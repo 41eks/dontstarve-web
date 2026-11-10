@@ -44,7 +44,7 @@ function setup() {
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
 /** The Lua tags, in order; `tickingarea` is this project's own activity tag. */
-const tags = (inst: PrefabInstance) => inst.listTags().filter(tag => tag !== 'tickingarea');
+const tags = (inst: PrefabInstance) => inst.listTags();
 const artLoaded = (inst: PrefabInstance) => prefabDisplay(inst.transform.model)!.artLoaded();
 const requested = (archive: string) => (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
 /** Frames the drawn clip to its end, as the display group does: its animover replaces the declared clip, even with one of the same name. */

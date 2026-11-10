@@ -1,7 +1,7 @@
 import type { Object3D } from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { prefabDisplay } from '@dontstarve-web/display';
-import { activePrefabs, type FoundEntity } from '../../prefab/src/activePrefabs';
+import { actionEntities, type FoundEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import type { BufferedActionDoer, BufferedActionObject } from '../../stategraphs/src/bufferedaction';
@@ -26,13 +26,13 @@ function contains(root: Object3D, model: Object3D): boolean {
 }
 
 /**
- * The world's active entities tagged `<action>_workable` (TheSim:FindEntities with that tag), optionally only the
- * one drawn by `model`, those drawn under a scene `root`, or those of `prefab`. Tests use this in place of a manager's target list.
+ * The live entities tagged `<action>_workable`, optionally only the one drawn by `model`, those drawn under a scene
+ * `root`, or those of `prefab`. Tests use this in place of a manager's target list.
  */
 export function workTargets(action: WorkAction, filter?: Object3D | string): WorkTarget[] {
   // An asleep entity keeps its components: it cannot be picked, but an action still reaches it.
   const isValid = (entity: FoundEntity) => !entity.isRemoved && entity.hasTag(`${action}_workable`);
-  return activePrefabs.filter(entity => isValid(entity)
+  return [...actionEntities()].filter(entity => isValid(entity)
     && (filter === undefined || (typeof filter === 'string' ? entity.prefab === filter : contains(filter, entity.model))))
     .map(entity => ({
       entity, model: entity.model,

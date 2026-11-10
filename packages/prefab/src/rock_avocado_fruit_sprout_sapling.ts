@@ -3,7 +3,6 @@ import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Timer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { actionEntity } from './actionEntity';
 import { addComponent } from './components';
 import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -104,7 +103,7 @@ export function rockAvocadoSaplingPrefabs(world: RockAvocadoSaplingWorld): Reado
         bank: 'rock_avo_fruit_master', hiddenSymbols: ['snow'] },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       minimapIcon: 'rock_avocado.png',
-      onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, ROCK_AVOCADO_SAPLING_ID), inst, inst.components.workable, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
     },
   };
 }

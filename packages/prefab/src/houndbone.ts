@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
@@ -76,7 +75,7 @@ export function houndbonePrefabs(world: HoundboneWorld): Readonly<Record<typeof 
       fn: position => new HoundboneInstance(world, position),
       assets: { animationArchive: 'hound_base.zip', buildArchives: ['hound_base.zip'], bank: 'houndbase' },
       assetOptions: { instancedAnimations: 'all' },
-      onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, HOUNDBONE_ID), inst, inst.components.workable, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
     },
   };
 }

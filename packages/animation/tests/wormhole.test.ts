@@ -3,9 +3,8 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { wormholePrefabs, WORMHOLE_ID, WORMHOLE_SKINS, WORMHOLE_ENTER_DISTANCE, WORMHOLE_EXIT_DISTANCE, type WormholeInstance } from '../../prefab/src/wormhole';
-import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabEntityManager, type PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { loadSpriteSkinArchive } from '../src/animationAssets';
 import { isMouseTarget } from '../../stategraphs/src/mouseTargets';
 import { bindTestWorld } from './worldContentFixture';
@@ -121,7 +120,7 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
   const wormhole = s.spawn(new THREE.Vector3()), model = wormhole.transform.model;
   await prefabDisplay(model)!.artLoaded();
   const id = wormhole.entityId;
-  const target = () => findActionEntity(model)!.reskinTarget!;
+  const target = () => prefabInstance(model)!.reskinTarget!;
   try {
     expect(wormhole.skinId).toBeUndefined();
     await s.playerAt(0);

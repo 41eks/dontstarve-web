@@ -8,7 +8,6 @@ import { MoleBait } from '../packages/prefab/src/molebait';
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
-import { activePrefabs } from '../packages/prefab/src/actionEntity';
 import type { TemperatureSource } from '../packages/componets/src/temperature';
 import { PlaySound } from '@dontstarve-web/prefab/sound';
 import { newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntity } from '@dontstarve-web/inventory';
@@ -33,7 +32,7 @@ import { createFarmMap } from '@dontstarve-web/prefab/farmMap';
 import { placementEntities } from '@dontstarve-web/prefab/placementEntities';
 import { playerStats } from './playerStats';
 import { PrefabDisplayGroup, SpriteResources } from '@dontstarve-web/display';
-import { PrefabEntityManager, PrefabInstance, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
+import { PrefabEntityManager, PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
 import { staffLightPrefabs } from '@dontstarve-web/prefab/stafflight';
 import { bulbPlantPrefabs } from '@dontstarve-web/prefab/bulb_plant';
@@ -96,6 +95,8 @@ import type { LootLaunch } from '../packages/componets/src/inventoryphysics';
 
 /** Where SpawnPrefab makes an inst before it is set down or given to its holder. */
 const ITEM_ORIGIN = new THREE.Vector3();
+/** tileManager's default ticking area is the square 10 tiles around the player's tile; this reaches its corners. */
+const TICKING_AREA_REACH = 10.5 * TILE_SIZE * Math.SQRT2;
 import { player, playerInstance } from './player';
 import {
   PlaceableBuildingPlacement,
@@ -608,8 +609,10 @@ export async function createSceneEntities(
       butterflyWorld: {
         getWatchWorldContent: worldState.getWatchWorldContent,
         getThreatPositions: () => [player.position],
-        // butterflybrain.lua GetClosestInstWithTag({"flower"}): the flower-tagged entities in the ticking area.
-        getFlowers: () => activePrefabs.filter(inst => inst.hasTag('flower')).map(inst => ({ id: String(prefabInstance(inst.model)?.entityId), position: inst.getPosition() })),
+        // butterflybrain.lua GetClosestInstWithTag({"flower"}): the awake flower-tagged entities, which fill the ticking
+        // area (10 tiles around the player's tile, a square) that this radius covers.
+        getFlowers: () => prefabs.FindEntities(player.position, TICKING_AREA_REACH, ['flower'])
+          .filter(inst => inst.status.peek() === 'active').map(inst => ({ id: String(inst.entityId), position: inst.position })),
         constrainPosition: (position) => {
           const edge = initialSave.world.map.generator.options.size / 2 - 0.5;
           position.x = THREE.MathUtils.clamp(position.x, -edge, edge);

@@ -155,7 +155,7 @@ it('cycles building skins while preserving the container root, identity, state a
   const record = { id: 'e_open_chest', transform: { position: [3, 0, 4] as const, rotationY: 0 },
     components: { building: {}, container: { slotCount: 9, slots: [] } } };
   const root = await placement.spawnFromSave('treasurechest', record) as THREE.Group;
-  const target = findActionEntity(root)!.reskinTarget!;
+  const target = lookupPrefabInstance(root)!.reskinTarget!;
   const skins = Object.keys(definitions.animatedBuildings.treasurechest.skinArchives);
   expect(placement.exportRecords()[0].record.components.building?.skinId).toBeUndefined();
   const fx = { play: vi.fn(), dispose: vi.fn() };
@@ -217,7 +217,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
   model.add(mesh); world.scene.add(model);
   const entity = actionEntity(model, 'twigs');
-  expect(entity.reskinTarget).toBeUndefined();
+  expect(lookupPrefabInstance(model)!.reskinTarget).toBeUndefined();
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   equipped.set(tool);
@@ -248,7 +248,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
     const sprite = new SpriteState({ name: '' });
     const skinned: ReskinTarget = { ...reskinEntityFields, skins: ['icebox_crystal'], id: 'e_target', prefabId: 'icebox',
       model: new THREE.Group(), position: new THREE.Vector3(1, 0, 0), sprite, get skinId() { return sprite.skinId.peek(); }, isValid: () => true };
-    entity.reskinTarget = skinned;
+    lookupPrefabInstance(model)!.reskinTarget = skinned;
     expect(controller.DoAction(controller.createAction(picker.getMouseActions().right!)!)).toBe(true);
     equipped.set(null); lifecycle.onunequip();
     expect(animation.hit()).toBe(false);

@@ -1,9 +1,8 @@
 import type { Object3D } from 'three';
-import type { FoundEntity } from './activePrefabs';
+import type { FoundEntity } from './actionEntity';
 
 interface Registration {
   readonly entity: FoundEntity;
-  active: boolean;
   awake: boolean;
   refresh(): void;
 }
@@ -27,17 +26,17 @@ export function refreshMouseTarget(model: Object3D): void { registrations.get(mo
 /** A projected entity owns one registration; its lifecycle and tags update it without a pointer-time world scan. */
 export function registerMouseTarget(entity: FoundEntity) {
   const { model } = entity;
-  const registration: Registration = { entity, active: false, awake: true, refresh() {
-    if (registration.active && registration.awake && model.parent && enabled.get(model) !== false
+  const registration: Registration = { entity, awake: true, refresh() {
+    if (registration.awake && model.parent && enabled.get(model) !== false
       && !entity.isRemoved && !entity.hasTag('NOCLICK')) targets.add(entity);
     else targets.delete(entity);
   } };
   registrations.set(model, registration);
+  registration.refresh();
   model.addEventListener('added', registration.refresh);
   model.addEventListener('removed', registration.refresh);
   return {
     refresh: registration.refresh,
-    setActive(value: boolean) { registration.active = value; registration.refresh(); },
     setAwake(value: boolean) { registration.awake = value; registration.refresh(); },
     dispose() {
       targets.delete(entity);

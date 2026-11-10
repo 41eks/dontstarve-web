@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { WINTEROMETER_ID } from '../../prefab/src/winterometer';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { findActionEntity } from '../../prefab/src/actionEntity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { GetTemperatureAtXZ } from '../../componets/src/temperatureoverrider';
 import type { SpriteState } from '../../display/src';
@@ -90,7 +89,7 @@ it('keeps its skin through c_save, restores the reading, and saves only the burn
   const { placement, scheduler } = await createPlacement(temperature);
   try {
     await placement.spawn(WINTEROMETER_ID);
-    expect(reskinEntity(findActionEntity(workTargets('HAMMER')[0].model)!.reskinTarget!)).toBe(true);
+    expect(reskinEntity(prefabInstance(workTargets('HAMMER')[0].model)!.reskinTarget!)).toBe(true);
     const saved = placement.exportRecords()[0].record;
     expect(saved.components.building).toMatchObject({ skinId: 'winterometer_circus' });
     expect(saved.components.building).not.toHaveProperty('burnt');

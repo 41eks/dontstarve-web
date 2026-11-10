@@ -12,7 +12,7 @@ import { createMemo, createSignal, type HandEquipment, type ReadonlySignal } fro
 import { DisposeTileStates, GetTileKeyAtPoint, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { bindTestWorld } from './worldContentFixture';
 import { configureBugNetEntity } from '../../prefab/src/bugnet';
-import { actionEntity, activePrefabs, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { actionEntities, actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
 import { bindInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import { displayLights } from '../../display/src/displaySprites';
@@ -74,7 +74,7 @@ describe('source fireflies light and proximity', () => {
       s.handEquipment.set(hand); await settle();
       expect(s.controller.clickable).toBe(false);
       expect(mouseTargets.has(projected)).toBe(false);
-      expect(activePrefabs).toContain(projected);
+      expect([...actionEntities()]).toContain(projected);
       // The held-net gate only drops the mouse candidate; NOCLICK still follows the source fade.
       expect(s.entity.hasTag('NOCLICK')).toBe(false);
       expect(s.instance.hasTag('NOCLICK')).toBe(false);

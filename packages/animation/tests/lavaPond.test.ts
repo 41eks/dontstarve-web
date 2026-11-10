@@ -7,7 +7,6 @@ import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { Heater } from '../../componets/src/heater';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { lavaPondPrefabs, LAVA_POND_RADIUS, type LavaPondInstance } from '../../prefab/src/lava_pond';
-import { FindEntities } from '../../prefab/src/actionEntity';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { createInventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -71,11 +70,11 @@ it('creates source rock offsets as nonpersistent children, blocks bodies and kee
     s.scheduler.advance(0);
     expect(pond.task).toBeUndefined();
     expect(pond.rocks.peek()!.map(rock => rock.rocktype)).toEqual(['', '7']);
-    const rocks = FindEntities(pond.position, 30).filter(inst => inst.prefab.startsWith('lava_pond_rock'));
+    const rocks = pond.TheSim.FindEntities(pond.position, 30).filter(inst => inst.prefab.startsWith('lava_pond_rock'));
     expect(rocks.map(rock => rock.prefab).sort()).toEqual(['lava_pond_rock', 'lava_pond_rock7']);
-    const first = FindEntities(new THREE.Vector3(12, 0, -1.7), .01);
+    const first = pond.TheSim.FindEntities(new THREE.Vector3(12, 0, -1.7), .01);
     expect(first.map(inst => inst.prefab)).toEqual(['lava_pond_rock']);
-    const source = FindEntities(pond.position, 30, ['HASHEATER'], ['INLIMBO']);
+    const source = pond.TheSim.FindEntities(pond.position, 30, ['HASHEATER'], ['INLIMBO']);
     expect(source).toHaveLength(1); expect(source[0].components.heater!.GetHeat()).toBe(500);
 
     const body = pond.physicsBody!;
@@ -95,15 +94,17 @@ it('creates source rock offsets as nonpersistent children, blocks bodies and kee
     await restored.registry.restoreAll({ lava_pond: entities.lava_pond });
     expect(restoredRandom).not.toHaveBeenCalled();
     const reloaded = restored.ponds.get(id) as LavaPondInstance;
-    expect(FindEntities(reloaded.position, 30).filter(inst => inst.prefab.startsWith('lava_pond_rock') && inst !== rocks[0] && inst !== rocks[1])).toHaveLength(2);
+    expect(reloaded.TheSim.FindEntities(reloaded.position, 30).filter(inst => inst.prefab.startsWith('lava_pond_rock') && inst !== rocks[0] && inst !== rocks[1])).toHaveLength(2);
     restored.scheduler.advance(0);
     expect(restored.ponds.exportRecords()).toEqual(s.ponds.exportRecords());
 
     pond.remove();
-    expect(FindEntities(pond.position, 30, ['HASHEATER'])).toHaveLength(1);
+    // Its heater leaves its world; the reloaded pond in the other world keeps its own.
+    expect(pond.TheSim.FindEntities(pond.position, 30, ['HASHEATER'])).toEqual([]);
+    expect(reloaded.TheSim.FindEntities(reloaded.position, 30, ['HASHEATER'])).toEqual([reloaded]);
     expect(s.physics.bodies).toEqual([]);
     expect(s.ponds.exportRecords()).toEqual([]);
-    expect(FindEntities(pond.position, 30).filter(inst => rocks.includes(inst))).toEqual([]);
+    expect(pond.TheSim.FindEntities(pond.position, 30).filter(inst => rocks.includes(inst))).toEqual([]);
   } finally { s.dispose(); restored.dispose(); }
 });
 

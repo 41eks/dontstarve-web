@@ -38,13 +38,13 @@ it('uses component-owned pickable tags and blocks fire/intense without consultin
     instance.removeTag(tag);
   }
   component.pick({ giveItem: () => true });
-  expect(instance.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['plant', 'custom']);
+  expect(instance.listTags()).toEqual(['plant', 'custom']);
   expect(canDoSceneAction('PICK', model)).toBe(false);
   component.update(10);
   expect(canDoSceneAction('PICK', model)).toBe(true);
   component.dispose();
   expect(sceneActions(model)).toEqual([]);
-  expect(instance.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['plant', 'custom']);
+  expect(instance.listTags()).toEqual(['plant', 'custom']);
   disposeActionEntity(model); instance.remove(); display.dispose();
 });
 

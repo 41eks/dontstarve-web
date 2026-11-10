@@ -8,7 +8,6 @@ import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper
 import { Timer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Worker } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import { addComponent, removeComponent } from './components';
 import { DeciduousTreeLeaves, type LeafWorld } from './deciduousTreeLeaves';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
@@ -368,7 +367,7 @@ function onSpawned(inst: DeciduousInstance): void {
   if (inst.hasTag('stump')) inst.sprite.playOnce(rest(inst));
   applyBuild(inst);
   inst.components.growable.OnEntitySleep();
-  inst.mouseTarget = new ToolMouseTarget(actionEntity(inst.transform.model, DECIDUOUS_ID), inst, inst.components.workable, inst.world.handEquipment);
+  inst.mouseTarget = new ToolMouseTarget(inst, inst.components.workable, inst.world.handEquipment);
 }
 
 /** deciduoustrees.lua normal build: three size anims over one trunk, with the season's leaves as a symbol override. */

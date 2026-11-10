@@ -7,7 +7,7 @@ import { ItemEntity } from '../../inventory/src';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { Workable } from '../../componets/src/workable';
 import { Burnable } from '../../componets/src/burnable';
-import { actionEntity, activePrefabs, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { actionEntities, actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { PrefabInstance, bindInstance } from '../../prefab/src/prefabInstance';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
@@ -28,7 +28,7 @@ function setup(options?: ToolMouseTargetOptions) {
   const target = actionEntity(tree, 'evergreen'); actionEntity(withEntity(back, 'log'), 'log');
   const workable = new Workable(target); target.components.workable = workable;
   const burnable = new Burnable(target); target.components.burnable = burnable;
-  const binding = new ToolMouseTarget(target, instance, workable, hand, options);
+  const binding = new ToolMouseTarget(instance, workable, hand, options);
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
   camera.position.z = 10; camera.updateMatrixWorld();
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
@@ -55,7 +55,7 @@ it('skips tree geometry with empty hands, follows CHOP to DIG replacement, and p
   try {
     expect(s.pick()).toBe(s.back);
     expect(intersect).not.toHaveBeenCalled();
-    expect(activePrefabs).toContain(s.target);
+    expect([...actionEntities()]).toContain(s.target);
     expect(s.target.hasTag('NOCLICK')).toBe(false);
     await s.equip('axe');
     expect(s.pick()).toBe(s.tree);

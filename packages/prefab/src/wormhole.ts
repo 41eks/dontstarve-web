@@ -4,7 +4,6 @@ import { PlayerProx } from '../../componets/src/playerprox';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { WormholeStateGraph, type WormholeStateInst } from '../../stategraphs/src/SGwormhole';
-import { actionEntity } from './actionEntity';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { reskinTarget } from './reskin_tool';
@@ -101,7 +100,7 @@ export function wormholePrefabs(world: WormholeWorld): Readonly<Record<typeof WO
         playerprox.SetOnPlayerFar(() => onfar(inst));
         playerprox.ForceUpdate();
         const model = inst.transform.model;
-        actionEntity(model, WORMHOLE_ID).reskinTarget = reskinTarget({
+        inst.reskinTarget = reskinTarget({
           get id() { return String(inst.entityId); }, prefabId: WORMHOLE_ID, instance: inst, display: prefabDisplay(model)!,
           sprite: inst.sprite, skins: WORMHOLE_SKINS, get position() { return inst.position; },
           hasTag: tag => inst.hasTag(tag), isValid: () => !inst.isRemoved,

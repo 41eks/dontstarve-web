@@ -6,7 +6,6 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import { WorldMigrator, type WorldMigratorShard } from '../../componets/src/worldmigrator';
-import { actionEntity } from './actionEntity';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound } from './sound';
@@ -109,7 +108,7 @@ export function caveEntrancePrefabs(world: CaveEntranceWorld): Readonly<Record<C
     minimapIcon: id === CAVE_ENTRANCE_ID ? 'cave_closed.png' : 'cave_open.png',
     onSpawned: inst => {
       const workable = inst.components.workable;
-      if (workable) new ToolMouseTarget(actionEntity(inst.transform.model, id), inst, workable, world.handEquipment);
+      if (workable) new ToolMouseTarget(inst, workable, world.handEquipment);
     },
   });
   return { cave_entrance: definition(CAVE_ENTRANCE_ID), cave_entrance_open: definition(CAVE_ENTRANCE_OPEN_ID) };

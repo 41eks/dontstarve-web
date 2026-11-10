@@ -1,6 +1,6 @@
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import type { Object3D } from 'three';
-import type { FoundEntity } from '../../prefab/src/activePrefabs';
+import type { FoundEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
 
 /** Resolve a drawn descendant to its registered prefab root, independently of available actions. */

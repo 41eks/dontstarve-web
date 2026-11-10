@@ -3,7 +3,8 @@ import { Group, Scene, Vector3 } from 'three';
 import { Builder } from '../../componets/src/builder';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree } from '../../componets/src/techtree';
-import { actionEntity, actionEntitiesChanged, FindEntities } from '../../prefab/src/actionEntity';
+import { actionEntity } from '../../prefab/src/actionEntity';
+import { testEnts } from './entsFixture';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { withEntity } from './entityFixture';
@@ -11,17 +12,19 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
 
 function setup() {
-  const scene = new Scene();
+  const scene = new Scene(), ents = testEnts();
   const entity = (prefab: string, position = new Vector3()) => {
     const model = withEntity(new Group(), prefab);
-    model.position.copy(position);
+    const inst = ents.track(prefabInstance(model)!);
+    inst.setPosition(position.x, position.y, position.z);
     scene.add(model);
-    return actionEntity(model, prefab);
+    actionEntity(model, prefab);
+    return inst;
   };
   const player = entity('waxwell');
   const builder = new Builder(player, {
-    findEntities: (...args) => FindEntities(...args), researchMachineDistance: 4 * WORLD_SCALE,
-    entitiesChanged: actionEntitiesChanged,
+    findEntities: (...args) => ents.prefabs.FindEntities(...args) as never, researchMachineDistance: 4 * WORLD_SCALE,
+    entitiesChanged: ents.prefabs.entitiesChanged,
   });
   const station = (position: Vector3, levels: Record<string, number>) => {
     const inst = entity('station', position);
@@ -52,13 +55,13 @@ it('reacts to position, station creation/removal, tags and technology without fr
     expect(builder.current_prototyper).toBe(other.inst);
     other.inst.addTag('fire'); await settle();
     expect(builder.current_prototyper).toBe(near.inst);
-    prefabInstance(near.inst.model)!.remove(); await settle();
+    near.inst.remove(); await settle();
     expect(builder.current_prototyper).toBeUndefined();
     other.inst.removeTag('fire'); await settle();
-    player.model.position.x = 40; publish(); await settle();
+    player.setPosition(40, 0, 0); publish(); await settle();
     expect(other.prototyper.on).toBe(false);
     builder.dispose(); evaluate.mockClear();
-    player.model.position.x = 0; publish(); await settle();
+    player.setPosition(0, 0, 0); publish(); await settle();
     expect(evaluate).not.toHaveBeenCalled();
   } finally { builder.dispose(); near.prototyper.OnRemoveFromEntity(); other?.prototyper.OnRemoveFromEntity(); world.unbind(); scheduler.dispose(); }
 });
@@ -76,16 +79,16 @@ it('selects only the nearest eligible station at the scaled radius and clears it
     expect(builder.accessible_tech_trees.peek()).toMatchObject({ SCIENCE: 1, MAGIC: 1, ANCIENT: 0 });
     builder.EvaluateTechTrees();
     expect(events).toHaveBeenCalledTimes(1);
-    player.model.position.set(8, 0, 0);
+    player.setPosition(8, 0, 0);
     builder.EvaluateTechTrees();
     expect(builder.current_prototyper).toBe(farther.inst);
     expect(nearer.prototyper.on).toBe(false);
     expect(builder.accessible_tech_trees.peek().SCIENCE).toBe(2);
     // Lua's 4 units use TILE_SIZE / 4, with one boundary and no exit hysteresis.
-    player.model.position.set(8 + 4 * WORLD_SCALE, 0, 0);
+    player.setPosition(8 + 4 * WORLD_SCALE, 0, 0);
     builder.EvaluateTechTrees();
     expect(farther.prototyper.on).toBe(true);
-    player.model.position.x += .001;
+    player.setPosition(player.position.x + .001, 0, 0);
     builder.EvaluateTechTrees();
     expect(builder.current_prototyper).toBeUndefined();
     expect(farther.prototyper.on).toBe(false);
@@ -137,7 +140,7 @@ it('keeps a station on for its other doers and releases removal listeners on com
   expect(on).toHaveBeenCalledOnce();
   builder.dispose();
   expect(prototyper.on).toBe(true);
-  prefabInstance(other.model)!.remove();
+  other.remove();
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(prototyper.on).toBe(false);
   expect(off).toHaveBeenCalledOnce();
@@ -149,7 +152,7 @@ it('keeps a station on for its other doers and releases removal listeners on com
   prototyper.OnRemoveFromEntity();
   expect(inst.hasTag('prototyper')).toBe(false);
   expect(off).toHaveBeenCalledTimes(2);
-  prefabInstance(player.model)!.remove();
+  player.remove();
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(off).toHaveBeenCalledTimes(2);
 });

@@ -257,7 +257,7 @@ mintemp = max(default_mintemp, min(0, ambient_temperature))
 
 ## 熔岩池的热源供给端
 
-项目的 `lava_pond` 已挂载通用 `Heater`，固定 `GetHeat(observer) = 500`，默认供热、启用距离衰减且无额外半径截断。Heater 的配置保存在私有 signal 中并提供只读视图，组件拥有 `HASHEATER` 标签，移除时释放标签；没有温度时钟订阅或每帧供热数值更新。现有 `FindEntities` 可在场景中查询实例、位置及 heater 组件。熔岩池不改写 `WorldTemperature` 或局部环境温度。
+项目的 `lava_pond` 已挂载通用 `Heater`，固定 `GetHeat(observer) = 500`，默认供热、启用距离衰减且无额外半径截断。Heater 的配置保存在私有 signal 中并提供只读视图，组件拥有 `HASHEATER` 标签，移除时释放标签；没有温度时钟订阅或每帧供热数值更新。世界的 `FindEntities`（`inst.TheSim` 或应用层的 manager）可按 `HASHEATER` 查到实例、位置及 heater 组件。熔岩池不改写 `WorldTemperature` 或局部环境温度。
 
 当前仍未实现实体 `Temperature`，因此靠近不会实际更新角色体温；距离衰减、保温、升降温速率和过热伤害属于后续消费端。熔岩池已接入原版动画、局部光照、障碍、焦岩布局及保存恢复，具体范围见 [实现计划](lava-pond-plan.md) 和 README 的调试命令。
 

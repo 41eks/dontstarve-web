@@ -4,7 +4,9 @@ import { withEntity } from './entityFixture';
 import { afterEach, expect, it, vi } from 'vitest';
 import { intersectSpriteEntities, PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
-import { actionEntity, activePrefabs, bindActionEntityWorld, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { actionEntities, actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { watchTileActivity } from '../../prefab/src/tileActivity';
 import { ItemEntity } from '../../inventory/src';
 import { createMemo, createSignal } from '../../signals/src';
 import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
@@ -13,7 +15,7 @@ import { SpriteFrameRenderer, type ResolvedSprite } from '../src/animationAssets
 import { mouseTargets, setMouseTargetEnabled } from '../../prefab/src/mouseTargets';
 
 useTestTileMap();
-afterEach(() => { vi.unstubAllGlobals(); expect(activePrefabs).toHaveLength(0); expect(mouseTargets.size).toBe(0); });
+afterEach(() => { vi.unstubAllGlobals(); expect([...actionEntities()]).toHaveLength(0); expect(mouseTargets.size).toBe(0); });
 
 it('picks behind hidden/NOCLICK swarms, restores visible bounding-box picking and keeps unavailable visible targets blocking', () => {
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
@@ -81,7 +83,6 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
   const pointer = new PointerRaycaster({ camera, renderer, scene }), picker = new PlayerActionPicker(pointer);
   const raycasts = vi.spyOn(pointer, 'pickMouseTarget'), traversal = vi.spyOn(scene, 'traverse');
-  const worldScan = vi.spyOn(activePrefabs, Symbol.iterator);
   const pickup = { action: 'PICKUP' as const };
   const provider = vi.fn(model => model ? [{ action: pickup, model, button: 'left' as const, available: model === back }] : []);
   picker.register(provider);
@@ -95,7 +96,7 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
     expect(picker.getMouseActions().left).toBeUndefined();
     expect(provider).toHaveBeenLastCalledWith(front); // An unavailable visible entity still occludes the back.
     setMouseTargetEnabled(front, false);
-    expect(activePrefabs.some(entity => entity.model === front)).toBe(true);
+    expect([...actionEntities()].some(entity => entity.model === front)).toBe(true);
     expect(mouseTargets.has(findActionEntity(front)!)).toBe(false);
     expect(picker.getMouseActions().left).toBe(pickup);
     setMouseTargetEnabled(front, true);
@@ -109,9 +110,8 @@ it('picks active prefabs using logical NOCLICK/removal and resolves a pointer ev
     item.removeTag('NOCLICK');
     expect(picker.getMouseActions().left).toBe(pickup);
     expect(traversal).not.toHaveBeenCalled();
-    expect(worldScan).not.toHaveBeenCalled();
   } finally {
-    raycasts.mockRestore(); traversal.mockRestore(); worldScan.mockRestore();
+    raycasts.mockRestore(); traversal.mockRestore();
     item.destroy(); disposeActionEntity(front); disposeActionEntity(back); picker.dispose();
     geometry.dispose(); material.dispose();
   }
@@ -147,14 +147,19 @@ it('follows tickingarea and picks tall art away from its logical foot using curr
   back.position.y = 8; back.add(new THREE.Mesh(geometry, material)); scene.add(tall, back);
   const positions = createSignal([new THREE.Vector3()]);
   const player = createMemo(() => positions.get()[0]);
-  const stop = bindActionEntityWorld(scene, GetTileStateAtPoint(player));
   actionEntity(withEntity(tall, 'tall'), 'tall').addTag('NOBLOCK'); actionEntity(withEntity(back, 'back'), 'back');
+  // The world's manager wakes each entity with its tile, as the ticking area moves; mouse targets follow its status.
+  const query = GetTileStateAtPoint(player);
+  const watches = [tall, back].map(model => watchTileActivity(model, query, active => prefabInstance(model)!.setActive(active)));
+  const stop = () => { watches.forEach(unwatch => unwatch()); disposeActionEntity(tall); disposeActionEntity(back); };
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
   camera.position.set(0, 8, 10); camera.updateMatrixWorld();
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
   const pointer = new PointerRaycaster({ camera, renderer, scene }), picker = new PlayerActionPicker(pointer);
   const pick = () => { picker.getMouseActions(); return picker.targetModel; };
   try {
+    // The status changes from the first activity update reach the mouse registry once effects settle.
+    await new Promise(resolve => setTimeout(resolve, 0));
     pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
     expect(pick()).toBe(back);
     positions.set([new THREE.Vector3(12, 0, 0)]);

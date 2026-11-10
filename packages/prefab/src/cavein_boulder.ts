@@ -5,7 +5,6 @@ import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { MakeHeavyObstaclePhysics } from './standardcomponents';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
-import { actionEntity } from './actionEntity';
 import { addComponent } from './components';
 import { Transform } from './transform';
 import type { SpawnGroundItem } from './groundPrefab';
@@ -113,7 +112,7 @@ export function caveinBoulderPrefabs(world: CaveinBoulderWorld): Readonly<Record
       assets: { animationArchive: 'cavein_boulder.zip', buildArchives: ['swap_cavein_boulder.zip'], bank: 'cavein_boulder' },
       assetOptions: { instancedAnimations: 'all' },
       physics: { make: MakeHeavyObstaclePhysics, radius: PHYSICS_RADIUS },
-      onSpawned: inst => { new ToolMouseTarget(actionEntity(inst.transform.model, CAVEIN_BOULDER_ID), inst, inst.components.workable!, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable!, world.handEquipment); },
     },
   };
 }

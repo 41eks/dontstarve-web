@@ -8,7 +8,6 @@ import { Combat, type CombatActor } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Workable, type Worker } from '../../componets/src/workable';
-import { actionEntity } from './actionEntity';
 import type { BuildingPlacerSpec } from './buildingPlacer';
 import { PrefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
 import { reskinTarget } from './reskin_tool';
@@ -193,13 +192,13 @@ function fn(world: PrefabWorldContext, sprites: SpriteResources): FenceInstance 
 
 /** What the mouse and the tools find on a fence: the hammer and the reskin tool. */
 function onspawned(inst: FenceInstance, world: Pick<PrefabWorldContext, 'handEquipment'>): void {
-    const model = inst.transform.model, entity = actionEntity(model, FENCE_ID, inst);
-    entity.reskinTarget = reskinTarget({
+    const model = inst.transform.model;
+    inst.reskinTarget = reskinTarget({
         get id() { return String(inst.entityId); }, prefabId: FENCE_ID, instance: inst, display: prefabDisplay(model)!,
         sprite: inst.sprite, skins: Object.keys(FENCE_SKIN_ARCHIVES),
         hasTag: tag => inst.hasTag(tag), get position() { return inst.position; }, isValid: () => !inst.isRemoved,
     });
-    new ToolMouseTarget(entity, inst, inst.components.workable, world.handEquipment);
+    new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
 }
 
 /** The Prefab fence.lua returns for the placed fence; fence_item is a ground and inventory item. */

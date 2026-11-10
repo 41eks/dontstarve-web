@@ -7,7 +7,6 @@ import { Growable, type GrowableSave } from '../../componets/src/growable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { actionEntity } from './actionEntity';
 import { ToolMouseTarget } from './toolMouseTarget';
 import { SpriteState } from '@dontstarve-web/display';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
@@ -394,7 +393,7 @@ export function mushtreePrefabs(world: MushtreeWorld): Readonly<Record<MushtreeS
         if (inst.isRemoved) return;
         inst.startGrowth();
         if (stump) inst.makeStump();
-        new ToolMouseTarget(actionEntity(inst.transform.model, id), inst, inst.components.workable, world.handEquipment);
+        new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
       },
     });
     prefabs[id] = tree(false) as unknown as PrefabEntityDefinition<PrefabInstance>;

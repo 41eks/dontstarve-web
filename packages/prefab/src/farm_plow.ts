@@ -9,7 +9,6 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { FarmPlantWorld } from '../../componets/src/farmplantable';
-import { actionEntity } from './actionEntity';
 import { addComponent } from './components';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
@@ -436,7 +435,7 @@ export function farmPrefabs(world: FarmWorld): Readonly<Record<string, PrefabEnt
       physics: { make: MakeObstaclePhysics, radius: .5 },
       onSpawned: inst => {
         const plow = inst as FarmPlowInstance;
-        new ToolMouseTarget(actionEntity(plow.transform.model, FARM_PLOW_ID), plow, plow.components.workable, world.handEquipment);
+        new ToolMouseTarget(plow, plow.components.workable, world.handEquipment);
       },
     },
     farm_soil: { fn: () => soil_fn(world), assets: { animationArchive: 'farm_soil.zip', buildArchives: ['farm_soil.zip'], bank: 'farm_soil' } },

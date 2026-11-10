@@ -7,7 +7,6 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { FlowerInstance, flowerPrefabs, type FlowerAnimation } from '../../prefab/src/flower';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { FireFxHost } from '../../prefab/src/treeFire';
-import { FindEntities } from '../../prefab/src/actionEntity';
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
 import { deployActor, landTurf } from './deployActor';
@@ -154,7 +153,7 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
     // The shared display group releases a removed entity's display on its next frame.
     s.displays.update(0, new THREE.Quaternion());
     expect(flower.parent).toBeNull();
-    expect(FindEntities(new THREE.Vector3(2, 0, 0), 1, ['flower'])).toEqual([]);
+    expect(s.prefabs.FindEntities(new THREE.Vector3(2, 0, 0), 1, ['flower'])).toEqual([]);
     expect(s.displays.renderEntities).toEqual([]);
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
@@ -371,6 +370,6 @@ it('spawns natural flowers and explicit roses, saves their live fields and resto
     expect(prefabInstance<FlowerInstance>(restored.world.scene.children[1])!.components.inspectable!.getstatus!()).toBe('ROSE');
     rose.remove();
     expect(s.flowers.exportRecords()).toHaveLength(1);
-    expect(FindEntities(rose.position, 1, ['flower']).some(inst => lookupPrefabInstance(inst.model) === rose)).toBe(false);
+    expect(s.prefabs.FindEntities(rose.position, 1, ['flower'])).not.toContain(rose);
   } finally { s.dispose(); restored.dispose(); }
 });

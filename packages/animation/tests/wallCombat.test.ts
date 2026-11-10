@@ -12,7 +12,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import * as CANNON from 'cannon-es';
-import { activePrefabs } from '../../prefab/src/actionEntity';
+import { actionEntities } from '../../prefab/src/actionEntity';
 import { Combat, type CombatInst } from '../../componets/src/combat';
 import type { Health } from '../../componets/src/health';
 import { ItemEntity } from '../../inventory/src';
@@ -53,8 +53,8 @@ function attacker(position: THREE.Vector3, now: () => number, weapon?: ItemEntit
   return { inst, combat };
 }
 
-/** The walls DoAttackButton finds: live combat entities, as FindEntities lists them. */
-const combatTargets = () => activePrefabs.filter(entity => (entity.components as { combat?: unknown }).combat)
+/** The walls DoAttackButton finds: live combat entities, in placement order. */
+const combatTargets = () => [...actionEntities()].filter(entity => (entity.components as { combat?: unknown }).combat)
   .map(entity => ({ inst: prefabInstance(entity.model)! as unknown as CombatInst & { components: { health?: Health } },
     isValid: () => !entity.isRemoved && !prefabInstance(entity.model)!.components.health!.IsDead() }));
 const pose = (model: THREE.Group) => {

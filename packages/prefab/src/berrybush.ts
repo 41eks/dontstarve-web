@@ -7,7 +7,6 @@ import { Witherable } from '../../componets/src/witherable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Pickable } from './components/pickable';
 import { BurnableBinding } from './treeFire';
-import { actionEntity } from './actionEntity';
 import { reskinTarget } from './reskin_tool';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter, MakeSmallObstaclePhysics, MakeSnowCovered } from './standardcomponents';
 import { PickablePlantInstance, plantLootSpawner, SpringGrowthMod, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
@@ -167,7 +166,7 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
 
 /** reskin_tool's target, once the bush's display exists. */
 function bindReskin(inst: PickablePlantInstance): void {
-  actionEntity(inst.transform.model, inst.prefab).reskinTarget = reskinTarget({
+  inst.reskinTarget = reskinTarget({
     id: String(inst.entityId), prefabId: inst.prefab, instance: inst, display: prefabDisplay(inst.transform.model)!, sprite: inst.sprite,
     position: inst.position, skins: BERRYBUSH_SKINS, isValid: () => !inst.isRemoved, hasTag: tag => inst.hasTag(tag),
   });

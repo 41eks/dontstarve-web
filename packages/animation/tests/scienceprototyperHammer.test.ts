@@ -8,7 +8,7 @@ import { RESEARCH_LAB_IDS } from '../../prefab/src/scienceprototyper';
 import { managedBuildings } from './managedBuildings';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { Builder } from '../../componets/src/builder';
-import { actionEntity, FindEntities, findActionEntity } from '../../prefab/src/actionEntity';
+import { actionEntity } from '../../prefab/src/actionEntity';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { PlaySound } from '../../prefab/src/sound';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -49,15 +49,17 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
     id: `test_${id}`, transform: { position: [3, 0, 4], rotationY: 0 },
     components: { building: { ...(skinId ? { skinId } : {}) } },
   }) as THREE.Group;
+  // The builder searches the world its player is in; a test that reloads into a new world moves it there.
+  const sim = { current: placement.prefabs };
   const builder = new Builder(actionEntity(withEntity(world.player as THREE.Group, 'waxwell'), 'waxwell'), {
-    findEntities: (...args) => FindEntities(...args), researchMachineDistance: 4 * WORLD_SCALE,
+    findEntities: (...args) => sim.current.FindEntities(...args) as never, researchMachineDistance: 4 * WORLD_SCALE,
   });
   const animation = () => prefabInstance<PrefabInstance>(model)!.sprite;
-  const reskinTarget = () => findActionEntity(model)!.reskinTarget!;
+  const reskinTarget = () => prefabInstance(model)!.reskinTarget!;
   const finish = () => { for (let i = 0; i < 80; i++) { placement.update(1 / 30); fx.update(1 / 30, world.camera.quaternion); } };
   // The display loads the lab art; standalone collapse effects load from their own shared owner.
   await vi.waitFor(() => expect(animation().loaded).toBe(true));
-  return { placement, model, world, fx, animation, finish, dropLoot, builder, reskinTarget };
+  return { placement, model, world, fx, animation, finish, dropLoot, builder, reskinTarget, sim };
 }
 
 it.each(['researchlab'] as const)('%s fires hit/finish callbacks once and removes its record on hit four', async (id) => {
@@ -140,7 +142,7 @@ it('preserves work through reskinning and restores proximity after hits', async 
 });
 
 it('queues magic station transitions across reskinning, then rebuilds transient use state on load', async () => {
-  const { placement, model, world, animation, builder, reskinTarget } = await setup('researchlab3');
+  const { placement, model, world, animation, builder, reskinTarget, sim } = await setup('researchlab3');
   let restored: ReturnType<typeof managedBuildings> | undefined;
   try {
     world.player.position.copy(actionEntity(model, 'researchlab3').getPosition());
@@ -167,6 +169,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     placement.dispose();
 
     restored = managedBuildings(world);
+    sim.current = restored.prefabs;
     const loaded = restored.spawnFromSave('researchlab3', record) as THREE.Group;
     expect(prefabInstance(loaded)!.components.prototyper!.on).toBe(false);
     world.player.position.copy(actionEntity(loaded, 'researchlab3').getPosition());
@@ -182,6 +185,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect(lab.components.prototyper).toBeUndefined();
     restored.dispose();
     restored = managedBuildings(world);
+    sim.current = restored.prefabs;
     const burnt = restored.spawnFromSave('researchlab3', { ...record,
       components: { ...record.components, building: { ...record.components.building!, burnt: true } } }) as THREE.Group;
     builder.EvaluateTechTrees();
