@@ -115,6 +115,8 @@ export interface SpriteJson {
   readonly ground?: { readonly renderOrder: number; readonly flat: boolean };
   /** LAYER_BACKGROUND art that draws by mesh order among the ground layers, keeping its group order. */
   readonly meshOrder?: number;
+  /** AnimState:SetLayer(LAYER_BACKGROUND) on billboard art: drawn by meshOrder with the ground layers, not depth-sorted. */
+  readonly background?: boolean;
   /** An effect drawn on its owner's plane, a few depth steps towards the camera. */
   readonly depthOffset?: boolean;
   /** AnimState:SetFinalOffset(-1) on a standalone entity: it sorts before what shares its foot point, such as a sitter. */
@@ -176,6 +178,8 @@ export interface ArchiveSpriteCommands {
   setBuildArchive(archive: string): void;
   setGround(renderOrder: number, flat?: boolean): void;
   setMeshOrder(order: number): void;
+  /** AnimState:SetLayer: LAYER_BACKGROUND leaves the depth-sorted world layer, keeping the art's orientation. */
+  setLayer(layer: 'world' | 'background'): void;
   setDepthOffset(enabled: boolean): void;
   setBehindFoot(enabled: boolean): void;
   attachFx(key: string, fx: FxJson): void;
@@ -383,6 +387,10 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   setErosion(erosion: number): void { this.write({ erosion }); }
   setGround(renderOrder: number, flat = true): void { this.write({ ground: { renderOrder, flat } }); }
   setMeshOrder(meshOrder: number): void { this.write({ meshOrder }); }
+  setLayer(layer: 'world' | 'background'): void {
+    const background = layer === 'background' ? true : undefined;
+    if (background !== this.state.background) this.write({ background });
+  }
   setVisualHeight(visualHeight: number): void { if (visualHeight !== (this.state.visualHeight ?? 0)) this.write({ visualHeight }); }
   setDepthOffset(depthOffset: boolean): void { this.write({ depthOffset }); }
   setBehindFoot(behindFoot: boolean): void { if (behindFoot !== (this.state.behindFoot ?? false)) this.write({ behindFoot }); }

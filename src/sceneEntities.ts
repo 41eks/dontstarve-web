@@ -78,7 +78,7 @@ import { marshPlantPrefabs } from '@dontstarve-web/prefab/marsh_plant';
 import { FireFxHost } from '@dontstarve-web/prefab/treeFire';
 import { hotspringPrefabs } from '@dontstarve-web/prefab/hotspring';
 import { lavaPondPrefabs } from '@dontstarve-web/prefab/lava_pond';
-import { WormholeManager, WORMHOLE_ID } from '@dontstarve-web/prefab/wormhole';
+import { wormholePrefabs } from '@dontstarve-web/prefab/wormhole';
 import { portalPrefabs } from '@dontstarve-web/prefab/portal';
 import { nightmareGrowthPrefabs, type NightmareGrowthCrackInstance } from '@dontstarve-web/prefab/nightmaregrowth';
 import { nightmareRockPrefabs } from '@dontstarve-web/prefab/nightmarerock';
@@ -330,7 +330,6 @@ export async function createSceneEntities(
     'grass': ReturnType<typeof registerGrasses>;
     'sapling': ReturnType<typeof registerSaplings>;
     'cave_fern': ReturnType<typeof registerCaveFerns>;
-    'wormhole': ReturnType<typeof registerWormholes>;
     'multiplayer_portal_moonrock': ReturnType<typeof registerPortals>;
     'evergreen': ReturnType<typeof registerEvergreens>;
     'deciduoustree': ReturnType<typeof registerDeciduousTrees>;
@@ -419,7 +418,7 @@ export async function createSceneEntities(
   const worldWind = worldState.worldwind;
   registerTumbleweeds(registry, 'tumbleweed', worldState);
   registerHotsprings(registry, 'hotspring', worldState);
-  Managers['wormhole'] = registerWormholes(registry, 'wormhole', worldState);
+  registerWormholes(registry, 'wormhole', worldState);
   Managers['multiplayer_portal_moonrock'] = registerPortals(registry, 'multiplayer_portal_moonrock', worldState);
   registerNightmareGrowths(registry, 'nightmaregrowth', worldState);
   registerBeefalos(registry, 'beefalo', worldState);
@@ -478,7 +477,6 @@ export async function createSceneEntities(
     grasses: Managers['grass'],
     saplings: Managers['sapling'],
     ponds: Managers['pond'],
-    wormholes: Managers['wormhole'],
     reskinEffects: Managers['reskinEffects'],
     worldFx: Managers['world_fx'],
     staffProjectiles: Managers['staff_projectile'],
@@ -772,7 +770,6 @@ export async function createSceneEntities(
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 
-
   function registerGrottoPools(registry: EntityRegistry, prefabId: 'grotto_pool', worldState: SceneWorldState) {
     prefabs.register(grottoPoolPrefabs({
       handEquipment: sceneInventory.handEquipment,
@@ -1002,20 +999,11 @@ export async function createSceneEntities(
   }
 
 
-  function registerWormholes(registry: EntityRegistry, prefabId: 'wormhole', _worldState: SceneWorldState) {
-    const wormholes = new WormholeManager(scene, `${import.meta.env.BASE_URL}dst/data/anim`, () => [player.position]);
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (_, record) => wormholes.spawn(new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { wormhole: record.components.wormhole },
-      }),
-      debugSpawn: () => wormholes.spawn(player.position.clone()),
-      exportRecords: () => wormholes.exportRecords().map((record) => ({ prefabId: WORMHOLE_ID, record })),
-      update: (dt, quaternion) => wormholes.update(dt, quaternion),
-      renderEntities: () => wormholes.renderEntities,
-      dispose: () => wormholes.dispose(),
-    });
-    return wormholes;
+  function registerWormholes(registry: EntityRegistry, prefabId: 'wormhole', worldState: SceneWorldState) {
+    prefabs.register(wormholePrefabs({ scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
+    registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
+
 
   function registerPortals(registry: EntityRegistry, prefabId: 'multiplayer_portal_moonrock', worldState: SceneWorldState) {
     prefabs.register(portalPrefabs({

@@ -1,15 +1,20 @@
-import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { WormholeManager, WORMHOLE_SKINS, WORMHOLE_ENTER_DISTANCE, WORMHOLE_EXIT_DISTANCE } from '../../prefab/src/wormhole';
+import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
+import { wormholePrefabs, WORMHOLE_ID, WORMHOLE_SKINS, WORMHOLE_ENTER_DISTANCE, WORMHOLE_EXIT_DISTANCE, type WormholeInstance } from '../../prefab/src/wormhole';
+import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { loadSpriteSkinArchive } from '../src/animationAssets';
 import { isMouseTarget } from '../../stategraphs/src/mouseTargets';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { PlaySound } from '../../prefab/src/sound';
 
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })) }));
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -29,108 +34,132 @@ async function stubWormholeAssets() {
   return fetchAsset;
 }
 
+function setup() {
+  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler();
+  // The wormhole's display turns itself to the world's camera rotation; playerprox follows its player positions.
+  const content = bindTestWorld(scheduler);
+  const displays = new PrefabDisplayGroup(scene);
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { scheduler });
+  prefabs.register(wormholePrefabs({ scheduler, getWatchWorldContent: content.getWatchWorldContent }));
+  const spawn = (position: THREE.Vector3, record?: PlacementSaveRecord) => prefabs.spawn(WORMHOLE_ID, position, record) as WormholeInstance;
+  /** Player positions reach playerprox through its effect, which runs once the change settles. */
+  const playerAt = async (x: number) => { content.playerpositions.set([new THREE.Vector3(x, 0, 0)]); await new Promise(resolve => setTimeout(resolve, 0)); };
+  // Game time advances by whole frames, so a frame timeline lands on its frame without summing 1/30s.
+  let frame = 0;
+  const step = (frames: number, quaternion = new THREE.Quaternion()) => {
+    for (let i = 0; i < frames; i++) { scheduler.advanceTo(++frame / 30); displays.update(1 / 30, quaternion); }
+  };
+  const dispose = () => { prefabs.dispose(); displays.dispose(); content.unbind(); scheduler.dispose(); };
+  return { scene, content, displays, prefabs, spawn, playerAt, step, dispose };
+}
+
 it('opens and closes with source distance hysteresis and frame-specific layering, including interrupted transitions', async () => {
   await stubWormholeAssets();
-  // The wormhole's display turns itself to the world's camera rotation.
-  const content = bindTestWorld(new GameTimeScheduler());
-  const player = new THREE.Vector3(100, 50, 0);
-  const manager = new WormholeManager(new THREE.Scene(), '/dst/data/anim', () => [player]);
-  const model = await manager.spawn(new THREE.Vector3());
+  const s = setup();
+  await s.playerAt(100);
+  const wormhole = s.spawn(new THREE.Vector3()), model = wormhole.transform.model;
+  await prefabDisplay(model)!.artLoaded();
   expect(isMouseTarget(model)).toBe(true);
   const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 4);
-  const step = (frames: number) => { for (let i = 0; i < frames; i++) manager.update(1 / 30, quaternion); };
-  const clip = () => prefabInstance(model)!.sprite.currentAnimation;
+  const clip = () => wormhole.sprite.currentAnimation;
   try {
-    player.x = WORMHOLE_ENTER_DISTANCE + 0.01;
-    step(1);
+    // playerprox's range test is strict: a player exactly at the near distance is not near.
+    await s.playerAt(WORMHOLE_ENTER_DISTANCE);
+    s.step(1, quaternion);
     expect(clip()).toBe('idle_loop');
-    player.x = WORMHOLE_ENTER_DISTANCE;
-    step(9);
+    await s.playerAt(WORMHOLE_ENTER_DISTANCE - .01);
+    expect(wormhole.sg.stateName).toBe('opening');
+    expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/teleportworm/open', expect.anything());
+    s.step(9, quaternion);
     expect(clip()).toBe('open_pre');
-    expect(manager.renderEntities).toHaveLength(1);
-    step(1);
-    expect(manager.renderEntities).toHaveLength(0);
+    expect(s.displays.renderEntities).toHaveLength(1);
+    // FrameEvent(10, SetGroundLayering).
+    s.step(1, quaternion);
+    expect(s.displays.renderEntities).toHaveLength(0);
     // The display applies the declared layer in its effect, under the root it keeps around the drawn sprite.
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(model.children[0].children[0].renderOrder).toBe(0);
     expect(model.children[0].children[0].children[0].renderOrder).toBe(-0.5);
-    step(60);
+    s.step(60, quaternion);
     expect(clip()).toBe('open_loop');
-    content.camerarotation.set(quaternion);
+    expect(wormhole.sg.stateName).toBe('open');
+    s.content.camerarotation.set(quaternion);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(quaternion)).toBeCloseTo(0);
     expect(model.rotation.y).toBe(0);
-    player.x = WORMHOLE_EXIT_DISTANCE;
-    step(1);
+    await s.playerAt(WORMHOLE_EXIT_DISTANCE - .01);
+    s.step(1, quaternion);
     expect(clip()).toBe('open_loop');
-    player.x += 0.01;
-    step(3);
+    await s.playerAt(WORMHOLE_EXIT_DISTANCE);
+    s.step(3, quaternion);
     expect(clip()).toBe('open_pst');
-    expect(manager.renderEntities).toHaveLength(0);
-    step(1);
-    expect(manager.renderEntities).toHaveLength(1);
-    step(60);
+    expect(s.displays.renderEntities).toHaveLength(0);
+    // FrameEvent(4, SetBBLayering).
+    s.step(1, quaternion);
+    expect(s.displays.renderEntities).toHaveLength(1);
+    s.step(60, quaternion);
     expect(clip()).toBe('idle_loop');
-    player.x = 0;
-    step(3);
+    await s.playerAt(0);
+    s.step(3, quaternion);
     expect(clip()).toBe('open_pre');
-    player.x = 100;
-    step(1);
+    // opening is tagged open, so the far player closes it; closing is not, so the near one reopens it.
+    await s.playerAt(100);
+    s.step(1, quaternion);
     expect(clip()).toBe('open_pst');
-    player.x = 0;
-    step(1);
+    await s.playerAt(0);
+    s.step(1, quaternion);
     expect(clip()).toBe('open_pre');
-    step(60);
+    s.step(60, quaternion);
     expect(clip()).toBe('open_loop');
-  } finally { manager.dispose(); content.unbind(); }
+  } finally { s.dispose(); }
   expect(isMouseTarget(model)).toBe(false);
 });
 
 it('reskins a live opening wormhole and restores its identity and skin', async () => {
   const fetchAsset = await stubWormholeAssets();
-  const scene = new THREE.Scene();
-  const player = new THREE.Vector3(100, 0, 0);
-  const manager = new WormholeManager(scene, '/dst/data/anim', () => [player]);
-  const model = await manager.spawn(new THREE.Vector3(0, 0, 0));
-  const id = lookupPrefabInstance(model)?.entityId;
-  const step = (frames: number) => { for (let i = 0; i < frames; i++) manager.update(1 / 30, new THREE.Quaternion()); };
+  const s = setup();
+  await s.playerAt(100);
+  const wormhole = s.spawn(new THREE.Vector3()), model = wormhole.transform.model;
+  await prefabDisplay(model)!.artLoaded();
+  const id = wormhole.entityId;
+  const target = () => findActionEntity(model)!.reskinTarget!;
   try {
-    expect(lookupPrefabInstance(model)?.skinId).toBeUndefined();
-    player.x = 0;
-    step(9);
-    expect(reskinEntity(manager.reskinTargets[0])).toBe(true);
-    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('open_pre');
-    expect(manager.renderEntities).toHaveLength(1);
-    step(1);
-    expect(manager.renderEntities).toHaveLength(0);
-    step(60);
-    expect(prefabInstance(model)!.sprite.currentAnimation).toBe('open_loop');
+    expect(wormhole.skinId).toBeUndefined();
+    await s.playerAt(0);
+    s.step(9);
+    expect(reskinEntity(target())).toBe(true);
+    expect(wormhole.sprite.currentAnimation).toBe('open_pre');
+    expect(s.displays.renderEntities).toHaveLength(1);
+    s.step(1);
+    expect(s.displays.renderEntities).toHaveLength(0);
+    s.step(60);
+    expect(wormhole.sprite.currentAnimation).toBe('open_loop');
 
     const skinId = WORMHOLE_SKINS[0];
-      expect(lookupPrefabInstance(model)?.entityId).toBe(id);
-      expect(lookupPrefabInstance(model)?.skinId).toBe(skinId);
-      expect(prefabInstance(model)!.sprite.currentAnimation).toBe('open_loop');
-      expect(model.position.toArray()).toEqual([0, 0, 0]);
-      const saved = manager.exportRecords()[0];
-      expect(saved.components).toEqual(skinId ? { wormhole: { skinId } } : {});
-      if (skinId) {
-        const skin = await loadSpriteSkinArchive(`dynamic/${skinId}.zip`, '/dst/data/anim');
-        expect(skin.buildPackage.build.name).toBe(skinId);
-        const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
-        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        expect(materials.some((material) => ((material as THREE.MeshBasicMaterial).map as THREE.DataTexture | null)?.image.data
-          === skin.buildPackage.atlases[0].pixels)).toBe(true);
-        const restored = await manager.spawn(new THREE.Vector3(...saved.transform.position), saved);
-        expect(lookupPrefabInstance(restored)?.skinId).toBe(skinId);
-        expect(lookupPrefabInstance(restored)?.entityId).toBe(id);
-      }
+    expect(wormhole.entityId).toBe(id);
+    expect(wormhole.skinId).toBe(skinId);
+    expect(model.position.toArray()).toEqual([0, 0, 0]);
+    await vi.waitFor(async () => {
+      const skin = await loadSpriteSkinArchive(`dynamic/${skinId}.zip`, '/dst/data/anim');
+      expect(skin.buildPackage.build.name).toBe(skinId);
+      const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      expect(materials.some((material) => ((material as THREE.MeshBasicMaterial).map as THREE.DataTexture | null)?.image.data
+        === skin.buildPackage.atlases[0].pixels)).toBe(true);
+    });
+    const [{ record: saved }] = s.prefabs.exportRecords();
+    expect(saved.components).toEqual({ wormhole: { skinId } });
+    expect(PREFAB_DEFINITIONS.wormholes.parseComponents(saved.components, 'wormhole', {} as never)).toEqual(saved.components);
+    expect(() => PREFAB_DEFINITIONS.wormholes.parseComponents({ wormhole: { skinId: 'missing' } }, 'wormhole', {} as never)).toThrow();
+    const restored = setup();
+    try {
+      const loaded = restored.spawn(new THREE.Vector3(...saved.transform.position), saved);
+      expect(loaded.skinId).toBe(skinId);
+      expect(loaded.entityId).toBe(id);
+    } finally { restored.dispose(); }
     expect(fetchAsset.mock.calls.filter(([url]) => url.endsWith('.dyn'))).toHaveLength(1);
-    await expect(manager.spawn(new THREE.Vector3(), {
-      id: 'bad_skin', transform: { position: [0, 0, 0], rotationY: 0 }, components: { wormhole: { skinId: 'missing' } },
-    })).rejects.toThrow('Unsupported wormhole skin');
-    const late = manager.reskinTargets[0];
-    manager.dispose();
+    const late = target();
+    s.dispose();
     expect(reskinEntity(late)).toBe(false);
-    expect(scene.children).toHaveLength(0);
-  } finally { manager.dispose(); }
+    expect(s.scene.children).toHaveLength(0);
+  } finally { s.dispose(); }
 });

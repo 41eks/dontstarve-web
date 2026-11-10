@@ -103,6 +103,8 @@ export interface PlacementSaveRecord {
     farmDebris?: import('./farm_plow').FarmDebrisSaveState;
     /** lightflier_flower.lua onsave_single, with its pickable, childspawner and timer. */
     lightflierFlower?: import('./lightflier_flower').LightFlierFlowerSave;
+    /** The wormhole's skin. */
+    wormhole?: import('./wormhole').WormholeSaveState;
     /** chessjunk.lua OnSave. */
     chessJunk?: import('./chessjunk').ChessJunkSaveState;
     /** chesspieces.lua onsave and submersible.lua OnSave. */

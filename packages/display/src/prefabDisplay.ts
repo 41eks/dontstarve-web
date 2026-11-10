@@ -112,7 +112,8 @@ export class PrefabDisplay {
     skinId?: string; source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
 
   /** Ground declarations keep their explicit group order and do not join billboard foot sorting. */
-  get hasGroundOrder(): boolean { return this.state.sprite.peek().ground !== undefined; }
+  /** Ground art and LAYER_BACKGROUND art draw by their own order, outside the depth-sorted world layer. */
+  get hasGroundOrder(): boolean { const json = this.state.sprite.peek(); return json.ground !== undefined || json.background === true; }
   /** The foot-point sort layer: 0 for a negative SetFinalOffset, otherwise the default. */
   get sortLayer(): number | undefined { return this.state.sprite.peek().behindFoot ? 0 : undefined; }
 

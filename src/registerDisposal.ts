@@ -91,7 +91,7 @@ interface ApplicationResourcesOptions {
 }
 
 type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
-  'registry' | 'buildingPlacement' | 'farmMap' | 'mushroomPlants' | 'wormholes' | 'reskinEffects' | 'worldFx' | 'rockAvocadoBushes' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'ponds'>;
+  'registry' | 'buildingPlacement' | 'farmMap' | 'mushroomPlants' | 'reskinEffects' | 'worldFx' | 'rockAvocadoBushes' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
 export function createDisposalResources({ gameUi, view, screenProjection, inventory, playerAnimation, locomotor, pickupDoer,

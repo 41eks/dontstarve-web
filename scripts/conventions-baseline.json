@@ -250,12 +250,6 @@
   "packages/prefab/src/walls.ts": {
     "component-dispose-on-remove": 2
   },
-  "packages/prefab/src/wormhole.ts": {
-    "manager": 1,
-    "prefab-io": 2,
-    "scene": 1,
-    "userdata": 3
-  },
   "packages/prefab/src/wortox.ts": {
     "prefab-timer": 1
   },

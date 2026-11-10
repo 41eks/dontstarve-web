@@ -217,6 +217,12 @@ const sounds = {
   // common file_index 208–210 and 180, each + 1.
   'dontstarve/common/lightningrod': { bank: 'common', streams: [209, 210, 211], loop: false },
   'dontstarve/common/lightning_rod_craft': { bank: 'common', streams: [181], loop: false },
+  // SGwormhole.lua → dontstarve.fev sounddefs 464 / 465 (teleportworm_open / _close, common file_index 285 / 284) and
+  // 1775 (teleportworm_idle_LP, sfx file_index 390), each + 1, with the events' volumes. The idle event's second
+  // sounddef (1776, the intermittent idle_brth_1..3) is not layered here.
+  'dontstarve/common/teleportworm/open': { bank: 'common', streams: [286], loop: false, volume: .5011872053146362 },
+  'dontstarve/common/teleportworm/close': { bank: 'common', streams: [285], loop: false, volume: .5011872053146362 },
+  'dontstarve/common/teleportworm/idle': { bank: 'sfx', streams: [391], loop: true, volume: .25118863582611084 },
   // chessjunk.lua OnRepaired → dontstarve.fev sounddefs 990 (rook_nightmare_rattle_10 / _8 / _9, chess file_index
   // 103 / 110 / 111) and 989 (chess_resurect, common file_index 161), each + 1.
   'dontstarve/common/chesspile_repair': { bank: 'chess', streams: [104, 111, 112], loop: false, pitchOctaves: -.125 },
