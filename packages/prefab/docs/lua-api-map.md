@@ -54,7 +54,7 @@
 | 装备改写 `owner.AnimState` | `EquipmentAnimState` 插槽（`declareAnimState`） | `equipmentVisual.ts` | 分层，不是后写者生效 |
 | `HideSymbol`、`ShowSymbol` | `sprite.setSymbolHidden(symbol, hidden)` | `monkeypillar.ts` | |
 | `Hide(layer)`、`Show(layer)` | `sprite.hideLayer`、`sprite.showLayer` | `display/src/spriteState.ts` | |
-| `SetMultColour` | `sprite.setColour(rgba)` | `wallPlacement.ts` | |
+| `SetMultColour` | `sprite.setColour(rgba)` | `walls.ts` | |
 | `SetLightOverride` | `sprite.setLightOverride(value)` | `deployPlacer.ts` | |
 | `SetSymbolBloom` | `AnimState.SetSymbolBloom(symbol)` | `alterguardian_hat_equipped.ts` | 局部光晕近似 |
 | `SetOrientation(OnGround)` | `sprite.setGround(order)` | `atrium_gate.ts` | |

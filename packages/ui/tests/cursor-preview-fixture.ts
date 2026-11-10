@@ -6,7 +6,6 @@ import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { managedBuildings } from '../../animation/tests/managedBuildings';
-import { WallsPlacement } from '../../prefab/src/walls';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { clockstate, createSignal, seasonstate } from '@dontstarve-web/signals';
 
@@ -87,7 +86,6 @@ export async function checkCursorPreview() {
   const world: WorldContext = { scene, camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer, ground, player,
     createCursorLabel: (value) => ui.createLabel(value) };
   const chest = managedBuildings(world);
-  const wall = new WallsPlacement(world, () => true);
   window.dispatchEvent(new PointerEvent('pointermove', { clientX: 200, clientY: 220 }));
   await chest.begin('treasurechest');
   chest.update(0);
@@ -102,13 +100,14 @@ export async function checkCursorPreview() {
   const builtChest = chest.renderEntities[0]?.object;
   const placed = { previewRemoved: chestPreview.parent === null, inScene: builtChest !== chestPreview && builtChest?.parent === scene,
     override: (builtChest && displayLightOverride(builtChest)) || null, count: chest.exportRecords().length, label: labelState() };
-  await wall.begin('wall_stone');
-  wall.update();
-  const wallPreview = wall.renderEntities[0].object;
+  // A wall item's placer goes through the same build flow.
+  await chest.begin('wall_stone_item');
+  chest.update(0);
+  const wallPreview = chest.placement.renderEntities[0].object;
   const wallBefore = { inScene: wallPreview.parent === scene, override: displayLightOverride(wallPreview) };
-  wall.cancel();
+  chest.cancel();
   const cancelled = { removed: wallPreview.parent === null, override: displayLightOverride(wallPreview) || null,
-    count: wall.exportRecords().length, label: labelState() };
+    count: chest.exportRecords().filter(({ prefabId }) => prefabId === 'wall_stone').length, label: labelState() };
   const blocker = document.createElement('div');
   blocker.style.cssText = 'position:fixed;left:180px;top:200px;width:40px;height:40px;z-index:150';
   document.body.append(blocker);

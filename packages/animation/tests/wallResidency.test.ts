@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { SpriteState } from '../../display/src';
-import { WallsPlacement } from '../../prefab/src/walls';
+import { wallsFixture } from './wallsFixture';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -38,7 +38,7 @@ function meshes(model: THREE.Object3D): THREE.Mesh[] {
 it('shares layered wall art, releases only visuals, restores current health/facing/skin, and saves dormant walls', async () => {
   const { world, awake } = setup();
   const scheduler = new GameTimeScheduler(), content = bindTestWorld(scheduler);
-  const placement = new WallsPlacement(world, () => false);
+  const placement = wallsFixture(world, () => false);
   try {
     const record = { id: 'wall', transform: { position: [3, 0, 6] as [number, number, number], rotationY: 0 },
       components: { health: { current: 200, maximum: 400 } } };
@@ -75,7 +75,7 @@ it('shares layered wall art, releases only visuals, restores current health/faci
     expect(meshes(model)[0].geometry.drawRange.count).toBe(12);
     for (const [key, component] of Object.entries(components)) expect(instance.components[key as keyof typeof components]).toBe(component);
     expect(lookupPrefabInstance(model)?.skinId).toBe(saved[0].record.components.wall!.skinId);
-    const restored = new WallsPlacement(world, () => false);
+    const restored = wallsFixture(world, () => false);
     try {
       const exportRecord = placement.exportRecords()[0];
       await restored.spawnFromSave('wall_dreadstone', exportRecord.record);

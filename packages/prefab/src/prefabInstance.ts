@@ -645,6 +645,8 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteSt
    * changes its bank with SetBank (`sprite.setArtSource` with the `sprites` that `fn` receives).
    */
   factory?: Parameters<SpriteResources['factory']>[0];
+  /** In place of `assets`: build images drawn as static sprites from the world's shared resources, as walls are. */
+  staticImages?: { readonly buildArchive: string; readonly options: Parameters<SpriteResources['staticFactory']>[1] };
   /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
   assets?: Parameters<SpriteResources['archive']>[0];
   /** In place of `assets`: an instance's own SetBank / SetBuild, which its OnLoad may still change as it spawns. */
@@ -722,8 +724,9 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
     const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols,
-      baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon, factory } = this.prefabs[prefabId];
-    const source = this.prefabs[prefabId].source ?? (factory && this.resources.factory(factory));
+      baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon, factory, staticImages } = this.prefabs[prefabId];
+    const source = this.prefabs[prefabId].source ?? (factory && this.resources.factory(factory))
+      ?? (staticImages && this.resources.staticFactory(staticImages.buildArchive, staticImages.options));
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position, this.resources);
     // The world's scheduler for inst:DoTaskInTime, unless the prefab's fn already bound the one it scheduled on.

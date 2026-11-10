@@ -3,7 +3,8 @@ import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabI
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { WallsPlacement, type WallId } from '../../prefab/src/walls';
+import type { WallId } from '../../prefab/src/walls';
+import { wallsFixture } from './wallsFixture';
 import { WALL_SKIN_ARCHIVES, wallWorldSkin } from '../../prefab/src/wallSkins';
 import { GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -17,6 +18,13 @@ import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
+import { executeDebugCommand } from '../../../src/debugCommands';
+import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { serializeSave } from '../../../src/save/serialize';
+import { snapToWallSlotCenter } from '../../prefab/src/tile';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -34,7 +42,7 @@ function setup(consume: (id: WallId, skinId?: string) => boolean = () => false) 
   const world = { scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
     renderer: { domElement: canvas }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
-  return { world, canvas, placement: new WallsPlacement(world, consume) };
+  return { world, canvas, placement: wallsFixture(world, consume) };
 }
 
 it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
@@ -162,4 +170,41 @@ it('keeps the wall sprite when a skin commit is cancelled or superseded and rele
   placement.dispose();
   expect(release).toHaveBeenCalledOnce();
   expect(world.scene.children).toHaveLength(0);
+});
+
+it('c_spawn places walls by their world and item IDs, and c_save reloads one reskinned', async () => {
+  const registryFor = () => {
+    const { world, placement } = setup();
+    world.player.position.set(3, 0, -6);
+    const registry = new EntityRegistry([], placement.prefabs);
+    registry.register(PREFAB_DEFINITIONS.buildings, {
+      restore: (id, record) => placement.spawnFromSave(id as WallId, record), debugSpawn: id => placement.spawn(id as WallId),
+      exportRecords: () => [], dispose: () => placement.dispose(),
+    });
+    return { registry, placement, dispose: () => { registry.dispose(); placement.dispose(); } };
+  };
+  const first = registryFor(), second = registryFor(), inventory = new InventoryStore([], SAVE_CATALOG.items);
+  try {
+    for (const id of ['wall_stone', 'wall_stone_item']) {
+      expect(await executeDebugCommand(`c_spawn("${id}")`, inventory, prefab => first.registry.spawn(prefab))).toMatchObject({ ok: true });
+    }
+    const [spawned, alias] = first.placement.exportRecords();
+    expect([spawned.prefabId, alias.prefabId]).toEqual(['wall_stone', 'wall_stone']);
+    const [x, , z] = spawned.record.transform.position, slot = snapToWallSlotCenter({ x, z });
+    expect([x, z]).toEqual([slot.x, slot.z]);
+    // walls.lua: a new stone wall starts at half of STONEWALL_HEALTH.
+    expect(spawned.record.components).toEqual({ health: { current: 200, maximum: 400 } });
+    expect(reskinEntity(first.placement.reskinTargets[0])).toBe(true);
+    const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);
+    let json = '';
+    expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
+      json = serializeSave(template, { entities: { ...template.world.entities, ...first.registry.exportRecords() },
+        inventory: inventory.exportState(), playerTransform: { position: [3, 0, -6], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
+    })).ok).toBe(true);
+    const saved = deserializeSave(json, SAVE_CATALOG).world.entities.wall_stone!;
+    expect(saved[0]).toEqual({ ...spawned.record, components: { health: { current: 200, maximum: 400 }, wall: { skinId: 'wall_stone_an' } } });
+    await second.registry.restoreAll({ wall_stone: saved });
+    expect(second.registry.exportRecords().wall_stone).toEqual(saved);
+    expect(second.placement.prefabs.get(saved[0].id)!.skinId).toBe('wall_stone_an');
+  } finally { first.dispose(); second.dispose(); inventory.dispose(); }
 });

@@ -79,7 +79,7 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 
 ## 静态墙实现
 
-`src/camera.ts` 的 `FollowCameraController.facing` signal 把相机 heading（`packages/animation/src/facing.ts` 的 `facingFromHeading()`）按 45° 分成 8 档，取对应 `FACING_*`（`constants.lua`：RIGHT=0、UP=1、LEFT=2、DOWN=3、UPRIGHT=4、UPLEFT=5、DOWNRIGHT=6、DOWNLEFT=7；墙的 rotation 为 0，故 `a = heading`，偶数档为四个正向，奇数档为四个斜向）的位掩码，该 signal 只在 heading 跨过扇区边界时写入，经 `WorldContext.cameraFacing` 传给 `WallPlacement`，后者用 `watchSignal` 建立私有本地 signal，并在 `createEffect` 中对预览和已建墙调用 `setFacing()`，由动画按 `facing` 掩码匹配 clip；`wall.zip` 与 `wall_dreadstone.zip` 的每个状态只创作了 `15`（四个正向共用）和 `240`（四个斜向共用）两组美术，同组内选哪个方向不改变画面。再调用 `packages/animation/src/wallSprite.ts` 的 `StaticSpriteController.showImage()` 切换图片。
+`src/camera.ts` 的 `FollowCameraController.facing` signal 把相机 heading（`packages/animation/src/facing.ts` 的 `facingFromHeading()`）按 45° 分成 8 档，取对应 `FACING_*`（`constants.lua`：RIGHT=0、UP=1、LEFT=2、DOWN=3、UPRIGHT=4、UPLEFT=5、DOWNRIGHT=6、DOWNLEFT=7；墙的 rotation 为 0，故 `a = heading`，偶数档为四个正向，奇数档为四个斜向）的位掩码，该 signal 只在 heading 跨过扇区边界时写入，墙实例（`walls.ts`，由共享的 `PrefabEntityManager` 生成；预览由 `BuildingPlacer` 生成）只声明 `facingRotation` 与正面／斜面图，`PrefabDisplay` 按世界相机朝向对预览和已建墙调用 `setFacing()`，由动画按 `facing` 掩码匹配 clip；`wall.zip` 与 `wall_dreadstone.zip` 的每个状态只创作了 `15`（四个正向共用）和 `240`（四个斜向共用）两组美术，同组内选哪个方向不改变画面。再调用 `packages/animation/src/wallSprite.ts` 的 `StaticSpriteController.showImage()` 切换图片。
 
 `createStaticSpriteFactory()` 按 build／skin 共享 atlas 与不可变帧几何，每个实例每次显示一个 build 图片；`ResidentSpriteController` 负责 visual 驻留，`imageIndices` 提前列出所有需要的 facing，不必随相机转动重建 sprite。`wall_dreadstone` 另将 `wall_segment_red` 叠在 `wall_segment_base` 上：通过 `overlay` 传入覆盖符号，其 `imageIndices` 与基础列表按位置配对，让朝向切换后仍保留发光层。
 

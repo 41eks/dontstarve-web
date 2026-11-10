@@ -9,8 +9,8 @@ import { PrefabDisplayGroup, SpriteResources, SpriteState } from '../../display/
 import { BuildingPlacer } from '../../prefab/src/buildingPlacer';
 import { buildingPlacer } from '../../prefab/src/building';
 import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
-import { WALL_DEFINITIONS } from '../../prefab/src/walls';
-import { WallPlacement } from '../../prefab/src/wallPlacement';
+import { wallPrefabs } from '../../prefab/src/walls';
+import { snapToWallSlotCenter } from '../../prefab/src/tile';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { displayLightOverride } from '../../display/src/displaySprites';
@@ -90,6 +90,28 @@ function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () =
   };
 }
 
+/** A wall item's build flow as the application wires it: the wall placer, and the shared manager that ondeploywall spawns on. */
+function wallFlow(world: WorldContext, consume: () => boolean) {
+  const scheduler = new GameTimeScheduler(), displays = new PrefabDisplayGroup(world.scene);
+  const walls = wallPrefabs({ ...world, scheduler });
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, { scheduler }, walls.prefabs);
+  const snap = (point: THREE.Vector3) => { const { x, z } = snapToWallSlotCenter(point); return new THREE.Vector3(x, point.y, z); };
+  const placer = new BuildingPlacer<'wall_stone_item'>(world, buildId => walls.placer(buildId, snap), consume,
+    (buildId, position, skinId) => { walls.ondeploywall(prefabs, buildId, position, skinId); });
+  let disposed = false;
+  return {
+    begin: (_buildId: 'building', skinId?: string) => placer.begin('wall_stone_item', skinId),
+    spawn: (_buildId: 'building') => { prefabs.spawn('wall_stone', snap(placer.groundInFrontOfPlayer())); },
+    exportRecords: () => prefabs.exportRecords(),
+    get renderEntities() { return [...displays.renderEntities, ...placer.renderEntities]; },
+    dispose() {
+      if (disposed) return;
+      disposed = true;
+      placer.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose();
+    },
+  };
+}
+
 function setup(kind: 'animated' | 'wall') {
   const cursor = { hidden: true };
   const canvas = new EventTarget();
@@ -120,11 +142,7 @@ function setup(kind: 'animated' | 'wall') {
   expect(store.craft(recipe, kind === 'animated' ? 'selected_skin' : undefined)).toBe(true);
   const consume = vi.fn(() => store.takeBuffered('building') || store.takeItem('building'));
   const onbuilt = vi.fn();
-  const placement = kind === 'animated'
-    ? buildingFlow(world, consume, onbuilt)
-    : new WallPlacement(world, {
-      building: { ...WALL_DEFINITIONS.wall_stone, archive: 'wall.zip', name: 'Wall', buildLabel: 'wall', frontImageIndex: 14, sideImageIndex: 4 },
-    }, consume);
+  const placement = kind === 'animated' ? buildingFlow(world, consume, onbuilt) : wallFlow(world, consume);
   const begin = () => placement.begin('building', store.bufferedSkin('building'));
   const click = (button: number) => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
   const load = kind === 'animated' ? vi.mocked(createAnimatedSpriteSource) : vi.mocked(createStaticSpriteFactory);
@@ -232,21 +250,11 @@ it.each(['animated', 'wall'] as const)('%s does not resurrect a preview cancelle
 
   const cancelled = model();
   const source = { create: vi.fn(() => cancelled), disposeSprite: (sprite: THREE.Group) => sprite.removeFromParent(), dispose: vi.fn() };
-  let resumed: THREE.Object3D;
-  if (kind === 'wall') {
-    const resuming = begin();
-    source.create = vi.fn(() => model());
-    resolve(source as never);
-    await Promise.all([pending, resuming]);
-    resumed = world.scene.children[0];
-  } else {
-    await begin();
-    resumed = world.scene.children[0];
-    resolve(source as never);
-    await pending;
-  }
+  await begin();
+  const resumed = world.scene.children[0];
+  resolve(source as never);
+  await pending;
   expect(world.scene.children).toEqual([resumed]);
-  if (kind === 'wall') expect(cancelled.parent).toBeNull();
   expect(cursor.hidden).toBe(false);
   expect(consume).not.toHaveBeenCalled();
   click(0);
@@ -277,7 +285,7 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   resources.forEach((resource) => expect(resource).toHaveBeenCalledOnce());
   click(0);
   expect(consume).not.toHaveBeenCalled();
-  // The animated placer throws at once; walls still reject their load.
+  // A disposed build flow refuses a new placer.
   await expect(async () => begin()).rejects.toThrow('disposed');
 });
 

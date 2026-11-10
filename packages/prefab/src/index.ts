@@ -70,10 +70,6 @@ export {
   type WilsonPlayerPrefabOptions,
 } from './player';
 export {
-  WallPlacement,
-  type WallDefinition,
-} from './wallPlacement';
-export {
   TileMap,
   TILE_SIZE,
   WALL_SLOT_SIZE,
@@ -113,9 +109,9 @@ export { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDecla
 export { reskinToolVisual, ReskinEffects, nextReskin, reskinEffectSound } from './reskin_tool';
 export { fencePrefabs, fencePlacer, FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, type FenceId } from './fence';
 export {
-  WALL_DEFINITIONS,
   WALL_IDS,
-  WallsPlacement,
+  WALL_PREFAB_IDS,
+  wallPrefabs,
   isWallId,
   type WallId,
 } from './walls';

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createSignal, type HandEquipment } from '@dontstarve-web/signals';
-import { WallsPlacement } from '../../prefab/src/walls';
+import { wallsFixture } from './wallsFixture';
 import { WALL_PHYSICS_RADIUS } from '../../prefab/src/walls';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
@@ -39,7 +39,7 @@ function setup(dropLoot?: WorldContext['dropLoot']) {
   const world = { scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), dropLoot,
   } as unknown as WorldContext;
-  return { world, placement: new WallsPlacement(world, () => false) };
+  return { world, placement: wallsFixture(world, () => false) };
 }
 
 function attacker(position: THREE.Vector3, now: () => number, weapon?: ItemEntity) {

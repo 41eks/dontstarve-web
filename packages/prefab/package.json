@@ -157,7 +157,6 @@
     "./walls": "./src/walls.ts",
     "./fence": "./src/fence.ts",
     "./fenceSkins": "./src/fenceSkins.ts",
-    "./wallPlacement": "./src/wallPlacement.ts",
     "./wallSkins": "./src/wallSkins.ts",
     "./tile": "./src/tile.ts",
     "./treeFire": "./src/treeFire.ts",

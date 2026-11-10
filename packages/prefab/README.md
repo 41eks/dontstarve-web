@@ -35,8 +35,7 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 - `torch.ts`：`torch.lua` 的回调按源注册在实例的组件上（`configureTorchEntity` 对应 `fn()`）：`burnable:SetOnExtinguishFn(OnExtinguish)`、`fueled:SetSectionCallback(onfuelchange)`、`inventoryitem:SetOnPutInInventoryFn(OnPutInInventory)`，`equippable` 的 `onequip`／`onunequip` 经 `createTorchHandLifecycle` 接入；`inst.fires`、声音任务、`_owner`、`_fuelratemult` 和 `SetFuelRateMult` 都在 `TorchInst` 上。燃烧状态即 `burnable:IsBurning()`。
 - `@dontstarve-web/animation/residentSprite` 的 `ResidentSprite` / `ResidentSpriteController`：固定实体的 visual 驻留封装，保留根节点与动画请求；`ResidentEntity` 记录稳定的身份和脚点。常青树、桦树、月树和蘑菇树通过 `PrefabInstance` + `PrefabDisplay` 与 `watchTileActivity()` 加载／释放 visual，不重建实体或 Workable。
 - `cookPotPrefabs`（`cook_pot.ts`）、`bookstationPrefabs`（`bookstation.ts`）：烹饪锅与书架的 `PrefabEntityDefinition`，和其他建筑一样由应用层的 `PrefabEntityManager` 注册，placer 为 `COOK_POT_PLACER`／`BOOKSTATION_PLACER`
-- `WallsPlacement`：`prefabs/walls.lua` 的 9 种墙（石、档案馆石、木、草、铥、档案馆铥、月岩、绝望石、废料），
-  含各自的 `wall_*_item` 部署物 ID。
+- `wallPrefabs`（`walls.ts`）：`prefabs/walls.lua` `MakeWallType` 的 9 种墙（石、档案馆石、木、草、铥、档案馆铥、月岩、绝望石、废料）的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册；`wall_*_item` 的放置预览是 `BuildingPlacer` 的 placer（吸附到墙格），`ondeploywall` 生成带关联皮肤的建成墙。存档仍为 `health`（`current`／`maximum`）与 `wall.skinId`。`c_spawn("wall_*")` 与 `wall_*_item` 别名都在玩家前方的墙格生成建成墙。
 
 火把的 `onequip` 点燃并在持有者的 `swap_object` 上生成 torchfire 与 `AttachLightTo(owner)` 的光源，`onunequip` 移除它们并熄灭；被外部熄灭时，持有中的火把保留 `inst.fires`，与源码一致。`OnPutInInventory` 恢复闲置状态并停止火焰，保留 fuel；`OnExtinguish` 只处理未持有且未耗尽的地面火把并按源弹起（`inventoryphysics.Launch`）；`IgniteTossed` 在实例自己的 `swap_torch` 上生成 torchfire 与光源。`torchPrefabs()` 只负责地面 prefab 的存读档：`OnSave` 只在未处于 limbo 且燃烧时写 `torch.lit`，读档时按源 `OnLoad` 播放 `land` 并 `IgniteTossed`。声音通过共享 `PlaySound()` / `PreloadSounds()` 播放，地面声音在拾取或移除时释放，玩家拥有的一次性音效允许自然播放结束。地面 lit 状态及 fuel 可保存和恢复，换肤保持状态，恢复不重播点燃声。
 

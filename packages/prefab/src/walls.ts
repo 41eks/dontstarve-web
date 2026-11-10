@@ -1,20 +1,26 @@
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
+import { prefabDisplay, SpriteState, type SpriteResources } from '@dontstarve-web/display';
+import { FACING_CARDINAL } from '@dontstarve-web/animation/facing';
 import definitions from './definitions.json' with { type: 'json' };
-import { WallPlacement, type WallDefinition } from './wallPlacement';
-import type { WorldContext } from './worldContext';
-import { WALL_SKIN_ARCHIVES, wallWorldPrefab } from './wallSkins';
+import { WALL_SKIN_ARCHIVES, wallWorldPrefab, wallWorldSkin } from './wallSkins';
 import { PlaySound } from './sound';
-import { PrefabInstance } from './prefabInstance';
-import type { SpriteState } from '@dontstarve-web/display';
+import { PrefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
 import { Health } from '../../componets/src/health';
 import { Combat } from '../../componets/src/combat';
+import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Workable } from '../../componets/src/workable';
+import { actionEntity } from './actionEntity';
+import type { BuildingPlacerSpec } from './buildingPlacer';
 import { PathfindingWall } from './pathfinder';
+import { reskinTarget } from './reskin_tool';
+import type { PlacementSaveRecord } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { TILE_SIZE } from './tile';
+import { ToolMouseTarget } from './toolMouseTarget';
+import type { PrefabWorldContext } from './worldContext';
 import {
     wall_stone_init_fn, wall_ruins_init_fn, wall_moonrock_init_fn,
     wall_dreadstone_init_fn, wall_hay_init_fn, wall_wood_init_fn,
@@ -74,6 +80,59 @@ export const WALL_IDS = [
 ] as const;
 
 export type WallId = typeof WALL_IDS[number];
+/** The placed `wall_<name>` prefabs MakeWallType returns. */
+export type WallPrefabId = Exclude<WallId, `${string}_item`>;
+export const WALL_PREFAB_IDS = WALL_IDS.filter((id): id is WallPrefabId => !id.endsWith('_item'));
+
+export function isWallId(value: string): value is WallId {
+    return WALL_IDS.some((wallId) => wallId === value);
+}
+
+/** What this project draws a wall from: its build's front and side segment images, from definitions.json. */
+interface WallArt {
+    archive: string;
+    /** Anim archive supplying the `half` pose and `half_hit` feedback; defaults to `wall.zip`, `wall_dreadstone` has its own bank. */
+    animationArchive?: string;
+    buildLabel: string;
+    /** Front face art for cardinal camera headings, where the wall's `facing=15` animations are used. */
+    frontImageIndex: number;
+    /** Oblique side art for diagonal camera headings, where the wall's `facing=240` animations are used. */
+    sideImageIndex: number;
+    /** `AnimState:SetMultColour` RGB, e.g. hay walls' `[0.9, 0.9, 0.9]`. */
+    multColour?: readonly number[];
+    name: string;
+    /** Symbol stacked over the main one: `wall_dreadstone` draws `wall_segment_red` over `wall_segment_base`. */
+    overlay?: { symbol: string; frontImageIndex: number; sideImageIndex: number };
+    /** Symbol the images belong to; defaults to the build's only symbol. */
+    symbol?: string;
+}
+
+/** walls.lua walldata with tuning.lua *WALL_HEALTH / *WALL_PLAYERDAMAGEMOD, as far as it is ported. */
+interface WallData {
+    name: string;
+    tags: readonly string[];
+    material: 'wood' | 'stone' | 'straw';
+    loot: string;
+    maxloots: number;
+    maxhealth: number;
+    maxwork?: number;
+    playerdamagemod?: number;
+}
+
+const WALL_DATA: Readonly<Record<WallPrefabId, WallData>> = {
+    wall_stone: { name: 'stone', tags: ['stone'], material: 'stone', loot: 'rocks', maxloots: 2, maxhealth: 400 },
+    wall_stone_2: { name: 'stone_2', tags: ['stone'], material: 'stone', loot: 'rocks', maxloots: 2, maxhealth: 400 },
+    wall_wood: { name: 'wood', tags: ['wood'], material: 'wood', loot: 'log', maxloots: 2, maxhealth: 200 },
+    wall_hay: { name: 'hay', tags: ['grass'], material: 'straw', loot: 'cutgrass', maxloots: 2, maxhealth: 100 },
+    wall_ruins: { name: 'ruins', tags: ['stone', 'ruins'], material: 'stone', loot: 'thulecite_pieces', maxloots: 2, maxhealth: 800 },
+    wall_ruins_2: { name: 'ruins_2', tags: ['stone', 'ruins'], material: 'stone', loot: 'thulecite_pieces', maxloots: 2, maxhealth: 800 },
+    wall_moonrock: { name: 'moonrock', tags: ['stone', 'moonrock'], material: 'stone', loot: 'moonrocknugget', maxloots: 2, maxhealth: 600,
+        maxwork: 25, playerdamagemod: .25 },
+    wall_dreadstone: { name: 'dreadstone', tags: ['stone', 'dreadstone'], material: 'stone', loot: 'dreadstone', maxloots: 2, maxhealth: 800,
+        maxwork: 25, playerdamagemod: .25 },
+    wall_scrap: { name: 'scrap', tags: ['stone', 'scrap'], material: 'stone', loot: 'wagpunk_bits', maxloots: 1, maxhealth: 600,
+        maxwork: 10, playerdamagemod: .25 },
+};
 
 const WALL_SKIN_INITIALIZERS: Readonly<Record<string, PrefabSkinInitializer>> = {
     wall_stone: wall_stone_init_fn,
@@ -84,145 +143,222 @@ const WALL_SKIN_INITIALIZERS: Readonly<Record<string, PrefabSkinInitializer>> = 
     wall_wood: wall_wood_init_fn,
 };
 
-const BASE_WALL_DEFINITIONS: Readonly<Record<WallId, Omit<WallDefinition, 'createPrefab' | 'onplaced'>>> = {
-    wall_stone: definitions.walls.wall_stone,
-    wall_stone_item: definitions.walls.wall_stone,
-    wall_stone_2: definitions.walls.wall_stone_2,
-    wall_stone_2_item: definitions.walls.wall_stone_2,
-    wall_wood: definitions.walls.wall_wood,
-    wall_wood_item: definitions.walls.wall_wood,
-    wall_hay: definitions.walls.wall_hay,
-    wall_hay_item: definitions.walls.wall_hay,
-    wall_ruins: definitions.walls.wall_ruins,
-    wall_ruins_item: definitions.walls.wall_ruins,
-    wall_ruins_2: definitions.walls.wall_ruins_2,
-    wall_ruins_2_item: definitions.walls.wall_ruins_2,
-    wall_moonrock: definitions.walls.wall_moonrock,
-    wall_moonrock_item: definitions.walls.wall_moonrock,
-    wall_dreadstone: definitions.walls.wall_dreadstone,
-    wall_dreadstone_item: definitions.walls.wall_dreadstone,
-    wall_scrap: definitions.walls.wall_scrap,
-    wall_scrap_item: definitions.walls.wall_scrap,
-};
-
-// walls.lua walldata with tuning.lua *WALL_HEALTH / *WALL_PLAYERDAMAGEMOD; health is independent of HAMMER work.
-const WALL_WORK_DEFINITIONS: Readonly<Record<string, Pick<WallDefinition, 'tags' | 'hammerWorkLeft' | 'hammerMaterial' | 'hammerLoot' | 'maxhealth' | 'playerdamagemod'>>> = {
-    wall_stone: { tags: ['stone'], hammerMaterial: 'stone', hammerLoot: { itemId: 'rocks', maxCount: 2 }, maxhealth: 400 },
-    wall_stone_2: { tags: ['stone'], hammerMaterial: 'stone', hammerLoot: { itemId: 'rocks', maxCount: 2 }, maxhealth: 400 },
-    wall_wood: { tags: ['wood'], hammerMaterial: 'wood', hammerLoot: { itemId: 'log', maxCount: 2 }, maxhealth: 200 },
-    wall_hay: { tags: ['grass'], hammerMaterial: 'straw', hammerLoot: { itemId: 'cutgrass', maxCount: 2 }, maxhealth: 100 },
-    wall_ruins: { tags: ['stone', 'ruins'], hammerMaterial: 'stone', hammerLoot: { itemId: 'thulecite_pieces', maxCount: 2 }, maxhealth: 800 },
-    wall_ruins_2: { tags: ['stone', 'ruins'], hammerMaterial: 'stone', hammerLoot: { itemId: 'thulecite_pieces', maxCount: 2 }, maxhealth: 800 },
-    wall_moonrock: { tags: ['stone', 'moonrock'], hammerWorkLeft: 25, hammerMaterial: 'stone', hammerLoot: { itemId: 'moonrocknugget', maxCount: 2 },
-        maxhealth: 600, playerdamagemod: .25 },
-    wall_dreadstone: { tags: ['stone', 'dreadstone'], hammerWorkLeft: 25, hammerMaterial: 'stone', hammerLoot: { itemId: 'dreadstone', maxCount: 2 },
-        maxhealth: 800, playerdamagemod: .25 },
-    wall_scrap: { tags: ['stone', 'scrap'], hammerWorkLeft: 10, hammerMaterial: 'stone', hammerLoot: { itemId: 'wagpunk_bits', maxCount: 1 },
-        maxhealth: 600, playerdamagemod: .25 },
-};
-
-class WallPrefabInstance extends PrefabInstance {
-    readonly wallData: WallDefinition;
-    /** makeobstacle and clearobstacle's inst._ispathfinding. */
-    pathfinding?: PathfindingWall;
-    constructor(prefab: string, sprite: SpriteState, data: WallDefinition) { super(prefab, sprite); this.wallData = data; }
+/** The skin builds a wall's display loads: each source skin's own build, as its prefabskin init_fn names it. */
+function skinArchives(prefab: WallPrefabId): Readonly<Record<string, string>> {
+    const init = WALL_SKIN_INITIALIZERS[prefab];
+    return Object.fromEntries(Object.entries(WALL_SKIN_ARCHIVES[prefab] ?? {}).map(([id, archive]) => [id, init?.(id).skinArchive ?? archive]));
 }
 
-function onhit(inst: WallPrefabInstance): void {
-    const { hammerMaterial } = inst.wallData;
-    if (hammerMaterial) PlaySound(`dontstarve/common/destroy_${hammerMaterial}`, inst.position);
-    if (inst.components.health!.GetPercent() > 0) {
-        const anim = resolveWallAnim(inst.components.health!.GetPercent(), inst.position);
-        inst.sprite.playOnce(`${anim}_hit`);
-        inst.sprite.pushAnimation(anim, false);
-    }
+/** The front and side images of the build, with the `half` rest pose of the wall's bank. */
+function staticImages(art: WallArt) {
+    return {
+        buildArchive: art.archive,
+        options: {
+            imageIndices: [art.sideImageIndex, art.frontImageIndex], name: art.name, symbol: art.symbol,
+            ...(art.overlay ? { overlay: { symbol: art.overlay.symbol, imageIndices: [art.overlay.sideImageIndex, art.overlay.frontImageIndex] } } : {}),
+            animationArchive: art.animationArchive ?? 'wall.zip', restAnimation: 'half',
+        },
+    };
 }
 
-function onhealthchange(inst: WallPrefabInstance, oldPercent: number, newPercent: number): void {
-    const anim = resolveWallAnim(newPercent, inst.position);
+/** SetBank / SetBuild / PlayAnimation("half") and SetMultColour, as the eight-faced static segment images declare them. */
+function declareWallArt(inst: PrefabInstance, art: WallArt): void {
+    inst.sprite.setPose(undefined);
+    inst.sprite.setFacingRotation(0);
+    inst.sprite.setFacingImages(new Map([[FACING_CARDINAL, art.frontImageIndex], [240, art.sideImageIndex]]));
+    if (art.multColour) inst.sprite.setColour(art.multColour);
+}
+
+export class WallInstance extends PrefabInstance {
+    declare readonly components: PrefabInstance['components'] & {
+        health: Health; combat: Combat; lootdropper: LootDropper; workable: Workable; inspectable: Inspectable;
+    };
+    /** inst._ispathfinding. */
+    declare _ispathfinding: boolean;
+    /** inst._pfpos: the Pathfinder wall it registered, once InitializePathFinding listens. */
+    declare _pfwall: PathfindingWall | undefined;
+}
+
+/** OnIsPathFindingDirty. */
+function OnIsPathFindingDirty(inst: WallInstance): void {
+    inst._pfwall?.set(inst._ispathfinding);
+}
+
+/** InitializePathFinding: delayed so the wall is at its position before it is added. */
+function InitializePathFinding(inst: WallInstance): void {
+    inst._pfwall = new PathfindingWall(inst.worldServices?.pathfinder, () => inst.position);
+    OnIsPathFindingDirty(inst);
+}
+
+function makeobstacle(inst: WallInstance): void {
+    inst.physics.SetActive(true);
+    inst._ispathfinding = true;
+    OnIsPathFindingDirty(inst);
+}
+
+function clearobstacle(inst: WallInstance): void {
+    inst.physics.SetActive(false);
+    inst._ispathfinding = false;
+    OnIsPathFindingDirty(inst);
+}
+
+/** The pose this project rests a static wall on: its health anim's image, except the bank's own `half`. */
+function showHealthPose(inst: WallInstance, anim: string): void {
     inst.sprite.setPose(anim === 'half' ? undefined : anim);
-    if (newPercent > 0) {
-        if (oldPercent <= 0) { inst.physics.SetActive(true); inst.pathfinding?.set(true); }
-        inst.sprite.playOnce(`${anim}_hit`);
-        inst.sprite.pushAnimation(anim, false);
+}
+
+function onhealthchange(inst: WallInstance, old_percent: number, new_percent: number): void {
+    const anim_to_play = resolveWallAnim(new_percent, inst.position);
+    showHealthPose(inst, anim_to_play);
+    if (new_percent > 0) {
+        if (old_percent <= 0) makeobstacle(inst);
+        inst.sprite.playOnce(`${anim_to_play}_hit`);
+        inst.sprite.pushAnimation(anim_to_play, false);
     } else {
-        if (oldPercent > 0) { inst.physics.SetActive(false); inst.pathfinding?.set(false); }
-        inst.sprite.playOnce(anim);
+        if (old_percent > 0) clearobstacle(inst);
+        inst.sprite.playOnce(anim_to_play);
     }
 }
 
-/** MakeWallType.onhammered: condition-scaled loot, collapse_small, then Remove. */
-function onhammered(inst: WallPrefabInstance): void {
-    const { hammerLoot, hammerMaterial } = inst.wallData;
-    if (hammerLoot) {
-        const count = Math.max(1, Math.floor(hammerLoot.maxCount * inst.components.health!.GetPercent()));
-        for (let i = 0; i < count; i++) inst.components.lootdropper!.SpawnLootPrefab(hammerLoot.itemId);
-    }
-    inst.worldServices?.fx?.collapse?.('small', inst.position, hammerMaterial);
-    inst.remove();
-}
+function keeptargetfn(): boolean { return false; }
 
-function initializeWall(instance: PrefabInstance, saved?: { current: number; maximum: number }): void {
-    const inst = instance as WallPrefabInstance;
-    const data = inst.wallData;
-    for (const tag of ['wall', 'noauradamage', 'electricdamageimmune', ...(data.tags ?? [])]) inst.addTag(tag);
-    const health = addComponent(inst, 'health', Health, data.maxhealth ?? 100);
-    health.SetCurrentHealth(health.maxhealth * .5);
-    health.canheal = false; health.nofadeout = true;
-    if (data.playerdamagemod !== undefined) health.SetAbsorptionAmountFromPlayer(data.playerdamagemod);
-    if (saved) health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
+/**
+ * onload: a dead wall clears its obstacle. This project's record keeps health as `{ current, maximum }` under `health`,
+ * which health:OnLoad reads here, and the skin under `wall`; the loaded health is shown as onhealthchange would.
+ */
+function onload(inst: WallInstance, data: PlacementSaveRecord['components']): void {
+    const { health } = inst.components;
+    if (data.health) health.OnLoad({ health: data.health.current, maxhealth: data.health.maximum });
+    if (data.wall?.skinId !== undefined) inst.skinId = data.wall.skinId;
     const anim = resolveWallAnim(health.GetPercent(), inst.position);
-    inst.sprite.setPose(anim === 'half' ? undefined : anim);
+    showHealthPose(inst, anim);
     inst.sprite.playOnce(anim);
-    health.ondelta = onhealthchange;
-    const combat = addComponent(inst, 'combat', Combat, () => inst.worldServices?.scheduler?.now ?? 0);
-    combat.SetKeepTargetFunction(() => false);
-    combat.onhitfn = onhit;
-    addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
-    const workable = addComponent(inst, 'workable', Workable);
-    workable.SetWorkAction('HAMMER');
-    workable.SetWorkLeft(data.hammerWorkLeft ?? 3);
-    workable.SetOnWorkCallback(onhit);
-    workable.SetOnFinishCallback(onhammered);
-    MakeObstaclePhysics(inst, .5).SetDontRemoveOnSleep(true);
-    inst.physics.SetActive(!health.IsDead());
-    if (inst.worldServices?.physics) inst.bindPhysics(inst.worldServices.physics);
-    const pathfinding = inst.pathfinding = new PathfindingWall(inst.worldServices?.pathfinder, () => inst.position);
-    pathfinding.set(!health.IsDead());
-    inst.onRemove(() => { pathfinding.set(false); workable.dispose(); health.dispose(); combat.onhitfn = undefined; });
+    if (health.IsDead()) clearobstacle(inst);
 }
 
-export const WALL_DEFINITIONS: Readonly<Record<WallId, WallDefinition>> = Object.fromEntries(
-    WALL_IDS.map((id): [WallId, WallDefinition] => [id, {
-        ...BASE_WALL_DEFINITIONS[id], skinArchives: WALL_SKIN_ARCHIVES[wallWorldPrefab(id)],
-        skinInit: WALL_SKIN_INITIALIZERS[wallWorldPrefab(id)],
-        ...WALL_WORK_DEFINITIONS[wallWorldPrefab(id)],
-        createPrefab: (prefab, sprite) => new WallPrefabInstance(prefab, sprite, WALL_DEFINITIONS[id]),
-        onplaced: initializeWall,
-    }]),
-) as Record<WallId, WallDefinition>;
-
-export function isWallId(value: string): value is WallId {
-    return WALL_IDS.some((wallId) => wallId === value);
+/** The record's `health` and `wall` entries, in place of health:OnSave's own shape. */
+function onsave(inst: WallInstance, data: PlacementSaveRecord['components']): void {
+    const { health } = inst.components;
+    data.health = { current: health.currenthealth, maximum: health.maxhealth };
+    if (inst.skinId !== undefined) data.wall = { skinId: inst.skinId };
 }
 
-export class WallsPlacement extends WallPlacement<WallId> {
-    override exportRecords() {
-        // The deployable item places a wall entity; its item ID is not a world prefab.
-        return super.exportRecords().map(({ prefabId, record }) => ({
-            prefabId: prefabId.endsWith('_item') ? prefabId.slice(0, -'_item'.length) : prefabId,
-            record,
-        }));
+function onremove(inst: WallInstance): void {
+    inst._ispathfinding = false;
+    OnIsPathFindingDirty(inst);
+}
+
+/** MakeWallType(data): the placed wall, its deployable item's ondeploywall and its placer. */
+function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world: PrefabWorldContext) {
+    /** fence_item-style SpawnPrefab("wall_"..data.name, linked skin) at the wall slot; consuming the item is the build flow's. */
+    function ondeploywall(prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>, pt: ReadonlyVector3, skinId?: string): WallInstance {
+        return prefabs.spawn(prefab, pt, undefined, skinId) as WallInstance;
     }
 
-    constructor(
-        world: WorldContext,
-        consumeBufferedBuild: (buildId: WallId) => boolean,
-    ) {
-        super(
-            world,
-            WALL_DEFINITIONS,
-            consumeBufferedBuild,
-        );
+    /** onhammered: condition-scaled loot, collapse_small with the wall's material, then Remove. */
+    function onhammered(inst: WallInstance): void {
+        const num_loots = Math.max(1, Math.floor(data.maxloots * inst.components.health.GetPercent()));
+        for (let i = 0; i < num_loots; i++) inst.components.lootdropper.SpawnLootPrefab(data.loot);
+        inst.worldServices?.fx?.collapse?.('small', inst.position, data.material);
+        inst.remove();
     }
+
+    function onhit(inst: WallInstance): void {
+        PlaySound(`dontstarve/common/destroy_${data.material}`, inst.position);
+        const healthpercent = inst.components.health.GetPercent();
+        if (healthpercent > 0) {
+            const anim_to_play = resolveWallAnim(healthpercent, inst.position);
+            inst.sprite.playOnce(`${anim_to_play}_hit`);
+            inst.sprite.pushAnimation(anim_to_play, false);
+        }
+    }
+
+    function fn(): WallInstance {
+        const inst = new WallInstance(prefab, new SpriteState({ name: 'half', held: true, billboard: true }));
+        inst.worldServices = world;
+        declareWallArt(inst, art);
+        for (const tag of ['wall', 'noauradamage', 'electricdamageimmune', ...data.tags]) inst.addTag(tag);
+        inst._pfwall = undefined;
+        inst._ispathfinding = false;
+        makeobstacle(inst);
+        // Delay this because makeobstacle sets pathfinding on by default, but it is handled once the position is set.
+        inst.DoTaskInTime(0, InitializePathFinding);
+        inst.onRemove(() => onremove(inst));
+
+        addComponent(inst, 'inspectable', Inspectable);
+        addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
+        const combat = addComponent(inst, 'combat', Combat, () => inst.worldServices?.scheduler?.now ?? 0);
+        combat.SetKeepTargetFunction(keeptargetfn);
+        combat.onhitfn = onhit;
+        const health = addComponent(inst, 'health', Health, data.maxhealth);
+        health.SetCurrentHealth(data.maxhealth * .5);
+        health.ondelta = onhealthchange;
+        health.nofadeout = true;
+        health.canheal = false;
+        if (data.playerdamagemod !== undefined) health.SetAbsorptionAmountFromPlayer(data.playerdamagemod);
+        const workable = addComponent(inst, 'workable', Workable);
+        workable.SetWorkAction('HAMMER');
+        workable.SetWorkLeft(data.maxwork ?? 3);
+        workable.SetOnFinishCallback(onhammered);
+        workable.SetOnWorkCallback(onhit);
+        inst.onRemove(() => { combat.onhitfn = undefined; });
+        // The half-health anim of a new wall.
+        const anim = resolveWallAnim(health.GetPercent(), inst.position);
+        showHealthPose(inst, anim);
+        inst.sprite.playOnce(anim);
+        inst.OnLoad = onload;
+        inst.OnSave = onsave;
+        return inst;
+    }
+
+    const skins = skinArchives(prefab);
+    const definition: PrefabEntityDefinition<WallInstance> = {
+        fn,
+        staticImages: staticImages(art),
+        skins,
+        alignBottom: true,
+        // MakeObstaclePhysics(inst, .5); inst.Physics:SetDontRemoveOnSleep(true).
+        physics: { make: (inst, radius) => MakeObstaclePhysics(inst, radius).SetDontRemoveOnSleep(true), radius: .5 },
+        onSpawned: inst => {
+            const model = inst.transform.model, entity = actionEntity(model, prefab, inst);
+            entity.reskinTarget = reskinTarget({
+                get id() { return String(inst.entityId); }, prefabId: prefab, instance: inst, display: prefabDisplay(model)!,
+                sprite: inst.sprite, skins: Object.keys(skins),
+                hasTag: tag => inst.hasTag(tag), get position() { return inst.position; }, isValid: () => !inst.isRemoved,
+            });
+            new ToolMouseTarget(entity, inst, inst.components.workable, world.handEquipment);
+        },
+    };
+
+    /** MakePlacer("wall_"..data.name.."_item_placer", bank, "wall_"..data.name, "half", ..., snap, ..., "eight"). */
+    const placer = (buildId: WallId, snap: BuildingPlacerSpec['snap']): BuildingPlacerSpec => ({
+        buildLabel: art.buildLabel, name: art.name, animation: 'half', snap,
+        art: (resources: SpriteResources, skinId?: string) => ({
+            source: resources.staticFactory(staticImages(art).buildArchive, staticImages(art).options),
+            initialize: entity => {
+                entity.skinId = wallWorldSkin(buildId, skinId);
+                entity.sprite.setSkinSource({ art: resources.archives, archives: skins });
+                declareWallArt(entity, art);
+            },
+        }),
+    });
+
+    return { definition, ondeploywall, placer };
+}
+
+const WALL_ART: Readonly<Record<WallPrefabId, WallArt>> = definitions.walls;
+
+/** The Prefab list walls.lua returns, for the placed walls; the items are ground and inventory items. */
+export function wallPrefabs(world: PrefabWorldContext) {
+    const types = Object.fromEntries(WALL_PREFAB_IDS.map(prefab =>
+        [prefab, MakeWallType(prefab, WALL_DATA[prefab], WALL_ART[prefab], world)])) as Record<WallPrefabId, ReturnType<typeof MakeWallType>>;
+    return {
+        prefabs: Object.fromEntries(WALL_PREFAB_IDS.map(prefab => [prefab, types[prefab].definition])) as
+            Readonly<Record<WallPrefabId, PrefabEntityDefinition<WallInstance>>>,
+        /** wall_*_item's placer, or the wall's own when it is built by its world ID. */
+        placer: (buildId: WallId, snap: BuildingPlacerSpec['snap']) => types[wallWorldPrefab(buildId) as WallPrefabId].placer(buildId, snap),
+        /** wall_*_item's deployable ondeploywall, with the item's skin linked to the wall's. */
+        ondeploywall: (prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>, buildId: WallId, pt: ReadonlyVector3, skinId?: string) =>
+            types[wallWorldPrefab(buildId) as WallPrefabId].ondeploywall(prefabs, pt, wallWorldSkin(buildId, skinId)),
+    };
 }

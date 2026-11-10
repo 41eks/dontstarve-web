@@ -8,7 +8,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { Pathfinder } from '../../prefab/src/pathfinder';
-import { WallsPlacement } from '../../prefab/src/walls';
+import { wallsFixture } from './wallsFixture';
 import { WALL_PHYSICS_RADIUS } from '../../prefab/src/walls';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { Health } from '../../componets/src/health';
@@ -33,11 +33,11 @@ function setup(physics: CANNON.World = new CANNON.World()) {
   const world = { physics, pathfinder, scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
-  return { physics, pathfinder, placement: new WallsPlacement(world, () => false) };
+  return { physics, pathfinder, placement: wallsFixture(world, () => false) };
 }
 
 /** The placed walls' health, in placement order (their combat entities, as FindEntities lists them). */
-const healthOf = (_placement: WallsPlacement, index: number) =>
+const healthOf = (_placement: ReturnType<typeof wallsFixture>, index: number) =>
   (activePrefabs.filter(entity => (entity.components as { combat?: unknown }).combat)[index].components as { health: Health }).health;
 const wallBodies = (physics: CANNON.World) => physics.bodies.filter(body => body.type === CANNON.Body.STATIC);
 
