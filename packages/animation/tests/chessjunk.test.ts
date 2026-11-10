@@ -1,70 +1,140 @@
-import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
+import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { ChessJunkManager, CHESSJUNK_IDS } from '../../prefab/src/chessjunk';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { Repairer } from '../../componets/src/repairer';
+import { chessJunkPrefabs, CHESSJUNK_IDS, type ChessJunkId, type ChessJunkInstance } from '../../prefab/src/chessjunk';
+import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
+import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { deserializeSave } from '../../../src/save/deserialize';
+import { serializeSave } from '../../../src/save/serialize';
+import { createPickupInventory } from './pickupFixture';
+import { workTargets } from './workTargets';
 
-const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-function setup() {
+function setup(playerPosition = new THREE.Vector3()) {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
-  const registry = new EntityRegistry();
-  const piles = new ChessJunkManager(scene, { scheduler, tickingarea: () => createMemo(() => awake.get()),
-    trackDisplay: display => registry.trackDisplay(display) });
-  return { scene, scheduler, awake, piles, registry };
+  const displays = new PrefabDisplayGroup(scene), dropped: string[] = [], collapses: string[] = [];
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim',
+    { tickingarea: () => createMemo(() => awake.get()), scheduler });
+  prefabs.register(chessJunkPrefabs({ scheduler,
+    fx: { spawn: () => { throw new Error('unexpected fx'); }, collapse: (size, _position, material) => { collapses.push(`${size}:${material}`); } },
+    dropLoot: items => { for (const item of items) dropped.push(item.itemId); } }) as never);
+  const registry = new EntityRegistry([], prefabs, () => playerPosition);
+  registry.registerPrefabs(PREFAB_DEFINITIONS.chessJunk);
+  const spawn = (id: ChessJunkId, record?: PlacementSaveRecord) =>
+    prefabs.spawn(id, new THREE.Vector3(...record?.transform.position ?? [0, 0, 0]), record) as ChessJunkInstance;
+  const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };
+  return { scheduler, prefabs, registry, spawn, dropped, collapses, dispose };
 }
+/** A gears stack's repairer. */
+function gears(workrepairvalue: number) {
+  const item = { addTag() {}, removeTag() {}, hasTag: () => false, getPosition: () => new THREE.Vector3(), consumed: 0 };
+  return Object.assign(item, { components: { repairer: new Repairer(item as never, 'gears', workrepairvalue),
+    stackable: { Consume: () => { item.consumed++; return true; } } } });
+}
+const clip = (pile: ChessJunkInstance) => pile.sprite.sprite.peek().clip;
+/** The source's PlayAnimation / PushAnimation calls; an undrawn sprite completes a one-shot at once. */
+function animations(pile: ChessJunkInstance): string[] {
+  const calls: string[] = [];
+  vi.spyOn(pile.sprite, 'playOnce').mockImplementation(name => { calls.push(`play ${name}`); });
+  vi.spyOn(pile.sprite, 'pushAnimation').mockImplementation((name, loop) => { calls.push(`push ${name}${loop ? ' loop' : ''}`); });
+  vi.spyOn(pile.sprite, 'start').mockImplementation(name => { calls.push(`loop ${name}`); });
+  return calls;
+}
+
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-it('loads each source style and the repaired OnLoad animation', () => {
-  const { piles, scheduler } = setup();
+it('hammers a pile: hit then idle each blow, then loot and a metal collapse', () => {
+  const { spawn, dropped, collapses, dispose } = setup();
+  vi.spyOn(Math, 'random').mockReturnValue(.99);
   try {
-    for (const [index, id] of CHESSJUNK_IDS.entries()) {
-      const record = { id: `source-${id}`, transform: { position: [index, 0, 3] as [number, number, number], rotationY: 0 },
-        components: index === 0 ? {} : { chessJunk: { repaired: true as const, repairerid: 'u', repairerchar: 'wilson' } } };
-      const model = piles.spawn(id, new THREE.Vector3(...record.transform.position), record);
-      const inst = prefabInstance(model)!;
-      expect(inst.listTags()).toEqual(expect.arrayContaining(['chess', 'mech']));
-      expect(inst.sprite.sprite.peek().clip).toMatchObject(index === 0
-        ? { name: 'idle1', loop: false } : { name: `hit${index + 1}`, loop: true });
-    }
-    const exported = piles.exportRecords();
-    expect(exported.map(entry => entry.prefabId)).toEqual(CHESSJUNK_IDS);
-    for (const { record } of exported) expect(PREFAB_DEFINITIONS.chessJunk.parseComponents(record.components, 'pile', {} as never))
+    const pile = spawn('chessjunk2');
+    expect(pile.listTags()).toEqual(expect.arrayContaining(['chess', 'mech', 'repairable_gears']));
+    expect(clip(pile)).toMatchObject({ name: 'idle2', loop: false });
+    const calls = animations(pile);
+    const target = workTargets('HAMMER').find(entry => entry.id === String(pile.entityId))!;
+    target.work();
+    expect(calls).toEqual(['play hit2', 'push idle2']);
+    target.work(); target.work();
+    expect(pile.isRemoved).toBe(true);
+    // chess_junk's guaranteed trinket_6; every other chance fails at .99.
+    expect(dropped).toEqual(['trinket_6']);
+    expect(collapses).toEqual(['small:metal']);
+  } finally { dispose(); }
+});
+
+it('repairs a pile to full, saves the repairer and resurrects it after 0.7 s', () => {
+  const { scheduler, prefabs, spawn, dropped, dispose } = setup();
+  vi.spyOn(Math, 'random').mockReturnValue(.99);
+  try {
+    const pile = spawn('chessjunk1');
+    const doer = { prefab: 'wilson', userid: 'KU_test' };
+    const small = gears(1), calls = animations(pile);
+    expect(pile.components.repairable.Repair(doer, small)).toBe(true);
+    expect(small.consumed).toBe(1);
+    expect(pile.components.workable.GetWorkLeft()).toBe(4);
+    expect(calls).toEqual(['play hit1', 'push idle1']);
+    expect(pile.repaired).toBe(false);
+
+    expect(pile.components.repairable.Repair(doer, gears(2))).toBe(true);
+    expect(calls.slice(2)).toEqual(['loop hit1']);
+    const [record] = prefabs.exportRecords().map(entry => entry.record);
+    expect(record.components).toEqual({ chessJunk: { repaired: true, repairerid: 'KU_test', repairerchar: 'wilson' } });
+    expect(PREFAB_DEFINITIONS.chessJunk.parseComponents(record.components, 'pile', { prefab: 'chessjunk1' } as never))
       .toEqual(record.components);
-  } finally { piles.dispose(); scheduler.dispose(); }
+
+    scheduler.advance(.69);
+    expect(pile.isRemoved).toBe(false);
+    scheduler.advance(.02);
+    expect(pile.isRemoved).toBe(true);
+    expect(dropped).toEqual(['trinket_6']);
+  } finally { dispose(); }
 });
 
-it('restores declared clip after tile sleep', async () => {
-  const { scene, piles, scheduler, awake } = setup();
+it('loads each style, and OnLoad replays a saved repair', () => {
+  const { scheduler, prefabs, spawn, dispose } = setup();
   try {
-    const model = piles.spawn('chessjunk2', new THREE.Vector3(2, 0, 4), {
-      id: 'repaired', transform: { position: [2, 0, 4], rotationY: 0 }, components: { chessJunk: { repaired: true } },
-    });
-    await prefabDisplay(model)!.artLoaded();
-    const inst = prefabInstance(model)!;
-    awake.set(false); await settle();
-    expect(inst.status.peek()).toBe('asleep'); expect(inst.sprite.loaded).toBe(false); expect(model.parent).toBeNull();
-    awake.set(true); await settle();
-    expect(model.parent).toBe(scene); expect(inst.sprite.currentAnimation).toBe('hit2');
-  } finally { piles.dispose(); scheduler.dispose(); }
+    const piles = CHESSJUNK_IDS.map((id, index) => spawn(id, { id: `source-${id}`,
+      transform: { position: [index * 4, 0, 3], rotationY: 0 },
+      components: index === 2 ? { chessJunk: { repaired: true, repairerid: 'u', repairerchar: 'wendy' } } : {} }));
+    expect(piles.map(clip)).toMatchObject([{ name: 'idle1', loop: false }, { name: 'idle2', loop: false }, { name: 'hit3', loop: true }]);
+    expect(piles[2].components.workable.GetWorkLeft()).toBe(6);
+    expect(prefabs.exportRecords().map(({ prefabId, record }) => [prefabId, record.components])).toEqual([
+      ['chessjunk1', {}], ['chessjunk2', {}], ['chessjunk3', { chessJunk: { repaired: true, repairerid: 'u', repairerchar: 'wendy' } }]]);
+    scheduler.advance(.7);
+    expect(piles.map(pile => pile.isRemoved)).toEqual([false, false, true]);
+  } finally { dispose(); }
 });
 
-it('advances a spawned pile through the scene display tick', async () => {
-  const { piles, scheduler, registry } = setup();
+it('keeps a c_spawn pile and its repair through c_save and a reload', async () => {
+  const first = setup(new THREE.Vector3(3, 0, -6)), second = setup(), inventory = createPickupInventory();
   try {
-    const model = piles.spawn('chessjunk1', new THREE.Vector3());
-    await prefabDisplay(model)!.artLoaded();
-    const sprite = prefabInstance(model)!.sprite;
-    sprite.playOnce('idle1');
-    const clip = sprite.sprite.peek().clip;
-    expect(clip.finished).toBe(false);
-    for (let frame = 0; frame < 60; frame++) registry.update(.1, new THREE.Quaternion());
-    expect(clip.finished).toBe(true);
-  } finally { piles.dispose(); registry.dispose(); scheduler.dispose(); }
+    expect((await executeDebugCommand('c_spawn("chessjunk2")', inventory, prefab => first.registry.spawn(prefab))).ok).toBe(true);
+    expect((await executeDebugCommand('c_give("chessjunk2")', inventory)).ok).toBe(false);
+    const pile = [...first.prefabs.instances('chessjunk2')][0] as ChessJunkInstance;
+    pile.components.repairable.Repair({ prefab: 'wilson', userid: 'KU_test' }, gears(3));
+    const before = first.registry.exportRecords();
+    let json = '';
+    expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
+      json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
+        { entities: before, inventory: inventory.exportState(), elapsedSeconds: 1, playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
+    })).ok).toBe(true);
+    const saved = deserializeSave(json, SAVE_CATALOG).world.entities.chessjunk2!;
+    expect(saved).toEqual(before.chessjunk2);
+    expect(saved[0]).toMatchObject({ transform: { position: [3, 0, -6] },
+      components: { chessJunk: { repaired: true, repairerid: 'KU_test', repairerchar: 'wilson' } } });
+    await second.registry.restoreAll({ chessjunk2: saved });
+    const restored = second.prefabs.get(saved[0].id) as ChessJunkInstance;
+    expect(clip(restored)).toMatchObject({ name: 'hit2', loop: true });
+    expect(second.registry.exportRecords().chessjunk2).toEqual(saved);
+  } finally { first.dispose(); second.dispose(); inventory.dispose(); }
 });

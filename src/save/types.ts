@@ -90,7 +90,7 @@ export interface SavedEntity {
     statueglommer?: { worked?: true; spawned?: true };
     atriumGate?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['atriumGate'];
     ruinsStatueMage?: import('@dontstarve-web/prefab/ruins_statue_mage').RuinsStatueSaveState;
-    chessJunk?: import('@dontstarve-web/prefab/chessjunk').ChessJunkRecord['components']['chessJunk'];
+    chessJunk?: import('@dontstarve-web/prefab/chessjunk').ChessJunkSaveState;
     chesspiece?: import('@dontstarve-web/prefab/chesspieces').ChesspieceSaveState;
     submersible?: import('@dontstarve-web/prefab/chesspieces').SubmersibleSaveState;
     charliecutscene?: import('@dontstarve-web/prefab/atrium_gate').AtriumGateRecord['components']['charliecutscene'];

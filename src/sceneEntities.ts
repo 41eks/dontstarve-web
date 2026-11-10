@@ -85,7 +85,7 @@ import { StatueGlommerManager } from '@dontstarve-web/prefab/statueglommer';
 import { atriumGatePrefabs } from '@dontstarve-web/prefab/atrium_gate';
 import { ruinsStatuePrefabs, type RuinsStatueId } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { AtriumStatueManager } from '@dontstarve-web/prefab/atrium_statue';
-import { ChessJunkManager } from '@dontstarve-web/prefab/chessjunk';
+import { chessJunkPrefabs } from '@dontstarve-web/prefab/chessjunk';
 import { chesspiecePrefabs } from '@dontstarve-web/prefab/chesspieces';
 import { archiveCentipedeHuskPrefabs } from '@dontstarve-web/prefab/archive_centipede';
 import { BEEFALO_BEHAVIOR, beefaloPrefabs, findBeefaloSpawnPoint, type BeefaloWorld } from '@dontstarve-web/prefab/beefalo';
@@ -340,7 +340,6 @@ export async function createSceneEntities(
     'ruins_statue_head': typeof prefabs;
     'ruins_statue_head_nogem': typeof prefabs;
     'atrium_statue': ReturnType<typeof registerAtriumStatue>;
-    'chessjunk': ReturnType<typeof registerChessJunk>;
     'rain': ReturnType<typeof registerRain>;
     'snow': ReturnType<typeof registerSnow>;
     'ocean_waves': ReturnType<typeof registerOceanWaves>;
@@ -438,7 +437,7 @@ export async function createSceneEntities(
   Managers['ruins_statue_head_nogem'] = registerRuinsStatue(registry, 'ruins_statue_head_nogem');
   registerRuinsRelics(registry, worldState);
   Managers['atrium_statue'] = registerAtriumStatue(registry, 'atrium_statue', worldState);
-  Managers['chessjunk'] = registerChessJunk(registry, 'chessjunk', worldState);
+  registerChessJunk(registry, worldState);
   registerChesspieces(registry, 'chesspiece_malbatross_marble', worldState);
   registerArchiveCentipedeHusks(registry, 'archive_centipede_husk', worldState);
   Managers['marsh_plant'] = registerMarshPlants(registry, worldState);
@@ -1231,16 +1230,10 @@ export async function createSceneEntities(
     return statues;
   }
 
-  function registerChessJunk(registry: EntityRegistry, prefabId: 'chessjunk', worldState: SceneWorldState) {
-    const piles = new ChessJunkManager(scene, { tickingarea: worldState.tickingarea, scheduler: worldState.scheduler, physics: world,
-      trackDisplay: display => registry.trackDisplay(display) });
-    registry.registerDisplayManager(MANAGER_DEFINITIONS[prefabId], piles, {
-      restore: (id, record) => piles.spawn(id, new THREE.Vector3(...record.transform.position), {
-        id: record.id, transform: record.transform, components: { chessJunk: record.components.chessJunk },
-      }),
-      debugSpawn: id => piles.spawn(id, new THREE.Vector3(player.position.x, 0, player.position.z)),
-    });
-    return piles;
+  function registerChessJunk(registry: EntityRegistry, worldState: SceneWorldState) {
+    prefabs.register(chessJunkPrefabs({ fx: Managers['world_fx'], scheduler: worldState.scheduler,
+      dropLoot: (items, position) => groundItems.flingLoot(items.map(item => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position) }));
+    registry.registerPrefabs(PREFAB_DEFINITIONS.chessJunk);
   }
 
   function registerChesspieces(registry: EntityRegistry, prefabId: 'chesspiece_malbatross_marble', worldState: SceneWorldState) {

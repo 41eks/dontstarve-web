@@ -47,12 +47,6 @@
   "packages/prefab/src/cactus.ts": {
     "instance-method": 5
   },
-  "packages/prefab/src/chessjunk.ts": {
-    "manager": 1,
-    "model-keyed-state": 1,
-    "scene": 1,
-    "userdata": 1
-  },
   "packages/prefab/src/chesspieces.ts": {
     "instance-method": 3
   },

@@ -157,7 +157,7 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 
 ### c_spawn 支持的对象
 
-`c_spawn("chessjunk1")`、`c_spawn("chessjunk2")`、`c_spawn("chessjunk3")` 分别在玩家脚点生成三种棋械残骸；都是世界 prefab，不支持 `c_give`。三者使用 `chessmonster_ruins.zip`，初始声明非循环 `idle1/2/3`；已修复记录按 Lua `OnLoad` 恢复循环 `hit1/2/3`。`c_save()` 保留 ID、位置和已修复记录中的 `repaired`、`repairerid`、`repairerchar`。洞穴导入分别含 23、33、25 个。无皮肤；修复、敲击、战利品及重生行为未接入。
+`c_spawn("chessjunk1")`、`c_spawn("chessjunk2")`、`c_spawn("chessjunk3")` 分别在玩家脚点生成三种棋械残骸；都是世界 prefab，不支持 `c_give`。三者使用 `chessmonster_ruins.zip`，初始声明非循环 `idle1/2/3`，由共享的 `PrefabEntityManager` 生成。锤子敲三下后按 `chess_junk` 掉落表掉落战利品并播放金属 `collapse_small`；用齿轮修满 6 点工作量时循环播放 `hit1/2/3`，0.7 秒后再掉一次战利品（另加 10% 齿轮）并移除。已修复记录按 Lua `OnLoad` 重放同一流程。`c_save()` 保留 ID、位置和已修复记录中的 `repaired`、`repairerid`、`repairerchar`。洞穴导入分别含 23、33、25 个。无皮肤；发条生物（scion）、闪电、随机 `chessjunk` 及遗迹重生未移植。
 
 `c_spawn("chesspiece_malbatross_marble")` 在玩家脚点生成大理石邪天翁雕像，无额外参数；按世界 prefab 处理，不支持 `c_give`。使用 `anim/chesspiece.zip` 的 bank `chesspiece` 和 `anim/swap_chesspiece_malbatross_marble.zip` 的 build，按 Lua 声明非循环 `idle`，带 `heavy`、`blocker` 标签，半径 0.45 的障碍碰撞；锤子一击掉落 1 个 `marble` 并播放 `collapse_small` 后移除。无皮肤、无地图图标。原版 `SetPrefabName` 让所有材质都以 `chesspiece_malbatross` 入档，导入器把 `materialid` 为 1 的记录转成本 ID，其他材质尚未移植，遇到时导入报错；默认 `Cluster_1/Master.json` 含 1 座。`c_save()` 保留 ID、位置、`chesspiece.materialid` 和 `submersible.force_no_repositioning`，读档恢复 `idle`。扛起、装备减速、落水打捞、作祟效果尚未接入。
 

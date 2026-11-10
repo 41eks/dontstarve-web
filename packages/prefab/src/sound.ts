@@ -217,6 +217,10 @@ const sounds = {
   // common file_index 208–210 and 180, each + 1.
   'dontstarve/common/lightningrod': { bank: 'common', streams: [209, 210, 211], loop: false },
   'dontstarve/common/lightning_rod_craft': { bank: 'common', streams: [181], loop: false },
+  // chessjunk.lua OnRepaired → dontstarve.fev sounddefs 990 (rook_nightmare_rattle_10 / _8 / _9, chess file_index
+  // 103 / 110 / 111) and 989 (chess_resurect, common file_index 161), each + 1.
+  'dontstarve/common/chesspile_repair': { bank: 'chess', streams: [104, 111, 112], loop: false, pitchOctaves: -.125 },
+  'dontstarve/common/chesspile_ressurect': { bank: 'common', streams: [162], loop: false },
   // lightning.lua → dontstarve.fev sounddef 612 (thunder_close_1..4), forest_stream file_index 93–96 + 1.
   'dontstarve/rain/thunder_close': { bank: 'forest_stream', streams: [94, 95, 96, 97], loop: false },
   // sculptingtable.lua onbuilt → dontstarve.fev sounddef sfx/together/sculpting_table/sculpting_station_craft-01.wav → sfx stream 910.

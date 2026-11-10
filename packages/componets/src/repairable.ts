@@ -14,7 +14,8 @@ export class Repairable {
   private readonly repairableMemo;
   readonly workrepairable;
   noannounce = false;
-  onrepaired?: () => void;
+  /** repairable.lua onrepaired(inst, doer, repair_item); the inst is the callback's own closure. */
+  onrepaired?: (doer: unknown) => void;
   private readonly inst: WorkInst;
   private readonly workable?: Workable;
   private readonly health?: Health;
@@ -41,14 +42,14 @@ export class Repairable {
       && (this.CanRepairWork() && repairer.workrepairvalue > 0 || !!this.health?.IsHurt() && repairer.healthrepairvalue > 0);
   }
   /** repairable.lua Repair(doer, repair_item): apply the repair, then remove one of the repair item's stack. */
-  Repair(_doer: unknown, item: RepairItem): boolean {
+  Repair(doer: unknown, item: RepairItem): boolean {
     if (!this.CanRepair(item)) return false;
     const repairer = item.components!.repairer!;
     if (this.health?.IsHurt() && repairer.healthrepairvalue > 0) this.health.DoDelta(repairer.healthrepairvalue);
     else this.workable!.SetWorkLeft(this.workable!.GetWorkLeft() + repairer.workrepairvalue);
     if (item.components?.stackable) item.components.stackable.Consume();
     else item.remove?.();
-    this.onrepaired?.();
+    this.onrepaired?.(doer);
     return true;
   }
   dispose(): void {
