@@ -5,15 +5,20 @@ import {
   ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION, FULL_ABSORPTION,
   configureArmorSnurtleshellEntity,
 } from '../../prefab/src/armorsnurtleshell';
-import { activePrefabs, type FoundEntity } from '../../prefab/src/activePrefabs';
+import { SpriteState } from '@dontstarve-web/display';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { addComponent } from '../../prefab/src/components';
 import { createPerishWorld } from './perishWorldFixture';
+import { testEnts } from './entsFixture';
 
-afterEach(() => { activePrefabs.length = 0; });
+let ents = testEnts();
+afterEach(() => { ents.dispose(); ents = testEnts(); });
 
 function wornShell() {
   const world = createPerishWorld();
   const entity = new ItemEntityRegistry().create({ itemId: 'armorsnurtleshell', count: 1 });
   entity.BindPerishWorld(world);
+  ents.track(entity);
   entity.configure({ equippable: 'body', configureEntity: configureArmorSnurtleshellEntity });
   const listeners = new Map<string, (inst: unknown, data: unknown) => void>();
   const states: string[] = [];
@@ -34,10 +39,16 @@ function wornShell() {
 }
 
 /** A combat entity at `position` (FindEntities range is 20) that targets `target`. */
+class TargetingCombat {
+  target: object | undefined;
+  readonly DropTarget = vi.fn(() => { this.target = undefined; });
+  constructor(_inst: unknown, target: object) { this.target = target; }
+}
+class Attacker extends PrefabInstance<SpriteState, { combat?: TargetingCombat }> {}
 function attacker(target: object, position = new Vector3(3, 0, 0)) {
-  const combat = { target: target as object | undefined, DropTarget: vi.fn(() => { combat.target = undefined; }) };
-  activePrefabs.push({ isRemoved: false, hasTag: () => false, getPosition: () => position, components: { combat } } as unknown as FoundEntity);
-  return combat;
+  const inst = ents.track(new Attacker('attacker', new SpriteState({ name: '' })));
+  inst.setPosition(position.x, position.y, position.z);
+  return addComponent(inst, 'combat', TargetingCombat, target);
 }
 
 describe('armorsnurtleshell', () => {

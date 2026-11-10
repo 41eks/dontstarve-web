@@ -384,6 +384,17 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     for (const task of this.pendingtasks ?? []) task.rebind(scheduler);
   }
 
+  private sim?: EntityQuery;
+  /**
+   * TheSim's entity queries for the world this entity is in, bound by the PrefabEntityManager that spawns or tracks it.
+   * An entity outside any world has no TheSim to ask.
+   */
+  get TheSim(): EntityQuery {
+    if (!this.sim) throw new Error(`${this.prefab} is not in a world: it has no TheSim to query`);
+    return this.sim;
+  }
+  BindSim(sim: EntityQuery): void { this.sim = sim; }
+
   private taskScheduler(): TaskScheduler {
     const scheduler = this.worldServices?.scheduler;
     if (!scheduler) throw new Error(`${this.prefab} has no world scheduler for its tasks`);
@@ -623,6 +634,12 @@ export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, o
   return { instance, display };
 }
 
+/** TheSim:FindEntities, as the world's PrefabEntityManager answers it. */
+export interface EntityQuery {
+  FindEntities(position: ReadonlyVector3, radius: number,
+    mustTags?: readonly string[], cantTags?: readonly string[], oneOfTags?: readonly string[]): PrefabInstance[];
+}
+
 /** Prefab(name, fn, assets): how one source prefab is built and which art its display declares. */
 export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteState, object>> {
   /** `sprites` is the world's shared resource cache, for the sources of the fx children the prefab draws; declaring one performs no IO. */
@@ -734,6 +751,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     const instance = fn(position, this.resources);
     // The world's scheduler for inst:DoTaskInTime, unless the prefab's fn already bound the one it scheduled on.
     if (this.scheduler && !instance.worldServices?.scheduler) instance.BindScheduler(this.scheduler);
+    instance.BindSim(this);
     if (skins || materialOptions) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins ?? {}, materialOptions,
       ...skinSymbols ? { symbols: skinSymbols } : {}, ...baseSymbols ? { baseSymbols } : {},
       ...skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {} });
@@ -804,6 +822,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (instance.isRemoved || this.entities.has(instance) || this.tracked.has(instance)) return;
     const stopIndex = this.index(instance);
     this.tracked.set(instance, stopIndex);
+    instance.BindSim(this);
     instance.onRemove(() => { this.tracked.get(instance)?.(); this.tracked.delete(instance); });
   }
 

@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import { Explosive, type ExplosiveTarget } from '../../componets/src/explosive';
-import { FindEntities } from './actionEntity';
 import { bindBurnableItem } from './burnableItems';
 import { groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import type { ItemPrefabWorld } from './groundPrefab';
@@ -18,7 +17,7 @@ export function gunpowderPrefabs(world: ItemPrefabWorld): Record<string, ItemPre
         if (!fx) throw new Error('Gunpowder requires the explode_small effect');
         bindBurnableItem(inst, world);
         const explosive = addComponent(inst, 'explosive', Explosive,
-          (center, radius) => FindEntities(center, radius, [], CANT_TAGS) as unknown as readonly ExplosiveTarget[], TILE_SIZE / 4);
+          (center, radius) => inst.TheSim.FindEntities(center, radius, [], CANT_TAGS) as unknown as readonly ExplosiveTarget[], TILE_SIZE / 4);
         explosive.SetOnExplodeFn(entity => fx.spawn('explode_small', entity.getPosition()));
       },
     }),

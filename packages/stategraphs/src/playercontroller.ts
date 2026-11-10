@@ -10,7 +10,7 @@ import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts
 import { PlayerActionPicker } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { WilsonAction } from './SGwilson.ts';
-import { FindEntities } from '../../prefab/src/actionEntity';
+import type { EntityQuery } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import type { Combat, CombatInst } from '../../componets/src/combat';
 import { Vector3 } from 'three';
@@ -30,6 +30,8 @@ export type PlayerLocomotor = ActionLocomotor & Required<Pick<ActionLocomotor, '
 
 type PlayerDoer = BufferedActionDoer & SceneActionDoer & {
   readonly components?: { combat?: Combat };
+  /** TheSim of the world the player is in. */
+  readonly TheSim: EntityQuery;
   /** player_common.lua MakeCharacterPhysics(inst, 75, .5). */
   getPhysicsRadius?(): number;
   /** PlayerController:GetMapActions' workaround flags, read by pointspecialactionsfn. */
@@ -230,7 +232,7 @@ export class PlayerController {
     const reach = (this.doer.getPhysicsRadius?.() ?? 0) + rad + .1 * WORLD_SCALE;
     let nearest: ActionTargetEntity | undefined, nearestDistance = Infinity;
     // TheSim:FindEntities around the doer for "_combat" insts, excluding INLIMBO.
-    for (const entity of FindEntities(position, reach + 5 * WORLD_SCALE, [], ['INLIMBO'])) {
+    for (const entity of this.doer.TheSim.FindEntities(position, reach + 5 * WORLD_SCALE, [], ['INLIMBO'])) {
       const target = entity as unknown as ActionTargetEntity;
       if (!(entity.components as { combat?: unknown }).combat || !this.isValidAttackTarget(target, forceAttack)) continue;
       const radius = target.getPhysicsRadius?.() ?? 0;

@@ -8,7 +8,7 @@ import { MoleBait } from '../packages/prefab/src/molebait';
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
-import { activePrefabs, FindEntities } from '../packages/prefab/src/actionEntity';
+import { activePrefabs } from '../packages/prefab/src/actionEntity';
 import type { TemperatureSource } from '../packages/componets/src/temperature';
 import { PlaySound } from '@dontstarve-web/prefab/sound';
 import { newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntity } from '@dontstarve-web/inventory';
@@ -353,7 +353,7 @@ export async function createSceneEntities(
   sceneInventory.entities.bindTemperatureWorld({
     componentUpdates: worldState.componentUpdates,
     temperature: worldState.temperature, clock: worldState.clock, unitScale: WORLD_SCALE,
-    findHeaters: (position, radius, ignoredTags) => FindEntities(position, radius, ['HASHEATER'], ignoredTags) as TemperatureSource[],
+    findHeaters: (position, radius, ignoredTags) => prefabs.FindEntities(position, radius, ['HASHEATER'], ignoredTags) as unknown as TemperatureSource[],
   });
   const dynamicMusic = scheduler ? new DynamicMusic(scheduler, path => PlaySound(path)) : undefined;
 

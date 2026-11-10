@@ -113,7 +113,7 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
   });
 }
 const playerAnimation = playerInstance.animationController;
-const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (inst: unknown, data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean; OpenEquipmentView?: import('@dontstarve-web/signals').EquipmentOwner['OpenEquipmentView'];
+const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (inst: unknown, data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean; readonly TheSim: import('@dontstarve-web/prefab/prefabInstance').EntityQuery; OpenEquipmentView?: import('@dontstarve-web/signals').EquipmentOwner['OpenEquipmentView'];
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   // The player's own eater.lua (ACTIONS.EAT) and sleepingbaguser.lua (SLEEPIN's sleepingbag:DoSleep) on act.doer.
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger, eater: playerInstance.components.eater,
@@ -126,6 +126,7 @@ const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> 
   getPosition: () => player.position,
   position: player.position,
   get SoundEmitter() { return playerInstance.SoundEmitter; },
+  get TheSim() { return playerInstance.TheSim; },
   sg: {
     HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false,
     // SGwilson portal_jumpin_pre for ACTIONS.BLINK / BLINK_MAP.
@@ -240,7 +241,7 @@ const sceneResources = await startScene(
   },
   inventory,
 );
-const { scheduler, buildingPlacement, groundItems, worldFx, registry, getSaveState, disposalEvents } = sceneResources;
+const { scheduler, buildingPlacement, groundItems, worldFx, registry, prefabs, getSaveState, disposalEvents } = sceneResources;
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading });
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);
@@ -329,7 +330,7 @@ gameUi.debugConsole.addEventListener('game:debug-console-toggle', (event) => {
 });
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
-  void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), saveGame, setPlayerSanityPercent, async () => { await SendLightningStrike({ root: scene, fx: worldFx }, player.position); }).then((result) => {
+  void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), saveGame, setPlayerSanityPercent, async () => { await SendLightningStrike({ root: scene, fx: worldFx, sim: prefabs }, player.position); }).then((result) => {
     if (result.ok) console.info(result.message);
     else console.warn(result.message);
   }).catch((error: unknown) => {

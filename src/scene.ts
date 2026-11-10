@@ -28,7 +28,7 @@ import { createWorldClockUpdater } from './worldState';
 import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import { AddSlipperyFeet, RemoveSlipperyFeet } from '@dontstarve-web/prefab/player_common';
-import { actionEntitiesChanged, bindActionEntityWorld, FindEntities } from '../packages/prefab/src/actionEntity';
+import { actionEntitiesChanged, bindActionEntityWorld } from '../packages/prefab/src/actionEntity';
 import { bindPlayerBuilder } from '@dontstarve-web/prefab/player';
 import { removeComponent } from '../packages/prefab/src/components';
 import type { DisposalEvents } from './registerDisposal';
@@ -110,7 +110,9 @@ export async function startScene(
   inventory?.entities.bindPerishWorld(perishWorld);
   const entities = await createSceneEntities(world, worldState, consumeBufferedBuild,
     onBuildingInteraction, inventory, scheduler);
-  const { registry } = entities;
+  const { registry, prefabs } = entities;
+  // The player is not SpawnPrefab'd here, but it is in Ents: TheSim queries find it and it queries through them.
+  prefabs.track(playerInstance);
   try {
     // Scan the save here; the archive worker decodes the needed art while entities restore and share its cache.
     void preloadAnimationArchives(savedPrefabArchives(registry.prefabDefinitions, initialSave.world.entities),
@@ -129,7 +131,7 @@ export async function startScene(
     throw error;
   }
   const builder = bindPlayerBuilder(player, {
-    findEntities: (position, radius, mustTags, cantTags) => FindEntities(position, radius, mustTags, cantTags),
+    findEntities: (position, radius, mustTags, cantTags) => prefabs.FindEntities(position, radius, mustTags, cantTags) as never,
     entitiesChanged: actionEntitiesChanged,
     getWatchWorldContent: worldState.getWatchWorldContent,
   });

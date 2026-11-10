@@ -1,10 +1,9 @@
 import { addComponent } from './components';
-import { FindEntities } from './actionEntity';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { createArchiveEntity } from './prefabInstance';
 import { Burnable } from '../../componets/src/burnable';
-import { Propagator } from '../../componets/src/propagator';
+import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
 import type { BurnableInst } from '../../componets/src/burnable';
 import type { ItemPrefabWorld } from './groundPrefab';
 import { GROUND_ART_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
@@ -61,9 +60,9 @@ export class BurnableItemController {
     this.burnable = addComponent(entity, 'burnable', Burnable, scheduler);
     const { burnTime, burnTimeVariance = 0, explosive } = BURNABLE_ITEM_DEFINITIONS[entity.prefab];
     this.burnable.SetBurnTime(burnTime + Math.random() * burnTimeVariance);
-    // MakeSmallPropagator: the neighbours are the propagators FindEntities finds in range.
-    this.propagator = addComponent(entity, 'propagator', Propagator, 'small', radius => FindEntities(entity.getPosition(), radius)
-      .filter(inst => inst.components.propagator && !inst.isRemoved && !inst.hasTag('INLIMBO')) as unknown as BurnableInst[],
+    // MakeSmallPropagator; propagator.lua OnUpdate: TheSim:FindEntities(x, y, z, prop_range, nil, TARGET_CANT_TAGS).
+    this.propagator = addComponent(entity, 'propagator', Propagator, 'small', radius =>
+      entity.TheSim.FindEntities(entity.position, radius, undefined, PROPAGATOR_CANT_TAGS) as unknown as BurnableInst[],
     TILE_SIZE / 4, scheduler);
     this.burnable.SetOnIgniteFn(() => { entity.persists = false; }); // DefaultBurnFn
     this.burnable.SetOnExtinguishFn(() => { entity.persists = true; }); // DefaultExtinguishFn

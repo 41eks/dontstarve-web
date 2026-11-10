@@ -12,7 +12,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import type { SaveDocument } from '../../../src/save/types';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance, type EntityQuery } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
 import { managedBuildings } from './managedBuildings';
@@ -37,8 +37,8 @@ async function createPlacement() {
   return { placement, scheduler, fx, scene, play };
 }
 
-const strikeAt = (scene: THREE.Scene, fx: object, position: THREE.Vector3) =>
-  SendLightningStrike({ root: scene, fx: fx as never }, position);
+const strikeAt = (placement: { prefabs: EntityQuery }, scene: THREE.Scene, fx: object, position: THREE.Vector3) =>
+  SendLightningStrike({ root: scene, fx: fx as never, sim: placement.prefabs }, position);
 
 it('is charged by a strike for three days: zaps on the 10–40 s task, loses a day per cycle, then goes dark', async () => {
   const { placement, scheduler, fx, scene, play } = await createPlacement();
@@ -54,7 +54,7 @@ it('is charged by a strike for three days: zaps on the 10–40 s task, loses a d
     expect(declaredLight(model)).toBeUndefined();
 
     // The strike lands 30 units away; the rod within 40 units takes it over.
-    const struck = strikeAt(scene, fx, model.position.clone().add(new THREE.Vector3(30 * 3, 0, 0)));
+    const struck = strikeAt(placement, scene, fx, model.position.clone().add(new THREE.Vector3(30 * 3, 0, 0)));
     expect(struck.x).toBeCloseTo(model.position.x);
     expect(fx.spawn).toHaveBeenCalledWith('lightning', expect.any(THREE.Vector3));
     expect(components.inspectable!.getstatus!()).toBe('CHARGED');
@@ -93,7 +93,7 @@ it('draws a battery charge as one decaying point, not three', async () => {
     scene.add(model);
     const battery = (lookupPrefabInstance(model) as LightningRodInstance).components.battery;
     expect(battery.CanBeUsed()).toEqual([false, 'NOT_ENOUGH_CHARGE']);
-    await strikeAt(scene, fx, model.position);
+    await strikeAt(placement, scene, fx, model.position);
     expect(battery.CanBeUsed()).toEqual([true]);
     // chargeleft 3 holds one full point: 0.4 is drawn without discharging, 1 empties it.
     battery.OnUsed(undefined, .4);
@@ -113,7 +113,7 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
     expect(reskinEntity(findActionEntity(display.model)!.reskinTarget!)).toBe(true);
     const model = display.model;
     scene.add(model);
-    await strikeAt(scene, fx, model.position);
+    await strikeAt(placement, scene, fx, model.position);
     scheduler.advance(DAY);
     const saved = placement.exportRecords()[0].record;
     expect(saved.components.building).toMatchObject({ skinId: 'lightning_rod_adventure' });

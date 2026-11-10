@@ -3,7 +3,7 @@ import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import * as THREE from 'three';
 import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, type PrefabEntityManager, type PrefabInstance } from './prefabInstance';
 import type { WorldContext } from './worldContext';
 
 /** prefabutil.lua MakePlacer(name, bank, build, anim): what a build's placer draws. */
@@ -48,6 +48,7 @@ export class BuildingPlacer<BuildId extends string> {
     private readonly displays: PrefabDisplayGroup;
     /** Placers are made translucent through their materials, so they draw from resources apart from the buildings'. */
     private readonly sprites = new SpriteResources();
+    private readonly ents?: Pick<PrefabEntityManager<string, PrefabInstance>, 'track'>;
     private placer?: { buildId: BuildId; skinId?: string; instance: PrefabInstance; display: PrefabDisplay; spec: BuildingPlacerSpec };
 
     constructor(
@@ -55,7 +56,10 @@ export class BuildingPlacer<BuildId extends string> {
         specs: (buildId: BuildId) => BuildingPlacerSpec,
         consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean,
         place: (buildId: BuildId, position: THREE.Vector3, skinId: string | undefined, placer: PrefabInstance) => void,
+        /** The world's Ents: a placer is an entity there, so its placerupdate can query TheSim. */
+        ents?: Pick<PrefabEntityManager<string, PrefabInstance>, 'track'>,
     ) {
+        this.ents = ents;
         this.specs = specs;
         this.consumeBufferedBuild = consumeBufferedBuild;
         this.place = place;
@@ -86,6 +90,7 @@ export class BuildingPlacer<BuildId extends string> {
                 declarePlacer(entity);
                 entity.sprite.setOpacity(PLACER_OPACITY);
             }, undefined, { alignBottom: spec.alignBottom ?? true });
+        this.ents?.track(instance);
         this.displays.mount(display);
         this.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });
         this.cursor.show(`: 建造 ${spec.buildLabel}`, 'left');

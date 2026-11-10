@@ -12,6 +12,8 @@ export function playerDoer(player: THREE.Object3D, components: Record<string, un
     hasTag: (tag: string) => tag === 'player' || prefabInstance(player)?.hasTag(tag) === true,
     PushEvent: (name: string, data?: unknown) => prefabInstance(player)?.PushEvent(name, data),
     getPosition: () => player.position,
+    /** The player inst's TheSim: a test that queries through the doer tracks the player in its world first. */
+    get TheSim() { return prefabInstance(player)!.TheSim; },
     get sg() { const sg = prefabInstance(player)?.sg; return sg && { HasStateTag: (tag: string) => sg.hasStateTag(tag) }; },
   };
 }

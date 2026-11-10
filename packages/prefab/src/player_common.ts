@@ -7,7 +7,6 @@ import { Hunger } from '../../componets/src/hunger';
 import { Sanity, type SanityMode } from '../../componets/src/sanity';
 import { Eater } from '../../componets/src/eater';
 import type { PrefabInstance } from './prefabInstance';
-import { FindEntities } from './actionEntity';
 import { SlipperyFeet } from '../../componets/src/slipperyfeet';
 import { SKELETON_PLAYER_ID, type SkeletonInstance } from './skeleton';
 import { MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from './standardcomponents';
@@ -95,7 +94,7 @@ export function AddSlipperyFeet(inst: WilsonPlayerInstance): void {
     sg,
   }, {
     scheduler: inst.scheduler,
-    findSlipperyEntities: (position, radius) => FindEntities(position, radius, ['slipperyfeettarget']) as never,
+    findSlipperyEntities: (position, radius) => inst.TheSim.FindEntities(position, radius, ['slipperyfeettarget']) as never,
   });
 }
 

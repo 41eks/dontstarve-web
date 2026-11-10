@@ -8,6 +8,7 @@ import { actionEntity } from '../../prefab/src/actionEntity';
 import { withEntity } from './entityFixture';
 import { ItemEntity } from '../../inventory/src';
 import { configureBurnableItemEntity, type BurnableItemController } from '../../prefab/src/burnableItems';
+import { testEnts } from './entsFixture';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -87,3 +88,24 @@ it('binds a persistent inventory propagator to world season and releases the pre
   expect(propagator.propagationRange.peek()).toBeCloseTo(4 * .67);
 });
 
+
+it('spreads an item fire through TheSim to the propagators in range, leaving out INLIMBO ones as propagator.lua does', () => {
+  vi.spyOn(Math, 'random').mockReturnValue(.5);
+  const ents = testEnts();
+  const log = (x: number) => {
+    const entity = ents.track(new ItemEntity({ itemId: 'log', count: 1 }));
+    configureBurnableItemEntity(entity);
+    entity.setPosition(x, 0, 0);
+    return { entity, propagator: entity.getComponent<BurnableItemController>('burnable_item')!.propagator };
+  };
+  const source = log(0), near = log(6), held = log(6), far = log(30);
+  held.entity.RemoveFromScene();
+  const heated = [near, held, far].map(({ propagator }) => vi.spyOn(propagator, 'AddHeat').mockImplementation(() => {}));
+  source.propagator.heatoutput = 15;
+  source.propagator.spreading.set(true);
+  source.propagator.Update(.5);
+  // MakeSmallPropagator's range is 4 units (12 here): only the log on the ground within it is heated.
+  expect(heated.map(spy => spy.mock.calls.length > 0)).toEqual([true, false, false]);
+  for (const { entity } of [source, near, held, far]) entity.destroy();
+  ents.dispose();
+});

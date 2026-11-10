@@ -23,7 +23,7 @@ import type { SoundEmitter } from './soundEmitter';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { PhysicsState } from '../../componets/src/physicsState';
-import { actionEntity, disposeActionEntity, FindEntities } from './actionEntity';
+import { actionEntity, disposeActionEntity } from './actionEntity';
 import { createPrefabEntity, prefabInstance, type EntityTask, type PrefabInstance } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
@@ -321,8 +321,8 @@ class WilsonController implements WilsonAnimationController {
         hasBodyItem: () => !!instance.components.inventory?.GetEquippedItem('body'),
         showHUD: show => instance.ShowHUD(show),
         sleepNearby: (radius, seconds) => {
-          for (const v of FindEntities(instance.position, radius * WORLD_SCALE)) {
-            if (v.model !== instance.transform.model) (v.components as { sleeper?: { GoToSleep(seconds: number): void } }).sleeper?.GoToSleep(seconds);
+          for (const v of instance.TheSim.FindEntities(instance.position, radius * WORLD_SCALE)) {
+            if (v !== instance) (v.components as { sleeper?: { GoToSleep(seconds: number): void } }).sleeper?.GoToSleep(seconds);
           }
         },
       },

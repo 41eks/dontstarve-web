@@ -7,10 +7,9 @@ import { WORLD_SCALE } from './tile';
 import { OPALSTAFF_COLOUR, YELLOWSTAFF_COLOUR } from './staff';
 import type { SoundEventPath } from './sound';
 import type { SoundEmitter } from './soundEmitter';
-import { FindEntities } from './actionEntity';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer } from '../../componets/src/timer';
-import { Propagator } from '../../componets/src/propagator';
+import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
 import { Heater } from '../../componets/src/heater';
 import { Hauntable, HAUNT_SMALL } from '../../componets/src/hauntable';
 import { SanityAura, SANITYAURA_SMALL } from '../../componets/src/sanityaura';
@@ -116,7 +115,7 @@ export class StaffLightInstance extends PrefabInstance {
     let propagator: Propagator | undefined;
     if (settings.is_hot) {
       propagator = addComponent(this, 'propagator', Propagator, 'default', radius =>
-        FindEntities(this.position, radius, [], ['INLIMBO']) as BurnableInst[], WORLD_SCALE, scheduler, world.getWatchWorldContent);
+        this.TheSim.FindEntities(this.position, radius, undefined, PROPAGATOR_CANT_TAGS) as BurnableInst[], WORLD_SCALE, scheduler, world.getWatchWorldContent);
       propagator.heatoutput = 15;
       propagator.spreading.set(true);
     }

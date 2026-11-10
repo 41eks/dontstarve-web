@@ -6,7 +6,6 @@ import { Armor } from '../../componets/src/armor';
 import type { Combat } from '../../componets/src/combat';
 import { Equippable } from '../../componets/src/equippable';
 import { UseableItem } from '../../componets/src/useableitem';
-import { FindEntities } from './actionEntity';
 import { wornOwner, type EquipmentVisualOwner } from './equipmentVisual';
 
 export const ARMORSNURTLESHELL_ID = 'armorsnurtleshell';
@@ -55,7 +54,7 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
     const owner = this.owner, position = owner?.getPosition?.();
     if (!owner || !position || !owner.HasStateTag?.('shell')) return;
     // TARGET_MUST_TAGS { "_combat" } is the combat component's replica tag.
-    for (const v of FindEntities(position, DROPTARGETS_RANGE, [], TARGET_CANT_TAGS)) {
+    for (const v of this.inst.TheSim.FindEntities(position, DROPTARGETS_RANGE, [], TARGET_CANT_TAGS)) {
       const combat = (v.components as { combat?: Combat }).combat;
       if ((combat?.target as object | undefined) === owner) combat!.DropTarget();
     }

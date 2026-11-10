@@ -13,9 +13,11 @@ import { Reader } from '../../componets/src/reader';
 import { Weather } from '../../componets/src/weather';
 import { createWorldClockUpdater, createWorldState } from '../../../src/worldState';
 import { bindTestWorld } from './worldContentFixture';
+import { testEnts } from './entsFixture';
 
 const cleanups: (() => void)[] = [];
-afterEach(() => { cleanups.splice(0).forEach(stop => stop()); });
+let ents = testEnts();
+afterEach(() => { cleanups.splice(0).forEach(stop => stop()); ents.dispose(); ents = testEnts(); });
 
 function bookWorld(root: THREE.Scene, scheduler: GameTimeScheduler, weather: Weather): BookWorld {
   const { moon, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
@@ -30,6 +32,7 @@ function pickedGrass(scene: THREE.Scene, scheduler: GameTimeScheduler, x: number
   const { instance, display } = createEmptyEntity('grass');
   const model = display.model; instance.setPosition(x, 0, 0);
   for (const tag of ['plant', 'renewable', 'silviculture']) instance.addTag(tag);
+  ents.track(instance);
   cleanups.push(() => { instance.remove(); display.dispose(); });
   const pickable = addComponent(instance, 'pickable', Pickable, 'cutgrass', 1440, 1, undefined, undefined,
     { picked: true, regrowSeconds: 1440 }, { scheduler });
@@ -54,6 +57,7 @@ it('reads book_silviculture: regrows picked plants in range, spends a use and ch
   const far = pickedGrass(scene, scheduler, 31 * TILE_SIZE / 4); // Source range is 30 units.
   const book = new ItemEntity({ itemId: 'book_silviculture', count: 1 });
   book.configure(BOOK_ITEM_SPECS.book_silviculture);
+  ents.track(book);
   const { reader, tags, doDelta } = readerFor(new THREE.Vector3(), bookWorld(scene, scheduler, newWeather()));
   expect(tags).toEqual(['reader']);
   // The inst fields SGwilson's book state reads off the book itself.
@@ -77,6 +81,7 @@ it('fails with NOSILVICULTURE without spending a use or sanity when only ready p
   ready.regen();
   const book = new ItemEntity({ itemId: 'book_silviculture', count: 1, remainingUses: 2 });
   book.configure(BOOK_ITEM_SPECS.book_silviculture);
+  ents.track(book);
   const { reader, doDelta } = readerFor(new THREE.Vector3(), bookWorld(scene, scheduler, newWeather()));
   expect(reader.Read(book)).toEqual([false, 'NOSILVICULTURE']);
   expect(book.components.finiteuses.uses.peek()).toBe(2);

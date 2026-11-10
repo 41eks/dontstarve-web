@@ -59,14 +59,14 @@ export function isPlaceableBuildingId(value: string): value is PlaceableBuilding
  */
 export class PlaceableBuildingPlacement {
     private readonly managed: BuildingPlacer<PlaceableBuildingId>;
-    private readonly prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'register'>;
+    private readonly prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'register' | 'track'>;
     private readonly snapToWallSlot: (point: Vector3) => Vector3;
 
     constructor(
         world: WorldContext,
         consumeBufferedBuild: (buildId: PlaceableBuildingId, skinId?: string) => boolean,
         onInteractionChange: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
-        prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'register'>,
+        prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'register' | 'track'>,
     ) {
         this.prefabs = prefabs;
         const { scene: _scene, ...rest } = world;
@@ -86,7 +86,7 @@ export class PlaceableBuildingPlacement {
                 if (isFenceId(buildId)) { ondeploywall(prefabs, buildId, position, skinId, GetRotation(placer)); return; }
                 if (isWallId(buildId)) { walls.ondeploywall(prefabs, buildId, position, skinId); return; }
                 prefabs.spawn(buildId, position, undefined, skinId).PushEvent('onbuilt', undefined);
-            });
+            }, prefabs);
         this.snapToWallSlot = snapToWallSlot;
     }
 

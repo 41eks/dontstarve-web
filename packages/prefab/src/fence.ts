@@ -8,9 +8,9 @@ import { Combat, type CombatActor } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Workable, type Worker } from '../../componets/src/workable';
-import { actionEntity, FindEntities } from './actionEntity';
+import { actionEntity } from './actionEntity';
 import type { BuildingPlacerSpec } from './buildingPlacer';
-import { PrefabInstance, prefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
+import { PrefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
 import { reskinTarget } from './reskin_tool';
 import type { PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
@@ -88,13 +88,9 @@ export function SetOrientation(inst: PrefabInstance, rotation: number, art?: Spr
 
 /** FixUpFenceOrientation(inst, nil): FindEntities(x, 0, z, 1.5, { "wall" }) around the inst, without itself. */
 function FixUpFenceOrientation(inst: PrefabInstance): void {
-    const model = inst.transform.model;
-    const neighbours = FindEntities(inst.position, 1.5 * UNIT, ['wall'])
-        .filter(found => found.model !== model)
-        .map(found => {
-            const other = found.model && prefabInstance<PrefabInstance>(found.model);
-            return { isFence: found.hasTag('fence'), rotation: other ? GetRotation(other) : 0 };
-        });
+    const neighbours = inst.TheSim.FindEntities(inst.position, 1.5 * UNIT, ['wall'])
+        .filter(found => found !== inst)
+        .map(found => ({ isFence: found.hasTag('fence'), rotation: GetRotation(found) }));
     SetOrientation(inst, fixUpFenceRotation(GetRotation(inst), neighbours));
 }
 

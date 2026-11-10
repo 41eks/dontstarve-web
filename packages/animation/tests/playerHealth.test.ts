@@ -6,9 +6,8 @@ import { expect, it, vi } from 'vitest';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Health } from '../../componets/src/health';
-import { createWilsonPlayerPrefab } from './playerVisual';
+import { createWilsonPlayerPrefab, playerEnts } from './playerVisual';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
-import { actionEntity } from '../../prefab/src/actionEntity';
 import { inventoryUse } from './inventoryUseFixture';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -126,7 +125,8 @@ it('resurrects a loaded ghost from a haunted amulet, wearing that inst and retur
   const pig = createEmptyEntity('pigman'), sleeper = { GoToSleep: vi.fn() };
   pig.instance.components.sleeper = sleeper as never;
   pig.instance.setPosition(6, 0, 0);
-  actionEntity(pig.display.model, 'pigman');
+  // The pig is in the player's Ents, where TheSim finds it around the player.
+  playerEnts(instance).track(pig.instance);
   try {
     inventory.add('amulet', 2);
     expect(inventory.EquipFromInventory(inventory.getEntity(inventorySlotAddress(0))!)).toBe(true);

@@ -1,11 +1,10 @@
-import { FindEntities } from './actionEntity';
 import type * as THREE from 'three';
 import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { prefabInstance, PrefabInstance } from './prefabInstance';
 import { SpriteResources, type LoadedSpriteSource } from '@dontstarve-web/display';
 import { addComponent, removeComponent } from './components';
 import { Burnable, type BurnableInst, type BurnFXData } from '../../componets/src/burnable';
-import { Propagator } from '../../componets/src/propagator';
+import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { CAMPFIREFIRE_ARCHIVE, CAMPFIREFIRE_ID, CampfireFire } from './campfirefire';
@@ -95,9 +94,9 @@ export class BurnableBinding {
     this.burnable.SetOnIgniteFn(spec.onIgnite ? () => spec.onIgnite!() : undefined);
     this.burnable.SetOnExtinguishFn(spec.onExtinguish ? () => spec.onExtinguish!() : undefined);
     this.burnable.SetOnBurntFn(() => spec.onBurnt());
-    this.propagator = addComponent(owner, 'propagator', Propagator, spec.propagator, radius => {
-      return FindEntities(owner.getPosition(), radius).filter(other => other.components.propagator && !other.hasTag('INLIMBO'));
-    }, TILE_SIZE / 4, env.scheduler, getBoundWatchWorldContent(), spec.propagatorValues);
+    // propagator.lua OnUpdate: TheSim:FindEntities(x, y, z, prop_range, nil, TARGET_CANT_TAGS).
+    this.propagator = addComponent(owner, 'propagator', Propagator, spec.propagator, radius =>
+      owner.TheSim.FindEntities(owner.position, radius, undefined, PROPAGATOR_CANT_TAGS), TILE_SIZE / 4, env.scheduler, getBoundWatchWorldContent(), spec.propagatorValues);
   }
 
   /** StartUpdatingComponent of the fire's firefx: its light flickers each frame. */

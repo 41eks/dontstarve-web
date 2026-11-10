@@ -81,7 +81,7 @@ interface ApplicationResourcesOptions {
   inventory: InventoryStore;
   playerAnimation?: WilsonAnimationController;
   locomotor: PlayerLocomotor;
-  pickupDoer: PickupDoer;
+  pickupDoer: PickupDoer & { readonly TheSim: import('@dontstarve-web/prefab/prefabInstance').EntityQuery };
   inventorySlotItem: (entity: ItemEntity) => SlotItem;
   actionEvents: EventEmitter<PlayerActionEvents>;
   isActionInterrupting: () => boolean;

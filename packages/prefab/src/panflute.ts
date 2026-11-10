@@ -2,7 +2,7 @@ import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Instrument } from '../../componets/src/instrument';
 import { Tool } from '../../componets/src/tool';
-import { FindEntities } from './actionEntity';
+import type { EntityQuery } from './prefabInstance';
 import { itemSkinBuild } from './itemSkinBuild';
 import { TILE_SIZE } from './tile';
 
@@ -20,12 +20,12 @@ export interface PanfluteListener {
 }
 
 /** The player playing the flute: instrument:Play finds the listeners around it. */
-export interface PanfluteMusician { getPosition(): import('three').Vector3 }
+export interface PanfluteMusician { getPosition(): import('three').Vector3; readonly TheSim: EntityQuery }
 export type PanfluteInstrument = Instrument<PanfluteMusician, PanfluteListener>;
 
 /** instrument.lua Play: TheSim:FindEntities(x, y, z, self.range, nil, {"FX", "DECOR", "INLIMBO"}) at the musician. */
 const findListeners = (musician: PanfluteMusician, range: number) =>
-  FindEntities(musician.getPosition(), range * TILE_SIZE / 4, undefined, ['FX', 'DECOR', 'INLIMBO']) as unknown as PanfluteListener[];
+  musician.TheSim.FindEntities(musician.getPosition(), range * TILE_SIZE / 4, undefined, ['FX', 'DECOR', 'INLIMBO']) as unknown as PanfluteListener[];
 
 /**
  * panflute.lua HearPanFlute for the ported branches: sleepers that are not players fall asleep.

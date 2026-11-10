@@ -12,7 +12,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import * as CANNON from 'cannon-es';
-import { findActionEntity, activePrefabs } from '../../prefab/src/actionEntity';
+import { activePrefabs } from '../../prefab/src/actionEntity';
 import { Combat, type CombatInst } from '../../componets/src/combat';
 import type { Health } from '../../componets/src/health';
 import { ItemEntity } from '../../inventory/src';
@@ -174,7 +174,7 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
   const hand = createSignal<HandEquipment | null>(null);
   // The player inst: DoAttackButton searches around it and ATTACK runs its combat.
   const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
-    getPhysicsRadius: () => .5 * UNIT, components: { combat } };
+    getPhysicsRadius: () => .5 * UNIT, components: { combat }, TheSim: placement.prefabs };
   const controller = new PlayerController(world, animation.stategraph, locomotor, hand, doer as never, () => false);
   const key = (type: string, code: string, ctrlKey: boolean) => {
     const event = Object.assign(new Event(type, { cancelable: true }), { code, ctrlKey, repeat: false });
@@ -191,7 +191,7 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
     key('keydown', 'KeyF', false); key('keyup', 'KeyF', false);
     expect(controller.bufferedAction).toBeUndefined();
     expect(key('keydown', 'KeyF', true).defaultPrevented).toBe(true);
-    expect(controller.bufferedAction).toMatchObject({ action: 'ATTACK', target: findActionEntity(hay) });
+    expect(controller.bufferedAction).toMatchObject({ action: 'ATTACK', target: prefabInstance(hay) });
     expect(locomotor.bufferedAction).toBeDefined();
     // combat:LocomotorCanAttack: inside the attack range of the wall's edge.
     player.position.x = 3 + 2 * UNIT; locomotor.update(16, 1 / 30);

@@ -5,7 +5,7 @@ import type { InventoryItemSpec, ItemEntity } from '@dontstarve-web/inventory';
 import type { BookDef } from '@dontstarve-web/stategraphs';
 import { Book, type BookFxWorld, type BookReaderInst, type BookResult } from '../../componets/src/book';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { FindEntities, type FoundEntity } from './actionEntity';
+import type { FoundEntity } from './actionEntity';
 import { configureBurnableItemEntity } from './burnableItems';
 import type { Pickable } from './components/pickable';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -72,9 +72,9 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
     read_sanity: -SANITY_LARGE,
     fx_under_prefab: 'fx_roots_under_book',
     layer_sound: { frame: 17, sound: 'wickerbottom_rework/book_spells/silviculture' },
-    fn(_inst, reader, world) {
-      const ents = FindEntities(reader.getPosition(), SILVICULTURE_RANGE, [], SILVICULTURE_CANT_TAGS, SILVICULTURE_ONEOF_TAGS)
-        .filter(v => (v.components as GrowthTarget['components']).pickable !== undefined || v.hasTag('leif')) as GrowthTarget[];
+    fn(inst, reader, world) {
+      const ents = inst.TheSim.FindEntities(reader.getPosition(), SILVICULTURE_RANGE, [], SILVICULTURE_CANT_TAGS, SILVICULTURE_ONEOF_TAGS)
+        .filter(v => (v.components as GrowthTarget['components']).pickable !== undefined || v.hasTag('leif')) as unknown as GrowthTarget[];
       if (ents.length === 0) return [false, 'NOSILVICULTURE'];
       trygrowth(ents.splice(Math.floor(Math.random() * ents.length), 1)[0]);
       if (ents.length > 0) {

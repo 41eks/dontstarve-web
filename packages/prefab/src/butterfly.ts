@@ -20,11 +20,9 @@ import { RADIANS } from '../../brains/src/simutil';
 import type { BrainComponents, BrainEntity, BrainInst, BrainWorld } from '../../brains/src/types';
 import catalog from './groundItems.json' with { type: 'json' };
 import { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED } from './moonbutterflyTuning';
-import { FindEntities } from './actionEntity';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import { animationLengths } from './animationTimings';
-import { prefabInstance } from './prefabInstance';
 
 export const BUTTERFLY_ID = 'butterfly';
 export const MOONBUTTERFLY_ID = 'moonbutterfly';
@@ -511,13 +509,12 @@ export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefab
       world.configureItem(inst);
       (prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(inst);
       if (prefab === BUTTERFLY_ID && !inst.components.inventoryitem.owner) inst.components.perishable.StopPerishing();
-      const model = inst.transform.model, origin = new THREE.Vector3();
+      const origin = new THREE.Vector3();
       const creature = inst.component('butterfly_creature', () => new ButterflyCreature(BUTTERFLY_DEFINITIONS[prefab], inst,
-        inst.sprite, world.butterflyWorld, (position, radius) => FindEntities(origin.set(position.x, position.y, position.z), radius, ['butterfly'])
+        inst.sprite, world.butterflyWorld, (position, radius) => inst.TheSim.FindEntities(origin.set(position.x, position.y, position.z), radius, ['butterfly'])
           .flatMap(neighbour => {
-            const neighbourModel = (neighbour as { model?: THREE.Object3D }).model;
-            const other = neighbourModel !== model
-              ? (neighbourModel && prefabInstance<ItemEntity>(neighbourModel)?.getComponent<ButterflyCreature>('butterfly_creature')) : undefined;
+            // Every butterfly-tagged inst is a butterfly item with its creature component.
+            const other = neighbour !== (inst as unknown) ? (neighbour as unknown as ItemEntity).getComponent?.<ButterflyCreature>('butterfly_creature') : undefined;
             return other ? [other] : [];
           }), undefined, dropLoot));
       const flicker = prefab === MOONBUTTERFLY_ID ? bindMoonButterfly(inst, creature) : undefined;

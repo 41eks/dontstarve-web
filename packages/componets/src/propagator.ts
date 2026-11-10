@@ -3,6 +3,8 @@ import { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import type { BurnableInst } from './burnable';
 
+/** propagator.lua TARGET_CANT_TAGS: what OnUpdate's TheSim:FindEntities leaves out when the fire spreads. */
+export const PROPAGATOR_CANT_TAGS: readonly string[] = ['INLIMBO'];
 const SPRING_FIRE_RANGE_MOD = .67; // tuning.lua
 
 // standardcomponents.lua MakeSmall/Medium/LargePropagator, plus bare AddComponent("propagator").
