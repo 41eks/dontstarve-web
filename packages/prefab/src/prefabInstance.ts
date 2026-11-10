@@ -640,6 +640,12 @@ export interface EntityQuery {
     mustTags?: readonly string[], cantTags?: readonly string[], oneOfTags?: readonly string[]): PrefabInstance[];
 }
 
+/**
+ * The global POPULATING: true while a saved entity's SetPersistData runs, so the callbacks its components' OnLoad
+ * call settle into their pose instead of playing a transition.
+ */
+export let POPULATING = false;
+
 /** Prefab(name, fn, assets): how one source prefab is built and which art its display declares. */
 export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteState, object>> {
   /** `sprites` is the world's shared resource cache, for the sources of the fx children the prefab draws; declaring one performs no IO. */
@@ -773,7 +779,8 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     instance.entityId = saved?.id ?? newItemEntityId();
     if (saved) {
       instance.saveRecord = { ...saved, transform: { position: [position.x, 0, position.z], rotationY: saved.transform?.rotationY ?? 0 } };
-      instance.SetPersistData(saved.components);
+      POPULATING = true;
+      try { instance.SetPersistData(saved.components); } finally { POPULATING = false; }
     }
     if (skinId !== undefined) instance.skinId = skinId;
     onSpawned?.(instance);

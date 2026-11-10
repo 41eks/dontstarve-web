@@ -12,7 +12,7 @@ import { performToolWork } from '../../stategraphs/src/componentactions';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import { workTargets } from './workTargets';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -51,7 +51,7 @@ it('opens at night, is picked for a blue_cap, regrows after rainy periods and ke
     s.rain.set('rain');
     for (let i = 0; i < 40 && !pickable.canBePicked; i++) s.advance(30);
     expect(pickable.canBePicked).toBe(true);
-    expect(s.mushrooms.exportRecords()[0].record.components.pickable).toEqual({});
+    expect(s.mushrooms.exportRecords()[0].record.components.pickable).toBeUndefined();
 
     const restored = plantManager(mushroomPlantPrefabs, new THREE.Scene(), { rain: s.rain, spawnGroundItem: (definition, position, options) => s.ground.spawnGroundItem(definition, position, options) });
     try {

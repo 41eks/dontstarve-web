@@ -69,7 +69,7 @@ it('spawns grass through the debug command using its source bank and build, then
   const [{ prefabId, record }] = grasses.exportRecords();
   expect(prefabId).toBe(GRASS_ID);
   expect(record.transform).toEqual({ position: [4, 0, -6], rotationY: 0 });
-  expect(record.components).toEqual({ pickable: {}, witherable: { taskSeconds: expect.any(Number) } });
+  expect(record.components).toEqual({ witherable: { taskSeconds: expect.any(Number) } });
 
   const pickable = plantInstance(model).components.pickable;
   expect(pickable.pick({ giveItem: (id: string, count: number) => id === 'cutgrass' && count === 1 })).toBe(true);

@@ -85,6 +85,7 @@
 | 任务所用的 `scheduler`（引擎全局） | `inst.BindScheduler(world.scheduler)` | `evergreens.ts` | `PrefabEntityManager.spawn` 在 `fn` 之后注入世界 scheduler，物品由 `ItemEntity.BindPerishWorld` 注入；`fn`／构造函数里就要计时的 prefab 先自己调用。改绑时挂起任务保留剩余时间 |
 | `inst.OnSave`、`inst.OnLoad` | `this.OnSave = (_inst, data) => …`，同名 `OnLoad` | `archive_pillar.ts` | 还要加：`saveRecord.ts`、`src/save/types.ts`、`src/prefabDefinitions.ts` 的解析和导入转换器 |
 | `inst.OnLoadPostPass` | 见示例 | `atrium_gate.ts` | |
+| 全局 `POPULATING`（读档时组件 `OnLoad` 调到的回调只摆姿势、不播过渡） | `import { POPULATING } from './prefabInstance'` | `grass.ts`、`berrybush.ts` | `PrefabEntityManager.spawn` 带存档执行 `SetPersistData` 期间为 true |
 | `OnLoadPostPass(inst, newents, data)` 的 `newents[GUID]` | 注入的 `world.getEntity(id)`（应用层接 `PrefabEntityManager.get`），在 `DoTaskInTime(0)` 里解析 | `grotto_pool.ts` | 存档 ID 即项目实体 ID |
 | `onSpawned`（`POPULATING` 之外的初始化） | 定义的 `onSpawned(inst)` | `monkeypillar.ts` | 位置和存档都就绪后运行 |
 

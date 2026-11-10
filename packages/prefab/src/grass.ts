@@ -1,70 +1,108 @@
 import { addComponent } from './components';
-import type { PrefabEntityDefinition } from './prefabInstance';
+import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
+import { Transform } from './transform';
+import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
+import { Witherable } from '../../componets/src/witherable';
+import { LootDropper } from '../../componets/src/lootdropper';
+import { BurnableBinding } from './treeFire';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
+import { PickablePlantInstance, plantLootSpawner, SpringGrowthMod, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
 
 export const GRASS_ID = 'grass' as const;
 export const GRASS_REGROW_TIME = 3 * 480;
 /** TUNING.GRASS_CYCLES: picks a transplanted tuft gives before it goes barren. */
 export const GRASS_CYCLES = 20;
+export const GRASS_ANIM_ARCHIVE = 'grass.zip';
+export const GRASS_BUILD_ARCHIVE = 'grass1.zip';
 
 export type GrassRecord = PickablePlantRecord;
 export type GrassWorld = PickablePlantWorld;
 
-/** grass.lua: this prefab owns and registers its component callbacks. */
-export class GrassInstance extends PickablePlantInstance {
-  constructor(context: PickablePlantContext) {
-    super(GRASS_DEFINITION, context);
-    addComponent(this, 'pickable', Pickable, 'cutgrass', GRASS_REGROW_TIME, 1, () => onpickedfn(this), () => onregenfn(this), context.saved?.components.pickable, {
-      scheduler: context.scheduler, growthDuration: context.growthDuration, maxCycles: GRASS_CYCLES,
-      onTransplant: () => ontransplantfn(this), onBarren: wasEmpty => makebarrenfn(this, wasEmpty), onEmpty: () => makeemptyfn(this),
-    });
-    this.bindBurnable({ propagator: 'small', burnTime: 20, fxLevel: 3,
-      onIgnite: () => DefaultBurnFn(this), onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => DefaultBurntFn(this, context.world) });
-    const workable = addComponent(this, 'workable', Workable);
-    workable.SetWorkAction('DIG'); workable.SetWorkLeft(1); workable.SetOnFinishCallback(dig_up);
-    this.bindWitherable();
-    MakeNoGrowInWinter(this, context.getWatchWorldContent);
-  }
-}
-
-function onpickedfn(inst: PickablePlantInstance): void {
-  inst.playPickSound('dontstarve/wilson/pickup_reeds');
-  inst.play(inst.components.pickable.IsBarren() ? ['picking', 'empty_to_dead', 'idle_dead'] : ['picking', 'picked']);
-}
-function onregenfn(inst: PickablePlantInstance): void { inst.play(['grow', 'idle'], true); }
-function makeemptyfn(inst: PickablePlantInstance): void {
-  inst.play(inst.components.witherable?.IsWithered() || inst.sprite.currentAnimation === 'idle_dead'
-    ? ['dead_to_empty', 'picked'] : ['picked']);
-}
-function makebarrenfn(inst: PickablePlantInstance, wasEmpty: boolean): void {
-  inst.play(inst.components.witherable?.IsWithered() ? [wasEmpty ? 'empty_to_dead' : 'full_to_dead', 'idle_dead'] : ['idle_dead']);
-}
-function ontransplantfn(inst: PickablePlantInstance): void { inst.components.pickable.MakeBarren(); }
 function dig_up(inst: PickablePlantInstance): void {
-  const { pickable, lootdropper, witherable } = inst.components;
+  const { pickable, witherable } = inst.components, lootdropper = inst.components.lootdropper!;
   if (pickable.canBePicked) lootdropper.SpawnLootPrefab(pickable.product!);
   lootdropper.SpawnLootPrefab(witherable?.IsWithered() ? 'cutgrass' : 'dug_grass');
   inst.remove();
 }
 
-/** grass.lua: grass bank with the grass1 build, picking → picked, and dug_grass loot. */
-export const GRASS_DEFINITION: PickablePlantDefinition = {
-  createInstance: context => new GrassInstance(context),
-  prefab: GRASS_ID,
-  minimapIcon: 'grass.png',
-  animArchive: 'grass.zip',
-  buildArchive: 'grass1.zip',
-  archiveSprite: { bank: 'grass', instancedAnimations: 'all' },
-  tags: ['plant', 'renewable', 'silviculture', 'lunarplant_target'],
-  barren: 'idle_dead',
-  idle: { name: 'idle' },
-  empty: { name: 'picked', frame: 'last' },
-};
+function onregenfn(inst: PickablePlantInstance): void {
+  inst.AnimState.PlayAnimation('grow');
+  inst.AnimState.PushAnimation('idle', true);
+}
 
-/** grass.lua's native grass, with source component ownership for PICK, DIG and burning. */
+function makeemptyfn(inst: PickablePlantInstance): void {
+  if (!POPULATING && (inst.components.witherable?.IsWithered() || inst.sprite.currentAnimation === 'idle_dead')) {
+    inst.AnimState.PlayAnimation('dead_to_empty');
+    inst.AnimState.PushAnimation('picked', false);
+  } else inst.AnimState.PlayAnimation('picked');
+}
+
+function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
+  if (!POPULATING && inst.components.witherable?.IsWithered()) {
+    inst.AnimState.PlayAnimation(wasempty ? 'empty_to_dead' : 'full_to_dead');
+    inst.AnimState.PushAnimation('idle_dead', false);
+  } else inst.AnimState.PlayAnimation('idle_dead');
+}
+
+function onpickedfn(inst: PickablePlantInstance): void {
+  inst.SoundEmitter!.PlaySound('dontstarve/wilson/pickup_reeds');
+  inst.AnimState.PlayAnimation('picking');
+  if (inst.components.pickable.IsBarren()) {
+    inst.AnimState.PushAnimation('empty_to_dead', false);
+    inst.AnimState.PushAnimation('idle_dead', false);
+  } else inst.AnimState.PushAnimation('picked', false);
+}
+
+/** The grass gekko morph timers are not ported. */
+function ontransplantfn(inst: PickablePlantInstance): void {
+  inst.components.pickable.MakeBarren();
+}
+
+/**
+ * grass.lua grass(name, stage) fn. Not ported: SetFrame / SetMultColour, the gekko morph, MakeHauntableIgnite,
+ * MakeWaxablePlant and the lunarthrall herd save.
+ */
+function fn(world: PickablePlantWorld): PickablePlantInstance {
+  const inst = new PickablePlantInstance(GRASS_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+  inst.AddSoundEmitter();
+  inst.BindScheduler(world.scheduler);
+  inst.addTag('plant');
+  inst.addTag('renewable');
+  inst.addTag('silviculture');
+  inst.addTag('lunarplant_target');
+
+  const pickable = addComponent(inst, 'pickable', Pickable, 'cutgrass', GRASS_REGROW_TIME, 1, () => onpickedfn(inst), () => onregenfn(inst), undefined, {
+    scheduler: world.scheduler, growthDuration: SpringGrowthMod(inst, world.getWatchWorldContent), maxCycles: GRASS_CYCLES,
+    onEmpty: () => makeemptyfn(inst), onBarren: wasempty => makebarrenfn(inst, wasempty), onTransplant: () => ontransplantfn(inst),
+  });
+  pickable.picksound = 'dontstarve/wilson/pickup_reeds';
+
+  addComponent(inst, 'witherable', Witherable, pickable, world.scheduler, () => world.getLocalTemperature?.(inst.position) ?? 20, world.rain);
+  addComponent(inst, 'lootdropper', LootDropper, plantLootSpawner(world));
+
+  const workable = addComponent(inst, 'workable', Workable);
+  workable.SetWorkAction('DIG');
+  workable.SetOnFinishCallback(dig_up);
+  workable.SetWorkLeft(1);
+
+  // MakeMediumBurnable + MakeSmallPropagator.
+  const burn = new BurnableBinding(inst, { propagator: 'small', burnTime: 20, fxLevel: 3,
+    onIgnite: () => DefaultBurnFn(inst), onExtinguish: () => DefaultExtinguishFn(inst), onBurnt: () => DefaultBurntFn(inst, world) }, world);
+  inst.onRemove(() => burn.dispose());
+  MakeNoGrowInWinter(inst, world.getWatchWorldContent);
+  return inst;
+}
+
+/** grass.lua's Prefab("grass", fn, assets). */
 export function grassPrefabs(world: PickablePlantWorld): Readonly<Record<typeof GRASS_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
-  return { [GRASS_ID]: plantEntityDefinition(GRASS_DEFINITION, world) };
+  return {
+    [GRASS_ID]: {
+      fn: () => fn(world),
+      assets: { animationArchive: GRASS_ANIM_ARCHIVE, buildArchives: [GRASS_BUILD_ARCHIVE], bank: 'grass' },
+      assetOptions: { instancedAnimations: 'all', staticBillboard: true },
+      minimapIcon: 'grass.png',
+    },
+  };
 }
