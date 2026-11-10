@@ -4,7 +4,10 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { Burnable } from '../../componets/src/burnable';
 import { Combat, type CombatActor } from '../../componets/src/combat';
 import { getFireStaffController } from '../../prefab/src/staff';
-import { StaffProjectileManager } from '../../prefab/src/staff_projectile';
+import { FIRE_PROJECTILE_ID, LaunchProjectile, staffProjectilePrefabs, type StaffProjectileInstance } from '../../prefab/src/staff_projectile';
+import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabDisplayGroup } from '../../display/src';
+import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -16,7 +19,8 @@ function setup() {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createInventoryStore([{ slot_index: 0, id: 'firestaff', num: 1 }]), scene = new THREE.Scene();
   const fx = { spawn: vi.fn() };
-  const projectiles = new StaffProjectileManager(scene, { fx });
+  const componentUpdates = new ComponentUpdates(), displays = new PrefabDisplayGroup(scene);
+  const projectiles = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {}, staffProjectilePrefabs({ fx, componentUpdates }));
   const staff = inventory.getEntity(inventorySlotAddress(0))!;
   const sanity = vi.fn();
   const attacker: CombatActor = {
@@ -26,7 +30,8 @@ function setup() {
   const combat = new Combat(attacker, () => 0, () => staff.components.weapon);
   combat.SetRange(2);
   attacker.components.combat = combat;
-  getFireStaffController(staff, { launch: (owner, target, from) => projectiles.launch(owner, target, from) });
+  getFireStaffController(staff, { launch: (owner, target, from) =>
+    LaunchProjectile((prefab, position) => projectiles.spawn(prefab, position), FIRE_PROJECTILE_ID, owner, target, from) });
   const tags = new Set<string>();
   const target = {
     isRemoved: false, prefab: 'evergreen', components: {} as { burnable?: Burnable; combat?: Combat },
@@ -35,9 +40,9 @@ function setup() {
     PushEvent: vi.fn(),
   };
   target.components.burnable = new Burnable(target as never);
-  const fly = (seconds: number) => { for (let t = 0; t < seconds; t += 1 / 60) projectiles.update(1 / 60, new THREE.Quaternion()); };
+  const fly = (seconds: number) => { for (let t = 0; t < seconds; t += 1 / 60) { componentUpdates.update(1 / 60); displays.update(1 / 60); } };
   return { inventory, staff, combat, sanity, target, projectiles, fx, fly,
-    dispose: () => { projectiles.dispose(); inventory.dispose(); } };
+    dispose: () => { projectiles.dispose(); displays.dispose(); componentUpdates.dispose(); inventory.dispose(); } };
 }
 
 it('shoots a burnable from range, lights it on impact, and wears one use and one sanity point per shot', async () => {
@@ -47,9 +52,16 @@ it('shoots a burnable from range, lights it on impact, and wears one use and one
     expect(s.staff.components.weapon!.attackrange).toBeGreaterThan(0);
     expect(s.combat.CanLightTarget(s.target as never)).toBe(true);
     expect(s.combat.DoAttack(s.target as never)).toBe(true);
-    // Nothing happens until the projectile arrives.
+    // Nothing happens until the projectile arrives: a transient fire_projectile flies from the attacker.
     expect(s.target.components.burnable!.IsBurning()).toBe(false);
+    const [projectile] = s.projectiles.instances(FIRE_PROJECTILE_ID) as Iterable<StaffProjectileInstance>;
+    expect([projectile.persists, projectile.hasTag('projectile'), projectile.sprite.sprite.peek().clip])
+      .toEqual([false, true, expect.objectContaining({ name: 'fire_spin_loop', loop: true })]);
+    s.fly(.1);
+    expect(projectile.position.x).toBe(projectile.components.projectile.position.x);
+    expect(projectile.position.x).toBeGreaterThan(0);
     s.fly(2);
+    expect(projectile.isRemoved).toBe(true);
     expect(s.target.components.burnable!.IsBurning()).toBe(true);
     expect(s.sanity).toHaveBeenCalledWith(-1);
     expect(s.staff.components.finiteuses.remaining).toBe(19);
@@ -68,7 +80,7 @@ it('misses without cost when the target is removed in flight', async () => {
     expect(s.target.components.burnable!.IsBurning()).toBe(false);
     expect(s.staff.components.finiteuses.remaining ?? 20).toBe(20);
     expect(s.sanity).not.toHaveBeenCalled();
-    expect(s.projectiles.renderEntities).toEqual([]);
+    expect([...s.projectiles.instances(FIRE_PROJECTILE_ID)]).toEqual([]);
   } finally { s.dispose(); }
 });
 

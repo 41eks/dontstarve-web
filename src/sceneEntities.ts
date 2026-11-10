@@ -47,7 +47,7 @@ import { atriumPillarPrefabs } from '@dontstarve-web/prefab/atrium_pillar';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
 import { vaultPillarPrefabs } from '@dontstarve-web/prefab/vault_pillar';
 import { monkeyPillarPrefabs } from '@dontstarve-web/prefab/monkeypillar';
-import { StaffProjectileManager } from '@dontstarve-web/prefab/staff_projectile';
+import { staffProjectilePrefabs } from '@dontstarve-web/prefab/staff_projectile';
 import { caveEntrancePrefabs, CAVES_SHARD } from '@dontstarve-web/prefab/cave_entrance';
 import { caveExitPrefabs, MASTER_SHARD } from '@dontstarve-web/prefab/cave_exit';
 import type { WorldMigratorShard } from '../packages/componets/src/worldmigrator';
@@ -307,7 +307,6 @@ export async function createSceneEntities(
     'buildings': ReturnType<typeof registerBuildings>;
     'reskinEffects': ReturnType<typeof registerReskinEffects>;
     'world_fx': ReturnType<typeof registerWorldFx>;
-    'staff_projectile': ReturnType<typeof registerStaffProjectiles>;
     'molehill': ReturnType<typeof registerMolehills>;
     'lightflier_flower': ReturnType<typeof registerLightFlierFlowers>;
     'bulb_plant': ReturnType<typeof registerBulbPlants>;
@@ -362,7 +361,7 @@ export async function createSceneEntities(
   Managers['reskinEffects'] = registerReskinEffects(registry, 'reskinEffects', worldState);
   registerFlowers(registry, 'flower', worldState);
   Managers['world_fx'] = registerWorldFx(registry, 'world_fx', worldState);
-  Managers['staff_projectile'] = registerStaffProjectiles(registry, 'staff_projectile', worldState);
+  registerStaffProjectiles(registry, worldState);
   Managers['molehill'] = registerMolehills(registry, 'molehill', worldState);
   Managers['lightflier_flower'] = registerLightFlierFlowers(registry, 'lightflier_flower', worldState);
   registerItems(registry, 'items', worldState);
@@ -477,7 +476,6 @@ export async function createSceneEntities(
     ponds: Managers['pond'],
     reskinEffects: Managers['reskinEffects'],
     worldFx: Managers['world_fx'],
-    staffProjectiles: Managers['staff_projectile'],
     farmMap,
   };
 
@@ -534,15 +532,9 @@ export async function createSceneEntities(
     return worldFxSpawner(prefabs);
   }
 
-  function registerStaffProjectiles(registry: EntityRegistry, prefabId: 'staff_projectile', _worldState: SceneWorldState) {
-    const staffProjectiles = new StaffProjectileManager(scene, { fx: Managers['world_fx'] });
-    registry.register(MANAGER_DEFINITIONS[prefabId], {
-      exportRecords: () => [],
-      update: (dt, quaternion) => staffProjectiles.update(dt, quaternion),
-      renderEntities: () => staffProjectiles.renderEntities,
-      dispose: () => staffProjectiles.dispose(),
-    });
-    return staffProjectiles;
+  function registerStaffProjectiles(registry: EntityRegistry, worldState: SceneWorldState) {
+    prefabs.register(staffProjectilePrefabs({ fx: Managers['world_fx'], componentUpdates: worldState.componentUpdates }));
+    registry.registerPrefabs(PREFAB_DEFINITIONS.staffProjectiles);
   }
 
   function registerMolehills(registry: EntityRegistry, prefabId: 'molehill', worldState: SceneWorldState) {

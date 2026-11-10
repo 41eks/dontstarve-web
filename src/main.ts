@@ -1,4 +1,5 @@
 // src/main.ts
+import { FIRE_PROJECTILE_ID, LaunchProjectile } from '@dontstarve-web/prefab/staff_projectile';
 
 import './style.css';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
@@ -170,7 +171,7 @@ inventory.entities.bindEquipmentWorld({
     spawnLoot: (items, position) => groundItems.flingLoot(items.map(({ itemId, count }) => ({ ...inventory.getItemSpec(itemId), itemId, count })), position),
   },
   fireStaffWorld: {
-    launch: (owner, target, attacker) => staffProjectiles.launch(owner, target, attacker),
+    launch: (owner, target, attacker) => LaunchProjectile((prefab, position) => registry.SpawnPrefab(prefab, position), FIRE_PROJECTILE_ID, owner, target, attacker),
     createFuel: () => inventory.entities.create({ itemId: 'cutgrass', count: 1 }),
   },
   tridentWorld: {
@@ -239,7 +240,7 @@ const sceneResources = await startScene(
   },
   inventory,
 );
-const { scheduler, buildingPlacement, groundItems, worldFx, staffProjectiles, registry, getSaveState, disposalEvents } = sceneResources;
+const { scheduler, buildingPlacement, groundItems, worldFx, registry, getSaveState, disposalEvents } = sceneResources;
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading });
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);

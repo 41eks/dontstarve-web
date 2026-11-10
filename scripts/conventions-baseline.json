@@ -208,10 +208,6 @@
   "packages/prefab/src/staff_castinglight.ts": {
     "instance-method": 3
   },
-  "packages/prefab/src/staff_projectile.ts": {
-    "manager": 1,
-    "scene": 1
-  },
   "packages/prefab/src/stafflight.ts": {
     "instance-method": 6
   },
