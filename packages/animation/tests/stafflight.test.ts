@@ -12,7 +12,6 @@ import { InventoryStore, ItemEntity } from '../../inventory/src';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { configureHeatRockEntity, type HeatRock } from '../../prefab/src/heatrock';
-import { FindEntities } from '../../prefab/src/actionEntity';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -117,7 +116,7 @@ it('expires on the extinguish timer: disappear, animover kills the loop, Remove 
   expect(star.isRemoved).toBe(true);
   await settle();
   expect(model.parent).toBeNull();
-  expect(FindEntities(star.position, 1, ['HASHEATER'])).toEqual([]);
+  expect(star.TheSim.FindEntities(star.position, 1, ['HASHEATER'])).toEqual([]);
 });
 
 it('haunting stops the timer and kills the light once; a repeat succeeds without another removal', async () => {
@@ -247,7 +246,7 @@ it('world clock and season changes do not restart the idle', async () => {
 it('heats nearby thermal stones with distance falloff until permanent removal', async () => {
   const { spawn, update } = setup();
   const star = spawn(new THREE.Vector3());
-  const source = FindEntities(star.position, 1, ['HASHEATER'])[0];
+  const source = star.TheSim.FindEntities(star.position, 1, ['HASHEATER'])[0];
   expect(source.prefab).toBe('stafflight');
   expect(source.components.heater!.GetHeat()).toBe(100);
   expect(source.components.heater!.IsExothermic()).toBe(true);
@@ -259,7 +258,7 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
   configureHeatRockEntity(stone);
   stone.BindTemperatureWorld({
     temperature: createSignal(0), componentUpdates: updates, unitScale: TILE_SIZE / 4,
-    findHeaters: (position, radius, ignoredTags) => FindEntities(position, radius, ['HASHEATER'], ignoredTags),
+    findHeaters: (position, radius, ignoredTags) => star.TheSim.FindEntities(position, radius, ['HASHEATER'], ignoredTags) as never,
   });
   const temperature = stone.components.temperature!;
   const rock = stone.getComponent<HeatRock>('heatrock')!;
@@ -283,7 +282,7 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
     expect(temperature.GetCurrent()).toBeCloseTo(38.3); // Lua keeps heater during disappearance.
     update(1.01);
     expect(source.hasTag('HASHEATER')).toBe(false);
-    expect(FindEntities(star.position, 1, ['HASHEATER'])).toEqual([]);
+    expect(star.TheSim.FindEntities(star.position, 1, ['HASHEATER'])).toEqual([]);
     updates.update(1);
     expect(temperature.GetCurrent()).toBeCloseTo(38.1);
   } finally { stone.destroy(); updates.dispose(); }
@@ -292,7 +291,7 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
 it('cools nearby thermal stones with endothermic falloff until permanent removal', async () => {
   const { spawn, update, awake } = setup('staffcoldlight');
   const star = spawn(new THREE.Vector3());
-  const source = FindEntities(star.position, 1, ['HASHEATER'])[0];
+  const source = star.TheSim.FindEntities(star.position, 1, ['HASHEATER'])[0];
   const heater = source.components.heater!;
   expect(source.prefab).toBe('staffcoldlight');
   expect(heater.GetHeat()).toBe(-100);
@@ -305,7 +304,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
   configureHeatRockEntity(stone);
   stone.BindTemperatureWorld({
     temperature: createSignal(35), componentUpdates: updates, unitScale: TILE_SIZE / 4,
-    findHeaters: (position, radius, ignoredTags) => FindEntities(position, radius, ['HASHEATER'], ignoredTags),
+    findHeaters: (position, radius, ignoredTags) => star.TheSim.FindEntities(position, radius, ['HASHEATER'], ignoredTags) as never,
   });
   const temperature = stone.components.temperature!, rock = stone.getComponent<HeatRock>('heatrock')!;
   try {
@@ -327,7 +326,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
     expect(source.components.heater).toBe(heater);
     awake.set(true);
     await settle();
-    expect(FindEntities(star.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
+    expect(star.TheSim.FindEntities(star.position, 1, ['HASHEATER'])[0].components.heater).toBe(heater);
     stone.transform.setPosition(0, 0, 0);
     temperature.SetTemperature(5);
     star.components.hauntable!.DoHaunt(haunter);
@@ -335,7 +334,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
     expect(temperature.GetCurrent()).toBe(4);
     update(1.01);
     expect(source.hasTag('HASHEATER')).toBe(false);
-    expect(FindEntities(star.position, 1, ['HASHEATER'])).toEqual([]);
+    expect(star.TheSim.FindEntities(star.position, 1, ['HASHEATER'])).toEqual([]);
     updates.update(1);
     expect(temperature.GetCurrent()).toBeCloseTo(4.2);
   } finally { stone.destroy(); updates.dispose(); }
@@ -397,7 +396,7 @@ it('spawns world lights through console definitions and saves and reloads their 
     const star = entity as PrefabInstance;
     expect(star.persists).toBe(true);
     const heater = star.components.heater!;
-    expect(FindEntities(star.position, 1, ['HASHEATER']).map(found => found.components.heater)).toContain(heater);
+    expect(star.TheSim.FindEntities(star.position, 1, ['HASHEATER']).map(found => found.components.heater)).toContain(heater);
     expect(heater.GetHeat()).toBe(star.prefab === 'stafflight' ? 100 : -100);
     expect(heater.IsEndothermic()).toBe(star.prefab === 'staffcoldlight');
   }

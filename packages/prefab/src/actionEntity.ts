@@ -1,20 +1,22 @@
-import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
+import type { Object3D, Vector3 } from 'three';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
-import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
+import { createEffect, createSignal, readonlySignal, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { WorkableInst } from '../../componets/src/workable';
-import { watchTileActivity } from './tileActivity';
+import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { registerPlacementEntity, syncPlacementEntity } from './placementEntities';
-import { activePrefabs, type FoundEntity } from './activePrefabs';
 import { prefabInstance } from './prefabInstance';
 import { registerMouseTarget } from './mouseTargets';
 
-export { activePrefabs, type FoundEntity } from './activePrefabs';
-
-const queryRevision = createSignal(0);
-/** Changes to the logical query index, independent of rendered frames. */
-export const actionEntitiesChanged = readonlySignal(queryRevision);
-function invalidateQueries(): void { queryRevision.set(queryRevision.peek() + 1); }
+/** The action and mouse-target view of an entity's model; world queries go through its TheSim, not this view. */
+export type FoundEntity = ComponentActionEntity & WorkableInst & {
+  readonly model: Object3D;
+  getPosition(): Vector3;
+  /** The entity's skin operation, supplied by its owner; skin state stays on that entity. */
+  reskinTarget?: ReskinTarget;
+  /** The owner's greenstaff deconstruction view; loot and removal follow the recipe and the owner. */
+  deconstructionTarget?: import('./staff').DeconstructionTarget;
+};
 
 /** Legacy removal bridge for bare models only; instance and injected owners supply their own lifecycle. */
 function modelRemoval(model: THREE.Object3D): ReadonlySignal<boolean> {
@@ -60,7 +62,6 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
       }
       syncPlacementEntity(model);
       mouseRegistrations.get(entity)?.refresh();
-      if (!owner) invalidateQueries();
     },
     removeTag(tag) {
       const owner = inst ?? instance;
@@ -68,7 +69,6 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
       else model.userData.tags = (model.userData.tags ?? []).filter((value: string) => value !== tag);
       syncPlacementEntity(model);
       mouseRegistrations.get(entity)?.refresh();
-      if (!owner) invalidateQueries();
     },
     // A bare model without an inst has no event listeners to reach.
     PushEvent: (name, data) => (inst ?? instance)?.PushEvent?.(name, data),
@@ -77,12 +77,13 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
   const mouse = registerMouseTarget(entity);
   mouseRegistrations.set(entity, mouse);
   const mouseCleanups: (() => void)[] = [];
+  // A mouse target while its entity is awake: the instance's status follows the ticking area and limbo.
   if (instance) {
     const status = watchSignal(instance.status, stop => mouseCleanups.push(stop));
     createEffect(() => mouse.setAwake(status.get() === 'active'));
   }
   const stopPlacement = registerPlacementEntity(model, entity.getPosition);
-  const tagsChanged = () => { syncPlacementEntity(model); mouse.refresh(); invalidateQueries(); };
+  const tagsChanged = () => { syncPlacementEntity(model); mouse.refresh(); };
   const stopTags = inst && inst !== instance ? (inst as typeof inst & { ListenForEvent?(name: string, listener: () => void): () => void })
     .ListenForEvent?.('tagchanged', tagsChanged)
     : instance?.onTagChanged(tagsChanged);
@@ -94,29 +95,15 @@ export function actionEntity(model: THREE.Object3D, prefab: string, inst?: Compo
     stopPlacement();
     mouseCleanups.splice(0).forEach(stop => stop());
     mouse.dispose(); mouseRegistrations.delete(entity);
-    entityWorlds.get(entity)?.remove(entity);
-    setPrefabActive(entity, false);
-    entity.removeTag('tickingarea');
     liveEntities.delete(entity);
     delete entity.reskinTarget;
     delete entity.deconstructionTarget;
     entitiesByModel.delete(model);
     actionOwners.delete(model);
   });
-  if (!entity.isRemoved) {
-    if (currentEntityWorld) currentEntityWorld.add(entity);
-    else {
-      entity.addTag('tickingarea'); // Standalone worlds have no area gate.
-      setPrefabActive(entity, true);
-    }
-  }
   return entity;
 }
 
-/**
- * The engine's lifecycle list adopts projected insts when a world binds. Area effects maintain the active
- * prefab list independently of scene attachment. Mouse input has a separate, explicitly maintained registry.
- */
 const liveEntities = new Set<FoundEntity>();
 const entitiesByModel = new WeakMap<THREE.Object3D, FoundEntity & { getPhysicsRadius(): number }>();
 const actionOwners = new WeakMap<THREE.Object3D, ComponentActionEntity>();
@@ -126,22 +113,18 @@ export function actionInstance(model: THREE.Object3D | undefined): ComponentActi
   return model ? actionOwners.get(model) : undefined;
 }
 const disposals = new Map<FoundEntity, () => void>();
-const entityWorlds = new WeakMap<FoundEntity, ActionEntityWorld>();
 const mouseRegistrations = new WeakMap<FoundEntity, ReturnType<typeof registerMouseTarget>>();
-let currentEntityWorld: ActionEntityWorld | undefined;
+
+/**
+ * The live action projections, in registration order. Only tests enumerate them, in place of a manager's target list;
+ * game code finds entities through TheSim.
+ */
+export function actionEntities(): Iterable<FoundEntity> { return liveEntities; }
 
 /** Resolve an already registered action entity for the picked model without creating a projection. */
 export function findActionEntity(model: THREE.Object3D | null | undefined): FoundEntity | undefined {
   const entity = model ? entitiesByModel.get(model) : undefined;
   return entity && entity.model === model && liveEntities.has(entity) && !entity.isRemoved ? entity : undefined;
-}
-
-function setPrefabActive(entity: FoundEntity, active: boolean): void {
-  mouseRegistrations.get(entity)?.setActive(active);
-  const index = activePrefabs.indexOf(entity);
-  if (active && !entity.isRemoved) {
-    if (index === -1) { activePrefabs.push(entity); invalidateQueries(); }
-  } else if (index !== -1) { activePrefabs.splice(index, 1); invalidateQueries(); }
 }
 
 /** Release a model projection, including when its logical item survives a visual replacement or pickup. */
@@ -151,71 +134,4 @@ export function disposeActionEntity(model: THREE.Object3D): void {
   const dispose = disposals.get(entity);
   disposals.delete(entity);
   dispose?.();
-}
-
-/** Action registration shares the entity transform's activity query with its display. */
-class ActionEntityWorld {
-  private readonly records = new Map<FoundEntity, { stop(): void }>();
-  private readonly query: TileStateQuery;
-
-  constructor(query: TileStateQuery) {
-    this.query = query;
-  }
-
-  add(entity: FoundEntity): void {
-    if (this.records.has(entity)) return;
-    const stop = watchTileActivity(entity.model, this.query, awake => {
-      if (awake) entity.addTag('tickingarea');
-      else entity.removeTag('tickingarea');
-      setPrefabActive(entity, awake);
-    });
-    this.records.set(entity, { stop });
-    entityWorlds.set(entity, this);
-  }
-
-  remove(entity: FoundEntity): void {
-    const record = this.records.get(entity);
-    this.records.delete(entity);
-    entityWorlds.delete(entity);
-    record?.stop();
-  }
-
-  dispose(): void {
-    for (const entity of [...this.records.keys()]) disposeActionEntity(entity.model);
-  }
-}
-
-/** Bind before restoring/spawning world entities; also adopt projections already attached to this root. */
-export function bindActionEntityWorld(root: THREE.Object3D, query: TileStateQuery): () => void {
-  const world = new ActionEntityWorld(query);
-  currentEntityWorld = world;
-  for (const entity of liveEntities) {
-    const model = entity.model;
-    if (isUnder(model, root) && !entityWorlds.has(entity)) world.add(entity);
-  }
-  return () => {
-    if (currentEntityWorld === world) currentEntityWorld = undefined;
-    world.dispose();
-  };
-}
-
-function isUnder(model: THREE.Object3D, root: THREE.Object3D): boolean {
-  for (let object: THREE.Object3D | null = model; object; object = object.parent) if (object === root) return true;
-  return false;
-}
-
-/** Query tickingarea-registered prefabs by their logical position and tags, independently of their visual. */
-export function FindEntities(position: ReadonlyVector3, radius: number,
-  mustTags: readonly string[] = [], cantTags: readonly string[] = [], oneOfTags: readonly string[] = []): FoundEntity[] {
-  if (!Number.isFinite(radius) || radius < 0) throw new RangeError('Invalid entity query radius');
-  if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return [];
-  const found: FoundEntity[] = [];
-  const radiusSquared = radius * radius;
-  for (const inst of activePrefabs) {
-    if (inst.isRemoved || !(inst.getPosition().distanceToSquared(position) <= radiusSquared)) continue;
-    if (mustTags.some(tag => !inst.hasTag(tag)) || cantTags.some(tag => inst.hasTag(tag))
-      || (oneOfTags.length > 0 && !oneOfTags.some(tag => inst.hasTag(tag)))) continue;
-    found.push(inst);
-  }
-  return found;
 }

@@ -28,7 +28,6 @@ import { createWorldClockUpdater } from './worldState';
 import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import { AddSlipperyFeet, RemoveSlipperyFeet } from '@dontstarve-web/prefab/player_common';
-import { actionEntitiesChanged, bindActionEntityWorld } from '../packages/prefab/src/actionEntity';
 import { bindPlayerBuilder } from '@dontstarve-web/prefab/player';
 import { removeComponent } from '../packages/prefab/src/components';
 import type { DisposalEvents } from './registerDisposal';
@@ -104,7 +103,6 @@ export async function startScene(
   view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
   playerInstance.locomotor = locomotor;
   const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, () => [player.position]);
-  const stopEntityWorld = bindActionEntityWorld(scene, worldState.tickingarea);
   const scheduler = worldState.scheduler;
   const perishWorld: PerishWorld = { perishClock: worldState.perishClock, scheduler };
   inventory?.entities.bindPerishWorld(perishWorld);
@@ -121,7 +119,6 @@ export async function startScene(
   } catch (error) {
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
     entities.dispose();
-    stopEntityWorld();
     disposePlayer();
     world.dispose();
     disposeTerrain();
@@ -132,7 +129,7 @@ export async function startScene(
   }
   const builder = bindPlayerBuilder(player, {
     findEntities: (position, radius, mustTags, cantTags) => prefabs.FindEntities(position, radius, mustTags, cantTags) as never,
-    entitiesChanged: actionEntitiesChanged,
+    entitiesChanged: prefabs.entitiesChanged,
     getWatchWorldContent: worldState.getWatchWorldContent,
   });
   // player_common.lua AddComponent("slipperyfeet"); CommonPlayerDeath removes it and CommonActualRez adds it back.
@@ -234,7 +231,6 @@ export async function startScene(
     }
     const releaseResources = () => {
       entities.dispose();
-      stopEntityWorld();
       disposePlayer();
       world.dispose();
       disposeTerrain();

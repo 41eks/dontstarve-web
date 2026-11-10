@@ -1,4 +1,4 @@
-import { activePrefabs } from '../../prefab/src/activePrefabs';
+import { actionEntities } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { rockWorld } from '../../animation/tests/rockWorldFixture';
@@ -36,7 +36,7 @@ export async function checkRockInstances() {
     renderer.readRenderTargetPixels(target, 0, 0, 256, 256, pixels);
     let painted = 0;
     for (let i = 0; i < pixels.length; i += 4) if (Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) > 30) painted++;
-    const mine = { entity: activePrefabs.find(entity => entity.hasTag('MINE_workable'))! };
+    const mine = { entity: [...actionEntities()].find(entity => entity.hasTag('MINE_workable'))! };
     for (let i = 0; i < 3; i++) performToolWork('MINE', mine.entity, {});
     calls.push(await draw());
     for (let i = 0; i < 3; i++) performToolWork('MINE', mine.entity, {});

@@ -7,7 +7,7 @@ import { ItemEntity } from '../../inventory/src';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { Workable } from '../../componets/src/workable';
 import { Burnable } from '../../componets/src/burnable';
-import { actionEntity, activePrefabs, disposeActionEntity } from '../../prefab/src/actionEntity';
+import { actionEntities, actionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { PrefabInstance, bindInstance } from '../../prefab/src/prefabInstance';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
@@ -55,7 +55,7 @@ it('skips tree geometry with empty hands, follows CHOP to DIG replacement, and p
   try {
     expect(s.pick()).toBe(s.back);
     expect(intersect).not.toHaveBeenCalled();
-    expect(activePrefabs).toContain(s.target);
+    expect([...actionEntities()]).toContain(s.target);
     expect(s.target.hasTag('NOCLICK')).toBe(false);
     await s.equip('axe');
     expect(s.pick()).toBe(s.tree);

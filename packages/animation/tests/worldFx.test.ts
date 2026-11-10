@@ -5,7 +5,6 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
 import { PrefabDisplayGroup } from '../../display/src/prefabDisplayGroup';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { FindEntities } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { worldFxPrefabs, worldFxSpawner, type WorldFxPrefab } from '../../prefab/src/world_fx';
 import { createTestWorldFx } from './worldFxFixture';
@@ -103,7 +102,9 @@ it('leaves an fx out of mouse targets, entity queries and saves', async () => {
     fx.spawn('explode_small', new THREE.Vector3(1, 0, 2));
     fx.collapse('small', new THREE.Vector3(1, 0, 2));
     await Promise.all(manager.renderEntities.map(({ object }) => prefabDisplay(object)!.artLoaded()));
-    expect(FindEntities(new THREE.Vector3(1, 0, 2), 5)).toEqual([]);
+    // fx.lua tags its prefabs FX: they are in Ents, and the source's queries leave them out with that cant tag.
+    expect(manager.FindEntities(new THREE.Vector3(1, 0, 2), 5)).toHaveLength(2);
+    expect(manager.FindEntities(new THREE.Vector3(1, 0, 2), 5, [], ['FX'])).toEqual([]);
     const [explosion, collapse] = manager.renderEntities.map(({ object }) => prefabInstance(object)!);
     expect(explosion.sprite.loaded).toBe(true);
     expect(explosion.hasTag('NOCLICK')).toBe(false);

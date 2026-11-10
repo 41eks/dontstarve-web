@@ -1,7 +1,7 @@
 import { createEffect, createSignal, watchSignal, type HandEquipment, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { Workable } from '../../componets/src/workable';
 import { collectEquippedItemActions, equippedActionEntity, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
-import type { FoundEntity } from './activePrefabs';
+import type { FoundEntity } from './actionEntity';
 import type { PrefabInstance } from './prefabInstance';
 import { setMouseTargetEnabled } from './mouseTargets';
 

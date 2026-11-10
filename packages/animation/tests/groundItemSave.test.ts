@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ItemWorldFixture, itemAt } from './itemWorldFixture';
-import { FindEntities } from '../../prefab/src/actionEntity';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 import { placementEntities } from '../../prefab/src/placementEntities';
@@ -69,8 +68,8 @@ describe('ground item save records', () => {
       manager.update(.1, new THREE.Quaternion());
       expect(matrices).not.toHaveBeenCalled();
       expect(copies).not.toHaveBeenCalled();
-      expect(FindEntities(origin, 1)).toHaveLength(0);
-      expect(FindEntities(entity.transform.position, 1).map(inst => inst.prefab)).toEqual(['log']);
+      expect(entity.TheSim.FindEntities(origin, 1)).toHaveLength(0);
+      expect(entity.TheSim.FindEntities(entity.transform.position, 1).map(inst => inst.prefab)).toEqual(['log']);
       expect(query.someNear(origin, 1, () => true)).toBe(false);
       expect(query.someNear(entity.transform.position, 1, () => true)).toBe(true);
       entity.addTag('NOBLOCK');

@@ -28,7 +28,7 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 
 活动网格在世界创建时读取存档的 `world.map.generator.options.size` 并注入 tileManager，按每格 12 世界单位计算地皮范围，不再固定为 84×84。网格包含边缘不足整格的地皮，但地图外坐标仍无效；`c_save()` 保留原地图尺寸，读档重新建立对应网格。调试命令的语法、参数和支持 ID 不变。
 
-`FindEntities(position, radius, mustTags?, cantTags?, oneOfTags?)` 直接遍历顶层 `activePrefabs` 数组，按实体脚点距离和调用方标签筛选，不再接收 scene 或依赖模型父节点。世界 tickingarea signal 的 effect 同时维护标签和数组：active 注册，inactive 注销，默认仍为玩家周围 10 格方形区域；移动实体随现有每 60 活动帧的位置快照刷新 tile，模型加入场景时立即同步位置。拾取、模型替换、永久移除及场景销毁清理索引和订阅。无活动区域门控时保持 active；inactive 逻辑实体仍由原存档系统保存。`c_spawn`、`c_give`、`c_save()` 的语法、参数和支持 ID 不变。
+实体查询对应 Lua 的 `TheSim:FindEntities`：实体用 `inst.TheSim.FindEntities(position, radius, mustTags?, cantTags?, oneOfTags?)`，由它所在世界的 `PrefabEntityManager` 回答，应用层直接调用 manager。查询覆盖该世界的全部有效实体（含休眠和 `INLIMBO` 的实体），按距离由近到远返回，排除哪些实体由调用方按 Lua 传 cant 标签决定；manager 用按 16 单位分格的空间网格建立索引，位置经 `Transform.setPosition` 写入时同步更新。manager 之外生成的实体（玩家、建造 placer）通过 `track` 加入。`c_spawn`、`c_give`、`c_save()` 的语法、参数和支持 ID 不变。
 
 
 

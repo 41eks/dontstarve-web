@@ -61,7 +61,7 @@ it('loads a burnt tree as ash and releases its independent burnt FX on game time
     expect(s.prefabs.exportRecords()).toEqual([]);
     expect(s.ash).toEqual([new THREE.Vector3(5, 0, 7)]);
     const fx = s.find('mushtree_moon_burntfx')!;
-    expect(fx.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['FX']);
+    expect(fx.listTags()).toEqual(['FX']);
     expect(fx.persists).toBe(false);
     awake.set(false); await settle();
     expect(fx.status.peek()).toBe('asleep');
@@ -77,7 +77,7 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
   try {
     expect((await executeDebugCommand('c_spawn("mushtree_moon")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const tree = s.find('mushtree_moon') as MushtreeInstance;
-    expect(tree.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['blocker', 'cavedweller', 'mushtree', 'plant', 'shelter', 'tree', 'canlight']);
+    expect(tree.listTags()).toEqual(['blocker', 'cavedweller', 'mushtree', 'plant', 'shelter', 'tree', 'canlight']);
     expect(tree.minimap.icon).toBe('mushtree_moon.png');
     await prefabDisplay(tree.transform.model)!.artLoaded();
     const axe = s.inventory.entities.create({ itemId: 'axe', count: 1 });

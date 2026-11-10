@@ -66,14 +66,14 @@ it('a small pool sets up its mist, waterfall and sound on its first frame; minin
   try {
     expect((await executeDebugCommand('c_spawn("grotto_pool_small")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const pool = s.find<GrottoPoolInstance>('grotto_pool_small');
-    expect(pool.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['blocker', 'antlion_sinkhole_blocker', 'birdblocker', 'watersource', 'inspectable']);
+    expect(pool.listTags()).toEqual(['blocker', 'antlion_sinkhole_blocker', 'birdblocker', 'watersource', 'inspectable']);
     expect(pool.minimap.icon).toBe('grotto_pool_small.png');
     expect(s.ids()).toEqual(['grotto_pool_small']);
     // DoTaskInTime(0, ...): the mist, register_pool and setup_children.
     s.scheduler.advance(.01);
     expect(s.ids()).toEqual(['grotto_pool_small', 'grotto_waterfall_small2']);
     const mist = s.find(GROTTO_POOL_MIST_ID), fall = s.find<GrottoGlassInstance>('grotto_waterfall_small2');
-    expect(mist.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['FX', 'NOCLICK']);
+    expect(mist.listTags()).toEqual(['FX', 'NOCLICK']);
     expect(mist.sprite.sprite.peek().clip).toMatchObject({ name: 'steam_small2', loop: true });
     expect([...s.waterfalls.values()]).toEqual([{ radius: 2, large: false }]);
     expect(pool._children).toEqual([fall]);

@@ -795,10 +795,16 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
 
   /** The spatial hash FindEntities reads, kept current by each entity's position writes. */
   private readonly grid = new EntityGrid<Instance>();
+  private readonly revision = createSignal(0);
+  /** Changes to what FindEntities can return: an entity joining or leaving Ents, or a tag change. Moves are not included. */
+  readonly entitiesChanged = readonlySignal(this.revision);
+  private readonly changed = () => { this.revision.set(this.revision.peek() + 1); };
   private index(instance: Instance): () => void {
     this.grid.insert(instance);
     const stopMoved = instance.transform.onMoved(() => this.grid.move(instance));
-    return () => { stopMoved(); this.grid.remove(instance); };
+    const stopTags = instance.onTagChanged(this.changed);
+    this.changed();
+    return () => { stopMoved(); stopTags(); this.grid.remove(instance); this.changed(); };
   }
 
   /** One shared icon billboard source per prefab, from the inventory atlases this manager owns. */

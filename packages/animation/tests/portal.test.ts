@@ -44,7 +44,7 @@ function setup() {
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
-const tags = (inst: PrefabInstance) => inst.listTags().filter(tag => tag !== 'tickingarea');
+const tags = (inst: PrefabInstance) => inst.listTags();
 const sounds = () => vi.mocked(PlaySound).mock.calls.map(([path]) => path);
 /** Frames the drawn clip to its end, as the display group does, then lets the next state start. */
 const finishClip = async (inst: PrefabInstance) => {

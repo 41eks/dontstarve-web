@@ -8,7 +8,6 @@ import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { hotspringPrefabs, HOTSPRING_ID, HOTSPRING_LIGHT, type HotspringInstance } from '../../prefab/src/hotspring.ts';
 import { worldFxPrefabs, worldFxSpawner } from '../../prefab/src/world_fx';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { FindEntities } from '../../prefab/src/actionEntity';
 import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
@@ -74,7 +73,7 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect(s.springs()).toHaveLength(1);
     const spring = s.scene.children.map(child => prefabInstance<HotspringInstance>(child)!).find(inst => inst?.prefab === HOTSPRING_ID)!;
     const model = spring.transform.model, inst = findActionEntity(model)!, heater = spring.components.heater;
-    expect(spring.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['watersource', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable', 'HASHEATER', 'bathbombable', 'blocker']);
+    expect(spring.listTags()).toEqual(['watersource', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable', 'HASHEATER', 'bathbombable', 'blocker']);
     expect(spring.minimap.icon).toBe('hotspring.png');
     expect(heater.GetHeat()).toBe(45);
     expect(declaredLight(spring)).toBeUndefined();
@@ -115,7 +114,7 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect(reloaded.sprite.sprite.peek().clip).toMatchObject({ name: 'glow_loop', loop: true });
 
     spring.remove();
-    expect(FindEntities(model.position, 1, ['HASHEATER']).map(entity => entity === findActionEntity(reloaded.transform.model))).toEqual([true]);
+    expect(reloaded.TheSim.FindEntities(model.position, 1, ['HASHEATER'])).toEqual([reloaded]);
     expect(declaredLight(spring)).toBeUndefined();
   } finally { toss?.dispose(); s.dispose(); restored.dispose(); }
 });

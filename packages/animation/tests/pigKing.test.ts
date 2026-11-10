@@ -49,7 +49,7 @@ describe('Pig King prefab', () => {
     const s = setup();
     try {
       const king = s.prefabs.spawn(PIGKING_ID, new THREE.Vector3(-13, 2, -25)) as PigKingInstance;
-      expect(king.listTags().filter(tag => tag !== 'tickingarea')).toEqual(['blocker', 'king', 'birdblocker', 'antlion_sinkhole_blocker', 'inspectable', 'trader']);
+      expect(king.listTags()).toEqual(['blocker', 'king', 'birdblocker', 'antlion_sinkhole_blocker', 'inspectable', 'trader']);
       // pigking.lua MakeObstaclePhysics(inst, 2, .5): a static body on the feet origin; the height is dropped.
       const body = king.physicsBody!;
       expect(s.physics.bodies).toContain(body);

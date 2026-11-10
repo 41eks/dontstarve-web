@@ -1,4 +1,4 @@
-import { activePrefabs } from '../../prefab/src/activePrefabs';
+import { actionEntities } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { archivePropsPrefabs } from '../../prefab/src/archive_props';
@@ -37,7 +37,7 @@ export async function checkArchiveStatueInstancing() {
     }
     await tick();
     const full = await sample();
-    const targets = activePrefabs.filter(entity => entity.hasTag('MINE_workable'));
+    const targets = [...actionEntities()].filter(entity => entity.hasTag('MINE_workable'));
     for (const target of targets) target.components.workable!.WorkedBy({}, 4);
     await tick();
     const med = await sample();

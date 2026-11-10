@@ -1,5 +1,4 @@
 import { PrefabDisplayGroup } from '../../display/src';
-import { FindEntities } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../src/transformRoot';
 import * as CANNON from 'cannon-es';
@@ -67,7 +66,7 @@ it('preserves a natural rose, shares its art after wake and burns while dormant'
     const geometry = meshes(model)[0].geometry;
     env.awake.set(false); await settle();
     expect(model.parent).toBeNull(); expect(sprite.loaded).toBe(false); expect(displays.renderEntities).toEqual([]);
-    expect(FindEntities(rose.position, .01, ['flower'])).toHaveLength(1);
+    expect(rose.TheSim.FindEntities(rose.position, .01, ['flower'])).toHaveLength(1);
     expect(flowers.exportRecords()).toEqual(before);
     env.sources.camerarotation.set(env.rotation);
     env.awake.set(true); await settle();
