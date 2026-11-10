@@ -18,6 +18,7 @@ import { watchTileActivity } from './tileActivity';
 import { WORLD_SCALE } from './tile';
 import { refreshMouseTarget } from './mouseTargets';
 import { Transform, type ReadonlyVector3 } from './transform';
+import { EntityGrid } from './entityGrid';
 import type { PrefabWorldContext } from './worldContext';
 import { SoundEmitter } from './soundEmitter';
 import { InstanceAnimState } from './instanceAnimState';
@@ -678,7 +679,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   private readonly resources: SpriteResources;
   private readonly entities = new Set<Instance>();
   /** Entities spawned elsewhere which FindEntities still searches, such as the player. */
-  private readonly tracked = new Set<Instance>();
+  private readonly tracked = new Map<Instance, () => void>();
   private readonly byEntityId = new Map<string, Instance>();
   private readonly byPrefab = new Map<string, Set<Instance>>();
   private icons?: IconSpriteAtlases;
@@ -766,11 +767,20 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (!ofPrefab) this.byPrefab.set(prefabId, ofPrefab = new Set());
     ofPrefab.add(instance);
     const stopActivity = watchTileActivity(display.model, alwaysActive ? undefined : this.tickingarea, active => instance.setActive(active));
+    const stopIndex = this.index(instance);
     instance.onRemove(() => {
-      stopActivity(); this.entities.delete(instance); ofPrefab.delete(instance);
+      stopActivity(); stopIndex(); this.entities.delete(instance); ofPrefab.delete(instance);
       if (this.byEntityId.get(entityId) === instance) this.byEntityId.delete(entityId);
     });
     return instance;
+  }
+
+  /** The spatial hash FindEntities reads, kept current by each entity's position writes. */
+  private readonly grid = new EntityGrid<Instance>();
+  private index(instance: Instance): () => void {
+    this.grid.insert(instance);
+    const stopMoved = instance.transform.onMoved(() => this.grid.move(instance));
+    return () => { stopMoved(); this.grid.remove(instance); };
   }
 
   /** One shared icon billboard source per prefab, from the inventory atlases this manager owns. */
@@ -792,8 +802,9 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   track(instance: Instance): void {
     if (this.disposed) throw new Error(`Cannot track ${instance.prefab}: its manager has been disposed`);
     if (instance.isRemoved || this.entities.has(instance) || this.tracked.has(instance)) return;
-    this.tracked.add(instance);
-    instance.onRemove(() => { this.tracked.delete(instance); });
+    const stopIndex = this.index(instance);
+    this.tracked.set(instance, stopIndex);
+    instance.onRemove(() => { this.tracked.get(instance)?.(); this.tracked.delete(instance); });
   }
 
   /**
@@ -807,15 +818,14 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return [];
     const radiusSquared = radius * radius;
     const found: { entity: Instance; distanceSquared: number }[] = [];
-    for (const entities of [this.entities, this.tracked]) for (const entity of entities) {
-      if (entity.isRemoved) continue;
+    this.grid.visit(position, radius, entity => {
+      if (entity.isRemoved) return;
       const distanceSquared = entity.getPosition().distanceToSquared(position);
-      if (!(distanceSquared <= radiusSquared)) continue;
+      if (!(distanceSquared <= radiusSquared)) return;
       if (mustTags.some(tag => !entity.hasTag(tag)) || cantTags.some(tag => entity.hasTag(tag))
-        || (oneOfTags.length > 0 && !oneOfTags.some(tag => entity.hasTag(tag)))) continue;
+        || (oneOfTags.length > 0 && !oneOfTags.some(tag => entity.hasTag(tag)))) return;
       found.push({ entity, distanceSquared });
-    }
-    // Array.prototype.sort is stable, so entities at the same distance keep their spawn order.
+    });
     return found.sort((a, b) => a.distanceSquared - b.distanceSquared).map(({ entity }) => entity);
   }
 
@@ -838,8 +848,10 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (this.disposed) return;
     this.disposed = true;
     for (const entity of [...this.entities]) entity.remove();
-    // A tracked entity belongs to its own owner, which removes it.
+    // A tracked entity belongs to its own owner, which removes it; it only leaves this index.
+    for (const stopIndex of [...this.tracked.values()]) stopIndex();
     this.tracked.clear();
+    this.grid.clear();
     // Every entity's display is released above, before the shared resources.
     this.resources.dispose();
     for (const source of this.iconSources.values()) source.dispose();

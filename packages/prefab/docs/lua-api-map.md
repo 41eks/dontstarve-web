@@ -21,7 +21,7 @@
 | `SpawnPrefab(id)` | `world.spawnPrefab(id, position)` | `vault_pillar.ts` | 注入，不是全局函数 |
 | `inst.entity:AddChild`（非存档子实体） | `child.entityParent = inst`，并 `inst.onRemove(() => child.remove())` | `vault_pillar.ts` | 子实体定义 `targetable: false` |
 | `inst:AddTag`、`RemoveTag`、`HasTag` | `addTag`、`removeTag`、`hasTag` | `atrium_pillar.ts` | 含 `Make*` 和组件构造函数加的标签 |
-| `TheSim:FindEntities(x, y, z, r, must, cant, oneof)` | `PrefabEntityManager.FindEntities(position, r, must, cant, oneof)`；manager 之外生成的实体（玩家）用 `track(inst)` 加入 | `prefabEntityFind.test.ts` | 查全部有效实体（含休眠），按距离升序；不自动排除自身和 `INLIMBO`，按 Lua 写 `v ~= inst` 和 cant 标签。旧的全局 `FindEntities`（`actionEntity.ts`）只查 ticking area 内已投影的实体，迁移中 |
+| `TheSim:FindEntities(x, y, z, r, must, cant, oneof)` | `PrefabEntityManager.FindEntities(position, r, must, cant, oneof)`；manager 之外生成的实体（玩家）用 `track(inst)` 加入 | `prefabEntityFind.test.ts` | 查全部有效实体（含休眠），按距离升序（同距离的顺序不定）；manager 用 16 单位的空间网格（`entityGrid.ts`），由 `Transform.setPosition` 同步更新，位置只能经 `setPosition` 写入；不自动排除自身和 `INLIMBO`，按 Lua 写 `v ~= inst` 和 cant 标签。旧的全局 `FindEntities`（`actionEntity.ts`）只查 ticking area 内已投影的实体，迁移中 |
 
 ## 动画
 

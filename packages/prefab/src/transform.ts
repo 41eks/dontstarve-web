@@ -36,7 +36,19 @@ export class Transform {
     this.#model.position.set(x, y, z);
     // TileTracker.moved: the key refreshes once per interval, so a jump settles within the writes that follow it.
     this.#tracker?.moved();
+    this.#moved?.();
     this.markDirty();
+  }
+
+  #moved?: () => void;
+  /**
+   * Called synchronously after every position write, without a signal: the world's spatial query index keeps
+   * the entity's cell current with it. One index owns an entity, so a second watcher is an error.
+   */
+  onMoved(listener: () => void): () => void {
+    if (this.#moved) throw new Error('Transform position already has a watcher');
+    this.#moved = listener;
+    return () => { if (this.#moved === listener) this.#moved = undefined; };
   }
 
   /** Transform:SetPosition(pt:Get()). */

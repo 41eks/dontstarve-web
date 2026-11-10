@@ -40,6 +40,26 @@ it('finds every valid entity in range nearest first, asleep or in limbo, leaving
   dispose();
 });
 
+it('follows position writes across the spatial index, including negative and map-wide queries', () => {
+  const { prefabs, spawn, dispose } = world();
+  const walker = spawn(0), stay = spawn(-40);
+  const there = new THREE.Vector3(-1000, 0, 700);
+
+  // Moved within its cell and then across many cells: found only where it now stands.
+  walker.setPosition(1, 0, 1);
+  expect(prefabs.FindEntities(origin, 2)).toEqual([walker]);
+  walker.setPosition(there.x + 1, 0, there.z);
+  expect(prefabs.FindEntities(origin, 2)).toEqual([]);
+  expect(prefabs.FindEntities(there, 2)).toEqual([walker]);
+  expect(prefabs.FindEntities(new THREE.Vector3(-39, 0, 0), 2)).toEqual([stay]);
+  // A radius wider than the occupied cells still reads every entity, nearest first.
+  expect(prefabs.FindEntities(origin, 1e6)).toEqual([stay, walker]);
+
+  walker.remove();
+  expect(prefabs.FindEntities(there, 2)).toEqual([]);
+  dispose();
+});
+
 it('searches a tracked entity it did not spawn without saving it, until the entity is removed', () => {
   const { prefabs, spawn, dispose } = world();
   const thing = spawn(2);
