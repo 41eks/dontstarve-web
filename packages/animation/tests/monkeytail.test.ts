@@ -29,7 +29,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
+vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function setup() {

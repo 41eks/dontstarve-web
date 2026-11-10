@@ -1,13 +1,14 @@
 import { Vector3 } from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
-import { GrassInstance, GRASS_REGROW_TIME } from '../../prefab/src/grass';
-import { RockAvocadoBushInstance } from '../../prefab/src/rock_avocado_bush';
+import { grassPrefabs, GRASS_REGROW_TIME } from '../../prefab/src/grass';
+import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FireFxHost } from '../../prefab/src/treeFire';
-import type { PickablePlantContext } from '../../prefab/src/pickablePlant';
+import type { PickablePlantWorld } from '../../prefab/src/pickablePlant';
+import type { SpriteResources } from '@dontstarve-web/display';
 import { bindTestWorld } from './worldContentFixture';
 
-vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
+vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function setup() {
@@ -16,16 +17,20 @@ function setup() {
   const scheduler = new GameTimeScheduler(), fire = FireFxHost.create('/dst/data/anim');
   const { season, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   const spawnGroundItem = vi.fn();
-  const context: PickablePlantContext = {
-    position: new Vector3(3, 0, 6), scheduler, fire, getWatchWorldContent,
-    world: { scheduler, fire, getWatchWorldContent, spawnGroundItem }, growthDuration: seconds => seconds,
+  const world: PickablePlantWorld = { scheduler, fire, getWatchWorldContent, spawnGroundItem };
+  const position = new Vector3(3, 0, 6);
+  /** The prefab's fn, then SpawnPrefab's SetPosition, without a manager or display. */
+  const spawn = <T extends { setPosition(x: number, y: number, z: number): void }>(definition: { fn(position: Vector3, sprites: SpriteResources): T }) => {
+    const inst = definition.fn(position, undefined as unknown as SpriteResources);
+    inst.setPosition(position.x, position.y, position.z);
+    return inst;
   };
-  return { context, scheduler, season, fetch, spawnGroundItem,
+  return { world, spawn, scheduler, season, fetch, spawnGroundItem,
     dispose: () => { fire.dispose(); unbind(); scheduler.dispose(); } };
 }
 
 it('registers grass callbacks without a manager or display, including winter pause, transplant and removal cancellation', () => {
-  const s = setup(), grass = new GrassInstance(s.context);
+  const s = setup(), grass = s.spawn(grassPrefabs(s.world).grass);
   const pickable = grass.components.pickable;
   try {
     expect(pickable.Pick({ giveItem: () => true })).toBe(true);
@@ -54,14 +59,12 @@ it('registers grass callbacks without a manager or display, including winter pau
   } finally { grass.remove(); s.dispose(); }
 });
 
-it('keeps the rock avocado burning callback on its instance and restores a burning mature bush without art', () => {
+it('keeps the rock avocado burning callback on its inst and restores a burning mature bush without art', () => {
   const s = setup();
-  const bush = new RockAvocadoBushInstance({ ...s.context, saved: {
-    id: 'burning-bush', transform: { position: [3, 0, 6], rotationY: 0 },
-    components: { burning: true, growable: { stage: 3 } },
-  } });
+  const bush = s.spawn(rockAvocadoBushPrefabs(s.world).rock_avocado_bush);
+  bush.entityId = 'burning-bush';
   try {
-    bush.initialize();
+    bush.SetPersistData({ burning: true, growable: { stage: 3 } });
     expect(bush.entityId).toBe('burning-bush');
     expect(bush.isRemoved).toBe(true);
     expect(s.spawnGroundItem.mock.calls.map(([item]) => item.itemId)).toEqual([

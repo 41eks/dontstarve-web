@@ -1,53 +1,72 @@
 import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
+import { Transform } from './transform';
+import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
+import { BurnableBinding } from './treeFire';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import { plantEntityDefinition, PickablePlantInstance, type PickablePlantContext, type PickablePlantDefinition, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
+import { PickablePlantInstance, SpringGrowthMod, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
 
 export const LICHEN_ID = 'lichen' as const;
 /** TUNING.LICHEN_REGROW_TIME: total_day_time * 5. */
 export const LICHEN_REGROW_TIME = 5 * 480;
+/** AnimState:SetBank / SetBuild("algae_bush"). */
+export const LICHEN_ARCHIVE = 'algae_bush.zip';
 
 export type LichenRecord = PickablePlantRecord;
 export type LichenWorld = PickablePlantWorld;
 
-export class LichenInstance extends PickablePlantInstance {
-  constructor(context: PickablePlantContext) {
-    super(LICHEN_DEFINITION, context);
-    addComponent(this, 'pickable', Pickable, 'cutlichen', LICHEN_REGROW_TIME, 1, () => onpickedfn(this), () => onregenfn(this), context.saved?.components.pickable, {
-      scheduler: context.scheduler, growthDuration: context.growthDuration, onEmpty: () => makeemptyfn(this),
-    });
-    this.bindBurnable({ propagator: 'small', burnTime: 10, fxLevel: 2,
-      onIgnite: () => DefaultBurnFn(this), onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => DefaultBurntFn(this, context.world) });
-    MakeNoGrowInWinter(this, context.getWatchWorldContent);
-  }
-}
 function onpickedfn(inst: PickablePlantInstance): void {
-  inst.playPickSound('dontstarve/wilson/pickup_lichen'); inst.play(['picking', 'picked']);
+  inst.SoundEmitter!.PlaySound('dontstarve/wilson/pickup_lichen');
+  inst.AnimState.PlayAnimation('picking');
+  inst.AnimState.PushAnimation('picked', false);
 }
-function onregenfn(inst: PickablePlantInstance): void { inst.play(['grow', 'idle'], true); }
-function makeemptyfn(inst: PickablePlantInstance): void { inst.play(['picked']); }
+
+function onregenfn(inst: PickablePlantInstance): void {
+  inst.AnimState.PlayAnimation('grow');
+  inst.AnimState.PushAnimation('idle', true);
+}
+
+function makeemptyfn(inst: PickablePlantInstance): void {
+  inst.AnimState.PlayAnimation('picked');
+}
 
 /**
- * lichen.lua: bank/build `algae_bush`, a looping idle started on a random frame with a random grey tint, PICK cutlichen
- * (picking -> picked, grow -> idle), small burnable and propagator, MakeNoGrowInWinter. No workable, so it cannot be dug.
+ * lichen.lua fn: PICK cutlichen, small burnable and propagator, MakeNoGrowInWinter. No workable, so it cannot be dug.
+ * MakeHauntableIgnite is not ported.
  */
-export const LICHEN_DEFINITION: PickablePlantDefinition = {
-  prefab: LICHEN_ID,
-  createInstance: context => new LichenInstance(context),
-  animArchive: 'algae_bush.zip',
-  buildArchive: 'algae_bush.zip',
-  archiveSprite: { bank: 'algae_bush', instancedAnimations: 'all' },
-  tags: ['lichen'],
-  // fn: PlayAnimation("idle", true), then SetFrame(math.random(numframes) - 1).
-  idle: { name: 'idle', randomFrame: true },
-  multColour: () => .75 + Math.random() * .25,
-  // makeemptyfn: PlayAnimation("picked").
-  empty: { name: 'picked', frame: 'last' },
-  minimapIcon: 'lichen.png',
-};
+function fn(world: PickablePlantWorld): PickablePlantInstance {
+  const inst = new PickablePlantInstance(LICHEN_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+  inst.AddSoundEmitter();
+  inst.BindScheduler(world.scheduler);
+  inst.addTag('lichen');
 
-/** lichen.lua's cave lichen, with source component ownership for PICK and burning. */
+  inst.sprite.setFrameAt(Math.random());
+  const color = .75 + Math.random() * .25;
+  inst.sprite.setColour([color, color, color]);
+
+  const pickable = addComponent(inst, 'pickable', Pickable, 'cutlichen', LICHEN_REGROW_TIME, 1, () => onpickedfn(inst), () => onregenfn(inst), undefined, {
+    scheduler: world.scheduler, growthDuration: SpringGrowthMod(inst, world.getWatchWorldContent), onEmpty: () => makeemptyfn(inst),
+  });
+  pickable.picksound = 'dontstarve/wilson/pickup_reeds';
+
+  // MakeSmallBurnable + MakeSmallPropagator.
+  const burn = new BurnableBinding(inst, { propagator: 'small', burnTime: 10, fxLevel: 2,
+    onIgnite: () => DefaultBurnFn(inst), onExtinguish: () => DefaultExtinguishFn(inst), onBurnt: () => DefaultBurntFn(inst, world) }, world);
+  inst.onRemove(() => burn.dispose());
+  MakeNoGrowInWinter(inst, world.getWatchWorldContent);
+  return inst;
+}
+
+/** lichen.lua's Prefab("lichen", fn, assets). */
 export function lichenPrefabs(world: PickablePlantWorld): Readonly<Record<typeof LICHEN_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
-  return { [LICHEN_ID]: plantEntityDefinition(LICHEN_DEFINITION, world) };
+  return {
+    [LICHEN_ID]: {
+      fn: () => fn(world),
+      assets: { animationArchive: LICHEN_ARCHIVE, buildArchives: [LICHEN_ARCHIVE], bank: 'algae_bush' },
+      // SetMultColour needs the instanced batch's colour attribute.
+      assetOptions: { instancedAnimations: 'all', staticBillboard: true, colour: [1, 1, 1] },
+      minimapIcon: 'lichen.png',
+    },
+  };
 }

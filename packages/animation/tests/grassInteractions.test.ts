@@ -72,7 +72,7 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     expect(s.inventory.transfer(inventorySlotAddress(1), equipmentSlotAddress('hand'), 1)).toBe(true);
     expect(performToolWork('DIG', target.entity!, s.worker, shovel)).toBe(true);
     expect(performToolWork('DIG', target.entity!, s.worker, shovel)).toBe(false);
-    expect(oldState.phase.peek()).toBe('removed');
+    expect(oldState.isRemoved).toBe(true);
     expect(shovel.components.finiteuses.remaining).toBe(24.75);
     expect(s.ground.exportRecords().slice(1).map(record => record.components.stack?.itemId)).toEqual(['cutgrass', 'dug_grass']);
     for (const record of s.ground.exportRecords().slice(1)) {
@@ -113,7 +113,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     plantInstance(model).components.pickable.pick({ giveItem: () => true });
     burnable.Ignite();
     const timer = burnable.timer.peek();
-    expect(state.phase.peek()).toBe('burning');
+    expect(burnable.IsBurning()).toBe(true);
     expect(state.persists).toBe(false);
     expect(s.grass.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(canDoSceneAction('PICK', model)).toBe(false);
@@ -124,7 +124,8 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     const record = s.grass.exportRecords().map(({ record }) => record)[0];
     expect(record.id).toBe(lookupPrefabInstance(model)?.entityId);
     expect(record.components.pickable).toEqual({ picked: true, regrowSeconds: 1430 });
-    expect(state.phase.peek()).toBe('picked');
+    expect(burnable.IsBurning()).toBe(false);
+    expect(state.components.pickable.state.phase.peek()).toBe('picked');
     expect(state.persists).toBe(true);
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 }); s.inventory.GiveItem(torch);
@@ -132,7 +133,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(collectEquippedItemActions(torch, undefined, findActionEntity(model)!, true)).toContain('LIGHT');
     burnable.Ignite();
     tickWorld(s.scheduler, prefabDisplays(s.grass), 20, new THREE.Quaternion());
-    expect(state.phase.peek()).toBe('removed');
+    expect(state.isRemoved).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull();
     expect(workTargets('DIG')).toEqual([]);

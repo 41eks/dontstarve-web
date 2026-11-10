@@ -8,7 +8,7 @@ import type { PlacementSaveRecord } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { ReadonlyVector3 } from './transform';
 import catalog from './groundItems.json' with { type: 'json' };
-import { getBoundWatchWorldContent, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
+import { createRenderEffect, getBoundWatchWorldContent, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { Pickable } from './components/pickable';
 
 /** World units per DST unit. */
@@ -66,6 +66,22 @@ export function MakeNoGrowInWinter(inst: PrefabInstance & { components: { pickab
         if ((current.season === 'winter') !== (previous.season === 'winter')) toggle(current.season === 'winter');
     });
     toggle(season.peek().season === 'winter');
+}
+
+/**
+ * standardcomponents.lua MakeSnowCoveredPristine + MakeSnowCovered: the snow symbol from snow.zip, shown while the world
+ * is snow covered (weather.lua SNOW_COVERED_THRESHOLD). The prefab declares snow.zip and the hidden `snow` layer.
+ */
+export function MakeSnowCovered(inst: PrefabInstance, watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent()): void {
+    if (!inst.hasTag('SnowCovered')) {
+        inst.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
+        inst.addTag('SnowCovered');
+        inst.sprite.hideLayer('snow');
+    }
+    const snow = watch?.(WorldContentKey.SnowLevel, stop => inst.onRemove(stop));
+    inst.onRemove(createRenderEffect(() => {
+        if ((snow?.get() ?? 0) >= .015) inst.sprite.showLayer('snow'); else inst.sprite.hideLayer('snow');
+    }));
 }
 
 /**

@@ -38,10 +38,10 @@ import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-we
 import { MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { ROCK_AVOCADO_SAPLING_ID, ROCK_AVOCADO_SPROUT_GROW_TIME } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
 import { ROCK_AVOCADO_BUSH_ID, ROCK_AVOCADO_FRUIT_ID } from '@dontstarve-web/prefab/rock_avocado_bush';
-import { BERRYBUSH_DEFINITION, BERRYBUSH_ID, BERRYBUSH_MAX_REGROW_TIME, BERRYBUSH_SKINS } from '@dontstarve-web/prefab/berrybush';
+import { BERRYBUSH_ARCHIVE, BERRYBUSH_ID, BERRYBUSH_MAX_REGROW_TIME, BERRYBUSH_SKINS } from '@dontstarve-web/prefab/berrybush';
 import { MONKEYTAIL_ID, MONKEYTAIL_REGROW_TIME } from '@dontstarve-web/prefab/monkeytail';
-import { GRASS_CYCLES, GRASS_DEFINITION, GRASS_ID, GRASS_REGROW_TIME } from '@dontstarve-web/prefab/grass';
-import { LICHEN_DEFINITION, LICHEN_ID, LICHEN_REGROW_TIME } from '@dontstarve-web/prefab/lichen';
+import { GRASS_ANIM_ARCHIVE, GRASS_BUILD_ARCHIVE, GRASS_CYCLES, GRASS_ID, GRASS_REGROW_TIME } from '@dontstarve-web/prefab/grass';
+import { LICHEN_ARCHIVE, LICHEN_ID, LICHEN_REGROW_TIME } from '@dontstarve-web/prefab/lichen';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
 import { MARSH_PLANT_ID } from '@dontstarve-web/prefab/marsh_plant';
@@ -56,8 +56,8 @@ import { NIGHTMAREROCK_IDS } from '@dontstarve-web/prefab/nightmarerock';
 import { CAVE_ENTRANCE_IDS } from '@dontstarve-web/prefab/cave_entrance';
 import { CAVE_EXIT_IDS } from '@dontstarve-web/prefab/cave_exit';
 import { GROTTO_IDS } from '@dontstarve-web/prefab/grotto_pool';
-import { CAVE_FERN_ANIMATIONS, CAVE_FERN_DEFINITIONS, CAVE_FERN_IDS } from '@dontstarve-web/prefab/cave_fern';
-import { CACTUS_DEFINITIONS, CACTUS_IDS, CACTUS_REGROW_TIME } from '@dontstarve-web/prefab/cactus';
+import { CAVE_FERN_ANIM_ARCHIVE, CAVE_FERN_ANIMATIONS, CAVE_FERN_BUILD_ARCHIVES, CAVE_FERN_IDS } from '@dontstarve-web/prefab/cave_fern';
+import { CACTUS_IDS, CACTUS_REGROW_TIME } from '@dontstarve-web/prefab/cactus';
 import { MUSHROOM_PLANT_IDS } from '@dontstarve-web/prefab/mushroom_plant';
 import { MUSHTREE_IDS, MUSHTREE_SPAWN_IDS, MUSHTREE_GROWTH_STAGES, MUSHTREE_GROWTH_TIME } from '@dontstarve-web/prefab/mushtree';
 import { TENT_ID, TENT_USES } from '@dontstarve-web/prefab/tent';
@@ -434,17 +434,17 @@ const WORLD_PREFAB_DEFINITIONS = {
   rockAvocadoSaplings: definePrefabs([ROCK_AVOCADO_SAPLING_ID], componentParser({ keys: ['saplingTimer'], timerDuration: ROCK_AVOCADO_SPROUT_GROW_TIME }), true),
   rockAvocadoBushes: definePrefabs([ROCK_AVOCADO_BUSH_ID], componentParser({ keys: ['pickable', 'witherable', 'growable', 'burning'], regrowTime: 0, pickCycles: 3, minimumPickCycles: 3, growthStages: 4 }), true),
   berrybushes: definePrefabs([BERRYBUSH_ID], componentParser({ keys: ['pickable', 'witherable', 'plant'], regrowTime: BERRYBUSH_MAX_REGROW_TIME, pickCycles: 5, minimumPickCycles: 4, plantSkins: BERRYBUSH_SKINS }), true,
-    [{ animation: BERRYBUSH_DEFINITION.animArchive, build: BERRYBUSH_DEFINITION.buildArchive }]),
+    [{ animation: BERRYBUSH_ARCHIVE, build: BERRYBUSH_ARCHIVE }]),
   monkeytails: definePrefabs([MONKEYTAIL_ID], componentParser({ keys: ['pickable', 'witherable'], regrowTime: MONKEYTAIL_REGROW_TIME, pickCycles: 7 }), true),
   grasses: definePrefabs([GRASS_ID], componentParser({ keys: ['pickable', 'witherable'], regrowTime: GRASS_REGROW_TIME, pickCycles: GRASS_CYCLES, minimumPickCycles: GRASS_CYCLES }), true,
-    [{ animation: GRASS_DEFINITION.animArchive, build: GRASS_DEFINITION.buildArchive }]),
+    [{ animation: GRASS_ANIM_ARCHIVE, build: GRASS_BUILD_ARCHIVE }]),
   // lichen.lua: only pickable saves state.
   lichens: definePrefabs([LICHEN_ID], componentParser({ keys: ['pickable'], regrowTime: LICHEN_REGROW_TIME }), true,
-    [{ animation: LICHEN_DEFINITION.animArchive, build: LICHEN_DEFINITION.buildArchive }]),
+    [{ animation: LICHEN_ARCHIVE, build: LICHEN_ARCHIVE }]),
   caveFerns: definePrefabs(CAVE_FERN_IDS, componentParser({ keys: ['pickable', 'variant'], plantVariants: CAVE_FERN_ANIMATIONS }), true,
-    prefab => [{ animation: CAVE_FERN_DEFINITIONS[prefab].animArchive, build: CAVE_FERN_DEFINITIONS[prefab].buildArchive }]),
+    prefab => [{ animation: CAVE_FERN_ANIM_ARCHIVE, build: CAVE_FERN_BUILD_ARCHIVES[prefab] }]),
   cacti: definePrefabs(CACTUS_IDS, componentParser({ keys: ['pickable'], regrowTime: CACTUS_REGROW_TIME }), true,
-    prefab => [{ animation: CACTUS_DEFINITIONS[prefab].animArchive, build: CACTUS_DEFINITIONS[prefab].buildArchive }]),
+    prefab => [{ animation: `${prefab}.zip`, build: `${prefab}.zip` }]),
   saplings: definePrefabs(SAPLING_PREFABS, componentParser({ keys: ['pickable', 'witherable'], regrowTime: SAPLING_REGROW_TIME }), true),
   ponds: definePrefabs([POND_ID], componentParser({ keys: ['fishable', 'plants'] }), true, ['marsh_tile.zip']),
   marshPlants: definePrefabs([MARSH_PLANT_ID], empty, true, ['marsh_plant.zip']),

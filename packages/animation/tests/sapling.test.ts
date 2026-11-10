@@ -87,7 +87,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     expect(lookupPrefabInstance(copy)?.entityId).toBe(lookupPrefabInstance(model)?.entityId);
 
     tickWorld(s.scheduler, prefabDisplays(s.saplings), 920, new THREE.Quaternion());
-    expect(plantInstance(model).phase.peek()).toBe('ready');
+    expect(plantInstance(model).components.pickable.state.phase.peek()).toBe('ready');
     expect(animation.currentAnimation).toBe('grow');
     for (let frame = 0; frame < 45; frame++) tickWorld(s.scheduler, prefabDisplays(s.saplings), 1 / 30, new THREE.Quaternion());
     expect(animation.currentAnimation).toBe('sway');

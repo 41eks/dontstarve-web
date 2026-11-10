@@ -22,9 +22,6 @@
     "instance-method": 17,
     "sg-forward": 1
   },
-  "packages/prefab/src/berrybush.ts": {
-    "instance-method": 1
-  },
   "packages/prefab/src/books.ts": {
     "prefab-timer": 1
   },
@@ -38,9 +35,6 @@
   },
   "packages/prefab/src/butterfly.ts": {
     "sg-forward": 2
-  },
-  "packages/prefab/src/cactus.ts": {
-    "instance-method": 5
   },
   "packages/prefab/src/chesspieces.ts": {
     "instance-method": 3
@@ -127,9 +121,6 @@
   "packages/prefab/src/mouseTargets.ts": {
     "model-keyed-state": 2
   },
-  "packages/prefab/src/mushroom_plant.ts": {
-    "instance-method": 10
-  },
   "packages/prefab/src/mushtree.ts": {
     "component-dispose-on-remove": 2,
     "instance-method": 16
@@ -143,11 +134,6 @@
   },
   "packages/prefab/src/ocean_waves.ts": {
     "scene": 1
-  },
-  "packages/prefab/src/pickablePlant.ts": {
-    "component-dispose-on-remove": 5,
-    "instance-method": 9,
-    "object-assign-state": 1
   },
   "packages/prefab/src/pigking.ts": {
     "component-dispose-on-remove": 1,
@@ -182,9 +168,6 @@
   },
   "packages/prefab/src/reskin_tool.ts": {
     "scene": 1
-  },
-  "packages/prefab/src/rock_avocado_bush.ts": {
-    "instance-method": 8
   },
   "packages/prefab/src/rocks.ts": {
     "instance-method": 1
