@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import * as THREE from 'three';
@@ -74,7 +75,7 @@ it('uses separate source ground and equipped art and renders a skin while moving
 
 it('spawns/gives individual swords, preserves failed drops and reskin/pickup identity, then saves and reloads ground and equipped swords', async () => {
   const inventory = createPickupInventory(), restoredInventory = createPickupInventory();
-  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(), player = new THREE.Group();
+  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(), player = withEntity(new THREE.Group(), 'wilson');
   const renderer = { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer;
   player.position.set(3, 0, -6);
   const manager = new ItemWorldFixture(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);

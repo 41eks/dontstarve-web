@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -20,14 +21,14 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
-import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function setup() {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  const inventory = createPickupInventory(), scene = new THREE.Scene(), player = new THREE.Group();
+  const inventory = createPickupInventory(), scene = new THREE.Scene(), player = withEntity(new THREE.Group(), 'wilson');
   const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
     inventory, '/dst/data/anim', player);
@@ -54,13 +55,13 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
       expect(performLightAction(torch, findActionEntity(model)!, torch)).toBe(true);
       expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.peek()).toBe(true);
       expect(prefabInstance<ItemEntity>(model)!.persistence.peek()).toBe(false);
-      expect(performPickupAction(itemAt(model), createPickupDoer(new THREE.Group(), inventory))).toBe(false);
+      expect(performPickupAction(itemAt(model), createPickupDoer(withEntity(new THREE.Group(), 'wilson'), inventory))).toBe(false);
     }
     // The fire is a child of the burning item, as DST's Burnable:SpawnFX adds it, with the source's tags.
     const fires = () => models.flatMap(model => model.children.filter(child => child.name === 'fire'));
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(fires()).toHaveLength(2);
-    expect(fires().every(fire => modelHasTag(fire, 'FX') && modelHasTag(fire, 'HASHEATER'))).toBe(true);
+    expect(fires().every(fire => prefabInstance(fire)!.hasTag('FX') && prefabInstance(fire)!.hasTag('HASHEATER'))).toBe(true);
     await Promise.all(fires().map(fire => (prefabDisplay(fire) as PrefabDisplay).artLoaded()));
     // Drawn on the item's plane after it: the depth the item's instance batch writes cannot hide it at any heading.
     const fireMaterials = () => fires().flatMap(fire => (fire.getObjectByProperty('type', 'Mesh') as THREE.Mesh<THREE.BufferGeometry, THREE.Material[]>).material);

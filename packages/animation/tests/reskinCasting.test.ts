@@ -42,7 +42,7 @@ afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); 
 
 function setupWorld() {
   return {
-    scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
+    scene: new THREE.Scene(), player: withEntity(new THREE.Group(), 'wilson'), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
 }

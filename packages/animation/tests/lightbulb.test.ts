@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ItemEntity, InventorySlot, InventoryStore, cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
@@ -88,7 +89,7 @@ it('buffers one fuel item until frame six, preserves it on cancellation and retu
   lantern.setRemainingFuel(0);
   inventory.transfer(inventorySlotAddress(1), cursor, 2);
   const original = inventory.getEntity(cursor)!;
-  const doer = createPickupDoer(new THREE.Group(), inventory);
+  const doer = createPickupDoer(withEntity(new THREE.Group(), 'wilson'), inventory);
   const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, onStateChanged() {} });
   const request = () => graph.pushBufferedAction(createBufferedAction('ADDFUEL', { doer, target: lantern, invobject: original }));
   try {

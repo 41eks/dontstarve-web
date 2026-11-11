@@ -3,7 +3,6 @@ import { batch, createMemo, createSignal, readonlySignal } from '@dontstarve-web
 import type { PickableComponent, PickDoer } from '@dontstarve-web/stategraphs/pick';
 import { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
-import { setModelTag, modelHasTag, prefabInstance } from '../prefabInstance';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { Burnable } from '../../../componets/src/burnable';
 import type { Witherable } from '../../../componets/src/witherable';
@@ -76,27 +75,16 @@ export class Pickable implements PickableComponent {
   get productEntity(): ItemEntity | undefined { return this.getProductEntity?.(); }
 
   private readonly inst: PickableInst;
-  private readonly eventEntity: PickableInst | THREE.Object3D;
   private productName: string | undefined;
   private regrowTime: number | undefined;
   private harvestCount: number;
   private readonly onPicked: (doer?: PickDoer) => void;
   private readonly onRegen: () => void;
 
-  constructor(owner: PickableInst | THREE.Object3D, product: string | undefined, regenTime: number | undefined,
+  constructor(inst: PickableInst, product: string | undefined, regenTime: number | undefined,
     numToHarvest = 1, onPicked: (doer?: PickDoer) => void = () => {},
     onRegen: () => void = () => {}, saved?: PickableSaveState, timing?: PickableTiming) {
-    if (owner instanceof THREE.Object3D) {
-      const model = owner, position = new THREE.Vector3();
-      this.inst = prefabInstance(model) ?? {
-        components: {},
-        getPosition: () => model.getWorldPosition(position),
-        hasTag: tag => modelHasTag(model, tag),
-        addTag: tag => setModelTag(model, tag, true),
-        removeTag: tag => setModelTag(model, tag, false),
-      };
-    } else this.inst = owner;
-    this.eventEntity = owner instanceof THREE.Object3D ? prefabInstance(owner) ?? owner : owner;
+    this.inst = inst;
     this.productName = product; this.regrowTime = regenTime;
     this.harvestCount = numToHarvest; this.onPicked = onPicked; this.onRegen = onRegen;
     this.scheduler = timing?.scheduler ?? new GameTimeScheduler();
@@ -218,7 +206,7 @@ export class Pickable implements PickableComponent {
       else this.timer.stop();
       this.refreshTag();
     });
-    this.inst.PushEvent?.('picked', { picker: doer?.picker ?? doer, loot: doer?.loot, plant: this.eventEntity });
+    this.inst.PushEvent?.('picked', { picker: doer?.picker ?? doer, loot: doer?.loot, plant: this.inst });
     if (this.remove_when_picked) {
       this.callbacks?.onRemove?.();
       this.dispose();

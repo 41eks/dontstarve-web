@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { grassPrefabs } from '../../prefab/src/grass';
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
-import { prefabInstance, setModelTag } from '../../prefab/src/prefabInstance';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
@@ -115,12 +115,12 @@ it('an entity under the mouse replaces the point deploy unless it does not catch
     expect(s.held()).toBe(2);
     stopRepair();
 
-    setModelTag(model, 'ignoremouseover', true);
+    prefabInstance(model)!.addTag('ignoremouseover');
     s.rightClick();
     expect(actor.locomotor.PushAction).toHaveBeenCalledTimes(1);
     actor.controller.cancel();
     expect(s.held()).toBe(2);
-    setModelTag(model, 'ignoremouseover', false);
+    prefabInstance(model)!.removeTag('ignoremouseover');
 
     expect(s.rightClick().defaultPrevented).toBe(true);
     expect(s.held()).toBe(0);

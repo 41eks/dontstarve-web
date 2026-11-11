@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
@@ -173,7 +174,7 @@ describe('torch prefab burning lifecycle', () => {
       { torch_barber: { itemId: 'torch', name: 'torch', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
     const world = createPerishWorld();
     store.entities.bindPerishWorld(world);
-    const scene = new THREE.Scene(), player = new THREE.Group();
+    const scene = new THREE.Scene(), player = withEntity(new THREE.Group(), 'wilson');
     const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
     // The world's SpawnPrefab is bound before any item exists, as in the scene.
     const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
@@ -230,7 +231,7 @@ describe('torch prefab burning lifecycle', () => {
 
   it('restores a lit ground torch silently, extinguishes through its event and picks it up without affecting held equipment', async () => {
     vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-    const inventory = createPickupInventory(), world = createPerishWorld(), player = new THREE.Group();
+    const inventory = createPickupInventory(), world = createPerishWorld(), player = withEntity(new THREE.Group(), 'wilson');
     inventory.entities.bindPerishWorld(world);
     player.position.set(12, 0, 0);
     const owner = player.position;

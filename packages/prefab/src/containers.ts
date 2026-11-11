@@ -3,17 +3,15 @@ import { ItemEntity, PreparedFoodSlot, StorageSlot, type ItemSlot, type Inventor
 import { Container } from '../../componets/src/container';
 import { IsCookingIngredient } from '../../componets/src/cooking';
 import { isBookCabinetItem } from './books';
-import { PrefabInstance, setModelTag } from './prefabInstance';
+import { PrefabInstance } from './prefabInstance';
 import { addComponent, removeComponent } from './components';
-import type { Object3D } from 'three';
 
 export type BuildingContainer = Container<InventoryStack, ItemEntity, ItemSlot>;
 
 export function createBuildingContainer(prefab: StorageBuildingId, inst: object): BuildingContainer {
     if (prefab === 'icebox') {
-        const holder = inst as { addTag?(tag: string): void; tags?: Set<string>; userData?: object };
+        const holder = inst as { addTag?(tag: string): void; tags?: Set<string> };
         if (holder.addTag) holder.addTag('fridge');
-        else if (holder.userData) setModelTag(holder as Object3D, 'fridge', true);
         else (holder.tags ??= new Set()).add('fridge');
     }
     const definition = buildingContainerDefinition(prefab);

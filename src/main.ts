@@ -62,7 +62,6 @@ import { playerStats, playerGhostMode, getPlayerStats, setPlayerSanityPercent } 
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import type { Sanity } from '../packages/componets/src/sanity';
-import { modelHasTag, setModelTag } from '@dontstarve-web/prefab/prefabInstance';
 
 // Independent startup loads begin together; each is awaited where it is first needed.
 const animRoot = `${import.meta.env.BASE_URL}dst/data/anim`;
@@ -120,9 +119,9 @@ const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> 
     sleepingbaguser: playerInstance.components.sleepingbaguser, get talker() { return playerInstance.components.talker; } },
   get prefab() { return playerInstance.prefab; },
   ListenForEvent: (name, listener) => playerInstance.ListenForEvent(name, listener),
-  hasTag: tag => tag === 'player' || modelHasTag(player, tag),
-  addTag: tag => setModelTag(player, tag, true),
-  removeTag: tag => setModelTag(player, tag, false),
+  hasTag: tag => tag === 'player' || playerInstance.hasTag(tag),
+  addTag: tag => playerInstance.addTag(tag),
+  removeTag: tag => playerInstance.removeTag(tag),
   GetPosition: () => player.position,
   getPosition: () => player.position,
   position: player.position,

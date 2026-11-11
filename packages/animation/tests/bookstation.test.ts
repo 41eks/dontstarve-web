@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -29,9 +30,8 @@ function stubArt() {
 
 /** The world a bookstation is spawned in: the shared manager, the inventory its shelf registers with, and the player. */
 function stationWorld(scheduler = new GameTimeScheduler(), tags: string[] = [], playerAt = new THREE.Vector3()) {
-  const inventory = createPickupInventory(), player = new THREE.Group();
+  const inventory = createPickupInventory(), player = withEntity(new THREE.Group(), 'wilson', tags);
   player.position.copy(playerAt);
-  player.userData.tags = tags;
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, scheduler,
     registerContainer: (...args: Parameters<typeof inventory.registerContainer>) => inventory.registerContainer(...args),

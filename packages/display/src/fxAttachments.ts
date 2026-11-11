@@ -1,7 +1,6 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteCommands, SpriteJson } from './spriteState';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import type { CompositeSpriteFrame } from '@dontstarve-web/animation/sprite';
@@ -27,15 +26,10 @@ interface FxOptions {
   };
 }
 
-/** Prepared art, or an entity drawn by its own display (including children that unload with their tile). */
-export type FxJson = FxOptions & (
-  /** Tags the source adds to the effect entity (`FX`, `HASHEATER`). */
-  | { readonly sprite: ArchiveSprite; readonly display?: undefined; readonly tags: readonly string[] }
-  /** A drawn entity's tags and persistence belong to its own instance. */
-  | { readonly sprite: ArchiveSpriteCommands; readonly display: PrefabDisplay; readonly tags?: undefined }
-);
+/** An effect entity drawn by its own display (including children that unload with their tile); its tags and persistence belong to its instance. */
+export type FxJson = FxOptions & { readonly sprite: ArchiveSpriteCommands; readonly display: PrefabDisplay };
 
-const fxModel = (fx: FxJson): THREE.Group => fx.display ? fx.display.model : (fx.sprite as ArchiveSprite).model;
+const fxModel = (fx: FxJson): THREE.Group => fx.display.model;
 
 export interface FxRenderEntry {
   readonly object: THREE.Group;
@@ -79,7 +73,6 @@ export class FxAttachments {
     const entry: Attached = { fx, enabled: fx.active.peek(), stop: () => {} };
     this.attached.set(key, entry);
     const model = fxModel(fx);
-    if (!fx.display) { model.userData.tags = [...fx.tags]; model.userData.persists = false; }
     model.position.set(0, 0, 0);
     // Drawn after its owner on the owner's plane: the owner's depth (an instance batch writes it) must not hide it.
     if (!fx.composite && fx.sortLayer > 1) fx.sprite.setDepthOffset(true);
@@ -103,7 +96,7 @@ export class FxAttachments {
   get hasComposites(): boolean { return [...this.attached.values()].some(({ fx }) => fx.composite !== undefined); }
 
   compositeFrames(): readonly CompositeSpriteFrame[] {
-    return [...this.attached.values()].flatMap(({ fx, enabled }) => enabled && fx.composite && fx.display && !fx.display.isRemoved
+    return [...this.attached.values()].flatMap(({ fx, enabled }) => enabled && fx.composite && !fx.display.isRemoved
       ? [{ sprites: fx.display.resolveFrame(), symbol: fx.composite.symbol === undefined ? undefined : smallHash(fx.composite.symbol),
         detached: fx.composite.detached, finalOffset: fx.composite.finalOffset, noFaced: fx.composite.noFaced,
         offset: fx.composite.offset }] : []);
@@ -115,8 +108,7 @@ export class FxAttachments {
         if (owner?.facing !== undefined && !fx.composite.noFaced) (fx.sprite as import('./spriteState').SpriteState).setFacing(owner.facing);
         fx.sprite.update(dt);
       } else if (fxModel(fx).parent === this.owner) {
-        if (fx.display) fx.display.update(dt, cameraRotation);
-        else fx.sprite.update(dt);
+        fx.display.update(dt, cameraRotation);
       }
     }
   }

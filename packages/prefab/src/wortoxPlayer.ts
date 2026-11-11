@@ -9,7 +9,7 @@ import { CHARACTER_COLLISION_MASK, WORLD_SCALE } from './standardcomponents';
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { Wortox, type WortoxSave } from './wortox';
 import { isGroundTargetBlocked, placementEntities, type PlacementQuery } from './placementEntities';
-import { modelHasTag, prefabInstance } from './prefabInstance';
+import { prefabInstance } from './prefabInstance';
 import { wilsonPlayerInstance } from './player';
 
 export interface WortoxPlayerOptions {
@@ -90,7 +90,7 @@ export class WortoxPlayer {
     const state = this.state;
     Object.assign(doer, {
       // The project skips the Has("wortox_soul") count (README); riding still blocks the hop.
-      CanSoulhop: () => !this.disposed && !modelHasTag(world.player, 'riding'),
+      CanSoulhop: () => !this.disposed && !prefabInstance(world.player)?.hasTag('riding'),
       CanBlinkTo: (position: THREE.Vector3) => this.canBlinkTo(position),
       CanBlinkFromWithMap: (position: THREE.Vector3) => this.canMapBlinkTo(position),
     });

@@ -12,7 +12,7 @@ import { AMULET_ID } from '@dontstarve-web/prefab/amulet';
 import { Reader } from '../packages/componets/src/reader';
 import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
-import { modelHasTag, prefabInstance } from '../packages/prefab/src/prefabInstance';
+import { prefabInstance } from '../packages/prefab/src/prefabInstance';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { PLAYER_COLLIDER_RADIUS, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import { addComponent, removeComponent } from '@dontstarve-web/prefab/components';
@@ -188,7 +188,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         const attackerInst: CombatActor = {
           getPosition: () => player.position,
           getPhysicsRadius: () => .5 * unit,
-          hasTag: tag => tag === 'player' || modelHasTag(player, tag),
+          hasTag: tag => tag === 'player' || playerInstance.hasTag(tag),
           PushEvent: (name, data) => prefabInstance(player)!.PushEvent(name, data),
           components: { health: playerStats.health, sanity: playerStats.sanity, inventory },
         };

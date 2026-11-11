@@ -1,6 +1,6 @@
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
-import { PrefabInstance, modelHasTag, type EntityTask } from './prefabInstance';
+import { PrefabInstance, prefabInstance, type EntityTask } from './prefabInstance';
 import { Workable } from '../../componets/src/workable';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree } from '../../componets/src/techtree';
@@ -107,7 +107,7 @@ function onclose(inst: BookstationInstance): void {
 /** RestoreBooks: +1% of the maximum uses, doubled while a bookbuilder is within range; the world has one player. */
 function RestoreBooks(inst: BookstationInstance): void {
     const player = inst.worldServices?.player;
-    const wicker_bonus = player !== undefined && modelHasTag(player, 'bookbuilder')
+    const wicker_bonus = player !== undefined && prefabInstance(player)?.hasTag('bookbuilder') === true
         && player.position.distanceToSquared(inst.position) <= BOOKSTATION_BONUS_RANGE * BOOKSTATION_BONUS_RANGE ? BOOKSTATION_WICKER_BONUS : 1;
     for (const book of inst.components.container!.GetAllItems()) {
         if (!book.hasTag('book') || !isBook(book.prefab)) continue;

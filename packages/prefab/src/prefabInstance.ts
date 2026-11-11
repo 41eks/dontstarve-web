@@ -16,7 +16,6 @@ import { newItemEntityId } from '../../inventory/src/entityId';
 import { registerActionEntity } from './actionEntity';
 import { watchTileActivity } from './tileActivity';
 import { WORLD_SCALE } from './tile';
-import { refreshMouseTarget } from './mouseTargets';
 import { Transform, type ReadonlyVector3 } from './transform';
 import { EntityGrid } from './entityGrid';
 import type { PrefabWorldContext } from './worldContext';
@@ -247,6 +246,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   physicsRadiusOverride?: number;
   /** Deployable smart spacing, in world units. */
   deploySmartRadius?: number;
+  /** inst.ground_target_blocker_radius (EntityScript:SetGroundTargetBlockerRadius), in world units. */
+  ground_target_blocker_radius?: number;
   /** inst._groundhole_*: the ring map.lua's IsGroundTargetBlocked refuses, in world units. */
   _groundhole_innerradius?: number;
   _groundhole_outerradius?: number;
@@ -571,28 +572,11 @@ export function prefabInstance<Instance extends AnyPrefabInstance = PrefabInstan
   return (model ? instancesByModel.get(model) : undefined) as Instance | undefined;
 }
 
-/** inst:HasTag on a model: its instance owns the tags; a model without one (bare FX) keeps its own `userData.tags`. */
 /** An action's target as its entity: the inst itself, or the inst behind a model-based target view. */
 export function targetInstance(target: object | undefined): PrefabInstance | undefined {
   if (target instanceof PrefabInstance) return target;
   const model = (target as { model?: Object3D } | undefined)?.model;
   return model ? prefabInstance(model) : undefined;
-}
-
-export function modelHasTag(model: Object3D, tag: string): boolean {
-  const instance = prefabInstance(model);
-  return instance ? instance.hasTag(tag) : (model.userData.tags as readonly string[] | undefined)?.includes(tag) ?? false;
-}
-
-/** Transitional: a model's tag write goes to its instance; a model without one keeps its own `userData.tags`. */
-export function setModelTag(model: Object3D, tag: string, present: boolean): void {
-  const instance = prefabInstance(model);
-  if (instance) { if (present) instance.addTag(tag); else instance.removeTag(tag); return; }
-  const tags: string[] = model.userData.tags ??= [];
-  const index = tags.indexOf(tag);
-  if (present) { if (index < 0) tags.push(tag); }
-  else if (index >= 0) tags.splice(index, 1);
-  refreshMouseTarget(model);
 }
 
 /** A new entity and the display that borrows its transform root. */

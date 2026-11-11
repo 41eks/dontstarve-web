@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -158,7 +159,7 @@ describe('nightmare_timepiece.lua', () => {
 
   it('saves a spawned watch and a held one through c_save', async () => {
     const world = createWorldState({ map: testMap(48), elapsedSeconds: 0, systems: {}, prefab: 'cave' });
-    const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group();
+    const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = withEntity(new THREE.Group(), 'wilson');
     const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
       '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
     const registry = new EntityRegistry();

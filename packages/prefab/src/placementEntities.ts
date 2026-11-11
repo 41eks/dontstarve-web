@@ -45,19 +45,18 @@ export function registerPlacementEntity(instance: PrefabInstance): () => void {
     inst: instance,
     get position() { return instance.getPosition(); },
     get prefab() { return instance.prefab; },
-    get smartRadius() { return instance.deploySmartRadius ?? model.userData.deploySmartRadius; },
+    get smartRadius() { return instance.deploySmartRadius; },
     get groundTargetRadius() {
       return hasPlacementTag(entry, 'groundtargetblocker') || hasPlacementTag(entry, 'groundhole')
-        ? model.userData.ground_target_blocker_radius ?? instance._groundhole_outerradius ?? model.userData._groundhole_outerradius ?? instance.getPhysicsRadius(0) ?? 0 : undefined;
+        ? instance.ground_target_blocker_radius ?? instance._groundhole_outerradius ?? instance.getPhysicsRadius(0) ?? 0 : undefined;
     },
-    get groundHoleInnerRadius() { return instance._groundhole_innerradius ?? model.userData._groundhole_innerradius; },
-    get groundHoleRangeOverride() { return instance._groundhole_rangeoverride ?? model.userData._groundhole_rangeoverride; },
+    get groundHoleInnerRadius() { return instance._groundhole_innerradius; },
+    get groundHoleRangeOverride() { return instance._groundhole_rangeoverride; },
     get inventoryRadius() { return (instance.components as { inventoryitem?: unknown }).inventoryitem ? instance.getPhysicsRadius(.5) ?? .5 : undefined; },
     getInventoryRadius: fallback => (instance.components as { inventoryitem?: unknown }).inventoryitem ? instance.getPhysicsRadius(fallback) ?? fallback : undefined,
     get visible() { return isSpriteEntityVisible(model); },
     hasTag: tag => instance.hasTag(tag),
     valid: () => (!!model.parent || !!instance.logicalPlacement) && !instance.isRemoved
-      && !model.userData.removed && !model.userData.placer
       && (hasPlacementTag(entry, 'dockjammer') || !ignoresPlacement(entry, ['NOBLOCK', 'FX', 'DECOR', 'player'])),
   };
   const sync = () => { if (entry.valid()) index.add(entry); else index.delete(entry); };

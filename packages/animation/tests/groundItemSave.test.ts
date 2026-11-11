@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import { readFile } from 'node:fs/promises';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -31,7 +32,7 @@ function setup() {
   });
   const inventory = createPickupInventory();
   const pickup = vi.spyOn(inventory, 'GiveItem');
-  const player = new THREE.Group();
+  const player = withEntity(new THREE.Group(), 'wilson');
   const worldEvents = new EventEmitter<WorldEvents>();
   const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player,

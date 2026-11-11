@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { expect, it, vi } from 'vitest';
 import { GameTimeScheduler } from '../../prefab/src/components/gameTimeScheduler';
 import { ComponentTimer } from '../../prefab/src/components/timer';
@@ -36,11 +35,10 @@ it('preserves paused regrowth through restoration and applies spring growth only
   let spring = false;
   const timing = { scheduler, growthDuration: (time: number) => time * (spring ? .75 : 1) };
   const { instance, display } = createEmptyEntity('grass');
-  const model = display.model;
   instance.addTag('plant'); instance.addTag('renewable');
   const onRegen = vi.fn(), order: string[] = [];
   let pickable: Pickable;
-  pickable = new Pickable(model, 'cutgrass', 1440, 1, () => {
+  pickable = new Pickable(instance, 'cutgrass', 1440, 1, () => {
     expect(pickable.canBePicked).toBe(true);
     order.push('prefab');
   }, onRegen, undefined, timing);
@@ -64,7 +62,7 @@ it('preserves paused regrowth through restoration and applies spring growth only
   expect(saved).toEqual({ picked: true, paused: true, regrowSeconds: 1340 });
   pickable.dispose();
   stopPicked(); instance.remove(); display.dispose();
-  const restored = new Pickable(new THREE.Group(), 'cutgrass', 1440, 1, undefined, onRegen, saved, timing);
+  const restored = new Pickable(createEmptyEntity('grass').instance, 'cutgrass', 1440, 1, undefined, onRegen, saved, timing);
   spring = true;
   restored.resume();
   expect(restored.remainingSeconds).toBe(1005);
@@ -92,7 +90,7 @@ it('restores a barren grass timer saved by pickable.lua and settles it at its de
   const scheduler = new GameTimeScheduler();
   const onRegen = vi.fn();
   const saved = { picked: true, transplanted: true, cyclesLeft: 0, maxCycles: 20, regrowSeconds: 1059 };
-  const pickable = new Pickable(new THREE.Group(), 'cutgrass', 1440, 1, undefined, onRegen, saved, { scheduler });
+  const pickable = new Pickable(createEmptyEntity('grass').instance, 'cutgrass', 1440, 1, undefined, onRegen, saved, { scheduler });
   expect(pickable.IsBarren()).toBe(true);
   expect(pickable.canBePicked).toBe(false);
   expect(pickable.exportState()).toEqual(saved);

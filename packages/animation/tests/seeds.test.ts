@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -25,7 +26,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
-function farmSetup(player = new THREE.Group()) {
+function farmSetup(player = withEntity(new THREE.Group(), 'wilson')) {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const turf = new TurfMap(96);

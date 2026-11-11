@@ -17,7 +17,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import type { GroundItemDefinition } from '../../prefab/src/groundPrefab';
 import { bindTestWorld, drawn } from './worldContentFixture';
-import { modelHasTag, prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -127,7 +127,7 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     env.sources.snowLevel.set(0); await settle();
     expect(meshes(shrub)[0].geometry.drawRange.count).toBeLessThan(snowyCount);
     const target = workTargets('MINE')[0];
-    for (let i = 0; i < 8 && !modelHasTag(shrub, 'NOCLICK'); i++) performToolWork('MINE', target.entity, {});
+    for (let i = 0; i < 8 && !prefabInstance(shrub)!.hasTag('NOCLICK'); i++) performToolWork('MINE', target.entity, {});
     expect(prefabInstance(shrub)!.listTags()).toContain('NOCLICK');
     env.awake.set(false); await settle();
     expect(prefabInstance(shrub)!.isRemoved).toBe(false);

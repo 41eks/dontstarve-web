@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
@@ -31,7 +32,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function setup(inventory = createPickupInventory()) {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
-  const scene = new THREE.Scene(), player = new THREE.Group();
+  const scene = new THREE.Scene(), player = withEntity(new THREE.Group(), 'wilson');
   const camera = new THREE.PerspectiveCamera(), renderer = { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer;
   const ground = new ItemWorldFixture(scene, camera,
     renderer, '/dst/data/databundles/images.zip',

@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
@@ -90,7 +91,7 @@ it('runs a ground-only record for 64 seconds through its machine and releases ea
 it('preserves a loaded skinned record across reskin, pickup, inventory transfer, drop and save/load; rejects failed trades', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(
     new URL(`../../../public/dst/data/${url.slice('/dst/data/'.length)}`, import.meta.url))));
-  const scene = new THREE.Scene(), player = new THREE.Group();
+  const scene = new THREE.Scene(), player = withEntity(new THREE.Group(), 'wilson');
   const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
   vi.stubGlobal('window', new EventTarget());
   const from = inventorySlotAddress(0), to = inventorySlotAddress(1), cursor = cursorSlotAddress();

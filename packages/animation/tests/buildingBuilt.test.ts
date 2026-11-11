@@ -9,7 +9,6 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { managedBuildings } from './managedBuildings';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import { modelHasTag } from '../../prefab/src/prefabInstance';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
 import { miniMapEntities } from '../../map/src/minimapEntities';
@@ -130,7 +129,7 @@ it('gives placed and restored chests a map icon at their foot and releases it wi
       components: { building: {}, container: { slotCount: 9, slots: [] } } });
     await settle();
     expect(icons().map(({ position }) => [position.x, position.z])).toEqual([[3, 4], [-12, 24]]);
-    expect(modelHasTag(restored, 'chest')).toBe(true);
+    expect(prefabInstance(restored)!.hasTag('chest')).toBe(true);
     expect(prefabInstance(world.scene.children[0])!.deconstructionTarget!.removeOne()).toBe(true);
     await settle();
     expect(built.enabled).toBe(false);

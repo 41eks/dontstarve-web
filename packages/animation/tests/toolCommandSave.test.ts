@@ -1,3 +1,4 @@
+import { withEntity } from './entityFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -20,7 +21,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, positions, quantities and uses', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createPickupInventory();
-  const scene = new THREE.Scene(), player = new THREE.Group();
+  const scene = new THREE.Scene(), player = withEntity(new THREE.Group(), 'wilson');
   player.position.set(3, 0, -6);
   const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',

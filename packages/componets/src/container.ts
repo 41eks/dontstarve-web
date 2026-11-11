@@ -1,6 +1,5 @@
 import { batch, createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type GetWatchWorldContent, type ReadonlySignal } from '../../signals/src';
-import { modelHasTag } from '../../prefab/src/prefabInstance';
-import type { Object3D, Vector3 } from 'three';
+import type { Vector3 } from 'three';
 
 /** Logical scene-container hosts/openers. Bare transform holders remain supported by detached inventories. */
 interface ContainerEntity {
@@ -46,8 +45,8 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   readonly inst: object;
   /** Tags belong to the holder, not to its stored items. */
   hasTag(tag: string): boolean {
-    const inst = this.inst as { hasTag?(tag: string): boolean; tags?: Set<string>; userData?: object };
-    return inst.hasTag?.(tag) ?? inst.tags?.has(tag) ?? (inst.userData ? modelHasTag(inst as Object3D, tag) : false);
+    const inst = this.inst as { hasTag?(tag: string): boolean; tags?: Set<string> };
+    return inst.hasTag?.(tag) ?? inst.tags?.has(tag) ?? false;
   }
   /** containers.lua params[prefab].type: a doer keeps one open container of each type. */
   type?: string;

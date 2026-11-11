@@ -16,8 +16,8 @@ afterEach(() => vi.unstubAllGlobals());
 it('ground target blocking uses source tags and ring radii, including blockers whose centre is outside the query range', () => {
   const scene = new THREE.Scene(), model = withEntity(new THREE.Group(), 'test-groundhole', ['blocker']);
   model.position.set(24, 0, 0);
-  Object.assign(model.userData, { ground_target_blocker_radius: 24, _groundhole_innerradius: 3 });
   const entity = registerActionEntity(prefabInstance(model)!); scene.add(model);
+  entity.ground_target_blocker_radius = 24; entity._groundhole_innerradius = 3;
   const query = placementEntities(scene), point = new THREE.Vector3(0, 0, 0);
   try {
     expect(isGroundTargetBlocked(query, point, 1.5)).toBe(false);

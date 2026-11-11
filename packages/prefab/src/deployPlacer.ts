@@ -119,7 +119,6 @@ export class DeployPlacer {
       { name: definition.animation, billboard: true }, 'PlantPlacer');
     const model = entity.display.model, { instance } = entity;
     this.tagPlacer(instance);
-    model.userData.placer = true;
     instance.sprite.setVisible(false);
     this.placer = { instance, display: entity.display, visible: false, place: (point, valid) => {
       instance.copyPosition(point);
@@ -136,7 +135,8 @@ export class DeployPlacer {
   }
 
   private tagPlacer(instance: Placer['instance']): void {
-    for (const tag of ['FX', 'NOCLICK']) instance.addTag(tag);
+    // prefabutil.lua MakePlacer and gridplacer.lua tag their placer "placer".
+    for (const tag of ['FX', 'NOCLICK', 'placer']) instance.addTag(tag);
     instance.persists = false;
     instance.sprite.setLightOverride(1);
   }

@@ -4,15 +4,15 @@ import type { ActionWorldContext as WorldContext } from './actionContext.ts';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
 import { prepareSpatialGeometryBounds, spatialAttributeVersion } from '../../animation/src/spatialBounds.ts';
 import { isInstancedSpriteProxy } from '../../animation/src/spriteRaycast.ts';
-import { modelHasTag } from '../../prefab/src/prefabInstance';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 /** Ten percent of the sprite's size on each outer edge, used only after exact picking misses. */
 const SPRITE_PICK_SCALE = 1.2;
 
 function mouseVisible(object: THREE.Object3D): boolean {
     if (!object.visible && !isInstancedSpriteProxy(object)) return false;
-    const inst = findActionEntity(object);
-    return !(inst?.hasTag('NOCLICK') ?? modelHasTag(object, 'NOCLICK'));
+    const inst = findActionEntity(object) ?? prefabInstance(object);
+    return !inst?.hasTag('NOCLICK');
 }
 
 interface BoundsPart {
