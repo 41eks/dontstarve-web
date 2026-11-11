@@ -177,7 +177,9 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     this.model.remove(this.placeholder);
     this.model.add(sprite.model);
     if (this.facing) sprite.faceCamera(this.facing);
-    registerSpriteRenderGroup(this.model, sprite.model.children[0] as THREE.Group);
+    const renderGroup = sprite.model.children[0];
+    if (!(renderGroup instanceof THREE.Group)) throw new Error(`${this.model.name || 'Sprite'} has no render group to sort`);
+    registerSpriteRenderGroup(this.model, renderGroup);
     this.attachHook?.(sprite);
     this.play();
   }
