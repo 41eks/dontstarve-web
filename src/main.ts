@@ -317,8 +317,7 @@ function saveGame(): Promise<void> {
     const json = serializeSave(initialSave, {
       ...getSaveState(), playerWortox: playerInstance.wortox?.OnSave(), inventory: inventory.exportState(), playerStats: getPlayerStats(), playerGhost: playerGhostMode.peek(),
     }, SAVE_CATALOG, lastSavedSnapshotId);
-    await downloadClusterSave(json, initialSave.world.prefab);
-    lastSavedSnapshotId = (JSON.parse(json) as typeof initialSave).snapshot.id;
+    lastSavedSnapshotId = (await downloadClusterSave(json, initialSave.world.prefab)).snapshot.id;
   }));
   pendingSave = save.catch(() => {});
   return save;

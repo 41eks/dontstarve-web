@@ -1,5 +1,8 @@
 import { strToU8, zipSync } from 'fflate';
 import type { SaveDocument } from './types';
+import { SAVE_CATALOG } from './catalog';
+import { deserializeSave } from './deserialize';
+import { field } from './validation';
 
 const SOURCE_ROOT = '../../public/saves/';
 // Only the glob keys are used (Vite then emits no imports): public files are fetched from the base path, not imported.
@@ -8,7 +11,10 @@ const clusterFiles = Object.fromEntries(Object.keys(import.meta.glob('../../publ
 
 /** Preserve every cluster file, replacing the active world's shard with its validated snapshot. */
 export async function createClusterSaveZip(json: string, prefab: SaveDocument['world']['prefab']): Promise<Uint8Array<ArrayBuffer>> {
-  const document = JSON.parse(json) as SaveDocument;
+  return clusterSaveZip(deserializeSave(json, SAVE_CATALOG), prefab);
+}
+
+async function clusterSaveZip(document: SaveDocument, prefab: SaveDocument['world']['prefab']): Promise<Uint8Array<ArrayBuffer>> {
   const shard = prefab === 'cave' ? 'Caves' : 'Master';
   const activePath = `Cluster_1/${shard}.json`;
   const sourceSessionId = document.session.playerFile?.match(/^(?:Master|Caves)\/save\/session\/([^/]+)\//)?.[1]
@@ -24,9 +30,9 @@ export async function createClusterSaveZip(json: string, prefab: SaveDocument['w
   const indexSource = clusterFiles['Cluster_1/session.json'];
   const indexResponse = indexSource === undefined ? undefined : await fetch(indexSource);
   if (indexResponse && !indexResponse.ok) throw new Error(`Unable to save ${indexPath}: HTTP ${indexResponse.status}`);
-  const oldIndex = indexResponse ? await indexResponse.json() as { snapshots?: unknown[] } : {};
+  const oldSnapshots = indexResponse ? field(await indexResponse.json(), 'snapshots') : undefined;
   const indexBytes = strToU8(`${JSON.stringify({ activeShard: shard,
-    snapshots: [...(oldIndex.snapshots ?? []), { shard, sessionId: sourceSessionId,
+    snapshots: [...Array.isArray(oldSnapshots) ? oldSnapshots : [], { shard, sessionId: sourceSessionId,
       snapshotId: document.snapshot.id, worldFile: snapshotFile, playerFile, migration: null }] }, null, 2)}\n`);
   const entries = await Promise.all(Object.entries(clusterFiles).map(async ([path, url]) => {
     if (path === activePath) return [path, activeBytes] as const;
@@ -40,8 +46,10 @@ export async function createClusterSaveZip(json: string, prefab: SaveDocument['w
     [playerPath]: playerBytes, [indexPath]: indexBytes });
 }
 
-export async function downloadClusterSave(json: string, prefab: SaveDocument['world']['prefab']): Promise<void> {
-  const bytes = await createClusterSaveZip(json, prefab);
+/** Downloads the cluster with this save as its active shard; returns the saved document. */
+export async function downloadClusterSave(json: string, prefab: SaveDocument['world']['prefab']): Promise<SaveDocument> {
+  const saved = deserializeSave(json, SAVE_CATALOG);
+  const bytes = await clusterSaveZip(saved, prefab);
   const url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
   const link = document.createElement('a');
   link.href = url;
@@ -54,4 +62,5 @@ export async function downloadClusterSave(json: string, prefab: SaveDocument['wo
     // Let the browser start reading the object URL before releasing it.
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
+  return saved;
 }

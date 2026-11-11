@@ -4,7 +4,7 @@ import {
   type ArchiveSpriteDefinition,
 } from '@dontstarve-web/animation/archiveSprite';
 import type { ItemEntity, InventoryItemSpec, InventorySkinSpec } from '@dontstarve-web/inventory';
-import type { GroundTileName } from './groundTiles';
+import { GROUND_TILE_DEFINITIONS, type GroundTileName } from './groundTiles';
 import catalog from './groundItems.json' with { type: 'json' };
 import type { ItemPrefabWorld } from './groundPrefab';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
@@ -22,6 +22,10 @@ export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
   readonly atlas: string;
   /** tiledefs.lua's terrain key, independent of the inventory and ground art. */
   readonly groundTile?: GroundTileName;
+  /** The source item has the molebait tag and a bait component. */
+  readonly moleBait?: boolean;
+  /** edible.hungervalue of an ELEMENTAL food. */
+  readonly elementalFoodHunger?: number;
   readonly tags?: readonly string[];
   readonly scale?: number;
   readonly ground?: boolean;
@@ -29,13 +33,40 @@ export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
   readonly skinArchives: Readonly<Record<string, string>>;
 }
 
-// The importer validates four-component colour tuples; JSON infers plain arrays.
-export const GROUND_ITEM_DEFINITIONS = catalog.items as unknown as Readonly<Record<string, GroundItemAssetDefinition>>;
+/**
+ * A catalog entry as JSON types it: the tile name is a plain string and the colour a plain array until they are
+ * checked against tiledefs and the four channels.
+ */
+type GroundItemCatalogEntry = Omit<GroundItemAssetDefinition, 'groundTile' | 'multColour'>
+  & { readonly groundTile?: string; readonly multColour?: readonly number[] };
+const isGroundTileName = (name: string): name is GroundTileName => Object.hasOwn(GROUND_TILE_DEFINITIONS, name);
+function groundTileName(id: string, name: string): GroundTileName {
+  if (!isGroundTileName(name)) throw new Error(`${id}: unknown groundTile ${name}`);
+  return name;
+}
+function rgba(id: string, colour: readonly number[]): readonly [number, number, number, number] {
+  if (colour.length !== 4) throw new Error(`${id}: multColour needs four channels`);
+  const [r, g, b, a] = colour;
+  return [r, g, b, a];
+}
+const CATALOG_ITEMS: Readonly<Record<string, GroundItemCatalogEntry>> = catalog.items;
+export const GROUND_ITEM_DEFINITIONS: Readonly<Record<string, GroundItemAssetDefinition>> = Object.fromEntries(
+  Object.entries(CATALOG_ITEMS).map(([id, { groundTile, multColour, ...item }]) => [id, {
+    ...item,
+    ...groundTile === undefined ? {} : { groundTile: groundTileName(id, groundTile) },
+    ...multColour === undefined ? {} : { multColour: rgba(id, multColour) },
+  }]));
 /** Additional art shares the ground factory without registering inventory/gameplay support. */
 export type GroundArtDefinition = Omit<GroundItemAssetDefinition, 'icon' | 'atlas'> & { readonly icon?: string; readonly atlas?: string };
-export const GROUND_ART_DEFINITIONS = { ...GROUND_ITEM_DEFINITIONS, ...catalog.staticItems } as unknown as Readonly<Record<string, GroundArtDefinition>>;
+const CATALOG_STATIC_ITEMS: Readonly<Record<string, Omit<GroundArtDefinition, 'multColour'> & { readonly multColour?: readonly number[] }>> = catalog.staticItems;
+export const GROUND_ART_DEFINITIONS: Readonly<Record<string, GroundArtDefinition>> = {
+  ...GROUND_ITEM_DEFINITIONS,
+  ...Object.fromEntries(Object.entries(CATALOG_STATIC_ITEMS).map(([id, { multColour, ...art }]) => [id, {
+    ...art, ...multColour === undefined ? {} : { multColour: rgba(id, multColour) },
+  }])),
+};
 export const GROUND_ART_SPAWN_IDS = Object.keys(catalog.staticItems);
-export const GROUND_ART_VARIANTS = catalog.staticVariants as Readonly<Record<string, Readonly<Record<string, Partial<ArchiveSpriteDefinition>>>>>;
+export const GROUND_ART_VARIANTS: Readonly<Record<string, Readonly<Record<string, Partial<ArchiveSpriteDefinition>>>>> = catalog.staticVariants;
 export const GROUND_ITEM_DISPLAY_SPECS = Object.fromEntries(Object.entries(GROUND_ITEM_DEFINITIONS)
   .map(([id, { name, icon, atlas }]) => [id, { name, icon, atlas }]));
 export const GROUND_ITEM_SKIN_SPECS: Readonly<Record<string, InventorySkinSpec>> = catalog.skinSpecs;

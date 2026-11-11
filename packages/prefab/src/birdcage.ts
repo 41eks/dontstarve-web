@@ -57,7 +57,7 @@ const INVALID_FOODS: ReadonlySet<string> = new Set(['bird_egg', 'bird_egg_cooked
 const FEED_BIRD_POOP_CHANCE = .33;
 const ANIMATION_PERIOD = 6;
 
-const ITEM_SOURCES = catalog.items as unknown as Readonly<Record<string, { readonly source: string }>>;
+const ITEM_SOURCES: Readonly<Record<string, { readonly source: string }>> = catalog.items;
 
 /** edible.foodtype == FOODTYPE.MEAT: prefabs/meats.lua items and cooked recipes with a MEAT primary type. */
 export function isMeatFood(prefab: string): boolean {

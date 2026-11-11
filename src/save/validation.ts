@@ -10,6 +10,12 @@ export function object(value: unknown, path: string, keys: readonly string[]): R
   return value as Record<string, unknown>;
 }
 
+/** A JSON object's own field, or undefined when the value is not an object or has no such field. */
+export function field(value: unknown, key: string): unknown {
+  if (value === null || typeof value !== 'object' || Array.isArray(value) || !Object.hasOwn(value, key)) return undefined;
+  return Reflect.get(value, key);
+}
+
 export function array(value: unknown, path: string, max = 10_000): unknown[] {
   if (!Array.isArray(value) || value.length > max) fail(path, `expected an array of at most ${max} entries`);
   return value;

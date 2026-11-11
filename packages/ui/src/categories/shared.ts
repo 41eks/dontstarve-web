@@ -39,7 +39,7 @@ export interface InventoryProductSpec {
   readonly atlas?: string;
 }
 
-const recipeData = recipeDataJson as unknown as RecipeData;
+const recipeData: RecipeData = recipeDataJson;
 const recipesById = new Map(recipeData.recipes.map((recipe) => [recipe.name, recipe]));
 
 export { recipeData };

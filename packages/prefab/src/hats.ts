@@ -44,8 +44,37 @@ export interface HatDefinition extends HatArtDefinition {
   readonly skinEquipModes: Readonly<Record<string, HatEquipMode>>;
 }
 
-export const HAT_DEFINITIONS: Readonly<Record<string, HatDefinition>> = catalog.hats as unknown as
-  Readonly<Record<string, HatDefinition>>;
+/** A catalog entry as JSON types it: equip modes are plain strings until they are checked. */
+type HatActivation = NonNullable<HatDefinition['equip']['activated']>;
+type HatCatalogEntry = Omit<HatDefinition, 'equip' | 'skinEquipModes'> & {
+  readonly equip: Omit<HatDefinition['equip'], 'mode' | 'activated'> & {
+    readonly mode: string;
+    readonly activated?: Omit<HatActivation, 'light'> & { readonly light: Omit<PrefabLocalLight, 'colour'> & { readonly colour: readonly number[] } };
+  };
+  readonly skinEquipModes: Readonly<Record<string, string>>;
+};
+function rgb(hat: string, colour: readonly number[]): PrefabLocalLight['colour'] {
+  if (colour.length !== 3) throw new Error(`${hat}: light colour needs three channels`);
+  const [r, g, b] = colour;
+  return [r, g, b];
+}
+const HAT_EQUIP_MODES: readonly HatEquipMode[] = ['normal', 'opentop', 'fullhelm'];
+const isHatEquipMode = (mode: string): mode is HatEquipMode => HAT_EQUIP_MODES.some(known => known === mode);
+function hatEquipMode(hat: string, mode: string): HatEquipMode {
+  if (!isHatEquipMode(mode)) throw new Error(`${hat}: unknown equip mode ${mode}`);
+  return mode;
+}
+const CATALOG_HATS: Readonly<Record<string, HatCatalogEntry>> = catalog.hats;
+export const HAT_DEFINITIONS: Readonly<Record<string, HatDefinition>> = Object.fromEntries(
+  Object.entries(CATALOG_HATS).map(([id, { equip: { mode, activated, ...equip }, skinEquipModes, ...hat }]) => [id, {
+    ...hat,
+    equip: {
+      ...equip,
+      mode: hatEquipMode(id, mode),
+      ...activated ? { activated: { ...activated, light: { ...activated.light, colour: rgb(id, activated.light.colour) } } } : {},
+    },
+    skinEquipModes: Object.fromEntries(Object.entries(skinEquipModes).map(([skin, skinMode]) => [skin, hatEquipMode(`${id} ${skin}`, skinMode)])),
+  }]));
 export const HAT_IDS: readonly string[] = Object.keys(HAT_DEFINITIONS);
 export function isHatId(itemId: string): boolean {
   return Object.hasOwn(HAT_DEFINITIONS, itemId);

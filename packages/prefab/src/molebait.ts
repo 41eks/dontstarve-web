@@ -5,12 +5,12 @@ import { Bait } from '../../componets/src/bait';
 import type { EntityTask } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { MoleBaitTarget } from '../../stategraphs/src/moleactions';
-import catalog from './groundItems.json';
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import type { Vector3 } from 'three';
 
 /** The source catalog records actual molebait + bait components, including minerals and trinkets. */
 export function configureMoleBaitEntity(entity: ItemEntity): void {
-  const definition = (catalog.items as Record<string, { moleBait?: boolean; elementalFoodHunger?: number }>)[entity.prefab];
+  const definition = GROUND_ITEM_DEFINITIONS[entity.prefab];
   if (definition?.elementalFoodHunger !== undefined && !entity.components.edible) {
     const edible = addComponent(entity, 'edible', Edible, () => entity.components.perishable.stage.peek());
     edible.hungervalue = definition.elementalFoodHunger; entity.addTag('edible_ELEMENTAL');

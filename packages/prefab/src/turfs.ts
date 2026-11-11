@@ -2,6 +2,7 @@ import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Deployable } from '../../componets/src/deployable';
 import type { GroundTileName } from './groundTiles';
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import catalog from './groundItems.json';
 import { WORLD_TILES } from './turfMap';
 import { TILE_SIZE } from './tile';
@@ -9,7 +10,7 @@ import { PlaySound } from './sound';
 import { configureBurnableItemEntity } from './burnableItems';
 
 export function turfTileName(prefab: string): GroundTileName | undefined {
-  return (catalog.items as Readonly<Record<string, { groundTile?: GroundTileName }>>)[prefab]?.groundTile;
+  return GROUND_ITEM_DEFINITIONS[prefab]?.groundTile;
 }
 
 /** componentutil.lua HandleDugGround resolves loot through GroundTiles.turf. */
