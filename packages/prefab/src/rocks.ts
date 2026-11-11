@@ -196,8 +196,8 @@ SetSharedLootTable('rock_moon_glass', [['moonglass', 1], ['moonglass', 1], ['moo
 const moonglassRockBank = (type: MoonglassRockType): string => type === 1 ? 'moonglass_rock' : `moonglass_rock${type}`;
 
 /** The saved rocks' banks, so a scan of the save warms their decoders; an unsaved type is only rolled at spawn. */
-export function moonglassRockArchives(records: readonly unknown[]) {
-  const types = new Set((records as { components?: { rock_type?: MoonglassRockType } }[]).flatMap(record => record.components?.rock_type ?? []));
+export function moonglassRockArchives(records: readonly { readonly components?: { readonly rock_type?: MoonglassRockType } }[]) {
+  const types = new Set(records.flatMap(record => record.components?.rock_type ?? []));
   return [...types].map(type => ({ animation: `${moonglassRockBank(type)}.zip`, build: `${moonglassRockBank(type)}.zip` }));
 }
 

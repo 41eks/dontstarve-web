@@ -402,7 +402,7 @@ function OnLoseShelfItem(inst: BirdcageInstance): void {
 function OnSave(inst: BirdcageInstance, data: PlacementSaveRecord['components']): void {
     SaveBuildingSkin(inst, data);
     // The slot's item is saved in the cage's own record, as the save format declares it.
-    delete (data as { inventory?: unknown }).inventory;
+    delete data.inventory;
     const occupant = GetBird(inst);
     occupant?.flush();
     const item = inst.components.inventory.GetItemInSlot(1);

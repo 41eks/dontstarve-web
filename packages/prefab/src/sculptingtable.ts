@@ -123,7 +123,7 @@ function onturnoff(inst: SculptingTableInstance): void {
 /** onsave: data.itemname = caninteractwith and product or nil. The pickable's own record stays out of the save. */
 function onsave(inst: SculptingTableInstance, data: PlacementSaveRecord['components']): void {
     SaveBuildingSkin(inst, data);
-    delete (data as { pickable?: unknown }).pickable;
+    delete data.pickable;
     const { pickable } = inst.components;
     if (pickable.canInteractWith && pickable.product) data.sculptingtable = { itemname: pickable.product };
 }

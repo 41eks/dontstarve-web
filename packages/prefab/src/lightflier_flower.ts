@@ -243,20 +243,20 @@ function OnEntityWake(inst: LightFlierFlowerInstance, awake: boolean): void {
   OnUpdateLight(inst);
 }
 
-function OnSave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-  const flower = inst as LightFlierFlowerInstance, { pickable, childspawner, timer } = flower.components;
+function OnSave(flower: LightFlierFlowerInstance, data: PlacementSaveRecord['components']): void {
+  const { pickable, childspawner, timer } = flower.components;
   const children = childspawner.OnSave();
   children.childrenoutside.push(...flower._pendingchildren);
   const recharge = timer.GetTimeLeft('recharge'), turnoff = timer.GetTimeLeft('turnoff');
   data.lightflierFlower = { variant: flower.plantname, lightState: flower.light_state, ...pickable.exportState(), childspawner: children,
     ...recharge === undefined ? {} : { rechargeSeconds: recharge }, ...turnoff === undefined ? {} : { turnoffSeconds: turnoff } };
   // The record keeps these components' state inside lightflierFlower.
-  delete data.pickable; delete (data as Record<string, unknown>).childspawner; delete data.timer;
+  delete data.pickable; delete data.childspawner; delete data.timer;
 }
 
 /** onload_single and OnLoadPostPass: the settled clip of the saved state, then the children outside as they load. */
-function OnLoad(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-  const flower = inst as LightFlierFlowerInstance, saved = data.lightflierFlower;
+function OnLoad(flower: LightFlierFlowerInstance, data: PlacementSaveRecord['components']): void {
+  const saved = data.lightflierFlower;
   if (!saved) return;
   const { pickable, childspawner, timer } = flower.components;
   flower.plantname = saved.variant;

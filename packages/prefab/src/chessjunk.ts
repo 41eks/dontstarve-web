@@ -89,16 +89,15 @@ function OnHit(inst: ChessJunkInstance): void {
   inst.SoundEmitter!.PlaySound('dontstarve/common/lightningrod');
 }
 
-function OnSave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-  const pile = inst as ChessJunkInstance;
+function OnSave(pile: ChessJunkInstance, data: PlacementSaveRecord['components']): void {
   if (!pile.repaired) return;
   data.chessJunk = { repaired: true,
     ...pile.repairerid === undefined ? {} : { repairerid: pile.repairerid },
     ...pile.repairerchar === undefined ? {} : { repairerchar: pile.repairerchar } };
 }
 
-function OnLoad(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-  const pile = inst as ChessJunkInstance, saved = data.chessJunk;
+function OnLoad(pile: ChessJunkInstance, data: PlacementSaveRecord['components']): void {
+  const saved = data.chessJunk;
   if (!saved?.repaired) return;
   pile.components.workable.SetWorkLeft(MAXHITS);
   OnRepaired(pile);

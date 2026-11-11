@@ -142,7 +142,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
   /** The record keeps the inventory and spawner saves together under `molehill`. */
   OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const { spawner, inventory } = this.components;
-    delete (data as { inventory?: unknown }).inventory;
+    delete data.inventory;
     data.molehill = { items: inventory.OnSave(),
       ...(spawner.IsOccupied() ? { child: spawner.child!.entity.snapshot() }
         : spawner.child && !spawner.child.isDead() ? { childid: spawner.child.id }

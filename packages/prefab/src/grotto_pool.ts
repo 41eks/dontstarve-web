@@ -234,8 +234,8 @@ export class GrottoGlassInstance extends PrefabInstance {
 
     // The project's save keeps workable's OnSave under `grottoGlass`.
     this.OnSave = (_inst, data) => {
-      const saved = data as Record<string, unknown>, work = saved.workable as { workleft?: number } | undefined;
-      delete saved.workable;
+      const work = data.workable;
+      delete data.workable;
       if (work?.workleft !== undefined) data.grottoGlass = { workleft: work.workleft };
     };
     this.OnLoad = (_inst, data) => { if (data.grottoGlass) workable.OnLoad({ workleft: data.grottoGlass.workleft }); };

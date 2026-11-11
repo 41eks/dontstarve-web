@@ -161,6 +161,12 @@ export function GetTaskRemaining(task: EntityTask | undefined, now: number): num
   return next === undefined || next < now ? -1 : next - now;
 }
 
+/** A component as EntityScript's persist loops see it: OnSave and OnLoad looked up by the component's name. */
+interface PersistentComponent { OnSave?(): unknown; OnLoad?(saved: unknown): void }
+function persistentComponent(component: unknown): PersistentComponent | undefined {
+  return component !== null && typeof component === 'object' ? component : undefined;
+}
+
 /**
  * The logical entity behind a placed prefab: identity, save record, skin, persistence, lifecycle `status` and the
  * `sprite` json. Its Transform owns the stable root borrowed by its display. A `PrefabDisplay` subscribes to `status` and
@@ -218,8 +224,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   /** EntityScript:GetPersistData: each component's OnSave under its name, then inst.OnSave. */
   GetPersistData(): PlacementSaveRecord['components'] {
     const data: Record<string, unknown> = {};
-    for (const [name, component] of Object.entries(this.components) as [string, { OnSave?(): unknown } | undefined][]) {
-      const saved = component?.OnSave?.();
+    for (const [name, component] of Object.entries(this.components)) {
+      const saved = persistentComponent(component)?.OnSave?.();
       if (saved && typeof saved === 'object' && Object.keys(saved).length) data[name] = saved;
     }
     this.OnSave?.(this, data);
@@ -227,8 +233,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   }
   /** EntityScript:SetPersistData: each saved component's OnLoad, then inst.OnLoad. */
   SetPersistData(data: PlacementSaveRecord['components']): void {
-    const components = this.components as Record<string, { OnLoad?(saved: unknown): void } | undefined>;
-    for (const [name, saved] of Object.entries(data)) components[name]?.OnLoad?.(saved);
+    for (const [name, saved] of Object.entries(data)) persistentComponent(Reflect.get(this.components, name))?.OnLoad?.(saved);
     this.OnLoad?.(this, data);
   }
   private readonly removedState = createSignal(false);

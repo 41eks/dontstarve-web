@@ -152,8 +152,8 @@ export class FirePitInstance extends PrefabInstance {
 
 /** The fueled component's record stays nested under `firepit`, the shape existing saves hold. */
 function onsave(inst: FirePitInstance, data: PlacementSaveRecord['components']): void {
-    const components = data as { fueled?: FueledSave }, { fueled } = components;
-    delete components.fueled;
+    const { fueled } = data;
+    delete data.fueled;
     if (fueled || inst.queued_charcoal) data.firepit = { ...(fueled ? { fueled } : {}), ...(inst.queued_charcoal ? { queued_charcoal: true as const } : {}) };
 }
 

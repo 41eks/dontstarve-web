@@ -324,9 +324,8 @@ function UpdateWorkState(inst: MoonbaseInstance): void {
 /** onsave: the workable's record and the prefab's staff and timers, which stay nested under `moonbase`. */
 function onsave(inst: MoonbaseInstance, data: PlacementSaveRecord['components']): void {
   SaveBuildingSkin(inst, data);
-  const saved = data as { timer?: unknown; pickable?: unknown };
-  delete saved.timer;
-  delete saved.pickable;
+  delete data.timer;
+  delete data.pickable;
   const { timer, workable } = inst.components;
   data.workable = { workleft: workable.workleft.peek(), maxwork: workable.maxwork.peek() };
   const staff = inst._staffinst;

@@ -135,15 +135,15 @@ function onlightning(inst: LightningRodInstance): void {
     inst.lightningRod.setcharged(3);
 }
 
-function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-    const rod = (inst as LightningRodInstance).lightningRod;
+function onsave(inst: LightningRodInstance, data: PlacementSaveRecord['components']): void {
+    const rod = inst.lightningRod;
     if (rod.charged) data.lightningrod = { charged: true, chargeleft: rod.chargeleft! };
 }
 
 /** A charged save restores its remaining charge (and zaps once, as setcharged does). */
-function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: LightningRodInstance, data: PlacementSaveRecord['components']): void {
     const saved = data.lightningrod;
-    if (saved?.charged && saved.chargeleft > 0) (inst as LightningRodInstance).lightningRod.setcharged(saved.chargeleft);
+    if (saved?.charged && saved.chargeleft > 0) inst.lightningRod.setcharged(saved.chargeleft);
 }
 
 /** lightningrod.lua fn(), as far as it is ported: the charge, its battery and the hammer workable. */

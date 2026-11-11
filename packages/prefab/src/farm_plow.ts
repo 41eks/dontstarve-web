@@ -223,8 +223,8 @@ function StartUp(inst: FarmPlowInstance): void {
   inst.startup_task = undefined;
 }
 
-function plowOnSave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-  const plow = inst as FarmPlowInstance, { timer } = plow.components;
+function plowOnSave(plow: FarmPlowInstance, data: PlacementSaveRecord['components']): void {
+  const { timer } = plow.components;
   const drilling = timer.TimerExists('drilling');
   data.farmPlow = {
     phase: plow.folding ? 'collapse' : drilling ? 'drill_loop' : 'drill_pre',
@@ -236,8 +236,8 @@ function plowOnSave(inst: PrefabInstance, data: PlacementSaveRecord['components'
 }
 
 /** OnLoadPostPass: deploy_item, then a running drilling timer resumes DoDrilling in place of StartUp. */
-function plowOnLoad(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-  const plow = inst as FarmPlowInstance, saved = data.farmPlow;
+function plowOnLoad(plow: FarmPlowInstance, data: PlacementSaveRecord['components']): void {
+  const saved = data.farmPlow;
   if (!saved) return;
   plow.deploy_item_save_record = saved.deployItem ? { ...saved.deployItem } : null;
   if (saved.phase === 'drill_pre') return;
@@ -313,13 +313,12 @@ export function SetPlowing(inst: FarmSoilInstance, plow: PrefabInstance): void {
   inst.addTag('NOCLICK');
 }
 
-function soilOnSave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-  const soil = inst as FarmSoilInstance;
+function soilOnSave(soil: FarmSoilInstance, data: PlacementSaveRecord['components']): void {
   data.farmSoil = { broken: soil.hasTag('NOBLOCK'), ...soil._plow ? { plowId: String(soil._plow.entityId) } : {} };
 }
 
-function soilOnLoad(inst: PrefabInstance, data: PlacementSaveRecord['components'], world: FarmWorld): void {
-  const soil = inst as FarmSoilInstance, saved = data.farmSoil;
+function soilOnLoad(soil: FarmSoilInstance, data: PlacementSaveRecord['components'], world: FarmWorld): void {
+  const saved = data.farmSoil;
   if (saved?.broken) {
     OnBreak(soil);
     soil.sprite.playOnce('collapse_idle');

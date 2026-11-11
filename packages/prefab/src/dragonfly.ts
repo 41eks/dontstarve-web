@@ -18,6 +18,7 @@ import { DamageTracker, ExplosiveResist, GroundPounder, GroupTargeter, HealthTri
 import { DragonflyBrain } from '../../brains/src/dragonflybrain';
 import { DragonflyStateGraph } from '../../stategraphs/src/SGdragonfly';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
+import { clearPersistData } from './saveRecord';
 import { MakeFlyingGiantCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { Transform } from './transform';
 
@@ -105,7 +106,7 @@ export class DragonflyInstance extends PrefabInstance {
     this.OnSave = (_inst, data) => {
       const { timer: _timer, knownlocations: _locations, ...saved } = this.saved;
       const locations = knownlocations.OnSave(), cooldown = timer.OnSave()?.timers.groundpound_cd;
-      for (const key of Object.keys(data)) delete (data as Record<string, unknown>)[key];
+      clearPersistData(data);
       data.dragonfly = { ...structuredClone(saved), health: { ...this.saved.health, health: health.currenthealth },
         ...locations ? { knownlocations: locations } : {},
         ...cooldown ? { timer: { timers: { groundpound_cd: cooldown } } } : {} };

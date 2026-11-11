@@ -269,7 +269,7 @@ function fn(world: BeefaloWorld): BeefaloInstance {
   inst.SetStateGraph(() => inst.stategraph.sg);
   inst.SetBrain(() => new BeefaloBrain(brainInst(inst, world, random), WORLD_SCALE));
 
-  inst.OnLoad = onload as PrefabInstance['OnLoad'];
+  inst.OnLoad = onload;
   inst.onRemove(() => {
     inst.brain?.Stop();
     inst.stategraph.dispose();

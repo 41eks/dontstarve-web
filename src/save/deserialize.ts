@@ -41,8 +41,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   try { data = JSON.parse(text); } catch { fail('$', 'invalid JSON'); }
   if (sessionPlayer !== undefined) {
     if (!data || typeof data !== 'object' || Array.isArray(data)) fail('$', 'expected a save object');
-    const document = data as Record<string, unknown>;
-    document.players = { local: sessionPlayer };
+    data = { ...data, players: { local: sessionPlayer } };
   }
   let nodes = 0;
   const visit = (value: unknown, depth: number) => {

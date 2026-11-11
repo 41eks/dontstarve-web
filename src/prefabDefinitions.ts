@@ -70,25 +70,36 @@ import { componentParser, type PrefabComponentParser } from './save/prefabCompon
 import { fail } from './save/validation';
 import { array, integer, number, object, string } from './save/validation';
 
+/** The fields of a saved entity that choose its art, read while the save is scanned before restore. */
+export interface ArchiveSaveRecord {
+  readonly components?: {
+    readonly stack?: { readonly skinId?: string; readonly variant?: string };
+    readonly rock_type?: import('@dontstarve-web/prefab/rocks').MoonglassRockType;
+  };
+}
+
 /** Pure definitions are available before loading a save or constructing a scene. */
 export interface PrefabDefinition<Id extends string = string> {
   readonly prefabIds: readonly Id[];
   readonly debugSpawnIds: readonly Id[];
   readonly parseComponents: PrefabComponentParser;
-  /** Archives a saved instance needs, so a scan of the save can warm the decoders before restore. */
-  readonly archives: (prefabId: string, records: readonly unknown[]) => readonly AnimationArchiveSpec[];
+  /**
+   * Archives a saved instance needs, so a scan of the save can warm the decoders before restore. Method-typed, so a
+   * definition of particular IDs is still a definition of strings.
+   */
+  archives(prefabId: Id, records: readonly ArchiveSaveRecord[]): readonly AnimationArchiveSpec[];
 }
 
 export function definePrefabs<const Id extends string>(
   prefabIds: readonly Id[], parseComponents: PrefabComponentParser, debugSpawn: readonly Id[] | true = [],
-  archives: readonly AnimationArchiveSpec[] | ((prefabId: Id, records: readonly unknown[]) => readonly AnimationArchiveSpec[]) = [],
+  archives: readonly AnimationArchiveSpec[] | ((prefabId: Id, records: readonly ArchiveSaveRecord[]) => readonly AnimationArchiveSpec[]) = [],
 ): PrefabDefinition<Id> {
   const debugSpawnIds = debugSpawn === true ? prefabIds : debugSpawn;
   if (new Set(prefabIds).size !== prefabIds.length || new Set(debugSpawnIds).size !== debugSpawnIds.length) {
     throw new Error('Duplicate prefab ID in definition');
   }
   return Object.freeze({ prefabIds: Object.freeze([...prefabIds]), debugSpawnIds: Object.freeze([...debugSpawnIds]), parseComponents,
-    archives: (typeof archives === 'function' ? archives : () => archives) as PrefabDefinition['archives'] });
+    archives: typeof archives === 'function' ? archives : () => archives });
 }
 
 /** Base art only; skins load when applied. definitions.json supplies each archive's bank and build. */
@@ -101,9 +112,9 @@ function buildingArchives(prefab: string): readonly AnimationArchiveSpec[] {
 }
 
 /** An item record's art: its prefab's ground art, for the variant and skin its stack names. */
-function groundItemArchives(prefab: string, records: readonly unknown[]): readonly AnimationArchiveSpec[] {
+function groundItemArchives(prefab: string, records: readonly ArchiveSaveRecord[]): readonly AnimationArchiveSpec[] {
   const specs: AnimationArchiveSpec[] = [];
-  for (const record of records as { components?: { stack?: { skinId?: string; variant?: string } } }[]) {
+  for (const record of records) {
     const stack = record.components?.stack;
     const item = Object.hasOwn(GROUND_ART_DEFINITIONS, prefab)
       ? { ...GROUND_ART_DEFINITIONS[prefab], ...GROUND_ART_VARIANTS[prefab]?.[stack?.variant ?? ''] } : undefined;
@@ -493,7 +504,7 @@ export function prefabSaveParsers(definitions: readonly PrefabDefinition[]): Rea
 
 /** Archives for the prefab IDs present in a save; unlisted prefabs still load lazily when restored. */
 export function savedPrefabArchives(
-  definitions: readonly PrefabDefinition[], entities: Readonly<Record<string, readonly unknown[]>>,
+  definitions: readonly PrefabDefinition[], entities: Readonly<Record<string, readonly ArchiveSaveRecord[]>>,
 ): AnimationArchiveSpec[] {
   const archives = new Map<string, AnimationArchiveSpec>();
   for (const definition of definitions) {

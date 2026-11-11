@@ -34,6 +34,13 @@ export interface PlacementSaveRecord {
     sculptingtable?: { itemname: string };
     birdcage?: import('./birdcage').BirdcageSaveStateData;
     workable?: { workleft: number; maxwork: number };
+    /**
+     * Records GetPersistData writes under the component's name. The prefabs that own these components fold them into
+     * their own record and delete these before the save is written.
+     */
+    inventory?: import('@dontstarve-web/inventory').InventoryStack[];
+    childspawner?: import('../../componets/src/childspawner').ChildSpawnerSave;
+    fueled?: import('../../componets/src/fueled').FueledSave;
     timer?: import('../../componets/src/timer').NamedTimerSave;
     /** beequeenhive.lua's timer component save. */
     beeQueenHiveTimer?: import('../../componets/src/timer').NamedTimerSave;
@@ -113,6 +120,11 @@ export interface PlacementSaveRecord {
     chesspiece?: import('./chesspieces').ChesspieceSaveState;
     submersible?: import('./chesspieces').SubmersibleSaveState;
   };
+}
+
+/** Empties an OnSave's record in place, for a prefab that writes its whole record itself. */
+export function clearPersistData(data: PlacementSaveRecord['components']): void {
+  for (const key of Object.keys(data)) Reflect.deleteProperty(data, key);
 }
 
 /** A detached entity snapshot produced by the generic save loop. */
