@@ -497,7 +497,9 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.placeholder.removeFromParent();
     this.model.add(sprite);
     this.applyFacing();
-    registerSpriteRenderGroup(this.model, sprite.children[0] as THREE.Group);
+    const renderGroup = sprite.children[0];
+    if (!(renderGroup instanceof THREE.Group)) throw new Error(`${this.model.name || 'Sprite'} has no render group to sort`);
+    registerSpriteRenderGroup(this.model, renderGroup);
     if (replay) this.play();
   }
 

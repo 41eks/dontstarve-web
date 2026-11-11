@@ -80,7 +80,7 @@ it('lets the display group own an adopted display across sleep, wake and scene t
 it('keeps shared creation and action binding free of model metadata throughout the entity lifecycle', async () => {
   const entities = [
     createEmptyEntity('empty'),
-    createPrefabEntity('factory', { create: () => new THREE.Group(), release: model => model.removeFromParent() }, { name: 'idle' }),
+    createPrefabEntity('factory', { create: () => new THREE.Group().add(new THREE.Group()), release: model => model.removeFromParent() }, { name: 'idle' }),
     createArchiveEntity('archive', { create: () => { throw new Error('A clip has not been declared'); } }, { name: '', none: true }),
   ];
   for (const { instance, display } of entities) {

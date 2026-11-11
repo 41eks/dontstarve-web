@@ -30,7 +30,7 @@ vi.mock('../src/wallSprite', () => ({ createStaticSpriteFactory: vi.fn() }));
 
 function model() {
   const result = new THREE.Group();
-  result.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial()));
+  result.add(new THREE.Group().add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial())));
   result.userData.animationController = {
     update: vi.fn(), start: vi.fn(), holdLastFrame: vi.fn(), pushAnimation: vi.fn(), showImage: vi.fn(), setFacing: vi.fn(), setPose: vi.fn(), setColour: vi.fn(), setOpacity: vi.fn(),
     playOnce: vi.fn((_name: string, complete: () => void) => complete()),
@@ -158,7 +158,7 @@ it('an accepted action cancels a paid preview through events and skips its own c
   const paidState = store.exportState();
   const preview = world.scene.children[1];
   await vi.waitFor(() => expect(lookupPrefabInstance(preview)!.sprite.loaded).toBe(true));
-  const geometry = vi.spyOn((preview.children[0].children[0] as THREE.Mesh).geometry, 'dispose');
+  const geometry = vi.spyOn((preview.children[0].children[0].children[0] as THREE.Mesh).geometry, 'dispose');
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   const model = withEntity(new THREE.Group(), 'icebox'); world.scene.add(model);
@@ -274,7 +274,7 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   });
   const resources = world.scene.children.flatMap((model) => {
     // A resident building returns its sprite to the shared source, which keeps the atlas materials.
-    const mesh = model.children[0].children[0] as THREE.Mesh;
+    const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
     return [vi.spyOn(mesh.geometry, 'dispose')];
   });
   placement.dispose(); placement.dispose();

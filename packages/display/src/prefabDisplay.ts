@@ -121,7 +121,7 @@ export class PrefabDisplay {
 
   constructor(options: PrefabDisplayOptions) {
     const { archive, sprite: state } = options;
-    const source = options.source ?? (options.empty ? { create: () => new THREE.Group(), release: (model: THREE.Group) => model.removeFromParent() } : undefined);
+    const source = options.source ?? (options.empty ? { create: () => new THREE.Group().add(new THREE.Group()), release: (model: THREE.Group) => model.removeFromParent() } : undefined);
     this.state = state;
     this.empty = !archive && !options.source && options.empty === true;
     const first = state.sprite.peek();

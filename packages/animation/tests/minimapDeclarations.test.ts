@@ -9,7 +9,7 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 it('subscribes to prefab map declarations, preserves marker identity and foot position across sleep, and releases subscriptions on removal', async () => {
   const before = [...miniMapEntities()];
   const unbind = BindTileMapSize(96);
-  const entity = createPrefabEntity('tree', { create: () => new Group(), release: vi.fn() }, { name: 'idle' }, 'tree', instance => {
+  const entity = createPrefabEntity('tree', { create: () => new Group().add(new Group()), release: vi.fn() }, { name: 'idle' }, 'tree', instance => {
     // Declaration needs neither an attached transform nor any loaded map assets.
     instance.minimap.SetIcon('evergreen.png');
     instance.minimap.SetPriority(-1);
