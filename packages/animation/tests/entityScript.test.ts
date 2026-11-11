@@ -242,4 +242,60 @@ describe('EntityScript queries on PrefabInstance', () => {
     expect(inst.brain?.stopped).toBe(false);
     expect(made).toEqual(['start', 'stop', 'start', 'stop', 'start']);
   });
+
+  it('replaces and clears the stategraph, stops it in limbo, and releases it with the entity', () => {
+    const inst = entity('pigman');
+    const graph = () => {
+      const sg = new StateGraphInstance<null, 'idle'>(null, [{ name: 'idle' }]);
+      sg.goToState('idle');
+      return Object.assign(sg, { pauseSpy: vi.spyOn(sg, 'pause'), resumeSpy: vi.spyOn(sg, 'resume'), disposeSpy: vi.spyOn(sg, 'dispose') });
+    };
+    const first = inst.SetStateGraph(graph);
+    expect(inst.sg).toBe(first);
+    const second = inst.SetStateGraph(graph);
+    expect(first.disposeSpy).toHaveBeenCalledOnce();
+    expect(inst.sg).toBe(second);
+
+    inst.RemoveFromScene();
+    expect(second.pauseSpy).toHaveBeenCalledOnce();
+    // A stategraph set in limbo starts stopped, and ReturnToScene starts it.
+    const third = inst.SetStateGraph(graph);
+    expect(third.pauseSpy).toHaveBeenCalledOnce();
+    inst.ReturnToScene();
+    expect(third.resumeSpy).toHaveBeenCalledOnce();
+
+    inst.ClearStateGraph();
+    expect(inst.sg).toBeUndefined();
+    expect(third.disposeSpy).toHaveBeenCalledOnce();
+    const last = inst.SetStateGraph(graph);
+    inst.remove();
+    expect(last.disposeSpy).toHaveBeenCalledOnce();
+    expect(inst.sg).toBe(last);
+  });
+
+  it('runs no timeline for a state entered in limbo until the entity returns to the scene', () => {
+    const scheduler = new GameTimeScheduler();
+    const inst = entity('mole');
+    const fired = vi.fn();
+    inst.SetStateGraph(() => {
+      const sg = new StateGraphInstance<null, 'sleeping' | 'idle'>(null, [
+        { name: 'sleeping' },
+        { name: 'idle', timeline: [{ time: 1, fn: () => fired() }], onenter: sg => sg.setTimeout(2), ontimeout: () => fired('timeout') },
+      ], [], scheduler);
+      sg.goToState('sleeping');
+      return sg;
+    });
+    inst.RemoveFromScene();
+    inst.sg!.goToState('idle');
+    scheduler.advance(5);
+    expect(fired).not.toHaveBeenCalled();
+    inst.ReturnToScene();
+    scheduler.advance(.9);
+    expect(fired).not.toHaveBeenCalled();
+    scheduler.advance(.2);
+    expect(fired).toHaveBeenCalledOnce();
+    scheduler.advance(1);
+    expect(fired).toHaveBeenLastCalledWith('timeout');
+    scheduler.dispose();
+  });
 });

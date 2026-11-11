@@ -66,7 +66,7 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
     this.fx = world.spawnPrefab(PORTAL_FX_ID, position);
     this.fx.entityParent = this;
 
-    this.sg = createMultiplayerPortalStateGraph(this, world.scheduler);
+    this.SetStateGraph(inst => createMultiplayerPortalStateGraph(inst, world.scheduler));
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
 
@@ -90,10 +90,7 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
       this.sprite.art.get();
       if (this.sprite.loaded && this.sprite.sprite.peek().clip.finished) this.animover();
     }));
-    this.onRemove(() => {
-      cleanups.splice(0).forEach(stop => stop());
-      this.sg.dispose();
-    });
+    this.onRemove(() => cleanups.splice(0).forEach(stop => stop()));
   }
 
   /** inst:IsValid(). */

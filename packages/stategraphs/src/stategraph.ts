@@ -159,7 +159,8 @@ export class StateGraphInstance<Context, Name extends string> {
     this.current = state;
     this.revision++;
     this.timeInState = 0;
-    this.enteredAt = this.scheduler?.now ?? this.clock;
+    // A state entered while the graph is stopped starts its time when the graph resumes.
+    this.enteredAt = this.pausedAt ?? this.scheduler?.now ?? this.clock;
     this.timelineIndex = 0;
     this.timeout = null;
     this.tags = new Set(state.tags);
@@ -172,7 +173,9 @@ export class StateGraphInstance<Context, Name extends string> {
 
   private armTimeline(): void {
     const event = this.current.timeline?.[this.timelineIndex];
-    if (event && this.scheduler) this.timelineTimer!.start(Math.max(0, this.enteredAt + event.time - this.scheduler.now));
+    if (!event || !this.scheduler) return;
+    this.timelineTimer!.start(Math.max(0, this.enteredAt + event.time - (this.pausedAt ?? this.scheduler.now)));
+    if (this.pausedAt !== undefined) this.timelineTimer!.pause();
   }
 
   private syncSchedulerTime(): void {
@@ -182,8 +185,10 @@ export class StateGraphInstance<Context, Name extends string> {
 
   setTimeout(duration: number): void {
     if (!Number.isFinite(duration) || duration <= 0) throw new Error('Invalid state timeout');
-    if (this.timeoutTimer) this.timeoutTimer.start(duration);
-    else this.timeout = this.timeInState + duration;
+    if (this.timeoutTimer) {
+      this.timeoutTimer.start(duration);
+      if (this.pausedAt !== undefined) this.timeoutTimer.pause();
+    } else this.timeout = this.timeInState + duration;
   }
 
   /** Engine timers (e.g. animation completion) survive state transitions.

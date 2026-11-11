@@ -126,12 +126,11 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     const stopSprite = this.animstate.animation.subscribe(({ name, loop }) => {
       this.AnimState.PlayAnimation(name, loop);
     });
-    this.sg = big ? createBernieStateGraph(this, true, world.scheduler) : createBernieStateGraph(this, false, world.scheduler);
+    this.SetStateGraph(inst => big ? createBernieStateGraph(inst, true, world.scheduler) : createBernieStateGraph(inst, false, world.scheduler));
     this.SetBrain(inst => big ? new BernieBigBrain(inst, WORLD_SCALE) : new BernieBrain(inst, WORLD_SCALE));
     this.think();
     this.onRemove(() => {
       this.brain?.Stop();
-      this.sg.dispose();
       stopSprite(); this.animstate.dispose();
     });
   }

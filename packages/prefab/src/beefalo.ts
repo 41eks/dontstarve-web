@@ -266,7 +266,7 @@ function fn(world: BeefaloWorld): BeefaloInstance {
     isCurrentAnimation: name => inst.animstate.animation.peek().name === name,
     random,
   }, scheduler);
-  inst.sg = inst.stategraph.sg;
+  inst.SetStateGraph(() => inst.stategraph.sg);
   inst.SetBrain(() => new BeefaloBrain(brainInst(inst, world, random), WORLD_SCALE));
 
   inst.OnLoad = onload as PrefabInstance['OnLoad'];

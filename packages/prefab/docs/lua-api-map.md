@@ -46,7 +46,7 @@
 | `SetFrame(n)` | `sprite.setFrame(n)`；随机帧用 `sprite.setFrameAt(fraction)` | `monkeypillar.ts` | `setFrameAt` 取 0–1 比例，未加载时也能声明 |
 | `SetDeltaTimeMultiplier` | `inst.AnimState.SetDeltaTimeMultiplier(rate)`（写入 `sprite.setPlaybackRate`） | `SGwilson.ts` | |
 | `GetCurrentAnimationLength`、`GetCurrentAnimationNumFrames` | 声明了 ANIM 资源（`DeclareAnimationAssets`）的实体用 `inst.AnimState.GetCurrentAnimationLength()`，按源 anim.bin 时长计算，可用于业务计时；其余用 `sprite.currentAnimationLength`、`sprite.numFrames` | `SGwilson.ts`；`moonbaseFx.ts`、`cactus.ts` | sprite 上的两项**未绘制时为 0**，业务计时不能依赖 |
-| `inst:SetStateGraph("SGx")` | `packages/stategraphs/src/SGx.ts` 的 `StateGraphInstance`（传入 scheduler，timeline 走游戏时间），实例实现状态图读取的方法；`animover` 由 `playOnce` 的 `complete` 推给 `sg.pushEvent` | `portal.ts`、`nightmarerock.ts` | 未绘制时暂停 animover 链，见 `portal.ts` |
+| `inst:SetStateGraph("SGx")`、`ClearStateGraph()` | `inst.SetStateGraph(inst => createXStateGraph(inst, scheduler))`：`packages/stategraphs/src/SGx.ts` 的 `StateGraphInstance`（传入 scheduler，timeline 走游戏时间），实例实现状态图读取的方法；`animover` 由 `playOnce` 的 `complete` 推给 `sg.pushEvent`；`inst.ClearStateGraph()` | `portal.ts`、`nightmarerock.ts`、`wormhole.ts` | SG 模块的构造自己进入首个状态（代替 Lua 的 `defaultstate`）；替换或清除时旧 SG 释放；`RemoveFromScene` 暂停、`ReturnToScene` 恢复，暂停期间进入的状态从恢复时起计时；实体移除时释放 SG，`inst.sg` 仍可读。不做 Lua 的睡眠 hibernate（醒来补算时间），SG 照常由 prefab 的 update 推进；未绘制时暂停 animover 链，见 `portal.ts` |
 | `ListenForEvent("animover", fn)` | `playOnce` 的 `complete` | `monkeypillar.ts` | 未绘制时结算，见上；需要等重新绘制时跟 `sprite.art` |
 | 循环动画批量绘制 | `assetOptions.instancedAnimations`、`staticBillboard` | `pillar.ts` | 只是绘制方式，非 Lua 调用 |
 

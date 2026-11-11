@@ -59,6 +59,13 @@ export interface PrefabComponents extends ActionComponents {
   slipperyfeettarget?: import('../../componets/src/slipperyfeettarget').SlipperyFeetTarget;
 }
 
+/**
+ * inst.sg as other code reads and drives it, and the lifecycle EntityScript runs on it: stopped in limbo (pause),
+ * started again on ReturnToScene (resume), and released with the entity (dispose).
+ */
+type EntityStateGraph = Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent' | 'isListeningForEvent'>
+  & Partial<Pick<StateGraphInstance<unknown, string>, 'pause' | 'resume' | 'dispose'>>;
+
 /** What EntityScript's distance methods read from the other inst: whether it is valid, and where it is. */
 type PositionedEntity = { readonly prefab?: string; isValid(): boolean; getPosition(): Vector3Like };
 
@@ -263,7 +270,27 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   logicalPlacement?: boolean;
   private physicsBinding?: PhysicsBinding;
   /** inst.sg: SetStateGraph's instance, as other code reads and drives it; cleared by ClearStateGraph. */
-  sg?: Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent' | 'isListeningForEvent'>;
+  sg?: EntityStateGraph;
+
+  /**
+   * EntityScript:SetStateGraph: the previous stategraph stops and `create` makes the new one for the inst. The new
+   * graph enters its first state itself, as each SG module's constructor does in place of Lua's `defaultstate`; in
+   * limbo it starts stopped.
+   */
+  SetStateGraph<SG extends EntityStateGraph>(create: (inst: this) => SG): SG {
+    this.ClearStateGraph();
+    const sg = create(this);
+    this.sg = sg;
+    if (this.inlimbo) sg.pause?.();
+    return sg;
+  }
+
+  /** EntityScript:ClearStateGraph: the stategraph stops and leaves the inst. */
+  ClearStateGraph(): void {
+    const sg = this.sg;
+    this.sg = undefined;
+    sg?.dispose?.();
+  }
   /** inst.brain: the brain SetBrain made, absent while the entity sleeps or is in limbo. */
   brain?: Brain<BehaviourContext>;
   /** inst.brainfn: SetBrain's constructor, which makes a new brain each time the entity wakes. */
@@ -584,6 +611,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.addTag('INLIMBO');
     this.minimap.SetEnabled(false);
     this.syncAwake();
+    // sg:Stop(): stategraph time stands still in limbo.
+    this.sg?.pause?.();
     this.PushEvent('enterlimbo');
   }
 
@@ -593,6 +622,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.removeTag('INLIMBO');
     this.minimap.SetEnabled(true);
     this.syncAwake();
+    // sg:Start()
+    this.sg?.resume?.();
     this.PushEvent('exitlimbo');
   }
 
@@ -653,6 +684,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     const engineChildren = this.engineChildren;
     this.engineChildren = undefined;
     for (const child of engineChildren ?? []) child.remove();
+    // SGManager:OnRemoveEntity: the stategraph no longer runs; inst.sg stays readable, as in the source.
+    this.sg?.dispose?.();
     this.removedState.set(true);
     this.lifecycle.set('removed');
     this.physicsBinding?.dispose();

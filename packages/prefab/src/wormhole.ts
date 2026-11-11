@@ -76,11 +76,10 @@ function fn(world: WormholeWorld): WormholeInstance {
   inst.AddSoundEmitter();
   inst.sprite.start('idle_loop');
   for (const tag of ['trader', 'alltrader', 'antlion_sinkhole_blocker', 'wormhole']) inst.addTag(tag);
-  inst.sg = WormholeStateGraph(inst, world.scheduler);
+  inst.SetStateGraph(inst => WormholeStateGraph(inst, world.scheduler));
   addComponent(inst, 'inspectable', Inspectable);
   inst.OnSave = OnSave;
   inst.OnLoad = OnLoad;
-  inst.onRemove(() => inst.sg.dispose());
   return inst;
 }
 

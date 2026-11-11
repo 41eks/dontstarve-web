@@ -432,7 +432,7 @@ export function MakePlayerCharacter(
     inst.ListenForEvent('respawnfromghost', (_inst, data) => OnRespawnFromGhost(inst, data as { source?: RezSource } | undefined));
     inst.onRemove(() => OnRemoveEntity(inst));
 
-    inst.sg = new WilsonStateGraph(inst);
+    inst.SetStateGraph(inst => new WilsonStateGraph(inst));
     inst.ListenForEvent('newstate', OnNewState);
 
     master_postinit?.(inst);

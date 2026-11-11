@@ -98,7 +98,7 @@ export class PigKingInstance extends PrefabInstance {
       DoTaskInTime: (time, fn) => this.DoTaskInTime(time, fn),
     };
     this.pigking = new PigKingStateGraph(inst, world.scheduler);
-    this.sg = this.pigking.sg;
+    this.SetStateGraph(() => this.pigking.sg);
 
     // WatchWorldState("isnight", OnIsNight) and OnIsNight(inst, TheWorld.state.isnight).
     const cleanups: (() => void)[] = [];

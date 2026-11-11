@@ -139,14 +139,11 @@ function commonfn(world: NightmareRockWorld, id: NightmareRockId): NightmareRock
   inst.addTag('antlion_sinkhole_blocker');
   inst.addTag(id);
   inst.activeonsane = id === 'sanityrock';
-  inst.sg = new NightmareRockStateGraph(inst, world.scheduler).sg;
+  inst.SetStateGraph(inst => new NightmareRockStateGraph(inst, world.scheduler).sg);
   AddRefreshTask(inst);
   inst.OnActiveStateChanged = OnActiveStateChanged;
   inst.OnConcealStateChanged = OnConcealStateChanged;
   inst.ConcealForMinigame = ConcealForMinigame;
-  inst.onRemove(() => {
-    inst.sg.dispose();
-  });
   return inst;
 }
 
