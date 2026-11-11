@@ -218,11 +218,11 @@ function check(file, source, prefabClasses, report) {
       && !(ts.isCallExpression(node.parent) && node.parent.expression.getText(source) === 'Object.assign')) {
       add('components-write', node, node.getText(source).slice(0, 60));
     }
-    // userdata: writes are errors; reads of userData.tags (bare FX) are allowed.
+    // userdata: reads and writes, userData.tags included (tags live on the instance).
     if (ts.isPropertyAccessExpression(node) && node.name.text === 'userData') {
       const parent = node.parent;
       const member = ts.isPropertyAccessExpression(parent) && parent.expression === node ? parent.name.text : undefined;
-      if (member !== 'tags') add('userdata', node, `${isAssignmentTarget(node) ? 'writes' : 'reads'} userData${member ? `.${member}` : ''}`);
+      add('userdata', node, `${isAssignmentTarget(node) ? 'writes' : 'reads'} userData${member ? `.${member}` : ''}`);
     }
     // scene
     if ((ts.isPropertyAccessExpression(node) && node.name.text === 'scene')

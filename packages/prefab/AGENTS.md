@@ -21,7 +21,7 @@
 
 ## Tags
 
-- When porting a prefab or child/FX entity, keep every tag the Lua source adds (`inst:AddTag(...)`, such as `FX`, `NOCLICK`, `DECOR`), regardless of whether its semantics seem relevant or are consumed yet. Apply them on the entity exactly as in Lua, including non-networked child entities like mist or particles; never drop or substitute a tag because it looks unused. An entity with a `PrefabInstance` owns its tags there: write them with `instance.addTag()` / `removeTag()` and read them with `instance.hasTag()`; its model has no `userData.tags`. Code that only holds a model uses `modelHasTag()` / `setModelTag()`. Only models without an instance, such as bare FX sprites, keep their tags in `userData.tags`.
+- When porting a prefab or child/FX entity, keep every tag the Lua source adds (`inst:AddTag(...)`, such as `FX`, `NOCLICK`, `DECOR`), regardless of whether its semantics seem relevant or are consumed yet. Apply them on the entity exactly as in Lua, including non-networked child entities like mist or particles; never drop or substitute a tag because it looks unused. Tags live only on the entity's `PrefabInstance`: write them with `inst.addTag()` / `removeTag()` and read them with `inst.hasTag()`, including tags the component layer derives. An entity that carries tags, child and FX entities included, is created as a `PrefabInstance`; a model has no tag store of its own (no `userData.tags`), and code that only holds a model reads through `prefabInstance(model)?.hasTag()`.
 
 ## Components
 
