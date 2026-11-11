@@ -9,6 +9,8 @@ import { modelHasTag, prefabInstance, setModelTag } from '../../prefab/src/prefa
  * components the application binds to it (inventory, sanity, combat, sleepingbaguser).
  */
 export interface PickupDoer extends InventoryActor {
+  /** inst.prefab, whose speech GetDescription looks up. */
+  readonly prefab?: string;
   /** The player inst always owns its tags, as reader.lua adds "reader". */
   addTag(tag: string): void;
   removeTag(tag: string): void;
@@ -22,6 +24,7 @@ export interface PickupDoer extends InventoryActor {
   readonly SoundEmitter?: { PlaySound(path: import('../../prefab/src/sound').SoundEventPath): void };
   components: {
     inventory: InventoryStore;
+    talker?: import('../../componets/src/talker').Talker;
     sanity?: { DoDelta(delta: number): void };
     combat?: import('../../componets/src/combat').Combat;
     sleepingbaguser?: import('../../componets/src/sleepingbag').SleepingBagSleeper;

@@ -117,7 +117,8 @@ const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> 
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   // The player's own eater.lua (ACTIONS.EAT) and sleepingbaguser.lua (SLEEPIN's sleepingbag:DoSleep) on act.doer.
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger, eater: playerInstance.components.eater,
-    sleepingbaguser: playerInstance.components.sleepingbaguser },
+    sleepingbaguser: playerInstance.components.sleepingbaguser, get talker() { return playerInstance.components.talker; } },
+  get prefab() { return playerInstance.prefab; },
   ListenForEvent: (name, listener) => playerInstance.ListenForEvent(name, listener),
   hasTag: tag => tag === 'player' || modelHasTag(player, tag),
   addTag: tag => setModelTag(player, tag, true),

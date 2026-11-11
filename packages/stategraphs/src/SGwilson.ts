@@ -9,7 +9,7 @@ import { ghostActionHandlers, ghostClip, ghostStates } from './SGwilsonghost.ts'
 
 export type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
 export type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'item_hat' | 'pickup';
-export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
+export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build' | 'emote' | 'talk'
   | 'mine_start' | 'mine' | 'chop_start' | 'chop' | 'hammer_start' | 'hammer'
   | 'bugnet_start' | 'bugnet' | 'terraform' | 'castspell' | 'veryquickcastspell'
   | 'quickeat' | 'migrate' | 'doshortaction' | 'dolongaction' | 'till_start' | 'till' | 'dig_start' | 'dig' | 'catchonfire'
@@ -23,8 +23,8 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'portal_rez' | 'portal_jumpin_pre' | 'portal_jumpin' | 'portal_jumpout'
   /** SGwilson.lua amulet_rebirth: the player rising from a red amulet after a haunt resurrection. */
   | 'amulet_rebirth';
-export type WilsonAction = 'BLINK' | 'BLINK_MAP' | 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'PLANTSOIL' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'DEPLOY_TILEARRIVE' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT' | 'MIGRATE' | 'TURNON' | 'TURNOFF' | 'RUMMAGE';
-export type WilsonAnimationKey = 'wortox_portal' | WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
+export type WilsonAction = 'LOOKAT' | 'BLINK' | 'BLINK_MAP' | 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'PLANTSOIL' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'DEPLOY_TILEARRIVE' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT' | 'MIGRATE' | 'TURNON' | 'TURNOFF' | 'RUMMAGE';
+export type WilsonAnimationKey = 'dial_loop' | 'wortox_portal' | WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
   | 'quick_eat_pre' | 'quick_eat' | 'quick_drink_pre' | 'quick_drink' | 'pickup_pst' | 'till_pre' | 'till_loop' | 'till_pst'
@@ -513,6 +513,17 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     tags: ['busy', 'nomorph'],
     onenter: inst => inst.context.playClips([clip('slip_fall_pst')]),
     timeline: [TimeEvent(12 * FRAMES, inst => inst.goToState('idle', true))],
+  }),
+  State({
+    // SGwilson.lua talk; the character's talk_LP has no sound mapping yet.
+    name: 'talk',
+    tags: ['idle', 'talking'],
+    onenter: (inst, noanim) => {
+      if (noanim !== true) inst.context.playClips([{ ...clip('dial_loop'), loop: true }]);
+      inst.setTimeout(1.5 + Math.random() * .5);
+    },
+    ontimeout: inst => inst.goToState('idle'),
+    events: [EventHandler('donetalking', inst => inst.goToState('idle'))],
   }),
   State({
     name: 'idle',
@@ -1608,7 +1619,11 @@ export class WilsonStateGraph {
     });
     // SGwilson.lua EventHandler("locomote"): an idle-tagged shell state yields to movement.
     this.sg.listenForEvent('locomote', () => {
-      if (this.sg.hasStateTag('shell') && !this.sg.hasStateTag('busy')) this.finish();
+      if ((this.sg.hasStateTag('shell') || this.sg.hasStateTag('talking')) && !this.sg.hasStateTag('busy')) this.finish();
+    });
+    // SGwilson.lua EventHandler("ontalk"): the acting, closeinspect and mime branches are not ported.
+    this.sg.listenForEvent('ontalk', data => {
+      if (this.sg.hasStateTag('idle') && !this.sg.hasStateTag('notalking')) this.sg.goToState('talk', (data as { noanim?: boolean }).noanim);
     });
     // SGwilson.lua EventHandler("fishingcancel")
     this.sg.listenForEvent('fishingcancel', () => {

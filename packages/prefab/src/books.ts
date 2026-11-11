@@ -99,7 +99,7 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
     read_sanity: -SANITY_HUGE,
     fx: 'fx_book_moon',
     // The cave refusal (NOMOONINCAVES) needs a cave world; the project only has the forest.
-    // ANNOUNCE_BOOK_MOON_DAYTIME needs the unported talker component.
+    // ANNOUNCE_BOOK_MOON_DAYTIME needs the ANNOUNCE strings, which are not imported.
     fn(_inst, _reader, world) {
       const cleanups: (() => void)[] = [];
       try {

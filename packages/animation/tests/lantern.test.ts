@@ -184,14 +184,14 @@ describe('lantern fuel', () => {
       world.advance(120);
       expect(ground.components.fueled!.currentfuel).toBeCloseTo(LANTERN_FUEL - 120 - 1 / 60, 6);
       // componentactions.lua SCENE.machine: RMB offers TURNOFF (priority 2, over the inventoryitem's PICKUP); off, it removes the light and stops fuel.
-      expect(sceneActions(model!, undefined, true)).toEqual(['PICKUP', 'TURNOFF']);
+      expect(sceneActions(model!, undefined, true)).toEqual(['PICKUP', 'LOOKAT', 'TURNOFF']);
       ground.components.machine!.TurnOff();
       const off = ground.components.fueled!.currentfuel;
       world.advance(60);
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(lightAt(prefabInstance(model)!)).toBeUndefined();
       expect(ground.components.fueled!.currentfuel).toBe(off);
-      expect(sceneActions(model!, undefined, true)).toEqual(['PICKUP', 'TURNON']);
+      expect(sceneActions(model!, undefined, true)).toEqual(['PICKUP', 'LOOKAT', 'TURNON']);
       ground.components.machine!.TurnOn();
       expect(lightAt(prefabInstance(model)!)).toMatchObject({ radius: expect.any(Number) });
       expect(inventory.setRemainingFuel(inventorySlotAddress(1), 0)).toBe(true);

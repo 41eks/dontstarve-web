@@ -1,3 +1,5 @@
+import { addComponent } from '../../prefab/src/components';
+import { Talker } from '../../componets/src/talker';
 import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import { World } from 'cannon-es';
@@ -18,7 +20,7 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   const animation = instance.animationController;
   const controls = { HideCraftingAndInventory: vi.fn(), ShowCraftingAndInventory: vi.fn() };
   instance.HUD = { Show() {}, Hide() {}, controls };
-  const say = vi.spyOn(console, 'info').mockImplementation(() => {});
+  const talker = addComponent(instance, 'talker', Talker, scheduler);
   const sleeper = instance.components.sleepingbaguser!;
   const tags = new Set(['tent']);
   const tent = { hasTag: (tag: string) => tags.has(tag), addTag: (tag: string) => { tags.add(tag); },
@@ -34,7 +36,8 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
 
   // A tent refuses the day (ANNOUNCE_NODAYSLEEP in the character's speech).
   sleepIn();
-  expect([animation.stategraph.stateName, sleeper.bed, say.mock.lastCall]).toEqual(['idle', undefined, ['我不要打乱规律的作息时间。']]);
+  // The refusal is said from idle, so SGwilson's ontalk handler enters talk.
+  expect([animation.stategraph.stateName, sleeper.bed, talker.line.peek()]).toEqual(['talk', undefined, '我不要打乱规律的作息时间。']);
 
   clockstate.set({ phase: 'night', timeinphase: 0 });
   sleepIn();
@@ -56,5 +59,4 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   expect(sleeper.bed).toBe(bag);
   instance.remove();
   expect([bag.InUse(), tags.has('hassleeper')]).toEqual([false, false]);
-  say.mockRestore();
 });

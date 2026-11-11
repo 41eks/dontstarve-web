@@ -1,7 +1,7 @@
 import { Vector3, type Object3D } from 'three';
 import { type EventEmitter, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type InventoryStore, type ItemEntity } from '@dontstarve-web/inventory';
-import { createChestInventoryPanel, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
+import { createChestInventoryPanel, createFollowText, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
   PlayerController,
   type PickupDoer, type PlayerLocomotor, type PlayerActionEvents,
@@ -14,7 +14,9 @@ import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
 import { modelHasTag, prefabInstance } from '../packages/prefab/src/prefabInstance';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
-import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { PLAYER_COLLIDER_RADIUS, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { addComponent, removeComponent } from '@dontstarve-web/prefab/components';
+import { Talker } from '../packages/componets/src/talker';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
 import { buildingContainerId, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
 import type { BookWorld } from '@dontstarve-web/prefab/books';
@@ -154,6 +156,11 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         reader.OnRemoveFromEntity();
         delete pickupDoer.components.reader;
       } });
+
+      const talker = addComponent(playerInstance, 'talker', Talker, scheduler);
+      const followText = createFollowText({ camera, canvas: renderer.domElement, target: player, height: PLAYER_COLLIDER_RADIUS * 3.6 + 1, line: talker.line });
+      frameControllers.push({ update: () => followText.update(), dispose: () => followText.dispose() });
+      actionControllers.push({ dispose() { removeComponent(playerInstance, 'talker'); } });
 
       if (playerAnimation) {
         view.registerFrameTask = registerFrontTask;

@@ -11,6 +11,7 @@ import type { FarmTiller } from '../../componets/src/farmtiller';
 import { preparePickReceiver, type PickableComponent } from './pick.ts';
 import { canPickUp, performPickupAction, type PickupDoer } from './pickup.ts';
 import { performRummageAction, type RummageContainer, type RummageTarget } from './rummage.ts';
+import type { Inspectable } from '../../componets/src/inspectable';
 import type { Stewer, StewerHarvester } from '../../componets/src/stewer';
 import type { SleepingBag } from '../../componets/src/sleepingbag';
 import type { WorldMigrator } from '../../componets/src/worldmigrator';
@@ -288,6 +289,16 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
     },
   },
   RUMMAGE: { fn: act => performRummageAction(act.target as RummageTarget, playerDoer(act)) },
+  LOOKAT: {
+    // ACTIONS.LOOKAT.fn without closeinspector, which has no port.
+    fn: act => {
+      const doer = playerDoer(act), inspectable = ((act.target ?? act.invobject) as { components?: { inspectable?: Inspectable } } | undefined)?.components?.inspectable;
+      const desc = inspectable?.GetDescription(doer);
+      if (desc === undefined) return false;
+      doer.components.talker?.Say(desc, undefined, inspectable?.noanim);
+      return true;
+    },
+  },
   SLEEPIN: {
     // sleepingbag:DoSleep(act.doer) hands the bed to the doer's sleepingbaguser.
     fn: act => {

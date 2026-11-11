@@ -1,3 +1,4 @@
+import { STRINGS } from '../../componets/src/stringutil';
 import { Inspectable } from '../../componets/src/inspectable';
 import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
@@ -146,11 +147,11 @@ export class ArchiveRuneStatueInstance extends PrefabInstance {
     const inspectable = addComponent(this, 'inspectable', Inspectable);
     /** getstatus: `LINE_<n>`, advancing the story on first use. */
     inspectable.getstatus = () => { advance(); return `LINE_${this.storyprogress}`; };
-    /** rune_getdescription: only a viewer holding an ancient_reader gets the line's text key. */
+    /** rune_getdescription: only a viewer holding an ancient_reader gets the line's text. */
     inspectable.descriptionfn = (viewer: { components?: { inventory?: { EquipHasTag(tag: string): boolean } } }) => {
       if (!viewer.components?.inventory?.EquipHasTag('ancient_reader')) return undefined;
       advance();
-      return `LINE_${this.storyprogress}`;
+      return (STRINGS.ARCHIVE_RUNE_STATUE as Readonly<Record<string, string>>)[`LINE_${this.storyprogress}`];
     };
 
     this.OnSave = (_inst, data) => {

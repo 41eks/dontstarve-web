@@ -1,3 +1,4 @@
+import { STRINGS } from '../../componets/src/stringutil';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -105,7 +106,7 @@ it('hands out rune story lines once, saves static props and ignores the pad, the
     expect([status(runes[0]), status(runes[1]), status(runes[0])]).toEqual(['LINE_1', 'LINE_2', 'LINE_1']);
     // Only a reader holding the ancient_reader tag gets the text.
     const describe = (viewer: object) => (runes[0].components as { inspectable: { descriptionfn(viewer: object): string | undefined } }).inspectable.descriptionfn(viewer);
-    expect(describe({ components: { inventory: { EquipHasTag: (tag: string) => tag === 'ancient_reader' } } })).toBe('LINE_1');
+    expect(describe({ components: { inventory: { EquipHasTag: (tag: string) => tag === 'ancient_reader' } } })).toBe(STRINGS.ARCHIVE_RUNE_STATUE.LINE_1);
     expect(describe({})).toBeUndefined();
 
     // SetEightFaced: the portal and its shadow child follow the camera heading.

@@ -16,6 +16,7 @@ export { INVENTORY_RECEIVE_DURATION_MS, INVENTORY_RECEIVE_PULSE_MS, type Invento
 
 export { CursorLabelUi, type CursorPointer } from './cursor-label';
 export { SanityVignette } from './sanity-vignette';
+export { createFollowText, type FollowText, type FollowTextOptions } from './follow-text';
 
 export { DstChestPanelElement, type ChestCloseDetail, type OpenChestOptions } from './chest-panel';
 export {

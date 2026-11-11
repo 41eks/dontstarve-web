@@ -21,12 +21,13 @@ vi.mock('@dontstarve-web/ui', () => ({
   createChestInventoryPanel: vi.fn(() => ({
     open: vi.fn(), close: vi.fn(), bindActions: vi.fn(), dispose: vi.fn(),
   })),
+  createFollowText: vi.fn(() => ({ update: vi.fn(), dispose: vi.fn() })),
 }));
 vi.mock('../../../src/emoteWheel', () => ({ setupEmoteWheel: vi.fn(() => vi.fn()) }));
 vi.mock('../../../src/playerStats', () => ({
   playerStats: { sanity: { peek: () => 35, set: vi.fn() } },
 }));
-vi.mock('../../../src/player', () => ({ playerInstance: {} }));
+vi.mock('../../../src/player', () => ({ playerInstance: { components: {}, isRemoved: false, onRemove: () => () => {}, PushEvent() {} } }));
 
 it('updates application resources until scene disposal, then releases them once', () => {
   const events = new EventEmitter<DisposalEvents>();

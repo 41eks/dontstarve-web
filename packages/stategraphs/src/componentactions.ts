@@ -77,12 +77,13 @@ type IsValidFn = (inst: ComponentActionTarget, action: string, right: boolean) =
 /** The acting player as SCENE entries read it: its tags and inventory. */
 export interface SceneActionDoer {
   hasTag(tag: string): boolean;
+  readonly sg?: { HasStateTag(tag: string): boolean };
   readonly components?: { inventory?: { GetNumSlots(): number;
     GetActiveItem?(): import('../../inventory/src/entity').ItemEntity | null;
     CanAccessItem?(item: import('../../inventory/src/entity').ItemEntity): boolean;
   } };
 }
-export type SceneAction = 'PICKUP' | 'PICK' | 'HARVEST' | 'TURNON' | 'TURNOFF' | 'RUMMAGE' | 'SLEEPIN' | 'MIGRATE' | 'TAKEITEM' | 'HAUNT';
+export type SceneAction = 'LOOKAT' | 'PICKUP' | 'PICK' | 'HARVEST' | 'TURNON' | 'TURNOFF' | 'RUMMAGE' | 'SLEEPIN' | 'MIGRATE' | 'TAKEITEM' | 'HAUNT';
 type SceneFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: SceneAction[], right: boolean) => void;
 type SceneComponents = {
   inventoryitem?: { CanBePickedUp(doer: object): boolean; readonly owner?: unknown };
@@ -195,6 +196,9 @@ export const COMPONENT_ACTIONS: {
       // The bundle branch (WRAPBUNDLE / APPLYCONSTRUCTION) is not ported.
       if (!inst.hasTag('bundle') && !inst.hasTag('burnt') && (inst.components as SceneComponents).container?.canbeopened
         && doer.components?.inventory) actions.push('RUMMAGE');
+    },
+    inspectable: (inst, doer, actions) => {
+      if (inst !== doer && (!doer.sg || (doer.sg.HasStateTag('idle') && !doer.sg.HasStateTag('moving')) || doer.sg.HasStateTag('channeling'))) actions.push('LOOKAT');
     },
     hauntable: (inst, _doer, actions) => {
       if (!inst.hasTag('haunted') && !inst.hasTag('catchable')) actions.push('HAUNT');

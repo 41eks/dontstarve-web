@@ -53,6 +53,7 @@ type WilsonAnimations = Record<Exclude<WilsonAnimationKey, 'emote' | 'ghost' | '
 const WILSON_ANIMATION_ARCHIVES: WilsonAnimations = {
   wortox_portal: 'wortox_portal.zip',
   idle: 'player_idles.zip',
+  dial_loop: 'player_actions.zip',
   walk: 'player_basic.zip',
   run: 'player_basic.zip',
   jump: 'player_jump.zip',
@@ -300,8 +301,7 @@ class WilsonController implements WilsonAnimationController {
       },
       // inst:Hide() / inst:Show() with the DynamicShadow, declared on the sprite for the player's display.
       setHidden: hidden => instance.sprite.setVisible(!hidden),
-      // The talker component is not ported: the line is logged.
-      say: announce => console.info(WORTOX_SLEEP_SPEECH[announce]),
+      say: announce => instance.components.talker?.Say(WORTOX_SLEEP_SPEECH[announce]),
     };
     const controller = this;
     this.stategraph = new WilsonStateGraph({

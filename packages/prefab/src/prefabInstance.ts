@@ -43,6 +43,7 @@ export interface PrefabComponents extends ActionComponents {
   phonograph?: import('./phonograph').PhonographController;
   sanityaura?: import('../../componets/src/sanityaura').SanityAura;
   inspectable?: import('../../componets/src/inspectable').Inspectable;
+  talker?: import('../../componets/src/talker').Talker;
   playerprox?: import('../../componets/src/playerprox').PlayerProx;
   leader?: import('../../componets/src/statueglommerSignatures').Leader;
   pointofinterest?: import('../../componets/src/statueglommerSignatures').PointOfInterest;

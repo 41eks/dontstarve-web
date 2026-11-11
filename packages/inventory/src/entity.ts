@@ -1,3 +1,4 @@
+import { Inspectable } from '../../componets/src/inspectable';
 import { addComponent } from '../../prefab/src/components';
 import type { ItemTileJson, InventoryItemSpec, InventoryStack, SlotAddress } from './types';
 import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -281,6 +282,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     addComponent(this, 'stackable', StackableComponent, state.count);
     addComponent(this, 'finiteuses', FiniteUsesComponent, state.remainingUses);
     addComponent(this, 'inventoryitem', InventoryItem<ItemEntity, ItemOwner>);
+    addComponent(this, 'inspectable', Inspectable);
     addComponent(this, 'perishable', Perishable, readonlySignal(this.wetState), perishWorld);
     this.durability = createMemo(() => this.components.finiteuses.percent.get() ?? this.fueledState.get()?.percent.get()
       ?? this.armorState.get()?.percent.get());

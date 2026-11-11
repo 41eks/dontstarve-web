@@ -101,6 +101,9 @@
 | `inst:Hide()`、`inst:Show()` | `inst.Hide()`、`inst.Show()`（`PrefabInstance`） | `SGnightmarerock.ts` | 只停止绘制实体 |
 | `MakeSnowCovered` | `setSymbolOverride('snow', 'snow.zip', 'snow')` + `setSymbolHidden` 跟雪量；植物用 `snowCovered: true` | `monkeypillar.ts`、`berrybush.ts` | `buildArchives` 要加 `snow.zip`，`hiddenSymbols: ['snow']` |
 
+| `inst.components.inspectable`、`GetDescription(viewer, inst, status)` | `addComponent(inst, 'inspectable', Inspectable)`；`getstatus` 返回 Lua 的状态键 | `archive_props.ts` | 物品默认都有；文本来自 `componets/src/strings.json`（`import-speech.py` 由 `chinese_s.po` 生成），只含 GENERIC 和 WORTOX |
+| `inst.components.talker:Say(text)` | 玩家的 `components.talker.Say(text)` | `actionfns.ts` | 只支持单行；推 `ontalk`／`donetalking`，头顶文字由 `createFollowText` 显示 |
+
 ## 未实现
 
 遇到时跳过并在汇报中写明，或按任务需要在所属包补上。
