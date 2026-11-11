@@ -7,7 +7,8 @@ export interface FaceEntityInst extends BrainInst {
     hasState(name: string): boolean;
     goToState(name: string): void;
   };
-  facePoint(point: Vec3): void;
+  /** EntityScript:FacePoint. */
+  FacePoint(point: Vec3): void;
 }
 
 /** behaviours/faceentity.lua: stop once on acquisition, rotate only when the state permits it. */
@@ -46,7 +47,7 @@ export class FaceEntity extends BehaviourNode {
         return;
       }
       if (!this.target?.isValid() || !this.keepfn(this.inst, this.target)) this.status = FAILED;
-      else if (sg.hasStateTag('canrotate')) this.inst.facePoint(this.target.getPosition());
+      else if (sg.hasStateTag('canrotate')) this.inst.FacePoint(this.target.getPosition());
       this.Sleep(.5);
     }
   }

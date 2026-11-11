@@ -43,8 +43,8 @@ export interface BrainInst extends BrainEntity {
   getTime(): number;
   /** math.random() */
   random(): number;
-  getAngleToPoint(x: number, y: number, z: number): number;
-  isNear(other: BrainEntity, distance: number): boolean;
+  GetAngleToPoint(x: number, y: number, z: number): number;
+  IsNear(other: BrainEntity, distance: number): boolean;
   ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): void;
   RemoveEventCallback(name: string, fn: (data?: unknown) => void): void;
   /** AvoidElectricFence: set by electric fields, read by BrainCommon. */

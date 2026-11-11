@@ -1,5 +1,9 @@
 import { readonlySignal, createEffect, createSignal, WorldContentKey, type GetWatchWorldContent, type WorldPhase } from '../../signals/src';
+import type { Vector3Like } from 'three';
 import { ComponentTimer } from './timer';
+
+/** homeseeker.home as StandardSleepChecks reads it. */
+type SleeperHome = { isValid(): boolean; getPosition(): Vector3Like };
 
 /**
  * What components/sleeper.lua reads from its inst. Not ported (the beefalo has none of them yet):
@@ -8,10 +12,10 @@ import { ComponentTimer } from './timer';
 export interface SleeperInst {
   isValid(): boolean;
   PushEvent(name: string, data?: unknown): void;
-  isNear?(home: { getPosition(): unknown }, distance: number): boolean;
+  IsNear?(home: SleeperHome, distance: number): boolean;
   readonly sg?: { hasStateTag(tag: string): boolean };
   readonly components: {
-    homeseeker?: { home?: { isValid(): boolean; getPosition(): unknown } };
+    homeseeker?: { home?: SleeperHome };
     health?: { IsDead?(): boolean; takingfiredamage?: boolean };
     combat?: { target?: unknown };
     burnable?: { IsBurning?(): boolean };
@@ -28,7 +32,7 @@ export function StandardSleepChecks(inst: SleeperInst): boolean {
   const { combat, burnable } = inst.components;
   const home = inst.components.homeseeker?.home;
   const unitsPerMeter = inst.components.sleeper?.unitsPerMeter ?? 1;
-  return !(home?.isValid() && inst.isNear?.(home, 40 * unitsPerMeter)) && !(combat?.target) && !burnable?.IsBurning?.() && !inst.sg?.hasStateTag('busy');
+  return !(home?.isValid() && inst.IsNear?.(home, 40 * unitsPerMeter)) && !(combat?.target) && !burnable?.IsBurning?.() && !inst.sg?.hasStateTag('busy');
 }
 
 export function StandardWakeChecks(inst: SleeperInst): boolean {

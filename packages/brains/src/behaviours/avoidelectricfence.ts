@@ -31,7 +31,7 @@ export class AvoidElectricFence extends BehaviourNode {
     let xs = 0, zs = 0;
     for (const fence of field.fences) {
       const { x, z } = fence.getPosition();
-      const angle = this.inst.getAngleToPoint(x, 0, z) * DEGREES;
+      const angle = this.inst.GetAngleToPoint(x, 0, z) * DEGREES;
       xs -= Math.cos(angle);
       zs -= Math.sin(angle);
     }

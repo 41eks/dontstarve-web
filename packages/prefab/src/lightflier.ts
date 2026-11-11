@@ -246,14 +246,14 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   isDead(): boolean { return this.components.health.IsDead(); }
   hasTag(tag: string): boolean { return this.entity.hasTag(tag); }
   random(): number { return Math.random(); }
-  isNear(other: BrainEntity, distance: number): boolean { return this.getPosition().distanceToSquared(other.getPosition() as Vector3) <= distance ** 2; }
+  IsNear(other: BrainEntity, distance: number): boolean { return this.getPosition().distanceToSquared(other.getPosition() as Vector3) <= distance ** 2; }
   ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): () => void {
     const stop = this.entity.ListenForEvent(name, fn); this.eventStops.set(fn, stop); return stop;
   }
   RemoveEventCallback(_name: string, fn: (inst: unknown, data: unknown) => void): void { this.eventStops.get(fn)?.(); this.eventStops.delete(fn); }
   PushEvent(name: string, data?: unknown): void { this.entity.PushEvent(name, data); }
   setRotation(degrees: number): void { this.heading = degrees; this.syncMotor(); }
-  getAngleToPoint(x: number, _y: number, z: number): number { const p = this.getPosition(); return Math.atan2(-(z - p.z), x - p.x) * 180 / Math.PI; }
+  GetAngleToPoint(x: number, _y: number, z: number): number { const p = this.getPosition(); return Math.atan2(-(z - p.z), x - p.x) * 180 / Math.PI; }
   setMotorSpeed(speed: number): void { this.speed = speed; this.syncMotor(); }
   stopPhysics(): void { this.setMotorSpeed(0); }
   bindWorld(habitat: LightFlierHabitat, lengths: ReadonlyMap<string, number>): void {
@@ -398,7 +398,7 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
       if (follower.updating && follower.targetpos && !this.sg.hasStateTag('busy')) {
         const target = follower.targetpos, p = this.getPosition();
         this.locomotor.walkspeed = Math.min(p.distanceTo(target) * 8, 10.5 * WORLD_SCALE);
-        this.setRotation(this.getAngleToPoint(target.x, target.y, target.z));
+        this.setRotation(this.GetAngleToPoint(target.x, target.y, target.z));
         if (!this.locomotor.isUpdating) this.locomotor.WalkForward(true);
       }
       if (this.locomotor.isUpdating) this.locomotor.update(step);

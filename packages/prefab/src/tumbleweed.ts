@@ -96,7 +96,7 @@ export class TumbleweedInstance extends PrefabInstance {
     const motor: LocoMotorInst = {
       isValid: () => !this.isRemoved, getPosition: () => ({ x: this.body.position.x, y: 0, z: this.body.position.z }),
       getPhysicsRadius: () => WORLD_SCALE, setRotation: degrees => this.setRotationDegrees(degrees),
-      getAngleToPoint: () => this.rotation,
+      GetAngleToPoint: () => this.rotation,
       setMotorSpeed: speed => this.setMotorSpeed(speed),
       components: {}, PushEvent: () => undefined, PushBufferedAction: () => undefined,
     };

@@ -59,6 +59,9 @@ export interface PrefabComponents extends ActionComponents {
   slipperyfeettarget?: import('../../componets/src/slipperyfeettarget').SlipperyFeetTarget;
 }
 
+/** What EntityScript's distance methods read from the other inst: whether it is valid, and where it is. */
+type PositionedEntity = { readonly prefab?: string; isValid(): boolean; getPosition(): Vector3Like };
+
 /** An entity whose events others listen for. */
 type EventEntity = PrefabInstance<ArchiveSpriteCommands, object>;
 /**
@@ -316,6 +319,39 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   isValid(): boolean { return !this.isRemoved; }
   get isRemoved(): boolean { return this.lifecycle.peek() === 'removed'; }
   getPosition(): Vector3 { return this.transform.model.position; }
+
+  /** EntityScript:GetDistanceSqToInst: both entities must be valid, as the source asserts. */
+  GetDistanceSqToInst(inst: PositionedEntity): number {
+    if (!this.isValid() || !inst.isValid()) throw new Error(`GetDistanceSqToInst between ${this.prefab} and ${inst.prefab} needs two valid entities`);
+    return this.GetDistanceSqToPoint(inst.getPosition());
+  }
+  /** EntityScript:GetDistanceSqToPoint. */
+  GetDistanceSqToPoint(point: Vector3Like): number { return this.getPosition().distanceToSquared(point); }
+  /** EntityScript:IsNear: closer than `dist`. */
+  IsNear(otherinst: PositionedEntity | undefined, dist: number): boolean {
+    return otherinst !== undefined && this.GetDistanceSqToInst(otherinst) < dist * dist;
+  }
+  /** EntityScript:GetAngleToPoint in degrees; at the entity's own position it is the current rotation. */
+  GetAngleToPoint(x: number, y: number, z: number): number;
+  GetAngleToPoint(point: Vector3Like): number;
+  GetAngleToPoint(x: number | Vector3Like, _y?: number, z?: number): number {
+    const target = typeof x === 'number' ? { x, z: z! } : x;
+    const { x: x1, z: z1 } = this.position;
+    return x1 === target.x && z1 === target.z ? this.rotation : Math.atan2(z1 - target.z, target.x - x1) * 180 / Math.PI;
+  }
+  /** EntityScript:ForceFacePoint. */
+  ForceFacePoint(x: number, y: number, z: number): void;
+  ForceFacePoint(point: Vector3Like): void;
+  ForceFacePoint(x: number | Vector3Like, y?: number, z?: number): void {
+    this.setRotation(typeof x === 'number' ? this.GetAngleToPoint(x, y!, z!) : this.GetAngleToPoint(x));
+  }
+  /** EntityScript:FacePoint: as ForceFacePoint, except while the stategraph is busy. */
+  FacePoint(x: number, y: number, z: number): void;
+  FacePoint(point: Vector3Like): void;
+  FacePoint(x: number | Vector3Like, y?: number, z?: number): void {
+    if (this.sg?.hasStateTag('busy')) return;
+    if (typeof x === 'number') this.ForceFacePoint(x, y!, z!); else this.ForceFacePoint(x);
+  }
   /**
    * EntityScript:PushEvent: every fn listening for it, called fn(inst, data) from a copy of the list, then the stategraph
    * when it listens for the event, then the brain. Listeners run whether or not a display draws the entity.
@@ -383,12 +419,23 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   /** GetTime() on the scheduler this entity's tasks run on. */
   GetTime(): number { return this.taskScheduler().now; }
 
+  /** inst.spawntime: CreateEntity's GetTime(), taken when the entity first joins a world's scheduler. */
+  private spawntime?: number;
+  /** EntityScript:GetTimeAlive. */
+  GetTimeAlive(): number {
+    if (this.spawntime === undefined) throw new Error(`${this.prefab} has no world scheduler for its spawn time`);
+    return this.GetTime() - this.spawntime;
+  }
+
   /**
    * The entity joins a world's game-time scheduler, as an item does when its registry binds it: its pending tasks
    * keep their remaining time there.
    */
   BindScheduler(scheduler: GameTimeScheduler): void {
-    if (this.worldServices?.scheduler === scheduler) return;
+    const previous = this.worldServices?.scheduler;
+    // The entity keeps its age on the scheduler it joins.
+    this.spawntime = this.spawntime === undefined ? scheduler.now : this.spawntime + scheduler.now - (previous?.now ?? scheduler.now);
+    if (previous === scheduler) return;
     this.worldServices = { ...this.worldServices, scheduler };
     for (const task of this.pendingtasks ?? []) task.rebind(scheduler);
   }
@@ -449,6 +496,12 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.tagsChanged(tag);
   }
   removeTag(tag: string): void { if (this.tags.delete(tag)) this.tagsChanged(tag); }
+  /** EntityScript:AddOrRemoveTag. */
+  AddOrRemoveTag(tag: string, condition: boolean): void { if (condition) this.addTag(tag); else this.removeTag(tag); }
+  /** EntityScript:HasTags (HasAllTags): every one of the tags. */
+  HasTags(tags: readonly string[]): boolean { return tags.every(tag => this.hasTag(tag)); }
+  /** EntityScript:HasOneOfTags (HasAnyTag): at least one of the tags. */
+  HasOneOfTags(tags: readonly string[]): boolean { return tags.some(tag => this.hasTag(tag)); }
   /** The current tags as a frozen list. */
   listTags(): readonly string[] { return this.tagView ??= Object.freeze([...this.tags]); }
   /** Called with each added or removed tag, e.g. to refresh the placement index. */
@@ -466,6 +519,9 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   private tileAwake = true;
   /** inst.inlimbo: set by RemoveFromScene, cleared by ReturnToScene. */
   get inlimbo(): boolean { return this.hasTag('INLIMBO'); }
+
+  /** EntityScript:IsAsleep: the entity's tile is outside the ticking area or it is in limbo. */
+  IsAsleep(): boolean { return this.lifecycle.peek() === 'asleep'; }
 
   /** OnEntitySleep / OnEntityWake: follows the entity's tile; a removed entity stays removed. */
   setActive(active: boolean): void {
@@ -754,8 +810,10 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
       ?? (staticImages && this.resources.staticFactory(staticImages.buildArchive, staticImages.options));
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position, this.resources);
-    // The world's scheduler for inst:DoTaskInTime, unless the prefab's fn already bound the one it scheduled on.
-    if (this.scheduler && !instance.worldServices?.scheduler) instance.BindScheduler(this.scheduler);
+    // The world's scheduler for inst:DoTaskInTime, unless the prefab's fn already bound the one it scheduled on; binding
+    // also takes the spawn time of an fn that set its world services directly.
+    const scheduler = instance.worldServices?.scheduler ?? this.scheduler;
+    if (scheduler) instance.BindScheduler(scheduler);
     instance.BindSim(this);
     if (skins || materialOptions) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins ?? {}, materialOptions,
       ...skinSymbols ? { symbols: skinSymbols } : {}, ...baseSymbols ? { baseSymbols } : {},

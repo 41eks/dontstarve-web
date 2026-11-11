@@ -304,10 +304,10 @@ export class ButterflyCreature implements BrainInst, ButterflyStateInst, LocoMot
   addTag(tag: string): void { this.entity.addTag(tag); }
   removeTag(tag: string): void { this.entity.removeTag(tag); }
   hasTag(tag: string): boolean { return this.entity.hasTag(tag); }
-  isNear(other: BrainEntity, distance: number): boolean {
+  IsNear(other: BrainEntity, distance: number): boolean {
     return distanceSquared(this.getPosition(), other.getPosition()) <= distance * distance;
   }
-  getAngleToPoint(x: number, _y: number, z: number): number {
+  GetAngleToPoint(x: number, _y: number, z: number): number {
     const position = this.getPosition();
     const angle = Math.atan2(-(z - position.z), x - position.x) * RADIANS;
     return (angle % 360 + 360) % 360;
@@ -347,7 +347,7 @@ export class ButterflyCreature implements BrainInst, ButterflyStateInst, LocoMot
     const target = action.target as BrainEntity | undefined;
     if (target?.isValid()) {
       const { x, y, z } = target.getPosition();
-      this.setRotation(this.getAngleToPoint(x, y, z));
+      this.setRotation(this.GetAngleToPoint(x, y, z));
     }
     this.PushEvent('performaction', { action });
     const success = action.do();

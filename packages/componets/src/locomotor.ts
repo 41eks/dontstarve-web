@@ -16,7 +16,7 @@ export interface LocoMotorInst {
   getPhysicsRadius(fallback: number): number;
   /** Transform:GetRotation in degrees; forward is (cos, -sin). */
   setRotation(degrees: number): void;
-  getAngleToPoint(x: number, y: number, z: number): number;
+  GetAngleToPoint(x: number, y: number, z: number): number;
   /** Physics:SetMotorVel / Physics:Stop: the entity moves forward at this speed. */
   setMotorSpeed(speed: number): void;
   readonly sg?: { hasStateTag(tag: string): boolean };
@@ -223,7 +223,7 @@ export class LocoMotor {
   }
 
   FaceMovePoint(x: number, y: number, z: number): void {
-    this.inst.setRotation(this.inst.getAngleToPoint(x, y, z));
+    this.inst.setRotation(this.inst.GetAngleToPoint(x, y, z));
   }
 
   SetMoveDir(direction: number): void { this.inst.setRotation(direction); }
@@ -353,7 +353,7 @@ export class LocoMotor {
         if (canrotate && !(sg?.hasStateTag('busy'))) {
           const point = this.pathing?.GetMoveStep(position, destination, this.inst.getPhysicsRadius(0)) ?? destination;
           this.movePoint = point;
-          this.SetMoveDir(this.inst.getAngleToPoint(point.x, point.y, point.z));
+          this.SetMoveDir(this.inst.GetAngleToPoint(point.x, point.y, point.z));
         }
         this.wantstomoveforward = true;
       }

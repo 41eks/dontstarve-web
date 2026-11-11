@@ -110,13 +110,6 @@ export class BeefaloInstance extends PrefabInstance {
     this.sprite.setFacingRotation(degrees, 6);
   }
 
-  /** EntityScript:GetAngleToPoint. */
-  // conventions-allow instance-method: EntityScript:GetAngleToPoint, part of the inst surface locomotor reads.
-  getAngleToPoint(x: number, _y: number, z: number): number {
-    const { x: px, z: pz } = this.position;
-    return THREE.MathUtils.radToDeg(Math.atan2(pz - z, x - px));
-  }
-
   /** Physics:SetMotorVel along the heading. */
   // conventions-allow instance-method: the engine's Physics:SetMotorVel, which locomotor calls on inst.
   setMotorSpeed(speed: number): void {
@@ -203,9 +196,9 @@ function brainInst(inst: BeefaloInstance, world: BeefaloWorld, random: () => num
     getPosition: () => inst.getPosition(), isValid: () => inst.isValid(),
     getPhysicsRadius: () => BEEFALO_BEHAVIOR.radius,
     hasTag: tag => inst.hasTag(tag),
-    getAngleToPoint: (x, y, z) => inst.getAngleToPoint(x, y, z),
-    isNear: (entity, distance) => distanceSquared(inst.position, entity.getPosition()) < distance ** 2,
-    facePoint: point => inst.setRotation(inst.getAngleToPoint(point.x, 0, point.z)),
+    GetAngleToPoint: (x, y, z) => inst.GetAngleToPoint(x, y, z),
+    IsNear: (entity, distance) => distanceSquared(inst.position, entity.getPosition()) < distance ** 2,
+    FacePoint: point => inst.FacePoint(point),
     ListenForEvent: (name, fn) => { inst.ListenForEvent(name, fn); },
     RemoveEventCallback: (name, fn) => inst.RemoveEventCallback(name, fn),
   };

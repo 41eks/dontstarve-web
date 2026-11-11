@@ -138,7 +138,7 @@ it('moves a creature around a wall through the same search, and holds it at the 
   let heading = 0, speed = 0;
   const inst = { isValid: () => true, getPosition: () => position, getPhysicsRadius: () => .5, components: {}, PushEvent() {}, PushBufferedAction() {},
     setRotation: (degrees: number) => { heading = degrees; }, setMotorSpeed: (value: number) => { speed = value; },
-    getAngleToPoint: (x: number, _y: number, z: number) => Math.atan2(position.z - z, x - position.x) * 180 / Math.PI };
+    GetAngleToPoint: (x: number, _y: number, z: number) => Math.atan2(position.z - z, x - position.x) * 180 / Math.PI };
   const motor = new LocoMotor(inst, { arriveDistance: .45, pathfinder });
   motor.walkspeed = 8;
   motor.GoToPoint({ x: 24, y: 0, z: 0 });

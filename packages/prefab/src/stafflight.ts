@@ -71,9 +71,7 @@ export interface StaffLightWorld {
 export class StaffLightInstance extends PrefabInstance {
   readonly no_wet_prefix = true;
   _killed = false;
-  private readonly scheduler: GameTimeScheduler;
   private readonly settings: typeof STAFF_LIGHTS[StaffLightId];
-  private readonly spawnedAt: number;
   private readonly soundEmitter: SoundEmitter = this.AddSoundEmitter();
   /** A random idle waits here for its art: a clip nothing draws would complete at once. */
   private idleAwaitsArt = false;
@@ -81,7 +79,7 @@ export class StaffLightInstance extends PrefabInstance {
   constructor(prefab: StaffLightId, world: StaffLightWorld) {
     super(prefab, new SpriteState({ name: 'appear', billboard: true }));
     const { scheduler } = world, settings = STAFF_LIGHTS[prefab];
-    this.scheduler = scheduler; this.settings = settings; this.spawnedAt = scheduler.now;
+    this.settings = settings;
     this.BindScheduler(scheduler);
 
     // DoPeriodicTask(.1, pulse_light): the light is first enabled by the first pulse, a period after spawning.
@@ -141,7 +139,7 @@ export class StaffLightInstance extends PrefabInstance {
   }
 
   private pulse_light(): void {
-    const timealive = this.scheduler.now - this.spawnedAt;
+    const timealive = this.GetTimeAlive();
     this.light.set({ ...dwarfStarLight(timealive), colour: this.settings.colour });
   }
 

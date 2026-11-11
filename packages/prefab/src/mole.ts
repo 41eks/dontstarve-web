@@ -133,8 +133,8 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
   RemoveEventCallback(name: string, fn: (inst: unknown, data: unknown) => void): void { this.listeners.get(name)?.get(fn)?.(); this.listeners.get(name)?.delete(fn); }
   // inst:PushEvent reaches SGmole itself: entity.sg is its stategraph.
   PushEvent(name: string, data?: unknown): void { this.entity.PushEvent(name, data); }
-  isNear(other: { getPosition(): unknown }, distance: number): boolean { return this.getPosition().distanceToSquared(other.getPosition() as Vector3) <= distance ** 2; }
-  getAngleToPoint(x: number, _y: number, z: number): number { const p = this.getPosition(); return Math.atan2(-(z - p.z), x - p.x) * 180 / Math.PI; }
+  IsNear(other: { getPosition(): unknown }, distance: number): boolean { return this.getPosition().distanceToSquared(other.getPosition() as Vector3) <= distance ** 2; }
+  GetAngleToPoint(x: number, _y: number, z: number): number { const p = this.getPosition(); return Math.atan2(-(z - p.z), x - p.x) * 180 / Math.PI; }
   setRotation(degrees: number): void { this.heading = degrees; this.syncMotor(); }
   setMotorSpeed(speed: number): void { this.speed = speed; this.syncMotor(); }
   stopPhysics(): void { this.setMotorSpeed(0); }

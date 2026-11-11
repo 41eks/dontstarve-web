@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
-import * as THREE from 'three';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Combat } from '../../componets/src/combat';
@@ -58,10 +57,6 @@ export class DragonflyInstance extends PrefabInstance {
   /** The components' inst: inventory owner id, Transform and Physics motor, and brain switches. */
   get id(): string { return String(this.entityId); }
   isDead(): boolean { return this.components.health.IsDead(); }
-  getAngleToPoint(x: number, _y: number, z: number): number {
-    const { position } = this;
-    return THREE.MathUtils.radToDeg(Math.atan2(position.z - z, x - position.x));
-  }
   /** Physics:SetMotorVel along the facing. */
   setMotorSpeed(speed: number): void {
     const body = this.physicsBody, angle = this.transform.model.rotation.y;

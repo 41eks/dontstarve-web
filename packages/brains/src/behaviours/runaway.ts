@@ -60,7 +60,7 @@ export class RunAway extends BehaviourNode {
       this.avoid_time = undefined;
       this.avoid_angle = undefined;
     }
-    let angle = this.inst.getAngleToPoint(hp.x, hp.y, hp.z) + 180;
+    let angle = this.inst.GetAngleToPoint(hp.x, hp.y, hp.z) + 180;
     if (angle > 360) angle -= 360;
     const result = FindWalkableOffset(this.inst.world, pt, angle * DEGREES, 6, 8);
     if (!result) return angle; // ok whatever, just run
@@ -78,7 +78,7 @@ export class RunAway extends BehaviourNode {
       this.hunter = this.gethunterfn
         ? this.gethunterfn(this.inst)
         : this.inst.world.findEntity(this.inst, this.see_dist, this.hunterfn && ((guy, from) => this.hunterfn!(guy, from as BrainInst)), this.huntertags, this.hunternotags, this.hunteroneoftags);
-      if (this.gethunterfn && this.hunter && !(this.hunter.isValid() && this.inst.isNear(this.hunter, this.see_dist))) this.hunter = undefined;
+      if (this.gethunterfn && this.hunter && !(this.hunter.isValid() && this.inst.IsNear(this.hunter, this.see_dist))) this.hunter = undefined;
       if (this.hunter && this.shouldrunfn && !this.shouldrunfn(this.hunter, this.inst)) this.hunter = undefined;
       this.status = this.hunter ? RUNNING : FAILED;
     }

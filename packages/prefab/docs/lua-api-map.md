@@ -21,6 +21,11 @@
 | `SpawnPrefab(id)` | `world.spawnPrefab(id, position)` | `vault_pillar.ts` | 注入，不是全局函数 |
 | `inst.entity:AddChild`（非存档子实体） | `child.entityParent = inst`，并 `inst.onRemove(() => child.remove())` | `vault_pillar.ts` | 子实体定义 `targetable: false` |
 | `inst:AddTag`、`RemoveTag`、`HasTag` | `addTag`、`removeTag`、`hasTag` | `atrium_pillar.ts` | 含 `Make*` 和组件构造函数加的标签 |
+| `inst:AddOrRemoveTag(tag, cond)`、`HasTags`（`HasAllTags`）、`HasOneOfTags`（`HasAnyTag`） | 同名方法，多标签传数组：`inst.HasTags(['a', 'b'])` | `entityScript.test.ts` | 不支持 Lua 的可变参数写法；别名 `HasAllTags`、`HasAnyTag` 不另设 |
+| `inst:GetDistanceSqToInst`、`GetDistanceSqToPoint`、`IsNear` | 同名方法，点用 `Vector3` | `entityScript.test.ts` | `GetDistanceSqToInst` 与 Lua 一样要求两实体有效，否则抛错 |
+| `inst:GetAngleToPoint`、`FacePoint`、`ForceFacePoint` | 同名方法，传 `(x, y, z)` 或一个点；角度为度 | `entityScript.test.ts`、`locomotor.ts` | `FacePoint` 在 `sg` 有 `busy` 标签时不转向 |
+| `inst:GetTimeAlive()` | `inst.GetTimeAlive()` | `stafflight.ts`、`bernie.ts` | 出生时间取实体首次绑定 world 调度器时的 `GetTime()`（manager 生成时一定绑定）；换到另一 world 的调度器时保留已存活时间 |
+| `inst:IsAsleep()` | `inst.IsAsleep()` | `entityScript.test.ts` | 与 `status` 的 `asleep` 一致：tile 不在活动区或处于 limbo |
 | `TheSim:FindEntities(x, y, z, r, must, cant, oneof)` | `inst.TheSim.FindEntities(position, r, must, cant, oneof)`，由实体所在 world 的 `PrefabEntityManager` 回答；manager 之外生成的实体（玩家、placer）用 `track(inst)` 加入并获得 `TheSim`；应用层直接用 manager | `fence.ts`、`burnableItems.ts`、`prefabEntityFind.test.ts` | 查全部有效实体（含休眠），按距离升序（同距离的顺序不定）；manager 用 16 单位的空间网格（`entityGrid.ts`），由 `Transform.setPosition` 同步更新，位置只能经 `setPosition` 写入；不自动排除自身和 `INLIMBO`，按 Lua 写 `v ~= inst` 和 cant 标签。未加入任何 world 的实体读 `TheSim` 会抛错 |
 
 ## 动画

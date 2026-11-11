@@ -21,7 +21,7 @@ export class BeefaloBrain extends Brain {
           return target && !target.hasTag('notarget') && !target.hasTag('playerghost') ? target : undefined;
         },
         (_inst, target) => inst.isValid() && !target.hasTag('notarget') && !target.hasTag('playerghost')
-          && inst.isNear(target, 6 * scale)),
+          && inst.IsNear(target, 6 * scale)),
       new Wander(inst, () => inst.components.knownlocations?.GetLocation('herd'),
         () => (inst.world.isDay ? 20 : 5) * scale, undefined, undefined, undefined,
         { wander_dist: 12 * scale }),

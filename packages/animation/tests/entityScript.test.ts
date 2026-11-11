@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import * as THREE from 'three';
 import { SpriteState } from '../../display/src';
 import { HomeSeeker } from '../../componets/src/homeseeker';
 import { GameTimeScheduler } from '../../signals/src';
@@ -146,3 +147,63 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     expect(seeker.home).toBeUndefined();
   });
 });
+
+describe('EntityScript queries on PrefabInstance', () => {
+  it('measures distance and angle on the ground, and FacePoint waits while the stategraph is busy', () => {
+    const inst = entity('beefalo'), other = entity('wilson');
+    other.setPosition(3, 0, -4);
+    expect(inst.GetDistanceSqToInst(other)).toBe(25);
+    expect(inst.IsNear(other, 5)).toBe(false);
+    expect(inst.IsNear(other, 5.01)).toBe(true);
+    expect(inst.IsNear(undefined, 100)).toBe(false);
+    // atan2(z1 - z, x - x1): -z is 90 degrees; at the entity's own position the angle is its rotation.
+    expect(inst.GetAngleToPoint(0, 0, -2)).toBeCloseTo(90);
+    inst.setRotation(30);
+    expect(inst.GetAngleToPoint(inst.getPosition())).toBeCloseTo(30);
+
+    const sg = new StateGraphInstance<null, 'idle' | 'attack'>(null, [{ name: 'idle' }, { name: 'attack', tags: ['busy'] }]);
+    inst.sg = sg;
+    sg.goToState('attack');
+    inst.FacePoint(0, 0, -2);
+    expect(inst.rotation).toBeCloseTo(30);
+    inst.ForceFacePoint(0, 0, -2);
+    expect(inst.rotation).toBeCloseTo(90);
+    sg.goToState('idle');
+    inst.FacePoint(new THREE.Vector3(-2, 0, 0));
+    expect(inst.rotation).toBeCloseTo(180);
+
+    other.remove();
+    expect(() => inst.GetDistanceSqToInst(other)).toThrow();
+  });
+
+  it('tests several tags at once, sleeps with its tile or in limbo, and keeps its age across schedulers', () => {
+    const inst = entity('rabbit');
+    inst.AddOrRemoveTag('animal', true);
+    inst.AddOrRemoveTag('prey', true);
+    inst.AddOrRemoveTag('prey', false);
+    expect(inst.HasTags(['animal'])).toBe(true);
+    expect(inst.HasTags(['animal', 'prey'])).toBe(false);
+    expect(inst.HasOneOfTags(['prey', 'animal'])).toBe(true);
+    expect(inst.HasOneOfTags([])).toBe(false);
+
+    expect(inst.IsAsleep()).toBe(false);
+    inst.setActive(false);
+    expect(inst.IsAsleep()).toBe(true);
+    inst.setActive(true);
+    inst.RemoveFromScene();
+    expect(inst.IsAsleep()).toBe(true);
+    inst.ReturnToScene();
+    expect(inst.IsAsleep()).toBe(false);
+
+    const first = new GameTimeScheduler(10), second = new GameTimeScheduler(100);
+    expect(() => inst.GetTimeAlive()).toThrow();
+    inst.BindScheduler(first);
+    first.advance(4);
+    expect(inst.GetTimeAlive()).toBe(4);
+    inst.BindScheduler(second);
+    second.advance(1);
+    expect(inst.GetTimeAlive()).toBe(5);
+    first.dispose(); second.dispose();
+  });
+});
+

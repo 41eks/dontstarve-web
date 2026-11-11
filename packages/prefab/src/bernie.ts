@@ -104,7 +104,6 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
   private readonly world: BernieWorld;
   private readonly animstate: AnimState;
   private readonly bernieBrain: BernieBrain | BernieBigBrain;
-  private readonly spawnedAt: number;
   private readonly archive: string;
 
   constructor(world: BernieWorld, big: boolean) {
@@ -112,7 +111,6 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     this.world = world;
     this.BindScheduler(world.scheduler);
     this.big = big;
-    this.spawnedAt = world.scheduler.now;
     this.archive = big ? 'bernie_big.zip' : 'bernie.zip';
     for (const tag of big ? ['largecreature', 'companion', 'soulless', 'crazy', 'bigbernie'] : ['smallcreature', 'companion', 'soulless']) this.addTag(tag);
     this.addTag('inspectable');
@@ -167,7 +165,6 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
   random(): number { return Math.random(); }
   getPlayers(): readonly BerniePlayer[] { return this.world.getPlayers(); }
   isleadercrazy(leader: BerniePlayer): boolean { return isleadercrazy(leader); }
-  GetTimeAlive(): number { return this.world.scheduler.now - this.spawnedAt; }
   /** health.lua OnSave, kept as the record's `{ current, maximum }`. */
   OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const { health } = this.components;
