@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import { prefabDisplay } from '@dontstarve-web/display';
@@ -67,7 +68,7 @@ function setup() {
 }
 
 function actor() {
-  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound: () => {}, stopSound: () => {}, onStateChanged: () => {} });
+  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged: () => {} });
   const animation = { stategraph: graph };
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   return { graph, animation, locomotor };

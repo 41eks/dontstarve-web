@@ -18,7 +18,6 @@ import type { PickaxeTool } from './pickaxe';
 import type { PitchforkTool } from './pitchfork';
 import { createPlayerStats, equipSamePrefab, OnMakePlayerGhost, OnRespawnFromGhost, type PlayerStats, type PlayerStatsSave, type RezSource } from './player_common';
 import type { ShovelTool } from './shovel';
-import type { SoundEventPath } from './sound';
 import type { SoundEmitter } from './soundEmitter';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -100,7 +99,7 @@ export interface WilsonAnimationController {
   makeGhost(loading?: boolean): void;
   /** player_common_extensions.lua DoActualRez: the living bank and skin, SetStateGraph("SGwilson") and the source's rebirth state (portal_rez, or amulet_rebirth for an amulet). */
   makeAlive(state?: 'portal_rez' | 'amulet_rebirth'): void;
-  bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint' | 'playSound'> | undefined): void;
+  bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint'> | undefined): void;
   readonly isGhost: boolean;
   readonly isSleeping: boolean;
   wakeFromBed(): void;
@@ -123,6 +122,8 @@ export type PlayerModel = THREE.Group;
 
 /** Player-owned state kept on the logical inst, including the movement facts read by SGwilson. */
 export interface WilsonPlayerInstance extends PrefabInstance {
+  /** player_common.lua fn: inst.entity:AddSoundEmitter(). */
+  SoundEmitter: SoundEmitter;
   readonly stats: PlayerStats;
   readonly components: PrefabInstance['components'] & {
     inventory?: import('@dontstarve-web/inventory').InventoryStore;
@@ -194,7 +195,6 @@ class WilsonController implements WilsonAnimationController {
   readonly equipmentPresentation: EquipmentPresentation;
   /** inst.AnimState: the player's own declaration, beneath the slots its equipped items declare. */
   readonly AnimState: AnimState;
-  private makeSoundActive = false;
   /** The player inst's combat component, read by the attack state. */
   combat?: WilsonCombat;
   private readonly instance: WilsonPlayerInstance;
@@ -210,7 +210,6 @@ class WilsonController implements WilsonAnimationController {
   private readonly sleepHost?: WilsonSleepHost;
   private deathHost?: WilsonDeathHost;
   private fishingHost?: WilsonFishingHost;
-  private readonly SoundEmitter: SoundEmitter;
   private inventory?: Parameters<typeof equipSamePrefab>[0];
 
   constructor(
@@ -220,7 +219,6 @@ class WilsonController implements WilsonAnimationController {
     sanityPercent?: ReadonlySignal<number>,
   ) {
     this.instance = instance;
-    this.SoundEmitter = instance.AddSoundEmitter({ atListener: true });
     this.resources = resources;
     this.equipmentAssets = new GroundItemAssets();
     // The sprite holds the AnimState's own json signal; the player's display follows it and loads the builds it names from the equipment assets.
@@ -253,7 +251,7 @@ class WilsonController implements WilsonAnimationController {
       say: announce => instance.components.talker?.Say(WORTOX_SLEEP_SPEECH[announce]),
     };
     const controller = this;
-    this.stategraph = new WilsonStateGraph({
+    this.stategraph = new WilsonStateGraph(instance, {
       get soulHop() { return controller.soulHopHost; },
       get sleep() { return controller.sleepHost; },
       get death() { return controller.deathHost; },
@@ -282,44 +280,9 @@ class WilsonController implements WilsonAnimationController {
         setInvincible: invincible => { instance.components.health!.SetInvincible(invincible); },
       },
       get fishing() { return controller.fishingHost; },
-      playEvent: event => { this.SoundEmitter.PlaySound(event as SoundEventPath); },
       playAnimation: (clip) => this.selectAnimation(clip),
       getCombat: () => this.combat,
-      playSound: (cue, castsound) => {
-        if (cue === 'attack') { this.SoundEmitter.PlaySound(castsound as SoundEventPath); return; }
-        if (cue === 'shave') {
-          this.SoundEmitter.PlaySound('dontstarve/wilson/shave_LP', 'shave');
-          return;
-        }
-        if (cue === 'make') {
-          this.SoundEmitter.KillSound('make');
-          this.makeSoundActive = true;
-          return;
-        }
-        const event = cue === 'useBreak' ? 'dontstarve/wilson/use_break' : cue === 'dig' ? 'dontstarve/wilson/dig' : cue === 'tillEmerge' ? 'dontstarve_DLC001/creatures/mole/emerge'
-          : cue === 'sip' ? 'dontstarve/wilson/sip' : cue === 'eat' ? 'dontstarve/wilson/eat' : cue === 'reskin' ? 'dontstarve/wilson/attack_weapon'
-          : cue === 'cast' ? (castsound as SoundEventPath ?? 'dontstarve/wilson/use_gemstaff')
-            : cue === 'bookLight' ? 'dontstarve/common/use_book_light' : cue === 'bookClose' ? 'dontstarve/common/use_book_close'
-              : cue === 'hammer' ? 'dontstarve/wilson/hit' : 'dontstarve/wilson/use_pick_rock';
-        this.SoundEmitter.PlaySound(event);
-      },
-      playNamedSound: (name, event) => { this.SoundEmitter.PlaySound(event as SoundEventPath, name); },
-      stopNamedSound: name => { this.SoundEmitter.KillSound(name); },
-      isPlayingNamedSound: name => this.SoundEmitter.PlayingSound(name),
-      setNamedSoundVolume: (name, volume) => { this.SoundEmitter.SetVolume(name, volume); },
-      showLayer: layer => this.AnimState.Show(layer),
-      hideLayer: layer => this.AnimState.Hide(layer),
-      clearOverrideSymbol: symbol => this.AnimState.ClearOverrideSymbol(symbol),
       spawnFx: (prefab, followSymbol) => this.bookFx.spawn(prefab, followSymbol),
-      overrideSymbol: (symbol, build, sourceSymbol) => this.AnimState.OverrideSymbol(symbol, build, sourceSymbol),
-      // Item skin builds are dynamic/<skin>.zip; the skin's symbol is drawn when its build has it, else the stock one.
-      overrideItemSkinSymbol: (symbol, skinBuild, skinSymbol, build, sourceSymbol) =>
-        this.AnimState.OverrideItemSkinSymbol(symbol, `dynamic/${skinBuild}.zip`, skinSymbol, 'player', build, sourceSymbol),
-      stopSound: cue => {
-        if (cue === 'shave') { this.SoundEmitter.KillSound('shave'); return; }
-        this.SoundEmitter.KillSound('make');
-        this.makeSoundActive = false;
-      },
       castLight: (colour, duration, delay) => {
         const light = instance.SpawnPrefab?.(STAFF_CASTINGLIGHT_ID, instance.position.clone()) as StaffCastingLightInstance | undefined;
         light?.SetUp(colour, duration, delay);
@@ -327,15 +290,11 @@ class WilsonController implements WilsonAnimationController {
       },
       setControllerEnabled: enabled => { instance.controllerEnabled = enabled; },
       stopMovement: () => instance.locomotor?.stop(),
-      pushPlayerEvent: (name, data) => instance.PushEvent(name, data),
       slip: {
         runSpeed: () => instance.runSpeed,
         setMotorSpeed: speed => { instance.motorSpeed = speed; },
         resetSlipperiness: () => instance.slipperyfeet?.SetCurrent(0),
         wantsToMoveForward: () => instance.wantsToMoveForward,
-        playSound: (event, volume) => {
-          this.SoundEmitter.PlaySound(event === 'hurt' ? 'dontstarve/characters/wilson/hurt' : `dontstarve/movement/${event}`, undefined, volume);
-        },
       },
       equipSamePrefab: (prefab) => this.inventory !== undefined && equipSamePrefab(this.inventory, prefab),
       onStateChanged: (name) => {
@@ -374,7 +333,7 @@ class WilsonController implements WilsonAnimationController {
   bindDeath(death: WilsonDeathHost | undefined): void { this.deathHost = death; }
   bindSpawnPrefab(spawn: ((prefab: string, position: THREE.Vector3) => PrefabInstance | undefined) | undefined): void { this.instance.SpawnPrefab = spawn; }
 
-  bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint' | 'playSound'> | undefined): void {
+  bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint'> | undefined): void {
     if (!host) {
       this.stategraph.cancelAction('BLINK');
       this.stategraph.cancelAction('BLINK_MAP');
@@ -383,9 +342,6 @@ class WilsonController implements WilsonAnimationController {
     this.soulHopHost = host && {
       ...host,
       setTint: value => this.setTint(value),
-      playSound: (event, volume = 1) => {
-        this.SoundEmitter.PlaySound(event as SoundEventPath, undefined, volume);
-      },
     };
   }
 
@@ -471,9 +427,6 @@ class WilsonController implements WilsonAnimationController {
       this.instance.sprite.setArtSource(this.artSource);
     }
     this.instance.AnimState.PlayAnimation(clip.name, clip.loop);
-    if (this.makeSoundActive && this.state === 'build_loop') {
-      this.SoundEmitter.PlaySound('dontstarve/wilson/make_trap', 'make');
-    }
     return animation.frames / (animation.frameRate * playbackRate);
   }
 
@@ -488,7 +441,7 @@ class WilsonController implements WilsonAnimationController {
     this.stategraph.dispose();
     this.cleanups.splice(0).forEach(stop => stop());
     this.bookFx.dispose(); this.fxScheduler.dispose();
-    this.SoundEmitter.KillAllSounds();
+    this.instance.SoundEmitter.KillAllSounds();
   }
 
   releaseAssets(): void {
@@ -511,6 +464,8 @@ function createWilsonPlayerEntity(
     instance.sprite.setFacingRotation(0, 4);
   });
   if (options.scheduler) baseInstance.BindScheduler(options.scheduler);
+  // player_common.lua fn: inst.entity:AddSoundEmitter(); the listener is at the player.
+  baseInstance.AddSoundEmitter({ atListener: true });
   const instance: WilsonPlayerInstance = Object.assign(baseInstance, {
     stats: createPlayerStats(baseInstance, options.stats, options.scheduler),
     controllerEnabled: true, runSpeed: 0, currentMotorSpeed: 0, wantsToMoveForward: false, worldHeading: 0,

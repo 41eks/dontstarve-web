@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src';
@@ -33,10 +34,11 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
   const spawn = vi.fn(), worldServices = { map, spawnPrefab: spawn };
   const staff = getLightStaffController(entity, worldServices);
   staff.onequip();
-  const sound = vi.fn(), castingLight = { remove: vi.fn() }, casting = vi.fn(() => castingLight);
-  const graph = new WilsonStateGraph({
+  const castingLight = { remove: vi.fn() }, casting = vi.fn(() => castingLight);
+  const inst = wilsonStateInst(), sound = inst.SoundEmitter.PlaySound;
+  const graph = new WilsonStateGraph(inst, {
     playAnimation: clip => (clip.key === 'staff_pre' ? 15 : clip.key === 'staff' ? 65 : 30) / 30,
-    playSound: sound, castLight: casting, onStateChanged() {},
+    castLight: casting, onStateChanged() {},
   });
   const player = new THREE.Group();
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
@@ -78,7 +80,7 @@ it('uses source capabilities and the real invobject, approaches distant points, 
     expect(s.graph.getBufferedAction()?.invobject).toBe(s.entity);
     point.set(-50, 0, 0); // Pointer movement cannot change the buffered point.
     s.graph.update(13 / 30);
-    expect(s.sound).toHaveBeenCalledWith('cast', LIGHT_STAFF_CAST_SOUND);
+    expect(s.sound).toHaveBeenCalledWith(LIGHT_STAFF_CAST_SOUND);
     s.graph.update(39 / 30);
     expect(s.spawn).not.toHaveBeenCalled();
     expect(s.entity.components.finiteuses.remaining).toBeUndefined();

@@ -69,6 +69,15 @@ it('names skin builds without loading them, replaces an unequipped skin and keep
   }
 });
 
+it('reads a lone skin_build as its dynamic archive, and keeps archive paths and fallback lists as named', () => {
+  const anim = new AnimState();
+  // SGwilson book: OverrideItemSkinSymbol("book_open", skin_build, "book_open", book.GUID, swap_build) with GetSkinBuild's name.
+  anim.OverrideItemSkinSymbol('book_open', 'book_horticulture_bookshelf', 'book_open', '1', 'player_actions_uniqueitem', 'book_open');
+  expect(overrideArchives(anim, 'book_open')).toEqual(['dynamic/book_horticulture_bookshelf.zip', 'player_actions_uniqueitem.zip']);
+  anim.OverrideItemSkinSymbol('swap_object', ['dynamic/bugnet_frog.zip', 'swap_bugnet'], 'swap_bugnet', '2');
+  expect(overrideArchives(anim, 'swap_object')).toEqual(['dynamic/bugnet_frog.zip', 'swap_bugnet.zip']);
+});
+
 it('lets the hat prefab change source visibility groups and clear its own overrides while preserving the backpack', async () => {
   const assets = new GroundItemAssets();
   const context = { assets, hats: new HatEquipmentAssets('/dst/data/anim'), lightParent: createEmptyEntity('wilson').instance };

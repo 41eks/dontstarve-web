@@ -212,10 +212,15 @@ export class AnimState {
     const hash = smallHash(sourceSymbol);
     this.setOverride(symbol, this.archives(build).map(archive => ({ archive, symbol: hash })));
   }
-  /** The skin's symbol, else the fallback build's; a skin without the symbol and no fallback hides it. */
+  /**
+   * The skin's symbol, else the fallback build's; a skin without the symbol and no fallback hides it. One skin named as a
+   * build (skin_build, as AnimState:GetSkinBuild returns it) is the item skin archive anim/dynamic/<build>.zip; archives
+   * and registered builds are used as named.
+   */
   OverrideItemSkinSymbol(symbol: string, skin: SymbolSource, sourceSymbol: string, _guid: string, fallback?: SymbolSource, fallbackSymbol = sourceSymbol): void {
     const skinHash = smallHash(sourceSymbol), fallbackHash = smallHash(fallbackSymbol);
-    this.setOverride(symbol, [...this.archives(skin).map(archive => ({ archive, symbol: skinHash })),
+    const skins = typeof skin === 'string' && !skin.endsWith('.zip') && !this.builds.has(skin) ? [`dynamic/${skin}.zip`] : this.archives(skin);
+    this.setOverride(symbol, [...skins.map(archive => ({ archive, symbol: skinHash })),
       ...(fallback === undefined ? [] : this.archives(fallback).map(archive => ({ archive, symbol: fallbackHash })))]);
   }
   private setOverride(symbol: string, sources: SymbolOverrideJson['sources']): void {

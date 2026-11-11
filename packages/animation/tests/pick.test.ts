@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import { addComponent } from '../../prefab/src/components';
 import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
@@ -61,7 +62,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   const picker = new PlayerActionPicker(pointer), canvas = new EventTarget();
   const actionEvents = new EventEmitter<PlayerActionEvents>(), begin = vi.fn();
   const stopEvents = actionEvents.on('action:begin', begin);
-  const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, onStateChanged() {} });
+  const stategraph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => .2, onStateChanged() {} });
   const animation = { stategraph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });

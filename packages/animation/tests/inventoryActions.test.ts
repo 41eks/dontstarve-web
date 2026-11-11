@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -36,7 +37,7 @@ function setup() {
   const world = { scene, player: display.model, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: canvas } } as unknown as ActionWorldContext;
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
-  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, onStateChanged() {} });
+  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged() {} });
   const locomotor = new Locomotor({ position: instance.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
   const controller = new PlayerController(world, graph,
     locomotor, inventory.handEquipment, instance as never);

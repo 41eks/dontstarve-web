@@ -1,3 +1,4 @@
+import type { SoundEventPath } from '../../prefab/src/sound';
 import { getActionString } from './actions.ts';
 
 /** books.lua def fields read by SGwilson's book2 state. */
@@ -6,11 +7,13 @@ export interface BookDef {
   readonly fx?: string;
   readonly fx_over_prefab?: string;
   readonly fx_under_prefab?: string;
-  readonly layer_sound?: { readonly frame?: number; readonly sound: string };
+  readonly layer_sound?: { readonly frame?: number; readonly sound: SoundEventPath };
 }
 
 /** Entity metadata read by Lua-style action destination functions. */
 export interface BufferedActionObject {
+  /** The entity's GUID. */
+  readonly id?: string;
   readonly prefab?: string;
   readonly spelltype?: string;
   readonly castsound?: string;

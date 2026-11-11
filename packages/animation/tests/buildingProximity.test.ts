@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -52,7 +53,7 @@ async function setup(definition: { archive: string } = definitions.animatedBuild
   const playOnce = vi.spyOn(animation, 'playOnce');
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockImplementation(() =>
     ({ object: model, point: new THREE.Vector3() }) as THREE.Intersection);
-  const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, onStateChanged() {} });
+  const stategraph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => .2, onStateChanged() {} });
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
   // The player inst RUMMAGE opens the container for; SCENE.container needs its inventory.

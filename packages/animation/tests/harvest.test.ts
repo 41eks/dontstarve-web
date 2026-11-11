@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
@@ -30,7 +31,8 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   instance.components.stewer = stewer;
   registerActionEntity(prefabInstance(model)!);
   stewer.OnLoad({ product: 'kabobs', done: true });
-  const stategraph = new WilsonStateGraph({ playAnimation: () => .2, playSound() {}, onStateChanged() {} });
+  const inst = wilsonStateInst();
+  const stategraph = new WilsonStateGraph(inst, { playAnimation: () => .2, onStateChanged() {} });
   const animation = { stategraph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
@@ -50,6 +52,9 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
     expect(locomotor.destination).toBeDefined();
     player.position.x = 18.1; locomotor.update(16, 1 / 30);
     expect(stategraph.stateName).toBe('dolongaction');
+    // SGwilson.lua dolongaction: make_trap on the "make" handle as the state is entered, killed as it ends.
+    expect(inst.SoundEmitter.PlaySound).toHaveBeenCalledWith('dontstarve/wilson/make_trap', 'make');
+    expect(inst.SoundEmitter.KillSound).not.toHaveBeenCalledWith('make');
     stategraph.update(.5);
     manual = true; controller.update(); stategraph.update(2);
     expect(inventory.GiveItem).not.toHaveBeenCalled();
@@ -59,6 +64,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
     stategraph.update(2);
     expect(inventory.entities.create).toHaveBeenCalledExactlyOnceWith({ itemId: 'kabobs', count: 1 });
     expect(inventory.GiveItem).toHaveBeenCalledExactlyOnceWith(product, new THREE.Vector3(20, 0, 0));
+    expect(inst.SoundEmitter.KillSound).toHaveBeenCalledWith('make');
     expect(stewer.IsDone()).toBe(false);
     stewer.OnLoad({ product: 'kabobs', done: true });
     instance.addTag('burnt');

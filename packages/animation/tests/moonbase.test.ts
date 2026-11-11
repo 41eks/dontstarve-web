@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -334,7 +335,7 @@ it('persists paused named timers without ticking their snapshots and keeps expir
 
 it('walks to the moonbase through the player controller, cancels before consumption, and commits REPAIR and GIVE at their source times', async () => {
   const { placement, world, model } = await createMoonbase();
-  const graph = new WilsonStateGraph({ playAnimation: () => .8, playSound() {}, stopSound() {}, onStateChanged() {} });
+  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => .8, onStateChanged() {} });
   const inventory = createInventoryStore([]);
   inventory.add('moonrocknugget', 1); inventory.add('yellowstaff', 1);
   let manual = false;

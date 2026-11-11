@@ -33,8 +33,8 @@ export const wortoxStates = [
     },
     timeline: [
       time(1, inst => {
-        inst.context.host.soulHop?.playSound('dontstarve/creatures/together/toad_stool/infection_post', .7);
-        inst.context.host.soulHop?.playSound('dontstarve/characters/wortox/soul/spawn', .5);
+        inst.context.entity.SoundEmitter.PlaySound('dontstarve/creatures/together/toad_stool/infection_post', undefined, .7);
+        inst.context.entity.SoundEmitter.PlaySound('dontstarve/characters/wortox/soul/spawn', undefined, .5);
       }),
       tint(2, .1), tint(3, .3),
       time(4, inst => {
@@ -66,17 +66,17 @@ export const wortoxStates = [
       host.soulHop?.spawnFx('wortox_portal_jumpout_fx');
       host.soulHop?.setTint(1);
       host.rez?.setInvincible(true);
-      host.pushPlayerEvent?.('soulhop');
+      inst.context.entity.PushEvent('soulhop');
       inst.setTimeout(14 * FRAMES);
     },
     timeline: [
-      time(1, inst => inst.context.host.soulHop?.playSound('dontstarve/characters/wortox/soul/hop_out')),
+      time(1, inst => inst.context.entity.SoundEmitter.PlaySound('dontstarve/characters/wortox/soul/hop_out')),
       tint(5, .9), tint(6, .7),
       time(7, inst => {
         inst.context.host.soulHop?.setTint(.4);
         inst.context.host.rez?.setInvincible(false);
         inst.removeStateTag('noattack');
-        inst.context.host.playEvent?.('dontstarve/movement/bodyfall_dirt');
+        inst.context.entity.SoundEmitter.PlaySound('dontstarve/movement/bodyfall_dirt');
       }),
       time(8, inst => {
         inst.context.host.soulHop?.setTint(0);

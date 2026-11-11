@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import { describe, expect, it, vi } from 'vitest';
 import { ItemEntity, type InventoryStack, type ItemOwner } from '../../inventory/src';
 import { Inventory } from '../../componets/src/inventory';
@@ -159,7 +160,7 @@ describe('caged birds', () => {
     const scheduler = new GameTimeScheduler();
     const instance = new BirdcageInstance({ scheduler } as unknown as WorldContext);
     const inventory = createInventoryStore([]);
-    const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, onStateChanged() {} });
+    const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged() {} });
     const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), renderer: { domElement: new EventTarget() } };
     const use = activeItemUse(world, graph, inventory);
     try {

@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { PrefabEntityManager, prefabInstance as lookupPrefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -114,7 +115,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
 
 it('quick-picks petals at frame six, preserves a cancelled flower and reloads the harvested result', async () => {
   const s = setup(), restored = setup();
-  const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, onStateChanged() {} });
+  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged() {} });
   const animation = { stategraph: graph };
   const locomotor = new Locomotor({ position: s.world.player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });

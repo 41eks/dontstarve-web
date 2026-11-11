@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -103,7 +104,7 @@ describe('ACTIONS.LOOKAT', () => {
   it('says the description and takes the talk state until the line ends', () => {
     const { instance, dispose } = entity();
     const scheduler = new GameTimeScheduler();
-    const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, onStateChanged() {} });
+    const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged() {} });
     const talker = new Talker({ PushEvent: (name, data) => graph.pushEvent(name as never, data as never) }, scheduler);
     const doer = { ...viewer(), components: { talker, inventory: {} } };
     expect(createBufferedAction('LOOKAT', { doer: doer as never, target: instance as never }).do()).toBe(true);

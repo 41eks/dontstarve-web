@@ -41,7 +41,7 @@ export const ghostStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] =
     onenter: inst => {
       if (inst.context.loadingGhost) { inst.goToState('idle'); return; }
       inst.context.playClips([ghostClip('appear')]);
-      inst.context.host.playEvent?.(GHOST_HOWL);
+      inst.context.entity.SoundEmitter.PlaySound(GHOST_HOWL);
     },
     events: [
       EventHandler('animover', inst => { if (inst.context.animationDone) inst.goToState('idle'); }),
@@ -53,7 +53,7 @@ export const ghostStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] =
     onenter: inst => {
       inst.context.host.stopMovement?.();
       inst.context.playClips([ghostClip('dissipate')]);
-      inst.context.host.playEvent?.(GHOST_HAUNT);
+      inst.context.entity.SoundEmitter.PlaySound(GHOST_HAUNT);
     },
     timeline: [TimeEvent(15 * FRAMES, inst => { inst.context.performBufferedAction(); })],
     events: [
@@ -76,7 +76,7 @@ export const ghostStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] =
     name: 'hit',
     tags: ['busy', 'pausepredict'],
     onenter: inst => {
-      inst.context.host.playEvent?.(GHOST_HOWL);
+      inst.context.entity.SoundEmitter.PlaySound(GHOST_HOWL);
       inst.context.playClips([ghostClip('hit')]);
       inst.context.clearBufferedAction();
       inst.context.host.stopMovement?.();

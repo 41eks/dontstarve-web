@@ -1,3 +1,4 @@
+import { wilsonStateInst } from './wilsonStateInst';
 import { Vector3 } from 'three';
 import { expect, it } from 'vitest';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -9,12 +10,13 @@ const FRAME = 1 / 30;
 
 function setup(options: { speed?: number; pond?: boolean } = {}) {
   const scheduler = new GameTimeScheduler();
-  const log = { motor: [] as (number | undefined)[], sounds: [] as string[], resets: 0, wants: false };
-  const graph = new WilsonStateGraph({
-    playAnimation: () => 14 * FRAME, playSound() {}, onStateChanged() {}, stopMovement() {},
+  const inst = wilsonStateInst();
+  const log = { motor: [] as (number | undefined)[], sounds: inst.played, resets: 0, wants: false };
+  const graph = new WilsonStateGraph(inst, {
+    playAnimation: () => 14 * FRAME, onStateChanged() {}, stopMovement() {},
     slip: {
       runSpeed: () => 6, setMotorSpeed: speed => log.motor.push(speed), resetSlipperiness: () => { log.resets++; feet.SetCurrent(0); },
-      wantsToMoveForward: () => log.wants, playSound: event => log.sounds.push(event),
+      wantsToMoveForward: () => log.wants,
     },
   });
   const position = new Vector3();
@@ -60,7 +62,7 @@ it('slides a running player over a slipperyfeettarget, then falls on held input 
   expect(graph.stateName).toBe('slip_fall');
   expect(log.motor.at(-1)).toBeCloseTo(6 * 0.25 * 0.8);
   step(10);
-  expect(log.sounds).toContain('slip_fall_thud');
+  expect(log.sounds).toContain('dontstarve/movement/slip_fall_thud');
   step(5);
   expect(graph.stateName).toBe('slip_fall_loop');
   graph.pushEvent('locomote');
