@@ -10,6 +10,8 @@ import { AnimState, mergeAnimStates, resolveAnimState, type AnimStateArt } from 
 import { smallHash } from '../src/animationAssets';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '../src/archiveSprite';
 import { ResidentSprite } from '../src/residentSprite';
+import { setSpriteController } from '../src/spriteController';
+import type { SpriteController } from '../src/sprite';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import definitions from '../../prefab/src/definitions.json';
 import { managedBuildings } from './managedBuildings';
@@ -252,10 +254,11 @@ it('subscribes to declared direction and pose signals, preserving the clip throu
   let name = 'jump';
   const controller = { get currentAnimation() { return name; }, numFrames: 20,
     start: vi.fn((value: string) => { name = value; }), update: vi.fn(),
-    setFacing: vi.fn(), setFrame: vi.fn(), setPaused: vi.fn(), setPlaybackRate: vi.fn(),
+    setFacing: vi.fn(), setFrame: vi.fn(), setPercent: vi.fn(), setPaused: vi.fn(), setPlaybackRate: vi.fn(),
   };
   const { instance, display } = createPrefabEntity('posed', {
-    create: () => { const sprite = new THREE.Group(); sprite.add(new THREE.Group()); sprite.userData.animationController = controller; return sprite; },
+    // A mock of the animated surface the resident drives.
+    create: () => { const sprite = new THREE.Group(); sprite.add(new THREE.Group()); setSpriteController(sprite, controller as unknown as SpriteController); return sprite; },
     release: sprite => sprite.removeFromParent(),
   }, { name: 'jump', billboard: true });
   const progress = createSignal<number | undefined>(.25);

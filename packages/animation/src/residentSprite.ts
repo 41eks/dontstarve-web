@@ -6,6 +6,7 @@ import type { ArchiveSprite } from './archiveSprite';
 import { registerSpriteRenderGroup, setSpriteEntityRenderOrder } from './renderOrder';
 import type { InstancedSprite } from './instancedArchiveSprites';
 import { installRootMatrixGate } from './matrixGate';
+import { spriteController } from './spriteController';
 import { TransformRoot } from './transformRoot';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from './sprite';
 import type { BuildOverride, CompositeSpriteFrame, SpriteTint, SymbolOverride } from './spriteDressing';
@@ -444,10 +445,14 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   }
 
   get loaded(): boolean { return this.sprite !== undefined; }
-  private get controller(): SpriteController | undefined { return this.sprite?.userData.animationController as SpriteController | undefined; }
+  private get controller() { return spriteController(this.sprite); }
+  /** Clips, frames, layers, symbols and skins: the animated controller's surface, which a static sprite lacks. */
+  private get animated(): SpriteController | undefined { const c = this.controller; return c && 'setPercent' in c ? c : undefined; }
+  /** Poses and image frames: the static (wall) controller's surface. */
+  private get staticController(): StaticSpriteController | undefined { const c = this.controller; return c && 'showImage' in c ? c : undefined; }
   get currentAnimation(): string { return this.controller?.currentAnimation ?? this.clip.name; }
-  get numFrames(): number { return this.controller?.numFrames ?? 0; }
-  get currentAnimationLength(): number { return this.controller?.currentAnimationLength ?? 0; }
+  get numFrames(): number { return this.animated?.numFrames ?? 0; }
+  get currentAnimationLength(): number { return this.animated?.currentAnimationLength ?? 0; }
 
   setActive(active: boolean): void {
     if (this.disposed) return;
@@ -509,12 +514,13 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     const controller = this.controller, clip = this.clip;
     if (!controller) return;
     if (clip.pose) this.staticController?.setPose(clip.pose.name);
-    else if (clip.percent !== undefined) controller.setPercent(clip.name, clip.percent);
+    else if (clip.percent !== undefined) this.animated?.setPercent(clip.name, clip.percent);
     else if (clip.loop) controller.start(clip.name);
     else if (clip.finished) controller.holdLastFrame(clip.name);
     else controller.playOnce(clip.name, this.completion(clip));
     for (const entry of this.queue) controller.pushAnimation(entry.name, entry.loop);
-    if (this.frame !== undefined && clip.loop) controller.setFrame(Math.min(this.frame, controller.numFrames - 1));
+    const animated = this.animated;
+    if (this.frame !== undefined && clip.loop) animated?.setFrame(Math.min(this.frame, animated.numFrames - 1));
   }
 
   private completion(clip: BuildingClip): () => void {
@@ -525,9 +531,6 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     };
   }
 
-  private get staticController(): StaticSpriteController | undefined {
-    return this.sprite?.userData.animationController as StaticSpriteController | undefined;
-  }
   get pose(): string | undefined { return this.clip.pose?.name; }
   setPose(name: string | undefined): void {
     this.clip = { name: name ?? this.initialAnimation, loop: false, finished: true, pose: { name } };
@@ -537,33 +540,35 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   showImage(image: number): void { this.staticController?.showImage(image); }
   setFacing(facing: number, mirrored?: boolean): void {
     // Only six-faced art mirrors; other sprites keep their one-argument facing.
-    if (mirrored === undefined) { this.staticController?.setFacing(facing); return; }
-    (this.sprite?.userData.animationController as { setFacing(facing: number, mirrored: boolean): void } | undefined)?.setFacing(facing, mirrored);
+    const animated = this.animated;
+    if (animated && mirrored !== undefined) animated.setFacing(facing, mirrored);
+    else this.controller?.setFacing(facing);
   }
   /** AnimState:SetBuild, for factory sprites that carry the entity's alternative builds. */
   setBuildArchive(archive: string): void {
-    const controller = this.sprite?.userData.animationController as { setBuildArchive?(archive: string): void } | undefined;
-    if (controller && !controller.setBuildArchive) throw new Error('This sprite has no alternative builds');
-    controller?.setBuildArchive?.(archive);
+    const controller = this.controller;
+    if (!controller) return;
+    if (!('setBuildArchive' in controller)) throw new Error('This sprite has no alternative builds');
+    controller.setBuildArchive(archive);
   }
-  setColour(colour: readonly number[]): void { this.staticController?.setColour(colour); }
-  setOpacity(opacity: number): void { this.staticController?.setOpacity(opacity); }
-  setPaused(paused: boolean): void { this.controller?.setPaused?.(paused); }
-  setPlaybackRate(rate: number): void { this.controller?.setPlaybackRate?.(rate); }
-  setArtSource(source: import('./sprite').SpriteArtSource): void { this.controller?.setArtSource?.(source); }
-  setSkin(skin: import('./sprite').SpriteSkin | undefined): void { this.controller?.setSkin?.(skin); }
-  setAnimState(state: import('./animState').ResolvedAnimState): void { this.controller?.setAnimState?.(state); }
-  setTint(tint: import('./sprite').SpriteTint): void { this.controller?.setTint?.(tint); }
-  setComposites(frames: readonly import('./sprite').CompositeSpriteFrame[]): void { this.controller?.setComposites?.(frames); }
-  getResolvedFrame(): readonly import('./animationAssets').ResolvedSprite[] { return this.controller?.getResolvedFrame?.() ?? []; }
+  setColour(colour: readonly number[]): void { this.controller?.setColour(colour); }
+  setOpacity(opacity: number): void { this.controller?.setOpacity(opacity); }
+  setPaused(paused: boolean): void { this.animated?.setPaused(paused); }
+  setPlaybackRate(rate: number): void { this.animated?.setPlaybackRate(rate); }
+  setArtSource(source: import('./sprite').SpriteArtSource): void { this.animated?.setArtSource(source); }
+  setSkin(skin: import('./sprite').SpriteSkin | undefined): void { this.controller?.setSkin(skin); }
+  setAnimState(state: import('./animState').ResolvedAnimState): void { this.animated?.setAnimState(state); }
+  setTint(tint: import('./sprite').SpriteTint): void { this.animated?.setTint(tint); }
+  setComposites(frames: readonly import('./sprite').CompositeSpriteFrame[]): void { this.animated?.setComposites(frames); }
+  getResolvedFrame(): readonly import('./animationAssets').ResolvedSprite[] { return this.animated?.getResolvedFrame() ?? []; }
   /** The symbol's point in the entity root's frame, as a follower parented to the root reads it. */
   getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean {
-    if (!this.sprite || !this.controller?.getSymbolPosition?.(symbol, x, y, target)) return false;
+    if (!this.sprite || !this.animated?.getSymbolPosition(symbol, x, y, target)) return false;
     toParentFrame(this.sprite, target);
     return true;
   }
   setDepthOffset(enabled: boolean): void {
-    (this.sprite?.userData.animationController as { setDepthOffset?(enabled: boolean): void } | undefined)?.setDepthOffset?.(enabled);
+    this.animated?.setDepthOffset(enabled);
   }
   setMeshOrder(order: number): void {
     if (!this.sprite) return;
@@ -601,19 +606,19 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   setPercent(name: string, percent: number): void {
     this.clip = { name, loop: false, finished: true, percent };
     this.queue = []; this.frame = undefined;
-    this.controller?.setPercent(name, percent);
+    this.animated?.setPercent(name, percent);
   }
-  setFrame(frame: number): void { this.frame = frame; this.controller?.setFrame(frame); }
+  setFrame(frame: number): void { this.frame = frame; this.animated?.setFrame(frame); }
   // Appearance is not kept here: the owning prefab dresses each drawn sprite from its own state through an
   // effect on `art`, and the sprite factory options carry the skin when a sprite is built.
-  hideLayer(layer: string): void { this.controller?.hideLayer(layer); }
-  showLayer(layer: string): void { this.controller?.showLayer(layer); }
+  hideLayer(layer: string): void { this.animated?.hideLayer(layer); }
+  showLayer(layer: string): void { this.animated?.showLayer(layer); }
   setSymbolOverrides(overrides: SymbolOverrideMap, hiddenLayers: readonly string[] = []): void {
-    this.controller?.setSymbolOverrides(overrides, hiddenLayers);
+    this.animated?.setSymbolOverrides(overrides, hiddenLayers);
   }
-  overrideSymbol(symbol: string, override: SymbolOverrideValue): void { this.controller?.overrideSymbol(symbol, override); }
-  addOverrideBuild(name: string, override: LoadedBuildOverride): void { this.controller?.addOverrideBuild(name, override); }
-  clearOverrideBuild(name: string): void { this.controller?.clearOverrideBuild(name); }
+  overrideSymbol(symbol: string, override: SymbolOverrideValue): void { this.animated?.overrideSymbol(symbol, override); }
+  addOverrideBuild(name: string, override: LoadedBuildOverride): void { this.animated?.addOverrideBuild(name, override); }
+  clearOverrideBuild(name: string): void { this.animated?.clearOverrideBuild(name); }
   faceCamera(rotation: THREE.Quaternion): void {
     (this.facing ??= new THREE.Quaternion()).copy(rotation);
     this.applyFacing();

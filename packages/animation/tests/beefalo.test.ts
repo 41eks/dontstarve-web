@@ -8,12 +8,12 @@ import { BEEFALO_BEHAVIOR, beefaloPrefabs, type BeefaloInstance, type BeefaloWor
 import { createSignal, getWatchWorldContent, type WorldPhase, type WorldContentEnvironment } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
-import { BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, createBeefaloSpriteFactory, type FacingSpriteController } from '../src/beefaloSprite';
+import { BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, createBeefaloSpriteFactory } from '../src/beefaloSprite';
 import { COLLISION } from '../../componets/src/physicsState';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup } from '../../display/src';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
-import type { SpriteController } from '../src/sprite';
+import { spriteController } from '../src/spriteController';
 import { Pathfinder } from '../../prefab/src/pathfinder';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { createInventoryStore } from '../../../src/inventory';
@@ -393,7 +393,8 @@ describe('original beefalo assets', () => {
     const mesh = a.children[0].children[0] as THREE.Mesh;
     expect(mesh.material).toEqual((b.children[0].children[0] as THREE.Mesh).material);
     for (const material of mesh.material as THREE.MeshBasicMaterial[]) expect(material.forceSinglePass).toBe(true);
-    const controller = a.userData.animationController as SpriteController & FacingSpriteController;
+    const controller = spriteController(a);
+    if (!controller || !('setBuildArchive' in controller)) throw new Error('A beefalo sprite switches builds');
     const complete = vi.fn();
     controller.playOnce('sleep_pre', complete);
     for (let i = 0; i < 6; i++) controller.update(0.1);

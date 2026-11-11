@@ -5,7 +5,8 @@ import { actionTool } from './actionFixtures';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createAnimatedSpriteSource } from '../src/sprite';
-import { createStaticSpriteFactory } from '../src/wallSprite';
+import { createStaticSpriteFactory, type StaticSpriteController } from '../src/wallSprite';
+import { setSpriteController } from '../src/spriteController';
 import { PrefabDisplayGroup, SpriteResources, SpriteState } from '../../display/src';
 import { BuildingPlacer } from '../../prefab/src/buildingPlacer';
 import { buildingPlacer } from '../../prefab/src/building';
@@ -28,13 +29,20 @@ import { bufferingStategraph } from './bufferingStategraph';
 vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSpriteSource: vi.fn() }));
 vi.mock('../src/wallSprite', () => ({ createStaticSpriteFactory: vi.fn() }));
 
+const mockController = () => ({
+  update: vi.fn(), start: vi.fn(), holdLastFrame: vi.fn(), pushAnimation: vi.fn(), showImage: vi.fn(), setFacing: vi.fn(), setPose: vi.fn(), setColour: vi.fn(), setOpacity: vi.fn(), setSkin: vi.fn(),
+  playOnce: vi.fn((_name: string, complete: () => void) => complete()),
+});
+/** Each mocked sprite's controller, for assertions on the calls it received. */
+const mockControllers = new WeakMap<THREE.Object3D, ReturnType<typeof mockController>>();
+
 function model() {
   const result = new THREE.Group();
   result.add(new THREE.Group().add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial())));
-  result.userData.animationController = {
-    update: vi.fn(), start: vi.fn(), holdLastFrame: vi.fn(), pushAnimation: vi.fn(), showImage: vi.fn(), setFacing: vi.fn(), setPose: vi.fn(), setColour: vi.fn(), setOpacity: vi.fn(),
-    playOnce: vi.fn((_name: string, complete: () => void) => complete()),
-  };
+  const controller = mockController();
+  // A mock of the static (wall) surface the residents drive.
+  setSpriteController(result, controller as unknown as StaticSpriteController);
+  mockControllers.set(result, controller);
   return result;
 }
 
@@ -298,14 +306,14 @@ it('lets the display select wall images only when the shared camera orientation 
   await begin();
   const factory = await load.mock.results[0].value;
   await vi.waitFor(() => expect(factory.create).toHaveBeenCalled());
-  const controller = factory.create.mock.results[0].value.userData.animationController;
-  expect(controller.setFacing.mock.lastCall[0]).toBe(8); expect(controller.showImage).toHaveBeenLastCalledWith(14);
+  const controller = mockControllers.get(factory.create.mock.results[0].value)!;
+  expect(controller.setFacing.mock.lastCall?.[0]).toBe(8); expect(controller.showImage).toHaveBeenLastCalledWith(14);
   const calls = controller.setFacing.mock.calls.length;
   content.camerarotation.set(rotation(45)); await new Promise(resolve => setTimeout(resolve, 0));
-  expect(controller.setFacing.mock.lastCall[0]).toBe(128); expect(controller.showImage).toHaveBeenLastCalledWith(4);
+  expect(controller.setFacing.mock.lastCall?.[0]).toBe(128); expect(controller.showImage).toHaveBeenLastCalledWith(4);
   const camera = rotation(180);
   content.camerarotation.set(camera); await new Promise(resolve => setTimeout(resolve, 0));
-  expect(controller.setFacing.mock.lastCall[0]).toBe(2); expect(controller.showImage).toHaveBeenLastCalledWith(14);
+  expect(controller.setFacing.mock.lastCall?.[0]).toBe(2); expect(controller.showImage).toHaveBeenLastCalledWith(14);
   const changed = controller.setFacing.mock.calls.length;
   content.camerarotation.set(camera); await new Promise(resolve => setTimeout(resolve, 0));
   expect(controller.setFacing.mock.calls.length).toBe(changed); expect(changed).toBe(calls + 2);

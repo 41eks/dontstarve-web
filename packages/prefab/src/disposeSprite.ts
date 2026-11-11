@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { SpriteController } from '@dontstarve-web/animation/sprite';
+import { spriteController } from '@dontstarve-web/animation/spriteController';
 import { prefabInstance } from './prefabInstance';
 import { prefabDisplay } from '@dontstarve-web/display';
 
@@ -14,7 +14,7 @@ export function disposeSprite(root: THREE.Object3D): void {
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
   root.traverse((object) => {
-    if (object.userData.animationController instanceof SpriteController) object.userData.animationController.dispose();
+    spriteController(object)?.dispose();
     // Static sprites own fallback atlas materials even when the current pose
     // only draws skin symbols. Release those resources along with visible ones.
     for (const material of object.userData.ownedSpriteMaterials ?? []) materials.add(material);

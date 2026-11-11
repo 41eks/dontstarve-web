@@ -52,7 +52,7 @@
   },
   "packages/prefab/src/disposeSprite.ts": {
     "child-traversal": 1,
-    "userdata": 7
+    "userdata": 5
   },
   "packages/prefab/src/dragonfly.ts": {
     "instance-method": 6

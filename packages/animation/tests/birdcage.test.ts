@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createAnimatedSprite, loadBuildOverride, type SpriteController } from '../src/sprite';
+import { animatedSpriteController, createAnimatedSprite, loadBuildOverride } from '../src/sprite';
 import { BIRDCAGE_SKIN_ARCHIVES, type BirdcageInstance } from '../../prefab/src/birdcage';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { managedBuildings } from './managedBuildings';
@@ -43,7 +43,7 @@ function meshOf(model: THREE.Group) {
 
 it('AddOverrideBuild draws the caged bird from its own build and ClearOverrideBuild restores the cage-only frame', async () => {
   const model = await spawn('idle_bird');
-  const controller = model.userData.animationController as SpriteController;
+  const controller = animatedSpriteController(model);
   const bare = meshOf(model).geometry.drawRange.count;
   const canary = await loadBuildOverride('/dst/data/anim', 'canary_build.zip');
   controller.addOverrideBuild('canary_build', canary);
@@ -60,7 +60,7 @@ it('keeps the bird override on a skinned cage, with gothicp using the gothic bui
   const model = await spawn('idle_bird', 'birdcage_gothicp');
   expect(fetch).toHaveBeenCalledWith('/dst/data/anim/dynamic/birdcage_gothic.zip');
   expect(fetch).not.toHaveBeenCalledWith('/dst/data/anim/dynamic/birdcage_gothicp.zip');
-  const controller = model.userData.animationController as SpriteController;
+  const controller = animatedSpriteController(model);
   const bird = await loadBuildOverride('/dst/data/anim', 'crow_build.zip');
   const before = meshOf(model).geometry.drawRange.count;
   controller.addOverrideBuild('crow_build', bird);

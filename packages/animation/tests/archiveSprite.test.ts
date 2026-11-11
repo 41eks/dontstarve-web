@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite, type ArchiveSpriteDefinition } from '../src/archiveSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
-import { createAnimatedSpriteSource, loadBuildOverride, type SpriteController } from '../src/sprite';
+import { animatedSpriteController, createAnimatedSpriteSource, loadBuildOverride } from '../src/sprite';
 import { smallHash } from '../src/animationAssets';
 import type { ResolvedAnimState } from '../src/animState';
 
@@ -19,7 +19,7 @@ it('matches native skinned berry layers and snow overrides while retaining indep
     skinArchive: 'dynamic/berrybush_cawnival.zip',
   });
   const control = reference.create({ initialAnimation: 'idle', snowCovered: snow });
-  const controller = control.userData.animationController as SpriteController;
+  const controller = animatedSpriteController(control);
   const definition = { animationArchive: 'berrybush.zip', buildArchives: ['berrybush.zip', 'snow.zip'], bank: 'berrybush',
     animation: 'idle', loop: true, symbolOverrides: { snow: { archive: 'snow.zip', symbol: 'snow' } } };
   const options = { skinArchive: 'dynamic/berrybush_cawnival.zip', instancedAnimations: 'all' as const };
@@ -161,7 +161,7 @@ it('draws override builds and AnimState declarations as a factory sprite does, t
   const assets = new ArchiveSpriteAssets(), crow = await loadBuildOverride('/dst/data/anim', 'crow_build.zip');
   const reference = await createAnimatedSpriteSource('/dst/data/anim', 'bird_cage.zip');
   const control = reference.create({ initialAnimation: 'caw' });
-  const controller = control.userData.animationController as SpriteController;
+  const controller = animatedSpriteController(control);
   const definition = { animationArchive: 'bird_cage.zip', buildArchives: ['bird_cage.zip'], bank: 'birdcage', animation: 'caw', loop: true };
   const first = await createSharedArchiveSprite(assets, definition, { instancedAnimations: 'all' });
   const second = await createSharedArchiveSprite(assets, definition, { instancedAnimations: 'all' });

@@ -25,6 +25,7 @@ import {
 
 export type { CompositeSpriteFrame, SpriteTint } from './spriteDressing';
 import { registerSpriteRenderGroup } from './renderOrder';
+import { setSpriteController, spriteController } from './spriteController';
 import { publishSpriteSpatialBounds, spriteSpatialRadius } from './spatialBounds';
 import { installMatrixGate } from './matrixGate';
 import { SPRITE_SCALE } from './units';
@@ -595,7 +596,7 @@ export async function createAnimatedSprite(
   const materials = createMaterials(buildPackage);
   const sprite = createSprite(buildPackage.build, animations, materials, options, skin);
   sprite.userData.ownedSpriteMaterials = [...materials, ...(skin?.materials ?? []), ...[...overrideMaterials.values()].flat()];
-  (sprite.userData.animationController as SpriteController).setSymbolOverrides(overrides, options.hiddenLayers);
+  animatedSpriteController(sprite).setSymbolOverrides(overrides, options.hiddenLayers);
   return sprite;
 }
 
@@ -641,7 +642,7 @@ export async function createAnimatedSpriteSource(
   return {
     create(options) {
       const sprite = factory.create(options);
-      const controller = sprite.userData.animationController as SpriteController;
+      const controller = animatedSpriteController(sprite);
       controller.setSymbolOverrides(new Map(overrides), options.hiddenLayers);
       for (const [name, override] of buildOverrides) controller.addOverrideBuild(name, override);
       return sprite;
@@ -678,7 +679,7 @@ export function createSpriteFactory(
   let disposed = false;
   const disposeSprite = (sprite: THREE.Group) => {
     if (!sprites.delete(sprite)) return;
-    (sprite.userData.animationController as SpriteController | undefined)?.dispose();
+    spriteController(sprite)?.dispose();
     sprite.removeFromParent();
     sprite.traverse((object) => {
       if (object instanceof THREE.Mesh) object.geometry.dispose();
@@ -743,6 +744,13 @@ function createSprite(
   );
   if (frameCache) controller.useFrameCache(frameCache);
   if (options.initialFrame === 'last') controller.holdLastFrame(options.initialAnimation);
-  sprite.userData.animationController = controller;
+  setSpriteController(sprite, controller);
   return sprite;
+}
+
+/** The controller of an animated sprite a factory here built. */
+export function animatedSpriteController(sprite: THREE.Object3D): SpriteController {
+  const controller = spriteController(sprite);
+  if (!(controller instanceof SpriteController)) throw new Error(`${sprite.name || 'Sprite'} has no animated sprite controller`);
+  return controller;
 }

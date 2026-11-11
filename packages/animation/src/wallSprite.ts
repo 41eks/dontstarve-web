@@ -14,6 +14,7 @@ import {
   type ResolvedSprite,
 } from './animationAssets';
 import { registerSpriteRenderGroup } from './renderOrder';
+import { setSpriteController, spriteController } from './spriteController';
 import type { TransientSpriteAnimationController } from './sprite';
 import type { SymbolBuild } from './animState';
 import { SPRITE_SCALE } from './units';
@@ -378,7 +379,7 @@ export async function createStaticSpriteFactory(
   let disposed = false;
   const disposeSprite = (sprite: THREE.Group) => {
     if (!sprites.delete(sprite)) return;
-    (sprite.userData.animationController as StaticSpriteController).dispose();
+    spriteController(sprite)?.dispose();
     sprite.removeFromParent();
     sprite.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
   };
@@ -393,8 +394,8 @@ export async function createStaticSpriteFactory(
       visual.scale.set(scale, -scale, scale);
       sprite.add(visual);
       registerSpriteRenderGroup(sprite, visual);
-      sprite.userData.animationController = new StaticSprite(visual, frames, options.imageIndex ?? options.imageIndices[0],
-        builds, animations, options.restAnimation, cache);
+      setSpriteController(sprite, new StaticSprite(visual, frames, options.imageIndex ?? options.imageIndices[0],
+        builds, animations, options.restAnimation, cache));
       sprites.add(sprite);
       return sprite;
     },

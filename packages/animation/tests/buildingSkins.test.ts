@@ -8,7 +8,7 @@ import { unzipSync } from 'fflate';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodeDyn } from '../src/decodeDyn';
 import { loadAnimationArchive, loadSpriteSkinArchive, smallHash } from '../src/animationAssets';
-import { createAnimatedSprite, type SpriteAnimationController } from '../src/sprite';
+import { animatedSpriteController, createAnimatedSprite } from '../src/sprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import type { BuildingDeclaration } from '../../prefab/src/building';
@@ -115,7 +115,7 @@ describe('DST building skins', () => {
     expect(fetch).toHaveBeenCalledWith(`/dst/data/anim/${archive.replace(/\.zip$/, '.dyn')}`);
     setSpriteEntityRenderOrder(model, 7);
     expect(mesh.parent!.renderOrder).toBe(7);
-    const animation = model.userData.animationController as SpriteAnimationController;
+    const animation = animatedSpriteController(model);
     const complete = vi.fn(() => animation.start(options(prefabId, skinId).initialAnimation));
     animation.playOnce('place', complete);
     for (let frame = 0; frame < 100; frame++) animation.update(0.1);
@@ -168,11 +168,11 @@ describe('DST building skins', () => {
       ...options('researchlab2', 'researchlab2_pod'), skinAnimationBanks: [],
     });
     for (const model of [withFx, withoutFx]) {
-      (model.userData.animationController as SpriteAnimationController).start('proximity_loop');
+      animatedSpriteController(model).start('proximity_loop');
     }
     let hasFx = false;
     for (let frame = 0; frame < 60; frame++) {
-      for (const model of [withFx, withoutFx]) model.userData.animationController.update(1 / 30);
+      for (const model of [withFx, withoutFx]) animatedSpriteController(model).update(1 / 30);
       hasFx ||= meshOf(withFx).geometry.drawRange.count > meshOf(withoutFx).geometry.drawRange.count;
     }
     expect(hasFx).toBe(true);

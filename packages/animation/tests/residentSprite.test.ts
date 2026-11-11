@@ -169,7 +169,6 @@ it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while
     // owner must invalidate it when the outer entity root actually moves.
     const gate = installMatrixGate(sprite.model, visual, true);
     sprite.dispose = () => { gate.dispose(); sprite.model.removeFromParent(); };
-    sprite.model.userData.animationController = sprite;
     created.push({ sprite, leaf, gate });
     return sprite;
   };
@@ -177,7 +176,7 @@ it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while
   const resident = kind === 'archive'
     ? new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, first)
     : new ResidentSpriteController(new THREE.Group(), name => make({ name, loop: true }).model,
-      model => { (model.userData.animationController as ArchiveSprite).dispose(); }, first.model, { name: 'idle' });
+      model => { created.find(entry => entry.sprite.model === model)!.sprite.dispose(); }, first.model, { name: 'idle' });
   parent.add(resident.model);
   const observer = vi.fn(), stop = watchMatrixUpdates(resident.model, observer);
   const updates = vi.spyOn(resident.model, 'updateMatrix');

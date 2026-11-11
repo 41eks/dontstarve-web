@@ -1,3 +1,4 @@
+import { animatedSpriteController } from '../../animation/src/sprite';
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { prewarmScenePasses, renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass';
@@ -217,7 +218,7 @@ export async function checkBirchLeafRendering(instanced = false) {
     { colour: [1, 1, 1], instancedAnimations: ['sway1_loop_tall'] }) : undefined;
   const extra: Awaited<ReturnType<typeof createSharedArchiveSprite>>[] = [];
   const model = shared?.model ?? factory.create({ initialAnimation: 'sway1_loop_tall', scale: .02 });
-  const controller = model.userData.animationController ?? shared;
+  const controller = shared ?? animatedSpriteController(model);
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, preserveDrawingBuffer: true });
   renderer.setSize(600, 600); renderer.setClearColor(0, 0);
   const reference = document.createElement('canvas'); reference.width = reference.height = 600;
