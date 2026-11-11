@@ -21,8 +21,9 @@ export class Shelf<Item, Inst extends ShelfInst = ShelfInst> {
   private readonly itemState = createSignal<Item | undefined>(undefined);
   readonly itemonshelf = readonlySignal(this.itemState);
   private canTake = false;
-  onshelfitemfn?: (inst: Inst, item: Item) => void;
-  ontakeitemfn?: (inst: Inst, taker: ShelfTaker<Item> | undefined, item: Item) => void;
+  // Method-typed like Trader's callbacks, so a Shelf<.., SubInst> stays assignable where the inst type is wider.
+  onshelfitemfn?(inst: Inst, item: Item): void;
+  ontakeitemfn?(inst: Inst, taker: ShelfTaker<Item> | undefined, item: Item): void;
   private readonly inst: Inst;
   private readonly holder: ShelfHolder<Item>;
 

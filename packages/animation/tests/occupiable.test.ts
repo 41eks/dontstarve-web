@@ -1,5 +1,3 @@
-import { PrefabInstance } from '../../prefab/src/prefabInstance';
-import { SpriteState } from '@dontstarve-web/display';
 import { describe, expect, it, vi } from 'vitest';
 import { ItemEntity, type ItemOwner } from '../../inventory/src';
 import { Occupiable } from '../../componets/src/occupiable';
@@ -7,11 +5,12 @@ import { Shelf } from '../../componets/src/shelf';
 import { Trader } from '../../componets/src/trader';
 import { PERISH_CAGE_MULT, PERISH_FAST } from '../../componets/src/perishable';
 import { BIRD_PERISH_TIME, configureBirdEntity, generateBirdLoot } from '../../prefab/src/birds';
-import { Birdcage, birdcageAcceptsItem, digestedFoodProduct } from '../../prefab/src/birdcage';
+import { BirdcageInstance, birdcageAcceptsItem, digestedFoodProduct } from '../../prefab/src/birdcage';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
-import { batch, createSignal, type WorldPhase } from '../../signals/src';
+import { batch } from '../../signals/src';
 import { createPerishWorld } from './perishWorldFixture';
+import { bindTestWorld } from './worldContentFixture';
 import * as THREE from 'three';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
@@ -36,19 +35,21 @@ const settle = (bird: ReturnType<typeof createBird>, seconds: number) => {
 describe('caged birds', () => {
   it('subscribes to sleeper state for status and animation, stops idle tasks and detaches removed sleepers', async () => {
     const scheduler = new GameTimeScheduler();
-    const cycle = createSignal<WorldPhase>('day');
-    const instance = new PrefabInstance('birdcage', new SpriteState({ name: 'idle_empty' }));
+    const random = vi.spyOn(Math, 'random').mockReturnValue(.9);
+    const { cycle, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
+    const instance = new BirdcageInstance({ scheduler, getWatchWorldContent } as unknown as WorldContext);
     instance.entityId = 'birdcage:test';
     const playOnce = vi.spyOn(instance.sprite, 'playOnce');
-    const cage = new Birdcage(instance, { scheduler, cycle } as unknown as WorldContext, undefined, () => .9);
+    const { components } = instance;
+    const status = () => components.inspectable.getstatus!();
     const bird = createBird();
-    cage.occupiable!.Occupy(bird);
-    expect(cage.status.peek()).toBe('OCCUPIED');
-    const sleeper = cage.sleeper!;
+    components.occupiable!.Occupy(bird);
+    expect(status()).toBe('OCCUPIED');
+    const sleeper = components.sleeper!;
     cycle.set('night');
     await new Promise(resolve => setTimeout(resolve, 0));
     sleeper.StopTesting();
-    expect(cage.status.peek()).toBe('SLEEPING');
+    expect(status()).toBe('SLEEPING');
     expect(instance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'sleep_pre', loop: false }, queue: [{ name: 'sleep_loop', loop: true }] });
     const calls = playOnce.mock.calls.length;
     scheduler.advance(6);
@@ -57,7 +58,7 @@ describe('caged birds', () => {
     sleeper.StartTesting();
     cycle.set('day');
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(cage.status.peek()).toBe('OCCUPIED');
+    expect(status()).toBe('OCCUPIED');
     expect(instance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'sleep_pst', loop: false }, queue: [{ name: 'idle_bird', loop: true }] });
     scheduler.advance(6);
     expect(playOnce).toHaveBeenLastCalledWith('hop');
@@ -66,25 +67,25 @@ describe('caged birds', () => {
     cycle.set('night');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(sleeper.IsAsleep()).toBe(false);
-    expect(cage.status.peek()).toBe('STARVING');
+    expect(status()).toBe('STARVING');
     bird.components.perishable.SetPercent(1);
     scheduler.advance(4.4);
-    expect(cage.status.peek()).toBe('SLEEPING');
+    expect(status()).toBe('SLEEPING');
 
     sleeper.GoToSleep();
-    expect(cage.occupiable!.Harvest()).toBe(bird);
-    expect(cage.status.peek()).toBe('GENERIC');
-    expect(cage.sleeper).toBeUndefined();
+    expect(components.occupiable!.Harvest()).toBe(bird);
+    expect(status()).toBe('GENERIC');
+    expect(components.sleeper).toBeUndefined();
     playOnce.mockClear();
     cycle.set('day');
     await new Promise(resolve => setTimeout(resolve, 0));
     sleeper.WakeUp();
     scheduler.advance(12);
     expect(playOnce).not.toHaveBeenCalled();
-    cage.occupiable!.Occupy(bird);
-    cage.sleeper!.GoToSleep();
-    expect(cage.status.peek()).toBe('SLEEPING');
-    const removedSleeper = cage.sleeper!;
+    components.occupiable!.Occupy(bird);
+    components.sleeper!.GoToSleep();
+    expect(status()).toBe('SLEEPING');
+    const removedSleeper = components.sleeper!;
     instance.remove();
     playOnce.mockClear();
     cycle.set('night');
@@ -93,14 +94,15 @@ describe('caged birds', () => {
     scheduler.advance(12);
     expect(playOnce).not.toHaveBeenCalled();
     bird.destroy();
+    unbind();
     scheduler.dispose();
+    random.mockRestore();
   });
 
   it('stores the cursor-held bird itself through USEITEM.occupier and ACTIONS.STORE at the short-action frame', () => {
     vi.stubGlobal('window', new EventTarget());
     const scheduler = new GameTimeScheduler();
-    const instance = new PrefabInstance('birdcage', new SpriteState({ name: 'idle_empty' }));
-    const cage = new Birdcage(instance, { scheduler, cycle: createSignal<WorldPhase>('day') } as unknown as WorldContext, undefined, () => .9);
+    const instance = new BirdcageInstance({ scheduler } as unknown as WorldContext);
     const inventory = createInventoryStore([]);
     const graph = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, stopSound() {}, onStateChanged() {} });
     const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), renderer: { domElement: new EventTarget() } };
@@ -119,7 +121,7 @@ describe('caged birds', () => {
       expect(inventory.GetActiveItem()).toBe(bird);
       graph.update(1 / 30);
       expect(inventory.GetActiveItem()).toBeNull();
-      expect(cage.occupiable!.GetOccupant()).toBe(bird);
+      expect(instance.components.occupiable!.GetOccupant()).toBe(bird);
       expect(bird.isRemoved).toBe(false);
       expect(instance.hasTag('occupied')).toBe(true);
     } finally { use.dispose(); graph.dispose(); instance.remove(); inventory.dispose(); scheduler.dispose(); vi.unstubAllGlobals(); }

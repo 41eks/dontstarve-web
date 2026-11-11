@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createAnimatedSprite, loadBuildOverride, type SpriteController } from '../src/sprite';
-import { BIRDCAGE_SKIN_ARCHIVES } from '../../prefab/src/birdcage';
+import { BIRDCAGE_SKIN_ARCHIVES, type BirdcageInstance } from '../../prefab/src/birdcage';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { managedBuildings } from './managedBuildings';
 import { workTargets } from './workTargets';
@@ -86,14 +86,14 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
     await placement.spawn('birdcage');
-    const model = workTargets('HAMMER')[0].model as THREE.Group, instance = prefabInstance(model)!;
-    const display = prefabDisplay(model)!, cage = instance.components.birdcage!;
+    const model = workTargets('HAMMER')[0].model as THREE.Group, instance = prefabInstance(model) as BirdcageInstance;
+    const display = prefabDisplay(model)!, occupiable = instance.components.occupiable!;
     const birdSlot = instance.sprite.sprite.peek().appearance.get('anim-state:bird');
     expect(birdSlot?.kind).toBe('anim-state');
     if (birdSlot?.kind !== 'anim-state') throw new Error('The cage has no bird slot');
     expect(fetch).not.toHaveBeenCalledWith('/dst/data/anim/canary_build.zip');
     const bird = spawnItem({ itemId: 'canary', count: 1, freshnessPercent: .7 });
-    expect(cage.occupiable!.Occupy(bird)).toBe(true);
+    expect(occupiable.Occupy(bird)).toBe(true);
     await tick(); await display.artLoaded();
     instance.sprite.start('idle_bird');
     expect(birdSlot.state.peek().overrideBuilds).toEqual(['canary_build.zip']);
@@ -109,7 +109,7 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
     expect(meshOf(model).material.map(material => material.map?.uuid)).not.toEqual(plainAtlases);
     expect(drawsBird(model)).toBe(true);
     expect(instance.sprite.sprite.peek().appearance.get('anim-state:bird')).toBe(birdSlot);
-    expect(cage.getBird()).toBe(bird);
+    expect(occupiable.GetOccupant()).toBe(bird);
     const saved = placement.exportRecords()[0];
 
     awake.set(false); await tick();
@@ -117,14 +117,14 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
     expect(model.parent).toBeNull();
     expect(instance.sprite.loaded).toBe(false);
     expect(model.getObjectsByProperty('isMesh', true)).toHaveLength(0);
-    expect(cage.getBird()).toBe(bird);
+    expect(occupiable.GetOccupant()).toBe(bird);
     awake.set(true); await tick(); await display.artLoaded();
     expect(model.parent).toBe(world.scene);
     expect(drawsBird(model)).toBe(true);
     expect(placement.exportRecords()[0]).toEqual(saved);
 
     const withBird = meshOf(model).geometry.drawRange.count;
-    expect(cage.occupiable!.Harvest()).toBe(bird);
+    expect(occupiable.Harvest()).toBe(bird);
     instance.sprite.start('idle_bird');
     expect(birdSlot.state.peek().overrideBuilds).toEqual([]);
     await tick();
@@ -138,7 +138,7 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
     const restoredInstance = prefabInstance(restored)!;
     await prefabDisplay(restored)!.artLoaded();
     expect(restoredInstance.skinId).toBe('birdcage_gothicp');
-    expect(restoredInstance.components.birdcage!.save()).toEqual(saved.record.components.birdcage);
+    expect(placement.exportRecords()[0].record.components.birdcage).toEqual(saved.record.components.birdcage);
     expect(drawsBird(restored)).toBe(true);
     for (const key of ['components', 'animationController', 'display', 'skinIdSignal', 'removed']) {
       expect(Object.hasOwn(restored.userData, key), key).toBe(false);

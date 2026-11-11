@@ -38,7 +38,6 @@ export interface PrefabComponents extends ActionComponents {
   growable?: import('../../componets/src/growable').Growable;
   pickable?: import('./components/pickable').Pickable;
   timer?: import('../../componets/src/timer').Timer;
-  birdcage?: import('./birdcage').Birdcage;
   shelf?: import('../../componets/src/shelf').Shelf<import('@dontstarve-web/inventory').ItemEntity, PrefabInstance>;
   sleeper?: import('../../componets/src/sleeper').Sleeper;
   phonograph?: import('./phonograph').PhonographController;

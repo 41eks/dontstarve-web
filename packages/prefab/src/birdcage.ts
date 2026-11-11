@@ -4,19 +4,20 @@ import { Workable } from '../../componets/src/workable';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { PrefabInstance, type EntityTask } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
-import * as THREE from 'three';
 import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
-import { batch, createMemo, createSignal, readonlySignal, getWatchWorldContent, createIdleWeatherSources, type ReadonlySignal, type GetWatchWorldContent, type WorldContentEnvironment, type WorldNightmarePhase, type WorldPhase } from '@dontstarve-web/signals';
+import { batch, type WorldPhase } from '@dontstarve-web/signals';
 import type { InventoryStack, ItemEntity, ItemOwner } from '@dontstarve-web/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
-import { Shelf, type ShelfHolder, type ShelfTaker } from '../../componets/src/shelf';
-import { DefaultSleepTest, DefaultWakeTest, Sleeper, type SleeperInst } from '../../componets/src/sleeper';
-import { Trader, type TradeItem } from '../../componets/src/trader';
+import { Shelf } from '../../componets/src/shelf';
+import { DefaultSleepTest, DefaultWakeTest, Sleeper } from '../../componets/src/sleeper';
+import { Trader, type TradeAcceptance, type TradeItem } from '../../componets/src/trader';
+import { Inspectable } from '../../componets/src/inspectable';
 import { foods } from '../../componets/src/preparedfoods';
 import { FRAMES } from '../../stategraphs/src/stategraph';
-import { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
+import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
+import type { PlacementSaveRecord } from './saveRecord';
 import type { PrefabWorldContext } from './worldContext';
 import { BIRD_SOUNDS, isBirdId } from './birds';
 import { PlaySound, type SoundEventPath } from './sound';
@@ -46,7 +47,6 @@ export interface BirdcageSaveStateData {
     occupant?: InventoryStack;
     item?: InventoryStack;
 }
-export type BirdcageSaveState = BirdcageSaveStateData;
 
 // birdcage.lua BUILD_OVERRIDES: poisoned canaries and mutated birds are not ported.
 const BUILD_OVERRIDES: Readonly<Record<string, string>> = { canary_poisoned: 'canary', mutatedbird: 'bird_lunar' };
@@ -80,472 +80,411 @@ export function digestedFoodProduct(prefab: string, random: () => number = Math.
     return random() <= FEED_BIRD_POOP_CHANCE ? 'guano' : undefined;
 }
 
-type CageEntity = PrefabInstance;
+interface BirdcageComponents {
+    inspectable: Inspectable;
+    lootdropper: LootDropper;
+    occupiable?: Occupiable<ItemEntity, BirdcageInstance>;
+    workable: Workable<BirdcageInstance>;
+    trader: Trader<TradeItem, unknown, BirdcageInstance>;
+    shelf: Shelf<ItemEntity, BirdcageInstance>;
+    sleeper?: Sleeper;
+}
 
-/** birdcage.lua prefab logic for one cage inst. */
-export class Birdcage {
-    private readonly cageStateSignal = createSignal<CageState>(CAGE_STATES.EMPTY);
-    readonly cageState: ReadonlySignal<CageState> = readonlySignal(this.cageStateSignal);
-    private readonly birdTypeSignal = createSignal<string | undefined>(undefined);
-    readonly birdType: ReadonlySignal<string | undefined> = readonlySignal(this.birdTypeSignal);
-    /** The inventory's only slot (maxslots = 1). */
-    private slot: ItemEntity | undefined;
-    occupiable: Occupiable<ItemEntity, CageEntity> | undefined;
-    readonly shelf: Shelf<ItemEntity, CageEntity>;
-    readonly trader: Trader<TradeItem>;
-    private readonly sleeperSignal = createSignal<Sleeper | undefined>(undefined);
-    get sleeper(): Sleeper | undefined { return this.sleeperSignal.peek(); }
-    readonly status: ReadonlySignal<BirdcageStatus | undefined>;
-    private readonly statusMemo;
-    private stopSleepAnimation: (() => void) | undefined;
+/** birdcage.lua's fields on the inst; fn is the constructor. */
+export class BirdcageInstance extends PrefabInstance {
+    declare readonly components: PrefabInstance['components'] & BirdcageComponents;
+    /** inst.CAGE_STATE */
+    CAGE_STATE: CageState = CAGE_STATES.EMPTY;
+    /** inst.bird_type: OnEmptied keeps it, as OnBirdStarve reads it afterwards. */
+    bird_type?: string;
+    /** inst.chirpsound */
+    chirpsound?: SoundEventPath;
     /** inst.AnimationTask */
-    private AnimationTask?: EntityTask;
-    private chirpsound: SoundEventPath | undefined;
+    AnimationTask?: EntityTask;
+    /** inst.components.inventory's only slot (maxslots = 1). */
+    slot?: ItemEntity;
+    /** RemoveEventCallback for item.OnRotFn. */
+    stopRot?: () => void;
     /** The bird's appearance slot; the cage's own skin declaration stays independent. */
-    private readonly birdAnimState = new AnimState();
-    private stopRot: (() => void) | undefined;
-    private disposed = false;
-    private readonly instance: CageEntity;
-    private readonly world: PrefabWorldContext | undefined;
-    private readonly getWatchWorldContent: GetWatchWorldContent | undefined;
-    private readonly random: () => number;
+    readonly birdAnimState = new AnimState();
 
-    constructor(instance: CageEntity, world?: PrefabWorldContext, art?: AnimStateArt, random: () => number = Math.random) {
-        this.instance = instance;
-        this.world = world;
-        this.getWatchWorldContent = world?.getWatchWorldContent;
-        const scheduler = world?.scheduler;
-        if (!this.getWatchWorldContent && scheduler) {
-            const sources: WorldContentEnvironment = {
-                wind: world?.wind ?? readonlySignal(createSignal({ angle: 0, velocity: 1 })),
-                perishTick: world?.perishTick ?? readonlySignal(createSignal({ time: scheduler.now, total: 0 })),
-                perishClock: world?.perishClock,
-                ...createIdleWeatherSources(),
-                snowLevel: world?.snowLevel ?? readonlySignal(createSignal(0)),
-                playerpositions: world?.playerpositions ?? readonlySignal(createSignal<THREE.Vector3[]>([])),
-                camerarotation: readonlySignal(createSignal(new THREE.Quaternion())),
-                moon: world?.moon ?? readonlySignal(createSignal({ phase: 'new', waxing: true })),
-                scheduler, temperature: world?.temperature ?? readonlySignal(createSignal(30)),
-                cycle: world?.cycle ?? readonlySignal(createSignal<WorldPhase>('day')),
-                nightmarephase: world?.nightmarephase ?? readonlySignal(createSignal<WorldNightmarePhase>('none')),
-                season: world?.season ?? readonlySignal(createSignal({ season: 'spring', progress: .5 })),
-            };
-            this.getWatchWorldContent = (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, sources, options);
-        }
-        this.random = random;
-        instance.sprite.declareAnimState('bird', this.birdAnimState.json, art);
-        if (scheduler && !instance.worldServices?.scheduler) instance.BindScheduler(scheduler);
-        for (const tag of ['structure', 'cage', 'sanityaura']) instance.addTag(tag);
-        this.shelf = new Shelf<ItemEntity, CageEntity>(instance, this.holder);
-        this.shelf.SetOnShelfItem((_inst, item) => this.onGetShelfItem(item));
-        this.shelf.SetOnTakeItem((_inst, taker, item) => this.onLoseShelfItem(taker, item));
-        this.trader = new Trader<TradeItem>(instance);
-        this.trader.SetAbleToAcceptTest(() => this.sleeper?.IsAsleep() ? { ok: false, reason: 'SLEEPING' } : { ok: true });
-        this.trader.SetAcceptTest((_inst, item) => birdcageAcceptsItem(item.prefab));
-        this.trader.SetOnAccept((_inst, giver, item) => this.onGetItem(giver, item));
-        this.trader.SetOnRefuse(() => this.onRefuseItem());
-        this.trader.Disable();
-        this.addOccupiable();
-        this.statusMemo = createMemo((): BirdcageStatus | undefined => this.computeStatus());
-        this.status = readonlySignal(this.statusMemo);
-        const components = instance.components;
-        components.shelf = this.shelf;
-        components.trader = this.trader;
-        components.birdcage = this;
-        instance.onRemove(() => this.dispose());
-    }
+    constructor(world: PrefabWorldContext, art?: AnimStateArt) {
+        super(BIRDCAGE_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
+        this.worldServices = world;
+        this.sprite.declareAnimState('bird', this.birdAnimState.json, art);
+        for (const tag of ['structure', 'cage', 'sanityaura']) this.addTag(tag);
 
-    // --- state -------------------------------------------------------------------------------
+        addComponent(this, 'inspectable', Inspectable).getstatus = () => GetStatus(this);
+        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
+        AddOccupiable(this);
 
-    get item(): ItemEntity | undefined { return this.slot; }
-    getBird(): ItemEntity | undefined { return this.occupiable?.GetOccupant(); }
+        const workable = addComponent(this, 'workable', Workable<BirdcageInstance>);
+        workable.SetWorkAction('HAMMER');
+        workable.SetWorkLeft(4);
+        workable.SetOnFinishCallback(OnWorkFinished);
+        workable.SetOnWorkCallback(OnWorked);
 
-    private setCageState(state: CageState): void { this.cageStateSignal.set(state); }
+        const trader = addComponent(this, 'trader', Trader<TradeItem, unknown, BirdcageInstance>);
+        trader.SetAbleToAcceptTest(AbleToAcceptTest);
+        trader.SetAcceptTest(ShouldAcceptItem);
+        trader.SetOnAccept(OnGetItem);
+        trader.SetOnRefuse(OnRefuseItem);
+        trader.Disable();
 
-    /** birdcage.lua GetHunger: the bird's remaining freshness. */
-    private hungerOf(bird: ItemEntity | undefined): number {
-        const percent = bird?.components.perishable.percent.peek();
-        return bird && percent !== undefined ? percent : 1;
-    }
-
-    /** birdcage.lua GetStatus; undefined once the cage no longer has a state worth reporting. */
-    private computeStatus(): BirdcageStatus | undefined {
-        const state = this.cageStateSignal.get();
-        if (state === CAGE_STATES.EMPTY) return 'GENERIC';
-        if (state === CAGE_STATES.FULL) {
-            const percent = this.occupiable?.occupant.get()?.components.perishable.percent.get();
-            const hunger = percent ?? 1;
-            return this.sleeperSignal.get()?.isasleep.get() ? 'SLEEPING' : hunger < .33 ? 'STARVING' : hunger < .66 ? 'HUNGRY' : 'OCCUPIED';
-        }
-        if (state === CAGE_STATES.DEAD || state === CAGE_STATES.SICK) return 'DEAD';
-        return 'SKELETON';
-    }
-
-    // --- animation helpers -------------------------------------------------------------------
-
-    private playStateAnim(name: string, loop = false): void {
-        const clip = name + this.cageStateSignal.peek();
-        this.instance.AnimState.PlayAnimation(clip, loop);
-    }
-    private pushStateAnim(name: string, loop = false): void { this.instance.AnimState.PushAnimation(name + this.cageStateSignal.peek(), loop); }
-
-    private doTaskInTime(seconds: number, run: () => void): void {
-        if (!this.instance.worldServices?.scheduler) return;
-        this.instance.DoTaskInTime(seconds, () => { if (!this.disposed) run(); });
-    }
-
-    private playSound(path: SoundEventPath | undefined): void { if (path) PlaySound(path, this.instance.position); }
-
-    // --- bird build ---------------------------------------------------------------------------
-
-    /** birdcage.lua SetBirdType: swap the override build for the bird's own build. */
-    setBirdType(bird: string | undefined): void {
-        const type = bird === undefined ? undefined : BUILD_OVERRIDES[bird] ?? bird;
-        const previous = this.birdTypeSignal.peek();
-        if (previous !== undefined) this.birdAnimState.ClearOverrideBuild(`${previous}_build`);
-        this.birdTypeSignal.set(type);
-        if (type !== undefined && isBirdId(type)) this.birdAnimState.AddOverrideBuild(`${type}_build`);
-    }
-
-    // --- occupiable ---------------------------------------------------------------------------
-
-    private addOccupiable(): void {
-        const occupiable = addComponent(this.instance, 'occupiable', Occupiable<ItemEntity, CageEntity>);
-        occupiable.occupanttype = 'bird';
-        occupiable.onoccupied = (_inst, bird) => this.onOccupied(bird);
-        occupiable.onemptied = () => this.onEmptied();
-        occupiable.onperishfn = (_inst, bird) => this.onBirdStarve(bird);
-        this.occupiable = occupiable;
-    }
-
-    private removeOccupiable(): void {
-        removeComponent(this.instance, 'occupiable');
-        this.occupiable = undefined;
-    }
-
-    private onOccupied(bird: ItemEntity): void {
-        const world = this.world;
-        if (world?.perishClock && world.scheduler) bird.components.perishable.BindWorld({ perishClock: world.perishClock, scheduler: world.scheduler });
-        this.setCageState(CAGE_STATES.FULL);
-        // Only if the bird can actually sleep: every ported bird has a sleeper in birds.lua.
-        if (this.getWatchWorldContent && !this.sleeper) {
-            const sleeper = addComponent(this.instance, 'sleeper', Sleeper, this.getWatchWorldContent, this.random);
-            sleeper.sleeptestfn = (inst, cycle) => this.shouldSleep(inst, cycle);
-            sleeper.waketestfn = (inst, cycle) => this.shouldWake(inst, cycle);
-            this.sleeperSignal.set(sleeper);
-            this.stopSleepAnimation = sleeper.isasleep.subscribe(asleep => {
-                if (!this.occupiable?.IsOccupied()) return;
-                if (asleep) {
-                    this.stopAnimationTask();
-                    this.instance.sprite.playOnce('sleep_pre');
-                    this.instance.sprite.pushAnimation('sleep_loop', true);
-                } else {
-                    this.instance.sprite.playOnce('sleep_pst');
-                    this.pushStateAnim('idle', true);
-                    this.startAnimationTask();
-                }
-            });
-        }
-        this.trader.Enable();
-        this.setBirdType(bird.prefab);
-        this.chirpsound = isBirdId(bird.prefab) ? BIRD_SOUNDS[bird.prefab].chirp : undefined;
-        this.instance.sprite.playOnce('flap');
-        this.playSound('dontstarve/birds/wingflap_cage');
-        this.pushStateAnim('idle', true);
-        this.startAnimationTask();
-    }
-
-    private onEmptied(): void {
-        const birdType = this.birdTypeSignal.peek();
-        if (birdType !== undefined) this.birdAnimState.ClearOverrideBuild(`${birdType}_build`);
-        this.setCageState(CAGE_STATES.EMPTY);
-        this.removeSleeper();
-        this.trader.Disable();
-        this.playStateAnim('idle', false);
-        this.stopAnimationTask();
-    }
-
-    private removeSleeper(): void {
-        this.stopSleepAnimation?.();
-        this.stopSleepAnimation = undefined;
-        removeComponent(this.instance, 'sleeper');
-        this.sleeperSignal.set(undefined);
-    }
-
-    /** The bird starved: drop its death state and shelve the meat. */
-    private onBirdStarve(bird: ItemEntity): void {
-        this.stopAnimationTask();
-        this.setCageState(CAGE_STATES.DEAD);
-        this.instance.sprite.playOnce('death');
-        if (isBirdId(bird.prefab)) this.playSound(BIRD_SOUNDS[bird.prefab].death);
-        this.pushStateAnim('idle', false);
-        // Needed because onEmptied already cleared the override build.
-        this.setBirdType(this.birdTypeSignal.peek());
-        const loot = this.world?.spawnItem?.({ itemId: 'smallmeat', count: 1 });
-        if (loot) {
-            this.giveItem(loot);
-            this.shelf.PutItemOnShelf(loot);
-        }
-    }
-
-    // --- sleeper -----------------------------------------------------------------------------
-
-    private shouldSleep(inst: SleeperInst, cycle: WorldPhase): boolean {
-        const bird = this.getBird();
-        return bird !== undefined && DefaultSleepTest(inst, cycle) && this.hungerOf(bird) >= .33;
-    }
-
-    private shouldWake(inst: SleeperInst, cycle: WorldPhase): boolean {
-        const bird = this.getBird();
-        return bird !== undefined && DefaultWakeTest(inst, cycle) || this.hungerOf(bird) < .33;
-    }
-
-    // --- periodic idle animation ---------------------------------------------------------------
-
-    private startAnimationTask(): void {
-        this.stopAnimationTask();
-        if (this.instance.worldServices?.scheduler) this.AnimationTask = this.instance.DoPeriodicTask(ANIMATION_PERIOD, () => this.doAnimationTask());
-    }
-    private stopAnimationTask(): void { this.AnimationTask?.Cancel(); this.AnimationTask = undefined; }
-
-    /** DoAnimationTask: the hunger of the bird picks the idle variant and its sounds. */
-    private doAnimationTask(): void {
-        const bird = this.getBird();
-        const hunger = this.hungerOf(bird);
-        const rand = this.random();
-        const chirp = this.chirpsound;
-        if (hunger < .33) {
-            if (rand < .75) {
-                this.instance.sprite.playOnce('idle_bird3');
-                for (const frame of [5, 15, 28, 99]) this.doTaskInTime(frame * FRAMES, () => this.playSound('dontstarve/birds/wingflap_cage'));
-                for (const frame of [4, 27, 42, 100]) this.doTaskInTime(frame * FRAMES, () => this.playSound(chirp));
-            }
-        } else if (hunger < .66) {
-            if (rand < .5) {
-                this.instance.sprite.playOnce('idle_bird2');
-                for (const frame of [26, 81, 96]) this.doTaskInTime(frame * FRAMES, () => this.playSound(chirp));
-            }
-        } else if (rand < .5) {
-            this.instance.sprite.playOnce('caw');
-            this.playSound(chirp);
-        } else if (rand < .6) {
-            this.instance.sprite.playOnce('flap');
-            this.playSound('dontstarve/birds/wingflap_cage');
-        } else this.instance.sprite.playOnce('hop');
-        this.pushStateAnim('idle', true);
-    }
-
-    // --- trader -------------------------------------------------------------------------------
-
-    private onGetItem(_giver: unknown, item: TradeItem): void {
-        // If you're sleeping, wake up.
-        if (this.sleeper?.IsAsleep()) this.sleeper.WakeUp();
-        const prefab = item.prefab;
-        if (isMeatFood(prefab) || isSeedItem(prefab) || Object.hasOwn(ITEM_SOURCES, seedOf(prefab))) {
-            // Peck, peck, peck, hop, idle; the food is digested 60 frames later.
-            this.instance.sprite.playOnce('peck');
-            this.instance.sprite.pushAnimation('peck');
-            this.instance.sprite.pushAnimation('peck');
-            this.instance.sprite.pushAnimation('hop');
-            this.pushStateAnim('idle', true);
-            this.doTaskInTime(60 * FRAMES, () => this.digestFood(prefab));
-        }
-    }
-
-    private onRefuseItem(): void {
-        this.instance.sprite.playOnce('flap');
-        this.pushStateAnim('idle', true);
-        this.playSound('dontstarve/birds/wingflap_cage');
-    }
-
-    private digestFood(prefab: string): void {
-        const product = digestedFoodProduct(prefab, this.random);
-        if (product) this.world?.dropLoot?.([{ itemId: product, count: 1 }], this.instance.position.clone());
-        // Refill the bird's stomach.
-        const bird = this.getBird();
-        if (bird && !bird.isRemoved) bird.components.perishable.SetPercent(1);
-    }
-
-    // --- shelf and inventory ----------------------------------------------------------------
-
-    /** inventory:GiveItem on the cage's only slot. */
-    private giveItem(item: ItemEntity): void {
-        this.slot = item;
-        item.components.inventoryitem.owner = this.slotOwner(item);
-    }
-
-    private slotOwner(item: ItemEntity): ItemOwner {
-        const cage = this;
-        const id = String(cage.instance.entityId);
-        return {
-            address: { containerId: `world:birdcage:${id}`, slotKey: '0' },
-            changed() {},
-            remove: () => { cage.holder.RemoveItem(item); item.destroy(); return true; },
-            replace: prefab => {
-                if (cage.slot !== item) return false;
-                const replacement = cage.world?.spawnItem?.({ itemId: prefab, count: item.components.stackable.count });
-                if (!replacement) return false;
-                cage.holder.RemoveItem(item);
-                item.destroy();
-                cage.giveItem(replacement);
-                return true;
-            },
-            PushEvent() {},
-        };
-    }
-
-    private readonly holder: ShelfHolder<ItemEntity> = {
-        RemoveItem: (item) => {
-            if (this.slot !== item) return;
-            this.slot = undefined;
-            item.components.inventoryitem.owner = null;
-        },
-        DropItem: (item) => {
-            if (this.slot === item) this.holder.RemoveItem(item);
-            this.world?.dropItem?.(item, this.instance.position.clone());
-        },
-    };
-
-    private onGetShelfItem(item: ItemEntity): void {
-        const world = this.world;
-        if (world?.perishClock && world.scheduler) item.components.perishable.BindWorld({ perishClock: world.perishClock, scheduler: world.scheduler });
-        // De-activate occupiable.
-        this.removeOccupiable();
-        this.shelf.cantakeitem = true;
-        this.stopRot?.();
-        this.stopRot = item.ListenForEvent('perished', () => this.onBirdRot());
-    }
-
-    private onLoseShelfItem(_taker: ShelfTaker<ItemEntity> | undefined, _item: ItemEntity): void {
-        this.stopRot?.();
-        this.stopRot = undefined;
-        // Activate occupiable.
-        if (!this.occupiable) this.addOccupiable();
-        const bird = this.getBird();
-        if (bird) this.onOccupied(bird);
-        else this.onEmptied();
-    }
-
-    private onBirdRot(): void {
-        this.stopAnimationTask();
-        this.setCageState(CAGE_STATES.SKELETON);
-        this.playStateAnim('idle', false);
-        // Mutated birds do not have a skeleton to show so always default back to one that does.
-        this.setBirdType('crow');
-        this.doTaskInTime(0, () => {
-            if (this.slot) this.shelf.PutItemOnShelf(this.slot);
+        // inst:AddComponent("inventory"): the shelf's one-slot holder.
+        const shelf = addComponent(this, 'shelf', Shelf<ItemEntity, BirdcageInstance>, {
+            RemoveItem: item => RemoveItem(this, item),
+            DropItem: item => DropItem(this, item),
         });
-    }
+        shelf.SetOnShelfItem(OnGetShelfItem);
+        shelf.SetOnTakeItem(OnLoseShelfItem);
 
-    // --- work --------------------------------------------------------------------------------
+        this.ListenForEvent('onbuilt', OnBuilt);
+        this.ListenForEvent('gotosleep', GoToSleep);
+        this.ListenForEvent('onwakeup', WakeUp);
 
-    /** OnWorked: hit clip of the state; an occupied cage flaps. */
-    onWorked(): void {
-        this.playStateAnim('hit', false);
-        if (this.occupiable?.IsOccupied()) {
-            this.instance.sprite.pushAnimation('flap');
-            this.playSound('dontstarve/birds/wingflap_cage');
-        }
-        this.pushStateAnim('idle', true);
-    }
-
-    /** OnWorkFinished: the occupant and the shelved item leave with the destroyed cage. */
-    dropContents(): void {
-        if (this.occupiable?.IsOccupied()) {
-            const item = this.occupiable.Harvest();
-            if (item) this.world?.dropItem?.(item, this.instance.position.clone());
-        }
-        const held = this.slot;
-        if (held) this.holder.DropItem(held);
-    }
-
-    /** OnBuilt */
-    onBuilt(): void {
-        this.instance.sprite.playOnce('place');
-        this.pushStateAnim('idle', false);
-        this.playSound('dontstarve/common/birdcage_craft');
-    }
-
-    // --- persistence -------------------------------------------------------------------------
-
-    /** OnSave: CAGE_STATE, bird_type, the occupant and the inventory slot. */
-    save(): BirdcageSaveState {
-        const occupant = this.getBird();
-        occupant?.flush();
-        this.slot?.flush();
-        return {
-            cageState: this.cageStateSignal.peek(),
-            ...(this.birdTypeSignal.peek() === undefined ? {} : { birdType: this.birdTypeSignal.peek() }),
-            ...(occupant ? { occupant: occupant.snapshot() } : {}),
-            ...(this.slot ? { item: this.slot.snapshot() } : {}),
-        };
-    }
-
-    /** OnLoad, then OnLoadPostPass: components first (the occupant), then the inst data and the shelf. */
-    restore(data: BirdcageSaveState): void {
-        const world = this.world;
-        batch(() => {
-            if (data.occupant && this.occupiable) {
-                const bird = world?.spawnItem?.(data.occupant);
-                if (bird) this.occupiable.Occupy(bird);
-            }
-            if (data.item) {
-                const held = world?.spawnItem?.(data.item);
-                if (held) this.giveItem(held);
-            }
-            this.setCageState(data.cageState);
-            if (data.birdType !== undefined) this.setBirdType(data.birdType);
-        });
-        this.playStateAnim('idle', true);
-        // Check in the inventory, put on the shelf if needed.
-        if (this.slot) this.shelf.PutItemOnShelf(this.slot);
-    }
-
-    dispose(): void {
-        if (this.disposed) return;
-        this.disposed = true;
-        this.stopAnimationTask();
-        this.stopRot?.();
-        this.removeSleeper();
-        this.occupiable?.dispose();
-        this.shelf.dispose();
-        this.trader.dispose();
-        this.statusMemo.dispose();
-        this.instance.sprite.declareAnimState('bird', undefined);
+        this.OnSave = OnSave;
+        this.OnLoad = OnLoad;
+        this.onRemove(() => OnRemoveEntity(this));
     }
 }
 
-const cageOf = (instance: PrefabInstance): Birdcage => instance.components.birdcage!;
+const GetBird = (inst: BirdcageInstance): ItemEntity | undefined => inst.components.occupiable?.GetOccupant();
 
-function onworked(inst: PrefabInstance): void {
-    cageOf(inst).onWorked();
+/** GetHunger: the bird's remaining freshness. */
+function GetHunger(bird: ItemEntity | undefined): number {
+    return bird?.components.perishable.percent.peek() ?? 1;
 }
 
-function onhammered(inst: PrefabInstance): void {
-    cageOf(inst).dropContents();
-    inst.components.lootdropper!.DropLoot();
+/** SetBirdType: swap the override build for the bird's own build. */
+function SetBirdType(inst: BirdcageInstance, bird: string | undefined): void {
+    if (inst.bird_type !== undefined) inst.birdAnimState.ClearOverrideBuild(`${inst.bird_type}_build`);
+    inst.bird_type = bird === undefined ? undefined : BUILD_OVERRIDES[bird] ?? bird;
+    if (inst.bird_type !== undefined && isBirdId(inst.bird_type)) inst.birdAnimState.AddOverrideBuild(`${inst.bird_type}_build`);
+}
+
+function SetCageState(inst: BirdcageInstance, state: CageState): void {
+    inst.CAGE_STATE = state;
+}
+
+function PlayStateAnim(inst: BirdcageInstance, anim: string, loop = false): void {
+    inst.AnimState.PlayAnimation(anim + inst.CAGE_STATE, loop);
+}
+
+function PushStateAnim(inst: BirdcageInstance, anim: string, loop = false): void {
+    inst.AnimState.PushAnimation(anim + inst.CAGE_STATE, loop);
+}
+
+function DoPlaySound(inst: BirdcageInstance, soundname: SoundEventPath | undefined): void {
+    if (soundname) PlaySound(soundname, inst.position);
+}
+
+/** The world's perish clock reaches a bird or item the cage now holds. */
+function BindPerishWorld(inst: BirdcageInstance, item: ItemEntity): void {
+    const { perishClock, scheduler } = inst.worldServices ?? {};
+    if (perishClock && scheduler) item.components.perishable.BindWorld({ perishClock, scheduler });
+}
+
+function DigestFood(inst: BirdcageInstance, prefab: string): void {
+    const product = digestedFoodProduct(prefab);
+    if (product) inst.worldServices?.dropLoot?.([{ itemId: product, count: 1 }], inst.position.clone());
+    // Refill bird stomach.
+    const bird = GetBird(inst);
+    if (bird && !bird.isRemoved) bird.components.perishable.SetPercent(1);
+}
+
+/** trader.lua AbleToAccept's sleeper check. */
+function AbleToAcceptTest(inst: BirdcageInstance): TradeAcceptance {
+    return inst.components.sleeper?.IsAsleep() ? { ok: false, reason: 'SLEEPING' } : { ok: true };
+}
+
+function ShouldAcceptItem(_inst: BirdcageInstance, item: TradeItem): boolean {
+    return birdcageAcceptsItem(item.prefab);
+}
+
+function OnGetItem(inst: BirdcageInstance, _giver: unknown, item: TradeItem): void {
+    // If you're sleeping, wake up.
+    if (inst.components.sleeper?.IsAsleep()) inst.components.sleeper.WakeUp();
+    const prefab = item.prefab;
+    if (isMeatFood(prefab) || isSeedItem(prefab) || Object.hasOwn(ITEM_SOURCES, seedOf(prefab))) {
+        // Peck, peck, peck, hop, idle; the food is digested 60 frames later.
+        inst.sprite.playOnce('peck');
+        inst.sprite.pushAnimation('peck');
+        inst.sprite.pushAnimation('peck');
+        inst.sprite.pushAnimation('hop');
+        PushStateAnim(inst, 'idle', true);
+        inst.DoTaskInTime(60 * FRAMES, () => DigestFood(inst, prefab));
+    }
+}
+
+function OnRefuseItem(inst: BirdcageInstance): void {
+    inst.sprite.playOnce('flap');
+    PushStateAnim(inst, 'idle', true);
+    DoPlaySound(inst, 'dontstarve/birds/wingflap_cage');
+}
+
+/** DoAnimationTask: the hunger of the bird picks the idle variant and its sounds. */
+function DoAnimationTask(inst: BirdcageInstance): void {
+    const hunger = GetHunger(GetBird(inst));
+    const rand = Math.random();
+    const chirp = inst.chirpsound;
+    const soundAt = (frame: number, sound: SoundEventPath | undefined) => inst.DoTaskInTime(frame * FRAMES, () => DoPlaySound(inst, sound));
+    if (hunger < .33) {
+        if (rand < .75) {
+            inst.sprite.playOnce('idle_bird3');
+            for (const frame of [5, 15, 28, 99]) soundAt(frame, 'dontstarve/birds/wingflap_cage');
+            for (const frame of [4, 27, 42, 100]) soundAt(frame, chirp);
+        }
+    } else if (hunger < .66) {
+        if (rand < .5) {
+            inst.sprite.playOnce('idle_bird2');
+            for (const frame of [26, 81, 96]) soundAt(frame, chirp);
+        }
+    } else if (rand < .5) {
+        inst.sprite.playOnce('caw');
+        DoPlaySound(inst, chirp);
+    } else if (rand < .6) {
+        inst.sprite.playOnce('flap');
+        DoPlaySound(inst, 'dontstarve/birds/wingflap_cage');
+    } else inst.sprite.playOnce('hop');
+    PushStateAnim(inst, 'idle', true);
+}
+
+function StartAnimationTask(inst: BirdcageInstance): void {
+    inst.AnimationTask?.Cancel();
+    inst.AnimationTask = inst.DoPeriodicTask(ANIMATION_PERIOD, DoAnimationTask);
+}
+
+function StopAnimationTask(inst: BirdcageInstance): void {
+    inst.AnimationTask?.Cancel();
+    inst.AnimationTask = undefined;
+}
+
+function ShouldSleep(inst: BirdcageInstance, cycle: WorldPhase): boolean {
+    const bird = GetBird(inst);
+    return bird !== undefined && DefaultSleepTest(inst, cycle) && GetHunger(bird) >= .33;
+}
+
+function ShouldWake(inst: BirdcageInstance, cycle: WorldPhase): boolean {
+    const bird = GetBird(inst);
+    return bird !== undefined && DefaultWakeTest(inst, cycle) || GetHunger(bird) < .33;
+}
+
+function GoToSleep(inst: BirdcageInstance): void {
+    if (inst.components.occupiable?.IsOccupied()) {
+        StopAnimationTask(inst);
+        inst.sprite.playOnce('sleep_pre');
+        inst.sprite.pushAnimation('sleep_loop', true);
+    }
+}
+
+function WakeUp(inst: BirdcageInstance): void {
+    if (inst.components.occupiable?.IsOccupied()) {
+        inst.sprite.playOnce('sleep_pst');
+        PushStateAnim(inst, 'idle', true);
+        StartAnimationTask(inst);
+    }
+}
+
+function OnOccupied(inst: BirdcageInstance, bird: ItemEntity): void {
+    BindPerishWorld(inst, bird);
+    SetCageState(inst, CAGE_STATES.FULL);
+    // Only if the bird can actually sleep: every ported bird has a sleeper in birds.lua.
+    const getWatchWorldContent = inst.worldServices?.getWatchWorldContent;
+    if (getWatchWorldContent) {
+        const sleeper = addComponent(inst, 'sleeper', Sleeper, getWatchWorldContent);
+        sleeper.sleeptestfn = ShouldSleep;
+        sleeper.waketestfn = ShouldWake;
+    }
+    inst.components.trader.Enable();
+    SetBirdType(inst, bird.prefab);
+    inst.chirpsound = isBirdId(bird.prefab) ? BIRD_SOUNDS[bird.prefab].chirp : undefined;
+    inst.sprite.playOnce('flap');
+    DoPlaySound(inst, 'dontstarve/birds/wingflap_cage');
+    PushStateAnim(inst, 'idle', true);
+    StartAnimationTask(inst);
+}
+
+function OnEmptied(inst: BirdcageInstance): void {
+    if (inst.bird_type !== undefined) inst.birdAnimState.ClearOverrideBuild(`${inst.bird_type}_build`);
+    SetCageState(inst, CAGE_STATES.EMPTY);
+    removeComponent(inst, 'sleeper');
+    inst.components.trader.Disable();
+    PlayStateAnim(inst, 'idle', false);
+    StopAnimationTask(inst);
+}
+
+function OnWorkFinished(inst: BirdcageInstance): void {
+    // If there is a bird inside drop the proper loot (bird, meat or rot).
+    if (inst.components.occupiable?.IsOccupied()) {
+        const item = inst.components.occupiable.Harvest();
+        if (item) inst.worldServices?.dropItem?.(item, inst.position.clone());
+    }
+    inst.components.lootdropper.DropLoot();
+    if (inst.slot) DropItem(inst, inst.slot);
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'metal');
     inst.remove();
 }
 
-/** birdcage.lua fn(), as far as it is ported: the cage's occupant, shelf and trader, and the hammer workable. */
-export class BirdcageInstance extends PrefabInstance {
-    constructor(world: PrefabWorldContext, art: AnimStateArt) {
-        super(BIRDCAGE_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
-        this.worldServices = world;
-        MakeBuildingPersist(this);
-        const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
-        this.OnSave = (inst, data) => { saveBuilding!(inst, data); data.birdcage = cageOf(inst).save(); };
-        this.OnLoad = (inst, data) => { loadBuilding!(inst, data); if (data.birdcage) cageOf(inst).restore(data.birdcage); };
-        const workable = addComponent(this, 'workable', Workable);
-        workable.SetWorkAction('HAMMER');
-        workable.SetWorkLeft(4);
-        workable.SetOnWorkCallback(onworked);
-        workable.SetOnFinishCallback(onhammered);
-        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
-        new Birdcage(this, world, art);
-        this.ListenForEvent('onbuilt', () => cageOf(this).onBuilt());
+function OnWorked(inst: BirdcageInstance): void {
+    PlayStateAnim(inst, 'hit', false);
+    if (inst.components.occupiable?.IsOccupied()) {
+        inst.sprite.pushAnimation('flap');
+        DoPlaySound(inst, 'dontstarve/birds/wingflap_cage');
     }
+    PushStateAnim(inst, 'idle', true);
+}
+
+function OnBuilt(inst: BirdcageInstance): void {
+    inst.sprite.playOnce('place');
+    PushStateAnim(inst, 'idle', false);
+    DoPlaySound(inst, 'dontstarve/common/birdcage_craft');
+}
+
+function OnBirdRot(inst: BirdcageInstance): void {
+    StopAnimationTask(inst);
+    SetCageState(inst, CAGE_STATES.SKELETON);
+    PlayStateAnim(inst, 'idle', false);
+    // Mutated birds do not have a skeleton to show so always default back to one that does.
+    SetBirdType(inst, 'crow');
+    inst.DoTaskInTime(0, () => {
+        if (inst.slot) inst.components.shelf.PutItemOnShelf(inst.slot);
+    });
+}
+
+function OnBirdStarve(inst: BirdcageInstance): void {
+    const bird = GetBird(inst);
+    StopAnimationTask(inst);
+    SetCageState(inst, CAGE_STATES.DEAD);
+    inst.sprite.playOnce('death');
+    if (bird && isBirdId(bird.prefab)) DoPlaySound(inst, BIRD_SOUNDS[bird.prefab].death);
+    PushStateAnim(inst, 'idle', false);
+    // Needed here because OnEmptied is called before this callback, which clears the build override.
+    SetBirdType(inst, inst.bird_type);
+    // Put loot on "shelf".
+    const loot = inst.worldServices?.spawnItem?.({ itemId: 'smallmeat', count: 1 });
+    if (loot) {
+        GiveItem(inst, loot);
+        inst.components.shelf.PutItemOnShelf(loot);
+    }
+}
+
+/** The occupiable fn registers, and OnLoseShelfItem registers again after OnGetShelfItem removed it. */
+function AddOccupiable(inst: BirdcageInstance): void {
+    const occupiable = addComponent(inst, 'occupiable', Occupiable<ItemEntity, BirdcageInstance>);
+    occupiable.occupanttype = 'bird';
+    occupiable.onoccupied = OnOccupied;
+    occupiable.onemptied = OnEmptied;
+    occupiable.onperishfn = OnBirdStarve;
+}
+
+/** inventory:GiveItem on the cage's only slot. */
+function GiveItem(inst: BirdcageInstance, item: ItemEntity): void {
+    inst.slot = item;
+    item.components.inventoryitem.owner = SlotOwner(inst, item);
+}
+
+function SlotOwner(inst: BirdcageInstance, item: ItemEntity): ItemOwner {
+    return {
+        address: { containerId: `world:birdcage:${String(inst.entityId)}`, slotKey: '0' },
+        changed() {},
+        remove: () => { RemoveItem(inst, item); item.destroy(); return true; },
+        replace: prefab => {
+            if (inst.slot !== item) return false;
+            const replacement = inst.worldServices?.spawnItem?.({ itemId: prefab, count: item.components.stackable.count });
+            if (!replacement) return false;
+            RemoveItem(inst, item);
+            item.destroy();
+            GiveItem(inst, replacement);
+            return true;
+        },
+        PushEvent() {},
+    };
+}
+
+/** inventory:RemoveItem on the cage's only slot. */
+function RemoveItem(inst: BirdcageInstance, item: ItemEntity): void {
+    if (inst.slot !== item) return;
+    inst.slot = undefined;
+    item.components.inventoryitem.owner = null;
+}
+
+/** inventory:DropItem on the cage's only slot. */
+function DropItem(inst: BirdcageInstance, item: ItemEntity): void {
+    RemoveItem(inst, item);
+    inst.worldServices?.dropItem?.(item, inst.position.clone());
+}
+
+function OnGetShelfItem(inst: BirdcageInstance, item: ItemEntity): void {
+    BindPerishWorld(inst, item);
+    // De-activate occupiable.
+    removeComponent(inst, 'occupiable');
+    inst.components.shelf.cantakeitem = true;
+    inst.stopRot?.();
+    inst.stopRot = item.ListenForEvent('perished', () => OnBirdRot(inst));
+}
+
+function OnLoseShelfItem(inst: BirdcageInstance): void {
+    inst.stopRot?.();
+    inst.stopRot = undefined;
+    // Activate occupiable.
+    if (!inst.components.occupiable) AddOccupiable(inst);
+    const bird = GetBird(inst);
+    if (bird) OnOccupied(inst, bird);
+    else OnEmptied(inst);
+}
+
+/** OnSave: CAGE_STATE, bird_type, the occupant and the inventory slot. */
+function OnSave(inst: BirdcageInstance, data: PlacementSaveRecord['components']): void {
+    SaveBuildingSkin(inst, data);
+    const occupant = GetBird(inst);
+    occupant?.flush();
+    inst.slot?.flush();
+    data.birdcage = {
+        cageState: inst.CAGE_STATE,
+        ...(inst.bird_type === undefined ? {} : { birdType: inst.bird_type }),
+        ...(occupant ? { occupant: occupant.snapshot() } : {}),
+        ...(inst.slot ? { item: inst.slot.snapshot() } : {}),
+    };
+}
+
+/** OnLoad, then OnLoadPostPass: components first (the occupant), then the inst data and the shelf. */
+function OnLoad(inst: BirdcageInstance, data: PlacementSaveRecord['components']): void {
+    LoadBuildingSkin(inst, data);
+    const saved = data.birdcage;
+    if (!saved) return;
+    const spawnItem = inst.worldServices?.spawnItem;
+    batch(() => {
+        if (saved.occupant) {
+            const bird = spawnItem?.(saved.occupant);
+            if (bird) inst.components.occupiable?.Occupy(bird);
+        }
+        if (saved.item) {
+            const held = spawnItem?.(saved.item);
+            if (held) GiveItem(inst, held);
+        }
+        SetCageState(inst, saved.cageState);
+        if (saved.birdType !== undefined) SetBirdType(inst, saved.birdType);
+    });
+    PlayStateAnim(inst, 'idle', true);
+    // Check in inventory, put on shelf if needed.
+    if (inst.slot) inst.components.shelf.PutItemOnShelf(inst.slot);
+}
+
+/** GetStatus */
+function GetStatus(inst: BirdcageInstance): BirdcageStatus {
+    if (inst.CAGE_STATE === CAGE_STATES.EMPTY) return 'GENERIC';
+    if (inst.CAGE_STATE === CAGE_STATES.FULL) {
+        const hunger = GetHunger(GetBird(inst));
+        return inst.components.sleeper?.IsAsleep() ? 'SLEEPING' : hunger < .33 ? 'STARVING' : hunger < .66 ? 'HUNGRY' : 'OCCUPIED';
+    }
+    if (inst.CAGE_STATE === CAGE_STATES.DEAD || inst.CAGE_STATE === CAGE_STATES.SICK) return 'DEAD';
+    return 'SKELETON';
+}
+
+function OnRemoveEntity(inst: BirdcageInstance): void {
+    inst.stopRot?.();
+    inst.sprite.declareAnimState('bird', undefined);
 }
 
 export function birdcagePrefabs(world: PrefabWorldContext) {

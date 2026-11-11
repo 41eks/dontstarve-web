@@ -20,7 +20,8 @@ export interface SleeperInst {
   };
 }
 
-export type SleeperTest = (inst: SleeperInst, cycle: WorldPhase) => boolean;
+/** Method-typed, as Lua does not check it, so a test written for a narrower inst can be registered. */
+export type SleeperTest = { call(inst: SleeperInst, cycle: WorldPhase): boolean }['call'];
 
 /** sleeper.lua StandardSleepChecks, including home proximity; freezable/teamattacker are unported. */
 export function StandardSleepChecks(inst: SleeperInst): boolean {

@@ -65,10 +65,9 @@ async function harness(page: Page, errors: string[]) {
   const cage = () => page.evaluate(() => {
     const model = (window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage');
     const instance = (window as any).__prefabInstance(model);
-    const birdcage = instance?.components.birdcage;
-    if (!birdcage) return null;
-    return { state: birdcage.cageState.peek(), status: birdcage.status.peek(), animation: instance.sprite.currentAnimation,
-      bird: birdcage.getBird()?.prefab ?? null, shelf: birdcage.item?.prefab ?? null,
+    if (!instance) return null;
+    return { state: instance.CAGE_STATE, status: instance.components.inspectable.getstatus(), animation: instance.sprite.currentAnimation,
+      bird: instance.components.occupiable?.GetOccupant()?.prefab ?? null, shelf: instance.slot?.prefab ?? null,
       tags: ['occupied', 'takeshelfitem', 'trader'].filter(tag => instance.hasTag(tag)) };
   });
   const clickCage = async (action: string) => {
@@ -159,7 +158,7 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
   // Starvation: the bird's perishable ends, the cage shows the death state and shelves the meat.
   await page.evaluate(() => {
     const model = (window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage');
-    (window as any).__prefabInstance(model).components.birdcage.getBird().components.perishable.SetPercent(.0001);
+    (window as any).__prefabInstance(model).components.occupiable.GetOccupant().components.perishable.SetPercent(.0001);
   });
   await expect.poll(cage, { timeout: 60_000 }).toMatchObject({ state: '_death', status: 'DEAD', bird: null, shelf: 'smallmeat', tags: ['takeshelfitem'] });
   const dead = await saveGame();
@@ -168,7 +167,7 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
   // Rot: the shelved meat spoils into the skeleton state.
   await page.evaluate(() => {
     const model = (window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage');
-    (window as any).__prefabInstance(model).components.birdcage.item.components.perishable.SetPercent(.0001);
+    (window as any).__prefabInstance(model).slot.components.perishable.SetPercent(.0001);
   });
   await expect.poll(cage, { timeout: 60_000 }).toMatchObject({ state: '_skeleton', status: 'SKELETON', shelf: 'spoiled_food', tags: ['takeshelfitem'] });
   expect((await saveGame()).world.entities.birdcage[0].components.birdcage).toMatchObject({ cageState: '_skeleton', item: { itemId: 'spoiled_food' } });
@@ -196,8 +195,8 @@ test('feeds, wakes, releases and hammers an occupied cage', async ({ page }) => 
 
   // Meat is accepted: after the peck clips the bird is full again and an egg drops beside the cage.
   await page.evaluate(async () => {
-    const cageComponent = (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage')).components.birdcage;
-    cageComponent.getBird().components.perishable.SetPercent(.4);
+    const cageComponent = (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage'));
+    cageComponent.components.occupiable.GetOccupant().components.perishable.SetPercent(.4);
   });
   await expect.poll(cage).toMatchObject({ status: 'HUNGRY' });
   await slot('smallmeat').click();
@@ -208,19 +207,19 @@ test('feeds, wakes, releases and hammers an occupied cage', async ({ page }) => 
 
   // A sleeping cage refuses gifts; waking returns to the idle loop.
   await page.evaluate(async () => {
-    const cageComponent = (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage')).components.birdcage;
-    cageComponent.sleeper.GoToSleep();
+    const cageComponent = (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage'));
+    cageComponent.components.sleeper.GoToSleep();
   });
   await expect.poll(cage).toMatchObject({ status: 'SLEEPING', animation: 'sleep_loop' });
   expect((await page.evaluate(async () => {
-    const cageComponent = (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage')).components.birdcage;
-    return cageComponent.trader.AbleToAccept({ prefab: 'smallmeat', hasTag: () => false });
+    const cageComponent = (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage'));
+    return cageComponent.components.trader.AbleToAccept({ prefab: 'smallmeat', hasTag: () => false });
   }))).toEqual({ ok: false, reason: 'SLEEPING' });
-  await page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage')).components.birdcage.sleeper.WakeUp());
+  await page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage')).components.sleeper.WakeUp());
   await expect.poll(cage).toMatchObject({ animation: 'idle_bird' });
 
   // HARVEST (FREE) returns the same inst, with its hunger, to the inventory.
-  await page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage')).components.birdcage.getBird().components.perishable.SetPercent(.7));
+  await page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage')).components.occupiable.GetOccupant().components.perishable.SetPercent(.7));
   const before = (await saveGame()).world.entities.birdcage[0].components.birdcage.occupant;
   await clickCage('HARVEST');
   await expect.poll(cage).toMatchObject({ state: '_empty', bird: null });
