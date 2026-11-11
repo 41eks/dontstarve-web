@@ -522,9 +522,10 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     if (override !== undefined) return override ?? undefined;
     const skin = this.skin;
     if (skin && !skin.baseSymbols.has(element.imageHash)
-      && (skin.symbols === undefined || skin.symbols.has(element.imageHash))) {
+      && (skin.symbols === undefined || skin.symbols.has(element.imageHash)) && skin.build.symbols.has(element.imageHash)) {
+      // A symbol the skin has is the skin's in every frame: the frames its art leaves blank draw nothing, not the base art.
       const image = findImage(skin.build, element.imageHash, element.imageIndex);
-      if (image) return { element, image, materials: skin.materials };
+      return image && { element, image, materials: skin.materials };
     }
     for (const source of this.artSource ? [this.artSource.build, ...this.artSource.fallbackBuilds ?? []] : [{ build: this.build, materials: this.materials }]) {
       const image = findImage(source.build, element.imageHash, element.imageIndex);

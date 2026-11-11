@@ -193,6 +193,21 @@ it('draws override builds and AnimState declarations as a factory sprite does, t
   } finally { first.dispose(); second.dispose(); reference.disposeSprite(control); reference.dispose(); crow.dispose(); assets.dispose(); }
 });
 
+it('draws nothing for the frames of a skinned symbol that the skin leaves blank', async () => {
+  const assets = new ArchiveSpriteAssets();
+  const definition: ArchiveSpriteDefinition = { animationArchive: 'researchlab3.zip', buildArchives: ['researchlab3.zip'], bank: 'researchlab3', animation: 'idle', loop: true };
+  const sprite = await createSharedArchiveSprite(assets, definition);
+  const skin = await assets.loadBuild('dynamic/researchlab3_nature.zip', definition);
+  const pieces = () => sprite.getResolvedFrame().filter(part => part.element.imageHash === smallHash('lab3_pieces')).map(part => part.element.imageIndex);
+  try {
+    // The base machine's brackets and gem; researchlab3_nature's tree has no art in these frames.
+    expect(pieces().filter(index => [1, 4, 6, 7].includes(index))).not.toEqual([]);
+    sprite.setSkin(skin);
+    expect(pieces().filter(index => [1, 4, 6, 7].includes(index))).toEqual([]);
+    expect(pieces()).not.toEqual([]);
+  } finally { sprite.dispose(); assets.dispose(); }
+});
+
 it('keeps base symbols that a partial skin does not replace', async () => {
   const assets = new ArchiveSpriteAssets();
   const definition: ArchiveSpriteDefinition = { animationArchive: 'berrybush.zip', buildArchives: ['berrybush.zip'], bank: 'berrybush', animation: 'idle', loop: true };

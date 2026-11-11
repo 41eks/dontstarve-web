@@ -95,7 +95,12 @@ function appearanceVisible({ hidden, hiddenLayers }: Pick<SpriteAppearance, 'hid
 function resolveAppearanceElement({ builds, skin, overrides }: SpriteAppearance, element: AnimElement): ResolvedSprite | undefined {
   const override = overrides.get(element.imageHash), hash = override?.hash ?? element.imageHash;
   const skinned = skin && !skin.baseSymbols?.has(element.imageHash) && (!skin.symbols || skin.symbols.has(element.imageHash));
-  for (const build of [...(skinned ? [skin] : []), ...(override ? [override.source] : builds)]) {
+  // A symbol the skin has is the skin's in every frame: the frames its art leaves blank draw nothing, not the base art.
+  if (skinned && skin.build.symbols.has(hash)) {
+    const image = findImage(skin.build, hash, element.imageIndex);
+    return image && { element, image, materials: skin.materials };
+  }
+  for (const build of override ? [override.source] : builds) {
     const image = findImage(build.build, hash, element.imageIndex);
     if (image) return { element, image, materials: build.materials };
   }
