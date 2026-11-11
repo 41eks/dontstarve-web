@@ -14,7 +14,7 @@ import definitions from '../../prefab/src/definitions.json' with { type: 'json' 
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { ItemEntity } from '../../inventory/src/entity';
 import { configureMoonrockNugget } from '../../prefab/src/moonrocknugget';
-import { getMoonbaseState, MOONBASE_CHARGE_DURATION } from '../../prefab/src/moonbase';
+import { GetAnimState, GetChargePhase, MOONBASE_CHARGE_DURATION, MOONBASE_TIMER_LIMITS, type MoonbaseInstance } from '../../prefab/src/moonbase';
 import * as sound from '../../prefab/src/sound';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { activeItemUse } from './inventoryUseFixture';
@@ -32,6 +32,12 @@ import { canDoSceneAction } from './sceneActions';
 import { managedBuildings } from './managedBuildings';
 
 const components = (model: THREE.Object3D) => prefabInstance(model)!.components;
+/** The moonbase's state, read the same way at each assertion. */
+function getMoonbaseState(model: THREE.Object3D) {
+  const inst = prefabInstance(model) as MoonbaseInstance;
+  return { phase: { peek: () => GetAnimState(inst) }, charge: { peek: () => GetChargePhase(inst) }, staff: { peek: () => inst._staffinst }, workleft: inst.components.workable.workleft,
+    timers: Object.fromEntries(Object.keys(MOONBASE_TIMER_LIMITS).map(name => [name, inst.components.timer.snapshot(name)])) };
+}
 
 const worldCleanups: (() => void)[] = [];
 function moonWorld(scheduler: GameTimeScheduler, full: boolean) {
