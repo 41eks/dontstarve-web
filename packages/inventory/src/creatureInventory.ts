@@ -9,8 +9,10 @@ export class CreatureInventory {
   private readonly slots: InventorySlot[];
   private readonly inst: { id: string; getPosition(): Vector3 };
   private readonly drop: (item: ItemEntity, position: Vector3) => void;
-  constructor(inst: { id: string; getPosition(): Vector3 }, maxslots: number, drop: (item: ItemEntity, position: Vector3) => void, itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {}) {
-    this.inst = inst; this.drop = drop;
+  /** SpawnPrefab for onperishreplacement; without it a perished item stays in its slot. */
+  private readonly spawn?: (state: InventoryStack) => ItemEntity;
+  constructor(inst: { id: string; getPosition(): Vector3 }, maxslots: number, drop: (item: ItemEntity, position: Vector3) => void, itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {}, spawn?: (state: InventoryStack) => ItemEntity) {
+    this.inst = inst; this.drop = drop; this.spawn = spawn;
     this.slots = Array.from({ length: maxslots }, () => new InventorySlot(null, itemSpecs));
   }
   /** inventory.lua ApplyDamage: a creature inventory has no equip slots, so nothing absorbs. */
@@ -19,6 +21,8 @@ export class CreatureInventory {
   GetEquippedItem(_eslot: string): null { return null; }
   IsFull(): boolean { return this.slots.every(slot => slot.getEntity() !== null); }
   GetItems(): ItemEntity[] { return this.slots.flatMap(slot => slot.getEntity() ?? []); }
+  /** inventory.lua GetItemInSlot: slots count from 1. */
+  GetItemInSlot(slot: number): ItemEntity | undefined { return this.slots[slot - 1]?.getEntity() ?? undefined; }
   GiveItem(item: ItemEntity): boolean {
     if (item.isRemoved || item.components.inventoryitem.owner) return false;
     item.flush();
@@ -41,32 +45,48 @@ export class CreatureInventory {
     const index = this.slots.findIndex(slot => slot.getEntity() === null);
     if (index < 0) { this.drop(item, this.inst.getPosition().clone()); return true; }
     item.flush();
+    this.PutInSlot(index, item);
+    return true;
+  }
+  private PutInSlot(index: number, item: ItemEntity): void {
     const slot = this.slots[index];
     const owner: ItemOwner = {
       address: { containerId: `creature:${this.inst.id}`, slotKey: String(index) },
       getPosition: () => this.inst.getPosition(), changed: () => undefined,
       remove: () => { if (slot.getEntity() !== item) return false; slot.setEntity(null); item.components.inventoryitem.owner = null; item.destroy(); return true; },
-      replace: () => false, PushEvent: () => undefined,
+      replace: prefab => {
+        if (!this.spawn || slot.getEntity() !== item) return false;
+        const replacement = this.spawn({ itemId: prefab, count: item.components.stackable.count });
+        this.RemoveItem(item);
+        item.destroy();
+        this.PutInSlot(index, replacement);
+        return true;
+      },
+      PushEvent: () => undefined,
     };
     slot.setEntity(item); item.components.inventoryitem.owner = owner;
     item.PushEvent('onputininventory', owner);
-    return true;
   }
-  private TakeItem(item: ItemEntity): void {
+  /** inventory.lua RemoveItem with wholestack: the item leaves its slot and stays valid. */
+  RemoveItem(item: ItemEntity): void {
     const slot = this.slots.find(slot => slot.getEntity() === item); if (!slot) return;
     slot.setEntity(null); item.components.inventoryitem.owner = null;
+  }
+  /** inventory.lua DropItem; an item already removed from its slot, as a failed shelf take leaves it, still drops. */
+  DropItem(item: ItemEntity): void {
+    item.flush(); this.RemoveItem(item); this.drop(item, this.inst.getPosition().clone());
   }
   TransferInventory(receiver: { components: { inventory?: CreatureInventory } }): void {
     const target = receiver.components.inventory;
     if (!target) return;
     for (const item of this.GetItems()) {
-      item.flush(); this.TakeItem(item); if (!target.GiveItem(item)) this.drop(item, this.inst.getPosition().clone());
+      item.flush(); this.RemoveItem(item); if (!target.GiveItem(item)) this.drop(item, this.inst.getPosition().clone());
     }
   }
   DropEverything(): void {
     const position = this.inst.getPosition().clone();
     for (const item of this.GetItems()) {
-      item.flush(); this.TakeItem(item); this.drop(item, position);
+      item.flush(); this.RemoveItem(item); this.drop(item, position);
     }
   }
   OnSave(): InventoryStack[] { return this.GetItems().map(item => { item.flush(); return item.snapshot(); }); }

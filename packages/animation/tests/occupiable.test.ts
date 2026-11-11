@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ItemEntity, type ItemOwner } from '../../inventory/src';
+import { ItemEntity, type InventoryStack, type ItemOwner } from '../../inventory/src';
+import { Inventory } from '../../componets/src/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf } from '../../componets/src/shelf';
 import { Trader } from '../../componets/src/trader';
@@ -97,6 +98,60 @@ describe('caged birds', () => {
     unbind();
     scheduler.dispose();
     random.mockRestore();
+  });
+
+  it('keeps the starved bird meat in its inventory slot, replaces it when it rots and drops it from a failed take', () => {
+    const scheduler = new GameTimeScheduler();
+    const dropItem = vi.fn();
+    const world = { scheduler, dropItem, spawnItem: (state: InventoryStack) => new ItemEntity(state) } as unknown as WorldContext;
+    const instance = new BirdcageInstance(world);
+    const { components } = instance;
+    const bird = createBird();
+    components.occupiable!.Occupy(bird);
+    bird.components.perishable.SetPercent(.0001);
+    settle(bird, 30);
+    expect(instance.CAGE_STATE).toBe('_death');
+    const meat = components.inventory.GetItemInSlot(1)!;
+    expect(meat.prefab).toBe('smallmeat');
+    expect(components.shelf.itemonshelf.peek()).toBe(meat);
+    expect(components.occupiable).toBeUndefined();
+
+    const persisted = instance.GetPersistData();
+    expect(persisted).not.toHaveProperty('inventory');
+    expect(persisted.birdcage).toMatchObject({ cageState: '_death', birdType: 'canary', item: { itemId: 'smallmeat' } });
+    const restored = new BirdcageInstance(world);
+    restored.SetPersistData(persisted);
+    expect(restored.CAGE_STATE).toBe('_death');
+    expect(restored.components.shelf.itemonshelf.peek()?.prefab).toBe('smallmeat');
+    expect(restored.components.occupiable).toBeUndefined();
+    restored.remove();
+
+    meat.PushEvent('perished');
+    expect(meat.components.inventoryitem.owner!.replace('spoiled_food')).toBe(true);
+    expect(meat.isRemoved).toBe(true);
+    scheduler.advance(.1);
+    const spoiled = components.inventory.GetItemInSlot(1)!;
+    expect(spoiled.prefab).toBe('spoiled_food');
+    expect(components.shelf.itemonshelf.peek()).toBe(spoiled);
+    expect(instance.CAGE_STATE).toBe('_skeleton');
+
+    expect(components.shelf.TakeItem({ GiveItem: () => false })).toBe(true);
+    expect(dropItem).toHaveBeenCalledWith(spoiled, expect.anything());
+    expect(components.inventory.GetItemInSlot(1)).toBeUndefined();
+    expect(spoiled.components.inventoryitem.owner).toBeNull();
+    expect(instance.CAGE_STATE).toBe('_empty');
+    expect(components.occupiable).toBeDefined();
+    instance.remove();
+    scheduler.dispose();
+  });
+
+  it('leaves a perished item in a creature inventory that was given no spawner', () => {
+    const inventory = new Inventory({ id: 'mole', getPosition: () => new THREE.Vector3() }, 1, vi.fn());
+    const meat = new ItemEntity({ itemId: 'smallmeat', count: 1 });
+    inventory.GiveItem(meat);
+    expect(meat.components.inventoryitem.owner!.replace('spoiled_food')).toBe(false);
+    expect(inventory.GetItemInSlot(1)).toBe(meat);
+    inventory.dispose();
   });
 
   it('stores the cursor-held bird itself through USEITEM.occupier and ACTIONS.STORE at the short-action frame', () => {

@@ -8,7 +8,8 @@ import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
 import { batch, type WorldPhase } from '@dontstarve-web/signals';
-import type { InventoryStack, ItemEntity, ItemOwner } from '@dontstarve-web/inventory';
+import type { InventoryStack, ItemEntity } from '@dontstarve-web/inventory';
+import { Inventory } from '../../componets/src/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf } from '../../componets/src/shelf';
 import { DefaultSleepTest, DefaultWakeTest, Sleeper } from '../../componets/src/sleeper';
@@ -83,6 +84,7 @@ export function digestedFoodProduct(prefab: string, random: () => number = Math.
 interface BirdcageComponents {
     inspectable: Inspectable;
     lootdropper: LootDropper;
+    inventory: Inventory;
     occupiable?: Occupiable<ItemEntity, BirdcageInstance>;
     workable: Workable<BirdcageInstance>;
     trader: Trader<TradeItem, unknown, BirdcageInstance>;
@@ -101,12 +103,12 @@ export class BirdcageInstance extends PrefabInstance {
     chirpsound?: SoundEventPath;
     /** inst.AnimationTask */
     AnimationTask?: EntityTask;
-    /** inst.components.inventory's only slot (maxslots = 1). */
-    slot?: ItemEntity;
     /** RemoveEventCallback for item.OnRotFn. */
     stopRot?: () => void;
     /** The bird's appearance slot; the cage's own skin declaration stays independent. */
     readonly birdAnimState = new AnimState();
+    /** The owner address the inventory component builds for its slot. */
+    get id(): string { return String(this.entityId); }
 
     constructor(world: PrefabWorldContext, art?: AnimStateArt) {
         super(BIRDCAGE_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
@@ -131,11 +133,10 @@ export class BirdcageInstance extends PrefabInstance {
         trader.SetOnRefuse(OnRefuseItem);
         trader.Disable();
 
-        // inst:AddComponent("inventory"): the shelf's one-slot holder.
-        const shelf = addComponent(this, 'shelf', Shelf<ItemEntity, BirdcageInstance>, {
-            RemoveItem: item => RemoveItem(this, item),
-            DropItem: item => DropItem(this, item),
-        });
+        // inventory.maxslots = 1
+        const inventory = addComponent(this, 'inventory', Inventory, 1, (item, position) => world.dropItem?.(item, position), undefined, world.spawnItem);
+
+        const shelf = addComponent(this, 'shelf', Shelf<ItemEntity, BirdcageInstance>, inventory);
         shelf.SetOnShelfItem(OnGetShelfItem);
         shelf.SetOnTakeItem(OnLoseShelfItem);
 
@@ -321,7 +322,7 @@ function OnWorkFinished(inst: BirdcageInstance): void {
         if (item) inst.worldServices?.dropItem?.(item, inst.position.clone());
     }
     inst.components.lootdropper.DropLoot();
-    if (inst.slot) DropItem(inst, inst.slot);
+    inst.components.inventory.DropEverything();
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'metal');
     inst.remove();
 }
@@ -348,23 +349,23 @@ function OnBirdRot(inst: BirdcageInstance): void {
     // Mutated birds do not have a skeleton to show so always default back to one that does.
     SetBirdType(inst, 'crow');
     inst.DoTaskInTime(0, () => {
-        if (inst.slot) inst.components.shelf.PutItemOnShelf(inst.slot);
+        const item = inst.components.inventory.GetItemInSlot(1);
+        if (item) inst.components.shelf.PutItemOnShelf(item);
     });
 }
 
-function OnBirdStarve(inst: BirdcageInstance): void {
-    const bird = GetBird(inst);
+function OnBirdStarve(inst: BirdcageInstance, bird: ItemEntity): void {
     StopAnimationTask(inst);
     SetCageState(inst, CAGE_STATES.DEAD);
     inst.sprite.playOnce('death');
-    if (bird && isBirdId(bird.prefab)) DoPlaySound(inst, BIRD_SOUNDS[bird.prefab].death);
+    if (isBirdId(bird.prefab)) DoPlaySound(inst, BIRD_SOUNDS[bird.prefab].death);
     PushStateAnim(inst, 'idle', false);
     // Needed here because OnEmptied is called before this callback, which clears the build override.
     SetBirdType(inst, inst.bird_type);
     // Put loot on "shelf".
     const loot = inst.worldServices?.spawnItem?.({ itemId: 'smallmeat', count: 1 });
     if (loot) {
-        GiveItem(inst, loot);
+        inst.components.inventory.GiveItem(loot);
         inst.components.shelf.PutItemOnShelf(loot);
     }
 }
@@ -376,43 +377,6 @@ function AddOccupiable(inst: BirdcageInstance): void {
     occupiable.onoccupied = OnOccupied;
     occupiable.onemptied = OnEmptied;
     occupiable.onperishfn = OnBirdStarve;
-}
-
-/** inventory:GiveItem on the cage's only slot. */
-function GiveItem(inst: BirdcageInstance, item: ItemEntity): void {
-    inst.slot = item;
-    item.components.inventoryitem.owner = SlotOwner(inst, item);
-}
-
-function SlotOwner(inst: BirdcageInstance, item: ItemEntity): ItemOwner {
-    return {
-        address: { containerId: `world:birdcage:${String(inst.entityId)}`, slotKey: '0' },
-        changed() {},
-        remove: () => { RemoveItem(inst, item); item.destroy(); return true; },
-        replace: prefab => {
-            if (inst.slot !== item) return false;
-            const replacement = inst.worldServices?.spawnItem?.({ itemId: prefab, count: item.components.stackable.count });
-            if (!replacement) return false;
-            RemoveItem(inst, item);
-            item.destroy();
-            GiveItem(inst, replacement);
-            return true;
-        },
-        PushEvent() {},
-    };
-}
-
-/** inventory:RemoveItem on the cage's only slot. */
-function RemoveItem(inst: BirdcageInstance, item: ItemEntity): void {
-    if (inst.slot !== item) return;
-    inst.slot = undefined;
-    item.components.inventoryitem.owner = null;
-}
-
-/** inventory:DropItem on the cage's only slot. */
-function DropItem(inst: BirdcageInstance, item: ItemEntity): void {
-    RemoveItem(inst, item);
-    inst.worldServices?.dropItem?.(item, inst.position.clone());
 }
 
 function OnGetShelfItem(inst: BirdcageInstance, item: ItemEntity): void {
@@ -437,14 +401,17 @@ function OnLoseShelfItem(inst: BirdcageInstance): void {
 /** OnSave: CAGE_STATE, bird_type, the occupant and the inventory slot. */
 function OnSave(inst: BirdcageInstance, data: PlacementSaveRecord['components']): void {
     SaveBuildingSkin(inst, data);
+    // The slot's item is saved in the cage's own record, as the save format declares it.
+    delete (data as { inventory?: unknown }).inventory;
     const occupant = GetBird(inst);
     occupant?.flush();
-    inst.slot?.flush();
+    const item = inst.components.inventory.GetItemInSlot(1);
+    item?.flush();
     data.birdcage = {
         cageState: inst.CAGE_STATE,
         ...(inst.bird_type === undefined ? {} : { birdType: inst.bird_type }),
         ...(occupant ? { occupant: occupant.snapshot() } : {}),
-        ...(inst.slot ? { item: inst.slot.snapshot() } : {}),
+        ...(item ? { item: item.snapshot() } : {}),
     };
 }
 
@@ -459,16 +426,14 @@ function OnLoad(inst: BirdcageInstance, data: PlacementSaveRecord['components'])
             const bird = spawnItem?.(saved.occupant);
             if (bird) inst.components.occupiable?.Occupy(bird);
         }
-        if (saved.item) {
-            const held = spawnItem?.(saved.item);
-            if (held) GiveItem(inst, held);
-        }
+        if (saved.item && spawnItem) inst.components.inventory.OnLoad([saved.item], spawnItem);
         SetCageState(inst, saved.cageState);
         if (saved.birdType !== undefined) SetBirdType(inst, saved.birdType);
     });
     PlayStateAnim(inst, 'idle', true);
     // Check in inventory, put on shelf if needed.
-    if (inst.slot) inst.components.shelf.PutItemOnShelf(inst.slot);
+    const item = inst.components.inventory.GetItemInSlot(1);
+    if (item) inst.components.shelf.PutItemOnShelf(item);
 }
 
 /** GetStatus */

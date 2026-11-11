@@ -67,7 +67,7 @@ async function harness(page: Page, errors: string[]) {
     const instance = (window as any).__prefabInstance(model);
     if (!instance) return null;
     return { state: instance.CAGE_STATE, status: instance.components.inspectable.getstatus(), animation: instance.sprite.currentAnimation,
-      bird: instance.components.occupiable?.GetOccupant()?.prefab ?? null, shelf: instance.slot?.prefab ?? null,
+      bird: instance.components.occupiable?.GetOccupant()?.prefab ?? null, shelf: instance.components.inventory.GetItemInSlot(1)?.prefab ?? null,
       tags: ['occupied', 'takeshelfitem', 'trader'].filter(tag => instance.hasTag(tag)) };
   });
   const clickCage = async (action: string) => {
@@ -167,7 +167,7 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
   // Rot: the shelved meat spoils into the skeleton state.
   await page.evaluate(() => {
     const model = (window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage');
-    (window as any).__prefabInstance(model).slot.components.perishable.SetPercent(.0001);
+    (window as any).__prefabInstance(model).components.inventory.GetItemInSlot(1).components.perishable.SetPercent(.0001);
   });
   await expect.poll(cage, { timeout: 60_000 }).toMatchObject({ state: '_skeleton', status: 'SKELETON', shelf: 'spoiled_food', tags: ['takeshelfitem'] });
   expect((await saveGame()).world.entities.birdcage[0].components.birdcage).toMatchObject({ cageState: '_skeleton', item: { itemId: 'spoiled_food' } });
