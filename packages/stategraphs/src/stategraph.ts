@@ -1,3 +1,4 @@
+import type { EventData } from '../../componets/src/entityEvents';
 import type { BufferedAction } from './bufferedaction.ts';
 import { ComponentTimer } from '../../componets/src/timer.ts';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -12,7 +13,8 @@ export interface TimelineEvent<Context, Name extends string> {
 
 export interface StateEvent<Context, Name extends string> {
   name: string;
-  fn: (inst: StateGraphInstance<Context, Name>, data: unknown) => void;
+  /** Method-typed, as each handler reads the data its event's pusher sends. */
+  fn: { call(inst: StateGraphInstance<Context, Name>, data: unknown): void }['call'];
 }
 
 export interface StateDefinition<Context, Name extends string> {
@@ -37,8 +39,12 @@ export function TimeEvent<Context, Name extends string>(
   return { time, fn };
 }
 
-export function EventHandler<Context, Name extends string>(
-  name: string, fn: StateEvent<Context, Name>['fn'],
+/** A listenForEvent listener as the stategraph keeps it; method-typed, as each reads its own event's data. */
+type StoredEventListener = { call(data: unknown): void }['call'];
+
+/** EventHandler(name, fn): `data` is what the event's pusher sends (EntityEventData). */
+export function EventHandler<Context, Name extends string, E extends string = string>(
+  name: E, fn: (inst: StateGraphInstance<Context, Name>, data: EventData<E>) => void,
 ): StateEvent<Context, Name> {
   return { name, fn };
 }
@@ -62,7 +68,7 @@ export class StateGraphInstance<Context, Name extends string> {
   private readonly states = new Map<Name, StateDefinition<Context, Name>>();
   private readonly actionHandlers = new Map<string, StateActionHandler<Context, Name>>();
   /** The stategraph's own EventHandlers (stategraph.lua sg.events), beside the current state's. */
-  private readonly listeners = new Map<string, Set<(data: unknown) => void>>();
+  private readonly listeners = new Map<string, Set<StoredEventListener>>();
   /** What follows GoToState, which stategraph.lua reports as the inst's "newstate" event rather than to a handler. */
   private readonly newStateListeners = new Set<(data: { name: Name }) => void>();
   private current!: StateDefinition<Context, Name>;
@@ -210,7 +216,7 @@ export class StateGraphInstance<Context, Name extends string> {
     return () => { this.scheduled.delete(task); };
   }
 
-  listenForEvent(name: string, fn: (data: unknown) => void): () => void {
+  listenForEvent<E extends string>(name: E, fn: (data: EventData<E>) => void): () => void {
     if (name === 'newstate') throw new Error('newstate is not a stategraph event; use onNewState');
     let listeners = this.listeners.get(name);
     if (!listeners) this.listeners.set(name, listeners = new Set());

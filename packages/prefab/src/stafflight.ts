@@ -105,7 +105,7 @@ export class StaffLightInstance extends PrefabInstance {
 
     const timer = addComponent(this, 'timer', Timer, scheduler);
     timer.StartTimer(EXTINGUISH, settings.duration);
-    this.ListenForEvent('timerdone', (_inst, data) => { if ((data as { name: string }).name === EXTINGUISH) this.kill_light(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === EXTINGUISH) this.kill_light(); });
 
     addComponent(this, 'inspectable', Inspectable);
     this.addTag('inspectable');

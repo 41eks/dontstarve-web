@@ -1,3 +1,4 @@
+import type { EntityEventData } from '../../componets/src/entityEvents';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { PrefabInstance, type EntityTask } from './prefabInstance';
 import { createEffect, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
@@ -249,8 +250,7 @@ function DestroyStaff(inst: MoonbaseInstance, staff: ItemEntity): void {
   if (items) items.destroy(staff); else staff.destroy();
 }
 
-function OnTimerDone(inst: MoonbaseInstance, data: unknown): void {
-  const { name } = data as { name: string };
+function OnTimerDone(inst: MoonbaseInstance, { name }: EntityEventData['timerdone']): void {
   const { pickable, timer } = inst.components;
   if (name === 'moonchargepre') {
     if (timer.TimerExists('fullmoonstartdelay')) {

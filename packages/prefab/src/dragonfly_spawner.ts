@@ -51,7 +51,7 @@ export class DragonflySpawnerInstance extends PrefabInstance {
     childspawner.StopRegen();
     this.worldsettingstimer = new Timer(this, world.scheduler, [DRAGONFLY_SPAWNTIMER]);
     const stopTimerDone = this.ListenForEvent('timerdone', (_inst, data) => {
-      if ((data as { name: string }).name === DRAGONFLY_SPAWNTIMER) GenerateNewDragon(this);
+      if (data.name === DRAGONFLY_SPAWNTIMER) GenerateNewDragon(this);
     });
 
     this.OnSave = (_inst, data) => {

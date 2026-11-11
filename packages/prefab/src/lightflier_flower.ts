@@ -1,3 +1,4 @@
+import type { EntityEventData } from '../../componets/src/entityEvents';
 import type * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, watchSignal, type GetWatchWorldContent } from '@dontstarve-web/signals';
@@ -176,8 +177,7 @@ function StartCallForLightflierTask(inst: LightFlierFlowerInstance): void {
     RECALL_DELAY + random(inst.world) * RECALL_DELAY_VARIANCE);
 }
 
-function ontimerdone(inst: LightFlierFlowerInstance, data: unknown): void {
-  const name = (data as { name?: string } | undefined)?.name;
+function ontimerdone(inst: LightFlierFlowerInstance, { name }: EntityEventData['timerdone']): void {
   if (name === 'recharge') Recharge(inst);
   else if (name === 'turnoff') {
     TurnOff(inst);

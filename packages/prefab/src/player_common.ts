@@ -1,3 +1,4 @@
+import type { EntityEventData } from '../../componets/src/entityEvents';
 import { addComponent, removeComponent } from './components';
 import { SpriteResources, SpriteState, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
 import { clockstate, createMemo, createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
@@ -14,7 +15,7 @@ import { GroundItemAssets } from './groundItems';
 import { HatEquipmentAssets } from './hats';
 import type { PickaxeTool } from './pickaxe';
 import type { PitchforkTool } from './pitchfork';
-import { OnMakePlayerGhost, OnRespawnFromGhost, PlayerBuild, type RezSource } from './player_common_extensions';
+import { OnMakePlayerGhost, OnRespawnFromGhost, PlayerBuild } from './player_common_extensions';
 import type { ShovelTool } from './shovel';
 import type { SoundEmitter } from './soundEmitter';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
@@ -75,9 +76,14 @@ export function equipSamePrefab(
   return same !== null && inventory.EquipFromInventory(same);
 }
 
+const EQUIPMENT_KINDS: readonly EquipmentKind[] = ['hand', 'body', 'head'];
+const isEquipmentKind = (value: unknown): value is EquipmentKind => EQUIPMENT_KINDS.some(kind => kind === value);
+
+/** player_common.lua OnItemRanOut, for the itemranout data the owner forwards. */
 export function OnItemRanOut(inventory: Parameters<typeof equipSamePrefab>[0], data: unknown): void {
-  const { prefab, equipslot } = (data ?? {}) as { prefab?: string; equipslot?: EquipmentKind };
-  if (prefab !== undefined && equipslot !== undefined) equipSamePrefab(inventory, prefab, equipslot);
+  if (typeof data !== 'object' || data === null || !('prefab' in data) || !('equipslot' in data)) return;
+  const { prefab, equipslot } = data;
+  if (typeof prefab === 'string' && isEquipmentKind(equipslot)) equipSamePrefab(inventory, prefab, equipslot);
 }
 
 /** player_common.lua AddComponent("builder"); the scene supplies spatial queries. */
@@ -252,7 +258,7 @@ export function playDrop(inst: PlayerInstance, onDrop: () => boolean, onCancel?:
   cancelEmote(inst);
   const action = new BufferedAction<WilsonAction>('DROP', onDrop);
   const stop = inst.sg.listenForEvent('actionfailed', data => {
-    if ((data as { action?: unknown } | undefined)?.action === action) { stop(); onCancel?.(); }
+    if (data.action === action) { stop(); onCancel?.(); }
   });
   action.addSuccessAction(stop);
   if (inst.sg.pushBufferedAction(action)) return true;
@@ -316,8 +322,8 @@ export function updatePlayer(inst: PlayerInstance, dt: number): void {
 }
 
 /** player_common.lua OnPlayerDeath: inst.deathcause. */
-function OnPlayerDeath(inst: PlayerInstance, data: unknown): void {
-  inst.deathcause = (data as { cause?: string } | undefined)?.cause ?? 'unknown';
+function OnPlayerDeath(inst: PlayerInstance, data: EntityEventData['death']): void {
+  inst.deathcause = data?.cause ?? 'unknown';
 }
 
 /** OnRemoveEntity: the stategraph, the book FX and every sound stop with the player. */
@@ -335,8 +341,8 @@ function releasePlayerAssets(inst: PlayerInstance): void {
 }
 
 /** The emote ends with any state but emote's own. */
-function OnNewState(inst: PlayerInstance, data: unknown): void {
-  if ((data as { statename?: string } | undefined)?.statename !== 'emote') inst.emote = null;
+function OnNewState(inst: PlayerInstance, data: EntityEventData['newstate']): void {
+  if (data.statename !== 'emote') inst.emote = null;
 }
 
 /** player_common.lua: MakeCharacterPhysics(inst, 75, .5), in DST units. */
@@ -428,8 +434,8 @@ export function MakePlayerCharacter(
     // ListenForEvent("death", ex_fns.OnPlayerDeath); SGwilson's own death handler hears the same event.
     inst.ListenForEvent('death', OnPlayerDeath);
     // ListenForEvent("makeplayerghost" / "respawnfromghost", ex_fns.OnMakePlayerGhost / OnRespawnFromGhost).
-    inst.ListenForEvent('makeplayerghost', (_inst, data) => OnMakePlayerGhost(inst, data as { skeleton?: boolean; loading?: boolean } | undefined));
-    inst.ListenForEvent('respawnfromghost', (_inst, data) => OnRespawnFromGhost(inst, data as { source?: RezSource } | undefined));
+    inst.ListenForEvent('makeplayerghost', (_inst, data) => OnMakePlayerGhost(inst, data));
+    inst.ListenForEvent('respawnfromghost', (_inst, data) => OnRespawnFromGhost(inst, data));
     inst.onRemove(() => OnRemoveEntity(inst));
 
     inst.SetStateGraph(inst => new WilsonStateGraph(inst));

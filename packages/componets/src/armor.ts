@@ -1,3 +1,4 @@
+import type { EventListening } from './entityEvents';
 import { createSignal, readonlySignal, createMemo, type Memo, type ReadonlySignal } from '../../signals/src';
 
 export interface ArmorSaveData { condition: number }
@@ -7,7 +8,7 @@ export interface ArmorOwner { PushEvent(name: string, data?: unknown): void }
 
 export interface ArmorInst {
   PushEvent(name: string, data?: unknown): void;
-  ListenForEvent(name: string, listener: (inst: unknown, data: unknown) => void): () => void;
+  ListenForEvent: EventListening['ListenForEvent'];
   remove(): boolean;
   readonly components: { readonly inventoryitem: { readonly owner: ArmorOwner | null } };
 }
@@ -31,8 +32,7 @@ export class Armor {
     this.percent = createMemo(() => this.conditionState.get() / this.maxconditionState.get());
     // armor.lua PercentChanged: a broken armor tells its wearer.
     this.stopPercentChanged = inst.ListenForEvent('percentusedchange', (_inst, data) => {
-      const percent = (data as { percent?: number } | undefined)?.percent;
-      if (percent !== undefined && percent <= 0) this.inst.components.inventoryitem.owner?.PushEvent('armorbroke', { armor: this.inst });
+      if (data.percent <= 0) this.inst.components.inventoryitem.owner?.PushEvent('armorbroke', { armor: this.inst });
     });
   }
 

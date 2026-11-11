@@ -1,3 +1,4 @@
+import type { EntityEventData } from '../../componets/src/entityEvents';
 import { addComponent } from './components';
 import { Vector3 } from 'three';
 import { createEffect, WorldContentKey, watchSignal, type ReadonlySignal, type WorldContentContext } from '@dontstarve-web/signals';
@@ -258,7 +259,7 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
     return undefined;
   }
   makeHome(): boolean { this.worldServices!.makeHome(this); this.needs_home_time = undefined; return true; }
-  onAttacked(data: unknown): void {
+  onAttacked(data: EntityEventData['attacked']): void {
     this.flee = true;
     this.stopfleetask?.Cancel();
     this.stopfleetask = this.entity.DoTaskInTime(3 + Math.floor(this.random() * 4), () => { this.flee = false; });
@@ -266,7 +267,7 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
     for (const mole of this.worldServices!.getMoles()) if (mole.getPosition().distanceToSquared(this.getPosition()) <= (30 * WORLD_SCALE) ** 2) {
       mole.PushEvent('gohome'); if (++count > 5) break;
     }
-    const weapon = (data as { weapon?: { hasTag(tag: string): boolean } })?.weapon;
+    const weapon = data.weapon;
     if (weapon?.hasTag('hammer')) { this.dropInventory(); if (!this.isDead()) this.sg.goToState('stunned'); }
     else if (weapon && !this.isDead() && !this.sg.hasStateTag('busy')) this.sg.goToState('hit');
   }

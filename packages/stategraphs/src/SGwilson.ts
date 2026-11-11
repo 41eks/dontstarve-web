@@ -1,3 +1,4 @@
+import type { EventData } from '../../componets/src/entityEvents';
 import { AnimationPlayback } from '@dontstarve-web/animation/animationPlayback';
 import { BufferedAction } from './bufferedaction.ts';
 import type { BufferedActionObject } from './bufferedaction.ts';
@@ -265,8 +266,8 @@ function onEnterIdle(inst: WilsonInstance, pushanim: boolean): void {
 }
 
 /** SGwilson.lua GetUnequipState: item_hat off a non-hand slot, item_in otherwise (the wereplayer, slip and tool_slip branches are not ported). */
-function GetUnequipState(data: unknown): 'item_hat' | 'item_in' {
-  return (data as { eslot?: string } | undefined)?.eslot === 'HANDS' ? 'item_in' : 'item_hat';
+function GetUnequipState(data: EventData<'unequip'>): 'item_hat' | 'item_in' {
+  return data.eslot === 'HANDS' ? 'item_in' : 'item_hat';
 }
 const fishingClip = (name: string): WilsonAnimationClip => clip('fishing', name);
 
@@ -1396,7 +1397,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.context.entity.SoundEmitter.PlaySound('dontstarve/common/fishingpole_fishinwater', 'splash');
     },
     events: [
-      EventHandler('fishingcatch', (inst, data) => inst.goToState('catchfish', (data as { build: string }).build)),
+      EventHandler('fishingcatch', (inst, data) => inst.goToState('catchfish', data.build)),
       EventHandler('fishingloserod', (inst) => inst.goToState('loserod')),
     ],
     onexit: (inst) => inst.context.entity.SoundEmitter.KillSound('splash'),
@@ -1605,14 +1606,14 @@ export class WilsonStateGraph {
     this.sg.listenForEvent('toolbroke', data => {
       if (this.sg.hasStateTag('nointerrupt')) return;
       this.releaseAction();
-      this.sg.goToState('toolbroke', (data as { tool?: WilsonBrokenTool } | undefined)?.tool);
+      this.sg.goToState('toolbroke', data.tool);
     });
     // SGwilson.lua EventHandler("equip"): item_out for a hand item, item_hat otherwise, from an idle or channeling state.
     // The heavy lifting, catch_equip and wereplayer branches belong to unported components.
     this.sg.listenForEvent('equip', data => {
       if (this.sg.handlesEvent('equip') || this.sg.hasStateTag('acting') || this.ghost) return;
       if (this.sg.hasAnyStateTag('idle', 'channeling')) {
-        this.sg.goToState((data as { eslot?: string } | undefined)?.eslot === 'HANDS' ? 'item_out' : 'item_hat');
+        this.sg.goToState(data.eslot === 'HANDS' ? 'item_out' : 'item_hat');
       }
     });
     // SGwilson.lua EventHandler("unequip") + GetUnequipState: item_hat off a non-hand slot, item_in otherwise.
@@ -1650,7 +1651,7 @@ export class WilsonStateGraph {
     });
     // SGwilson.lua EventHandler("ontalk"): the acting, closeinspect and mime branches are not ported.
     this.sg.listenForEvent('ontalk', data => {
-      if (this.sg.hasStateTag('idle') && !this.sg.hasStateTag('notalking')) this.sg.goToState('talk', (data as { noanim?: boolean }).noanim);
+      if (this.sg.hasStateTag('idle') && !this.sg.hasStateTag('notalking')) this.sg.goToState('talk', data.noanim);
     });
     // SGwilson.lua EventHandler("fishingcancel")
     this.sg.listenForEvent('fishingcancel', () => {
@@ -1689,7 +1690,7 @@ export class WilsonStateGraph {
   /** Browser input is held off while the slip states own the motor. */
   get isDead(): boolean { return this.sg.hasStateTag('dead'); }
   get isSlipping(): boolean { return this.stateName.startsWith('slip'); }
-  listenForEvent(name: string, fn: (data: unknown) => void): () => void { return this.sg.listenForEvent(name, fn); }
+  listenForEvent<E extends string>(name: E, fn: (data: EventData<E>) => void): () => void { return this.sg.listenForEvent(name, fn); }
   onNewState(fn: (data: { name: WilsonStateName }) => void): () => void { return this.sg.onNewState(fn); }
   isListeningForEvent(name: string): boolean { return this.sg.isListeningForEvent(name); }
   pushEvent(name: string, data?: unknown): void {

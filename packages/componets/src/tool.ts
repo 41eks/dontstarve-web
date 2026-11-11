@@ -1,3 +1,4 @@
+import type { EventListening } from './entityEvents';
 import type { WorkAction, WorkInst } from './workable';
 
 /** tool.lua actions: work actions plus instruments' ACTIONS.PLAY. */
@@ -5,7 +6,7 @@ export type ToolAction = WorkAction | 'PLAY';
 
 export interface ToolInst extends WorkInst {
   /** Returns the unsubscribe function. */
-  ListenForEvent?(name: string, listener: (inst: unknown, data: unknown) => void): () => void;
+  ListenForEvent?: EventListening['ListenForEvent'];
   readonly components: {
     inventoryitem?: { readonly owner: { PushEvent(name: string, data: unknown): void } | null };
     rechargeable?: unknown;
@@ -22,8 +23,7 @@ export class Tool {
     inst.addTag('tool');
     // tool.lua PercentChanged: a depleted, non-rechargeable tool tells its owner it broke.
     this.stopPercentListener = inst.ListenForEvent?.('percentusedchange', (_inst, data) => {
-      const percent = (data as { percent?: number } | undefined)?.percent;
-      if (percent === undefined || percent > 0 || inst.components.rechargeable) return;
+      if (data.percent > 0 || inst.components.rechargeable) return;
       inst.components.inventoryitem?.owner?.PushEvent('toolbroke', { tool: inst });
     });
   }

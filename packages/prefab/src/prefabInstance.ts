@@ -12,6 +12,7 @@ import type { BehaviourContext } from '../../brains/src/behaviourtree';
 import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import type { PlacementSaveRecord, PrefabSaveRecord } from './saveRecord';
+import type { EventData, EventDataArgs } from '../../componets/src/entityEvents';
 import { newItemEntityId } from '../../inventory/src/entityId';
 import { registerActionEntity } from './actionEntity';
 import { watchTileActivity } from './tileActivity';
@@ -75,7 +76,7 @@ type EventEntity = PrefabInstance<ArchiveSpriteCommands, object>;
  * EntityScript:ListenForEvent's fn(inst, data): `inst` is the entity that pushed the event. Method-typed, as Lua does not
  * check it, so a listener written for a narrower inst can be registered.
  */
-export type EntityEventListener<Inst = EventEntity> = { call(inst: Inst, data: unknown): void }['call'];
+export type EntityEventListener<Inst = EventEntity, Data = unknown> = { call(inst: Inst, data: Data): void }['call'];
 type StoredListener = EntityEventListener;
 /** event_listeners / event_listening: per event, per entity on the other side, its fns in registration order. */
 type ListenerTable = Map<string, Map<EventEntity, StoredListener[]>>;
@@ -432,7 +433,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
    * EntityScript:PushEvent: every fn listening for it, called fn(inst, data) from a copy of the list, then the stategraph
    * when it listens for the event, then the brain. Listeners run whether or not a display draws the entity.
    */
-  PushEvent(event: string, data?: unknown): void {
+  PushEvent<E extends string>(event: E, ...[data]: EventDataArgs<E>): void {
     const listeners = this.event_listeners?.get(event);
     if (listeners) for (const fn of [...listeners.values()].flat()) fn(this, data);
     // conventions-allow sg-forward: EntityScript:PushEvent's own forward to inst.sg.
@@ -444,8 +445,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
    * EntityScript:ListenForEvent(event, fn, source): fn(source, data) whenever `source` (this entity by default) pushes the
    * event. Both entities record it, so removing either drops it. The returned function is RemoveEventCallback for it.
    */
-  ListenForEvent(event: string, fn: EntityEventListener<this>): () => void;
-  ListenForEvent<Source extends EventEntity>(event: string, fn: EntityEventListener<Source>, source: Source): () => void;
+  ListenForEvent<E extends string>(event: E, fn: EntityEventListener<this, EventData<E>>): () => void;
+  ListenForEvent<E extends string, Source extends EventEntity>(event: E, fn: EntityEventListener<Source, EventData<E>>, source: Source): () => void;
   ListenForEvent(event: string, fn: EntityEventListener<never>, source: EventEntity = this): () => void {
     addListener(source.event_listeners ??= new Map(), event, this, fn);
     addListener(this.event_listening ??= new Map(), event, source, fn);

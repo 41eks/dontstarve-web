@@ -1,3 +1,4 @@
+import type { EntityEventData } from '../../componets/src/entityEvents';
 import * as THREE from 'three';
 import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
 import { SpriteState } from '@dontstarve-web/display';
@@ -209,8 +210,8 @@ function DoDrilling(inst: FarmPlowInstance): void {
   inst.DoTaskInTime(.5 + r() * .3, plow => dirt_anim(plow, 4, fxTime));
 }
 
-function timerdone(inst: FarmPlowInstance, data: unknown): void {
-  if ((data as { name?: string } | undefined)?.name !== 'drilling') return;
+function timerdone(inst: FarmPlowInstance, data: EntityEventData['timerdone']): void {
+  if (data.name !== 'drilling') return;
   if (inst.world.map.Terraform(inst.position.clone())) OnTerraform(inst);
   else Finished(inst);
 }

@@ -211,3 +211,12 @@ function DoActualRez(inst: PlayerInstance, source: RezSource): void {
   inst.removeTag('reviving');
   inst.PushEvent('ms_respawnedfromghost', undefined);
 }
+
+declare module '../../componets/src/entityEvents' {
+  interface EntityEventData {
+    /** SGwilson death / player_common OnLoad: the player becomes a ghost, with a skeleton or while loading a ghost save. */
+    makeplayerghost: { readonly skeleton?: boolean; readonly loading?: boolean } | undefined;
+    /** hauntable / resurrectors: the ghost comes back to life from `source`. */
+    respawnfromghost: { readonly source?: RezSource } | undefined;
+  }
+}

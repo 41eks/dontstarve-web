@@ -15,13 +15,14 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
   it('calls fn(source, data) and drops a cross-entity listener when either side is removed', () => {
     const listener = entity('spider'), source = entity('spiderden'), other = entity('spiderden');
     const fn = vi.fn();
+    const hit = { attacker: other, damage: 10 };
     listener.ListenForEvent('attacked', fn, source);
-    source.PushEvent('attacked', { damage: 10 });
-    expect(fn).toHaveBeenCalledExactlyOnceWith(source, { damage: 10 });
+    source.PushEvent('attacked', hit);
+    expect(fn).toHaveBeenCalledExactlyOnceWith(source, hit);
 
     // The listener retires: its registration on the source goes with it.
     listener.remove();
-    source.PushEvent('attacked', { damage: 10 });
+    source.PushEvent('attacked', hit);
     expect(fn).toHaveBeenCalledOnce();
 
     // The source retires: what the listener recorded about it goes too, and nothing calls it again.
@@ -44,7 +45,7 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     sg.goToState('idle');
     inst.sg = sg;
     // GoToState's "newstate" reaches its own followers, and the inst echoing it does not loop back into the stategraph.
-    const follow = vi.fn(() => inst.PushEvent('newstate'));
+    const follow = vi.fn(() => inst.PushEvent('newstate', { statename: sg.stateName }));
     sg.onNewState(follow);
     sg.goToState('idle');
     expect(follow).toHaveBeenCalledOnce();
@@ -53,10 +54,11 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     const brain = inst.brain = new EventBrain(inst as unknown as BehaviourContext);
     const heard = vi.fn();
     brain.AddEventHandler('attacked', heard);
-    inst.PushEvent('attacked', { attacker: 'wilson' });
+    const hit = { attacker: entity('wilson'), damage: 10 };
+    inst.PushEvent('attacked', hit);
     inst.PushEvent('ignored');
     expect(handled).toEqual(['attacked']);
-    expect(heard).toHaveBeenCalledExactlyOnceWith({ attacker: 'wilson' });
+    expect(heard).toHaveBeenCalledExactlyOnceWith(hit);
   });
 
   it('removes in EntityScript order: onremove while valid, tasks cancelled, components, then OnRemoveEntity', () => {

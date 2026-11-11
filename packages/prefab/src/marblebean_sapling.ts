@@ -58,7 +58,7 @@ export class MarbleBeanSaplingInstance extends PrefabInstance {
     this.addTag('marbleshrub');
 
     const timer = addComponent(this, 'timer', Timer, world.scheduler, [GROW]);
-    this.ListenForEvent('timerdone', (_inst, data) => { if ((data as { name: string }).name === GROW) this.growtree(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === GROW) this.growtree(); });
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(() => this.digup());

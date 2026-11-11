@@ -86,7 +86,7 @@ export class EvergreenInstance extends PrefabInstance {
     })), seconds => world.growthDuration?.(seconds) ?? seconds);
     growable.loopstages = true; growable.springgrowth = true;
     addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
-    this.ListenForEvent('timerdone', (_inst, data) => { if ((data as { name: string }).name === 'decay') this.remove(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === 'decay') this.remove(); });
     this.OnSave = (_inst, data) => onsave(this, data);
     this.OnLoad = (_inst, data) => onload(this, data);
     this.onRemove(() => {

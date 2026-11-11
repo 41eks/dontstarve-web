@@ -54,7 +54,7 @@ export class RockAvocadoSaplingInstance extends PrefabInstance {
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(dig_sprout);
     const timer = addComponent(this, 'timer', Timer, world.scheduler, ['grow']);
-    this.ListenForEvent('timerdone', (_inst, data) => on_grow_timer_done(this, (data as { name: string }).name));
+    this.ListenForEvent('timerdone', (_inst, data) => on_grow_timer_done(this, data.name));
     // MakeSmallBurnable + MakeSmallPropagator; DefaultBurnFn and DefaultExtinguishFn give way to these callbacks.
     const burn = new BurnableBinding(this, { propagator: 'small', burnTime: BURN_TIME, fxLevel: BURN_FX_LEVEL,
       onIgnite: () => stop_sprout_growing(this), onExtinguish: () => start_sprout_growing(this), onBurnt: () => DefaultBurntFn(this, world) }, world);
