@@ -12,8 +12,9 @@ function setup(options: { speed?: number; pond?: boolean } = {}) {
   const scheduler = new GameTimeScheduler();
   const log = { resets: 0 };
   // The player inst the slip states read: its run speed, motor velocity, wish to move forward and slipperyfeet.
-  const inst = wilsonStateInst({ runSpeed: 6, slipperyfeet: { SetCurrent: (value: number) => { log.resets++; feet.SetCurrent(value); } } });
-  const graph = new WilsonStateGraph(inst, { playAnimation: () => 14 * FRAME });
+  const inst = wilsonStateInst({ runSpeed: 6, slipperyfeet: { SetCurrent: (value: number) => { log.resets++; feet.SetCurrent(value); } } },
+    () => 14 * FRAME);
+  const graph = new WilsonStateGraph(inst);
   const position = new Vector3();
   const tags = new Set<string>();
   const ice = { components: {} as { slipperyfeettarget?: SlipperyFeetTarget } };

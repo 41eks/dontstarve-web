@@ -75,17 +75,15 @@ export function GetRotation(inst: PrefabInstance): number {
 
 /**
  * fence.lua SetOrientation: Transform:SetRotation, and SetBank(anims.narrow / anims.wide) when the parity changes;
- * the build stays. `art` is given the first time; later calls keep the art the bank was declared with.
+ * the build stays. `art` is given the first time, with fence.lua's wide and narrow ANIM assets and SetBuild("fence").
  */
 export function SetOrientation(inst: PrefabInstance, rotation: number, art?: SpriteResources['archives']): void {
     inst.sprite.setFacingRotation(rotation);
-    const bank = isNarrowRotation(rotation) ? 'fence_thin' : 'fence';
-    const current = inst.sprite.sprite.peek().source;
-    if (current?.bank === bank) return;
-    const archives = art ?? (current && 'art' in current ? current.art : undefined);
-    if (!archives) throw new Error('A fence needs its art the first time its bank is set');
-    // fence.lua declares the wide and the narrow anim; the bank picks one.
-    inst.sprite.setArtSource({ animationArchives: FENCE_ANIMATION_ARCHIVES, bank, buildArchive: 'fence.zip', art: archives });
+    if (art) {
+        inst.AnimState.DeclareAnimationAssets(FENCE_ANIMATION_ARCHIVES, art);
+        inst.AnimState.SetBuild('fence.zip');
+    }
+    inst.AnimState.SetBank(isNarrowRotation(rotation) ? 'fence_thin' : 'fence');
 }
 
 /** FixUpFenceOrientation(inst, nil): FindEntities(x, 0, z, 1.5, { "wall" }) around the inst, without itself. */

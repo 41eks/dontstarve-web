@@ -29,7 +29,7 @@
 | --- | --- | --- | --- |
 | `SetBank`、`SetBuild`（固定） | 定义的 `assets: { animationArchive, buildArchives, bank }` | `atrium_pillar.ts` | |
 | `SetBank`、`SetBuild`（按实例，构造或读档时定） | 定义的 `instanceAssets(inst)` | `archive_pillar.ts` | |
-| `SetBank`、`SetBuild`（运行中切换） | `sprite.setArtSource({ animationArchives, bank, buildArchive, art })`：`animationArchives` 列出 Lua 声明的全部 ANIM 资源，`PlayAnimation` 在当前 bank 下跨这些文件找动画；切换时只改 `bank`／build，不按动画换文件 | `fence.ts`、`player.ts` | |
+| `SetBank`、`SetBuild`（运行中切换） | `inst.AnimState.DeclareAnimationAssets(archives, art)` 声明 Lua 的全部 ANIM 资源，之后 `inst.AnimState.SetBank(bank)`／`SetBuild(archive)`；`PlayAnimation` 在当前 bank 下跨这些文件找动画，`GetCurrentAnimationLength` 按同一组文件取时长。不按动画换文件 | `fence.ts`、`player.ts`（`makeGhost`／`makeAlive`） | |
 | 构造函数里 `PlayAnimation(x, true)` | `new SpriteState({ name: x })` | `atrium_pillar.ts` | |
 | 构造函数里 `PlayAnimation(x)` | `new SpriteState({ name: x, held: true })`，或构造后 `sprite.playOnce(x)` | `atrium_gate.ts`、`vault_pillar.ts` | |
 | `PlayAnimation(x, loop)` | `inst.AnimState.PlayAnimation(x, loop)`（循环转 `sprite.start(x)`，否则 `sprite.playOnce(x)`） | `birdcage.ts`、`fire.ts` | 循环方式按 Lua，不为实例化改动；不发 `animover`，要完成通知用下一行 |
@@ -38,8 +38,8 @@
 | 不播放动画（只有 bank、build） | `{ none: true }` 或 `sprite.clearAnimation()` | `fireflies.ts` | 不绘制，直到有 clip |
 | `SetPercent(x, p)` | `sprite.setPercent(x, p)` | `winterometer.ts` | |
 | `SetFrame(n)` | `sprite.setFrame(n)`；随机帧用 `sprite.setFrameAt(fraction)` | `monkeypillar.ts` | `setFrameAt` 取 0–1 比例，未加载时也能声明 |
-| `SetDeltaTimeMultiplier` | `sprite.setPlaybackRate(rate)` | `player.ts` | |
-| `GetCurrentAnimationLength`、`GetCurrentAnimationNumFrames` | `sprite.currentAnimationLength`、`sprite.numFrames` | `moonbaseFx.ts`、`cactus.ts` | **未绘制时为 0**，业务计时不能依赖 |
+| `SetDeltaTimeMultiplier` | `inst.AnimState.SetDeltaTimeMultiplier(rate)`（写入 `sprite.setPlaybackRate`） | `SGwilson.ts` | |
+| `GetCurrentAnimationLength`、`GetCurrentAnimationNumFrames` | 声明了 ANIM 资源（`DeclareAnimationAssets`）的实体用 `inst.AnimState.GetCurrentAnimationLength()`，按源 anim.bin 时长计算，可用于业务计时；其余用 `sprite.currentAnimationLength`、`sprite.numFrames` | `SGwilson.ts`；`moonbaseFx.ts`、`cactus.ts` | sprite 上的两项**未绘制时为 0**，业务计时不能依赖 |
 | `inst:SetStateGraph("SGx")` | `packages/stategraphs/src/SGx.ts` 的 `StateGraphInstance`（传入 scheduler，timeline 走游戏时间），实例实现状态图读取的方法；`animover` 由 `playOnce` 的 `complete` 推给 `sg.pushEvent` | `portal.ts`、`nightmarerock.ts` | 未绘制时暂停 animover 链，见 `portal.ts` |
 | `ListenForEvent("animover", fn)` | `playOnce` 的 `complete` | `monkeypillar.ts` | 未绘制时结算，见上；需要等重新绘制时跟 `sprite.art` |
 | 循环动画批量绘制 | `assetOptions.instancedAnimations`、`staticBillboard` | `pillar.ts` | 只是绘制方式，非 Lua 调用 |

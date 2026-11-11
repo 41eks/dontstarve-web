@@ -37,10 +37,9 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
   const castingLight = { remove: vi.fn(), SetUp: vi.fn() };
   // SpawnPrefab("staff_castinglight") on the player inst; the castspell state sets it up.
   const casting = vi.fn((_prefab: string, _position: THREE.Vector3) => castingLight);
-  const inst = wilsonStateInst({ SpawnPrefab: casting }), sound = inst.SoundEmitter.PlaySound;
-  const graph = new WilsonStateGraph(inst, {
-    playAnimation: clip => (clip.key === 'staff_pre' ? 15 : clip.key === 'staff' ? 65 : 30) / 30,
-  });
+  const inst = wilsonStateInst({ SpawnPrefab: casting }, name => (name === 'staff_pre' ? 15 : name === 'staff' ? 65 : 30) / 30);
+  const sound = inst.SoundEmitter.PlaySound;
+  const graph = new WilsonStateGraph(inst);
   const player = new THREE.Group();
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     actionEvents: new EventEmitter<PlayerActionEvents>(),

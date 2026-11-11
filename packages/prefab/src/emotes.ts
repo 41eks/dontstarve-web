@@ -14,7 +14,7 @@ export const WILSON_EMOTES = {
   bonesaw: { label: '准备战斗', group: 'action', archive: 'player_emotesxl.zip', variants: [['emoteXL_bonesaw']] },
   facepalm: { label: '捂脸', group: 'action', archive: 'player_emotesxl.zip', variants: [['emoteXL_facepalm']] },
   pose: { label: '摆姿势', group: 'action', archive: 'player_emotes.zip', variants: [['emote_strikepose']] },
-  toast: { label: '干杯', group: 'action', archive: 'player_emote_extra.zip', variants: [['emote_pre_toast', 'emote_loop_toast']], loop: true, props: true },
+  toast: { label: '干杯', group: 'action', archive: 'player_emote_extra.zip', variants: [['emote_pre_toast', 'emote_loop_toast']], loop: true },
 } as const satisfies Record<string, WilsonEmoteDefinition>;
 
 export type WilsonEmote = keyof typeof WILSON_EMOTES;
@@ -25,5 +25,4 @@ export interface WilsonEmoteDefinition {
   readonly archive: string;
   readonly variants: readonly (readonly string[])[];
   readonly loop?: boolean;
-  readonly props?: boolean;
 }

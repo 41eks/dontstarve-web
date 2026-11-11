@@ -1,13 +1,11 @@
 import { addComponent, removeComponent } from './components';
-import { smallHash } from '@dontstarve-web/animation/animationAssets';
-import { SpriteResources, SpriteState, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
+import { SpriteResources, SpriteState, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
 import { clockstate, createMemo, createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonSleepAnnounce, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
+import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonSleepAnnounce, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { AxeTool } from './axe';
 import { BookFxController } from './book_fx';
-import { bankAnimationTiming } from './animationTimings';
 import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
 import type { EquipmentPresentation } from './equipmentVisual';
 import type { FarmHoeTool } from './farm_hoe';
@@ -45,8 +43,9 @@ export interface SymbolFollower {
 }
 
 export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'firestaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
-/** player_common_extensions.lua AddOverrideBuild, named in the display declaration. */
-const UNIQUE_ITEM_BUILD = 'player_actions_uniqueitem';
+/** skinprefabs.lua wortox_none: the normal and ghost skin builds. */
+const PLAYER_BUILD = `dynamic/${PLAYER_ART_CHARACTER}.zip`;
+const GHOST_BUILD = `dynamic/ghost_${PLAYER_ART_CHARACTER}_build.zip`;
 /**
  * The ANIM assets MakePlayerCharacter, global.lua (player_idles) and wortox.lua declare for the player, plus the emotes':
  * AnimState:PlayAnimation finds each clip of the current bank in whichever of them holds it.
@@ -82,8 +81,6 @@ export type PlayerModel = THREE.Group;
 
 interface ActiveEmote {
   id: WilsonEmote;
-  archive: string;
-  props: boolean;
   clips: readonly string[];
   loop: boolean;
 }
@@ -138,8 +135,6 @@ export class WilsonPlayerInstance extends PrefabInstance {
   combat?: WilsonCombat;
   /** The emote SGwilson's emote state is playing, with the art it was chosen with. */
   emote: ActiveEmote | null = null;
-  /** The bank and builds the player is drawn with: SetBank / SetBuild and the skinner's ghost build. */
-  artSource?: NamedSpriteArt;
   /** The archive and dynamic builds the player's display loads. */
   resources!: SpriteResources;
   /** What the player draws its equipment with; the player's OpenEquipmentView gives each equipped inst a slot of it. */
@@ -222,12 +217,16 @@ export function bindSoulHop(inst: WilsonPlayerInstance, host: Omit<WilsonSoulHop
 export function makeGhost(inst: WilsonPlayerInstance, loading = false): void {
   if (inst.sg.isGhost) return;
   cancelEmote(inst);
+  inst.AnimState.SetBank('ghost');
+  inst.AnimState.SetBuild(GHOST_BUILD);
   inst.sg.becomeGhost(loading);
 }
 
 /** player_common_extensions.lua DoActualRez: the living bank and skin, SetStateGraph("SGwilson") and the source's rebirth state. */
 export function makeAlive(inst: WilsonPlayerInstance, state: 'portal_rez' | 'amulet_rebirth' = 'portal_rez'): void {
   if (!inst.sg.isGhost) return;
+  inst.AnimState.SetBank('wilson');
+  inst.AnimState.SetBuild(PLAYER_BUILD);
   inst.sg.becomeAlive(state);
 }
 
@@ -242,7 +241,7 @@ export function playEmote(inst: WilsonPlayerInstance, id: WilsonEmote): boolean 
   if (!definition || !inst.sg.canEmote()) return false;
   cancelEmote(inst);
   inst.emote = {
-    id, archive: definition.archive, props: definition.props === true,
+    id,
     clips: definition.variants[Math.floor(Math.random() * definition.variants.length)],
     loop: definition.loop === true,
   };
@@ -269,25 +268,6 @@ export function updatePlayer(inst: WilsonPlayerInstance, dt: number): void {
   const step = Math.max(0, Math.min(dt, 0.1));
   inst.fxScheduler.advance(step);
   inst.sg.update(step);
-}
-
-/** Select the clip's art (SetBank and the ghost build) and play it; returns its playback length in seconds. */
-function selectAnimation(inst: WilsonPlayerInstance, clip: WilsonAnimationClip): number {
-  // SetBank("ghost") with the skinner's ghost build while a ghost; the clip is in whichever declared anim holds it.
-  const ghost = clip.key === 'ghost';
-  const bank = ghost ? 'ghost' : 'wilson';
-  const animation = bankAnimationTiming(PLAYER_ANIMATION_ARCHIVES, clip.name, smallHash(bank));
-  const playbackRate = (clip.frameRate ?? animation.frameRate) / animation.frameRate * (clip.playbackRate ?? 1);
-  inst.sprite.setPlaybackRate(playbackRate);
-  const buildArchive = ghost ? `dynamic/ghost_${PLAYER_ART_CHARACTER}_build.zip` : `dynamic/${PLAYER_ART_CHARACTER}.zip`;
-  const fallbackBuilds = [`${UNIQUE_ITEM_BUILD}.zip`, ...(inst.emote?.props ? [inst.emote.archive] : [])];
-  const current = inst.artSource;
-  if (!current || current.bank !== bank || current.buildArchive !== buildArchive || fallbackBuilds.join() !== current.fallbackBuilds?.join()) {
-    inst.artSource = { animationArchives: PLAYER_ANIMATION_ARCHIVES, bank, buildArchive, fallbackBuilds, art: inst.resources.archives };
-    inst.sprite.setArtSource(inst.artSource);
-  }
-  inst.AnimState.PlayAnimation(clip.name, clip.loop);
-  return animation.frames / (animation.frameRate * playbackRate);
 }
 
 /** SetSleeperSleepState / SetSleeperAwakeState: playercontroller:Enable and inventory:Hide / Show. */
@@ -343,11 +323,15 @@ function createWilsonPlayerEntity(
   const resources = new SpriteResources(assetBaseUrl);
   const inst = new WilsonPlayerInstance(PLAYER_ART_CHARACTER, new SpriteState({ name: 'idle_loop', billboard: true }));
   const { display } = createPrefabEntity(PLAYER_ART_CHARACTER, resources.factory({
-    buildArchive: `dynamic/${PLAYER_ART_CHARACTER}.zip`, animationArchive: PLAYER_ANIMATION_ARCHIVES[0],
+    buildArchive: PLAYER_BUILD, animationArchive: PLAYER_ANIMATION_ARCHIVES[0],
     extraAnimationArchives: PLAYER_ANIMATION_ARCHIVES.slice(1),
   }), { name: 'idle_loop', billboard: true, instance: inst }, 'Wortox', () => {
-    inst.sprite.setArtSource({ animationArchives: PLAYER_ANIMATION_ARCHIVES, bank: 'wilson',
-      buildArchive: `dynamic/${PLAYER_ART_CHARACTER}.zip`, fallbackBuilds: [`${UNIQUE_ITEM_BUILD}.zip`], art: resources.archives });
+    // player_common.lua fn: SetBank("wilson"), SetBuild(name) from the prefab's ANIM assets.
+    inst.AnimState.DeclareAnimationAssets(PLAYER_ANIMATION_ARCHIVES, resources.archives);
+    inst.AnimState.SetBank('wilson');
+    inst.AnimState.SetBuild(PLAYER_BUILD);
+    // player_common_extensions.lua SetupOverrideBuilds, for the ported states' item and emote prop symbols.
+    for (const build of ['player_actions_uniqueitem', 'player_emote_extra']) inst.AnimState.AddOverrideBuild(build);
     inst.sprite.setFacingRotation(0, 4);
   });
   if (options.scheduler) inst.BindScheduler(options.scheduler);
@@ -397,7 +381,7 @@ function createWilsonPlayerEntity(
   inst.fxScheduler = new GameTimeScheduler();
   inst.bookFx = new BookFxController(inst, inst.fxScheduler, resources);
   inst.sleepHost = createSleepHost(inst);
-  inst.sg = new WilsonStateGraph(inst, { playAnimation: clip => selectAnimation(inst, clip) });
+  inst.sg = new WilsonStateGraph(inst);
   inst.ListenForEvent('newstate', OnNewState);
 
   // player_common.lua ListenForEvent("death", ex_fns.OnPlayerDeath); SGwilson's own death handler hears the same event.

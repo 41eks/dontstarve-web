@@ -64,8 +64,8 @@ export interface WilsonAnimationClip {
   key: WilsonAnimationKey;
   name: string;
   loop?: boolean;
+  /** AnimState:SetDeltaTimeMultiplier for this clip. */
   playbackRate?: number;
-  frameRate?: number;
 }
 
 /** A spawned FX inst owned by a state until it is detached or removed. */
@@ -142,7 +142,8 @@ export interface WilsonSoulHopHost {
  */
 export interface WilsonStateInst {
   readonly SoundEmitter: Pick<SoundEmitter, 'PlaySound' | 'KillSound' | 'PlayingSound' | 'SetVolume'>;
-  readonly AnimState: Pick<InstanceAnimState, 'OverrideSymbol' | 'OverrideItemSkinSymbol' | 'ClearOverrideSymbol' | 'Show' | 'Hide' | 'SetMultColour'>;
+  readonly AnimState: Pick<InstanceAnimState, 'PlayAnimation' | 'GetCurrentAnimationLength' | 'SetDeltaTimeMultiplier'
+    | 'OverrideSymbol' | 'OverrideItemSkinSymbol' | 'ClearOverrideSymbol' | 'Show' | 'Hide' | 'SetMultColour'>;
   readonly position: ReadonlyVector3;
   readonly TheSim: { FindEntities(position: ReadonlyVector3, radius: number): readonly { readonly components: object }[] };
   readonly components: {
@@ -175,11 +176,6 @@ export interface WilsonStateInst {
   readonly sleepHost?: WilsonSleepHost;
   /** SpawnPrefab parented to the player, optionally Follower:FollowSymbol on a player symbol. */
   readonly bookFx?: { spawn(prefab: string, followSymbol?: string): WilsonFx };
-}
-
-export interface WilsonStateGraphHost {
-  /** Select the art and return its effective playback duration in seconds. */
-  playAnimation(clip: WilsonAnimationClip): number;
 }
 
 /** The SHAVE target: beard.lua ShouldTryToShave gates the state. */
@@ -1437,7 +1433,7 @@ const applicationStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] = 
   State({
     name: 'walk',
     tags: ['moving', 'running'],
-    onenter: (inst) => inst.context.playClips([{ ...clip('walk', 'run_loop'), loop: true, frameRate: 16 }]),
+    onenter: (inst) => inst.context.playClips([{ ...clip('walk', 'run_loop'), loop: true, playbackRate: 16 / 30 }]),
   }),
   State({
     name: 'run',
@@ -1561,7 +1557,6 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
 export class WilsonStateGraph {
   /** The entity the states act on, as `inst` in the source. */
   readonly entity: WilsonStateInst;
-  readonly host: WilsonStateGraphHost;
   private sg: WilsonInstance;
   private ghost = false;
   private loadingGhostFlag = false;
@@ -1576,9 +1571,8 @@ export class WilsonStateGraph {
   private activeBufferedAction: BufferedAction<WilsonAction> | undefined;
   private activeInvobject: BufferedActionObject | undefined;
 
-  constructor(entity: WilsonStateInst, host: WilsonStateGraphHost) {
+  constructor(entity: WilsonStateInst) {
     this.entity = entity;
-    this.host = host;
     this.sg = this.createGraph();
     this.playback = new AnimationPlayback<WilsonAnimationClip>(clip => {
       this.clipStartedAt = this.sg.elapsedTime;
@@ -1586,7 +1580,11 @@ export class WilsonStateGraph {
         this.sg.goToState(this.crafting ? 'build' : this.movementState);
         return 0;
       }
-      return this.host.playAnimation(clip);
+      // AnimState:SetDeltaTimeMultiplier and PlayAnimation; the clip's length at that rate schedules animover.
+      const rate = clip.playbackRate ?? 1, { AnimState } = this.entity;
+      AnimState.SetDeltaTimeMultiplier(rate);
+      AnimState.PlayAnimation(clip.name, clip.loop);
+      return AnimState.GetCurrentAnimationLength() / rate;
     }, (seconds, complete) => this.sg.schedule(seconds, complete));
     this.playback.on('animover', () => this.pushEvent('animover'));
     this.playback.on('animqueueover', () => this.pushEvent('animqueueover'));

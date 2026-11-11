@@ -62,7 +62,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   const picker = new PlayerActionPicker(pointer), canvas = new EventTarget();
   const actionEvents = new EventEmitter<PlayerActionEvents>(), begin = vi.fn();
   const stopEvents = actionEvents.on('action:begin', begin);
-  const stategraph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => .2 });
+  const stategraph = new WilsonStateGraph(wilsonStateInst(undefined, () => .2));
   const animation = { stategraph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
