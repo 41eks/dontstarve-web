@@ -252,7 +252,7 @@ describe('wild beefalo behavior', () => {
     // A cursor-held razor: USEITEM.shaver offers SHAVE and SGwilson's shave state commits it after one second.
     vi.stubGlobal('window', new EventTarget());
     const inventory = createInventoryStore([]);
-    const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged() {} });
+    const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1 });
     const use = activeItemUse({ player: new THREE.Object3D(), renderer: { domElement: new EventTarget() } }, graph, inventory);
     inventory.add('razor', 1);
     expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);

@@ -160,7 +160,7 @@ describe('caged birds', () => {
     const scheduler = new GameTimeScheduler();
     const instance = new BirdcageInstance({ scheduler } as unknown as WorldContext);
     const inventory = createInventoryStore([]);
-    const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged() {} });
+    const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1 });
     const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), renderer: { domElement: new EventTarget() } };
     const use = activeItemUse(world, graph, inventory);
     try {

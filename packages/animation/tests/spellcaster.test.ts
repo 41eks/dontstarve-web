@@ -34,11 +34,12 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
   const spawn = vi.fn(), worldServices = { map, spawnPrefab: spawn };
   const staff = getLightStaffController(entity, worldServices);
   staff.onequip();
-  const castingLight = { remove: vi.fn() }, casting = vi.fn(() => castingLight);
-  const inst = wilsonStateInst(), sound = inst.SoundEmitter.PlaySound;
+  const castingLight = { remove: vi.fn(), SetUp: vi.fn() };
+  // SpawnPrefab("staff_castinglight") on the player inst; the castspell state sets it up.
+  const casting = vi.fn((_prefab: string, _position: THREE.Vector3) => castingLight);
+  const inst = wilsonStateInst({ SpawnPrefab: casting }), sound = inst.SoundEmitter.PlaySound;
   const graph = new WilsonStateGraph(inst, {
     playAnimation: clip => (clip.key === 'staff_pre' ? 15 : clip.key === 'staff' ? 65 : 30) / 30,
-    castLight: casting, onStateChanged() {},
   });
   const player = new THREE.Group();
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
@@ -106,7 +107,8 @@ it('consumes the last yellow use through the store, clears only its equipment an
     expect(s.entity.isRemoved).toBe(true);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/gem_shatter', s.player.position);
     expect(s.doDelta).toHaveBeenCalledExactlyOnceWith(-20);
-    expect(s.casting).toHaveBeenCalledTimes(1);
+    expect(s.casting).toHaveBeenCalledExactlyOnceWith('staff_castinglight', expect.anything());
+    expect(s.castingLight.SetUp).toHaveBeenCalledOnce();
     expect(s.castingLight.remove).not.toHaveBeenCalled(); // Source releases FX ownership before the final-use unequip.
   } finally { s.dispose(); }
 });

@@ -67,14 +67,13 @@ it('commits BLINK after the pre-animation, teleports after 11 frames and restore
   const point = new Vector3(12, 0, 24), position = new Vector3();
   const state = new Wortox(new GameTimeScheduler(), { ConsumeByName: vi.fn() });
   let invincible = false, collisions = true, tint = 0;
-  const host: WilsonStateGraphHost = {
-    playAnimation: clip => clip.name === 'wortox_portal_jumpin_pre' ? .2 : 1,
-    onStateChanged() {},
-    rez: { isHidden: false, setHidden() {}, setMultColour() {}, setInvincible: value => { invincible = value; } },
-    soulHop: { tryToPortalHop: () => state.TryToPortalHop(), facePoint() {}, teleport: target => position.copy(target),
-      setPhysicsEnabled: enabled => { collisions = enabled; }, setTint: value => { tint = value; }, spawnFx: vi.fn() },
-  };
-  const graph = new WilsonStateGraph(wilsonStateInst(), host);
+  const host: WilsonStateGraphHost = { playAnimation: clip => clip.name === 'wortox_portal_jumpin_pre' ? .2 : 1 };
+  const inst = wilsonStateInst({
+    components: { health: { SetInvincible: (value: boolean) => { invincible = value; } } },
+    soulHopHost: { tryToPortalHop: () => state.TryToPortalHop(), facePoint() {}, teleport: (target: Vector3) => position.copy(target),
+      setPhysicsEnabled: (enabled: boolean) => { collisions = enabled; }, setTint: (value: number) => { tint = value; }, spawnFx: vi.fn() },
+  });
+  const graph = new WilsonStateGraph(inst, host);
   const execute = vi.fn(() => graph.beginPortalJump(point));
   const action = new BufferedAction('BLINK', execute, () => true, { pos: point });
   expect(graph.pushBufferedAction(action)).toBe(true);
@@ -107,12 +106,9 @@ it('runs the map right click as BLINK_MAP without walking, revalidates before co
   const player = new Object3D(), point = new Vector3(1200, 0, -900);
   const tryToPortalHop = vi.fn(() => false), snapCamera = vi.fn(() => player.position.clone());
   const teleport = vi.fn((position: Vector3) => player.position.copy(position));
-  const graph = new WilsonStateGraph(wilsonStateInst(), {
-    playAnimation: clip => clip.name === 'wortox_portal_jumpin_pre' ? .2 : 1,
-    onStateChanged() {},
-    soulHop: { tryToPortalHop, facePoint() {}, teleport, snapCamera,
-      setPhysicsEnabled() {}, setTint() {}, spawnFx() {} },
-  });
+  const inst = wilsonStateInst({ soulHopHost: { tryToPortalHop, facePoint() {}, teleport, snapCamera,
+    setPhysicsEnabled() {}, setTint() {}, spawnFx() {} } });
+  const graph = new WilsonStateGraph(inst, { playAnimation: clip => clip.name === 'wortox_portal_jumpin_pre' ? .2 : 1 });
   const world = { player, scene: new Scene(), camera: new PerspectiveCamera(),
     ground: new Object3D(), renderer: { domElement: new EventTarget() } as unknown as WebGLRenderer } as ActionWorldContext;
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));

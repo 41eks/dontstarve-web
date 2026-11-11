@@ -102,7 +102,7 @@ it('spares bramble_resistant pickers and restores a picked cactus empty', async 
 
 it('flinches a living player into hit for six frames, and shells into shell_hit', () => {
   const inst = wilsonStateInst(), { played } = inst;
-  const graph = new WilsonStateGraph(inst, { playAnimation: () => 1, onStateChanged() {} });
+  const graph = new WilsonStateGraph(inst, { playAnimation: () => 1 });
   graph.pushEvent('attacked', {});
   expect(graph.stateName).toBe('hit');
   expect(played).toEqual(['dontstarve/wilson/hit', 'dontstarve/characters/wilson/hurt']);

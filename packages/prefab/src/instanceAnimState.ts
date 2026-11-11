@@ -2,7 +2,7 @@ import { AnimState } from '@dontstarve-web/animation/animState';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 
 /** The sprite commands AnimState playback is written with. */
-export type AnimStateSprite = Pick<ArchiveSpriteCommands, 'start' | 'playOnce' | 'pushAnimation'>;
+export type AnimStateSprite = Pick<ArchiveSpriteCommands, 'start' | 'playOnce' | 'pushAnimation' | 'setColour'>;
 
 /**
  * inst.AnimState: one AnimState for the entity, as in Lua. Playback writes the entity's sprite json; symbol overrides
@@ -25,4 +25,7 @@ export class InstanceAnimState extends AnimState {
 
   /** AnimState:PushAnimation(name, loop); the loop the source omits is decided by the caller (see lua-api-map). */
   PushAnimation(name: string, loop = false): void { this.sprite.pushAnimation(name, loop); }
+
+  /** AnimState:SetMultColour(r, g, b, a): the entity's own multiplied colour; the source's callers keep alpha 1. */
+  SetMultColour(r: number, g: number, b: number, _a = 1): void { this.sprite.setColour([r, g, b]); }
 }

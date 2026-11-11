@@ -67,7 +67,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   torch.configure({ maxFuel: TORCH_FUEL, configureEntity: configureTorchEntity });
   const equipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' as const, entity: torch };
   const hand = createSignal<HandEquipment | null>(equipment);
-  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged() {} });
+  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1 });
   const animation = { stategraph: graph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });

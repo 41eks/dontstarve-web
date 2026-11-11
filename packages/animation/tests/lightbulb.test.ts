@@ -91,7 +91,7 @@ it('buffers one fuel item until frame six, preserves it on cancellation and retu
   inventory.transfer(inventorySlotAddress(1), cursor, 2);
   const original = inventory.getEntity(cursor)!;
   const doer = createPickupDoer(withEntity(new THREE.Group(), 'wilson'), inventory);
-  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged() {} });
+  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1 });
   const request = () => graph.pushBufferedAction(createBufferedAction('ADDFUEL', { doer, target: lantern, invobject: original }));
   try {
     expect(request()).toBe(true); graph.update(5 / 30);

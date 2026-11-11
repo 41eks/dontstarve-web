@@ -66,7 +66,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
 
 it('lights and heats a spring only after a cursor-held bath bomb is tossed in, then saves and reloads the state', async () => {
   const s = setup(), restored = setup();
-  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged: () => {} });
+  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1 });
   let toss: ReturnType<typeof activeItemUse> | undefined;
   try {
     expect((await executeDebugCommand('c_give("bathbomb",2);c_spawn("hotspring")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);

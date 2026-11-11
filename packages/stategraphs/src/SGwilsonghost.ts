@@ -30,7 +30,7 @@ export const ghostStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] =
     name: 'idle',
     tags: ['idle', 'canrotate'],
     onenter: inst => {
-      inst.context.host.stopMovement?.();
+      inst.context.entity.locomotor?.stop();
       inst.context.clearBufferedAction();
       playGhostIdle(inst);
       // The movement the browser requested during the state before it resumes, as the living idle does.
@@ -61,7 +61,7 @@ export const ghostStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] =
     name: 'haunt_pre',
     tags: ['doing', 'busy'],
     onenter: inst => {
-      inst.context.host.stopMovement?.();
+      inst.context.entity.locomotor?.stop();
       inst.context.playClips([ghostClip('dissipate')]);
       inst.context.entity.SoundEmitter.PlaySound(GHOST_HAUNT);
     },
@@ -74,12 +74,12 @@ export const ghostStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] =
     name: 'haunt',
     tags: ['doing', 'busy', 'nopredict'],
     onenter: inst => {
-      inst.context.host.stopMovement?.();
+      inst.context.entity.locomotor?.stop();
       inst.context.playClips([ghostClip('appear')]);
     },
     events: [
       // Hidden if resurrecting.
-      EventHandler('animover', inst => { if (inst.context.animationDone && !inst.context.host.rez?.isHidden) inst.goToState('idle'); }),
+      EventHandler('animover', inst => { if (inst.context.animationDone && inst.context.entity.IsVisible()) inst.goToState('idle'); }),
     ],
   }),
   State({
@@ -89,7 +89,7 @@ export const ghostStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] =
       inst.context.entity.SoundEmitter.PlaySound(GHOST_HOWL);
       inst.context.playClips([ghostClip('hit')]);
       inst.context.clearBufferedAction();
-      inst.context.host.stopMovement?.();
+      inst.context.entity.locomotor?.stop();
     },
     timeline: [TimeEvent(3 * FRAMES, inst => { inst.removeStateTag('busy'); inst.removeStateTag('pausepredict'); })],
     events: [

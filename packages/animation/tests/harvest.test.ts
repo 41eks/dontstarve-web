@@ -32,7 +32,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   registerActionEntity(prefabInstance(model)!);
   stewer.OnLoad({ product: 'kabobs', done: true });
   const inst = wilsonStateInst();
-  const stategraph = new WilsonStateGraph(inst, { playAnimation: () => .2, onStateChanged() {} });
+  const stategraph = new WilsonStateGraph(inst, { playAnimation: () => .2 });
   const animation = { stategraph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });

@@ -68,7 +68,7 @@ function setup() {
 }
 
 function actor() {
-  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged: () => {} });
+  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1 });
   const animation = { stategraph: graph };
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   return { graph, animation, locomotor };

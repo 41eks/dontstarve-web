@@ -2,7 +2,7 @@ import { addComponent, removeComponent } from './components';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import { SpriteResources, SpriteState, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
 import { clockstate, createMemo, createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonSleepAnnounce, type WilsonDeathHost, type WilsonStateGraphHost, type WilsonStateName } from '@dontstarve-web/stategraphs';
+import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonSleepAnnounce, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { AxeTool } from './axe';
@@ -15,7 +15,7 @@ import { GroundItemAssets } from './groundItems';
 import { HatEquipmentAssets } from './hats';
 import type { PickaxeTool } from './pickaxe';
 import type { PitchforkTool } from './pitchfork';
-import { createPlayerStats, equipSamePrefab, OnMakePlayerGhost, OnRespawnFromGhost, type PlayerStats, type PlayerStatsSave, type RezSource } from './player_common';
+import { createPlayerStats, OnMakePlayerGhost, OnRespawnFromGhost, type PlayerStats, type PlayerStatsSave, type RezSource } from './player_common';
 import type { ShovelTool } from './shovel';
 import type { SoundEmitter } from './soundEmitter';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
@@ -25,7 +25,6 @@ import { registerActionEntity, disposeActionEntity } from './actionEntity';
 import { createPrefabEntity, PrefabInstance, prefabInstance, type EntityTask } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
-import { STAFF_CASTINGLIGHT_ID, type StaffCastingLightInstance } from './staff_castinglight';
 import type { SlipperyFeet } from '../../componets/src/slipperyfeet';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { SleepingBagUser } from '../../componets/src/sleepingbaguser';
@@ -232,8 +231,7 @@ export function makeAlive(inst: WilsonPlayerInstance, state: 'portal_rez' | 'amu
   inst.sg.becomeAlive(state);
 }
 
-/** Character colour and Wortox's additive portal tint are per-instance appearance declarations. */
-function setMultColour(inst: WilsonPlayerInstance, r: number, g: number, b: number): void { inst.sprite.setColour([r, g, b]); }
+/** Wortox's additive portal tint is a per-instance appearance declaration. */
 function setTint(inst: WilsonPlayerInstance, amount: number): void { inst.sprite.setTint({ colour: [154 / 255, 23 / 255, 19 / 255], amount }); }
 
 /** Movement input while asleep: the locomote event wakes the sleeper. */
@@ -292,42 +290,12 @@ function selectAnimation(inst: WilsonPlayerInstance, clip: WilsonAnimationClip):
   return animation.frames / (animation.frameRate * playbackRate);
 }
 
-/** SGwilson.lua amulet_rebirth: consume the equipped red amulet. */
-function consumeEquippedAmulet(inst: WilsonPlayerInstance): boolean {
-  const inventory = inst.components.inventory, item = inventory?.GetEquippedItem('body');
-  if (!inventory || item?.prefab !== 'amulet') return false;
-  const removed = inventory.RemoveItem(item);
-  if (!removed) return false;
-  removed.remove();
-  return true;
-}
-
-/** SGwilson.lua amulet_rebirth: the sleepers around the player go to sleep for `seconds`. */
-function sleepNearby(inst: WilsonPlayerInstance, radius: number, seconds: number): void {
-  for (const v of inst.TheSim.FindEntities(inst.position, radius * WORLD_SCALE)) {
-    if (v !== inst) (v.components as { sleeper?: { GoToSleep(seconds: number): void } }).sleeper?.GoToSleep(seconds);
-  }
-}
-
-/** SpawnPrefab("staff_castinglight") at the player with SetUp(colour, duration, delay). */
-function castLight(inst: WilsonPlayerInstance, colour: readonly [number, number, number], duration: number, delay: number) {
-  const light = inst.SpawnPrefab?.(STAFF_CASTINGLIGHT_ID, inst.position.clone()) as StaffCastingLightInstance | undefined;
-  light?.SetUp(colour, duration, delay);
-  return light;
-}
-
 /** SetSleeperSleepState / SetSleeperAwakeState: playercontroller:Enable and inventory:Hide / Show. */
 function setSleeperState(inst: WilsonPlayerInstance, sleeping: boolean): void {
   // OnSleepIn / OnWakeUp's hand and active item stashing is not ported.
   inst.controllerEnabled = !sleeping;
   if (sleeping) inst.HUD?.controls?.HideCraftingAndInventory();
   else inst.HUD?.controls?.ShowCraftingAndInventory();
-}
-
-/** stategraph.lua pushes "newstate" to the inst; armorsnurtleshell's ProtectionLevels listens for it. */
-function onStateChanged(inst: WilsonPlayerInstance, name: WilsonStateName): void {
-  if (name !== 'emote') inst.emote = null;
-  inst.PushEvent('newstate', { statename: name });
 }
 
 /** player_common.lua OnPlayerDeath: inst.deathcause. */
@@ -349,52 +317,23 @@ function releasePlayerAssets(inst: WilsonPlayerInstance): void {
   inst.resources.dispose();
 }
 
-/** SGwilson's states reach the player inst through these until the stategraph reads it directly. */
-function createStateGraphHost(inst: WilsonPlayerInstance): WilsonStateGraphHost {
+/** SGwilson.lua tent and wakeup on the player inst: its hunger, sleepingbaguser, controller, HUD and talker. */
+function createSleepHost(inst: WilsonPlayerInstance): WilsonSleepHost | undefined {
   const sleeper = inst.components.sleepingbaguser;
-  // SGwilson.lua tent and wakeup on the player inst: its hunger, sleepingbaguser, controller, HUD and talker.
-  inst.sleepHost = sleeper && {
+  return sleeper && {
     isDay: () => clockstate.peek().phase === 'day',
     hungerCurrent: () => inst.stats.hunger.current,
     get sleepingbag() { return sleeper.bed; },
     setSleeperState: sleeping => setSleeperState(inst, sleeping),
     // inst:Hide() / inst:Show() with the DynamicShadow, declared on the sprite for the player's display.
-    setHidden: hidden => inst.sprite.setVisible(!hidden),
+    setHidden: hidden => { if (hidden) inst.Hide(); else inst.Show(); },
     say: announce => inst.components.talker?.Say(WORTOX_SLEEP_SPEECH[announce]),
   };
-  return {
-    get soulHop() { return inst.soulHopHost; },
-    get sleep() { return inst.sleepHost; },
-    get death() { return inst.deathHost; },
-    get fishing() { return inst.fishingHost; },
-    // SGwilson.lua amulet_rebirth on the player inst: its inventory, HUD and the sleepers around it.
-    rebirth: {
-      consumeEquippedAmulet: () => consumeEquippedAmulet(inst),
-      hasBodyItem: () => !!inst.components.inventory?.GetEquippedItem('body'),
-      showHUD: show => inst.ShowHUD(show),
-      sleepNearby: (radius, seconds) => sleepNearby(inst, radius, seconds),
-    },
-    rez: {
-      setHidden: hidden => inst.sprite.setVisible(!hidden),
-      get isHidden() { return !inst.IsVisible(); },
-      setMultColour: (r, g, b) => setMultColour(inst, r, g, b),
-      setInvincible: invincible => { inst.components.health!.SetInvincible(invincible); },
-    },
-    playAnimation: clip => selectAnimation(inst, clip),
-    getCombat: () => inst.combat,
-    spawnFx: (prefab, symbol) => inst.bookFx.spawn(prefab, symbol),
-    castLight: (colour, duration, delay) => castLight(inst, colour, duration, delay),
-    setControllerEnabled: enabled => { inst.controllerEnabled = enabled; },
-    stopMovement: () => inst.locomotor?.stop(),
-    slip: {
-      runSpeed: () => inst.runSpeed,
-      setMotorSpeed: speed => { inst.motorSpeed = speed; },
-      resetSlipperiness: () => inst.slipperyfeet?.SetCurrent(0),
-      wantsToMoveForward: () => inst.wantsToMoveForward,
-    },
-    equipSamePrefab: prefab => inst.components.inventory !== undefined && equipSamePrefab(inst.components.inventory, prefab),
-    onStateChanged: name => onStateChanged(inst, name),
-  };
+}
+
+/** The emote ends with any state but emote's own. */
+function OnNewState(inst: WilsonPlayerInstance, data: unknown): void {
+  if ((data as { statename?: string } | undefined)?.statename !== 'emote') inst.emote = null;
 }
 
 function createWilsonPlayerEntity(
@@ -457,7 +396,9 @@ function createWilsonPlayerEntity(
   };
   inst.fxScheduler = new GameTimeScheduler();
   inst.bookFx = new BookFxController(inst, inst.fxScheduler, resources);
-  inst.sg = new WilsonStateGraph(inst, createStateGraphHost(inst));
+  inst.sleepHost = createSleepHost(inst);
+  inst.sg = new WilsonStateGraph(inst, { playAnimation: clip => selectAnimation(inst, clip) });
+  inst.ListenForEvent('newstate', OnNewState);
 
   // player_common.lua ListenForEvent("death", ex_fns.OnPlayerDeath); SGwilson's own death handler hears the same event.
   inst.ListenForEvent('death', OnPlayerDeath);

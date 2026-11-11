@@ -10,15 +10,10 @@ const FRAME = 1 / 30;
 
 function setup(options: { speed?: number; pond?: boolean } = {}) {
   const scheduler = new GameTimeScheduler();
-  const inst = wilsonStateInst();
-  const log = { motor: [] as (number | undefined)[], sounds: inst.played, resets: 0, wants: false };
-  const graph = new WilsonStateGraph(inst, {
-    playAnimation: () => 14 * FRAME, onStateChanged() {}, stopMovement() {},
-    slip: {
-      runSpeed: () => 6, setMotorSpeed: speed => log.motor.push(speed), resetSlipperiness: () => { log.resets++; feet.SetCurrent(0); },
-      wantsToMoveForward: () => log.wants,
-    },
-  });
+  const log = { resets: 0 };
+  // The player inst the slip states read: its run speed, motor velocity, wish to move forward and slipperyfeet.
+  const inst = wilsonStateInst({ runSpeed: 6, slipperyfeet: { SetCurrent: (value: number) => { log.resets++; feet.SetCurrent(value); } } });
+  const graph = new WilsonStateGraph(inst, { playAnimation: () => 14 * FRAME });
   const position = new Vector3();
   const tags = new Set<string>();
   const ice = { components: {} as { slipperyfeettarget?: SlipperyFeetTarget } };
@@ -36,11 +31,11 @@ function setup(options: { speed?: number; pond?: boolean } = {}) {
   const step = (frames: number) => {
     for (let i = 0; i < frames; i++) { scheduler.advance(FRAME); feet.update(FRAME); graph.update(FRAME); }
   };
-  return { graph, feet, log, step, tags, ice, position };
+  return { graph, feet, log, inst, step, tags, ice, position };
 }
 
 it('slides a running player over a slipperyfeettarget, then falls on held input after the checkfall frame', () => {
-  const { graph, feet, log, step, tags } = setup();
+  const { graph, feet, log, inst, step, tags } = setup();
   expect(tags.has('slipperyfeettarget')).toBe(true);
   graph.requestMovement('run');
   expect(graph.stateName).toBe('run');
@@ -53,23 +48,23 @@ it('slides a running player over a slipperyfeettarget, then falls on held input 
   expect(graph.stateName).toBe('slip');
   expect(feet.slippiness).toBe(0);
   expect(log.resets).toBe(1);
-  expect(log.motor).toEqual([6 * 0.6]);
-  log.wants = true;
+  expect(inst.motorSpeed).toBeCloseTo(6 * 0.6);
+  inst.wantsToMoveForward = true;
   graph.pushEvent('locomote');
   expect(graph.stateName).toBe('slip'); // too early to fall
   step(18);
   graph.pushEvent('locomote');
   expect(graph.stateName).toBe('slip_fall');
-  expect(log.motor.at(-1)).toBeCloseTo(6 * 0.25 * 0.8);
+  expect(inst.motorSpeed).toBeCloseTo(6 * 0.25 * 0.8);
   step(10);
-  expect(log.sounds).toContain('dontstarve/movement/slip_fall_thud');
+  expect(inst.played).toContain('dontstarve/movement/slip_fall_thud');
   step(5);
   expect(graph.stateName).toBe('slip_fall_loop');
   graph.pushEvent('locomote');
   expect(graph.stateName).toBe('slip_fall_pst');
   step(14);
   expect(graph.stateName).toBe('run'); // the pushed idle resumes movement once the clip ends
-  expect(log.motor.at(-1)).toBeUndefined();
+  expect(inst.motorSpeed).toBeUndefined();
 });
 
 it('does not accumulate while standing, slips more slowly when walking off the ice, and lets the slide finish by itself', () => {
@@ -94,7 +89,7 @@ it('does not accumulate while standing, slips more slowly when walking off the i
   for (let i = 0; i < 90 && slide.graph.stateName === 'run'; i++) slide.step(1);
   slide.step(28); // slip_pre + slip_loop
   expect(slide.graph.stateName).toBe('slip_pst');
-  expect(slide.log.motor.at(-1)).toBeCloseTo(6 * 0.15);
+  expect(slide.inst.motorSpeed).toBeCloseTo(6 * 0.15);
   slide.step(14);
   expect(slide.graph.stateName).toBe('run');
 });

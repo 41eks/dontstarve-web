@@ -37,7 +37,7 @@ function setup() {
   const world = { scene, player: display.model, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: canvas } } as unknown as ActionWorldContext;
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
-  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1, onStateChanged() {} });
+  const graph = new WilsonStateGraph(wilsonStateInst(), { playAnimation: () => 1 });
   const locomotor = new Locomotor({ position: instance.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
   const controller = new PlayerController(world, graph,
     locomotor, inventory.handEquipment, instance as never);
