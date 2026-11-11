@@ -9,6 +9,7 @@ import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../invento
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabDisplayGroup } from '../../display/src';
 import * as THREE from 'three';
+import { updateSpriteRenderOrders } from '../src/renderOrder';
 
 const FRAME = 1 / 30;
 
@@ -36,6 +37,8 @@ describe('yellowstaff source lighting', () => {
     expect(light.position.toArray()).toEqual([6, 0, 9]);
     expect(light.hasTag('FX')).toBe(true);
     expect(lights.exportRecords()).toEqual([]);
+    // It draws nothing, yet the frame's foot sort still orders its bare model.
+    expect(() => updateSpriteRenderOrders(displays.renderEntities, new THREE.Matrix4())).not.toThrow();
     expect(light.light.peek()).toEqual({ radius: .3 * 3, intensity: .8, falloff: .9, colour: [1, 0, 0] });
     advanceFrames(9);
     expect(light.light.peek()!.radius).toBeCloseTo(.9);
