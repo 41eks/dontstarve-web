@@ -1,7 +1,7 @@
 import { addComponent, removeComponent } from './components';
 import { SpriteResources, SpriteState, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
 import { clockstate, createMemo, createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonSleepAnnounce, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
+import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { AxeTool } from './axe';
@@ -57,14 +57,6 @@ const PLAYER_ANIMATION_ARCHIVES: readonly string[] = [...new Set([
   'player_jump.zip', 'player_amulet_resurrect.zip', 'player_slurtle_armor.zip', 'player_staff.zip', 'player_strum.zip',
   'player_slip.zip', 'player_ghost_withhat.zip', 'wortox_portal.zip', ...Object.values(WILSON_EMOTES).map(definition => definition.archive),
 ])];
-/** STRINGS.CHARACTERS.WORTOX: GetString(inst, failreason) for SGwilson's tent refusals. */
-const WORTOX_SLEEP_SPEECH: Record<WilsonSleepAnnounce, string> = {
-  ANNOUNCE_NODAYSLEEP: '我不要打乱规律的作息时间。',
-  ANNOUNCE_NONIGHTSIESTA: '我这么有荣誉感，怎么会在夜晚小憩呢。',
-  ANNOUNCE_NOSLEEPONFIRE: '莫要烧焦了我的皮草。',
-  ANNOUNCE_NOHUNGERSLEEP: '灵魂过度饥饿，难以入眠。',
-};
-
 export type PlayerBody = CANNON.Body & { canJump: boolean };
 
 export interface WilsonPlayerPrefab {
@@ -148,7 +140,6 @@ export class WilsonPlayerInstance extends PrefabInstance {
   soulHopHost?: WilsonSoulHopHost;
   deathHost?: WilsonDeathHost;
   fishingHost?: WilsonFishingHost;
-  sleepHost?: WilsonSleepHost;
 }
 
 export function wilsonPlayerInstance(model: THREE.Object3D): WilsonPlayerInstance {
@@ -270,14 +261,6 @@ export function updatePlayer(inst: WilsonPlayerInstance, dt: number): void {
   inst.sg.update(step);
 }
 
-/** SetSleeperSleepState / SetSleeperAwakeState: playercontroller:Enable and inventory:Hide / Show. */
-function setSleeperState(inst: WilsonPlayerInstance, sleeping: boolean): void {
-  // OnSleepIn / OnWakeUp's hand and active item stashing is not ported.
-  inst.controllerEnabled = !sleeping;
-  if (sleeping) inst.HUD?.controls?.HideCraftingAndInventory();
-  else inst.HUD?.controls?.ShowCraftingAndInventory();
-}
-
 /** player_common.lua OnPlayerDeath: inst.deathcause. */
 function OnPlayerDeath(inst: WilsonPlayerInstance, data: unknown): void {
   inst.deathcause = (data as { cause?: string } | undefined)?.cause ?? 'unknown';
@@ -295,20 +278,6 @@ function OnRemoveEntity(inst: WilsonPlayerInstance): void {
 function releasePlayerAssets(inst: WilsonPlayerInstance): void {
   inst.equipmentAssets.dispose(); inst.hatAssets.dispose();
   inst.resources.dispose();
-}
-
-/** SGwilson.lua tent and wakeup on the player inst: its hunger, sleepingbaguser, controller, HUD and talker. */
-function createSleepHost(inst: WilsonPlayerInstance): WilsonSleepHost | undefined {
-  const sleeper = inst.components.sleepingbaguser;
-  return sleeper && {
-    isDay: () => clockstate.peek().phase === 'day',
-    hungerCurrent: () => inst.stats.hunger.current,
-    get sleepingbag() { return sleeper.bed; },
-    setSleeperState: sleeping => setSleeperState(inst, sleeping),
-    // inst:Hide() / inst:Show() with the DynamicShadow, declared on the sprite for the player's display.
-    setHidden: hidden => { if (hidden) inst.Hide(); else inst.Show(); },
-    say: announce => inst.components.talker?.Say(WORTOX_SLEEP_SPEECH[announce]),
-  };
 }
 
 /** The emote ends with any state but emote's own. */
@@ -380,7 +349,6 @@ function createWilsonPlayerEntity(
   };
   inst.fxScheduler = new GameTimeScheduler();
   inst.bookFx = new BookFxController(inst, inst.fxScheduler, resources);
-  inst.sleepHost = createSleepHost(inst);
   inst.sg = new WilsonStateGraph(inst);
   inst.ListenForEvent('newstate', OnNewState);
 

@@ -26,6 +26,8 @@ export function wilsonStateInst<Overrides extends Partial<WilsonStateInst>>(over
     played,
     SoundEmitter: { PlaySound: vi.fn((path: string) => { played.push(path); }), KillSound: vi.fn(), PlayingSound: vi.fn(() => false), SetVolume: vi.fn() },
     AnimState: new RecordedAnimState(animationLength),
+    prefab: 'wilson',
+    hasTag: (_tag: string) => false,
     position: new Vector3(),
     TheSim: { FindEntities: () => [] },
     components: {},

@@ -1,4 +1,4 @@
-"""Build the examine strings from the DST Lua sources: chinese_s.po's STRINGS.CHARACTERS and ARCHIVE_RUNE_STATUE entries."""
+"""Build the examine and announce strings from the DST Lua sources: chinese_s.po's STRINGS.CHARACTERS and ARCHIVE_RUNE_STATUE entries."""
 import argparse
 import json
 from pathlib import Path
@@ -6,7 +6,9 @@ import re
 
 # wilson speaks STRINGS.CHARACTERS.GENERIC; only playable characters with their own speech are kept.
 CHARACTERS = ('GENERIC', 'WORTOX')
-CHARACTER_KEYS = ('DESCRIBE', 'DESCRIBE_GENERIC', 'DESCRIBE_TOODARK', 'DESCRIBE_SMOLDERING')
+CHARACTER_KEYS = ('DESCRIBE', 'DESCRIBE_GENERIC', 'DESCRIBE_TOODARK', 'DESCRIBE_SMOLDERING',
+                  # SGwilson.lua tent: GetString(inst, failreason).
+                  'ANNOUNCE_NODAYSLEEP', 'ANNOUNCE_NONIGHTSIESTA', 'ANNOUNCE_NOSLEEPONFIRE', 'ANNOUNCE_NOHUNGERSLEEP')
 ENTRY = re.compile(r'msgctxt "((?:[^"\\]|\\.)*)"\nmsgid "((?:[^"\\]|\\.)*)"\nmsgstr "((?:[^"\\]|\\.)*)"')
 
 

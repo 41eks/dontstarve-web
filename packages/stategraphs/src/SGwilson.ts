@@ -11,6 +11,8 @@ import type { InventoryStore } from '../../inventory/src';
 import type { SoundEmitter } from '../../prefab/src/soundEmitter';
 import type { SoundEventPath } from '../../prefab/src/sound';
 import { WORLD_SCALE } from '../../prefab/src/tile';
+import { clockstate } from '@dontstarve-web/signals';
+import { GetString } from '../../componets/src/stringutil';
 import { ghostActionHandlers, ghostStates } from './SGwilsonghost.ts';
 
 export type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
@@ -83,21 +85,6 @@ const CALORIES_MED = 25;
 /** The talker strings SGwilson.lua's tent state says through GetString(inst, failreason). */
 export type WilsonSleepAnnounce = 'ANNOUNCE_NODAYSLEEP' | 'ANNOUNCE_NONIGHTSIESTA' | 'ANNOUNCE_NOSLEEPONFIRE' | 'ANNOUNCE_NOHUNGERSLEEP';
 
-/** What SGwilson.lua's tent and wakeup states reach on the sleeper inst and TheWorld. */
-export interface WilsonSleepHost {
-  /** TheWorld.state.isday */
-  isDay(): boolean;
-  /** inst.components.hunger.current */
-  hungerCurrent(): number;
-  /** inst.sleepingbag: the bed the sleeper's sleepingbaguser lies in. */
-  readonly sleepingbag: { DoWakeUp(nostatechange?: boolean): void } | undefined;
-  /** SetSleeperSleepState / SetSleeperAwakeState: player controller, inventory and HUD while asleep. */
-  setSleeperState(sleeping: boolean): void;
-  /** inst:Hide() / inst:Show() with the dynamic shadow. */
-  setHidden(hidden: boolean): void;
-  /** inst.components.talker:Say(GetString(inst, failreason)) */
-  say(announce: WilsonSleepAnnounce): void;
-}
 
 /** The SLEEPIN target as the tent state checks it: its tags, sleepingbag and burnable. */
 interface WilsonTentTarget extends BufferedActionObject {
@@ -146,8 +133,14 @@ export interface WilsonStateInst {
     | 'OverrideSymbol' | 'OverrideItemSkinSymbol' | 'ClearOverrideSymbol' | 'Show' | 'Hide' | 'SetMultColour'>;
   readonly position: ReadonlyVector3;
   readonly TheSim: { FindEntities(position: ReadonlyVector3, radius: number): readonly { readonly components: object }[] };
+  readonly prefab: string;
+  hasTag(tag: string): boolean;
   readonly components: {
     readonly health?: { SetInvincible(invincible: boolean): void };
+    readonly hunger?: { readonly current: number };
+    readonly talker?: { Say(script: string): void };
+    /** sleepingbaguser.lua: inst.sleepingbag is the bed the sleeper lies in. */
+    readonly sleepingbaguser?: { readonly bed?: { DoWakeUp(nostatechange?: boolean): void } };
     readonly inventory?: Pick<InventoryStore, 'GetEquippedItem' | 'RemoveItem' | 'FindItem' | 'EquipFromInventory'>;
   };
   PushEvent(name: string, data?: unknown): void;
@@ -156,6 +149,8 @@ export interface WilsonStateInst {
   Show(): void;
   IsVisible(): boolean;
   ShowHUD(show: boolean): void;
+  /** inst.HUD.controls: inventory:Hide() / Show() hide and show crafting and the inventory bar. */
+  readonly HUD?: { readonly controls?: { HideCraftingAndInventory(): void; ShowCraftingAndInventory(): void } };
   SpawnPrefab?(prefab: string, position: Vector3): { remove(): void; SetUp?(colour: readonly [number, number, number], duration: number, delay: number): void } | undefined;
   /** inst.components.playercontroller:Enable. */
   controllerEnabled: boolean;
@@ -173,7 +168,6 @@ export interface WilsonStateInst {
   readonly soulHopHost?: WilsonSoulHopHost;
   readonly deathHost?: WilsonDeathHost;
   readonly fishingHost?: WilsonFishingHost;
-  readonly sleepHost?: WilsonSleepHost;
   /** SpawnPrefab parented to the player, optionally Follower:FollowSymbol on a player symbol. */
   readonly bookFx?: { spawn(prefab: string, followSymbol?: string): WilsonFx };
 }
@@ -201,6 +195,19 @@ const ActionHandler = DefineActionHandler<WilsonStateGraph, WilsonStateName>;
  */
 function DoHurtSound(entity: WilsonStateInst): void {
   entity.SoundEmitter.PlaySound('dontstarve/characters/wilson/hurt');
+}
+
+/**
+ * SGwilson.lua SetSleeperSleepState / SetSleeperAwakeState: the player controller and the inventory bar. The grue,
+ * talker IgnoreAll, firebug, map controls, OnSleepIn and popups are not ported.
+ */
+function SetSleeperSleepState(entity: WilsonStateInst): void {
+  entity.controllerEnabled = false;
+  entity.HUD?.controls?.HideCraftingAndInventory();
+}
+function SetSleeperAwakeState(entity: WilsonStateInst): void {
+  entity.controllerEnabled = true;
+  entity.HUD?.controls?.ShowCraftingAndInventory();
 }
 
 /** SGwilson.lua amulet_rebirth: the equipped body amulet is removed from the inventory and destroyed. */
@@ -306,10 +313,10 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     name: 'tent',
     tags: ['tent', 'busy', 'silentmorph'],
     onenter: (inst) => {
-      const sleep = inst.context.entity.sleepHost;
-      inst.context.entity.locomotor?.stop();
+      const { entity } = inst.context;
+      entity.locomotor?.stop();
       const target = inst.context.getBufferedAction()?.target as WilsonTentTarget | undefined;
-      if (!target || !sleep) {
+      if (!target) {
         inst.context.clearBufferedAction();
         inst.goToState('idle');
         return;
@@ -317,25 +324,25 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       // Caves and IsNearDanger are not ported.
       const siesta = target.hasTag('siestahut');
       const failreason: WilsonSleepAnnounce | undefined =
-        siesta !== sleep.isDay() ? (siesta ? 'ANNOUNCE_NONIGHTSIESTA' : 'ANNOUNCE_NODAYSLEEP')
+        siesta !== (clockstate.peek().phase === 'day') ? (siesta ? 'ANNOUNCE_NONIGHTSIESTA' : 'ANNOUNCE_NODAYSLEEP')
           : target.components?.burnable?.IsBurning() ? 'ANNOUNCE_NOSLEEPONFIRE'
             // You can still sleep if your hunger will bottom out, but not absolutely.
-            : sleep.hungerCurrent() < CALORIES_MED ? 'ANNOUNCE_NOHUNGERSLEEP' : undefined;
+            : (entity.components.hunger?.current ?? 0) < CALORIES_MED ? 'ANNOUNCE_NOHUNGERSLEEP' : undefined;
       if (failreason) {
         inst.context.clearBufferedAction();
         inst.goToState('idle');
-        sleep.say(failreason);
+        const script = GetString(entity, failreason);
+        if (script !== undefined) entity.components.talker?.Say(script);
         return;
       }
       inst.context.playClips([clip('pickup')]);
       inst.setTimeout(6 * FRAMES);
-      sleep.setSleeperState(true);
+      SetSleeperSleepState(entity);
     },
     ontimeout: (inst) => {
-      const sleep = inst.context.entity.sleepHost!;
       const tent = inst.context.getBufferedAction()?.target as WilsonTentTarget | undefined;
       if (!tent || !tent.components?.sleepingbag || !tent.hasTag('tent') || tent.hasTag('hassleeper')
-        || tent.hasTag('siestahut') !== sleep.isDay() || tent.components.burnable?.IsBurning()) {
+        || tent.hasTag('siestahut') !== (clockstate.peek().phase === 'day') || tent.components.burnable?.IsBurning()) {
         // Edge cases, don't bother with fail dialogue.
         inst.context.clearBufferedAction();
         inst.context.playClips([clip('pickup_pst')]);
@@ -343,27 +350,26 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
         return;
       }
       inst.context.performBufferedAction();
-      sleep.setHidden(true);
+      inst.context.entity.Hide();
       inst.addStateTag('sleeping');
       inst.removeStateTag('busy');
     },
     events: [
       // Movement while asleep wakes the sleeper first (Lua: the locomote handler's bedroll/tent branch).
       EventHandler('locomote', (inst) => {
-        const sleep = inst.context.entity.sleepHost;
-        if (inst.hasStateTag('sleeping')) sleep?.sleepingbag?.DoWakeUp();
+        if (inst.hasStateTag('sleeping')) inst.context.entity.components.sleepingbaguser?.bed?.DoWakeUp();
       }),
     ],
     onexit: (inst) => {
-      const sleep = inst.context.entity.sleepHost!;
-      sleep.setHidden(false);
-      if (sleep.sleepingbag) {
+      const { entity } = inst.context, sleepingbag = entity.components.sleepingbaguser?.bed;
+      entity.Show();
+      if (sleepingbag) {
         // Interrupted while "sleeping".
-        sleep.sleepingbag.DoWakeUp(true);
-        sleep.setSleeperState(false);
+        sleepingbag.DoWakeUp(true);
+        SetSleeperAwakeState(entity);
       } else if (!inst.statemem.iswaking) {
         // Interrupted before "sleeping", or woken through the wakeup state.
-        sleep.setSleeperState(false);
+        SetSleeperAwakeState(entity);
       }
     },
   }),
@@ -379,7 +385,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
         if (inst.context.animationDone) inst.goToState('idle');
       }),
     ],
-    onexit: (inst) => inst.context.entity.sleepHost?.setSleeperState(false),
+    onexit: (inst) => SetSleeperAwakeState(inst.context.entity),
   }),
   State({
     name: 'toolbroke',
@@ -1627,7 +1633,7 @@ export class WilsonStateGraph {
       if (this.sg.hasStateTag('dead')) return;
       if (this.sg.hasStateTag('sleeping')) {
         playHitSounds(this.entity);
-        const bag = this.entity.sleepHost?.sleepingbag;
+        const bag = this.entity.components.sleepingbaguser?.bed;
         if (bag) bag.DoWakeUp();
         else { this.sg.statemem.iswaking = true; this.sg.goToState('wakeup'); }
       } else if (this.sg.hasStateTag('nointerrupt')) playHitSounds(this.entity);
