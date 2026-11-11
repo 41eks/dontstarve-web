@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { readSaveDownload } from './save-download';
-import { minimalSave, savePageUrl } from './inline-save';
+import { gotoSave, minimalSave, savePageUrl } from './inline-save';
 
 test('cursor swaps, rejected placement and save reload preserve inventory and backpack entities', async ({ page }) => {
   test.setTimeout(120_000);
@@ -91,7 +91,7 @@ test('cursor swaps, rejected placement and save reload preserve inventory and ba
   const bag = containers['player:equipment'].slots.find(slot => slot.slotKey === 'body')!.item;
   expect(bag.container!.slots).toEqual([]);
   expect(containers['player:cursor'].slots[0].item).toEqual(original.torch);
-  await page.goto(savePageUrl(saved));
+  await gotoSave(page, saved);
   expect(await page.evaluate(async url => {
     const { inventory } = await import(url);
     return inventory.getEntity({ containerId: 'player:cursor', slotKey: '0' })?.snapshot();

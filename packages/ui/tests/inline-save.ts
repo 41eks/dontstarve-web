@@ -1,3 +1,5 @@
+import type { Page } from '@playwright/test';
+
 type SavedSlot = { slotKey: string; item: Record<string, unknown> };
 
 /**
@@ -35,6 +37,17 @@ export function minimalSave(options: {
       },
     },
   };
+}
+
+/**
+ * Starts the game from `save`, served as if it were a bundled save file. An exported save carries the whole map and is
+ * too long for `savePageUrl`: the dev server answers 431 and the test page never loads.
+ */
+export async function gotoSave(page: Page, save: unknown): Promise<void> {
+  const file = 'inline-test.json';
+  await page.unroute(`**/saves/${file}`);
+  await page.route(`**/saves/${file}`, route => route.fulfill({ json: save }));
+  await page.goto(`/tests/dst-lighting.html?save=${file}`);
 }
 
 /** The page URL that starts the game from `save`, passed inline as base64url JSON in `?saveData=`. */

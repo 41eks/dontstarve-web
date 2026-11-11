@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import { minimalSave, savePageUrl } from './inline-save';
+import { gotoSave, minimalSave } from './inline-save';
 import { readSaveDownload } from './save-download';
 
 const mainUrl = `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`;
@@ -15,7 +15,7 @@ test('inline dragonfly save renders, c_spawn adds one, and c_save reloads both',
     components: { dragonfly: { health: { health: 27000 }, inventory: { items: {}, equip: {} },
       moisture: { moisture: 7 }, rampingspawner: { current_wave: 1, wave_num: 1, spawning_on: false } } } }] };
   const boot = async (data: unknown) => {
-    await page.goto(savePageUrl(data));
+    await gotoSave(page, data);
     await page.evaluate(async ({ mainUrl, sceneUrl }) => {
       const main = await import(mainUrl); await main.gameReady;
       const { scene } = await import(sceneUrl);

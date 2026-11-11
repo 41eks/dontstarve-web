@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
-import { minimalSave, savePageUrl } from './inline-save';
+import { gotoSave, minimalSave } from './inline-save';
 import { readSaveDownload } from './save-download';
 
 const mainUrl = `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`;
@@ -30,7 +30,7 @@ test('inline pandoraschest renders, c_spawn saves, and reload preserves identity
     }));
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
-  await page.goto(savePageUrl(save)); await prepare();
+  await gotoSave(page, save); await prepare();
   await expect.poll(chests).toEqual([expect.objectContaining({ id: 'inline-chest', clip: 'closed', loop: false, loaded: true })]);
   expect((await chests())[0].meshes).toBeGreaterThan(0);
   await submit('c_spawn("pandoraschest")');
@@ -40,7 +40,7 @@ test('inline pandoraschest renders, c_spawn saves, and reload preserves identity
   expect(exported.world.entities.pandoraschest).toHaveLength(2);
   expect(exported.world.entities.pandoraschest[0]).toEqual({ id: 'inline-chest',
     transform: { position: [8, 0, 0], rotationY: 0 }, components: { container: contents, building: {} } });
-  await page.goto(savePageUrl(exported)); await prepare();
+  await gotoSave(page, exported); await prepare();
   await expect.poll(async () => (await chests()).filter(chest => chest.loaded).length).toBe(2);
   expect((await chests()).map(chest => [chest.id, chest.clip, chest.loop])).toEqual(expect.arrayContaining(
     exported.world.entities.pandoraschest.map((record: any) => [record.id, 'closed', false])));

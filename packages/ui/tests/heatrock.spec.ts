@@ -1,5 +1,5 @@
 import { readSaveDownload } from './save-download';
-import { minimalSave, savePageUrl } from './inline-save';
+import { gotoSave, minimalSave } from './inline-save';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
@@ -71,7 +71,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
       actual.world.elapsedSeconds - expected.world.elapsedSeconds));
   };
 
-  await page.goto(savePageUrl(minimalSave())); await prepare();
+  await gotoSave(page, minimalSave()); await prepare();
   await submit('c_give("heatrock", 2); c_give("reskin_tool"); c_spawn("heatrock")');
   const bar = page.locator('dst-inventory-bar'), bag = bar.locator('.inventory-bar__items');
   await expect(bag.locator('[data-item-id="heatrock"]')).toHaveCount(2);
@@ -102,7 +102,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   const dropped = await saveGame();
   expectStoneState(dropped.world.entities.heatrock.find((record: any) => record.id === spawned.id).components.stack,
     savedStone.components.stack, dropped.world.elapsedSeconds - groundSave.world.elapsedSeconds);
-  await page.goto(savePageUrl(dropped)); await prepare();
+  await gotoSave(page, dropped); await prepare();
   await expect.poll(async () => (await ground())[0]?.skin).toBe('heatrock_fantasy');
   const restored = await saveGame();
   expect(restored.world.entities.heatrock).toHaveLength(dropped.world.entities.heatrock.length);
@@ -119,7 +119,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   expectStoneState(stones(taken).find(item => item.entityId === spawned.id), { entityId: spawned.id, ...savedStone.components.stack },
     taken.world.elapsedSeconds - groundSave.world.elapsedSeconds);
   expect(taken.world.entities.heatrock ?? []).toEqual([]);
-  await page.goto(savePageUrl(taken)); await prepare();
+  await gotoSave(page, taken); await prepare();
   expectInventoryStones(await saveGame(), taken);
   await expect(skinned.locator('.inventory-slot__icon')).toHaveAttribute('data-element', 'heatrock_fantasy3.tex');
   expect(errors).toEqual([]);
