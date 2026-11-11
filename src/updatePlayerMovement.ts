@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import type { Locomotor } from '@dontstarve-web/prefab/locomotor';
-import { cancelEmote, wakeFromBed, wilsonPlayerInstance } from '@dontstarve-web/prefab/player';
+import { cancelEmote, wakeFromBed, playerInst } from '@dontstarve-web/prefab/player_common';
 import { input } from './InputManager';
 import type { PlayerBody } from './types/Player';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
@@ -16,7 +16,7 @@ export function updateMovement(
     playerBody: PlayerBody,
     locomotor: Locomotor,
 ) {
-    const instance = wilsonPlayerInstance(player);
+    const instance = playerInst(player);
     const radius = (playerBody.shapes[0] as CANNON.Sphere).radius;
     const positionOffset = new THREE.Vector3(0, radius, 0);
     const forward = new THREE.Vector3();

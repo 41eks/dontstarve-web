@@ -6,7 +6,7 @@ import { expect, it, vi } from 'vitest';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Health } from '../../componets/src/health';
-import { createWilsonPlayerPrefab, playerEnts } from './playerVisual';
+import { createPlayerPrefab, playerEnts } from './playerVisual';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { inventoryUse } from './inventoryUseFixture';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
@@ -22,7 +22,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const scheduler = new GameTimeScheduler(), inventory = createPickupInventory();
-  const prefab = await createWilsonPlayerPrefab('/dst/data/anim', new World(), { stats: { health: 150 }, scheduler });
+  const prefab = await createPlayerPrefab('/dst/data/anim', new World(), { stats: { health: 150 }, scheduler });
   const { model: player, instance, physics, display } = prefab;
   player.position.set(0, 0, 0);
   const animation = instance, stats = instance.stats, health = instance.components.health!;
@@ -116,7 +116,7 @@ it('resurrects a loaded ghost from a haunted amulet, wearing that inst and retur
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const scheduler = new GameTimeScheduler(), inventory = createPickupInventory();
-  const { model: player, instance, display } = await createWilsonPlayerPrefab('/dst/data/anim', new World(), { stats: { health: 50 }, scheduler });
+  const { model: player, instance, display } = await createPlayerPrefab('/dst/data/anim', new World(), { stats: { health: 50 }, scheduler });
   player.position.set(0, 0, 0);
   instance.components.inventory = inventory;
   const hud = { Show: vi.fn(), Hide: vi.fn() };

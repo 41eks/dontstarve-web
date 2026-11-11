@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { inventoryUse } from './inventoryUseFixture';
 import { FOOD_EFFECTS } from '../../prefab/src/food';
-import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
+import { playerInst, createPlayer } from './playerVisual';
 import { PlaySound } from '../../prefab/src/sound';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
@@ -30,8 +30,8 @@ beforeEach(() => {
 afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 async function fixture(itemId = 'bananajuice') {
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player);
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const slot = inventorySlotAddress(0), store = createPickupInventory();

@@ -1,4 +1,4 @@
-import { wakeFromBed } from '../../prefab/src/player';
+import { wakeFromBed } from '../../prefab/src/player_common';
 import { addComponent } from '../../prefab/src/components';
 import { Talker } from '../../componets/src/talker';
 import { advancePlayer } from './playerVisual';
@@ -9,7 +9,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { SleepingBag } from '../../componets/src/sleepingbag';
 import { clockstate } from '../../signals/src';
 import { BufferedAction } from '../../stategraphs/src';
-import { createWilsonPlayerPrefab } from './playerVisual';
+import { createPlayerPrefab } from './playerVisual';
 
 afterEach(() => { clockstate.set({ phase: 'day', timeinphase: 0 }); });
 
@@ -17,7 +17,7 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const scheduler = new GameTimeScheduler();
-  const { model, instance } = await createWilsonPlayerPrefab('/dst/data/anim', new World(), { scheduler });
+  const { model, instance } = await createPlayerPrefab('/dst/data/anim', new World(), { scheduler });
   const animation = instance;
   const controls = { HideCraftingAndInventory: vi.fn(), ShowCraftingAndInventory: vi.fn() };
   instance.HUD = { Show() {}, Hide() {}, controls };

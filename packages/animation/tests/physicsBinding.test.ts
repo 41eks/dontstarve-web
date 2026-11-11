@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { bindPhysics, GROUND_COLLISION_GROUP } from '../../componets/src/physicsBinding';
 import { COLLISION, PhysicsState } from '../../componets/src/physicsState';
 import { CHARACTER_COLLISION_MASK, MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from '../../prefab/src/standardcomponents';
-import { createWilsonPlayerPrefab, PLAYER_PHYSICS_RADIUS } from './playerVisual';
+import { createPlayerPrefab, PLAYER_PHYSICS_RADIUS } from './playerVisual';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
@@ -70,7 +70,7 @@ it('binds a moving character: frictionless damped sphere, ghost and toggled mask
 it('makes the player instance own its tags, collider and permanent removal', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const world = new CANNON.World();
-  const { model, physics, instance: playerInstance, body } = await createWilsonPlayerPrefab('/dst/data/anim', world);
+  const { model, physics, instance: playerInstance, body } = await createPlayerPrefab('/dst/data/anim', world);
   const instance = prefabInstance(model)!;
   expect(instance.prefab).toBe('wortox');
   expect(instance.hasTag('player')).toBe(true);

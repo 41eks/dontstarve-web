@@ -21,7 +21,7 @@ import { createEquipmentExistenceState } from '../../signals/src';
 import { farmFixture } from './farmFixture';
 import { PLANTED_SEED_ID } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonPlayerInstance } from './playerVisual';
+import { playerInst, createPlayer, type PlayerInstance } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -43,7 +43,7 @@ function setup(player = new THREE.Group()) {
   const farm = farmFixture(world.scene, turf, { blockers: blockers as never });
   return { farm, turf, world, blockers };
 }
-function advance(animation: WilsonPlayerInstance, frames: number) {
+function advance(animation: PlayerInstance, frames: number) {
   for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30);
 }
 
@@ -116,9 +116,9 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
 });
 
 it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a cancelled or unequipped hit', async () => {
-  const player = await createWilsonPlayer('/dst/data/anim');
+  const player = await createPlayer('/dst/data/anim');
   player.position.set(0, 0, 15);
-  const animation = wilsonPlayerInstance(player);
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('golden_farm_hoe');
   const { world, farm, turf } = setup(player);

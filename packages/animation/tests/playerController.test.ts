@@ -29,7 +29,7 @@ import type { PlayerBody } from '../../../src/types/Player';
 import { actionTool, netEntity } from './actionFixtures';
 import { bufferingStategraph } from './bufferingStategraph';
 import { createPickupInventory } from './pickupFixture';
-import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
+import { playerInst, createPlayer } from './playerVisual';
 import { workTargets } from './workTargets';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
@@ -249,8 +249,8 @@ describe('PlayerController with the Wilson stategraph', () => {
   });
 
   it('commits mining at frame seven and preserves durability when cancelled, finished elsewhere or unequipped', async () => {
-    const player = await createWilsonPlayer('/dst/data/anim');
-    const animation = wilsonPlayerInstance(player);
+    const player = await createPlayer('/dst/data/anim');
+    const animation = playerInst(player);
     const animationEquipper = createPlayerEquipper(animation);
     await animationEquipper.equip('goldenpickaxe');
     const inventory = createPickupInventory();
@@ -309,8 +309,8 @@ describe('PlayerController with the Wilson stategraph', () => {
       const file = new URL(String(url), 'https://test.invalid').pathname.split('/anim/').at(-1)!;
       return new Response(await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url)));
     });
-    const player = await createWilsonPlayer('/anim');
-    const animation = wilsonPlayerInstance(player);
+    const player = await createPlayer('/anim');
+    const animation = playerInst(player);
     const animationEquipper = createPlayerEquipper(animation);
     await animationEquipper.equip('bugnet');
     const body = new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(0.5), linearDamping: 0 }) as PlayerBody;
@@ -342,8 +342,8 @@ describe('PlayerController with the Wilson stategraph', () => {
     } finally { controller.dispose(); }
   });
   it('uses a book and the pan flute from their slots: GetInventoryActions, the stategraph frame and ACTIONS.READ / PLAY', async () => {
-    const player = await createWilsonPlayer('/dst/data/anim');
-    const animation = wilsonPlayerInstance(player);
+    const player = await createPlayer('/dst/data/anim');
+    const animation = playerInst(player);
     const inventory = createPickupInventory();
     inventory.add('book_rain', 1); inventory.add('panflute', 1);
     const book = inventory.getEntity(inventorySlotAddress(0))!, flute = inventory.getEntity(inventorySlotAddress(1))!;

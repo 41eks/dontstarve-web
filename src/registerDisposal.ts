@@ -14,7 +14,7 @@ import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
 import { prefabInstance } from '../packages/prefab/src/prefabInstance';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
-import { PLAYER_COLLIDER_RADIUS, playDrop, wakeFromBed, type WilsonPlayerInstance } from '@dontstarve-web/prefab/player';
+import { PLAYER_COLLIDER_RADIUS, playDrop, wakeFromBed, type PlayerInstance } from '@dontstarve-web/prefab/player_common';
 import { addComponent, removeComponent } from '@dontstarve-web/prefab/components';
 import { Talker } from '../packages/componets/src/talker';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
@@ -81,7 +81,7 @@ interface ApplicationResourcesOptions {
   view: WorldContext;
   screenProjection: Pick<ScreenProjection, 'GetScreenPos'>;
   inventory: InventoryStore;
-  playerEntity?: WilsonPlayerInstance;
+  playerEntity?: PlayerInstance;
   locomotor: PlayerLocomotor;
   pickupDoer: PickupDoer & { readonly TheSim: import('@dontstarve-web/prefab/prefabInstance').EntityQuery };
   inventorySlotItem: (entity: ItemEntity) => SlotItem;

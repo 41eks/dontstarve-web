@@ -61,14 +61,14 @@ export {
   type PigKingWorld,
 } from './pigking';
 export {
-  createWilsonPlayer,
-  createWilsonPlayerPrefab,
+  MakePlayerCharacter,
   type PlayerBody,
-  WilsonPlayerInstance,
-  type WilsonCarryItem,
-  type WilsonPlayerPrefab,
-  type WilsonPlayerPrefabOptions,
-} from './player';
+  PlayerInstance,
+  type PlayerCarryItem,
+  type PlayerPrefab,
+  type PlayerPrefabOptions,
+} from './player_common';
+export { wortox } from './wortox';
 export {
   TileMap,
   TILE_SIZE,

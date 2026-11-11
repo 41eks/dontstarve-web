@@ -1,4 +1,4 @@
-import { playPickup } from '../../prefab/src/player';
+import { playPickup } from '../../prefab/src/player_common';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer } from './playerVisual';
 
@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonPlayerInstance } from './playerVisual';
+import { playerInst, createPlayer, type PlayerInstance } from './playerVisual';
 import { ReskinEffects, createReskinToolLifecycle, nextReskin, reskinEntity } from '../../prefab/src/reskin_tool';
 import { SpriteState } from '@dontstarve-web/display';
 import { type ReskinTarget } from '../../stategraphs/src/reskin_tool';
@@ -48,13 +48,13 @@ function setupWorld() {
   } as unknown as WorldContext;
 }
 
-function advance(animation: WilsonPlayerInstance, frames: number) {
+function advance(animation: PlayerInstance, frames: number) {
   for (let frame = 0; frame < frames; frame++) advancePlayer(animation, 1 / 30);
 }
 
 it('casts at source frame nine once and cancels before commitment on unequip or another action', async () => {
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player);
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('reskin_tool');
   const cast = vi.fn();

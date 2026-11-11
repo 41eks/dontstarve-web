@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { dwarfStarLight } from '../../prefab/src/stafflight';
 import { staffCastingLightPrefabs, StaffCastingLightInstance, type StaffCastingLightId } from '../../prefab/src/staff_castinglight';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
-import { createWilsonPlayer, wilsonPlayerInstance } from './playerVisual';
+import { createPlayer, playerInst } from './playerVisual';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabDisplayGroup } from '../../display/src';
@@ -60,7 +60,7 @@ describe('yellowstaff source lighting', () => {
   it('spawns one light per cast at the player: an interrupted cast removes it, a committed one leaves it to finish', async () => {
     vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
     const { lights, displays } = setupLights();
-    const model = await createWilsonPlayer('/dst/data/anim'), player = wilsonPlayerInstance(model);
+    const model = await createPlayer('/dst/data/anim'), player = playerInst(model);
     const controller = player, graph = controller.sg;
     const setUp = vi.spyOn(StaffCastingLightInstance.prototype, 'SetUp');
     const spawned: StaffCastingLightInstance[] = [];

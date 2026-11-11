@@ -1,4 +1,4 @@
-import { cancelEmote, playEmote, type WilsonPlayerInstance } from '@dontstarve-web/prefab/player';
+import { cancelEmote, playEmote, type PlayerInstance } from '@dontstarve-web/prefab/player_common';
 import type { DstEmoteWheelElement, EmoteRequestDetail, EmoteWheelToggleDetail } from '@dontstarve-web/ui';
 import { input } from './InputManager';
 import type { EventEmitter } from '@dontstarve-web/signals';
@@ -7,7 +7,7 @@ import type { PlayerActionEvents } from '@dontstarve-web/stategraphs';
 export function setupEmoteWheel(
   wheel: DstEmoteWheelElement,
   canvas: HTMLCanvasElement,
-  player: WilsonPlayerInstance | undefined,
+  player: PlayerInstance | undefined,
   actionEvents: EventEmitter<PlayerActionEvents> | undefined,
   updateCursor: () => void,
 ): () => void {

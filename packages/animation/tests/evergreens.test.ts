@@ -16,7 +16,7 @@ import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
+import { playerInst, createPlayer } from './playerVisual';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { workTargets } from './workTargets';
 import { drawn } from './worldContentFixture';
@@ -107,8 +107,8 @@ it('shows growth settled while unloaded as its final stage without the transitio
 });
 it('commits source axe work, cancels before impact, preserves logical components while unloaded, and fells and digs a tall tree permanently', async () => {
   const s = await setup(), inventory = createPickupInventory();
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player);
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('axe'); inventory.add('axe', 1);
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);

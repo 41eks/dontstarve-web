@@ -1,4 +1,4 @@
-import { startMovement } from '../../prefab/src/player';
+import { startMovement } from '../../prefab/src/player_common';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import * as THREE from 'three';
@@ -8,7 +8,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { declaredAnimState, loadDeclaredArt } from './animStateFixture';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
+import { playerInst, createPlayer } from './playerVisual';
 import { parseImageAtlasXml } from '../src/imageAtlas';
 
 beforeEach(() => {
@@ -38,14 +38,14 @@ it('uses source ground art for base, ordinary, shared-build and invisible backpa
 });
 
 it('uses skinned swap_body art in every player facing and hides invisible equipment', async () => {
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const controller = wilsonPlayerInstance(player);
+  const player = await createPlayer('/dst/data/anim');
+  const controller = playerInst(player);
   const controllerEquipper = createPlayerEquipper(controller);
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   for (const skinId of ['backpack_babybeef', 'backpack_invisible']) {
     controllerEquipper.equip('backpack', skinId, 'body');
     // The player's display loads the named skin build before it is drawn.
-    await loadDeclaredArt(declaredAnimState(wilsonPlayerInstance(player).sprite), controller.equipmentAssets);
+    await loadDeclaredArt(declaredAnimState(playerInst(player).sprite), controller.equipmentAssets);
     let hasSkinnedArt = false;
     for (const facing of ['up', 'down', 'side'] as const) {
       facePlayer(controller, facing);

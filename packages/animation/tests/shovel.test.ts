@@ -14,7 +14,7 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import { workTargets } from './workTargets';
 import { farmFixture } from './farmFixture';
 import { TurfMap } from '../../prefab/src/turfMap';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonPlayerInstance } from './playerVisual';
+import { playerInst, createPlayer, type PlayerInstance } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -37,7 +37,7 @@ function setup(player = new THREE.Group(), random = () => 0.9, spawnLoot?: (item
   const farm = farmFixture(world.scene, turf, { random, spawnLoot });
   return { farm, turf, world };
 }
-function advance(animation: WilsonPlayerInstance, frames: number) {
+function advance(animation: PlayerInstance, frames: number) {
   for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30);
 }
 
@@ -103,9 +103,9 @@ it('removes one debris with source loot while preserving soil, terrain, other de
 });
 
 it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancelled or unequipped targets', async () => {
-  const player = await createWilsonPlayer('/dst/data/anim');
+  const player = await createPlayer('/dst/data/anim');
   player.position.set(0, 0, 15);
-  const animation = wilsonPlayerInstance(player);
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('goldenshovel');
   expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/equip_item_gold');

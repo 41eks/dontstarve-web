@@ -2,6 +2,7 @@ import { batch, createMemo, createSignal, readonlySignal } from '@dontstarve-web
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentTimer } from '../../componets/src/timer';
 import type { InventoryStore } from '@dontstarve-web/inventory';
+import { MakePlayerCharacter, type PlayerInstance } from './player_common';
 
 export interface WortoxSave { freehops: number; soulhopcost: number }
 export const WORTOX_FREEHOP_TIMELIMIT = 5;
@@ -62,3 +63,25 @@ export class Wortox {
     this.echo.dispose();
   }
 }
+
+/** wortox.lua common_postinit: the soul eater's tags. */
+function common_postinit(inst: PlayerInstance): void {
+  inst.addTag('playermonster');
+  inst.addTag('monster');
+  inst.addTag('soulstealer');
+  // souleater (from the souleater component) added to pristine state for optimization.
+  inst.addTag('souleater');
+}
+
+/** wortox.lua master_postinit: ClearSoulhopCounter and inst.TryToPortalHop / FinishPortalHop, consuming from the inventory. */
+function master_postinit(inst: PlayerInstance): void {
+  if (!inst.scheduler) return;
+  const wortox = new Wortox(inst.scheduler, {
+    ConsumeByName: (prefab, amount) => inst.components.inventory?.ConsumeByName(prefab, amount),
+  });
+  inst.wortox = wortox;
+  inst.onRemove(() => wortox.dispose());
+}
+
+/** wortox.lua: MakePlayerCharacter("wortox", prefabs, assets, common_postinit, master_postinit), with its ported ANIM assets. */
+export const wortox = MakePlayerCharacter('wortox', ['wortox_portal.zip'], common_postinit, master_postinit);

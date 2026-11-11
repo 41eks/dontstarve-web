@@ -6,7 +6,7 @@ import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { AnimationMixer, type Group, type AnimationAction, type AnimationClip } from "three";
 import { input } from './InputManager';
 import { prefabInstance } from '../packages/prefab/src/prefabInstance';
-import { startMovement, updatePlayer, WilsonPlayerInstance } from '@dontstarve-web/prefab/player';
+import { startMovement, updatePlayer, PlayerInstance } from '@dontstarve-web/prefab/player_common';
 
 export default class ModelAnimation {
     // 显式声明属性类型
@@ -79,7 +79,7 @@ export function createAnimationUpdater(model: THREE.Group) {
 
     const inst = prefabInstance(model);
 
-    if (inst instanceof WilsonPlayerInstance) {
+    if (inst instanceof PlayerInstance) {
         const sprite = inst.sprite;
         const jumpProgress = createSignal<number | undefined>(undefined);
         sprite.setFrameSource({ name: 'jump', progress: readonlySignal(jumpProgress) });

@@ -1,10 +1,11 @@
-import { cancelEmote, playEmote, playPickup, setCrafting, startMovement } from '../../prefab/src/player';
+import { wortox } from '../../prefab/src/wortox';
+import { cancelEmote, playEmote, playPickup, setCrafting, startMovement } from '../../prefab/src/player_common';
 import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { createWilsonPlayerPrefab, type WilsonPlayerInstance } from '../../prefab/src/player';
-import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from '../../prefab/src/emotes';
+import { type PlayerInstance } from '../../prefab/src/player_common';
+import { EMOTES, type EmoteName, type EmoteDefinition } from '../../prefab/src/emotes';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { mountGameUi } from '../src';
 import { setupEmoteWheel } from '../../../src/emoteWheel';
@@ -15,7 +16,7 @@ import { bindActionCancellation, type PlayerActionEvents } from '../../stategrap
 
 export async function createEmoteFixture() {
   const { emoteWheel } = mountGameUi({ assetBaseUrl: '/dst/data/ui/' });
-  const { model, body, instance, display } = createWilsonPlayerPrefab('/dst/data/anim', new CANNON.World());
+  const { model, body, instance, display } = wortox('/dst/data/anim', new CANNON.World());
   registerPlayer(model);
   await display.artLoaded();
   model.position.set(0, 0, 0);
@@ -64,8 +65,8 @@ export async function createEmoteFixture() {
     async checkAnimations() {
       const failures: string[] = [];
       let changed = 0;
-      for (const id of Object.keys(WILSON_EMOTES) as WilsonEmote[]) {
-        const definition: WilsonEmoteDefinition = WILSON_EMOTES[id];
+      for (const id of Object.keys(EMOTES) as EmoteName[]) {
+        const definition: EmoteDefinition = EMOTES[id];
         startMovement(animation, 'idle');
         for (const facing of ['up', 'down', 'side'] as const) {
           for (const mirrored of [false, true]) {

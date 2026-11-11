@@ -1,17 +1,19 @@
+import * as CANNON from 'cannon-es';
+import { wortox } from '../../prefab/src/wortox';
 import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
-import { createWilsonPlayer, wilsonPlayerInstance, type WilsonPlayerInstance } from '../../prefab/src/player';
+import { playerInst, type PlayerInstance } from '../../prefab/src/player_common';
 import type { PrefabDisplay } from '../../display/src';
 
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
 
 export async function checkCrown() {
-  const player = createWilsonPlayer('/dst/data/anim', { stats: { sanity: 200 } });
+  const player = wortox('/dst/data/anim', new CANNON.World(), { stats: { sanity: 200 } }).model;
   registerPlayer(player);
-  const sanity = wilsonPlayerInstance(player).stats.sanity;
+  const sanity = playerInst(player).stats.sanity;
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
   const animation = prefabInstance(player);

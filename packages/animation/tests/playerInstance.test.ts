@@ -5,14 +5,14 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SpriteState } from '@dontstarve-web/display';
-import { createWilsonPlayerPrefab, type WilsonPlayerPrefab } from './playerVisual';
+import { createPlayerPrefab, type PlayerPrefab } from './playerVisual';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { smallHash } from '../src/animationAssets';
 import { declaredAnimState } from './animStateFixture';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true, setVolume() {} })) }));
-const players: WilsonPlayerPrefab[] = [];
+const players: PlayerPrefab[] = [];
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -30,7 +30,7 @@ const meshes = (model: THREE.Object3D) => {
 };
 async function createPlayer() {
   const world = new CANNON.World();
-  const prefab = await createWilsonPlayerPrefab('/dst/data/anim', world);
+  const prefab = await createPlayerPrefab('/dst/data/anim', world);
   players.push(prefab);
   return { ...prefab, world, animation: prefab.instance };
 }

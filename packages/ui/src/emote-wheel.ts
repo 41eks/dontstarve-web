@@ -1,11 +1,11 @@
 import { loadImageAtlasFiles } from '@dontstarve-web/animation/imageAtlas';
-import { WILSON_EMOTES, type EmoteGroup, type WilsonEmote } from '@dontstarve-web/prefab/emotes';
+import { EMOTES, type EmoteGroup, type EmoteName } from '@dontstarve-web/prefab/emotes';
 import { AssetElement } from './assets';
 import styles from './styles/emote-wheel.css?inline';
 
-export interface EmoteRequestDetail { emote: WilsonEmote }
+export interface EmoteRequestDetail { emote: EmoteName }
 export interface EmoteWheelToggleDetail { isOpen: boolean }
-interface WheelItem { label: string; icon: WilsonEmote; group?: EmoteGroup; emote?: WilsonEmote }
+interface WheelItem { label: string; icon: EmoteName; group?: EmoteGroup; emote?: EmoteName }
 
 const GROUPS: readonly WheelItem[] = [
   { label: '情绪', icon: 'wave', group: 'emotion' },
@@ -105,9 +105,9 @@ export class DstEmoteWheelElement extends AssetElement {
 
   private setGroup(group: EmoteGroup | null): void {
     this.group = group;
-    this.items = group === null ? GROUPS : (Object.keys(WILSON_EMOTES) as WilsonEmote[])
-      .filter((id) => WILSON_EMOTES[id].group === group)
-      .map((id) => ({ label: WILSON_EMOTES[id].label, icon: id, emote: id }));
+    this.items = group === null ? GROUPS : (Object.keys(EMOTES) as EmoteName[])
+      .filter((id) => EMOTES[id].group === group)
+      .map((id) => ({ label: EMOTES[id].label, icon: id, emote: id }));
     const container = this.shadowRoot!.querySelector<HTMLElement>('.emote-wheel__items')!;
     container.replaceChildren(...this.items.map((item, index) => {
       const angle = index * Math.PI * 2 / this.items.length;

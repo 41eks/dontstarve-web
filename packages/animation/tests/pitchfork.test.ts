@@ -9,7 +9,7 @@ import { overrideArchives } from './animStateFixture';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonPlayerInstance } from './playerVisual';
+import { playerInst, createPlayer, type PlayerInstance } from './playerVisual';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { drawGround, layerGeometry, layerMeshes } from './groundDisplayFixture';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-function advance(animation: WilsonPlayerInstance, frames: number) {
+function advance(animation: PlayerInstance, frames: number) {
   for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 60);
 }
 
@@ -43,8 +43,8 @@ describe('pitchfork source art and TERRAFORM timing', () => {
       const skinned = await createGroundItemVisual(tool, skin);
       skinned.dispose();
     }
-    const player = await createWilsonPlayer('/dst/data/anim');
-    const animation = wilsonPlayerInstance(player);
+    const player = await createPlayer('/dst/data/anim');
+    const animation = playerInst(player);
     const animationEquipper = createPlayerEquipper(animation);
     const dig = vi.fn();
     const push = () => animation.sg.pushBufferedAction(new BufferedAction('TERRAFORM', dig));

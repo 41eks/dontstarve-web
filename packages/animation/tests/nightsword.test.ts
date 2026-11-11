@@ -1,4 +1,4 @@
-import { startMovement } from '../../prefab/src/player';
+import { startMovement } from '../../prefab/src/player_common';
 import { withEntity } from './entityFixture';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
@@ -9,7 +9,7 @@ import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } fro
 import { createGroundItemVisual } from './groundItemVisual';
 import { nightswordVisual } from '../../prefab/src/nightsword';
 import { declaredSymbol } from './animStateFixture';
-import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
+import { playerInst, createPlayer } from './playerVisual';
 import { AnimState } from '../src/animState';
 import { ItemWorldFixture, itemAt, itemEntities } from './itemWorldFixture';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -35,8 +35,8 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('uses separate source ground and equipped art and renders a skin while moving and changing facing', async () => {
   const assets = new GroundItemAssets();
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player);
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const usedMaterials = () => mesh.geometry.groups.map(group => mesh.material[group.materialIndex!].name);

@@ -1,13 +1,15 @@
+import * as CANNON from 'cannon-es';
+import { wortox } from '../../prefab/src/wortox';
 import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { HAT_IDS, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
-import { createWilsonPlayer, type WilsonPlayerInstance } from '@dontstarve-web/prefab/player';
+import { type PlayerInstance } from '@dontstarve-web/prefab/player_common';
 import type { PrefabDisplay } from '../../display/src';
 
 export async function renderHatCatalog(): Promise<void> {
-  const player = createWilsonPlayer('/dst/data/anim');
+  const player = wortox('/dst/data/anim', new CANNON.World()).model;
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
   const scene = new THREE.Scene();

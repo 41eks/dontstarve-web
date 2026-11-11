@@ -28,7 +28,7 @@ import { createWorldClockUpdater } from './worldState';
 import type { PerishWorld } from '../packages/componets/src/perishable';
 import { Locomotor, setupLocomotorInput } from '@dontstarve-web/prefab/locomotor';
 import { AddSlipperyFeet, RemoveSlipperyFeet } from '@dontstarve-web/prefab/player_common';
-import { bindPlayerBuilder } from '@dontstarve-web/prefab/player';
+import { bindPlayerBuilder } from '@dontstarve-web/prefab/player_common';
 import { removeComponent } from '../packages/prefab/src/components';
 import type { DisposalEvents } from './registerDisposal';
 import { disposeTextureAssets } from '@dontstarve-web/animation/textureLoader';

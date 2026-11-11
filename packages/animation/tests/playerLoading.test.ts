@@ -1,10 +1,10 @@
-import { makeAlive, makeGhost } from '../../prefab/src/player';
+import { makeAlive, makeGhost } from '../../prefab/src/player_common_extensions';
 import { advancePlayer, registerPlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createWilsonPlayerPrefab } from '../../prefab/src/player';
+import { wortox } from '../../prefab/src/wortox';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true, setVolume() {} })) }));
@@ -21,7 +21,7 @@ it('creates the logical player and body synchronously and completes actions and 
   });
   vi.stubGlobal('fetch', fetch);
   const world = new CANNON.World();
-  const prefab = createWilsonPlayerPrefab('/dst/data/anim', world);
+  const prefab = wortox('/dst/data/anim', world);
   const { instance, model, display, body } = prefab;
   registerPlayer(model);
   const animation = instance;
@@ -77,7 +77,7 @@ it('does not recreate a removed player or write its json when a pending source f
     await blocked;
     return new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)));
   });
-  const world = new CANNON.World(), { instance, display, model, body } = createWilsonPlayerPrefab('/dst/data/anim', world);
+  const world = new CANNON.World(), { instance, display, model, body } = wortox('/dst/data/anim', world);
   instance.remove(); await tick();
   const removed = instance.sprite.sprite.peek();
   release(); await display.artLoaded(); await tick();

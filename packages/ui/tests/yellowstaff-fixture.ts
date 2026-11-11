@@ -1,3 +1,5 @@
+import * as CANNON from 'cannon-es';
+import { wortox } from '../../prefab/src/wortox';
 import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { prefabManager } from '../../animation/tests/prefabManagerFixture';
 import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
@@ -5,7 +7,7 @@ import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
-import { createWilsonPlayer, type WilsonPlayerInstance } from '../../prefab/src/player';
+import { type PlayerInstance } from '../../prefab/src/player_common';
 import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { getLightStaffController, type LightStaffId } from '../../prefab/src/staff';
@@ -61,7 +63,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     return pixel[0] + pixel[1] + pixel[2];
   };
   const baseline = sample(30);
-  const player = createWilsonPlayer('/dst/data/anim');
+  const player = wortox('/dst/data/anim', new CANNON.World()).model;
   registerPlayer(player);
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);

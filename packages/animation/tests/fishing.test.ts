@@ -18,7 +18,7 @@ import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
+import { playerInst, createPlayer } from './playerVisual';
 import { pondPrefabs, POND_ID } from '../../prefab/src/pond';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup } from '../../display/src';
@@ -67,9 +67,9 @@ it('hooks, releases and removes fish, respawns them on game time and saves the r
 
 it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a strained rod is lost', async () => {
   const scheduler = new GameTimeScheduler();
-  const player = await createWilsonPlayer('/dst/data/anim');
+  const player = await createPlayer('/dst/data/anim');
   player.position.set(0, 0, 20);
-  const animation = wilsonPlayerInstance(player);
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('fishingrod');
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),

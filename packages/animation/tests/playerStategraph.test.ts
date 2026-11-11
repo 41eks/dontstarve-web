@@ -1,11 +1,12 @@
-import { makeAlive, makeGhost, playDrop, startMovement } from '../../prefab/src/player';
+import { makeAlive, makeGhost } from '../../prefab/src/player_common_extensions';
+import { playDrop, startMovement } from '../../prefab/src/player_common';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
+import { playerInst, createPlayer } from './playerVisual';
 import { DisposeSounds } from '../../prefab/src/sound';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 
@@ -19,13 +20,13 @@ beforeEach(() => {
 afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('loads the Wortox build with shared player animations and renders every facing with equipment', async () => {
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player);
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
-  expect(player.name).toBe('Wortox');
-  expect(wilsonPlayerInstance(player).prefab).toBe('wortox');
-  expect(wilsonPlayerInstance(player).minimap.peek().icon).toBe('wortox.png');
-  expect(wilsonPlayerInstance(player).sg).toBe(animation.sg);
+  expect(player.name).toBe('wortox');
+  expect(playerInst(player).prefab).toBe('wortox');
+  expect(playerInst(player).minimap.peek().icon).toBe('wortox.png');
+  expect(playerInst(player).sg).toBe(animation.sg);
   const urls = vi.mocked(fetch).mock.calls.map(([url]) => String(url));
   expect(urls).toContain('/dst/data/anim/dynamic/wortox.zip');
   expect(urls).toContain('/dst/data/anim/dynamic/wortox.dyn');
@@ -70,8 +71,8 @@ it('loads the Wortox build with shared player animations and renders every facin
 });
 
 it('keeps the source mining timeline when Wortox changes facing and emits one action notification', async () => {
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player);
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('pickaxe');
   const hit = vi.fn(), events: string[] = [];
@@ -95,7 +96,7 @@ it('keeps the source mining timeline when Wortox changes facing and emits one ac
 });
 
 it('keeps a buffered action when the same action, target and invobject is pushed again, as PushBufferedAction does', async () => {
-  const animation = wilsonPlayerInstance(await createWilsonPlayer('/dst/data/anim'));
+  const animation = playerInst(await createPlayer('/dst/data/anim'));
   const rod = { prefab: 'fishingrod', hasTag: (tag: string) => tag === 'fishingrod' };
   const pond = { prefab: 'pond', hasTag: () => false };
   const failed: unknown[] = [];
@@ -117,7 +118,7 @@ it('keeps a buffered action when the same action, target and invobject is pushed
 });
 
 it('performs a drop on the doshortaction frame and reports a cancelled drop', async () => {
-  const animation = wilsonPlayerInstance(await createWilsonPlayer('/dst/data/anim'));
+  const animation = playerInst(await createPlayer('/dst/data/anim'));
   const drop = vi.fn(() => true), cancelled = vi.fn();
   expect(playDrop(animation, drop, cancelled)).toBe(true);
   expect(animation.sg.stateName).toBe('doshortaction');
@@ -137,8 +138,8 @@ it('performs a drop on the doshortaction frame and reports a cancelled drop', as
 });
 
 it('advances rendered frames in animation without reading the stategraph clock or publishing frame state', async () => {
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const instance = wilsonPlayerInstance(player), animation = instance;
+  const player = await createPlayer('/dst/data/anim');
+  const instance = playerInst(player), animation = instance;
   const display = prefabDisplay(player)!;
   try {
     startMovement(animation, 'walk');

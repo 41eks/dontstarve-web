@@ -11,7 +11,7 @@ import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { HatEquipmentAssets } from '../../prefab/src/hats';
 import { createPerishWorld } from './perishWorldFixture';
 import { createPlayerEquipper } from './playerEquipFixture';
-import { advancePlayer, createWilsonPlayer, wilsonPlayerInstance } from './playerVisual';
+import { advancePlayer, createPlayer, playerInst } from './playerVisual';
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })),
@@ -86,8 +86,8 @@ it('equips restored and committed torches through equippable with the owner, une
 });
 
 it("goes through SGwilson's equip and unequip handlers: item_out, item_in and item_hat from idle, not while busy", async () => {
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player);
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
   const equipper = createPlayerEquipper(animation);
   const settle = () => { for (let frame = 0; frame < 30; frame++) advancePlayer(animation, 1 / 30); };
   try {

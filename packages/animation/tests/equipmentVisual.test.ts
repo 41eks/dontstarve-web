@@ -11,7 +11,7 @@ import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { HatEquipmentAssets, hatVisual } from '../../prefab/src/hats';
 import { backpackVisual } from '../../prefab/src/backpack';
-import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
+import { playerInst, createPlayer } from './playerVisual';
 import { declaredAnimState, declaredSymbol, element, overrideArchives } from './animStateFixture';
 import { SpriteState } from '@dontstarve-web/display';
 
@@ -125,8 +125,8 @@ it("draws a follow hat's own animation from its bank once the owner's display ha
 });
 
 it('lets a skin replaced before its load finishes only fill the cache: the player draws the current declaration', async () => {
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player);
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const drawn = () => mesh.geometry.groups.map(group => mesh.material[group.materialIndex!].name);

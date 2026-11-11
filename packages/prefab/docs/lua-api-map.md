@@ -29,7 +29,7 @@
 | --- | --- | --- | --- |
 | `SetBank`、`SetBuild`（固定） | 定义的 `assets: { animationArchive, buildArchives, bank }` | `atrium_pillar.ts` | |
 | `SetBank`、`SetBuild`（按实例，构造或读档时定） | 定义的 `instanceAssets(inst)` | `archive_pillar.ts` | |
-| `SetBank`、`SetBuild`（运行中切换） | `inst.AnimState.DeclareAnimationAssets(archives, art)` 声明 Lua 的全部 ANIM 资源，之后 `inst.AnimState.SetBank(bank)`／`SetBuild(archive)`；`PlayAnimation` 在当前 bank 下跨这些文件找动画，`GetCurrentAnimationLength` 按同一组文件取时长。不按动画换文件 | `fence.ts`、`player.ts`（`makeGhost`／`makeAlive`） | |
+| `SetBank`、`SetBuild`（运行中切换） | `inst.AnimState.DeclareAnimationAssets(archives, art)` 声明 Lua 的全部 ANIM 资源，之后 `inst.AnimState.SetBank(bank)`／`SetBuild(archive)`；`PlayAnimation` 在当前 bank 下跨这些文件找动画，`GetCurrentAnimationLength` 按同一组文件取时长。不按动画换文件 | `fence.ts`、`player_common_extensions.ts`（`makeGhost`／`makeAlive`） | |
 | 构造函数里 `PlayAnimation(x, true)` | `new SpriteState({ name: x })` | `atrium_pillar.ts` | |
 | 构造函数里 `PlayAnimation(x)` | `new SpriteState({ name: x, held: true })`，或构造后 `sprite.playOnce(x)` | `atrium_gate.ts`、`vault_pillar.ts` | |
 | `PlayAnimation(x, loop)` | `inst.AnimState.PlayAnimation(x, loop)`（循环转 `sprite.start(x)`，否则 `sprite.playOnce(x)`） | `birdcage.ts`、`fire.ts` | 循环方式按 Lua，不为实例化改动；不发 `animover`，要完成通知用下一行 |
@@ -51,7 +51,7 @@
 | Lua | TS | 示例 | 差异 |
 | --- | --- | --- | --- |
 | `OverrideSymbol`（prefab 自身） | `sprite.setSymbolOverride(symbol, archive, source)` | `monkeypillar.ts` | 写入 sprite json，跨休眠保留 |
-| `OverrideSymbol`、`Show`、`Hide` 等（共用 `AnimState`） | `inst.AnimState` 同名方法 + 一次 `sprite.setAnimState(inst.AnimState.json, art)` | `sculptingtable.ts`、`player.ts` | 只声明一次，不回写快照；`inst.AnimState` 与播放是同一个对象 |
+| `OverrideSymbol`、`Show`、`Hide` 等（共用 `AnimState`） | `inst.AnimState` 同名方法 + 一次 `sprite.setAnimState(inst.AnimState.json, art)` | `sculptingtable.ts`、`player_common.ts` | 只声明一次，不回写快照；`inst.AnimState` 与播放是同一个对象 |
 | 装备改写 `owner.AnimState` | `EquipmentAnimState` 插槽（`declareAnimState`） | `equipmentVisual.ts` | 分层，不是后写者生效 |
 | `HideSymbol`、`ShowSymbol` | `sprite.setSymbolHidden(symbol, hidden)` | `monkeypillar.ts` | |
 | `Hide(layer)`、`Show(layer)` | `sprite.hideLayer`、`sprite.showLayer` | `display/src/spriteState.ts` | |

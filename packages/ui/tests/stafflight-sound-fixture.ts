@@ -1,3 +1,5 @@
+import * as CANNON from 'cannon-es';
+import { wortox } from '../../prefab/src/wortox';
 import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { prefabManager } from '../../animation/tests/prefabManagerFixture';
 import { advancePlayer, registerPlayer } from '../../animation/tests/playerVisual';
@@ -7,7 +9,7 @@ import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { staffLightPrefabs, DWARF_STAR_DURATION, DWARF_STAR_ID } from '../../prefab/src/stafflight';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createWilsonPlayer, type WilsonPlayerInstance } from '../../prefab/src/player';
+import { type PlayerInstance } from '../../prefab/src/player_common';
 import { BufferedAction } from '../../stategraphs/src';
 import { DisposeSounds, PrewarmSounds } from '../../prefab/src/sound';
 
@@ -33,7 +35,7 @@ export async function prepareStarAudioCheck() {
   const restored = await manager.spawn(DWARF_STAR_ID, new THREE.Vector3(4, 0, 5), { id: 'e_saved', components: { timer: { timers: { extinguish: { timeleft: 0.1, paused: false, initial_time: DWARF_STAR_DURATION } } } } });
   const samples = sources.map(({ source }) => ({ loop: source.loop, length: source.buffer!.length,
     channels: source.buffer!.numberOfChannels, sampleRate: source.buffer!.sampleRate }));
-  const player = createWilsonPlayer('/dst/data/anim');
+  const player = wortox('/dst/data/anim', new CANNON.World()).model;
   registerPlayer(player);
   await prefabDisplay(player).artLoaded();
   const animation = prefabInstance(player);

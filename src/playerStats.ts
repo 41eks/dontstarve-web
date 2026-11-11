@@ -1,7 +1,7 @@
 import { playerInstance } from './player';
 import type { SavedPlayer } from './save/types';
 
-export { WILSON_MAX_HEALTH, WILSON_MAX_HUNGER, WILSON_MAX_SANITY } from '@dontstarve-web/prefab/player_common';
+export { WILSON_HEALTH, WILSON_HUNGER, WILSON_SANITY } from '@dontstarve-web/prefab/player_common';
 export const playerStats = playerInstance.stats;
 
 /** player_classified isghostmode: set by OnMakePlayerGhost, read by playervision and the save. */

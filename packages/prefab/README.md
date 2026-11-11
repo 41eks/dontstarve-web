@@ -4,7 +4,7 @@ DST 场景预制体。该包基于 `@dontstarve-web/animation` 组合具体资�
 
 `skinId` 保存在 `SpriteJson.skinId` 中；`PrefabInstance.skinId` 的 getter / setter 读写同一份声明，修改时发布 sprite signal。prefab 用 `sprite.setSkinSource()` 声明源皮肤 ID 到 archive 的映射、共享资源所有者及符号／附加动画 bank 配置。`PrefabDisplay` 在收到声明后查询共享缓存，缺失的 build／animation 由 display 异步加载；完成后按当前 json 应用，过期请求只留下缓存。直接设置 `instance.skinId` 即可换皮，设为 `undefined` 恢复基础外观，保留实体、sprite 控制器、动画进度及完成回调。休眠不为换皮加载资源，唤醒后应用最新声明。
 
-- `createWilsonPlayer` / `createWilsonPlayerPrefab`
+- `wortox`（`wortox.ts`）：`MakePlayerCharacter('wortox', assets, common_postinit, master_postinit)` 返回的玩家 prefab。`player_common.ts` 的 `MakePlayerCharacter` 对应 `player_common.lua` 的同名函数，负责所有角色共用的 fn；角色专有的 ANIM 资源、标签和 `master_postinit` 状态（wortox 的传送计数 `inst.wortox`）写在角色文件里。幽灵与复活在 `player_common_extensions.ts`
 - `pigKingPrefabs`（`pigking`）：猪王的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册
 - `placeStaticLayout`（`staticLayout`）：`default_pigking` 静态布局的地皮与岩石坐标，由地图生成层登记；`nightmareRockPrefabs`（`nightmarerock`）对应 `sanityrock` / `insanityrock` 的 `PrefabEntityDefinition`，由应用层的 `PrefabEntityManager` 注册：`NightmareRockInstance` 持有状态图、`AddRefreshTask`（文件级 `UPDATE_OFFSET` 错开各实体的刷新）和 `updatephysics`，只保存身份与位置，状态在载入后按附近玩家的理智重新推导；地图图标 `obelisk.png`。
 - `Pathfinder`（`pathfinder.ts`）：`TheWorld.Pathfinder` 的 Lua 接口（`SubmitSearch`、`GetSearchStatus`、`GetSearchResult`、`KillSearch`、`IsClear`、`AddWall`、`RemoveWall`、`GetPathTileIndexFromPoint`），位置用世界单位的向量，搜索由 `update()` 分帧推进。只考虑地皮和 `AddWall` 登记的墙；引擎算法不可见，路径可能与原版不同。应用层 `src/building.ts` 持有唯一实例，每帧 `update()`；玩家的 `Locomotor` 和 `componets` 的 `LocoMotor` 共用 `LocoMotorPath` 走 Lua 的 `FindPath` 流程，墙、栅栏和 `atrium_gate` 用 `AddWall` 登记。树、石头等其他障碍交给物理碰撞。
@@ -130,7 +130,7 @@ inventory atlas 路径。`HAT_SKIN_SPECS` 及 `skinArchives` 对应 144 个皮�
 原游戏的内部实体 `shadow_thrall_parasitehat` 已从导入目录、物品定义和制作入口中排除，
 不再镜像其动画包，也不提供图标或地面图像回退。
 
-`createWilsonPlayer()` / `createWilsonPlayerPrefab()` 同步返回玩家模型／实例和刚体。玩家只声明动画 archive、bank、build 和道具 fallback；`PrefabDisplay` 通过 `SpriteResources` 加载并应用当前声明，加载完成不回写玩家逻辑。需要等到可绘制时，由应用调用 `await display.artLoaded()`。幽灵／复活、读书、工具动作和表情的时长来自导入的 `animationTimings.json`，不等待美术；读书／工具破损 FX 的定时移除也独立于资源加载。用 `python3 packages/prefab/scripts/import-animation-timings.py --check` 校验时长。
+`wortox(assetBaseUrl, world, options)` 同步返回玩家模型／实例和刚体。玩家只声明动画 archive、bank、build 和 override build；`PrefabDisplay` 通过 `SpriteResources` 加载并应用当前声明，加载完成不回写玩家逻辑。需要等到可绘制时，由应用调用 `await display.artLoaded()`。幽灵／复活、读书、工具动作和表情的时长来自导入的 `animationTimings.json`，不等待美术；读书／工具破损 FX 的定时移除也独立于资源加载。用 `python3 packages/prefab/scripts/import-animation-timings.py --check` 校验时长。
 
 `WilsonAnimationController.setHat(itemId, skinId?)` 同步声明装备贴图，由 display 按需加载；传入 `null`
 卸下帽子。普通帽、露顶帽、全头盔分别切换头发与脸部；Walter 帽使用 Wilson 的

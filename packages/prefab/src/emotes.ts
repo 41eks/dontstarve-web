@@ -1,5 +1,5 @@
 /** Standing, built-in commands from scripts/emotes.lua (mounted-only pets excluded). */
-export const WILSON_EMOTES = {
+export const EMOTES = {
   wave: { label: '挥手', group: 'emotion', archive: 'player_emotesxl.zip', variants: [['emoteXL_waving1'], ['emoteXL_waving2'], ['emoteXL_waving3']] },
   rude: { label: '挑衅', group: 'emotion', archive: 'player_emotesxl.zip', variants: [['emoteXL_waving4']] },
   happy: { label: '欢呼', group: 'emotion', archive: 'player_emotesxl.zip', variants: [['emoteXL_happycheer']] },
@@ -15,11 +15,11 @@ export const WILSON_EMOTES = {
   facepalm: { label: '捂脸', group: 'action', archive: 'player_emotesxl.zip', variants: [['emoteXL_facepalm']] },
   pose: { label: '摆姿势', group: 'action', archive: 'player_emotes.zip', variants: [['emote_strikepose']] },
   toast: { label: '干杯', group: 'action', archive: 'player_emote_extra.zip', variants: [['emote_pre_toast', 'emote_loop_toast']], loop: true },
-} as const satisfies Record<string, WilsonEmoteDefinition>;
+} as const satisfies Record<string, EmoteDefinition>;
 
-export type WilsonEmote = keyof typeof WILSON_EMOTES;
+export type EmoteName = keyof typeof EMOTES;
 export type EmoteGroup = 'emotion' | 'action';
-export interface WilsonEmoteDefinition {
+export interface EmoteDefinition {
   readonly label: string;
   readonly group: EmoteGroup;
   readonly archive: string;

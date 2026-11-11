@@ -33,7 +33,7 @@ import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { isGroundTargetBlocked, placementEntities } from '../packages/prefab/src/placementEntities';
 import { backpackContainerId } from '@dontstarve-web/inventory';
 import { player, playerBody, playerInstance, playerPhysics } from './player';
-import { setCrafting } from '@dontstarve-web/prefab/player';
+import { setCrafting } from '@dontstarve-web/prefab/player_common';
 import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
 import { createEquipmentViews } from '@dontstarve-web/prefab/equipmentVisual';
 import { getHandEquipmentDefinition, type HandEquipmentWorld } from '@dontstarve-web/prefab/handEquipment';
@@ -240,7 +240,7 @@ const sceneResources = await startScene(
   },
   inventory,
 );
-const { scheduler, buildingPlacement, groundItems, worldFx, registry, prefabs, getSaveState, disposalEvents } = sceneResources;
+const { buildingPlacement, groundItems, worldFx, registry, prefabs, getSaveState, disposalEvents } = sceneResources;
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading });
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);
@@ -253,7 +253,7 @@ disposalEvents.on('dispose', () => {
 });
 disposalResources.register(disposalEvents, sceneResources);
 const wortox = await WortoxPlayer.create({
-  world: view, body: playerBody, physics: playerPhysics, doer: pickupDoer, inventory, scheduler, fx: worldFx,
+  world: view, body: playerBody, physics: playerPhysics, doer: pickupDoer, fx: worldFx,
   isPassableAtPoint: position => turfMap.isPassableAtPoint(position),
   saved: initialSave.players.local.wortox,
   resetMinimapOffset: () => gameUi.minimap.setView({ x: player.position.x, z: player.position.z }),
@@ -315,7 +315,7 @@ let pendingSave = Promise.resolve();
 function saveGame(): Promise<void> {
   const save = pendingSave.then(() => gameUi.savingIndicator.whileSaving(async () => {
     const json = serializeSave(initialSave, {
-      ...getSaveState(), playerWortox: wortox?.state.OnSave(), inventory: inventory.exportState(), playerStats: getPlayerStats(), playerGhost: playerGhostMode.peek(),
+      ...getSaveState(), playerWortox: playerInstance.wortox?.OnSave(), inventory: inventory.exportState(), playerStats: getPlayerStats(), playerGhost: playerGhostMode.peek(),
     }, SAVE_CATALOG, lastSavedSnapshotId);
     await downloadClusterSave(json, initialSave.world.prefab);
     lastSavedSnapshotId = (JSON.parse(json) as typeof initialSave).snapshot.id;

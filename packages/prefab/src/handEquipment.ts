@@ -17,7 +17,7 @@ import { configureNightswordEntity, nightswordVisual } from './nightsword';
 import { configurePickaxeEntity, PICKAXE_USES, pickaxeVisual } from './pickaxe';
 import { GOLDENTOOLFACTOR, WILSON_ATTACK } from './handTool';
 import { configurePitchforkEntity, createTerraformerLifecycle, pitchforkVisual } from './pitchfork';
-import type { WilsonCarryItem } from './player';
+import type { PlayerCarryItem } from './player_common';
 import type { PrefabInstance } from './prefabInstance';
 import { configureReskinToolEntity, createReskinToolLifecycle, reskinToolVisual } from './reskin_tool';
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
@@ -69,7 +69,7 @@ export interface HandEquipmentDefinition {
 }
 
 /** Source hand prefabs declare their presentation and equip lifecycle together. */
-const definitions: Record<WilsonCarryItem, HandEquipmentDefinition> = {
+const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
   torch: { visual: torchVisual, weapon: { damage: WILSON_ATTACK * .5, onattack: torchOnAttack }, configureEntity: configureTorchEntity, createLifecycle: createTorchHandLifecycle },
   lantern: { visual: lanternVisual, tags: ['light'], maxFuel: LANTERN_FUEL, configureEntity: configureLanternEntity, createLifecycle: createLanternHandLifecycle },
   yellowstaff: { visual: yellowstaffVisual, tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
@@ -130,9 +130,9 @@ export function configureEquipmentEntity(entity: ItemEntity): void {
   }
 }
 
-export function getHandEquipmentDefinition(itemId: string): { carryItem: WilsonCarryItem; definition: HandEquipmentDefinition } | undefined {
+export function getHandEquipmentDefinition(itemId: string): { carryItem: PlayerCarryItem; definition: HandEquipmentDefinition } | undefined {
   if (!Object.hasOwn(definitions, itemId)) return undefined;
-  const carryItem = itemId as WilsonCarryItem;
+  const carryItem = itemId as PlayerCarryItem;
   return { carryItem, definition: definitions[carryItem] };
 }
 

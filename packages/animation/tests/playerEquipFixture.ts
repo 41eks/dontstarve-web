@@ -2,7 +2,7 @@ import { ItemEntityRegistry, type InventoryStore, type ItemEntity } from '../../
 import type { EquipmentOwner } from '../../signals/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
-import type { WilsonPlayerInstance } from '../../prefab/src/player';
+import type { PlayerInstance } from '../../prefab/src/player_common';
 
 type Kind = 'hand' | 'head' | 'body';
 const ESLOTS: Readonly<Record<Kind, string>> = { hand: 'HANDS', head: 'HEAD', body: 'BODY' };
@@ -11,7 +11,7 @@ const ESLOTS: Readonly<Record<Kind, string>> = { hand: 'HANDS', head: 'HEAD', bo
  * The player as equipment owner, as main.ts's actor is: equip/unequip reach SGwilson, and OpenEquipmentView gives each
  * equipped inst its slot of the player's sprite. `base` adds the owner's other capabilities.
  */
-export function playerEquipmentOwner(animation: Pick<WilsonPlayerInstance, 'equipmentPresentation' | 'sg'>,
+export function playerEquipmentOwner(animation: Pick<PlayerInstance, 'equipmentPresentation' | 'sg'>,
   base: Partial<EquipmentOwner> & Record<string, unknown> = {}): EquipmentOwner {
   const owner: EquipmentOwner = {
     ...base,
@@ -25,7 +25,7 @@ export function playerEquipmentOwner(animation: Pick<WilsonPlayerInstance, 'equi
 }
 
 /** Binds an inventory's actor to the player owner, so its committed equips draw on the player. */
-export function bindPlayerEquipment(inventory: InventoryStore, animation: Pick<WilsonPlayerInstance, 'equipmentPresentation' | 'sg'>,
+export function bindPlayerEquipment(inventory: InventoryStore, animation: Pick<PlayerInstance, 'equipmentPresentation' | 'sg'>,
   base: Record<string, unknown> = {}): EquipmentOwner {
   const owner = playerEquipmentOwner(animation, { hasTag: () => false, GetPosition: () => ({ x: 0, y: 0, z: 0 }), ...base });
   inventory.bindActor(owner as unknown as Parameters<InventoryStore['bindActor']>[0]);
@@ -36,7 +36,7 @@ export function bindPlayerEquipment(inventory: InventoryStore, animation: Pick<W
  * Equips a fresh, configured inst of a prefab on the player without an inventory, the way inventory:Equip calls
  * equippable:Equip(owner) and pushes "equip"; the slot's previous inst is unequipped first.
  */
-export function createPlayerEquipper(animation: Pick<WilsonPlayerInstance, 'equipmentPresentation' | 'sg'>) {
+export function createPlayerEquipper(animation: Pick<PlayerInstance, 'equipmentPresentation' | 'sg'>) {
   const registry = new ItemEntityRegistry();
   const owner = playerEquipmentOwner(animation);
   const worn = new Map<Kind, ItemEntity>();

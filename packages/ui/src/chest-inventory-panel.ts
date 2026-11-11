@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { DstChestPanelElement } from './chest-panel';
 import type { EntitySlots } from './slot/slot-binding';
 import { buildingContainerDefinition, containerPanelAnchor, type ContainerPanelAnchor, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
-import { PLAYER_COLLIDER_RADIUS } from '@dontstarve-web/prefab/player';
+import { PLAYER_COLLIDER_RADIUS } from '@dontstarve-web/prefab/player_common';
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { SlotItem } from './slot/slot-model';

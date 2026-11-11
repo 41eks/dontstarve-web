@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HeadSlot, BodySlot, equipmentSlotAddress, inventorySlotAddress } from '@dontstarve-web/inventory';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { bindPlayerEquipment } from './playerEquipFixture';
-import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
+import { playerInst, createPlayer } from './playerVisual';
 import { resolveAnimState, resolveAnimStateSymbol } from '../src/animState';
 import { declaredAnimState, element } from './animStateFixture';
 
@@ -12,8 +12,8 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('equips through equippable onequip/onunequip after restore/transfer and releases head/body art independently', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player);
+  const player = await createPlayer('/dst/data/anim');
+  const animation = playerInst(player);
   const head = equipmentSlotAddress('head'), body = equipmentSlotAddress('body'), bag = inventorySlotAddress(0);
   const store = new InventoryStore([
     { address: head, slot: new HeadSlot() }, { address: body, slot: new BodySlot() }, { address: bag, slot: new InventorySlot() },
@@ -21,7 +21,7 @@ it('equips through equippable onequip/onunequip after restore/transfer and relea
   // inventory:Equip calls equippable:Equip with the player, whose view gives each item its slot of the sprite.
   bindPlayerEquipment(store, animation);
   // What the player's display draws for the symbol: it loads the named builds itself.
-  const sprite = wilsonPlayerInstance(player).sprite;
+  const sprite = playerInst(player).sprite;
   const symbol = (name: string) => resolveAnimStateSymbol(resolveAnimState(declaredAnimState(sprite).json.peek(), animation.equipmentAssets).state, element(name), 0);
   // Equipping declares a slot on the player's sprite, so an unchanged appearance means nothing was equipped again.
   const appearance = () => sprite.sprite.peek().appearance;

@@ -8,7 +8,7 @@ import {
   createMultiplayerPortalStateGraph, type MultiplayerPortalSound, type MultiplayerPortalStateInst,
 } from '../../stategraphs/src/SGmultiplayerportal';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { RezSource } from './player_common';
+import type { RezSource } from './player_common_extensions';
 import type { SoundEventPath } from './sound';
 import type { SoundEmitter } from './soundEmitter';
 import { TILE_SIZE } from './tile';

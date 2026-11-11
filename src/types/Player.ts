@@ -1,1 +1,1 @@
-export type { PlayerBody } from '@dontstarve-web/prefab/player';
+export type { PlayerBody } from '@dontstarve-web/prefab/player_common';

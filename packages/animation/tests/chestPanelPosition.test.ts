@@ -8,7 +8,7 @@ import { MakeBuildingContainer } from '../../prefab/src/building';
 import { DefaultBurntStructureFn } from '../../prefab/src/standardcomponents';
 import type { PrefabWorldContext } from '../../prefab/src/worldContext';
 import { withEntity } from './entityFixture';
-import { PLAYER_COLLIDER_RADIUS } from '../../prefab/src/player';
+import { PLAYER_COLLIDER_RADIUS } from '../../prefab/src/player_common';
 import { createChestInventoryPanel } from '../../ui/src/chest-inventory-panel';
 import type { DstChestPanelElement } from '../../ui/src/chest-panel';
 
