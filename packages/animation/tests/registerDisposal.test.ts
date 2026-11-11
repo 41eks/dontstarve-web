@@ -17,7 +17,7 @@ vi.mock('../../../src/animate', () => ({
 }));
 vi.mock('@dontstarve-web/ui', () => ({
   createChestInventoryPanel: vi.fn(() => ({
-    setOpen: vi.fn(), bindActions: vi.fn(), dispose: vi.fn(),
+    open: vi.fn(), close: vi.fn(), bindActions: vi.fn(), dispose: vi.fn(),
   })),
 }));
 vi.mock('../../../src/emoteWheel', () => ({ setupEmoteWheel: vi.fn(() => vi.fn()) }));
@@ -88,8 +88,8 @@ it('creates panels before scene initialization and owns subscriptions until expl
     expect(panels).toHaveLength(3);
     expect(panelTasks).toEqual([]);
     expect(subscribeReceived).not.toHaveBeenCalled();
-    resources.setContainerOpen('cookpot', player, true);
-    expect(panels[1].setOpen).toHaveBeenCalledWith(player, true, 'cookpot');
+    resources.setContainerOpen('cookpot', player, false);
+    expect(panels[1].close).toHaveBeenCalledWith(player);
     const scene = { buildingPlacement: {} } as Parameters<typeof resources.register>[1];
     expect(resources.register(events, scene)).toBeUndefined();
     expect(subscribeReceived).toHaveBeenCalledOnce();

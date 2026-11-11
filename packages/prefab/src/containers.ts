@@ -46,6 +46,9 @@ export interface BuildingContainerDefinition {
     slotGrid?: { x: number; y: number; columnSpacing: number; rowSpacing: number };
 }
 
+/** Where a container's panel sits on screen; this project's layout, with no counterpart in containers.lua. */
+export type ContainerPanelAnchor = 'player-top' | 'player-right' | 'building-right';
+
 export const STORAGE_BUILDING_IDS = [
     'treasurechest', 'pandoraschest', 'icebox', 'cookpot', 'dragonflychest', 'saltbox', 'mushroom_light', 'mushroom_light2', 'bookstation',
 ] as const;
@@ -57,6 +60,14 @@ export function isStorageBuildingId(value: string): value is StorageBuildingId {
 
 export function buildingContainerDefinition(prefab: StorageBuildingId): BuildingContainerDefinition {
     return definitions.animatedBuildings[prefab].container;
+}
+
+const PANEL_ANCHORS: Partial<Record<StorageBuildingId, ContainerPanelAnchor>> = {
+    cookpot: 'player-right', mushroom_light: 'building-right', mushroom_light2: 'building-right',
+};
+
+export function containerPanelAnchor(prefab: StorageBuildingId): ContainerPanelAnchor {
+    return PANEL_ANCHORS[prefab] ?? 'player-top';
 }
 
 export function buildingContainerId(prefab: StorageBuildingId, entityId: string): string {

@@ -16,7 +16,7 @@ import { modelHasTag, prefabInstance } from '../packages/prefab/src/prefabInstan
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import type { WilsonAnimationController } from '@dontstarve-web/prefab/player';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
-import type { StorageBuildingId } from '@dontstarve-web/prefab/containers';
+import { buildingContainerId, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
 import type { BookWorld } from '@dontstarve-web/prefab/books';
 import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { registerFrontTask } from './animate';
@@ -100,14 +100,17 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
   const camera = view.camera;
   const renderer = view.renderer;
   const statusHud = gameUi.statusHud;
-  const inventoryPanelOptions = { camera, canvas: renderer.domElement, player, getWatchWorldContent: watchWorldContent, toItem: inventorySlotItem };
+  const closeContainer = (model: Object3D) => prefabInstance(model)?.components.container?.Close(prefabInstance(player) ?? player);
+  const inventoryPanelOptions = { camera, canvas: renderer.domElement, player, getWatchWorldContent: watchWorldContent, toItem: inventorySlotItem, closeContainer };
   const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel, inventoryPanelOptions);
-  const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, inventoryPanelOptions, 'cookpot');
-  const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, inventoryPanelOptions, 'icebox');
+  const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, inventoryPanelOptions);
+  const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, inventoryPanelOptions);
   return {
     setContainerOpen(buildId: StorageBuildingId, model: Object3D, isOpen: boolean): void {
-      (buildId === 'cookpot' ? cookPotInventoryPanel : buildId === 'icebox' ? iceBoxInventoryPanel : chestInventoryPanel)
-        .setOpen(model, isOpen, buildId);
+      const panel = buildId === 'cookpot' ? cookPotInventoryPanel : buildId === 'icebox' ? iceBoxInventoryPanel : chestInventoryPanel;
+      if (!isOpen) { panel.close(model); return; }
+      const instance = prefabInstance(model), slots = instance?.components.container?.slots;
+      if (instance && slots) panel.open(model, buildId, { containerId: buildingContainerId(buildId, String(instance.entityId)), slots });
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
       const { buildingPlacement, worldFx, scheduler, weather, moon, getWatchWorldContent } = scene;

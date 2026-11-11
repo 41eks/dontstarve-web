@@ -1,7 +1,7 @@
-import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import type { DstChestPanelElement } from './chest-panel';
-import { buildingContainerId, buildingContainerDefinition, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
+import type { EntitySlots } from './slot/slot-binding';
+import { buildingContainerDefinition, containerPanelAnchor, type ContainerPanelAnchor, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
 import { PLAYER_COLLIDER_RADIUS } from '@dontstarve-web/prefab/player';
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
 import type { ItemEntity } from '@dontstarve-web/inventory';
@@ -16,8 +16,15 @@ const ANCHOR_MARGIN = 1;
 const PLAYER_HEIGHT_RADII = 3.6;
 const PLAYER_HALF_WIDTH_RADII = 2.5;
 
+/** The container a panel shows: its address and the slots the panel mirrors. */
+export interface ChestPanelContents {
+  containerId: string;
+  slots: EntitySlots<ItemEntity>;
+}
+
 export interface ChestInventoryPanelController {
-  setOpen(model: THREE.Object3D, isOpen: boolean, prefab?: StorageBuildingId): void;
+  open(model: THREE.Object3D, prefab: StorageBuildingId, contents: ChestPanelContents): void;
+  close(model: THREE.Object3D): void;
   bindActions(dispatcher: { performContainerAction(model: THREE.Object3D, action: 'COOK', doer: object): boolean }): void;
   dispose(): void;
 }
@@ -29,12 +36,13 @@ export interface ChestInventoryPanelOptions {
   /** The anchor follows the world's player positions, which are published once per 60 active frames. */
   getWatchWorldContent: GetWatchWorldContent;
   toItem?: (item: ItemEntity) => SlotItem;
+  /** The player closed the panel: the owner closes the model's container. */
+  closeContainer: (model: THREE.Object3D) => void;
 }
 
 export function createChestInventoryPanel(
   element: DstChestPanelElement,
-  { camera, canvas, player, getWatchWorldContent, toItem }: ChestInventoryPanelOptions,
-  prefab: StorageBuildingId = 'treasurechest',
+  { camera, canvas, player, getWatchWorldContent, toItem, closeContainer }: ChestInventoryPanelOptions,
 ): ChestInventoryPanelController {
   const bounds = new THREE.Box3();
   // Animated frames change the model's bounds every frame, so measure once per opening and follow the model's position.
@@ -42,8 +50,7 @@ export function createChestInventoryPanel(
   const origin = new THREE.Vector3();
   const anchor = new THREE.Vector3();
   let openModel: THREE.Object3D | undefined;
-  let openPrefab = prefab;
-  let stopBurnt: (() => void) | undefined;
+  let panelAnchor: ContainerPanelAnchor = 'player-top';
   let actions: { performContainerAction(model: THREE.Object3D, action: 'COOK', doer: object): boolean } | undefined;
   const cook = (event: Event) => {
     const { containerId } = (event as CustomEvent<CookRequestDetail>).detail;
@@ -58,7 +65,7 @@ export function createChestInventoryPanel(
       return;
     }
 
-    if (openPrefab.startsWith('mushroom_light')) {
+    if (panelAnchor === 'building-right') {
       // Static model: measure its animated bounds once per opening and follow its position.
       openModel.updateWorldMatrix(true, true);
       openModel.getWorldPosition(origin);
@@ -85,7 +92,7 @@ export function createChestInventoryPanel(
       bounds.max.y + ANCHOR_MARGIN,
       (bounds.min.z + bounds.max.z) / 2,
     ).project(camera);
-    if (openPrefab === 'cookpot' || openPrefab.startsWith('mushroom_light')) {
+    if (panelAnchor !== 'player-top') {
       // Project all box corners so the panel stays to the sprite's screen-right
       // even when the camera heading changes.
       let right = -Infinity;
@@ -117,8 +124,7 @@ export function createChestInventoryPanel(
   const playerpositions = getWatchWorldContent(WorldContentKey.PlayerPositions, stop => cleanups.push(stop));
   createEffect(() => { playerpositions.get(); update(); });
   const close = () => {
-    stopBurnt?.(); stopBurnt = undefined;
-    prefabInstance(openModel)?.components.container?.Close(prefabInstance(player) ?? player);
+    if (openModel) closeContainer(openModel);
     if (!element.isClosing) {
       openModel = undefined;
       element.hidden = true;
@@ -130,37 +136,31 @@ export function createChestInventoryPanel(
     bindActions(dispatcher) { actions = dispatcher; },
     dispose() {
       cleanups.forEach(stop => stop());
-      stopBurnt?.(); stopBurnt = undefined;
       element.removeEventListener('game:cook-request', cook);
       element.removeEventListener('game:chest-close', close);
       actions = undefined; openModel = undefined;
     },
-    setOpen(model, isOpen, buildingPrefab = prefab) {
-      if (isOpen) {
-        if (prefabInstance(model)?.hasTag('burnt')) return;
-        if (openModel !== model && element.slotContainer) element.close();
-        stopBurnt?.(); stopBurnt = undefined;
-        openModel = model;
-        bounds0.makeEmpty();
-        openPrefab = buildingPrefab;
-        const container = buildingContainerDefinition(buildingPrefab);
-        element.open({
-          containerId: buildingContainerId(buildingPrefab, String(prefabInstance(model)?.entityId)),
-          slotCount: container.slotCount,
-          columns: container.columns,
-          panelArchive: container.panelArchive,
-          slotGrid: container.slotGrid,
-          singleItems: container.singleItems,
-          title: definitions.animatedBuildings[buildingPrefab].buildLabel,
-        });
-        const component = prefabInstance(model)?.components.container;
-        if (component && toItem) element.bindContainer(component.slots, toItem);
-        const onBurnt = () => element.close();
-        stopBurnt = prefabInstance(model)?.ListenForEvent('burntup', onBurnt);
-      } else if (openModel === model) {
-        stopBurnt?.(); stopBurnt = undefined;
-        element.close();
-      }
+    open(model, prefab, { containerId, slots }) {
+      // One element shows one container at a time.
+      if (openModel !== model && element.slotContainer) element.close();
+      openModel = model;
+      bounds0.makeEmpty();
+      const container = buildingContainerDefinition(prefab);
+      panelAnchor = containerPanelAnchor(prefab);
+      element.open({
+        containerId,
+        slotCount: container.slotCount,
+        columns: container.columns,
+        panelArchive: container.panelArchive,
+        slotGrid: container.slotGrid,
+        singleItems: container.singleItems,
+        title: definitions.animatedBuildings[prefab].buildLabel,
+      });
+      if (toItem) element.bindContainer(slots, toItem);
+      update();
+    },
+    close(model) {
+      if (openModel === model) element.close();
       update();
     },
   };
