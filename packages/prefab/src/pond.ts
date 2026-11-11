@@ -38,7 +38,6 @@ export interface PondWorld {
 
 interface PondComponents extends PrefabComponents {
   fishable?: Fishable;
-  slipperyfeettarget?: SlipperyFeetTarget;
 }
 
 /** pond.lua's commonfn("") and pondfrog(): marsh_tile art, fishable pondfish, and frozen following snowlevel. */
@@ -105,7 +104,7 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
       const position = new Vector3(this.position.x + offset[0] * WORLD_SCALE, 0, this.position.z + offset[2] * WORLD_SCALE);
       const plant = this.spawnPrefab?.(MARSH_PLANT_ID, position);
       if (!plant) continue;
-      plant.entityParent = this as PrefabInstance<SpriteState, object>;
+      plant.entityParent = this;
       plant.persists = false;
       this.plant_ents.push(plant);
     }

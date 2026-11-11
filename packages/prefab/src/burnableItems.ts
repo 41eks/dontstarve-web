@@ -4,7 +4,6 @@ import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontst
 import { createArchiveEntity } from './prefabInstance';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
-import type { BurnableInst } from '../../componets/src/burnable';
 import type { ItemPrefabWorld } from './groundPrefab';
 import { GROUND_ART_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -62,7 +61,7 @@ export class BurnableItemController {
     this.burnable.SetBurnTime(burnTime + Math.random() * burnTimeVariance);
     // MakeSmallPropagator; propagator.lua OnUpdate: TheSim:FindEntities(x, y, z, prop_range, nil, TARGET_CANT_TAGS).
     this.propagator = addComponent(entity, 'propagator', Propagator, 'small', radius =>
-      entity.TheSim.FindEntities(entity.position, radius, undefined, PROPAGATOR_CANT_TAGS) as unknown as BurnableInst[],
+      entity.TheSim.FindEntities(entity.position, radius, undefined, PROPAGATOR_CANT_TAGS),
     TILE_SIZE / 4, scheduler);
     this.burnable.SetOnIgniteFn(() => { entity.persists = false; }); // DefaultBurnFn
     this.burnable.SetOnExtinguishFn(() => { entity.persists = true; }); // DefaultExtinguishFn

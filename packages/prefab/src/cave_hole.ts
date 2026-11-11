@@ -78,7 +78,7 @@ export class CaveHoleInstance extends PrefabInstance {
 
     // CreateSurfaceAnim: a non-networked child that is never saved.
     const surface = world.spawnPrefab(CAVE_HOLE_SURFACE_ID, position);
-    surface.entityParent = this as PrefabInstance<SpriteState, object>;
+    surface.entityParent = this;
 
     const playerprox = addComponent(this, 'playerprox', PlayerProx, world.getWatchWorldContent);
     playerprox.SetDist(OUTER_RADIUS * WORLD_SCALE, OUTER_RADIUS * WORLD_SCALE);

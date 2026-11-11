@@ -128,7 +128,7 @@ export async function startScene(
     throw error;
   }
   const builder = bindPlayerBuilder(player, {
-    findEntities: (position, radius, mustTags, cantTags) => prefabs.FindEntities(position, radius, mustTags, cantTags) as never,
+    findEntities: (position, radius, mustTags, cantTags) => prefabs.FindEntities(position, radius, mustTags, cantTags),
     entitiesChanged: prefabs.entitiesChanged,
     getWatchWorldContent: worldState.getWatchWorldContent,
   });

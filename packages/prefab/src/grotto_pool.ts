@@ -122,7 +122,7 @@ export class GrottoPoolInstance extends PrefabInstance {
     // DoTaskInTime(0, makebigmist / makesmallmist), DoTaskInTime(0, register_pool), and after OnLoadPostPass DoTaskInTime(0, setup_children).
     this.DoTaskInTime(0, () => {
       mist = world.spawnPrefab(GROTTO_POOL_MIST_ID, this.position);
-      mist.entityParent = this as PrefabInstance;
+      mist.entityParent = this;
       mist.sprite.start(big ? 'steam_big' : `steam_small${1 + Math.floor(Math.random() * 2)}`);
       stopSound = world.registerWaterfallPool(this.transform.model.position, POOL_RADIUS[prefab], big);
       on_load_postpass(this, world);

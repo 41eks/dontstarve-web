@@ -98,7 +98,7 @@ export class AtriumGateInstance extends PrefabInstance {
         }
       }
     }
-    for (const child of children) child.entityParent = this as PrefabInstance<SpriteState, object>;
+    for (const child of children) child.entityParent = this;
     InitializePathFinding(this, world.pathfinder);
 
     // A new pickable has no product until OnKeyGiven's SetUp: nothing to pick.
@@ -154,7 +154,7 @@ function SetMiniMapIcon(inst: AtriumGateInstance): void {
 function ShowFx(inst: AtriumGateInstance, state: 'idle' | 'overload'): void {
   if (!inst._gatefx) {
     const fx = inst._gatefx = inst.world.spawnPrefab(ATRIUM_GATE_ACTIVATEDFX_ID, inst.position) as AtriumGateFxInstance;
-    fx.entityParent = inst as PrefabInstance<SpriteState, object>;
+    fx.entityParent = inst;
   }
   inst._gatefx.SetFX(state);
 }

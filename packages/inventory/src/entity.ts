@@ -306,7 +306,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.flush();
     const { entityId: _id, ...stack } = this.snapshot(false);
     const data: import('../../prefab/src/saveRecord').PlacementSaveRecord['components'] = { stack };
-    this.OnSave?.(this as unknown as PrefabInstance, data);
+    this.OnSave?.(this, data);
     return data;
   }
   /** SpawnSaveRecord: the stack record restores the item's components, then the prefab's OnLoad runs. */
@@ -315,7 +315,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
       this.apply({ ...data.stack, itemId: this.prefab, entityId: this.id });
       if (data.stack.container) this.components.container?.OnLoad(data.stack.container);
     }
-    this.OnLoad?.(this as unknown as PrefabInstance, data);
+    this.OnLoad?.(this, data);
   }
 
   GetIsWet(): boolean { return this.wetState.peek(); }

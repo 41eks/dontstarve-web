@@ -183,7 +183,7 @@ function portalfn(world: ArchivePropsWorld, position: ReadonlyVector3): PrefabIn
   inst.addTag('blocker');
   const shadow = world.spawnPrefab(ARCHIVE_PORTAL_SHADOW_ID, position);
   // entity:SetParent: the shadow retires with the portal.
-  shadow.entityParent = inst as PrefabInstance<SpriteState, object>;
+  shadow.entityParent = inst;
   return inst;
 }
 

@@ -99,7 +99,7 @@ export function AddSlipperyFeet(inst: PlayerInstance): void {
     sg,
   }, {
     scheduler: inst.scheduler,
-    findSlipperyEntities: (position, radius) => inst.TheSim.FindEntities(position, radius, ['slipperyfeettarget']) as never,
+    findSlipperyEntities: (position, radius) => inst.TheSim.FindEntities(position, radius, ['slipperyfeettarget']),
   });
 }
 

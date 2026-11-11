@@ -25,7 +25,7 @@ export type PanfluteInstrument = Instrument<PanfluteMusician, PanfluteListener>;
 
 /** instrument.lua Play: TheSim:FindEntities(x, y, z, self.range, nil, {"FX", "DECOR", "INLIMBO"}) at the musician. */
 const findListeners = (musician: PanfluteMusician, range: number) =>
-  musician.TheSim.FindEntities(musician.getPosition(), range * TILE_SIZE / 4, undefined, ['FX', 'DECOR', 'INLIMBO']) as unknown as PanfluteListener[];
+  musician.TheSim.FindEntities(musician.getPosition(), range * TILE_SIZE / 4, undefined, ['FX', 'DECOR', 'INLIMBO']);
 
 /**
  * panflute.lua HearPanFlute for the ported branches: sleepers that are not players fall asleep.

@@ -108,7 +108,7 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
     for (const { rocktype, offset } of this.rocksState.peek()!) {
       const position = new Vector3(this.position.x + offset[0] * WORLD_SCALE, 0, this.position.z + offset[2] * WORLD_SCALE);
       const rock = this.world.spawnPrefab(`lava_pond_rock${rocktype}`, position);
-      rock.entityParent = this as PrefabInstance<SpriteState, object>;
+      rock.entityParent = this;
       rock.persists = false;
       this.rock_ents.push(rock);
     }

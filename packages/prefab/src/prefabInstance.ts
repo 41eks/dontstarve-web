@@ -55,6 +55,8 @@ export interface PrefabComponents extends ActionComponents {
   floater?: import('../../componets/src/ruinsrelicSignatures').Floater;
   furnituredecor?: import('../../componets/src/ruinsrelicSignatures').FurnitureDecor;
   inventoryitemmoisture?: import('../../componets/src/ruinsrelicSignatures').InventoryItemMoisture;
+  /** What slipperyfeet's TheSim:FindEntities reads from each surface it finds, such as a frozen pond. */
+  slipperyfeettarget?: import('../../componets/src/slipperyfeettarget').SlipperyFeetTarget;
 }
 
 /** An entity whose events others listen for. */
@@ -64,7 +66,7 @@ type EventEntity = PrefabInstance<ArchiveSpriteCommands, object>;
  * check it, so a listener written for a narrower inst can be registered.
  */
 export type EntityEventListener<Inst = EventEntity> = { call(inst: Inst, data: unknown): void }['call'];
-type StoredListener = (inst: never, data: unknown) => void;
+type StoredListener = EntityEventListener;
 /** event_listeners / event_listening: per event, per entity on the other side, its fns in registration order. */
 type ListenerTable = Map<string, Map<EventEntity, StoredListener[]>>;
 
@@ -170,7 +172,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   readonly persistence = readonlySignal(this.persistsState);
   get persists(): boolean { return this.persistence.peek(); }
   set persists(value: boolean) { this.persistsState.set(value); }
-  private engineParent?: PrefabInstance<SpriteState, object>;
+  private engineParent?: EventEntity;
   /** The entities parented to this one with entity:SetParent, which retire with it. */
   private engineChildren?: Set<EventEntity>;
   /**
@@ -178,11 +180,11 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
    * its parent. The engine's own removal is not in the scripts; that it removes parented entities is read from them:
    * vault_pillar's CreateBottom, pond's plants and lava_pond's rocks are parented and never removed by script.
    */
-  get entityParent(): PrefabInstance<SpriteState, object> | undefined { return this.engineParent; }
-  set entityParent(parent: PrefabInstance<SpriteState, object> | undefined) {
-    this.engineParent?.engineChildren?.delete(this as EventEntity);
+  get entityParent(): EventEntity | undefined { return this.engineParent; }
+  set entityParent(parent: EventEntity | undefined) {
+    this.engineParent?.engineChildren?.delete(this);
     this.engineParent = parent;
-    if (parent) (parent.engineChildren ??= new Set()).add(this as EventEntity);
+    if (parent) (parent.engineChildren ??= new Set()).add(this);
   }
   /** inst.parent: the entity whose AddChild made this one its child; its Remove removes this one. */
   parent?: EventEntity;
@@ -199,9 +201,9 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   /** The greenstaff's view of this structure (MakeDeconstructable); loot and removal follow the recipe and the entity. */
   deconstructionTarget?: import('./staff').DeconstructionTarget;
   /** inst.OnSave(inst, data): the prefab writes its own state into the record's components. */
-  OnSave?(inst: PrefabInstance, data: PlacementSaveRecord['components']): void;
+  OnSave?(inst: this, data: PlacementSaveRecord['components']): void;
   /** inst.OnLoad(inst, data): the prefab restores its own state from the record's components. */
-  OnLoad?(inst: PrefabInstance, data: PlacementSaveRecord['components']): void;
+  OnLoad?(inst: this, data: PlacementSaveRecord['components']): void;
   /** EntityScript:GetPersistData: each component's OnSave under its name, then inst.OnSave. */
   GetPersistData(): PlacementSaveRecord['components'] {
     const data: Record<string, unknown> = {};
@@ -209,14 +211,14 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
       const saved = component?.OnSave?.();
       if (saved && typeof saved === 'object' && Object.keys(saved).length) data[name] = saved;
     }
-    this.OnSave?.(this as unknown as PrefabInstance, data);
+    this.OnSave?.(this, data);
     return data;
   }
   /** EntityScript:SetPersistData: each saved component's OnLoad, then inst.OnLoad. */
   SetPersistData(data: PlacementSaveRecord['components']): void {
     const components = this.components as Record<string, { OnLoad?(saved: unknown): void } | undefined>;
     for (const [name, saved] of Object.entries(data)) components[name]?.OnLoad?.(saved);
-    this.OnLoad?.(this as unknown as PrefabInstance, data);
+    this.OnLoad?.(this, data);
   }
   private readonly removedState = createSignal(false);
   readonly removal: ReadonlySignal<boolean> = readonlySignal(this.removedState);
@@ -320,7 +322,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
    */
   PushEvent(event: string, data?: unknown): void {
     const listeners = this.event_listeners?.get(event);
-    if (listeners) for (const fn of [...listeners.values()].flat()) fn(this as never, data);
+    if (listeners) for (const fn of [...listeners.values()].flat()) fn(this, data);
     // conventions-allow sg-forward: EntityScript:PushEvent's own forward to inst.sg.
     if (this.sg?.isListeningForEvent(event)) this.sg.pushEvent(event, data);
     this.brain?.PushEvent(event, data);
@@ -332,7 +334,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
    */
   ListenForEvent(event: string, fn: EntityEventListener<this>): () => void;
   ListenForEvent<Source extends EventEntity>(event: string, fn: EntityEventListener<Source>, source: Source): () => void;
-  ListenForEvent(event: string, fn: StoredListener, source: EventEntity = this): () => void {
+  ListenForEvent(event: string, fn: EntityEventListener<never>, source: EventEntity = this): () => void {
     addListener(source.event_listeners ??= new Map(), event, this, fn);
     addListener(this.event_listening ??= new Map(), event, source, fn);
     return () => this.RemoveEventCallback(event, fn, source);
@@ -340,8 +342,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   /** EntityScript:RemoveEventCallback(event, fn, source). */
   RemoveEventCallback(event: string, fn: EntityEventListener<never>, source: EventEntity = this): void {
-    removeListener(source.event_listeners, event, this, fn as StoredListener);
-    removeListener(this.event_listening, event, source, fn as StoredListener);
+    removeListener(source.event_listeners, event, this, fn);
+    removeListener(this.event_listening, event, source, fn);
   }
 
   /** EntityScript:RemoveAllEventCallbacks: what this entity listens for elsewhere, and what listens for it. */
@@ -497,14 +499,14 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   }
 
   /** inst.OnRemoveEntity(inst): the prefab's own teardown, after its components' and its children's. */
-  OnRemoveEntity?(inst: PrefabInstance): void;
+  OnRemoveEntity?(inst: this): void;
 
   /** EntityScript:AddChild: `child` leaves its old parent, is parented here and is removed with this entity. */
   AddChild(child: EventEntity): void {
     child.parent?.RemoveChild(child);
-    child.parent = this as EventEntity;
+    child.parent = this;
     (this.children ??= new Set()).add(child);
-    child.entityParent = this as unknown as PrefabInstance<SpriteState, object>;
+    child.entityParent = this;
   }
 
   /** EntityScript:RemoveChild. */
@@ -522,7 +524,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   remove(): void {
     if (this.removing || this.lifecycle.peek() === 'removed') return;
     this.removing = true;
-    this.parent?.RemoveChild(this as EventEntity);
+    this.parent?.RemoveChild(this);
     this.PushEvent('onremove');
     this.RemoveAllEventCallbacks();
     this.CancelAllPendingTasks();
@@ -537,10 +539,10 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
       child.parent = undefined;
       child.remove();
     }
-    this.OnRemoveEntity?.(this as unknown as PrefabInstance);
+    this.OnRemoveEntity?.(this);
     this.persists = false;
     // entity:Retire
-    this.engineParent?.engineChildren?.delete(this as EventEntity);
+    this.engineParent?.engineChildren?.delete(this);
     const engineChildren = this.engineChildren;
     this.engineChildren = undefined;
     for (const child of engineChildren ?? []) child.remove();
