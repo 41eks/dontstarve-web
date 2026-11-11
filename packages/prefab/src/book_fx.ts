@@ -38,7 +38,7 @@ class FxInst implements WilsonFx {
     }), { name: definition.anim }, prefab, instance => {
       instance.addTag('FX');
       instance.persists = false;
-      instance.sprite.setArtSource({ animationArchive: definition.archive, bank: definition.bank,
+      instance.sprite.setArtSource({ animationArchives: [definition.archive], bank: definition.bank,
         buildArchive: definition.archive, art: owner.resources.archives });
       instance.sprite.playOnce(definition.anim);
       instance.sprite.setFacing(owner.instance.sprite.sprite.peek().facing ?? 8);

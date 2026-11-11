@@ -33,11 +33,16 @@ it('creates the logical player and body synchronously and completes actions and 
     expect(model.visible).toBe(false);
     instance.sprite.setVisible(true); await tick();
     expect(model.visible).toBe(true);
+    advancePlayer(animation, 1 / 30);
+    // The idles and the book's clips are in different anim archives of the one declared bank: no art switch between them.
+    const living = instance.sprite.sprite.peek().source;
+    expect(living).toMatchObject({ bank: 'wilson', buildArchive: 'dynamic/wortox.zip' });
     const read = vi.fn(() => true);
     const book = { prefab: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' }, hasTag: () => false };
     expect(animation.stategraph.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }))).toBe(true);
     for (let frame = 0; frame < 60 && animation.stategraph.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
     expect(animation.stategraph.stateName).toBe('book2');
+    expect(instance.sprite.sprite.peek().source).toBe(living);
     const fx = [...instance.sprite.fx.peek().values()];
     expect(fx).toHaveLength(2);
     instance.setActive(false); await tick();
@@ -47,12 +52,14 @@ it('creates the logical player and body synchronously and completes actions and 
     for (const child of fx) expect(child.display!.isRemoved).toBe(true);
     animation.makeGhost(true);
     expect(animation.isGhost).toBe(true);
+    advancePlayer(animation, 1 / 30);
+    expect(instance.sprite.sprite.peek().source).toMatchObject({ bank: 'ghost', buildArchive: 'dynamic/ghost_wortox_build.zip' });
     animation.makeAlive();
     for (let frame = 0; frame < 120; frame++) advancePlayer(animation, 1 / 30);
     expect(animation.isGhost).toBe(false);
     instance.setActive(true); await tick();
     const latest = instance.sprite.sprite.peek();
-    expect(latest.source).toMatchObject({ animationArchive: 'player_idles.zip', buildArchive: 'dynamic/wortox.zip' });
+    expect(latest.source).toMatchObject({ bank: 'wilson', buildArchive: 'dynamic/wortox.zip' });
     release(); await display.artLoaded();
     expect(instance.sprite.sprite.peek()).toBe(latest);
     expect(model.getObjectByProperty('isMesh', true)).toBeDefined();

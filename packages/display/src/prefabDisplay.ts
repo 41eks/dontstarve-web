@@ -498,21 +498,23 @@ export class PrefabDisplay {
   }
 
   private async loadSource(source: NamedSpriteArt): Promise<void> {
-    await Promise.all([source.art.loadAnimation(source.animationArchive),
+    await Promise.all([...source.animationArchives.map(archive => source.art.loadAnimation(archive)),
       ...[source.buildArchive, ...source.fallbackBuilds ?? []].map(archive => source.art.loadBuild(archive))]);
   }
 
   private resolveSource(source: SpriteSourceJson | undefined): SpriteArtSource | undefined {
     if (!source || !('art' in source)) return source;
     if (this.sourceArt?.declaration === source) return this.sourceArt.value;
-    const animations = source.art.peekAnimation(source.animationArchive), build = source.art.peekBuild(source.buildArchive);
+    const banks = source.animationArchives.map(archive => source.art.peekAnimation(archive)), build = source.art.peekBuild(source.buildArchive);
     const fallbacks = (source.fallbackBuilds ?? []).map(archive => source.art.peekBuild(archive));
-    if (animations && build && fallbacks.every(value => value !== undefined)) {
+    if (banks.every(value => value !== undefined) && build && fallbacks.every(value => value !== undefined)) {
+      // One bank across every declared archive, as the engine resolves a clip name.
+      const animations = banks.length === 1 ? banks[0]! : { animations: banks.flatMap(bank => bank!.animations) };
       return (this.sourceArt = { declaration: source, value: { animations, build, bank: smallHash(source.bank),
         fallbackBuilds: fallbacks as NonNullable<SpriteArtSource['fallbackBuilds']> } }).value;
     }
     if (this.engine.loaded) {
-      const key = `source:${JSON.stringify([source.animationArchive, source.buildArchive, source.fallbackBuilds])}`;
+      const key = `source:${JSON.stringify([source.animationArchives, source.buildArchive, source.fallbackBuilds])}`;
       if (!this.loadingArt.has(key)) {
         this.loadingArt.add(key);
         void this.loadSource(source).then(() => {

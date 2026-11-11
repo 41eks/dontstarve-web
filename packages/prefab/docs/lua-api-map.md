@@ -29,7 +29,7 @@
 | --- | --- | --- | --- |
 | `SetBank`、`SetBuild`（固定） | 定义的 `assets: { animationArchive, buildArchives, bank }` | `atrium_pillar.ts` | |
 | `SetBank`、`SetBuild`（按实例，构造或读档时定） | 定义的 `instanceAssets(inst)` | `archive_pillar.ts` | |
-| `SetBank`、`SetBuild`（运行中切换） | `sprite.setArtSource(...)` | `fence.ts` | |
+| `SetBank`、`SetBuild`（运行中切换） | `sprite.setArtSource({ animationArchives, bank, buildArchive, art })`：`animationArchives` 列出 Lua 声明的全部 ANIM 资源，`PlayAnimation` 在当前 bank 下跨这些文件找动画；切换时只改 `bank`／build，不按动画换文件 | `fence.ts`、`player.ts` | |
 | 构造函数里 `PlayAnimation(x, true)` | `new SpriteState({ name: x })` | `atrium_pillar.ts` | |
 | 构造函数里 `PlayAnimation(x)` | `new SpriteState({ name: x, held: true })`，或构造后 `sprite.playOnce(x)` | `atrium_gate.ts`、`vault_pillar.ts` | |
 | `PlayAnimation(x, loop)` | `inst.AnimState.PlayAnimation(x, loop)`（循环转 `sprite.start(x)`，否则 `sprite.playOnce(x)`） | `birdcage.ts`、`fire.ts` | 循环方式按 Lua，不为实例化改动；不发 `animover`，要完成通知用下一行 |

@@ -26,7 +26,8 @@ export interface SkinJson {
 
 /** Named bank and builds. The display resolves them from the owner's shared cache. */
 export interface NamedSpriteArt {
-  readonly animationArchive: string;
+  /** The ANIM assets the entity declares: AnimState:PlayAnimation finds a clip of `bank` in any of them. */
+  readonly animationArchives: readonly string[];
   readonly bank: string;
   readonly buildArchive: string;
   readonly fallbackBuilds?: readonly string[];

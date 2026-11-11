@@ -26,6 +26,8 @@ export { FENCE_ID, FENCE_ITEM_ID, FENCE_IDS, isFenceId, fenceWorldSkin, type Fen
 /** DST distance unit in world units. */
 const UNIT = TILE_SIZE / 4;
 const ROT_SIDES = 8;
+/** fence.lua assets: the wide anim, then the narrow one. */
+const FENCE_ANIMATION_ARCHIVES: readonly string[] = ['fence.zip', 'fence_thin.zip'];
 /** MakeMediumBurnable(inst): burn time 20, fx level 3; MakeMediumPropagator. */
 const FENCE_BURN_TIME = 20;
 const FENCE_FX_LEVEL = 3;
@@ -82,7 +84,8 @@ export function SetOrientation(inst: PrefabInstance, rotation: number, art?: Spr
     if (current?.bank === bank) return;
     const archives = art ?? (current && 'art' in current ? current.art : undefined);
     if (!archives) throw new Error('A fence needs its art the first time its bank is set');
-    inst.sprite.setArtSource({ animationArchive: `${bank}.zip`, bank, buildArchive: 'fence.zip', art: archives });
+    // fence.lua declares the wide and the narrow anim; the bank picks one.
+    inst.sprite.setArtSource({ animationArchives: FENCE_ANIMATION_ARCHIVES, bank, buildArchive: 'fence.zip', art: archives });
 }
 
 /** FixUpFenceOrientation(inst, nil): FindEntities(x, 0, z, 1.5, { "wall" }) around the inst, without itself. */
@@ -224,7 +227,7 @@ export function fencePlacer(buildId: FenceId, cameraHeading: ReadonlySignal<numb
     return {
         buildLabel: '栅栏', name: FENCE_ID, animation: 'idle', alignBottom: false, snap,
         art: (resources, skinId) => ({
-            source: resources.factory({ animationArchive: 'fence.zip', extraAnimationArchives: ['fence_thin.zip'], buildArchive: 'fence.zip' }),
+            source: resources.factory({ animationArchive: FENCE_ANIMATION_ARCHIVES[0], extraAnimationArchives: FENCE_ANIMATION_ARCHIVES.slice(1), buildArchive: 'fence.zip' }),
             initialize: placer => {
                 placer.skinId = fenceWorldSkin(buildId, skinId);
                 placer.sprite.setSkinSource({ art: resources.archives, archives: FENCE_SKIN_ARCHIVES });

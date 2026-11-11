@@ -8,7 +8,7 @@ import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { AxeTool } from './axe';
 import { BookFxController } from './book_fx';
-import { animationTiming } from './animationTimings';
+import { bankAnimationTiming } from './animationTimings';
 import { WILSON_EMOTES, type WilsonEmote, type WilsonEmoteDefinition } from './emotes';
 import type { EquipmentPresentation } from './equipmentVisual';
 import type { FarmHoeTool } from './farm_hoe';
@@ -48,68 +48,19 @@ export interface SymbolFollower {
 }
 
 export type WilsonCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'firestaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
-type ReadAnimationKey = 'action_uniqueitem_pre' | 'book' | 'flute';
-type WilsonAnimations = Record<Exclude<WilsonAnimationKey, 'emote' | 'ghost' | 'amulet_rebirth' | ReadAnimationKey>, string>;
-const WILSON_ANIMATION_ARCHIVES: WilsonAnimations = {
-  wortox_portal: 'wortox_portal.zip',
-  idle: 'player_idles.zip',
-  dial_loop: 'player_actions.zip',
-  walk: 'player_basic.zip',
-  run: 'player_basic.zip',
-  jump: 'player_jump.zip',
-  build: 'player_actions_item.zip',
-  build_pre: 'player_actions_item.zip',
-  build_loop: 'player_actions_item.zip',
-  build_pst: 'player_actions_item.zip',
-  eat: 'player_actions_eat.zip',
-  quick_eat_pre: 'player_actions_eat.zip',
-  quick_eat: 'player_actions_eat.zip',
-  quick_drink_pre: 'player_actions_eat.zip',
-  quick_drink: 'player_actions_eat.zip',
-  item_in: 'player_actions_item.zip',
-  item_out: 'player_actions_item.zip',
-  item_hat: 'player_actions_item.zip',
-  pickup: 'player_actions_item.zip',
-  pickup_pst: 'player_actions_item.zip',
-  give: 'player_actions_item.zip',
-  give_pst: 'player_actions_item.zip',
-  light_fire: 'player_actions_item.zip',
-  light_fire_pst: 'player_actions_item.zip',
-  atk_pre: 'player_attacks.zip',
-  atk: 'player_attacks.zip',
-  punch: 'player_attacks.zip',
-  toolpunch: 'player_attacks.zip',
-  staff_pre: 'player_staff.zip',
-  staff: 'player_staff.zip',
-  bugnet_pre: 'player_actions_bugnet.zip',
-  bugnet: 'player_actions_bugnet.zip',
-  pickaxe_pre: 'player_actions_pickaxe.zip',
-  pickaxe_loop: 'player_actions_pickaxe.zip',
-  pickaxe_pst: 'player_actions_pickaxe.zip',
-  chop_pre: 'player_actions_axe.zip',
-  chop_loop: 'player_actions_axe.zip',
-  shovel_pre: 'player_actions_shovel.zip',
-  shovel_loop: 'player_actions_shovel.zip',
-  shovel_pst: 'player_actions_shovel.zip',
-  till_pre: 'player_actions_till.zip',
-  till_loop: 'player_actions_till.zip',
-  till_pst: 'player_actions_till.zip',
-  hit: 'player_actions.zip',
-  death: 'player_actions.zip',
-  wakeup: 'player_actions.zip',
-  strum_pre: 'player_strum.zip',
-  strum: 'player_strum.zip',
-  fishing: 'player_actions_fishing.zip',
-  hideshell: 'player_slurtle_armor.zip',
-  hideshell_idle: 'player_slurtle_armor.zip',
-  hitshell: 'player_slurtle_armor.zip',
-  slip_pre: 'player_slip.zip',
-  slip_loop: 'player_slip.zip',
-  slip_pst: 'player_slip.zip',
-  slip_fall_pre: 'player_slip.zip',
-  slip_fall_idle: 'player_slip.zip',
-  slip_fall_pst: 'player_slip.zip',
-};
+/** player_common_extensions.lua AddOverrideBuild, named in the display declaration. */
+const UNIQUE_ITEM_BUILD = 'player_actions_uniqueitem';
+/**
+ * The ANIM assets MakePlayerCharacter, global.lua (player_idles) and wortox.lua declare for the player, plus the emotes':
+ * AnimState:PlayAnimation finds each clip of the current bank in whichever of them holds it.
+ */
+const PLAYER_ANIMATION_ARCHIVES: readonly string[] = [...new Set([
+  'player_idles.zip', 'player_basic.zip', 'player_actions.zip', 'player_actions_axe.zip', 'player_actions_pickaxe.zip',
+  'player_actions_shovel.zip', 'player_actions_eat.zip', 'player_actions_item.zip', 'player_actions_uniqueitem.zip',
+  'player_actions_bugnet.zip', 'player_actions_fishing.zip', 'player_actions_till.zip', 'player_attacks.zip',
+  'player_jump.zip', 'player_amulet_resurrect.zip', 'player_slurtle_armor.zip', 'player_staff.zip', 'player_strum.zip',
+  'player_slip.zip', 'player_ghost_withhat.zip', 'wortox_portal.zip', ...Object.values(WILSON_EMOTES).map(definition => definition.archive),
+])];
 /** STRINGS.CHARACTERS.WORTOX: GetString(inst, failreason) for SGwilson's tent refusals. */
 const WORTOX_SLEEP_SPEECH: Record<WilsonSleepAnnounce, string> = {
   ANNOUNCE_NODAYSLEEP: '我不要打乱规律的作息时间。',
@@ -117,8 +68,6 @@ const WORTOX_SLEEP_SPEECH: Record<WilsonSleepAnnounce, string> = {
   ANNOUNCE_NOSLEEPONFIRE: '莫要烧焦了我的皮草。',
   ANNOUNCE_NOHUNGERSLEEP: '灵魂过度饥饿，难以入眠。',
 };
-/** player_common_extensions.lua AddOverrideBuild, named in the display declaration. */
-const UNIQUE_ITEM_BUILD = 'player_actions_uniqueitem';
 
 export interface WilsonAnimationController {
   readonly stategraph: WilsonStateGraph;
@@ -509,19 +458,16 @@ class WilsonController implements WilsonAnimationController {
 
   private selectAnimation(clip: WilsonAnimationClip): number {
     this.state = clip.key;
-    const archive = this.state === 'ghost' ? 'player_ghost_withhat.zip' : this.state === 'emote' ? this.emote!.archive
-      : this.state === 'amulet_rebirth' ? 'player_amulet_resurrect.zip'
-      : this.state === 'action_uniqueitem_pre' || this.state === 'book' || this.state === 'flute' ? `${UNIQUE_ITEM_BUILD}.zip`
-        : WILSON_ANIMATION_ARCHIVES[this.state];
+    // SetBank("ghost") with the skinner's ghost build while a ghost; the clip is in whichever declared anim holds it.
     const bank = this.state === 'ghost' ? 'ghost' : 'wilson';
-    const animation = animationTiming(archive, clip.name, smallHash(bank));
+    const animation = bankAnimationTiming(PLAYER_ANIMATION_ARCHIVES, clip.name, smallHash(bank));
     const playbackRate = (clip.frameRate ?? animation.frameRate) / animation.frameRate * (clip.playbackRate ?? 1);
     this.instance.sprite.setPlaybackRate(playbackRate);
     const buildArchive = this.state === 'ghost' ? `dynamic/ghost_${PLAYER_ART_CHARACTER}_build.zip` : `dynamic/${PLAYER_ART_CHARACTER}.zip`;
     const fallbackBuilds = [`${UNIQUE_ITEM_BUILD}.zip`, ...(this.emote?.props ? [this.emote.archive] : [])];
-    if (!this.artSource || this.artSource.animationArchive !== archive || this.artSource.buildArchive !== buildArchive
+    if (!this.artSource || this.artSource.bank !== bank || this.artSource.buildArchive !== buildArchive
       || fallbackBuilds.join() !== this.artSource.fallbackBuilds?.join()) {
-      this.artSource = { animationArchive: archive, bank, buildArchive, fallbackBuilds, art: this.resources.archives };
+      this.artSource = { animationArchives: PLAYER_ANIMATION_ARCHIVES, bank, buildArchive, fallbackBuilds, art: this.resources.archives };
       this.instance.sprite.setArtSource(this.artSource);
     }
     this.instance.AnimState.PlayAnimation(clip.name, clip.loop);
@@ -556,13 +502,11 @@ function createWilsonPlayerEntity(
   options: WilsonPlayerPrefabOptions = {},
 ): { model: PlayerModel; instance: WilsonPlayerInstance; display: PrefabDisplay } {
   const resources = new SpriteResources(assetBaseUrl);
-  const archives = [...new Set([...Object.values(WILSON_ANIMATION_ARCHIVES), `${UNIQUE_ITEM_BUILD}.zip`,
-    'player_ghost_withhat.zip', 'player_amulet_resurrect.zip', ...Object.values(WILSON_EMOTES).map(definition => definition.archive)])];
   const { instance: baseInstance, display } = createPrefabEntity(PLAYER_ART_CHARACTER, resources.factory({
-    buildArchive: `dynamic/${PLAYER_ART_CHARACTER}.zip`, animationArchive: 'player_idles.zip',
-    extraAnimationArchives: archives.filter(archive => archive !== 'player_idles.zip'),
+    buildArchive: `dynamic/${PLAYER_ART_CHARACTER}.zip`, animationArchive: PLAYER_ANIMATION_ARCHIVES[0],
+    extraAnimationArchives: PLAYER_ANIMATION_ARCHIVES.slice(1),
   }), { name: 'idle_loop', billboard: true }, 'Wortox', instance => {
-    instance.sprite.setArtSource({ animationArchive: 'player_idles.zip', bank: 'wilson',
+    instance.sprite.setArtSource({ animationArchives: PLAYER_ANIMATION_ARCHIVES, bank: 'wilson',
       buildArchive: `dynamic/${PLAYER_ART_CHARACTER}.zip`, fallbackBuilds: [`${UNIQUE_ITEM_BUILD}.zip`], art: resources.archives });
     instance.sprite.setFacingRotation(0, 4);
   });
