@@ -85,6 +85,8 @@ function randomDropLaunch(heavy: boolean, random = Math.random): DropLaunch {
 }
 
 export class InventoryStore {
+  /** inventory.lua opencontainers: the inst of each container this inventory's owner has open. */
+  readonly opencontainers = new Set<object>();
   private activeItemPrevSlot?: SlotAddress;
   private actor: import('../../componets/src/inventoryitem').InventoryActor = {
     hasTag: tag => tag === 'player', GetPosition: () => ({ x: 0, y: 0, z: 0 }), PushEvent() {},

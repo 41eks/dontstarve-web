@@ -5,12 +5,43 @@ import { Vector3 } from 'three';
 import { createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { createBuildingContainer, type StorageBuildingId } from '../../prefab/src/containers';
 
 function createContainer(loadItem = (record: InventoryStack) => new ItemEntity(record)) {
   return new Container({}, () => new StorageSlot(), loadItem);
 }
 
 describe('Lua container component', () => {
+  it('closes the open container of the same type when a doer opens another, and only an opener closes one', () => {
+    const doer = { components: { inventory: { opencontainers: new Set<object>() } } };
+    const entities: ReturnType<typeof createEmptyEntity>[] = [];
+    const open = (prefab: StorageBuildingId) => {
+      const entity = createEmptyEntity(prefab);
+      entities.push(entity);
+      const container = createBuildingContainer(prefab, entity.instance);
+      container.Open(doer);
+      return container;
+    };
+    const chest = open('treasurechest'), pot = open('cookpot');
+    expect(chest.IsOpenedBy(doer) && pot.IsOpenedBy(doer)).toBe(true);
+    // containers.lua: the icebox is a "chest" too; the cookpot is a "cooker".
+    const icebox = open('icebox');
+    expect(chest.IsOpen()).toBe(false);
+    expect(pot.IsOpenedBy(doer)).toBe(true);
+    expect(doer.components.inventory.opencontainers.size).toBe(2);
+
+    const closed = vi.fn();
+    icebox.onclosefn = closed;
+    icebox.Close({});
+    expect(closed).not.toHaveBeenCalled();
+    expect(icebox.IsOpenedBy(doer)).toBe(true);
+    icebox.Close(doer);
+    expect(closed).toHaveBeenCalledOnce();
+    expect(doer.components.inventory.opencontainers.size).toBe(1);
+    for (const { instance, display } of entities) { instance.remove(); display.dispose(); }
+  });
+
   it('checks actual openers on position changes and releases subscriptions when the last opener leaves', async () => {
     const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler);
     const container = new Container({ getPosition: () => new Vector3() }, () => new StorageSlot(), (record: InventoryStack) => new ItemEntity(record));

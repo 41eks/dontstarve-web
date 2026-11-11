@@ -25,6 +25,7 @@ export function createBuildingContainer(prefab: StorageBuildingId, inst: object)
         ?? new ItemEntity(record);
     const container = inst instanceof PrefabInstance ? addComponent(inst, 'container', Container<InventoryStack, ItemEntity, ItemSlot>, createSlot, loadItem)
         : new Container<InventoryStack, ItemEntity, ItemSlot>(inst, createSlot, loadItem);
+    container.type = definition.type;
     container.SetNumSlots(definition.slotCount);
     return container;
 }
@@ -38,6 +39,8 @@ export function releaseBuildingContainer(inst: PrefabInstance): void {
 }
 
 export interface BuildingContainerDefinition {
+    /** containers.lua params[prefab].type. */
+    type: string;
     slotCount: number;
     columns: number;
     singleItems: boolean;

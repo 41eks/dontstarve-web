@@ -4,6 +4,8 @@ import { EventEmitter } from '../../signals/src/EventEmitter';
 import { createPickupInventory } from './pickupFixture';
 import { createDisposalResources, registerDisposal, type DisposalEvents } from '../../../src/registerDisposal';
 import { createChestInventoryPanel } from '@dontstarve-web/ui';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { createBuildingContainer } from '../../prefab/src/containers';
 import { setupEmoteWheel } from '../../../src/emoteWheel';
 
 const tasks = vi.hoisted(() => new Set<(dt: number) => void>());
@@ -90,6 +92,13 @@ it('creates panels before scene initialization and owns subscriptions until expl
     expect(subscribeReceived).not.toHaveBeenCalled();
     resources.setContainerOpen('cookpot', player, false);
     expect(panels[1].close).toHaveBeenCalledWith(player);
+    // The panel's close button closes the container for the doer RUMMAGE opened it with.
+    const { instance, display } = createEmptyEntity('treasurechest');
+    const chest = createBuildingContainer('treasurechest', instance);
+    chest.Open(pickupDoer);
+    vi.mocked(createChestInventoryPanel).mock.calls[startIndex][1].closeContainer(display.model);
+    expect(chest.IsOpen()).toBe(false);
+    instance.remove(); display.dispose();
     const scene = { buildingPlacement: {} } as Parameters<typeof resources.register>[1];
     expect(resources.register(events, scene)).toBeUndefined();
     expect(subscribeReceived).toHaveBeenCalledOnce();

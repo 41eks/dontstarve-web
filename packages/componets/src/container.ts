@@ -12,6 +12,15 @@ interface ContainerEntity {
   PushEvent?(name: string, data?: unknown): void;
 }
 
+/** inventory.lua's opencontainers on the doer: the inst of each container it has open. */
+interface ContainerDoer {
+  readonly components?: { readonly inventory?: { readonly opencontainers?: Set<OpenContainerHost> } };
+}
+interface OpenContainerHost {
+  readonly prefab?: string;
+  readonly components: { readonly container?: { readonly type?: string; Close(doer?: object): void } };
+}
+
 /** container.lua's data.items in the save document's shape: occupied slots under zero-based keys. */
 export interface ContainerSaveData<TRecord> {
   slotCount: number;
@@ -40,6 +49,8 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     const inst = this.inst as { hasTag?(tag: string): boolean; tags?: Set<string>; userData?: object };
     return inst.hasTag?.(tag) ?? inst.tags?.has(tag) ?? (inst.userData ? modelHasTag(inst as Object3D, tag) : false);
   }
+  /** containers.lua params[prefab].type: a doer keeps one open container of each type. */
+  type?: string;
   canbeopened = true;
   openlimit?: number;
   onopenfn?(inst: object, doer?: object): void;
@@ -150,6 +161,14 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   /** As in Lua, callers check canbeopened/CanOpen before requesting Open. */
   Open(doer?: object): void {
     if (!doer || this.openlist.has(doer)) return;
+    const opencontainers = (doer as ContainerDoer).components?.inventory?.opencontainers;
+    if (opencontainers) {
+      const inst = this.inst as OpenContainerHost;
+      for (const k of opencontainers) {
+        if (k.prefab === inst.prefab || k.components.container?.type === this.type) k.components.container?.Close(doer);
+      }
+      opencontainers.add(inst);
+    }
     const wasOpen = this.IsOpen();
     this.openlist.add(doer);
     this.openCountState.set(this.openlist.size);
@@ -165,11 +184,14 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
 
   Close(doer?: object): void {
     const wasOpen = this.IsOpen();
+    let closed = false;
     for (const opener of doer ? [doer] : this.openlist) {
-      this.openlist.delete(opener);
+      closed = this.openlist.delete(opener) || closed;
       this.openerCleanups.get(opener)?.();
       this.openerCleanups.delete(opener);
+      (opener as ContainerDoer).components?.inventory?.opencontainers?.delete(this.inst as OpenContainerHost);
     }
+    if (!closed) return;
     this.openCountState.set(this.openlist.size);
     if (!this.IsOpen()) { this.stopPositions?.(); this.stopPositions = undefined; }
     if (wasOpen && !this.IsOpen()) this.onclosefn?.(this.inst, doer);

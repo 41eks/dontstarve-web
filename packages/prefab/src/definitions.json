@@ -44,6 +44,7 @@
         "icebox_victorian": "dynamic/icebox_victorian.zip"
       },
       "container": {
+        "type": "chest",
         "slotCount": 9,
         "columns": 3,
         "singleItems": false,
@@ -66,6 +67,7 @@
         "cookpot_tureen": "dynamic/cookpot_tureen.zip"
       },
       "container": {
+        "type": "cooker",
         "slotCount": 4,
         "columns": 1,
         "singleItems": true
@@ -200,6 +202,7 @@
         "treasurechest_cupidalt": "dynamic/treasurechest_cupid.zip"
       },
       "container": {
+        "type": "chest",
         "slotCount": 9,
         "columns": 3,
         "singleItems": false,
@@ -212,6 +215,7 @@
       "idleAnimation": "closed",
       "name": "PandorasChest",
       "container": {
+        "type": "chest",
         "slotCount": 9,
         "columns": 3,
         "singleItems": false,
@@ -235,6 +239,7 @@
         "dragonflychest_upgraded_kraken": "dynamic/dragonflychest_kraken.zip"
       },
       "container": {
+        "type": "chest",
         "slotCount": 12,
         "columns": 3,
         "singleItems": false,
@@ -250,6 +255,7 @@
         "bookstation_house": "dynamic/bookstation_house.zip"
       },
       "container": {
+        "type": "chest",
         "slotCount": 20,
         "columns": 4,
         "singleItems": false,
@@ -284,6 +290,7 @@
         "saltbox_victorian": "dynamic/saltbox_victorian.zip"
       },
       "container": {
+        "type": "chest",
         "slotCount": 9,
         "columns": 3,
         "singleItems": false,
@@ -323,6 +330,7 @@
         "mushroom_light_tiffany": "dynamic/mushroom_light_tiffany.zip"
       },
       "container": {
+        "type": "cooker",
         "slotCount": 4,
         "columns": 1,
         "singleItems": true,
@@ -342,6 +350,7 @@
         "mushroom_light2_victorian": "dynamic/mushroom_light2_victorian.zip"
       },
       "container": {
+        "type": "cooker",
         "slotCount": 4,
         "columns": 1,
         "singleItems": true,

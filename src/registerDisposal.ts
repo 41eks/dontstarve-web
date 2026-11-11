@@ -100,7 +100,8 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
   const camera = view.camera;
   const renderer = view.renderer;
   const statusHud = gameUi.statusHud;
-  const closeContainer = (model: Object3D) => prefabInstance(model)?.components.container?.Close(prefabInstance(player) ?? player);
+  // The same doer RUMMAGE opened it with.
+  const closeContainer = (model: Object3D) => prefabInstance(model)?.components.container?.Close(pickupDoer);
   const inventoryPanelOptions = { camera, canvas: renderer.domElement, player, getWatchWorldContent: watchWorldContent, toItem: inventorySlotItem, closeContainer };
   const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel, inventoryPanelOptions);
   const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, inventoryPanelOptions);
