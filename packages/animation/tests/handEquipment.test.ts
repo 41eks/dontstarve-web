@@ -11,7 +11,7 @@ import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { HatEquipmentAssets } from '../../prefab/src/hats';
 import { createPerishWorld } from './perishWorldFixture';
 import { createPlayerEquipper } from './playerEquipFixture';
-import { advancePlayer, createWilsonPlayer, wilsonPlayerInstance, type WilsonAnimationController } from './playerVisual';
+import { advancePlayer, createWilsonPlayer, wilsonPlayerInstance } from './playerVisual';
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })),
@@ -87,29 +87,29 @@ it('equips restored and committed torches through equippable with the owner, une
 
 it("goes through SGwilson's equip and unequip handlers: item_out, item_in and item_hat from idle, not while busy", async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player);
   const equipper = createPlayerEquipper(animation);
   const settle = () => { for (let frame = 0; frame < 30; frame++) advancePlayer(animation, 1 / 30); };
   try {
-    expect(animation.stategraph.stateName).toBe('idle');
+    expect(animation.sg.stateName).toBe('idle');
     equipper.equip('torch');
-    expect(animation.stategraph.stateName).toBe('item_out');
+    expect(animation.sg.stateName).toBe('item_out');
     settle();
-    expect(animation.stategraph.stateName).toBe('idle');
+    expect(animation.sg.stateName).toBe('idle');
     equipper.equip('strawhat', undefined, 'head');
-    expect(animation.stategraph.stateName).toBe('item_hat');
+    expect(animation.sg.stateName).toBe('item_hat');
     settle();
     equipper.equip(null);
-    expect(animation.stategraph.stateName).toBe('item_in');
+    expect(animation.sg.stateName).toBe('item_in');
     settle();
     // A state with its own unequip handler takes the event instead: shell_enter leaves for GetUnequipState's item_hat.
-    animation.stategraph.goToState('shell_enter');
+    animation.sg.goToState('shell_enter');
     equipper.equip(null, undefined, 'head');
-    expect(animation.stategraph.stateName).toBe('item_hat');
+    expect(animation.sg.stateName).toBe('item_hat');
     settle();
     // Busy, non-idle states keep running.
-    animation.stategraph.goToState('shell_hit');
+    animation.sg.goToState('shell_hit');
     equipper.equip('torch');
-    expect(animation.stategraph.stateName).toBe('shell_hit');
+    expect(animation.sg.stateName).toBe('shell_hit');
   } finally { equipper.dispose(); player.removeFromParent(); }
 });

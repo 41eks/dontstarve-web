@@ -198,7 +198,7 @@ it('an accepted action cancels a paid preview through events and skips its own c
     expect(controller.bufferedAction).toBeDefined();
     world.actionEvents!.emit('action:interrupt', { reason: 'slot-select' });
     expect(controller.bufferedAction).toBeUndefined();
-    expect(animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
+    expect(animation.sg.pushBufferedAction).not.toHaveBeenCalled();
     controller.dispose();
     cancel.mockClear();
     world.actionEvents!.emit('action:interrupt', { reason: 'emote' });

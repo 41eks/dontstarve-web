@@ -16,7 +16,7 @@ import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { workTargets } from './workTargets';
 import { drawn } from './worldContentFixture';
@@ -108,13 +108,13 @@ it('shows growth settled while unloaded as its final stage without the transitio
 it('commits source axe work, cancels before impact, preserves logical components while unloaded, and fells and digs a tall tree permanently', async () => {
   const s = await setup(), inventory = createPickupInventory();
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('axe'); inventory.add('axe', 1);
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
   const axe = inventory.getEntity(equipmentSlotAddress('hand'))!;
   const world = { player, camera: s.camera, scene: new THREE.Scene(), ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const controller = new PlayerController(world, animation.stategraph, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
+  const controller = new PlayerController(world, animation.sg, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const chop = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'CHOP', target: target.entity as never, invobject: axe })!);
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
   try {
@@ -125,7 +125,7 @@ it('commits source axe work, cancels before impact, preserves logical components
     expect(chop(target)).toBe(true); controller.cancel(); advance(60);
     expect(work.GetWorkLeft()).toBe(15); expect(axe.components.finiteuses.remaining).toBeUndefined();
     expect(chop(target)).toBe(true);
-    while (animation.stategraph.stateName === 'chop_start') advancePlayer(animation, 1 / 30);
+    while (animation.sg.stateName === 'chop_start') advancePlayer(animation, 1 / 30);
     advance(2); expect(work.GetWorkLeft()).toBe(14); expect(axe.components.finiteuses.remaining).toBe(99);
     expect(s.displays.renderEntities.some(entry => entry.object.name === 'pine_needles_chop')).toBe(true);
     await drawn(tree.transform.model);

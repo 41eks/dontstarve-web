@@ -14,7 +14,7 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import { workTargets } from './workTargets';
 import { farmFixture } from './farmFixture';
 import { TurfMap } from '../../prefab/src/turfMap';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonPlayerInstance } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -37,7 +37,7 @@ function setup(player = new THREE.Group(), random = () => 0.9, spawnLoot?: (item
   const farm = farmFixture(world.scene, turf, { random, spawnLoot });
   return { farm, turf, world };
 }
-function advance(animation: WilsonAnimationController, frames: number) {
+function advance(animation: WilsonPlayerInstance, frames: number) {
   for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30);
 }
 
@@ -105,7 +105,7 @@ it('removes one debris with source loot while preserving soil, terrain, other de
 it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancelled or unequipped targets', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 15);
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('goldenshovel');
   expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/equip_item_gold');
@@ -119,13 +119,13 @@ it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancell
   equipped.set({ itemId: 'goldenshovel', EQUIPSLOTS: 'HANDS', entity: tool });
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
-  const controller = new PlayerController(world, animation.stategraph, locomotor, equipped, playerDoer(player));
+  const controller = new PlayerController(world, animation.sg, locomotor, equipped, playerDoer(player));
   const dig = () => controller.DoAction(controller.createAction({ action: 'DIG', target: workTargets('DIG')[0].entity, invobject: tool })!);
   try {
     expect(dig()).toBe(true);
     expect(locomotor.destination).toBeDefined();
     player.position.set(3, 0, 4.5); locomotor.update(16, 1 / 30);
-    while (animation.stategraph.stateName === 'dig_start') advancePlayer(animation, 1 / 30);
+    while (animation.sg.stateName === 'dig_start') advancePlayer(animation, 1 / 30);
     advance(animation, 14);
     expect(farm.decor()).toHaveLength(1);
     expect(tool.components.finiteuses.remaining).toBeUndefined();

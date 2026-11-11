@@ -12,7 +12,7 @@ import { SKELETON_PLAYER_ID, type SkeletonInstance } from './skeleton';
 import { MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from './standardcomponents';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { isGhostValidAction } from '../../stategraphs/src/actions';
-import type { WilsonPlayerInstance } from './player';
+import { makeAlive, makeGhost, type WilsonPlayerInstance } from './player';
 import { ItemEntity, type EquipmentKind, type InventoryStore } from '@dontstarve-web/inventory';
 
 // Existing Wilson stat defaults, from tuning.lua. Older saves may omit all stats.
@@ -86,7 +86,7 @@ function Teleport(inst: WilsonPlayerInstance, position: ReadonlyVector3): void {
 /** player_common.lua AddComponent("slipperyfeet"): frozen ponds are its slipperyfeettarget entities. */
 export function AddSlipperyFeet(inst: WilsonPlayerInstance): void {
   if (inst.slipperyfeet || !inst.scheduler) return;
-  const sg = inst.animationController.stategraph;
+  const sg = inst.sg;
   inst.slipperyfeet = new SlipperyFeet({
     getPosition: () => inst.transform.model.position,
     getMotorSpeed: () => inst.currentMotorSpeed,
@@ -124,7 +124,7 @@ export function OnMakePlayerGhost(inst: WilsonPlayerInstance, data?: { skeleton?
   if (data?.skeleton) SpawnDeathProduct(inst, position);
   if (!loading) inst.SpawnPrefab?.('die_fx', position);
 
-  inst.animationController.makeGhost(loading);
+  makeGhost(inst, loading);
   inst.sprite.setLightOverride(GHOST_LIGHT_OVERRIDE);
   setGhostLight(inst, true);
 
@@ -185,7 +185,7 @@ function revertMove(inst: WilsonPlayerInstance): void {
   revertRespawn(inst);
   setHidden(inst, false);
   setGhostLight(inst, true);
-  inst.animationController.stategraph.goToState('haunt');
+  inst.sg.goToState('haunt');
 }
 
 /**
@@ -201,7 +201,7 @@ export function OnRespawnFromGhost(inst: WilsonPlayerInstance, data?: { source?:
   inst.addTag('reviving');
   inst.ShowHUD(false);
   inst.controllerEnabled = false;
-  inst.animationController.stategraph.addStateTag('busy');
+  inst.sg.addStateTag('busy');
   inst.DoTaskInTime(9 * FRAMES, () => DoMoveToRezSource(inst, source, 51 * FRAMES));
 }
 
@@ -254,7 +254,7 @@ function DoActualRez(inst: WilsonPlayerInstance, source: RezSource): void {
   }
   setGhostLight(inst, false);
   MakeCharacterPhysics(inst, 75, .5);
-  inst.animationController.makeAlive(amulet ? 'amulet_rebirth' : 'portal_rez');
+  makeAlive(inst, amulet ? 'amulet_rebirth' : 'portal_rez');
 
   // CommonActualRez
   inst.components.playeractionpicker?.PopActionFilter(GhostActionFilter);

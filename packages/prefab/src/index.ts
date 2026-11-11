@@ -64,7 +64,7 @@ export {
   createWilsonPlayer,
   createWilsonPlayerPrefab,
   type PlayerBody,
-  type WilsonAnimationController,
+  WilsonPlayerInstance,
   type WilsonCarryItem,
   type WilsonPlayerPrefab,
   type WilsonPlayerPrefabOptions,

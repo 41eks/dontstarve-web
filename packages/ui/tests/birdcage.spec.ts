@@ -72,7 +72,7 @@ async function harness(page: Page, errors: string[]) {
   });
   const clickCage = async (action: string) => {
     await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.player)
-      .animationController.stategraph.hasStateTag('busy'))).toBe(false);
+      .sg.hasStateTag('busy'))).toBe(false);
     let point: { x: number; y: number } | null = null;
     await expect.poll(async () => {
       point = await page.evaluate(action => (window as any).cageGame.cagePoint(action), action);
@@ -132,7 +132,7 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
   const point = await page.evaluate(() => (window as any).cageGame.cagePoint('CASTSPELL', 'right'));
   await page.mouse.click(point.x, point.y, { button: 'right' });
   await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage'))?.skinId)).toBe('birdcage_adventure');
-  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.player).animationController.stategraph.isPerformingAction('CASTSPELL', 'reskin_tool'))).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.player).sg.isPerformingAction('CASTSPELL', 'reskin_tool'))).toBe(false);
   expect(await cage()).toMatchObject({ state: '_bird', bird: 'canary', animation: 'idle_bird' });
   expect(await page.evaluate(() => (window as any).cageGame.cageMesh().material.length))
     .toBeGreaterThanOrEqual(plainAtlases);

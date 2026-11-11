@@ -18,7 +18,7 @@ import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
 import { pondPrefabs, POND_ID } from '../../prefab/src/pond';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup } from '../../display/src';
@@ -69,7 +69,7 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const scheduler = new GameTimeScheduler();
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 20);
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('fishingrod');
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
@@ -93,13 +93,13 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   // The rod's hand lifecycle attaches its fishingrod component with the scene's scheduler, updates and world.
   const rodOf = () => getFishingRod(tool, scheduler, { landFish: (fish, position) => landed.push({ prefab: fish.prefab, position }) }, updates);
   // SGwilson's fishing states reach the held rod, as the application binds them.
-  animation.bindFishing({ waitForFish: () => rodOf().WaitForFish(), collect: () => rodOf().Collect(),
-    loseRod: () => { rodOf().Release(); tool.remove(); } });
+  animation.fishingHost = { waitForFish: () => rodOf().WaitForFish(), collect: () => rodOf().Collect(),
+    loseRod: () => { rodOf().Release(); tool.remove(); } };
   // The player inst: the rod's events reach its stategraph, whose tags gate the rod.
   const doer = { hasTag: (tag: string) => tag === 'player', getPosition: () => player.position,
-    PushEvent: (name: string, data: unknown) => animation.stategraph.pushEvent(name, data),
-    sg: { HasStateTag: (tag: string) => animation.stategraph.hasStateTag(tag) } };
-  const playerController = new PlayerController(world, animation.stategraph, locomotor, equipped, doer as never, () => false);
+    PushEvent: (name: string, data: unknown) => animation.sg.pushEvent(name, data),
+    sg: { HasStateTag: (tag: string) => animation.sg.hasStateTag(tag) } };
+  const playerController = new PlayerController(world, animation.sg, locomotor, equipped, doer as never, () => false);
   const pondEntity = () => findActionEntity(pond)!;
   const controller = {
     // EQUIPPED.fishingrod on the left button: FISH a pond, or REEL the one being fished (an instant action).
@@ -124,10 +124,10 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
     expect(locomotor.bufferedAction).toBeDefined();
     // ARRIVE_STEP plus the pond's 1.95 and the player's .5 radius.
     player.position.set(0, 0, 7); controller.update(0);
-    expect(animation.stategraph.stateName).toBe('fishing_pre');
-    advanceUntil(() => animation.stategraph.stateName === 'fishing');
+    expect(animation.sg.stateName).toBe('fishing_pre');
+    advanceUntil(() => animation.sg.stateName === 'fishing');
     expect(rodOf().IsFishing()).toBe(true);
-    expect(animation.stategraph.hasStateTag('fishing')).toBe(true);
+    expect(animation.sg.hasStateTag('fishing')).toBe(true);
     // EQUIPPED.fishingrod offers REEL on the fished pond; REEL.strfn names what it would do.
     const reelString = () => getActionString({ action: 'REEL', doer, invobject: tool, target: pondEntity() });
     expect(collectEquippedItemActions(tool, doer, pondEntity(), false)).toEqual(['REEL']);
@@ -135,16 +135,16 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
 
     // 4 s minimum wait with a full pond; a click on the pond while waiting would stop fishing, so wait for the bite.
     scheduler.advance(4);
-    expect(animation.stategraph.stateName).toBe('fishing_nibble');
+    expect(animation.sg.stateName).toBe('fishing_nibble');
     expect(rodOf().FishIsBiting()).toBe(true);
     expect(reelString()).toBe('上钩');
     controller.request(pondEntity()); // REEL: Hook
-    expect(animation.stategraph.stateName).toBe('fishing_strain');
+    expect(animation.sg.stateName).toBe('fishing_strain');
     expect(rodOf().HasHookedFish()).toBe(true);
     expect(reelString()).toBe('收线');
     expect(fishable().fishleft).toBe(9);
     controller.request(pondEntity()); // REEL: Reel
-    expect(animation.stategraph.stateName).toBe('catchfish');
+    expect(animation.sg.stateName).toBe('catchfish');
     expect(landed).toEqual([]);
     advance(23); expect(landed).toEqual([]);
     advance(2);
@@ -152,33 +152,33 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
     expect(landed[0].prefab).toBe('pondfish');
     expect(landed[0].position.z).toBeGreaterThan(7);
     expect(tool.components.finiteuses.remaining).toBe(8);
-    advanceUntil(() => animation.stategraph.stateName === 'idle');
+    advanceUntil(() => animation.sg.stateName === 'idle');
     expect(rodOf().IsFishing()).toBe(false);
     expect(fishable().fishleft).toBe(9);
     expect(fishable().OnSave()).toEqual({ fish: 9 });
 
     // Hook a fish and let the line strain until the rod is lost: the fish returns to the pond.
     expect(controller.request(pondEntity())).toBe(true); controller.update(0);
-    advanceUntil(() => animation.stategraph.stateName === 'fishing');
+    advanceUntil(() => animation.sg.stateName === 'fishing');
     scheduler.advance(40); // nibble: 4 + (1 - .9) * 36 s
-    expect(animation.stategraph.stateName).toBe('fishing_nibble');
+    expect(animation.sg.stateName).toBe('fishing_nibble');
     controller.request(pondEntity());
     expect(fishable().fishleft).toBe(8);
     scheduler.advance(5 * (8 / 9) + .01);
-    expect(animation.stategraph.stateName).toBe('loserod');
+    expect(animation.sg.stateName).toBe('loserod');
     expect(tool.isRemoved).toBe(true);
     expect(fishable().fishleft).toBe(9);
     expect(landed).toHaveLength(1);
-    advanceUntil(() => animation.stategraph.stateName === 'idle');
+    advanceUntil(() => animation.sg.stateName === 'idle');
 
     // Walking away mid-cast cancels fishing instead of leaving the line out.
     tool = rodEntity();
     equipped.set({ itemId: 'fishingrod', EQUIPSLOTS: 'HANDS', entity: tool });
     expect(controller.request(pondEntity())).toBe(true); controller.update(0);
-    advanceUntil(() => animation.stategraph.stateName === 'fishing');
-    animation.stategraph.cancelAction('FISH');
+    advanceUntil(() => animation.sg.stateName === 'fishing');
+    animation.sg.cancelAction('FISH');
     controller.update(0);
-    expect(animation.stategraph.hasStateTag('fishing')).toBe(false);
+    expect(animation.sg.hasStateTag('fishing')).toBe(false);
     expect(rodOf().IsFishing()).toBe(false);
   } finally { controller.dispose(); ponds.dispose(); }
 });

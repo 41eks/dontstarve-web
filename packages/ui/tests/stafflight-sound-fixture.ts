@@ -7,7 +7,7 @@ import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { staffLightPrefabs, DWARF_STAR_DURATION, DWARF_STAR_ID } from '../../prefab/src/stafflight';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { createWilsonPlayer, type WilsonPlayerInstance } from '../../prefab/src/player';
 import { BufferedAction } from '../../stategraphs/src';
 import { DisposeSounds, PrewarmSounds } from '../../prefab/src/sound';
 
@@ -36,13 +36,13 @@ export async function prepareStarAudioCheck() {
   const player = createWilsonPlayer('/dst/data/anim');
   registerPlayer(player);
   await prefabDisplay(player).artLoaded();
-  const animation = prefabInstance(player).animationController as WilsonAnimationController;
+  const animation = prefabInstance(player);
   const animationEquipper = createPlayerEquipper(animation);
   // SGwilson's equip/unequip handlers play item_out/item_in from idle; let them finish.
   const settleEquip = () => { for (let frame = 0; frame < 24; frame++) advancePlayer(animation, 1 / 30); };
   await animationEquipper.equip('yellowstaff'); settleEquip();
   let casts = 0;
-  animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
+  animation.sg.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
     invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
   }));
   for (let i = 0; i < 12; i++) advancePlayer(animation, 1 / 30);
@@ -53,7 +53,7 @@ export async function prepareStarAudioCheck() {
   const afterCastSources = sources.length;
   await animationEquipper.equip(null); settleEquip();
   await animationEquipper.equip('yellowstaff'); settleEquip();
-  animation.stategraph.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
+  animation.sg.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
     invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
   }));
   for (let i = 0; i < 12; i++) advancePlayer(animation, 1 / 30);

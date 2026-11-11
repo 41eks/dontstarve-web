@@ -1,3 +1,4 @@
+import { startMovement } from '../../prefab/src/player';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import * as THREE from 'three';
@@ -7,7 +8,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { declaredAnimState, loadDeclaredArt } from './animStateFixture';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
 import { parseImageAtlasXml } from '../src/imageAtlas';
 
 beforeEach(() => {
@@ -38,7 +39,7 @@ it('uses source ground art for base, ordinary, shared-build and invisible backpa
 
 it('uses skinned swap_body art in every player facing and hides invisible equipment', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const controller = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const controller = wilsonPlayerInstance(player);
   const controllerEquipper = createPlayerEquipper(controller);
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   for (const skinId of ['backpack_babybeef', 'backpack_invisible']) {
@@ -48,7 +49,7 @@ it('uses skinned swap_body art in every player facing and hides invisible equipm
     let hasSkinnedArt = false;
     for (const facing of ['up', 'down', 'side'] as const) {
       facePlayer(controller, facing);
-      controller.start('walk'); advancePlayer(controller, 1 / 30);
+      startMovement(controller, 'walk'); advancePlayer(controller, 1 / 30);
       hasSkinnedArt ||= mesh.material.some((material) => material.name.startsWith('ground:backpack_'));
       expect(mesh.material.some((material) => material.name === 'ground:swap_backpack'), skinId).toBe(false);
       expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite), skinId).toBe(true);

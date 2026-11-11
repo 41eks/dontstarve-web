@@ -25,12 +25,12 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   const prefab = await createWilsonPlayerPrefab('/dst/data/anim', new World(), { stats: { health: 150 }, scheduler });
   const { model: player, instance, physics, display } = prefab;
   player.position.set(0, 0, 0);
-  const animation = instance.animationController, stats = instance.stats, health = instance.components.health!;
+  const animation = instance, stats = instance.stats, health = instance.components.health!;
   const world = { scene: new Scene(), player, camera: new PerspectiveCamera(), ground: new Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   instance.components.inventory = inventory;
   const picker = new PlayerActionPicker(new PointerRaycaster(world));
-  const food = inventoryUse({ ...world, mouseActions: picker }, animation.stategraph, instance);
+  const food = inventoryUse({ ...world, mouseActions: picker }, animation.sg, instance);
   // The player prefab's own makeplayerghost / respawnfromghost listeners reach these world services on the inst.
   const ghost = instance.ghostMode, death = vi.fn(), hud = { Show: vi.fn(), Hide: vi.fn() };
   const skeleton = { SetSkeletonDescription: vi.fn() };
@@ -39,7 +39,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   instance.components.playeractionpicker = picker;
   instance.HUD = hud;
   const stopDeath = instance.ListenForEvent('death', death);
-  animation.bindDeath({ dropEverything: vi.fn(), isPassableAtPoint: () => true });
+  animation.deathHost = { dropEverything: vi.fn(), isPassableAtPoint: () => true };
   const frames = (count: number) => { for (let i = 0; i < count; i++) advancePlayer(animation, 1 / 30); };
   try {
     expect(stats.health).toBe(health);
@@ -57,7 +57,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
       if (eaten < 8) frames(40);
     }
     expect(inventory.getEntity(slot)).toBeNull();
-    expect(animation.stategraph.stateName).toBe('death');
+    expect(animation.sg.stateName).toBe('death');
     expect(death).toHaveBeenCalledOnce();
     expect(death.mock.calls[0][1].cause).toBe('red_cap');
     frames(100);
@@ -147,7 +147,7 @@ it('resurrects a loaded ghost from a haunted amulet, wearing that inst and retur
     expect(inventory.FindItem(item => item === worn)).toBe(worn);
     expect(source.PushEvent).toHaveBeenCalledWith('activateresurrection', player);
     expect(source.PushEvent).not.toHaveBeenCalledWith('rez_player');
-    expect(instance.animationController.stategraph.stateName).toBe('amulet_rebirth');
+    expect(instance.sg.stateName).toBe('amulet_rebirth');
     expect(instance.ghostMode.peek()).toBe(false); expect(instance.hasTag('playerghost')).toBe(false);
     expect(instance.stats.health.penalty).toBe(0);
     // SGwilson amulet_rebirth: the worn amulet leaves the inventory and is removed, the HUD is hidden, and at
@@ -155,11 +155,11 @@ it('resurrects a loaded ghost from a haunted amulet, wearing that inst and retur
     expect(inventory.GetEquippedItem('body')).toBeNull();
     expect(amulet.isRemoved).toBe(true);
     expect(hud.Hide).toHaveBeenCalled();
-    const graph = instance.animationController.stategraph;
-    for (let frame = 0; frame < 81; frame++) advancePlayer(instance.animationController, 1 / 30);
+    const graph = instance.sg;
+    for (let frame = 0; frame < 81; frame++) advancePlayer(instance, 1 / 30);
     expect(sleeper.GoToSleep).toHaveBeenCalledExactlyOnceWith(20);
     hud.Show.mockClear();
-    for (let frame = 0; frame < 300 && graph.stateName === 'amulet_rebirth'; frame++) advancePlayer(instance.animationController, 1 / 30);
+    for (let frame = 0; frame < 300 && graph.stateName === 'amulet_rebirth'; frame++) advancePlayer(instance, 1 / 30);
     expect(graph.stateName).toBe('idle');
     expect(hud.Show).toHaveBeenCalled();
     expect(instance.controllerEnabled).toBe(true);

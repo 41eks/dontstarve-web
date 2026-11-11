@@ -30,8 +30,8 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
     return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
   const player = () => page.evaluate(() => {
-    const { player, stats } = (window as any).ghostGame, controller = (window as any).__prefabInstance(player).animationController;
-    return { ghost: controller.isGhost, state: controller.stategraph.stateName, ghostMode: stats.playerGhostMode.peek(),
+    const { player, stats } = (window as any).ghostGame, controller = (window as any).__prefabInstance(player);
+    return { ghost: controller.sg.isGhost, state: controller.sg.stateName, ghostMode: stats.playerGhostMode.peek(),
       health: stats.playerStats.health.currenthealth, tagged: (window as any).__prefabInstance(player).listTags().includes('playerghost') };
   });
   const skeletons = () => page.evaluate(() => (window as any).ghostGame.scene.children
@@ -82,9 +82,9 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
   const player = () => page.evaluate(() => {
-    const { player, stats } = (window as any).ghostGame, controller = (window as any).__prefabInstance(player).animationController;
+    const { player, stats } = (window as any).ghostGame, controller = (window as any).__prefabInstance(player);
     const portal = (window as any).ghostGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'multiplayer_portal_moonrock');
-    return { ghost: controller.isGhost, state: controller.stategraph.stateName, ghostMode: stats.playerGhostMode.peek(),
+    return { ghost: controller.sg.isGhost, state: controller.sg.stateName, ghostMode: stats.playerGhostMode.peek(),
       health: stats.playerStats.health.currenthealth, penalty: stats.playerStats.health.penalty, invincible: stats.playerStats.health.invincible,
       visible: player.visible && player.children.every((child: any) => child.visible), x: Math.round(player.position.x * 10) / 10,
       slippery: !!(window as any).__prefabInstance(player).slipperyfeet, tags: (window as any).__prefabInstance(player).listTags(), portalTags: (window as any).__prefabInstance(portal).listTags(), hauntable: !!((window as any).__findActionEntity(portal)?.components ?? (window as any).__prefabInstance(portal)!.components).hauntable };

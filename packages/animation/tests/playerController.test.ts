@@ -29,7 +29,7 @@ import type { PlayerBody } from '../../../src/types/Player';
 import { actionTool, netEntity } from './actionFixtures';
 import { bufferingStategraph } from './bufferingStategraph';
 import { createPickupInventory } from './pickupFixture';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
 import { workTargets } from './workTargets';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
@@ -98,12 +98,12 @@ describe('PlayerController', () => {
       expect(s.click(0).defaultPrevented).toBe(true);
       expect(s.controller.bufferedAction).toMatchObject({ action: 'MINE', target: rock.entity, invobject: s.equipped.entity });
       expect(s.locomotor.bufferedAction).toBeDefined();
-      expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
+      expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
       // ARRIVE_STEP plus both physics radii: the target has none, the player .5.
       s.player.position.x = 10 - 2.1; s.locomotor.update(16, 1 / 30);
-      expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
+      expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
       s.player.position.x = 10 - 1.9; s.locomotor.update(16, 1 / 30);
-      expect(s.animation.stategraph.pushBufferedAction).toHaveBeenCalledOnce();
+      expect(s.animation.sg.pushBufferedAction).toHaveBeenCalledOnce();
       expect(s.playerInstance.sprite.sprite.peek().facingRotation).toBeCloseTo(0);
       expect(s.locomotor.bufferedAction).toBeUndefined();
       expect(s.equipped.entity.components.finiteuses.remaining).toBeUndefined();
@@ -113,7 +113,7 @@ describe('PlayerController', () => {
       // Another click is another action: it drops the buffered MINE.
       pickNothing();
       s.click(0);
-      expect(s.animation.stategraph.cancelAction).toHaveBeenCalledWith('MINE');
+      expect(s.animation.sg.cancelAction).toHaveBeenCalledWith('MINE');
       expect(s.controller.bufferedAction).toBeUndefined();
     } finally { s.dispose(); }
   });
@@ -147,7 +147,7 @@ describe('PlayerController', () => {
         expect(s.controller.bufferedAction).toBeUndefined();
         expect(s.locomotor.bufferedAction).toBeUndefined();
         s.player.position.x = 9; s.locomotor.update(16, 1 / 30);
-        expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
+        expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
       } finally { s.dispose(); }
     });
 });
@@ -176,7 +176,7 @@ describe('PlayerController scene actions', () => {
       expect(s.click(0).defaultPrevented).toBe(true);
       // mindistance = 2 outweighs ARRIVE_STEP plus the player's .5 radius.
       s.player.position.x = 10 - 2.1 * WORLD_SCALE; s.locomotor.update(16, 1 / 30);
-      expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
+      expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
       s.player.position.x = 10 - 1.9 * WORLD_SCALE; s.locomotor.update(16, 1 / 30);
       expect(s.animation.last).toMatchObject({ action: 'HAUNT', target: entity });
       expect(s.animation.hit()).toBe(true);
@@ -219,10 +219,10 @@ describe('PlayerController point actions', () => {
       lifecycle.onequip();
       expect(s.world.mouseActions!.getMouseActions().right).toMatchObject({ action: 'TERRAFORM', invobject: s.equipped.entity });
       expect(s.click(2).defaultPrevented).toBe(true);
-      expect(s.animation.stategraph.pushBufferedAction).not.toHaveBeenCalled();
+      expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
       // No action distance: ARRIVE_STEP plus the player's radius from the point itself.
       s.player.position.set(12.1 - 1.9, 0, 0.1); s.locomotor.update(16, 1 / 30);
-      expect(s.animation.stategraph.pushBufferedAction).toHaveBeenCalledOnce();
+      expect(s.animation.sg.pushBufferedAction).toHaveBeenCalledOnce();
       expect(map.getTileAtWorld(point)).toBe(WORLD_TILES.DECIDUOUS);
       expect(s.animation.hit()).toBe(true);
       expect(map.getTileAtWorld(point)).toBe(WORLD_TILES.DIRT);
@@ -250,7 +250,7 @@ describe('PlayerController with the Wilson stategraph', () => {
 
   it('commits mining at frame seven and preserves durability when cancelled, finished elsewhere or unequipped', async () => {
     const player = await createWilsonPlayer('/dst/data/anim');
-    const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+    const animation = wilsonPlayerInstance(player);
     const animationEquipper = createPlayerEquipper(animation);
     await animationEquipper.equip('goldenpickaxe');
     const inventory = createPickupInventory();
@@ -263,12 +263,12 @@ describe('PlayerController with the Wilson stategraph', () => {
     const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
       renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
     const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
-    const controller = new PlayerController(world, animation.stategraph, locomotor, inventory.handEquipment, playerDoer(player));
+    const controller = new PlayerController(world, animation.sg, locomotor, inventory.handEquipment, playerDoer(player));
     const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
     const mine = () => controller.createAction({ action: 'MINE', target: workTargets('MINE')[0].entity, invobject: tool })!;
     const begin = () => {
       expect(controller.DoAction(mine())).toBe(true);
-      while (animation.stategraph.stateName === 'mine_start') advancePlayer(animation, 1 / 30);
+      while (animation.sg.stateName === 'mine_start') advancePlayer(animation, 1 / 30);
     };
     try {
       rocks.spawn('rock_flintless_low', new THREE.Vector3(1, 0, 0));
@@ -276,8 +276,8 @@ describe('PlayerController with the Wilson stategraph', () => {
       expect(controller.DoAction(mine())).toBe(true);
       expect(locomotor.destination).toBeDefined();
       player.position.set(1, 0, 3); locomotor.update(16, 1 / 30);
-      expect(animation.stategraph.stateName).toBe('mine_start');
-      while (animation.stategraph.stateName === 'mine_start') advancePlayer(animation, 1 / 30);
+      expect(animation.sg.stateName).toBe('mine_start');
+      while (animation.sg.stateName === 'mine_start') advancePlayer(animation, 1 / 30);
       advance(6);
       expect(tool.components.finiteuses.remaining).toBeUndefined();
       expect(workTargets('MINE')[0].entity.components.workable!.GetWorkLeft()).toBe(2);
@@ -310,7 +310,7 @@ describe('PlayerController with the Wilson stategraph', () => {
       return new Response(await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url)));
     });
     const player = await createWilsonPlayer('/anim');
-    const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+    const animation = wilsonPlayerInstance(player);
     const animationEquipper = createPlayerEquipper(animation);
     await animationEquipper.equip('bugnet');
     const body = new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(0.5), linearDamping: 0 }) as PlayerBody;
@@ -327,7 +327,7 @@ describe('PlayerController with the Wilson stategraph', () => {
     const hand = createEquipmentExistenceState('HANDS');
     const net = actionTool('bugnet');
     hand.set(net);
-    const controller = new PlayerController(world, animation.stategraph, locomotor, hand, playerDoer(player));
+    const controller = new PlayerController(world, animation.sg, locomotor, hand, playerDoer(player));
     const move = updateMovement(camera, player, body, locomotor);
     try {
       expect(controller.DoAction(controller.createAction({ action: 'NET', target: butterfly, invobject: net.entity })!)).toBe(true);
@@ -343,7 +343,7 @@ describe('PlayerController with the Wilson stategraph', () => {
   });
   it('uses a book and the pan flute from their slots: GetInventoryActions, the stategraph frame and ACTIONS.READ / PLAY', async () => {
     const player = await createWilsonPlayer('/dst/data/anim');
-    const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+    const animation = wilsonPlayerInstance(player);
     const inventory = createPickupInventory();
     inventory.add('book_rain', 1); inventory.add('panflute', 1);
     const book = inventory.getEntity(inventorySlotAddress(0))!, flute = inventory.getEntity(inventorySlotAddress(1))!;
@@ -353,11 +353,11 @@ describe('PlayerController with the Wilson stategraph', () => {
     const world = { player, scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
       renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
     const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
-    const controller = new PlayerController(world, animation.stategraph, locomotor, inventory.handEquipment, doer);
+    const controller = new PlayerController(world, animation.sg, locomotor, inventory.handEquipment, doer);
     const ForcePrecipitation = vi.fn();
     const bookWorld = { root: world.scene, scheduler: new GameTimeScheduler(), getWatchWorldContent: () => { throw new Error('unused'); },
       weather: { preciptype: createSignal('none'), ForcePrecipitation }, moon: { SetMoonPhase: vi.fn() } } as unknown as BookWorld;
-    const finish = () => { for (let i = 0; i < 300 && animation.stategraph.stateName !== 'idle'; i++) advancePlayer(animation, 1 / 30); };
+    const finish = () => { for (let i = 0; i < 300 && animation.sg.stateName !== 'idle'; i++) advancePlayer(animation, 1 / 30); };
     try {
       // componentactions.lua book INVENTORY: only a reader is offered READ.
       expect(controller.GetInventoryItemAction(book)).toBeUndefined();
@@ -366,7 +366,7 @@ describe('PlayerController with the Wilson stategraph', () => {
       const read = controller.GetInventoryItemAction(book)!;
       expect([read.action, read.invobject, read.target]).toEqual(['READ', book, undefined]);
       expect(controller.DoAction(read)).toBe(true);
-      expect(animation.stategraph.stateName).toBe('book');
+      expect(animation.sg.stateName).toBe('book');
       expect(ForcePrecipitation).not.toHaveBeenCalled(); // The book's fn waits for the state's action frame.
       finish();
       expect(ForcePrecipitation).toHaveBeenCalledExactlyOnceWith(true);
@@ -376,7 +376,7 @@ describe('PlayerController with the Wilson stategraph', () => {
       const play = controller.GetInventoryItemAction(flute)!;
       expect(play.action).toBe('PLAY');
       expect(controller.DoAction(play)).toBe(true);
-      expect(animation.stategraph.stateName).toBe('play_flute');
+      expect(animation.sg.stateName).toBe('play_flute');
       expect(flute.components.finiteuses.uses.peek()).toBeUndefined();
       finish();
       // ACTIONS.PLAY.fn, then BufferedAction:Do's finiteuses:OnUsedAsItem("PLAY").

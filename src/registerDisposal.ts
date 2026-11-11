@@ -14,7 +14,7 @@ import { Combat, type CombatActor } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
 import { prefabInstance } from '../packages/prefab/src/prefabInstance';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
-import { PLAYER_COLLIDER_RADIUS, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { PLAYER_COLLIDER_RADIUS, playDrop, wakeFromBed, type WilsonPlayerInstance } from '@dontstarve-web/prefab/player';
 import { addComponent, removeComponent } from '@dontstarve-web/prefab/components';
 import { Talker } from '../packages/componets/src/talker';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
@@ -81,7 +81,7 @@ interface ApplicationResourcesOptions {
   view: WorldContext;
   screenProjection: Pick<ScreenProjection, 'GetScreenPos'>;
   inventory: InventoryStore;
-  playerAnimation?: WilsonAnimationController;
+  playerEntity?: WilsonPlayerInstance;
   locomotor: PlayerLocomotor;
   pickupDoer: PickupDoer & { readonly TheSim: import('@dontstarve-web/prefab/prefabInstance').EntityQuery };
   inventorySlotItem: (entity: ItemEntity) => SlotItem;
@@ -96,7 +96,7 @@ type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
   'registry' | 'buildingPlacement' | 'farmMap' | 'mushroomPlants' | 'reskinEffects' | 'worldFx' | 'rockAvocadoBushes' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
-export function createDisposalResources({ gameUi, view, screenProjection, inventory, playerAnimation, locomotor, pickupDoer,
+export function createDisposalResources({ gameUi, view, screenProjection, inventory, playerEntity, locomotor, pickupDoer,
   inventorySlotItem, actionEvents, isActionInterrupting, updateCursor, getWatchWorldContent: watchWorldContent, turfMap }: ApplicationResourcesOptions) {
   const player = view.player;
   const camera = view.camera;
@@ -131,10 +131,10 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         if (source) inventoryReceiveEffect(gameUi,
           screenProjection.GetScreenPos(new Vector3(source.x, source.y, source.z)))(received);
       });
-      if (playerAnimation) {
+      if (playerEntity) {
         // Pointer input is blocked while the sleeper's controller is disabled, so waking listens ahead of the canvas.
         const wakeOnPointer = (event: PointerEvent) => {
-          if (event.target === renderer.domElement && playerAnimation.isSleeping) playerAnimation.wakeFromBed();
+          if (event.target === renderer.domElement && playerEntity.sg.isSleeping) wakeFromBed(playerEntity);
         };
         window.addEventListener('pointerdown', wakeOnPointer, true);
         actionControllers.push({ dispose() {
@@ -162,10 +162,10 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
       frameControllers.push({ update: () => followText.update(), dispose: () => followText.dispose() });
       actionControllers.push({ dispose() { removeComponent(playerInstance, 'talker'); } });
 
-      if (playerAnimation) {
+      if (playerEntity) {
         view.registerFrameTask = registerFrontTask;
         // playercontroller.lua: the picker's actions on any entity, buffered for the player.
-        const controller = new PlayerController(view, playerAnimation.stategraph, locomotor, handEquipment, pickupDoer, isActionInterrupting);
+        const controller = new PlayerController(view, playerEntity.sg, locomotor, handEquipment, pickupDoer, isActionInterrupting);
         playerInstance.components.playercontroller = controller;
         actionControllers.push(controller, { dispose() {
           if (playerInstance.components.playercontroller === controller) delete playerInstance.components.playercontroller;
@@ -173,15 +173,15 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
 
         // SGwilson.lua fishing states reach inst.components.inventory:GetEquippedItem(HANDS).components.fishingrod.
         const heldRod = () => (equippedActionEntity(handEquipment.peek())?.components as { fishingrod?: import('../packages/componets/src/fishingrod').FishingRod } | undefined)?.fishingrod;
-        playerAnimation.bindFishing({
+        playerEntity.fishingHost = {
           waitForFish: () => heldRod()?.WaitForFish(),
           collect: () => heldRod()?.Collect(),
           loseRod: () => {
             heldRod()?.Release();
             (handEquipment.peek()?.entity as { remove?(): boolean } | undefined)?.remove?.();
           },
-        });
-        actionControllers.push({ dispose: () => playerAnimation.bindFishing(undefined) });
+        };
+        actionControllers.push({ dispose: () => { playerEntity.fishingHost = undefined; } });
 
         // player_common.lua: combat with UNARMED_DAMAGE, WILSON_ATTACK_PERIOD and DEFAULT_ATTACK_RANGE.
         const unit = TILE_SIZE / 4;
@@ -200,9 +200,9 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         attackerInst.components.combat = combat;
         // pickable onpickedfn callbacks hurt the picker through its combat.
         pickupDoer.components.combat = combat;
-        playerAnimation.combat = combat;
+        playerEntity.combat = combat;
       }
-      if (playerAnimation) {
+      if (playerEntity) {
 
         // TheWorld.Map for ACTIONS.DEPLOY and the deployable items' placer.
         const deployMap = createDeployMap({ turf: turfMap, blockers: placementEntities(view.scene), worldEvents: view.worldEvents, farm: scene.farmMap,
@@ -212,7 +212,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           { dispose() { pickupDoer.Map = undefined; } });
       }
 
-      const stopEmoteWheel = setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerAnimation,
+      const stopEmoteWheel = setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerEntity,
         actionEvents, updateCursor);
 
       const stopContextMenu = gameUi.inventoryBar.contextMenu.subscribe((request) => {
@@ -228,7 +228,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           const entity = inventory.getEntity(slot);
           if (!entity) return;
           // DROP's perform frame: inventory:DropItem of the whole stack, if this inst is still the slot's.
-          playerAnimation?.playDrop(() => {
+          if (playerEntity) playDrop(playerEntity, () => {
             if (isHandSlot(slot)) inventory.getEntity(slot)?.flush();
             if (inventory.getEntity(slot) !== entity) return false;
             inventory.DropItem(entity, player.position.clone());

@@ -5,7 +5,7 @@ import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
-import { createWilsonPlayer, type WilsonAnimationController } from '../../prefab/src/player';
+import { createWilsonPlayer, type WilsonPlayerInstance } from '../../prefab/src/player';
 import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { getLightStaffController, type LightStaffId } from '../../prefab/src/staff';
@@ -66,7 +66,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
   scene.add(player);
-  const animation = prefabInstance(player).animationController as WilsonAnimationController;
+  const animation = prefabInstance(player);
   const animationEquipper = createPlayerEquipper(animation);
   // SGwilson's equip/unequip handlers play item_out/item_in from idle; let them finish.
   const settleEquip = () => { for (let frame = 0; frame < 24; frame++) advancePlayer(animation, 1 / 30); };
@@ -108,7 +108,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity; the point is in CASTSPELL range.
   const doer = { position: player.position, getPosition: () => player.position, hasTag: () => false, PushEvent() {},
     components: { sanity: { DoDelta: (delta: number) => { sanity = Math.max(0, sanity + delta); } } } };
-  const casting = new PlayerController({ scene, camera, renderer, ground, player }, animation.stategraph,
+  const casting = new PlayerController({ scene, camera, renderer, ground, player }, animation.sg,
     { destination: undefined, stop: () => { stops += 1; }, goToPoint: () => true, PushAction: (_action, arrive) => arrive() },
     inventory.handEquipment, doer as never, () => false);
   const click = (button = 2) => {
@@ -129,11 +129,11 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   await PrewarmSounds();
   click(0);
   await settle();
-  const ignoredLeft = !animation.stategraph.isPerformingAction('CASTSPELL');
+  const ignoredLeft = !animation.sg.isPerformingAction('CASTSPELL');
   click();
   click();
   await settle();
-  const busy = animation.stategraph.isPerformingAction('CASTSPELL');
+  const busy = animation.sg.isPerformingAction('CASTSPELL');
   window.dispatchEvent(new PointerEvent('pointermove', { clientX: 1, clientY: 1 }));
   tick(52);
   const beforeCommit = stars.exportRecords().length;
@@ -187,11 +187,11 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   staff.onunequip();
   await animationEquipper.equip(null); settleEquip();
   tick(90);
-  const cancelled = !animation.stategraph.isPerformingAction('CASTSPELL') && stars.exportRecords().length === 1;
+  const cancelled = !animation.sg.isPerformingAction('CASTSPELL') && stars.exportRecords().length === 1;
   const noCastingLight = player.children.filter((child) => getDeclaredLight(child)).length === 0;
   click();
   await settle();
-  const ignoredUnequipped = !animation.stategraph.isPerformingAction('CASTSPELL');
+  const ignoredUnequipped = !animation.sg.isPerformingAction('CASTSPELL');
   player.position.set(-60, 0, 40);
   advanceStars(0.05);
   const fixedPosition = star.position.distanceTo(new THREE.Vector3(...record.transform.position)) < 0.000001;

@@ -1,3 +1,4 @@
+import { wakeFromBed } from '../../prefab/src/player';
 import { addComponent } from '../../prefab/src/components';
 import { Talker } from '../../componets/src/talker';
 import { advancePlayer } from './playerVisual';
@@ -17,7 +18,7 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const scheduler = new GameTimeScheduler();
   const { model, instance } = await createWilsonPlayerPrefab('/dst/data/anim', new World(), { scheduler });
-  const animation = instance.animationController;
+  const animation = instance;
   const controls = { HideCraftingAndInventory: vi.fn(), ShowCraftingAndInventory: vi.fn() };
   instance.HUD = { Show() {}, Hide() {}, controls };
   const talker = addComponent(instance, 'talker', Talker, scheduler);
@@ -30,28 +31,28 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   const sleepIn = () => {
     // ACTIONS.SLEEPIN.fn: sleepingbag:DoSleep(act.doer) reaches the player's sleepingbaguser.
     const action = new BufferedAction('SLEEPIN', () => { bag.DoSleep(sleeper); return true; }, () => true, { target: tent });
-    expect(animation.stategraph.pushBufferedAction(action)).toBe(true);
+    expect(animation.sg.pushBufferedAction(action)).toBe(true);
     frames(7);
   };
 
   // A tent refuses the day (ANNOUNCE_NODAYSLEEP in the character's speech).
   sleepIn();
   // The refusal is said from idle, so SGwilson's ontalk handler enters talk.
-  expect([animation.stategraph.stateName, sleeper.bed, talker.line.peek()]).toEqual(['talk', undefined, '我不要打乱规律的作息时间。']);
+  expect([animation.sg.stateName, sleeper.bed, talker.line.peek()]).toEqual(['talk', undefined, '我不要打乱规律的作息时间。']);
 
   clockstate.set({ phase: 'night', timeinphase: 0 });
   sleepIn();
-  expect(animation.stategraph.hasStateTag('sleeping')).toBe(true);
+  expect(animation.sg.hasStateTag('sleeping')).toBe(true);
   expect([sleeper.bed, tags.has('hassleeper'), instance.controllerEnabled]).toEqual([bag, true, false]);
   expect(controls.HideCraftingAndInventory).toHaveBeenCalledOnce();
   expect([instance.sprite.sprite.peek().visible, model.visible]).toEqual([false, false]);
   // Movement wakes the sleeper through its bed; leaving the tent shows the player again.
-  animation.wakeFromBed();
+  wakeFromBed(animation);
   frames(1);
-  expect([animation.stategraph.stateName, sleeper.bed, tags.has('hassleeper')]).toEqual(['wakeup', undefined, false]);
+  expect([animation.sg.stateName, sleeper.bed, tags.has('hassleeper')]).toEqual(['wakeup', undefined, false]);
   expect([instance.sprite.sprite.peek().visible, model.visible]).toEqual([true, true]);
   frames(120);
-  expect([animation.stategraph.stateName, instance.controllerEnabled]).toEqual(['idle', true]);
+  expect([animation.sg.stateName, instance.controllerEnabled]).toEqual(['idle', true]);
   expect(controls.ShowCraftingAndInventory).toHaveBeenCalled();
 
   // player_common.lua OnDespawn: the bed releases a sleeper that is removed in it.

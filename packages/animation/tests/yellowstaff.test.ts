@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { dwarfStarLight } from '../../prefab/src/stafflight';
 import { staffCastingLightPrefabs, StaffCastingLightInstance, type StaffCastingLightId } from '../../prefab/src/staff_castinglight';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
-import { createWilsonPlayer, wilsonPlayerInstance, type WilsonAnimationController } from './playerVisual';
+import { createWilsonPlayer, wilsonPlayerInstance } from './playerVisual';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabDisplayGroup } from '../../display/src';
@@ -61,14 +61,14 @@ describe('yellowstaff source lighting', () => {
     vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
     const { lights, displays } = setupLights();
     const model = await createWilsonPlayer('/dst/data/anim'), player = wilsonPlayerInstance(model);
-    const controller = player.animationController as WilsonAnimationController, graph = controller.stategraph;
+    const controller = player, graph = controller.sg;
     const setUp = vi.spyOn(StaffCastingLightInstance.prototype, 'SetUp');
     const spawned: StaffCastingLightInstance[] = [];
-    controller.bindSpawnPrefab((prefab, position) => {
+    controller.SpawnPrefab = (prefab, position) => {
       const light = lights.spawn(prefab as StaffCastingLightId, position);
       spawned.push(light);
       return light;
-    });
+    };
     player.setPosition(6, 0, 9);
     const cast = () => graph.pushBufferedAction(new BufferedAction('CASTSPELL', () => {}, undefined, {
       invobject: { prefab: 'yellowstaff', fxcolour: [1, 0, 0], hasTag: () => false },

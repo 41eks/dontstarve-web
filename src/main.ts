@@ -33,6 +33,7 @@ import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { isGroundTargetBlocked, placementEntities } from '../packages/prefab/src/placementEntities';
 import { backpackContainerId } from '@dontstarve-web/inventory';
 import { player, playerBody, playerInstance, playerPhysics } from './player';
+import { setCrafting } from '@dontstarve-web/prefab/player';
 import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
 import { createEquipmentViews } from '@dontstarve-web/prefab/equipmentVisual';
 import { getHandEquipmentDefinition, type HandEquipmentWorld } from '@dontstarve-web/prefab/handEquipment';
@@ -111,7 +112,6 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
     inventory.setStorageAccessible(containerId, false);
   });
 }
-const playerAnimation = playerInstance.animationController;
 const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (inst: unknown, data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean; readonly TheSim: import('@dontstarve-web/prefab/prefabInstance').EntityQuery; OpenEquipmentView?: import('@dontstarve-web/signals').EquipmentOwner['OpenEquipmentView'];
   components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
   // The player's own eater.lua (ACTIONS.EAT) and sleepingbaguser.lua (SLEEPIN's sleepingbag:DoSleep) on act.doer.
@@ -128,13 +128,13 @@ const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> 
   get SoundEmitter() { return playerInstance.SoundEmitter; },
   get TheSim() { return playerInstance.TheSim; },
   sg: {
-    HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false,
+    HasStateTag: tag => playerInstance.sg.hasStateTag(tag),
     // SGwilson portal_jumpin_pre for ACTIONS.BLINK / BLINK_MAP.
-    beginPortalJump: (pos, fromMap) => playerAnimation?.stategraph.beginPortalJump(pos, fromMap) ?? false,
+    beginPortalJump: (pos, fromMap) => playerInstance.sg.beginPortalJump(pos, fromMap),
   },
-  HasStateTag: tag => playerAnimation?.stategraph.hasStateTag(tag) ?? false,
-  GoToState: name => playerAnimation?.stategraph.goToState(name as WilsonStateName),
-  IsCurrentState: name => playerAnimation?.stategraph.stateName === name,
+  HasStateTag: tag => playerInstance.sg.hasStateTag(tag),
+  GoToState: name => playerInstance.sg.goToState(name as WilsonStateName),
+  IsCurrentState: name => playerInstance.sg.stateName === name,
   PushEvent: (name, data) => {
     // player_common.lua listens for itemranout; inst:PushEvent reaches SGwilson's handlers itself (instance.sg).
     if (name === 'itemranout') OnItemRanOut(inventory, data);
@@ -144,7 +144,6 @@ const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> 
 inventory.bindActor(pickupDoer);
 const playerSanity = playerStats.sanity;
 pickupDoer.components.sanity = playerSanity;
-playerAnimation?.bindInventory(inventory);
 playerInstance.components.inventory = inventory;
 const handPointer = view.mouseActions?.pointer ?? new PointerRaycaster(view);
 const bodySlotAddress = equipmentSlotAddress('body');
@@ -193,7 +192,7 @@ inventory.entities.bindEquipmentWorld({
   },
 } satisfies HandEquipmentWorld);
 // equippable:Equip(owner): each equipped inst draws on its own slot of the player's sprite.
-if (playerAnimation) pickupDoer.OpenEquipmentView = createEquipmentViews(pickupDoer, playerAnimation.equipmentPresentation);
+pickupDoer.OpenEquipmentView = createEquipmentViews(pickupDoer, playerInstance.equipmentPresentation);
 // The cursor shows the held item's action; the backpack panel follows the worn backpack.
 inventory.handEquipment.subscribe(equipment => {
   cursorUi.setHandAction((equipment && getHandEquipmentDefinition(equipment.itemId)?.definition.handAction) ?? null, handPointer);
@@ -225,7 +224,7 @@ syncCraftingInventory();
 inventory.subscribe(syncCraftingInventory);
 
 const disposalResources = createDisposalResources({
-  gameUi, view, screenProjection, inventory, playerAnimation, locomotor, pickupDoer,
+  gameUi, view, screenProjection, inventory, playerEntity: playerInstance, locomotor, pickupDoer,
   inventorySlotItem, actionEvents, isActionInterrupting: input.isActionInterrupting,
   updateCursor: () => cursorUi.update(), getWatchWorldContent: worldState.getWatchWorldContent, turfMap,
 });
@@ -253,13 +252,13 @@ disposalEvents.on('dispose', () => {
   sanityVignette.dispose();
 });
 disposalResources.register(disposalEvents, sceneResources);
-const wortox = playerAnimation ? await WortoxPlayer.create({
-  world: view, body: playerBody, physics: playerPhysics, animation: playerAnimation, doer: pickupDoer, inventory, scheduler, fx: worldFx,
+const wortox = await WortoxPlayer.create({
+  world: view, body: playerBody, physics: playerPhysics, doer: pickupDoer, inventory, scheduler, fx: worldFx,
   isPassableAtPoint: position => turfMap.isPassableAtPoint(position),
   saved: initialSave.players.local.wortox,
   resetMinimapOffset: () => gameUi.minimap.setView({ x: player.position.x, z: player.position.z }),
   snapCamera: () => followCamera.snap(),
-}) : undefined;
+});
 const onMapActionRequest = (event: Event) => {
   const { position } = (event as CustomEvent<MinimapActionRequestDetail>).detail;
   // MapScreen right click: ThePlayer.components.playercontroller:OnMapAction.
@@ -268,18 +267,18 @@ const onMapActionRequest = (event: Event) => {
 gameUi.minimap.addEventListener('game:map-action-request', onMapActionRequest);
 disposalEvents.on('dispose', () => {
   gameUi.minimap.removeEventListener('game:map-action-request', onMapActionRequest);
-  wortox?.dispose();
+  wortox.dispose();
 });
 
 
 // health.lua pushes "death" when health reaches 0; SGwilson.lua's death state drops everything and plays the clip.
-playerAnimation?.bindDeath({
+playerInstance.deathHost = {
   dropEverything: () => {
     inventory.DropEverything();
   },
   // TheWorld.Map:IsPassableAtPoint: neither open ocean nor the void.
   isPassableAtPoint: () => turfMap.isPassableAtPoint(player.position),
-});
+};
 // player_common.lua OnSetOwner: PlayerActionFilter at the bottom of the stack (ACTION_FILTER_PRIORITIES.default);
 // the ghost's filter is pushed above it while dead.
 view.mouseActions?.PushActionFilter(PlayerActionFilter, -99);
@@ -294,7 +293,7 @@ playerInstance.HUD = {
     ShowCraftingAndInventory: () => { gameUi.inventoryBar.style.visibility = ''; },
   },
 };
-playerAnimation?.bindSpawnPrefab((prefab, position) => registry.SpawnPrefab(prefab, position));
+playerInstance.SpawnPrefab = (prefab, position) => registry.SpawnPrefab(prefab, position);
 // A saved ghost resumes as a ghost (OnLoad is_ghost → OnMakePlayerGhost({ loading = true })).
 if (initialSave.players.local.ghost) playerInstance.PushEvent('makeplayerghost', { loading: true });
 const stopGhostWatch: (() => void)[] = [];
@@ -305,8 +304,8 @@ createEffect(() => { gameUi.inventoryBar.style.display = watchedGhostMode.get() 
 if (playerStats.health.IsDead() && !playerGhostMode.peek()) playerInstance.PushEvent('death', { cause: playerInstance.deathcause });
 disposalEvents.on('dispose', () => {
   stopGhostWatch.splice(0).forEach(stop => stop());
-  playerAnimation?.bindDeath(undefined);
-  playerAnimation?.bindSpawnPrefab(undefined);
+  playerInstance.deathHost = undefined;
+  playerInstance.SpawnPrefab = undefined;
   delete playerInstance.HUD;
   if (playerInstance.components.playeractionpicker === view.mouseActions) delete playerInstance.components.playeractionpicker;
 });
@@ -387,7 +386,7 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
 gameUi.crafting.addEventListener('game:crafting-state-change', (event) => {
   const { crafting } = (event as CustomEvent<CraftingStateDetail>).detail;
   if (crafting) actionEvents.emit('action:interrupt', { reason: 'crafting' });
-  playerAnimation?.setCrafting(crafting);
+  setCrafting(playerInstance, crafting);
 });
 
 /** All startup resources and bindings are ready, and the complete scene has rendered. */

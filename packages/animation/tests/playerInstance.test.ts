@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { SpriteState } from '@dontstarve-web/display';
-import { createWilsonPlayerPrefab, type WilsonAnimationController, type WilsonPlayerPrefab } from './playerVisual';
+import { createWilsonPlayerPrefab, type WilsonPlayerPrefab } from './playerVisual';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { smallHash } from '../src/animationAssets';
 import { declaredAnimState } from './animStateFixture';
@@ -32,7 +32,7 @@ async function createPlayer() {
   const world = new CANNON.World();
   const prefab = await createWilsonPlayerPrefab('/dst/data/anim', world);
   players.push(prefab);
-  return { ...prefab, world, animation: prefab.instance.animationController as WilsonAnimationController };
+  return { ...prefab, world, animation: prefab.instance };
 }
 
 it('declares player art and retains its entity, equipment, body and shared assets through sleep and wake', async () => {
@@ -50,7 +50,7 @@ it('declares player art and retains its entity, equipment, body and shared asset
   const disposals = materials.map(material => vi.spyOn(material, 'dispose'));
   await animationEquipper.equip('pickaxe');
   const hit = vi.fn();
-  expect(animation.stategraph.pushBufferedAction(new BufferedAction('MINE', hit))).toBe(true);
+  expect(animation.sg.pushBufferedAction(new BufferedAction('MINE', hit))).toBe(true);
   for (let frame = 0; frame < 5; frame++) advancePlayer(animation, 1 / 30);
   facePlayer(animation, 'side', true);
   expect(instance.sprite.sprite.peek()).toMatchObject({ facing: 5, mirrored: true });
@@ -88,10 +88,10 @@ it('declares tagged book FX as child instances and expires them on game timers w
   const { instance, model, display, animation } = await createPlayer();
   const book = { prefab: 'book_silviculture', swap_build: 'swap_books', swap_prefix: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' }, hasTag: () => false };
   const read = vi.fn(() => true);
-  const push = () => animation.stategraph.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }));
+  const push = () => animation.sg.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }));
   expect(push()).toBe(true);
-  for (let frame = 0; frame < 60 && animation.stategraph.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
-  expect(animation.stategraph.stateName).toBe('book2');
+  for (let frame = 0; frame < 60 && animation.sg.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
+  expect(animation.sg.stateName).toBe('book2');
   await display.artLoaded(); advancePlayer(animation, 0);
   const fx = [...instance.sprite.fx.peek().values()];
   expect(fx).toHaveLength(2);

@@ -238,6 +238,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   Hide(): void { this.sprite.setVisible(false); }
   /** EntityScript:Show() */
   Show(): void { this.sprite.setVisible(true); }
+  /** inst.entity:IsVisible(): false while inst:Hide() holds. */
+  IsVisible(): boolean { return this.sprite.sprite.peek().visible !== false; }
   /** inst.MiniMapEntity: map settings stay declared while the world sprite sleeps. */
   readonly minimap = new MiniMapState();
   /** The entity owns its movement notifications; map consumers receive this tracker with its icon declaration. */

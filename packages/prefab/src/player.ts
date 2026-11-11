@@ -1,9 +1,8 @@
 import { addComponent, removeComponent } from './components';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
-import { AnimState } from '@dontstarve-web/animation/animState';
-import { SpriteResources, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
-import { clockstate, createMemo, createSignal, readonlySignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonAnimationKey, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonSleepAnnounce, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
+import { SpriteResources, SpriteState, type NamedSpriteArt, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
+import { clockstate, createMemo, createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonAnimationClip, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonSleepHost, type WilsonSleepAnnounce, type WilsonDeathHost, type WilsonStateGraphHost, type WilsonStateName } from '@dontstarve-web/stategraphs';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import type { AxeTool } from './axe';
@@ -23,7 +22,7 @@ import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { PhysicsState } from '../../componets/src/physicsState';
 import { registerActionEntity, disposeActionEntity } from './actionEntity';
-import { createPrefabEntity, prefabInstance, type EntityTask, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, PrefabInstance, prefabInstance, type EntityTask } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
 import { STAFF_CASTINGLIGHT_ID, type StaffCastingLightInstance } from './staff_castinglight';
@@ -68,44 +67,6 @@ const WORTOX_SLEEP_SPEECH: Record<WilsonSleepAnnounce, string> = {
   ANNOUNCE_NOHUNGERSLEEP: '灵魂过度饥饿，难以入眠。',
 };
 
-export interface WilsonAnimationController {
-  readonly stategraph: WilsonStateGraph;
-  cancelEmote(): void;
-  readonly currentEmote: WilsonEmote | null;
-  readonly isEmoting: boolean;
-  /** The player inst's combat component, read by the attack state. */
-  combat?: WilsonCombat;
-  playEmote(emote: WilsonEmote): boolean;
-  start(state: WilsonMovementState): void;
-  playEat(): void;
-  /** Inventory searched when a broken tool is replaced by another of the same prefab. */
-  bindInventory(inventory: Parameters<typeof equipSamePrefab>[0]): void;
-  playPickup(): void;
-  playDrop(onDrop: () => boolean, onCancel?: () => void): boolean;
-  setCrafting(crafting: boolean): void;
-  readonly AnimState: AnimState;
-  readonly equipmentAssets: GroundItemAssets;
-  /** What the player draws its equipment with; the player's OpenEquipmentView gives each equipped inst a slot of it. */
-  readonly equipmentPresentation: EquipmentPresentation;
-  /** Follower:FollowSymbol(owner.GUID, symbol, offsetX, offsetY): a node tracking the symbol, in the player's space. */
-  /** `fx` is drawn at the follower by the player's display, which loads its art. */
-  followSymbol(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): SymbolFollower;
-  /** SGwilson's death state: DropAllItemsForDeath through the application's inventory. */
-  bindDeath(death: WilsonDeathHost | undefined): void;
-  /** The equipped rod's component for SGwilson's fishing states. */
-  bindFishing(fishing: WilsonFishingHost | undefined): void;
-  bindSpawnPrefab(spawn: ((prefab: string, position: THREE.Vector3) => PrefabInstance | undefined) | undefined): void;
-  /** AnimState:SetBank("ghost") + skinner ghost_skin + SetStateGraph("SGwilsonghost"); `loading` is inst.loading_ghost. */
-  makeGhost(loading?: boolean): void;
-  /** player_common_extensions.lua DoActualRez: the living bank and skin, SetStateGraph("SGwilson") and the source's rebirth state (portal_rez, or amulet_rebirth for an amulet). */
-  makeAlive(state?: 'portal_rez' | 'amulet_rebirth'): void;
-  bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint'> | undefined): void;
-  readonly isGhost: boolean;
-  readonly isSleeping: boolean;
-  wakeFromBed(): void;
-  update(dt: number): void;
-}
-
 export type PlayerBody = CANNON.Body & { canJump: boolean };
 
 export interface WilsonPlayerPrefab {
@@ -120,12 +81,22 @@ export interface WilsonPlayerPrefab {
 
 export type PlayerModel = THREE.Group;
 
-/** Player-owned state kept on the logical inst, including the movement facts read by SGwilson. */
-export interface WilsonPlayerInstance extends PrefabInstance {
+interface ActiveEmote {
+  id: WilsonEmote;
+  archive: string;
+  props: boolean;
+  clips: readonly string[];
+  loop: boolean;
+}
+
+/**
+ * The player inst: the fields player_common.lua and SGwilson keep on it, assigned in createWilsonPlayerEntity (fn).
+ * Its behaviour is the module functions below, each taking the inst first.
+ */
+export class WilsonPlayerInstance extends PrefabInstance {
   /** player_common.lua fn: inst.entity:AddSoundEmitter(). */
-  SoundEmitter: SoundEmitter;
-  readonly stats: PlayerStats;
-  readonly components: PrefabInstance['components'] & {
+  declare SoundEmitter: SoundEmitter;
+  declare readonly components: PrefabInstance['components'] & {
     inventory?: import('@dontstarve-web/inventory').InventoryStore;
     sanity?: import('../../componets/src/sanity').Sanity;
     /** The input's action picker: the ghost pushes and pops its action filter on it. */
@@ -133,22 +104,24 @@ export interface WilsonPlayerInstance extends PrefabInstance {
     /** player_common.lua master_postinit AddComponent("sleepingbaguser"), on game time. */
     sleepingbaguser?: SleepingBagUser;
   };
-  animationController: WilsonAnimationController;
-  controllerEnabled: boolean;
+  /** inst:SetStateGraph("SGwilson"). */
+  declare sg: WilsonStateGraph;
+  stats!: PlayerStats;
+  controllerEnabled = true;
   locomotor?: { stop(): void };
-  runSpeed: number;
+  runSpeed = 0;
   motorSpeed?: number;
-  currentMotorSpeed: number;
-  wantsToMoveForward: boolean;
-  worldHeading: number;
+  currentMotorSpeed = 0;
+  wantsToMoveForward = false;
+  worldHeading = 0;
   slipperyfeet?: SlipperyFeet;
   wortox?: import('./wortox').Wortox;
   /** The game-time scheduler inst:DoTaskInTime runs on. */
-  readonly scheduler?: GameTimeScheduler;
+  scheduler?: GameTimeScheduler;
   /** player_classified isghostmode (SetGhostMode): playervision's ghost colour cube, and the ghost's save flag. */
-  readonly ghostMode: Signal<boolean>;
+  readonly ghostMode = createSignal(false);
   /** player_common.lua OnPlayerDeath: inst.deathcause, for the skeleton's description. */
-  deathcause: string;
+  deathcause = 'unknown';
   /** SpawnPrefab: the scene's registry, for what the player's states and death spawn. */
   SpawnPrefab?: (prefab: string, position: THREE.Vector3) => PrefabInstance | undefined;
   /** inst.HUD, set by the front end while the player has one. */
@@ -157,19 +130,37 @@ export interface WilsonPlayerInstance extends PrefabInstance {
     /** HUD.controls: inventory:Hide() / Show() hide and show crafting and the inventory bar. */
     controls?: { HideCraftingAndInventory(): void; ShowCraftingAndInventory(): void };
   };
-  /** inst:ShowHUD(show) */
-  ShowHUD(show: boolean): void;
-  /** inst.entity:IsVisible(): false while inst:Hide() holds. */
-  IsVisible(): boolean;
   /** bernie_active.lua / berniebigbrain.lua: the big Bernies this player leads, and the brief block after one grows. */
   bigbernies?: Set<object>;
   blockbigbernies?: EntityTask;
+  /** inst:ShowHUD(show) */
+  ShowHUD!: (show: boolean) => void;
+  /** The player inst's combat component, read by the attack state. */
+  combat?: WilsonCombat;
+  /** The emote SGwilson's emote state is playing, with the art it was chosen with. */
+  emote: ActiveEmote | null = null;
+  /** The bank and builds the player is drawn with: SetBank / SetBuild and the skinner's ghost build. */
+  artSource?: NamedSpriteArt;
+  /** The archive and dynamic builds the player's display loads. */
+  resources!: SpriteResources;
+  /** What the player draws its equipment with; the player's OpenEquipmentView gives each equipped inst a slot of it. */
+  equipmentAssets!: GroundItemAssets;
+  hatAssets!: HatEquipmentAssets;
+  equipmentPresentation!: EquipmentPresentation;
+  /** The book reading FX the player's states spawn, on their own frame clock. */
+  bookFx!: BookFxController;
+  fxScheduler!: GameTimeScheduler;
+  /** SGwilson's soul hop, death and fishing reach the application through these while they are bound. */
+  soulHopHost?: WilsonSoulHopHost;
+  deathHost?: WilsonDeathHost;
+  fishingHost?: WilsonFishingHost;
+  sleepHost?: WilsonSleepHost;
 }
 
 export function wilsonPlayerInstance(model: THREE.Object3D): WilsonPlayerInstance {
   const instance = prefabInstance(model);
-  if (!instance || instance.prefab !== PLAYER_ART_CHARACTER) throw new Error('Expected a Wilson player instance');
-  return instance as WilsonPlayerInstance;
+  if (!(instance instanceof WilsonPlayerInstance)) throw new Error('Expected a Wilson player instance');
+  return instance;
 }
 
 export interface WilsonPlayerPrefabOptions {
@@ -180,274 +171,230 @@ export interface WilsonPlayerPrefabOptions {
   componentUpdates?: ComponentUpdates;
 }
 
-interface ActiveEmote {
-  id: WilsonEmote;
-  archive: string;
-  props: boolean;
-  clips: readonly string[];
-  loop: boolean;
+/** player_common.lua fns.ShowHUD, assigned to inst.ShowHUD in master_postinit. */
+function ShowHUD(inst: WilsonPlayerInstance, show: boolean): void {
+  if (show) inst.HUD?.Show(); else inst.HUD?.Hide();
 }
 
-class WilsonController implements WilsonAnimationController {
-  readonly stategraph: WilsonStateGraph;
-  private state: WilsonAnimationKey = 'idle';
-  readonly equipmentAssets: GroundItemAssets;
-  readonly equipmentPresentation: EquipmentPresentation;
-  /** inst.AnimState: the player's own declaration, beneath the slots its equipped items declare. */
-  readonly AnimState: AnimState;
-  /** The player inst's combat component, read by the attack state. */
-  combat?: WilsonCombat;
-  private readonly instance: WilsonPlayerInstance;
-  private readonly fxScheduler = new GameTimeScheduler();
-  private readonly cleanups: (() => void)[] = [];
-  private disposed = false;
-  private artSource?: NamedSpriteArt;
-  private readonly resources: SpriteResources;
-  private soulHopHost?: WilsonSoulHopHost;
-  private readonly hatAssets: HatEquipmentAssets;
-  private emote: ActiveEmote | null = null;
-  readonly bookFx: BookFxController;
-  private readonly sleepHost?: WilsonSleepHost;
-  private deathHost?: WilsonDeathHost;
-  private fishingHost?: WilsonFishingHost;
-  private inventory?: Parameters<typeof equipSamePrefab>[0];
+/** Movement input: walking or running cancels an emote. */
+export function startMovement(inst: WilsonPlayerInstance, state: WilsonMovementState): void {
+  if (state !== 'idle' && inst.emote !== null) cancelEmote(inst);
+  inst.sg.requestMovement(state);
+}
 
-  constructor(
-    instance: WilsonPlayerInstance,
-    assetBaseUrl: string,
-    resources: SpriteResources,
-    sanityPercent?: ReadonlySignal<number>,
-  ) {
-    this.instance = instance;
-    this.resources = resources;
-    this.equipmentAssets = new GroundItemAssets();
-    // The sprite holds the AnimState's own json signal; the player's display follows it and loads the builds it names from the equipment assets.
-    this.AnimState = instance.AnimState;
-    instance.sprite.setAnimState(this.AnimState.json, this.equipmentAssets);
-    for (const layer of ['ARM_carry', 'LANTERN_OVERLAY', 'HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) this.AnimState.Hide(layer);
-    this.hatAssets = new HatEquipmentAssets(assetBaseUrl);
+function startOneShot(inst: WilsonPlayerInstance, state: WilsonOneShotState): void {
+  cancelEmote(inst);
+  inst.sg.requestOneShot(state);
+}
 
-    this.equipmentPresentation = {
-      sprite: { sprite: instance.sprite, art: this.equipmentAssets }, assets: this.equipmentAssets, hats: this.hatAssets,
-      lightParent: instance, sanityPercent, soundPosition: instance.transform.position,
-      followSymbol: (symbol, x, y, fx) => this.followSymbol(symbol, x, y, fx),
-    };
-    this.bookFx = new BookFxController(instance, this.fxScheduler, resources);
-    const sleeper = instance.components.sleepingbaguser;
-    // SGwilson.lua tent and wakeup on the player inst: its hunger, sleepingbaguser, controller, HUD and talker.
-    this.sleepHost = sleeper && {
-      isDay: () => clockstate.peek().phase === 'day',
-      hungerCurrent: () => instance.stats.hunger.current,
-      get sleepingbag() { return sleeper.bed; },
-      setSleeperState: sleeping => {
-        // SetSleeperSleepState / SetSleeperAwakeState: playercontroller:Enable and inventory:Hide / Show.
-        // OnSleepIn / OnWakeUp's hand and active item stashing is not ported.
-        instance.controllerEnabled = !sleeping;
-        if (sleeping) instance.HUD?.controls?.HideCraftingAndInventory();
-        else instance.HUD?.controls?.ShowCraftingAndInventory();
-      },
-      // inst:Hide() / inst:Show() with the DynamicShadow, declared on the sprite for the player's display.
-      setHidden: hidden => instance.sprite.setVisible(!hidden),
-      say: announce => instance.components.talker?.Say(WORTOX_SLEEP_SPEECH[announce]),
-    };
-    const controller = this;
-    this.stategraph = new WilsonStateGraph(instance, {
-      get soulHop() { return controller.soulHopHost; },
-      get sleep() { return controller.sleepHost; },
-      get death() { return controller.deathHost; },
-      // SGwilson.lua amulet_rebirth on the player inst: its inventory, HUD and the sleepers around it.
-      rebirth: {
-        consumeEquippedAmulet: () => {
-          const inventory = instance.components.inventory, item = inventory?.GetEquippedItem('body');
-          if (!inventory || item?.prefab !== 'amulet') return false;
-          const removed = inventory.RemoveItem(item);
-          if (!removed) return false;
-          removed.remove();
-          return true;
-        },
-        hasBodyItem: () => !!instance.components.inventory?.GetEquippedItem('body'),
-        showHUD: show => instance.ShowHUD(show),
-        sleepNearby: (radius, seconds) => {
-          for (const v of instance.TheSim.FindEntities(instance.position, radius * WORLD_SCALE)) {
-            if (v !== instance) (v.components as { sleeper?: { GoToSleep(seconds: number): void } }).sleeper?.GoToSleep(seconds);
-          }
-        },
-      },
-      rez: {
-        setHidden: hidden => instance.sprite.setVisible(!hidden),
-        get isHidden() { return instance.sprite.sprite.peek().visible === false; },
-        setMultColour: (r, g, b) => this.setMultColour(r, g, b),
-        setInvincible: invincible => { instance.components.health!.SetInvincible(invincible); },
-      },
-      get fishing() { return controller.fishingHost; },
-      playAnimation: (clip) => this.selectAnimation(clip),
-      getCombat: () => this.combat,
-      spawnFx: (prefab, followSymbol) => this.bookFx.spawn(prefab, followSymbol),
-      castLight: (colour, duration, delay) => {
-        const light = instance.SpawnPrefab?.(STAFF_CASTINGLIGHT_ID, instance.position.clone()) as StaffCastingLightInstance | undefined;
-        light?.SetUp(colour, duration, delay);
-        return light;
-      },
-      setControllerEnabled: enabled => { instance.controllerEnabled = enabled; },
-      stopMovement: () => instance.locomotor?.stop(),
-      slip: {
-        runSpeed: () => instance.runSpeed,
-        setMotorSpeed: speed => { instance.motorSpeed = speed; },
-        resetSlipperiness: () => instance.slipperyfeet?.SetCurrent(0),
-        wantsToMoveForward: () => instance.wantsToMoveForward,
-      },
-      equipSamePrefab: (prefab) => this.inventory !== undefined && equipSamePrefab(this.inventory, prefab),
-      onStateChanged: (name) => {
-        if (name !== 'emote') this.emote = null;
-        // stategraph.lua pushes "newstate" to the inst; armorsnurtleshell's ProtectionLevels listens for it.
-        instance.PushEvent('newstate', { statename: name });
-      },
-    });
+export function playEat(inst: WilsonPlayerInstance): void { startOneShot(inst, 'eat'); }
+export function playPickup(inst: WilsonPlayerInstance): void { startOneShot(inst, 'pickup'); }
+
+/** ACTIONS.DROP: doshortaction performs the drop on its frame 6; onCancel runs if the action never performs. */
+export function playDrop(inst: WilsonPlayerInstance, onDrop: () => boolean, onCancel?: () => void): boolean {
+  if (inst.sg.hasStateTag('busy')) return false;
+  cancelEmote(inst);
+  const action = new BufferedAction<WilsonAction>('DROP', onDrop);
+  const stop = inst.sg.listenForEvent('actionfailed', data => {
+    if ((data as { action?: unknown } | undefined)?.action === action) { stop(); onCancel?.(); }
+  });
+  action.addSuccessAction(stop);
+  if (inst.sg.pushBufferedAction(action)) return true;
+  stop();
+  return false;
+}
+
+export function setCrafting(inst: WilsonPlayerInstance, crafting: boolean): void {
+  if (crafting) cancelEmote(inst);
+  inst.sg.requestCrafting(crafting);
+}
+
+/** Wortox's soul hop while its skill is bound; unbinding cancels a pending hop and clears the portal tint. */
+export function bindSoulHop(inst: WilsonPlayerInstance, host: Omit<WilsonSoulHopHost, 'setTint'> | undefined): void {
+  if (!host) {
+    inst.sg.cancelAction('BLINK');
+    inst.sg.cancelAction('BLINK_MAP');
+    setTint(inst, 0);
   }
+  inst.soulHopHost = host && { ...host, setTint: value => setTint(inst, value) };
+}
 
-  start(state: WilsonMovementState) {
-    if (state !== 'idle' && this.isEmoting) this.cancelEmote();
-    this.stategraph.requestMovement(state);
-  }
+/** AnimState:SetBank("ghost") + skinner ghost_skin + SetStateGraph("SGwilsonghost"); `loading` is inst.loading_ghost. */
+export function makeGhost(inst: WilsonPlayerInstance, loading = false): void {
+  if (inst.sg.isGhost) return;
+  cancelEmote(inst);
+  inst.sg.becomeGhost(loading);
+}
 
-  /** Inventory searched when a broken tool is replaced by another of the same prefab. */
-  bindInventory(inventory: Parameters<typeof equipSamePrefab>[0]): void { this.inventory = inventory; }
+/** player_common_extensions.lua DoActualRez: the living bank and skin, SetStateGraph("SGwilson") and the source's rebirth state. */
+export function makeAlive(inst: WilsonPlayerInstance, state: 'portal_rez' | 'amulet_rebirth' = 'portal_rez'): void {
+  if (!inst.sg.isGhost) return;
+  inst.sg.becomeAlive(state);
+}
 
-  playEat() {
-    this.startOneShot('eat');
-  }
+/** Character colour and Wortox's additive portal tint are per-instance appearance declarations. */
+function setMultColour(inst: WilsonPlayerInstance, r: number, g: number, b: number): void { inst.sprite.setColour([r, g, b]); }
+function setTint(inst: WilsonPlayerInstance, amount: number): void { inst.sprite.setTint({ colour: [154 / 255, 23 / 255, 19 / 255], amount }); }
 
-  /** ACTIONS.DROP: doshortaction performs the drop on its frame 6; onCancel runs if the action never performs. */
-  playDrop(onDrop: () => boolean, onCancel?: () => void): boolean {
-    if (this.stategraph.hasStateTag('busy')) return false;
-    this.cancelEmote();
-    const action = new BufferedAction<WilsonAction>('DROP', onDrop);
-    const stop = this.stategraph.listenForEvent('actionfailed', data => {
-      if ((data as { action?: unknown } | undefined)?.action === action) { stop(); onCancel?.(); }
-    });
-    action.addSuccessAction(stop);
-    if (this.stategraph.pushBufferedAction(action)) return true;
-    stop();
+/** Movement input while asleep: the locomote event wakes the sleeper. */
+export function wakeFromBed(inst: WilsonPlayerInstance): void { inst.sg.pushLocomote(); }
+
+export function playEmote(inst: WilsonPlayerInstance, id: WilsonEmote): boolean {
+  const definition: WilsonEmoteDefinition | undefined = WILSON_EMOTES[id];
+  if (!definition || !inst.sg.canEmote()) return false;
+  cancelEmote(inst);
+  inst.emote = {
+    id, archive: definition.archive, props: definition.props === true,
+    clips: definition.variants[Math.floor(Math.random() * definition.variants.length)],
+    loop: definition.loop === true,
+  };
+  if (!inst.sg.requestEmote(inst.emote.clips, inst.emote.loop)) {
+    inst.emote = null;
     return false;
   }
-  bindDeath(death: WilsonDeathHost | undefined): void { this.deathHost = death; }
-  bindSpawnPrefab(spawn: ((prefab: string, position: THREE.Vector3) => PrefabInstance | undefined) | undefined): void { this.instance.SpawnPrefab = spawn; }
+  return true;
+}
 
-  bindSoulHop(host: Omit<WilsonSoulHopHost, 'setTint'> | undefined): void {
-    if (!host) {
-      this.stategraph.cancelAction('BLINK');
-      this.stategraph.cancelAction('BLINK_MAP');
-      this.setTint(0);
-    }
-    this.soulHopHost = host && {
-      ...host,
-      setTint: value => this.setTint(value),
-    };
+export function cancelEmote(inst: WilsonPlayerInstance): void {
+  inst.sg.cancelEmote();
+  inst.emote = null;
+}
+
+/** Follower:FollowSymbol(owner.GUID, symbol, offsetX, offsetY): a node tracking the symbol, in the player's space; `fx` is drawn there. */
+export function followSymbol(inst: WilsonPlayerInstance, symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): SymbolFollower {
+  return inst.sprite.followSymbol(symbol, offsetX, offsetY, fx);
+}
+
+/** One frame of the player's stategraph and its FX clock. */
+export function updatePlayer(inst: WilsonPlayerInstance, dt: number): void {
+  if (inst.isRemoved) return;
+  const step = Math.max(0, Math.min(dt, 0.1));
+  inst.fxScheduler.advance(step);
+  inst.sg.update(step);
+}
+
+/** Select the clip's art (SetBank and the ghost build) and play it; returns its playback length in seconds. */
+function selectAnimation(inst: WilsonPlayerInstance, clip: WilsonAnimationClip): number {
+  // SetBank("ghost") with the skinner's ghost build while a ghost; the clip is in whichever declared anim holds it.
+  const ghost = clip.key === 'ghost';
+  const bank = ghost ? 'ghost' : 'wilson';
+  const animation = bankAnimationTiming(PLAYER_ANIMATION_ARCHIVES, clip.name, smallHash(bank));
+  const playbackRate = (clip.frameRate ?? animation.frameRate) / animation.frameRate * (clip.playbackRate ?? 1);
+  inst.sprite.setPlaybackRate(playbackRate);
+  const buildArchive = ghost ? `dynamic/ghost_${PLAYER_ART_CHARACTER}_build.zip` : `dynamic/${PLAYER_ART_CHARACTER}.zip`;
+  const fallbackBuilds = [`${UNIQUE_ITEM_BUILD}.zip`, ...(inst.emote?.props ? [inst.emote.archive] : [])];
+  const current = inst.artSource;
+  if (!current || current.bank !== bank || current.buildArchive !== buildArchive || fallbackBuilds.join() !== current.fallbackBuilds?.join()) {
+    inst.artSource = { animationArchives: PLAYER_ANIMATION_ARCHIVES, bank, buildArchive, fallbackBuilds, art: inst.resources.archives };
+    inst.sprite.setArtSource(inst.artSource);
   }
+  inst.AnimState.PlayAnimation(clip.name, clip.loop);
+  return animation.frames / (animation.frameRate * playbackRate);
+}
 
-  get isGhost(): boolean { return this.stategraph.isGhost; }
+/** SGwilson.lua amulet_rebirth: consume the equipped red amulet. */
+function consumeEquippedAmulet(inst: WilsonPlayerInstance): boolean {
+  const inventory = inst.components.inventory, item = inventory?.GetEquippedItem('body');
+  if (!inventory || item?.prefab !== 'amulet') return false;
+  const removed = inventory.RemoveItem(item);
+  if (!removed) return false;
+  removed.remove();
+  return true;
+}
 
-  makeGhost(loading = false): void {
-    if (this.isGhost) return;
-    this.cancelEmote();
-    this.stategraph.becomeGhost(loading);
+/** SGwilson.lua amulet_rebirth: the sleepers around the player go to sleep for `seconds`. */
+function sleepNearby(inst: WilsonPlayerInstance, radius: number, seconds: number): void {
+  for (const v of inst.TheSim.FindEntities(inst.position, radius * WORLD_SCALE)) {
+    if (v !== inst) (v.components as { sleeper?: { GoToSleep(seconds: number): void } }).sleeper?.GoToSleep(seconds);
   }
+}
 
-  makeAlive(state: 'portal_rez' | 'amulet_rebirth' = 'portal_rez'): void {
-    if (!this.isGhost) return;
-    this.stategraph.becomeAlive(state);
-  }
+/** SpawnPrefab("staff_castinglight") at the player with SetUp(colour, duration, delay). */
+function castLight(inst: WilsonPlayerInstance, colour: readonly [number, number, number], duration: number, delay: number) {
+  const light = inst.SpawnPrefab?.(STAFF_CASTINGLIGHT_ID, inst.position.clone()) as StaffCastingLightInstance | undefined;
+  light?.SetUp(colour, duration, delay);
+  return light;
+}
 
-  /** Character colour and Wortox's additive portal tint are per-instance appearance declarations. */
-  private setMultColour(r: number, g: number, b: number): void { this.instance.sprite.setColour([r, g, b]); }
-  private setTint(amount: number): void { this.instance.sprite.setTint({ colour: [154 / 255, 23 / 255, 19 / 255], amount }); }
+/** SetSleeperSleepState / SetSleeperAwakeState: playercontroller:Enable and inventory:Hide / Show. */
+function setSleeperState(inst: WilsonPlayerInstance, sleeping: boolean): void {
+  // OnSleepIn / OnWakeUp's hand and active item stashing is not ported.
+  inst.controllerEnabled = !sleeping;
+  if (sleeping) inst.HUD?.controls?.HideCraftingAndInventory();
+  else inst.HUD?.controls?.ShowCraftingAndInventory();
+}
 
-  /** The equipped rod's component for SGwilson's fishing states. */
-  bindFishing(fishing: WilsonFishingHost | undefined): void { this.fishingHost = fishing; }
-  get isSleeping(): boolean { return this.stategraph.isSleeping; }
-  /** Movement input while asleep: the locomote event wakes the sleeper. */
-  wakeFromBed(): void { this.stategraph.pushLocomote(); }
+/** stategraph.lua pushes "newstate" to the inst; armorsnurtleshell's ProtectionLevels listens for it. */
+function onStateChanged(inst: WilsonPlayerInstance, name: WilsonStateName): void {
+  if (name !== 'emote') inst.emote = null;
+  inst.PushEvent('newstate', { statename: name });
+}
 
-  get currentEmote(): WilsonEmote | null { return this.emote?.id ?? null; }
-  get isEmoting(): boolean { return this.emote !== null; }
+/** player_common.lua OnPlayerDeath: inst.deathcause. */
+function OnPlayerDeath(inst: WilsonPlayerInstance, data: unknown): void {
+  inst.deathcause = (data as { cause?: string } | undefined)?.cause ?? 'unknown';
+}
 
-  playEmote(id: WilsonEmote): boolean {
-    const definition: WilsonEmoteDefinition | undefined = WILSON_EMOTES[id];
-    if (!definition || !this.stategraph.canEmote()) return false;
-    this.cancelEmote();
-    this.emote = {
-      id, archive: definition.archive, props: definition.props === true,
-      clips: definition.variants[Math.floor(Math.random() * definition.variants.length)],
-      loop: definition.loop === true,
-    };
-    if (!this.stategraph.requestEmote(this.emote.clips, this.emote.loop)) {
-      this.emote = null;
-      return false;
-    }
-    return true;
-  }
+/** OnRemoveEntity: the stategraph, the book FX and every sound stop with the player. */
+function OnRemoveEntity(inst: WilsonPlayerInstance): void {
+  inst.sg.dispose();
+  inst.bookFx.dispose(); inst.fxScheduler.dispose();
+  inst.SoundEmitter.KillAllSounds();
+  disposeActionEntity(inst);
+}
 
-  cancelEmote(): void {
-    this.stategraph.cancelEmote();
-    this.emote = null;
-  }
+/** The display's art caches go with the player's display. */
+function releasePlayerAssets(inst: WilsonPlayerInstance): void {
+  inst.equipmentAssets.dispose(); inst.hatAssets.dispose();
+  inst.resources.dispose();
+}
 
-  playPickup() {
-    this.startOneShot('pickup');
-  }
-
-  setCrafting(crafting: boolean) {
-    if (crafting) this.cancelEmote();
-    this.stategraph.requestCrafting(crafting);
-  }
-
-  followSymbol(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): SymbolFollower {
-    return this.instance.sprite.followSymbol(symbol, offsetX, offsetY, fx);
-  }
-
-  update(dt: number): void {
-    if (this.disposed) return;
-    const step = Math.max(0, Math.min(dt, 0.1));
-    this.fxScheduler.advance(step);
-    this.stategraph.update(step);
-  }
-
-  private selectAnimation(clip: WilsonAnimationClip): number {
-    this.state = clip.key;
-    // SetBank("ghost") with the skinner's ghost build while a ghost; the clip is in whichever declared anim holds it.
-    const bank = this.state === 'ghost' ? 'ghost' : 'wilson';
-    const animation = bankAnimationTiming(PLAYER_ANIMATION_ARCHIVES, clip.name, smallHash(bank));
-    const playbackRate = (clip.frameRate ?? animation.frameRate) / animation.frameRate * (clip.playbackRate ?? 1);
-    this.instance.sprite.setPlaybackRate(playbackRate);
-    const buildArchive = this.state === 'ghost' ? `dynamic/ghost_${PLAYER_ART_CHARACTER}_build.zip` : `dynamic/${PLAYER_ART_CHARACTER}.zip`;
-    const fallbackBuilds = [`${UNIQUE_ITEM_BUILD}.zip`, ...(this.emote?.props ? [this.emote.archive] : [])];
-    if (!this.artSource || this.artSource.bank !== bank || this.artSource.buildArchive !== buildArchive
-      || fallbackBuilds.join() !== this.artSource.fallbackBuilds?.join()) {
-      this.artSource = { animationArchives: PLAYER_ANIMATION_ARCHIVES, bank, buildArchive, fallbackBuilds, art: this.resources.archives };
-      this.instance.sprite.setArtSource(this.artSource);
-    }
-    this.instance.AnimState.PlayAnimation(clip.name, clip.loop);
-    return animation.frames / (animation.frameRate * playbackRate);
-  }
-
-  private startOneShot(state: WilsonOneShotState) {
-    this.cancelEmote();
-    this.stategraph.requestOneShot(state);
-  }
-
-  dispose(): void {
-    if (this.disposed) return;
-    this.disposed = true;
-    this.stategraph.dispose();
-    this.cleanups.splice(0).forEach(stop => stop());
-    this.bookFx.dispose(); this.fxScheduler.dispose();
-    this.instance.SoundEmitter.KillAllSounds();
-  }
-
-  releaseAssets(): void {
-    this.equipmentAssets.dispose(); this.hatAssets.dispose();
-    this.resources.dispose();
-  }
+/** SGwilson's states reach the player inst through these until the stategraph reads it directly. */
+function createStateGraphHost(inst: WilsonPlayerInstance): WilsonStateGraphHost {
+  const sleeper = inst.components.sleepingbaguser;
+  // SGwilson.lua tent and wakeup on the player inst: its hunger, sleepingbaguser, controller, HUD and talker.
+  inst.sleepHost = sleeper && {
+    isDay: () => clockstate.peek().phase === 'day',
+    hungerCurrent: () => inst.stats.hunger.current,
+    get sleepingbag() { return sleeper.bed; },
+    setSleeperState: sleeping => setSleeperState(inst, sleeping),
+    // inst:Hide() / inst:Show() with the DynamicShadow, declared on the sprite for the player's display.
+    setHidden: hidden => inst.sprite.setVisible(!hidden),
+    say: announce => inst.components.talker?.Say(WORTOX_SLEEP_SPEECH[announce]),
+  };
+  return {
+    get soulHop() { return inst.soulHopHost; },
+    get sleep() { return inst.sleepHost; },
+    get death() { return inst.deathHost; },
+    get fishing() { return inst.fishingHost; },
+    // SGwilson.lua amulet_rebirth on the player inst: its inventory, HUD and the sleepers around it.
+    rebirth: {
+      consumeEquippedAmulet: () => consumeEquippedAmulet(inst),
+      hasBodyItem: () => !!inst.components.inventory?.GetEquippedItem('body'),
+      showHUD: show => inst.ShowHUD(show),
+      sleepNearby: (radius, seconds) => sleepNearby(inst, radius, seconds),
+    },
+    rez: {
+      setHidden: hidden => inst.sprite.setVisible(!hidden),
+      get isHidden() { return !inst.IsVisible(); },
+      setMultColour: (r, g, b) => setMultColour(inst, r, g, b),
+      setInvincible: invincible => { inst.components.health!.SetInvincible(invincible); },
+    },
+    playAnimation: clip => selectAnimation(inst, clip),
+    getCombat: () => inst.combat,
+    spawnFx: (prefab, symbol) => inst.bookFx.spawn(prefab, symbol),
+    castLight: (colour, duration, delay) => castLight(inst, colour, duration, delay),
+    setControllerEnabled: enabled => { inst.controllerEnabled = enabled; },
+    stopMovement: () => inst.locomotor?.stop(),
+    slip: {
+      runSpeed: () => inst.runSpeed,
+      setMotorSpeed: speed => { inst.motorSpeed = speed; },
+      resetSlipperiness: () => inst.slipperyfeet?.SetCurrent(0),
+      wantsToMoveForward: () => inst.wantsToMoveForward,
+    },
+    equipSamePrefab: prefab => inst.components.inventory !== undefined && equipSamePrefab(inst.components.inventory, prefab),
+    onStateChanged: name => onStateChanged(inst, name),
+  };
 }
 
 function createWilsonPlayerEntity(
@@ -455,67 +402,72 @@ function createWilsonPlayerEntity(
   options: WilsonPlayerPrefabOptions = {},
 ): { model: PlayerModel; instance: WilsonPlayerInstance; display: PrefabDisplay } {
   const resources = new SpriteResources(assetBaseUrl);
-  const { instance: baseInstance, display } = createPrefabEntity(PLAYER_ART_CHARACTER, resources.factory({
+  const inst = new WilsonPlayerInstance(PLAYER_ART_CHARACTER, new SpriteState({ name: 'idle_loop', billboard: true }));
+  const { display } = createPrefabEntity(PLAYER_ART_CHARACTER, resources.factory({
     buildArchive: `dynamic/${PLAYER_ART_CHARACTER}.zip`, animationArchive: PLAYER_ANIMATION_ARCHIVES[0],
     extraAnimationArchives: PLAYER_ANIMATION_ARCHIVES.slice(1),
-  }), { name: 'idle_loop', billboard: true }, 'Wortox', instance => {
-    instance.sprite.setArtSource({ animationArchives: PLAYER_ANIMATION_ARCHIVES, bank: 'wilson',
+  }), { name: 'idle_loop', billboard: true, instance: inst }, 'Wortox', () => {
+    inst.sprite.setArtSource({ animationArchives: PLAYER_ANIMATION_ARCHIVES, bank: 'wilson',
       buildArchive: `dynamic/${PLAYER_ART_CHARACTER}.zip`, fallbackBuilds: [`${UNIQUE_ITEM_BUILD}.zip`], art: resources.archives });
-    instance.sprite.setFacingRotation(0, 4);
+    inst.sprite.setFacingRotation(0, 4);
   });
-  if (options.scheduler) baseInstance.BindScheduler(options.scheduler);
+  if (options.scheduler) inst.BindScheduler(options.scheduler);
   // player_common.lua fn: inst.entity:AddSoundEmitter(); the listener is at the player.
-  baseInstance.AddSoundEmitter({ atListener: true });
-  const instance: WilsonPlayerInstance = Object.assign(baseInstance, {
-    stats: createPlayerStats(baseInstance, options.stats, options.scheduler),
-    controllerEnabled: true, runSpeed: 0, currentMotorSpeed: 0, wantsToMoveForward: false, worldHeading: 0,
-    scheduler: options.scheduler, ghostMode: createSignal(false), deathcause: 'unknown',
-    ShowHUD(show: boolean) { if (show) instance.HUD?.Show(); else instance.HUD?.Hide(); },
-    IsVisible: () => instance.sprite.sprite.peek().visible !== false,
-  }) as WilsonPlayerInstance;
+  inst.AddSoundEmitter({ atListener: true });
+  inst.stats = createPlayerStats(inst, options.stats, options.scheduler);
+  inst.scheduler = options.scheduler;
+  inst.ShowHUD = show => ShowHUD(inst, show);
+  inst.resources = resources;
   const player = display.model;
-  const stopSanity = options.componentUpdates?.register(instance.stats.sanity);
-  if (stopSanity) instance.onRemove(stopSanity);
+  const stopSanity = options.componentUpdates?.register(inst.stats.sanity);
+  if (stopSanity) inst.onRemove(stopSanity);
   if (options.scheduler) {
     // sleepingbaguser.lua: per-tick hunger, sanity and health in a bed; WatchWorldState("phase") wakes at the bed's phase end.
     const phase = createMemo(() => clockstate.get().phase);
-    const { hunger, sanity, health } = instance.stats;
+    const { hunger, sanity, health } = inst.stats;
     // player_common.lua OnDespawn: the bed releases its sleeper without a state change, before the component's teardown.
-    instance.onRemove(() => { instance.components.sleepingbaguser?.bed?.DoWakeUp(true); });
-    addComponent(instance, 'sleepingbaguser', SleepingBagUser, {
+    inst.onRemove(() => { inst.components.sleepingbaguser?.bed?.DoWakeUp(true); });
+    addComponent(inst, 'sleepingbaguser', SleepingBagUser, {
       scheduler: options.scheduler, phase: readonlySignal(phase), hunger, sanity, health,
-      goToWakeup: () => instance.animationController.stategraph.wakeUp(),
+      goToWakeup: () => inst.sg.wakeUp(),
     });
-    instance.onRemove(() => phase.dispose());
+    inst.onRemove(() => phase.dispose());
   }
-  instance.minimap.SetIcon(`${PLAYER_ART_CHARACTER}.png`);
-  instance.minimap.SetPriority(10);
-  instance.minimap.SetCanUseCache(false);
-  instance.minimap.SetDrawOverFogOfWar(true);
+  inst.minimap.SetIcon(`${PLAYER_ART_CHARACTER}.png`);
+  inst.minimap.SetPriority(10);
+  inst.minimap.SetCanUseCache(false);
+  inst.minimap.SetDrawOverFogOfWar(true);
   // player_common.lua's common tags; upgrades.lua uses these exact upgrade type names.
   for (const tag of ['player', 'scarytoprey', 'character', 'lightningtarget', 'waterplant_upgradeuser', 'mast_upgradeuser',
     'chest_upgradeuser', 'usesvegetarianequipment', 'ghostlyelixirable', 'trader', 'debuffable', 'stageactor',
-    'playermonster', 'monster', 'soulstealer', 'souleater']) instance.addTag(tag);
+    'playermonster', 'monster', 'soulstealer', 'souleater']) inst.addTag(tag);
   player.position.set(0, 30, 0);
-  registerActionEntity(instance);
+  registerActionEntity(inst);
 
-  const controller = new WilsonController(instance, assetBaseUrl, resources,
-    options.sanityPercent ?? (options.stats ? instance.stats.sanity.percent : undefined));
-  // player_common.lua OnPlayerDeath; inst:PushEvent reaches SGwilson's death handler itself, as instance.sg is its stategraph.
-  const stopDeath = instance.ListenForEvent('death', (_inst, data) => {
-    instance.deathcause = (data as { cause?: string } | undefined)?.cause ?? 'unknown';
-  });
+  // The player's own AnimState declaration, beneath the slots its equipped items declare; the display loads the builds it names.
+  inst.equipmentAssets = new GroundItemAssets();
+  inst.sprite.setAnimState(inst.AnimState.json, inst.equipmentAssets);
+  for (const layer of ['ARM_carry', 'LANTERN_OVERLAY', 'HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) inst.AnimState.Hide(layer);
+  inst.hatAssets = new HatEquipmentAssets(assetBaseUrl);
+  inst.equipmentPresentation = {
+    sprite: { sprite: inst.sprite, art: inst.equipmentAssets }, assets: inst.equipmentAssets, hats: inst.hatAssets,
+    lightParent: inst, sanityPercent: options.sanityPercent ?? (options.stats ? inst.stats.sanity.percent : undefined),
+    soundPosition: inst.transform.position,
+    followSymbol: (symbol, x, y, fx) => followSymbol(inst, symbol, x, y, fx),
+  };
+  inst.fxScheduler = new GameTimeScheduler();
+  inst.bookFx = new BookFxController(inst, inst.fxScheduler, resources);
+  inst.sg = new WilsonStateGraph(inst, createStateGraphHost(inst));
+
+  // player_common.lua ListenForEvent("death", ex_fns.OnPlayerDeath); SGwilson's own death handler hears the same event.
+  inst.ListenForEvent('death', OnPlayerDeath);
   // player_common.lua ListenForEvent("makeplayerghost" / "respawnfromghost", ex_fns.OnMakePlayerGhost / OnRespawnFromGhost).
-  const stopMakeGhost = instance.ListenForEvent('makeplayerghost',
-    (_inst, data) => OnMakePlayerGhost(instance, data as { skeleton?: boolean; loading?: boolean } | undefined));
-  const stopRespawn = instance.ListenForEvent('respawnfromghost',
-    (_inst, data) => OnRespawnFromGhost(instance, data as { source?: RezSource } | undefined));
-  instance.onRemove(() => { stopDeath(); stopMakeGhost(); stopRespawn(); controller.dispose(); disposeActionEntity(instance); });
-  display.onDispose(() => controller.releaseAssets());
+  inst.ListenForEvent('makeplayerghost', (_inst, data) => OnMakePlayerGhost(inst, data as { skeleton?: boolean; loading?: boolean } | undefined));
+  inst.ListenForEvent('respawnfromghost', (_inst, data) => OnRespawnFromGhost(inst, data as { source?: RezSource } | undefined));
+  inst.onRemove(() => OnRemoveEntity(inst));
+  display.onDispose(() => releasePlayerAssets(inst));
   display.update(0);
-  instance.animationController = controller;
-  instance.sg = controller.stategraph as never;
-  return { model: player, instance, display };
+  return { model: player, instance: inst, display };
 }
 
 export function createWilsonPlayer(assetBaseUrl: string, options: WilsonPlayerPrefabOptions = {}): PlayerModel {

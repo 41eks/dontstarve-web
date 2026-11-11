@@ -23,7 +23,7 @@ export function bufferingStategraph(onPush?: (action: BufferedAction<string>) =>
     isActionActive: (action: BufferedAction<string>) => active === action,
   };
   return {
-    stategraph,
+    sg: stategraph,
     get last() { return last; },
     /** BufferedAction:Do for the last pushed action, even after it was cancelled: its own checks decide. */
     hit: () => last?.do(),

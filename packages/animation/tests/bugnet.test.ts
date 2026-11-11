@@ -8,7 +8,7 @@ import { AnimState } from '../src/animState';
 import { overrideArchives } from './animStateFixture';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonPlayerInstance } from './playerVisual';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 
@@ -28,7 +28,7 @@ describe('original bugnet assets and Wilson action', () => {
     });
   }
 
-  function advance(controller: WilsonAnimationController, frames: number) {
+  function advance(controller: WilsonPlayerInstance, frames: number) {
     for (let i = 0; i < frames; i++) advancePlayer(controller, 1 / 60);
   }
 
@@ -46,7 +46,7 @@ describe('original bugnet assets and Wilson action', () => {
     bugnetVisual({ id: 'bugnet', prefab: 'bugnet', skinId: 'bugnet_frog' }).onequip({ AnimState: anim, PushEvent() {} });
     expect(overrideArchives(anim, 'swap_object')).toEqual([GROUND_ITEM_DEFINITIONS.bugnet.skinArchives.bugnet_frog, 'swap_bugnet.zip']);
     const player = await createWilsonPlayer('/anim');
-    const controller = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+    const controller = wilsonPlayerInstance(player);
     const controllerEquipper = createPlayerEquipper(controller);
     controllerEquipper.equip('bugnet');
     // SGwilson's equip handler plays item_out (16 frames) from idle; the held art shows by its end.
@@ -61,12 +61,12 @@ describe('original bugnet assets and Wilson action', () => {
   it('plays pre then swing, performs NET at frame 10 once and cancels on unequip', async () => {
     useRealAssets();
     const player = await createWilsonPlayer('/anim');
-    const controller = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+    const controller = wilsonPlayerInstance(player);
     const controllerEquipper = createPlayerEquipper(controller);
     const capture = vi.fn();
     const net = { prefab: 'bugnet', hasTag: (tag: string) => tag === 'NET_tool' };
-    const swing = () => controller.stategraph.pushBufferedAction(new BufferedAction('NET', capture, undefined, { invobject: net }));
-    const netting = () => controller.stategraph.isPerformingAction('NET');
+    const swing = () => controller.sg.pushBufferedAction(new BufferedAction('NET', capture, undefined, { invobject: net }));
+    const netting = () => controller.sg.isPerformingAction('NET');
     await controllerEquipper.equip('bugnet');
     expect(swing()).toBe(true);
     expect(netting()).toBe(true);

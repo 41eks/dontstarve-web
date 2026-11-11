@@ -21,7 +21,7 @@ import { createEquipmentExistenceState } from '../../signals/src';
 import { farmFixture } from './farmFixture';
 import { PLANTED_SEED_ID } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonPlayerInstance } from './playerVisual';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -43,7 +43,7 @@ function setup(player = new THREE.Group()) {
   const farm = farmFixture(world.scene, turf, { blockers: blockers as never });
   return { farm, turf, world, blockers };
 }
-function advance(animation: WilsonAnimationController, frames: number) {
+function advance(animation: WilsonPlayerInstance, frames: number) {
   for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30);
 }
 
@@ -118,7 +118,7 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
 it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a cancelled or unequipped hit', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
   player.position.set(0, 0, 15);
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('golden_farm_hoe');
   const { world, farm, turf } = setup(player);
@@ -129,7 +129,7 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
   const tool = actionTool('golden_farm_hoe');
   const lifecycle = getHandEquipmentDefinition('golden_farm_hoe')!.definition.createLifecycle!(tool.entity, { farmTillMap: farm.map } as never)!;
   lifecycle.onequip();
-  const controller = new PlayerController(world, animation.stategraph, locomotor, hand, playerDoer(player));
+  const controller = new PlayerController(world, animation.sg, locomotor, hand, playerDoer(player));
   const point = new THREE.Vector3(3, 0, 3);
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined as never);
@@ -149,8 +149,8 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
     expect(locomotor.bufferedAction).toBeDefined();
     expect(farm.decor()).toEqual([]);
     walkIn();
-    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.stategraph.stateName).toBe('till_start'); });
-    while (animation.stategraph.stateName === 'till_start') advancePlayer(animation, 1 / 30);
+    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.sg.stateName).toBe('till_start'); });
+    while (animation.sg.stateName === 'till_start') advancePlayer(animation, 1 / 30);
     advance(animation, 10);
     expect(farm.decor()).toEqual([]);
     facePlayer(animation, 'side', true); advancePlayer(animation, 1 / 30);
@@ -162,11 +162,11 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
     expect(farm.decor()).toHaveLength(1);
     const preserved = farm.decor();
     rightClick(); walkIn();
-    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
+    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.sg.isPerformingAction('TILL')).toBe(true); });
     window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' })); advance(animation, 60);
     expect(farm.decor()).toEqual(preserved);
     rightClick(); walkIn();
-    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.stategraph.isPerformingAction('TILL')).toBe(true); });
+    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.sg.isPerformingAction('TILL')).toBe(true); });
     hand.set(null); await animationEquipper.equip(null); advance(animation, 60);
     expect(farm.decor()).toEqual(preserved);
   } finally { controller.dispose(); world.mouseActions.dispose(); lifecycle.onunequip(); farm.dispose(); }

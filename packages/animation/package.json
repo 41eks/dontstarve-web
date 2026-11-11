@@ -15,6 +15,7 @@
     "./sceneRenderPass": "./src/sceneRenderPass.ts",
     "./rgbaSpriteAtlas": "./src/rgbaSpriteAtlas.ts",
     "./sprite": "./src/sprite.ts",
+    "./spriteController": "./src/spriteController.ts",
     "./archiveSprite": "./src/archiveSprite.ts",
     "./instancedArchiveSprites": "./src/instancedArchiveSprites.ts",
     "./residentSprite": "./src/residentSprite.ts",

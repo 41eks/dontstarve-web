@@ -1,3 +1,4 @@
+import { makeAlive, makeGhost } from '../../prefab/src/player';
 import { advancePlayer, registerPlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -23,7 +24,7 @@ it('creates the logical player and body synchronously and completes actions and 
   const prefab = createWilsonPlayerPrefab('/dst/data/anim', world);
   const { instance, model, display, body } = prefab;
   registerPlayer(model);
-  const animation = instance.animationController;
+  const animation = instance;
   const scene = new THREE.Scene(); display.mount(scene);
   try {
     expect(prefab).not.toBeInstanceOf(Promise);
@@ -39,9 +40,9 @@ it('creates the logical player and body synchronously and completes actions and 
     expect(living).toMatchObject({ bank: 'wilson', buildArchive: 'dynamic/wortox.zip' });
     const read = vi.fn(() => true);
     const book = { prefab: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' }, hasTag: () => false };
-    expect(animation.stategraph.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }))).toBe(true);
-    for (let frame = 0; frame < 60 && animation.stategraph.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
-    expect(animation.stategraph.stateName).toBe('book2');
+    expect(animation.sg.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }))).toBe(true);
+    for (let frame = 0; frame < 60 && animation.sg.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
+    expect(animation.sg.stateName).toBe('book2');
     expect(instance.sprite.sprite.peek().source).toBe(living);
     const fx = [...instance.sprite.fx.peek().values()];
     expect(fx).toHaveLength(2);
@@ -50,13 +51,13 @@ it('creates the logical player and body synchronously and completes actions and 
     expect(read).toHaveBeenCalledOnce();
     expect(instance.sprite.fx.peek().size).toBe(0);
     for (const child of fx) expect(child.display!.isRemoved).toBe(true);
-    animation.makeGhost(true);
-    expect(animation.isGhost).toBe(true);
+    makeGhost(animation, true);
+    expect(animation.sg.isGhost).toBe(true);
     advancePlayer(animation, 1 / 30);
     expect(instance.sprite.sprite.peek().source).toMatchObject({ bank: 'ghost', buildArchive: 'dynamic/ghost_wortox_build.zip' });
-    animation.makeAlive();
+    makeAlive(animation);
     for (let frame = 0; frame < 120; frame++) advancePlayer(animation, 1 / 30);
-    expect(animation.isGhost).toBe(false);
+    expect(animation.sg.isGhost).toBe(false);
     instance.setActive(true); await tick();
     const latest = instance.sprite.sprite.peek();
     expect(latest.source).toMatchObject({ bank: 'wilson', buildArchive: 'dynamic/wortox.zip' });

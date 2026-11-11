@@ -131,9 +131,6 @@
   "packages/prefab/src/placementEntities.ts": {
     "model-keyed-state": 1
   },
-  "packages/prefab/src/player.ts": {
-    "object-assign-state": 1
-  },
   "packages/prefab/src/player_common.ts": {
     "component-dispose-on-remove": 4,
     "sg-forward": 1

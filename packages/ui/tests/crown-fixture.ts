@@ -3,7 +3,7 @@ import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
-import { createWilsonPlayer, wilsonPlayerInstance, type WilsonAnimationController } from '../../prefab/src/player';
+import { createWilsonPlayer, wilsonPlayerInstance, type WilsonPlayerInstance } from '../../prefab/src/player';
 import type { PrefabDisplay } from '../../display/src';
 
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
@@ -14,7 +14,7 @@ export async function checkCrown() {
   const sanity = wilsonPlayerInstance(player).stats.sanity;
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
-  const animation = prefabInstance(player).animationController as WilsonAnimationController;
+  const animation = prefabInstance(player);
   const animationEquipper = createPlayerEquipper(animation);
   const scene = new THREE.Scene();
   scene.add(player);

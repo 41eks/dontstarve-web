@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { inventoryUse } from './inventoryUseFixture';
 import { FOOD_EFFECTS } from '../../prefab/src/food';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
 import { PlaySound } from '../../prefab/src/sound';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
@@ -31,12 +31,12 @@ afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 async function fixture(itemId = 'bananajuice') {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player);
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const slot = inventorySlotAddress(0), store = createPickupInventory();
   playerInstance.components.inventory = store;
-  const actions = inventoryUse(world, animation.stategraph, playerInstance);
+  const actions = inventoryUse(world, animation.sg, playerInstance);
   store.add(itemId, 2);
   const entity = store.getEntity(slot)!;
   return { animation, actions, store, slot, entity };
@@ -54,7 +54,7 @@ it('eats meatballs through the solid-food action and commits edible stats and on
     const picked = actions.controller.GetInventoryItemAction(entity)!;
     expect([picked.action, picked.invobject, picked.target]).toEqual(['EAT', entity, undefined]);
     expect(await actions.use(entity)).toBe(true);
-    expect(animation.stategraph.animationClip.key).toBe('quick_eat_pre');
+    expect(animation.sg.animationClip.key).toBe('quick_eat_pre');
     for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
     expect(onEaten).not.toHaveBeenCalled();
     expect(store.get(slot)?.count).toBe(2);
@@ -102,7 +102,7 @@ it('drinks source bananajuice art, consumes once at frame 12 and restores the re
     const mesh = ground.model.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect(await actions.use(entity)).toBe(true);
-    expect(animation.stategraph.animationClip.key).toBe('quick_drink_pre');
+    expect(animation.sg.animationClip.key).toBe('quick_drink_pre');
     for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(2);
     expect(onEaten).not.toHaveBeenCalled();

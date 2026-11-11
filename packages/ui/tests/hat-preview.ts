@@ -3,7 +3,7 @@ import { prefabDisplay } from '../../display/src';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { HAT_IDS, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
-import { createWilsonPlayer, type WilsonAnimationController } from '@dontstarve-web/prefab/player';
+import { createWilsonPlayer, type WilsonPlayerInstance } from '@dontstarve-web/prefab/player';
 import type { PrefabDisplay } from '../../display/src';
 
 export async function renderHatCatalog(): Promise<void> {
@@ -22,7 +22,7 @@ export async function renderHatCatalog(): Promise<void> {
   gallery.id = 'hat-gallery';
   gallery.style.cssText = 'display:grid;grid-template-columns:repeat(9,144px);width:1296px';
   document.body.append(gallery);
-  const hatEquipper = createPlayerEquipper(prefabInstance(player).animationController as WilsonAnimationController);
+  const hatEquipper = createPlayerEquipper(prefabInstance(player));
   for (const id of [null, ...HAT_IDS]) {
     hatEquipper.equip(id, undefined, 'head');
     await (prefabDisplay(player) as PrefabDisplay).artLoaded();

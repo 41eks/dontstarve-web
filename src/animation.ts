@@ -6,7 +6,7 @@ import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { AnimationMixer, type Group, type AnimationAction, type AnimationClip } from "three";
 import { input } from './InputManager';
 import { prefabInstance } from '../packages/prefab/src/prefabInstance';
-import type { WilsonPlayerInstance } from '@dontstarve-web/prefab/player';
+import { startMovement, updatePlayer, WilsonPlayerInstance } from '@dontstarve-web/prefab/player';
 
 export default class ModelAnimation {
     // 显式声明属性类型
@@ -77,10 +77,10 @@ import { playerBody } from "./player";
 import { JUMP_VELOCITY } from './updatePlayerMovement';
 export function createAnimationUpdater(model: THREE.Group) {
 
-    const wilsonAnimation = (prefabInstance(model) as WilsonPlayerInstance | undefined)?.animationController;
+    const inst = prefabInstance(model);
 
-    if (wilsonAnimation) {
-        const sprite = (prefabInstance(model) as WilsonPlayerInstance).sprite;
+    if (inst instanceof WilsonPlayerInstance) {
+        const sprite = inst.sprite;
         const jumpProgress = createSignal<number | undefined>(undefined);
         sprite.setFrameSource({ name: 'jump', progress: readonlySignal(jumpProgress) });
         const direction = new THREE.Vector3();
@@ -93,11 +93,11 @@ export function createAnimationUpdater(model: THREE.Group) {
 
             if (isMoving) sprite.facePoint(origin, direction);
 
-            wilsonAnimation.start(isJumping ? 'jump' : isMoving
+            startMovement(inst, isJumping ? 'jump' : isMoving
                 ? (input.isPressed('ShiftLeft') ? 'run' : 'walk')
                 : 'idle');
             jumpProgress.set(isJumping ? (JUMP_VELOCITY - playerBody.velocity.y) / (2 * JUMP_VELOCITY) : undefined);
-            wilsonAnimation.update(dt);
+            updatePlayer(inst, dt);
         };
     }
 

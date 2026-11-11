@@ -12,7 +12,7 @@ import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { moonTreePrefabs } from '../../prefab/src/moontree';
 import { treeWorld } from './treeManagerFixture';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { PlaySound } from '../../prefab/src/sound';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
@@ -60,7 +60,7 @@ it('wears axes by CHOP consumption, with golden and moonglass variants, and remo
 
 it('chops a moon tree into a stump with an axe, dropping loot, keeping progress while unloaded and saving the stump', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('axe');
   const inventory = createPickupInventory();
@@ -71,7 +71,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
   const { camera, scene, dropLoot } = forest;
   const tree0 = forest.prefabs.spawn('moon_tree', new THREE.Vector3(1, 0, 0), { id: 'tree', transform: { position: [1, 0, 0], rotationY: 0 }, components: {} });
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const controller = new PlayerController(world, animation.stategraph, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
+  const controller = new PlayerController(world, animation.sg, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const chop = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'CHOP', target: target.entity as never, invobject: axe })!);
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
   try {
@@ -83,8 +83,8 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
 
     // chop_start → chop: the work lands on frame two of the chop loop and wears the axe.
     expect(chop(target)).toBe(true);
-    while (animation.stategraph.stateName === 'chop_start') advancePlayer(animation, 1 / 30);
-    expect(animation.stategraph.stateName).toBe('chop');
+    while (animation.sg.stateName === 'chop_start') advancePlayer(animation, 1 / 30);
+    expect(animation.sg.stateName).toBe('chop');
     expect(axe.components.finiteuses.remaining).toBeUndefined();
     advance(2);
     expect(target.entity.components.workable!.GetWorkLeft()).toBe(15);
@@ -151,7 +151,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
 
 it('digs a restored moon tree stump at shovel frame 15 and permanently removes it, preserving other trees and cancelled work', async () => {
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('shovel');
   const inventory = createPickupInventory();
@@ -165,7 +165,7 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
   player.position.set(1, 0, 3);
   await area.visit(player.position);
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const controller = new PlayerController(world, animation.stategraph, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
+  const controller = new PlayerController(world, animation.sg, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const dig = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'DIG', target: target.entity as never, invobject: shovel })!);
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
   try {
@@ -190,7 +190,7 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     await drawn(reloaded.model);
     const geometryDispose = vi.spyOn((reloaded.model.children[0].children[0].children[0] as THREE.Mesh).geometry, 'dispose');
     expect(dig(reloaded)).toBe(true);
-    while (animation.stategraph.stateName === 'dig_start') advancePlayer(animation, 1 / 30);
+    while (animation.sg.stateName === 'dig_start') advancePlayer(animation, 1 / 30);
     advance(14);
     expect(reloaded.isValid()).toBe(true);
     expect(dropLoot).not.toHaveBeenCalled();

@@ -9,7 +9,7 @@ import { overrideArchives } from './animStateFixture';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer, type WilsonPlayerInstance } from './playerVisual';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { drawGround, layerGeometry, layerMeshes } from './groundDisplayFixture';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
@@ -24,7 +24,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-function advance(animation: WilsonAnimationController, frames: number) {
+function advance(animation: WilsonPlayerInstance, frames: number) {
   for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 60);
 }
 
@@ -44,11 +44,11 @@ describe('pitchfork source art and TERRAFORM timing', () => {
       skinned.dispose();
     }
     const player = await createWilsonPlayer('/dst/data/anim');
-    const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+    const animation = wilsonPlayerInstance(player);
     const animationEquipper = createPlayerEquipper(animation);
     const dig = vi.fn();
-    const push = () => animation.stategraph.pushBufferedAction(new BufferedAction('TERRAFORM', dig));
-    const digging = () => animation.stategraph.isPerformingAction('TERRAFORM');
+    const push = () => animation.sg.pushBufferedAction(new BufferedAction('TERRAFORM', dig));
+    const digging = () => animation.sg.isPerformingAction('TERRAFORM');
     animationEquipper.equip(tool);
     // SGwilson's equip handler plays item_out (16 frames) from idle; the held art shows by its end.
     advance(animation, 20);

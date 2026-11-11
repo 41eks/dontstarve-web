@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { InventoryStore } from '@dontstarve-web/inventory';
 import type { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import type { WilsonAnimationController, PlayerBody } from './player';
+import type { PlayerBody } from './player';
 import type { WorldContext } from './worldContext';
 import type { WorldFx } from './world_fx';
 import { CHARACTER_COLLISION_MASK, WORLD_SCALE } from './standardcomponents';
@@ -10,14 +10,13 @@ import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { Wortox, type WortoxSave } from './wortox';
 import { isGroundTargetBlocked, placementEntities, type PlacementQuery } from './placementEntities';
 import { prefabInstance } from './prefabInstance';
-import { wilsonPlayerInstance } from './player';
+import { bindSoulHop, wilsonPlayerInstance } from './player';
 
 export interface WortoxPlayerOptions {
   world: WorldContext;
   body: PlayerBody;
   /** The player's inst.Physics, for SGwilson's ToggleOffPhysics / ToggleOnPhysics. */
   physics: PhysicsState;
-  animation: WilsonAnimationController;
   /** The player inst as act.doer: wortox.lua puts CanSoulhop, CanBlinkTo and CanBlinkFromWithMap on it. */
   doer: WortoxDoer;
   inventory: InventoryStore;
@@ -65,13 +64,13 @@ export class WortoxPlayer {
   private constructor(options: WortoxPlayerOptions) {
     this.options = options;
     this.blockers = placementEntities(options.world.scene);
-    const { world, body, animation, doer, inventory, scheduler, fx } = options;
+    const { world, body, doer, inventory, scheduler, fx } = options;
     this.state = new Wortox(scheduler, inventory);
     this.state.OnLoad(options.saved);
     const instance = wilsonPlayerInstance(world.player);
     instance.wortox = this.state;
     instance.addTag('soulstealer');
-    animation.bindSoulHop({
+    bindSoulHop(instance, {
       tryToPortalHop: () => this.state.TryToPortalHop(inventory.EquipHasTag('heavy')),
       facePoint: position => this.facePoint(position),
       teleport: position => {
@@ -133,7 +132,7 @@ export class WortoxPlayer {
     if (world.mouseActions) (world.mouseActions as PlayerActionPicker).pointspecialactionsfn = undefined;
     delete doer.CanSoulhop; delete doer.CanBlinkTo; delete doer.CanBlinkFromWithMap;
     delete (doer as { _freesoulhop_counter?: number })._freesoulhop_counter;
-    this.options.animation.bindSoulHop(undefined);
+    bindSoulHop(wilsonPlayerInstance(this.options.world.player), undefined);
     this.setPhysicsEnabled(true);
     this.state.dispose();
     delete wilsonPlayerInstance(this.options.world.player).wortox;

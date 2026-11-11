@@ -1,3 +1,4 @@
+import { startMovement } from '../../prefab/src/player';
 import { withEntity } from './entityFixture';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
@@ -8,7 +9,7 @@ import { GroundItemAssets, GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } fro
 import { createGroundItemVisual } from './groundItemVisual';
 import { nightswordVisual } from '../../prefab/src/nightsword';
 import { declaredSymbol } from './animStateFixture';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
 import { AnimState } from '../src/animState';
 import { ItemWorldFixture, itemAt, itemEntities } from './itemWorldFixture';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -35,7 +36,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('uses separate source ground and equipped art and renders a skin while moving and changing facing', async () => {
   const assets = new GroundItemAssets();
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player);
   const animationEquipper = createPlayerEquipper(animation);
   const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const usedMaterials = () => mesh.geometry.groups.map(group => mesh.material[group.materialIndex!].name);
@@ -60,7 +61,7 @@ it('uses separate source ground and equipped art and renders a skin while moving
         // SGwilson's equip handler plays item_out from idle; the held art shows as it runs.
         await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`); });
         for (const [facing, mirrored] of [['up', false], ['down', false], ['side', true]] as const) {
-          facePlayer(animation, facing, mirrored); animation.start('walk'); advancePlayer(animation, 1 / 30);
+          facePlayer(animation, facing, mirrored); startMovement(animation, 'walk'); advancePlayer(animation, 1 / 30);
           expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`);
           expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
           expect(mesh.material.every(material => material.forceSinglePass)).toBe(true);

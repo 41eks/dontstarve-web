@@ -192,7 +192,7 @@ export async function startScene(
         const results = await Promise.allSettled([
           dstLighting.prewarm(scene, camera, preparation.signal),
           PrewarmSounds(),
-          prewarmCachedBuilds(playerInstance.animationController.equipmentAssets,
+          prewarmCachedBuilds(playerInstance.equipmentAssets,
             ['pan_flute.zip', ...Object.values(GROUND_ITEM_DEFINITIONS.panflute.skinArchives)]),
         ]);
         for (const result of results) {

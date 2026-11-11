@@ -28,7 +28,7 @@ test('right-click reads book_rain: its fx and sounds play, moisture starts the r
   }, modules);
   const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
     new CustomEvent('game:debug-command', { detail: { command } })), command);
-  const stateName = () => page.evaluate(() => (window as any).__prefabInstance((window as any).rainGame.player).animationController.stategraph.stateName);
+  const stateName = () => page.evaluate(() => (window as any).__prefabInstance((window as any).rainGame.player).sg.stateName);
   const weather = () => page.evaluate(() => {
     const { weather } = (window as any).rainGame;
     return { type: weather.preciptype.peek(), moisture: weather.moisture.peek(), ceil: weather.moistureceil.peek(),

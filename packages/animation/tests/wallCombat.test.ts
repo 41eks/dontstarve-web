@@ -6,7 +6,7 @@ import { createSignal, type HandEquipment } from '@dontstarve-web/signals';
 import { wallsFixture } from './wallsFixture';
 import { WALL_PHYSICS_RADIUS } from '../../prefab/src/walls';
 import { TILE_SIZE } from '../../prefab/src/tile';
-import { wilsonPlayerInstance, createWilsonPlayer, type WilsonAnimationController } from './playerVisual';
+import { wilsonPlayerInstance, createWilsonPlayer } from './playerVisual';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
@@ -163,7 +163,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
 it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and repeats while held', async () => {
   const { world, placement } = setup();
   const player = await createWilsonPlayer('/dst/data/anim');
-  const animation = wilsonPlayerInstance(player).animationController as WilsonAnimationController;
+  const animation = wilsonPlayerInstance(player);
   (world as { player: THREE.Object3D }).player = player;
   player.position.set(3 + 6 * UNIT, 0, -6);
   let now = 0;
@@ -175,7 +175,7 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
   // The player inst: DoAttackButton searches around it and ATTACK runs its combat.
   const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
     getPhysicsRadius: () => .5 * UNIT, components: { combat }, TheSim: placement.prefabs };
-  const controller = new PlayerController(world, animation.stategraph, locomotor, hand, doer as never, () => false);
+  const controller = new PlayerController(world, animation.sg, locomotor, hand, doer as never, () => false);
   const key = (type: string, code: string, ctrlKey: boolean) => {
     const event = Object.assign(new Event(type, { cancelable: true }), { code, ctrlKey, repeat: false });
     window.dispatchEvent(event);
@@ -195,8 +195,8 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
     expect(locomotor.bufferedAction).toBeDefined();
     // combat:LocomotorCanAttack: inside the attack range of the wall's edge.
     player.position.x = 3 + 2 * UNIT; locomotor.update(16, 1 / 30);
-    expect(animation.stategraph.stateName).toBe('attack');
-    expect(animation.stategraph.animationClip.key).toBe('punch');
+    expect(animation.sg.stateName).toBe('attack');
+    expect(animation.sg.animationClip.key).toBe('punch');
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/attack_whoosh', undefined);
     step(7);
     expect(health.currenthealth).toBe(50);

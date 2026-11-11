@@ -34,22 +34,22 @@ test('G opens nested wheel; mouse direction selects source icons and plays emote
   await expect(wheel.getByRole('button', { name: '挥手' })).toHaveAttribute('aria-pressed', 'true');
   await page.mouse.click(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height * 0.28);
   await expect(wheel.getByRole('dialog')).toBeHidden();
-  await expect.poll(() => page.evaluate(() => window.emoteFixture.animation.currentEmote)).toBe('wave');
+  await expect.poll(() => page.evaluate(() => window.emoteFixture.currentEmote)).toBe('wave');
   expect(await page.evaluate(() => ({ requests: window.emoteFixture.requests, clicks: window.emoteFixture.worldClicks })))
     .toEqual({ requests: ['wave'], clicks: 0 });
   await page.evaluate(() => window.emoteFixture.tick(240));
-  expect(await page.evaluate(() => window.emoteFixture.animation.currentEmote)).toBeNull();
+  expect(await page.evaluate(() => window.emoteFixture.currentEmote)).toBeNull();
 
   await page.keyboard.press('g');
   await wheel.getByRole('button', { name: '动作', exact: true }).click();
   await expect(wheel.locator('canvas[data-loaded="true"]')).toHaveCount(7);
   await wheel.getByRole('button', { name: '跳舞', exact: true }).click();
-  await expect.poll(() => page.evaluate(() => window.emoteFixture.animation.currentEmote)).toBe('dance');
+  await expect.poll(() => page.evaluate(() => window.emoteFixture.currentEmote)).toBe('dance');
   await page.evaluate(() => window.emoteFixture.tick(240));
-  expect(await page.evaluate(() => window.emoteFixture.animation.currentEmote)).toBe('dance');
+  expect(await page.evaluate(() => window.emoteFixture.currentEmote)).toBe('dance');
   await page.keyboard.down('w');
   await page.evaluate(() => window.emoteFixture.tick());
-  expect(await page.evaluate(() => window.emoteFixture.animation.currentEmote)).toBeNull();
+  expect(await page.evaluate(() => window.emoteFixture.currentEmote)).toBeNull();
   expect(await page.evaluate(() => Math.hypot(...window.emoteFixture.velocity))).toBeGreaterThan(0);
   await page.keyboard.up('w');
 });
@@ -85,14 +85,14 @@ test('cancel, back, repeat G, blur and shadow text input do not execute a select
 
 test('Space interrupts an emote and jumps during automatic travel; opposing movement keys cancel the destination', async ({ page }) => {
   await page.evaluate(async () => {
-    const { animation, locomotor, model } = window.emoteFixture;
-    await animation.playEmote('dance');
+    const { locomotor, model } = window.emoteFixture;
+    window.emoteFixture.playEmote('dance');
     locomotor.goToPoint(model.position.clone().set(8, 0, 0));
   });
   await page.keyboard.down('Space');
   await page.evaluate(() => window.emoteFixture.tick());
   expect(await page.evaluate(() => ({
-    emote: window.emoteFixture.animation.currentEmote,
+    emote: window.emoteFixture.currentEmote,
     velocity: window.emoteFixture.velocity,
     destination: window.emoteFixture.locomotor.destination?.toArray(),
   }))).toEqual({ emote: null, velocity: [6, 10, 0], destination: [8, 0, 0] });
