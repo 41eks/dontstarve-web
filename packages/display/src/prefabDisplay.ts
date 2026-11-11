@@ -116,11 +116,14 @@ export class PrefabDisplay {
   get hasGroundOrder(): boolean { const json = this.state.sprite.peek(); return json.ground !== undefined || json.background === true; }
   /** The foot-point sort layer: 0 for a negative SetFinalOffset, otherwise the default. */
   get sortLayer(): number | undefined { return this.state.sprite.peek().behindFoot ? 0 : undefined; }
+  /** A transform-only entity draws nothing of its own, so it takes no foot order; FX attached to it still do. */
+  readonly empty: boolean;
 
   constructor(options: PrefabDisplayOptions) {
     const { archive, sprite: state } = options;
     const source = options.source ?? (options.empty ? { create: () => new THREE.Group(), release: (model: THREE.Group) => model.removeFromParent() } : undefined);
     this.state = state;
+    this.empty = !archive && !options.source && options.empty === true;
     const first = state.sprite.peek();
     const held = first.clip.finished && !first.clip.loop;
     if (archive) {

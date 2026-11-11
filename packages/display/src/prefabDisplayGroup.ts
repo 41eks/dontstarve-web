@@ -42,7 +42,7 @@ export class PrefabDisplayGroup {
     for (const [display, footPosition] of this.awake) {
       const { model } = display;
       if (model.parent !== this.scene || !model.visible || display.isRemoved) continue;
-      if (!display.hasGroundOrder) {
+      if (!display.hasGroundOrder && !display.empty) {
         const sortLayer = display.sortLayer;
         entries.push(sortLayer === undefined ? { object: model, footPosition, cameraDepth: 0 } : { object: model, footPosition, cameraDepth: 0, sortLayer });
       }

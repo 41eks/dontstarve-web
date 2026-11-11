@@ -17,10 +17,14 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+/** An entity that draws a sprite, so it joins the group's foot sort. */
+const drawnEntity = (prefab: string) => createPrefabEntity(prefab, {
+  create: () => new THREE.Group().add(new THREE.Group()), release: model => model.removeFromParent(),
+}, { name: 'idle' }, prefab);
 
 it('takes a sleeping display out of the group\'s frame updates and render list until it wakes, and still releases it', async () => {
   const scene = new THREE.Scene(), group = new PrefabDisplayGroup(scene);
-  const entity = createEmptyEntity('tree'), { instance, display } = entity;
+  const entity = drawnEntity('tree'), { instance, display } = entity;
   const update = vi.spyOn(display, 'update');
   group.mount(display);
   group.update(1 / 30);
@@ -43,7 +47,7 @@ it('takes a sleeping display out of the group\'s frame updates and render list u
 
 it('preserves ground ordering when ground art and billboards share one display group', () => {
   const scene = new THREE.Scene(), group = new PrefabDisplayGroup(scene);
-  const ground = createEmptyEntity('ground'), billboard = createEmptyEntity('billboard');
+  const ground = drawnEntity('ground'), billboard = drawnEntity('billboard');
   ground.instance.sprite.setGround(0);
   try {
     group.mount(ground.display); group.mount(billboard.display);
@@ -54,7 +58,7 @@ it('preserves ground ordering when ground art and billboards share one display g
 
 it('lets the display group own an adopted display across sleep, wake and scene teardown', async () => {
   const scene = new THREE.Scene(), group = new PrefabDisplayGroup(scene);
-  const { instance, display } = createEmptyEntity('adopted');
+  const { instance, display } = drawnEntity('adopted');
   const released = vi.fn(); display.onDispose(released);
   try {
     group.mount(display); group.mount(display);

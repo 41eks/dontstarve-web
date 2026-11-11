@@ -497,8 +497,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.placeholder.removeFromParent();
     this.model.add(sprite);
     this.applyFacing();
-    // A transform-only entity's sprite is a bare group: it is its own render group.
-    registerSpriteRenderGroup(this.model, (sprite.children[0] as THREE.Group | undefined) ?? sprite);
+    registerSpriteRenderGroup(this.model, sprite.children[0] as THREE.Group);
     if (replay) this.play();
   }
 
