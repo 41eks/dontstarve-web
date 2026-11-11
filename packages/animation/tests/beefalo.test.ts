@@ -94,7 +94,7 @@ function setup(random: () => number = () => 0) {
 describe('wild beefalo behavior', () => {
   it('times graze_empty from entry and begins the next idle timeout during the post animation', () => {
     const s = setup();
-    s.inst.brain.Stop();
+    s.inst.StopBrain();
     const idleTimer = s.inst.stategraph.sg.timeoutSnapshot!.peek();
     s.scheduler.advanceTo(.9);
     expect(s.inst.stategraph.sg.timeoutSnapshot!.peek()).toBe(idleTimer);
@@ -118,14 +118,14 @@ describe('wild beefalo behavior', () => {
 
   it('cancels grazing on sleep and does not replay a cancelled pre animation after returning to the same state', () => {
     const s = setup();
-    s.inst.brain.Stop();
+    s.inst.StopBrain();
     s.scheduler.advanceTo(1);
     s.inst.components.sleeper.GoToSleep();
     expect(s.inst.state).toBe('sleep');
     expect(s.inst.stategraph.sg.timeoutSnapshot!.peek()).toEqual({ status: 'stopped' });
     // `nowake` keeps sleep_pre playing until animover, even if waking occurs during it.
     s.inst.components.sleeper.WakeUp();
-    s.inst.brain.Stop();
+    s.inst.StopBrain();
     expect(s.inst.state).toBe('sleep');
     s.complete();
     expect(s.inst.state).toBe('wake');
@@ -433,8 +433,8 @@ describe('original beefalo assets', () => {
     const s = beefaloWorld({ physics });
     const inst = s.spawn();
     // The actual brain, locomotor and stategraph over a deterministic two-second walk.
-    inst.brain.Stop();
-    inst.brain.Start();
+    inst.StopBrain();
+    inst.RestartBrain();
     inst.stategraph.goToState('idle');
     for (let i = 0; i < 240; i++) {
       s.scheduler.advance(1 / 60);

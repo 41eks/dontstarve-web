@@ -13,6 +13,9 @@ export interface SleeperInst {
   isValid(): boolean;
   PushEvent(name: string, data?: unknown): void;
   IsNear?(home: SleeperHome, distance: number): boolean;
+  /** EntityScript:StopBrain / RestartBrain, for an inst with a brain. */
+  StopBrain?(reason: string): void;
+  RestartBrain?(reason: string): void;
   readonly sg?: { hasStateTag(tag: string): boolean };
   readonly components: {
     homeseeker?: { home?: SleeperHome };
@@ -140,6 +143,7 @@ export class Sleeper {
     const wasasleep = this.IsAsleep();
     this.state.set(true);
     this.wearoff.stop();
+    inst.StopBrain?.('sleeper');
     if (!inst.sg?.hasStateTag('nosleep')) inst.components.locomotor?.Stop();
     if (!wasasleep) inst.PushEvent('gotosleep');
     this.StartTesting(sleeptime);
@@ -150,6 +154,7 @@ export class Sleeper {
     if (!this.IsAsleep() || inst.components.health?.IsDead?.()) return;
     this.state.set(false);
     this.sleepiness = 0;
+    inst.RestartBrain?.('sleeper');
     inst.PushEvent('onwakeup');
     this.StartTesting();
   }

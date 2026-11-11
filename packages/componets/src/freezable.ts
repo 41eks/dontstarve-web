@@ -9,8 +9,8 @@ export interface FreezableInst {
   removeTag(tag: string): void;
   PushEvent(name: string): void;
   ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): () => void;
-  stopBrain(): void;
-  restartBrain(): void;
+  StopBrain(reason: string): void;
+  RestartBrain(reason: string): void;
   readonly components: { combat?: { DropTarget(): void }; locomotor?: { Stop(): void } };
 }
 /** freezable.lua's default resistance branch (no boss diminishing returns). Freeze state is not saved. */
@@ -46,7 +46,7 @@ export class Freezable {
   Freeze(seconds = this.wearofftime): void {
     if (!this.inst.isValid() || this.inst.isDead()) return;
     const previous = this.mode.peek(); this.mode.set('FROZEN'); this.wearoff.start(seconds);
-    this.inst.stopBrain(); this.inst.components.combat?.DropTarget(); this.inst.components.locomotor?.Stop();
+    this.inst.StopBrain('frozen'); this.inst.components.combat?.DropTarget(); this.inst.components.locomotor?.Stop();
     if (previous !== 'FROZEN') this.inst.PushEvent('freeze');
   }
   Thaw(seconds = this.wearofftime): void {
@@ -56,7 +56,7 @@ export class Freezable {
   Unfreeze(): void {
     if (!this.IsFrozen()) return;
     this.mode.set('NORMAL'); this.cold.set(0);
-    if (!this.inst.isDead()) { this.inst.restartBrain(); this.inst.PushEvent('unfreeze'); }
+    if (!this.inst.isDead()) { this.inst.RestartBrain('frozen'); this.inst.PushEvent('unfreeze'); }
   }
   dispose(): void { this.wearoff.stop(); this.stopAttacked(); this.inst.removeTag('freezable'); }
 }

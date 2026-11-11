@@ -103,7 +103,6 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
   should_shrink?: boolean;
   private readonly world: BernieWorld;
   private readonly animstate: AnimState;
-  private readonly bernieBrain: BernieBrain | BernieBigBrain;
   private readonly archive: string;
 
   constructor(world: BernieWorld, big: boolean) {
@@ -128,12 +127,10 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
       this.AnimState.PlayAnimation(name, loop);
     });
     this.sg = big ? createBernieStateGraph(this, true, world.scheduler) : createBernieStateGraph(this, false, world.scheduler);
-    this.bernieBrain = big ? new BernieBigBrain(this, WORLD_SCALE) : new BernieBrain(this, WORLD_SCALE);
-    this.brain = this.bernieBrain;
-    this.bernieBrain.Start();
+    this.SetBrain(inst => big ? new BernieBigBrain(inst, WORLD_SCALE) : new BernieBrain(inst, WORLD_SCALE));
     this.think();
     this.onRemove(() => {
-      this.bernieBrain.Stop();
+      this.brain?.Stop();
       this.sg.dispose();
       stopSprite(); this.animstate.dispose();
     });
@@ -142,8 +139,8 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
   /** BrainManager: an awake Bernie's brain updates again once its tree's sleep time has passed. */
   private think(): void {
     if (this.isRemoved) return;
-    if (this.status.peek() === 'active') this.bernieBrain.tick(this.world.scheduler.now);
-    const sleep = this.bernieBrain.GetSleepTime();
+    if (this.status.peek() === 'active') this.brain?.tick(this.world.scheduler.now);
+    const sleep = this.brain?.GetSleepTime();
     this.DoTaskInTime(Math.max(sleep ?? 1, FRAMES), () => this.think());
   }
 

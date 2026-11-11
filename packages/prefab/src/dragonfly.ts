@@ -64,8 +64,6 @@ export class DragonflyInstance extends PrefabInstance {
   }
   PushBufferedAction(): void { throw new Error('Dragonfly stategraph actions are outside the saved-display scope'); }
   /** EntityScript:StopBrain / RestartBrain: the brain is a constructor signature only. */
-  stopBrain(): void {}
-  restartBrain(): void {}
   /** The loaded record; health, knownlocations and timer are saved from their components. */
   private saved: DragonflySaveState = structuredClone(NEW_DRAGONFLY);
 

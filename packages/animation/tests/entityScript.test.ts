@@ -205,5 +205,41 @@ describe('EntityScript queries on PrefabInstance', () => {
     expect(inst.GetTimeAlive()).toBe(5);
     first.dispose(); second.dispose();
   });
-});
 
+  it('makes the brain with SetBrain, holds it stopped per reason, and drops it while asleep for a new one on waking', () => {
+    const inst = entity('pigman');
+    const made: string[] = [];
+    class TestBrain extends Brain<BehaviourContext> {
+      protected OnStart(): void { made.push('start'); }
+      protected override OnStop(): void { made.push('stop'); }
+    }
+    inst.SetBrain(owner => new TestBrain(owner as unknown as BehaviourContext));
+    const first = inst.brain!;
+    expect(first.stopped).toBe(false);
+
+    inst.StopBrain('sleeper');
+    inst.StopBrain('frozen');
+    expect(first.stopped).toBe(true);
+    inst.RestartBrain('sleeper');
+    expect(first.stopped).toBe(true);
+
+    // Asleep, the brain is dropped; on waking a new one is made, still held by the remaining reason.
+    inst.setActive(false);
+    expect(inst.brain).toBeUndefined();
+    inst.setActive(true);
+    const second = inst.brain!;
+    expect(second).not.toBe(first);
+    expect(second.stopped).toBe(true);
+    inst.RestartBrain('frozen');
+    expect(second.stopped).toBe(false);
+
+    // In limbo it goes the same way, and SetBrain there only keeps the constructor until the entity returns.
+    inst.RemoveFromScene();
+    expect(inst.brain).toBeUndefined();
+    inst.SetBrain(owner => new TestBrain(owner as unknown as BehaviourContext));
+    expect(inst.brain).toBeUndefined();
+    inst.ReturnToScene();
+    expect(inst.brain?.stopped).toBe(false);
+    expect(made).toEqual(['start', 'stop', 'start', 'stop', 'start']);
+  });
+});

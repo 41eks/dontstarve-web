@@ -264,8 +264,57 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   private physicsBinding?: PhysicsBinding;
   /** inst.sg: SetStateGraph's instance, as other code reads and drives it; cleared by ClearStateGraph. */
   sg?: Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent' | 'isListeningForEvent'>;
-  /** inst.brain: SetBrain's brain, cleared by StopBrain. */
+  /** inst.brain: the brain SetBrain made, absent while the entity sleeps or is in limbo. */
   brain?: Brain<BehaviourContext>;
+  /** inst.brainfn: SetBrain's constructor, which makes a new brain each time the entity wakes. */
+  private brainfn?: () => Brain<BehaviourContext>;
+  /** inst._braindisabled: the entity has a brainfn but no brain while it sleeps or is in limbo. */
+  private braindisabled = false;
+  /** inst._brainstopped: the reasons StopBrain holds the brain stopped for. */
+  private brainstopped?: Set<string>;
+
+  /**
+   * EntityScript:SetBrain(brainfn): the brain is made now unless the entity sleeps or is in limbo, and started unless
+   * StopBrain holds it. `brainfn` constructs the brain for the inst, as Lua's brainfn() followed by brain.inst = inst.
+   */
+  SetBrain(brainfn: ((inst: this) => Brain<BehaviourContext>) | undefined): void {
+    const make = brainfn && (() => brainfn(this));
+    this.brainfn = make;
+    this.braindisabled = !!make && (this.inlimbo || this.IsAsleep());
+    this.brain?.Stop();
+    this.brain = make && !this.braindisabled ? make() : undefined;
+    if (this.brain && !this.brainstopped) this.brain.Start();
+  }
+
+  /** EntityScript:StopBrain(reason): the brain stops until every reason given here has been restarted. */
+  StopBrain(reason = ''): void {
+    if (this.brainstopped) { this.brainstopped.add(reason); return; }
+    this.brainstopped = new Set([reason]);
+    this.brain?.Stop();
+  }
+
+  /** EntityScript:RestartBrain(reason): drops `reason`; the brain starts again once no reason holds it. */
+  RestartBrain(reason = ''): void {
+    if (!this.brainstopped?.delete(reason) || this.brainstopped.size) return;
+    this.brainstopped = undefined;
+    this.brain?.Start();
+  }
+
+  /** EntityScript:_DisableBrain_Internal, as OnEntitySleep and RemoveFromScene call it: the brain is dropped. */
+  private disableBrain(): void {
+    if (!this.brainfn) return;
+    this.braindisabled = true;
+    this.brain?.Stop();
+    this.brain = undefined;
+  }
+
+  /** EntityScript:_EnableBrain_Internal, as OnEntityWake and ReturnToScene call it: a new brain from brainfn. */
+  private enableBrain(): void {
+    if (!this.braindisabled || !this.brainfn) return;
+    this.braindisabled = false;
+    this.brain = this.brainfn();
+    if (!this.brainstopped) this.brain.Start();
+  }
   private readonly tags = new Set<string>();
   private tagView?: readonly string[];
   private readonly tagListeners = new Set<(tag: string) => void>();
@@ -552,6 +601,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     const awake = this.tileAwake && !this.tags.has('INLIMBO');
     this.sprite.setAwake(awake);
     this.lifecycle.set(awake ? 'active' : 'asleep');
+    // After the entity's own sleep and wake handlers, as OnEntitySleep / OnEntityWake order them.
+    if (awake) this.enableBrain(); else this.disableBrain();
   }
 
   /** inst.OnRemoveEntity(inst): the prefab's own teardown, after its components' and its children's. */

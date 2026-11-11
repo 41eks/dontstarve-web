@@ -236,9 +236,9 @@ export class LightFlier implements LightFlierBrainInst, LightFlierStateInst, Loc
   onRemove(remove: () => void): () => void { return this.entity.onRemove(remove); }
   addTag(tag: string): void { this.entity.addTag(tag); }
   removeTag(tag: string): void { this.entity.removeTag(tag); }
-  /** EntityScript:StopBrain / RestartBrain. */
-  stopBrain(): void { this.brain.Pause(); }
-  restartBrain(): void { this.brain.Resume(); }
+  /** EntityScript:StopBrain / RestartBrain, which freezable and sleeper call; a frozen lightflier stays paused. */
+  StopBrain(_reason: string): void { this.brain.Pause(); }
+  RestartBrain(_reason: string): void { if (!this.components.freezable?.IsFrozen()) this.brain.Resume(); }
   getTime(): number { return this.habitat?.services.scheduler.now ?? 0; }
   getPosition(): Vector3 { return this.entity.getPosition(); }
   getPhysicsRadius(): number { return .5 * WORLD_SCALE; }

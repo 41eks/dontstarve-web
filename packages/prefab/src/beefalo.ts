@@ -94,7 +94,7 @@ export class BeefaloInstance extends PrefabInstance {
   readonly animstate: AnimState;
   /** SetStateGraph("SGBeefalo"). */
   stategraph!: BeefaloStateGraph;
-  declare brain: BeefaloBrain;
+  declare brain: BeefaloBrain | undefined;
 
   constructor(scheduler: GameTimeScheduler) {
     super(BEEFALO_ID, new SpriteState({ name: 'idle_loop', billboard: true }));
@@ -253,9 +253,6 @@ function fn(world: BeefaloWorld): BeefaloInstance {
 
   const sleeper = addComponent(inst, 'sleeper', Sleeper, world.getWatchWorldContent, random);
   sleeper.SetResistance(3);
-  // The brain rests while the beefalo sleeps.
-  inst.ListenForEvent('gotosleep', () => inst.brain.Stop());
-  inst.ListenForEvent('onwakeup', () => inst.brain.Start());
 
   // The drawn sprite follows the logical clip at once.
   const stopSprite = inst.animstate.animation.subscribe(({ name, loop }) => inst.AnimState.PlayAnimation(name, loop));
@@ -270,12 +267,11 @@ function fn(world: BeefaloWorld): BeefaloInstance {
     random,
   }, scheduler);
   inst.sg = inst.stategraph.sg;
-  inst.brain = new BeefaloBrain(brainInst(inst, world, random), WORLD_SCALE);
-  inst.brain.Start();
+  inst.SetBrain(() => new BeefaloBrain(brainInst(inst, world, random), WORLD_SCALE));
 
   inst.OnLoad = onload as PrefabInstance['OnLoad'];
   inst.onRemove(() => {
-    inst.brain.Stop();
+    inst.brain?.Stop();
     inst.stategraph.dispose();
     stopSprite(); inst.animstate.dispose();
   });
@@ -297,7 +293,7 @@ function OnUpdate(inst: BeefaloInstance, world: BeefaloWorld, dt: number): void 
   }
   const step = Math.min(dt, .1);
   inst.stategraph.update(step);
-  inst.brain.tick(world.scheduler.now);
+  inst.brain?.tick(world.scheduler.now);
   inst.components.locomotor.update(step);
 }
 
