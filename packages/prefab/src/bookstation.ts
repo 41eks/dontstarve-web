@@ -159,6 +159,7 @@ function fn(world: PrefabWorldContext, sprites: SpriteResources): BookstationIns
     // inst.AnimState: the display dresses every drawn sprite and reskin with the book layers.
     inst.sprite.setAnimState(inst.AnimState.json, sprites.archives);
     UpdateBookAesthetics(inst, 0);
+    inst.minimap.SetPriority(5);
     inst.addTag('structure');
     inst.addTag('giftmachine');
 

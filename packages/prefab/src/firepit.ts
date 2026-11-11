@@ -59,6 +59,7 @@ export class FirePitInstance extends PrefabInstance {
         const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
         this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsave(this, data); };
         this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onload(this, data); };
+        this.minimap.SetPriority(1);
         for (const tag of ['campfire', 'structure', 'wildfireprotected', 'cooker', 'storytellingprop']) this.addTag(tag);
         const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');

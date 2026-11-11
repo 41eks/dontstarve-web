@@ -118,5 +118,5 @@ function onhammered(inst: PrefabInstance): void {
 
 /** The Prefab table tent.lua returns for the tent; the placer is the build flow's. */
 export function tentPrefabs(world: PrefabWorldContext) {
-    return { [TENT_ID]: buildingPrefab(declaration, 'tent', 1, () => new TentInstance(world), world) };
+    return { [TENT_ID]: { ...buildingPrefab(declaration, 'tent', 1, () => new TentInstance(world), world), minimapIcon: 'tent.png' } };
 }

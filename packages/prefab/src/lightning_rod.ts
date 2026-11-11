@@ -196,5 +196,5 @@ function onhammered(inst: PrefabInstance): void {
 }
 
 export function lightningRodPrefabs(world: PrefabWorldContext) {
-    return { [LIGHTNING_ROD_ID]: buildingPrefab(declaration, 'lightning_rod', undefined, () => new LightningRodInstance(world), world) };
+    return { [LIGHTNING_ROD_ID]: { ...buildingPrefab(declaration, 'lightning_rod', undefined, () => new LightningRodInstance(world), world), minimapIcon: 'lightningrod.png' } };
 }

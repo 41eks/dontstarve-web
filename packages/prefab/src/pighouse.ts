@@ -52,5 +52,5 @@ export class PigHouseInstance extends PrefabInstance {
 }
 
 export function pigHousePrefabs(world: PrefabWorldContext) {
-  return { [PIG_HOUSE_ID]: buildingPrefab(declaration, 'pig_house', 1, () => new PigHouseInstance(world), world) };
+  return { [PIG_HOUSE_ID]: { ...buildingPrefab(declaration, 'pig_house', 1, () => new PigHouseInstance(world), world), minimapIcon: 'pighouse.png' } };
 }

@@ -453,5 +453,5 @@ function OnRemoveEntity(inst: BirdcageInstance): void {
 }
 
 export function birdcagePrefabs(world: PrefabWorldContext) {
-    return { [BIRDCAGE_ID]: buildingPrefab(declaration, 'birdcage', .5, (_position, sprites) => new BirdcageInstance(world, sprites.archives), world) };
+    return { [BIRDCAGE_ID]: { ...buildingPrefab(declaration, 'birdcage', .5, (_position, sprites) => new BirdcageInstance(world, sprites.archives), world), minimapIcon: 'birdcage.png' } };
 }

@@ -87,6 +87,7 @@ function createmachine(level: 3 | 4, name: MagicPrototyperId, soundprefix: 'lvl3
         const inst = new PrefabInstance(name, new SpriteState({ name: 'idle', billboard: true }));
         inst.worldServices = world;
         inst.AddSoundEmitter();
+        inst.minimap.SetPriority(5);
         inst.addTag('structure');
         inst.addTag(`level${level}`);
 
@@ -119,7 +120,7 @@ function createmachine(level: 3 | 4, name: MagicPrototyperId, soundprefix: 'lvl3
 
     return {
         placer: buildingPlacer(declaration),
-        prefab: (world: PrefabWorldContext) => buildingPrefab(declaration, name, .4, () => fn(world), world),
+        prefab: (world: PrefabWorldContext) => ({ ...buildingPrefab(declaration, name, .4, () => fn(world), world), minimapIcon: `${name}.png` }),
     };
 }
 

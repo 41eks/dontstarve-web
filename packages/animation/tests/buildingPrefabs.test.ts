@@ -157,6 +157,7 @@ it('draws the moved animated buildings through their archive or controller art, 
     getLocalTemperature: () => 35 } as unknown as WorldContext;
   const buildings = managedBuildings(world);
   cleanups.push(() => { buildings.dispose(); content.unbind(); scheduler.dispose(); });
+  const minimapAtlases = (await Promise.all([1, 2].map(n => readFile(new URL(`../../../public/dst/data/minimap/minimap_data${n}.xml`, import.meta.url), 'utf8')))).join('');
   // tent, lightning_rod and the heads draw from the shared archive; the rest through a controller for their AnimState.
   const ids = ['tent', 'lightning_rod', 'pighead', 'mermhead', 'winterometer', 'moondial', 'sculptingtable', 'birdcage', 'moonbase',
     'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'] as const;
@@ -170,6 +171,13 @@ it('draws the moved animated buildings through their archive or controller art, 
     expect(model.getObjectsByProperty('isMesh', true).length, id).toBeGreaterThan(0);
     expect(fetched.some(url => url.endsWith(`/${declaration.buildArchive ?? declaration.archive}`)), id).toBe(true);
     if (skinId !== undefined) expect(fetched.some(url => url.endsWith(declaration.skinArchives![skinId])), id).toBe(true);
+    // fn: MiniMapEntity:SetIcon, an icon the source atlases hold; stickheads.lua has no map entity.
+    const icon = prefabInstance(model)!.minimap.icon;
+    if (id === 'pighead' || id === 'mermhead') expect(icon, id).toBe('');
+    else expect(minimapAtlases, id).toContain(`"${icon}"`);
+    if (id === 'moonbase') expect(prefabInstance(model)!.minimap.priority).toBe(4);
+    if (id === 'researchlab3') expect(prefabInstance(model)!.minimap.priority).toBe(5);
+    if (id === 'moondial') expect(prefabInstance(model)!.minimap.drawOverFogOfWar).toBe(true);
   }
   const records = buildings.exportRecords();
   expect(records.map(({ prefabId }) => prefabId).sort()).toEqual([...ids].sort());

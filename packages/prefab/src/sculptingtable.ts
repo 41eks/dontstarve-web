@@ -163,6 +163,7 @@ export class SculptingTableInstance extends PrefabInstance {
 function fn(world: PrefabWorldContext, sprites: SpriteResources): SculptingTableInstance {
     const inst = new SculptingTableInstance(sprites);
     inst.worldServices = world;
+    inst.minimap.SetPriority(5);
     inst.addTag('structure');
 
     const prototyper = addComponent(inst, 'prototyper', Prototyper, 4 * WORLD_SCALE);
@@ -197,5 +198,5 @@ function fn(world: PrefabWorldContext, sprites: SpriteResources): SculptingTable
 }
 
 export function sculptingTablePrefabs(world: PrefabWorldContext) {
-    return { [SCULPTING_TABLE_ID]: buildingPrefab(declaration, 'sculpting_station', .4, (_position, sprites) => fn(world, sprites), world) };
+    return { [SCULPTING_TABLE_ID]: { ...buildingPrefab(declaration, 'sculpting_station', .4, (_position, sprites) => fn(world, sprites), world), minimapIcon: 'sculpting_station.png' } };
 }

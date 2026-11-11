@@ -69,5 +69,5 @@ export class DragonflyChestInstance extends PrefabInstance {
 }
 
 export function dragonflyChestPrefabs(world: PrefabWorldContext) {
-  return { [DRAGONFLY_CHEST_ID]: buildingPrefab(declaration, 'dragonfly_chest', undefined, () => new DragonflyChestInstance(world), world) };
+  return { [DRAGONFLY_CHEST_ID]: { ...buildingPrefab(declaration, 'dragonfly_chest', undefined, () => new DragonflyChestInstance(world), world), minimapIcon: 'dragonflychest.png' } };
 }

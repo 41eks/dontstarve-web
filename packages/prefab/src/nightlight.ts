@@ -51,5 +51,5 @@ export class NightLightInstance extends PrefabInstance {
 }
 
 export function nightLightPrefabs(world: PrefabWorldContext) {
-  return { [NIGHT_LIGHT_ID]: buildingPrefab(declaration, 'nightmare_torch', .1, () => new NightLightInstance(world), world) };
+  return { [NIGHT_LIGHT_ID]: { ...buildingPrefab(declaration, 'nightmare_torch', .1, () => new NightLightInstance(world), world), minimapIcon: 'nightlight.png' } };
 }

@@ -77,6 +77,7 @@ export class MoonbaseInstance extends PrefabInstance {
     this.cycle = world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.onRemove(stop));
     this.effects = new MoonbaseEffects(this, scheduler, sprites);
 
+    this.minimap.SetPriority(4);
     for (const tag of ['moonbase', 'event_trigger', 'antlion_sinkhole_blocker', 'NPC_workable']) this.addTag(tag);
 
     const workable = addComponent(this, 'workable', Workable<MoonbaseInstance>);
@@ -372,5 +373,5 @@ function OnRemoveEntity(inst: MoonbaseInstance): void {
 }
 
 export function moonbasePrefabs(world: PrefabWorldContext) {
-  return { [MOONBASE_ID]: buildingPrefab(declaration, 'moonbase', 1, (_position, sprites) => new MoonbaseInstance(world, sprites), world) };
+  return { [MOONBASE_ID]: { ...buildingPrefab(declaration, 'moonbase', 1, (_position, sprites) => new MoonbaseInstance(world, sprites), world), minimapIcon: 'moonbase.png' } };
 }

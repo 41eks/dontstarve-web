@@ -98,6 +98,7 @@ function createmachine(level: 1 | 2, name: ScienceMachineId, soundprefix: 'lvl1'
         const inst = new PrefabInstance(name, new SpriteState({ name: 'idle', billboard: true }));
         inst.worldServices = world;
         inst.AddSoundEmitter();
+        inst.minimap.SetPriority(5);
         inst.addTag('giftmachine');
         inst.addTag('structure');
         inst.addTag(`level${level}`);
@@ -131,7 +132,7 @@ function createmachine(level: 1 | 2, name: ScienceMachineId, soundprefix: 'lvl1'
 
     return {
         placer: buildingPlacer(declaration),
-        prefab: (world: PrefabWorldContext) => buildingPrefab(declaration, name, .4, () => fn(world), world),
+        prefab: (world: PrefabWorldContext) => ({ ...buildingPrefab(declaration, name, .4, () => fn(world), world), minimapIcon: `${name}.png` }),
     };
 }
 

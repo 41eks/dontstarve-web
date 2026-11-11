@@ -167,6 +167,8 @@ export class MoondialInstance extends PrefabInstance {
         super(MOONDIAL_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
         this.worldServices = world;
         MakeBuildingPersist(this);
+        this.minimap.SetCanUseCache(false);
+        this.minimap.SetDrawOverFogOfWar(true);
         this.addTag('structure');
         const animState = new AnimState();
         this.sprite.setAnimState(animState.json, sprites.archives);
@@ -183,5 +185,5 @@ export class MoondialInstance extends PrefabInstance {
 }
 
 export function moondialPrefabs(world: PrefabWorldContext) {
-    return { [MOONDIAL_ID]: buildingPrefab(declaration, 'moondial', .45, (_position, sprites) => new MoondialInstance(world, sprites), world) };
+    return { [MOONDIAL_ID]: { ...buildingPrefab(declaration, 'moondial', .45, (_position, sprites) => new MoondialInstance(world, sprites), world), minimapIcon: 'moondial.png' } };
 }
