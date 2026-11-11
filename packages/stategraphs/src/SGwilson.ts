@@ -8,7 +8,7 @@ import type { Vector3 } from 'three';
 import type { AnimState } from '@dontstarve-web/animation/animState';
 import type { SoundEmitter } from '../../prefab/src/soundEmitter';
 import type { SoundEventPath } from '../../prefab/src/sound';
-import { ghostActionHandlers, ghostClip, ghostStates } from './SGwilsonghost.ts';
+import { ghostActionHandlers, ghostStates } from './SGwilsonghost.ts';
 
 export type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
 export type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'item_hat' | 'pickup';
@@ -229,6 +229,19 @@ function playHitSounds(entity: WilsonStateInst): void {
 }
 
 const clip = (key: WilsonAnimationKey, name: string = key): WilsonAnimationClip => ({ key, name });
+
+/** SGwilson.lua idle onenter (ClearBufferedAction), then the movement or crafting the browser requested during the action. */
+function onEnterIdle(inst: WilsonInstance, pushanim: boolean): void {
+  const graph = inst.context;
+  graph.releaseAction();
+  // Lua's idle state stays while a pushed post-animation is still playing.
+  if (!pushanim && (graph.isCrafting || graph.requestedMovement !== 'idle')) {
+    inst.goToState(graph.isCrafting ? 'build' : graph.requestedMovement);
+    return;
+  }
+  const idle = { ...clip('idle', 'idle_loop'), loop: true };
+  if (pushanim) graph.pushClips([idle]); else graph.playClips([idle]);
+}
 
 /** SGwilson.lua GetUnequipState: item_hat off a non-hand slot, item_in otherwise (the wereplayer, slip and tool_slip branches are not ported). */
 function GetUnequipState(data: unknown): 'item_hat' | 'item_in' {
@@ -525,7 +538,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
   State({
     name: 'idle',
     tags: ['idle', 'canrotate'],
-    onenter: (inst, pushanim) => inst.context.onEnterIdle(pushanim === true),
+    onenter: (inst, pushanim) => onEnterIdle(inst, pushanim === true),
   }),
   State({
     name: 'mine_start',
@@ -723,7 +736,9 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
   State({
     name: 'quickeat',
     tags: ['busy', 'keep_pocket_rummage'],
-    onenter: (inst) => inst.context.onEnterQuickEat(),
+    // SGwilson.lua quickeat: the drink clips for fooddrink-tagged food.
+    onenter: (inst) => inst.context.playClips(inst.context.isDrinking
+      ? [clip('quick_drink_pre'), clip('quick_drink')] : [clip('quick_eat_pre'), clip('quick_eat')]),
     timeline: [
       // DoEatSound(inst): the eating handle, unless one is already playing.
       TimeEvent(10 * FRAMES, (inst) => { if (!inst.context.entity.SoundEmitter.PlayingSound('eating')) inst.context.entity.SoundEmitter.PlaySound(inst.context.isDrinking ? 'dontstarve/wilson/sip' : 'dontstarve/wilson/eat', 'eating'); }),
@@ -1103,7 +1118,11 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
   State({
     name: 'emote',
     tags: ['busy', 'pausepredict'],
-    onenter: (inst) => inst.context.onEnterEmote(),
+    onenter: (inst) => {
+      // An accepted emote can interrupt working states that have no busy tag.
+      inst.context.releaseAction();
+      inst.context.playClips(inst.context.emoteClips);
+    },
     timeline: [
       TimeEvent(.5, (inst) => {
         inst.removeStateTag('busy');
@@ -1547,7 +1566,7 @@ export class WilsonStateGraph {
   private crafting = false;
   private readonly playback: AnimationPlayback<WilsonAnimationClip>;
   private clipStartedAt = 0;
-  private emoteClips: readonly WilsonAnimationClip[] = [];
+  private preparedEmote: readonly WilsonAnimationClip[] = [];
   private foodDrink = false;
   private activeAction: WilsonAction | null = null;
   private activeBufferedAction: BufferedAction<WilsonAction> | undefined;
@@ -1576,10 +1595,7 @@ export class WilsonStateGraph {
     // SGwilson.lua EventHandler("toolbroke"): ignored during nointerrupt states.
     this.sg.listenForEvent('toolbroke', data => {
       if (this.sg.hasStateTag('nointerrupt')) return;
-      this.clearBufferedAction();
-      this.activeAction = null;
-      this.activeBufferedAction = undefined;
-      this.activeInvobject = undefined;
+      this.releaseAction();
       this.sg.goToState('toolbroke', (data as { tool?: WilsonBrokenTool } | undefined)?.tool);
     });
     // SGwilson.lua EventHandler("equip"): item_out for a hand item, item_hat otherwise, from an idle or channeling state.
@@ -1648,6 +1664,12 @@ export class WilsonStateGraph {
   /** inst.loading_ghost: true only while OnMakePlayerGhost enters the ghost's first state for a ghost loaded from a save. */
   get loadingGhost(): boolean { return this.loadingGhostFlag; }
   get isJumping(): boolean { return this.movementState === 'jump'; }
+  /** The movement the browser requested, which idle resumes once an action ends. */
+  get requestedMovement(): WilsonMovementState { return this.movementState; }
+  /** The clips requestEmote prepared, which the emote state plays. */
+  get emoteClips(): readonly WilsonAnimationClip[] { return this.preparedEmote; }
+  /** The clip AnimState is playing, if any. */
+  get currentClip(): WilsonAnimationClip | undefined { return this.playback.current; }
   get isDrinking(): boolean { return this.foodDrink && this.stateName === 'quickeat'; }
   hasStateTag(tag: string): boolean { return this.sg.hasStateTag(tag); }
   /** inst.sg:AddStateTag */
@@ -1694,26 +1716,6 @@ export class WilsonStateGraph {
     this.activeInvobject = undefined;
   }
 
-  /** Called by idle.onenter after the state has already been entered. */
-  onEnterIdle(pushanim: boolean): void {
-    this.clearBufferedAction();
-    this.activeAction = null;
-    this.activeBufferedAction = undefined;
-    this.activeInvobject = undefined;
-    // Resume movement/crafting requested by browser input during an action.
-    // Keep Lua's idle state while a pushed post-animation is still playing.
-    if (!pushanim && (this.crafting || this.movementState !== 'idle')) {
-      this.sg.goToState(this.crafting ? 'build' : this.movementState);
-      return;
-    }
-    const idle = { ...clip('idle', 'idle_loop'), loop: true };
-    if (pushanim) {
-      this.playback.push([idle]);
-    } else {
-      this.playClips([idle]);
-    }
-  }
-
   /** AnimState owns the clip queue and publishes completion events to this graph. */
   pushClips(clips: readonly WilsonAnimationClip[]): void { this.playback.push(clips); }
   playClips(clips: readonly WilsonAnimationClip[]): void { this.playback.play(clips); }
@@ -1754,18 +1756,6 @@ export class WilsonStateGraph {
     this.sg.goToState(state);
   }
 
-  /** SGwilsonghost idle/run: `if not inst.AnimState:IsCurrentAnimation("idle") then PlayAnimation("idle", true)`. */
-  playGhostIdle(): void {
-    const current = this.playback.current;
-    if (current?.key !== 'ghost' || current.name !== 'idle') this.playClips([ghostClip('idle', true)]);
-  }
-
-  /** The ghost idle state resumes movement the browser requested during the state before it, as onEnterIdle does. */
-  onEnterGhostIdle(): void {
-    this.playGhostIdle();
-    if (this.movementState === 'walk' || this.movementState === 'run') this.sg.goToState(this.movementState);
-  }
-
   /** Record requested movement; resume it when the current action finishes. */
   requestMovement(state: WilsonMovementState): void {
     // The ghost floats: it has no jump.
@@ -1789,10 +1779,7 @@ export class WilsonStateGraph {
   /** Request a visual state, interrupting any buffered action. */
   requestOneShot(state: WilsonOneShotState): void {
     if (this.isDead || this.ghost || this.isSoulHopping) return;
-    this.clearBufferedAction();
-    this.activeAction = null;
-    this.activeBufferedAction = undefined;
-    this.activeInvobject = undefined;
+    this.releaseAction();
     this.sg.goToState(state);
   }
 
@@ -1844,13 +1831,6 @@ export class WilsonStateGraph {
     return false;
   }
 
-  /** SGwilson quickeat chooses drink clips for fooddrink-tagged inventory food. */
-  onEnterQuickEat(): void {
-    this.playClips(this.foodDrink
-      ? [clip('quick_drink_pre'), clip('quick_drink')]
-      : [clip('quick_eat_pre'), clip('quick_eat')]);
-  }
-
   clearBufferedAction(): void {
     const action = this.bufferedAction;
     this.bufferedAction = null;
@@ -1871,10 +1851,7 @@ export class WilsonStateGraph {
   finish(pushanim = false): void {
     // The dead never resume movement or crafting.
     if (this.isDead) return;
-    this.clearBufferedAction();
-    this.activeAction = null;
-    this.activeBufferedAction = undefined;
-    this.activeInvobject = undefined;
+    this.releaseAction();
     // Lua's GoToState("idle", true) preserves the current animation queue.
     // Ordinary completion resumes the browser's requested movement/crafting state.
     this.sg.goToState(pushanim ? 'idle' : this.crafting ? 'build' : this.movementState, pushanim);
@@ -1887,20 +1864,11 @@ export class WilsonStateGraph {
   /** Validate the request, prepare its clips, then enter the emote state. */
   requestEmote(names: readonly string[], loop: boolean): boolean {
     if (!this.canEmote() || !names.length) return false;
-    this.emoteClips = names.map((name, index) => ({
+    this.preparedEmote = names.map((name, index) => ({
       key: 'emote', name, loop: loop && index === names.length - 1,
     }));
     this.sg.goToState('emote');
     return true;
-  }
-  /** Called only by emote.onenter to play the prepared animation queue. */
-  onEnterEmote(): void {
-    // An accepted emote can interrupt working states that have no busy tag.
-    this.clearBufferedAction();
-    this.activeAction = null;
-    this.activeBufferedAction = undefined;
-    this.activeInvobject = undefined;
-    this.playClips(this.emoteClips);
   }
   cancelEmote(): void { if (this.stateName === 'emote') this.finish(); }
 
@@ -1908,10 +1876,7 @@ export class WilsonStateGraph {
   get isSleeping(): boolean { return this.sg.hasAnyStateTag('tent', 'waking'); }
   /** inst.sg:GoToState("wakeup") from sleepingbaguser:DoWakeUp. */
   wakeUp(): void {
-    this.clearBufferedAction();
-    this.activeAction = null;
-    this.activeBufferedAction = undefined;
-    this.activeInvobject = undefined;
+    this.releaseAction();
     this.sg.goToState('wakeup');
   }
   /** The locomote event for a sleeper. */

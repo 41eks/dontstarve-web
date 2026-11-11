@@ -7,6 +7,13 @@ const State = DefineState<WilsonStateGraph, WilsonStateName>;
 /** ghost.zip's clips are selected by name from the `ghost` bank. */
 const ghostClip = (name: string, loop = false): WilsonAnimationClip => ({ key: 'ghost', name, ...loop ? { loop } : {} });
 const GHOST_HOWL = 'dontstarve/ghost/ghost_howl';
+type GhostInstance = Parameters<NonNullable<StateDefinition<WilsonStateGraph, WilsonStateName>['onenter']>>[0];
+
+/** SGwilsonghost idle/run: `if not inst.AnimState:IsCurrentAnimation("idle") then PlayAnimation("idle", true)`. */
+function playGhostIdle(inst: GhostInstance): void {
+  const current = inst.context.currentClip;
+  if (current?.key !== 'ghost' || current.name !== 'idle') inst.context.playClips([ghostClip('idle', true)]);
+}
 const GHOST_HAUNT = 'dontstarve/ghost/ghost_haunt';
 
 /** SGwilsonghost.lua actionhandlers: only HAUNT is ported (jumpin, remoteresurrect, migrate and climb need their actions). */
@@ -25,14 +32,17 @@ export const ghostStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] =
     onenter: inst => {
       inst.context.host.stopMovement?.();
       inst.context.clearBufferedAction();
-      inst.context.onEnterGhostIdle();
+      playGhostIdle(inst);
+      // The movement the browser requested during the state before it resumes, as the living idle does.
+      const movement = inst.context.requestedMovement;
+      if (movement === 'walk' || movement === 'run') inst.goToState(movement);
     },
   }),
   ...(['walk', 'run'] as const).map(name => State({
     name,
     tags: ['moving', 'running', 'canrotate', 'autopredict'],
     // `if not inst.AnimState:IsCurrentAnimation("idle") then PlayAnimation("idle", true)`
-    onenter: inst => inst.context.playGhostIdle(),
+    onenter: inst => playGhostIdle(inst),
   })),
   State({
     // A freshly dead player appears with a howl; a ghost loaded from a save (`loading_ghost`) goes straight to idle.
@@ -87,5 +97,3 @@ export const ghostStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] =
     ],
   }),
 ];
-
-export { ghostClip };
