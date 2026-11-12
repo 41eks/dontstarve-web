@@ -1,5 +1,7 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { SpriteState } from '@dontstarve-web/display';
+import { AnimState } from '../../componets/src/animstate';
+import { animationLengths } from './animationTimings';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { NightmareRockStateGraph, type NightmareRockStateInst } from '../../stategraphs/src/SGnightmarerock';
@@ -24,6 +26,9 @@ export interface NightmareRockWorld {
   /** SpawnPrefab(prefab) placed at `position`, for the sanity_raise / sanity_lower fx. */
   spawnPrefab(prefab: WorldFxPrefab, position: ReadonlyVector3): PrefabInstance;
 }
+
+/** blocker_sanity's clips, from the source anim.bin. */
+const ANIMATION_LENGTHS = animationLengths('blocker_sanity.zip');
 
 // nightmarerock.lua constants, DST units converted to scene units.
 const COLLISION_SIZE = 1;
@@ -52,14 +57,18 @@ export class NightmareRockInstance extends PrefabInstance implements NightmareRo
   transition_task?: EntityTask;
   _refreshtask?: EntityTask;
   declare sg: NightmareRockStateGraph['sg'];
+  /** inst.AnimState's playback: clips end after their source length in game time, whether or not their art is drawn. */
+  animstate!: AnimState;
   /** TheWorld and AllPlayers, as this rock's callbacks reach them. */
   world!: NightmareRockWorld;
   OnActiveStateChanged!: (inst: NightmareRockInstance) => void;
   OnConcealStateChanged!: (inst: NightmareRockInstance) => void;
   ConcealForMinigame!: (inst: NightmareRockInstance, conceal: boolean) => void;
 
+  /** SGnightmarerock's AnimState:PlayAnimation: the logical clip's end is the stategraph's animover. */
   playAnimation(name: string): void {
-    this.sprite.playOnce(name, () => this.sg?.pushEvent('animover'));
+    this.animstate.PlayAnimation(name);
+    this.sprite.playOnce(name);
   }
   declare SoundEmitter: SoundEmitter;
 }
@@ -136,6 +145,8 @@ function commonfn(world: NightmareRockWorld, id: NightmareRockId): NightmareRock
   inst.AddSoundEmitter();
   inst.world = world;
   inst.BindScheduler(world.scheduler);
+  inst.animstate = new AnimState(world.scheduler, ANIMATION_LENGTHS, event => inst.sg?.pushEvent(event));
+  inst.onRemove(() => inst.animstate.dispose());
   inst.addTag('antlion_sinkhole_blocker');
   inst.addTag(id);
   inst.activeonsane = id === 'sanityrock';

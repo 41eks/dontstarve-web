@@ -113,7 +113,7 @@ it('grows an unloaded marble shrub and keeps shape, colour and the scheduled min
   } finally { manager.dispose(); scheduler.dispose(); }
 });
 
-it('settles a sanityrock transition on sleep and restores its stategraph pose and collision on wake', async () => {
+it('keeps a sanityrock transition on game time through sleep and restores its stategraph pose and collision on wake', async () => {
   vi.spyOn(Math, 'random').mockReturnValue(0);
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true), physics = new CANNON.World();
   const player = { position: new THREE.Vector3(12, 0, 6), sanity: { IsSane: () => true, IsInsane: () => false } };
@@ -127,8 +127,13 @@ it('settles a sanityrock transition on sleep and restores its stategraph pose an
     const instance = prefabInstance(model)!, records = manager.exportRecords();
     expect(instance.sprite.currentAnimation).toBe('raise');
     awake.set(false); await settle();
-    expect(rock.sg.stateName).toBe('idle');
+    // Unloading the art does not end the transition: raise (45 frames) still ends on game time.
+    expect(rock.sg.stateName).toBe('raise');
     expect(instance.status.peek()).toBe('asleep');
+    scheduler.advance(44.5 / 30);
+    expect(rock.sg.stateName).toBe('raise');
+    scheduler.advance(1 / 30);
+    expect(rock.sg.stateName).toBe('idle');
     expect(model.parent).toBeNull(); expect(meshes(model)).toHaveLength(0);
     expect(instance.physicsBody!.collisionResponse).toBe(true);
     expect(manager.exportRecords()).toEqual(records);
@@ -137,7 +142,8 @@ it('settles a sanityrock transition on sleep and restores its stategraph pose an
     expect(instance.sprite.currentAnimation).toBe('idle_active');
     expect(instance.position.toArray()).toEqual([12, 0, 6]);
     awake.set(false); await settle();
-    rock.ConcealForMinigame(rock, true); scheduler.advance(.2); await settle();
+    // lower_to_conceal (24 frames) ends on game time, asleep as awake.
+    rock.ConcealForMinigame(rock, true); scheduler.advance(.2 + 24.5 / 30); await settle();
     expect(rock.sg.stateName).toBe('concealed');
     expect(instance.physicsBody!.collisionResponse).toBe(false);
     awake.set(true); await settle();

@@ -4,6 +4,8 @@ import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, createMemo, WorldContentKey, type GameTimeScheduler, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
+import { AnimState } from '../../componets/src/animstate';
+import { animationLengths } from './animationTimings';
 import { Trader, type TradeItem } from '../../componets/src/trader';
 import { PigKingStateGraph, type PigKingStateInst } from '../../stategraphs/src/SGpigking';
 import type { LootLaunch } from '../../componets/src/inventoryphysics';
@@ -29,34 +31,8 @@ const TOSS_HEIGHT = 4.5;
 const TOSS_DELAY = 2 / 3;
 const GOLD = 'goldnugget';
 
-/** AnimState:PlayAnimation / PushAnimation: `animover` fires once the queued animations have all ended. */
-class PigKingAnimation {
-  private queue: { name: string; loop: boolean }[] = [];
-  private playingOnce = false;
-  private readonly sprite: SpriteState;
-  private readonly onOver: () => void;
-  constructor(sprite: SpriteState, onOver: () => void) { this.sprite = sprite; this.onOver = onOver; }
-
-  play(name: string, loop = false): void { this.queue = []; this.run(name, loop); }
-
-  push(name: string, loop = false): void {
-    if (this.playingOnce) this.queue.push({ name, loop });
-    else this.run(name, loop);
-  }
-
-  private run(name: string, loop: boolean): void {
-    this.playingOnce = !loop;
-    if (loop) this.sprite.start(name);
-    else this.sprite.playOnce(name, () => this.finish());
-  }
-
-  private finish(): void {
-    this.playingOnce = false;
-    const next = this.queue.shift();
-    if (next) this.run(next.name, next.loop);
-    else this.onOver();
-  }
-}
+/** pig_king's clips, from the source anim.bin. */
+const ANIMATION_LENGTHS = animationLengths(definitions.pigKing.archive as 'pig_king.zip');
 
 /**
  * pigking.lua fn: obstacle physics, minimap icon, trader, SGpigking and the isnight watcher. The minigame, hauntable,
@@ -71,7 +47,8 @@ export class PigKingInstance extends PrefabInstance {
   /** inst.happy, set by SGpigking's cointoss for five seconds. */
   happy = false;
   private readonly world: PigKingWorld;
-  private readonly animation: PigKingAnimation;
+  /** inst.AnimState's playback: clips end after their source length in game time, whether or not their art is drawn. */
+  readonly animstate: AnimState;
 
   constructor(world: PigKingWorld, position: ReadonlyVector3) {
     super(PIGKING_ID, new SpriteState({ name: definitions.pigKing.animationName, billboard: true }));
@@ -93,7 +70,7 @@ export class PigKingInstance extends PrefabInstance {
     trader.SetOnRefuse(() => this.pigking.goToState('unimpressed'));
     addComponent(this, 'inspectable', Inspectable);
 
-    this.animation = new PigKingAnimation(this.sprite, () => this.pigking.pushEvent('animover'));
+    this.animstate = new AnimState(world.scheduler, ANIMATION_LENGTHS, event => this.pigking.pushEvent(event));
     this.AddSoundEmitter();
     this.pigking = new PigKingStateGraph(this, world.scheduler);
     this.SetStateGraph(() => this.pigking.sg);
@@ -108,17 +85,24 @@ export class PigKingInstance extends PrefabInstance {
     }
     this.onRemove(() => {
       cleanups.splice(0).forEach(stop => stop());
+      this.animstate.dispose();
       this.pigking.dispose();
       trader.Disable();
       trader.dispose();
     });
   }
 
-  /** AnimState:PlayAnimation / PushAnimation, whose queue end pushes `animover` to SGpigking. */
-  // conventions-allow instance-method: the engine's AnimState calls, with the animover InstanceAnimState does not push yet
-  playAnimation(name: string, loop?: boolean): void { this.animation.play(name, loop); }
-  // conventions-allow instance-method: the engine's AnimState calls, with the animover InstanceAnimState does not push yet
-  pushAnimation(name: string, loop?: boolean): void { this.animation.push(name, loop); }
+  /** AnimState:PlayAnimation / PushAnimation on the logical clip, whose end is SGpigking's animover, and the drawn one. */
+  // conventions-allow instance-method: the engine's AnimState calls SGpigking makes on its inst
+  playAnimation(name: string, loop = false): void {
+    this.animstate.PlayAnimation(name, loop);
+    if (loop) this.sprite.start(name); else this.sprite.playOnce(name);
+  }
+  // conventions-allow instance-method: the engine's AnimState calls SGpigking makes on its inst
+  pushAnimation(name: string, loop = false): void {
+    this.animstate.PushAnimation(name, loop);
+    this.sprite.pushAnimation(name, loop);
+  }
 
   /** pigking.lua ontradeforgold: goldvalue nuggets thrown from 4.5 units up, toward the giver. */
   tradeForGold(goldvalue: number, giver: unknown): void {

@@ -190,3 +190,19 @@ describe('nightmare rocks', () => {
     } finally { second.dispose(); }
   });
 });
+
+it('ends its clips on game time while its art never loads', async () => {
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
+  const scheduler = new GameTimeScheduler();
+  const manager = nightmareRockWorld(new THREE.Scene(), { scheduler, getPlayers: () => [] }, { physics: new CANNON.World() });
+  const rock = manager.spawn('sanityrock', new THREE.Vector3());
+  try {
+    // lower is 37 frames; its animover returns SGnightmarerock to idle.
+    rock.sg.goToState('lower');
+    scheduler.advance(36.5 / 30);
+    expect(rock.sg.stateName).toBe('lower');
+    scheduler.advance(1 / 30);
+    expect(rock.sg.stateName).toBe('idle');
+    expect(rock.sprite.loaded).toBe(false);
+  } finally { manager.dispose(); scheduler.dispose(); }
+});

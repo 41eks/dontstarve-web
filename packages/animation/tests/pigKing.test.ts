@@ -121,3 +121,18 @@ describe('default_pigking static layout', () => {
     expect(insanity).toContainEqual([2.125 * TILE_SIZE, 24 + .125 * TILE_SIZE]);
   });
 });
+
+it('ends its clips on game time while its art never loads', () => {
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
+  const s = setup();
+  const king = s.prefabs.spawnAs(PigKingInstance, PIGKING_ID, new THREE.Vector3(-13, 2, -25));
+  try {
+    // unimpressed is 56 frames; its animover returns SGpigking to idle.
+    king.pigking.goToState('unimpressed');
+    s.scheduler.advance(55.5 / 30);
+    expect(king.pigking.stateName).toBe('unimpressed');
+    s.scheduler.advance(1 / 30);
+    expect(king.pigking.stateName).toBe('idle');
+    expect(king.sprite.loaded).toBe(false);
+  } finally { s.dispose(); }
+});

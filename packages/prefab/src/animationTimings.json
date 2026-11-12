@@ -2856,5 +2856,161 @@
       "frameRate": 30.0,
       "frames": 27
     }
+  ],
+  "teleporter_worm.zip": [
+    {
+      "name": "idle_loop",
+      "bank": 1417216858,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "open_pre",
+      "bank": 1417216858,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "open_loop",
+      "bank": 1417216858,
+      "frameRate": 30.0,
+      "frames": 49
+    },
+    {
+      "name": "open_pst",
+      "bank": 1417216858,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "cough",
+      "bank": 1417216858,
+      "frameRate": 30.0,
+      "frames": 34
+    },
+    {
+      "name": "death",
+      "bank": 1417216858,
+      "frameRate": 30.0,
+      "frames": 50
+    }
+  ],
+  "blocker_sanity.zip": [
+    {
+      "name": "idle_active",
+      "bank": 3746987411,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "lower",
+      "bank": 3746987411,
+      "frameRate": 30.0,
+      "frames": 37
+    },
+    {
+      "name": "idle_inactive",
+      "bank": 3746987411,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "raise",
+      "bank": 3746987411,
+      "frameRate": 30.0,
+      "frames": 45
+    },
+    {
+      "name": "conceal",
+      "bank": 3746987411,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "idle_concealed",
+      "bank": 3746987411,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "reveal",
+      "bank": 3746987411,
+      "frameRate": 30.0,
+      "frames": 21
+    },
+    {
+      "name": "lower_to_conceal",
+      "bank": 3746987411,
+      "frameRate": 30.0,
+      "frames": 24
+    }
+  ],
+  "pig_king.zip": [
+    {
+      "name": "anim",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "idle",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 69
+    },
+    {
+      "name": "happy",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 57
+    },
+    {
+      "name": "cointoss",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 47
+    },
+    {
+      "name": "unimpressed",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 56
+    },
+    {
+      "name": "sleep_pre",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 11
+    },
+    {
+      "name": "sleep_loop",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 51
+    },
+    {
+      "name": "sleep_pst",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 21
+    },
+    {
+      "name": "intro_pre",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "intro_loop",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 20
+    },
+    {
+      "name": "intro_pst",
+      "bank": 4133990248,
+      "frameRate": 30.0,
+      "frames": 31
+    }
   ]
 }

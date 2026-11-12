@@ -162,3 +162,21 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
     expect(s.scene.children).toHaveLength(0);
   } finally { s.dispose(); }
 });
+
+it('ends open_pre on game time while its art never loads', async () => {
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
+  vi.stubGlobal('window', new EventTarget());
+  const s = setup();
+  await s.playerAt(100);
+  const wormhole = s.spawn(new THREE.Vector3());
+  try {
+    await s.playerAt(WORMHOLE_ENTER_DISTANCE - .01);
+    expect(wormhole.sg.stateName).toBe('opening');
+    // open_pre is 17 frames; its animover comes from the logical clip, not from a drawn sprite.
+    s.step(16);
+    expect(wormhole.sg.stateName).toBe('opening');
+    s.step(2);
+    expect(wormhole.sg.stateName).toBe('open');
+    expect(wormhole.sprite.loaded).toBe(false);
+  } finally { s.dispose(); }
+});
