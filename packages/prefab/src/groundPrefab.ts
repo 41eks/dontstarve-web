@@ -1,5 +1,5 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
+import type { ItemEntity, ItemEntityFactory, InventoryStack } from '@dontstarve-web/inventory';
 import type { SpriteResources } from '@dontstarve-web/display';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { BernieWorld } from './bernie';
@@ -49,8 +49,12 @@ export interface GroundFx {
  * configured with, the game-time services, and the spawns, fx and habitats its callbacks use.
  */
 export interface ItemPrefabWorld {
-  /** The item registry's construction of a new inst of `prefab`, bound to its worlds; the item prefab's fn calls it. */
+  /**
+   * The item registry's construction of a new inst of `prefab`, bound to its worlds; the item prefab's fn calls it,
+   * with its own ItemEntity subclass when it has one.
+   */
   newItem(prefab: string): ItemEntity;
+  newItem<Entity extends ItemEntity>(prefab: string, factory: ItemEntityFactory<Entity>): Entity;
   /** SpawnPrefab of an item from its stack, as a container's SpawnSaveRecord makes its contents. */
   spawnItem(state: InventoryStack): ItemEntity;
   /** inventoryitem:OnDropped of an inst a holder lets go of, at `position`. */

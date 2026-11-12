@@ -9,7 +9,7 @@ import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
 import { PlaySound } from '@dontstarve-web/prefab/sound';
-import { newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntity } from '@dontstarve-web/inventory';
+import { newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntity, type ItemEntityFactory } from '@dontstarve-web/inventory';
 import type { ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
 import { createInventoryStore } from './inventory';
 import * as CANNON from 'cannon-es';
@@ -595,8 +595,14 @@ export async function createSceneEntities(
   /** TheWorld as the item prefabs reach it. */
   function itemWorld(worldState: SceneWorldState): ItemPrefabWorld {
     if (itemWorldInstance) return itemWorldInstance;
+    function newItem(prefab: string): ItemEntity;
+    function newItem<Entity extends ItemEntity>(prefab: string, factory: ItemEntityFactory<Entity>): Entity;
+    function newItem(prefab: string, factory?: ItemEntityFactory): ItemEntity {
+      const state = { itemId: prefab, count: 1 };
+      return factory ? sceneInventory.entities.construct(state, factory) : sceneInventory.entities.construct(state);
+    }
     const items: ItemPrefabWorld = itemWorldInstance = {
-      newItem: prefab => sceneInventory.entities.construct({ itemId: prefab, count: 1 }),
+      newItem,
       spawnItem: state => sceneInventory.entities.create(state),
       isInventoryItem: prefab => sceneInventory.hasItemSpec(prefab),
       configureItem: entity => { sceneInventory.entities.adopt(entity); sceneInventory.configureItem(entity); },

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PrefabDisplayGroup, SpriteResources } from '../../display/src';
-import { newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntity, type ItemEntityRegistry } from '../../inventory/src';
+import { newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntity, type ItemEntityFactory, type ItemEntityRegistry } from '../../inventory/src';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { LootLaunch } from '../../componets/src/inventoryphysics';
@@ -50,8 +50,14 @@ export class ItemWorldFixture {
     // The scene has one ticking area: the manager's tile activity and the fireflies' world read the same one.
     this.prefabs = new PrefabEntityManager(this.displays, animationBaseUrl,
       { tickingarea: tickingarea ?? firefliesWorld.tickingarea, physics, iconArchiveUrl: archiveUrl });
+    function newItem(prefab: string): ItemEntity;
+    function newItem<Entity extends ItemEntity>(prefab: string, factory: ItemEntityFactory<Entity>): Entity;
+    function newItem(prefab: string, factory?: ItemEntityFactory): ItemEntity {
+      const state = { itemId: prefab, count: 1 };
+      return factory ? inventory.entities.construct(state, factory) : inventory.entities.construct(state);
+    }
     this.world = {
-      newItem: prefab => inventory.entities.construct({ itemId: prefab, count: 1 }),
+      newItem,
       spawnItem: state => inventory.entities.create(state),
       isInventoryItem: prefab => inventory.hasItemSpec(prefab),
       configureItem: entity => { inventory.entities.adopt(entity); inventory.configureItem(entity); },

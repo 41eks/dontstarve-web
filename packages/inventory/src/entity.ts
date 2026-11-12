@@ -472,6 +472,13 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
 }
 
+/**
+ * How an item prefab's fn makes its inst: the prefab's own ItemEntity subclass, built with the registry's world and the
+ * SpawnPrefab its containers load through.
+ */
+export type ItemEntityFactory<Entity extends ItemEntity = ItemEntity> =
+  (state: InventoryStack, perishWorld: PerishWorld | undefined, createItem: (state: InventoryStack) => ItemEntity) => Entity;
+
 /** Shared by the inventory store and world item manager; contains each live item exactly once. */
 export class ItemEntityRegistry {
   private readonly entities = new Map<string, ItemEntity>();
@@ -536,8 +543,10 @@ export class ItemEntityRegistry {
    */
   bindSpawner(spawn: ((state: InventoryStack) => ItemEntity | undefined) | undefined): void { this.spawner = spawn; }
   /** The item prefab's own construction, bound to this registry's worlds but not yet registered. */
-  construct(state: InventoryStack): ItemEntity {
-    const entity = new ItemEntity(state, this.perishWorld, item => this.create(item));
+  construct(state: InventoryStack): ItemEntity;
+  construct<Entity extends ItemEntity>(state: InventoryStack, factory: ItemEntityFactory<Entity>): Entity;
+  construct(state: InventoryStack, factory: ItemEntityFactory = (...args) => new ItemEntity(...args)): ItemEntity {
+    const entity = factory(state, this.perishWorld, item => this.create(item));
     if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
     if (this.equipmentWorld) entity.equipmentWorld = this.equipmentWorld;
     return entity;

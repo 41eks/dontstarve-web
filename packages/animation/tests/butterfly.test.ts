@@ -1,8 +1,7 @@
 import * as THREE from 'three';
-import { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  BUTTERFLY_DEFINITIONS, ButterflyController,
+  BUTTERFLY_DEFINITIONS, ButterflyEntity, MakeButterflyCreature, UpdateButterfly,
   type ButterflyFlower, type ButterflyWorld,
 } from '../../prefab/src/butterfly';
 
@@ -10,6 +9,10 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
 import { ItemWorldFixture } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
+import { createInventoryStore } from '../../../src/inventory';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
+import { inventorySlotAddress } from '../../inventory/src';
+import { createPerishWorld } from './perishWorldFixture';
 
 const cleanups: (() => void)[] = [];
 afterEach(() => { cleanups.splice(0).forEach(stop => stop()); });
@@ -31,9 +34,10 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
     getThreatPositions: () => threats,
     getFlowers: () => flowers,
   };
-  const entity = new ItemEntity({ itemId: prefab, count: 1 });
-  const controller = new ButterflyController(BUTTERFLY_DEFINITIONS[prefab], entity, animation, world, () => [], () => 0, dropLoot);
-  cleanups.push(() => { controller.dispose(); unbind(); scheduler.dispose(); });
+  const entity = new ButterflyEntity(BUTTERFLY_DEFINITIONS[prefab], { itemId: prefab, count: 1 });
+  MakeButterflyCreature(entity, world, { animation, random: () => 0, dropLoot });
+  const controller = entity;
+  cleanups.push(() => { entity.remove(); unbind(); scheduler.dispose(); });
   return {
     cycle, animation, controller, world, entity,
     position: () => entity.transform.position.clone(),
@@ -41,8 +45,8 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
     setFlowers: (value: ButterflyFlower[]) => { flowers = value; },
     setDay: (value: boolean) => { cycle.set(value ? 'day' : 'dusk'); },
     // The animover is handled on the stategraph's next update.
-    complete: () => { const callback = complete; complete = undefined; callback?.(); controller.update(0); },
-    tick: (seconds: number) => { for (let i = 0; i < Math.round(seconds * 10); i++) controller.update(0.1); },
+    complete: () => { const callback = complete; complete = undefined; callback?.(); UpdateButterfly(entity, 0); },
+    tick: (seconds: number) => { for (let i = 0; i < Math.round(seconds * 10); i++) UpdateButterfly(entity, 0.1); },
   };
 }
 
@@ -153,4 +157,35 @@ it('declares both butterflies as item prefabs', () => {
   try {
     expect(['butterfly', 'moonbutterfly'].every(id => items.prefabs.has(id))).toBe(true);
   } finally { items.dispose(); inventory.dispose(); }
+});
+
+it('spawns a butterfly as its own entity, whose brain stops in an inventory and is remade when it is dropped', () => {
+  const inventory = createInventoryStore([]), world = createPerishWorld();
+  inventory.entities.bindPerishWorld(world);
+  const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
+    inventory, '/dst/data/anim', new THREE.Group());
+  const restored = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
+    createInventoryStore([]), '/dst/data/anim', new THREE.Group());
+  try {
+    items.spawnFromSave('wild', { ...SAVE_CATALOG.items.butterfly, itemId: 'butterfly', count: 1 }, new THREE.Vector3(3, 0, 0));
+    const wild = items.entities.get('wild');
+    if (!(wild instanceof ButterflyEntity)) throw new Error('the butterfly prefab makes a ButterflyEntity');
+    const brain = wild.brain;
+    expect(brain?.stopped).toBe(false);
+    expect(wild.sg?.stateName).toBe('idle');
+    expect(inventory.GiveItem(wild)).toBe(true);
+    expect(inventory.getEntity(inventorySlotAddress(0))).toBe(wild);
+    // RemoveFromScene: _DisableBrain_Internal drops the brain and sg:Stop pauses the graph.
+    expect(wild.brain).toBeUndefined();
+    expect(brain?.stopped).toBe(true);
+    inventory.DropItem(wild, new THREE.Vector3(5, 0, 0));
+    expect(wild.brain).toBeDefined();
+    expect(wild.brain).not.toBe(brain);
+    expect(wild.brain?.stopped).toBe(false);
+    expect(wild.state).toBe('idle');
+    restored.restoreEntities(items.exportEntities());
+    const [copy] = restored.entities.values();
+    expect(copy).toBeInstanceOf(ButterflyEntity);
+    expect(copy.getPosition().toArray()).toEqual([5, 0, 0]);
+  } finally { items.dispose(); restored.dispose(); inventory.dispose(); }
 });

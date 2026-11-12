@@ -3,11 +3,10 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import { WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import type { GroundItemDefinition, ItemPrefabWorld } from './groundPrefab';
-import type { ItemEntity } from '@dontstarve-web/inventory';
+import { ItemEntity } from '@dontstarve-web/inventory';
 import { bindItemWorld, dropStackIndividually, type ItemPrefabDefinition } from './groundItems';
 import { TOTAL_DAY_TIME } from '../../componets/src/perishable';
 import { Deployable } from '../../componets/src/deployable';
-import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { ButterflyStateGraph, type ButterflyStateInst, type ButterflyStateName } from '../../stategraphs/src/SGbutterfly';
 import { LocoMotor, type LocoMotorInst, type LocoMotorPoint } from '../../componets/src/locomotor';
 import { KnownLocations } from '../../componets/src/knownlocations';
@@ -124,7 +123,7 @@ export interface ButterflyWorld {
 
 export type ButterflyState = ButterflyStateName | 'removed';
 
-interface ButterflyAnimation {
+export interface ButterflyAnimation {
   start(name: string): void;
   playOnce(name: string, onComplete?: () => void): void;
   update(dt: number): void;
@@ -226,261 +225,201 @@ const entityRegistries = new WeakMap<ButterflyWorld, ButterflyEntities>();
 
 const distanceSquared = (a: LocoMotorPoint, b: LocoMotorPoint) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
 
+/** What the butterfly's fn takes from the world besides its item registry. */
+export interface ButterflyServices {
+  /** TheSim:FindEntities for other butterflies near a point. */
+  readonly getOthers?: (position: LocoMotorPoint, radius: number) => readonly ButterflyEntity[];
+  readonly random?: () => number;
+  /** lootdropper:DropLoot's item spawns at the butterfly's position. */
+  readonly dropLoot?: (itemIds: readonly string[], position: THREE.Vector3) => void;
+  /** AnimState, when the sprite json's own playback is not the one being driven. */
+  readonly animation?: ButterflyAnimation;
+}
+
 /**
- * The live butterfly or moonbutterfly inst: components, stategraph and brain as in butterfly.lua,
- * SGbutterfly.lua and the *brain.lua files, driven from the committed inventory entity's transform.
+ * The butterfly or moonbutterfly inst of butterfly.lua and moonbutterfly.lua: an inventory item whose locomotor,
+ * stategraph (SGbutterfly.lua) and brain (the *brain.lua files) are its own. SetBrain's brain stops in limbo and while the
+ * entity sleeps; UpdateButterfly advances it, the locomotor, the stategraph and the physics motor once a frame.
  */
-export class ButterflyCreature implements BrainInst, ButterflyStateInst, LocoMotorInst {
+export class ButterflyEntity extends ItemEntity implements BrainInst, LocoMotorInst {
   readonly definition: ButterflyDefinition;
-  readonly world: BrainWorld;
-  readonly locomotor: LocoMotor;
-  readonly sg: ButterflyStateGraph;
-  readonly brain: Brain;
-  bufferedaction: BufferedAction | undefined;
-  private inInventory = false;
-  get removed(): boolean { return this.inInventory || this.entity.isRemoved; }
-  private rotation = 0;
-  private motorSpeed = 0;
-  private time = 0;
-  private readonly entity: ItemEntity;
-  get components(): BrainComponents { return this.entity.components; }
-  /** The creature is the Lua inst its components see; they are stored on, and torn down with, the item entity. */
-  get isRemoved(): boolean { return this.entity.isRemoved; }
-  onRemove(remove: () => void): () => void { return this.entity.onRemove(remove); }
-  get prefab(): string { return this.entity.prefab; }
-  getPosition(): THREE.Vector3 { return this.entity.getPosition(); }
-  getPhysicsRadius(): number { return this.entity.getPhysicsRadius(); }
-  private readonly transform: ItemEntity['transform'];
-  private readonly animation: ButterflyAnimation;
-  private readonly sharedEntities: ButterflyEntities;
-  private readonly butterflyWorld: ButterflyWorld;
-  private readonly cycle?: WorldContentSignal<WorldPhase>;
-  private readonly cleanups: (() => void)[] = [];
-  private readonly getOthers: (position: LocoMotorPoint, radius: number) => readonly ButterflyCreature[];
-  private readonly randomSource: () => number;
+  /** The brain's TheWorld: isday, and FindEntities over the flowers, the threats and the other butterflies. */
+  world!: BrainWorld;
+  locomotor!: LocoMotor;
+  /** SetStateGraph("SGbutterfly"). */
+  stategraph!: ButterflyStateGraph;
+  /** Held in an inventory: the creature neither thinks nor moves. */
+  inInventory = false;
+  get removed(): boolean { return this.inInventory || this.isRemoved; }
+  /** Physics:SetMotorVel's speed along the heading. */
+  motorSpeed = 0;
+  /** GetTime() of the creature's own frames. */
+  time = 0;
+  animation!: ButterflyAnimation;
   /** The engine's animover, buffered like SG events in stategraph.lua and handled on the next stategraph update. */
-  private animationOver = false;
-  private readonly onAnimationOver = () => { this.animationOver = true; };
-  private readonly dropLootItems?: (itemIds: readonly string[], position: THREE.Vector3) => void;
-  private snapshot: { flowers: SimpleEntity[]; threats: SimpleEntity[] } = { flowers: [], threats: [] };
-  private readonly scratch = new THREE.Vector3();
+  animationOver = false;
+  butterflyWorld!: ButterflyWorld;
+  sharedEntities!: ButterflyEntities;
+  cycle?: WorldContentSignal<WorldPhase>;
+  getOthers?: ButterflyServices['getOthers'];
+  randomSource: () => number = Math.random;
+  dropLootItems?: ButterflyServices['dropLoot'];
+  /** The flowers and threats of this frame's FindEntities. */
+  nearby: { flowers: SimpleEntity[]; threats: SimpleEntity[] } = { flowers: [], threats: [] };
+  readonly scratch = new THREE.Vector3();
 
-  constructor(definition: ButterflyDefinition, entity: ItemEntity, animation: ButterflyAnimation,
-    butterflyWorld: ButterflyWorld, getOthers: (position: LocoMotorPoint, radius: number) => readonly ButterflyCreature[] = () => [],
-    random: () => number = Math.random, dropLoot?: ButterflyCreature['dropLootItems']) {
-    this.entity = entity;
+  constructor(definition: ButterflyDefinition, ...item: ConstructorParameters<typeof ItemEntity>) {
+    super(...item);
     this.definition = definition;
-    this.transform = entity.transform;
-    this.animation = animation;
-    this.butterflyWorld = butterflyWorld;
-    this.cycle = butterflyWorld.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
-    this.getOthers = getOthers;
-    this.randomSource = random;
-    this.dropLootItems = dropLoot;
-    for (const tag of definition.tags) entity.addTag(tag);
-    let shared = entityRegistries.get(butterflyWorld);
-    if (!shared) entityRegistries.set(butterflyWorld, shared = new ButterflyEntities());
-    this.sharedEntities = shared;
-    this.world = this.createWorld();
-    // locomotor must be constructed before the stategraph.
-    this.locomotor = addComponent(this, 'locomotor', LocoMotor);
-    if (definition.walkspeed !== undefined) this.locomotor.walkspeed = definition.walkspeed;
-    addComponent(this, 'knownlocations', KnownLocations);
-    if (definition.pollinates) addComponent(this, 'pollinator', Pollinator<BrainEntity>);
-    this.sg = new ButterflyStateGraph(this);
-    this.brain = definition.createBrain(this);
-    this.brain.inst.brain = this.brain;
-    entity.brain = this.brain;
-    for (const name of ['locomote', 'death', 'animover']) this.cleanups.push(entity.ListenForEvent(name, (_inst, data) => this.sg.pushEvent(name, data)));
-    this.cleanups.push(entity.ListenForEvent('ondropped', () => this.onDropped()),
-      entity.ListenForEvent('onputininventory', () => this.onPutInInventory()));
-    // OnDropped explicitly enters idle rather than the graph's initial takeoff.
-    this.onDropped();
   }
 
-  // --- BrainInst / entity script
+  // conventions-allow instance-method: GetTime(), which the brain's behaviours call on inst.
   getTime(): number { return this.time; }
+  // conventions-allow instance-method: math.random, which the brain's behaviours call on inst.
   random(): number { return this.randomSource(); }
-  addTag(tag: string): void { this.entity.addTag(tag); }
-  removeTag(tag: string): void { this.entity.removeTag(tag); }
-  hasTag(tag: string): boolean { return this.entity.hasTag(tag); }
-  IsNear(other: BrainEntity, distance: number): boolean {
-    return distanceSquared(this.getPosition(), other.getPosition()) <= distance * distance;
-  }
-  GetAngleToPoint(x: number, _y: number, z: number): number {
-    const position = this.getPosition();
-    const angle = Math.atan2(-(z - position.z), x - position.x) * RADIANS;
-    return (angle % 360 + 360) % 360;
-  }
-  setRotation(degrees: number): void { this.rotation = degrees; }
-  get facing(): number { return this.rotation; }
-
-  ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): void { this.entity.ListenForEvent(name, fn); }
-  RemoveEventCallback(name: string, fn: (inst: unknown, data: unknown) => void): void { this.entity.RemoveEventCallback(name, fn); }
-  PushEvent(name: string, data?: unknown): void { this.entity.PushEvent(name, data); }
-
-  /** entityscript.lua PushBufferedAction */
-  PushBufferedAction(action: BufferedAction): void {
-    const current = this.bufferedaction;
-    if (current && current.target === action.target && current.action === action.action
-      && current.invobject === action.invobject && !this.sg.hasStateTag('idle')) return;
-    if (current) {
-      current.fail();
-      this.bufferedaction = undefined;
-    }
-    if (!action.isValid()) {
-      this.PushEvent('actionfailed', { action });
-      return;
-    }
-    this.bufferedaction = action;
-    if (!this.sg.startAction(action)) {
-      this.PushEvent('performaction', { action });
-      action.fail();
-      this.bufferedaction = undefined;
-    }
-  }
-
-  // --- ButterflyStateInst
-  performBufferedAction(): boolean | undefined {
-    const action = this.bufferedaction;
-    if (!action) return undefined;
-    const target = action.target as BrainEntity | undefined;
-    if (target?.isValid()) {
-      const { x, y, z } = target.getPosition();
-      this.setRotation(this.GetAngleToPoint(x, y, z));
-    }
-    this.PushEvent('performaction', { action });
-    const success = action.do();
-    if (success) {
-      if (this.bufferedaction === action) this.bufferedaction = undefined;
-      return true;
-    }
-    this.PushEvent('actionfailed', { action });
-    action.fail();
-    if (this.bufferedaction === action) this.bufferedaction = undefined;
-    return undefined;
-  }
-
-  playAnimation(name: string, loop = false): void {
-    if (loop) this.animation.start(name);
-    else this.animation.playOnce(name, this.onAnimationOver);
-  }
-  // PushAnimation is only used after the previous animation completed, so it plays immediately.
-  pushAnimation(name: string, loop = false): void { this.playAnimation(name, loop); }
-  isCurrentAnimation(name: string): boolean { return this.animation.currentAnimation === name; }
-  getCurrentAnimationLength(): number { return BUTTERFLY_ANIMATION_LENGTHS.get(this.animation.currentAnimation)!; }
-  stopPhysics(): void { this.motorSpeed = 0; }
-  removePhysicsColliders(): void { /* flying creatures have no physics body in this world */ }
+  // conventions-allow instance-method: the engine's Physics:SetMotorVel, which locomotor calls on inst.
   setMotorSpeed(speed: number): void { this.motorSpeed = speed; }
-  landFlyingCreature(): void { this.removeTag('flying'); this.PushEvent('on_landed'); }
-  raiseFlyingCreature(): void { this.addTag('flying'); this.PushEvent('on_no_longer_landed'); }
-  dropLoot(): void {
-    const items = this.definition.generateLoot(() => this.random());
-    const { x, y, z } = this.getPosition();
-    this.dropLootItems?.(items, new THREE.Vector3(x, y, z));
-  }
-  remove(): void {
-    if (this.removed) return;
-    this.entity.remove();
-    this.brain.Stop();
-    this.stopPhysics();
-    this.cleanups.splice(0).forEach(stop => stop());
-  }
-  isValid(): boolean { return !this.removed; }
 
-  // --- lifecycle driven by the inventory entity
-  get state(): ButterflyState { return this.removed ? 'removed' : this.sg.stateName; }
+  get state(): ButterflyState { return this.removed ? 'removed' : this.stategraph.stateName; }
   get targetFlowerId(): string | undefined {
     const target = this.components.pollinator?.target;
     return target ? this.sharedEntities.idOf(target) : undefined;
   }
-
-  onDropped(): void {
-    this.inInventory = false;
-    this.bufferedaction = undefined;
-    this.brain.Stop();
-    this.locomotor.Stop();
-    this.sg.goToState('idle');
-    this.brain.Start();
-  }
-
-  onPutInInventory(): void {
-    this.brain.Stop();
-    this.locomotor.Stop();
-    this.bufferedaction = undefined;
-    this.inInventory = true;
-  }
-
-  dispose(): void {
-    this.onPutInInventory();
-    this.cleanups.splice(0).forEach(stop => stop());
-  }
-
-  /** One frame: brain, locomotor, stategraph, then the physics motor. */
-  update(dt: number): void {
-    if (this.removed) return;
-    const step = Math.max(0, Math.min(dt, 0.1));
-    this.time += step;
-    this.snapshot = this.sharedEntities.sync(this.butterflyWorld);
-    this.brain.tick(this.time);
-    if (this.locomotor.isUpdating) this.locomotor.update(step);
-    if (this.removed) return;
-    if (this.animationOver) {
-      this.animationOver = false;
-      this.sg.pushEvent('animover');
-      if (this.removed) return;
-    }
-    this.sg.update(step);
-    if (this.removed) return;
-    this.stepMotor(step);
-  }
-
-  private stepMotor(dt: number): void {
-    if (this.motorSpeed <= 0) return;
-    const radians = this.rotation / RADIANS;
-    const position = this.scratch.copy(this.transform.position);
-    position.x += Math.cos(radians) * this.motorSpeed * dt;
-    position.z -= Math.sin(radians) * this.motorSpeed * dt;
-    this.butterflyWorld.constrainPosition?.(position);
-    this.transform.setPosition(position.x, position.y, position.z);
-  }
-
-  private createWorld(): BrainWorld {
-    const world = this.butterflyWorld;
-    const creature = this;
-    const candidates = (origin: LocoMotorPoint, radius: number): BrainEntity[] => {
-      const { flowers, threats } = creature.snapshot;
-      return [...threats, ...flowers,
-        ...creature.getOthers(origin, radius).filter(other => other !== creature && other.isValid())];
-    };
-    const matches = (entity: BrainEntity, must?: readonly string[], cant?: readonly string[], oneOf?: readonly string[]) =>
-      (must ?? []).every(tag => entity.hasTag(tag)) && !(cant ?? []).some(tag => entity.hasTag(tag))
-      && (!oneOf?.length || oneOf.some(tag => entity.hasTag(tag)));
-    const find = (from: BrainEntity, radius: number, must?: readonly string[], cant?: readonly string[], oneOf?: readonly string[]) => {
-      const origin = from.getPosition();
-      return candidates(origin, radius)
-        .filter(entity => entity !== from && entity.isValid() && matches(entity, must, cant, oneOf)
-          && distanceSquared(origin, entity.getPosition()) <= radius * radius)
-        .sort((a, b) => distanceSquared(origin, a.getPosition()) - distanceSquared(origin, b.getPosition()));
-    };
-    return {
-      // butterflybrain.lua tests isday when the behaviour tree evaluates its go-home branch.
-      get isDay() { return (creature.cycle?.peek() ?? 'day') === 'day'; },
-      findEntity: (from, radius, fn, must, cant, oneOf) =>
-        find(from, radius, must, cant, oneOf).find(entity => fn === undefined || fn(entity, from)),
-      getClosestInstWithTag: (tags, from, radius) => find(from, radius, tags)[0],
-      isAboveGroundAtPoint: (x, _y, z) => {
-        if (!world.constrainPosition) return true;
-        const point = new THREE.Vector3(x, 0, z);
-        world.constrainPosition(point);
-        return point.x === x && point.z === z;
-      },
-    };
-  }
 }
 
-/** Back-compat name for the live inst driving a ground butterfly's model. */
-export { ButterflyCreature as ButterflyController };
+/** butterfly.lua fn()'s creature: tags, locomotor, knownlocations, pollinator, SetStateGraph and SetBrain. */
+export function MakeButterflyCreature(inst: ButterflyEntity, butterflyWorld: ButterflyWorld, services: ButterflyServices = {}): void {
+  const { definition } = inst;
+  inst.animation = services.animation ?? inst.sprite;
+  inst.butterflyWorld = butterflyWorld;
+  inst.cycle = butterflyWorld.getWatchWorldContent?.(WorldContentKey.Cycle, stop => inst.onRemove(stop));
+  inst.getOthers = services.getOthers;
+  if (services.random) inst.randomSource = services.random;
+  inst.dropLootItems = services.dropLoot;
+  for (const tag of definition.tags) inst.addTag(tag);
+  let shared = entityRegistries.get(butterflyWorld);
+  if (!shared) entityRegistries.set(butterflyWorld, shared = new ButterflyEntities());
+  inst.sharedEntities = shared;
+  inst.world = createBrainWorld(inst);
+  // locomotor must be constructed before the stategraph.
+  inst.locomotor = addComponent(inst, 'locomotor', LocoMotor);
+  if (definition.walkspeed !== undefined) inst.locomotor.walkspeed = definition.walkspeed;
+  addComponent(inst, 'knownlocations', KnownLocations);
+  if (definition.pollinates) addComponent(inst, 'pollinator', Pollinator<BrainEntity>);
+  inst.stategraph = new ButterflyStateGraph(stateContext(inst));
+  inst.SetStateGraph(() => inst.stategraph.sg);
+  inst.SetBrain(definition.createBrain);
+  inst.ListenForEvent('ondropped', OnDropped);
+  inst.ListenForEvent('onputininventory', OnPutInInventory);
+  inst.onRemove(() => { inst.motorSpeed = 0; });
+  // OnDropped explicitly enters idle rather than the graph's initial takeoff.
+  OnDropped(inst);
+}
+
+/** SGbutterfly's inst: the entity's AnimState, Physics, lootdropper and buffered action. */
+function stateContext(inst: ButterflyEntity): ButterflyStateInst {
+  const playAnimation = (name: string, loop = false) => {
+    if (loop) inst.animation.start(name);
+    else inst.animation.playOnce(name, () => { inst.animationOver = true; });
+  };
+  return {
+    locomotor: inst.locomotor,
+    get bufferedaction() { return inst.bufferedaction; },
+    playAnimation,
+    // PushAnimation is only used after the previous animation completed, so it plays immediately.
+    pushAnimation: playAnimation,
+    isCurrentAnimation: name => inst.animation.currentAnimation === name,
+    getCurrentAnimationLength: () => BUTTERFLY_ANIMATION_LENGTHS.get(inst.animation.currentAnimation)!,
+    stopPhysics: () => { inst.motorSpeed = 0; },
+    // Flying creatures have no physics body in this world.
+    removePhysicsColliders: () => {},
+    landFlyingCreature: () => { inst.removeTag('flying'); inst.PushEvent('on_landed'); },
+    raiseFlyingCreature: () => { inst.addTag('flying'); inst.PushEvent('on_no_longer_landed'); },
+    performBufferedAction: () => inst.PerformBufferedAction(),
+    dropLoot: () => {
+      const items = inst.definition.generateLoot(() => inst.random());
+      const { x, y, z } = inst.getPosition();
+      inst.dropLootItems?.(items, new THREE.Vector3(x, y, z));
+    },
+    remove: () => inst.remove(),
+    random: () => inst.random(),
+  };
+}
+
+/** butterfly.lua OnDropped: inst.sg:GoToState("idle"). */
+function OnDropped(inst: ButterflyEntity): void {
+  inst.inInventory = false;
+  inst.bufferedaction = undefined;
+  inst.locomotor.Stop();
+  inst.stategraph.goToState('idle');
+}
+
+function OnPutInInventory(inst: ButterflyEntity): void {
+  inst.locomotor.Stop();
+  inst.bufferedaction = undefined;
+  inst.inInventory = true;
+}
+
+/** One frame: brain, locomotor, stategraph, then the physics motor. */
+export function UpdateButterfly(inst: ButterflyEntity, dt: number): void {
+  if (inst.removed) return;
+  const step = Math.max(0, Math.min(dt, 0.1));
+  inst.time += step;
+  inst.nearby = inst.sharedEntities.sync(inst.butterflyWorld);
+  inst.brain?.tick(inst.time);
+  if (inst.locomotor.isUpdating) inst.locomotor.update(step);
+  if (inst.removed) return;
+  if (inst.animationOver) {
+    inst.animationOver = false;
+    inst.PushEvent('animover');
+    if (inst.removed) return;
+  }
+  inst.stategraph.update(step);
+  if (inst.removed) return;
+  stepMotor(inst, step);
+}
+
+function stepMotor(inst: ButterflyEntity, dt: number): void {
+  if (inst.motorSpeed <= 0) return;
+  const radians = inst.rotation / RADIANS;
+  const position = inst.scratch.copy(inst.transform.position);
+  position.x += Math.cos(radians) * inst.motorSpeed * dt;
+  position.z -= Math.sin(radians) * inst.motorSpeed * dt;
+  inst.butterflyWorld.constrainPosition?.(position);
+  inst.transform.setPosition(position.x, position.y, position.z);
+}
+
+/** The brain's TheWorld: FindEntities over this frame's flowers and threats and the butterflies near it. */
+function createBrainWorld(inst: ButterflyEntity): BrainWorld {
+  const world = inst.butterflyWorld;
+  const candidates = (origin: LocoMotorPoint, radius: number): BrainEntity[] => {
+    const { flowers, threats } = inst.nearby;
+    return [...threats, ...flowers, ...(inst.getOthers?.(origin, radius) ?? []).filter(other => other !== inst && !other.removed)];
+  };
+  const matches = (entity: BrainEntity, must?: readonly string[], cant?: readonly string[], oneOf?: readonly string[]) =>
+    (must ?? []).every(tag => entity.hasTag(tag)) && !(cant ?? []).some(tag => entity.hasTag(tag))
+    && (!oneOf?.length || oneOf.some(tag => entity.hasTag(tag)));
+  const find = (from: BrainEntity, radius: number, must?: readonly string[], cant?: readonly string[], oneOf?: readonly string[]) => {
+    const origin = from.getPosition();
+    return candidates(origin, radius)
+      .filter(entity => entity !== from && entity.isValid() && matches(entity, must, cant, oneOf)
+        && distanceSquared(origin, entity.getPosition()) <= radius * radius)
+      .sort((a, b) => distanceSquared(origin, a.getPosition()) - distanceSquared(origin, b.getPosition()));
+  };
+  return {
+    // butterflybrain.lua tests isday when the behaviour tree evaluates its go-home branch.
+    get isDay() { return (inst.cycle?.peek() ?? 'day') === 'day'; },
+    findEntity: (from, radius, fn, must, cant, oneOf) =>
+      find(from, radius, must, cant, oneOf).find(entity => fn === undefined || fn(entity, from)),
+    getClosestInstWithTag: (tags, from, radius) => find(from, radius, tags)[0],
+    isAboveGroundAtPoint: (x, _y, z) => {
+      if (!world.constrainPosition) return true;
+      const point = new THREE.Vector3(x, 0, z);
+      world.constrainPosition(point);
+      return point.x === x && point.z === z;
+    },
+  };
+}
 
 /**
  * butterfly.lua and moonbutterfly.lua: the creature's brain, stategraph and locomotor run while it flies awake in the
@@ -497,7 +436,7 @@ export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefab
   };
   const definition = (prefab: ButterflyPrefabId): ItemPrefabDefinition => ({
     fn: () => {
-      const inst = world.newItem(prefab);
+      const inst = world.newItem(prefab, (...item) => new ButterflyEntity(BUTTERFLY_DEFINITIONS[prefab], ...item));
       inst.sprite.resetPresentation({ name: 'idle_flight_loop', billboard: true });
       bindItemWorld(inst, world);
       return inst;
@@ -509,19 +448,16 @@ export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefab
       world.configureItem(inst);
       (prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(inst);
       if (prefab === BUTTERFLY_ID && !inst.components.inventoryitem.owner) inst.components.perishable.StopPerishing();
+      if (!(inst instanceof ButterflyEntity)) return;
       const origin = new THREE.Vector3();
-      const creature = inst.component('butterfly_creature', () => new ButterflyCreature(BUTTERFLY_DEFINITIONS[prefab], inst,
-        inst.sprite, world.butterflyWorld, (position, radius) => inst.TheSim.FindEntities(origin.set(position.x, position.y, position.z), radius, ['butterfly'])
-          .flatMap(neighbour => {
-            // Every butterfly-tagged inst is a butterfly item with its creature component.
-            const other = neighbour !== (inst as unknown) ? (neighbour as unknown as ItemEntity).getComponent?.<ButterflyCreature>('butterfly_creature') : undefined;
-            return other ? [other] : [];
-          }), undefined, dropLoot));
-      const flicker = prefab === MOONBUTTERFLY_ID ? bindMoonButterfly(inst, creature) : undefined;
+      MakeButterflyCreature(inst, world.butterflyWorld, { dropLoot, getOthers: (position, radius) =>
+        inst.TheSim.FindEntities(origin.set(position.x, position.y, position.z), radius, ['butterfly'])
+          .flatMap(other => other instanceof ButterflyEntity && other !== inst ? [other] : []) });
+      const flicker = prefab === MOONBUTTERFLY_ID ? bindMoonButterfly(inst) : undefined;
       inst.onRemove(world.componentUpdates.register({
         OnUpdate: dt => {
           if (inst.status.peek() !== 'active') return;
-          creature.update(dt);
+          UpdateButterfly(inst, dt);
           flicker?.(dt);
         },
       }));
@@ -535,7 +471,7 @@ export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefab
 const LIGHT_RADIUS = .5 * (TILE_SIZE / 4), LIGHT_INTENSITY = .5, LIGHT_FALLOFF = .8;
 
 /** moonbutterfly.lua: its flickering light, and onperish in the world. Returns OnUpdateFlicker's frame step. */
-function bindMoonButterfly(entity: ItemEntity, creature: ButterflyCreature): (dt: number) => void {
+function bindMoonButterfly(entity: ButterflyEntity): (dt: number) => void {
   let flickerTime = 0, flickerElapsed = 0, lit = true;
   const setLight = (intensity: number) => entity.light.set(lit
     ? { colour: [.3, .55, .45], radius: LIGHT_RADIUS, intensity, falloff: LIGHT_FALLOFF } : null);
@@ -543,22 +479,22 @@ function bindMoonButterfly(entity: ItemEntity, creature: ButterflyCreature): (dt
   sprite.setLightOverride(.15);
   setLight(LIGHT_INTENSITY);
   entity.ListenForEvent('perished', () => {
-    if (entity.components.inventoryitem.owner || creature.removed) return;
+    if (entity.components.inventoryitem.owner || entity.removed) return;
     // onperish: the net no longer works, the light goes out, then `death` and removal after 3 seconds.
     entity.components.workable?.SetWorkable(false);
     lit = false;
     setLight(0);
     sprite.setLightOverride(null);
-    creature.addTag('dead');
-    creature.removeTag('spore');
-    creature.PushEvent('death');
+    entity.addTag('dead');
+    entity.removeTag('spore');
+    entity.PushEvent('death');
     entity.persists = false;
     entity.DoTaskInTime(3, inst => inst.remove());
   });
   entity.ListenForEvent('onputininventory', () => { lit = false; setLight(0); });
   entity.ListenForEvent('ondropped', () => {
     lit = true;
-    creature.components.knownlocations?.RememberLocation('home', creature.getPosition());
+    entity.components.knownlocations?.RememberLocation('home', entity.getPosition());
     setLight(LIGHT_INTENSITY);
   });
   // OnUpdateFlicker runs every .1s: intensity = .5 + .05 * (1 + sin(t * .7 + sin(t * 6.28))) / 2, t in 15x seconds.

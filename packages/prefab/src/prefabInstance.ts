@@ -10,6 +10,7 @@ import type { TileTracker } from '../../componets/src/tileManager';
 import type { Brain } from '../../brains/src/brain';
 import type { BehaviourContext } from '../../brains/src/behaviourtree';
 import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
+import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import type { PlacementSaveRecord, PrefabSaveRecord } from './saveRecord';
 import type { EventData, EventDataArgs } from '../../componets/src/entityEvents';
@@ -65,10 +66,15 @@ export interface PrefabComponents extends ActionComponents {
  * started again on ReturnToScene (resume), and released with the entity (dispose).
  */
 type EntityStateGraph = Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent' | 'isListeningForEvent'>
-  & Partial<Pick<StateGraphInstance<unknown, string>, 'pause' | 'resume' | 'dispose'>>;
+  & Partial<Pick<StateGraphInstance<unknown, string>, 'pause' | 'resume' | 'dispose' | 'startAction'>>;
 
 /** What EntityScript's distance methods read from the other inst: whether it is valid, and where it is. */
 type PositionedEntity = { readonly prefab?: string; isValid(): boolean; getPosition(): Vector3Like };
+
+/** A buffered action's target has a Transform when it is an entity with a position, as PerformBufferedAction checks. */
+function hasTransform(target: object): target is PositionedEntity {
+  return 'isValid' in target && typeof target.isValid === 'function' && 'getPosition' in target && typeof target.getPosition === 'function';
+}
 
 /** An entity whose events others listen for. */
 type EventEntity = PrefabInstance<ArchiveSpriteCommands, object>;
@@ -297,6 +303,58 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.sg = undefined;
     sg?.dispose?.();
   }
+  /** inst.bufferedaction: the action PushBufferedAction handed to the stategraph, until it is done or fails. */
+  bufferedaction?: BufferedAction;
+
+  /**
+   * EntityScript:PushBufferedAction: the same action again is ignored unless the stategraph is idle, any other one fails,
+   * and the new one starts in the stategraph. WALKTO and instant actions are not pushed by a ported caller yet.
+   */
+  PushBufferedAction(bufferedaction: BufferedAction): void {
+    const current = this.bufferedaction;
+    if (current && bufferedaction.target === current.target && bufferedaction.action === current.action
+      && bufferedaction.invobject === current.invobject && !this.sg?.hasStateTag('idle')) return;
+    this.ClearBufferedAction();
+    // bufferedaction:TestForStart
+    if (!bufferedaction.isValid()) {
+      this.PushEvent('actionfailed', { action: bufferedaction });
+      return;
+    }
+    this.bufferedaction = bufferedaction;
+    if (!this.sg) this.PushEvent('startaction', { action: bufferedaction });
+    // A stategraph without StartAction (the player's controller takes its actions itself) takes none.
+    else if (!this.sg.startAction?.(bufferedaction)) {
+      this.PushEvent('performaction', { action: bufferedaction });
+      this.ClearBufferedAction();
+    }
+  }
+
+  /** EntityScript:PerformBufferedAction: face the target, do the action, and fail it if it does not succeed. */
+  PerformBufferedAction(): true | undefined {
+    const bufferedaction = this.bufferedaction;
+    if (!bufferedaction) return undefined;
+    const { target } = bufferedaction;
+    if (target && hasTransform(target) && target.isValid()) this.FacePoint(target.getPosition());
+    this.PushEvent('performaction', { action: bufferedaction });
+    // Cached, as the source does: inst.bufferedaction may change during Do().
+    if (bufferedaction.do()) {
+      if (this.bufferedaction === bufferedaction) this.bufferedaction = undefined;
+      return true;
+    }
+    this.PushEvent('actionfailed', { action: bufferedaction });
+    bufferedaction.fail();
+    if (this.bufferedaction === bufferedaction) this.bufferedaction = undefined;
+    return undefined;
+  }
+
+  /** EntityScript:ClearBufferedAction: the pending action fails. */
+  ClearBufferedAction(): void {
+    const bufferedaction = this.bufferedaction;
+    if (!bufferedaction) return;
+    bufferedaction.fail();
+    this.bufferedaction = undefined;
+  }
+
   /** inst.brain: the brain SetBrain made, absent while the entity sleeps or is in limbo. */
   brain?: Brain<BehaviourContext>;
   /** inst.brainfn: SetBrain's constructor, which makes a new brain each time the entity wakes. */

@@ -129,7 +129,7 @@ export { LIGHTBULB_ID, LIGHTBULB_LIGHT, lightbulbPrefabs } from './lightbulb';
 export { FlowerInstance, flowerPrefabs, FLOWER_ANIMATIONS, FLOWER_SPAWN_IDS, type FlowerAnimation, type FlowerWorld } from './flower';
 export { BUGNET_ID, bugnetVisual } from './bugnet';
 export {
-  butterflyPrefabs, ButterflyController, ButterflyCreature,
+  butterflyPrefabs, ButterflyEntity, MakeButterflyCreature, UpdateButterfly, type ButterflyServices,
   BUTTERFLY_ID, MOONBUTTERFLY_ID,
   type ButterflyFlower, type ButterflyWorld, type ButterflyState,
 } from './butterfly';
