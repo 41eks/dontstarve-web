@@ -41,6 +41,13 @@ export class AnimState {
     if (playing && current.loop) this.state.set({ ...current, loop: false });
   }
   stop(): void { this.playback.stop(); }
+  /** AnimState:SetTime(seconds): the playing clip continues from that point, ending after the rest of its length. */
+  SetTime(seconds: number): void {
+    const remaining = this.length - seconds, status = this.task.snapshot.peek().status;
+    if (!(remaining > 0)) throw new RangeError(`Invalid time ${seconds} in ${this.state.peek().name}`);
+    if (status === 'scheduled') this.task.start(remaining);
+    else if (status === 'paused') this.task.restorePaused(remaining);
+  }
   /** Entity sleep: the playing clip keeps its remaining time, as the stategraph that waits for its animover does. */
   pause(): void { if (this.task.snapshot.peek().status === 'scheduled') this.task.pause(); }
   resume(): void { if (this.task.snapshot.peek().status === 'paused') this.task.start(this.task.remainingSeconds!); }

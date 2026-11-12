@@ -134,7 +134,7 @@
     "child-traversal": 1
   },
   "packages/prefab/src/portal.ts": {
-    "instance-method": 3,
+    "instance-method": 2,
     "sg-forward": 1
   },
   "packages/prefab/src/prefabInstance.ts": {
@@ -167,9 +167,6 @@
   },
   "packages/prefab/src/staff_castinglight.ts": {
     "instance-method": 3
-  },
-  "packages/prefab/src/stafflight.ts": {
-    "instance-method": 6
   },
   "packages/prefab/src/stickheads.ts": {
     "child-traversal": 1

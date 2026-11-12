@@ -2692,5 +2692,113 @@
       "frameRate": 30.0,
       "frames": 16
     }
+  ],
+  "pillar_monkey.zip": [
+    {
+      "name": "idle",
+      "bank": 551750824,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "idle1_move",
+      "bank": 551750824,
+      "frameRate": 30.0,
+      "frames": 159
+    },
+    {
+      "name": "idle2_move",
+      "bank": 551750824,
+      "frameRate": 30.0,
+      "frames": 159
+    },
+    {
+      "name": "idle3_move",
+      "bank": 551750824,
+      "frameRate": 30.0,
+      "frames": 159
+    },
+    {
+      "name": "idle4_move",
+      "bank": 551750824,
+      "frameRate": 30.0,
+      "frames": 159
+    },
+    {
+      "name": "idle1",
+      "bank": 551750824,
+      "frameRate": 30.0,
+      "frames": 159
+    },
+    {
+      "name": "idle2",
+      "bank": 551750824,
+      "frameRate": 30.0,
+      "frames": 159
+    },
+    {
+      "name": "idle3",
+      "bank": 551750824,
+      "frameRate": 30.0,
+      "frames": 159
+    },
+    {
+      "name": "idle4",
+      "bank": 551750824,
+      "frameRate": 30.0,
+      "frames": 159
+    }
+  ],
+  "star_hot.zip": [
+    {
+      "name": "appear",
+      "bank": 1780937120,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "disappear",
+      "bank": 1780937120,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "idle_loop",
+      "bank": 1780937120,
+      "frameRate": 30.0,
+      "frames": 64
+    }
+  ],
+  "star_cold.zip": [
+    {
+      "name": "appear",
+      "bank": 680222993,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "disappear",
+      "bank": 680222993,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "idle_loop",
+      "bank": 680222993,
+      "frameRate": 30.0,
+      "frames": 64
+    },
+    {
+      "name": "idle_loop2",
+      "bank": 680222993,
+      "frameRate": 30.0,
+      "frames": 64
+    },
+    {
+      "name": "idle_loop3",
+      "bank": 680222993,
+      "frameRate": 30.0,
+      "frames": 64
+    }
   ]
 }

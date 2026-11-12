@@ -1,5 +1,5 @@
 import { addComponent } from './components';
-import { createEffect, type GetWatchWorldContent, type TileStateQuery } from '@dontstarve-web/signals';
+import type { GetWatchWorldContent, TileStateQuery } from '@dontstarve-web/signals';
 import { SpriteState } from '@dontstarve-web/display';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { type PrefabLocalLight } from './localLight';
@@ -9,6 +9,8 @@ import type { SoundEventPath } from './sound';
 import type { SoundEmitter } from './soundEmitter';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer } from '../../componets/src/timer';
+import { AnimState } from '../../componets/src/animstate';
+import { animationLengths } from './animationTimings';
 import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
 import { Heater } from '../../componets/src/heater';
 import { Hauntable, HAUNT_SMALL } from '../../componets/src/hauntable';
@@ -25,12 +27,14 @@ export const POLAR_LIGHT_DURATION = 16 * 60;
 export type StaffLightId = typeof DWARF_STAR_ID | typeof POLAR_LIGHT_ID;
 
 const EXTINGUISH = 'extinguish';
+/** Each star bank's clips, from the source anim.bin. */
+const ANIMATION_LENGTHS = { star_hot: animationLengths('star_hot.zip'), star_cold: animationLengths('star_cold.zip') };
 const PULSE_PERIOD = .1;
 
 /** stafflight.lua's makestafflight arguments for the two world stars. */
 const STAFF_LIGHTS: Record<StaffLightId, {
   readonly is_hot: boolean;
-  readonly anim: string;
+  readonly anim: keyof typeof ANIMATION_LENGTHS;
   readonly colour: PrefabLocalLight['colour'];
   readonly idles: readonly string[];
   readonly duration: number;
@@ -71,22 +75,29 @@ export interface StaffLightWorld {
 export class StaffLightInstance extends PrefabInstance {
   readonly no_wet_prefix = true;
   _killed = false;
-  private readonly settings: typeof STAFF_LIGHTS[StaffLightId];
-  private readonly soundEmitter: SoundEmitter = this.AddSoundEmitter();
-  /** A random idle waits here for its art: a clip nothing draws would complete at once. */
-  private idleAwaitsArt = false;
+  /** makestafflight's arguments, which its local functions close over. */
+  readonly settings: typeof STAFF_LIGHTS[StaffLightId];
+  declare SoundEmitter: SoundEmitter;
+  /** inst.AnimState's playback: a clip ends after its source length in game time, whether or not its art is drawn. */
+  readonly animstate: AnimState;
 
   constructor(prefab: StaffLightId, world: StaffLightWorld) {
     super(prefab, new SpriteState({ name: 'appear', billboard: true }));
     const { scheduler } = world, settings = STAFF_LIGHTS[prefab];
     this.settings = settings;
     this.BindScheduler(scheduler);
+    this.AddSoundEmitter();
 
     // DoPeriodicTask(.1, pulse_light): the light is first enabled by the first pulse, a period after spawning.
-    this.DoPeriodicTask(PULSE_PERIOD, () => this.pulse_light());
+    this.DoPeriodicTask(PULSE_PERIOD, pulse_light);
 
-    this.sprite.playOnce('appear', () => this.PushEvent('animover'));
-    if (settings.idles.length === 1) this.sprite.pushAnimation(settings.idles[0], true);
+    this.animstate = new AnimState(scheduler, ANIMATION_LENGTHS[settings.anim], event => this.PushEvent(event));
+    this.onRemove(() => this.animstate.dispose());
+    PlayAnimation(this, 'appear');
+    if (settings.idles.length === 1) {
+      this.animstate.PushAnimation(settings.idles[0], true);
+      this.sprite.pushAnimation(settings.idles[0], true);
+    }
 
     this.addTag('ignorewalkableplatforms');
     this.physicsRadiusOverride = .5;
@@ -101,11 +112,11 @@ export class StaffLightInstance extends PrefabInstance {
 
     const hauntable = addComponent(this, 'hauntable', Hauntable, scheduler);
     hauntable.SetHauntValue(HAUNT_SMALL);
-    hauntable.SetOnHauntFn(() => this.onhaunt());
+    hauntable.SetOnHauntFn(onhaunt);
 
     const timer = addComponent(this, 'timer', Timer, scheduler);
     timer.StartTimer(EXTINGUISH, settings.duration);
-    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === EXTINGUISH) this.kill_light(); });
+    this.ListenForEvent('timerdone', ontimer);
 
     addComponent(this, 'inspectable', Inspectable);
     this.addTag('inspectable');
@@ -118,60 +129,57 @@ export class StaffLightInstance extends PrefabInstance {
       propagator.spreading.set(true);
     }
 
-    let stopIdleResume: (() => void) | undefined;
-    if (settings.idles.length > 1) {
-      this.ListenForEvent('animover', () => this.PlayRandomStarIdle());
-      stopIdleResume = createEffect(() => {
-        this.sprite.art.get();
-        if (!this.idleAwaitsArt || !this.sprite.loaded) return;
-        this.idleAwaitsArt = false;
-        this.PlayRandomStarIdle();
-      });
-    }
-
-    this.onRemove(() => stopIdleResume?.());
+    if (settings.idles.length > 1) this.ListenForEvent('animover', PlayRandomStarIdle);
   }
+}
 
-  /** The SoundEmitter's PlaySound calls in fn(); they follow the transform, which exists once the display is attached. */
-  playSpawnSounds(): void {
-    this.soundEmitter.PlaySound(this.settings.loopSound, 'staff_star_loop');
-    this.soundEmitter.PlaySound('dontstarve/common/staff_star_create');
-  }
+/** The SoundEmitter's PlaySound calls in fn(); they follow the transform, which exists once the display is attached. */
+function playSpawnSounds(inst: StaffLightInstance): void {
+  inst.SoundEmitter.PlaySound(inst.settings.loopSound, 'staff_star_loop');
+  inst.SoundEmitter.PlaySound('dontstarve/common/staff_star_create');
+}
 
-  private pulse_light(): void {
-    const timealive = this.GetTimeAlive();
-    this.light.set({ ...dwarfStarLight(timealive), colour: this.settings.colour });
-  }
+function pulse_light(inst: StaffLightInstance): void {
+  const timealive = inst.GetTimeAlive();
+  inst.light.set({ ...dwarfStarLight(timealive), colour: inst.settings.colour });
+}
 
-  private PlayRandomStarIdle(): void {
-    // Don't if we're extinguished
-    if (this._killed) return;
-    const { idles } = this.settings, idle = idles[Math.floor(Math.random() * idles.length)];
-    if (this.sprite.loaded) this.sprite.playOnce(idle, () => this.PushEvent('animover'));
-    else { this.sprite.start(idle); this.idleAwaitsArt = true; }
-  }
+/** inst.AnimState:PlayAnimation(name): the logical clip, whose end is the animover, and the drawn one. */
+function PlayAnimation(inst: StaffLightInstance, name: string): void {
+  inst.animstate.PlayAnimation(name);
+  inst.sprite.playOnce(name);
+}
 
-  private kill_sound(): void {
-    this.soundEmitter.KillSound('staff_star_loop');
-  }
+function PlayRandomStarIdle(inst: StaffLightInstance): void {
+  // Don't if we're extinguished
+  if (inst._killed) return;
+  const { idles } = inst.settings;
+  PlayAnimation(inst, idles[Math.floor(Math.random() * idles.length)]);
+}
 
-  private kill_light(): void {
-    // Set first: a clip nothing draws completes, and sends animover, inside playOnce.
-    this._killed = true;
-    this.persists = false;
-    this.ListenForEvent('animover', () => this.kill_sound());
-    this.sprite.playOnce('disappear', () => this.PushEvent('animover'));
-    this.DoTaskInTime(1, inst => inst.remove()); // originally 0.6, padded for network
-  }
+function kill_sound(inst: StaffLightInstance): void {
+  inst.SoundEmitter.KillSound('staff_star_loop');
+}
 
-  private onhaunt(): boolean {
-    const timer = this.components.timer!;
-    if (timer.TimerExists(EXTINGUISH)) {
-      timer.StopTimer(EXTINGUISH);
-      this.kill_light();
-    }
-    return true;
+function kill_light(inst: StaffLightInstance): void {
+  inst._killed = true;
+  inst.persists = false;
+  PlayAnimation(inst, 'disappear');
+  inst.ListenForEvent('animover', kill_sound);
+  inst.DoTaskInTime(1, star => star.remove()); // originally 0.6, padded for network
+}
+
+function ontimer(inst: StaffLightInstance, data: { name: string }): void {
+  if (data.name === EXTINGUISH) kill_light(inst);
+}
+
+function onhaunt(inst: StaffLightInstance): boolean {
+  const timer = inst.components.timer!;
+  if (timer.TimerExists(EXTINGUISH)) {
+    timer.StopTimer(EXTINGUISH);
+    kill_light(inst);
   }
+  return true;
 }
 
 /** The Prefab table stafflight.lua returns for the two world stars. */
@@ -181,7 +189,7 @@ export function staffLightPrefabs(world: StaffLightWorld): Readonly<Record<Staff
     return {
       fn: () => new StaffLightInstance(prefabId, world),
       assets: { animationArchive: archive, buildArchives: [archive], bank: anim },
-      onSpawned: star => star.playSpawnSounds(),
+      onSpawned: playSpawnSounds,
     };
   };
   return { [DWARF_STAR_ID]: define(DWARF_STAR_ID), [POLAR_LIGHT_ID]: define(POLAR_LIGHT_ID) };

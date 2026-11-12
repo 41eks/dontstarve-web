@@ -105,11 +105,13 @@ it('expires on the extinguish timer: disappear, animover kills the loop, Remove 
   expect(star.persists).toBe(false);
   expect(star.components.timer!.TimerExists('extinguish')).toBe(false);
   expect(manager.exportRecords()).toEqual([]);
-  expect(play).toHaveBeenCalledExactlyOnceWith('disappear', expect.any(Function));
+  expect(play).toHaveBeenCalledExactlyOnceWith('disappear');
+  // disappear (17 frames from 0.8s) ends on game time; its animover kills the loop.
+  update(.4);
   expect(loop.stop).not.toHaveBeenCalled();
-  play.mock.calls[0][1]!();
+  update(.1);
   expect(loop.stop).toHaveBeenCalledOnce();
-  update(.89);
+  update(.39);
   expect(star.isRemoved).toBe(false);
   expect(model.parent).toBe(scene);
   update(.02);
@@ -127,7 +129,7 @@ it('haunting stops the timer and kills the light once; a repeat succeeds without
   hauntable.DoHaunt(haunter);
   expect(star.components.timer!.TimerExists('extinguish')).toBe(false);
   expect(star.persists).toBe(false);
-  expect(play).toHaveBeenCalledExactlyOnceWith('disappear', expect.any(Function));
+  expect(play).toHaveBeenCalledExactlyOnceWith('disappear');
   update(.6);
   hauntable.DoHaunt(haunter);
   expect(play).toHaveBeenCalledOnce();
@@ -174,14 +176,17 @@ it('expires and is removed while asleep, without drawing anything', async () => 
   const loop = sounds('dontstarve/common/staff_star_LP')[0];
   update(.6);
   expect(star._killed).toBe(true);
-  expect(loop.stop).toHaveBeenCalledOnce(); // Nothing draws disappear, so its animover comes at once.
+  // Nothing draws disappear; it still ends after its 17 frames, and its animover kills the loop.
+  expect(loop.stop).not.toHaveBeenCalled();
+  update(.5);
+  expect(loop.stop).toHaveBeenCalledOnce();
   expect(star.isRemoved).toBe(false);
-  update(1);
+  update(.5);
   expect(star.isRemoved).toBe(true);
   expect(star.sprite.loaded).toBe(false);
 });
 
-it('chains random polar idles on animover, resuming after a sleep and stopping once killed', async () => {
+it('chains random polar idles on game time, asleep as awake, and stops once killed', async () => {
   const { spawn, scene, awake, update } = setup('staffcoldlight');
   const random = vi.spyOn(Math, 'random').mockReturnValue(.5);
   const star = await artLoaded(scene, spawn(new THREE.Vector3()));
@@ -190,16 +195,21 @@ it('chains random polar idles on animover, resuming after a sleep and stopping o
   for (let frame = 0; frame < 150 && clip().name === 'appear'; frame++) update(1 / 30);
   expect(clip().name).toBe('idle_loop2');
   expect(clip().loop).toBe(false);
-  // A sleep with art gone leaves no drawn clip to complete: the chain must not recurse, and resumes on wake.
+  // Asleep, nothing is drawn; each idle still ends after its 64 frames and the next one plays.
   awake.set(false);
   await settle();
-  star.PushEvent('animover');
-  expect(clip().loop).toBe(true);
+  const idle = star.animstate.animation.peek();
+  for (let frame = 0; frame < 63; frame++) update(1 / 30);
+  update(.5 / 30);
+  expect(star.animstate.animation.peek()).toBe(idle);
+  update(1 / 30);
+  expect(star.animstate.animation.peek()).not.toBe(idle);
+  expect(star.animstate.animation.peek().name).toBe('idle_loop2');
   awake.set(true);
   await settle();
   await prefabDisplay(modelIn(scene, star)!)!.artLoaded();
   await settle();
-  expect(clip().loop).toBe(false);
+  expect(clip()).toMatchObject({ name: 'idle_loop2', loop: false });
   star.components.hauntable!.DoHaunt(haunter);
   expect(clip().name).toBe('disappear');
   star.PushEvent('animover');

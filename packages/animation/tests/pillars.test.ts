@@ -21,6 +21,7 @@ import { createClusterSaveZip } from '../../../src/save/download';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
+import { FRAMES } from '../../stategraphs/src/stategraph';
 
 const IDS = [...CAVE_PILLAR_IDS, PILLAR_ATRIUM_ID, ARCHIVE_PILLAR_ID, VAULT_PILLAR_ID, MONKEYPILLAR_ID];
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -48,10 +49,11 @@ const tags = (inst: PrefabInstance) => inst.listTags();
 const artLoaded = (inst: PrefabInstance) => prefabDisplay(inst.transform.model)!.artLoaded();
 const requested = (archive: string) => (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
 /** Frames the drawn clip to its end, as the display group does: its animover replaces the declared clip, even with one of the same name. */
-const finishClip = async (inst: PrefabInstance) => {
-  const clip = inst.sprite.sprite.peek().clip;
-  for (let frame = 0; frame < 300 && inst.sprite.sprite.peek().clip === clip; frame++) inst.sprite.update(1 / 30);
-  expect(inst.sprite.sprite.peek().clip).not.toBe(clip);
+/** Advances game time to the end of the pillar's playing clip, whose animover plays the next one. */
+const finishClip = async (scheduler: GameTimeScheduler, pillar: MonkeyPillarInstance) => {
+  const playing = pillar.animstate.animation.peek();
+  for (let frame = 0; frame < 300 && pillar.animstate.animation.peek() === playing; frame++) scheduler.advance(FRAMES);
+  expect(pillar.animstate.animation.peek()).not.toBe(playing);
   await turn();
 };
 
@@ -124,17 +126,22 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     // AnimState starts empty; OnLoad's setpillartype plays the saved idle once and animover chains the next.
     const monkey = s.prefabs.spawnAs(MonkeyPillarInstance, MONKEYPILLAR_ID, at, record({ pillar_id: 3 }));
     expect(tags(monkey)).toEqual(['blocker', 'SnowCovered', 'inspectable']);
-    expect(monkey.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle3', loop: false }, frame: { at: expect.any(Number) }, lightOverride: .25 });
+    expect(monkey.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle3', loop: false }, frame: expect.any(Number), lightOverride: .25 });
     expect(monkey.physics.json.peek()!.capsule).toEqual({ radius: .6, height: 24 });
     expect(monkey.light.peek()).toMatchObject({ intensity: .6, falloff: .8 });
     await artLoaded(monkey);
     expect(requested('pillar_monkey.zip') && requested('snow.zip')).toBe(true);
-    await finishClip(monkey);
+    // SetFrame's random frame shortens the logical clip by as much as the drawn one: 159 frames in all.
+    const first = monkey.animstate.animation.peek(), start = monkey.sprite.sprite.peek().frame as number;
+    s.scheduler.advance((159 - start - .5) * FRAMES);
+    expect(monkey.animstate.animation.peek()).toBe(first);
+    s.scheduler.advance(FRAMES); await turn();
+    expect(monkey.animstate.animation.peek()).not.toBe(first);
     expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle3', loop: false, finished: false });
-    s.scheduler.advance(26);
-    await finishClip(monkey);
+    // The move trigger, 15 to 25 seconds after spawning, plays idle3_move at the next animover, then idle3 again.
+    for (let clip = 0; clip < 6 && monkey.animstate.animation.peek().name !== 'idle3_move'; clip++) await finishClip(s.scheduler, monkey);
     expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle3_move', loop: false, finished: false });
-    await finishClip(monkey);
+    await finishClip(s.scheduler, monkey);
     expect(monkey.sprite.sprite.peek().clip.name).toBe('idle3');
     expect(monkey.GetPersistData()).toEqual({ pillar_id: 3 });
   } finally { s.dispose(); }
@@ -157,6 +164,10 @@ it('sleeping releases the sprite and waking restores the declared clip and appea
       expect(pillar.sprite.loaded).toBe(false);
     }
     expect(monkey._moveanim_task).toBeUndefined();
+    // The idle clip waits with the entity.
+    const playing = monkey.animstate.animation.peek();
+    s.scheduler.advance(30);
+    expect(monkey.animstate.animation.peek()).toBe(playing);
 
     s.awake.set(true); await turn();
     await Promise.all(pillars.map(artLoaded)); await turn();
@@ -165,12 +176,11 @@ it('sleeping releases the sprite and waking restores the declared clip and appea
     expect(broken.bank).toBe('pillar_archive_broken');
     expect(capped.sprite.currentAnimation).toBe('idle_upper_capped_2');
     expect(capped.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_upper_capped_2', loop: false });
-    // The chain is still running after a wake, on an unfinished clip.
+    // The drawn clip settled while unloaded holds its last frame; the logical clip resumes and its end plays the next.
     expect(monkey.sprite.currentAnimation).toBe('idle2');
-    expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle2', loop: false, finished: false });
     expect(monkey._moveanim_task).toBeDefined();
     expect(monkey.sprite.sprite.peek().appearance.get('archive-hidden:snow')).toMatchObject({ hidden: true });
-    await finishClip(monkey);
+    await finishClip(s.scheduler, monkey);
     expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle2', finished: false });
     expect(s.prefabs.exportRecords()).toEqual(before);
   } finally { s.dispose(); }
