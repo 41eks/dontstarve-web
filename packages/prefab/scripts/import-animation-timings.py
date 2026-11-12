@@ -20,6 +20,7 @@ ARCHIVES = (
     'mushroom_tree_med.zip', 'mushroom_tree_tall.zip',
     'beefalo_basic.zip', 'beefalo_actions.zip', 'beefalo_actions_domestic.zip',
     'portal_moonrock.zip', 'pillar_monkey.zip', 'star_hot.zip', 'star_cold.zip',
+    'moonbase_fx.zip',
 )
 # Clips whose length differs by facing; the logical AnimState has one length per clip, so the first facing's is kept.
 # beefalo walk_pre is 12 frames facing down or sideways and 7 facing up; switch is unused by SGBeefalo.

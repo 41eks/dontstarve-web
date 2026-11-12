@@ -30,6 +30,10 @@ import { importedSave } from './importedSave';
 import { workTargets } from './workTargets';
 import { canDoSceneAction } from './sceneActions';
 import { managedBuildings } from './managedBuildings';
+import { MoonbaseEffects } from '../../prefab/src/moonbaseFx';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { SpriteResources, SpriteState } from '@dontstarve-web/display';
+import { FRAMES } from '../../stategraphs/src/stategraph';
 
 const components = (model: THREE.Object3D) => prefabInstance(model)!.components;
 /** The moonbase's state, read the same way at each assertion. */
@@ -371,4 +375,43 @@ it('walks to the moonbase through the player controller, cancels before consumpt
     graph.update(1 / 30); expect(inventory.GetActiveItem()).toBeNull();
     expect(getMoonbaseState(model).staff.peek()).toBe(staff);
   } finally { use.dispose(); graph.dispose(); placement.dispose(); inventory.dispose(); }
+});
+
+it('ends the beam, pulse and cold star clips on game time while their art never loads', () => {
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
+  const scheduler = new GameTimeScheduler();
+  const owner = new PrefabInstance('moonbase', new SpriteState({ name: 'idle_full', billboard: true }));
+  const effects = new MoonbaseEffects(owner, scheduler, new SpriteResources('/dst/data/anim'));
+  const attached = (prefab: string) => [...owner.sprite.fx.peek().entries()].filter(([key]) => key.startsWith(`${prefab}:`)).map(([, fx]) => fx.sprite);
+  const clip = (prefab: string) => attached(prefab)[0]?.sprite.peek().clip.name;
+  const advance = (frames: number) => scheduler.advance(frames * FRAMES);
+  try {
+    // staffcoldlightfx: appear (16 frames), then a random idle on its animover.
+    effects.showCold();
+    advance(15.5);
+    expect(clip('staffcoldlightfx')).toBe('appear');
+    advance(1);
+    expect(['idle_loop', 'idle_loop2', 'idle_loop3']).toContain(clip('staffcoldlightfx'));
+
+    // KillFX: lunar_*_pst (17 frames); its animover removes each beam.
+    effects.start(1);
+    expect(attached('positronbeam_back')).toHaveLength(1);
+    effects.stop();
+    expect(clip('positronbeam_back')).toBe('lunar_back_pst');
+    advance(16.5);
+    expect(attached('positronbeam_back')).toHaveLength(1);
+    expect(attached('positronbeam_front')).toHaveLength(1);
+    advance(1);
+    expect(attached('positronbeam_back')).toHaveLength(0);
+    expect(attached('positronbeam_front')).toHaveLength(0);
+
+    // FinishFX: lunar_full_pst (27 frames), removed GetCurrentAnimationLength() + 2 frames later.
+    effects.start(3);
+    effects.finish();
+    expect(clip('positronpulse')).toBe('lunar_full_pst');
+    advance(28.5);
+    expect(attached('positronpulse')).toHaveLength(1);
+    advance(1);
+    expect(attached('positronpulse')).toHaveLength(0);
+  } finally { effects.dispose(); scheduler.dispose(); }
 });

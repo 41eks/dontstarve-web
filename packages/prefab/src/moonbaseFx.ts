@@ -1,25 +1,31 @@
 import type { PrefabDisplay, SpriteResources, SpriteState } from '@dontstarve-web/display';
 import { createPrefabEntity, type EntityTask, type PrefabInstance } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { AnimState } from '../../componets/src/animstate';
+import { animationLengths } from './animationTimings';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { polarLight } from './stafflight';
 import { SPRITE_SCALE } from '@dontstarve-web/animation/units';
-import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 
 interface Fx {
   readonly key: string;
   instance: PrefabInstance;
   display: PrefabDisplay;
   animation: SpriteState;
+  /** inst.AnimState's playback: clips end after their source length in game time, whether or not their art is drawn. */
+  animstate: AnimState;
   /** The FX's own DoTaskInTime(..., inst.Remove). */
   removaltask?: EntityTask;
   createdAt: number;
-  stop?: () => void;
 }
 const PATH = 'dontstarve/common/together/moonbase/';
 /** stafflight.lua's DoPeriodicTask(.1, pulse_light). */
 const PULSE_PERIOD = .1;
 const SHOWN = readonlySignal(createSignal(true));
+/** The lunar_fx and star_cold clips, from the source anim.bin. */
+const BEAM_LENGTHS = animationLengths('moonbase_fx.zip'), COLD_LENGTHS = animationLengths('star_cold.zip');
+const COLD_IDLES = ['idle_loop', 'idle_loop2', 'idle_loop3'];
 let nextId = 0;
 const beamSource = (sprites: SpriteResources, prefab: string) => sprites.animated('moonbase_fx.zip', {}, { name: prefab });
 const coldSource = (sprites: SpriteResources, prefab: string) =>
@@ -56,16 +62,27 @@ export class MoonbaseEffects {
       entity.sprite.setLightOverride(1);
     }, this.owner.status);
     instance.BindScheduler(this.scheduler);
-    const fx: Fx = { key: `${prefab}:${nextId++}`, instance, display, animation: instance.sprite, createdAt: this.scheduler.now };
+    const animstate = new AnimState(this.scheduler, cold ? COLD_LENGTHS : BEAM_LENGTHS, event => instance.PushEvent(event));
+    instance.onRemove(() => animstate.dispose());
+    const fx: Fx = { key: `${prefab}:${nextId++}`, instance, display, animation: instance.sprite, animstate, createdAt: this.scheduler.now };
     this.effects.add(fx);
     this.owner.sprite.attachFx(fx.key, { sprite: instance.sprite, display, active: SHOWN, sortLayer });
     return fx;
   }
   private remove(fx: Fx): void {
     if (!this.effects.delete(fx)) return;
-    fx.stop?.();
     this.owner.sprite.detachFx(fx.key);
     fx.instance.remove(); fx.display.dispose();
+  }
+  /** AnimState:PlayAnimation(name, loop) on the effect's logical clip and its drawn one. */
+  private play(fx: Fx, name: string, loop = false): void {
+    fx.animstate.PlayAnimation(name, loop);
+    if (loop) fx.animation.start(name); else fx.animation.playOnce(name);
+  }
+  /** AnimState:PushAnimation(name, loop). */
+  private push(fx: Fx, name: string, loop: boolean): void {
+    fx.animstate.PushAnimation(name, loop);
+    fx.animation.pushAnimation(name, loop);
   }
   private removeAfter(fx: Fx, time: number): void {
     fx.removaltask?.Cancel();
@@ -93,11 +110,12 @@ export class MoonbaseEffects {
     this.back = this.create('positronbeam_back', 'lunar_back_pre', 0);
     this.front = this.create('positronbeam_front', 'lunar_front_pre', 2);
     for (const [fx, layer] of [[this.back, 'back'], [this.front, 'front']] as const) {
-      if (restored) fx.animation.start(`lunar_${layer}_loop`);
-      else fx.animation.playOnce(`lunar_${layer}_pre`, () => fx.animation.start(`lunar_${layer}_loop`));
+      // PlayAnimation("lunar_"..layer.."_pre"), PushAnimation("lunar_"..layer.."_loop", true).
+      if (restored) this.play(fx, `lunar_${layer}_loop`, true);
+      else { this.play(fx, `lunar_${layer}_pre`); this.push(fx, `lunar_${layer}_loop`, true); }
     }
     this.pulse = this.create('positronpulse', 'lunar_2_loop', 3);
-    this.pulse.animation.start('lunar_2_loop'); this.pulse.animation.setVisible(false);
+    this.play(this.pulse, 'lunar_2_loop', true); this.pulse.animation.setVisible(false);
     this.beamSound = PlaySound(`${PATH}beam`, this.owner.position);
     if (!restored) this.sound('beam_level_up');
     this.setLevel(level, false);
@@ -107,7 +125,7 @@ export class MoonbaseEffects {
     if (!this.pulse) return;
     this.pulse.animation.setVisible(level > 1);
     if (level > 1) {
-      if (this.pulse.animation.currentAnimation !== `lunar_${level}_loop`) this.pulse.animation.start(`lunar_${level}_loop`);
+      if (this.pulse.animstate.animation.peek().name !== `lunar_${level}_loop`) this.play(this.pulse, `lunar_${level}_loop`, true);
       if (playSound) this.sound('beam_level_up');
     }
     this.beamSound?.setParameter?.('intensity', level === 1 ? 0 : level === 2 ? .6 : .9);
@@ -117,9 +135,9 @@ export class MoonbaseEffects {
     const pulse = this.pulse; this.pulse = undefined;
     this.beamSound?.stop(); this.beamSound = undefined;
     this.sound('beam_stop'); pulse.animation.setVisible(true);
-    pulse.animation.playOnce('lunar_full_pst');
+    this.play(pulse, 'lunar_full_pst');
     // DoTaskInTime(AnimState:GetCurrentAnimationLength() + 2 * FRAMES, inst.Remove)
-    this.removeAfter(pulse, pulse.animation.currentAnimationLength + 2 / 30);
+    this.removeAfter(pulse, pulse.animstate.length + 2 / 30);
   }
   stop(): void {
     if (this.pulse) { this.remove(this.pulse); this.pulse = undefined; }
@@ -127,9 +145,11 @@ export class MoonbaseEffects {
     if (this.front || this.back) {
       for (const [fx, layer] of [[this.front, 'front'], [this.back, 'back']] as const) if (fx) {
         if (layer === 'front') this.sound('beam_stop_fail');
-        // ListenForEvent("animover", inst.Remove) and DoTaskInTime(GetCurrentAnimationLength() + FRAMES, inst.Remove)
-        fx.animation.playOnce(`lunar_${layer}_pst`, () => this.remove(fx));
-        this.removeAfter(fx, fx.animation.currentAnimationLength + 1 / 30);
+        // PlayAnimation("lunar_"..layer.."_pst"), ListenForEvent("animover", inst.Remove) and
+        // DoTaskInTime(GetCurrentAnimationLength() + FRAMES, inst.Remove).
+        this.play(fx, `lunar_${layer}_pst`);
+        fx.instance.ListenForEvent('animover', () => this.remove(fx));
+        this.removeAfter(fx, fx.animstate.length + 1 / 30);
       }
       this.front = undefined; this.back = undefined;
       this.stopLight();
@@ -137,17 +157,10 @@ export class MoonbaseEffects {
   }
   showCold(): void {
     if (this.cold) return;
-    const cold = this.cold = this.create('staffcoldlightfx', 'idle_loop', 1, true);
-    // ListenForEvent("animover", PlayRandomStarIdle): an undrawn sprite has no animover, so it holds idle_loop and the random
-    // chain resumes once the display has drawn it again.
-    let chaining = false;
-    const idle = () => {
-      if (this.cold !== cold) return;
-      chaining = cold.animation.loaded;
-      if (chaining) cold.animation.playOnce(['idle_loop', 'idle_loop2', 'idle_loop3'][Math.floor(Math.random() * 3)], idle);
-      else cold.animation.start('idle_loop');
-    };
-    cold.stop = createEffect(() => { cold.animation.art.get(); if (!chaining) idle(); });
+    const cold = this.cold = this.create('staffcoldlightfx', 'appear', 1, true);
+    // PlayAnimation("appear"), then ListenForEvent("animover", PlayRandomStarIdle).
+    this.play(cold, 'appear');
+    cold.instance.ListenForEvent('animover', () => this.play(cold, COLD_IDLES[Math.floor(Math.random() * COLD_IDLES.length)]));
     // DoPeriodicTask(.1, pulse_light): the light is first enabled by the first pulse, a period after spawning.
     cold.instance.DoPeriodicTask(PULSE_PERIOD, inst => inst.light.set(polarLight(this.scheduler.now - cold.createdAt)));
     this.coldSound = PlaySound('dontstarve/common/staff_coldlight_LP', this.owner.position);

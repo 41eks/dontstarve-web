@@ -2800,5 +2800,61 @@
       "frameRate": 30.0,
       "frames": 64
     }
+  ],
+  "moonbase_fx.zip": [
+    {
+      "name": "lunar_front_pre",
+      "bank": 3622737275,
+      "frameRate": 30.0,
+      "frames": 11
+    },
+    {
+      "name": "lunar_front_loop",
+      "bank": 3622737275,
+      "frameRate": 30.0,
+      "frames": 40
+    },
+    {
+      "name": "lunar_front_pst",
+      "bank": 3622737275,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "lunar_back_pre",
+      "bank": 3622737275,
+      "frameRate": 30.0,
+      "frames": 11
+    },
+    {
+      "name": "lunar_back_loop",
+      "bank": 3622737275,
+      "frameRate": 30.0,
+      "frames": 40
+    },
+    {
+      "name": "lunar_back_pst",
+      "bank": 3622737275,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "lunar_2_loop",
+      "bank": 3622737275,
+      "frameRate": 30.0,
+      "frames": 39
+    },
+    {
+      "name": "lunar_3_loop",
+      "bank": 3622737275,
+      "frameRate": 30.0,
+      "frames": 39
+    },
+    {
+      "name": "lunar_full_pst",
+      "bank": 3622737275,
+      "frameRate": 30.0,
+      "frames": 27
+    }
   ]
 }
