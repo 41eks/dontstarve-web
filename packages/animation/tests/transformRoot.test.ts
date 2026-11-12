@@ -4,7 +4,7 @@ import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import { installMatrixGate } from '../src/matrixGate';
 import { updateSceneMatrices } from '../src/matrixUpdates';
-import { markTransformDirty, TransformRoot } from '../src/transformRoot';
+import { isTransformRootScheduled, markTransformDirty, retainEntityRootUpdates, TransformRoot } from '../src/transformRoot';
 
 /** A stationary archive sprite, as plants draw: its gate is marked by faceCamera(). */
 function stationarySprite() {
@@ -93,4 +93,60 @@ it('updates a root carrying FX every frame and reaches a marked root nested insi
   single.position.x = 4; single.markTransformDirty();
   point.getWorldPosition(new THREE.Vector3());
   expect(point.matrixWorld.elements[12]).toBe(4);
+});
+
+it('settles only marked and FX-carrying roots under a scene with entity root updates, until released', () => {
+  const scene = new THREE.Scene(), ground = new THREE.Group();
+  scene.add(ground);
+  const roots = Array.from({ length: 3 }, (_, index) => {
+    const root = new TransformRoot(), point = new THREE.Object3D();
+    root.position.x = index; root.add(point); scene.add(root);
+    return { root, point, updates: vi.spyOn(root, 'updateMatrixWorld') };
+  });
+  const [moving, resting, carrying] = roots;
+  const release = retainEntityRootUpdates(scene);
+  const reset = () => roots.forEach(({ updates }) => updates.mockClear());
+  try {
+    // The first update visits every root added before the installation; later ones only what was marked.
+    updateSceneMatrices(scene);
+    expect(resting.point.matrixWorld.elements[12]).toBe(1);
+    reset(); updateSceneMatrices(scene);
+    roots.forEach(({ updates }) => expect(updates).not.toHaveBeenCalled());
+
+    moving.root.position.x = 5; markTransformDirty(moving.point);
+    expect(isTransformRootScheduled(moving.root)).toBe(true);
+    reset(); updateSceneMatrices(scene);
+    expect(moving.point.matrixWorld.elements[12]).toBe(5);
+    expect(moving.updates).toHaveBeenCalledOnce();
+    expect(resting.updates).not.toHaveBeenCalled();
+    expect(isTransformRootScheduled(moving.root)).toBe(false);
+
+    // Attached FX keep their root settling on every update; detaching them ends it.
+    const fx = new THREE.Object3D(); carrying.root.add(fx);
+    for (const x of [1, 2]) {
+      fx.position.x = x; reset(); updateSceneMatrices(scene);
+      expect(fx.matrixWorld.elements[12]).toBe(2 + x);
+      expect(resting.updates).not.toHaveBeenCalled();
+    }
+    fx.removeFromParent(); updateSceneMatrices(scene);
+    reset(); updateSceneMatrices(scene);
+    expect(carrying.updates).not.toHaveBeenCalled();
+
+    // A mark inside a nested root schedules the outermost one; a query settles a scheduled root at once.
+    const inner = new TransformRoot(), leaf = new THREE.Object3D();
+    inner.add(leaf); resting.point.add(inner); updateSceneMatrices(scene);
+    inner.position.z = 3; markTransformDirty(inner);
+    expect(isTransformRootScheduled(resting.root)).toBe(true);
+    leaf.updateWorldMatrix(true, false);
+    expect(leaf.matrixWorld.elements[14]).toBe(3);
+    // Other scene children keep their ordinary update, and a moved scene reaches every root.
+    ground.position.y = 2; updateSceneMatrices(scene);
+    expect(ground.matrixWorld.elements[13]).toBe(2);
+    scene.position.y = 7; reset(); updateSceneMatrices(scene);
+    expect(resting.point.matrixWorld.elements[13]).toBe(7);
+    expect(moving.point.matrixWorld.elements[13]).toBe(7);
+  } finally { release(); }
+  // Released, the scene walks its roots again.
+  reset(); updateSceneMatrices(scene);
+  roots.forEach(({ updates }) => expect(updates).toHaveBeenCalled());
 });

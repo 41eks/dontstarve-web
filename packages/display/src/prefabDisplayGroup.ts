@@ -1,4 +1,4 @@
-import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
+import { retainEntityRootUpdates, type ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { createEffect } from '@dontstarve-web/signals';
 import { PrefabDisplay, type PrefabDisplayOptions } from './prefabDisplay';
@@ -13,7 +13,10 @@ export class PrefabDisplayGroup {
   private disposed = false;
   private readonly scene: THREE.Scene;
 
-  constructor(scene: THREE.Scene) { this.scene = scene; }
+  /** The scene's matrix update settles only the entity roots marked since the last one. */
+  private readonly releaseRootUpdates: () => void;
+
+  constructor(scene: THREE.Scene) { this.scene = scene; this.releaseRootUpdates = retainEntityRootUpdates(scene); }
 
   add(options: PrefabDisplayOptions, footPosition?: ReadonlyVector3): PrefabDisplay {
     if (this.disposed) throw new Error('Prefab displays have been disposed');
@@ -63,5 +66,6 @@ export class PrefabDisplayGroup {
     this.disposed = true;
     for (const display of this.entries) display.dispose();
     this.entries.clear(); this.awake.clear();
+    this.releaseRootUpdates();
   }
 }
