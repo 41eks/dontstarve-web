@@ -7,7 +7,9 @@ import type { Burnable } from '../../componets/src/burnable';
 import type { Propagator } from '../../componets/src/propagator';
 import type { Vector3 } from 'three';
 import { getDeconstructionRecipe } from '../../componets/src/recipes.ts';
-import { ACTIONS, type MouseActionId } from './actions.ts';
+import { getActionDef } from './actions.ts';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import type { SpellCastDoer } from '../../componets/src/spellcaster';
 import { FOODGROUP, FOODTYPE } from '../../componets/src/eater';
 import { ItemEntity } from '../../inventory/src/entity';
 
@@ -16,7 +18,7 @@ export interface ComponentActionEntity extends WorkInst {
   readonly prefab: string;
   getPhysicsRadius?(): number;
   readonly components: {
-    inventoryitem?: { readonly owner?: unknown };
+    inventoryitem?: { readonly owner?: unknown; CanBePickedUp(doer: object): boolean };
     container?: import('../../prefab/src/containers').BuildingContainer;
     stewer?: import('../../componets/src/stewer').Stewer;
     worldmigrator?: import('../../componets/src/worldmigrator').WorldMigrator;
@@ -61,7 +63,13 @@ export interface ComponentActionEntity extends WorkInst {
     inspectable?: import('../../componets/src/inspectable').Inspectable;
     fishable?: import('../../componets/src/fishable').Fishable;
     book?: import('../../componets/src/book').BookComponent;
+    deployable?: import('../../componets/src/deployable').Deployable;
+    terraformer?: import('../../componets/src/terraformer').Terraformer;
+    farmtiller?: import('../../componets/src/farmtiller').FarmTiller;
+    fishingrod?: import('../../componets/src/fishingrod').FishingRod;
   };
+  /** inventoryitem's GetIsWet on the inst, as ADDFUEL / ADDWETFUEL chooses. */
+  GetIsWet?(): boolean;
 }
 
 /** The hand item an equipped action is done with. */
@@ -93,11 +101,6 @@ export interface SceneActionDoer {
 }
 export type SceneAction = 'LOOKAT' | 'PICKUP' | 'PICK' | 'HARVEST' | 'TURNON' | 'TURNOFF' | 'RUMMAGE' | 'SLEEPIN' | 'MIGRATE' | 'TAKEITEM' | 'HAUNT';
 type SceneFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: SceneAction[], right: boolean) => void;
-type SceneComponents = {
-  inventoryitem?: { CanBePickedUp(doer: object): boolean; readonly owner?: unknown };
-  container?: { canbeopened: boolean };
-  machine?: object;
-};
 /** The acting player as EQUIPPED / POINT entries read it. */
 export interface EquippedActionDoer {
   hasTag(tag: string): boolean;
@@ -120,15 +123,9 @@ type UseItemFn = (inst: ComponentActionEntity, doer: SceneActionDoer, target: Co
   actions: UseItemAction[], right: boolean) => void;
 type EquippedFn = (inst: ComponentActionEntity, doer: EquippedActionDoer | undefined, target: ComponentActionTarget,
   actions: EquippedAction[], right: boolean) => void;
-type PointFn = (inst: ComponentActionEntity, doer: EquippedActionDoer & { readonly position?: Vector3 }, pos: Vector3,
-  actions: EquippedAction[], right: boolean) => void;
-type EquippedComponents = {
-  deployable?: import('../../componets/src/deployable').Deployable;
-  spellcaster?: SpellCasterComponent;
-  terraformer?: { CanTerraformAtPoint(pt: Vector3): boolean };
-  farmtiller?: { CanTillSoilAtPoint(pt: Vector3): boolean };
-  fishingrod?: { readonly target?: unknown; HasCaughtFish(): boolean };
-};
+/** The acting player as POINT entries read it: spellcaster:CanCast also reads its position and sanity. */
+export type PointActionDoer = EquippedActionDoer & SpellCastDoer;
+type PointFn = (inst: ComponentActionEntity, doer: PointActionDoer, pos: Vector3, actions: EquippedAction[], right: boolean) => void;
 
 /** componentactions.lua COMPONENT_ACTIONS, for the component entries ported here. */
 export const COMPONENT_ACTIONS: {
@@ -192,7 +189,7 @@ export const COMPONENT_ACTIONS: {
     fuel: (inst, _doer, target, actions) => {
       const fuel = inst.components.fuel;
       if (fuel && target.hasTag(`${fuel.fueltype}_fueled`) && target.components.fueled?.CanAcceptFuelItem(inst)) {
-        actions.push((inst as ComponentActionEntity & { GetIsWet?(): boolean }).GetIsWet?.() ? 'ADDWETFUEL' : 'ADDFUEL');
+        actions.push(inst.GetIsWet?.() ? 'ADDWETFUEL' : 'ADDFUEL');
       }
     },
     farmplantable: (_inst, _doer, target, actions) => {
@@ -202,7 +199,7 @@ export const COMPONENT_ACTIONS: {
   SCENE: {
     container: (inst, doer, actions) => {
       // The bundle branch (WRAPBUNDLE / APPLYCONSTRUCTION) is not ported.
-      if (!inst.hasTag('bundle') && !inst.hasTag('burnt') && (inst.components as SceneComponents).container?.canbeopened
+      if (!inst.hasTag('bundle') && !inst.hasTag('burnt') && inst.components.container?.canbeopened
         && doer.components?.inventory) actions.push('RUMMAGE');
     },
     inspectable: (inst, doer, actions) => {
@@ -212,7 +209,7 @@ export const COMPONENT_ACTIONS: {
       if (!inst.hasTag('haunted') && !inst.hasTag('catchable')) actions.push('HAUNT');
     },
     inventoryitem: (inst, doer, actions, right) => {
-      const item = (inst.components as SceneComponents).inventoryitem;
+      const item = inst.components.inventoryitem;
       const inventory = doer.components?.inventory;
       if (item?.CanBePickedUp(doer) && inventory && (inventory.GetNumSlots() > 0 || !!inst.components.equippable)
         && !(inst.hasTag('catchable') || (inst.hasTag('fire') && !inst.hasTag('lighter')) || inst.hasTag('smolder'))
@@ -223,7 +220,7 @@ export const COMPONENT_ACTIONS: {
     machine: (inst, _doer, actions, right) => {
       if (!right || ['cooldown', 'fueldepleted', 'alwayson', 'emergency'].some(tag => inst.hasTag(tag)) || !inst.hasTag('enabled')) return;
       // A held machine is only usable while equipped, and equipped items are not in the scene.
-      if ((inst.components as SceneComponents).inventoryitem?.owner) return;
+      if (inst.components.inventoryitem?.owner) return;
       actions.push(inst.hasTag('turnedon') ? 'TURNOFF' : 'TURNON');
     },
     occupiable: (inst, _doer, actions) => { if (inst.hasTag('occupied')) actions.push('HARVEST'); },
@@ -241,30 +238,31 @@ export const COMPONENT_ACTIONS: {
   },
   POINT: {
     deployable: (inst, doer, pos, actions, right) => {
-      if (right && inst.components.inventoryitem && (inst.components as EquippedComponents).deployable?.CanDeploy(pos, doer.Map)) {
+      if (right && inst.components.inventoryitem && inst.components.deployable?.CanDeploy(pos, doer.Map)) {
         actions.push(inst.hasTag('tile_deploy') ? 'DEPLOY_TILEARRIVE' : 'DEPLOY');
       }
     },
     farmtiller: (inst, _doer, pos, actions, right) => {
-      if (right && (inst.components as EquippedComponents).farmtiller?.CanTillSoilAtPoint(pos)) actions.push('TILL');
+      if (right && inst.components.farmtiller?.CanTillSoilAtPoint(pos)) actions.push('TILL');
     },
     // The plow branch (CanPlowAtPoint) is not ported.
     terraformer: (inst, _doer, pos, actions, right) => {
-      if (right && (inst.components as EquippedComponents).terraformer?.CanTerraformAtPoint(pos)) actions.push('TERRAFORM');
+      if (right && inst.components.terraformer?.CanTerraformAtPoint(pos)) actions.push('TERRAFORM');
     },
     // The SPELLTYPES (<type>_spellcaster / _spelluser) gate is not ported; spellcaster:CanCast stands in for the map's
     // IsAboveGroundAtPoint / IsOceanAtPoint and IsGroundTargetBlocked checks.
     spellcaster: (inst, doer, pos, actions, right) => {
       if (!right || !(inst.hasTag('castonpoint') || inst.hasTag('castonpointwater'))
         || doer.hasTag('steeringboat') || doer.hasTag('rotatingboat')) return;
-      if ((inst.components as EquippedComponents).spellcaster?.canCast(doer as never, undefined, pos)) actions.push('CASTSPELL');
+      if (inst.components.spellcaster?.canCast(doer, undefined, pos)) actions.push('CASTSPELL');
     },
   },
   EQUIPPED: {
     fishingrod: (inst, doer, target, actions) => {
-      const rod = (inst.components as EquippedComponents).fishingrod;
+      const rod = inst.components.fishingrod;
       if (!rod || !target.hasTag('fishable') || rod.HasCaughtFish()) return;
-      if (target !== rod.target) actions.push('FISH');
+      // target ~= fishingrod.target: identity, between the picked entity and the rod's fishing target.
+      if (!Object.is(target, rod.target)) actions.push('FISH');
       else if (!doer?.sg || doer.sg.HasStateTag('fishing')) actions.push('REEL');
     },
     lighter: (_inst, _doer, target, actions, right) => {
@@ -280,7 +278,8 @@ export const COMPONENT_ACTIONS: {
     // attack on a combat target is not offered here.
     weapon: (inst, doer, target, actions, right) => {
       if (inst.hasTag('outofammo') || !doer?.components?.combat) return;
-      if (right && doer.components.combat.CanLightTarget(target as never, inst.components.weapon as never)) actions.push('ATTACK');
+      // combat:CanLightTarget reads the target entity's components; a spell's target view is no combat target.
+      if (right && target instanceof PrefabInstance && doer.components.combat.CanLightTarget(target, inst.components.weapon)) actions.push('ATTACK');
     },
     tool: (inst, _doer, target, actions, right) => {
       if (target.hasTag('INLIMBO') || inst.components.equippable?.IsRestricted()) return;
@@ -296,7 +295,7 @@ export const COMPONENT_ACTIONS: {
 
 /** EntityScript:IsActionValid: an `rmb` action only on the right button, then any registered component's ISVALID. */
 export function isActionValid(inst: ComponentActionTarget, action: string, right: boolean): boolean {
-  if ((ACTIONS[action as MouseActionId] as { rmb?: boolean } | undefined)?.rmb === true && !right) return false;
+  if (getActionDef(action)?.rmb === true && !right) return false;
   return Object.keys(inst.components ?? {}).some(name => COMPONENT_ACTIONS.ISVALID[name]?.(inst, action, right) === true);
 }
 
@@ -335,7 +334,7 @@ export function collectEquippedItemActions(item: ComponentActionEntity | undefin
 }
 
 /** EntityScript:CollectActions("POINT", doer, pos, actions, right) for the item in the doer's hands. */
-export function collectPointActions(item: ComponentActionEntity | undefined, doer: EquippedActionDoer, pos: Vector3,
+export function collectPointActions(item: ComponentActionEntity | undefined, doer: PointActionDoer, pos: Vector3,
   right: boolean): EquippedAction[] {
   const actions: EquippedAction[] = [];
   if (!item || item.isRemoved) return actions;

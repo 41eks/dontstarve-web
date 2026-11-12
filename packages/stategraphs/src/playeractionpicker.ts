@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 import { getActionPriority, type ActionDescription } from './actions.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import { isMouseTarget } from './mouseTargets.ts';
-import { collectEquippedItemActions, collectPointActions, collectSceneActions, type EquippedActionDoer, type SceneActionDoer } from './componentactions.ts';
+import { collectEquippedItemActions, collectPointActions, collectSceneActions, type EquippedActionDoer, type PointActionDoer, type SceneActionDoer } from './componentactions.ts';
 import type { ItemEntity } from '../../inventory/src/entity';
 import type { PlayerActionTarget } from './actionfns.ts';
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -34,7 +34,7 @@ export class PlayerActionPicker {
   private readonly placerSources = new Set<() => boolean>();
   private readonly eventActions = new WeakMap<PointerEvent, { actions: MouseActions; target?: THREE.Object3D }>();
   private selectedModel?: THREE.Object3D;
-  private player?: { readonly doer: SceneActionDoer & EquippedActionDoer; equippedItem(): ItemEntity | undefined };
+  private player?: { readonly doer: SceneActionDoer & PointActionDoer; equippedItem(): ItemEntity | undefined };
   private readonly actionFilters: { fn: ActionFilter; priority: number }[] = [];
   get targetModel(): THREE.Object3D | undefined { return this.selectedModel; }
 
@@ -52,7 +52,7 @@ export class PlayerActionPicker {
   }
 
   /** playeractionpicker.inst: the player whose hand item and scene actions the picker collects itself. */
-  bindPlayer(doer: SceneActionDoer & EquippedActionDoer, equippedItem: () => ItemEntity | undefined): () => void {
+  bindPlayer(doer: SceneActionDoer & PointActionDoer, equippedItem: () => ItemEntity | undefined): () => void {
     const player = { doer, equippedItem };
     this.player = player;
     return () => { if (this.player === player) this.player = undefined; };

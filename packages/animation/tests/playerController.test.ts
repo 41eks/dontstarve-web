@@ -1,4 +1,9 @@
 import { createPlayerEquipper } from './playerEquipFixture';
+import { ItemEntity } from '../../inventory/src/entity';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { SpriteState } from '../../display/src';
+import { addComponent } from '../../prefab/src/components';
+import { Weapon } from '../../componets/src/weapon';
 import { advancePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
 import * as THREE from 'three';
@@ -190,18 +195,20 @@ describe('PlayerController scene actions', () => {
 
 describe('PlayerController equipped actions', () => {
   it('offers ATTACK (RANGEDLIGHT) on the right button for a weapon that can light the target', () => {
-    const weapon = { prefab: 'firestaff', isRemoved: false, hasTag: () => false, components: { weapon: {} } } as never;
-    const target = { prefab: 'evergreen', isRemoved: false, hasTag: () => false, components: {} };
+    const weapon = new ItemEntity({ itemId: 'firestaff', count: 1 });
+    const weaponComponent = addComponent(weapon, 'weapon', Weapon);
+    const target = new PrefabInstance('evergreen', new SpriteState({ name: 'idle', billboard: true }));
+    // The doer's combat:CanLightTarget is the rule under test's input: only its answer matters here.
     const canLight = vi.fn((_target: unknown, _weapon: unknown) => true);
     const doer = { hasTag: () => false, components: { combat: { CanLightTarget: canLight } } };
     // componentactions EQUIPPED.weapon: combat:CanLightTarget on the right button only.
-    expect(collectEquippedItemActions(weapon, doer as never, target, false)).toEqual([]);
-    expect(collectEquippedItemActions(weapon, doer as never, target, true)).toEqual(['ATTACK']);
-    expect(canLight).toHaveBeenLastCalledWith(target, (weapon as { components: { weapon: object } }).components.weapon);
-    expect(getActionString({ action: 'ATTACK', doer, invobject: weapon, target: target as never })).toBe('点燃');
+    expect(collectEquippedItemActions(weapon, doer, target, false)).toEqual([]);
+    expect(collectEquippedItemActions(weapon, doer, target, true)).toEqual(['ATTACK']);
+    expect(canLight).toHaveBeenLastCalledWith(target, weaponComponent);
+    expect(getActionString({ action: 'ATTACK', doer, invobject: weapon, target })).toBe('点燃');
     canLight.mockReturnValue(false);
-    expect(collectEquippedItemActions(weapon, doer as never, target, true)).toEqual([]);
-    expect(getActionString({ action: 'ATTACK', doer, invobject: weapon, target: target as never })).toBe('攻击');
+    expect(collectEquippedItemActions(weapon, doer, target, true)).toEqual([]);
+    expect(getActionString({ action: 'ATTACK', doer, invobject: weapon, target })).toBe('攻击');
   });
 });
 

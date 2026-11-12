@@ -128,7 +128,7 @@ it('reads live entity metadata and radius overrides through action and placement
   instance.skinId = 'test-skin';
   instance.persists = false;
   instance.addTag('groundtargetblocker');
-  instance.components.inventoryitem = {};
+  instance.components.inventoryitem = { CanBePickedUp: () => true };
   const entity = registerActionEntity(prefabInstance(model)!);
   scene.add(model);
   const query = placementEntities(scene);
