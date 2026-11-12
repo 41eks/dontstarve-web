@@ -11,7 +11,6 @@ import { Pathfinder } from '../../prefab/src/pathfinder';
 import { wallsFixture } from './wallsFixture';
 import { WALL_PHYSICS_RADIUS } from '../../prefab/src/walls';
 import type { WorldContext } from '../../prefab/src/worldContext';
-import type { Health } from '../../componets/src/health';
 import { workTargets } from './workTargets';
 
 useTestTileMap();
@@ -38,7 +37,7 @@ function setup(physics: CANNON.World = new CANNON.World()) {
 
 /** The placed walls' health, in placement order (their combat entities, in registration order). */
 const healthOf = (_placement: ReturnType<typeof wallsFixture>, index: number) =>
-  ([...actionEntities()].filter(entity => (entity.components as { combat?: unknown }).combat)[index].components as { health: Health }).health;
+  [...actionEntities()].filter(entity => entity.components.combat)[index].components.health!;
 const wallBodies = (physics: CANNON.World) => physics.bodies.filter(body => body.type === CANNON.Body.STATIC);
 
 it('blocks with a static obstacle at the foot point only while the wall has health', async () => {

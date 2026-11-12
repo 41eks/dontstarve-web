@@ -1,8 +1,8 @@
 import type { Object3D } from 'three';
-import type { PrefabInstance } from './prefabInstance';
+import type { ActionEntity } from './prefabInstance';
 
 /** What the mouse registry reads of an entity: its root model, removal and tags. */
-export type MouseTargetEntity = Pick<PrefabInstance, 'transform' | 'isRemoved' | 'hasTag'>;
+export type MouseTargetEntity = Pick<ActionEntity, 'transform' | 'isRemoved' | 'hasTag'>;
 
 interface Registration {
   readonly entity: MouseTargetEntity;

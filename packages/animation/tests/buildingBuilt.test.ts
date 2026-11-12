@@ -10,7 +10,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { managedBuildings } from './managedBuildings';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { findActionEntity } from '../../prefab/src/actionEntity';
-import { performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
+import { performRummageAction } from '../../stategraphs/src/rummage';
 import { miniMapEntities } from '../../map/src/minimapEntities';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { SpriteAnimationController } from '../src/sprite';
@@ -106,7 +106,7 @@ it('opens a chest during its place clip, as source onbuilt does not lock the con
   const model = world.scene.children[0], instance = prefabInstance(model)!;
   const playOnce = vi.spyOn(instance.sprite as SpriteAnimationController, 'playOnce');
   expect(sceneActions(model).filter(action => action === 'RUMMAGE')).toEqual(['RUMMAGE']);
-  expect(performRummageAction(findActionEntity(model) as unknown as RummageTarget, world.player)).toBe(true);
+  expect(performRummageAction(findActionEntity(model)!, world.player)).toBe(true);
   expect(playOnce).toHaveBeenCalledExactlyOnceWith('open');
 });
 

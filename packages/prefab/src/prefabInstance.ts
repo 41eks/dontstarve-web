@@ -24,7 +24,9 @@ import type { PrefabWorldContext } from './worldContext';
 import { SoundEmitter } from './soundEmitter';
 import { InstanceAnimState } from './instanceAnimState';
 
-type ActionComponents = ComponentActionEntity['components'];
+export type ActionComponents = ComponentActionEntity['components'];
+/** An entity the player can act on: what action selection reads of it, whichever prefab it is. */
+export type ActionEntity = PrefabInstance<ArchiveSpriteCommands, ActionComponents>;
 
 /** Components owned by a world prefab, beyond the capabilities used to select actions. */
 export interface PrefabComponents extends ActionComponents {

@@ -51,7 +51,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   }) as THREE.Group;
   // The builder searches the world its player is in; a test that reloads into a new world moves it there.
   const sim = { current: placement.prefabs };
-  const builder = new Builder(registerActionEntity(prefabInstance(withEntity(world.player as THREE.Group, 'waxwell'))!), {
+  const builder = new Builder(registerActionEntity(prefabInstance(withEntity(world.player, 'waxwell'))!), {
     findEntities: (...args) => sim.current.FindEntities(...args) as never, researchMachineDistance: 4 * WORLD_SCALE,
   });
   const animation = () => prefabInstance<PrefabInstance>(model)!.sprite;

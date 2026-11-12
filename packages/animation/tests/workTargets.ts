@@ -2,8 +2,7 @@ import type { Object3D } from 'three';
 import type { PrefabDisplay } from '@dontstarve-web/display';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { actionEntities } from '../../prefab/src/actionEntity';
-import type { PrefabInstance } from '../../prefab/src/prefabInstance';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import type { ActionEntity } from '../../prefab/src/prefabInstance';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import type { ItemEntity } from '../../inventory/src/entity';
 import type { PickupDoer } from '../../stategraphs/src/pickup';
@@ -12,11 +11,11 @@ import type { WorkAction } from '../../componets/src/workable';
 
 /** A live entity whose workable currently takes `action`, as componentactions finds it through its tags. */
 export interface WorkTarget {
-  readonly entity: PrefabInstance;
+  readonly entity: ActionEntity;
   readonly model: Object3D;
   readonly id: string;
   readonly display: PrefabDisplay;
-  readonly position: ReturnType<PrefabInstance['getPosition']>;
+  readonly position: ReturnType<ActionEntity['getPosition']>;
   isValid(): boolean;
   /** One ACTIONS[action].fn on this target, as the stategraph's hit frame runs it. */
   work(doer?: { readonly components?: Partial<PickupDoer['components']> }, tool?: ItemEntity): boolean;
@@ -34,15 +33,15 @@ function contains(root: Object3D, model: Object3D): boolean {
  */
 export function workTargets(action: WorkAction, filter?: Object3D | string): WorkTarget[] {
   // An asleep entity keeps its components: it cannot be picked, but an action still reaches it.
-  const isValid = (entity: PrefabInstance) => !entity.isRemoved && entity.hasTag(`${action}_workable`);
+  const isValid = (entity: ActionEntity) => !entity.isRemoved && entity.hasTag(`${action}_workable`);
   return [...actionEntities()].filter(entity => isValid(entity)
     && (filter === undefined || (typeof filter === 'string' ? entity.prefab === filter : contains(filter, entity.transform.model))))
-    .map(entity => ({
+    .map((entity): WorkTarget => ({
       entity, model: entity.transform.model,
-      id: String(prefabInstance(entity.transform.model)?.entityId ?? (entity as { id?: unknown }).id ?? ''),
+      id: entity.entityId ?? '',
       get display() { return prefabDisplay(entity.transform.model)!; },
       get position() { return entity.getPosition(); },
       isValid: () => isValid(entity),
       work: (doer = {}, tool) => createBufferedAction(action, { doer: actionDoer(doer.components), target: entity, invobject: tool }).do(),
-    }) as WorkTarget);
+    }));
 }

@@ -111,7 +111,7 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
     update: (_dt: number) => { locomotor.update(16, 1 / 30); updates.update(1 / 30); },
     dispose: () => playerController.dispose(),
   };
-  const fishable = () => (findActionEntity(pond)!.components as { fishable: Fishable }).fishable;
+  const fishable = () => findActionEntity(pond)!.components.fishable!;
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
   const advanceUntil = (done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) advancePlayer(animation, 1 / 30); expect(done()).toBe(true); };
   try {

@@ -3,7 +3,7 @@ import type { Object3D } from 'three';
 import { isSpriteEntityVisible } from '@dontstarve-web/animation/renderOrder';
 import { SpatialIndex, type SpatialQuery } from './spatialIndex';
 import { prefabDisplay } from '@dontstarve-web/display';
-import type { PrefabInstance } from './prefabInstance';
+import type { ActionEntity } from './prefabInstance';
 
 export interface PlacementBlocker {
   readonly position: ReadonlyVector3;
@@ -36,7 +36,7 @@ export function ignoresPlacement(blocker: PlacementBlocker, tags: Iterable<strin
 }
 
 /** One engine entity entry, independent of rendering lists, selected action and mouse visibility. */
-export function registerPlacementEntity(instance: PrefabInstance): () => void {
+export function registerPlacementEntity(instance: ActionEntity): () => void {
   const model = instance.transform.model;
   const entry: WorldBlocker = {
     // An asleep model has left the scene; its display still knows the parent it returns to.

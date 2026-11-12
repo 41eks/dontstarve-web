@@ -67,7 +67,7 @@ it('picks behind hidden/NOCLICK swarms, restores visible bounding-box picking an
     expect(intersectSpriteEntities(ray, [swarm])).toEqual([]);
     visual.visible = true;
     expect(intersectSpriteEntities(ray, [swarm])[0]?.object).toBe(part);
-  } finally { disposeActionEntity(findActionEntity(swarm)); disposeActionEntity(findActionEntity(back as unknown as THREE.Group)); picker.dispose(); geometry.dispose(); material.dispose(); }
+  } finally { disposeActionEntity(findActionEntity(swarm)); disposeActionEntity(findActionEntity(back)); picker.dispose(); geometry.dispose(); material.dispose(); }
 });
 
 it('picks active prefabs using logical NOCLICK/removal and resolves a pointer event once for all action consumers', () => {

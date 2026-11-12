@@ -1,20 +1,20 @@
 import type * as THREE from 'three';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import { registerPlacementEntity, syncPlacementEntity } from './placementEntities';
-import type { PrefabInstance } from './prefabInstance';
+import type { ActionEntity } from './prefabInstance';
 import { registerMouseTarget } from './mouseTargets';
 
 interface Registration { dispose(): void }
-const registrations = new Map<PrefabInstance, Registration>();
+const registrations = new Map<ActionEntity, Registration>();
 /** The registered entity of each root model, whether or not a display has bound it yet. */
-const byModel = new WeakMap<THREE.Object3D, PrefabInstance>();
+const byModel = new WeakMap<THREE.Object3D, ActionEntity>();
 
 /**
  * Make an entity something the player can act on: a mouse target while it is awake and an entry in the placement
  * index, both following its tags. The instance is the action target itself; it leaves both when it is removed.
  */
-export function registerActionEntity<Instance extends object>(instance: Instance): Instance {
-  const inst = instance as unknown as PrefabInstance;
+export function registerActionEntity<Instance extends ActionEntity>(instance: Instance): Instance {
+  const inst: ActionEntity = instance;
   if (registrations.has(inst) || inst.isRemoved) return instance;
   const model = inst.transform.model;
   const cleanups: (() => void)[] = [];
@@ -32,7 +32,7 @@ export function registerActionEntity<Instance extends object>(instance: Instance
 }
 
 /** The registered entity a picked model belongs to, while it is live; finding it registers nothing. */
-export function findActionEntity(model: THREE.Object3D | null | undefined): PrefabInstance | undefined {
+export function findActionEntity(model: THREE.Object3D | null | undefined): ActionEntity | undefined {
   const inst = model ? byModel.get(model) : undefined;
   return inst && !inst.isRemoved ? inst : undefined;
 }
@@ -41,14 +41,13 @@ export function findActionEntity(model: THREE.Object3D | null | undefined): Pref
  * The registered entities, in registration order. Only tests enumerate them, in place of a manager's target list;
  * game code finds entities through TheSim.
  */
-export function actionEntities(): Iterable<PrefabInstance> { return registrations.keys(); }
+export function actionEntities(): Iterable<ActionEntity> { return registrations.keys(); }
 
 /** Withdraw an entity from the mouse and placement registries, as removal does. */
-export function disposeActionEntity(instance: object | undefined): void {
+export function disposeActionEntity(instance: ActionEntity | undefined): void {
   if (!instance) return;
-  const inst = instance as PrefabInstance;
-  const registration = registrations.get(inst);
+  const registration = registrations.get(instance);
   if (!registration) return;
-  registrations.delete(inst);
+  registrations.delete(instance);
   registration.dispose();
 }

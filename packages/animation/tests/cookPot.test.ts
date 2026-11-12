@@ -8,7 +8,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { findImage, loadBuild, smallHash } from '../src/animationAssets';
 import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
-import { performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
+import { performRummageAction } from '../../stategraphs/src/rummage';
 import { sceneActions } from './sceneActions';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { createPickupInventory } from './pickupFixture';
@@ -33,7 +33,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const model = await placement.spawnFromSave('cookpot', { id: 'pot:feed',
     transform: { position: [1, 0, 2], rotationY: 0 }, components: { building: { skinId: 'cookpot_candy' } } });
   const animation = prefabInstance<PrefabInstance>(model)!.sprite;
-  expect(performRummageAction(findActionEntity(model) as unknown as RummageTarget, world.player)).toBe(true);
+  expect(performRummageAction(findActionEntity(model)!, world.player)).toBe(true);
   expect(changed).toHaveBeenLastCalledWith({ buildId: 'cookpot', model, isOpen: true });
   const container = prefabInstance(model)!.components.container;
   expect(placement.performContainerAction(model, 'COOK', world.player)).toBe(false);

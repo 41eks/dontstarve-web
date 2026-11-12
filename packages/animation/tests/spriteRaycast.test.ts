@@ -64,7 +64,7 @@ it('selects actions behind transparent atlas pixels while opaque, mirrored and b
     expect(at(75, 75)).toBeUndefined(); // Lua's explicit BB mode includes transparent gaps.
     expect(picker.targetModel).toBe(front);
   } finally {
-    disposeActionEntity(findActionEntity(front)); disposeActionEntity(findActionEntity(back as unknown as THREE.Group)); picker.dispose();
+    disposeActionEntity(findActionEntity(front)); disposeActionEntity(findActionEntity(back)); picker.dispose();
     dispose(visual, renderer, [clear, cutout]); back.geometry.dispose(); back.material.dispose();
   }
 });
