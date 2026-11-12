@@ -131,7 +131,7 @@ export { BUGNET_ID, bugnetVisual } from './bugnet';
 export {
   butterflyPrefabs, ButterflyEntity, MakeButterflyCreature, UpdateButterfly, type ButterflyServices,
   BUTTERFLY_ID, MOONBUTTERFLY_ID,
-  type ButterflyFlower, type ButterflyWorld, type ButterflyState,
+  type ButterflyWorld, type ButterflyState,
 } from './butterfly';
 export { listenInventoryEvents, type PrefabInventoryEventMap } from './inventoryEvents';
 export { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, IgniteTossed, SetFuelRateMult, torchPrefabs, type TorchInst } from './torch';

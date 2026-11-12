@@ -1,5 +1,4 @@
 import { addComponent } from './components';
-import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import { WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import type { GroundItemDefinition, ItemPrefabWorld } from './groundPrefab';
@@ -8,7 +7,7 @@ import { bindItemWorld, dropStackIndividually, type ItemPrefabDefinition } from 
 import { TOTAL_DAY_TIME } from '../../componets/src/perishable';
 import { Deployable } from '../../componets/src/deployable';
 import { ButterflyStateGraph, type ButterflyStateInst, type ButterflyStateName } from '../../stategraphs/src/SGbutterfly';
-import { LocoMotor, type LocoMotorInst, type LocoMotorPoint } from '../../componets/src/locomotor';
+import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
 import { KnownLocations } from '../../componets/src/knownlocations';
 import { Pollinator } from '../../componets/src/pollinator';
 import { Workable } from '../../componets/src/workable';
@@ -16,7 +15,7 @@ import { Brain } from '../../brains/src/brain';
 import { ButterflyBrain } from '../../brains/src/butterflybrain';
 import { MoonButterflyBrain } from '../../brains/src/moonbutterflybrain';
 import { RADIANS } from '../../brains/src/simutil';
-import type { BrainComponents, BrainEntity, BrainInst, BrainWorld } from '../../brains/src/types';
+import type { BrainEntity, BrainInst, BrainWorld } from '../../brains/src/types';
 import catalog from './groundItems.json' with { type: 'json' };
 import { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED } from './moonbutterflyTuning';
 import { PlaySound } from './sound';
@@ -107,16 +106,9 @@ export function configureMoonButterflyEntity(entity: ItemEntity): void {
   };
 }
 
-export interface ButterflyFlower {
-  readonly id: string;
-  readonly position: ReadonlyVector3;
-}
-
+/** TheWorld as the butterflies read it besides TheSim: the day cycle and the world's edge. */
 export interface ButterflyWorld {
   getWatchWorldContent?: GetWatchWorldContent;
-  /** Player and other entities carrying DST's scarytoprey tag. */
-  getThreatPositions(): readonly THREE.Vector3[];
-  getFlowers(): readonly ButterflyFlower[];
   /** Flying creatures ignore obstacles, but cannot leave the world. */
   constrainPosition?(position: THREE.Vector3): void;
 }
@@ -165,70 +157,8 @@ export const BUTTERFLY_DEFINITIONS: Readonly<Record<ButterflyPrefabId, Butterfly
   },
 };
 
-/** An entity as the brains see it: tags, a ground position and a validity flag. */
-class SimpleEntity implements BrainEntity {
-  readonly components: BrainComponents = {};
-  valid = true;
-  readonly prefab: string;
-  readonly tags: ReadonlySet<string>;
-  readonly position: () => ReadonlyVector3;
-  constructor(prefab: string, tags: readonly string[], position: () => ReadonlyVector3) {
-    this.prefab = prefab;
-    this.tags = new Set(tags);
-    this.position = position;
-  }
-  hasTag(tag: string): boolean { return this.tags.has(tag); }
-  isValid(): boolean { return this.valid; }
-  getPosition(): LocoMotorPoint { const { x, y, z } = this.position(); return { x, y, z }; }
-  getPhysicsRadius(): number { return 0; }
-}
-
-/** Flower and threat entities shared by every butterfly of one world, so identity comparisons hold. */
-class ButterflyEntities {
-  private readonly flowers = new Map<string, SimpleEntity>();
-  private readonly flowerPositions = new Map<string, ReadonlyVector3>();
-  private readonly ids = new Map<BrainEntity, string>();
-  private readonly threats: SimpleEntity[] = [];
-  private threatPositions: readonly THREE.Vector3[] = [];
-
-  sync(world: ButterflyWorld): { flowers: SimpleEntity[]; threats: SimpleEntity[] } {
-    const present = new Set<string>();
-    for (const flower of world.getFlowers()) {
-      present.add(flower.id);
-      this.flowerPositions.set(flower.id, flower.position);
-      if (!this.flowers.has(flower.id)) {
-        const entity = new SimpleEntity('flower', ['flower'], () => this.flowerPositions.get(flower.id)!);
-        this.flowers.set(flower.id, entity);
-        this.ids.set(entity, flower.id);
-      }
-    }
-    for (const [id, entity] of this.flowers) {
-      if (present.has(id)) continue;
-      entity.valid = false;
-      this.flowers.delete(id);
-      this.flowerPositions.delete(id);
-      this.ids.delete(entity);
-    }
-    const positions = world.getThreatPositions();
-    this.threatPositions = positions;
-    while (this.threats.length < positions.length) {
-      const index = this.threats.length;
-      this.threats.push(new SimpleEntity('wilson', ['scarytoprey', 'player'], () => this.threatPositions[index]));
-    }
-    return { flowers: [...this.flowers.values()], threats: this.threats.slice(0, positions.length) };
-  }
-
-  idOf(entity: BrainEntity): string | undefined { return this.ids.get(entity); }
-}
-
-const entityRegistries = new WeakMap<ButterflyWorld, ButterflyEntities>();
-
-const distanceSquared = (a: LocoMotorPoint, b: LocoMotorPoint) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
-
 /** What the butterfly's fn takes from the world besides its item registry. */
 export interface ButterflyServices {
-  /** TheSim:FindEntities for other butterflies near a point. */
-  readonly getOthers?: (position: LocoMotorPoint, radius: number) => readonly ButterflyEntity[];
   readonly random?: () => number;
   /** lootdropper:DropLoot's item spawns at the butterfly's position. */
   readonly dropLoot?: (itemIds: readonly string[], position: THREE.Vector3) => void;
@@ -259,13 +189,9 @@ export class ButterflyEntity extends ItemEntity implements BrainInst, LocoMotorI
   /** The engine's animover, buffered like SG events in stategraph.lua and handled on the next stategraph update. */
   animationOver = false;
   butterflyWorld!: ButterflyWorld;
-  sharedEntities!: ButterflyEntities;
   cycle?: WorldContentSignal<WorldPhase>;
-  getOthers?: ButterflyServices['getOthers'];
   randomSource: () => number = Math.random;
   dropLootItems?: ButterflyServices['dropLoot'];
-  /** The flowers and threats of this frame's FindEntities. */
-  nearby: { flowers: SimpleEntity[]; threats: SimpleEntity[] } = { flowers: [], threats: [] };
   readonly scratch = new THREE.Vector3();
 
   constructor(definition: ButterflyDefinition, ...item: ConstructorParameters<typeof ItemEntity>) {
@@ -281,10 +207,6 @@ export class ButterflyEntity extends ItemEntity implements BrainInst, LocoMotorI
   setMotorSpeed(speed: number): void { this.motorSpeed = speed; }
 
   get state(): ButterflyState { return this.removed ? 'removed' : this.stategraph.stateName; }
-  get targetFlowerId(): string | undefined {
-    const target = this.components.pollinator?.target;
-    return target ? this.sharedEntities.idOf(target) : undefined;
-  }
 }
 
 /** butterfly.lua fn()'s creature: tags, locomotor, knownlocations, pollinator, SetStateGraph and SetBrain. */
@@ -293,13 +215,9 @@ export function MakeButterflyCreature(inst: ButterflyEntity, butterflyWorld: But
   inst.animation = services.animation ?? inst.sprite;
   inst.butterflyWorld = butterflyWorld;
   inst.cycle = butterflyWorld.getWatchWorldContent?.(WorldContentKey.Cycle, stop => inst.onRemove(stop));
-  inst.getOthers = services.getOthers;
   if (services.random) inst.randomSource = services.random;
   inst.dropLootItems = services.dropLoot;
   for (const tag of definition.tags) inst.addTag(tag);
-  let shared = entityRegistries.get(butterflyWorld);
-  if (!shared) entityRegistries.set(butterflyWorld, shared = new ButterflyEntities());
-  inst.sharedEntities = shared;
   inst.world = createBrainWorld(inst);
   // locomotor must be constructed before the stategraph.
   inst.locomotor = addComponent(inst, 'locomotor', LocoMotor);
@@ -365,7 +283,6 @@ export function UpdateButterfly(inst: ButterflyEntity, dt: number): void {
   if (inst.removed) return;
   const step = Math.max(0, Math.min(dt, 0.1));
   inst.time += step;
-  inst.nearby = inst.sharedEntities.sync(inst.butterflyWorld);
   inst.brain?.tick(inst.time);
   if (inst.locomotor.isUpdating) inst.locomotor.update(step);
   if (inst.removed) return;
@@ -389,29 +306,22 @@ function stepMotor(inst: ButterflyEntity, dt: number): void {
   inst.transform.setPosition(position.x, position.y, position.z);
 }
 
-/** The brain's TheWorld: FindEntities over this frame's flowers and threats and the butterflies near it. */
+/** The brain's TheWorld: simutil.lua FindEntity / GetClosestInstWithTag over TheSim, and isday. */
 function createBrainWorld(inst: ButterflyEntity): BrainWorld {
   const world = inst.butterflyWorld;
-  const candidates = (origin: LocoMotorPoint, radius: number): BrainEntity[] => {
-    const { flowers, threats } = inst.nearby;
-    return [...threats, ...flowers, ...(inst.getOthers?.(origin, radius) ?? []).filter(other => other !== inst && !other.removed)];
-  };
-  const matches = (entity: BrainEntity, must?: readonly string[], cant?: readonly string[], oneOf?: readonly string[]) =>
-    (must ?? []).every(tag => entity.hasTag(tag)) && !(cant ?? []).some(tag => entity.hasTag(tag))
-    && (!oneOf?.length || oneOf.some(tag => entity.hasTag(tag)));
-  const find = (from: BrainEntity, radius: number, must?: readonly string[], cant?: readonly string[], oneOf?: readonly string[]) => {
-    const origin = from.getPosition();
-    return candidates(origin, radius)
-      .filter(entity => entity !== from && entity.isValid() && matches(entity, must, cant, oneOf)
-        && distanceSquared(origin, entity.getPosition()) <= radius * radius)
-      .sort((a, b) => distanceSquared(origin, a.getPosition()) - distanceSquared(origin, b.getPosition()));
-  };
+  // Transform:GetWorldPosition of the searcher, which the brain passes as a BrainEntity.
+  const origin = new THREE.Vector3();
+  const at = (from: BrainEntity) => { const { x, y, z } = from.getPosition(); return origin.set(x, y, z); };
   return {
     // butterflybrain.lua tests isday when the behaviour tree evaluates its go-home branch.
     get isDay() { return (inst.cycle?.peek() ?? 'day') === 'day'; },
-    findEntity: (from, radius, fn, must, cant, oneOf) =>
-      find(from, radius, must, cant, oneOf).find(entity => fn === undefined || fn(entity, from)),
-    getClosestInstWithTag: (tags, from, radius) => find(from, radius, tags)[0],
+    // FindEntity skips the searcher and entities that are not visible, those in limbo among them.
+    findEntity: (from, radius, fn, must, cant, oneOf) => inst.TheSim.FindEntities(at(from), radius, must, cant, oneOf)
+      .find(entity => entity !== from && entity.IsVisible() && !entity.inlimbo && (!fn || fn(entity, from))),
+    getClosestInstWithTag: (tags, from, radius) => {
+      const [first, second] = inst.TheSim.FindEntities(at(from), radius, tags);
+      return first !== from ? first : second;
+    },
     isAboveGroundAtPoint: (x, _y, z) => {
       if (!world.constrainPosition) return true;
       const point = new THREE.Vector3(x, 0, z);
@@ -449,10 +359,7 @@ export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefab
       (prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(inst);
       if (prefab === BUTTERFLY_ID && !inst.components.inventoryitem.owner) inst.components.perishable.StopPerishing();
       if (!(inst instanceof ButterflyEntity)) return;
-      const origin = new THREE.Vector3();
-      MakeButterflyCreature(inst, world.butterflyWorld, { dropLoot, getOthers: (position, radius) =>
-        inst.TheSim.FindEntities(origin.set(position.x, position.y, position.z), radius, ['butterfly'])
-          .flatMap(other => other instanceof ButterflyEntity && other !== inst ? [other] : []) });
+      MakeButterflyCreature(inst, world.butterflyWorld, { dropLoot });
       const flicker = prefab === MOONBUTTERFLY_ID ? bindMoonButterfly(inst) : undefined;
       inst.onRemove(world.componentUpdates.register({
         OnUpdate: dt => {

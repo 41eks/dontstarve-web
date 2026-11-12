@@ -1,8 +1,10 @@
 import * as THREE from 'three';
+import { PrefabDisplayGroup, SpriteState } from '../../display/src';
+import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BUTTERFLY_DEFINITIONS, ButterflyEntity, MakeButterflyCreature, UpdateButterfly,
-  type ButterflyFlower, type ButterflyWorld,
+  type ButterflyWorld,
 } from '../../prefab/src/butterfly';
 
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -25,24 +27,30 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
     playOnce: vi.fn((name: string, callback?: () => void) => { current = name; complete = callback; }),
     get currentAnimation() { return current; },
   };
-  let threats: THREE.Vector3[] = [];
-  let flowers: ButterflyFlower[] = [];
   const scheduler = new GameTimeScheduler();
   const { cycle, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   const world: ButterflyWorld = {
     getWatchWorldContent,
-    getThreatPositions: () => threats,
-    getFlowers: () => flowers,
   };
+  // TheSim: the butterfly, its flowers and the player are the entities one manager finds.
+  const displays = new PrefabDisplayGroup(new THREE.Scene());
+  const prefabs = new PrefabEntityManager<string, PrefabInstance<SpriteState, object>>(displays, '/dst/data/anim', {});
   const entity = new ButterflyEntity(BUTTERFLY_DEFINITIONS[prefab], { itemId: prefab, count: 1 });
+  prefabs.track(entity);
   MakeButterflyCreature(entity, world, { animation, random: () => 0, dropLoot });
   const controller = entity;
-  cleanups.push(() => { entity.remove(); unbind(); scheduler.dispose(); });
+  const add = (prefab: string, tags: readonly string[], position: THREE.Vector3) => {
+    const inst = new PrefabInstance(prefab, new SpriteState({ name: 'idle', billboard: true }));
+    for (const tag of tags) inst.addTag(tag);
+    inst.setPosition(position.x, position.y, position.z); prefabs.track(inst);
+    return inst;
+  };
+  cleanups.push(() => { entity.remove(); prefabs.dispose(); displays.dispose(); unbind(); scheduler.dispose(); });
   return {
     cycle, animation, controller, world, entity,
     position: () => entity.transform.position.clone(),
-    setThreats: (value: THREE.Vector3[]) => { threats = value; },
-    setFlowers: (value: ButterflyFlower[]) => { flowers = value; },
+    addThreat: (position: THREE.Vector3) => add('wilson', ['player', 'scarytoprey'], position),
+    addFlower: (position: THREE.Vector3) => add('flower', ['flower'], position),
     setDay: (value: boolean) => { cycle.set(value ? 'day' : 'dusk'); },
     // The animover is handled on the stategraph's next update.
     complete: () => { const callback = complete; complete = undefined; callback?.(); UpdateButterfly(entity, 0); },
@@ -70,7 +78,7 @@ describe('live butterfly source behavior', () => {
 
   it('runs away from scarytoprey inside 5 units until 10 units away', () => {
     const s = setup();
-    s.setThreats([new THREE.Vector3(3, 100, 0)]);
+    s.addThreat(new THREE.Vector3(3, 0, 0));
     s.tick(4.5);
     // RunAway keeps the walking butterfly moving until it is farther than STOP_RUN_AWAY_DIST, then stops.
     expect(s.position().x).toBeLessThan(-6);
@@ -83,7 +91,7 @@ describe('live butterfly source behavior', () => {
 
   it('lands, pollinates once, takes off and does not revisit the flower', () => {
     const s = setup();
-    s.setFlowers([{ id: 'flower1', position: new THREE.Vector3(3, 0, 0) }]);
+    s.addFlower(new THREE.Vector3(3, 0, 0));
     s.tick(5);
     expect(s.controller.state).toBe('land');
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('land', expect.any(Function));
@@ -113,7 +121,7 @@ describe('live butterfly source behavior', () => {
   it('goes home to a flower at dusk and is removed only after landing', () => {
     const s = setup();
     s.setDay(false);
-    s.setFlowers([{ id: 'home', position: new THREE.Vector3(3, 0, 0) }]);
+    s.addFlower(new THREE.Vector3(3, 0, 0));
     s.tick(5);
     expect(s.controller.state).toBe('land');
     expect(s.controller.removed).toBe(false);
@@ -128,7 +136,7 @@ describe('live butterfly source behavior', () => {
 describe('moonbutterfly', () => {
   it('ignores flowers, walks at MOONBUTTERFLY_SPEED and is leashed to its home', () => {
     const s = setup('moonbutterfly');
-    s.setFlowers([{ id: 'flower', position: new THREE.Vector3(2, 0, 0) }]);
+    s.addFlower(new THREE.Vector3(2, 0, 0));
     expect(s.controller.components.pollinator).toBeUndefined();
     expect(s.controller.components.locomotor!.walkspeed).toBe(2.5);
     expect(s.controller.components.knownlocations!.GetLocation('home')).toEqual({ x: 0, y: 0, z: 0 });

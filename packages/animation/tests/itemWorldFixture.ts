@@ -38,7 +38,7 @@ export class ItemWorldFixture {
 
   constructor(scene: THREE.Scene, _camera: THREE.Camera, _renderer: unknown, archiveUrl: string, inventory: InventoryStore,
     animationBaseUrl: string, _player: THREE.Object3D,
-    butterflyWorld: ItemPrefabWorld['butterflyWorld'] = { getThreatPositions: () => [], getFlowers: () => [] },
+    butterflyWorld: ItemPrefabWorld['butterflyWorld'] = {},
     firefliesWorld: ItemPrefabWorld['firefliesWorld'] = {}, bernieWorld?: ItemPrefabWorld['bernieWorld'],
     _entities?: ItemEntityRegistry, scheduler?: GameTimeScheduler, fx?: ItemPrefabWorld['fx'], moleWorld?: ItemPrefabWorld['moleWorld'],
     worldEvents?: WorldEventEmitter, _mouseActions?: unknown, lightflierWorld?: ItemPrefabWorld['lightflierWorld'],

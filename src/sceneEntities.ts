@@ -94,8 +94,6 @@ import type { LootLaunch } from '../packages/componets/src/inventoryphysics';
 
 /** Where SpawnPrefab makes an inst before it is set down or given to its holder. */
 const ITEM_ORIGIN = new THREE.Vector3();
-/** tileManager's default ticking area is the square 10 tiles around the player's tile; this reaches its corners. */
-const TICKING_AREA_REACH = 10.5 * TILE_SIZE * Math.SQRT2;
 import { player, playerInstance } from './player';
 import {
   PlaceableBuildingPlacement,
@@ -613,11 +611,6 @@ export async function createSceneEntities(
       handEquipment: sceneInventory.handEquipment, bernieWorld: bernieWorld(worldState),
       butterflyWorld: {
         getWatchWorldContent: worldState.getWatchWorldContent,
-        getThreatPositions: () => [player.position],
-        // butterflybrain.lua GetClosestInstWithTag({"flower"}): the awake flower-tagged entities, which fill the ticking
-        // area (10 tiles around the player's tile, a square) that this radius covers.
-        getFlowers: () => prefabs.FindEntities(player.position, TICKING_AREA_REACH, ['flower'])
-          .filter(inst => inst.status.peek() === 'active').map(inst => ({ id: String(inst.entityId), position: inst.position })),
         constrainPosition: (position) => {
           const edge = initialSave.world.map.generator.options.size / 2 - 0.5;
           position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
