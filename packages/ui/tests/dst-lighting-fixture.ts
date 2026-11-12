@@ -58,7 +58,7 @@ export async function checkDstLocalLighting() {
   scene.add(tiles);
   draw();
   const instances = { near: sample(0, 2), far: sample(15, 2) };
-  owner.position.x = 12;
+  ownerInstance.setPosition(12, owner.position.y, owner.position.z);
   draw();
   const moved = { previous: sample(0, 0), current: sample(12, 0) };
   removeTorchLight();

@@ -82,7 +82,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   await page.evaluate(id => {
     const game = (window as any).heatRockGame;
     ((window as any).__findActionEntity(game.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id))?.components ?? (window as any).__prefabInstance(game.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.entityId === id))!.components).fueled.SetPercent(.75);
-    game.playerBody.position.set(-3, game.playerBody.shapes[0].radius, 3); game.player.position.set(-3, 0, 3);
+    game.playerBody.position.set(-3, game.playerBody.shapes[0].radius, 3); (window as any).__prefabInstance(game.player).setPosition(-3, 0, 3);
   }, spawned.id);
   await bag.locator('[data-item-id="reskin_tool"]').dragTo(bar.locator('[data-slot-key="hand"]'));
   await clickStone(spawned.id, 'right');

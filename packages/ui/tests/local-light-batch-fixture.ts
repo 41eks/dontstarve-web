@@ -3,8 +3,8 @@ import { DstLocalLighting } from '../../../src/dstLocalLighting';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 
 /** An entity that declares only a light, as torch and lantern light entities do. */
-const lightEntity = (light: Parameters<ReturnType<typeof createEmptyEntity>['instance']['light']['set']>[0]) => {
-  const { instance, display } = createEmptyEntity('light'); instance.light.set(light); return display.model;
+const lightEntity = (light: Parameters<ReturnType<typeof createEmptyEntity>['instance']['light']['set']>[0], x = 0, z = 0) => {
+  const { instance, display } = createEmptyEntity('light'); instance.light.set(light); instance.setPosition(x, 0, z); return display.model;
 };
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -50,8 +50,7 @@ export async function checkLocalLightBatch() {
   await settle();
   const overlapping = { ...draw(), pixel: sample() };
   for (let i = 2; i < 10_000; i++) {
-    const owner = lightEntity({ radius: 1, intensity: .5, falloff: .5, colour: [1, 1, 1] });
-    owner.position.set((i % 100) * 10, 0, Math.floor(i / 100) * 10);
+    const owner = lightEntity({ radius: 1, intensity: .5, falloff: .5, colour: [1, 1, 1] }, (i % 100) * 10, Math.floor(i / 100) * 10);
     scene.add(owner);
   }
   await settle();

@@ -19,7 +19,7 @@ export async function createEmoteFixture() {
   const { model, body, instance, display } = wortox('/dst/data/anim', new CANNON.World());
   registerPlayer(model);
   await display.artLoaded();
-  model.position.set(0, 0, 0);
+  instance.setPosition(0, 0, 0);
   body.position.set(0, 4.5, 0);
   body.canJump = true;
   const animation = instance;

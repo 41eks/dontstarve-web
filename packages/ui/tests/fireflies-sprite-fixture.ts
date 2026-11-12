@@ -33,7 +33,7 @@ export async function checkFirefliesInstances() {
   const camera = new THREE.OrthographicCamera(-16, 16, 12, -4, .1, 100);
   camera.position.set(0, 4, 25); camera.lookAt(0, 4, 0);
   const pointer = new PointerRaycaster({ camera, renderer });
-  swarms.forEach(swarm => swarm.model.quaternion.copy(camera.quaternion));
+  swarms.forEach(swarm => { swarm.model.quaternion.copy(camera.quaternion); prefabInstance(swarm.model)!.transform.markDirty(); });
   const lighting = new DstLocalLighting();
   lighting.setAmbientColour(new THREE.Vector3());
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -88,10 +88,10 @@ export async function checkFirefliesInstances() {
     handEquipment.set({ itemId: 'bugnet', EQUIPSLOTS: 'HANDS', entity: net }); await settle();
     registrations.push(mouseTargets.size);
     const positions = swarms.map(swarm => swarm.model.position.clone());
-    swarms.forEach(swarm => { swarm.model.position.x += 10000; });
+    swarms.forEach(swarm => prefabInstance(swarm.model)!.transform.offsetPosition(10000, 0, 0));
     calls.push(draw());
     const retainedOffscreen = sourceMeshes().every(mesh => mesh !== undefined);
-    swarms.forEach((swarm, index) => swarm.model.position.copy(positions[index]));
+    swarms.forEach((swarm, index) => prefabInstance(swarm.model)!.copyPosition(positions[index]));
     calls.push(draw());
     // Hide during the first one-shot, then return to the loop through its callback.
     prefabInstance(swarms[0].model)!.PushEvent('onputininventory');

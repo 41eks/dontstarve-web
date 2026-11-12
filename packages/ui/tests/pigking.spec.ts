@@ -30,7 +30,7 @@ test('places the default_pigking layout: grass and woodfloor tiles around the ki
   await start(page, errors);
   await page.evaluate(() => {
     const g = (window as any).game;
-    g.playerBody.position.set(0, g.playerBody.position.y, 40); g.player.position.set(0, 0, 40);
+    g.playerBody.position.set(0, g.playerBody.position.y, 40); (window as any).__prefabInstance(g.player).setPosition(0, 0, 40);
   });
   // The obelisks are drawn once the tickingarea, refreshed every 60 active frames, reaches the moved player.
   const layout = () => page.evaluate(() => {

@@ -15,7 +15,7 @@ export async function checkCrown() {
   registerPlayer(player);
   const sanity = playerInst(player).stats.sanity;
   await prefabDisplay(player).artLoaded();
-  player.position.set(0, 0, 0);
+  playerInst(player).setPosition(0, 0, 0);
   const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   const scene = new THREE.Scene();
@@ -106,7 +106,7 @@ export async function checkCrown() {
   await draw();
   const lit = sample(8, 8);
   const far = sample(-35, -35);
-  player.position.x = 20;
+  playerInst(player).setPosition(20, 0, 0);
   await draw();
   const moved = sample(28, 8);
   await animationEquipper.equip(null, undefined, 'head');

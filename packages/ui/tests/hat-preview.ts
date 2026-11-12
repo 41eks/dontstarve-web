@@ -10,7 +10,7 @@ import type { PrefabDisplay } from '../../display/src';
 export async function renderHatCatalog(): Promise<void> {
   const player = wortox('/dst/data/anim', new CANNON.World()).model;
   await prefabDisplay(player).artLoaded();
-  player.position.set(0, 0, 0);
+  playerInst(player).setPosition(0, 0, 0);
   const scene = new THREE.Scene();
   scene.add(player);
   const camera = new THREE.OrthographicCamera(-5.5, 5.5, 11, -1, 0.1, 100);

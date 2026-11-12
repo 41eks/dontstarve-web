@@ -68,7 +68,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const player = wortox('/dst/data/anim', new CANNON.World()).model;
   registerPlayer(player);
   await prefabDisplay(player).artLoaded();
-  player.position.set(0, 0, 0);
+  playerInst(player).setPosition(0, 0, 0);
   scene.add(player);
   const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
@@ -197,7 +197,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   click();
   await settle();
   const ignoredUnequipped = !animation.sg.isPerformingAction('CASTSPELL');
-  player.position.set(-60, 0, 40);
+  playerInst(player).setPosition(-60, 0, 40);
   advanceStars(0.05);
   const fixedPosition = star.position.distanceTo(new THREE.Vector3(...record.transform.position)) < 0.000001;
 
