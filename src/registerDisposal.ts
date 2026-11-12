@@ -141,8 +141,8 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
       // The player inst carries reader.lua's component and tag, with the world services the books' callbacks reach.
       const bookWorld: BookWorld = {
         root: view.scene, scheduler, weather, moon, getWatchWorldContent,
-        spawnFx(prefab, { getPosition }) {
-          const { x, z } = getPosition();
+        spawnFx(prefab, reader) {
+          const { x, z } = reader.getPosition();
           if (isWorldFx(prefab)) worldFx.spawn(prefab, new Vector3(x, 0, z));
         },
       };

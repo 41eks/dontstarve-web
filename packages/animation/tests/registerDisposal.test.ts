@@ -103,12 +103,20 @@ it('creates panels before scene initialization and owns subscriptions until expl
     vi.mocked(createChestInventoryPanel).mock.calls[startIndex][1].closeContainer(display.model);
     expect(chest.IsOpen()).toBe(false);
     instance.remove(); display.dispose();
-    const scene = { buildingPlacement: {} } as Parameters<typeof resources.register>[1];
+    const worldFx = { spawn: vi.fn() };
+    const scene = { buildingPlacement: {}, worldFx } as unknown as Parameters<typeof resources.register>[1];
     expect(resources.register(events, scene)).toBeUndefined();
     expect(subscribeReceived).toHaveBeenCalledOnce();
     // The player's reader.lua component, which ACTIONS.READ reaches on act.doer.
     expect(playerInstance.components.reader).toBeDefined();
     expect(playerInstance.hasTag('reader')).toBe(true);
+    // book.lua spawns the book's fx at the reader; the reader's position is read through its own method.
+    let bookWorld: { spawnFx?(prefab: string, reader: unknown): void } | undefined;
+    const book = { components: { book: { OnRead: (_reader: unknown, world: typeof bookWorld) => { bookWorld = world; return [true] as const; } } } };
+    (playerInstance.components as { reader: { Read(book: unknown): unknown } }).reader.Read(book);
+    const reader = { position: new THREE.Vector3(4, 0, 3), getPosition() { return this.position; } };
+    bookWorld!.spawnFx!('fx_book_rain', reader);
+    expect(worldFx.spawn).toHaveBeenCalledExactlyOnceWith('fx_book_rain', new THREE.Vector3(4, 0, 3));
     const received = [{ slot: { containerId: 'player:inventory', slotKey: '0' }, itemId: 'rocks', delta: 2 }];
     subscribeReceived.mock.calls[0][0](received, { x: 4, y: 0, z: 3 });
     expect(screenProjection.GetScreenPos).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(4, 0, 3));

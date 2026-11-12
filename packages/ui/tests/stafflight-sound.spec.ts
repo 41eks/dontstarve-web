@@ -28,7 +28,9 @@ test('dwarf stars decode the source WAVs and stop independent loops on removal',
     (window as unknown as { checkStarAudio: (action: string) => { state: string; restoredRemoved: boolean; stops: number[] } })
       .checkStarAudio(value), action);
   await expect.poll(async () => (await check('inspect')).state).toBe('running');
-  expect(await check('expire')).toMatchObject({ restoredRemoved: true, stops: [0, 0, 0, 0, 1, 1, 0] });
+  // Removal kills the restored star's named loop; its unnamed staff_star_create one-shot outlives the entity, as a
+  // sound played just before inst:Remove() does in wormwarning.lua.
+  expect(await check('expire')).toMatchObject({ restoredRemoved: true, stops: [0, 0, 0, 0, 1, 0, 0] });
   const disposed = await check('dispose');
   expect(disposed.stops[0]).toBe(1);
   expect(disposed.stops[2]).toBe(1);

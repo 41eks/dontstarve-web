@@ -178,6 +178,9 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(take).toHaveBeenCalledWith(false);
     expect(getMoonbaseState(model).staff.peek()).toBe(staff);
     expect(staff.isRemoved).toBe(false);
+    // inst:AddChild(item), item:RemoveFromScene(): the world save leaves the held staff to the moonbase's own record.
+    expect(staff.entityParent).toBe(prefabInstance(model));
+    expect(staff.inlimbo).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     // OverrideItemSkinSymbol("swap_staffs", skin_build, "yellowstaff", item.GUID, "staffs")
     expect(staffSymbol()).toEqual([{ archive: 'dynamic/starstaff_crystal.zip', symbol: smallHash('yellowstaff') },
@@ -198,6 +201,8 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(components(restored).repairable).toBeUndefined();
     const held = getMoonbaseState(restored).staff.peek()!;
     expect(held.snapshot()).toEqual(staff.snapshot());
+    expect(held.entityParent).toBe(prefabInstance(restored));
+    expect(held.inlimbo).toBe(true);
     const pickable = components(restored).pickable;
     expect(pickable!.pick({ giveItem: () => true, giveEntity: () => false })).toBe(false);
     expect(getMoonbaseState(restored).staff.peek()).toBe(held);
@@ -205,6 +210,9 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(pickable!.pick({ giveItem: vi.fn(), giveEntity })).toBe(true);
     expect(giveEntity).toHaveBeenCalledWith(held, restored.position);
     expect(getMoonbaseState(restored).staff.peek()).toBeUndefined();
+    // RemoveChild and ReturnToScene: a picker that does not hold it leaves it in the world.
+    expect(held.entityParent).toBeUndefined();
+    expect(held.inlimbo).toBe(false);
     expect(held.snapshot()).toEqual(staff.snapshot());
     expect(components(restored).trader!.isEnabled).toBe(true);
     expect(placement.exportRecords()[1].record.components.moonbase).toBeUndefined();

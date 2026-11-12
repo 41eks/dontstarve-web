@@ -221,6 +221,7 @@ function OnStaffGiven(inst: MoonbaseInstance, _giver: unknown, item: TradeItem):
   const staff = item as ItemEntity;
   const { pickable, trader } = inst.components;
   inst._staffinst = staff;
+  HoldStaff(inst, staff);
   OverrideStaffSymbol(inst);
   trader.Disable();
   pickable.SetUp(staff.prefab, 1000000);
@@ -232,13 +233,29 @@ function OnStaffGiven(inst: MoonbaseInstance, _giver: unknown, item: TradeItem):
 }
 
 function OnStaffTaken(inst: MoonbaseInstance): void {
+  const staff = inst._staffinst;
   inst._staffinst = undefined;
+  if (staff) {
+    // inst:RemoveChild(staff), staff:ReturnToScene(); a picker's inventory has already taken it into limbo as its owner.
+    inst.RemoveChild(staff);
+    if (!staff.components.inventoryitem.owner) staff.ReturnToScene();
+  }
   OverrideStaffSymbol(inst);
   inst.components.pickable.canInteractWith = false;
   DoPlaySound(inst, ITEM_SOUND);
   inst.effects.hideCold();
   UpdateTrading(inst);
   if (!inst._loading) ToggleMoonCharge(inst);
+}
+
+/**
+ * inst:AddChild(staff), staff.Transform:SetPosition(0, 0, 0), staff:RemoveFromScene(): the held staff is the moonbase's
+ * child in limbo, so the world save leaves it to the moonbase's own record.
+ */
+function HoldStaff(inst: MoonbaseInstance, staff: ItemEntity): void {
+  inst.AddChild(staff);
+  staff.copyPosition(inst.position);
+  staff.RemoveFromScene();
 }
 
 function CreateStaff(inst: MoonbaseInstance, state: InventoryStack): ItemEntity {
@@ -278,6 +295,7 @@ function OnTimerDone(inst: MoonbaseInstance, { name }: EntityEventData['timerdon
     staff.components.finiteuses.setMaxUses(50);
     DestroyStaff(inst, old);
     inst._staffinst = staff;
+    HoldStaff(inst, staff);
     OverrideStaffSymbol(inst);
     pickable.SetUp(MORPHED_STAFF, 1000000);
     pickable.pause();
