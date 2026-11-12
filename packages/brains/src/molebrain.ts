@@ -7,7 +7,7 @@ import { RunAway } from './behaviours/runaway';
 import { Wander } from './behaviours/wander';
 import type { BrainComponents, BrainEntity, BrainInst } from './types';
 import { CreateBufferedAction } from './bufferedaction';
-import { MakeMoleHillAction, MolePeekAction, StealMoleBaitAction, isMoleBaitTarget } from '../../stategraphs/src/moleactions';
+import { IsMoleBait, MakeMoleHillAction, MolePeekAction, StealMoleBaitAction, type MoleBaitTarget } from '../../stategraphs/src/moleactions';
 
 export interface MoleBrainInst extends BrainInst {
   /** ACTIONS.MAKEMOLEHILL's SpawnPrefab("molehill"), through the moles' world. */
@@ -25,6 +25,14 @@ export interface MoleBrainInst extends BrainInst {
   readonly bornAt: number;
   readonly world: BrainInst['world'] & { readonly isAcidRaining?: boolean };
 }
+/** SelectedTargetTimeout */
+function SelectedTargetTimeout(target: MoleBaitTarget): void { target.selectedasmoletarget = undefined; }
+/** target:IsOnValidGround(), as the moles' map answers it. */
+function IsOnValidGround(inst: MoleBrainInst, target: BrainEntity): boolean {
+  const { x, y, z } = target.getPosition();
+  return inst.world.isAboveGroundAtPoint(x, y, z);
+}
+
 const isFull = (inst: MoleBrainInst) => inst.components.inventory?.IsFull() ?? false;
 
 /** MakeNewHomeAction's FindWalkableOffset(pos, random angle, math.random(5, 15), 120): the first walkable point around. */
@@ -55,9 +63,13 @@ export class MoleBrain extends Brain {
     };
     const takebait = () => {
       if (inst.getTime() - inst.bornAt < 3 || inst.sg?.hasStateTag('busy') || shouldMakeMoleHome(inst) || isFull(inst)) return;
-      const target = inst.world.findEntity(inst, 20 * unit, isMoleBaitTarget, ['molebait'], ['outofreach', 'INLIMBO', 'fire']);
-      // Source checks reservation after FindEntity, rather than searching for the next bait.
-      if (target && isMoleBaitTarget(target) && target.isOnValidGround() && target.reserve()) return StealMoleBaitAction(inst, target, unit);
+      const target = inst.world.findEntity(inst, 20 * unit, IsMoleBait, ['molebait'], ['outofreach', 'INLIMBO', 'fire']);
+      // Source checks the mark after FindEntity, rather than searching for the next bait.
+      if (target && IsMoleBait(target) && !target.selectedasmoletarget && IsOnValidGround(inst, target)) {
+        target.selectedasmoletarget = true;
+        target.DoTaskInTime(5, () => SelectedTargetTimeout(target));
+        return StealMoleBaitAction(inst, target, unit);
+      }
       return;
     };
     this.bt = new BT(inst, new PriorityNode([

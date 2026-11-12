@@ -36,7 +36,6 @@ export const MOLE_SOUNDS = ['death', 'emerge', 'emerge_voice', 'hurt', 'move', '
 export interface MoleWorld extends Pick<WorldContentContext, 'getWatchWorldContent'> {
   itemSpecs?: Readonly<Record<string, Pick<import('@dontstarve-web/inventory').InventoryItemSpec, 'maxStack'>>>;
   cameraHeading: ReadonlySignal<number>;
-  getEntities(): readonly BrainEntity[];
   getMoles(): readonly Mole[];
   isWalkable(position: Vector3): boolean;
   /** TheWorld.Pathfinder. */
@@ -222,18 +221,19 @@ export function BindMoleWorld(inst: Mole, services: MoleWorld, lengths: Readonly
   const cycle = getWatchWorldContent(WorldContentKey.Cycle, stop => inst.cleanups.push(stop));
   const { scheduler } = cycle;
   inst.moleScheduler = scheduler; inst.bornAt = inst.getTime();
+  // Transform:GetWorldPosition of the searcher, which the brain passes as a BrainEntity.
+  const origin = new Vector3();
+  const at = (from: BrainEntity) => { const { x, y, z } = from.getPosition(); return origin.set(x, y, z); };
   inst.world = {
     get isDay() { return cycle.peek() === 'day'; },
     isAboveGroundAtPoint: (x, y, z) => services.isWalkable(new Vector3(x, y, z)),
-    // simutil.lua FindEntity skips entities that are not visible, those in limbo among them.
-    findEntity: (from, radius, predicate, must = [], cant = [], one = []) => {
-      const origin = from.getPosition();
-      return services.getEntities().filter(e => e !== from && e.isValid() && !e.hasTag('INLIMBO') && must.every(t => e.hasTag(t)) && !cant.some(t => e.hasTag(t)) &&
-        (!one.length || one.some(t => e.hasTag(t))) && distanceSquared(origin, e.getPosition()) <= radius ** 2)
-        .sort((a, b) => distanceSquared(origin, a.getPosition()) - distanceSquared(origin, b.getPosition()))
-        .find(e => !predicate || predicate(e, from));
+    // simutil.lua FindEntity over TheSim: it skips the searcher and entities that are not visible, those in limbo among them.
+    findEntity: (from, radius, fn, must, cant, oneOf) => inst.TheSim.FindEntities(at(from), radius, must, cant, oneOf)
+      .find(entity => entity !== from && entity.IsVisible() && !entity.inlimbo && (!fn || fn(entity, from))),
+    getClosestInstWithTag: (tags, from, radius) => {
+      const [first, second] = inst.TheSim.FindEntities(at(from), radius, tags);
+      return first !== from ? first : second;
     },
-    getClosestInstWithTag: (tags, from, radius) => inst.world.findEntity(from, radius, undefined, tags),
   };
   addComponent(inst, 'inventory', Inventory, 3, services.dropItem, services.itemSpecs).OnLoad(inst.saved?.items ?? [], services.spawnItem);
   inst.locomotor = addComponent(inst, 'locomotor', LocoMotor, { arriveDistance: .15 * WORLD_SCALE, pathfinder: services.pathfinder, pathcaps: { ignorecreep: true, ignorebridges: true } });
@@ -349,7 +349,6 @@ function MoleOnSave(inst: Mole): MoleSave {
     items: inst.components.inventory?.OnSave() ?? inst.saved?.items ?? [] };
 }
 
-const distanceSquared = (a: { x: number; z: number }, b: { x: number; z: number }) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
 
 /** The inventory item's side of mole.lua: tags, the ELEMENTAL eater and perishing while held. */
 export function configureMoleEntity(entity: ItemEntity): void {

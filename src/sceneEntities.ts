@@ -4,7 +4,6 @@ import { lightflierFlowerPrefabs } from '../packages/prefab/src/lightflier_flowe
 import { LightFlierHabitat } from '../packages/prefab/src/lightflier';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
 import { createMoleHabitat, molehillPrefabs, type MolehillInstance } from '../packages/prefab/src/molehill';
-import { MoleBait } from '../packages/prefab/src/molebait';
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
@@ -458,7 +457,7 @@ export async function createSceneEntities(
     try { registry.dispose(); }
     finally {
       sceneInventory.entities.bindSpawner(undefined);
-      Managers['molehill'].disposeBaits(); prefabDisplays.dispose(); prefabFire.dispose(); itemSprites.dispose(); dynamicMusic?.dispose();
+      prefabDisplays.dispose(); prefabFire.dispose(); itemSprites.dispose(); dynamicMusic?.dispose();
       if (!inventory) sceneInventory.dispose();
     }
   };
@@ -536,8 +535,6 @@ export async function createSceneEntities(
   }
 
   function registerMolehills(registry: EntityRegistry, prefabId: 'molehill', worldState: SceneWorldState) {
-    const moleScheduler = scheduler ?? worldState.scheduler;
-    const moleBaits = new Map<string, MoleBait>();
     const moleWalkable = (point: THREE.Vector3) => {
       const radius = .5 * WORLD_SCALE;
       const edge = initialSave.world.map.generator.options.size / 2 - radius;
@@ -558,20 +555,12 @@ export async function createSceneEntities(
       // The spawned mole is set down where it comes out, as SpawnPrefab and Transform:SetPosition do.
       showMole: (entity, position) => { entity.setPosition(position.x, 0, position.z); },
       dropLoot: (itemId, position) => { groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position); },
-      getEntities: () => {
-        for (const entity of sceneInventory.entities.values()) if (entity.components.bait && !moleBaits.has(entity.id))
-          moleBaits.set(entity.id, new MoleBait(entity, moleScheduler, moleWalkable));
-        for (const [id, bait] of moleBaits) if (bait.entity.isRemoved) { bait.dispose(); moleBaits.delete(id); }
-        return [...moleBaits.values(), ...habitat.getMoles(),
-          { prefab: 'wilson', components: {}, isValid: () => true, hasTag: (tag: string) => tag === 'scarytoprey',
-            getPosition: () => player.position, getPhysicsRadius: () => .5 * WORLD_SCALE }];
-      },
       spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) as MolehillInstance,
       fx: Managers['world_fx'],
     });
     prefabs.register(molehillPrefabs(habitat));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
-    return { habitat, disposeBaits: () => { for (const bait of moleBaits.values()) bait.dispose(); moleBaits.clear(); } };
+    return { habitat };
   }
 
   /**
