@@ -8,7 +8,7 @@ import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './
 import { WorldContentKey, watchSignal, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { BlowInWind } from '../../componets/src/blowinwind';
-import { DEFAULT_RUN_SPEED, DEFAULT_WALK_SPEED, LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
+import { DEFAULT_RUN_SPEED, DEFAULT_WALK_SPEED, LocoMotor } from '../../componets/src/locomotor';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldWind, WorldWindChange } from '../../componets/src/worldwind';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
@@ -93,16 +93,10 @@ export class TumbleweedInstance extends PrefabInstance {
     this.BindScheduler(world.scheduler);
     const random = this.random = world.random ?? Math.random;
     this.sprite.setFacingRotation(0, 4);
-    const motor: LocoMotorInst = {
-      isValid: () => !this.isRemoved, getPosition: () => ({ x: this.body.position.x, y: 0, z: this.body.position.z }),
-      getPhysicsRadius: () => WORLD_SCALE, setRotation: degrees => this.setRotationDegrees(degrees),
-      GetAngleToPoint: () => this.rotation,
-      setMotorSpeed: speed => this.setMotorSpeed(speed),
-      components: {}, PushEvent: () => undefined, PushBufferedAction: () => undefined,
-    };
-    this.locomotor = new LocoMotor(motor);
+    // AddComponent("locomotor") and AddComponent("blowinwind") on the inst itself.
+    this.locomotor = new LocoMotor(this);
     this.locomotor.walkspeed = DEFAULT_WALK_SPEED * WORLD_SCALE; this.locomotor.runspeed = DEFAULT_RUN_SPEED * WORLD_SCALE;
-    this.blowinwind = new BlowInWind(motor, (DEFAULT_RUN_SPEED + DEFAULT_WALK_SPEED) / 2 * WORLD_SCALE, this.locomotor, random);
+    this.blowinwind = new BlowInWind(this, (DEFAULT_RUN_SPEED + DEFAULT_WALK_SPEED) / 2 * WORLD_SCALE, this.locomotor, random);
     this.loot = rollTumbleweedLoot(random);
     // AddComponent("pickable"): onpickedfn = onpickup, remove_when_picked, canbepicked = true.
     const pickable = addComponent(this, 'pickable', Pickable, undefined, undefined, 1, () => { this.onpickup(); }, undefined, undefined,
@@ -138,12 +132,14 @@ export class TumbleweedInstance extends PrefabInstance {
     this.physics.Teleport();
   }
 
-  private setRotationDegrees(degrees: number): void {
-    this.setRotation(degrees);
+  /** Transform:SetRotation on a four-faced inst: the facing follows the heading. */
+  override setRotation(degrees: number): void {
+    super.setRotation(degrees);
     this.sprite.setFacingRotation(degrees, 4);
   }
 
-  private setMotorSpeed(speed: number): void {
+  /** Physics:SetMotorVel: the wind drives the body forward along the heading. */
+  setMotorSpeed(speed: number): void {
     const radians = this.rotation * DEGREES;
     this.body.velocity.x = Math.cos(radians) * speed;
     this.body.velocity.z = -Math.sin(radians) * speed;

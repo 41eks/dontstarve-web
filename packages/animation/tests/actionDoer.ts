@@ -17,6 +17,5 @@ export function actionDoer(components: Partial<PickupDoer['components']> = {}): 
     removeTag: tag => { tags.delete(tag); },
     PushEvent: () => {},
     getPosition: () => position,
-    GetPosition: () => position,
   };
 }

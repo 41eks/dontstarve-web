@@ -35,7 +35,7 @@ export function activeItemUse(world: object, stategraph: WilsonStateGraph,
     PushAction(_action: unknown, arrive: () => void) { arrival = arrive; } } as unknown as PlayerLocomotor;
   const position = (world as ActionWorldContext).player.position;
   const doer = { components: { inventory }, hasTag: (tag: string) => tag === 'player', position,
-    getPosition: () => position, GetPosition: () => position, PushEvent() {} };
+    getPosition: () => position, PushEvent() {} };
   const controller = new PlayerController(world as ActionWorldContext, stategraph, locomotor, createSignal(null),
     doer as never, isManualMovement);
   return {

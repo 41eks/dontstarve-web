@@ -89,7 +89,7 @@ it('starves an entire stack into independently rolled loot after removing the bu
     expect((await executeDebugCommand('c_give("butterfly",3)', inventory)).ok).toBe(true);
     const entity = inventory.getEntity(inventorySlotAddress(0))!;
     const events: string[] = [];
-    inventory.bindActor({ hasTag: tag => tag === 'player', GetPosition: () => new THREE.Vector3(),
+    inventory.bindActor({ hasTag: tag => tag === 'player', getPosition: () => new THREE.Vector3(),
       PushEvent: name => events.push(name) });
     entity.ListenForEvent('onremove', () => events.push('removed'));
     vi.spyOn(Math, 'random').mockReturnValueOnce(0).mockReturnValueOnce(.5).mockReturnValueOnce(.5).mockReturnValue(.5);

@@ -1,7 +1,8 @@
 import { withEntity } from './entityFixture';
+import { pickupDoer } from './playerDoer';
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
-import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
+import { performPickupAction } from '../../stategraphs/src/pickup';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { ItemWorldFixture, itemAt } from './itemWorldFixture';
@@ -150,7 +151,7 @@ describe('torch prefab burning lifecycle', () => {
       pushed.push({ name, slotEmpty: store.getEntity(hand) == null });
       if (name === 'itemranout') OnItemRanOut(store, data);
     } };
-    store.bindActor({ ...owner, hasTag: () => false, GetPosition: () => ({ x: 0, y: 0, z: 0 }) });
+    store.bindActor({ ...owner, hasTag: () => false, getPosition: () => new THREE.Vector3() });
     try {
       store.add('torch', 2);
       store.applySlotChanges([{ slot: bag, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 }]);
@@ -214,7 +215,7 @@ describe('torch prefab burning lifecycle', () => {
       expect(record.components.torch).toEqual({ lit: true });
       vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
       world.advance(0.125);
-      performPickupAction(itemAt(model), createPickupDoer(player, store));
+      performPickupAction(itemAt(model), pickupDoer(player, store));
       expect(manager.exportRecords()).toEqual([]);
       expect(store.getEntity(hand)).toBe(entity);
       expect(burning(entity)).toBe(true);
@@ -244,7 +245,7 @@ describe('torch prefab burning lifecycle', () => {
         new THREE.Vector3(4, 0, 6));
       const entity = itemAt(model) as TorchInst;
       // inventoryitem:OnPutInInventory(owner): the owner's SoundEmitter is at the player.
-      const doer = { hasTag: () => false, GetPosition: () => owner, PushEvent() {} };
+      const doer = { hasTag: () => false, getPosition: () => owner, PushEvent() {} };
       const saved = () => {
         const { components } = items.exportRecords().find(record => record.id === 'torch-lit')!;
         return { remainingFuel: components.stack!.remainingFuel, torchLit: components.torch?.lit ?? false };

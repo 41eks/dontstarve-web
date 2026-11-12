@@ -232,7 +232,7 @@ function OnPutInInventory(inst: TorchInst, owner: InventoryActor): void {
   inst.sprite.playOnce('idle');
   if (inst.fires) {
     RemoveFires(inst);
-    PlayExtinguishSound(inst, owner.GetPosition() as ReadonlyVector3, false, false);
+    PlayExtinguishSound(inst, owner.getPosition(), false, false);
   }
   inst.components.burnable!.Extinguish();
 }

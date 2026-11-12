@@ -1,4 +1,5 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { pickupDoer } from './playerDoer';
 import { withEntity } from './entityFixture';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -8,7 +9,6 @@ import { PERISH_FAST } from '../../componets/src/perishable';
 import { getFoodEffects } from '../../prefab/src/food';
 import { LANTERN_FUEL } from '../../prefab/src/lantern';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
-import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { createPickupInventory } from './pickupFixture';
 import { createPerishWorld } from './perishWorldFixture';
@@ -71,7 +71,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
     expect(ison()).toBe(true);
     lantern.components.equippable!.Unequip(owner);
     // inventoryitem:SetOnPutInInventoryFn(turnoff).
-    lantern.components.inventoryitem.OnPutInInventory({ hasTag: () => true, GetPosition: () => new THREE.Vector3(), PushEvent() {} });
+    lantern.components.inventoryitem.OnPutInInventory({ hasTag: () => true, getPosition: () => new THREE.Vector3(), PushEvent() {} });
     lantern.setRemainingFuel(LANTERN_FUEL - 1);
     const clamp = new ItemEntity({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(clamp);
     fueled.TakeFuelItem(clamp);
@@ -90,7 +90,7 @@ it('buffers one fuel item until frame six, preserves it on cancellation and retu
   lantern.setRemainingFuel(0);
   inventory.transfer(inventorySlotAddress(1), cursor, 2);
   const original = inventory.getEntity(cursor)!;
-  const doer = createPickupDoer(withEntity(new THREE.Group(), 'wilson'), inventory);
+  const doer = pickupDoer(withEntity(new THREE.Group(), 'wilson'), inventory);
   const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
   const request = () => graph.pushBufferedAction(createBufferedAction('ADDFUEL', { doer, target: lantern, invobject: original }));
   try {

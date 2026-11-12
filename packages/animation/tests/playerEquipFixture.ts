@@ -1,4 +1,5 @@
 import { ItemEntityRegistry, type InventoryStore, type ItemEntity } from '../../inventory/src';
+import { Vector3 } from 'three';
 import type { EquipmentOwner } from '../../signals/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
@@ -27,7 +28,7 @@ export function playerEquipmentOwner(animation: Pick<PlayerInstance, 'equipmentP
 /** Binds an inventory's actor to the player owner, so its committed equips draw on the player. */
 export function bindPlayerEquipment(inventory: InventoryStore, animation: Pick<PlayerInstance, 'equipmentPresentation' | 'sg'>,
   base: Record<string, unknown> = {}): EquipmentOwner {
-  const owner = playerEquipmentOwner(animation, { hasTag: () => false, GetPosition: () => ({ x: 0, y: 0, z: 0 }), ...base });
+  const owner = playerEquipmentOwner(animation, { hasTag: () => false, getPosition: () => new Vector3(), ...base });
   inventory.bindActor(owner as unknown as Parameters<InventoryStore['bindActor']>[0]);
   return owner;
 }

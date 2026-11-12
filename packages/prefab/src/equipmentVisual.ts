@@ -123,17 +123,23 @@ export function createEquipmentViews(owner: EquipmentOwner, presentation: Equipm
     slot.equip();
     let holds = 0, closed = false;
     const settle = () => { if (closed && holds === 0) slot.unequip(); };
-    const view: EquipmentVisualOwner = Object.assign(Object.create(owner) as EquipmentOwner, {
+    // The owner's own members act on the owner itself; only AnimState is this inst's slot of its sprite.
+    const view: EquipmentVisualOwner = {
+      ListenForEvent: owner.ListenForEvent && ((name, listener) => owner.ListenForEvent!(name, listener)),
+      PushEvent: (name, data) => owner.PushEvent(name, data),
+      getPosition: owner.getPosition && (() => owner.getPosition!()),
+      get sg() { return owner.sg; },
+      get SoundEmitter() { return owner.SoundEmitter; },
+      get components() { return owner.components; },
       AnimState: slot.AnimState,
       presentation,
-      OpenEquipmentView: undefined,
       Retain() {
         holds++;
         let released = false;
         return () => { if (released) return; released = true; holds--; settle(); };
       },
       close() { if (closed) return; closed = true; settle(); },
-    });
+    };
     return view;
   };
 }

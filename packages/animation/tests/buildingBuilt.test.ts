@@ -130,7 +130,7 @@ it('gives placed and restored chests a map icon at their foot and releases it wi
     await settle();
     expect(icons().map(({ position }) => [position.x, position.z])).toEqual([[3, 4], [-12, 24]]);
     expect(prefabInstance(restored)!.hasTag('chest')).toBe(true);
-    expect(prefabInstance(world.scene.children[0])!.deconstructionTarget!.removeOne()).toBe(true);
+    prefabInstance(world.scene.children[0])!.remove();
     await settle();
     expect(built.enabled).toBe(false);
     expect(icons().map(({ position }) => position)).toEqual([restored.position]);

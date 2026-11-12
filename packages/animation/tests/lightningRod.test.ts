@@ -12,7 +12,7 @@ import type { SaveDocument } from '../../../src/save/types';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { prefabInstance, type EntityQuery } from '../../prefab/src/prefabInstance';
-import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
 import { managedBuildings } from './managedBuildings';
 
@@ -109,7 +109,7 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
   try {
     await placement.spawn(LIGHTNING_ROD_ID);
     const [{ display }] = workTargets('HAMMER');
-    expect(reskinEntity(prefabInstance(display.model)!.reskinTarget!)).toBe(true);
+    expect(reskinEntity(reskinTargetOf(prefabInstance(display.model))!)).toBe(true);
     const model = display.model;
     scene.add(model);
     await strikeAt(placement, scene, fx, model.position);

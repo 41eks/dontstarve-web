@@ -4,14 +4,17 @@ import { batch } from '../../signals/src';
 import type { InventoryItemSpec, InventoryStack } from './types';
 import type { Vector3 } from 'three';
 
+/** The creature whose inventory this is: its items' owner. */
+export interface CreatureInventoryInst { readonly id: string; getPosition(): Vector3; PushEvent(name: string, data: unknown): void }
+
 /** inventory.lua's creature inventory, backed by authoritative inventory slots. */
 export class CreatureInventory {
   private readonly slots: InventorySlot[];
-  private readonly inst: { id: string; getPosition(): Vector3 };
+  private readonly inst: CreatureInventoryInst;
   private readonly drop: (item: ItemEntity, position: Vector3) => void;
   /** SpawnPrefab for onperishreplacement; without it a perished item stays in its slot. */
   private readonly spawn?: (state: InventoryStack) => ItemEntity;
-  constructor(inst: { id: string; getPosition(): Vector3 }, maxslots: number, drop: (item: ItemEntity, position: Vector3) => void, itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {}, spawn?: (state: InventoryStack) => ItemEntity) {
+  constructor(inst: CreatureInventoryInst, maxslots: number, drop: (item: ItemEntity, position: Vector3) => void, itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {}, spawn?: (state: InventoryStack) => ItemEntity) {
     this.inst = inst; this.drop = drop; this.spawn = spawn;
     this.slots = Array.from({ length: maxslots }, () => new InventorySlot(null, itemSpecs));
   }
@@ -62,7 +65,8 @@ export class CreatureInventory {
         this.PutInSlot(index, replacement);
         return true;
       },
-      PushEvent: () => undefined,
+      // owner:PushEvent reaches the creature holding the item.
+      PushEvent: (name, data) => this.inst.PushEvent(name, data),
     };
     slot.setEntity(item); item.components.inventoryitem.owner = owner;
     item.PushEvent('onputininventory', owner);

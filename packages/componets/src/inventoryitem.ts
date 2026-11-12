@@ -7,7 +7,7 @@ export interface InventoryActor {
   hasTag(tag: string): boolean;
   addTag?(tag: string): void;
   removeTag?(tag: string): void;
-  GetPosition(): ItemPosition;
+  getPosition(): import('three').Vector3;
   PushEvent(name: string, data: unknown): void;
 }
 export interface InventoryItemInstance {

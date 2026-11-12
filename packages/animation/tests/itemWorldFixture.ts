@@ -9,8 +9,6 @@ import { GROUND_ART_DEFINITIONS, GroundItemAssets } from '../../prefab/src/groun
 import type { GroundItemDefinition, GroundSpawnOptions, ItemPrefabWorld } from '../../prefab/src/groundPrefab';
 import { flingLoot, itemPrefabs, spawnGroundStack } from '../../prefab/src/itemPrefabs';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { instanceReskinTarget } from '../../prefab/src/reskin_tool';
-import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import type { PrefabSaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldEventEmitter } from '../../prefab/src/worldContext';
 import { ITEM_PREFAB_IDS } from '../../../src/prefabDefinitions';
@@ -154,10 +152,9 @@ export class ItemWorldFixture {
     };
   }
 
-  /** The items lying in the world, in spawn order, as the reskin tool's target views. */
-  get reskinTargets() {
-    return [...this.inventory.entities.values()].filter(inst => !inst.isRemoved && !inst.inlimbo && this.prefabs.get(inst.id) === inst as unknown)
-      .map(inst => instanceReskinTarget(inst as unknown as PrefabInstance) as ReskinTarget & { readonly model: THREE.Group });
+  /** The items lying in the world, in spawn order: the entities the reskin tool casts on. */
+  get reskinTargets(): ItemEntity[] {
+    return [...this.inventory.entities.values()].filter(inst => !inst.isRemoved && !inst.inlimbo && this.prefabs.get(inst.id) === inst as unknown);
   }
 
   *iteratePrefabPositions(prefab: string): IterableIterator<ReadonlyVector3> {

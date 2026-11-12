@@ -218,7 +218,7 @@ function fn(world: BeefaloWorld): BeefaloInstance {
     world.constrainPosition(position);
     world.spawnPoop(position);
     return { spawned: true };
-  }, random, { getPosition: () => inst.getPosition(), getPrefabPositions: () => world.getPoopPositions() });
+  }, random, () => world.getPoopPositions());
   periodicspawner.SetRandomTimes(40, 60);
   periodicspawner.SetDensityInRange(BEEFALO_BEHAVIOR.poopDensityRadius, 2);
   periodicspawner.SetMinimumSpacing(BEEFALO_BEHAVIOR.poopSpacing);

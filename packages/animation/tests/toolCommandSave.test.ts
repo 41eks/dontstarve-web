@@ -1,4 +1,5 @@
 import { withEntity } from './entityFixture';
+import { pickupDoer } from './playerDoer';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -13,7 +14,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { performPickupAction, createPickupDoer } from '../../stategraphs/src/pickup';
+import { performPickupAction } from '../../stategraphs/src/pickup';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -48,7 +49,7 @@ it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, po
     expect(skinId).toBeDefined();
     const hand = equipmentSlotAddress('hand');
     const pickup = () => performPickupAction(itemAt(manager.reskinTargets.find(target => target.id === golden.id)!
-      .model), createPickupDoer(player, inventory));
+      .transform.model), pickupDoer(player, inventory));
     expect(pickup()).toBe(true);
     expect(inventory.getEntity(hand)).toBe(golden);
     expect(await manager.drop({ ...SAVE_CATALOG.items.goldenpickaxe, ...golden.snapshot() }, player.position,

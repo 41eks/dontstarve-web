@@ -147,7 +147,7 @@ describe('caged birds', () => {
   });
 
   it('leaves a perished item in a creature inventory that was given no spawner', () => {
-    const inventory = new Inventory({ id: 'mole', getPosition: () => new THREE.Vector3() }, 1, vi.fn());
+    const inventory = new Inventory({ id: 'mole', getPosition: () => new THREE.Vector3(), PushEvent: vi.fn() }, 1, vi.fn());
     const meat = new ItemEntity({ itemId: 'smallmeat', count: 1 });
     inventory.GiveItem(meat);
     expect(meat.components.inventoryitem.owner!.replace('spoiled_food')).toBe(false);

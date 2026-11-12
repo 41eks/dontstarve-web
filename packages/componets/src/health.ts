@@ -33,7 +33,7 @@ function clamp(value: number, maxhealth: number): number {
 export interface HealthInst {
   hasTag?(tag: string): boolean;
   PushEvent?(name: string, data: unknown): void;
-  readonly sg?: { hasStateTag?(tag: string): boolean; HasStateTag?(tag: string): boolean };
+  readonly sg?: { hasStateTag(tag: string): boolean };
   readonly is_teleporting?: boolean;
 }
 
@@ -87,8 +87,7 @@ export class Health {
     this.inst.PushEvent?.('invincibletoggle', { invincible: value });
   }
   IsInvincible(): boolean {
-    return this.invincible || (this.inst.sg?.hasStateTag?.('temp_invincible')
-      ?? this.inst.sg?.HasStateTag?.('temp_invincible') ?? false);
+    return this.invincible || (this.inst.sg?.hasStateTag('temp_invincible') ?? false);
   }
   SetPenalty(penalty: number): void {
     this.penaltyState.set(Math.max(0, Math.min(finite(penalty, 'penalty'), MAXIMUM_HEALTH_PENALTY)));

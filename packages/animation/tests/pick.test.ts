@@ -72,8 +72,8 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   const product = { isRemoved: false };
   const inventory = { GetNumSlots: () => 15, EquipHasTag: () => false, GiveItem: vi.fn(() => true),
     entities: { create: vi.fn(() => product), destroy: vi.fn() } };
-  const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), GetPosition: () => player.position,
-    getPosition: () => player.position, components: { inventory } };
+  const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
+    components: { inventory } };
   let manual = false;
   const controller = new PlayerController(world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), doer as never, () => manual);
   const click = () => {

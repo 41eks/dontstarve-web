@@ -2,7 +2,7 @@ import { wilsonStateInst } from './wilsonStateInst';
 import { withEntity } from './entityFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
-import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
+import { performPickupAction } from '../../stategraphs/src/pickup';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -13,7 +13,7 @@ import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { Locomotor } from '../../prefab/src/locomotor';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type * as CANNON from 'cannon-es';
-import { playerDoer } from './playerDoer';
+import { playerDoer, pickupDoer } from './playerDoer';
 import { PlaySound } from '../../prefab/src/sound';
 import { ItemWorldFixture, itemAt } from './itemWorldFixture';
 import { InventoryStore, InventorySlot, ItemEntity, inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
@@ -144,11 +144,11 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     manager.update(8, new THREE.Quaternion());
     const playingSound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
     const soundCalls = vi.mocked(PlaySound).mock.calls.length;
-    const target = manager.reskinTargets.find(({ prefabId }) => prefabId === 'phonograph')!;
+    const target = manager.reskinTargets.find(({ prefab }) => prefab === 'phonograph')!;
     // Playback advances during the asynchronous preparation.
     manager.update(2, new THREE.Quaternion());
     expect(reskinEntity(target)).toBe(true);
-    model = manager.reskinTargets.find(({ prefabId }) => prefabId === 'phonograph')!.model as THREE.Group;
+    model = manager.reskinTargets.find(({ prefab }) => prefab === 'phonograph')!.transform.model as THREE.Group;
     expect(lookupPrefabInstance(model)?.entityId).toBe('phonograph:test'); expect(model.position).toEqual(position);
     expect(prefabInstance(model)!.components.phonograph!.snapshot()).toEqual({ phonographRecord: 'record_creepyforest', playbackRemaining: 54 });
     expect(PlaySound).toHaveBeenCalledTimes(soundCalls);
@@ -176,7 +176,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(give(model, plain, true)).toBe(false);
     expect(manager.exportRecords()).toEqual(before);
     vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
-    performPickupAction(itemAt(model), createPickupDoer(player, inventory));
+    performPickupAction(itemAt(model), pickupDoer(player, inventory));
     expect(prefabInstance(model)!.components.phonograph!.isPlaying).toBe(false);
     const item = inventory.get(from)!;
     expect(item.phonographRecord).toBe('record_creepyforest');
@@ -191,7 +191,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     skinned = loaded.components.inventory!.GetItems()[0];
     expect(skinned.snapshot()).toEqual(contents);
     expect(await manager.drop({ ...spec, ...item, entity: loaded }, position, () => inventory.extract(to, 1, loaded) ?? false)).toBe(true);
-    const dropped = manager.reskinTargets.find(({ model }) => lookupPrefabInstance(model)?.entityId !== 'restored')!.model as THREE.Group;
+    const dropped = manager.reskinTargets.find(target => target.entityId !== 'restored')!.transform.model as THREE.Group;
     expect(prefabInstance(dropped)!.components.phonograph!.record).toBe('record_creepyforest');
     expect(prefabInstance(dropped)!.components.phonograph!.isPlaying).toBe(false);
     const droppedRecord = manager.exportRecords().find(({ id }) => id !== 'restored')!;
@@ -199,8 +199,8 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     // Replacing the record ejects its original skin; one hammer hit ejects the new record.
     expect(give(dropped, plain)).toBe(true);
     expect(manager.exportRecords().some(({ components }) => components.stack?.skinId === 'record_creepyforest')).toBe(true);
-    const ejected = manager.reskinTargets.find(({ prefabId }) => prefabId === 'record')!.model;
-    expect(manager.reskinTargets.find(target => target.model === ejected)!.hasTag('phonograph_record')).toBe(true);
+    const ejected = manager.reskinTargets.find(({ prefab }) => prefab === 'record')!.transform.model;
+    expect(manager.reskinTargets.find(target => target.transform.model === ejected)!.hasTag('phonograph_record')).toBe(true);
     expect(manager.entities.get(skinned.id)).toBe(skinned);
     expect(skinned.GetIsWet()).toBe(true);
     workTargets('HAMMER').find(({ model }) => model === dropped)!.work();

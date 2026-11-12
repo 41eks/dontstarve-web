@@ -1,9 +1,9 @@
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import type { ItemEntity } from '@dontstarve-web/inventory';
+import { ItemEntity } from '@dontstarve-web/inventory';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
 import { WILSON_ACTION_TIMES } from '@dontstarve-web/stategraphs/SGwilson';
-import type { SpellCastMap, SpellCastTarget } from '@dontstarve-web/stategraphs/castspell';
+import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import type { CombatActor, CombatInst } from '../../componets/src/combat';
 import type { Projectile, ProjectileTarget } from '../../componets/src/projectile';
 import type { Burnable } from '../../componets/src/burnable';
@@ -15,9 +15,7 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound, type SoundEventPath } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
 import { FIRE_PROJECTILE_ID } from './staff_projectile';
-import { targetInstance, type PrefabInstance } from './prefabInstance';
-import type { SpriteState } from '@dontstarve-web/display';
-import type * as THREE from 'three';
+import { PrefabInstance } from './prefabInstance';
 
 /** staff.lua: the staffs share swap_staffs and the spellcaster or weapon each colour configures. */
 
@@ -190,19 +188,13 @@ export const fireStaffVisual: EquipmentVisualFactory = item => staffVisual({ ...
 
 export const GREENSTAFF_USES = 5;
 export const GREENSTAFF_COLOUR = [51 / 255, 153 / 255, 51 / 255] as const;
-export type DeconstructionTarget = SpellCastTarget & {
-  readonly components: {
-    finiteuses?: { readonly percent: ReadonlySignal<number | undefined> };
-    fueled?: { readonly percent: ReadonlySignal<number | undefined> };
-    armor?: { GetPercent(): number };
-    inventoryitem?: object;
-    container?: { DropEverything(position: ReadonlyVector3): void };
-    stewer?: { Harvest(): unknown };
-  };
-  flush?(): void;
-  PushEvent(name: string, data: unknown): void;
-  removeOne(): boolean;
-};
+/** What staff.lua destroystructure reads from the entity it deconstructs. */
+export interface DeconstructionComponents {
+  finiteuses?: { readonly percent: ReadonlySignal<number | undefined> };
+  fueled?: { readonly percent: ReadonlySignal<number | undefined> };
+  armor?: { GetPercent(): number };
+  inventoryitem?: object;
+}
 export interface DeconstructionLoot { readonly itemId: string; readonly count: number; }
 export interface GreenStaffWorld {
   /** lootdropper:SpawnLootPrefab for each piece, flung from `position`; created synchronously. */
@@ -210,7 +202,7 @@ export interface GreenStaffWorld {
 }
 
 /** staff.lua destroystructure: one recipe product, scaled by its current condition. */
-export function deconstructionLoot(target: Pick<DeconstructionTarget, 'prefab' | 'components'>): DeconstructionLoot[] {
+export function deconstructionLoot(target: { readonly prefab: string; readonly components: DeconstructionComponents }): DeconstructionLoot[] {
   const recipe = getDeconstructionRecipe(target.prefab);
   if (!recipe) return [];
   const components = target.components;
@@ -242,18 +234,17 @@ export class GreenStaffController implements HeldEquipFunctions {
     this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster);
     this.spellcaster.canUseOnTargets = true;
     this.spellcaster.canOnlyUseOnRecipes = true;
-    // The entity cast on carries its own deconstruction view; tests may hand the view itself.
     this.spellcaster.setSpellFn((_staff, target, _position, doer) =>
-      this.destroyStructure(targetInstance(target)?.deconstructionTarget
-        ?? instanceDeconstruction(target) ?? target as DeconstructionTarget, doer, world));
+      target instanceof PrefabInstance && this.destroyStructure(target, doer, world));
   }
   onequip(): void {}
   onunequip(): void {}
   dispose(): void {}
-  private destroyStructure(target: DeconstructionTarget, doer: SpellCastDoer, world: GreenStaffWorld): boolean {
+  private destroyStructure(target: PrefabInstance, doer: SpellCastDoer, world: GreenStaffWorld): boolean {
     const recipe = getDeconstructionRecipe(target.prefab);
     if (!recipe || !target.isValid() || this.entity.isRemoved) return false;
-    target.flush?.();
+    // An item's pending stack and use changes settle before its condition is read.
+    if (target instanceof ItemEntity) target.flush();
     if (!target.isValid()) return false;
     world.spawnLoot(deconstructionLoot(target), target.position);
     for (const ingredient of recipe.ingredients) {
@@ -263,7 +254,8 @@ export class GreenStaffController implements HeldEquipFunctions {
     target.components.container?.DropEverything(target.position);
     target.components.stewer?.Harvest();
     target.PushEvent('ondeconstructstructure', doer);
-    target.removeOne();
+    // A stackable inst loses one of its stack (stackable:Get():Remove()); anything else is removed.
+    if (target.components.stackable) target.components.stackable.Consume(); else target.remove();
     PlaySound('dontstarve/common/staff_dissassemble', doer.position);
     if (doer.components.staffsanity) doer.components.staffsanity.doCastingDelta(-20);
     else doer.components.sanity?.DoDelta(-20);
@@ -273,30 +265,6 @@ export class GreenStaffController implements HeldEquipFunctions {
     return true;
   }
 }
-/**
- * destroystructure on an inst without a structure view: a stackable inst loses one of its stack
- * (stackable:Get():Remove()), anything else is removed.
- */
-function instanceDeconstruction(target: object | undefined): DeconstructionTarget | undefined {
-  const inst = targetInstance(target) as PrefabInstance<SpriteState, { stackable?: { Consume(): boolean } }> | undefined;
-  if (!inst) return undefined;
-  const model = inst.transform.model;
-  const isValid = () => !inst.isRemoved && !inst.inlimbo;
-  return {
-    prefab: inst.prefab, model: model as THREE.Group, components: inst.components as DeconstructionTarget['components'],
-    get position() { return inst.position; }, get isRemoved() { return !isValid(); }, isValid,
-    isVisible: () => model.visible, hasTag: (tag: string) => inst.hasTag(tag),
-    flush: () => (inst as { flush?(): void }).flush?.(),
-    PushEvent: (name: string, data: unknown) => inst.PushEvent(name, data),
-    removeOne: () => {
-      if (!isValid()) return false;
-      if (inst.components.stackable) return inst.components.stackable.Consume();
-      inst.remove();
-      return true;
-    },
-  };
-}
-
 export function getGreenStaffController(entity: ItemEntity, world: GreenStaffWorld): GreenStaffController {
   return entity.component('greenstaff', () => new GreenStaffController(entity, world));
 }

@@ -1,5 +1,6 @@
 
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabDisplay } from '../../display/src/prefabDisplay';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -58,7 +59,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
     placement.update();
     const instance = lookupPrefabInstance(model)!;
     const sprite = instance.sprite;
-    const display = placement.reskinTargets[0].display!;
+    const display = prefabDisplay(placement.reskinTargets[0].transform.model)!;
     await display.artLoaded();
     const changed = vi.fn();
     const stopSkin = sprite.sprite.subscribe((value, previous) => {
@@ -90,7 +91,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
         const record = placement.exportRecords()[0].record;
         expect(record).toEqual({ id: `wall:${prefabId}`, transform: { position: [3, 0, -6], rotationY: 0 },
           components: { health, ...(skinId === undefined ? {} : { wall: { skinId } }) } });
-        expect(placement.reskinTargets[0].display!.model).toBe(model);
+        expect(prefabDisplay(placement.reskinTargets[0].transform.model)!.model).toBe(model);
         expect(placement.renderEntities[0].footPosition.toArray()).toEqual([3, 0, -6]);
 
         for (const [x, z] of [[40, 40], [0, 40]]) {
@@ -152,7 +153,7 @@ it('keeps the wall sprite when a skin commit is cancelled or superseded and rele
   const model = await placement.spawnFromSave('wall_hay', { id: 'hay', transform: { position: [0, 0, 0], rotationY: 0 }, components: {} });
   const target = placement.reskinTargets[0];
   const instance = lookupPrefabInstance(model)!;
-  const display = target.display!;
+  const display = prefabDisplay(target.transform.model)!;
   await display.artLoaded();
   const sources = vi.spyOn(wallSprites, 'createStaticSpriteFactory');
   const controller = instance.sprite;

@@ -8,7 +8,7 @@ import type { ComponentUpdates } from './componentUpdates';
 export interface Fisherman {
   PushEvent(name: string, data?: unknown): void;
   getPosition(): Vector3;
-  readonly sg?: { HasStateTag(tag: string): boolean };
+  readonly sg?: { hasStateTag(tag: string): boolean };
   /** inst:IsValid(); a doer without one is taken as valid. */
   IsValid?(): boolean;
 }
@@ -90,14 +90,14 @@ export class FishingRod {
   OnUpdate(): void {
     if (!this.IsFishing()) return;
     const fisherman = this.fisherman!;
-    if (fisherman.IsValid?.() === false || (!fisherman.sg?.HasStateTag('fishing') && !fisherman.sg?.HasStateTag('catchfish'))
+    if (fisherman.IsValid?.() === false || (!fisherman.sg?.hasStateTag('fishing') && !fisherman.sg?.hasStateTag('catchfish'))
       || !this.inst.components.equippable?.IsEquipped()) this.StopFishing();
   }
 
   IsFishing(): boolean { return this.target !== undefined && this.fisherman !== undefined; }
   HasHookedFish(): boolean { return this.target !== undefined && this.hookedfish !== undefined; }
   HasCaughtFish(): boolean { return this.caughtfish !== undefined; }
-  FishIsBiting(): boolean { return this.fisherman?.sg?.HasStateTag('nibble') ?? false; }
+  FishIsBiting(): boolean { return this.fisherman?.sg?.hasStateTag('nibble') ?? false; }
 
   StartFishing(target: FishingTarget, fisherman: Fisherman): void {
     this.StopFishing();

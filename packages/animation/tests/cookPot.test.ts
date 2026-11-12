@@ -7,7 +7,7 @@ import { managedBuildings } from './managedBuildings';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { findImage, loadBuild, smallHash } from '../src/animationAssets';
 import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { performRummageAction, type RummageTarget } from '../../stategraphs/src/rummage';
 import { sceneActions } from './sceneActions';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -62,7 +62,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   // The display loads the pot's art; one-shot clips play out once it is drawn.
   await vi.waitFor(() => expect(prefabInstance(restored)!.sprite.loaded).toBe(true));
   restoredPlacement.update(1);
-  expect(reskinEntity(prefabInstance(restored)!.reskinTarget!)).toBe(true);
+  expect(reskinEntity(reskinTargetOf(prefabInstance(restored))!)).toBe(true);
   expect(skinSignal.peek()).toBe('cookpot_cauldron');
   expect(prefabInstance(restored)!.components.stewer).toBe(restoredStewer);
   expect(cookPotState(restored)?.remainingSeconds).toBeCloseTo(BEEFALO_FEED_COOK_TIME - 4);

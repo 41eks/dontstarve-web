@@ -1,5 +1,5 @@
 import { addComponent, removeComponent } from './components';
-import { prefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Health } from '../../componets/src/health';
 import { Combat } from '../../componets/src/combat';
@@ -18,7 +18,6 @@ import type { ReadonlyVector3 } from './transform';
 import type { WorldContext } from './worldContext';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { LootDropper } from '../../componets/src/lootdropper';
-import { reskinTarget } from './reskin_tool';
 
 export const RELIC_NAMES = ['table', 'chair', 'vase', 'chipbowl', 'bowl', 'plate'] as const;
 type RelicName = typeof RELIC_NAMES[number];
@@ -203,17 +202,7 @@ export function ruinsRelicPrefabs(world: RuinsRelicWorld): Readonly<Record<Ruins
       assets: { bank, animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`] },
       assetOptions: { instancedAnimations: 'all' },
       ...radius === undefined ? {} : { physics: { make: MakeObstaclePhysics, radius } },
-      ...skins ? {
-        skins,
-        onSpawned: (inst: RuinsRelicInstance) => {
-          const model = inst.transform.model;
-          inst.reskinTarget = reskinTarget({
-            get id() { return String(inst.entityId); }, prefabId: id, instance: inst, display: prefabDisplay(model)!,
-            sprite: inst.sprite, skins: Object.keys(RUINS_CHAIR_SKINS), get position() { return inst.position; },
-            hasTag: tag => inst.hasTag(tag), isValid: () => !inst.isRemoved,
-          });
-        },
-      } : {},
+      ...skins ? { skins } : {},
     };
   };
   return Object.fromEntries(RUINS_RELIC_IDS.map(id => [id, define(id)])) as Record<RuinsRelicId, PrefabEntityDefinition<RuinsRelicInstance>>;

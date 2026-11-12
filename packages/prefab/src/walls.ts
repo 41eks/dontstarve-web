@@ -1,7 +1,7 @@
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { prefabDisplay, SpriteState, type SpriteResources } from '@dontstarve-web/display';
+import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { FACING_CARDINAL } from '@dontstarve-web/animation/facing';
 import definitions from './definitions.json' with { type: 'json' };
 import { WALL_SKIN_ARCHIVES, wallWorldPrefab, wallWorldSkin } from './wallSkins';
@@ -13,7 +13,6 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Workable } from '../../componets/src/workable';
 import type { BuildingPlacerSpec } from './buildingPlacer';
 import { PathfindingWall } from './pathfinder';
-import { reskinTarget } from './reskin_tool';
 import type { PlacementSaveRecord } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
@@ -319,12 +318,6 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
         // MakeObstaclePhysics(inst, .5); inst.Physics:SetDontRemoveOnSleep(true).
         physics: { make: (inst, radius) => MakeObstaclePhysics(inst, radius).SetDontRemoveOnSleep(true), radius: .5 },
         onSpawned: inst => {
-            const model = inst.transform.model;
-            inst.reskinTarget = reskinTarget({
-                get id() { return String(inst.entityId); }, prefabId: prefab, instance: inst, display: prefabDisplay(model)!,
-                sprite: inst.sprite, skins: Object.keys(skins),
-                hasTag: tag => inst.hasTag(tag), get position() { return inst.position; }, isValid: () => !inst.isRemoved,
-            });
             new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
         },
     };

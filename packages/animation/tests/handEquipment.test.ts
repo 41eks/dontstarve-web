@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { Vector3 } from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { SpriteState } from '@dontstarve-web/display';
@@ -34,7 +35,7 @@ it('equips restored and committed torches through equippable with the owner, une
   // The inventory's actor is the owner; its view gives each equipped inst a slot and AttachLightTo(owner).
   const lightParent = createEmptyEntity('wilson').instance, assets = new GroundItemAssets(), hats = new HatEquipmentAssets('/dst/data/anim');
   const events: string[] = [];
-  const owner = { hasTag: () => false, GetPosition: () => ({ x: 0, y: 0, z: 0 }), PushEvent: (name: string) => { events.push(name); } } as EquipmentOwner & { hasTag(): boolean; GetPosition(): { x: number; y: number; z: number } };
+  const owner: EquipmentOwner & { hasTag(): boolean; getPosition(): Vector3 } = { hasTag: () => false, getPosition: () => new Vector3(), PushEvent: (name: string) => { events.push(name); } };
   owner.OpenEquipmentView = createEquipmentViews(owner, { sprite: { sprite: new SpriteState({ name: 'idle' }), art: assets }, assets, hats, lightParent });
   store.bindActor(owner);
   try {

@@ -3,11 +3,12 @@ import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import type { Vector3 } from 'three';
 
-export interface PeriodicSpawnerSpatial {
+export interface PeriodicSpawnerInst {
   getPosition(): Vector3;
-  /** The host resolves the configured prefab and excludes INLIMBO entities. */
-  getPrefabPositions(): Iterable<ReadonlyVector3>;
 }
+
+/** TheSim:FindEntities for the configured prefab: the host resolves it and excludes INLIMBO entities. */
+export type FindPrefabPositions = () => Iterable<ReadonlyVector3>;
 
 /** periodicspawner.lua's scheduled spawn/retry and persistence; host supplies prefab/map validation. */
 export class PeriodicSpawner {
@@ -20,12 +21,13 @@ export class PeriodicSpawner {
   private range?: number;
   private density?: number;
   private spacing?: number;
-  private readonly spatial?: PeriodicSpawnerSpatial;
+  private readonly inst: PeriodicSpawnerInst;
+  private readonly findPrefabPositions?: FindPrefabPositions;
 
-  constructor(_inst: object, scheduler: GameTimeScheduler, trySpawn: PeriodicSpawner['trySpawn'], random = Math.random,
-    spatial?: PeriodicSpawnerSpatial) {
-    this.trySpawn = trySpawn; this.random = random;
-    this.spatial = spatial;
+  constructor(inst: PeriodicSpawnerInst, scheduler: GameTimeScheduler, trySpawn: PeriodicSpawner['trySpawn'], random = Math.random,
+    findPrefabPositions?: FindPrefabPositions) {
+    this.inst = inst; this.trySpawn = trySpawn; this.random = random;
+    this.findPrefabPositions = findPrefabPositions;
     this.timer = new ComponentTimer(scheduler, () => this.DoSpawn());
   }
 
@@ -44,12 +46,12 @@ export class PeriodicSpawner {
   SetMinimumSpacing(spacing: number): void { this.spacing = spacing; }
   TrySpawn() {
     if (this.disposed) return { spawned: false, retrySeconds: this.basetime * .25 };
-    if (this.spatial && (this.range !== undefined || this.spacing !== undefined)) {
+    if (this.findPrefabPositions && (this.range !== undefined || this.spacing !== undefined)) {
       const density = this.density ?? 0;
       if (density <= 0) return { spawned: false };
-      const origin = this.spatial.getPosition(), radius = this.range ?? this.spacing!;
+      const origin = this.inst.getPosition(), radius = this.range ?? this.spacing!;
       let count = 0;
-      for (const point of this.spatial.getPrefabPositions()) {
+      for (const point of this.findPrefabPositions()) {
         const distanceSquared = point.distanceToSquared(origin);
         if (distanceSquared > radius ** 2) continue;
         // TrySpawn checks the default spawn point (the inst's foot), before beefalo's OnSpawn

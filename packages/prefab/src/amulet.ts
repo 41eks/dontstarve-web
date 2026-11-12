@@ -70,7 +70,7 @@ class RedAmulet implements ItemRuntimeComponent {
     // onunequip_red keeps swap_body while the owner is in amulet_rebirth; that state clears it on exit, so the
     // amulet's slot stays drawn until the owner leaves it.
     const worn = owner && wornOwner(owner);
-    if (visual && worn?.IsCurrentState?.('amulet_rebirth')) {
+    if (visual && worn?.sg?.stateName === 'amulet_rebirth') {
       const release = worn.Retain();
       const stop = worn.ListenForEvent?.('newstate', (_inst, data) => {
         if ((data as { statename?: string } | undefined)?.statename === 'amulet_rebirth') return;

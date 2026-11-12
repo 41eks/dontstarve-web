@@ -19,7 +19,7 @@ import {
   type SlotTransferRequest,
   slotTransferController,
 } from '@dontstarve-web/ui';
-import { type PickupDoer, PointerRaycaster, type WilsonStateName } from '@dontstarve-web/stategraphs';
+import { PointerRaycaster } from '@dontstarve-web/stategraphs';
 import { PlayerActionFilter } from '@dontstarve-web/stategraphs/actions';
 import { turfMap } from './building';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
@@ -34,7 +34,6 @@ import { isGroundTargetBlocked, placementEntities } from '../packages/prefab/src
 import { backpackContainerId } from '@dontstarve-web/inventory';
 import { player, playerBody, playerInstance, playerPhysics } from './player';
 import { setCrafting } from '@dontstarve-web/prefab/player_common';
-import { OnItemRanOut } from '@dontstarve-web/prefab/player_common';
 import { createEquipmentViews } from '@dontstarve-web/prefab/equipmentVisual';
 import { getHandEquipmentDefinition, type HandEquipmentWorld } from '@dontstarve-web/prefab/handEquipment';
 import { cursorUi, renderer, scene } from './universal';
@@ -50,7 +49,7 @@ import {
   createInventoryStore,
 } from './inventory';
 import { locomotor, startScene, worldState } from './scene';
-import { WortoxPlayer, type WortoxDoer } from '../packages/prefab/src/wortoxPlayer';
+import { WortoxPlayer } from '../packages/prefab/src/wortoxPlayer';
 import { createDisposalResources } from './registerDisposal';
 import { initialSave } from './save/initialSave';
 import { inventoryStateFromSave } from './save/inventoryState';
@@ -62,7 +61,6 @@ import { createInventorySlotItem } from './inventorySlotItem';
 import { playerStats, playerGhostMode, getPlayerStats, setPlayerSanityPercent } from './playerStats';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
-import type { Sanity } from '../packages/componets/src/sanity';
 
 // Independent startup loads begin together; each is awaited where it is first needed.
 const animRoot = `${import.meta.env.BASE_URL}dst/data/anim`;
@@ -112,40 +110,10 @@ for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]
     inventory.setStorageAccessible(containerId, false);
   });
 }
-const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> & { beginPortalJump(pos: import('three').Vector3, fromMap?: boolean): boolean }; ListenForEvent(name: string, listener: (inst: unknown, data: unknown) => void): () => void; HasStateTag(tag: string): boolean; GoToState(name: string): void; IsCurrentState(name: string): boolean; readonly TheSim: import('@dontstarve-web/prefab/prefabInstance').EntityQuery; OpenEquipmentView?: import('@dontstarve-web/signals').EquipmentOwner['OpenEquipmentView'];
-  components: PickupDoer['components'] & { health: typeof playerStats.health; hunger: typeof playerStats.hunger; sanity?: Sanity } } = {
-  // The player's own eater.lua (ACTIONS.EAT) and sleepingbaguser.lua (SLEEPIN's sleepingbag:DoSleep) on act.doer.
-  components: { inventory, health: playerStats.health, hunger: playerStats.hunger, eater: playerInstance.components.eater,
-    sleepingbaguser: playerInstance.components.sleepingbaguser, get talker() { return playerInstance.components.talker; } },
-  get prefab() { return playerInstance.prefab; },
-  get isRemoved() { return playerInstance.isRemoved; },
-  ListenForEvent: (name, listener) => playerInstance.ListenForEvent(name, listener),
-  hasTag: tag => tag === 'player' || playerInstance.hasTag(tag),
-  addTag: tag => playerInstance.addTag(tag),
-  removeTag: tag => playerInstance.removeTag(tag),
-  GetPosition: () => player.position,
-  getPosition: () => player.position,
-  position: player.position,
-  get SoundEmitter() { return playerInstance.SoundEmitter; },
-  get TheSim() { return playerInstance.TheSim; },
-  sg: {
-    HasStateTag: tag => playerInstance.sg.hasStateTag(tag),
-    // SGwilson portal_jumpin_pre for ACTIONS.BLINK / BLINK_MAP.
-    beginPortalJump: (pos, fromMap) => playerInstance.sg.beginPortalJump(pos, fromMap),
-  },
-  HasStateTag: tag => playerInstance.sg.hasStateTag(tag),
-  GoToState: name => playerInstance.sg.goToState(name as WilsonStateName),
-  IsCurrentState: name => playerInstance.sg.stateName === name,
-  PushEvent: (name, data) => {
-    // player_common.lua listens for itemranout; inst:PushEvent reaches SGwilson's handlers itself (instance.sg).
-    if (name === 'itemranout') OnItemRanOut(inventory, data);
-    playerInstance.PushEvent(name, data);
-  },
-};
-inventory.bindActor(pickupDoer);
-const playerSanity = playerStats.sanity;
-pickupDoer.components.sanity = playerSanity;
+// The player inst is the inventory's owner and every action's doer.
 playerInstance.components.inventory = inventory;
+inventory.bindActor(playerInstance);
+const playerSanity = playerStats.sanity;
 const handPointer = view.mouseActions?.pointer ?? new PointerRaycaster(view);
 const bodySlotAddress = equipmentSlotAddress('body');
 
@@ -193,7 +161,7 @@ inventory.entities.bindEquipmentWorld({
   },
 } satisfies HandEquipmentWorld);
 // equippable:Equip(owner): each equipped inst draws on its own slot of the player's sprite.
-pickupDoer.OpenEquipmentView = createEquipmentViews(pickupDoer, playerInstance.equipmentPresentation);
+playerInstance.OpenEquipmentView = createEquipmentViews(playerInstance, playerInstance.equipmentPresentation);
 // The cursor shows the held item's action; the backpack panel follows the worn backpack.
 inventory.handEquipment.subscribe(equipment => {
   cursorUi.setHandAction((equipment && getHandEquipmentDefinition(equipment.itemId)?.definition.handAction) ?? null, handPointer);
@@ -225,7 +193,7 @@ syncCraftingInventory();
 inventory.subscribe(syncCraftingInventory);
 
 const disposalResources = createDisposalResources({
-  gameUi, view, screenProjection, inventory, playerEntity: playerInstance, locomotor, pickupDoer,
+  gameUi, view, screenProjection, inventory, playerEntity: playerInstance, locomotor,
   inventorySlotItem, actionEvents, isActionInterrupting: input.isActionInterrupting,
   updateCursor: () => cursorUi.update(), getWatchWorldContent: worldState.getWatchWorldContent, turfMap,
 });
@@ -254,7 +222,7 @@ disposalEvents.on('dispose', () => {
 });
 disposalResources.register(disposalEvents, sceneResources);
 const wortox = await WortoxPlayer.create({
-  world: view, body: playerBody, physics: playerPhysics, doer: pickupDoer, fx: worldFx,
+  world: view, body: playerBody, physics: playerPhysics, fx: worldFx,
   isPassableAtPoint: position => turfMap.isPassableAtPoint(position),
   saved: initialSave.players.local.wortox,
   resetMinimapOffset: () => gameUi.minimap.setView({ x: player.position.x, z: player.position.z }),

@@ -8,7 +8,7 @@ import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
 import { PlaySound } from '@dontstarve-web/prefab/sound';
-import { newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntity, type ItemEntityFactory } from '@dontstarve-web/inventory';
+import { newItemEntityId, type InventoryStack, type InventoryStore, ItemEntity, type ItemEntityFactory } from '@dontstarve-web/inventory';
 import type { ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
 import { createInventoryStore } from './inventory';
 import * as CANNON from 'cannon-es';
@@ -573,9 +573,12 @@ export async function createSceneEntities(
     const definitions = itemPrefabs(itemWorld(worldState), icons);
     const ids = new Set(MANAGER_DEFINITIONS[prefabId].prefabIds);
     prefabs.register(Object.fromEntries(Object.entries(definitions).filter(([id]) => ids.has(id))) as never);
-    sceneInventory.entities.bindSpawner(state => ids.has(state.itemId)
-      ? prefabs.spawn(state.itemId, ITEM_ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } }) as PrefabInstance as unknown as ItemEntity
-      : undefined);
+    sceneInventory.entities.bindSpawner(state => {
+      if (!ids.has(state.itemId)) return undefined;
+      const entity = prefabs.spawn(state.itemId, ITEM_ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } });
+      if (!(entity instanceof ItemEntity)) throw new Error(`${state.itemId} does not spawn an item entity`);
+      return entity;
+    });
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 

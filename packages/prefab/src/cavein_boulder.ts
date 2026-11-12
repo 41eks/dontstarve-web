@@ -27,7 +27,7 @@ export interface CaveinBoulderWorld extends ToolMouseTargetWorld {
   spawnGroundItem: SpawnGroundItem;
 }
 
-interface Worker { sg?: { HasStateTag(tag: string): boolean }; getPosition?(): { x: number; z: number } }
+interface Worker { sg?: { hasStateTag(tag: string): boolean }; getPosition?(): { x: number; z: number } }
 
 /**
  * cavein_boulder.lua fn, for a boulder standing in the world: carrying, falling, wobbling and the formation's
@@ -69,7 +69,7 @@ function OnWorked(inst: CaveinBoulderInstance, worker: Worker): void {
   PlaySound('dontstarve/wilson/rock_break', inst.position);
   const { lootdropper } = inst.components;
   if (inst.raised) lootdropper.DropLoot(new THREE.Vector3(inst.position.x, 2, inst.position.z));
-  else if (inst.formed && worker.sg?.HasStateTag('working') && worker.getPosition) {
+  else if (inst.formed && worker.sg?.hasStateTag('working') && worker.getPosition) {
     const target = worker.getPosition();
     // LaunchAt(loot, inst, worker, 1, 1).
     for (const loot of lootdropper.GenerateLoot()) lootdropper.SpawnLootPrefab(loot)?.PushEvent('launch', {

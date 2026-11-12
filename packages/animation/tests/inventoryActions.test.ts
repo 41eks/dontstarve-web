@@ -31,7 +31,7 @@ function setup() {
   display.mount(scene);
   instance.setPosition(100, 0, 100);
   instance.components.inventory = inventory;
-  inventory.bindActor({ hasTag: tag => instance.hasTag(tag), GetPosition: () => instance.position,
+  inventory.bindActor({ hasTag: tag => instance.hasTag(tag), getPosition: () => instance.getPosition(),
     PushEvent: (name, data) => instance.PushEvent(name, data) });
   const canvas = new EventTarget();
   const world = { scene, player: display.model, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),

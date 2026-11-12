@@ -76,7 +76,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   // The player inst: LIGHT pushes onstartedfire on it.
   const playerEvents = new EventEmitter<Record<string, unknown>>();
-  const doer = { ...actionDoer(), position: player.position, getPosition: () => player.position, GetPosition: () => player.position,
+  const doer = { ...actionDoer(), position: player.position, getPosition: () => player.position,
     PushEvent: (name: string, data: unknown) => playerEvents.emit(name, data), TheSim: { FindEntities: () => [] } };
   const playerController = new PlayerController(world, animation.stategraph, locomotor, hand, doer, () => false);
   // EQUIPPED.lighter on the right button, then DoAction.

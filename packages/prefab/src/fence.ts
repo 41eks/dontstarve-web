@@ -1,7 +1,7 @@
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import { ToolMouseTarget } from './toolMouseTarget';
-import { prefabDisplay, SpriteState, type SpriteResources } from '@dontstarve-web/display';
+import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import type { ReadonlySignal } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Combat, type CombatActor } from '../../componets/src/combat';
@@ -10,7 +10,6 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Workable, type Worker } from '../../componets/src/workable';
 import type { BuildingPlacerSpec } from './buildingPlacer';
 import { PrefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
-import { reskinTarget } from './reskin_tool';
 import type { PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
@@ -193,12 +192,6 @@ function fn(world: PrefabWorldContext, sprites: SpriteResources): FenceInstance 
 
 /** What the mouse and the tools find on a fence: the hammer and the reskin tool. */
 function onspawned(inst: FenceInstance, world: Pick<PrefabWorldContext, 'handEquipment'>): void {
-    const model = inst.transform.model;
-    inst.reskinTarget = reskinTarget({
-        get id() { return String(inst.entityId); }, prefabId: FENCE_ID, instance: inst, display: prefabDisplay(model)!,
-        sprite: inst.sprite, skins: Object.keys(FENCE_SKIN_ARCHIVES),
-        hasTag: tag => inst.hasTag(tag), get position() { return inst.position; }, isValid: () => !inst.isRemoved,
-    });
     new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
 }
 

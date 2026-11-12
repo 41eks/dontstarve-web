@@ -29,8 +29,10 @@ function wornShell() {
     getPosition: () => new Vector3(),
     SoundEmitter: { PlaySound: vi.fn() },
     components: { inventory: { GetEquippedItem: (kind: string) => kind === 'body' ? entity : null } },
-    HasStateTag: (tag: string) => shell && tag === 'shell',
-    GoToState: (name: string) => { states.push(name); shell = true; listeners.get('newstate')?.(owner, { statename: name }); },
+    sg: {
+      hasStateTag: (tag: string) => shell && tag === 'shell',
+      goToState: (name: string) => { states.push(name); shell = true; listeners.get('newstate')?.(owner, { statename: name }); },
+    },
   };
   // inventory:Equip calls equippable:Equip(owner); Unequip mirrors it.
   const lifecycle = { onunequip: () => entity.components.equippable!.Unequip(owner) };

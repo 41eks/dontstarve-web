@@ -1,4 +1,5 @@
 import { withEntity } from './entityFixture';
+import { pickupDoer } from './playerDoer';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,7 +7,6 @@ import { prefabDisplay } from '../../display/src';
 import { inventorySlotAddress } from '../../inventory/src';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { createBuildingContainer } from '../../prefab/src/containers';
-import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { createWorldState } from '../../../src/worldState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
@@ -28,7 +28,7 @@ function setup(prefab: 'cave' | 'forest' = 'cave') {
   const world = createWorldState({ map: testMap(48), elapsedSeconds: 0, systems: {}, prefab });
   const inventory = createPickupInventory();
   const { instance: player, display } = createEmptyEntity('wilson');
-  createPickupDoer(display.model, inventory);
+  pickupDoer(display.model, inventory);
   return { world, inventory, player, dispose() { inventory.dispose(); display.dispose(); world.dispose(); } };
 }
 

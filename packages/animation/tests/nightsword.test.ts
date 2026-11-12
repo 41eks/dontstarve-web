@@ -1,4 +1,5 @@
 import { startMovement } from '../../prefab/src/player_common';
+import { pickupDoer } from './playerDoer';
 import { withEntity } from './entityFixture';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
@@ -17,7 +18,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { createPickupInventory } from './pickupFixture';
 import { inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src';
-import { performPickupAction, createPickupDoer } from '../../stategraphs/src/pickup';
+import { performPickupAction } from '../../stategraphs/src/pickup';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -108,8 +109,8 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
     expect(entity.tile.peek().wet).toBe(true);
     const groundRecord = manager.exportRecords().find(record => record.id === entity.id)!;
     expect(groundRecord.transform).toEqual(beforeSkin.transform);
-    const model = manager.reskinTargets.find(target => target.id === entity.id)!.model;
-    expect(performPickupAction(itemAt(model), createPickupDoer(player, inventory))).toBe(true);
+    const model = manager.reskinTargets.find(target => target.id === entity.id)!.transform.model;
+    expect(performPickupAction(itemAt(model), pickupDoer(player, inventory))).toBe(true);
     expect(inventory.getEntity(hand)).toBe(entity);
     expect(inventory.handEquipment.peek()?.skinId).toBe('nightsword_cotl');
     expect(manager.exportRecords().some(record => record.id === entity.id)).toBe(false);

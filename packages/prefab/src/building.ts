@@ -1,12 +1,10 @@
 import type { PlacementSaveRecord } from './saveRecord';
-import { prefabDisplay } from '@dontstarve-web/display';
 import { removeComponent } from './components';
 import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import type { BuildingPlacerSpec } from './buildingPlacer';
 import { buildingContainerId, createBuildingContainer, releaseBuildingContainer, type BuildingContainer, type StorageBuildingId } from './containers';
 import type { PrefabEntityDefinition, PrefabInstance } from './prefabInstance';
-import { reskinTarget } from './reskin_tool';
-import { MakeDeconstructable, MakeObstaclePhysics } from './standardcomponents';
+import { MakeObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 import { ToolMouseTarget } from './toolMouseTarget';
 import type { PrefabWorldContext } from './worldContext';
@@ -92,16 +90,7 @@ export function MakeBuildingContainer(inst: PrefabInstance, prefab: StorageBuild
 }
 
 /** What the mouse and the tools find on a building once it has its display: the greenstaff, the reskin tool and its workable. */
-function MakeBuildingTargets(inst: PrefabInstance, skins: readonly string[], world: Pick<PrefabWorldContext, 'handEquipment'>): void {
-  const model = inst.transform.model;
-  MakeDeconstructable(inst);
-  if (skins.length) inst.reskinTarget = reskinTarget({
-    get id() { return String(inst.entityId); }, prefabId: inst.prefab,
-    instance: inst, display: prefabDisplay(model)!, sprite: inst.sprite, skins,
-    get isRemoved() { return inst.isRemoved; },
-    hasTag: tag => inst.hasTag(tag),
-    get position() { return inst.position; }, isValid: () => !inst.isRemoved && model.visible,
-  });
+function MakeBuildingTargets(inst: PrefabInstance, world: Pick<PrefabWorldContext, 'handEquipment'>): void {
   if (!inst.components.workable) return;
   // A building that does something without a tool keeps its own actions under the mouse while no tool is held.
   new ToolMouseTarget(inst, inst.components.workable, world.handEquipment, {
@@ -117,7 +106,7 @@ function MakeBuildingTargets(inst: PrefabInstance, skins: readonly string[], wor
  */
 export function buildingPrefab<Instance extends PrefabInstance>(declaration: BuildingDeclaration, bank: string, radius: number | undefined,
   fn: PrefabEntityDefinition<Instance>['fn'], world: Pick<PrefabWorldContext, 'handEquipment'>): PrefabEntityDefinition<Instance> {
-  const { archive, buildArchive = archive, skinArchives, skinSymbols, baseSymbols, skinAnimationBanks } = declaration, skins = Object.keys(skinArchives ?? {});
+  const { archive, buildArchive = archive, skinArchives, skinSymbols, baseSymbols, skinAnimationBanks } = declaration;
   return {
     fn,
     assets: { animationArchive: archive, buildArchives: [buildArchive], bank },
@@ -127,6 +116,6 @@ export function buildingPrefab<Instance extends PrefabInstance>(declaration: Bui
     ...skinAnimationBanks ? { skinAnimationBanks } : {},
     alignBottom: true,
     ...radius === undefined ? {} : { physics: { make: MakeObstaclePhysics, radius } },
-    onSpawned: inst => { MakeBuildingTargets(inst, skins, world); registerBuildingContainer(inst); },
+    onSpawned: inst => { MakeBuildingTargets(inst, world); registerBuildingContainer(inst); },
   };
 }

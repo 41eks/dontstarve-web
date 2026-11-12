@@ -1,4 +1,5 @@
 import { withEntity } from './entityFixture';
+import { pickupDoer } from './playerDoer';
 import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
@@ -10,7 +11,6 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { grassPrefabs } from '../../prefab/src/grass';
 import { ItemWorldFixture, itemEntities } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
-import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -36,7 +36,7 @@ function setup() {
   const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
     inventory, '/dst/data/anim', player);
-  const worker = createPickupDoer(player, inventory);
+  const worker = pickupDoer(player, inventory);
   const scheduler = new GameTimeScheduler();
   bindTestWorld(scheduler);
   const grass = plantManager(grassPrefabs, scene, {

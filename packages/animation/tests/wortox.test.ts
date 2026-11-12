@@ -118,7 +118,7 @@ it('runs the map right click as BLINK_MAP without walking, revalidates before co
   const doer: WortoxDoer & Record<string, unknown> = {
     components: {}, position: player.position, getPosition: () => player.position,
     hasTag: (tag: string) => tag === 'player' || tag === 'soulstealer',
-    sg: { HasStateTag: (tag: string) => graph.hasStateTag(tag), beginPortalJump: (pos: Vector3, fromMap?: boolean) => graph.beginPortalJump(pos, fromMap) },
+    sg: { hasStateTag: (tag: string) => graph.hasStateTag(tag), beginPortalJump: (pos: Vector3, fromMap?: boolean) => graph.beginPortalJump(pos, fromMap) },
     CanSoulhop: () => eligible, CanBlinkTo: vi.fn(() => false), CanBlinkFromWithMap: () => valid,
   };
   world.mouseActions.pointspecialactionsfn = (_doer, pos, useitem, right) => GetPointSpecialActions(doer, player.position, pos, useitem, right);

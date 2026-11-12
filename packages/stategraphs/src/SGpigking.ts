@@ -10,10 +10,10 @@ export type PigKingStateName = 'idle' | 'cointoss' | 'happy' | 'unimpressed' | '
  * they need pig_token, the elite pigs and the minigame component.
  */
 export interface PigKingStateInst {
-  /** inst.sg.mem */
+  /** inst.sg.mem: kept on the king, since the graph's statemem resets on every GoToState. */
   readonly mem: { sleeping: boolean; endhappytask?: { Cancel(): void } };
   happy: boolean;
-  readonly trader: { Enable(): void; Disable(): void };
+  readonly components: { readonly trader: { Enable(): void; Disable(): void } };
   /** AnimState:PlayAnimation; a non-looping animation pushes `animover` to the stategraph when its queue ends. */
   playAnimation(name: string, loop?: boolean): void;
   pushAnimation(name: string, loop?: boolean): void;
@@ -72,11 +72,11 @@ const states: StateDefinition<PigKingStateInst, PigKingStateName>[] = [
     name: 'sleep',
     tags: ['sleeping'],
     onenter: sg => {
-      sg.context.trader.Disable();
+      sg.context.components.trader.Disable();
       sg.context.playAnimation('sleep_pre');
       sg.context.pushAnimation('sleep_loop', true);
     },
-    onexit: sg => sg.context.trader.Enable(),
+    onexit: sg => sg.context.components.trader.Enable(),
   }),
   State<PigKingStateInst, PigKingStateName>({
     name: 'wake',

@@ -18,7 +18,7 @@ import { createMemo, createSignal } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { snapToWallSlotCenter } from '../../prefab/src/tile';
-import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { PlaceableBuildingPlacement } from '../../../src/placeableBuilding';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -192,8 +192,8 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
     expect(addWall).not.toHaveBeenCalled();
     update(0.01);
     expect(addWall).toHaveBeenCalledWith(expect.objectContaining({ x: 6, z: 6 }));
-    const reskin = lookupPrefabInstance(model)!.reskinTarget!;
-    expect(reskin.skins).toEqual(Object.keys(FENCE_SKIN_ARCHIVES));
+    const reskin = reskinTargetOf(lookupPrefabInstance(model))!;
+    expect(reskin.sprite.skinNames).toEqual(Object.keys(FENCE_SKIN_ARCHIVES));
     expect(reskinEntity(reskin)).toBe(true);
     expect(records(registry)[0].components.fence).toEqual({ rot: 2, skinId: 'fence_ancient' });
 
@@ -252,7 +252,7 @@ it('settles a fence hit on sleep, reskins dormant art, restores mirroring, and c
     expect(entity.components.workable!.GetWorkLeft()).toBe(2);
     heading.set(90);
     content.camerarotation.set(new THREE.Quaternion());
-    expect(reskinEntity(lookupPrefabInstance(model)!.reskinTarget!)).toBe(true);
+    expect(reskinEntity(reskinTargetOf(lookupPrefabInstance(model))!)).toBe(true);
     const [saved] = records(registry);
     awake.set(true); await settle(); await settle();
     expect(lookupPrefabInstance(model)).toBe(instance);

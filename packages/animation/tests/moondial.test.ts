@@ -11,7 +11,7 @@ import { smallHash } from '../src/animationAssets';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import * as sound from '../../prefab/src/sound';
 import { getDstClock, TUNING } from '../../../src/tuning';
-import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
 import { managedBuildings } from './managedBuildings';
 
@@ -47,7 +47,7 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     moon.set(dayMoon(14)); // waning half
     // WatchWorldState reaches the dial in its effect, before the reskin.
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(reskinEntity(prefabInstance(workTargets('HAMMER')[0].model)!.reskinTarget!)).toBe(true);
+    expect(reskinEntity(reskinTargetOf(prefabInstance(workTargets('HAMMER')[0].model))!)).toBe(true);
     const model = workTargets('HAMMER')[0].display.model;
     expect(lookupPrefabInstance(model)?.skinId).toBe('moondial_an');
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('wane_to_half');

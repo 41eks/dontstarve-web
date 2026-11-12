@@ -1,9 +1,10 @@
 import { withEntity } from './entityFixture';
+import { pickupDoer } from './playerDoer';
 import { readFile } from 'node:fs/promises';
 import { prefabDisplay } from '../../display/src';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { createPickupInventory } from './pickupFixture';
-import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
+import { performPickupAction } from '../../stategraphs/src/pickup';
 import * as THREE from 'three';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -37,7 +38,7 @@ function setup() {
   const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player,
     undefined, undefined, undefined, undefined, undefined, undefined, undefined, worldEvents);
-  const doer = createPickupDoer(player, inventory);
+  const doer = pickupDoer(player, inventory);
   const pick = (model: THREE.Object3D) => performPickupAction(itemAt(model), doer);
   return { manager, scene, pickup, pick, player, inventory, canvas, worldEvents };
 }

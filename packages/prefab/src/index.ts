@@ -138,7 +138,7 @@ export { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, IgniteTossed, SetFuelRateMult, torc
 export type { GroundItemDefinition, ItemPrefabWorld } from './groundPrefab';
 export { itemPrefabs, spawnGroundStack, flingLoot } from './itemPrefabs';
 export { YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME, OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, staffVisual, yellowstaffVisual, getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_SANITY_COST, type LightStaffWorld, type LightStaffId,
-  GREENSTAFF_USES, GREENSTAFF_COLOUR, GreenStaffController, getGreenStaffController, deconstructionLoot, type GreenStaffWorld, type DeconstructionTarget } from './staff';
+  GREENSTAFF_USES, GREENSTAFF_COLOUR, GreenStaffController, getGreenStaffController, deconstructionLoot, type GreenStaffWorld, type DeconstructionComponents } from './staff';
 export { staffCastingLightPrefabs, StaffCastingLightInstance, STAFF_CASTINGLIGHT_ID, STAFF_CASTINGLIGHT_SMALL_ID, type StaffCastingLightId } from './staff_castinglight';
 export { TRIDENT_ID, TRIDENT_DAMAGE, TRIDENT_USES, TRIDENT_STRUM_SOUND, TridentController, getTridentController, tridentVisual, type TridentWorld } from './trident';
 export { DWARF_STAR_ID, DWARF_STAR_DURATION, POLAR_LIGHT_ID, POLAR_LIGHT_DURATION,

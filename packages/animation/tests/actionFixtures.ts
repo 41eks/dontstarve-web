@@ -15,6 +15,3 @@ export function netEntity(onCapture: () => void): ItemEntity {
   return entity;
 }
 
-export const reskinEntityFields = {
-  skins: ['test_skin'], isRemoved: false, hasTag: () => false,
-};

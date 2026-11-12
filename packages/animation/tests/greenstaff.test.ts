@@ -3,18 +3,15 @@ import { collectEquippedItemActions } from '../../stategraphs/src/componentactio
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { ItemEntity, InventoryStore, HandSlot, equipmentSlotAddress } from '../../inventory/src';
-import { GreenStaffController, deconstructionLoot, type DeconstructionTarget } from '../../prefab/src/staff';
+import { GreenStaffController, deconstructionLoot } from '../../prefab/src/staff';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 
-function target(itemId = 'opalstaff', remainingUses = 50): DeconstructionTarget & { entity: ItemEntity } {
+/** A staff lying in the world: the entity the greenstaff casts on. */
+function target(itemId = 'opalstaff', remainingUses = 50): ItemEntity {
   const entity = new ItemEntity({ itemId, count: 1, remainingUses });
   entity.configure(INVENTORY_ITEM_SPECS[itemId]);
-  return {
-    entity, prefab: entity.prefab, model: new THREE.Group(), position: new THREE.Vector3(12, 0, 0),
-    components: entity.components, get isRemoved() { return entity.isRemoved; },
-    hasTag: tag => entity.hasTag(tag), isValid: () => !entity.isRemoved,
-    PushEvent: (name, data) => entity.PushEvent(name, data), removeOne: () => entity.remove(),
-  };
+  entity.setPosition(12, 0, 0);
+  return entity;
 }
 
 describe('greenstaff source deconstruction', () => {
@@ -27,7 +24,7 @@ describe('greenstaff source deconstruction', () => {
     expect(deconstructionLoot({ prefab: 'wall_stone_item', components: {} })).toEqual([
       { itemId: 'cutstone', count: 1 },
     ]);
-    opal.entity.destroy(); yellow.entity.destroy();
+    opal.destroy(); yellow.destroy();
   });
 
   it('selects recipe targets and commits removal, cost and final equipment depletion through the store', async () => {
@@ -39,13 +36,13 @@ describe('greenstaff source deconstruction', () => {
     const staff = new GreenStaffController(entity, { spawnLoot: spawn });
     staff.onequip();
     const opal = target();
-    const event = vi.fn(); opal.entity.ListenForEvent('ondeconstructstructure', event);
+    const event = vi.fn(); opal.ListenForEvent('ondeconstructstructure', event);
     const doDelta = vi.fn(), staffDelta = vi.fn();
     const doer = { position: new THREE.Vector3(), hasTag: () => false,
       components: { sanity: { DoDelta: doDelta }, staffsanity: { doCastingDelta: staffDelta } } };
     expect(entity.hasTag('castonrecipes')).toBe(true);
     expect(entity.hasTag('castontargets')).toBe(false);
-    expect(collectEquippedItemActions(entity, undefined, opal.entity, true)).toEqual(['CASTSPELL']);
+    expect(collectEquippedItemActions(entity, undefined, opal, true)).toEqual(['CASTSPELL']);
     const livinglog = new ItemEntity({ itemId: 'livinglog', count: 1 });
     expect(collectEquippedItemActions(entity, undefined, livinglog, true)).toEqual([]);
     livinglog.destroy();
@@ -55,7 +52,7 @@ describe('greenstaff source deconstruction', () => {
     expect(spawn).toHaveBeenCalledWith([
       { itemId: 'nightmarefuel', count: 4 }, { itemId: 'livinglog', count: 2 }, { itemId: 'opalpreciousgem', count: 1 },
     ], opal.position);
-    expect(event).toHaveBeenCalledWith(opal.entity, doer);
+    expect(event).toHaveBeenCalledWith(opal, doer);
     expect(opal.isRemoved).toBe(true);
     expect(staffDelta).toHaveBeenCalledWith(-20); expect(doDelta).not.toHaveBeenCalled();
     expect(inventory.getEntity(slot)).toBeNull();
@@ -73,11 +70,11 @@ describe('greenstaff source deconstruction', () => {
     const action = createBufferedAction('CASTSPELL', { doer: doer as never, target: opal as never, invobject: entity, pos: opal.position }, () => held);
     held = false;
     expect(action.do()).toBe(false);
-    held = true; opal.entity.addTag('INLIMBO');
+    held = true; opal.addTag('INLIMBO');
     expect(action.do()).toBe(false);
     expect(spawn).not.toHaveBeenCalled(); expect(doDelta).not.toHaveBeenCalled();
     expect(entity.components.finiteuses.percent.peek()).toBe(1);
     expect(opal.isRemoved).toBe(false);
-    entity.destroy(); opal.entity.destroy();
+    entity.destroy(); opal.destroy();
   });
 });

@@ -36,8 +36,8 @@ function lanternOwner() {
   const player = createEmptyEntity('wilson').instance;
   const events = new EventEmitter<Record<string, unknown>>();
   const pushed = vi.fn();
-  const owner: import('../../signals/src').EquipmentOwner & { hasTag(): boolean; GetPosition(): typeof player.position } = {
-    hasTag: () => true, GetPosition: () => player.position,
+  const owner: import('../../signals/src').EquipmentOwner & { hasTag(): boolean; getPosition(): THREE.Vector3 } = {
+    hasTag: () => true, getPosition: () => player.getPosition(),
     PushEvent: (name: string, data?: unknown) => { pushed(name, data); events.emit(name, data); },
     ListenForEvent: (name: string, listener: (inst: unknown, data: unknown) => void) => events.on(name, data => listener(owner, data)),
   };
@@ -173,7 +173,7 @@ describe('lantern fuel', () => {
       expect((await executeDebugCommand('c_spawn("lantern")', inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
       expect((await executeDebugCommand('c_give("lantern", 2)', inventory)).ok).toBe(true);
       const ground = manager.entities.get('spawn:lantern')!;
-      const model = manager.reskinTargets[0].model;
+      const model = manager.reskinTargets[0].transform.model;
       // SpawnPrefab leaves machine.ison false; only ondropped turns a lantern on. The player's TURNON lights it.
       expect(ground.components.machine!.IsOn()).toBe(false);
       ground.components.machine!.TurnOn();

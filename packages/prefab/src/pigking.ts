@@ -10,6 +10,7 @@ import type { LootLaunch } from '../../componets/src/inventoryphysics';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { Transform } from './transform';
+import type { SoundEmitter } from './soundEmitter';
 import definitions from './definitions.json' with { type: 'json' };
 
 export const PIGKING_ID = 'pigking' as const;
@@ -64,8 +65,14 @@ class PigKingAnimation {
  */
 export class PigKingInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & { trader: Trader<TradeItem> };
+  declare SoundEmitter: SoundEmitter;
   readonly pigking: PigKingStateGraph;
+  /** inst.sg.mem, which SGpigking reads across its states. */
+  readonly mem: PigKingStateInst['mem'] = { sleeping: false };
+  /** inst.happy, set by SGpigking's cointoss for five seconds. */
+  happy = false;
   private readonly world: PigKingWorld;
+  private readonly animation: PigKingAnimation;
 
   constructor(world: PigKingWorld, position: ReadonlyVector3) {
     super(PIGKING_ID, new SpriteState({ name: definitions.pigKing.animationName, billboard: true }), Transform.stationary());
@@ -87,17 +94,9 @@ export class PigKingInstance extends PrefabInstance {
     trader.SetOnRefuse(() => this.pigking.goToState('unimpressed'));
     addComponent(this, 'inspectable', Inspectable);
 
-    const animation = new PigKingAnimation(this.sprite, () => this.pigking.pushEvent('animover'));
-    const inst: PigKingStateInst = {
-      mem: { sleeping: false },
-      happy: false,
-      trader,
-      playAnimation: (name, loop) => animation.play(name, loop),
-      pushAnimation: (name, loop) => animation.push(name, loop),
-      SoundEmitter: this.AddSoundEmitter(),
-      DoTaskInTime: (time, fn) => this.DoTaskInTime(time, fn),
-    };
-    this.pigking = new PigKingStateGraph(inst, world.scheduler);
+    this.animation = new PigKingAnimation(this.sprite, () => this.pigking.pushEvent('animover'));
+    this.AddSoundEmitter();
+    this.pigking = new PigKingStateGraph(this, world.scheduler);
     this.SetStateGraph(() => this.pigking.sg);
 
     // WatchWorldState("isnight", OnIsNight) and OnIsNight(inst, TheWorld.state.isnight).
@@ -106,7 +105,7 @@ export class PigKingInstance extends PrefabInstance {
     if (cycle) {
       const isNight = createMemo(() => cycle.get() === 'night');
       cleanups.push(() => isNight.dispose());
-      cleanups.push(createEffect(() => OnIsNight(this, inst, isNight.get())));
+      cleanups.push(createEffect(() => OnIsNight(this, isNight.get())));
     }
     this.onRemove(() => {
       cleanups.splice(0).forEach(stop => stop());
@@ -115,6 +114,12 @@ export class PigKingInstance extends PrefabInstance {
       trader.dispose();
     });
   }
+
+  /** AnimState:PlayAnimation / PushAnimation, whose queue end pushes `animover` to SGpigking. */
+  // conventions-allow instance-method: the engine's AnimState calls, with the animover InstanceAnimState does not push yet
+  playAnimation(name: string, loop?: boolean): void { this.animation.play(name, loop); }
+  // conventions-allow instance-method: the engine's AnimState calls, with the animover InstanceAnimState does not push yet
+  pushAnimation(name: string, loop?: boolean): void { this.animation.push(name, loop); }
 
   /** pigking.lua ontradeforgold: goldvalue nuggets thrown from 4.5 units up, toward the giver. */
   tradeForGold(goldvalue: number, giver: unknown): void {
@@ -141,8 +146,8 @@ function OnGetItemFromPlayer(inst: PigKingInstance, giver: unknown, item: TradeI
   inst.DoTaskInTime(TOSS_DELAY, () => inst.tradeForGold(goldvalue, giver));
 }
 
-function OnIsNight(inst: PigKingInstance, state: PigKingStateInst, isnight: boolean): void {
-  state.mem.sleeping = isnight;
+function OnIsNight(inst: PigKingInstance, isnight: boolean): void {
+  inst.mem.sleeping = isnight;
   if (isnight) {
     if (inst.pigking.hasStateTag('idle')) inst.pigking.goToState('sleep');
   } else if (inst.pigking.hasStateTag('sleeping')) inst.pigking.goToState('wake');

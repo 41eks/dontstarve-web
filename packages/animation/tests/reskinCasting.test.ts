@@ -1,21 +1,21 @@
 import { playPickup } from '../../prefab/src/player_common';
+import { pickupDoer } from './playerDoer';
 import { ItemEntity } from '../../inventory/src/entity';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer } from './playerVisual';
 
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
-import { actionTool, reskinEntityFields } from './actionFixtures';
+import { actionTool } from './actionFixtures';
 import { createPickupInventory } from './pickupFixture';
-import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
+import { performPickupAction } from '../../stategraphs/src/pickup';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { playerInst, createPlayer, type PlayerInstance } from './playerVisual';
-import { ReskinEffects, createReskinToolLifecycle, nextReskin, reskinEntity } from '../../prefab/src/reskin_tool';
-import { SpriteState } from '@dontstarve-web/display';
-import { type ReskinTarget } from '../../stategraphs/src/reskin_tool';
+import { ReskinEffects, createReskinToolLifecycle, nextReskin, reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
+import { SpriteResources } from '@dontstarve-web/display';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { getActionString } from '../../stategraphs/src/actions';
 import { registerActionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
@@ -157,7 +157,7 @@ it('cycles building skins while preserving the container root, identity, state a
   const record = { id: 'e_open_chest', transform: { position: [3, 0, 4] as const, rotationY: 0 },
     components: { building: {}, container: { slotCount: 9, slots: [] } } };
   const root = await placement.spawnFromSave('treasurechest', record) as THREE.Group;
-  const target = lookupPrefabInstance(root)!.reskinTarget!;
+  const target = reskinTargetOf(lookupPrefabInstance(root))!;
   const skins = Object.keys(definitions.animatedBuildings.treasurechest.skinArchives);
   expect(placement.exportRecords()[0].record.components.building?.skinId).toBeUndefined();
   const fx = { play: vi.fn(), dispose: vi.fn() };
@@ -195,16 +195,16 @@ it('reskins dropped items without changing their count or entity ID and preserve
   expect(reskinEntity(first, undefined, fx)).toBe(true);
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'greenstaff');
   expect(first.isValid()).toBe(true);
-  expect(manager.reskinTargets[0]).toMatchObject({ id: first.id, model: first.model });
+  expect(manager.reskinTargets[0]).toBe(first);
   expect(manager.exportRecords()[0]).toMatchObject({ id: 'e_staff', transform: { position: [3, 0, 4] },
     components: { stack: { itemId: 'greenstaff', count: 1, remainingUses: 4, skinId: 'greenstaff_an' } } });
   expect(manager.reskinTargets[0].isValid()).toBe(true);
   const canvas = world.renderer.domElement;
   Object.assign(canvas, { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
   vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([
-    { object: manager.reskinTargets[0].model.children[0].children[0], point: new THREE.Vector3(), distance: 1 } as THREE.Intersection,
+    { object: manager.reskinTargets[0].transform.model.children[0].children[0], point: new THREE.Vector3(), distance: 1 } as THREE.Intersection,
   ]);
-  performPickupAction(itemAt(manager.reskinTargets[0].model), createPickupDoer(world.player, inventory));
+  performPickupAction(itemAt(manager.reskinTargets[0].transform.model), pickupDoer(world.player, inventory));
   expect(picked).toHaveBeenCalledWith(expect.objectContaining({ id: 'e_staff', prefab: 'greenstaff', skinId: 'greenstaff_an' }));
   expect(inventory.getEntity(equipmentSlotAddress('hand'))?.components.finiteuses.remaining).toBe(4);
   expect(manager.exportRecords()).toEqual([]);
@@ -219,7 +219,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
   model.add(mesh); world.scene.add(model);
   const entity = registerActionEntity(lookupPrefabInstance(model)!);
-  expect(lookupPrefabInstance(model)!.reskinTarget).toBeUndefined();
+  expect(reskinTargetOf(lookupPrefabInstance(model))).toBeUndefined();
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   equipped.set(tool);
@@ -247,14 +247,13 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
     expect(effects.prepare).not.toHaveBeenCalled();
     expect(tool.entity._cached_reskinname!.size).toBe(0);
     // A skinnable target whose tool left the hand before the hit frame keeps its skin.
-    const sprite = new SpriteState({ name: '' });
-    const skinned: ReskinTarget = { ...reskinEntityFields, skins: ['icebox_crystal'], id: 'e_target', prefabId: 'icebox',
-      model: new THREE.Group(), position: new THREE.Vector3(1, 0, 0), sprite, get skinId() { return sprite.skinId.peek(); }, isValid: () => true };
-    lookupPrefabInstance(model)!.reskinTarget = skinned;
+    const skinned = lookupPrefabInstance(model)!;
+    skinned.sprite.setSkinSource({ archives: { icebox_crystal: 'icebox_crystal.zip' }, art: new SpriteResources().archives });
+    expect(reskinTargetOf(skinned)).toBe(skinned);
     expect(controller.DoAction(controller.createAction(picker.getMouseActions().right!)!)).toBe(true);
     equipped.set(null); lifecycle.onunequip();
     expect(animation.hit()).toBe(false);
-    expect(sprite.skinId.peek()).toBeUndefined();
+    expect(reskinTargetOf(skinned)!.sprite.skinId.peek()).toBeUndefined();
     expect(fx.play).not.toHaveBeenCalled();
     lookupPrefabInstance(model)!.remove();
     await new Promise(resolve => setTimeout(resolve, 0));

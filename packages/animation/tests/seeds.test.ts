@@ -1,4 +1,5 @@
 import { withEntity } from './entityFixture';
+import { pickupDoer } from './playerDoer';
 import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -15,7 +16,6 @@ import { createPickupInventory } from './pickupFixture';
 import { inventorySlotAddress } from '@dontstarve-web/inventory';
 import { PlaySound } from '../../prefab/src/sound';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
-import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { collectUseItemActions } from '../../stategraphs/src/componentactions';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
@@ -103,7 +103,7 @@ it('renders veggie ground art and plants split bank/build veggie seeds, preservi
   expect(FOOD_EFFECTS.watermelon_cooked.sanity).toBe(7.5);
   expect(PERISHABLE_FOODS.carrot).toEqual({ perishTime: 4800, replacement: 'spoiled_food' });
   const { farm, turf, world } = farmSetup();
-  const inventory = createPickupInventory(), doer = createPickupDoer(world.player, inventory);
+  const inventory = createPickupInventory(), doer = pickupDoer(world.player, inventory);
   try {
     for (const [index, [seed, plant]] of [['carrot_seeds', 'farm_plant_carrot'], ['corn_seeds', 'farm_plant_corn']].entries()) {
       const position = new THREE.Vector3(3 + index * 8, 0, 3);

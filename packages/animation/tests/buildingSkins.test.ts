@@ -18,7 +18,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { recipeSkins } from '../../ui/src/categories/generated';
-import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 
 const prefabIds = [
   'cookpot', 'researchlab2', 'researchlab4',
@@ -37,7 +37,7 @@ function labWorld(extra: Partial<Record<keyof WorldContext, unknown>> = {}) {
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() }, ...extra } as unknown as WorldContext;
   return { world, buildings: managedBuildings(world) };
 }
-const reskinTarget = (model: THREE.Object3D) => prefabInstance(model)!.reskinTarget!;
+const reskinTarget = (model: THREE.Object3D) => reskinTargetOf(prefabInstance(model))!;
 // One plain build; the tests below exercise symbol-only and layered skins.
 const cases = [{ prefabId: 'cookpot', skinId: 'cookpot_candy', archive: 'dynamic/cookpot_candy.zip' }] as const;
 

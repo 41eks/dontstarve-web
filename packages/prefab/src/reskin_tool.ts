@@ -8,28 +8,13 @@ import { Vector3 } from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { bindInstance, PrefabInstance, targetInstance } from './prefabInstance';
+import { bindInstance, PrefabInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath } from './sound';
 import { TILE_SIZE } from './tile';
 
-/** The entity a CASTSPELL targets carries its own skin operation; tests may hand the operation itself. */
-function reskinOperation(target: object | undefined): ReskinTarget | undefined {
-  if (!target) return undefined;
-  const inst = targetInstance(target);
-  if (inst?.reskinTarget) return inst.reskinTarget;
-  if (!(target instanceof PrefabInstance) && (target as Partial<ReskinTarget>).sprite) return target as ReskinTarget;
-  return inst && inst.sprite.skinNames.length ? instanceReskinTarget(inst) : undefined;
-}
-
-/** An inst whose declared skin source has skins: PREFAB_SKINS[inst.prefab], its skin its own sprite json's. */
-export function instanceReskinTarget(inst: PrefabInstance): ReskinTarget {
-  const model = inst.transform.model;
-  return reskinTarget({
-    id: String(inst.entityId), prefabId: inst.prefab, model, sprite: inst.sprite, skins: inst.sprite.skinNames,
-    isValid: () => !inst.isRemoved && !inst.inlimbo,
-    get position() { return inst.position; },
-    hasTag: tag => inst.hasTag(tag), isVisible: () => model.visible,
-  });
+/** The entity a CASTSPELL targets, when its declared skin source has skins (PREFAB_SKINS[target.prefab]). */
+export function reskinTargetOf(target: object | undefined): ReskinTarget | undefined {
+  return target instanceof PrefabInstance && target.sprite.skinNames.length ? target : undefined;
 }
 
 /** The scene's explode_reskin presenter for each held tool, bound by its hand lifecycle. */
@@ -47,7 +32,7 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
   // spellCB: the skin is chosen at the hit frame and the explode_reskin fx is spawned with it; the display loads
   // the chosen skin's art when the sprite json names it.
   caster.setSpellFn((_tool, target) => {
-    const inst = reskinOperation(target);
+    const inst = reskinTargetOf(target);
     if (!inst) return false;
     const fx = reskinFxPresenters.get(entity)?.prepare(entity.skinId);
     const reskinned = reskinEntity(inst, entity, fx);
@@ -55,9 +40,10 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
     return reskinned;
   });
   caster.setCanCastFn((_doer, target) => {
-    const inst = reskinOperation(target);
-    return !!inst && !inst.reskinToolCannotTargetThis && inst.isValid()
-      && (nextReskin(inst.skins, inst.skinId, entity._cached_reskinname, inst.prefabId) !== undefined || inst.skinId !== undefined);
+    const inst = reskinTargetOf(target);
+    const skinId = inst?.sprite.skinId.peek();
+    return !!inst && !inst.isRemoved
+      && (nextReskin(inst.sprite.skinNames, skinId, entity._cached_reskinname, inst.prefab) !== undefined || skinId !== undefined);
   });
 }
 
@@ -71,27 +57,16 @@ export function createReskinToolLifecycle(entity: ItemEntity, effects: ReskinEff
 
 export { nextReskin };
 
-/** What a skinned entity supplies to become a reskin target; its skin is read from its own sprite json. */
-export type ReskinTargetView = Omit<ReskinTarget, 'skinId' | 'isRemoved'> & { readonly isRemoved?: boolean };
-
-/** A skinned entity as the reskin tool sees it: identity, skins and validity are its own, its skin is its sprite json's. */
-export function reskinTarget(view: ReskinTargetView): ReskinTarget {
-  return Object.create(view, {
-    skinId: { get: () => view.sprite.skinId.peek() },
-    ...'isRemoved' in view ? {} : { isRemoved: { get: () => !view.isValid() } },
-  }) as ReskinTarget;
-}
-
 /**
  * spellCB: GetNextSkin, remembered on the tool for the prefab, then TheSim:ReskinEntity, which writes the skin into the
  * entity's sprite json; the entity's own skin functions follow that declaration. The fx plays at the entity.
  */
 export function reskinEntity(target: ReskinTarget, tool?: Pick<ItemEntity, '_cached_reskinname'>, fx?: ReskinFxMessage): boolean {
-  if (!target.isValid() || target.reskinToolCannotTargetThis) return false;
-  const skinId = nextReskin(target.skins, target.skinId, tool?._cached_reskinname, target.prefabId);
-  tool?._cached_reskinname?.set(target.prefabId, skinId);
+  if (target.isRemoved) return false;
+  const skinId = nextReskin(target.sprite.skinNames, target.sprite.skinId.peek(), tool?._cached_reskinname, target.prefab);
+  tool?._cached_reskinname?.set(target.prefab, skinId);
   target.sprite.skinId.set(skinId);
-  fx?.play(target.position, target.prefabId);
+  fx?.play(target.position, target.prefab);
   return true;
 }
 

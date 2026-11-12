@@ -9,7 +9,7 @@ import { loadSpriteSkinArchive } from '../src/animationAssets';
 import { isMouseTarget } from '../../stategraphs/src/mouseTargets';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { PlaySound } from '../../prefab/src/sound';
 
@@ -120,7 +120,7 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
   const wormhole = s.spawn(new THREE.Vector3()), model = wormhole.transform.model;
   await prefabDisplay(model)!.artLoaded();
   const id = wormhole.entityId;
-  const target = () => prefabInstance(model)!.reskinTarget!;
+  const target = () => reskinTargetOf(prefabInstance(model))!;
   try {
     expect(wormhole.skinId).toBeUndefined();
     await s.playerAt(0);

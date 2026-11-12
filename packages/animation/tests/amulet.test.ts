@@ -1,4 +1,5 @@
 import { expect, it, vi } from 'vitest';
+import { Vector3 } from 'three';
 import { Hunger } from '../../componets/src/hunger';
 import { Health } from '../../componets/src/health';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
@@ -17,8 +18,9 @@ function wornAmulet(health: number, hunger: number) {
   stats.hunger.SetCurrent(hunger);
   const state = { name: 'idle' };
   const listeners = new Set<(inst: unknown, data: unknown) => void>();
-  const owner = { PushEvent: vi.fn(), components: stats, IsCurrentState: (name: string) => name === state.name,
-    hasTag: () => false, GetPosition: () => ({ x: 0, y: 0, z: 0 }),
+  const owner = { PushEvent: vi.fn(), components: stats,
+    sg: { hasStateTag: () => false, goToState: (name: string) => { state.name = name; }, get stateName() { return state.name; } },
+    hasTag: () => false, getPosition: () => new Vector3(),
     ListenForEvent: (name: string, listener: (inst: unknown, data: unknown) => void) => {
       if (name !== 'newstate') return () => {};
       listeners.add(listener);

@@ -140,6 +140,8 @@ export interface WilsonStateInst {
     /** sleepingbaguser.lua: inst.sleepingbag is the bed the sleeper lies in. */
     readonly sleepingbaguser?: { readonly bed?: { DoWakeUp(nostatechange?: boolean): void } };
     readonly inventory?: Pick<InventoryStore, 'GetEquippedItem' | 'RemoveItem' | 'FindItem' | 'EquipFromInventory'>;
+    /** combat.lua: the attack state's cooldown. */
+    readonly combat?: WilsonCombat;
   };
   PushEvent(name: string, data?: unknown): void;
   /** inst:Hide() / inst:Show() / inst.entity:IsVisible(). */
@@ -161,8 +163,6 @@ export interface WilsonStateInst {
   /** inst.components.locomotor:WantsToMoveForward(). */
   readonly wantsToMoveForward: boolean;
   readonly slipperyfeet?: { SetCurrent(value: number): void };
-  /** inst.components.combat: the attack state's cooldown. */
-  readonly combat?: WilsonCombat;
   readonly soulHopHost?: WilsonSoulHopHost;
   readonly deathHost?: WilsonDeathHost;
   readonly fishingHost?: WilsonFishingHost;
@@ -1098,7 +1098,7 @@ const states: WilsonState[] = [
     name: 'attack',
     tags: ['attack', 'notalking', 'abouttoattack', 'autopredict'],
     onenter: (inst) => {
-      const combat = inst.context.entity.combat;
+      const combat = inst.context.entity.components.combat;
       if (!combat || combat.InCooldown()) {
         inst.removeStateTag('abouttoattack');
         inst.context.clearBufferedAction();
@@ -1175,7 +1175,7 @@ const states: WilsonState[] = [
       }),
     ],
     onexit: (inst) => {
-      if (inst.hasStateTag('abouttoattack')) inst.context.entity.combat?.CancelAttack();
+      if (inst.hasStateTag('abouttoattack')) inst.context.entity.components.combat?.CancelAttack();
     },
   }),
   State({

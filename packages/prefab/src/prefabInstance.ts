@@ -57,6 +57,12 @@ export interface PrefabComponents extends ActionComponents {
   floater?: import('../../componets/src/ruinsrelicSignatures').Floater;
   furnituredecor?: import('../../componets/src/ruinsrelicSignatures').FurnitureDecor;
   inventoryitemmoisture?: import('../../componets/src/ruinsrelicSignatures').InventoryItemMoisture;
+  /** firefx.lua on a fire fx entity (fire, campfirefire), which its owner's burnable or fueled drives. */
+  firefx?: import('../../componets/src/firefx').FireFX;
+  /** armor.lua, whose condition staff.lua destroystructure reads from an armor item. */
+  armor?: import('../../componets/src/armor').Armor;
+  /** stackable.lua on an item inst, of which destroystructure removes one. */
+  stackable?: import('../../inventory/src/entity').StackableComponent;
   /** What slipperyfeet's TheSim:FindEntities reads from each surface it finds, such as a frozen pond. */
   slipperyfeettarget?: import('../../componets/src/slipperyfeettarget').SlipperyFeetTarget;
 }
@@ -222,10 +228,6 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   readonly components: Components = {} as Components;
   /** World services injected when this prefab joins a world; callbacks use the same host and components. */
   worldServices?: Partial<PrefabWorldContext>;
-  /** The reskin_tool's skin operation on this entity, set by a prefab with source skins; the skin stays the sprite json's. */
-  reskinTarget?: import('../../stategraphs/src/reskin_tool').ReskinTarget;
-  /** The greenstaff's view of this structure (MakeDeconstructable); loot and removal follow the recipe and the entity. */
-  deconstructionTarget?: import('./staff').DeconstructionTarget;
   /** inst.OnSave(inst, data): the prefab writes its own state into the record's components. */
   OnSave?(inst: this, data: PlacementSaveRecord['components']): void;
   /** inst.OnLoad(inst, data): the prefab restores its own state from the record's components. */
@@ -783,12 +785,6 @@ export function prefabInstance<Instance extends AnyPrefabInstance = PrefabInstan
   return (model ? instancesByModel.get(model) : undefined) as Instance | undefined;
 }
 
-/** An action's target as its entity: the inst itself, or the inst behind a model-based target view. */
-export function targetInstance(target: object | undefined): PrefabInstance | undefined {
-  if (target instanceof PrefabInstance) return target;
-  const model = (target as { model?: Object3D } | undefined)?.model;
-  return model ? prefabInstance(model) : undefined;
-}
 
 /** A new entity and the display that borrows its transform root. */
 /**

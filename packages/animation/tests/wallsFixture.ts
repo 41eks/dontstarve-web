@@ -1,5 +1,3 @@
-import { prefabInstance } from '../../prefab/src/prefabInstance';
-import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
 import { WALL_PREFAB_IDS, type WallId } from '../../prefab/src/walls';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -27,9 +25,9 @@ export function wallsFixture(world: WorldContext, consume: (buildId: WallId, ski
     exportRecords: records,
     update: (dt = 0) => buildings.update(dt),
     get renderEntities() { return buildings.renderEntities; },
-    /** The placed walls' reskin operations, in spawn order. */
-    get reskinTargets(): ReskinTarget[] {
-      return records().map(({ record }) => prefabInstance(prefabs.get(record.id)!.transform.model)!.reskinTarget!);
+    /** The placed walls, in spawn order: the entities the reskin tool casts on. */
+    get reskinTargets() {
+      return records().map(({ record }) => prefabs.get(record.id)!);
     },
   };
 }

@@ -32,12 +32,8 @@ export interface EquipmentSanity {
 export interface EquipmentOwner {
   ListenForEvent?(name: string, listener: (inst: unknown, data: unknown) => void): () => void;
   PushEvent(name: string, data?: unknown): void;
-  /** owner.sg:HasStateTag(tag) */
-  HasStateTag?(tag: string): boolean;
-  /** owner.sg:GoToState(name) */
-  GoToState?(name: string): void;
-  /** owner.sg.currentstate.name == name */
-  IsCurrentState?(name: string): boolean;
+  /** owner.sg: HasStateTag(tag), GoToState(name) and currentstate.name. */
+  readonly sg?: { hasStateTag(tag: string): boolean; goToState(name: string): void; readonly stateName?: string };
   /** owner.Transform:GetWorldPosition(), as the ground-plane foot point. */
   getPosition?(): Vector3;
   /** owner.SoundEmitter */

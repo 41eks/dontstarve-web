@@ -1,4 +1,4 @@
-import { prefabDisplay, SpriteState } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import { PlayerProx } from '../../componets/src/playerprox';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
@@ -6,7 +6,6 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { WormholeStateGraph, type WormholeStateInst } from '../../stategraphs/src/SGwormhole';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import { reskinTarget } from './reskin_tool';
 import type { PlacementSaveRecord } from './saveRecord';
 import type { SoundEmitter } from './soundEmitter';
 import { TILE_SIZE } from './tile';
@@ -98,12 +97,6 @@ export function wormholePrefabs(world: WormholeWorld): Readonly<Record<typeof WO
         playerprox.SetOnPlayerNear(() => onnear(inst));
         playerprox.SetOnPlayerFar(() => onfar(inst));
         playerprox.ForceUpdate();
-        const model = inst.transform.model;
-        inst.reskinTarget = reskinTarget({
-          get id() { return String(inst.entityId); }, prefabId: WORMHOLE_ID, instance: inst, display: prefabDisplay(model)!,
-          sprite: inst.sprite, skins: WORMHOLE_SKINS, get position() { return inst.position; },
-          hasTag: tag => inst.hasTag(tag), isValid: () => !inst.isRemoved,
-        });
       },
     },
   };

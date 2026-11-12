@@ -2,7 +2,7 @@ import type { EntityEventData } from '../../componets/src/entityEvents';
 import { addComponent, removeComponent } from './components';
 import { SpriteResources, SpriteState, type FollowerFx, type PrefabDisplay } from '@dontstarve-web/display';
 import { clockstate, createMemo, createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonCombat, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
+import { BufferedAction, WilsonStateGraph, type WilsonAction, type WilsonFishingHost, type WilsonMovementState, type WilsonOneShotState, type WilsonDeathHost } from '@dontstarve-web/stategraphs';
 import type * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { type EquipmentKind, type InventoryStore } from '@dontstarve-web/inventory';
@@ -89,7 +89,7 @@ export function OnItemRanOut(inventory: Parameters<typeof equipSamePrefab>[0], d
 
 /** player_common.lua AddComponent("builder"); the scene supplies spatial queries. */
 export function bindPlayerBuilder(model: THREE.Group, world: Omit<BuilderWorld, 'researchMachineDistance'>): Builder {
-  const inst = prefabInstance(model)!;
+  const inst = playerInst(model);
   registerActionEntity(inst);
   removeComponent(inst, 'builder');
   return addComponent(inst, 'builder', Builder, { ...world, researchMachineDistance: 4 * WORLD_SCALE });
@@ -98,13 +98,7 @@ export function bindPlayerBuilder(model: THREE.Group, world: Omit<BuilderWorld, 
 /** player_common.lua AddComponent("slipperyfeet"): frozen ponds are its slipperyfeettarget entities. */
 export function AddSlipperyFeet(inst: PlayerInstance): void {
   if (inst.slipperyfeet || !inst.scheduler) return;
-  const sg = inst.sg;
-  inst.slipperyfeet = new SlipperyFeet({
-    getPosition: () => inst.transform.model.position,
-    getMotorSpeed: () => inst.currentMotorSpeed,
-    PushEvent: (name, data) => sg.pushEvent(name, data),
-    sg,
-  }, {
+  inst.slipperyfeet = new SlipperyFeet(inst, {
     scheduler: inst.scheduler,
     findSlipperyEntities: (position, radius) => inst.TheSim.FindEntities(position, radius, ['slipperyfeettarget']),
   });
@@ -168,7 +162,24 @@ export class PlayerInstance extends PrefabInstance {
     playeractionpicker?: Pick<import('../../stategraphs/src/playeractionpicker').PlayerActionPicker, 'PushActionFilter' | 'PopActionFilter'>;
     /** player_common.lua master_postinit AddComponent("sleepingbaguser"), on game time. */
     sleepingbaguser?: SleepingBagUser;
+    /** player_common.lua AddComponent("combat"), bound by the scene with its weapon lookup. */
+    combat?: import('../../componets/src/combat').Combat;
+    /** reader.lua, which ACTIONS.READ reaches on the doer; bound by the scene with the books' world services. */
+    reader?: import('../../componets/src/reader').Reader<PlayerInstance, import('./books').BookWorld>;
   };
+  /** TheWorld.Map, as ACTIONS.DEPLOY reaches it through the doer while the scene binds one. */
+  Map?: import('../../componets/src/deployable').DeployMap;
+  /** equippable:Equip(owner): each equipped inst draws on its own slot of the player's sprite. */
+  OpenEquipmentView?: import('@dontstarve-web/signals').EquipmentOwner['OpenEquipmentView'];
+  /** wortox.lua: CanSoulhop / CanBlinkTo / CanBlinkFromWithMap on the inst, read by ACTIONS.BLINK and BLINK_MAP. */
+  CanSoulhop?: () => boolean;
+  CanBlinkTo?: (position: THREE.Vector3) => boolean;
+  CanBlinkFromWithMap?: (position: THREE.Vector3) => boolean;
+  /** PlayerController:GetMapActions sets these while it asks for the map's actions. */
+  checkingmapactions?: boolean;
+  checkingmapactions_pos?: THREE.Vector3;
+  /** wortox.lua inst._freesoulhop_counter */
+  get _freesoulhop_counter(): number | undefined { return this.wortox?.freeHops.peek(); }
   /** inst:SetStateGraph("SGwilson"). */
   declare sg: WilsonStateGraph;
   stats!: PlayerStats;
@@ -177,6 +188,9 @@ export class PlayerInstance extends PrefabInstance {
   runSpeed = 0;
   motorSpeed?: number;
   currentMotorSpeed = 0;
+  /** Physics:GetMotorSpeed, as slipperyfeet and the surfaces' slippery rates read it. */
+  // conventions-allow instance-method: the engine's Physics:GetMotorSpeed, not a Lua local function
+  getMotorSpeed(): number { return this.currentMotorSpeed; }
   wantsToMoveForward = false;
   worldHeading = 0;
   slipperyfeet?: SlipperyFeet;
@@ -201,8 +215,6 @@ export class PlayerInstance extends PrefabInstance {
   blockbigbernies?: EntityTask;
   /** inst:ShowHUD(show) */
   ShowHUD!: (show: boolean) => void;
-  /** The player inst's combat component, read by the attack state. */
-  combat?: WilsonCombat;
   /** The emote SGwilson's emote state is playing, with the art it was chosen with. */
   emote: ActiveEmote | null = null;
   /** The archive and dynamic builds the player's display loads. */
@@ -218,6 +230,12 @@ export class PlayerInstance extends PrefabInstance {
   soulHopHost?: WilsonSoulHopHost;
   deathHost?: WilsonDeathHost;
   fishingHost?: WilsonFishingHost;
+}
+
+/** The player inst once the application has given it its inventory, as it is whenever it acts. */
+export type PlayerWithInventory = PlayerInstance & { readonly components: { readonly inventory: InventoryStore } };
+export function hasPlayerInventory(inst: PlayerInstance): inst is PlayerWithInventory {
+  return inst.components.inventory !== undefined;
 }
 
 export function playerInst(model: THREE.Object3D): PlayerInstance {
@@ -434,6 +452,8 @@ export function MakePlayerCharacter(
 
     // ListenForEvent("death", ex_fns.OnPlayerDeath); SGwilson's own death handler hears the same event.
     inst.ListenForEvent('death', OnPlayerDeath);
+    // ListenForEvent("itemranout", fns.OnItemRanOut)
+    inst.ListenForEvent('itemranout', (_inst, data) => { if (inst.components.inventory) OnItemRanOut(inst.components.inventory, data); });
     // ListenForEvent("makeplayerghost" / "respawnfromghost", ex_fns.OnMakePlayerGhost / OnRespawnFromGhost).
     inst.ListenForEvent('makeplayerghost', (_inst, data) => OnMakePlayerGhost(inst, data));
     inst.ListenForEvent('respawnfromghost', (_inst, data) => OnRespawnFromGhost(inst, data));

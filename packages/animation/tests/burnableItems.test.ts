@@ -1,4 +1,5 @@
 import { withEntity } from './entityFixture';
+import { pickupDoer } from './playerDoer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -13,7 +14,7 @@ import { ItemEntity, inventorySlotAddress } from '../../inventory/src';
 import { createPickupInventory } from './pickupFixture';
 import type { BurnableItemController } from '../../prefab/src/burnableItems';
 import { performLightAction } from '../../stategraphs/src/componentactions';
-import { createPickupDoer, performPickupAction } from '../../stategraphs/src/pickup';
+import { performPickupAction } from '../../stategraphs/src/pickup';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
@@ -45,7 +46,7 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
       expect(await manager.drop({ ...INVENTORY_ITEM_SPECS[entity.prefab], ...entity.snapshot(), entity }, position,
         () => inventory.extract(inventorySlotAddress(index), entity.components.stackable.count)!)).toBe(true);
     }
-    const models = manager.reskinTargets.map(target => target.model);
+    const models = manager.reskinTargets.map(target => target.transform.model);
     const notifications = models.map(model => {
       const notify = vi.fn(); prefabInstance<ItemEntity>(model)!.getComponent<BurnableItemController>('burnable_item')!.burnt.subscribe(notify); return notify;
     });
@@ -55,7 +56,7 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
       expect(performLightAction(torch, findActionEntity(model)!, torch)).toBe(true);
       expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.peek()).toBe(true);
       expect(prefabInstance<ItemEntity>(model)!.persistence.peek()).toBe(false);
-      expect(performPickupAction(itemAt(model), createPickupDoer(withEntity(new THREE.Group(), 'wilson'), inventory))).toBe(false);
+      expect(performPickupAction(itemAt(model), pickupDoer(withEntity(new THREE.Group(), 'wilson'), inventory))).toBe(false);
     }
     // The fire is a child of the burning item, as DST's Burnable:SpawnFX adds it, with the source's tags.
     const fires = () => models.flatMap(model => model.children.filter(child => child.name === 'fire'));
@@ -121,8 +122,8 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     const entity = manager.entities.get('spawn:log')!;
     entity.setFreshnessPercent(.6); entity.setWet(true);
     const before = entity.snapshot();
-    const model = manager.reskinTargets.find(target => target.prefabId === 'log')!.model;
-    const rocks = manager.reskinTargets.find(target => target.prefabId === 'rocks')!.model;
+    const model = manager.reskinTargets.find(target => target.prefab === 'log')!.transform.model;
+    const rocks = manager.reskinTargets.find(target => target.prefab === 'rocks')!.transform.model;
     const torch = inventory.getEntity(inventorySlotAddress(0))!;
     expect(collectEquippedItemActions(torch, undefined, findActionEntity(rocks)!, true)).toEqual([]);
     performLightAction(torch, findActionEntity(model)!, torch); manager.update(5, new THREE.Quaternion());
@@ -131,13 +132,13 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     expect(prefabInstance<ItemEntity>(model)!.components.burnable!.burning.peek()).toBe(false);
     const burningSignal = prefabInstance<ItemEntity>(model)!.components.burnable!.burning, burntSignal = prefabInstance<ItemEntity>(model)!.getComponent<BurnableItemController>('burnable_item')!.burnt;
     player.position.set(3, 0, 6);
-    expect(performPickupAction(itemAt(model), createPickupDoer(player, inventory))).toBe(true);
+    expect(performPickupAction(itemAt(model), pickupDoer(player, inventory))).toBe(true);
     // RemoveFromScene: the held inst's display leaves the scene as its lifecycle effect runs.
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull(); expect(inventory.getEntity(inventorySlotAddress(1))).toBe(entity);
     expect(await manager.drop({ ...SAVE_CATALOG.items.log, ...entity.snapshot(), entity }, new THREE.Vector3(8, 0, -4),
       () => inventory.extract(inventorySlotAddress(1), 1)!)).toBe(true);
-    const dropped = manager.reskinTargets.find(target => target.prefabId === 'log')!.model;
+    const dropped = manager.reskinTargets.find(target => target.prefab === 'log')!.transform.model;
     expect(prefabInstance<ItemEntity>(dropped)!.components.burnable!.burning).toBe(burningSignal); expect(prefabInstance<ItemEntity>(dropped)!.getComponent<BurnableItemController>('burnable_item')!.burnt).toBe(burntSignal);
     expect(entity.snapshot()).toEqual(before); expect(entity.transform.position.toArray()).toEqual([8, 0, -4]);
     performLightAction(torch, findActionEntity(dropped)!, torch); manager.update(15, new THREE.Quaternion());

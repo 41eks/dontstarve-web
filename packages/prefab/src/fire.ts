@@ -5,7 +5,7 @@ import type { BurnFX } from '../../componets/src/burnable';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { FireFX, type FireFXInst, type FireFXLevel, type FireFXLight } from '../../componets/src/firefx';
 import { spawnLightEntity } from './localLight';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, type PrefabComponents, type PrefabInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 
@@ -33,7 +33,7 @@ let nextId = 0;
 export class Fire implements BurnFX, FireFXInst {
   readonly instance: PrefabInstance;
   /** The fx is the inst its firefx sees; the component is stored on, and torn down with, the fx's prefab instance. */
-  get components(): { firefx: FireFX } { return this.instance.components as unknown as { firefx: FireFX }; }
+  get components(): PrefabComponents { return this.instance.components; }
   get isRemoved(): boolean { return this.instance.isRemoved; }
   onRemove(remove: () => void): () => void { return this.instance.onRemove(remove); }
   private readonly owner: PrefabInstance;

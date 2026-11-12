@@ -15,7 +15,7 @@
     "instance-method": 2
   },
   "packages/prefab/src/bernie.ts": {
-    "instance-method": 17,
+    "instance-method": 16,
     "sg-forward": 1
   },
   "packages/prefab/src/books.ts": {
@@ -28,9 +28,6 @@
     "component-dispose-on-remove": 1,
     "instance-method": 13,
     "prefab-timer": 2
-  },
-  "packages/prefab/src/butterfly.ts": {
-    "sg-forward": 2
   },
   "packages/prefab/src/chesspieces.ts": {
     "instance-method": 3
@@ -55,7 +52,7 @@
     "userdata": 5
   },
   "packages/prefab/src/dragonfly.ts": {
-    "instance-method": 6
+    "instance-method": 3
   },
   "packages/prefab/src/evergreens.ts": {
     "instance-method": 1
@@ -81,8 +78,7 @@
     "instance-method": 3
   },
   "packages/prefab/src/lightflier.ts": {
-    "prefab-timer": 1,
-    "sg-forward": 1
+    "prefab-timer": 1
   },
   "packages/prefab/src/marblebean_sapling.ts": {
     "instance-method": 2
@@ -93,9 +89,6 @@
   },
   "packages/prefab/src/modelRecords.ts": {
     "model-keyed-state": 1
-  },
-  "packages/prefab/src/mole.ts": {
-    "sg-forward": 1
   },
   "packages/prefab/src/molehill.ts": {
     "component-dispose-on-remove": 3,
@@ -132,8 +125,7 @@
     "model-keyed-state": 1
   },
   "packages/prefab/src/player_common.ts": {
-    "component-dispose-on-remove": 4,
-    "sg-forward": 1
+    "component-dispose-on-remove": 4
   },
   "packages/prefab/src/pond.ts": {
     "instance-method": 6
@@ -195,7 +187,6 @@
     "prefab-timer": 1
   },
   "packages/prefab/src/wortoxPlayer.ts": {
-    "object-assign-state": 1,
     "scene": 1
   },
   "packages/stategraphs/src/actions.ts": {
@@ -207,7 +198,7 @@
     "userdata": 1
   },
   "src/main.ts": {
-    "components-write": 4
+    "components-write": 3
   },
   "src/prefabDefinitions.ts": {
     "prefab-id-branch": 12
@@ -216,7 +207,7 @@
     "userdata": 1
   },
   "src/registerDisposal.ts": {
-    "components-write": 6
+    "components-write": 2
   },
   "src/save/download.ts": {
     "prefab-id-branch": 1

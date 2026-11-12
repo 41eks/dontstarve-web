@@ -5,9 +5,9 @@ import { ItemEntity } from '../../inventory/src/entity';
 import { Tool } from '../../componets/src/tool';
 import { Workable } from '../../componets/src/workable';
 import { performToolWork } from '../../stategraphs/src/componentactions';
-import { configureReskinToolEntity, nextReskin, reskinTarget } from '../../prefab/src/reskin_tool';
-import { SpriteState } from '@dontstarve-web/display';
-import type { ReskinTarget } from '../../stategraphs/src/reskin_tool';
+import { configureReskinToolEntity, nextReskin } from '../../prefab/src/reskin_tool';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { SpriteResources, SpriteState } from '@dontstarve-web/display';
 
 it('selects work from component tags, revalidates changes at impact and consumes only successful work', () => {
   const tool = new ItemEntity({ itemId: 'test_tool', count: 1 });
@@ -43,31 +43,26 @@ it('validates reskin spells and advances each tool cache only after a successful
   const first = new ItemEntity({ itemId: 'reskin_tool', count: 1 });
   const second = new ItemEntity({ itemId: 'reskin_tool', count: 1 });
   configureReskinToolEntity(first); configureReskinToolEntity(second);
-  let visible = true;
-  // The entity the mouse picks; the reskin spell reads it through its target view.
+  // The entity the mouse picks, and a skinned structure the reskin spell is cast on.
   const picked = new ItemEntity({ itemId: 'test_structure', count: 1 });
   const sprite = new SpriteState({ name: '' });
-  const target: ReskinTarget = reskinTarget({
-    id: 'target', prefabId: 'test_structure', model: new THREE.Group(), position: new THREE.Vector3(), sprite,
-    skins: ['skin_a', 'skin_b'], isRemoved: false, hasTag: tag => picked.hasTag(tag), isVisible: () => visible,
-    isValid: () => true,
-  });
+  sprite.setSkinSource({ archives: { skin_a: 'skin_a.zip', skin_b: 'skin_b.zip' }, art: new SpriteResources().archives });
+  const target = new PrefabInstance('test_structure', sprite);
   const doer = { position: new THREE.Vector3(), hasTag: () => false, components: {} };
   try {
     expect(collectEquippedItemActions(first, undefined, picked, true)).toEqual(['CASTSPELL']);
     // CanCast only asks; the tool's cache advances with a cast.
     expect(first.components.spellcaster!.canCast(doer, target, target.position.clone())).toBe(true);
     expect(first._cached_reskinname!.size).toBe(0);
-    visible = false;
+    sprite.setVisible(false);
     expect(first.components.spellcaster!.canCast(doer, target, target.position.clone())).toBe(false);
-    visible = true; picked.addTag('nomagic');
+    sprite.setVisible(true); picked.addTag('nomagic');
     expect(collectEquippedItemActions(first, undefined, picked, true)).toEqual([]);
     picked.removeTag('nomagic');
     expect(first.components.spellcaster!.castSpell(target, target.position.clone(), doer)).toBe(true);
     expect(sprite.skinId.peek()).toBe('skin_a');
-    expect(target.skinId).toBe('skin_a');
-    expect(nextReskin(target.skins, target.skinId, first._cached_reskinname, target.prefabId)).toBe('skin_b');
-    expect(nextReskin(target.skins, target.skinId, second._cached_reskinname, target.prefabId)).toBeUndefined();
+    expect(nextReskin(sprite.skinNames, sprite.skinId.peek(), first._cached_reskinname, target.prefab)).toBe('skin_b');
+    expect(nextReskin(sprite.skinNames, sprite.skinId.peek(), second._cached_reskinname, target.prefab)).toBeUndefined();
     first.destroy(); expect(first.hasTag('castontargets')).toBe(false);
-  } finally { first.destroy(); second.destroy(); picked.destroy(); }
+  } finally { first.destroy(); second.destroy(); picked.destroy(); target.remove(); }
 });

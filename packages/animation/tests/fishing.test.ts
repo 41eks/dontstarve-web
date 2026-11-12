@@ -97,9 +97,9 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   animation.fishingHost = { waitForFish: () => rodOf().WaitForFish(), collect: () => rodOf().Collect(),
     loseRod: () => { rodOf().Release(); tool.remove(); } };
   // The player inst: the rod's events reach its stategraph, whose tags gate the rod.
-  const doer = { ...actionDoer(), position: player.position, getPosition: () => player.position, GetPosition: () => player.position,
+  const doer = { ...actionDoer(), position: player.position, getPosition: () => player.position,
     PushEvent: (name: string, data: unknown) => animation.sg.pushEvent(name, data),
-    sg: { HasStateTag: (tag: string) => animation.sg.hasStateTag(tag) }, TheSim: { FindEntities: () => [] } };
+    sg: { hasStateTag: (tag: string) => animation.sg.hasStateTag(tag) }, TheSim: { FindEntities: () => [] } };
   const playerController = new PlayerController(world, animation.sg, locomotor, equipped, doer, () => false);
   const pondEntity = () => findActionEntity(pond)!;
   const controller = {

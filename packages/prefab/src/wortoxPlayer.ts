@@ -15,8 +15,6 @@ export interface WortoxPlayerOptions {
   body: PlayerBody;
   /** The player's inst.Physics, for SGwilson's ToggleOffPhysics / ToggleOnPhysics. */
   physics: PhysicsState;
-  /** The player inst as act.doer: wortox.lua puts CanSoulhop, CanBlinkTo and CanBlinkFromWithMap on it. */
-  doer: WortoxDoer;
   fx: WorldFx;
   isPassableAtPoint(position: THREE.Vector3): boolean;
   resetMinimapOffset?(): void;
@@ -60,7 +58,7 @@ export class WortoxPlayer {
   private constructor(options: WortoxPlayerOptions) {
     this.options = options;
     this.blockers = placementEntities(options.world.scene);
-    const { world, body, doer, fx } = options;
+    const { world, body, fx } = options;
     const instance = playerInst(world.player);
     if (!instance.wortox) throw new Error('Expected wortox master_postinit to have run');
     this.state = instance.wortox;
@@ -81,18 +79,14 @@ export class WortoxPlayer {
       snapCamera: options.snapCamera,
     });
     // wortox.lua: CanSoulhop / CanBlinkTo / CanBlinkFromWithMap on the inst, read by ACTIONS.BLINK and BLINK_MAP.
-    const state = this.state;
-    Object.assign(doer, {
-      // The project skips the Has("wortox_soul") count (README); riding still blocks the hop.
-      CanSoulhop: () => !this.disposed && !prefabInstance(world.player)?.hasTag('riding'),
-      CanBlinkTo: (position: THREE.Vector3) => this.canBlinkTo(position),
-      CanBlinkFromWithMap: (position: THREE.Vector3) => this.canMapBlinkTo(position),
-    });
-    Object.defineProperty(doer, '_freesoulhop_counter', { configurable: true, get: () => state.freeHops.peek() });
+    // The project skips the Has("wortox_soul") count (README); riding still blocks the hop.
+    instance.CanSoulhop = () => !this.disposed && !instance.hasTag('riding');
+    instance.CanBlinkTo = position => this.canBlinkTo(position);
+    instance.CanBlinkFromWithMap = position => this.canMapBlinkTo(position);
     // OnSetOwner: playeractionpicker.pointspecialactionsfn = GetPointSpecialActions.
     if (world.mouseActions) {
       world.mouseActions.pointspecialactionsfn = (_doer, pos, useitem, right) =>
-        GetPointSpecialActions(doer, world.player.position, pos, useitem, right);
+        GetPointSpecialActions(instance, instance.getPosition(), pos, useitem, right);
     }
   }
 
@@ -123,11 +117,11 @@ export class WortoxPlayer {
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    const { world, doer } = this.options;
+    const { world } = this.options;
     if (world.mouseActions) (world.mouseActions as PlayerActionPicker).pointspecialactionsfn = undefined;
-    delete doer.CanSoulhop; delete doer.CanBlinkTo; delete doer.CanBlinkFromWithMap;
-    delete (doer as { _freesoulhop_counter?: number })._freesoulhop_counter;
-    bindSoulHop(playerInst(this.options.world.player), undefined);
+    const instance = playerInst(world.player);
+    instance.CanSoulhop = undefined; instance.CanBlinkTo = undefined; instance.CanBlinkFromWithMap = undefined;
+    bindSoulHop(instance, undefined);
     this.setPhysicsEnabled(true);
   }
 }

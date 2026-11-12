@@ -1,4 +1,5 @@
 import { withEntity } from './entityFixture';
+import { pickupDoer } from './playerDoer';
 import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
@@ -10,7 +11,6 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { saplingPrefabs } from '../../prefab/src/sapling';
 import { ItemWorldFixture } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
-import { createPickupDoer } from '../../stategraphs/src/pickup';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
@@ -58,7 +58,7 @@ function setup(inventory = createPickupInventory()) {
   const dispose = () => { registry.dispose(); ground.dispose(); inventory.dispose(); unbind(); scheduler.dispose(); };
   return { inventory, scene, player, ground, saplings, season, scheduler, registry, save, dispose,
     world: { scene, player, camera, renderer, ground: new THREE.Group(), cameraFacing: createSignal(1), cameraHeading: createSignal(0) },
-    worker: createPickupDoer(player, inventory) };
+    worker: pickupDoer(player, inventory) };
 }
 
 it('picks twigs, regrows after four days through grow → sway, and saves/restores the empty sapling', async () => {

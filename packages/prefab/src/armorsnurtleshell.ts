@@ -41,7 +41,7 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
     const owner = this.owner;
     const equippedArmor = owner?.components?.inventory?.GetEquippedItem('body');
     if (!owner || !equippedArmor) return;
-    if (owner.HasStateTag?.('shell')) equippedArmor.components.armor?.SetAbsorption(FULL_ABSORPTION);
+    if (owner.sg?.hasStateTag('shell')) equippedArmor.components.armor?.SetAbsorption(FULL_ABSORPTION);
     else {
       equippedArmor.components.armor?.SetAbsorption(ARMORSNURTLESHELL_ABSORPTION);
       equippedArmor.components.useableitem?.StopUsingItem();
@@ -52,7 +52,7 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
   private droptargets(): void {
     this.task = undefined;
     const owner = this.owner, position = owner?.getPosition?.();
-    if (!owner || !position || !owner.HasStateTag?.('shell')) return;
+    if (!owner || !position || !owner.sg?.hasStateTag('shell')) return;
     // TARGET_MUST_TAGS { "_combat" } is the combat component's replica tag.
     for (const v of this.inst.TheSim.FindEntities(position, DROPTARGETS_RANGE, [], TARGET_CANT_TAGS)) {
       const combat = (v.components as { combat?: Combat }).combat;
@@ -63,7 +63,7 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
   onuse(): void {
     const owner = this.owner;
     if (!owner) return;
-    owner.GoToState?.('shell_enter');
+    owner.sg?.goToState('shell_enter');
     this.task?.Cancel();
     if (!this.inst.worldServices?.scheduler) return;
     this.task = this.inst.DoTaskInTime(DROPTARGETS_DELAY, () => this.droptargets());

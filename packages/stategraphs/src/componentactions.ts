@@ -52,7 +52,7 @@ export interface ComponentActionEntity extends WorkInst {
     repairable?: import('../../componets/src/repairable').Repairable;
     repairer?: import('../../componets/src/repairer').Repairer;
     /** Picked from the class: its inst type parameter is the owning prefab's, which actions do not read. */
-    fueled?: Pick<import('../../componets/src/fueled').Fueled, 'CanAcceptFuelItem' | 'TakeFuelItem'>;
+    fueled?: Pick<import('../../componets/src/fueled').Fueled, 'CanAcceptFuelItem' | 'TakeFuelItem' | 'percent'>;
     trader?: import('../../componets/src/trader').Trader<import('../../componets/src/trader').TradeItem>;
     occupiable?: Pick<import('../../componets/src/occupiable').Occupiable<ItemEntity>, 'CanOccupy' | 'Occupy' | 'IsOccupied' | 'Harvest'>;
     machine?: import('../../componets/src/machine').Machine;
@@ -88,7 +88,7 @@ type IsValidFn = (inst: ComponentActionTarget, action: string, right: boolean) =
 /** The acting player as SCENE entries read it: its tags and inventory. */
 export interface SceneActionDoer {
   hasTag(tag: string): boolean;
-  readonly sg?: { HasStateTag(tag: string): boolean };
+  readonly sg?: { hasStateTag(tag: string): boolean };
   readonly components?: { inventory?: { GetNumSlots(): number;
     GetActiveItem?(): import('../../inventory/src/entity').ItemEntity | null;
     CanAccessItem?(item: import('../../inventory/src/entity').ItemEntity): boolean;
@@ -99,7 +99,7 @@ type SceneFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: Sce
 /** The acting player as EQUIPPED / POINT entries read it. */
 export interface EquippedActionDoer {
   hasTag(tag: string): boolean;
-  readonly sg?: { HasStateTag(tag: string): boolean };
+  readonly sg?: { hasStateTag(tag: string): boolean };
   readonly components?: { combat?: Pick<import('../../componets/src/combat').Combat, 'CanLightTarget'> };
   /** TheWorld.Map, as deployable:CanDeploy reaches it. */
   readonly Map?: import('../../componets/src/deployable').DeployMap;
@@ -198,7 +198,7 @@ export const COMPONENT_ACTIONS: {
         && doer.components?.inventory) actions.push('RUMMAGE');
     },
     inspectable: (inst, doer, actions) => {
-      if (inst !== doer && (!doer.sg || (doer.sg.HasStateTag('idle') && !doer.sg.HasStateTag('moving')) || doer.sg.HasStateTag('channeling'))) actions.push('LOOKAT');
+      if (inst !== doer && (!doer.sg || (doer.sg.hasStateTag('idle') && !doer.sg.hasStateTag('moving')) || doer.sg.hasStateTag('channeling'))) actions.push('LOOKAT');
     },
     hauntable: (inst, _doer, actions) => {
       if (!inst.hasTag('haunted') && !inst.hasTag('catchable')) actions.push('HAUNT');
@@ -258,7 +258,7 @@ export const COMPONENT_ACTIONS: {
       if (!rod || !target.hasTag('fishable') || rod.HasCaughtFish()) return;
       // target ~= fishingrod.target: identity, between the picked entity and the rod's fishing target.
       if (!Object.is(target, rod.target)) actions.push('FISH');
-      else if (!doer?.sg || doer.sg.HasStateTag('fishing')) actions.push('REEL');
+      else if (!doer?.sg || doer.sg.hasStateTag('fishing')) actions.push('REEL');
     },
     lighter: (_inst, _doer, target, actions, right) => {
       if (right && target.hasTag('canlight') && !((target.hasTag('fueldepleted') && !target.hasTag('burnableignorefuel'))

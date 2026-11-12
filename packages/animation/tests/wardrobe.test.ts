@@ -5,7 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabDisplay, PrefabDisplayGroup } from '../../display/src';
 import { InventoryStore } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
-import { PrefabEntityManager, PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import { WARDROBE_ID } from '../../prefab/src/wardrobe';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -78,11 +78,10 @@ it('stands its sprite on the ground, and the greenstaff can deconstruct it', asy
   displays.update(1 / 30);
   wardrobe.transform.model.updateWorldMatrix(true, true);
   expect(new THREE.Box3().setFromObject(wardrobe.transform.model).min.y).toBeCloseTo(0);
-  const target = prefabInstance(wardrobe.transform.model)!.deconstructionTarget!;
-  expect(target.isValid()).toBe(true);
-  expect(target.removeOne()).toBe(true);
+  expect(wardrobe.isValid()).toBe(true);
+  wardrobe.remove();
   expect(wardrobe.isRemoved).toBe(true);
-  expect(target.isValid()).toBe(false);
+  expect(wardrobe.isValid()).toBe(false);
   expect(physics.bodies).toHaveLength(0);
 });
 

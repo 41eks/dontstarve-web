@@ -2,7 +2,6 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
 import type { ItemEntity, InventoryStore } from '../../inventory/src/index.ts';
 import type { InventoryActor } from '../../componets/src/inventoryitem.ts';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
 
 /**
  * The player inst as actions.lua's fns reach it through `act.doer`: its tags, events, position, stategraph and the
@@ -19,7 +18,7 @@ export interface PickupDoer extends InventoryActor {
   getPosition(): THREE.Vector3;
   /** spellcaster.lua reads the caster's position. */
   readonly position: ReadonlyVector3;
-  readonly sg?: { HasStateTag(tag: string): boolean };
+  readonly sg?: { hasStateTag(tag: string): boolean };
   /** TheWorld.Map, as ACTIONS.DEPLOY reaches it. */
   Map?: import('../../componets/src/deployable').DeployMap;
   /** inst.SoundEmitter, as components play sounds on the doer (pickable:Fertilize). */
@@ -36,21 +35,6 @@ export interface PickupDoer extends InventoryActor {
     /** reader.lua, which ACTIONS.READ reaches on the doer. */
     reader?: { Read(book: object): readonly [boolean, string?] | undefined; OnRemoveFromEntity(): void };
   };
-}
-export function createPickupDoer(player: THREE.Object3D, inventory: InventoryStore): PickupDoer {
-  const inst = prefabInstance(player);
-  if (!inst) throw new Error('A pickup doer needs its player entity');
-  const doer: PickupDoer = { components: { inventory }, GetPosition: () => player.position, getPosition: () => player.position,
-    position: player.position,
-    get isRemoved() { return inst.isRemoved; },
-    // inst.sg:HasStateTag, as workable callbacks read the worker's state.
-    get sg() { const sg = inst.sg; return sg && { HasStateTag: (tag: string) => sg.hasStateTag(tag) }; },
-    hasTag: tag => tag === 'player' || inst.hasTag(tag),
-    addTag: tag => inst.addTag(tag),
-    removeTag: tag => inst.removeTag(tag),
-    PushEvent: (name, data) => inst.PushEvent(name, data) };
-  inventory.bindActor(doer);
-  return doer;
 }
 /** The inst a PICKUP targets: in the scene, unowned and not flying off as a projectile. */
 export function canPickUp(inst: ItemEntity): boolean {

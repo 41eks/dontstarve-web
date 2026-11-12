@@ -28,9 +28,10 @@ interface SpellCasterInst {
 export interface SpellTarget {
   readonly isRemoved: boolean;
   hasTag(tag: string): boolean;
-  isVisible?(): boolean;
-  isDead?(): boolean;
-  hasStateTag?(tag: string): boolean;
+  /** inst.entity:IsVisible() */
+  IsVisible?(): boolean;
+  readonly components?: { readonly health?: { IsDead(): boolean } };
+  readonly sg?: { hasStateTag(tag: string): boolean };
 }
 
 type SpellFn = (item: SpellCasterInst, target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer) => boolean;
@@ -70,9 +71,9 @@ export class SpellCaster implements SpellCasterComponent {
       || ![position.x, position.y, position.z].every(Number.isFinite)) return false;
     if (target) {
       const inst = target as SpellTarget;
-      return this.onTargets && !inst.isRemoved && !inst.hasTag('INLIMBO') && inst.isVisible?.() !== false
-        && (this.onDead || !inst.isDead?.())
-        && !['death', 'flight', 'invisible', 'nospellcasting'].some(tag => inst.hasStateTag?.(tag))
+      return this.onTargets && !inst.isRemoved && !inst.hasTag('INLIMBO') && inst.IsVisible?.() !== false
+        && (this.onDead || !inst.components?.health?.IsDead())
+        && !['death', 'flight', 'invisible', 'nospellcasting'].some(tag => inst.sg?.hasStateTag(tag))
         && ((this.onRecipes && 'prefab' in inst && typeof inst.prefab === 'string'
           && !!getDeconstructionRecipe(inst.prefab)) || (this.canCastFn?.(doer, target, position) ?? false));
     }

@@ -10,7 +10,7 @@ import { PIG_HOUSE_ID } from '../../prefab/src/pighouse';
 import { PrefabEntityManager, PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import { RESEARCH_LAB_PLACERS } from '../../prefab/src/scienceprototyper';
 import { SpriteResources } from '../../display/src/spriteResources';
-import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createSignal } from '../../signals/src';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -109,7 +109,7 @@ it('takes its source hammer work, drops its loot and collapses', async () => {
 it('reskins through its target, draws the skin build and keeps it through the building save shape', async () => {
   const { prefabs, placement, displays } = setup();
   const house = prefabs.spawn(PIG_HOUSE_ID, new THREE.Vector3(1, 0, 2));
-  const target = prefabInstance(house.transform.model)!.reskinTarget!;
+  const target = reskinTargetOf(prefabInstance(house.transform.model))!;
   expect(prefabs.exportRecords()[0].record.components).toEqual({ building: {} });
   expect(reskinEntity(target)).toBe(true);
   const { skinId } = house;

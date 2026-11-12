@@ -16,9 +16,11 @@ export interface ExplosiveTarget extends WorkInst {
   };
 }
 
-export interface ExplosiveInst extends ExplosiveTarget {
+/** The explosive inst, which is also the worker of what it works. */
+export type ExplosiveInst = ExplosiveTarget & Worker & {
+  readonly components: NonNullable<Worker['components']>;
   remove(): boolean;
-}
+};
 
 /**
  * The work, ignition and `explosion` event branches of components/explosive.lua. Damage to
@@ -47,9 +49,7 @@ export class Explosive {
     this.exploded = true;
     this.onexplodefn?.(this.inst);
     const stacksize = this.inst.components.stackable?.count ?? 1;
-    // The explosive is the worker of every target it works; `working` and `explosion` events name it.
-    const worker: Worker & { readonly inst: ExplosiveInst } = { inst: this.inst, getPosition: () => this.inst.getPosition(),
-      PushEvent: (name, data) => this.inst.PushEvent?.(name, data) };
+    // The explosive inst is the worker of every target it works; `working` and `explosion` events name it.
     let workablecount = EXPLOSIVE_MAX_WORKABLE_INVENTORYITEMS;
     for (const target of this.find(this.inst.getPosition(), this.explosiverange * this.unitsPerMeter)) {
       if (target === this.inst || target.isRemoved || target.hasTag('INLIMBO')) continue;
@@ -63,7 +63,7 @@ export class Explosive {
             workdamage *= target.components.stackable?.count ?? 1;
           } else dowork = false;
         }
-        if (dowork) workable.WorkedBy(worker, workdamage);
+        if (dowork) workable.WorkedBy(this.inst, workdamage);
       }
       // Recheck validity after work.
       if (target.isRemoved || target.hasTag('INLIMBO')) continue;

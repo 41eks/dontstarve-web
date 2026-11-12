@@ -1,4 +1,5 @@
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabDisplay } from '../../display/src/prefabDisplay';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -44,7 +45,7 @@ it('shares layered wall art, releases only visuals, restores current health/faci
       components: { health: { current: 200, maximum: 400 } } };
     const model = await placement.spawnFromSave('wall_dreadstone', record);
     const other = await placement.spawnFromSave('wall_dreadstone', { ...record, id: 'other', transform: { position: [9, 0, 6], rotationY: 0 } });
-    await Promise.all(placement.reskinTargets.map(target => target.display!.artLoaded()));
+    await Promise.all(placement.reskinTargets.map(target => prefabDisplay(target.transform.model)!.artLoaded()));
     const instance = lookupPrefabInstance(model)!;
     const controller = instance.sprite;
     expect(controller).toBeInstanceOf(SpriteState);

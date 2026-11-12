@@ -4,17 +4,17 @@ import { cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress, type Inv
 import { createChestInventoryPanel, createFollowText, type mountGameUi, type SlotAddress, type SlotItem } from '@dontstarve-web/ui';
 import {
   PlayerController,
-  type PickupDoer, type PlayerLocomotor, type PlayerActionEvents,
+  type PlayerLocomotor, type PlayerActionEvents,
 } from '@dontstarve-web/stategraphs';
 import type { ScreenProjection } from '@dontstarve-web/display';
 import { ARMORSNURTLESHELL_ID } from '@dontstarve-web/prefab/armorsnurtleshell';
 import { AMULET_ID } from '@dontstarve-web/prefab/amulet';
 import { Reader } from '../packages/componets/src/reader';
-import { Combat, type CombatActor } from '../packages/componets/src/combat';
+import { Combat } from '../packages/componets/src/combat';
 import { equippedActionEntity } from '../packages/stategraphs/src/componentactions';
 import { prefabInstance } from '../packages/prefab/src/prefabInstance';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
-import { PLAYER_COLLIDER_RADIUS, playDrop, wakeFromBed, type PlayerInstance } from '@dontstarve-web/prefab/player_common';
+import { hasPlayerInventory, PLAYER_COLLIDER_RADIUS, playDrop, wakeFromBed, type PlayerInstance } from '@dontstarve-web/prefab/player_common';
 import { addComponent, removeComponent } from '@dontstarve-web/prefab/components';
 import { Talker } from '../packages/componets/src/talker';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
@@ -30,7 +30,6 @@ import type { turfMap } from './building';
 import type { startScene } from './scene';
 import { setupEmoteWheel } from './emoteWheel';
 import { inventoryReceiveEffect } from './inventoryReceive';
-import { playerStats } from './playerStats';
 import { playerInstance } from './player';
 
 export type DisposalEvents = { dispose: void };
@@ -83,7 +82,6 @@ interface ApplicationResourcesOptions {
   inventory: InventoryStore;
   playerEntity?: PlayerInstance;
   locomotor: PlayerLocomotor;
-  pickupDoer: PickupDoer & { readonly TheSim: import('@dontstarve-web/prefab/prefabInstance').EntityQuery };
   inventorySlotItem: (entity: ItemEntity) => SlotItem;
   actionEvents: EventEmitter<PlayerActionEvents>;
   isActionInterrupting: () => boolean;
@@ -96,14 +94,14 @@ type SceneResources = Pick<Awaited<ReturnType<typeof startScene>>,
   'registry' | 'buildingPlacement' | 'farmMap' | 'mushroomPlants' | 'reskinEffects' | 'worldFx' | 'rockAvocadoBushes' | 'grasses' | 'saplings' | 'scheduler' | 'weather' | 'moon' | 'getWatchWorldContent' | 'ponds'>;
 
 /** Create panels before scene loading, then own action setup and its explicit disposal. */
-export function createDisposalResources({ gameUi, view, screenProjection, inventory, playerEntity, locomotor, pickupDoer,
+export function createDisposalResources({ gameUi, view, screenProjection, inventory, playerEntity, locomotor,
   inventorySlotItem, actionEvents, isActionInterrupting, updateCursor, getWatchWorldContent: watchWorldContent, turfMap }: ApplicationResourcesOptions) {
   const player = view.player;
   const camera = view.camera;
   const renderer = view.renderer;
   const statusHud = gameUi.statusHud;
   // The same doer RUMMAGE opened it with.
-  const closeContainer = (model: Object3D) => prefabInstance(model)?.components.container?.Close(pickupDoer);
+  const closeContainer = (model: Object3D) => prefabInstance(model)?.components.container?.Close(playerInstance);
   const inventoryPanelOptions = { camera, canvas: renderer.domElement, player, getWatchWorldContent: watchWorldContent, toItem: inventorySlotItem, closeContainer };
   const chestInventoryPanel = createChestInventoryPanel(gameUi.chestPanel, inventoryPanelOptions);
   const cookPotInventoryPanel = createChestInventoryPanel(gameUi.cookPotPanel, inventoryPanelOptions);
@@ -149,13 +147,8 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
           if (isWorldFx(prefab)) worldFx.spawn(prefab, new Vector3(x, 0, z));
         },
       };
-      const reader = new Reader<PickupDoer, BookWorld>(pickupDoer, bookWorld);
-      pickupDoer.components.reader = reader;
-      actionControllers.push({ dispose() {
-        if (pickupDoer.components.reader !== reader) return;
-        reader.OnRemoveFromEntity();
-        delete pickupDoer.components.reader;
-      } });
+      addComponent(playerInstance, 'reader', Reader<PlayerInstance, BookWorld>, bookWorld);
+      actionControllers.push({ dispose() { removeComponent(playerInstance, 'reader'); } });
 
       const talker = addComponent(playerInstance, 'talker', Talker, scheduler);
       const followText = createFollowText({ camera, canvas: renderer.domElement, target: player, height: PLAYER_COLLIDER_RADIUS * 3.6 + 1, line: talker.line });
@@ -165,7 +158,8 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
       if (playerEntity) {
         view.registerFrameTask = registerFrontTask;
         // playercontroller.lua: the picker's actions on any entity, buffered for the player.
-        const controller = new PlayerController(view, playerEntity.sg, locomotor, handEquipment, pickupDoer, isActionInterrupting);
+        if (!hasPlayerInventory(playerEntity)) throw new Error('The player acts with its inventory');
+        const controller = new PlayerController(view, playerEntity.sg, locomotor, handEquipment, playerEntity, isActionInterrupting);
         playerInstance.components.playercontroller = controller;
         actionControllers.push(controller, { dispose() {
           if (playerInstance.components.playercontroller === controller) delete playerInstance.components.playercontroller;
@@ -185,31 +179,21 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
 
         // player_common.lua: combat with UNARMED_DAMAGE, WILSON_ATTACK_PERIOD and DEFAULT_ATTACK_RANGE.
         const unit = TILE_SIZE / 4;
-        const attackerInst: CombatActor = {
-          getPosition: () => player.position,
-          getPhysicsRadius: () => .5 * unit,
-          hasTag: tag => tag === 'player' || playerInstance.hasTag(tag),
-          PushEvent: (name, data) => prefabInstance(player)!.PushEvent(name, data),
-          components: { health: playerStats.health, sanity: playerStats.sanity, inventory },
-        };
-        const combat = new Combat(attackerInst, () => scheduler.now,
+        const combat = addComponent(playerEntity, 'combat', Combat, () => scheduler.now,
           () => equippedActionEntity(handEquipment.peek())?.components.weapon);
         combat.SetDefaultDamage(10);
         combat.SetAttackPeriod(.4);
         combat.SetRange(2 * unit);
-        attackerInst.components.combat = combat;
-        // pickable onpickedfn callbacks hurt the picker through its combat.
-        pickupDoer.components.combat = combat;
-        playerEntity.combat = combat;
+        actionControllers.push({ dispose() { removeComponent(playerEntity, 'combat'); } });
       }
       if (playerEntity) {
 
         // TheWorld.Map for ACTIONS.DEPLOY and the deployable items' placer.
         const deployMap = createDeployMap({ turf: turfMap, blockers: placementEntities(view.scene), worldEvents: view.worldEvents, farm: scene.farmMap,
           spawnPrefab: (prefab, position, skinId) => scene.registry.SpawnPrefab(prefab, position, skinId) as DeploySpawned | undefined });
-        pickupDoer.Map = deployMap;
+        playerEntity.Map = deployMap;
         actionControllers.push(new DeployPlacer(view, deployMap, () => inventory.GetActiveItem()),
-          { dispose() { pickupDoer.Map = undefined; } });
+          { dispose() { playerEntity.Map = undefined; } });
       }
 
       const stopEmoteWheel = setupEmoteWheel(gameUi.emoteWheel, view.renderer.domElement, playerEntity,
@@ -273,7 +257,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         panels: [chestInventoryPanel, cookPotInventoryPanel, iceBoxInventoryPanel],
         statusHud, frameControllers, actionControllers,
         stopInventoryReceived, stopEmoteWheel,
-        stopContextMenu: () => { stopContextMenu(); reader.OnRemoveFromEntity(); },
+        stopContextMenu,
       });
     },
   };

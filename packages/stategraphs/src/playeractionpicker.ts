@@ -194,7 +194,7 @@ export class PlayerActionPicker {
       }
       // GetLeftClickActions: CONTROL_FORCE_INSPECT (Alt) examines whatever else the click would do, even on the move.
       const doer = this.player?.doer, entity = findActionEntity(target ?? undefined);
-      if (event?.altKey && doer && entity?.hasTag('inspectable') && (!doer.sg || ['moving', 'idle', 'channeling'].some(tag => doer.sg!.HasStateTag(tag)))) {
+      if (event?.altKey && doer && entity?.hasTag('inspectable') && (!doer.sg || ['moving', 'idle', 'channeling'].some(tag => doer.sg!.hasStateTag(tag)))) {
         const inspect = { action: 'LOOKAT', doer, target: entity };
         if (!filter || filter(inspect)) result.left = inspect;
       }

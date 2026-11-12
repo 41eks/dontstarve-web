@@ -89,7 +89,7 @@ export class InventoryStore {
   readonly opencontainers = new Set<object>();
   private activeItemPrevSlot?: SlotAddress;
   private actor: import('../../componets/src/inventoryitem').InventoryActor = {
-    hasTag: tag => tag === 'player', GetPosition: () => ({ x: 0, y: 0, z: 0 }), PushEvent() {},
+    hasTag: tag => tag === 'player', getPosition: () => new Vector3(), PushEvent() {},
   };
   private readonly receipts = new Set<(received: readonly InventorySlotDelta[], source?: import('../../componets/src/inventoryitem').ItemPosition) => void>();
 
@@ -221,7 +221,7 @@ export class InventoryStore {
   DropItem(entity: ItemEntity, dropPosition?: import('../../componets/src/inventoryitem').ItemPosition, launch?: DropLaunch): void {
     const owner = entity.components.inventoryitem.owner;
     if (owner && this.extract(owner.address, entity.components.stackable.count, entity) !== entity) return;
-    const position = dropPosition ?? this.actor.GetPosition();
+    const position = dropPosition ?? this.actor.getPosition();
     entity.transform.setPosition(position.x, 0, position.z);
     entity.MiniMapEntity?.tileTracker.sync();
     entity.components.inventoryitem.OnDropped(launch);
@@ -1032,7 +1032,6 @@ export class InventoryStore {
     for (const { address, slot } of this.registrations) {
       const entity = slot.getEntity();
       if (!entity) continue;
-      const ownerPosition = new Vector3();
       entity.components.inventoryitem.owner = {
         DropItem: (item, position) => this.DropItem(item, position),
         address: cloneAddress(address),
@@ -1044,8 +1043,7 @@ export class InventoryStore {
           }
           const inst = this.worldContainers.get(address.containerId)?.inst as
             { getPosition?(): import('three').Vector3; position?: import('three').Vector3 } | undefined;
-          const position = inst?.getPosition?.() ?? inst?.position ?? this.actor.GetPosition();
-          return position instanceof Vector3 ? position : ownerPosition.set(position.x, position.y, position.z);
+          return inst?.getPosition?.() ?? inst?.position ?? this.actor.getPosition();
         },
         changed: () => { if (slot.getEntity() === entity) this.notify([cloneAddress(address)]); },
         GiveItem: item => {

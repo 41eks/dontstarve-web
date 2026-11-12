@@ -89,7 +89,7 @@ describe('talker.lua', () => {
 });
 
 describe('ACTIONS.LOOKAT', () => {
-  const sgDoer = (tags: string[]): SceneActionDoer => ({ hasTag: () => false, sg: { HasStateTag: tag => tags.includes(tag) } });
+  const sgDoer = (tags: string[]): SceneActionDoer => ({ hasTag: () => false, sg: { hasStateTag: tag => tags.includes(tag) } });
 
   it('is offered to an idle doer on both buttons at the lowest priority, and not while it moves', () => {
     const { instance, dispose } = entity();

@@ -1,13 +1,12 @@
 import { addComponent } from './components';
 import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
 import { Transform } from './transform';
-import { SpriteState, prefabDisplay } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { Witherable } from '../../componets/src/witherable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Pickable } from './components/pickable';
 import { BurnableBinding } from './treeFire';
-import { reskinTarget } from './reskin_tool';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter, MakeSmallObstaclePhysics, MakeSnowCovered } from './standardcomponents';
 import { PickablePlantInstance, plantLootSpawner, SpringGrowthMod, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
 
@@ -164,14 +163,6 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
   return inst;
 }
 
-/** reskin_tool's target, once the bush's display exists. */
-function bindReskin(inst: PickablePlantInstance): void {
-  inst.reskinTarget = reskinTarget({
-    id: String(inst.entityId), prefabId: inst.prefab, instance: inst, display: prefabDisplay(inst.transform.model)!, sprite: inst.sprite,
-    position: inst.position, skins: BERRYBUSH_SKINS, isValid: () => !inst.isRemoved, hasTag: tag => inst.hasTag(tag),
-  });
-}
-
 /** berrybush.lua's createbush("berrybush", ...); berrybush2 and the juicy bush are separate source prefabs. */
 export function berrybushPrefabs(world: PickablePlantWorld): Readonly<Record<typeof BERRYBUSH_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
   return {
@@ -182,7 +173,6 @@ export function berrybushPrefabs(world: PickablePlantWorld): Readonly<Record<typ
       skins: Object.fromEntries(BERRYBUSH_SKINS.map(skin => [skin, `dynamic/${skin}.zip`])),
       physics: { make: MakeSmallObstaclePhysics, radius: .1 },
       minimapIcon: 'berrybush.png',
-      onSpawned: bindReskin,
     },
   };
 }

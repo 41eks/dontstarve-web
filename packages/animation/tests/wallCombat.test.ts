@@ -168,7 +168,7 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
   player.position.set(3 + 6 * UNIT, 0, -6);
   let now = 0;
   const { combat } = attacker(player.position, () => now);
-  animation.combat = combat;
+  animation.components.combat = combat;
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * UNIT });
   const hand = createSignal<HandEquipment | null>(null);

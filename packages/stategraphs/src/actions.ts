@@ -133,7 +133,7 @@ function strfn(act: ActionDescription): string | undefined {
       if (!rod || rod.target !== act.target) return undefined;
       if (rod.HasHookedFish()) return 'REEL';
       // act.doer:HasTag("nibble"): the hook string is REEL's GENERIC.
-      return act.doer?.sg?.HasStateTag('nibble') ? undefined : 'CANCEL';
+      return act.doer?.sg?.hasStateTag('nibble') ? undefined : 'CANCEL';
     }
     default: return undefined;
   }

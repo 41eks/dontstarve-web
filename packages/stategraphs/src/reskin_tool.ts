@@ -1,7 +1,5 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { Signal } from '@dontstarve-web/signals';
-import type { SpellTarget } from '../../componets/src/spellcaster';
-import type { ActionTargetView } from './actionTargetView.ts';
 /** Prepared logical FX message. The target places and starts it only after committing its skin. */
 export interface ReskinFxMessage {
   play(position: ReadonlyVector3, prefabId: string): void;
@@ -9,22 +7,22 @@ export interface ReskinFxMessage {
   dispose(): void;
 }
 
-/** The skin an entity's sprite json declares (inst.skinname); the reskin tool writes it as TheSim:ReskinEntity. */
-export interface SkinnedSprite { readonly skinId: Signal<string | undefined> }
+/**
+ * The entity's own sprite json: the skin it declares (inst.skinname), which the reskin tool writes as
+ * TheSim:ReskinEntity, and the skins its declared skin source can draw (PREFAB_SKINS[inst.prefab]).
+ */
+export interface SkinnedSprite {
+  readonly skinId: Signal<string | undefined>;
+  readonly skinNames: readonly string[];
+}
 
-type ReskinActionTarget = SpellTarget & ActionTargetView & {
-  readonly id: string;
-  readonly prefabId: string;
+/** An entity the reskin tool casts on: its prefab, its position and its own sprite json. */
+export interface ReskinTarget {
+  readonly prefab: string;
   readonly position: ReadonlyVector3;
-  readonly skinId?: string;
-  readonly skins: readonly string[];
-  readonly reskinToolCannotTargetThis?: boolean;
-  /** The entity's own sprite json; only an entity with one can be reskinned. */
-  readonly sprite?: SkinnedSprite;
-  isValid(): boolean;
-};
-
-export type ReskinTarget = ReskinActionTarget & Required<Pick<ReskinActionTarget, 'sprite'>>;
+  readonly isRemoved: boolean;
+  readonly sprite: SkinnedSprite;
+}
 
 /**
  * reskin_tool.lua GetNextSkin: the tool's cached skin for the prefab when it differs from the current one, otherwise the
