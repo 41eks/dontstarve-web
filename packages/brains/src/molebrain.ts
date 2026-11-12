@@ -11,9 +11,10 @@ import { createMoleAction, type MoleBaitTarget } from '../../stategraphs/src/mol
 export interface MoleBrainInst extends BrainInst {
   PushEvent(name: string, data?: unknown): void;
   makeHome(): boolean;
-  wentHome(target: BrainEntity): boolean;
+  wentHome(target: Omit<BrainEntity, 'components'>): boolean;
   readonly sg?: { hasStateTag(tag: string): boolean };
-  readonly home: BrainEntity | undefined;
+  /** homeseeker.home: the molehill, whose validity and position the brain reads. */
+  readonly home: Omit<BrainEntity, 'components'> | undefined;
   readonly needs_home_time: number | undefined;
   readonly make_home_delay: number;
   readonly last_above_time: number;

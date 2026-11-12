@@ -7,8 +7,10 @@ export interface MoleActionInst {
   isValid(): boolean;
   PushEvent(name: string, data?: unknown): void;
   makeHome(): boolean;
-  wentHome(target: BrainEntity): boolean;
+  wentHome(target: ActionTarget): boolean;
 }
+/** A mole action's target as the action reads it: its validity and position, not its components. */
+type ActionTarget = Omit<BrainEntity, 'components'>;
 export interface MoleBaitTarget extends BrainEntity {
   reserve(): boolean;
   releaseReservation(): void;
@@ -17,7 +19,7 @@ export interface MoleBaitTarget extends BrainEntity {
   PushEvent(name: string, data?: unknown): void;
 }
 /** actions.lua: theft is an event handled by bait.lua, not direct item removal. */
-export function createMoleAction(inst: MoleActionInst, action: MoleAction, target?: BrainEntity, pos?: Vector3, unit = 1): BufferedAction {
+export function createMoleAction(inst: MoleActionInst, action: MoleAction, target?: ActionTarget, pos?: Vector3, unit = 1): BufferedAction {
   return new BufferedAction(action, () => {
     switch (action) {
       case 'GOHOME': return !!target && inst.wentHome(target);

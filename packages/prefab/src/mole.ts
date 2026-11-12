@@ -141,7 +141,7 @@ export class Mole extends ItemEntity implements MoleBrainInst, LocoMotorInst {
   makeHome(): boolean { this.moleWorld!.makeHome(this); this.needs_home_time = undefined; return true; }
   /** ACTIONS.GOHOME's spawner branch. */
   // conventions-allow instance-method: ACTIONS.GOHOME's fn, which the brain's action runs for inst.
-  wentHome(target: BrainEntity): boolean {
+  wentHome(target: Omit<BrainEntity, 'components'>): boolean {
     const home = this.home; if (target !== home || !home?.isValid()) return false;
     this.components.inventory?.TransferInventory(home); this.stategraph.goToState('idle');
     return home.components.spawner.GoHome(this);
@@ -243,7 +243,7 @@ export function BindMoleWorld(inst: Mole, services: MoleWorld, lengths: Readonly
   inst.world = {
     get isDay() { return cycle.peek() === 'day'; },
     isAboveGroundAtPoint: (x, y, z) => services.isWalkable(new Vector3(x, y, z)),
-    // TheSim:FindEntities never returns an entity in limbo.
+    // simutil.lua FindEntity skips entities that are not visible, those in limbo among them.
     findEntity: (from, radius, predicate, must = [], cant = [], one = []) => {
       const origin = from.getPosition();
       return services.getEntities().filter(e => e !== from && e.isValid() && !e.hasTag('INLIMBO') && must.every(t => e.hasTag(t)) && !cant.some(t => e.hasTag(t)) &&

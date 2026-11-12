@@ -136,6 +136,11 @@ export class StateGraphInstance<Context, Name extends string> {
   get timeoutSnapshot() { return this.timeoutTimer?.snapshot; }
   get timelineSnapshot() { return this.timelineTimer?.snapshot; }
   hasStateTag(tag: string): boolean { return this.tags.has(tag); }
+  /** StateGraphInstance:HasState: the graph defines a state of this name. */
+  hasState(name: string): boolean {
+    for (const state of this.states.keys()) if (state === name) return true;
+    return false;
+  }
   addStateTag(tag: string): void { this.tags.add(tag); }
   removeStateTag(tag: string): void { this.tags.delete(tag); }
   hasAnyStateTag(...tags: readonly string[]): boolean { return tags.some(tag => this.hasStateTag(tag)); }

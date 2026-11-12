@@ -11,8 +11,8 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, createBeefaloSpriteFactory } from '../src/beefaloSprite';
 import { COLLISION } from '../../componets/src/physicsState';
-import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { PrefabDisplayGroup } from '../../display/src';
+import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabDisplayGroup, SpriteState } from '../../display/src';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import { spriteController } from '../src/spriteController';
 import { Pathfinder } from '../../prefab/src/pathfinder';
@@ -41,7 +41,6 @@ function serveAssets() {
 /** beefalo as the application wires it: its world services, the shared PrefabEntityManager and the frame's component updates. */
 function beefaloWorld({ random = (): number => 0, physics = new CANNON.World() }: { random?: () => number; physics?: CANNON.World } = {}) {
   serveAssets();
-  let players: THREE.Vector3[] = [];
   let poop: Iterable<THREE.Vector3> = [];
   const scheduler = new GameTimeScheduler(), componentUpdates = new ComponentUpdates();
   const clock = createSignal<{ phase: WorldPhase }>({ phase: 'day' }), cycle = createSignal<WorldPhase>('day');
@@ -51,14 +50,19 @@ function beefaloWorld({ random = (): number => 0, physics = new CANNON.World() }
   const world: BeefaloWorld = { scheduler, componentUpdates, clock, random,
     getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources),
     secondsUntilNextDay: now => DAY - now % DAY, spawnPrize: vi.fn(),
-    getPlayerPositions: () => players, pathfinder: new Pathfinder(OPEN_GROUND), isWalkable: () => true,
+    pathfinder: new Pathfinder(OPEN_GROUND), isWalkable: () => true,
     constrainPosition: vi.fn(), getPoopPositions: () => poop, spawnPoop: vi.fn() };
   const displays = new PrefabDisplayGroup(new THREE.Scene());
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics }, beefaloPrefabs(world));
   const spawn = (saved?: Pick<PlacementSaveRecord, 'id' | 'components' | 'transform'>, position = new THREE.Vector3()) =>
     prefabs.spawn('beefalo', position, saved) as BeefaloInstance;
   return { world, prefabs, physics, scheduler, componentUpdates, spawn,
-    setPlayers: (value: THREE.Vector3[]) => { players = value; },
+    /** A player the manager tracks, as the scene tracks its player instance for TheSim. */
+    addPlayer: (position: THREE.Vector3) => {
+      const player = new PrefabInstance('wilson', new SpriteState({ name: 'idle_loop', billboard: true }));
+      player.addTag('player'); player.setPosition(position.x, position.y, position.z); prefabs.track(player);
+      return player;
+    },
     setPoop: (value: Iterable<THREE.Vector3>) => { poop = value; },
     setNight: (value: boolean) => { const phase = value ? 'night' : 'day'; clock.set({ phase }); cycle.set(phase); },
     dispose: () => { prefabs.dispose(); displays.dispose(); scheduler.dispose(); },
@@ -142,18 +146,17 @@ describe('wild beefalo behavior', () => {
 
   it('uses FaceEntity alert states and keeps the target until the source keep distance is exceeded', () => {
     const s = setup();
-    const player = new THREE.Vector3(10, 0, 0);
-    s.setPlayers([player]); s.tick(1);
+    const player = s.addPlayer(new THREE.Vector3(10, 0, 0)); s.tick(1);
     expect(s.inst.state).toBe('actual_alert');
     expect(s.inst.stategraph.hasStateTag('idle')).toBe(true);
     expect(s.inst.stategraph.hasStateTag('alert')).toBe(true);
     // alert_pre is three frames long, so game time has already reached the queued alert_idle.
     expect(s.playAnimation).toHaveBeenCalledWith('alert_pre', undefined);
     expect(s.clip()).toBe('alert_idle');
-    player.x = 15; s.tick(3);
+    player.setPosition(15, 0, 0); s.tick(3);
     expect(s.inst.state).toBe('actual_alert');
     expect(s.body.velocity.x).toBe(0);
-    player.x = 19; s.tick(2);
+    player.setPosition(19, 0, 0); s.tick(2);
     // walk_pre has ended within those two seconds of game time.
     expect(s.inst.state).toBe('walk');
     expect(s.body.velocity.x).toBeGreaterThan(0);
@@ -342,7 +345,7 @@ describe('wild beefalo behavior', () => {
   it('declares a six-faced heading on the transform, which the record saves and a reload restores', () => {
     const s = setup();
     expect(s.inst.sprite.sprite.peek()).toMatchObject({ facingRotation: 0, facingMode: 6 });
-    s.setPlayers([new THREE.Vector3(1, 0, -10)]); s.tick(1);
+    s.addPlayer(new THREE.Vector3(1, 0, -10)); s.tick(1);
     const heading = s.inst.transform.rotation;
     expect(heading).not.toBe(0);
     expect(s.inst.sprite.sprite.peek()).toMatchObject({ facingRotation: heading, facingMode: 6 });

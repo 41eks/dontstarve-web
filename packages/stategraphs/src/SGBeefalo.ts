@@ -191,7 +191,7 @@ export class BeefaloStateGraph {
 
   get stateName(): BeefaloStateName { return this.sg.stateName; }
   hasStateTag(tag: string): boolean { return this.sg.hasStateTag(tag); }
-  hasState(name: string): boolean { return states.some(state => state.name === name); }
+  hasState(name: string): boolean { return this.sg.hasState(name); }
   pushEvent(name: string, data?: unknown): void { this.sg.pushEvent(name, data); }
   goToState(name: BeefaloStateName): void { this.sg.goToState(name); }
   update(dt: number): void { this.sg.update(dt); }

@@ -2,7 +2,7 @@ import { BehaviourNode, FAILED, READY, RUNNING, SUCCESS } from '../behaviourtree
 import type { BrainEntity, BrainInst, Vec3 } from '../types';
 
 export interface FaceEntityInst extends BrainInst {
-  readonly sg: {
+  readonly sg?: {
     hasStateTag(tag: string): boolean;
     hasState(name: string): boolean;
     goToState(name: string): void;
@@ -39,7 +39,7 @@ export class FaceEntity extends BehaviourNode {
     }
     if (this.status === RUNNING) {
       const sg = this.inst.sg;
-      if (sg.hasStateTag('idle') && !sg.hasStateTag('alert') && sg.hasState('alert')) {
+      if (sg?.hasStateTag('idle') && !sg.hasStateTag('alert') && sg.hasState('alert')) {
         sg.goToState(this.customalert ?? 'alert');
       }
       if (this.timeout !== undefined && this.now - this.starttime > this.timeout) {
@@ -47,7 +47,7 @@ export class FaceEntity extends BehaviourNode {
         return;
       }
       if (!this.target?.isValid() || !this.keepfn(this.inst, this.target)) this.status = FAILED;
-      else if (sg.hasStateTag('canrotate')) this.inst.FacePoint(this.target.getPosition());
+      else if (sg?.hasStateTag('canrotate')) this.inst.FacePoint(this.target.getPosition());
       this.Sleep(.5);
     }
   }

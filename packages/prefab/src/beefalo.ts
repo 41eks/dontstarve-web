@@ -54,7 +54,6 @@ export interface BeefaloWorld extends Pick<WorldContentContext, 'getWatchWorldCo
   secondsUntilNextDay(now: number): number;
   /** beard.lua SpawnPrefab(prize) launched from the beefalo's position. */
   spawnPrize(prefab: string, count: number, position: THREE.Vector3): void;
-  getPlayerPositions(): readonly THREE.Vector3[];
   /** TheWorld.Pathfinder. */
   pathfinder: LocoMotorPathfinder;
   /** Whether a beefalo can stand here: on land and clear of colliders. */
@@ -86,8 +85,12 @@ const BEEFALO_BANKS = ['beefalo_basic.zip', 'beefalo_actions.zip', 'beefalo_acti
 const BEEFALO_CLIP_LENGTHS: ReadonlyMap<string, number> = new Map(BEEFALO_BANKS.flatMap(bank => [...animationLengths(bank)]).reverse());
 
 /** beefalo.lua: the fields it keeps on inst, and the engine's Physics and AnimState the stategraph and locomotor drive. */
-export class BeefaloInstance extends PrefabInstance {
+export class BeefaloInstance extends PrefabInstance implements FaceEntityInst {
   declare readonly components: BeefaloComponents;
+  declare sg: BeefaloStateGraph['sg'] | undefined;
+  /** The brain's TheWorld: its day and its entity queries. */
+  world!: BrainWorld;
+  randomSource: () => number = Math.random;
   /** inst.hairGrowthPending, set by OnHairGrowth. */
   hairGrowthPending = false;
   /** The engine's AnimState queue: the stategraph's animover/animqueueover come from game time, not from drawing. */
@@ -102,6 +105,11 @@ export class BeefaloInstance extends PrefabInstance {
   }
 
   get state(): BeefaloState { return this.stategraph.stateName; }
+
+  // conventions-allow instance-method: GetTime(), which the brain and its behaviours call on inst.
+  getTime(): number { return this.GetTime(); }
+  // conventions-allow instance-method: math.random, which the brain's behaviours call on inst.
+  random(): number { return this.randomSource(); }
 
   /** Transform:SetRotation; Transform:SetSixFaced draws the heading with six facings. */
   // conventions-allow instance-method: the engine's Transform:SetRotation, which locomotor and FaceEntity call on inst.
@@ -119,9 +127,6 @@ export class BeefaloInstance extends PrefabInstance {
     body.velocity.x = Math.cos(heading) * speed;
     body.velocity.z = -Math.sin(heading) * speed;
   }
-
-  // conventions-allow instance-method: EntityScript:PushBufferedAction, which a passive creature never receives.
-  PushBufferedAction(): void { throw new Error('Passive beefalo has no buffered actions'); }
 }
 
 /** OnResetBeard; brushable, domestication and skins are not ported. has_beard and the shaved build follow the beard's hairy memo. */
@@ -154,53 +159,25 @@ function onload(inst: BeefaloInstance, data: PlacementSaveRecord['components']):
   if (!data.beard && legacy.beard) inst.components.beard.OnLoad(legacy.beard);
 }
 
-const distanceSquared = (a: { x: number; z: number }, b: { x: number; z: number }) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
-
-/** SetBrain(brain): beefalobrain.lua sees the inst, and the players as the world's FindEntity returns them. */
-function brainInst(inst: BeefaloInstance, world: BeefaloWorld, random: () => number): FaceEntityInst {
-  const players = new WeakMap<THREE.Vector3, BrainEntity>();
-  const playerEntities = () => world.getPlayerPositions().map(position => {
-    let entity = players.get(position);
-    if (!entity) {
-      entity = { prefab: 'wilson', components: {}, hasTag: tag => tag === 'player',
-        isValid: () => world.getPlayerPositions().includes(position),
-        getPosition: () => position, getPhysicsRadius: () => 0 };
-      players.set(position, entity);
-    }
-    return entity;
-  });
-  const nearest = (from: BrainEntity, radius: number, test: (entity: BrainEntity) => boolean) => {
-    const position = from.getPosition();
-    return playerEntities().filter(entity => test(entity) && distanceSquared(position, entity.getPosition()) <= radius ** 2)
-      .sort((a, b) => distanceSquared(position, a.getPosition()) - distanceSquared(position, b.getPosition()))[0];
-  };
-  const brainWorld: BrainWorld = {
+/** The brain's TheWorld: simutil.lua FindEntity / GetClosestInstWithTag over TheSim, and the map's IsAboveGroundAtPoint. */
+function CreateBrainWorld(inst: BeefaloInstance, world: BeefaloWorld): BrainWorld {
+  // Transform:GetWorldPosition of the searcher, which the brain passes as a BrainEntity.
+  const origin = new THREE.Vector3();
+  const at = (from: BrainEntity) => { const { x, y, z } = from.getPosition(); return origin.set(x, y, z); };
+  return {
     get isDay() { return world.clock.peek().phase === 'day'; },
-    findEntity: (from, radius, fn, must, cant, oneOf) => nearest(from, radius, entity =>
-      (!fn || fn(entity, from)) && (!must || must.every(tag => entity.hasTag(tag)))
-      && (!cant || !cant.some(tag => entity.hasTag(tag))) && (!oneOf || oneOf.some(tag => entity.hasTag(tag)))),
-    getClosestInstWithTag: (tags, from, radius) => nearest(from, radius, entity => tags.every(tag => entity.hasTag(tag))),
+    // FindEntity skips the searcher and entities that are not visible, those in limbo among them.
+    findEntity: (from, radius, fn, must, cant, oneOf) => inst.TheSim.FindEntities(at(from), radius, must, cant, oneOf)
+      .find(entity => entity !== from && entity.IsVisible() && !entity.inlimbo && (!fn || fn(entity, from))),
+    getClosestInstWithTag: (tags, from, radius) => {
+      const [first, second] = inst.TheSim.FindEntities(at(from), radius, tags);
+      return first !== from ? first : second;
+    },
     isAboveGroundAtPoint: (x, y, z) => {
       const point = new THREE.Vector3(x, y, z);
       world.constrainPosition(point);
       return point.x === x && point.z === z && world.isWalkable(point);
     },
-  };
-  return {
-    prefab: BEEFALO_ID, world: brainWorld,
-    // The components beefalobrain.lua and its behaviours read.
-    components: inst.components as Pick<BeefaloComponents, 'locomotor' | 'knownlocations' | 'health' | 'combat'>,
-    sg: { hasStateTag: tag => inst.stategraph.hasStateTag(tag), hasState: name => inst.stategraph.hasState(name),
-      goToState: name => inst.stategraph.goToState(name as BeefaloState) },
-    getTime: () => world.scheduler.now, random,
-    getPosition: () => inst.getPosition(), isValid: () => inst.isValid(),
-    getPhysicsRadius: () => BEEFALO_BEHAVIOR.radius,
-    hasTag: tag => inst.hasTag(tag),
-    GetAngleToPoint: (x, y, z) => inst.GetAngleToPoint(x, y, z),
-    IsNear: (entity, distance) => distanceSquared(inst.position, entity.getPosition()) < distance ** 2,
-    FacePoint: point => inst.FacePoint(point),
-    ListenForEvent: (name, fn) => { inst.ListenForEvent(name, fn); },
-    RemoveEventCallback: (name, fn) => inst.RemoveEventCallback(name, fn),
   };
 }
 
@@ -267,7 +244,9 @@ function fn(world: BeefaloWorld): BeefaloInstance {
     random,
   }, scheduler);
   inst.SetStateGraph(() => inst.stategraph.sg);
-  inst.SetBrain(() => new BeefaloBrain(brainInst(inst, world, random), WORLD_SCALE));
+  inst.world = CreateBrainWorld(inst, world);
+  inst.randomSource = random;
+  inst.SetBrain(beefalo => new BeefaloBrain(beefalo, WORLD_SCALE));
 
   inst.OnLoad = onload;
   inst.onRemove(() => {

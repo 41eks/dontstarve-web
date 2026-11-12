@@ -1031,7 +1031,6 @@ export async function createSceneEntities(
       secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
       clock: worldState.clock,
       getWatchWorldContent: worldState.getWatchWorldContent,
-      getPlayerPositions: () => [player.position],
       pathfinder,
       isWalkable(point) {
         const radius = BEEFALO_BEHAVIOR.radius;

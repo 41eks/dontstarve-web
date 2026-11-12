@@ -13,7 +13,6 @@ export interface BrainEntity extends LocoMotorTarget {
 /** Component surface read by the ported brains and behaviours. */
 export interface BrainComponents {
   pickable?: { readonly canBePicked: boolean };
-  inventory?: import('../../componets/src/inventory').Inventory;
   bait?: import('../../componets/src/bait').Bait;
   locomotor?: LocoMotor;
   pollinator?: Pollinator<BrainEntity>;
