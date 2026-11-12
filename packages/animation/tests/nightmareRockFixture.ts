@@ -4,7 +4,7 @@ import type { ReadonlyVector3 } from '../src/transformRoot';
 import type * as CANNON from 'cannon-es';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import type { TileStateQuery } from '@dontstarve-web/signals';
-import { nightmareRockPrefabs, type NightmareRockId, type NightmareRockInstance, type NightmareRockWorld } from '../../prefab/src/nightmarerock';
+import { nightmareRockPrefabs, type NightmareRockId, NightmareRockInstance, type NightmareRockWorld } from '../../prefab/src/nightmarerock';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { worldFxPrefabs } from '../../prefab/src/world_fx';
 
@@ -22,7 +22,7 @@ export function nightmareRockWorld(scene: THREE.Scene, world: Omit<NightmareRock
   return {
     prefabs,
     spawnPrefab,
-    spawn: (id: NightmareRockId, position: THREE.Vector3) => prefabs.spawn(id, position) as NightmareRockInstance,
+    spawn: (id: NightmareRockId, position: THREE.Vector3) => prefabs.spawnAs(NightmareRockInstance, id, position),
     exportRecords: () => prefabs.exportRecords(),
     /** The display group advances the awake rocks' clips. */
     update: (dt: number) => displays.update(dt),

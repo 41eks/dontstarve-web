@@ -48,7 +48,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   const model = placement.spawnFromSave(id, {
     id: `test_${id}`, transform: { position: [3, 0, 4], rotationY: 0 },
     components: { building: { ...(skinId ? { skinId } : {}) } },
-  }) as THREE.Group;
+  });
   // The builder searches the world its player is in; a test that reloads into a new world moves it there.
   const sim = { current: placement.prefabs };
   const builder = new Builder(registerActionEntity(prefabInstance(withEntity(world.player, 'waxwell'))!), {
@@ -170,7 +170,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
 
     restored = managedBuildings(world);
     sim.current = restored.prefabs;
-    const loaded = restored.spawnFromSave('researchlab3', record) as THREE.Group;
+    const loaded = restored.spawnFromSave('researchlab3', record);
     expect(prefabInstance(loaded)!.components.prototyper!.on).toBe(false);
     world.player.position.copy(registerActionEntity(prefabInstance(loaded)!).getPosition());
     builder.EvaluateTechTrees();
@@ -187,7 +187,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     restored = managedBuildings(world);
     sim.current = restored.prefabs;
     const burnt = restored.spawnFromSave('researchlab3', { ...record,
-      components: { ...record.components, building: { ...record.components.building!, burnt: true } } }) as THREE.Group;
+      components: { ...record.components, building: { ...record.components.building!, burnt: true } } });
     builder.EvaluateTechTrees();
     expect(prefabInstance(burnt)!.components.prototyper).toBeUndefined();
     expect(registerActionEntity(prefabInstance(burnt)!).hasTag('prototyper')).toBe(false);

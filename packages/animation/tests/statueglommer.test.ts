@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { statueGlommerPrefabs, STATUEGLOMMER_ID, type StatueGlommerInstance } from '../../prefab/src/statueglommer';
+import { statueGlommerPrefabs, STATUEGLOMMER_ID, StatueGlommerInstance } from '../../prefab/src/statueglommer';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -29,7 +29,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.glommerStatues);
   const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawn(STATUEGLOMMER_ID, new THREE.Vector3(...record.transform.position), record) as StatueGlommerInstance;
+    prefabs.spawnAs(StatueGlommerInstance, STATUEGLOMMER_ID, new THREE.Vector3(...record.transform.position), record);
   const records = () => registry.exportRecords().statueglommer ?? [];
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };
   return { scene, scheduler, awake, physics, prefabs, registry, spawn, records, dispose };
@@ -51,7 +51,7 @@ it('constructs full once, then declares the Lua OnLoadWorked pose for saved work
     expect(records()).toEqual([saved]);
     await prefabDisplay(inst.transform.model)!.artLoaded();
     expect(inst.sprite.currentAnimation).toBe('med');
-    const fresh = prefabs.spawn(STATUEGLOMMER_ID, new THREE.Vector3(3, 0, 3)) as StatueGlommerInstance;
+    const fresh = prefabs.spawnAs(StatueGlommerInstance, STATUEGLOMMER_ID, new THREE.Vector3(3, 0, 3));
     expect(fresh.sprite.sprite.peek().clip).toMatchObject({ name: 'full', loop: false });
     // A new pickable is empty: the flower stays hidden and the record is the source's picked shelf.
     expect(fresh.components.pickable.canBePicked).toBe(false);

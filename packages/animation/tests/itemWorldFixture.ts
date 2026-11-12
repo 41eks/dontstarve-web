@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PrefabDisplayGroup, SpriteResources } from '../../display/src';
-import { newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntity, type ItemEntityFactory, type ItemEntityRegistry } from '../../inventory/src';
+import { ItemEntity, newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntityFactory, type ItemEntityRegistry } from '../../inventory/src';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { LootLaunch } from '../../componets/src/inventoryphysics';
@@ -71,7 +71,7 @@ export class ItemWorldFixture {
     const ids = new Set(ITEM_PREFAB_IDS);
     this.prefabs.register(Object.fromEntries(Object.entries(itemPrefabs(this.world, icons)).filter(([id]) => ids.has(id))));
     inventory.entities.bindSpawner(state => ids.has(state.itemId)
-      ? this.prefabs.spawn(state.itemId, ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } }) as unknown as ItemEntity
+      ? this.prefabs.spawnAs(ItemEntity, state.itemId, ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } })
       : undefined);
     // DefaultBurntFn's ash.
     this.stopAsh = worldEvents?.on('spawnAsh', position => { this.spawnGroundItem({ ...SAVE_CATALOG.items.ash, itemId: 'ash', count: 1 }, position); });

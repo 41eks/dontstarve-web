@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo } from '@dontstarve-web/signals';
-import { caveExitPrefabs, CAVE_EXIT_ID, type CaveExitInstance } from '../../prefab/src/cave_exit';
+import { caveExitPrefabs, CAVE_EXIT_ID, CaveExitInstance } from '../../prefab/src/cave_exit';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { WorldMigratorShard } from '../../componets/src/worldmigrator';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -65,7 +65,7 @@ it('offers MIGRATE to the Master shard once it is available and hands the player
   const s = setup({ isWorldAvailable: id => id === 'Master', isWorldFull: () => false, migratePlayer: (...args) => { migrated.push(args); } });
   const unlinked = setup();
   try {
-    const exit = s.prefabs.spawn(CAVE_EXIT_ID, new THREE.Vector3(1, 0, 2)) as CaveExitInstance;
+    const exit = s.prefabs.spawnAs(CaveExitInstance, CAVE_EXIT_ID, new THREE.Vector3(1, 0, 2));
     expect(exit.sprite.sprite.peek().clip).toMatchObject({ name: 'open', loop: true });
     expect(canDoSceneAction('MIGRATE', exit.transform.model)).toBe(true);
     const player = testPlayer();

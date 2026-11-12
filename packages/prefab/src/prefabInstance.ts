@@ -950,6 +950,17 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   }
 
   /** SpawnPrefab, then SpawnSaveRecord's SetPosition and SetPersistData: the entity exists now and its display loads the art. */
+  /**
+   * SpawnPrefab for a caller that needs the prefab's own instance class, such as a prefab spawning its own children:
+   * the entity is checked to be one, and a prefab that spawns another class is an error.
+   */
+  spawnAs<Spawned extends Instance>(type: abstract new (...args: never[]) => Spawned, prefabId: Id, position: ReadonlyVector3,
+    saved?: Pick<PlacementSaveRecord, 'id' | 'components'> & Partial<Pick<PlacementSaveRecord, 'transform'>>, skinId?: string): Spawned {
+    const instance = this.spawn(prefabId, position, saved, skinId);
+    if (!(instance instanceof type)) throw new TypeError(`${prefabId} does not spawn a ${type.name}`);
+    return instance;
+  }
+
   spawn(prefabId: Id, position: ReadonlyVector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'> & Partial<Pick<PlacementSaveRecord, 'transform'>>, skinId?: string): Instance {
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);

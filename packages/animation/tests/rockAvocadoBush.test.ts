@@ -108,7 +108,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
     expect(root.components.deployable!.Deploy(position, { position, PushEvent: vi.fn() }, {
       canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => true, SpawnPrefab: (_prefab: string, point: THREE.Vector3) => prefabInstance(s.bushes.spawn('rock_avocado_bush', point).transform.model) as never,
+      canDeployPlant: () => true, SpawnPrefab: (_prefab: string, point: THREE.Vector3) => s.bushes.spawn('rock_avocado_bush', point),
     })).toBe(true);
     expect(s.inventory.count('dug_rock_avocado_bush')).toBe(1);
     const model = workTargets('DIG')[0].model, { pickable, growable, witherable } = plantInstance(model).components;

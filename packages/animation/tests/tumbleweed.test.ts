@@ -11,7 +11,7 @@ import type { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { BlowInWind } from '../../componets/src/blowinwind';
 import { WorldWind } from '../../componets/src/worldwind';
-import { tumbleweedPrefabs, rollTumbleweedLoot, type TumbleweedInstance, type TumbleweedWorld } from '../../prefab/src/tumbleweed';
+import { tumbleweedPrefabs, rollTumbleweedLoot, TumbleweedInstance, type TumbleweedWorld } from '../../prefab/src/tumbleweed';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { PrefabDisplayGroup } from '../../display/src';
 import { PrefabEntityManager } from '../../prefab/src/prefabInstance';
@@ -77,7 +77,7 @@ function tumbleweedManager(scene: THREE.Scene, physics: CANNON.World, world: Omi
   return {
     displays, componentUpdates,
     spawn: (position: THREE.Vector3, saved?: { id: string }) =>
-      manager.spawn('tumbleweed', position, saved && { id: saved.id, components: {} }) as TumbleweedInstance,
+      manager.spawnAs(TumbleweedInstance, 'tumbleweed', position, saved && { id: saved.id, components: {} }),
     exportRecords: () => manager.exportRecords().map(({ record }) => record),
     get renderEntities() { return displays.renderEntities; },
     dispose: () => { manager.dispose(); displays.dispose(); componentUpdates.dispose(); },

@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
-import { pigKingPrefabs, PIGKING_ID, type PigKingInstance } from '../../prefab/src/pigking';
+import { pigKingPrefabs, PIGKING_ID, PigKingInstance } from '../../prefab/src/pigking';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
@@ -48,7 +48,7 @@ describe('Pig King prefab', () => {
   it('stands on its feet with obstacle physics, the Lua tags and a camera-facing sprite', async () => {
     const s = setup();
     try {
-      const king = s.prefabs.spawn(PIGKING_ID, new THREE.Vector3(-13, 2, -25)) as PigKingInstance;
+      const king = s.prefabs.spawnAs(PigKingInstance, PIGKING_ID, new THREE.Vector3(-13, 2, -25));
       expect(king.listTags()).toEqual(['blocker', 'king', 'birdblocker', 'antlion_sinkhole_blocker', 'inspectable', 'trader']);
       // pigking.lua MakeObstaclePhysics(inst, 2, .5): a static body on the feet origin; the height is dropped.
       const body = king.physicsBody!;

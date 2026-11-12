@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { FACING } from '../src/facing';
-import { CAVE_HOLE_ID, caveHolePrefabs, type CaveHoleInstance } from '../../prefab/src/cave_hole';
+import { CAVE_HOLE_ID, caveHolePrefabs, CaveHoleInstance } from '../../prefab/src/cave_hole';
 import { bindPhysics } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import { staticObstacleTest } from '../../prefab/src/locomotor';
@@ -57,7 +57,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 it('restores a saved hole with its Lua clips, tags, layers and surface child', async () => {
   const s = setup();
   try {
-    const hole = s.prefabs.spawn(CAVE_HOLE_ID, new THREE.Vector3(3, 0, 6), record) as CaveHoleInstance;
+    const hole = s.prefabs.spawnAs(CaveHoleInstance, CAVE_HOLE_ID, new THREE.Vector3(3, 0, 6), record);
     const surface = s.surface();
     expect(hole.allowspawn).toBe(false);
     for (const tag of ['groundhole', 'blocker', 'blinkfocus']) expect(hole.hasTag(tag)).toBe(true);
@@ -85,7 +85,7 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
 it('blocks spheres at both walls, leaves the centre hollow and lets a soul hop land there', () => {
   const world = new CANNON.World(), s = setup(world);
   try {
-    const hole = s.prefabs.spawn(CAVE_HOLE_ID, new THREE.Vector3(0, 0, 0)) as CaveHoleInstance;
+    const hole = s.prefabs.spawnAs(CaveHoleInstance, CAVE_HOLE_ID, new THREE.Vector3(0, 0, 0));
     expect(hole.physicsBody!.shapes).toEqual([expect.any(CANNON.Trimesh)]);
     // The planners read the mesh as one obstacle; a walk target at the centre is never offered.
     expect(staticObstacleTest([hole.physicsBody!], 0)(new THREE.Vector3(0, 0, 0))).toBe(true);
@@ -124,7 +124,7 @@ it('blocks spheres at both walls, leaves the centre hollow and lets a soul hop l
 it('sleeping releases both layers and waking rebuilds their declared clip and hidden layer', async () => {
   const s = setup();
   try {
-    const hole = s.prefabs.spawn(CAVE_HOLE_ID, new THREE.Vector3(3, 0, 6), record) as CaveHoleInstance, surface = s.surface();
+    const hole = s.prefabs.spawnAs(CaveHoleInstance, CAVE_HOLE_ID, new THREE.Vector3(3, 0, 6), record), surface = s.surface();
     await Promise.all([artLoaded(hole), artLoaded(surface)]);
     const before = s.registry.exportRecords();
     s.awake.set(false); await turn();

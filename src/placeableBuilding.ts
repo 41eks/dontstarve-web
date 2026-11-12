@@ -59,14 +59,14 @@ export function isPlaceableBuildingId(value: string): value is PlaceableBuilding
  */
 export class PlaceableBuildingPlacement {
     private readonly managed: BuildingPlacer<PlaceableBuildingId>;
-    private readonly prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'register' | 'track'>;
+    private readonly prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'spawnAs' | 'register' | 'track'>;
     private readonly snapToWallSlot: (point: Vector3) => Vector3;
 
     constructor(
         world: WorldContext,
         consumeBufferedBuild: (buildId: PlaceableBuildingId, skinId?: string) => boolean,
         onInteractionChange: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
-        prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'register' | 'track'>,
+        prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'spawnAs' | 'register' | 'track'>,
     ) {
         this.prefabs = prefabs;
         const { scene: _scene, ...rest } = world;

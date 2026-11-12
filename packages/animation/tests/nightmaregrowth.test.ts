@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { nightmareGrowthPrefabs, type NightmareGrowthCrackInstance, type NightmareGrowthInstance } from '../../prefab/src/nightmaregrowth';
+import { nightmareGrowthPrefabs, NightmareGrowthCrackInstance, type NightmareGrowthInstance } from '../../prefab/src/nightmaregrowth';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { createInventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -26,7 +26,7 @@ function setup(random = () => .25) {
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
   prefabs.register(nightmareGrowthPrefabs({ scheduler, random,
-    spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) as NightmareGrowthCrackInstance }));
+    spawnPrefab: (prefab, position) => prefabs.spawnAs(NightmareGrowthCrackInstance, prefab, position) }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(9, 0, -6));
   registry.registerPrefabs(PREFAB_DEFINITIONS.nightmareGrowths);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { MOONGLASS_ROCK_ID, moonglassRockPrefabs, type MoonglassRockInstance } from '../../prefab/src/rocks';
+import { MOONGLASS_ROCK_ID, moonglassRockPrefabs, MoonglassRockInstance } from '../../prefab/src/rocks';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -34,8 +34,8 @@ function setup() {
   registry.registerPrefabs(PREFAB_DEFINITIONS.moonglassRocks);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return { scene, awake, prefabs, registry, inventory, spawnGroundItem,
-    spawn: (position: THREE.Vector3, rockType?: number) => prefabs.spawn(MOONGLASS_ROCK_ID, position,
-      rockType === undefined ? undefined : { id: 'saved-rock', components: { rock_type: rockType as 1 } }) as MoonglassRockInstance,
+    spawn: (position: THREE.Vector3, rockType?: number) => prefabs.spawnAs(MoonglassRockInstance, MOONGLASS_ROCK_ID, position,
+      rockType === undefined ? undefined : { id: 'saved-rock', components: { rock_type: rockType as 1 } }),
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };

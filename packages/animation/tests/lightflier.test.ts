@@ -3,7 +3,7 @@ import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
-import { lightflierFlowerPrefabs, LIGHTFLIER_FLOWER_ID, type LightFlierFlowerInstance } from '../../prefab/src/lightflier_flower';
+import { lightflierFlowerPrefabs, LIGHTFLIER_FLOWER_ID, LightFlierFlowerInstance } from '../../prefab/src/lightflier_flower';
 import { LightFlier, LightFlierHabitat, MakeLightFlier, UpdateLightFlier, configureLightFlierEntity, type LightFlierPlayer } from '../../prefab/src/lightflier';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -44,7 +44,7 @@ function setup(players: LightFlierPlayer[] = [], withWorld = false) {
     spawnItem: state => { const entity = new LightFlier(state); MakeLightFlier(entity); prefabs.track(entity); entities.push(entity); return entity; }, dropLoot,
     getHomes: () => prefabs.instances(LIGHTFLIER_FLOWER_ID) as Iterable<LightFlierFlowerInstance> });
   prefabs.register(lightflierFlowerPrefabs({ scheduler, habitat, dropLoot, getWatchWorldContent: world?.getWatchWorldContent, getLightLevel: () => 1 }));
-  const spawn = (position: THREE.Vector3, record?: PlacementSaveRecord) => prefabs.spawn(LIGHTFLIER_FLOWER_ID, position, record) as LightFlierFlowerInstance;
+  const spawn = (position: THREE.Vector3, record?: PlacementSaveRecord) => prefabs.spawnAs(LightFlierFlowerInstance, LIGHTFLIER_FLOWER_ID, position, record);
   const records = () => prefabs.exportRecords().map(({ record }) => record);
   const step = async (dt: number) => { scheduler.advance(dt); for (const fly of habitat.flies) UpdateLightFlier(fly, dt); habitat.update(dt); displays.update(dt); await task(); };
   const dispose = () => { entities.forEach(entity => entity.destroy()); prefabs.dispose(); displays.dispose(); habitat.dispose(); world?.unbind(); area.dispose(); scheduler.dispose(); };

@@ -71,7 +71,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     expect(item.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
       canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => true, SpawnPrefab: () => s.saplings.spawn(point) as never,
+      canDeployPlant: () => true, SpawnPrefab: () => s.saplings.spawn(point),
     })).toBe(true);
     expect(s.inventory.count('marblebean')).toBe(2);
     // The shovel's DIG finishes the one-work sapling and drops its only loot, then cancels growth.

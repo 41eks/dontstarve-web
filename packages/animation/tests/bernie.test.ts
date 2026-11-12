@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { ItemEntity } from '../../inventory/src/entity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { BERNIE_ACTIVE_ID, BERNIE_BIG_ID, BERNIE_ITEM_ID, berniePrefabs, type BernieInstance, type BerniePlayer, type BernieWorld } from '../../prefab/src/bernie';
+import { BERNIE_ACTIVE_ID, BERNIE_BIG_ID, BERNIE_ITEM_ID, berniePrefabs, BernieInstance, type BerniePlayer, type BernieWorld } from '../../prefab/src/bernie';
 import { itemAt, ItemWorldFixture } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
@@ -103,7 +103,7 @@ it('reanimates the item on the ground near a crazy, visible player, carrying its
 it('runs SGbernie: activates, idles, and sits back down as the item once no crazy player is near', () => {
   const s = setup();
   try {
-    const active = s.prefabs.spawn(BERNIE_ACTIVE_ID, new THREE.Vector3(1, 0, 1), undefined, 'bernie_dog_active') as BernieInstance;
+    const active = s.prefabs.spawnAs(BernieInstance, BERNIE_ACTIVE_ID, new THREE.Vector3(1, 0, 1), undefined, 'bernie_dog_active');
     expect(active.sg.stateName).toBe('activate');
     expect(active.sprite.currentAnimation).toBe('activate');
     // The crazy player keeps it up; without a Willow it never goes big.
@@ -127,7 +127,7 @@ it('grows next to a crazy Willow, and the big Bernie deactivates straight back t
   const s = setup();
   try {
     s.tags.add('bernieowner');
-    const active = s.prefabs.spawn(BERNIE_ACTIVE_ID, new THREE.Vector3(1, 0, 0)) as BernieInstance;
+    const active = s.prefabs.spawnAs(BernieInstance, BERNIE_ACTIVE_ID, new THREE.Vector3(1, 0, 0));
     active.components.health.SetPercent(.5);
     // Busy while activating; the brain's first PriorityNode evaluation (scattered to 1.5 seconds) then goes big.
     s.scheduler.advance(1.5);
@@ -174,7 +174,7 @@ it('spawns both forms with c_spawn and saves and reloads their health, a loaded 
     expect(entities.bernie_active).toHaveLength(1);
     const [record] = entities.bernie_big!;
     expect(record.components.health).toEqual({ current: 500, maximum: 2000 });
-    const reloaded = restored.prefabs.spawn(BERNIE_BIG_ID, new THREE.Vector3(...record.transform.position), record) as BernieInstance;
+    const reloaded = restored.prefabs.spawnAs(BernieInstance, BERNIE_BIG_ID, new THREE.Vector3(...record.transform.position), record);
     expect(reloaded.components.health.currenthealth).toBe(500);
     expect(reloaded.sg.stateName).toBe('idle');
   } finally { s.dispose(); restored.dispose(); }

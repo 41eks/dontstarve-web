@@ -43,7 +43,7 @@ function stationWorld(scheduler = new GameTimeScheduler(), tags: string[] = [], 
 function createStation(tags: string[] = [], playerAt = new THREE.Vector3(0, 0, 0)) {
   stubArt();
   const { inventory, scheduler, buildings } = stationWorld(undefined, tags, playerAt);
-  const model = buildings.spawnFromSave('bookstation', { id: 'shelf', transform: { position: [0, 0, 0], rotationY: 0 }, components: { building: {} } }) as THREE.Group;
+  const model = buildings.spawnFromSave('bookstation', { id: 'shelf', transform: { position: [0, 0, 0], rotationY: 0 }, components: { building: {} } });
   const inst = prefabInstance(model) as BookstationInstance;
   const container = inst.components.container!;
   /** UpdateBookAesthetics: the book layers inst.AnimState hides. */

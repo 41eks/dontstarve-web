@@ -77,7 +77,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     expect((await executeDebugCommand('c_give("butterfly",2)', s.inventory)).ok).toBe(true);
     s.inventory.getEntity(inventorySlotAddress(0))!.setFreshnessPercent(.6);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
-    const spawnPrefab = vi.fn((_prefab: string, position: THREE.Vector3) => s.prefabs.spawn('planted_flower', position) as never);
+    const spawnPrefab = vi.fn((_prefab: string, position: THREE.Vector3) => s.prefabs.spawn('planted_flower', position));
     const point = new THREE.Vector3(2, 0, 0);
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
     actor = deployActor(s.world, s.inventory, createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }), blockers: placementEntities(s.world.scene), spawnPrefab }));

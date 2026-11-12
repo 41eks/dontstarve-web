@@ -5,7 +5,7 @@ import { ItemEntity } from '@dontstarve-web/inventory';
 import * as CANNON from 'cannon-es';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
-import { pigKingPrefabs, PIGKING_ID, type PigKingInstance } from '../../prefab/src/pigking';
+import { pigKingPrefabs, PIGKING_ID, PigKingInstance } from '../../prefab/src/pigking';
 import { configureTradableEntity } from '../../prefab/src/tradable';
 import { bindTestWorld } from './worldContentFixture';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -37,7 +37,7 @@ async function setup() {
   const displays = new PrefabDisplayGroup(new THREE.Scene());
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics: new CANNON.World() });
   prefabs.register(pigKingPrefabs({ camera: new THREE.PerspectiveCamera(), scheduler, getWatchWorldContent: world.getWatchWorldContent, dropLoot }));
-  const instance = prefabs.spawn(PIGKING_ID, new THREE.Vector3(6, 0, 6)) as PigKingInstance;
+  const instance = prefabs.spawnAs(PigKingInstance, PIGKING_ID, new THREE.Vector3(6, 0, 6));
   // The stategraph's animover follows the drawn clips; a clip with nothing drawn completes at once.
   await prefabDisplay(instance.transform.model)!.artLoaded();
   // The tests read the king's trader and stategraph by their source names.

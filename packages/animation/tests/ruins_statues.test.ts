@@ -6,7 +6,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import {
   ruinsStatuePrefabs, RUINS_STATUE_HEAD_ID, RUINS_STATUE_HEAD_NOGEM_ID, RUINS_STATUE_MAGE_ID, RUINS_STATUE_MAGE_NOGEM_ID,
-  type RuinsStatueId, type RuinsStatueInstance,
+  type RuinsStatueId, RuinsStatueInstance,
 } from '../../prefab/src/ruins_statue_mage';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
@@ -40,7 +40,7 @@ function setup(player = new THREE.Vector3()) {
   const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   return { scene, awake, prefabs, registry, inventory, save,
-    spawn: (id: RuinsStatueId, position: THREE.Vector3, record?: PlacementSaveRecord) => prefabs.spawn(id, position, record) as RuinsStatueInstance,
+    spawn: (id: RuinsStatueId, position: THREE.Vector3, record?: PlacementSaveRecord) => prefabs.spawnAs(RuinsStatueInstance, id, position, record),
     dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

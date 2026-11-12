@@ -6,7 +6,7 @@ import { prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { chesspiecePrefabs, CHESSPIECE_MALBATROSS_MARBLE_ID, type ChesspieceInstance } from '../../prefab/src/chesspieces';
+import { chesspiecePrefabs, CHESSPIECE_MALBATROSS_MARBLE_ID, ChesspieceInstance } from '../../prefab/src/chesspieces';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -32,7 +32,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   registry.registerPrefabs(PREFAB_DEFINITIONS.chesspieces);
   const pieces = {
     /** SpawnSaveRecord. */
-    spawn: (record: PlacementSaveRecord) => prefabs.spawn(ID, new THREE.Vector3(...record.transform.position), record) as ChesspieceInstance,
+    spawn: (record: PlacementSaveRecord) => prefabs.spawnAs(ChesspieceInstance, ID, new THREE.Vector3(...record.transform.position), record),
     exportRecords: () => prefabs.exportRecords().map(({ record }) => record),
   };
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };

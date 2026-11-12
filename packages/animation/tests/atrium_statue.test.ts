@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
-import { atriumStatuePrefabs, ATRIUM_STATUE_ID, type AtriumStatueInstance } from '../../prefab/src/atrium_statue';
+import { atriumStatuePrefabs, ATRIUM_STATUE_ID, AtriumStatueInstance } from '../../prefab/src/atrium_statue';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -33,7 +33,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.atriumStatues);
   const spawn = (record = RECORD) =>
-    prefabs.spawn(ATRIUM_STATUE_ID, new THREE.Vector3(...record.transform.position), record) as AtriumStatueInstance;
+    prefabs.spawnAs(AtriumStatueInstance, ATRIUM_STATUE_ID, new THREE.Vector3(...record.transform.position), record);
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); };
   return { scene, awake, physics, prefabs, registry, spawn, dispose };
 }

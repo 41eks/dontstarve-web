@@ -3,7 +3,7 @@ import { ruinsRelicPrefabs } from '@dontstarve-web/prefab/ruinsrelic';
 import { lightflierFlowerPrefabs } from '../packages/prefab/src/lightflier_flower';
 import { LightFlierHabitat } from '../packages/prefab/src/lightflier';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
-import { createMoleHabitat, molehillPrefabs, type MolehillInstance } from '../packages/prefab/src/molehill';
+import { createMoleHabitat, molehillPrefabs, MolehillInstance } from '../packages/prefab/src/molehill';
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
@@ -51,7 +51,7 @@ import type { WorldMigratorShard } from '../packages/componets/src/worldmigrator
 import { grottoPoolPrefabs } from '@dontstarve-web/prefab/grotto_pool';
 import { mushroomPlantPrefabs } from '@dontstarve-web/prefab/mushroom_plant';
 import { mushtreePrefabs } from '@dontstarve-web/prefab/mushtree';
-import { marbleShrubPrefabs, type MarbleShrubInstance } from '@dontstarve-web/prefab/marbleshrub';
+import { marbleShrubPrefabs, MarbleShrubInstance } from '@dontstarve-web/prefab/marbleshrub';
 import { archivePropsPrefabs } from '@dontstarve-web/prefab/archive_props';
 import { houndbonePrefabs } from '@dontstarve-web/prefab/houndbone';
 import { beeQueenHivePrefabs } from '@dontstarve-web/prefab/beequeenhivegrown';
@@ -77,7 +77,7 @@ import { hotspringPrefabs } from '@dontstarve-web/prefab/hotspring';
 import { lavaPondPrefabs } from '@dontstarve-web/prefab/lava_pond';
 import { wormholePrefabs } from '@dontstarve-web/prefab/wormhole';
 import { portalPrefabs } from '@dontstarve-web/prefab/portal';
-import { nightmareGrowthPrefabs, type NightmareGrowthCrackInstance } from '@dontstarve-web/prefab/nightmaregrowth';
+import { nightmareGrowthPrefabs, NightmareGrowthCrackInstance } from '@dontstarve-web/prefab/nightmaregrowth';
 import { nightmareRockPrefabs } from '@dontstarve-web/prefab/nightmarerock';
 import { pigKingPrefabs } from '@dontstarve-web/prefab/pigking';
 import { BERNIE_ITEM_ID, berniePrefabs, type BernieWorld } from '@dontstarve-web/prefab/bernie';
@@ -555,7 +555,7 @@ export async function createSceneEntities(
       // The spawned mole is set down where it comes out, as SpawnPrefab and Transform:SetPosition do.
       showMole: (entity, position) => { entity.setPosition(position.x, 0, position.z); },
       dropLoot: (itemId, position) => { groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position); },
-      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) as MolehillInstance,
+      spawnPrefab: (prefab, position) => prefabs.spawnAs(MolehillInstance, prefab, position),
       fx: Managers['world_fx'],
     });
     prefabs.register(molehillPrefabs(habitat));
@@ -840,7 +840,7 @@ export async function createSceneEntities(
     prefabs.register(marbleBeanSaplingPrefabs({
       handEquipment: sceneInventory.handEquipment,
       scheduler: scheduler ?? worldState.scheduler,
-      spawnPrefab: (id, position) => prefabs.spawn(id, position) as MarbleShrubInstance,
+      spawnPrefab: (id, position) => prefabs.spawnAs(MarbleShrubInstance, id, position),
       spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
@@ -1000,7 +1000,7 @@ export async function createSceneEntities(
   function registerNightmareGrowths(registry: EntityRegistry, prefabId: 'nightmaregrowth', worldState: SceneWorldState) {
     prefabs.register(nightmareGrowthPrefabs({
       scheduler: scheduler ?? worldState.scheduler,
-      spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) as NightmareGrowthCrackInstance,
+      spawnPrefab: (prefab, position) => prefabs.spawnAs(NightmareGrowthCrackInstance, prefab, position),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }

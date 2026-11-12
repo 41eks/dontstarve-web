@@ -88,10 +88,14 @@ export class HotspringInstance extends PrefabInstance {
   }
 }
 
+/** fx.lua's steam variants push_special_idle picks from with math.random(4) / math.random(5). */
+const CRATER_STEAM_FX = ['crater_steam_fx1', 'crater_steam_fx2', 'crater_steam_fx3', 'crater_steam_fx4'] as const;
+const SLOW_STEAM_FX = ['slow_steam_fx1', 'slow_steam_fx2', 'slow_steam_fx3', 'slow_steam_fx4', 'slow_steam_fx5'] as const;
+
 /** push_special_idle, non-glass branches. */
 function push_special_idle(inst: HotspringInstance): void {
-  if (inst.components.bathbombable.is_bathbombed) inst.world.fx.spawn(`crater_steam_fx${1 + Math.floor(inst.random() * 4) as 1 | 2 | 3 | 4}`, inst.position);
-  else inst.world.fx.spawn(`slow_steam_fx${1 + Math.floor(inst.random() * 5) as 1 | 2 | 3 | 4 | 5}`, inst.position);
+  const variants = inst.components.bathbombable.is_bathbombed ? CRATER_STEAM_FX : SLOW_STEAM_FX;
+  inst.world.fx.spawn(variants[Math.floor(inst.random() * variants.length)], inst.position);
 }
 
 function StartFx(inst: HotspringInstance, delay = inst.random() * HOTSPRING_IDLE.DELAY): void {

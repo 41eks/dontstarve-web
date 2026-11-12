@@ -4,7 +4,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal, GameTimeScheduler } from '@dontstarve-web/signals';
-import { atriumGatePrefabs, ATRIUM_GATE_ID, type AtriumGateInstance } from '../../prefab/src/atrium_gate';
+import { atriumGatePrefabs, ATRIUM_GATE_ID, AtriumGateInstance } from '../../prefab/src/atrium_gate';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { Pathfinder } from '../../prefab/src/pathfinder';
@@ -34,7 +34,7 @@ function setup(pathfinder?: Pathfinder) {
   const instances = (prefab: string) => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).filter(inst => inst?.prefab === prefab && !inst.isRemoved);
   return { scene, awake, prefabs, registry, inventory, instances,
     gate: (components: PlacementSaveRecord['components'], x = 5) =>
-      prefabs.spawn(ATRIUM_GATE_ID, new THREE.Vector3(x, 0, 7), record(x, components)) as AtriumGateInstance,
+      prefabs.spawnAs(AtriumGateInstance, ATRIUM_GATE_ID, new THREE.Vector3(x, 0, 7), record(x, components)),
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };

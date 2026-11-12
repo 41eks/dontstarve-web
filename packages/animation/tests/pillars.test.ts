@@ -6,9 +6,9 @@ import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal, GameTimeScheduler } from '@dontstarve-web/signals';
 import { CAVE_PILLAR_IDS, pillarPrefabs } from '../../prefab/src/pillar';
 import { atriumPillarPrefabs, PILLAR_ATRIUM_ID } from '../../prefab/src/atrium_pillar';
-import { archivePillarPrefabs, ARCHIVE_PILLAR_ID, type ArchivePillarInstance } from '../../prefab/src/archive_pillar';
-import { vaultPillarPrefabs, VAULT_PILLAR_ID, type VaultPillarInstance } from '../../prefab/src/vault_pillar';
-import { monkeyPillarPrefabs, MONKEYPILLAR_ID, type MonkeyPillarInstance } from '../../prefab/src/monkeypillar';
+import { archivePillarPrefabs, ARCHIVE_PILLAR_ID, ArchivePillarInstance } from '../../prefab/src/archive_pillar';
+import { vaultPillarPrefabs, VAULT_PILLAR_ID, VaultPillarInstance } from '../../prefab/src/vault_pillar';
+import { monkeyPillarPrefabs, MONKEYPILLAR_ID, MonkeyPillarInstance } from '../../prefab/src/monkeypillar';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -84,7 +84,7 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
 
     // choosebroken: a saved true sets the broken bank; a saved false never restores what the constructor's roll picked.
     const random = vi.spyOn(Math, 'random').mockReturnValue(.5);
-    const whole = s.prefabs.spawn(ARCHIVE_PILLAR_ID, at, record({ broken: false })) as ArchivePillarInstance;
+    const whole = s.prefabs.spawnAs(ArchivePillarInstance, ARCHIVE_PILLAR_ID, at, record({ broken: false }));
     expect(tags(whole)).toEqual(['blocker', 'archive_pillar']);
     expect(whole.physics.json.peek()!.capsule).toEqual({ radius: 1.8, height: 6 });
     expect(whole.minimap.icon).toBe('pillar_archive.png');
@@ -92,19 +92,19 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     await artLoaded(whole);
     expect(requested('pillar_archive.zip')).toBe(true);
     expect(requested('pillar_archive_broken.zip')).toBe(false);
-    const broken = s.prefabs.spawn(ARCHIVE_PILLAR_ID, at, record({ broken: true })) as ArchivePillarInstance;
+    const broken = s.prefabs.spawnAs(ArchivePillarInstance, ARCHIVE_PILLAR_ID, at, record({ broken: true }));
     expect(broken.bank).toBe('pillar_archive_broken');
     await artLoaded(broken);
     expect(requested('pillar_archive_broken.zip')).toBe(true);
     expect(broken.GetPersistData()).toEqual({ broken: true });
     random.mockReturnValue(.1);
-    const rolled = s.prefabs.spawn(ARCHIVE_PILLAR_ID, at, record({ broken: false })) as ArchivePillarInstance;
+    const rolled = s.prefabs.spawnAs(ArchivePillarInstance, ARCHIVE_PILLAR_ID, at, record({ broken: false }));
     expect([rolled.broken, rolled.bank]).toEqual([false, 'pillar_archive_broken']);
     random.mockRestore();
 
     const clips = { idle_upper: {}, idle_upper_capped: { capped: 1 }, idle_upper_capped_2: { capped: 2 }, idle_upper_broken: { broken: 1 } } as const;
     for (const [clip, components] of Object.entries(clips)) {
-      const vault = s.prefabs.spawn(VAULT_PILLAR_ID, at, record(components)) as VaultPillarInstance;
+      const vault = s.prefabs.spawnAs(VaultPillarInstance, VAULT_PILLAR_ID, at, record(components));
       expect(tags(vault)).toEqual(['decor', 'nomagic', 'nohighlight']);
       expect(vault.sprite.sprite.peek().clip).toMatchObject({ name: clip, loop: false });
       await artLoaded(vault);
@@ -122,7 +122,7 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     expect(bottom.isRemoved).toBe(true);
 
     // AnimState starts empty; OnLoad's setpillartype plays the saved idle once and animover chains the next.
-    const monkey = s.prefabs.spawn(MONKEYPILLAR_ID, at, record({ pillar_id: 3 })) as MonkeyPillarInstance;
+    const monkey = s.prefabs.spawnAs(MonkeyPillarInstance, MONKEYPILLAR_ID, at, record({ pillar_id: 3 }));
     expect(tags(monkey)).toEqual(['blocker', 'SnowCovered', 'inspectable']);
     expect(monkey.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle3', loop: false }, frame: { at: expect.any(Number) }, lightOverride: .25 });
     expect(monkey.physics.json.peek()!.capsule).toEqual({ radius: .6, height: 24 });
@@ -144,9 +144,9 @@ it('sleeping releases the sprite and waking restores the declared clip and appea
   const s = setup();
   try {
     const looping = s.prefabs.spawn('pillar_cave', at, record());
-    const broken = s.prefabs.spawn(ARCHIVE_PILLAR_ID, at, record({ broken: true })) as ArchivePillarInstance;
+    const broken = s.prefabs.spawnAs(ArchivePillarInstance, ARCHIVE_PILLAR_ID, at, record({ broken: true }));
     const capped = s.prefabs.spawn(VAULT_PILLAR_ID, at, record({ capped: 2 }));
-    const monkey = s.prefabs.spawn(MONKEYPILLAR_ID, at, record({ pillar_id: 2 })) as MonkeyPillarInstance;
+    const monkey = s.prefabs.spawnAs(MonkeyPillarInstance, MONKEYPILLAR_ID, at, record({ pillar_id: 2 }));
     const pillars = [looping, broken, capped, monkey] as PrefabInstance[];
     await Promise.all(pillars.map(artLoaded));
     const before = s.prefabs.exportRecords();

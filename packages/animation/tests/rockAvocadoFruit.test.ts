@@ -116,14 +116,14 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     expect(item.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
       canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => false, SpawnPrefab: () => s.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, point) as never,
+      canDeployPlant: () => false, SpawnPrefab: () => s.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, point),
     })).toBe(false);
     expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(2);
     const root = s.inventory.extract(inventorySlotAddress(0), 1, item)!;
     expect(root.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
       canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => true, SpawnPrefab: () => s.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, point) as never,
+      canDeployPlant: () => true, SpawnPrefab: () => s.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, point),
     })).toBe(true);
     expect(root.isRemoved).toBe(true); expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(1);
     const model = workTargets('DIG', s.scene)[0].model, { timer } = prefabInstance<RockAvocadoSaplingInstance>(model)!.components;

@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BEEFALO_BEHAVIOR, beefaloPrefabs, type BeefaloInstance, type BeefaloWorld } from '../../prefab/src/beefalo';
+import { BEEFALO_BEHAVIOR, beefaloPrefabs, BeefaloInstance, type BeefaloWorld } from '../../prefab/src/beefalo';
 import { createSignal, getWatchWorldContent, type WorldPhase, type WorldContentEnvironment } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
@@ -54,7 +54,7 @@ function beefaloWorld({ random = (): number => 0, physics = new CANNON.World() }
   const displays = new PrefabDisplayGroup(new THREE.Scene());
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics }, beefaloPrefabs(world));
   const spawn = (saved?: Pick<PlacementSaveRecord, 'id' | 'components' | 'transform'>, position = new THREE.Vector3()) =>
-    prefabs.spawn('beefalo', position, saved) as BeefaloInstance;
+    prefabs.spawnAs(BeefaloInstance, 'beefalo', position, saved);
   return { world, prefabs, physics, scheduler, componentUpdates, spawn,
     /** A player the manager tracks, as the scene tracks its player instance for TheSim. */
     addPlayer: (position: THREE.Vector3) => {

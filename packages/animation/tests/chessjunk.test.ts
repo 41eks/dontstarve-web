@@ -5,7 +5,7 @@ import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Repairer } from '../../componets/src/repairer';
-import { chessJunkPrefabs, CHESSJUNK_IDS, type ChessJunkId, type ChessJunkInstance } from '../../prefab/src/chessjunk';
+import { chessJunkPrefabs, CHESSJUNK_IDS, type ChessJunkId, ChessJunkInstance } from '../../prefab/src/chessjunk';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -31,7 +31,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.chessJunk);
   const spawn = (id: ChessJunkId, record?: PlacementSaveRecord) =>
-    prefabs.spawn(id, new THREE.Vector3(...record?.transform.position ?? [0, 0, 0]), record) as ChessJunkInstance;
+    prefabs.spawnAs(ChessJunkInstance, id, new THREE.Vector3(...record?.transform.position ?? [0, 0, 0]), record);
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };
   return { scheduler, prefabs, registry, spawn, dropped, collapses, dispose };
 }

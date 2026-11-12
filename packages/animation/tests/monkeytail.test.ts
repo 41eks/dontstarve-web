@@ -133,7 +133,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
     s.player.position.set(0, 0, 0);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
-    const spawnPrefab = vi.fn((_prefab: string, position: THREE.Vector3) => prefabInstance(s.monkeytails.spawn('monkeytail', position).transform.model) as never);
+    const spawnPrefab = vi.fn((_prefab: string, position: THREE.Vector3) => s.monkeytails.spawn('monkeytail', position));
     deployment = deployActor(s.world as never, s.inventory, createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
       blockers: placementEntities(s.scene), spawnPrefab }), a.graph);
     expect(deployment.canDeploy(new THREE.Vector3(-1, 0, 0))).toBe(false);

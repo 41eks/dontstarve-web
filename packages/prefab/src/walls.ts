@@ -249,8 +249,8 @@ function onremove(inst: WallInstance): void {
 /** MakeWallType(data): the placed wall, its deployable item's ondeploywall and its placer. */
 function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world: PrefabWorldContext) {
     /** fence_item-style SpawnPrefab("wall_"..data.name, linked skin) at the wall slot; consuming the item is the build flow's. */
-    function ondeploywall(prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>, pt: ReadonlyVector3, skinId?: string): WallInstance {
-        return prefabs.spawn(prefab, pt, undefined, skinId) as WallInstance;
+    function ondeploywall(prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawnAs'>, pt: ReadonlyVector3, skinId?: string): WallInstance {
+        return prefabs.spawnAs(WallInstance, prefab, pt, undefined, skinId);
     }
 
     /** onhammered: condition-scaled loot, collapse_small with the wall's material, then Remove. */
@@ -350,7 +350,7 @@ export function wallPrefabs(world: PrefabWorldContext) {
         /** wall_*_item's placer, or the wall's own when it is built by its world ID. */
         placer: (buildId: WallId, snap: BuildingPlacerSpec['snap']) => types[wallWorldPrefab(buildId) as WallPrefabId].placer(buildId, snap),
         /** wall_*_item's deployable ondeploywall, with the item's skin linked to the wall's. */
-        ondeploywall: (prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>, buildId: WallId, pt: ReadonlyVector3, skinId?: string) =>
+        ondeploywall: (prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawnAs'>, buildId: WallId, pt: ReadonlyVector3, skinId?: string) =>
             types[wallWorldPrefab(buildId) as WallPrefabId].ondeploywall(prefabs, pt, wallWorldSkin(buildId, skinId)),
     };
 }

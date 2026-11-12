@@ -73,7 +73,7 @@ it('burns a chest through shared components, drops its live contents and restore
   try {
     const model = placement.spawnFromSave('treasurechest', { id: 'burning-chest', transform: { position: [3, 0, -6], rotationY: 0 },
       components: { building: {}, container: { slotCount: 9,
-        slots: [{ slotKey: '0', item: { entityId: 'stored-seeds', itemId: 'seeds', count: 3, freshnessPercent: .6 } }] } } }) as THREE.Group;
+        slots: [{ slotKey: '0', item: { entityId: 'stored-seeds', itemId: 'seeds', count: 3, freshnessPercent: .6 } }] } } });
     const inst = prefabInstance(model)!;
     const item = inventory.getEntity({ containerId: 'world:treasurechest:burning-chest', slotKey: '0' })!;
     const before = item.snapshot(), burnable = inst.components.burnable!;
@@ -97,7 +97,7 @@ it('burns a chest through shared components, drops its live contents and restore
     expect(dispose).toHaveBeenCalledOnce();
 
     restored = managedBuildings(world, { consume: () => false });
-    const loaded = prefabInstance(restored.spawnFromSave('treasurechest', record) as THREE.Group)!;
+    const loaded = prefabInstance(restored.spawnFromSave('treasurechest', record))!;
     expect(loaded.entityId).toBe(inst.entityId);
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect(loaded.hasTag('burnt')).toBe(true);
@@ -106,7 +106,7 @@ it('burns a chest through shared components, drops its live contents and restore
     expect(restored.exportRecords()[0].record).toEqual(record);
     // A burnt record that still lists items: Container:OnLoad runs first, so the prefab's onload drops them.
     const stocked = prefabInstance(restored.spawnFromSave('treasurechest', { id: 'stocked-burnt', transform: { position: [8, 0, 1], rotationY: 0 }, components: {
-      building: { burnt: true }, container: { slotCount: 9, slots: [{ slotKey: '0', item: { entityId: 'saved-log', itemId: 'log', count: 2 } }] } } }) as THREE.Group)!;
+      building: { burnt: true }, container: { slotCount: 9, slots: [{ slotKey: '0', item: { entityId: 'saved-log', itemId: 'log', count: 2 } }] } } }))!;
     expect(stocked.components.container).toBeUndefined();
     const saved = inventory.entities.get('saved-log')!;
     expect(saved.components.inventoryitem.owner).toBeNull();

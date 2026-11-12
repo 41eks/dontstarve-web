@@ -120,7 +120,7 @@ it('reskins through its target, draws the skin build and keeps it through the bu
   expect(record.components).toEqual({ building: { skinId } });
   expect(PREFAB_DEFINITIONS.buildings.prefabIds).toContain(PIG_HOUSE_ID);
 
-  const restored = prefabInstance(placement.spawnFromSave(PIG_HOUSE_ID, { ...record, id: 'restored' }) as THREE.Group)!;
+  const restored = prefabInstance(placement.spawnFromSave(PIG_HOUSE_ID, { ...record, id: 'restored' }))!;
   expect(restored.skinId).toBe(skinId);
   await prefabDisplay(restored.transform.model)!.artLoaded();
   displays.update(1 / 30);
@@ -139,7 +139,7 @@ it('draws each container prefab from its source bank and skin build, and keeps i
     expect(PREFAB_DEFINITIONS.buildings.prefabIds).toContain(id);
     const record = { id: `saved-${id}`, transform: { position: [1, 0, 2] as [number, number, number], rotationY: 0 },
       components: { building: skinId === undefined ? {} : { skinId }, container: { slotCount: declaration.container.slotCount, slots: [] } } };
-    const model = buildings.spawnFromSave(id, record) as THREE.Group, inst = prefabInstance(model)!;
+    const model = buildings.spawnFromSave(id, record), inst = prefabInstance(model)!;
     await prefabDisplay(model)!.artLoaded();
     buildings.displays.update(1 / 30);
     expect(inst.sprite.loaded, id).toBe(true);
@@ -167,7 +167,7 @@ it('draws the moved animated buildings through their archive or controller art, 
     const declaration: { archive: string; buildArchive?: string; skinArchives?: Record<string, string> } = definitions.animatedBuildings[id];
     const [skinId] = Object.keys(declaration.skinArchives ?? {});
     const model = buildings.spawnFromSave(id, { id: `saved-${id}`, transform: { position: [index * 10, 0, 2], rotationY: 0 },
-      components: { building: skinId === undefined ? {} : { skinId } } }) as THREE.Group;
+      components: { building: skinId === undefined ? {} : { skinId } } });
     await prefabDisplay(model)!.artLoaded();
     buildings.displays.update(1 / 30);
     expect(model.getObjectsByProperty('isMesh', true).length, id).toBeGreaterThan(0);

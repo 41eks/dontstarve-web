@@ -2,9 +2,9 @@ import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { FarmTillerMap } from '../../componets/src/farmtiller';
 import { FARM_DECOR_IDS, FARM_PLOW_ID, FARM_PLOW_ITEM_ID, FARM_PLOW_USES, FARM_SCALE,
-  FARM_TILL_SPACING, PLANTED_SEED_IDS, type FarmPlowInstance, type FarmSoilMap } from './farm_plow';
+  FARM_TILL_SPACING, PLANTED_SEED_IDS, FarmPlowInstance, type FarmSoilMap } from './farm_plow';
 import { hasPlacementTag, ignoresPlacement, type PlacementBlocker, type PlacementQuery } from './placementEntities';
-import type { PrefabInstance } from './prefabInstance';
+import type { PrefabEntityManager, PrefabInstance } from './prefabInstance';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { WORLD_TILES, type TurfMap } from './turfMap';
 
@@ -15,9 +15,8 @@ const PLOW_IGNORE_TAGS = ['NOBLOCK', 'locomotor', 'NOCLICK', 'FX', 'DECOR'];
 const FARM_ENTITY_IDS: readonly string[] = [FARM_PLOW_ID, ...FARM_DECOR_IDS, ...PLANTED_SEED_IDS];
 
 /** The live entities the farm prefabs spawn: TheSim:FindEntities over them and SpawnPrefab. */
-export interface FarmEntities {
+export interface FarmEntities extends Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'spawnAs'> {
   instances(prefabId: string): Iterable<PrefabInstance>;
-  spawn(prefabId: string, position: THREE.Vector3): PrefabInstance;
 }
 export interface FarmMap extends FarmSoilMap, FarmTillerMap {
   /** farm_plow_item's can_plow_tile. */
@@ -89,7 +88,7 @@ export function createFarmMap({ turf, entities, blockers }: { turf: TurfMap; ent
       if (item.prefab !== FARM_PLOW_ITEM_ID || item.isRemoved || item.components.inventoryitem.owner
         || item.components.stackable.count !== 1) throw new Error('Deployment requires one detached farm_plow_item');
       // item_ondeploy: SpawnPrefab("farm_plow") at the tile centre, finiteuses:Use(1), then the item's save record.
-      const plow = entities.spawn(FARM_PLOW_ID, tileCenter(point)) as FarmPlowInstance;
+      const plow = entities.spawnAs(FarmPlowInstance, FARM_PLOW_ID, tileCenter(point));
       item.components.finiteuses.setMaxUses(FARM_PLOW_USES);
       item.components.finiteuses.use(1);
       if (!item.isRemoved) {

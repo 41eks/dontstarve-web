@@ -5,7 +5,7 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal, GameTimeScheduler } from '@dontstarve-web/signals';
-import { portalPrefabs, PORTAL_FX_ID, PORTAL_ID, type PortalInstance } from '../../prefab/src/portal';
+import { portalPrefabs, PORTAL_FX_ID, PORTAL_ID, PortalInstance } from '../../prefab/src/portal';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PlaySound } from '../../prefab/src/sound';
 import { FRAMES } from '../../stategraphs/src/stategraph';
@@ -65,7 +65,7 @@ it('loads with its fx child and runs SGmultiplayerportal idle, spawn and rez sta
   const s = setup();
   const random = vi.spyOn(Math, 'random').mockReturnValue(.5); // never funnyidle
   try {
-    const portal = s.prefabs.spawn(PORTAL_ID, new THREE.Vector3(3, 0, 6), { id: 'saved', components: {} }) as PortalInstance;
+    const portal = s.prefabs.spawnAs(PortalInstance, PORTAL_ID, new THREE.Vector3(3, 0, 6), { id: 'saved', components: {} });
     const fx = s.find(PORTAL_FX_ID);
     expect(tags(portal)).toEqual(['multiplayer_portal', 'antlion_sinkhole_blocker', 'moonportal', 'moontrader', 'inspectable', 'resurrector']);
     expect(tags(fx)).toEqual(['FX']);

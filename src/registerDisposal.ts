@@ -24,7 +24,6 @@ import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { registerFrontTask } from './animate';
 import { createDeployMap } from '../packages/prefab/src/deployMap';
 import { DeployPlacer } from '../packages/prefab/src/deployPlacer';
-import type { DeploySpawned } from '../packages/componets/src/deployable';
 import { placementEntities } from '../packages/prefab/src/placementEntities';
 import type { turfMap } from './building';
 import type { startScene } from './scene';
@@ -190,7 +189,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
 
         // TheWorld.Map for ACTIONS.DEPLOY and the deployable items' placer.
         const deployMap = createDeployMap({ turf: turfMap, blockers: placementEntities(view.scene), worldEvents: view.worldEvents, farm: scene.farmMap,
-          spawnPrefab: (prefab, position, skinId) => scene.registry.SpawnPrefab(prefab, position, skinId) as DeploySpawned | undefined });
+          spawnPrefab: (prefab, position, skinId) => scene.registry.SpawnPrefab(prefab, position, skinId) });
         playerEntity.Map = deployMap;
         actionControllers.push(new DeployPlacer(view, deployMap, () => inventory.GetActiveItem()),
           { dispose() { playerEntity.Map = undefined; } });

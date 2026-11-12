@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { bulbPlantPrefabs, bulbPlantRegrowTime, BULB_PLANT_LIGHT, type BulbPlantInstance } from '../../prefab/src/bulb_plant';
+import { bulbPlantPrefabs, bulbPlantRegrowTime, BULB_PLANT_LIGHT, BulbPlantInstance } from '../../prefab/src/bulb_plant';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -36,7 +36,7 @@ function setup() {
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
-  const spawn = (id: string, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawn(id, new THREE.Vector3(1, 0, 2), saved) as BulbPlantInstance;
+  const spawn = (id: string, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawnAs(BulbPlantInstance, id, new THREE.Vector3(1, 0, 2), saved);
   return { scene, scheduler, awake, inventory, prefabs, registry, save, spawn, getLightLevel, setLight: (value: number) => { light = value; },
     clip: (plant: PrefabInstance) => plant.sprite.sprite.peek().clip,
     plants: () => scene.children.map(model => prefabInstance<BulbPlantInstance>(model)!).filter(plant => plant?.prefab.startsWith('flower_cave')),

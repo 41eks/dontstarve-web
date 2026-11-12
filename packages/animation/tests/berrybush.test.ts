@@ -133,7 +133,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     expect(item.components.deployable!.Deploy(position, { position, PushEvent: vi.fn() }, {
       canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => true, SpawnPrefab: (_prefab: string, point: THREE.Vector3, skinId?: string) => prefabInstance(s.bushes.spawn('berrybush', point, undefined, skinId).transform.model) as never,
+      canDeployPlant: () => true, SpawnPrefab: (_prefab: string, point: THREE.Vector3, skinId?: string) => s.bushes.spawn('berrybush', point, undefined, skinId),
     })).toBe(true);
     const replanted = await drawn(workTargets('DIG')[0].model), pickable = plantInstance(replanted).components.pickable;
     expect(lookupPrefabInstance(replanted)?.skinId).toBe('berrybush_cawnival');

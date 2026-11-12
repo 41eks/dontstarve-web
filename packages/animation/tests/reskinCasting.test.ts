@@ -158,7 +158,7 @@ it('cycles building skins while preserving the container root, identity, state a
   const placement = managedBuildings(world, { consume: () => false });
   const record = { id: 'e_open_chest', transform: { position: [3, 0, 4] as const, rotationY: 0 },
     components: { building: {}, container: { slotCount: 9, slots: [] } } };
-  const root = await placement.spawnFromSave('treasurechest', record) as THREE.Group;
+  const root = await placement.spawnFromSave('treasurechest', record);
   const target = reskinTargetOf(lookupPrefabInstance(root))!;
   const skins = Object.keys(definitions.animatedBuildings.treasurechest.skinArchives);
   expect(placement.exportRecords()[0].record.components.building?.skinId).toBeUndefined();

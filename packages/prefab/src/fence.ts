@@ -237,9 +237,9 @@ export function fencePlacer(buildId: FenceId, cameraHeading: ReadonlySignal<numb
  * fence_item ondeploywall: SpawnPrefab("fence", linked skin) at the wall slot, the placer's fixed-up rotation, and the
  * place sound. Consuming the item is the build flow's.
  */
-export function ondeploywall(prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>, buildId: FenceId,
+export function ondeploywall(prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawnAs'>, buildId: FenceId,
     pt: ReadonlyVector3, skinId: string | undefined, rot: number): FenceInstance {
-    const wall = prefabs.spawn(FENCE_ID, pt, undefined, fenceWorldSkin(buildId, skinId)) as FenceInstance;
+    const wall = prefabs.spawnAs(FenceInstance, FENCE_ID, pt, undefined, fenceWorldSkin(buildId, skinId));
     wall.SetOrientation(wall, rot);
     PlaySound('dontstarve/common/place_structure_wood', wall.position);
     return wall;

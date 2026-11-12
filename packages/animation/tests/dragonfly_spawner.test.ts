@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { createMemo, createSignal, getWatchWorldContent } from '@dontstarve-web/signals';
 import { dragonflyPrefabs, DRAGONFLY_ID } from '../../prefab/src/dragonfly';
-import { dragonflySpawnerPrefabs, DRAGONFLY_SPAWNER_ID, type DragonflySpawnerInstance } from '../../prefab/src/dragonfly_spawner';
+import { dragonflySpawnerPrefabs, DRAGONFLY_SPAWNER_ID, DragonflySpawnerInstance } from '../../prefab/src/dragonfly_spawner';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -44,7 +44,7 @@ function setup(initialAwake: boolean) {
   };
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return { scheduler, awake, dragonflies, prefabs, registry, inventory,
-    spawner: (record?: PlacementSaveRecord) => prefabs.spawn(DRAGONFLY_SPAWNER_ID, new THREE.Vector3(), record) as DragonflySpawnerInstance,
+    spawner: (record?: PlacementSaveRecord) => prefabs.spawnAs(DragonflySpawnerInstance, DRAGONFLY_SPAWNER_ID, new THREE.Vector3(), record),
     spawnerRecord: () => prefabs.exportRecords().find(({ prefabId }) => prefabId === DRAGONFLY_SPAWNER_ID)!.record,
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),

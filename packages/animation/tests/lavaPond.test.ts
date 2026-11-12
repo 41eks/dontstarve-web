@@ -6,7 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { Heater } from '../../componets/src/heater';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { lavaPondPrefabs, LAVA_POND_RADIUS, type LavaPondInstance } from '../../prefab/src/lava_pond';
+import { lavaPondPrefabs, LAVA_POND_RADIUS, LavaPondInstance } from '../../prefab/src/lava_pond';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { createInventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -112,7 +112,7 @@ it('cancels pending child creation on removal and rejects malformed saved rock l
   const random = vi.fn(() => .5);
   const s = setup(random);
   try {
-    const pond = s.ponds.spawn('lava_pond', new THREE.Vector3()) as LavaPondInstance;
+    const pond = s.ponds.spawnAs(LavaPondInstance, 'lava_pond', new THREE.Vector3());
     const [{ record }] = s.ponds.exportRecords();
     expect(record.components.lavaPond).toEqual({});
     pond.remove(); s.scheduler.advance(100);

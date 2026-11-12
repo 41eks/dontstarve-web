@@ -60,7 +60,7 @@ async function setup(item: string, ground: THREE.Vector3) {
 function grassActor(s: Awaited<ReturnType<typeof setup>>) {
   const grasses = plantManager(grassPrefabs, s.scene, { spawnGroundItem: vi.fn() as never });
   const map = createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
-    blockers: placementEntities(s.scene), spawnPrefab: (_prefab, position) => prefabInstance(grasses.spawn('grass', position).transform.model) as never });
+    blockers: placementEntities(s.scene), spawnPrefab: (_prefab, position) => grasses.spawn('grass', position) });
   return { grasses, actor: deployActor(s.world, s.inventory, map) };
 }
 

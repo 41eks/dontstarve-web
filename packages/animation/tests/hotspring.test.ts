@@ -6,7 +6,7 @@ import { PhysicsWorld } from '../../componets/src/physicsWorld';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
-import { hotspringPrefabs, HOTSPRING_ID, HOTSPRING_LIGHT, type HotspringInstance } from '../../prefab/src/hotspring.ts';
+import { hotspringPrefabs, HOTSPRING_ID, HOTSPRING_LIGHT, HotspringInstance } from '../../prefab/src/hotspring.ts';
 import { worldFxPrefabs, worldFxSpawner } from '../../prefab/src/world_fx';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { ItemWorldFixture } from './itemWorldFixture';
@@ -58,7 +58,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
     for (let i = 0; i < Math.round(seconds * 10); i++) { scheduler.advance(.1); displays.update(.1); await settle(); }
   };
   return { inventory, scene, player, prefabs, displays, physics, registry, scheduler, save, springs, tick,
-    spawn: (position: THREE.Vector3, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawn(HOTSPRING_ID, position, saved) as HotspringInstance,
+    spawn: (position: THREE.Vector3, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawnAs(HotspringInstance, HOTSPRING_ID, position, saved),
     world: { scene, player, camera, renderer, ground: new THREE.Group() },
     dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); physics.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
