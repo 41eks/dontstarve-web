@@ -4,7 +4,7 @@ import { InventoryStore } from '../../inventory/src';
 import { createEmptyEntity, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { createInventoryStore } from '../../../src/inventory';
 import { testEnts } from './entsFixture';
-import { withEntity } from './entityFixture';
+import { entityOf } from './entityFixture';
 import type { DeployMap } from '../../componets/src/deployable';
 
 /** A player entity as a test's act.doer: an entity tagged "player" that owns its inventory store. */
@@ -21,6 +21,8 @@ function ownsStore(inst: PrefabInstance<ArchiveSpriteCommands>): inst is TestPla
 }
 
 export interface TestPlayerOptions {
+  /** The entity that acts, when the test already has it. */
+  readonly entity?: PrefabInstance<ArchiveSpriteCommands>;
   /** A player or entity model whose entity acts (a bare model gets one); a new entity at the origin otherwise. */
   readonly model?: THREE.Object3D;
   /** TheWorld.Map for the actions that read it. */
@@ -37,10 +39,11 @@ export interface TestPlayerOptions {
  * The entity that acts in a test, as the application's player inst does: it is tagged "player", owns `inventory`
  * (inventory.inst, the store's actor and its items' owner) and is every action's doer.
  */
-export function testPlayer({ model, inventory = createInventoryStore([]), position, map, prefab = 'wilson', tags = [] }: TestPlayerOptions = {}): TestPlayer {
+export function testPlayer({ entity, model, inventory = createInventoryStore([]), position, map, prefab = 'wilson', tags = [] }: TestPlayerOptions = {}): TestPlayer {
   // A new player entity is tracked in a world of its own, so its TheSim finds what a test adds there.
-  const existing = model && prefabInstance(model);
-  const inst = existing ?? testEnts().track(model ? prefabInstance(withEntity(model, prefab))! : createEmptyEntity(prefab).instance);
+  const existing = entity ?? (model && prefabInstance(model));
+  const inst: PrefabInstance<ArchiveSpriteCommands> = existing
+    ?? testEnts().track(model ? entityOf(model, prefab) : createEmptyEntity(prefab).instance);
   for (const tag of ['player', ...tags]) inst.addTag(tag);
   if (position) inst.setPosition(position.x, position.y, position.z);
   inst.components.inventory = inventory;

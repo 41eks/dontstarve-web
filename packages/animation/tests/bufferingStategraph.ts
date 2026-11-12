@@ -1,33 +1,21 @@
-import type { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { vi } from 'vitest';
 import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import { wilsonPlayer } from './wilsonPlayer';
 
 /**
- * A player whose stategraph only buffers actions: every push is accepted and stays active until it is
- * cancelled or `finish()`ed, and `hit()` performs the last pushed action as its state's hit frame would.
+ * A player inst whose own SGwilson takes the actions a controller buffers: `sg` spies on its pushBufferedAction and
+ * cancelAction, `last` is the last pushed action, and `hit()` performs it as its state's hit frame would.
  */
-export function bufferingStategraph(onPush?: (action: BufferedAction<string>) => void) {
-  let active: BufferedAction<string> | undefined;
-  let last: BufferedAction<string> | undefined;
-  const stategraph = {
-    cancelEmote: vi.fn(),
-    hasStateTag: (_tag: string) => false,
-    isPerformingAction: (action: string, invobjectPrefab?: string) => active?.action === action
-      && (invobjectPrefab === undefined || active.invobject?.prefab === invobjectPrefab),
-    pushBufferedAction: vi.fn((action: BufferedAction<string>) => {
-      active = last = action;
-      onPush?.(action);
-      return true;
-    }),
-    cancelAction: vi.fn((action?: string) => { if (active && (!action || active.action === action)) active = undefined; }),
-    isActionActive: (action: BufferedAction<string>) => active === action,
-  };
+export function bufferingStategraph() {
+  const player = wilsonPlayer(), graph = player.sg;
+  const sg = { pushBufferedAction: vi.spyOn(graph, 'pushBufferedAction'), cancelAction: vi.spyOn(graph, 'cancelAction') };
+  const last = (): BufferedAction<string> | undefined => sg.pushBufferedAction.mock.calls.at(-1)?.[0];
   return {
-    sg: stategraph,
-    get last() { return last; },
+    player, graph, sg,
+    get last() { return last(); },
     /** BufferedAction:Do for the last pushed action, even after it was cancelled: its own checks decide. */
-    hit: () => last?.do(),
-    finish() { active = undefined; },
-    get graph() { return stategraph as unknown as WilsonStateGraph; },
+    hit: () => last()?.do(),
+    /** Plays the state out until the player is idle again. */
+    finish() { for (let i = 0; i < 300 && graph.stateName !== 'idle'; i++) graph.update(1 / 30); },
   };
 }

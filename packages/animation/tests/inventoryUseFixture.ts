@@ -1,5 +1,6 @@
 import { createSignal } from '@dontstarve-web/signals';
-import { testPlayer } from './testPlayer';
+import { testPlayer, type TestPlayer } from './testPlayer';
+import type { PlayerActionTarget } from '../../stategraphs/src/actionfns';
 import type { ItemEntity } from '../../inventory/src/entity';
 import { PlayerController, type PlayerLocomotor } from '../../stategraphs/src/playercontroller';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
@@ -11,9 +12,9 @@ import type { InventoryStore } from '../../inventory/src';
  * The player's PlayerController with nothing in hand, for inventory.lua UseItemFromInvTile: the first of
  * GetInventoryActions(item), pushed where the doer stands.
  */
-export function inventoryUse(world: object, stategraph: WilsonStateGraph, doer: object) {
+export function inventoryUse(world: object, stategraph: WilsonStateGraph, doer: TestPlayer) {
   const locomotor = { stop() {}, PushAction() {} } as unknown as PlayerLocomotor;
-  const controller = new PlayerController(world as ActionWorldContext, stategraph, locomotor, createSignal(null), doer as never);
+  const controller = new PlayerController(world as ActionWorldContext, stategraph, locomotor, createSignal(null), doer);
   return {
     controller,
     use(item: ItemEntity): boolean {
@@ -41,12 +42,12 @@ export function activeItemUse(world: object, stategraph: WilsonStateGraph,
   return {
     controller, doer,
     /** CollectActions("USEITEM"): the action names the active item offers on the target for one button. */
-    actions(target: object, right = false): string[] {
+    actions(target: PlayerActionTarget, right = false): string[] {
       const item = inventory.GetActiveItem();
-      return item ? collectUseItemActions(item, doer, target as never, right) : [];
+      return item ? collectUseItemActions(item, doer, target, right) : [];
     },
-    useOn(target: object): boolean {
-      const item = inventory.GetActiveItem(), action = item && controller.GetItemUseAction(item, target as never);
+    useOn(target: PlayerActionTarget): boolean {
+      const item = inventory.GetActiveItem(), action = item && controller.GetItemUseAction(item, target);
       return !!action && controller.DoAction(action);
     },
     /** locomotor OnUpdate at the destination. */

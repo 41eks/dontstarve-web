@@ -52,7 +52,7 @@ describe('inspectable.lua', () => {
     expect(inspectable.GetStatus()).toBe('BURNT');
     inspectable.getstatus = () => 'DEAD';
     expect(inspectable.GetDescription(viewer())).toBe(describeStrings.BIRDCAGE.DEAD);
-    expect(inspectable.GetDescription(instance as never)).toBeUndefined();
+    expect(inspectable.GetDescription(instance)).toBeUndefined();
     inspectable.SetDescription('a fixed line');
     expect(inspectable.GetDescription(viewer())).toBe('a fixed line');
     expect(inspectable.GetDescription(viewer('wilson', ['mime']))).toBe('');

@@ -16,8 +16,7 @@ import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import * as CANNON from 'cannon-es';
 import { actionEntities } from '../../prefab/src/actionEntity';
-import { Combat, type CombatInst } from '../../componets/src/combat';
-import type { Health } from '../../componets/src/health';
+import { Combat } from '../../componets/src/combat';
 import { ItemEntity } from '../../inventory/src';
 import { PlaySound } from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -54,8 +53,8 @@ function attacker(position: THREE.Vector3, now: () => number, weapon?: ItemEntit
 }
 
 /** The walls DoAttackButton finds: live combat entities, in placement order. */
-const combatTargets = () => [...actionEntities()].filter(entity => (entity.components as { combat?: unknown }).combat)
-  .map(entity => ({ inst: entity as unknown as CombatInst & { components: { health?: Health } },
+const combatTargets = () => [...actionEntities()].filter(entity => entity.components.combat)
+  .map(entity => ({ inst: entity,
     isValid: () => !entity.isRemoved && !entity.components.health!.IsDead() }));
 const pose = (model: THREE.Group) => {
   const json = prefabInstance(model)!.sprite.sprite.peek();

@@ -247,6 +247,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
     expect(animation.hit()).toBe(false);
     expect(effects.prepare).not.toHaveBeenCalled();
     expect(tool.entity._cached_reskinname!.size).toBe(0);
+    animation.finish();
     // A skinnable target whose tool left the hand before the hit frame keeps its skin.
     const skinned = lookupPrefabInstance(model)!;
     skinned.sprite.setSkinSource({ archives: { icebox_crystal: 'icebox_crystal.zip' }, art: new SpriteResources().archives });

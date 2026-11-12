@@ -1,3 +1,4 @@
+import type { CombatActor, CombatInst } from './combat';
 /** The finite uses a weapon wears on attack. */
 export interface WeaponUses { use(amount: number): boolean }
 
@@ -7,12 +8,12 @@ export class Weapon {
   attackwear = 1;
   attackrange?: number;
   hitrange?: number;
-  onattack?: (inst: object, attacker: object, target: object) => void;
+  onattack?: (inst: object, attacker: CombatActor, target: CombatInst) => void;
   /** weapon.lua SetProjectile: the prefab a ranged attack launches instead of hitting at once. */
   projectile?: string;
-  onprojectilelaunched?: (inst: object, attacker: object, target: object, projectile: unknown) => void;
+  onprojectilelaunched?: (inst: object, attacker: CombatActor, target: CombatInst, projectile: unknown) => void;
   /** SpawnPrefab(self.projectile) + projectile:Throw, supplied by the prefab that owns the projectile art. */
-  launchProjectile?: (attacker: object, target: object) => unknown;
+  launchProjectile?: (attacker: CombatActor, target: CombatInst) => unknown;
   private readonly inst: object;
   private readonly uses?: () => WeaponUses | undefined;
 
@@ -33,7 +34,7 @@ export class Weapon {
   SetOnProjectileLaunched(fn: Weapon['onprojectilelaunched']): void { this.onprojectilelaunched = fn; }
   CanRangedAttack(): boolean { return this.projectile !== undefined; }
   /** LaunchProjectile: spawn and throw the projectile, then run onprojectilelaunched. */
-  LaunchProjectile(attacker: object, target: object): void {
+  LaunchProjectile(attacker: CombatActor, target: CombatInst): void {
     if (this.projectile === undefined) return;
     const projectile = this.launchProjectile?.(attacker, target);
     this.onprojectilelaunched?.(this.inst, attacker, target, projectile);
@@ -42,7 +43,7 @@ export class Weapon {
   hasTag(tag: string): boolean { return (this.inst as { hasTag?(tag: string): boolean }).hasTag?.(tag) ?? false; }
 
   /** OnAttack: callbacks, then finiteuses:Use(attackwear) when the item has uses. */
-  OnAttack(attacker: object, target: object): void {
+  OnAttack(attacker: CombatActor, target: CombatInst): void {
     this.onattack?.(this.inst, attacker, target);
     this.uses?.()?.use(this.attackwear);
   }

@@ -461,7 +461,7 @@ export function configureLightFlierEntity(entity: ItemEntity): void {
     const workable = addComponent(entity, 'workable', Workable); workable.SetWorkAction('NET'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback((_inst, worker) => {
       if (entity instanceof LightFlier) entity.home?.components.childspawner.OnChildKilled(entity);
-      worker.components?.inventory?.GiveItem(entity, entity.getPosition().clone());
+      worker.components?.inventory?.GiveItem?.(entity, entity.getPosition().clone());
     });
   }
   const eater = addComponent(entity, 'eater', Eater); eater.SetDiet(['VEGGIE']);

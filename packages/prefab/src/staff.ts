@@ -138,9 +138,9 @@ export class FireStaffController implements HeldEquipFunctions {
     entity.components.finiteuses.setMaxUses(FIRESTAFF_USES);
     const weapon = entity.components.weapon!;
     weapon.SetRange(ATTACK_RANGE, HIT_RANGE);
-    weapon.SetOnAttack((_, attacker, target) => this.onAttack(attacker as FireStaffAttacker, target as FireStaffTarget));
+    weapon.SetOnAttack((_, attacker, target) => this.onAttack(attacker, target));
     weapon.SetProjectile(FIRE_PROJECTILE_ID, (attacker, target) => {
-      const projectile = world.launch(entity, target as ProjectileTarget, attacker as CombatActor);
+      const projectile = world.launch(entity, target, attacker);
       projectile.DelayVisibility(entity.projectiledelay ?? 0);
       return projectile;
     });

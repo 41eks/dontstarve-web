@@ -1,4 +1,5 @@
 import { advancePlayer } from './playerVisual';
+import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { World } from 'cannon-es';
 import { Group, PerspectiveCamera, Scene, Vector3 } from 'three';
@@ -28,9 +29,8 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   const animation = instance, stats = instance.stats, health = instance.components.health!;
   const world = { scene: new Scene(), player, camera: new PerspectiveCamera(), ground: new Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
-  instance.components.inventory = inventory;
   const picker = new PlayerActionPicker(new PointerRaycaster(world));
-  const food = inventoryUse({ ...world, mouseActions: picker }, animation.sg, instance);
+  const food = inventoryUse({ ...world, mouseActions: picker }, animation.sg, testPlayer({ model: player, inventory }));
   // The player prefab's own makeplayerghost / respawnfromghost listeners reach these world services on the inst.
   const ghost = instance.ghostMode, death = vi.fn(), hud = { Show: vi.fn(), Hide: vi.fn() };
   const skeleton = { SetSkeletonDescription: vi.fn() };

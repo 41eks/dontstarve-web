@@ -7,7 +7,7 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Combat, type CombatActor } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
-import { Workable, type Worker } from '../../componets/src/workable';
+import { Workable } from '../../componets/src/workable';
 import type { BuildingPlacerSpec } from './buildingPlacer';
 import { PrefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
@@ -114,7 +114,7 @@ function onworked(inst: PrefabInstance): void {
 }
 
 function onhit(inst: PrefabInstance, attacker: CombatActor): void {
-    inst.components.workable!.WorkedBy(attacker as unknown as Worker);
+    inst.components.workable!.WorkedBy(attacker);
 }
 
 /** InitializePathFinding: inst._ispathfinding is set, so TheWorld.Pathfinder:AddWall at the fence; onremove clears it. */

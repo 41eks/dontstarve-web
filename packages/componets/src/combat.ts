@@ -3,14 +3,16 @@ import type { Weapon } from './weapon';
 
 export interface CombatInst<HealthComponent extends Pick<Health, 'IsDead' | 'DoDelta'> = Health> extends HealthAfflicter {
   readonly isRemoved?: boolean;
-  /** Ground contact in DST units. */
-  getPosition(): { x: number; y: number; z: number };
+  /** Ground contact. */
+  getPosition(): import('three').Vector3;
   getPhysicsRadius(): number;
   hasTag(tag: string): boolean;
   PushEvent?(name: string, data: unknown): void;
   readonly components: { combat?: Combat; health?: HealthComponent; sanity?: { DoDelta(delta: number): void };
     /** inventory:ApplyDamage: equipped armor absorbs its share before health; creature inventories wear none. */
-    inventory?: { ApplyDamage?(damage: number, attacker?: CombatActor, weapon?: Weapon): number } };
+    inventory?: { ApplyDamage?(damage: number, attacker?: CombatActor, weapon?: Weapon): number;
+      /** inventory:GiveItem, as the work an attacker does gives it what it works loose. */
+      GiveItem?(entity: unknown, source?: { x: number; y: number; z: number }): boolean } };
 }
 
 /** Combat needs only these operations from the actor's health component. */

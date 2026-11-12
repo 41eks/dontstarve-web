@@ -154,13 +154,21 @@ function WatchRain(inst: TorchInst): void {
   onisraining(inst, preciptype.peek() === 'rain');
 }
 
+/** components.rainimmunity, or components.sheltered.sheltered: what keeps the rain off an entity. */
+function rainProtected(components: object | undefined, sheltered = true): boolean {
+  if (!components) return false;
+  if ('rainimmunity' in components && components.rainimmunity !== undefined) return true;
+  const shelter = sheltered && 'sheltered' in components ? components.sheltered : undefined;
+  return typeof shelter === 'object' && shelter !== null && 'sheltered' in shelter && shelter.sheltered === true;
+}
+
 function onupdatefueledraining(inst: TorchInst): void {
   const fueled = inst.components.fueled;
   if (!fueled || inst.isRemoved) return;
-  const owner = inst.components.inventoryitem.owner as { components?: { sheltered?: { sheltered?: boolean }; rainimmunity?: object } } | null;
-  const ownerProtected = owner?.components?.sheltered?.sheltered || owner?.components?.rainimmunity !== undefined;
+  // The holder's shelter or rain immunity, else the torch's own rain immunity.
+  const ownerProtected = rainProtected(inst.components.inventoryitem.owner?.components);
   const mult = inst._fuelratemult ?? 1;
-  fueled.rate = ownerProtected || (inst.components as { rainimmunity?: object }).rainimmunity !== undefined ? mult
+  fueled.rate = ownerProtected || rainProtected(inst.components, false) ? mult
     : (1 + TORCH_RAIN_RATE * (inst._precipitationrate?.peek() ?? 0)) * mult;
 }
 

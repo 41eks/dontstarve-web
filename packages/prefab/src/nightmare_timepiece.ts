@@ -1,7 +1,7 @@
 import { Inspectable } from '../../componets/src/inspectable';
 import { addComponent } from './components';
-import type { InventoryActor } from '../../componets/src/inventoryitem';
-import type { ItemEntity, ItemRuntimeComponent } from '@dontstarve-web/inventory';
+import type { ItemHolder } from '../../componets/src/inventoryitem';
+import { InventoryStore, type ItemEntity, type ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import { createEffect, getBoundWatchWorldContent, WorldContentKey, type WorldContentSignal, type WorldNightmarePhase } from '@dontstarve-web/signals';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -19,17 +19,18 @@ const STATES: Partial<Record<WorldNightmarePhase, typeof DEFAULT_STATE>> = {
 
 export type NightmareTimepieceStatus = 'WARN' | 'CALM' | 'DAWN' | 'NOMAGIC' | 'WAXING' | 'STEADY' | 'WANING';
 
-/** The source's owner: the inventory's actor, once the store's slot says it holds the watch itself. */
-type TrackerOwner = InventoryActor & {
-  addTag(tag: string): void;
-  removeTag(tag: string): void;
-  components: { inventory: { Has(prefab: string, amount?: number): boolean; isHeldByActor(address: { containerId: string }): boolean } };
-};
+/** nightmare_timepiece.lua inst._owner: the watch's grand owner, which carries the nightmaretracker tag. */
+type TrackerOwner = ItemHolder & { addTag(tag: string): void; removeTag(tag: string): void };
 
-function trackerOwner(owner: InventoryActor | undefined, entity: ItemEntity): TrackerOwner | undefined {
-  const tracker = owner as Partial<TrackerOwner> | undefined;
-  const address = entity.components.inventoryitem.slot?.address;
-  return address && tracker?.addTag && tracker.components?.inventory?.isHeldByActor(address) ? tracker as TrackerOwner : undefined;
+function isTracker(owner: ItemHolder | null): owner is TrackerOwner {
+  return !!owner && 'addTag' in owner && typeof owner.addTag === 'function'
+    && 'removeTag' in owner && typeof owner.removeTag === 'function';
+}
+
+/** owner.components.inventory:Has(prefab, 1); an owner without an inventory (a chest) has none. */
+function holds(owner: TrackerOwner, prefab: string): boolean {
+  const inventory = owner.components && 'inventory' in owner.components ? owner.components.inventory : undefined;
+  return inventory instanceof InventoryStore && inventory.Has(prefab, 1);
 }
 
 class NightmareTimepiece implements ItemRuntimeComponent {
@@ -43,7 +44,7 @@ class NightmareTimepiece implements ItemRuntimeComponent {
     this.entity = entity;
     this.bindWorld();
     this.stopEvents = [
-      entity.ListenForEvent('onputininventory', (_inst, owner) => this.topocket(owner as InventoryActor)),
+      entity.ListenForEvent('onputininventory', () => this.topocket()),
       entity.ListenForEvent('ondropped', () => this.toground()),
       entity.ListenForEvent('onremove', () => this.toground()),
     ];
@@ -85,11 +86,14 @@ class NightmareTimepiece implements ItemRuntimeComponent {
     const owner = this.owner;
     if (!owner) return;
     this.owner = undefined;
-    if (!owner.components.inventory.Has(this.entity.prefab, 1)) owner.removeTag('nightmaretracker');
+    if (!holds(owner, this.entity.prefab)) owner.removeTag('nightmaretracker');
   }
 
-  private topocket(doer: InventoryActor): void {
-    const owner = trackerOwner(doer, this.entity);
+  /** topocket: owner.components.inventoryitem:GetGrandOwner(), through a held backpack to whoever holds it. */
+  private topocket(): void {
+    // A backpack lying on the ground has no grand owner of its own; it is then the owner.
+    const item = this.entity.components.inventoryitem, grand = item.GetGrandOwner() ?? item.owner;
+    const owner = isTracker(grand) ? grand : undefined;
     if (owner === this.owner) return;
     this.toground();
     owner?.addTag('nightmaretracker');

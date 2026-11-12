@@ -7,15 +7,14 @@ import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { testEnts } from './entsFixture';
 import { WORLD_SCALE } from '../../prefab/src/standardcomponents';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { withEntity } from './entityFixture';
+import { entityOf } from './entityFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
 
 function setup() {
   const scene = new Scene(), ents = testEnts();
   const entity = (prefab: string, position = new Vector3()) => {
-    const model = withEntity(new Group(), prefab);
-    const inst = ents.track(prefabInstance(model)!);
+    const inst = ents.track(entityOf(new Group(), prefab)), model = inst.transform.model;
     inst.setPosition(position.x, position.y, position.z);
     scene.add(model);
     registerActionEntity(prefabInstance(model)!);

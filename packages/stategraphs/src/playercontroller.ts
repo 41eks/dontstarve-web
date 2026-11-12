@@ -112,7 +112,7 @@ export class PlayerController {
   }
 
   /** playercontroller.lua GetItemUseAction: try the active item's RMB actions, then its LMB actions. */
-  GetItemUseAction(item: ItemEntity, target: ItemEntity): PlayerAction<WilsonAction> | undefined {
+  GetItemUseAction(item: ItemEntity, target: PlayerActionTarget): PlayerAction<WilsonAction> | undefined {
     const picked = this.picker.GetUseItemActions(target, item, true)[0]
       ?? this.picker.GetUseItemActions(target, item, false)[0];
     return picked && this.createAction(picked);

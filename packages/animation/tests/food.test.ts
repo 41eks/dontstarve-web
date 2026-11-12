@@ -1,4 +1,5 @@
 import { advancePlayer } from './playerVisual';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -35,8 +36,7 @@ async function fixture(itemId = 'bananajuice') {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const slot = inventorySlotAddress(0), store = createPickupInventory();
-  playerInstance.components.inventory = store;
-  const actions = inventoryUse(world, animation.sg, playerInstance);
+  const actions = inventoryUse(world, animation.sg, testPlayer({ entity: playerInstance, inventory: store }));
   store.add(itemId, 2);
   const entity = store.getEntity(slot)!;
   return { animation, actions, store, slot, entity };

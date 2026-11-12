@@ -20,7 +20,7 @@ export interface Worker {
   PushEvent?(name: string, data: unknown): void;
   /** Ground position of the worker, e.g. for a tree's fall direction. */
   getPosition?(): Vector3;
-  components?: { inventory?: { GiveItem(entity: unknown, source?: { x: number; y: number; z: number }): boolean } };
+  components?: { inventory?: { GiveItem?(entity: unknown, source?: { x: number; y: number; z: number }): boolean } };
 }
 
 const WORKABLE_TAGS = new Set(['NET_workable', 'HAMMER_workable', 'MINE_workable', 'DIG_workable', 'CHOP_workable']);

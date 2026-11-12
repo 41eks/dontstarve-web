@@ -47,8 +47,7 @@ it('renders the original ground seed pose and commits quick eating once at frame
   const animation = playerInst(player);
   const { farm, world } = farmSetup(player);
   const instance = playerInst(player), store = createPickupInventory();
-  instance.components.inventory = store;
-  const seeds = inventoryUse(world, animation.sg, instance);
+  const seeds = inventoryUse(world, animation.sg, testPlayer({ entity: instance, inventory: store }));
   store.add('seeds', 2);
   const slot = inventorySlotAddress(0), source = store.getEntity(slot)!;
   const stats = () => ({ hunger: instance.stats.hunger.current, health: instance.stats.health.currenthealth, sanity: instance.stats.sanity.current });

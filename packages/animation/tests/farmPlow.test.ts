@@ -160,9 +160,9 @@ it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and 
     const preview = world.scene.children.find(model => model.name === 'FarmPlowPlacer')!;
     expect(preview.position.toArray()).toEqual([6, 0, 6]);
 
-    const [point] = collectPointActions(entity as never, actor.doer as never, click, true);
+    const [point] = collectPointActions(entity, actor.doer, click, true);
     expect(point).toBe('DEPLOY_TILEARRIVE');
-    expect(getActionString({ action: point, invobject: entity as never })).toBe('部署');
+    expect(getActionString({ action: point, invobject: entity })).toBe('部署');
     world.player.position.set(-30, 0, 2);
     const action = actor.controller.createAction({ action: point, invobject: entity as never, pos: click })!;
     expect(actor.controller.DoAction(action)).toBe(true);

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, type SpriteState } from '@dontstarve-web/display';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 
 /**
@@ -8,10 +8,10 @@ import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefa
  */
 export function testEnts() {
   const displays = new PrefabDisplayGroup(new THREE.Scene());
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, {});
+  const prefabs = new PrefabEntityManager<string, PrefabInstance<SpriteState, object>>(displays, undefined, {});
   return {
     prefabs,
-    track<T extends object>(inst: T): T { prefabs.track(inst as unknown as PrefabInstance); return inst; },
+    track<T extends PrefabInstance<SpriteState, object>>(inst: T): T { prefabs.track(inst); return inst; },
     dispose() { prefabs.dispose(); displays.dispose(); },
   };
 }
