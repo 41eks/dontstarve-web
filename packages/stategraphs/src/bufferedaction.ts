@@ -35,10 +35,10 @@ export interface BufferedActionObject {
 /** The acting inst, as actions.lua's fns pass `act.doer` to the components they call. */
 export type BufferedActionDoer = import('../../componets/src/workable').Worker;
 
-export interface BufferedActionObjects {
+export interface BufferedActionObjects<Target extends BufferedActionObject = BufferedActionObject> {
   readonly doer?: BufferedActionDoer;
   readonly invobject?: BufferedActionObject;
-  readonly target?: BufferedActionObject;
+  readonly target?: Target;
   /** bufferedaction.lua pos, distance, arrivedist and forced. */
   readonly pos?: { readonly x: number; readonly y: number; readonly z: number };
   readonly distance?: number;
@@ -46,12 +46,15 @@ export interface BufferedActionObjects {
   readonly forced?: boolean;
 }
 
-/** The actor owns one pending action; animation states choose when to execute it. */
-export class BufferedAction<Action extends string = string> {
+/**
+ * The actor owns one pending action; animation states choose when to execute it. `Target` is what the action was made
+ * for, so code holding the action it made reads its target as that entity.
+ */
+export class BufferedAction<Action extends string = string, Target extends BufferedActionObject = BufferedActionObject> {
   readonly action: Action;
   readonly doer: BufferedActionDoer | undefined;
   readonly invobject: BufferedActionObject | undefined;
-  readonly target: BufferedActionObject | undefined;
+  readonly target: Target | undefined;
   readonly pos: BufferedActionObjects['pos'];
   readonly distance: number | undefined;
   readonly arrivedist: number | undefined;
@@ -63,7 +66,7 @@ export class BufferedAction<Action extends string = string> {
 
   constructor(
     action: Action, execute: () => void | boolean, valid: () => boolean = () => true,
-    objects: BufferedActionObjects = {},
+    objects: BufferedActionObjects<Target> = {},
   ) {
     this.action = action;
     this.doer = objects.doer;

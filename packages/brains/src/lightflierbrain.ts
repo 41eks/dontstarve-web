@@ -5,14 +5,14 @@ import { PanicTrigger, ElectricFencePanicTrigger } from './braincommon';
 import { RunAway } from './behaviours/runaway';
 import { Wander } from './behaviours/wander';
 import { DoAction } from './behaviours/doaction';
-import { BufferedAction } from '../../stategraphs/src/bufferedaction';
-import type { BrainEntity, BrainInst } from './types';
+import { CreateBufferedAction } from './bufferedaction';
+import type { BrainComponents, BrainEntity, BrainInst } from './types';
 
 /** lightflier_flower.lua as the brain reads it: its childspawner, burnable, pickable and _lightflier_returning_home. */
-export interface LightFlierBrainHome extends Omit<BrainEntity, 'components'> {
+export interface LightFlierBrainHome extends BrainEntity {
   readonly _lightflier_returning_home?: BrainEntity;
-  readonly components: {
-    childspawner: { readonly numchildrenoutside: number };
+  readonly components: BrainComponents & {
+    childspawner: NonNullable<BrainComponents['childspawner']> & { readonly numchildrenoutside: number };
     burnable: { IsBurning(): boolean };
     pickable: { readonly canBePicked: boolean };
   };
@@ -27,9 +27,20 @@ export interface LightFlierBrainInst extends BrainInst {
   readonly lastAttacked: number;
   readonly inFormation: boolean;
   readonly sg?: { hasStateTag(tag: string): boolean };
-  formationActive(active: boolean): void;
-  findHome(): void;
-  wentHome(home: BrainEntity): boolean;
+  readonly components: BrainComponents & { formationfollower: { active: boolean } };
+}
+
+/** The ParallelNode's ActionNode: formation movement on or off, and the walk speed back to TUNING.LIGHTFLIER.WALK_SPEED. */
+export function SetFormationActive(inst: LightFlierBrainInst, active: boolean, unit = 1): void {
+  inst.components.formationfollower.active = active;
+  const locomotor = inst.components.locomotor;
+  if (locomotor) { locomotor.walkspeed = 3.5 * unit; locomotor.directdrive = active; }
+}
+
+/** FindHome: a lightflier_flower within MAX_WANDER_DIST, not burnt or burning, takes ownership of the fly. */
+function FindHome(inst: LightFlierBrainInst, unit: number): void {
+  if (inst.home?.isValid()) return;
+  inst.world.findEntity(inst, 10 * unit, undefined, ['lightflier_home'], ['burnt', 'fire'])?.components.childspawner?.TakeOwnership(inst);
 }
 
 /** brains/lightflierbrain.lua: formation direct drive follows panic, avoidance and home actions. */
@@ -40,15 +51,14 @@ export class LightFlierBrain extends Brain {
   protected override OnStart(): void {
     const inst = this.fly, unit = this.unit;
     const gohome = () => {
-      inst.findHome(); const home = inst.home;
+      FindHome(inst, unit); const home = inst.home;
       if (!home?.isValid() || !CanGoHome(home) || inst.sg?.hasStateTag('busy')
         || !(home._lightflier_returning_home === inst || inst.getTime() - inst.bornAt > 60 && home.components.childspawner.numchildrenoutside > 1)) return;
-      return new BufferedAction('GOHOME', () => inst.wentHome(home),
-        () => inst.isValid() && CanGoHome(home), { target: home, distance: unit });
+      return CreateBufferedAction(inst, home, 'GOHOME', undefined, unit);
     };
     class Root extends PriorityNode {
       override Visit(): void {
-        if (this.lasttime === undefined || this.lasttime + .25 < this.now) inst.formationActive(false);
+        if (this.lasttime === undefined || this.lasttime + .25 < this.now) SetFormationActive(inst, false, unit);
         super.Visit();
       }
     }
@@ -62,7 +72,7 @@ export class LightFlierBrain extends Brain {
         new DoAction(inst, gohome, 'Go Home', false),
         new Wander(inst, () => inst.home?.getPosition() ?? inst.components.knownlocations?.GetLocation('home'), 10 * unit),
       ], .25)),
-      new ActionNode(() => inst.formationActive(true), 'Follow Formation'),
+      new ActionNode(() => SetFormationActive(inst, true, unit), 'Follow Formation'),
     ], .25));
   }
 }

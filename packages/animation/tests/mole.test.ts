@@ -12,7 +12,8 @@ import { loadAnim } from '../src/animationAssets';
 import { BindMoleWorld, MakeMole, Mole, SetAbovePhysics, UpdateMole, configureMoleEntity } from '../../prefab/src/mole';
 import { createMoleHabitat, molehillPrefabs, MOLEHILL_ID, type MolehillInstance } from '../../prefab/src/molehill';
 import { configureMoleBaitEntity, MoleBait } from '../../prefab/src/molebait';
-import { createMoleAction } from '../../stategraphs/src/moleactions';
+import { StealMoleBaitAction } from '../../stategraphs/src/moleactions';
+import { CreateBufferedAction } from '../../brains/src/bufferedaction';
 import { Combat } from '../../componets/src/combat';
 import { Weapon } from '../../componets/src/weapon';
 import { createInventoryStore } from '../../../src/inventory';
@@ -107,10 +108,10 @@ it('uses the Lua brain to steal minerals, build a home and deposit the same item
 it('revalidates stolen bait at frame 12 and cancels a stolen target that moved into an inventory', async () => {
   const f = await fixture(), mole = f.mole(), bait = f.bait('flint'); mole.brain!.Stop();
   expect(bait.reserve()).toBe(true); expect(bait.reserve()).toBe(false);
-  mole.PushBufferedAction(createMoleAction(mole, 'STEALMOLEBAIT', bait));
+  mole.PushBufferedAction(StealMoleBaitAction(mole, bait));
   f.scheduler.advanceTo(f.lengths.get('enter')! + f.lengths.get('idle')!); await settle();
   expect(mole.stategraph.stateName).toBe('steal');
-  f.scheduler.advance(11 / 30); await settle(); expect(mole.inventoryFull()).toBe(false); expect(mole.components.inventory!.GetItems()).toHaveLength(0);
+  f.scheduler.advance(11 / 30); await settle(); expect(mole.components.inventory!.IsFull()).toBe(false); expect(mole.components.inventory!.GetItems()).toHaveLength(0);
   bait.entity.components.inventoryitem.owner = { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => true, replace: () => false, PushEvent() {} };
   f.scheduler.advance(1 / 30); await settle();
   expect(mole.components.inventory!.GetItems()).toHaveLength(0);
@@ -156,7 +157,9 @@ it('saves an occupied molehill with its stored items and releases the same child
   const extra = f.bait('goldnugget', new THREE.Vector3(), 1); mole.components.inventory!.GiveItem(extra.entity);
   expect(extra.entity.isRemoved).toBe(true); expect(bait.entity.components.stackable.count).toBe(5);
   const hill = f.spawnHill(new THREE.Vector3(9, 0, 15)), model = hill.transform.model;
-  hill.components.spawner.TakeOwnership(mole); expect(mole.wentHome(hill)).toBe(true);
+  hill.components.spawner.TakeOwnership(mole);
+  // ACTIONS.GOHOME: onwenthome moves the stolen items into the hill, then the spawner takes the mole in.
+  expect(CreateBufferedAction(mole, hill, 'GOHOME').do()).toBe(true);
   const record = f.hills()[0], moleId = mole.id, baitId = bait.entity.id;
   f.awake.set(false); await settle();
   expect(hill.status.peek()).toBe('asleep');

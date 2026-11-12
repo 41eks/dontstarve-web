@@ -21,6 +21,9 @@ export interface BrainComponents {
   hauntable?: { panic?: boolean };
   combat?: { DropTarget(): void };
   skilltreeupdater?: { IsActivated(skill: string): boolean };
+  /** spawner.lua and childspawner.lua, which ACTIONS.GOHOME and the brains' FindHome call on a home. */
+  spawner?: { GoHome(child: BrainInst): boolean };
+  childspawner?: { GoHome(child: BrainInst): boolean; TakeOwnership(child: BrainInst): void };
 }
 
 /** simutil.lua queries (TheSim:FindEntities, TheWorld.Map) used by the ported brains. */
@@ -46,8 +49,11 @@ export interface BrainInst extends BrainEntity {
   IsNear(other: BrainEntity, distance: number): boolean;
   ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): void;
   RemoveEventCallback(name: string, fn: (data?: unknown) => void): void;
+  PushEvent(name: string, data?: unknown): void;
   /** AvoidElectricFence: set by electric fields, read by BrainCommon. */
   panic_electric_field?: unknown;
   _has_electric_fence_panic_trigger?: boolean;
   brain?: { ForceUpdate(): void };
+  /** inst.force_onwenthome_message: ACTIONS.GOHOME pushes onwenthome on the doer first. */
+  readonly force_onwenthome_message?: boolean;
 }

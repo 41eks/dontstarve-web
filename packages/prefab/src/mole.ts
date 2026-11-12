@@ -71,6 +71,8 @@ export class Mole extends ItemEntity implements MoleBrainInst, LocoMotorInst {
   peek_interval = 15;
   flee = false;
   bornAt = 0;
+  /** mole.lua: ACTIONS.GOHOME pushes onwenthome, which OnWentHome handles. */
+  readonly force_onwenthome_message = true;
   /** In its molehill: spawner:GoHome took it out of the world. */
   occupied = false;
   moleWorld?: MoleWorld;
@@ -122,30 +124,9 @@ export class Mole extends ItemEntity implements MoleBrainInst, LocoMotorInst {
     this.physics.Teleport(); this.physics.SetActive(true);
     this.stategraph.resume(); this.stategraph.goToState('idle'); this.brain?.Start(); this.components.sleeper?.StartTesting();
   }
-  /** inventory:IsFull(), which molebrain.lua reads before stealing bait. */
-  // conventions-allow instance-method: molebrain.lua's inventory test, which the ported brain calls on inst.
-  inventoryFull(): boolean { return this.components.inventory?.IsFull() ?? false; }
-  /** molebrain.lua MakeNewHomeAction's FindWalkableOffset. */
-  // conventions-allow instance-method: molebrain.lua's MakeNewHomeAction, which the ported brain calls on inst.
-  findHomePosition(): Vector3 | undefined {
-    const services = this.moleWorld!, start = this.random() * Math.PI * 2, radius = (5 + Math.floor(this.random() * 11)) * WORLD_SCALE;
-    for (let i = 0; i < 120; i++) {
-      const angle = start + i * Math.PI * 2 / 120;
-      const p = this.getPosition().clone().add(new Vector3(Math.cos(angle) * radius, 0, -Math.sin(angle) * radius));
-      if (services.isWalkable(p)) return p;
-    }
-    return undefined;
-  }
   /** ACTIONS.MAKEMOLEHILL's fn. */
   // conventions-allow instance-method: ACTIONS.MAKEMOLEHILL's fn, which the brain's action runs for inst.
   makeHome(): boolean { this.moleWorld!.makeHome(this); this.needs_home_time = undefined; return true; }
-  /** ACTIONS.GOHOME's spawner branch. */
-  // conventions-allow instance-method: ACTIONS.GOHOME's fn, which the brain's action runs for inst.
-  wentHome(target: Omit<BrainEntity, 'components'>): boolean {
-    const home = this.home; if (target !== home || !home?.isValid()) return false;
-    this.components.inventory?.TransferInventory(home); this.stategraph.goToState('idle');
-    return home.components.spawner.GoHome(this);
-  }
 }
 
 /** In the world rather than held or in its hill. */
@@ -176,6 +157,7 @@ export function MakeMole(inst: Mole, random: () => number = Math.random): void {
   inst.component(MOLE_ID, () => ({ OnSave: () => MoleOnSave(inst), dispose: () => {} }));
   inst.ListenForEvent('ondropped', ondrop);
   inst.ListenForEvent('onputininventory', onpickup);
+  inst.ListenForEvent('onwenthome', OnWentHome);
   inst.onRemove(() => {
     inst.animstate?.dispose(); StopSounds(inst); StopStunnedSounds(inst);
     inst.cleanups.splice(0).forEach(stop => stop());
@@ -312,6 +294,14 @@ function OnAttacked(inst: Mole, data: EntityEventData['attacked']): void {
   const weapon = data.weapon;
   if (weapon?.hasTag('hammer')) { DropInventory(inst); if (!isDead(inst)) inst.stategraph.goToState('stunned'); }
   else if (weapon && !isDead(inst) && !inst.stategraph.hasStateTag('busy')) inst.stategraph.goToState('hit');
+}
+
+/** OnWentHome: the stolen items go into the molehill, and the mole stops in idle. */
+function OnWentHome(inst: Mole): void {
+  const molehill = inst.home;
+  if (!molehill) return;
+  inst.components.inventory?.TransferInventory(molehill);
+  inst.stategraph.goToState('idle');
 }
 
 /** OnHomeDugUp */

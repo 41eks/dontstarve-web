@@ -25,7 +25,7 @@ import { ErodeAway } from '../../componets/src/erodeaway';
 import { animationLengths } from './animationTimings';
 import { Workable } from '../../componets/src/workable';
 import { LocoMotor, type LocoMotorInst } from '../../componets/src/locomotor';
-import { CanGoHome, LightFlierBrain, type LightFlierBrainInst } from '../../brains/src/lightflierbrain';
+import { LightFlierBrain, SetFormationActive, type LightFlierBrainInst } from '../../brains/src/lightflierbrain';
 import { LightFlierStateGraph, type LightFlierStateInst } from '../../stategraphs/src/SGlightflier';
 import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import type { ItemPrefabWorld } from './groundPrefab';
@@ -200,25 +200,6 @@ export class LightFlier extends ItemEntity implements LightFlierBrainInst, LocoM
     this.components.homeseeker.SetHome(home);
     if (home) this.components.knownlocations.RememberLocation('home', home.getPosition());
   }
-  /** lightflierbrain.lua FindHome: the nearest lightflier_flower within MAX_WANDER_DIST that is not burnt or burning. */
-  // conventions-allow instance-method: lightflierbrain.lua's FindHome, which the ported brain calls on inst.
-  findHome(): void {
-    if (this.home?.isValid()) return;
-    const position = this.getPosition();
-    const home = [...this.habitat!.services.getHomes()].filter(h => h.isValid() && !h.hasTag('fire') && !h.hasTag('burnt')
-      && h.getPosition().distanceToSquared(position) <= (10 * WORLD_SCALE) ** 2)
-      .sort((a, b) => a.getPosition().distanceToSquared(position) - b.getPosition().distanceToSquared(position))[0];
-    home?.components.childspawner.TakeOwnership(this);
-  }
-  /** The ParallelNode's ActionNode in lightflierbrain.lua: formation movement off, walk speed back. */
-  // conventions-allow instance-method: lightflierbrain.lua's ActionNode body, which the ported brain calls on inst.
-  formationActive(active: boolean): void {
-    this.components.formationfollower.active = active;
-    if (this.locomotor) { this.locomotor.walkspeed = 3.5 * WORLD_SCALE; this.locomotor.directdrive = active; }
-  }
-  /** ACTIONS.GOHOME's childspawner branch. */
-  // conventions-allow instance-method: ACTIONS.GOHOME's fn, which the brain's GoHome action runs for inst.
-  wentHome(home: BrainEntity): boolean { return home === this.home && CanGoHome(this.home) && this.home.components.childspawner.GoHome(this); }
 }
 
 /** In the world rather than held: the stategraph, brain and formation run only then. */
@@ -280,7 +261,7 @@ function OnAttacked(inst: LightFlier): void {
   follower.formationleader?.DisbandFormation();
 }
 
-function GoToSleep(inst: LightFlier): void { inst.brain?.Pause(); inst.formationActive(false); EnableBuzz(inst, false); }
+function GoToSleep(inst: LightFlier): void { inst.brain?.Pause(); SetFormationActive(inst, false, WORLD_SCALE); EnableBuzz(inst, false); }
 function OnWakeUp(inst: LightFlier): void { if (!inst.components.freezable?.IsFrozen()) inst.brain?.Resume(); EnableBuzz(inst, true); }
 function IsSleeping(inst: LightFlier): boolean { return inst.components.sleeper?.IsAsleep() ?? false; }
 function WakeUp(inst: LightFlier): void { inst.components.sleeper?.WakeUp(); }
@@ -328,10 +309,11 @@ function BindLightFlierWorld(inst: LightFlier, habitat: LightFlierHabitat, lengt
   const services = habitat.services, scheduler = services.scheduler;
   inst.bornAt = scheduler.now - (inst.lightflier?.age ?? 0);
   inst.world = { isDay: false, isAboveGroundAtPoint: () => true,
-    findEntity: (from, radius, fn, must = [], cant = [], one = []) => services.getPlayers().map(player => ({
+    // The players and the lightflier_flower homes are the entities the brain searches for.
+    findEntity: (from, radius, fn, must = [], cant = [], one = []) => [...services.getPlayers().map((player): BrainEntity => ({
       prefab: 'wilson', components: {}, isValid: () => player.isValid(), hasTag: (tag: string) => tag === 'player' || tag === 'scarytoprey',
       getPosition: () => player.position, getPhysicsRadius: () => .5 * WORLD_SCALE,
-    })).filter(e => e.isValid() && must.every(t => e.hasTag(t)) && !cant.some(t => e.hasTag(t)) && (!one.length || one.some(t => e.hasTag(t)))
+    })), ...services.getHomes()].filter(e => e.isValid() && must.every(t => e.hasTag(t)) && !cant.some(t => e.hasTag(t)) && (!one.length || one.some(t => e.hasTag(t)))
       && distanceSquared(from.getPosition(), e.getPosition()) <= radius ** 2).find(e => !fn || fn(e, from)),
     getClosestInstWithTag: (tags, from, radius) => inst.world.findEntity(from, radius, undefined, tags),
   };

@@ -21,17 +21,17 @@ export function addComponent<Inst extends Owner, Name extends ComponentName<Inst
   inst: Inst, name: Name, Component: C, ...args: Args<C>
 ): InstanceType<C> {
   if (inst.isRemoved) throw new Error(`Cannot add ${name} to a removed entity`);
-  const components = inst.components as Record<string, unknown>;
-  const existing = components[name];
+  // inst.components[name], the registry the entity declares by name.
+  const existing: unknown = Reflect.get(inst.components, name);
   if (existing) return existing as InstanceType<C>;
   const component = new (Component as unknown as new (inst: Inst, ...args: Args<C>) => InstanceType<C>)(inst, ...args);
-  components[name] = component;
+  Reflect.set(inst.components, name, component);
   let callbacks = removals.get(inst);
   if (!callbacks) removals.set(inst, callbacks = new Map());
   const entityCallbacks = callbacks;
   callbacks.set(name, inst.onRemove(() => {
     entityCallbacks.delete(name);
-    const removed = component as Lifecycle;
+    const removed: Lifecycle = component;
     tornDown.add(removed);
     if (removed.OnRemoveEntity) removed.OnRemoveEntity();
     else if (removed.OnRemoveFromEntity) removed.OnRemoveFromEntity();
@@ -42,10 +42,10 @@ export function addComponent<Inst extends Owner, Name extends ComponentName<Inst
 
 /** RemoveComponent deletes the registration before invoking the component's OnRemoveFromEntity (or its teardown). */
 export function removeComponent<Inst extends Owner>(inst: Inst, name: ComponentName<Inst>): void {
-  const components = inst.components as Record<string, Lifecycle | undefined>;
-  const component = components[name];
-  if (!component) return;
-  delete components[name];
+  const registered: unknown = Reflect.get(inst.components, name);
+  if (!registered || typeof registered !== 'object') return;
+  const component: Lifecycle = registered;
+  Reflect.deleteProperty(inst.components, name);
   const callbacks = removals.get(inst);
   callbacks?.get(name)?.();
   callbacks?.delete(name);
