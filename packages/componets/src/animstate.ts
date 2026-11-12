@@ -41,5 +41,8 @@ export class AnimState {
     if (playing && current.loop) this.state.set({ ...current, loop: false });
   }
   stop(): void { this.playback.stop(); }
+  /** Entity sleep: the playing clip keeps its remaining time, as the stategraph that waits for its animover does. */
+  pause(): void { if (this.task.snapshot.peek().status === 'scheduled') this.task.pause(); }
+  resume(): void { if (this.task.snapshot.peek().status === 'paused') this.task.start(this.task.remainingSeconds!); }
   dispose(): void { this.stop(); }
 }

@@ -2,11 +2,13 @@ import { addComponent, removeComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, watchSignal, type GameTimeScheduler, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
+import { AnimState } from '../../componets/src/animstate';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Hauntable, HAUNT_INSTANT_REZ } from '../../componets/src/hauntable';
 import {
   createMultiplayerPortalStateGraph, type MultiplayerPortalSound, type MultiplayerPortalStateInst,
 } from '../../stategraphs/src/SGmultiplayerportal';
+import { animationLengths } from './animationTimings';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { RezSource } from './player_common_extensions';
 import type { SoundEventPath } from './sound';
@@ -18,6 +20,9 @@ export const PORTAL_FX_ID = 'multiplayer_portal_moonrock_fx' as const;
 
 /** assets_moonrock / assets_fx: the portal_moonrock bank and build, with symbols from portal_stone. */
 const ASSETS = { animationArchive: 'portal_moonrock.zip', buildArchives: ['portal_moonrock.zip', 'portal_stone.zip'], bank: 'portal_moonrock_dst' };
+
+/** The portal_moonrock_dst clips SGmultiplayerportal plays, from the source anim.bin. */
+const PORTAL_ANIMATION_LENGTHS = animationLengths('portal_moonrock.zip');
 
 /** multiplayer_portal.lua MOONROCK_SOUNDS; the keys it leaves nil are absent. */
 const MOONROCK_SOUNDS: Partial<Record<MultiplayerPortalSound, SoundEventPath>> = {
@@ -46,6 +51,8 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
   declare SoundEmitter: SoundEmitter;
   /** inst.sounds = MOONROCK_SOUNDS (moonrock_master_postinit). */
   readonly sounds = MOONROCK_SOUNDS;
+  /** inst.AnimState's playback: a clip ends after its source length in game time, whether or not its art is drawn. */
+  readonly animstate: AnimState;
 
   constructor(world: PortalWorld, position: ReadonlyVector3) {
     super(PORTAL_ID, new SpriteState({ name: 'idle_loop', billboard: true }));
@@ -65,6 +72,7 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
     this.fx = world.spawnPrefab(PORTAL_FX_ID, position);
     this.fx.entityParent = this;
 
+    this.animstate = new AnimState(world.scheduler, PORTAL_ANIMATION_LENGTHS, event => { if (!this.isRemoved) this.sg.pushEvent(event); });
     this.SetStateGraph(inst => createMultiplayerPortalStateGraph(inst, world.scheduler));
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
@@ -77,32 +85,24 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
     }
     cleanups.push(this.ListenForEvent('rez_player', () => OnRezPlayer(this)));
 
-    // The stategraph sleeps with the entity. A clip settled while nothing is drawn holds the animover chain, which
-    // resumes once the display has drawn the sprite again.
+    // The stategraph and the clip it waits for sleep with the entity.
     const status = watchSignal(this.status, stop => cleanups.push(stop));
     cleanups.push(createEffect(() => {
       const value = status.get();
-      if (value === 'asleep') this.sg.pause();
-      else if (value === 'active') this.sg.resume();
+      if (value === 'asleep') { this.sg.pause(); this.animstate.pause(); }
+      else if (value === 'active') { this.animstate.resume(); this.sg.resume(); }
     }));
-    cleanups.push(createEffect(() => {
-      this.sprite.art.get();
-      if (this.sprite.loaded && this.sprite.sprite.peek().clip.finished) this.animover();
-    }));
-    this.onRemove(() => cleanups.splice(0).forEach(stop => stop()));
+    this.onRemove(() => { this.animstate.dispose(); cleanups.splice(0).forEach(stop => stop()); });
   }
 
   /** inst:IsValid(). */
   isValid(): boolean { return !this.isRemoved; }
 
+  /** SGmultiplayerportal's PlayAnimation: inst.AnimState and inst.fx.AnimState; the logical clip's end is the animover. */
   playAnimation(name: string): void {
+    this.animstate.PlayAnimation(name);
+    this.sprite.playOnce(name);
     this.fx.sprite.playOnce(name);
-    this.sprite.playOnce(name, () => this.animover());
-  }
-
-
-  private animover(): void {
-    if (this.sprite.loaded && !this.isRemoved) this.sg.pushEvent('animover');
   }
 }
 

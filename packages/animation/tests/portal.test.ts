@@ -47,11 +47,11 @@ function setup() {
 }
 const tags = (inst: PrefabInstance) => inst.listTags();
 const sounds = () => vi.mocked(PlaySound).mock.calls.map(([path]) => path);
-/** Frames the drawn clip to its end, as the display group does, then lets the next state start. */
-const finishClip = async (inst: PrefabInstance) => {
-  const clip = inst.sprite.sprite.peek().clip;
-  for (let frame = 0; frame < 300 && inst.sprite.sprite.peek().clip === clip; frame++) inst.sprite.update(1 / 30);
-  expect(inst.sprite.sprite.peek().clip).not.toBe(clip);
+/** Advances game time to the end of the portal's playing clip, whose animover starts the next state. */
+const finishClip = async (scheduler: GameTimeScheduler, portal: PortalInstance) => {
+  const playing = portal.animstate.animation.peek();
+  for (let frame = 0; frame < 300 && portal.animstate.animation.peek() === playing; frame++) scheduler.advance(FRAMES);
+  expect(portal.animstate.animation.peek()).not.toBe(playing);
   await turn();
 };
 
@@ -81,7 +81,7 @@ it('loads with its fx child and runs SGmultiplayerportal idle, spawn and rez sta
     expect(sounds()).toEqual([JACOB]);
     s.scheduler.advance(30 * FRAMES);
     expect(sounds()).toEqual([JACOB, JACOB]);
-    await finishClip(portal);
+    await finishClip(s.scheduler, portal);
     expect(portal.sg.stateName).toBe('idle');
     expect(sounds()).toEqual([JACOB, JACOB, JACOB]);
 
@@ -96,18 +96,18 @@ it('loads with its fx child and runs SGmultiplayerportal idle, spawn and rez sta
     expect([portal.sprite.sprite.peek().clip.name, fx.sprite.sprite.peek().clip.name]).toEqual(['pre_fx', 'pre_fx']);
     expect(sounds()).toEqual([SPAWNING, SHAKE]);
     const activate = vi.mocked(PlaySound).mock.results[0].value as { stop: ReturnType<typeof vi.fn> };
-    await finishClip(portal);
+    await finishClip(s.scheduler, portal);
     expect(portal.sg.stateName).toBe('spawn_loop');
     expect(activate.stop).not.toHaveBeenCalled();
     s.scheduler.advance(55 * FRAMES);
     expect(sounds()).toEqual([SPAWNING, SHAKE, OPEN]);
-    await finishClip(portal);
+    await finishClip(s.scheduler, portal);
     expect(portal.sg.stateName).toBe('spawn_pst');
     expect(activate.stop).toHaveBeenCalledOnce();
     expect(portal.sg.hasStateTag('busy')).toBe(true);
     s.scheduler.advance(12 * FRAMES);
     expect(portal.sg.hasStateTag('busy')).toBe(false);
-    await finishClip(portal);
+    await finishClip(s.scheduler, portal);
     expect(portal.sg.stateName).toBe('idle');
 
     // portal_rez off removes the hauntable and the resurrector tag.
@@ -124,6 +124,35 @@ it('loads with its fx child and runs SGmultiplayerportal idle, spawn and rez sta
     const calls = sounds().length;
     s.scheduler.advance(10);
     expect(sounds()).toHaveLength(calls);
+  } finally { random.mockRestore(); s.dispose(); }
+});
+
+it('ends its clips on game time whether or not their art is drawn, and holds them while its tile sleeps', async () => {
+  const s = setup();
+  const random = vi.spyOn(Math, 'random').mockReturnValue(.5); // never funnyidle
+  try {
+    // Nothing has been drawn yet: pre_fx (12 frames) still ends after its source length, not at once or at load.
+    const portal = s.prefabs.spawnAs(PortalInstance, PORTAL_ID, new THREE.Vector3(3, 0, 6), { id: 'saved', components: {} });
+    expect(portal.sprite.loaded).toBe(false);
+    portal.PushEvent('rez_player');
+    expect(portal.sg.stateName).toBe('spawn_pre');
+    s.scheduler.advance(11.5 * FRAMES);
+    expect(portal.sg.stateName).toBe('spawn_pre');
+    s.scheduler.advance(FRAMES);
+    expect(portal.sg.stateName).toBe('spawn_loop');
+    expect(portal.sprite.loaded).toBe(false);
+
+    // Asleep, the stategraph and its clip wait; awake again, the clip ends after the rest of its length.
+    s.scheduler.advance(29.5 * FRAMES);
+    s.awake.set(false); await turn();
+    expect(portal.status.peek()).toBe('asleep');
+    s.scheduler.advance(10);
+    expect(portal.sg.stateName).toBe('spawn_loop');
+    s.awake.set(true); await turn();
+    s.scheduler.advance(29.5 * FRAMES);
+    expect(portal.sg.stateName).toBe('spawn_loop');
+    s.scheduler.advance(FRAMES);
+    expect(portal.sg.stateName).toBe('spawn_pst');
   } finally { random.mockRestore(); s.dispose(); }
 });
 

@@ -2630,5 +2630,67 @@
       "frameRate": 30.0,
       "frames": 7
     }
+  ],
+  "portal_moonrock.zip": [
+    {
+      "name": "idle_off",
+      "bank": 648741215,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "idle_loop",
+      "bank": 648741215,
+      "frameRate": 30.0,
+      "frames": 60
+    },
+    {
+      "name": "idle_eyescratch",
+      "bank": 648741215,
+      "frameRate": 30.0,
+      "frames": 60
+    },
+    {
+      "name": "pre_fx",
+      "bank": 648741215,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "fx",
+      "bank": 648741215,
+      "frameRate": 30.0,
+      "frames": 60
+    },
+    {
+      "name": "pst_fx",
+      "bank": 648741215,
+      "frameRate": 30.0,
+      "frames": 60
+    },
+    {
+      "name": "idle_closed",
+      "bank": 648741215,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "burnt",
+      "bank": 648741215,
+      "frameRate": 30.0,
+      "frames": 1
+    },
+    {
+      "name": "staticfx_one",
+      "bank": 648741215,
+      "frameRate": 30.0,
+      "frames": 16
+    },
+    {
+      "name": "staticfx_two",
+      "bank": 648741215,
+      "frameRate": 30.0,
+      "frames": 16
+    }
   ]
 }
