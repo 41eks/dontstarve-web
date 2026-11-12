@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { createTestWorldSources } from './worldContentFixture';
 import { readFile } from 'node:fs/promises';
@@ -19,7 +19,6 @@ import { Pathfinder } from '../../prefab/src/pathfinder';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { activeItemUse } from './inventoryUseFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { SAVE_CATALOG } from '../../../src/save/catalog';
@@ -255,7 +254,7 @@ describe('wild beefalo behavior', () => {
     // A cursor-held razor: USEITEM.shaver offers SHAVE and SGwilson's shave state commits it after one second.
     vi.stubGlobal('window', new EventTarget());
     const inventory = createInventoryStore([]);
-    const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
+    const graph = wilsonPlayer(() => 1).sg;
     const use = activeItemUse({ player: new THREE.Object3D(), renderer: { domElement: new EventTarget() } }, graph, inventory);
     inventory.add('razor', 1);
     expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);

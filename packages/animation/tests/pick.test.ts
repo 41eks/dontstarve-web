@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { withEntity } from './entityFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { testPlayer } from './testPlayer';
@@ -9,7 +9,6 @@ import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { Pickable } from '../../prefab/src/components/pickable';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
@@ -65,7 +64,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   const picker = new PlayerActionPicker(pointer), canvas = new EventTarget();
   const actionEvents = new EventEmitter<PlayerActionEvents>(), begin = vi.fn();
   const stopEvents = actionEvents.on('action:begin', begin);
-  const stategraph = new WilsonStateGraph(wilsonStateInst(undefined, () => .2));
+  const stategraph = wilsonPlayer(() => .2).sg;
   const animation = { stategraph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });

@@ -7,32 +7,31 @@ import { smallHash } from '../src/animationAssets';
 import { HAUNT_COOLDOWN_MEDIUM } from '../../componets/src/hauntable';
 import { createPickupInventory } from './pickupFixture';
 import { testPlayer } from './testPlayer';
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { declaredAnimState } from './animStateFixture';
 import { addComponent } from '../../prefab/src/components';
-import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
 import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { HatEquipmentAssets } from '../../prefab/src/hats';
 import { SpriteState } from '@dontstarve-web/display';
-import { WilsonStateGraph, type WilsonStateName } from '../../stategraphs/src/SGwilson';
+import type { WilsonStateName } from '../../stategraphs/src/SGwilson';
 import { createPerishWorld } from './perishWorldFixture';
 
 function wornAmulet(health: number, hunger: number) {
   const inventory = createPickupInventory(), world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
   // The wearer is a player inst: its health and hunger, its stategraph, and the slots of its sprite equipment draws on.
-  const body = createEmptyEntity('wilson').instance;
-  const owner = testPlayer({ model: body.transform.model, inventory });
+  const player = wilsonPlayer();
+  const owner = testPlayer({ model: player.transform.model, inventory });
   const stats = { health: addComponent(owner, 'health', Health, 150), hunger: addComponent(owner, 'hunger', Hunger, 150) };
   stats.health.SetCurrentHealth(health);
   stats.hunger.SetCurrent(hunger);
-  const graph = owner.SetStateGraph(() => new WilsonStateGraph(wilsonStateInst()));
+  const graph = player.sg;
   const sprite = new SpriteState({ name: 'idle' }), assets = new GroundItemAssets();
   owner.OpenEquipmentView = createEquipmentViews(owner, { sprite: { sprite, art: assets }, assets,
-    hats: new HatEquipmentAssets('/dst/data/anim'), lightParent: body });
-  // GoToState pushes "newstate" on the inst, as player_common's OnNewState hears it.
-  const enter = (name: WilsonStateName) => { graph.goToState(name); owner.PushEvent('newstate', { statename: name }); };
+    hats: new HatEquipmentAssets('/dst/data/anim'), lightParent: player });
+  // GoToState pushes "newstate" on the player inst.
+  const enter = (name: WilsonStateName) => graph.goToState(name);
   /** Whether the player's sprite still declares the amulet's swap_body. */
   const swapBody = () => declaredAnimState(sprite).json.peek().overrides.has(smallHash('swap_body'));
   inventory.add(AMULET_ID, 1);
@@ -75,11 +74,13 @@ it('converts hunger into health every 30 game seconds while hurt, spending one u
 });
 
 it('stops converting once unequipped, and keeps its worn art through amulet_rebirth', () => {
-  const { inventory, world, stats, enter, swapBody } = wornAmulet(100, 100);
+  const { inventory, world, entity, stats, enter, swapBody } = wornAmulet(100, 100);
   try {
     expect(swapBody()).toBe(true);
+    // SGwilson amulet_rebirth onenter: ConsumeEquippedAmulet removes the worn amulet from the inventory.
     enter('amulet_rebirth');
-    expect(inventory.Unequip('body')).not.toBeNull();
+    expect(inventory.GetEquippedItem('body')).toBeNull();
+    expect(entity.isRemoved).toBe(true);
     // onunequip_red keeps swap_body; the slot is retained past equippable:Unequip closing the view.
     expect(swapBody()).toBe(true);
     world.advance(REDAMULET_CONVERSION_TIME * 2);

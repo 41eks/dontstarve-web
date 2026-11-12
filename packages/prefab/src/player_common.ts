@@ -253,7 +253,7 @@ export interface PlayerPrefabOptions {
 }
 
 /** player_common.lua fns.ShowHUD, assigned to inst.ShowHUD in master_postinit. */
-function ShowHUD(inst: PlayerInstance, show: boolean): void {
+export function ShowHUD(inst: PlayerInstance, show: boolean): void {
   if (show) inst.HUD?.Show(); else inst.HUD?.Hide();
 }
 

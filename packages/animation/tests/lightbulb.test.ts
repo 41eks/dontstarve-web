@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { testPlayer } from './testPlayer';
 import { pickupDoer } from './playerDoer';
 import { withEntity } from './entityFixture';
@@ -10,7 +10,6 @@ import { PERISH_FAST } from '../../componets/src/perishable';
 import { getFoodEffects } from '../../prefab/src/food';
 import { LANTERN_FUEL } from '../../prefab/src/lantern';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { createPickupInventory } from './pickupFixture';
 import { createPerishWorld } from './perishWorldFixture';
 
@@ -92,7 +91,7 @@ it('buffers one fuel item until frame six, preserves it on cancellation and retu
   inventory.transfer(inventorySlotAddress(1), cursor, 2);
   const original = inventory.getEntity(cursor)!;
   const doer = pickupDoer(withEntity(new THREE.Group(), 'wilson'), inventory);
-  const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
+  const graph = wilsonPlayer(() => 1).sg;
   const request = () => graph.pushBufferedAction(createBufferedAction('ADDFUEL', { doer, target: lantern, invobject: original }));
   try {
     expect(request()).toBe(true); graph.update(5 / 30);

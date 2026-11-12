@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { withEntity } from './entityFixture';
 import { testPlayer } from './testPlayer';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -13,7 +13,6 @@ import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
 import { createEquipmentExistenceState } from '../../signals/src';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { getActionString } from '../../stategraphs/src/actions';
 import definitions from '../../prefab/src/definitions.json';
 import { managedBuildings } from './managedBuildings';
@@ -55,7 +54,7 @@ async function setup(definition: { archive: string } = definitions.animatedBuild
   const playOnce = vi.spyOn(animation, 'playOnce');
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockImplementation(() =>
     ({ object: model, point: new THREE.Vector3() }) as THREE.Intersection);
-  const stategraph = new WilsonStateGraph(wilsonStateInst(undefined, () => .2));
+  const stategraph = wilsonPlayer(() => .2).sg;
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
   // The player inst RUMMAGE opens the container for; SCENE.container needs its inventory.

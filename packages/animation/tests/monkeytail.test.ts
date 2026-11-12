@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { testPlayer } from './testPlayer';
 import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
@@ -16,7 +16,6 @@ import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { activeItemUse } from './inventoryUseFixture';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -69,7 +68,7 @@ function setup() {
 }
 
 function actor() {
-  const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
+  const graph = wilsonPlayer(() => 1).sg;
   const animation = { stategraph: graph };
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
   return { graph, animation, locomotor };

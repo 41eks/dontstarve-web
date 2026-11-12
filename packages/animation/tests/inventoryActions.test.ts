@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
@@ -12,7 +12,6 @@ import { TurfMap } from '../../prefab/src/turfMap';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
@@ -37,7 +36,7 @@ function setup() {
   const world = { scene, player: display.model, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: canvas } } as unknown as ActionWorldContext;
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
-  const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
+  const graph = wilsonPlayer(() => 1).sg;
   const locomotor = new Locomotor({ position: instance.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
   const controller = new PlayerController(world, graph,
     locomotor, inventory.handEquipment, instance as never);

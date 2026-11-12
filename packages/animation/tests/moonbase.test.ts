@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -21,7 +21,6 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { activeItemUse } from './inventoryUseFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { smallHash } from '../src/animationAssets';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Timer } from '../../componets/src/timer';
@@ -335,7 +334,7 @@ it('persists paused named timers without ticking their snapshots and keeps expir
 
 it('walks to the moonbase through the player controller, cancels before consumption, and commits REPAIR and GIVE at their source times', async () => {
   const { placement, world, model } = await createMoonbase();
-  const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => .8));
+  const graph = wilsonPlayer(() => .8).sg;
   const inventory = createInventoryStore([]);
   inventory.add('moonrocknugget', 1); inventory.add('yellowstaff', 1);
   let manual = false;

@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { withEntity } from './entityFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -9,7 +9,6 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { afterEach, expect, it, vi } from 'vitest';
 import { configurePhonographEntity } from '../../prefab/src/phonograph';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { Locomotor } from '../../prefab/src/locomotor';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type * as CANNON from 'cannon-es';
@@ -101,7 +100,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
   const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const spec = INVENTORY_ITEM_SPECS.phonograph;
-  const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
+  const graph = wilsonPlayer(() => 1).sg;
   const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), renderer: { domElement: canvas } } as unknown as ActionWorldContext;
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
   const controller = new PlayerController(world, graph, locomotor, inventory.handEquipment, playerDoer(player, { inventory }));

@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -13,7 +13,7 @@ import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import { getActionPriority } from '../../stategraphs/src/actions';
 import { collectSceneActions } from '../../stategraphs/src/componentactions';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
-import { WilsonStateGraph, type WilsonStateName } from '../../stategraphs/src/SGwilson';
+import type { WilsonStateName } from '../../stategraphs/src/SGwilson';
 import { ItemEntity } from '../../inventory/src';
 
 const describeStrings = STRINGS.CHARACTERS.GENERIC.DESCRIBE;
@@ -93,9 +93,9 @@ describe('talker.lua', () => {
 describe('ACTIONS.LOOKAT', () => {
   /** The player inst in a state of its stategraph, whose tags LOOKAT reads. */
   const sgDoer = (state: WilsonStateName) => {
-    const doer = testPlayer();
-    doer.SetStateGraph(() => new WilsonStateGraph(wilsonStateInst())).goToState(state);
-    return doer;
+    const player = wilsonPlayer();
+    player.sg.goToState(state);
+    return testPlayer({ model: player.transform.model });
   };
 
   it('is offered to an idle doer on both buttons at the lowest priority, and not while it moves', () => {
@@ -111,10 +111,9 @@ describe('ACTIONS.LOOKAT', () => {
   it('says the description and takes the talk state until the line ends', () => {
     const { instance, dispose } = entity();
     const scheduler = new GameTimeScheduler();
-    const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
+    const player = wilsonPlayer(() => 1), graph = player.sg;
     // The player inst says the line with its own talker; its talk events reach its stategraph.
-    const doer = viewer();
-    doer.SetStateGraph(() => graph);
+    const doer = testPlayer({ model: player.transform.model });
     const talker = addComponent(doer, 'talker', Talker, scheduler);
     expect(createBufferedAction('LOOKAT', { doer, target: instance }).do()).toBe(true);
     expect(talker.line.peek()).toBe(describeStrings.BIRDCAGE.GENERIC);

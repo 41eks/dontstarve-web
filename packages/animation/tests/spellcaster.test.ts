@@ -1,18 +1,27 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
+import { testPlayer } from './testPlayer';
+import { addComponent } from '../../prefab/src/components';
+import { Sanity } from '../../componets/src/sanity';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { SpriteState } from '@dontstarve-web/display';
+
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src';
-import type { SpellCastDoer } from '../../stategraphs/src/castspell';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { collectPointActions } from '../../stategraphs/src/componentactions';
 import { Locomotor } from '../../prefab/src/locomotor';
 import * as CANNON from 'cannon-es';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_CAST_SOUND, type LightStaffId } from '../../prefab/src/staff';
 import { PlaySound } from '../../prefab/src/sound';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
+
+/** staff_castinglight, which is not ported: an fx entity whose SetUp the castspell state calls. */
+class CastingLight extends PrefabInstance {
+  readonly SetUp = vi.fn((_colour: readonly [number, number, number], _duration: number, _delay: number) => {});
+}
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
@@ -34,26 +43,25 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
   const spawn = vi.fn(), worldServices = { map, spawnPrefab: spawn };
   const staff = getLightStaffController(entity, worldServices);
   staff.onequip();
-  const castingLight = { remove: vi.fn(), SetUp: vi.fn() };
   // SpawnPrefab("staff_castinglight") on the player inst; the castspell state sets it up.
+  const castingLight = new CastingLight('staff_castinglight', new SpriteState({ name: '' }));
+  vi.spyOn(castingLight, 'remove');
   const casting = vi.fn((_prefab: string, _position: THREE.Vector3) => castingLight);
-  const inst = wilsonStateInst({ SpawnPrefab: casting }, name => (name === 'staff_pre' ? 15 : name === 'staff' ? 65 : 30) / 30);
+  const inst = wilsonPlayer(name => (name === 'staff_pre' ? 15 : name === 'staff' ? 65 : 30) / 30, inst => { inst.SpawnPrefab = casting; });
   const sound = inst.SoundEmitter.PlaySound;
-  const graph = new WilsonStateGraph(inst);
-  const player = new THREE.Group();
+  const graph = inst.sg, player = inst.transform.model;
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     actionEvents: new EventEmitter<PlayerActionEvents>(),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const doDelta = vi.fn();
-  const doer: SpellCastDoer = { position: player.position, hasTag: () => false, components: { sanity: { DoDelta: doDelta } } };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity.
-  const playerDoer = Object.assign(doer, { getPosition: () => player.position, PushEvent: vi.fn() });
+  const playerDoer = testPlayer({ model: player, inventory: store });
+  const doDelta = vi.spyOn(addComponent(playerDoer, 'sanity', Sanity, 200), 'DoDelta');
   const controller = new PlayerController(world, graph, locomotor,
-    store.handEquipment, playerDoer as never, () => false);
+    store.handEquipment, playerDoer, () => false);
   const input = {
     // GetPointActions(position, equipitem) on the right button, then DoAction.
-    request: (point: THREE.Vector3) => collectPointActions(entity, playerDoer as never, point, true).includes('CASTSPELL')
+    request: (point: THREE.Vector3) => collectPointActions(entity, playerDoer, point, true).includes('CASTSPELL')
       && controller.DoAction(controller.createAction({ action: 'CASTSPELL', invobject: entity, pos: point.clone() })!),
     dispose: () => controller.dispose(),
   };

@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { describe, expect, it, vi } from 'vitest';
 import { ItemEntity, type InventoryStack } from '../../inventory/src';
@@ -17,7 +17,6 @@ import { bindTestWorld } from './worldContentFixture';
 import * as THREE from 'three';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { activeItemUse } from './inventoryUseFixture';
 
 function createBird(prefab = 'canary') {
@@ -161,7 +160,7 @@ describe('caged birds', () => {
     const scheduler = new GameTimeScheduler();
     const instance = new BirdcageInstance({ scheduler } as unknown as WorldContext);
     const inventory = createInventoryStore([]);
-    const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
+    const graph = wilsonPlayer(() => 1).sg;
     const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), renderer: { domElement: new EventTarget() } };
     const use = activeItemUse(world, graph, inventory);
     try {

@@ -1,11 +1,10 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { testPlayer } from './testPlayer';
 import type * as THREE from 'three';
 import { vi } from 'vitest';
 import type { DeployMap } from '../../componets/src/deployable';
 import type { InventoryStore } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { WORLD_TILES, type TurfMap } from '../../prefab/src/turfMap';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -16,7 +15,7 @@ export const landTurf = (rules: Partial<Record<keyof TurfMap, unknown>>) =>
 
 /** A player whose controller buffers DEPLOY through a locomotor that arrives when told. */
 export function deployActor(world: WorldContext, inventory: InventoryStore, map: DeployMap,
-  graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1))) {
+  graph = wilsonPlayer(() => 1).sg) {
   let arrive = () => {};
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn(),
     PushAction: vi.fn((_action: { target: { getPosition(): THREE.Vector3 } }, arrived: () => void) => { arrive = arrived; }) };

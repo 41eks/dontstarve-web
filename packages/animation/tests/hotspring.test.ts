@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { useTestTileMap, testMap } from './tileMapFixture';
 import * as THREE from 'three';
@@ -12,7 +12,6 @@ import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../
 import { ItemWorldFixture } from './itemWorldFixture';
 import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { activeItemUse } from './inventoryUseFixture';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -66,7 +65,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
 
 it('lights and heats a spring only after a cursor-held bath bomb is tossed in, then saves and reloads the state', async () => {
   const s = setup(), restored = setup();
-  const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
+  const graph = wilsonPlayer(() => 1).sg;
   let toss: ReturnType<typeof activeItemUse> | undefined;
   try {
     expect((await executeDebugCommand('c_give("bathbomb",2);c_spawn("hotspring")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);

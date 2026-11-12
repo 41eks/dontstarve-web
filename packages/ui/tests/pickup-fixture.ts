@@ -1,16 +1,15 @@
-import { wilsonStateInst } from '../../animation/tests/wilsonStateInst';
+import { wilsonPlayer } from '../../animation/tests/wilsonPlayer';
 import { withEntity } from '../../animation/tests/entityFixture';
 import * as THREE from 'three';
 import { createInventoryStore } from '../../../src/inventory';
 import { testPlayer } from '../../animation/tests/testPlayer';
 import { PlayerController, type PlayerLocomotor } from '../../stategraphs/src/playercontroller';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { createEquipmentExistenceState } from '../../signals/src';
 
 /** Standalone art fixtures share the production input path with a deterministic animation clock. */
 export function fixturePickup(scene: THREE.Scene, camera: THREE.Camera, renderer: THREE.WebGLRenderer,
   player = withEntity(new THREE.Group(), 'wilson'), inventory = createInventoryStore()) {
-  const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => .25));
+  const graph = wilsonPlayer(() => .25).sg;
   const animation = { stategraph: graph };
   // The player steps straight onto the target, so locomotor:PushAction buffers at once.
   const locomotor: PlayerLocomotor = { destination: undefined, stop() {}, goToPoint(point) { player.position.copy(point); return true; },

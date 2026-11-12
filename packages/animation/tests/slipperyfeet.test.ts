@@ -1,10 +1,8 @@
-import { wilsonStateInst } from './wilsonStateInst';
-import { Vector3 } from 'three';
-import { expect, it } from 'vitest';
+import { played, wilsonPlayer } from './wilsonPlayer';
+import { expect, it, vi } from 'vitest';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { SlipperyFeet } from '../../componets/src/slipperyfeet';
 import { SlipperyFeetTarget } from '../../componets/src/slipperyfeettarget';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 
 const FRAME = 1 / 30;
 
@@ -12,10 +10,6 @@ function setup(options: { speed?: number; pond?: boolean } = {}) {
   const scheduler = new GameTimeScheduler();
   const log = { resets: 0 };
   // The player inst the slip states read: its run speed, motor velocity, wish to move forward and slipperyfeet.
-  const inst = wilsonStateInst({ runSpeed: 6, slipperyfeet: { SetCurrent: (value: number) => { log.resets++; feet.SetCurrent(value); } } },
-    () => 14 * FRAME);
-  const graph = new WilsonStateGraph(inst);
-  const position = new Vector3();
   const tags = new Set<string>();
   const ice = { components: {} as { slipperyfeettarget?: SlipperyFeetTarget } };
   if (options.pond !== false) {
@@ -25,14 +19,23 @@ function setup(options: { speed?: number; pond?: boolean } = {}) {
     });
     ice.components.slipperyfeettarget.SetSlipperyRate((_, target) => (target as { getMotorSpeed(): number }).getMotorSpeed() > 6 ? 50 : 5);
   }
-  const feet = new SlipperyFeet({
-    getPosition: () => position, getMotorSpeed: () => options.speed ?? 5.33,
-    PushEvent: (name, data) => graph.pushEvent(name, data), sg: graph,
-  }, { scheduler, random: () => 1, findSlipperyEntities: () => options.pond === false ? [] : [ice] });
+  // The player inst the slip states read: its run speed, motor speed, wish to move forward and slipperyfeet.
+  let feet!: SlipperyFeet;
+  const inst = wilsonPlayer(() => 14 * FRAME, inst => {
+    inst.runSpeed = 6;
+    inst.currentMotorSpeed = options.speed ?? 5.33;
+    // AddComponent("slipperyfeet") on the player, finding the ice around it.
+    inst.slipperyfeet = feet = new SlipperyFeet(inst, { scheduler, random: () => 1, findSlipperyEntities: () => options.pond === false ? [] : [ice] });
+    const reset = feet.SetCurrent.bind(feet);
+    // SGwilson's slip states reset the slippiness the feet have accumulated.
+    vi.spyOn(feet, 'SetCurrent').mockImplementation((value: number) => { if (value === 0 && feet.slippiness > 0) log.resets++; reset(value); });
+  });
+  const graph = inst.sg;
   const step = (frames: number) => {
     for (let i = 0; i < frames; i++) { scheduler.advance(FRAME); feet.update(FRAME); graph.update(FRAME); }
   };
-  return { graph, feet, log, inst, step, tags, ice, position };
+  // The player's own position, which a test moves off the pond.
+  return { graph, feet, log, inst, step, tags, ice, position: inst.getPosition() };
 }
 
 it('slides a running player over a slipperyfeettarget, then falls on held input after the checkfall frame', () => {
@@ -58,7 +61,7 @@ it('slides a running player over a slipperyfeettarget, then falls on held input 
   expect(graph.stateName).toBe('slip_fall');
   expect(inst.motorSpeed).toBeCloseTo(6 * 0.25 * 0.8);
   step(10);
-  expect(inst.played).toContain('dontstarve/movement/slip_fall_thud');
+  expect(played(inst)).toContain('dontstarve/movement/slip_fall_thud');
   step(5);
   expect(graph.stateName).toBe('slip_fall_loop');
   graph.pushEvent('locomote');

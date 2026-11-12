@@ -1,9 +1,11 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
+import { testPlayer } from './testPlayer';
+import { addComponent } from '../../prefab/src/components';
+import { Health } from '../../componets/src/health';
 import type { PlayerAction } from '../../stategraphs/src/actionfns';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Wortox } from '../../prefab/src/wortox';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { Object3D, PerspectiveCamera, Scene, Vector3, type WebGLRenderer } from 'three';
 import * as CANNON from 'cannon-es';
@@ -12,7 +14,7 @@ import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { Locomotor } from '../../prefab/src/locomotor';
-import { GetPointSpecialActions, type WortoxDoer } from '../../prefab/src/wortoxPlayer';
+import { GetPointSpecialActions } from '../../prefab/src/wortoxPlayer';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
@@ -66,27 +68,29 @@ it('saves and restores Lua counters without persisting the transient finish task
 it('commits BLINK after the pre-animation, teleports after 11 frames and restores collision and invincibility', () => {
   const point = new Vector3(12, 0, 24), position = new Vector3();
   const state = new Wortox(new GameTimeScheduler(), { ConsumeByName: vi.fn() });
-  let invincible = false, collisions = true, tint = 0;
-  const inst = wilsonStateInst({
-    components: { health: { SetInvincible: (value: boolean) => { invincible = value; } } },
-    soulHopHost: { tryToPortalHop: () => state.TryToPortalHop(), facePoint() {}, teleport: (target: Vector3) => position.copy(target),
-      setPhysicsEnabled: (enabled: boolean) => { collisions = enabled; }, setTint: (value: number) => { tint = value; }, spawnFx: vi.fn() },
-  }, name => name === 'wortox_portal_jumpin_pre' ? .2 : 1);
-  const graph = new WilsonStateGraph(inst);
+  let collisions = true, tint = 0;
+  // The player inst: its health's invincibility and the soul hop host the application binds.
+  let health!: Health;
+  const inst = wilsonPlayer(name => name === 'wortox_portal_jumpin_pre' ? .2 : 1, inst => {
+    health = addComponent(inst, 'health', Health, 150);
+    inst.soulHopHost = { tryToPortalHop: () => state.TryToPortalHop(), facePoint() {}, teleport: (target: Vector3) => position.copy(target),
+      setPhysicsEnabled: (enabled: boolean) => { collisions = enabled; }, setTint: (value: number) => { tint = value; }, spawnFx: vi.fn() };
+  });
+  const graph = inst.sg;
   const execute = vi.fn(() => graph.beginPortalJump(point));
   const action: PlayerAction<'BLINK'> = new BufferedAction('BLINK', execute, () => true, { pos: point });
   expect(graph.pushBufferedAction(action)).toBe(true);
   graph.update(.19); expect(execute).not.toHaveBeenCalled();
   graph.update(.01); expect(execute).toHaveBeenCalledOnce();
   expect(graph.stateName).toBe('portal_jumpin');
-  graph.update(4 / 30); expect(invincible).toBe(true); expect(position.lengthSq()).toBe(0);
+  graph.update(4 / 30); expect(health.invincible).toBe(true); expect(position.lengthSq()).toBe(0);
   graph.update(7 / 30); expect(graph.stateName).toBe('portal_jumpout'); expect(position).toEqual(point);
-  expect(collisions).toBe(false); expect(invincible).toBe(true);
+  expect(collisions).toBe(false); expect(health.invincible).toBe(true);
   graph.requestOneShot('item_out'); graph.requestCrafting(true); graph.pushEvent('unequip');
   expect(graph.stateName).toBe('portal_jumpout');
-  graph.update(7 / 30); expect(invincible).toBe(false);
+  graph.update(7 / 30); expect(health.invincible).toBe(false);
   graph.update(1 / 30); expect(collisions).toBe(true); expect(tint).toBe(0);
-  graph.cancelAction('BLINK'); expect(collisions).toBe(true); expect(invincible).toBe(false);
+  graph.cancelAction('BLINK'); expect(collisions).toBe(true); expect(health.invincible).toBe(false);
   let valid = true;
   const cancelled = vi.fn(() => graph.beginPortalJump(point));
   graph.pushBufferedAction(new BufferedAction('BLINK', cancelled, () => valid, { pos: point }));
@@ -94,36 +98,35 @@ it('commits BLINK after the pre-animation, teleports after 11 frames and restore
   expect(cancelled).not.toHaveBeenCalled(); expect(graph.stateName).toBe('idle');
   graph.pushBufferedAction(new BufferedAction('BLINK', () => graph.beginPortalJump(point), () => true, { pos: point }));
   graph.update(.2 + 4 / 30);
-  expect(invincible).toBe(true);
+  expect(health.invincible).toBe(true);
   graph.goToState('death');
-  expect(invincible).toBe(false); expect(tint).toBe(0); expect(collisions).toBe(true);
+  expect(health.invincible).toBe(false); expect(tint).toBe(0); expect(collisions).toBe(true);
   state.dispose();
 });
 
 it('runs the map right click as BLINK_MAP without walking, revalidates before commit and snaps only after teleporting', () => {
   vi.stubGlobal('window', new EventTarget());
-  const player = new Object3D(), point = new Vector3(1200, 0, -900);
+  const point = new Vector3(1200, 0, -900);
   const tryToPortalHop = vi.fn(() => false), snapCamera = vi.fn(() => player.position.clone());
   const teleport = vi.fn((position: Vector3) => player.position.copy(position));
-  const inst = wilsonStateInst({ soulHopHost: { tryToPortalHop, facePoint() {}, teleport, snapCamera,
-    setPhysicsEnabled() {}, setTint() {}, spawnFx() {} } }, name => name === 'wortox_portal_jumpin_pre' ? .2 : 1);
-  const graph = new WilsonStateGraph(inst);
+  // The player inst: Wortox's soul hop host and point actions, and its own SGwilson.
+  let eligible = true, valid = true;
+  const inst = wilsonPlayer(name => name === 'wortox_portal_jumpin_pre' ? .2 : 1, inst => {
+    inst.addTag('soulstealer');
+    inst.soulHopHost = { tryToPortalHop, facePoint() {}, teleport, snapCamera, setPhysicsEnabled() {}, setTint() {}, spawnFx() {} };
+    inst.CanSoulhop = () => eligible; inst.CanBlinkTo = vi.fn(() => false); inst.CanBlinkFromWithMap = () => valid;
+  });
+  const graph = inst.sg, player = inst.transform.model;
   const world = { player, scene: new Scene(), camera: new PerspectiveCamera(),
     ground: new Object3D(), renderer: { domElement: new EventTarget() } as unknown as WebGLRenderer } as ActionWorldContext;
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
   const body = { position: player.position, velocity: new Vector3() } as unknown as CANNON.Body;
   const locomotor = new Locomotor(body, {});
   const goToPoint = vi.spyOn(locomotor, 'goToPoint');
-  let eligible = true, valid = true;
-  const doer: WortoxDoer & Record<string, unknown> = {
-    components: {}, position: player.position, getPosition: () => player.position,
-    hasTag: (tag: string) => tag === 'player' || tag === 'soulstealer',
-    sg: { hasStateTag: (tag: string) => graph.hasStateTag(tag), beginPortalJump: (pos: Vector3, fromMap?: boolean) => graph.beginPortalJump(pos, fromMap) },
-    CanSoulhop: () => eligible, CanBlinkTo: vi.fn(() => false), CanBlinkFromWithMap: () => valid,
-  };
-  world.mouseActions.pointspecialactionsfn = (_doer, pos, useitem, right) => GetPointSpecialActions(doer, player.position, pos, useitem, right);
+  const doer = testPlayer({ model: player });
+  world.mouseActions.pointspecialactionsfn = (_doer, pos, useitem, right) => GetPointSpecialActions(inst, player.position, pos, useitem, right);
   const controller = new PlayerController(world, graph,
-    locomotor, createEquipmentExistenceState('HANDS'), doer as never);
+    locomotor, createEquipmentExistenceState('HANDS'), doer);
   try {
     eligible = false;
     expect(controller.OnMapAction(point)).toBe(false);
@@ -143,8 +146,8 @@ it('runs the map right click as BLINK_MAP without walking, revalidates before co
     expect(graph.stateName).toBe('portal_jumpin');
     expect(tryToPortalHop).not.toHaveBeenCalled();
     expect(goToPoint).not.toHaveBeenCalled();
-    expect(doer.CanBlinkTo).not.toHaveBeenCalled();
-    expect(doer.checkingmapactions).toBeUndefined();
+    expect(inst.CanBlinkTo).not.toHaveBeenCalled();
+    expect(inst.checkingmapactions).toBeUndefined();
     graph.update(11 / 30);
     expect(teleport).toHaveBeenCalledExactlyOnceWith(point);
     expect(snapCamera).toHaveReturnedWith(point);

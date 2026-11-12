@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { played, wilsonPlayer } from './wilsonPlayer';
 import { Health } from '../../componets/src/health';
 import { addComponent } from '../../prefab/src/components';
 import { testPlayer } from './testPlayer';
@@ -11,7 +11,6 @@ import { cactusPrefabs, CACTUS_DAMAGE, CACTUS_REGROW_TIME } from '../../prefab/s
 import { ARMOR_DREADSTONEHAT, DREADSTONEHAT_ID } from '../../prefab/src/dreadstonehat';
 import { Combat } from '../../componets/src/combat';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { inventorySlotAddress } from '../../inventory/src';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -103,11 +102,11 @@ it('spares bramble_resistant pickers and restores a picked cactus empty', async 
 });
 
 it('flinches a living player into hit for six frames, and shells into shell_hit', () => {
-  const inst = wilsonStateInst(undefined, () => 1), { played } = inst;
-  const graph = new WilsonStateGraph(inst);
+  const inst = wilsonPlayer(() => 1);
+  const graph = inst.sg;
   graph.pushEvent('attacked', {});
   expect(graph.stateName).toBe('hit');
-  expect(played).toEqual(['dontstarve/wilson/hit', 'dontstarve/characters/wilson/hurt']);
+  expect(played(inst)).toEqual(['dontstarve/wilson/hit', 'dontstarve/characters/wilson/hurt']);
   graph.update(5 / 30);
   expect(graph.stateName).toBe('hit');
   graph.update(1 / 30);

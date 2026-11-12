@@ -1,4 +1,4 @@
-import { wilsonStateInst } from './wilsonStateInst';
+import { wilsonPlayer } from './wilsonPlayer';
 import { testPlayer } from './testPlayer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import * as THREE from 'three';
@@ -11,7 +11,6 @@ import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { createSignal, type HandEquipment } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src';
@@ -70,7 +69,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   torch.configure({ maxFuel: TORCH_FUEL, configureEntity: configureTorchEntity });
   const equipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' as const, entity: torch };
   const hand = createSignal<HandEquipment | null>(equipment);
-  const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
+  const graph = wilsonPlayer(() => 1).sg;
   const animation = { stategraph: graph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });

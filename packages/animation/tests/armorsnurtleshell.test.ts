@@ -12,8 +12,7 @@ import { createPerishWorld } from './perishWorldFixture';
 import { testEnts } from './entsFixture';
 import { createPickupInventory } from './pickupFixture';
 import { testPlayer } from './testPlayer';
-import { wilsonStateInst } from './wilsonStateInst';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
+import { wilsonPlayer } from './wilsonPlayer';
 
 let ents = testEnts();
 afterEach(() => { ents.dispose(); ents = testEnts(); });
@@ -22,11 +21,10 @@ function wornShell() {
   const world = createPerishWorld(), inventory = createPickupInventory();
   inventory.entities.bindPerishWorld(world);
   // The wearer is a player inst: its inventory wears the shell and its stategraph hides in it, pushing newstate on it.
-  const owner = testPlayer({ inventory });
-  const graph = owner.SetStateGraph(() => new WilsonStateGraph(wilsonStateInst({
-    PushEvent: (name: string, data?: unknown) => owner.PushEvent(name, data) })));
+  const player = wilsonPlayer(), owner = testPlayer({ model: player.transform.model, inventory });
+  const graph = player.sg;
   const goToState = vi.spyOn(graph, 'goToState');
-  const playSound = vi.spyOn(owner.AddSoundEmitter(), 'PlaySound').mockImplementation(() => {});
+  const playSound = vi.mocked(player.SoundEmitter.PlaySound);
   inventory.add('armorsnurtleshell', 1);
   const entity = inventory.getEntity(inventorySlotAddress(0))!;
   ents.track(entity);
