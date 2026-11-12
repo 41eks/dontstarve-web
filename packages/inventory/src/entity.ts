@@ -258,7 +258,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   equipmentWorld?: object;
   spelltype?: string;
   _cached_reskinname?: Map<string, string | undefined>;
-  castsound?: string;
+  castsound?: import('../../prefab/src/sound').SoundEventPath;
   projectiledelay?: number;
   fxcolour?: readonly [number, number, number];
   /** books.lua inst.def, inst.swap_build and inst.swap_prefix, read by SGwilson's book state. */

@@ -6,35 +6,35 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 /** DST constants.lua: one source animation frame is 1/30 second. */
 export const FRAMES = 1 / 30;
 
-export interface TimelineEvent<Context, Name extends string> {
+export interface TimelineEvent<Context, Name extends string, Mem extends object = Record<string, unknown>> {
   time: number;
-  fn: (inst: StateGraphInstance<Context, Name>) => void;
+  fn: (inst: StateGraphInstance<Context, Name, Mem>) => void;
 }
 
-export interface StateEvent<Context, Name extends string> {
+export interface StateEvent<Context, Name extends string, Mem extends object = Record<string, unknown>> {
   name: string;
   /** Method-typed, as each handler reads the data its event's pusher sends. */
-  fn: { call(inst: StateGraphInstance<Context, Name>, data: unknown): void }['call'];
+  fn: { call(inst: StateGraphInstance<Context, Name, Mem>, data: unknown): void }['call'];
 }
 
-export interface StateDefinition<Context, Name extends string> {
+export interface StateDefinition<Context, Name extends string, Mem extends object = Record<string, unknown>> {
   name: Name;
   tags?: readonly string[];
-  onenter?: (inst: StateGraphInstance<Context, Name>, data: unknown) => void;
-  onupdate?: (inst: StateGraphInstance<Context, Name>, dt: number) => void;
-  timeline?: readonly TimelineEvent<Context, Name>[];
-  ontimeout?: (inst: StateGraphInstance<Context, Name>) => void;
-  events?: readonly StateEvent<Context, Name>[];
-  onexit?: (inst: StateGraphInstance<Context, Name>, nextState: Name) => void;
+  onenter?: (inst: StateGraphInstance<Context, Name, Mem>, data: unknown) => void;
+  onupdate?: (inst: StateGraphInstance<Context, Name, Mem>, dt: number) => void;
+  timeline?: readonly TimelineEvent<Context, Name, Mem>[];
+  ontimeout?: (inst: StateGraphInstance<Context, Name, Mem>) => void;
+  events?: readonly StateEvent<Context, Name, Mem>[];
+  onexit?: (inst: StateGraphInstance<Context, Name, Mem>, nextState: Name) => void;
 }
 
-export function State<Context, Name extends string>(definition: StateDefinition<Context, Name>) {
+export function State<Context, Name extends string, Mem extends object = Record<string, unknown>>(definition: StateDefinition<Context, Name, Mem>) {
   return definition;
 }
 
-export function TimeEvent<Context, Name extends string>(
-  time: number, fn: TimelineEvent<Context, Name>['fn'],
-): TimelineEvent<Context, Name> {
+export function TimeEvent<Context, Name extends string, Mem extends object = Record<string, unknown>>(
+  time: number, fn: TimelineEvent<Context, Name, Mem>['fn'],
+): TimelineEvent<Context, Name, Mem> {
   if (!Number.isFinite(time) || time < 0) throw new Error('Invalid timeline time');
   return { time, fn };
 }
@@ -43,9 +43,9 @@ export function TimeEvent<Context, Name extends string>(
 type StoredEventListener = { call(data: unknown): void }['call'];
 
 /** EventHandler(name, fn): `data` is what the event's pusher sends (EntityEventData). */
-export function EventHandler<Context, Name extends string, E extends string = string>(
-  name: E, fn: (inst: StateGraphInstance<Context, Name>, data: EventData<E>) => void,
-): StateEvent<Context, Name> {
+export function EventHandler<Context, Name extends string, E extends string = string, Mem extends object = Record<string, unknown>>(
+  name: E, fn: (inst: StateGraphInstance<Context, Name, Mem>, data: EventData<E>) => void,
+): StateEvent<Context, Name, Mem> {
   return { name, fn };
 }
 
@@ -53,29 +53,29 @@ export function EventHandler<Context, Name extends string, E extends string = st
  * ActionHandler(action, deststate, condition). `deststate` is method-typed over the actions the graph is pushed, as Lua
  * does not check them: a graph whose inst only buffers its own kind of action reads that action's target as its type.
  */
-export interface StateActionHandler<Context, Name extends string, Action extends BufferedAction = BufferedAction> {
+export interface StateActionHandler<Context, Name extends string, Action extends BufferedAction = BufferedAction, Mem extends object = Record<string, unknown>> {
   action: string;
-  deststate: { call(inst: StateGraphInstance<Context, Name>, action: Action): Name | null | undefined }['call'];
-  condition?: (inst: StateGraphInstance<Context, Name>) => boolean;
+  deststate: { call(inst: StateGraphInstance<Context, Name, Mem>, action: Action): Name | null | undefined }['call'];
+  condition?: (inst: StateGraphInstance<Context, Name, Mem>) => boolean;
 }
 
 /** scripts/stategraph.lua: string destinations are constant destination functions. */
-export function ActionHandler<Context, Name extends string, Action extends BufferedAction = BufferedAction>(
-  action: string, state: Name | StateActionHandler<Context, Name, Action>['deststate'],
-  condition?: StateActionHandler<Context, Name, Action>['condition'],
-): StateActionHandler<Context, Name, Action> {
+export function ActionHandler<Context, Name extends string, Action extends BufferedAction = BufferedAction, Mem extends object = Record<string, unknown>>(
+  action: string, state: Name | StateActionHandler<Context, Name, Action, Mem>['deststate'],
+  condition?: StateActionHandler<Context, Name, Action, Mem>['condition'],
+): StateActionHandler<Context, Name, Action, Mem> {
   return { action, deststate: typeof state === 'string' ? () => state : state, condition };
 }
 
 /** State-local timelines and tags, mirroring scripts/stategraph.lua. */
-export class StateGraphInstance<Context, Name extends string> {
-  private readonly states = new Map<Name, StateDefinition<Context, Name>>();
-  private readonly actionHandlers = new Map<string, StateActionHandler<Context, Name>>();
+export class StateGraphInstance<Context, Name extends string, Mem extends object = Record<string, unknown>> {
+  private readonly states = new Map<Name, StateDefinition<Context, Name, Mem>>();
+  private readonly actionHandlers = new Map<string, StateActionHandler<Context, Name, BufferedAction, Mem>>();
   /** The stategraph's own EventHandlers (stategraph.lua sg.events), beside the current state's. */
   private readonly listeners = new Map<string, Set<StoredEventListener>>();
   /** What follows GoToState, which stategraph.lua reports as the inst's "newstate" event rather than to a handler. */
   private readonly newStateListeners = new Set<(data: { name: Name }) => void>();
-  private current!: StateDefinition<Context, Name>;
+  private current!: StateDefinition<Context, Name, Mem>;
   private tags = new Set<string>();
   private timelineIndex = 0;
   private timeout: number | null = null;
@@ -89,13 +89,14 @@ export class StateGraphInstance<Context, Name extends string> {
   private disposed = false;
   private pausedAt: number | undefined;
   private readonly cancelScheduled = new Set<() => void>();
-  statemem: Record<string, unknown> = {};
+  /** sg.statemem: what the current state keeps while it runs, cleared on every GoToState. */
+  statemem: Partial<Mem> = {};
   timeInState = 0;
   readonly context: Context;
 
   constructor(
-    context: Context, states: readonly StateDefinition<Context, Name>[],
-    actionHandlers: readonly StateActionHandler<Context, Name>[] = [],
+    context: Context, states: readonly StateDefinition<Context, Name, Mem>[],
+    actionHandlers: readonly StateActionHandler<Context, Name, BufferedAction, Mem>[] = [],
     scheduler?: GameTimeScheduler,
   ) {
     this.context = context;

@@ -1,11 +1,11 @@
 import type { Vector3 } from 'three';
-import type { WilsonStateGraph, WilsonStateName, PortalJumpData } from './SGwilson.ts';
+import { isPortalJumpData, type WilsonStateGraph, type WilsonStateMem, type WilsonStateName } from './SGwilson.ts';
 import { State, TimeEvent, EventHandler, FRAMES } from './stategraph.ts';
 
 /** SGwilson.lua's unmounted Wortox portal states, shared by ground and map jumps. */
-const state = State<WilsonStateGraph, WilsonStateName>;
-const time = (frame: number, fn: Parameters<typeof TimeEvent<WilsonStateGraph, WilsonStateName>>[1]) =>
-  TimeEvent<WilsonStateGraph, WilsonStateName>(frame * FRAMES, fn);
+const state = State<WilsonStateGraph, WilsonStateName, WilsonStateMem>;
+const time = (frame: number, fn: Parameters<typeof TimeEvent<WilsonStateGraph, WilsonStateName, WilsonStateMem>>[1]) =>
+  TimeEvent<WilsonStateGraph, WilsonStateName, WilsonStateMem>(frame * FRAMES, fn);
 const tint = (frame: number, value: number) => time(frame, inst => inst.context.entity.soulHopHost?.setTint(value));
 const play = (name: string) => [{ key: 'wortox_portal' as const, name: `wortox_portal_${name}` }];
 
@@ -25,7 +25,7 @@ export const wortoxStates = [
   state({
     name: 'portal_jumpin', tags: ['busy', 'pausepredict', 'nodangle', 'nomorph'],
     onenter: (inst, data) => {
-      inst.statemem.dest = data;
+      if (isPortalJumpData(data)) inst.statemem.dest = data;
       inst.context.entity.locomotor?.stop();
       inst.context.playClips(play('jumpin'));
       inst.context.entity.soulHopHost?.spawnFx('wortox_portal_jumpin_fx');
@@ -57,7 +57,8 @@ export const wortoxStates = [
     onenter: (inst, data) => {
       inst.context.entity.soulHopHost?.setPhysicsEnabled(false);
       inst.context.entity.locomotor?.stop();
-      const jump = data as PortalJumpData;
+      if (!isPortalJumpData(data)) throw new Error('portal_jumpout needs its jump destination');
+      const jump = data;
       inst.context.entity.soulHopHost?.teleport(jump.dest);
       inst.context.entity.soulHopHost?.resetMinimapOffset?.();
       if (jump.from_map) inst.context.entity.soulHopHost?.snapCamera?.();
