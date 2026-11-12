@@ -302,21 +302,30 @@ function stateContext(inst: LightFlier): LightFlierStateInst {
   };
 }
 
+/** The brain's TheWorld: simutil.lua FindEntity / GetClosestInstWithTag over TheSim; caves have no day. */
+function CreateBrainWorld(inst: LightFlier): BrainWorld {
+  // Transform:GetWorldPosition of the searcher, which the brain passes as a BrainEntity.
+  const origin = new Vector3();
+  const at = (from: BrainEntity) => { const { x, y, z } = from.getPosition(); return origin.set(x, y, z); };
+  return {
+    isDay: false, isAboveGroundAtPoint: () => true,
+    // FindEntity skips the searcher and entities that are not visible, those in limbo among them.
+    findEntity: (from, radius, fn, must, cant, oneOf) => inst.TheSim.FindEntities(at(from), radius, must, cant, oneOf)
+      .find(entity => entity !== from && entity.IsVisible() && !entity.inlimbo && (!fn || fn(entity, from))),
+    getClosestInstWithTag: (tags, from, radius) => {
+      const [first, second] = inst.TheSim.FindEntities(at(from), radius, tags);
+      return first !== from ? first : second;
+    },
+  };
+}
+
 /** The rest of fn() in the habitat's world: locomotor, SetStateGraph, SetBrain, the burnable and the day watch. */
 function BindLightFlierWorld(inst: LightFlier, habitat: LightFlierHabitat, lengths: ReadonlyMap<string, number>): void {
   if (inst.habitat) return;
   inst.habitat = habitat; habitat.flies.add(inst);
   const services = habitat.services, scheduler = services.scheduler;
   inst.bornAt = scheduler.now - (inst.lightflier?.age ?? 0);
-  inst.world = { isDay: false, isAboveGroundAtPoint: () => true,
-    // The players and the lightflier_flower homes are the entities the brain searches for.
-    findEntity: (from, radius, fn, must = [], cant = [], one = []) => [...services.getPlayers().map((player): BrainEntity => ({
-      prefab: 'wilson', components: {}, isValid: () => player.isValid(), hasTag: (tag: string) => tag === 'player' || tag === 'scarytoprey',
-      getPosition: () => player.position, getPhysicsRadius: () => .5 * WORLD_SCALE,
-    })), ...services.getHomes()].filter(e => e.isValid() && must.every(t => e.hasTag(t)) && !cant.some(t => e.hasTag(t)) && (!one.length || one.some(t => e.hasTag(t)))
-      && distanceSquared(from.getPosition(), e.getPosition()) <= radius ** 2).find(e => !fn || fn(e, from)),
-    getClosestInstWithTag: (tags, from, radius) => inst.world.findEntity(from, radius, undefined, tags),
-  };
+  inst.world = CreateBrainWorld(inst);
   inst.locomotor = addComponent(inst, 'locomotor', LocoMotor, { arriveDistance: .15 * WORLD_SCALE });
   inst.locomotor.walkspeed = inst.locomotor.runspeed = 3.5 * WORLD_SCALE;
   inst.animstate = new AnimState(scheduler, lengths, event => inst.PushEvent(event));
@@ -443,7 +452,6 @@ function LightFlierSave(inst: LightFlier): NonNullable<InventoryStack['lightflie
     ...(inst.home ? { homeId: String(inst.home.entityId) } : {}), ...(known ? { knownHome: [known.x, known.y, known.z] } : {}) };
 }
 
-const distanceSquared = (a: { x: number; z: number }, b: { x: number; z: number }) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
 
 /** The inventory item's side of lightflier.lua: tags, the NET workable, the VEGGIE eater and perishing while held. */
 export function configureLightFlierEntity(entity: ItemEntity): void {

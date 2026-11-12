@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
 import { lightflierFlowerPrefabs, LIGHTFLIER_FLOWER_ID, type LightFlierFlowerInstance } from '../../prefab/src/lightflier_flower';
 import { LightFlier, LightFlierHabitat, MakeLightFlier, UpdateLightFlier, configureLightFlierEntity, type LightFlierPlayer } from '../../prefab/src/lightflier';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
@@ -18,7 +18,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
-import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import { PrefabEntityManager, PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -33,16 +33,21 @@ function setup(players: LightFlierPlayer[] = [], withWorld = false) {
   const world = withWorld ? bindTestWorld(scheduler, () => area) : undefined;
   const dropLoot = (id: string, count: number) => { for (let i = 0; i < count; i++) loot.push(id); };
   const displays = new PrefabDisplayGroup(scene);
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { scheduler, tickingarea: world?.tickingarea });
+  const prefabs = new PrefabEntityManager<string, PrefabInstance<SpriteState, object>>(displays, '/dst/data/anim', { scheduler, tickingarea: world?.tickingarea });
+  // TheSim: the players the brain runs from stand in the same manager as the flies and their homes.
+  for (const player of players) {
+    const inst = new PrefabInstance('wilson', new SpriteState({ name: 'idle', billboard: true }));
+    inst.addTag('player'); inst.addTag('scarytoprey'); inst.setPosition(player.position.x, 0, player.position.z); prefabs.track(inst);
+  }
   const habitat = new LightFlierHabitat({ scheduler, getWatchWorldContent: world?.getWatchWorldContent, tickingarea: world?.tickingarea, getPlayers: () => players,
-    spawnItem: state => { const entity = new LightFlier(state); MakeLightFlier(entity); entities.push(entity); return entity; }, dropLoot,
+    spawnItem: state => { const entity = new LightFlier(state); MakeLightFlier(entity); prefabs.track(entity); entities.push(entity); return entity; }, dropLoot,
     getHomes: () => prefabs.instances(LIGHTFLIER_FLOWER_ID) as Iterable<LightFlierFlowerInstance> });
   prefabs.register(lightflierFlowerPrefabs({ scheduler, habitat, dropLoot, getWatchWorldContent: world?.getWatchWorldContent, getLightLevel: () => 1 }));
   const spawn = (position: THREE.Vector3, record?: PlacementSaveRecord) => prefabs.spawn(LIGHTFLIER_FLOWER_ID, position, record) as LightFlierFlowerInstance;
   const records = () => prefabs.exportRecords().map(({ record }) => record);
   const step = async (dt: number) => { scheduler.advance(dt); for (const fly of habitat.flies) UpdateLightFlier(fly, dt); habitat.update(dt); displays.update(dt); await task(); };
   const dispose = () => { entities.forEach(entity => entity.destroy()); prefabs.dispose(); displays.dispose(); habitat.dispose(); world?.unbind(); area.dispose(); scheduler.dispose(); };
-  return { scene, scheduler, entities, habitat, spawn, records, loot, step, dispose, awake };
+  return { scene, scheduler, entities, habitat, prefabs, spawn, records, loot, step, dispose, awake };
 }
 
 it('releases a child on light timeout, pauses growth, and captures the same entity before resuming the 12-day timer', async () => {
@@ -79,7 +84,7 @@ it('restores child ownership and returns home only at the source stategraph fram
     } finally { inventory.dispose(); }
     expect(record.components.lightflierFlower).toMatchObject({ picked: true, paused: true, childspawner: { childrenoutside: [fly.id] } });
     const home = restored.spawn(new THREE.Vector3(), record);
-    const child = new LightFlier(state); restored.entities.push(child); MakeLightFlier(child); configureLightFlierEntity(child);
+    const child = new LightFlier(state); restored.entities.push(child); MakeLightFlier(child); restored.prefabs.track(child); configureLightFlierEntity(child);
     restored.habitat.bind(child);
     expect(child.home).toBe(home); expect(home.components.childspawner.OnSave().childrenoutside).toEqual([fly.id]);
     child.getPosition().copy(home.getPosition()); home._lightflier_returning_home = child;
