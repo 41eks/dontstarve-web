@@ -1,4 +1,6 @@
-import type { BufferedActionObject } from './bufferedaction.ts';
+import type { ItemEntity } from '../../inventory/src/entity';
+import type { PlayerActionTarget } from './actionfns.ts';
+import type { EquippedActionDoer, SceneActionDoer } from './componentactions.ts';
 
 /** Supported action strings from strings.lua + languages/chinese_s.po; priorities from actions.lua. */
 export const ACTIONS = {
@@ -46,72 +48,92 @@ export const ACTIONS = {
 } as const;
 
 export type MouseActionId = keyof typeof ACTIONS;
+
+/** actions.lua Action({ ... }): the options the ported ACTIONS entries set. */
+export interface ActionDef {
+  readonly priority?: number;
+  readonly strings?: Readonly<Record<string, string>>;
+  readonly rmb?: boolean;
+  readonly distance?: number;
+  readonly mindistance?: number;
+  readonly instant?: boolean;
+  readonly arrive_anywhere?: boolean;
+  readonly map_action?: boolean;
+  readonly ghost_valid?: boolean;
+  readonly ghost_exclusive?: boolean;
+}
+const ACTION_DEFS: ReadonlyMap<string, ActionDef> = new Map(Object.entries(ACTIONS));
+/** ACTIONS[id], for an id the ported table has. */
+export function getActionDef(id: string): ActionDef | undefined { return ACTION_DEFS.get(id); }
+/** Whether ACTIONS has an entry for `id`. */
+export function isMouseActionId(id: string): id is MouseActionId { return ACTION_DEFS.has(id); }
+/** The player as the picker describes it to the actions' strfns: Wortox keeps its free soul-hop count on the inst. */
+export type ActionDescriptionDoer = SceneActionDoer & EquippedActionDoer & { readonly _freesoulhop_counter?: number };
+
 export interface ActionDescription {
   action: string;
   modifier?: string;
   /** BufferedAction.doer, for the strfns that ask who acts. */
-  doer?: object;
-  invobject?: BufferedActionObject;
-  target?: BufferedActionObject;
+  doer?: ActionDescriptionDoer;
+  invobject?: ItemEntity;
+  target?: PlayerActionTarget;
   /** A point action's ground position. */
   pos?: { readonly x: number; readonly y: number; readonly z: number };
 }
 
-type ActionFlags = { ghost_valid?: boolean; ghost_exclusive?: boolean };
-
 /** actions.lua `ghost_valid` (a ghost-exclusive action is ghost-valid); only the actions ported here that a ghost may do. */
 export function isGhostValidAction(action: ActionDescription): boolean {
-  const flags = ACTIONS[action.action as MouseActionId] as ActionFlags | undefined;
+  const flags = getActionDef(action.action);
   return flags?.ghost_valid === true || flags?.ghost_exclusive === true;
 }
 
 /** player_common.lua PlayerActionFilter, at the bottom of the filter stack: the living cannot do ghost-exclusive actions. */
 export function PlayerActionFilter(action: ActionDescription): boolean {
-  return (ACTIONS[action.action as MouseActionId] as ActionFlags | undefined)?.ghost_exclusive !== true;
+  return getActionDef(action.action)?.ghost_exclusive !== true;
 }
 
 export function getActionPriority(action: ActionDescription): number {
-  return ACTIONS[action.action as MouseActionId]?.priority ?? 0;
+  return getActionDef(action.action)?.priority ?? 0;
 }
 
 /** BufferedAction:GetActionString -> GetActionString(action.id, action.strfn(action)). */
 export function getActionString(action: ActionDescription): string {
-  const strings: Readonly<Record<string, string>> | undefined = ACTIONS[action.action as MouseActionId]?.strings;
+  const strings = getActionDef(action.action)?.strings;
   const modifier = action.modifier ?? strfn(action);
   const text = (modifier && strings?.[modifier]) || strings?.GENERIC || 'ACTION';
-  return text.includes('{item}') ? text.replace('{item}', action.invobject?.getDisplayName?.() ?? '') : text;
+  const item: PlayerActionTarget | undefined = action.invobject;
+  return text.includes('{item}') ? text.replace('{item}', item?.getDisplayName?.() ?? '') : text;
 }
 
 /** actions.lua ACTIONS.<id>.strfn, for the ported actions whose string depends on the act. */
 function strfn(act: ActionDescription): string | undefined {
-  const target = act.target as (BufferedActionObject & { components?: { container?: { IsOpenedBy(doer: object): boolean } } }) | undefined;
+  const target = act.target;
   switch (act.action) {
     case 'CASTSPELL': return act.invobject?.spelltype;
     case 'DEPLOY':
     case 'DEPLOY_TILEARRIVE':
       return act.invobject?.hasTag('usedeploystring') ? 'DEPLOY' : act.invobject?.hasTag('groundtile') ? 'GROUNDTILE' : undefined;
     case 'EAT': return act.invobject?.hasTag('fooddrink') ? 'DRINK' : undefined;
-    case 'RUMMAGE': return act.doer && target?.components?.container?.IsOpenedBy(act.doer) ? 'CLOSE' : undefined;
+    case 'RUMMAGE': return act.doer && target?.components.container?.IsOpenedBy(act.doer) ? 'CLOSE' : undefined;
     case 'HARVEST': return target?.prefab === 'birdcage' ? 'FREE' : undefined;
     // The stewer COOK / SPICE and decoratable branches are not ported.
     case 'STORE': return target?.prefab === 'birdcage' ? 'IMPRISON' : undefined;
     case 'TAKEITEM': return target?.prefab === 'birdcage' ? 'BIRDCAGE' : 'GENERIC';
     case 'BLINK': {
-      const doer = act.doer as { hasTag?(tag: string): boolean; _freesoulhop_counter?: number } | undefined;
-      return !act.invobject && doer?.hasTag?.('soulstealer') ? ((doer._freesoulhop_counter ?? 0) > 0 ? 'FREESOUL' : 'SOUL') : undefined;
+      const doer = act.doer;
+      return !act.invobject && doer?.hasTag('soulstealer') ? ((doer._freesoulhop_counter ?? 0) > 0 ? 'FREESOUL' : 'SOUL') : undefined;
     }
     case 'ATTACK': {
       // The invobject is the weapon; PROP, RANGEDSMOTHER and WHACK are not ported.
-      const combat = (act.doer as { components?: { combat?: { CanLightTarget(target: never, weapon?: never): boolean } } } | undefined)?.components?.combat;
-      const weapon = (act.invobject as { components?: { weapon?: unknown } } | undefined)?.components?.weapon;
-      return target && act.invobject && combat?.CanLightTarget(target as never, weapon as never) ? 'RANGEDLIGHT' : undefined;
+      const combat = act.doer?.components?.combat, weapon = act.invobject?.components.weapon;
+      return target && act.invobject && combat?.CanLightTarget(target, weapon) ? 'RANGEDLIGHT' : undefined;
     }
     case 'REEL': {
-      const rod = (act.invobject as { components?: { fishingrod?: { readonly target?: unknown; HasHookedFish(): boolean } } } | undefined)?.components?.fishingrod;
+      const rod = act.invobject?.components.fishingrod;
       if (!rod || rod.target !== act.target) return undefined;
       if (rod.HasHookedFish()) return 'REEL';
       // act.doer:HasTag("nibble"): the hook string is REEL's GENERIC.
-      return (act.doer as { sg?: { HasStateTag(tag: string): boolean } } | undefined)?.sg?.HasStateTag('nibble') ? undefined : 'CANCEL';
+      return act.doer?.sg?.HasStateTag('nibble') ? undefined : 'CANCEL';
     }
     default: return undefined;
   }

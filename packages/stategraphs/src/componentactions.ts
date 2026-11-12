@@ -9,6 +9,7 @@ import type { Vector3 } from 'three';
 import { getDeconstructionRecipe } from '../../componets/src/recipes.ts';
 import { ACTIONS, type MouseActionId } from './actions.ts';
 import { FOODGROUP, FOODTYPE } from '../../componets/src/eater';
+import { ItemEntity } from '../../inventory/src/entity';
 
 export interface ComponentActionEntity extends WorkInst {
   readonly _cached_reskinname?: Map<string, string | undefined>;
@@ -27,7 +28,8 @@ export interface ComponentActionEntity extends WorkInst {
     edible?: import('../../componets/src/edible').Edible;
     fuel?: import('../../componets/src/fuel').Fuel;
     farmplantable?: import('../../componets/src/farmplantable').FarmPlantable;
-    pickable?: { CanBeFertilized(): boolean; Fertilize(item: import('../../componets/src/trader').TradeItem, doer?: unknown): boolean };
+    pickable?: import('./pick').PickableComponent
+      & { CanBeFertilized(): boolean; Fertilize(item: import('../../componets/src/trader').TradeItem, doer?: unknown): boolean };
     workable?: Workable;
     tool?: Tool;
     spellcaster?: SpellCasterComponent;
@@ -53,13 +55,19 @@ export interface ComponentActionEntity extends WorkInst {
       TakeFuelItem(item: import('../../componets/src/fuel').FuelItem, doer?: unknown): boolean;
     };
     trader?: import('../../componets/src/trader').Trader<import('../../componets/src/trader').TradeItem>;
-    occupiable?: { CanOccupy(item: any): boolean; Occupy(item: any): boolean };
+    occupiable?: { CanOccupy(item: any): boolean; Occupy(item: any): boolean; IsOccupied(): boolean; Harvest(): import('../../inventory/src/entity').ItemEntity | undefined };
+    machine?: { IsOn(): boolean; TurnOn(): void; TurnOff(): void };
+    shelf?: { readonly cantakeitem: boolean; TakeItem(taker: { GiveItem(item: never): boolean }): boolean };
+    inspectable?: import('../../componets/src/inspectable').Inspectable;
+    fishable?: import('../../componets/src/fishable').Fishable;
+    book?: import('../../componets/src/book').BookComponent;
   };
 }
 
-export function equippedActionEntity(equipment: HandEquipment | null | undefined): ComponentActionEntity | undefined {
+/** The hand item an equipped action is done with. */
+export function equippedActionEntity(equipment: HandEquipment | null | undefined): ItemEntity | undefined {
   const entity = equipment?.entity;
-  return entity && 'hasTag' in entity && 'components' in entity ? entity as unknown as ComponentActionEntity : undefined;
+  return entity instanceof ItemEntity ? entity : undefined;
 }
 
 /** constants.lua TOOLACTIONS, for the work actions ported here. */
@@ -94,7 +102,7 @@ type SceneComponents = {
 export interface EquippedActionDoer {
   hasTag(tag: string): boolean;
   readonly sg?: { HasStateTag(tag: string): boolean };
-  readonly components?: { combat?: { CanLightTarget(target: never, weapon?: never): boolean } };
+  readonly components?: { combat?: Pick<import('../../componets/src/combat').Combat, 'CanLightTarget'> };
   /** TheWorld.Map, as deployable:CanDeploy reaches it. */
   readonly Map?: import('../../componets/src/deployable').DeployMap;
 }

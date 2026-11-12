@@ -25,6 +25,7 @@ import { registerActionEntity, disposeActionEntity } from './actionEntity';
 import { createPrefabEntity, PrefabInstance, prefabInstance, type EntityTask } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
+import type { PlayerAction } from '../../stategraphs/src/actionfns';
 import { SlipperyFeet } from '../../componets/src/slipperyfeet';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { SleepingBagUser } from '../../componets/src/sleepingbaguser';
@@ -256,7 +257,7 @@ export function playPickup(inst: PlayerInstance): void { startOneShot(inst, 'pic
 export function playDrop(inst: PlayerInstance, onDrop: () => boolean, onCancel?: () => void): boolean {
   if (inst.sg.hasStateTag('busy')) return false;
   cancelEmote(inst);
-  const action = new BufferedAction<WilsonAction>('DROP', onDrop);
+  const action: PlayerAction<WilsonAction> = new BufferedAction('DROP', onDrop);
   const stop = inst.sg.listenForEvent('actionfailed', data => {
     if (data.action === action) { stop(); onCancel?.(); }
   });

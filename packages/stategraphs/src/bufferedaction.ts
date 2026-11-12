@@ -1,5 +1,4 @@
 import type { SoundEventPath } from '../../prefab/src/sound';
-import { getActionString } from './actions.ts';
 
 /** books.lua def fields read by SGwilson's book2 state. */
 export interface BookDef {
@@ -35,9 +34,10 @@ export interface BufferedActionObject {
 /** The acting inst, as actions.lua's fns pass `act.doer` to the components they call. */
 export type BufferedActionDoer = import('../../componets/src/workable').Worker;
 
-export interface BufferedActionObjects<Target extends BufferedActionObject = BufferedActionObject> {
-  readonly doer?: BufferedActionDoer;
-  readonly invobject?: BufferedActionObject;
+export interface BufferedActionObjects<Target extends BufferedActionObject = BufferedActionObject,
+  Invobject extends BufferedActionObject = BufferedActionObject, Doer extends BufferedActionDoer = BufferedActionDoer> {
+  readonly doer?: Doer;
+  readonly invobject?: Invobject;
   readonly target?: Target;
   /** bufferedaction.lua pos, distance, arrivedist and forced. */
   readonly pos?: { readonly x: number; readonly y: number; readonly z: number };
@@ -47,13 +47,14 @@ export interface BufferedActionObjects<Target extends BufferedActionObject = Buf
 }
 
 /**
- * The actor owns one pending action; animation states choose when to execute it. `Target` is what the action was made
- * for, so code holding the action it made reads its target as that entity.
+ * The actor owns one pending action; animation states choose when to execute it. `Target`, `Invobject` and `Doer` are
+ * what the action was made with, so code holding the action it made reads them as those entities.
  */
-export class BufferedAction<Action extends string = string, Target extends BufferedActionObject = BufferedActionObject> {
+export class BufferedAction<Action extends string = string, Target extends BufferedActionObject = BufferedActionObject,
+  Invobject extends BufferedActionObject = BufferedActionObject, Doer extends BufferedActionDoer = BufferedActionDoer> {
   readonly action: Action;
-  readonly doer: BufferedActionDoer | undefined;
-  readonly invobject: BufferedActionObject | undefined;
+  readonly doer: Doer | undefined;
+  readonly invobject: Invobject | undefined;
   readonly target: Target | undefined;
   readonly pos: BufferedActionObjects['pos'];
   readonly distance: number | undefined;
@@ -66,7 +67,7 @@ export class BufferedAction<Action extends string = string, Target extends Buffe
 
   constructor(
     action: Action, execute: () => void | boolean, valid: () => boolean = () => true,
-    objects: BufferedActionObjects<Target> = {},
+    objects: BufferedActionObjects<Target, Invobject, Doer> = {},
   ) {
     this.action = action;
     this.doer = objects.doer;
@@ -81,7 +82,6 @@ export class BufferedAction<Action extends string = string, Target extends Buffe
   }
 
   isValid(): boolean { return this.valid(); }
-  getActionString(): string { return getActionString(this); }
   /** BufferedAction:Do runs the action, then Succeed() or Fail() notifies the pushing behaviour. */
   do(): boolean {
     if (!this.isValid()) return false;

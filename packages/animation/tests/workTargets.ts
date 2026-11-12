@@ -5,7 +5,9 @@ import { actionEntities } from '../../prefab/src/actionEntity';
 import type { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
-import type { BufferedActionDoer, BufferedActionObject } from '../../stategraphs/src/bufferedaction';
+import type { ItemEntity } from '../../inventory/src/entity';
+import type { PickupDoer } from '../../stategraphs/src/pickup';
+import { actionDoer } from './actionDoer';
 import type { WorkAction } from '../../componets/src/workable';
 
 /** A live entity whose workable currently takes `action`, as componentactions finds it through its tags. */
@@ -17,7 +19,7 @@ export interface WorkTarget {
   readonly position: ReturnType<PrefabInstance['getPosition']>;
   isValid(): boolean;
   /** One ACTIONS[action].fn on this target, as the stategraph's hit frame runs it. */
-  work(doer?: BufferedActionDoer, tool?: BufferedActionObject): boolean;
+  work(doer?: { readonly components?: Partial<PickupDoer['components']> }, tool?: ItemEntity): boolean;
 }
 
 /** `model` itself, or drawn somewhere below `root` (its scene, say). */
@@ -41,6 +43,6 @@ export function workTargets(action: WorkAction, filter?: Object3D | string): Wor
       get display() { return prefabDisplay(entity.transform.model)!; },
       get position() { return entity.getPosition(); },
       isValid: () => isValid(entity),
-      work: (doer = {}, tool) => createBufferedAction(action, { doer, target: entity, invobject: tool }).do(),
+      work: (doer = {}, tool) => createBufferedAction(action, { doer: actionDoer(doer.components), target: entity, invobject: tool }).do(),
     }) as WorkTarget);
 }

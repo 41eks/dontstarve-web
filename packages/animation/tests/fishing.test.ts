@@ -1,4 +1,5 @@
 import { createPlayerEquipper } from './playerEquipFixture';
+import { actionDoer } from './actionDoer';
 import { prefabManager } from './prefabManagerFixture';
 import { advancePlayer } from './playerVisual';
 import { getActionString } from '../../stategraphs/src/actions';
@@ -96,10 +97,10 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   animation.fishingHost = { waitForFish: () => rodOf().WaitForFish(), collect: () => rodOf().Collect(),
     loseRod: () => { rodOf().Release(); tool.remove(); } };
   // The player inst: the rod's events reach its stategraph, whose tags gate the rod.
-  const doer = { hasTag: (tag: string) => tag === 'player', getPosition: () => player.position,
+  const doer = { ...actionDoer(), position: player.position, getPosition: () => player.position, GetPosition: () => player.position,
     PushEvent: (name: string, data: unknown) => animation.sg.pushEvent(name, data),
-    sg: { HasStateTag: (tag: string) => animation.sg.hasStateTag(tag) } };
-  const playerController = new PlayerController(world, animation.sg, locomotor, equipped, doer as never, () => false);
+    sg: { HasStateTag: (tag: string) => animation.sg.hasStateTag(tag) }, TheSim: { FindEntities: () => [] } };
+  const playerController = new PlayerController(world, animation.sg, locomotor, equipped, doer, () => false);
   const pondEntity = () => findActionEntity(pond)!;
   const controller = {
     // EQUIPPED.fishingrod on the left button: FISH a pond, or REEL the one being fished (an instant action).

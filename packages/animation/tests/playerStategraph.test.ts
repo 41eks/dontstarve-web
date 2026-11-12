@@ -1,4 +1,8 @@
 import { makeAlive, makeGhost } from '../../prefab/src/player_common_extensions';
+import type { PlayerAction } from '../../stategraphs/src/actionfns';
+import { ItemEntity } from '../../inventory/src/entity';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { SpriteState } from '../../display/src';
 import { playDrop, startMovement } from '../../prefab/src/player_common';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
@@ -97,23 +101,25 @@ it('keeps the source mining timeline when Wortox changes facing and emits one ac
 
 it('keeps a buffered action when the same action, target and invobject is pushed again, as PushBufferedAction does', async () => {
   const animation = playerInst(await createPlayer('/dst/data/anim'));
-  const rod = { prefab: 'fishingrod', hasTag: (tag: string) => tag === 'fishingrod' };
-  const pond = { prefab: 'pond', hasTag: () => false };
+  const rod = new ItemEntity({ itemId: 'fishingrod', count: 1 }); rod.addTag('fishingrod');
+  const pondEntity = () => new PrefabInstance('pond', new SpriteState({ name: 'idle', billboard: true }));
+  const pond = pondEntity();
+  const fish = (fn: () => void, target = pond): PlayerAction<'FISH'> => new BufferedAction('FISH', fn, undefined, { invobject: rod, target });
   const failed: unknown[] = [];
   animation.sg.listenForEvent('actionfailed', data => failed.push((data as { action: unknown }).action));
   const cast = vi.fn(), repeat = vi.fn(), other = vi.fn();
-  const first = new BufferedAction('FISH', cast, undefined, { invobject: rod, target: pond });
+  const first = fish(cast);
   expect(animation.sg.pushBufferedAction(first)).toBe(true);
   for (let frame = 0; frame < 5; frame++) advancePlayer(animation, 1 / 30);
   // fishing_pre is not busy: the duplicate is dropped and the first cast keeps its timeline.
-  expect(animation.sg.pushBufferedAction(new BufferedAction('FISH', repeat, undefined, { invobject: rod, target: pond }))).toBe(false);
+  expect(animation.sg.pushBufferedAction(fish(repeat))).toBe(false);
   for (let frame = 0; frame < 11 && !cast.mock.calls.length; frame++) advancePlayer(animation, 1 / 30);
   expect(cast).toHaveBeenCalledOnce();
   expect(repeat).not.toHaveBeenCalled();
   // Another target replaces the buffered action; the replaced one fails.
-  const second = new BufferedAction('FISH', vi.fn(), undefined, { invobject: rod, target: pond });
+  const second = fish(vi.fn());
   expect(animation.sg.pushBufferedAction(second)).toBe(true);
-  expect(animation.sg.pushBufferedAction(new BufferedAction('FISH', other, undefined, { invobject: rod, target: { ...pond } }))).toBe(true);
+  expect(animation.sg.pushBufferedAction(fish(other, pondEntity()))).toBe(true);
   expect(failed).toEqual([second]);
 });
 

@@ -1,4 +1,5 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { actionDoer } from './actionDoer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
@@ -75,9 +76,9 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   // The player inst: LIGHT pushes onstartedfire on it.
   const playerEvents = new EventEmitter<Record<string, unknown>>();
-  const doer = { hasTag: (tag: string) => tag === 'player', getPosition: () => player.position,
-    PushEvent: (name: string, data: unknown) => playerEvents.emit(name, data) };
-  const playerController = new PlayerController(world, animation.stategraph, locomotor, hand, doer as never, () => false);
+  const doer = { ...actionDoer(), position: player.position, getPosition: () => player.position, GetPosition: () => player.position,
+    PushEvent: (name: string, data: unknown) => playerEvents.emit(name, data), TheSim: { FindEntities: () => [] } };
+  const playerController = new PlayerController(world, animation.stategraph, locomotor, hand, doer, () => false);
   // EQUIPPED.lighter on the right button, then DoAction.
   const controller = {
     request: (inst: typeof target) => collectEquippedItemActions(torch, doer, inst, true).includes('LIGHT')

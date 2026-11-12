@@ -1,4 +1,5 @@
 import { makeAlive, makeGhost } from '../../prefab/src/player_common_extensions';
+import { ItemEntity } from '../../inventory/src/entity';
 import { advancePlayer, registerPlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -39,7 +40,7 @@ it('creates the logical player and body synchronously and completes actions and 
     const living = instance.sprite.sprite.peek().source;
     expect(living).toMatchObject({ bank: 'wilson', buildArchive: 'dynamic/wortox.zip' });
     const read = vi.fn(() => true);
-    const book = { prefab: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' }, hasTag: () => false };
+    const book = new ItemEntity({ itemId: 'book_silviculture', count: 1 }); book.def = { fx_under_prefab: 'fx_roots_under_book' };
     expect(animation.sg.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }))).toBe(true);
     for (let frame = 0; frame < 60 && animation.sg.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
     expect(animation.sg.stateName).toBe('book2');

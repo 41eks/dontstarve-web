@@ -1,4 +1,5 @@
 import { createPlayerEquipper } from './playerEquipFixture';
+import { ItemEntity } from '../../inventory/src/entity';
 import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -64,7 +65,7 @@ describe('original bugnet assets and Wilson action', () => {
     const controller = playerInst(player);
     const controllerEquipper = createPlayerEquipper(controller);
     const capture = vi.fn();
-    const net = { prefab: 'bugnet', hasTag: (tag: string) => tag === 'NET_tool' };
+    const net = new ItemEntity({ itemId: 'bugnet', count: 1 }); net.addTag('NET_tool');
     const swing = () => controller.sg.pushBufferedAction(new BufferedAction('NET', capture, undefined, { invobject: net }));
     const netting = () => controller.sg.isPerformingAction('NET');
     await controllerEquipper.equip('bugnet');

@@ -1,9 +1,8 @@
 import { bindActionCancellation, type PlayerActionKind } from './actionEvents.ts';
 import { isHandActionBusy, type ActionLocomotor, type ActionWorldContext } from './actionContext.ts';
-import { createBufferedAction, customArriveCheck, extraArriveDist, hasActionFn } from './actionfns.ts';
-import { ACTIONS, type ActionDescription, type MouseActionId } from './actions.ts';
-import type { BufferedAction, BufferedActionDoer, BufferedActionObject } from './bufferedaction.ts';
-import { equippedActionEntity, type ComponentActionEntity, type SceneActionDoer } from './componentactions.ts';
+import { createBufferedAction, customArriveCheck, extraArriveDist, hasActionFn, type PlayerAction, type PlayerActionDoer, type PlayerActionTarget } from './actionfns.ts';
+import { getActionDef, isMouseActionId, type ActionDescription } from './actions.ts';
+import { equippedActionEntity, type SceneActionDoer } from './componentactions.ts';
 import type { WilsonStateGraph } from './SGwilson.ts';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
@@ -12,23 +11,13 @@ import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { WilsonAction } from './SGwilson.ts';
 import type { EntityQuery } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/tile';
-import type { Combat, CombatInst } from '../../componets/src/combat';
+import type { Combat } from '../../componets/src/combat';
 import { Vector3 } from 'three';
-import type { ItemEntity } from '../../inventory/src/entity';
-import type { PickupDoer } from './pickup.ts';
-
-/** An entity the picker resolved as an action target: tags and components plus its ground position and radius. */
-type ActionTargetEntity = ComponentActionEntity & {
-  getPosition(): import('three').Vector3;
-  getPhysicsRadius?(): number;
-  /** PlayerController:GetMapActions' workaround flags, read by pointspecialactionsfn. */
-  checkingmapactions?: boolean;
-  checkingmapactions_pos?: Vector3;
-};
+import { ItemEntity } from '../../inventory/src/entity';
 
 export type PlayerLocomotor = ActionLocomotor & Required<Pick<ActionLocomotor, 'PushAction'>>;
 
-type PlayerDoer = BufferedActionDoer & SceneActionDoer & {
+type PlayerDoer = PlayerActionDoer & SceneActionDoer & {
   readonly components?: { combat?: Combat };
   /** TheSim of the world the player is in. */
   readonly TheSim: EntityQuery;
@@ -61,7 +50,7 @@ export class PlayerController {
   private forceAttack = false;
   private readonly cleanups: (() => void)[] = [];
   /** The action this controller pushed: walked to by the locomotor, then buffered on the stategraph. */
-  private action?: BufferedAction<WilsonAction>;
+  private action?: PlayerAction<WilsonAction>;
   private walking = false;
   private disposed = false;
 
@@ -98,51 +87,49 @@ export class PlayerController {
     window.addEventListener('blur', this.handleBlur);
   }
 
-  private equippedItem(): ComponentActionEntity | undefined {
+  private equippedItem(): ItemEntity | undefined {
     const item = equippedActionEntity(this.handEquipment.peek());
     return item && !item.isRemoved ? item : undefined;
   }
 
   /** The buffered action this controller owns, while it is walked to or performed. */
-  get bufferedAction(): BufferedAction<WilsonAction> | undefined { return this.action; }
+  get bufferedAction(): PlayerAction<WilsonAction> | undefined { return this.action; }
 
   /** PlayerActionPicker:SortActionList's BufferedAction(doer, target, action, invobject) for a picked action. */
-  createAction(description: ActionDescription): BufferedAction<WilsonAction> | undefined {
-    const target = description.target as (BufferedActionObject & Partial<ActionTargetEntity>) | undefined;
-    const pos = description.pos;
-    const invobject = description.invobject as (BufferedActionObject & { isRemoved?: boolean }) | undefined;
+  createAction(description: ActionDescription): PlayerAction<WilsonAction> | undefined {
+    const { target, pos, invobject } = description;
     // An inventory action has neither target nor point: the item is used where the doer stands.
-    if (!hasActionFn(description.action) || (target ? !target.getPosition : !pos && !invobject)) return undefined;
-    const inventory = this.doer.components?.inventory;
+    if (!hasActionFn(description.action) || (!target && !pos && !invobject)) return undefined;
+    const inventory = this.doer.components.inventory;
     const equipped = invobject !== undefined && invobject === this.equippedItem();
-    const heldTarget = target !== undefined && inventory?.CanAccessItem?.(target as ItemEntity) === true;
+    const heldTarget = target instanceof ItemEntity && inventory.CanAccessItem(target);
     // An inventory action keeps the actual inst, including when it moves between accessible slots.
     const validfn = () => (invobject === undefined || (equipped ? invobject === this.equippedItem()
-      : inventory?.CanAccessItem?.(invobject as ItemEntity) === true))
-      && (!heldTarget || inventory?.CanAccessItem?.(target as ItemEntity) === true);
+      : inventory.CanAccessItem(invobject)))
+      && (!heldTarget || (target instanceof ItemEntity && inventory.CanAccessItem(target)));
     return createBufferedAction(description.action as WilsonAction,
       { doer: this.doer, target, invobject, ...(pos ? { pos: { x: pos.x, y: pos.y, z: pos.z } } : {}) }, validfn);
   }
 
   /** playercontroller.lua GetItemUseAction: try the active item's RMB actions, then its LMB actions. */
-  GetItemUseAction(item: ItemEntity, target: ItemEntity): BufferedAction<WilsonAction> | undefined {
+  GetItemUseAction(item: ItemEntity, target: ItemEntity): PlayerAction<WilsonAction> | undefined {
     const picked = this.picker.GetUseItemActions(target, item, true)[0]
       ?? this.picker.GetUseItemActions(target, item, false)[0];
     return picked && this.createAction(picked);
   }
 
   /** inventory.lua UseItemFromInvTile without an active item: the first of GetInventoryActions(item). */
-  GetInventoryItemAction(item: ItemEntity): BufferedAction<WilsonAction> | undefined {
+  GetInventoryItemAction(item: ItemEntity): PlayerAction<WilsonAction> | undefined {
     const picked = this.picker.GetInventoryActions(item)[0];
     return picked && this.createAction(picked);
   }
 
   /** BufferedAction:GetActionPoint: the target's position, else the action's pos. */
-  private actionPoint(action: BufferedAction<WilsonAction>): Vector3 {
-    const target = action.target as Partial<ActionTargetEntity> | undefined;
-    if (target?.getPosition) {
+  private actionPoint(action: PlayerAction<WilsonAction>): Vector3 {
+    const target = action.target;
+    if (target) {
       // locomotor.lua Dest(target) follows inventoryitem's owner, while the action retains the target inst.
-      const owner = (target as ComponentActionEntity).components?.inventoryitem?.owner as { getPosition?(): Vector3 } | undefined;
+      const owner = target instanceof ItemEntity ? target.components.inventoryitem.owner : undefined;
       return owner?.getPosition?.() ?? target.getPosition();
     }
     const pos = action.pos!;
@@ -150,13 +137,12 @@ export class PlayerController {
   }
 
   /** PlayerController:DoAction: locomotor:PushAction walks to the target and the inst buffers the action there. */
-  DoAction(action: BufferedAction<WilsonAction>): boolean {
+  DoAction(action: PlayerAction<WilsonAction>): boolean {
     const { stategraph } = this;
-    const target = action.target as Partial<ActionTargetEntity> | undefined;
-    if (this.disposed || (target ? !target.getPosition : !action.pos && !action.invobject) || stategraph.hasStateTag('busy')
+    const target = action.target;
+    if (this.disposed || (!target && !action.pos && !action.invobject) || stategraph.hasStateTag('busy')
       || isHandActionBusy(stategraph) || !action.isValid()) return false;
-    const { distance, mindistance, instant, arrive_anywhere } = (ACTIONS[action.action as MouseActionId] ?? {}) as
-      { distance?: number; mindistance?: number; instant?: boolean; arrive_anywhere?: boolean };
+    const { distance, mindistance, instant, arrive_anywhere } = getActionDef(action.action) ?? {};
     // EntityScript:PushBufferedAction for an instant action: face the target and do it now, keeping the
     // buffered action and the state it runs in.
     if (instant) {
@@ -178,12 +164,12 @@ export class PlayerController {
     this.walking = true;
     const combat = this.doer.components?.combat, customarrive = customArriveCheck(action);
     this.locomotor.PushAction({
-      target: { getPosition: () => this.actionPoint(action), getPhysicsRadius: () => target?.getPhysicsRadius?.() ?? 0 },
+      target: { getPosition: () => this.actionPoint(action), getPhysicsRadius: () => target?.getPhysicsRadius() ?? 0 },
       ...(distance === undefined ? {} : { distance: distance * WORLD_SCALE + extraArriveDist(action) }),
       ...(mindistance === undefined ? {} : { minDistance: mindistance * WORLD_SCALE }),
       // locomotor OnUpdate for ATTACK: combat:LocomotorCanAttack, inside the attack range of the target's edge.
-      ...(action.action === 'ATTACK' && combat && target ? { arrived: () => this.doer.getPosition!()
-        .distanceToSquared(target.getPosition!()) <= combat.CalcAttackRangeSq(target as unknown as CombatInst) } : {}),
+      ...(action.action === 'ATTACK' && combat && target ? { arrived: () => this.doer.getPosition()
+        .distanceToSquared(target.getPosition()) <= combat.CalcAttackRangeSq(target) } : {}),
       // customarrivecheck = ArriveAnywhere.
       ...(arrive_anywhere ? { arrived: () => true } : {}),
       ...(customarrive ? { arrived: customarrive } : {}),
@@ -210,13 +196,13 @@ export class PlayerController {
     try { rmb = picker.GetPointSpecialActions(this.world.player.position, true)[0]; }
     finally { this.doer.checkingmapactions = undefined; this.doer.checkingmapactions_pos = undefined; }
     const mapAction = rmb && `${rmb}_MAP`;
-    if (!mapAction || !(mapAction in ACTIONS)) return false;
-    const action = this.createAction({ action: mapAction as MouseActionId, pos: position.clone() });
+    if (!mapAction || !isMouseActionId(mapAction)) return false;
+    const action = this.createAction({ action: mapAction, pos: position.clone() });
     return !!action && this.DoAction(action);
   }
 
   /** locomotor OnUpdate at the destination: FaceMovePoint, then inst:PushBufferedAction. */
-  private arrive(action: BufferedAction<WilsonAction>): void {
+  private arrive(action: PlayerAction<WilsonAction>): void {
     if (this.action !== action) return;
     this.walking = false;
     prefabInstance(this.world.player)?.sprite.facePoint(this.world.player.position, this.actionPoint(action));
@@ -224,18 +210,17 @@ export class PlayerController {
   }
 
   /** playercontroller.lua GetAttackTarget: the nearest valid combat target in reach, none while already attacking. */
-  getAttackTarget(forceAttack: boolean): ActionTargetEntity | undefined {
+  getAttackTarget(forceAttack: boolean): PlayerActionTarget | undefined {
     const combat = this.doer.components?.combat, position = this.doer.getPosition?.();
     if (!combat || !position || this.stategraph.hasStateTag('attack')) return undefined;
     // Autowalking searches 6 extra units; direct (WASD) walking only reaches attack range.
     const rad = this.isManualMovement() ? combat.GetAttackRange() : combat.GetAttackRange() + 6 * WORLD_SCALE;
     const reach = (this.doer.getPhysicsRadius?.() ?? 0) + rad + .1 * WORLD_SCALE;
-    let nearest: ActionTargetEntity | undefined, nearestDistance = Infinity;
+    let nearest: PlayerActionTarget | undefined, nearestDistance = Infinity;
     // TheSim:FindEntities around the doer for "_combat" insts, excluding INLIMBO.
-    for (const entity of this.doer.TheSim.FindEntities(position, reach + 5 * WORLD_SCALE, [], ['INLIMBO'])) {
-      const target = entity as unknown as ActionTargetEntity;
-      if (!(entity.components as { combat?: unknown }).combat || !this.isValidAttackTarget(target, forceAttack)) continue;
-      const radius = target.getPhysicsRadius?.() ?? 0;
+    for (const target of this.doer.TheSim.FindEntities(position, reach + 5 * WORLD_SCALE, [], ['INLIMBO'])) {
+      if (!target.components.combat || !this.isValidAttackTarget(target, forceAttack)) continue;
+      const radius = target.getPhysicsRadius();
       const dsq = target.getPosition().distanceToSquared(position);
       if (dsq > (reach + radius) ** 2) continue;
       const distance = Math.max(0, Math.sqrt(dsq) - radius);
@@ -245,10 +230,10 @@ export class PlayerController {
   }
 
   /** ValidateAttackTarget for the ported cases: a lightable target, or a combat target that is hostile or forced. */
-  private isValidAttackTarget(target: ActionTargetEntity, forceAttack: boolean): boolean {
-    const combat = this.doer.components?.combat, inst = target as unknown as CombatInst;
+  private isValidAttackTarget(target: PlayerActionTarget, forceAttack: boolean): boolean {
+    const combat = this.doer.components.combat;
     if (!combat || target.isRemoved || target.hasTag('stealth')) return false;
-    return combat.CanLightTarget(inst) || (combat.CanTarget(inst) && (forceAttack || target.hasTag('hostile')));
+    return combat.CanLightTarget(target) || (combat.CanTarget(target) && (forceAttack || target.hasTag('hostile')));
   }
 
   /** playercontroller.lua DoAttackButton: ATTACK the attack target with the hand item as invobject. */
@@ -257,7 +242,7 @@ export class PlayerController {
     if (!target) return false;
     if (this.action?.action === 'ATTACK' && this.action.target === target && this.walking) return true;
     const invobject = this.equippedItem();
-    const action = createBufferedAction('ATTACK' as WilsonAction, { doer: this.doer, target, invobject },
+    const action = createBufferedAction<WilsonAction>('ATTACK', { doer: this.doer, target, invobject },
       () => invobject === undefined || invobject === this.equippedItem());
     return this.DoAction(action);
   }
@@ -300,8 +285,8 @@ export class PlayerController {
     if (!action) {
       this.cancel();
       // OnRightClick: no action returns the active item. Only deployable items are ported; other held items' RMB controllers read their own clicks.
-      const inventory = (this.doer as unknown as PickupDoer).components?.inventory;
-      if (event.button === 2 && !picked && this.picker.canPickClickAction() && inventory?.GetActiveItem?.()?.components.deployable) {
+      const inventory = this.doer.components.inventory;
+      if (event.button === 2 && !picked && this.picker.canPickClickAction() && inventory.GetActiveItem()?.components.deployable) {
         event.preventDefault();
         event.stopImmediatePropagation();
         inventory.ReturnActiveItem();

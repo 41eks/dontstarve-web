@@ -118,6 +118,7 @@ const pickupDoer: PickupDoer & WortoxDoer & { sg: NonNullable<PickupDoer['sg']> 
   components: { inventory, health: playerStats.health, hunger: playerStats.hunger, eater: playerInstance.components.eater,
     sleepingbaguser: playerInstance.components.sleepingbaguser, get talker() { return playerInstance.components.talker; } },
   get prefab() { return playerInstance.prefab; },
+  get isRemoved() { return playerInstance.isRemoved; },
   ListenForEvent: (name, listener) => playerInstance.ListenForEvent(name, listener),
   hasTag: tag => tag === 'player' || playerInstance.hasTag(tag),
   addTag: tag => playerInstance.addTag(tag),

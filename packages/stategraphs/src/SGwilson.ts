@@ -1,7 +1,7 @@
 import type { EventData } from '../../componets/src/entityEvents';
 import { AnimationPlayback } from '@dontstarve-web/animation/animationPlayback';
-import { BufferedAction } from './bufferedaction.ts';
 import type { BufferedActionObject } from './bufferedaction.ts';
+import type { PlayerAction } from './actionfns.ts';
 import { ActionHandler as DefineActionHandler, EventHandler, FRAMES, State as DefineState, StateGraphInstance, TimeEvent } from './stategraph.ts';
 import type { StateActionHandler, StateDefinition } from './stategraph.ts';
 import { wortoxStates } from './SGwortox.ts';
@@ -87,11 +87,6 @@ const CALORIES_MED = 25;
 export type WilsonSleepAnnounce = 'ANNOUNCE_NODAYSLEEP' | 'ANNOUNCE_NONIGHTSIESTA' | 'ANNOUNCE_NOSLEEPONFIRE' | 'ANNOUNCE_NOHUNGERSLEEP';
 
 
-/** The SLEEPIN target as the tent state checks it: its tags, sleepingbag and burnable. */
-interface WilsonTentTarget extends BufferedActionObject {
-  readonly components?: { sleepingbag?: unknown; burnable?: { IsBurning(): boolean } };
-}
-
 /** What SGwilson.lua's death state reaches: DropAllItemsForDeath and the controller. */
 export interface WilsonDeathHost {
   /** inventory:DropEverything(true) */
@@ -173,11 +168,6 @@ export interface WilsonStateInst {
   readonly bookFx?: { spawn(prefab: string, followSymbol?: string): WilsonFx };
 }
 
-/** The SHAVE target: beard.lua ShouldTryToShave gates the state. */
-export interface ShaveTarget {
-  readonly components?: { beard?: { ShouldTryToShave(doer: unknown): { ok: true } | { ok: false; reason?: string } } };
-}
-
 export interface WilsonBrokenTool { readonly prefab: string; readonly nobrokentoolfx?: boolean }
 
 export interface WilsonCombat {
@@ -189,7 +179,7 @@ export interface WilsonCombat {
 
 type WilsonInstance = StateGraphInstance<WilsonStateGraph, WilsonStateName>;
 const State = DefineState<WilsonStateGraph, WilsonStateName>;
-const ActionHandler = DefineActionHandler<WilsonStateGraph, WilsonStateName>;
+const ActionHandler = DefineActionHandler<WilsonStateGraph, WilsonStateName, PlayerAction>;
 /**
  * SGwilson.lua DoHurtSound: dontstarve/characters/<soundsname or prefab>/hurt. The sound catalog has Wilson's hurt
  * event only, so every player sounds Wilson's.
@@ -285,9 +275,8 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     onenter: (inst) => {
       inst.context.entity.locomotor?.stop();
       const action = inst.context.getBufferedAction();
-      const shavee = action?.target as ShaveTarget | undefined;
-      const shaver = (action?.invobject as { components?: { shaver?: unknown } } | undefined)?.components?.shaver;
-      const verdict = shaver && shavee ? shavee.components?.beard?.ShouldTryToShave(undefined) : undefined;
+      const shavee = action?.target, shaver = action?.invobject?.components.shaver;
+      const verdict = shaver && shavee ? shavee.components.beard?.ShouldTryToShave(undefined) : undefined;
       if (!verdict?.ok) {
         inst.context.failBufferedAction(verdict?.reason);
         inst.goToState('idle');
@@ -316,7 +305,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     onenter: (inst) => {
       const { entity } = inst.context;
       entity.locomotor?.stop();
-      const target = inst.context.getBufferedAction()?.target as WilsonTentTarget | undefined;
+      const target = inst.context.getBufferedAction()?.target;
       if (!target) {
         inst.context.clearBufferedAction();
         inst.goToState('idle');
@@ -341,8 +330,8 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       SetSleeperSleepState(entity);
     },
     ontimeout: (inst) => {
-      const tent = inst.context.getBufferedAction()?.target as WilsonTentTarget | undefined;
-      if (!tent || !tent.components?.sleepingbag || !tent.hasTag('tent') || tent.hasTag('hassleeper')
+      const tent = inst.context.getBufferedAction()?.target;
+      if (!tent || !tent.components.sleepingbag || !tent.hasTag('tent') || tent.hasTag('hassleeper')
         || tent.hasTag('siestahut') !== (clockstate.peek().phase === 'day') || tent.components.burnable?.IsBurning()) {
         // Edge cases, don't bother with fail dialogue.
         inst.context.clearBufferedAction();
@@ -1470,7 +1459,7 @@ const applicationStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] = 
 ];
 
 /** SGwilson.lua action handlers for the supported, unmounted player/tool branches. */
-const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = [
+const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName, PlayerAction>[] = [
   ActionHandler('BLINK', (inst, action) => !action.invobject && inst.context.entity.soulHopHost ? 'portal_jumpin_pre' : null),
   ActionHandler('BLINK_MAP', (inst, action) => !action.invobject && inst.context.entity.soulHopHost ? 'portal_jumpin_pre' : null),
   // Ranged, blowdart and mounted destinations need unported states.
@@ -1527,7 +1516,7 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
     // SGwilson.lua:1043-1077 — jostle/skill/riding branches remain unported.
     if (action.target?.hasTag('jostlepick')) return null;
     if (action.target?.hasTag('noquickpick')) return 'dolongaction';
-    const pickable = (action.target as { components?: { pickable?: { quickpick?: boolean } } } | undefined)?.components?.pickable;
+    const pickable = action.target?.components.pickable;
     return pickable?.quickpick ? 'doshortaction' : 'dolongaction';
   }),
   ActionHandler('LIGHT', 'catchonfire'),
@@ -1539,7 +1528,7 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = 
   ActionHandler('EAT', (inst, action) => {
     if (inst.hasStateTag('busy')) return null;
     const obj = action.target ?? action.invobject;
-    if (!(obj as { components?: { edible?: unknown } } | undefined)?.components?.edible) return null;
+    if (!obj?.components.edible) return null;
     // eater:PrefersToEat, the soul branch, the slow/meat "eat" state and floating remain unported: only quickeat is connected.
     return 'quickeat';
   }),
@@ -1567,7 +1556,7 @@ export class WilsonStateGraph {
   private sg: WilsonInstance;
   private ghost = false;
   private loadingGhostFlag = false;
-  private bufferedAction: BufferedAction<WilsonAction> | null = null;
+  private bufferedAction: PlayerAction<WilsonAction> | null = null;
   private movementState: WilsonMovementState = 'idle';
   private crafting = false;
   private readonly playback: AnimationPlayback<WilsonAnimationClip>;
@@ -1575,7 +1564,7 @@ export class WilsonStateGraph {
   private preparedEmote: readonly WilsonAnimationClip[] = [];
   private foodDrink = false;
   private activeAction: WilsonAction | null = null;
-  private activeBufferedAction: BufferedAction<WilsonAction> | undefined;
+  private activeBufferedAction: PlayerAction<WilsonAction> | undefined;
   private activeInvobject: BufferedActionObject | undefined;
 
   constructor(entity: WilsonStateInst) {
@@ -1715,7 +1704,7 @@ export class WilsonStateGraph {
     return this.activeAction === action
       && (invobjectPrefab === undefined || this.activeInvobject?.prefab === invobjectPrefab);
   }
-  isActionActive(action: BufferedAction<WilsonAction>): boolean { return this.activeBufferedAction === action; }
+  isActionActive(action: PlayerAction<WilsonAction>): boolean { return this.activeBufferedAction === action; }
   get isSoulHopping(): boolean { return this.isPerformingAction('BLINK') || this.isPerformingAction('BLINK_MAP'); }
 
   /** A state that outlives the action's equipment (loserod, catchfish) stops being cancelled by `unequip`. */
@@ -1799,7 +1788,7 @@ export class WilsonStateGraph {
    * keeps running and the new one is dropped (false: its callback never runs); otherwise the old one fails,
    * TestForStart validates the new one and sg:StartAction enters its handler's destination state.
    */
-  pushBufferedAction(action: BufferedAction<WilsonAction>): boolean {
+  pushBufferedAction(action: PlayerAction<WilsonAction>): boolean {
     const current = this.bufferedAction;
     if (current && current.action === action.action && current.target === action.target
       && current.invobject === action.invobject && !this.hasStateTag('idle')) return false;
@@ -1827,7 +1816,7 @@ export class WilsonStateGraph {
     return true;
   }
 
-  getBufferedAction(): BufferedAction<WilsonAction> | null { return this.bufferedAction; }
+  getBufferedAction(): PlayerAction<WilsonAction> | null { return this.bufferedAction; }
 
   /** EntityScript:PerformBufferedAction; false when nothing ran or the action failed. */
   performBufferedAction(): boolean {

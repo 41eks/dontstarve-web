@@ -1,4 +1,5 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import type { PlayerAction } from '../../stategraphs/src/actionfns';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Wortox } from '../../prefab/src/wortox';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -73,7 +74,7 @@ it('commits BLINK after the pre-animation, teleports after 11 frames and restore
   }, name => name === 'wortox_portal_jumpin_pre' ? .2 : 1);
   const graph = new WilsonStateGraph(inst);
   const execute = vi.fn(() => graph.beginPortalJump(point));
-  const action = new BufferedAction('BLINK', execute, () => true, { pos: point });
+  const action: PlayerAction<'BLINK'> = new BufferedAction('BLINK', execute, () => true, { pos: point });
   expect(graph.pushBufferedAction(action)).toBe(true);
   graph.update(.19); expect(execute).not.toHaveBeenCalled();
   graph.update(.01); expect(execute).toHaveBeenCalledOnce();

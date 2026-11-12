@@ -1,4 +1,5 @@
 import { playPickup } from '../../prefab/src/player_common';
+import { ItemEntity } from '../../inventory/src/entity';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer } from './playerVisual';
 
@@ -58,7 +59,7 @@ it('casts at source frame nine once and cancels before commitment on unequip or 
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('reskin_tool');
   const cast = vi.fn();
-  const tool = { prefab: 'reskin_tool', spelltype: 'RESKIN', hasTag: (tag: string) => tag === 'veryquickcast' };
+  const tool = new ItemEntity({ itemId: 'reskin_tool', count: 1 }); tool.spelltype = 'RESKIN'; tool.addTag('veryquickcast');
   const push = () => animation.sg.pushBufferedAction(new BufferedAction('CASTSPELL', cast, undefined, { invobject: tool }));
   expect(push()).toBe(true);
   expect(push()).toBe(false);

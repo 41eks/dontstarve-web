@@ -49,17 +49,21 @@ export function EventHandler<Context, Name extends string, E extends string = st
   return { name, fn };
 }
 
-export interface StateActionHandler<Context, Name extends string> {
+/**
+ * ActionHandler(action, deststate, condition). `deststate` is method-typed over the actions the graph is pushed, as Lua
+ * does not check them: a graph whose inst only buffers its own kind of action reads that action's target as its type.
+ */
+export interface StateActionHandler<Context, Name extends string, Action extends BufferedAction = BufferedAction> {
   action: string;
-  deststate: (inst: StateGraphInstance<Context, Name>, action: BufferedAction) => Name | null | undefined;
+  deststate: { call(inst: StateGraphInstance<Context, Name>, action: Action): Name | null | undefined }['call'];
   condition?: (inst: StateGraphInstance<Context, Name>) => boolean;
 }
 
 /** scripts/stategraph.lua: string destinations are constant destination functions. */
-export function ActionHandler<Context, Name extends string>(
-  action: string, state: Name | StateActionHandler<Context, Name>['deststate'],
-  condition?: StateActionHandler<Context, Name>['condition'],
-): StateActionHandler<Context, Name> {
+export function ActionHandler<Context, Name extends string, Action extends BufferedAction = BufferedAction>(
+  action: string, state: Name | StateActionHandler<Context, Name, Action>['deststate'],
+  condition?: StateActionHandler<Context, Name, Action>['condition'],
+): StateActionHandler<Context, Name, Action> {
   return { action, deststate: typeof state === 'string' ? () => state : state, condition };
 }
 

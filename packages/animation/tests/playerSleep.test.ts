@@ -1,4 +1,7 @@
 import { wakeFromBed } from '../../prefab/src/player_common';
+import type { PlayerAction } from '../../stategraphs/src/actionfns';
+import { PrefabInstance } from '../../prefab/src/prefabInstance';
+import { SpriteState } from '../../display/src';
 import { addComponent } from '../../prefab/src/components';
 import { Talker } from '../../componets/src/talker';
 import { advancePlayer } from './playerVisual';
@@ -23,14 +26,14 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   instance.HUD = { Show() {}, Hide() {}, controls };
   const talker = addComponent(instance, 'talker', Talker, scheduler);
   const sleeper = instance.components.sleepingbaguser!;
-  const tags = new Set(['tent']);
-  const tent = { hasTag: (tag: string) => tags.has(tag), addTag: (tag: string) => { tags.add(tag); },
-    removeTag: (tag: string) => { tags.delete(tag); }, components: {} as { sleepingbag?: SleepingBag } };
-  const bag = tent.components.sleepingbag = new SleepingBag(tent);
+  const tent = new PrefabInstance('tent', new SpriteState({ name: 'idle', billboard: true }));
+  tent.addTag('tent');
+  const bag = addComponent(tent, 'sleepingbag', SleepingBag);
+  const tags = { has: (tag: string) => tent.hasTag(tag) };
   const frames = (count: number) => { for (let i = 0; i < count; i++) advancePlayer(animation, 1 / 30); };
   const sleepIn = () => {
     // ACTIONS.SLEEPIN.fn: sleepingbag:DoSleep(act.doer) reaches the player's sleepingbaguser.
-    const action = new BufferedAction('SLEEPIN', () => { bag.DoSleep(sleeper); return true; }, () => true, { target: tent });
+    const action: PlayerAction<'SLEEPIN'> = new BufferedAction('SLEEPIN', () => { bag.DoSleep(sleeper); return true; }, () => true, { target: tent });
     expect(animation.sg.pushBufferedAction(action)).toBe(true);
     frames(7);
   };

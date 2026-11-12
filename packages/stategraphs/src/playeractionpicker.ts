@@ -2,7 +2,9 @@ import type * as THREE from 'three';
 import { getActionPriority, type ActionDescription } from './actions.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import { isMouseTarget } from './mouseTargets.ts';
-import { collectEquippedItemActions, collectPointActions, collectSceneActions, type ComponentActionEntity, type EquippedActionDoer, type SceneActionDoer } from './componentactions.ts';
+import { collectEquippedItemActions, collectPointActions, collectSceneActions, type EquippedActionDoer, type SceneActionDoer } from './componentactions.ts';
+import type { ItemEntity } from '../../inventory/src/entity';
+import type { PlayerActionTarget } from './actionfns.ts';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { collectInventoryActions, collectUseItemActions } from './componentactions';
 
@@ -32,7 +34,7 @@ export class PlayerActionPicker {
   private readonly placerSources = new Set<() => boolean>();
   private readonly eventActions = new WeakMap<PointerEvent, { actions: MouseActions; target?: THREE.Object3D }>();
   private selectedModel?: THREE.Object3D;
-  private player?: { readonly doer: SceneActionDoer & EquippedActionDoer; equippedItem(): ComponentActionEntity | undefined };
+  private player?: { readonly doer: SceneActionDoer & EquippedActionDoer; equippedItem(): ItemEntity | undefined };
   private readonly actionFilters: { fn: ActionFilter; priority: number }[] = [];
   get targetModel(): THREE.Object3D | undefined { return this.selectedModel; }
 
@@ -50,7 +52,7 @@ export class PlayerActionPicker {
   }
 
   /** playeractionpicker.inst: the player whose hand item and scene actions the picker collects itself. */
-  bindPlayer(doer: SceneActionDoer & EquippedActionDoer, equippedItem: () => ComponentActionEntity | undefined): () => void {
+  bindPlayer(doer: SceneActionDoer & EquippedActionDoer, equippedItem: () => ItemEntity | undefined): () => void {
     const player = { doer, equippedItem };
     this.player = player;
     return () => { if (this.player === player) this.player = undefined; };
@@ -85,7 +87,7 @@ export class PlayerActionPicker {
   }
 
   /** playeractionpicker.lua GetUseItemActions / SortActionList, including the current action filter. */
-  GetUseItemActions(target: ComponentActionEntity, item: ComponentActionEntity, right = false): ActionDescription[] {
+  GetUseItemActions(target: PlayerActionTarget, item: ItemEntity, right = false): ActionDescription[] {
     const doer = this.player?.doer;
     if (!doer) return [];
     return collectUseItemActions(item, doer, target, right).map(action => ({ action, doer, target, invobject: item }))
@@ -94,7 +96,7 @@ export class PlayerActionPicker {
   }
 
   /** playeractionpicker.lua GetInventoryActions without the drop modifier: the item's INVENTORY actions, sorted. */
-  GetInventoryActions(useitem: ComponentActionEntity, right = false): ActionDescription[] {
+  GetInventoryActions(useitem: ItemEntity, right = false): ActionDescription[] {
     const doer = this.player?.doer;
     if (!doer) return [];
     return collectInventoryActions(useitem, doer, right).map(action => ({ action, doer, invobject: useitem }))
@@ -115,7 +117,7 @@ export class PlayerActionPicker {
   }
 
   /** GetPointActions(position, useitem, true) for the active item; of its POINT entries only deployable is ported. */
-  private activeItemPointActions(player: NonNullable<PlayerActionPicker['player']>, item: ComponentActionEntity): MouseActionCandidate[] {
+  private activeItemPointActions(player: NonNullable<PlayerActionPicker['player']>, item: ItemEntity): MouseActionCandidate[] {
     const point = this.pointer.groundPoint();
     if (!point) return [];
     return collectPointActions(item, player.doer, point, true).filter(action => action === 'DEPLOY' || action === 'DEPLOY_TILEARRIVE').map(action => ({

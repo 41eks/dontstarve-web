@@ -1,4 +1,5 @@
 import { createPlayerEquipper } from './playerEquipFixture';
+import { ItemEntity } from '../../inventory/src/entity';
 import { advancePlayer, facePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -86,7 +87,8 @@ it('declares player art and retains its entity, equipment, body and shared asset
 
 it('declares tagged book FX as child instances and expires them on game timers while the player visual sleeps', async () => {
   const { instance, model, display, animation } = await createPlayer();
-  const book = { prefab: 'book_silviculture', swap_build: 'swap_books', swap_prefix: 'book_silviculture', def: { fx_under_prefab: 'fx_roots_under_book' }, hasTag: () => false };
+  const book = new ItemEntity({ itemId: 'book_silviculture', count: 1 });
+  book.swap_build = 'swap_books'; book.swap_prefix = 'book_silviculture'; book.def = { fx_under_prefab: 'fx_roots_under_book' };
   const read = vi.fn(() => true);
   const push = () => animation.sg.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }));
   expect(push()).toBe(true);

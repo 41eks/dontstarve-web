@@ -11,6 +11,8 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 export interface PickupDoer extends InventoryActor {
   /** inst.prefab, whose speech GetDescription looks up. */
   readonly prefab?: string;
+  /** EntityScript:IsValid, as the components an action calls read their doer's. */
+  readonly isRemoved: boolean;
   /** The player inst always owns its tags, as reader.lua adds "reader". */
   addTag(tag: string): void;
   removeTag(tag: string): void;
@@ -40,6 +42,7 @@ export function createPickupDoer(player: THREE.Object3D, inventory: InventorySto
   if (!inst) throw new Error('A pickup doer needs its player entity');
   const doer: PickupDoer = { components: { inventory }, GetPosition: () => player.position, getPosition: () => player.position,
     position: player.position,
+    get isRemoved() { return inst.isRemoved; },
     // inst.sg:HasStateTag, as workable callbacks read the worker's state.
     get sg() { const sg = inst.sg; return sg && { HasStateTag: (tag: string) => sg.hasStateTag(tag) }; },
     hasTag: tag => tag === 'player' || inst.hasTag(tag),

@@ -2,15 +2,16 @@ import type { Object3D } from 'three';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import { collectSceneActions, type SceneActionDoer } from '../../stategraphs/src/componentactions';
-import type { BufferedActionDoer } from '../../stategraphs/src/bufferedaction';
+import type { PlayerActionDoer } from '../../stategraphs/src/actionfns';
+import { actionDoer } from './actionDoer';
 
-type Doer = SceneActionDoer & BufferedActionDoer;
+type Doer = PlayerActionDoer;
 
 /** A player with an inventory, for scene entries that only read the doer's tags and slots. */
-export const sceneDoer: Doer = { hasTag: tag => tag === 'player', components: { inventory: { GetNumSlots: () => 15 } as never } };
+export const sceneDoer: Doer = actionDoer();
 
 /** GetSceneActions: what the entity drawn by `model` offers the doer on a button (none without an entity). */
-export function sceneActions(model: Object3D, doer: Doer = sceneDoer, right = false): string[] {
+export function sceneActions(model: Object3D, doer: SceneActionDoer = sceneDoer, right = false): string[] {
   const entity = findActionEntity(model);
   return entity ? collectSceneActions(entity, doer, right) : [];
 }
