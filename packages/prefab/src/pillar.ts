@@ -2,7 +2,6 @@ import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { Transform } from './transform';
 
 export const PILLAR_RUINS_ID = 'pillar_ruins' as const;
 /** pillar.lua's other pillar(name, true) entries: identical except for the name that is their bank and build. */
@@ -13,7 +12,7 @@ const PHYSICS_RADIUS = 2.35;
 /** pillar.lua makefn("pillar_ruins", true). Its shake listener (doshake) is not ported. */
 function createPillarRuins(position: ReadonlyVector3): PrefabInstance {
   // PlayAnimation("idle", true): the constructor's clip loops.
-  const inst = new PrefabInstance(PILLAR_RUINS_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+  const inst = new PrefabInstance(PILLAR_RUINS_ID, new SpriteState({ name: 'idle', billboard: true }));
   inst.setPosition(position.x, 0, position.z);
   inst.addTag('charge_barrier');
   inst.addTag('quake_on_charge');
@@ -25,7 +24,7 @@ function createPillarRuins(position: ReadonlyVector3): PrefabInstance {
 /** pillar.lua makefn(name, true) without pillar_ruins' tags. Its shake listener (doshake) is not ported. */
 function createCavePillar(prefab: CavePillarId, position: ReadonlyVector3): PrefabInstance {
   // PlayAnimation("idle", true): the constructor's clip loops.
-  const inst = new PrefabInstance(prefab, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+  const inst = new PrefabInstance(prefab, new SpriteState({ name: 'idle', billboard: true }));
   inst.setPosition(position.x, 0, position.z);
   inst.addTag('blocker'); // MakeObstaclePhysics
   return inst;

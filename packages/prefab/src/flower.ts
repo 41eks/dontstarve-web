@@ -1,6 +1,5 @@
 import { Inspectable } from '../../componets/src/inspectable';
 import { addComponent } from './components';
-import { Transform } from './transform';
 import { SpriteState } from '@dontstarve-web/display';
 import type { PickActor } from '@dontstarve-web/stategraphs/pick';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -92,7 +91,7 @@ export class FlowerInstance extends PrefabInstance {
   readonly random: () => number;
 
   constructor(world: FlowerWorld, random = Math.random) {
-    super('flower', new SpriteState({ name: 'f1', none: true, billboard: true }), Transform.stationary());
+    super('flower', new SpriteState({ name: 'f1', none: true, billboard: true }));
     const { scheduler } = world;
     this.worldServices = { worldEvents: world.worldEvents };
     this.random = random;

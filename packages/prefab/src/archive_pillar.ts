@@ -2,7 +2,6 @@ import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { Transform } from './transform';
 
 export const ARCHIVE_PILLAR_ID = 'archive_pillar' as const;
 /** The constructor's roll can pick either bank for any record, including one saved as not broken. */
@@ -16,7 +15,7 @@ export class ArchivePillarInstance extends PrefabInstance {
 
   constructor(position: ReadonlyVector3) {
     // PlayAnimation("idle", true): the constructor's clip loops, and both banks have it.
-    super(ARCHIVE_PILLAR_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+    super(ARCHIVE_PILLAR_ID, new SpriteState({ name: 'idle', billboard: true }));
     this.setPosition(position.x, 0, position.z);
     this.addTag('blocker'); // MakeObstaclePhysics
     this.addTag('archive_pillar');

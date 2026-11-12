@@ -16,7 +16,6 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { Pathfinder } from './pathfinder';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
-import { Transform } from './transform';
 
 export { ATRIUM_GATE_TIMER_NAMES, type AtriumGateTimerName, type AtriumGateTimerSave } from '../../componets/src/atriumGateSignatures';
 
@@ -76,7 +75,7 @@ export class AtriumGateInstance extends PrefabInstance {
   _gatefx?: AtriumGateFxInstance;
 
   constructor(world: AtriumGateWorld, position: ReadonlyVector3) {
-    super(ATRIUM_GATE_ID, new SpriteState({ name: 'idle', held: true, billboard: true }), Transform.stationary());
+    super(ATRIUM_GATE_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
     this.world = world;
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce('idle');
@@ -212,7 +211,7 @@ function OnRemove(inst: AtriumGateInstance): void {
 
 /** atrium_gate.lua CreateFloor. */
 function CreateFloor(position: ReadonlyVector3): PrefabInstance {
-  const inst = new PrefabInstance(ATRIUM_GATE_FLOOR_ID, new SpriteState({ name: 'idle_active', held: true, billboard: false }), Transform.stationary());
+  const inst = new PrefabInstance(ATRIUM_GATE_FLOOR_ID, new SpriteState({ name: 'idle_active', held: true, billboard: false }));
   inst.setPosition(position.x, 0, position.z);
   inst.addTag('DECOR'); inst.addTag('NOCLICK');
   inst.persists = false;
@@ -224,7 +223,7 @@ function CreateFloor(position: ReadonlyVector3): PrefabInstance {
 
 /** atrium_gate.lua CreateTerraformBlocker: a transform only. */
 function CreateTerraformBlocker(position: ReadonlyVector3): PrefabInstance {
-  const inst = new PrefabInstance(ATRIUM_GATE_TERRAFORM_BLOCKER_ID, new SpriteState({ name: '', billboard: false }), Transform.stationary());
+  const inst = new PrefabInstance(ATRIUM_GATE_TERRAFORM_BLOCKER_ID, new SpriteState({ name: '', billboard: false }));
   inst.setPosition(position.x, 0, position.z);
   inst.addTag('FX');
   inst.persists = false;
@@ -236,7 +235,7 @@ export class AtriumGateFxInstance extends PrefabInstance {
   anim?: 'idle' | 'overload';
 
   constructor(position: ReadonlyVector3) {
-    super(ATRIUM_GATE_ACTIVATEDFX_ID, new SpriteState({ name: 'idle_pre', billboard: true }), Transform.stationary());
+    super(ATRIUM_GATE_ACTIVATEDFX_ID, new SpriteState({ name: 'idle_pre', billboard: true }));
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce('idle_pre');
     this.addTag('FX');

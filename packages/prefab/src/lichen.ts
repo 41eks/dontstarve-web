@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
-import { Transform } from './transform';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { BurnableBinding } from './treeFire';
@@ -36,7 +35,7 @@ function makeemptyfn(inst: PickablePlantInstance): void {
  * MakeHauntableIgnite is not ported.
  */
 function fn(world: PickablePlantWorld): PickablePlantInstance {
-  const inst = new PickablePlantInstance(LICHEN_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+  const inst = new PickablePlantInstance(LICHEN_ID, new SpriteState({ name: 'idle', billboard: true }));
   inst.AddSoundEmitter();
   inst.BindScheduler(world.scheduler);
   inst.addTag('lichen');

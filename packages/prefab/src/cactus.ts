@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
-import { Transform } from './transform';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { BurnableBinding } from './treeFire';
@@ -95,7 +94,7 @@ function OnEntityWake(inst: CactusInstance): void {
  * MakeHauntableIgnite.
  */
 function cactusfn(prefab: CactusId, world: PickablePlantWorld): CactusInstance {
-  const inst = new CactusInstance(prefab, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+  const inst = new CactusInstance(prefab, new SpriteState({ name: 'idle', billboard: true }));
   inst.BindScheduler(world.scheduler);
   inst.world = world;
   inst.season = world.getWatchWorldContent?.(WorldContentKey.Season, stop => inst.onRemove(stop));

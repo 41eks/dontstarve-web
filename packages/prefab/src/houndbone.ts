@@ -7,7 +7,6 @@ import { Workable } from '../../componets/src/workable';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { Transform } from './transform';
 import type { WorldFx } from './world_fx';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -33,7 +32,7 @@ export class HoundboneInstance extends PrefabInstance {
   bonetype = 1;
 
   constructor(world: HoundboneWorld, position: ReadonlyVector3) {
-    super(HOUNDBONE_ID, new SpriteState({ name: 'piece1', billboard: true }), Transform.stationary());
+    super(HOUNDBONE_ID, new SpriteState({ name: 'piece1', billboard: true }));
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce('piece1');
     this.addTag('bone');

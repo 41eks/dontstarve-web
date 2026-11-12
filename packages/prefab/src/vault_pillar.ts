@@ -1,7 +1,6 @@
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import { Transform } from './transform';
 
 export const VAULT_PILLAR_ID = 'vault_pillar' as const;
 const VAULT_PILLAR_BOTTOM_ID = 'vault_pillar_bottom' as const;
@@ -18,7 +17,7 @@ export class VaultPillarInstance extends PrefabInstance {
   broken?: 1;
 
   constructor(world: VaultPillarWorld, position: ReadonlyVector3) {
-    super(VAULT_PILLAR_ID, new SpriteState({ name: 'idle_upper', billboard: true }), Transform.stationary());
+    super(VAULT_PILLAR_ID, new SpriteState({ name: 'idle_upper', billboard: true }));
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce('idle_upper'); // PlayAnimation("idle_upper"), never looping.
     this.addTag('decor');
@@ -59,7 +58,7 @@ export class VaultPillarInstance extends PrefabInstance {
 }
 
 function createBottom(position: ReadonlyVector3): PrefabInstance {
-  const inst = new PrefabInstance(VAULT_PILLAR_BOTTOM_ID, new SpriteState({ name: 'idle_lower', billboard: true }), Transform.stationary());
+  const inst = new PrefabInstance(VAULT_PILLAR_BOTTOM_ID, new SpriteState({ name: 'idle_lower', billboard: true }));
   inst.setPosition(position.x, 0, position.z);
   inst.persists = false;
   inst.addTag('decor');

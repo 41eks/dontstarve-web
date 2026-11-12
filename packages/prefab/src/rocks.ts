@@ -13,7 +13,6 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LunarHailBuildup } from '../../componets/src/pandoraschestSignatures';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { addComponent } from './components';
-import { Transform } from './transform';
 import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
 import { PlaySound } from './sound';
@@ -85,7 +84,7 @@ export class RockInstance extends PrefabInstance {
   doNotRemoveOnWorkDone = false;
 
   constructor(prefab: string, world: RockWorld, anim: string, tag?: string, multcolour = .5) {
-    super(prefab, new SpriteState({ name: anim, billboard: true }), Transform.stationary());
+    super(prefab, new SpriteState({ name: anim, billboard: true }));
     this.sprite.playOnce(anim); // PlayAnimation(anim), never looping.
     // MakeSnowCoveredPristine, then MakeSnowCovered with weather.lua's SNOW_COVERED_THRESHOLD.
     this.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');

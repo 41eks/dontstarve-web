@@ -411,7 +411,7 @@ export function MakePlayerCharacter(
     // upgrades.lua uses these exact upgrade type names.
     for (const tag of ['player', 'scarytoprey', 'character', 'lightningtarget', 'waterplant_upgradeuser', 'mast_upgradeuser',
       'chest_upgradeuser', 'usesvegetarianequipment', 'ghostlyelixirable']) inst.addTag(tag);
-    display.model.position.set(0, 30, 0);
+    inst.setPosition(0, 30, 0);
 
     // The player's own AnimState declaration, beneath the slots its equipped items declare; the display loads the builds it names.
     inst.equipmentAssets = new GroundItemAssets();

@@ -71,7 +71,7 @@ export class DragonflyInstance extends PrefabInstance {
   constructor(world: DragonflyWorld, position: ReadonlyVector3) {
     super(DRAGONFLY_ID, new SpriteState({ name: 'idle', billboard: true }), new Transform());
     this.setPosition(position.x, 0, position.z);
-    this.scale.setScalar(1.3);
+    this.setScale(1.3);
     for (const tag of ['epic', 'noepicmusic', 'monster', 'hostile', 'dragonfly', 'scarytoprey',
       'largecreature', 'flying', 'ignorewalkableplatformdrowning']) this.addTag(tag);
     this.sprite.start('idle'); // AnimState:PlayAnimation('idle', true) in fn.

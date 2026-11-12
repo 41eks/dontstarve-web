@@ -1,5 +1,4 @@
 import { addComponent } from './components';
-import { Transform } from './transform';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { createRenderEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
@@ -69,8 +68,7 @@ export class MarbleShrubInstance extends PrefabInstance {
   private readonly sounds = new Set<SoundHandle>();
 
   constructor(position: ReadonlyVector3, world: MarbleShrubWorld, growthstage: number) {
-    super(MARBLESHRUB_ID, new SpriteState({ name: 'idle_short', billboard: true }),
-      Transform.stationary());
+    super(MARBLESHRUB_ID, new SpriteState({ name: 'idle_short', billboard: true }));
     this.setPosition(position.x, 0, position.z);
     const { scheduler, getWatchWorldContent, spawnGroundItem } = world;
     this.BindScheduler(scheduler);

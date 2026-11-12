@@ -72,7 +72,8 @@ export class DeployPlacer {
       const model = entity.display.model, { instance } = entity, { sprite } = instance;
       this.tagPlacer(instance);
       model.userData.billboard = false;
-      model.rotation.x = -Math.PI / 2;
+      // gridplacer.lua: SetLayer(LAYER_BACKGROUND), SetOrientation(ANIM_ORIENTATION.OnGround).
+      sprite.setGround(0);
       sprite.setVisible(false);
       sprite.setMeshOrder(-.5);
       let tinted: boolean | undefined;
@@ -94,7 +95,8 @@ export class DeployPlacer {
     const entity = createArchiveEntity('FarmPlowPlacer', this.resources.archive(art, appearance), { name: animation, billboard: true }, 'FarmPlowPlacer');
     const outline = createArchiveEntity('FarmPlowTileOutline', this.resources.archive({ animationArchive: 'gridplacer.zip',
       buildArchives: ['gridplacer.zip'], bank: 'gridplacer' }, appearance), { name: 'anim', billboard: false }, 'FarmPlowTileOutline');
-    outline.display.model.rotation.x = -Math.PI / 2;
+    // tile_outline (gridplacer.lua): SetLayer(LAYER_BACKGROUND), SetOrientation(ANIM_ORIENTATION.OnGround).
+    outline.instance.sprite.setGround(0);
     outline.display.model.userData.billboard = false;
     for (const { instance } of [entity, outline]) { this.tagPlacer(instance); instance.sprite.setVisible(false); }
     let tinted: boolean | undefined;

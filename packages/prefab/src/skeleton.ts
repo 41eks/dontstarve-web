@@ -9,7 +9,6 @@ import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeSmallObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { Transform } from './transform';
 import type { WorldFx } from './world_fx';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -60,7 +59,7 @@ export class SkeletonInstance extends PrefabInstance {
   constructor(prefab: SkeletonId, world: SkeletonWorld, position: ReadonlyVector3) {
     // inst.animnum = math.random(data.animnum_min, data.animnum_max); PlayAnimation("idle"..animnum), never looping.
     const { min, max } = SKELETON_ANIMS[prefab], animnum = min + Math.floor(Math.random() * (max - min + 1));
-    super(prefab, new SpriteState({ name: `idle${animnum}`, billboard: true }), Transform.stationary());
+    super(prefab, new SpriteState({ name: `idle${animnum}`, billboard: true }));
     this.animnum = animnum;
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce(`idle${animnum}`);

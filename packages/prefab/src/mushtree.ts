@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { Transform } from './transform';
 import * as THREE from 'three';
 import { createEffect, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type ReadonlySignal, type WorldContentSignal, type SeasonState, type TileStateQuery } from '@dontstarve-web/signals';
 import { Growable, type GrowableSave } from '../../componets/src/growable';
@@ -130,7 +129,7 @@ export class MushtreeInstance extends PrefabInstance {
   }
 
   constructor(prefab: MushtreeId, world: MushtreeWorld, position: ReadonlyVector3) {
-    super(prefab, new SpriteState({ name: 'idle_loop', billboard: true }), Transform.stationary());
+    super(prefab, new SpriteState({ name: 'idle_loop', billboard: true }));
     this.data = TREES[prefab]; this.world = world;
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);

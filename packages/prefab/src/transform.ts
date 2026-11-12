@@ -1,4 +1,4 @@
-import { Group, MathUtils, type Vector3, type Vector3Like } from 'three';
+import { Group, MathUtils, type Vector3Like } from 'three';
 import { markTransformDirty, TransformRoot, type ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
 import type { Memo, TileStateQuery } from '@dontstarve-web/signals';
 import { TileTracker } from '../../componets/src/tileManager';
@@ -15,19 +15,16 @@ export class Transform {
   readonly #areas = new Map<TileStateQuery, { area: Memo<boolean> | undefined; owners: number }>();
   readonly #syncTile = () => { this.#tracker?.sync(); };
 
-  constructor(onDirty: TransformDirtyHandler = markTransformDirty, model = new Group()) {
+  constructor(onDirty: TransformDirtyHandler = markTransformDirty, model: Group = new TransformRoot()) {
     this.#model = model;
     this.#onDirty = onDirty;
     this.#model.addEventListener('added', this.#syncTile);
   }
 
-  /** A stationary entity retains the existing marked matrix-update contract. */
-  static stationary(): Transform { return new Transform(markTransformDirty, new TransformRoot()); }
-
   /** Root passed to display; logical code uses the transform methods. */
   get model(): Group { return this.#model; }
   get position(): ReadonlyVector3 { return this.#model.position; }
-  get scale(): Vector3 { return this.#model.scale; }
+  get scale(): ReadonlyVector3 { return this.#model.scale; }
   get tileTracker(): TileTracker { return this.#tracker ??= new TileTracker(() => this.position); }
   /** Lua Transform rotation is a heading in degrees. */
   get rotation(): number { return MathUtils.radToDeg(this.#model.rotation.y); }

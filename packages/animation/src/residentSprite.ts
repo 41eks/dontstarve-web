@@ -1,13 +1,12 @@
 import type { ReadonlyVector3 } from './transformRoot';
 import * as THREE from 'three';
-import { createEffect, createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { StaticSpriteController } from './wallSprite';
 import type { ArchiveSprite } from './archiveSprite';
 import { registerSpriteRenderGroup, setSpriteEntityRenderOrder } from './renderOrder';
 import type { InstancedSprite } from './instancedArchiveSprites';
-import { installRootMatrixGate } from './matrixGate';
 import { spriteController } from './spriteController';
-import { TransformRoot } from './transformRoot';
+import { markTransformDirty } from './transformRoot';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController } from './sprite';
 import type { BuildOverride, CompositeSpriteFrame, SpriteTint, SymbolOverride } from './spriteDressing';
 import type { ResolvedAnimState } from './animState';
@@ -47,15 +46,13 @@ function toParentFrame(visual: THREE.Object3D, point: THREE.Vector3): void {
 export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationController, PercentAnimationController {
   readonly model: THREE.Group;
   private readonly placeholder = new THREE.Group();
-  // The current sprite owns its subtree cache; the stable root caches only itself, or is a TransformRoot.
-  private readonly matrixGate: Pick<ReturnType<typeof installRootMatrixGate>, 'markDirty' | 'setRenderEnabled' | 'dispose'>;
-  private readonly visual = createSignal<ArchiveSprite | undefined>(undefined);
+  // The current sprite owns its subtree cache; the entity's TransformRoot is marked when the resident changes it.
+  private drawn: ArchiveSprite | undefined;
   private readonly artVersion = createSignal(0);
   /** Changes whenever the drawn sprite is attached or released; effects that dress the sprite (build, symbols, colour) read it. */
   readonly art = readonlySignal(this.artVersion);
-  private readonly stopVisualEffect: () => void;
-  private get sprite(): ArchiveSprite | undefined { return this.visual.peek(); }
-  private set sprite(sprite: ArchiveSprite | undefined) { this.visual.set(sprite); this.artVersion.set(this.artVersion.peek() + 1); }
+  private get sprite(): ArchiveSprite | undefined { return this.drawn; }
+  private set sprite(sprite: ArchiveSprite | undefined) { this.drawn = sprite; this.artVersion.set(this.artVersion.peek() + 1); }
   private clip: Clip;
   private queue: { name: string; loop: boolean }[] = [];
   private generation = 0;
@@ -77,12 +74,6 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   constructor(model: THREE.Group, create: ResidentSprite['create'], clip: { name: string; loop: boolean; none?: boolean }, initial?: ArchiveSprite,
     name = 'ResidentSprite') {
     this.model = model;
-    if (model instanceof TransformRoot) {
-      const root = model;
-      this.matrixGate = { markDirty: () => root.markTransformDirty(), setRenderEnabled: () => {}, dispose: () => {} };
-    } else {
-      this.matrixGate = installRootMatrixGate(this.model, this.placeholder);
-    }
     this.create = create;
     this.clip = { ...clip, finished: clip.none === true };
     this.model.name = name;
@@ -91,7 +82,6 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     registerSpriteRenderGroup(this.model, this.placeholder);
     this.model.addEventListener('added', this.onAdded);
     if (initial) this.attach(initial);
-    this.stopVisualEffect = createEffect(() => this.matrixGate.setRenderEnabled(this.visual.get() !== undefined));
   }
 
   private attachHook?: (sprite: ArchiveSprite) => void;
@@ -145,7 +135,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     this.settle();
     this.placeholder.visible = sprite.model.visible;
     this.placeholder.position.copy(sprite.model.position);
-    this.matrixGate.markDirty();
+    markTransformDirty(this.model);
     this.model.add(this.placeholder);
     registerSpriteRenderGroup(this.model, this.placeholder);
     sprite.dispose();
@@ -171,7 +161,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   }
 
   private attach(sprite: ArchiveSprite): void {
-    this.matrixGate.markDirty();
+    markTransformDirty(this.model);
     this.sprite = sprite;
     sprite.model.visible = this.placeholder.visible;
     sprite.model.position.copy(this.placeholder.position);
@@ -349,7 +339,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   setVisualHeight(height: number): void {
     (this.sprite?.model ?? this.placeholder).position.y = height;
     this.sprite?.refreshTransform();
-    this.matrixGate.markDirty();
+    markTransformDirty(this.model);
   }
   /** Erosion is keyed by the drawn sprite model; its owner sets it every update. */
   setErosion(amount: number): void { this.sprite?.setErosion(amount); }
@@ -366,7 +356,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     visual.rotation.x = flat ? -Math.PI / 2 : 0;
     visual.position.y = flat ? .01 : 0;
     setSpriteEntityRenderOrder(this.model, renderOrder);
-    this.matrixGate.markDirty();
+    markTransformDirty(this.model);
   }
   refreshTransform(): void { this.sprite?.refreshTransform(); }
 
@@ -376,10 +366,8 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     this.asleep = false;
     this.home = undefined;
     this.model.removeEventListener('added', this.onAdded);
-    this.stopVisualEffect();
     this.unload();
     this.placeholder.removeFromParent();
-    this.matrixGate.dispose();
     this.model.removeFromParent();
   }
 }
@@ -407,17 +395,15 @@ interface BuildingClip {
 export class ResidentSpriteController implements TransientSpriteAnimationController, PercentAnimationController, LayerAnimationController {
   readonly model: THREE.Group;
   private readonly placeholder = new THREE.Group();
-  private readonly matrixGate: ReturnType<typeof installRootMatrixGate>;
   /** Undefined while the source the display loads is not ready: nothing is drawn yet. */
   private create: (initialAnimation: string) => THREE.Group | undefined;
   private release: (sprite: THREE.Group) => void;
-  private readonly visual = createSignal<THREE.Group | undefined>(undefined);
+  private drawn: THREE.Group | undefined;
   private readonly artVersion = createSignal(0);
   /** Changes whenever the drawn sprite is attached, released or replaced; effects that dress the sprite read it. */
   readonly art = readonlySignal(this.artVersion);
-  private readonly stopVisualEffect: () => void;
-  private get sprite(): THREE.Group | undefined { return this.visual.peek(); }
-  private set sprite(sprite: THREE.Group | undefined) { this.visual.set(sprite); this.artVersion.set(this.artVersion.peek() + 1); }
+  private get sprite(): THREE.Group | undefined { return this.drawn; }
+  private set sprite(sprite: THREE.Group | undefined) { this.drawn = sprite; this.artVersion.set(this.artVersion.peek() + 1); }
   private clip: BuildingClip;
   private readonly initialAnimation: string;
   private queue: { name: string; loop: boolean }[] = [];
@@ -434,14 +420,12 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     initial: THREE.Group | undefined, clip: { name: string; held?: boolean }) {
     this.model = model;
     this.initialAnimation = clip.name;
-    this.matrixGate = installRootMatrixGate(model, this.placeholder);
     this.create = create;
     this.release = release;
     this.clip = { name: clip.name, loop: !clip.held, finished: clip.held === true };
     model.userData.billboard = true;
     registerSpriteRenderGroup(model, this.placeholder);
     if (initial) this.attach(initial, false); else model.add(this.placeholder);
-    this.stopVisualEffect = createEffect(() => this.matrixGate.setRenderEnabled(this.visual.get() !== undefined));
   }
 
   get loaded(): boolean { return this.sprite !== undefined; }
@@ -470,7 +454,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.placeholder.visible = sprite.visible;
     this.placeholder.position.copy(sprite.position);
     this.released = true;
-    this.matrixGate.markDirty();
+    markTransformDirty(this.model);
     this.sprite = undefined;
     this.release(sprite);
     this.model.add(this.placeholder);
@@ -493,7 +477,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   }
 
   private attach(sprite: THREE.Group, replay: boolean): void {
-    this.matrixGate.markDirty();
+    markTransformDirty(this.model);
     this.sprite = sprite;
     if (replay) {
       sprite.visible = this.placeholder.visible;
@@ -580,7 +564,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     visual.rotation.x = flat ? -Math.PI / 2 : 0;
     visual.position.y = flat ? .01 : 0;
     setSpriteEntityRenderOrder(this.model, renderOrder);
-    this.matrixGate.markDirty();
+    markTransformDirty(this.model);
   }
 
   start(name: string): void {
@@ -628,13 +612,13 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     const visual = this.sprite ?? this.placeholder;
     if (visual.quaternion.equals(this.facing)) return;
     visual.quaternion.copy(this.facing);
-    this.matrixGate.markDirty();
+    markTransformDirty(this.model);
   }
   /** Lifts the drawn sprite off the entity's foot point, on top of the foot offset the sprite was built with. */
   setVisualHeight(height: number): void {
     (this.sprite ?? this.placeholder).position.y += height - this.visualHeight;
     this.visualHeight = height;
-    this.matrixGate.markDirty();
+    markTransformDirty(this.model);
   }
   update(dt: number): void { this.controller?.update(dt); }
 
@@ -642,11 +626,9 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
-    this.stopVisualEffect();
     const sprite = this.sprite;
     this.sprite = undefined;
     if (sprite) this.release(sprite);
-    this.matrixGate.dispose();
     this.placeholder.removeFromParent();
   }
 }

@@ -1,5 +1,4 @@
 import { addComponent } from './components';
-import { Transform } from './transform';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
@@ -49,8 +48,7 @@ export class MarbleBeanSaplingInstance extends PrefabInstance {
   private readonly world: MarbleBeanSaplingWorld;
 
   constructor(position: ReadonlyVector3, world: MarbleBeanSaplingWorld) {
-    super(MARBLEBEAN_SAPLING_ID, new SpriteState({ name: 'idle_planted', billboard: true }),
-      Transform.stationary());
+    super(MARBLEBEAN_SAPLING_ID, new SpriteState({ name: 'idle_planted', billboard: true }));
     this.setPosition(position.x, 0, position.z);
     this.world = world;
     this.deploySmartRadius = 1;

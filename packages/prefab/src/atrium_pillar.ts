@@ -2,14 +2,13 @@ import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { Transform } from './transform';
 
 export const PILLAR_ATRIUM_ID = 'pillar_atrium' as const;
 
 /** atrium_pillar.lua fn. Its atriumpowered listener (OnPoweredFn) is not ported. */
 function createAtriumPillar(position: ReadonlyVector3): PrefabInstance {
   // PlayAnimation("idle", true): the constructor's clip loops.
-  const inst = new PrefabInstance(PILLAR_ATRIUM_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+  const inst = new PrefabInstance(PILLAR_ATRIUM_ID, new SpriteState({ name: 'idle', billboard: true }));
   inst.setPosition(position.x, 0, position.z);
   inst.addTag('blocker'); // MakeObstaclePhysics
   inst.addTag('groundhole');

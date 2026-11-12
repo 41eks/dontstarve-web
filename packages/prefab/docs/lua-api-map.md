@@ -9,7 +9,7 @@
 | Lua | TS | 示例 | 差异 |
 | --- | --- | --- | --- |
 | `Prefab(name, fn, assets)` | `PrefabEntityDefinition`：`fn`、`assets` | `atrium_pillar.ts` | 只由 `PrefabEntityManager` 管理 |
-| `CreateEntity()` | `new PrefabInstance(id, new SpriteState(clip), transform)` | `atrium_pillar.ts` | 静态实体用 `Transform.stationary()` |
+| `CreateEntity()` | `new PrefabInstance(id, new SpriteState(clip))` | `atrium_pillar.ts` | 根节点由默认的 `Transform` 创建为 `TransformRoot` |
 | `Transform:SetPosition` | `inst.setPosition(x, y, z)`、`copyPosition` | `atrium_pillar.ts` | 位置不是信号 |
 | `Transform:SetScale`、`SetRotation` | `inst.setScale`、`inst.setRotation(degrees)` | `moontree.ts`、`lightflier.ts` | |
 | `inst:Remove()` | `inst.remove()` | `vault_pillar.ts` | 按 Lua 顺序：离开 `AddChild` 的父实体，推 `onremove`（此时仍有效），撤销双向事件监听、取消 `DoTaskInTime` 任务，执行组件与 `onRemove` 回调，`Remove` 脚本子实体，调用 `inst.OnRemoveEntity`，`persists = false`，最后 Retire 并移除 `entity:SetParent` 的子实体 |

@@ -1,5 +1,5 @@
 import { Matrix4, type Object3D } from 'three';
-import { cacheMatrixUpdates, invalidateMatrixUpdates, retainWorldMatrixVersion } from './matrixUpdates';
+import { cacheMatrixUpdates, retainWorldMatrixVersion } from './matrixUpdates';
 import { markTransformDirty } from './transformRoot';
 
 /** Inline scalar snapshots keep the common automatic-transform check compact.
@@ -40,7 +40,6 @@ class MatrixGate {
   private readonly stationary: boolean;
   private readonly fixedVisual: boolean;
   private readonly dynamicParent: boolean;
-  private readonly rootOnly: boolean;
   private readonly original: { updateMatrixWorld: Object3D['updateMatrixWorld']; updateWorldMatrix: Object3D['updateWorldMatrix'] };
   private readonly local = new LocalTransform();
   private readonly visualLocal = new LocalTransform();
@@ -51,9 +50,9 @@ class MatrixGate {
   // A gated sprite inside a TransformRoot is only reached by traversal once that root is marked too.
   readonly markDirty = () => { this.dirty = true; markTransformDirty(this.model); };
 
-  constructor(model: Object3D, visual: Object3D, stationary: boolean, fixedVisual: boolean, dynamicParent: boolean, original: MatrixGate['original'], rootOnly: boolean) {
+  constructor(model: Object3D, visual: Object3D, stationary: boolean, fixedVisual: boolean, dynamicParent: boolean, original: MatrixGate['original']) {
     this.model = model; this.visual = visual; this.stationary = stationary;
-    this.fixedVisual = fixedVisual; this.dynamicParent = dynamicParent; this.original = original; this.rootOnly = rootOnly;
+    this.fixedVisual = fixedVisual; this.dynamicParent = dynamicParent; this.original = original;
   }
 
   private readParentVersion(): number {
@@ -69,7 +68,7 @@ class MatrixGate {
   private reusable(): boolean {
     const { model, visual } = this;
     return !this.dirty && !model.matrixWorldNeedsUpdate
-      && (this.rootOnly || !visual.matrixWorldNeedsUpdate
+      && (!visual.matrixWorldNeedsUpdate
         && model.children.length === 1 && model.children[0] === visual && visual.children.length <= 1
         && (!visual.children.length || !visual.children[0].matrixAutoUpdate && !visual.children[0].children.length)
         && (this.fixedVisual || this.visualLocal.matches(visual)))
@@ -80,18 +79,14 @@ class MatrixGate {
   private capture(): void {
     const { model, visual } = this;
     if (!this.stationary) this.local.capture(model);
-    if (!this.rootOnly && !this.fixedVisual) this.visualLocal.capture(visual);
+    if (!this.fixedVisual) this.visualLocal.capture(visual);
     if (this.dynamicParent) this.capturedParentVersion = this.readParentVersion();
     // A detached resident placeholder was not visited by this update.
-    this.dirty = !this.rootOnly && visual.parent !== model;
+    this.dirty = visual.parent !== model;
   }
 
   updateMatrixWorld(force?: boolean): boolean {
-    if (this.reusable()) {
-      if (this.rootOnly) for (const child of this.model.children) child.updateMatrixWorld(force);
-      return false;
-    }
-    if (this.rootOnly) for (const child of this.model.children) invalidateMatrixUpdates(child);
+    if (this.reusable()) return false;
     this.original.updateMatrixWorld.call(this.model, force);
     this.capture();
     return true;
@@ -100,56 +95,18 @@ class MatrixGate {
   updateWorldMatrix(parents: boolean, children: boolean): boolean {
     const { model, visual } = this;
     if (parents) model.parent?.updateWorldMatrix(true, false);
-    if (this.reusable()) {
-      if (this.rootOnly && children) for (const child of model.children) child.updateWorldMatrix(false, true);
-      return false;
-    }
-    if (this.rootOnly) for (const child of model.children) invalidateMatrixUpdates(child);
+    if (this.reusable()) return false;
     this.original.updateWorldMatrix.call(model, false, children);
     // Shallow queries have not settled the descendant matrices.
-    if (children || this.rootOnly) {
+    if (children) {
       model.matrixWorldNeedsUpdate = false;
-      if (!this.rootOnly) visual.matrixWorldNeedsUpdate = false;
+      visual.matrixWorldNeedsUpdate = false;
       this.capture();
     } else this.dirty = true;
     return true;
   }
 
   dispose(): void { this.parentVersion?.dispose(); }
-}
-
-function install(model: Object3D, visual: Object3D, stationary: boolean, fixedVisual: boolean, dynamicParent: boolean, rootOnly: boolean) {
-  let gate!: MatrixGate;
-  const updates = cacheMatrixUpdates(model, original => gate = new MatrixGate(model, visual, stationary, fixedVisual, dynamicParent, original, rootOnly));
-  let renderEnabled = true;
-  const refreshRenderEntry = () => {
-    // Attached FX retain normal updates even while the resident visual is absent.
-    const empty = model.children.length === 1 && model.children[0] === visual && visual.children.length === 0;
-    updates.setRenderEnabled(renderEnabled || !empty);
-  };
-  model.addEventListener('added', gate.markDirty);
-  model.addEventListener('removed', gate.markDirty);
-  model.addEventListener('childadded', refreshRenderEntry);
-  model.addEventListener('childremoved', refreshRenderEntry);
-  visual.addEventListener('childadded', refreshRenderEntry);
-  visual.addEventListener('childremoved', refreshRenderEntry);
-  return {
-    markDirty: gate.markDirty,
-    setRenderEnabled(enabled: boolean) {
-      renderEnabled = enabled;
-      gate.markDirty();
-      refreshRenderEntry();
-    },
-    dispose() {
-      model.removeEventListener('childadded', refreshRenderEntry);
-      model.removeEventListener('childremoved', refreshRenderEntry);
-      visual.removeEventListener('childadded', refreshRenderEntry);
-      visual.removeEventListener('childremoved', refreshRenderEntry);
-      updates.dispose(); gate.dispose();
-      model.removeEventListener('added', gate.markDirty);
-      model.removeEventListener('removed', gate.markDirty);
-    },
-  };
 }
 
 /**
@@ -161,14 +118,19 @@ function install(model: Object3D, visual: Object3D, stationary: boolean, fixedVi
  * Owners of a fixed visual must markDirty() after changing its local transform.
  * Ancestors are assumed static: attaching or detaching `model` invalidates the cache, but an
  * ancestor that moves while `model` stays attached needs `dynamicParent` to be noticed.
+ * Inside an entity's TransformRoot the gate is reached only after a mark, so every local write calls markDirty().
  */
 export function installMatrixGate(model: Object3D, visual: Object3D, stationary = false, fixedVisual = stationary, dynamicParent = false) {
-  return install(model, visual, stationary, fixedVisual, dynamicParent, false);
-}
-
-/** Cache only a resident's stable root. Replaced sprite subtrees keep their own
- * caches and attached FX still update; placeholder only selects the empty entry.
- */
-export function installRootMatrixGate(model: Object3D, placeholder: Object3D) {
-  return install(model, placeholder, false, true, true, true);
+  let gate!: MatrixGate;
+  const updates = cacheMatrixUpdates(model, original => gate = new MatrixGate(model, visual, stationary, fixedVisual, dynamicParent, original));
+  model.addEventListener('added', gate.markDirty);
+  model.addEventListener('removed', gate.markDirty);
+  return {
+    markDirty: gate.markDirty,
+    dispose() {
+      updates.dispose(); gate.dispose();
+      model.removeEventListener('added', gate.markDirty);
+      model.removeEventListener('removed', gate.markDirty);
+    },
+  };
 }

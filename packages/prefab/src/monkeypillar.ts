@@ -7,7 +7,6 @@ import { LunarHailBuildup } from '../../componets/src/pandoraschestSignatures';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { WORLD_SCALE } from './tile';
-import { Transform } from './transform';
 
 export const MONKEYPILLAR_ID = 'monkeypillar' as const;
 /** A world save holds a number; tostring(math.random(1, 4)) makes a string. */
@@ -27,7 +26,7 @@ export class MonkeyPillarInstance extends PrefabInstance {
   readonly world: MonkeyPillarWorld;
 
   constructor(world: MonkeyPillarWorld, position: ReadonlyVector3) {
-    super(MONKEYPILLAR_ID, new SpriteState({ name: 'idle1', none: true, billboard: true }), Transform.stationary());
+    super(MONKEYPILLAR_ID, new SpriteState({ name: 'idle1', none: true, billboard: true }));
     this.world = world;
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);

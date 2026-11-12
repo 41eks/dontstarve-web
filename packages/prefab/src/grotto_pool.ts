@@ -13,7 +13,6 @@ import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { Transform } from './transform';
 import type { WorldFx } from './world_fx';
 import catalog from './groundItems.json' with { type: 'json' };
 
@@ -103,7 +102,7 @@ export class GrottoPoolInstance extends PrefabInstance {
   private savedChildren?: GrottoPoolSaveState['children'];
 
   constructor(world: GrottoPoolWorld, prefab: GrottoPoolId, position: ReadonlyVector3) {
-    super(prefab, new SpriteState({ name: POOLS[prefab].animation }), Transform.stationary());
+    super(prefab, new SpriteState({ name: POOLS[prefab].animation }));
     this.BindScheduler(world.scheduler);
     const definition = POOLS[prefab], big = prefab === GROTTO_POOL_BIG_ID;
     this.setPosition(position.x, 0, position.z);
@@ -178,7 +177,7 @@ function adopt(inst: GrottoPoolInstance, slot: number, child: PrefabInstance): v
 
 /** makebigmist / makesmallmist: FX and NOCLICK, never asleep and never saved. */
 function createMist(position: ReadonlyVector3): PrefabInstance {
-  const inst = new PrefabInstance(GROTTO_POOL_MIST_ID, new SpriteState({ name: 'steam_big', billboard: true }), Transform.stationary());
+  const inst = new PrefabInstance(GROTTO_POOL_MIST_ID, new SpriteState({ name: 'steam_big', billboard: true }));
   inst.setPosition(position.x, 0, position.z);
   inst.addTag('FX');
   inst.addTag('NOCLICK');
@@ -189,7 +188,7 @@ function createMist(position: ReadonlyVector3): PrefabInstance {
 
 /** grotto_waterfall_big.lua fn. */
 function createBigWaterfall(position: ReadonlyVector3): PrefabInstance {
-  const inst = new PrefabInstance('grotto_waterfall_big', new SpriteState({ name: 'water_big', billboard: true }), Transform.stationary());
+  const inst = new PrefabInstance('grotto_waterfall_big', new SpriteState({ name: 'water_big', billboard: true }));
   inst.setPosition(position.x, 0, position.z);
   inst.addTag('NOCLICK');
   Object.assign(inst, { no_wet_prefix: true });
@@ -211,7 +210,7 @@ export class GrottoGlassInstance extends PrefabInstance {
 
   constructor(world: GrottoGlassWorld, prefab: MineableId, position: ReadonlyVector3) {
     const definition = MINEABLES[prefab];
-    super(prefab, new SpriteState({ name: definition.animation, billboard: true }), Transform.stationary());
+    super(prefab, new SpriteState({ name: definition.animation, billboard: true }));
     this.world = world;
     this._anim = definition.animation;
     this.setPosition(position.x, 0, position.z);

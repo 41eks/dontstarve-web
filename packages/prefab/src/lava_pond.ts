@@ -8,7 +8,6 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type EntityTask, type PrefabComponents, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { MakePondPhysics } from './standardcomponents';
-import { Transform } from './transform';
 import { WORLD_SCALE } from './tile';
 
 export const LAVA_POND_ID = 'lava_pond' as const;
@@ -55,7 +54,7 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
   private readonly random: () => number;
 
   constructor(world: LavaPondWorld, position: Vector3) {
-    super(LAVA_POND_ID, new SpriteState({ name: 'bubble_lava' }), Transform.stationary());
+    super(LAVA_POND_ID, new SpriteState({ name: 'bubble_lava' }));
     this.world = world; this.random = world.random ?? Math.random;
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
@@ -122,7 +121,7 @@ export class LavaPondRockInstance extends PrefabInstance {
 
   constructor(prefab: LavaPondRockId, position: Vector3) {
     const rocktype = prefab.slice('lava_pond_rock'.length);
-    super(prefab, new SpriteState({ name: `idle${rocktype}`, billboard: true }), Transform.stationary());
+    super(prefab, new SpriteState({ name: `idle${rocktype}`, billboard: true }));
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce(`idle${rocktype}`);
     if (rocktype.length > 0) this.prefabNameOverride = 'lava_pond_rock';

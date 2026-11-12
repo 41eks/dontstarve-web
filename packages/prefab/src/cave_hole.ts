@@ -9,7 +9,6 @@ import { PlayerProx } from '../../componets/src/playerprox';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { setMouseTargetEnabled } from './mouseTargets';
 import { TILE_SIZE } from './tile';
-import { Transform } from './transform';
 
 export const CAVE_HOLE_ID = 'cave_hole' as const;
 const CAVE_HOLE_SURFACE_ID = 'cave_hole_surface' as const;
@@ -66,7 +65,7 @@ export class CaveHoleInstance extends PrefabInstance {
   allowspawn = true;
 
   constructor(world: CaveHoleWorld, position: ReadonlyVector3) {
-    super(CAVE_HOLE_ID, new SpriteState({ name: 'idle' }), Transform.stationary());
+    super(CAVE_HOLE_ID, new SpriteState({ name: 'idle' }));
     // PlayerProx reads the position once.
     this.setPosition(position.x, 0, position.z);
     for (const tag of ['groundhole', 'blocker', 'blinkfocus']) this.addTag(tag);
@@ -90,7 +89,7 @@ export class CaveHoleInstance extends PrefabInstance {
 }
 
 function createSurfaceAnim(): PrefabInstance {
-  const inst = new PrefabInstance(CAVE_HOLE_SURFACE_ID, new SpriteState({ name: 'idle' }), Transform.stationary());
+  const inst = new PrefabInstance(CAVE_HOLE_SURFACE_ID, new SpriteState({ name: 'idle' }));
   inst.addTag('DECOR');
   inst.addTag('NOCLICK');
   inst.persists = false;

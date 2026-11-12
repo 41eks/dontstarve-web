@@ -108,7 +108,7 @@ class ReskinFx implements ReskinFxMessage {
     const info = fxInfo[prefabId];
     this.footPosition.copy(position);
     this.instance.setPosition(position.x, position.y + (info?.offset ?? 0) * (TILE_SIZE / 4), position.z);
-    this.instance.scale.setScalar(info?.scale ?? 1);
+    this.instance.setScale(info?.scale ?? 1);
     this.instance.sprite.setVisible(true);
     this.instance.sprite.playOnce('puff', () => this.instance.remove());
     PlaySound(reskinEffectSound(this.toolSkinId), position);

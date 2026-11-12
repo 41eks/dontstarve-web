@@ -8,7 +8,6 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Heater } from '../../componets/src/heater';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import { MakePondPhysics, WORLD_SCALE } from './standardcomponents';
-import { Transform } from './transform';
 import type { WorldFx } from './world_fx';
 
 export const HOTSPRING_ID = 'hotspring' as const;
@@ -48,7 +47,7 @@ export class HotspringInstance extends PrefabInstance {
   populating = false;
 
   constructor(world: HotspringWorld, position: ReadonlyVector3) {
-    super(HOTSPRING_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+    super(HOTSPRING_ID, new SpriteState({ name: 'idle', billboard: true }));
     this.world = world; this.random = world.random ?? Math.random;
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);

@@ -9,7 +9,6 @@ import { PigKingStateGraph, type PigKingStateInst } from '../../stategraphs/src/
 import type { LootLaunch } from '../../componets/src/inventoryphysics';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { Transform } from './transform';
 import type { SoundEmitter } from './soundEmitter';
 import definitions from './definitions.json' with { type: 'json' };
 
@@ -75,7 +74,7 @@ export class PigKingInstance extends PrefabInstance {
   private readonly animation: PigKingAnimation;
 
   constructor(world: PigKingWorld, position: ReadonlyVector3) {
-    super(PIGKING_ID, new SpriteState({ name: definitions.pigKing.animationName, billboard: true }), Transform.stationary());
+    super(PIGKING_ID, new SpriteState({ name: definitions.pigKing.animationName, billboard: true }));
     this.world = world;
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);

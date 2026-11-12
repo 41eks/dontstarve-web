@@ -9,7 +9,6 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import type { SoundEmitter } from './soundEmitter';
 import { TILE_SIZE } from './tile';
-import { Transform } from './transform';
 
 export const WORMHOLE_ID = 'wormhole' as const;
 // prefabskins.lua order; wormhole_init_fn swaps the build, retaining the base bank.
@@ -36,7 +35,7 @@ export class WormholeInstance extends PrefabInstance implements WormholeStateIns
   declare sg: ReturnType<typeof WormholeStateGraph>;
   declare SoundEmitter: SoundEmitter;
   constructor() {
-    super(WORMHOLE_ID, new SpriteState({ name: 'idle_loop', billboard: true }), Transform.stationary());
+    super(WORMHOLE_ID, new SpriteState({ name: 'idle_loop', billboard: true }));
   }
   // conventions-allow instance-method: the AnimState call SGwormhole makes; a one-shot reports animover to the stategraph.
   playAnimation(name: string, loop = false): void {

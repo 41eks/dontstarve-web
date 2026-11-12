@@ -4,7 +4,7 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { Transform, type ReadonlyVector3 } from './transform';
+import type { ReadonlyVector3 } from './transform';
 
 export const NIGHTMAREGROWTH_ID = 'nightmaregrowth' as const;
 export const NIGHTMAREGROWTH_CRACK_ID = 'nightmaregrowth_crack' as const;
@@ -39,7 +39,7 @@ export class NightmareGrowthInstance extends PrefabInstance {
   private readonly world: NightmareGrowthWorld;
 
   constructor(world: NightmareGrowthWorld, position: ReadonlyVector3) {
-    super(NIGHTMAREGROWTH_ID, new SpriteState({ name: 'idle', held: true, billboard: true }), Transform.stationary());
+    super(NIGHTMAREGROWTH_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
     this.world = world;
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
@@ -74,7 +74,7 @@ export class NightmareGrowthInstance extends PrefabInstance {
 /** nightmaregrowth.lua crackfn: OnGround, LAYER_BACKGROUND and sort order 3, FX/NOCLICK/DECOR, not persistent. */
 export class NightmareGrowthCrackInstance extends PrefabInstance {
   constructor(position: ReadonlyVector3, random: () => number) {
-    super(NIGHTMAREGROWTH_CRACK_ID, new SpriteState({ name: 'crack_idle', held: true }), Transform.stationary());
+    super(NIGHTMAREGROWTH_CRACK_ID, new SpriteState({ name: 'crack_idle', held: true }));
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce('crack_idle');
     this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);

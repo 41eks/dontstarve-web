@@ -6,7 +6,6 @@ import { MakeHeavyObstaclePhysics } from './standardcomponents';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
-import { Transform } from './transform';
 import type { SpawnGroundItem } from './groundPrefab';
 import catalog from './groundItems.json' with { type: 'json' };
 import { PlaySound } from './sound';
@@ -40,7 +39,7 @@ export class CaveinBoulderInstance extends PrefabInstance {
   formed?: true;
 
   constructor(world: CaveinBoulderWorld) {
-    super(CAVEIN_BOULDER_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+    super(CAVEIN_BOULDER_ID, new SpriteState({ name: 'idle', billboard: true }));
     this.sprite.playOnce('idle');
     this.addTag('heavy');
     this.addTag('boulder');

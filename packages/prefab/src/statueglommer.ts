@@ -11,7 +11,6 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { PlaySound } from './sound';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
-import { Transform } from './transform';
 
 export const STATUEGLOMMER_ID = 'statueglommer' as const;
 /** TUNING.ROCKS_MINE. */
@@ -98,7 +97,7 @@ function OnLoadWorked(inst: StatueGlommerInstance): void {
  * empties a new statue's shelf, so the flower symbol starts hidden.
  */
 function fn(world: StatueGlommerWorld): StatueGlommerInstance {
-    const inst = new StatueGlommerInstance(STATUEGLOMMER_ID, new SpriteState({ name: 'full', held: true, billboard: true }), Transform.stationary());
+    const inst = new StatueGlommerInstance(STATUEGLOMMER_ID, new SpriteState({ name: 'full', held: true, billboard: true }));
     inst.minimap.SetPriority(5);
     inst.minimap.SetIcon('statueglommer.png');
     // SetBank / SetBuild("glommer_statue"), PlayAnimation("full") without the loop flag.

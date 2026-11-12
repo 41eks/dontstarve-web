@@ -9,7 +9,7 @@ import { Workable } from '../../componets/src/workable';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { Transform, type ReadonlyVector3 } from './transform';
+import type { ReadonlyVector3 } from './transform';
 import type { WorldFx } from './world_fx';
 import { BindMoleWorld, Mole, OnHomeDugUp, configureMoleEntity, type MoleWorld } from './mole';
 
@@ -75,7 +75,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
   private stopPending?: () => void;
 
   constructor(world: MoleHabitat, position: ReadonlyVector3) {
-    super(MOLEHILL_ID, new SpriteState({ name: 'mound_idle', billboard: true }), Transform.stationary());
+    super(MOLEHILL_ID, new SpriteState({ name: 'mound_idle', billboard: true }));
     this.world = world;
     this.setPosition(position.x, 0, position.z);
     // LAYER_BACKGROUND, sort order 3: the mound stays upright behind what stands on it.

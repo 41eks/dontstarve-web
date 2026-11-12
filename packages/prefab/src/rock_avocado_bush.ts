@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
-import { Transform } from './transform';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -156,7 +155,7 @@ function on_load(inst: RockAvocadoBushInstance, data: PickablePlantRecord['compo
  * Not ported: MakeHauntableIgnite, MakeWaxablePlant and the lunar hail buildup.
  */
 function rock_avocado_bush(world: PickablePlantWorld): RockAvocadoBushInstance {
-  const inst = new PickablePlantInstance(ROCK_AVOCADO_BUSH_ID, new SpriteState({ name: 'idle1', billboard: true }), Transform.stationary()) as RockAvocadoBushInstance;
+  const inst = new PickablePlantInstance(ROCK_AVOCADO_BUSH_ID, new SpriteState({ name: 'idle1', billboard: true })) as RockAvocadoBushInstance;
   inst.BindScheduler(world.scheduler);
   inst.AnimState.PlayAnimation('idle1');
   inst.deploySmartRadius = 3;

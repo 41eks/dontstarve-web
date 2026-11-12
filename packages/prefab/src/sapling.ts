@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
-import { Transform } from './transform';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -58,7 +57,7 @@ function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
  * dug_<prefab>. Not ported: MakeHauntableIgnite, MakeWaxablePlant, halloweenmoonmutable and the lunarthrall herd save.
  */
 function sapling_common(prefab: SaplingPrefabId, world: PickablePlantWorld): PickablePlantInstance {
-  const inst = new PickablePlantInstance(prefab, new SpriteState({ name: 'sway', billboard: true }), Transform.stationary());
+  const inst = new PickablePlantInstance(prefab, new SpriteState({ name: 'sway', billboard: true }));
   inst.BindScheduler(world.scheduler);
   // DEPLOYSPACING_RADIUS[DEPLOYSPACING.MEDIUM] / 2.
   inst.deploySmartRadius = .5 * (TILE_SIZE / 4);

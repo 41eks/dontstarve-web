@@ -40,7 +40,8 @@ class BeefaloSpriteController extends SpriteController implements FacingSpriteCo
 
   /** A single FACING_* bit; changing art preserves playback and one-shot callbacks. */
   setFacing(facing: number, mirrored = false) {
-    this.visual.scale.x = Math.abs(this.visual.scale.x) * (mirrored ? -1 : 1);
+    const scaleX = Math.abs(this.visual.scale.x) * (mirrored ? -1 : 1);
+    if (this.visual.scale.x !== scaleX) { this.visual.scale.x = scaleX; this.visualTransformChanged(); }
     if (this.facing === facing) return;
     this.facing = facing;
     this.animation = this.findAnimation(this.animationName);

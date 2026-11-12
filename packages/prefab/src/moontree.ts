@@ -17,7 +17,6 @@ import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { Transform } from './transform';
 import { BurnableBinding, TREE_BURN_TIME, type BurnSpec, type FireFxHost } from './treeFire';
 import type { WorldEventEmitter } from './worldContext';
 
@@ -81,7 +80,7 @@ export class MoonTreeInstance extends PrefabInstance {
   private awake = false;
 
   constructor(world: MoonTreeWorld, position: ReadonlyVector3, stage: number, random: () => number) {
-    super(MOON_TREE_ID, new SpriteState({ name: definitions.moonTree.animationName, billboard: true }), Transform.stationary());
+    super(MOON_TREE_ID, new SpriteState({ name: definitions.moonTree.animationName, billboard: true }));
     this.world = world; this.random = random;
     this.BindScheduler(world.scheduler);
     this.setActive(false);
@@ -342,7 +341,7 @@ export class MoonButterflySaplingInstance extends PrefabInstance {
   readonly world: MoonTreeWorld;
 
   constructor(world: MoonTreeWorld, position: ReadonlyVector3, random: () => number) {
-    super(MOONBUTTERFLY_SAPLING_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+    super(MOONBUTTERFLY_SAPLING_ID, new SpriteState({ name: 'idle', billboard: true }));
     this.world = world;
     this.setActive(false);
     this.sprite.playOnce('idle');

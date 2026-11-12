@@ -41,9 +41,6 @@ interface Updates {
 const updateState = Symbol('matrixUpdates');
 type ManagedObject = Object3D & { [updateState]?: Updates };
 
-/** Empty resident visuals do not enter the cache or notify spatial observers. */
-function skipRenderMatrixUpdate(): void {}
-
 // Shared call targets keep Three's child traversal monomorphic. Entity state
 // is read through a private symbol, without allocating per-model call targets.
 function updateMatrixWorld(this: Object3D, force?: boolean): void {
@@ -153,10 +150,6 @@ export function cacheMatrixUpdates(model: Object3D, create: (original: MatrixMet
   if (state.updater) throw new Error('Object already has a matrix cache');
   const updater = state.updater = create(state.original);
   return {
-    setRenderEnabled(enabled: boolean) {
-      if (state.updater !== updater) return;
-      model.updateMatrixWorld = enabled ? updateMatrixWorld : skipRenderMatrixUpdate;
-    },
     dispose() {
       if (state.updater !== updater) return;
       state.updater = undefined;

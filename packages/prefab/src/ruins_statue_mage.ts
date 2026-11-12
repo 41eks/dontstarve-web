@@ -8,7 +8,6 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { Transform } from './transform';
 
 export const RUINS_STATUE_MAGE_ID = 'ruins_statue_mage' as const;
 export const RUINS_STATUE_MAGE_NOGEM_ID = 'ruins_statue_mage_nogem' as const;
@@ -47,7 +46,7 @@ export class RuinsStatueInstance extends PrefabInstance {
   private readonly gemArchive?: string;
 
   constructor(prefab: RuinsStatueId, world: RuinsStatueWorld, position: ReadonlyVector3) {
-    super(prefab, new SpriteState({ name: 'idle_full', billboard: true }), Transform.stationary());
+    super(prefab, new SpriteState({ name: 'idle_full', billboard: true }));
     const variant = VARIANTS[prefab];
     this.gemArchive = variant.gemArchive;
     this.setPosition(position.x, 0, position.z);

@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
-import { Transform } from './transform';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -65,7 +64,7 @@ function ontransplantfn(inst: PickablePlantInstance): void {
  * MakeWaxablePlant and the lunarthrall herd save.
  */
 function fn(world: PickablePlantWorld): PickablePlantInstance {
-  const inst = new PickablePlantInstance(GRASS_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+  const inst = new PickablePlantInstance(GRASS_ID, new SpriteState({ name: 'idle', billboard: true }));
   inst.AddSoundEmitter();
   inst.BindScheduler(world.scheduler);
   inst.addTag('plant');

@@ -1,5 +1,4 @@
 import { addComponent } from './components';
-import { Transform } from './transform';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
@@ -48,8 +47,7 @@ export class ChesspieceInstance extends PrefabInstance {
 
   constructor(world: ChesspieceWorld) {
     // fn: SetBank("chesspiece"), SetBuild("swap_chesspiece_malbatross_marble"), PlayAnimation("idle") without looping.
-    super(CHESSPIECE_MALBATROSS_MARBLE_ID, new SpriteState({ name: 'idle', billboard: true }),
-      Transform.stationary());
+    super(CHESSPIECE_MALBATROSS_MARBLE_ID, new SpriteState({ name: 'idle', billboard: true }));
     this.sprite.playOnce('idle');
     this.physicsRadiusOverride = PHYSICS_RADIUS;
     this.addTag('heavy');

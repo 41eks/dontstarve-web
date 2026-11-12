@@ -15,7 +15,6 @@ import type { PlacementSaveRecord } from './saveRecord';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { Transform } from './transform';
 import { BurnableBinding, TREE_BURN_TIME, type FireFxHost } from './treeFire';
 import type { WorldEventEmitter } from './worldContext';
 
@@ -75,7 +74,7 @@ export class DeciduousInstance extends PrefabInstance {
   private awake = false;
 
   constructor(world: DeciduousWorld, position: ReadonlyVector3, stage: number, random: () => number) {
-    super(DECIDUOUS_ID, new SpriteState({ name: 'sway1_loop_short', billboard: true }), Transform.stationary());
+    super(DECIDUOUS_ID, new SpriteState({ name: 'sway1_loop_short', billboard: true }));
     this.world = world; this.random = random; this.color = .5 + random() * .5;
     this.BindScheduler(world.scheduler);
     this.setActive(false);

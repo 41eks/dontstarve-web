@@ -439,12 +439,12 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   }
 
   get position(): ReadonlyVector3 { return this.transform.position; }
-  get scale(): Vector3 { return this.transform.scale; }
+  get scale(): ReadonlyVector3 { return this.transform.scale; }
   get rotation(): number { return this.transform.rotation; }
 
   /**
-   * Transform:SetPosition. Unlike a write through `position`, it marks the transform, which an entity drawn with
-   * `staticTransform` requires: its matrices are recomputed only when marked.
+   * Transform:SetPosition. Every entity root is a TransformRoot whose matrices are recomputed only when marked, so
+   * transforms are written through these methods and never through the model's vectors.
    */
   setPosition(x: number, y: number, z: number): void {
     this.transform.setPosition(x, y, z);
@@ -797,13 +797,13 @@ export function prefabInstance<Instance extends AnyPrefabInstance = PrefabInstan
 export type EntityClip<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance> =
   ConstructorParameters<typeof SpriteState>[0] & { readonly instance?: Instance };
 
-function entityInstance<Instance extends PrefabInstance<SpriteState, object>>(prefab: string, clip: EntityClip<Instance>, staticTransform = false): Instance {
+function entityInstance<Instance extends PrefabInstance<SpriteState, object>>(prefab: string, clip: EntityClip<Instance>): Instance {
   if (clip.instance) {
     if (clip.instance.isRemoved || clip.instance.prefab !== prefab) throw new Error('Cannot display a removed or different prefab instance');
     clip.instance.sprite.resetPresentation(clip);
     return clip.instance;
   }
-  return new PrefabInstance(prefab, new SpriteState(clip), staticTransform ? Transform.stationary() : new Transform()) as Instance;
+  return new PrefabInstance(prefab, new SpriteState(clip)) as Instance;
 }
 
 export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, source: SpriteSource | LoadedSpriteSource, clip: EntityClip<Instance>, name?: string,
@@ -819,10 +819,9 @@ export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, 
 
 /** A new entity drawn with a shared archive sprite; `clip.held` is a one-shot clip that rests on its last frame. */
 export function createArchiveEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip<Instance>, name?: string,
-  initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>,
-  displayOptions?: { readonly staticTransform?: boolean }):
+  initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>):
   { instance: Instance; display: PrefabDisplay } {
-  const instance = entityInstance(prefab, clip, displayOptions?.staticTransform), state = instance.sprite;
+  const instance = entityInstance(prefab, clip), state = instance.sprite;
   initialize?.(instance);
   const display = new PrefabDisplay({ root: instance.transform.model, name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });
   bindInstance(display.model, instance);

@@ -4,7 +4,6 @@ import { SpriteState } from '@dontstarve-web/display';
 import { WorldMigrator, type WorldMigratorShard } from '../../componets/src/worldmigrator';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { Transform } from './transform';
 
 export const CAVE_EXIT_ID = 'cave_exit' as const;
 export const CAVE_EXIT_IDS = [CAVE_EXIT_ID] as const;
@@ -29,7 +28,7 @@ export class CaveExitInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & { worldmigrator: WorldMigrator };
 
   constructor(world: CaveExitWorld) {
-    super(CAVE_EXIT_ID, new SpriteState({ name: 'open', billboard: true }), Transform.stationary());
+    super(CAVE_EXIT_ID, new SpriteState({ name: 'open', billboard: true }));
     this.sprite.playOnce('open'); // PlayAnimation("open"), never looping.
     const worldmigrator = addComponent(this, 'worldmigrator', WorldMigrator, world.shard ?? NO_SHARD);
     /** GetStatus. */

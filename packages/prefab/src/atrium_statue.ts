@@ -4,7 +4,6 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { RoseInspectable } from '../../componets/src/pandoraschestSignatures';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { Transform } from './transform';
 
 export const ATRIUM_STATUE_ID = 'atrium_statue' as const;
 
@@ -20,7 +19,7 @@ export class AtriumStatueInstance extends PrefabInstance {
  */
 function fn(): AtriumStatueInstance {
   // SetBank / SetBuild("atrium_statue"), PlayAnimation("idle_full") without looping.
-  const inst = new AtriumStatueInstance(ATRIUM_STATUE_ID, new SpriteState({ name: 'idle_full', held: true, billboard: true }), Transform.stationary());
+  const inst = new AtriumStatueInstance(ATRIUM_STATUE_ID, new SpriteState({ name: 'idle_full', held: true, billboard: true }));
   inst.minimap.SetIcon('atrium_statue.png');
   addComponent(inst, 'inspectable', Inspectable);
   inst._suffix = '';

@@ -7,7 +7,6 @@ import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './
 import { type PrefabLocalLight } from './localLight';
 import { TILE_SIZE } from './tile';
 import { Pickable, type PickableSaveState } from './components/pickable';
-import { Transform } from './transform';
 import { PlaySound, type SoundHandle } from './sound';
 
 export const BULB_PLANT_ID = 'flower_cave';
@@ -101,7 +100,7 @@ export class BulbPlantInstance extends PrefabInstance {
 
   constructor(prefab: BulbPlantPrefabId, world: BulbPlantWorld) {
     // PlayAnimation("off"): shown on its last frame, as a plant that has been off for a while.
-    super(prefab, new SpriteState({ name: 'off', held: true, billboard: true }), Transform.stationary());
+    super(prefab, new SpriteState({ name: 'off', held: true, billboard: true }));
     this.world = world;
     this.variant = prefab === 'flower_cave_double' ? 'double' : prefab === 'flower_cave_triple' ? 'triple'
       : BULB_PLANT_VARIANTS[Math.min(1, Math.floor(Math.random() * 2))];

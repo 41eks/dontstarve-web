@@ -11,7 +11,6 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { Transform } from './transform';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const CAVE_ENTRANCE_ID = 'cave_entrance' as const;
@@ -53,7 +52,7 @@ export class CaveEntranceInstance extends PrefabInstance {
 
   constructor(prefab: CaveEntranceId, world: CaveEntranceWorld, position: ReadonlyVector3) {
     const open = prefab === CAVE_ENTRANCE_OPEN_ID;
-    super(prefab, new SpriteState({ name: open ? 'no_access' : 'idle_closed', held: !open, billboard: true }), Transform.stationary());
+    super(prefab, new SpriteState({ name: open ? 'no_access' : 'idle_closed', held: !open, billboard: true }));
     this.setPosition(position.x, 0, position.z);
     // PlayAnimation("idle_closed") plays once rather than resting on its last frame.
     if (!open) this.sprite.playOnce('idle_closed');

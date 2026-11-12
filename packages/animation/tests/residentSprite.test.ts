@@ -4,7 +4,8 @@ import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createEffect } from '@dontstarve-web/signals';
 import { ResidentSprite, ResidentSpriteController } from '@dontstarve-web/animation/residentSprite';
 import { installMatrixGate } from '../src/matrixGate';
-import { updateSceneMatrices, watchMatrixUpdates } from '../src/matrixUpdates';
+import { updateSceneMatrices, watchWorldMatrixChanges } from '../src/matrixUpdates';
+import { markTransformDirty, TransformRoot } from '../src/transformRoot';
 
 function fake(clip: { name: string; loop: boolean }) {
   const model = new THREE.Group();
@@ -66,58 +67,57 @@ it('keeps the last pose of a finished one-shot clip when reloaded', () => {
   expect(created[2].calls).toEqual(['once:pst', 'frame:9']);
 });
 
-it('skips empty visuals during rendering, updates explicit queries and refreshes a rebuilt visual', async () => {
+it('skips a clean entity root while empty, settles marked and resident writes, and refreshes a rebuilt visual', async () => {
   const scene = new THREE.Scene();
   const created: ReturnType<typeof fake>[] = [];
-  const resident = new ResidentSprite(new THREE.Group(), clip => {
+  const root = new TransformRoot();
+  const resident = new ResidentSprite(root, clip => {
     const entry = fake(clip); created.push(entry); return entry.sprite;
   }, { name: 'idle', loop: true });
-  scene.add(resident.model);
-  const placeholder = resident.model.children[0];
-  const updates = vi.spyOn(resident.model, 'updateMatrix');
+  scene.add(root);
+  const placeholder = root.children[0];
+  const updates = vi.spyOn(root, 'updateMatrix');
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
-    scene.updateMatrixWorld(); scene.updateMatrixWorld();
+    updateSceneMatrices(scene); updates.mockClear();
+    updateSceneMatrices(scene);
     expect(updates).not.toHaveBeenCalled();
-    resident.model.position.x = 4;
-    scene.updateMatrixWorld();
-    expect(updates).not.toHaveBeenCalled();
-    resident.model.updateWorldMatrix(true, true);
+    // An entity writes its root through its Transform, which marks it.
+    root.position.x = 4; markTransformDirty(root);
+    updateSceneMatrices(scene);
     expect(placeholder.matrixWorld.elements[12]).toBe(4);
 
     resident.load();
     await tick();
-    const child = created[0].sprite.model.children[0];
-    scene.updateMatrixWorld();
-    child.position.x = 2;
-    scene.updateMatrixWorld();
-    expect(child.matrixWorld.elements[12]).toBe(6);
-    resident.model.position.x = 8;
-    created[0].sprite.model.position.y = 3;
-    scene.updateMatrixWorld();
-    expect(child.matrixWorld.elements[12]).toBe(10);
+    updateSceneMatrices(scene);
+    expect(created[0].sprite.model.matrixWorld.elements[12]).toBe(4);
+    // The resident's own visual writes mark the root.
+    resident.setVisualHeight(3);
+    updateSceneMatrices(scene);
+    expect(created[0].sprite.model.matrixWorld.elements[13]).toBe(3);
 
     resident.unload();
     await tick();
-    updates.mockClear();
-    scene.updateMatrixWorld(); scene.updateMatrixWorld();
+    updateSceneMatrices(scene); updates.mockClear();
+    updateSceneMatrices(scene);
     expect(updates).not.toHaveBeenCalled();
-    resident.model.updateWorldMatrix(true, true);
-    expect(placeholder.matrixWorld.elements[12]).toBe(8);
     expect(placeholder.matrixWorld.elements[13]).toBe(3);
 
-    // FX attached to an otherwise empty resident still receive their transforms.
-    const fx = new THREE.Group(); resident.model.add(fx);
+    // FX attached to an otherwise empty resident are updated on every traversal while attached.
+    const fx = new THREE.Group(); root.add(fx);
     fx.position.x = 2;
-    scene.updateMatrixWorld();
-    expect(fx.matrixWorld.elements[12]).toBe(10);
+    updateSceneMatrices(scene);
+    expect(fx.matrixWorld.elements[12]).toBe(6);
+    fx.position.x = 5;
+    updateSceneMatrices(scene);
+    expect(fx.matrixWorld.elements[12]).toBe(9);
     fx.removeFromParent();
-    updates.mockClear(); scene.updateMatrixWorld();
+    updateSceneMatrices(scene); updates.mockClear(); updateSceneMatrices(scene);
     expect(updates).not.toHaveBeenCalled();
 
-    resident.model.position.x = 11;
+    root.position.x = 11; markTransformDirty(root);
     resident.load();
-    await tick(); scene.updateMatrixWorld();
+    await tick(); updateSceneMatrices(scene);
     expect(created[1].sprite.model.matrixWorld.elements[12]).toBe(11);
   } finally {
     updates.mockRestore(); resident.dispose();
@@ -157,7 +157,7 @@ it('leaves its parent while inactive, returns on activation and stays out when a
   expect(scene.children).toHaveLength(0);
 });
 
-it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while preserving child updates, queries and visual replacement', async kind => {
+it.each(['archive', 'factory'] as const)('skips a clean %s entity root while settling marks, parent moves, queries and visual replacement', async kind => {
   const scene = new THREE.Scene(), parent = new THREE.Group();
   scene.add(parent);
   const created: { sprite: ArchiveSprite; leaf: THREE.Object3D; gate: ReturnType<typeof installMatrixGate> }[] = [];
@@ -165,8 +165,7 @@ it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while
     const { sprite } = fake(clip), visual = sprite.model.children[0], leaf = new THREE.Object3D();
     leaf.matrixAutoUpdate = false;
     visual.add(leaf);
-    // The archive's stationary cache assumes static ancestors. Its resident
-    // owner must invalidate it when the outer entity root actually moves.
+    // The archive's stationary cache assumes static ancestors; the entity root invalidates it when it actually moves.
     const gate = installMatrixGate(sprite.model, visual, true);
     sprite.dispose = () => { gate.dispose(); sprite.model.removeFromParent(); };
     created.push({ sprite, leaf, gate });
@@ -174,11 +173,11 @@ it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while
   };
   const first = make({ name: 'idle', loop: true });
   const resident = kind === 'archive'
-    ? new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, first)
-    : new ResidentSpriteController(new THREE.Group(), name => make({ name, loop: true }).model,
+    ? new ResidentSprite(new TransformRoot(), make, { name: 'idle', loop: true }, first)
+    : new ResidentSpriteController(new TransformRoot(), name => make({ name, loop: true }).model,
       model => { created.find(entry => entry.sprite.model === model)!.sprite.dispose(); }, first.model, { name: 'idle' });
   parent.add(resident.model);
-  const observer = vi.fn(), stop = watchMatrixUpdates(resident.model, observer);
+  const observer = vi.fn(), stop = watchWorldMatrixChanges(resident.model, observer);
   const updates = vi.spyOn(resident.model, 'updateMatrix');
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
@@ -188,7 +187,7 @@ it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while
     expect(updates).not.toHaveBeenCalled();
     expect(observer).not.toHaveBeenCalled();
 
-    resident.model.position.x = 4;
+    resident.model.position.x = 4; markTransformDirty(resident.model);
     updateSceneMatrices(scene);
     expect(created[0].leaf.matrixWorld.elements[12]).toBe(4);
     expect(observer).toHaveBeenCalledOnce();
@@ -198,7 +197,7 @@ it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while
     expect(created[0].leaf.matrixWorld.elements[12]).toBe(7);
     expect(observer).toHaveBeenCalledOnce();
 
-    // A dirty inner visual and an attached FX still run while the root is cached.
+    // A marked inner visual settles; an attached FX runs on every traversal while attached.
     const fx = new THREE.Group(); resident.model.add(fx);
     fx.position.x = 2;
     first.model.children[0].position.y = 5; created[0].gate.markDirty();
@@ -209,8 +208,8 @@ it.each(['archive', 'factory'] as const)('caches a loaded %s resident root while
     expect(fx.matrixWorld.elements[12]).toBe(13);
     fx.removeFromParent();
 
-    // Shallow queries settle the root now and leave the child invalidation for render.
-    resident.model.position.x = 8;
+    // A query settles a marked root at once.
+    resident.model.position.x = 8; markTransformDirty(resident.model);
     resident.model.updateWorldMatrix(true, false);
     updateSceneMatrices(scene);
     expect(created[0].leaf.matrixWorld.elements[12]).toBe(11);

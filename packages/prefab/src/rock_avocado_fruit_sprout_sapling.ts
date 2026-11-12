@@ -12,7 +12,6 @@ import { PlaySound } from './sound';
 import { DefaultBurntFn } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { Transform } from './transform';
 import { BurnableBinding, type FireFxHost } from './treeFire';
 
 export const ROCK_AVOCADO_SAPLING_ID = 'rock_avocado_fruit_sprout_sapling' as const;
@@ -42,7 +41,7 @@ export class RockAvocadoSaplingInstance extends PrefabInstance {
   seedGrowth?: EntityTask;
 
   constructor(world: RockAvocadoSaplingWorld) {
-    super(ROCK_AVOCADO_SAPLING_ID, new SpriteState({ name: 'idle_buried_seed', billboard: true }), Transform.stationary());
+    super(ROCK_AVOCADO_SAPLING_ID, new SpriteState({ name: 'idle_buried_seed', billboard: true }));
     this.world = world;
     this.BindScheduler(world.scheduler);
     this.sprite.playOnce('idle_buried_seed');

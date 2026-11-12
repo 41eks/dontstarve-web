@@ -1,7 +1,6 @@
 import { addComponent } from './components';
 import type { EntityTask, PrefabEntityDefinition } from './prefabInstance';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { Transform } from './transform';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -98,7 +97,7 @@ function OnIsOpenPhase(inst: MushroomPlantInstance, isopen: boolean): void {
  */
 function mushcommonfn(prefab: MushroomPlantId, world: PickablePlantWorld, position: ReadonlyVector3): MushroomPlantInstance {
   const data = MUSHROOM_DATA[prefab];
-  const inst = new MushroomPlantInstance(prefab, new SpriteState({ name: data.animname, billboard: true }), Transform.stationary());
+  const inst = new MushroomPlantInstance(prefab, new SpriteState({ name: data.animname, billboard: true }));
   inst.AddSoundEmitter();
   inst.BindScheduler(world.scheduler);
   // The cave phase is watched through this mushroom's own tile, which its position places.

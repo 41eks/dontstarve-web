@@ -11,7 +11,6 @@ import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { addComponent } from './components';
-import { Transform } from './transform';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { WorldFx } from './world_fx';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -92,7 +91,7 @@ export class ArchiveMoonStatueInstance extends PrefabInstance {
   anim: number;
 
   constructor(world: ArchivePropsWorld) {
-    super(ARCHIVE_MOON_STATUE_ID, new SpriteState({ name: 'idle_full_1', billboard: true }), Transform.stationary());
+    super(ARCHIVE_MOON_STATUE_ID, new SpriteState({ name: 'idle_full_1', billboard: true }));
     for (const tag of ['structure', 'statue', 'dustable']) this.addTag(tag);
     this.anim = 1 + Math.floor(Math.random() * MOON_STATUE_VARIANTS);
     this.sprite.playOnce(`idle_full_${this.anim}`); // PlayAnimation, never looping.
@@ -132,7 +131,7 @@ export class ArchiveRuneStatueInstance extends PrefabInstance {
   storyprogress?: number;
 
   constructor(story: { progress: number }) {
-    super(ARCHIVE_RUNE_STATUE_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+    super(ARCHIVE_RUNE_STATUE_ID, new SpriteState({ name: 'idle', billboard: true }));
     for (const tag of ['structure', 'statue', 'dustable', 'ancient_text']) this.addTag(tag);
     this.anim = 1 + Math.floor(Math.random() * RUNE_STATUE_VARIANTS);
     this.sprite.playOnce(runeAnimation(this.anim));
@@ -175,7 +174,7 @@ export class ArchiveRuneStatueInstance extends PrefabInstance {
 
 /** portalfn. The POWEROFF status and ms_register_vault_lobby_exit_target need the archive manager. */
 function portalfn(world: ArchivePropsWorld, position: ReadonlyVector3): PrefabInstance {
-  const inst = new PrefabInstance(ARCHIVE_PORTAL_ID, new SpriteState({ name: 'idle' }), Transform.stationary());
+  const inst = new PrefabInstance(ARCHIVE_PORTAL_ID, new SpriteState({ name: 'idle' }));
   SetEightFaced(inst, world.cameraFacing);
   inst.sprite.playOnce('idle');
   layOnGround(inst, 1, 2);
@@ -189,7 +188,7 @@ function portalfn(world: ArchivePropsWorld, position: ReadonlyVector3): PrefabIn
 
 /** CreateDropShadow: a DECOR | NOCLICK child that sorts just under the portal art (SortOrder 1, no FinalOffset). */
 function CreateDropShadow(world: ArchivePropsWorld): PrefabInstance {
-  const inst = new PrefabInstance(ARCHIVE_PORTAL_SHADOW_ID, new SpriteState({ name: 'idle' }), Transform.stationary());
+  const inst = new PrefabInstance(ARCHIVE_PORTAL_SHADOW_ID, new SpriteState({ name: 'idle' }));
   inst.sprite.playOnce('idle');
   layOnGround(inst, 1);
   SetEightFaced(inst, world.cameraFacing);
@@ -201,7 +200,7 @@ function CreateDropShadow(world: ArchivePropsWorld): PrefabInstance {
 
 /** switchbasefn / switchpadfn: background decals. The base's archive_switch rotation and power listeners are not wired. */
 function groundDecal(prefab: typeof ARCHIVE_SWITCH_BASE_ID | typeof ARCHIVE_SWITCH_PAD_ID, sortOrder: number): PrefabInstance {
-  const inst = new PrefabInstance(prefab, new SpriteState({ name: 'idle' }), Transform.stationary());
+  const inst = new PrefabInstance(prefab, new SpriteState({ name: 'idle' }));
   inst.sprite.playOnce('idle');
   layOnGround(inst, sortOrder);
   inst.persists = prefab !== ARCHIVE_SWITCH_PAD_ID;
@@ -210,7 +209,7 @@ function groundDecal(prefab: typeof ARCHIVE_SWITCH_BASE_ID | typeof ARCHIVE_SWIT
 
 /** ambientfn: NOBLOCK | NOCLICK sound source; the arhivepoweron/off listeners need the archive manager. */
 function ambientfn(): PrefabInstance {
-  const inst = new PrefabInstance(ARCHIVE_AMBIENT_SFX_ID, new SpriteState({ name: '' }), Transform.stationary());
+  const inst = new PrefabInstance(ARCHIVE_AMBIENT_SFX_ID, new SpriteState({ name: '' }));
   inst.addTag('NOBLOCK');
   inst.addTag('NOCLICK');
   return inst;
@@ -218,7 +217,7 @@ function ambientfn(): PrefabInstance {
 
 /** worldgenitemfn: a bare Transform that removes itself at the next tick. */
 function worldgenitemfn(prefab: 'rubble1' | 'rubble2', scheduler: ArchivePropsWorld['scheduler']): PrefabInstance {
-  const inst = new PrefabInstance(prefab, new SpriteState({ name: '' }), Transform.stationary());
+  const inst = new PrefabInstance(prefab, new SpriteState({ name: '' }));
   inst.persists = false;
   inst.BindScheduler(scheduler);
   inst.DoTaskInTime(0, inst => inst.remove());

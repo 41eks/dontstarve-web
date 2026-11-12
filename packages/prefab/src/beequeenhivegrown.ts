@@ -26,7 +26,7 @@ export class BeeQueenHiveInstance extends PrefabInstance {
     super(BEEQUEENHIVEGROWN_ID, new SpriteState({ name: 'large', held: true, billboard: true }));
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
-    this.scale.setScalar(1.4);
+    this.setScale(1.4);
     for (const tag of ['event_trigger', 'antlion_sinkhole_blocker']) this.addTag(tag);
     this.sprite.playOnce('large');
     for (let level = 0; level < 3; level++) this.sprite.setSymbolHidden(`honey${level}`, true);

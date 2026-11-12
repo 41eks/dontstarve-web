@@ -10,7 +10,6 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { spawnStructureLoot } from './structureLoot';
-import { Transform } from './transform';
 import type { WorldContext } from './worldContext';
 
 export const CHESSJUNK_IDS = ['chessjunk1', 'chessjunk2', 'chessjunk3'] as const;
@@ -40,7 +39,7 @@ export class ChessJunkInstance extends PrefabInstance {
   repairerchar?: string;
   constructor(prefab: ChessJunkId) {
     const style = Number(prefab.at(-1)) as 1 | 2 | 3;
-    super(prefab, new SpriteState({ name: `idle${style}`, billboard: true }), Transform.stationary());
+    super(prefab, new SpriteState({ name: `idle${style}`, billboard: true }));
     this.style = style;
   }
 }

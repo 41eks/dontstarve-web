@@ -8,7 +8,6 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { KnownLocations } from '../../componets/src/knownlocations';
 import { PrefabInstance, prefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { WORLD_SCALE } from './tile';
-import { Transform } from './transform';
 
 export const DRAGONFLY_SPAWNER_ID = 'dragonfly_spawner' as const;
 /** TUNING.DRAGONFLY_SPAWN_TIME. */
@@ -39,7 +38,7 @@ export class DragonflySpawnerInstance extends PrefabInstance {
   private childrenToLink: readonly string[] = [];
 
   constructor(world: DragonflySpawnerWorld, position: ReadonlyVector3) {
-    super(DRAGONFLY_SPAWNER_ID, new SpriteState({ name: '', billboard: false }), Transform.stationary());
+    super(DRAGONFLY_SPAWNER_ID, new SpriteState({ name: '', billboard: false }));
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     this.addTag('CLASSIFIED');

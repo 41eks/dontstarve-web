@@ -16,7 +16,6 @@ import type { LightFlier, LightFlierHabitat } from './lightflier';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { PlacementSaveRecord } from './saveRecord';
 import { WORLD_SCALE } from './standardcomponents';
-import { Transform } from './transform';
 
 export const LIGHTFLIER_FLOWER_ID = 'lightflier_flower';
 /** tuning.lua LIGHTFLIER_FLOWER_REGROW_TIME: twelve days. */
@@ -75,7 +74,7 @@ export class LightFlierFlowerInstance extends PrefabInstance {
   /** Saved children outside that OnLoadPostPass has not found yet. */
   _pendingchildren: string[] = [];
   constructor(world: LightFlierFlowerWorld) {
-    super(LIGHTFLIER_FLOWER_ID, new SpriteState({ name: 'off', held: true, billboard: true }), Transform.stationary());
+    super(LIGHTFLIER_FLOWER_ID, new SpriteState({ name: 'off', held: true, billboard: true }));
     this.world = world;
     this.plantname = random(world) < .5 ? 'single' : 'springy';
     this._lightstart = world.scheduler.now - this._lighttime;

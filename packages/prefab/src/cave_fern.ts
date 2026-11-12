@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import type { PrefabEntityDefinition } from './prefabInstance';
-import { Transform } from './transform';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { BurnableBinding } from './treeFire';
@@ -50,7 +49,7 @@ function onload(inst: CaveFernInstance, data: PickablePlantRecord['components'])
  */
 function fn(prefab: CaveFernId, world: PickablePlantWorld): CaveFernInstance {
   const animname = CAVE_FERN_ANIMATIONS[Math.floor(Math.random() * CAVE_FERN_ANIMATIONS.length)];
-  const inst = new CaveFernInstance(prefab, new SpriteState({ name: animname, billboard: true }), Transform.stationary());
+  const inst = new CaveFernInstance(prefab, new SpriteState({ name: animname, billboard: true }));
   inst.BindScheduler(world.scheduler);
   inst.animname = animname;
   inst.AnimState.PlayAnimation(inst.animname);

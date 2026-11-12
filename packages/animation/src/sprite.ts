@@ -28,6 +28,7 @@ import { registerSpriteRenderGroup } from './renderOrder';
 import { setSpriteController, spriteController } from './spriteController';
 import { publishSpriteSpatialBounds, spriteSpatialRadius } from './spatialBounds';
 import { installMatrixGate } from './matrixGate';
+import { markTransformDirty } from './transformRoot';
 import { SPRITE_SCALE } from './units';
 
 /** Envelope radius of every frame of an animation drawn from the plain build (no skin layers or overrides). */
@@ -114,6 +115,10 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
   protected readonly visual: THREE.Group;
   private readonly renderer: SpriteFrameRenderer;
   private readonly matrixGate?: ReturnType<typeof installMatrixGate>;
+  /** A local transform written inside the visual: the gate and its enclosing TransformRoot must recompute it. */
+  protected visualTransformChanged(): void {
+    if (this.matrixGate) this.matrixGate.markDirty(); else markTransformDirty(this.visual);
+  }
   private build: ParsedBuild;
   protected readonly animations: ParsedAnim;
   private materials: THREE.MeshBasicMaterial[];
@@ -277,6 +282,7 @@ export class SpriteController implements TransientSpriteAnimationController, Fra
     if (facing === this.artFacing && mirrored === this.mirrored) return;
     this.artFacing = facing; this.mirrored = mirrored;
     this.visual.scale.x = Math.abs(this.visual.scale.x) * (mirrored ? -1 : 1);
+    this.visualTransformChanged();
     this.animation = this.findAnimation(this.animationName);
     this.reshowFrame();
   }

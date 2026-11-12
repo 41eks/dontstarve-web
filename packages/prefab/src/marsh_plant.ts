@@ -7,7 +7,6 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { DefaultBurnFn, DefaultBurntFn, DefaultExtinguishFn } from './standardcomponents';
-import { Transform } from './transform';
 import { BurnableBinding, type FireFxHost } from './treeFire';
 
 export const MARSH_PLANT_ID = 'marsh_plant' as const;
@@ -27,7 +26,7 @@ export interface MarshPlantWorld {
 /** marsh_plant.lua fn("marsh_plant", "marsh_plant"). */
 export class MarshPlantInstance extends PrefabInstance {
   constructor(world: MarshPlantWorld) {
-    super(MARSH_PLANT_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+    super(MARSH_PLANT_ID, new SpriteState({ name: 'idle', billboard: true }));
     this.addTag('plant');
     // MakeMediumBurnable(inst) + MakeSmallPropagator(inst).
     const burn = new BurnableBinding(this, { propagator: 'small', burnTime: BURN_TIME, fxLevel: BURN_FX_LEVEL,

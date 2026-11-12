@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
-import { Transform } from './transform';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { Witherable } from '../../componets/src/witherable';
@@ -118,7 +117,7 @@ function OnLoad(inst: PickablePlantInstance, data: PickablePlantRecord['componen
  * MakeWaxablePlant, lunar hail buildup and the lunarthrall herd save.
  */
 function fn(world: PickablePlantWorld): PickablePlantInstance {
-  const inst = new PickablePlantInstance(BERRYBUSH_ID, new SpriteState({ name: 'idle', billboard: true }), Transform.stationary());
+  const inst = new PickablePlantInstance(BERRYBUSH_ID, new SpriteState({ name: 'idle', billboard: true }));
   inst.BindScheduler(world.scheduler);
   inst.deploySmartRadius = 3;
   // MakeSmallObstaclePhysics(inst, .1) is the prefab's `physics`; it adds the blocker tag.

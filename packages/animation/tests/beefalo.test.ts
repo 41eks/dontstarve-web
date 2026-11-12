@@ -15,6 +15,8 @@ import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInst
 import { PrefabDisplayGroup, SpriteState } from '../../display/src';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import { spriteController } from '../src/spriteController';
+import { updateSceneMatrices } from '../src/matrixUpdates';
+import { TransformRoot } from '../src/transformRoot';
 import { Pathfinder } from '../../prefab/src/pathfinder';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { createInventoryStore } from '../../../src/inventory';
@@ -401,7 +403,14 @@ describe('original beefalo assets', () => {
     const complete = vi.fn();
     controller.playOnce('sleep_pre', complete);
     for (let i = 0; i < 6; i++) controller.update(0.1);
+    // Mirroring is a local write inside a factory sprite: it marks the entity's clean TransformRoot.
+    const scene = new THREE.Scene(), root = new TransformRoot();
+    root.add(a); scene.add(root);
+    updateSceneMatrices(scene); updateSceneMatrices(scene);
+    const facingRight = a.children[0].matrixWorld.elements[0];
     controller.setFacing(32, true);
+    updateSceneMatrices(scene);
+    expect(a.children[0].matrixWorld.elements[0]).toBeCloseTo(-facingRight);
     for (let i = 0; i < 6; i++) controller.update(0.1);
     expect(complete).toHaveBeenCalledTimes(1);
     for (const clip of ['walk_pre', 'walk_loop', 'walk_pst', 'graze2_pre', 'graze2_loop', 'graze2_pst',

@@ -12,7 +12,6 @@ import type { RezSource } from './player_common_extensions';
 import type { SoundEventPath } from './sound';
 import type { SoundEmitter } from './soundEmitter';
 import { TILE_SIZE } from './tile';
-import { Transform } from './transform';
 
 export const PORTAL_ID = 'multiplayer_portal_moonrock' as const;
 export const PORTAL_FX_ID = 'multiplayer_portal_moonrock_fx' as const;
@@ -49,7 +48,7 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
   readonly sounds = MOONROCK_SOUNDS;
 
   constructor(world: PortalWorld, position: ReadonlyVector3) {
-    super(PORTAL_ID, new SpriteState({ name: 'idle_loop', billboard: true }), Transform.stationary());
+    super(PORTAL_ID, new SpriteState({ name: 'idle_loop', billboard: true }));
     this.setPosition(position.x, 0, position.z);
     this.AddSoundEmitter();
     this.addTag('multiplayer_portal');
@@ -124,7 +123,7 @@ function OnGetPortalRez(inst: PortalInstance, scheduler: GameTimeScheduler, port
 
 /** moonrockfxfn: the non-networked half drawn over the portal, never saved. */
 function createPortalFx(position: ReadonlyVector3): PrefabInstance {
-  const inst = new PrefabInstance(PORTAL_FX_ID, new SpriteState({ name: 'idle_loop', billboard: true }), Transform.stationary());
+  const inst = new PrefabInstance(PORTAL_FX_ID, new SpriteState({ name: 'idle_loop', billboard: true }));
   inst.setPosition(position.x, 0, position.z);
   inst.sprite.hideLayer('portal');
   inst.sprite.setSymbolOverride('FX_ray1', 'portal_stone.zip', 'FX_ray1');
