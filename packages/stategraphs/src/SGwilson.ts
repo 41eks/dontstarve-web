@@ -129,7 +129,8 @@ export interface WilsonStateInst {
   readonly AnimState: Pick<InstanceAnimState, 'PlayAnimation' | 'GetCurrentAnimationLength' | 'SetDeltaTimeMultiplier'
     | 'OverrideSymbol' | 'OverrideItemSkinSymbol' | 'ClearOverrideSymbol' | 'Show' | 'Hide' | 'SetMultColour'>;
   readonly position: ReadonlyVector3;
-  readonly TheSim: { FindEntities(position: ReadonlyVector3, radius: number): readonly { readonly components: object }[] };
+  /** TheSim:FindEntities, as amulet_rebirth puts the sleepers around the player to sleep. */
+  readonly TheSim: { FindEntities(position: ReadonlyVector3, radius: number): readonly { readonly components: { sleeper?: { GoToSleep(seconds: number): void } } }[] };
   readonly prefab: string;
   hasTag(tag: string): boolean;
   readonly components: {
@@ -178,31 +179,37 @@ export interface WilsonCombat {
   CancelAttack(): void;
 }
 
-/** The fields SGwilson.lua's states keep in inst.sg.statemem. */
+/** sg.statemem as SGwilson.lua's states keep it while they run; a field is nil until its state sets it. */
 export interface WilsonStateMem {
+  /** The buffered action a long action, a channel or a book state started with. */
   action: PlayerAction<WilsonAction> | null;
-  action_failed: boolean;
-  attacktarget: PlayerActionTarget | undefined;
-  book_fx: WilsonFx | undefined;
-  fx_over: WilsonFx | undefined;
-  fx_under: WilsonFx | undefined;
-  castsound: SoundEventPath;
-  checkfall: boolean;
-  dest: PortalJumpData;
-  istweencomplete: boolean;
+  /** sleeping: the wakeup was asked for, not an interruption. */
   iswaking: boolean;
-  not_interrupted: boolean;
-  projectiledelay: number | undefined;
-  projectilesound: SoundEventPath | undefined;
-  slipping: boolean;
-  soundtask: (() => void) | undefined;
+  /** toolbroke: the broken tool's prefab, equipped again from the inventory on exit. */
+  toolname: string;
+  /** The slip states: the speed they slow down from. */
   speed: number;
-  stafflight: ReturnType<typeof SpawnCastingLight>;
-  symbolsoverridden: boolean;
-  toolname: string | undefined;
-  tweenElapsed: number | undefined;
+  checkfall: boolean;
+  slipping: boolean;
   unequipped: boolean;
+  tweenElapsed: number;
+  istweencomplete: boolean;
   usedamulet: boolean;
+  castsound: SoundEventPath;
+  stafflight: ReturnType<typeof SpawnCastingLight>;
+  projectiledelay: number;
+  projectilesound: SoundEventPath;
+  attacktarget: PlayerActionTarget;
+  book_fx: WilsonFx;
+  fx_over: WilsonFx;
+  fx_under: WilsonFx;
+  not_interrupted: boolean;
+  /** book2: the layer sound's scheduled play, cancelled on exit. */
+  soundtask: () => void;
+  symbolsoverridden: boolean;
+  action_failed: boolean;
+  /** portal_jumpin: where portal_jumpout teleports to. */
+  dest: PortalJumpData;
 }
 
 /** The data GoToState passes the states that read it. */
@@ -222,7 +229,7 @@ export interface WilsonStateData {
 
 export interface WilsonStateSpec { mem: WilsonStateMem; data: WilsonStateData; action: PlayerAction }
 
-type WilsonInstance = StateGraphInstance<WilsonStateGraph, WilsonStateName, WilsonStateSpec>;
+export type WilsonInstance = StateGraphInstance<WilsonStateGraph, WilsonStateName, WilsonStateSpec>;
 export type WilsonState<N extends WilsonStateName = WilsonStateName> =
   StateDefinition<WilsonStateGraph, WilsonStateName, WilsonStateSpec, N>;
 /** State({ name, ... }): the name picks the data its onenter reads. */
@@ -264,7 +271,7 @@ function ConsumeEquippedAmulet(entity: WilsonStateInst): boolean {
 /** SGwilson.lua amulet_rebirth: every other entity with a sleeper within `radius` goes to sleep for `seconds`. */
 function SleepNearby(entity: WilsonStateInst, radius: number, seconds: number): void {
   for (const v of entity.TheSim.FindEntities(entity.position, radius * WORLD_SCALE)) {
-    if (v !== entity) (v.components as { sleeper?: { GoToSleep(seconds: number): void } }).sleeper?.GoToSleep(seconds);
+    if (v !== entity) v.components.sleeper?.GoToSleep(seconds);
   }
 }
 
@@ -275,8 +282,12 @@ function SpawnCastingLight(entity: WilsonStateInst, colour: readonly [number, nu
   return light;
 }
 
-/** The slip states' statemem.speed, which their onenter sets to the given speed or the run speed. */
-function slipSpeed(inst: WilsonInstance): number { return inst.statemem.speed ?? inst.context.entity.runSpeed; }
+/** The slip states' statemem.speed, which each enters with; Lua errors on a missing one as this does. */
+function slipSpeed(inst: WilsonInstance): number {
+  const speed = inst.statemem.speed;
+  if (speed === undefined) throw new Error(`${inst.stateName} has no statemem.speed`);
+  return speed;
+}
 
 /** SGwilson.lua toolbroke onexit: equip another equippable of the broken tool's prefab from the inventory. */
 function EquipSameTool(entity: WilsonStateInst, toolname: string): void {
