@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { createRenderEffect, createSignal, readonlySignal, type GameTimeScheduler, type ReadonlySignal } from '@dontstarve-web/signals';
 import { BASE_COOK_TIME, CalculateRecipe, GetRecipe } from './cooking';
 import { ComponentTimer } from './timer';
@@ -47,11 +48,11 @@ export class Stewer {
   cooktimemult = 1;
   ingredient_prefabs?: readonly string[];
   chef_id?: string;
-  onstartcooking?: { call(inst: StewerInstance): void }['call'];
-  ondonecooking?: { call(inst: StewerInstance): void }['call'];
-  oncontinuecooking?: { call(inst: StewerInstance): void }['call'];
-  oncontinuedone?: { call(inst: StewerInstance): void }['call'];
-  onharvest?: { call(inst: StewerInstance): void }['call'];
+  onstartcooking?: LuaFn<[inst: StewerInstance]>;
+  ondonecooking?: LuaFn<[inst: StewerInstance]>;
+  oncontinuecooking?: LuaFn<[inst: StewerInstance]>;
+  oncontinuedone?: LuaFn<[inst: StewerInstance]>;
+  onharvest?: LuaFn<[inst: StewerInstance]>;
   /** self.task: DoTaskInTime(cooktime, dostew). Running means self.targettime is set. */
   private readonly cookTask: ComponentTimer;
   /** The task's whole duration: `end - now` can round above it, and a save rejects a time longer than its recipe's. */

@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 /** What components/slipperyfeettarget.lua reads from its entity. */
 export interface SlipperyFeetTargetInst {
   addTag(tag: string): void;
@@ -7,10 +8,13 @@ export interface SlipperyFeetTargetInst {
   getPhysicsRadius(): number | undefined;
 }
 
+export type SlipperyFeetTargetIsSlipperyAtPointFn = LuaFn<[inst: SlipperyFeetTargetInst, x: number, y: number, z: number], boolean>;
+export type SlipperyFeetTargetRateFn = LuaFn<[inst: SlipperyFeetTargetInst, target: unknown], number>;
+
 /** components/slipperyfeettarget.lua: marks a surface that slipperyfeet users can slide on. */
 export class SlipperyFeetTarget {
-  private isslipperyatfeetfn?: (inst: SlipperyFeetTargetInst, x: number, z: number) => boolean;
-  private ratefn?: (inst: SlipperyFeetTargetInst, target: unknown) => number;
+  private isslipperyatfeetfn?: SlipperyFeetTargetIsSlipperyAtPointFn;
+  private ratefn?: SlipperyFeetTargetRateFn;
   private readonly inst: SlipperyFeetTargetInst;
 
   constructor(inst: SlipperyFeetTargetInst) {
@@ -20,10 +24,10 @@ export class SlipperyFeetTarget {
 
   OnRemoveFromEntity(): void { this.inst.removeTag('slipperyfeettarget'); }
 
-  SetIsSlipperyAtPoint(fn: SlipperyFeetTarget['isslipperyatfeetfn']): void { this.isslipperyatfeetfn = fn; }
+  SetIsSlipperyAtPoint(fn: SlipperyFeetTargetIsSlipperyAtPointFn | undefined): void { this.isslipperyatfeetfn = fn; }
 
   IsSlipperyAtPosition(x: number, z: number): boolean {
-    if (this.isslipperyatfeetfn) return this.isslipperyatfeetfn(this.inst, x, z);
+    if (this.isslipperyatfeetfn) return this.isslipperyatfeetfn(this.inst, x, 0, z);
     const radius = this.inst.getPhysicsRadius();
     if (radius === undefined) return false;
     const position = this.inst.getPosition();
@@ -31,7 +35,7 @@ export class SlipperyFeetTarget {
     return dx * dx + dz * dz < radius * radius;
   }
 
-  SetSlipperyRate(fn: SlipperyFeetTarget['ratefn']): void { this.ratefn = fn; }
+  SetSlipperyRate(fn: SlipperyFeetTargetRateFn | undefined): void { this.ratefn = fn; }
 
   GetSlipperyRate(target: unknown): number { return this.ratefn ? this.ratefn(this.inst, target) : 1; }
 }

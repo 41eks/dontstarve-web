@@ -31,7 +31,7 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
   caster.veryQuickCast = true;
   // spellCB: the skin is chosen at the hit frame and the explode_reskin fx is spawned with it; the display loads
   // the chosen skin's art when the sprite json names it.
-  caster.setSpellFn((_tool, target) => {
+  caster.SetSpellFn((_tool, target) => {
     const inst = reskinTargetOf(target);
     if (!inst) return false;
     const fx = reskinFxPresenters.get(entity)?.prepare(entity.skinId);
@@ -39,7 +39,7 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
     if (!reskinned) fx?.dispose();
     return reskinned;
   });
-  caster.setCanCastFn((_doer, target) => {
+  caster.SetCanCastFn((_doer, target) => {
     const inst = reskinTargetOf(target);
     const skinId = inst?.sprite.skinId.peek();
     return !!inst && !inst.isRemoved

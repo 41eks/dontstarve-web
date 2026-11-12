@@ -49,7 +49,7 @@ export class LightStaffController implements HeldEquipFunctions {
     entity.fxcolour = entity.prefab === 'opalstaff' ? OPALSTAFF_COLOUR : YELLOWSTAFF_COLOUR;
     entity.components.finiteuses.setMaxUses(LIGHT_STAFF_USES[entity.prefab]);
     this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster, world.map);
-    this.spellcaster.setSpellFn((_staff, _target, position, doer) => this.createLight(position, doer));
+    this.spellcaster.SetSpellFn((_staff, _target, position, doer) => this.createLight(position, doer));
     this.spellcaster.canUseOnPoint = true;
     this.spellcaster.canUseOnPointWater = true;
   }
@@ -234,7 +234,7 @@ export class GreenStaffController implements HeldEquipFunctions {
     this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster);
     this.spellcaster.canUseOnTargets = true;
     this.spellcaster.canOnlyUseOnRecipes = true;
-    this.spellcaster.setSpellFn((_staff, target, _position, doer) =>
+    this.spellcaster.SetSpellFn((_staff, target, _position, doer) =>
       target instanceof PrefabInstance && this.destroyStructure(target, doer, world));
   }
   onequip(): void {}

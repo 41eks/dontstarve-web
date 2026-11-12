@@ -1,23 +1,27 @@
+import type { LuaFn } from './luaFn';
 import type { CombatActor, CombatInst } from './combat';
 /** The finite uses a weapon wears on attack. */
 export interface WeaponUses { use(amount: number): boolean }
 
+export type WeaponOnAttackFn<Inst> = LuaFn<[inst: Inst, attacker: CombatActor, target: CombatInst]>;
+export type WeaponOnProjectileLaunchedFn<Inst> = LuaFn<[inst: Inst, attacker: CombatActor, target: CombatInst, projectile: unknown]>;
+
 /** components/weapon.lua damage and combat durability loss. */
-export class Weapon {
+export class Weapon<Inst extends object = object> {
   damage = 10;
   attackwear = 1;
   attackrange?: number;
   hitrange?: number;
-  onattack?: (inst: object, attacker: CombatActor, target: CombatInst) => void;
+  onattack?: WeaponOnAttackFn<Inst>;
   /** weapon.lua SetProjectile: the prefab a ranged attack launches instead of hitting at once. */
   projectile?: string;
-  onprojectilelaunched?: (inst: object, attacker: CombatActor, target: CombatInst, projectile: unknown) => void;
+  onprojectilelaunched?: WeaponOnProjectileLaunchedFn<Inst>;
   /** SpawnPrefab(self.projectile) + projectile:Throw, supplied by the prefab that owns the projectile art. */
   launchProjectile?: (attacker: CombatActor, target: CombatInst) => unknown;
-  private readonly inst: object;
+  private readonly inst: Inst;
   private readonly uses?: () => WeaponUses | undefined;
 
-  constructor(inst: object, uses?: () => WeaponUses | undefined) {
+  constructor(inst: Inst, uses?: () => WeaponUses | undefined) {
     this.inst = inst;
     this.uses = uses;
   }
@@ -27,11 +31,11 @@ export class Weapon {
     this.damage = damage;
   }
   SetRange(attack: number, hit = attack): void { this.attackrange = attack; this.hitrange = hit; }
-  SetOnAttack(fn: Weapon['onattack']): void { this.onattack = fn; }
+  SetOnAttack(fn: WeaponOnAttackFn<Inst> | undefined): void { this.onattack = fn; }
   SetProjectile(projectile: string, launch: NonNullable<Weapon['launchProjectile']>): void {
     this.projectile = projectile; this.launchProjectile = launch;
   }
-  SetOnProjectileLaunched(fn: Weapon['onprojectilelaunched']): void { this.onprojectilelaunched = fn; }
+  SetOnProjectileLaunched(fn: WeaponOnProjectileLaunchedFn<Inst> | undefined): void { this.onprojectilelaunched = fn; }
   CanRangedAttack(): boolean { return this.projectile !== undefined; }
   /** LaunchProjectile: spawn and throw the projectile, then run onprojectilelaunched. */
   LaunchProjectile(attacker: CombatActor, target: CombatInst): void {

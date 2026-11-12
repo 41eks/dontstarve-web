@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { Vector3 } from 'three';
 import { createEffect, createSignal, readonlySignal, watchSignal } from '@dontstarve-web/signals';
 import type { WorkableInst } from './workable';
@@ -19,11 +20,11 @@ export class Prototyper<Inst extends PrototyperInst = PrototyperInst> {
   SetTechLevel(branch: string, level: number): void { this.trees = { ...this.levels, [branch]: level }; }
   get restrictedtag(): string | undefined { return this.restriction; }
   set restrictedtag(tag: string | undefined) { this.restriction = tag; this.revision.set(this.revision.peek() + 1); }
-  onturnon?: { call(inst: Inst): void }['call'];
-  onturnoff?: { call(inst: Inst): void }['call'];
-  onturnonfordoer?: { call(inst: Inst, doer: PrototyperDoer): void }['call'];
-  onturnofffordoer?: { call(inst: Inst, doer: PrototyperDoer): void }['call'];
-  canuseprototyperfn?: { call(inst: Inst, doer: PrototyperDoer): boolean }['call'];
+  onturnon?: LuaFn<[inst: Inst]>;
+  onturnoff?: LuaFn<[inst: Inst]>;
+  onturnonfordoer?: LuaFn<[inst: Inst, doer: PrototyperDoer]>;
+  onturnofffordoer?: LuaFn<[inst: Inst, doer: PrototyperDoer]>;
+  canuseprototyperfn?: LuaFn<[inst: Inst, doer: PrototyperDoer], boolean>;
   private readonly doers = new Map<PrototyperDoer, () => void>();
   private active = false;
   private disposed = false;

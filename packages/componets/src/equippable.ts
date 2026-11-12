@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { EquipmentKind } from '../../inventory/src/types';
 import type { EquipmentOwner, EquipmentOwnerView } from '../../signals/src/equipment';
 
@@ -14,22 +15,26 @@ export interface EquippableOwner {
   };
 }
 
+export type EquippableOnEquipFn<Inst> = LuaFn<[inst: Inst, owner: EquipmentOwner]>;
+export type EquippableOnUnequipFn<Inst> = LuaFn<[inst: Inst, owner: EquipmentOwner]>;
+export type EquippableDappernessFn<Inst> = LuaFn<[inst: Inst, owner: EquippableOwner | undefined], number>;
+
 /** equippable.lua: the equip slot, dapperness and the prefab's onequip/onunequip; the owner's inventory calls Equip/Unequip. */
 export class Equippable<Inst extends EquippableInst = EquippableInst> {
   equipslot: EquipmentKind;
   dapperness = 0;
   is_magic_dapperness = false;
-  dapperfn?: (inst: EquippableInst, owner: EquippableOwner | undefined) => number;
+  dapperfn?: EquippableDappernessFn<Inst>;
   isequipped = false;
-  onequipfn?: (inst: Inst, owner: EquipmentOwner) => void;
-  onunequipfn?: (inst: Inst, owner: EquipmentOwner) => void;
+  onequipfn?: EquippableOnEquipFn<Inst>;
+  onunequipfn?: EquippableOnUnequipFn<Inst>;
   private readonly inst: Inst;
   /** The owner's view for this equip; its AnimState slot is closed after onunequip. */
   private view?: EquipmentOwnerView;
 
   constructor(inst: Inst, equipslot: EquipmentKind) { this.inst = inst; this.equipslot = equipslot; }
-  SetOnEquip(fn: (inst: Inst, owner: EquipmentOwner) => void): void { this.onequipfn = fn; }
-  SetOnUnequip(fn: (inst: Inst, owner: EquipmentOwner) => void): void { this.onunequipfn = fn; }
+  SetOnEquip(fn: EquippableOnEquipFn<Inst> | undefined): void { this.onequipfn = fn; }
+  SetOnUnequip(fn: EquippableOnUnequipFn<Inst> | undefined): void { this.onunequipfn = fn; }
   IsEquipped(): boolean { return this.isequipped; }
   Equip(owner: EquipmentOwner): void {
     this.isequipped = true;
@@ -48,7 +53,7 @@ export class Equippable<Inst extends EquippableInst = EquippableInst> {
     this.inst.PushEvent('unequipped', { owner });
   }
   IsRestricted(): boolean { return false; }
-  SetDappernessFn(fn: (inst: EquippableInst, owner: EquippableOwner | undefined) => number): void { this.dapperfn = fn; }
+  SetDappernessFn(fn: EquippableDappernessFn<Inst> | undefined): void { this.dapperfn = fn; }
   GetDapperness(owner?: EquippableOwner, ignoreWetness = false): number {
     let dapperness = this.dapperfn ? this.dapperfn(this.inst, owner) : this.dapperness;
     if (!ignoreWetness && this.inst.GetIsWet()) dapperness -= .1; // TUNING.WET_ITEM_DAPPERNESS

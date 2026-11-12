@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { Health, HealthAfflicter } from './health';
 import type { Weapon } from './weapon';
 
@@ -18,6 +19,10 @@ export interface CombatInst<HealthComponent extends Pick<Health, 'IsDead' | 'DoD
 /** Combat needs only these operations from the actor's health component. */
 export type CombatActor = CombatInst<Pick<Health, 'IsDead' | 'DoDelta'>>;
 
+export type CombatOnHitFn = LuaFn<[inst: CombatActor, attacker: CombatActor, damage: number]>;
+/** combat.lua keeptargetfn(inst, target). */
+export type CombatKeepTargetFn = LuaFn<[inst: CombatActor, target: CombatInst], boolean>;
+
 /**
  * The supported branches of components/combat.lua: default/weapon damage,
  * attack cooldown, range checks and GetAttacked → health:DoDelta → onhitfn.
@@ -28,9 +33,8 @@ export class Combat {
   attackrange = 3;
   hitrange = 3;
   damagemultiplier = 1;
-  // Registration retains the prefab host signature after the component registry erases it.
-  onhitfn?: { call(inst: CombatActor, attacker: CombatActor, damage: number): void }['call'];
-  keeptargetfn?: () => boolean;
+  onhitfn?: CombatOnHitFn;
+  keeptargetfn?: CombatKeepTargetFn;
   /** Projectiles hit from wherever they are: the weapon's range was checked at launch. */
   ignorehitrange = false;
   private laststartattacktime?: number;
@@ -50,7 +54,7 @@ export class Combat {
   SetDefaultDamage(damage: number): void { this.defaultdamage = damage; }
   SetAttackPeriod(period: number): void { this.min_attack_period = period; }
   SetRange(attack: number, hit = attack): void { this.attackrange = attack; this.hitrange = hit; }
-  SetKeepTargetFunction(fn: () => boolean): void { this.keeptargetfn = fn; }
+  SetKeepTargetFunction(fn: CombatKeepTargetFn | undefined): void { this.keeptargetfn = fn; }
   GetWeapon(): Weapon | undefined { return this.getWeapon(); }
 
   InCooldown(): boolean {

@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import type { SleepingBag, SleepingBagSleeper } from './sleepingbag';
@@ -19,18 +20,22 @@ export interface SleepingBagUserOptions {
 // TUNING.GOODSLEEP_SANITY: the extra sanity a good sleep aid adds to every tick.
 const GOODSLEEP_SANITY = 1.3;
 
+export type SleepingBagUserCanSleepFn<Inst> = LuaFn<[inst: Inst], readonly [success: boolean, reason?: string]>;
+
 /** components/sleepingbaguser.lua: the sleeper's per-tick hunger, sanity and health changes. */
-export class SleepingBagUser implements SleepingBagSleeper {
+export class SleepingBagUser<Inst extends object = object> implements SleepingBagSleeper {
   bed: SleepingBag | undefined;
   hunger_bonus_mult = 1;
   health_bonus_mult = 1;
   sanity_bonus_mult = 1;
-  cansleepfn?: () => readonly [success: boolean, reason?: string];
+  cansleepfn?: SleepingBagUserCanSleepFn<Inst>;
+  private readonly inst: Inst;
   private readonly tick: ComponentTimer;
   private stopWatchingPhase?: () => void;
   private readonly options: SleepingBagUserOptions;
 
-  constructor(_inst: object, options: SleepingBagUserOptions) {
+  constructor(inst: Inst, options: SleepingBagUserOptions) {
+    this.inst = inst;
     this.options = options;
     this.tick = new ComponentTimer(options.scheduler, () => {
       this.SleepTick();
@@ -42,9 +47,9 @@ export class SleepingBagUser implements SleepingBagSleeper {
   SetHungerBonusMult(bonus: number): void { this.hunger_bonus_mult = bonus; }
   SetHealthBonusMult(bonus: number): void { this.health_bonus_mult = bonus; }
   SetSanityBonusMult(bonus: number): void { this.sanity_bonus_mult = bonus; }
-  SetCanSleepFn(fn: SleepingBagUser['cansleepfn']): void { this.cansleepfn = fn; }
+  SetCanSleepFn(fn: SleepingBagUserCanSleepFn<Inst> | undefined): void { this.cansleepfn = fn; }
 
-  ShouldSleep(): readonly [success: boolean, reason?: string] { return this.cansleepfn ? this.cansleepfn() : [true]; }
+  ShouldSleep(): readonly [success: boolean, reason?: string] { return this.cansleepfn ? this.cansleepfn(this.inst) : [true]; }
 
   /** Waking when the phase leaves the bed's sleep phase, e.g. at dawn for a tent. */
   private wakeUpTest(phase: WorldPhase): void {

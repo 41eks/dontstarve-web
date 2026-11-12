@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { createSignal, readonlySignal, type WorldPhase } from '../../signals/src';
 
 /** The entity that owns a sleepingbag: only its tags are touched (`hassleeper`). */
@@ -20,17 +21,20 @@ const SLEEP_HUNGER_PER_TICK = -1;
 const SLEEP_HEALTH_PER_TICK = 1;
 const SLEEP_SANITY_PER_TICK = 1;
 
+export type SleepingBagOnWakeFn = LuaFn<[inst: SleepingBagInst, sleeper: SleepingBagSleeper, nostatechange: boolean]>;
+export type SleepingBagTemperatureTickFn = LuaFn<[inst: SleepingBagInst, sleeper: SleepingBagSleeper]>;
+
 /** components/sleepingbag.lua; the sleeper is a signal, and `hassleeper` follows it. */
 export class SleepingBag {
   healthsleep = true;
   dryingrate: number | undefined;
   onsleep?: (inst: SleepingBagInst, sleeper: SleepingBagSleeper) => void;
-  onwake?: (inst: SleepingBagInst, sleeper: SleepingBagSleeper, nostatechange: boolean) => void;
+  onwake?: SleepingBagOnWakeFn;
   tick_period = SLEEP_TICK_PERIOD;
   hunger_tick = SLEEP_HUNGER_PER_TICK;
   health_tick = SLEEP_HEALTH_PER_TICK;
   sanity_tick = SLEEP_SANITY_PER_TICK;
-  temperaturetickfn?: (inst: SleepingBagInst, sleeper: SleepingBagSleeper) => void;
+  temperaturetickfn?: SleepingBagTemperatureTickFn;
   private sleep_phase: WorldPhase = 'night';
   private readonly sleeperState = createSignal<SleepingBagSleeper | undefined>(undefined);
   readonly sleeper = readonlySignal(this.sleeperState);
@@ -40,7 +44,7 @@ export class SleepingBag {
 
   SetSleepPhase(phase: WorldPhase): void { this.sleep_phase = phase; }
   GetSleepPhase(): WorldPhase { return this.sleep_phase; }
-  SetTemperatureTickFn(fn: SleepingBag['temperaturetickfn']): void { this.temperaturetickfn = fn; }
+  SetTemperatureTickFn(fn: SleepingBagTemperatureTickFn | undefined): void { this.temperaturetickfn = fn; }
 
   DoSleep(doer: SleepingBagSleeper): void {
     if (this.sleeperState.peek() !== undefined || doer.bed !== undefined) return;

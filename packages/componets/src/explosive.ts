@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { Vector3 } from 'three';
 import type { Burnable } from './burnable';
 import type { Workable, WorkInst, Worker } from './workable';
@@ -21,6 +22,7 @@ export type ExplosiveInst = ExplosiveTarget & Worker & {
   readonly components: NonNullable<Worker['components']>;
   remove(): boolean;
 };
+export type ExplosiveOnExplodeFn = LuaFn<[inst: ExplosiveInst]>;
 
 /**
  * The work, ignition and `explosion` event branches of components/explosive.lua. Damage to
@@ -31,7 +33,7 @@ export class Explosive {
   explosiverange = 3;
   buildingdamage = 10;
   lightonexplode = true;
-  private onexplodefn?: (inst: ExplosiveInst) => void;
+  private onexplodefn?: ExplosiveOnExplodeFn;
   readonly inst: ExplosiveInst;
   private readonly find: (center: Vector3, radius: number) => readonly ExplosiveTarget[];
   private readonly unitsPerMeter: number;
@@ -41,7 +43,7 @@ export class Explosive {
     this.inst = inst; this.find = find; this.unitsPerMeter = unitsPerMeter;
   }
 
-  SetOnExplodeFn(fn: ((inst: ExplosiveInst) => void) | undefined): void { this.onexplodefn = fn; }
+  SetOnExplodeFn(fn: ExplosiveOnExplodeFn | undefined): void { this.onexplodefn = fn; }
 
   /** The whole stack explodes at once and the inst removes itself, as in Lua. */
   OnBurnt(): void {

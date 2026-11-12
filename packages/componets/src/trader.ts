@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { createEffect, createSignal, readonlySignal } from '../../signals/src';
 
 export interface TraderInst {
@@ -18,6 +19,11 @@ export interface TradeItem {
 /** abletoaccepttest returns Lua's `false, reason` as `{ ok: false, reason }`. */
 export type TradeAcceptance = { ok: true } | { ok: false; reason?: string };
 
+export type TraderAbleToAcceptTestFn<Inst, Item, Giver> = LuaFn<[inst: Inst, item: Item, giver: Giver | undefined], TradeAcceptance>;
+export type TraderAcceptTestFn<Inst, Item, Giver> = LuaFn<[inst: Inst, item: Item, giver: Giver | undefined], boolean>;
+export type TraderOnAcceptFn<Inst, Item, Giver> = LuaFn<[inst: Inst, giver: Giver | undefined, item: Item]>;
+export type TraderOnRefuseFn<Inst, Item, Giver> = LuaFn<[inst: Inst, giver: Giver | undefined, item: Item]>;
+
 /** components/trader.lua: gate on the ability to accept, then consume one item and notify. */
 export class Trader<Item extends TradeItem = TradeItem, Giver = unknown, Inst extends TraderInst = TraderInst> {
   private readonly enabledState = createSignal(true);
@@ -25,11 +31,10 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown, Inst ex
   readonly enabled = readonlySignal(this.enabledState);
   deleteitemonaccept = true;
   private readonly acceptNonTradableState = createSignal(false);
-  // Method-typed like Prototyper's callbacks, so a Trader<.., SubInst> stays assignable where the inst type is wider.
-  private abletoaccepttest?: { call(inst: Inst, item: Item, giver: Giver | undefined): TradeAcceptance }['call'];
-  private test?: { call(inst: Inst, item: Item, giver: Giver | undefined): boolean }['call'];
-  private onaccept?: { call(inst: Inst, giver: Giver | undefined, item: Item): void }['call'];
-  private onrefuse?: { call(inst: Inst, giver: Giver | undefined, item: Item): void }['call'];
+  private abletoaccepttest?: TraderAbleToAcceptTestFn<Inst, Item, Giver>;
+  private test?: TraderAcceptTestFn<Inst, Item, Giver>;
+  private onaccept?: TraderOnAcceptFn<Inst, Item, Giver>;
+  private onrefuse?: TraderOnRefuseFn<Inst, Item, Giver>;
   private readonly inst: Inst;
   private readonly stopTags: () => void;
 
@@ -49,10 +54,10 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown, Inst ex
   Enable(): void { this.enabledState.set(true); }
   Disable(): void { this.enabledState.set(false); }
   /** Like trader.lua, every callback receives the trader's inst first. */
-  SetAbleToAcceptTest(fn: (inst: Inst, item: Item, giver: Giver | undefined) => TradeAcceptance): void { this.abletoaccepttest = fn; }
-  SetAcceptTest(fn: (inst: Inst, item: Item, giver: Giver | undefined) => boolean): void { this.test = fn; }
-  SetOnAccept(fn: (inst: Inst, giver: Giver | undefined, item: Item) => void): void { this.onaccept = fn; }
-  SetOnRefuse(fn: (inst: Inst, giver: Giver | undefined, item: Item) => void): void { this.onrefuse = fn; }
+  SetAbleToAcceptTest(fn: TraderAbleToAcceptTestFn<Inst, Item, Giver> | undefined): void { this.abletoaccepttest = fn; }
+  SetAcceptTest(fn: TraderAcceptTestFn<Inst, Item, Giver> | undefined): void { this.test = fn; }
+  SetOnAccept(fn: TraderOnAcceptFn<Inst, Item, Giver> | undefined): void { this.onaccept = fn; }
+  SetOnRefuse(fn: TraderOnRefuseFn<Inst, Item, Giver> | undefined): void { this.onrefuse = fn; }
 
   AbleToAccept(item: Item | undefined, giver?: Giver): TradeAcceptance {
     if (!this.enabledState.peek() || !item) return { ok: false };

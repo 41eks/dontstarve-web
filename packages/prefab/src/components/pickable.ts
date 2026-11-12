@@ -1,3 +1,4 @@
+import type { LuaFn } from '../../../componets/src/luaFn';
 import * as THREE from 'three';
 import { batch, createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { PickableComponent, PickDoer } from '@dontstarve-web/stategraphs/pick';
@@ -67,9 +68,9 @@ export class Pickable implements PickableComponent {
   wildfirestarter = false;
   remove_when_picked = false;
   /** pickable.lua makefullfn(inst): Regen and an OnLoad of a full plant call it. */
-  makefullfn?: { call(inst: PickableInst): void }['call'];
+  makefullfn?: LuaFn<[inst: PickableInst]>;
   /** pickable.lua onpickedfn(inst, picker, loot), called after the constructor's onPicked. */
-  onpickedfn?: { call(inst: PickableInst, picker: unknown, loot: unknown): void }['call'];
+  onpickedfn?: LuaFn<[inst: PickableInst, picker: unknown, loot: unknown]>;
   /** Prefabs retaining an original item provide it instead of spawning a product copy. */
   getProductEntity?: () => ItemEntity | undefined;
   get productEntity(): ItemEntity | undefined { return this.getProductEntity?.(); }

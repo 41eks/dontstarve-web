@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 /** Lua `success, reason` from a book callback or the READ action. */
 export type BookResult = readonly [success: boolean, reason?: string];
 
@@ -19,7 +20,7 @@ export interface BookFxWorld<Reader> {
 
 /** Book callbacks receive the world services the Lua callbacks reach through globals. */
 export type BookFn<Inst extends BookInst, Reader extends BookReaderInst, World> =
-  (inst: Inst, reader: Reader, world: World) => BookResult;
+  LuaFn<[inst: Inst, reader: Reader, world: World], BookResult>;
 
 /** The inst.components.book surface used by readers and component actions. */
 export interface BookComponent {

@@ -1,9 +1,16 @@
+import type { LuaFn } from './luaFn';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { createSignal, readonlySignal, createEffect, createMemo, watchSignal, WorldContentKey, getBoundWatchWorldContent, type GetWatchWorldContent, type Memo, type PlayerPositionsSignal } from '../../signals/src';
 import { GetTileCoordsAtPoint, TileTracker } from './tileManager';
 import { TILE_SIZE } from '../../prefab/src/tile';
 
 export interface PlayerProxInst { isValid(): boolean; getPosition(): ReadonlyVector3 }
+/**
+ * playerprox.lua onnear(inst, player) / onfar(inst). The position signal carries no player entities, so the
+ * player argument is not passed.
+ */
+export type PlayerProxOnNearFn<Inst> = LuaFn<[inst: Inst]>;
+export type PlayerProxOnFarFn<Inst> = LuaFn<[inst: Inst]>;
 
 // Unordered tile pairs share their grid distance across entities and position
 // snapshots. Signed X/Z indices also distinguish tiles outside the bounded grid.
@@ -22,24 +29,24 @@ function getTileDistance(a: readonly [number, number], b: readonly [number, numb
 }
 
 /** playerprox.lua's AnyPlayer state and hysteresis, evaluated on position signals instead of polling. */
-export class PlayerProx {
+export class PlayerProx<Inst extends PlayerProxInst = PlayerProxInst> {
   private readonly close = createSignal(false);
   readonly isclose = readonlySignal(this.close);
   private enabled = false;
   private disposed = false;
   private near = 2;
   private far = 3;
-  private readonly inst: PlayerProxInst;
+  private readonly inst: Inst;
   private readonly playerpositions?: PlayerPositionsSignal;
   private readonly playerTiles?: Memo<readonly [number, number][]>;
   private stopPlayers?: () => void;
   private stopArea?: () => void;
   /** Tickingarea suspension must not undo an explicit Stop(). */
   private pausedByArea = false;
-  private onnear?: () => void;
-  private onfar?: () => void;
+  private onnear?: PlayerProxOnNearFn<Inst>;
+  private onfar?: PlayerProxOnFarFn<Inst>;
 
-  constructor(inst: PlayerProxInst, getWatchWorldContent: GetWatchWorldContent | undefined = getBoundWatchWorldContent()) {
+  constructor(inst: Inst, getWatchWorldContent: GetWatchWorldContent | undefined = getBoundWatchWorldContent()) {
     this.inst = inst;
     // A private tile key gates the player positions by tickingarea; the inst's position is read once, so it must not move.
     const tracker = new TileTracker(() => inst.getPosition());
@@ -65,8 +72,8 @@ export class PlayerProx {
     }
   }
   SetDist(near: number, far: number): void { this.near = near; this.far = far; }
-  SetOnPlayerNear(fn: () => void): void { this.onnear = fn; }
-  SetOnPlayerFar(fn: () => void): void { this.onfar = fn; }
+  SetOnPlayerNear(fn: PlayerProxOnNearFn<Inst> | undefined): void { this.onnear = fn; }
+  SetOnPlayerFar(fn: PlayerProxOnFarFn<Inst> | undefined): void { this.onfar = fn; }
   IsPlayerClose(): boolean { return this.close.peek(); }
   Schedule(): void {
     if (this.disposed) return;
@@ -87,7 +94,7 @@ export class PlayerProx {
     }) ?? false;
     if (wasClose === isClose) return;
     this.close.set(isClose);
-    if (isClose) this.onnear?.(); else this.onfar?.();
+    if (isClose) this.onnear?.(this.inst); else this.onfar?.(this.inst);
   }
   Stop(): void { this.enabled = false; this.pausedByArea = false; }
   OnEntityWake(): void { this.Schedule(); this.ForceUpdate(); }

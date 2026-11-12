@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal, type Signal } from '../../signals/src';
 import type { GameTimeScheduler } from '../../signals/src/gameTimeScheduler';
 
@@ -59,8 +60,7 @@ export class Health {
   /** Healing action capability; Lua still allows repair and other direct DoDelta calls when false. */
   canheal = true;
   nofadeout = false;
-  // Registration retains the prefab host signature after the component registry erases it.
-  ondelta?: { call(inst: HealthInst, oldPercent: number, newPercent: number, overtime?: boolean, cause?: string, afflicter?: HealthAfflicter, amount?: number): void }['call'];
+  ondelta?: LuaFn<[inst: HealthInst, oldPercent: number, newPercent: number, overtime?: boolean, cause?: string, afflicter?: HealthAfflicter, amount?: number]>;
   readonly inst: HealthInst;
   /** inst:DoPeriodicTask for StartRegen; absent for health that never regenerates. */
   private readonly scheduler?: GameTimeScheduler;

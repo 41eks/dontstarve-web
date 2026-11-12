@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { batch, createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { Health } from './health';
 import type { GameTimeScheduler } from './gameTimeScheduler';
@@ -9,6 +10,8 @@ export interface HungerInst {
   readonly is_teleporting?: boolean;
   PushEvent?(name: string, data?: unknown): void;
 }
+
+export type HungerOverrideStarveFn = LuaFn<[inst: HungerInst, dt: number]>;
 
 /** hunger.lua: authoritative nutrition, starvation edges and the one-second world task. */
 export class Hunger {
@@ -25,7 +28,7 @@ export class Hunger {
   hurtrate = 1;
   burnrate = 1;
   redirect?: (inst: HungerInst, delta: number, overtime?: boolean) => void;
-  overridestarvefn?: (inst: HungerInst, dt: number) => void;
+  overridestarvefn?: HungerOverrideStarveFn;
   readonly burnratemodifiers = new SourceModifierList();
 
   constructor(inst: HungerInst, maximum = 100, scheduler?: GameTimeScheduler) {
@@ -50,7 +53,7 @@ export class Hunger {
   }
   SetRate(rate: number): void { this.hungerrate = finite(rate); }
   SetKillRate(rate: number): void { this.hurtrate = finite(rate); }
-  SetOverrideStarveFn(fn: Hunger['overridestarvefn']): void { this.overridestarvefn = fn; }
+  SetOverrideStarveFn(fn: HungerOverrideStarveFn | undefined): void { this.overridestarvefn = fn; }
   IsPaused(): boolean { return !this.burning; }
   IsStarving(): boolean { return this.current <= 0; }
   Pause(): void { this.burning = false; this.timer?.stop(); }

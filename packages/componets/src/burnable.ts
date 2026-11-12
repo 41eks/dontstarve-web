@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { Vector3 } from 'three';
 import type { WorkInst } from './workable';
 import { GameTimeScheduler } from './gameTimeScheduler';
@@ -12,6 +13,10 @@ export interface BurnableInst extends WorkInst {
 }
 
 /** One AddBurnFX entry; offsets are in animation pixels when following a symbol. */
+export type BurnableOnIgniteFn = LuaFn<[inst: BurnableInst, source?: WorkInst, doer?: WorkInst]>;
+export type BurnableOnExtinguishFn = LuaFn<[inst: BurnableInst]>;
+export type BurnableOnBurntFn = LuaFn<[inst: BurnableInst]>;
+
 export interface BurnFXData {
   readonly prefab: string;
   readonly x: number;
@@ -54,9 +59,9 @@ export class Burnable {
   private fxlevel = 1;
   /** SpawnPrefab for this inst's burn fx; the owning prefab supplies it with its AddBurnFX entries. */
   private spawnfx?: (data: BurnFXData) => BurnFX | undefined;
-  onignite?: (inst: BurnableInst, source?: WorkInst, doer?: WorkInst) => void;
-  onextinguish?: (inst: BurnableInst) => void;
-  onburnt?: (inst: BurnableInst) => void;
+  onignite?: BurnableOnIgniteFn;
+  onextinguish?: BurnableOnExtinguishFn;
+  onburnt?: BurnableOnBurntFn;
   readonly inst: BurnableInst;
   constructor(inst: BurnableInst, scheduler?: GameTimeScheduler) {
     this.inst = inst;
@@ -90,9 +95,9 @@ export class Burnable {
   get canlight(): boolean { return this.lightable; }
   set canlight(value: boolean) { this.lightable = value; this.refreshTags(); }
   SetBurnTime(time: number): void { this.burntime = time; }
-  SetOnIgniteFn(fn: Burnable['onignite']): void { this.onignite = fn; }
-  SetOnExtinguishFn(fn: Burnable['onextinguish']): void { this.onextinguish = fn; }
-  SetOnBurntFn(fn: Burnable['onburnt']): void { this.onburnt = fn; }
+  SetOnIgniteFn(fn: BurnableOnIgniteFn | undefined): void { this.onignite = fn; }
+  SetOnExtinguishFn(fn: BurnableOnExtinguishFn | undefined): void { this.onextinguish = fn; }
+  SetOnBurntFn(fn: BurnableOnBurntFn | undefined): void { this.onburnt = fn; }
   IsBurning(): boolean { return this.burning.peek(); }
   AddBurnFX(prefab: string, offset: { x: number; y: number; z: number }, followsymbol?: string, followaschild?: boolean,
     scale?: number, followlayered?: boolean): void {

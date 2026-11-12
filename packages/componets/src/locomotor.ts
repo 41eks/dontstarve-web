@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { BufferedAction, BufferedActionObject } from '../../stategraphs/src/bufferedaction';
 
 export interface LocoMotorPoint { x: number; y: number; z: number }
@@ -148,6 +149,8 @@ export class LocoMotorPath {
   }
 }
 
+export type LocoMotorReachDestinationFn = LuaFn<[inst: LocoMotorInst]>;
+
 /**
  * components/locomotor.lua: the stategraph starts the motor, while destinations retain movement
  * intent across StopMoving. Hosts may inject ground paths; flying creatures approach directly.
@@ -159,7 +162,7 @@ export class LocoMotor {
   runspeed = DEFAULT_RUN_SPEED;
   dest?: Dest;
   bufferedaction?: BufferedAction;
-  private atdestfn?: (inst: LocoMotorInst) => void;
+  private atdestfn?: LocoMotorReachDestinationFn;
   private wantstomoveforward = false;
   private wantstorun = false;
   private isrunning = false;
@@ -183,7 +186,7 @@ export class LocoMotor {
   /** Creatures here are terrestrial or flying and never pathfind on water. */
   IsAquatic(): boolean { return false; }
   CanPathfindOnWater(): boolean { return false; }
-  SetReachDestinationCallback(fn: ((inst: LocoMotorInst) => void) | undefined): void { this.atdestfn = fn; }
+  SetReachDestinationCallback(fn: LocoMotorReachDestinationFn | undefined): void { this.atdestfn = fn; }
   WantsToRun(): boolean { return this.wantstorun; }
   WantsToMoveForward(): boolean { return this.wantstomoveforward; }
   HasDestination(): boolean { return this.dest !== undefined; }

@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '../../signals/src';
 
 export interface FiniteUsesInst {
@@ -7,6 +8,8 @@ export interface FiniteUsesInst {
 
 export interface FiniteUsesSaveData { uses: number }
 
+export type FiniteUsesOnFinishedFn = LuaFn<[inst: FiniteUsesInst]>;
+
 /** components/finiteuses.lua for world entities: the remaining uses are a private signal with a read-only view. */
 export class FiniteUses {
   private readonly currentState = createSignal(0);
@@ -15,7 +18,7 @@ export class FiniteUses {
   readonly total: ReadonlySignal<number> = readonlySignal(this.totalState);
   /** GetPercent(): derived from the uses signals. */
   readonly percent: Memo<number>;
-  private onfinished?: (inst: FiniteUsesInst) => void;
+  private onfinished?: FiniteUsesOnFinishedFn;
   private readonly inst: FiniteUsesInst;
 
   constructor(inst: FiniteUsesInst) {
@@ -28,7 +31,7 @@ export class FiniteUses {
     this.totalState.set(value);
   }
 
-  SetOnFinished(fn: ((inst: FiniteUsesInst) => void) | undefined): void { this.onfinished = fn; }
+  SetOnFinished(fn: FiniteUsesOnFinishedFn | undefined): void { this.onfinished = fn; }
   GetUses(): number { return this.currentState.peek(); }
   GetPercent(): number { return this.currentState.peek() / this.totalState.peek(); }
 

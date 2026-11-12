@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { Vector3 } from 'three';
 
@@ -29,11 +30,10 @@ const canWork = (disposed: boolean, removed: boolean, enabled: boolean, workleft
 const workTag = (canBeWorked: boolean, action: WorkAction | undefined): string | undefined =>
   canBeWorked && action ? `${action}_workable` : undefined;
 
-// Component registries erase the concrete host type; prefab registration retains its own host signature.
-type WorkCallback<Inst extends WorkableInst> = {
-  call(inst: Inst, worker: Worker, workleft: number, numworks: number): void;
-}['call'];
-type FinishCallback<Inst extends WorkableInst> = { call(inst: Inst, worker: Worker): void }['call'];
+export type WorkableOnWorkFn<Inst> = LuaFn<[inst: Inst, worker: Worker, workleft: number, numworks: number]>;
+export type WorkableOnFinishFn<Inst> = LuaFn<[inst: Inst, worker: Worker]>;
+export interface WorkableSaveData { workleft?: number; maxwork?: number }
+export type WorkableOnLoadFn<Inst> = LuaFn<[inst: Inst, data: WorkableSaveData]>;
 
 /** components/workable.lua: signals own work state; the action tag is a pure derived view. */
 export class Workable<Inst extends WorkableInst = WorkableInst> {
@@ -52,9 +52,9 @@ export class Workable<Inst extends WorkableInst = WorkableInst> {
   private readonly actionTagMemo: Memo<string | undefined>;
   readonly canBeWorked: ReadonlySignal<boolean>;
   readonly actionTag: ReadonlySignal<string | undefined>;
-  private onwork?: WorkCallback<Inst>;
-  private onfinish?: FinishCallback<Inst>;
-  private onload?: () => void;
+  private onwork?: WorkableOnWorkFn<Inst>;
+  private onfinish?: WorkableOnFinishFn<Inst>;
+  private onload?: WorkableOnLoadFn<Inst>;
   savestate = false;
 
   private readonly inst: Inst;
@@ -89,8 +89,8 @@ export class Workable<Inst extends WorkableInst = WorkableInst> {
   HasTag(tag: string): boolean | undefined {
     return WORKABLE_TAGS.has(tag) ? workTag(this.CanBeWorked(), this.actionState.peek()) === tag : undefined;
   }
-  SetOnWorkCallback(fn: WorkCallback<Inst> | undefined): void { this.onwork = fn; }
-  SetOnFinishCallback(fn: FinishCallback<Inst>): void { this.onfinish = fn; }
+  SetOnWorkCallback(fn: WorkableOnWorkFn<Inst> | undefined): void { this.onwork = fn; }
+  SetOnFinishCallback(fn: WorkableOnFinishFn<Inst> | undefined): void { this.onfinish = fn; }
 
   WorkedBy(worker: Worker, numworks = 1): boolean {
     if (!this.CanBeWorked()) return false;
@@ -111,17 +111,17 @@ export class Workable<Inst extends WorkableInst = WorkableInst> {
     return true;
   }
 
-  SetOnLoadFn(fn: () => void): void { this.onload = fn; }
-  OnSave(): { workleft?: number; maxwork?: number } { return this.savestate ? {
+  SetOnLoadFn(fn: WorkableOnLoadFn<Inst> | undefined): void { this.onload = fn; }
+  OnSave(): WorkableSaveData { return this.savestate ? {
     workleft: this.workleftState.peek(), ...(this.maxworkState.peek() > 0 ? { maxwork: this.maxworkState.peek() } : {}),
   } : {}; }
-  OnLoad(data: { workleft?: number; maxwork?: number }): void {
+  OnLoad(data: WorkableSaveData): void {
     if (this.disposedState.peek()) return;
     batch(() => {
       if (data.maxwork !== undefined) this.maxworkState.set(data.maxwork);
       if (data.workleft !== undefined) this.workleftState.set(data.workleft);
     });
-    this.onload?.();
+    this.onload?.(this.inst, data);
   }
   dispose(): void {
     if (this.disposedState.peek()) return;

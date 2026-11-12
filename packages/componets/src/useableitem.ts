@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { createSignal, readonlySignal, type ReadonlySignal } from '../../signals/src';
 
 export interface UseableItemInst {
@@ -6,18 +7,21 @@ export interface UseableItemInst {
   readonly components: { equippable?: { IsEquipped(): boolean } };
 }
 
+export type UseableItemOnUseFn = LuaFn<[inst: UseableItemInst], boolean | void>;
+export type UseableItemOnStopUseFn = LuaFn<[inst: UseableItemInst]>;
+
 /** useableitem.lua: the "inuse" tag mirrors the flag; the item decides what using it does. */
 export class UseableItem {
   private readonly inuseState = createSignal(false);
   readonly inuse: ReadonlySignal<boolean> = readonlySignal(this.inuseState);
-  private onusefn?: (inst: UseableItemInst) => boolean | void;
-  private onstopusefn?: (inst: UseableItemInst) => void;
+  private onusefn?: UseableItemOnUseFn;
+  private onstopusefn?: UseableItemOnStopUseFn;
   private readonly inst: UseableItemInst;
 
   constructor(inst: UseableItemInst) { this.inst = inst; }
 
-  SetOnUseFn(fn: (inst: UseableItemInst) => boolean | void): void { this.onusefn = fn; }
-  SetOnStopUseFn(fn: (inst: UseableItemInst) => void): void { this.onstopusefn = fn; }
+  SetOnUseFn(fn: UseableItemOnUseFn | undefined): void { this.onusefn = fn; }
+  SetOnStopUseFn(fn: UseableItemOnStopUseFn | undefined): void { this.onstopusefn = fn; }
   /** `inst.replica.equippable:IsEquipped()`. */
   CanInteract(): boolean { return !this.inuseState.peek() && !!this.inst.components.equippable?.IsEquipped(); }
 

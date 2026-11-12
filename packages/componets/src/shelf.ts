@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { createSignal, readonlySignal } from '../../signals/src';
 
 export interface ShelfInst {
@@ -16,14 +17,16 @@ export interface ShelfTaker<Item> {
   GiveItem(item: Item): boolean;
 }
 
+export type ShelfOnShelfItemFn<Inst, Item> = LuaFn<[inst: Inst, item: Item]>;
+export type ShelfOnTakeItemFn<Inst, Item> = LuaFn<[inst: Inst, taker: ShelfTaker<Item> | undefined, item: Item]>;
+
 /** components/shelf.lua: one item that can be taken once the owner allows it. */
 export class Shelf<Item, Inst extends ShelfInst = ShelfInst> {
   private readonly itemState = createSignal<Item | undefined>(undefined);
   readonly itemonshelf = readonlySignal(this.itemState);
   private canTake = false;
-  // Method-typed like Trader's callbacks, so a Shelf<.., SubInst> stays assignable where the inst type is wider.
-  onshelfitemfn?(inst: Inst, item: Item): void;
-  ontakeitemfn?(inst: Inst, taker: ShelfTaker<Item> | undefined, item: Item): void;
+  onshelfitemfn?: ShelfOnShelfItemFn<Inst, Item>;
+  ontakeitemfn?: ShelfOnTakeItemFn<Inst, Item>;
   private readonly inst: Inst;
   private readonly holder: ShelfHolder<Item>;
 
@@ -35,8 +38,8 @@ export class Shelf<Item, Inst extends ShelfInst = ShelfInst> {
   get cantakeitem(): boolean { return this.canTake; }
   set cantakeitem(value: boolean) { this.canTake = value; this.refreshTag(); }
 
-  SetOnShelfItem(fn: Shelf<Item, Inst>['onshelfitemfn']): void { this.onshelfitemfn = fn; }
-  SetOnTakeItem(fn: Shelf<Item, Inst>['ontakeitemfn']): void { this.ontakeitemfn = fn; }
+  SetOnShelfItem(fn: ShelfOnShelfItemFn<Inst, Item> | undefined): void { this.onshelfitemfn = fn; }
+  SetOnTakeItem(fn: ShelfOnTakeItemFn<Inst, Item> | undefined): void { this.ontakeitemfn = fn; }
 
   PutItemOnShelf(item: Item): void {
     this.itemState.set(item);

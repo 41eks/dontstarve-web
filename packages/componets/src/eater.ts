@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { Health } from './health';
 import type { Edible } from './edible';
 import type { Hunger } from './hunger';
@@ -11,7 +12,7 @@ export const FOODGROUP: Readonly<Record<string, { readonly name: string; readonl
   OMNI: { name: 'OMNI', types: ['MEAT', 'VEGGIE', 'INSECT', 'SEEDS', 'GENERIC', 'GOODIES'] },
 };
 
-interface EaterInstance {
+export interface EaterInstance {
   addTag(tag: string): void;
   removeTag(tag: string): void;
   PushEvent(name: string, data: unknown): void;
@@ -25,18 +26,20 @@ export interface EaterFood {
   flush?(): void;
   hasTag(tag: string): boolean;
 }
+export type EaterOnEatFn = LuaFn<[inst: EaterInstance, food: EaterFood, feeder: unknown]>;
+
 /** eater.lua: validate the food, read its edible values, apply stats and consume one. */
 export class Eater {
   private readonly inst: EaterInstance;
   private diet: readonly string[] = [];
-  private oneat?: () => void;
+  private oneat?: EaterOnEatFn;
   constructor(inst: EaterInstance) { this.inst = inst; this.SetDiet(['OMNI']); }
   SetDiet(types: readonly string[]): void {
     for (const type of this.diet) this.inst.removeTag(`${type}_eater`);
     this.diet = types;
     for (const type of types) this.inst.addTag(`${type}_eater`);
   }
-  SetOnEatFn(fn: () => void): void { this.oneat = fn; }
+  SetOnEatFn(fn: EaterOnEatFn | undefined): void { this.oneat = fn; }
   CanEat(food: EaterFood): boolean {
     return !food.isRemoved && !!food.components?.edible
       && this.diet.some(type => (FOODGROUP[type]?.types ?? [type]).some(type => food.hasTag(`edible_${type}`)));
@@ -49,7 +52,7 @@ export class Eater {
     if (health !== 0) this.inst.components.health?.DoDelta(health, false, food.prefab);
     if (hunger !== 0) this.inst.components.hunger?.DoDelta(hunger);
     if (sanity !== 0) this.inst.components.sanity?.DoDelta(sanity);
-    this.inst.PushEvent('oneat', { food, feeder }); this.oneat?.();
+    this.inst.PushEvent('oneat', { food, feeder }); this.oneat?.(this.inst, food, feeder);
     edible.OnEaten(this.inst);
     return edible.HandleEatRemove();
   }

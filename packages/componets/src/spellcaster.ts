@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
 import { getDeconstructionRecipe } from './recipes.ts';
@@ -19,7 +20,7 @@ export interface SpellCasterComponent {
   castSpell(target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer): boolean;
   dispose(): void;
 }
-interface SpellCasterInst {
+export interface SpellCasterInst {
   readonly isRemoved: boolean;
   addTag(tag: string): void;
   removeTag(tag: string): void;
@@ -34,7 +35,10 @@ export interface SpellTarget {
   readonly sg?: { hasStateTag(tag: string): boolean };
 }
 
-type SpellFn = (item: SpellCasterInst, target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer) => boolean;
+/** spellcaster.lua spell(inst, target, pos, doer). */
+export type SpellFn = LuaFn<[inst: SpellCasterInst, target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer], boolean>;
+/** spellcaster.lua can_cast_fn(doer, target, pos, inst): the doer comes first in the source. */
+export type SpellCanCastFn = LuaFn<[doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3, inst: SpellCasterInst], boolean>;
 
 /** Supported point and target branches of components/spellcaster.lua. */
 export class SpellCaster implements SpellCasterComponent {
@@ -47,7 +51,7 @@ export class SpellCaster implements SpellCasterComponent {
   private onRecipes = false;
   private onDead = false;
   private veryQuick = false;
-  private canCastFn?: (doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3) => boolean;
+  private canCastFn?: SpellCanCastFn;
   private disposed = false;
   constructor(item: SpellCasterInst, map?: SpellCastMap) { this.item = item; this.map = map; }
   get canUseOnTargets(): boolean { return this.onTargets; }
@@ -58,12 +62,12 @@ export class SpellCaster implements SpellCasterComponent {
   set canUseOnDead(value: boolean) { this.onDead = value; }
   get veryQuickCast(): boolean { return this.veryQuick; }
   set veryQuickCast(value: boolean) { this.veryQuick = value; this.refreshTags(); }
-  setCanCastFn(fn: (doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3) => boolean): void { this.canCastFn = fn; }
+  SetCanCastFn(fn: SpellCanCastFn | undefined): void { this.canCastFn = fn; }
   get canUseOnPoint(): boolean { return this.onPoint; }
   set canUseOnPoint(value: boolean) { this.onPoint = value; this.refreshTags(); }
   get canUseOnPointWater(): boolean { return this.onWater; }
   set canUseOnPointWater(value: boolean) { this.onWater = value; this.refreshTags(); }
-  setSpellFn(spell: SpellFn): void {
+  SetSpellFn(spell: SpellFn | undefined): void {
     this.spell = spell; this.refreshTags();
   }
   canCast(doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3): boolean {
@@ -75,9 +79,9 @@ export class SpellCaster implements SpellCasterComponent {
         && (this.onDead || !inst.components?.health?.IsDead())
         && !['death', 'flight', 'invisible', 'nospellcasting'].some(tag => inst.sg?.hasStateTag(tag))
         && ((this.onRecipes && 'prefab' in inst && typeof inst.prefab === 'string'
-          && !!getDeconstructionRecipe(inst.prefab)) || (this.canCastFn?.(doer, target, position) ?? false));
+          && !!getDeconstructionRecipe(inst.prefab)) || (this.canCastFn?.(doer, target, position, this.item) ?? false));
     }
-    return (this.canCastFn?.(doer, target, position) ?? true) && !!this.map
+    return (this.canCastFn?.(doer, target, position, this.item) ?? true) && !!this.map
       && (this.onPoint ? this.map.isAboveGroundAtPoint(position, this.onWater)
         : this.onWater && this.map.isOceanAtPoint(position)) && !this.map.isGroundTargetBlocked(position);
   }

@@ -57,7 +57,7 @@ function fire(world: StaffProjectileWorld): StaffProjectileInstance {
   const projectile = addComponent(inst, 'projectile', Projectile);
   projectile.SetSpeed(SPEED);
   projectile.SetHitDist(HIT_DISTANCE);
-  projectile.SetOnHitFn((_projectile, _attacker, target) => OnHitFire(inst, target, world));
+  projectile.SetOnHitFn((_inst, _attacker, target) => OnHitFire(inst, target, world));
   projectile.SetOnMissFn(() => inst.remove());
   inst.onRemove(world.componentUpdates.register({
     OnUpdate: dt => {

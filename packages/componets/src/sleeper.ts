@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { readonlySignal, createEffect, createSignal, WorldContentKey, type GetWatchWorldContent, type WorldPhase } from '../../signals/src';
 import type { Vector3Like } from 'three';
 import { ComponentTimer } from './timer';
@@ -27,8 +28,7 @@ export interface SleeperInst {
   };
 }
 
-/** Method-typed, as Lua does not check it, so a test written for a narrower inst can be registered. */
-export type SleeperTest = { call(inst: SleeperInst, cycle: WorldPhase): boolean }['call'];
+export type SleeperTest = LuaFn<[inst: SleeperInst, cycle: WorldPhase], boolean>;
 
 /** sleeper.lua StandardSleepChecks, including home proximity; freezable/teamattacker are unported. */
 export function StandardSleepChecks(inst: SleeperInst): boolean {

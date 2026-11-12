@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 
@@ -12,6 +13,8 @@ export interface HookedFish {
   readonly build: string;
 }
 
+export type FishableGetFishFn = LuaFn<[inst: FishableInst, fisherman: unknown], string | undefined>;
+
 export interface FishableSave { fish: number }
 
 /**
@@ -24,7 +27,7 @@ export class Fishable {
   fishleft = 10;
   readonly hookedfish = new Set<HookedFish>();
   fishrespawntime: number | undefined;
-  private getfishfn: ((inst: FishableInst, fisherman: unknown) => string | undefined) | undefined;
+  private getfishfn: FishableGetFishFn | undefined;
   private frozen = false;
   private readonly respawn: ComponentTimer;
   private readonly inst: FishableInst;
@@ -38,7 +41,7 @@ export class Fishable {
   get respawnTimer() { return this.respawn.snapshot; }
 
   AddFish(prefab: string, build = prefab): void { this.fish.set(prefab, { prefab, build }); }
-  SetGetFishFn(fn: Fishable['getfishfn']): void { this.getfishfn = fn; }
+  SetGetFishFn(fn: FishableGetFishFn | undefined): void { this.getfishfn = fn; }
   SetRespawnTime(time: number): void { this.fishrespawntime = time; }
 
   HookFish(fisherman?: unknown): HookedFish | undefined {

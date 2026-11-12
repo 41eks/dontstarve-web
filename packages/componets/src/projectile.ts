@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { Vector3 } from 'three';
 import type { CombatActor, CombatInst } from './combat';
 import type { Weapon } from './weapon';
@@ -19,17 +20,20 @@ export interface ProjectileOwner {
   readonly components: { weapon?: Weapon; inventoryitem?: { readonly owner: unknown | null } };
 }
 
+export type ProjectileOnHitFn<Inst> = LuaFn<[inst: Inst, attacker: CombatActor | undefined, target: ProjectileTarget]>;
+export type ProjectileOnMissFn<Inst> = LuaFn<[inst: Inst, attacker: CombatActor | undefined, target: ProjectileTarget]>;
+
 /**
  * components/projectile.lua for homing projectiles: Throw, per-frame OnUpdate with hit/miss/stuck tests,
  * Hit → combat:DoAttack(target, weapon, projectile) and DelayVisibility. Distances are in scene units.
  */
-export class Projectile {
+export class Projectile<Inst = unknown> {
   /** Scene units per second. */
   speed = 0;
   hitdist = 1;
   homing = true;
-  onhit?: (projectile: Projectile, attacker: CombatActor | undefined, target: ProjectileTarget) => void;
-  onmiss?: (projectile: Projectile, attacker: CombatActor | undefined, target: ProjectileTarget) => void;
+  onhit?: ProjectileOnHitFn<Inst>;
+  onmiss?: ProjectileOnMissFn<Inst>;
   /** Ground contact of the projectile. */
   readonly position = new Vector3();
   readonly heading = new Vector3(1, 0, 0);
@@ -46,11 +50,14 @@ export class Projectile {
   private movedTowardsTarget?: boolean;
   private stuckTime = 0;
   private readonly scratch = new Vector3();
+  private readonly inst: Inst;
+
+  constructor(inst: Inst) { this.inst = inst; }
 
   SetSpeed(speed: number): void { this.speed = speed; }
   SetHitDist(distance: number): void { this.hitdist = distance; }
-  SetOnHitFn(fn: Projectile['onhit']): void { this.onhit = fn; }
-  SetOnMissFn(fn: Projectile['onmiss']): void { this.onmiss = fn; }
+  SetOnHitFn(fn: ProjectileOnHitFn<Inst> | undefined): void { this.onhit = fn; }
+  SetOnMissFn(fn: ProjectileOnMissFn<Inst> | undefined): void { this.onmiss = fn; }
   IsThrown(): boolean { return this.target !== undefined; }
 
   /** Throw: aim from the owner's launch point at the target and announce `hostileprojectile`. */
@@ -163,7 +170,7 @@ export class Projectile {
   Miss(target: ProjectileTarget): void {
     const attacker = this.attacker;
     this.Stop();
-    this.onmiss?.(this, attacker, target);
+    this.onmiss?.(this.inst, attacker, target);
   }
 
   /** Hit: the holder's combat re-enters DoAttack with this projectile, ignoring hit range, then onhit. */
@@ -176,6 +183,6 @@ export class Projectile {
       combat.ignorehitrange = true;
       try { combat.DoAttack(target, weapon, this); } finally { combat.ignorehitrange = false; }
     }
-    this.onhit?.(this, holder, target);
+    this.onhit?.(this.inst, holder, target);
   }
 }

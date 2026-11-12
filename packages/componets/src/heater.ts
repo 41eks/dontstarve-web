@@ -1,7 +1,8 @@
+import type { LuaFn } from './luaFn';
 import { createSignal, readonlySignal } from '../../signals/src';
 
 export interface HeaterInst { addTag(tag: string): void; removeTag(tag: string): void; }
-type HeatFn = (inst: HeaterInst, observer: unknown) => number | undefined;
+export type HeatFn = LuaFn<[inst: HeaterInst, observer: unknown], number | undefined>;
 interface HeaterState {
   readonly heat?: number;
   readonly heatfn?: HeatFn;
@@ -23,7 +24,7 @@ export class Heater {
     if (heat !== undefined && !Number.isFinite(heat)) throw new RangeError('Invalid heater output');
     this.configure({ heat });
   }
-  SetHeatFn(heatfn?: HeatFn): void { this.configure({ heatfn }); }
+  SetHeatFn(heatfn: HeatFn | undefined): void { this.configure({ heatfn }); }
   SetThermics(exothermic: boolean, endothermic: boolean): void {
     this.configure({ exothermic, endothermic });
   }

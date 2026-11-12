@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { MiniMapEntity } from './minimapentity';
 import { createMemo, createSignal, type Memo, type ReadonlySignal } from '../../signals/src';
@@ -42,6 +43,9 @@ export interface InventoryItemInstance {
   /** The inst's sprite json: its skin, and the clip a prefab may derive its inventory image from. */
   readonly sprite: { readonly sprite: ReadonlySignal<InventoryItemSprite> };
 }
+
+export type InventoryItemOnPickupFn<Inst> = LuaFn<[inst: Inst, pickupguy: InventoryActor, src_pos?: ItemPosition], boolean | void>;
+export type InventoryItemOnPutInInventoryFn<Inst> = LuaFn<[inst: Inst, owner: ItemHolder]>;
 
 export interface InventoryImage { readonly icon: string; readonly atlas: string }
 /** The prefab's or its skin's name and default inventory image. */
@@ -127,16 +131,16 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
   canbepickedupalive = false;
   cangoincontainer = true;
   grabbableoverridetag?: string;
-  onpickupfn?: (inst: Instance, owner: InventoryActor, source?: ItemPosition) => boolean | void;
-  onputininventoryfn?: (inst: Instance, owner: ItemHolder) => void;
+  onpickupfn?: InventoryItemOnPickupFn<Instance>;
+  onputininventoryfn?: InventoryItemOnPutInInventoryFn<Instance>;
 
   constructor(inst: Instance) { this.inst = inst; }
   CanBePickedUp(doer: InventoryActor): boolean {
     if (this.grabbableoverridetag && doer.hasTag(this.grabbableoverridetag)) return true;
     return this.canbepickedup && (!this.inst.hasTag('spider') || doer.hasTag('spiderwhisperer'));
   }
-  SetOnPickupFn(fn: InventoryItem<Instance, Owner>['onpickupfn']): void { this.onpickupfn = fn; }
-  SetOnPutInInventoryFn(fn: InventoryItem<Instance, Owner>['onputininventoryfn']): void { this.onputininventoryfn = fn; }
+  SetOnPickupFn(fn: InventoryItemOnPickupFn<Instance> | undefined): void { this.onpickupfn = fn; }
+  SetOnPutInInventoryFn(fn: InventoryItemOnPutInInventoryFn<Instance> | undefined): void { this.onputininventoryfn = fn; }
   OnPickup(doer: InventoryActor, source?: ItemPosition): boolean {
     this.inst.PushEvent('onpickup', { owner: doer });
     return this.onpickupfn?.(this.inst, doer, source) === true;

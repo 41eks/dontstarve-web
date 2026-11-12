@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import { createMemo } from '../../signals/src';
@@ -13,6 +14,8 @@ export interface HauntableInst {
   removeTag(tag: string): void;
   PushEvent(name: string, data?: unknown): void;
 }
+
+export type HauntableOnHauntFn = LuaFn<[inst: HauntableInst, haunter: Haunter], boolean>;
 
 /** The ghost doing the haunting. */
 export interface Haunter {
@@ -32,7 +35,8 @@ export class Hauntable {
   private readonly panicking;
   panicable = false;
   get panic(): boolean { return this.panicking.peek(); }
-  private onhaunt: (inst: HauntableInst, haunter: Haunter) => boolean = () => true;
+  /** hauntable.lua DefaultOnHauntFn; SetOnHauntFn(nil) leaves DoHaunt only pushing `haunted`. */
+  private onhaunt?: HauntableOnHauntFn = () => true;
   private hauntvalue: number | undefined;
   /** self.cooldown: replaces both defaults of DoHaunt. */
   private cooldownSeconds: number | undefined;
@@ -50,18 +54,20 @@ export class Hauntable {
   get panicTimer() { return this.panicTask.snapshot; }
   Panic(seconds: number): void { this.panicTask.start(seconds); }
   IsHaunted(): boolean { return this.hauntedValue; }
-  SetOnHauntFn(fn: Hauntable['onhaunt']): void { this.onhaunt = fn; }
+  SetOnHauntFn(fn: HauntableOnHauntFn | undefined): void { this.onhaunt = fn; }
   SetCooldown(seconds: number): void { this.cooldownSeconds = seconds; }
   SetHauntValue(value: number | undefined): void { if (value) this.hauntvalue = value; }
 
   DoHaunt(doer: Haunter): void {
     if (this.disposed) return;
-    const success = this.onhaunt(this.inst, doer);
-    if (success) {
-      if (this.hauntvalue === HAUNT_INSTANT_REZ && doer.hasTag('playerghost')) doer.PushEvent('respawnfromghost', { source: this.inst });
+    if (this.onhaunt) {
+      const success = this.onhaunt(this.inst, doer);
+      if (success) {
+        if (this.hauntvalue === HAUNT_INSTANT_REZ && doer.hasTag('playerghost')) doer.PushEvent('respawnfromghost', { source: this.inst });
+      }
+      this.setHaunted(true);
+      this.cooldown.start(this.cooldownSeconds ?? (success ? HAUNT_COOLDOWN_MEDIUM : HAUNT_COOLDOWN_SMALL));
     }
-    this.setHaunted(true);
-    this.cooldown.start(this.cooldownSeconds ?? (success ? HAUNT_COOLDOWN_MEDIUM : HAUNT_COOLDOWN_SMALL));
     this.inst.PushEvent('haunted');
   }
 

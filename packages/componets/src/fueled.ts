@@ -1,3 +1,4 @@
+import type { LuaFn } from './luaFn';
 import { createMemo, createSignal, readonlySignal, type ReadonlySignal } from '../../signals/src';
 import type { FuelItem } from './fuel';
 import type { GameTimeScheduler } from './gameTimeScheduler';
@@ -14,7 +15,11 @@ export interface FueledInst {
 /** fueled.lua OnSave: only a fuel level other than full is written. */
 export interface FueledSave { fuel: number }
 
-type SectionFn<Inst> = (newsection: number, oldsection: number, inst: Inst, doer?: unknown) => void;
+/** fueled.lua sectionfn(newsection, oldsection, inst, doer): the sections come before the inst in the source. */
+export type FueledSectionFn<Inst> = LuaFn<[newsection: number, oldsection: number, inst: Inst, doer?: unknown]>;
+export type FueledUpdateFn<Inst> = LuaFn<[inst: Inst]>;
+export type FueledTakeFuelFn<Inst> = LuaFn<[inst: Inst, fuelvalue: number]>;
+export type FueledDepletedFn<Inst> = LuaFn<[inst: Inst]>;
 
 /** tuning.lua WET_FUEL_PENALTY. */
 const WET_FUEL_PENALTY = .75;
@@ -43,10 +48,10 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
   private consumingState = false;
   private type = 'BURNABLE';
   private acceptingState = false;
-  private sectionfn?: SectionFn<Inst>;
-  private updatefn?: (inst: Inst) => void;
-  private ontakefuelfn?: (inst: Inst, fuelvalue: number) => void;
-  private depleted?: (inst: Inst) => void;
+  private sectionfn?: FueledSectionFn<Inst>;
+  private updatefn?: FueledUpdateFn<Inst>;
+  private ontakefuelfn?: FueledTakeFuelFn<Inst>;
+  private depleted?: FueledDepletedFn<Inst>;
   private firstperiod?: number;
   private firstperiodfull?: number;
   private scheduler?: GameTimeScheduler;
@@ -88,10 +93,10 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
   }
 
   SetSections(num: number): void { this.sections = num; }
-  SetSectionCallback(fn: SectionFn<Inst>): void { this.sectionfn = fn; }
-  SetDepletedFn(fn: (inst: Inst) => void): void { this.depleted = fn; }
-  SetUpdateFn(fn?: (inst: Inst) => void): void { this.updatefn = fn; }
-  SetTakeFuelFn(fn: (inst: Inst, fuelvalue: number) => void): void { this.ontakefuelfn = fn; }
+  SetSectionCallback(fn: FueledSectionFn<Inst> | undefined): void { this.sectionfn = fn; }
+  SetDepletedFn(fn: FueledDepletedFn<Inst> | undefined): void { this.depleted = fn; }
+  SetUpdateFn(fn: FueledUpdateFn<Inst> | undefined): void { this.updatefn = fn; }
+  SetTakeFuelFn(fn: FueledTakeFuelFn<Inst> | undefined): void { this.ontakefuelfn = fn; }
   SetFirstPeriod(firstperiod: number, firstperiodfull?: number): void {
     this.firstperiod = firstperiod;
     this.firstperiodfull = firstperiodfull;

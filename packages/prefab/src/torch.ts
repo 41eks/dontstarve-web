@@ -179,7 +179,7 @@ function onisraining(inst: TorchInst, israining: boolean): void {
     fueled.SetUpdateFn(() => onupdatefueledraining(inst));
     onupdatefueledraining(inst);
   } else {
-    fueled.SetUpdateFn();
+    fueled.SetUpdateFn(undefined);
     fueled.rate = inst._fuelratemult ?? 1;
   }
 }
