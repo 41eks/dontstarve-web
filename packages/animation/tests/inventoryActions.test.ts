@@ -1,7 +1,6 @@
 import { wilsonPlayer } from './wilsonPlayer';
 import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
-import type * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { cursorSlotAddress, inventorySlotAddress, InventorySlot } from '../../inventory/src';
@@ -37,7 +36,7 @@ function setup() {
     renderer: { domElement: canvas } } as unknown as ActionWorldContext;
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
   const graph = wilsonPlayer(() => 1).sg;
-  const locomotor = new Locomotor({ position: instance.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
+  const locomotor = new Locomotor({ position: instance.position, velocity: new THREE.Vector3() });
   const controller = new PlayerController(world, graph,
     locomotor, inventory.handEquipment, instance as never);
   const use = (target: ReturnType<typeof inventory.getEntity>) => {

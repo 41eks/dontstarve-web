@@ -72,9 +72,15 @@ interface PendingAction {
     readonly fail: () => void;
 }
 
+/** What the locomotor reads and drives of the entity's physics body: its position, and its horizontal velocity. */
+export interface LocomotorBody {
+    readonly position: { readonly x: number; readonly y: number; readonly z: number };
+    readonly velocity: { x: number; z: number };
+}
+
 /** Owns movement destinations and horizontal physics velocity, like DST's locomotor. */
 export class Locomotor {
-    private readonly body: CANNON.Body;
+    private readonly body: LocomotorBody;
     private readonly arriveDistance: number;
     private readonly pathing?: LocoMotorPath;
     private readonly isPassable?: LocomotorOptions['isPassable'];
@@ -85,7 +91,7 @@ export class Locomotor {
     private point?: THREE.Vector3;
     private readonly direction = new THREE.Vector3();
 
-    constructor(body: CANNON.Body, options: LocomotorOptions = {}) {
+    constructor(body: LocomotorBody, options: LocomotorOptions = {}) {
         this.body = body;
         this.arriveDistance = options.arriveDistance ?? 0.25;
         if (!Number.isFinite(this.arriveDistance) || this.arriveDistance <= 0) throw new RangeError('Invalid arrival distance');

@@ -74,7 +74,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     expect(s.saplings()).toEqual([]);
     world.player.position.set(4, 0, 0);
     expect(planting.deploy(point)).toBe(true);
-    expect(locomotor.PushAction).toHaveBeenCalled();
+    expect(locomotor.pushAction).toHaveBeenCalled();
     graph.update(5 / 30); planting.controller.cancel(); graph.update(1);
     expect(inventory.get(cursorSlotAddress())?.count).toBe(2);
     expect(s.saplings()).toEqual([]);

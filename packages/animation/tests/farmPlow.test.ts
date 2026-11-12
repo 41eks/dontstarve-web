@@ -164,14 +164,14 @@ it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and 
     expect(point).toBe('DEPLOY_TILEARRIVE');
     expect(getActionString({ action: point, invobject: entity })).toBe('部署');
     world.player.position.set(-30, 0, 2);
-    const action = actor.controller.createAction({ action: point, invobject: entity as never, pos: click })!;
+    const action = actor.controller.createAction({ action: point, invobject: entity, pos: click })!;
     expect(actor.controller.DoAction(action)).toBe(true);
-    const [walk, arrive] = actor.locomotor.PushAction.mock.calls[0] as unknown as [{ arrived(): boolean; distance?: number }, () => void];
+    const [walk, arrive] = actor.locomotor.pushAction.mock.calls[0];
     expect(walk.distance).toBeUndefined();
-    expect(walk.arrived()).toBe(false);
+    expect(walk.arrived!()).toBe(false);
     // CheckTileWithinRange: inside the clicked tile, however far from the click itself.
     world.player.position.set(.5, 0, 11);
-    expect(walk.arrived()).toBe(true);
+    expect(walk.arrived!()).toBe(true);
     arrive();
     expect(actor.graph.stateName).toBe('doshortaction');
     actor.graph.update(5 / 30);

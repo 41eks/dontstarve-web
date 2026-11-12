@@ -8,7 +8,6 @@ import { Wortox } from '../../prefab/src/wortox';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { Object3D, PerspectiveCamera, Scene, Vector3, type WebGLRenderer } from 'three';
-import * as CANNON from 'cannon-es';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -120,7 +119,7 @@ it('runs the map right click as BLINK_MAP without walking, revalidates before co
   const world = { player, scene: new Scene(), camera: new PerspectiveCamera(),
     ground: new Object3D(), renderer: { domElement: new EventTarget() } as unknown as WebGLRenderer } as ActionWorldContext;
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
-  const body = { position: player.position, velocity: new Vector3() } as unknown as CANNON.Body;
+  const body = { position: player.position, velocity: new Vector3() };
   const locomotor = new Locomotor(body, {});
   const goToPoint = vi.spyOn(locomotor, 'goToPoint');
   const doer = testPlayer({ model: player });

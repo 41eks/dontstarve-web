@@ -8,7 +8,6 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { farmHoeVisual } from '../../prefab/src/farm_hoe';
 import { declaredSymbol, overrideArchives } from './animStateFixture';
-import * as CANNON from 'cannon-es';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -123,7 +122,7 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
   await animationEquipper.equip('golden_farm_hoe');
   const { world, farm, turf } = setup(player);
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
-  const body = { position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body;
+  const body = { position: player.position, velocity: new THREE.Vector3() };
   const locomotor = new Locomotor(body, { physicsRadius: .5 * WORLD_SCALE });
   const hand = createEquipmentExistenceState('HANDS');
   const tool = actionTool('golden_farm_hoe');

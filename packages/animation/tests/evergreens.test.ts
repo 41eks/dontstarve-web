@@ -8,7 +8,6 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { createTestArea, useTestTileMap } from './tileMapFixture';
-import type * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { evergreenPrefabs } from '../../prefab/src/evergreens';
@@ -115,7 +114,7 @@ it('commits source axe work, cancels before impact, preserves logical components
   inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1);
   const axe = inventory.getEntity(equipmentSlotAddress('hand'))!;
   const world = { player, camera: s.camera, scene: new THREE.Scene(), ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const controller = new PlayerController(world, animation.sg, new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
+  const controller = new PlayerController(world, animation.sg, new Locomotor({ position: player.position, velocity: new THREE.Vector3() }, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const chop = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'CHOP', target: target.entity as never, invobject: axe })!);
   const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
   try {

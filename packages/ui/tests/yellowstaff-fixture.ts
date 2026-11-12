@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { playerInst, type PlayerInstance } from '../../prefab/src/player_common';
 import { testPlayer } from '../../animation/tests/testPlayer';
+import { testLocomotor } from '../../animation/tests/testLocomotor';
 import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { getLightStaffController, type LightStaffId } from '../../prefab/src/staff';
@@ -107,12 +108,13 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     spawnPrefab: (_prefab, point) => { summoned.push(stars.spawn(prefabId, point)); },
   });
   staff.onequip();
-  let stops = 0;
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity; the point is in CASTSPELL range.
   const doer = testPlayer({ model: player, inventory });
+  // The player's own locomotor: the cast point is within reach, so the walk arrives at once.
+  const walker = testLocomotor(player);
   animation.stats.sanity.SetCurrent(100);
   const casting = new PlayerController({ scene, camera, renderer, ground, player }, animation.sg,
-    { destination: undefined, stop: () => { stops += 1; }, goToPoint: () => true, PushAction: (_action, arrive) => arrive() },
+    walker.locomotor,
     inventory.handEquipment, doer, () => false);
   const click = (button = 2) => {
     const point = new THREE.Vector3(30, 0, 0).project(camera);
@@ -226,7 +228,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     skins: skins.length - 1, unlitHand, ignoredLeft, busy, beforeCommit, afterCommit,
     position: record.transform.position, remainingSeconds: record.components.timer!.timers.extinguish.timeleft,
     fixedPosition, survivesUntilExpiry, expiresAtLifetime, lifetimeRemoved,
-    stops, sanity: animation.stats.sanity.current, remainingUses: entity.components.finiteuses.remaining, appeared, baseline, bright, far,
+    stops: walker.stop.mock.calls.length, sanity: animation.stats.sanity.current, remainingUses: entity.components.finiteuses.remaining, appeared, baseline, bright, far,
     radius: source.radius, cancelled, noCastingLight, ignoredUnequipped, restoredLit,
     expiredNotSaved, expiredRemoved, survivor, disposedDark };
 }

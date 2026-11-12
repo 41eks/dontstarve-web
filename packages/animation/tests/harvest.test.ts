@@ -5,7 +5,6 @@ import { testPlayer } from './testPlayer';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { GameTimeScheduler } from '../../signals/src';
@@ -36,7 +35,7 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   const inst = wilsonPlayer(() => .2);
   const stategraph = inst.sg;
   const animation = { stategraph };
-  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() },
     { physicsRadius: .5 * WORLD_SCALE });
   // The player inst: HARVEST gives the product to its own inventory.
   const inventory = createInventoryStore([]);

@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { configureShovelEntity, shovelVisual } from '../../prefab/src/shovel';
 import { declaredSymbol, overrideArchives } from './animStateFixture';
-import * as CANNON from 'cannon-es';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
@@ -117,7 +116,7 @@ it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancell
   const tool = new ItemEntity({ itemId: 'goldenshovel', count: 1 });
   configureShovelEntity(tool);
   equipped.set({ itemId: 'goldenshovel', EQUIPSLOTS: 'HANDS', entity: tool });
-  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() },
     { physicsRadius: .5 * WORLD_SCALE });
   const controller = new PlayerController(world, animation.sg, locomotor, equipped, playerDoer(player));
   const dig = () => controller.DoAction(controller.createAction({ action: 'DIG', target: workTargets('DIG')[0].entity, invobject: tool })!);

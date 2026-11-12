@@ -139,8 +139,8 @@ it('walks to the shore through DEPLOY, reaches over the water, consumes one kit 
     const action = actor.controller.createAction({ action: 'DEPLOY', invobject: entity as never, pos: centre(0, 0) })!;
     expect(actor.controller.DoAction(action)).toBe(true);
     // actions.lua ExtraDeployDist: 1.1 + DEPLOYSPACING.DEFAULT (2) + 1 DST units, from land to an ocean point.
-    expect(actor.locomotor.PushAction.mock.calls[0][0]).toMatchObject({ distance: expect.closeTo(4.1 * 3) });
-    actor.locomotor.PushAction.mock.calls[0][1]();
+    expect(actor.locomotor.pushAction.mock.calls[0][0]).toMatchObject({ distance: expect.closeTo(4.1 * 3) });
+    actor.locomotor.pushAction.mock.calls[0][1]();
     actor.graph.update(5 / 30);
     expect(turf.tileIdAtCell(0, 0)).toBe(WORLD_TILES.OCEAN_COASTAL);
     actor.graph.update(1 / 30);

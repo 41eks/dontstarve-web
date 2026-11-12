@@ -11,7 +11,6 @@ import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
-import * as CANNON from 'cannon-es';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { getActionString } from '../../stategraphs/src/actions';
 import definitions from '../../prefab/src/definitions.json';
@@ -55,7 +54,7 @@ async function setup(definition: { archive: string } = definitions.animatedBuild
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockImplementation(() =>
     ({ object: model, point: new THREE.Vector3() }) as THREE.Intersection);
   const stategraph = wilsonPlayer(() => .2).sg;
-  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() },
     { physicsRadius: .5 * WORLD_SCALE });
   // The player inst RUMMAGE opens the container for; SCENE.container needs its inventory.
   const doer = testPlayer({ model: withEntity(player, 'wilson') });

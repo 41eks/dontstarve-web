@@ -5,7 +5,6 @@ import { testPlayer } from './testPlayer';
 import { addComponent } from '../../prefab/src/components';
 import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
@@ -66,7 +65,7 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
   const stopEvents = actionEvents.on('action:begin', begin);
   const stategraph = wilsonPlayer(() => .2).sg;
   const animation = { stategraph };
-  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() },
     { physicsRadius: .5 * WORLD_SCALE });
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     mouseActions: picker, actionEvents, renderer: { domElement: canvas } } as unknown as ActionWorldContext;

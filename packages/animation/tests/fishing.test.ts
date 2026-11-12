@@ -17,7 +17,6 @@ import { collectEquippedItemActions } from '../../stategraphs/src/componentactio
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
-import * as CANNON from 'cannon-es';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { playerInst, createPlayer } from './playerVisual';
 import { pondPrefabs, POND_ID } from '../../prefab/src/pond';
@@ -90,7 +89,7 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   };
   let tool = rodEntity();
   equipped.set({ itemId: 'fishingrod', EQUIPSLOTS: 'HANDS', entity: tool });
-  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() },
     { physicsRadius: .5 * WORLD_SCALE });
   const updates = new ComponentUpdates();
   // The rod's hand lifecycle attaches its fishingrod component with the scene's scheduler, updates and world.

@@ -22,7 +22,6 @@ import { createSignal, EventEmitter } from '../../signals/src';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
-import * as CANNON from 'cannon-es';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { canDoSceneAction } from './sceneActions';
 import type { WorldEvents } from '../../prefab/src/worldContext';
@@ -119,7 +118,7 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
   const s = setup(), restored = setup();
   const graph = wilsonPlayer(() => 1).sg;
   const animation = { stategraph: graph };
-  const locomotor = new Locomotor({ position: s.world.player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+  const locomotor = new Locomotor({ position: s.world.player.position, velocity: new THREE.Vector3() },
     { physicsRadius: .5 * WORLD_SCALE });
   const killed = vi.fn();
   // The player inst: pickable:Pick(act.doer) spawns the petals into its inventory and its sanity takes the delta.

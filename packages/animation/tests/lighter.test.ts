@@ -10,7 +10,6 @@ import { Propagator } from '../../componets/src/propagator';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
-import * as CANNON from 'cannon-es';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { createSignal, type HandEquipment } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src';
@@ -71,7 +70,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const hand = createSignal<HandEquipment | null>(equipment);
   const graph = wilsonPlayer(() => 1).sg;
   const animation = { stategraph: graph };
-  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() },
     { physicsRadius: .5 * WORLD_SCALE });
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;

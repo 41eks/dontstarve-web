@@ -11,7 +11,6 @@ import { configurePhonographEntity } from '../../prefab/src/phonograph';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
-import type * as CANNON from 'cannon-es';
 import { playerDoer, pickupDoer } from './playerDoer';
 import { PlaySound } from '../../prefab/src/sound';
 import { ItemWorldFixture, itemAt } from './itemWorldFixture';
@@ -102,7 +101,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
   const spec = INVENTORY_ITEM_SPECS.phonograph;
   const graph = wilsonPlayer(() => 1).sg;
   const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), renderer: { domElement: canvas } } as unknown as ActionWorldContext;
-  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() });
   const controller = new PlayerController(world, graph, locomotor, inventory.handEquipment, playerDoer(player, { inventory }));
   const give = (model: THREE.Group, item: ItemEntity, cancel = false) => {
     const active = inventory.GetActiveItem();

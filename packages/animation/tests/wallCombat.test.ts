@@ -14,7 +14,6 @@ import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
-import * as CANNON from 'cannon-es';
 import { actionEntities } from '../../prefab/src/actionEntity';
 import { Combat } from '../../componets/src/combat';
 import { ItemEntity } from '../../inventory/src';
@@ -170,7 +169,7 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
   const combat = addComponent(animation, 'combat', Combat, () => now);
   combat.SetDefaultDamage(10); combat.SetAttackPeriod(.4); combat.SetRange(2 * UNIT);
   animation.BindSim(placement.prefabs);
-  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() },
     { physicsRadius: .5 * UNIT });
   const hand = createSignal<HandEquipment | null>(null);
   // The player inst: DoAttackButton searches around it and ATTACK runs its combat.

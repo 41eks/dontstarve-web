@@ -1,4 +1,5 @@
 import { playPickup } from '../../prefab/src/player_common';
+import { testLocomotor } from './testLocomotor';
 import { testPlayer } from './testPlayer';
 import { pickupDoer } from './playerDoer';
 import { ItemEntity } from '../../inventory/src/entity';
@@ -230,9 +231,10 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   const lifecycle = createReskinToolLifecycle(tool.entity, effects);
   lifecycle.onequip();
   const doer = testPlayer({ model: world.player });
-  const controller = new PlayerController(world, animation.graph,
-    { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined, PushAction: (_action, arrive) => arrive() },
-    equipped, doer, () => false);
+  // The player's own locomotor; `walk` lets it arrive at the target.
+  const walker = testLocomotor(world.player);
+  const controller = new PlayerController(world, animation.graph, walker.locomotor, equipped, doer, () => false);
+  const walk = (action: Parameters<typeof controller.DoAction>[0]) => { const done = controller.DoAction(action); walker.arrive(); return done; };
   try {
     picker.pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
     // componentactions EQUIPPED.spellcaster: castontargets on the right button; CASTSPELL.strfn is the tool's spelltype.
@@ -241,7 +243,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
     entity.addTag('nomagic');
     expect(picker.getMouseActions().right).toBeUndefined();
     entity.removeTag('nomagic');
-    expect(controller.DoAction(controller.createAction(picker.getMouseActions().right!)!)).toBe(true);
+    expect(walk(controller.createAction(picker.getMouseActions().right!)!)).toBe(true);
     expect(animation.last).toMatchObject({ action: 'CASTSPELL', invobject: tool.entity });
     // No skin operation: CanCast fails at the hit frame and no fx is spawned.
     expect(animation.hit()).toBe(false);
@@ -252,7 +254,7 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
     const skinned = lookupPrefabInstance(model)!;
     skinned.sprite.setSkinSource({ archives: { icebox_crystal: 'icebox_crystal.zip' }, art: new SpriteResources().archives });
     expect(reskinTargetOf(skinned)).toBe(skinned);
-    expect(controller.DoAction(controller.createAction(picker.getMouseActions().right!)!)).toBe(true);
+    expect(walk(controller.createAction(picker.getMouseActions().right!)!)).toBe(true);
     equipped.set(null); lifecycle.onunequip();
     expect(animation.hit()).toBe(false);
     expect(reskinTargetOf(skinned)!.sprite.skinId.peek()).toBeUndefined();

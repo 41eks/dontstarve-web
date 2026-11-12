@@ -11,7 +11,6 @@ import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmen
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { collectPointActions } from '../../stategraphs/src/componentactions';
 import { Locomotor } from '../../prefab/src/locomotor';
-import * as CANNON from 'cannon-es';
 import { getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_CAST_SOUND, type LightStaffId } from '../../prefab/src/staff';
 import { PlaySound } from '../../prefab/src/sound';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
@@ -53,7 +52,7 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     actionEvents: new EventEmitter<PlayerActionEvents>(),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
+  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() });
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity.
   const playerDoer = testPlayer({ model: player, inventory: store });
   const doDelta = vi.spyOn(addComponent(playerDoer, 'sanity', Sanity, 200), 'DoDelta');

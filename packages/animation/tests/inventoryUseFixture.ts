@@ -1,8 +1,9 @@
 import { createSignal } from '@dontstarve-web/signals';
 import { testPlayer, type TestPlayer } from './testPlayer';
+import { testLocomotor } from './testLocomotor';
 import type { PlayerActionTarget } from '../../stategraphs/src/actionfns';
 import type { ItemEntity } from '../../inventory/src/entity';
-import { PlayerController, type PlayerLocomotor } from '../../stategraphs/src/playercontroller';
+import { PlayerController } from '../../stategraphs/src/playercontroller';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import type { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { collectUseItemActions } from '../../stategraphs/src/componentactions';
@@ -13,7 +14,8 @@ import type { InventoryStore } from '../../inventory/src';
  * GetInventoryActions(item), pushed where the doer stands.
  */
 export function inventoryUse(world: object, stategraph: WilsonStateGraph, doer: TestPlayer) {
-  const locomotor = { stop() {}, PushAction() {} } as unknown as PlayerLocomotor;
+  // The player's own locomotor: an inventory action is pushed where it stands.
+  const { locomotor } = testLocomotor(doer.transform.model);
   const controller = new PlayerController(world as ActionWorldContext, stategraph, locomotor, createSignal(null), doer);
   return {
     controller,
@@ -32,12 +34,10 @@ export function inventoryUse(world: object, stategraph: WilsonStateGraph, doer: 
  */
 export function activeItemUse(world: object, stategraph: WilsonStateGraph,
   inventory: InventoryStore, isManualMovement = () => false) {
-  let arrival: (() => void) | undefined;
-  const locomotor = { destination: undefined, goToPoint: () => true, stop() { arrival = undefined; },
-    PushAction(_action: unknown, arrive: () => void) { arrival = arrive; } } as unknown as PlayerLocomotor;
-  // The player inst uses the item from its own inventory.
+  // The player inst uses the item from its own inventory, walking with its own locomotor.
   const doer = testPlayer({ model: (world as ActionWorldContext).player, inventory });
-  const controller = new PlayerController(world as ActionWorldContext, stategraph, locomotor, createSignal(null),
+  const walker = testLocomotor(doer.transform.model);
+  const controller = new PlayerController(world as ActionWorldContext, stategraph, walker.locomotor, createSignal(null),
     doer, isManualMovement);
   return {
     controller, doer,
@@ -51,8 +51,8 @@ export function activeItemUse(world: object, stategraph: WilsonStateGraph,
       return !!action && controller.DoAction(action);
     },
     /** locomotor OnUpdate at the destination. */
-    arrive() { const arrive = arrival; arrival = undefined; arrive?.(); },
-    get walking() { return arrival !== undefined; },
+    arrive: () => walker.arrive(),
+    get walking() { return walker.walking; },
     dispose: () => controller.dispose(),
   };
 }

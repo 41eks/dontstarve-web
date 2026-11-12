@@ -60,7 +60,7 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
   const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: canvas }, actionEvents } as unknown as ActionWorldContext;
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
-  const body = { position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body;
+  const body = { position: player.position, velocity: new THREE.Vector3() };
   const locomotor = new Locomotor(body, { physicsRadius: .5 * WORLD_SCALE });
   const hand = createEquipmentExistenceState('HANDS');
   const equipped = actionTool(tool);
@@ -271,7 +271,7 @@ describe('PlayerController with the Wilson stategraph', () => {
     const rocks = rockWorld(scene, { spawnGroundItem: loot });
     const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
       renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-    const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
+    const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() });
     const controller = new PlayerController(world, animation.sg, locomotor, inventory.handEquipment, playerDoer(player));
     const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
     const mine = () => controller.createAction({ action: 'MINE', target: workTargets('MINE')[0].entity, invobject: tool })!;
@@ -361,7 +361,7 @@ describe('PlayerController with the Wilson stategraph', () => {
     const sanity = vi.spyOn(animation.stats.sanity, 'DoDelta');
     const world = { player, scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
       renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-    const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
+    const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() });
     const controller = new PlayerController(world, animation.sg, locomotor, inventory.handEquipment, doer);
     const ForcePrecipitation = vi.fn();
     const bookWorld = { root: world.scene, scheduler: new GameTimeScheduler(), getWatchWorldContent: () => { throw new Error('unused'); },

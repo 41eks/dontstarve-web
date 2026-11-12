@@ -69,7 +69,7 @@ it('a right click walks, plants dug_grass barren at frame six, keeps the stack h
   const deployed = vi.fn(); actor.doer.ListenForEvent('deployitem', (_inst, data) => deployed(data));
   try {
     expect(s.rightClick().defaultPrevented).toBe(true);
-    const walk = actor.locomotor.PushAction.mock.calls[0];
+    const walk = actor.locomotor.pushAction.mock.calls[0];
     expect(walk[0].target.getPosition().toArray()).toEqual([2, 0, 0]);
     walk[1]();
     actor.graph.update(5 / 30);
@@ -101,7 +101,7 @@ it('no action at the pointer returns the whole held stack to the slot it came fr
     expect(s.rightClick().defaultPrevented).toBe(true);
     expect(s.held()).toBe(0);
     expect(s.inventory.get(inventorySlotAddress(2))).toMatchObject({ itemId: 'dug_grass', count: 2 });
-    expect(actor.locomotor.PushAction).not.toHaveBeenCalled();
+    expect(actor.locomotor.pushAction).not.toHaveBeenCalled();
   } finally { actor.controller.dispose(); grasses.dispose(); s.dispose(); }
 });
 
@@ -118,14 +118,14 @@ it('an entity under the mouse replaces the point deploy unless it does not catch
 
     prefabInstance(model)!.addTag('ignoremouseover');
     s.rightClick();
-    expect(actor.locomotor.PushAction).toHaveBeenCalledTimes(1);
+    expect(actor.locomotor.pushAction).toHaveBeenCalledTimes(1);
     actor.controller.cancel();
     expect(s.held()).toBe(2);
     prefabInstance(model)!.removeTag('ignoremouseover');
 
     expect(s.rightClick().defaultPrevented).toBe(true);
     expect(s.held()).toBe(0);
-    expect(actor.locomotor.PushAction).toHaveBeenCalledTimes(1);
+    expect(actor.locomotor.pushAction).toHaveBeenCalledTimes(1);
   } finally { actor.controller.dispose(); grasses.dispose(); s.dispose(); }
 });
 
@@ -162,7 +162,7 @@ it('turfs share the DEPLOY path: the raw click is walked to, and a tile lost on 
   try {
     expect(getActionString(s.world.mouseActions!.getMouseActions().right!)).toBe('放置地皮');
     s.rightClick();
-    const walk = actor.locomotor.PushAction.mock.calls[0];
+    const walk = actor.locomotor.pushAction.mock.calls[0];
     expect(walk[0].target.getPosition().toArray()).toEqual([7, 0, 8]);
     dirt = false;
     walk[1]();
@@ -174,7 +174,7 @@ it('turfs share the DEPLOY path: the raw click is walked to, and a tile lost on 
     dirt = true;
     actor.graph.update(1);
     s.rightClick();
-    actor.locomotor.PushAction.mock.calls[1][1]();
+    actor.locomotor.pushAction.mock.calls[1][1]();
     actor.graph.update(6 / 30);
     expect(setTile).toHaveBeenCalledOnce();
     expect(s.held()).toBe(1);

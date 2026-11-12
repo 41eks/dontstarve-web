@@ -1,4 +1,5 @@
 import { withEntity } from './entityFixture';
+import { testLocomotor } from './testLocomotor';
 import { playerDoer } from './playerDoer';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { actionTool } from './actionFixtures';
@@ -170,11 +171,12 @@ it('an accepted action cancels a paid preview through events and skips its own c
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   const model = withEntity(new THREE.Group(), 'icebox'); world.scene.add(model);
+  model.position.set(400, 0, 0); // out of the player's reach, so the walk never arrives
   const target = registerActionEntity(lookupPrefabInstance(model)!);
   const animation = bufferingStategraph();
-  // The player walks towards the target; the cast is never buffered in this test.
+  // The player walks towards the target with its own locomotor; it never arrives, so the cast is never buffered.
   const controller = new PlayerController(world, animation.graph,
-    { stop: vi.fn(), goToPoint: () => true, destination: undefined, PushAction: () => {} }, equipped, playerDoer(withEntity(world.player, 'wilson')));
+    testLocomotor(world.player).locomotor, equipped, playerDoer(withEntity(world.player, 'wilson')));
   const cast = () => controller.DoAction(controller.createAction({ action: 'CASTSPELL', target, invobject: tool.entity })!);
   const cancel = vi.spyOn(controller, 'cancel');
   try {

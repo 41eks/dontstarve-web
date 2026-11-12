@@ -70,8 +70,7 @@ function setup() {
 function actor() {
   const graph = wilsonPlayer(() => 1).sg;
   const animation = { stategraph: graph };
-  const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn() };
-  return { graph, animation, locomotor };
+  return { graph, animation };
 }
 
 it('spawns wild monkeytail, picks reeds, pauses in winter and reloads its discrete regrowth task', async () => {
