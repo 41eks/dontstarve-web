@@ -218,7 +218,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   private readonly artVersion = createSignal(0);
   /** Changes whenever the drawn sprite is attached or released; owners dress what they keep outside the json after it. */
   readonly art = readonlySignal(this.artVersion);
-  private initialAnimation: string;
+  protected initialAnimation: string;
   private probe: SpriteProbe | undefined;
   private awake = true;
 
@@ -253,7 +253,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   }
 
   private get state(): SpriteJson { return this.json.peek(); }
-  private write(patch: Partial<SpriteJson>): void { this.json.set({ ...this.state, ...patch }); }
+  protected write(patch: Partial<SpriteJson>): void { this.json.set({ ...this.state, ...patch }); }
   setSkinId(skinId: string | undefined): void { if (skinId !== this.state.skinId) this.write({ skinId }); }
   setSkinSource(skin: SkinJson): void { this.withAppearance('skin', { kind: 'skin', skin }); }
   /** The skins the declared skin source can draw, in its order: PREFAB_SKINS for this entity. */
@@ -326,9 +326,6 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   setPercent(name: string, percent: number): void {
     this.write({ clip: { name, loop: false, finished: true, percent }, queue: [], frame: undefined });
   }
-  setPose(name: string | undefined): void {
-    this.write({ clip: { name: name ?? this.initialAnimation, loop: false, finished: true, pose: { name } }, queue: [], frame: undefined });
-  }
   setFrame(frame: number): void { if (frame !== this.state.frame) this.write({ frame }); }
   setFrameAt(fraction: number): void {
     if (!(fraction >= 0 && fraction <= 1)) throw new RangeError('Frame fraction must be within [0, 1]');
@@ -359,8 +356,6 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
       this.write({ followers });
     } };
   }
-  showImage(image: number): void { this.write({ image }); }
-  setFacingImages(images: ReadonlyMap<number, number>): void { this.write({ facingImages: images }); }
   setFacing(facing: number, mirrored?: boolean): void {
     if (facing !== this.state.facing || mirrored !== this.state.mirrored || this.state.facingRotation !== undefined) {
       this.write({ facing, mirrored, facingRotation: undefined });
@@ -426,4 +421,18 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   clearOverrideBuild(name: string): void {
     this.withAppearance(`build:${name}`, { kind: 'build', name, override: undefined });
   }
+}
+
+/**
+ * The sprite of an entity drawn from static build images (`staticImages`, as walls are): besides the animation commands
+ * it selects a static pose and the build image per facing, which only a static image controller can draw. Archive and
+ * animated art have no such images, so these commands exist only on this sprite, and a prefab definition pairs it with
+ * `staticImages` art.
+ */
+export class StaticImageSpriteState extends SpriteState {
+  setPose(name: string | undefined): void {
+    this.write({ clip: { name: name ?? this.initialAnimation, loop: false, finished: true, pose: { name } }, queue: [], frame: undefined });
+  }
+  showImage(image: number): void { this.write({ image }); }
+  setFacingImages(images: ReadonlyMap<number, number>): void { this.write({ facingImages: images }); }
 }

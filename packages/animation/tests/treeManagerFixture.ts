@@ -11,8 +11,8 @@ import { worldFxPrefabs } from '../../prefab/src/world_fx';
 import type { WorldEvents } from '../../prefab/src/worldContext';
 
 /** A test world's generic manager and the services the tree prefabs take from their world, including the fx they spawn. */
-export function treeWorld<Extra extends object, Id extends string, Instance extends PrefabInstance>(tickingarea: TileStateQuery,
-  define: (world: ReturnType<typeof services> & Extra) => Readonly<Record<Id, PrefabEntityDefinition<Instance>>>,
+export function treeWorld<Extra extends object>(tickingarea: TileStateQuery,
+  define: (world: ReturnType<typeof services> & Extra) => Readonly<Record<string, PrefabEntityDefinition<PrefabInstance>>>,
   extra: Extra, { scheduler = new GameTimeScheduler(), scene = new THREE.Scene(), physics = new CANNON.World() }: { scheduler?: GameTimeScheduler; scene?: THREE.Scene; physics?: CANNON.World } = {}) {
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea, physics });

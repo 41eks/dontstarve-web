@@ -1,7 +1,7 @@
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
+import { StaticImageSpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { FACING_CARDINAL } from '@dontstarve-web/animation/facing';
 import definitions from './definitions.json' with { type: 'json' };
 import { WALL_SKIN_ARCHIVES, wallWorldPrefab, wallWorldSkin } from './wallSkins';
@@ -160,14 +160,14 @@ function staticImages(art: WallArt) {
 }
 
 /** SetBank / SetBuild / PlayAnimation("half") and SetMultColour, as the eight-faced static segment images declare them. */
-function declareWallArt(inst: PrefabInstance, art: WallArt): void {
+function declareWallArt(inst: PrefabInstance<StaticImageSpriteState>, art: WallArt): void {
     inst.sprite.setPose(undefined);
     inst.sprite.setFacingRotation(0);
     inst.sprite.setFacingImages(new Map([[FACING_CARDINAL, art.frontImageIndex], [240, art.sideImageIndex]]));
     if (art.multColour) inst.sprite.setColour(art.multColour);
 }
 
-export class WallInstance extends PrefabInstance {
+export class WallInstance extends PrefabInstance<StaticImageSpriteState> {
     declare readonly components: PrefabInstance['components'] & {
         health: Health; combat: Combat; lootdropper: LootDropper; workable: Workable; inspectable: Inspectable;
     };
@@ -272,7 +272,7 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
     }
 
     function fn(): WallInstance {
-        const inst = new WallInstance(prefab, new SpriteState({ name: 'half', held: true, billboard: true }));
+        const inst = new WallInstance(prefab, new StaticImageSpriteState({ name: 'half', held: true, billboard: true }));
         inst.worldServices = world;
         declareWallArt(inst, art);
         for (const tag of ['wall', 'noauradamage', 'electricdamageimmune', ...data.tags]) inst.addTag(tag);
@@ -326,7 +326,7 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
     const placer = (buildId: WallId, snap: BuildingPlacerSpec['snap']): BuildingPlacerSpec => ({
         buildLabel: art.buildLabel, name: art.name, animation: 'half', snap,
         art: (resources: SpriteResources, skinId?: string) => ({
-            source: resources.staticFactory(staticImages(art).buildArchive, staticImages(art).options),
+            staticImages: staticImages(art),
             initialize: entity => {
                 entity.skinId = wallWorldSkin(buildId, skinId);
                 entity.sprite.setSkinSource({ art: resources.archives, archives: skins });

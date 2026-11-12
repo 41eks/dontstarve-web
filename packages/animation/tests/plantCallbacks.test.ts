@@ -6,7 +6,8 @@ import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import type { PickablePlantWorld } from '../../prefab/src/pickablePlant';
-import type { SpriteResources } from '@dontstarve-web/display';
+import type { SpriteResources, SpriteState } from '@dontstarve-web/display';
+import type { PrefabEntityDefinition, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { bindTestWorld } from './worldContentFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
@@ -21,8 +22,8 @@ function setup() {
   const world: PickablePlantWorld = { scheduler, fire, getWatchWorldContent, spawnGroundItem };
   const position = new Vector3(3, 0, 6);
   /** The prefab's fn, then SpawnPrefab's SetPosition, without a manager or display. */
-  const spawn = <T extends { setPosition(x: number, y: number, z: number): void }>(definition: { fn(position: Vector3, sprites: SpriteResources): T }) => {
-    const inst = definition.fn(position, undefined as unknown as SpriteResources);
+  const spawn = <T extends PrefabInstance<SpriteState, object>>(definition: PrefabEntityDefinition<T>): T => {
+    const inst: T = definition.fn(position, undefined as unknown as SpriteResources);
     inst.setPosition(position.x, position.y, position.z);
     return inst;
   };

@@ -1,19 +1,27 @@
-import { PrefabDisplayGroup, SpriteResources, type LoadedSpriteSource, type PrefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteResources, StaticImageSpriteState, type LoadedSpriteSource, type PrefabDisplay } from '@dontstarve-web/display';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import * as THREE from 'three';
 import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
-import { createPrefabEntity, type PrefabEntityManager, type PrefabInstance } from './prefabInstance';
+import { createPrefabEntity, PrefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
 import type { WorldContext } from './worldContext';
 
 /** prefabutil.lua MakePlacer(name, bank, build, anim): what a build's placer draws. */
+type StaticImages = NonNullable<Extract<PrefabEntityDefinition<PrefabInstance<StaticImageSpriteState>>, { staticImages: object }>['staticImages']>;
+export type PlacerArt =
+    | { readonly source: LoadedSpriteSource; readonly staticImages?: never; initialize?(entity: PrefabInstance): void }
+    | { readonly staticImages: StaticImages; readonly source?: never; initialize?(entity: PrefabInstance<StaticImageSpriteState>): void };
+
 export interface BuildingPlacerSpec {
     readonly buildLabel: string;
     /** The display's name for the placer's sprites. */
     readonly name: string;
     readonly animation: string;
-    /** The source it draws from and the appearance its entity declares before the first draw. */
-    art(resources: SpriteResources, skinId?: string): { source: LoadedSpriteSource; initialize?(entity: PrefabInstance): void };
+    /**
+     * The art it draws and the appearance its entity declares before the first draw: an animated `source`, or, as the
+     * prefab definition pairs them, `staticImages` drawn by an entity whose sprite selects static poses and images.
+     */
+    art(resources: SpriteResources, skinId?: string): PlacerArt;
     /** Stands the placer's lowest point on the ground, as this project draws its buildings (the default). */
     readonly alignBottom?: boolean;
     /** The deploy mode's snap of the pointer point, such as DEPLOYMODE.WALL's wall grid. */
@@ -84,12 +92,15 @@ export class BuildingPlacer<BuildId extends string> {
         if (this.placer) return;
         const spec = this.specs(buildId), art = spec.art(this.sprites, skinId);
         // MakePlacer: PlayAnimation(anim, true) with the shared placer declarations.
-        const { instance, display } = createPrefabEntity(`${buildId}_placer`, art.source,
-            { name: spec.animation, billboard: true }, `${spec.name}Placer`, entity => {
-                art.initialize?.(entity);
-                declarePlacer(entity);
-                entity.sprite.setOpacity(PLACER_OPACITY);
-            }, undefined, { alignBottom: spec.alignBottom ?? true });
+        const prefab = `${buildId}_placer`, clip = { name: spec.animation, billboard: true };
+        const declare = (entity: PrefabInstance) => { declarePlacer(entity); entity.sprite.setOpacity(PLACER_OPACITY); };
+        const options = { alignBottom: spec.alignBottom ?? true };
+        const { instance, display } = art.staticImages
+            ? createPrefabEntity(prefab, this.sprites.staticFactory(art.staticImages.buildArchive, art.staticImages.options),
+                { ...clip, instance: new PrefabInstance(prefab, new StaticImageSpriteState(clip)) }, `${spec.name}Placer`,
+                entity => { art.initialize?.(entity); declare(entity); }, undefined, options)
+            : createPrefabEntity(prefab, art.source, clip, `${spec.name}Placer`,
+                entity => { art.initialize?.(entity); declare(entity); }, undefined, options);
         this.ents?.track(instance);
         this.displays.mount(display);
         this.actionEvents?.emit('action:begin', { owner: this, action: 'BUILD' });

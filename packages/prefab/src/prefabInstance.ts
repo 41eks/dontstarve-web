@@ -3,7 +3,7 @@ import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
 import { type Object3D, type Vector3, type Vector3Like } from 'three';
 import { createSignal, readonlySignal, type GameTimeScheduler, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
-import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
+import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type StaticImageSpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { TileTracker } from '../../componets/src/tileManager';
@@ -818,7 +818,7 @@ export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, 
 }
 
 /** A new entity drawn with a shared archive sprite; `clip.held` is a one-shot clip that rests on its last frame. */
-export function createArchiveEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip<Instance>, name?: string,
+export function createArchiveEntity<Instance extends PrefabInstance<SpriteState, object> & AnimatedSpriteInstance = PrefabInstance>(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip<Instance>, name?: string,
   initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>):
   { instance: Instance; display: PrefabDisplay } {
   const instance = entityInstance(prefab, clip), state = instance.sprite;
@@ -850,10 +850,16 @@ export interface EntityQuery {
  */
 export let POPULATING = false;
 
-/** Prefab(name, fn, assets): how one source prefab is built and which art its display declares. */
-export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteState, object>> {
-  /** `sprites` is the world's shared resource cache, for the sources of the fx children the prefab draws; declaring one performs no IO. */
-  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance;
+/** The `fn` of a prefab definition: Prefab(name, fn, assets)'s constructor. */
+export type PrefabEntityFn<Instance> = (position: ReadonlyVector3, sprites: SpriteResources) => Instance;
+
+/** An instance whose sprite has no static image commands: archive, animated and icon art draw every command it has. */
+export interface AnimatedSpriteInstance { readonly sprite: { readonly setPose?: never } }
+/** An instance drawn from static build images, whose sprite selects poses and images per facing. */
+export interface StaticImageSpriteInstance { readonly sprite: StaticImageSpriteState }
+
+/** What every prefab definition declares, whichever art it is drawn with. */
+interface PrefabEntityCommon<Instance extends PrefabInstance<SpriteState, object>> {
   /** Source skin names and their shared build archives; the display loads the selected one. */
   skins?: Readonly<Record<string, string>>;
   /** The symbols a skin build replaces, when it replaces only some of the base build's (OverrideItemSkinSymbol). */
@@ -864,23 +870,6 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteSt
   skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
   /** How the builds' materials are made (multColour, point filtering), with or without skins. */
   materialOptions?: import('@dontstarve-web/animation/animationAssets').SpriteMaterialOptions;
-  /** In place of `assets`: the art is the inventory image, drawn as a billboard. */
-  icon?: { readonly atlas: string; readonly image: string };
-  /** In place of `assets`: the sprite factory the art is drawn with; the manager releases it after every entity's display. */
-  source?: LoadedSpriteSource & { dispose?(): void };
-  /**
-   * In place of `assets`: a sprite factory over these archives in the world's shared resources, for art whose instance
-   * changes its bank with SetBank (`sprite.setArtSource` with the `sprites` that `fn` receives).
-   */
-  factory?: Parameters<SpriteResources['factory']>[0];
-  /** In place of `assets`: build images drawn as static sprites from the world's shared resources, as walls are. */
-  staticImages?: { readonly buildArchive: string; readonly options: Parameters<SpriteResources['staticFactory']>[1] };
-  /** A prefab without assets has only a transform and what it declares on it, as FX lights do: nothing to draw or click. */
-  assets?: Parameters<SpriteResources['archive']>[0];
-  /** In place of `assets`: an instance's own SetBank / SetBuild, which its OnLoad may still change as it spawns. */
-  instanceAssets?(instance: Instance): Parameters<SpriteResources['archive']>[0];
-  /** How the display builds this art's sprites, such as a plant's instanced batches. */
-  assetOptions?: Parameters<SpriteResources['archive']>[1];
   /** Stands the sprite's lowest point on the ground, as this project draws its buildings and their placers. */
   alignBottom?: boolean;
   /** AnimState:SetRayTestOnBB: the mouse hits the art's bounding box rather than its opaque pixels. */
@@ -896,6 +885,74 @@ export interface PrefabEntityDefinition<Instance extends PrefabInstance<SpriteSt
   /** Runs once the entity has its position and saved state, for what the source starts from there. */
   onSpawned?(instance: Instance): void;
 }
+
+/** The art fields, of which a definition declares at most one; the others are absent. */
+interface NoArt {
+  assets?: never;
+  instanceAssets?: never;
+  assetOptions?: never;
+  icon?: never;
+  source?: never;
+  factory?: never;
+  staticImages?: never;
+}
+
+/** Archive art: a shared archive sprite in the world's resources. */
+interface ArchiveArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'assets' | 'assetOptions'> {
+  /** `sprites` is the world's shared resource cache, for the sources of the fx children the prefab draws; declaring one performs no IO. */
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
+  assets: Parameters<SpriteResources['archive']>[0];
+  /** How the display builds this art's sprites, such as a plant's instanced batches. */
+  assetOptions?: Parameters<SpriteResources['archive']>[1];
+}
+
+/** Archive art chosen by the instance: its own SetBank / SetBuild, which its OnLoad may still change as it spawns. */
+interface InstanceArchiveArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'instanceAssets' | 'assetOptions'> {
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
+  instanceAssets(instance: Instance): Parameters<SpriteResources['archive']>[0];
+  assetOptions?: Parameters<SpriteResources['archive']>[1];
+}
+
+/** The inventory image, drawn as a billboard. */
+interface IconArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'icon'> {
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
+  icon: { readonly atlas: string; readonly image: string };
+}
+
+/** A sprite factory the definition owns; the manager releases it after every entity's display. */
+interface SourceArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'source'> {
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
+  source: LoadedSpriteSource & { dispose?(): void };
+}
+
+/**
+ * A sprite factory over these archives in the world's shared resources, for art whose instance changes its bank with
+ * SetBank (`sprite.setArtSource` with the `sprites` that `fn` receives).
+ */
+interface FactoryArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'factory'> {
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
+  factory: Parameters<SpriteResources['factory']>[0];
+}
+
+/** Build images drawn as static sprites from the world's shared resources, as walls are; only they draw a static sprite. */
+interface StaticImagesArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'staticImages'> {
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & StaticImageSpriteInstance;
+  staticImages: { readonly buildArchive: string; readonly options: Parameters<SpriteResources['staticFactory']>[1] };
+}
+
+/** No assets: only a transform and what the instance declares on it, as FX lights do; nothing to draw or click. */
+interface NoArtDefinition<Instance extends PrefabInstance<SpriteState, object>> extends NoArt {
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
+}
+
+/**
+ * Prefab(name, fn, assets): how one source prefab is built and which art its display declares. The art is one of
+ * `assets`, `instanceAssets`, `icon`, `source`, `factory` or `staticImages`, or none; `staticImages` and only it goes with
+ * a `StaticImageSpriteState` sprite, whose pose and image commands no other art can draw.
+ */
+export type PrefabEntityDefinition<Instance extends PrefabInstance<SpriteState, object>> = PrefabEntityCommon<Instance> & (
+  | ArchiveArt<Instance> | InstanceArchiveArt<Instance> | IconArt<Instance> | SourceArt<Instance> | FactoryArt<Instance>
+  | StaticImagesArt<Instance> | NoArtDefinition<Instance>);
 
 /**
  * The application's shared SpawnPrefab owner and save loop over Ents: one collection and shared texture cache
