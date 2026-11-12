@@ -11,7 +11,7 @@ import type { PlacementSaveRecord } from './saveRecord';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { Transform, type ReadonlyVector3 } from './transform';
 import type { WorldFx } from './world_fx';
-import { Mole, configureMoleEntity, type MoleWorld } from './mole';
+import { BindMoleWorld, Mole, OnHomeDugUp, configureMoleEntity, type MoleWorld } from './mole';
 
 export const MOLEHILL_ID = 'molehill' as const;
 // tuning.lua: day_time = 10 * 30; MOLE_RESPAWN_TIME = day_time * 4.
@@ -83,10 +83,11 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     this.cycle = world.getWatchWorldContent(WorldContentKey.Cycle, stop => this.onRemove(stop));
     const inventory = addComponent(this, 'inventory', Inventory, 50, world.dropItem, world.itemSpecs);
     const spawner = addComponent(this, 'spawner', Spawner<Mole>, this.cycle.scheduler, () => {
-      const entity = world.spawnItem({ itemId: 'mole', count: 1 }); configureMoleEntity(entity);
-      const mole = entity.getComponent<Mole>('mole')!; mole.bindWorld(world);
+      const mole = world.spawnItem({ itemId: 'mole', count: 1 });
+      if (!(mole instanceof Mole)) throw new Error('SpawnPrefab("mole") made no mole');
+      configureMoleEntity(mole); BindMoleWorld(mole, world);
       // Dropping a spawned child does not invoke mole.lua's inventory-drop stun.
-      world.showMole(entity, this.getPosition()); return mole;
+      world.showMole(mole, this.getPosition()); return mole;
     }, MOLE_RESPAWN_TIME);
     spawner.onoccupied = () => { if (this.cycle.peek() !== 'day') this.startspawning(); };
     spawner.onvacate = () => this.stopspawning();
@@ -128,7 +129,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     if (spawner.child) {
       spawner.child.needs_home_time = this.cycle.scheduler.now;
       if (spawner.IsOccupied()) {
-        spawner.SetQueueSpawning(false); spawner.onvacate = child => child.onHomeDugUp(); spawner.ReleaseChild();
+        spawner.SetQueueSpawning(false); spawner.onvacate = OnHomeDugUp; spawner.ReleaseChild();
       }
     }
     // lootdropper: one random loot by weight.
@@ -144,8 +145,8 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     const { spawner, inventory } = this.components;
     delete data.inventory;
     data.molehill = { items: inventory.OnSave(),
-      ...(spawner.IsOccupied() ? { child: spawner.child!.entity.snapshot() }
-        : spawner.child && !spawner.child.isDead() ? { childid: spawner.child.id }
+      ...(spawner.IsOccupied() ? { child: spawner.child!.snapshot() }
+        : spawner.child && !spawner.child.components.health.IsDead() ? { childid: spawner.child.id }
         : this.pendingChildId ? { childid: this.pendingChildId }
         : spawner.remainingSeconds === undefined ? {} : { startdelay: spawner.remainingSeconds }) };
   }
@@ -157,10 +158,11 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     inventory.OnLoad(saved.items, world.spawnItem);
     if (saved.child) {
       spawner.CancelSpawning();
-      const entity = world.spawnItem(saved.child); configureMoleEntity(entity);
-      const child = entity.getComponent<Mole>('mole')!; child.bindWorld(world);
+      const child = world.spawnItem(saved.child);
+      if (!(child instanceof Mole)) throw new Error('SpawnPrefab("mole") made no mole');
+      configureMoleEntity(child); BindMoleWorld(child, world);
       const position = this.getPosition();
-      entity.setPosition(position.x, position.y, position.z); world.showMole(entity, position);
+      child.setPosition(position.x, position.y, position.z); world.showMole(child, position);
       spawner.TakeOwnership(child); spawner.GoHome(child);
     } else if (saved.childid) {
       spawner.CancelSpawning();

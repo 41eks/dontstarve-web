@@ -9,13 +9,15 @@ import { ItemEntity } from '../../inventory/src/entity';
 import type { InventoryStack } from '../../inventory/src/types';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { loadAnim } from '../src/animationAssets';
-import { Mole, configureMoleEntity } from '../../prefab/src/mole';
+import { BindMoleWorld, MakeMole, Mole, SetAbovePhysics, UpdateMole, configureMoleEntity } from '../../prefab/src/mole';
 import { createMoleHabitat, molehillPrefabs, MOLEHILL_ID, type MolehillInstance } from '../../prefab/src/molehill';
 import { configureMoleBaitEntity, MoleBait } from '../../prefab/src/molebait';
 import { createMoleAction } from '../../stategraphs/src/moleactions';
 import { Combat } from '../../componets/src/combat';
 import { Weapon } from '../../componets/src/weapon';
 import { createInventoryStore } from '../../../src/inventory';
+import { ItemWorldFixture } from './itemWorldFixture';
+import { inventorySlotAddress } from '../../inventory/src';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -34,7 +36,11 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 async function fixture(daytime = false) {
   const scheduler = new GameTimeScheduler(), cycle = createSignal<WorldPhase>(daytime ? 'day' : 'dusk'), heading = createSignal(0), awake = createSignal(true);
   const items: ItemEntity[] = [], baits: MoleBait[] = [], drops: { entity?: ItemEntity; prefab: string; position: THREE.Vector3 }[] = [];
-  const spawnItem = (state: InventoryStack) => { const item = new ItemEntity(state); items.push(item); if (state.itemId === 'mole') configureMoleEntity(item); else configureMoleBaitEntity(item); return item; };
+  const spawnItem = (state: InventoryStack) => {
+    const item = state.itemId === 'mole' ? new Mole(state) : new ItemEntity(state); items.push(item);
+    if (item instanceof Mole) { MakeMole(item); configureMoleEntity(item); } else configureMoleBaitEntity(item);
+    return item;
+  };
   const sources: WorldContentEnvironment = { ...createTestWorldSources(scheduler), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
   const requests = vi.fn();
   const watch: GetWatchWorldContent = (key, register) => {
@@ -57,7 +63,8 @@ async function fixture(daytime = false) {
   const lengths = new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate]));
   const mole = (position = new THREE.Vector3(), entityId?: string) => {
     const entity = spawnItem({ itemId: 'mole', count: 1, ...(entityId ? { entityId } : {}) }); entity.getPosition().copy(position);
-    const runtime = entity.getComponent<Mole>('mole')!; runtime.bindWorld(habitat, lengths); return runtime;
+    if (!(entity instanceof Mole)) throw new Error('a mole item is a Mole');
+    BindMoleWorld(entity, habitat, lengths); return entity;
   };
   const bait = (id: string, position = new THREE.Vector3(3, 0, 0), count = 1) => {
     const entity = spawnItem({ itemId: id, count }); entity.getPosition().copy(position);
@@ -65,7 +72,7 @@ async function fixture(daytime = false) {
   };
   const advance = async (seconds: number, runBrain = true) => {
     for (let i = 0; i < Math.ceil(seconds * 30); i++) {
-      scheduler.advance(1 / 30); if (runBrain) for (const runtime of habitat.getMoles()) runtime.update(1 / 30);
+      scheduler.advance(1 / 30); if (runBrain) for (const runtime of habitat.getMoles()) UpdateMole(runtime, 1 / 30);
     }
     await settle();
   };
@@ -98,11 +105,11 @@ it('uses the Lua brain to steal minerals, build a home and deposit the same item
 });
 
 it('revalidates stolen bait at frame 12 and cancels a stolen target that moved into an inventory', async () => {
-  const f = await fixture(), mole = f.mole(), bait = f.bait('flint'); mole.brain.Stop();
+  const f = await fixture(), mole = f.mole(), bait = f.bait('flint'); mole.brain!.Stop();
   expect(bait.reserve()).toBe(true); expect(bait.reserve()).toBe(false);
   mole.PushBufferedAction(createMoleAction(mole, 'STEALMOLEBAIT', bait));
   f.scheduler.advanceTo(f.lengths.get('enter')! + f.lengths.get('idle')!); await settle();
-  expect(mole.sg.stateName).toBe('steal');
+  expect(mole.stategraph.stateName).toBe('steal');
   f.scheduler.advance(11 / 30); await settle(); expect(mole.inventoryFull()).toBe(false); expect(mole.components.inventory!.GetItems()).toHaveLength(0);
   bait.entity.components.inventoryitem.owner = { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => true, replace: () => false, PushEvent() {} };
   f.scheduler.advance(1 / 30); await settle();
@@ -112,38 +119,39 @@ it('revalidates stolen bait at frame 12 and cancels a stolen target that moved i
 });
 
 it('hammer attacks stun above ground, drop stolen inventory, allow pickup and detach the home child', async () => {
-  const f = await fixture(), mole = f.mole(); mole.brain.Stop();
+  const f = await fixture(), mole = f.mole(); mole.brain!.Stop();
   const bait = f.bait('nitre', new THREE.Vector3(), 3);
   expect(mole.components.inventory!.GiveItem(bait.entity)).toBe(true);
   const hill = f.spawnHill(new THREE.Vector3(15, 0, 0)); hill.components.spawner.TakeOwnership(mole);
-  mole.setAbove(); mole.sg.goToState('idle');
+  SetAbovePhysics(mole); mole.stategraph.goToState('idle');
   const attacker = { components: {}, getPosition: () => new THREE.Vector3(), getPhysicsRadius: () => 1, hasTag: () => true };
   const hammer = new Weapon({ hasTag: (tag: string) => tag === 'hammer' }); hammer.SetDamage(17);
   const combat = new Combat(attacker, () => f.scheduler.now, () => hammer);
   expect(combat.CanTarget(mole)).toBe(true); combat.DoAttack(mole);
-  expect(mole.sg.stateName).toBe('stunned'); expect(mole.components.health.currenthealth).toBe(13);
-  expect(mole.entity.components.inventoryitem.canbepickedup).toBe(true);
+  expect(mole.stategraph.stateName).toBe('stunned'); expect(mole.components.health.currenthealth).toBe(13);
+  expect(mole.components.inventoryitem.canbepickedup).toBe(true);
   expect(f.drops[0].entity).toBe(bait.entity); expect(f.drops[0].entity!.snapshot().count).toBe(3);
-  mole.entity.components.inventoryitem.owner = { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => true, replace: () => false, PushEvent() {} };
-  mole.entity.PushEvent('onputininventory', mole.entity.components.inventoryitem.owner);
+  mole.components.inventoryitem.owner = { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => true, replace: () => false, PushEvent() {} };
+  mole.PushEvent('onputininventory', mole.components.inventoryitem.owner);
   expect(hill.components.spawner.child).toBeUndefined(); expect(mole.home).toBeUndefined();
-  expect(mole.entity.snapshot().mole?.health).toBe(13);
-  mole.entity.components.perishable.SetPercent(.25);
+  expect(mole.snapshot().mole?.health).toBe(13);
+  mole.components.perishable.SetPercent(.25);
   const food = f.bait('rocks', new THREE.Vector3(), 2).entity;
-  expect(mole.entity.components.eater!.Eat(food)).toBe(true);
+  expect(mole.components.eater!.Eat(food)).toBe(true);
   expect(mole.components.health.currenthealth).toBe(23);
-  expect(mole.entity.components.perishable.GetPercent()).toBe(1);
+  expect(mole.components.perishable.GetPercent()).toBe(1);
   expect(food.components.stackable.count).toBe(1);
-  expect(mole.brain.stopped).toBe(true);
-  mole.entity.components.inventoryitem.owner = null; mole.entity.PushEvent('ondropped', undefined);
-  expect(mole.sg.stateName).toBe('stunned');
+  // Held, the mole is in limbo: _DisableBrain_Internal dropped its brain.
+  expect(mole.inlimbo).toBe(true); expect(mole.brain).toBeUndefined();
+  mole.components.inventoryitem.owner = null; mole.PushEvent('ondropped', undefined);
+  expect(mole.stategraph.stateName).toBe('stunned');
   await f.advance(10);
-  expect(mole.entity.components.inventoryitem.canbepickedup).toBe(false);
+  expect(mole.components.inventoryitem.canbepickedup).toBe(false);
   f.dispose();
 });
 
 it('saves an occupied molehill with its stored items and releases the same child when dug up after reload', async () => {
-  const f = await fixture(true), mole = f.mole(new THREE.Vector3(9, 0, 15)); mole.brain.Stop();
+  const f = await fixture(true), mole = f.mole(new THREE.Vector3(9, 0, 15)); mole.brain!.Stop();
   const bait = f.bait('goldnugget', new THREE.Vector3(), 4); mole.components.inventory!.GiveItem(bait.entity);
   const extra = f.bait('goldnugget', new THREE.Vector3(), 1); mole.components.inventory!.GiveItem(extra.entity);
   expect(extra.entity.isRemoved).toBe(true); expect(bait.entity.components.stackable.count).toBe(5);
@@ -177,7 +185,7 @@ it('saves an occupied molehill with its stored items and releases the same child
   loaded.components.workable.WorkedBy({}, 1);
   expect(loaded.isValid()).toBe(false);
   expect(loaded.status.peek()).toBe('removed');
-  expect(loaded.components.spawner.child!.sg.stateName).toBe('stunned');
+  expect(loaded.components.spawner.child!.stategraph.stateName).toBe('stunned');
   expect(restored.drops.some(d => d.entity?.id === baitId)).toBe(true);
   expect(loaded.components.spawner.timer.peek().status).toBe('stopped');
   restored.dispose();
@@ -190,7 +198,7 @@ it('c_spawn and c_save keep a hill whose child is outside, which reclaims that m
   registry.registerPrefabs(PREFAB_DEFINITIONS.molehills);
   expect((await executeDebugCommand('c_spawn("molehill")', inventory, id => registry.spawn(id))).ok).toBe(true);
   const [{ record: { id } }] = f.prefabs.exportRecords();
-  const hill = f.prefabs.get(id) as MolehillInstance, mole = f.mole(new THREE.Vector3(9, 0, 3)); mole.brain.Stop();
+  const hill = f.prefabs.get(id) as MolehillInstance, mole = f.mole(new THREE.Vector3(9, 0, 3)); mole.brain!.Stop();
   hill.components.spawner.TakeOwnership(mole);
   expect(mole.home).toBe(hill);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
@@ -219,27 +227,27 @@ it('c_spawn and c_save keep a hill whose child is outside, which reclaims that m
 });
 
 it('day sleep clears sniff at frame 1, plays only the sleep event and keeps captured moles silent', async () => {
-  const f = await fixture(true), mole = f.mole(); mole.brain.Stop(); mole.setAbove(); mole.sg.goToState('idle');
-  const played = vi.spyOn(mole.SoundEmitter, 'PlaySound'), stopped = vi.spyOn(mole.SoundEmitter, 'KillSound');
+  const f = await fixture(true), mole = f.mole(); mole.brain!.Stop(); SetAbovePhysics(mole); mole.stategraph.goToState('idle');
+  const played = vi.spyOn(mole.SoundEmitter!, 'PlaySound'), stopped = vi.spyOn(mole.SoundEmitter!, 'KillSound');
   f.scheduler.advance(1 / 30); expect(played).toHaveBeenCalledWith('dontstarve_DLC001/creatures/mole/sniff', 'sniff');
   mole.PushEvent('gotosleep'); f.scheduler.advance(1 / 30);
   expect(stopped).toHaveBeenCalledWith('sniff'); expect(stopped).toHaveBeenCalledWith('stunned');
   played.mockClear();
-  f.scheduler.advance(f.lengths.get('sleep_pre')!); expect(mole.sg.stateName).toBe('sleeping');
+  f.scheduler.advance(f.lengths.get('sleep_pre')!); expect(mole.stategraph.stateName).toBe('sleeping');
   f.scheduler.advance(28 / 30); expect(played.mock.calls.map(call => call[0])).toEqual(['dontstarve_DLC001/creatures/mole/sleep']);
   const owner = { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => true, replace: () => false, PushEvent() {} };
-  mole.entity.components.inventoryitem.owner = owner; mole.entity.PushEvent('onputininventory', owner);
+  mole.components.inventoryitem.owner = owner; mole.PushEvent('onputininventory', owner);
   played.mockClear(); f.scheduler.advance(10);
   expect(played).not.toHaveBeenCalled();
-  expect(mole.sg.sg.timelineSnapshot!.peek().status).toBe('paused');
-  mole.entity.components.inventoryitem.owner = null; mole.entity.PushEvent('ondropped', undefined);
-  expect(mole.sg.stateName).toBe('stunned');
+  expect(mole.stategraph.sg.timelineSnapshot!.peek().status).toBe('paused');
+  mole.components.inventoryitem.owner = null; mole.PushEvent('ondropped', undefined);
+  expect(mole.stategraph.stateName).toBe('stunned');
   f.dispose();
 });
 
 it('passes the world watcher to sleeper and keeps both cycle consumers independent through removal', async () => {
   const f = await fixture(), mole = f.mole();
-  mole.brain.Stop(); mole.setAbove(); mole.sg.goToState('idle');
+  mole.brain!.Stop(); SetAbovePhysics(mole); mole.stategraph.goToState('idle');
   const sleeper = mole.components.sleeper!;
   expect(f.watch).toHaveBeenCalledTimes(2);
   try {
@@ -257,7 +265,7 @@ it('passes the world watcher to sleeper and keeps both cycle consumers independe
     expect(sleeper.IsAsleep()).toBe(false);
 
     sleeper.dispose();
-    const force = vi.spyOn(mole.brain, 'ForceUpdate');
+    const force = vi.spyOn(mole.brain!, 'ForceUpdate');
     f.cycle.set('day');
     await settle();
     expect(mole.world.isDay).toBe(true);
@@ -268,4 +276,38 @@ it('passes the world watcher to sleeper and keeps both cycle consumers independe
     expect(force).toHaveBeenCalledOnce();
     expect(mole.world.isDay).toBe(false);
   } finally { f.dispose(); }
+});
+
+it('spawns a mole as its own entity, whose brain stops while it is held and is remade when it is dropped', () => {
+  const scheduler = new GameTimeScheduler(), inventory = createInventoryStore([]), restoredInventory = createInventoryStore([]);
+  const sources: WorldContentEnvironment = { ...createTestWorldSources(scheduler), playerpositions: createSignal<THREE.Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle: createSignal<WorldPhase>('dusk'), season: createSignal({ season: 'spring', progress: .5 }) };
+  const watch: GetWatchWorldContent = (key, register) => getWatchWorldContent(key, register, sources);
+  const habitat = (store: typeof inventory) => createMoleHabitat({
+    getWatchWorldContent: watch, cameraHeading: createSignal(0), isWalkable: () => true,
+    spawnPrefab: () => { throw new Error('no molehill in this test'); }, fx: { spawn: () => undefined },
+    spawnItem: state => store.entities.create(state), dropItem: () => {}, showMole: () => undefined, dropLoot: () => {}, getEntities: () => [],
+  });
+  const fixture = (store: typeof inventory) => new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined,
+    '/dst/data/databundles/images.zip', store, '/dst/data/anim', new THREE.Group(), undefined, undefined, undefined, undefined, scheduler,
+    undefined, habitat(store));
+  const items = fixture(inventory), restored = fixture(restoredInventory);
+  try {
+    items.spawnFromSave('mole', { ...SAVE_CATALOG.items.mole, itemId: 'mole', count: 1 }, new THREE.Vector3(3, 0, 0));
+    const mole = items.entities.get('mole');
+    if (!(mole instanceof Mole)) throw new Error('the mole prefab makes a Mole');
+    const brain = mole.brain;
+    expect(brain?.stopped).toBe(false);
+    expect(inventory.GiveItem(mole)).toBe(true);
+    expect(inventory.getEntity(inventorySlotAddress(0))).toBe(mole);
+    expect(mole.brain).toBeUndefined();
+    expect(brain?.stopped).toBe(true);
+    inventory.DropItem(mole, new THREE.Vector3(5, 0, 0));
+    expect(mole.brain).toBeDefined();
+    expect(mole.brain).not.toBe(brain);
+    // mole.lua ondrop: dropped from an inventory, it lands stunned.
+    expect(mole.stategraph.stateName).toBe('stunned');
+    restored.restoreEntities(items.exportEntities());
+    const [copy] = restored.entities.values();
+    expect(copy).toBeInstanceOf(Mole);
+  } finally { items.dispose(); restored.dispose(); inventory.dispose(); restoredInventory.dispose(); scheduler.dispose(); }
 });

@@ -12,7 +12,7 @@ export interface MoleBrainInst extends BrainInst {
   PushEvent(name: string, data?: unknown): void;
   makeHome(): boolean;
   wentHome(target: BrainEntity): boolean;
-  readonly sg: { hasStateTag(tag: string): boolean };
+  readonly sg?: { hasStateTag(tag: string): boolean };
   readonly home: BrainEntity | undefined;
   readonly needs_home_time: number | undefined;
   readonly make_home_delay: number;
@@ -33,14 +33,14 @@ export class MoleBrain extends Brain {
   constructor(mole: MoleBrainInst, unit = 1) { super(mole); this.mole = mole; this.unit = unit; }
   protected override OnStart(): void {
     const inst = this.mole, unit = this.unit;
-    const gohome = () => inst.home?.isValid() && !inst.sg.hasStateTag('trapped')
+    const gohome = () => inst.home?.isValid() && !inst.sg?.hasStateTag('trapped')
       ? createMoleAction(inst, 'GOHOME', inst.home, undefined, unit) : undefined;
     const makehome = () => {
       const pos = inst.findHomePosition();
       return pos ? createMoleAction(inst, 'MAKEMOLEHILL', undefined, pos, unit) : undefined;
     };
     const takebait = () => {
-      if (inst.getTime() - inst.bornAt < 3 || inst.sg.hasStateTag('busy') || shouldMakeMoleHome(inst) || inst.inventoryFull()) return;
+      if (inst.getTime() - inst.bornAt < 3 || inst.sg?.hasStateTag('busy') || shouldMakeMoleHome(inst) || inst.inventoryFull()) return;
       const target = inst.world.findEntity(inst, 20 * unit, guy => 'canSteal' in guy,
         ['molebait'], ['outofreach', 'INLIMBO', 'fire']) as MoleBaitTarget | undefined;
       // Source checks reservation after FindEntity, rather than searching for the next bait.
@@ -52,7 +52,7 @@ export class MoleBrain extends Brain {
       WhileNode(() => shouldMakeMoleHome(inst), 'Home Dug Up', new DoAction(inst, makehome, 'Make Home', false)),
       WhileNode(() => inst.flee, 'Flee', new RunAway(inst, 'scarytoprey', 0, 6 * unit)),
       WhileNode(() => !!inst.world.isAcidRaining, 'Acid Raining', new DoAction(inst, gohome, 'Go Home', false)),
-      WhileNode(() => !inst.sg.hasStateTag('busy') && inst.getTime() > inst.last_above_time + inst.peek_interval,
+      WhileNode(() => !inst.sg?.hasStateTag('busy') && inst.getTime() > inst.last_above_time + inst.peek_interval,
         'Should Peek', new DoAction(inst, () => createMoleAction(inst, 'MOLEPEEK'), 'Do Peek', false)),
       WhileNode(() => inst.inventoryFull(), 'Deposit Inventory', new DoAction(inst, gohome, 'Go Home', false)),
       new EventNode(inst, 'gohome', new DoAction(inst, gohome, 'Go Home', false)),

@@ -2,7 +2,7 @@ import type { EntityEventData } from '../../componets/src/entityEvents';
 import { addComponent } from './components';
 import { Vector3 } from 'three';
 import { createEffect, WorldContentKey, watchSignal, type ReadonlySignal, type WorldContentContext } from '@dontstarve-web/signals';
-import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
+import { ItemEntity, type InventoryStack } from '@dontstarve-web/inventory';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { Eater } from '../../componets/src/eater';
 import { Sleeper } from '../../componets/src/sleeper';
@@ -18,12 +18,10 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { MoleBrain, type MoleBrainInst } from '../../brains/src/molebrain';
 import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import { MoleStateGraph, type MoleStateInst } from '../../stategraphs/src/SGmole';
-import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { MolehillInstance } from './molehill';
 import type { ItemPrefabWorld } from './groundPrefab';
 import { bindItemWorld, type ItemPrefabDefinition } from './groundItems';
 import { PlaySound, type SoundEventPath } from './sound';
-import type { SoundEmitter } from './soundEmitter';
 import { WORLD_SCALE, MakeCharacterPhysics, CHARACTER_COLLISION_MASK } from './standardcomponents';
 import { animationLengths } from './animationTimings';
 import { COLLISION } from '../../componets/src/physicsState';
@@ -54,203 +52,83 @@ export interface MoleWorld extends Pick<WorldContentContext, 'getWatchWorldConte
 type MoleComponents = ItemEntity['components'] & { health: Health; combat: Combat; knownlocations: KnownLocations;
   homeseeker: HomeSeeker<MolehillInstance>; inventory?: Inventory; locomotor?: LocoMotor; sleeper?: Sleeper };
 
-/** mole.lua: the logical inst survives pickup, dropping and replacement of its visual. */
-export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
-  readonly prefab = MOLE_ID;
-  /** The mole is the Lua inst its components see; they are stored on, and torn down with, the item entity. */
-  get components(): MoleComponents { return this.entity.components as MoleComponents; }
+/**
+ * mole.lua's inst: an inventory item whose components, stategraph (SGmole.lua) and brain (molebrain.lua) are its own.
+ * MakeMole adds its creature components; BindMoleWorld the rest of fn() once the moles' world is known.
+ */
+export class Mole extends ItemEntity implements MoleBrainInst, LocoMotorInst {
+  declare readonly components: MoleComponents;
+  declare brain: MoleBrain | undefined;
   world!: BrainWorld;
   locomotor!: LocoMotor;
-  sg!: MoleStateGraph;
-  brain!: MoleBrain;
+  /** SetStateGraph("SGmole"). */
+  stategraph!: MoleStateGraph;
   animstate!: AnimState;
   isunder = true;
   needs_home_time: number | undefined;
-  make_home_delay: number;
+  make_home_delay = 5;
   last_above_time = 0;
-  peek_interval: number;
+  peek_interval = 15;
   flee = false;
   bornAt = 0;
-  bufferedaction?: BufferedAction;
+  /** In its molehill: spawner:GoHome took it out of the world. */
   occupied = false;
-  private worldServices?: MoleWorld;
-  private scheduler?: GameTimeScheduler;
-  private saved?: MoleSave;
-  private disposed = false;
-  private dropPending = false;
-  private speed = 0;
-  /** Physics belongs to the logical item and survives replacing its display. */
-  bindPhysics(world?: import('cannon-es').World): void {
-    MakeCharacterPhysics(this.entity, 99999, .5);
-    if (this.isunder) this.setUnder(); else this.setAbove();
-    this.entity.physics.SetActive(this.isValid());
-    if (world) this.entity.bindPhysics(world, () => this.getPosition());
-  }
-  private syncMotor(): void {
-    const body = this.entity.physicsBody;
-    if (!body) return;
-    const angle = this.heading * Math.PI / 180;
-    body.velocity.x = Math.cos(angle) * this.speed;
-    body.velocity.z = -Math.sin(angle) * this.speed;
-  }
-
-  private heading = 0;
-  private readonly cleanups: (() => void)[] = [];
-  private stopfleetask?: EntityTask;
-  private homechecktask?: EntityTask;
+  moleWorld?: MoleWorld;
+  moleScheduler?: GameTimeScheduler;
+  saved?: MoleSave;
+  dropPending = false;
+  /** Physics:SetMotorVel's speed along the heading. */
+  speed = 0;
+  readonly cleanups: (() => void)[] = [];
+  stopfleetask?: EntityTask;
+  homechecktask?: EntityTask;
   /** SGmole stunned's sg.statemem.playtask / killtask. */
-  private playtask?: EntityTask;
-  private killtask?: EntityTask;
-  private stateTags = new Set<string>();
-  readonly entity: ItemEntity;
-  private readonly randomSource: () => number;
-  constructor(entity: ItemEntity, randomSource = Math.random) {
-    this.entity = entity; this.randomSource = randomSource;
-    entity.AddSoundEmitter();
-    this.make_home_delay = 5 + Math.floor(this.random() * 6); this.peek_interval = 15 + Math.floor(this.random() * 11);
-    addComponent(this, 'health', Health, 30).OnLoad({ health: entity.mole?.health ?? 30 });
-    this.saved = entity.mole;
-    addComponent(this, 'combat', Combat, () => this.getTime());
-    addComponent(this, 'knownlocations', KnownLocations);
-    addComponent(this, 'homeseeker', HomeSeeker<MolehillInstance>);
-    this.cleanups.push(entity.ListenForEvent('ondropped', () => this.onDropped()),
-      entity.ListenForEvent('onputininventory', () => this.onPickup()));
-  }
-  get id(): string { return this.entity.id; }
+  playtask?: EntityTask;
+  killtask?: EntityTask;
+  stateTags = new Set<string>();
+  randomSource: () => number = Math.random;
+
   get home(): MolehillInstance | undefined { return this.components.homeseeker.home; }
-  getPosition(): Vector3 { return this.entity.getPosition(); }
-  getPhysicsRadius(): number { return .5 * WORLD_SCALE; }
-  getTime(): number { return this.scheduler?.now ?? 0; }
-  get isRemoved(): boolean { return this.entity.isRemoved || this.disposed; }
-  onRemove(remove: () => void): () => void { return this.entity.onRemove(remove); }
-  isValid(): boolean { return !this.isRemoved && !this.occupied && !this.entity.components.inventoryitem.owner; }
-  hasTag(tag: string): boolean { return this.entity.hasTag(tag); }
+  get facing(): number { return this.rotation; }
+
+  // conventions-allow instance-method: GetTime(), which the brain and its behaviours call on inst.
+  getTime(): number { return this.moleScheduler?.now ?? 0; }
+  // conventions-allow instance-method: math.random, which the brain's behaviours call on inst.
   random(): number { return this.randomSource(); }
-  ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): () => void {
-    const stop = this.entity.ListenForEvent(name, fn);
-    let set = this.listeners.get(name); if (!set) this.listeners.set(name, set = new Map()); set.set(fn, stop); return stop;
+  /** Transform:SetRotation; the motor velocity follows the heading. */
+  // conventions-allow instance-method: the engine's Transform:SetRotation, which locomotor calls on inst.
+  override setRotation(degrees: number): void { super.setRotation(degrees); syncMotor(this); }
+  // conventions-allow instance-method: the engine's Physics:SetMotorVel, which locomotor calls on inst.
+  setMotorSpeed(speed: number): void { this.speed = speed; syncMotor(this); }
+  /** homeseeker:SetHome, with the hill's position remembered. */
+  // conventions-allow instance-method: spawner:TakeOwnership calls it on the child.
+  setHome(home?: MolehillInstance): void {
+    this.components.homeseeker.SetHome(home);
+    if (home) this.components.knownlocations.RememberLocation('home', home.getPosition());
   }
-  private readonly listeners = new Map<string, Map<(inst: unknown, data: unknown) => void, () => void>>();
-  RemoveEventCallback(name: string, fn: (inst: unknown, data: unknown) => void): void { this.listeners.get(name)?.get(fn)?.(); this.listeners.get(name)?.delete(fn); }
-  // inst:PushEvent reaches SGmole itself: entity.sg is its stategraph.
-  PushEvent(name: string, data?: unknown): void { this.entity.PushEvent(name, data); }
-  IsNear(other: { getPosition(): unknown }, distance: number): boolean { return this.getPosition().distanceToSquared(other.getPosition() as Vector3) <= distance ** 2; }
-  GetAngleToPoint(x: number, _y: number, z: number): number { const p = this.getPosition(); return Math.atan2(-(z - p.z), x - p.x) * 180 / Math.PI; }
-  setRotation(degrees: number): void { this.heading = degrees; this.syncMotor(); }
-  setMotorSpeed(speed: number): void { this.speed = speed; this.syncMotor(); }
-  stopPhysics(): void { this.setMotorSpeed(0); }
-  setUnder(): void {
-    this.isunder = true; this.entity.addTag('notdrawable');
-    this.entity.physics.SetCollisionGroup(COLLISION.CHARACTERS);
-    this.entity.physics.SetCollisionMask(COLLISION.WORLD, COLLISION.OBSTACLES);
+  /** spawner:GoHome's child:RemoveFromScene, as the mole stops in its hill. */
+  // conventions-allow instance-method: spawner:GoHome calls it on the child.
+  enterHome(): void {
+    this.physics.SetActive(false); this.occupied = true; this.addTag('INLIMBO'); this.brain?.Stop(); this.locomotor.Stop();
+    this.animstate.stop(); this.stategraph.pause(); this.components.sleeper?.StopTesting(); StopSounds(this); this.components.homeseeker.SetHome();
   }
-  setAbove(): void {
-    this.isunder = false; this.entity.removeTag('notdrawable');
-    this.entity.physics.SetCollisionGroup(COLLISION.CHARACTERS);
-    this.entity.physics.SetCollisionMask(...CHARACTER_COLLISION_MASK);
-  }
-  setPickup(enabled: boolean): void { this.entity.components.inventoryitem.canbepickedup = enabled; }
-  isDead(): boolean { return this.components.health.IsDead(); }
-  inventoryFull(): boolean { return this.components.inventory?.IsFull() ?? false; }
-  bindWorld(services: MoleWorld, lengths: ReadonlyMap<string, number> = MOLE_ANIMATION_LENGTHS): void {
-    if (this.worldServices) return;
-    this.worldServices = services;
-    this.cleanups.push(services.registerMole(this));
-    const { getWatchWorldContent } = services;
-    const cycle = getWatchWorldContent(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
-    const { scheduler } = cycle;
-    this.scheduler = scheduler; this.bornAt = this.getTime();
-    this.world = {
-      get isDay() { return cycle.peek() === 'day'; },
-      isAboveGroundAtPoint: (x, y, z) => services.isWalkable(new Vector3(x, y, z)),
-      findEntity: (from, radius, predicate, must = [], cant = [], one = []) => {
-        const origin = from.getPosition() as Vector3;
-        return services.getEntities().filter(e => e !== from && e.isValid() && must.every(t => e.hasTag(t)) && !cant.some(t => e.hasTag(t)) &&
-          (!one.length || one.some(t => e.hasTag(t))) && origin.distanceToSquared(e.getPosition() as Vector3) <= radius ** 2)
-          .sort((a, b) => origin.distanceToSquared(a.getPosition() as Vector3) - origin.distanceToSquared(b.getPosition() as Vector3))
-          .find(e => !predicate || predicate(e, from));
-      },
-      getClosestInstWithTag: (tags, from, radius) => this.world.findEntity(from, radius, undefined, tags),
-    };
-    addComponent(this, 'inventory', Inventory, 3, services.dropItem, services.itemSpecs).OnLoad(this.saved?.items ?? [], services.spawnItem);
-    this.locomotor = addComponent(this, 'locomotor', LocoMotor, { arriveDistance: .15 * WORLD_SCALE, pathfinder: services.pathfinder, pathcaps: { ignorecreep: true, ignorebridges: true } });
-    this.locomotor.walkspeed = 2.75 * WORLD_SCALE; this.locomotor.runspeed = 6 * WORLD_SCALE;
-    this.animstate = new AnimState(scheduler, lengths, event => this.sg.pushEvent(event));
-    this.sg = new MoleStateGraph(this, scheduler);
-    this.entity.sg = this.sg.sg;
-    this.sg.sg.onNewState(() => this.syncStateTags()); this.syncStateTags();
-    this.brain = new MoleBrain(this, WORLD_SCALE);
-    this.entity.brain = this.brain;
-    if (!this.entity.worldServices?.scheduler) this.entity.BindScheduler(scheduler);
-    // DoTaskInTime(inst.make_home_delay, TestForMakeHome)
-    this.homechecktask = this.entity.DoTaskInTime(this.make_home_delay, () => { if (!this.home?.isValid()) this.needs_home_time = this.getTime(); });
-    if (this.saved?.needsHomeElapsed !== undefined) this.needs_home_time = this.getTime() - this.saved.needsHomeElapsed;
-    this.saved = undefined;
-    addComponent(this, 'sleeper', Sleeper, getWatchWorldContent, this.randomSource, WORLD_SCALE).SetNocturnal(true);
-    this.entity.addTag('sleeper');
-    if (this.isValid()) { this.brain.Start(); if (this.dropPending) this.onDropped(); }
-    createEffect(() => { cycle.get(); this.brain.ForceUpdate(); });
-  }
-  private syncStateTags(): void {
-    for (const tag of this.stateTags) this.entity.removeTag(tag);
-    this.stateTags = new Set(['noattack', 'noelectrocute', 'busy', 'sleeping', 'canwxscan', 'canelectrocute'].filter(tag => this.sg.hasStateTag(tag)));
-    for (const tag of this.stateTags) this.entity.addTag(tag);
-  }
-  PushBufferedAction(action: BufferedAction): void {
-    if (this.bufferedaction === action) return;
-    this.clearBufferedAction(); if (!action.isValid()) { action.fail(); return; }
-    this.bufferedaction = action;
-    if (!this.sg.startAction(action)) this.clearBufferedAction();
-  }
-  performBufferedAction(): boolean {
-    const action = this.bufferedaction; if (!action) return false;
-    this.bufferedaction = undefined; const success = action.do();
-    if (!success) { this.PushEvent('actionfailed', { action }); action.fail(); } return success;
-  }
-  clearBufferedAction(): void { this.bufferedaction?.fail(); this.bufferedaction = undefined; }
-  playAnimation(name: string, loop = false): void { this.animstate.PlayAnimation(name, loop); }
-  pushAnimation(name: string, loop = false): void { this.animstate.PushAnimation(name, loop); }
-  /** inst.SoundEmitter (mole.lua AddSoundEmitter). */
-  get SoundEmitter(): SoundEmitter { return this.entity.SoundEmitter!; }
-  /** OnSleep / OnRemove: SoundEmitter:KillAllSounds(). */
-  private stopSounds(): void { this.entity.SoundEmitter?.KillAllSounds(); }
-  startStunnedSounds(skippre: boolean): void {
-    const delay = skippre ? 0 : this.animstate.length;
-    // SGmole stunned: DoPeriodicTask(23 * FRAMES, PlayStunnedSound / KillStunnedSound).
-    this.playtask?.Cancel(); this.killtask?.Cancel();
-    this.playtask = this.entity.DoPeriodicTask(23 / 30, () => {
-      if (!this.SoundEmitter.PlayingSound('stunned')) this.SoundEmitter.PlaySound(`${SOUND_PREFIX}sleep` as SoundEventPath, 'stunned');
-    }, delay);
-    this.killtask = this.entity.DoPeriodicTask(23 / 30, () => this.SoundEmitter.KillSound('stunned'), delay + 11 / 30);
-  }
-  stopStunnedSounds(): void {
-    this.playtask?.Cancel(); this.playtask = undefined;
-    this.killtask?.Cancel(); this.killtask = undefined;
-    this.SoundEmitter.KillSound('stunned');
-  }
-  dropInventory(): void { this.components.inventory?.DropEverything(); }
-  dropDeathLoot(): void { this.entity.persists = false; this.worldServices?.dropLoot('smallmeat', this.getPosition().clone()); }
-  spawnMoveFx(): void { this.worldServices?.spawnMoveFx(this.getPosition()); }
-  setHome(home: unknown): void {
-    this.components.homeseeker.SetHome(home as MolehillInstance | undefined);
-    if (home) this.components.knownlocations.RememberLocation('home', (home as MolehillInstance).getPosition());
-  }
-  wentHome(target: BrainEntity): boolean {
-    const home = this.home; if (target !== home || !home?.isValid()) return false;
-    this.components.inventory?.TransferInventory(home); this.sg.goToState('idle');
-    return home.components.spawner.GoHome(this);
-  }
-  enterHome(): void { this.entity.physics.SetActive(false); this.occupied = true; this.entity.addTag('INLIMBO'); this.brain.Stop(); this.locomotor.Stop(); this.animstate.stop(); this.sg.pause(); this.components.sleeper?.StopTesting(); this.stopSounds(); this.components.homeseeker.SetHome(); }
+  /** spawner:ReleaseChild's child:ReturnToScene beside the hill. */
+  // conventions-allow instance-method: spawner:ReleaseChild calls it on the child.
   leaveHome(): void {
-    this.occupied = false; this.entity.removeTag('INLIMBO'); const home = this.home!;
+    this.occupied = false; this.removeTag('INLIMBO'); const home = this.home!;
     const angle = this.random() * Math.PI * 2;
     const position = home.getPosition();
-    this.entity.setPosition(position.x + Math.cos(angle) * WORLD_SCALE, position.y, position.z - Math.sin(angle) * WORLD_SCALE);
-    this.entity.physics.Teleport(); this.entity.physics.SetActive(true);
-    this.sg.resume(); this.sg.goToState('idle'); this.brain.Start(); this.components.sleeper?.StartTesting();
+    this.setPosition(position.x + Math.cos(angle) * WORLD_SCALE, position.y, position.z - Math.sin(angle) * WORLD_SCALE);
+    this.physics.Teleport(); this.physics.SetActive(true);
+    this.stategraph.resume(); this.stategraph.goToState('idle'); this.brain?.Start(); this.components.sleeper?.StartTesting();
   }
+  /** inventory:IsFull(), which molebrain.lua reads before stealing bait. */
+  // conventions-allow instance-method: molebrain.lua's inventory test, which the ported brain calls on inst.
+  inventoryFull(): boolean { return this.components.inventory?.IsFull() ?? false; }
+  /** molebrain.lua MakeNewHomeAction's FindWalkableOffset. */
+  // conventions-allow instance-method: molebrain.lua's MakeNewHomeAction, which the ported brain calls on inst.
   findHomePosition(): Vector3 | undefined {
-    const services = this.worldServices!, start = this.random() * Math.PI * 2, radius = (5 + Math.floor(this.random() * 11)) * WORLD_SCALE;
+    const services = this.moleWorld!, start = this.random() * Math.PI * 2, radius = (5 + Math.floor(this.random() * 11)) * WORLD_SCALE;
     for (let i = 0; i < 120; i++) {
       const angle = start + i * Math.PI * 2 / 120;
       const p = this.getPosition().clone().add(new Vector3(Math.cos(angle) * radius, 0, -Math.sin(angle) * radius));
@@ -258,68 +136,236 @@ export class Mole implements MoleBrainInst, MoleStateInst, LocoMotorInst {
     }
     return undefined;
   }
-  makeHome(): boolean { this.worldServices!.makeHome(this); this.needs_home_time = undefined; return true; }
-  onAttacked(data: EntityEventData['attacked']): void {
-    this.flee = true;
-    this.stopfleetask?.Cancel();
-    this.stopfleetask = this.entity.DoTaskInTime(3 + Math.floor(this.random() * 4), () => { this.flee = false; });
-    let count = 0;
-    for (const mole of this.worldServices!.getMoles()) if (mole.getPosition().distanceToSquared(this.getPosition()) <= (30 * WORLD_SCALE) ** 2) {
-      mole.PushEvent('gohome'); if (++count > 5) break;
-    }
-    const weapon = data.weapon;
-    if (weapon?.hasTag('hammer')) { this.dropInventory(); if (!this.isDead()) this.sg.goToState('stunned'); }
-    else if (weapon && !this.isDead() && !this.sg.hasStateTag('busy')) this.sg.goToState('hit');
-  }
-  onHomeDugUp(): void { this.needs_home_time = this.getTime(); this.dropInventory(); if (!this.isDead()) this.sg.goToState('stunned'); }
-  private onPickup(): void {
-    this.entity.physics.SetActive(false);
-    this.entity.PushEvent('ontrapped', undefined); this.components.homeseeker.SetHome(); this.components.sleeper?.StopTesting(); this.brain?.Stop(); this.locomotor?.Stop(); this.clearBufferedAction();
-    this.sg?.goToState('idle'); this.sg?.pause(); this.animstate?.stop(); this.stopStunnedSounds(); this.stopSounds();
-    this.entity.components.perishable.StartPerishing();
-  }
-  private onDropped(): void {
-    this.entity.physics.Teleport(); this.entity.physics.SetActive(true);
-    this.dropPending = true;
-    this.entity.components.perishable.StopPerishing(); this.stopSounds();
-    if (this.sg) { this.dropPending = false; this.sg.resume(); this.sg.goToState('stunned', true); this.brain.Start(); this.components.sleeper?.StartTesting(); }
-    if (!this.home?.isValid()) this.needs_home_time = this.getTime();
-  }
-  update(dt: number): void {
-    if (!this.isValid() || this.isDead()) return;
-    const body = this.entity.physicsBody;
-    if (body) this.entity.setPosition(body.position.x, 0, body.position.z);
-    this.brain.tick(this.getTime()); if (this.locomotor.isUpdating) this.locomotor.update(dt); this.sg.update(dt);
-    if (this.speed > 0) {
-      const angle = this.heading * Math.PI / 180;
-      const p = this.getPosition().clone().add(new Vector3(Math.cos(angle) * this.speed * dt, 0, -Math.sin(angle) * this.speed * dt));
-      if (this.worldServices!.isWalkable(p)) {
-        if (body) this.syncMotor(); else this.entity.setPosition(p.x, p.y, p.z);
-      } else this.locomotor.Stop();
-    }
-  }
-  get facing(): number { return this.heading; }
-  OnSave(): MoleSave {
-    return { health: this.components.health.currenthealth,
-      ...(this.needs_home_time === undefined ? this.saved?.needsHomeElapsed === undefined ? {} : { needsHomeElapsed: this.saved.needsHomeElapsed }
-        : { needsHomeElapsed: this.getTime() - this.needs_home_time }),
-      items: this.components.inventory?.OnSave() ?? this.saved?.items ?? [] };
-  }
-  remove(): void { this.entity.remove(); }
-  dispose(): void {
-    if (this.disposed) return; this.disposed = true;
-    // The components were torn down with the item entity.
-    this.brain?.Stop(); this.sg?.dispose(); this.animstate?.dispose(); this.stopSounds();
-    this.stopfleetask?.Cancel(); this.homechecktask?.Cancel(); this.stopStunnedSounds();
-    this.cleanups.splice(0).forEach(stop => stop());
-    for (const listeners of this.listeners.values()) for (const stop of listeners.values()) stop(); this.listeners.clear();
+  /** ACTIONS.MAKEMOLEHILL's fn. */
+  // conventions-allow instance-method: ACTIONS.MAKEMOLEHILL's fn, which the brain's action runs for inst.
+  makeHome(): boolean { this.moleWorld!.makeHome(this); this.needs_home_time = undefined; return true; }
+  /** ACTIONS.GOHOME's spawner branch. */
+  // conventions-allow instance-method: ACTIONS.GOHOME's fn, which the brain's action runs for inst.
+  wentHome(target: BrainEntity): boolean {
+    const home = this.home; if (target !== home || !home?.isValid()) return false;
+    this.components.inventory?.TransferInventory(home); this.stategraph.goToState('idle');
+    return home.components.spawner.GoHome(this);
   }
 }
+
+/** In the world rather than held or in its hill. */
+function inWorld(inst: Mole): boolean { return !inst.isRemoved && !inst.occupied && !inst.components.inventoryitem.owner; }
+function isDead(inst: Mole): boolean { return inst.components.health.IsDead(); }
+
+function syncMotor(inst: Mole): void {
+  const body = inst.physicsBody;
+  if (!body) return;
+  const angle = inst.rotation * Math.PI / 180;
+  body.velocity.x = Math.cos(angle) * inst.speed;
+  body.velocity.z = -Math.sin(angle) * inst.speed;
+}
+
+/** mole.lua fn()'s creature: the sound emitter, physics, health, combat, knownlocations and homeseeker. */
+export function MakeMole(inst: Mole, random: () => number = Math.random): void {
+  if (inst.components.health) return;
+  inst.randomSource = random;
+  inst.AddSoundEmitter();
+  MakeCharacterPhysics(inst, 99999, .5);
+  inst.make_home_delay = 5 + Math.floor(inst.random() * 6); inst.peek_interval = 15 + Math.floor(inst.random() * 11);
+  addComponent(inst, 'health', Health, 30).OnLoad({ health: inst.mole?.health ?? 30 });
+  inst.saved = inst.mole;
+  addComponent(inst, 'combat', Combat, () => inst.getTime());
+  addComponent(inst, 'knownlocations', KnownLocations);
+  addComponent(inst, 'homeseeker', HomeSeeker<MolehillInstance>);
+  // The inventory saves the mole's own record with its stack.
+  inst.component(MOLE_ID, () => ({ OnSave: () => MoleOnSave(inst), dispose: () => {} }));
+  inst.ListenForEvent('ondropped', ondrop);
+  inst.ListenForEvent('onputininventory', onpickup);
+  inst.onRemove(() => {
+    inst.animstate?.dispose(); StopSounds(inst); StopStunnedSounds(inst);
+    inst.cleanups.splice(0).forEach(stop => stop());
+  });
+}
+
+/** Physics belongs to the logical item and survives replacing its display. */
+export function BindMolePhysics(inst: Mole, world?: import('cannon-es').World): void {
+  if (inst.isunder) SetUnderPhysics(inst); else SetAbovePhysics(inst);
+  inst.physics.SetActive(inWorld(inst));
+  if (world) inst.bindPhysics(world, () => inst.getPosition());
+}
+
+export function SetUnderPhysics(inst: Mole): void {
+  inst.isunder = true; inst.addTag('notdrawable');
+  inst.physics.SetCollisionGroup(COLLISION.CHARACTERS);
+  inst.physics.SetCollisionMask(COLLISION.WORLD, COLLISION.OBSTACLES);
+}
+export function SetAbovePhysics(inst: Mole): void {
+  inst.isunder = false; inst.removeTag('notdrawable');
+  inst.physics.SetCollisionGroup(COLLISION.CHARACTERS);
+  inst.physics.SetCollisionMask(...CHARACTER_COLLISION_MASK);
+}
+
+/** SGmole's inst: the entity's AnimState, Physics, SoundEmitter, inventory, lootdropper and buffered action. */
+function stateContext(inst: Mole): MoleStateInst {
+  return {
+    get locomotor() { return inst.locomotor; },
+    get isunder() { return inst.isunder; },
+    get last_above_time() { return inst.last_above_time; },
+    set last_above_time(time) { inst.last_above_time = time; },
+    get peek_interval() { return inst.peek_interval; },
+    set peek_interval(interval) { inst.peek_interval = interval; },
+    getTime: () => inst.getTime(),
+    random: () => inst.random(),
+    setUnder: () => SetUnderPhysics(inst),
+    setAbove: () => SetAbovePhysics(inst),
+    stopPhysics: () => inst.setMotorSpeed(0),
+    playAnimation: (name, loop) => inst.animstate.PlayAnimation(name, loop),
+    pushAnimation: (name, loop) => inst.animstate.PushAnimation(name, loop),
+    performBufferedAction: () => inst.PerformBufferedAction() === true,
+    clearBufferedAction: () => inst.ClearBufferedAction(),
+    get SoundEmitter() { return inst.SoundEmitter!; },
+    dropInventory: () => DropInventory(inst),
+    dropDeathLoot: () => { inst.persists = false; inst.moleWorld?.dropLoot('smallmeat', inst.getPosition().clone()); },
+    setPickup: enabled => { inst.components.inventoryitem.canbepickedup = enabled; },
+    startStunnedSounds: skippre => StartStunnedSounds(inst, skippre),
+    stopStunnedSounds: () => StopStunnedSounds(inst),
+    spawnMoveFx: () => inst.moleWorld?.spawnMoveFx(inst.getPosition()),
+    onAttacked: data => OnAttacked(inst, data as EntityEventData['attacked']),
+    isDead: () => isDead(inst),
+    remove: () => inst.remove(),
+  };
+}
+
+/** The rest of fn() in the moles' world: inventory, locomotor, SetStateGraph, SetBrain, the home test and the sleeper. */
+export function BindMoleWorld(inst: Mole, services: MoleWorld, lengths: ReadonlyMap<string, number> = MOLE_ANIMATION_LENGTHS): void {
+  if (inst.moleWorld) return;
+  inst.moleWorld = services;
+  inst.cleanups.push(services.registerMole(inst));
+  const { getWatchWorldContent } = services;
+  const cycle = getWatchWorldContent(WorldContentKey.Cycle, stop => inst.cleanups.push(stop));
+  const { scheduler } = cycle;
+  inst.moleScheduler = scheduler; inst.bornAt = inst.getTime();
+  inst.world = {
+    get isDay() { return cycle.peek() === 'day'; },
+    isAboveGroundAtPoint: (x, y, z) => services.isWalkable(new Vector3(x, y, z)),
+    // TheSim:FindEntities never returns an entity in limbo.
+    findEntity: (from, radius, predicate, must = [], cant = [], one = []) => {
+      const origin = from.getPosition();
+      return services.getEntities().filter(e => e !== from && e.isValid() && !e.hasTag('INLIMBO') && must.every(t => e.hasTag(t)) && !cant.some(t => e.hasTag(t)) &&
+        (!one.length || one.some(t => e.hasTag(t))) && distanceSquared(origin, e.getPosition()) <= radius ** 2)
+        .sort((a, b) => distanceSquared(origin, a.getPosition()) - distanceSquared(origin, b.getPosition()))
+        .find(e => !predicate || predicate(e, from));
+    },
+    getClosestInstWithTag: (tags, from, radius) => inst.world.findEntity(from, radius, undefined, tags),
+  };
+  addComponent(inst, 'inventory', Inventory, 3, services.dropItem, services.itemSpecs).OnLoad(inst.saved?.items ?? [], services.spawnItem);
+  inst.locomotor = addComponent(inst, 'locomotor', LocoMotor, { arriveDistance: .15 * WORLD_SCALE, pathfinder: services.pathfinder, pathcaps: { ignorecreep: true, ignorebridges: true } });
+  inst.locomotor.walkspeed = 2.75 * WORLD_SCALE; inst.locomotor.runspeed = 6 * WORLD_SCALE;
+  inst.animstate = new AnimState(scheduler, lengths, event => inst.PushEvent(event));
+  if (!inst.worldServices?.scheduler) inst.BindScheduler(scheduler);
+  inst.stategraph = new MoleStateGraph(stateContext(inst), scheduler);
+  inst.SetStateGraph(() => inst.stategraph.sg);
+  inst.stategraph.sg.onNewState(() => SyncStateTags(inst)); SyncStateTags(inst);
+  inst.SetBrain(mole => new MoleBrain(mole, WORLD_SCALE));
+  if (!inWorld(inst)) inst.brain?.Stop();
+  inst.homechecktask = inst.DoTaskInTime(inst.make_home_delay, TestForMakeHome);
+  if (inst.saved?.needsHomeElapsed !== undefined) inst.needs_home_time = inst.getTime() - inst.saved.needsHomeElapsed;
+  inst.saved = undefined;
+  addComponent(inst, 'sleeper', Sleeper, getWatchWorldContent, inst.randomSource, WORLD_SCALE).SetNocturnal(true);
+  inst.addTag('sleeper');
+  if (inWorld(inst) && inst.dropPending) ondrop(inst);
+  createEffect(() => { cycle.get(); inst.brain?.ForceUpdate(); });
+}
+
+/** TestForMakeHome */
+function TestForMakeHome(inst: Mole): void { if (!inst.home?.isValid()) inst.needs_home_time = inst.getTime(); }
+
+/** The stategraph's tags the source's other code reads as entity tags. */
+function SyncStateTags(inst: Mole): void {
+  for (const tag of inst.stateTags) inst.removeTag(tag);
+  inst.stateTags = new Set(['noattack', 'noelectrocute', 'busy', 'sleeping', 'canwxscan', 'canelectrocute'].filter(tag => inst.stategraph.hasStateTag(tag)));
+  for (const tag of inst.stateTags) inst.addTag(tag);
+}
+
+/** OnSleep / OnRemove: SoundEmitter:KillAllSounds(). */
+function StopSounds(inst: Mole): void { inst.SoundEmitter?.KillAllSounds(); }
+function StartStunnedSounds(inst: Mole, skippre: boolean): void {
+  const delay = skippre ? 0 : inst.animstate.length;
+  const sound = inst.SoundEmitter!;
+  // SGmole stunned: DoPeriodicTask(23 * FRAMES, PlayStunnedSound / KillStunnedSound).
+  inst.playtask?.Cancel(); inst.killtask?.Cancel();
+  inst.playtask = inst.DoPeriodicTask(23 / 30, () => {
+    if (!sound.PlayingSound('stunned')) sound.PlaySound(`${SOUND_PREFIX}sleep` as SoundEventPath, 'stunned');
+  }, delay);
+  inst.killtask = inst.DoPeriodicTask(23 / 30, () => sound.KillSound('stunned'), delay + 11 / 30);
+}
+function StopStunnedSounds(inst: Mole): void {
+  inst.playtask?.Cancel(); inst.playtask = undefined;
+  inst.killtask?.Cancel(); inst.killtask = undefined;
+  inst.SoundEmitter?.KillSound('stunned');
+}
+function DropInventory(inst: Mole): void { inst.components.inventory?.DropEverything(); }
+
+function OnAttacked(inst: Mole, data: EntityEventData['attacked']): void {
+  inst.flee = true;
+  inst.stopfleetask?.Cancel();
+  inst.stopfleetask = inst.DoTaskInTime(3 + Math.floor(inst.random() * 4), () => { inst.flee = false; });
+  let count = 0;
+  for (const mole of inst.moleWorld!.getMoles()) if (mole.getPosition().distanceToSquared(inst.getPosition()) <= (30 * WORLD_SCALE) ** 2) {
+    mole.PushEvent('gohome'); if (++count > 5) break;
+  }
+  const weapon = data.weapon;
+  if (weapon?.hasTag('hammer')) { DropInventory(inst); if (!isDead(inst)) inst.stategraph.goToState('stunned'); }
+  else if (weapon && !isDead(inst) && !inst.stategraph.hasStateTag('busy')) inst.stategraph.goToState('hit');
+}
+
+/** OnHomeDugUp */
+export function OnHomeDugUp(inst: Mole): void {
+  inst.needs_home_time = inst.getTime(); DropInventory(inst); if (!isDead(inst)) inst.stategraph.goToState('stunned');
+}
+
+function onpickup(inst: Mole): void {
+  inst.physics.SetActive(false);
+  inst.PushEvent('ontrapped'); inst.components.homeseeker.SetHome(); inst.components.sleeper?.StopTesting(); inst.brain?.Stop(); inst.locomotor?.Stop(); inst.ClearBufferedAction();
+  inst.stategraph?.goToState('idle'); inst.stategraph?.pause(); inst.animstate?.stop(); StopStunnedSounds(inst); StopSounds(inst);
+  inst.components.perishable.StartPerishing();
+}
+
+function ondrop(inst: Mole): void {
+  inst.physics.Teleport(); inst.physics.SetActive(true);
+  inst.dropPending = true;
+  inst.components.perishable.StopPerishing(); StopSounds(inst);
+  if (inst.stategraph) {
+    inst.dropPending = false; inst.stategraph.resume(); inst.stategraph.goToState('stunned', true); inst.brain?.Start(); inst.components.sleeper?.StartTesting();
+  }
+  if (!inst.home?.isValid()) inst.needs_home_time = inst.getTime();
+}
+
+/** One frame: the brain, the locomotor, the stategraph and the motor, which stops at the walkable edge. */
+export function UpdateMole(inst: Mole, dt: number): void {
+  if (!inWorld(inst) || isDead(inst)) return;
+  const body = inst.physicsBody;
+  if (body) inst.setPosition(body.position.x, 0, body.position.z);
+  inst.brain?.tick(inst.getTime()); if (inst.locomotor.isUpdating) inst.locomotor.update(dt); inst.stategraph.update(dt);
+  if (inst.speed > 0) {
+    const angle = inst.rotation * Math.PI / 180;
+    const p = inst.getPosition().clone().add(new Vector3(Math.cos(angle) * inst.speed * dt, 0, -Math.sin(angle) * inst.speed * dt));
+    if (inst.moleWorld!.isWalkable(p)) {
+      if (body) syncMotor(inst); else inst.setPosition(p.x, p.y, p.z);
+    } else inst.locomotor.Stop();
+  }
+}
+
+/** mole.lua OnSave: needs_home_time as the time elapsed since it was set, with health and the stolen items. */
+function MoleOnSave(inst: Mole): MoleSave {
+  return { health: inst.components.health.currenthealth,
+    ...(inst.needs_home_time === undefined ? inst.saved?.needsHomeElapsed === undefined ? {} : { needsHomeElapsed: inst.saved.needsHomeElapsed }
+      : { needsHomeElapsed: inst.getTime() - inst.needs_home_time }),
+    items: inst.components.inventory?.OnSave() ?? inst.saved?.items ?? [] };
+}
+
+const distanceSquared = (a: { x: number; z: number }, b: { x: number; z: number }) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
+
+/** The inventory item's side of mole.lua: tags, the ELEMENTAL eater and perishing while held. */
 export function configureMoleEntity(entity: ItemEntity): void {
   for (const tag of ['animal', 'prey', 'mole', 'smallcreature', 'canbetrapped', 'baitstealer', 'cattoy', 'catfood', 'whackable', 'stunnedbybomb', 'cookable', 'small_livestock', 'show_spoilage']) entity.addTag(tag);
-  if (entity.getComponent<Mole>('mole')) return;
+  if (entity.components.eater) return;
   entity.components.inventoryitem.canbepickedup = false; entity.components.inventoryitem.canbepickedupalive = true;
-  entity.component('mole', () => new Mole(entity));
   const eater = addComponent(entity, 'eater', Eater);
   eater.SetDiet(['ELEMENTAL']); eater.SetOnEatFn(() => entity.components.perishable.SetPercent(1));
   const perishable = entity.components.perishable;
@@ -336,7 +382,7 @@ export function molePrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDe
   return {
     [MOLE_ID]: {
       fn: () => {
-        const inst = world.newItem(MOLE_ID);
+        const inst = world.newItem(MOLE_ID, (...item) => new Mole(...item));
         inst.sprite.resetPresentation({ name: 'idle_under', billboard: true });
         bindItemWorld(inst, world);
         return inst;
@@ -345,21 +391,23 @@ export function molePrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDe
       onSpawned: inst => {
         const moleWorld = world.moleWorld;
         if (!moleWorld) throw new Error('Mole world is unavailable');
+        if (!(inst instanceof Mole)) return;
+        MakeMole(inst);
         world.configureItem(inst);
         configureMoleEntity(inst);
-        const mole = inst.getComponent<Mole>('mole')!, sprite = inst.sprite;
-        mole.bindWorld(moleWorld);
+        const mole = inst, sprite = inst.sprite;
+        BindMoleWorld(mole, moleWorld);
         const animation = watchSignal(mole.animstate.animation, stop => inst.onRemove(stop));
         createEffect(() => { const { name, loop } = animation.get(); inst.AnimState.PlayAnimation(name, loop); });
-        mole.bindPhysics(world.physics);
+        BindMolePhysics(mole, world.physics);
         const heading = watchSignal(moleWorld.cameraHeading, stop => inst.onRemove(stop));
         // Visibility and facing change the sprite json only when their value does.
         let visible: boolean | undefined, facing: number | undefined;
         inst.onRemove(world.componentUpdates.register({
           OnUpdate: dt => {
             if (inst.status.peek() !== 'active') return;
-            mole.update(dt);
-            const nextVisible = mole.isValid();
+            UpdateMole(mole, dt);
+            const nextVisible = inWorld(mole);
             if (nextVisible !== visible) sprite.setVisible(visible = nextVisible);
             const nextFacing = fourFacingFromRotation(mole.facing, heading.peek());
             if (nextFacing !== facing) sprite.setFacing(facing = nextFacing);
