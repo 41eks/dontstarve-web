@@ -13,8 +13,8 @@ import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefa
 export function marbleShrubWorld(scene: THREE.Scene, world: MarbleShrubWorld, options: { physics?: CANNON.World; tickingarea?: TileStateQuery } = {}) {
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', options);
-  prefabs.register(marbleShrubPrefabs(world) as never);
-  prefabs.register(marbleBeanSaplingPrefabs({ ...world, spawnPrefab: (id, position) => prefabs.spawn(id, position) as MarbleShrubInstance }) as never);
+  prefabs.register(marbleShrubPrefabs(world));
+  prefabs.register(marbleBeanSaplingPrefabs({ ...world, spawnPrefab: (id, position) => prefabs.spawn(id, position) as MarbleShrubInstance }));
   const records = (prefabId: string) => prefabs.exportRecords().filter(entry => entry.prefabId === prefabId).map(({ record }) => record);
   return {
     prefabs,

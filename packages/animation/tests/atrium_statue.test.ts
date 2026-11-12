@@ -29,7 +29,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim',
     { tickingarea: () => createMemo(() => awake.get()), physics });
-  prefabs.register(atriumStatuePrefabs() as never);
+  prefabs.register(atriumStatuePrefabs());
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.atriumStatues);
   const spawn = (record = RECORD) =>

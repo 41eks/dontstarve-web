@@ -34,7 +34,7 @@ function setup(physics?: CANNON.World) {
   const tickingarea = () => createMemo(() => awake.get());
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea, physics });
-  prefabs.register(caveHolePrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) }) as never);
+  prefabs.register(caveHolePrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
   registry.registerPrefabs(PREFAB_DEFINITIONS.caveHoles);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

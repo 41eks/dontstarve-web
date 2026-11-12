@@ -37,7 +37,7 @@ function setup(world: Partial<CaveEntranceWorld> & { tickingarea?: TileStateQuer
   caves.register(caveEntrancePrefabs({
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options),
     spawnPrefab: (prefab, position) => caves.spawn(prefab, position), ...world,
-  }) as never);
+  }));
   const registry = new EntityRegistry([], caves, () => player.position);
   registry.registerPrefabs(PREFAB_DEFINITIONS.caveEntrances);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

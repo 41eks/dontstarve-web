@@ -67,7 +67,7 @@ async function fixture(daytime = false) {
     spawnItem, dropItem: (entity, position) => { entity.transform.copyPosition(position); entity.PushEvent('ondropped', undefined); drops.push({ entity, prefab: entity.prefab, position: position.clone() }); },
     showMole: () => undefined, dropLoot: (prefab, position) => drops.push({ prefab, position }),
   });
-  prefabs.register(molehillPrefabs(habitat) as never);
+  prefabs.register(molehillPrefabs(habitat));
   const hills = () => prefabs.exportRecords().map(({ record }) => record);
   const spawnHill = (position: THREE.Vector3, saved?: Parameters<typeof prefabs.spawn>[2]) => molehill(prefabs.spawn(MOLEHILL_ID, position, saved));
   const bank = await loadAnim('mole_basic.zip', '/dst/data/anim');

@@ -31,9 +31,9 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
   const scene = new THREE.Scene();
   const displays = new PrefabDisplayGroup(scene);
   const bones = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea });
-  bones.register(rockPrefabs({ scheduler, spawnGroundItem, spawnPrefab: (id, position) => bones.spawn(id, position) }) as never);
-  bones.register(houndbonePrefabs({ spawnGroundItem }) as never);
-  bones.register(skeletonPrefabs({ spawnGroundItem }) as never);
+  bones.register(rockPrefabs({ scheduler, spawnGroundItem, spawnPrefab: (id, position) => bones.spawn(id, position) }));
+  bones.register(houndbonePrefabs({ spawnGroundItem }));
+  bones.register(skeletonPrefabs({ spawnGroundItem }));
   const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);
   // The displays turn themselves to the world's camera rotation.
   const content = bindTestWorld(scheduler);

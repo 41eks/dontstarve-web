@@ -29,7 +29,7 @@ it('restores portal ground layers, its shadow child and statue work state withou
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
   prefabs.register(archivePropsPrefabs({ scheduler, spawnGroundItem, cameraFacing, fx: { collapse: () => {} },
-    spawnPrefab: (id, position) => prefabs.spawn(id, position) }) as never);
+    spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
   try {
     const portal = prefabs.spawn('archive_portal', new THREE.Vector3(3, 0, 6)).transform.model;
     const statue = prefabs.spawn('archive_moon_statue', new THREE.Vector3(9, 0, 6)).transform.model;

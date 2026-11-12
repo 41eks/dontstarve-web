@@ -20,7 +20,7 @@ export async function checkArchiveStatueInstancing() {
   const manager = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim',
     { tickingarea: () => createMemo(() => awake.get()) });
   manager.register(archivePropsPrefabs({ scheduler, spawnGroundItem: () => undefined, fx: { collapse: () => {} },
-    spawnPrefab: (id, position) => manager.spawn(id, position) }) as never);
+    spawnPrefab: (id, position) => manager.spawn(id, position) }));
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   const sample = async () => {
     await prewarmScenePasses(renderer, scene, camera);

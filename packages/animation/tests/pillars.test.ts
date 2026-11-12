@@ -32,7 +32,7 @@ function setup() {
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
   for (const declared of [pillarPrefabs(), atriumPillarPrefabs(), archivePillarPrefabs(), monkeyPillarPrefabs({ scheduler }),
-    vaultPillarPrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) })]) prefabs.register(declared as never);
+    vaultPillarPrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) })]) prefabs.register(declared);
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
   for (const definition of [PREFAB_DEFINITIONS.cavePillars, PREFAB_DEFINITIONS.atriumPillars, PREFAB_DEFINITIONS.archivePillars,
     PREFAB_DEFINITIONS.vaultPillars, PREFAB_DEFINITIONS.monkeyPillars]) registry.registerPrefabs(definition);

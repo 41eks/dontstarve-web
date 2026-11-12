@@ -29,7 +29,7 @@ function setup() {
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
   const displays = new PrefabDisplayGroup(scene);
   const skeletons = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
-  skeletons.register(skeletonPrefabs({ spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) }) as never);
+  skeletons.register(skeletonPrefabs({ spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) }));
   const registry = new EntityRegistry([], skeletons, () => player.position);
   registry.registerPrefabs(PREFAB_DEFINITIONS.skeletons);
   registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));

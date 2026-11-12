@@ -73,7 +73,7 @@ function tumbleweedManager(scene: THREE.Scene, physics: CANNON.World, world: Omi
   tickingarea?: () => ReturnType<typeof createMemo<boolean>>) {
   const displays = new PrefabDisplayGroup(scene), componentUpdates = new ComponentUpdates();
   const manager: PrefabEntityManager<string, PrefabInstance> = new PrefabEntityManager(displays, '/dst/data/anim', { physics, tickingarea });
-  manager.register(tumbleweedPrefabs({ ...world, componentUpdates, spawnPrefab: (prefab, position) => manager.spawn(prefab, position) }) as never);
+  manager.register(tumbleweedPrefabs({ ...world, componentUpdates, spawnPrefab: (prefab, position) => manager.spawn(prefab, position) }));
   return {
     displays, componentUpdates,
     spawn: (position: THREE.Vector3, saved?: { id: string }) =>

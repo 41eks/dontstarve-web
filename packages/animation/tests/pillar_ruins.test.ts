@@ -25,7 +25,7 @@ function setup() {
   const tickingarea = () => createMemo(() => awake.get());
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea });
-  prefabs.register(pillarPrefabs() as never);
+  prefabs.register(pillarPrefabs());
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
   registry.registerPrefabs(PREFAB_DEFINITIONS.pillarRuins);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

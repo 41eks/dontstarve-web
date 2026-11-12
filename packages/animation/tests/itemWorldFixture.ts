@@ -69,7 +69,7 @@ export class ItemWorldFixture {
     const icons = Object.fromEntries(Object.entries(SAVE_CATALOG.items).filter(([id]) => !Object.hasOwn(GROUND_ART_DEFINITIONS, id))
       .map(([id, spec]) => [id, { atlas: spec.atlas ?? 'images/inventoryimages.xml', image: spec.icon }]));
     const ids = new Set(ITEM_PREFAB_IDS);
-    this.prefabs.register(Object.fromEntries(Object.entries(itemPrefabs(this.world, icons)).filter(([id]) => ids.has(id))) as never);
+    this.prefabs.register(Object.fromEntries(Object.entries(itemPrefabs(this.world, icons)).filter(([id]) => ids.has(id))));
     inventory.entities.bindSpawner(state => ids.has(state.itemId)
       ? this.prefabs.spawn(state.itemId, ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } }) as unknown as ItemEntity
       : undefined);

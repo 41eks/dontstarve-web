@@ -35,7 +35,8 @@ export interface PrefabComponents extends ActionComponents {
   /** The player's store, or a creature's or structure's Lua inventory component. */
   inventory?: import('@dontstarve-web/inventory').InventoryStore | import('../../componets/src/inventory').Inventory;
   playercontroller?: import('../../stategraphs/src/playercontroller').PlayerController;
-  finiteuses?: import('../../componets/src/finiteuses').FiniteUses;
+  /** finiteuses.lua: a structure's, or an item's (whose uses are part of its stack record). */
+  finiteuses?: import('../../componets/src/finiteuses').FiniteUses | import('../../inventory/src/entity').FiniteUsesComponent;
   knownlocations?: import('../../componets/src/knownlocations').KnownLocations;
   lootdropper?: import('../../componets/src/lootdropper').LootDropper;
   growable?: import('../../componets/src/growable').Growable;

@@ -26,7 +26,7 @@ function setup(random = () => .25) {
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
   prefabs.register(nightmareGrowthPrefabs({ scheduler, random,
-    spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) as NightmareGrowthCrackInstance }) as never);
+    spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) as NightmareGrowthCrackInstance }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(9, 0, -6));
   registry.registerPrefabs(PREFAB_DEFINITIONS.nightmareGrowths);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

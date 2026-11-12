@@ -35,7 +35,7 @@ function setup() {
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics, tickingarea: () => createMemo(() => true) });
   const spawnGroundItem = vi.fn<SpawnGroundItem>(() => undefined), collapse = vi.fn();
   prefabs.register(archivePropsPrefabs({ scheduler, cameraFacing, spawnGroundItem, fx: { collapse },
-    spawnPrefab: (id, position) => prefabs.spawn(id, position) }) as never);
+    spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(0, 0, 0));
   registry.registerPrefabs(PREFAB_DEFINITIONS.archiveProps);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

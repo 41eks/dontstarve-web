@@ -28,7 +28,7 @@ function setup(spawnAt = new THREE.Vector3(2, 0, 3)) {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true), physics = new CANNON.World();
   const displays = new PrefabDisplayGroup(scene), inventory = createInventoryStore([]);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()), physics });
-  prefabs.register(beeQueenHivePrefabs({ scheduler }) as never);
+  prefabs.register(beeQueenHivePrefabs({ scheduler }));
   const registry = new EntityRegistry([], prefabs, () => spawnAt);
   registry.registerPrefabs(PREFAB_DEFINITIONS.beeQueenHives);
   const spawn = async () => {

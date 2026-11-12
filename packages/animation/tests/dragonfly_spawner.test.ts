@@ -31,9 +31,9 @@ function setup(initialAwake: boolean) {
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea });
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
-  prefabs.register(dragonflyPrefabs({ scheduler, getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources) }) as never);
+  prefabs.register(dragonflyPrefabs({ scheduler, getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources) }));
   prefabs.register(dragonflySpawnerPrefabs({ scheduler, spawnDragonfly: point => prefabs.spawn(DRAGONFLY_ID, point).transform.model,
-    resolveDragonfly: id => prefabs.get(id)?.transform.model, isPassable: () => true }) as never);
+    resolveDragonfly: id => prefabs.get(id)?.transform.model, isPassable: () => true }));
   registry.registerPrefabs(PREFAB_DEFINITIONS.dragonflies);
   registry.registerPrefabs(PREFAB_DEFINITIONS.dragonflySpawners);
   /** The dragonflies' save records, as the save loop exports them. */

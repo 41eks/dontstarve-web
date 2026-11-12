@@ -572,7 +572,7 @@ export async function createSceneEntities(
       .map(([id, spec]) => [id, { atlas: spec.atlas ?? 'images/inventoryimages.xml', image: spec.icon }]));
     const definitions = itemPrefabs(itemWorld(worldState), icons);
     const ids = new Set(MANAGER_DEFINITIONS[prefabId].prefabIds);
-    prefabs.register(Object.fromEntries(Object.entries(definitions).filter(([id]) => ids.has(id))) as never);
+    prefabs.register(Object.fromEntries(Object.entries(definitions).filter(([id]) => ids.has(id))));
     sceneInventory.entities.bindSpawner(state => {
       if (!ids.has(state.itemId)) return undefined;
       const entity = prefabs.spawn(state.itemId, ITEM_ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } });

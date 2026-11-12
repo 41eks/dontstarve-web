@@ -27,7 +27,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function setup(shard?: WorldMigratorShard) {
   const scene = new THREE.Scene(), physics = new CANNON.World(), displays = new PrefabDisplayGroup(scene), inventory = createInventoryStore([]);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics, tickingarea: () => createMemo(() => true) });
-  prefabs.register(caveExitPrefabs({ shard }) as never);
+  prefabs.register(caveExitPrefabs({ shard }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(5, 0, 7));
   registry.registerPrefabs(PREFAB_DEFINITIONS.caveExits);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

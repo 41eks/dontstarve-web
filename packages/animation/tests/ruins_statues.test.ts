@@ -33,7 +33,7 @@ function setup(player = new THREE.Vector3()) {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
-  prefabs.register(ruinsStatuePrefabs({ scheduler }) as never);
+  prefabs.register(ruinsStatuePrefabs({ scheduler }));
   const registry = new EntityRegistry([], prefabs, () => player.clone()), inventory = createInventoryStore([]);
   for (const definition of Object.values(DEFINITIONS)) registry.registerPrefabs(definition);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

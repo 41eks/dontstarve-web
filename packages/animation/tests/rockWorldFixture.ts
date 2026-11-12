@@ -16,9 +16,9 @@ export function rockWorld(scene: THREE.Scene, options: { scheduler?: GameTimeSch
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: options.tickingarea });
   prefabs.register(rockPrefabs({ scheduler, spawnGroundItem, handEquipment: options.handEquipment,
-    spawnPrefab: (id, position) => prefabs.spawn(id, position) }) as never);
-  prefabs.register(caveinBoulderPrefabs({ spawnGroundItem, handEquipment: options.handEquipment }) as never);
-  prefabs.register(moonrockseedPrefabs() as never);
+    spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
+  prefabs.register(caveinBoulderPrefabs({ spawnGroundItem, handEquipment: options.handEquipment }));
+  prefabs.register(moonrockseedPrefabs());
   return { scheduler, displays, prefabs,
     spawn: (id: string, position: THREE.Vector3, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawn(id, position, saved).transform.model,
     exportRecords: () => prefabs.exportRecords(),

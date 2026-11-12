@@ -30,7 +30,7 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   bones.register(houndbonePrefabs({
     fx: createTestWorldFx(scene),
     spawnGroundItem: (definition: GroundItemDefinition) => { dropped.push(definition.itemId); return undefined; },
-  }) as never);
+  }));
 
   const record = (bonetype: number, id: string) => ({ id, transform: { position: [1, 0, 2] as [number, number, number], rotationY: 0 },
     components: { houndbone: { bonetype } } });

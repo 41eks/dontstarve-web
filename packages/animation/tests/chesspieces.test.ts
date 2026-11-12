@@ -27,7 +27,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
   const displays = new PrefabDisplayGroup(scene), dropped: string[] = [];
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
-  prefabs.register(chesspiecePrefabs({ scheduler, spawnGroundItem: definition => { dropped.push(definition.itemId); return undefined; } }) as never);
+  prefabs.register(chesspiecePrefabs({ scheduler, spawnGroundItem: definition => { dropped.push(definition.itemId); return undefined; } }));
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.chesspieces);
   const pieces = {

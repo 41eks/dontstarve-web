@@ -30,7 +30,7 @@ function setup() {
   const getLightLevel = vi.fn(() => light);
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
-  prefabs.register(bulbPlantPrefabs({ scheduler, getLightLevel }) as never);
+  prefabs.register(bulbPlantPrefabs({ scheduler, getLightLevel }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(1, 0, 2));
   registry.registerPrefabs(PREFAB_DEFINITIONS.bulbPlants);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

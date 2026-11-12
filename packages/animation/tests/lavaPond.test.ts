@@ -28,7 +28,7 @@ function setup(random: () => number, scheduler = new GameTimeScheduler()) {
   const scene = new THREE.Scene(), physics = new CANNON.World(), player = new THREE.Group(), inventory = createInventoryStore([]);
   const displays = new PrefabDisplayGroup(scene);
   const ponds = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
-  ponds.register(lavaPondPrefabs({ scheduler, random, spawnPrefab: (prefab, position) => ponds.spawn(prefab, position) }) as never);
+  ponds.register(lavaPondPrefabs({ scheduler, random, spawnPrefab: (prefab, position) => ponds.spawn(prefab, position) }));
   const registry = new EntityRegistry([], ponds, () => player.position);
   registry.registerPrefabs(PREFAB_DEFINITIONS.lavaPonds);
   registry.registerPrefabs(PREFAB_DEFINITIONS.lavaPondRocks);

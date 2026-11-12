@@ -25,7 +25,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim',
     { tickingarea: () => createMemo(() => awake.get()), scheduler, physics });
-  prefabs.register(statueGlommerPrefabs({ scheduler }) as never);
+  prefabs.register(statueGlommerPrefabs({ scheduler }));
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.glommerStatues);
   const spawn = (record: PlacementSaveRecord) =>

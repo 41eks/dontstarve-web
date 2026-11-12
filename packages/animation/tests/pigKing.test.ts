@@ -33,7 +33,7 @@ function setup() {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), physics = new CANNON.World();
   const world = bindTestWorld(scheduler), displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
-  prefabs.register(pigKingPrefabs({ camera: new THREE.PerspectiveCamera(), scheduler, getWatchWorldContent: world.getWatchWorldContent, dropLoot: vi.fn() }) as never);
+  prefabs.register(pigKingPrefabs({ camera: new THREE.PerspectiveCamera(), scheduler, getWatchWorldContent: world.getWatchWorldContent, dropLoot: vi.fn() }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
   registry.registerPrefabs(PREFAB_DEFINITIONS.pigKings);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

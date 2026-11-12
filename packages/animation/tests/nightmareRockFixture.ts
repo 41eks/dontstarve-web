@@ -17,8 +17,8 @@ export function nightmareRockWorld(scene: THREE.Scene, world: Omit<NightmareRock
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', options);
   const spawnPrefab = vi.fn((prefab: string, position: ReadonlyVector3) => prefabs.spawn(prefab, position));
-  prefabs.register(worldFxPrefabs({ scheduler: world.scheduler }) as never);
-  prefabs.register(nightmareRockPrefabs({ ...world, spawnPrefab }) as never);
+  prefabs.register(worldFxPrefabs({ scheduler: world.scheduler }));
+  prefabs.register(nightmareRockPrefabs({ ...world, spawnPrefab }));
   return {
     prefabs,
     spawnPrefab,

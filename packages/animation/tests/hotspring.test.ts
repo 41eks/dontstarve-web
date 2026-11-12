@@ -42,8 +42,8 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
   const physics = new PhysicsWorld({}, tickingarea);
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea, physics });
-  prefabs.register(worldFxPrefabs({ scheduler }) as never);
-  prefabs.register(hotspringPrefabs({ scheduler, fx: worldFxSpawner(prefabs), random }) as never);
+  prefabs.register(worldFxPrefabs({ scheduler }));
+  prefabs.register(hotspringPrefabs({ scheduler, fx: worldFxSpawner(prefabs), random }));
   const registry = new EntityRegistry([], prefabs, () => player.position);
   registry.registerPrefabs(PREFAB_DEFINITIONS.hotsprings);
   registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, () => 'dug:command'));

@@ -36,7 +36,7 @@ async function setup() {
   const dropLoot = vi.fn();
   const displays = new PrefabDisplayGroup(new THREE.Scene());
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics: new CANNON.World() });
-  prefabs.register(pigKingPrefabs({ camera: new THREE.PerspectiveCamera(), scheduler, getWatchWorldContent: world.getWatchWorldContent, dropLoot }) as never);
+  prefabs.register(pigKingPrefabs({ camera: new THREE.PerspectiveCamera(), scheduler, getWatchWorldContent: world.getWatchWorldContent, dropLoot }));
   const instance = prefabs.spawn(PIGKING_ID, new THREE.Vector3(6, 0, 6)) as PigKingInstance;
   // The stategraph's animover follows the drawn clips; a clip with nothing drawn completes at once.
   await prefabDisplay(instance.transform.model)!.artLoaded();

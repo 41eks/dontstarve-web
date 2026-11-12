@@ -27,7 +27,7 @@ function setup() {
   const scene = new THREE.Scene(), awake = createSignal(true), scheduler = new GameTimeScheduler();
   const displays = new PrefabDisplayGroup(scene), inventory = createInventoryStore([]);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
-  prefabs.register(ruinsRelicPrefabs({ scheduler }) as never);
+  prefabs.register(ruinsRelicPrefabs({ scheduler }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6), displays);
   registry.registerPrefabs(PREFAB_DEFINITIONS.ruinsRelics);
   const spawn = (id: RuinsRelicId, position: THREE.Vector3, saved?: PlacementSaveRecord) => prefabs.spawn(id, position, saved).transform.model;

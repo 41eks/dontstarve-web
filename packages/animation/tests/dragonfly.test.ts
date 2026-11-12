@@ -23,7 +23,7 @@ const setup = () => {
   const sources = createTestWorldSources(scheduler);
   const displays = new PrefabDisplayGroup(scene);
   const dragonflies = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
-  dragonflies.register(dragonflyPrefabs({ scheduler, getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources) }) as never);
+  dragonflies.register(dragonflyPrefabs({ scheduler, getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources) }));
   return { scene, scheduler, awake, dragonflies,
     spawn: () => dragonflies.spawn(DRAGONFLY_ID, new THREE.Vector3(...record.transform.position), record).transform.model,
     dispose: () => { dragonflies.dispose(); displays.dispose(); scheduler.dispose(); } };

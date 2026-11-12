@@ -29,7 +29,7 @@ function setup() {
   const tickingarea = () => createMemo(() => awake.get());
   const displays = new PrefabDisplayGroup(scene), spawnGroundItem = vi.fn(() => undefined);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea });
-  prefabs.register(moonglassRockPrefabs({ scheduler, spawnGroundItem }) as never);
+  prefabs.register(moonglassRockPrefabs({ scheduler, spawnGroundItem }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
   registry.registerPrefabs(PREFAB_DEFINITIONS.moonglassRocks);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

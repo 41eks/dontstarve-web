@@ -54,7 +54,7 @@ function setup(random = () => .5) {
     renderer: { domElement: canvas } as unknown as THREE.WebGLRenderer };
   const scheduler = new GameTimeScheduler(), fire = FireFxHost.create('/dst/data/anim'), displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {});
-  prefabs.register(flowerPrefabs({ scheduler, fire, random, worldEvents: world.worldEvents, spawnGroundItem: vi.fn() }) as never);
+  prefabs.register(flowerPrefabs({ scheduler, fire, random, worldEvents: world.worldEvents, spawnGroundItem: vi.fn() }));
   const flowers = {
     /** SpawnSaveRecord for a saved flower. */
     spawnFromSave: (id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = false) =>
