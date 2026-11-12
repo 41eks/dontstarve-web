@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import * as CANNON from 'cannon-es';
 import { ItemEntity } from '../../inventory/src';
 import { Mole } from '../../prefab/src/mole';
-import { LightFlier } from '../../prefab/src/lightflier';
+import { BindLightFlierPhysics, LightFlier, MakeLightFlier } from '../../prefab/src/lightflier';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { MakeCharacterPhysics, MakeObstaclePhysics } from '../../prefab/src/standardcomponents';
 
@@ -37,9 +37,10 @@ it('keeps mole physics on its instance, collides with obstacles underground and 
 });
 
 it('declares lightflier ghost physics on its instance and excludes obstacle collisions', () => {
-  const world = new CANNON.World(), item = new ItemEntity({ itemId: 'lightflier', count: 1 }), fly = new LightFlier(item);
+  const world = new CANNON.World(), item = new LightFlier({ itemId: 'lightflier', count: 1 });
   const obstacle = createEmptyEntity('rock1');
-  fly.bindPhysics(world);
+  MakeLightFlier(item);
+  BindLightFlierPhysics(item, world);
   MakeObstaclePhysics(obstacle.instance, 1); obstacle.instance.bindPhysics(world);
   try {
     const body = item.physicsBody!, barrier = obstacle.instance.physicsBody!;
@@ -49,7 +50,7 @@ it('declares lightflier ghost physics on its instance and excludes obstacle coll
     item.remove();
     expect(world.bodies).not.toContain(body);
   } finally {
-    fly.dispose(); item.destroy();
+    item.destroy();
     for (const entity of [obstacle]) { entity.instance.remove(); entity.display.dispose(); }
   }
 });

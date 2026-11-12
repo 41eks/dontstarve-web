@@ -26,7 +26,7 @@ export interface LightFlierBrainInst extends BrainInst {
   readonly bornAt: number;
   readonly lastAttacked: number;
   readonly inFormation: boolean;
-  readonly sg: { hasStateTag(tag: string): boolean };
+  readonly sg?: { hasStateTag(tag: string): boolean };
   formationActive(active: boolean): void;
   findHome(): void;
   wentHome(home: BrainEntity): boolean;
@@ -41,7 +41,7 @@ export class LightFlierBrain extends Brain {
     const inst = this.fly, unit = this.unit;
     const gohome = () => {
       inst.findHome(); const home = inst.home;
-      if (!home?.isValid() || !CanGoHome(home) || inst.sg.hasStateTag('busy')
+      if (!home?.isValid() || !CanGoHome(home) || inst.sg?.hasStateTag('busy')
         || !(home._lightflier_returning_home === inst || inst.getTime() - inst.bornAt > 60 && home.components.childspawner.numchildrenoutside > 1)) return;
       return new BufferedAction('GOHOME', () => inst.wentHome(home),
         () => inst.isValid() && CanGoHome(home), { target: home, distance: unit });

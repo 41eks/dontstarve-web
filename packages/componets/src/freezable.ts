@@ -4,17 +4,18 @@ import type { GameTimeScheduler } from './gameTimeScheduler';
 
 export interface FreezableInst {
   isValid(): boolean;
-  isDead(): boolean;
   addTag(tag: string): void;
   removeTag(tag: string): void;
   PushEvent(name: string): void;
   ListenForEvent(name: string, fn: (inst: unknown, data: unknown) => void): () => void;
   StopBrain(reason: string): void;
   RestartBrain(reason: string): void;
-  readonly components: { combat?: { DropTarget(): void }; locomotor?: { Stop(): void } };
+  readonly components: { combat?: { DropTarget(): void }; locomotor?: { Stop(): void }; health?: { IsDead(): boolean } };
 }
 /** freezable.lua's default resistance branch (no boss diminishing returns). Freeze state is not saved. */
 export class Freezable {
+  /** health:IsDead(), as freezable.lua reads it on inst.components. */
+  private isDead(): boolean { return this.inst.components.health?.IsDead() ?? false; }
   resistance = 1;
   wearofftime = 10;
   private readonly cold = createSignal(0);
@@ -44,19 +45,19 @@ export class Freezable {
     else this.wearoff.start(this.wearofftime);
   }
   Freeze(seconds = this.wearofftime): void {
-    if (!this.inst.isValid() || this.inst.isDead()) return;
+    if (!this.inst.isValid() || this.isDead()) return;
     const previous = this.mode.peek(); this.mode.set('FROZEN'); this.wearoff.start(seconds);
     this.inst.StopBrain('frozen'); this.inst.components.combat?.DropTarget(); this.inst.components.locomotor?.Stop();
     if (previous !== 'FROZEN') this.inst.PushEvent('freeze');
   }
   Thaw(seconds = this.wearofftime): void {
-    if (!this.IsFrozen() || this.inst.isDead()) return;
+    if (!this.IsFrozen() || this.isDead()) return;
     this.mode.set('THAWING'); this.cold.set(0); this.inst.PushEvent('onthaw'); this.wearoff.start(seconds);
   }
   Unfreeze(): void {
     if (!this.IsFrozen()) return;
     this.mode.set('NORMAL'); this.cold.set(0);
-    if (!this.inst.isDead()) { this.inst.RestartBrain('frozen'); this.inst.PushEvent('unfreeze'); }
+    if (!this.isDead()) { this.inst.RestartBrain('frozen'); this.inst.PushEvent('unfreeze'); }
   }
   dispose(): void { this.wearoff.stop(); this.stopAttacked(); this.inst.removeTag('freezable'); }
 }
