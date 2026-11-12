@@ -1,4 +1,5 @@
 import { prefabDisplays, prefabManager } from './prefabManagerFixture';
+import { testPlayer } from './testPlayer';
 import { plantManager } from './plantManagerFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
@@ -77,11 +78,13 @@ it('mines a stack through the common tool action, rolls each consumed fruit, gro
     const target = workTargets('MINE', s.scene)[0], entity = s.ground.entities.get('hard-fruit:stack')!;
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
     const uses = pickaxe.components.finiteuses.remaining ?? s.inventory.getItemSpec('pickaxe').maxUses!;
-    expect(performToolWork('MINE', target.entity, { getPosition: () => new THREE.Vector3(21, 0, 36) }, pickaxe)).toBe(true);
+    // The miner is a player inst; a second one stands at `point`.
+    const miner = testPlayer({ position: new THREE.Vector3(21, 0, 36) }), worker = testPlayer({ position: point });
+    expect(performToolWork('MINE', target.entity, miner, pickaxe)).toBe(true);
     expect(pickaxe.components.finiteuses.remaining).toBe(uses! - 1);
     expect(entity.components.stackable.count).toBe(4); expect(entity.components.workable!.GetWorkLeft()).toBe(4);
     random.mockReturnValueOnce(.655).mockReturnValueOnce(.9).mockReturnValueOnce(.1);
-    expect(entity.components.workable!.WorkedBy({ getPosition: () => point }, 3)).toBe(true);
+    expect(entity.components.workable!.WorkedBy(worker, 3)).toBe(true);
     expect(entity.components.stackable.count).toBe(1); expect(entity.components.workable!.GetWorkLeft()).toBe(1);
     const products = s.ground.exportRecords().filter(record => record.id !== entity.id);
     expect(products.map(record => [record.components.stack?.itemId, record.components.stack?.count])).toEqual([
@@ -96,9 +99,9 @@ it('mines a stack through the common tool action, rolls each consumed fruit, gro
     expect(restored.ground.exportRecords()).toEqual(before);
     expect(workTargets('MINE', restored.scene)[0].id).toBe(entity.id);
     random.mockReturnValueOnce(.8);
-    expect(performToolWork('MINE', target.entity, {}, pickaxe)).toBe(true);
+    expect(performToolWork('MINE', target.entity, testPlayer(), pickaxe)).toBe(true);
     expect(entity.isRemoved).toBe(true); expect(workTargets('MINE', s.scene)).toEqual([]);
-    expect(performToolWork('MINE', target.entity, {}, pickaxe)).toBe(false);
+    expect(performToolWork('MINE', target.entity, testPlayer(), pickaxe)).toBe(false);
     expect(pickaxe.components.finiteuses.remaining).toBe(uses! - 2);
   } finally { s.dispose(); restored.dispose(); }
 }, 15000);

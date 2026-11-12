@@ -1,4 +1,7 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { withEntity } from './entityFixture';
+import { createInventoryStore } from '../../../src/inventory';
+import { testPlayer } from './testPlayer';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
@@ -36,13 +39,14 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
   const animation = { stategraph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
-  const product = { itemId: 'kabobs' };
-  const inventory = { GetNumSlots: () => 15, GiveItem: vi.fn(() => true), entities: { create: vi.fn(() => product), destroy: vi.fn() } };
-  const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position, components: { inventory } };
+  // The player inst: HARVEST gives the product to its own inventory.
+  const inventory = createInventoryStore([]);
+  const create = vi.spyOn(inventory.entities, 'create'), give = vi.spyOn(inventory, 'GiveItem');
+  const doer = testPlayer({ model: withEntity(player, 'wilson'), inventory });
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, actionEvents: new EventEmitter<PlayerActionEvents>() } as unknown as ActionWorldContext;
   let manual = false;
-  const controller = new PlayerController(world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), doer as never, () => manual);
+  const controller = new PlayerController(world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), doer, () => manual);
   const harvest = () => controller.DoAction(controller.createAction({ action: 'HARVEST', target: registerActionEntity(prefabInstance(model)!) })!);
   try {
     // componentactions SCENE.stewer: a pot done cooking offers HARVEST on both buttons.
@@ -57,17 +61,18 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
     expect(inst.SoundEmitter.KillSound).not.toHaveBeenCalledWith('make');
     stategraph.update(.5);
     manual = true; controller.update(); stategraph.update(2);
-    expect(inventory.GiveItem).not.toHaveBeenCalled();
+    expect(give).not.toHaveBeenCalled();
     expect(stewer.IsDone()).toBe(true);
     manual = false;
     expect(harvest()).toBe(true);
     stategraph.update(2);
-    expect(inventory.entities.create).toHaveBeenCalledExactlyOnceWith({ itemId: 'kabobs', count: 1 });
-    expect(inventory.GiveItem).toHaveBeenCalledExactlyOnceWith(product, new THREE.Vector3(20, 0, 0));
+    expect(create).toHaveBeenCalledExactlyOnceWith({ itemId: 'kabobs', count: 1 });
+    expect(give).toHaveBeenCalledExactlyOnceWith(create.mock.results[0].value, new THREE.Vector3(20, 0, 0));
+    expect(inventory.count('kabobs')).toBe(1);
     expect(inst.SoundEmitter.KillSound).toHaveBeenCalledWith('make');
     expect(stewer.IsDone()).toBe(false);
     stewer.OnLoad({ product: 'kabobs', done: true });
     instance.addTag('burnt');
     expect(sceneActions(model, doer)).toEqual([]);
-  } finally { controller.dispose(); stewer.OnRemoveFromEntity(); disposeActionEntity(findActionEntity(model)); instance.remove(); display.dispose(); }
+  } finally { controller.dispose(); stewer.OnRemoveFromEntity(); disposeActionEntity(findActionEntity(model)); instance.remove(); display.dispose(); inventory.dispose(); }
 });

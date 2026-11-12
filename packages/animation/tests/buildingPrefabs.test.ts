@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import { testPlayer } from './testPlayer';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -97,9 +98,10 @@ it('takes its source hammer work, drops its loot and collapses', async () => {
   const workable = findActionEntity(house.transform.model)!.components.workable!;
   expect(workable.GetWorkAction()).toBe('HAMMER');
   expect(physics.bodies[0].shapes[0]).toBeDefined();
-  workable.WorkedBy({ hasTag: () => false } as never, 3);
+  const worker = testPlayer();
+  workable.WorkedBy(worker, 3);
   expect(house.sprite.sprite.peek().clip.name).toBe('hit');
-  workable.WorkedBy({ hasTag: () => false } as never, 1);
+  workable.WorkedBy(worker, 1);
   expect(house.isRemoved).toBe(true);
   expect(collapse).toHaveBeenCalledWith('big', house.position, 'wood');
   expect(dropLoot).toHaveBeenCalled();

@@ -1,43 +1,32 @@
 import { ItemEntityRegistry, type InventoryStore, type ItemEntity } from '../../inventory/src';
-import { Vector3 } from 'three';
-import type { EquipmentOwner } from '../../signals/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
+import { testPlayer } from './testPlayer';
 import type { PlayerInstance } from '../../prefab/src/player_common';
 
 type Kind = 'hand' | 'head' | 'body';
-const ESLOTS: Readonly<Record<Kind, string>> = { hand: 'HANDS', head: 'HEAD', body: 'BODY' };
+const ESLOTS: Readonly<Record<Kind, import('../../componets/src/entityEvents').EquipSlot>> = { hand: 'HANDS', head: 'HEAD', body: 'BODY' };
 
 /**
- * The player as equipment owner, as main.ts's actor is: equip/unequip reach SGwilson, and OpenEquipmentView gives each
- * equipped inst its slot of the player's sprite. `base` adds the owner's other capabilities.
+ * The player inst as equipment owner, as main.ts binds it: its own events reach SGwilson, and its OpenEquipmentView
+ * gives each equipped inst a slot of its sprite.
  */
-export function playerEquipmentOwner(animation: Pick<PlayerInstance, 'equipmentPresentation' | 'sg'>,
-  base: Partial<EquipmentOwner> & Record<string, unknown> = {}): EquipmentOwner {
-  const owner: EquipmentOwner = {
-    ...base,
-    PushEvent: (name, data) => {
-      if (name === 'equip' || name === 'unequip') animation.sg.pushEvent(name, data);
-      base.PushEvent?.(name, data);
-    },
-  };
-  owner.OpenEquipmentView = createEquipmentViews(owner, animation.equipmentPresentation);
-  return owner;
+export function playerEquipmentOwner(player: PlayerInstance): PlayerInstance {
+  player.OpenEquipmentView ??= createEquipmentViews(player, player.equipmentPresentation);
+  return player;
 }
 
-/** Binds an inventory's actor to the player owner, so its committed equips draw on the player. */
-export function bindPlayerEquipment(inventory: InventoryStore, animation: Pick<PlayerInstance, 'equipmentPresentation' | 'sg'>,
-  base: Record<string, unknown> = {}): EquipmentOwner {
-  const owner = playerEquipmentOwner(animation, { hasTag: () => false, getPosition: () => new Vector3(), ...base });
-  inventory.bindActor(owner as unknown as Parameters<InventoryStore['bindActor']>[0]);
-  return owner;
+/** The player inst owns the inventory, so its committed equips draw on the player. */
+export function bindPlayerEquipment(inventory: InventoryStore, player: PlayerInstance): PlayerInstance {
+  testPlayer({ model: player.transform.model, inventory });
+  return playerEquipmentOwner(player);
 }
 
 /**
  * Equips a fresh, configured inst of a prefab on the player without an inventory, the way inventory:Equip calls
  * equippable:Equip(owner) and pushes "equip"; the slot's previous inst is unequipped first.
  */
-export function createPlayerEquipper(animation: Pick<PlayerInstance, 'equipmentPresentation' | 'sg'>) {
+export function createPlayerEquipper(animation: PlayerInstance) {
   const registry = new ItemEntityRegistry();
   const owner = playerEquipmentOwner(animation);
   const worn = new Map<Kind, ItemEntity>();

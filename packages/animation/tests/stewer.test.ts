@@ -1,4 +1,5 @@
 import { expect, it, vi } from 'vitest';
+import { testPlayer } from './testPlayer';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { InventoryStore, type InventoryItemSpec } from '../../inventory/src';
 import { GameTimeScheduler } from '../../signals/src';
@@ -71,7 +72,8 @@ it('COOK consumes the pot entities and derives another recipe, resuming the task
 
 it('rejects incomplete containers, non-ingredients and another opener without consuming or starting a task', () => {
   const pot = createPot();
-  const doer = {}, other = {};
+  // Two players: the one cooking and another who has the pot open.
+  const doer = testPlayer(), other = testPlayer();
   expect(performCookAction(pot, doer)).toBe(false);
   const slot = { containerId: pot.containerId, slotKey: '0' };
   expect(pot.inventory.applySlotChanges([{ slot, itemId: 'log', delta: 1 }])).toBe(false);

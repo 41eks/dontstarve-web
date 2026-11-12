@@ -1,4 +1,5 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { testPlayer } from './testPlayer';
 import { pickupDoer } from './playerDoer';
 import { withEntity } from './entityFixture';
 import * as THREE from 'three';
@@ -49,7 +50,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
   try {
     inventory.add('lantern', 1);
     const lantern = inventory.getEntity(inventorySlotAddress(0))!, fueled = lantern.components.fueled!;
-    const ison = () => lantern.components.machine!.IsOn(), owner = { PushEvent() {} };
+    const ison = () => lantern.components.machine!.IsOn(), owner = testPlayer({ inventory });
     inventory.configureItem(dry); inventory.configureItem(wet);
     const taken = vi.fn(), added = vi.fn();
     dry.ListenForEvent('fueltaken', taken); lantern.ListenForEvent('takefuel', added);
@@ -71,7 +72,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
     expect(ison()).toBe(true);
     lantern.components.equippable!.Unequip(owner);
     // inventoryitem:SetOnPutInInventoryFn(turnoff).
-    lantern.components.inventoryitem.OnPutInInventory({ hasTag: () => true, getPosition: () => new THREE.Vector3(), PushEvent() {} });
+    lantern.components.inventoryitem.OnPutInInventory(owner);
     lantern.setRemainingFuel(LANTERN_FUEL - 1);
     const clamp = new ItemEntity({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(clamp);
     fueled.TakeFuelItem(clamp);

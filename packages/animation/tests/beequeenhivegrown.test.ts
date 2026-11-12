@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -58,12 +59,12 @@ it('declares the Lua large_hit then nonlooping large sequence on a hammer hit an
     expect(hive.physicsBody).toBeDefined();
     expect(model.scale.x).toBeCloseTo(1.4);
     expect(hive.sprite.sprite.peek().clip).toMatchObject({ name: 'large', loop: false });
-    hive.components.workable.WorkedBy({});
+    hive.components.workable.WorkedBy(testPlayer());
     expect(hive.sprite.sprite.peek().clip).toMatchObject({ name: 'large_hit', loop: false });
     expect(hive.sprite.sprite.peek().queue).toEqual([{ name: 'large', loop: false }]);
     for (let i = 0; i < 120; i++) s.displays.update(.1);
     expect(hive.sprite.currentAnimation).toBe('large');
-    hive.components.workable.WorkedBy({});
+    hive.components.workable.WorkedBy(testPlayer());
     entities = await s.save();
     expect(entities.beequeenhivegrown).toEqual([expect.objectContaining({ id: hive.entityId,
       transform: { position: [2, 0, 3], rotationY: 0 },
@@ -93,7 +94,7 @@ it('settles the hit on tile sleep and rebuilds the declared large pose and honey
   try {
     const hive = await s.spawn(), model = hive.transform.model;
     await prefabDisplay(model)!.artLoaded();
-    hive.components.workable.WorkedBy({});
+    hive.components.workable.WorkedBy(testPlayer());
     s.awake.set(false); await settle();
     expect(hive.status.peek()).toBe('asleep');
     expect(hive.sprite.loaded).toBe(false);

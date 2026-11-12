@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -68,7 +69,7 @@ it('mines through the source poses and drops the moon glass table', async () => 
   vi.spyOn(Math, 'random').mockReturnValue(.5);
   try {
     const rock = s.spawn(new THREE.Vector3(3, 0, 6), 1), workable = rock.components.workable!;
-    const worker = {}, clip = () => rock.sprite.sprite.peek().clip.name;
+    const worker = testPlayer(), clip = () => rock.sprite.sprite.peek().clip.name;
     workable.WorkedBy(worker, 2); expect(clip()).toBe('full'); // 4 left is not below ROCKS_MINE * 2 / 3.
     workable.WorkedBy(worker, 1); expect(clip()).toBe('med');
     workable.WorkedBy(worker, 2); expect(clip()).toBe('low');

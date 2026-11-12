@@ -1,4 +1,5 @@
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -49,15 +50,15 @@ it.each(HEADS)('$id sleeps by default, wakes on a full-moon night, is hit by the
     expect(s.sprite.currentAnimation).toBe('wake'); s.finish();
     expect(s.sprite.currentAnimation).toBe('idle_awake');
     const entity = workTargets('HAMMER')[0].entity;
-    expect(performToolWork('HAMMER', entity, {})).toBe(true);
+    expect(performToolWork('HAMMER', entity, testPlayer())).toBe(true);
     expect(s.sprite.currentAnimation).toBe('hit'); s.finish();
     expect(s.sprite.currentAnimation).toBe('idle_awake');
     s.content.cycle.set('day'); await s.settle();
     expect(s.sprite.currentAnimation).toBe('sleep'); s.finish();
     expect(s.sprite.currentAnimation).toBe('idle_asleep');
     s.content.cycle.set('night'); await s.settle(); s.finish();
-    expect(performToolWork('HAMMER', entity, {})).toBe(true);
-    expect(performToolWork('HAMMER', entity, {})).toBe(true);
+    expect(performToolWork('HAMMER', entity, testPlayer())).toBe(true);
+    expect(performToolWork('HAMMER', entity, testPlayer())).toBe(true);
     // The deconstruct recipe at the 50% hammer rate, plus nightmarefuel while the moon is full.
     const dropped = s.loot.flat().flatMap(({ itemId, count }) => Array(count).fill(itemId));
     const expected = [...loot, { itemId: 'nightmarefuel', count: 1 }].flatMap(({ itemId, count }) => Array(count).fill(itemId));
@@ -75,7 +76,7 @@ it.each(HEADS)('$id burns to a burnt head that keeps sleeping, saves only the bu
     s.content.moon.set({ phase: 'full', waxing: false }); s.content.cycle.set('night'); await s.settle();
     expect(s.sprite.currentAnimation).toBe('burnt');
     expect(s.placement.exportRecords()[0].record.components.building).toMatchObject({ burnt: true });
-    for (let i = 0; i < 3; i++) performToolWork('HAMMER', entity, {});
+    for (let i = 0; i < 3; i++) performToolWork('HAMMER', entity, testPlayer());
     expect(s.loot.flat().some(item => item.itemId === 'nightmarefuel')).toBe(true);
     expect(s.placement.exportRecords()).toEqual([]);
   } finally { s.placement.dispose(); }

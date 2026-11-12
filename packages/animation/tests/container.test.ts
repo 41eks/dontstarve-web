@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { testPlayer } from './testPlayer';
 import { Container } from '../../componets/src/container';
 import { ItemEntity, StorageSlot, type InventoryStack } from '../../inventory/src';
 import { Vector3 } from 'three';
@@ -14,7 +15,8 @@ function createContainer(loadItem = (record: InventoryStack) => new ItemEntity(r
 
 describe('Lua container component', () => {
   it('closes the open container of the same type when a doer opens another, and only an opener closes one', () => {
-    const doer = { components: { inventory: { opencontainers: new Set<object>() } } };
+    // The player inst opens them: its inventory keeps its opencontainers.
+    const doer = testPlayer();
     const entities: ReturnType<typeof createEmptyEntity>[] = [];
     const open = (prefab: StorageBuildingId) => {
       const entity = createEmptyEntity(prefab);
@@ -33,7 +35,7 @@ describe('Lua container component', () => {
 
     const closed = vi.fn();
     icebox.onclosefn = closed;
-    icebox.Close({});
+    icebox.Close(testPlayer());
     expect(closed).not.toHaveBeenCalled();
     expect(icebox.IsOpenedBy(doer)).toBe(true);
     icebox.Close(doer);

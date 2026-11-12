@@ -1,4 +1,5 @@
 import { PrefabDisplayGroup } from '../../display/src';
+import { testPlayer } from './testPlayer';
 import { prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
@@ -37,7 +38,7 @@ it('restores portal ground layers, its shadow child and statue work state withou
     const shadow = shadowInstance.transform.model;
     await Promise.all([portal, shadow].map(model => prefabDisplay(model)!.artLoaded()));
     const mine = workTargets('MINE')[0];
-    mine.entity.components.workable!.WorkedBy({}, 5);
+    mine.entity.components.workable!.WorkedBy(testPlayer(), 5);
     await settle();
     const records = prefabs.exportRecords();
     const work = mine.entity.components.workable!.GetWorkLeft();
@@ -68,7 +69,7 @@ it('restores portal ground layers, its shadow child and statue work state withou
     expect(prefabInstance(statue)!.sprite.currentAnimation).toMatch(/^idle_med_/);
     expect(prefabs.exportRecords()).toEqual(records);
     awake.set(false); await settle();
-    mine.entity.components.workable!.WorkedBy({}, work);
+    mine.entity.components.workable!.WorkedBy(testPlayer(), work);
     expect(prefabInstance(statue)!.status.peek()).toBe('removed');
     prefabs.dispose(); displays.dispose(); await settle();
     awake.set(true); await settle();
@@ -101,7 +102,7 @@ it('grows an unloaded marble shrub and keeps shape, colour and the scheduled min
     expect(instance.sprite.sprite.peek().appearance.get('archive-symbol:marbleshrub_top1')).toMatchObject({ sourceSymbol: 'marbleshrub_top3' });
     awake.set(false); await settle();
     const target = workTargets('MINE')[0];
-    target.entity.components.workable!.WorkedBy({}, 8);
+    target.entity.components.workable!.WorkedBy(testPlayer(), 8);
     expect(instance.status.peek()).toBe('asleep');
     expect(instance.persists).toBe(false);
     expect(manager.exportRecords()).toEqual([]);

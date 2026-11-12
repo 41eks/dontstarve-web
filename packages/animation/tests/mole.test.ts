@@ -1,4 +1,6 @@
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import { addComponent } from '../../prefab/src/components';
+import { testPlayer } from './testPlayer';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup, SpriteState, prefabDisplay } from '@dontstarve-web/display';
 import { createTestWorldSources } from './worldContentFixture';
@@ -135,9 +137,10 @@ it('hammer attacks stun above ground, drop stolen inventory, allow pickup and de
   expect(mole.components.inventory!.GiveItem(bait)).toBe(true);
   const hill = f.spawnHill(new THREE.Vector3(15, 0, 0)); hill.components.spawner.TakeOwnership(mole);
   SetAbovePhysics(mole); mole.stategraph.goToState('idle');
-  const attacker = { components: {}, getPosition: () => new THREE.Vector3(), getPhysicsRadius: () => 1, hasTag: () => true };
+  // The attacker is a player inst whose combat swings a hammer.
+  const attacker = testPlayer();
   const hammer = new Weapon({ hasTag: (tag: string) => tag === 'hammer' }); hammer.SetDamage(17);
-  const combat = new Combat(attacker, () => f.scheduler.now, () => hammer);
+  const combat = addComponent(attacker, 'combat', Combat, () => f.scheduler.now, () => hammer);
   expect(combat.CanTarget(mole)).toBe(true); combat.DoAttack(mole);
   expect(mole.stategraph.stateName).toBe('stunned'); expect(mole.components.health.currenthealth).toBe(13);
   expect(mole.components.inventoryitem.canbepickedup).toBe(true);
@@ -195,7 +198,7 @@ it('saves an occupied molehill with its stored items and releases the same child
   // mound_idle stays upright in LAYER_BACKGROUND, including after reload.
   expect(hillModel.children[0].children[0].rotation.x).toBe(0);
   expect(hillModel.children[0].children[0].renderOrder).toBe(-.5);
-  loaded.components.workable.WorkedBy({}, 1);
+  loaded.components.workable.WorkedBy(testPlayer(), 1);
   expect(loaded.isValid()).toBe(false);
   expect(loaded.status.peek()).toBe('removed');
   expect(loaded.components.spawner.child!.stategraph.stateName).toBe('stunned');

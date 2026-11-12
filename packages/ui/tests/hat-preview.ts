@@ -2,10 +2,9 @@ import * as CANNON from 'cannon-es';
 import { wortox } from '../../prefab/src/wortox';
 import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { prefabDisplay } from '../../display/src';
-import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { HAT_IDS, HAT_DEFINITIONS } from '@dontstarve-web/prefab/hats';
-import { type PlayerInstance } from '@dontstarve-web/prefab/player_common';
+import { playerInst, type PlayerInstance } from '@dontstarve-web/prefab/player_common';
 import type { PrefabDisplay } from '../../display/src';
 
 export async function renderHatCatalog(): Promise<void> {
@@ -24,7 +23,7 @@ export async function renderHatCatalog(): Promise<void> {
   gallery.id = 'hat-gallery';
   gallery.style.cssText = 'display:grid;grid-template-columns:repeat(9,144px);width:1296px';
   document.body.append(gallery);
-  const hatEquipper = createPlayerEquipper(prefabInstance(player));
+  const hatEquipper = createPlayerEquipper(playerInst(player));
   for (const id of [null, ...HAT_IDS]) {
     hatEquipper.equip(id, undefined, 'head');
     await (prefabDisplay(player) as PrefabDisplay).artLoaded();

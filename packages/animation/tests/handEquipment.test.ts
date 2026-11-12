@@ -1,9 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import { Vector3 } from 'three';
+import { testPlayer } from './testPlayer';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { SpriteState } from '@dontstarve-web/display';
-import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 import { createEmptyEntity, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -34,10 +33,11 @@ it('equips restored and committed torches through equippable with the owner, une
   store.entities.bindPerishWorld(world);
   // The inventory's actor is the owner; its view gives each equipped inst a slot and AttachLightTo(owner).
   const lightParent = createEmptyEntity('wilson').instance, assets = new GroundItemAssets(), hats = new HatEquipmentAssets('/dst/data/anim');
+  // The player inst: the owner of the store and of the light its equipment attaches.
+  const owner = testPlayer({ model: lightParent.transform.model, inventory: store });
   const events: string[] = [];
-  const owner: EquipmentOwner & { hasTag(): boolean; getPosition(): Vector3 } = { hasTag: () => false, getPosition: () => new Vector3(), PushEvent: (name: string) => { events.push(name); } };
+  for (const name of ['equip', 'unequip']) owner.ListenForEvent(name, () => events.push(name));
   owner.OpenEquipmentView = createEquipmentViews(owner, { sprite: { sprite: new SpriteState({ name: 'idle' }), art: assets }, assets, hats, lightParent });
-  store.bindActor(owner);
   try {
     store.replaceState({ slots: [
       { address: a, item: { itemId: 'torch', count: 1, remainingFuel: 20 } },

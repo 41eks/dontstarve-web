@@ -1,4 +1,6 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { withEntity } from './entityFixture';
+import { testPlayer } from './testPlayer';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -57,10 +59,9 @@ async function setup(definition: { archive: string } = definitions.animatedBuild
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
   // The player inst RUMMAGE opens the container for; SCENE.container needs its inventory.
-  const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
-    components: { inventory: { GetNumSlots: () => 15 } } };
+  const doer = testPlayer({ model: withEntity(player, 'wilson') });
   const rummage = new PlayerController(world, stategraph,
-    locomotor, createEquipmentExistenceState('HANDS'), doer as never);
+    locomotor, createEquipmentExistenceState('HANDS'), doer);
   // The world publishes player snapshots; proximity effects run after the microtask.
   const distance = async (value: number) => {
     player.position.copy(model.position).add(new THREE.Vector3(value, 0, 0));

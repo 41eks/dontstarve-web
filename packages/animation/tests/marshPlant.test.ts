@@ -1,4 +1,5 @@
 import { prefabManager } from './prefabManagerFixture';
+import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -155,7 +156,8 @@ it('haunting fails with the source cooldown, and c_spawn plants save and reload 
 
   const plant = [...restored.byEntityId.values()][0] as MarshPlantInstance;
   const hauntable = plant.components.hauntable!;
-  hauntable.DoHaunt({ hasTag: () => false, PushEvent() {} });
+  // A player's ghost haunts it.
+  hauntable.DoHaunt(testPlayer({ tags: ['playerghost'] }));
   expect(plant.components.burnable!.IsBurning()).toBe(false);
   expect(hauntable.IsHaunted()).toBe(true);
   scheduler.advance(4.9);

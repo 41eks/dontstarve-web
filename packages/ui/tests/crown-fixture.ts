@@ -16,7 +16,7 @@ export async function checkCrown() {
   const sanity = playerInst(player).stats.sanity;
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
-  const animation = prefabInstance(player);
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   const scene = new THREE.Scene();
   scene.add(player);

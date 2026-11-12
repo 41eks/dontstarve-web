@@ -1,4 +1,5 @@
 import { Transform } from '../../prefab/src/transform';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { expect, it, vi } from 'vitest';
@@ -67,7 +68,7 @@ it('skips tree geometry with empty hands, follows CHOP to DIG replacement, and p
       const dig = new Workable(s.target); dig.SetWorkAction('DIG'); dig.SetWorkLeft(1);
       s.target.components.workable = dig; s.binding.setWorkable(dig);
     });
-    s.workable.WorkedBy({}, 1); await flush();
+    s.workable.WorkedBy(testPlayer(), 1); await flush();
     expect(s.pick()).toBe(s.back);
     await s.equip('shovel'); expect(s.pick()).toBe(s.tree);
     s.instance.setActive(false); await flush(); expect(s.pick()).toBe(s.back);
@@ -105,7 +106,7 @@ it('matches mining and hammering to the current workable and stops intercepting 
     s.workable.SetWorkAction('HAMMER'); s.workable.SetWorkLeft(1);
     await flush(); expect(s.pick()).toBe(s.back);
     await s.equip('hammer'); expect(s.pick()).toBe(s.tree);
-    s.workable.WorkedBy({}, 1); await flush(); expect(s.pick()).toBe(s.back);
+    s.workable.WorkedBy(testPlayer(), 1); await flush(); expect(s.pick()).toBe(s.back);
   } finally { s.dispose(); }
 });
 

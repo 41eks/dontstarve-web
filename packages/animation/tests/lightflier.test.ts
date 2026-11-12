@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
@@ -60,7 +61,7 @@ it('releases a child on light timeout, pauses growth, and captures the same enti
     expect(plant.components.pickable.canBePicked).toBe(false); expect(plant.components.pickable.state.paused.peek()).toBe(true);
     expect(fly.home).toBe(plant); expect(s.entities).toHaveLength(1); expect(plant.components.childspawner.numchildrenoutside).toBe(1);
     expect(declaredLight(model)).toBeUndefined();
-    expect(performToolWork('NET', fly, { components: { inventory } })).toBe(true);
+    expect(performToolWork('NET', fly, testPlayer({ inventory }))).toBe(true);
     expect(inventory.Has('lightflier')).toBe(true); expect(inventory.exportState().slots.find(slot => slot.item?.itemId === 'lightflier')?.item?.entityId).toBe(fly.id);
     expect(plant.components.childspawner.numchildrenoutside).toBe(0); expect(plant.components.pickable.state.paused.peek()).toBe(false);
     expect(plant.components.pickable.remainingSeconds).toBe(5760);

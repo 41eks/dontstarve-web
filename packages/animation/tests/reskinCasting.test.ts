@@ -1,4 +1,5 @@
 import { playPickup } from '../../prefab/src/player_common';
+import { testPlayer } from './testPlayer';
 import { pickupDoer } from './playerDoer';
 import { ItemEntity } from '../../inventory/src/entity';
 import { createPlayerEquipper } from './playerEquipFixture';
@@ -163,7 +164,7 @@ it('cycles building skins while preserving the container root, identity, state a
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const tool = actionTool('reskin_tool');
   // spellCB chooses the skin at the cast and spawns its fx through the scene presenter the held tool is bound to.
-  const doer = { position: world.player.position, hasTag: () => false, components: {} };
+  const doer = testPlayer({ model: world.player });
   createReskinToolLifecycle(tool.entity, { prepare: () => fx }).onequip();
   expect(tool.entity.components.spellcaster!.castSpell(findActionEntity(root), root.position, doer)).toBe(true);
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'treasurechest');
@@ -228,10 +229,10 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   const effects = { prepare: vi.fn(() => fx) };
   const lifecycle = createReskinToolLifecycle(tool.entity, effects);
   lifecycle.onequip();
-  const doer = { hasTag: () => false, position: world.player.position, getPosition: () => world.player.position, components: {} };
+  const doer = testPlayer({ model: world.player });
   const controller = new PlayerController(world, animation.graph,
     { stop: vi.fn(), goToPoint: vi.fn(() => true), destination: undefined, PushAction: (_action, arrive) => arrive() },
-    equipped, doer as never, () => false);
+    equipped, doer, () => false);
   try {
     picker.pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
     // componentactions EQUIPPED.spellcaster: castontargets on the right button; CASTSPELL.strfn is the tool's spelltype.

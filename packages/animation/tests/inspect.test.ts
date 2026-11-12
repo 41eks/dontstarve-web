@@ -1,4 +1,5 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -10,13 +11,14 @@ import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import { getActionPriority } from '../../stategraphs/src/actions';
-import { collectSceneActions, type SceneActionDoer } from '../../stategraphs/src/componentactions';
+import { collectSceneActions } from '../../stategraphs/src/componentactions';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
-import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
+import { WilsonStateGraph, type WilsonStateName } from '../../stategraphs/src/SGwilson';
 import { ItemEntity } from '../../inventory/src';
 
 const describeStrings = STRINGS.CHARACTERS.GENERIC.DESCRIBE;
-const viewer = (prefab = 'wilson', tags: string[] = []) => ({ prefab, hasTag: (tag: string) => tags.includes(tag) });
+/** The player inst that looks: its character and tags choose the line. */
+const viewer = (prefab = 'wilson', tags: string[] = []) => testPlayer({ prefab, tags });
 
 function entity(prefab = 'birdcage') {
   const { instance, display } = createEmptyEntity(prefab);
@@ -89,14 +91,19 @@ describe('talker.lua', () => {
 });
 
 describe('ACTIONS.LOOKAT', () => {
-  const sgDoer = (tags: string[]): SceneActionDoer => ({ hasTag: () => false, sg: { hasStateTag: tag => tags.includes(tag) } });
+  /** The player inst in a state of its stategraph, whose tags LOOKAT reads. */
+  const sgDoer = (state: WilsonStateName) => {
+    const doer = testPlayer();
+    doer.SetStateGraph(() => new WilsonStateGraph(wilsonStateInst())).goToState(state);
+    return doer;
+  };
 
   it('is offered to an idle doer on both buttons at the lowest priority, and not while it moves', () => {
     const { instance, dispose } = entity();
-    expect(collectSceneActions(instance, sgDoer(['idle']), false)).toEqual(['LOOKAT']);
-    expect(collectSceneActions(instance, sgDoer(['idle']), true)).toEqual(['LOOKAT']);
-    expect(collectSceneActions(instance, sgDoer(['idle', 'moving']), false)).toEqual([]);
-    expect(collectSceneActions(instance, sgDoer(['busy']), false)).toEqual([]);
+    expect(collectSceneActions(instance, sgDoer('idle'), false)).toEqual(['LOOKAT']);
+    expect(collectSceneActions(instance, sgDoer('idle'), true)).toEqual(['LOOKAT']);
+    expect(collectSceneActions(instance, sgDoer('run'), false)).toEqual([]);
+    expect(collectSceneActions(instance, sgDoer('dolongaction'), false)).toEqual([]);
     expect(getActionPriority({ action: 'LOOKAT' })).toBeLessThan(getActionPriority({ action: 'RUMMAGE' }));
     dispose();
   });
@@ -105,9 +112,11 @@ describe('ACTIONS.LOOKAT', () => {
     const { instance, dispose } = entity();
     const scheduler = new GameTimeScheduler();
     const graph = new WilsonStateGraph(wilsonStateInst(undefined, () => 1));
-    const talker = new Talker({ PushEvent: (name, data) => graph.pushEvent(name as never, data as never) }, scheduler);
-    const doer = { ...viewer(), components: { talker, inventory: {} } };
-    expect(createBufferedAction('LOOKAT', { doer: doer as never, target: instance as never }).do()).toBe(true);
+    // The player inst says the line with its own talker; its talk events reach its stategraph.
+    const doer = viewer();
+    doer.SetStateGraph(() => graph);
+    const talker = addComponent(doer, 'talker', Talker, scheduler);
+    expect(createBufferedAction('LOOKAT', { doer, target: instance }).do()).toBe(true);
     expect(talker.line.peek()).toBe(describeStrings.BIRDCAGE.GENERIC);
     expect(graph.stateName).toBe('talk');
     scheduler.advance(2.5);
@@ -121,8 +130,8 @@ describe('ACTIONS.LOOKAT', () => {
     registerActionEntity(instance);
     const pointer = { trackPointer() {}, beginFrame() {}, endFrame() {}, pickMouseTarget: () => ({ object: display.model as THREE.Object3D }), groundPoint: () => undefined, dispose() {} };
     const picker = new PlayerActionPicker(pointer as never);
-    const doer = { ...sgDoer(['moving']), components: { inventory: { GetNumSlots: () => 15 } } };
-    picker.bindPlayer(doer as never, () => undefined);
+    const doer = sgDoer('run');
+    picker.bindPlayer(doer, () => undefined);
     expect(picker.getMouseActions({} as PointerEvent).left).toBeUndefined();
     expect(picker.getMouseActions({ altKey: true } as PointerEvent).left?.action).toBe('LOOKAT');
     dispose();

@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { Vector3 } from 'three';
+import { playerEntity } from './playerEntity';
 import { InventoryStore, InventorySlot, HandSlot, HeadSlot, BodySlot, equipmentSlotAddress, inventorySlotAddress } from '../src';
 
 const head = equipmentSlotAddress('head'), body = equipmentSlotAddress('body');
@@ -79,8 +79,9 @@ it('runs equippable Equip/Unequip with the actor in inventory.lua order, once pe
     { address: head, slot: new HeadSlot() },
   ], { ...specs, flowerhat: { name: 'garland', icon: 'flowerhat.tex', maxStack: 1, equippable: 'head' as const } });
   const calls: string[] = [];
-  const actor = { hasTag: () => false, getPosition: () => new Vector3(),
-    PushEvent: (name: string, data: unknown) => calls.push(`${name}:${(data as { item?: { prefab: string } }).item?.prefab}`) };
+  // The player inst the inventory belongs to: inventory.lua pushes equip and unequip on it.
+  const actor = playerEntity();
+  for (const name of ['equip', 'unequip']) actor.ListenForEvent(name, (_inst, data) => calls.push(`${name}:${(data as { item?: { prefab: string } }).item?.prefab}`));
   store.bindActor(actor);
   const watch = (prefab: string) => {
     store.add(prefab, 1);

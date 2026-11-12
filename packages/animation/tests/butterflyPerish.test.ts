@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
@@ -89,8 +90,8 @@ it('starves an entire stack into independently rolled loot after removing the bu
     expect((await executeDebugCommand('c_give("butterfly",3)', inventory)).ok).toBe(true);
     const entity = inventory.getEntity(inventorySlotAddress(0))!;
     const events: string[] = [];
-    inventory.bindActor({ hasTag: tag => tag === 'player', getPosition: () => new THREE.Vector3(),
-      PushEvent: name => events.push(name) });
+    // The player inst holding the stack is told about the murder.
+    testPlayer({ inventory }).ListenForEvent('murdered', () => events.push('murdered'));
     entity.ListenForEvent('onremove', () => events.push('removed'));
     vi.spyOn(Math, 'random').mockReturnValueOnce(0).mockReturnValueOnce(.5).mockReturnValueOnce(.5).mockReturnValue(.5);
     world.advance(BUTTERFLY_PERISH_TIME);

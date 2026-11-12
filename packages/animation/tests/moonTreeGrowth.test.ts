@@ -1,4 +1,5 @@
 import type { Timer } from '../../componets/src/timer';
+import { testPlayer } from './testPlayer';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { createTestArea, useTestTileMap } from './tileMapFixture';
@@ -137,7 +138,7 @@ it('keeps logical growth while unloaded and stops growth when chopping or diggin
     expect(tree.GetPersistData()).toEqual({ moonTree: { size: 'short' }, growable: { stage: 1, time: 250 } });
     expect(prefabInstance(tree.transform.model)!.sprite.currentAnimation).not.toMatch(/^grow_/);
     const target = workTargets('CHOP', tree.transform.model)[0];
-    expect(target.entity.components.workable!.WorkedBy({}, 8)).toBe(true);
+    expect(target.entity.components.workable!.WorkedBy(testPlayer(), 8)).toBe(true);
     expect(tree.GetPersistData()).toEqual({ moonTree: { size: 'short', stump: true }, growable: { stage: 1 },
       moonTreeTimer: { timers: { decay: { timeleft: 14400, initial_time: 14400, paused: false } } } });
     expect(prefabInstance(tree.transform.model)!.minimap.icon).toBe('moon_tree_stump.png');

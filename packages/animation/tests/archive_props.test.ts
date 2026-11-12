@@ -1,4 +1,5 @@
 import { STRINGS } from '../../componets/src/stringutil';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -77,9 +78,9 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     // MARBLEPILLAR_MINE = 10 works; the final one drops the table (the 5% nugget misses at .5), collapses and removes the statue.
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
     const [mine] = workTargets('MINE', s.scene);
-    for (let i = 0; i < 9; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
+    for (let i = 0; i < 9; i++) expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
     expect(statue.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_low_3', loop: true });
-    expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
+    expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
     expect(workTargets('MINE', s.scene)).toEqual([]); expect(s.prefabs.exportRecords()).toEqual([]);
     expect(statue.isRemoved).toBe(true);
     expect(s.physics.bodies).toHaveLength(0);
@@ -106,8 +107,11 @@ it('hands out rune story lines once, saves static props and ignores the pad, the
     expect([status(runes[0]), status(runes[1]), status(runes[0])]).toEqual(['LINE_1', 'LINE_2', 'LINE_1']);
     // Only a reader holding the ancient_reader tag gets the text.
     const describe = (viewer: object) => (runes[0].components as { inspectable: { descriptionfn(viewer: object): string | undefined } }).inspectable.descriptionfn(viewer);
-    expect(describe({ components: { inventory: { EquipHasTag: (tag: string) => tag === 'ancient_reader' } } })).toBe(STRINGS.ARCHIVE_RUNE_STATUE.LINE_1);
-    expect(describe({})).toBeUndefined();
+    // A player wearing something with ancient_reader, and one without.
+    const reader = testPlayer();
+    vi.spyOn(reader.components.inventory, 'EquipHasTag').mockImplementation(tag => tag === 'ancient_reader');
+    expect(describe(reader)).toBe(STRINGS.ARCHIVE_RUNE_STATUE.LINE_1);
+    expect(describe(testPlayer())).toBeUndefined();
 
     // SetEightFaced: the portal and its shadow child follow the camera heading.
     const [portal] = s.find('archive_portal'), [shadow] = s.find('archive_portal_shadow');

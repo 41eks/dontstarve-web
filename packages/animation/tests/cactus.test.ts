@@ -1,4 +1,7 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { Health } from '../../componets/src/health';
+import { addComponent } from '../../prefab/src/components';
+import { testPlayer } from './testPlayer';
 import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
@@ -6,7 +9,7 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { cactusPrefabs, CACTUS_DAMAGE, CACTUS_REGROW_TIME } from '../../prefab/src/cactus';
 import { ARMOR_DREADSTONEHAT, DREADSTONEHAT_ID } from '../../prefab/src/dreadstonehat';
-import { Combat, type CombatActor } from '../../componets/src/combat';
+import { Combat } from '../../componets/src/combat';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { inventorySlotAddress } from '../../inventory/src';
@@ -36,17 +39,13 @@ async function setup() {
     spawnItem: state => { const entity = inventory.entities.create(state); inventory.configureItem(entity); return entity; },
   });
   // The picker: player combat whose GetAttacked runs through the inventory's worn armor.
-  let health = 150;
+  const picker = testPlayer({ inventory });
+  const health = addComponent(picker, 'health', Health, 150);
+  addComponent(picker, 'combat', Combat, () => scheduler.now);
   const events: string[] = [];
-  const inst: CombatActor = {
-    getPosition: () => new THREE.Vector3(), getPhysicsRadius: () => .5, hasTag: tag => tag === 'player',
-    PushEvent: name => events.push(name),
-    components: { health: { IsDead: () => health <= 0, DoDelta: delta => { health += delta; return delta; } }, inventory },
-  };
-  inst.components.combat = new Combat(inst, () => scheduler.now);
-  const picker = { hasTag: inst.hasTag, PushEvent: inst.PushEvent!, components: { combat: inst.components.combat, inventory } };
+  for (const name of ['attacked', 'thorns']) picker.ListenForEvent(name, () => events.push(name));
   const pick = (model: THREE.Group) => plantInstance(model).components.pickable.pick({ picker, giveItem: () => true });
-  return { scheduler, world, inventory, cacti, picker, events, pick, health: () => health,
+  return { scheduler, world, inventory, cacti, picker, events, pick, health: () => health.currenthealth,
     dispose() { cacti.dispose(); inventory.dispose(); world.unbind(); } };
 }
 
@@ -85,10 +84,13 @@ it('spares bramble_resistant pickers and restores a picked cactus empty', async 
   const test = await setup();
   try {
     const oasis = await test.cacti.spawn('oasis_cactus', new THREE.Vector3(2, 0, 2)).transform.model;
-    const attacked = vi.spyOn(test.picker.components.combat, 'GetAttacked');
-    const resistant = { ...test.picker, components: { ...test.picker.components,
-      inventory: Object.assign(Object.create(test.inventory) as typeof test.inventory, { EquipHasTag: (tag: string) => tag === 'bramble_resistant' }) } };
-    expect(plantInstance(oasis).components.pickable.pick({ picker: resistant, giveItem: () => true })).toBe(true);
+    const attacked = vi.spyOn(test.picker.components.combat!, 'GetAttacked');
+    // The picker wears something bramble_resistant.
+    test.inventory.add('torch', 1);
+    const torch = test.inventory.getEntity(inventorySlotAddress(0))!;
+    torch.addTag('bramble_resistant');
+    expect(test.inventory.EquipFromInventory(torch)).toBe(true);
+    expect(plantInstance(oasis).components.pickable.pick({ picker: test.picker, giveItem: () => true })).toBe(true);
     expect(attacked).not.toHaveBeenCalled();
     const [{ prefabId, record }] = test.cacti.exportRecords();
     expect(prefabId).toBe('oasis_cactus');

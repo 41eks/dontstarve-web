@@ -1,4 +1,5 @@
 import { workTargets } from './workTargets';
+import { testPlayer } from './testPlayer';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -60,17 +61,17 @@ it('changes full/med/low source poses and resets surviving rock work on reload',
   try {
     rocks.spawn('rock1', new THREE.Vector3(3, 0, 4));
     const target = workTargets('MINE')[0], animation = prefabInstance(target.model)!.sprite;
-    for (let i = 0; i < 3; i++) performToolWork('MINE', target.entity, {});
+    for (let i = 0; i < 3; i++) performToolWork('MINE', target.entity, testPlayer());
     expect(target.entity.components.workable!.GetWorkLeft()).toBe(3);
     expect(animation.currentAnimation).toBe('med');
     const { prefabId, record } = rocks.exportRecords()[0];
     restored.spawn(prefabId, new THREE.Vector3(...record.transform.position), record);
     expect(restored.exportRecords()).toEqual(rocks.exportRecords());
     expect(workTargets('MINE').find(({ model }) => model !== target.model)!.entity.components.workable!.GetWorkLeft()).toBe(6);
-    for (let i = 0; i < 2; i++) performToolWork('MINE', target.entity, {});
+    for (let i = 0; i < 2; i++) performToolWork('MINE', target.entity, testPlayer());
     expect(animation.currentAnimation).toBe('low');
     vi.spyOn(Math, 'random').mockReturnValue(.1);
-    performToolWork('MINE', target.entity, {});
+    performToolWork('MINE', target.entity, testPlayer());
     expect(spawn).toHaveBeenCalledTimes(7); // guaranteed loot plus both chance entries
     expect(rocks.exportRecords()).toEqual([]);
   } finally { rocks.dispose(); restored.dispose(); }

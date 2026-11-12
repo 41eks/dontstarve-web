@@ -1,4 +1,5 @@
 import { RuinsRelicInstance } from '../../prefab/src/ruinsrelic';
+import { testPlayer } from './testPlayer';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Quaternion, Scene, Vector3 } from 'three';
@@ -24,7 +25,7 @@ it('runs a prefab’s work callbacks without loaded art and leaves component sta
   const work = inst.components.workable!;
   try {
     expect(inst.sprite.loaded).toBe(false);
-    expect(work.WorkedBy({})).toBe(true);
+    expect(work.WorkedBy(testPlayer())).toBe(true);
     expect(inst.sprite.sprite.peek()).toMatchObject({ clip: { name: 'hit', loop: false }, queue: [{ name: 'closed', loop: false }] });
     expect(container.DropEverything).toHaveBeenCalledExactlyOnceWith(inst.position);
     expect(container.Close).toHaveBeenCalledOnce();
@@ -34,12 +35,12 @@ it('runs a prefab’s work callbacks without loaded art and leaves component sta
     expect(dropLoot).not.toHaveBeenCalled();
     expect(inst.isRemoved).toBe(false);
 
-    expect(work.WorkedBy({})).toBe(true);
+    expect(work.WorkedBy(testPlayer())).toBe(true);
     expect(collapse).toHaveBeenCalledExactlyOnceWith('small', inst.position, 'metal');
     const dropped = dropLoot.mock.calls.flatMap(([items]) => items.flatMap(({ itemId, count }: { itemId: string; count: number }) => Array(count).fill(itemId)));
     expect(dropped.sort()).toEqual(['cutstone', 'gears', 'goldnugget']);
     expect(inst.isRemoved).toBe(true);
-    expect(work.WorkedBy({})).toBe(false);
+    expect(work.WorkedBy(testPlayer())).toBe(false);
   } finally { work.dispose(); inst.remove(); }
 });
 
@@ -52,15 +53,15 @@ it('checks the lamp’s declared light and skips the final hit before running it
   try {
     // Animation names do not determine whether the lamp is on.
     inst.sprite.start('idle_on');
-    work.WorkedBy({});
+    work.WorkedBy(testPlayer());
     expect(inst.sprite.currentAnimation).toBe('hit');
     inst.light.set({ radius: 2, intensity: .5, falloff: .8, colour: [1, 1, 1] });
     inst.sprite.start('idle');
-    work.WorkedBy({});
+    work.WorkedBy(testPlayer());
     expect(inst.sprite.currentAnimation).toBe('hit_on');
     const hit = vi.spyOn(inst.sprite, 'playOnce');
     vi.mocked(container.DropEverything).mockClear();
-    work.WorkedBy({});
+    work.WorkedBy(testPlayer());
     expect(hit).not.toHaveBeenCalled();
     expect(container.DropEverything).toHaveBeenCalledOnce();
     expect(collapse).toHaveBeenCalledOnce();
@@ -107,7 +108,7 @@ it('hammers a replica decor through its real instance, declaring material FX bef
     new Vector3(4, 0, -3));
   inst.onRemove(() => { calls.push('remove'); });
   const worked = vi.fn(); inst.ListenForEvent('worked', worked);
-  const worker = {};
+  const worker = testPlayer();
   try {
     expect(inst.sprite.loaded).toBe(false);
     expect(inst.components.workable!.WorkedBy(worker)).toBe(true);

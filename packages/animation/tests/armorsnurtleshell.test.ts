@@ -1,46 +1,42 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Vector3 } from 'three';
-import { ItemEntityRegistry } from '@dontstarve-web/inventory';
+import { inventorySlotAddress } from '@dontstarve-web/inventory';
 import {
   ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION, FULL_ABSORPTION,
-  configureArmorSnurtleshellEntity,
+
 } from '../../prefab/src/armorsnurtleshell';
 import { SpriteState } from '@dontstarve-web/display';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { addComponent } from '../../prefab/src/components';
 import { createPerishWorld } from './perishWorldFixture';
 import { testEnts } from './entsFixture';
+import { createPickupInventory } from './pickupFixture';
+import { testPlayer } from './testPlayer';
+import { wilsonStateInst } from './wilsonStateInst';
+import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 
 let ents = testEnts();
 afterEach(() => { ents.dispose(); ents = testEnts(); });
 
 function wornShell() {
-  const world = createPerishWorld();
-  const entity = new ItemEntityRegistry().create({ itemId: 'armorsnurtleshell', count: 1 });
-  entity.BindPerishWorld(world);
+  const world = createPerishWorld(), inventory = createPickupInventory();
+  inventory.entities.bindPerishWorld(world);
+  // The wearer is a player inst: its inventory wears the shell and its stategraph hides in it, pushing newstate on it.
+  const owner = testPlayer({ inventory });
+  const graph = owner.SetStateGraph(() => new WilsonStateGraph(wilsonStateInst({
+    PushEvent: (name: string, data?: unknown) => owner.PushEvent(name, data) })));
+  const goToState = vi.spyOn(graph, 'goToState');
+  const playSound = vi.spyOn(owner.AddSoundEmitter(), 'PlaySound').mockImplementation(() => {});
+  inventory.add('armorsnurtleshell', 1);
+  const entity = inventory.getEntity(inventorySlotAddress(0))!;
   ents.track(entity);
-  entity.configure({ equippable: 'body', configureEntity: configureArmorSnurtleshellEntity });
-  const listeners = new Map<string, (inst: unknown, data: unknown) => void>();
-  const states: string[] = [];
-  let shell = false;
-  const owner = {
-    ListenForEvent: (name: string, listener: (inst: unknown, data: unknown) => void) => { listeners.set(name, listener); return () => listeners.delete(name); },
-    PushEvent: vi.fn(),
-    getPosition: () => new Vector3(),
-    SoundEmitter: { PlaySound: vi.fn() },
-    components: { inventory: { GetEquippedItem: (kind: string) => kind === 'body' ? entity : null } },
-    sg: {
-      hasStateTag: (tag: string) => shell && tag === 'shell',
-      goToState: (name: string) => { states.push(name); shell = true; listeners.get('newstate')?.(owner, { statename: name }); },
-    },
-  };
-  // inventory:Equip calls equippable:Equip(owner); Unequip mirrors it.
-  const lifecycle = { onunequip: () => entity.components.equippable!.Unequip(owner) };
-  entity.components.equippable!.Equip(owner);
-  return { world, entity, owner, lifecycle, listeners, states, leaveShell: () => { shell = false; listeners.get('newstate')?.(owner, { statename: 'idle' }); } };
+  expect(inventory.EquipFromInventory(entity)).toBe(true);
+  // inventory:Unequip calls equippable:Unequip(owner).
+  const lifecycle = { onunequip: () => inventory.Unequip('body') };
+  return { world, entity, owner, lifecycle, playSound, states: () => goToState.mock.calls.map(([name]) => name),
+    leaveShell: () => graph.goToState('idle') };
 }
 
-/** A combat entity at `position` (FindEntities range is 20) that targets `target`. */
 class TargetingCombat {
   target: object | undefined;
   readonly DropTarget = vi.fn(() => { this.target = undefined; });
@@ -70,7 +66,7 @@ describe('armorsnurtleshell', () => {
     const { entity, states, leaveShell } = wornShell();
     const useable = entity.components.useableitem!, armor = entity.components.armor!;
     expect(useable.StartUsingItem()).toBe(true);
-    expect(states).toEqual(['shell_enter']);
+    expect(states()).toEqual(['shell_enter']);
     expect(armor.GetAbsorption()).toBe(FULL_ABSORPTION);
     expect(entity.hasTag('inuse')).toBe(true);
     leaveShell();
@@ -99,13 +95,14 @@ describe('armorsnurtleshell', () => {
   });
 
   it('plays the armor impact through the owner when blocked and releases the owner on unequip', () => {
-    const { world, entity, owner, listeners, lifecycle } = wornShell();
-    listeners.get('blocked')!(owner, undefined);
-    expect(owner.SoundEmitter.PlaySound).toHaveBeenCalledWith('dontstarve/wilson/hit_armour');
+    const { world, entity, owner, playSound, lifecycle } = wornShell();
+    owner.PushEvent('blocked');
+    expect(playSound).toHaveBeenCalledWith('dontstarve/wilson/hit_armour');
     const target = attacker(owner);
     entity.components.useableitem!.StartUsingItem();
     lifecycle.onunequip();
-    expect(listeners.size).toBe(0);
+    playSound.mockClear(); owner.PushEvent('blocked');
+    expect(playSound).not.toHaveBeenCalled();
     world.advance(5);
     expect(target.DropTarget).not.toHaveBeenCalled(); // onunequip runs onstopuse
     expect(entity.components.useableitem!.StartUsingItem()).toBe(true); // no owner: nothing hides

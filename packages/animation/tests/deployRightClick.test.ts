@@ -66,6 +66,7 @@ function grassActor(s: Awaited<ReturnType<typeof setup>>) {
 
 it('a right click walks, plants dug_grass barren at frame six, keeps the stack held and survives c_save', async () => {
   const s = await setup('dug_grass', new THREE.Vector3(2, 0, 0)), { grasses, actor } = grassActor(s);
+  const deployed = vi.fn(); actor.doer.ListenForEvent('deployitem', (_inst, data) => deployed(data));
   try {
     expect(s.rightClick().defaultPrevented).toBe(true);
     const walk = actor.locomotor.PushAction.mock.calls[0];
@@ -79,7 +80,7 @@ it('a right click walks, plants dug_grass barren at frame six, keeps the stack h
     expect(record.transform.position).toEqual([2, 0, 0]);
     expect(record.components.pickable).toMatchObject({ transplanted: true });
     expect(plantInstance(workTargets('DIG', s.scene)[0].model).components.pickable.IsBarren()).toBe(true);
-    expect(actor.doer.PushEvent).toHaveBeenCalledWith('deployitem', { prefab: 'dug_grass' });
+    expect(deployed).toHaveBeenCalledWith({ prefab: 'dug_grass' });
 
     let json = '';
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);

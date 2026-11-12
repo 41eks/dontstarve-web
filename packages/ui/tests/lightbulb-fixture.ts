@@ -65,7 +65,7 @@ export async function checkLightbulbLighting() {
   manager.update(0.05, camera.quaternion);
   const dropped = await sample(5);
   const click = () => {
-    const { model } = manager.reskinTargets[0];
+    const model = manager.reskinTargets[0].transform.model;
     model.updateWorldMatrix(true, true);
     const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry>;
     const bounds = new THREE.Box3();

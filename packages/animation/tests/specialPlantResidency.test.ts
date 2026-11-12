@@ -1,4 +1,5 @@
 import { PrefabDisplayGroup } from '../../display/src';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../src/transformRoot';
 import * as CANNON from 'cannon-es';
@@ -127,7 +128,7 @@ it('grows a dormant marblebean, restores shrub shape/tint/snow and preserves the
     env.sources.snowLevel.set(0); await settle();
     expect(meshes(shrub)[0].geometry.drawRange.count).toBeLessThan(snowyCount);
     const target = workTargets('MINE')[0];
-    for (let i = 0; i < 8 && !prefabInstance(shrub)!.hasTag('NOCLICK'); i++) performToolWork('MINE', target.entity, {});
+    for (let i = 0; i < 8 && !prefabInstance(shrub)!.hasTag('NOCLICK'); i++) performToolWork('MINE', target.entity, testPlayer());
     expect(prefabInstance(shrub)!.listTags()).toContain('NOCLICK');
     env.awake.set(false); await settle();
     expect(prefabInstance(shrub)!.isRemoved).toBe(false);

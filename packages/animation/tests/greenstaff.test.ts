@@ -1,6 +1,8 @@
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
+import { Sanity } from '../../componets/src/sanity';
+import { addComponent } from '../../prefab/src/components';
+import { testPlayer } from './testPlayer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
-import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { ItemEntity, InventoryStore, HandSlot, equipmentSlotAddress } from '../../inventory/src';
 import { GreenStaffController, deconstructionLoot } from '../../prefab/src/staff';
@@ -37,16 +39,16 @@ describe('greenstaff source deconstruction', () => {
     staff.onequip();
     const opal = target();
     const event = vi.fn(); opal.ListenForEvent('ondeconstructstructure', event);
-    const doDelta = vi.fn(), staffDelta = vi.fn();
-    const doer = { position: new THREE.Vector3(), hasTag: () => false,
-      components: { sanity: { DoDelta: doDelta }, staffsanity: { doCastingDelta: staffDelta } } };
+    // The caster is the player inst, whose sanity pays the cast.
+    const doer = testPlayer();
+    const doDelta = vi.spyOn(addComponent(doer, 'sanity', Sanity, 200), 'DoDelta');
     expect(entity.hasTag('castonrecipes')).toBe(true);
     expect(entity.hasTag('castontargets')).toBe(false);
     expect(collectEquippedItemActions(entity, undefined, opal, true)).toEqual(['CASTSPELL']);
     const livinglog = new ItemEntity({ itemId: 'livinglog', count: 1 });
     expect(collectEquippedItemActions(entity, undefined, livinglog, true)).toEqual([]);
     livinglog.destroy();
-    const action = createBufferedAction('CASTSPELL', { doer: doer as never, target: opal as never, invobject: entity, pos: opal.position });
+    const action = createBufferedAction('CASTSPELL', { doer, target: opal, invobject: entity, pos: opal.position });
     expect(action.target).toBe(opal);
     expect(action.do()).toBe(true);
     expect(spawn).toHaveBeenCalledWith([
@@ -54,7 +56,7 @@ describe('greenstaff source deconstruction', () => {
     ], opal.position);
     expect(event).toHaveBeenCalledWith(opal, doer);
     expect(opal.isRemoved).toBe(true);
-    expect(staffDelta).toHaveBeenCalledWith(-20); expect(doDelta).not.toHaveBeenCalled();
+    expect(doDelta).toHaveBeenCalledExactlyOnceWith(-20);
     expect(inventory.getEntity(slot)).toBeNull();
     expect(inventory.handEquipment.peek()).toBeNull();
     inventory.dispose();
@@ -64,10 +66,10 @@ describe('greenstaff source deconstruction', () => {
     const entity = new ItemEntity({ itemId: 'greenstaff', count: 1 });
     const spawn = vi.fn();
     new GreenStaffController(entity, { spawnLoot: spawn });
-    const opal = target(), doDelta = vi.fn();
-    const doer = { position: new THREE.Vector3(), hasTag: () => false, components: { sanity: { DoDelta: doDelta } } };
+    const opal = target(), doer = testPlayer();
+    const doDelta = vi.spyOn(addComponent(doer, 'sanity', Sanity, 200), 'DoDelta');
     let held = true;
-    const action = createBufferedAction('CASTSPELL', { doer: doer as never, target: opal as never, invobject: entity, pos: opal.position }, () => held);
+    const action = createBufferedAction('CASTSPELL', { doer, target: opal, invobject: entity, pos: opal.position }, () => held);
     held = false;
     expect(action.do()).toBe(false);
     held = true; opal.addTag('INLIMBO');

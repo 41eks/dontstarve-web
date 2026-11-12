@@ -1,4 +1,7 @@
 import { advancePlayer } from './playerVisual';
+import { addComponent } from '../../prefab/src/components';
+import { playerDoer } from './playerDoer';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -42,14 +45,11 @@ function setup(dropLoot?: WorldContext['dropLoot']) {
   return { world, placement: wallsFixture(world, () => false) };
 }
 
+/** A player entity at `position` with player_common.lua's combat: UNARMED_DAMAGE, its attack period and range. */
 function attacker(position: THREE.Vector3, now: () => number, weapon?: ItemEntity) {
-  const inst: CombatInst = {
-    getPosition: () => new THREE.Vector3(position.x, 0, position.z), getPhysicsRadius: () => .5 * UNIT,
-    hasTag: tag => tag === 'player', components: {},
-  };
-  const combat = new Combat(inst, now, () => weapon?.components.weapon);
+  const inst = testPlayer({ position: { x: position.x, y: 0, z: position.z } });
+  const combat = addComponent(inst, 'combat', Combat, now, () => weapon?.components.weapon);
   combat.SetDefaultDamage(10); combat.SetAttackPeriod(.4); combat.SetRange(2 * UNIT);
-  inst.components.combat = combat;
   return { inst, combat };
 }
 
@@ -167,15 +167,16 @@ it('force attacks a wall with Ctrl+F, walks into range, punches on frame 8 and r
   (world as { player: THREE.Object3D }).player = player;
   player.position.set(3 + 6 * UNIT, 0, -6);
   let now = 0;
-  const { combat } = attacker(player.position, () => now);
-  animation.components.combat = combat;
+  // player_common.lua's combat on the player inst, which DoAttackButton searches the walls' world around.
+  const combat = addComponent(animation, 'combat', Combat, () => now);
+  combat.SetDefaultDamage(10); combat.SetAttackPeriod(.4); combat.SetRange(2 * UNIT);
+  animation.BindSim(placement.prefabs);
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * UNIT });
   const hand = createSignal<HandEquipment | null>(null);
   // The player inst: DoAttackButton searches around it and ATTACK runs its combat.
-  const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
-    getPhysicsRadius: () => .5 * UNIT, components: { combat }, TheSim: placement.prefabs };
-  const controller = new PlayerController(world, animation.sg, locomotor, hand, doer as never, () => false);
+  const doer = playerDoer(player);
+  const controller = new PlayerController(world, animation.sg, locomotor, hand, doer, () => false);
   const key = (type: string, code: string, ctrlKey: boolean) => {
     const event = Object.assign(new Event(type, { cancelable: true }), { code, ctrlKey, repeat: false });
     window.dispatchEvent(event);

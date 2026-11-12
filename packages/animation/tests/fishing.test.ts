@@ -1,5 +1,5 @@
 import { createPlayerEquipper } from './playerEquipFixture';
-import { actionDoer } from './actionDoer';
+import { playerDoer } from './playerDoer';
 import { prefabManager } from './prefabManagerFixture';
 import { advancePlayer } from './playerVisual';
 import { getActionString } from '../../stategraphs/src/actions';
@@ -83,7 +83,9 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const rodEntity = () => {
     const entity = new ItemEntity({ itemId: 'fishingrod', count: 1 });
     configureFishingRodEntity(entity);
-    entity.components.inventoryitem.owner = { address: equipmentSlotAddress('hand'), remove: () => { entity.destroy(); return true; }, changed() {} } as never;
+    // Held in the player's hand: the player owns it.
+    entity.components.inventoryitem.SetOwner(animation, { address: equipmentSlotAddress('hand'),
+      remove: () => { entity.destroy(); return true; }, changed() {}, replace: () => false });
     return entity;
   };
   let tool = rodEntity();
@@ -97,9 +99,7 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   animation.fishingHost = { waitForFish: () => rodOf().WaitForFish(), collect: () => rodOf().Collect(),
     loseRod: () => { rodOf().Release(); tool.remove(); } };
   // The player inst: the rod's events reach its stategraph, whose tags gate the rod.
-  const doer = { ...actionDoer(), position: player.position, getPosition: () => player.position,
-    PushEvent: (name: string, data: unknown) => animation.sg.pushEvent(name, data),
-    sg: { hasStateTag: (tag: string) => animation.sg.hasStateTag(tag) }, TheSim: { FindEntities: () => [] } };
+  const doer = playerDoer(player);
   const playerController = new PlayerController(world, animation.sg, locomotor, equipped, doer, () => false);
   const pondEntity = () => findActionEntity(pond)!;
   const controller = {

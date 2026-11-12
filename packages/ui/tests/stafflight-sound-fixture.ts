@@ -5,11 +5,10 @@ import { prefabManager } from '../../animation/tests/prefabManagerFixture';
 import { advancePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
-import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import * as THREE from 'three';
 import { staffLightPrefabs, DWARF_STAR_DURATION, DWARF_STAR_ID } from '../../prefab/src/stafflight';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { type PlayerInstance } from '../../prefab/src/player_common';
+import { playerInst, type PlayerInstance } from '../../prefab/src/player_common';
 import { BufferedAction } from '../../stategraphs/src';
 import { DisposeSounds, PrewarmSounds } from '../../prefab/src/sound';
 
@@ -38,7 +37,7 @@ export async function prepareStarAudioCheck() {
   const player = wortox('/dst/data/anim', new CANNON.World()).model;
   registerPlayer(player);
   await prefabDisplay(player).artLoaded();
-  const animation = prefabInstance(player);
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   // SGwilson's equip/unequip handlers play item_out/item_in from idle; let them finish.
   const settleEquip = () => { for (let frame = 0; frame < 24; frame++) advancePlayer(animation, 1 / 30); };

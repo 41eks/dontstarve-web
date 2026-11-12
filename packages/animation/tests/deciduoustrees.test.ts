@@ -1,4 +1,5 @@
 import type { Growable } from '../../componets/src/growable';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import { createTestArea, useTestTileMap } from './tileMapFixture';
 import { readFile } from 'node:fs/promises';
@@ -112,7 +113,7 @@ it('drops two autumn acorns, preserves a saved stump and its seasonal build, and
     const tree = s.prefabs.spawn('deciduoustree_tall', new THREE.Vector3(1, 0, 0));
     const target = workTargets('CHOP')[0], work = target.entity.components.workable!;
     const leaves = leavesOf(tree.transform.model);
-    expect(work.WorkedBy({ getPosition: () => new THREE.Vector3(3, 0, 0) }, 15)).toBe(true);
+    expect(work.WorkedBy(testPlayer({ position: new THREE.Vector3(3, 0, 0) }), 15)).toBe(true);
     expect(s.dropLoot.mock.calls[0][0]).toEqual([{ itemId: 'log', count: 3 }, { itemId: 'acorn', count: 2 }]);
     expect(target.isValid()).toBe(false);
     await new Promise(resolve => setTimeout(resolve, 0)); expect(s.physics.bodies).toEqual([]);

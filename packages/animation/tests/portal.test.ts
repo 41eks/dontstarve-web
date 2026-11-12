@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -86,9 +87,10 @@ it('loads with its fx child and runs SGmultiplayerportal idle, spawn and rez sta
 
     // A haunting ghost is resurrected here: rez_player opens the portal through spawn_pre, spawn_loop and spawn_pst.
     vi.mocked(PlaySound).mockClear();
-    const ghost = { hasTag: (tag: string) => tag === 'playerghost', PushEvent: vi.fn() };
+    const ghost = testPlayer({ tags: ['playerghost'] }), respawn = vi.fn();
+    ghost.ListenForEvent('respawnfromghost', (_inst, data) => respawn(data));
     portal.components.hauntable!.DoHaunt(ghost);
-    expect(ghost.PushEvent).toHaveBeenCalledWith('respawnfromghost', { source: portal });
+    expect(respawn).toHaveBeenCalledWith({ source: portal });
     portal.PushEvent('rez_player');
     expect(portal.sg.stateName).toBe('spawn_pre');
     expect([portal.sprite.sprite.peek().clip.name, fx.sprite.sprite.peek().clip.name]).toEqual(['pre_fx', 'pre_fx']);

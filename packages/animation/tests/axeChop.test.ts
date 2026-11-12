@@ -1,4 +1,5 @@
 import { createPlayerEquipper } from './playerEquipFixture';
+import { testPlayer } from './testPlayer';
 import { advancePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
@@ -113,7 +114,8 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
 
     // The last strike fells the tree away from the chopper and leaves a stump.
     vi.spyOn(Math, 'random').mockReturnValue(.9);
-    const worker = { getPosition: () => new THREE.Vector3(1, 0, 3) };
+    // The chopper is a player inst standing at (1, 0, 3).
+    const worker = testPlayer({ position: { x: 1, y: 0, z: 3 } });
     const tree = workTargets('CHOP')[0];
     for (let i = 0; i < 15; i++) expect(performToolWork('CHOP', tree.entity, worker, axe)).toBe(true);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/forest/treeFall', expect.any(THREE.Vector3));

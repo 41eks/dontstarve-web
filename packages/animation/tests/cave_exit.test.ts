@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -67,7 +68,7 @@ it('offers MIGRATE to the Master shard once it is available and hands the player
     const exit = s.prefabs.spawn(CAVE_EXIT_ID, new THREE.Vector3(1, 0, 2)) as CaveExitInstance;
     expect(exit.sprite.sprite.peek().clip).toMatchObject({ name: 'open', loop: true });
     expect(canDoSceneAction('MIGRATE', exit.transform.model)).toBe(true);
-    const player = { hasTag: (tag: string) => tag === 'player' };
+    const player = testPlayer();
     expect(exit.components.worldmigrator.Activate(player)).toBe(true);
     expect(migrated).toEqual([[player, undefined, 'Master']]);
     expect(sceneActions(unlinked.prefabs.spawn(CAVE_EXIT_ID, new THREE.Vector3(1, 0, 2)).transform.model)).not.toContain('MIGRATE');

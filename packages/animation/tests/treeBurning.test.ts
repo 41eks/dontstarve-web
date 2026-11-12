@@ -1,4 +1,5 @@
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
+import { testPlayer } from './testPlayer';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -109,10 +110,10 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
       expect(restored.records()[0]).toEqual(record);
     } finally { restored.dispose(); }
 
-    expect(performToolWork('CHOP', target, {})).toBe(true);
+    expect(performToolWork('CHOP', target, testPlayer())).toBe(true);
     expect(s.dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('chop_burnt_normal');
-    expect(performToolWork('CHOP', target, {})).toBe(false);
+    expect(performToolWork('CHOP', target, testPlayer())).toBe(false);
     for (let i = 0; i < 60; i++) s.displays.update(1 / 30, new THREE.Quaternion());
     expect(s.records()).toEqual([]);
   } finally { s.dispose(); }
@@ -123,7 +124,7 @@ it('burns an evergreen stump to ash and removes it, and finishes a burning tree 
   try {
     const stumpTree = s.prefabs.spawn('evergreen_short', new THREE.Vector3(2, 0, 0));
     const stump = findActionEntity(stumpTree.transform.model)!;
-    expect(performToolWork('CHOP', stump, {})).toBe(true); expect(stump.components.workable!.WorkedBy({}, 4)).toBe(true);
+    expect(performToolWork('CHOP', stump, testPlayer())).toBe(true); expect(stump.components.workable!.WorkedBy(testPlayer(), 4)).toBe(true);
     expect(stump.hasTag('stump')).toBe(true);
     expect(light(stump)).toBe(true); await flush();
     expect(fires(s.scene)).toBe(1);
@@ -162,7 +163,7 @@ it('burns a deciduous tree, keeps its season-independent burnt save, and drops c
     expect(components.growable).toEqual({ stage: 2 });
     season.set({ season: 'autumn', progress: .5 }); await flush(); // leaves no longer change on a burnt tree
     expect(s.records()[0].components.deciduoustree!.leaf_state).toBe(components.deciduoustree!.leaf_state);
-    expect(performToolWork('CHOP', target, {})).toBe(true);
+    expect(performToolWork('CHOP', target, testPlayer())).toBe(true);
     expect(dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
   } finally { s.dispose(); }
 });

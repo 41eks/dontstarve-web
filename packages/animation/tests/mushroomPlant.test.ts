@@ -1,4 +1,5 @@
 import { prefabDisplays } from './prefabManagerFixture';
+import { testPlayer } from './testPlayer';
 import { plantManager } from './plantManagerFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -71,7 +72,7 @@ it('digs an unpicked mushroom into two blue_caps without releasing a neighbourin
     const disposed = vi.fn(); geometry.addEventListener('dispose', disposed);
     const neighbourRecord = s.mushrooms.exportRecords()[1];
     const [dig] = workTargets('DIG');
-    expect(performToolWork('DIG', dig.entity!, {})).toBe(true);
+    expect(performToolWork('DIG', dig.entity!, testPlayer())).toBe(true);
     await vi.waitFor(() => expect(s.ground.exportRecords().map(r => r.components.stack?.itemId)).toEqual(['blue_cap', 'blue_cap']));
     expect(s.mushrooms.exportRecords()).toEqual([neighbourRecord]);
     expect(disposed).not.toHaveBeenCalled();

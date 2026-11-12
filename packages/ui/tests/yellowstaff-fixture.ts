@@ -7,7 +7,8 @@ import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import * as THREE from 'three';
 import { DstLightingRenderer } from '../../../src/dstLighting';
-import { type PlayerInstance } from '../../prefab/src/player_common';
+import { playerInst, type PlayerInstance } from '../../prefab/src/player_common';
+import { testPlayer } from '../../animation/tests/testPlayer';
 import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { getLightStaffController, type LightStaffId } from '../../prefab/src/staff';
@@ -68,7 +69,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   await prefabDisplay(player).artLoaded();
   player.position.set(0, 0, 0);
   scene.add(player);
-  const animation = prefabInstance(player);
+  const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   // SGwilson's equip/unequip handlers play item_out/item_in from idle; let them finish.
   const settleEquip = () => { for (let frame = 0; frame < 24; frame++) advancePlayer(animation, 1 / 30); };
@@ -106,13 +107,13 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     spawnPrefab: (_prefab, point) => { summoned.push(stars.spawn(prefabId, point)); },
   });
   staff.onequip();
-  let stops = 0, sanity = 100;
+  let stops = 0;
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity; the point is in CASTSPELL range.
-  const doer = { position: player.position, getPosition: () => player.position, hasTag: () => false, PushEvent() {},
-    components: { sanity: { DoDelta: (delta: number) => { sanity = Math.max(0, sanity + delta); } } } };
+  const doer = testPlayer({ model: player, inventory });
+  animation.stats.sanity.SetCurrent(100);
   const casting = new PlayerController({ scene, camera, renderer, ground, player }, animation.sg,
     { destination: undefined, stop: () => { stops += 1; }, goToPoint: () => true, PushAction: (_action, arrive) => arrive() },
-    inventory.handEquipment, doer as never, () => false);
+    inventory.handEquipment, doer, () => false);
   const click = (button = 2) => {
     const point = new THREE.Vector3(30, 0, 0).project(camera);
     const bounds = renderer.domElement.getBoundingClientRect();
@@ -152,7 +153,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     saveJson = serializeSave(template, {
       entities: { ...template.world.entities, [prefabId]: stars.exportRecords().map(entry => entry.record) },
       playerTransform: { position: [0, 0, 0], rotationY: 0 }, elapsedSeconds: 0,
-      inventory: inventory.exportState(), playerStats: { health: 150, hunger: 105, sanity },
+      inventory: inventory.exportState(), playerStats: { health: 150, hunger: 105, sanity: animation.stats.sanity.current },
     }, SAVE_CATALOG);
   });
   const saved = deserializeSave(saveJson, SAVE_CATALOG);
@@ -225,7 +226,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     skins: skins.length - 1, unlitHand, ignoredLeft, busy, beforeCommit, afterCommit,
     position: record.transform.position, remainingSeconds: record.components.timer!.timers.extinguish.timeleft,
     fixedPosition, survivesUntilExpiry, expiresAtLifetime, lifetimeRemoved,
-    stops, sanity, remainingUses: entity.components.finiteuses.remaining, appeared, baseline, bright, far,
+    stops, sanity: animation.stats.sanity.current, remainingUses: entity.components.finiteuses.remaining, appeared, baseline, bright, far,
     radius: source.radius, cancelled, noCastingLight, ignoredUnequipped, restoredLit,
     expiredNotSaved, expiredRemoved, survivor, disposedDark };
 }

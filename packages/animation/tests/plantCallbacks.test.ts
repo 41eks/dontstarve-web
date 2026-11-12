@@ -1,4 +1,5 @@
 import { Vector3 } from 'three';
+import { testPlayer } from './testPlayer';
 import { afterEach, expect, it, vi } from 'vitest';
 import { grassPrefabs, GRASS_REGROW_TIME } from '../../prefab/src/grass';
 import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
@@ -50,7 +51,7 @@ it('registers grass callbacks without a manager or display, including winter pau
     expect(pickable.Fertilize({ components: { fertilizer: { withered_cycles: 0 } } })).toBe(true);
     expect(grass.sprite.currentAnimation).toBe('dead_to_empty');
     const workable = grass.components.workable!;
-    expect(workable.WorkedBy({})).toBe(true);
+    expect(workable.WorkedBy(testPlayer())).toBe(true);
     expect(grass.isRemoved).toBe(true);
     expect(s.spawnGroundItem.mock.calls.map(([item]) => item.itemId)).toEqual(['dug_grass']);
     s.scheduler.advance(GRASS_REGROW_TIME * 2);

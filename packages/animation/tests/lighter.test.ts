@@ -1,5 +1,5 @@
 import { wilsonStateInst } from './wilsonStateInst';
-import { actionDoer } from './actionDoer';
+import { testPlayer } from './testPlayer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
@@ -13,7 +13,7 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
-import { createSignal, EventEmitter, type HandEquipment } from '../../signals/src';
+import { createSignal, type HandEquipment } from '../../signals/src';
 import { ItemEntity } from '../../inventory/src';
 import { TORCH_FUEL, configureTorchEntity } from '../../prefab/src/torch';
 import { registerActionEntity } from '../../prefab/src/actionEntity';
@@ -59,7 +59,9 @@ it('spreads source heat to nearby combustible structures through smoldering befo
 
 it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 without spending extra torch fuel', () => {
   vi.stubGlobal('window', new EventTarget());
-  const scene = new THREE.Scene(), model = withEntity(new THREE.Group(), 'treasurechest'), player = new THREE.Group();
+  const scene = new THREE.Scene(), model = withEntity(new THREE.Group(), 'treasurechest');
+  // The player inst: LIGHT pushes onstartedfire on it.
+  const doer = testPlayer(), player = doer.transform.model;
   model.position.set(20, 0, 0); scene.add(model);
   const target = registerActionEntity(prefabInstance(model)!);
   const burnable = new Burnable(registerActionEntity(prefabInstance(model)!));
@@ -74,10 +76,6 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
     { physicsRadius: .5 * WORLD_SCALE });
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
-  // The player inst: LIGHT pushes onstartedfire on it.
-  const playerEvents = new EventEmitter<Record<string, unknown>>();
-  const doer = { ...actionDoer(), position: player.position, getPosition: () => player.position,
-    PushEvent: (name: string, data: unknown) => playerEvents.emit(name, data), TheSim: { FindEntities: () => [] } };
   const playerController = new PlayerController(world, animation.stategraph, locomotor, hand, doer, () => false);
   // EQUIPPED.lighter on the right button, then DoAction.
   const controller = {
@@ -87,7 +85,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
     cancel: () => playerController.cancel(),
     dispose: () => playerController.dispose(),
   };
-  const started = vi.fn(); playerEvents.on('onstartedfire', started);
+  const started = vi.fn(); doer.ListenForEvent('onstartedfire', () => started());
   try {
     expect(collectEquippedItemActions(torch, undefined, target, false)).toEqual([]);
     expect(controller.request(target)).toBe(true); controller.update();

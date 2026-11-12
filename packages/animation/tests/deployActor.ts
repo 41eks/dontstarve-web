@@ -1,4 +1,5 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { testPlayer } from './testPlayer';
 import type * as THREE from 'three';
 import { vi } from 'vitest';
 import type { DeployMap } from '../../componets/src/deployable';
@@ -19,9 +20,9 @@ export function deployActor(world: WorldContext, inventory: InventoryStore, map:
   let arrive = () => {};
   const locomotor = { destination: undefined, goToPoint: vi.fn(() => true), stop: vi.fn(),
     PushAction: vi.fn((_action: { target: { getPosition(): THREE.Vector3 } }, arrived: () => void) => { arrive = arrived; }) };
-  const doer = { components: { inventory }, Map: map, position: world.player.position, getPosition: () => world.player.position,
-    hasTag: () => false, PushEvent: vi.fn() };
-  const controller = new PlayerController(world, graph, locomotor as never, createSignal(undefined) as never, doer as never);
+  // The player inst deploys from its own inventory, onto TheWorld.Map.
+  const doer = testPlayer({ model: world.player, inventory, map });
+  const controller = new PlayerController(world, graph, locomotor as never, createSignal(undefined) as never, doer);
   return { graph, locomotor, doer, controller,
     canDeploy: (point: THREE.Vector3) => inventory.GetActiveItem()!.components.deployable!.CanDeploy(point, map),
     /** PlayerController:DoAction with the active item, then the locomotor's arrival. */

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { rockWorld } from './rockWorldFixture';
@@ -39,7 +40,7 @@ it('mines moon rocks in six hits and cave-in boulders in three, preserving survi
     await s.manager.spawn('rock_moon', new THREE.Vector3(3, 0, 4));
     const boulder = await s.manager.spawn('cavein_boulder', new THREE.Vector3(6, 0, 4));
     const [moon, cavein] = workTargets('MINE', s.scene);
-    performToolWork('MINE', cavein.entity, {});
+    performToolWork('MINE', cavein.entity, testPlayer());
     expect(cavein.entity.components.workable!.GetWorkLeft()).toBe(2);
     expect(prefabInstance(boulder)!.sprite.currentAnimation).toBe('idle');
     const surviving = s.manager.exportRecords().find(record => record.prefabId === 'cavein_boulder')!;
@@ -47,10 +48,10 @@ it('mines moon rocks in six hits and cave-in boulders in three, preserving survi
     expect(restored.manager.exportRecords()[0]).toEqual(surviving);
     expect(workTargets('MINE', restored.scene)[0].entity.components.workable!.GetWorkLeft()).toBe(3);
     vi.spyOn(Math, 'random').mockReturnValue(.9);
-    for (let i = 0; i < 2; i++) performToolWork('MINE', cavein.entity, {});
+    for (let i = 0; i < 2; i++) performToolWork('MINE', cavein.entity, testPlayer());
     expect(s.drops).toEqual(['rocks', 'rocks']);
     expect(cavein.isValid()).toBe(false);
-    for (let i = 0; i < 6; i++) performToolWork('MINE', moon.entity, {});
+    for (let i = 0; i < 6; i++) performToolWork('MINE', moon.entity, testPlayer());
     expect(s.drops.slice(2)).toEqual(['rocks', 'flint', 'moonrocknugget', 'moonrocknugget']);
     expect(s.manager.exportRecords()).toEqual([]);
     expect(workTargets('MINE', s.scene)).toEqual([]);
@@ -63,7 +64,7 @@ it('breaks a moon shell after its minerals drop, synchronously spawns one orb an
     const model = await s.manager.spawn('rock_moon_shell', new THREE.Vector3(3, 0, 4));
     const [mine] = workTargets('MINE', s.scene);
     vi.spyOn(Math, 'random').mockReturnValue(.9);
-    for (let i = 0; i < 5; i++) performToolWork('MINE', mine.entity, {});
+    for (let i = 0; i < 5; i++) performToolWork('MINE', mine.entity, testPlayer());
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('low');
     expect(s.manager.exportRecords().map(record => record.prefabId)).toEqual(['rock_moon_shell']);
     const finished = vi.fn(() => {
@@ -71,13 +72,13 @@ it('breaks a moon shell after its minerals drop, synchronously spawns one orb an
       expect(s.manager.exportRecords().map(record => record.prefabId)).toEqual(['moonrockseed']);
     });
     prefabInstance(model)!.ListenForEvent('workfinished', finished);
-    performToolWork('MINE', mine.entity, {});
+    performToolWork('MINE', mine.entity, testPlayer());
     expect(finished).toHaveBeenCalledOnce();
     expect(prefabInstance(model)!.listTags()).toContain('NOCLICK');
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('break');
     expect(s.manager.exportRecords()[0].record.transform.position).toEqual([3, 0, 4]);
     expect(workTargets('MINE', s.scene)).toEqual([]);
-    expect(performToolWork('MINE', mine.entity, {})).toBe(false);
+    expect(performToolWork('MINE', mine.entity, testPlayer())).toBe(false);
     const { erode } = prefabInstance(model) as RockMoonShellInstance;
     expect(erode.delay.peek()).toEqual({ status: 'scheduled', endTime: 2 });
     s.scheduler.advance(2 + 15 / 30); // ErodeAway's thread steps once per tick, with no frame update.
@@ -98,7 +99,7 @@ it('cancels shell removal timers on scene disposal without touching an injected 
   try {
     const shell = await s.manager.spawn('rock_moon_shell', new THREE.Vector3());
     const [target] = workTargets('MINE', s.scene);
-    for (let i = 0; i < 6; i++) performToolWork('MINE', target.entity, {});
+    for (let i = 0; i < 6; i++) performToolWork('MINE', target.entity, testPlayer());
     s.manager.dispose();
     s.scheduler.advance(10);
     expect(prefabInstance(shell)!.status.peek()).toBe('removed');

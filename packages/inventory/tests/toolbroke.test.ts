@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { Vector3 } from 'three';
+import { playerEntity } from './playerEntity';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../src';
 import { Tool } from '../../componets/src/tool';
 import { equipSamePrefab } from '../../prefab/src/player_common';
@@ -11,8 +11,9 @@ it('pushes toolbroke to the player once, before the depleted tool is removed', (
     address: inventorySlotAddress(0), slot: new InventorySlot({ itemId: 'bugnet', count: 1 }, specs),
   }], specs);
   const events: [string, unknown][] = [];
-  inventory.bindActor({ hasTag: () => true, getPosition: () => new Vector3(),
-    PushEvent: (name, data) => { events.push([name, data]); } });
+  const player = playerEntity();
+  player.ListenForEvent('toolbroke', (_inst, data) => { events.push(['toolbroke', data]); });
+  inventory.bindActor(player);
   try {
     const net = inventory.getEntity(inventorySlotAddress(0))!;
     net.components.finiteuses.setMaxUses(2);

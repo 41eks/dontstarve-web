@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { testPlayer } from './testPlayer';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -54,9 +56,9 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
     const [mine] = workTargets('MINE', s.scene);
-    for (let i = 0; i < 5; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
+    for (let i = 0; i < 5; i++) expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
     expect(s.caves.exportRecords().map(({ prefabId }) => prefabId)).toEqual(['cave_entrance']);
-    expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
+    expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
 
     // The open entrance replaces it at the same point, is drawn on the background layer, and is no longer mineable.
     const [{ prefabId, record }] = s.caves.exportRecords();
@@ -87,8 +89,10 @@ it('offers MIGRATE on an open entrance whose Caves destination is available and 
     expect(canDoSceneAction('MIGRATE', open)).toBe(true);
     expect(prefabInstance(open)!.listTags()).toContain('migrator');
     expect(prefabInstance(open)!.sprite.sprite.peek().clip.name).toBe('open');
-    expect(prefabInstance<CaveEntranceInstance>(open)!.components.worldmigrator!.Activate({ hasTag: () => false })).toBe(false);
-    const player = { hasTag: (tag: string) => tag === 'player' };
+    // worldmigrator:Activate migrates only a player.
+    const pig = createEmptyEntity('pigman').instance;
+    expect(prefabInstance<CaveEntranceInstance>(open)!.components.worldmigrator!.Activate(pig)).toBe(false);
+    const player = testPlayer();
     expect(prefabInstance<CaveEntranceInstance>(open)!.components.worldmigrator!.Activate(player)).toBe(true);
     expect(migrated).toEqual([[player, undefined, 'Caves']]);
 

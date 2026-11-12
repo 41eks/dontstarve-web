@@ -1,4 +1,5 @@
 import { Workable } from '../../componets/src/workable';
+import { testPlayer } from './testPlayer';
 import { Propagator } from '../../componets/src/propagator';
 import { Burnable } from '../../componets/src/burnable';
 import { expect, it, vi } from 'vitest';
@@ -72,7 +73,7 @@ it('retains the concrete prefab host in workable callbacks and validates constru
   workable.SetWorkAction('HAMMER');
   workable.SetWorkLeft(2);
   workable.SetOnWorkCallback(host => { host.sprite.start('hit'); worked(host); });
-  workable.WorkedBy({}, 1);
+  workable.WorkedBy(testPlayer(), 1);
   expect(worked).toHaveBeenCalledExactlyOnceWith(inst);
   expect(inst.sprite.currentAnimation).toBe('hit');
   const dispose = vi.spyOn(workable, 'dispose');

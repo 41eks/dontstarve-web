@@ -1,4 +1,6 @@
 import { createPlayerEquipper } from './playerEquipFixture';
+import { Combat } from '../../componets/src/combat';
+import { testPlayer } from './testPlayer';
 import { ItemEntity } from '../../inventory/src/entity';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { SpriteState } from '../../display/src';
@@ -40,7 +42,7 @@ import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 import { Reader } from '../../componets/src/reader';
 import { createSignal } from '../../signals/src';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
+import type { PlayerInstance } from '../../prefab/src/player_common';
 import type { BookWorld } from '../../prefab/src/books';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, setVolume() {}, isPlaying: () => true })) }));
@@ -199,8 +201,8 @@ describe('PlayerController equipped actions', () => {
     const weaponComponent = addComponent(weapon, 'weapon', Weapon);
     const target = new PrefabInstance('evergreen', new SpriteState({ name: 'idle', billboard: true }));
     // The doer's combat:CanLightTarget is the rule under test's input: only its answer matters here.
-    const canLight = vi.fn((_target: unknown, _weapon: unknown) => true);
-    const doer = { hasTag: () => false, components: { combat: { CanLightTarget: canLight } } };
+    const doer = testPlayer();
+    const canLight = vi.spyOn(addComponent(doer, 'combat', Combat, () => 0), 'CanLightTarget').mockReturnValue(true);
     // componentactions EQUIPPED.weapon: combat:CanLightTarget on the right button only.
     expect(collectEquippedItemActions(weapon, doer, target, false)).toEqual([]);
     expect(collectEquippedItemActions(weapon, doer, target, true)).toEqual(['ATTACK']);
@@ -354,9 +356,9 @@ describe('PlayerController with the Wilson stategraph', () => {
     const inventory = createPickupInventory();
     inventory.add('book_rain', 1); inventory.add('panflute', 1);
     const book = inventory.getEntity(inventorySlotAddress(0))!, flute = inventory.getEntity(inventorySlotAddress(1))!;
-    const sanity = { DoDelta: vi.fn() };
-    const doer = Object.assign(playerDoer(player, { inventory, sanity }), {
-      addTag: (tag: string) => prefabInstance(player)!.addTag(tag), removeTag: (tag: string) => prefabInstance(player)!.removeTag(tag) });
+    // The player inst reads with its own sanity component.
+    const doer = playerDoer(player, { inventory });
+    const sanity = vi.spyOn(animation.stats.sanity, 'DoDelta');
     const world = { player, scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
       renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
     const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body);
@@ -368,8 +370,7 @@ describe('PlayerController with the Wilson stategraph', () => {
     try {
       // componentactions.lua book INVENTORY: only a reader is offered READ.
       expect(controller.GetInventoryItemAction(book)).toBeUndefined();
-      const reader = new Reader(doer, bookWorld);
-      (doer.components as Record<string, unknown>).reader = reader;
+      const reader = addComponent(animation, 'reader', Reader<PlayerInstance, BookWorld>, bookWorld);
       const read = controller.GetInventoryItemAction(book)!;
       expect([read.action, read.invobject, read.target]).toEqual(['READ', book, undefined]);
       expect(controller.DoAction(read)).toBe(true);
@@ -377,7 +378,7 @@ describe('PlayerController with the Wilson stategraph', () => {
       expect(ForcePrecipitation).not.toHaveBeenCalled(); // The book's fn waits for the state's action frame.
       finish();
       expect(ForcePrecipitation).toHaveBeenCalledExactlyOnceWith(true);
-      expect(sanity.DoDelta).toHaveBeenCalledExactlyOnceWith(-33);
+      expect(sanity).toHaveBeenCalledExactlyOnceWith(-33);
       expect(book.components.finiteuses.uses.peek()).toBe(4);
 
       const play = controller.GetInventoryItemAction(flute)!;

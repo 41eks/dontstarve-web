@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -89,7 +90,7 @@ it('c_spawn then c_save ZIP export reloads the source ID, position, empty compon
     expect((await executeDebugCommand('c_spawn("stalagmite_med")', first.inventory, id => first.registry.spawn(id))).ok).toBe(true);
     expect((await executeDebugCommand('c_give("stalagmite_med")', first.inventory)).ok).toBe(false);
     // workable.savestate=false: a surviving med rock saves no progress and reloads with four work remaining.
-    prefabInstance(first.scene.children[0])!.components.workable!.WorkedBy({}, 1);
+    prefabInstance(first.scene.children[0])!.components.workable!.WorkedBy(testPlayer(), 1);
     expect(prefabInstance(first.scene.children[0])!.components.workable!.GetWorkLeft()).toBe(3);
     records = first.registry.exportRecords();
     expect((await executeDebugCommand('c_save()', first.inventory, undefined, async () => {

@@ -174,7 +174,7 @@ it('an accepted action cancels a paid preview through events and skips its own c
   const animation = bufferingStategraph();
   // The player walks towards the target; the cast is never buffered in this test.
   const controller = new PlayerController(world, animation.graph,
-    { stop: vi.fn(), goToPoint: () => true, destination: undefined, PushAction: () => {} }, equipped, playerDoer(world.player));
+    { stop: vi.fn(), goToPoint: () => true, destination: undefined, PushAction: () => {} }, equipped, playerDoer(withEntity(world.player, 'wilson')));
   const cast = () => controller.DoAction(controller.createAction({ action: 'CASTSPELL', target, invobject: tool.entity })!);
   const cancel = vi.spyOn(controller, 'cancel');
   try {

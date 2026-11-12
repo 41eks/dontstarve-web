@@ -1,5 +1,5 @@
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
-import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import { expect, it, vi } from 'vitest';
 import { ItemEntity } from '../../inventory/src/entity';
 import { Tool } from '../../componets/src/tool';
@@ -23,19 +23,19 @@ it('selects work from component tags, revalidates changes at impact and consumes
   try {
     expect(collectEquippedItemActions(tool, undefined, target, false)).toEqual([]);
     expect(collectEquippedItemActions(tool, undefined, target, true)).toEqual(['HAMMER']);
-    expect(performToolWork('HAMMER', target, {}, tool)).toBe(true);
+    expect(performToolWork('HAMMER', target, testPlayer(), tool)).toBe(true);
     expect(work.GetWorkLeft()).toBe(1);
     expect(tool.components.finiteuses.remaining).toBe(1);
     work.SetWorkable(false);
     expect(target.hasTag('HAMMER_workable')).toBe(false);
-    expect(performToolWork('HAMMER', target, {}, tool)).toBe(false);
+    expect(performToolWork('HAMMER', target, testPlayer(), tool)).toBe(false);
     expect(tool.components.finiteuses.remaining).toBe(1);
     work.SetWorkable(true);
-    expect(performToolWork('HAMMER', target, {}, tool)).toBe(true);
+    expect(performToolWork('HAMMER', target, testPlayer(), tool)).toBe(true);
     expect(hit).toHaveBeenCalledTimes(2); expect(finish).toHaveBeenCalledOnce();
     expect(target.isRemoved).toBe(true); expect(tool.isRemoved).toBe(true);
     expect(tool.hasTag('HAMMER_tool')).toBe(false);
-    expect(performToolWork('HAMMER', target, {}, tool)).toBe(false);
+    expect(performToolWork('HAMMER', target, testPlayer(), tool)).toBe(false);
   } finally { target.destroy(); tool.destroy(); }
 });
 
@@ -48,7 +48,7 @@ it('validates reskin spells and advances each tool cache only after a successful
   const sprite = new SpriteState({ name: '' });
   sprite.setSkinSource({ archives: { skin_a: 'skin_a.zip', skin_b: 'skin_b.zip' }, art: new SpriteResources().archives });
   const target = new PrefabInstance('test_structure', sprite);
-  const doer = { position: new THREE.Vector3(), hasTag: () => false, components: {} };
+  const doer = testPlayer();
   try {
     expect(collectEquippedItemActions(first, undefined, picked, true)).toEqual(['CASTSPELL']);
     // CanCast only asks; the tool's cache advances with a cast.

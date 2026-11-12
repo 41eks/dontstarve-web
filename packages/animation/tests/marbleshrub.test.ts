@@ -1,4 +1,5 @@
 import { prefabDisplay } from '@dontstarve-web/display';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -118,9 +119,9 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
     const [mine] = workTargets('MINE', s.scene);
-    for (let i = 0; i < 9; i++) expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
+    for (let i = 0; i < 9; i++) expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
     expect(s.shrubs.exportRecords()).toHaveLength(1);
-    expect(performToolWork('MINE', mine.entity, {}, pickaxe)).toBe(true);
+    expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
     expect(workTargets('MINE', s.scene)).toEqual([]); expect(s.shrubs.exportRecords()).toEqual([]);
     s.shrubs.dispose();
     expect(prefabInstance(model)!.status.peek()).toBe('removed');

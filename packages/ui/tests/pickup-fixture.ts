@@ -2,7 +2,7 @@ import { wilsonStateInst } from '../../animation/tests/wilsonStateInst';
 import { withEntity } from '../../animation/tests/entityFixture';
 import * as THREE from 'three';
 import { createInventoryStore } from '../../../src/inventory';
-import { createPickupDoer } from '../../stategraphs/src/pickup';
+import { testPlayer } from '../../animation/tests/testPlayer';
 import { PlayerController, type PlayerLocomotor } from '../../stategraphs/src/playercontroller';
 import { WilsonStateGraph } from '../../stategraphs/src/SGwilson';
 import { createEquipmentExistenceState } from '../../signals/src';
@@ -16,7 +16,7 @@ export function fixturePickup(scene: THREE.Scene, camera: THREE.Camera, renderer
   const locomotor: PlayerLocomotor = { destination: undefined, stop() {}, goToPoint(point) { player.position.copy(point); return true; },
     PushAction(action, arrive) { player.position.copy(action.target.getPosition()); arrive(); } };
   const controller = new PlayerController({ scene, camera, renderer, player, ground: new THREE.Group() }, animation.stategraph,
-    locomotor, createEquipmentExistenceState('HANDS'), createPickupDoer(player, inventory));
+    locomotor, createEquipmentExistenceState('HANDS'), testPlayer({ model: player, inventory }));
   let allowed = true;
   const give = inventory.GiveItem.bind(inventory), equip = inventory.Equip.bind(inventory);
   inventory.GiveItem = (...args) => allowed && give(...args);

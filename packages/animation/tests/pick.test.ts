@@ -1,4 +1,7 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { withEntity } from './entityFixture';
+import { createInventoryStore } from '../../../src/inventory';
+import { testPlayer } from './testPlayer';
 import { addComponent } from '../../prefab/src/components';
 import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
@@ -68,14 +71,14 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
     { physicsRadius: .5 * WORLD_SCALE });
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     mouseActions: picker, actionEvents, renderer: { domElement: canvas } } as unknown as ActionWorldContext;
-  // pickable:Pick spawns the product and the picker's inventory takes it.
-  const product = { isRemoved: false };
-  const inventory = { GetNumSlots: () => 15, EquipHasTag: () => false, GiveItem: vi.fn(() => true),
-    entities: { create: vi.fn(() => product), destroy: vi.fn() } };
-  const doer = { hasTag: (tag: string) => tag === 'player', PushEvent: vi.fn(), getPosition: () => player.position,
-    components: { inventory } };
+  // pickable:Pick spawns the product and the picker's own inventory takes it.
+  const inventory = createInventoryStore([]);
+  const create = vi.spyOn(inventory.entities, 'create'), destroy = vi.spyOn(inventory.entities, 'destroy');
+  const give = vi.spyOn(inventory, 'GiveItem');
+  const doer = testPlayer({ model: withEntity(player, 'wilson'), inventory });
+  const product = (call: number) => create.mock.results[call].value;
   let manual = false;
-  const controller = new PlayerController(world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), doer as never, () => manual);
+  const controller = new PlayerController(world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), doer, () => manual);
   const click = () => {
     const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button: 0 });
     canvas.dispatchEvent(event);
@@ -90,13 +93,14 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
     player.position.x = 20 - 1.9; locomotor.update(16, 1 / 30);
     expect(stategraph.stateName).toBe('dolongaction');
     stategraph.update(1);
-    expect(inventory.entities.create).toHaveBeenCalledExactlyOnceWith({ itemId: 'log', count: 2 });
-    expect(inventory.GiveItem).toHaveBeenCalledWith(product, new THREE.Vector3(20, 0, 0));
+    expect(create).toHaveBeenCalledExactlyOnceWith({ itemId: 'log', count: 2 });
+    expect(give).toHaveBeenCalledWith(product(0), new THREE.Vector3(20, 0, 0));
+    expect(inventory.count('log')).toBe(2);
     expect(component.exportState()).toMatchObject({ picked: true });
-    expect(inventory.entities.destroy).not.toHaveBeenCalled();
+    expect(destroy).not.toHaveBeenCalled();
 
     // An inventory that refuses the product leaves the plant unpicked and destroys the spawned product.
-    inventory.GiveItem.mockReturnValue(false);
+    give.mockReturnValue(false);
     component.update(10);
     expect(component.canBePicked).toBe(true);
     player.position.x = 0;
@@ -109,12 +113,12 @@ it('walks to the arrive distance, gives the PICK product to the doer inventory a
     player.position.x = 20 - 1.9;
     click();
     stategraph.update(1);
-    expect(inventory.GiveItem).toHaveBeenCalledTimes(2);
+    expect(give).toHaveBeenCalledTimes(2);
     expect(component.exportState()).toEqual({});
     expect(component.canBePicked).toBe(true);
-    expect(inventory.entities.destroy).toHaveBeenCalledExactlyOnceWith(product);
+    expect(destroy).toHaveBeenCalledExactlyOnceWith(product(1));
   } finally {
-    controller.dispose(); instance.remove(); display.dispose();
+    controller.dispose(); instance.remove(); display.dispose(); inventory.dispose();
     expect(pointer.dispose).not.toHaveBeenCalled();
     expect(picker.getMouseActions().left).toBeUndefined();
     component.dispose(); disposeActionEntity(findActionEntity(model)); picker.dispose(); stopEvents();

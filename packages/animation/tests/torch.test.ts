@@ -1,4 +1,5 @@
 import { withEntity } from './entityFixture';
+import { testPlayer } from './testPlayer';
 import { pickupDoer } from './playerDoer';
 import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
@@ -147,11 +148,12 @@ describe('torch prefab burning lifecycle', () => {
     const world = createPerishWorld();
     store.entities.bindPerishWorld(world);
     const pushed: unknown[] = [];
-    const owner = { PushEvent: (name: string, data?: unknown) => {
+    // The player inst owns the store; player_common.lua listens for itemranout on it.
+    const player = testPlayer({ inventory: store });
+    for (const name of ['equip', 'unequip', 'itemranout']) player.ListenForEvent(name, (_inst, data) => {
       pushed.push({ name, slotEmpty: store.getEntity(hand) == null });
       if (name === 'itemranout') OnItemRanOut(store, data);
-    } };
-    store.bindActor({ ...owner, hasTag: () => false, getPosition: () => new THREE.Vector3() });
+    });
     try {
       store.add('torch', 2);
       store.applySlotChanges([{ slot: bag, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 }]);
@@ -245,7 +247,7 @@ describe('torch prefab burning lifecycle', () => {
         new THREE.Vector3(4, 0, 6));
       const entity = itemAt(model) as TorchInst;
       // inventoryitem:OnPutInInventory(owner): the owner's SoundEmitter is at the player.
-      const doer = { hasTag: () => false, getPosition: () => owner, PushEvent() {} };
+      const doer = testPlayer({ model: player, inventory });
       const saved = () => {
         const { components } = items.exportRecords().find(record => record.id === 'torch-lit')!;
         return { remainingFuel: components.stack!.remainingFuel, torchLit: components.torch?.lit ?? false };
@@ -352,7 +354,7 @@ describe('torch prefab burning lifecycle', () => {
   });
 
   it('ignites what it hits by the target flammability', () => {
-    const attacker = {}, ignite = vi.fn(), target = { isRemoved: false, components: { burnable: { flammability: .5, Ignite: ignite } } };
+    const attacker = testPlayer(), ignite = vi.fn(), target = { isRemoved: false, components: { burnable: { flammability: .5, Ignite: ignite } } };
     const random = vi.spyOn(Math, 'random').mockReturnValue(.6);
     onattack({}, attacker, target);
     expect(ignite).not.toHaveBeenCalled();

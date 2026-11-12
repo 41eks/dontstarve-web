@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -82,9 +83,9 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
     await prefabDisplay(tree.transform.model)!.artLoaded();
     const axe = s.inventory.entities.create({ itemId: 'axe', count: 1 });
     const [chop] = workTargets('CHOP');
-    for (let i = 0; i < 14; i++) expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
+    for (let i = 0; i < 14; i++) expect(performToolWork('CHOP', chop.entity, testPlayer(), axe)).toBe(true);
     expect(workTargets('DIG')).toEqual([]);
-    expect(performToolWork('CHOP', chop.entity, {}, axe)).toBe(true);
+    expect(performToolWork('CHOP', chop.entity, testPlayer(), axe)).toBe(true);
     // moon_cap has no ground item yet, so only the two logs are dropped.
     expect(s.drops).toEqual([{ itemId: 'log', count: 2 }]);
     expect(tree.minimap.icon).toBe('mushroom_tree_stump.png');
@@ -171,7 +172,7 @@ it('a chopped tree stops following the season but its stump keeps following the 
     await prefabDisplay(tree.transform.model)!.artLoaded();
     const axe = s.inventory.entities.create({ itemId: 'axe', count: 1 });
     const [chop] = workTargets('CHOP');
-    while (performToolWork('CHOP', chop.entity, {}, axe));
+    while (performToolWork('CHOP', chop.entity, testPlayer(), axe));
     expect(s.record().components.mushtree?.stump).toBe(true);
     player.set(new THREE.Vector3(400, 0, 0));
     await settle();

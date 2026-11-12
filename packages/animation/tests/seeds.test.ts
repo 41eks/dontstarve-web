@@ -1,4 +1,5 @@
 import { withEntity } from './entityFixture';
+import { testPlayer } from './testPlayer';
 import { pickupDoer } from './playerDoer';
 import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
@@ -75,7 +76,7 @@ it('renders the original ground seed pose and commits quick eating once at frame
 it('excludes broken soil and soil still being plowed from USEITEM actions', () => {
   const { farm, turf } = farmSetup(), inventory = createPickupInventory();
   const seeds = inventory.entities.create({ itemId: 'seeds', count: 1 }); inventory.configureItem(seeds);
-  const doer = { hasTag: () => false };
+  const doer = testPlayer({ inventory });
   try {
     const position = new THREE.Vector3(3, 0, 3); turf.plow(position);
     for (const [id, state] of [['broken', { broken: true }], ['working', { broken: false, plowId: 'plow' }]] as const) {

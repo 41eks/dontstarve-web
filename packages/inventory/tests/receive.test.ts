@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest';
-import { Vector3 } from 'three';
+import { playerEntity } from './playerEntity';
 import { InventorySlot, InventoryStore, inventorySlotAddress, type InventoryStack } from '../src';
 
 const specs = { cutgrass: { name: '草', icon: 'cutgrass.tex', maxStack: 40 },
@@ -13,8 +13,8 @@ function store(stacks: readonly (InventoryStack | null)[]) {
 it('handles GiveItem when partially or completely full, notifying only received quantities', () => {
   const inventory = store([{ itemId: 'cutgrass', count: 39 }, { itemId: 'rope', count: 20 }]);
   const receive = vi.fn(), drop = vi.fn();
-  const source = { x: 8, y: 0, z: 9 }, position = new Vector3(4, 0, 5);
-  inventory.bindActor({ hasTag: tag => tag === 'player', getPosition: () => position, PushEvent() {} });
+  const source = { x: 8, y: 0, z: 9 };
+  inventory.bindActor(playerEntity({ x: 4, y: 0, z: 5 }));
   inventory.subscribeReceived(receive);
   try {
     const partial = inventory.entities.create({ itemId: 'cutgrass', count: 3, wet: true });

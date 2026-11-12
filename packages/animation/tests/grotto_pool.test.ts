@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { testPlayer } from './testPlayer';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { unzipSync, strFromU8 } from 'fflate';
@@ -118,7 +119,7 @@ it('c_save and reload link a big pool to its saved children by ID instead of spa
     expect([x, z]).toEqual([12 + 1.15 * 3, -6 - 2.77 * 3]);
     expect([...first.waterfalls.values()]).toEqual([{ radius: 5.5, large: true }]);
     const glass = pool._children[1] as GrottoGlassInstance;
-    for (let i = 0; i < 6; i++) glass.components.workable!.WorkedBy({});
+    for (let i = 0; i < 6; i++) glass.components.workable!.WorkedBy(testPlayer());
     // A removed child leaves its slot.
     pool._children[4]!.remove();
     expect(pool._children[4]).toBeUndefined();

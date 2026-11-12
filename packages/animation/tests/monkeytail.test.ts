@@ -1,4 +1,5 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { testPlayer } from './testPlayer';
 import { prefabDisplays } from './prefabManagerFixture';
 import { plantManager } from './plantManagerFixture';
 import { prefabDisplay } from '@dontstarve-web/display';
@@ -207,7 +208,7 @@ it('withers in heat, reloads its recovery delay, regrows after rain and digs the
     s.advance(MONKEYTAIL_REGROW_TIME);
     expect(pickable.canBePicked).toBe(true);
     const mature = workTargets('DIG', s.scene)[0];
-    expect(performToolWork('DIG', mature.entity!, {})).toBe(true);
+    expect(performToolWork('DIG', mature.entity!, testPlayer())).toBe(true);
     expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutreeds', 'dug_monkeytail']);
     const dead = await drawn(s.monkeytails.spawn('monkeytail', new THREE.Vector3(80, 0, 6)).transform.model);
     plantInstance(dead).components.witherable!.ForceWither();

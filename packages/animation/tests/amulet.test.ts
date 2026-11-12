@@ -1,44 +1,44 @@
 import { expect, it, vi } from 'vitest';
-import { Vector3 } from 'three';
 import { Hunger } from '../../componets/src/hunger';
 import { Health } from '../../componets/src/health';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { AMULET_ID, REDAMULET_CONVERSION, REDAMULET_CONVERSION_TIME, REDAMULET_USES } from '../../prefab/src/amulet';
-import { AnimState } from '../src/animState';
 import { smallHash } from '../src/animationAssets';
 import { HAUNT_COOLDOWN_MEDIUM } from '../../componets/src/hauntable';
 import { createPickupInventory } from './pickupFixture';
+import { testPlayer } from './testPlayer';
+import { wilsonStateInst } from './wilsonStateInst';
+import { declaredAnimState } from './animStateFixture';
+import { addComponent } from '../../prefab/src/components';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
+import { GroundItemAssets } from '../../prefab/src/groundItems';
+import { HatEquipmentAssets } from '../../prefab/src/hats';
+import { SpriteState } from '@dontstarve-web/display';
+import { WilsonStateGraph, type WilsonStateName } from '../../stategraphs/src/SGwilson';
 import { createPerishWorld } from './perishWorldFixture';
 
 function wornAmulet(health: number, hunger: number) {
   const inventory = createPickupInventory(), world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
-  const stats = { health: new Health({}, 150), hunger: new Hunger({ components: {} }, 150) };
+  // The wearer is a player inst: its health and hunger, its stategraph, and the slots of its sprite equipment draws on.
+  const body = createEmptyEntity('wilson').instance;
+  const owner = testPlayer({ model: body.transform.model, inventory });
+  const stats = { health: addComponent(owner, 'health', Health, 150), hunger: addComponent(owner, 'hunger', Hunger, 150) };
   stats.health.SetCurrentHealth(health);
   stats.hunger.SetCurrent(hunger);
-  const state = { name: 'idle' };
-  const listeners = new Set<(inst: unknown, data: unknown) => void>();
-  const owner = { PushEvent: vi.fn(), components: stats,
-    sg: { hasStateTag: () => false, goToState: (name: string) => { state.name = name; }, get stateName() { return state.name; } },
-    hasTag: () => false, getPosition: () => new Vector3(),
-    ListenForEvent: (name: string, listener: (inst: unknown, data: unknown) => void) => {
-      if (name !== 'newstate') return () => {};
-      listeners.add(listener);
-      return () => { listeners.delete(listener); };
-    },
-    // owner.OpenEquipmentView: the amulet's own AnimState slot, which stays drawn while retained.
-    OpenEquipmentView: () => view,
-  };
-  const slot = { AnimState: new AnimState(), close: vi.fn(), released: vi.fn(), holds: 0 };
-  const view = Object.assign(Object.create(owner), { AnimState: slot.AnimState, presentation: {}, close: slot.close,
-    Retain: () => { slot.holds++; return () => { slot.holds--; slot.released(); }; } });
-  const enter = (name: string) => { state.name = name; for (const listener of [...listeners]) listener(owner, { statename: name }); };
-  // inventory:Equip runs equippable:Equip(owner): the owner is the inventory's actor.
-  inventory.bindActor(owner);
+  const graph = owner.SetStateGraph(() => new WilsonStateGraph(wilsonStateInst()));
+  const sprite = new SpriteState({ name: 'idle' }), assets = new GroundItemAssets();
+  owner.OpenEquipmentView = createEquipmentViews(owner, { sprite: { sprite, art: assets }, assets,
+    hats: new HatEquipmentAssets('/dst/data/anim'), lightParent: body });
+  // GoToState pushes "newstate" on the inst, as player_common's OnNewState hears it.
+  const enter = (name: WilsonStateName) => { graph.goToState(name); owner.PushEvent('newstate', { statename: name }); };
+  /** Whether the player's sprite still declares the amulet's swap_body. */
+  const swapBody = () => declaredAnimState(sprite).json.peek().overrides.has(smallHash('swap_body'));
   inventory.add(AMULET_ID, 1);
   const entity = inventory.getEntity(inventorySlotAddress(0))!;
   expect(inventory.EquipFromInventory(entity)).toBe(true);
-  return { inventory, world, entity, stats, slot, state, enter, owner };
+  return { inventory, world, entity, stats, enter, owner, swapBody };
 }
 
 it('is a body resurrector with source uses and a hauntable that resurrects', () => {
@@ -75,28 +75,24 @@ it('converts hunger into health every 30 game seconds while hurt, spending one u
 });
 
 it('stops converting once unequipped, and keeps its worn art through amulet_rebirth', () => {
-  const { inventory, world, stats, slot, enter } = wornAmulet(100, 100);
-  const swapBody = () => slot.AnimState.json.peek().overrides.has(smallHash('swap_body'));
+  const { inventory, world, stats, enter, swapBody } = wornAmulet(100, 100);
   try {
     expect(swapBody()).toBe(true);
     enter('amulet_rebirth');
     expect(inventory.Unequip('body')).not.toBeNull();
     // onunequip_red keeps swap_body; the slot is retained past equippable:Unequip closing the view.
     expect(swapBody()).toBe(true);
-    expect(slot.close).toHaveBeenCalledOnce();
-    expect(slot.holds).toBe(1);
     world.advance(REDAMULET_CONVERSION_TIME * 2);
     expect(stats.health.currenthealth).toBe(100);
     // SGwilson amulet_rebirth onexit: the art the amulet left goes as the owner leaves the state.
     enter('idle');
     expect(swapBody()).toBe(false);
-    expect(slot.holds).toBe(0);
     enter('amulet_rebirth');
-    expect(slot.released).toHaveBeenCalledOnce();
+    expect(swapBody()).toBe(false);
+    // Outside amulet_rebirth the art goes with the unequip.
     const second = wornAmulet(100, 100);
     second.inventory.Unequip('body');
-    expect(second.slot.AnimState.json.peek().overrides.has(smallHash('swap_body'))).toBe(false);
-    expect(second.slot.holds).toBe(0);
+    expect(second.swapBody()).toBe(false);
     second.inventory.dispose();
   } finally { inventory.dispose(); }
 });
@@ -115,10 +111,12 @@ it('asks a haunting ghost to respawn from the amulet, then cools down on the gam
   const { inventory, world, entity } = wornAmulet(150, 150);
   try {
     const hauntable = entity.components.hauntable!;
-    const ghost = { hasTag: (tag: string) => tag === 'playerghost', PushEvent: vi.fn() };
+    // A player's ghost haunts it.
+    const ghost = testPlayer({ tags: ['playerghost'] }), respawn = vi.fn();
+    ghost.ListenForEvent('respawnfromghost', (_inst, data) => respawn(data));
     hauntable.DoHaunt(ghost);
     // hauntable.lua: the amulet inst itself is the resurrection source.
-    expect(ghost.PushEvent).toHaveBeenCalledWith('respawnfromghost', { source: entity });
+    expect(respawn).toHaveBeenCalledWith({ source: entity });
     expect(entity.hasTag('haunted')).toBe(true);
     world.advance(HAUNT_COOLDOWN_MEDIUM);
     expect(entity.hasTag('haunted')).toBe(false);

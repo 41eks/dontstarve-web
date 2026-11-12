@@ -1,4 +1,5 @@
 import { createSignal } from '@dontstarve-web/signals';
+import { testPlayer } from './testPlayer';
 import type { ItemEntity } from '../../inventory/src/entity';
 import { PlayerController, type PlayerLocomotor } from '../../stategraphs/src/playercontroller';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
@@ -33,11 +34,10 @@ export function activeItemUse(world: object, stategraph: WilsonStateGraph,
   let arrival: (() => void) | undefined;
   const locomotor = { destination: undefined, goToPoint: () => true, stop() { arrival = undefined; },
     PushAction(_action: unknown, arrive: () => void) { arrival = arrive; } } as unknown as PlayerLocomotor;
-  const position = (world as ActionWorldContext).player.position;
-  const doer = { components: { inventory }, hasTag: (tag: string) => tag === 'player', position,
-    getPosition: () => position, PushEvent() {} };
+  // The player inst uses the item from its own inventory.
+  const doer = testPlayer({ model: (world as ActionWorldContext).player, inventory });
   const controller = new PlayerController(world as ActionWorldContext, stategraph, locomotor, createSignal(null),
-    doer as never, isManualMovement);
+    doer, isManualMovement);
   return {
     controller, doer,
     /** CollectActions("USEITEM"): the action names the active item offers on the target for one button. */

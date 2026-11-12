@@ -1,4 +1,8 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { Sanity } from '../../componets/src/sanity';
+import { addComponent } from '../../prefab/src/components';
+import { withEntity } from './entityFixture';
+import { testPlayer } from './testPlayer';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { PrefabEntityManager, prefabInstance as lookupPrefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -22,9 +26,8 @@ import { WORLD_SCALE } from '../../prefab/src/tile';
 import * as CANNON from 'cannon-es';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { canDoSceneAction } from './sceneActions';
-import type { PickActor } from '../../stategraphs/src/pick';
 import type { WorldEvents } from '../../prefab/src/worldContext';
-import { Combat, type CombatInst } from '../../componets/src/combat';
+import { Combat } from '../../componets/src/combat';
 import { Health } from '../../componets/src/health';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createPerishWorld } from './perishWorldFixture';
@@ -119,16 +122,16 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
   const animation = { stategraph: graph };
   const locomotor = new Locomotor({ position: s.world.player.position, velocity: new THREE.Vector3() } as unknown as CANNON.Body,
     { physicsRadius: .5 * WORLD_SCALE });
-  const sanity = vi.fn(), killed = vi.fn();
+  const killed = vi.fn();
   // The player inst: pickable:Pick(act.doer) spawns the petals into its inventory and its sanity takes the delta.
-  const picker = { hasTag: () => false, PushEvent: vi.fn(), getPosition: () => s.world.player.position,
-    components: { sanity: { DoDelta: sanity }, inventory: s.inventory } };
-  const controller = new PlayerController(s.world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), picker as never);
+  const picker = testPlayer({ model: withEntity(s.world.player, 'wilson'), inventory: s.inventory });
+  const sanity = vi.spyOn(addComponent(picker, 'sanity', Sanity, 200), 'DoDelta');
+  const controller = new PlayerController(s.world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), picker);
   try {
     const flower = await s.flowers.spawnFromSave('flower:pick', 'f6', new THREE.Vector3(2, 0, 0));
     const component = prefabInstance(flower)!.components.pickable;
     const entity = findActionEntity(flower)!;
-    expect(canDoSceneAction('PICK', flower, picker as never)).toBe(true);
+    expect(canDoSceneAction('PICK', flower, picker)).toBe(true);
     s.world.worldEvents.on('plantkilled', killed);
     const picked = vi.fn(() => expect(flower.parent).toBe(s.world.scene));
     prefabInstance(flower)!.ListenForEvent('picked', picked);
@@ -167,13 +170,12 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
 
 it('applies rose thorns through combat and respects equipped bramble protection and plantkin sanity immunity', async () => {
   const s = setup();
-  const sanity = vi.fn(), pushEvent = vi.fn();
-  const inst: CombatInst = { getPosition: () => s.world.player.position, getPhysicsRadius: () => 0,
-    hasTag: () => false, components: {} };
-  const health = new Health({}, 150), combat = new Combat(inst, () => 0);
-  inst.components.health = health;
-  const picker: PickActor = { hasTag: () => false, PushEvent: pushEvent,
-    components: { sanity: { DoDelta: sanity }, combat, inventory: s.inventory } };
+  // The picker is the player inst, with player_common.lua's health, sanity and combat and its own inventory.
+  const picker = testPlayer({ model: withEntity(s.world.player, 'wilson'), inventory: s.inventory });
+  const health = addComponent(picker, 'health', Health, 150);
+  const sanity = vi.spyOn(addComponent(picker, 'sanity', Sanity, 200), 'DoDelta');
+  addComponent(picker, 'combat', Combat, () => 0);
+  const pushEvent = vi.fn(); picker.ListenForEvent('thorns', () => pushEvent('thorns'));
   try {
     // A carried protective item does not protect until equipped.
     s.inventory.add('torch', 1);
@@ -189,14 +191,14 @@ it('applies rose thorns through combat and respects equipped bramble protection 
     expect(sanity).toHaveBeenCalledExactlyOnceWith(5);
     expect(s.inventory.EquipFromInventory(torch)).toBe(true);
     const protectedRose = await s.flowers.spawnFromSave('rose:protected', 'rose', new THREE.Vector3(8, 0, 0));
+    picker.addTag('plantkin');
     expect(prefabInstance(protectedRose)!.components.pickable!.pick({
-      picker: { ...picker, hasTag: (tag: string) => tag === 'plantkin' },
-      giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count),
+      picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count),
     })).toBe(true);
     expect(health.currenthealth).toBe(149);
     expect(pushEvent).toHaveBeenCalledOnce(); expect(sanity).toHaveBeenCalledOnce();
     expect(s.inventory.count('petals')).toBe(2);
-  } finally { health.dispose(); s.dispose(); }
+  } finally { picker.remove(); s.dispose(); }
 });
 
 it('perishes harvested petals in discrete batches and preserves freshness and quantity through cursor transfer and reload', async () => {
@@ -321,9 +323,12 @@ it('uses the live instance in source callbacks and declares type changes without
     expect(flower.sprite.sprite.peek()).toMatchObject({ clip: { name: 'f2', loop: false }, queue: [] });
 
     flower.OnLoad!(flower, { flower: { animation: 'rose' } });
-    const attack = vi.fn(), sanity = vi.fn(), thorns = vi.fn();
-    const picker = { hasTag: () => false, PushEvent: thorns,
-      components: { sanity: { DoDelta: sanity }, combat: { GetAttacked: attack } } } as unknown as PickActor;
+    // The picker is a player inst with its own health, sanity and combat.
+    const picker = testPlayer();
+    addComponent(picker, 'health', Health, 150);
+    const sanity = vi.spyOn(addComponent(picker, 'sanity', Sanity, 200), 'DoDelta');
+    const attack = vi.spyOn(addComponent(picker, 'combat', Combat, () => 0), 'GetAttacked');
+    const thorns = vi.fn(); picker.ListenForEvent('thorns', () => thorns('thorns'));
     const events: string[] = [];
     worldEvents.on('plantkilled', () => events.push('plantkilled'));
     flower.ListenForEvent('picked', () => events.push('picked'));

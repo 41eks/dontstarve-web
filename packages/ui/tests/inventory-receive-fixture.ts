@@ -1,4 +1,5 @@
 import { performToolWork } from '../../stategraphs/src/componentactions';
+import { testPlayer } from '../../animation/tests/testPlayer';
 import { actionEntities } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { mountGameUi, INVENTORY_RECIPES } from '../src';
@@ -69,7 +70,7 @@ export async function createReceiveFixture() {
       await ground.spawnFromSave('e_flight_fireflies', { itemId: 'fireflies', count: 1, ...spec }, position);
       const source = screenProjection.GetScreenPos(position);
       const firefly = [...actionEntities()].find(entity => entity.hasTag('NET_workable'))!;
-      const ok = performToolWork('NET', firefly, { components: { inventory } })
+      const ok = performToolWork('NET', firefly, testPlayer({ inventory }))
         && (!!firefly.components.inventoryitem?.owner || firefly.isRemoved);
       return { ok, source, remaining: ground.exportRecords().length };
     },

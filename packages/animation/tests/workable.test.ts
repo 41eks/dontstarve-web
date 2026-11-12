@@ -1,4 +1,5 @@
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { expect, it, vi } from 'vitest';
@@ -24,7 +25,9 @@ it('publishes readonly work and derived eligibility, while successful work expli
     expect(entity.hasTag('HAMMER_workable')).toBe(work.workleft.peek() > 0);
   });
   entity.ListenForEvent('workfinished', () => events.push('workfinished'));
-  const worker = { PushEvent: (name: string) => events.push(name) };
+  // The worker is a player inst; workable pushes "working" and "finishedwork" on it.
+  const worker = testPlayer();
+  for (const name of ['working', 'finishedwork']) worker.ListenForEvent(name, () => events.push(name));
   const worked = vi.fn(() => { events.push('onwork'); });
   work.SetOnWorkCallback(worked);
   work.SetOnFinishCallback((inst, doer) => { events.push('onfinish'); finish(inst, doer); });
@@ -74,7 +77,7 @@ it('reads current action eligibility during a transaction and publishes only the
       expect(entity.hasTag('NET_workable')).toBe(true);
       work.OnLoad({ workleft: 0 });
       expect(entity.hasTag('NET_workable')).toBe(false);
-      expect(work.WorkedBy({})).toBe(false);
+      expect(work.WorkedBy(testPlayer())).toBe(false);
       expect(canWork).not.toHaveBeenCalled();
       expect(tags).not.toHaveBeenCalled();
     });
@@ -94,7 +97,7 @@ it('preserves savestate rules and reacts to world removal, releasing memo depend
   const stop = work.canBeWorked.subscribe(eligibility);
   work.SetOnFinishCallback(finish);
   try {
-    source.work.WorkedBy({});
+    source.work.WorkedBy(testPlayer());
     expect(source.work.OnSave()).toEqual({});
     ordinary.work.OnLoad(source.work.OnSave());
     expect(ordinary.work.workleft.peek()).toBe(3);

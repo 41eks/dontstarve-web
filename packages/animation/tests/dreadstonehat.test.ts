@@ -1,5 +1,5 @@
 import { importedSave } from './importedSave';
-import { expect, it, vi } from 'vitest';
+import { expect, it } from 'vitest';
 import { inventorySlotAddress } from '../../inventory/src';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
@@ -11,28 +11,28 @@ import {
   ARMOR_DREADSTONEHAT, ARMOR_DREADSTONE_REGEN_MAXRATE, ARMOR_DREADSTONE_REGEN_MINRATE, CRAZINESS_MED, DREADSTONEHAT_ID,
 } from '../../prefab/src/dreadstonehat';
 import { createPickupInventory } from './pickupFixture';
+import { testPlayer } from './testPlayer';
+import { addComponent } from '../../prefab/src/components';
 import { createPerishWorld } from './perishWorldFixture';
 
 function wornHat(sanityPoints: number) {
   const inventory = createPickupInventory(), world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
-  const components: { inventory: typeof inventory; sanity?: Sanity } = { inventory };
-  const sanity = components.sanity = new Sanity({ components, hasTag: () => false }, 200);
+  // The wearer is a player inst with its own sanity; inventory:Equip calls equippable:Equip(owner) with it.
+  const owner = testPlayer({ inventory });
+  const sanity = addComponent(owner, 'sanity', Sanity, 200);
   sanity.SetCurrent(sanityPoints);
   const current = sanity;
-  // inventory:Equip calls equippable:Equip(owner) with the wearer.
-  const owner = { PushEvent: vi.fn(), components: { sanity } };
   inventory.add(DREADSTONEHAT_ID, 1);
   const entity = inventory.getEntity(inventorySlotAddress(0))!;
   expect(inventory.EquipFromInventory(entity)).toBe(true);
   const lifecycle = {
-    onequip: (wearer = owner) => entity.components.equippable!.Equip(wearer),
+    onequip: () => entity.components.equippable!.Equip(owner),
     onunequip: () => entity.components.equippable!.Unequip(owner),
   };
-  lifecycle.onequip();
   const armor = entity.components.armor!;
   return { inventory, world, entity, armor, current, sanity, lifecycle,
-    dispose() { lifecycle.onunequip(); sanity.dispose(); inventory.dispose(); } };
+    dispose() { lifecycle.onunequip(); owner.remove(); inventory.dispose(); } };
 }
 
 it('regenerates once per second after damage, faster at lower sanity, draining sanity until repaired', () => {
@@ -73,7 +73,7 @@ it('starts only while worn and damaged, and unequipping cancels the task', () =>
     hat.world.advance(5);
     expect(hat.armor.condition.peek()).toBe(ARMOR_DREADSTONEHAT - 51);
     // dreadstone_onequip restarts a damaged hat's regeneration.
-    hat.lifecycle.onequip({ PushEvent: vi.fn(), components: { sanity: hat.sanity } });
+    hat.lifecycle.onequip();
     hat.world.advance(1);
     expect(hat.armor.condition.peek()).toBeGreaterThan(ARMOR_DREADSTONEHAT - 51);
   } finally { hat.dispose(); }

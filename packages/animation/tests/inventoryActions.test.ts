@@ -1,4 +1,5 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import type * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
@@ -30,9 +31,8 @@ function setup() {
   const scene = new THREE.Scene();
   display.mount(scene);
   instance.setPosition(100, 0, 100);
-  instance.components.inventory = inventory;
-  inventory.bindActor({ hasTag: tag => instance.hasTag(tag), getPosition: () => instance.getPosition(),
-    PushEvent: (name, data) => instance.PushEvent(name, data) });
+  // The player inst owns the inventory.
+  testPlayer({ model: display.model, inventory });
   const canvas = new EventTarget();
   const world = { scene, player: display.model, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: canvas } } as unknown as ActionWorldContext;

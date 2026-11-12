@@ -1,4 +1,5 @@
 import { createPlayerEquipper } from './playerEquipFixture';
+import { testPlayer } from './testPlayer';
 import type { Growable } from '../../componets/src/growable';
 import { advancePlayer } from './playerVisual';
 import { playerDoer } from './playerDoer';
@@ -52,7 +53,7 @@ it('cycles all four source stages and split archives, resets chop work, removes 
     await drawn(model);
     expect((model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     expect(work.GetWorkLeft()).toBe(15);
-    expect(work.WorkedBy({})).toBe(true);
+    expect(work.WorkedBy(testPlayer())).toBe(true);
     const timer = growable.state.timer.peek(); s.scheduler.advance(100);
     expect(growable.state.timer.peek()).toBe(timer);
     s.spring(); s.scheduler.advance(1400);
@@ -138,7 +139,7 @@ it('commits source axe work, cancels before impact, preserves logical components
     expect(workTargets('CHOP')[0].entity.components.workable).toBe(work);
     expect(work.GetWorkLeft()).toBe(14);
     const current = workTargets('CHOP')[0];
-    expect(work.WorkedBy({ getPosition: () => player.position }, 14)).toBe(true);
+    expect(work.WorkedBy(testPlayer({ position: player.position }), 14)).toBe(true);
     expect(current.isValid()).toBe(false); expect(current.entity.hasTag('CHOP_workable')).toBe(false);
     expect(current.entity.hasTag('DIG_workable')).toBe(true);
     expect(s.dropLoot.mock.calls[0][0]).toEqual([{ itemId: 'log', count: 3 }, { itemId: 'pinecone', count: 2 }]);
