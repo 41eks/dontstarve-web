@@ -6,35 +6,66 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 /** DST constants.lua: one source animation frame is 1/30 second. */
 export const FRAMES = 1 / 30;
 
-export interface TimelineEvent<Context, Name extends string> {
-  time: number;
-  fn: (inst: StateGraphInstance<Context, Name>) => void;
+/**
+ * What a graph declares besides its context and state names: the fields its states keep in statemem, the data
+ * GoToState(name, data) hands each state that takes some, and the buffered actions its ActionHandlers read.
+ */
+export interface StateGraphSpec {
+  readonly mem: object;
+  readonly data: object;
+  readonly action: BufferedAction;
+}
+/** A graph that declares nothing: any statemem field, any state data and any buffered action. */
+export interface DefaultStateGraphSpec {
+  readonly mem: Record<string, unknown>;
+  readonly data: {};
+  readonly action: BufferedAction;
 }
 
-export interface StateEvent<Context, Name extends string> {
+/** The data state `N` is entered with: what the graph declares for it, else whatever GoToState passes. */
+export type StateData<Spec extends StateGraphSpec, N extends string> = N extends keyof Spec['data'] ? Spec['data'][N] : unknown;
+/** GoToState's data argument: required for a state the graph declares data for, unless that data may be nil. */
+type StateDataArgs<Spec extends StateGraphSpec, N extends string> = N extends keyof Spec['data']
+  ? undefined extends Spec['data'][N] ? [data?: Spec['data'][N]] : [data: Spec['data'][N]]
+  : [data?: unknown];
+
+export interface TimelineEvent<Context, Name extends string, Spec extends StateGraphSpec = DefaultStateGraphSpec> {
+  time: number;
+  fn: (inst: StateGraphInstance<Context, Name, Spec>) => void;
+}
+
+export interface StateEvent<Context, Name extends string, Spec extends StateGraphSpec = DefaultStateGraphSpec> {
   name: string;
   /** Method-typed, as each handler reads the data its event's pusher sends. */
-  fn: { call(inst: StateGraphInstance<Context, Name>, data: unknown): void }['call'];
+  fn: { call(inst: StateGraphInstance<Context, Name, Spec>, data: unknown): void }['call'];
 }
 
-export interface StateDefinition<Context, Name extends string> {
-  name: Name;
+/**
+ * A state named `N`. `onenter` reads the data the graph declares for `N`; it is method-typed so the graph can keep
+ * its states in one list, while GoToState checks the data each state is entered with.
+ */
+export interface StateDefinition<Context, Name extends string, Spec extends StateGraphSpec = DefaultStateGraphSpec,
+  N extends Name = Name> {
+  name: N;
   tags?: readonly string[];
-  onenter?: (inst: StateGraphInstance<Context, Name>, data: unknown) => void;
-  onupdate?: (inst: StateGraphInstance<Context, Name>, dt: number) => void;
-  timeline?: readonly TimelineEvent<Context, Name>[];
-  ontimeout?: (inst: StateGraphInstance<Context, Name>) => void;
-  events?: readonly StateEvent<Context, Name>[];
-  onexit?: (inst: StateGraphInstance<Context, Name>, nextState: Name) => void;
+  onenter?: { call(inst: StateGraphInstance<Context, Name, Spec>, data: StateData<Spec, N>): void }['call'];
+  onupdate?: (inst: StateGraphInstance<Context, Name, Spec>, dt: number) => void;
+  timeline?: readonly TimelineEvent<Context, Name, Spec>[];
+  ontimeout?: (inst: StateGraphInstance<Context, Name, Spec>) => void;
+  events?: readonly StateEvent<Context, Name, Spec>[];
+  onexit?: (inst: StateGraphInstance<Context, Name, Spec>, nextState: Name) => void;
 }
 
-export function State<Context, Name extends string>(definition: StateDefinition<Context, Name>) {
+/** State({ name, ... }): with `N` inferred from the name, its onenter reads the data the graph declares for it. */
+export function State<Context, Name extends string, Spec extends StateGraphSpec = DefaultStateGraphSpec, N extends Name = Name>(
+  definition: StateDefinition<Context, Name, Spec, N>,
+): StateDefinition<Context, Name, Spec, N> {
   return definition;
 }
 
-export function TimeEvent<Context, Name extends string>(
-  time: number, fn: TimelineEvent<Context, Name>['fn'],
-): TimelineEvent<Context, Name> {
+export function TimeEvent<Context, Name extends string, Spec extends StateGraphSpec = DefaultStateGraphSpec>(
+  time: number, fn: TimelineEvent<Context, Name, Spec>['fn'],
+): TimelineEvent<Context, Name, Spec> {
   if (!Number.isFinite(time) || time < 0) throw new Error('Invalid timeline time');
   return { time, fn };
 }
@@ -43,39 +74,42 @@ export function TimeEvent<Context, Name extends string>(
 type StoredEventListener = { call(data: unknown): void }['call'];
 
 /** EventHandler(name, fn): `data` is what the event's pusher sends (EntityEventData). */
-export function EventHandler<Context, Name extends string, E extends string = string>(
-  name: E, fn: (inst: StateGraphInstance<Context, Name>, data: EventData<E>) => void,
-): StateEvent<Context, Name> {
+export function EventHandler<Context, Name extends string, E extends string = string,
+  Spec extends StateGraphSpec = DefaultStateGraphSpec>(
+  name: E, fn: (inst: StateGraphInstance<Context, Name, Spec>, data: EventData<E>) => void,
+): StateEvent<Context, Name, Spec> {
   return { name, fn };
 }
 
-/**
- * ActionHandler(action, deststate, condition). `deststate` is method-typed over the actions the graph is pushed, as Lua
- * does not check them: a graph whose inst only buffers its own kind of action reads that action's target as its type.
- */
-export interface StateActionHandler<Context, Name extends string, Action extends BufferedAction = BufferedAction> {
+/** ActionHandler(action, deststate, condition), over the buffered actions the graph declares it is pushed. */
+export interface StateActionHandler<Context, Name extends string, Spec extends StateGraphSpec = DefaultStateGraphSpec> {
   action: string;
-  deststate: { call(inst: StateGraphInstance<Context, Name>, action: Action): Name | null | undefined }['call'];
-  condition?: (inst: StateGraphInstance<Context, Name>) => boolean;
+  deststate: (inst: StateGraphInstance<Context, Name, Spec>, action: Spec['action']) => Name | null | undefined;
+  condition?: (inst: StateGraphInstance<Context, Name, Spec>) => boolean;
 }
 
 /** scripts/stategraph.lua: string destinations are constant destination functions. */
-export function ActionHandler<Context, Name extends string, Action extends BufferedAction = BufferedAction>(
-  action: string, state: Name | StateActionHandler<Context, Name, Action>['deststate'],
-  condition?: StateActionHandler<Context, Name, Action>['condition'],
-): StateActionHandler<Context, Name, Action> {
+export function ActionHandler<Context, Name extends string, Spec extends StateGraphSpec = DefaultStateGraphSpec>(
+  action: string, state: Name | StateActionHandler<Context, Name, Spec>['deststate'],
+  condition?: StateActionHandler<Context, Name, Spec>['condition'],
+): StateActionHandler<Context, Name, Spec> {
   return { action, deststate: typeof state === 'string' ? () => state : state, condition };
 }
 
+/** A state as the graph keeps it: GoToState has already checked the data its onenter is handed. */
+type StoredState<Context, Name extends string, Spec extends StateGraphSpec> = Omit<StateDefinition<Context, Name, Spec>, 'onenter'> & {
+  onenter?: { call(inst: StateGraphInstance<Context, Name, Spec>, data: unknown): void }['call'];
+};
+
 /** State-local timelines and tags, mirroring scripts/stategraph.lua. */
-export class StateGraphInstance<Context, Name extends string> {
-  private readonly states = new Map<Name, StateDefinition<Context, Name>>();
-  private readonly actionHandlers = new Map<string, StateActionHandler<Context, Name>>();
+export class StateGraphInstance<Context, Name extends string, Spec extends StateGraphSpec = DefaultStateGraphSpec> {
+  private readonly states = new Map<Name, StoredState<Context, Name, Spec>>();
+  private readonly actionHandlers = new Map<string, StateActionHandler<Context, Name, Spec>>();
   /** The stategraph's own EventHandlers (stategraph.lua sg.events), beside the current state's. */
   private readonly listeners = new Map<string, Set<StoredEventListener>>();
   /** What follows GoToState, which stategraph.lua reports as the inst's "newstate" event rather than to a handler. */
   private readonly newStateListeners = new Set<(data: { name: Name }) => void>();
-  private current!: StateDefinition<Context, Name>;
+  private current!: StoredState<Context, Name, Spec>;
   private tags = new Set<string>();
   private timelineIndex = 0;
   private timeout: number | null = null;
@@ -89,13 +123,14 @@ export class StateGraphInstance<Context, Name extends string> {
   private disposed = false;
   private pausedAt: number | undefined;
   private readonly cancelScheduled = new Set<() => void>();
-  statemem: Record<string, unknown> = {};
+  /** stategraph.lua statemem: reset on every GoToState, holding the fields the graph's states declare. */
+  statemem: Partial<Spec['mem']> = {};
   timeInState = 0;
   readonly context: Context;
 
   constructor(
-    context: Context, states: readonly StateDefinition<Context, Name>[],
-    actionHandlers: readonly StateActionHandler<Context, Name>[] = [],
+    context: Context, states: readonly StateDefinition<Context, Name, Spec>[],
+    actionHandlers: readonly StateActionHandler<Context, Name, Spec>[] = [],
     scheduler?: GameTimeScheduler,
   ) {
     this.context = context;
@@ -149,21 +184,26 @@ export class StateGraphInstance<Context, Name extends string> {
   removeStateTag(tag: string): void { this.tags.delete(tag); }
   hasAnyStateTag(...tags: readonly string[]): boolean { return tags.some(tag => this.hasStateTag(tag)); }
 
-  getActionState(action: BufferedAction): Name | null {
+  getActionState(action: Spec['action']): Name | null {
     const handler = this.actionHandlers.get(action.action);
     if (!handler || (handler.condition && !handler.condition(this))) return null;
     const destination = handler.deststate(this, action);
     return destination != null && this.states.has(destination) ? destination : null;
   }
 
-  startAction(action: BufferedAction): boolean {
+  startAction(action: Spec['action']): boolean {
     const destination = this.getActionState(action);
     if (destination === null) return false;
-    this.goToState(destination);
+    // stategraph.lua StartAction: sg:GoToState(state) with no data.
+    this.enterState(destination, undefined);
     return true;
   }
 
-  goToState(name: Name, data?: unknown): void {
+  goToState<N extends Name>(name: N, ...[data]: StateDataArgs<Spec, N>): void {
+    this.enterState(name, data);
+  }
+
+  private enterState(name: Name, data: unknown): void {
     if (this.disposed) return;
     const state = this.states.get(name);
     if (!state) throw new Error(`Unknown state ${name}`);

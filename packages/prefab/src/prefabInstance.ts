@@ -65,8 +65,11 @@ export interface PrefabComponents extends ActionComponents {
  * inst.sg as other code reads and drives it, and the lifecycle EntityScript runs on it: stopped in limbo (pause),
  * started again on ReturnToScene (resume), and released with the entity (dispose).
  */
-type EntityStateGraph = Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'goToState' | 'pushEvent' | 'listenForEvent' | 'isListeningForEvent'>
-  & Partial<Pick<StateGraphInstance<unknown, string>, 'pause' | 'resume' | 'dispose' | 'startAction'>>;
+type EntityStateGraph = Pick<StateGraphInstance<unknown, string>, 'stateName' | 'hasStateTag' | 'pushEvent' | 'listenForEvent' | 'isListeningForEvent'>
+  & Partial<Pick<StateGraphInstance<unknown, string>, 'pause' | 'resume' | 'dispose' | 'startAction'>> & {
+    /** inst.sg:GoToState(name, data) from outside the graph, which does not know the graph's declared state data. */
+    goToState(name: string, data?: unknown): void;
+  };
 
 /** What EntityScript's distance methods read from the other inst: whether it is valid, and where it is. */
 type PositionedEntity = { readonly prefab?: string; isValid(): boolean; getPosition(): Vector3Like };

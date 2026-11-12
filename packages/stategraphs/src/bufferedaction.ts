@@ -15,7 +15,7 @@ export interface BufferedActionObject {
   readonly id?: string;
   readonly prefab?: string;
   readonly spelltype?: string;
-  readonly castsound?: string;
+  readonly castsound?: import('../../prefab/src/sound').SoundEventPath;
   /** staff.lua inst.projectiledelay: seconds a launched projectile stays hidden. */
   readonly projectiledelay?: number;
   readonly fxcolour?: readonly [number, number, number];

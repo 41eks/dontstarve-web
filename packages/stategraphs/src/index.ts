@@ -24,3 +24,4 @@ export { PlayerActionPicker } from './playeractionpicker.ts';
 export type { MouseActionCandidate, MouseActions } from './playeractionpicker.ts';
 export * from './playercontroller.ts';
 export { createBufferedAction, ACTION_FNS } from './actionfns.ts';
+export type { PlayerActionId } from './actionfns.ts';

@@ -1,4 +1,4 @@
-import { bindActionCancellation, type PlayerActionKind } from './actionEvents.ts';
+import { bindActionCancellation } from './actionEvents.ts';
 import { isHandActionBusy, type ActionLocomotor, type ActionWorldContext } from './actionContext.ts';
 import { createBufferedAction, customArriveCheck, extraArriveDist, hasActionFn, type PlayerAction, type PlayerActionDoer, type PlayerActionTarget } from './actionfns.ts';
 import { getActionDef, isMouseActionId, type ActionDescription } from './actions.ts';
@@ -107,7 +107,7 @@ export class PlayerController {
     const validfn = () => (invobject === undefined || (equipped ? invobject === this.equippedItem()
       : inventory.CanAccessItem(invobject)))
       && (!heldTarget || (target instanceof ItemEntity && inventory.CanAccessItem(target)));
-    return createBufferedAction(description.action as WilsonAction,
+    return createBufferedAction(description.action,
       { doer: this.doer, target, invobject, ...(pos ? { pos: { x: pos.x, y: pos.y, z: pos.z } } : {}) }, validfn);
   }
 
@@ -151,7 +151,7 @@ export class PlayerController {
     }
     // A repeated attack replaces the last through the stategraph's ATTACK handler; anything else ends it first.
     this.cancel(action.action === 'ATTACK' && this.action?.action === 'ATTACK');
-    this.world.actionEvents?.emit('action:begin', { owner: this, action: action.action as PlayerActionKind });
+    this.world.actionEvents?.emit('action:begin', { owner: this, action: action.action });
     this.stategraph.cancelEmote();
     this.action = action;
     // locomotor:PushAction with neither target nor pos buffers the action where the doer stands.

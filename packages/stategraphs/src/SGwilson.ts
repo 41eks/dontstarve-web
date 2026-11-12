@@ -1,7 +1,7 @@
 import type { EventData } from '../../componets/src/entityEvents';
 import { AnimationPlayback } from '@dontstarve-web/animation/animationPlayback';
 import type { BufferedActionObject } from './bufferedaction.ts';
-import type { PlayerAction } from './actionfns.ts';
+import type { PlayerAction, PlayerActionId, PlayerActionTarget } from './actionfns.ts';
 import { ActionHandler as DefineActionHandler, EventHandler, FRAMES, State as DefineState, StateGraphInstance, TimeEvent } from './stategraph.ts';
 import type { StateActionHandler, StateDefinition } from './stategraph.ts';
 import { wortoxStates } from './SGwortox.ts';
@@ -32,7 +32,8 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'portal_rez' | 'portal_jumpin_pre' | 'portal_jumpin' | 'portal_jumpout'
   /** SGwilson.lua amulet_rebirth: the player rising from a red amulet after a haunt resurrection. */
   | 'amulet_rebirth';
-export type WilsonAction = 'LOOKAT' | 'BLINK' | 'BLINK_MAP' | 'ATTACK' | 'MINE' | 'CHOP' | 'HAMMER' | 'NET' | 'TERRAFORM' | 'CASTSPELL' | 'EAT' | 'PLANT' | 'PLANTSOIL' | 'TILL' | 'DIG' | 'HARVEST' | 'PICK' | 'PICKUP' | 'LIGHT' | 'READ' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'DROP' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'DEPLOY' | 'DEPLOY_TILEARRIVE' | 'FERTILIZE' | 'BATHBOMB' | 'FISH' | 'HAUNT' | 'MIGRATE' | 'TURNON' | 'TURNOFF' | 'RUMMAGE';
+/** The actions SGwilson buffers: every ported actions.lua fn, and DROP / PLANT, which the player's inst makes itself. */
+export type WilsonAction = PlayerActionId | 'DROP' | 'PLANT';
 export type WilsonAnimationKey = 'dial_loop' | 'wortox_portal' | WilsonMovementState | WilsonOneShotState | 'build' | 'emote'
   | 'pickaxe_pre' | 'pickaxe_loop' | 'pickaxe_pst' | 'chop_pre' | 'chop_loop' | 'bugnet_pre' | 'bugnet'
   | 'shovel_pre' | 'shovel_loop' | 'shovel_pst' | 'staff_pre' | 'staff' | 'atk_pre' | 'atk'
@@ -177,9 +178,56 @@ export interface WilsonCombat {
   CancelAttack(): void;
 }
 
-type WilsonInstance = StateGraphInstance<WilsonStateGraph, WilsonStateName>;
-const State = DefineState<WilsonStateGraph, WilsonStateName>;
-const ActionHandler = DefineActionHandler<WilsonStateGraph, WilsonStateName, PlayerAction>;
+/** The fields SGwilson.lua's states keep in inst.sg.statemem. */
+export interface WilsonStateMem {
+  action: PlayerAction<WilsonAction> | null;
+  action_failed: boolean;
+  attacktarget: PlayerActionTarget | undefined;
+  book_fx: WilsonFx | undefined;
+  fx_over: WilsonFx | undefined;
+  fx_under: WilsonFx | undefined;
+  castsound: SoundEventPath;
+  checkfall: boolean;
+  dest: PortalJumpData;
+  istweencomplete: boolean;
+  iswaking: boolean;
+  not_interrupted: boolean;
+  projectiledelay: number | undefined;
+  projectilesound: SoundEventPath | undefined;
+  slipping: boolean;
+  soundtask: (() => void) | undefined;
+  speed: number;
+  stafflight: ReturnType<typeof SpawnCastingLight>;
+  symbolsoverridden: boolean;
+  toolname: string | undefined;
+  tweenElapsed: number | undefined;
+  unequipped: boolean;
+  usedamulet: boolean;
+}
+
+/** The data GoToState passes the states that read it. */
+export interface WilsonStateData {
+  idle: boolean | undefined;
+  talk: boolean | undefined;
+  toolbroke: WilsonBrokenTool | undefined;
+  slip: number | undefined;
+  slip_pst: number | undefined;
+  slip_fall: number | undefined;
+  book2: { readonly book_fx?: WilsonFx } | undefined;
+  fishing: string | undefined;
+  catchfish: string;
+  portal_jumpin: PortalJumpData;
+  portal_jumpout: PortalJumpData | undefined;
+}
+
+export interface WilsonStateSpec { mem: WilsonStateMem; data: WilsonStateData; action: PlayerAction }
+
+type WilsonInstance = StateGraphInstance<WilsonStateGraph, WilsonStateName, WilsonStateSpec>;
+export type WilsonState<N extends WilsonStateName = WilsonStateName> =
+  StateDefinition<WilsonStateGraph, WilsonStateName, WilsonStateSpec, N>;
+/** State({ name, ... }): the name picks the data its onenter reads. */
+const State = <N extends WilsonStateName>(definition: WilsonState<N>) => DefineState(definition);
+const ActionHandler = DefineActionHandler<WilsonStateGraph, WilsonStateName, WilsonStateSpec>;
 /**
  * SGwilson.lua DoHurtSound: dontstarve/characters/<soundsname or prefab>/hurt. The sound catalog has Wilson's hurt
  * event only, so every player sounds Wilson's.
@@ -227,6 +275,9 @@ function SpawnCastingLight(entity: WilsonStateInst, colour: readonly [number, nu
   return light;
 }
 
+/** The slip states' statemem.speed, which their onenter sets to the given speed or the run speed. */
+function slipSpeed(inst: WilsonInstance): number { return inst.statemem.speed ?? inst.context.entity.runSpeed; }
+
 /** SGwilson.lua toolbroke onexit: equip another equippable of the broken tool's prefab from the inventory. */
 function EquipSameTool(entity: WilsonStateInst, toolname: string): void {
   const inventory = entity.components.inventory;
@@ -267,7 +318,7 @@ const fishingClip = (name: string): WilsonAnimationClip => clip('fishing', name)
  * Mounted, character-specific, prediction, held-action repetition and pocket-rummage
  * branches require components not yet ported here; see docs/dst-stategraphs.md.
  */
-const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
+const states: WilsonState[] = [
   State({
     // SGwilson.lua shave: the beard component (or shaveable) vets the target before the sound and clips start.
     name: 'shave',
@@ -386,14 +437,13 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.context.entity.SoundEmitter.PlaySound('dontstarve/wilson/use_break');
       inst.context.entity.AnimState.Hide('ARM_carry');
       inst.context.entity.AnimState.Show('ARM_normal');
-      const broken = tool as WilsonBrokenTool | undefined;
-      if (!broken?.nobrokentoolfx) inst.context.entity.bookFx?.spawn('brokentool');
-      inst.statemem.toolname = broken?.prefab;
+      if (!tool?.nobrokentoolfx) inst.context.entity.bookFx?.spawn('brokentool');
+      inst.statemem.toolname = tool?.prefab;
       inst.setTimeout(10 * FRAMES);
     },
     ontimeout: inst => inst.goToState('idle', true),
     onexit: inst => {
-      const toolname = inst.statemem.toolname as string | undefined;
+      const toolname = inst.statemem.toolname;
       if (toolname !== undefined) EquipSameTool(inst.context.entity, toolname);
     },
   }),
@@ -431,15 +481,15 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.context.entity.slipperyfeet?.SetCurrent(0);
       inst.context.playClips([clip('slip_pre'), clip('slip_loop')]);
       inst.context.entity.SoundEmitter.PlaySound('dontstarve/movement/iceslab_slipping');
-      inst.statemem.speed = typeof speed === 'number' ? speed : inst.context.entity.runSpeed;
-      inst.context.entity.motorSpeed = inst.statemem.speed as number * 0.6;
+      inst.statemem.speed = speed ?? inst.context.entity.runSpeed;
+      inst.context.entity.motorSpeed = inst.statemem.speed * 0.6;
     },
     timeline: [
-      TimeEvent(6 * FRAMES, inst => inst.context.entity.motorSpeed = inst.statemem.speed as number * 0.3),
+      TimeEvent(6 * FRAMES, inst => inst.context.entity.motorSpeed = slipSpeed(inst) * 0.3),
       TimeEvent(10 * FRAMES, inst => inst.context.entity.SoundEmitter.PlaySound('dontstarve/movement/iceslab_slipping')),
-      TimeEvent(12 * FRAMES, inst => inst.context.entity.motorSpeed = inst.statemem.speed as number * 0.25),
+      TimeEvent(12 * FRAMES, inst => inst.context.entity.motorSpeed = slipSpeed(inst) * 0.25),
       TimeEvent(18 * FRAMES, inst => {
-        inst.context.entity.motorSpeed = inst.statemem.speed as number * 0.2;
+        inst.context.entity.motorSpeed = slipSpeed(inst) * 0.2;
         inst.statemem.checkfall = true;
       }),
       TimeEvent(20 * FRAMES, inst => inst.context.entity.SoundEmitter.PlaySound('dontstarve/movement/iceslab_slipping', undefined, .5)),
@@ -448,7 +498,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       EventHandler('locomote', inst => {
         if (inst.context.entity.wantsToMoveForward && inst.statemem.checkfall) {
           inst.statemem.slipping = true;
-          inst.goToState('slip_fall', inst.statemem.speed as number * 0.25);
+          inst.goToState('slip_fall', slipSpeed(inst) * 0.25);
         }
       }),
       EventHandler('animqueueover', inst => {
@@ -468,10 +518,10 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     tags: ['busy', 'nopredict', 'nomorph', 'jumping'],
     onenter: (inst, speed) => {
       inst.context.playClips([clip('slip_pst')]);
-      inst.statemem.speed = typeof speed === 'number' ? speed : inst.context.entity.runSpeed;
-      inst.context.entity.motorSpeed = inst.statemem.speed as number * 0.15;
+      inst.statemem.speed = speed ?? inst.context.entity.runSpeed;
+      inst.context.entity.motorSpeed = inst.statemem.speed * 0.15;
     },
-    timeline: [TimeEvent(2 * FRAMES, inst => inst.context.entity.motorSpeed = inst.statemem.speed as number * 0.1)],
+    timeline: [TimeEvent(2 * FRAMES, inst => inst.context.entity.motorSpeed = slipSpeed(inst) * 0.1)],
     events: [EventHandler('animover', inst => { if (inst.context.animationDone) inst.goToState('idle'); })],
     onexit: inst => {
       inst.context.entity.motorSpeed = undefined;
@@ -496,7 +546,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       TimeEvent(10 * FRAMES, inst => inst.context.entity.SoundEmitter.PlaySound('dontstarve/movement/slip_fall_thud')),
       // The source holds frame 13's speed for two frames on purpose.
       ...([[11, .64], [13, .32], [14, .16], [15, .08], [16, .04], [17, 0]] as const).map(([frame, factor]) =>
-        TimeEvent<WilsonStateGraph, WilsonStateName>(frame * FRAMES, inst => {
+        TimeEvent<WilsonStateGraph, WilsonStateName, WilsonStateSpec>(frame * FRAMES, inst => {
           if (frame === 11) DoHurtSound(inst.context.entity);
           if (typeof inst.statemem.speed === 'number') inst.context.entity.motorSpeed = inst.statemem.speed * factor;
         })),
@@ -868,7 +918,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     onupdate: (inst, dt) => {
       // components/colourtweener.lua StartTween({ 1, 1, 1, 1 }, 14 * FRAMES): a linear blend from black.
       if (inst.statemem.tweenElapsed === undefined) return;
-      const elapsed = Math.min((inst.statemem.tweenElapsed as number) + dt, PORTAL_REZ_TWEEN_TIME);
+      const elapsed = Math.min(inst.statemem.tweenElapsed + dt, PORTAL_REZ_TWEEN_TIME);
       inst.statemem.tweenElapsed = elapsed;
       const level = elapsed / PORTAL_REZ_TWEEN_TIME;
       inst.context.entity.AnimState.SetMultColour(level, level, level, 1);
@@ -989,7 +1039,10 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.statemem.stafflight = SpawnCastingLight(inst.context.entity, inst.context.getBufferedAction()?.invobject?.fxcolour ?? [1, 1, 1], 1.9, .33);
     },
     timeline: [
-      TimeEvent(13 * FRAMES, (inst) => inst.context.entity.SoundEmitter.PlaySound(inst.statemem.castsound as SoundEventPath)),
+      TimeEvent(13 * FRAMES, (inst) => {
+        // onenter always sets castsound; the engine's PlaySound(nil) plays nothing.
+        if (inst.statemem.castsound) inst.context.entity.SoundEmitter.PlaySound(inst.statemem.castsound);
+      }),
       TimeEvent(53 * FRAMES, (inst) => {
         inst.statemem.stafflight = undefined; // Can't be cancelled anymore
         inst.context.performBufferedAction();
@@ -1006,7 +1059,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     ],
     onexit: (inst) => {
       inst.context.entity.controllerEnabled = true;
-      (inst.statemem.stafflight as { remove(): void } | undefined)?.remove();
+      inst.statemem.stafflight?.remove();
     },
   }),
   State({
@@ -1056,9 +1109,9 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
         if (projectiledelay > 0) {
           // Projectiles stay hidden for their first frames, so the swing starts early to keep the animation in sync.
           inst.statemem.projectiledelay = 8 * FRAMES - projectiledelay;
-          if ((inst.statemem.projectiledelay as number) > FRAMES) {
+          if (inst.statemem.projectiledelay > FRAMES) {
             inst.statemem.projectilesound = equip.hasTag('firestaff') ? 'dontstarve/wilson/attack_firestaff' : 'dontstarve/wilson/attack_weapon';
-          } else if ((inst.statemem.projectiledelay as number) <= 0) inst.statemem.projectiledelay = undefined;
+          } else if (inst.statemem.projectiledelay <= 0) inst.statemem.projectiledelay = undefined;
         }
         if (inst.statemem.projectilesound === undefined) {
           inst.context.entity.SoundEmitter.PlaySound(equip.hasTag('shadow') ? 'dontstarve/wilson/attack_nightsword'
@@ -1078,12 +1131,12 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       inst.statemem.attacktarget = action?.target;
     },
     onupdate: (inst, dt) => {
-      const delay = inst.statemem.projectiledelay as number | undefined;
+      const delay = inst.statemem.projectiledelay;
       if (delay === undefined || delay <= 0) return;
       inst.statemem.projectiledelay = delay - dt;
       if (delay - dt <= FRAMES) {
         if (inst.statemem.projectilesound !== undefined) {
-          inst.context.entity.SoundEmitter.PlaySound(inst.statemem.projectilesound as SoundEventPath);
+          inst.context.entity.SoundEmitter.PlaySound(inst.statemem.projectilesound);
           inst.statemem.projectilesound = undefined;
         }
         if (delay - dt <= 0) {
@@ -1209,7 +1262,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       }),
     ],
     onexit: (inst) => {
-      const fx = inst.statemem.book_fx as WilsonFx | undefined;
+      const fx = inst.statemem.book_fx;
       if (!inst.statemem.not_interrupted && fx?.isValid()) fx.remove();
     },
   }),
@@ -1218,7 +1271,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     tags: ['doing', 'busy'],
     onenter: (inst, data) => {
       inst.context.playClips([clip('book')]);
-      inst.statemem.book_fx = (data as { book_fx?: WilsonFx } | undefined)?.book_fx;
+      inst.statemem.book_fx = data?.book_fx;
       const book = inst.context.getBufferedAction()?.invobject;
       if (book) {
         if (book.def?.fx_over_prefab) inst.statemem.fx_over = inst.context.entity.bookFx?.spawn(book.def.fx_over_prefab, 'swap_book_fx_over');
@@ -1252,11 +1305,11 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
       // Without repeatcast, source frame 13 defers fn19 and frame 44 defers fn50.
       TimeEvent(19 * FRAMES, (inst) => inst.context.entity.SoundEmitter.PlaySound('dontstarve/common/use_book_light')),
       TimeEvent(50 * FRAMES, (inst) => {
-        const fx = inst.statemem.book_fx as WilsonFx | undefined;
+        const fx = inst.statemem.book_fx;
         const bookFx = fx?.isValid() ? fx : undefined;
         bookFx?.detach();
         inst.statemem.book_fx = undefined; // Don't cancel anymore
-        inst.context.entity.SoundEmitter.PlaySound(inst.statemem.castsound as SoundEventPath);
+        if (inst.statemem.castsound) inst.context.entity.SoundEmitter.PlaySound(inst.statemem.castsound);
         inst.removeStateTag('busy');
         if (!inst.context.performBufferedAction()) bookFx?.pushEvent('fail_fx');
       }),
@@ -1273,11 +1326,11 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
         inst.context.entity.AnimState.OverrideSymbol('book_open', 'player_actions_uniqueitem', 'book_open');
         inst.context.entity.AnimState.OverrideSymbol('book_closed', 'player_actions_uniqueitem', 'book_closed');
       }
-      for (const key of ['book_fx', 'fx_over', 'fx_under']) {
-        const fx = inst.statemem[key] as WilsonFx | undefined;
+      for (const key of ['book_fx', 'fx_over', 'fx_under'] as const) {
+        const fx = inst.statemem[key];
         if (fx?.isValid()) fx.remove();
       }
-      const soundtask = inst.statemem.soundtask as (() => void) | undefined;
+      const soundtask = inst.statemem.soundtask;
       if (soundtask) soundtask();
       else if (inst.context.entity.SoundEmitter.PlayingSound('book_layer_sound')) inst.context.entity.SoundEmitter.SetVolume('book_layer_sound', .5);
     },
@@ -1396,7 +1449,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
     tags: ['fishing', 'catchfish', 'busy'],
     onenter: (inst, build) => {
       inst.context.playClips([fishingClip('fish_catch')]);
-      inst.context.entity.AnimState.OverrideSymbol('fish01', build as string, 'fish01');
+      inst.context.entity.AnimState.OverrideSymbol('fish01', build, 'fish01');
     },
     timeline: [
       TimeEvent(8 * FRAMES, (inst) => inst.context.entity.SoundEmitter.PlaySound('dontstarve/common/fishingpole_fishcaught')),
@@ -1425,7 +1478,7 @@ const states: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
 ];
 
 /** Browser movement/visual adapters; Lua's locomotion states are not ported here. */
-const applicationStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
+const applicationStates: WilsonState[] = [
   State({
     name: 'walk',
     tags: ['moving', 'running'],
@@ -1459,7 +1512,7 @@ const applicationStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] = 
 ];
 
 /** SGwilson.lua action handlers for the supported, unmounted player/tool branches. */
-const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName, PlayerAction>[] = [
+const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName, WilsonStateSpec>[] = [
   ActionHandler('BLINK', (inst, action) => !action.invobject && inst.context.entity.soulHopHost ? 'portal_jumpin_pre' : null),
   ActionHandler('BLINK_MAP', (inst, action) => !action.invobject && inst.context.entity.soulHopHost ? 'portal_jumpin_pre' : null),
   // Ranged, blowdart and mounted destinations need unported states.

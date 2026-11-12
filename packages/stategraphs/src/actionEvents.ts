@@ -1,7 +1,8 @@
 import type { ActionWorldContext } from './actionContext.ts';
+import type { WilsonAction } from './SGwilson.ts';
 
-export type PlayerActionKind = 'BLINK' | 'BLINK_MAP' | 'ATTACK' | 'HAMMER' | 'MINE' | 'CHOP' | 'TERRAFORM' | 'TILL' | 'DIG' | 'PLANTSOIL'
-  | 'NET' | 'PICK' | 'PICKUP' | 'HARVEST' | 'EAT' | 'READ' | 'BUILD' | 'DEPLOY' | 'DEPLOY_TILEARRIVE' | 'FERTILIZE' | 'BATHBOMB' | 'CASTSPELL' | 'LIGHT' | 'GIVE' | 'FEED' | 'REPAIR' | 'SHAVE' | 'STORE' | 'TAKEITEM' | 'ADDFUEL' | 'ADDWETFUEL' | 'SLEEPIN' | 'PLAY' | 'FISH' | 'HAUNT' | 'MIGRATE' | 'TURNON' | 'TURNOFF' | 'RUMMAGE';
+/** An action whose start cancels other work: one the player buffers, or the building placer's BUILD. */
+export type PlayerActionKind = WilsonAction | 'BUILD';
 export type ActionInterruptReason = 'slot-select' | 'slot-context-menu' | 'drop' | 'craft' | 'crafting' | 'emote';
 export interface PlayerActionEvents {
   'action:begin': { owner: object; action: PlayerActionKind };

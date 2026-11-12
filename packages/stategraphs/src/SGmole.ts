@@ -1,4 +1,5 @@
 import { ActionHandler, EventHandler, FRAMES, StateGraphInstance, TimeEvent, type StateDefinition } from './stategraph';
+import type { EventData } from '../../componets/src/entityEvents';
 import type { BufferedAction } from './bufferedaction';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { LocoMotor } from '../../componets/src/locomotor';
@@ -28,7 +29,7 @@ export interface MoleStateInst {
   startStunnedSounds(skippre: boolean): void;
   stopStunnedSounds(): void;
   spawnMoveFx(): void;
-  onAttacked(data: unknown): void;
+  onAttacked(data: EventData<'attacked'>): void;
   isDead(): boolean;
   remove(): void;
 }

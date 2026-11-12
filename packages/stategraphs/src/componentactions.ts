@@ -8,7 +8,6 @@ import type { Propagator } from '../../componets/src/propagator';
 import type { Vector3 } from 'three';
 import { getDeconstructionRecipe } from '../../componets/src/recipes.ts';
 import { getActionDef } from './actions.ts';
-import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { SpellCastDoer } from '../../componets/src/spellcaster';
 import { FOODGROUP, FOODTYPE } from '../../componets/src/eater';
 import { ItemEntity } from '../../inventory/src/entity';
@@ -52,14 +51,12 @@ export interface ComponentActionEntity extends WorkInst {
     weapon?: import('../../componets/src/weapon').Weapon;
     repairable?: import('../../componets/src/repairable').Repairable;
     repairer?: import('../../componets/src/repairer').Repairer;
-    fueled?: {
-      CanAcceptFuelItem(item: Pick<import('../../componets/src/fuel').FuelItem, 'components'>): boolean;
-      TakeFuelItem(item: import('../../componets/src/fuel').FuelItem, doer?: unknown): boolean;
-    };
+    /** Picked from the class: its inst type parameter is the owning prefab's, which actions do not read. */
+    fueled?: Pick<import('../../componets/src/fueled').Fueled, 'CanAcceptFuelItem' | 'TakeFuelItem'>;
     trader?: import('../../componets/src/trader').Trader<import('../../componets/src/trader').TradeItem>;
-    occupiable?: { CanOccupy(item: any): boolean; Occupy(item: any): boolean; IsOccupied(): boolean; Harvest(): import('../../inventory/src/entity').ItemEntity | undefined };
-    machine?: { IsOn(): boolean; TurnOn(): void; TurnOff(): void };
-    shelf?: { readonly cantakeitem: boolean; TakeItem(taker: { GiveItem(item: never): boolean }): boolean };
+    occupiable?: Pick<import('../../componets/src/occupiable').Occupiable<ItemEntity>, 'CanOccupy' | 'Occupy' | 'IsOccupied' | 'Harvest'>;
+    machine?: import('../../componets/src/machine').Machine;
+    shelf?: import('../../componets/src/shelf').Shelf<ItemEntity>;
     inspectable?: import('../../componets/src/inspectable').Inspectable;
     fishable?: import('../../componets/src/fishable').Fishable;
     book?: import('../../componets/src/book').BookComponent;
@@ -83,10 +80,8 @@ const TOOLACTIONS = ['NET', 'HAMMER', 'MINE', 'CHOP', 'DIG'] as const;
 export type ToolAction = typeof TOOLACTIONS[number];
 
 /** The parts of an entity componentactions reads: its tags and the components it registered. */
-export type ComponentActionTarget = Pick<ComponentActionEntity, 'hasTag' | 'isRemoved'> & {
-  readonly prefab?: string;
-  readonly components?: object;
-};
+/** The entity under the mouse an EQUIPPED entry tests: its components, its position and its physics radius. */
+export type ComponentActionTarget = ComponentActionEntity & { getPosition(): Vector3; getPhysicsRadius(): number };
 
 type IsValidFn = (inst: ComponentActionTarget, action: string, right: boolean) => boolean;
 
@@ -278,8 +273,7 @@ export const COMPONENT_ACTIONS: {
     // attack on a combat target is not offered here.
     weapon: (inst, doer, target, actions, right) => {
       if (inst.hasTag('outofammo') || !doer?.components?.combat) return;
-      // combat:CanLightTarget reads the target entity's components; a spell's target view is no combat target.
-      if (right && target instanceof PrefabInstance && doer.components.combat.CanLightTarget(target, inst.components.weapon)) actions.push('ATTACK');
+      if (right && doer.components.combat.CanLightTarget(target, inst.components.weapon)) actions.push('ATTACK');
     },
     tool: (inst, _doer, target, actions, right) => {
       if (target.hasTag('INLIMBO') || inst.components.equippable?.IsRestricted()) return;

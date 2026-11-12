@@ -116,16 +116,23 @@ export class Mole extends ItemEntity implements MoleBrainInst, LocoMotorInst {
   /** spawner:ReleaseChild's child:ReturnToScene beside the hill. */
   // conventions-allow instance-method: spawner:ReleaseChild calls it on the child.
   leaveHome(): void {
-    this.occupied = false; this.removeTag('INLIMBO'); const home = this.home!;
-    const angle = this.random() * Math.PI * 2;
-    const position = home.getPosition();
-    this.setPosition(position.x + Math.cos(angle) * WORLD_SCALE, position.y, position.z - Math.sin(angle) * WORLD_SCALE);
+    this.occupied = false; this.removeTag('INLIMBO');
+    // spawner:ReleaseChild places the child beside its hill; without one it returns where it stands.
+    const home = this.home;
+    if (home) {
+      const angle = this.random() * Math.PI * 2;
+      const position = home.getPosition();
+      this.setPosition(position.x + Math.cos(angle) * WORLD_SCALE, position.y, position.z - Math.sin(angle) * WORLD_SCALE);
+    }
     this.physics.Teleport(); this.physics.SetActive(true);
     this.stategraph.resume(); this.stategraph.goToState('idle'); this.brain?.Start(); this.components.sleeper?.StartTesting();
   }
   /** ACTIONS.MAKEMOLEHILL's fn. */
   // conventions-allow instance-method: ACTIONS.MAKEMOLEHILL's fn, which the brain's action runs for inst.
-  makeHome(): boolean { this.moleWorld!.makeHome(this); this.needs_home_time = undefined; return true; }
+  makeHome(): boolean {
+    if (!this.moleWorld) return false;
+    this.moleWorld.makeHome(this); this.needs_home_time = undefined; return true;
+  }
 }
 
 /** In the world rather than held or in its hill. */
@@ -199,14 +206,15 @@ function stateContext(inst: Mole): MoleStateInst {
     pushAnimation: (name, loop) => inst.animstate.PushAnimation(name, loop),
     performBufferedAction: () => inst.PerformBufferedAction() === true,
     clearBufferedAction: () => inst.ClearBufferedAction(),
-    get SoundEmitter() { return inst.SoundEmitter!; },
+    // MakeMole added the emitter; AddSoundEmitter returns the one the inst has.
+    get SoundEmitter() { return inst.AddSoundEmitter(); },
     dropInventory: () => DropInventory(inst),
     dropDeathLoot: () => { inst.persists = false; inst.moleWorld?.dropLoot('smallmeat', inst.getPosition().clone()); },
     setPickup: enabled => { inst.components.inventoryitem.canbepickedup = enabled; },
     startStunnedSounds: skippre => StartStunnedSounds(inst, skippre),
     stopStunnedSounds: () => StopStunnedSounds(inst),
     spawnMoveFx: () => inst.moleWorld?.spawnMoveFx(inst.getPosition()),
-    onAttacked: data => OnAttacked(inst, data as EntityEventData['attacked']),
+    onAttacked: data => OnAttacked(inst, data),
     isDead: () => isDead(inst),
     remove: () => inst.remove(),
   };
@@ -268,7 +276,7 @@ function SyncStateTags(inst: Mole): void {
 function StopSounds(inst: Mole): void { inst.SoundEmitter?.KillAllSounds(); }
 function StartStunnedSounds(inst: Mole, skippre: boolean): void {
   const delay = skippre ? 0 : inst.animstate.length;
-  const sound = inst.SoundEmitter!;
+  const sound = inst.AddSoundEmitter();
   // SGmole stunned: DoPeriodicTask(23 * FRAMES, PlayStunnedSound / KillStunnedSound).
   inst.playtask?.Cancel(); inst.killtask?.Cancel();
   inst.playtask = inst.DoPeriodicTask(23 / 30, () => {
@@ -288,7 +296,7 @@ function OnAttacked(inst: Mole, data: EntityEventData['attacked']): void {
   inst.stopfleetask?.Cancel();
   inst.stopfleetask = inst.DoTaskInTime(3 + Math.floor(inst.random() * 4), () => { inst.flee = false; });
   let count = 0;
-  for (const mole of inst.moleWorld!.getMoles()) if (mole.getPosition().distanceToSquared(inst.getPosition()) <= (30 * WORLD_SCALE) ** 2) {
+  for (const mole of inst.moleWorld?.getMoles() ?? []) if (mole.getPosition().distanceToSquared(inst.getPosition()) <= (30 * WORLD_SCALE) ** 2) {
     mole.PushEvent('gohome'); if (++count > 5) break;
   }
   const weapon = data.weapon;
@@ -335,7 +343,7 @@ export function UpdateMole(inst: Mole, dt: number): void {
   if (inst.speed > 0) {
     const angle = inst.rotation * Math.PI / 180;
     const p = inst.getPosition().clone().add(new Vector3(Math.cos(angle) * inst.speed * dt, 0, -Math.sin(angle) * inst.speed * dt));
-    if (inst.moleWorld!.isWalkable(p)) {
+    if (inst.moleWorld?.isWalkable(p)) {
       if (body) syncMotor(inst); else inst.setPosition(p.x, p.y, p.z);
     } else inst.locomotor.Stop();
   }

@@ -1,15 +1,15 @@
 import type { Vector3 } from 'three';
-import type { WilsonStateGraph, WilsonStateName, PortalJumpData } from './SGwilson.ts';
+import type { WilsonState, WilsonStateGraph, WilsonStateName, WilsonStateSpec } from './SGwilson.ts';
 import { State, TimeEvent, EventHandler, FRAMES } from './stategraph.ts';
 
 /** SGwilson.lua's unmounted Wortox portal states, shared by ground and map jumps. */
-const state = State<WilsonStateGraph, WilsonStateName>;
-const time = (frame: number, fn: Parameters<typeof TimeEvent<WilsonStateGraph, WilsonStateName>>[1]) =>
-  TimeEvent<WilsonStateGraph, WilsonStateName>(frame * FRAMES, fn);
+const state = <N extends WilsonStateName>(definition: WilsonState<N>) => State(definition);
+const time = (frame: number, fn: Parameters<typeof TimeEvent<WilsonStateGraph, WilsonStateName, WilsonStateSpec>>[1]) =>
+  TimeEvent<WilsonStateGraph, WilsonStateName, WilsonStateSpec>(frame * FRAMES, fn);
 const tint = (frame: number, value: number) => time(frame, inst => inst.context.entity.soulHopHost?.setTint(value));
 const play = (name: string) => [{ key: 'wortox_portal' as const, name: `wortox_portal_${name}` }];
 
-export const wortoxStates = [
+export const wortoxStates: WilsonState[] = [
   state({
     name: 'portal_jumpin_pre', tags: ['busy'],
     onenter: inst => {
@@ -57,10 +57,10 @@ export const wortoxStates = [
     onenter: (inst, data) => {
       inst.context.entity.soulHopHost?.setPhysicsEnabled(false);
       inst.context.entity.locomotor?.stop();
-      const jump = data as PortalJumpData;
-      inst.context.entity.soulHopHost?.teleport(jump.dest);
+      // Without data the player comes out where it stands.
+      if (data) inst.context.entity.soulHopHost?.teleport(data.dest);
       inst.context.entity.soulHopHost?.resetMinimapOffset?.();
-      if (jump.from_map) inst.context.entity.soulHopHost?.snapCamera?.();
+      if (data?.from_map) inst.context.entity.soulHopHost?.snapCamera?.();
       inst.context.playClips(play('jumpout'));
       inst.context.entity.soulHopHost?.spawnFx('wortox_portal_jumpout_fx');
       inst.context.entity.soulHopHost?.setTint(1);

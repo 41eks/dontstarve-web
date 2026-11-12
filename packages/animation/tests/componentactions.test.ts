@@ -43,29 +43,31 @@ it('validates reskin spells and advances each tool cache only after a successful
   const first = new ItemEntity({ itemId: 'reskin_tool', count: 1 });
   const second = new ItemEntity({ itemId: 'reskin_tool', count: 1 });
   configureReskinToolEntity(first); configureReskinToolEntity(second);
-  let blocked = false, visible = true;
+  let visible = true;
+  // The entity the mouse picks; the reskin spell reads it through its target view.
+  const picked = new ItemEntity({ itemId: 'test_structure', count: 1 });
   const sprite = new SpriteState({ name: '' });
   const target: ReskinTarget = reskinTarget({
     id: 'target', prefabId: 'test_structure', model: new THREE.Group(), position: new THREE.Vector3(), sprite,
-    skins: ['skin_a', 'skin_b'], isRemoved: false, hasTag: tag => blocked && tag === 'nomagic', isVisible: () => visible,
+    skins: ['skin_a', 'skin_b'], isRemoved: false, hasTag: tag => picked.hasTag(tag), isVisible: () => visible,
     isValid: () => true,
   });
   const doer = { position: new THREE.Vector3(), hasTag: () => false, components: {} };
   try {
-    expect(collectEquippedItemActions(first, undefined, target, true)).toEqual(['CASTSPELL']);
+    expect(collectEquippedItemActions(first, undefined, picked, true)).toEqual(['CASTSPELL']);
     // CanCast only asks; the tool's cache advances with a cast.
     expect(first.components.spellcaster!.canCast(doer, target, target.position.clone())).toBe(true);
     expect(first._cached_reskinname!.size).toBe(0);
     visible = false;
     expect(first.components.spellcaster!.canCast(doer, target, target.position.clone())).toBe(false);
-    visible = true; blocked = true;
-    expect(collectEquippedItemActions(first, undefined, target, true)).toEqual([]);
-    blocked = false;
+    visible = true; picked.addTag('nomagic');
+    expect(collectEquippedItemActions(first, undefined, picked, true)).toEqual([]);
+    picked.removeTag('nomagic');
     expect(first.components.spellcaster!.castSpell(target, target.position.clone(), doer)).toBe(true);
     expect(sprite.skinId.peek()).toBe('skin_a');
     expect(target.skinId).toBe('skin_a');
     expect(nextReskin(target.skins, target.skinId, first._cached_reskinname, target.prefabId)).toBe('skin_b');
     expect(nextReskin(target.skins, target.skinId, second._cached_reskinname, target.prefabId)).toBeUndefined();
     first.destroy(); expect(first.hasTag('castontargets')).toBe(false);
-  } finally { first.destroy(); second.destroy(); }
+  } finally { first.destroy(); second.destroy(); picked.destroy(); }
 });

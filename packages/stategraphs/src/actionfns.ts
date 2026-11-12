@@ -1,7 +1,7 @@
 import { BufferedAction } from './bufferedaction.ts';
 import { Vector3 } from 'three';
 import { snapToTileCenter, TILE_SIZE, WORLD_SCALE } from '../../prefab/src/tile';
-import { performLightAction, performToolWork, type ComponentActionEntity, type ToolAction } from './componentactions.ts';
+import { performLightAction, performToolWork, type ComponentActionEntity, type ComponentActionTarget, type ToolAction } from './componentactions.ts';
 import { preparePickReceiver } from './pick.ts';
 import { canPickUp, performPickupAction, type PickupDoer } from './pickup.ts';
 import { performRummageAction } from './rummage.ts';
@@ -10,8 +10,7 @@ import { ItemEntity } from '../../inventory/src/entity';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 
 /** act.target of the player's actions: a scene entity or an item, with the components actions.lua reaches on it. */
-export type PlayerActionTarget = ComponentActionEntity & {
-  getPosition(): Vector3; getPhysicsRadius(): number; readonly isRemoved: boolean;
+export type PlayerActionTarget = ComponentActionTarget & {
   /** EntityScript:GetDisplayName, for the action strings that name the item. */
   getDisplayName?(): string;
 };
@@ -94,12 +93,12 @@ function deploy(act: PlayerAction): boolean {
     if (!item || !map || !item.components.deployable?.CanDeploy(point, map)) return false;
     const inventory = doer.components.inventory, obj = inventory.RemoveItem(item);
     if (!obj) return false;
-    if (obj.components.deployable!.Deploy(point, doer, map)) return true;
+    if (obj.components.deployable?.Deploy(point, doer, map)) return true;
     inventory.GiveItem(obj);
     return false;
 }
 
-export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
+export const ACTION_FNS = {
   GIVE: {
     fn: act => {
       const item = act.invobject, trader = act.target?.components.trader;
@@ -153,7 +152,7 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
       const item = act.invobject, occupiable = act.target?.components.occupiable;
       if (!item?.components.occupier || !occupiable?.CanOccupy(item)) return false;
       // inventoryitem:RemoveFromOwner(): the same inst leaves the doer's inventory.
-      return occupiable.Occupy(playerDoer(act).components.inventory.RemoveItem(item));
+      return occupiable.Occupy(playerDoer(act).components.inventory.RemoveItem(item) ?? undefined);
     },
   },
   FEED: {
@@ -369,7 +368,10 @@ export const ACTION_FNS: Readonly<Partial<Record<string, ActionFns>>> = {
     },
     validfn: act => !components(act).hauntable?.IsHaunted(),
   },
-};
+} satisfies Readonly<Record<string, ActionFns>>;
+
+/** The actions.lua actions whose fn is ported, which the player's controller can buffer. */
+export type PlayerActionId = keyof typeof ACTION_FNS;
 
 /** actions.lua ADDFUEL: detach one live item; return rejected fuel to the active stack or inventory. */
 function addFuel(act: PlayerAction): boolean {
@@ -386,16 +388,18 @@ function addFuel(act: PlayerAction): boolean {
   return false;
 }
 
-export function hasActionFn(action: string): boolean { return ACTION_FNS[action] !== undefined; }
+export function hasActionFn(action: string): action is PlayerActionId { return Object.hasOwn(ACTION_FNS, action); }
+
+function actionFns(action: string): ActionFns | undefined { return hasActionFn(action) ? ACTION_FNS[action] : undefined; }
 
 /** locomotor.lua: action.extra_arrive_dist(doer, dest, bufferedaction). */
 /** locomotor.lua OnUpdate: action.customarrivecheck(doer, dest, bufferedaction), when the action has one. */
 export function customArriveCheck(act: PlayerAction): (() => boolean) | undefined {
-  const check = ACTION_FNS[act.action]?.customarrivecheck;
+  const check = actionFns(act.action)?.customarrivecheck;
   return check && (() => check(act));
 }
 
-export function extraArriveDist(act: PlayerAction): number { return ACTION_FNS[act.action]?.extra_arrive_dist?.(act) ?? 0; }
+export function extraArriveDist(act: PlayerAction): number { return actionFns(act.action)?.extra_arrive_dist?.(act) ?? 0; }
 
 /**
  * bufferedaction.lua BufferedAction(doer, target, action, invobject): Do runs ACTIONS[action].fn, and IsValid
@@ -407,7 +411,7 @@ export function createBufferedAction<Action extends string>(action: Action, obje
   readonly target?: PlayerActionTarget;
   readonly invobject?: ItemEntity;
 }, validfn: () => boolean = () => true): PlayerAction<Action> {
-  const fns = ACTION_FNS[action];
+  const fns = actionFns(action);
   if (!fns) throw new Error(`No actions.lua fn ported for ${action}`);
   const buffered: PlayerAction<Action> = new BufferedAction(action, () => fns.fn(buffered),
     () => !objects.invobject?.isRemoved && !objects.target?.isRemoved && validfn() && (fns.validfn?.(buffered) ?? true),

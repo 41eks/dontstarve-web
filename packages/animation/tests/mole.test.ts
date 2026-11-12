@@ -10,7 +10,12 @@ import type { InventoryStack } from '../../inventory/src/types';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { loadAnim } from '../src/animationAssets';
 import { BindMoleWorld, MakeMole, Mole, SetAbovePhysics, UpdateMole, configureMoleEntity } from '../../prefab/src/mole';
-import { createMoleHabitat, molehillPrefabs, MOLEHILL_ID, type MolehillInstance } from '../../prefab/src/molehill';
+import { createMoleHabitat, molehillPrefabs, MOLEHILL_ID, MolehillInstance } from '../../prefab/src/molehill';
+
+function molehill(inst: unknown): MolehillInstance {
+  if (!(inst instanceof MolehillInstance)) throw new Error('Expected a molehill');
+  return inst;
+}
 import { configureMoleBaitEntity } from '../../prefab/src/molebait';
 import { StealMoleBaitAction } from '../../stategraphs/src/moleactions';
 import { CreateBufferedAction } from '../../brains/src/bufferedaction';
@@ -55,13 +60,13 @@ async function fixture(daytime = false) {
   const fx = vi.fn();
   const habitat = createMoleHabitat({
     getWatchWorldContent: watch, cameraHeading: heading, isWalkable: () => true,
-    spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position) as MolehillInstance, fx: { spawn: fx },
+    spawnPrefab: (prefab, position) => molehill(prefabs.spawn(prefab, position)), fx: { spawn: fx },
     spawnItem, dropItem: (entity, position) => { entity.transform.copyPosition(position); entity.PushEvent('ondropped', undefined); drops.push({ entity, prefab: entity.prefab, position: position.clone() }); },
     showMole: () => undefined, dropLoot: (prefab, position) => drops.push({ prefab, position }),
   });
   prefabs.register(molehillPrefabs(habitat) as never);
   const hills = () => prefabs.exportRecords().map(({ record }) => record);
-  const spawnHill = (position: THREE.Vector3, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawn(MOLEHILL_ID, position, saved) as MolehillInstance;
+  const spawnHill = (position: THREE.Vector3, saved?: Parameters<typeof prefabs.spawn>[2]) => molehill(prefabs.spawn(MOLEHILL_ID, position, saved));
   const bank = await loadAnim('mole_basic.zip', '/dst/data/anim');
   const lengths = new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate]));
   const mole = (position = new THREE.Vector3(), entityId?: string) => {
@@ -204,7 +209,7 @@ it('c_spawn and c_save keep a hill whose child is outside, which reclaims that m
   registry.registerPrefabs(PREFAB_DEFINITIONS.molehills);
   expect((await executeDebugCommand('c_spawn("molehill")', inventory, id => registry.spawn(id))).ok).toBe(true);
   const [{ record: { id } }] = f.prefabs.exportRecords();
-  const hill = f.prefabs.get(id) as MolehillInstance, mole = f.mole(new THREE.Vector3(9, 0, 3)); mole.brain!.Stop();
+  const hill = molehill(f.prefabs.get(id)), mole = f.mole(new THREE.Vector3(9, 0, 3)); mole.brain!.Stop();
   hill.components.spawner.TakeOwnership(mole);
   expect(mole.home).toBe(hill);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
@@ -220,7 +225,7 @@ it('c_spawn and c_save keep a hill whose child is outside, which reclaims that m
   const restored = await fixture(true), restoredRegistry = new EntityRegistry([], restored.prefabs, () => new THREE.Vector3());
   restoredRegistry.registerPrefabs(PREFAB_DEFINITIONS.molehills);
   await restoredRegistry.restoreAll({ molehill: entities.molehill });
-  const loaded = restored.prefabs.get(id) as MolehillInstance;
+  const loaded = molehill(restored.prefabs.get(id));
   expect(loaded.position.toArray()).toEqual([6, 0, 3]);
   expect(loaded.components.spawner.child).toBeUndefined();
   // The saved childid is kept until the mole joins, as OnLoadPostPass's newents lookup.

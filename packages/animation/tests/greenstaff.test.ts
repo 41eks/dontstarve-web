@@ -45,8 +45,10 @@ describe('greenstaff source deconstruction', () => {
       components: { sanity: { DoDelta: doDelta }, staffsanity: { doCastingDelta: staffDelta } } };
     expect(entity.hasTag('castonrecipes')).toBe(true);
     expect(entity.hasTag('castontargets')).toBe(false);
-    expect(collectEquippedItemActions(entity, undefined, opal, true)).toEqual(['CASTSPELL']);
-    expect(collectEquippedItemActions(entity, undefined, { prefab: 'livinglog', isRemoved: false, hasTag: () => false }, true)).toEqual([]);
+    expect(collectEquippedItemActions(entity, undefined, opal.entity, true)).toEqual(['CASTSPELL']);
+    const livinglog = new ItemEntity({ itemId: 'livinglog', count: 1 });
+    expect(collectEquippedItemActions(entity, undefined, livinglog, true)).toEqual([]);
+    livinglog.destroy();
     const action = createBufferedAction('CASTSPELL', { doer: doer as never, target: opal as never, invobject: entity, pos: opal.position });
     expect(action.target).toBe(opal);
     expect(action.do()).toBe(true);

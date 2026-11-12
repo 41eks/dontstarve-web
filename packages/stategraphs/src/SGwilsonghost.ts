@@ -1,13 +1,12 @@
 import { ActionHandler as DefineActionHandler, EventHandler, FRAMES, State as DefineState, TimeEvent } from './stategraph.ts';
-import type { StateActionHandler } from './stategraph.ts';
-import type { StateDefinition } from './stategraph.ts';
-import type { WilsonAnimationClip, WilsonStateGraph, WilsonStateName } from './SGwilson.ts';
+import type { StateActionHandler, StateGraphInstance } from './stategraph.ts';
+import type { WilsonAnimationClip, WilsonState, WilsonStateGraph, WilsonStateName, WilsonStateSpec } from './SGwilson.ts';
 
-const State = DefineState<WilsonStateGraph, WilsonStateName>;
+const State = <N extends WilsonStateName>(definition: WilsonState<N>) => DefineState(definition);
 /** ghost.zip's clips are selected by name from the `ghost` bank. */
 const ghostClip = (name: string, loop = false): WilsonAnimationClip => ({ key: 'ghost', name, ...loop ? { loop } : {} });
 const GHOST_HOWL = 'dontstarve/ghost/ghost_howl';
-type GhostInstance = Parameters<NonNullable<StateDefinition<WilsonStateGraph, WilsonStateName>['onenter']>>[0];
+type GhostInstance = StateGraphInstance<WilsonStateGraph, WilsonStateName, WilsonStateSpec>;
 
 /** SGwilsonghost idle/run: `if not inst.AnimState:IsCurrentAnimation("idle") then PlayAnimation("idle", true)`. */
 function playGhostIdle(inst: GhostInstance): void {
@@ -17,15 +16,15 @@ function playGhostIdle(inst: GhostInstance): void {
 const GHOST_HAUNT = 'dontstarve/ghost/ghost_haunt';
 
 /** SGwilsonghost.lua actionhandlers: only HAUNT is ported (jumpin, remoteresurrect, migrate and climb need their actions). */
-export const ghostActionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName>[] = [
-  DefineActionHandler<WilsonStateGraph, WilsonStateName>('HAUNT', 'haunt_pre'),
+export const ghostActionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName, WilsonStateSpec>[] = [
+  DefineActionHandler<WilsonStateGraph, WilsonStateName, WilsonStateSpec>('HAUNT', 'haunt_pre'),
 ];
 
 /**
  * SGwilsonghost.lua: the ghost's idle, run, appear, haunt_pre, haunt and hit states. The dissipate, talk, remoteresurrect,
  * migrate and rewindtime states and every action but HAUNT are not ported, so every other buffered action is refused. `walk` is the browser's slower movement request and plays the same idle loop.
  */
-export const ghostStates: StateDefinition<WilsonStateGraph, WilsonStateName>[] = [
+export const ghostStates: WilsonState[] = [
   State({
     name: 'idle',
     tags: ['idle', 'canrotate'],
