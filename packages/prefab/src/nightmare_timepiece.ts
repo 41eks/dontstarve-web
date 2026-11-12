@@ -28,7 +28,7 @@ type TrackerOwner = InventoryActor & {
 
 function trackerOwner(owner: InventoryActor | undefined, entity: ItemEntity): TrackerOwner | undefined {
   const tracker = owner as Partial<TrackerOwner> | undefined;
-  const address = entity.components.inventoryitem.owner?.address;
+  const address = entity.components.inventoryitem.slot?.address;
   return address && tracker?.addTag && tracker.components?.inventory?.isHeldByActor(address) ? tracker as TrackerOwner : undefined;
 }
 

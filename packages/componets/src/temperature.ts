@@ -3,13 +3,13 @@ import { createSignal, readonlySignal, watchSignal, type ReadonlySignal } from '
 import type { Heater } from './heater';
 import type { ComponentUpdates } from './componentUpdates';
 
+/** inventoryitem.owner, whose fridge and pocket-dimension tags change the held inst's temperature. */
 export interface TemperatureOwner {
-  hasTag?(tag: string): boolean;
-  getPosition?(): Vector3;
+  hasTag(tag: string): boolean;
 }
 export interface TemperatureInst {
   readonly isRemoved: boolean;
-  readonly components: { inventoryitem: { owner: TemperatureOwner | null } };
+  readonly components: { inventoryitem: { readonly owner: TemperatureOwner | null; GetHeldPosition(): Vector3 | undefined } };
   getPosition(): Vector3;
   GetIsWet(): boolean;
   PushEvent(name: string, data: unknown): void;
@@ -72,11 +72,12 @@ export class Temperature {
   GetMax(): number { return this.maxtemp; }
   GetAmbientTemperature(): number {
     const owner = this.inst.components.inventoryitem.owner;
-    return owner?.hasTag?.('pocketdimension_container') ? this.ambient?.peek() ?? 35
+    return owner?.hasTag('pocketdimension_container') ? this.ambient?.peek() ?? 35
       : this.world?.getLocalTemperature?.(this.getPosition()) ?? this.ambient?.peek() ?? 35;
   }
   private getPosition(): Vector3 {
-    return this.inst.components.inventoryitem.owner?.getPosition?.() ?? this.inst.getPosition();
+    // A held inst is its holder's child, at the holder's position.
+    return this.inst.components.inventoryitem.GetHeldPosition() ?? this.inst.getPosition();
   }
   IgnoreTags(...tags: string[]): void { this.ignoreheatertags = ['INLIMBO', ...tags]; }
   SetTemp(value?: number): void {
@@ -111,12 +112,12 @@ export class Temperature {
     const current = this.GetCurrent(), ambient = this.GetAmbientTemperature();
     const owner = this.inst.components.inventoryitem.owner;
     let minimum = this.mintemp;
-    if (owner?.hasTag?.('fridge') && !owner.hasTag('nocool')) {
+    if (owner?.hasTag('fridge') && !owner.hasTag('nocool')) {
       minimum = Math.max(minimum, Math.min(0, ambient));
       this.rate = owner.hasTag('lowcool') ? -.5 : -1;
     } else {
       let delta = ambient - current;
-      if (!owner?.hasTag?.('pocketdimension_container')) {
+      if (!owner?.hasTag('pocketdimension_container')) {
         const position = this.getPosition(), scale = this.world?.unitScale ?? 1, radius = 10 * scale;
         for (const source of this.world?.findHeaters?.(position, radius, this.ignoreheatertags) ?? []) {
           if ((source as unknown) === this.inst || this.ignoreheatertags.some(tag => source.hasTag(tag))) continue;

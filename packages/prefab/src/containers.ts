@@ -8,21 +8,16 @@ import { addComponent, removeComponent } from './components';
 
 export type BuildingContainer = Container<InventoryStack, ItemEntity, ItemSlot>;
 
-export function createBuildingContainer(prefab: StorageBuildingId, inst: object): BuildingContainer {
-    if (prefab === 'icebox') {
-        const holder = inst as { addTag?(tag: string): void; tags?: Set<string> };
-        if (holder.addTag) holder.addTag('fridge');
-        else (holder.tags ??= new Set()).add('fridge');
-    }
+/** AddComponent("container") on a storage building, with containers.lua's widget setup for its prefab. */
+export function createBuildingContainer(prefab: StorageBuildingId, inst: PrefabInstance): BuildingContainer {
+    if (prefab === 'icebox') inst.addTag('fridge');
     const definition = buildingContainerDefinition(prefab);
     const createSlot = () => definition.singleItems ? new PreparedFoodSlot(null, (_spec, itemId) => prefab !== 'cookpot' || (itemId !== undefined && IsCookingIngredient(itemId)))
             // containers.lua params.bookstation.itemtestfn: item:HasTag("bookcabinet_item").
             : new StorageSlot(null, prefab === 'bookstation' ? (_spec, itemId) => itemId !== undefined && isBookCabinetItem(itemId) : undefined);
     // SpawnSaveRecord of each content in the building's world, or alone outside one.
-    const loadItem = (record: InventoryStack) => (inst as Partial<Pick<PrefabInstance, 'worldServices'>>).worldServices?.spawnItem?.(record)
-        ?? new ItemEntity(record);
-    const container = inst instanceof PrefabInstance ? addComponent(inst, 'container', Container<InventoryStack, ItemEntity, ItemSlot>, createSlot, loadItem)
-        : new Container<InventoryStack, ItemEntity, ItemSlot>(inst, createSlot, loadItem);
+    const loadItem = (record: InventoryStack) => inst.worldServices?.spawnItem?.(record) ?? new ItemEntity(record);
+    const container = addComponent(inst, 'container', Container<InventoryStack, ItemEntity, ItemSlot>, createSlot, loadItem);
     container.type = definition.type;
     container.SetNumSlots(definition.slotCount);
     return container;

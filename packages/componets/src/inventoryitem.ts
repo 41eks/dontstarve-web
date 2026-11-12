@@ -10,6 +10,24 @@ export interface InventoryActor {
   getPosition(): import('three').Vector3;
   PushEvent(name: string, data: unknown): void;
 }
+/**
+ * inventoryitem.owner: the entity holding the inst, whose child it is (owner:AddChild) — the player, a container's inst
+ * such as a chest or a worn backpack, or a creature.
+ */
+export interface ItemHolder {
+  hasTag(tag: string): boolean;
+  getPosition(): import('three').Vector3;
+  PushEvent(name: string, data?: unknown): void;
+  /** The holder's own components; a holder that is itself an item (a backpack) has an inventoryitem. */
+  readonly components?: object;
+}
+
+/** The holder that is itself held: its inventoryitem, when it has one. */
+function heldHolder(owner: ItemHolder): InventoryItem<InventoryItemInstance, ItemHolder, unknown> | undefined {
+  const item = owner.components && 'inventoryitem' in owner.components ? owner.components.inventoryitem : undefined;
+  return item instanceof InventoryItem ? item : undefined;
+}
+
 export interface InventoryItemInstance {
   hasTag(tag: string): boolean;
   PushEvent(name: string, data: unknown): void;
@@ -30,8 +48,11 @@ export interface InventoryImage { readonly icon: string; readonly atlas: string 
 export interface InventoryAppearance extends InventoryImage { readonly name: string }
 export interface InventoryItemSprite { readonly skinId?: string; readonly clip: { readonly name: string } }
 
-/** inventoryitem.lua's supported pickup/ownership hooks; slot addresses remain store-owned. */
-export class InventoryItem<Instance extends InventoryItemInstance, Owner> {
+/**
+ * inventoryitem.lua's supported pickup/ownership hooks. `owner` is the holder entity; `slot` is the holder's slot of the
+ * inst (inventory/container:GetItemSlot), which the store holding it binds together with the owner.
+ */
+export class InventoryItem<Instance extends InventoryItemInstance, Owner extends ItemHolder, Slot = never> {
   readonly inst: Instance;
   /** inventoryitem.imagename/atlasname, set by ChangeImageName. */
   private readonly imagename = createSignal<InventoryImage | undefined>(undefined);
@@ -68,10 +89,35 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner> {
     this.memos?.image.dispose(); this.memos?.appearance.dispose(); this.memos?.skinId.dispose();
   }
   private ownerValue: Owner | null = null;
+  private slotValue: Slot | null = null;
   get owner(): Owner | null { return this.ownerValue; }
+  /** The holder's slot of the inst while it is held; it goes with the owner. */
+  get slot(): Slot | null { return this.slotValue; }
+  /** inventoryitem:OnPutInInventory's SetOwner, with the slot its holder put it in. */
+  SetOwner(owner: Owner, slot: Slot): void {
+    this.owner = owner;
+    this.slotValue = slot;
+  }
+  /** inventoryitem:GetGrandOwner(): through a held holder (a worn backpack) to the one that holds it. */
+  GetGrandOwner(): ItemHolder | null {
+    const owner = this.ownerValue;
+    if (!owner) return null;
+    const held = heldHolder(owner);
+    return held ? held.GetGrandOwner() : owner;
+  }
+  /**
+   * Transform:GetWorldPosition of a held inst: owner:AddChild puts it at its holder, and a held holder at its own
+   * holder. Undefined while the inst is not held.
+   */
+  GetHeldPosition(): import('three').Vector3 | undefined {
+    const owner = this.ownerValue;
+    if (!owner) return undefined;
+    return heldHolder(owner)?.GetHeldPosition() ?? owner.getPosition();
+  }
   set owner(owner: Owner | null) {
     const previous = this.ownerValue;
     this.ownerValue = owner;
+    if (owner === null) this.slotValue = null;
     // OnPutInInventory's RemoveFromScene and OnRemoved's ReturnToScene: a held inst is in limbo, as is its minimap icon.
     this.inst.MiniMapEntity?.SetEnabled(owner === null && !this.inst.isRemoved);
     if (this.inst.isRemoved || (previous === null) === (owner === null)) return;
@@ -82,7 +128,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner> {
   cangoincontainer = true;
   grabbableoverridetag?: string;
   onpickupfn?: (inst: Instance, owner: InventoryActor, source?: ItemPosition) => boolean | void;
-  onputininventoryfn?: (inst: Instance, owner: InventoryActor) => void;
+  onputininventoryfn?: (inst: Instance, owner: ItemHolder) => void;
 
   constructor(inst: Instance) { this.inst = inst; }
   CanBePickedUp(doer: InventoryActor): boolean {
@@ -100,7 +146,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner> {
    * body in `launch`'s direction, then `ondropped`. An inst without a body lands where it is.
    */
   OnDropped(launch?: import('./inventoryphysics').LootLaunch): void {
-    if (this.inst.isRemoved) { this.ownerValue = null; return; }
+    if (this.inst.isRemoved) { this.ownerValue = null; this.slotValue = null; return; }
     this.owner = null;
     // OnRemoved's ReturnToScene, also for an inst a holder took out of the scene without a store owner.
     this.inst.ReturnToScene?.();
@@ -108,7 +154,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner> {
       ?.inventoryphysics?.Launch(launch);
     this.inst.PushEvent('ondropped', undefined);
   }
-  OnPutInInventory(doer: InventoryActor): void {
+  OnPutInInventory(doer: ItemHolder): void {
     this.inst.transform.setPosition(0, 0, 0);
     this.onputininventoryfn?.(this.inst, doer);
     this.inst.PushEvent('onputininventory', doer);

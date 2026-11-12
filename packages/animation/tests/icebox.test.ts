@@ -10,6 +10,7 @@ import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { Temperature } from '../../componets/src/temperature';
 import { Heater } from '../../componets/src/heater';
 import { createBuildingContainer } from '../../prefab/src/containers';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { managedBuildings } from './managedBuildings';
 import { HeatRock } from '../../prefab/src/heatrock';
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -27,7 +28,7 @@ const held = inventorySlotAddress(0), chilled = { containerId: 'world:icebox:fri
 it('uses the fridge multiplier while closed, settles the old holder on transfer and releases scheduled updates', () => {
   const inventory = createPickupInventory(), world = createPerishWorld(), clock = world.perishClock;
   inventory.entities.bindPerishWorld(world);
-  const container = createBuildingContainer('icebox', {});
+  const container = createBuildingContainer('icebox', createEmptyEntity('icebox').instance);
   inventory.registerContainer(chilled.containerId, container);
   try {
     inventory.add('red_cap', 2);
@@ -59,25 +60,26 @@ it('stops frozen perishables in a fridge and below zero, with nocool/lowcool usi
   const ambient = createSignal(20), world = createPerishWorld(ambient), clock = world.perishClock;
   const item = new ItemEntity({ itemId: 'frozen_fixture', count: 1, wet: true }, world);
   item.addTag('frozen');
-  const tags = new Set(['fridge']);
-  item.components.inventoryitem.owner = { address: chilled, hasTag: tag => tags.has(tag),
-    changed() {}, PushEvent() {}, remove: () => false, replace: () => false };
+  // Held in an icebox: the item's owner is the icebox itself.
+  const fridge = createEmptyEntity('icebox').instance;
+  fridge.addTag('fridge');
+  item.components.inventoryitem.owner = fridge;
   const perish = item.components.perishable;
   perish.SetPerishTime(100); perish.StartPerishing();
   const advance = (dt: number) => { world.advance(dt); perish.flush(); };
   try {
     advance(20);
     expect(perish.GetPercent()).toBe(1);
-    tags.add('lowcool'); advance(10);
+    fridge.addTag('lowcool'); advance(10);
     expect(perish.GetPercent()).toBeCloseTo(.935);
-    tags.delete('lowcool'); tags.add('nocool'); advance(10);
+    fridge.removeTag('lowcool'); fridge.addTag('nocool'); advance(10);
     expect(perish.GetPercent()).toBeCloseTo(.87);
     ambient.set(-1); advance(10);
     expect(perish.GetPercent()).toBeCloseTo(.87);
     // Exactly zero is outside perishable.lua's frozen ambient branch.
     ambient.set(0); advance(10);
     expect(perish.GetPercent()).toBeCloseTo(.805);
-    tags.delete('nocool');
+    fridge.removeTag('nocool');
     perish.SetPercent(0); advance(10);
     expect(perish.timer.peek()).toEqual({ status: 'perished' });
   } finally { item.destroy(); clock.dispose(); }
@@ -86,7 +88,7 @@ it('stops frozen perishables in a fridge and below zero, with nocool/lowcool usi
 it('cools stones to the source floor, resumes ambient changes outside the fridge and consumes a completed cold cycle once', async () => {
   const inventory = createPickupInventory(), ambient = createSignal(35);
   inventory.entities.bindTemperatureWorld({ temperature: ambient, componentUpdates: new ComponentUpdates() });
-  inventory.registerContainer(chilled.containerId, createBuildingContainer('icebox', {}));
+  inventory.registerContainer(chilled.containerId, createBuildingContainer('icebox', createEmptyEntity('icebox').instance));
   try {
     inventory.add('heatrock', 1);
     const item = inventory.getEntity(held)!, temp = item.components.temperature!, rock = item.getComponent<HeatRock>('heatrock')!;
@@ -136,16 +138,16 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
 it('honours lowcool, nocool, heater falloff and ignored stones, and cleans up world signal bridges', () => {
   const ambient = createSignal(35), phase = createSignal({ phase: 'day' });
   const item = new ItemEntity({ itemId: 'heatrock', count: 1 });
-  const tags = new Set(['fridge', 'lowcool']);
-  item.components.inventoryitem.owner = { address: chilled, hasTag: tag => tags.has(tag),
-    changed() {}, PushEvent() {}, remove: () => false, replace: () => false };
+  const fridge = createEmptyEntity('icebox').instance;
+  fridge.addTag('fridge'); fridge.addTag('lowcool');
+  item.components.inventoryitem.owner = fridge;
   const heater = new Heater({ addTag() {}, removeTag() {} }); heater.SetHeat(60);
   const source = { getPosition: () => new THREE.Vector3(5, 0, 0), components: { heater }, hasTag: (_tag: string) => false };
   const temp = new Temperature(item, { temperature: ambient, componentUpdates: new ComponentUpdates(), clock: phase, findHeaters: () => [source] });
   const watchedAmbient = vi.spyOn(ambient, 'get'), watchedPhase = vi.spyOn(phase, 'get');
   try {
     temp.OnUpdate(10); expect(temp.GetCurrent()).toBe(30);
-    tags.add('nocool'); temp.OnUpdate(1); expect(temp.GetCurrent()).toBe(31);
+    fridge.addTag('nocool'); temp.OnUpdate(1); expect(temp.GetCurrent()).toBe(31);
     temp.SetTemperature(40); temp.OnUpdate(1); expect(temp.GetCurrent()).toBe(40);
     temp.IgnoreTags('heatrock'); source.hasTag = tag => tag === 'heatrock';
     temp.OnUpdate(1); expect(temp.GetCurrent()).toBe(39);

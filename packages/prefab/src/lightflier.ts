@@ -473,7 +473,7 @@ export function configureLightFlierEntity(entity: ItemEntity): void {
     const owner = entity.components.inventoryitem.owner; if (!owner) return;
     owner.PushEvent('murdered', { victim: entity, stackmult: entity.components.stackable.count, negligent: true });
     // Guaranteed one lightbulb per insect, so replacement retains exactly the original stack size.
-    owner.replace('lightbulb');
+    entity.components.inventoryitem.slot?.replace('lightbulb');
   };
   if (!entity.components.inventoryitem.owner) perishable.StopPerishing();
 }

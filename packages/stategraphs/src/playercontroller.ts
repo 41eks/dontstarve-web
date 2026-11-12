@@ -128,9 +128,9 @@ export class PlayerController {
   private actionPoint(action: PlayerAction<WilsonAction>): Vector3 {
     const target = action.target;
     if (target) {
-      // locomotor.lua Dest(target) follows inventoryitem's owner, while the action retains the target inst.
-      const owner = target instanceof ItemEntity ? target.components.inventoryitem.owner : undefined;
-      return owner?.getPosition?.() ?? target.getPosition();
+      // locomotor.lua Dest(target) is the held inst's world position, its holder's, while the action retains the target.
+      const held = target instanceof ItemEntity ? target.components.inventoryitem.GetHeldPosition() : undefined;
+      return held ?? target.getPosition();
     }
     const pos = action.pos!;
     return new Vector3(pos.x, pos.y, pos.z);

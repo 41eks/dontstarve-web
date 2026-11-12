@@ -59,10 +59,10 @@ export function configureButterflyEntity(entity: ItemEntity): void {
     const perishable = entity.components.perishable;
     perishable.localMultiplier = () => entity.components.inventoryitem.owner ? 1 : 0;
     perishable.perishfn = () => {
-      const owner = entity.components.inventoryitem.owner;
+      const owner = entity.components.inventoryitem.owner, slot = entity.components.inventoryitem.slot;
       if (!owner) return;
       const count = entity.components.stackable.count;
-      const position = owner.getPosition?.().clone();
+      const position = entity.components.inventoryitem.GetHeldPosition()?.clone();
       const loot = new Map<string, number>();
       for (let i = 0; i < count; i++) for (const prefab of BUTTERFLY_DEFINITIONS.butterfly.generateLoot(Math.random)) {
         loot.set(prefab, (loot.get(prefab) ?? 0) + 1);
@@ -72,7 +72,7 @@ export function configureButterflyEntity(entity: ItemEntity): void {
         const item = entity.worldServices?.spawnItem?.({ itemId, count: amount });
         if (!item) continue;
         if (position) item.setPosition(position.x, position.y, position.z);
-        owner.GiveItem?.(item);
+        slot?.GiveItem?.(item);
       }
     };
     entity.component('butterflyperishing', () => {
@@ -101,8 +101,7 @@ export function configureMoonButterflyEntity(entity: ItemEntity): void {
   const perishable = entity.components.perishable;
   perishable.localMultiplier = () => entity.components.inventoryitem.owner ? MOONBUTTERFLY_PERISH_INV_MODIFIER : 1;
   perishable.perishfn = () => {
-    const owner = entity.components.inventoryitem.owner as { remove?(): boolean } | null;
-    owner?.remove?.();
+    entity.components.inventoryitem.slot?.remove();
   };
 }
 

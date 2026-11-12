@@ -1,4 +1,5 @@
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup, SpriteState, prefabDisplay } from '@dontstarve-web/display';
 import { createTestWorldSources } from './worldContentFixture';
 import * as THREE from 'three';
@@ -120,7 +121,8 @@ it('revalidates stolen bait at frame 12 and cancels a stolen target that moved i
   f.scheduler.advanceTo(f.lengths.get('enter')! + f.lengths.get('idle')!); await settle();
   expect(mole.stategraph.stateName).toBe('steal');
   f.scheduler.advance(11 / 30); await settle(); expect(mole.components.inventory!.IsFull()).toBe(false); expect(mole.components.inventory!.GetItems()).toHaveLength(0);
-  bait.components.inventoryitem.owner = { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => true, replace: () => false, PushEvent() {} };
+  // A player picked it up: its owner is the player.
+  bait.components.inventoryitem.owner = createEmptyEntity('wilson').instance;
   f.scheduler.advance(1 / 30); await settle();
   expect(mole.components.inventory!.GetItems()).toHaveLength(0);
   expect(mole.bufferedaction).toBeUndefined();
@@ -140,7 +142,7 @@ it('hammer attacks stun above ground, drop stolen inventory, allow pickup and de
   expect(mole.stategraph.stateName).toBe('stunned'); expect(mole.components.health.currenthealth).toBe(13);
   expect(mole.components.inventoryitem.canbepickedup).toBe(true);
   expect(f.drops[0].entity).toBe(bait); expect(f.drops[0].entity!.snapshot().count).toBe(3);
-  mole.components.inventoryitem.owner = { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => true, replace: () => false, PushEvent() {} };
+  mole.components.inventoryitem.owner = createEmptyEntity('wilson').instance;
   mole.PushEvent('onputininventory', mole.components.inventoryitem.owner);
   expect(hill.components.spawner.child).toBeUndefined(); expect(mole.home).toBeUndefined();
   expect(mole.snapshot().mole?.health).toBe(13);
@@ -246,7 +248,7 @@ it('day sleep clears sniff at frame 1, plays only the sleep event and keeps capt
   played.mockClear();
   f.scheduler.advance(f.lengths.get('sleep_pre')!); expect(mole.stategraph.stateName).toBe('sleeping');
   f.scheduler.advance(28 / 30); expect(played.mock.calls.map(call => call[0])).toEqual(['dontstarve_DLC001/creatures/mole/sleep']);
-  const owner = { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => true, replace: () => false, PushEvent() {} };
+  const owner = createEmptyEntity('wilson').instance;
   mole.components.inventoryitem.owner = owner; mole.PushEvent('onputininventory', owner);
   played.mockClear(); f.scheduler.advance(10);
   expect(played).not.toHaveBeenCalled();

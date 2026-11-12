@@ -9,7 +9,7 @@ import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { createBuildingContainer, type StorageBuildingId } from '../../prefab/src/containers';
 
 function createContainer(loadItem = (record: InventoryStack) => new ItemEntity(record)) {
-  return new Container({}, () => new StorageSlot(), loadItem);
+  return new Container(createEmptyEntity('treasurechest').instance, () => new StorageSlot(), loadItem);
 }
 
 describe('Lua container component', () => {
@@ -44,7 +44,7 @@ describe('Lua container component', () => {
 
   it('checks actual openers on position changes and releases subscriptions when the last opener leaves', async () => {
     const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler);
-    const container = new Container({ getPosition: () => new Vector3() }, () => new StorageSlot(), (record: InventoryStack) => new ItemEntity(record));
+    const container = new Container(createEmptyEntity('treasurechest').instance, () => new StorageSlot(), (record: InventoryStack) => new ItemEntity(record));
     container.SetAutoClose(world.getWatchWorldContent, 9);
     const first = { position: new Vector3(), removal: createSignal(false) };
     const second = { position: new Vector3(1, 0, 0), removal: createSignal(false) };

@@ -1,4 +1,4 @@
-import { ItemEntity, ItemEntityRegistry } from './entity';
+import { ItemEntity, ItemEntityRegistry, type ItemOwner } from './entity';
 import { planCraft } from './craft';
 import { Vector3 } from 'three';
 import {
@@ -93,7 +93,11 @@ export class InventoryStore {
   };
   private readonly receipts = new Set<(received: readonly InventorySlotDelta[], source?: import('../../componets/src/inventoryitem').ItemPosition) => void>();
 
-  bindActor(actor: import('../../componets/src/inventoryitem').InventoryActor): void { this.actor = actor; }
+  /** The inventory's inst (inventory.inst): the owner of the items in its own slots, including those it already holds. */
+  bindActor(actor: import('../../componets/src/inventoryitem').InventoryActor): void {
+    this.actor = actor;
+    this.bindOwners();
+  }
   configureItem(entity: ItemEntity): void {
     entity.configure(this.requireItemSpec(entity.prefab));
     entity.components.inventoryitem.SetDefaultAppearance(this.defaultAppearance(entity.prefab));
@@ -118,12 +122,12 @@ export class InventoryStore {
   GetActiveItem(): ItemEntity | null { return this.getEntity(cursorSlotAddress()); }
   /** inventory.lua CanAccessItem: the original inst is still in a slot accessible through this inventory. */
   CanAccessItem(item: ItemEntity): boolean {
-    const owner = item.components.inventoryitem?.owner;
-    return !item.isRemoved && !!owner && this.getEntity(owner.address) === item;
+    const held = item.components.inventoryitem?.slot;
+    return !item.isRemoved && !!held && this.getEntity(held.address) === item;
   }
   /** inventory.lua RemoveItem(item): detach one inst, configuring a split stack through the usual item registry. */
   RemoveItem(item: ItemEntity): ItemEntity | null {
-    return this.CanAccessItem(item) ? this.extract(item.components.inventoryitem.owner!.address, 1, item) : null;
+    return this.CanAccessItem(item) ? this.extract(item.components.inventoryitem.slot!.address, 1, item) : null;
   }
   /** inventory.lua ConsumeByName: item slots, active item, then the equipped overflow container. */
   ConsumeByName(prefab: string, amount = 1): void {
@@ -194,9 +198,9 @@ export class InventoryStore {
   }
   /** inventory.lua Equip of an item that currently sits in an inventory slot. */
   EquipFromInventory(entity: ItemEntity): boolean {
-    const owner = entity.components.inventoryitem.owner;
-    if (!owner || !entity.components.equippable || this.GetEquippedItem(entity.components.equippable.equipslot)) return false;
-    const taken = this.extract(owner.address, 1, entity);
+    const held = entity.components.inventoryitem.slot;
+    if (!held || !entity.components.equippable || this.GetEquippedItem(entity.components.equippable.equipslot)) return false;
+    const taken = this.extract(held.address, 1, entity);
     if (!taken) return false;
     if (this.Equip(taken)) return true;
     this.receive(taken);
@@ -219,8 +223,8 @@ export class InventoryStore {
     return true;
   }
   DropItem(entity: ItemEntity, dropPosition?: import('../../componets/src/inventoryitem').ItemPosition, launch?: DropLaunch): void {
-    const owner = entity.components.inventoryitem.owner;
-    if (owner && this.extract(owner.address, entity.components.stackable.count, entity) !== entity) return;
+    const held = entity.components.inventoryitem.slot;
+    if (held && this.extract(held.address, entity.components.stackable.count, entity) !== entity) return;
     const position = dropPosition ?? this.actor.getPosition();
     entity.transform.setPosition(position.x, 0, position.z);
     entity.MiniMapEntity?.tileTracker.sync();
@@ -484,7 +488,7 @@ export class InventoryStore {
     this.commit(next, false, true);
     // inventory.lua OnLoad: GiveItem puts each saved item back through OnPutInInventory.
     for (const { address, slot } of this.playerRegistrations()) {
-      if (address.containerId !== PLAYER_EQUIPMENT_CONTAINER_ID) slot.getEntity()?.components.inventoryitem.OnPutInInventory(this.actor);
+      if (address.containerId !== PLAYER_EQUIPMENT_CONTAINER_ID) slot.getEntity()?.components.inventoryitem.OnPutInInventory(this.holderOf(address.containerId));
     }
     this.bufferedBuilds.clear();
     for (const [id, skin] of buffered) this.bufferedBuilds.set(id, skin);
@@ -901,9 +905,10 @@ export class InventoryStore {
     if (!this.validEntityAssignments(next)) return false;
     const previous = new Map([...changed].map(([key, address]) => [key, this.getEntity(address)]));
     this.commit(next);
+    // inventory/container:GiveItem: OnPutInInventory(self.inst), the holder of the slot it went into.
     for (const [key, address] of changed) {
       const entity = this.getEntity(address);
-      if (entity && entity !== previous.get(key)) entity.components.inventoryitem.OnPutInInventory(this.actor);
+      if (entity && entity !== previous.get(key)) entity.components.inventoryitem.OnPutInInventory(this.holderOf(address.containerId));
     }
     this.notify([...changed.values()], changedEquipmentKinds([...changed.values()]));
     return true;
@@ -1028,23 +1033,23 @@ export class InventoryStore {
     }
   }
 
+  /** The entity holding a slot's items: a backpack's or a world container's inst, else this inventory's owner. */
+  private holderOf(containerId: string): ItemOwner {
+    if (isBackpackContainerId(containerId)) {
+      const backpack = this.entities.get(containerId.slice('item:backpack:'.length));
+      if (backpack) return backpack;
+    }
+    return this.worldContainers.get(containerId)?.inst ?? this.actor;
+  }
+
+  /** OnPutInInventory's SetOwner: each held item's owner is its holder entity, with the slot it is in. */
   private bindOwners(): void {
     for (const { address, slot } of this.registrations) {
       const entity = slot.getEntity();
       if (!entity) continue;
-      entity.components.inventoryitem.owner = {
-        DropItem: (item, position) => this.DropItem(item, position),
+      entity.components.inventoryitem.SetOwner(this.holderOf(address.containerId), {
         address: cloneAddress(address),
-        hasTag: tag => this.worldContainers.get(address.containerId)?.hasTag(tag) ?? false,
-        getPosition: () => {
-          if (isBackpackContainerId(address.containerId)) {
-            const backpack = this.entities.get(address.containerId.slice('item:backpack:'.length));
-            if (backpack) return backpack.components.inventoryitem.owner?.getPosition?.() ?? backpack.getPosition();
-          }
-          const inst = this.worldContainers.get(address.containerId)?.inst as
-            { getPosition?(): import('three').Vector3; position?: import('three').Vector3 } | undefined;
-          return inst?.getPosition?.() ?? inst?.position ?? this.actor.getPosition();
-        },
+        DropItem: (item, position) => this.DropItem(item, position),
         changed: () => { if (slot.getEntity() === entity) this.notify([cloneAddress(address)]); },
         GiveItem: item => {
           if (!this.worldContainers.has(address.containerId) && !isBackpackContainerId(address.containerId)) return this.GiveItem(item);
@@ -1052,8 +1057,6 @@ export class InventoryStore {
           const slots = this.registrations.filter(registration => registration.address.containerId === address.containerId);
           return this.giveToSlots(item, slots, undefined, item.getPosition());
         },
-        // Items in a backpack have the backpack as owner in DST, which has no player handlers.
-        PushEvent: (name, data) => { if (!isBackpackContainerId(address.containerId)) this.actor.PushEvent(name, data); },
         remove: () => slot.getEntity() === entity && this.applySlotChanges([{
           slot: address, itemId: entity.prefab, skinId: entity.skinId, delta: -entity.components.stackable.count,
         }]),
@@ -1071,7 +1074,7 @@ export class InventoryStore {
           this.DropItem(replacement);
           return true;
         },
-      };
+      });
     }
   }
 

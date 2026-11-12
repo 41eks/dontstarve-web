@@ -67,7 +67,7 @@ describe('atomic slot swaps', () => {
     expect(store.get(hand)!.remainingFuel).toBe(60);
     expect(store.get(second)!.remainingFuel).toBe(22.875);
     expect(dispose).not.toHaveBeenCalled();
-    expect(worn.components.inventoryitem.owner!.address).toEqual(second);
+    expect(worn.components.inventoryitem.slot!.address).toEqual(second);
     store.dispose();
   });
 

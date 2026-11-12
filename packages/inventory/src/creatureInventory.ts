@@ -1,11 +1,11 @@
 import { InventorySlot } from './slots';
-import type { ItemEntity, ItemOwner } from './entity';
+import type { ItemEntity } from './entity';
 import { batch } from '../../signals/src';
 import type { InventoryItemSpec, InventoryStack } from './types';
 import type { Vector3 } from 'three';
 
 /** The creature whose inventory this is: its items' owner. */
-export interface CreatureInventoryInst { readonly id: string; getPosition(): Vector3; PushEvent(name: string, data: unknown): void }
+export interface CreatureInventoryInst { readonly id: string; hasTag(tag: string): boolean; getPosition(): Vector3; PushEvent(name: string, data?: unknown): void }
 
 /** inventory.lua's creature inventory, backed by authoritative inventory slots. */
 export class CreatureInventory {
@@ -53,9 +53,10 @@ export class CreatureInventory {
   }
   private PutInSlot(index: number, item: ItemEntity): void {
     const slot = this.slots[index];
-    const owner: ItemOwner = {
+    // The creature itself is the item's owner; the slot is its inventory's.
+    item.components.inventoryitem.SetOwner(this.inst, {
       address: { containerId: `creature:${this.inst.id}`, slotKey: String(index) },
-      getPosition: () => this.inst.getPosition(), changed: () => undefined,
+      changed: () => undefined,
       remove: () => { if (slot.getEntity() !== item) return false; slot.setEntity(null); item.components.inventoryitem.owner = null; item.destroy(); return true; },
       replace: prefab => {
         if (!this.spawn || slot.getEntity() !== item) return false;
@@ -65,11 +66,9 @@ export class CreatureInventory {
         this.PutInSlot(index, replacement);
         return true;
       },
-      // owner:PushEvent reaches the creature holding the item.
-      PushEvent: (name, data) => this.inst.PushEvent(name, data),
-    };
-    slot.setEntity(item); item.components.inventoryitem.owner = owner;
-    item.PushEvent('onputininventory', owner);
+    });
+    slot.setEntity(item);
+    item.PushEvent('onputininventory', this.inst);
   }
   /** inventory.lua RemoveItem with wholestack: the item leaves its slot and stays valid. */
   RemoveItem(item: ItemEntity): void {

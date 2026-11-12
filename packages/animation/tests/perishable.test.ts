@@ -334,7 +334,7 @@ it('settles wetness on disposal and releases the source bridge and effect', asyn
   const world = createPerishWorld(), clock = world.perishClock;
   const perish = new Perishable({
     isRemoved: false,
-    components: { inventoryitem: { owner: null } },
+    components: { inventoryitem: { owner: null, slot: null } },
     PushEvent: vi.fn(),
   }, wet, world);
   perish.SetPerishTime(100);

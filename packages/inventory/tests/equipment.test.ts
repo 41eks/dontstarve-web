@@ -31,7 +31,7 @@ it('publishes committed head/body identity, preserves transfers and restores the
     expect(headChanges).toHaveBeenCalledExactlyOnceWith(headEquipment, hat);
     expect(bodyChanges).toHaveBeenCalledExactlyOnceWith(bodyEquipment, backpack);
     store.add('cutgrass', 3);
-    hat.components.inventoryitem.owner!.changed();
+    hat.components.inventoryitem.slot!.changed();
     expect(store.transfer(body, head, 1)).toBe(false);
     expect(store.headEquipment.peek()).toBe(headEquipment);
     expect(store.bodyEquipment.peek()).toBe(bodyEquipment);
@@ -95,13 +95,13 @@ it('runs equippable Equip/Unequip with the actor in inventory.lua order, once pe
   expect(calls).toEqual(['onequip:strawhat', 'equip:strawhat']);
   calls.length = 0;
   // Replacing the hat unequips the old inst before equipping the new one.
-  expect(store.swap(flower.components.inventoryitem.owner!.address, head)).toBe(true);
+  expect(store.swap(flower.components.inventoryitem.slot!.address, head)).toBe(true);
   expect(store.getEntity(head)).toBe(flower);
   expect(calls).toEqual(['onunequip:strawhat', 'unequip:strawhat', 'onequip:flowerhat', 'equip:flowerhat']);
   expect(straw.components.equippable!.IsEquipped()).toBe(false);
   calls.length = 0;
   // A component update notifies the slot without equipping again; removing the worn inst unequips it.
-  flower.components.inventoryitem.owner!.changed();
+  flower.components.inventoryitem.slot!.changed();
   expect(calls).toEqual([]);
   expect(flower.remove()).toBe(true);
   expect(calls).toEqual(['onunequip:flowerhat', 'unequip:flowerhat']);

@@ -11,13 +11,19 @@ interface ContainerEntity {
   PushEvent?(name: string, data?: unknown): void;
 }
 
+/** The entity that has the container — a chest, an icebox, a backpack — and the owner of the items it holds. */
+export interface ContainerInst {
+  readonly prefab: string;
+  readonly isRemoved: boolean;
+  readonly components: { readonly container?: { readonly type?: string; Close(doer?: object): void } };
+  hasTag(tag: string): boolean;
+  getPosition(): Vector3;
+  PushEvent(name: string, data?: unknown): void;
+}
+
 /** inventory.lua's opencontainers on the doer: the inst of each container it has open. */
 interface ContainerDoer {
-  readonly components?: { readonly inventory?: { readonly opencontainers?: Set<OpenContainerHost> } };
-}
-interface OpenContainerHost {
-  readonly prefab?: string;
-  readonly components: { readonly container?: { readonly type?: string; Close(doer?: object): void } };
+  readonly components?: { readonly inventory?: { readonly opencontainers?: Set<ContainerInst> } };
 }
 
 /** container.lua's data.items in the save document's shape: occupied slots under zero-based keys. */
@@ -42,12 +48,9 @@ export interface ContainerSlot<TItem> {
 
 /** container.lua state and lifecycle; inventory transactions own slot mutations. */
 export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot extends ContainerSlot<TItem>> {
-  readonly inst: object;
+  readonly inst: ContainerInst;
   /** Tags belong to the holder, not to its stored items. */
-  hasTag(tag: string): boolean {
-    const inst = this.inst as { hasTag?(tag: string): boolean; tags?: Set<string> };
-    return inst.hasTag?.(tag) ?? inst.tags?.has(tag) ?? false;
-  }
+  hasTag(tag: string): boolean { return this.inst.hasTag(tag); }
   /** containers.lua params[prefab].type: a doer keeps one open container of each type. */
   type?: string;
   canbeopened = true;
@@ -88,9 +91,7 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   }
 
   CheckOpeners(): void {
-    const holder = this.inst as ContainerEntity;
-    const position = holder.getPosition?.() ?? holder.position;
-    if (!position) return;
+    const holder = this.inst, position = holder.getPosition();
     for (const opener of this.openlist) {
       const entity = opener as ContainerEntity;
       const origin = entity.getPosition?.() ?? entity.position;
@@ -99,7 +100,7 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     }
   }
 
-  constructor(inst: object, createSlot: () => TSlot, loadItem: (record: TRecord) => TItem) {
+  constructor(inst: ContainerInst, createSlot: () => TSlot, loadItem: (record: TRecord) => TItem) {
     this.inst = inst;
     this.createSlot = createSlot;
     this.loadItem = loadItem;
@@ -162,7 +163,7 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     if (!doer || this.openlist.has(doer)) return;
     const opencontainers = (doer as ContainerDoer).components?.inventory?.opencontainers;
     if (opencontainers) {
-      const inst = this.inst as OpenContainerHost;
+      const inst = this.inst;
       for (const k of opencontainers) {
         if (k.prefab === inst.prefab || k.components.container?.type === this.type) k.components.container?.Close(doer);
       }
@@ -176,7 +177,7 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
       const removed = watchSignal(removal, stop => this.openerCleanups.set(doer, stop));
       createEffect(() => { if (removed.get()) this.Close(doer); });
     }
-    (this.inst as ContainerEntity).PushEvent?.('onopen', { doer });
+    this.inst.PushEvent('onopen', { doer });
     if (!wasOpen) this.onopenfn?.(this.inst, doer);
     if (this.IsOpen()) this.watchOpeners();
   }
@@ -188,13 +189,13 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
       closed = this.openlist.delete(opener) || closed;
       this.openerCleanups.get(opener)?.();
       this.openerCleanups.delete(opener);
-      (opener as ContainerDoer).components?.inventory?.opencontainers?.delete(this.inst as OpenContainerHost);
+      (opener as ContainerDoer).components?.inventory?.opencontainers?.delete(this.inst);
     }
     if (!closed) return;
     this.openCountState.set(this.openlist.size);
     if (!this.IsOpen()) { this.stopPositions?.(); this.stopPositions = undefined; }
     if (wasOpen && !this.IsOpen()) this.onclosefn?.(this.inst, doer);
-    if (wasOpen) (this.inst as ContainerEntity).PushEvent?.('onclose', { doer });
+    if (wasOpen) this.inst.PushEvent('onclose', { doer });
   }
 
   IsOpen(): boolean { return this.opencount > 0; }

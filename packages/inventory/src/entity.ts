@@ -25,19 +25,22 @@ export interface ItemRuntimeComponent {
   BindScheduler?(scheduler: import('../../componets/src/gameTimeScheduler').GameTimeScheduler): void;
   dispose(): void;
 }
-export interface ItemOwner {
+/** inventoryitem.owner: the entity holding an item — the player, a chest's or a worn backpack's inst, or a creature. */
+export type ItemOwner = import('../../componets/src/inventoryitem').ItemHolder;
+
+/** The holder's slot an item is in (inventory/container:GetItemSlot), bound by the inventory that holds it. */
+export interface HeldSlot {
   readonly address: SlotAddress;
-  hasTag?(tag: string): boolean;
-  getPosition?(): Vector3;
+  /** The item's stack or state changed in place; the holder republishes the slot. */
   changed(): void;
+  /** inst:Remove() of a held item: its slot gives it up. */
   remove(): boolean;
-  /** perishable.lua's onperishreplacement: the same slot receives the replacement stack. */
+  /** perishable.lua's onperishreplacement: the same slot receives the replacement stack (holder:GiveItem(goop, slot)). */
   replace(prefab: string): boolean;
-  /** Livestock onperish removes the original stack, then gives its generated loot to the holder. */
+  /** holder:GiveItem(item): livestock onperish gives its loot to the holder of the perished stack. */
   GiveItem?(item: ItemEntity): boolean;
+  /** holder:DropItem(item). */
   DropItem?(item: ItemEntity, position?: Vector3): void;
-  /** Lua owner:PushEvent: the player's inventory forwards to the player; other containers ignore it. */
-  PushEvent(name: string, data: unknown): void;
 }
 
 /** stackable.lua: stack size belongs to the item, independent of its current slot. */
@@ -58,7 +61,7 @@ export class StackableComponent {
     if (this.entity.isRemoved || this.count < 1) return false;
     if (this.count === 1) return this.entity.remove();
     this.count--;
-    this.entity.components.inventoryitem.owner?.changed();
+    this.entity.components.inventoryitem.slot?.changed();
     return true;
   }
 }
@@ -136,7 +139,7 @@ export interface ItemComponents {
   stackable: StackableComponent;
   fueled?: Fueled<ItemEntity>;
   finiteuses: FiniteUsesComponent;
-  inventoryitem: InventoryItem<ItemEntity, ItemOwner>;
+  inventoryitem: InventoryItem<ItemEntity, ItemOwner, HeldSlot>;
   /** MakeInventoryPhysics, added by an item prefab in a world that advances its flights. */
   inventoryphysics?: import('../../componets/src/inventoryphysics').InventoryPhysics;
   perishable: Perishable;
@@ -281,7 +284,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.wetState.set(state.wet ?? false);
     addComponent(this, 'stackable', StackableComponent, state.count);
     addComponent(this, 'finiteuses', FiniteUsesComponent, state.remainingUses);
-    addComponent(this, 'inventoryitem', InventoryItem<ItemEntity, ItemOwner>);
+    addComponent(this, 'inventoryitem', InventoryItem<ItemEntity, ItemOwner, HeldSlot>);
     addComponent(this, 'inspectable', Inspectable);
     addComponent(this, 'perishable', Perishable, readonlySignal(this.wetState), perishWorld);
     this.durability = createMemo(() => this.components.finiteuses.percent.get() ?? this.fueledState.get()?.percent.get()
@@ -451,8 +454,8 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
   remove(): boolean {
     if (this.isRemoved) return false;
-    const owner = this.components.inventoryitem.owner;
-    if (owner) return owner.remove();
+    const slot = this.components.inventoryitem.slot;
+    if (slot) return slot.remove();
     this.destroy();
     return true;
   }

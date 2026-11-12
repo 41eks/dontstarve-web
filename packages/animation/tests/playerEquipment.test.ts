@@ -32,7 +32,7 @@ it('equips through equippable onequip/onunequip after restore/transfer and relea
     await vi.waitFor(() => { expect(symbol('swap_hat')).toHaveLength(1); expect(symbol('swap_body')).toHaveLength(1); });
     const back = symbol('swap_body'), backpack = store.getEntity(body)!;
     const declared = appearance();
-    backpack.components.inventoryitem.owner!.changed();
+    backpack.components.inventoryitem.slot!.changed();
     expect(appearance()).toBe(declared);
     expect(store.transfer(body, bag, 1)).toBe(true);
     expect(symbol('swap_body')).toBeUndefined();

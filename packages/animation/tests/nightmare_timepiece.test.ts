@@ -130,7 +130,7 @@ describe('nightmare_timepiece.lua', () => {
       // A chest is the watch's owner, not the player who put it there.
       s.inventory.GiveItem(second);
       expect(tracking()).toBe(true);
-      const chest = createBuildingContainer('treasurechest', {});
+      const chest = createBuildingContainer('treasurechest', createEmptyEntity('treasurechest').instance);
       s.inventory.registerContainer('world:chest', chest);
       expect(s.inventory.transfer(inventorySlotAddress(0), { containerId: 'world:chest', slotKey: '0' }, 1)).toBe(true);
       expect(tracking()).toBe(false);

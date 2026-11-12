@@ -1,4 +1,5 @@
 import { expect, it, vi } from 'vitest';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { InventoryStore, type InventoryItemSpec } from '../../inventory/src';
 import { GameTimeScheduler } from '../../signals/src';
 import { createBuildingContainer } from '../../prefab/src/containers';
@@ -10,7 +11,7 @@ function createPot(dropProduct?: (prefab: string, count?: number) => void, start
   const specs = Object.fromEntries(['twigs', 'red_cap', 'monstermeat', 'log'].map(id =>
     [id, { name: id, icon: `${id}.tex`, maxStack: 40 } satisfies InventoryItemSpec]));
   const inventory = new InventoryStore([], specs);
-  const container = createBuildingContainer('cookpot', {});
+  const container = createBuildingContainer('cookpot', createEmptyEntity('cookpot').instance);
   const containerId = 'world:cookpot:test';
   inventory.registerContainer(containerId, container);
   const tags = new Set<string>();
@@ -136,9 +137,9 @@ it('keeps world container contents out of the player state, restores around them
   expect(pot.inventory.exportState().slots).toEqual([]);
   pot.inventory.replaceState({ slots: [], bufferedBuilds: [] }, {});
   expect(pot.inventory.getEntity(slot)).toBe(entity);
-  expect(entity!.components.inventoryitem.owner?.address).toEqual(slot);
+  expect(entity!.components.inventoryitem.slot?.address).toEqual(slot);
   expect(() => pot.inventory.replaceState({ slots: [{ address: slot, item: null }], bufferedBuilds: [] }, {})).toThrow('Invalid or duplicate saved slot');
-  const other = createBuildingContainer('cookpot', {});
+  const other = createBuildingContainer('cookpot', createEmptyEntity('cookpot').instance);
   expect(() => pot.inventory.registerContainer(pot.containerId, other)).toThrow('Duplicate slot address');
   pot.inventory.unregisterContainer(pot.containerId, other);
   expect(pot.inventory.getEntity(slot)).toBe(entity);

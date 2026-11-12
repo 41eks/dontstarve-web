@@ -1,6 +1,7 @@
 import { wilsonStateInst } from './wilsonStateInst';
+import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { describe, expect, it, vi } from 'vitest';
-import { ItemEntity, type InventoryStack, type ItemOwner } from '../../inventory/src';
+import { ItemEntity, type InventoryStack } from '../../inventory/src';
 import { Inventory } from '../../componets/src/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf } from '../../componets/src/shelf';
@@ -128,7 +129,7 @@ describe('caged birds', () => {
     restored.remove();
 
     meat.PushEvent('perished');
-    expect(meat.components.inventoryitem.owner!.replace('spoiled_food')).toBe(true);
+    expect(meat.components.inventoryitem.slot!.replace('spoiled_food')).toBe(true);
     expect(meat.isRemoved).toBe(true);
     scheduler.advance(.1);
     const spoiled = components.inventory.GetItemInSlot(1)!;
@@ -147,10 +148,10 @@ describe('caged birds', () => {
   });
 
   it('leaves a perished item in a creature inventory that was given no spawner', () => {
-    const inventory = new Inventory({ id: 'mole', getPosition: () => new THREE.Vector3(), PushEvent: vi.fn() }, 1, vi.fn());
+    const inventory = new Inventory({ id: 'mole', hasTag: () => false, getPosition: () => new THREE.Vector3(), PushEvent: vi.fn() }, 1, vi.fn());
     const meat = new ItemEntity({ itemId: 'smallmeat', count: 1 });
     inventory.GiveItem(meat);
-    expect(meat.components.inventoryitem.owner!.replace('spoiled_food')).toBe(false);
+    expect(meat.components.inventoryitem.slot!.replace('spoiled_food')).toBe(false);
     expect(inventory.GetItemInSlot(1)).toBe(meat);
     inventory.dispose();
   });
@@ -198,7 +199,7 @@ describe('caged birds', () => {
     expect(caged.components.perishable.GetPercent()).toBeCloseTo(1 - 600 * PERISH_CAGE_MULT / BIRD_PERISH_TIME, 5);
 
     const carried = createBird();
-    carried.components.inventoryitem.owner = { address: { containerId: 'player:inventory', slotKey: '0' } } as ItemOwner;
+    carried.components.inventoryitem.owner = createEmptyEntity('wilson').instance;
     settle(carried, 600);
     expect(carried.components.perishable.GetPercent()).toBeCloseTo(1 - 600 / BIRD_PERISH_TIME, 5);
   });
@@ -245,14 +246,17 @@ describe('caged birds', () => {
 
   it('a starved carried bird is replaced by its loot', () => {
     const bird = createBird('canary');
-    const replace = vi.fn(() => true), PushEvent = vi.fn();
-    bird.components.inventoryitem.owner = { address: { containerId: 'player:inventory', slotKey: '0' }, replace, PushEvent } as unknown as ItemOwner;
+    const replace = vi.fn(() => true), murdered = vi.fn();
+    // Carried by the player: its owner is the player and its slot the player's.
+    const holder = createEmptyEntity('wilson').instance;
+    holder.ListenForEvent('murdered', (_inst, data) => murdered(data));
+    bird.components.inventoryitem.SetOwner(holder, { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => false, replace });
     bird.components.perishable.SetPercent(.0001);
     const random = vi.spyOn(Math, 'random');
     try { random.mockReturnValue(.2); settle(bird, 30); }
     finally { random.mockRestore(); }
     expect(replace).toHaveBeenCalledWith('smallmeat');
-    expect(PushEvent).toHaveBeenCalledWith('murdered', expect.objectContaining({ victim: bird, negligent: true }));
+    expect(murdered).toHaveBeenCalledWith(expect.objectContaining({ victim: bird, negligent: true }));
     // Canary feathers are a tenth as likely as meat; other birds weigh them equally.
     expect(generateBirdLoot('canary', () => .08)).toBe('feather_canary');
     expect(generateBirdLoot('canary', () => .2)).toBe('smallmeat');

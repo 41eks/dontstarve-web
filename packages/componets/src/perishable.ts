@@ -30,7 +30,7 @@ export type PerishStage = 'fresh' | 'stale' | 'spoiled';
 export interface PerishableInst {
   readonly isRemoved: boolean;
   hasTag?(tag: string): boolean;
-  readonly components: { inventoryitem: { owner: PerishableOwner | null }; stackable?: { count: number } };
+  readonly components: { inventoryitem: { readonly owner: PerishableOwner | null; readonly slot: PerishableSlot | null }; stackable?: { count: number } };
   readonly transform?: { readonly position: { readonly x: number; readonly y: number; readonly z: number } };
   PushEvent(name: string, data: unknown): void;
   remove?(): unknown;
@@ -43,9 +43,12 @@ export interface PerishReplacement {
   PushEvent(name: string, data?: unknown): void;
 }
 
+/** inventoryitem.owner, whose fridge tags slow perishing. */
 export interface PerishableOwner {
-  hasTag?(tag: string): boolean;
-  /** holder:GiveItem(goop, slot) after the perished inst leaves the same slot. */
+  hasTag(tag: string): boolean;
+}
+/** The holder's slot of the inst: holder:GiveItem(goop, slot) after the perished inst leaves it. */
+export interface PerishableSlot {
   replace(prefab: string): boolean;
 }
 
@@ -188,7 +191,7 @@ export class Perishable {
       || tick.time < this.lastTick.time || tick.total < this.lastTick.total) throw new RangeError('Perish ticks must be finite and monotonic');
     const owner = this.inst.components.inventoryitem.owner;
     const frozen = this.inst.hasTag?.('frozen') === true;
-    const refrigeratedFrozen = frozen && owner?.hasTag?.('fridge') === true
+    const refrigeratedFrozen = frozen && owner?.hasTag('fridge') === true
       && !owner.hasTag('nocool') && !owner.hasTag('lowcool');
     const frozenClock = frozen ? this.world?.perishClock.GetFrozenTick?.bind(this.world.perishClock) : undefined;
     const accumulatedPerish = refrigeratedFrozen ? 0 : frozenClock
@@ -213,10 +216,10 @@ export class Perishable {
     this.perishfn?.(this.inst);
     if (this.inst.isRemoved) return;
     this.inst.PushEvent('perished', undefined);
-    const owner = this.inst.components.inventoryitem.owner, replacement = this.onperishreplacement;
+    const slot = this.inst.components.inventoryitem.slot, replacement = this.onperishreplacement;
     if (this.inst.isRemoved || replacement === undefined) return;
     // Holders give the replacement to the perished inst's slot.
-    if (owner) { owner.replace(replacement); return; }
+    if (slot) { slot.replace(replacement); return; }
     // Otherwise SpawnPrefab(onperishreplacement) takes its place with its stack size, and the inst is removed.
     const goop = this.world?.SpawnPrefab?.(replacement);
     if (!goop) return;
@@ -269,7 +272,7 @@ export class Perishable {
 
   private rateModifier(): number {
     const owner = this.inst.components.inventoryitem.owner;
-    let modifier = owner?.hasTag?.('fridge') ? PERISH_FRIDGE_MULT
+    let modifier = owner?.hasTag('fridge') ? PERISH_FRIDGE_MULT
       : owner ? 1 : this.occupierCage?.() ? PERISH_CAGE_MULT : PERISH_GROUND_MULT;
     if (this.settledWet) modifier *= PERISH_WET_MULT;
     return modifier * PERISH_GLOBAL_MULT * (this.localMultiplier?.() ?? 1);

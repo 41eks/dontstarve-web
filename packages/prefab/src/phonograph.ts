@@ -157,7 +157,7 @@ export function configurePhonographEntity(entity: ItemEntity, scheduler?: GameTi
     const inventory = addComponent(entity, 'inventory', Inventory, 15, (item, position) => {
       const drop = entity.worldServices?.dropItem;
       if (drop) drop(item, position);
-      else entity.components.inventoryitem.owner?.DropItem?.(item, position);
+      else entity.components.inventoryitem.slot?.DropItem?.(item, position);
     });
     // Old saves only named the song. New saves retain each stored inst's identity and state.
     const items = saved.inventory ?? (saved.phonographRecord ? [{ itemId: RECORD_ID, count: 1,

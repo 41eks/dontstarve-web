@@ -49,7 +49,7 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 保存时，`inventory:OnSave()` 按普通槽、装备槽和 activeitem 嵌套保存各物品的 `GetSaveRecord()`；`container:OnSave()` 按容器槽位保存相同记录。`EntityScript:GetSaveRecord()` 从该 inst 的 Transform 读取位置并保存组件数据。世界保存遍历全局 `Ents`，检查实体有效性、持久化标志、prefab、Transform 和没有父实体等条件；持有物作为 owner 的子实体随其组件嵌套保存，避免再次作为世界顶层实体保存。源码见 `components/inventory.lua:192`、`components/container.lua:979`、`entityscript.lua:248` 和 `mainfunctions.lua:1088`。
 
-对应到本项目，InventoryStore/Container 管理实际槽位成员与转移，ItemEntity 是 PrefabInstance 子类，持有组件、库存归属与逻辑 Transform，物品 prefab 在共享 `PrefabEntityManager` 上管理世界中的实体（持有时 RemoveFromScene 进入 limbo，丢弃时 ReturnToScene），display 管理场景挂载和显示资源。归属变化应通过统一转移流程同时维护槽位与 owner，UI signal 只反映提交后的状态。项目的 `ItemOwner.address` 用于库存事务寻址；它不是 Lua 物品独立保存当前槽号的依据。
+对应到本项目，InventoryStore/Container 管理实际槽位成员与转移，ItemEntity 是 PrefabInstance 子类，持有组件、库存归属与逻辑 Transform，物品 prefab 在共享 `PrefabEntityManager` 上管理世界中的实体（持有时 RemoveFromScene 进入 limbo，丢弃时 ReturnToScene），display 管理场景挂载和显示资源。归属变化应通过统一转移流程同时维护槽位与 owner，UI signal 只反映提交后的状态。`inventoryitem.owner` 与 Lua 一致，是持有物品的实体本身（玩家、箱子或背包的 inst、生物）；`GetGrandOwner` 和 `GetHeldPosition` 沿嵌套的持有者（如穿着的背包）找到最外层持有者及其位置。槽位相关操作放在 store 绑定的 `inventoryitem.slot`（`HeldSlot`）上，相当于 holder:GetItemSlot，其中 `address` 用于库存事务寻址；它不是 Lua 物品独立保存当前槽号的依据。
 
 ### 项目的物品实体
 

@@ -142,7 +142,7 @@ describe('DST item identity and ownership', () => {
     expect(store.applySlotChanges([{ slot: a, itemId: 'torch', delta: -1 },
       { slot: hand, itemId: 'torch', delta: 1 }])).toBe(true);
     expect(store.getEntity(hand)).toBe(entity);
-    expect(entity.components.inventoryitem.owner?.address).toEqual(hand);
+    expect(entity.components.inventoryitem.slot?.address).toEqual(hand);
     entity.setRemainingFuel(32.125);
     expect(store.get(hand)?.remainingFuel).toBe(32.125);
     store.add('log', 20);

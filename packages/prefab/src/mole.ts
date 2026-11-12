@@ -370,7 +370,7 @@ export function configureMoleEntity(entity: ItemEntity): void {
   perishable.localMultiplier = () => entity.components.inventoryitem.owner ? 1 : 0;
   perishable.perishfn = () => {
     const owner = entity.components.inventoryitem.owner;
-    if (owner) { owner.PushEvent('murdered', { victim: entity, stackmult: 1, negligent: true }); PlaySound(`${SOUND_PREFIX}death`); owner.replace('smallmeat'); }
+    if (owner) { owner.PushEvent('murdered', { victim: entity, stackmult: 1, negligent: true }); PlaySound(`${SOUND_PREFIX}death`); entity.components.inventoryitem.slot?.replace('smallmeat'); }
   };
   if (!entity.components.inventoryitem.owner) perishable.StopPerishing();
 }

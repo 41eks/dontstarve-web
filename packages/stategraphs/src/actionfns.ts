@@ -381,8 +381,8 @@ function addFuel(act: PlayerAction): boolean {
   const fuel = inventory.RemoveItem(source);
   if (!fuel) return false;
   if (act.target?.components.fueled?.TakeFuelItem(fuel, act.doer)) return true;
-  const owner = source.components.inventoryitem.owner;
-  if (fuel === source || inventory.GetActiveItem() !== source || !owner || !inventory.receiveAt(owner.address, fuel)) {
+  const held = source.components.inventoryitem.slot;
+  if (fuel === source || inventory.GetActiveItem() !== source || !held || !inventory.receiveAt(held.address, fuel)) {
     inventory.GiveItem(fuel);
   }
   return false;
