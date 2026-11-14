@@ -14,6 +14,7 @@ import { BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS } from '@dontstarve-web/prefab/
 import { CAVE_HOLE_ID } from '@dontstarve-web/prefab/cave_hole';
 import { CAVE_PILLAR_IDS, PILLAR_RUINS_ID } from '@dontstarve-web/prefab/pillar';
 import { PILLAR_ATRIUM_ID } from '@dontstarve-web/prefab/atrium_pillar';
+import { MOON_FISSURE_ID } from '@dontstarve-web/prefab/moon_fissure';
 import { ARCHIVE_PILLAR_ARCHIVES, ARCHIVE_PILLAR_ID } from '@dontstarve-web/prefab/archive_pillar';
 import { VAULT_PILLAR_ID } from '@dontstarve-web/prefab/vault_pillar';
 import { MONKEY_PILLAR_IDS, MONKEYPILLAR_ID } from '@dontstarve-web/prefab/monkeypillar';
@@ -384,6 +385,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   pillarRuins: definePrefabs([PILLAR_RUINS_ID], empty, true, ['pillar_ruins.zip']),
   cavePillars: definePrefabs(CAVE_PILLAR_IDS, empty, true, prefab => [`${prefab}.zip`]),
   atriumPillars: definePrefabs([PILLAR_ATRIUM_ID], empty, true, ['pillar_atrium.zip']),
+  moonFissures: definePrefabs([MOON_FISSURE_ID], empty, true, ['moon_fissure.zip']),
   archivePillars: definePrefabs([ARCHIVE_PILLAR_ID], archivePillar, true, ARCHIVE_PILLAR_ARCHIVES),
   vaultPillars: definePrefabs([VAULT_PILLAR_ID], vaultPillar, true, ['pillar_vault_deep.zip']),
   monkeyPillars: definePrefabs([MONKEYPILLAR_ID], monkeyPillar, true, ['pillar_monkey.zip', 'snow.zip']),

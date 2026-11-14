@@ -4,6 +4,8 @@ export const SANITYAURA_SMALL = 100 / (30 * 8);
 /** components/sanityaura.lua's fixed-aura branch. */
 export class SanityAura {
   aura = 0;
+  /** sanityaura.max_distsq: nil leaves GetAura on TUNING.SANITY_EFFECT_RANGE. GetAura itself is not ported. */
+  max_distsq?: number;
   private readonly inst: { addTag(tag: string): void; removeTag(tag: string): void };
   constructor(inst: SanityAura['inst']) { this.inst = inst; inst.addTag('sanityaura'); }
   OnRemoveFromEntity(): void { this.inst.removeTag('sanityaura'); }

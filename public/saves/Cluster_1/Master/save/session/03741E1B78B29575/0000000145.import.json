@@ -404,6 +404,7 @@
     "pillar_algae",
     "pillar_atrium",
     "archive_pillar",
+    "moon_fissure",
     "vault_pillar",
     "monkeypillar",
     "cave_entrance",
@@ -820,6 +821,10 @@
     "archive_pillar": {
       "source": 0,
       "imported": 0
+    },
+    "moon_fissure": {
+      "source": 70,
+      "imported": 70
     },
     "vault_pillar": {
       "source": 0,
@@ -20316,6 +20321,776 @@
         -152.45
       ],
       "sourceNode": "Squeltch:0:SlightlyMermySwamp"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000001",
+      "prefab": "moon_fissure",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        636.68,
+        0,
+        -368.74
+      ],
+      "sourceNode": "MoonIsland_Mine:1:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000002",
+      "prefab": "moon_fissure",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        639.2,
+        0,
+        -387.44
+      ],
+      "sourceNode": "MoonIsland_Mine:1:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000003",
+      "prefab": "moon_fissure",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        476.88,
+        0,
+        -284.55
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000004",
+      "prefab": "moon_fissure",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        487.69,
+        0,
+        -331.86
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000005",
+      "prefab": "moon_fissure",
+      "sourceIndex": 5,
+      "sourcePosition": [
+        575.5,
+        0,
+        -295.25
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000006",
+      "prefab": "moon_fissure",
+      "sourceIndex": 6,
+      "sourcePosition": [
+        315.64,
+        0,
+        -448.81
+      ],
+      "sourceNode": "MoonIsland_IslandShards:5:MoonIsland_IslandShard"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000007",
+      "prefab": "moon_fissure",
+      "sourceIndex": 7,
+      "sourcePosition": [
+        447.01,
+        0,
+        -300.42
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000008",
+      "prefab": "moon_fissure",
+      "sourceIndex": 8,
+      "sourcePosition": [
+        460.33,
+        0,
+        -315.2
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000009",
+      "prefab": "moon_fissure",
+      "sourceIndex": 9,
+      "sourcePosition": [
+        468.2,
+        0,
+        -304.15
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000010",
+      "prefab": "moon_fissure",
+      "sourceIndex": 10,
+      "sourcePosition": [
+        579.24,
+        0,
+        -247.65
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000011",
+      "prefab": "moon_fissure",
+      "sourceIndex": 11,
+      "sourcePosition": [
+        583.62,
+        0,
+        -387.16
+      ],
+      "sourceNode": "MoonIsland_Mine:0:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000012",
+      "prefab": "moon_fissure",
+      "sourceIndex": 12,
+      "sourcePosition": [
+        608.12,
+        0,
+        -355.31
+      ],
+      "sourceNode": "MoonIsland_Mine:0:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000013",
+      "prefab": "moon_fissure",
+      "sourceIndex": 13,
+      "sourcePosition": [
+        479.08,
+        0,
+        -280.9
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000014",
+      "prefab": "moon_fissure",
+      "sourceIndex": 14,
+      "sourcePosition": [
+        539.24,
+        0,
+        -304.32
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000015",
+      "prefab": "moon_fissure",
+      "sourceIndex": 15,
+      "sourcePosition": [
+        352.95,
+        0,
+        -436.22
+      ],
+      "sourceNode": "MoonIsland_IslandShards:3:MoonIsland_IslandShard"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000016",
+      "prefab": "moon_fissure",
+      "sourceIndex": 16,
+      "sourcePosition": [
+        499.77,
+        0,
+        -284.62
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000017",
+      "prefab": "moon_fissure",
+      "sourceIndex": 17,
+      "sourcePosition": [
+        499.43,
+        0,
+        -311.1
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000018",
+      "prefab": "moon_fissure",
+      "sourceIndex": 18,
+      "sourcePosition": [
+        532.81,
+        0,
+        -316.12
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000019",
+      "prefab": "moon_fissure",
+      "sourceIndex": 19,
+      "sourcePosition": [
+        504.63,
+        0,
+        -296.22
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000020",
+      "prefab": "moon_fissure",
+      "sourceIndex": 20,
+      "sourcePosition": [
+        503.03,
+        0,
+        -280.78
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000021",
+      "prefab": "moon_fissure",
+      "sourceIndex": 21,
+      "sourcePosition": [
+        539.1,
+        0,
+        -312.57
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000022",
+      "prefab": "moon_fissure",
+      "sourceIndex": 22,
+      "sourcePosition": [
+        455.47,
+        0,
+        -356.08
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000023",
+      "prefab": "moon_fissure",
+      "sourceIndex": 23,
+      "sourcePosition": [
+        479.21,
+        0,
+        -363.77
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000024",
+      "prefab": "moon_fissure",
+      "sourceIndex": 24,
+      "sourcePosition": [
+        440.41,
+        0,
+        -323.07
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000025",
+      "prefab": "moon_fissure",
+      "sourceIndex": 25,
+      "sourcePosition": [
+        648.96,
+        0,
+        -340.85
+      ],
+      "sourceNode": "MoonIsland_Mine:1:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000026",
+      "prefab": "moon_fissure",
+      "sourceIndex": 26,
+      "sourcePosition": [
+        668.73,
+        0,
+        -355.75
+      ],
+      "sourceNode": "MoonIsland_Mine:1:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000027",
+      "prefab": "moon_fissure",
+      "sourceIndex": 27,
+      "sourcePosition": [
+        443.86,
+        0,
+        -311.2
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000028",
+      "prefab": "moon_fissure",
+      "sourceIndex": 28,
+      "sourcePosition": [
+        464.09,
+        0,
+        -323.83
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000029",
+      "prefab": "moon_fissure",
+      "sourceIndex": 29,
+      "sourcePosition": [
+        464.81,
+        0,
+        -355.78
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000030",
+      "prefab": "moon_fissure",
+      "sourceIndex": 30,
+      "sourcePosition": [
+        451.82,
+        0,
+        -339.24
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000031",
+      "prefab": "moon_fissure",
+      "sourceIndex": 31,
+      "sourcePosition": [
+        452.32,
+        0,
+        -312.28
+      ],
+      "sourceNode": "MoonIsland_Baths:2:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000032",
+      "prefab": "moon_fissure",
+      "sourceIndex": 32,
+      "sourcePosition": [
+        548.64,
+        0,
+        -348.07
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000033",
+      "prefab": "moon_fissure",
+      "sourceIndex": 33,
+      "sourcePosition": [
+        559.68,
+        0,
+        -360.95
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000034",
+      "prefab": "moon_fissure",
+      "sourceIndex": 34,
+      "sourcePosition": [
+        572.43,
+        0,
+        -340.86
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000035",
+      "prefab": "moon_fissure",
+      "sourceIndex": 35,
+      "sourcePosition": [
+        548.06,
+        0,
+        -371.53
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000036",
+      "prefab": "moon_fissure",
+      "sourceIndex": 36,
+      "sourcePosition": [
+        552.74,
+        0,
+        -359.62
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000037",
+      "prefab": "moon_fissure",
+      "sourceIndex": 37,
+      "sourcePosition": [
+        536.59,
+        0,
+        -344.93
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000038",
+      "prefab": "moon_fissure",
+      "sourceIndex": 38,
+      "sourcePosition": [
+        516.21,
+        0,
+        -367.11
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000039",
+      "prefab": "moon_fissure",
+      "sourceIndex": 39,
+      "sourcePosition": [
+        491.97,
+        0,
+        -396.13
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000040",
+      "prefab": "moon_fissure",
+      "sourceIndex": 40,
+      "sourcePosition": [
+        500.17,
+        0,
+        -396.14
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000041",
+      "prefab": "moon_fissure",
+      "sourceIndex": 41,
+      "sourcePosition": [
+        564.05,
+        0,
+        -284.88
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000042",
+      "prefab": "moon_fissure",
+      "sourceIndex": 42,
+      "sourcePosition": [
+        601.69,
+        0,
+        -262.45
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000043",
+      "prefab": "moon_fissure",
+      "sourceIndex": 43,
+      "sourcePosition": [
+        601.63,
+        0,
+        -288.9
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000044",
+      "prefab": "moon_fissure",
+      "sourceIndex": 44,
+      "sourcePosition": [
+        586.28,
+        0,
+        -289.89
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000045",
+      "prefab": "moon_fissure",
+      "sourceIndex": 45,
+      "sourcePosition": [
+        562.87,
+        0,
+        -366.94
+      ],
+      "sourceNode": "MoonIsland_Mine:0:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000046",
+      "prefab": "moon_fissure",
+      "sourceIndex": 46,
+      "sourcePosition": [
+        512.85,
+        0,
+        -267.75
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000047",
+      "prefab": "moon_fissure",
+      "sourceIndex": 47,
+      "sourcePosition": [
+        538.28,
+        0,
+        -245.04
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000048",
+      "prefab": "moon_fissure",
+      "sourceIndex": 48,
+      "sourcePosition": [
+        546.97,
+        0,
+        -265.72
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000049",
+      "prefab": "moon_fissure",
+      "sourceIndex": 49,
+      "sourcePosition": [
+        561.98,
+        0,
+        -262.88
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000050",
+      "prefab": "moon_fissure",
+      "sourceIndex": 50,
+      "sourcePosition": [
+        492.94,
+        0,
+        -251.99
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000051",
+      "prefab": "moon_fissure",
+      "sourceIndex": 51,
+      "sourcePosition": [
+        597.28,
+        0,
+        -225.44
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000052",
+      "prefab": "moon_fissure",
+      "sourceIndex": 52,
+      "sourcePosition": [
+        606.39,
+        0,
+        -245.07
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000053",
+      "prefab": "moon_fissure",
+      "sourceIndex": 53,
+      "sourcePosition": [
+        532.34,
+        0,
+        -268.28
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000054",
+      "prefab": "moon_fissure",
+      "sourceIndex": 54,
+      "sourcePosition": [
+        515.39,
+        0,
+        -244.72
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000055",
+      "prefab": "moon_fissure",
+      "sourceIndex": 55,
+      "sourcePosition": [
+        591.69,
+        0,
+        -279.16
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000056",
+      "prefab": "moon_fissure",
+      "sourceIndex": 56,
+      "sourcePosition": [
+        599.04,
+        0,
+        -275.2
+      ],
+      "sourceNode": "MoonIsland_Forest:0:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000057",
+      "prefab": "moon_fissure",
+      "sourceIndex": 57,
+      "sourcePosition": [
+        612.11,
+        0,
+        -199.61
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000058",
+      "prefab": "moon_fissure",
+      "sourceIndex": 58,
+      "sourcePosition": [
+        319.39,
+        0,
+        -420.29
+      ],
+      "sourceNode": "MoonIsland_IslandShards:2:MoonIsland_IslandShard"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000059",
+      "prefab": "moon_fissure",
+      "sourceIndex": 59,
+      "sourcePosition": [
+        632.62,
+        0,
+        -416.14
+      ],
+      "sourceNode": "MoonIsland_Mine:2:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000060",
+      "prefab": "moon_fissure",
+      "sourceIndex": 60,
+      "sourcePosition": [
+        616.01,
+        0,
+        -384.35
+      ],
+      "sourceNode": "MoonIsland_Mine:2:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000061",
+      "prefab": "moon_fissure",
+      "sourceIndex": 61,
+      "sourcePosition": [
+        584.7,
+        0,
+        -412.97
+      ],
+      "sourceNode": "MoonIsland_Mine:2:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000062",
+      "prefab": "moon_fissure",
+      "sourceIndex": 62,
+      "sourcePosition": [
+        587.28,
+        0,
+        -432.71
+      ],
+      "sourceNode": "MoonIsland_Mine:2:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000063",
+      "prefab": "moon_fissure",
+      "sourceIndex": 63,
+      "sourcePosition": [
+        656.23,
+        0,
+        -363.97
+      ],
+      "sourceNode": "MoonIsland_Mine:1:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000064",
+      "prefab": "moon_fissure",
+      "sourceIndex": 64,
+      "sourcePosition": [
+        584.34,
+        0,
+        -320.11
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000065",
+      "prefab": "moon_fissure",
+      "sourceIndex": 65,
+      "sourcePosition": [
+        496.09,
+        0,
+        -376.15
+      ],
+      "sourceNode": "MoonIsland_Baths:3:MoonIsland_Meadows"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000066",
+      "prefab": "moon_fissure",
+      "sourceIndex": 66,
+      "sourcePosition": [
+        566,
+        0,
+        -377.19
+      ],
+      "sourceNode": "MoonIsland_Mine:0:MoonIsland_Mine"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000067",
+      "prefab": "moon_fissure",
+      "sourceIndex": 67,
+      "sourcePosition": [
+        564.61,
+        0,
+        -251.9
+      ],
+      "sourceNode": "MoonIsland_Forest:1:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000068",
+      "prefab": "moon_fissure",
+      "sourceIndex": 68,
+      "sourcePosition": [
+        576.21,
+        0,
+        -240.09
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000069",
+      "prefab": "moon_fissure",
+      "sourceIndex": 69,
+      "sourcePosition": [
+        616.26,
+        0,
+        -216.09
+      ],
+      "sourceNode": "MoonIsland_Forest:2:MoonIsland_Forest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_moon_fissure_index_000070",
+      "prefab": "moon_fissure",
+      "sourceIndex": 70,
+      "sourcePosition": [
+        316.37,
+        0,
+        -459.9
+      ],
+      "sourceNode": "MoonIsland_IslandShards:5:MoonIsland_IslandShard"
     },
     {
       "id": "dst_03741E1B78B29575_monkeypillar_id_108756",
@@ -83901,7 +84676,7 @@
       }
     ]
   },
-  "groundItemScope": "Ground art via the existing ground_item path: identity, position, quantity, skin and visual variants. Existing prefab behavior is reused; art-only IDs add no gameplay components.",
+  "groundItemScope": "Ground art as item prefabs saved under their own IDs: identity, position, quantity, skin and visual variants. Existing prefab behavior is reused; art-only IDs add no gameplay components.",
   "player": {
     "source": "public/saves/Cluster_62/Master/save/session/03741E1B78B29575/A7MO82FN9PR9/0000000145",
     "sourceSha256": "b1b0f863c668d60cddf39c72f6e03f0afbcc9cd8205a4f66b2d102fc73ba48a1",

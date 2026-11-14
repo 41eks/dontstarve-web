@@ -483,6 +483,7 @@
     "pillar_algae",
     "pillar_atrium",
     "archive_pillar",
+    "moon_fissure",
     "vault_pillar",
     "monkeypillar",
     "cave_entrance",
@@ -757,6 +758,10 @@
     "archive_pillar": {
       "source": 22,
       "imported": 22
+    },
+    "moon_fissure": {
+      "source": 0,
+      "imported": 0
     },
     "vault_pillar": {
       "source": 0,
@@ -68912,7 +68917,7 @@
     "skipped": [],
     "droppedComponents": []
   },
-  "groundItemScope": "Ground art via the existing ground_item path: identity, position, quantity, skin and visual variants. Existing prefab behavior is reused; art-only IDs add no gameplay components.",
+  "groundItemScope": "Ground art as item prefabs saved under their own IDs: identity, position, quantity, skin and visual variants. Existing prefab behavior is reused; art-only IDs add no gameplay components.",
   "source": "public/saves/Cluster_62/Caves/save/session/04E26ADB66396E8D/0000000002",
   "sourceSha256": "452879e43f3e8d396d59fab35b1e770e2077128093a4e44556db768c15d8c40b"
 }

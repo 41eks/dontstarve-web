@@ -181,6 +181,13 @@ def stateless_pillar_components(prefab):
     return convert
 
 
+def moon_fissure_components(data):
+    # moon_fissure.lua has no OnSave; its workable leaves savestate false and sanityaura / repairable save nothing.
+    if data:
+        raise ValueError(f'Unsupported moon_fissure save state: {sorted(data)}')
+    return {}
+
+
 def archive_pillar_components(data):
     # archive_pillar.lua OnSave: data.broken, a boolean. Without it the constructor rolls one.
     if set(data) - {'broken'} or ('broken' in data and type(data['broken']) is not bool):

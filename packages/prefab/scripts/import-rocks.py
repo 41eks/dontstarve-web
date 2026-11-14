@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror source rock, cave hole and pillar world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock, cave hole, pillar and moon fissure world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
 from pathlib import Path
@@ -18,6 +18,8 @@ ASSETS = {
     'moonrockseed': ['moonrock_seed.zip'],
     'stalagmite': ['rock_stalagmite.zip'],
     'stalagmite_tall': ['rock_stalagmite_tall.zip'],
+    # moon_fissure.lua also lists moon_fissure_fx.zip, the bank of its unported moon_fissure_fx child.
+    'moon_fissure': ['moon_fissure.zip'],
 }
 
 
@@ -62,6 +64,9 @@ def main():
             for clip in clips}
     art |= {f'pillar_vault/{clip}': {'animationArchive': 'pillar_vault_deep.zip', 'bank': 'pillar_vault', 'animation': clip}
             for clip in ['idle_upper', 'idle_lower', 'idle_upper_capped', 'idle_upper_capped_2', 'idle_upper_broken']}
+    # moon_fissure.lua fn's loop and delayed_transition's clip.
+    art |= {f'moon_fissure/{clip}': {'animationArchive': 'moon_fissure.zip', 'bank': 'moon_fissure', 'animation': clip}
+            for clip in ['crack_idle', 'transition']}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives')
 

@@ -73,6 +73,7 @@
     "./pillar": "./src/pillar.ts",
     "./atrium_pillar": "./src/atrium_pillar.ts",
     "./archive_pillar": "./src/archive_pillar.ts",
+    "./moon_fissure": "./src/moon_fissure.ts",
     "./vault_pillar": "./src/vault_pillar.ts",
     "./monkeypillar": "./src/monkeypillar.ts",
     "./cave_exit": "./src/cave_exit.ts",

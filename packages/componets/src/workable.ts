@@ -79,6 +79,8 @@ export class Workable<Inst extends WorkableInst = WorkableInst> {
     batch(() => { this.enabledState.set(true); this.workleftState.set(this.maxworkState.peek() > 0
       ? Math.min(this.maxworkState.peek(), Math.max(1, work)) : Math.max(1, work)); });
   }
+  /** Lua's direct `workable.workleft = n` field write (moon_fissure.lua, sculptures.lua): no clamp, `workable` untouched. */
+  WriteWorkLeft(work: number): void { if (!this.disposedState.peek()) this.workleftState.set(work); }
   GetWorkLeft(): number { return this.enabledState.peek() ? this.workleftState.peek() : 0; }
   SetWorkable(value: boolean): void { if (!this.disposedState.peek()) this.enabledState.set(value); }
   // Domain checks use the same pure calculation on current inputs, including inside an outer batch.
