@@ -55,6 +55,8 @@ export class Snowfall {
   private readonly rate: ReadonlySignal<number>;
   private stopRate!: () => void;
   private mesh?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  /** The mesh's dynamic quad attributes and the arrays they upload. */
+  private quads?: Readonly<Record<'position' | 'color' | 'blur', { attribute: THREE.BufferAttribute; values: Float32Array }>>;
   private disposed = false;
   private particlesPerTick = 0;
   private numParticlesToEmit = 0;
@@ -105,9 +107,14 @@ export class Snowfall {
       uv.set([0, 1, 1, 1, 1, 0, 0, 0], i * 8);
       index.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3], i * 6);
     }
-    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(fx.maxParticles * 12), 3).setUsage(THREE.DynamicDrawUsage));
-    geometry.setAttribute('color', new THREE.BufferAttribute(new Float32Array(fx.maxParticles * 16), 4).setUsage(THREE.DynamicDrawUsage));
-    geometry.setAttribute('snowBlur', new THREE.BufferAttribute(new Float32Array(fx.maxParticles * 4), 1).setUsage(THREE.DynamicDrawUsage));
+    const dynamic = (itemSize: number) => {
+      const values = new Float32Array(fx.maxParticles * 4 * itemSize);
+      return { attribute: new THREE.BufferAttribute(values, itemSize).setUsage(THREE.DynamicDrawUsage), values };
+    };
+    const quads = this.quads = { position: dynamic(3), color: dynamic(4), blur: dynamic(1) };
+    geometry.setAttribute('position', quads.position.attribute);
+    geometry.setAttribute('color', quads.color.attribute);
+    geometry.setAttribute('snowBlur', quads.blur.attribute);
     geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
     geometry.setIndex(new THREE.BufferAttribute(index, 1));
     geometry.setDrawRange(0, 0);
@@ -220,13 +227,10 @@ export class Snowfall {
   }
 
   private writeGeometry(cameraQuaternion: THREE.Quaternion): void {
-    if (!this.mesh) return;
+    if (!this.mesh || !this.quads) return;
     this.orient(cameraQuaternion);
-    const position = this.mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
-    const color = this.mesh.geometry.getAttribute('color') as THREE.BufferAttribute;
-    const blur = this.mesh.geometry.getAttribute('snowBlur') as THREE.BufferAttribute;
-    const vertices = position.array as Float32Array, colors = color.array as Float32Array;
-    const blurValues = blur.array as Float32Array;
+    const { position: { attribute: position, values: vertices }, color: { attribute: color, values: colors },
+      blur: { attribute: blur, values: blurValues } } = this.quads;
     const camera = this.options.camera;
     let quads = 0;
     for (let i = 0; i < this.count; i++) {
@@ -309,6 +313,7 @@ export class Snowfall {
       mesh.material.dispose();
     }
     this.mesh = undefined;
+    this.quads = undefined;
     this.root.removeFromParent();
   }
 }

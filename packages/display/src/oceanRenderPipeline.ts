@@ -125,8 +125,9 @@ function target(name: string, width: number, height: number): THREE.WebGLRenderT
   return result;
 }
 
-function palette(name: string, width: number, height: number): THREE.DataTexture {
-  const texture = new THREE.DataTexture(new Uint8Array(width * height * 4), width, height, THREE.RGBAFormat);
+/** An RGBA palette texture over `pixels`, which its owner keeps writing. */
+function palette(name: string, pixels: Uint8Array, width: number, height: number): THREE.DataTexture {
+  const texture = new THREE.DataTexture(pixels, width, height, THREE.RGBAFormat);
   texture.name = name;
   texture.colorSpace = THREE.NoColorSpace;
   texture.minFilter = texture.magFilter = THREE.LinearFilter;
@@ -188,6 +189,9 @@ export class OceanRenderPipeline implements SceneRenderPass {
   private readonly day: THREE.DataTexture;
   private readonly dusk: THREE.DataTexture;
   private readonly primary: THREE.DataTexture;
+  private readonly dayPixels: Uint8Array;
+  private readonly duskPixels: Uint8Array;
+  private readonly primaryPixels: Uint8Array;
   private readonly dayBlur: THREE.WebGLRenderTarget;
   private readonly duskBlur: THREE.WebGLRenderTarget;
   private readonly primaryBlur: THREE.WebGLRenderTarget;
@@ -195,7 +199,12 @@ export class OceanRenderPipeline implements SceneRenderPass {
   private readonly scratchV: THREE.WebGLRenderTarget;
   private readonly blended: THREE.WebGLRenderTarget;
   private readonly encoded = target('DST ocean encoded screen colour', 1, 1);
-  private readonly white = palette('DST ocean neutral light', 1, 1);
+  private readonly white = palette('DST ocean neutral light', new Uint8Array(4).fill(255), 1, 1);
+  // Uniform values, written in place.
+  private readonly pixelStep = new THREE.Vector2();
+  private readonly lightmapExtents = new THREE.Vector4();
+  private readonly ambient = new THREE.Vector3(1, 1, 1);
+  private readonly floorColour = new THREE.Vector3(0, 19 / 255, 20 / 255);
   private readonly quadScene = new THREE.Scene();
   private readonly quadCamera = new THREE.Camera();
   private readonly quad: THREE.Mesh<THREE.PlaneGeometry, THREE.ShaderMaterial>;
@@ -222,19 +231,19 @@ export class OceanRenderPipeline implements SceneRenderPass {
     this.map = map;
     this.min = Math.floor(-map.size / 2 / map.tileSize);
     this.width = Math.ceil(map.size / 2 / map.tileSize) - this.min;
-    this.day = palette('DST ocean day palette', this.width, this.width);
-    this.dusk = palette('DST ocean dusk palette', this.width, this.width);
-    this.primary = palette('DST ocean primary palette', this.width, this.width);
+    const pixels = () => new Uint8Array(this.width * this.width * 4);
+    this.day = palette('DST ocean day palette', this.dayPixels = pixels(), this.width, this.width);
+    this.dusk = palette('DST ocean dusk palette', this.duskPixels = pixels(), this.width, this.width);
+    this.primary = palette('DST ocean primary palette', this.primaryPixels = pixels(), this.width, this.width);
     this.dayBlur = target('DST ocean blurred day', this.width, this.width);
     this.duskBlur = target('DST ocean blurred dusk', this.width, this.width);
     this.primaryBlur = target('DST ocean blurred primary', this.width, this.width);
     this.scratchH = target('DST ocean horizontal blur', this.width, this.width);
     this.scratchV = target('DST ocean vertical blur', this.width, this.width);
     this.blended = target('DST ocean day-dusk blend', this.width, this.width);
-    (this.white.image.data as Uint8Array).fill(255);
     noise.colorSpace = THREE.NoColorSpace;
     this.blurMaterial = this.material('DST ocean nine-tap blur', QUAD_VERTEX, BLUR_FRAGMENT, {
-      sourceTexture: { value: this.day }, pixelStep: { value: new THREE.Vector2() },
+      sourceTexture: { value: this.day }, pixelStep: { value: this.pixelStep },
     });
     this.blendMaterial = this.material('DST ocean colour texture blend', QUAD_VERTEX, BLEND_FRAGMENT, {
       dayTexture: { value: this.dayBlur.texture }, duskTexture: { value: this.duskBlur.texture }, textureBlend: { value: 0 },
@@ -244,8 +253,8 @@ export class OceanRenderPipeline implements SceneRenderPass {
       baseTexture: { value: this.blended.texture }, primaryTexture: { value: this.primaryBlur.texture },
       noiseTexture: { value: noise }, oceanTime: { value: 0 },
       oceanExtents: { value: new THREE.Vector4(this.min * map.tileSize, this.min * map.tileSize, 1 / span, 1 / span) },
-      lightmap: { value: this.white }, lightmapExtents: { value: new THREE.Vector4() },
-      ambient: { value: new THREE.Vector3(1, 1, 1) }, useLightmap: { value: 0 },
+      lightmap: { value: this.white }, lightmapExtents: { value: this.lightmapExtents },
+      ambient: { value: this.ambient }, useLightmap: { value: 0 },
     });
     this.resolveMaterial = this.material('DST ocean screen resolve', WORLD_VERTEX, RESOLVE_FRAGMENT, {
       encodedTexture: { value: this.encoded.texture },
@@ -255,7 +264,7 @@ export class OceanRenderPipeline implements SceneRenderPass {
     this.resolveMaterial.premultipliedAlpha = true;
     this.resolveMaterial.depthTest = true;
     this.floorMaterial = this.material('DST ocean clear colour', WORLD_VERTEX, FLOOR_FRAGMENT, {
-      floorColour: { value: new THREE.Vector3(0, 19 / 255, 20 / 255) },
+      floorColour: { value: this.floorColour },
     });
     this.floorMaterial.depthTest = true;
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.blurMaterial);
@@ -300,9 +309,9 @@ export class OceanRenderPipeline implements SceneRenderPass {
       const colour = this.map.oceanColoursAt?.(col + this.min, row + this.min)
         ?? (this.map.isOceanTileAt(col + this.min, row + this.min) ? OCEAN : LAND);
       const offset = (row * this.width + col) * 4;
-      (this.day.image.data as Uint8Array).set(colour.day, offset);
-      (this.dusk.image.data as Uint8Array).set(colour.dusk, offset);
-      (this.primary.image.data as Uint8Array).set(colour.primary, offset);
+      this.dayPixels.set(colour.day, offset);
+      this.duskPixels.set(colour.dusk, offset);
+      this.primaryPixels.set(colour.primary, offset);
     }
     this.day.needsUpdate = this.dusk.needsUpdate = this.primary.needsUpdate = true;
     this.rebuildFloor();
@@ -312,7 +321,7 @@ export class OceanRenderPipeline implements SceneRenderPass {
   setPhase(blend: number, floor: THREE.Vector3): void {
     if (this.blendMaterial.uniforms.textureBlend.value !== blend) this.blendDirty = true;
     this.blendMaterial.uniforms.textureBlend.value = blend;
-    (this.floorMaterial.uniforms.floorColour.value as THREE.Vector3).copy(floor);
+    this.floorColour.copy(floor);
   }
 
   update(dt: number): void { this.combinedMaterial.uniforms.oceanTime.value += dt; }
@@ -361,10 +370,10 @@ export class OceanRenderPipeline implements SceneRenderPass {
     // tuning.lua TEXTURE_BLUR_PASS_SIZE = 1, TEXTURE_BLUR_PASS_COUNT = 3.
     for (let round = 0; round < 3; round++) {
       uniforms.sourceTexture.value = input;
-      (uniforms.pixelStep.value as THREE.Vector2).set(1 / this.width, 0);
+      this.pixelStep.set(1 / this.width, 0);
       this.drawQuad(renderer, this.blurMaterial, this.scratchH);
       uniforms.sourceTexture.value = this.scratchH.texture;
-      (uniforms.pixelStep.value as THREE.Vector2).set(0, 1 / this.width);
+      this.pixelStep.set(0, 1 / this.width);
       const destination = round === 2 ? output : this.scratchV;
       this.drawQuad(renderer, this.blurMaterial, destination);
       input = destination.texture;
@@ -392,9 +401,9 @@ export class OceanRenderPipeline implements SceneRenderPass {
     const uniforms = this.combinedMaterial.uniforms;
     uniforms.lightmap.value = lighting?.texture ?? this.white;
     uniforms.useLightmap.value = lighting ? 1 : 0;
-    if (lighting) (uniforms.ambient.value as THREE.Vector3).copy(lighting.ambient);
-    else (uniforms.ambient.value as THREE.Vector3).set(1, 1, 1);
-    if (lighting) (uniforms.lightmapExtents.value as THREE.Vector4).copy(lighting.extents);
+    if (lighting) this.ambient.copy(lighting.ambient);
+    else this.ambient.set(1, 1, 1);
+    if (lighting) this.lightmapExtents.copy(lighting.extents);
     this.withRendererState(renderer, () => {
       this.renderColourTextures(renderer);
       renderer.setRenderTarget(this.encoded);

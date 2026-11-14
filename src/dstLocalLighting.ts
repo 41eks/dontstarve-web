@@ -47,7 +47,7 @@ const LIGHT_FRAGMENT_SHADER = /* glsl */`
   }
 `;
 
-type MaterialRenderHook = (this: THREE.Material, ...args: unknown[]) => void;
+type MaterialRenderHook = THREE.Material['onBeforeRender'];
 
 /**
  * Materials are patched and their light override resolved when they are about
@@ -59,24 +59,35 @@ let originalMaterialBeforeRender: MaterialRenderHook | undefined;
 
 function installMaterialHook(): void {
   if (originalMaterialBeforeRender) return;
-  const original = THREE.Material.prototype.onBeforeRender as MaterialRenderHook;
+  const original = THREE.Material.prototype.onBeforeRender;
   originalMaterialBeforeRender = original;
-  THREE.Material.prototype.onBeforeRender = function (this: THREE.Material, ...args: unknown[]) {
-    original.apply(this, args);
-    for (const lighting of renderingLighting) lighting.prepareDrawnMaterial(this, args[4] as THREE.Object3D, args[0] as THREE.WebGLRenderer);
-  } as typeof THREE.Material.prototype.onBeforeRender;
+  THREE.Material.prototype.onBeforeRender = function (this: THREE.Material, renderer, scene, camera, geometry, object, group) {
+    original.call(this, renderer, scene, camera, geometry, object, group);
+    for (const lighting of renderingLighting) lighting.prepareDrawnMaterial(this, object, renderer);
+  };
 }
 
 function uninstallMaterialHook(): void {
   if (!originalMaterialBeforeRender || renderingLighting.size) return;
-  THREE.Material.prototype.onBeforeRender = originalMaterialBeforeRender as typeof THREE.Material.prototype.onBeforeRender;
+  THREE.Material.prototype.onBeforeRender = originalMaterialBeforeRender;
   originalMaterialBeforeRender = undefined;
 }
+
+/** Three's own isScene flag, which marks a scene without an instanceof check. */
+const isScene = (object: THREE.Object3D | null): object is THREE.Scene =>
+  object !== null && 'isScene' in object && object.isScene === true;
 
 function sceneOf(object: THREE.Object3D): THREE.Scene | undefined {
   let root = object;
   while (root.parent) root = root.parent;
-  return (root as THREE.Scene).isScene === true ? root as THREE.Scene : undefined;
+  return isScene(root) ? root : undefined;
+}
+
+/** The instanced light attributes for `capacity` lights. */
+function lightAttributes(capacity: number) {
+  const attribute = (size: number) => new THREE.InstancedBufferAttribute(new Float32Array(capacity * size), size)
+    .setUsage(THREE.DynamicDrawUsage);
+  return { lightOriginRadius: attribute(3), lightColour: attribute(3), lightLogFalloff: attribute(1) };
 }
 
 /** World XZ lightmap shared by ground, animated sprites and instanced scenery. */
@@ -98,6 +109,7 @@ export class DstLocalLighting {
   private readonly ambientMaterial: THREE.ShaderMaterial;
   private readonly lightmapMaterial: THREE.ShaderMaterial;
   private readonly lightGeometry = new THREE.InstancedBufferGeometry();
+  private lightAttributes = lightAttributes(0);
   private readonly lightMesh: THREE.Mesh;
   private lightCapacity = 0;
   private renderer: THREE.WebGLRenderer | undefined;
@@ -189,7 +201,7 @@ export class DstLocalLighting {
       // Owners are parented to the scene root or an unrotated group, so the local position is checked before the full lookup.
       const reach = light.radius * 3;
       const local = owner.position;
-      if ((owner.parent as THREE.Scene | null)?.isScene === true && (Math.abs(position.x - local.x) >= reach || Math.abs(position.z - local.z) >= reach)) continue;
+      if (isScene(owner.parent) && (Math.abs(position.x - local.x) >= reach || Math.abs(position.z - local.z) >= reach)) continue;
       const origin = this.getLightPosition(listed);
       if (!origin) continue;
       const distance = Math.max(Math.hypot(position.x - origin.x, position.z - origin.z) / light.radius, 0.0001);
@@ -206,9 +218,7 @@ export class DstLocalLighting {
   renderLightmap(renderer: THREE.WebGLRenderer, preparedScene?: THREE.Scene): void {
     this.renderer = renderer;
     this.ensureLightCapacity(displayLights().size);
-    const origins = this.lightGeometry.getAttribute('lightOriginRadius') as THREE.InstancedBufferAttribute;
-    const colours = this.lightGeometry.getAttribute('lightColour') as THREE.InstancedBufferAttribute;
-    const falloffs = this.lightGeometry.getAttribute('lightLogFalloff') as THREE.InstancedBufferAttribute;
+    const { lightOriginRadius: origins, lightColour: colours, lightLogFalloff: falloffs } = this.lightAttributes;
     let count = 0;
     let minX = Infinity, minZ = Infinity, maxX = -Infinity, maxZ = -Infinity;
     for (const listed of displayLights()) {
@@ -267,18 +277,16 @@ export class DstLocalLighting {
     // Release old GPU attributes before replacing them; retain and re-upload the shared quad.
     if (this.lightCapacity) this.lightGeometry.dispose();
     this.lightCapacity = THREE.MathUtils.ceilPowerOfTwo(count);
-    for (const [name, size] of [['lightOriginRadius', 3], ['lightColour', 3], ['lightLogFalloff', 1]] as const) {
-      this.lightGeometry.setAttribute(name, new THREE.InstancedBufferAttribute(
-        new Float32Array(this.lightCapacity * size), size).setUsage(THREE.DynamicDrawUsage));
-    }
+    this.lightAttributes = lightAttributes(this.lightCapacity);
+    for (const [name, attribute] of Object.entries(this.lightAttributes)) this.lightGeometry.setAttribute(name, attribute);
   }
 
   /** One-off patch of every material already in the scene, for prewarming; frames patch lazily when drawn. */
   prepareScene(scene: THREE.Scene): void {
     scene.traverse((object) => {
-      const material = (object as THREE.Mesh).material;
-      if (!material) return;
-      for (const entry of Array.isArray(material) ? material : [material]) this.patchMaterial(entry);
+      if (!('material' in object)) return;
+      const { material } = object;
+      for (const entry of Array.isArray(material) ? material : [material]) if (entry instanceof THREE.Material) this.patchMaterial(entry);
     });
   }
 

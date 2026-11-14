@@ -62,11 +62,18 @@ interface InstanceState {
   r: number; g: number; b: number;
   opacity: number; light: number; erosion: number;
 }
+/** A page batch's quad and its per-instance sprite attributes. */
+type BatchAttributes = {
+  position: THREE.BufferAttribute; uv: THREE.BufferAttribute;
+  spriteUv: THREE.InstancedBufferAttribute; spriteOpacity: THREE.InstancedBufferAttribute;
+  spriteLightOverride: THREE.InstancedBufferAttribute; spriteErosion: THREE.InstancedBufferAttribute;
+};
+type BatchMesh = THREE.InstancedMesh<THREE.BufferGeometry<BatchAttributes>, THREE.MeshBasicMaterial>;
 interface PageBatch {
   atlas: RgbaSpriteAtlas;
-  geometry: THREE.BufferGeometry;
-  colour: THREE.InstancedMesh;
-  depth: THREE.InstancedMesh;
+  geometry: THREE.BufferGeometry<BatchAttributes>;
+  colour: BatchMesh;
+  depth: BatchMesh;
   capacity: number;
   attributes: InstanceAttributes;
   transforms: InstanceState[];
@@ -255,7 +262,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   bindMembers(members: ReadonlySet<InstancedSpriteMember>): void { this.members = members; }
 
   private createBatch(scene: SceneBatches, atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial, capacity: number): PageBatch {
-    const geometry = new THREE.BufferGeometry();
+    const geometry = new THREE.BufferGeometry<BatchAttributes>();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0], 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2));
     geometry.setIndex([0, 1, 2, 0, 2, 3]);
@@ -291,8 +298,8 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     batch.colour.removeFromParent(); batch.depth.removeFromParent();
     batch.colour.dispose(); batch.depth.dispose();
     batch.geometry.dispose();
-    (batch.colour.material as THREE.Material).dispose();
-    (batch.depth.material as THREE.Material).dispose();
+    batch.colour.material.dispose();
+    batch.depth.material.dispose();
   }
 
   private recycleBatch(batches: SceneBatches, batch: PageBatch): void {
@@ -428,16 +435,16 @@ export class InstancedArchiveSprites implements SceneRenderPass {
             batch = reusable; batch.atlas = atlas;
             batches.group.add(batch.depth, batch.colour);
             for (const mesh of [batch.colour, batch.depth]) {
-              const material = mesh.material as THREE.MeshBasicMaterial;
+              const material = mesh.material;
               material.map = atlas.texture; material.color.copy(source.color);
             }
           } else batch = spritePerf('createBatch', `${count}`, () => this.createBatch(batches, atlas, source, THREE.MathUtils.ceilPowerOfTwo(Math.max(1, count))));
           batches.pages.set(atlas, batch);
         }
-        const uv = batch.geometry.getAttribute('spriteUv') as THREE.InstancedBufferAttribute;
-        const opacity = batch.geometry.getAttribute('spriteOpacity') as THREE.InstancedBufferAttribute;
-        const lightOverride = batch.geometry.getAttribute('spriteLightOverride') as THREE.InstancedBufferAttribute;
-        const erosion = batch.geometry.getAttribute('spriteErosion') as THREE.InstancedBufferAttribute;
+        const uv = batch.geometry.getAttribute('spriteUv');
+        const opacity = batch.geometry.getAttribute('spriteOpacity');
+        const lightOverride = batch.geometry.getAttribute('spriteLightOverride');
+        const erosion = batch.geometry.getAttribute('spriteErosion');
         const writer = batch.attributes, values = this.attributeValues;
         writer.begin();
         for (let index = 0; index < page.entries.length; index++) {
@@ -490,7 +497,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     // Prepare the ordinary shared-frame material variant used when an entity starts working.
     const proxies = new Set<THREE.Mesh>();
     for (const entry of this.retained) {
-      const proxy = entry.visual.children.find(child => child instanceof THREE.Mesh) as THREE.Mesh | undefined;
+      const proxy = entry.visual.children.find((child): child is THREE.Mesh => child instanceof THREE.Mesh);
       if (proxy && !proxy.visible) proxies.add(proxy);
     }
     const staging = new THREE.Scene(); staging.children = [...proxies];

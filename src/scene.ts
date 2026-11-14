@@ -50,7 +50,7 @@ function disposeTerrain(): void {
   turfMap.dispose();
   ground.removeFromParent();
   ground.geometry.dispose();
-  (ground.material as THREE.Material).dispose();
+  ground.material.dispose();
 }
 
 const playerRadius = (playerBody.shapes[0] as CANNON.Sphere).radius;

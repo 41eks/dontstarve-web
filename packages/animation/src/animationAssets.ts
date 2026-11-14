@@ -160,7 +160,10 @@ export function prepareAtlasTexture(renderer: THREE.WebGLRenderer, texture: THRE
 /** The RGBA of an atlas texture for CPU composition, or undefined while a released atlas is decoded again. */
 export function atlasTexturePixels(texture: THREE.DataTexture): Uint8Array | undefined {
   const record = sourceRecords.get(texture.source);
-  if (!record) return texture.image.data as Uint8Array;
+  if (!record) {
+    const { data } = texture.image;
+    return data instanceof Uint8Array ? data : undefined;
+  }
   if (!record.image.data) reloadAtlasSource(record);
   return record.image.data ?? undefined;
 }

@@ -440,7 +440,7 @@ class GpuAtlasScratch {
   readonly uploaded = new Set<THREE.Texture>();
   private readonly materials: THREE.ShaderMaterial[] = [];
   private readonly materialIndices = new Map<THREE.Texture, number>();
-  private readonly geometry = new THREE.BufferGeometry();
+  private readonly geometry = new THREE.BufferGeometry<Record<'position' | 'uv', THREE.BufferAttribute>>();
   private readonly mesh = new THREE.Mesh(this.geometry, this.materials);
   private positions = new Float32Array();
   private uvs = new Float32Array();
@@ -519,7 +519,7 @@ class GpuAtlasScratch {
     if (count) this.geometry.addGroup(runStart * 6, (count - runStart) * 6, run);
     this.geometry.setDrawRange(0, count * 6);
     for (const [name, length] of [['position', count * 12], ['uv', count * 8]] as const) {
-      const attribute = this.geometry.getAttribute(name) as THREE.BufferAttribute;
+      const attribute = this.geometry.getAttribute(name);
       // A render may not have consumed previous writes (e.g. during context loss).
       let end = length;
       for (const range of attribute.updateRanges) end = Math.max(end, range.start + range.count);
@@ -690,8 +690,10 @@ export function updateRgbaSpriteFrameGeometry(
   options: RgbaSpriteFrameGeometryOptions = {},
 ) {
   const yOffset = options.anchor === 'bottom' ? -frame.maxY : 0;
-  let positions = geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
-  let uvs = geometry.getAttribute('uv') as THREE.BufferAttribute | undefined;
+  // A geometry that lacks them (or holds interleaved ones) gets its own four-vertex attributes.
+  const position = geometry.getAttribute('position'), uv = geometry.getAttribute('uv');
+  let positions = position instanceof THREE.BufferAttribute ? position : undefined;
+  let uvs = uv instanceof THREE.BufferAttribute ? uv : undefined;
   if (!positions || positions.count !== 4) {
     positions = new THREE.BufferAttribute(new Float32Array(12), 3);
     positions.setUsage(THREE.DynamicDrawUsage);

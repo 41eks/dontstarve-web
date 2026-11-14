@@ -88,8 +88,11 @@ function sample<T extends readonly number[]>(stops: readonly Stop<T>[], t: numbe
 
 const unitRand = () => Math.random() * 2 - 1;
 
+/** The particle quads' vertex attributes, each a plain BufferAttribute. */
+type VfxAttributes = Record<'position' | 'uv' | 'tint' | 'size' | 'corner', THREE.BufferAttribute>;
+
 class Emitter {
-  readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  readonly mesh: THREE.Mesh<THREE.BufferGeometry<VfxAttributes>, THREE.ShaderMaterial>;
   private readonly spec: VfxEmitterJson;
   private readonly position: Float32Array;
   private readonly velocity: Float32Array;
@@ -105,7 +108,7 @@ class Emitter {
     this.position = new Float32Array(max * 3); this.velocity = new Float32Array(max * 3);
     this.age = new Float32Array(max); this.lifetime = new Float32Array(max); this.uvOffset = new Float32Array(max);
     this.toEmit = spec.initialCount;
-    const geometry = new THREE.BufferGeometry();
+    const geometry = new THREE.BufferGeometry<VfxAttributes>();
     const corners = new Float32Array(max * 8);
     const index = new Uint16Array(max * 6);
     for (let i = 0; i < max; i++) {
@@ -181,10 +184,10 @@ class Emitter {
 
   write(): void {
     const { geometry } = this.mesh, { spec } = this;
-    const position = geometry.getAttribute('position') as THREE.BufferAttribute;
-    const uv = geometry.getAttribute('uv') as THREE.BufferAttribute;
-    const tint = geometry.getAttribute('tint') as THREE.BufferAttribute;
-    const size = geometry.getAttribute('size') as THREE.BufferAttribute;
+    const position = geometry.getAttribute('position');
+    const uv = geometry.getAttribute('uv');
+    const tint = geometry.getAttribute('tint');
+    const size = geometry.getAttribute('size');
     for (let i = 0; i < this.count; i++) {
       const life = this.age[i] / this.lifetime[i];
       const colour = sample(spec.colourEnvelope, life);

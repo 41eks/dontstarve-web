@@ -38,7 +38,7 @@ const TILES_PER_NOISE_TEXTURE = 8;
  * colour lives in the ground noise texture; `levels/tiles/<name>.tex` next to it
  * only holds the seam pieces the terrain shader blends between tile types.
  */
-export async function createTurfGround(options: TurfGroundOptions): Promise<THREE.Mesh> {
+export async function createTurfGround(options: TurfGroundOptions): Promise<THREE.Mesh<THREE.PlaneGeometry, THREE.MeshLambertMaterial>> {
     const root = options.assetBaseUrl.replace(/\/$/, '');
     const tileAssets = options.tileAtlas ? await loadGroundTileAssets(root, options.tileAtlas) : undefined;
     let texture: THREE.Texture;

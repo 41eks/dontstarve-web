@@ -1,5 +1,6 @@
 import { readAnimationArchivePart } from './animationArchive';
 import type { AnimationArchiveWorkerRequest, AnimationArchiveWorkerResponse } from './animationArchiveWorkerProtocol';
+import { transferBuffers } from './transferBuffers';
 
 // The worker scope's postMessage, typed by the protocol; `{ transfer }` also suits the DOM lib's Window signature.
 const postMessage = (message: AnimationArchiveWorkerResponse, transfer: Transferable[]): void => globalThis.postMessage(message, { transfer });
@@ -9,8 +10,7 @@ globalThis.addEventListener('message', async ({ data: { id, file, assetBaseUrl, 
     const result = await readAnimationArchivePart(file, assetBaseUrl, kind);
     // Ownership of RGBA and alpha buffers moves to the main-thread cache without a copy.
     const buffers = result && 'atlases' in result
-      ? result.atlases.flatMap(({ pixels, alpha }) => [pixels, alpha].filter(data => data !== undefined)
-        .map(data => data.buffer as ArrayBuffer)) : [];
+      ? transferBuffers(result.atlases.flatMap(({ pixels, alpha }) => [pixels, alpha])) : [];
     postMessage({ id, result }, buffers);
   } catch (error) {
     postMessage({ id, error: error instanceof Error ? error.message : String(error) }, []);

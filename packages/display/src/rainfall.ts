@@ -65,6 +65,8 @@ export class Rainfall {
   private readonly rate: ReadonlySignal<number>;
   private stopRate!: () => void;
   private mesh?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
+  /** The mesh's dynamic quad attributes and the arrays they upload. */
+  private quads?: { position: THREE.BufferAttribute; positions: Float32Array; uv: THREE.BufferAttribute; uvs: Float32Array };
   private disposed = false;
   private tickRemainder = 0;
   private particlesPerTick = 0;
@@ -105,8 +107,13 @@ export class Rainfall {
       uv.set([0, 1, 1, 1, 1, 0, 0, 0], i * 8);
       index.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3], i * 6);
     }
-    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(fx.maxParticles * 12), 3).setUsage(THREE.DynamicDrawUsage));
-    geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    const positions = new Float32Array(fx.maxParticles * 12);
+    const quads = this.quads = {
+      position: new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage), positions,
+      uv: new THREE.BufferAttribute(uv, 2), uvs: uv,
+    };
+    geometry.setAttribute('position', quads.position);
+    geometry.setAttribute('uv', quads.uv);
     geometry.setIndex(new THREE.BufferAttribute(index, 1));
     geometry.setDrawRange(0, 0);
     // BLENDMODE.Premultiplied with a white colour envelope: opacity scales the white texture.
@@ -170,17 +177,14 @@ export class Rainfall {
 
   /** Stretched, screen-facing quads of the scale envelope; the part under the ground is clipped away. */
   private writeGeometry(): void {
-    if (!this.mesh) return;
-    const attribute = this.mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
-    const uv = this.mesh.geometry.getAttribute('uv') as THREE.BufferAttribute;
+    if (!this.mesh || !this.quads) return;
+    const { position: attribute, positions: out, uv, uvs: uvOut } = this.quads;
     const { scale } = this.options.fx;
     const fullWidth = scale[0] * SCALE_FACTOR[0] * WORLD_SCALE / 2;
     const fullHeight = scale[1] * SCALE_FACTOR[1] * WORLD_SCALE / 2;
     const { right, up, cameraPosition } = this;
     cameraPosition.setFromMatrixPosition(this.options.camera.matrixWorld);
     const focusDistance = cameraPosition.distanceTo(this.options.getFocus());
-    const out = attribute.array as Float32Array;
-    const uvOut = uv.array as Float32Array;
     let quads = 0;
     for (let i = 0; i < this.count; i++) {
       const cx = this.position[i * 3], cy = this.position[i * 3 + 1], cz = this.position[i * 3 + 2];
@@ -250,6 +254,7 @@ export class Rainfall {
       mesh.material.dispose();
     }
     this.mesh = undefined;
+    this.quads = undefined;
     this.root.removeFromParent();
   }
 }

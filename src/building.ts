@@ -1,6 +1,5 @@
 // src/building.ts
 
-import * as THREE from 'three';
 import { createTurfGround } from '@dontstarve-web/prefab/turf';
 import { Pathfinder } from '@dontstarve-web/prefab/pathfinder';
 import { TurfMap, WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
@@ -19,7 +18,7 @@ export const turfMap = new TurfMap(initialSave.world.map.generator.options.size,
 /** TheWorld.Pathfinder. */
 export const pathfinder = new Pathfinder(turfMap);
 // The plane remains a pointer target; local maps draw only their saved land cells.
-(ground.material as THREE.Material).visible = turfMap.defaultTileId === WORLD_TILES.DECIDUOUS;
+ground.material.visible = turfMap.defaultTileId === WORLD_TILES.DECIDUOUS;
 /** The turf layers, cliffs and ocean turfMap declares; edits redraw only the chunks they reach. */
 export const groundDisplay = new GroundDisplay(turfMap, `${import.meta.env.BASE_URL}dst/data`);
 await groundDisplay.prepare();

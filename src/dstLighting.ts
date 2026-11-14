@@ -269,6 +269,8 @@ export class DstLightingRenderer {
   private readonly bakeScene = new THREE.Scene();
   private bakeDirty = true;
   private readonly drawingBufferSize = new THREE.Vector2();
+  /** The sceneTexelSize uniform's value, written in place. */
+  private readonly sceneTexelSize = new THREE.Vector2(1, 1);
   private readonly localLighting: DstLocalLighting;
   private readonly litAmbient = new THREE.Vector3();
   private readonly litBackground = new THREE.Color();
@@ -354,7 +356,7 @@ export class DstLightingRenderer {
         lutSize: { value: initialLut.image.height },
         distortionIntensity: { value: 0 },
         distortionTime: { value: 0 },
-        sceneTexelSize: { value: new THREE.Vector2(1, 1) },
+        sceneTexelSize: { value: this.sceneTexelSize },
       },
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
@@ -485,8 +487,7 @@ export class DstLightingRenderer {
     if (this.renderTarget.width !== this.drawingBufferSize.x
       || this.renderTarget.height !== this.drawingBufferSize.y) {
       this.renderTarget.setSize(this.drawingBufferSize.x, this.drawingBufferSize.y);
-      (this.material.uniforms.sceneTexelSize.value as THREE.Vector2)
-        .set(1 / this.drawingBufferSize.x, 1 / this.drawingBufferSize.y);
+      this.sceneTexelSize.set(1 / this.drawingBufferSize.x, 1 / this.drawingBufferSize.y);
     }
   }
 

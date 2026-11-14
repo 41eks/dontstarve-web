@@ -86,7 +86,7 @@ export class MiniMapRenderer {
   private readonly pendingLayers = new Set<number>();
   private oceanIds?: ReadonlySet<number>;
   private oceanTexture?: THREE.Texture;
-  private ocean?: THREE.Mesh;
+  private ocean?: THREE.Mesh<THREE.BufferGeometry, THREE.RawShaderMaterial>;
   private view?: MinimapView;
   private frame?: number;
   private preparation?: Promise<void>;
@@ -291,7 +291,7 @@ export class MiniMapRenderer {
     return material;
   }
 
-  private createOcean(plate: THREE.Texture, cellSize: number): THREE.Mesh {
+  private createOcean(plate: THREE.Texture, cellSize: number): THREE.Mesh<THREE.BufferGeometry, THREE.RawShaderMaterial> {
     const { min, max } = this.options.terrain.cellRange(), world = (max - min) * cellSize;
     const x0 = min * cellSize - MINIMAP_MARGIN_RATIO * world, x1 = max * cellSize + MINIMAP_MARGIN_RATIO * world;
     const repeat = (x1 - x0) / (OCEAN_PLATE_CELLS * cellSize);
@@ -343,7 +343,7 @@ export class MiniMapRenderer {
     this.stopTerrain();
     for (const chunk of this.chunks.values()) for (const mesh of chunk.meshes) mesh.geometry.dispose();
     this.chunks.clear();
-    if (this.ocean) { this.ocean.geometry.dispose(); (this.ocean.material as THREE.Material).dispose(); }
+    if (this.ocean) { this.ocean.geometry.dispose(); this.ocean.material.dispose(); }
     for (const material of this.materials.values()) material.dispose();
     for (const texture of this.textures.values()) texture.dispose();
     this.oceanTexture?.dispose();

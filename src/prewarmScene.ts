@@ -30,10 +30,12 @@ export async function prewarmScene(renderer: THREE.WebGLRenderer, scene: THREE.S
   };
   scene.traverseVisible(object => {
     if (object instanceof THREE.Light) lights.push(object);
-    const material = (object as THREE.Mesh).material;
+    if (!('material' in object)) return;
+    const { material } = object;
     if (!material) return;
     objects.push(object);
     for (const entry of Array.isArray(material) ? material : [material]) {
+      if (!(entry instanceof THREE.Material)) continue;
       Object.values(entry).forEach(addTexture);
       addTexture(entry.userData.prewarmTextures);
       if (entry instanceof THREE.ShaderMaterial) {

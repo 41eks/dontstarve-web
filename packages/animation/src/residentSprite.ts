@@ -347,7 +347,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   /** LAYER_BACKGROUND art drawn by its mesh order within the ground layers; the group keeps its own order. */
   setMeshOrder(order: number): void {
     if (!this.sprite) return;
-    (this.sprite.model.children[0].children[0] as THREE.Object3D).renderOrder = order;
+    this.sprite.model.children[0].children[0].renderOrder = order;
   }
   /** Display-only orientation and background order, reapplied by the entity's sprite json after loading. */
   setGround(renderOrder: number, flat: boolean): void {
@@ -556,7 +556,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   }
   setMeshOrder(order: number): void {
     if (!this.sprite) return;
-    (this.sprite.children[0].children[0] as THREE.Object3D).renderOrder = order;
+    this.sprite.children[0].children[0].renderOrder = order;
   }
   setGround(renderOrder: number, flat: boolean): void {
     if (!this.sprite) return;
