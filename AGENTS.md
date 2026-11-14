@@ -13,6 +13,10 @@
 - 合并到 `main` 时不得覆盖主检出目录中其他会话未提交的修改：不对主检出目录执行 `git stash`、`git reset`、`git checkout -- <path>` 或 `git clean`。如果合并会触及这些文件，先暂停并向用户确认处理方式。
 - 合并完成后删除该任务的 worktree 和分支。
 
+## Shell
+
+- 运行 shell 命令时显式指定 bash（如 `bash -c '...'` 或 `bash script.sh`），不使用环境的默认 shell：默认 shell 可能是 zsh，其变量不分词、未匹配的通配符报错等行为与 bash 不同。
+
 ## Packages and ownership
 
 以下职责适用于新增代码和迁移代码；已有兼容实现不能作为继续跨层存取状态、加载资源或复制控制器的依据。
