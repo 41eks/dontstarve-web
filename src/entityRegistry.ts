@@ -161,7 +161,9 @@ export class EntityRegistry {
     }
     for (const [prefabId, records] of Object.entries(entities)) {
       for (const record of records) {
-        const entity = await this.restorers.get(prefabId)!(record);
+        const restore = this.restorers.get(prefabId);
+        if (!restore) throw new Error(`No restorer for saved prefab ${prefabId}`);
+        const entity = await restore(record);
         this.assertActive();
         this.byEntityId.set(record.id, entity);
       }

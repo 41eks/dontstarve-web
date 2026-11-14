@@ -121,13 +121,20 @@ function drawAnimation(
   }
 }
 
+/** A clip the clock's art must have. */
+function requiredAnimation(asset: AnimationAsset, name: string) {
+  const animation = asset.animations.get(name);
+  if (!animation) throw new Error(`Clock art has no animation ${name}`);
+  return animation;
+}
+
 function animationAt(asset: AnimationAsset, first: string | undefined, idle: string, elapsed: number) {
   const transition = first ? asset.animations.get(first) : undefined;
   const duration = transition ? transition.frames.length / transition.frameRate * 1000 : 0;
   if (transition && elapsed < duration) {
     return { animation: transition, frame: Math.floor(elapsed * transition.frameRate / 1000) };
   }
-  const animation = asset.animations.get(idle)!;
+  const animation = requiredAnimation(asset, idle);
   return { animation, frame: Math.floor((elapsed - duration) * animation.frameRate / 1000) % animation.frames.length };
 }
 
@@ -265,7 +272,7 @@ export class WorldClock {
     };
     if (this.moonAnimation !== 'hidden') {
       if (this.moonAnimation === 'trans_in') {
-        const animation = assets.moon.animations.get('trans_in')!;
+        const animation = requiredAnimation(assets.moon, 'trans_in');
         const frame = Math.floor(this.moonElapsed * animation.frameRate / 1000);
         if (frame < animation.frames.length) {
           drawAnimation(context, assets.moon, animation, frame, assets.moonPhases, moonSymbols[moonPhase]);

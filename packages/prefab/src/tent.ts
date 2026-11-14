@@ -27,7 +27,7 @@ export type TentComponents = { sleepingbag: SleepingBag; finiteuses: FiniteUses 
 
 /** The tent's own components, once oninit has run. */
 export function getTentComponents(model: THREE.Object3D): TentComponents | undefined {
-    const components = prefabInstance(model)!.components;
+    const components = prefabInstance(model)?.components;
     return components?.sleepingbag && components.finiteuses ? components as TentComponents : undefined;
 }
 

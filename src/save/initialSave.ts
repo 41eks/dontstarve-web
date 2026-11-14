@@ -43,7 +43,8 @@ async function activeSaveUrl(search: string, base: string): Promise<string> {
     for (const entry of snapshots) {
       const snapshot = sessionSnapshot(entry);
       const key = `${snapshot.shard}/${snapshot.sessionId}`;
-      if (!latest.has(key) || latest.get(key)!.snapshotId < snapshot.snapshotId) latest.set(key, snapshot);
+      const previous = latest.get(key);
+      if (!previous || previous.snapshotId < snapshot.snapshotId) latest.set(key, snapshot);
     }
     const active = [...latest.values()].filter(snapshot => snapshot.playerFile && snapshot.migration == null);
     const preferred = active.filter(snapshot => snapshot.shard === activeShard);

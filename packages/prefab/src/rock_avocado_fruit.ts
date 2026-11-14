@@ -57,7 +57,7 @@ export class RockAvocadoFruit {
     const worked = Math.max(1, Math.min(count, Math.ceil(workdone)));
     if (count > worked) presentation.sprite.playOnce('mined', () => presentation.sprite.playOnce('idle'));
     const counts = new Map<Product, number>(PRODUCTS.map(id => [id, 0]));
-    for (let i = 0; i < worked; i++) { const id = rockAvocadoProduct(Math.random()); counts.set(id, counts.get(id)! + 1); }
+    for (let i = 0; i < worked; i++) { const id = rockAvocadoProduct(Math.random()); counts.set(id, (counts.get(id) ?? 0) + 1); }
     const origin = this.entity.getPosition(), target = worker.getPosition?.();
     for (const [prefab, amount] of counts) {
       if (!amount) continue;

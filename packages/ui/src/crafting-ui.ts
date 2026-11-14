@@ -191,8 +191,15 @@ export class DstCraftingUiElement extends AssetElement {
     resolveCraftingUiReady();
   }
 
+  /** The recipe's position in the recipes this panel was built with. */
+  private recipeIndex(recipe: Recipe): number {
+    const index = this.recipeIndices.get(recipe);
+    if (index === undefined) throw new Error(`Recipe ${recipe.id} is not in the crafting panel`);
+    return index;
+  }
+
   private isRecipeLocked(recipe: Recipe): boolean {
-    return this.recipeLockStates[this.recipeIndices.get(recipe)!].get();
+    return this.recipeLockStates[this.recipeIndex(recipe)].get();
   }
 
   private calculateRecipeLocked(recipe: Recipe): boolean {
@@ -201,7 +208,7 @@ export class DstCraftingUiElement extends AssetElement {
   }
 
   private isRecipeBuffered(recipe: Recipe): boolean {
-    return this.recipeBufferedStates[this.recipeIndices.get(recipe)!].get();
+    return this.recipeBufferedStates[this.recipeIndex(recipe)].get();
   }
 
   private updateRecipeLocks(): void {

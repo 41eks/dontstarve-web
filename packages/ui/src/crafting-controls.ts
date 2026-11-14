@@ -68,6 +68,8 @@ function skinIcon(recipe: Recipe, skin: RecipeSkin): HTMLElement {
   return icon;
 }
 
+function missingCategory(id: string): never { throw new Error(`Crafting has no ${id} category`); }
+
 export function initializeCraftingControls(root: ShadowRoot, {
   activeCategoryIdState,
   selectedRecipeState,
@@ -224,7 +226,7 @@ export function initializeCraftingControls(root: ShadowRoot, {
     return { category, recipeGroup, quickGroup, recipeButtons };
   });
   const allView = {
-    category: categories.find(({ id }) => id === 'none')!,
+    category: categories.find(({ id }) => id === 'none') ?? missingCategory('none'),
     recipeButtons: categoryViews.flatMap(({ recipeButtons }) => recipeButtons),
   };
 

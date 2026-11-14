@@ -194,9 +194,11 @@ export class Pickable implements PickableComponent {
       : this.product !== undefined && !doer?.giveItem(this.product, this.numToHarvest, position)) return false;
     // Lua invokes the prefab callback while canbepicked is still true, then clears it.
     batch(() => {
-      if (this.transplanted.peek() && this.cycles.peek() !== undefined) this.cycles.set(Math.max(0, this.cycles.peek()! - 1));
-      if (this.protection.peek() !== undefined) {
-        const protection = this.protection.peek()! - 1;
+      const cycles = this.cycles.peek();
+      if (this.transplanted.peek() && cycles !== undefined) this.cycles.set(Math.max(0, cycles - 1));
+      const protectedCycles = this.protection.peek();
+      if (protectedCycles !== undefined) {
+        const protection = protectedCycles - 1;
         this.protection.set(protection > 0 ? protection : undefined);
         if (protection <= 0) this.inst.components.witherable?.Enable(true);
       }

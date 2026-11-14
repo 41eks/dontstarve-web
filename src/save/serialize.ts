@@ -29,6 +29,11 @@ export function serializeSave(
   const nextId = Number(parentId) + 1;
   if (!Number.isSafeInteger(nextId) || nextId > 9_999_999_999) throw new Error('Snapshot 编号已用尽');
   const containers = new Map<string, SavedContainer>();
+  const playerContainer = (id: string): SavedContainer => {
+    const container = containers.get(id);
+    if (!container) throw new Error(`The inventory state has no ${id} container`);
+    return container;
+  };
   containers.set('player:inventory', { slotCount: 15, slots: [] });
   containers.set('player:equipment', { slotCount: 3, slots: [] });
   containers.set('player:cursor', { slotCount: 1, slots: [] });
@@ -64,9 +69,9 @@ export function serializeSave(
         ...(state.playerWortox === undefined ? {} : { wortox: { ...state.playerWortox } }),
         inventory: {
           containers: {
-            'player:inventory': containers.get('player:inventory')!,
-            'player:equipment': containers.get('player:equipment')!,
-            'player:cursor': containers.get('player:cursor')!,
+            'player:inventory': playerContainer('player:inventory'),
+            'player:equipment': playerContainer('player:equipment'),
+            'player:cursor': playerContainer('player:cursor'),
           },
           bufferedBuilds: state.inventory.bufferedBuilds.map((build) => ({ ...build })),
         },

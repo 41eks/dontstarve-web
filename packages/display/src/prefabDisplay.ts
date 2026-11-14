@@ -14,6 +14,8 @@ import { mergeAnimStates, resolveAnimState, type AnimStateArt, type AnimStateJso
 import { facingFromRotation, fourFacingFromRotation, sixFacingFromRotation, selectsFacing } from '@dontstarve-web/animation/facing';
 
 /** active: drawn and in the scene; asleep: nothing drawn and out of the scene; removed: everything released. */
+const isDefined = <T>(value: T | undefined): value is T => value !== undefined;
+
 export type PrefabStatus = 'active' | 'asleep' | 'removed';
 
 /** The entity's shared sprite source. It owns the atlases; the display only builds and returns drawn sprites. */
@@ -507,9 +509,9 @@ export class PrefabDisplay {
     if (this.sourceArt?.declaration === source) return this.sourceArt.value;
     const banks = source.animationArchives.map(archive => source.art.peekAnimation(archive)), build = source.art.peekBuild(source.buildArchive);
     const fallbacks = (source.fallbackBuilds ?? []).map(archive => source.art.peekBuild(archive));
-    if (banks.every(value => value !== undefined) && build && fallbacks.every(value => value !== undefined)) {
+    if (banks.every(isDefined) && build && fallbacks.every(value => value !== undefined)) {
       // One bank across every declared archive, as the engine resolves a clip name.
-      const animations = banks.length === 1 ? banks[0]! : { animations: banks.flatMap(bank => bank!.animations) };
+      const animations = banks.length === 1 ? banks[0] : { animations: banks.flatMap(bank => bank.animations) };
       return (this.sourceArt = { declaration: source, value: { animations, build, bank: smallHash(source.bank),
         fallbackBuilds: fallbacks as NonNullable<SpriteArtSource['fallbackBuilds']> } }).value;
     }

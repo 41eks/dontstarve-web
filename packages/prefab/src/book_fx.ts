@@ -76,7 +76,8 @@ class FxInst implements WilsonFx {
   detach(): void {
     if (!this.isValid() || this.detached) return;
     this.detached = this.owner.groundPoint();
-    const fx = this.owner.instance.sprite.fx.peek().get(this.key)!;
+    const fx = this.owner.instance.sprite.fx.peek().get(this.key);
+    if (!fx) throw new Error(`${this.owner.instance.prefab} no longer declares the book fx ${this.key}`);
     this.owner.instance.sprite.attachFx(this.key, { ...fx, composite: { symbol: this.symbol, detached: this.detached } });
   }
   pushEvent(name: 'fail_fx'): void {

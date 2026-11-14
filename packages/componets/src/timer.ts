@@ -106,8 +106,8 @@ export class Timer {
   StopTimer(name: string): void { if (this.TimerExists(name)) this.timers.get(name)?.timer.stop(); }
   GetTimeLeft(name: string): number | undefined { return this.timers.get(name)?.timer.remainingSeconds; }
   GetTimeElapsed(name: string): number | undefined {
-    const remaining = this.GetTimeLeft(name);
-    return remaining === undefined ? undefined : this.timers.get(name)!.initialTime - remaining;
+    const entry = this.timers.get(name), remaining = entry?.timer.remainingSeconds;
+    return entry && remaining !== undefined ? entry.initialTime - remaining : undefined;
   }
   PauseTimer(name: string): void { this.timers.get(name)?.timer.pause(); }
   ResumeTimer(name: string): boolean {

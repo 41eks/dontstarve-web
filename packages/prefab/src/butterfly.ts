@@ -245,7 +245,11 @@ function stateContext(inst: ButterflyEntity): ButterflyStateInst {
     // PushAnimation is only used after the previous animation completed, so it plays immediately.
     pushAnimation: playAnimation,
     isCurrentAnimation: name => inst.animation.currentAnimation === name,
-    getCurrentAnimationLength: () => BUTTERFLY_ANIMATION_LENGTHS.get(inst.animation.currentAnimation)!,
+    getCurrentAnimationLength: () => {
+      const length = BUTTERFLY_ANIMATION_LENGTHS.get(inst.animation.currentAnimation);
+      if (length === undefined) throw new Error(`butterfly_basic.zip has no animation ${inst.animation.currentAnimation}`);
+      return length;
+    },
     stopPhysics: () => { inst.motorSpeed = 0; },
     // Flying creatures have no physics body in this world.
     removePhysicsColliders: () => {},

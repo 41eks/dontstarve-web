@@ -94,17 +94,18 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
 
   private SpawnRocks(): void {
     this.task = undefined;
-    if (this.rocksState.peek() === undefined) {
-      const rocks: LavaPondRockLayout[] = [];
+    let rocks = this.rocksState.peek();
+    if (rocks === undefined) {
+      const layout: LavaPondRockLayout[] = [];
       const count = 2 + Math.floor(this.random() * 3);
       for (let i = 0; i < count; i++) {
         const theta = this.random() * Math.PI * 2;
         const rocktype = LAVA_POND_ROCK_TYPES[Math.floor(this.random() * LAVA_POND_ROCK_TYPES.length)];
-        rocks.push({ rocktype, offset: [Math.sin(theta) * 2.1 + this.random() * .3, 0, Math.cos(theta) * 2.1 + this.random() * .3] });
+        layout.push({ rocktype, offset: [Math.sin(theta) * 2.1 + this.random() * .3, 0, Math.cos(theta) * 2.1 + this.random() * .3] });
       }
-      this.rocksState.set(rocks);
+      this.rocksState.set(rocks = layout);
     }
-    for (const { rocktype, offset } of this.rocksState.peek()!) {
+    for (const { rocktype, offset } of rocks) {
       const position = new Vector3(this.position.x + offset[0] * WORLD_SCALE, 0, this.position.z + offset[2] * WORLD_SCALE);
       const rock = this.world.spawnPrefab(`lava_pond_rock${rocktype}`, position);
       rock.entityParent = this;

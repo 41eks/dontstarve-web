@@ -139,10 +139,10 @@ export class DeciduousTreeLeaves {
     } else this.idleFxTimer.stop();
   }
   OnSave(): DeciduousTreeSave {
-    const build = this.buildSignal.peek(), remaining = this.changeTimer.remainingSeconds;
+    const build = this.buildSignal.peek(), remaining = this.changeTimer.remainingSeconds, target = this.targetSignal.peek();
     return { ...(this.stopped ? { stump: true as const } : {}), ...(build !== 'normal' ? { build } : {}),
       leaf_state: this.leafSignal.peek(),
-      ...(this.targetSignal.peek() === undefined ? {} : { target_leaf_state: this.targetSignal.peek()! }),
+      ...(target === undefined ? {} : { target_leaf_state: target }),
       ...(remaining !== undefined ? { leaveschangetime: remaining } : {}) };
   }
   Stop(): void {
