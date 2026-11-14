@@ -77,7 +77,9 @@ export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THR
                 return;
             }
             // Match Three's layer and custom raycast propagation rules while pruning hidden subtrees.
-            propagate = (object.raycast(raycaster, hits) as unknown) !== false;
+            // Three types raycast as void, yet stops propagation when an override returns false.
+            const result: unknown = object.raycast(raycaster, hits);
+            propagate = result !== false;
         }
         if (recursive && propagate) for (const child of object.children) intersect(child);
     };

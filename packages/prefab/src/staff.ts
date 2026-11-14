@@ -7,7 +7,6 @@ import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import type { CombatActor, CombatInst } from '../../componets/src/combat';
 import type { Projectile, ProjectileTarget } from '../../componets/src/projectile';
 import type { Burnable } from '../../componets/src/burnable';
-import type { WorkInst } from '../../componets/src/workable';
 import { getDeconstructionRecipe } from '../../componets/src/recipes';
 import { SpellCaster, type SpellCastDoer } from '../../componets/src/spellcaster';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type EquipmentVisualItem, type HeldEquipFunctions } from './equipmentVisual';
@@ -161,7 +160,7 @@ export class FireStaffController implements HeldEquipFunctions {
       if (freezable?.IsFrozen()) freezable.Unfreeze();
       else if (!fueled || (fueled.fueltype !== 'BURNABLE' && fueled.secondaryfueltype !== 'BURNABLE')) {
         // Does not take burnable fuel, so just burn it.
-        if (burnable.canlight || combat) burnable.Ignite(true, this.entity as unknown as WorkInst, attacker as unknown as WorkInst);
+        if (burnable.canlight || combat) burnable.Ignite(true, this.entity, attacker);
       } else if (fueled.accepting) {
         // Takes burnable fuel, so fuel it.
         const fuel = this.world.createFuel?.();

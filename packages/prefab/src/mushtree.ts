@@ -395,8 +395,8 @@ export function mushtreePrefabs(world: MushtreeWorld): Readonly<Record<MushtreeS
         new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
       },
     });
-    prefabs[id] = tree(false) as unknown as PrefabEntityDefinition<PrefabInstance>;
-    prefabs[`${id}_stump`] = tree(true) as unknown as PrefabEntityDefinition<PrefabInstance>;
+    prefabs[id] = tree(false);
+    prefabs[`${id}_stump`] = tree(true);
     for (const bloom of data.buildArchives.length > 1 ? [false, true] : [false]) {
       const fx = `${id}${bloom ? '_bloom' : ''}_burntfx` as MushtreeBurntFxId;
       prefabs[fx] = { fn: position => new MushtreeBurntFxInstance(fx, data, bloom, world.scheduler, position),

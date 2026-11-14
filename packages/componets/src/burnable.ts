@@ -13,7 +13,9 @@ export interface BurnableInst extends WorkInst {
 }
 
 /** One AddBurnFX entry; offsets are in animation pixels when following a symbol. */
-export type BurnableOnIgniteFn = LuaFn<[inst: BurnableInst, source?: WorkInst, doer?: WorkInst]>;
+/** Ignite's source and doer: the igniting entities, passed through to onignite as Lua passes them. */
+export type IgniteSource = object;
+export type BurnableOnIgniteFn = LuaFn<[inst: BurnableInst, source?: IgniteSource, doer?: IgniteSource]>;
 export type BurnableOnExtinguishFn = LuaFn<[inst: BurnableInst]>;
 export type BurnableOnBurntFn = LuaFn<[inst: BurnableInst]>;
 
@@ -116,7 +118,7 @@ export class Burnable {
     }
   }
   IsSmoldering(): boolean { return this.smolderTask.snapshot.peek().status === 'scheduled'; }
-  Ignite(immediate = false, source?: WorkInst, doer?: WorkInst): void {
+  Ignite(immediate = false, source?: IgniteSource, doer?: IgniteSource): void {
     if (this.removed || this.inst.isRemoved || this.IsBurning() || this.inst.hasTag('fireimmune')) return;
     this.StopSmoldering();
     if (this.burntime !== undefined) this.burnTimer.start(this.burntime);

@@ -95,12 +95,21 @@ export function resolveAnimState(state: AnimStateJson, art: AnimStateArt | undef
   return { state: { ...state, overrides, overrideBuilds, symbolAnimations }, missing };
 }
 
+/** AnimStateJson or ResolvedAnimState: the shape mergeAnimStates keeps, whatever its overrides resolve to. */
+interface MergeableAnimState<Override, Build, SymbolAnimation> extends Omit<AnimStateJson, 'overrides' | 'overrideBuilds' | 'symbolAnimations'> {
+  readonly overrides: ReadonlyMap<number, Override>;
+  readonly overrideBuilds?: readonly Build[];
+  readonly symbolAnimations: ReadonlyMap<number, SymbolAnimation>;
+}
+
 /** Declarations drawn over one another, in order: a later one's overrides and shown or hidden layers and symbols win; the rest add up. */
-export function mergeAnimStates<S extends AnimStateJson | ResolvedAnimState>(states: readonly S[]): S {
+export function mergeAnimStates<Override, Build, SymbolAnimation>(
+  states: readonly MergeableAnimState<Override, Build, SymbolAnimation>[],
+): MergeableAnimState<Override, Build, SymbolAnimation> {
   if (states.length === 1) return states[0];
-  const overrides = new Map<number, unknown>();
-  const overrideBuilds: unknown[] = [];
-  const symbolAnimations = new Map<number, unknown>();
+  const overrides = new Map<number, Override>();
+  const overrideBuilds: Build[] = [];
+  const symbolAnimations = new Map<number, SymbolAnimation>();
   const symbolLightOverrides = new Map<number, number>();
   const hiddenLayers = new Set<number>(), hiddenSymbols = new Set<number>(), blooms = new Set<number>();
   const attachments: AnimationAttachment[] = [];
@@ -116,7 +125,7 @@ export function mergeAnimStates<S extends AnimStateJson | ResolvedAnimState>(sta
     for (const bloom of state.blooms) blooms.add(bloom);
     attachments.push(...state.attachments);
   }
-  return { overrides, overrideBuilds, hiddenLayers, hiddenSymbols, symbolLightOverrides, symbolAnimations, blooms, attachments } as unknown as S;
+  return { overrides, overrideBuilds, hiddenLayers, hiddenSymbols, symbolLightOverrides, symbolAnimations, blooms, attachments };
 }
 
 export function animStateVisible(state: Pick<AnimStateJson, 'hiddenLayers' | 'hiddenSymbols'>, element: AnimElement): boolean {

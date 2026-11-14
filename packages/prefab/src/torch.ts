@@ -7,7 +7,6 @@ import type { FollowerFx } from '@dontstarve-web/display';
 import { Burnable } from '../../componets/src/burnable';
 import { ErodeAway } from '../../componets/src/erodeaway';
 import { Lighter } from '../../componets/src/lighter';
-import type { WorkInst } from '../../componets/src/workable';
 import type { InventoryActor } from '../../componets/src/inventoryitem';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
@@ -79,7 +78,7 @@ export interface TorchHolder {
 export function onattack(_weapon: object, attacker: object, target: object): void {
   const { isRemoved, components } = target as { isRemoved?: boolean; components?: { burnable?: Burnable } };
   const burnable = components?.burnable;
-  if (!isRemoved && burnable && Math.random() < TORCH_ATTACK_IGNITE_PERCENT * burnable.flammability) burnable.Ignite(undefined, attacker as WorkInst);
+  if (!isRemoved && burnable && Math.random() < TORCH_ATTACK_IGNITE_PERCENT * burnable.flammability) burnable.Ignite(undefined, attacker);
 }
 
 /** (owner or inst).SoundEmitter: a held torch sounds from its owner, one on the ground from its own transform. */

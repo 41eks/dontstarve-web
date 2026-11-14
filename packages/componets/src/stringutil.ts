@@ -54,8 +54,10 @@ function GetSpecialCharacterString(inst: SpeakerInst): string | undefined {
   return inst.hasTag('mime') ? '' : inst.hasTag('playerghost') ? CraftOooh() : undefined;
 }
 
+const CHARACTERS: Readonly<Record<string, Table>> = STRINGS.CHARACTERS;
+const GENERIC: Table = STRINGS.CHARACTERS.GENERIC;
 const characterTable = (name: string | undefined) => name === undefined ? undefined
-  : (STRINGS.CHARACTERS as Readonly<Record<string, Table>>)[name];
+  : CHARACTERS[name];
 
 /** stringutil.lua GetString. */
 export function GetString(inst: SpeakerInst, stringtype: string, modifier?: string): string | undefined {
@@ -63,7 +65,7 @@ export function GetString(inst: SpeakerInst, stringtype: string, modifier?: stri
   if (special !== undefined) return special;
   const type = stringtype.toUpperCase();
   return getcharacterstring(characterTable(inst.prefab?.toUpperCase()), type, modifier)
-    ?? getcharacterstring(STRINGS.CHARACTERS.GENERIC as unknown as Table, type, modifier);
+    ?? getcharacterstring(GENERIC, type, modifier);
 }
 
 /** stringutil.lua GetDescription. GetDescription_AddSpecialCases' shadowlevel, foodmemory and canfix suffixes are not ported. */
@@ -71,8 +73,7 @@ export function GetDescription(inst: SpeakerInst, item: DescribedInst, modifier?
   const special = GetSpecialCharacterString(inst);
   if (special !== undefined) return special;
   const itemname = (item.nameoverride ?? (item.components as { inspectable?: { nameoverride?: string } } | undefined)?.inspectable?.nameoverride ?? item.prefab)?.toUpperCase();
-  const generic = STRINGS.CHARACTERS.GENERIC as unknown as Table;
   return getcharacterstring(characterTable(inst.prefab?.toUpperCase())?.DESCRIBE as Table | undefined, itemname, modifier)
-    ?? getcharacterstring(generic.DESCRIBE as Table, itemname, modifier)
+    ?? getcharacterstring(GENERIC.DESCRIBE as Table, itemname, modifier)
     ?? STRINGS.CHARACTERS.GENERIC.DESCRIBE_GENERIC;
 }

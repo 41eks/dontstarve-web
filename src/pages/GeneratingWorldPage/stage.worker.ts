@@ -9,14 +9,8 @@ export type StageWorkerResponse =
   | { type: "ready" }
   | { type: "error"; message: string }
 
-type WorkerScope = {
-  onmessage: ((event: MessageEvent<StageWorkerRequest>) => void) | null
-  postMessage: (message: StageWorkerResponse) => void
-  requestAnimationFrame: (callback: (time: number) => void) => number
-  cancelAnimationFrame: (handle: number) => void
-}
-
-const scope = self as unknown as WorkerScope
+// The worker scope's postMessage, typed by the protocol.
+const postMessage = (message: StageWorkerResponse): void => self.postMessage(message)
 
 let stage: GeneratingWorldThreeStage | undefined
 let size = { width: 1, height: 1 }
@@ -54,16 +48,16 @@ async function init(request: Extract<StageWorkerRequest, { type: "init" }>) {
         )) as [number, number]
       }
       created.render(worldFrame, handFrames, true)
-      scope.requestAnimationFrame(tick)
+      self.requestAnimationFrame(tick)
     }
-    scope.requestAnimationFrame(tick)
-    scope.postMessage({ type: "ready" })
+    self.requestAnimationFrame(tick)
+    postMessage({ type: "ready" })
   } catch (reason) {
-    scope.postMessage({ type: "error", message: reason instanceof Error ? reason.message : String(reason) })
+    postMessage({ type: "error", message: reason instanceof Error ? reason.message : String(reason) })
   }
 }
 
-scope.onmessage = ({ data }) => {
+self.addEventListener("message", ({ data }: MessageEvent<StageWorkerRequest>) => {
   if (data.type === "init") {
     size = { width: data.width, height: data.height }
     void init(data)
@@ -71,4 +65,4 @@ scope.onmessage = ({ data }) => {
     size = { width: data.width, height: data.height }
     stage?.resize(data.width, data.height)
   }
-}
+})

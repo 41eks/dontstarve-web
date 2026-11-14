@@ -119,8 +119,9 @@ export class Temperature {
       let delta = ambient - current;
       if (!owner?.hasTag('pocketdimension_container')) {
         const position = this.getPosition(), scale = this.world?.unitScale ?? 1, radius = 10 * scale;
+        const self: object = this.inst; // a heater found here may be this inst itself; only identity is compared
         for (const source of this.world?.findHeaters?.(position, radius, this.ignoreheatertags) ?? []) {
-          if ((source as unknown) === this.inst || this.ignoreheatertags.some(tag => source.hasTag(tag))) continue;
+          if (source === self || this.ignoreheatertags.some(tag => source.hasTag(tag))) continue;
           const heater = source.components.heater, heat = heater?.GetHeat(this.inst);
           if (heat === undefined || !heater || (!heater.IsExothermic() && !heater.IsEndothermic())) continue;
           const distanceSquared = position.distanceToSquared(source.getPosition());
