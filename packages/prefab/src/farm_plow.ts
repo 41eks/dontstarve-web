@@ -48,7 +48,8 @@ export interface FarmPlowSaveState {
 /** farm_soil.lua OnSave: broken, and the plow it was dug by. */
 export interface FarmSoilSaveState { broken: boolean; plowId?: string }
 /** farm_soil_debris.lua onsave: anim. */
-export interface FarmDebrisSaveState { animation: 'f1' | 'f2' | 'f3' | 'f4' }
+const FARM_DEBRIS_ANIMATIONS = ['f1', 'f2', 'f3', 'f4'] as const;
+export interface FarmDebrisSaveState { animation: typeof FARM_DEBRIS_ANIMATIONS[number] }
 
 /** In scene units: map.lua's distances are in Lua units, a quarter tile each. */
 export const FARM_SCALE = TILE_SIZE / 4;
@@ -112,7 +113,7 @@ export class FarmDebrisInstance extends PrefabInstance {
   constructor(world: FarmWorld) {
     super('farm_soil_debris', new SpriteState({ name: 'f1', billboard: true }));
     this.world = world;
-    this.animname = `f${1 + Math.floor((world.random ?? Math.random)() * 4)}` as FarmDebrisSaveState['animation'];
+    this.animname = FARM_DEBRIS_ANIMATIONS[Math.floor((world.random ?? Math.random)() * FARM_DEBRIS_ANIMATIONS.length)];
   }
 }
 

@@ -80,6 +80,13 @@ export const WALL_IDS = [
 export type WallId = typeof WALL_IDS[number];
 /** The placed `wall_<name>` prefabs MakeWallType returns. */
 export type WallPrefabId = Exclude<WallId, `${string}_item`>;
+const isWallPrefabId = (id: string): id is WallPrefabId => !id.endsWith('_item') && WALL_IDS.some(known => known === id);
+/** The wall a wall_*_item (or the wall itself) builds. */
+function wallPrefab(buildId: WallId): WallPrefabId {
+    const prefab = wallWorldPrefab(buildId);
+    if (!isWallPrefabId(prefab)) throw new Error(`${buildId} builds no wall`);
+    return prefab;
+}
 export const WALL_PREFAB_IDS = WALL_IDS.filter((id): id is WallPrefabId => !id.endsWith('_item'));
 
 export function isWallId(value: string): value is WallId {
@@ -348,9 +355,9 @@ export function wallPrefabs(world: PrefabWorldContext) {
         prefabs: Object.fromEntries(WALL_PREFAB_IDS.map(prefab => [prefab, types[prefab].definition])) as
             Readonly<Record<WallPrefabId, PrefabEntityDefinition<WallInstance>>>,
         /** wall_*_item's placer, or the wall's own when it is built by its world ID. */
-        placer: (buildId: WallId, snap: BuildingPlacerSpec['snap']) => types[wallWorldPrefab(buildId) as WallPrefabId].placer(buildId, snap),
+        placer: (buildId: WallId, snap: BuildingPlacerSpec['snap']) => types[wallPrefab(buildId)].placer(buildId, snap),
         /** wall_*_item's deployable ondeploywall, with the item's skin linked to the wall's. */
         ondeploywall: (prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawnAs'>, buildId: WallId, pt: ReadonlyVector3, skinId?: string) =>
-            types[wallWorldPrefab(buildId) as WallPrefabId].ondeploywall(prefabs, pt, wallWorldSkin(buildId, skinId)),
+            types[wallPrefab(buildId)].ondeploywall(prefabs, pt, wallWorldSkin(buildId, skinId)),
     };
 }

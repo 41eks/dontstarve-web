@@ -294,7 +294,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     stats = { health: number(o.health, 'players.local.stats.health'), hunger: number(o.hunger, 'players.local.stats.hunger'), sanity: number(o.sanity, 'players.local.stats.sanity'),
       ...o.penalty === undefined ? {} : { penalty: number(o.penalty, 'players.local.stats.penalty') },
       ...o.sanitySane === undefined ? {} : { sanitySane: o.sanitySane },
-      ...o.sanityMode === undefined ? {} : { sanityMode: integer(o.sanityMode, 'players.local.stats.sanityMode', 0, 1) as 0 | 1 } };
+      ...o.sanityMode === undefined ? {} : { sanityMode: choice(o.sanityMode, 'players.local.stats.sanityMode', [0, 1]) } };
   }
   const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'weather', 'nightmareclock', 'moon', 'random']);
   const systems: SaveDocument['world']['systems'] = {};

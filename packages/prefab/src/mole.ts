@@ -31,8 +31,8 @@ export const MOLE_PERISH_TIME = 960;
 const MOLE_ANIMATION_LENGTHS = animationLengths('mole_basic.zip');
 export type MoleSave = NonNullable<InventoryStack['mole']>;
 const SOUND_PREFIX = 'dontstarve_DLC001/creatures/mole/';
-export const MOLE_SOUNDS = ['death', 'emerge', 'emerge_voice', 'hurt', 'move', 'retract', 'jump', 'pickup', 'sniff', 'sleep']
-  .map(name => `${SOUND_PREFIX}${name}` as SoundEventPath);
+export const MOLE_SOUNDS: SoundEventPath[] = (['death', 'emerge', 'emerge_voice', 'hurt', 'move', 'retract', 'jump', 'pickup', 'sniff', 'sleep'] as const)
+  .map(name => `${SOUND_PREFIX}${name}` as const);
 export interface MoleWorld extends Pick<WorldContentContext, 'getWatchWorldContent'> {
   itemSpecs?: Readonly<Record<string, Pick<import('@dontstarve-web/inventory').InventoryItemSpec, 'maxStack'>>>;
   cameraHeading: ReadonlySignal<number>;
@@ -280,7 +280,7 @@ function StartStunnedSounds(inst: Mole, skippre: boolean): void {
   // SGmole stunned: DoPeriodicTask(23 * FRAMES, PlayStunnedSound / KillStunnedSound).
   inst.playtask?.Cancel(); inst.killtask?.Cancel();
   inst.playtask = inst.DoPeriodicTask(23 / 30, () => {
-    if (!sound.PlayingSound('stunned')) sound.PlaySound(`${SOUND_PREFIX}sleep` as SoundEventPath, 'stunned');
+    if (!sound.PlayingSound('stunned')) sound.PlaySound(`${SOUND_PREFIX}sleep` as const, 'stunned');
   }, delay);
   inst.killtask = inst.DoPeriodicTask(23 / 30, () => sound.KillSound('stunned'), delay + 11 / 30);
 }

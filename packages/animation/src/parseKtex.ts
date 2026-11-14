@@ -138,6 +138,9 @@ function decodeBC(data: Uint8Array, width: number, height: number, type: 1 | 2 |
   return output;
 }
 
+/** KTEX pixel formats 0–2 are DXT1, DXT3 and DXT5: BC1–BC3. */
+const BC_TYPES = [1, 2, 3] as const;
+
 export function parseKtex(data: Uint8Array, label = 'KTEX'): DecodedTexture {
   const reader = new KtexReader(data, label);
   if (reader.ascii(4) !== 'KTEX') throw new Error(`${label}: invalid KTEX signature`);
@@ -153,7 +156,7 @@ export function parseKtex(data: Uint8Array, label = 'KTEX'): DecodedTexture {
   if (pixelFormat <= 2) {
     return {
       width: first.width, height: first.height,
-      pixels: decodeBC(source, first.width, first.height, (pixelFormat + 1) as 1 | 2 | 3),
+      pixels: decodeBC(source, first.width, first.height, BC_TYPES[pixelFormat]),
     };
   }
   let pixels: Uint8Array;

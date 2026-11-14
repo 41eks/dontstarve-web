@@ -13,6 +13,8 @@ import { spawnStructureLoot } from './structureLoot';
 import type { WorldContext } from './worldContext';
 
 export const CHESSJUNK_IDS = ['chessjunk1', 'chessjunk2', 'chessjunk3'] as const;
+/** chessjunk.lua makes each pile with its style number. */
+const CHESSJUNK_STYLE = { chessjunk1: 1, chessjunk2: 2, chessjunk3: 3 } as const satisfies Record<typeof CHESSJUNK_IDS[number], 1 | 2 | 3>;
 export type ChessJunkId = typeof CHESSJUNK_IDS[number];
 /** chessjunk.lua OnSave: repaired, repairerid and repairerchar. */
 export interface ChessJunkSaveState { repaired: true; repairerid?: string; repairerchar?: string }
@@ -38,7 +40,7 @@ export class ChessJunkInstance extends PrefabInstance {
   repairerid?: string;
   repairerchar?: string;
   constructor(prefab: ChessJunkId) {
-    const style = Number(prefab.at(-1)) as 1 | 2 | 3;
+    const style = CHESSJUNK_STYLE[prefab];
     super(prefab, new SpriteState({ name: `idle${style}`, billboard: true }));
     this.style = style;
   }

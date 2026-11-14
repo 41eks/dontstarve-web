@@ -2,6 +2,7 @@ import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signal
 
 const movementKeys = ['KeyW', 'KeyA', 'KeyS', 'KeyD'] as const;
 const supportedKeys = new Set<string>([...movementKeys, 'ShiftLeft', 'Space']);
+const isKey = (code: string): code is Key => supportedKeys.has(code);
 
 export class InputManager {
     private readonly keysState = createSignal<ReadonlySet<Key>>(new Set());
@@ -41,17 +42,17 @@ export class InputManager {
     }
 
     private readonly handleKeyDown = (event: KeyboardEvent) => {
-        if (this.blocked || !supportedKeys.has(event.code) || event.composedPath().some(isTextInput)) return;
-        const key = event.code as Key;
+        const key = event.code;
+        if (this.blocked || !isKey(key) || event.composedPath().some(isTextInput)) return;
         const keys = this.keysState.peek();
         if (keys.has(key)) return;
         this.keysState.set(new Set([...keys, key]));
     };
 
     private readonly handleKeyUp = (event: KeyboardEvent) => {
-        const key = event.code as Key;
+        const key = event.code;
         const keys = this.keysState.peek();
-        if (!keys.has(key)) return;
+        if (!isKey(key) || !keys.has(key)) return;
         const next = new Set(keys);
         next.delete(key);
         this.keysState.set(next);

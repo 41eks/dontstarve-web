@@ -3,7 +3,7 @@ import { createPrefabEntity, type EntityTask, type PrefabInstance } from './pref
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { AnimState } from '../../componets/src/animstate';
 import { animationLengths } from './animationTimings';
-import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
+import { PlaySound, type SoundHandle } from './sound';
 import { polarLight } from './stafflight';
 import { SPRITE_SCALE } from '@dontstarve-web/animation/units';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
@@ -101,9 +101,9 @@ export class MoonbaseEffects {
     this.lightstarttask?.Cancel(); this.lightstarttask = undefined;
     this.lightstoptask?.Cancel(); this.lightstoptask = undefined;
   }
-  private sound(event: string): void {
+  private sound(event: 'beam_level_up' | 'beam_stop' | 'beam_stop_fail'): void {
     for (const sound of this.oneShots) if (!sound.isPlaying()) this.oneShots.delete(sound);
-    this.oneShots.add(PlaySound(`${PATH}${event}` as SoundEventPath, this.owner.position));
+    this.oneShots.add(PlaySound(`${PATH}${event}` as const, this.owner.position));
   }
   start(level: 1 | 2 | 3, restored = false): void {
     if (this.front && this.back) { this.setLevel(level, false); return; }

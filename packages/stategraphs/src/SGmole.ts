@@ -4,7 +4,6 @@ import type { BufferedAction } from './bufferedaction';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { LocoMotor } from '../../componets/src/locomotor';
 import type { SoundEmitter } from '../../prefab/src/soundEmitter';
-import type { SoundEventPath } from '../../prefab/src/sound';
 
 export type MoleState = 'idle' | 'enter' | 'peek' | 'exit' | 'steal_pre_under' | 'steal_pre_above' | 'steal' |
   'walk_pre' | 'walk' | 'walk_pst' | 'gohome' | 'make_molehill' | 'stunned' | 'stunned_pst' | 'death' | 'hit' | 'sleep' | 'sleeping' | 'wake';
@@ -41,7 +40,7 @@ type MoleSound = 'death' | 'emerge' | 'emerge_voice' | 'hurt' | 'move' | 'retrac
  */
 function PlaySound(inst: MoleStateInst, name: MoleSound, slot?: string): void {
   if (slot !== undefined && inst.SoundEmitter.PlayingSound(slot)) return;
-  inst.SoundEmitter.PlaySound(`dontstarve_DLC001/creatures/mole/${name}` as SoundEventPath, slot);
+  inst.SoundEmitter.PlaySound(`dontstarve_DLC001/creatures/mole/${name}` as const, slot);
 }
 const sound = (frame: number, name: MoleSound, slot?: string) => TimeEvent<MoleStateInst, MoleState>(frame * FRAMES, sg => PlaySound(sg.context, name, slot));
 const kill = (frame: number, slot: string) => TimeEvent<MoleStateInst, MoleState>(frame * FRAMES, sg => sg.context.SoundEmitter.KillSound(slot));

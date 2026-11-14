@@ -189,7 +189,8 @@ export function rockPrefabs(world: RockShellWorld): Readonly<Record<RockPrefabId
 
 export const MOONGLASS_ROCK_ID = 'moonglass_rock' as const;
 /** rocks.lua set_moonglass_type: math.random(4) picks the bank and build, and OnSave keeps the pick. */
-export type MoonglassRockType = 1 | 2 | 3 | 4;
+const MOONGLASS_ROCK_TYPES = [1, 2, 3, 4] as const;
+export type MoonglassRockType = typeof MOONGLASS_ROCK_TYPES[number];
 SetSharedLootTable('rock_moon_glass', [['moonglass', 1], ['moonglass', 1], ['moonglass', .25]]);
 
 const moonglassRockBank = (type: MoonglassRockType): string => type === 1 ? 'moonglass_rock' : `moonglass_rock${type}`;
@@ -209,7 +210,7 @@ export class MoonglassRockInstance extends RockInstance {
   constructor(world: MoonglassRockWorld) {
     super(MOONGLASS_ROCK_ID, world, 'full', 'moonglass', 1);
     this.components.lootdropper.SetChanceLootTable('rock_moon_glass');
-    set_moonglass_type(this, 1 + Math.floor(Math.random() * 4) as MoonglassRockType);
+    set_moonglass_type(this, MOONGLASS_ROCK_TYPES[Math.floor(Math.random() * MOONGLASS_ROCK_TYPES.length)]);
     this.OnSave = (_inst, data) => { data.rock_type = this.rock_type; };
     this.OnLoad = (_inst, data) => { if (data.rock_type) set_moonglass_type(this, data.rock_type); };
   }

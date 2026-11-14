@@ -2,7 +2,7 @@ import type { PlacementSaveRecord } from './saveRecord';
 import { removeComponent } from './components';
 import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import type { BuildingPlacerSpec } from './buildingPlacer';
-import { buildingContainerId, createBuildingContainer, releaseBuildingContainer, type BuildingContainer, type StorageBuildingId } from './containers';
+import { buildingContainerId, createBuildingContainer, isStorageBuildingId, releaseBuildingContainer, type BuildingContainer, type StorageBuildingId } from './containers';
 import type { AnimatedSpriteInstance, PrefabEntityDefinition, PrefabEntityFn, PrefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
@@ -63,7 +63,8 @@ function registerBuildingContainer(inst: PrefabInstance): void {
   const container: BuildingContainer | undefined = inst.components.container;
   if (!container || addressedContainers.has(inst)) return;
   addressedContainers.add(inst);
-  inst.worldServices?.registerContainer?.(buildingContainerId(inst.prefab as StorageBuildingId, String(inst.entityId)), container);
+  if (!isStorageBuildingId(inst.prefab)) throw new Error(`${inst.prefab} is not a storage building`);
+  inst.worldServices?.registerContainer?.(buildingContainerId(inst.prefab, String(inst.entityId)), container);
 }
 
 /**

@@ -1,9 +1,10 @@
+import type { SoundEventPath } from '../../prefab/src/sound';
 /** One entry of a fire prefab's firefx.levels; radius is in DST units. */
 export interface FireFXLevel {
   readonly anim: string;
   readonly pre?: string;
   readonly pst?: string;
-  readonly sound?: string;
+  readonly sound?: SoundEventPath;
   readonly soundintensity?: number;
   readonly radius: number;
   readonly intensity: number;
@@ -23,7 +24,7 @@ export interface FireFXLight {
 export interface FireFXInst {
   PlayAnimation(name: string, loop?: boolean): void;
   PushAnimation(name: string, loop?: boolean): void;
-  PlaySound(path: string, name?: string): void;
+  PlaySound(path: SoundEventPath, name?: string): void;
   KillSound(name: string): void;
   PlayingSound(name: string): boolean;
   SetSoundParameter(name: string, parameter: string, value: number): void;
@@ -39,11 +40,11 @@ export class FireFX {
   radius_levels?: readonly number[];
   playignitesound = true;
   bigignitesoundthresh = 3;
-  lightsound?: string;
-  extinguishsound?: string;
+  lightsound?: SoundEventPath;
+  extinguishsound?: SoundEventPath;
   current_radius = 1;
   readonly light: FireFXLight;
-  private playingsound?: string;
+  private playingsound?: SoundEventPath;
   private playingsoundintensity?: number;
   private lightState?: { radius: number; intensity: number; falloff: number; colour: readonly [number, number, number] };
   /** GetTime() of the flicker, advanced by OnUpdate. */

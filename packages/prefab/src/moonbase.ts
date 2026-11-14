@@ -19,6 +19,9 @@ import { MoonbaseEffects } from './moonbaseFx';
 import type { PrefabWorldContext } from './worldContext';
 import catalog from './groundItems.json' with { type: 'json' };
 
+/** moonbase.lua's staff morph: the morphed staff's skin for each source staff skin. */
+const STAFF_MORPH_SKINS: Readonly<Partial<Record<string, string>>> = catalog.staffMorphSkins;
+
 export const MOONBASE_ID = 'moonbase' as const;
 const declaration: BuildingDeclaration = definitions.animatedBuildings.moonbase;
 
@@ -289,7 +292,7 @@ function OnTimerDone(inst: MoonbaseInstance, { name }: EntityEventData['timerdon
   } else if (name === 'mooncharge' && pickable.canInteractWith && inst._staffinst?.prefab === KEY_STAFF) {
     // morph staff
     const old = inst._staffinst;
-    const skinId = old.skinId === undefined ? undefined : catalog.staffMorphSkins[old.skinId as keyof typeof catalog.staffMorphSkins];
+    const skinId = old.skinId === undefined ? undefined : STAFF_MORPH_SKINS[old.skinId];
     const staff = CreateStaff(inst, { itemId: MORPHED_STAFF, count: 1, remainingUses: 50, ...(skinId ? { skinId } : {}) });
     staff.components.finiteuses.setMaxUses(50);
     DestroyStaff(inst, old);

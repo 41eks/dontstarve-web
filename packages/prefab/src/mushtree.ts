@@ -38,6 +38,8 @@ const SEG_TIME = 30;
 /** Animation frames are 30 per second. */
 const FRAMES = 1 / 30;
 const STAGE_SCALE = [.9, 1, 1.1] as const;
+/** The stage each growth stage's growfn grows into. */
+const NEXT_STAGE = [1, 2, 3] as const;
 
 interface TreeData {
   bank: string;
@@ -199,7 +201,7 @@ export class MushtreeInstance extends PrefabInstance {
     this.world.worldEvents.emit('spawnAsh', position);
     if (Math.random() < .5) this.world.dropLoot([{ itemId: 'charcoal', count: 1 }], position);
     const bloom = this.treestate === 'bloom' && this.data.buildArchives.length > 1;
-    this.world.spawnPrefab(`${this.prefab}${bloom ? '_bloom' : ''}_burntfx` as MushtreeBurntFxId, position);
+    this.world.spawnPrefab(`${this.prefab}${bloom ? '_bloom' : ''}_burntfx` as const, position);
     this.remove();
   }
 
@@ -214,7 +216,7 @@ export class MushtreeInstance extends PrefabInstance {
     const growable = addComponent(this, 'growable', Growable, this.world.scheduler, STAGE_SCALE.map((scale, index) => ({
       time: () => MUSHTREE_GROWTH_TIME[index].base + (Math.random() * 2 - 1) * MUSHTREE_GROWTH_TIME[index].random,
       fn: () => this.setScale(scale),
-      growfn: () => this.doGrow((index + 1) as 1 | 2 | 3),
+      growfn: () => this.doGrow(NEXT_STAGE[index]),
     })));
     growable.loopstages = true; growable.growonly = true;
   }
@@ -398,7 +400,7 @@ export function mushtreePrefabs(world: MushtreeWorld): Readonly<Record<MushtreeS
     prefabs[id] = tree(false);
     prefabs[`${id}_stump`] = tree(true);
     for (const bloom of data.buildArchives.length > 1 ? [false, true] : [false]) {
-      const fx = `${id}${bloom ? '_bloom' : ''}_burntfx` as MushtreeBurntFxId;
+      const fx = `${id}${bloom ? '_bloom' : ''}_burntfx` as const;
       prefabs[fx] = { fn: position => new MushtreeBurntFxInstance(fx, data, bloom, world.scheduler, position),
         assets: assetsOf(data), assetOptions: ASSET_OPTIONS, targetable: false };
     }

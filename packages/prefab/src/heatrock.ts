@@ -10,6 +10,8 @@ export const HEATROCK_FUEL = 100;
 /** tuning.lua HEATROCK_NUMUSES. */
 const HEATROCK_NUMUSES = 8;
 export const HEATROCK_IMAGES = catalog.items.heatrock.inventoryImageVariants;
+/** The variant images by texture name, as SetImageFromSprite builds it. */
+const HEATROCK_IMAGES_BY_NAME: Readonly<Partial<Record<string, typeof HEATROCK_IMAGES[keyof typeof HEATROCK_IMAGES]>>> = HEATROCK_IMAGES;
 
 const THRESHOLDS = [-30, -10, 10, 30];
 const EMITTED_TEMPERATURES = [-10, 10, 25, 40, 60];
@@ -57,7 +59,7 @@ export class HeatRock {
     // clip. Catalog entries are constant, so sprite writes that keep the image do not reach the item tile.
     entity.components.inventoryitem.SetImageFromSprite(({ skinId, clip }) => {
       const name = `${skinId ?? 'heat_rock'}${clip.name}.tex`;
-      const image = HEATROCK_IMAGES[name as keyof typeof HEATROCK_IMAGES];
+      const image = HEATROCK_IMAGES_BY_NAME[name];
       if (!image) throw new Error(`Missing thermal stone image: ${name}`);
       return image;
     });

@@ -16,6 +16,8 @@ import { SCULPTABLE_MATERIALS } from '@dontstarve-web/prefab/sculptingtable';
 import { CAGE_STATES } from '@dontstarve-web/prefab/birdcage';
 import { BIRD_IDS, isBirdId } from '@dontstarve-web/prefab/birds';
 import { MOONBASE_TIMER_LIMITS } from '@dontstarve-web/prefab/moonbase';
+/** The moonbase timers' limits by the timer name a save holds; object() has already rejected unknown names. */
+const MOONBASE_TIMER_LIMITS_BY_NAME: Readonly<Partial<Record<string, number>>> = MOONBASE_TIMER_LIMITS;
 import { LAVA_POND_ROCK_TYPES } from '@dontstarve-web/prefab/lava_pond';
 import { BASE_COOK_TIME, GetRecipe } from '../../packages/componets/src/cooking';
 import { array, choice, fail, integer, number, object, string } from './validation';
@@ -480,7 +482,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         for (const [name, value] of Object.entries(timers)) {
           const entryPath = `${t}.timers.${name}`, entry = object(value, entryPath, ['timeleft', 'paused', 'initial_time']);
           if (typeof entry.paused !== 'boolean') fail(`${entryPath}.paused`, 'expected a boolean');
-          const maximum = MOONBASE_TIMER_LIMITS[name as keyof typeof MOONBASE_TIMER_LIMITS];
+          const maximum = MOONBASE_TIMER_LIMITS_BY_NAME[name];
           const initial_time = number(entry.initial_time, `${entryPath}.initial_time`, 0, maximum);
           parsed[name] = { timeleft: number(entry.timeleft, `${entryPath}.timeleft`, 0, initial_time), paused: entry.paused, initial_time };
         }

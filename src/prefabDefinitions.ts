@@ -16,7 +16,7 @@ import { CAVE_PILLAR_IDS, PILLAR_RUINS_ID } from '@dontstarve-web/prefab/pillar'
 import { PILLAR_ATRIUM_ID } from '@dontstarve-web/prefab/atrium_pillar';
 import { ARCHIVE_PILLAR_ARCHIVES, ARCHIVE_PILLAR_ID } from '@dontstarve-web/prefab/archive_pillar';
 import { VAULT_PILLAR_ID } from '@dontstarve-web/prefab/vault_pillar';
-import { MONKEY_PILLAR_IDS, MONKEYPILLAR_ID, type MonkeyPillarId } from '@dontstarve-web/prefab/monkeypillar';
+import { MONKEY_PILLAR_IDS, MONKEYPILLAR_ID } from '@dontstarve-web/prefab/monkeypillar';
 import { MOONGLASS_ROCK_ID, ROCK_PREFABS, isRockPrefab, moonglassRockArchives, rockArchives } from '@dontstarve-web/prefab/rocks';
 import { CAVEIN_BOULDER_ID } from '@dontstarve-web/prefab/cavein_boulder';
 import { MOONROCKSEED_ID } from '@dontstarve-web/prefab/moonrockseed';
@@ -34,7 +34,7 @@ import { CHESSJUNK_IDS } from '@dontstarve-web/prefab/chessjunk';
 import { CHESSPIECE_MALBATROSS_MARBLE_ID, CHESSPIECE_MARBLE_MATERIAL_ID } from '@dontstarve-web/prefab/chesspieces';
 import { ARCHIVE_CENTIPEDE_HUSK_ID } from '@dontstarve-web/prefab/archive_centipede';
 import { parseDragonflyState } from './save/dragonfly';
-import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
+import { isSkeletonId, SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
 import { MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { ROCK_AVOCADO_SAPLING_ID, ROCK_AVOCADO_SPROUT_GROW_TIME } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
 import { ROCK_AVOCADO_BUSH_ID, ROCK_AVOCADO_FRUIT_ID } from '@dontstarve-web/prefab/rock_avocado_bush';
@@ -102,12 +102,13 @@ export function definePrefabs<const Id extends string>(
     archives: typeof archives === 'function' ? archives : () => archives });
 }
 
+/** definitions.json's building and wall archives, by the prefab a save names. */
+const ARCHIVED_BUILDINGS: Readonly<Partial<Record<string, { archive: string; buildArchive?: string }>>> = definitions.animatedBuildings;
+const ARCHIVED_WALLS: Readonly<Partial<Record<string, { archive: string; buildArchive?: string }>>> = definitions.walls;
 /** Base art only; skins load when applied. definitions.json supplies each archive's bank and build. */
 function buildingArchives(prefab: string): readonly AnimationArchiveSpec[] {
   if (prefab === FENCE_ID) return [{ animation: 'fence.zip', build: 'fence.zip' }, { animation: 'fence_thin.zip', build: 'fence.zip' }];
-  const spec: { archive: string; buildArchive?: string } | undefined = Object.hasOwn(definitions.animatedBuildings, prefab)
-    ? definitions.animatedBuildings[prefab as keyof typeof definitions.animatedBuildings]
-    : Object.hasOwn(definitions.walls, prefab) ? definitions.walls[prefab as keyof typeof definitions.walls] : undefined;
+  const spec = ARCHIVED_BUILDINGS[prefab] ?? ARCHIVED_WALLS[prefab];
   return spec ? [{ animation: spec.archive, build: spec.buildArchive ?? spec.archive }] : [];
 }
 
@@ -146,16 +147,17 @@ const archivePillar: PrefabComponentParser = (value, path) => {
 /** vault_pillar.lua OnSave: data.capped or data.broken, and world generation's data.random. */
 const vaultPillar: PrefabComponentParser = (value, path) => {
   const { capped, broken, random } = object(value, path, ['capped', 'broken', 'random']);
-  if (capped !== undefined && capped !== 1 && capped !== 2) fail(`${path}.capped`, 'expected 1 or 2');
+  const cap = capped === undefined || capped === 1 || capped === 2 ? capped : fail(`${path}.capped`, 'expected 1 or 2');
   if (broken !== undefined && broken !== 1) fail(`${path}.broken`, 'expected 1');
   if (random !== undefined && random !== true) fail(`${path}.random`, 'expected true');
-  return { ...capped ? { capped: capped as 1 | 2 } : {}, ...broken ? { broken: 1 as const } : {}, ...random ? { random: true as const } : {} };
+  return { ...cap ? { capped: cap } : {}, ...broken ? { broken: 1 as const } : {}, ...random ? { random: true as const } : {} };
 };
 /** monkeypillar.lua OnSave: data.pillar_id. */
 const monkeyPillar: PrefabComponentParser = (value, path) => {
   const { pillar_id } = object(value, path, ['pillar_id']);
-  if (pillar_id !== undefined && !MONKEY_PILLAR_IDS.includes(pillar_id as MonkeyPillarId)) fail(`${path}.pillar_id`, 'unsupported monkey pillar');
-  return pillar_id === undefined ? {} : { pillar_id: pillar_id as MonkeyPillarId };
+  if (pillar_id === undefined) return {};
+  const id = MONKEY_PILLAR_IDS.find(known => known === pillar_id) ?? fail(`${path}.pillar_id`, 'unsupported monkey pillar');
+  return { pillar_id: id };
 };
 const archiveStatue = componentParser({ keys: ['archiveProp'], archivePropVariants: 4 });
 const archiveRune = componentParser({ keys: ['archiveProp'], archivePropVariants: 3, archiveStoryLines: 5 });
@@ -401,7 +403,7 @@ const WORLD_PREFAB_DEFINITIONS = {
       : prefab === 'archive_portal' ? ['archive_portal.zip', 'archive_portal_base.zip']
       : prefab === 'archive_switch_base' ? ['archive_switch_ground.zip'] : []),
   skeletons: definePrefabs(SKELETON_IDS, (value, path, context) =>
-    componentParser({ keys: ['skeleton'], skeletonAnims: SKELETON_ANIMS[context.prefab as keyof typeof SKELETON_ANIMS], skeletonDescribed: context.prefab === SKELETON_PLAYER_ID })(value, path, context), true, ['skeletons.zip', 'structure_collapse_fx.zip']),
+    componentParser({ keys: ['skeleton'], skeletonAnims: SKELETON_ANIMS[isSkeletonId(context.prefab) ? context.prefab : fail(path, `${context.prefab} is not a skeleton`)], skeletonDescribed: context.prefab === SKELETON_PLAYER_ID })(value, path, context), true, ['skeletons.zip', 'structure_collapse_fx.zip']),
   houndbones: definePrefabs([HOUNDBONE_ID], componentParser({ keys: ['houndbone'] }), true, ['hound_base.zip', 'structure_collapse_fx.zip']),
   beeQueenHives: definePrefabs([BEEQUEENHIVEGROWN_ID], beeQueenHiveComponents, true, ['bee_queen_hive.zip']),
   dragonflies: definePrefabs([DRAGONFLY_ID], (value, path) => {

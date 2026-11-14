@@ -13,6 +13,8 @@ import { WORLD_SCALE } from './tile';
 export const MONKEYPILLAR_ID = 'monkeypillar' as const;
 /** A world save holds a number; tostring(math.random(1, 4)) makes a string. */
 export const MONKEY_PILLAR_IDS = [1, 2, 3, 4, '1', '2', '3', '4'] as const;
+/** The ids SetPillarType picks from: math.random(4) as the string the source saves. */
+const PICKED_PILLAR_IDS = ['1', '2', '3', '4'] as const;
 export type MonkeyPillarId = typeof MONKEY_PILLAR_IDS[number];
 
 const ARCHIVE = 'pillar_monkey.zip';
@@ -103,7 +105,7 @@ function OnAnimOver(inst: MonkeyPillarInstance): void {
 
 function setpillartype(inst: MonkeyPillarInstance, index?: MonkeyPillarId): void {
   if (inst.pillar_id === undefined || (index !== undefined && inst.pillar_id !== index)) {
-    inst.pillar_id = index ?? String(1 + Math.floor(Math.random() * 4)) as MonkeyPillarId;
+    inst.pillar_id = index ?? PICKED_PILLAR_IDS[Math.floor(Math.random() * PICKED_PILLAR_IDS.length)];
     const idlename = `idle${inst.pillar_id}`;
     PlayAnimation(inst, idlename);
     // SetFrame(math.random(GetCurrentAnimationNumFrames()) - 1), on the logical clip and the drawn one alike.

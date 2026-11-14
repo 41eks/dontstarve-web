@@ -30,6 +30,7 @@ export type GrottoPoolId = typeof GROTTO_POOL_IDS[number];
 export type GrottoId = typeof GROTTO_IDS[number];
 type MineableId = typeof GROTTO_MOONGLASS_IDS[number] | 'grotto_waterfall_small1' | 'grotto_waterfall_small2';
 type ChildId = Exclude<GrottoId, GrottoPoolId>;
+const SMALL_WATERFALLS = ['grotto_waterfall_small1', 'grotto_waterfall_small2'] as const;
 
 /** tuning.lua ROCKS_MINE, GROTTO_POOL_BIG_RADIUS / GROTTO_POOL_SMALL_RADIUS / GROTTO_MOONGLASS_REGROW_CHANCE. */
 const ROCKS_MINE = 6;
@@ -162,7 +163,7 @@ function on_load_postpass(inst: GrottoPoolInstance, world: GrottoPoolWorld): voi
 
 function setup_children(inst: GrottoPoolInstance, world: GrottoPoolWorld, big: boolean): void {
   const layout: readonly { name: ChildId; x: number; z: number }[] = big ? BIG_LAYOUT
-    : [{ name: `grotto_waterfall_small${1 + Math.floor(Math.random() * 2)}` as ChildId, x: 0, z: 0 }];
+    : [{ name: SMALL_WATERFALLS[Math.floor(Math.random() * SMALL_WATERFALLS.length)], x: 0, z: 0 }];
   layout.forEach(({ name, x, z }, slot) => {
     if (inst._children[slot] !== undefined) return;
     adopt(inst, slot, world.spawnPrefab(name, new THREE.Vector3(inst.position.x + x * WORLD_SCALE, 0, inst.position.z + z * WORLD_SCALE)));

@@ -39,7 +39,17 @@ export interface RuinsRelicWorld {
   fx?: WorldContext['fx'];
   dropLoot?: WorldContext['dropLoot'];
 }
-export function relicName(id: RuinsRelicId): RelicName { return id.split('_').at(-1) as RelicName; }
+/** A skin the chair saves: only RUINS_CHAIR_SKINS reach a relic. */
+function ruinsChairSkin(skinId: string): keyof typeof RUINS_CHAIR_SKINS {
+  if (!isRuinsChairSkin(skinId)) throw new Error(`Unsupported ruins chair skin: ${skinId}`);
+  return skinId;
+}
+const isRuinsChairSkin = (skinId: string): skinId is keyof typeof RUINS_CHAIR_SKINS => Object.hasOwn(RUINS_CHAIR_SKINS, skinId);
+export function relicName(id: RuinsRelicId): RelicName {
+  const name = RELIC_NAMES.find(relic => id.endsWith(`_${relic}`));
+  if (!name) throw new Error(`${id} names no relic`);
+  return name;
+}
 export function isRelicItem(id: string): id is typeof RUINS_RELIC_ITEM_IDS[number] {
   return RUINS_RELIC_ITEM_IDS.some(known => known === id);
 }
@@ -182,7 +192,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     const health = this.components.health;
     clearPersistData(data);
     Object.assign(data, this.replica ? {
-      ...this.skinId ? { ruinsRelic: { skinId: this.skinId as keyof typeof RUINS_CHAIR_SKINS } } : {},
+      ...this.skinId ? { ruinsRelic: { skinId: ruinsChairSkin(this.skinId) } } : {},
       ...this.saveRecord?.components.inventoryitemmoisture
         ? { inventoryitemmoisture: { ...this.saveRecord.components.inventoryitemmoisture } } : {},
     } : { ...this.rubble ? { ruinsRelic: { rubble: true as const } } : {},

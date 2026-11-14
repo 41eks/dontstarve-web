@@ -79,8 +79,8 @@ export class Fire implements BurnFX, FireFXInst {
   PlayAnimation(name: string, loop = false): void { this.instance.AnimState.PlayAnimation(name, loop); }
   PushAnimation(name: string, loop = false): void { this.instance.AnimState.PushAnimation(name, loop); }
 
-  PlaySound(path: string, name?: string): void {
-    const sound = PlaySound(path as SoundEventPath, this.owner.position);
+  PlaySound(path: SoundEventPath, name?: string): void {
+    const sound = PlaySound(path, this.owner.position);
     if (name === undefined) return;
     this.sounds.get(name)?.stop();
     this.sounds.set(name, sound);

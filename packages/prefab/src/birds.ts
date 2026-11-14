@@ -34,7 +34,8 @@ function onperish(entity: ItemEntity): void {
   if (!owner) return;
   // health is present, so the holder is told about the (negligent) murder first.
   owner.PushEvent('murdered', { victim: entity, stackmult: 1, negligent: true });
-  entity.components.inventoryitem.slot?.replace(generateBirdLoot(entity.prefab as BirdId));
+  if (!isBirdId(entity.prefab)) throw new Error(`${entity.prefab} is not a bird`);
+  entity.components.inventoryitem.slot?.replace(generateBirdLoot(entity.prefab));
 }
 
 /**

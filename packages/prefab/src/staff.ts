@@ -39,14 +39,16 @@ export class LightStaffController implements HeldEquipFunctions {
   readonly spellcaster: SpellCaster;
   private readonly entity: ItemEntity;
   private readonly world: LightStaffWorld;
+  /** finiteuses' maximum, which an unworn staff's uses default to. */
+  private readonly maxUses: number;
   constructor(entity: ItemEntity, world: LightStaffWorld) {
     if (!isLightStaff(entity.prefab)) throw new Error('LightStaffController requires a light staff');
-    this.entity = entity; this.world = world;
+    this.entity = entity; this.world = world; this.maxUses = LIGHT_STAFF_USES[entity.prefab];
     entity.addTag('nopunch'); entity.addTag('allow_action_on_impassable');
     if (entity.prefab === 'yellowstaff') entity.addTag('shadowlevel');
     entity.castsound = LIGHT_STAFF_CAST_SOUND;
     entity.fxcolour = entity.prefab === 'opalstaff' ? OPALSTAFF_COLOUR : YELLOWSTAFF_COLOUR;
-    entity.components.finiteuses.setMaxUses(LIGHT_STAFF_USES[entity.prefab]);
+    entity.components.finiteuses.setMaxUses(this.maxUses);
     this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster, world.map);
     this.spellcaster.SetSpellFn((_staff, _target, position, doer) => this.createLight(position, doer));
     this.spellcaster.canUseOnPoint = true;
@@ -61,7 +63,7 @@ export class LightStaffController implements HeldEquipFunctions {
   private createLight(position: ReadonlyVector3, doer: SpellCastDoer): boolean {
     if (this.entity.isRemoved) return false;
     this.world.spawnPrefab(this.product, position);
-    const depleted = (this.entity.components.finiteuses.remaining ?? LIGHT_STAFF_USES[this.entity.prefab as LightStaffId]) === 1;
+    const depleted = (this.entity.components.finiteuses.remaining ?? this.maxUses) === 1;
     if (!this.entity.components.finiteuses.use(1)) return false;
     if (depleted) PlaySound('dontstarve/common/gem_shatter', doer.position);
     if (doer.components.staffsanity) doer.components.staffsanity.doCastingDelta(-LIGHT_STAFF_SANITY_COST);
@@ -82,7 +84,11 @@ export function staffVisual(item: EquipmentVisualItem & { readonly prefab: Staff
   return handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_staffs'], `swap_${item.prefab === 'firestaff' ? 'redstaff' : item.prefab}`);
 }
 
-export const yellowstaffVisual: EquipmentVisualFactory = item => staffVisual({ ...item, prefab: item.prefab as StaffId });
+export const yellowstaffVisual: EquipmentVisualFactory = item => {
+  const { prefab } = item;
+  if (!isStaff(prefab)) throw new Error(`${prefab} is not a staff`);
+  return staffVisual({ ...item, prefab });
+};
 
 // staff.lua red()
 

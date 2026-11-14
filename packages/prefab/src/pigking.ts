@@ -5,7 +5,7 @@ import { createEffect, createMemo, WorldContentKey, type GameTimeScheduler, type
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { AnimState } from '../../componets/src/animstate';
-import { animationLengths } from './animationTimings';
+import { animationLengths, isTimedArchive } from './animationTimings';
 import { Trader, type TradeItem } from '../../componets/src/trader';
 import { PigKingStateGraph, type PigKingStateInst } from '../../stategraphs/src/SGpigking';
 import type { LootLaunch } from '../../componets/src/inventoryphysics';
@@ -32,7 +32,9 @@ const TOSS_DELAY = 2 / 3;
 const GOLD = 'goldnugget';
 
 /** pig_king's clips, from the source anim.bin. */
-const ANIMATION_LENGTHS = animationLengths(definitions.pigKing.archive as 'pig_king.zip');
+const PIG_KING_ARCHIVE = definitions.pigKing.archive;
+if (!isTimedArchive(PIG_KING_ARCHIVE)) throw new Error(`No animation timings for ${PIG_KING_ARCHIVE}`);
+const ANIMATION_LENGTHS = animationLengths(PIG_KING_ARCHIVE);
 
 /**
  * pigking.lua fn: obstacle physics, minimap icon, trader, SGpigking and the isnight watcher. The minigame, hauntable,

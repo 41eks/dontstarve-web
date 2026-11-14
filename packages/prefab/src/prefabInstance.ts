@@ -996,6 +996,12 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   }
 
   has(prefabId: string): boolean { return Object.hasOwn(this.prefabs, prefabId); }
+  /** An entity's prefab, which it was spawned by, as one of this manager's registered ids. */
+  private registeredId(prefab: string): Id {
+    if (!this.isRegistered(prefab)) throw new Error(`Unregistered prefab: ${prefab}`);
+    return prefab;
+  }
+  private isRegistered(prefab: string): prefab is Id { return Object.hasOwn(this.prefabs, prefab); }
 
   /** OnLoadPostPass's `newents`: a live entity by its saved entity ID. */
   get(entityId: string): Instance | undefined { return this.byEntityId.get(entityId); }
@@ -1143,7 +1149,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
    * (OnPutInInventory's AddChild and RemoveFromScene), so its holder saves it.
    */
   exportRecords(): { prefabId: Id; record: PrefabSaveRecord }[] {
-    return [...this.entities].filter(entity => entity.persists && !entity.entityParent && !entity.inlimbo).map(entity => ({ prefabId: entity.prefab as Id, record: {
+    return [...this.entities].filter(entity => entity.persists && !entity.entityParent && !entity.inlimbo).map(entity => ({ prefabId: this.registeredId(entity.prefab), record: {
       id: String(entity.entityId),
       transform: { position: [entity.position.x, 0, entity.position.z], rotationY: entity.transform.model.rotation.y },
       components: entity.GetPersistData(),
