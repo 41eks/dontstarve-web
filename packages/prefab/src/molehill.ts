@@ -103,7 +103,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
   }
 
   get id(): string { return String(this.entityId); }
-  isValid(): boolean { return !this.isRemoved; }
+  override isValid(): boolean { return !this.isRemoved; }
 
   /** OnInit, DoTaskInTime(0): WatchWorldState("iscaveday", OnIsDay). */
   OnInit(): void {
@@ -141,7 +141,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
   }
 
   /** The record keeps the inventory and spawner saves together under `molehill`. */
-  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const { spawner, inventory } = this.components;
     delete data.inventory;
     data.molehill = { items: inventory.OnSave(),
@@ -151,7 +151,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
         : spawner.remainingSeconds === undefined ? {} : { startdelay: spawner.remainingSeconds }) };
   }
 
-  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const saved = data.molehill;
     if (!saved) return;
     const { spawner, inventory } = this.components, world = this.world;

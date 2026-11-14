@@ -29,7 +29,7 @@ export class DstEmoteWheelElement extends AssetElement {
 
   get isOpen(): boolean { return this.opened; }
 
-  connectedCallback(): void {
+  override connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener('keydown', this.handleKeyDown, true);
     window.addEventListener('blur', this.close);

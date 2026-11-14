@@ -96,7 +96,7 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
   }
 
   /** inst:IsValid(). */
-  isValid(): boolean { return !this.isRemoved; }
+  override isValid(): boolean { return !this.isRemoved; }
 
   /** SGmultiplayerportal's PlayAnimation: inst.AnimState and inst.fx.AnimState; the logical clip's end is the animover. */
   playAnimation(name: string): void {

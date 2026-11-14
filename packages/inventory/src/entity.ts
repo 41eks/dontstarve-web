@@ -453,7 +453,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.components.container?.flush();
     for (const component of this.runtime.values()) component.flush?.();
   }
-  remove(): boolean {
+  override remove(): boolean {
     if (this.isRemoved) return false;
     const slot = this.components.inventoryitem.slot;
     if (slot) return slot.remove();

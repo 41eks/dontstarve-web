@@ -179,7 +179,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
    * Source OnPreLoad applies maxhealth and switches rubble before health.OnLoad runs. The record keeps health as
    * `{ current, maximum }`, which the component's own OnLoad leaves alone, so all three steps run here.
    */
-  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
     if (this.replica) { this.skinId = data.ruinsRelic?.skinId; return; }
     const health = this.components.health!, saved = data.health;
     if (saved) health.SetMaxHealth(saved.maximum);
@@ -188,7 +188,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     if (saved) health.OnLoad({ health: saved.current });
   }
   /** ruinsrelic.lua has no OnSave; the skin and an unported moisture payload keep their record fields. smashables.lua saves rubble and health. */
-  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const health = this.components.health;
     clearPersistData(data);
     Object.assign(data, this.replica ? {

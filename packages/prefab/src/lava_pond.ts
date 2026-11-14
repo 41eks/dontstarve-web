@@ -77,13 +77,13 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
     });
   }
 
-  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const rocks = this.rocksState.peek();
     data.lavaPond = rocks === undefined ? {} : { rocks: copyLayout(rocks) };
   }
 
   /** OnLoad cancels the pending task and spawns the saved rocks at once. */
-  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const rocks = data.lavaPond?.rocks;
     if (rocks === undefined || this.rocksState.peek() !== undefined || !this.task) return;
     this.task.Cancel();

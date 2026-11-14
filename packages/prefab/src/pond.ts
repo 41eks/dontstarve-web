@@ -80,12 +80,12 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
     this.OnSnowLevel(snowLevel?.peek() ?? 0);
   }
 
-  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     if (this.plants) data.plants = this.plants;
   }
 
   /** Always before OnInit here, while the source's inst.task is still pending. */
-  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
     this.plants ??= data.plants;
   }
 

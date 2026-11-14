@@ -151,7 +151,7 @@ export class BulbPlantInstance extends PrefabInstance {
   }
 
   /** OnEntitySleep / OnEntityWake: the LightWatcher samples only while the entity is awake; game-time timers keep running. */
-  setActive(active: boolean): void {
+  override setActive(active: boolean): void {
     if (active !== this.entityAwake && !this.isRemoved) {
       this.entityAwake = active;
       this.sampletask?.Cancel(); this.sampletask = undefined;

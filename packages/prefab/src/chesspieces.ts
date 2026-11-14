@@ -72,7 +72,7 @@ export class ChesspieceInstance extends PrefabInstance {
   }
 
   /** onsave: materialid. workable.savestate is false, so the hammer work is not saved. */
-  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     data.chesspiece = { materialid: CHESSPIECE_MARBLE_MATERIAL_ID };
   }
 

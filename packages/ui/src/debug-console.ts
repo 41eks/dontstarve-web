@@ -25,7 +25,7 @@ export class DstDebugConsoleElement extends AssetElement {
     return this.opened;
   }
 
-  connectedCallback(): void {
+  override connectedCallback(): void {
     super.connectedCallback();
     window.addEventListener('keydown', this.handleGlobalKeyDown, { capture: true });
   }

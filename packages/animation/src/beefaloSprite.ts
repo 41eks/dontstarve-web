@@ -39,7 +39,7 @@ class BeefaloSpriteController extends SpriteController implements FacingSpriteCo
   }
 
   /** A single FACING_* bit; changing art preserves playback and one-shot callbacks. */
-  setFacing(facing: number, mirrored = false) {
+  override setFacing(facing: number, mirrored = false) {
     const scaleX = Math.abs(this.visual.scale.x) * (mirrored ? -1 : 1);
     if (this.visual.scale.x !== scaleX) { this.visual.scale.x = scaleX; this.visualTransformChanged(); }
     if (this.facing === facing) return;
@@ -50,7 +50,7 @@ class BeefaloSpriteController extends SpriteController implements FacingSpriteCo
     this.showFrame(this.loop ? frame % this.animation.frames.length : Math.min(frame, this.animation.frames.length - 1));
   }
 
-  protected findAnimation(name: string): Animation {
+  protected override findAnimation(name: string): Animation {
     const candidates = this.animations.animations.filter((candidate) => candidate.name === name);
     const animation = candidates.find((candidate) => candidate.facing === this.facing)
       ?? candidates.find((candidate) => this.facing !== undefined && (candidate.facing & this.facing) !== 0)
@@ -59,7 +59,7 @@ class BeefaloSpriteController extends SpriteController implements FacingSpriteCo
     return animation;
   }
 
-  protected isLayerVisible(layerHash: number): boolean { return layerHash !== HEAT_LAYER; }
+  protected override isLayerVisible(layerHash: number): boolean { return layerHash !== HEAT_LAYER; }
 }
 
 /** Beefalo's builds and actions ship in separate source archives. */

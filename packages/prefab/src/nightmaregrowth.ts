@@ -60,13 +60,13 @@ export class NightmareGrowthInstance extends PrefabInstance {
   }
 
   /** The crack's rotation, or the loaded one its pending SpawnCrack has not applied yet. */
-  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const crack = this._crack && !this._crack.isRemoved ? this._crack : undefined;
     const rotation = crack ? crack.GetRotation() : this._crack_rotation;
     if (rotation !== undefined) data.nightmareGrowth = { crackRotation: rotation };
   }
 
-  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
     if (data.nightmareGrowth?.crackRotation !== undefined) this._crack_rotation = data.nightmareGrowth.crackRotation;
   }
 }

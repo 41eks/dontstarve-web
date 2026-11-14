@@ -116,7 +116,7 @@ export class MoonTreeInstance extends PrefabInstance {
   }
 
   /** OnEntitySleep / OnEntityWake follow the entity's tile. */
-  setActive(active: boolean): void {
+  override setActive(active: boolean): void {
     if (active !== this.awake && !this.isRemoved) {
       this.awake = active;
       if (active) on_wake(this); else on_sleep(this);

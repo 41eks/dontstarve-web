@@ -97,7 +97,7 @@ export class EvergreenInstance extends PrefabInstance {
   }
 
   /** OnEntitySleep / OnEntityWake follow the entity's tile. */
-  setActive(active: boolean): void {
+  override setActive(active: boolean): void {
     if (active !== this.awake && !this.isRemoved) {
       this.awake = active;
       if (active) OnEntityWake(this); else OnEntitySleep(this);

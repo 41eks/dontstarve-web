@@ -58,12 +58,12 @@ export interface BindableInventory<TItem> {
 }
 
 export class DstInventoryBarElement extends AssetElement {
-  static readonly observedAttributes = [...AssetElement.observedAttributes, 'player'];
+  static override readonly observedAttributes = [...AssetElement.observedAttributes, 'player'];
 
   get player(): string { return this.getAttribute('player') ?? 'wilson'; }
   set player(value: string) { this.setAttribute('player', value); }
 
-  attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
+  override attributeChangedCallback(name: string, oldValue: string | null, newValue: string | null): void {
     super.attributeChangedCallback(name, oldValue, newValue);
     if (name === 'player' && oldValue !== newValue && this.initialized) {
       this.shadowRoot!.querySelector<HTMLImageElement>('.inventory-bar__inspect img')!.src = this.inspectAsset();

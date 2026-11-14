@@ -42,13 +42,13 @@ export class BeeQueenHiveInstance extends PrefabInstance {
   }
 
   /** The record keeps the timer component's save under beeQueenHiveTimer. */
-  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const saved = data.timer; delete data.timer;
     if (saved) data.beeQueenHiveTimer = saved;
   }
 
   /** inst.OnLoad = RefreshHoneyState, after the saved workable and timer. */
-  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
     this.components.timer.OnLoad(data.beeQueenHiveTimer);
     setHoneyLevel(this, honeyLevel(this.components.workable.GetWorkLeft()));
   }

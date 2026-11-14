@@ -123,7 +123,7 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
   }
 
   /** huskfn has no OnSave; health:OnSave writes the current health, kept as the record's `{ current, maximum }`. */
-  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const { health } = this.components;
     data.health = { current: health.currenthealth, maximum: health.maxhealth };
   }
@@ -132,7 +132,7 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
    * health:OnLoad: SetVal(data.health, "file_load") then ForceUpdateHUD(true), whose DoDelta(0) reaches OnHealthDelta
    * with equal percentages: no clip changes, but combat is removed below the bottom threshold.
    */
-  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const saved = data.health;
     if (!saved) return;
     this.components.health.OnLoad({ health: saved.current, maxhealth: saved.maximum });

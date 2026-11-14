@@ -162,13 +162,13 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
   getPlayers(): readonly BerniePlayer[] { return this.world.getPlayers(); }
   isleadercrazy(leader: BerniePlayer): boolean { return isleadercrazy(leader); }
   /** health.lua OnSave, kept as the record's `{ current, maximum }`. */
-  OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
     const { health } = this.components;
     data.health = { current: health.currenthealth, maximum: health.maxhealth };
   }
 
   /** health.lua OnLoad from the record; bernie_big.lua OnLoad then stands a loaded big Bernie idle instead of activating. */
-  OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
     if (data.health) {
       this.components.health.SetMaxHealth(data.health.maximum);
       this.components.health.OnLoad({ health: data.health.current });

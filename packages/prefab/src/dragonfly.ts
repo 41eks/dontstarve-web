@@ -63,7 +63,7 @@ export class DragonflyInstance extends PrefabInstance {
     const body = this.physicsBody, angle = this.transform.model.rotation.y;
     if (body) { body.velocity.x = Math.cos(angle) * speed; body.velocity.z = -Math.sin(angle) * speed; }
   }
-  PushBufferedAction(): void { throw new Error('Dragonfly stategraph actions are outside the saved-display scope'); }
+  override PushBufferedAction(): void { throw new Error('Dragonfly stategraph actions are outside the saved-display scope'); }
   /** EntityScript:StopBrain / RestartBrain: the brain is a constructor signature only. */
   /** The loaded record; health, knownlocations and timer are saved from their components. */
   private saved: DragonflySaveState = structuredClone(NEW_DRAGONFLY);
