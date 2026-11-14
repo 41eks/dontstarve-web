@@ -6,7 +6,6 @@ import { grassPrefabs } from '../../prefab/src/grass';
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -24,6 +23,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { workTargets } from './workTargets';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { WorldContext } from '../../prefab/src/worldContext';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

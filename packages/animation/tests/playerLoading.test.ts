@@ -1,5 +1,4 @@
 import { makeAlive, makeGhost } from '../../prefab/src/player_common_extensions';
-import { ItemEntity } from '../../inventory/src/entity';
 import { advancePlayer, registerPlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -7,6 +6,7 @@ import * as CANNON from 'cannon-es';
 import { afterEach, expect, it, vi } from 'vitest';
 import { wortox } from '../../prefab/src/wortox';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true, setVolume() {} })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -40,7 +40,7 @@ it('creates the logical player and body synchronously and completes actions and 
     const living = instance.sprite.sprite.peek().source;
     expect(living).toMatchObject({ bank: 'wilson', buildArchive: 'dynamic/wortox.zip' });
     const read = vi.fn(() => true);
-    const book = new ItemEntity({ itemId: 'book_silviculture', count: 1 }); book.def = { fx_under_prefab: 'fx_roots_under_book' };
+    const book = testItem({ itemId: 'book_silviculture', count: 1 }); book.def = { fx_under_prefab: 'fx_roots_under_book' };
     expect(animation.sg.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }))).toBe(true);
     for (let frame = 0; frame < 60 && animation.sg.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
     expect(animation.sg.stateName).toBe('book2');

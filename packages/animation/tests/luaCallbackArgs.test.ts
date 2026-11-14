@@ -6,7 +6,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Hauntable } from '../../componets/src/hauntable';
 import { SleepingBagUser } from '../../componets/src/sleepingbaguser';
 import { Workable } from '../../componets/src/workable';
-import { ItemEntity } from '../../inventory/src/entity';
+import { testItem } from './testInventory';
 
 const tagged = () => {
   const tags = new Set<string>();
@@ -25,7 +25,7 @@ it('passes callbacks the inst first and the rest of the Lua arguments in source 
   expect(eaterInst.PushEvent).toHaveBeenCalledBefore(oneat);
 
   // workable.lua onloadfn(inst, data).
-  const entity = new ItemEntity({ itemId: 'test_workable', count: 1 });
+  const entity = testItem({ itemId: 'test_workable', count: 1 });
   const work = entity.component('workable', () => new Workable(entity)), onload = vi.fn();
   work.SetOnLoadFn(onload);
   work.OnLoad({ workleft: 1 });

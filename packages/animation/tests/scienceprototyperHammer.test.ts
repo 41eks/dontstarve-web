@@ -18,7 +18,6 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { PrefabDisplayGroup } from '../../display/src';
 import { createSignal } from '../../signals/src';
-import { InventoryStore } from '../../inventory/src';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PlaceableBuildingPlacement } from '../../../src/placeableBuilding';
@@ -26,6 +25,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
+import { testInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
@@ -212,7 +212,7 @@ it('c_spawn then c_save reloads a research lab as a prototyper in the building s
     });
     return { registry, prefabs, dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); } };
   };
-  const first = registryFor(), restored = registryFor(), inventory = new InventoryStore([], SAVE_CATALOG.items);
+  const first = registryFor(), restored = registryFor(), inventory = testInventoryStore([], SAVE_CATALOG.items);
   try {
     expect((await executeDebugCommand('c_spawn("researchlab4")', inventory, prefab => first.registry.spawn(prefab))).ok).toBe(true);
     const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);

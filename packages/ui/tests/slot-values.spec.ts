@@ -91,14 +91,15 @@ test('subscribes to individual slot indicators, draws native meters and releases
 test('renders the inst\'s tile declaration without replacing the UI item and unbinds replaced entities', async ({ page }) => {
   await page.goto('/tests/fixture.html');
   await page.evaluate(async url => {
-    const { InventoryStore, InventorySlot, inventorySlotAddress } = await import(url);
+    const { InventoryStore, InventorySlot, ItemEntityRegistry, inventorySlotAddress } = await import(url);
+    const entities = new ItemEntityRegistry((state: any) => entities.construct(state));
     const address = inventorySlotAddress(0);
     const store = new InventoryStore([{ address, slot: new InventorySlot() }], {
       berries: { name: '浆果', icon: 'berries.tex', maxStack: 40 },
       // A fueled prefab adds fueled and InitializeFuelLevel in its configuration.
       torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75,
         configureEntity: (entity: any) => { if (!entity.components.fueled) entity.AddFueled().InitializeFuelLevel(75); } },
-    });
+    }, {}, entities);
     store.add('berries', 3);
     const entity = store.getEntity(address);
     entity.setFreshnessPercent(.75); entity.setWet(true);

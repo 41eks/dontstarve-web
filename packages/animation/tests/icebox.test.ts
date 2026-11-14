@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
-import { ItemEntity, inventorySlotAddress } from '../../inventory/src';
+import { inventorySlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
 import type { WorldPerishClock } from '../../componets/src/worldperishclock';
 import { createPerishWorld } from './perishWorldFixture';
@@ -21,6 +21,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { createInventorySlotItem } from '../../../src/inventorySlotItem';
+import { testItem } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const held = inventorySlotAddress(0), chilled = { containerId: 'world:icebox:fridge', slotKey: '0' };
@@ -58,7 +59,7 @@ it('uses the fridge multiplier while closed, settles the old holder on transfer 
 
 it('stops frozen perishables in a fridge and below zero, with nocool/lowcool using ordinary refrigeration', () => {
   const ambient = createSignal(20), world = createPerishWorld(ambient), clock = world.perishClock;
-  const item = new ItemEntity({ itemId: 'frozen_fixture', count: 1, wet: true }, world);
+  const item = testItem({ itemId: 'frozen_fixture', count: 1, wet: true }, world);
   item.addTag('frozen');
   // Held in an icebox: the item's owner is the icebox itself.
   const fridge = createEmptyEntity('icebox').instance;
@@ -137,7 +138,7 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
 
 it('honours lowcool, nocool, heater falloff and ignored stones, and cleans up world signal bridges', () => {
   const ambient = createSignal(35), phase = createSignal({ phase: 'day' });
-  const item = new ItemEntity({ itemId: 'heatrock', count: 1 });
+  const item = testItem({ itemId: 'heatrock', count: 1 });
   const fridge = createEmptyEntity('icebox').instance;
   fridge.addTag('fridge'); fridge.addTag('lowcool');
   item.components.inventoryitem.owner = fridge;
@@ -171,13 +172,11 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() },
     registerContainer: (...args: Parameters<typeof inventory.registerContainer>) => inventory.registerContainer(...args),
-    unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args),
-  } as unknown as WorldContext;
+    unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args), spawnItem: testItem } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   const restoredPlacement = managedBuildings({ ...world,
     registerContainer: (...args: Parameters<typeof restored.registerContainer>) => restored.registerContainer(...args),
-    unregisterContainer: (...args: Parameters<typeof restored.unregisterContainer>) => restored.unregisterContainer(...args),
-  } as unknown as WorldContext, { consume: () => false });
+    unregisterContainer: (...args: Parameters<typeof restored.unregisterContainer>) => restored.unregisterContainer(...args), spawnItem: testItem } as unknown as WorldContext, { consume: () => false });
   let restoredClock: WorldPerishClock | undefined;
   try {
     const spawn = async (id: string) => {

@@ -6,7 +6,6 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { executeDebugCommand } from '../../../src/debugCommands';
-import { createInventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { serializeSave } from '../../../src/save/serialize';
@@ -16,6 +15,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { lichenPrefabs, LICHEN_ID, type LichenRecord } from '../../prefab/src/lichen';
 import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { createInventoryStore } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 

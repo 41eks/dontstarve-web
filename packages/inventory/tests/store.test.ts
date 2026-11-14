@@ -15,6 +15,7 @@ import {
   type InventoryStack,
 } from '../src';
 import { addFueled } from './fueled';
+import { bodySlot, handSlot, headSlot, inventorySlot as inventorySlotHolding, preparedFoodSlot, storageSlot, testInventoryStore } from './testItems';
 
 const signalSubscriptions: (() => void)[] = [];
 afterEach(() => {
@@ -28,10 +29,10 @@ const specs: Readonly<Record<string, InventoryItemSpec>> = {
 
 it('ConsumeByName consumes item slots then the active stack, preserves unrelated storage, and tolerates a shortfall', () => {
   const cursor = cursorSlotAddress(), storage = { containerId: 'test:chest', slotKey: '0' };
-  const store = new InventoryStore([
+  const store = testInventoryStore([
     inventorySlot(0, { itemId: 'twigs', count: 2 }),
-    { address: cursor, slot: new InventorySlot({ itemId: 'twigs', count: 2 }) },
-    { address: storage, slot: new StorageSlot({ itemId: 'twigs', count: 3 }) },
+    { address: cursor, slot: inventorySlotHolding({ itemId: 'twigs', count: 2 }) },
+    { address: storage, slot: storageSlot({ itemId: 'twigs', count: 3 }) },
   ], specs);
   store.ConsumeByName('twigs', 3);
   expect(store.getEntity(inventorySlotAddress(0))).toBeNull();
@@ -45,16 +46,16 @@ it('ConsumeByName consumes item slots then the active stack, preserves unrelated
 function inventorySlot(index: number, stack: InventoryStack | null = null) {
   return {
     address: inventorySlotAddress(index),
-    slot: new InventorySlot(stack),
+    slot: inventorySlotHolding(stack),
   };
 }
 
 function equipmentSlot(kind: 'hand' | 'body' | 'head') {
   const slot = kind === 'hand'
-    ? new HandSlot()
+    ? handSlot()
     : kind === 'body'
-      ? new BodySlot()
-      : new HeadSlot();
+      ? bodySlot()
+      : headSlot();
   return {
     address: equipmentSlotAddress(kind),
     slot,
@@ -64,7 +65,7 @@ function equipmentSlot(kind: 'hand' | 'body' | 'head') {
 describe('inventory state restoration', () => {
   it('publishes hand equipment only after commits, preserves its identity during fuel updates and distinguishes replacement torches', () => {
     const itemSpecs = { torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75, configureEntity: addFueled(75) } };
-    const store = new InventoryStore([inventorySlot(0), equipmentSlot('hand')], itemSpecs);
+    const store = testInventoryStore([inventorySlot(0), equipmentSlot('hand')], itemSpecs);
     const from = inventorySlotAddress(0), hand = equipmentSlotAddress('hand');
     const transitions: unknown[] = [];
     signalSubscriptions.push(store.handEquipment.subscribe((equipment) => transitions.push({ equipment, hand: store.get(hand), from: store.get(from) })));
@@ -111,7 +112,7 @@ describe('inventory state restoration', () => {
 
   it('persists fractional prefab fuel through transfers and reload', () => {
     const itemSpecs = { torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75, configureEntity: addFueled(75) } };
-    const store = new InventoryStore([inventorySlot(0), inventorySlot(1), equipmentSlot('hand')], itemSpecs);
+    const store = testInventoryStore([inventorySlot(0), inventorySlot(1), equipmentSlot('hand')], itemSpecs);
     const from = inventorySlotAddress(0), spare = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
     expect(store.add('torch', 2)).toBe(true);
     expect(store.applySlotChanges([{ slot: from, itemId: 'torch', delta: -1 },
@@ -130,14 +131,14 @@ describe('inventory state restoration', () => {
     expect(store.get(hand)?.remainingFuel).toBe(37.875);
     expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: -1 },
       { slot: from, itemId: 'torch', delta: 1, remainingFuel: 37.875 }])).toBe(true);
-    const restored = new InventoryStore([inventorySlot(0), inventorySlot(1), equipmentSlot('hand')], itemSpecs);
+    const restored = testInventoryStore([inventorySlot(0), inventorySlot(1), equipmentSlot('hand')], itemSpecs);
     restored.replaceState(store.exportState(), {});
     expect(restored.get(from)).toEqual(store.get(from));
     expect(restored.get(spare)).toEqual(store.get(spare));
   });
 
   it('rejects invalid fuel without changing inventory or notifying listeners, but keeps an empty fuel value', () => {
-    const store = new InventoryStore([inventorySlot(0)], {
+    const store = testInventoryStore([inventorySlot(0)], {
       ...specs, torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75, configureEntity: addFueled(75) },
     });
     const listener = vi.fn();
@@ -161,14 +162,14 @@ describe('inventory state restoration', () => {
 
   it('preserves a farm plow usage count through pickup, transfers and save/load', () => {
     const itemSpecs = { farm_plow_item: { name: '耕地机', icon: 'farm_plow_item.tex', maxStack: 1, maxUses: 4 } };
-    const store = new InventoryStore([inventorySlot(0), inventorySlot(1)], itemSpecs);
+    const store = testInventoryStore([inventorySlot(0), inventorySlot(1)], itemSpecs);
     const from = inventorySlotAddress(0), to = inventorySlotAddress(1);
     expect(store.add('farm_plow_item', 1, undefined, undefined, 3)).toBe(true);
     expect(store.get(from)).toEqual({ itemId: 'farm_plow_item', count: 1, remainingUses: 3 });
     expect(store.applySlotChanges([{ slot: from, itemId: 'farm_plow_item', delta: -1 },
       { slot: to, itemId: 'farm_plow_item', delta: 1, remainingUses: 3 }])).toBe(true);
     const saved = store.exportState();
-    const restored = new InventoryStore([inventorySlot(0), inventorySlot(1)], itemSpecs);
+    const restored = testInventoryStore([inventorySlot(0), inventorySlot(1)], itemSpecs);
     restored.replaceState(saved, {});
     expect(restored.get(to)?.remainingUses).toBe(3);
     expect(store.add('farm_plow_item', 1, undefined, undefined, 0)).toBe(false);
@@ -177,8 +178,8 @@ describe('inventory state restoration', () => {
   });
 
   it('exports closed storage, equipment and buffered builds as detached data without notifying', () => {
-    const storage = { address: { containerId: 'chest:1', slotKey: '0' }, slot: new StorageSlot() };
-    const store = new InventoryStore([inventorySlot(0), equipmentSlot('hand'), storage], specs);
+    const storage = { address: { containerId: 'chest:1', slotKey: '0' }, slot: storageSlot() };
+    const store = testInventoryStore([inventorySlot(0), equipmentSlot('hand'), storage], specs);
     const recipe = { recipeId: 'house', productId: 'twigs', productCount: 1, ingredients: {}, buffered: true };
     store.replaceState({ slots: [
       { address: equipmentSlotAddress('hand'), item: { itemId: 'axe', count: 1 } },
@@ -198,7 +199,7 @@ describe('inventory state restoration', () => {
   });
 
   it('leaves the entire old inventory untouched when any saved slot is invalid', () => {
-    const store = new InventoryStore([inventorySlot(0, { itemId: 'twigs', count: 8 }), equipmentSlot('hand')], specs);
+    const store = testInventoryStore([inventorySlot(0, { itemId: 'twigs', count: 8 }), equipmentSlot('hand')], specs);
     const listener = vi.fn();
     store.subscribe(listener);
     expect(() => store.replaceState({
@@ -216,9 +217,9 @@ describe('inventory state restoration', () => {
 describe('craft', () => {
   it('returns new inventory items without mutating its input', () => {
     const slots = [
-      new InventorySlot({ itemId: 'twigs', count: 2 }),
-      new InventorySlot({ itemId: 'axe', count: 1 }),
-      new InventorySlot(),
+      inventorySlotHolding({ itemId: 'twigs', count: 2 }),
+      inventorySlotHolding({ itemId: 'axe', count: 1 }),
+      inventorySlotHolding(),
     ];
 
     const next = craft({
@@ -250,8 +251,8 @@ describe('craft', () => {
       ingredients: {},
       buffered: false,
     }, [
-      new InventorySlot({ itemId: 'axe', count: 40 }, { axe: { maxStack: 40 } }),
-      new InventorySlot(null, { axe: { maxStack: 40 } }),
+      inventorySlotHolding({ itemId: 'axe', count: 40 }, { axe: { maxStack: 40 } }),
+      inventorySlotHolding(null, { axe: { maxStack: 40 } }),
     ]);
 
     expect(next).toEqual([
@@ -263,7 +264,7 @@ describe('craft', () => {
 
 describe('InventoryStore', () => {
   it('keeps the selected skin with a buffered build until it is consumed', () => {
-    const store = new InventoryStore([
+    const store = testInventoryStore([
       inventorySlot(0, { itemId: 'twigs', count: 2 }),
     ], specs);
 
@@ -290,7 +291,7 @@ describe('InventoryStore', () => {
       equipmentSlot('body'),
       equipmentSlot('head'),
     ];
-    const store = new InventoryStore(slots, specs, {
+    const store = testInventoryStore(slots, specs, {
       axe_feathered: {
         name: '猎人斧',
         icon: 'axe_feathered.tex',
@@ -320,7 +321,7 @@ describe('InventoryStore', () => {
   });
 
   it('moves a skinned stack atomically and notifies both slots', () => {
-    const store = new InventoryStore([
+    const store = testInventoryStore([
       inventorySlot(0, { itemId: 'axe', skinId: 'axe_feathered', count: 1 }),
       inventorySlot(1),
     ], specs);
@@ -355,9 +356,9 @@ describe('InventoryStore', () => {
   });
 
   it('exposes inventory.lua itemslots, equipslots and activeitem as slot signals that follow committed moves', () => {
-    const store = new InventoryStore([
+    const store = testInventoryStore([
       inventorySlot(1), inventorySlot(0, { itemId: 'axe', skinId: 'axe_feathered', count: 1 }), equipmentSlot('hand'),
-      { address: cursorSlotAddress(), slot: new InventorySlot() },
+      { address: cursorSlotAddress(), slot: inventorySlotHolding() },
     ], specs);
     const axe = store.getEntity(inventorySlotAddress(0))!;
     // itemslots follow slot order, not registration order.
@@ -375,8 +376,8 @@ describe('InventoryStore', () => {
 
   it('limits prepared food slots to one item and rolls back oversized transfers and saves', () => {
     const address = { containerId: 'world:cookpot:pot', slotKey: '0' };
-    const slot = new PreparedFoodSlot();
-    const store = new InventoryStore([
+    const slot = preparedFoodSlot();
+    const store = testInventoryStore([
       inventorySlot(0, { itemId: 'twigs', count: 4 }), { address, slot },
     ], specs);
     const transfer = (count: number) => store.applySlotChanges([
@@ -398,7 +399,7 @@ describe('InventoryStore', () => {
       slots: [{ address, item: { itemId: 'twigs', count: 2 } }], bufferedBuilds: [],
     }, {})).toThrow('Invalid saved item');
     expect(store.exportState()).toEqual(before);
-    expect(() => new PreparedFoodSlot({ itemId: 'twigs', count: 2 })).toThrow('one item');
+    expect(() => preparedFoodSlot({ itemId: 'twigs', count: 2 })).toThrow('one item');
     expect(store.applySlotChanges([
       { slot: address, itemId: 'twigs', delta: -1 },
       { slot: inventorySlotAddress(0), itemId: 'twigs', delta: 1 },

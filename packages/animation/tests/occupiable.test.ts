@@ -15,13 +15,13 @@ import { batch } from '../../signals/src';
 import { createPerishWorld } from './perishWorldFixture';
 import { bindTestWorld } from './worldContentFixture';
 import * as THREE from 'three';
-import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { activeItemUse } from './inventoryUseFixture';
+import { createInventoryStore, testItem } from './testInventory';
 
 function createBird(prefab = 'canary') {
   const perishWorld = createPerishWorld();
-  const bird = Object.assign(new ItemEntity({ itemId: prefab, count: 1 }, perishWorld), { perishWorld });
+  const bird = Object.assign(testItem({ itemId: prefab, count: 1 }, perishWorld), { perishWorld });
   bird.configure({ perishTime: BIRD_PERISH_TIME, configureEntity: configureBirdEntity });
   return bird;
 }
@@ -104,7 +104,7 @@ describe('caged birds', () => {
   it('keeps the starved bird meat in its inventory slot, replaces it when it rots and drops it from a failed take', () => {
     const scheduler = new GameTimeScheduler();
     const dropItem = vi.fn();
-    const world = { scheduler, dropItem, spawnItem: (state: InventoryStack) => new ItemEntity(state) } as unknown as WorldContext;
+    const world = { scheduler, dropItem, spawnItem: (state: InventoryStack) => testItem(state) } as unknown as WorldContext;
     const instance = new BirdcageInstance(world);
     const { components } = instance;
     const bird = createBird();
@@ -148,7 +148,7 @@ describe('caged birds', () => {
 
   it('leaves a perished item in a creature inventory that was given no spawner', () => {
     const inventory = new Inventory({ id: 'mole', hasTag: () => false, getPosition: () => new THREE.Vector3(), PushEvent: vi.fn() }, 1, vi.fn());
-    const meat = new ItemEntity({ itemId: 'smallmeat', count: 1 });
+    const meat = testItem({ itemId: 'smallmeat', count: 1 });
     inventory.GiveItem(meat);
     expect(meat.components.inventoryitem.slot!.replace('spoiled_food')).toBe(false);
     expect(inventory.GetItemInSlot(1)).toBe(meat);
@@ -267,7 +267,7 @@ describe('caged birds', () => {
 describe('shelf', () => {
   it('offers the item only once it can be taken and removes it from the holder', () => {
     const cage = tags();
-    const meat = new ItemEntity({ itemId: 'smallmeat', count: 1 });
+    const meat = testItem({ itemId: 'smallmeat', count: 1 });
     const holder = { RemoveItem: vi.fn(), DropItem: vi.fn() };
     const shelf = new Shelf<ItemEntity>(cage, holder);
     const taken = vi.fn();

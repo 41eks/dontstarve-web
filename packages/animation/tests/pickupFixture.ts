@@ -1,4 +1,5 @@
 import { InventorySlot, HandSlot, HeadSlot, BodySlot, InventoryStore, inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src';
+import { testItemRegistry } from './testInventory';
 import { INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS } from '../../../src/inventoryItems';
 
 export function createPickupInventory() {
@@ -7,5 +8,5 @@ export function createPickupInventory() {
     { address: equipmentSlotAddress('hand'), slot: new HandSlot() },
     { address: equipmentSlotAddress('head'), slot: new HeadSlot() },
     { address: equipmentSlotAddress('body'), slot: new BodySlot() },
-  ], INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS);
+  ], INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS, testItemRegistry());
 }

@@ -1,5 +1,4 @@
 import { createPlayerEquipper } from './playerEquipFixture';
-import { ItemEntity } from '../../inventory/src/entity';
 import { advancePlayer, facePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -11,6 +10,7 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { smallHash } from '../src/animationAssets';
 import { declaredAnimState } from './animStateFixture';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true, setVolume() {} })) }));
 const players: PlayerPrefab[] = [];
@@ -87,7 +87,7 @@ it('declares player art and retains its entity, equipment, body and shared asset
 
 it('declares tagged book FX as child instances and expires them on game timers while the player visual sleeps', async () => {
   const { instance, model, display, animation } = await createPlayer();
-  const book = new ItemEntity({ itemId: 'book_silviculture', count: 1 });
+  const book = testItem({ itemId: 'book_silviculture', count: 1 });
   book.swap_build = 'swap_books'; book.swap_prefix = 'book_silviculture'; book.def = { fx_under_prefab: 'fx_roots_under_book' };
   const read = vi.fn(() => true);
   const push = () => animation.sg.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }));

@@ -5,12 +5,13 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { MiniMapEntity } from '../../prefab/src/minimapEntity';
 import { loadMinimapIcon } from '../../map/src/minimapIcons';
 import { miniMapEntities } from '../../map/src/minimapEntities';
-import { ItemEntity, InventoryStore, BodySlot, equipmentSlotAddress } from '../../inventory/src';
+import { BodySlot, equipmentSlotAddress } from '../../inventory/src';
 import { configureBackpackEntity } from '../../prefab/src/backpack';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { pigKingPrefabs, PIGKING_ID } from '../../prefab/src/pigking';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { testInventoryStore, testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 
@@ -53,8 +54,8 @@ it('keeps a backpack icon on the logical item through equip, drop, reskin and lo
   const body = equipmentSlotAddress('body');
   const specs = { backpack: { name: '背包', icon: 'backpack.tex', maxStack: 1, equippable: 'body' as const,
     canGoInContainer: false, configureEntity: configureBackpackEntity } };
-  const store = new InventoryStore([{ address: body, slot: new BodySlot() }], specs, {});
-  const backpack = new ItemEntity({ itemId: 'backpack', count: 1, entityId: 'map-backpack' });
+  const store = testInventoryStore([{ address: body, slot: new BodySlot() }], specs, {});
+  const backpack = testItem({ itemId: 'backpack', count: 1, entityId: 'map-backpack' });
   store.configureItem(backpack);
   const icon = backpack.MiniMapEntity!;
   backpack.transform.setPosition(24, 0, -36);

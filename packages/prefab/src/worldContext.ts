@@ -61,3 +61,11 @@ export type PointerContext = Pick<WorldContext, 'camera' | 'renderer'>;
 
 /** Long-lived prefab services exclude the application-owned scene. */
 export type PrefabWorldContext = Omit<WorldContext, 'scene'>;
+
+/** SpawnPrefab of an item a prefab loads or makes, in the inst's own world; an inst outside a world cannot hold one. */
+export function spawnWorldItem(inst: { readonly prefab: string; readonly worldServices?: Pick<WorldContext, 'spawnItem'> },
+    state: import('@dontstarve-web/inventory').InventoryStack): import('@dontstarve-web/inventory').ItemEntity {
+    const spawn = inst.worldServices?.spawnItem;
+    if (!spawn) throw new Error(`${inst.prefab} has no world to spawn ${state.itemId} in`);
+    return spawn(state);
+}

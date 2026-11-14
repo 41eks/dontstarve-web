@@ -14,7 +14,7 @@ import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { playerDoer, pickupDoer } from './playerDoer';
 import { PlaySound } from '../../prefab/src/sound';
 import { ItemWorldFixture, itemAt } from './itemWorldFixture';
-import { InventoryStore, InventorySlot, ItemEntity, inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
+import { InventorySlot, ItemEntity, inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { INVENTORY_SKIN_SPECS, INVENTORY_RECIPES, INVENTORY_RECIPE_SKINS } from '../../ui/src/categories/shared';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
@@ -22,6 +22,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
+import { testInventoryStore, testItem } from './testInventory';
 
 const SAVE_CATALOG = { items: INVENTORY_ITEM_SPECS, skins: INVENTORY_SKIN_SPECS, recipes: INVENTORY_RECIPES,
   recipeSkins: INVENTORY_RECIPE_SKINS, buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) };
@@ -34,11 +35,11 @@ afterEach(() => { vi.clearAllMocks(); vi.restoreAllMocks(); vi.unstubAllGlobals(
 
 it('runs a ground-only record for 64 seconds through its machine and releases each machine sound independently', () => {
   const scheduler = new GameTimeScheduler();
-  const firstInst = new ItemEntity({ itemId: 'phonograph', count: 1 }), secondInst = new ItemEntity({ itemId: 'phonograph', count: 1, phonographRecord: 'record_efs' });
+  const firstInst = testItem({ itemId: 'phonograph', count: 1 }), secondInst = testItem({ itemId: 'phonograph', count: 1, phonographRecord: 'record_efs' });
   configurePhonographEntity(firstInst, scheduler); configurePhonographEntity(secondInst);
   const first = firstInst.components.phonograph!, second = secondInst.components.phonograph!;
   const sprite = { start: vi.spyOn(firstInst.sprite, 'start'), playOnce: vi.spyOn(firstInst.sprite, 'playOnce') };
-  const incoming = new ItemEntity({ itemId: 'record', count: 1 }); incoming.configure(INVENTORY_ITEM_SPECS.record);
+  const incoming = testItem({ itemId: 'record', count: 1 }); incoming.configure(INVENTORY_ITEM_SPECS.record);
   const machine = firstInst.components.machine!;
   // phonograph.lua: an empty phonograph's machine is disabled, so componentactions offers no TURNON.
   expect(machine.enabled).toBe(false);
@@ -94,7 +95,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
   const canvas = Object.assign(new EventTarget(), { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
   vi.stubGlobal('window', new EventTarget());
   const from = inventorySlotAddress(0), to = inventorySlotAddress(1), cursor = cursorSlotAddress();
-  const inventory = new InventoryStore([{ address: from, slot: new InventorySlot() },
+  const inventory = testInventoryStore([{ address: from, slot: new InventorySlot() },
     { address: to, slot: new InventorySlot() }, { address: cursor, slot: new InventorySlot() }], INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS);
   const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
     { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
@@ -123,12 +124,12 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     const position = new THREE.Vector3(3, 0, 4);
     player.position.copy(position);
     let model = await manager.spawnFromSave('phonograph:test', { ...spec, itemId: 'phonograph', count: 1 }, position);
-    let plain = new ItemEntity({ itemId: 'record', count: 1 });
+    let plain = testItem({ itemId: 'record', count: 1 });
     plain.configure(INVENTORY_ITEM_SPECS.record);
-    let skinned = new ItemEntity({ itemId: 'record', count: 1, skinId: 'record_creepyforest' });
+    let skinned = testItem({ itemId: 'record', count: 1, skinId: 'record_creepyforest' });
     skinned.configure(INVENTORY_ITEM_SPECS.record);
     expect(plain.hasTag('cattoy')).toBe(true);
-    const invalid = new ItemEntity({ itemId: 'twigs', count: 1 });
+    const invalid = testItem({ itemId: 'twigs', count: 1 });
     expect(give(model, invalid)).toBe(false);
     expect(inventory.GetActiveItem()).toBe(invalid);
     inventory.extract(cursor, 1, invalid); invalid.destroy();
@@ -158,7 +159,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     data.world.entities.phonograph[0].components.phonograph.remainingSeconds = 65;
     expect(() => deserializeSave(JSON.stringify(data), SAVE_CATALOG)).toThrow('remainingSeconds');
     const saved = manager.exportRecords();
-    const restoredInventory = new InventoryStore([], INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS);
+    const restoredInventory = testInventoryStore([], INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS);
     const restoredManager = new ItemWorldFixture(new THREE.Scene(), world.camera,
       { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', restoredInventory, '/dst/data/anim', player);
     try {

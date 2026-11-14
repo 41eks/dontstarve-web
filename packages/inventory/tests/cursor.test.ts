@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { InventorySlot, InventoryStore, HandSlot, cursorSlotAddress, equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { addFueled } from './fueled';
+import { handSlot, inventorySlot, testInventoryStore } from './testItems';
 
 const first = inventorySlotAddress(0), second = inventorySlotAddress(1), cursor = cursorSlotAddress();
 const specs = {
@@ -8,9 +9,9 @@ const specs = {
   torch: { name: '火把', icon: 'torch.tex', maxStack: 1, equippable: 'hand' as const, maxFuel: 75, configureEntity: addFueled(75) },
 };
 function createStore() {
-  return new InventoryStore([
-    ...[first, second, cursor].map(address => ({ address, slot: new InventorySlot(null, specs) })),
-    { address: equipmentSlotAddress('hand'), slot: new HandSlot() },
+  return testInventoryStore([
+    ...[first, second, cursor].map(address => ({ address, slot: inventorySlot(null, specs) })),
+    { address: equipmentSlotAddress('hand'), slot: handSlot() },
   ], specs, { torch_barber: { itemId: 'torch', name: '理发师火把', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
 }
 

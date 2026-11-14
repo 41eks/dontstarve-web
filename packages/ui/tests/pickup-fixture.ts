@@ -1,7 +1,7 @@
 import { wilsonPlayer } from '../../animation/tests/wilsonPlayer';
 import { withEntity } from '../../animation/tests/entityFixture';
 import * as THREE from 'three';
-import { createInventoryStore } from '../../../src/inventory';
+import { createInventoryStore } from '../../animation/tests/testInventory';
 import { testPlayer } from '../../animation/tests/testPlayer';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { testLocomotor } from '../../animation/tests/testLocomotor';

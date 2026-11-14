@@ -2,10 +2,10 @@ import type * as THREE from 'three';
 import type { ArchiveSpriteCommands } from '../../display/src';
 import { InventoryStore } from '../../inventory/src';
 import { createEmptyEntity, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { createInventoryStore } from '../../../src/inventory';
 import { testEnts } from './entsFixture';
 import { entityOf } from './entityFixture';
 import type { DeployMap } from '../../componets/src/deployable';
+import { createInventoryStore } from './testInventory';
 
 /** A player entity as a test's act.doer: an entity tagged "player" that owns its inventory store. */
 export type TestPlayer = PrefabInstance<ArchiveSpriteCommands> & {

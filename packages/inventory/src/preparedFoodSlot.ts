@@ -1,5 +1,5 @@
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
-import { ItemEntity } from './entity';
+import type { ItemEntity } from './entity';
 import type { ItemSlot } from './slots';
 import type { InventoryStack, InventoryItemSpec } from './types';
 
@@ -10,18 +10,12 @@ export class PreparedFoodSlot implements ItemSlot {
   readonly entity = readonlySignal(this.entityState);
   private readonly itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean;
 
-  constructor(initialStack: InventoryStack | null = null, itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean = () => true) {
+  constructor(itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean = () => true) {
     this.itemTest = itemTest;
-    this.set(initialStack);
   }
 
   get(): InventoryStack | null {
     return this.entityState.peek()?.snapshot(false) ?? null;
-  }
-
-  set(stack: InventoryStack | null): void {
-    if (stack && stack.count !== 1) throw new RangeError('Prepared food slots hold one item');
-    this.entityState.set(stack ? new ItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }

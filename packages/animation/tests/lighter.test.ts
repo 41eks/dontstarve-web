@@ -12,7 +12,7 @@ import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { createSignal, type HandEquipment } from '../../signals/src';
-import { ItemEntity, newItemEntity } from '../../inventory/src';
+import { ItemEntity } from '../../inventory/src';
 import { TORCH_FUEL, configureTorchEntity } from '../../prefab/src/torch';
 import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { managedBuildings } from './managedBuildings';
@@ -21,6 +21,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
+import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -64,7 +65,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const target = registerActionEntity(prefabInstance(model)!);
   const burnable = new Burnable(registerActionEntity(prefabInstance(model)!));
   target.components.burnable = burnable;
-  const torch = newItemEntity({ itemId: 'torch', count: 1, remainingFuel: 30 });
+  const torch = testItem({ itemId: 'torch', count: 1, remainingFuel: 30 });
   torch.configure({ maxFuel: TORCH_FUEL, configureEntity: configureTorchEntity });
   const equipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' as const, entity: torch };
   const hand = createSignal<HandEquipment | null>(equipment);
@@ -110,7 +111,7 @@ function structureFixture(onInteraction?: (change: PlaceableBuildingInteractionC
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createPickupInventory(), scene = new THREE.Scene(), dropLoot = vi.fn();
-  const world: WorldContext = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
+  const world: WorldContext = { spawnItem: testItem, scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
     registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),

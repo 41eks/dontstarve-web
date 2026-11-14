@@ -5,11 +5,11 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { berrybushPrefabs } from '../../prefab/src/berrybush';
 import { ItemWorldFixture } from './itemWorldFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import { workTargets } from './workTargets';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

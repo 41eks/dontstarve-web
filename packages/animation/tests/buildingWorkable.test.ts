@@ -7,6 +7,7 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
 import { workTargets } from './workTargets';
+import { testItem } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -24,8 +25,7 @@ it('restores container contents, drops their live entities at the building foot 
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
     registerContainer: (id, container) => inventory.registerContainer(id, container),
-    unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
-  } as WorldContext;
+    unregisterContainer: (id, container) => inventory.unregisterContainer(id, container), spawnItem: testItem } as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   try {
     const model = await placement.spawnFromSave('icebox', { id: 'icebox', transform: { position: [3, 0, -6], rotationY: 0 },
@@ -66,8 +66,7 @@ it('burns a chest through shared components, drops its live contents and restore
     cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
     registerContainer: (id, container) => inventory.registerContainer(id, container),
-    unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
-  } as WorldContext;
+    unregisterContainer: (id, container) => inventory.unregisterContainer(id, container), spawnItem: testItem } as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   let restored: ReturnType<typeof managedBuildings> | undefined;
   try {

@@ -24,7 +24,6 @@ import { StealMoleBaitAction } from '../../stategraphs/src/moleactions';
 import { CreateBufferedAction } from '../../brains/src/bufferedaction';
 import { Combat } from '../../componets/src/combat';
 import { Weapon } from '../../componets/src/weapon';
-import { createInventoryStore } from '../../../src/inventory';
 import { ItemWorldFixture } from './itemWorldFixture';
 import { inventorySlotAddress } from '../../inventory/src';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -34,6 +33,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { createInventoryStore, testItem } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -46,7 +46,7 @@ async function fixture(daytime = false) {
   const scheduler = new GameTimeScheduler(), cycle = createSignal<WorldPhase>(daytime ? 'day' : 'dusk'), heading = createSignal(0), awake = createSignal(true);
   const items: ItemEntity[] = [], drops: { entity?: ItemEntity; prefab: string; position: THREE.Vector3 }[] = [];
   const spawnItem = (state: InventoryStack) => {
-    const item = state.itemId === 'mole' ? new Mole(state) : new ItemEntity(state); items.push(item);
+    const item = state.itemId === 'mole' ? new Mole(state, undefined, testItem) : testItem(state); items.push(item);
     if (item instanceof Mole) { MakeMole(item); configureMoleEntity(item); } else configureMoleBaitEntity(item);
     // The item registry binds each inst to the world's scheduler; TheSim: the moles and the items they steal stand in
     // the manager that holds the hills.

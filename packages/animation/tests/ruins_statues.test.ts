@@ -12,12 +12,12 @@ import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { EntityRegistry } from '../../../src/entityRegistry';
-import { createInventoryStore } from '../../../src/inventory';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { createInventoryStore } from './testInventory';
 
 const DEFINITIONS = {
   [RUINS_STATUE_MAGE_ID]: PREFAB_DEFINITIONS.ruinsStatueMages,

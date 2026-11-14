@@ -5,7 +5,6 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
-import { createInventoryStore } from '../../../src/inventory';
 import { Sanity } from '../../componets/src/sanity';
 import {
   ARMOR_DREADSTONEHAT, ARMOR_DREADSTONE_REGEN_MAXRATE, ARMOR_DREADSTONE_REGEN_MINRATE, CRAZINESS_MED, DREADSTONEHAT_ID,
@@ -14,6 +13,7 @@ import { createPickupInventory } from './pickupFixture';
 import { testPlayer } from './testPlayer';
 import { addComponent } from '../../prefab/src/components';
 import { createPerishWorld } from './perishWorldFixture';
+import { createInventoryStore } from './testInventory';
 
 function wornHat(sanityPoints: number) {
   const inventory = createPickupInventory(), world = createPerishWorld();

@@ -8,8 +8,8 @@ import { placementEntities, syncPlacementEntity, isGroundTargetBlocked } from '.
 import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import { farmFixture } from './farmFixture';
 import { TurfMap } from '../../prefab/src/turfMap';
-import { ItemEntity } from '../../inventory/src';
 import type { WorldContext } from '../../prefab/src/worldContext';
+import { testItem } from './testInventory';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -57,7 +57,7 @@ it('visits local cells, stops at the first blocker and includes large smart radi
 
 it('tracks tags, movement, attachment, re-registration and permanent removal without walking scene/render lists', () => {
   const scene = new THREE.Scene(), other = new THREE.Scene();
-  const item = new ItemEntity({ itemId: 'log', count: 1 }), model = item.transform.model;
+  const item = testItem({ itemId: 'log', count: 1 }), model = item.transform.model;
   item.addTag('NOBLOCK');
   registerActionEntity(item); scene.add(model);
   const query = placementEntities(scene), position = new THREE.Vector3();

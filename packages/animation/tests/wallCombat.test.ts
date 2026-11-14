@@ -21,6 +21,7 @@ import { PlaySound } from '../../prefab/src/sound';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
+import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })) }));
 beforeEach(() => {
@@ -110,7 +111,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     expect(pose(stone)).toBe('half');
     expect(stoneTarget.inst.getPhysicsRadius()).toBe(WALL_PHYSICS_RADIUS);
 
-    const hammer = new ItemEntity({ itemId: 'hammer', count: 1 });
+    const hammer = testItem({ itemId: 'hammer', count: 1 });
     hammer.components.finiteuses.setMaxUses(75);
     configureEquipmentEntity(hammer);
     const player = attacker(new THREE.Vector3(3 + UNIT, 0, -6), () => 0, hammer);

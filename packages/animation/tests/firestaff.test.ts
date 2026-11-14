@@ -8,9 +8,9 @@ import { FIRE_PROJECTILE_ID, LaunchProjectile, staffProjectilePrefabs, type Staf
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup } from '../../display/src';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
-import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { executeDebugCommand } from '../../../src/debugCommands';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

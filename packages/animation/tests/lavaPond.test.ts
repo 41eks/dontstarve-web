@@ -8,7 +8,6 @@ import { Heater } from '../../componets/src/heater';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { lavaPondPrefabs, LAVA_POND_RADIUS, LavaPondInstance } from '../../prefab/src/lava_pond';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { createInventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -17,6 +16,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { SaveDocument } from '../../../src/save/types';
+import { createInventoryStore } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());

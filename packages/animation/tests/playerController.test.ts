@@ -1,7 +1,6 @@
 import { createPlayerEquipper } from './playerEquipFixture';
 import { Combat } from '../../componets/src/combat';
 import { testPlayer } from './testPlayer';
-import { ItemEntity } from '../../inventory/src/entity';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { SpriteState } from '../../display/src';
 import { addComponent } from '../../prefab/src/components';
@@ -44,6 +43,7 @@ import { Reader } from '../../componets/src/reader';
 import { createSignal } from '../../signals/src';
 import type { PlayerInstance } from '../../prefab/src/player_common';
 import type { BookWorld } from '../../prefab/src/books';
+import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, setVolume() {}, isPlaying: () => true })) }));
 vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false } }));
@@ -197,7 +197,7 @@ describe('PlayerController scene actions', () => {
 
 describe('PlayerController equipped actions', () => {
   it('offers ATTACK (RANGEDLIGHT) on the right button for a weapon that can light the target', () => {
-    const weapon = new ItemEntity({ itemId: 'firestaff', count: 1 });
+    const weapon = testItem({ itemId: 'firestaff', count: 1 });
     const weaponComponent = addComponent(weapon, 'weapon', Weapon);
     const target = new PrefabInstance('evergreen', new SpriteState({ name: 'idle', billboard: true }));
     // The doer's combat:CanLightTarget is the rule under test's input: only its answer matters here.

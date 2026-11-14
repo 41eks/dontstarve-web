@@ -1,6 +1,5 @@
 import { wilsonPlayer } from './wilsonPlayer';
 import { withEntity } from './entityFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { testPlayer } from './testPlayer';
 import { addComponent } from '../../prefab/src/components';
 import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
@@ -18,6 +17,7 @@ import { createEquipmentExistenceState } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { canDoSceneAction, sceneActions } from './sceneActions';
+import { createInventoryStore } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 

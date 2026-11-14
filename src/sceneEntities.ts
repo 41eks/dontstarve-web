@@ -8,9 +8,8 @@ import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
 import { PlaySound } from '@dontstarve-web/prefab/sound';
-import { newItemEntityId, type InventoryStack, type InventoryStore, ItemEntity, type ItemEntityFactory } from '@dontstarve-web/inventory';
+import { type InventoryStack, type InventoryStore, ItemEntity, type ItemEntityFactory } from '@dontstarve-web/inventory';
 import type { ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
-import { createInventoryStore } from './inventory';
 import * as CANNON from 'cannon-es';
 import { getRegisteredPhysicsBodies } from '../packages/componets/src/physicsWorld';
 import * as THREE from 'three';
@@ -29,8 +28,7 @@ import { farmPrefabs } from '@dontstarve-web/prefab/farm_plow';
 import { createFarmMap } from '@dontstarve-web/prefab/farmMap';
 import { placementEntities } from '@dontstarve-web/prefab/placementEntities';
 import { playerStats } from './playerStats';
-import { PrefabDisplayGroup, SpriteResources } from '@dontstarve-web/display';
-import { PrefabEntityManager, PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
+import { SpriteResources } from '@dontstarve-web/display';
 import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
 import { staffLightPrefabs } from '@dontstarve-web/prefab/stafflight';
 import { bulbPlantPrefabs } from '@dontstarve-web/prefab/bulb_plant';
@@ -93,7 +91,6 @@ import { BEEFALO_BEHAVIOR, beefaloPrefabs, findBeefaloSpawnPoint, type BeefaloWo
 import type { LootLaunch } from '../packages/componets/src/inventoryphysics';
 
 /** Where SpawnPrefab makes an inst before it is set down or given to its holder. */
-const ITEM_ORIGIN = new THREE.Vector3();
 import { player, playerInstance } from './player';
 import {
   PlaceableBuildingPlacement,
@@ -101,6 +98,7 @@ import {
   type PlaceableBuildingId,
 } from './placeableBuilding';
 import { dstLighting, scene } from './universal';
+import { PREFAB_BASE_URL, prefabDisplays, prefabs } from './prefabWorld';
 import { flowerPrefabs } from '@dontstarve-web/prefab/flower';
 import { view } from './view';
 import { initialSave, shardSaveSearch } from './save/initialSave';
@@ -279,11 +277,11 @@ export async function createSceneEntities(
   world: CANNON.World,
   worldState: SceneWorldState,
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
-  onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
-  inventory?: InventoryStore,
+  onBuildingInteraction: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
+  inventory: InventoryStore,
   scheduler?: GameTimeScheduler,
 ) {
-  const prefabDisplays = new PrefabDisplayGroup(scene), prefabBaseUrl = `${import.meta.env.BASE_URL}dst/data/anim`;
+  const prefabBaseUrl = PREFAB_BASE_URL;
   const prefabFire = FireFxHost.create(prefabBaseUrl, worldState.componentUpdates);
   // Shared by the ground Bernie item and the bernie_active / bernie_big prefabs, built on first use.
   let bernieWorldInstance: BernieWorld | undefined;
@@ -298,9 +296,6 @@ export async function createSceneEntities(
     flingLoot: (definitions: readonly GroundItemDefinition[], position: ReadonlyVector3, launch?: () => LootLaunch) =>
       flingLoot(itemSpawner, definitions, position, launch),
   };
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(prefabDisplays, prefabBaseUrl,
-    // Items without ground art are drawn from their inventory image.
-    { tickingarea: worldState.tickingarea, physics: world, scheduler: worldState.scheduler, iconArchiveUrl: `${import.meta.env.BASE_URL}dst/data/databundles/images.zip` });
   const registry = new EntityRegistry(SCENE_LIFECYCLE_ORDER, prefabs, () => player.position, prefabDisplays);
   const worldEvents = new EventEmitter<WorldEvents>();
   type SceneManagers = {
@@ -348,7 +343,7 @@ export async function createSceneEntities(
   // Filled in dependency order below; deferred callbacks run after scene setup.
   const Managers = {} as SceneManagers;
 
-  const sceneInventory = inventory ?? createInventoryStore();
+  const sceneInventory = inventory;
   sceneInventory.entities.bindPerishWorld({ perishClock: worldState.perishClock, scheduler: worldState.scheduler });
   sceneInventory.entities.bindTemperatureWorld({
     componentUpdates: worldState.componentUpdates,
@@ -460,9 +455,7 @@ export async function createSceneEntities(
     stopDugTurf(); farmMap.dispose(); Managers['lightflier_flower'].dispose();
     try { registry.dispose(); }
     finally {
-      sceneInventory.entities.bindSpawner(undefined);
       prefabDisplays.dispose(); prefabFire.dispose(); itemSprites.dispose(); dynamicMusic?.dispose();
-      if (!inventory) sceneInventory.dispose();
     }
   };
 
@@ -568,8 +561,8 @@ export async function createSceneEntities(
   }
 
   /**
-   * The item prefabs on the shared manager, and the inventory's item registry spawning through it: every item inst is
-   * SpawnPrefab'd into this world, saved by the world while it lies in the scene and by its holder while held.
+   * The item prefabs on the shared manager, which the inventory's item registry spawns through (prefabWorld.ts): every
+   * item inst is SpawnPrefab'd into this world, saved by the world while it lies in the scene and by its holder while held.
    */
   function registerItems(registry: EntityRegistry, prefabId: 'items', worldState: SceneWorldState) {
     const icons = Object.fromEntries(Object.entries(SAVE_CATALOG.items).filter(([id]) => !Object.hasOwn(GROUND_ART_DEFINITIONS, id))
@@ -577,12 +570,6 @@ export async function createSceneEntities(
     const definitions = itemPrefabs(itemWorld(worldState), icons);
     const ids = new Set(MANAGER_DEFINITIONS[prefabId].prefabIds);
     prefabs.register(Object.fromEntries(Object.entries(definitions).filter(([id]) => ids.has(id))));
-    sceneInventory.entities.bindSpawner(state => {
-      if (!ids.has(state.itemId)) return undefined;
-      const entity = prefabs.spawn(state.itemId, ITEM_ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } });
-      if (!(entity instanceof ItemEntity)) throw new Error(`${state.itemId} does not spawn an item entity`);
-      return entity;
-    });
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
   }
 

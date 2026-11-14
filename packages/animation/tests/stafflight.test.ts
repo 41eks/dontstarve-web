@@ -8,7 +8,6 @@ import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInst
 import { staffLightPrefabs, dwarfStarLight, DWARF_STAR_DURATION, type StaffLightId, type StaffLightInstance } from '../../prefab/src/stafflight';
 import { PlaySound } from '../../prefab/src/sound';
 import { clockstate, createMemo, createSignal, seasonstate } from '@dontstarve-web/signals';
-import { InventoryStore, ItemEntity } from '../../inventory/src';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { configureHeatRockEntity, type HeatRock } from '../../prefab/src/heatrock';
@@ -19,6 +18,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
+import { testInventoryStore, testItem } from './testInventory';
 
 
 vi.mock('../../prefab/src/sound', () => ({
@@ -264,7 +264,7 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
   expect(source.components.heater!.ShouldFalloff()).toBe(true);
   expect(source.components.heater!.GetHeatRadiusCutoff()).toBeUndefined();
   const updates = new ComponentUpdates();
-  const stone = new ItemEntity({ itemId: 'heatrock', count: 1, temperature: { current: 30 } });
+  const stone = testItem({ itemId: 'heatrock', count: 1, temperature: { current: 30 } });
   configureHeatRockEntity(stone);
   stone.BindTemperatureWorld({
     temperature: createSignal(0), componentUpdates: updates, unitScale: TILE_SIZE / 4,
@@ -310,7 +310,7 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
   expect(heater.ShouldFalloff()).toBe(true);
   expect(source.components.propagator).toBeUndefined();
   const updates = new ComponentUpdates();
-  const stone = new ItemEntity({ itemId: 'heatrock', count: 1, temperature: { current: 6 } });
+  const stone = testItem({ itemId: 'heatrock', count: 1, temperature: { current: 6 } });
   configureHeatRockEntity(stone);
   stone.BindTemperatureWorld({
     temperature: createSignal(35), componentUpdates: updates, unitScale: TILE_SIZE / 4,
@@ -366,7 +366,7 @@ it('spawns world lights through console definitions and saves and reloads their 
     return registry;
   };
   const registry = createRegistry();
-  const inventory = new InventoryStore([], SAVE_CATALOG.items);
+  const inventory = testInventoryStore([], SAVE_CATALOG.items);
   const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);
   const spawn = await executeDebugCommand('c_spawn("stafflight"); c_spawn("staffcoldlight")', inventory,
     prefab => registry.spawn(prefab));

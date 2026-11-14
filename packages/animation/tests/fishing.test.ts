@@ -9,7 +9,6 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { Fishable } from '../../componets/src/fishable';
 import { configureFishingRodEntity, getFishingRod } from '../../prefab/src/fishingrod';
-import { ItemEntity } from '../../inventory/src/entity';
 import { equipmentSlotAddress } from '../../inventory/src/addresses';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
@@ -32,6 +31,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true, setVolume() {} })) }));
 beforeEach(() => {
@@ -80,7 +80,7 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
   const landed: { prefab: string; position: THREE.Vector3 }[] = [];
   const equipped = createEquipmentExistenceState('HANDS');
   const rodEntity = () => {
-    const entity = new ItemEntity({ itemId: 'fishingrod', count: 1 });
+    const entity = testItem({ itemId: 'fishingrod', count: 1 });
     configureFishingRodEntity(entity);
     // Held in the player's hand: the player owns it.
     entity.components.inventoryitem.SetOwner(animation, { address: equipmentSlotAddress('hand'),

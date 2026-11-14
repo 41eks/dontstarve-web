@@ -10,13 +10,13 @@ import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
-import { createInventoryStore } from '../../../src/inventory';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { createInventoryStore } from './testInventory';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const record = (components: PlacementSaveRecord['components']): PlacementSaveRecord => ({ id: 'saved-relic',

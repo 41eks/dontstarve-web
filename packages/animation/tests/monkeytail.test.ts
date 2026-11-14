@@ -12,7 +12,6 @@ import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
 import { deployActor, landTurf } from './deployActor';
 import { ItemWorldFixture } from './itemWorldFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -29,6 +28,7 @@ import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

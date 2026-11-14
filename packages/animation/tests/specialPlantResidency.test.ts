@@ -8,7 +8,6 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { SpriteState } from '@dontstarve-web/display';
 import { loadAnim } from '../src/animationAssets';
-import { ItemEntity } from '../../inventory/src';
 import { flowerPrefabs } from '../../prefab/src/flower';
 import { marbleShrubWorld } from './marbleShrubFixture';
 import { rockAvocadoSaplingPrefabs, ROCK_AVOCADO_SAPLING_ID } from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
@@ -20,6 +19,7 @@ import type { GroundItemDefinition } from '../../prefab/src/groundPrefab';
 import { bindTestWorld, drawn } from './worldContentFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
+import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -42,7 +42,7 @@ function environment() {
   const sources = bindTestWorld(scheduler, tickingarea);
   const spawned = vi.fn();
   const spawnGroundItem = (definition: GroundItemDefinition, point: ReadonlyVector3) => {
-    const entity = new ItemEntity({ itemId: definition.itemId, count: definition.count });
+    const entity = testItem({ itemId: definition.itemId, count: definition.count });
     entity.transform.copyPosition(point); spawned(definition.itemId, point.clone());
     return entity;
   };

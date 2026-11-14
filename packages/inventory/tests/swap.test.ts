@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { HandSlot, InventorySlot, InventoryStore, PreparedFoodSlot, StorageSlot,
   equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { addFueled } from './fueled';
+import { handSlot, inventorySlot, preparedFoodSlot, storageSlot, testInventoryStore } from './testItems';
 
 const specs = {
   log: { name: '木头', icon: 'log.tex', maxStack: 20 },
@@ -11,12 +12,12 @@ const specs = {
 const first = inventorySlotAddress(0), second = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
 const chest = { containerId: 'chest:swap', slotKey: '0' }, food = { containerId: 'cookpot:swap', slotKey: '0' };
 function createStore() {
-  return new InventoryStore([
-    { address: first, slot: new InventorySlot(null, specs) },
-    { address: second, slot: new InventorySlot(null, specs) },
-    { address: hand, slot: new HandSlot() },
-    { address: chest, slot: new StorageSlot() },
-    { address: food, slot: new PreparedFoodSlot() },
+  return testInventoryStore([
+    { address: first, slot: inventorySlot(null, specs) },
+    { address: second, slot: inventorySlot(null, specs) },
+    { address: hand, slot: handSlot() },
+    { address: chest, slot: storageSlot() },
+    { address: food, slot: preparedFoodSlot() },
   ], specs, { torch_barber: { itemId: 'torch', name: '理发师火把', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
 }
 

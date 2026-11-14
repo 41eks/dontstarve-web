@@ -7,9 +7,9 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Propagator } from '../../componets/src/propagator';
 import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { withEntity } from './entityFixture';
-import { ItemEntity } from '../../inventory/src';
 import { configureBurnableItemEntity, type BurnableItemController } from '../../prefab/src/burnableItems';
 import { testEnts } from './entsFixture';
+import { testItem } from './testInventory';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -63,7 +63,7 @@ it('uses the current spring radius for neighbour queries and heat falloff withou
 
 it('binds a persistent inventory propagator to world season and releases the previous dependency on rebinding', () => {
   vi.spyOn(Math, 'random').mockReturnValue(.5);
-  const entity = new ItemEntity({ itemId: 'log', count: 1 });
+  const entity = testItem({ itemId: 'log', count: 1 });
   configureBurnableItemEntity(entity);
   const controller = entity.getComponent<BurnableItemController>('burnable_item')!;
   const propagator = controller.propagator;
@@ -94,7 +94,7 @@ it('spreads an item fire through TheSim to the propagators in range, leaving out
   vi.spyOn(Math, 'random').mockReturnValue(.5);
   const ents = testEnts();
   const log = (x: number) => {
-    const entity = ents.track(new ItemEntity({ itemId: 'log', count: 1 }));
+    const entity = ents.track(testItem({ itemId: 'log', count: 1 }));
     configureBurnableItemEntity(entity);
     entity.setPosition(x, 0, 0);
     return { entity, propagator: entity.getComponent<BurnableItemController>('burnable_item')!.propagator };

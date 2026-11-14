@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Container } from '../../componets/src/container';
 import { ItemEntity, InventoryStore, InventorySlot, BodySlot, StorageSlot, backpackSlotAddress, equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { addFueled } from './fueled';
+import { bodySlot, inventorySlot, storageSlot, testInventoryStore, testItem } from './testItems';
 
 const specs = {
   backpack: { name: '背包', icon: 'backpack.tex', maxStack: 1, equippable: 'body' as const, canGoInContainer: false },
@@ -10,12 +11,12 @@ const specs = {
 };
 const body = equipmentSlotAddress('body'), a = inventorySlotAddress(0), b = inventorySlotAddress(1), item = inventorySlotAddress(2);
 function store() {
-  return new InventoryStore([
-    { address: a, slot: new InventorySlot(null, specs) },
-    { address: b, slot: new InventorySlot(null, specs) },
-    { address: item, slot: new InventorySlot(null, specs) },
-    { address: body, slot: new BodySlot() },
-    { address: { containerId: 'chest:1', slotKey: '0' }, slot: new StorageSlot() },
+  return testInventoryStore([
+    { address: a, slot: inventorySlot(null, specs) },
+    { address: b, slot: inventorySlot(null, specs) },
+    { address: item, slot: inventorySlot(null, specs) },
+    { address: body, slot: bodySlot() },
+    { address: { containerId: 'chest:1', slotKey: '0' }, slot: storageSlot() },
   ], specs, { backpack_babybeef: { itemId: 'backpack', name: '小牛背包', icon: 'backpack_babybeef.tex', atlas: 'images/inventoryimages.xml' } });
 }
 
@@ -91,7 +92,7 @@ describe('entity-owned backpack containers', () => {
     const groundState = dropped.snapshot();
     expect(groundState.container!.slots[0].item.entityId).toBe(log.id);
     const groundReload = store();
-    const loadedBag = new ItemEntity(groundState);
+    const loadedBag = testItem(groundState);
     loadedBag.transform.position.set(2, 0, 3);
     expect(groundReload.receive(loadedBag)).toBe(true);
     expect(groundReload.transfer(a, body, 1)).toBe(true);

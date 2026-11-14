@@ -261,7 +261,9 @@ function HoldStaff(inst: MoonbaseInstance, staff: ItemEntity): void {
 }
 
 function CreateStaff(inst: MoonbaseInstance, state: InventoryStack): ItemEntity {
-  return inst.worldServices?.itemEntities?.create(state) ?? new ItemEntity(state);
+  const items = inst.worldServices?.itemEntities;
+  if (!items) throw new Error('A moonbase needs the world item registry to spawn its staff');
+  return items.create(state);
 }
 
 function DestroyStaff(inst: MoonbaseInstance, staff: ItemEntity): void {

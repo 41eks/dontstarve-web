@@ -7,11 +7,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { mushroomPlantPrefabs } from '../../prefab/src/mushroom_plant';
 import { ItemWorldFixture } from './itemWorldFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import { workTargets } from './workTargets';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

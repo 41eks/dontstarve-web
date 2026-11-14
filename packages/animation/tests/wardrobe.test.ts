@@ -3,7 +3,6 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabDisplay, PrefabDisplayGroup } from '../../display/src';
-import { InventoryStore } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
 import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/tile';
@@ -17,6 +16,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
+import { testInventoryStore } from './testInventory';
 
 const cleanups: (() => void)[] = [];
 beforeEach(() => {
@@ -86,7 +86,7 @@ it('stands its sprite on the ground, and the greenstaff can deconstruct it', asy
 });
 
 it('c_spawn wardrobes save in the building shape and reload', async () => {
-  const { registry } = setup(), { registry: restored } = setup(), inventory = new InventoryStore([], SAVE_CATALOG.items);
+  const { registry } = setup(), { registry: restored } = setup(), inventory = testInventoryStore([], SAVE_CATALOG.items);
   cleanups.push(() => inventory.dispose());
   expect((await executeDebugCommand('c_spawn("wardrobe")', inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
   const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);

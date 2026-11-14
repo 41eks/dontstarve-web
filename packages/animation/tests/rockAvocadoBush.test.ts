@@ -6,7 +6,6 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
 import { ItemWorldFixture } from './itemWorldFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -21,6 +20,7 @@ import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

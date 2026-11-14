@@ -2,7 +2,6 @@ import { useTestTileMap } from './tileMapFixture';
 import { createPickupInventory } from './pickupFixture';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
-import { ItemEntity } from '../../inventory/src';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FirefliesController, FIREFLIES_LIGHT, configureFirefliesEntity } from '../../prefab/src/fireflies';
 import { ItemWorldFixture } from './itemWorldFixture';
@@ -17,6 +16,7 @@ import { mouseTargets } from '../../prefab/src/mouseTargets';
 import { bindInstance, prefabInstance } from '../../prefab/src/prefabInstance';
 import { displayLights } from '../../display/src/displaySprites';
 import { workTargets } from './workTargets';
+import { testItem } from './testInventory';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -28,7 +28,7 @@ const cleanups: (() => void)[] = [];
 afterEach(() => { cleanups.splice(0).forEach(stop => stop()); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function netEquipment(itemId = 'bugnet'): HandEquipment {
-  const entity = new ItemEntity({ itemId, count: 1 });
+  const entity = testItem({ itemId, count: 1 });
   configureBugNetEntity(entity);
   cleanups.push(() => entity.destroy());
   return { itemId, EQUIPSLOTS: 'HANDS', entity };
@@ -39,7 +39,7 @@ function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = ()
   const { cycle, playerpositions, getWatchWorldContent, tickingarea, unbind } = bindTestWorld(scheduler);
   cycle.set(night ? 'night' : 'day');
   playerpositions.set([position.clone()]);
-  const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
+  const entity = testItem({ itemId: 'fireflies', count: 1 });
   const model = entity.transform.model;
   const animation = { start: vi.spyOn(entity.sprite, 'start'), playOnce: vi.spyOn(entity.sprite, 'playOnce'),
     clearAnimation: vi.spyOn(entity.sprite, 'clearAnimation'), setLightOverride: vi.spyOn(entity.sprite, 'setLightOverride') };
@@ -235,7 +235,7 @@ describe('fireflies tickingarea gate', () => {
     const query = (tile: ReadonlySignal<number>) => { queried.push(tile); return area; };
     const { cycle, playerpositions, getWatchWorldContent, tickingarea, unbind } = bindTestWorld(scheduler, query);
     cycle.set('day'); playerpositions.set([new THREE.Vector3(1, 0, 0)]);
-    const entity = new ItemEntity({ itemId: 'fireflies', count: 1 });
+    const entity = testItem({ itemId: 'fireflies', count: 1 });
     const model = entity.transform.model;
     const animation = { start: vi.spyOn(entity.sprite, 'start'), playOnce: vi.spyOn(entity.sprite, 'playOnce'),
       clearAnimation: vi.spyOn(entity.sprite, 'clearAnimation'), setLightOverride: vi.spyOn(entity.sprite, 'setLightOverride') };

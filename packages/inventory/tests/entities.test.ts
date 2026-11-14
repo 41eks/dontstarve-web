@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { HandSlot, InventorySlot, InventoryStore, ItemEntityRegistry, equipmentSlotAddress, inventorySlotAddress } from '../src';
 import { addFueled } from './fueled';
+import { handSlot, inventorySlot, testInventoryStore, testItemRegistry } from './testItems';
 
 const a = inventorySlotAddress(0), b = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
 const specs = {
@@ -9,15 +10,15 @@ const specs = {
   log: { name: 'log', icon: 'log.tex', maxStack: 20 },
 };
 function setup() {
-  return new InventoryStore([
-    { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
-    { address: hand, slot: new HandSlot() },
+  return testInventoryStore([
+    { address: a, slot: inventorySlot() }, { address: b, slot: inventorySlot() },
+    { address: hand, slot: handSlot() },
   ], specs);
 }
 
 describe('DST item identity and ownership', () => {
   it('indexes late-created map icons without scanning iconless items and releases removed icons from every registry', () => {
-    const entities = new ItemEntityRegistry(), adopted = new ItemEntityRegistry();
+    const entities = testItemRegistry(), adopted = testItemRegistry();
     const insect = entities.create({ itemId: 'fireflies', count: 1 });
     const backpack = entities.create({ itemId: 'backpack', count: 1 });
     const icon = backpack.AddMiniMapEntity();
@@ -168,6 +169,19 @@ describe('DST item identity and ownership', () => {
     expect(store.get(a)).toBeNull();
     expect(entity.isRemoved).toBe(true);
     expect(runtime.dispose).toHaveBeenCalledOnce();
+  });
+
+  it('makes every inst through the world\'s SpawnPrefab: created, restored, split and loaded into a backpack', () => {
+    const spawned: string[] = [];
+    const entities: ItemEntityRegistry = new ItemEntityRegistry(state => { spawned.push(state.itemId); return entities.construct(state); });
+    const store = new InventoryStore([{ address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() }],
+      { ...specs, backpack: { name: 'backpack', icon: 'backpack.tex', maxStack: 1 } }, {}, entities);
+    entities.create({ itemId: 'torch', count: 1 });
+    store.replaceState({ bufferedBuilds: [], slots: [{ address: a, item: { itemId: 'log', count: 4 } }] }, {});
+    expect(store.getEntity(a)).not.toBeNull();
+    entities.create({ itemId: 'backpack', count: 1, container: { slotCount: 8, slots: [{ slotKey: '0', item: { itemId: 'log', count: 1 } }] } });
+    expect(spawned).toEqual(['torch', 'log', 'backpack', 'log']);
+    store.dispose();
   });
 
   it('creates an inst for a split, keeps the receiving stack and removes the merged inst', () => {

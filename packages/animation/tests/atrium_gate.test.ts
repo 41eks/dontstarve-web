@@ -10,7 +10,6 @@ import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { Pathfinder } from '../../prefab/src/pathfinder';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
-import { createInventoryStore } from '../../../src/inventory';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -18,6 +17,7 @@ import { createClusterSaveZip } from '../../../src/save/download';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
+import { createInventoryStore } from './testInventory';
 
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 const record = (x: number, components: PlacementSaveRecord['components']) =>

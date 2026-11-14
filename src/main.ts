@@ -36,6 +36,7 @@ import {
   buildingContainerId, isStorageBuildingId,
 } from '@dontstarve-web/prefab/containers';
 import { executeDebugCommand } from './debugCommands';
+import { itemWorld } from './prefabWorld';
 import { isPlaceableBuildingId } from './placeableBuilding';
 import {
   createInventoryStore,
@@ -91,7 +92,7 @@ function syncPlayerStats(): void {
 const stopStatsUpdates = [playerStats.health.current, playerStats.hunger.value, playerStats.sanity.value]
   .map(stat => stat.subscribe(syncPlayerStats));
 syncPlayerStats();
-export const inventory = createInventoryStore();
+export const inventory = createInventoryStore(itemWorld);
 const inventorySlotItem = createInventorySlotItem(inventory);
 export const handEquipment = inventory.handEquipment;
 export const headEquipment = inventory.headEquipment;
@@ -169,9 +170,6 @@ inventory.bodyEquipment.subscribe(equipment => {
   }
 });
 
-// Restore only after subscribing: committed slot changes equip the restored items.
-inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
-
 
 function syncCraftingInventory(): void {
   gameUi.crafting.setMaterialSummary(inventory.materialSummary());
@@ -202,6 +200,9 @@ const sceneResources = await startScene(
   inventory,
 );
 const { buildingPlacement, groundItems, worldFx, registry, prefabs, getSaveState, disposalEvents } = sceneResources;
+// The player's saved items are SpawnPrefab'd into the world the scene has just registered the item prefabs in; the
+// subscriptions above equip the restored items as their slots commit.
+inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading });
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);

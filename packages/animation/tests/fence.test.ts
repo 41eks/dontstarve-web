@@ -1,5 +1,4 @@
 import { SpriteState, PrefabDisplayGroup } from '../../display/src';
-import { ItemEntity, InventoryStore } from '../../inventory/src';
 import { PrefabEntityManager, PrefabInstance, prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
@@ -28,6 +27,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { bindTestWorld } from './worldContentFixture';
 import { workTargets } from './workTargets';
+import { testInventoryStore, testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -53,7 +53,7 @@ function setup(consume: (id: string, skinId?: string) => boolean = () => true, p
   const canvas = new EventTarget(), awake = createSignal(true);
   const heading = createSignal(45), scheduler = new GameTimeScheduler(), fire = FireFxHost.create();
   const dropLoot = vi.fn(), dropItem = vi.fn(), addWall = vi.fn(), removeWall = vi.fn();
-  const spawnItem = vi.fn((state: { itemId: string; count: number }) => new ItemEntity(state));
+  const spawnItem = vi.fn((state: { itemId: string; count: number }) => testItem(state));
   const player = new THREE.Group(); player.position.copy(playerPosition);
   const world = { scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: heading, ground: new THREE.Group(),
     player, physics: new CANNON.World(), renderer: { domElement: canvas }, scheduler, fire,
@@ -277,7 +277,7 @@ it('settles a fence hit on sleep, reskins dormant art, restores mirroring, and c
 }, 20000);
 
 it('c_spawn places a fence at the wall slot ahead of the player, and c_save reloads it', async () => {
-  const first = setup(undefined, new THREE.Vector3(3, 0, -6)), second = setup(), inventory = new InventoryStore([], SAVE_CATALOG.items);
+  const first = setup(undefined, new THREE.Vector3(3, 0, -6)), second = setup(), inventory = testInventoryStore([], SAVE_CATALOG.items);
   try {
     const spawned = await executeDebugCommand('c_spawn("fence")', inventory, prefab => first.registry.spawn(prefab));
     expect(spawned).toMatchObject({ ok: true });

@@ -4,7 +4,7 @@ import { pickupDoer } from './playerDoer';
 import { withEntity } from './entityFixture';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
-import { ItemEntity, InventorySlot, InventoryStore, cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
+import { InventorySlot, cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { PERISH_FAST } from '../../componets/src/perishable';
 import { getFoodEffects } from '../../prefab/src/food';
@@ -12,6 +12,7 @@ import { LANTERN_FUEL } from '../../prefab/src/lantern';
 import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import { createPickupInventory } from './pickupFixture';
 import { createPerishWorld } from './perishWorldFixture';
+import { testInventoryStore, testItem } from './testInventory';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -45,7 +46,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
   const inventory = createPickupInventory();
   const world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
-  const dry = new ItemEntity({ itemId: 'lightbulb', count: 1 }), wet = new ItemEntity({ itemId: 'lightbulb', count: 1, wet: true });
+  const dry = testItem({ itemId: 'lightbulb', count: 1 }), wet = testItem({ itemId: 'lightbulb', count: 1, wet: true });
   try {
     inventory.add('lantern', 1);
     const lantern = inventory.getEntity(inventorySlotAddress(0))!, fueled = lantern.components.fueled!;
@@ -66,14 +67,14 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
     expect(fueled.TakeFuelItem(wet)).toBe(true);
     expect(fueled.currentfuel).toBeCloseTo(100 - 30 - .5 + 67.5);
     lantern.setRemainingFuel(0); lantern.components.machine!.TurnOff();
-    const relight = new ItemEntity({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(relight);
+    const relight = testItem({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(relight);
     fueled.TakeFuelItem(relight);
     expect(ison()).toBe(true);
     lantern.components.equippable!.Unequip(owner);
     // inventoryitem:SetOnPutInInventoryFn(turnoff).
     lantern.components.inventoryitem.OnPutInInventory(owner);
     lantern.setRemainingFuel(LANTERN_FUEL - 1);
-    const clamp = new ItemEntity({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(clamp);
+    const clamp = testItem({ itemId: 'lightbulb', count: 1 }); inventory.configureItem(clamp);
     fueled.TakeFuelItem(clamp);
     expect(fueled.currentfuel).toBe(LANTERN_FUEL);
     expect(ison()).toBe(false);
@@ -83,7 +84,7 @@ it('accepts cave fuel, settles pending consumption, applies wet penalties and re
 it('buffers one fuel item until frame six, preserves it on cancellation and returns rejected fuel to inventory', () => {
   vi.stubGlobal('window', new EventTarget());
   const cursor = cursorSlotAddress();
-  const inventory = new InventoryStore([inventorySlotAddress(0), inventorySlotAddress(1), cursor]
+  const inventory = testInventoryStore([inventorySlotAddress(0), inventorySlotAddress(1), cursor]
     .map(address => ({ address, slot: new InventorySlot() })), INVENTORY_ITEM_SPECS);
   inventory.add('lantern', 1); inventory.add('lightbulb', 2);
   const lantern = inventory.getEntity(inventorySlotAddress(0))!;

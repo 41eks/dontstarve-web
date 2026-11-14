@@ -1,8 +1,9 @@
-import { ItemEntityRegistry, type InventoryStore, type ItemEntity } from '../../inventory/src';
+import { type InventoryStore, type ItemEntity } from '../../inventory/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { createEquipmentViews } from '../../prefab/src/equipmentVisual';
 import { testPlayer } from './testPlayer';
 import type { PlayerInstance } from '../../prefab/src/player_common';
+import { testItemRegistry } from './testInventory';
 
 type Kind = 'hand' | 'head' | 'body';
 const ESLOTS: Readonly<Record<Kind, import('../../componets/src/entityEvents').EquipSlot>> = { hand: 'HANDS', head: 'HEAD', body: 'BODY' };
@@ -27,7 +28,7 @@ export function bindPlayerEquipment(inventory: InventoryStore, player: PlayerIns
  * equippable:Equip(owner) and pushes "equip"; the slot's previous inst is unequipped first.
  */
 export function createPlayerEquipper(animation: PlayerInstance) {
-  const registry = new ItemEntityRegistry();
+  const registry = testItemRegistry();
   const owner = playerEquipmentOwner(animation);
   const worn = new Map<Kind, ItemEntity>();
   const unequip = (kind: Kind) => {

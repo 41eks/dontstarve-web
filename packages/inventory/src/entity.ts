@@ -279,7 +279,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
   private readonly runtime = new Map<string, ItemRuntimeComponent>();
   /** `createItem` makes the insts a backpack loads, through the same SpawnPrefab as this one. */
-  constructor(state: InventoryStack, perishWorld?: PerishWorld, createItem: (state: InventoryStack) => ItemEntity = item => newItemEntity(item, perishWorld)) {
+  constructor(state: InventoryStack, perishWorld: PerishWorld | undefined, createItem: ItemSpawner) {
     super(state.itemId, new SpriteState({ name: state.itemId, none: true }));
     this.entityId = state.entityId ?? newItemEntityId();
     this.wetState.set(state.wet ?? false);
@@ -476,12 +476,15 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
 }
 
+/** SpawnPrefab of an item from its stack: the prefab's inst, in the world it was spawned into. */
+export type ItemSpawner = (state: InventoryStack) => ItemEntity;
+
 /**
  * How an item prefab's fn makes its inst: the prefab's own ItemEntity subclass, built with the registry's world and the
  * SpawnPrefab its containers load through.
  */
 export type ItemEntityFactory<Entity extends ItemEntity = ItemEntity> =
-  (state: InventoryStack, perishWorld: PerishWorld | undefined, createItem: (state: InventoryStack) => ItemEntity) => Entity;
+  (state: InventoryStack, perishWorld: PerishWorld | undefined, createItem: ItemSpawner) => Entity;
 
 /** Each item prefab's own ItemEntity subclass, by item id; the prefab module registers it where it defines it. */
 const itemEntityClasses = new Map<string, ItemEntityFactory>();
@@ -493,8 +496,7 @@ export function registerItemEntityClass(itemId: string, factory: ItemEntityFacto
 }
 
 /** An `itemId` inst as its prefab makes it: its registered subclass, or a plain ItemEntity. */
-export function newItemEntity(state: InventoryStack, perishWorld?: PerishWorld,
-  createItem: (state: InventoryStack) => ItemEntity = item => newItemEntity(item, perishWorld)): ItemEntity {
+export function newItemEntity(state: InventoryStack, perishWorld: PerishWorld | undefined, createItem: ItemSpawner): ItemEntity {
   const factory = itemEntityClasses.get(state.itemId);
   return factory ? factory(state, perishWorld, createItem) : new ItemEntity(state, perishWorld, createItem);
 }
@@ -556,12 +558,12 @@ export class ItemEntityRegistry {
       }
     }
   }
-  private spawner?: (state: InventoryStack) => ItemEntity | undefined;
   /**
-   * The world's SpawnPrefab: every inst created from now on is spawned through it, so it belongs to that world from its
-   * birth and only leaves and re-enters the scene. An item the world has no prefab for is constructed here alone.
+   * `spawn` is the world's SpawnPrefab for an item: every inst this registry creates is spawned through it, so it is its
+   * prefab's inst in that world from its birth and only leaves and re-enters the scene. There is no other way to make one.
    */
-  bindSpawner(spawn: ((state: InventoryStack) => ItemEntity | undefined) | undefined): void { this.spawner = spawn; }
+  private readonly spawner: ItemSpawner;
+  constructor(spawner: ItemSpawner) { this.spawner = spawner; }
   /** The item prefab's own construction, bound to this registry's worlds but not yet registered. */
   construct(state: InventoryStack): ItemEntity;
   construct<Entity extends ItemEntity>(state: InventoryStack, factory: ItemEntityFactory<Entity>): Entity;
@@ -573,7 +575,7 @@ export class ItemEntityRegistry {
   }
   create(state: InventoryStack): ItemEntity {
     if (state.entityId && this.get(state.entityId)) throw new Error(`Duplicate item entity: ${state.entityId}`);
-    const entity = this.spawner?.(state) ?? this.construct(state);
+    const entity = this.spawner(state);
     this.register(entity);
     return entity;
   }

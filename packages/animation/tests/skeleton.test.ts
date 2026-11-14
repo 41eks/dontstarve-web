@@ -6,7 +6,6 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { skeletonPrefabs, type SkeletonInstance } from '../../prefab/src/skeleton';
 import { ItemWorldFixture } from './itemWorldFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -17,6 +16,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

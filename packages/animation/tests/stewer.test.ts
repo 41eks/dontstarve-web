@@ -1,17 +1,18 @@
 import { expect, it, vi } from 'vitest';
 import { testPlayer } from './testPlayer';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
-import { InventoryStore, type InventoryItemSpec } from '../../inventory/src';
+import { type InventoryItemSpec } from '../../inventory/src';
 import { GameTimeScheduler } from '../../signals/src';
 import { createBuildingContainer } from '../../prefab/src/containers';
 import { Stewer } from '../../componets/src/stewer';
 import { BASE_COOK_TIME } from '../../componets/src/cooking';
 import { performCookAction } from '../../stategraphs/src/cook';
+import { testInventoryStore } from './testInventory';
 
 function createPot(dropProduct?: (prefab: string, count?: number) => void, startTime = 0) {
   const specs = Object.fromEntries(['twigs', 'red_cap', 'monstermeat', 'log'].map(id =>
     [id, { name: id, icon: `${id}.tex`, maxStack: 40 } satisfies InventoryItemSpec]));
-  const inventory = new InventoryStore([], specs);
+  const inventory = testInventoryStore([], specs);
   const container = createBuildingContainer('cookpot', createEmptyEntity('cookpot').instance);
   const containerId = 'world:cookpot:test';
   inventory.registerContainer(containerId, container);

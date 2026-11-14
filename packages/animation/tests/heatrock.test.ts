@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { ItemEntity, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
+import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createPickupInventory } from './pickupFixture';
 import { HEATROCK_FUEL, configureHeatRockEntity, type HeatRock } from '../../prefab/src/heatrock';
 
@@ -14,6 +14,7 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createRecipe } from '../../ui/src/categories/shared';
 import { batch, createSignal } from '../../signals/src';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
+import { testItem } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
@@ -22,7 +23,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('creates individual unequippable stones with source tags and preserves their fueled durability', () => {
   const inventory = createPickupInventory();
-  const saved = new ItemEntity({ itemId: 'heatrock', count: 1, remainingFuel: 62.5 });
+  const saved = testItem({ itemId: 'heatrock', count: 1, remainingFuel: 62.5 });
   try {
     expect(inventory.add('heatrock', 2)).toBe(true);
     const first = inventory.getEntity(inventorySlotAddress(0))!;
@@ -81,7 +82,7 @@ it('registers temperature updates once, moves them between worlds and unregister
 
 it('derives range from temperature signals, updates icons in effects and preserves synchronous usage accounting', async () => {
   const ambient = createSignal(35), updates = new ComponentUpdates();
-  const entity = new ItemEntity({ itemId: 'heatrock', count: 1, temperature: { current: 66 }, remainingFuel: 75 });
+  const entity = testItem({ itemId: 'heatrock', count: 1, temperature: { current: 66 }, remainingFuel: 75 });
   entity.configure(heatrockSpec);
   entity.BindTemperatureWorld({ temperature: ambient, componentUpdates: updates });
   const temperature = entity.components.temperature!, rock = entity.getComponent<HeatRock>('heatrock')!;

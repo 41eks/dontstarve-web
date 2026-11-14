@@ -1,5 +1,4 @@
 import { SpatialIndex } from '../../prefab/src/spatialIndex';
-import { ItemEntity } from '@dontstarve-web/inventory';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -16,7 +15,6 @@ import { deployActor } from './deployActor';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { collectPointActions } from '../../stategraphs/src/componentactions';
 import { getActionString } from '../../stategraphs/src/actions';
-import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { GroundItemAssets, GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
@@ -24,6 +22,7 @@ import { createGroundItemVisual } from './groundItemVisual';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PlaySound } from '../../prefab/src/sound';
 import { workTargets } from './workTargets';
+import { createInventoryStore, testItem } from './testInventory';
 
 const soundStops = vi.hoisted(() => [] as ReturnType<typeof vi.fn>[]);
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
@@ -46,7 +45,7 @@ function setup() {
 }
 
 function item(remainingUses?: number) {
-  return new ItemEntity({ itemId: 'farm_plow_item', count: 1, remainingUses });
+  return testItem({ itemId: 'farm_plow_item', count: 1, remainingUses });
 }
 
 it('loads original packed ground art and the actual inventory atlas', async () => {

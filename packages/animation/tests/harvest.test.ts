@@ -1,6 +1,5 @@
 import { wilsonPlayer } from './wilsonPlayer';
 import { withEntity } from './entityFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { testPlayer } from './testPlayer';
 import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
@@ -16,6 +15,7 @@ import { EventEmitter } from '../../signals/src/EventEmitter';
 import { createEquipmentExistenceState } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { sceneActions } from './sceneActions';
+import { createInventoryStore } from './testInventory';
 
 afterEach(() => vi.unstubAllGlobals());
 

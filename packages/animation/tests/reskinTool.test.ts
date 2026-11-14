@@ -4,12 +4,12 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createInventoryStore } from '../../../src/inventory';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createGroundItemVisual } from './groundItemVisual';
 import { playerInst, createPlayer } from './playerVisual';
 import { parseImageAtlasXml } from '../src/imageAtlas';
+import { createInventoryStore } from './testInventory';
 
 // Application inventory imports the UI's metadata through its package entry point.
 vi.mock('@dontstarve-web/ui', async () => ({

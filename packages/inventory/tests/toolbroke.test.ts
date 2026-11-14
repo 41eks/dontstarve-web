@@ -3,12 +3,13 @@ import { playerEntity } from './playerEntity';
 import { InventorySlot, InventoryStore, inventorySlotAddress } from '../src';
 import { Tool } from '../../componets/src/tool';
 import { equipSamePrefab } from '../../prefab/src/player_common';
+import { inventorySlot, testInventoryStore } from './testItems';
 
 const specs = { bugnet: { name: '捕虫网', icon: 'bugnet.tex', maxStack: 1 } };
 
 it('pushes toolbroke to the player once, before the depleted tool is removed', () => {
-  const inventory = new InventoryStore([{
-    address: inventorySlotAddress(0), slot: new InventorySlot({ itemId: 'bugnet', count: 1 }, specs),
+  const inventory = testInventoryStore([{
+    address: inventorySlotAddress(0), slot: inventorySlot({ itemId: 'bugnet', count: 1 }, specs),
   }], specs);
   const events: [string, unknown][] = [];
   const player = playerEntity();

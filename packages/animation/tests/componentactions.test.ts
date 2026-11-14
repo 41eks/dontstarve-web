@@ -1,20 +1,20 @@
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { testPlayer } from './testPlayer';
 import { expect, it, vi } from 'vitest';
-import { ItemEntity } from '../../inventory/src/entity';
 import { Tool } from '../../componets/src/tool';
 import { Workable } from '../../componets/src/workable';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { configureReskinToolEntity, nextReskin } from '../../prefab/src/reskin_tool';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { SpriteResources, SpriteState } from '@dontstarve-web/display';
+import { testItem } from './testInventory';
 
 it('selects work from component tags, revalidates changes at impact and consumes only successful work', () => {
-  const tool = new ItemEntity({ itemId: 'test_tool', count: 1 });
+  const tool = testItem({ itemId: 'test_tool', count: 1 });
   tool.components.finiteuses.setMaxUses(2);
   tool.components.tool = tool.component('tool', () => new Tool(tool));
   tool.components.tool.SetAction('HAMMER');
-  const target = new ItemEntity({ itemId: 'test_structure', count: 1 });
+  const target = testItem({ itemId: 'test_structure', count: 1 });
   const work = target.component('workable', () => new Workable(target));
   target.components.workable = work;
   work.SetWorkAction('HAMMER'); work.SetWorkLeft(2);
@@ -40,11 +40,11 @@ it('selects work from component tags, revalidates changes at impact and consumes
 });
 
 it('validates reskin spells and advances each tool cache only after a successful cast', async () => {
-  const first = new ItemEntity({ itemId: 'reskin_tool', count: 1 });
-  const second = new ItemEntity({ itemId: 'reskin_tool', count: 1 });
+  const first = testItem({ itemId: 'reskin_tool', count: 1 });
+  const second = testItem({ itemId: 'reskin_tool', count: 1 });
   configureReskinToolEntity(first); configureReskinToolEntity(second);
   // The entity the mouse picks, and a skinned structure the reskin spell is cast on.
-  const picked = new ItemEntity({ itemId: 'test_structure', count: 1 });
+  const picked = testItem({ itemId: 'test_structure', count: 1 });
   const sprite = new SpriteState({ name: '' });
   sprite.setSkinSource({ archives: { skin_a: 'skin_a.zip', skin_b: 'skin_b.zip' }, art: new SpriteResources().archives });
   const target = new PrefabInstance('test_structure', sprite);

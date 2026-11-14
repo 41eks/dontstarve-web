@@ -1,4 +1,4 @@
-export { ItemEntity, ItemEntityRegistry, FiniteUsesComponent, newItemEntity, newItemEntityId, registerItemEntityClass, type ItemEntityFactory, type ItemRuntimeComponent, type ItemOwner, type HeldSlot } from './entity';
+export { ItemEntity, ItemEntityRegistry, FiniteUsesComponent, newItemEntity, newItemEntityId, registerItemEntityClass, type ItemEntityFactory, type ItemSpawner, type ItemRuntimeComponent, type ItemOwner, type HeldSlot } from './entity';
 export {
   EQUIPMENT_KINDS,
   INVENTORY_SLOT_COUNT,

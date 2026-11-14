@@ -17,6 +17,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { testItem } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -35,8 +36,7 @@ function stationWorld(scheduler = new GameTimeScheduler(), tags: string[] = [], 
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, scheduler,
     registerContainer: (...args: Parameters<typeof inventory.registerContainer>) => inventory.registerContainer(...args),
-    unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args),
-  } as unknown as WorldContext;
+    unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args), spawnItem: testItem } as unknown as WorldContext;
   return { inventory, scheduler, buildings: managedBuildings(world) };
 }
 

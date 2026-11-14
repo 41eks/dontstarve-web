@@ -5,7 +5,8 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import type { ItemPrefabWorld, GroundItemDefinition } from './groundPrefab';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
-import { ItemEntity } from '@dontstarve-web/inventory';
+import type { ItemEntity } from '@dontstarve-web/inventory';
+import { spawnWorldItem } from './worldContext';
 import { GetTaskRemaining, type EntityTask } from './prefabInstance';
 import { Inventory } from '../../componets/src/inventory';
 import { Trader } from '../../componets/src/trader';
@@ -163,7 +164,7 @@ export function configurePhonographEntity(entity: ItemEntity, scheduler?: GameTi
     const items = saved.inventory ?? (saved.phonographRecord ? [{ itemId: RECORD_ID, count: 1,
       ...(saved.phonographRecord === RECORD_ID ? {} : { skinId: saved.phonographRecord }) }] : []);
     inventory.OnLoad(items, state => {
-      const item = entity.worldServices?.spawnItem?.(state) ?? new ItemEntity(state);
+      const item = spawnWorldItem(entity, state);
       configureRecordEntity(item);
       return item;
     });

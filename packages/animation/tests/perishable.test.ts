@@ -19,6 +19,7 @@ import { createPerishWorld } from './perishWorldFixture';
 import { PERISHABLE_FOODS, configureFoodEntity, getFoodEffects } from '../../prefab/src/food';
 import { configureIceEntity } from '../../prefab/src/ice';
 import { PERISH_FAST, PERISH_SUPERFAST } from '../../componets/src/perishable';
+import { testInventoryStore } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -29,7 +30,7 @@ const specs = {
   spoiled_food: { name: '腐烂物', icon: 'spoiled_food.tex', maxStack: 40 },
 };
 const setup = () => {
-  const store = new InventoryStore([
+  const store = testInventoryStore([
     { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
   ], specs);
   const perishWorld = createPerishWorld();
@@ -432,7 +433,7 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
 });
 
 it('gives meat and ice source perish times: meat spoils into spoiled_food, a held ice stack just melts away', () => {
-  const store = new InventoryStore([
+  const store = testInventoryStore([
     { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
   ], {
     meat: { name: '肉', icon: 'meat.tex', maxStack: 40,

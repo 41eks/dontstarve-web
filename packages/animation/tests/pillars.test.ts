@@ -13,7 +13,6 @@ import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
-import { createInventoryStore } from '../../../src/inventory';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -22,6 +21,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 import { FRAMES } from '../../stategraphs/src/stategraph';
+import { createInventoryStore } from './testInventory';
 
 const IDS = [...CAVE_PILLAR_IDS, PILLAR_ATRIUM_ID, ARCHIVE_PILLAR_ID, VAULT_PILLAR_ID, MONKEYPILLAR_ID];
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));

@@ -20,7 +20,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlaySound } from '../../prefab/src/sound';
 import { createEquipmentExistenceState } from '../../signals/src';
-import { ItemEntity } from '../../inventory/src/entity';
+import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })) }));
 beforeEach(() => {
@@ -113,7 +113,7 @@ it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancell
   turf.plow(point);
   farm.spawn('farm_soil_debris', point, { farmDebris: { animation: 'f1' } }, 'target');
   const equipped = createEquipmentExistenceState('HANDS');
-  const tool = new ItemEntity({ itemId: 'goldenshovel', count: 1 });
+  const tool = testItem({ itemId: 'goldenshovel', count: 1 });
   configureShovelEntity(tool);
   equipped.set({ itemId: 'goldenshovel', EQUIPSLOTS: 'HANDS', entity: tool });
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() },

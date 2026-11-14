@@ -5,7 +5,7 @@ const moduleUrl = (path: string) => `/@fs${fileURLToPath(new URL(path, import.me
 const modules = {
   hats: moduleUrl('../../prefab/src/hats.ts'),
   player: moduleUrl('../../prefab/src/player.ts'),
-  inventory: moduleUrl('../../../src/inventory.ts'),
+  inventory: moduleUrl('../../animation/tests/testInventory.ts'),
   ui: moduleUrl('../src/index.ts'),
   atlas: moduleUrl('../../animation/src/imageAtlas.ts'),
   preview: moduleUrl('./hat-preview.ts'),

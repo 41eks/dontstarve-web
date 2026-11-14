@@ -5,11 +5,11 @@ import { withEntity } from './entityFixture';
 import { expect, it, vi } from 'vitest';
 import { batch } from '../../signals/src';
 import { Workable } from '../../componets/src/workable';
-import { ItemEntity } from '../../inventory/src/entity';
 import { registerActionEntity } from '../../prefab/src/actionEntity';
+import { testItem } from './testInventory';
 
 function itemWorkable(workleft = 3) {
-  const entity = new ItemEntity({ itemId: 'test_workable', count: 1 });
+  const entity = testItem({ itemId: 'test_workable', count: 1 });
   const work = entity.component('workable', () => new Workable(entity));
   entity.components.workable = work;
   work.SetWorkAction('HAMMER'); work.SetWorkLeft(workleft);

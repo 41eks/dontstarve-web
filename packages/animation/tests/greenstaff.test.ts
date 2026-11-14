@@ -4,13 +4,14 @@ import { addComponent } from '../../prefab/src/components';
 import { testPlayer } from './testPlayer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { describe, expect, it, vi } from 'vitest';
-import { ItemEntity, InventoryStore, HandSlot, equipmentSlotAddress } from '../../inventory/src';
+import { ItemEntity, HandSlot, equipmentSlotAddress } from '../../inventory/src';
 import { GreenStaffController, deconstructionLoot } from '../../prefab/src/staff';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
+import { testInventoryStore, testItem } from './testInventory';
 
 /** A staff lying in the world: the entity the greenstaff casts on. */
 function target(itemId = 'opalstaff', remainingUses = 50): ItemEntity {
-  const entity = new ItemEntity({ itemId, count: 1, remainingUses });
+  const entity = testItem({ itemId, count: 1, remainingUses });
   entity.configure(INVENTORY_ITEM_SPECS[itemId]);
   entity.setPosition(12, 0, 0);
   return entity;
@@ -31,7 +32,7 @@ describe('greenstaff source deconstruction', () => {
 
   it('selects recipe targets and commits removal, cost and final equipment depletion through the store', async () => {
     const slot = equipmentSlotAddress('hand');
-    const inventory = new InventoryStore([{ address: slot, slot: new HandSlot() }], INVENTORY_ITEM_SPECS);
+    const inventory = testInventoryStore([{ address: slot, slot: new HandSlot() }], INVENTORY_ITEM_SPECS);
     inventory.replaceState({ bufferedBuilds: [], slots: [{ address: slot, item: { itemId: 'greenstaff', count: 1, remainingUses: 1 } }] }, {});
     const entity = inventory.getEntity(slot)!;
     const spawn = vi.fn();
@@ -45,7 +46,7 @@ describe('greenstaff source deconstruction', () => {
     expect(entity.hasTag('castonrecipes')).toBe(true);
     expect(entity.hasTag('castontargets')).toBe(false);
     expect(collectEquippedItemActions(entity, undefined, opal, true)).toEqual(['CASTSPELL']);
-    const livinglog = new ItemEntity({ itemId: 'livinglog', count: 1 });
+    const livinglog = testItem({ itemId: 'livinglog', count: 1 });
     expect(collectEquippedItemActions(entity, undefined, livinglog, true)).toEqual([]);
     livinglog.destroy();
     const action = createBufferedAction('CASTSPELL', { doer, target: opal, invobject: entity, pos: opal.position });
@@ -63,7 +64,7 @@ describe('greenstaff source deconstruction', () => {
   });
 
   it('revalidates buffered targets and held identity without consuming or removing anything', async () => {
-    const entity = new ItemEntity({ itemId: 'greenstaff', count: 1 });
+    const entity = testItem({ itemId: 'greenstaff', count: 1 });
     const spawn = vi.fn();
     new GreenStaffController(entity, { spawnLoot: spawn });
     const opal = target(), doer = testPlayer();

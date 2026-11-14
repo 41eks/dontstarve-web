@@ -93,8 +93,8 @@ if (!window.location.hostname.endsWith('github.io') && new URLSearchParams(windo
 
 export async function startScene(
   consumeBufferedBuild: (buildingId: PlaceableBuildingId, skinId?: string) => boolean,
-  onBuildingInteraction?: (change: PlaceableBuildingInteractionChange) => void,
-  inventory?: InventoryStore,
+  onBuildingInteraction: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
+  inventory: InventoryStore,
 ) {
   const blockDisabledController = (event: PointerEvent) => {
     if (playerInstance.controllerEnabled) return;
@@ -105,7 +105,7 @@ export async function startScene(
   const clockUpdater = createWorldClockUpdater(worldState, initialSave.world.elapsedSeconds, () => [player.position]);
   const scheduler = worldState.scheduler;
   const perishWorld: PerishWorld = { perishClock: worldState.perishClock, scheduler };
-  inventory?.entities.bindPerishWorld(perishWorld);
+  inventory.entities.bindPerishWorld(perishWorld);
   const entities = await createSceneEntities(world, worldState, consumeBufferedBuild,
     onBuildingInteraction, inventory, scheduler);
   const { registry, prefabs } = entities;

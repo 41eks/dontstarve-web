@@ -8,7 +8,6 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { beeQueenHivePrefabs, BEEQUEENHIVEGROWN_ID, type BeeQueenHiveInstance } from '../../prefab/src/beequeenhivegrown';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createInventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -16,6 +15,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { createInventoryStore } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());

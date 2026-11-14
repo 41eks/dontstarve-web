@@ -10,12 +10,12 @@ import { nightmareRockWorld } from './nightmareRockFixture';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { executeDebugCommand } from '../../../src/debugCommands';
-import { createInventoryStore } from '../../../src/inventory';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabDisplay } from '@dontstarve-web/display';
+import { createInventoryStore } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {

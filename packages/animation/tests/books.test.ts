@@ -3,7 +3,6 @@ import { createEmptyEntity, prefabInstance } from '../../prefab/src/prefabInstan
 import { testMap } from './tileMapFixture';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
-import { ItemEntity } from '../../inventory/src/entity';
 import { GameTimeScheduler } from '../../prefab/src/components/gameTimeScheduler';
 import { Pickable } from '../../prefab/src/components/pickable';
 import { registerActionEntity } from '../../prefab/src/actionEntity';
@@ -14,6 +13,7 @@ import { Weather } from '../../componets/src/weather';
 import { createWorldClockUpdater, createWorldState } from '../../../src/worldState';
 import { bindTestWorld } from './worldContentFixture';
 import { testEnts } from './entsFixture';
+import { testItem } from './testInventory';
 
 const cleanups: (() => void)[] = [];
 let ents = testEnts();
@@ -55,7 +55,7 @@ it('reads book_silviculture: regrows picked plants in range, spends a use and ch
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler();
   const near = pickedGrass(scene, scheduler, 10), alsoNear = pickedGrass(scene, scheduler, -20);
   const far = pickedGrass(scene, scheduler, 31 * TILE_SIZE / 4); // Source range is 30 units.
-  const book = new ItemEntity({ itemId: 'book_silviculture', count: 1 });
+  const book = testItem({ itemId: 'book_silviculture', count: 1 });
   book.configure(BOOK_ITEM_SPECS.book_silviculture);
   ents.track(book);
   const { reader, tags, doDelta } = readerFor(new THREE.Vector3(), bookWorld(scene, scheduler, newWeather()));
@@ -79,7 +79,7 @@ it('fails with NOSILVICULTURE without spending a use or sanity when only ready p
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler();
   const ready = pickedGrass(scene, scheduler, 0);
   ready.regen();
-  const book = new ItemEntity({ itemId: 'book_silviculture', count: 1, remainingUses: 2 });
+  const book = testItem({ itemId: 'book_silviculture', count: 1, remainingUses: 2 });
   book.configure(BOOK_ITEM_SPECS.book_silviculture);
   ents.track(book);
   const { reader, doDelta } = readerFor(new THREE.Vector3(), bookWorld(scene, scheduler, newWeather()));
@@ -92,7 +92,7 @@ it('fails with NOSILVICULTURE without spending a use or sanity when only ready p
 it('reads book_rain: toggles precipitation through moisture, spawns its fx and charges large sanity', () => {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), weather = newWeather();
   const spawnFx = vi.fn();
-  const book = new ItemEntity({ itemId: 'book_rain', count: 1 });
+  const book = testItem({ itemId: 'book_rain', count: 1 });
   book.configure(BOOK_ITEM_SPECS.book_rain);
   const world: BookWorld = { ...bookWorld(scene, scheduler, weather), spawnFx };
   const { reader, doDelta } = readerFor(new THREE.Vector3(), world);
@@ -147,7 +147,7 @@ it('lets rain dissipate to its floor on its own and restores precipitation from 
 it('reads book_moon: forces a full moon through the world clock, refuses when already full and charges huge sanity', () => {
   const state = createWorldState({ map: testMap(), elapsedSeconds: 480 * 3 + 10, systems: {} });
   const updater = createWorldClockUpdater(state, 480 * 3 + 10);
-  const book = new ItemEntity({ itemId: 'book_moon', count: 1 });
+  const book = testItem({ itemId: 'book_moon', count: 1 });
   book.configure(BOOK_ITEM_SPECS.book_moon);
   const world = { root: new THREE.Scene(), scheduler: new GameTimeScheduler(), weather: newWeather(),
     getWatchWorldContent: state.getWatchWorldContent, moon: { SetMoonPhase: state.SetMoonPhase } } as BookWorld;

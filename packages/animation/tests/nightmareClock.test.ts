@@ -6,9 +6,9 @@ import { TUNING } from '../../../src/tuning';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
-import { createInventoryStore } from '../../../src/inventory';
 import initialWorld from '../../../public/saves/initial-world.json';
 import { testMap } from './tileMapFixture';
+import { createInventoryStore } from './testInventory';
 
 function makeClock(random: () => number = () => .5) {
   const scheduler = new GameTimeScheduler();

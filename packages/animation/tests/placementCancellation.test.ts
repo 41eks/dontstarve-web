@@ -17,7 +17,7 @@ import { snapToWallSlotCenter } from '../../prefab/src/tile';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { displayLightOverride } from '../../display/src/displaySprites';
-import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
+import { InventorySlot, inventorySlotAddress } from '../../inventory/src';
 import { EventEmitter, createEquipmentExistenceState, createSignal } from '../../signals/src';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
@@ -26,6 +26,7 @@ import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bufferingStategraph } from './bufferingStategraph';
+import { slotWith, testInventoryStore } from './testInventory';
 
 vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSpriteSource: vi.fn() }));
 vi.mock('../src/wallSprite', () => ({ createStaticSpriteFactory: vi.fn() }));
@@ -139,8 +140,8 @@ function setup(kind: 'animated' | 'wall') {
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 4));
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
-  const store = new InventoryStore([
-    { address: inventorySlotAddress(0), slot: new InventorySlot({ itemId: 'log', count: 2 }) },
+  const store = testInventoryStore([
+    { address: inventorySlotAddress(0), slot: slotWith(new InventorySlot(), { itemId: 'log', count: 2 }) },
   ], {
     log: { name: 'log', maxStack: 20, icon: 'log.tex' },
     building: { name: 'building', maxStack: 40, icon: 'building.tex' },

@@ -1,11 +1,12 @@
 import { expect, it, vi } from 'vitest';
 import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '../src';
 import { addFueled } from './fueled';
+import { handSlot, inventorySlot, testInventoryStore } from './testItems';
 
 const hand = equipmentSlotAddress('hand'), bag = inventorySlotAddress(0);
 const specs = { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' as const, configureEntity: addFueled(75) } };
 function createStore() {
-  return new InventoryStore([{ address: bag, slot: new InventorySlot() }, { address: hand, slot: new HandSlot() }], specs, {});
+  return testInventoryStore([{ address: bag, slot: inventorySlot() }, { address: hand, slot: handSlot() }], specs, {});
 }
 
 it('publishes equipment identity after commits; a transfer keeps the entity and a removal clears the slot', () => {
@@ -39,10 +40,10 @@ it('publishes equipment identity after commits; a transfer keeps the entity and 
 });
 
 it('publishes the initial equipment when a hand slot is registered later', () => {
-  const store = new InventoryStore([{ address: bag, slot: new InventorySlot() }], specs, {});
+  const store = testInventoryStore([{ address: bag, slot: inventorySlot() }], specs, {});
   try {
     expect(store.handEquipment.peek()).toBeNull();
-    store.registerSlots([{ address: hand, slot: new HandSlot({ itemId: 'torch', count: 1, remainingFuel: 18.5 }) }]);
+    store.registerSlots([{ address: hand, slot: handSlot({ itemId: 'torch', count: 1, remainingFuel: 18.5 }) }]);
     expect(store.handEquipment.peek()?.entity).toBe(store.getEntity(hand));
   } finally { store.dispose(); }
 });

@@ -1,4 +1,5 @@
 import * as CANNON from 'cannon-es';
+import { testInventoryStore } from '../../animation/tests/testInventory';
 import { wortox } from '../../prefab/src/wortox';
 import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { prefabManager } from '../../animation/tests/prefabManagerFixture';
@@ -23,7 +24,7 @@ import { PrewarmSounds } from '../../prefab/src/sound';
 const getDeclaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
-import { HandSlot, InventorySlot, InventoryStore, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
+import { HandSlot, InventorySlot, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
@@ -34,7 +35,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   clockstate.set({ phase: 'night', timeinphase: 0 });
   seasonstate.set({ season: 'spring', progress: 0.5 });
   const duration = itemId === 'opalstaff' ? POLAR_LIGHT_DURATION : DWARF_STAR_DURATION;
-  const inventory = new InventoryStore([
+  const inventory = testInventoryStore([
     { address: inventorySlotAddress(0), slot: new InventorySlot() },
     { address: equipmentSlotAddress('hand'), slot: new HandSlot() },
   ], INVENTORY_ITEM_SPECS);
@@ -159,7 +160,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     }, SAVE_CATALOG);
   });
   const saved = deserializeSave(saveJson, SAVE_CATALOG);
-  const restoredInventory = new InventoryStore([
+  const restoredInventory = testInventoryStore([
     { address: inventorySlotAddress(0), slot: new InventorySlot() },
     { address: equipmentSlotAddress('hand'), slot: new HandSlot() },
   ], INVENTORY_ITEM_SPECS);

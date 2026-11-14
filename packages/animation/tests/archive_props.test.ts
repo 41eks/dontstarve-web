@@ -9,7 +9,6 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { archivePropsPrefabs, type ArchiveMoonStatueInstance, type ArchiveRuneStatueInstance } from '../../prefab/src/archive_props';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -21,6 +20,7 @@ import { FACING } from '../src/facing';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { workTargets } from './workTargets';
 import type { SpawnGroundItem } from '../../prefab/src/groundPrefab';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 beforeEach(() => {

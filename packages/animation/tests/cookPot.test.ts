@@ -15,6 +15,7 @@ import { createPickupInventory } from './pickupFixture';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
+import { testItem } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -27,7 +28,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
   const canvas = new EventTarget();
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas } } as unknown as WorldContext;
+    camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas }, spawnItem: testItem } as unknown as WorldContext;
   const changed = vi.fn();
   const placement = managedBuildings(world, { onInteraction: changed });
   const model = await placement.spawnFromSave('cookpot', { id: 'pot:feed',

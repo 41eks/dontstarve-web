@@ -10,7 +10,7 @@ import { WALL_SKIN_ARCHIVES, wallWorldSkin } from '../../prefab/src/wallSkins';
 import { GROUND_ITEM_DEFINITIONS, GROUND_ITEM_SKIN_SPECS } from '../../prefab/src/groundItems';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import { InventorySlot, InventoryStore, inventorySlotAddress } from '../../inventory/src';
+import { InventorySlot, inventorySlotAddress } from '../../inventory/src';
 import { loadBuild } from '../src/animationAssets';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import * as wallSprites from '../src/wallSprite';
@@ -26,6 +26,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { snapToWallSlotCenter } from '../../prefab/src/tile';
+import { slotWith, testInventoryStore } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -128,9 +129,9 @@ it('maps every inventory wall skin to the correct world build and consumes the s
       expect(WALL_SKIN_ARCHIVES[prefabId][wallWorldSkin(itemId, itemSkin)!]).toBe(archive);
     }
   }
-  const store = new InventoryStore([
-    { address: inventorySlotAddress(0), slot: new InventorySlot({ itemId: 'wall_stone_item', count: 2 }) },
-    { address: inventorySlotAddress(1), slot: new InventorySlot({ itemId: 'wall_stone_item', count: 2, skinId: 'wall_stone_anitem' }) },
+  const store = testInventoryStore([
+    { address: inventorySlotAddress(0), slot: slotWith(new InventorySlot(), { itemId: 'wall_stone_item', count: 2 }) },
+    { address: inventorySlotAddress(1), slot: slotWith(new InventorySlot(), { itemId: 'wall_stone_item', count: 2, skinId: 'wall_stone_anitem' }) },
   ], { wall_stone_item: { name: 'stone wall', icon: 'wall_stone_item.tex', maxStack: 40 } }, {
     wall_stone_anitem: GROUND_ITEM_SKIN_SPECS.wall_stone_anitem,
   });
@@ -184,7 +185,7 @@ it('c_spawn places walls by their world and item IDs, and c_save reloads one res
     });
     return { registry, placement, dispose: () => { registry.dispose(); placement.dispose(); } };
   };
-  const first = registryFor(), second = registryFor(), inventory = new InventoryStore([], SAVE_CATALOG.items);
+  const first = registryFor(), second = registryFor(), inventory = testInventoryStore([], SAVE_CATALOG.items);
   try {
     for (const id of ['wall_stone', 'wall_stone_item']) {
       expect(await executeDebugCommand(`c_spawn("${id}")`, inventory, prefab => first.registry.spawn(prefab))).toMatchObject({ ok: true });

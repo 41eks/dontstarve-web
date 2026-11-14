@@ -10,7 +10,6 @@ import { hotspringPrefabs, HOTSPRING_ID, HOTSPRING_LIGHT, HotspringInstance } fr
 import { worldFxPrefabs, worldFxSpawner } from '../../prefab/src/world_fx';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { ItemWorldFixture } from './itemWorldFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { activeItemUse } from './inventoryUseFixture';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -24,6 +23,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { createInventoryStore } from './testInventory';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (inst: PrefabInstance) => inst.light.peek();

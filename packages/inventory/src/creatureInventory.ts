@@ -19,7 +19,7 @@ export class CreatureInventory {
   readonly opencontainers = new Set<ContainerInst>();
   constructor(inst: CreatureInventoryInst, maxslots: number, drop: (item: ItemEntity, position: Vector3) => void, itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {}, spawn?: (state: InventoryStack) => ItemEntity) {
     this.inst = inst; this.drop = drop; this.spawn = spawn;
-    this.slots = Array.from({ length: maxslots }, () => new InventorySlot(null, itemSpecs));
+    this.slots = Array.from({ length: maxslots }, () => new InventorySlot(itemSpecs));
   }
   /** inventory.lua ApplyDamage: a creature inventory has no equip slots, so nothing absorbs. */
   ApplyDamage(damage: number): number { return damage; }

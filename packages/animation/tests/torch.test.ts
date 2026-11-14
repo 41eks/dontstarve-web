@@ -5,7 +5,7 @@ import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { performPickupAction } from '../../stategraphs/src/pickup';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
-import { ItemEntity, newItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
+import { ItemEntity, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { ItemWorldFixture, itemAt } from './itemWorldFixture';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
@@ -24,6 +24,7 @@ import { createTestWorldSources } from './worldContentFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createPerishWorld } from './perishWorldFixture';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { testInventoryStore, testItem } from './testInventory';
 
 /** burnable:IsBurning() on the torch inst. */
 const burning = (entity: ItemEntity) => entity.components.burnable!.IsBurning();
@@ -53,7 +54,7 @@ function asTorch(entity: ItemEntity | null | undefined): TorchEntity {
 }
 
 function fixture(initialFuel = TORCH_FUEL) {
-  const entity = asTorch(newItemEntity({ itemId: 'torch', count: 1, remainingFuel: initialFuel }));
+  const entity = asTorch(testItem({ itemId: 'torch', count: 1, remainingFuel: initialFuel }));
   entity.configure(torchSpec);
   // The item's world: fueled consumes on its game time.
   const world = createPerishWorld();
@@ -97,7 +98,7 @@ describe('torch prefab burning lifecycle', () => {
   });
 
   it('starts consuming once a torch lit before its world was bound joins that world', () => {
-    const entity = newItemEntity({ itemId: 'torch', count: 1 });
+    const entity = testItem({ itemId: 'torch', count: 1 });
     entity.configure(torchSpec);
     const torch = createTorchHandLifecycle(entity, {});
     // A restored inventory equips before the scene binds its world.
@@ -149,7 +150,7 @@ describe('torch prefab burning lifecycle', () => {
 
   it('removes the depleted item through its inventory owner, then pushes itemranout so the next torch is equipped', async () => {
     const hand = equipmentSlotAddress('hand'), bag = inventorySlotAddress(0), bag2 = inventorySlotAddress(1);
-    const store = new InventoryStore([{ address: bag, slot: new InventorySlot() }, { address: bag2, slot: new InventorySlot() },
+    const store = testInventoryStore([{ address: bag, slot: new InventorySlot() }, { address: bag2, slot: new InventorySlot() },
       { address: hand, slot: new HandSlot() }], specs, {});
     const world = createPerishWorld();
     store.entities.bindPerishWorld(world);
@@ -179,7 +180,7 @@ describe('torch prefab burning lifecycle', () => {
   it('keeps one entity through equip, asynchronous drop, reskin, pickup and save restoration', async () => {
     vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
     const slot = inventorySlotAddress(0), hand = equipmentSlotAddress('hand');
-    const store = new InventoryStore([{ address: slot, slot: new InventorySlot() }, { address: hand, slot: new HandSlot() }], specs,
+    const store = testInventoryStore([{ address: slot, slot: new InventorySlot() }, { address: hand, slot: new HandSlot() }], specs,
       { torch_barber: { itemId: 'torch', name: 'torch', icon: 'torch_barber.tex', atlas: 'images/inventoryimages.xml' } });
     const world = createPerishWorld();
     store.entities.bindPerishWorld(world);

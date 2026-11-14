@@ -14,6 +14,7 @@ import { backpackVisual } from '../../prefab/src/backpack';
 import { playerInst, createPlayer } from './playerVisual';
 import { declaredAnimState, declaredSymbol, element, overrideArchives } from './animStateFixture';
 import { SpriteState } from '@dontstarve-web/display';
+import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 beforeEach(() => vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
@@ -31,8 +32,8 @@ it('names skin builds without loading them, replaces an unequipped skin and keep
   // equippable:Equip(owner) opens the owner's view: the item's own AnimState slot of the holder's sprite.
   const owner: import('../../signals/src').EquipmentOwner = { PushEvent: vi.fn() };
   owner.OpenEquipmentView = createEquipmentViews(owner, { sprite: { sprite, art: assets }, assets, hats, lightParent: createEmptyEntity('wilson').instance });
-  const item = new ItemEntity({ itemId: 'hammer', count: 1, skinId: 'hammer_invisible' });
-  const next = new ItemEntity({ itemId: 'hammer', count: 1 });
+  const item = testItem({ itemId: 'hammer', count: 1, skinId: 'hammer_invisible' });
+  const next = testItem({ itemId: 'hammer', count: 1 });
   item.configure(INVENTORY_ITEM_SPECS.hammer); next.configure(INVENTORY_ITEM_SPECS.hammer);
   const archive = GROUND_ITEM_DEFINITIONS.hammer.skinArchives.hammer_invisible;
   const equipFns = (inst: ItemEntity) => ({

@@ -13,13 +13,11 @@ import type { SaveDocument } from '../../../src/save/types';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import type { WorldContext } from '../../prefab/src/worldContext';
-import { ItemEntity } from '../../inventory/src/entity';
 import { configureMoonrockNugget } from '../../prefab/src/moonrocknugget';
 import { GetAnimState, GetChargePhase, MOONBASE_CHARGE_DURATION, MOONBASE_TIMER_LIMITS, type MoonbaseInstance } from '../../prefab/src/moonbase';
 import * as sound from '../../prefab/src/sound';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { activeItemUse } from './inventoryUseFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { smallHash } from '../src/animationAssets';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -34,6 +32,7 @@ import { MoonbaseEffects } from '../../prefab/src/moonbaseFx';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { SpriteResources, SpriteState } from '@dontstarve-web/display';
 import { FRAMES } from '../../stategraphs/src/stategraph';
+import { createInventoryStore, testItem, testItemRegistry } from './testInventory';
 
 const components = (model: THREE.Object3D) => prefabInstance(model)!.components;
 /** The moonbase's state, read the same way at each assertion. */
@@ -66,8 +65,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   const world = {
     scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
-    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
-  } as unknown as WorldContext;
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), spawnItem: testItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
   world.player.position.set(30, 0, 40);
   const consume = vi.fn(() => false);
   const placement = managedBuildings(world, { consume });
@@ -122,7 +120,7 @@ async function createMoonbase(options: Partial<WorldContext> = {}, saved?: Param
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
-    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options } as unknown as WorldContext;
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options, spawnItem: testItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   if (saved) placement.spawnFromSave('moonbase', saved); else await placement.spawn('moonbase');
   const model = world.scene.children[0] as THREE.Group;
@@ -152,9 +150,9 @@ it('restores the converted native moonbase as repaired and preserves its identit
 it('repairs with one moonrock and preserves a skinned, partly used staff through insertion, save/load and PICK', async () => {
   const play = vi.spyOn(sound, 'PlaySound');
   const { placement, model } = await createMoonbase();
-  const staff = new ItemEntity({ entityId: 'test_moonbase_staff', itemId: 'yellowstaff', count: 1,
+  const staff = testItem({ entityId: 'test_moonbase_staff', itemId: 'yellowstaff', count: 1,
     skinId: 'starstaff_crystal', remainingUses: 7 });
-  const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 2 }); configureMoonrockNugget(rock);
+  const rock = testItem({ itemId: 'moonrocknugget', count: 2 }); configureMoonrockNugget(rock);
   const { trader, workable } = components(model);
   const staffSymbol = () => {
     const declared = prefabInstance(model)!.sprite.sprite.peek().appearance.get('anim-state');
@@ -228,10 +226,10 @@ it('charges through three source stages, restores the remaining timers and morph
   const scheduler = new GameTimeScheduler();
   const { moon, getWatchWorldContent } = moonWorld(scheduler, false);
   const { placement, model } = await createMoonbase({ getWatchWorldContent, scheduler });
-  const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
+  const rock = testItem({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
   components(model).repairable!.Repair(undefined, rock);
   scheduler.advance(0);
-  const original = new ItemEntity({ entityId: 'charging_staff', itemId: 'yellowstaff', count: 1, skinId: 'starstaff_crystal', remainingUses: 7 });
+  const original = testItem({ entityId: 'charging_staff', itemId: 'yellowstaff', count: 1, skinId: 'starstaff_crystal', remainingUses: 7 });
   components(model).trader!.AcceptGift(original, () => true);
   const state = getMoonbaseState(model), changed = vi.fn();
   const stop = state.timers.mooncharge.subscribe(changed);
@@ -298,10 +296,10 @@ it('cancels charge on early retrieval or moonset, then starts fresh and releases
   const scheduler = new GameTimeScheduler();
   const { cycle, getWatchWorldContent } = moonWorld(scheduler, true);
   const { placement, model } = await createMoonbase({ getWatchWorldContent, scheduler });
-  const rock = new ItemEntity({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
+  const rock = testItem({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
   components(model).repairable!.Repair(undefined, rock);
   scheduler.advance(0);
-  const staff = new ItemEntity({ itemId: 'yellowstaff', count: 1 });
+  const staff = testItem({ itemId: 'yellowstaff', count: 1 });
   const { trader, pickable } = components(model);
   const state = getMoonbaseState(model);
   trader!.AcceptGift(staff, () => true);

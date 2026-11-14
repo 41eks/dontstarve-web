@@ -1,11 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { InventoryStore, InventorySlot, HeadSlot, BodySlot, equipmentSlotAddress, inventorySlotAddress } from '@dontstarve-web/inventory';
+import { InventorySlot, HeadSlot, BodySlot, equipmentSlotAddress, inventorySlotAddress } from '@dontstarve-web/inventory';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { bindPlayerEquipment } from './playerEquipFixture';
 import { playerInst, createPlayer } from './playerVisual';
 import { resolveAnimState, resolveAnimStateSymbol } from '../src/animState';
 import { declaredAnimState, element } from './animStateFixture';
+import { testInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -15,7 +16,7 @@ it('equips through equippable onequip/onunequip after restore/transfer and relea
   const player = await createPlayer('/dst/data/anim');
   const animation = playerInst(player);
   const head = equipmentSlotAddress('head'), body = equipmentSlotAddress('body'), bag = inventorySlotAddress(0);
-  const store = new InventoryStore([
+  const store = testInventoryStore([
     { address: head, slot: new HeadSlot() }, { address: body, slot: new BodySlot() }, { address: bag, slot: new InventorySlot() },
   ], { strawhat: INVENTORY_ITEM_SPECS.strawhat, backpack: INVENTORY_ITEM_SPECS.backpack });
   // inventory:Equip calls equippable:Equip with the player, whose view gives each item its slot of the sprite.

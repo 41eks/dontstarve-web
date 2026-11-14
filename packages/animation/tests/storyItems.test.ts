@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ItemWorldFixture, itemEntities } from './itemWorldFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -11,6 +10,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import ground_catalog from '../../prefab/src/groundItems.json' with { type: 'json' };
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { createInventoryStore } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 

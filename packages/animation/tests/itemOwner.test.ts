@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 import { backpackSlotAddress, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
-import { createInventoryStore } from '../../../src/inventory';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { createBuildingContainer } from '../../prefab/src/containers';
+import { createInventoryStore } from './testInventory';
 
 it("makes each held item's owner its holder entity: the player, a worn backpack the player holds, or a chest", () => {
   const store = createInventoryStore([]);

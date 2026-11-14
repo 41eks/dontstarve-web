@@ -3,7 +3,6 @@ import { testPlayer } from './testPlayer';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
-import { createInventoryStore } from '../../../src/inventory';
 import { ItemWorldFixture } from './itemWorldFixture';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
@@ -13,6 +12,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { BUTTERFLY_PERISH_TIME } from '../../prefab/src/butterfly';
 import { createPerishWorld } from './perishWorldFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

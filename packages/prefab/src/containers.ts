@@ -1,5 +1,6 @@
 import definitions from './definitions.json' with { type: 'json' };
-import { ItemEntity, PreparedFoodSlot, StorageSlot, type ItemSlot, type InventoryStack } from '@dontstarve-web/inventory';
+import { spawnWorldItem } from './worldContext';
+import { type ItemEntity, PreparedFoodSlot, StorageSlot, type ItemSlot, type InventoryStack } from '@dontstarve-web/inventory';
 import { Container } from '../../componets/src/container';
 import { IsCookingIngredient } from '../../componets/src/cooking';
 import { isBookCabinetItem } from './books';
@@ -12,11 +13,11 @@ export type BuildingContainer = Container<InventoryStack, ItemEntity, ItemSlot>;
 export function createBuildingContainer(prefab: StorageBuildingId, inst: PrefabInstance): BuildingContainer {
     if (prefab === 'icebox') inst.addTag('fridge');
     const definition = buildingContainerDefinition(prefab);
-    const createSlot = () => definition.singleItems ? new PreparedFoodSlot(null, (_spec, itemId) => prefab !== 'cookpot' || (itemId !== undefined && IsCookingIngredient(itemId)))
+    const createSlot = () => definition.singleItems ? new PreparedFoodSlot((_spec, itemId) => prefab !== 'cookpot' || (itemId !== undefined && IsCookingIngredient(itemId)))
             // containers.lua params.bookstation.itemtestfn: item:HasTag("bookcabinet_item").
-            : new StorageSlot(null, prefab === 'bookstation' ? (_spec, itemId) => itemId !== undefined && isBookCabinetItem(itemId) : undefined);
-    // SpawnSaveRecord of each content in the building's world, or alone outside one.
-    const loadItem = (record: InventoryStack) => inst.worldServices?.spawnItem?.(record) ?? new ItemEntity(record);
+            : new StorageSlot(prefab === 'bookstation' ? (_spec, itemId) => itemId !== undefined && isBookCabinetItem(itemId) : undefined);
+    // SpawnSaveRecord of each content, in the building's world.
+    const loadItem = (record: InventoryStack) => spawnWorldItem(inst, record);
     const container = addComponent(inst, 'container', Container<InventoryStack, ItemEntity, ItemSlot>, createSlot, loadItem);
     container.type = definition.type;
     container.SetNumSlots(definition.slotCount);

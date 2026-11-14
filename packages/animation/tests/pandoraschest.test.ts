@@ -9,6 +9,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { prefabDisplay } from '@dontstarve-web/display';
+import { testItem } from './testInventory';
 
 // An imported Caves record: the ruins chest with the chest_labyrinth loot it was saved with.
 const RECORD: PlacementSaveRecord = {
@@ -39,7 +40,7 @@ function createPlacement(awake = createSignal(true)) {
   const scheduler = new GameTimeScheduler();
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(), scheduler,
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
-    tickingarea: () => createMemo(() => awake.get()) } as unknown as WorldContext;
+    tickingarea: () => createMemo(() => awake.get()), spawnItem: testItem } as unknown as WorldContext;
   const placement = managedBuildings(world);
   return { world, placement, awake, dispose: () => { placement.dispose(); scheduler.dispose(); } };
 }

@@ -14,7 +14,7 @@ import { getActionPriority } from '../../stategraphs/src/actions';
 import { collectSceneActions } from '../../stategraphs/src/componentactions';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import type { WilsonStateName } from '../../stategraphs/src/SGwilson';
-import { ItemEntity } from '../../inventory/src';
+import { testItem } from './testInventory';
 
 const describeStrings = STRINGS.CHARACTERS.GENERIC.DESCRIBE;
 /** The player inst that looks: its character and tags choose the line. */
@@ -60,7 +60,7 @@ describe('inspectable.lua', () => {
   });
 
   it('lets every item be examined', () => {
-    const rocks = new ItemEntity({ itemId: 'rocks', count: 1 });
+    const rocks = testItem({ itemId: 'rocks', count: 1 });
     expect(rocks.components.inspectable!.GetDescription(viewer())).toBe((describeStrings as Record<string, unknown>).ROCKS);
     expect(rocks.hasTag('inspectable')).toBe(true);
     rocks.destroy();

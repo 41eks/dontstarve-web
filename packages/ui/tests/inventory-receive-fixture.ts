@@ -3,7 +3,7 @@ import { testPlayer } from '../../animation/tests/testPlayer';
 import { actionEntities } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import { mountGameUi, INVENTORY_RECIPES } from '../src';
-import { createInventoryStore } from '../../../src/inventory';
+import { createInventoryStore } from '../../animation/tests/testInventory';
 import { ItemWorldFixture } from '../../animation/tests/itemWorldFixture';
 import { createWorldState } from '../../../src/worldState';
 import { inventoryReceiveEffect } from '../../../src/inventoryReceive';

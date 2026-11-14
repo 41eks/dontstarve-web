@@ -7,9 +7,10 @@ test('renders container slot insts through shared slots and releases replaced pa
   await page.goto('/tests/fixture.html');
   await page.evaluate(async urls => {
     const { Container } = await import(urls.container);
-    const { ItemEntity, StorageSlot } = await import(urls.inventory);
+    const { newItemEntity, StorageSlot } = await import(urls.inventory);
+    const item = (record: any): any => newItemEntity(record, undefined, item);
     const panel = document.querySelector('dst-chest-panel')!;
-    const create = () => new Container({}, () => new StorageSlot(), (record: any) => new ItemEntity(record));
+    const create = () => new Container({}, () => new StorageSlot(), item);
     const toItem = (item: any) => ({
       id: item.prefab, name: item.prefab, icon: `${item.prefab}.tex`, count: 0, maxStack: 20, tile: item.tile,
     });

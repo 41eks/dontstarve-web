@@ -1,15 +1,16 @@
 import { describe, expect, it, vi } from 'vitest';
 import { testPlayer } from './testPlayer';
 import { Container } from '../../componets/src/container';
-import { ItemEntity, StorageSlot, type InventoryStack } from '../../inventory/src';
+import { StorageSlot, type InventoryStack } from '../../inventory/src';
 import { Vector3 } from 'three';
 import { createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { createBuildingContainer, type StorageBuildingId } from '../../prefab/src/containers';
+import { testItem } from './testInventory';
 
-function createContainer(loadItem = (record: InventoryStack) => new ItemEntity(record)) {
+function createContainer(loadItem = (record: InventoryStack) => testItem(record)) {
   return new Container(createEmptyEntity('treasurechest').instance, () => new StorageSlot(), loadItem);
 }
 
@@ -46,7 +47,7 @@ describe('Lua container component', () => {
 
   it('checks actual openers on position changes and releases subscriptions when the last opener leaves', async () => {
     const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler);
-    const container = new Container(createEmptyEntity('treasurechest').instance, () => new StorageSlot(), (record: InventoryStack) => new ItemEntity(record));
+    const container = new Container(createEmptyEntity('treasurechest').instance, () => new StorageSlot(), (record: InventoryStack) => testItem(record));
     container.SetAutoClose(world.getWatchWorldContent, 9);
     const first = { position: new Vector3(), removal: createSignal(false) };
     const second = { position: new Vector3(1, 0, 0), removal: createSignal(false) };
@@ -97,7 +98,7 @@ describe('Lua container component', () => {
     const container = createContainer();
     expect(container.GetNumSlots()).toBe(0);
     container.SetNumSlots(2);
-    const log = new ItemEntity({ itemId: 'log', count: 3 });
+    const log = testItem({ itemId: 'log', count: 3 });
     container.slots[1].setEntity(log);
     expect(container.GetItemInSlot(2)).toBe(log);
     expect(container.GetItemSlot(log)).toBe(2);
@@ -126,7 +127,7 @@ describe('Lua container component', () => {
   it('saves occupied Lua slots and restores fresh entities without persisting openers', () => {
     const container = createContainer();
     container.SetNumSlots(8);
-    const torch = new ItemEntity({ entityId: 'saved_torch', itemId: 'torch', count: 1, remainingFuel: 12.5 });
+    const torch = testItem({ entityId: 'saved_torch', itemId: 'torch', count: 1, remainingFuel: 12.5 });
     container.slots[7].setEntity(torch);
     container.Open({});
     const flush = vi.spyOn(torch, 'flush');
@@ -145,7 +146,7 @@ describe('Lua container component', () => {
   });
 
   it('validates loads before changing slots and disposes prepared items if restoration fails', () => {
-    const prepared = new ItemEntity({ itemId: 'log', count: 1 });
+    const prepared = testItem({ itemId: 'log', count: 1 });
     const loadItem = vi.fn((record: InventoryStack) => {
       if (record.itemId === 'missing') throw new Error('Missing prefab');
       return prepared;

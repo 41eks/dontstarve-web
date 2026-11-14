@@ -16,7 +16,6 @@ import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
 import { deployActor, landTurf } from './deployActor';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createSignal, EventEmitter } from '../../signals/src';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
@@ -40,6 +39,7 @@ import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

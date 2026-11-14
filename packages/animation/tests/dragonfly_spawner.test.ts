@@ -10,13 +10,13 @@ import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
-import { createInventoryStore } from '../../../src/inventory';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { createTestWorldSources } from './worldContentFixture';
+import { createInventoryStore } from './testInventory';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const saved: PlacementSaveRecord = { id: 'spawner-1', transform: { position: [0, 0, 0], rotationY: 0 },

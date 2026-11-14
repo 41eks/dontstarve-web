@@ -2,7 +2,6 @@ import { playPickup } from '../../prefab/src/player_common';
 import { testLocomotor } from './testLocomotor';
 import { testPlayer } from './testPlayer';
 import { pickupDoer } from './playerDoer';
-import { ItemEntity } from '../../inventory/src/entity';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer } from './playerVisual';
 
@@ -34,6 +33,7 @@ import { displayLightOverride } from '../../display/src/displaySprites';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { bufferingStategraph } from './bufferingStategraph';
+import { testItem } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -61,7 +61,7 @@ it('casts at source frame nine once and cancels before commitment on unequip or 
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('reskin_tool');
   const cast = vi.fn();
-  const tool = new ItemEntity({ itemId: 'reskin_tool', count: 1 }); tool.spelltype = 'RESKIN'; tool.addTag('veryquickcast');
+  const tool = testItem({ itemId: 'reskin_tool', count: 1 }); tool.spelltype = 'RESKIN'; tool.addTag('veryquickcast');
   const push = () => animation.sg.pushBufferedAction(new BufferedAction('CASTSPELL', cast, undefined, { invobject: tool }));
   expect(push()).toBe(true);
   expect(push()).toBe(false);

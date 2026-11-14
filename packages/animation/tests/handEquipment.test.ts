@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { testPlayer } from './testPlayer';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
+import { InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { SpriteState } from '@dontstarve-web/display';
 import { TORCH_LIGHT } from '../../prefab/src/torch';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
@@ -12,6 +12,7 @@ import { HatEquipmentAssets } from '../../prefab/src/hats';
 import { createPerishWorld } from './perishWorldFixture';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, createPlayer, playerInst } from './playerVisual';
+import { testInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })),
@@ -24,7 +25,7 @@ const parented = (parent: PrefabInstance) => [...parent.light.slots.peek().value
 
 it('equips restored and committed torches through equippable with the owner, unequipping before replacement', () => {
   const a = inventorySlotAddress(0), b = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
-  const store = new InventoryStore([
+  const store = testInventoryStore([
     { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
     { address: hand, slot: new HandSlot() },
   ], { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand', configureEntity: configureEquipmentEntity } },

@@ -13,6 +13,7 @@ import { BIRD_PERISH_TIME, configureBirdEntity } from '../../prefab/src/birds';
 import { ItemEntity, type InventoryStack } from '@dontstarve-web/inventory';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { prefabDisplay } from '@dontstarve-web/display';
+import { testItem } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -74,7 +75,7 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
   vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
   const awake = createSignal(true), items: ItemEntity[] = [];
   const spawnItem = (state: InventoryStack) => {
-    const item = new ItemEntity(state);
+    const item = testItem(state);
     item.configure({ perishTime: BIRD_PERISH_TIME, configureEntity: configureBirdEntity });
     items.push(item);
     return item;

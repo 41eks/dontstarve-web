@@ -7,7 +7,6 @@ import { prefabDisplay, PrefabDisplayGroup } from '../../display/src';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { FireFX } from '../../componets/src/firefx';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { InventoryStore } from '../../inventory/src';
 import { marshPlantPrefabs, MARSH_PLANT_ID, type MarshPlantInstance } from '../../prefab/src/marsh_plant';
 import { pondPrefabs, POND_ID, type PondInstance } from '../../prefab/src/pond';
 import { WORLD_SCALE } from '../../prefab/src/tile';
@@ -19,6 +18,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { createSignal } from '@dontstarve-web/signals';
+import { testInventoryStore } from './testInventory';
 
 const cleanups: (() => void)[] = [];
 beforeEach(() => {
@@ -139,7 +139,7 @@ it('haunting fails with the source cooldown, and c_spawn plants save and reload 
     });
     return registry;
   };
-  const registry = createRegistry(), restored = createRegistry(), inventory = new InventoryStore([], SAVE_CATALOG.items);
+  const registry = createRegistry(), restored = createRegistry(), inventory = testInventoryStore([], SAVE_CATALOG.items);
   cleanups.push(() => { registry.dispose(); restored.dispose(); inventory.dispose(); fire.dispose(); });
   expect((await executeDebugCommand('c_spawn("marsh_plant")', inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
   const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);

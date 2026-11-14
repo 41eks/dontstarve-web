@@ -18,6 +18,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { testItem } from './testInventory';
 
 beforeEach(() => {
   // The brains' PriorityNodes scatter their first evaluation with math.random().
@@ -47,7 +48,7 @@ function setup() {
     getPlayers: () => [player],
     spawnPrefab: (prefab, position, skinId) => prefabs.spawn(prefab, position, undefined, skinId),
     spawnInactive: (position, skinId) => {
-      const item = new ItemEntity({ itemId: BERNIE_ITEM_ID, count: 1, skinId });
+      const item = testItem({ itemId: BERNIE_ITEM_ID, count: 1, skinId });
       item.setPosition(position.x, 0, position.z);
       inactive.push(item);
       return item;

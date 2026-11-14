@@ -4,7 +4,6 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { ItemWorldFixture, itemEntities } from './itemWorldFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -18,6 +17,7 @@ import { configureTorchEntity } from '../../prefab/src/torch';
 import { Explosive, EXPLOSIVE_MAX_WORKABLE_INVENTORYITEMS, type ExplosiveInst, type ExplosiveTarget } from '../../componets/src/explosive';
 import { Workable } from '../../componets/src/workable';
 import { performLightAction } from '../../stategraphs/src/componentactions';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

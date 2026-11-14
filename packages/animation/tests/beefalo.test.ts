@@ -19,13 +19,13 @@ import { updateSceneMatrices } from '../src/matrixUpdates';
 import { TransformRoot } from '../src/transformRoot';
 import { Pathfinder } from '../../prefab/src/pathfinder';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
-import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { activeItemUse } from './inventoryUseFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
+import { createInventoryStore } from './testInventory';
 
 const OPEN_GROUND = { isPassableAtPoint: () => true, isOceanAtWorld: () => false };
 const DAY = 480;

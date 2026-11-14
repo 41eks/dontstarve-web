@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import {
-  HeadSlot, InventorySlot, InventoryStore, equipmentSlotAddress, inventorySlotAddress,
+  HeadSlot, InventorySlot, equipmentSlotAddress, inventorySlotAddress,
 } from '../../inventory/src';
 import { HAT_ITEM_SPECS } from '../../prefab/src/hats';
 import { createPickupInventory } from './pickupFixture';
@@ -10,9 +10,10 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { testInventoryStore } from './testInventory';
 
 function createInventory() {
-  return new InventoryStore([
+  return testInventoryStore([
     { address: inventorySlotAddress(0), slot: new InventorySlot() },
     { address: equipmentSlotAddress('head'), slot: new HeadSlot() },
   ], HAT_ITEM_SPECS);

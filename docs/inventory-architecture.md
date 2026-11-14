@@ -53,7 +53,7 @@ Lua 使用双向关联：inventory/container 保存物品成员与槽位，物�
 
 ### 项目的物品实体
 
-`packages/inventory/src/entity.ts` 的 `ItemEntity` 继承 `PrefabInstance`。身份、标签、事件、皮肤、持久化、status 和 Transform 复用基类；物品组件（stackable、perishable、fueled、finiteuses、inventoryitem）挂在同一个 components 对象上。各具体槽位直接保存实体引用，`getEntity()` 返回引用，`get()` 返回用于 UI 与领域计算的独立快照。`InventoryStack` 是快照类型，不再是槽位中的另一份可变权威状态。`ItemEntityRegistry` 的 `create()` 经应用层绑定的 SpawnPrefab（`bindSpawner`）生成物品 prefab 实例，库存和世界共用同一实体。
+`packages/inventory/src/entity.ts` 的 `ItemEntity` 继承 `PrefabInstance`。身份、标签、事件、皮肤、持久化、status 和 Transform 复用基类；物品组件（stackable、perishable、fueled、finiteuses、inventoryitem）挂在同一个 components 对象上。各具体槽位直接保存实体引用，`getEntity()` 返回引用，`get()` 返回用于 UI 与领域计算的独立快照。`InventoryStack` 是快照类型，不再是槽位中的另一份可变权威状态。`ItemEntityRegistry` 构造时就带着所属 world 的 SpawnPrefab（`src/prefabWorld.ts` 先建 `PrefabEntityManager`，`createInventoryStore(itemWorld)` 再建库存），`create()` 只经它生成物品 prefab 实例，库存和世界共用同一实体。
 
 `InventoryStore.transfer()` 从源实体取得完整状态，验证后原子提交；整件转移使用同一个引用。`extract()` 交出整件原实体或创建部分堆叠的新实体，`receive()` 接收地面的实体并按需合堆。空间不足、目标不接受或源实体已被替换时不改变归属。消耗和移除仍由 store 提交，entity 的 owner 回调检查槽位是否还持有自己，避免旧实体影响替代物。制造仍先使用纯函数计算快照，提交时复用剩余材料的实体并为新产品创建实体。
 

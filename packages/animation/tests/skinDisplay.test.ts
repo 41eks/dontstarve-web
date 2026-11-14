@@ -11,6 +11,7 @@ import { itemAt, ItemWorldFixture } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
 import { SpriteResources } from '../../display/src/spriteResources';
 import definitions from '../../prefab/src/definitions.json';
+import { testInventoryStore } from './testInventory';
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 const fetchAsset = async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)));
@@ -121,7 +122,7 @@ it('applies a layered factory skin without resetting the clip, progress, callbac
 
 it('keeps an item\'s skin on its own sprite json across the ground, a container and the next drop', async () => {
   const slot = inventorySlotAddress(0);
-  const inventory = new InventoryStore([{ address: slot, slot: new InventorySlot() }], INVENTORY_ITEM_SPECS);
+  const inventory = testInventoryStore([{ address: slot, slot: new InventorySlot() }], INVENTORY_ITEM_SPECS);
   const items = itemWorld(new THREE.Scene(), inventory);
   const entity = inventory.entities.create({ itemId: 'greenstaff', count: 1 });
   const definition = { ...entity.snapshot(), name: 'greenstaff', icon: 'greenstaff.tex', entity };

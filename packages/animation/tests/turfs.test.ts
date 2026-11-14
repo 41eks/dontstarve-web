@@ -5,12 +5,12 @@ import { GroundItemAssets } from '../../prefab/src/groundItems';
 import { createGroundItemVisual } from './groundItemVisual';
 import { loadGroundTileAssets } from '../../prefab/src/groundTiles';
 import { createRecipe } from '../../ui/src/categories/shared';
-import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { turfItemForTile } from '../../prefab/src/turfs';
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { drawGround, layerGeometry, layerMeshes } from './groundDisplayFixture';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(), PreloadSounds: vi.fn(async () => {}) }));
 

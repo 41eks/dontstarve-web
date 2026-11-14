@@ -376,6 +376,24 @@ describe('ground item save records', () => {
     await vi.waitFor(() => expect(scene.children).toHaveLength(0));
   });
 
+  it('restores a saved player item as the world\'s prefab inst, so it is drawn once it is dropped', async () => {
+    const { manager, scene, inventory } = setup();
+    try {
+      const address = { containerId: 'player:inventory', slotKey: '0' };
+      inventory.replaceState({ bufferedBuilds: [], slots: [{ address, item: { itemId: 'flint', count: 2, entityId: 'saved-flint' } }] }, {});
+      const flint = inventory.getEntity(address)!;
+      // Held: the manager's own inst, in limbo and out of the scene.
+      expect(manager.prefabs.get('saved-flint')).toBe(flint);
+      expect(prefabDisplay(flint.transform.model)).toBeDefined();
+      expect(flint.inlimbo).toBe(true);
+      inventory.DropEverything();
+      await vi.waitFor(() => expect(flint.transform.model.parent).toBe(scene));
+      expect(flint.inlimbo).toBe(false);
+      expect(flint.sprite.sprite.peek().clip.none).toBeUndefined();
+      expect(manager.exportRecords().map(record => record.id)).toEqual(['saved-flint']);
+    } finally { manager.dispose(); inventory.dispose(); }
+  });
+
   it('splits a dropped butterfly stack into one living entity per butterfly', async () => {
     const { manager, scene, inventory } = setup();
     try {

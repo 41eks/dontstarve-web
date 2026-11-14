@@ -1,6 +1,5 @@
 import { makeAlive, makeGhost } from '../../prefab/src/player_common_extensions';
 import type { PlayerAction } from '../../stategraphs/src/actionfns';
-import { ItemEntity } from '../../inventory/src/entity';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { SpriteState } from '../../display/src';
 import { playDrop, startMovement } from '../../prefab/src/player_common';
@@ -13,6 +12,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { playerInst, createPlayer } from './playerVisual';
 import { DisposeSounds } from '../../prefab/src/sound';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import { testItem } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -101,7 +101,7 @@ it('keeps the source mining timeline when Wortox changes facing and emits one ac
 
 it('keeps a buffered action when the same action, target and invobject is pushed again, as PushBufferedAction does', async () => {
   const animation = playerInst(await createPlayer('/dst/data/anim'));
-  const rod = new ItemEntity({ itemId: 'fishingrod', count: 1 }); rod.addTag('fishingrod');
+  const rod = testItem({ itemId: 'fishingrod', count: 1 }); rod.addTag('fishingrod');
   const pondEntity = () => new PrefabInstance('pond', new SpriteState({ name: 'idle', billboard: true }));
   const pond = pondEntity();
   const fish = (fn: () => void, target = pond): PlayerAction<'FISH'> => new BufferedAction('FISH', fn, undefined, { invobject: rod, target });

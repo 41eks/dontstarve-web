@@ -297,8 +297,8 @@ export class InventoryStore {
   constructor(
     registrations: readonly RegisteredItemSlot[],
     itemSpecs: Readonly<Record<string, InventoryItemSpec>>,
-    skinSpecs: Readonly<Record<string, InventorySkinSpec>> = {},
-    entities = new ItemEntityRegistry(),
+    skinSpecs: Readonly<Record<string, InventorySkinSpec>>,
+    entities: ItemEntityRegistry,
     equipmentExistenceStates: EquipmentExistenceStates = {},
   ) {
     this.handEquipmentExistenceState = equipmentExistenceStates.handEquipmentExistenceState ?? createEquipmentExistenceState('HANDS');

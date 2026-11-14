@@ -12,7 +12,6 @@ import { FireFxHost } from '../../prefab/src/treeFire';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createInventoryStore } from '../../../src/inventory';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -23,6 +22,7 @@ import { createClusterSaveZip } from '../../../src/save/download';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { workTargets } from './workTargets';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 beforeEach(() => {

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { createMemo, createSignal, GameTimeScheduler, type HandEquipment } from '@dontstarve-web/signals';
-import { ItemEntity } from '@dontstarve-web/inventory';
 import { prewarmScenePasses, renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass';
 import { configureBugNetEntity } from '../../prefab/src/bugnet';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
@@ -9,6 +8,7 @@ import { prefabDisplay } from '../../display/src';
 import { bindTestWorld } from '../../animation/tests/worldContentFixture';
 import { itemAt, ItemWorldFixture } from '../../animation/tests/itemWorldFixture';
 import { createPickupInventory } from '../../animation/tests/pickupFixture';
+import { testItem } from '../../animation/tests/testInventory';
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 
@@ -18,7 +18,7 @@ export async function checkFirefliesInstances() {
   const { cycle, getWatchWorldContent, unbind } = bindTestWorld(scheduler, () => area);
   cycle.set('night');
   const handEquipment = createSignal<HandEquipment | null>(null);
-  const net = new ItemEntity({ itemId: 'bugnet', count: 1 }); configureBugNetEntity(net);
+  const net = testItem({ itemId: 'bugnet', count: 1 }); configureBugNetEntity(net);
   // The swarms are SpawnSaveRecord'd into an item world on this scene, its tiles awake while `awake` is.
   const scene = new THREE.Scene(), inventory = createPickupInventory();
   const world = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip', inventory,

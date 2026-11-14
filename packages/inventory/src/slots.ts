@@ -1,5 +1,5 @@
 import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import { newItemEntity, type ItemEntity } from './entity';
+import type { ItemEntity } from './entity';
 import type { EquipmentKind, InventoryItemSpec, InventoryStack } from './types';
 
 export interface ItemSlot {
@@ -7,7 +7,6 @@ export interface ItemSlot {
   get(): InventoryStack | null;
   getEntity(): ItemEntity | null;
   setEntity(entity: ItemEntity | null): void;
-  set(stack: InventoryStack | null): void;
   accepts(spec: InventoryItemSpec, itemId?: string): boolean;
   maxStack?(itemId: string): number;
 }
@@ -94,20 +93,12 @@ export class InventorySlot implements ItemSlot {
   readonly entity = readonlySignal(this.entityState);
   private readonly itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>>;
 
-  constructor(
-    initialStack: InventoryStack | null = null,
-    itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {},
-  ) {
-    this.entityState.set(initialStack ? newItemEntity(initialStack) : null);
+  constructor(itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {}) {
     this.itemSpecs = itemSpecs;
   }
 
   get(): InventoryStack | null {
     return this.entityState.peek()?.snapshot(false) ?? null;
-  }
-
-  set(stack: InventoryStack | null): void {
-    this.entityState.set(stack ? newItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }
@@ -129,17 +120,12 @@ export class StorageSlot implements ItemSlot {
   private readonly itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean;
 
   /** `itemTest` is the widget's itemtestfn; chests accept everything that can go in a container. */
-  constructor(initialStack: InventoryStack | null = null, itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean = () => true) {
-    this.entityState.set(initialStack ? newItemEntity(initialStack) : null);
+  constructor(itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean = () => true) {
     this.itemTest = itemTest;
   }
 
   get(): InventoryStack | null {
     return this.entityState.peek()?.snapshot(false) ?? null;
-  }
-
-  set(stack: InventoryStack | null): void {
-    this.entityState.set(stack ? newItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }
@@ -155,16 +141,8 @@ export class HandSlot implements ItemSlot {
   /** The inst in this slot; UI subscribes to it. */
   readonly entity = readonlySignal(this.entityState);
 
-  constructor(initialStack: InventoryStack | null = null) {
-    this.entityState.set(initialStack ? newItemEntity(initialStack) : null);
-  }
-
   get(): InventoryStack | null {
     return this.entityState.peek()?.snapshot(false) ?? null;
-  }
-
-  set(stack: InventoryStack | null): void {
-    this.entityState.set(stack ? newItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }
@@ -180,16 +158,8 @@ export class BodySlot implements ItemSlot {
   /** The inst in this slot; UI subscribes to it. */
   readonly entity = readonlySignal(this.entityState);
 
-  constructor(initialStack: InventoryStack | null = null) {
-    this.entityState.set(initialStack ? newItemEntity(initialStack) : null);
-  }
-
   get(): InventoryStack | null {
     return this.entityState.peek()?.snapshot(false) ?? null;
-  }
-
-  set(stack: InventoryStack | null): void {
-    this.entityState.set(stack ? newItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }
@@ -205,16 +175,8 @@ export class HeadSlot implements ItemSlot {
   /** The inst in this slot; UI subscribes to it. */
   readonly entity = readonlySignal(this.entityState);
 
-  constructor(initialStack: InventoryStack | null = null) {
-    this.entityState.set(initialStack ? newItemEntity(initialStack) : null);
-  }
-
   get(): InventoryStack | null {
     return this.entityState.peek()?.snapshot(false) ?? null;
-  }
-
-  set(stack: InventoryStack | null): void {
-    this.entityState.set(stack ? newItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }

@@ -12,7 +12,6 @@ import { performToolWork } from '../../stategraphs/src/componentactions';
 import { createDeployMap } from '../../prefab/src/deployMap';
 import { placementEntities } from '../../prefab/src/placementEntities';
 import { deployActor, landTurf } from './deployActor';
-import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
@@ -25,6 +24,7 @@ import { PlaySound } from '../../prefab/src/sound';
 import { bindTestWorld, drawn } from './worldContentFixture';
 import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
+import { createInventoryStore } from './testInventory';
 
 useTestTileMap();
 let area: ReturnType<typeof createTestArea>;

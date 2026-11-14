@@ -12,7 +12,6 @@ import { FireFxHost } from '../../prefab/src/treeFire';
 import { rockAvocadoProduct } from '../../prefab/src/rock_avocado_fruit';
 import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
 import { ItemWorldFixture } from './itemWorldFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { inventorySlotAddress } from '../../inventory/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -27,6 +26,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { workTargets } from './workTargets';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

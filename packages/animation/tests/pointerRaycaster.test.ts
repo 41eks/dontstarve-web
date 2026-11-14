@@ -7,12 +7,12 @@ import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { actionEntities, registerActionEntity, disposeActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { watchTileActivity } from '../../prefab/src/tileActivity';
-import { ItemEntity } from '../../inventory/src';
 import { createMemo, createSignal } from '../../signals/src';
 import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { useTestTileMap } from './tileMapFixture';
 import { SpriteFrameRenderer, type ResolvedSprite } from '../src/animationAssets';
 import { mouseTargets, setMouseTargetEnabled } from '../../prefab/src/mouseTargets';
+import { testItem } from './testInventory';
 
 useTestTileMap();
 afterEach(() => { vi.unstubAllGlobals(); expect([...actionEntities()]).toHaveLength(0); expect(mouseTargets.size).toBe(0); });
@@ -72,7 +72,7 @@ it('picks behind hidden/NOCLICK swarms, restores visible bounding-box picking an
 
 it('picks active prefabs using logical NOCLICK/removal and resolves a pointer event once for all action consumers', () => {
   // The log item's own root is its drawn model, in front of the rock.
-  const item = new ItemEntity({ itemId: 'log', count: 1 });
+  const item = testItem({ itemId: 'log', count: 1 });
   const scene = new THREE.Scene(), front = item.transform.model, back = new THREE.Group();
   const geometry = new THREE.PlaneGeometry(2, 2), material = new THREE.MeshBasicMaterial();
   front.add(new THREE.Mesh(geometry, material)); back.add(new THREE.Mesh(geometry, material));

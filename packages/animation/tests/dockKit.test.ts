@@ -9,7 +9,6 @@ import { DeployPlacer } from '../../prefab/src/deployPlacer';
 import { deployActor } from './deployActor';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import { createInventoryStore } from '../../../src/inventory';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabDisplay } from '@dontstarve-web/display';
@@ -21,6 +20,7 @@ import type { SaveDocument } from '../../../src/save/types';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import type { WorldContext } from '../../prefab/src/worldContext';
+import { createInventoryStore } from './testInventory';
 
 const setParameter = vi.hoisted(() => vi.fn());
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), setParameter })) }));

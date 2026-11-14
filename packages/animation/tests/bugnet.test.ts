@@ -1,5 +1,4 @@
 import { createPlayerEquipper } from './playerEquipFixture';
-import { ItemEntity } from '../../inventory/src/entity';
 import { advancePlayer } from './playerVisual';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -12,6 +11,7 @@ import { createGroundItemVisual } from './groundItemVisual';
 import { playerInst, createPlayer, type PlayerInstance } from './playerVisual';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
+import { testItem } from './testInventory';
 
 vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false } }));
 
@@ -65,7 +65,7 @@ describe('original bugnet assets and Wilson action', () => {
     const controller = playerInst(player);
     const controllerEquipper = createPlayerEquipper(controller);
     const capture = vi.fn();
-    const net = new ItemEntity({ itemId: 'bugnet', count: 1 }); net.addTag('NET_tool');
+    const net = testItem({ itemId: 'bugnet', count: 1 }); net.addTag('NET_tool');
     const swing = () => controller.sg.pushBufferedAction(new BufferedAction('NET', capture, undefined, { invobject: net }));
     const netting = () => controller.sg.isPerformingAction('NET');
     await controllerEquipper.equip('bugnet');

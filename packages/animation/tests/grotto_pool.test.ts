@@ -9,7 +9,6 @@ import { createMemo, createSignal } from '../../signals/src';
 import { grottoPoolPrefabs, GROTTO_POOL_MIST_ID, type GrottoGlassInstance, type GrottoPoolInstance } from '../../prefab/src/grotto_pool';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { ItemWorldFixture } from './itemWorldFixture';
-import { createInventoryStore } from '../../../src/inventory';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -21,6 +20,7 @@ import { importedSave, CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { workTargets } from './workTargets';
+import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true, setVolume: vi.fn() })) }));

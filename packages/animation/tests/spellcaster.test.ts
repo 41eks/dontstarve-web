@@ -7,7 +7,7 @@ import { SpriteState } from '@dontstarve-web/display';
 
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src';
+import { InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { collectPointActions } from '../../stategraphs/src/componentactions';
 import { Locomotor } from '../../prefab/src/locomotor';
@@ -16,6 +16,7 @@ import { PlaySound } from '../../prefab/src/sound';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
+import { testInventoryStore } from './testInventory';
 
 /** staff_castinglight, which is not ported: an fx entity whose SetUp the castspell state calls. */
 class CastingLight extends PrefabInstance {
@@ -28,7 +29,7 @@ afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
 
 function fixture(itemId: LightStaffId, remainingUses?: number) {
   const hand = equipmentSlotAddress('hand');
-  const store = new InventoryStore([
+  const store = testInventoryStore([
     { address: hand, slot: new HandSlot() },
     ...[0, 1].map(index => ({ address: inventorySlotAddress(index), slot: new InventorySlot() })),
   ], Object.fromEntries(Object.entries(LIGHT_STAFF_USES).map(([id, maxUses]) => [id, {

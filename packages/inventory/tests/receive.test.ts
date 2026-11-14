@@ -1,12 +1,13 @@
 import { expect, it, vi } from 'vitest';
 import { playerEntity } from './playerEntity';
 import { InventorySlot, InventoryStore, inventorySlotAddress, type InventoryStack } from '../src';
+import { inventorySlot, testInventoryStore } from './testItems';
 
 const specs = { cutgrass: { name: '草', icon: 'cutgrass.tex', maxStack: 40 },
   rope: { name: '绳', icon: 'rope.tex', maxStack: 20 } };
 function store(stacks: readonly (InventoryStack | null)[]) {
-  return new InventoryStore(stacks.map((item, index) => ({
-    address: inventorySlotAddress(index), slot: new InventorySlot(item, specs),
+  return testInventoryStore(stacks.map((item, index) => ({
+    address: inventorySlotAddress(index), slot: inventorySlot(item, specs),
   })), specs);
 }
 

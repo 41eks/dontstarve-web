@@ -1,6 +1,7 @@
 import { expect, it, vi } from 'vitest';
 import { playerEntity } from './playerEntity';
 import { InventoryStore, InventorySlot, HandSlot, HeadSlot, BodySlot, equipmentSlotAddress, inventorySlotAddress } from '../src';
+import { bodySlot, headSlot, inventorySlot, testInventoryStore } from './testItems';
 
 const head = equipmentSlotAddress('head'), body = equipmentSlotAddress('body');
 const a = inventorySlotAddress(0), b = inventorySlotAddress(1);
@@ -14,9 +15,9 @@ const skins = {
 };
 
 it('publishes committed head/body identity, preserves transfers and restores the resulting equipment', () => {
-  const store = new InventoryStore([
-    { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
-    { address: head, slot: new HeadSlot() }, { address: body, slot: new BodySlot() },
+  const store = testInventoryStore([
+    { address: a, slot: inventorySlot() }, { address: b, slot: inventorySlot() },
+    { address: head, slot: headSlot() }, { address: body, slot: bodySlot() },
   ], specs, skins);
   const headChanges = vi.fn(), bodyChanges = vi.fn();
   const stopHead = store.headEquipment.subscribe(equipment => headChanges(equipment, store.getEntity(head)));
@@ -60,23 +61,23 @@ it('publishes committed head/body identity, preserves transfers and restores the
 });
 
 it('publishes late head/body registrations once', () => {
-  const store = new InventoryStore([], specs, skins);
+  const store = testInventoryStore([], specs, skins);
   try {
     expect(store.headEquipment.peek()).toBeNull();
     store.registerSlots([
-      { address: head, slot: new HeadSlot({ itemId: 'strawhat', count: 1 }) },
-      { address: body, slot: new BodySlot({ itemId: 'backpack', count: 1 }) },
+      { address: head, slot: headSlot({ itemId: 'strawhat', count: 1 }) },
+      { address: body, slot: bodySlot({ itemId: 'backpack', count: 1 }) },
     ]);
-    expect(() => store.registerSlots([{ address: head, slot: new HeadSlot() }])).toThrow('Duplicate slot address');
+    expect(() => store.registerSlots([{ address: head, slot: headSlot() }])).toThrow('Duplicate slot address');
     expect(store.headEquipment.peek()?.entity).toBe(store.getEntity(head));
     expect(store.bodyEquipment.peek()?.entity).toBe(store.getEntity(body));
   } finally { store.dispose(); }
 });
 
 it('runs equippable Equip/Unequip with the actor in inventory.lua order, once per inst', () => {
-  const store = new InventoryStore([
-    { address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() },
-    { address: head, slot: new HeadSlot() },
+  const store = testInventoryStore([
+    { address: a, slot: inventorySlot() }, { address: b, slot: inventorySlot() },
+    { address: head, slot: headSlot() },
   ], { ...specs, flowerhat: { name: 'garland', icon: 'flowerhat.tex', maxStack: 1, equippable: 'head' as const } });
   const calls: string[] = [];
   // The player inst the inventory belongs to: inventory.lua pushes equip and unequip on it.

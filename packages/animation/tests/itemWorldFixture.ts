@@ -15,6 +15,7 @@ import { ITEM_PREFAB_IDS } from '../../../src/prefabDefinitions';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import type { SavedEntity } from '../../../src/save/types';
 import type { EntityRegistration } from '../../../src/entityRegistry';
+import { bindTestItemWorld } from './testInventory';
 
 const ORIGIN = new THREE.Vector3();
 
@@ -70,9 +71,10 @@ export class ItemWorldFixture {
       .map(([id, spec]) => [id, { atlas: spec.atlas ?? 'images/inventoryimages.xml', image: spec.icon }]));
     const ids = new Set(ITEM_PREFAB_IDS);
     this.prefabs.register(Object.fromEntries(Object.entries(itemPrefabs(this.world, icons)).filter(([id]) => ids.has(id))));
-    inventory.entities.bindSpawner(state => ids.has(state.itemId)
-      ? this.prefabs.spawnAs(ItemEntity, state.itemId, ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } })
-      : undefined);
+    bindTestItemWorld(inventory.entities, {
+      isItemPrefab: prefab => ids.has(prefab),
+      SpawnPrefab: state => this.prefabs.spawnAs(ItemEntity, state.itemId, ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } }),
+    });
     // DefaultBurntFn's ash.
     this.stopAsh = worldEvents?.on('spawnAsh', position => { this.spawnGroundItem({ ...SAVE_CATALOG.items.ash, itemId: 'ash', count: 1 }, position); });
   }
@@ -174,7 +176,7 @@ export class ItemWorldFixture {
     if (this.disposed) return;
     this.disposed = true;
     this.stopAsh?.();
-    this.inventory.entities.bindSpawner(undefined);
+    bindTestItemWorld(this.inventory.entities, undefined);
     this.prefabs.dispose();
     this.displays.dispose();
     this.sprites.dispose();

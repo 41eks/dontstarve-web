@@ -18,8 +18,8 @@ import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { createInventoryStore } from '../../../src/inventory';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
+import { createInventoryStore } from './testInventory';
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
 const ITEM = 'nightmare_timepiece', SLOT = inventorySlotAddress(0);

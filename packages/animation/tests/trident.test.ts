@@ -2,16 +2,17 @@ import { createBufferedAction } from '../../stategraphs/src/actionfns';
 import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
-import { InventoryStore, HandSlot, equipmentSlotAddress } from '../../inventory/src';
+import { HandSlot, equipmentSlotAddress } from '../../inventory/src';
 import { TridentController } from '../../prefab/src/trident';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
+import { testInventoryStore } from './testInventory';
 
 /** The caster: a player inst at the origin. */
 const doer = testPlayer();
 
 function setup(remainingUses: number, ocean: (point: THREE.Vector3) => boolean) {
   const slot = equipmentSlotAddress('hand');
-  const inventory = new InventoryStore([{ address: slot, slot: new HandSlot() }], INVENTORY_ITEM_SPECS);
+  const inventory = testInventoryStore([{ address: slot, slot: new HandSlot() }], INVENTORY_ITEM_SPECS);
   inventory.replaceState({ bufferedBuilds: [], slots: [{ address: slot, item: { itemId: 'trident', count: 1, remainingUses } }] }, {});
   const entity = inventory.getEntity(slot)!;
   const spawnWaterspout = vi.fn();

@@ -9,6 +9,7 @@ import { pigKingPrefabs, PIGKING_ID, PigKingInstance } from '../../prefab/src/pi
 import { configureTradableEntity } from '../../prefab/src/tradable';
 import { bindTestWorld } from './worldContentFixture';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
 
@@ -25,7 +26,7 @@ afterEach(() => {
 });
 
 const item = (itemId: string, tradable = true) => {
-  const entity = new ItemEntity({ itemId, count: 1 });
+  const entity = testItem({ itemId, count: 1 });
   if (tradable) configureTradableEntity(entity);
   return entity;
 };
