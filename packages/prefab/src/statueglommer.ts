@@ -26,8 +26,8 @@ export class StatueGlommerInstance extends PrefabInstance {
     declare readonly components: PrefabInstance['components'] & {
         pickable: Pickable; inspectable: Inspectable; hauntable: Hauntable; workable?: Workable; lootdropper?: LootDropper;
     };
-    /** inst.spawned: the flower was grown this full moon. */
-    declare spawned: boolean;
+    /** inst.spawned: the flower was grown this full moon; nil until the first one is. */
+    declare spawned?: boolean;
     /** inst.islighton. */
     declare islighton: boolean;
 }
