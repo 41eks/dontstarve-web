@@ -279,7 +279,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
   private readonly runtime = new Map<string, ItemRuntimeComponent>();
   /** `createItem` makes the insts a backpack loads, through the same SpawnPrefab as this one. */
-  constructor(state: InventoryStack, perishWorld?: PerishWorld, createItem: (state: InventoryStack) => ItemEntity = item => new ItemEntity(item, perishWorld)) {
+  constructor(state: InventoryStack, perishWorld?: PerishWorld, createItem: (state: InventoryStack) => ItemEntity = item => newItemEntity(item, perishWorld)) {
     super(state.itemId, new SpriteState({ name: state.itemId, none: true }));
     this.entityId = state.entityId ?? newItemEntityId();
     this.wetState.set(state.wet ?? false);
@@ -483,6 +483,22 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
 export type ItemEntityFactory<Entity extends ItemEntity = ItemEntity> =
   (state: InventoryStack, perishWorld: PerishWorld | undefined, createItem: (state: InventoryStack) => ItemEntity) => Entity;
 
+/** Each item prefab's own ItemEntity subclass, by item id; the prefab module registers it where it defines it. */
+const itemEntityClasses = new Map<string, ItemEntityFactory>();
+
+/** The item prefab declares that every `itemId` inst is made by `factory`, wherever the inventory constructs one. */
+export function registerItemEntityClass(itemId: string, factory: ItemEntityFactory): void {
+  if (itemEntityClasses.has(itemId)) throw new Error(`Item entity class already registered: ${itemId}`);
+  itemEntityClasses.set(itemId, factory);
+}
+
+/** An `itemId` inst as its prefab makes it: its registered subclass, or a plain ItemEntity. */
+export function newItemEntity(state: InventoryStack, perishWorld?: PerishWorld,
+  createItem: (state: InventoryStack) => ItemEntity = item => newItemEntity(item, perishWorld)): ItemEntity {
+  const factory = itemEntityClasses.get(state.itemId);
+  return factory ? factory(state, perishWorld, createItem) : new ItemEntity(state, perishWorld, createItem);
+}
+
 /** Shared by the inventory store and world item manager; contains each live item exactly once. */
 export class ItemEntityRegistry {
   private readonly entities = new Map<string, ItemEntity>();
@@ -549,7 +565,7 @@ export class ItemEntityRegistry {
   /** The item prefab's own construction, bound to this registry's worlds but not yet registered. */
   construct(state: InventoryStack): ItemEntity;
   construct<Entity extends ItemEntity>(state: InventoryStack, factory: ItemEntityFactory<Entity>): Entity;
-  construct(state: InventoryStack, factory: ItemEntityFactory = (...args) => new ItemEntity(...args)): ItemEntity {
+  construct(state: InventoryStack, factory: ItemEntityFactory = newItemEntity): ItemEntity {
     const entity = factory(state, this.perishWorld, item => this.create(item));
     if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
     if (this.equipmentWorld) entity.equipmentWorld = this.equipmentWorld;

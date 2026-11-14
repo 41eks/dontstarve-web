@@ -6,6 +6,7 @@ import { createSignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { createPerishWorld } from './perishWorldFixture';
 import { createPickupInventory } from './pickupFixture';
+import { LanternEntity } from '../../prefab/src/lantern';
 
 const created: ArchiveSprite[] = [];
 vi.mock('@dontstarve-web/animation/archiveSprite', async importOriginal => ({
@@ -76,7 +77,8 @@ it('retains a lantern machine, light and fuel while its tile releases and rebuil
     expect(drawn.dispose).toHaveBeenCalledOnce();
     expect(model.parent).toBeNull();
     expect(item.components.machine!.IsOn()).toBe(true);
-    expect((item as import('../../prefab/src/lantern').LanternInst)._light!.parent).toBe(item);
+    expect(item).toBeInstanceOf(LanternEntity);
+    expect(item instanceof LanternEntity && item._light!.parent).toBe(item);
     // The lanternlight is parented to the ground lantern: it goes out while the lantern's tile sleeps.
     expect(listed()).toBe(false);
     // Fuel follows the item's game time, not its sprite or frames.

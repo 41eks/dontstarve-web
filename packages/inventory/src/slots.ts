@@ -1,5 +1,5 @@
 import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
-import { ItemEntity } from './entity';
+import { newItemEntity, type ItemEntity } from './entity';
 import type { EquipmentKind, InventoryItemSpec, InventoryStack } from './types';
 
 export interface ItemSlot {
@@ -98,7 +98,7 @@ export class InventorySlot implements ItemSlot {
     initialStack: InventoryStack | null = null,
     itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {},
   ) {
-    this.entityState.set(initialStack ? new ItemEntity(initialStack) : null);
+    this.entityState.set(initialStack ? newItemEntity(initialStack) : null);
     this.itemSpecs = itemSpecs;
   }
 
@@ -107,7 +107,7 @@ export class InventorySlot implements ItemSlot {
   }
 
   set(stack: InventoryStack | null): void {
-    this.entityState.set(stack ? new ItemEntity(stack) : null);
+    this.entityState.set(stack ? newItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }
@@ -130,7 +130,7 @@ export class StorageSlot implements ItemSlot {
 
   /** `itemTest` is the widget's itemtestfn; chests accept everything that can go in a container. */
   constructor(initialStack: InventoryStack | null = null, itemTest: (spec: InventoryItemSpec, itemId?: string) => boolean = () => true) {
-    this.entityState.set(initialStack ? new ItemEntity(initialStack) : null);
+    this.entityState.set(initialStack ? newItemEntity(initialStack) : null);
     this.itemTest = itemTest;
   }
 
@@ -139,7 +139,7 @@ export class StorageSlot implements ItemSlot {
   }
 
   set(stack: InventoryStack | null): void {
-    this.entityState.set(stack ? new ItemEntity(stack) : null);
+    this.entityState.set(stack ? newItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }
@@ -156,7 +156,7 @@ export class HandSlot implements ItemSlot {
   readonly entity = readonlySignal(this.entityState);
 
   constructor(initialStack: InventoryStack | null = null) {
-    this.entityState.set(initialStack ? new ItemEntity(initialStack) : null);
+    this.entityState.set(initialStack ? newItemEntity(initialStack) : null);
   }
 
   get(): InventoryStack | null {
@@ -164,7 +164,7 @@ export class HandSlot implements ItemSlot {
   }
 
   set(stack: InventoryStack | null): void {
-    this.entityState.set(stack ? new ItemEntity(stack) : null);
+    this.entityState.set(stack ? newItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }
@@ -181,7 +181,7 @@ export class BodySlot implements ItemSlot {
   readonly entity = readonlySignal(this.entityState);
 
   constructor(initialStack: InventoryStack | null = null) {
-    this.entityState.set(initialStack ? new ItemEntity(initialStack) : null);
+    this.entityState.set(initialStack ? newItemEntity(initialStack) : null);
   }
 
   get(): InventoryStack | null {
@@ -189,7 +189,7 @@ export class BodySlot implements ItemSlot {
   }
 
   set(stack: InventoryStack | null): void {
-    this.entityState.set(stack ? new ItemEntity(stack) : null);
+    this.entityState.set(stack ? newItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }
@@ -206,7 +206,7 @@ export class HeadSlot implements ItemSlot {
   readonly entity = readonlySignal(this.entityState);
 
   constructor(initialStack: InventoryStack | null = null) {
-    this.entityState.set(initialStack ? new ItemEntity(initialStack) : null);
+    this.entityState.set(initialStack ? newItemEntity(initialStack) : null);
   }
 
   get(): InventoryStack | null {
@@ -214,7 +214,7 @@ export class HeadSlot implements ItemSlot {
   }
 
   set(stack: InventoryStack | null): void {
-    this.entityState.set(stack ? new ItemEntity(stack) : null);
+    this.entityState.set(stack ? newItemEntity(stack) : null);
   }
 
   getEntity(): ItemEntity | null { return this.entityState.peek(); }

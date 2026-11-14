@@ -12,7 +12,7 @@ import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { createSignal, type HandEquipment } from '../../signals/src';
-import { ItemEntity } from '../../inventory/src';
+import { ItemEntity, newItemEntity } from '../../inventory/src';
 import { TORCH_FUEL, configureTorchEntity } from '../../prefab/src/torch';
 import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { managedBuildings } from './managedBuildings';
@@ -64,7 +64,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const target = registerActionEntity(prefabInstance(model)!);
   const burnable = new Burnable(registerActionEntity(prefabInstance(model)!));
   target.components.burnable = burnable;
-  const torch = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: 30 });
+  const torch = newItemEntity({ itemId: 'torch', count: 1, remainingFuel: 30 });
   torch.configure({ maxFuel: TORCH_FUEL, configureEntity: configureTorchEntity });
   const equipment = { itemId: 'torch', EQUIPSLOTS: 'HANDS' as const, entity: torch };
   const hand = createSignal<HandEquipment | null>(equipment);

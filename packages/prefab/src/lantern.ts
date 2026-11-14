@@ -1,6 +1,6 @@
 import { addComponent } from './components';
 import type { AnimState } from '@dontstarve-web/animation/animState';
-import type { ItemEntity } from '@dontstarve-web/inventory';
+import { ItemEntity, registerItemEntityClass } from '@dontstarve-web/inventory';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
 import * as THREE from 'three';
 import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
@@ -17,7 +17,8 @@ export const LANTERN_COLOUR = [180 / 255, 195 / 255, 150 / 255] as const;
 export const LANTERN_FUEL = (30 * 2 + 30 * 4) * 2.6;
 
 /** mininglantern.lua's fields on the inst. */
-export interface LanternInst extends ItemEntity {
+/** mininglantern.lua's inst: the fields its fn and callbacks set on it. */
+export class LanternEntity extends ItemEntity {
   /** inst._light: the lanternlight, parented to (owner or inst) while on. */
   _light?: LightEntity;
   /** inst._owner: after an unequip while on, the owner whose next hand (or heavy body) equip turns it off. */
@@ -28,6 +29,13 @@ export interface LanternInst extends ItemEntity {
   _ownerentity?: LightParent;
   _ownerAnimState?: Pick<AnimState, 'Show' | 'Hide'>;
 }
+registerItemEntityClass(LANTERN_ID, (...item) => new LanternEntity(...item));
+
+/** The lantern's own inst, which the inventory constructs for every lantern. */
+function lanternEntity(entity: ItemEntity): LanternEntity {
+  if (!(entity instanceof LanternEntity)) throw new Error(`${entity.prefab} is not a lantern entity`);
+  return entity;
+}
 
 /** What onequip reaches on the owner: its entity for the light and owner.AnimState, the inst's own slot of its sprite. */
 export interface LanternHolder {
@@ -35,10 +43,10 @@ export interface LanternHolder {
   AnimState?: Pick<AnimState, 'Show' | 'Hide'>;
 }
 
-const isEquipped = (inst: LanternInst) => inst.components.equippable?.IsEquipped() === true;
+const isEquipped = (inst: LanternEntity) => inst.components.equippable?.IsEquipped() === true;
 
 /** fuelupdate: the light follows the fuel percent, radius 3 -> 5 and intensity .4 -> .6. */
-function fuelupdate(inst: LanternInst): void {
+function fuelupdate(inst: LanternEntity): void {
   const fueled = inst.components.fueled;
   if (!inst._light || !fueled) return;
   const fuelpercent = THREE.MathUtils.clamp(fueled.GetPercent(), 0, 1);
@@ -50,13 +58,13 @@ function fuelupdate(inst: LanternInst): void {
   });
 }
 
-function stoptrackingowner(inst: LanternInst): void {
+function stoptrackingowner(inst: LanternEntity): void {
   inst._stoptrackingowner?.();
   inst._stoptrackingowner = undefined;
   inst._owner = undefined;
 }
 
-function starttrackingowner(inst: LanternInst, owner: EquipmentOwner | undefined): void {
+function starttrackingowner(inst: LanternEntity, owner: EquipmentOwner | undefined): void {
   if (owner === inst._owner) return;
   stoptrackingowner(inst);
   if (!owner?.ListenForEvent) return;
@@ -65,12 +73,12 @@ function starttrackingowner(inst: LanternInst, owner: EquipmentOwner | undefined
 }
 
 /** inst._onownerequip */
-function onownerequip(inst: LanternInst, data: unknown): void {
+function onownerequip(inst: LanternEntity, data: unknown): void {
   const { item, eslot } = data as { item?: { hasTag?(tag: string): boolean }; eslot?: string };
   if (item !== inst && (eslot === 'HANDS' || (eslot === 'BODY' && item?.hasTag?.('heavy')))) turnoff(inst);
 }
 
-function turnon(inst: LanternInst): void {
+function turnon(inst: LanternEntity): void {
   const fueled = inst.components.fueled;
   if (inst.isRemoved || !fueled || fueled.IsEmpty()) return;
   fueled.StartConsuming();
@@ -85,7 +93,7 @@ function turnon(inst: LanternInst): void {
   inst.components.machine!.isOn = true;
 }
 
-function turnoff(inst: LanternInst): void {
+function turnoff(inst: LanternEntity): void {
   stoptrackingowner(inst);
   if (inst.isRemoved) return;
   inst.components.fueled?.StopConsuming();
@@ -97,7 +105,7 @@ function turnoff(inst: LanternInst): void {
 }
 
 /** OnRemoveEntity */
-function OnRemove(inst: LanternInst): void {
+function OnRemove(inst: LanternEntity): void {
   stoptrackingowner(inst);
   inst._light?.remove();
   inst._light = undefined;
@@ -105,13 +113,13 @@ function OnRemove(inst: LanternInst): void {
 }
 
 /** inventoryitem:SetOnDroppedFn(ondropped) */
-function ondropped(inst: LanternInst): void {
+function ondropped(inst: LanternEntity): void {
   turnoff(inst);
   turnon(inst);
 }
 
 /** onequip: the swap art is the equippable's visual; LANTERN_OVERLAY shows only while there is fuel. */
-function onequip(inst: LanternInst, owner: EquipmentOwner | undefined, holder: LanternHolder): void {
+function onequip(inst: LanternEntity, owner: EquipmentOwner | undefined, holder: LanternHolder): void {
   if (inst.isRemoved) return;
   inst._equipowner = owner;
   inst._ownerentity = holder.lightParent;
@@ -124,7 +132,7 @@ function onequip(inst: LanternInst, owner: EquipmentOwner | undefined, holder: L
 }
 
 /** onunequip only clears the worn art; pocketing, dropping or the owner's next equip decides when it turns off. */
-function onunequip(inst: LanternInst): void {
+function onunequip(inst: LanternEntity): void {
   const owner = inst._equipowner;
   inst._ownerAnimState?.Hide('LANTERN_OVERLAY');
   inst._ownerAnimState = undefined;
@@ -133,21 +141,21 @@ function onunequip(inst: LanternInst): void {
 }
 
 /** fueled:SetDepletedFn(nofuel): an equipped lantern tells its owner it ran out. */
-function nofuel(inst: LanternInst): void {
+function nofuel(inst: LanternEntity): void {
   const owner = isEquipped(inst) && inst.components.inventoryitem.owner !== null ? inst._equipowner : undefined;
   turnoff(inst);
   owner?.PushEvent('torchranout', { prefab: inst.prefab, equipslot: 'HANDS' });
 }
 
 /** fueled:SetTakeFuelFn(ontakefuel) */
-function ontakefuel(inst: LanternInst): void {
+function ontakefuel(inst: LanternEntity): void {
   if (isEquipped(inst)) turnon(inst);
 }
 
 /** mininglantern.lua fn(): inventoryitem, machine and CAVE fueled with the callbacks it registers on them. */
 export function configureLanternEntity(entity: ItemEntity): void {
   if (entity.components.machine) return;
-  const inst = entity as LanternInst;
+  const inst = lanternEntity(entity);
   inst.components.inventoryitem.SetOnPutInInventoryFn(() => turnoff(inst));
   inst.ListenForEvent('ondropped', () => ondropped(inst));
   const machine = addComponent(inst, 'machine', Machine, () => inst.components.perishable.scheduler);
@@ -169,7 +177,7 @@ export function configureLanternEntity(entity: ItemEntity): void {
 
 /** equippable:SetOnEquip(onequip) / SetOnUnequip(onunequip), with the owner's entity and AnimState slot. */
 export function createLanternHandLifecycle(entity: ItemEntity, holder: LanternHolder): HeldEquipFunctions {
-  const inst = entity as LanternInst;
+  const inst = lanternEntity(entity);
   return {
     onequip: owner => onequip(inst, owner, holder),
     onunequip: () => onunequip(inst),

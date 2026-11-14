@@ -36,7 +36,7 @@
 - Lua prefab 文件里的 `local function` 回调（赋给 `inst.OnSave`／`inst.OnLoad`／`inst.OnEntitySleep` 等字段，或交给 `ListenForEvent`、`DoTaskInTime`／`DoPeriodicTask`、组件的 `SetOnFinished`／`SetOnEquip`／`SetOnWorkCallback` 等），在 TS 中写成 prefab 模块顶层的同名函数，第一个参数是 `inst`，并在对应 `fn`／`master_postinit` 的位置按 Lua 原样注册（如 `inst.OnSave = onsave`、`inst.ListenForEvent('animover', onanimover)`）。不得把它们写成 `PrefabInstance` 子类的方法、类字段箭头函数或构造函数里的闭包；只有 Lua 本身在 `fn` 内写闭包时才写闭包。
 - 专用实例子类（或 `XxxInst` 接口）只声明 Lua 挂在 `inst` 上的字段（如 `inst.active`、`inst._light`），以及 Lua 赋给 `inst.X`、供别处以 `inst:X()` 调用的函数字段；这些字段在 `fn` 中赋为模块顶层函数，不在类里实现。
 - 变体（金工具、`MakeAxe` 的 `master_postinit` 等）按 Lua 用参数和共享的模块函数组合，不用子类继承表达。
-- 示例见 `lantern.ts`（`fuelupdate(inst)`、`turnoff(inst)` 等顶层函数，`LanternInst` 只声明字段）。已有把回调写成类方法的代码不能作为依据；改动这类文件时按本条迁移。
+- 示例见 `lantern.ts`（`fuelupdate(inst)`、`turnoff(inst)` 等顶层函数，`LanternEntity` 只声明字段）。物品 prefab 的专用实例是 `ItemEntity` 子类，在定义它的模块里紧接类声明调用 `registerItemEntityClass(itemId, factory)`，inventory 构造该 itemId 的每个实例时都用它；回调按 `instanceof` 取得该子类，不用 `as` 断言。已有把回调写成类方法的代码不能作为依据；改动这类文件时按本条迁移。
 - controller 只做动作请求和真实实例引用的转发，严禁在 controller 中用 `if`／`switch` 或 prefab 分发表实现 prefab 专属业务分支；也不得用 controller 内的闭包、helper 或注入的业务回调隐藏这些分支。已有此类逻辑迁移时必须移回所属 prefab 模块。
 - 保持 Lua 的调用关系：共享 `ACTIONS.fn` 调用组件，组件执行通用规则并触发已注册的 prefab 回调。伤害、工作量、进食、消耗等组件规则继续由组件负责；通用动作入口不在各 prefab 重复实现。动作转发细则见 [stategraphs](../stategraphs/AGENTS.md)。
 

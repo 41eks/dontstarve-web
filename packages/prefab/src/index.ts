@@ -121,7 +121,7 @@ export {
 } from './turf';
 export type { PointerContext, WorldContext } from './worldContext';
 export {
-  LANTERN_ID, LANTERN_COLOUR, LANTERN_FUEL, type LanternInst,
+  LANTERN_ID, LANTERN_COLOUR, LANTERN_FUEL, LanternEntity,
   lanternPrefabs, createLanternHandLifecycle, lanternVisual,
 } from './lantern';
 export { spawnLightEntity, type PrefabLocalLight } from './localLight';
@@ -134,7 +134,7 @@ export {
   type ButterflyWorld, type ButterflyState,
 } from './butterfly';
 export { listenInventoryEvents, type PrefabInventoryEventMap } from './inventoryEvents';
-export { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, IgniteTossed, SetFuelRateMult, torchPrefabs, type TorchInst } from './torch';
+export { TORCH_ID, TORCH_FUEL, TORCH_SOUNDS, IgniteTossed, SetFuelRateMult, torchPrefabs, TorchEntity } from './torch';
 export type { GroundItemDefinition, ItemPrefabWorld } from './groundPrefab';
 export { itemPrefabs, spawnGroundStack, flingLoot } from './itemPrefabs';
 export { YELLOWSTAFF_ID, YELLOWSTAFF_COLOUR, YELLOWSTAFF_CAST_TIME, OPALSTAFF_ID, OPALSTAFF_COLOUR, isLightStaff, staffVisual, yellowstaffVisual, getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_SANITY_COST, type LightStaffWorld, type LightStaffId,

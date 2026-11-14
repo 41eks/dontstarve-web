@@ -5,7 +5,7 @@ import { getHandEquipmentDefinition } from '../../prefab/src/handEquipment';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { performPickupAction } from '../../stategraphs/src/pickup';
 import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
-import { ItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
+import { ItemEntity, newItemEntity, InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } from '@dontstarve-web/inventory';
 import { ItemWorldFixture, itemAt } from './itemWorldFixture';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { readFile } from 'node:fs/promises';
@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { createEquipmentExistenceState } from '@dontstarve-web/signals';
 import { OnItemRanOut } from '../../prefab/src/player_common';
 import { TORCH_FUEL, TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION, onattack,
-  createTorchHandLifecycle, IgniteTossed, type TorchInst } from '../../prefab/src/torch';
+  createTorchHandLifecycle, IgniteTossed, TorchEntity } from '../../prefab/src/torch';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
 import { createPickupInventory } from './pickupFixture';
 import { PlaySound } from '../../prefab/src/sound';
@@ -46,8 +46,14 @@ const specs = { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, equippab
 /** SetFirstPeriod(TURNON_FUELED_CONSUMPTION, TURNON_FULL_FUELED_CONSUMPTION), charged on the next update. */
 const FULL_FIRST_PERIOD = TURNON_FULL_FUELED_CONSUMPTION, FIRST_PERIOD = TURNON_FUELED_CONSUMPTION;
 
+/** Every torch the inventory constructs is the torch prefab's own entity. */
+function asTorch(entity: ItemEntity | null | undefined): TorchEntity {
+  if (!(entity instanceof TorchEntity)) throw new Error('expected a torch entity');
+  return entity;
+}
+
 function fixture(initialFuel = TORCH_FUEL) {
-  const entity = new ItemEntity({ itemId: 'torch', count: 1, remainingFuel: initialFuel }) as TorchInst;
+  const entity = asTorch(newItemEntity({ itemId: 'torch', count: 1, remainingFuel: initialFuel }));
   entity.configure(torchSpec);
   // The item's world: fueled consumes on its game time.
   const world = createPerishWorld();
@@ -91,7 +97,7 @@ describe('torch prefab burning lifecycle', () => {
   });
 
   it('starts consuming once a torch lit before its world was bound joins that world', () => {
-    const entity = new ItemEntity({ itemId: 'torch', count: 1 });
+    const entity = newItemEntity({ itemId: 'torch', count: 1 });
     entity.configure(torchSpec);
     const torch = createTorchHandLifecycle(entity, {});
     // A restored inventory equips before the scene binds its world.
@@ -184,7 +190,7 @@ describe('torch prefab burning lifecycle', () => {
       { domElement: canvas } as unknown as THREE.WebGLRenderer, '', store,
       '/dst/data/anim', player, undefined, undefined, undefined, store.entities);
     store.add('torch', 1);
-    const entity = store.getEntity(slot)! as TorchInst;
+    const entity = asTorch(store.getEntity(slot));
     const equip = vi.spyOn(entity.components.equippable!, 'Equip');
     try {
       store.applySlotChanges([{ slot, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 }]);
@@ -245,7 +251,7 @@ describe('torch prefab burning lifecycle', () => {
       // SpawnSaveRecord of a torch saved burning on the ground: its OnLoad lands it and relights it, silently.
       const model = items.spawnFromSave('torch-lit', { ...GROUND_ITEM_DEFINITIONS.torch, itemId: 'torch', count: 1, remainingFuel: 18, torchLit: true },
         new THREE.Vector3(4, 0, 6));
-      const entity = itemAt(model) as TorchInst;
+      const entity = asTorch(itemAt(model));
       // inventoryitem:OnPutInInventory(owner): the owner's SoundEmitter is at the player.
       const doer = testPlayer({ model: player, inventory });
       const saved = () => {
@@ -341,14 +347,14 @@ describe('torch prefab burning lifecycle', () => {
       expect(fueled.rate).toBe(1);
       precipitationRate.set(.5); preciptype.set('rain');
       expect(fueled.rate).toBe(1 + 1.5 * .5);
-      entity.SetFuelRateMult(2);
+      entity.SetFuelRateMult!(2);
       expect(fueled.rate).toBe((1 + 1.5 * .5) * 2);
       precipitationRate.set(1);
       fueled.DoUpdate(0); // fueled's update fn re-reads the rate each period.
       expect(fueled.rate).toBe((1 + 1.5) * 2);
       preciptype.set('none');
       expect(fueled.rate).toBe(2);
-      entity.SetFuelRateMult(1);
+      entity.SetFuelRateMult!(1);
       expect(fueled.rate).toBe(1);
     } finally { unbind(); }
   });

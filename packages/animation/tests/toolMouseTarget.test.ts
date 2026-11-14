@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { expect, it, vi } from 'vitest';
 import { SpriteState } from '../../display/src';
-import { ItemEntity } from '../../inventory/src';
+import { ItemEntity, newItemEntity } from '../../inventory/src';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { Workable } from '../../componets/src/workable';
 import { Burnable } from '../../componets/src/burnable';
@@ -38,7 +38,7 @@ function setup(options?: ToolMouseTargetOptions) {
   const pick = () => { picker.getMouseActions(); return picker.targetModel; };
   const equip = async (itemId?: string) => {
     if (itemId) {
-      const entity = new ItemEntity({ itemId, count: 1 }); configureEquipmentEntity(entity); tools.push(entity);
+      const entity = newItemEntity({ itemId, count: 1 }); configureEquipmentEntity(entity); tools.push(entity);
       hand.set({ itemId, EQUIPSLOTS: 'HANDS', entity });
     } else hand.set(null);
     await flush();
