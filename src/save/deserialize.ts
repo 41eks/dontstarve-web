@@ -293,7 +293,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     if (o.sanitySane !== undefined && typeof o.sanitySane !== 'boolean') fail('players.local.stats.sanitySane', 'expected boolean');
     stats = { health: number(o.health, 'players.local.stats.health'), hunger: number(o.hunger, 'players.local.stats.hunger'), sanity: number(o.sanity, 'players.local.stats.sanity'),
       ...o.penalty === undefined ? {} : { penalty: number(o.penalty, 'players.local.stats.penalty') },
-      ...o.sanitySane === undefined ? {} : { sanitySane: o.sanitySane as boolean },
+      ...o.sanitySane === undefined ? {} : { sanitySane: o.sanitySane },
       ...o.sanityMode === undefined ? {} : { sanityMode: integer(o.sanityMode, 'players.local.stats.sanityMode', 0, 1) as 0 | 1 } };
   }
   const systemsData = object(world.systems, 'world.systems', ['clock', 'season', 'worldtemperature', 'weather', 'nightmareclock', 'moon', 'random']);
@@ -312,7 +312,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       ['daylight', 'season', 'seasontemperature', 'phasetemperature', 'noisetime']);
     if (o.daylight !== undefined && typeof o.daylight !== 'boolean') fail(`${path}.daylight`, 'expected a boolean');
     systems.worldtemperature = {
-      ...(o.daylight === undefined ? {} : { daylight: o.daylight as boolean }),
+      ...(o.daylight === undefined ? {} : { daylight: o.daylight }),
       season: choice(o.season, `${path}.season`, ['autumn', 'winter', 'spring', 'summer']),
       seasontemperature: number(o.seasontemperature, `${path}.seasontemperature`, -Number.MAX_SAFE_INTEGER),
       phasetemperature: number(o.phasetemperature, `${path}.phasetemperature`, -Number.MAX_SAFE_INTEGER),

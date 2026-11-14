@@ -228,7 +228,7 @@ export const camera = followCamera.camera;
 backTasks.push((dt, unpausedDt = dt) => followCamera.update(unpausedDt));
 
 window.addEventListener('game:camera-turn', (event) => {
-  const direction = (event as CustomEvent<{ direction?: unknown }>).detail?.direction;
+  const direction = event.detail.direction;
   if (direction === 'left') followCamera.rotateRight();
   else if (direction === 'right') followCamera.rotateLeft();
 });

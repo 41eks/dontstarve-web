@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { WorldContentKey, type GetWatchWorldContent, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
 import type { GroundItemDefinition, ItemPrefabWorld } from './groundPrefab';
 import { ItemEntity } from '@dontstarve-web/inventory';
-import { bindItemWorld, dropStackIndividually, type ItemPrefabDefinition } from './groundItems';
+import { bindItemWorld, dropStackIndividually, type ItemPrefabDefinition, GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { TOTAL_DAY_TIME } from '../../componets/src/perishable';
 import { Deployable } from '../../componets/src/deployable';
 import { ButterflyStateGraph, type ButterflyStateInst, type ButterflyStateName } from '../../stategraphs/src/SGbutterfly';
@@ -16,7 +16,6 @@ import { ButterflyBrain } from '../../brains/src/butterflybrain';
 import { MoonButterflyBrain } from '../../brains/src/moonbutterflybrain';
 import { RADIANS } from '../../brains/src/simutil';
 import type { BrainEntity, BrainInst, BrainWorld } from '../../brains/src/types';
-import catalog from './groundItems.json' with { type: 'json' };
 import { MOONBUTTERFLY_PERISH_INV_MODIFIER, MOONBUTTERFLY_PERISH_TIME, MOONBUTTERFLY_SPEED } from './moonbutterflyTuning';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
@@ -339,7 +338,7 @@ export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefab
     const counts = new Map<string, number>();
     for (const itemId of itemIds) counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
     const items: GroundItemDefinition[] = [...counts].map(([itemId, count]) => ({
-      ...catalog.items[itemId as keyof typeof catalog.items], itemId, count,
+      ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count,
     }));
     world.dropLoot?.(items, position);
   };

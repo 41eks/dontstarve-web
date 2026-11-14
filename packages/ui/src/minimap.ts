@@ -236,8 +236,9 @@ export class DstMinimapElement extends AssetElement {
 
   private onPointerDown = (event: PointerEvent): void => {
     if (!this.open || !this.view || event.defaultPrevented) return;
+    const onCenter = event.target instanceof Element && event.target.closest('.minimap__center') !== null;
     if (event.button === 2) {
-      if ((event.target as Element).closest('.minimap__center')) return;
+      if (onCenter) return;
       const rect = this.root.getBoundingClientRect();
       const point = this.view.screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
       if (!this.renderer?.terrain.isLandAt(point.x, point.z)) return;
@@ -249,14 +250,14 @@ export class DstMinimapElement extends AssetElement {
       if (accepted && this.open && this.autopaused) { this.autopaused = false; this.notifyMapState(); }
       return;
     }
-    if (event.button !== 0 || (event.target as Element).closest('.minimap__center')) return;
+    if (event.button !== 0 || onCenter) return;
     this.drag = { pointer: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
     this.root.setPointerCapture(event.pointerId);
   };
 
   private onPointerMove = (event: PointerEvent): void => {
     const rect = this.root.getBoundingClientRect();
-    this.hover = (event.target as Element).closest('.minimap__center') ? undefined : { x: event.clientX - rect.left, y: event.clientY - rect.top };
+    this.hover = event.target instanceof Element && event.target.closest('.minimap__center') ? undefined : { x: event.clientX - rect.left, y: event.clientY - rect.top };
     this.updateLandCursor();
     const drag = this.drag;
     if (!drag || drag.pointer !== event.pointerId) return;

@@ -11,7 +11,7 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import catalog from './groundItems.json' with { type: 'json' };
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const CAVE_ENTRANCE_ID = 'cave_entrance' as const;
 export const CAVE_ENTRANCE_OPEN_ID = 'cave_entrance_open' as const;
@@ -70,7 +70,7 @@ function closed_fn(inst: CaveEntranceInstance, world: CaveEntranceWorld): void {
   workable.SetWorkAction('MINE');
   workable.SetWorkLeft(ROCKS_MINE);
   const lootdropper = addComponent(inst, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
-    { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+    { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
   lootdropper.SetLoot(CLOSED_LOOT);
   workable.SetOnWorkCallback((_inst, _worker, workleft) => OnWork(inst, world, workleft));
 

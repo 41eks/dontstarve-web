@@ -88,13 +88,14 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     if (keys.includes('lightflierFlower')) {
       const p = `${path}.lightflierFlower`, data = object(c.lightflierFlower, p,
         ['variant', 'lightState', 'rechargeSeconds', 'turnoffSeconds', 'picked', 'paused', 'regrowSeconds', 'childspawner']);
-      for (const key of ['picked', 'paused'] as const) if (data[key] !== undefined && typeof data[key] !== 'boolean') fail(`${p}.${key}`, 'expected boolean');
+      if (data.picked !== undefined && typeof data.picked !== 'boolean') fail(`${p}.picked`, 'expected boolean');
+      if (data.paused !== undefined && typeof data.paused !== 'boolean') fail(`${p}.paused`, 'expected boolean');
       const child = object(data.childspawner, `${p}.childspawner`, ['childreninside', 'childrenoutside']);
       const ids = array(child.childrenoutside, `${p}.childspawner.childrenoutside`, 100).map((v, i) => string(v, `${p}.childspawner.childrenoutside[${i}]`));
       if (new Set(ids).size !== ids.length) fail(`${p}.childspawner.childrenoutside`, 'duplicate child');
       components.lightflierFlower = { variant: choice(data.variant, `${p}.variant`, ['single', 'springy'] as const),
         lightState: choice(data.lightState, `${p}.lightState`, BULB_PLANT_LIGHT_STATES),
-        ...(data.picked === undefined ? {} : { picked: data.picked as boolean }), ...(data.paused === undefined ? {} : { paused: data.paused as boolean }),
+        ...(data.picked === undefined ? {} : { picked: data.picked }), ...(data.paused === undefined ? {} : { paused: data.paused }),
         ...(data.regrowSeconds === undefined ? {} : { regrowSeconds: number(data.regrowSeconds, `${p}.regrowSeconds`, 0, 5760) }),
         ...(data.rechargeSeconds === undefined ? {} : { rechargeSeconds: number(data.rechargeSeconds, `${p}.rechargeSeconds`, 0, 118) }),
         ...(data.turnoffSeconds === undefined ? {} : { turnoffSeconds: number(data.turnoffSeconds, `${p}.turnoffSeconds`, 0, 198) }),
@@ -116,7 +117,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (pond.rocks !== undefined) components.lavaPond.rocks = array(pond.rocks, `${p}.rocks`).map((value, i) => {
         const r = `${p}.rocks[${i}]`, rock = object(value, r, ['rocktype', 'offset']);
         // Lua uses an empty string for the unnumbered first rock prefab.
-        if (typeof rock.rocktype !== 'string' || !(LAVA_POND_ROCK_TYPES as readonly string[]).includes(rock.rocktype)) fail(`${r}.rocktype`, 'unknown lava pond rock type');
+        if (typeof rock.rocktype !== 'string' || !LAVA_POND_ROCK_TYPES.some(known => known === rock.rocktype)) fail(`${r}.rocktype`, 'unknown lava pond rock type');
         const offset = array(rock.offset, `${r}.offset`, 3);
         if (offset.length !== 3) fail(`${r}.offset`, 'expected three coordinates');
         return { rocktype: rock.rocktype as typeof LAVA_POND_ROCK_TYPES[number],
@@ -150,19 +151,21 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         if (pickable[key] !== undefined && typeof pickable[key] !== 'boolean') fail(`${p}.${key}`, 'expected a boolean');
       }
       if (pickable.regrowSeconds !== undefined && pickable.picked !== true) fail(p, 'regrowth requires a picked plant');
+      let cyclesLeft: number | undefined, maxCycles: number | undefined;
       if (schema.pickCycles) {
         if ((pickable.cyclesLeft === undefined) !== (pickable.maxCycles === undefined)) fail(p, 'cyclesLeft and maxCycles must be saved together');
-        if (pickable.maxCycles !== undefined) integer(pickable.maxCycles, `${p}.maxCycles`, schema.minimumPickCycles ?? 5, schema.pickCycles);
-        if (pickable.cyclesLeft !== undefined) integer(pickable.cyclesLeft, `${p}.cyclesLeft`, 0, pickable.maxCycles as number);
-        if (pickable.cyclesLeft === 0 && pickable.picked !== true) fail(p, 'barren plants must be picked');
-      } else if (pickable.cyclesLeft !== undefined && (pickable.cyclesLeft !== 0 || pickable.picked !== true)) {
+        if (pickable.maxCycles !== undefined) maxCycles = integer(pickable.maxCycles, `${p}.maxCycles`, schema.minimumPickCycles ?? 5, schema.pickCycles);
+        if (pickable.cyclesLeft !== undefined) cyclesLeft = integer(pickable.cyclesLeft, `${p}.cyclesLeft`, 0, maxCycles);
+        if (cyclesLeft === 0 && pickable.picked !== true) fail(p, 'barren plants must be picked');
+      } else if (pickable.cyclesLeft !== undefined) {
         // pickable.lua MakeBarren saves cycles_left = 0 even when max_cycles is nil.
-        fail(`${p}.cyclesLeft`, 'only a picked barren plant may save cyclesLeft without maxCycles');
+        if (pickable.cyclesLeft !== 0 || pickable.picked !== true) fail(`${p}.cyclesLeft`, 'only a picked barren plant may save cyclesLeft without maxCycles');
+        cyclesLeft = 0;
       }
       components.pickable = {
         ...(pickable.transplanted === true ? { transplanted: true } : {}),
-        ...(pickable.cyclesLeft === undefined ? {} : { cyclesLeft: pickable.cyclesLeft as number }),
-        ...(pickable.maxCycles === undefined ? {} : { maxCycles: pickable.maxCycles as number }),
+        ...(cyclesLeft === undefined ? {} : { cyclesLeft }),
+        ...(maxCycles === undefined ? {} : { maxCycles }),
         ...(pickable.protectedCycles === undefined ? {} : { protectedCycles: number(pickable.protectedCycles, `${p}.protectedCycles`, Number.MIN_VALUE) }),
         ...(pickable.picked === true ? { picked: true } : {}),
         ...(pickable.paused === true ? { paused: true } : {}),
@@ -479,7 +482,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
           if (typeof entry.paused !== 'boolean') fail(`${entryPath}.paused`, 'expected a boolean');
           const maximum = MOONBASE_TIMER_LIMITS[name as keyof typeof MOONBASE_TIMER_LIMITS];
           const initial_time = number(entry.initial_time, `${entryPath}.initial_time`, 0, maximum);
-          parsed[name] = { timeleft: number(entry.timeleft, `${entryPath}.timeleft`, 0, initial_time), paused: entry.paused as boolean, initial_time };
+          parsed[name] = { timeleft: number(entry.timeleft, `${entryPath}.timeleft`, 0, initial_time), paused: entry.paused, initial_time };
         }
         const pending = ['mooncharge', 'moonchargepre', 'mooncharge2', 'mooncharge3'].some(name => Object.hasOwn(parsed, name));
         if (pending && (components.moonbase.staff?.itemId !== 'yellowstaff' || (components.workable?.workleft ?? 4) <= 0)) fail(t, 'charging requires a yellowstaff and a live moonbase');

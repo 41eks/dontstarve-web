@@ -2,7 +2,7 @@ export abstract class AssetElement extends HTMLElement {
   static readonly observedAttributes = ['asset-base'];
 
   protected get assetBaseUrl(): string {
-    const baseUrl = (import.meta as ImportMeta & { env: { BASE_URL: string } }).env.BASE_URL;
+    const baseUrl = import.meta.env.BASE_URL;
     return this.getAttribute('asset-base') ?? new URL(`${baseUrl}dst/data/ui/`, document.baseURI).href;
   }
 

@@ -8,7 +8,7 @@ export const BIRD_IDS = ['crow', 'robin', 'robin_winter', 'canary'] as const;
 export type BirdId = typeof BIRD_IDS[number];
 
 export function isBirdId(itemId: string): itemId is BirdId {
-  return (BIRD_IDS as readonly string[]).includes(itemId);
+  return BIRD_IDS.some(known => known === itemId);
 }
 
 /** tuning.lua: BIRD_PERISH_TIME = total_day_time * 5, MakeFeedableSmallLivestock's starve time. */

@@ -40,7 +40,7 @@ const FRAMES = 1 / 30;
 let UPDATE_OFFSET = 0;
 
 export function isNightmareRockId(value: string): value is NightmareRockId {
-  return (NIGHTMAREROCK_IDS as readonly string[]).includes(value);
+  return NIGHTMAREROCK_IDS.some(known => known === value);
 }
 
 /**

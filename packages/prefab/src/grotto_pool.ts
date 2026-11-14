@@ -14,7 +14,7 @@ import { MakeObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { WorldFx } from './world_fx';
-import catalog from './groundItems.json' with { type: 'json' };
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 const WORLD_SCALE = TILE_SIZE / 4;
 export const GROTTO_POOL_BIG_ID = 'grotto_pool_big' as const;
@@ -90,7 +90,7 @@ export interface GrottoPoolWorld extends ToolMouseTargetWorld {
   getEntity(entityId: string): PrefabInstance | undefined;
 }
 
-export function isGrottoId(value: string): value is GrottoId { return (GROTTO_IDS as readonly string[]).includes(value); }
+export function isGrottoId(value: string): value is GrottoId { return GROTTO_IDS.some(known => known === value); }
 
 /** grotto_pool_big.lua / grotto_pool_small.lua poolfn. */
 export class GrottoPoolInstance extends PrefabInstance {
@@ -226,7 +226,7 @@ export class GrottoGlassInstance extends PrefabInstance {
     workable.SetOnWorkCallback((_inst, worker, workleft) => on_mined(this, worker, workleft));
     workable.SetOnLoadFn(() => { if (workable.workleft.peek() <= 0) set_mined(this); });
     const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
-      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+      { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable('moonglass_prop');
 
     this.sprite.setFrameAt(Math.random());

@@ -176,7 +176,7 @@ function mushcommonfn(prefab: MushroomPlantId, world: PickablePlantWorld, positi
 }
 
 export function isMushroomPlantPrefab(value: string): value is MushroomPlantId {
-  return (MUSHROOM_PLANT_IDS as readonly string[]).includes(value);
+  return MUSHROOM_PLANT_IDS.some(known => known === value);
 }
 
 /** mushrooms.lua MakeMushroom(data): red (day), green (dusk) and blue (night) mushrooms share mushcommonfn. */

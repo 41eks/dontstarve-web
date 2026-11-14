@@ -12,7 +12,7 @@ import type { Pickable, PickableSaveState } from './components/pickable';
 import type { GameTimeScheduler } from './components/gameTimeScheduler';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { FireFxHost } from './treeFire';
-import catalog from './groundItems.json' with { type: 'json' };
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PrefabInstance } from './prefabInstance';
 
 /**
@@ -75,6 +75,6 @@ export function SpringGrowthMod(inst: PrefabInstance, watch: GetWatchWorldConten
 /** lootdropper:SpawnLootPrefab's SpawnPrefab: the loot is flung from the plant as a ground item. */
 export function plantLootSpawner(world: Pick<PickablePlantWorld, 'spawnGroundItem'>): LootSpawn {
   return (prefab, point, skinId) => world.spawnGroundItem(
-    { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1, ...(skinId ? { skinId } : {}) },
+    { ...GROUND_ITEM_DEFINITIONS[prefab], itemId: prefab, count: 1, ...(skinId ? { skinId } : {}) },
     point, { fling: true });
 }

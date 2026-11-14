@@ -345,7 +345,7 @@ const WORLD_PREFAB_DEFINITIONS = {
     if (data.submersible !== undefined) {
       const flag = object(data.submersible, `${path}.submersible`, ['force_no_repositioning']).force_no_repositioning;
       if (typeof flag !== 'boolean') fail(`${path}.submersible.force_no_repositioning`, 'expected boolean');
-      components.submersible = { force_no_repositioning: flag as boolean };
+      components.submersible = { force_no_repositioning: flag };
     }
     return components;
   }, true, [{ animation: 'chesspiece.zip', build: 'swap_chesspiece_malbatross_marble.zip' }]),

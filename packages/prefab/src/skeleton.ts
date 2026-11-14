@@ -10,7 +10,7 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeSmallObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { WorldFx } from './world_fx';
-import catalog from './groundItems.json' with { type: 'json' };
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const SKELETON_PLAYER_ID = 'skeleton_player' as const;
 export const SKELETON_IDS = [SKELETON_PLAYER_ID, 'skeleton', 'skeleton_notplayer', 'skeleton_notplayer_1', 'skeleton_notplayer_2'] as const;
@@ -40,7 +40,7 @@ export interface SkeletonWorld extends ToolMouseTargetWorld {
 }
 
 export function isSkeletonId(value: string): value is SkeletonId {
-  return (SKELETON_IDS as readonly string[]).includes(value);
+  return SKELETON_IDS.some(known => known === value);
 }
 
 /**
@@ -71,7 +71,7 @@ export class SkeletonInstance extends PrefabInstance {
     this.addTag('inspectable');
 
     const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
-      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+      { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable(player ? 'skeleton_player' : 'skeleton');
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');

@@ -6,7 +6,7 @@ import { PLAYER_COLLIDER_RADIUS } from '@dontstarve-web/prefab/player_common';
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { SlotItem } from './slot/slot-model';
-import type { CookRequestDetail } from './cook-pot-panel';
+import type { GameUiEventMap } from './events';
 import { createEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 
 export const CHEST_SLOT_COUNT = 9;
@@ -52,8 +52,8 @@ export function createChestInventoryPanel(
   let openModel: THREE.Object3D | undefined;
   let panelAnchor: ContainerPanelAnchor = 'player-top';
   let actions: { performContainerAction(model: THREE.Object3D, action: 'COOK', doer: object): boolean } | undefined;
-  const cook = (event: Event) => {
-    const { containerId } = (event as CustomEvent<CookRequestDetail>).detail;
+  const cook = (event: GameUiEventMap['game:cook-request']) => {
+    const { containerId } = event.detail;
     if (!openModel || element.slotContainer?.id !== containerId) return;
     actions?.performContainerAction(openModel, 'COOK', player);
   };

@@ -1,6 +1,7 @@
 import { loadImageAtlasFiles } from '@dontstarve-web/animation/imageAtlas';
 import { EMOTES, type EmoteGroup, type EmoteName } from '@dontstarve-web/prefab/emotes';
 import { AssetElement } from './assets';
+import type { GameUiEventMap } from './events';
 import styles from './styles/emote-wheel.css?inline';
 
 export interface EmoteRequestDetail { emote: EmoteName }
@@ -185,8 +186,8 @@ export class DstEmoteWheelElement extends AssetElement {
     }
   };
 
-  private readonly handleConsoleToggle = (event: Event): void => {
-    if ((event as CustomEvent<{ isOpen: boolean }>).detail.isOpen) this.close();
+  private readonly handleConsoleToggle = (event: GameUiEventMap['game:debug-console-toggle']): void => {
+    if (event.detail.isOpen) this.close();
   };
 
   private readonly handleVisibilityChange = (): void => {

@@ -38,7 +38,7 @@ function onsave(inst: CaveFernInstance, data: PickablePlantRecord['components'])
 function onload(inst: CaveFernInstance, data: PickablePlantRecord['components']): void {
   const anim = data.variant?.anim;
   if (anim === undefined) return;
-  if (!(CAVE_FERN_ANIMATIONS as readonly string[]).includes(anim)) throw new Error(`Unsupported ${inst.prefab} variant: ${anim}`);
+  if (!CAVE_FERN_ANIMATIONS.some(known => known === anim)) throw new Error(`Unsupported ${inst.prefab} variant: ${anim}`);
   inst.animname = anim;
   inst.AnimState.PlayAnimation(inst.animname);
 }

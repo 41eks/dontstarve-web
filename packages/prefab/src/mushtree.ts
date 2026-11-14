@@ -84,7 +84,7 @@ export interface MushtreeSaveState { stump?: true; burnt?: true; treestate?: Mus
 export interface MushtreeComponents { mushtree?: MushtreeSaveState; growable?: GrowableSave }
 
 export function isMushtreeSpawnId(value: string): value is MushtreeSpawnId {
-  return (MUSHTREE_SPAWN_IDS as readonly string[]).includes(value);
+  return MUSHTREE_SPAWN_IDS.some(known => known === value);
 }
 
 export interface MushtreeWorld {

@@ -17,7 +17,7 @@ import type { PlacementSaveRecord } from './saveRecord';
 import { MakeHeavyObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { WorldContext } from './worldContext';
-import catalog from './groundItems.json' with { type: 'json' };
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const CHESSPIECE_MALBATROSS_MARBLE_ID = 'chesspiece_malbatross_marble' as const;
 /** chesspieces.lua SetPrefabName: a saved sculpture's source group has no material suffix; data.materialid selects it. */
@@ -59,7 +59,7 @@ export class ChesspieceInstance extends PrefabInstance {
     workable.SetOnFinishCallback(() => this.onworkfinished());
     // SetMaterial: MATERIALS[marble].prefab.
     const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
-      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+      { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetLoot(['marble']);
     const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetHauntValue(TUNING_HAUNT_TINY);

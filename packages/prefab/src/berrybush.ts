@@ -108,7 +108,7 @@ function OnSave(inst: PickablePlantInstance, data: PickablePlantRecord['componen
 
 function OnLoad(inst: PickablePlantInstance, data: PickablePlantRecord['components']): void {
   const skinId = data.plant?.skinId;
-  if (skinId !== undefined && !(BERRYBUSH_SKINS as readonly string[]).includes(skinId)) throw new Error(`Unsupported ${inst.prefab} skin: ${skinId}`);
+  if (skinId !== undefined && !BERRYBUSH_SKINS.some(known => known === skinId)) throw new Error(`Unsupported ${inst.prefab} skin: ${skinId}`);
   inst.skinId = skinId;
 }
 

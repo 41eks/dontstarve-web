@@ -5,7 +5,7 @@ export const FENCE_IDS = [FENCE_ID, FENCE_ITEM_ID] as const;
 export type FenceId = typeof FENCE_IDS[number];
 
 export function isFenceId(value: string): value is FenceId {
-  return (FENCE_IDS as readonly string[]).includes(value);
+  return FENCE_IDS.some(known => known === value);
 }
 
 /** prefabskins.lua `fence` order; skinprefabs.lua gives each skin the build of the same name. */

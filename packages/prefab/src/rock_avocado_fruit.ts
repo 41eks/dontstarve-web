@@ -79,7 +79,7 @@ export class RockAvocadoFruit {
 }
 
 export function configureRockAvocadoFruitEntity(entity: ItemEntity): void {
-  if (!(ROCK_AVOCADO_ITEM_IDS as readonly string[]).includes(entity.prefab)) return;
+  if (!ROCK_AVOCADO_ITEM_IDS.some(known => known === entity.prefab)) return;
   configureTradableEntity(entity);
   if (entity.prefab === 'rock_avocado_fruit_sprout' && !entity.components.deployable) {
     configureBurnableItemEntity(entity);

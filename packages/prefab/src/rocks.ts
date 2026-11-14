@@ -14,7 +14,7 @@ import { LunarHailBuildup } from '../../componets/src/pandoraschestSignatures';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { addComponent } from './components';
 import type { SpawnGroundItem } from './groundPrefab';
-import catalog from './groundItems.json' with { type: 'json' };
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound } from './sound';
 import { MOONROCKSEED_ID } from './moonrockseed';
 
@@ -56,7 +56,7 @@ const ROCKS: Readonly<Record<RockPrefabId, RockDefinition>> = {
 for (const prefab of ROCK_PREFABS) SetSharedLootTable(prefab, ROCKS[prefab].loot);
 
 export function isRockPrefab(value: string): value is RockPrefabId {
-  return (ROCK_PREFABS as readonly string[]).includes(value);
+  return ROCK_PREFABS.some(known => known === value);
 }
 
 /** The archives a save scan warms for a rock prefab; the moon shell also drops its orb. */
@@ -93,7 +93,7 @@ export class RockInstance extends PrefabInstance {
     if (tag) this.addTag(tag);
 
     addComponent(this, 'lootdropper', LootDropper, (loot, position) => world.spawnGroundItem(
-      { ...catalog.items[loot as keyof typeof catalog.items], itemId: loot, count: 1 },
+      { ...GROUND_ITEM_DEFINITIONS[loot], itemId: loot, count: 1 },
       new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
     const workable = addComponent(this as RockInstance, 'workable', Workable);
     workable.SetWorkAction('MINE'); workable.SetWorkLeft(ROCKS_MINE);

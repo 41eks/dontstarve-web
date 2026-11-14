@@ -8,15 +8,7 @@ import {
   equipmentSlotAddress,
   mountGameUi,
   SanityVignette,
-  type CraftingStateDetail,
-  type CraftRequestDetail,
-  type ChestCloseDetail,
-  type DebugCommandDetail,
-  type MinimapStateDetail,
-  type MinimapActionRequestDetail,
-  type SlotAddress,
-  type SlotSelectDetail,
-  type SlotTransferRequest,
+  type GameUiEventMap,
   slotTransferController,
 } from '@dontstarve-web/ui';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs';
@@ -79,12 +71,12 @@ input.setBlocked(true);
 const gameUi = mountGameUi({ assetBaseUrl: `${import.meta.env.BASE_URL}dst/data/ui/` });
 gameUi.inventoryBar.player = playerInstance.prefab;
 gameUi.mapControls.addEventListener('game:map-toggle', (event) => {
-  gameUi.minimap.setOpen((event as CustomEvent<{ isOpen: boolean }>).detail.isOpen);
+  gameUi.minimap.setOpen(event.detail.isOpen);
 });
 // MapScreen registers SetAutopaused(true) on open and releases it on destroy; M/Esc close it too.
 let mapAutopaused = false;
 gameUi.minimap.addEventListener('game:map-state', (event) => {
-  const { isOpen, autopaused } = (event as CustomEvent<MinimapStateDetail>).detail;
+  const { isOpen, autopaused } = event.detail;
   gameUi.mapControls.setMapOpen(isOpen);
   cursorUi.setWorldCovered(isOpen);
   input.setBlocked(isOpen);
@@ -106,7 +98,7 @@ export const headEquipment = inventory.headEquipment;
 export const bodyEquipment = inventory.bodyEquipment;
 for (const panel of [gameUi.chestPanel, gameUi.cookPotPanel, gameUi.iceBoxPanel]) {
   panel.addEventListener('game:chest-close', (event) => {
-    const { containerId } = (event as CustomEvent<ChestCloseDetail>).detail;
+    const { containerId } = event.detail;
     inventory.setStorageAccessible(containerId, false);
   });
 }
@@ -228,8 +220,8 @@ const wortox = await WortoxPlayer.create({
   resetMinimapOffset: () => gameUi.minimap.setView({ x: player.position.x, z: player.position.z }),
   snapCamera: () => followCamera.snap(),
 });
-const onMapActionRequest = (event: Event) => {
-  const { position } = (event as CustomEvent<MinimapActionRequestDetail>).detail;
+const onMapActionRequest = (event: GameUiEventMap['game:map-action-request']) => {
+  const { position } = event.detail;
   // MapScreen right click: ThePlayer.components.playercontroller:OnMapAction.
   if (playerInstance.components.playercontroller?.OnMapAction(position)) event.preventDefault();
 };
@@ -293,10 +285,10 @@ function saveGame(): Promise<void> {
 }
 // Typing a command must not drive the character; closing releases the keyboard again.
 gameUi.debugConsole.addEventListener('game:debug-console-toggle', (event) => {
-  input.setBlocked((event as CustomEvent<{ isOpen: boolean }>).detail.isOpen);
+  input.setBlocked(event.detail.isOpen);
 });
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
-  const { command } = (event as CustomEvent<DebugCommandDetail>).detail;
+  const { command } = event.detail;
   void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), saveGame, setPlayerSanityPercent, async () => { await SendLightningStrike({ root: scene, fx: worldFx, sim: prefabs }, player.position); }).then((result) => {
     if (result.ok) console.info(result.message);
     else console.warn(result.message);
@@ -306,7 +298,7 @@ gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
 });
 
 window.addEventListener('game:slot-transfer-request', (event) => {
-  const detail = (event as CustomEvent<SlotTransferRequest>).detail;
+  const detail = event.detail;
   if (!Number.isSafeInteger(detail.amount) || detail.amount <= 0) return;
 
   const transferred = detail.swapWith
@@ -320,11 +312,11 @@ window.addEventListener('game:slot-transfer-request', (event) => {
   slotTransferController.completeTransfer(detail.operationId, transferred);
 });
 window.addEventListener('game:cursor-return-request', event => {
-  const { origin } = (event as CustomEvent<{ origin?: SlotAddress }>).detail;
+  const { origin } = event.detail;
   inventory.returnCursor(origin);
 });
 window.addEventListener('game:slot-select', (event) => {
-  const { slot } = (event as CustomEvent<SlotSelectDetail>).detail;
+  const { slot } = event.detail;
   if (inventory.GetActiveItem()) return;
   actionEvents.emit('action:interrupt', { reason: 'slot-select' });
   const stack = inventory.get(slot);
@@ -337,7 +329,7 @@ window.addEventListener('game:slot-select', (event) => {
 });
 gameUi.crafting.addEventListener('game:craft-request', (event) => {
   actionEvents.emit('action:interrupt', { reason: 'craft' });
-  const { recipeId, skinId } = (event as CustomEvent<CraftRequestDetail>).detail;
+  const { recipeId, skinId } = event.detail;
   const recipe = INVENTORY_RECIPES[recipeId];
   if (!recipe) return;
 
@@ -352,7 +344,7 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
   }
 });
 gameUi.crafting.addEventListener('game:crafting-state-change', (event) => {
-  const { crafting } = (event as CustomEvent<CraftingStateDetail>).detail;
+  const { crafting } = event.detail;
   if (crafting) actionEvents.emit('action:interrupt', { reason: 'crafting' });
   setCrafting(playerInstance, crafting);
 });

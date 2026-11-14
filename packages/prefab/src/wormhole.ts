@@ -71,7 +71,7 @@ function OnSave(inst: PrefabInstance, data: PlacementSaveRecord['components']): 
 function OnLoad(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
   const skinId = data.wormhole?.skinId;
   if (skinId === undefined) return;
-  if (!(WORMHOLE_SKINS as readonly string[]).includes(skinId)) throw new Error(`Unsupported wormhole skin: ${skinId}`);
+  if (!WORMHOLE_SKINS.some(known => known === skinId)) throw new Error(`Unsupported wormhole skin: ${skinId}`);
   inst.skinId = skinId;
 }
 

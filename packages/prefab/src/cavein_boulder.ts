@@ -7,7 +7,7 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import type { SpawnGroundItem } from './groundPrefab';
-import catalog from './groundItems.json' with { type: 'json' };
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound } from './sound';
 
 export const CAVEIN_BOULDER_ID = 'cavein_boulder' as const;
@@ -45,7 +45,7 @@ export class CaveinBoulderInstance extends PrefabInstance {
     this.addTag('boulder');
     this.addTag('caveindebris');
     const lootdropper = addComponent(this, 'lootdropper', LootDropper, (loot, position) => world.spawnGroundItem(
-      { ...catalog.items[loot as keyof typeof catalog.items], itemId: loot, count: 1 },
+      { ...GROUND_ITEM_DEFINITIONS[loot], itemId: loot, count: 1 },
       new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
     lootdropper.SetChanceLootTable(CAVEIN_BOULDER_ID);
 

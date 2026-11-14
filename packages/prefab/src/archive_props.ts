@@ -13,7 +13,7 @@ import { MakeObstaclePhysics } from './standardcomponents';
 import { addComponent } from './components';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { WorldFx } from './world_fx';
-import catalog from './groundItems.json' with { type: 'json' };
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const ARCHIVE_MOON_STATUE_ID = 'archive_moon_statue' as const;
 export const ARCHIVE_RUNE_STATUE_ID = 'archive_rune_statue' as const;
@@ -107,7 +107,7 @@ export class ArchiveMoonStatueInstance extends PrefabInstance {
       this.remove();
     });
     const lootdropper = addComponent(this, 'lootdropper', LootDropper, (prefab, position) => world.spawnGroundItem(
-      { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1 },
+      { ...GROUND_ITEM_DEFINITIONS[prefab], itemId: prefab, count: 1 },
       new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
     lootdropper.SetChanceLootTable('archive_statues');
     setminimapiconstatue(this);

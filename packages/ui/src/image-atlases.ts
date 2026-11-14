@@ -6,7 +6,7 @@ import { INVENTORY_ITEM_DISPLAY_SPECS } from './inventory-items';
 
 /** One archive for the entire UI; register metadata in a batch without eagerly decoding it. */
 export function initializeUiImageAtlases(): void {
-  const baseUrl = (import.meta as ImportMeta & { env: { BASE_URL: string } }).env.BASE_URL;
+  const baseUrl = import.meta.env.BASE_URL;
   const archive = new URL(`${baseUrl}dst/data/databundles/images.zip`, document.baseURI).href;
   const paths = new Set([
     'images/crafting_menu.xml', 'images/crafting_menu_icons.xml',

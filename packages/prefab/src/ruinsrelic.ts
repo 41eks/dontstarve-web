@@ -41,7 +41,7 @@ export interface RuinsRelicWorld {
 }
 export function relicName(id: RuinsRelicId): RelicName { return id.split('_').at(-1) as RelicName; }
 export function isRelicItem(id: string): id is typeof RUINS_RELIC_ITEM_IDS[number] {
-  return (RUINS_RELIC_ITEM_IDS as readonly string[]).includes(id);
+  return RUINS_RELIC_ITEM_IDS.some(known => known === id);
 }
 
 /** ruinsrelic.lua item.OnHammered: collapse material, then recipe salvage and Remove. */

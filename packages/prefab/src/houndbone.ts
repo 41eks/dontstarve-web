@@ -8,7 +8,7 @@ import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { WorldFx } from './world_fx';
-import catalog from './groundItems.json' with { type: 'json' };
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const HOUNDBONE_ID = 'houndbone' as const;
 /** houndbone.lua `names`: bonetype 1..3 selects piece1..piece3. */
@@ -42,7 +42,7 @@ export class HoundboneInstance extends PrefabInstance {
     workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(() => onhammered(this, world));
     const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
-      { ...catalog.items[itemId as keyof typeof catalog.items], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+      { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable('houndbone');
 
     SetBoneType(this, 1 + Math.floor(Math.random() * HOUNDBONE_PIECES.length));

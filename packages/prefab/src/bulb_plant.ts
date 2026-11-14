@@ -13,7 +13,7 @@ export const BULB_PLANT_ID = 'flower_cave';
 export const BULB_PLANT_PREFABS = ['flower_cave', 'flower_cave_double', 'flower_cave_triple'] as const;
 export type BulbPlantPrefabId = typeof BULB_PLANT_PREFABS[number];
 export function isBulbPlantPrefab(value: string): value is BulbPlantPrefabId {
-  return (BULB_PLANT_PREFABS as readonly string[]).includes(value);
+  return BULB_PLANT_PREFABS.some(known => known === value);
 }
 export const BULB_PLANT_VARIANTS = ['single', 'springy', 'double', 'triple'] as const;
 export const BULB_PLANT_LIGHT_STATES = ['ON', 'CHARGED', 'RECHARGING'] as const;
@@ -66,7 +66,7 @@ const FRAMES = 1 / 30;
 export interface BulbPlantWorld {
   /** LightWatcher level at the plant; the host samples ambient and other lights. */
   getLightLevel(model: THREE.Group): number;
-  scheduler: Pick<GameTimeScheduler, 'now' | 'schedule'>;
+  scheduler: GameTimeScheduler;
 }
 
 /** STATE_ANIMS: the first clip plays once, then the second; only `idle` loops. */
@@ -106,12 +106,12 @@ export class BulbPlantInstance extends PrefabInstance {
       : BULB_PLANT_VARIANTS[Math.min(1, Math.floor(Math.random() * 2))];
     this.addTag('plant');
     const scheduler = world.scheduler;
-    this.BindScheduler(scheduler as GameTimeScheduler);
+    this.BindScheduler(scheduler);
     this.tweenStartedAt = scheduler.now - this.tweenDuration;
-    this.rechargeTimer = new ComponentTimer(scheduler as GameTimeScheduler, () => this.Recharge());
-    this.turnoffTimer = new ComponentTimer(scheduler as GameTimeScheduler, () => this.TurnOff());
+    this.rechargeTimer = new ComponentTimer(scheduler, () => this.Recharge());
+    this.turnoffTimer = new ComponentTimer(scheduler, () => this.TurnOff());
     addComponent(this, 'pickable', Pickable, 'lightbulb', bulbPlantRegrowTime(this.variant), this.variant === 'double' ? 2 : this.variant === 'triple' ? 3 : 1,
-      () => this.onpickedfn(), () => this.onregenfn(), undefined, { scheduler: scheduler as GameTimeScheduler });
+      () => this.onpickedfn(), () => this.onregenfn(), undefined, { scheduler: scheduler });
     // OnWake: DoTaskInTime(1, TurnOnInLight); the LightWatcher only reports enterlight after it.
     this.DoTaskInTime(1, () => {
       this.awake = true;

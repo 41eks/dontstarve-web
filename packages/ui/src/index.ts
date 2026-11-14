@@ -14,6 +14,7 @@ import { DstSavingIndicatorElement } from './saving-indicator';
 
 export { INVENTORY_RECEIVE_DURATION_MS, INVENTORY_RECEIVE_PULSE_MS, type InventoryReceiveSource } from './slot/slot-receive-animation';
 
+export type { GameUiEventMap } from './events';
 export { CursorLabelUi, type CursorPointer } from './cursor-label';
 export { SanityVignette } from './sanity-vignette';
 export { createFollowText, type FollowText, type FollowTextOptions } from './follow-text';

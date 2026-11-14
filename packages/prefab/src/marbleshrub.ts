@@ -12,7 +12,7 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import catalog from './groundItems.json' with { type: 'json' };
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const MARBLESHRUB_ID = 'marbleshrub' as const;
 /** The Lua prefab names marbleshrub_short/normal/tall only choose the starting growth stage. */
@@ -91,7 +91,7 @@ export class MarbleShrubInstance extends PrefabInstance {
     growable.loopstages = true;
 
     addComponent(this, 'lootdropper', LootDropper, (prefab, point) => spawnGroundItem(
-      { ...catalog.items[prefab as keyof typeof catalog.items], itemId: prefab, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+      { ...GROUND_ITEM_DEFINITIONS[prefab], itemId: prefab, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
 
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('MINE');

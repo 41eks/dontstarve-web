@@ -20,7 +20,7 @@ interface CraftingControlsOptions {
   startCrafting: (recipeId: string, skinId?: string) => void;
 }
 
-const baseUrl = (import.meta as ImportMeta & { env: { BASE_URL: string } }).env.BASE_URL;
+const baseUrl = import.meta.env.BASE_URL;
 const assetBaseUrl = new URL(`${baseUrl}dst/data/ui/`, document.baseURI).href;
 
 function placeholder(color: string, label: string, className = ''): HTMLSpanElement {
