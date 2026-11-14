@@ -74,7 +74,7 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
     layer_sound: { frame: 17, sound: 'wickerbottom_rework/book_spells/silviculture' },
     fn(inst, reader, world) {
       const ents = inst.TheSim.FindEntities(reader.getPosition(), SILVICULTURE_RANGE, [], SILVICULTURE_CANT_TAGS, SILVICULTURE_ONEOF_TAGS)
-        .filter(v => (v.components as GrowthTarget['components']).pickable !== undefined || v.hasTag('leif'));
+        .filter(v => v.components.pickable !== undefined || v.hasTag('leif'));
       if (ents.length === 0) return [false, 'NOSILVICULTURE'];
       trygrowth(ents.splice(Math.floor(Math.random() * ents.length), 1)[0]);
       if (ents.length > 0) {

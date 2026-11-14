@@ -96,7 +96,7 @@ export class ArchiveMoonStatueInstance extends PrefabInstance {
     this.anim = 1 + Math.floor(Math.random() * MOON_STATUE_VARIANTS);
     this.sprite.playOnce(`idle_full_${this.anim}`); // PlayAnimation, never looping.
 
-    const workable = addComponent(this as ArchiveMoonStatueInstance, 'workable', Workable);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(MARBLEPILLAR_MINE);
     workable.SetOnWorkCallback(ShowWorkState);

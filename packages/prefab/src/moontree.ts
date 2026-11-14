@@ -89,7 +89,7 @@ export class MoonTreeInstance extends PrefabInstance {
     this.minimap.SetPriority(-1);
     // standardcomponents.lua MakeSnowCoveredPristine applies to trees and stumps, not saplings.
     for (const tag of ['plant', 'tree', 'moon_tree', 'SnowCovered', 'shelter']) this.addTag(tag);
-    const workable = addComponent(this as MoonTreeInstance, 'workable', Workable);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(on_chop_tree);
     workable.SetOnFinishCallback(on_chop_tree_down);
@@ -348,7 +348,7 @@ export class MoonButterflySaplingInstance extends PrefabInstance {
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1.6 * UNIT; this.logicalPlacement = true;
     for (const tag of ['plant', 'moon_tree']) this.addTag(tag);
-    const workable = addComponent(this as MoonButterflySaplingInstance, 'workable', Workable);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(dig_up_sapling);
     const timer = addComponent(this, 'timer', Timer, world.scheduler, ['grow']);
@@ -368,7 +368,9 @@ function dig_up_sapling(inst: MoonButterflySaplingInstance): void {
 }
 
 function grow_sapling(inst: MoonButterflySaplingInstance): void {
-  (inst.world.spawnPrefab('moon_tree_short', inst.position) as MoonTreeInstance).growfromseed();
+  const tree = inst.world.spawnPrefab('moon_tree_short', inst.position);
+  if (!(tree instanceof MoonTreeInstance)) throw new Error('moon_tree_short did not spawn a moon tree');
+  tree.growfromseed();
   inst.remove();
 }
 

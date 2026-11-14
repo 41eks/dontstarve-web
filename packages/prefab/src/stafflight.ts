@@ -16,7 +16,6 @@ import { Heater } from '../../componets/src/heater';
 import { Hauntable, HAUNT_SMALL } from '../../componets/src/hauntable';
 import { SanityAura, SANITYAURA_SMALL } from '../../componets/src/sanityaura';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
-import type { BurnableInst } from '../../componets/src/burnable';
 
 export const DWARF_STAR_ID = 'stafflight';
 // Gameplay duration requested for this project: 24 minutes.
@@ -124,7 +123,7 @@ export class StaffLightInstance extends PrefabInstance {
     let propagator: Propagator | undefined;
     if (settings.is_hot) {
       propagator = addComponent(this, 'propagator', Propagator, 'default', radius =>
-        this.TheSim.FindEntities(this.position, radius, undefined, PROPAGATOR_CANT_TAGS) as BurnableInst[], WORLD_SCALE, scheduler, world.getWatchWorldContent);
+        this.TheSim.FindEntities(this.position, radius, undefined, PROPAGATOR_CANT_TAGS), WORLD_SCALE, scheduler, world.getWatchWorldContent);
       propagator.heatoutput = 15;
       propagator.spreading.set(true);
     }

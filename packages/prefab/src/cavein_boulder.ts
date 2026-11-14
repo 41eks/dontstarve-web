@@ -49,7 +49,7 @@ export class CaveinBoulderInstance extends PrefabInstance {
       new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
     lootdropper.SetChanceLootTable(CAVEIN_BOULDER_ID);
 
-    const workable = addComponent(this as CaveinBoulderInstance, 'workable', Workable);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(CAVEIN_BOULDER_MINE);
     workable.SetOnFinishCallback(OnWorked);

@@ -72,7 +72,7 @@ export class EvergreenInstance extends PrefabInstance {
     this.deploySmartRadius = 1; this.logicalPlacement = true;
     this.minimap.SetPriority(-1);
     for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable', 'SnowCovered']) this.addTag(tag);
-    const workable = addComponent(this as EvergreenInstance, 'workable', Workable);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(chop_tree);
     workable.SetOnFinishCallback(chop_down_tree);

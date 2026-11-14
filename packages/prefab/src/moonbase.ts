@@ -44,7 +44,7 @@ const REPAIR_SOUND = 'dontstarve/common/together/moonbase/repair';
 interface MoonbaseComponents {
   workable: Workable<MoonbaseInstance>;
   pickable: Pickable;
-  trader: Trader<TradeItem, unknown, MoonbaseInstance>;
+  trader: Trader<ItemEntity, unknown, MoonbaseInstance>;
   timer: Timer;
   repairable?: Repairable;
 }
@@ -96,7 +96,7 @@ export class MoonbaseInstance extends PrefabInstance {
     pickable.pause();
     pickable.getProductEntity = () => this._staffinst;
 
-    const trader = addComponent(this, 'trader', Trader<TradeItem, unknown, MoonbaseInstance>);
+    const trader = addComponent(this, 'trader', Trader<ItemEntity, unknown, MoonbaseInstance>);
     trader.SetAbleToAcceptTest(ItemTradeTest);
     trader.deleteitemonaccept = false;
     trader.SetOnAccept(OnStaffGiven);
@@ -217,8 +217,7 @@ function OverrideStaffSymbol(inst: MoonbaseInstance): void {
   else inst.staffAnimState.OverrideSymbol('swap_staffs', 'staffs', staff.prefab);
 }
 
-function OnStaffGiven(inst: MoonbaseInstance, _giver: unknown, item: TradeItem): void {
-  const staff = item as ItemEntity;
+function OnStaffGiven(inst: MoonbaseInstance, _giver: unknown, staff: ItemEntity): void {
   const { pickable, trader } = inst.components;
   inst._staffinst = staff;
   HoldStaff(inst, staff);

@@ -49,7 +49,7 @@ export class RockAvocadoSaplingInstance extends PrefabInstance {
     this.sprite.setSymbolHidden('snow', true);
     // DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2, in world units.
     this.deploySmartRadius = TILE_SIZE / 4;
-    const workable = addComponent(this as RockAvocadoSaplingInstance, 'workable', Workable);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(dig_sprout);
     const timer = addComponent(this, 'timer', Timer, world.scheduler, ['grow']);

@@ -16,8 +16,9 @@ export interface EquipmentVisualOwner extends EquipmentOwnerView {
 
 /** A view opened without a presentation (no drawn holder) has no AnimState. */
 export function wornOwner(owner: EquipmentOwner): EquipmentVisualOwner | undefined {
-  return (owner as Partial<EquipmentVisualOwner>).AnimState ? owner as EquipmentVisualOwner : undefined;
+  return isWorn(owner) ? owner : undefined;
 }
+const isWorn = (owner: EquipmentOwner): owner is EquipmentVisualOwner => 'AnimState' in owner && Boolean(owner.AnimState);
 
 /** The holder's sprite, on which each equipped item declares its own AnimState slot, and the art its display loads them from. */
 export interface EquipmentSprite {

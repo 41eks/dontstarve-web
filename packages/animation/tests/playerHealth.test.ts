@@ -9,6 +9,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Health } from '../../componets/src/health';
 import { createPlayerPrefab, playerEnts } from './playerVisual';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
+import { SKELETON_PLAYER_ID, SkeletonInstance } from '../../prefab/src/skeleton';
 import { inventoryUse } from './inventoryUseFixture';
 import { PlayerActionPicker } from '../../stategraphs/src/playeractionpicker';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
@@ -33,8 +34,8 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   const food = inventoryUse({ ...world, mouseActions: picker }, animation.sg, testPlayer({ model: player, inventory }));
   // The player prefab's own makeplayerghost / respawnfromghost listeners reach these world services on the inst.
   const ghost = instance.ghostMode, death = vi.fn(), hud = { Show: vi.fn(), Hide: vi.fn() };
-  const skeleton = { SetSkeletonDescription: vi.fn() };
-  const spawned = vi.fn((prefab: string) => prefab === 'skeleton_player' ? skeleton as never : undefined);
+  const skeleton = new SkeletonInstance(SKELETON_PLAYER_ID, { spawnGroundItem: vi.fn() }, new Vector3());
+  const spawned = vi.fn((prefab: string) => prefab === SKELETON_PLAYER_ID ? skeleton : undefined);
   instance.SpawnPrefab = spawned;
   instance.components.playeractionpicker = picker;
   instance.HUD = hud;
@@ -63,7 +64,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     frames(100);
     expect(ghost.peek()).toBe(true);
     expect(spawned.mock.calls.map(([prefab]) => prefab)).toEqual(['skeleton_player', 'die_fx']);
-    expect(skeleton.SetSkeletonDescription).toHaveBeenCalledExactlyOnceWith(instance.prefab, player.name, 'red_cap');
+    expect(skeleton.description).toEqual({ char: instance.prefab, playername: player.name, cause: 'red_cap' });
     expect(physics.json.peek()?.mass).toBe(1);
     expect(instance.slipperyfeet).toBeUndefined();
     expect(health.currenthealth).toBe(50);

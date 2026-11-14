@@ -3,6 +3,7 @@ import type { ItemEntity } from './entity';
 import { batch } from '../../signals/src';
 import type { InventoryItemSpec, InventoryStack } from './types';
 import type { Vector3 } from 'three';
+import type { ContainerInst } from '../../componets/src/container';
 
 /** The creature whose inventory this is: its items' owner. */
 export interface CreatureInventoryInst { readonly id: string; hasTag(tag: string): boolean; getPosition(): Vector3; PushEvent(name: string, data?: unknown): void }
@@ -14,6 +15,8 @@ export class CreatureInventory {
   private readonly drop: (item: ItemEntity, position: Vector3) => void;
   /** SpawnPrefab for onperishreplacement; without it a perished item stays in its slot. */
   private readonly spawn?: (state: InventoryStack) => ItemEntity;
+  /** inventory.lua opencontainers: every inventory has it, so a creature that opens a container is tracked as the player is. */
+  readonly opencontainers = new Set<ContainerInst>();
   constructor(inst: CreatureInventoryInst, maxslots: number, drop: (item: ItemEntity, position: Vector3) => void, itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {}, spawn?: (state: InventoryStack) => ItemEntity) {
     this.inst = inst; this.drop = drop; this.spawn = spawn;
     this.slots = Array.from({ length: maxslots }, () => new InventorySlot(null, itemSpecs));

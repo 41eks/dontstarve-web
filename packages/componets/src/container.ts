@@ -3,8 +3,8 @@ import type { Vector3 } from 'three';
 
 /** Logical scene-container hosts/openers. Bare transform holders remain supported by detached inventories. */
 interface ContainerEntity {
-  getPosition?(): Vector3;
-  readonly position?: Vector3;
+  getPosition?(): Pick<Vector3, 'distanceToSquared'>;
+  readonly position?: Pick<Vector3, 'distanceToSquared'>;
   isValid?(): boolean;
   readonly isRemoved?: boolean;
   readonly removal?: ReadonlySignal<boolean>;
@@ -25,6 +25,8 @@ export interface ContainerInst {
 interface ContainerDoer {
   readonly components?: { readonly inventory?: { readonly opencontainers?: Set<ContainerInst> } };
 }
+/** An entity that opens the container: what container.lua reads from the doer and from each opener. */
+type ContainerOpener = ContainerEntity & ContainerDoer;
 
 /** container.lua's data.items in the save document's shape: occupied slots under zero-based keys. */
 export interface ContainerSaveData<TRecord> {
@@ -37,6 +39,8 @@ export interface ContainerItem<TRecord> {
   snapshot(): TRecord;
   flush(): void;
   destroy(): void;
+  /** inst:Remove() through the item's inventory owner, when the item has one. */
+  remove?(): boolean;
 }
 
 export interface ContainerSlot<TItem> {
@@ -61,7 +65,7 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   dropItem?: (item: TItem, slot: number, position: { x: number; y: number; z: number }) => void;
   /** Set by the prefab's SetNumSlots; each slot's `entity` signal holds its inst. */
   private readonly slotList: TSlot[] = [];
-  private readonly openlist = new Set<object>();
+  private readonly openlist = new Set<ContainerOpener>();
   private readonly openCountState = createSignal(0);
   /** container.lua's opencount, for components that follow opening and closing. */
   readonly openCount = readonlySignal(this.openCountState);
@@ -93,9 +97,8 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   CheckOpeners(): void {
     const holder = this.inst, position = holder.getPosition();
     for (const opener of this.openlist) {
-      const entity = opener as ContainerEntity;
-      const origin = entity.getPosition?.() ?? entity.position;
-      if (holder.isRemoved || entity.isRemoved || entity.isValid?.() === false || !origin
+      const origin = opener.getPosition?.() ?? opener.position;
+      if (holder.isRemoved || opener.isRemoved || opener.isValid?.() === false || !origin
         || origin.distanceToSquared(position) > this.autoCloseDistance ** 2) this.Close(opener);
     }
   }
@@ -127,9 +130,8 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     for (const slot of this.slots) {
       const item = slot.getEntity();
       if (!item) continue;
-      const removable = item as TItem & { remove?: () => boolean };
-      if (removable.remove) {
-        if (removable.remove() && slot.getEntity() === item) slot.setEntity(null);
+      if (item.remove) {
+        if (item.remove() && slot.getEntity() === item) slot.setEntity(null);
       }
       else { slot.setEntity(null); item.destroy(); }
     }
@@ -159,9 +161,9 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   IsFull(): boolean { return this.NumItems() >= this.numslots; }
 
   /** As in Lua, callers check canbeopened/CanOpen before requesting Open. */
-  Open(doer?: object): void {
+  Open(doer?: ContainerOpener): void {
     if (!doer || this.openlist.has(doer)) return;
-    const opencontainers = (doer as ContainerDoer).components?.inventory?.opencontainers;
+    const opencontainers = doer.components?.inventory?.opencontainers;
     if (opencontainers) {
       const inst = this.inst;
       for (const k of opencontainers) {
@@ -172,7 +174,7 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     const wasOpen = this.IsOpen();
     this.openlist.add(doer);
     this.openCountState.set(this.openlist.size);
-    const removal = (doer as ContainerEntity).removal;
+    const removal = doer.removal;
     if (removal) {
       const removed = watchSignal(removal, stop => this.openerCleanups.set(doer, stop));
       createEffect(() => { if (removed.get()) this.Close(doer); });
@@ -182,14 +184,14 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     if (this.IsOpen()) this.watchOpeners();
   }
 
-  Close(doer?: object): void {
+  Close(doer?: ContainerOpener): void {
     const wasOpen = this.IsOpen();
     let closed = false;
     for (const opener of doer ? [doer] : this.openlist) {
       closed = this.openlist.delete(opener) || closed;
       this.openerCleanups.get(opener)?.();
       this.openerCleanups.delete(opener);
-      (opener as ContainerDoer).components?.inventory?.opencontainers?.delete(this.inst);
+      opener.components?.inventory?.opencontainers?.delete(this.inst);
     }
     if (!closed) return;
     this.openCountState.set(this.openlist.size);

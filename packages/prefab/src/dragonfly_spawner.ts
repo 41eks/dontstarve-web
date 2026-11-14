@@ -114,7 +114,7 @@ function spawnChild(inst: DragonflySpawnerInstance, world: DragonflySpawnerWorld
 const knownLocations = (model: THREE.Group) => prefabInstance(model)?.components?.knownlocations as KnownLocations | undefined;
 
 function childFor(model: THREE.Group): DragonflyChild {
-  const instance = prefabInstance(model) as PrefabInstance | undefined;
+  const instance = prefabInstance(model);
   if (!instance?.entityId) throw new Error('Spawned dragonfly has no instance identity');
   return { id: instance.entityId, model,
     // DoTakeOwnership: knownlocations remembers home.

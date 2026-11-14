@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import type { ItemEntity } from '@dontstarve-web/inventory';
+import { ItemEntity } from '@dontstarve-web/inventory';
 import type { DeployMap } from '../../componets/src/deployable';
 import { createDockWorld } from './dock_kit';
 import { ignoresPlacement, type PlacementQuery } from './placementEntities';
@@ -23,7 +23,7 @@ export function createDeployMap({ turf, blockers, spawnPrefab, farm, worldEvents
   const docks = createDockWorld(turf, blockers);
   return {
     canDeployPlow: point => farm?.canDeploy(point) ?? false,
-    deployPlow: (point, inst) => farm?.deploy(point, inst as ItemEntity) ?? false,
+    deployPlow: (point, inst) => inst instanceof ItemEntity && (farm?.deploy(point, inst) ?? false),
     canDeployDock: point => docks.canDeployDock(point),
     createDock: point => docks.createDock(point),
     isPassableAtPoint: point => isLandTile(turf.getTileAtWorld(point)),

@@ -82,7 +82,7 @@ export class DeciduousInstance extends PrefabInstance {
     this.deploySmartRadius = 1; this.logicalPlacement = true;
     this.minimap.SetPriority(-1);
     for (const tag of ['plant', 'tree', 'birchnut', 'deciduoustree', 'cattoyairborne', 'SnowCovered', '__combat']) this.addTag(tag);
-    const workable = addComponent(this as DeciduousInstance, 'workable', Workable, () => world.scheduler.now);
+    const workable = addComponent(this, 'workable', Workable, () => world.scheduler.now);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(chop_tree);
     workable.SetOnFinishCallback(chop_down_tree);

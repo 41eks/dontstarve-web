@@ -45,13 +45,11 @@ function OnIsRoseDirty(inst: FlowerInstance): void {
   inst.scrapbook_proxy = inst.animname === 'rose' ? 'flower_rose' : undefined;
 }
 
-function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-  const flower = inst as FlowerInstance;
+function onsave(flower: FlowerInstance, data: PlacementSaveRecord['components']): void {
   data.flower = { animation: flower.animname!, ...(flower.planted ? { planted: true } : {}) };
 }
 
-function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
-  const flower = inst as FlowerInstance;
+function onload(flower: FlowerInstance, data: PlacementSaveRecord['components']): void {
   setflowertype(flower, data.flower?.animation);
   flower.planted = data.flower?.planted || undefined;
 }

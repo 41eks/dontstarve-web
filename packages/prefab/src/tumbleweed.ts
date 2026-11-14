@@ -260,8 +260,8 @@ export function tumbleweedPrefabs(world: TumbleweedWorld): Readonly<Record<Tumbl
       fn: () => new TumbleweedInstance(world), assets,
       // MakeCharacterPhysics(inst, .5, 1).
       physics: { make: (inst, radius) => MakeCharacterPhysics(inst, .5, radius), radius: 1 },
-      onSpawned: inst => (inst as TumbleweedInstance).placeOnSpawn(),
-    },
+      onSpawned: inst => inst.placeOnSpawn(),
+    } satisfies PrefabEntityDefinition<TumbleweedInstance>,
     [TUMBLEWEED_BREAKFX_ID]: { fn: breakfxfn, assets, targetable: false },
   };
 }

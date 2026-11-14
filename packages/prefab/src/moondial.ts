@@ -151,7 +151,7 @@ class Moondial {
 }
 
 /** onhammered: DropLoot, rock_break_fx (its Stone_break sound), inst:Remove(). */
-function onworked(inst: PrefabInstance): void { (inst as MoondialInstance).moondial.hit(); }
+function onworked(inst: MoondialInstance): void { inst.moondial.hit(); }
 
 function onhammered(inst: PrefabInstance): void {
     inst.components.lootdropper!.DropLoot();

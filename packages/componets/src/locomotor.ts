@@ -9,6 +9,9 @@ export interface LocoMotorTarget extends BufferedActionObject {
   getPosition(): LocoMotorPoint;
   getPhysicsRadius(fallback: number): number;
 }
+/** An action's target is walked to when it is an entity with a position, as every Lua action target is. */
+const isLocoMotorTarget = (target: BufferedActionObject | undefined): target is LocoMotorTarget =>
+  target !== undefined && 'isValid' in target && 'getPosition' in target && 'getPhysicsRadius' in target;
 
 /** What components/locomotor.lua reads from and writes to its entity, its stategraph and its physics. */
 export interface LocoMotorInst {
@@ -238,8 +241,8 @@ export class LocoMotor {
       return;
     }
     this.Clear();
-    const target = action.target as LocoMotorTarget | undefined;
-    if (target) {
+    const target = action.target;
+    if (isLocoMotorTarget(target)) {
       if (action.distance !== undefined && action.distance >= Infinity) {
         // essentially instant
         const { x, y, z } = target.getPosition();
@@ -337,8 +340,8 @@ export class LocoMotor {
         this.inst.PushEvent('onreachdestination', { pos: { ...destination } });
         this.atdestfn?.(this.inst);
         if (this.bufferedaction && this.bufferedaction !== this.inst.bufferedaction) {
-          const target = this.bufferedaction.target as LocoMotorTarget | undefined;
-          if (target) {
+          const target = this.bufferedaction.target;
+          if (isLocoMotorTarget(target)) {
             const { x, y, z } = target.getPosition();
             this.FaceMovePoint(x, y, z);
           }

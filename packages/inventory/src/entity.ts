@@ -164,7 +164,8 @@ export interface ItemComponents {
   weapon?: import('../../componets/src/weapon').Weapon;
   projectile?: import('../../componets/src/projectile').Projectile;
   repairer?: import('../../componets/src/repairer').Repairer;
-  occupier?: import('../../componets/src/occupiable').Occupier<ItemEntity>;
+  /** Its owner is the cage (occupiable) that holds it. */
+  occupier?: import('../../componets/src/occupiable').Occupier<import('../../componets/src/occupiable').OccupiableInst>;
   fuel?: Fuel;
   tradable?: import('../../componets/src/tradable').Tradable;
   temperature?: Temperature;

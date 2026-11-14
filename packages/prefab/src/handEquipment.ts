@@ -106,6 +106,7 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
   shovel: { visual: shovelVisual, maxUses: SHOVEL_USES, configureEntity: configureShovelEntity },
   goldenshovel: { visual: shovelVisual, maxUses: SHOVEL_USES, useStep: GOLDEN_USE_STEP, configureEntity: configureShovelEntity },
 };
+const isCarryItem = (itemId: string): itemId is PlayerCarryItem => Object.hasOwn(definitions, itemId);
 
 /** Prefab configuration for a hand inst: its own configureEntity, source tags, weapon and equippable onequip/onunequip. */
 export function configureEquipmentEntity(entity: ItemEntity): void {
@@ -131,9 +132,8 @@ export function configureEquipmentEntity(entity: ItemEntity): void {
 }
 
 export function getHandEquipmentDefinition(itemId: string): { carryItem: PlayerCarryItem; definition: HandEquipmentDefinition } | undefined {
-  if (!Object.hasOwn(definitions, itemId)) return undefined;
-  const carryItem = itemId as PlayerCarryItem;
-  return { carryItem, definition: definitions[carryItem] };
+  if (!isCarryItem(itemId)) return undefined;
+  return { carryItem: itemId, definition: definitions[itemId] };
 }
 
 /**

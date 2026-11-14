@@ -152,7 +152,9 @@ function SetMiniMapIcon(inst: AtriumGateInstance): void {
 
 function ShowFx(inst: AtriumGateInstance, state: 'idle' | 'overload'): void {
   if (!inst._gatefx) {
-    const fx = inst._gatefx = inst.world.spawnPrefab(ATRIUM_GATE_ACTIVATEDFX_ID, inst.position) as AtriumGateFxInstance;
+    const fx = inst.world.spawnPrefab(ATRIUM_GATE_ACTIVATEDFX_ID, inst.position);
+    if (!(fx instanceof AtriumGateFxInstance)) throw new Error(`${ATRIUM_GATE_ACTIVATEDFX_ID} did not spawn its fx instance`);
+    inst._gatefx = fx;
     fx.entityParent = inst;
   }
   inst._gatefx.SetFX(state);

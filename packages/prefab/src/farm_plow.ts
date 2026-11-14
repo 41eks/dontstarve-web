@@ -433,11 +433,10 @@ export function farmPrefabs(world: FarmWorld): Readonly<Record<string, PrefabEnt
       fn: () => main_fn(world),
       assets: soil('farm_plow.zip', 'farm_plow'),
       physics: { make: MakeObstaclePhysics, radius: .5 },
-      onSpawned: inst => {
-        const plow = inst as FarmPlowInstance;
+      onSpawned: plow => {
         new ToolMouseTarget(plow, plow.components.workable, world.handEquipment);
       },
-    },
+    } satisfies PrefabEntityDefinition<FarmPlowInstance>,
     farm_soil: { fn: () => soil_fn(world), assets: { animationArchive: 'farm_soil.zip', buildArchives: ['farm_soil.zip'], bank: 'farm_soil' } },
     farm_soil_debris: { fn: () => debris_fn(world), assets: soil('farm_soil_debris.zip', 'farm_soil_debris') },
     ...Object.fromEntries(Object.entries(PLANTED_SEED_ART).map(([prefab, { animationArchive, buildArchives, bank }]) => [prefab, {

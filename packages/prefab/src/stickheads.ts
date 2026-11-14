@@ -98,14 +98,14 @@ class StickHead {
     }
 }
 
-function onworked(inst: PrefabInstance): void {
-    if (!inst.hasTag('burnt')) (inst as StickHeadInstance).head.hit();
+function onworked(inst: StickHeadInstance): void {
+    if (!inst.hasTag('burnt')) inst.head.hit();
 }
 
-function onhammered(inst: PrefabInstance): void {
+function onhammered(inst: StickHeadInstance): void {
     if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
-    if ((inst as StickHeadInstance).head.isFullMoon) inst.components.lootdropper!.SpawnLootPrefab('nightmarefuel');
+    if (inst.head.isFullMoon) inst.components.lootdropper!.SpawnLootPrefab('nightmarefuel');
     inst.components.lootdropper!.DropLoot();
     inst.remove();
 }

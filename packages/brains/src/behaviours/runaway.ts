@@ -75,9 +75,11 @@ export class RunAway extends BehaviourNode {
   override Visit(): void {
     const locomotor = this.inst.components.locomotor!;
     if (this.status === READY) {
+      // FindEntity(inst, ...) calls fn(guy, inst), with the inst it searched from.
+      const hunterfn = this.hunterfn, inst = this.inst;
       this.hunter = this.gethunterfn
-        ? this.gethunterfn(this.inst)
-        : this.inst.world.findEntity(this.inst, this.see_dist, this.hunterfn && ((guy, from) => this.hunterfn!(guy, from as BrainInst)), this.huntertags, this.hunternotags, this.hunteroneoftags);
+        ? this.gethunterfn(inst)
+        : inst.world.findEntity(inst, this.see_dist, hunterfn && (guy => hunterfn(guy, inst)), this.huntertags, this.hunternotags, this.hunteroneoftags);
       if (this.gethunterfn && this.hunter && !(this.hunter.isValid() && this.inst.IsNear(this.hunter, this.see_dist))) this.hunter = undefined;
       if (this.hunter && this.shouldrunfn && !this.shouldrunfn(this.hunter, this.inst)) this.hunter = undefined;
       this.status = this.hunter ? RUNNING : FAILED;

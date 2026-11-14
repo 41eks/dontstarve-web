@@ -8,7 +8,7 @@ import {
 import { PLAYER_INVENTORY_CONTAINER_ID, EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, PLAYER_EQUIPMENT_CONTAINER_ID, BACKPACK_SLOT_COUNT } from './addresses';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
-import type { Container } from '../../componets/src/container';
+import type { Container, ContainerInst } from '../../componets/src/container';
 import type { InventoryAppearance } from '../../componets/src/inventoryitem';
 import type {
   EquipmentKind,
@@ -86,7 +86,7 @@ function randomDropLaunch(heavy: boolean, random = Math.random): DropLaunch {
 
 export class InventoryStore {
   /** inventory.lua opencontainers: the inst of each container this inventory's owner has open. */
-  readonly opencontainers = new Set<object>();
+  readonly opencontainers = new Set<ContainerInst>();
   private activeItemPrevSlot?: SlotAddress;
   private actor: import('../../componets/src/inventoryitem').InventoryActor = {
     hasTag: tag => tag === 'player', getPosition: () => new Vector3(), PushEvent() {},

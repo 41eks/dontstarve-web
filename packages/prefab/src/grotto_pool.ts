@@ -219,7 +219,7 @@ export class GrottoGlassInstance extends PrefabInstance {
     this.physicsRadiusOverride = definition.physicsRadius;
     this.addTag('moonglass');
 
-    const workable = addComponent(this as GrottoGlassInstance, 'workable', Workable);
+    const workable = addComponent(this, 'workable', Workable);
     workable.savestate = true;
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(ROCKS_MINE);

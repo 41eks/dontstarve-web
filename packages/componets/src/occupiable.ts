@@ -6,11 +6,11 @@ export interface OccupiableInst {
 }
 
 /** What components/occupiable.lua reads from an occupant: tags, events and the occupier component. */
-export interface OccupantItem {
+export interface OccupantItem<Owner = OccupiableInst> {
   readonly isRemoved: boolean;
   hasTag(tag: string): boolean;
   ListenForEvent(name: string, listener: (inst: unknown, data: unknown) => void): () => void;
-  readonly components: { occupier?: unknown };
+  readonly components: { occupier?: Occupier<Owner> };
   /** Settle against the current holder before the occupier's owner changes. */
   flush(): void;
   /** occupier:Remove(): the occupant is destroyed after it perished. */
@@ -31,7 +31,7 @@ export class Occupier<Owner = unknown> {
 }
 
 /** components/occupiable.lua: one occupant that leaves when it perishes, is removed or is harvested. */
-export class Occupiable<Item extends OccupantItem, Inst extends OccupiableInst = OccupiableInst> {
+export class Occupiable<Item extends OccupantItem<OccupiableInst>, Inst extends OccupiableInst = OccupiableInst> {
   private readonly occupantState = createSignal<Item | undefined>(undefined);
   /** The current occupant; absent after Harvest and after the occupant leaves for any reason. */
   readonly occupant = readonlySignal(this.occupantState);
@@ -65,7 +65,7 @@ export class Occupiable<Item extends OccupantItem, Inst extends OccupiableInst =
 
   /** The caller has already removed the item from its previous owner (inventoryitem:RemoveFromOwner). */
   Occupy(occupier: Item | undefined): boolean {
-    const occupierComponent = occupier?.components.occupier as Occupier<Inst> | undefined;
+    const occupierComponent = occupier?.components.occupier;
     if (this.IsOccupied() || !occupier || !occupierComponent || occupier.isRemoved) return false;
     occupier.flush();
     if (occupier.isRemoved || this.IsOccupied()) return false;
@@ -99,7 +99,7 @@ export class Occupiable<Item extends OccupantItem, Inst extends OccupiableInst =
     if (!item) return undefined;
     item.flush();
     if (item.isRemoved || this.occupantState.peek() !== item) return undefined;
-    (item.components.occupier as Occupier<Inst> | undefined)?.SetOwner(undefined);
+    item.components.occupier?.SetOwner(undefined);
     this.stopListening?.();
     this.setOccupant(undefined);
     this.onemptied?.(this.inst);

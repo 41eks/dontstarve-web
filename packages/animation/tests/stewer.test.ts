@@ -33,7 +33,7 @@ it('COOK consumes the pot entities and derives another recipe, resuming the task
   })))).toBe(true);
   const entities = pot.container.GetAllItems();
   expect(pot.tags.has('readytocook')).toBe(true);
-  const doer = { userid: 'chef' };
+  const doer = { userid: 'chef', isRemoved: false };
   pot.container.Open(doer);
   expect(pot.tags.has('readytocook')).toBe(false);
   const start = vi.fn(), done = vi.fn();

@@ -92,8 +92,8 @@ export function staffProjectilePrefabs(world: StaffProjectileWorld):
 export function LaunchProjectile(spawn: (prefab: StaffProjectileId, position: THREE.Vector3) => PrefabInstance | undefined,
   prefab: StaffProjectileId, owner: ProjectileOwner, target: ProjectileTarget, attacker: CombatActor): Projectile {
   const { x, z } = attacker.getPosition();
-  const inst = spawn(prefab, new THREE.Vector3(x, 0, z)) as StaffProjectileInstance | undefined;
-  if (!inst) throw new Error(`Unable to spawn ${prefab}`);
+  const inst = spawn(prefab, new THREE.Vector3(x, 0, z));
+  if (!(inst instanceof StaffProjectileInstance)) throw new Error(`Unable to spawn ${prefab}`);
   const projectile = inst.components.projectile;
   projectile.position.set(x, 0, z);
   projectile.Throw(owner, target, attacker);

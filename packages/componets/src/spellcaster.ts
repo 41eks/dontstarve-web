@@ -16,8 +16,8 @@ export interface SpellCastMap {
   isGroundTargetBlocked(position: THREE.Vector3): boolean;
 }
 export interface SpellCasterComponent {
-  canCast(doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3): boolean;
-  castSpell(target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer): boolean;
+  canCast(doer: SpellCastDoer, target: SpellTarget | undefined, position: THREE.Vector3): boolean;
+  castSpell(target: SpellTarget | undefined, position: THREE.Vector3, doer: SpellCastDoer): boolean;
   dispose(): void;
 }
 export interface SpellCasterInst {
@@ -27,7 +27,7 @@ export interface SpellCasterInst {
 }
 
 export interface SpellTarget {
-  readonly isRemoved: boolean;
+  readonly isRemoved?: boolean;
   hasTag(tag: string): boolean;
   /** inst.entity:IsVisible() */
   IsVisible?(): boolean;
@@ -70,11 +70,11 @@ export class SpellCaster implements SpellCasterComponent {
   SetSpellFn(spell: SpellFn | undefined): void {
     this.spell = spell; this.refreshTags();
   }
-  canCast(doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3): boolean {
+  canCast(doer: SpellCastDoer, target: SpellTarget | undefined, position: THREE.Vector3): boolean {
     if (this.disposed || this.item.isRemoved || !this.spell
       || ![position.x, position.y, position.z].every(Number.isFinite)) return false;
     if (target) {
-      const inst = target as SpellTarget;
+      const inst = target;
       return this.onTargets && !inst.isRemoved && !inst.hasTag('INLIMBO') && inst.IsVisible?.() !== false
         && (this.onDead || !inst.components?.health?.IsDead())
         && !['death', 'flight', 'invisible', 'nospellcasting'].some(tag => inst.sg?.hasStateTag(tag))
@@ -85,7 +85,7 @@ export class SpellCaster implements SpellCasterComponent {
       && (this.onPoint ? this.map.isAboveGroundAtPoint(position, this.onWater)
         : this.onWater && this.map.isOceanAtPoint(position)) && !this.map.isGroundTargetBlocked(position);
   }
-  castSpell(target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer): boolean {
+  castSpell(target: SpellTarget | undefined, position: THREE.Vector3, doer: SpellCastDoer): boolean {
     return this.canCast(doer, target, position) && (this.spell?.(this.item, target, position, doer) ?? false);
   }
   dispose(): void { this.disposed = true; this.refreshTags(); }

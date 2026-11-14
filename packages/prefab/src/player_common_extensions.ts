@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { PrefabInstance } from './prefabInstance';
-import { SKELETON_PLAYER_ID, type SkeletonInstance } from './skeleton';
+import { SKELETON_PLAYER_ID, SkeletonInstance } from './skeleton';
 import { MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from './standardcomponents';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { isGhostValidAction } from '../../stategraphs/src/actions';
@@ -51,8 +51,8 @@ export function makeAlive(inst: PlayerInstance, state: 'portal_rez' | 'amulet_re
 
 /** player_common_extensions.lua SpawnDeathProduct: skeleton_player at the death point, described with the character, name and cause. */
 function SpawnDeathProduct(inst: PlayerInstance, position: THREE.Vector3): void {
-  const skel = inst.SpawnPrefab?.(SKELETON_PLAYER_ID, position) as SkeletonInstance | undefined;
-  skel?.SetSkeletonDescription(inst.prefab, inst.transform.model.name, inst.deathcause);
+  const skel = inst.SpawnPrefab?.(SKELETON_PLAYER_ID, position);
+  if (skel instanceof SkeletonInstance) skel.SetSkeletonDescription(inst.prefab, inst.transform.model.name, inst.deathcause);
 }
 
 /**

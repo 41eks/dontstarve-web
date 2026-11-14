@@ -95,7 +95,7 @@ export class RockInstance extends PrefabInstance {
     addComponent(this, 'lootdropper', LootDropper, (loot, position) => world.spawnGroundItem(
       { ...GROUND_ITEM_DEFINITIONS[loot], itemId: loot, count: 1 },
       new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
-    const workable = addComponent(this as RockInstance, 'workable', Workable);
+    const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('MINE'); workable.SetWorkLeft(ROCKS_MINE);
     workable.SetOnWorkCallback(OnWork);
     if (0 <= multcolour && multcolour < 1) {

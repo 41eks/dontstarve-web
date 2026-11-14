@@ -100,9 +100,9 @@ export class TentInstance extends PrefabInstance {
 }
 
 /** tent.lua onhit wakes a sleeper even when the tent is burnt. */
-function onworked(inst: PrefabInstance): void {
+function onworked(inst: TentInstance): void {
     if (!inst.hasTag('burnt')) {
-        stopsleepsound(inst as TentInstance);
+        stopsleepsound(inst);
         inst.sprite.playOnce('hit');
         inst.sprite.pushAnimation('idle', true);
     }

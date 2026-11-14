@@ -5,7 +5,7 @@ import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Fueled, type FueledSave } from '../../componets/src/fueled';
-import { Workable, type WorkInst } from '../../componets/src/workable';
+import { Workable } from '../../componets/src/workable';
 import definitions from './definitions.json' with { type: 'json' };
 import { buildingPlacer, buildingPrefab, MakeBuildingPersist } from './building';
 import { CAMPFIREFIRE_ID } from './campfirefire';
@@ -82,7 +82,7 @@ export class FirePitInstance extends PrefabInstance {
         fueled.bonusmult = FIREPIT_BONUS_MULT;
         fueled.SetTakeFuelFn(() => { PlaySound(ADD_FUEL_SOUND, this.position); });
         fueled.SetUpdateFn(() => this.onupdatefueled());
-        fueled.SetSectionCallback((newsection, _oldsection, _inst, doer) => this.onfuelchange(newsection, doer as WorkInst | undefined));
+        fueled.SetSectionCallback((newsection, _oldsection, _inst, doer) => this.onfuelchange(newsection, doer));
         fueled.InitializeFuelLevel(FIREPIT_FUEL_START);
         addComponent(this, 'inspectable', Inspectable).getstatus = () => SECTION_STATUS[fueled.GetCurrentSection()];
 
@@ -131,7 +131,7 @@ export class FirePitInstance extends PrefabInstance {
         this.components.burnable!.SetFXLevel(fueled.GetCurrentSection(), fueled.GetSectionPercent());
     }
 
-    private onfuelchange(newsection: number, doer: WorkInst | undefined): void {
+    private onfuelchange(newsection: number, doer: object | undefined): void {
         const burnable = this.components.burnable!, { fueled } = this;
         if (newsection <= 0) {
             burnable.Extinguish();

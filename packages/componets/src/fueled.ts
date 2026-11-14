@@ -16,7 +16,7 @@ export interface FueledInst {
 export interface FueledSave { fuel: number }
 
 /** fueled.lua sectionfn(newsection, oldsection, inst, doer): the sections come before the inst in the source. */
-export type FueledSectionFn<Inst> = LuaFn<[newsection: number, oldsection: number, inst: Inst, doer?: unknown]>;
+export type FueledSectionFn<Inst> = LuaFn<[newsection: number, oldsection: number, inst: Inst, doer?: object]>;
 export type FueledUpdateFn<Inst> = LuaFn<[inst: Inst]>;
 export type FueledTakeFuelFn<Inst> = LuaFn<[inst: Inst, fuelvalue: number]>;
 export type FueledDepletedFn<Inst> = LuaFn<[inst: Inst]>;
@@ -114,7 +114,7 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
     return this.acceptingState && !!item?.components.fuel && item.components.fuel.fueltype === this.type;
   }
 
-  TakeFuelItem(item: FuelItem, doer?: unknown): boolean {
+  TakeFuelItem(item: FuelItem, doer?: object): boolean {
     if (this.inst.isRemoved || item.isRemoved || !this.CanAcceptFuelItem(item)) return false;
     // The fuel joins what is left at this moment.
     this.Settle();
@@ -140,7 +140,7 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
     }
   }
 
-  DoDelta(amount: number, doer?: unknown): void {
+  DoDelta(amount: number, doer?: object): void {
     const oldsection = this.GetCurrentSection();
     this.setCurrent(Math.max(0, Math.min(this.maxfuel, this.currentfuel + amount)));
     const newsection = this.GetCurrentSection();
