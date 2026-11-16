@@ -5,7 +5,6 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
-import { FACING } from '../src/facing';
 import { CAVE_HOLE_ID, caveHolePrefabs, CaveHoleInstance } from '../../prefab/src/cave_hole';
 import { bindPhysics } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
@@ -39,7 +38,7 @@ function setup(physics?: CANNON.World) {
   registry.registerPrefabs(PREFAB_DEFINITIONS.caveHoles);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const instances = () => scene.children.map(model => prefabInstance<PrefabInstance>(model)!);
-  return { scene, awake, prefabs, registry, inventory, instances,
+  return { scene, awake, displays, prefabs, registry, inventory, instances,
     hole: () => instances().find(inst => inst.prefab === CAVE_HOLE_ID) as CaveHoleInstance,
     surface: () => instances().find(inst => inst.prefab === 'cave_hole_surface')!,
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
@@ -68,7 +67,8 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
       const json = inst.sprite.sprite.peek();
       expect(json.clip).toMatchObject({ name: 'idle', loop: false });
       expect(json.queue).toEqual([]);
-      expect(json.facing).toBe(FACING.LEFT);
+      // OnGround + SetEightFaced: a flat billboard whose facing follows the camera heading.
+      expect(json).toMatchObject({ billboard: true, facingRotation: 0 });
       expect(json.ground).toEqual({ renderOrder: 0, flat: true });
       expect(json.appearance.get(`layer:${hidden}`)).toMatchObject({ layer: hidden, hidden: true });
     }
@@ -76,6 +76,30 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
     await Promise.all([artLoaded(hole), artLoaded(surface)]);
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/cave_hole.zip'));
     expect(hole.sprite.currentAnimation).toBe('idle');
+    // The follow camera's orientation at a heading (degrees), pitched down 40 degrees.
+    const camera = (heading: number) => {
+      const p = THREE.MathUtils.degToRad(40), h = THREE.MathUtils.degToRad(heading);
+      const forward = new THREE.Vector3(-Math.cos(p) * Math.cos(h), -Math.sin(p), -Math.cos(p) * Math.sin(h));
+      return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), forward, new THREE.Vector3(0, 1, 0)));
+    };
+    const drawn = (heading: number) => {
+      s.displays.update(0, camera(heading));
+      const sprite = hole.transform.model.children[0];
+      let mesh: THREE.Mesh | undefined;
+      sprite.traverse(child => { if (child instanceof THREE.Mesh) mesh = child; });
+      mesh!.geometry.computeBoundingBox();
+      const size = mesh!.geometry.boundingBox!.getSize(new THREE.Vector3());
+      const yaw = new THREE.Euler().setFromQuaternion(sprite.quaternion, 'YXZ').y;
+      return { yaw: THREE.MathUtils.radToDeg(yaw), aspect: size.x / size.y, flat: sprite.children[0].rotation.x };
+    };
+    // It lies flat and turns with the camera heading, and each heading draws its own idle: the cardinal frames are the
+    // wide (or tall) drawing, the diagonal ones its 45-degree turn.
+    for (const [heading, yaw, aspect] of [[90, 0, 1.27], [45, 45, 1], [0, 90, .79], [135, -45, 1]]) {
+      const view = drawn(heading);
+      expect(view.flat).toBeCloseTo(-Math.PI / 2);
+      expect(view.yaw).toBeCloseTo(yaw);
+      expect(view.aspect).toBeCloseTo(aspect, 2);
+    }
     expect(s.registry.exportRecords().cave_hole).toEqual([record]);
     hole.remove();
     expect(surface.isRemoved).toBe(true);

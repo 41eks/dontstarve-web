@@ -1,6 +1,5 @@
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
-import { facingFromHeading } from '@dontstarve-web/animation/facing';
 import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ObjectSpawner } from '../../componets/src/objectspawner';
@@ -15,11 +14,6 @@ const CAVE_HOLE_SURFACE_ID = 'cave_hole_surface' as const;
 const WORLD_SCALE = TILE_SIZE / 4;
 const OUTER_RADIUS = 2.75;
 const INNER_RADIUS = 1.5;
-/**
- * Each eight-faced idle is one drawing turned by the camera's 45-degree step, which keeps it still in the world. These
- * quads already stay still in the world, so they keep the one clip drawn for a camera looking along their up (-z).
- */
-const GROUND_FACING = facingFromHeading(90);
 /** LAYER_BACKGROUND and LAYER_WORLD_BACKGROUND, both sort order 2: above turf, and the hole above the surface. */
 const SURFACE_MESH_ORDER = -.5 + (2 - 3) * .01;
 const HOLE_MESH_ORDER = -.4 + (2 - 3) * .01;
@@ -51,10 +45,14 @@ function makeHolePhysics(inst: CaveHoleInstance, radius: number, height = 6): vo
   inst.physics.SetTriangleMesh([...ringWall(radius, 16, height), ...ringWall(INNER_RADIUS, 8, height)]);
 }
 
+/**
+ * SetOrientation(OnGround): the flat art turns with the camera (a billboard on the ground). Transform:SetEightFaced: the
+ * idle drawn for the camera heading is chosen as the camera turns.
+ */
 function declareGroundArt(inst: PrefabInstance, hiddenLayer: string, meshOrder: number): void {
   inst.sprite.hideLayer(hiddenLayer);
   inst.sprite.playOnce('idle'); // PlayAnimation("idle"), never looping.
-  inst.sprite.setFacing(GROUND_FACING);
+  inst.sprite.setFacingRotation(0);
   inst.sprite.setGround(0);
   inst.sprite.setMeshOrder(meshOrder);
 }
@@ -65,7 +63,7 @@ export class CaveHoleInstance extends PrefabInstance {
   allowspawn = true;
 
   constructor(world: CaveHoleWorld, position: ReadonlyVector3) {
-    super(CAVE_HOLE_ID, new SpriteState({ name: 'idle' }));
+    super(CAVE_HOLE_ID, new SpriteState({ name: 'idle', billboard: true }));
     // PlayerProx reads the position once.
     this.setPosition(position.x, 0, position.z);
     for (const tag of ['groundhole', 'blocker', 'blinkfocus']) this.addTag(tag);
@@ -89,7 +87,7 @@ export class CaveHoleInstance extends PrefabInstance {
 }
 
 function createSurfaceAnim(): PrefabInstance {
-  const inst = new PrefabInstance(CAVE_HOLE_SURFACE_ID, new SpriteState({ name: 'idle' }));
+  const inst = new PrefabInstance(CAVE_HOLE_SURFACE_ID, new SpriteState({ name: 'idle', billboard: true }));
   inst.addTag('DECOR');
   inst.addTag('NOCLICK');
   inst.persists = false;

@@ -61,6 +61,7 @@ export interface PrefabDisplayOptions {
 const displaysByModel = new WeakMap<THREE.Object3D, PrefabDisplay>();
 const rootRotation = new THREE.Quaternion();
 const localFacing = new THREE.Quaternion();
+const UP = new THREE.Vector3(0, 1, 0);
 
 /** Look up display-owned resources without writing references onto the model. */
 export function prefabDisplay(model: THREE.Object3D): PrefabDisplay | undefined { return displaysByModel.get(model); }
@@ -299,7 +300,13 @@ export class PrefabDisplay {
   /** Camera facing belongs to the visual, preserving the entity's logical heading. */
   private faceCamera(rotation: THREE.Quaternion): void {
     if (this.disposed) return;
-    (this.facing ??= new THREE.Quaternion()).copy(rotation);
+    const facing = this.facing ??= new THREE.Quaternion();
+    if (this.json.peek().ground?.flat) {
+      // ANIM_ORIENTATION.OnGround: flat art turns with the camera's heading only, so it stays on the ground; image-up
+      // points along the camera's forward on the ground.
+      const forward = this.cameraDirection.set(0, 0, -1).applyQuaternion(rotation);
+      facing.setFromAxisAngle(UP, Math.atan2(-forward.x, -forward.z));
+    } else facing.copy(rotation);
     this.alignVisual(true);
     this.applyFacing(this.json.peek());
   }
