@@ -41,6 +41,7 @@ import { pillarPrefabs } from '@dontstarve-web/prefab/pillar';
 import { atriumPillarPrefabs } from '@dontstarve-web/prefab/atrium_pillar';
 import { moonFissurePrefabs } from '@dontstarve-web/prefab/moon_fissure';
 import { watertreePillarPrefabs } from '@dontstarve-web/prefab/watertree_pillar';
+import { oceanTreePrefabs } from '@dontstarve-web/prefab/oceantree';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
 import { vaultPillarPrefabs } from '@dontstarve-web/prefab/vault_pillar';
 import { monkeyPillarPrefabs } from '@dontstarve-web/prefab/monkeypillar';
@@ -180,6 +181,7 @@ const MANAGER_DEFINITIONS = {
   'statueglommer': PREFAB_DEFINITIONS.glommerStatues,
   'moon_fissure': PREFAB_DEFINITIONS.moonFissures,
   'watertree_pillar': PREFAB_DEFINITIONS.watertreePillars,
+  'oceantree': PREFAB_DEFINITIONS.oceanTrees,
   'atrium_gate': PREFAB_DEFINITIONS.atriumGates,
   'ruins_statue_mage': PREFAB_DEFINITIONS.ruinsStatueMages,
   'ruins_statue_mage_nogem': PREFAB_DEFINITIONS.ruinsStatueMagesNoGem,
@@ -213,6 +215,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.glommerStatues,
   PREFAB_DEFINITIONS.moonFissures,
   PREFAB_DEFINITIONS.watertreePillars,
+  PREFAB_DEFINITIONS.oceanTrees,
   PREFAB_DEFINITIONS.atriumGates,
   PREFAB_DEFINITIONS.ruinsStatueMages,
   PREFAB_DEFINITIONS.ruinsStatueMagesNoGem,
@@ -426,6 +429,7 @@ export async function createSceneEntities(
   registerStatueGlommer(registry, worldState);
   registerMoonFissures(registry, worldState);
   registerWatertreePillars(registry, worldState);
+  registerOceanTrees(registry, worldState);
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
   // statueruins.lua returns the four prefabs together.
   prefabs.register(ruinsStatuePrefabs({ scheduler: worldState.scheduler }));
@@ -1145,6 +1149,18 @@ export async function createSceneEntities(
   function registerWatertreePillars(registry: EntityRegistry, worldState: SceneWorldState) {
     prefabs.register(watertreePillarPrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
     registry.registerPrefabs(PREFAB_DEFINITIONS.watertreePillars);
+  }
+
+  function registerOceanTrees(registry: EntityRegistry, worldState: SceneWorldState) {
+    prefabs.register(oceanTreePrefabs({
+      scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
+      growthDuration: seconds => seconds * (worldState.season.peek().season === 'spring' ? .75 : 1),
+      spawnLoot: (prefab, position) => {
+        groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count: 1 }], position);
+        return undefined;
+      },
+    }));
+    registry.registerPrefabs(PREFAB_DEFINITIONS.oceanTrees);
   }
 
   function registerStatueGlommer(registry: EntityRegistry, worldState: SceneWorldState) {

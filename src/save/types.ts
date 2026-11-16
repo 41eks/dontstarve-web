@@ -47,6 +47,8 @@ export interface SavedEntity {
     lightflierFlower?: import('../../packages/prefab/src/lightflier_flower').LightFlierFlowerSave;
     /** watertree_pillar.lua OnSave, with its childspawner and timer records. */
     watertreePillar?: import('@dontstarve-web/prefab/watertree_pillar').WatertreePillarSaveState;
+    /** oceantree.lua onsave. */
+    oceantree?: import('@dontstarve-web/prefab/oceantree').OceanTreeSaveState;
     molehill?: import('../../packages/prefab/src/molehill').MolehillSave;
     /** A beefalo save from before its components saved themselves; it loads and is not written. */
     beefalo?: LegacyBeefaloSave;

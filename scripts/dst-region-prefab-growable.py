@@ -109,6 +109,39 @@ def evergreen_components(data):
     return components
 
 
+OCEANTREE_STAGES_TO_SUPERTALL = 4
+
+
+def oceantree_components(data):
+    # oceantree.lua onsave plus growable. Its stump / burnt states, the enriched_cooldown timer (MakeEnriched) and a
+    # tree saved while turning into oceantree_pillar are not ported, so they raise.
+    if set(data) - {'growable', 'no_grow', 'buds', 'buds_used', 'supertall_growth_progress'}:
+        raise ValueError(f'Unsupported oceantree save state: {sorted(data)}')
+    growth = data.get('growable')
+    if growth is not None and (not isinstance(growth, dict) or set(growth) - {'stage', 'time', 'sleeptime', 'usetimemultiplier'}
+                               or growth.get('usetimemultiplier') not in (None, False)
+                               or type(growth.get('stage')) is not int or not 1 <= growth['stage'] <= 3
+                               or any(type(growth[key]) not in (int, float) or growth[key] < 0
+                                      for key in ('time', 'sleeptime') if key in growth)):
+        raise ValueError('Unsupported oceantree growable state')
+    progress = data.get('supertall_growth_progress', 0)
+    if type(progress) is not int or not 0 <= progress < OCEANTREE_STAGES_TO_SUPERTALL:
+        raise ValueError('Unsupported oceantree supertall_growth_progress')
+    state = {'supertall_growth_progress': progress}
+    if 'no_grow' in data:
+        if type(data['no_grow']) is not bool:
+            raise ValueError('Invalid oceantree no_grow')
+        state['no_grow'] = data['no_grow']
+    for key in ('buds', 'buds_used'):
+        if key in data:
+            buds = data[key]
+            if not isinstance(buds, list) or len(buds) > 7 or any(type(bud) is not int or not 1 <= bud <= 7 for bud in buds):
+                raise ValueError(f'Invalid oceantree {key}')
+            state[key] = buds
+    return {**({'growable': {key: growth[key] for key in ('stage', 'time', 'sleeptime') if key in growth}} if growth else {}),
+            'oceantree': state}
+
+
 def moon_tree_components(data):
     # moontree.lua on_save/on_load; size selects the same three growable stages.
     if set(data) - {'size', 'growable', 'plantregrowth', 'stump', 'burnt', 'timer'}:

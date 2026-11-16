@@ -54,10 +54,14 @@ export function MakeNoGrowInWinter(inst: PrefabInstance & { components: { pickab
 /**
  * standardcomponents.lua MakeSnowCoveredPristine + MakeSnowCovered: the snow symbol from snow.zip, shown while the world
  * is snow covered (weather.lua SNOW_COVERED_THRESHOLD). The prefab declares snow.zip and the hidden `snow` layer.
+ * `animState`: the prefab draws a sprite factory and declares its own inst.AnimState (`sprite.setAnimState`), so the
+ * override is AnimState:OverrideSymbol on it, which loads snow.zip from the declaration's art.
  */
-export function MakeSnowCovered(inst: PrefabInstance, watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent()): void {
+export function MakeSnowCovered(inst: PrefabInstance, watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent(),
+    { animState = false }: { animState?: boolean } = {}): void {
     if (!inst.hasTag('SnowCovered')) {
-        inst.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
+        if (animState) inst.AnimState.OverrideSymbol('snow', 'snow', 'snow');
+        else inst.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
         inst.addTag('SnowCovered');
         inst.sprite.hideLayer('snow');
     }

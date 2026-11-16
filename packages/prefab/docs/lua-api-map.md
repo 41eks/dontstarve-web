@@ -111,7 +111,7 @@
 | `inst.Light` | `inst.light.set({ radius, falloff, intensity, colour })` | `atrium_gate.ts` | 项目单位，见示例换算 |
 | `inst.entity:AddSoundEmitter()`、`inst.SoundEmitter:PlaySound(path, name)` 等 | `inst.AddSoundEmitter()`；之后 prefab 和状态图都调用 `inst.SoundEmitter` 同名方法，状态图接口声明 `SoundEmitter: Pick<SoundEmitter, ...>` | `nightmarerock.ts`、`SGmole.ts` | 路径写源码原文；其余见 [sound](sound.md) |
 | `inst:Hide()`、`inst:Show()` | `inst.Hide()`、`inst.Show()`（`PrefabInstance`） | `SGnightmarerock.ts` | 只停止绘制实体 |
-| `MakeSnowCovered` | `setSymbolOverride('snow', 'snow.zip', 'snow')` + `setSymbolHidden` 跟雪量；植物用 `snowCovered: true` | `monkeypillar.ts`、`berrybush.ts` | `buildArchives` 要加 `snow.zip`，`hiddenSymbols: ['snow']` |
+| `MakeSnowCovered` | `setSymbolOverride('snow', 'snow.zip', 'snow')` + `setSymbolHidden` 跟雪量；植物用 `snowCovered: true`；用 sprite factory 并声明 `inst.AnimState` 的 prefab 调 `MakeSnowCovered(inst, watch, { animState: true })` | `monkeypillar.ts`、`berrybush.ts`、`oceantree.ts` | `buildArchives` 要加 `snow.zip`，`hiddenSymbols: ['snow']`；factory 精灵不执行 `setSymbolOverride`，覆盖改走 `AnimState.OverrideSymbol` |
 
 | `inst.components.inspectable`、`GetDescription(viewer, inst, status)` | `addComponent(inst, 'inspectable', Inspectable)`；`getstatus` 返回 Lua 的状态键 | `archive_props.ts` | 物品默认都有；文本来自 `componets/src/strings.json`（`import-speech.py` 由 `chinese_s.po` 生成），只含 GENERIC 和 WORTOX |
 | `inst.components.talker:Say(text)` | 玩家的 `components.talker.Say(text)` | `actionfns.ts` | 只支持单行；推 `ontalk`／`donetalking`，头顶文字由 `createFollowText` 显示 |

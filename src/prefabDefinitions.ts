@@ -16,6 +16,7 @@ import { CAVE_PILLAR_IDS, PILLAR_RUINS_ID } from '@dontstarve-web/prefab/pillar'
 import { PILLAR_ATRIUM_ID } from '@dontstarve-web/prefab/atrium_pillar';
 import { MOON_FISSURE_ID } from '@dontstarve-web/prefab/moon_fissure';
 import { WATERTREE_PILLAR_ARCHIVES, WATERTREE_PILLAR_ID, type WatertreePillarSaveState } from '@dontstarve-web/prefab/watertree_pillar';
+import { OCEANTREE_ARCHIVES, OCEANTREE_ID, STAGES_TO_SUPERTALL, type OceanTreeSaveState } from '@dontstarve-web/prefab/oceantree';
 import { ARCHIVE_PILLAR_ARCHIVES, ARCHIVE_PILLAR_ID } from '@dontstarve-web/prefab/archive_pillar';
 import { VAULT_PILLAR_ID } from '@dontstarve-web/prefab/vault_pillar';
 import { MONKEY_PILLAR_IDS, MONKEYPILLAR_ID } from '@dontstarve-web/prefab/monkeypillar';
@@ -189,6 +190,26 @@ const watertreePillar: PrefabComponentParser = (value, path) => {
     })) };
   }
   return { watertreePillar: saved };
+};
+const oceanTreeGrowable = componentParser({ keys: ['growable'], growthStages: 3 });
+/** oceantree.lua's growable and onsave. Its stump, burnt and enriched (timer) states and the pillar it grows into are not ported. */
+const oceanTree: PrefabComponentParser = (value, path, context) => {
+  const { growable, oceantree: state } = object(value, path, ['growable', 'oceantree']);
+  const components = oceanTreeGrowable(growable === undefined ? {} : { growable }, path, context);
+  if (state === undefined) return components;
+  const p = `${path}.oceantree`;
+  const data = object(state, p, ['no_grow', 'buds', 'buds_used', 'supertall_growth_progress']);
+  const buds = (key: 'buds' | 'buds_used') => array(data[key], `${p}.${key}`, 7).map((bud, i) => integer(bud, `${p}.${key}[${i}]`, 1, 7));
+  const saved: OceanTreeSaveState = {
+    supertall_growth_progress: integer(data.supertall_growth_progress, `${p}.supertall_growth_progress`, 0, STAGES_TO_SUPERTALL - 1),
+  };
+  if (data.no_grow !== undefined) {
+    if (typeof data.no_grow !== 'boolean') fail(`${p}.no_grow`, 'expected boolean');
+    saved.no_grow = data.no_grow;
+  }
+  if (data.buds !== undefined) saved.buds = buds('buds');
+  if (data.buds_used !== undefined) saved.buds_used = buds('buds_used');
+  return { ...components, oceantree: saved };
 };
 const archiveStatue = componentParser({ keys: ['archiveProp'], archivePropVariants: 4 });
 const archiveRune = componentParser({ keys: ['archiveProp'], archivePropVariants: 3, archiveStoryLines: 5 });
@@ -417,6 +438,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   atriumPillars: definePrefabs([PILLAR_ATRIUM_ID], empty, true, ['pillar_atrium.zip']),
   moonFissures: definePrefabs([MOON_FISSURE_ID], empty, true, ['moon_fissure.zip']),
   watertreePillars: definePrefabs([WATERTREE_PILLAR_ID], watertreePillar, true, WATERTREE_PILLAR_ARCHIVES),
+  oceanTrees: definePrefabs([OCEANTREE_ID], oceanTree, true, [...OCEANTREE_ARCHIVES, 'snow.zip']),
   archivePillars: definePrefabs([ARCHIVE_PILLAR_ID], archivePillar, true, ARCHIVE_PILLAR_ARCHIVES),
   vaultPillars: definePrefabs([VAULT_PILLAR_ID], vaultPillar, true, ['pillar_vault_deep.zip']),
   monkeyPillars: definePrefabs([MONKEYPILLAR_ID], monkeyPillar, true, ['pillar_monkey.zip', 'snow.zip']),

@@ -22,6 +22,8 @@ ASSETS = {
     'moon_fissure': ['moon_fissure.zip'],
     # watertree_pillar.lua: the bank, its build and the override build all three of its prefabs add.
     'watertree_pillar': ['oceantree_pillar.zip', 'oceantree_pillar_build1.zip', 'oceantree_pillar_build2.zip'],
+    # oceantree.lua: one bank and build per growth stage, and MakeEnriched's build.
+    'oceantree': ['oceantree_short.zip', 'oceantree_normal.zip', 'oceantree_tall.zip', 'oceantree_tall_jammed_build.zip'],
 }
 
 
@@ -72,6 +74,15 @@ def main():
     # watertree_pillar.lua: fn's idle loop, and root_ripple / root_shadow of its unported ripples and roots children.
     art |= {f'oceantree_pillar/{clip}': {'animationArchive': 'oceantree_pillar.zip', 'bank': 'oceantree_pillar', 'animation': clip}
             for clip in ['idle', 'root_ripple', 'root_shadow']}
+    # oceantree.lua: every stage bank's anims table and its ripples / roots children, each stage's grow clip, and
+    # the tall bank's enrichment and pillar clips.
+    oceantree_clips = ['sway1_loop', 'sway2_loop', 'chop', 'fallleft', 'fallright', 'stump', 'burning_loop', 'burnt',
+                       'chop_burnt', 'idle_chop_burnt', 'root_ripple', 'root_shadow']
+    art |= {f'oceantree_{stage}/{clip}': {'animationArchive': f'oceantree_{stage}.zip', 'bank': f'oceantree_{stage}', 'animation': clip}
+            for stage, clips in [('short', [*oceantree_clips, 'grow_seed_to_short', 'grow_tall_to_short']),
+                                 ('normal', [*oceantree_clips, 'grow_short_to_normal']),
+                                 ('tall', [*oceantree_clips, 'grow_normal_to_tall', 'gooped', 'ungooped', 'grow_tall_to_pillar'])]
+            for clip in clips}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives')
 

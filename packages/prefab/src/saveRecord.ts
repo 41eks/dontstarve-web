@@ -114,6 +114,8 @@ export interface PlacementSaveRecord {
     lightflierFlower?: import('./lightflier_flower').LightFlierFlowerSave;
     /** watertree_pillar.lua OnSave, with its childspawner and timer records. */
     watertreePillar?: import('./watertree_pillar').WatertreePillarSaveState;
+    /** oceantree.lua onsave. */
+    oceantree?: import('./oceantree').OceanTreeSaveState;
     /** The wormhole's skin. */
     wormhole?: import('./wormhole').WormholeSaveState;
     /** chessjunk.lua OnSave. */
