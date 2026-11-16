@@ -95,7 +95,3 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 动画循环只循环时间轴，不对 build 的子图编号取模。子图只在 `index <= frame < index + duration` 的范围内有效，空白子图或缺失编号保持不可见；共享 archive sprite 同样跳过已知符号的缺失编号，缺失整个符号仍报告资源错误。桦树 `tree_leaf_green_build` 的 `swap_leaves` 只有 0～16 号子图，`sway1_loop_tall` 中 17～19 号插槽必须隐藏，不能回绕到 0～2 号，否则多画三层树叶并出现切半拼接。洞穴池塘也沿用同一空白插槽规则。调试命令、参数及支持的 prefab/item ID 不变。
 
 植物实例批次只退出普通 billboard 排序，不表示实体被隐藏。通用放置查询通过 `isSpriteEntityVisible()` 判断根节点及 visual 的可见性，保留实例化花朵等实体的种植间距；普通绘制排序继续使用 `isSpriteEntityRendered()` 排除 instance proxy。
-
-## 动画四边形的投影
-
-DST 只用透视投影动画实体的原点，贴图本身保持视空间形状、按原点深度缩放（弱透视）。`packages/animation/src/spriteProjection.ts` 给所有动画精灵材质（含着色、bloom 与深度偏移副本）安装同样的顶点投影，深度仍按顶点计算。正对相机的 billboard 位于同一视深，结果与完整透视相同；平放的 OnGround 美术（如 `cave_hole`）在屏幕边缘不再向屏幕中心的消失点剪切。`spriteRaycast.ts` 在原点所在的屏幕平行平面上求交，再映射回网格平面，使拾取与绘制位置一致。实例化批次只绘制 billboard，不安装此投影。
