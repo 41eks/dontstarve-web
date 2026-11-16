@@ -1,6 +1,7 @@
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
 import type { GetWatchWorldContent, ReadonlySignal } from '@dontstarve-web/signals';
+import { FACING } from '@dontstarve-web/animation/facing';
 import { SetEightFaced } from './eightFaced';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ObjectSpawner } from '../../componets/src/objectspawner';
@@ -48,11 +49,21 @@ function makeHolePhysics(inst: CaveHoleInstance, radius: number, height = 6): vo
   inst.physics.SetTriangleMesh([...ringWall(radius, 16, height), ...ringWall(INNER_RADIUS, 8, height)]);
 }
 
+/**
+ * cave_hole's left diagonals are vertical flips of its right ones, so the drawing the camera's UPLEFT step needs sits
+ * under DOWNLEFT and the reverse; with the other six facings it keeps the hole a wide oval, far wall on top, at every heading.
+ */
+function pitFrame(facing: number): number {
+  if (facing === FACING.UPLEFT) return FACING.DOWNLEFT;
+  if (facing === FACING.DOWNLEFT) return FACING.UPLEFT;
+  return facing;
+}
+
 /** SetOrientation(OnGround): flat art fixed in the world. Transform:SetEightFaced picks its idle by camera heading. */
 function declareGroundArt(inst: PrefabInstance, world: CaveHoleWorld, hiddenLayer: string, meshOrder: number): void {
   inst.sprite.hideLayer(hiddenLayer);
   inst.sprite.playOnce('idle'); // PlayAnimation("idle"), never looping.
-  SetEightFaced(inst, world.cameraFacing);
+  SetEightFaced(inst, world.cameraFacing, pitFrame);
   inst.sprite.setGround(0);
   inst.sprite.setMeshOrder(meshOrder);
 }

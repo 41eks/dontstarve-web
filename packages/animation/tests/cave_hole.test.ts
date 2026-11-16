@@ -84,6 +84,11 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
     s.cameraFacing.set(facingFromHeading(180)); await turn();
     for (const inst of [hole, surface]) expect(inst.sprite.sprite.peek().facing).toBe(FACING.UP);
     expect(sprite.quaternion.equals(turned)).toBe(true);
+    // The left diagonals take the other left-diagonal frame: the default heading 45 shows the frame stored as UPLEFT.
+    s.cameraFacing.set(facingFromHeading(45)); await turn();
+    for (const inst of [hole, surface]) expect(inst.sprite.sprite.peek().facing).toBe(FACING.UPLEFT);
+    s.cameraFacing.set(facingFromHeading(135)); await turn();
+    for (const inst of [hole, surface]) expect(inst.sprite.sprite.peek().facing).toBe(FACING.DOWNLEFT);
     expect(s.registry.exportRecords().cave_hole).toEqual([record]);
     hole.remove();
     expect(surface.isRemoved).toBe(true);

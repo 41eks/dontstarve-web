@@ -6,10 +6,15 @@ import type { PrefabInstance } from './prefabInstance';
  * lies fixed in the world, the eight idles are one drawing turned against the camera's 45-degree steps, so the art keeps
  * its look on screen as the camera turns.
  */
-export function SetEightFaced(inst: PrefabInstance, cameraFacing: ReadonlySignal<number> | undefined): void {
+export function SetEightFaced(
+  inst: PrefabInstance,
+  cameraFacing: ReadonlySignal<number> | undefined,
+  /** Maps the selected facing onto the build frame that holds it, for builds whose frames are stored under other names. */
+  frameFor: (facing: number) => number = facing => facing,
+): void {
   if (!cameraFacing) return;
   let stopWatching: (() => void) | undefined;
   const facing = watchSignal(cameraFacing, stop => { stopWatching = stop; });
-  const stopFacing = createRenderEffect(() => inst.sprite.setFacing(facing.get()));
+  const stopFacing = createRenderEffect(() => inst.sprite.setFacing(frameFor(facing.get())));
   inst.onRemove(() => { stopFacing(); stopWatching?.(); });
 }
