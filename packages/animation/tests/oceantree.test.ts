@@ -41,6 +41,12 @@ function setup(playerPosition = new THREE.Vector3()) {
 const layers = (inst: PrefabInstance) => Object.fromEntries([...inst.sprite.sprite.peek().appearance.values()]
   .flatMap(op => op.kind === 'layer' ? [[op.layer, op.hidden]] : []));
 const sway = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
+/** The entity's own sprite meshes that are drawn; an instanced sprite hides them and the shared batch draws it. */
+const ownMeshesShown = (inst: PrefabInstance) => {
+  let shown = 0;
+  inst.transform.model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) shown++; });
+  return shown;
+};
 /** The imported default save's trees, as the game's save reader parses them. */
 async function importedTrees(): Promise<PlacementSaveRecord[]> {
   const cluster = new URL('../../../public/saves/Cluster_1/', import.meta.url);
@@ -70,9 +76,11 @@ it('loads imported save records with the stage bank, sway clip, tags and compone
     expect(inst.sprite.sprite.peek().source).toMatchObject({ bank: 'oceantree_tall', buildArchive: 'oceantree_tall.zip' });
     expect(sway(inst)).toMatchObject({ name: expect.stringMatching(/^sway[12]_loop$/), loop: true });
     expect(definitions.oceantree).toMatchObject({
-      factory: { animationArchive: 'oceantree_short.zip', extraAnimationArchives: ['oceantree_normal.zip', 'oceantree_tall.zip'] },
+      assetOptions: { instancedAnimations: ['sway1_loop', 'sway2_loop'], staticBillboard: true, colour: [1, 1, 1] },
       physics: { radius: .8, height: 2 }, minimapIcon: 'oceantree_tall.png',
     });
+    expect(definitions.oceantree!.instanceAssets!(inst)).toEqual({ animationArchive: 'oceantree_tall.zip',
+      buildArchives: ['oceantree_tall.zip', 'snow.zip'], bank: 'oceantree_tall', hiddenLayers: ['snow'] });
     expect([inst.physicsRadiusOverride, inst.transform.scale.x]).toEqual([2.35, 1.1]);
     // Every bud hidden, none used; the snow layer follows the (absent) snow level.
     expect(layers(inst)).toMatchObject({ snow: true, ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map(i => [`tree_bud${i}`, true])) });
@@ -97,6 +105,16 @@ it('loads imported save records with the stage bank, sway clip, tags and compone
     await prefabDisplay(inst.transform.model)!.artLoaded();
     await prefabDisplay(small.transform.model)!.artLoaded();
     expect(['oceantree_short.zip', 'oceantree_normal.zip', 'oceantree_tall.zip', 'snow.zip'].filter(requested)).toEqual(['oceantree_short.zip', 'oceantree_normal.zip', 'oceantree_tall.zip', 'snow.zip']);
+    // The sway is drawn by the shared instanced batch: the tree's own mesh stays hidden.
+    expect(ownMeshesShown(inst)).toBe(0);
+    expect(ownMeshesShown(small)).toBe(0);
+    // A stage set while the tree is drawn switches the archive sprite's bank and keeps it in the batch.
+    const next = stage === 3 ? 1 : stage + 1;
+    inst.components.growable!.SetStage(next);
+    await prefabDisplay(inst.transform.model)!.artLoaded(); await settle();
+    expect(inst.sprite.sprite.peek().source).toMatchObject({ bank: `oceantree_${STAGES[next - 1]}`, buildArchive: `oceantree_${STAGES[next - 1]}.zip` });
+    expect(inst.sprite.currentAnimation).toMatch(/^sway[12]_loop$/);
+    expect(ownMeshesShown(inst)).toBe(0);
   } finally { dispose(); }
 });
 

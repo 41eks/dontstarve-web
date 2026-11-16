@@ -106,6 +106,12 @@ function SetTall(inst: OceanTreeInstance): void {
   SetStageArt(inst, 'tall', EVERGREEN_CHOPS_TALL, tree_data.tall_loot);
 }
 
+/** The stage whose Set* fn last chose the bank: growable's, or SetTall's for a no_grow tree that has none. */
+function drawnStage(inst: OceanTreeInstance): 'short' | 'normal' | 'tall' {
+  const stage = inst.components.growable?.GetStage() ?? 3;
+  return (['short', 'normal', 'tall'] as const)[stage - 1]!;
+}
+
 function showbuds(inst: OceanTreeInstance): void {
   for (const num of inst.buds_used) inst.sprite.showLayer(`tree_bud${num}`);
 }
@@ -163,11 +169,9 @@ function fn(world: OceanTreeWorld, sprites: SpriteResources): OceanTreeInstance 
   inst.addTag('event_trigger');
   inst.addTag('tree');
   inst.setScale(1.1);
-  // inst.AnimState: the display draws its symbol overrides on the factory sprite.
-  inst.sprite.setAnimState(inst.AnimState.json, sprites.archives);
   // MakeSnowCoveredPristine: the snow override, the SnowCovered tag and the hidden layer; MakeSnowCovered below finds
   // the tag and only follows the snow level, which this one call already does.
-  MakeSnowCovered(inst, world.getWatchWorldContent, { animState: true });
+  MakeSnowCovered(inst, world.getWatchWorldContent);
 
   const stage = 1 + Math.floor(Math.random() * 3);
   inst.AnimState.DeclareAnimationAssets(ANIMATION_ARCHIVES, sprites.archives);
@@ -229,8 +233,14 @@ export function oceanTreePrefabs(world: OceanTreeWorld):
   return {
     [OCEANTREE_ID]: {
       fn: (_position, sprites) => fn(world, sprites),
-      // SetShort / SetNormal / SetTall switch the bank and build as the tree grows.
-      factory: { animationArchive: ANIMATION_ARCHIVES[0]!, extraAnimationArchives: ANIMATION_ARCHIVES.slice(1), buildArchive: ANIMATION_ARCHIVES[0]! },
+      // The shared archive of the stage the tree is drawn in: SetShort / SetNormal / SetTall's bank and build. A stage
+      // that changes while it is drawn reaches the archive sprite as AnimState SetBank / SetBuild (setArtSource).
+      instanceAssets: inst => {
+        const archive = `oceantree_${drawnStage(inst)}`;
+        return { animationArchive: `${archive}.zip`, buildArchives: [`${archive}.zip`, 'snow.zip'], bank: archive, hiddenLayers: ['snow'] };
+      },
+      // Every stage's sways share one batch per bank; the random tint is per instance.
+      assetOptions: { instancedAnimations: [anims.sway1, anims.sway2], staticBillboard: true, colour: [1, 1, 1] },
       physics: { make: MakeWaterObstaclePhysics, radius: .8, height: 2 },
       minimapIcon: 'oceantree_tall.png',
       onSpawned: onloadpostpass,
