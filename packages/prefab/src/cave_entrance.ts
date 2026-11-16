@@ -24,8 +24,8 @@ const ROCKS_MINE = 6;
 const PHYSICS_RADIUS = 1;
 /** cave_entrance.lua closed_fn SetLoot. */
 const CLOSED_LOOT = ['rocks', 'rocks', 'flint', 'flint', 'flint'] as const;
-/** LAYER_BACKGROUND with sort order 3: drawn under the world entities, still facing the camera. */
-const BACKGROUND_RENDER_ORDER = -.5;
+/** LAYER_BACKGROUND with sort order 3: drawn above the turf and under the world entities, still facing the camera. */
+const BACKGROUND_MESH_ORDER = -.5;
 
 /** cave_entrance.lua open_fn `worldmigrator.shard_name`. */
 export const CAVES_SHARD = 'Caves';
@@ -56,7 +56,7 @@ export class CaveEntranceInstance extends PrefabInstance {
     this.setPosition(position.x, 0, position.z);
     // PlayAnimation("idle_closed") plays once rather than resting on its last frame.
     if (!open) this.sprite.playOnce('idle_closed');
-    else this.sprite.setGround(BACKGROUND_RENDER_ORDER, false);
+    else { this.sprite.setLayer('background'); this.sprite.setMeshOrder(BACKGROUND_MESH_ORDER); }
     this.addTag('antlion_sinkhole_blocker');
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);

@@ -381,7 +381,15 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   setPaused(paused: boolean): void { this.write({ paused }); }
   setVisible(visible: boolean): void { this.write({ visible }); }
   setErosion(erosion: number): void { this.write({ erosion }); }
-  setGround(renderOrder: number, flat = true): void { this.write({ ground: { renderOrder, flat } }); }
+  /**
+   * Display-only orientation and the entity's group order. The terrain is drawn at group order 0 and ordered by its
+   * meshes, so a negative group order would put the entity under every turf layer: ground art takes order 0 (or above)
+   * and places itself among the ground layers with `setMeshOrder`.
+   */
+  setGround(renderOrder: number, flat = true): void {
+    if (!(renderOrder >= 0)) throw new RangeError(`Ground group order ${renderOrder} draws under the terrain; use setMeshOrder`);
+    this.write({ ground: { renderOrder, flat } });
+  }
   setMeshOrder(meshOrder: number): void { this.write({ meshOrder }); }
   setLayer(layer: 'world' | 'background'): void {
     const background = layer === 'background' ? true : undefined;

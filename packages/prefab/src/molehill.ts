@@ -78,8 +78,8 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     super(MOLEHILL_ID, new SpriteState({ name: 'mound_idle', billboard: true }));
     this.world = world;
     this.setPosition(position.x, 0, position.z);
-    // LAYER_BACKGROUND, sort order 3: the mound stays upright behind what stands on it.
-    this.sprite.setGround(-.5, false);
+    // LAYER_BACKGROUND, sort order 3: the mound stays upright, above the turf and behind what stands on it.
+    this.sprite.setLayer('background'); this.sprite.setMeshOrder(-.5);
     this.cycle = world.getWatchWorldContent(WorldContentKey.Cycle, stop => this.onRemove(stop));
     const inventory = addComponent(this, 'inventory', Inventory, 50, world.dropItem, world.itemSpecs);
     const spawner = addComponent(this, 'spawner', Spawner<Mole>, this.cycle.scheduler, () => {

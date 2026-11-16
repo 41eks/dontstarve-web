@@ -20,8 +20,8 @@ export const HOTSPRING_LIGHT = { radius: 2 * WORLD_SCALE, intensity: .75, fallof
 export const HOTSPRING_RADIUS = WORLD_SCALE;
 /** tuning.lua HOTSPRING_IDLE: steam period and the random range of the first delay. */
 export const HOTSPRING_IDLE = { BASE: 3, DELAY: 4 } as const;
-/** LAYER_BACKGROUND (sort order 2): drawn below the world entities, still facing the camera. */
-const BACKGROUND_RENDER_ORDER = -.5;
+/** LAYER_BACKGROUND (sort order 2): drawn above the turf and below the world entities, still facing the camera. */
+const BACKGROUND_MESH_ORDER = -.5;
 
 /** hotspring.lua OnSave: the non-glass branch. */
 export interface HotspringSaveState { isbathbombed?: true }
@@ -51,7 +51,7 @@ export class HotspringInstance extends PrefabInstance {
     this.world = world; this.random = world.random ?? Math.random;
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
-    this.sprite.setGround(BACKGROUND_RENDER_ORDER, false);
+    this.sprite.setLayer('background'); this.sprite.setMeshOrder(BACKGROUND_MESH_ORDER);
     for (const tag of ['watersource', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable']) this.addTag(tag);
     this.deploySmartRadius = 1.5 * WORLD_SCALE;
     this.light.set(null); // Light:Enable(false)

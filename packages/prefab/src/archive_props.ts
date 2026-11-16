@@ -38,7 +38,7 @@ export const MARBLEPILLAR_MINE = 10;
 const PHYSICS_RADIUS = .66;
 // archive_props.lua SetSharedLootTable('archive_statues', ...)
 SetSharedLootTable('archive_statues', [['thulecite', 1], ['moonrocknugget', 1], ['moonrocknugget', .05]]);
-const BACKGROUND_RENDER_ORDER = -.5;
+const BACKGROUND_MESH_ORDER = -.5;
 
 /** archive_props.lua OnSave: statues and rune statues write `anim`; rune statues add `storyprogress` once it is assigned. */
 export interface ArchivePropSaveState { anim?: number; storyprogress?: number; }
@@ -60,11 +60,12 @@ const archive = (name: string, bank: string, hiddenSymbols?: string[]) =>
   ({ animationArchive: `${name}.zip`, buildArchives: [`${name}.zip`], bank, ...hiddenSymbols ? { hiddenSymbols } : {} });
 
 /**
- * AnimState:SetOrientation(OnGround) and SetLayer(LAYER_BACKGROUND): flat art drawn under the world. Background decals
- * share one layer, where the source sort order (and FinalOffset) breaks ties.
+ * AnimState:SetOrientation(OnGround) and SetLayer(LAYER_BACKGROUND): flat art drawn above the turf and under the world.
+ * Background decals share one layer, where the source sort order (and FinalOffset) breaks ties.
  */
 function layOnGround(inst: PrefabInstance, sortOrder: number, finalOffset = 0): void {
-  inst.sprite.setGround(BACKGROUND_RENDER_ORDER + (sortOrder - 3) * .01 + finalOffset * .001);
+  inst.sprite.setGround(0);
+  inst.sprite.setMeshOrder(BACKGROUND_MESH_ORDER + (sortOrder - 3) * .01 + finalOffset * .001);
 }
 
 /** Transform:SetEightFaced: a rotation-0 inst shows the facing the camera heading selects. */

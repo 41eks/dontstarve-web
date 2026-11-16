@@ -197,7 +197,9 @@ it('saves an occupied molehill with its stored items and releases the same child
   expect(loaded.position).toBe(hillModel.position);
   // mound_idle stays upright in LAYER_BACKGROUND, including after reload.
   expect(hillModel.children[0].children[0].rotation.x).toBe(0);
-  expect(hillModel.children[0].children[0].renderOrder).toBe(-.5);
+  // The terrain's group order, above the turf by its mesh order.
+  expect(hillModel.children[0].children[0].renderOrder).toBe(0);
+  expect(hillModel.children[0].children[0].children[0].renderOrder).toBe(-.5);
   loaded.components.workable.WorkedBy(testPlayer(), 1);
   expect(loaded.isValid()).toBe(false);
   expect(loaded.status.peek()).toBe('removed');

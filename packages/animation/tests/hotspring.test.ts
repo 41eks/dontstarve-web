@@ -128,7 +128,7 @@ it('faces the camera on LAYER_BACKGROUND while keeping the saved foot point and 
     const spring = s.spawn(position), model = spring.transform.model;
     await prefabDisplay(model)!.artLoaded();
     // SetLayer(LAYER_BACKGROUND): a fixed order below the world entities, not laid flat.
-    expect(spring.sprite.sprite.peek()).toMatchObject({ billboard: true, ground: { flat: false } });
+    expect(spring.sprite.sprite.peek()).toMatchObject({ billboard: true, background: true, meshOrder: -.5 });
     expect(s.registry.renderEntities.map(entry => entry.object)).not.toContain(model);
     const visual = model.children[0];
     const records = s.springs();

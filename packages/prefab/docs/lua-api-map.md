@@ -66,7 +66,8 @@
 | `SetLightOverride` | `sprite.setLightOverride(value)` | `deployPlacer.ts` | |
 | `SetSymbolBloom` | `AnimState.SetSymbolBloom(symbol)` | `alterguardian_hat_equipped.ts` | 局部光晕近似 |
 | `SetOrientation(OnGround)` | `sprite.setGround(order)` | `atrium_gate.ts` | |
-| `SetLayer(LAYER_BACKGROUND)` + `SetSortOrder` | `sprite.setGround(order, false)`、`setMeshOrder` | `molehill.ts`、`atrium_gate.ts` | order 是项目的渲染顺序，不是 Lua 的值 |
+| `SetLayer(LAYER_BACKGROUND)` + `SetSortOrder`（立着的美术） | `sprite.setLayer('background')` + `sprite.setMeshOrder(-.5 + (sortOrder - 3) * .01)` | `molehill.ts`、`cave_entrance.ts` | 地形在组顺序 0 上按 mesh 顺序排列（turf -1～-0.6、雪 -0.55），背景美术留在组顺序 0、用 mesh 顺序排在其上；`setGround` 不接受负的组顺序（会被所有 turf 盖住） |
+| `SetOrientation(OnGround)` + `SetLayer(LAYER_BACKGROUND)` + `SetSortOrder` | `sprite.setGround(0)` + `setMeshOrder(...)`，同上 | `cave_hole.ts`、`archive_props.ts` | |
 | `SetFinalOffset`（正值） | `sprite.setDepthOffset(true)` | `world_fx.ts` | 不区分具体数值 |
 | `SetFinalOffset`（符号跟随者） | `attachFx` 的 `finalOffset` | `display/src/fxAttachments.ts` | 负值在宿主后，正值在宿主前 |
 | 独立实体的 `SetFinalOffset`（负值） | `sprite.setBehindFoot(true)` | `ruinsrelic.ts` | 同一脚点上排在其他实体之前（排序层 0），不区分具体数值 |

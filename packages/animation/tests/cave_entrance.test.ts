@@ -4,7 +4,7 @@ import { testPlayer } from './testPlayer';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { PrefabDisplayGroup } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
 import { caveEntrancePrefabs, type CaveEntranceInstance, type CaveEntranceWorld } from '../../prefab/src/cave_entrance';
 import { ItemWorldFixture } from './itemWorldFixture';
 import { performToolWork } from '../../stategraphs/src/componentactions';
@@ -66,7 +66,9 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     expect(workTargets('MINE', s.scene)).toEqual([]);
     expect(s.physics.bodies).toHaveLength(1);
     const open = s.caves.get(record.id)!;
-    expect(open.sprite.sprite.peek().ground).toEqual({ renderOrder: -.5, flat: false });
+    // LAYER_BACKGROUND: the terrain's group order, above every turf layer by mesh order, below the world.
+    expect(open.sprite.sprite.peek()).toMatchObject({ background: true, meshOrder: -.5 });
+    expect(open.sprite.sprite.peek().ground).toBeUndefined();
     expect(open.minimap.icon).toBe('cave_open.png');
     await vi.waitFor(() => expect(s.ground.exportRecords().map(r => r.components.stack?.itemId).sort())
       .toEqual(['flint', 'flint', 'flint', 'rocks', 'rocks']));
@@ -127,3 +129,10 @@ it('stays clickable after its tile leaves and re-enters the tickingarea', async 
     expect(hit()).toBe(true);
   } finally { picker.dispose(); s.dispose(); }
 }, 20000);
+
+it('rejects a ground group order below the terrain, which every turf layer would paint over', () => {
+  const sprite = new SpriteState({ name: 'idle' });
+  expect(() => sprite.setGround(-.5, false)).toThrow(RangeError);
+  sprite.setGround(0);
+  expect(sprite.sprite.peek().ground).toEqual({ renderOrder: 0, flat: true });
+});

@@ -47,8 +47,10 @@ it('restores portal ground layers, its shadow child and statue work state withou
     // The archive path is stable root -> drawn sprite -> visual -> merged frame.
     const portalVisual = portal.children[0].children[0];
     expect(portalVisual.rotation.x).toBe(-Math.PI / 2);
-    const portalOrder = portalVisual.renderOrder;
-    expect(shadow.children[0].children[0].renderOrder).toBeLessThan(portalOrder);
+    // Both stay at the terrain's group order; their mesh orders lay the shadow (sort order 1) under the portal (FinalOffset 2).
+    expect([portalVisual.renderOrder, shadow.children[0].children[0].renderOrder]).toEqual([0, 0]);
+    const portalOrder = portalVisual.children[0].renderOrder;
+    expect(shadow.children[0].children[0].children[0].renderOrder).toBeLessThan(portalOrder);
     awake.set(false); await settle();
     for (const model of [portal, statue, ambient, shadow]) {
       expect(prefabInstance(model)!.status.peek()).toBe('asleep');
@@ -63,8 +65,8 @@ it('restores portal ground layers, its shadow child and statue work state withou
     expect(portal.parent).toBe(scene); expect(shadow.parent).toBe(scene); expect(ambient.parent).toBe(scene);
     expect(portal.rotation.y).toBe(0);
     expect(portal.children[0].children[0].rotation.x).toBe(-Math.PI / 2);
-    expect(portal.children[0].children[0].renderOrder).toBe(portalOrder);
-    expect(shadow.children[0].children[0].renderOrder).toBeLessThan(portalOrder);
+    expect(portal.children[0].children[0].children[0].renderOrder).toBe(portalOrder);
+    expect(shadow.children[0].children[0].children[0].renderOrder).toBeLessThan(portalOrder);
     expect(shadowInstance.sprite.sprite.peek().facing).toBe(FACING.UPRIGHT);
     expect(prefabInstance(statue)!.sprite.currentAnimation).toMatch(/^idle_med_/);
     expect(prefabs.exportRecords()).toEqual(records);
