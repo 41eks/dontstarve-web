@@ -489,6 +489,7 @@
     "moon_fissure",
     "watertree_pillar",
     "oceantree",
+    "oceanvine",
     "vault_pillar",
     "monkeypillar",
     "cave_entrance",
@@ -814,6 +815,10 @@
       "imported": 0
     },
     "oceantree": {
+      "source": 0,
+      "imported": 0
+    },
+    "oceanvine": {
       "source": 0,
       "imported": 0
     },

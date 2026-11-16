@@ -78,6 +78,20 @@ def cactus_components(prefab):
     return convert
 
 
+def oceanvine_components(data):
+    # oceanvine.lua has no OnSave of its own. Its fn sets max_cycles = nil and cycles_left = 1, which pickable.lua
+    # OnSave therefore always writes; cycles only fall for a transplanted plant, which a vine never is, so
+    # cycles_left must be 1 and is left to fn. caninteractwith is the default true that pickable_state drops.
+    if set(data) - {'pickable'}:
+        raise ValueError(f'Unsupported oceanvine save state: {sorted(data)}')
+    pickable = dict(data.get('pickable') or {})
+    if pickable.pop('cycles_left', 1) != 1 or 'max_cycles' in pickable:
+        raise ValueError('Unsupported oceanvine pickable cycles')
+    state = pickable_state(pickable, 'oceanvine')
+    state.pop('caninteractwith', None)
+    return {'pickable': state} if state else {}
+
+
 def cave_fern_components(prefab):
     # cave_fern.lua / cave_fern_withered.lua OnSave: data.anim is one of f1..f10.
     def convert(data):

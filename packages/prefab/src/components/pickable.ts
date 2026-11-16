@@ -261,7 +261,8 @@ export class Pickable implements PickableComponent {
     batch(() => {
       this.timer.stop();
       this.maxCycles = saved.maxCycles ?? this.maxCycles;
-      this.cycles.set(saved.cyclesLeft ?? this.maxCycles);
+      // self.cycles_left = data.cycles_left or self.cycles_left: a record without cycles keeps what fn set.
+      this.cycles.set(saved.cyclesLeft ?? this.cycles.peek());
       this.transplanted.set(saved.transplanted ?? false);
       this.protection.set(saved.protectedCycles);
       if (saved.picked || saved.regrowSeconds !== undefined) {

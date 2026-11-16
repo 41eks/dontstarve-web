@@ -72,6 +72,7 @@ ENTITY_WHITELIST = {
     'moon_fissure': STRUCTURE['moon_fissure_components'],
     'watertree_pillar': STRUCTURE['watertree_pillar_components'],
     'oceantree': GROWABLE['oceantree_components'],
+    'oceanvine': PICKABLE['oceanvine_components'],
     'vault_pillar': STRUCTURE['vault_pillar_components'],
     'monkeypillar': STRUCTURE['monkeypillar_components'],
     'cave_entrance': STRUCTURE['cave_entrance_components']({'worldmigrator'}),

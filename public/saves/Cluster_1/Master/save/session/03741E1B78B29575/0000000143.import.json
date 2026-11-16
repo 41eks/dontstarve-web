@@ -407,6 +407,7 @@
     "moon_fissure",
     "watertree_pillar",
     "oceantree",
+    "oceanvine",
     "vault_pillar",
     "monkeypillar",
     "cave_entrance",
@@ -834,6 +835,10 @@
     "oceantree": {
       "source": 48,
       "imported": 48
+    },
+    "oceanvine": {
+      "source": 45,
+      "imported": 45
     },
     "vault_pillar": {
       "source": 0,
@@ -21790,6 +21795,546 @@
         -577.74,
         0,
         575.2
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108057",
+      "prefab": "oceanvine",
+      "sourceIndex": 1,
+      "sourceId": 108057,
+      "sourcePosition": [
+        -616.54,
+        0,
+        314.72
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108058",
+      "prefab": "oceanvine",
+      "sourceIndex": 2,
+      "sourceId": 108058,
+      "sourcePosition": [
+        -627.25,
+        0,
+        304.93
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108059",
+      "prefab": "oceanvine",
+      "sourceIndex": 3,
+      "sourceId": 108059,
+      "sourcePosition": [
+        -620.41,
+        0,
+        288.54
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108060",
+      "prefab": "oceanvine",
+      "sourceIndex": 4,
+      "sourceId": 108060,
+      "sourcePosition": [
+        -614.77,
+        0,
+        287.06
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108061",
+      "prefab": "oceanvine",
+      "sourceIndex": 5,
+      "sourceId": 108061,
+      "sourcePosition": [
+        -648.02,
+        0,
+        281.89
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108062",
+      "prefab": "oceanvine",
+      "sourceIndex": 6,
+      "sourceId": 108062,
+      "sourcePosition": [
+        -651.75,
+        0,
+        250.35
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108063",
+      "prefab": "oceanvine",
+      "sourceIndex": 7,
+      "sourceId": 108063,
+      "sourcePosition": [
+        -669.64,
+        0,
+        264.48
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108064",
+      "prefab": "oceanvine",
+      "sourceIndex": 8,
+      "sourceId": 108064,
+      "sourcePosition": [
+        -623.48,
+        0,
+        262.91
+      ],
+      "sourceNode": "Speak to the king:COVE_5:Blank"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108065",
+      "prefab": "oceanvine",
+      "sourceIndex": 9,
+      "sourceId": 108065,
+      "sourcePosition": [
+        -605.58,
+        0,
+        279.07
+      ],
+      "sourceNode": "Speak to the king:COVE_5:Blank"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108066",
+      "prefab": "oceanvine",
+      "sourceIndex": 10,
+      "sourceId": 108066,
+      "sourcePosition": [
+        -599.91,
+        0,
+        276.72
+      ],
+      "sourceNode": "Speak to the king:COVE_5:Blank"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108067",
+      "prefab": "oceanvine",
+      "sourceIndex": 11,
+      "sourceId": 108067,
+      "sourcePosition": [
+        -620.42,
+        0,
+        248.71
+      ],
+      "sourceNode": "Speak to the king:COVE_5:Blank"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108068",
+      "prefab": "oceanvine",
+      "sourceIndex": 12,
+      "sourceId": 108068,
+      "sourcePosition": [
+        -590.77,
+        0,
+        564.93
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108069",
+      "prefab": "oceanvine",
+      "sourceIndex": 13,
+      "sourceId": 108069,
+      "sourcePosition": [
+        -627.71,
+        0,
+        541.1
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108070",
+      "prefab": "oceanvine",
+      "sourceIndex": 14,
+      "sourceId": 108070,
+      "sourcePosition": [
+        -650.25,
+        0,
+        566.07
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108071",
+      "prefab": "oceanvine",
+      "sourceIndex": 15,
+      "sourceId": 108071,
+      "sourcePosition": [
+        -624.02,
+        0,
+        570.1
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108072",
+      "prefab": "oceanvine",
+      "sourceIndex": 16,
+      "sourceId": 108072,
+      "sourcePosition": [
+        -627.75,
+        0,
+        601.64
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108073",
+      "prefab": "oceanvine",
+      "sourceIndex": 17,
+      "sourceId": 108073,
+      "sourcePosition": [
+        -645.64,
+        0,
+        587.51
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108074",
+      "prefab": "oceanvine",
+      "sourceIndex": 18,
+      "sourceId": 108074,
+      "sourcePosition": [
+        -575.91,
+        0,
+        575.27
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108075",
+      "prefab": "oceanvine",
+      "sourceIndex": 19,
+      "sourceId": 108075,
+      "sourcePosition": [
+        -575.89,
+        0,
+        598.92
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108076",
+      "prefab": "oceanvine",
+      "sourceIndex": 20,
+      "sourceId": 108076,
+      "sourcePosition": [
+        -596.42,
+        0,
+        603.28
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108077",
+      "prefab": "oceanvine",
+      "sourceIndex": 21,
+      "sourceId": 108077,
+      "sourcePosition": [
+        -177.28,
+        0,
+        499.46
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108078",
+      "prefab": "oceanvine",
+      "sourceIndex": 22,
+      "sourceId": 108078,
+      "sourcePosition": [
+        -187.07,
+        0,
+        488.75
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108079",
+      "prefab": "oceanvine",
+      "sourceIndex": 23,
+      "sourceId": 108079,
+      "sourcePosition": [
+        -203.46,
+        0,
+        495.59
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108080",
+      "prefab": "oceanvine",
+      "sourceIndex": 24,
+      "sourceId": 108080,
+      "sourcePosition": [
+        -181.11,
+        0,
+        464.29
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108081",
+      "prefab": "oceanvine",
+      "sourceIndex": 25,
+      "sourceId": 108081,
+      "sourcePosition": [
+        -206.08,
+        0,
+        441.75
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108082",
+      "prefab": "oceanvine",
+      "sourceIndex": 26,
+      "sourceId": 108082,
+      "sourcePosition": [
+        -210.11,
+        0,
+        467.98
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108083",
+      "prefab": "oceanvine",
+      "sourceIndex": 27,
+      "sourceId": 108083,
+      "sourcePosition": [
+        -241.65,
+        0,
+        464.25
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108084",
+      "prefab": "oceanvine",
+      "sourceIndex": 28,
+      "sourceId": 108084,
+      "sourcePosition": [
+        -227.52,
+        0,
+        446.36
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108085",
+      "prefab": "oceanvine",
+      "sourceIndex": 29,
+      "sourceId": 108085,
+      "sourcePosition": [
+        -229.09,
+        0,
+        492.52
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108086",
+      "prefab": "oceanvine",
+      "sourceIndex": 30,
+      "sourceId": 108086,
+      "sourcePosition": [
+        -212.93,
+        0,
+        510.42
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108087",
+      "prefab": "oceanvine",
+      "sourceIndex": 31,
+      "sourceId": 108087,
+      "sourcePosition": [
+        -215.28,
+        0,
+        516.09
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108088",
+      "prefab": "oceanvine",
+      "sourceIndex": 32,
+      "sourceId": 108088,
+      "sourcePosition": [
+        -238.93,
+        0,
+        516.11
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108089",
+      "prefab": "oceanvine",
+      "sourceIndex": 33,
+      "sourceId": 108089,
+      "sourcePosition": [
+        363.072,
+        0,
+        -310.395
+      ],
+      "sourceNode": "MoonIsland_Beach:2:MoonIsland_Blank"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108090",
+      "prefab": "oceanvine",
+      "sourceIndex": 34,
+      "sourceId": 108090,
+      "sourcePosition": [
+        -243.29,
+        0,
+        495.58
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108091",
+      "prefab": "oceanvine",
+      "sourceIndex": 35,
+      "sourceId": 108091,
+      "sourcePosition": [
+        -592.54,
+        0,
+        537.27
+      ],
+      "sourceNode": "For a nice walk:COVE_1:Blank"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108092",
+      "prefab": "oceanvine",
+      "sourceIndex": 36,
+      "sourceId": 108092,
+      "sourcePosition": [
+        -596.41,
+        0,
+        563.45
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108093",
+      "prefab": "oceanvine",
+      "sourceIndex": 37,
+      "sourceId": 108093,
+      "sourcePosition": [
+        -651.71,
+        0,
+        310.89
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108094",
+      "prefab": "oceanvine",
+      "sourceIndex": 38,
+      "sourceId": 108094,
+      "sourcePosition": [
+        -581.58,
+        0,
+        572.92
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108095",
+      "prefab": "oceanvine",
+      "sourceIndex": 39,
+      "sourceId": 108095,
+      "sourcePosition": [
+        -204.94,
+        0,
+        501.23
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108096",
+      "prefab": "oceanvine",
+      "sourceIndex": 40,
+      "sourceId": 108096,
+      "sourcePosition": [
+        -599.89,
+        0,
+        253.07
+      ],
+      "sourceNode": "Speak to the king:COVE_5:Blank"
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108097",
+      "prefab": "oceanvine",
+      "sourceIndex": 41,
+      "sourceId": 108097,
+      "sourcePosition": [
+        -674.25,
+        0,
+        285.92
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108098",
+      "prefab": "oceanvine",
+      "sourceIndex": 42,
+      "sourceId": 108098,
+      "sourcePosition": [
+        -599.48,
+        0,
+        589.08
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108099",
+      "prefab": "oceanvine",
+      "sourceIndex": 43,
+      "sourceId": 108099,
+      "sourcePosition": [
+        -603.25,
+        0,
+        547.06
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108100",
+      "prefab": "oceanvine",
+      "sourceIndex": 44,
+      "sourceId": 108100,
+      "sourcePosition": [
+        389.498,
+        0,
+        -284.201
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceanvine_id_108101",
+      "prefab": "oceanvine",
+      "sourceIndex": 45,
+      "sourceId": 108101,
+      "sourcePosition": [
+        390.777,
+        0,
+        -291.28
       ],
       "sourceNode": null
     },

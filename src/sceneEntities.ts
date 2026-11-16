@@ -42,6 +42,7 @@ import { atriumPillarPrefabs } from '@dontstarve-web/prefab/atrium_pillar';
 import { moonFissurePrefabs } from '@dontstarve-web/prefab/moon_fissure';
 import { watertreePillarPrefabs } from '@dontstarve-web/prefab/watertree_pillar';
 import { oceanTreePrefabs } from '@dontstarve-web/prefab/oceantree';
+import { oceanVinePrefabs } from '@dontstarve-web/prefab/oceanvine';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
 import { vaultPillarPrefabs } from '@dontstarve-web/prefab/vault_pillar';
 import { monkeyPillarPrefabs } from '@dontstarve-web/prefab/monkeypillar';
@@ -182,6 +183,7 @@ const MANAGER_DEFINITIONS = {
   'moon_fissure': PREFAB_DEFINITIONS.moonFissures,
   'watertree_pillar': PREFAB_DEFINITIONS.watertreePillars,
   'oceantree': PREFAB_DEFINITIONS.oceanTrees,
+  'oceanvine': PREFAB_DEFINITIONS.oceanVines,
   'atrium_gate': PREFAB_DEFINITIONS.atriumGates,
   'ruins_statue_mage': PREFAB_DEFINITIONS.ruinsStatueMages,
   'ruins_statue_mage_nogem': PREFAB_DEFINITIONS.ruinsStatueMagesNoGem,
@@ -216,6 +218,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.moonFissures,
   PREFAB_DEFINITIONS.watertreePillars,
   PREFAB_DEFINITIONS.oceanTrees,
+  PREFAB_DEFINITIONS.oceanVines,
   PREFAB_DEFINITIONS.atriumGates,
   PREFAB_DEFINITIONS.ruinsStatueMages,
   PREFAB_DEFINITIONS.ruinsStatueMagesNoGem,
@@ -430,6 +433,7 @@ export async function createSceneEntities(
   registerMoonFissures(registry, worldState);
   registerWatertreePillars(registry, worldState);
   registerOceanTrees(registry, worldState);
+  registerOceanVines(registry, worldState);
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
   // statueruins.lua returns the four prefabs together.
   prefabs.register(ruinsStatuePrefabs({ scheduler: worldState.scheduler }));
@@ -1161,6 +1165,11 @@ export async function createSceneEntities(
       },
     }));
     registry.registerPrefabs(PREFAB_DEFINITIONS.oceanTrees);
+  }
+
+  function registerOceanVines(registry: EntityRegistry, worldState: SceneWorldState) {
+    prefabs.register(oceanVinePrefabs({ scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
+    registry.registerPrefabs(PREFAB_DEFINITIONS.oceanVines);
   }
 
   function registerStatueGlommer(registry: EntityRegistry, worldState: SceneWorldState) {

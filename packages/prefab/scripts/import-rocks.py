@@ -24,6 +24,7 @@ ASSETS = {
     'watertree_pillar': ['oceantree_pillar.zip', 'oceantree_pillar_build1.zip', 'oceantree_pillar_build2.zip'],
     # oceantree.lua: one bank and build per growth stage, and MakeEnriched's build.
     'oceantree': ['oceantree_short.zip', 'oceantree_normal.zip', 'oceantree_tall.zip', 'oceantree_tall_jammed_build.zip'],
+    'oceanvine': ['oceanvine.zip'],
 }
 
 
@@ -83,6 +84,9 @@ def main():
                                  ('normal', [*oceantree_clips, 'grow_short_to_normal']),
                                  ('tall', [*oceantree_clips, 'grow_normal_to_tall', 'gooped', 'ungooped', 'grow_tall_to_pillar'])]
             for clip in clips}
+    # oceanvine.lua: every clip it plays.
+    art |= {f'oceanvine/{clip}': {'animationArchive': 'oceanvine.zip', 'bank': 'oceanvine', 'animation': clip}
+            for clip in ['idle_fruit', 'idle_nofruit', 'fruit_grow', 'harvest', 'spawn', 'burn', 'fall_land', 'fall_ocean']}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives')
 
