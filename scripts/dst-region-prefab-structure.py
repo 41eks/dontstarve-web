@@ -248,6 +248,13 @@ def watertree_pillar_components(data):
     return {'watertreePillar': state}
 
 
+def oceanvine_deco_components(data):
+    # oceanvine_deco.lua onsave: data.animnum, math.random(1, 6). Without it the constructor rolls one.
+    if set(data) - {'animnum'} or ('animnum' in data and (type(data['animnum']) is not int or not 1 <= data['animnum'] <= 6)):
+        raise ValueError(f'Unsupported oceanvine_deco save state: {data}')
+    return {'animnum': data['animnum']} if 'animnum' in data else {}
+
+
 def archive_pillar_components(data):
     # archive_pillar.lua OnSave: data.broken, a boolean. Without it the constructor rolls one.
     if set(data) - {'broken'} or ('broken' in data and type(data['broken']) is not bool):

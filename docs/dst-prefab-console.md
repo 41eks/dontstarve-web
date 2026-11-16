@@ -1,5 +1,7 @@
 # DST Lua prefab 的 c_spawn / c_give 静态核对
 
+2026-11-16 补充 `oceanvine_deco`：`prefabs/oceanvine_deco.lua` 注册 `Prefab("oceanvine_deco", commonfn, assets, prefabs)`，`commonfn` 没有 `inventoryitem`，原版可 `c_spawn("oceanvine_deco")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，存档保留 `animnum`（1～6）。`Cluster_62` 最新地表快照有 66 根，导入 66 根；洞穴快照没有。
+
 2026-11-16 补充 `oceanvine`：`prefabs/oceanvine.lua` 注册 `Prefab("oceanvine", commonfn, assets, prefabs)`，`commonfn` 没有 `inventoryitem`，原版可 `c_spawn("oceanvine")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，存档只有 `pickable`（`picked`、`regrowSeconds`）；同文件的 `oceanvine_patch` 未移植。`Cluster_62` 最新地表快照有 45 根，导入 45 根；洞穴快照没有。
 
 2026-11-16 补充 `oceantree`：`prefabs/oceantree.lua` 的 `tree("oceantree", 0)` 注册 `Prefab("oceantree", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("oceantree")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，存档保留 `growable`（阶段 1～3、剩余时间、休眠时间）和 `oceantree` 字段（`no_grow`、`buds`、`buds_used`、`supertall_growth_progress`）。同文件的 `oceantree_short`／`_normal`／`_tall`／`_burnt`／`_stump`（`SetPrefabName` 后都以 `oceantree` 入档）、`oceantree_ripples_*`、`oceantree_roots_*`、`oceantree_falling` 未移植。`Cluster_62` 最新地表快照有 48 棵，导入 48 棵；洞穴快照没有。
@@ -545,6 +547,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `watertree_pillar` | 可生成 | 不能入栏 | `prefabs/watertree_pillar.lua` |
 | `oceantree` | 可生成 | 不能入栏 | `prefabs/oceantree.lua` |
 | `oceanvine` | 可生成 | 不能入栏 | `prefabs/oceanvine.lua` |
+| `oceanvine_deco` | 可生成 | 不能入栏 | `prefabs/oceanvine_deco.lua` |
 | `vault_pillar` | 可生成 | 不能入栏 | `prefabs/vault_pillar.lua` |
 | `monkeypillar` | 可生成 | 不能入栏 | `prefabs/monkeypillar.lua` |
 | `rock_flintless_low` | 可生成 | 不能入栏 | `prefabs/rocks.lua` |

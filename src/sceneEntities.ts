@@ -43,6 +43,7 @@ import { moonFissurePrefabs } from '@dontstarve-web/prefab/moon_fissure';
 import { watertreePillarPrefabs } from '@dontstarve-web/prefab/watertree_pillar';
 import { oceanTreePrefabs } from '@dontstarve-web/prefab/oceantree';
 import { oceanVinePrefabs } from '@dontstarve-web/prefab/oceanvine';
+import { oceanVineDecoPrefabs } from '@dontstarve-web/prefab/oceanvine_deco';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
 import { vaultPillarPrefabs } from '@dontstarve-web/prefab/vault_pillar';
 import { monkeyPillarPrefabs } from '@dontstarve-web/prefab/monkeypillar';
@@ -184,6 +185,7 @@ const MANAGER_DEFINITIONS = {
   'watertree_pillar': PREFAB_DEFINITIONS.watertreePillars,
   'oceantree': PREFAB_DEFINITIONS.oceanTrees,
   'oceanvine': PREFAB_DEFINITIONS.oceanVines,
+  'oceanvine_deco': PREFAB_DEFINITIONS.oceanVineDecos,
   'atrium_gate': PREFAB_DEFINITIONS.atriumGates,
   'ruins_statue_mage': PREFAB_DEFINITIONS.ruinsStatueMages,
   'ruins_statue_mage_nogem': PREFAB_DEFINITIONS.ruinsStatueMagesNoGem,
@@ -219,6 +221,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.watertreePillars,
   PREFAB_DEFINITIONS.oceanTrees,
   PREFAB_DEFINITIONS.oceanVines,
+  PREFAB_DEFINITIONS.oceanVineDecos,
   PREFAB_DEFINITIONS.atriumGates,
   PREFAB_DEFINITIONS.ruinsStatueMages,
   PREFAB_DEFINITIONS.ruinsStatueMagesNoGem,
@@ -434,6 +437,8 @@ export async function createSceneEntities(
   registerWatertreePillars(registry, worldState);
   registerOceanTrees(registry, worldState);
   registerOceanVines(registry, worldState);
+  prefabs.register(oceanVineDecoPrefabs());
+  registry.registerPrefabs(PREFAB_DEFINITIONS.oceanVineDecos);
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
   // statueruins.lua returns the four prefabs together.
   prefabs.register(ruinsStatuePrefabs({ scheduler: worldState.scheduler }));

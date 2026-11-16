@@ -490,6 +490,7 @@
     "watertree_pillar",
     "oceantree",
     "oceanvine",
+    "oceanvine_deco",
     "vault_pillar",
     "monkeypillar",
     "cave_entrance",
@@ -825,6 +826,10 @@
       "imported": 0
     },
     "oceanvine": {
+      "source": 0,
+      "imported": 0
+    },
+    "oceanvine_deco": {
       "source": 0,
       "imported": 0
     },
