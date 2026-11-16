@@ -4,6 +4,7 @@ import type { AnimElement, BuildAtlas, BuildImage, ParsedAnim, ParsedBuild, Buil
 import { canReloadAtlasPixels, loadAnimationArchivePart, reloadAtlasPixels } from './animationArchiveLoader';
 import { raycastSprite, setAtlasAlphaMask, setInstancedSpriteProxy } from './spriteRaycast';
 import { setSpriteRenderGroupDrawn } from './renderOrder';
+import { projectAboutOrigin } from './spriteProjection';
 
 export { smallHash } from './animationArchive';
 export { atlasPixels } from './animationArchive';
@@ -176,7 +177,7 @@ export async function atlasReloadsSettled(): Promise<void> {
 export function createMaterials(buildPackage: BuildPackage, options: SpriteMaterialOptions = {}) {
   const [red, green, blue, alpha] = options.multColour ?? [1, 1, 1, 1];
   return buildPackage.atlases.map((atlas) => {
-    return new THREE.MeshBasicMaterial({
+    return projectAboutOrigin(new THREE.MeshBasicMaterial({
       map: createAtlasTexture(atlas, options.pointFiltering),
       color: new THREE.Color().setRGB(red, green, blue),
       opacity: alpha,
@@ -189,7 +190,7 @@ export function createMaterials(buildPackage: BuildPackage, options: SpriteMater
       // reorder those parts around the torso despite the correct index order.
       forceSinglePass: true,
       toneMapped: false,
-    });
+    }));
   });
 }
 

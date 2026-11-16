@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { findImage, type AnimElement, type Animation, type BuildImage, type Matrix2D, type ParsedBuild, type ResolvedSprite } from './animationAssets';
 import { animStateVisible, resolveAnimStateSymbol, type ResolvedAnimState } from './animState';
+import { projectAboutOrigin } from './spriteProjection';
 import type { ReadonlyVector3 } from './transformRoot';
 
 /**
@@ -96,7 +97,7 @@ export class SpriteMaterialDresser {
     let material = this.privateMaterials.get(source);
     if (!material && this.undressed) material = source;
     if (!material) {
-      material = source.clone();
+      material = projectAboutOrigin(source.clone());
       material.color.copy(source.color).multiply(this.colour);
       material.opacity = source.opacity * this.opacity;
       // clone() keeps the authored material properties, but deliberately omits renderer-installed compile hooks.
@@ -245,7 +246,7 @@ function createBloomMaterial(base: THREE.MeshBasicMaterial, image: BuildImage): 
     `);
   };
   material.customProgramCacheKey = () => 'dst-hat-bloom-v1';
-  return material;
+  return projectAboutOrigin(material);
 }
 
 /** A followed symbol's transform moved by the follower's offset in that symbol's space. */
