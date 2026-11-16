@@ -1,6 +1,7 @@
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
-import type { GetWatchWorldContent } from '@dontstarve-web/signals';
+import type { GetWatchWorldContent, ReadonlySignal } from '@dontstarve-web/signals';
+import { SetEightFaced } from './eightFaced';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ObjectSpawner } from '../../componets/src/objectspawner';
 import { COLLISION } from '../../componets/src/physicsState';
@@ -21,6 +22,8 @@ const ASSETS = { animationArchive: 'cave_hole.zip', buildArchives: ['cave_hole.z
 
 export interface CaveHoleWorld {
   getWatchWorldContent?: GetWatchWorldContent;
+  /** FACING_* bit that the camera heading gives an eight-faced inst with rotation 0. */
+  cameraFacing?: ReadonlySignal<number>;
   /** SpawnPrefab for the surface child, whose display loads its art. */
   spawnPrefab(prefab: typeof CAVE_HOLE_SURFACE_ID, position: ReadonlyVector3): PrefabInstance;
 }
@@ -45,14 +48,11 @@ function makeHolePhysics(inst: CaveHoleInstance, radius: number, height = 6): vo
   inst.physics.SetTriangleMesh([...ringWall(radius, 16, height), ...ringWall(INNER_RADIUS, 8, height)]);
 }
 
-/**
- * SetOrientation(OnGround): the flat art turns with the camera (a billboard on the ground). Transform:SetEightFaced: the
- * idle drawn for the camera heading is chosen as the camera turns.
- */
-function declareGroundArt(inst: PrefabInstance, hiddenLayer: string, meshOrder: number): void {
+/** SetOrientation(OnGround): flat art fixed in the world. Transform:SetEightFaced picks its idle by camera heading. */
+function declareGroundArt(inst: PrefabInstance, world: CaveHoleWorld, hiddenLayer: string, meshOrder: number): void {
   inst.sprite.hideLayer(hiddenLayer);
   inst.sprite.playOnce('idle'); // PlayAnimation("idle"), never looping.
-  inst.sprite.setFacingRotation(0);
+  SetEightFaced(inst, world.cameraFacing);
   inst.sprite.setGround(0);
   inst.sprite.setMeshOrder(meshOrder);
 }
@@ -63,7 +63,7 @@ export class CaveHoleInstance extends PrefabInstance {
   allowspawn = true;
 
   constructor(world: CaveHoleWorld, position: ReadonlyVector3) {
-    super(CAVE_HOLE_ID, new SpriteState({ name: 'idle', billboard: true }));
+    super(CAVE_HOLE_ID, new SpriteState({ name: 'idle' }));
     // PlayerProx reads the position once.
     this.setPosition(position.x, 0, position.z);
     for (const tag of ['groundhole', 'blocker', 'blinkfocus']) this.addTag(tag);
@@ -71,7 +71,7 @@ export class CaveHoleInstance extends PrefabInstance {
     this._groundhole_outerradius = OUTER_RADIUS * WORLD_SCALE;
     this._groundhole_rangeoverride = 0;
     this.deploySmartRadius = 3 * WORLD_SCALE;
-    declareGroundArt(this, 'surface', HOLE_MESH_ORDER);
+    declareGroundArt(this, world, 'surface', HOLE_MESH_ORDER);
 
     // CreateSurfaceAnim: a non-networked child that is never saved.
     const surface = world.spawnPrefab(CAVE_HOLE_SURFACE_ID, position);
@@ -86,12 +86,12 @@ export class CaveHoleInstance extends PrefabInstance {
   }
 }
 
-function createSurfaceAnim(): PrefabInstance {
-  const inst = new PrefabInstance(CAVE_HOLE_SURFACE_ID, new SpriteState({ name: 'idle', billboard: true }));
+function createSurfaceAnim(world: CaveHoleWorld): PrefabInstance {
+  const inst = new PrefabInstance(CAVE_HOLE_SURFACE_ID, new SpriteState({ name: 'idle' }));
   inst.addTag('DECOR');
   inst.addTag('NOCLICK');
   inst.persists = false;
-  declareGroundArt(inst, 'hole', SURFACE_MESH_ORDER);
+  declareGroundArt(inst, world, 'hole', SURFACE_MESH_ORDER);
   return inst;
 }
 
@@ -107,6 +107,6 @@ export function caveHolePrefabs(world: CaveHoleWorld): Readonly<Record<typeof CA
       // Nothing here has a scene action, and a hit on the hole would hide the ground point that BLINK needs (GetRightClickActions).
       onSpawned: inst => setMouseTargetEnabled(inst.transform.model, false),
     },
-    [CAVE_HOLE_SURFACE_ID]: { fn: createSurfaceAnim, assets: ASSETS, targetable: false },
+    [CAVE_HOLE_SURFACE_ID]: { fn: () => createSurfaceAnim(world), assets: ASSETS, targetable: false },
   };
 }

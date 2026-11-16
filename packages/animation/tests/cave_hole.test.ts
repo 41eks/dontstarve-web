@@ -1,3 +1,4 @@
+import { FACING, facingFromHeading } from '../src/facing';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -29,16 +30,16 @@ const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 const record = { id: 'saved-hole', transform: { position: [3, 0, 6] as [number, number, number], rotationY: 0 }, components: { allowspawn: false } };
 
 function setup(physics?: CANNON.World) {
-  const scene = new THREE.Scene(), awake = createSignal(true);
+  const scene = new THREE.Scene(), awake = createSignal(true), cameraFacing = createSignal(facingFromHeading(90));
   const tickingarea = () => createMemo(() => awake.get());
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea, physics });
-  prefabs.register(caveHolePrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
+  prefabs.register(caveHolePrefabs({ cameraFacing, spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
   registry.registerPrefabs(PREFAB_DEFINITIONS.caveHoles);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const instances = () => scene.children.map(model => prefabInstance<PrefabInstance>(model)!);
-  return { scene, awake, displays, prefabs, registry, inventory, instances,
+  return { scene, awake, cameraFacing, prefabs, registry, inventory, instances,
     hole: () => instances().find(inst => inst.prefab === CAVE_HOLE_ID) as CaveHoleInstance,
     surface: () => instances().find(inst => inst.prefab === 'cave_hole_surface')!,
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
@@ -67,8 +68,9 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
       const json = inst.sprite.sprite.peek();
       expect(json.clip).toMatchObject({ name: 'idle', loop: false });
       expect(json.queue).toEqual([]);
-      // OnGround + SetEightFaced: a flat billboard whose facing follows the camera heading.
-      expect(json).toMatchObject({ billboard: true, facingRotation: 0 });
+      // OnGround: flat art fixed in the world. SetEightFaced: the camera heading's facing.
+      expect(json.billboard).toBeUndefined();
+      expect(json.facing).toBe(FACING.LEFT);
       expect(json.ground).toEqual({ renderOrder: 0, flat: true });
       expect(json.appearance.get(`layer:${hidden}`)).toMatchObject({ layer: hidden, hidden: true });
     }
@@ -76,30 +78,12 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
     await Promise.all([artLoaded(hole), artLoaded(surface)]);
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/cave_hole.zip'));
     expect(hole.sprite.currentAnimation).toBe('idle');
-    // The follow camera's orientation at a heading (degrees), pitched down 40 degrees.
-    const camera = (heading: number) => {
-      const p = THREE.MathUtils.degToRad(40), h = THREE.MathUtils.degToRad(heading);
-      const forward = new THREE.Vector3(-Math.cos(p) * Math.cos(h), -Math.sin(p), -Math.cos(p) * Math.sin(h));
-      return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().lookAt(new THREE.Vector3(), forward, new THREE.Vector3(0, 1, 0)));
-    };
-    const drawn = (heading: number) => {
-      s.displays.update(0, camera(heading));
-      const sprite = hole.transform.model.children[0];
-      let mesh: THREE.Mesh | undefined;
-      sprite.traverse(child => { if (child instanceof THREE.Mesh) mesh = child; });
-      mesh!.geometry.computeBoundingBox();
-      const size = mesh!.geometry.boundingBox!.getSize(new THREE.Vector3());
-      const yaw = new THREE.Euler().setFromQuaternion(sprite.quaternion, 'YXZ').y;
-      return { yaw: THREE.MathUtils.radToDeg(yaw), aspect: size.x / size.y, flat: sprite.children[0].rotation.x };
-    };
-    // It lies flat and turns with the camera heading, and each heading draws its own idle: the cardinal frames are the
-    // wide (or tall) drawing, the diagonal ones its 45-degree turn.
-    for (const [heading, yaw, aspect] of [[90, 0, 1.27], [45, 45, 1], [0, 90, .79], [135, -45, 1]]) {
-      const view = drawn(heading);
-      expect(view.flat).toBeCloseTo(-Math.PI / 2);
-      expect(view.yaw).toBeCloseTo(yaw);
-      expect(view.aspect).toBeCloseTo(aspect, 2);
-    }
+    // The camera turning picks the facing for its heading; the quad keeps its place in the world.
+    const sprite = hole.transform.model.children[0];
+    const turned = sprite.quaternion.clone();
+    s.cameraFacing.set(facingFromHeading(180)); await turn();
+    for (const inst of [hole, surface]) expect(inst.sprite.sprite.peek().facing).toBe(FACING.UP);
+    expect(sprite.quaternion.equals(turned)).toBe(true);
     expect(s.registry.exportRecords().cave_hole).toEqual([record]);
     hole.remove();
     expect(surface.isRemoved).toBe(true);

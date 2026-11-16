@@ -673,7 +673,7 @@ export async function createSceneEntities(
 
   function registerCaveHoles(registry: EntityRegistry, prefabId: 'cave_hole', worldState: SceneWorldState) {
     prefabs.register(caveHolePrefabs({
-      getWatchWorldContent: worldState.getWatchWorldContent,
+      getWatchWorldContent: worldState.getWatchWorldContent, cameraFacing: view.cameraFacing,
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
     }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);

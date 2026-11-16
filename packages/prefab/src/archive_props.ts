@@ -3,7 +3,8 @@ import { Inspectable } from '../../componets/src/inspectable';
 import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
-import { createRenderEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import type { ReadonlySignal } from '@dontstarve-web/signals';
+import { SetEightFaced } from './eightFaced';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -66,15 +67,6 @@ const archive = (name: string, bank: string, hiddenSymbols?: string[]) =>
 function layOnGround(inst: PrefabInstance, sortOrder: number, finalOffset = 0): void {
   inst.sprite.setGround(0);
   inst.sprite.setMeshOrder(BACKGROUND_MESH_ORDER + (sortOrder - 3) * .01 + finalOffset * .001);
-}
-
-/** Transform:SetEightFaced: a rotation-0 inst shows the facing the camera heading selects. */
-function SetEightFaced(inst: PrefabInstance, cameraFacing: ReadonlySignal<number> | undefined): void {
-  if (!cameraFacing) return;
-  let stopWatching: (() => void) | undefined;
-  const facing = watchSignal(cameraFacing, stop => { stopWatching = stop; });
-  const stopFacing = createRenderEffect(() => inst.sprite.setFacing(facing.get()));
-  inst.onRemove(() => { stopFacing(); stopWatching?.(); });
 }
 
 /** ShowWorkState: low under a third of the work, med under two thirds, otherwise full; looping. */
