@@ -5,10 +5,22 @@ import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { renderer } from './universal';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { facingFromHeading } from '@dontstarve-web/animation/facing';
+import { initialSave } from './save/initialSave';
 
 const DEFAULT_HEADING = 45;
-// followcamera.lua distances (default 30, 15..50) in DST units, scaled by TILE_SIZE / TILE_SCALE.
-const DEFAULT_DISTANCE = 30 * WORLD_SCALE;
+
+/** followcamera.lua SetDefault's distances (DST units) and the pitches lerped across them. */
+interface FollowCameraDefaults {
+  distanceTarget: number;
+  minDist: number;
+  maxDist: number;
+  minDistPitch: number;
+  maxDistPitch: number;
+}
+
+const FOREST_CAMERA: FollowCameraDefaults = { distanceTarget: 30, minDist: 15, maxDist: 50, minDistPitch: 30, maxDistPitch: 60 };
+/** SetDefault's TheWorld:HasTag("cave") branch: a closer, flatter camera. */
+const CAVE_CAMERA: FollowCameraDefaults = { distanceTarget: 25, minDist: 15, maxDist: 35, minDistPitch: 25, maxDistPitch: 40 };
 const ROTATION_STEP = 45;
 const EPSILON = 0.01;
 const ORIGIN = new THREE.Vector3();
@@ -55,21 +67,27 @@ export class FollowCameraController {
   private readonly headingState = createSignal(DEFAULT_HEADING);
   readonly headingAngle = readonlySignal(this.headingState);
   private headingTarget = DEFAULT_HEADING;
-  private distance = DEFAULT_DISTANCE;
-  private distanceTarget = DEFAULT_DISTANCE;
+  private distance: number;
+  private distanceTarget: number;
   private paused = false;
 
-  readonly minDistance = 15 * WORLD_SCALE;
-  readonly maxDistance = 50 * WORLD_SCALE;
-  readonly minDistancePitch = 30;
-  readonly maxDistancePitch = 60;
+  // Distances in DST units, scaled by TILE_SIZE / TILE_SCALE.
+  readonly minDistance: number;
+  readonly maxDistance: number;
+  readonly minDistancePitch: number;
+  readonly maxDistancePitch: number;
   readonly panGain = 4;
   readonly headingGain = 20;
   readonly distanceGain = 1;
   readonly zoomStep = 4 * WORLD_SCALE;
 
-  constructor(target: THREE.Object3D) {
+  constructor(target: THREE.Object3D, defaults: FollowCameraDefaults = FOREST_CAMERA) {
     this.target = target;
+    this.distance = this.distanceTarget = defaults.distanceTarget * WORLD_SCALE;
+    this.minDistance = defaults.minDist * WORLD_SCALE;
+    this.maxDistance = defaults.maxDist * WORLD_SCALE;
+    this.minDistancePitch = defaults.minDistPitch;
+    this.maxDistancePitch = defaults.maxDistPitch;
     this.camera = new THREE.PerspectiveCamera(
       35,
       window.innerWidth / window.innerHeight,
@@ -221,7 +239,7 @@ export class FollowCameraController {
   }
 }
 
-export const followCamera = new FollowCameraController(player);
+export const followCamera = new FollowCameraController(player, initialSave.world.prefab === 'cave' ? CAVE_CAMERA : FOREST_CAMERA);
 export const camera = followCamera.camera;
 
 // followcamera.lua keeps updating under SetAutopaused (e.g. the open map), so use the unpaused frame time.
