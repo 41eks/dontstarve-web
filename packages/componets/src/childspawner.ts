@@ -18,6 +18,8 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
   readonly childrenoutside = new Set<Child>();
   childreninside = 1;
   maxchildren = 1;
+  /** childspawner.childname: the prefab SpawnChild makes. Here children come from ConfigureSpawning's function. */
+  childname?: string;
   onchildkilled?: (child: Child) => void;
   ongohome?: (child: Child) => void;
   private readonly listeners = new Map<Child, (() => void)[]>();
@@ -30,6 +32,8 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
   private nextSpawn = 0;
   private spawnPeriod = 20;
   private spawnVariance = 2;
+  private regenPeriod = 20;
+  private regenVariance = 2;
   private tickPeriod = 0;
   private spawning = false;
   private queued = false;
@@ -48,7 +52,7 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
     this.nextRegen = saved?.timetonextregen ?? 0;
     this.regen = new ComponentTimer(scheduler, () => {
       this.childreninside = Math.min(this.maxchildren, this.childreninside + 1);
-      this.nextRegen = 20 + (this.random() * 2 - 1) * 2;
+      this.nextRegen = this.GetTimeToNextRegen();
       this.startRegen();
     });
     this.timer = this.regen.snapshot;
@@ -71,6 +75,23 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
     if (!saved?.childrenoutside.length) this.startRegen();
   }
   get numchildrenoutside(): number { return this.childrenoutside.size; }
+  GetTimeToNextSpawn(): number { return this.spawnPeriod + (this.random() * 2 - 1) * this.spawnVariance; }
+  GetTimeToNextRegen(): number { return this.regenPeriod + (this.random() * 2 - 1) * this.regenVariance; }
+  /** ChildSpawner:SetSpawnPeriod. */
+  SetSpawnPeriod(period: number, variance = period * .1): void {
+    this.spawnPeriod = period; this.spawnVariance = variance; this.nextSpawn = this.GetTimeToNextSpawn();
+  }
+  /** ChildSpawner:SetRegenPeriod. */
+  SetRegenPeriod(period: number, variance = period * .1): void {
+    this.regenPeriod = period; this.regenVariance = variance; this.nextRegen = this.GetTimeToNextRegen();
+  }
+  /** ChildSpawner:SetMaxChildren: every child not outside is inside, so a full spawner stops regenerating. */
+  SetMaxChildren(max: number): void {
+    this.childreninside = Math.max(0, max - this.numchildrenoutside);
+    this.maxchildren = max;
+    if (this.childreninside + this.numchildrenoutside >= max) this.regen.stop();
+    this.startRegen(); this.startSpawnUpdate();
+  }
   TakeOwnership(child: Child): void {
     if (this.childrenoutside.has(child)) return;
     child.setHome(this.home); this.childrenoutside.add(child);

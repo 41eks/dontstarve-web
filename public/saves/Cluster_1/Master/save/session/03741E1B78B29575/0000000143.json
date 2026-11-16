@@ -716133,6 +716133,199 @@
           "components": {}
         }
       ],
+      "watertree_pillar": [
+        {
+          "id": "dst_03741E1B78B29575_watertree_pillar_id_113001",
+          "transform": {
+            "position": [
+              -1781.82,
+              0.0,
+              -1602.36
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "watertreePillar": {
+              "num_oceantreenuts": 1,
+              "cocoons_to_regrow": 0,
+              "childspawner": {
+                "childreninside": 1,
+                "childrenoutside": []
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_watertree_pillar_id_113004",
+          "transform": {
+            "position": [
+              -1734.75,
+              0.0,
+              -1722.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "watertreePillar": {
+              "num_oceantreenuts": 1,
+              "cocoons_to_regrow": 0,
+              "childspawner": {
+                "childreninside": 1,
+                "childrenoutside": []
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_watertree_pillar_id_113007",
+          "transform": {
+            "position": [
+              -1866.75,
+              0.0,
+              -1685.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "watertreePillar": {
+              "num_oceantreenuts": 1,
+              "cocoons_to_regrow": 0,
+              "childspawner": {
+                "childreninside": 1,
+                "childrenoutside": []
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_watertree_pillar_id_113010",
+          "transform": {
+            "position": [
+              -534.39,
+              0.0,
+              -1398.18
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "watertreePillar": {
+              "num_oceantreenuts": 1,
+              "cocoons_to_regrow": 0,
+              "childspawner": {
+                "childreninside": 1,
+                "childrenoutside": []
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_watertree_pillar_id_113013",
+          "transform": {
+            "position": [
+              -654.0,
+              0.0,
+              -1445.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "watertreePillar": {
+              "num_oceantreenuts": 1,
+              "cocoons_to_regrow": 0,
+              "childspawner": {
+                "childreninside": 1,
+                "childrenoutside": []
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_watertree_pillar_id_113016",
+          "transform": {
+            "position": [
+              -617.25,
+              0.0,
+              -1313.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "watertreePillar": {
+              "num_oceantreenuts": 1,
+              "cocoons_to_regrow": 0,
+              "childspawner": {
+                "childreninside": 1,
+                "childrenoutside": []
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_watertree_pillar_id_113019",
+          "transform": {
+            "position": [
+              -1853.82,
+              0.0,
+              -845.61
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "watertreePillar": {
+              "num_oceantreenuts": 2,
+              "last_ram_time": 72.346647294362,
+              "cocoons_to_regrow": 0,
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_watertree_pillar_id_113022",
+          "transform": {
+            "position": [
+              -1806.75,
+              0.0,
+              -726.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "watertreePillar": {
+              "num_oceantreenuts": 2,
+              "last_ram_time": 71.826808468501,
+              "cocoons_to_regrow": 0,
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_watertree_pillar_id_113025",
+          "transform": {
+            "position": [
+              -1938.75,
+              0.0,
+              -762.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "watertreePillar": {
+              "num_oceantreenuts": 1,
+              "cocoons_to_regrow": 0,
+              "childspawner": {
+                "childreninside": 0,
+                "childrenoutside": []
+              }
+            }
+          }
+        }
+      ],
       "monkeypillar": [
         {
           "id": "dst_03741E1B78B29575_monkeypillar_id_111840",

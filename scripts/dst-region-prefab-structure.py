@@ -188,6 +188,66 @@ def moon_fissure_components(data):
     return {}
 
 
+WATERTREE_PILLAR_TIMERS = {'regrow_oceantreenut', 'cocoon_regrow_check'}
+WATERTREE_PILLAR_WORLDSETTINGS_TIMERS = {'ChildSpawner_SpawnPeriod', 'ChildSpawner_RegenPeriod'}
+WATERTREE_PILLAR_CHILDSPAWNER = {'childreninside', 'childrenoutside', 'spawning', 'regening', 'queued_spawn',
+                                 'timetonextspawn', 'timetonextregen', 'emergencychildreninside'}
+
+
+def watertree_pillar_components(data):
+    # watertree_pillar.lua OnSave: num_oceantreenuts, last_ram_time and cocoons_to_regrow, with the childspawner, timer
+    # and worldsettingstimer components. The grassgator children outside are not ported, so their GUIDs are dropped
+    # and the childspawner regenerates them. The childspawner's spawn/regen timing and worldsettingstimer drive only
+    # the unported spawning, so they are checked and dropped.
+    if not isinstance(data, dict) or set(data) - {'num_oceantreenuts', 'last_ram_time', 'cocoons_to_regrow',
+                                                  'childspawner', 'timer', 'worldsettingstimer'}:
+        raise ValueError(f'Unsupported watertree_pillar save state: {sorted(data or {})}')
+    def finite(value):
+        return type(value) in (int, float) and math.isfinite(value)
+    if type(data.get('num_oceantreenuts')) is not int or not 0 <= data['num_oceantreenuts'] <= 2:
+        raise ValueError('Invalid watertree_pillar num_oceantreenuts')
+    state = {'num_oceantreenuts': data['num_oceantreenuts']}
+    if 'last_ram_time' in data:
+        if not finite(data['last_ram_time']) or data['last_ram_time'] < 0:
+            raise ValueError('Invalid watertree_pillar last_ram_time')
+        state['last_ram_time'] = data['last_ram_time']
+    if 'cocoons_to_regrow' in data:
+        if type(data['cocoons_to_regrow']) is not int or data['cocoons_to_regrow'] < 0:
+            raise ValueError('Invalid watertree_pillar cocoons_to_regrow')
+        state['cocoons_to_regrow'] = data['cocoons_to_regrow']
+    child = data.get('childspawner')
+    if not isinstance(child, dict) or set(child) - WATERTREE_PILLAR_CHILDSPAWNER \
+            or type(child.get('childreninside')) is not int or not 0 <= child['childreninside'] <= 1 \
+            or not isinstance(child.get('childrenoutside', []), list) \
+            or any(type(guid) is not int for guid in child.get('childrenoutside', [])) \
+            or any(key in child and type(child[key]) is not bool for key in ('spawning', 'regening', 'queued_spawn')) \
+            or any(key in child and not finite(child[key])
+                   for key in ('timetonextspawn', 'timetonextregen', 'emergencychildreninside')):
+        raise ValueError('Unsupported watertree_pillar childspawner')
+    state['childspawner'] = {'childreninside': child['childreninside'], 'childrenoutside': []}
+    if 'worldsettingstimer' in data:
+        timers = data['worldsettingstimer']
+        if not isinstance(timers, dict) or set(timers) != {'timers'} or not isinstance(timers['timers'], dict) \
+                or set(timers['timers']) - WATERTREE_PILLAR_WORLDSETTINGS_TIMERS:
+            raise ValueError('Unsupported watertree_pillar worldsettingstimer')
+    if 'timer' in data:
+        timer = data['timer']
+        if not isinstance(timer, dict) or set(timer) != {'timers'} or not isinstance(timer['timers'], dict) \
+                or set(timer['timers']) - WATERTREE_PILLAR_TIMERS:
+            raise ValueError('Unsupported watertree_pillar timer')
+        saved = {}
+        for name, value in timer['timers'].items():
+            if not isinstance(value, dict) or set(value) - {'timeleft', 'paused', 'initial_time'} \
+                    or not finite(value.get('timeleft')) or not finite(value.get('initial_time', 0)) \
+                    or type(value.get('paused', False)) is not bool:
+                raise ValueError(f'Unsupported watertree_pillar timer {name}')
+            saved[name] = {'timeleft': value['timeleft'], 'paused': value.get('paused', False),
+                           'initial_time': value.get('initial_time', value['timeleft'])}
+        if saved:
+            state['timer'] = {'timers': saved}
+    return {'watertreePillar': state}
+
+
 def archive_pillar_components(data):
     # archive_pillar.lua OnSave: data.broken, a boolean. Without it the constructor rolls one.
     if set(data) - {'broken'} or ('broken' in data and type(data['broken']) is not bool):

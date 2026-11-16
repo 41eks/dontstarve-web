@@ -484,6 +484,7 @@
     "pillar_atrium",
     "archive_pillar",
     "moon_fissure",
+    "watertree_pillar",
     "vault_pillar",
     "monkeypillar",
     "cave_entrance",
@@ -760,6 +761,10 @@
       "imported": 22
     },
     "moon_fissure": {
+      "source": 0,
+      "imported": 0
+    },
+    "watertree_pillar": {
       "source": 0,
       "imported": 0
     },

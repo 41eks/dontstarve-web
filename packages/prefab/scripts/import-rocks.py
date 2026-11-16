@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror source rock, cave hole, pillar and moon fissure world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock, cave hole, pillar, moon fissure and water tree pillar world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
 from pathlib import Path
@@ -20,6 +20,8 @@ ASSETS = {
     'stalagmite_tall': ['rock_stalagmite_tall.zip'],
     # moon_fissure.lua also lists moon_fissure_fx.zip, the bank of its unported moon_fissure_fx child.
     'moon_fissure': ['moon_fissure.zip'],
+    # watertree_pillar.lua: the bank, its build and the override build all three of its prefabs add.
+    'watertree_pillar': ['oceantree_pillar.zip', 'oceantree_pillar_build1.zip', 'oceantree_pillar_build2.zip'],
 }
 
 
@@ -67,6 +69,9 @@ def main():
     # moon_fissure.lua fn's loop and delayed_transition's clip.
     art |= {f'moon_fissure/{clip}': {'animationArchive': 'moon_fissure.zip', 'bank': 'moon_fissure', 'animation': clip}
             for clip in ['crack_idle', 'transition']}
+    # watertree_pillar.lua: fn's idle loop, and root_ripple / root_shadow of its unported ripples and roots children.
+    art |= {f'oceantree_pillar/{clip}': {'animationArchive': 'oceantree_pillar.zip', 'bank': 'oceantree_pillar', 'animation': clip}
+            for clip in ['idle', 'root_ripple', 'root_shadow']}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives')
 

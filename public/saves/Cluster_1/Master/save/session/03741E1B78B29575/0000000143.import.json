@@ -405,6 +405,7 @@
     "pillar_atrium",
     "archive_pillar",
     "moon_fissure",
+    "watertree_pillar",
     "vault_pillar",
     "monkeypillar",
     "cave_entrance",
@@ -824,6 +825,10 @@
     "moon_fissure": {
       "source": 70,
       "imported": 70
+    },
+    "watertree_pillar": {
+      "source": 9,
+      "imported": 9
     },
     "vault_pillar": {
       "source": 0,
@@ -21098,6 +21103,114 @@
         -459.9
       ],
       "sourceNode": "MoonIsland_IslandShards:5:MoonIsland_IslandShard"
+    },
+    {
+      "id": "dst_03741E1B78B29575_watertree_pillar_id_113001",
+      "prefab": "watertree_pillar",
+      "sourceIndex": 1,
+      "sourceId": 113001,
+      "sourcePosition": [
+        -607.94,
+        0,
+        552.12
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_watertree_pillar_id_113004",
+      "prefab": "watertree_pillar",
+      "sourceIndex": 2,
+      "sourceId": 113004,
+      "sourcePosition": [
+        -592.25,
+        0,
+        592
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_watertree_pillar_id_113007",
+      "prefab": "watertree_pillar",
+      "sourceIndex": 3,
+      "sourceId": 113007,
+      "sourcePosition": [
+        -636.25,
+        0,
+        579.75
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_watertree_pillar_id_113010",
+      "prefab": "watertree_pillar",
+      "sourceIndex": 4,
+      "sourceId": 113010,
+      "sourcePosition": [
+        -192.13,
+        0,
+        484.06
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_watertree_pillar_id_113013",
+      "prefab": "watertree_pillar",
+      "sourceIndex": 5,
+      "sourceId": 113013,
+      "sourcePosition": [
+        -232,
+        0,
+        499.75
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_watertree_pillar_id_113016",
+      "prefab": "watertree_pillar",
+      "sourceIndex": 6,
+      "sourceId": 113016,
+      "sourcePosition": [
+        -219.75,
+        0,
+        455.75
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_watertree_pillar_id_113019",
+      "prefab": "watertree_pillar",
+      "sourceIndex": 7,
+      "sourceId": 113019,
+      "sourcePosition": [
+        -631.94,
+        0,
+        299.87
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_watertree_pillar_id_113022",
+      "prefab": "watertree_pillar",
+      "sourceIndex": 8,
+      "sourceId": 113022,
+      "sourcePosition": [
+        -616.25,
+        0,
+        260
+      ],
+      "sourceNode": "Speak to the king:COVE_5:Blank"
+    },
+    {
+      "id": "dst_03741E1B78B29575_watertree_pillar_id_113025",
+      "prefab": "watertree_pillar",
+      "sourceIndex": 9,
+      "sourceId": 113025,
+      "sourcePosition": [
+        -660.25,
+        0,
+        272.25
+      ],
+      "sourceNode": null
     },
     {
       "id": "dst_03741E1B78B29575_monkeypillar_id_111840",

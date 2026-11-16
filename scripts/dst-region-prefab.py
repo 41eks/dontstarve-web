@@ -70,6 +70,7 @@ ENTITY_WHITELIST = {
     'pillar_atrium': STRUCTURE['stateless_pillar_components']('pillar_atrium'),
     'archive_pillar': STRUCTURE['archive_pillar_components'],
     'moon_fissure': STRUCTURE['moon_fissure_components'],
+    'watertree_pillar': STRUCTURE['watertree_pillar_components'],
     'vault_pillar': STRUCTURE['vault_pillar_components'],
     'monkeypillar': STRUCTURE['monkeypillar_components'],
     'cave_entrance': STRUCTURE['cave_entrance_components']({'worldmigrator'}),

@@ -15,6 +15,7 @@ import { CAVE_HOLE_ID } from '@dontstarve-web/prefab/cave_hole';
 import { CAVE_PILLAR_IDS, PILLAR_RUINS_ID } from '@dontstarve-web/prefab/pillar';
 import { PILLAR_ATRIUM_ID } from '@dontstarve-web/prefab/atrium_pillar';
 import { MOON_FISSURE_ID } from '@dontstarve-web/prefab/moon_fissure';
+import { WATERTREE_PILLAR_ARCHIVES, WATERTREE_PILLAR_ID, type WatertreePillarSaveState } from '@dontstarve-web/prefab/watertree_pillar';
 import { ARCHIVE_PILLAR_ARCHIVES, ARCHIVE_PILLAR_ID } from '@dontstarve-web/prefab/archive_pillar';
 import { VAULT_PILLAR_ID } from '@dontstarve-web/prefab/vault_pillar';
 import { MONKEY_PILLAR_IDS, MONKEYPILLAR_ID } from '@dontstarve-web/prefab/monkeypillar';
@@ -159,6 +160,35 @@ const monkeyPillar: PrefabComponentParser = (value, path) => {
   if (pillar_id === undefined) return {};
   const id = MONKEY_PILLAR_IDS.find(known => known === pillar_id) ?? fail(`${path}.pillar_id`, 'unsupported monkey pillar');
   return { pillar_id: id };
+};
+/** tuning.lua OCEANTREENUT_REGENERATE_TIME + _VARIANCE and OCEANVINE_COCOON_REGEN_BASE + _RAND, by the timer they bound. */
+const WATERTREE_PILLAR_TIMERS: Readonly<Record<string, number>> = { regrow_oceantreenut: 480 * 1.5, cocoon_regrow_check: 480 * 5 };
+/** watertree_pillar.lua OnSave: num_oceantreenuts, last_ram_time and cocoons_to_regrow, with its childspawner and timer. */
+const watertreePillar: PrefabComponentParser = (value, path) => {
+  const { watertreePillar: state } = object(value, path, ['watertreePillar']);
+  if (state === undefined) return {};
+  const p = `${path}.watertreePillar`;
+  const data = object(state, p, ['num_oceantreenuts', 'last_ram_time', 'cocoons_to_regrow', 'childspawner', 'timer']);
+  const child = object(data.childspawner, `${p}.childspawner`, ['childreninside', 'childrenoutside']);
+  // NUM_OCEANTREENUTS_MAX is 2; the grassgator children are not ported, so none is outside.
+  const saved: WatertreePillarSaveState = {
+    num_oceantreenuts: integer(data.num_oceantreenuts, `${p}.num_oceantreenuts`, 0, 2),
+    childspawner: { childreninside: integer(child.childreninside, `${p}.childspawner.childreninside`, 0, 1),
+      childrenoutside: array(child.childrenoutside, `${p}.childspawner.childrenoutside`, 0).map((id, i) => string(id, `${p}.childspawner.childrenoutside[${i}]`)) },
+  };
+  if (data.last_ram_time !== undefined) saved.last_ram_time = number(data.last_ram_time, `${p}.last_ram_time`, 0);
+  if (data.cocoons_to_regrow !== undefined) saved.cocoons_to_regrow = integer(data.cocoons_to_regrow, `${p}.cocoons_to_regrow`, 0, 1000);
+  if (data.timer !== undefined) {
+    const timers = object(object(data.timer, `${p}.timer`, ['timers']).timers, `${p}.timer.timers`, Object.keys(WATERTREE_PILLAR_TIMERS));
+    saved.timer = { timers: Object.fromEntries(Object.entries(timers).filter(([, timer]) => timer !== undefined).map(([name, timer]) => {
+      const tp = `${p}.timer.timers.${name}`, t = object(timer, tp, ['timeleft', 'paused', 'initial_time']);
+      const limit = WATERTREE_PILLAR_TIMERS[name]!;
+      if (typeof t.paused !== 'boolean') fail(`${tp}.paused`, 'expected boolean');
+      return [name, { timeleft: number(t.timeleft, `${tp}.timeleft`, 0, limit), paused: t.paused,
+        initial_time: number(t.initial_time, `${tp}.initial_time`, 0, limit) }];
+    })) };
+  }
+  return { watertreePillar: saved };
 };
 const archiveStatue = componentParser({ keys: ['archiveProp'], archivePropVariants: 4 });
 const archiveRune = componentParser({ keys: ['archiveProp'], archivePropVariants: 3, archiveStoryLines: 5 });
@@ -386,6 +416,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   cavePillars: definePrefabs(CAVE_PILLAR_IDS, empty, true, prefab => [`${prefab}.zip`]),
   atriumPillars: definePrefabs([PILLAR_ATRIUM_ID], empty, true, ['pillar_atrium.zip']),
   moonFissures: definePrefabs([MOON_FISSURE_ID], empty, true, ['moon_fissure.zip']),
+  watertreePillars: definePrefabs([WATERTREE_PILLAR_ID], watertreePillar, true, WATERTREE_PILLAR_ARCHIVES),
   archivePillars: definePrefabs([ARCHIVE_PILLAR_ID], archivePillar, true, ARCHIVE_PILLAR_ARCHIVES),
   vaultPillars: definePrefabs([VAULT_PILLAR_ID], vaultPillar, true, ['pillar_vault_deep.zip']),
   monkeyPillars: definePrefabs([MONKEYPILLAR_ID], monkeyPillar, true, ['pillar_monkey.zip', 'snow.zip']),

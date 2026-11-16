@@ -116,6 +116,20 @@ export function MakeObstaclePhysics(inst: PhysicsEntity, rad: number, height = 2
 }
 
 /**
+ * standardcomponents.lua MakeWaterObstaclePhysics(inst, rad, height, restitution), body only: an obstacle that also
+ * collides with other obstacles. As with MakeObstaclePhysics, the prefab's fn adds the `blocker` tag and the
+ * waterphysics component (with its restitution) where the source calls the helper.
+ */
+export function MakeWaterObstaclePhysics(inst: PhysicsEntity, rad: number, height = 2): PhysicsState {
+  const phys = inst.physics;
+  phys.SetMass(0);
+  phys.SetCollisionGroup(COLLISION.OBSTACLES);
+  phys.SetCollisionMask(COLLISION.ITEMS, COLLISION.CHARACTERS, COLLISION.GIANTS, COLLISION.OBSTACLES);
+  phys.SetCapsule(rad, height);
+  return phys;
+}
+
+/**
  * standardcomponents.lua MakeHeavyObstaclePhysics(inst, rad, height): the same static capsule as an obstacle, plus the
  * `blocker` tag. Friction, damping and restitution only matter once the heavyobstaclephysics component turns it into an item.
  */

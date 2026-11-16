@@ -105,6 +105,7 @@
 | Lua | TS | 示例 | 差异 |
 | --- | --- | --- | --- |
 | `MakeObstaclePhysics(inst, r, h)` 等 | 定义的 `physics: { make: MakeObstaclePhysics, radius, height }` | `monkeypillar.ts` | 实现在 `standardcomponents.ts`，Lua 在函数内加 `blocker`，TS 除 `MakeHeavyObstaclePhysics` 外要另外 `addTag` |
+| `MakeWaterObstaclePhysics(inst, r, h, restitution)` | 定义的 `physics: { make: MakeWaterObstaclePhysics, radius, height }`，`fn` 中在 Lua 调用处 `addTag('blocker')` 并 `addComponent(inst, 'waterphysics', WaterPhysics)` | `watertree_pillar.ts` | 碰撞掩码另含 `OBSTACLES`；`WaterPhysics` 只有构造签名，`restitution` 未设置 |
 | `inst.Physics:SetCylinder` 等 | `inst.physics` 同名方法 | `atrium_pillar.ts` | `SetCylinder` 实际是 capsule 近似 |
 | `MiniMapEntity:SetIcon` | 定义的 `minimapIcon` | `archive_pillar.ts` | |
 | `inst.Light` | `inst.light.set({ radius, falloff, intensity, colour })` | `atrium_gate.ts` | 项目单位，见示例换算 |
