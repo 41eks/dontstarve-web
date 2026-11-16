@@ -1,7 +1,7 @@
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { ActionWorldContext as WorldContext } from './actionContext.ts';
-import { mouseTargets } from '../../prefab/src/mouseTargets';
+import { mouseTargets, type MouseTargetEntity } from '../../prefab/src/mouseTargets';
 import { prepareSpatialGeometryBounds, spatialAttributeVersion } from '../../animation/src/spatialBounds.ts';
 import { isInstancedSpriteProxy } from '../../animation/src/spriteRaycast.ts';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -59,6 +59,30 @@ function spriteBounds(object: THREE.Object3D): THREE.Box3 {
     return cache.box;
 }
 
+/**
+ * Broad phase for pointer picking: per target root, the farthest any picked bounds have reached from its origin,
+ * padded as the padded pick enlarges them. It only grows, so a ray farther than this from the root misses both picks.
+ * Billboards turn and entities move about that origin, so neither invalidates it; a changed frame, scale or
+ * visibility is caught when the root is next refreshed.
+ */
+const pickEnvelopes = new WeakMap<MouseTargetEntity, number>();
+/** Roots refreshed per pick, round-robin, so each target's envelope follows its art within a few frames. */
+const ENVELOPE_REFRESHES_PER_PICK = 16;
+const envelopeOrigin = new THREE.Vector3();
+const envelopeSphere = new THREE.Sphere();
+
+function refreshPickEnvelope(entity: MouseTargetEntity): void {
+    const model = entity.transform.model;
+    // The bounds read the current transforms, as the exact pick does.
+    model.updateWorldMatrix(true, true);
+    const box = spriteBounds(model);
+    if (box.isEmpty()) { if (!pickEnvelopes.has(entity)) pickEnvelopes.set(entity, 0); return; }
+    model.getWorldPosition(envelopeOrigin);
+    box.getBoundingSphere(envelopeSphere);
+    const radius = envelopeOrigin.distanceTo(envelopeSphere.center) + envelopeSphere.radius * SPRITE_PICK_SCALE;
+    if (radius > (pickEnvelopes.get(entity) ?? -1)) pickEnvelopes.set(entity, radius);
+}
+
 /** Input:GetWorldEntityUnderMouse excludes invisible/NOCLICK entities before action selection. */
 export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THREE.Object3D[], recursive = true): THREE.Intersection[] {
     const hits: THREE.Intersection[] = [];
@@ -110,6 +134,9 @@ export class PointerRaycaster {
     private cacheGround = false;
     private groundCached = false;
     private cachedGround?: THREE.Intersection;
+    private pickCount = 0;
+    private readonly candidates: THREE.Object3D[] = [];
+    private readonly refreshed: MouseTargetEntity[] = [];
 
     /** Object-only picking can omit ground; ground queries then return no hit. */
     constructor(world: Pick<WorldContext, 'camera' | 'renderer'> & Partial<Pick<WorldContext, 'ground' | 'scene'>>) {
@@ -160,9 +187,20 @@ export class PointerRaycaster {
 
     pickMouseTarget(): THREE.Intersection | undefined {
         if (!this.updatePointerRay()) return undefined;
-        const candidates: THREE.Object3D[] = [];
+        const { candidates, refreshed } = this, ray = this.raycaster.ray;
+        candidates.length = 0; refreshed.length = 0;
+        // Each root is refreshed once every `period` picks; one with no envelope yet is refreshed now.
+        const period = Math.max(1, Math.ceil(mouseTargets.size / ENVELOPE_REFRESHES_PER_PICK)), phase = this.pickCount++ % period;
+        let index = 0;
         // The registry already excludes removed, detached, inactive, disabled and NOCLICK roots.
-        for (const entity of mouseTargets) if (mouseVisible(entity.transform.model)) candidates.push(entity.transform.model);
+        for (const entity of mouseTargets) {
+            const model = entity.transform.model, envelope = pickEnvelopes.get(entity);
+            const due = index++ % period === phase;
+            if (envelope === undefined || due) refreshed.push(entity);
+            else if (ray.distanceSqToPoint(model.getWorldPosition(envelopeOrigin)) > envelope * envelope) continue;
+            if (mouseVisible(model)) candidates.push(model);
+        }
+        for (const entity of refreshed) refreshPickEnvelope(entity);
         return intersectSpriteEntities(this.raycaster, candidates)[0] ?? this.pickPaddedTarget(candidates);
     }
 

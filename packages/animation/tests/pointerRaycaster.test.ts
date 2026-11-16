@@ -217,3 +217,38 @@ it('reads current drawn frame bounds on animation changes, including shared fram
     (visual.children[0] as THREE.Mesh).geometry.dispose(); material.dispose();
   }
 });
+
+it('narrows picking to targets whose padded envelope the ray reaches, following moved and new targets at once', () => {
+  const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
+  camera.position.z = 10; camera.updateMatrixWorld();
+  const scene = new THREE.Scene(), geometry = new THREE.PlaneGeometry(2, 2), material = new THREE.MeshBasicMaterial();
+  const target = (x: number) => {
+    const model = new THREE.Group(), mesh = new THREE.Mesh(geometry, material);
+    model.add(mesh); scene.add(model);
+    const inst = registerActionEntity(prefabInstance(withEntity(model, 'rock'))!);
+    inst.setPosition(x, 0, 0);
+    return { model, mesh, inst };
+  };
+  // 48 targets: each pick refreshes 16 of them; the far ones that are not due are culled by their envelope.
+  const targets = Array.from({ length: 48 }, (_, i) => target(20 + i * 5));
+  const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
+  const pointer = new PointerRaycaster({ camera, renderer, scene });
+  pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
+  try {
+    expect(pointer.pickMouseTarget()).toBeUndefined(); // Learns every envelope.
+    const raycasts = targets.map(({ mesh }) => vi.spyOn(mesh, 'raycast'));
+    expect(pointer.pickMouseTarget()).toBeUndefined();
+    expect(raycasts.filter(spy => spy.mock.calls.length > 0).length).toBeLessThanOrEqual(16);
+    // A known target moved under the pointer is picked on the next frame: its envelope moves with its root.
+    targets[30].inst.setPosition(0, 0, 0);
+    expect(pointer.pickMouseTarget()?.object).toBe(targets[30].mesh);
+    // A new target in front is picked at once.
+    const front = target(0);
+    front.inst.setPosition(0, 0, 2);
+    expect(pointer.pickMouseTarget()?.object).toBe(front.mesh);
+    raycasts.forEach(spy => spy.mockRestore());
+  } finally {
+    for (const model of [...scene.children]) disposeActionEntity(findActionEntity(model));
+    pointer.dispose(); geometry.dispose(); material.dispose();
+  }
+});
