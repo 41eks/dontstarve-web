@@ -3,7 +3,7 @@ import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
 import { type Object3D, type Vector3, type Vector3Like } from 'three';
 import { createSignal, readonlySignal, type GameTimeScheduler, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
-import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type StaticImageSpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
+import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { TileTracker } from '../../componets/src/tileManager';
@@ -818,7 +818,7 @@ export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, 
 }
 
 /** A new entity drawn with a shared archive sprite; `clip.held` is a one-shot clip that rests on its last frame. */
-export function createArchiveEntity<Instance extends PrefabInstance<SpriteState, object> & AnimatedSpriteInstance = PrefabInstance>(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip<Instance>, name?: string,
+export function createArchiveEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip<Instance>, name?: string,
   initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom'>):
   { instance: Instance; display: PrefabDisplay } {
   const instance = entityInstance(prefab, clip), state = instance.sprite;
@@ -853,10 +853,6 @@ export let POPULATING = false;
 /** The `fn` of a prefab definition: Prefab(name, fn, assets)'s constructor. */
 export type PrefabEntityFn<Instance> = (position: ReadonlyVector3, sprites: SpriteResources) => Instance;
 
-/** An instance whose sprite has no static image commands: archive, animated and icon art draw every command it has. */
-export interface AnimatedSpriteInstance { readonly sprite: { readonly setPose?: never } }
-/** An instance drawn from static build images, whose sprite selects poses and images per facing. */
-export interface StaticImageSpriteInstance { readonly sprite: StaticImageSpriteState }
 
 /** What every prefab definition declares, whichever art it is drawn with. */
 interface PrefabEntityCommon<Instance extends PrefabInstance<SpriteState, object>> {
@@ -892,13 +888,12 @@ interface NoArt {
   instanceAssets?: never;
   assetOptions?: never;
   icon?: never;
-  staticImages?: never;
 }
 
 /** Archive art: a shared archive sprite in the world's resources. */
 interface ArchiveArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'assets' | 'assetOptions'> {
   /** `sprites` is the world's shared resource cache, for the sources of the fx children the prefab draws; declaring one performs no IO. */
-  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance;
   assets: Parameters<SpriteResources['archive']>[0];
   /** How the display builds this art's sprites, such as a plant's instanced batches. */
   assetOptions?: Parameters<SpriteResources['archive']>[1];
@@ -906,35 +901,28 @@ interface ArchiveArt<Instance extends PrefabInstance<SpriteState, object>> exten
 
 /** Archive art chosen by the instance: its own SetBank / SetBuild, which its OnLoad may still change as it spawns. */
 interface InstanceArchiveArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'instanceAssets' | 'assetOptions'> {
-  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance;
   instanceAssets(instance: Instance): Parameters<SpriteResources['archive']>[0];
   assetOptions?: Parameters<SpriteResources['archive']>[1];
 }
 
 /** The inventory image, drawn as a billboard. */
 interface IconArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'icon'> {
-  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance;
   icon: { readonly atlas: string; readonly image: string };
-}
-
-/** Build images drawn as static sprites from the world's shared resources, as walls are; only they draw a static sprite. */
-interface StaticImagesArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'staticImages'> {
-  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & StaticImageSpriteInstance;
-  staticImages: { readonly buildArchive: string; readonly options: Parameters<SpriteResources['staticFactory']>[1] };
 }
 
 /** No assets: only a transform and what the instance declares on it, as FX lights do; nothing to draw or click. */
 interface NoArtDefinition<Instance extends PrefabInstance<SpriteState, object>> extends NoArt {
-  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
+  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance;
 }
 
 /**
  * Prefab(name, fn, assets): how one source prefab is built and which art its display declares. The art is one of
- * `assets`, `instanceAssets`, `icon` or `staticImages`, or none; `staticImages` and only it goes with
- * a `StaticImageSpriteState` sprite, whose pose and image commands no other art can draw.
+ * `assets`, `instanceAssets` or `icon`, or none.
  */
 export type PrefabEntityDefinition<Instance extends PrefabInstance<SpriteState, object>> = PrefabEntityCommon<Instance> & (
-  | ArchiveArt<Instance> | InstanceArchiveArt<Instance> | IconArt<Instance> | StaticImagesArt<Instance> | NoArtDefinition<Instance>);
+  | ArchiveArt<Instance> | InstanceArchiveArt<Instance> | IconArt<Instance> | NoArtDefinition<Instance>);
 
 /**
  * The application's shared SpawnPrefab owner and save loop over Ents: one collection and shared texture cache
@@ -1010,8 +998,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
     const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols,
-      baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon, staticImages } = this.prefabs[prefabId];
-    const source = staticImages && this.resources.staticFactory(staticImages.buildArchive, staticImages.options);
+      baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon } = this.prefabs[prefabId];
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position, this.resources);
     // The world's scheduler for inst:DoTaskInTime, unless the prefab's fn already bound the one it scheduled on; binding
@@ -1030,8 +1017,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
       // Spawning is synchronous, so instanceAssets runs after the SetPersistData below however early the display starts its sprite.
       // conventions-allow prefab-io: the manager hands the display a deferred declaration; the display does the loading.
       ...(instanceAssets ? { archive: { create: clip => Promise.resolve().then(() => this.resources.archive(instanceAssets(instance), assetOptions).create(clip)) } }
-        : assets ? { archive: this.resources.archive(assets, assetOptions) } : iconSource ? { source: iconSource }
-        : source ? { source } : { empty: true }) });
+        : assets ? { archive: this.resources.archive(assets, assetOptions) } : iconSource ? { source: iconSource } : { empty: true }) });
     bindInstance(display.model, instance);
     if (rayTestOnBB) display.model.userData.rayTestOnBB = true;
     instance.setPosition(position.x, 0, position.z);
@@ -1045,7 +1031,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     }
     if (skinId !== undefined) instance.skinId = skinId;
     onSpawned?.(instance);
-    if ((assets || instanceAssets || icon || source) && targetable) registerActionEntity(instance);
+    if ((assets || instanceAssets || icon) && targetable) registerActionEntity(instance);
     this.entities.add(instance);
     const entityId = String(instance.entityId);
     this.byEntityId.set(entityId, instance);

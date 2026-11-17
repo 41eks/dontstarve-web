@@ -110,7 +110,7 @@ export class PrefabDisplay {
   private readonly onAdded = () => { if (this.asleep) this.sleep(); };
   // What the controller has been given, so that each snapshot only sends what changed.
   private applied: { clip: ClipJson | undefined; queue: number; frame?: SpriteJson['frame']; transient?: SpriteJson['transient'];
-    image?: number; facingImages?: SpriteJson['facingImages']; facing?: number; facingRotation?: number; facingMode?: SpriteJson['facingMode']; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; playbackRate?: number; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean; visualHeight?: number;
+    facing?: number; facingRotation?: number; facingMode?: SpriteJson['facingMode']; mirrored?: boolean; colour?: readonly number[]; opacity?: number; paused?: boolean; playbackRate?: number; erosion?: number; ground?: SpriteJson['ground']; meshOrder?: number; depthOffset?: boolean; visualHeight?: number;
     skinId?: string; source?: SpriteJson['source']; tint?: SpriteJson['tint']; appearance: ReadonlyMap<string, AppearanceJson> };
 
   /** Ground declarations keep their explicit group order and do not join billboard foot sorting. */
@@ -183,14 +183,13 @@ export class PrefabDisplay {
       if (!this.disposed) console.error(`Unable to load a dependency of ${options.name ?? 'a sprite'}`, error);
     });
     // The controller starts in a looping or held clip; any other first clip is sent by the first snapshot.
-    const plain = first.clip.pose === undefined && first.clip.percent === undefined && (first.clip.loop ? !first.clip.finished : first.clip.finished);
+    const plain = first.clip.percent === undefined && (first.clip.loop ? !first.clip.finished : first.clip.finished);
     this.applied = { clip: plain ? first.clip : undefined, queue: 0, appearance: new Map() };
     const controller = this.engine;
     state.bind({
       get currentAnimation() { return controller.currentAnimation; },
       get numFrames() { return controller.numFrames; },
       get currentAnimationLength() { return controller.currentAnimationLength; },
-      get pose() { return controller.pose; },
       get loaded() { return controller.loaded; },
       update: dt => {
         this.alignVisual(false); controller.update(dt);
@@ -325,8 +324,6 @@ export class PrefabDisplay {
       const source = this.resolveSource(json.source);
       const clips = source?.animations.animations.filter(clip => clip.name === json.clip.name && clip.bankHash === source.bank);
       const clip = clips?.find(clip => clip.facing === facing) ?? clips?.find(clip => selectsFacing(clip.facing, facing).matches);
-      const image = json.facingImages && [...json.facingImages].find(([mask]) => (mask & facing) !== 0)?.[1];
-      if (image !== undefined) this.engine.showImage(image);
       this.engine.setFacing(facing, clip ? selectsFacing(clip.facing, facing).flipped : character && (facing === 4 || facing === 32 || facing === 128));
     } else if (json.facing !== undefined) this.engine.setFacing(json.facing, json.mirrored);
   }
@@ -390,8 +387,7 @@ export class PrefabDisplay {
       if (clip.none) {
         if (!controller.clearAnimation) throw new Error(`${this.model.name || 'Sprite'} cannot play no animation`);
         controller.clearAnimation();
-      } else if (clip.pose) controller.setPose(clip.pose.name);
-      else if (clip.percent !== undefined) controller.setPercent(clip.name, clip.percent);
+      } else if (clip.percent !== undefined) controller.setPercent(clip.name, clip.percent);
       else if (clip.loop) controller.start(clip.name);
       else if (clip.finished) controller.holdLastFrame(clip.name);
       else controller.playOnce(clip.name, () => state.finish(clip));
@@ -409,10 +405,8 @@ export class PrefabDisplay {
       if (frame !== undefined) controller.setFrame(frame);
     }
     if (json.transient !== applied.transient) { applied.transient = json.transient; if (json.transient) controller.playTransient(json.transient.name); }
-    if (json.image !== applied.image) { applied.image = json.image; if (json.image !== undefined) controller.showImage(json.image); }
-    if (json.facing !== applied.facing || json.mirrored !== applied.mirrored || json.facingRotation !== applied.facingRotation || json.facingMode !== applied.facingMode || json.facingImages !== applied.facingImages) {
+    if (json.facing !== applied.facing || json.mirrored !== applied.mirrored || json.facingRotation !== applied.facingRotation || json.facingMode !== applied.facingMode) {
       applied.facing = json.facing; applied.mirrored = json.mirrored; applied.facingRotation = json.facingRotation; applied.facingMode = json.facingMode;
-      applied.facingImages = json.facingImages;
       this.applyFacing(json);
     }
     if (json.colour !== applied.colour) { applied.colour = json.colour; if (json.colour) controller.setColour(json.colour); }
@@ -456,7 +450,6 @@ export class PrefabDisplay {
     const skin = json.appearance.get('skin');
     if (skin?.kind === 'skin') this.dressSkin(skin.skin, json.skinId);
     if (source) controller.setArtSource?.(source);
-    if (json.image !== undefined) controller.showImage(json.image);
     this.applyFacing(json);
     const frame = this.frameIndex(json.frame);
     if (frame !== undefined && controller.currentAnimation === json.clip.name && (fresh || this.applied.frame !== json.frame)) {

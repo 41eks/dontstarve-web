@@ -13,7 +13,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { InventorySlot, inventorySlotAddress } from '../../inventory/src';
 import { loadBuild } from '../src/animationAssets';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
-import * as wallSprites from '../src/wallSprite';
+import { InstancedArchiveSprites } from '../src/instancedArchiveSprites';
 import { createSignal } from '@dontstarve-web/signals';
 import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -67,7 +67,8 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
       if (value.skinId !== previous.skinId) changed(value.skinId, previous.skinId);
     });
     const components = { ...instance.components };
-    const artFactory = vi.spyOn(wallSprites, 'createStaticSpriteFactory');
+    // Each archive sprite the display draws joins the shared batches once: a reskin dresses the drawn one instead.
+    const artFactory = vi.spyOn(InstancedArchiveSprites.prototype, 'retain');
     try {
       for (const skinId of [undefined, Object.keys(WALL_SKIN_ARCHIVES[prefabId])[0]]) {
         const target = placement.reskinTargets[0];
@@ -99,14 +100,12 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
           world.camera.position.set(x, 12, z); world.camera.lookAt(0, 0, 0); world.camera.updateMatrixWorld();
           content.camerarotation.set(world.camera.quaternion.clone());
           placement.update();
-          const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
-          expect(mesh.geometry.drawRange.count).toBe(prefabId === 'wall_dreadstone' ? 12 : 6);
-          expect(mesh.geometry.boundingBox?.isEmpty()).not.toBe(true);
+          // One wall_segment part, and wall_dreadstone's wall_segment_red over its base, from the skin's build when skinned.
+          const parts = prefabDisplay(model)!.resolveFrame();
+          expect(parts).toHaveLength(prefabId === 'wall_dreadstone' ? 2 : 1);
           if (skinId) {
             const skin = await loadBuild(WALL_SKIN_ARCHIVES[prefabId][skinId], '/dst/data/anim');
-            const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-            expect(materials.some((material) => ((material as THREE.MeshBasicMaterial).map as THREE.DataTexture | null)?.image.data
-              === skin.atlases[0].pixels)).toBe(true);
+            expect(parts.some(({ materials }) => materials.some(({ name }) => name.includes(skin.build.name)))).toBe(true);
           }
           setSpriteEntityRenderOrder(model, 17);
           expect(model.children[0].children[0].renderOrder).toBe(17);
@@ -156,7 +155,7 @@ it('keeps the wall sprite when a skin commit is cancelled or superseded and rele
   const instance = lookupPrefabInstance(model)!;
   const display = prefabDisplay(target.transform.model)!;
   await display.artLoaded();
-  const sources = vi.spyOn(wallSprites, 'createStaticSpriteFactory');
+  const sources = vi.spyOn(InstancedArchiveSprites.prototype, 'retain');
   const controller = instance.sprite;
   const release = vi.fn(); display.onDispose(release);
   expect(instance.skinId).toBeUndefined();

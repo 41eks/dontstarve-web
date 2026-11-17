@@ -1,11 +1,9 @@
 import type { ReadonlyVector3 } from './transformRoot';
 import * as THREE from 'three';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
-import type { StaticSpriteController } from './wallSprite';
 import type { ArchiveSprite } from './archiveSprite';
 import { registerSpriteRenderGroup, setSpriteEntityRenderOrder } from './renderOrder';
 import type { InstancedSprite } from './instancedArchiveSprites';
-import { spriteController } from './spriteController';
 import { markTransformDirty } from './transformRoot';
 import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, TransientSpriteAnimationController } from './sprite';
 import type { BuildOverride, CompositeSpriteFrame, SpriteTint, SymbolOverride } from './spriteDressing';
@@ -383,15 +381,13 @@ interface BuildingClip {
   finished: boolean;
   /** AnimState:SetPercent pose, kept as a held frame. */
   percent?: number;
-  /** Static build-image rest pose; undefined name selects the source image. */
-  pose?: { name: string | undefined };
 }
 
 /**
- * A resident sprite from a loaded source: static build-image (wall) controllers and controller-less icon sprites. Animated
- * art is drawn by `ResidentSprite` from shared archives; the clip, frame, layer, symbol and AnimState calls a static
- * sprite has no art for are accepted and ignored here.
- * The stable root keeps the entity identity, position and render-order slot; the controller keeps the logical clip
+ * A resident sprite from a loaded source: an inventory icon billboard, which has a single image and no playback. Animated
+ * art is drawn by `ResidentSprite` from shared archives; the clip, frame, layer, symbol and AnimState calls an icon has
+ * no art for are kept as logical state or ignored here, and one-shots settle at once.
+ * The stable root keeps the entity identity, position and render-order slot; this resident keeps the logical clip
  * and queue. Appearance calls only reach the current sprite; the owner reapplies them through `art`. `create` builds a sprite from
  * the entity's shared source and `release` returns it to that owner; no atlas belongs to the entity.
  * Transitions that were running or requested while unloaded settle into their completion state.
@@ -409,7 +405,6 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   private get sprite(): THREE.Group | undefined { return this.drawn; }
   private set sprite(sprite: THREE.Group | undefined) { this.drawn = sprite; this.artVersion.set(this.artVersion.peek() + 1); }
   private clip: BuildingClip;
-  private readonly initialAnimation: string;
   private queue: { name: string; loop: boolean }[] = [];
   private disposed = false;
   /** The placeholder holds the transform of a released sprite; before the first sprite it holds none to restore. */
@@ -422,7 +417,6 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   constructor(model: THREE.Group, create: (initialAnimation: string) => THREE.Group | undefined, release: (sprite: THREE.Group) => void,
     initial: THREE.Group | undefined, clip: { name: string; held?: boolean }) {
     this.model = model;
-    this.initialAnimation = clip.name;
     this.create = create;
     this.release = release;
     this.clip = { name: clip.name, loop: !clip.held, finished: clip.held === true };
@@ -432,10 +426,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   }
 
   get loaded(): boolean { return this.sprite !== undefined; }
-  private get controller() { return spriteController(this.sprite); }
-  /** Poses and image frames: the static (wall) controller's surface. */
-  private get staticController(): StaticSpriteController | undefined { const c = this.controller; return c && 'showImage' in c ? c : undefined; }
-  get currentAnimation(): string { return this.controller?.currentAnimation ?? this.clip.name; }
+  get currentAnimation(): string { return this.clip.name; }
   get numFrames(): number { return 0; }
   get currentAnimationLength(): number { return 0; }
 
@@ -492,39 +483,15 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     const renderGroup = sprite.children[0];
     if (!(renderGroup instanceof THREE.Group)) throw new Error(`${this.model.name || 'Sprite'} has no render group to sort`);
     registerSpriteRenderGroup(this.model, renderGroup);
-    if (replay) this.play();
   }
 
-  private play(): void {
-    const controller = this.controller, clip = this.clip;
-    if (!controller) return;
-    if (clip.pose) this.staticController?.setPose(clip.pose.name);
-    else if (clip.percent !== undefined) return;
-    else if (clip.loop) controller.start(clip.name);
-    else if (clip.finished) controller.holdLastFrame(clip.name);
-    else controller.playOnce(clip.name, this.completion(clip));
-    for (const entry of this.queue) controller.pushAnimation(entry.name, entry.loop);
-  }
 
-  private completion(clip: BuildingClip): () => void {
-    return () => {
-      if (this.clip !== clip) return;
-      clip.finished = true;
-      clip.complete?.();
-    };
-  }
 
-  get pose(): string | undefined { return this.clip.pose?.name; }
-  setPose(name: string | undefined): void {
-    this.clip = { name: name ?? this.initialAnimation, loop: false, finished: true, pose: { name } };
-    this.queue = [];
-    this.staticController?.setPose(name);
-  }
-  showImage(image: number): void { this.staticController?.showImage(image); }
-  setFacing(facing: number): void { this.controller?.setFacing(facing); }
-  setColour(colour: readonly number[]): void { this.controller?.setColour(colour); }
-  setOpacity(opacity: number): void { this.controller?.setOpacity(opacity); }
-  setSkin(skin: import('./sprite').SpriteSkin | undefined): void { this.controller?.setSkin(skin); }
+  // An icon has one image in one colour: no facings, tint or skin builds.
+  setFacing(_facing: number): void {}
+  setColour(_colour: readonly number[]): void {}
+  setOpacity(_opacity: number): void {}
+  setSkin(_skin: import('./sprite').SpriteSkin | undefined): void {}
   setMeshOrder(order: number): void {
     if (!this.sprite) return;
     this.sprite.children[0].children[0].renderOrder = order;
@@ -541,22 +508,20 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   start(name: string): void {
     this.clip = { name, loop: true, finished: false };
     this.queue = [];
-    this.controller?.start(name);
   }
   playOnce(name: string, complete?: () => void): void {
-    const clip = this.clip = { name, loop: false, complete, finished: false };
+    this.clip = { name, loop: false, complete, finished: false };
     this.queue = [];
-    if (this.controller) this.controller.playOnce(name, this.completion(clip)); else this.settle();
+    this.settle();
   }
   pushAnimation(name: string, loop = false): void {
     this.queue.push({ name, loop });
-    if (this.controller) this.controller.pushAnimation(name, loop); else this.settle();
+    this.settle();
   }
-  playTransient(name: string): void { this.controller?.playTransient(name); }
+  playTransient(_name: string): void {}
   holdLastFrame(name: string): void {
     this.clip = { name, loop: false, finished: true };
     this.queue = [];
-    this.controller?.holdLastFrame(name);
   }
   setPercent(name: string, percent: number): void {
     this.clip = { name, loop: false, finished: true, percent };
@@ -587,7 +552,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.visualHeight = height;
     markTransformDirty(this.model);
   }
-  update(dt: number): void { this.controller?.update(dt); }
+  update(_dt: number): void {}
 
 
   dispose(): void {

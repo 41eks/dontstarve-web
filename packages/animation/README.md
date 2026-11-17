@@ -58,9 +58,8 @@ assets.dispose(); // manager 的所有实例移除后，统一释放缓存几何
 ## Sprite 驻留
 
 `@dontstarve-web/animation/residentSprite` 导出 `ResidentSprite`（archive sprite）、
-`ResidentSpriteController`（墙体静态图片与图标 sprite）和 `ResidentEntity`，也可从包根入口导入。
+`ResidentSpriteController`（物品栏图标 billboard）和 `ResidentEntity`，也可从包根入口导入。
 驻留容器保留稳定根节点与逻辑动画，`setActive()` 加载／释放实体 visual，共享资源由所有者管理。
-静态墙使用 `createStaticSpriteFactory()` 共享 atlas 与帧几何，实例的颜色／透明度使用私有材质；先 `disposeSprite()` 全部实体，再 `dispose()` 工厂。
 外观由 prefab 根据 `art` signal 在 visual 加载后重新应用。详见 [tile 生命周期](../../docs/tile-lifecycle.md)。
 
 ## prefab 的动画切换

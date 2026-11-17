@@ -1,8 +1,7 @@
 import { LootDropper } from '../../componets/src/lootdropper';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { StaticImageSpriteState, type SpriteResources } from '@dontstarve-web/display';
-import { FACING_CARDINAL } from '@dontstarve-web/animation/facing';
+import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
 import { WALL_SKIN_ARCHIVES, wallWorldPrefab, wallWorldSkin } from './wallSkins';
 import { PlaySound } from './sound';
@@ -93,23 +92,15 @@ export function isWallId(value: string): value is WallId {
     return WALL_IDS.some((wallId) => wallId === value);
 }
 
-/** What this project draws a wall from: its build's front and side segment images, from definitions.json. */
+/** A wall's art from definitions.json: its build (SetBuild("wall_"..data.name)) and the bank's animation archive. */
 interface WallArt {
     archive: string;
-    /** Anim archive supplying the `half` pose and `half_hit` feedback; defaults to `wall.zip`, `wall_dreadstone` has its own bank. */
+    /** Anim archive of the wall's bank; defaults to `wall.zip`, `wall_dreadstone` has its own bank. */
     animationArchive?: string;
     buildLabel: string;
-    /** Front face art for cardinal camera headings, where the wall's `facing=15` animations are used. */
-    frontImageIndex: number;
-    /** Oblique side art for diagonal camera headings, where the wall's `facing=240` animations are used. */
-    sideImageIndex: number;
     /** `AnimState:SetMultColour` RGB, e.g. hay walls' `[0.9, 0.9, 0.9]`. */
     multColour?: readonly number[];
     name: string;
-    /** Symbol stacked over the main one: `wall_dreadstone` draws `wall_segment_red` over `wall_segment_base`. */
-    overlay?: { symbol: string; frontImageIndex: number; sideImageIndex: number };
-    /** Symbol the images belong to; defaults to the build's only symbol. */
-    symbol?: string;
 }
 
 /** walls.lua walldata with tuning.lua *WALL_HEALTH / *WALL_PLAYERDAMAGEMOD, as far as it is ported. */
@@ -154,27 +145,22 @@ function skinArchives(prefab: WallPrefabId): Readonly<Record<string, string>> {
     return Object.fromEntries(Object.entries(WALL_SKIN_ARCHIVES[prefab] ?? {}).map(([id, archive]) => [id, init?.(id).skinArchive ?? archive]));
 }
 
-/** The front and side images of the build, with the `half` rest pose of the wall's bank. */
-function staticImages(art: WallArt) {
-    return {
-        buildArchive: art.archive,
-        options: {
-            imageIndices: [art.sideImageIndex, art.frontImageIndex], name: art.name, symbol: art.symbol,
-            ...(art.overlay ? { overlay: { symbol: art.overlay.symbol, imageIndices: [art.overlay.sideImageIndex, art.overlay.frontImageIndex] } } : {}),
-            animationArchive: art.animationArchive ?? 'wall.zip', restAnimation: 'half',
-        },
-    };
+/** MakeWallType's `bank`: dreadstone has its own, every other wall the shared `wall` bank of wall.zip. */
+function wallAssets(prefab: WallPrefabId, art: WallArt) {
+    return { animationArchive: art.animationArchive ?? 'wall.zip', buildArchives: [art.archive],
+        bank: prefab === 'wall_dreadstone' ? 'wall_dreadstone' : 'wall' };
 }
 
-/** SetBank / SetBuild / PlayAnimation("half") and SetMultColour, as the eight-faced static segment images declare them. */
-function declareWallArt(inst: PrefabInstance<StaticImageSpriteState>, art: WallArt): void {
-    inst.sprite.setPose(undefined);
+/**
+ * Transform:SetEightFaced() at rotation 0: the archive sprite picks each clip's facing from the camera heading. SetMultColour,
+ * for the hay wall, needs the sprite's own material copies (its assetOptions' colour).
+ */
+function declareWallArt(inst: PrefabInstance, art: WallArt): void {
     inst.sprite.setFacingRotation(0);
-    inst.sprite.setFacingImages(new Map([[FACING_CARDINAL, art.frontImageIndex], [240, art.sideImageIndex]]));
     if (art.multColour) inst.sprite.setColour(art.multColour);
 }
 
-export class WallInstance extends PrefabInstance<StaticImageSpriteState> {
+export class WallInstance extends PrefabInstance {
     declare readonly components: PrefabInstance['components'] & {
         health: Health; combat: Combat; lootdropper: LootDropper; workable: Workable; inspectable: Inspectable;
     };
@@ -207,14 +193,8 @@ function clearobstacle(inst: WallInstance): void {
     OnIsPathFindingDirty(inst);
 }
 
-/** The pose this project rests a static wall on: its health anim's image, except the bank's own `half`. */
-function showHealthPose(inst: WallInstance, anim: string): void {
-    inst.sprite.setPose(anim === 'half' ? undefined : anim);
-}
-
 function onhealthchange(inst: WallInstance, old_percent: number, new_percent: number): void {
     const anim_to_play = resolveWallAnim(new_percent, inst.position);
-    showHealthPose(inst, anim_to_play);
     if (new_percent > 0) {
         if (old_percent <= 0) makeobstacle(inst);
         inst.sprite.playOnce(`${anim_to_play}_hit`);
@@ -235,9 +215,7 @@ function onload(inst: WallInstance, data: PlacementSaveRecord['components']): vo
     const { health } = inst.components;
     if (data.health) health.OnLoad({ health: data.health.current, maxhealth: data.health.maximum });
     if (data.wall?.skinId !== undefined) inst.skinId = data.wall.skinId;
-    const anim = resolveWallAnim(health.GetPercent(), inst.position);
-    showHealthPose(inst, anim);
-    inst.sprite.playOnce(anim);
+    inst.sprite.playOnce(resolveWallAnim(health.GetPercent(), inst.position));
     if (health.IsDead()) clearobstacle(inst);
 }
 
@@ -279,7 +257,7 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
     }
 
     function fn(): WallInstance {
-        const inst = new WallInstance(prefab, new StaticImageSpriteState({ name: 'half', held: true, billboard: true }));
+        const inst = new WallInstance(prefab, new SpriteState({ name: 'half', held: true, billboard: true }));
         inst.worldServices = world;
         declareWallArt(inst, art);
         for (const tag of ['wall', 'noauradamage', 'electricdamageimmune', ...data.tags]) inst.addTag(tag);
@@ -308,9 +286,7 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
         workable.SetOnWorkCallback(onhit);
         inst.onRemove(() => { combat.onhitfn = undefined; });
         // The half-health anim of a new wall.
-        const anim = resolveWallAnim(health.GetPercent(), inst.position);
-        showHealthPose(inst, anim);
-        inst.sprite.playOnce(anim);
+        inst.sprite.playOnce(resolveWallAnim(health.GetPercent(), inst.position));
         inst.OnLoad = onload;
         inst.OnSave = onsave;
         return inst;
@@ -319,7 +295,9 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
     const skins = skinArchives(prefab);
     const definition: PrefabEntityDefinition<WallInstance> = {
         fn,
-        staticImages: staticImages(art),
+        assets: wallAssets(prefab, art),
+        // Every health anim and its _hit rests on its last frame: all of them are drawn by the shared batches.
+        assetOptions: { instancedAnimations: 'all', ...art.multColour ? { colour: [1, 1, 1] as const } : {} },
         skins,
         alignBottom: true,
         // MakeObstaclePhysics(inst, .5); inst.Physics:SetDontRemoveOnSleep(true).
@@ -333,7 +311,7 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
     const placer = (buildId: WallId, snap: BuildingPlacerSpec['snap']): BuildingPlacerSpec => ({
         buildLabel: art.buildLabel, name: art.name, animation: 'half', snap,
         art: (resources: SpriteResources, skinId?: string) => ({
-            staticImages: staticImages(art),
+            archive: wallAssets(prefab, art),
             initialize: entity => {
                 entity.skinId = wallWorldSkin(buildId, skinId);
                 entity.sprite.setSkinSource({ art: resources.archives, archives: skins });

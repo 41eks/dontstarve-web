@@ -3,7 +3,7 @@ import { removeComponent } from './components';
 import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import type { BuildingPlacerSpec } from './buildingPlacer';
 import { buildingContainerId, createBuildingContainer, isStorageBuildingId, releaseBuildingContainer, type BuildingContainer, type StorageBuildingId } from './containers';
-import type { AnimatedSpriteInstance, PrefabEntityDefinition, PrefabEntityFn, PrefabInstance } from './prefabInstance';
+import type { PrefabEntityDefinition, PrefabEntityFn, PrefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 import { ToolMouseTarget } from './toolMouseTarget';
@@ -106,7 +106,7 @@ function MakeBuildingTargets(inst: PrefabInstance, world: Pick<PrefabWorldContex
  * if it has one.
  */
 export function buildingPrefab<Instance extends PrefabInstance>(declaration: BuildingDeclaration, bank: string, radius: number | undefined,
-  fn: PrefabEntityFn<Instance & AnimatedSpriteInstance>, world: Pick<PrefabWorldContext, 'handEquipment'>): PrefabEntityDefinition<Instance> {
+  fn: PrefabEntityFn<Instance>, world: Pick<PrefabWorldContext, 'handEquipment'>): PrefabEntityDefinition<Instance> {
   const { archive, buildArchive = archive, skinArchives, skinSymbols, baseSymbols, skinAnimationBanks } = declaration;
   return {
     fn,

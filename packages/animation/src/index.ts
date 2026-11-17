@@ -18,13 +18,6 @@ export {
   type PercentAnimationController,
   type TransientSpriteAnimationController,
 } from './sprite';
-export {
-  createStaticSprite, createStaticSpriteFactory,
-  type StaticSpriteFactory,
-  type StaticSpriteController,
-  type StaticSpriteOptions,
-  type StaticSpriteOverlay,
-} from './wallSprite';
 export { isSpriteEntityRendered, isSpriteEntityVisible, setSpriteEntityRenderOrder, spriteRenderOrderKey, updateSpriteRenderOrders } from './renderOrder';
 export {
   ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite, preloadSharedArchiveSprite,

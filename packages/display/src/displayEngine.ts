@@ -27,7 +27,6 @@ export interface DisplayEngine {
   readonly currentAnimation: string;
   readonly numFrames: number;
   readonly currentAnimationLength: number;
-  readonly pose: string | undefined;
   setActive(active: boolean): void;
   update(dt: number): void;
   start(name: string): void;
@@ -35,7 +34,6 @@ export interface DisplayEngine {
   holdLastFrame(name: string): void;
   /** AnimState with no animation playing: the drawn sprite is released until a clip is played. Archive sprites only. */
   clearAnimation?(): void;
-  setPose(name: string | undefined): void;
   setPercent(name: string, percent: number): void;
   pushAnimation(name: string, loop?: boolean): void;
   playTransient(name: string): void;
@@ -51,7 +49,6 @@ export interface DisplayEngine {
   getSymbolPosition?(symbol: string, x: number, y: number, target: THREE.Vector3): boolean;
   /** AnimState:SetAnimation-like change of the current clip's name, keeping whether it loops. */
   setAnimation?(name: string): void;
-  showImage(image: number): void;
   setFacing(facing: number, mirrored?: boolean): void;
   setColour(colour: readonly number[]): void;
   setOpacity(opacity: number): void;
@@ -79,11 +76,8 @@ export interface DisplayEngine {
   dispose(): void;
 }
 
-const unsupported = (what: string): never => { throw new Error(`${what} is not supported by an archive sprite`); };
-
 /**
- * A shared archive sprite, resident while its tile is active. It takes the same AnimState calls as a factory sprite; only
- * static build images (`setPose`, `showImage`), which archive art does not have, are refused.
+ * A shared archive sprite, resident while its tile is active: every animated entity is drawn with one.
  */
 export class ArchiveEngine implements DisplayEngine {
   private readonly resident: ResidentSprite;
@@ -99,7 +93,6 @@ export class ArchiveEngine implements DisplayEngine {
   get numFrames(): number { return this.resident.frameCount; }
   getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean { return this.resident.getSymbolPosition(symbol, x, y, target); }
   get currentAnimationLength(): number { return this.resident.currentAnimationLength; }
-  get pose(): string | undefined { return undefined; }
   setActive(active: boolean): void { this.resident.setActive(active); }
   update(dt: number): void { this.resident.update(dt); }
   start(name: string): void { this.resident.start(name); }
@@ -127,8 +120,6 @@ export class ArchiveEngine implements DisplayEngine {
   faceCamera(rotation: THREE.Quaternion): void { this.resident.faceCamera(rotation); }
   dispose(): void { this.resident.dispose(); }
 
-  setPose(): void { unsupported('A static pose'); }
-  showImage(): void { unsupported('A static image'); }
   setPercent(name: string, percent: number): void { this.resident.setPercent(name, percent); }
   pushAnimation(name: string, loop = false): void { this.resident.pushAnimation(name, loop); }
   playTransient(name: string): void { this.resident.playTransient(name); }

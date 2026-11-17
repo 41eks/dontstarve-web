@@ -3,7 +3,7 @@ export { PrefabDisplayGroup } from './prefabDisplayGroup';
 export { ScreenProjection, type ScreenPosition } from './screenProjection';
 export { IconSpriteAtlases } from './iconSprites';
 export { SpriteResources, prewarmCachedBuilds } from './spriteResources';
-export { SpriteState, StaticImageSpriteState, type ArchiveSpriteCommands, type SpriteJson, type ClipJson, type AppearanceJson, type SpriteProbe, type SkinJson, type NamedSpriteArt, type SpriteSourceJson } from './spriteState';
+export { SpriteState, type ArchiveSpriteCommands, type SpriteJson, type ClipJson, type AppearanceJson, type SpriteProbe, type SkinJson, type NamedSpriteArt, type SpriteSourceJson } from './spriteState';
 export { type FxJson, type FxRenderEntry } from './fxAttachments';
 export { type DisplayEngine, type ArchiveSpriteSource } from './displayEngine';
 export { DisplaySprite, displayLightOverride } from './displaySprites';

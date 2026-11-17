@@ -44,8 +44,6 @@ export interface ClipJson {
   finished: boolean;
   /** AnimState:SetPercent pose, shown as a held frame. */
   readonly percent?: number;
-  /** Static build-image rest pose; an undefined name selects the source image. */
-  readonly pose?: { readonly name: string | undefined };
   /** AnimState with no animation playing (bank and build only): nothing is drawn until a clip is played. */
   readonly none?: true;
 }
@@ -92,9 +90,6 @@ export interface SpriteJson {
   readonly frame?: number | { readonly at: number };
   /** A fresh object is one more request for a brief feedback clip. */
   readonly transient?: { readonly name: string };
-  readonly image?: number;
-  /** Static build images selected by the source animation's facing masks. */
-  readonly facingImages?: ReadonlyMap<number, number>;
   readonly facing?: number;
   /** Transform:SetEightFaced with this logical rotation; the display selects the view from its camera input. */
   readonly facingRotation?: number;
@@ -133,7 +128,6 @@ export interface SpriteProbe {
   readonly currentAnimation: string;
   readonly numFrames: number;
   readonly currentAnimationLength: number;
-  readonly pose: string | undefined;
   readonly loaded: boolean;
   update(dt: number): void;
   createFollower?(): THREE.Object3D;
@@ -278,7 +272,6 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   get currentAnimation(): string { return this.probe?.currentAnimation ?? this.state.clip.name; }
   get numFrames(): number { return this.probe?.numFrames ?? 0; }
   get currentAnimationLength(): number { return this.probe?.currentAnimationLength ?? 0; }
-  get pose(): string | undefined { return this.probe ? this.probe.pose : this.state.clip.pose?.name; }
   update(dt: number): void { this.probe?.update(dt); }
 
   /** Nothing is drawn while the entity sleeps; a transition that was playing is not replayed but ends in its completion state. */
@@ -430,18 +423,4 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   clearOverrideBuild(name: string): void {
     this.withAppearance(`build:${name}`, { kind: 'build', name, override: undefined });
   }
-}
-
-/**
- * The sprite of an entity drawn from static build images (`staticImages`, as walls are): besides the animation commands
- * it selects a static pose and the build image per facing, which only a static image controller can draw. Archive and
- * animated art have no such images, so these commands exist only on this sprite, and a prefab definition pairs it with
- * `staticImages` art.
- */
-export class StaticImageSpriteState extends SpriteState {
-  setPose(name: string | undefined): void {
-    this.write({ clip: { name: name ?? this.initialAnimation, loop: false, finished: true, pose: { name } }, queue: [], frame: undefined });
-  }
-  showImage(image: number): void { this.write({ image }); }
-  setFacingImages(images: ReadonlyMap<number, number>): void { this.write({ facingImages: images }); }
 }

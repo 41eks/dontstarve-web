@@ -434,85 +434,53 @@
     "wall_stone": {
       "archive": "wall_stone.zip",
       "buildLabel": "石墙",
-      "frontImageIndex": 14,
-      "name": "WallStone",
-      "sideImageIndex": 4,
-      "symbol": "wall_segment"
+      "name": "WallStone"
     },
     "wall_stone_2": {
       "archive": "wall_stone_2.zip",
       "buildLabel": "档案馆石墙",
-      "frontImageIndex": 14,
-      "name": "WallStone2",
-      "sideImageIndex": 4,
-      "symbol": "wall_segment"
+      "name": "WallStone2"
     },
     "wall_wood": {
       "archive": "wall_wood.zip",
       "buildLabel": "木墙",
-      "frontImageIndex": 14,
-      "name": "WallWood",
-      "sideImageIndex": 4,
-      "symbol": "wall_segment"
+      "name": "WallWood"
     },
     "wall_hay": {
       "archive": "wall_hay.zip",
       "buildLabel": "草墙",
-      "frontImageIndex": 14,
       "multColour": [
         0.9,
         0.9,
         0.9
       ],
-      "name": "WallHay",
-      "sideImageIndex": 4,
-      "symbol": "wall_segment"
+      "name": "WallHay"
     },
     "wall_ruins": {
       "archive": "wall_ruins.zip",
       "buildLabel": "铥墙",
-      "frontImageIndex": 14,
-      "name": "WallRuins",
-      "sideImageIndex": 4,
-      "symbol": "wall_segment"
+      "name": "WallRuins"
     },
     "wall_ruins_2": {
       "archive": "wall_ruins_2.zip",
       "buildLabel": "档案馆铥墙",
-      "frontImageIndex": 14,
-      "name": "WallRuins2",
-      "sideImageIndex": 4,
-      "symbol": "wall_segment"
+      "name": "WallRuins2"
     },
     "wall_moonrock": {
       "archive": "wall_moonrock.zip",
       "buildLabel": "月岩墙",
-      "frontImageIndex": 14,
-      "name": "WallMoonrock",
-      "sideImageIndex": 4,
-      "symbol": "wall_segment"
+      "name": "WallMoonrock"
     },
     "wall_dreadstone": {
       "animationArchive": "wall_dreadstone.zip",
       "archive": "wall_dreadstone.zip",
       "buildLabel": "绝望石墙",
-      "frontImageIndex": 14,
-      "name": "WallDreadstone",
-      "overlay": {
-        "symbol": "wall_segment_red",
-        "frontImageIndex": 9,
-        "sideImageIndex": 2
-      },
-      "sideImageIndex": 4,
-      "symbol": "wall_segment_base"
+      "name": "WallDreadstone"
     },
     "wall_scrap": {
       "archive": "wall_scrap.zip",
       "buildLabel": "废料墙",
-      "frontImageIndex": 14,
-      "name": "WallScrap",
-      "sideImageIndex": 4,
-      "symbol": "wall_segment"
+      "name": "WallScrap"
     }
   },
   "moonTree": {

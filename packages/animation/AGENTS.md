@@ -4,7 +4,7 @@
 
 ## Shared resources and entity state
 
-- 共享缓存：同一 manager／资源生命周期内的实体，动画美术只走 shared archive 路径，必须复用同一个 `ArchiveSpriteAssets`（逐实体的 animated sprite factory 已删除，不再新增）；墙体静态图片按实际 build 与选项复用兼容的静态图片工厂。不得逐实体或每次唤醒时创建资源缓存、共享源材质或帧几何缓存；实体独立颜色／透明度所需的私有材质副本由动画实现管理。
+- 共享缓存：同一 manager／资源生命周期内的实体，动画美术（墙体在内）只走 shared archive 路径，必须复用同一个 `ArchiveSpriteAssets`（逐实体的 animated sprite factory 和静态图片工厂已删除，不再新增）。不得逐实体或每次唤醒时创建资源缓存、共享源材质或帧几何缓存；实体独立颜色／透明度所需的私有材质副本由动画实现管理。
 - 独立实体状态：各实体独立维护模型位置、播放进度、完成回调和私有外观状态，通过 sprite／控制器接口修改；不得直接修改或释放共享帧的顶点、UV、索引、几何体、源材质或纹理。
 
 ## Billboard drawing order and wall facing
@@ -19,7 +19,6 @@
 - 排除离屏合成的绘制统计时，只恢复 calls／triangles／lines／points，不得回退 Three.js 的 `renderer.info.render.frame`；该内部帧编号参与可复用 geometry 的上传判定，回退会使动画后续帧跳过上传。
 - For instanced billboard forests, use an alpha-tested, color-disabled depth prepass (`colorWrite = false`, `depthWrite = true`) followed by a transparent color pass (`depthWrite = false`) before dynamic characters. Do not write depth in the forest color pass.
 - Walls remain at world rotation `0` and switch eight-faced art using the source facing masks and camera heading. Pair equivalent frames from the same animation across facings.
-- List all static sprite facings in `imageIndices` and switch with `showImage()` rather than rebuilding the sprite. Preserve layered wall art through `overlay` with positionally paired `imageIndices`.
 - See [rendering rationale, wall masks, and frame examples](../../docs/dst-billboard-rendering.md).
 
 ## Resident transform ownership

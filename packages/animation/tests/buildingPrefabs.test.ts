@@ -86,7 +86,6 @@ it('declares a building\'s base symbols and skin animation banks on the spawned 
 
   const preview = new PrefabInstance('researchlab2_placer', new SpriteState({ name: 'idle', billboard: true }));
   const art = RESEARCH_LAB_PLACERS.researchlab2.art(resources, skinId);
-  if (art.staticImages) throw new Error('researchlab2 previews animated art');
   art.initialize!(preview);
   expect(declared(preview)).toEqual(expected);
 });

@@ -77,12 +77,9 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 
 `CalcRotationEnum` 的奇偶决定使用哪个 bank：偶数用窄的 `fence_thin`（动画在 `fence_thin.zip`，build 仍为 `fence.zip`），奇数用宽的 `fence`。预览和已放置的栅栏一样，只绘制当前 bank 的共享 archive；相机旋转跨过奇偶时 `SetOrientation` 的 `SetBank` 由 archive sprite 的 `setArtSource` 切换，实体身份不变，仍由共享批次绘制。预览使用 `PLACER_ARCHIVE_OPTIONS` 的私有材质副本（`options.opacity`）呈现 65% 不透明，不修改资源缓存里共享的材质；放置时 `ondeploywall` 生成新栅栏，预览随之释放。已放置栅栏的实体由共享的 `PrefabEntityManager` 生成并持有，预览实体由 `BuildingPlacer` 持有；换肤只写实体的 `skinId`，由 display 按声明的皮肤源重新穿上。
 
-## 静态墙实现
+## 墙的 archive sprite
 
-`src/camera.ts` 的 `FollowCameraController.facing` signal 把相机 heading（`packages/animation/src/facing.ts` 的 `facingFromHeading()`）按 45° 分成 8 档，取对应 `FACING_*`（`constants.lua`：RIGHT=0、UP=1、LEFT=2、DOWN=3、UPRIGHT=4、UPLEFT=5、DOWNRIGHT=6、DOWNLEFT=7；墙的 rotation 为 0，故 `a = heading`，偶数档为四个正向，奇数档为四个斜向）的位掩码，该 signal 只在 heading 跨过扇区边界时写入，墙实例（`walls.ts`，由共享的 `PrefabEntityManager` 生成；预览由 `BuildingPlacer` 生成）只声明 `facingRotation` 与正面／斜面图，`PrefabDisplay` 按世界相机朝向对预览和已建墙调用 `setFacing()`，由动画按 `facing` 掩码匹配 clip；`wall.zip` 与 `wall_dreadstone.zip` 的每个状态只创作了 `15`（四个正向共用）和 `240`（四个斜向共用）两组美术，同组内选哪个方向不改变画面。再调用 `packages/animation/src/wallSprite.ts` 的 `StaticSpriteController.showImage()` 切换图片。
-
-`createStaticSpriteFactory()` 按 build／skin 共享 atlas 与不可变帧几何，每个实例每次显示一个 build 图片；`ResidentSpriteController` 负责 visual 驻留，`imageIndices` 提前列出所有需要的 facing，不必随相机转动重建 sprite。`wall_dreadstone` 另将 `wall_segment_red` 叠在 `wall_segment_base` 上：通过 `overlay` 传入覆盖符号，其 `imageIndices` 与基础列表按位置配对，让朝向切换后仍保留发光层。
-
+墙按 `walls.lua` 声明 `SetBank(bank)`（`wall_dreadstone` 用自己的 bank，其余为 `wall.zip` 的 `wall`）、`SetBuild("wall_"..data.name)`，健康动画（`fullA`…`broken` 及其 `_hit`）直接 `PlayAnimation`。`Transform:SetEightFaced()` 对应 `sprite.setFacingRotation(0)`：`src/camera.ts` 的世界相机朝向只在 heading 跨过 45° 扇区时写入，`PrefabDisplay` 据此对已建墙和预览调用 `setFacing()`，archive sprite 按 clip 的 `facing` 掩码选同名 clip（`15` 为正面、`240` 为斜侧面），不重建 sprite。所有健康动画都是停在末帧的单次动画，`instancedAnimations: 'all'` 由共享批次绘制；`wall_dreadstone` 的 `wall_segment_red` 与 `wall_segment_base` 同在动画帧中，按源图层叠放。草墙的 `SetMultColour(.9, .9, .9)` 需要私有材质副本（`assetOptions.colour`）。预览用 `PlacerArt` 的同一 archive，`PLACER_ARCHIVE_OPTIONS` 半透明。
 
 ## 地皮与洞穴崖壁 falloff
 
