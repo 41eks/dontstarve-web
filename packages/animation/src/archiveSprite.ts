@@ -224,6 +224,14 @@ export interface ArchiveSprite {
   /** Draw a few depth steps towards the camera, so an effect on its owner's plane is not hidden by the owner's depth. */
   setDepthOffset(enabled: boolean): void;
   /**
+   * Draw with the shared batches only while `follow()` holds, checked on every update; otherwise as the sprite's own
+   * billboard. An effect drawn after its owner follows whether the owner is batched, since every batch draws before the
+   * ordinary billboards.
+   */
+  setInstancedWhile(follow: (() => boolean) | undefined): void;
+  /** Whether the shared batches drew the last frame shown. */
+  readonly drawnInstanced: boolean;
+  /**
    * Eight-faced insts select, among clips of the same name, the one whose `facing` mask contains this FACING bit,
    * mirrored horizontally when the clip lists both a facing and its left-hand mirror.
    */
@@ -373,6 +381,9 @@ function constructArchiveSprite(
   let loop = definition.loop;
   let onComplete: (() => void) | undefined;
   let playbackRate = 1;
+  let instancedWhile: (() => boolean) | undefined;
+  let batchAllowed = true;
+  let drawnInstanced = false;
   // Per-entity dressing. While any of it applies, frames are resolved for this sprite alone, outside shared frames and instances.
   let animState: ResolvedAnimState | undefined;
   let animStateElapsed = 0;
@@ -421,6 +432,8 @@ function constructArchiveSprite(
     if (following) animStateElapsed += dt;
     // Animated symbols and attachments redraw the frame even while the clip itself holds still.
     if (following || attachments.some(attachment => attachment.isAnimating)) { previousFrame = -1; refresh = true; }
+    const allowed = instancedWhile?.() ?? true;
+    if (allowed !== batchAllowed) { batchAllowed = allowed; previousFrame = -1; refresh = true; }
     if (paused && !refresh) return;
     if (!paused) elapsed += Math.max(0, Math.min(dt, 0.1)) * playbackRate;
     const rawFrame = Math.floor(elapsed * animation.frameRate);
@@ -456,7 +469,7 @@ function constructArchiveSprite(
       visual.scale.x = scaleX;
       matrixGate?.markDirty();
     }
-    const instanced = !!instances && !ownFrame && (options.instancedAnimations === 'all'
+    const instanced = drawnInstanced = !!instances && !ownFrame && batchAllowed && (options.instancedAnimations === 'all'
       || loop && options.instancedAnimations!.includes(animation.name));
     if (instances) renderer.setInstanced(instanced);
     if (instanced) {
@@ -582,6 +595,12 @@ function constructArchiveSprite(
     },
     setErosion(amount: number) { if (!disposed) instances?.setErosion(amount); },
     setDepthOffset(enabled) { if (!disposed) { renderer.setDepthOffset(enabled); instances?.setDepthOffset(enabled); } },
+    setInstancedWhile(follow) {
+      if (disposed || follow === instancedWhile) return;
+      instancedWhile = follow;
+      update(0, true);
+    },
+    get drawnInstanced() { return drawnInstanced; },
     setSkin(next) {
       if (disposed) return;
       const replacement = own(next);

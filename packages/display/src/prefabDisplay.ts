@@ -93,6 +93,7 @@ export class PrefabDisplay {
   /** The deferred sprite source while this display loads it. */
   private sourceLoading?: Promise<unknown>;
   private fx!: FxAttachments;
+  private instancedWhile?: () => boolean;
   private readonly follower = new AnimationFollower(name => {
     if (!this.engine.setAnimation) throw new Error('This display cannot follow an animation');
     this.engine.setAnimation(name);
@@ -223,9 +224,9 @@ export class PrefabDisplay {
     const followed = watchSignal(state.animationSource, stop => this.cleanups.push(stop));
     const declaredFx = watchSignal(state.fx, stop => this.cleanups.push(stop));
     this.cleanups.push(createEffect(() => this.follower.follow(followed.get())));
-    this.fx = new FxAttachments(this.model, () => this.engine.setComposites?.(this.fx.compositeFrames()));
+    this.fx = new FxAttachments(this.model, () => this.engine.setComposites?.(this.fx.compositeFrames()), () => this.engine.drawnInstanced ?? false);
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
-    this.cleanups.push(createEffect(() => { art.get(); this.listed.setSprite(this.engine.instanced); this.applySprite(this.json.peek()); this.dress(json.peek()); state.artChanged(); }));
+    this.cleanups.push(createEffect(() => { art.get(); this.listed.setSprite(this.engine.instanced); if (this.instancedWhile) this.engine.setInstancedWhile?.(this.instancedWhile); this.applySprite(this.json.peek()); this.dress(json.peek()); state.artChanged(); }));
     // A billboard (declared by its first clip) turns to TheCamera itself, through its own bridge to the world's camera
     // rotation, only when the camera turns. The rotation changes every frame of a turn, so it applies before that frame
     // renders, not a microtask later. An asleep display unsubscribes and resyncs to the camera when it wakes.
@@ -280,6 +281,13 @@ export class PrefabDisplay {
   update(dt: number): void {
     if (this.disposed || this.isRemoved || this.asleep) return;
     this.state.update(dt);
+  }
+
+  /** Draw with the shared batches only while `follow()` holds, for every sprite this display draws; the owner of an effect sets it. */
+  setInstancedWhile(follow: (() => boolean) | undefined): void {
+    if (this.instancedWhile === follow) return;
+    this.instancedWhile = follow;
+    this.engine.setInstancedWhile?.(follow);
   }
 
   /** Render entries of the effects that are shown now, for the owner's registry to sort with it. */

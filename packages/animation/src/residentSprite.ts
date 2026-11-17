@@ -315,6 +315,8 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   setOpacity(opacity: number): void { this.sprite?.setOpacity(opacity); }
   setColour(colour: readonly [number, number, number]): void { this.sprite?.setColour(colour); }
   setDepthOffset(enabled: boolean): void { this.sprite?.setDepthOffset(enabled); }
+  setInstancedWhile(follow: (() => boolean) | undefined): void { this.sprite?.setInstancedWhile(follow); }
+  get drawnInstanced(): boolean { return this.sprite?.drawnInstanced ?? false; }
   setBuildArchive(archive: string): void { this.sprite?.setBuildArchive(archive); }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void { this.sprite?.setSymbolOverride(symbol, archive, sourceSymbol); }
   setSymbolHidden(symbol: string, hidden: boolean): void { this.sprite?.setSymbolHidden(symbol, hidden); }

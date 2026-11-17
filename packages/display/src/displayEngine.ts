@@ -57,6 +57,10 @@ export interface DisplayEngine {
   setOpacity(opacity: number): void;
   setErosion?(amount: number): void;
   setDepthOffset?(enabled: boolean): void;
+  /** Archive sprites: drawn by the shared batches only while `follow()` holds. */
+  setInstancedWhile?(follow: (() => boolean) | undefined): void;
+  /** Archive sprites: whether the shared batches drew the last frame. */
+  readonly drawnInstanced?: boolean;
   setSymbolOverride?(symbol: string, archive?: string, sourceSymbol?: string): void;
   setSymbolHidden?(symbol: string, hidden: boolean): void;
   setBuildArchive?(archive: string): void;
@@ -110,6 +114,8 @@ export class ArchiveEngine implements DisplayEngine {
   setOpacity(opacity: number): void { this.resident.setOpacity(opacity); }
   setErosion(amount: number): void { this.resident.setErosion(amount); }
   setDepthOffset(enabled: boolean): void { this.resident.setDepthOffset(enabled); }
+  setInstancedWhile(follow: (() => boolean) | undefined): void { this.resident.setInstancedWhile(follow); }
+  get drawnInstanced(): boolean { return this.resident.drawnInstanced; }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void { this.resident.setSymbolOverride(symbol, archive, sourceSymbol); }
   setSymbolHidden(symbol: string, hidden: boolean): void { this.resident.setSymbolHidden(symbol, hidden); }
   setBuildArchive(archive: string): void { this.resident.setBuildArchive(archive); }

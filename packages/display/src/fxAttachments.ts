@@ -52,8 +52,12 @@ export class FxAttachments {
   private readonly owner: THREE.Group;
   private readonly attached = new Map<string, Attached>();
   private readonly changed: () => void;
+  private readonly ownerBatched: () => boolean;
 
-  constructor(owner: THREE.Group, changed: () => void = () => {}) { this.owner = owner; this.changed = changed; }
+  /** `ownerBatched`: whether the owner's last frame was drawn by the shared batches. */
+  constructor(owner: THREE.Group, changed: () => void = () => {}, ownerBatched: () => boolean = () => false) {
+    this.owner = owner; this.changed = changed; this.ownerBatched = ownerBatched;
+  }
 
   apply(declared: ReadonlyMap<string, FxJson> | undefined): void {
     let compositesChanged = false;
@@ -76,6 +80,9 @@ export class FxAttachments {
     model.position.set(0, 0, 0);
     // Drawn after its owner on the owner's plane: the owner's depth (an instance batch writes it) must not hide it.
     if (!fx.composite && fx.sortLayer > 1) fx.sprite.setDepthOffset(true);
+    // Every batch draws before the ordinary billboards: a batched effect stays ordered with its owner only while the
+    // owner is batched too, and is otherwise its own billboard, sorted against the owner's.
+    if (!fx.composite) fx.display.setInstancedWhile(this.ownerBatched);
     // The watched signal owns the effect that reads it: stopping the bridge stops both.
     const active = watchSignal(fx.active, stop => { entry.stop = stop; });
     createEffect(() => {
@@ -89,6 +96,7 @@ export class FxAttachments {
   private detach(key: string, entry: Attached): void {
     entry.stop();
     if (!entry.fx.composite && entry.fx.sortLayer > 1) entry.fx.sprite.setDepthOffset(false);
+    if (!entry.fx.composite) entry.fx.display.setInstancedWhile(undefined);
     fxModel(entry.fx).removeFromParent();
     this.attached.delete(key);
   }
