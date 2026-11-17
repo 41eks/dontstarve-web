@@ -15,6 +15,10 @@ prefab 如何声明 `AnimState` 与使用插槽见 [prefab 显示声明](../pref
 - 合并顺序：display 先绘制实体自己的 `anim-state`，再按插槽首次声明的顺序叠加 `anim-state:<key>`；同一 key 再次声明保持原位，移除后再声明则排到最后。后者的 override、显示／隐藏的图层与符号覆盖前者，其余（light override、bloom、symbol animation、attachment）叠加；`shownLayers`／`shownSymbols` 使上层显示下层隐藏的部分，未提及的沿用下层。
 - 订阅：`PrefabDisplay` 像 `FxAttachments` 跟随 `active` 一样，用 `watchSignal` 跟随每个声明的信号，信号变化时重新合并并绘制，声明被移除或 display 释放时停止跟随；实体的 sprite json 和 status 由 `createRenderEffect` 在写入的同一任务内应用，帧更新和查询已绘制 sprite 的 getter 都不再补应用快照；只有美术加载完成时按当前 json 重新应用。每个声明从自己的 `art` 加载缺失的 build／anim，加载完成后按当前声明重新合并。display 不复制声明，也不向任何 `AnimState` 写入。
 
+## Signal effects
+
+- 严禁给 signal 的 effect 做时序补偿。`createEffect` 晚一个微任务重跑，不得为此手动调用 `sync()`／`apply()`／`refresh()` 之类的补应用方法，不得在帧更新、getter 或查询里用 `peek()` 读快照再补应用一次，也不得在 `update()` 里逐帧重放信号的当前值。必须在写入的同一任务内生效的，用 `createRenderEffect`；能晚一个微任务的，直接用 `createEffect`。正确性取决于 effect 何时执行的逻辑放错了位置，按 [signals](../signals/AGENTS.md) 移到组件、scheduler 或同步的 `createMemo`／`subscribe`。
+
 ## Tickingarea and visibility
 
 - `tickingarea` is this project's own mechanism with no Lua counterpart; do not describe it or justify behavior with Lua semantics. Animation playback must not be decided by `tickingarea`: whether and which animation plays follows the source Lua and the entity's own state, and `tickingarea` only gates resource loading, subscriptions and logical activity as in [tile lifecycle](../../docs/tile-lifecycle.md). Camera culling is separate from both.

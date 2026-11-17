@@ -47,3 +47,7 @@
   - 不得把回调写入 `PrefabEntityManager`。Lua 回调（`OnWork`、`OnSave`／`OnLoad`、事件监听等）和 `PrefabEntityDefinition` 中各函数（如 `fn`、`onSpawned`）的实现都放在所属 prefab 模块；manager 只调用 `PrefabEntityDefinition` 声明的函数和实例的 `GetPersistData()`／`SetPersistData()`。
 - Expose world prefabs through `c_spawn("prefab_id")` and inventory items through `c_give("item_id", count)`, using actual source IDs. Support both when both forms exist.
 - These requirements also apply to artwork/animation-only ports unless the user explicitly narrows the scope.
+
+## Signal effects
+
+- 严禁给 signal 的 effect 做时序补偿。`createEffect` 晚一个微任务重跑，不得为此手动调用 `sync()`／`apply()`／`refresh()` 之类的补应用方法，不得在帧更新、getter 或查询里用 `peek()` 读快照再补应用一次，也不得在 `update()` 里逐帧重放信号的当前值。必须在写入的同一任务内生效的，用 `createRenderEffect`；能晚一个微任务的，直接用 `createEffect`。正确性取决于 effect 何时执行的逻辑放错了位置，按 [signals](../signals/AGENTS.md) 移到组件、scheduler 或同步的 `createMemo`／`subscribe`。
