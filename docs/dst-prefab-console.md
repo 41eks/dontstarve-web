@@ -1,6 +1,8 @@
 # DST Lua prefab 的 c_spawn / c_give 静态核对
 
-2026-11-17 补充 `oceantree_pillar`：`prefabs/oceantree_pillar.lua` 注册 `Prefab("oceantree_pillar", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("oceantree_pillar")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，存档字段 `oceantreePillar` 保存 `droppedvines`；同文件的 `oceantree_pillar_ripples`、`oceantree_pillar_roots`、`oceantree_pillar_leaves` 是不入档的子实体／特效，未移植。`Cluster_62` 最新地表快照有 1 个，导入 1 个；洞穴快照没有。
+2026-11-17 补充 `oceantree_pillar_ripples`、`oceantree_pillar_roots`：`prefabs/oceantree_pillar.lua` 以 `Prefab("oceantree_pillar_ripples", ripples_fn, assets)`、`Prefab("oceantree_pillar_roots", roots_fn, assets)` 注册，二者都 `AddNetwork`、没有 `inventoryitem`，原版可 `c_spawn`，不能放入物品栏；`persists = false`，`c_save()` 不保存。项目接入两者的 `c_spawn`（单独生成一个不入档的特效），`c_save()` 不写入，读档时由 `oceantree_pillar` 的 `fn` 重新生成并用 `entityParent` 挂到柱子上。`Cluster_62` 快照中没有这两个 prefab。
+
+2026-11-17 补充 `oceantree_pillar`：`prefabs/oceantree_pillar.lua` 注册 `Prefab("oceantree_pillar", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("oceantree_pillar")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，存档字段 `oceantreePillar` 保存 `droppedvines`；同文件的 `oceantree_pillar_ripples`、`oceantree_pillar_roots` 已移植（见下条），`oceantree_pillar_leaves` 未移植。`Cluster_62` 最新地表快照有 1 个，导入 1 个；洞穴快照没有。
 
 2026-11-16 补充 `oceanvine_deco`：`prefabs/oceanvine_deco.lua` 注册 `Prefab("oceanvine_deco", commonfn, assets, prefabs)`，`commonfn` 没有 `inventoryitem`，原版可 `c_spawn("oceanvine_deco")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，存档保留 `animnum`（1～6）。`Cluster_62` 最新地表快照有 66 根，导入 66 根；洞穴快照没有。
 
@@ -549,6 +551,8 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `watertree_pillar` | 可生成 | 不能入栏 | `prefabs/watertree_pillar.lua` |
 | `oceantree` | 可生成 | 不能入栏 | `prefabs/oceantree.lua` |
 | `oceantree_pillar` | 可生成 | 不能入栏 | `prefabs/oceantree_pillar.lua` |
+| `oceantree_pillar_ripples` | 可生成（不入档） | 不能入栏 | `prefabs/oceantree_pillar.lua` |
+| `oceantree_pillar_roots` | 可生成（不入档） | 不能入栏 | `prefabs/oceantree_pillar.lua` |
 | `oceanvine` | 可生成 | 不能入栏 | `prefabs/oceanvine.lua` |
 | `oceanvine_deco` | 可生成 | 不能入栏 | `prefabs/oceanvine_deco.lua` |
 | `vault_pillar` | 可生成 | 不能入栏 | `prefabs/vault_pillar.lua` |

@@ -88,8 +88,8 @@ def main():
                                  ('normal', [*oceantree_clips, 'grow_short_to_normal']),
                                  ('tall', [*oceantree_clips, 'grow_normal_to_tall', 'gooped', 'ungooped', 'grow_tall_to_pillar'])]
             for clip in clips}
-    # oceantree_pillar.lua: every clip it plays, including those of OnSprout, chop_tree, chop_down_tree, OnBurnt and the
-    # unported ripples, roots and leaves children.
+    # oceantree_pillar.lua: every clip it plays: fn's idle, the ripples' root_ripple and the roots' root_shadow, and those
+    # of the unported OnSprout, chop_tree, chop_down_tree, OnBurnt and leaves.
     art |= {f'oceantree_pillar_small/{clip}': {'animationArchive': 'oceantree_pillar_small.zip',
                                                'bank': 'oceantree_pillar_small', 'animation': clip}
             for clip in ['idle', 'grow_tall_to_pillar', 'chop', 'fall', 'burnt', 'root_ripple', 'root_shadow',

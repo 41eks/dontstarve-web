@@ -1183,6 +1183,7 @@ export async function createSceneEntities(
         groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count: 1 }], position);
         return undefined;
       },
+      spawnPrefab: (id, position) => prefabs.spawn(id, position),
     }));
     registry.registerPrefabs(PREFAB_DEFINITIONS.oceanTreePillars);
   }

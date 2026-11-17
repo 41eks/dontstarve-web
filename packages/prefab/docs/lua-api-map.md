@@ -68,6 +68,7 @@
 | `SetOrientation(OnGround)` | `sprite.setGround(order)` | `atrium_gate.ts` | |
 | `SetLayer(LAYER_BACKGROUND)` + `SetSortOrder`（立着的美术） | `sprite.setLayer('background')` + `sprite.setMeshOrder(-.5 + (sortOrder - 3) * .01)` | `molehill.ts`、`cave_entrance.ts` | 地形在组顺序 0 上按 mesh 顺序排列（turf -1～-0.6、雪 -0.55），背景美术留在组顺序 0、用 mesh 顺序排在其上；`setGround` 不接受负的组顺序（会被所有 turf 盖住） |
 | `SetOrientation(OnGround)` + `SetLayer(LAYER_BACKGROUND)` + `SetSortOrder` | `sprite.setGround(0)` + `setMeshOrder(...)`，同上 | `cave_hole.ts`、`archive_props.ts` | |
+| `SetLayer(LAYER_WIP_BELOW_OCEAN)`（即 `LAYER_BELOW_GROUND`）+ `SetSortOrder(ANIM_SORT_ORDER_BELOW_GROUND.UNDERWATER)` | `sprite.setLayer('background')` + `sprite.setMeshOrder(-1.755)` | `oceantree_pillar.ts` | 排在海洋底色（-1.76）之后、半透明海面（-1.75）之前，海面盖在上面，陆地 turf 也盖住它 |
 | `SetOrientation(OnGround)` + `Transform:SetEightFaced()` | `setGround(0)`（平放、固定在世界里，不随镜头转）+ `SetEightFaced(inst, world.cameraFacing)`（`eightFaced.ts`，按镜头朝向选帧） | `cave_hole.ts`、`archive_props.ts` | 八个帧是同一张图逐 45° 反向旋转（并按镜头俯角拉伸），世界固定的平面配合按朝向选帧，屏幕上的样子保持不变；只有一帧的 OnGround 美术（`pond`、`lava_pond`）就固定在世界里。`cave_hole` 的左侧两个斜向帧是右侧帧的上下翻转，存放位置互换，用 `SetEightFaced` 的第三个参数（`pitFrame`）把 UPLEFT／DOWNLEFT 对调，不改共享的 `facing.ts` |
 | `SetFinalOffset`（正值） | `sprite.setDepthOffset(true)` | `world_fx.ts` | 不区分具体数值 |
 | `SetFinalOffset`（符号跟随者） | `attachFx` 的 `finalOffset` | `display/src/fxAttachments.ts` | 负值在宿主后，正值在宿主前 |
@@ -124,4 +125,5 @@
 | --- | --- |
 | `SetAddColour` | 没有对应声明 |
 | 整个实体的 `SetBloomEffectHandle` | 没有渲染路径，只有按符号的 `SetSymbolBloom` 近似 |
-| `SetLayer(LAYER_BELOW_GROUND)` | 没有对应声明；`setGround` 只覆盖背景层 |
+| `SetLayer(LAYER_BELOW_GROUND)` 的其他排序（`BOAT_TRAIL`、`BOAT_LIP`） | 没有对应声明；水下的 `UNDERWATER` 见上表 |
+| `SetOceanBlendParams` | 没有对应声明（海洋颜色对特效的染色） |
