@@ -59,7 +59,7 @@ it('loads the imported save record with the clip, tags, bank and component value
   const pillars = await importedPillars();
   expect(pillars).toHaveLength(1);
   expect(pillars[0]!.components).toEqual({ oceantreePillar: { droppedvines: true } });
-  const { spawn, records, definitions, requested, dispose } = setup();
+  const { prefabs, spawn, records, definitions, requested, dispose } = setup();
   try {
     const inst = spawn(pillars[0]!);
     // MakeWaterObstaclePhysics's blocker, fn's AddTag in order, then the inspectable and burnable constructors' tags.
@@ -105,21 +105,32 @@ it('loads the imported save record with the clip, tags, bank and component value
     // The children retire with the pillar.
     inst.remove();
     expect([ripples!.isRemoved, roots!.isRemoved]).toEqual([true, true]);
+
+    // leaves_fn, which only the unported chop_down_tree spawns: FX | NOCLICK leaf_fall_ground once, never saved.
+    const leaves = prefabs.spawn('oceantree_pillar_leaves', new THREE.Vector3(4, 0, 2));
+    expect(leaves.listTags()).toEqual(['FX', 'NOCLICK']);
+    expect(leaves.persists).toBe(false);
+    expect(definitions.oceantree_pillar_leaves.assets).toEqual(definitions.oceantree_pillar.assets);
+    expect(leaves.sprite.sprite.peek()).toMatchObject({ clip: { name: 'leaf_fall_ground', loop: false }, billboard: true });
+    expect(overrideBuilds(leaves)).toEqual(['oceantree_pillar_small_build2.zip']);
+    await prefabDisplay(leaves.transform.model)!.artLoaded();
+    expect(leaves.sprite.currentAnimation).toBe('leaf_fall_ground');
   } finally { dispose(); }
 });
 
-it('rebuilds the declared clips and override builds of the pillar and its children after tile sleep', async () => {
-  const { scene, awake, spawn, records, dispose } = setup();
+it('rebuilds the declared clips and override builds of the pillar, its children and leaves after tile sleep', async () => {
+  const { scene, awake, prefabs, spawn, records, dispose } = setup();
   try {
     const saved: PlacementSaveRecord = { id: 'sleeping-pillar', transform: { position: [1, 0, 3], rotationY: 0 }, components: {} };
     const inst = spawn(saved);
     const model = inst.transform.model, before = inst.sprite.sprite.peek();
-    const kids = children(inst), kidsBefore = kids.map(child => child.sprite.sprite.peek());
+    const kids = [...children(inst), prefabs.spawn('oceantree_pillar_leaves', new THREE.Vector3(5, 0, 3))];
+    const kidsBefore = kids.map(child => child.sprite.sprite.peek());
     await prefabDisplay(model)!.artLoaded();
     for (const child of kids) await prefabDisplay(child.transform.model)!.artLoaded();
     awake.set(false); await settle();
     expect(kids.map(child => [child.status.peek(), child.sprite.loaded, child.transform.model.parent])).toEqual([
-      ['asleep', false, null], ['asleep', false, null]]);
+      ['asleep', false, null], ['asleep', false, null], ['asleep', false, null]]);
     expect(inst.status.peek()).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
@@ -139,6 +150,7 @@ it('rebuilds the declared clips and override builds of the pillar and its childr
     }
     expect(kids[0]!.sprite.currentAnimation).toBe('root_ripple');
     expect(kids[1]!.sprite.sprite.peek()).toMatchObject({ background: true, meshOrder: -1.755 });
+    expect(kids[2]!.sprite.sprite.peek().clip).toMatchObject({ name: 'leaf_fall_ground', loop: false });
     expect(records()).toEqual([saved]);
   } finally { dispose(); }
 });
@@ -148,14 +160,15 @@ it('keeps a c_spawn pillar through c_save and a reload, leaves its children out,
   try {
     expect((await executeDebugCommand('c_spawn("oceantree_pillar")', inventory, prefab => first.registry.spawn(prefab))).ok).toBe(true);
     expect((await executeDebugCommand('c_give("oceantree_pillar")', inventory)).ok).toBe(false);
-    // The ripples and roots are their own Prefabs: c_spawn makes a standalone one, persists = false keeps it unsaved.
-    for (const id of ['oceantree_pillar_ripples', 'oceantree_pillar_roots']) {
+    // The ripples, roots and leaves are their own Prefabs: c_spawn makes a standalone one, persists = false keeps it unsaved.
+    for (const id of ['oceantree_pillar_ripples', 'oceantree_pillar_roots', 'oceantree_pillar_leaves']) {
       expect((await executeDebugCommand(`c_spawn("${id}")`, inventory, prefab => first.registry.spawn(prefab))).ok).toBe(true);
       expect((await executeDebugCommand(`c_give("${id}")`, inventory)).ok).toBe(false);
     }
     // The pillar's own two children and the two standalone ones.
     expect([...first.prefabs.instances('oceantree_pillar_ripples')]).toHaveLength(2);
     expect([...first.prefabs.instances('oceantree_pillar_roots')]).toHaveLength(2);
+    expect([...first.prefabs.instances('oceantree_pillar_leaves')]).toHaveLength(1);
     const spawned = [...first.prefabs.instances(OCEANTREE_PILLAR_ID)][0] as OceanTreePillarInstance;
     // A fresh pillar has not dropped its vines (startvines is not ported), so it saves nothing of its own.
     expect(spawned.droppedvines).toBeUndefined();
@@ -168,7 +181,7 @@ it('keeps a c_spawn pillar through c_save and a reload, leaves its children out,
         { entities: before, inventory: inventory.exportState(), elapsedSeconds: 1, playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const entities = deserializeSave(json, SAVE_CATALOG).world.entities;
-    expect([entities.oceantree_pillar_ripples, entities.oceantree_pillar_roots]).toEqual([undefined, undefined]);
+    expect([entities.oceantree_pillar_ripples, entities.oceantree_pillar_roots, entities.oceantree_pillar_leaves]).toEqual([undefined, undefined, undefined]);
     const saved = entities.oceantree_pillar!;
     expect(saved).toEqual(before.oceantree_pillar);
     expect(saved).toHaveLength(1);
@@ -185,6 +198,7 @@ it('keeps a c_spawn pillar through c_save and a reload, leaves its children out,
     expect(children(loaded).map(child => [child.prefab, child.entityParent === loaded])).toEqual([
       ['oceantree_pillar_ripples', true], ['oceantree_pillar_roots', true]]);
     expect([...second.prefabs.instances('oceantree_pillar_ripples'), ...second.prefabs.instances('oceantree_pillar_roots')]).toHaveLength(2);
+    expect([...second.prefabs.instances('oceantree_pillar_leaves')]).toHaveLength(0);
     expect(second.records()).toEqual(saved);
   } finally { first.dispose(); second.dispose(); inventory.dispose(); }
 });

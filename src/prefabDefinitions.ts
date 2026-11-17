@@ -16,7 +16,8 @@ import { CAVE_PILLAR_IDS, PILLAR_RUINS_ID } from '@dontstarve-web/prefab/pillar'
 import { PILLAR_ATRIUM_ID } from '@dontstarve-web/prefab/atrium_pillar';
 import { MOON_FISSURE_ID } from '@dontstarve-web/prefab/moon_fissure';
 import { WATERTREE_PILLAR_ARCHIVES, WATERTREE_PILLAR_ID, type WatertreePillarSaveState } from '@dontstarve-web/prefab/watertree_pillar';
-import { OCEANTREE_PILLAR_ARCHIVES, OCEANTREE_PILLAR_ID, OCEANTREE_PILLAR_RIPPLES_ID, OCEANTREE_PILLAR_ROOTS_ID } from '@dontstarve-web/prefab/oceantree_pillar';
+import { OCEANTREE_PILLAR_ARCHIVES, OCEANTREE_PILLAR_ID, OCEANTREE_PILLAR_RIPPLES_ID, OCEANTREE_PILLAR_ROOTS_ID,
+  OCEANTREE_PILLAR_LEAVES_ID } from '@dontstarve-web/prefab/oceantree_pillar';
 import { OCEANTREE_ARCHIVES, OCEANTREE_ID, STAGES_TO_SUPERTALL, type OceanTreeSaveState } from '@dontstarve-web/prefab/oceantree';
 import { OCEANVINE_ID, OCEANVINE_REGROW_TIME } from '@dontstarve-web/prefab/oceanvine';
 import { OCEANVINE_DECO_ANIMNUMS, OCEANVINE_DECO_ID } from '@dontstarve-web/prefab/oceanvine_deco';
@@ -456,9 +457,9 @@ const WORLD_PREFAB_DEFINITIONS = {
   moonFissures: definePrefabs([MOON_FISSURE_ID], empty, true, ['moon_fissure.zip']),
   watertreePillars: definePrefabs([WATERTREE_PILLAR_ID], watertreePillar, true, WATERTREE_PILLAR_ARCHIVES),
   oceanTrees: definePrefabs([OCEANTREE_ID], oceanTree, true, [...OCEANTREE_ARCHIVES, 'snow.zip']),
-  // The ripples and roots children are persists = false: c_spawn creates them, and no save holds them.
+  // The ripples, roots and leaves are persists = false: c_spawn creates them, and no save holds them.
   oceanTreePillars: definePrefabs([OCEANTREE_PILLAR_ID], oceanTreePillar,
-    [OCEANTREE_PILLAR_ID, OCEANTREE_PILLAR_RIPPLES_ID, OCEANTREE_PILLAR_ROOTS_ID], OCEANTREE_PILLAR_ARCHIVES),
+    [OCEANTREE_PILLAR_ID, OCEANTREE_PILLAR_RIPPLES_ID, OCEANTREE_PILLAR_ROOTS_ID, OCEANTREE_PILLAR_LEAVES_ID], OCEANTREE_PILLAR_ARCHIVES),
   // oceanvine.lua has no OnSave of its own; pickable's record is its whole save.
   oceanVines: definePrefabs([OCEANVINE_ID], componentParser({ keys: ['pickable'], regrowTime: OCEANVINE_REGROW_TIME }), true, ['oceanvine.zip']),
   oceanVineDecos: definePrefabs([OCEANVINE_DECO_ID], oceanVineDeco, true, ['waterforest_vines.zip']),

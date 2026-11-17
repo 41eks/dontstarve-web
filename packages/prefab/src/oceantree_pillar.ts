@@ -18,6 +18,7 @@ import { TILE_SIZE } from './tile';
 export const OCEANTREE_PILLAR_ID = 'oceantree_pillar' as const;
 export const OCEANTREE_PILLAR_RIPPLES_ID = 'oceantree_pillar_ripples' as const;
 export const OCEANTREE_PILLAR_ROOTS_ID = 'oceantree_pillar_roots' as const;
+export const OCEANTREE_PILLAR_LEAVES_ID = 'oceantree_pillar_leaves' as const;
 type OceanTreePillarChildId = typeof OCEANTREE_PILLAR_RIPPLES_ID | typeof OCEANTREE_PILLAR_ROOTS_ID;
 /** Asset("ANIM", ...): the bank's archive, SetBuild's and AddOverrideBuild's. */
 export const OCEANTREE_PILLAR_ARCHIVES = ['oceantree_pillar_small.zip', 'oceantree_pillar_small_build1.zip', 'oceantree_pillar_small_build2.zip'];
@@ -149,16 +150,32 @@ function roots_fn(sprites: SpriteResources): PrefabInstance {
   return inst;
 }
 
+/**
+ * leaves_fn: the FX | NOCLICK leaf_fall_ground, played once. Not ported: its animover listener that removes it, the
+ * DoTaskInTime(0) that plays leaf_fall_water where IsVisualGroundAtPoint fails, and the SoundEmitter.
+ */
+function leaves_fn(sprites: SpriteResources): PrefabInstance {
+  const inst = new PrefabInstance(OCEANTREE_PILLAR_LEAVES_ID, new SpriteState({ name: 'leaf_fall_ground', billboard: true }));
+  inst.addTag('FX');
+  inst.addTag('NOCLICK');
+  inst.sprite.playOnce('leaf_fall_ground');
+  inst.AnimState.AddOverrideBuild('oceantree_pillar_small_build2');
+  inst.sprite.setAnimState(inst.AnimState.json, sprites.archives);
+  inst.persists = false;
+  return inst;
+}
+
 /** SetBank("oceantree_pillar_small") and SetBuild("oceantree_pillar_small_build1"), shared by all the file's prefabs. */
 const ASSETS = {
   animationArchive: 'oceantree_pillar_small.zip', buildArchives: ['oceantree_pillar_small_build1.zip'], bank: 'oceantree_pillar_small',
 } as const;
 
-/** The oceantree_pillar, _ripples and _roots Prefabs oceantree_pillar.lua returns; oceantree_pillar_leaves is not ported. */
+/** The four Prefabs oceantree_pillar.lua returns. */
 export function oceanTreePillarPrefabs(world: OceanTreePillarWorld): Readonly<{
   [OCEANTREE_PILLAR_ID]: PrefabEntityDefinition<OceanTreePillarInstance>;
   [OCEANTREE_PILLAR_RIPPLES_ID]: PrefabEntityDefinition<PrefabInstance>;
   [OCEANTREE_PILLAR_ROOTS_ID]: PrefabEntityDefinition<PrefabInstance>;
+  [OCEANTREE_PILLAR_LEAVES_ID]: PrefabEntityDefinition<PrefabInstance>;
 }> {
   return {
     [OCEANTREE_PILLAR_ID]: {
@@ -169,5 +186,6 @@ export function oceanTreePillarPrefabs(world: OceanTreePillarWorld): Readonly<{
     },
     [OCEANTREE_PILLAR_RIPPLES_ID]: { fn: (_position, sprites) => ripples_fn(sprites), assets: ASSETS, targetable: false },
     [OCEANTREE_PILLAR_ROOTS_ID]: { fn: (_position, sprites) => roots_fn(sprites), assets: ASSETS, targetable: false },
+    [OCEANTREE_PILLAR_LEAVES_ID]: { fn: (_position, sprites) => leaves_fn(sprites), assets: ASSETS, targetable: false },
   };
 }
