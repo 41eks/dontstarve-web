@@ -1,16 +1,18 @@
 import { addComponent } from './components';
 import { createEffect, createSignal, watchSignal } from '@dontstarve-web/signals';
-import type { LoadedSpriteSource } from '@dontstarve-web/display';
+import type { ArchiveSpriteSource } from '@dontstarve-web/display';
 import type { BurnFX, BurnFXData } from '../../componets/src/burnable';
 import { FireFX, type FireFXInst, type FireFXLevel, type FireFXLight } from '../../componets/src/firefx';
 import { spawnLightEntity } from './localLight';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
-import { createPrefabEntity, type PrefabComponents, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabComponents, type PrefabInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 
 export const CAMPFIREFIRE_ID = 'campfirefire';
 export const CAMPFIREFIRE_ARCHIVE = 'campfire_fire.zip';
+/** campfirefire.lua SetBank/SetBuild("campfire_fire"). Its frames are merged into the owner's, never batched on their own. */
+export const CAMPFIREFIRE_ART = { animationArchive: CAMPFIREFIRE_ARCHIVE, buildArchives: [CAMPFIREFIRE_ARCHIVE], bank: 'campfire_fire' };
 export const CAMPFIREFIRE_SOUNDS = ['dontstarve/common/campfire', 'dontstarve/common/fireBurstSmall',
   'dontstarve/common/fireBurstLarge', 'dontstarve/common/fireOut'] as const satisfies readonly SoundEventPath[];
 
@@ -43,9 +45,9 @@ export class CampfireFire implements BurnFX, FireFXInst {
   private onAnimOver?: () => void;
 
   /** `updates` is firefx.lua's StartUpdatingComponent, as for fire.lua. */
-  constructor(source: LoadedSpriteSource, owner: PrefabInstance, data: BurnFXData, updates?: ComponentUpdates) {
+  constructor(source: ArchiveSpriteSource, owner: PrefabInstance, data: BurnFXData, updates?: ComponentUpdates) {
     this.owner = owner;
-    const { instance, display } = createPrefabEntity(CAMPFIREFIRE_ID, source, { name: FIRE_LEVELS[0].anim }, CAMPFIREFIRE_ID, instance => {
+    const { instance, display } = createArchiveEntity(CAMPFIREFIRE_ID, source, { name: FIRE_LEVELS[0].anim }, CAMPFIREFIRE_ID, instance => {
       instance.addTag('FX');
       instance.addTag('HASHEATER');
       instance.persists = false;

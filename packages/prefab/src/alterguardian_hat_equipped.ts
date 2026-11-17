@@ -1,14 +1,13 @@
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
-import type { AnimatedSpriteFactory } from '@dontstarve-web/animation/sprite';
-import type { ArchiveSpriteCommands, PrefabDisplay } from '@dontstarve-web/display';
+import type { ArchiveSpriteCommands, PrefabDisplay, SpriteResources } from '@dontstarve-web/display';
 import { createSignal } from '@dontstarve-web/signals';
-import { createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 
 /** Where the display loads the FX entity's art: its own archive, and the item skin's build that SetSkin names. */
 export interface AlterguardianHatEquippedArt {
   readonly archive: string;
-  peekFactory(archive: string): AnimatedSpriteFactory | undefined;
-  loadFactory(archive: string): Promise<AnimatedSpriteFactory>;
+  /** The owner's shared archive art, released after the layers are removed. */
+  readonly sprites: SpriteResources;
   readonly skin?: { readonly archive: string; readonly art: AnimStateArt };
 }
 
@@ -16,6 +15,14 @@ const PREFAB = 'alterguardian_hat_equipped';
 // A follower is shown for as long as it exists; its removal takes the declaration away.
 const SHOWN = createSignal(true);
 let nextId = 0;
+
+/**
+ * SetBank / SetBuild("hat_alterguardian_equipped") from the FX archive, in the owner's shared archive art. Its frames are
+ * merged into the owner's; SetMultColour needs the sprite's own material copies.
+ */
+export function alterguardianHatEquippedSource(sprites: SpriteResources, archive: string) {
+  return sprites.archive({ animationArchive: archive, buildArchives: [archive], bank: 'hat_alterguardian_equipped' }, { colour: [1, 1, 1] });
+}
 
 /**
  * alterguardian_hat_equipped.lua: one of the crown's two layers, spawned under its owner (SpawnPrefab followed by
@@ -33,15 +40,8 @@ export class AlterguardianHatEquipped {
     this.art = art;
     this.owner = owner;
     const anim = this.anim = new AnimState();
-    // SetBank / SetBuild("hat_alterguardian_equipped"): the display loads the archive before it draws the layer.
-    const source = (factory: AnimatedSpriteFactory) => ({
-      create: (name: string) => factory.create({ initialAnimation: name, name: PREFAB }),
-      release: (sprite: import('three').Group) => factory.disposeSprite(sprite),
-    });
-    const { instance, display } = createPrefabEntity(PREFAB, {
-      peek: () => { const factory = art.peekFactory(art.archive); return factory && source(factory); },
-      load: () => art.loadFactory(art.archive).then(source),
-    }, { name: 'idle' }, PREFAB, instance => {
+    // The display loads the archive before it draws the layer.
+    const { instance, display } = createArchiveEntity(PREFAB, alterguardianHatEquippedSource(art.sprites, art.archive), { name: 'idle' }, PREFAB, instance => {
       // hats.lua's empty spore container: alterguardianhat_animstatemult sets SetMultColour(0.7, 0.7, 0.7) on both entities.
       instance.sprite.setColour([0.7, 0.7, 0.7]);
       // The layer's own AnimState, by its json signal: its display follows it.

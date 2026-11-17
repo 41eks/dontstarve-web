@@ -4,7 +4,7 @@ import type { SpriteResources } from '@dontstarve-web/display';
 import type { WilsonFx } from '@dontstarve-web/stategraphs';
 import { createSignal } from '@dontstarve-web/signals';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createPrefabEntity, type EntityTask, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type EntityTask, type PrefabInstance } from './prefabInstance';
 import { PlaySound } from './sound';
 import { animationTiming } from './animationTimings';
 
@@ -33,13 +33,12 @@ class FxInst implements WilsonFx {
     this.owner = owner; this.prefab = prefab; this.symbol = symbol;
     this.key = `book-fx:${owner.nextId++}`;
     const definition = FX_PREFABS[prefab];
-    const { instance, display } = createPrefabEntity(prefab, owner.resources.factory({
-      animationArchive: definition.archive, buildArchive: definition.archive,
-    }), { name: definition.anim }, prefab, instance => {
+    // SetBank / SetBuild from the FX's archive; book_fx's SetMultColour alpha needs its own translucent materials.
+    const source = owner.resources.archive({ animationArchive: definition.archive, buildArchives: [definition.archive], bank: definition.bank },
+      'opacity' in definition ? { opacity: definition.opacity } : {});
+    const { instance, display } = createArchiveEntity(prefab, source, { name: definition.anim }, prefab, instance => {
       instance.addTag('FX');
       instance.persists = false;
-      instance.sprite.setArtSource({ animationArchives: [definition.archive], bank: definition.bank,
-        buildArchive: definition.archive, art: owner.resources.archives });
       instance.sprite.playOnce(definition.anim);
       instance.sprite.setFacing(owner.instance.sprite.sprite.peek().facing ?? 8);
       if ('opacity' in definition) instance.sprite.setOpacity(definition.opacity);

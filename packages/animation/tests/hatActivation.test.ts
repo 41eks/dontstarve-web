@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HAT_DEFINITIONS, HatActivationController, HatEquipmentAssets } from '../../prefab/src/hats';
+import { alterguardianHatEquippedSource } from '../../prefab/src/alterguardian_hat_equipped';
 import { LANTERN_COLOUR } from '../../prefab/src/lantern';
 import { spawnLightEntity } from '../../prefab/src/localLight';
 import { smallHash } from '../src/animationAssets';
@@ -29,8 +30,8 @@ describe('Enlightened Crown source activation', () => {
   it('spawns two alterguardian_hat_equipped layers that play out on their own at the sanity threshold', async () => {
     const assets = sourceAssets();
     const hat = { definition: HAT_DEFINITIONS.alterguardianhat };
-    // The FX archive is already cached, as after an earlier activation: its layers are drawn at once.
-    await assets.loadFactory(hat.definition.equip.activated!.archive);
+    // The FX archive is already loaded, as after an earlier activation: its layers are drawn at once.
+    (await alterguardianHatEquippedSource(assets.sprites, hat.definition.equip.activated!.archive).create({ name: 'idle', loop: true })).dispose();
     const { instance: owner, display } = createEmptyEntity('wilson');
     // A lit lantern's lanternlight parented to the same owner.
     const lantern = spawnLightEntity('lanternlight', owner);

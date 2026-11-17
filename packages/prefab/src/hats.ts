@@ -1,14 +1,11 @@
 import { addComponent } from './components';
 import type { AnimStateArt } from '@dontstarve-web/animation/animState';
-import { HatArtAssets, type HatArtDefinition, type HatEquipMode } from '@dontstarve-web/animation/hatAssets';
-import {
-  createAnimatedSpriteSource, type AnimatedSpriteFactory, type AnimatedSpriteSourceOptions,
-} from '@dontstarve-web/animation/sprite';
+import type { HatArtDefinition, HatEquipMode } from '@dontstarve-web/animation/hatAssets';
+import { SpriteResources } from '@dontstarve-web/display';
 import type { ItemEntity, ItemRuntimeComponent, InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
 import { Equippable } from '../../componets/src/equippable';
 import { createMemo, createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
-import * as THREE from 'three';
 import type { ItemPrefabWorld } from './groundPrefab';
 import { bindItemWorld, type ItemPrefabDefinition } from './groundItems';
 import catalog from './hats.json' with { type: 'json' };
@@ -113,8 +110,15 @@ export const HAT_RECIPES: Readonly<Record<string, InventoryRecipeDefinition>> = 
   }),
 );
 
-/** One cache per player: the sprite sources of the entities worn hats spawn. */
-export class HatEquipmentAssets extends HatArtAssets {}
+/**
+ * One owner per player of the shared archive art of the entities worn hats spawn (alterguardian_hat_equipped); their
+ * displays load it when such an entity is drawn, and the owner removes those entities before releasing it.
+ */
+export class HatEquipmentAssets {
+  readonly sprites: SpriteResources;
+  constructor(assetBaseUrl: string) { this.sprites = new SpriteResources(assetBaseUrl); }
+  dispose(): void { this.sprites.dispose(); }
+}
 
 export interface HatActivationOptions {
   readonly assets: HatEquipmentAssets;
@@ -199,8 +203,7 @@ export class HatActivationController {
     const owner = this.owner;
     this.restoring.set(undefined);
     const skin = skinId === undefined ? undefined : definition.skinArchives[skinId];
-    const assets = this.options.assets;
-    const art = { archive: config.archive, peekFactory: (archive: string) => assets.peekFactory(archive), loadFactory: (archive: string) => assets.loadFactory(archive),
+    const art = { archive: config.archive, sprites: this.options.assets.sprites,
       ...skin && this.options.art ? { skin: { archive: skin, art: this.options.art } } : {} };
     for (const isFront of [true, false]) {
       const fx = new AlterguardianHatEquipped(art, owner);
@@ -236,21 +239,13 @@ const RABBITHAT_GROUND = { build: 'rabbit_build.zip', overrideBuild: 'hat_rabbit
 
 /**
  * hats.lua's simple(): SetBank(name.."hat") / SetBuild("hat_"..name) / PlayAnimation("anim"), independently of
- * swap_hat. Each hat is an item entity drawn by its display; each hat's sprite factory is made when one is first drawn.
+ * swap_hat. Each hat is an item entity drawn by its display from the hat's shared archive, in the shared batches.
  */
 export function hatPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
   return Object.fromEntries(Object.entries(HAT_DEFINITIONS).map(([id, hat]) => {
     const rabbit = id === 'rabbithat';
-    const options: AnimatedSpriteSourceOptions = rabbit
-      ? { buildArchive: RABBITHAT_GROUND.build, overrideBuilds: { [RABBITHAT_GROUND.overrideBuild]: `${RABBITHAT_GROUND.overrideBuild}.zip` } }
-      : {};
-    const name = `GroundHat:${id}`;
-    let request: Promise<AnimatedSpriteFactory> | undefined;
-    let loaded: AnimatedSpriteFactory | undefined;
-    const draw = (factory: AnimatedSpriteFactory) => ({
-      create: (animation: string, frame?: 'first' | 'last') => factory.create({ initialAnimation: animation, initialFrame: frame, name }),
-      release: (sprite: THREE.Group) => factory.disposeSprite(sprite),
-    });
+    // The rabbit's AddOverrideBuild("hat_rabbit") is drawn before its SetBuild("rabbit_build").
+    const buildArchives = rabbit ? [`${RABBITHAT_GROUND.overrideBuild}.zip`, RABBITHAT_GROUND.build] : [hat.archive];
     const definition: ItemPrefabDefinition = {
       // The rabbit's animqueueover restarts its ground idle; other hats rest on anim's last frame.
       fn: () => {
@@ -259,12 +254,8 @@ export function hatPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDef
         bindItemWorld(inst, world);
         return inst;
       },
-      source: {
-        peek: () => loaded && draw(loaded),
-        load: () => (request ??= createAnimatedSpriteSource(world.animationBaseUrl, hat.archive, options)
-          .then(factory => loaded = factory, error => { request = undefined; throw error; })).then(draw),
-        dispose: () => { void request?.then(factory => factory.dispose(), () => undefined); request = undefined; loaded = undefined; },
-      },
+      assets: { animationArchive: hat.archive, buildArchives, bank: id },
+      assetOptions: { instancedAnimations: 'all' },
       ...Object.keys(hat.skinArchives).length ? { skins: hat.skinArchives } : {},
       onSpawned: inst => world.configureItem(inst),
     };

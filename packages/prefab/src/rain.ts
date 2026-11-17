@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import { createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
-import { Rainfall, SpriteResources, type LoadedSpriteSource, type PrefabDisplay, type RainfallJson, type SpriteState } from '@dontstarve-web/display';
-import { createEmptyEntity, createPrefabEntity, type PrefabInstance } from './prefabInstance';
+import { Rainfall, SpriteResources, type ArchiveSpriteSource, type PrefabDisplay, type RainfallJson, type SpriteState } from '@dontstarve-web/display';
+import { createArchiveEntity, createEmptyEntity, type PrefabInstance } from './prefabInstance';
 import { PlaySound, type SoundHandle } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
 
@@ -64,7 +64,7 @@ export class RainEffect {
   private readonly rainfall: Rainfall;
   /** raindrop.lua's assets, declared once for every pooled splash. */
   private readonly sprites: SpriteResources;
-  private readonly raindrop: LoadedSpriteSource;
+  private readonly raindrop: ArchiveSpriteSource;
   private readonly splashes: Splash[] = [];
   private readonly pool: Splash[] = [];
   private sound?: SoundHandle;
@@ -78,7 +78,9 @@ export class RainEffect {
     this.emitter.instance.persists = false;
     this.emitter.instance.addTag('FX');
     this.sprites = new SpriteResources(options.animationBaseUrl);
-    this.raindrop = this.sprites.animated('raindrop.zip', {}, { name: 'raindrop' });
+    // raindrop.lua SetBuild/SetBank("raindrop"); the held one-shot is drawn by the shared batches.
+    this.raindrop = this.sprites.archive({ animationArchive: 'raindrop.zip', buildArchives: ['raindrop.zip'], bank: 'raindrop' },
+      { instancedAnimations: 'all' });
     this.rainfall = new Rainfall({ root: this.emitter.display.model, scene: options.scene, dataBaseUrl: options.dataBaseUrl,
       fx: RAIN_FX, getFocus: options.getFocus, camera: options.camera, rate: options.rate });
     this.stopRate = createEffect(() => this.setRate(options.rate.get()));
@@ -101,7 +103,7 @@ export class RainEffect {
   private spawnRaindrop(x: number, z: number): void {
     let splash = this.pool.pop();
     if (!splash) {
-      const { instance, display } = createPrefabEntity('raindrop', this.raindrop, { name: 'anim', held: true, billboard: true }, 'raindrop');
+      const { instance, display } = createArchiveEntity('raindrop', this.raindrop, { name: 'anim', held: true, billboard: true }, 'raindrop');
       instance.persists = false;
       instance.addTag('FX');
       splash = { instance, display, model: display.model, animation: instance.sprite };

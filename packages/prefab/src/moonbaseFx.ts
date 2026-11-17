@@ -1,5 +1,5 @@
 import type { PrefabDisplay, SpriteResources, SpriteState } from '@dontstarve-web/display';
-import { createPrefabEntity, type EntityTask, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type EntityTask, type PrefabInstance } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { AnimState } from '../../componets/src/animstate';
 import { animationLengths } from './animationTimings';
@@ -27,9 +27,11 @@ const SHOWN = readonlySignal(createSignal(true));
 const BEAM_LENGTHS = animationLengths('moonbase_fx.zip'), COLD_LENGTHS = animationLengths('star_cold.zip');
 const COLD_IDLES = ['idle_loop', 'idle_loop2', 'idle_loop3'];
 let nextId = 0;
-const beamSource = (sprites: SpriteResources, prefab: string) => sprites.animated('moonbase_fx.zip', {}, { name: prefab });
-const coldSource = (sprites: SpriteResources, prefab: string) =>
-  sprites.animated('star_cold.zip', {}, { name: prefab, scale: SPRITE_SCALE * .92, hiddenLayers: ['shadow'] });
+/** positronbeam.lua SetBank("lunar_fx"), SetBuild("moonbase_fx"). */
+const beamSource = (sprites: SpriteResources) => sprites.archive({ animationArchive: 'moonbase_fx.zip', buildArchives: ['moonbase_fx.zip'], bank: 'lunar_fx' });
+/** stafflight.lua SetBank/SetBuild("star_cold"), its shadow layer hidden, at the staff light's scale. */
+const coldSource = (sprites: SpriteResources) => sprites.archive({ animationArchive: 'star_cold.zip', buildArchives: ['star_cold.zip'],
+  bank: 'star_cold', hiddenLayers: ['shadow'] }, { scale: SPRITE_SCALE * .92 });
 
 /**
  * positronbeam.lua and stafflight.lua's nonpersistent, parented staffcoldlightfx branch. Each effect is an entity drawn
@@ -55,8 +57,8 @@ export class MoonbaseEffects {
     if (!owner.worldServices?.scheduler) owner.BindScheduler(scheduler);
   }
   private create(prefab: string, clip: string, sortLayer: number, cold = false): Fx {
-    const source = cold ? coldSource(this.sprites, prefab) : beamSource(this.sprites, prefab);
-    const { instance, display } = createPrefabEntity(prefab, source, { name: clip, billboard: true }, prefab, entity => {
+    const source = cold ? coldSource(this.sprites) : beamSource(this.sprites);
+    const { instance, display } = createArchiveEntity(prefab, source, { name: clip, billboard: true }, prefab, entity => {
       entity.persists = false;
       entity.addTag(cold ? 'HASHEATER' : 'FX');
       entity.sprite.setLightOverride(1);
