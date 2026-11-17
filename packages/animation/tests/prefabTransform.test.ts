@@ -11,8 +11,6 @@ import { GetTileKeyAtPoint } from '../../componets/src/tileManager';
 import { useTestTileMap } from './tileMapFixture';
 import { readFile } from 'node:fs/promises';
 import { PrefabDisplay } from '../../display/src/prefabDisplay';
-import { SpriteResources } from '../../display/src/spriteResources';
-import { SpriteController } from '../src/sprite';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '../src/archiveSprite';
 
 useTestTileMap();
@@ -94,31 +92,6 @@ it('gives every entity a TransformRoot and marks it after logical writes and a d
   transform.dispose();
 });
 
-it('keeps a symbol follower on the camera-facing sprite, whatever the camera and the entity heading', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  // One unit along the sprite's own x.
-  const symbol = vi.spyOn(SpriteController.prototype, 'getSymbolPosition').mockImplementation((_symbol, _x, _y, target) => { target.set(1, 0, 0); return true; });
-  const camera = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2);
-  const world = bindTestCamera();
-  const instance = new PrefabInstance('follower-host', new SpriteState({ name: 'idle', billboard: true }));
-  const display = new PrefabDisplay({ root: instance.transform.model, name: 'host', sprite: instance.sprite, status: instance.status,
-    source: new SpriteResources().factory({ buildArchive: 'berrybush.zip', animationArchive: 'berrybush.zip' }) });
-  const follower = instance.sprite.followSymbol('swap_object', 0, 0);
-  try {
-    await display.artLoaded();
-    const worldPoint = () => {
-      world.turn(camera);
-      for (let frame = 0; frame < 2; frame++) { display.update(1 / 30); instance.sprite.update(1 / 30); }
-      return follower.node.getWorldPosition(new Vector3());
-    };
-    const facing = new Vector3(1, 0, 0).applyQuaternion(camera);
-    expect(worldPoint().distanceTo(facing)).toBeCloseTo(0);
-    instance.setRotation(45);
-    expect(worldPoint().distanceTo(facing)).toBeCloseTo(0);
-    expect(follower.node.parent).toBe(display.model);
-  } finally { follower.remove(); display.dispose(); instance.remove(); symbol.mockRestore(); world.unbind(); vi.unstubAllGlobals(); }
-});
-
 it('keeps a symbol follower on a camera-facing archive sprite, whatever the camera and the entity heading', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const assets = new ArchiveSpriteAssets();
@@ -156,16 +129,15 @@ it('keeps a symbol follower on a camera-facing archive sprite, whatever the came
   } finally { follower.remove(); display.dispose(); instance.remove(); assets.dispose(); world.unbind(); vi.unstubAllGlobals(); }
 });
 
-it.each(['archive', 'factory'] as const)('lifts the drawn %s sprite off a grounded entity, across deferred art and reloading', async kind => {
+it('lifts the drawn archive sprite off a grounded entity, across deferred art and reloading', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const assets = new ArchiveSpriteAssets();
   const settle = async (display: PrefabDisplay) => { await new Promise(resolve => setTimeout(resolve, 0)); await display.artLoaded(); display.update(0); };
   // A fresh resource owner each time: the sprite is drawn only after its source has loaded.
   const draw = (name: string) => {
-    const instance = new PrefabInstance(name, new SpriteState({ name: kind === 'archive' ? 'idle_loop' : 'idle', billboard: true }));
-    const display = new PrefabDisplay({ root: instance.transform.model, name, sprite: instance.sprite, status: instance.status, alignBottom: true, ...kind === 'archive'
-      ? { archive: { create: () => createSharedArchiveSprite(assets, { animationArchive: 'mushroom_tree_tall.zip', buildArchives: ['mushroom_tree_tall.zip'], bank: 'mushroom_tree', animation: 'idle_loop', loop: true }) } }
-      : { source: new SpriteResources().factory({ buildArchive: 'berrybush.zip', animationArchive: 'berrybush.zip' }) } });
+    const instance = new PrefabInstance(name, new SpriteState({ name: 'idle_loop', billboard: true }));
+    const display = new PrefabDisplay({ root: instance.transform.model, name, sprite: instance.sprite, status: instance.status, alignBottom: true,
+      archive: { create: () => createSharedArchiveSprite(assets, { animationArchive: 'mushroom_tree_tall.zip', buildArchives: ['mushroom_tree_tall.zip'], bank: 'mushroom_tree', animation: 'idle_loop', loop: true }) } });
     return { instance, display };
   };
   const resting = draw('resting'), { instance, display } = draw('lifted');

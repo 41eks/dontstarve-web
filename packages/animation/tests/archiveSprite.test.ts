@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite, type ArchiveSpriteDefinition } from '../src/archiveSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
-import { animatedSpriteController, createAnimatedSpriteSource, loadBuildOverride } from '../src/sprite';
+import { loadBuildOverride } from '../src/sprite';
 import { smallHash } from '../src/animationAssets';
 import type { ResolvedAnimState } from '../src/animState';
 
@@ -13,13 +13,8 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn(async (url: string) => {
 })));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
-it('matches native skinned berry layers and snow overrides while retaining independent shared appearances', async () => {
-  const assets = new ArchiveSpriteAssets(), snow = await loadBuildOverride('/dst/data/anim', 'snow.zip');
-  const reference = await createAnimatedSpriteSource('/dst/data/anim', 'berrybush.zip', {
-    skinArchive: 'dynamic/berrybush_cawnival.zip',
-  });
-  const control = reference.create({ initialAnimation: 'idle', snowCovered: snow });
-  const controller = animatedSpriteController(control);
+it('draws skinned berry layers and the snow override while retaining independent shared appearances', async () => {
+  const assets = new ArchiveSpriteAssets();
   const definition = { animationArchive: 'berrybush.zip', buildArchives: ['berrybush.zip', 'snow.zip'], bank: 'berrybush',
     animation: 'idle', loop: true, symbolOverrides: { snow: { archive: 'snow.zip', symbol: 'snow' } } };
   const options = { skinArchive: 'dynamic/berrybush_cawnival.zip', instancedAnimations: 'all' as const };
@@ -27,16 +22,10 @@ it('matches native skinned berry layers and snow overrides while retaining indep
   const second = await createSharedArchiveSprite(assets, definition, options);
   const mesh = (model: THREE.Object3D) => model.getObjectByProperty('isMesh', true) as THREE.Mesh;
   try {
-    for (const layer of ['berries', 'berriesmore']) { controller.hideLayer(layer); first.setLayerHidden(layer, true); }
-    controller.showLayer('snow'); controller.setFrame(0); first.setFrame(0);
-    const positions = (model: THREE.Object3D) => {
-      const geometry = mesh(model).geometry;
-      return Array.from(geometry.getAttribute('position').array.slice(0, geometry.drawRange.count / 6 * 12));
-    };
-    expect(positions(first.model)).toEqual(positions(control));
+    for (const layer of ['berries', 'berriesmore']) first.setLayerHidden(layer, true);
+    first.setFrame(0);
     const withSnow = mesh(first.model).geometry;
-    controller.hideLayer('snow'); first.setLayerHidden('snow', true);
-    expect(positions(first.model)).toEqual(positions(control));
+    first.setLayerHidden('snow', true);
     expect(mesh(first.model).geometry.drawRange.count).toBeLessThan(withSnow.drawRange.count);
     // Identical appearance data shares immutable geometry; changing a sibling does not rewrite it.
     for (const layer of ['berries', 'berriesmore', 'snow']) second.setLayerHidden(layer, true);
@@ -47,7 +36,7 @@ it('matches native skinned berry layers and snow overrides while retaining indep
     expect(mesh(second.model).geometry).toBe(shared);
     first.setLayerHidden('berriesmost', false);
     expect(mesh(first.model).geometry).toBe(shared);
-  } finally { first.dispose(); second.dispose(); reference.disposeSprite(control); reference.dispose(); snow.dispose(); assets.dispose(); }
+  } finally { first.dispose(); second.dispose(); assets.dispose(); }
 });
 
 it('shares later-selected clips without prefab clip lists while keeping opacity and completion callbacks local', async () => {
@@ -157,40 +146,32 @@ it('pauses/resumes a source clip and accepts a caller-supplied food symbol overr
   expect(disposeTexture).toHaveBeenCalledOnce();
 });
 
-it('draws override builds and AnimState declarations as a factory sprite does, then returns to shared frames', async () => {
+it('draws override builds and AnimState declarations as its own frame, then returns to shared frames', async () => {
   const assets = new ArchiveSpriteAssets(), crow = await loadBuildOverride('/dst/data/anim', 'crow_build.zip');
-  const reference = await createAnimatedSpriteSource('/dst/data/anim', 'bird_cage.zip');
-  const control = reference.create({ initialAnimation: 'caw' });
-  const controller = animatedSpriteController(control);
   const definition = { animationArchive: 'bird_cage.zip', buildArchives: ['bird_cage.zip'], bank: 'birdcage', animation: 'caw', loop: true };
   const first = await createSharedArchiveSprite(assets, definition, { instancedAnimations: 'all' });
   const second = await createSharedArchiveSprite(assets, definition, { instancedAnimations: 'all' });
   const mesh = (model: THREE.Object3D) => model.getObjectByProperty('isMesh', true) as THREE.Mesh;
-  const positions = (model: THREE.Object3D) => {
-    const geometry = mesh(model).geometry;
-    return Array.from(geometry.getAttribute('position').array.slice(0, geometry.drawRange.count / 6 * 12));
-  };
   const state = (hiddenSymbols: string[]): ResolvedAnimState => ({ overrides: new Map(), hiddenLayers: new Set(),
     hiddenSymbols: new Set(hiddenSymbols.map(smallHash)), symbolLightOverrides: new Map(), symbolAnimations: new Map(), blooms: new Set(), attachments: [] });
   try {
     const cage = mesh(second.model).geometry.drawRange.count;
-    controller.addOverrideBuild('crow_build', crow); first.addOverrideBuild('crow_build', crow);
-    controller.setFrame(5); first.setFrame(5); second.setFrame(5);
-    expect(positions(first.model)).toEqual(positions(control));
+    first.addOverrideBuild('crow_build', crow);
+    first.setFrame(5); second.setFrame(5);
     expect(mesh(first.model).geometry.drawRange.count).toBeGreaterThan(cage);
+    expect(first.getResolvedFrame().some(part => part.element.imageHash === smallHash('crow_beak'))).toBe(true);
     // The dressed sprite draws its own frame, outside the batch its plain siblings share.
     expect(mesh(first.model).visible).toBe(true);
     expect(mesh(second.model).visible).toBe(false);
-    controller.setAnimState(state(['crow_beak'])); first.setAnimState(state(['crow_beak']));
-    expect(positions(first.model)).toEqual(positions(control));
+    first.setAnimState(state(['crow_beak']));
     expect(first.getResolvedFrame().some(part => part.element.imageHash === smallHash('crow_beak'))).toBe(false);
     // A paused sprite still shows the frame it is set to.
-    controller.setFrame(9); first.setPaused(true); first.setFrame(9);
-    expect(positions(first.model)).toEqual(positions(control));
+    first.setPaused(true); first.setFrame(9);
+    expect(first.frame).toBe(9);
     first.clearOverrideBuild('crow_build'); first.setAnimState(state([])); first.setPaused(false);
     second.setFrame(9);
     expect(mesh(first.model).geometry).toBe(mesh(second.model).geometry);
-  } finally { first.dispose(); second.dispose(); reference.disposeSprite(control); reference.dispose(); crow.dispose(); assets.dispose(); }
+  } finally { first.dispose(); second.dispose(); crow.dispose(); assets.dispose(); }
 });
 
 it('draws nothing for the frames of a skinned symbol that the skin leaves blank', async () => {

@@ -4,7 +4,7 @@
 
 ## Shared resources and entity state
 
-- 共享缓存：同一 manager／资源生命周期内的实体，shared archive 路径必须复用同一个 `ArchiveSpriteAssets`；factory 路径必须按实际 animation／build、皮肤及控制器配置复用兼容的 factory。不得逐实体或每次唤醒时创建资源缓存、共享源材质或帧几何缓存；实体独立颜色／透明度所需的私有材质副本由动画实现管理。
+- 共享缓存：同一 manager／资源生命周期内的实体，动画美术只走 shared archive 路径，必须复用同一个 `ArchiveSpriteAssets`（逐实体的 animated sprite factory 已删除，不再新增）；墙体静态图片按实际 build 与选项复用兼容的静态图片工厂。不得逐实体或每次唤醒时创建资源缓存、共享源材质或帧几何缓存；实体独立颜色／透明度所需的私有材质副本由动画实现管理。
 - 独立实体状态：各实体独立维护模型位置、播放进度、完成回调和私有外观状态，通过 sprite／控制器接口修改；不得直接修改或释放共享帧的顶点、UV、索引、几何体、源材质或纹理。
 
 ## Billboard drawing order and wall facing

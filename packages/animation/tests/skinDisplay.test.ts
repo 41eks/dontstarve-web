@@ -6,7 +6,7 @@ import { prefabDisplay } from '@dontstarve-web/display';
 import type { ArchiveSpriteAssets } from '@dontstarve-web/animation/archiveSprite';
 import { InventorySlot, InventoryStore, inventorySlotAddress, type ItemEntity } from '../../inventory/src';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
-import { createPrefabEntity, prefabInstance } from '../../prefab/src/prefabInstance';
+import { createArchiveEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { itemAt, ItemWorldFixture } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
 import { SpriteResources } from '../../display/src/spriteResources';
@@ -80,12 +80,13 @@ it('uses the latest json skin while paused, reuses loaded art, and ignores a loa
   } finally { releaseFirst(); releaseLast(); items.dispose(); inventory.dispose(); }
 });
 
-it('applies a layered factory skin without resetting the clip, progress, callback or private appearance', async () => {
+it('applies a layered skin without resetting the clip, progress, callback or private appearance', async () => {
   const definition: import('../../prefab/src/building').BuildingDeclaration = definitions.animatedBuildings.researchlab2;
   const resources = new SpriteResources();
-  const { instance, display } = createPrefabEntity('researchlab2', resources.factory({
-    animationArchive: definition.archive, buildArchive: definition.buildArchive ?? definition.archive,
-  }), { name: 'proximity_loop' }, 'researchlab2', entity => {
+  // Its own tint and opacity need the sprite's private material copies.
+  const { instance, display } = createArchiveEntity('researchlab2', resources.archive({ animationArchive: definition.archive,
+    buildArchives: [definition.buildArchive ?? definition.archive], bank: 'researchlab2' }, { colour: [1, 1, 1], opacity: 1 }),
+  { name: 'proximity_loop' }, 'researchlab2', entity => {
     entity.sprite.setSkinSource({ archives: definition.skinArchives!, art: resources.archives,
       symbols: definition.skinSymbols, baseSymbols: definition.baseSymbols, animationBanks: definition.skinAnimationBanks });
   });

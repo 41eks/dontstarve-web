@@ -191,7 +191,7 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 
 用 `c_spawn("wall_stone")`、`c_spawn("wall_wood")`、`c_spawn("wall_hay")`、`c_spawn("wall_ruins")`、`c_spawn("wall_moonrock")` 或 `c_spawn("wall_dreadstone")` 生成建成墙；`wall_*_item` 别名仍生成建成墙。`c_give("wall_stone_item", 10)` 等命令获取可放置的墙物品，库存图标、掉落地面的 `idle` 动画与建成墙的 `half` 外观分别使用各自原版资源。装备 `c_give("reskin_tool")` 获取的清洁扫把，右键建成墙可按下表循环换肤，最后回到默认外观；原有地面墙物品也可换肤。放置带皮肤的墙物品会映射到对应的建成墙皮肤，保留正面/斜面随相机朝向切换、受击动画和绝望石墙的红色覆盖层。换肤保留实体 ID、地面落点及已保存的健康状态；建成墙皮肤随 `c_save()` 保存并恢复，旧的无皮肤墙存档仍可加载。档案馆墙 `wall_stone_2` / `wall_ruins_2` 和废料墙 `wall_scrap` 没有原版皮肤，不提供换肤。
 
-墙体与栅栏的 display 使用动画包的 `ResidentSpriteController` 与共享精灵工厂；离开活动区只释放 visual，唤醒后恢复当前朝向、皮肤和姿态，实体 ID、脚点、健康／工作组件、物理登记和存档状态继续保留。栅栏燃烧计时在休眠时继续，到期仍移除实体。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 可继续保存休眠实体。
+墙体的 display 使用动画包的 `ResidentSpriteController` 与共享静态图片工厂，栅栏使用共享 archive；离开活动区只释放 visual，唤醒后恢复当前朝向、皮肤和姿态，实体 ID、脚点、健康／工作组件、物理登记和存档状态继续保留。栅栏燃烧计时在休眠时继续，到期仍移除实体。调试命令语法、参数与支持的 `c_spawn` / `c_give` ID 不变，`c_save()` 可继续保存休眠实体。
 
 墙、栅栏、骨骸、遗迹复制品、留声机与耕地机的 `HAMMER` 回调在各自 prefab 模块注册到真实实例；组件负责工作量和掉落，拆毁效果交给共享 FX 入口。受击动画按 Lua 声明非循环 `hit → idle`（墙回到当前健康姿态），休眠重建仍保留声明。蜂后巢的工作与再生回调读取实例的组件和计时状态。`c_spawn`、`c_give`、`c_save()` 的语法、支持 ID 和存档字段保持不变。
 

@@ -14,15 +14,10 @@ export {
   type ParsedImageAtlasXml,
 } from './imageAtlas';
 export {
-  createAnimatedSprite,
-  createAnimatedSpriteFactory,
-  type AnimatedSpriteOptions,
-  type AnimatedSpriteFactory,
   type SpriteAnimationController,
   type PercentAnimationController,
   type TransientSpriteAnimationController,
 } from './sprite';
-export { createBeefaloSpriteFactory, type FacingSpriteController, type BeefaloSpriteFactory } from './beefaloSprite';
 export {
   createStaticSprite, createStaticSpriteFactory,
   type StaticSpriteFactory,

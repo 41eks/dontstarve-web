@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { unzipSync, zipSync } from 'fflate';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
-import { createSpriteFactory } from '../src/sprite';
+import { ArchiveSpriteAssets, createArchiveSprite } from '../src/archiveSprite';
 import { createMaterials, loadAnim, loadBuild, loadAnimationArchive, loadSpriteSkinArchive, findImage, smallHash } from '../src/animationAssets';
 
 afterEach(() => vi.unstubAllGlobals());
@@ -74,7 +74,7 @@ it('keeps absent birch leaf slots invisible instead of repeating the first three
 
 it('keeps the base bank clip when a skin archive ships a stub anim.bin', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  const [{ buildPackage, animations }, skin] = await Promise.all([
+  const [{ animations }, skin] = await Promise.all([
     loadAnimationArchive('hat_dreadstone.zip', '/dst/data/anim'),
     loadSpriteSkinArchive('dynamic/hat_dreadstone_horn.zip', '/dst/data/anim'),
   ]);
@@ -82,12 +82,13 @@ it('keeps the base bank clip when a skin archive ships a stub anim.bin', async (
   // hats.lua plays dreadstonehat/anim, whose swap_hat element is the ground pose 3; the skin's own stub points at 1.
   expect(animations.animations[0].frames[0].elements[0].imageIndex).toBe(3);
   expect(skin.animations!.animations[0].frames[0].elements[0].imageIndex).toBe(1);
-  const factory = createSpriteFactory(buildPackage, animations, undefined, skin);
-  const sprite = factory.create({ initialAnimation: 'anim' });
-  const mesh = sprite.getObjectByProperty('isMesh', true) as THREE.Mesh;
+  const assets = new ArchiveSpriteAssets('sprite', '/dst/data/anim');
+  const sprite = await createArchiveSprite(assets, { animationArchive: 'hat_dreadstone.zip', buildArchives: ['hat_dreadstone.zip'],
+    bank: 'dreadstonehat', animation: 'anim', loop: false }, { skinArchive: 'dynamic/hat_dreadstone_horn.zip' });
+  const mesh = sprite.model.getObjectByProperty('isMesh', true) as THREE.Mesh;
   const box = new THREE.Box3().setFromBufferAttribute(mesh.geometry.getAttribute('position') as THREE.BufferAttribute);
   const aspect = (image: number) => findImage(skin.buildPackage.build, hash, image)!.width / findImage(skin.buildPackage.build, hash, image)!.height;
   expect((box.max.x - box.min.x) / (box.max.y - box.min.y)).toBeCloseTo(aspect(3), 2);
   expect(aspect(3)).not.toBeCloseTo(aspect(1), 1);
-  factory.dispose();
+  sprite.dispose(); assets.dispose();
 });

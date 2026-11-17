@@ -7,9 +7,9 @@ import type { ResolvedAnimState } from '@dontstarve-web/animation/animState';
 import type { ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import type { SpriteArtSource, SpriteTint, CompositeSpriteFrame, SpriteSkin } from '@dontstarve-web/animation/sprite';
 
-type SymbolOverrides = Parameters<import('@dontstarve-web/animation/sprite').SpriteController['setSymbolOverrides']>[0];
-type SymbolOverride = Parameters<import('@dontstarve-web/animation/sprite').SpriteController['overrideSymbol']>[1];
-type BuildOverride = Parameters<import('@dontstarve-web/animation/sprite').SpriteController['addOverrideBuild']>[1];
+type SymbolOverrides = Parameters<ArchiveSprite['setSymbolOverrides']>[0];
+type SymbolOverride = Parameters<ArchiveSprite['overrideSymbol']>[1];
+type BuildOverride = Parameters<ArchiveSprite['addOverrideBuild']>[1];
 
 /**
  * What a display draws with: a resident sprite that is built and released with its tile. `ResidentSpriteController`

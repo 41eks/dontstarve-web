@@ -187,9 +187,9 @@ W.A.R.B.I.S. 头戴装备、检查镜和兔子帽的主体跟随部件直接合�
 
 `hatPrefabs(world)` 把每顶帽子声明为物品 prefab，使用独立的落地 `anim` 动画，遵循
 `hats.lua` 的 `SetBank(name.."hat")` / `SetBuild("hat_"..name)` / `PlayAnimation("anim")`。
-sprite 来自定义的 `source`：每顶帽子首次绘制时建立 `createAnimatedSpriteSource()`，由 `PrefabEntityManager` 在所有实体之后释放；
+美术以 `assets` 声明帽子的共享 archive（bank 即帽子 ID），`instancedAnimations: 'all'` 由共享批次绘制；
 皮肤列表即 `skins`。落地帽子按实体的地面接触点参与遮挡排序，点击合并 Mesh 可拾取，存档保存真实落点。
-兔子帽按 `rabbit_custom_init` 以 `rabbit_build` 为 build，并以 sprite 来源的 `overrideBuilds: { hat_rabbit: 'hat_rabbit.zip' }` 声明帽子部件，由 display 随来源一起加载。
+兔子帽按 `rabbit_custom_init` 以 `rabbit_build` 为 build，`AddOverrideBuild("hat_rabbit")` 声明为 `buildArchives: ['hat_rabbit.zip', 'rabbit_build.zip']`（覆盖 build 在前），由 display 随 archive 一起加载。
 
 `@dontstarve-web/prefab/groundItems` 提供 `GROUND_ITEM_DEFINITIONS`、`groundArtArchive(itemId, variant?)`
 和 `groundItemPrefab(itemId, world, { configure? })`。prefab 的 `fn` 在物品自己的 `sprite` 上声明 clip、标签、符号覆盖、

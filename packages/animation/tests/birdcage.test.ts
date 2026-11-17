@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { animatedSpriteController, createAnimatedSprite, loadBuildOverride } from '../src/sprite';
+import { loadBuildOverride } from '../src/sprite';
+import { ArchiveSpriteAssets, createArchiveSprite } from '../src/archiveSprite';
 import { BIRDCAGE_SKIN_ARCHIVES, type BirdcageInstance } from '../../prefab/src/birdcage';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import { managedBuildings } from './managedBuildings';
@@ -29,10 +30,11 @@ afterEach(() => {
 
 const BIRDCAGE = definitions.animatedBuildings.birdcage;
 
+/** birdcage.lua SetBank("birdcage") / SetBuild("bird_cage"), in the cage skin if one is given. */
 async function spawn(animation: string, skinId?: string) {
-  return createAnimatedSprite('/dst/data/anim', BIRDCAGE.archive, {
-    initialAnimation: animation, skinArchive: skinId === undefined ? undefined : BIRDCAGE_SKIN_ARCHIVES[skinId],
-  });
+  return createArchiveSprite(new ArchiveSpriteAssets('sprite', '/dst/data/anim'), { animationArchive: BIRDCAGE.archive,
+    buildArchives: [BIRDCAGE.archive], bank: 'birdcage', animation, loop: true },
+  skinId === undefined ? {} : { skinArchive: BIRDCAGE_SKIN_ARCHIVES[skinId] });
 }
 
 function meshOf(model: THREE.Group) {
@@ -43,8 +45,7 @@ function meshOf(model: THREE.Group) {
 }
 
 it('AddOverrideBuild draws the caged bird from its own build and ClearOverrideBuild restores the cage-only frame', async () => {
-  const model = await spawn('idle_bird');
-  const controller = animatedSpriteController(model);
+  const controller = await spawn('idle_bird'), model = controller.model;
   const bare = meshOf(model).geometry.drawRange.count;
   const canary = await loadBuildOverride('/dst/data/anim', 'canary_build.zip');
   controller.addOverrideBuild('canary_build', canary);
@@ -58,10 +59,9 @@ it('AddOverrideBuild draws the caged bird from its own build and ClearOverrideBu
 });
 
 it('keeps the bird override on a skinned cage, with gothicp using the gothic build', async () => {
-  const model = await spawn('idle_bird', 'birdcage_gothicp');
+  const controller = await spawn('idle_bird', 'birdcage_gothicp'), model = controller.model;
   expect(fetch).toHaveBeenCalledWith('/dst/data/anim/dynamic/birdcage_gothic.zip');
   expect(fetch).not.toHaveBeenCalledWith('/dst/data/anim/dynamic/birdcage_gothicp.zip');
-  const controller = animatedSpriteController(model);
   const bird = await loadBuildOverride('/dst/data/anim', 'crow_build.zip');
   const before = meshOf(model).geometry.drawRange.count;
   controller.addOverrideBuild('crow_build', bird);

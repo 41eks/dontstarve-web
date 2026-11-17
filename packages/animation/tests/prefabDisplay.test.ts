@@ -5,14 +5,13 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { createArchiveEntity, createEmptyEntity, createPrefabEntity, prefabInstance } from '../../prefab/src/prefabInstance';
 import { registerActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
-import { PrefabDisplayGroup, prefabDisplay, SpriteResources, SpriteState } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, prefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { animStateDeclarations } from '../../display/src/spriteState';
 import { AnimState, mergeAnimStates, resolveAnimState, type AnimStateArt } from '../src/animState';
 import { smallHash } from '../src/animationAssets';
 import { ArchiveSpriteAssets, preloadSharedArchiveSprite } from '../src/archiveSprite';
 import { ResidentSprite } from '../src/residentSprite';
-import { setSpriteController } from '../src/spriteController';
-import type { SpriteController } from '../src/sprite';
+import type { ArchiveSprite } from '../src/archiveSprite';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import definitions from '../../prefab/src/definitions.json';
 import { managedBuildings } from './managedBuildings';
@@ -178,29 +177,6 @@ it('the model stands on the entity\'s own position vector, so moving it never to
   expect(instance.position.toArray()).toEqual([3, 0, 4]);
 });
 
-it('stands a deferred first sprite on the foot of the entity\'s first clip, and keeps that foot through sleep and wake', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  vi.stubGlobal('window', new EventTarget());
-  const resources = new SpriteResources('/dst/data/anim');
-  const source = resources.animated('cook_pot.zip', {}, { name: 'CookPot', scale: .02 });
-  const { instance, display } = createPrefabEntity('cookpot', source, { name: 'idle_empty', billboard: true }, 'CookPot',
-    undefined, undefined, { alignBottom: true });
-  try {
-    // A restored pot is already full before its art arrives; it is drawn at the empty pot's foot, as one drawn at once would be.
-    instance.sprite.start('idle_full');
-    await display.artLoaded();
-    const loaded = await source.load(), empty = loaded.create('idle_empty', 'first');
-    empty.updateWorldMatrix(true, true);
-    const foot = -new THREE.Box3().setFromObject(empty).min.y;
-    loaded.release(empty);
-    expect(foot).toBeGreaterThan(0);
-    expect(display.model.children[0].position.y).toBeCloseTo(foot);
-    instance.setActive(false); await tick();
-    instance.setActive(true); await tick();
-    expect(display.model.children[0].position.y).toBeCloseTo(foot);
-  } finally { instance.remove(); display.dispose(); resources.dispose(); }
-});
-
 it('draws a frame declared as a fraction of the clip once the art it was declared before has loaded', async () => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   vi.stubGlobal('window', new EventTarget());
@@ -254,15 +230,15 @@ it('draws AnimState slots over the entity\'s own declaration in the order they w
 it('subscribes to declared direction and pose signals, preserving the clip through camera turns and releasing pose subscriptions', async () => {
   const camera = bindTestCamera();
   let name = 'jump';
-  const controller = { get currentAnimation() { return name; }, numFrames: 20,
-    start: vi.fn((value: string) => { name = value; }), update: vi.fn(),
-    setFacing: vi.fn(), setFrame: vi.fn(), setPercent: vi.fn(), setPaused: vi.fn(), setPlaybackRate: vi.fn(),
+  const model = new THREE.Group(); model.add(new THREE.Group());
+  const controller = { model, instanced: undefined, drawnInstanced: false, get currentAnimation() { return name; }, frameCount: 20,
+    currentAnimationLength: 20 / 30, frame: 0,
+    start: vi.fn((value: string) => { name = value; }), update: vi.fn(), dispose: vi.fn(() => model.removeFromParent()),
+    setFacing: vi.fn(), setFrame: vi.fn(), setPaused: vi.fn(), setPlaybackRate: vi.fn(),
   };
-  const { instance, display } = createPrefabEntity('posed', {
-    // A mock of the animated surface the resident drives.
-    create: () => { const sprite = new THREE.Group(); sprite.add(new THREE.Group()); setSpriteController(sprite, controller as unknown as SpriteController); return sprite; },
-    release: sprite => sprite.removeFromParent(),
-  }, { name: 'jump', billboard: true });
+  // A mock of the archive sprite surface the resident drives; every other call is accepted.
+  const sprite = new Proxy(controller, { get: (target, key) => key in target ? target[key as keyof typeof target] : () => undefined });
+  const { instance, display } = createArchiveEntity('posed', { create: () => sprite as unknown as ArchiveSprite }, { name: 'jump', billboard: true });
   const progress = createSignal<number | undefined>(.25);
   try {
     instance.sprite.setFacingRotation(0, 4);
@@ -270,18 +246,18 @@ it('subscribes to declared direction and pose signals, preserving the clip throu
     await tick();
     const json = instance.sprite.sprite.peek();
     camera.turn(new THREE.Quaternion());
-    expect(controller.setFacing).toHaveBeenLastCalledWith(1, false);
+    expect(controller.setFacing).toHaveBeenLastCalledWith(1);
     expect(controller.setFrame).toHaveBeenLastCalledWith(5);
     expect(controller.setPaused).toHaveBeenLastCalledWith(true);
     progress.set(.75);
     expect(controller.setFrame).toHaveBeenLastCalledWith(15);
     camera.turn(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI));
-    expect(controller.setFacing).toHaveBeenLastCalledWith(4, true);
+    expect(controller.setFacing).toHaveBeenLastCalledWith(4);
     expect(instance.sprite.sprite.peek()).toBe(json);
     controller.start.mockClear();
     instance.sprite.setFacingRotation(90, 6);
     await tick();
-    expect(controller.setFacing).toHaveBeenLastCalledWith(64, false);
+    expect(controller.setFacing).toHaveBeenLastCalledWith(64);
     expect(controller.start).not.toHaveBeenCalled();
     instance.sprite.start('walk');
     await tick();

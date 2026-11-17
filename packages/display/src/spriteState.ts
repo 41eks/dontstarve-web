@@ -4,10 +4,11 @@ import type { AnimStateArt, AnimStateJson, SymbolBuild } from '@dontstarve-web/a
 import type { SpriteMaterialOptions } from '@dontstarve-web/animation/animationAssets';
 import type { FxJson } from './fxAttachments';
 import type { FollowerFx } from './followerFx';
-import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, SpriteController, TransientSpriteAnimationController, SpriteArtSource, SpriteTint } from '@dontstarve-web/animation/sprite';
+import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, TransientSpriteAnimationController, SpriteArtSource, SpriteTint } from '@dontstarve-web/animation/sprite';
+import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 
-type SymbolOverrideValue = Parameters<SpriteController['overrideSymbol']>[1];
-type SymbolOverrideMap = Parameters<SpriteController['setSymbolOverrides']>[0];
+type SymbolOverrideValue = Parameters<ArchiveSprite['overrideSymbol']>[1];
+type SymbolOverrideMap = Parameters<ArchiveSprite['setSymbolOverrides']>[0];
 
 interface SkinArt extends AnimStateArt {
   peekBuild(archive: string, options?: SpriteMaterialOptions): SymbolBuild | undefined;

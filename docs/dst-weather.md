@@ -173,7 +173,7 @@ alpha = first + second + third
 
 纹理按世界坐标重复，周期为 `TILE_SIZE × 8`（当前 96 场景单位），覆盖量只更新 shader 参数与可见性，不修改 `TurfMap` 的实际地皮数据，也不重建整个地表几何。停雪时保留覆盖，融雪到零才隐藏。
 
-实体雪层由 prefab 按 `MakeSnowCoveredPristine` 决定是否启用，并传入共享 `snow.zip` 美术。`SpriteController` 构造时接收世界内容 getter，取得私有 `WorldContentKey.SnowLevel` 信号，通过普通 `createEffect` 更新雪层；覆盖阈值为 `weather.lua` 的 0.015。构造和换肤提交时立即应用当前雪量，换肤保留播放进度与回调并释放旧 controller；取消预备换肤、卸载模型或移除实体时释放对应 controller 的监听。雪层由当前雪量派生，不另存动画控制器 signal，也不保存雪层可见性。
+实体雪层由 prefab 按 `MakeSnowCoveredPristine` 决定是否启用：`MakeSnowCovered`（`standardcomponents.ts`）在 sprite json 上声明共享 `snow.zip` 的 `snow` 符号覆盖，并通过世界内容 getter 取得 `WorldContentKey.SnowLevel` 信号，用 `createRenderEffect` 显示或隐藏 `snow` 层；覆盖阈值为 `weather.lua` 的 0.015。display 在每次 sprite 加载或替换后按 json 重新应用，换肤保留播放进度与回调；实体移除时释放监听。雪层由当前雪量派生，不另存动画控制器 signal，也不保存雪层可见性。
 
 ## 池塘结冰
 

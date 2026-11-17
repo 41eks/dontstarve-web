@@ -6,7 +6,6 @@ import { actionTool } from './actionFixtures';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createAnimatedSpriteSource } from '../src/sprite';
 import { createStaticSpriteFactory, type StaticSpriteController } from '../src/wallSprite';
 import { setSpriteController } from '../src/spriteController';
 import { InstancedArchiveSprites, type InstancedSprite } from '../src/instancedArchiveSprites';
@@ -30,7 +29,6 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bufferingStategraph } from './bufferingStategraph';
 import { slotWith, testInventoryStore } from './testInventory';
 
-vi.mock('../src/sprite', async importOriginal => ({ ...await importOriginal<typeof import('../src/sprite')>(), createAnimatedSpriteSource: vi.fn() }));
 vi.mock('../src/wallSprite', () => ({ createStaticSpriteFactory: vi.fn() }));
 
 const mockController = () => ({
@@ -55,7 +53,13 @@ let fetchGate: Promise<void> | undefined;
 /** The shared-batch instances retained so far, in order, and those released since. */
 const retained: InstancedSprite[] = [];
 const released = new Set<InstancedSprite>();
-const live = () => retained.filter(instance => !released.has(instance));
+/** Those not released yet, drawn in `scene`: a test's own entities, whatever art an earlier test's entities finish loading. */
+const live = (scene: THREE.Scene) => retained.filter(instance => {
+  if (released.has(instance)) return false;
+  let node: THREE.Object3D | null = (instance as unknown as { model: THREE.Object3D }).model;
+  while (node && node !== scene) node = node.parent;
+  return node === scene;
+});
 
 beforeEach(() => {
   fetchGate = undefined; retained.length = 0; released.clear();
@@ -74,14 +78,6 @@ beforeEach(() => {
   });
   vi.spyOn(GroundItemAssets.prototype, 'loadAnimation').mockResolvedValue({} as never);
   vi.spyOn(GroundItemAssets.prototype, 'loadBuild').mockResolvedValue({} as never);
-  vi.mocked(createAnimatedSpriteSource).mockImplementation(async () => ({
-    create: () => model(),
-    disposeSprite: (sprite: THREE.Group) => {
-      sprite.removeFromParent();
-      sprite.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); });
-    },
-    dispose: vi.fn(),
-  }));
   vi.mocked(createStaticSpriteFactory).mockImplementation(async () => ({
     create: vi.fn(() => model()),
     disposeSprite: sprite => { sprite.removeFromParent(); sprite.traverse(object => { if (object instanceof THREE.Mesh) object.geometry.dispose(); }); },
@@ -98,17 +94,18 @@ afterEach(() => {
 
 /** A building's build flow as the application wires it: its placer, and the shared manager that spawns what it builds. */
 function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () => void) {
-  // The placer draws treasure_chest's shared archive; the building it spawns is a mocked animated sprite.
+  // The placer and the building it spawns draw treasure_chest's shared archive in the batches.
   const declaration = { archive: 'treasure_chest.zip', name: 'Building', buildLabel: 'building', idleAnimation: 'closed',
     skinArchives: { treasurechest_cake: 'dynamic/treasurechest_cake.zip' } };
   const displays = new PrefabDisplayGroup(world.scene), sprites = new SpriteResources();
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, {}, { building: {
     fn: () => {
-      const inst = new PrefabInstance('building', new SpriteState({ name: 'idle', billboard: true }));
+      const inst = new PrefabInstance('building', new SpriteState({ name: 'closed', billboard: true }));
       inst.ListenForEvent('onbuilt', onbuilt);
       return inst;
     },
-    source: sprites.animated(declaration.archive, {}, { name: declaration.name }), skins: declaration.skinArchives, alignBottom: true,
+    assets: { animationArchive: declaration.archive, buildArchives: [declaration.archive], bank: 'chest' },
+    assetOptions: { instancedAnimations: 'all' }, skins: declaration.skinArchives, alignBottom: true,
   } });
   const placer = new BuildingPlacer<'building'>(world, () => buildingPlacer(declaration, 'chest'), consume,
     (buildId, position, skinId) => { prefabs.spawn(buildId, position, undefined, skinId).PushEvent('onbuilt', undefined); });
@@ -193,9 +190,9 @@ it('an accepted action cancels a paid preview through events and skips its own c
   const paidState = store.exportState();
   const preview = world.scene.children[1];
   await vi.waitFor(() => expect(lookupPrefabInstance(preview)!.sprite.loaded).toBe(true));
-  // The placer is drawn by its resources' shared batches.
-  expect(retained).toHaveLength(1);
-  const released = vi.spyOn(retained[0], 'dispose');
+  // The building and the placer are each drawn by their resources' shared batches.
+  expect(live(world.scene)).toHaveLength(2);
+  const released = vi.spyOn(live(world.scene)[1], 'dispose');
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   const model = withEntity(new THREE.Group(), 'icebox'); world.scene.add(model);
@@ -297,7 +294,7 @@ it.each(['animated', 'wall'] as const)('%s does not resurrect a preview cancelle
   if (kind === 'animated') {
     // Whatever the cancelled placer's load built is released: only the resumed placer stays in the batches.
     await vi.waitFor(() => expect(lookupPrefabInstance(resumed)!.sprite.loaded).toBe(true));
-    expect(live()).toHaveLength(1);
+    expect(live(world.scene)).toHaveLength(1);
   }
   expect(world.scene.children).toEqual([resumed]);
   expect(cursor.hidden).toBe(false);
@@ -316,13 +313,10 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   await vi.waitFor(() => {
     for (const model of world.scene.children) expect(lookupPrefabInstance(model)!.sprite.loaded).toBe(true);
   });
-  const resources = world.scene.children.flatMap((model) => {
-    // A resident building returns its sprite to the shared source, which keeps the atlas materials; an animated
-    // placer releases its instance in the shared batches.
-    if (kind === 'animated' && lookupPrefabInstance(model)!.hasTag('placer')) return [vi.spyOn(live()[0], 'dispose')];
-    const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
-    return [vi.spyOn(mesh.geometry, 'dispose')];
-  });
+  // The building and the placer release their instances in the shared batches; a resident wall returns its sprite to
+  // the shared source, which keeps the atlas materials.
+  const resources = kind === 'animated' ? live(world.scene).map(instance => vi.spyOn(instance, 'dispose'))
+    : world.scene.children.map(model => vi.spyOn((model.children[0].children[0].children[0] as THREE.Mesh).geometry, 'dispose'));
   expect(resources).toHaveLength(2);
   placement.dispose(); placement.dispose();
   expect(world.scene.children).toEqual([]);

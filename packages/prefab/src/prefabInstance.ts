@@ -892,8 +892,6 @@ interface NoArt {
   instanceAssets?: never;
   assetOptions?: never;
   icon?: never;
-  source?: never;
-  factory?: never;
   staticImages?: never;
 }
 
@@ -919,21 +917,6 @@ interface IconArt<Instance extends PrefabInstance<SpriteState, object>> extends 
   icon: { readonly atlas: string; readonly image: string };
 }
 
-/** A sprite factory the definition owns; the manager releases it after every entity's display. */
-interface SourceArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'source'> {
-  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
-  source: LoadedSpriteSource & { dispose?(): void };
-}
-
-/**
- * A sprite factory over these archives in the world's shared resources, for art whose instance changes its bank with
- * SetBank (`sprite.setArtSource` with the `sprites` that `fn` receives).
- */
-interface FactoryArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'factory'> {
-  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & AnimatedSpriteInstance;
-  factory: Parameters<SpriteResources['factory']>[0];
-}
-
 /** Build images drawn as static sprites from the world's shared resources, as walls are; only they draw a static sprite. */
 interface StaticImagesArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'staticImages'> {
   fn(position: ReadonlyVector3, sprites: SpriteResources): Instance & StaticImageSpriteInstance;
@@ -947,12 +930,11 @@ interface NoArtDefinition<Instance extends PrefabInstance<SpriteState, object>> 
 
 /**
  * Prefab(name, fn, assets): how one source prefab is built and which art its display declares. The art is one of
- * `assets`, `instanceAssets`, `icon`, `source`, `factory` or `staticImages`, or none; `staticImages` and only it goes with
+ * `assets`, `instanceAssets`, `icon` or `staticImages`, or none; `staticImages` and only it goes with
  * a `StaticImageSpriteState` sprite, whose pose and image commands no other art can draw.
  */
 export type PrefabEntityDefinition<Instance extends PrefabInstance<SpriteState, object>> = PrefabEntityCommon<Instance> & (
-  | ArchiveArt<Instance> | InstanceArchiveArt<Instance> | IconArt<Instance> | SourceArt<Instance> | FactoryArt<Instance>
-  | StaticImagesArt<Instance> | NoArtDefinition<Instance>);
+  | ArchiveArt<Instance> | InstanceArchiveArt<Instance> | IconArt<Instance> | StaticImagesArt<Instance> | NoArtDefinition<Instance>);
 
 /**
  * The application's shared SpawnPrefab owner and save loop over Ents: one collection and shared texture cache
@@ -1028,9 +1010,8 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
     const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols,
-      baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon, factory, staticImages } = this.prefabs[prefabId];
-    const source = this.prefabs[prefabId].source ?? (factory && this.resources.factory(factory))
-      ?? (staticImages && this.resources.staticFactory(staticImages.buildArchive, staticImages.options));
+      baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon, staticImages } = this.prefabs[prefabId];
+    const source = staticImages && this.resources.staticFactory(staticImages.buildArchive, staticImages.options);
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position, this.resources);
     // The world's scheduler for inst:DoTaskInTime, unless the prefab's fn already bound the one it scheduled on; binding
@@ -1167,7 +1148,6 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     // Every entity's display is released above, before the shared resources.
     this.resources.dispose();
     for (const source of this.iconSources.values()) source.dispose();
-    for (const { source } of Object.values(this.prefabs) as PrefabEntityDefinition<Instance>[]) source?.dispose?.();
     this.iconSources.clear();
     this.icons?.dispose();
   }

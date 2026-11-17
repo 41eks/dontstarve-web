@@ -1,4 +1,3 @@
-import { animatedSpriteController } from '../../animation/src/sprite';
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { prewarmScenePasses, renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass';
@@ -193,11 +192,9 @@ export async function checkTreeSpriteRendering(instanced = false) {
 /** Compare the actual birch draw with source image intervals, including intentionally absent override slots. */
 export async function checkBirchLeafRendering(instanced = false) {
   const { atlasPixels, loadBuild, loadAnim, smallHash } = await import('@dontstarve-web/animation/animationAssets');
-  const { createSpriteFactory, loadSymbolOverride } = await import('@dontstarve-web/animation/sprite');
   const base = '/dst/data/anim';
-  const [trunk, leaf, bank, override] = await Promise.all([
-    loadBuild('tree_leaf_trunk_build.zip', base), loadBuild('tree_leaf_green_build.zip', base),
-    loadAnim('tree_leaf_tall.zip', base), loadSymbolOverride(base, 'tree_leaf_green_build.zip', 'swap_leaves'),
+  const [trunk, leaf, bank] = await Promise.all([
+    loadBuild('tree_leaf_trunk_build.zip', base), loadBuild('tree_leaf_green_build.zip', base), loadAnim('tree_leaf_tall.zip', base),
   ]);
   // The CPU reference copies the source RGBA before the first draw hands it to the GPU.
   const sources: HTMLCanvasElement[] = [];
@@ -206,7 +203,6 @@ export async function checkBirchLeafRendering(instanced = false) {
     canvas.getContext('2d')!.putImageData(new ImageData(Uint8ClampedArray.from(atlasPixels(atlas)), atlas.width, atlas.height), 0, 0);
     sources.push(canvas); return canvas;
   }));
-  const factory = createSpriteFactory(trunk, bank);
   const assets = new ArchiveSpriteAssets();
   const definition = { animationArchive: 'tree_leaf_tall.zip',
     buildArchives: ['tree_leaf_trunk_build.zip', 'tree_leaf_green_build.zip'], bank: 'tree_leaf',
@@ -214,17 +210,16 @@ export async function checkBirchLeafRendering(instanced = false) {
     symbolOverrides: { swap_leaves: { archive: 'tree_leaf_green_build.zip', symbol: 'swap_leaves' } },
     hiddenSymbols: ['mouseover', 'snow'],
   };
-  const shared = instanced ? await createSharedArchiveSprite(assets, definition,
-    { colour: [1, 1, 1], instancedAnimations: ['sway1_loop_tall'] }) : undefined;
+  // The tree's own frame, or the shared batches' instance of it.
+  const shared = await createSharedArchiveSprite(assets, definition,
+    instanced ? { colour: [1, 1, 1], instancedAnimations: ['sway1_loop_tall'] } : { colour: [1, 1, 1] });
   const extra: Awaited<ReturnType<typeof createSharedArchiveSprite>>[] = [];
-  const model = shared?.model ?? factory.create({ initialAnimation: 'sway1_loop_tall', scale: .02 });
-  const controller = shared ?? animatedSpriteController(model);
+  const model = shared.model, controller = shared;
   const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: false, preserveDrawingBuffer: true });
   renderer.setSize(600, 600); renderer.setClearColor(0, 0);
   const reference = document.createElement('canvas'); reference.width = reference.height = 600;
   const actual = document.createElement('canvas'); actual.width = actual.height = 600;
   try {
-    if (!shared) controller.setSymbolOverrides(new Map([[smallHash('swap_leaves'), override]]), ['mouseover']);
     controller.setFrame(0);
     const scene = new THREE.Scene(); scene.add(model);
     const camera = new THREE.OrthographicCamera(-40 / 3, 40 / 3, 24, -8 / 3, .1, 100);
@@ -256,7 +251,7 @@ export async function checkBirchLeafRendering(instanced = false) {
     const mesh = model.children[0].children[0] as THREE.Mesh;
     const drawCalls: number[] = [];
     let privateTint = false, workDrawn = false, independentFrames = false;
-    if (shared) {
+    if (instanced) {
       renderer.info.autoReset = false;
       const draw = () => { renderer.info.reset(); renderSceneWithPasses(renderer, scene, camera); drawCalls.push(renderer.info.render.calls); };
       draw();
@@ -287,8 +282,8 @@ export async function checkBirchLeafRendering(instanced = false) {
     }
     return { expectedParts, drawnParts: mesh.geometry.drawRange.count / 6, meanError, drawCalls, privateTint, workDrawn, independentFrames };
   } finally {
-    shared?.dispose(); extra.forEach(tree => tree.dispose()); assets.dispose();
-    factory.dispose(); override.dispose(); renderer.dispose();
+    shared.dispose(); extra.forEach(tree => tree.dispose()); assets.dispose();
+    renderer.dispose();
     for (const canvas of [...sources, actual, reference]) canvas.width = canvas.height = 0;
   }
 }

@@ -19,7 +19,6 @@
     "./archiveSprite": "./src/archiveSprite.ts",
     "./instancedArchiveSprites": "./src/instancedArchiveSprites.ts",
     "./residentSprite": "./src/residentSprite.ts",
-    "./beefaloSprite": "./src/beefaloSprite.ts",
     "./wallSprite": "./src/wallSprite.ts",
     "./prefabskin": "./src/prefabskin.ts",
     "./animationPlayback": "./src/animationPlayback.ts",

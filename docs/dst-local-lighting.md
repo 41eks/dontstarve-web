@@ -298,7 +298,7 @@ Falloff `0.9 - 0.4k`；颜色取法杖的 `fxcolour`，半径乘场景单位比�
 ### 符号光照覆盖
 
 `AnimState:SetSymbolLightOverride(symbol, value)` 由 `AnimState.SetSymbolLightOverride()`
-声明在实体的 AnimState json（`symbolLightOverrides`）中，值为 0 即清除。`SpriteController`
+声明在实体的 AnimState json（`symbolLightOverrides`）中，值为 0 即清除。archive sprite
 解析帧时把该值写到对应符号部件的 `ResolvedSprite.lightOverride`，`SpriteFrameRenderer`
 将其烘焙为合并帧几何的逐顶点 `spriteLightOverride` 属性；跟随实体合入拥有者帧时保留自身的值。
 `dstLocalLighting.ts` 对所有接入的材质读取该属性，没有该属性的几何体经

@@ -8,7 +8,7 @@ import { unzipSync } from 'fflate';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodeDyn } from '../src/decodeDyn';
 import { loadAnimationArchive, loadSpriteSkinArchive, smallHash } from '../src/animationAssets';
-import { animatedSpriteController, createAnimatedSprite } from '../src/sprite';
+import { ArchiveSpriteAssets, createArchiveSprite, type ArchiveSprite } from '../src/archiveSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import type { BuildingDeclaration } from '../../prefab/src/building';
@@ -58,15 +58,26 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function options(prefabId: typeof prefabIds[number], skinId: string) {
-  const definition = buildingDefinitions[prefabId];
-  return {
-    initialAnimation: definition.idleAnimation ?? 'idle',
-    skinArchive: definition.skinArchives![skinId],
-    skinSymbols: definition.skinSymbols,
-    baseSymbols: definition.baseSymbols,
-    skinAnimationBanks: definition.skinAnimationBanks?.[skinId],
-  };
+/** The buildings' SetBank names, as their buildingPrefab declares them. */
+const BANKS: Readonly<Record<typeof prefabIds[number], string>> = { cookpot: 'cook_pot', researchlab2: 'researchlab2', researchlab4: 'researchlab4' };
+
+/**
+ * A building's shared archive sprite, dressed with a skin as its display resolves the entity's skin: the skin build,
+ * the symbols it replaces or keeps, and its animation banks drawn over the clip's frame.
+ */
+async function buildingSprite(prefabId: typeof prefabIds[number], skinId?: string, { scale, banks }: { scale?: number; banks?: readonly string[] } = {}) {
+  const declaration = buildingDefinitions[prefabId];
+  const assets = new ArchiveSpriteAssets('sprite', '/dst/data/anim');
+  const definition = { animationArchive: declaration.archive, buildArchives: [declaration.buildArchive ?? declaration.archive],
+    bank: BANKS[prefabId], animation: declaration.idleAnimation ?? 'idle', loop: true };
+  const sprite = await createArchiveSprite(assets, definition, scale === undefined ? {} : { scale });
+  if (skinId !== undefined) {
+    const archive = declaration.skinArchives![skinId], skinBanks = banks ?? declaration.skinAnimationBanks?.[skinId] ?? [];
+    const [build, animations] = await Promise.all([assets.loadBuild(archive), skinBanks.length ? assets.loadAnimation(archive) : undefined]);
+    sprite.setSkin({ ...build, animations, symbols: declaration.skinSymbols && new Set(declaration.skinSymbols.map(smallHash)),
+      baseSymbols: new Set(declaration.baseSymbols?.map(smallHash)), animationBanks: new Set(skinBanks.map(smallHash)) });
+  }
+  return Object.assign(sprite, { release: () => { sprite.dispose(); assets.dispose(); } }) as ArchiveSprite & { release(): void };
 }
 
 function meshOf(model: THREE.Group) {
@@ -78,14 +89,6 @@ function meshOf(model: THREE.Group) {
   return meshes[0];
 }
 
-function dispose(model: THREE.Group) {
-  const mesh = meshOf(model);
-  mesh.geometry.dispose();
-  for (const material of mesh.material) {
-    material.map?.dispose();
-    material.dispose();
-  }
-}
 
 describe('DST building skins', () => {
   it('covers crafting skin metadata for plain, symbol-only and layered buildings', () => {
@@ -105,8 +108,7 @@ describe('DST building skins', () => {
   });
 
   it.each(cases)('$skinId loads, animates, and stays one render-order entity', async ({ prefabId, skinId, archive }) => {
-    const definition = definitions.animatedBuildings[prefabId];
-    const model = await createAnimatedSprite('/dst/data/anim', definition.archive, options(prefabId, skinId));
+    const sprite = await buildingSprite(prefabId, skinId), model = sprite.model;
     const mesh = meshOf(model);
     expect(mesh.visible).toBe(true);
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
@@ -115,8 +117,8 @@ describe('DST building skins', () => {
     expect(fetch).toHaveBeenCalledWith(`/dst/data/anim/${archive.replace(/\.zip$/, '.dyn')}`);
     setSpriteEntityRenderOrder(model, 7);
     expect(mesh.parent!.renderOrder).toBe(7);
-    const animation = animatedSpriteController(model);
-    const complete = vi.fn(() => animation.start(options(prefabId, skinId).initialAnimation));
+    const animation = sprite;
+    const complete = vi.fn(() => animation.start(buildingDefinitions[prefabId].idleAnimation ?? 'idle'));
     animation.playOnce('place', complete);
     for (let frame = 0; frame < 100; frame++) animation.update(0.1);
     expect(complete).toHaveBeenCalledTimes(1);
@@ -127,7 +129,7 @@ describe('DST building skins', () => {
     expect(meshOf(model)).toBe(mesh);
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
-    dispose(model);
+    sprite.release();
   });
 
   it('draws only the researchlab4 hat from its skin build and swaps it on reskin', async () => {
@@ -142,13 +144,13 @@ describe('DST building skins', () => {
       expect(declared?.kind === 'skin' && declared.skin.symbols).toEqual(['machine_hat']);
       expect(lab.skinId).toBe('researchlab4_chef');
       await prefabDisplay(model)!.artLoaded();
-      const base = await createAnimatedSprite('/dst/data/anim', 'researchlab4.zip', { initialAnimation: 'idle', scale: 0.02 });
-      const mesh = meshOf(model), baseMesh = meshOf(base), baseCount = baseMesh.geometry.drawRange.count;
+      const base = await buildingSprite('researchlab4', undefined, { scale: 0.02 });
+      const mesh = meshOf(model), baseMesh = meshOf(base.model), baseCount = baseMesh.geometry.drawRange.count;
       // Only the hat changes: the machine keeps every part of the base build.
       expect(mesh.geometry.drawRange.count).toBe(baseMesh.geometry.drawRange.count);
       expect(Array.from(mesh.geometry.getAttribute('position').array))
         .not.toEqual(Array.from(baseMesh.geometry.getAttribute('position').array));
-      dispose(base);
+      base.release();
 
       // Reskinning swaps the hat's build: researchlab4_clear_fn, then the next skin's init_fn.
       expect(reskinEntity(reskinTarget(model))).toBe(true);
@@ -163,21 +165,17 @@ describe('DST building skins', () => {
     const original = await loadAnimationArchive('researchlab4.zip', '/dst/data/anim');
     expect(merchant.animations!.animations[0].bankHash).toBe(smallHash('researchlab4'));
     expect(merchant.animations!.animations[0].bankHash).toBe(original.animations.animations[0].bankHash);
-    const withFx = await createAnimatedSprite('/dst/data/anim', 'researchlab2.zip', options('researchlab2', 'researchlab2_pod'));
-    const withoutFx = await createAnimatedSprite('/dst/data/anim', 'researchlab2.zip', {
-      ...options('researchlab2', 'researchlab2_pod'), skinAnimationBanks: [],
-    });
-    for (const model of [withFx, withoutFx]) {
-      animatedSpriteController(model).start('proximity_loop');
-    }
+    const withFx = await buildingSprite('researchlab2', 'researchlab2_pod');
+    const withoutFx = await buildingSprite('researchlab2', 'researchlab2_pod', { banks: [] });
+    for (const sprite of [withFx, withoutFx]) sprite.start('proximity_loop');
     let hasFx = false;
     for (let frame = 0; frame < 60; frame++) {
-      for (const model of [withFx, withoutFx]) animatedSpriteController(model).update(1 / 30);
-      hasFx ||= meshOf(withFx).geometry.drawRange.count > meshOf(withoutFx).geometry.drawRange.count;
+      for (const sprite of [withFx, withoutFx]) sprite.update(1 / 30);
+      hasFx ||= meshOf(withFx.model).geometry.drawRange.count > meshOf(withoutFx.model).geometry.drawRange.count;
     }
     expect(hasFx).toBe(true);
-    dispose(withFx);
-    dispose(withoutFx);
+    withFx.release();
+    withoutFx.release();
   });
 
   it.each(['cookpot'] as const)('%s keeps its selected skin through preview, placement, and restoration', async (prefabId) => {
