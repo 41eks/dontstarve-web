@@ -1,6 +1,6 @@
 import { Quaternion } from 'three';
 import { bindWorldContent, createIdleWeatherSources, createSignal, getWatchWorldContent, type GetWatchWorldContent, type WorldContentEnvironment, type SeasonState, type WorldPhase, type WorldNightmarePhase, type WorldMoonState } from '../../signals/src';
-import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Object3D } from 'three';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -31,15 +31,36 @@ export function createTestWorldSources(scheduler: GameTimeScheduler) {
 export function bindTestWorld(scheduler: GameTimeScheduler, tickingarea?: WorldContentEnvironment['tickingarea']) {
   const sources = { ...createTestWorldSources(scheduler), tickingarea };
   const { season, snowLevel, cycle, moon, playerpositions, camerarotation } = sources;
-  const unbind = bindWorldContent(sources);
+  const release = bindWorldContent(sources);
+  boundCamera = camerarotation;
+  const unbind = () => { if (boundCamera === camerarotation) boundCamera = undefined; release(); };
   const getContent: GetWatchWorldContent = (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, sources, options);
   return { season, snowLevel, cycle, moon, playerpositions, camerarotation, getWatchWorldContent: getContent, tickingarea, unbind };
 }
 
+let boundCamera: ReturnType<typeof createTestWorldSources>['camerarotation'] | undefined;
+
+/**
+ * The scene's publishCameraRotation for a test frame: the bound world's camera takes the rotation when it differs, and
+ * the billboards following it turn. Without a bound world there is no camera to turn, as in a standalone game context.
+ */
+export function publishTestCamera(rotation: Quaternion): void {
+  if (boundCamera && !boundCamera.peek().equals(rotation)) boundCamera.set(rotation.clone());
+}
+
+/**
+ * Bind a world for a test that only turns its camera: displays created after this face the rotation `turn` publishes,
+ * as the scene publishes TheCamera's rotation when it turns.
+ */
+export function bindTestCamera() {
+  const world = bindTestWorld(new GameTimeScheduler());
+  return { turn: (rotation: Quaternion) => { world.camerarotation.set(rotation.clone()); }, unbind: world.unbind };
+}
+
 /** The bound world owns game time, so a frame advances the scheduler before the manager samples it. */
-export function tickWorld(scheduler: GameTimeScheduler, displays: { update(dt: number, quaternion: import('three').Quaternion): void },
+export function tickWorld(scheduler: GameTimeScheduler, displays: { update(dt: number): void },
   dt: number, quaternion: import('three').Quaternion): void {
-  scheduler.advance(dt); displays.update(dt, quaternion);
+  scheduler.advance(dt); publishTestCamera(quaternion); displays.update(dt);
 }
 
 /** A spawned entity exists at once; a test that inspects its drawn clips first lets its display load the art. */

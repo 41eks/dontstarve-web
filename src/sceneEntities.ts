@@ -524,7 +524,7 @@ export async function createSceneEntities(
     const reskinEffects = new ReskinEffects(scene);
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       exportRecords: () => [],
-      update: (dt, quaternion) => reskinEffects.update(dt, quaternion),
+      update: dt => reskinEffects.update(dt),
       renderEntities: () => reskinEffects.renderEntities,
       dispose: () => reskinEffects.dispose(),
     });

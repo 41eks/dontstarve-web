@@ -118,7 +118,7 @@ it('burns to ash where it stands; a burnt plant stays gone from the world but no
   // DefaultExtinguishFn sets persists; the save loop still skips a child.
   expect(extinguished.persists).toBe(true);
   expect(plants.exportRecords()).toEqual([]);
-  plantDisplays.update(1 / 30, new THREE.Quaternion());
+  plantDisplays.update(1 / 30);
   scheduler.advance(20);
   expect(burnt.isRemoved).toBe(true);
   expect(spawnGroundItem).toHaveBeenCalledOnce();

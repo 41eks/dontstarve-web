@@ -44,8 +44,8 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
   };
   const update = (dt: number) => {
     scheduler.advance(dt);
-    rockDisplays.update(dt, new THREE.Quaternion());
-    prefabDisplays(lichens).update(dt, new THREE.Quaternion());
+    rockDisplays.update(dt);
+    prefabDisplays(lichens).update(dt);
   };
   try {
     const models = [

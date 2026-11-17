@@ -209,8 +209,8 @@ export class EntityRegistry {
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
     if (this.disposed) return;
     for (const registration of this.registrations) registration.update?.(dt, cameraQuaternion);
-    this.prefabDisplays?.update(dt, cameraQuaternion);
-    for (const display of this.displays) display.update(dt, cameraQuaternion);
+    this.prefabDisplays?.update(dt);
+    for (const display of this.displays) display.update(dt);
   }
 
   /** Every registration's entries, in one list that the next read refills. */

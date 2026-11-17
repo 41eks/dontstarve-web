@@ -54,9 +54,9 @@ export class PrefabDisplayGroup {
     return entries;
   }
 
-  update(dt: number, cameraRotation?: THREE.Quaternion): void {
+  update(dt: number): void {
     for (const display of this.awake.keys()) {
-      display.update(dt, cameraRotation);
+      display.update(dt);
       if (display.isRemoved) display.dispose();
     }
   }

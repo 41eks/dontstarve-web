@@ -1,3 +1,4 @@
+import { bindTestCamera } from './worldContentFixture';
 import { playPickup } from '../../prefab/src/player_common';
 import { testLocomotor } from './testLocomotor';
 import { testPlayer } from './testPlayer';
@@ -87,6 +88,7 @@ it('casts at source frame nine once and cancels before commitment on unequip or 
 
 it.each([undefined, 'reskin_tool_brush'])(
   'draws %s puff with its source build and removes it at animation end', async (skinId) => {
+    const camera = bindTestCamera();
     const scene = new THREE.Scene();
     const effects = new ReskinEffects(scene);
     const fx = effects.prepare(skinId);
@@ -107,25 +109,26 @@ it.each([undefined, 'reskin_tool_brush'])(
     expect((mesh.material as THREE.MeshBasicMaterial[]).every((material) => material.forceSinglePass)).toBe(true);
     expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${skinId ?? 'reskin_tool_fx'}`)).toBe(true);
     const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 1);
-    for (let frame = 0; frame < 15; frame++) effects.update(1 / 30, quaternion);
+    camera.turn(quaternion);
+    for (let frame = 0; frame < 15; frame++) effects.update(1 / 30);
     expect(object.children[0].quaternion.equals(quaternion)).toBe(true);
     expect(effects.renderEntities).toHaveLength(1);
-    effects.update(1 / 30, quaternion);
+    effects.update(1 / 30);
     expect(effects.renderEntities).toEqual([]);
     expect(scene.children).toEqual([]);
     effects.dispose();
+    camera.unbind();
   },
 );
 
 it('shares FX geometry while keeping playback independent and discarding unused messages', async () => {
   const scene = new THREE.Scene();
   const effects = new ReskinEffects(scene);
-  const rotation = new THREE.Quaternion();
   const first = effects.prepare();
   const second = effects.prepare();
   const unused = effects.prepare();
   unused.dispose();
-  effects.update(0, rotation);
+  effects.update(0);
   expect(scene.children).toHaveLength(2);
   await Promise.all(scene.children.map(model => prefabDisplay(model)!.artLoaded()));
   const position = new THREE.Vector3(3, 0, 4);
@@ -143,10 +146,10 @@ it('shares FX geometry while keeping playback independent and discarding unused 
   position.set(30, 0, 40);
   expect(a.footPosition.toArray()).toEqual([3, 0, 4]);
   lookupPrefabInstance(a.object)!.remove();
-  effects.update(0, rotation);
+  effects.update(0);
   expect(effects.renderEntities).toEqual([b]);
   expect(release).not.toHaveBeenCalled();
-  for (let frame = 0; frame < 16; frame++) effects.update(1 / 30, rotation);
+  for (let frame = 0; frame < 16; frame++) effects.update(1 / 30);
   expect(scene.children).toEqual([]);
   expect(release).not.toHaveBeenCalled();
   effects.dispose();

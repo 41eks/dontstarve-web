@@ -102,13 +102,13 @@ export class FxAttachments {
         offset: fx.composite.offset }] : []);
   }
 
-  update(dt: number, owner?: SpriteJson, cameraRotation?: THREE.Quaternion): void {
+  update(dt: number, owner?: SpriteJson): void {
     for (const { fx, enabled } of this.attached.values()) {
       if (fx.composite && enabled) {
         if (owner?.facing !== undefined && !fx.composite.noFaced) (fx.sprite as import('./spriteState').SpriteState).setFacing(owner.facing);
         fx.sprite.update(dt);
       } else if (fxModel(fx).parent === this.owner) {
-        fx.display.update(dt, cameraRotation);
+        fx.display.update(dt);
       }
     }
   }

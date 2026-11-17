@@ -60,7 +60,7 @@ function setup() {
     entities: { monkeytail: monkeytails.exportRecords().map(({ record }) => record), ...ground.exportEntities() }, inventory: inventory.exportState(),
     elapsedSeconds: scheduler.now, playerTransform: { position: player.position.toArray() as [number, number, number], rotationY: 0 },
   }, SAVE_CATALOG);
-  const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(monkeytails).update(seconds, new THREE.Quaternion()); };
+  const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(monkeytails).update(seconds); };
   return { inventory, scene, player, ground, monkeytails, registry, season, rain, scheduler, save, advance,
     setTemperature: (value: number) => { temperature = value; },
     world: { scene, player, camera, renderer, ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45) },

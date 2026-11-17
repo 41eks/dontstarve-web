@@ -102,7 +102,6 @@ export class PrefabDisplay {
   private facing: THREE.Quaternion | undefined;
   /** The root's world rotation that the visual was last turned against. */
   private readonly alignedRoot = new THREE.Quaternion();
-  private readonly followsWorldCamera: boolean;
   private readonly cameraDirection = new THREE.Vector3();
   private asleep = false;
   private home: THREE.Object3D | undefined;
@@ -194,7 +193,7 @@ export class PrefabDisplay {
       get loaded() { return controller.loaded; },
       update: dt => {
         this.alignVisual(false); controller.update(dt);
-        this.fx.update(dt, this.json.peek(), this.facing);
+        this.fx.update(dt, this.json.peek());
         if (this.fx.hasComposites) controller.setComposites?.(this.fx.compositeFrames());
         this.updateSymbolFollowers(this.json.peek());
         for (const fx of this.symbolNodes.values()) fx?.update(dt);
@@ -227,11 +226,10 @@ export class PrefabDisplay {
     this.fx = new FxAttachments(this.model, () => this.engine.setComposites?.(this.fx.compositeFrames()));
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
     this.cleanups.push(createEffect(() => { art.get(); this.listed.setSprite(this.engine.instanced); this.applySprite(this.json.peek()); this.dress(json.peek()); state.artChanged(); }));
-    // A billboard turns to TheCamera itself, through its own bridge to the world's camera rotation.
-    // The rotation changes every frame of a turn, so it applies before that frame renders, not a microtask later.
-    // An asleep display has released its sprite, so it unsubscribes and resyncs to the camera when it wakes.
+    // A billboard (declared by its first clip) turns to TheCamera itself, through its own bridge to the world's camera
+    // rotation, only when the camera turns. The rotation changes every frame of a turn, so it applies before that frame
+    // renders, not a microtask later. An asleep display unsubscribes and resyncs to the camera when it wakes.
     const watchWorldContent = first.billboard ? getBoundWatchWorldContent() : undefined;
-    this.followsWorldCamera = watchWorldContent !== undefined;
     if (watchWorldContent) {
       const active = createMemo(() => status.get() === 'active');
       this.cleanups.push(() => active.dispose());
@@ -278,10 +276,9 @@ export class PrefabDisplay {
     }
   }
 
-  /** Advance a display; the frame's camera rotation is a fallback for worlds without a bound camera signal. */
-  update(dt: number, cameraRotation?: THREE.Quaternion): void {
+  /** Advance a display's animation; a billboard faces the camera when the world's camera rotation changes. */
+  update(dt: number): void {
     if (this.disposed || this.isRemoved || this.asleep) return;
-    if (cameraRotation && !this.followsWorldCamera && this.json.peek().billboard) this.faceCamera(cameraRotation);
     this.state.update(dt);
   }
 

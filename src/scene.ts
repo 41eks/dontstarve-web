@@ -149,7 +149,7 @@ export async function startScene(
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     worldState.componentUpdates.update(dt);
     publishCameraRotation();
-    prefabDisplay(player)!.update(dt, cameraWorldQuaternion);
+    prefabDisplay(player)!.update(dt);
     registry.update(dt, cameraWorldQuaternion);
     updateCharacterRenderOrder(registry);
   };

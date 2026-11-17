@@ -154,8 +154,8 @@ export class ReskinEffects {
 
   get renderEntities() { return this.displays.renderEntities; }
 
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    this.displays.update(Math.min(dt, 0.1), cameraQuaternion);
+  update(dt: number): void {
+    this.displays.update(Math.min(dt, 0.1));
     for (const effect of this.effects) if (effect.instance.status.peek() === 'removed') this.effects.delete(effect);
   }
 

@@ -19,7 +19,7 @@ import initial from '../../../public/saves/initial-world.json' with { type: 'jso
 import { createPickupInventory } from './pickupFixture';
 import { importedSave, CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { bindTestWorld } from './worldContentFixture';
+import { bindTestWorld, bindTestCamera } from './worldContentFixture';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -68,7 +68,8 @@ it('lets displays orient ground archives, hats and fallback icons, and resync sl
     for (const model of billboards) expect(drawnRotation(model).angleTo(turned)).toBeLessThan(1e-7);
     expect(drawnRotation(card).angleTo(cardRotation)).toBeLessThan(1e-7);
     copies.forEach(copy => copy.mockClear());
-    world.manager.update(.1, new THREE.Quaternion());
+    // A frame that publishes the same camera turns nothing again.
+    world.manager.update(.1, turned);
     for (const copy of copies) expect(copy).not.toHaveBeenCalled();
     expect(billboards.map(model => model.position.toArray())).toEqual(feet);
 
@@ -90,19 +91,20 @@ it('lets displays orient ground archives, hats and fallback icons, and resync sl
   } finally { world.dispose(); content.unbind(); scheduler.dispose(); }
 });
 
-it('passes a standalone camera to a ground display and its attached fire', async () => {
+it('turns a ground display and its attached fire with the world camera', async () => {
+  const camera = bindTestCamera();
   const world = setup();
   try {
     const log = world.spawn('log', 'log');
     world.manager.entities.get('log')!.components.burnable!.Ignite();
     const fire = prefabInstance(log)!.sprite.fx.peek().get('fire')!.display!;
     await Promise.all([prefabDisplay(log)!.artLoaded(), fire.artLoaded()]);
-    const camera = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
-    world.manager.update(0, camera);
+    const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
+    camera.turn(rotation);
     const drawn = log.children.find(child => child !== fire.model)!;
-    expect(drawn.getWorldQuaternion(new THREE.Quaternion()).angleTo(camera)).toBeLessThan(1e-7);
-    expect(fire.model.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(camera)).toBeLessThan(1e-7);
-  } finally { world.dispose(); }
+    expect(drawn.getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeLessThan(1e-7);
+    expect(fire.model.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(rotation)).toBeLessThan(1e-7);
+  } finally { world.dispose(); camera.unbind(); }
 });
 
 it('reuses ground item resources and activity, and skips sleeping visuals in the existing update loop', async () => {

@@ -1,3 +1,4 @@
+import { bindTestCamera } from './worldContentFixture';
 import { Group, Quaternion, Vector3 } from 'three';
 import { expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '../../signals/src';
@@ -29,13 +30,15 @@ it('owns position, scale and degree heading before display and preserves them ac
   expect(dirty.mock.calls.every(([model]) => model === transform.model)).toBe(true);
   expect(instance.rotation).toBeCloseTo(90);
   expect(transform.model.rotation.y).toBeCloseTo(Math.PI / 2);
+  const camera = bindTestCamera();
   const first = createEmptyEntity(instance.prefab, undefined, { instance, billboard: true });
   expect(first.display.model).toBe(transform.model);
   const cameraRotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -.3);
-  first.display.update(0, cameraRotation);
+  camera.turn(cameraRotation);
   expect(instance.rotation).toBeCloseTo(90);
   expect(first.display.model.children[0].getWorldQuaternion(new Quaternion()).angleTo(cameraRotation)).toBeCloseTo(0);
   first.display.dispose();
+  camera.unbind();
   expect(transform.model.children).toHaveLength(0);
   const second = createEmptyEntity(instance.prefab, undefined, { instance });
   try {
@@ -96,6 +99,7 @@ it('keeps a symbol follower on the camera-facing sprite, whatever the camera and
   // One unit along the sprite's own x.
   const symbol = vi.spyOn(SpriteController.prototype, 'getSymbolPosition').mockImplementation((_symbol, _x, _y, target) => { target.set(1, 0, 0); return true; });
   const camera = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2);
+  const world = bindTestCamera();
   const instance = new PrefabInstance('follower-host', new SpriteState({ name: 'idle', billboard: true }));
   const display = new PrefabDisplay({ root: instance.transform.model, name: 'host', sprite: instance.sprite, status: instance.status,
     source: new SpriteResources().factory({ buildArchive: 'berrybush.zip', animationArchive: 'berrybush.zip' }) });
@@ -103,7 +107,8 @@ it('keeps a symbol follower on the camera-facing sprite, whatever the camera and
   try {
     await display.artLoaded();
     const worldPoint = () => {
-      for (let frame = 0; frame < 2; frame++) { display.update(1 / 30, camera); instance.sprite.update(1 / 30); }
+      world.turn(camera);
+      for (let frame = 0; frame < 2; frame++) { display.update(1 / 30); instance.sprite.update(1 / 30); }
       return follower.node.getWorldPosition(new Vector3());
     };
     const facing = new Vector3(1, 0, 0).applyQuaternion(camera);
@@ -111,7 +116,7 @@ it('keeps a symbol follower on the camera-facing sprite, whatever the camera and
     instance.setRotation(45);
     expect(worldPoint().distanceTo(facing)).toBeCloseTo(0);
     expect(follower.node.parent).toBe(display.model);
-  } finally { follower.remove(); display.dispose(); instance.remove(); symbol.mockRestore(); vi.unstubAllGlobals(); }
+  } finally { follower.remove(); display.dispose(); instance.remove(); symbol.mockRestore(); world.unbind(); vi.unstubAllGlobals(); }
 });
 
 it('keeps a symbol follower on a camera-facing archive sprite, whatever the camera and the entity heading', async () => {
@@ -119,6 +124,7 @@ it('keeps a symbol follower on a camera-facing archive sprite, whatever the came
   const assets = new ArchiveSpriteAssets();
   const drawn = await createSharedArchiveSprite(assets, { animationArchive: 'mushroom_tree_tall.zip', buildArchives: ['mushroom_tree_tall.zip'],
     bank: 'mushroom_tree', animation: 'idle_loop', loop: true });
+  const world = bindTestCamera();
   const instance = new PrefabInstance('archive-follower-host', new SpriteState({ name: 'idle_loop', billboard: true }));
   instance.setPosition(3, 0, 6);
   const display = new PrefabDisplay({ root: instance.transform.model, name: 'host', sprite: instance.sprite, status: instance.status,
@@ -127,7 +133,7 @@ it('keeps a symbol follower on a camera-facing archive sprite, whatever the came
   const turned = (radians: number) => new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), radians);
   /** The follower's world point beside the same symbol point read from the drawn sprite itself. */
   const points = (camera: Quaternion) => {
-    display.update(0, camera);
+    world.turn(camera); display.update(0);
     const follows = follower.node.getWorldPosition(new Vector3());
     const symbol = new Vector3();
     expect(drawn.getSymbolPosition(SYMBOL, 20, -110, symbol)).toBe(true);
@@ -147,7 +153,7 @@ it('keeps a symbol follower on a camera-facing archive sprite, whatever the came
     expect(other.follows.distanceTo(first.follows)).toBeGreaterThan(.01);
     expect(other.follows.distanceTo(other.symbol)).toBeCloseTo(0);
     expect(follower.node.parent).toBe(display.model);
-  } finally { follower.remove(); display.dispose(); instance.remove(); assets.dispose(); vi.unstubAllGlobals(); }
+  } finally { follower.remove(); display.dispose(); instance.remove(); assets.dispose(); world.unbind(); vi.unstubAllGlobals(); }
 });
 
 it.each(['archive', 'factory'] as const)('lifts the drawn %s sprite off a grounded entity, across deferred art and reloading', async kind => {
@@ -221,6 +227,7 @@ it('shares one activity query and tracker, retaining the result until the final 
 });
 
 it('turns the visual only when the camera, the root or an ancestor turned', () => {
+  const world = bindTestCamera();
   const instance = new PrefabInstance('turning', new SpriteState({ name: '', none: true }), new Transform());
   const { display } = createEmptyEntity(instance.prefab, undefined, { instance, billboard: true });
   const parent = new Group();
@@ -230,7 +237,7 @@ it('turns the visual only when the camera, the root or an ancestor turned', () =
   const camera = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -.3);
   const facesCamera = () => display.model.children[0].getWorldQuaternion(new Quaternion()).angleTo(camera);
   try {
-    display.update(0, camera);
+    world.turn(camera);
     expect(facesCamera()).toBeCloseTo(0);
     worldQuery.mockClear();
     faceCamera.mockClear();
@@ -249,5 +256,5 @@ it('turns the visual only when the camera, the root or an ancestor turned', () =
     expect(faceCamera).toHaveBeenCalledTimes(2);
     expect(facesCamera()).toBeCloseTo(0);
     expect(instance.rotation).toBeCloseTo(90);
-  } finally { display.dispose(); instance.remove(); }
+  } finally { display.dispose(); instance.remove(); world.unbind(); }
 });

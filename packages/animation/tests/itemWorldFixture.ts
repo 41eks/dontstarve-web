@@ -1,3 +1,4 @@
+import { publishTestCamera } from './worldContentFixture';
 import * as THREE from 'three';
 import { PrefabDisplayGroup, SpriteResources } from '../../display/src';
 import { ItemEntity, newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntityFactory, type ItemEntityRegistry } from '../../inventory/src';
@@ -165,10 +166,12 @@ export class ItemWorldFixture {
 
   get renderEntities() { return this.displays.renderEntities; }
 
+  /** A scene frame: game time and components, the camera published as the scene does, then the displays. */
   update(dt: number, cameraQuaternion?: THREE.Quaternion): void {
     if (this.ownsScheduler && dt > 0) this.scheduler.advance(dt);
     this.componentUpdates.update(dt);
-    this.displays.update(dt, cameraQuaternion);
+    if (cameraQuaternion) publishTestCamera(cameraQuaternion);
+    this.displays.update(dt);
   }
 
   private disposed = false;

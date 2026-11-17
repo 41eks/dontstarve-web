@@ -318,8 +318,8 @@ describe('real fireflies archive and ground transfers', () => {
     const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
     camerarotation.set(turned);
     expect(first.children[0].quaternion.equals(turned)).toBe(true);
-    // The per-frame argument no longer drives orientation once the world publishes the rotation.
-    manager.update(.1, new THREE.Quaternion());
+    // A frame that publishes the same camera leaves the billboard as it is.
+    manager.update(.1, turned);
     expect(first.children[0].quaternion.equals(turned)).toBe(true);
     // Items created after the turn start from the current rotation.
     const later = await manager.spawnFromSave('fireflies:b', definition, new THREE.Vector3(1, 0, 0));

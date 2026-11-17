@@ -1,3 +1,4 @@
+import { bindTestCamera } from './worldContentFixture';
 import { prefabManager } from './prefabManagerFixture';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
@@ -26,6 +27,7 @@ async function spawned(fx: ReturnType<typeof createTestWorldFx>, prefab: WorldFx
 }
 
 it('turns a spawned fx to the camera while it plays, with the entity unturned at its foot point', async () => {
+  const world = bindTestCamera();
   const scene = new THREE.Scene(), fx = createTestWorldFx(scene);
   const turned = (radians: number) => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), radians);
   try {
@@ -43,7 +45,7 @@ it('turns a spawned fx to the camera while it plays, with the entity unturned at
     expect(Math.hypot(origin.x - 3, origin.z - 6)).toBeLessThan(1);
     expect(model.position.toArray()).toEqual([3, 0, 6]);
     expect(model.quaternion.angleTo(new THREE.Quaternion())).toBe(0);
-  } finally { fx.dispose(); }
+  } finally { fx.dispose(); world.unbind(); }
 });
 
 it('removes an fx at animover, or the frames its source waits after it', async () => {

@@ -153,7 +153,7 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
     expect(component!.state.timer.peek()).toEqual({ status: 'stopped' });
     expect(component!.canBePicked).toBe(false);
     // The shared display group releases a removed entity's display on its next frame.
-    s.displays.update(0, new THREE.Quaternion());
+    s.displays.update(0);
     expect(flower.parent).toBeNull();
     expect(s.prefabs.FindEntities(new THREE.Vector3(2, 0, 0), 1, ['flower'])).toEqual([]);
     expect(s.displays.renderEntities).toEqual([]);

@@ -1,3 +1,4 @@
+import { publishTestCamera } from './worldContentFixture';
 import { prefabManager } from './prefabManagerFixture';
 import type * as THREE from 'three';
 import { PrefabDisplayGroup } from '../../display/src/prefabDisplayGroup';
@@ -10,7 +11,7 @@ export function createTestWorldFx(scene: THREE.Scene, scheduler = new GameTimeSc
   return {
     ...worldFxSpawner(manager), scheduler,
     get renderEntities() { return manager.renderEntities; },
-    update: (dt: number, rotation: THREE.Quaternion) => { displays.update(dt, rotation); },
+    update: (dt: number, rotation: THREE.Quaternion) => { publishTestCamera(rotation); displays.update(dt); },
     dispose: () => { manager.dispose(); displays.dispose(); },
   };
 }

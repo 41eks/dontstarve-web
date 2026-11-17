@@ -1,3 +1,4 @@
+import { publishTestCamera } from './worldContentFixture';
 import { prefabManager } from './prefabManagerFixture';
 import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '@dontstarve-web/display';
@@ -57,7 +58,7 @@ function setup(prefab: StaffLightId = 'stafflight') {
     id: saved.id, components: { timer: { timers: { extinguish: { timeleft: saved.remainingSeconds, paused: false, initial_time: DWARF_STAR_DURATION } } } },
   });
   /** As the scene does: the world's scheduler advances, then the displays. */
-  const update = (dt: number) => { scheduler.advance(dt); displays.update(dt, new THREE.Quaternion()); };
+  const update = (dt: number) => { scheduler.advance(dt); displays.update(dt); };
   return { manager, spawn, scene, scheduler, awake, update };
 }
 
@@ -360,7 +361,7 @@ it('spawns world lights through console definitions and saves and reloads their 
       restore: (prefabId, record) => manager.spawn(prefabId, new THREE.Vector3(...record.transform.position), record),
       debugSpawn: prefabId => manager.spawn(prefabId, position.clone()),
       exportRecords: () => manager.exportRecords(),
-      update: (dt, quaternion) => { displays.update(dt, quaternion); },
+      update: (dt, quaternion) => { publishTestCamera(quaternion); displays.update(dt); },
       dispose: () => manager.dispose(),
     });
     return registry;

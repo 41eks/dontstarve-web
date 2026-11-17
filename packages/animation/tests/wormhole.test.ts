@@ -7,7 +7,7 @@ import { PrefabEntityManager, type PrefabInstance, prefabInstance } from '../../
 import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
 import { loadSpriteSkinArchive } from '../src/animationAssets';
 import { isMouseTarget } from '../../stategraphs/src/mouseTargets';
-import { bindTestWorld } from './worldContentFixture';
+import { bindTestWorld, publishTestCamera } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -46,7 +46,7 @@ function setup() {
   // Game time advances by whole frames, so a frame timeline lands on its frame without summing 1/30s.
   let frame = 0;
   const step = (frames: number, quaternion = new THREE.Quaternion()) => {
-    for (let i = 0; i < frames; i++) { scheduler.advanceTo(++frame / 30); displays.update(1 / 30, quaternion); }
+    for (let i = 0; i < frames; i++) { scheduler.advanceTo(++frame / 30); publishTestCamera(quaternion); displays.update(1 / 30); }
   };
   const dispose = () => { prefabs.dispose(); displays.dispose(); content.unbind(); scheduler.dispose(); };
   return { scene, content, displays, prefabs, spawn, playerAt, step, dispose };

@@ -114,7 +114,7 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
     expect(s.dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('chop_burnt_normal');
     expect(performToolWork('CHOP', target, testPlayer())).toBe(false);
-    for (let i = 0; i < 60; i++) s.displays.update(1 / 30, new THREE.Quaternion());
+    for (let i = 0; i < 60; i++) s.displays.update(1 / 30);
     expect(s.records()).toEqual([]);
   } finally { s.dispose(); }
 });
