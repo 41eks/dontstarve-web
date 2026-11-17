@@ -292,3 +292,17 @@ it('subscribes to declared direction and pose signals, preserving the clip throu
     expect(controller.setFrame.mock.calls.length).toBe(frames);
   } finally { instance.remove(); display.dispose(); }
 });
+
+it('applies a sprite json in the task that writes it and leaves unchanged frames alone', () => {
+  const { instance, display } = createEmptyEntity('test');
+  const apply = vi.spyOn(display as unknown as { applySprite(json: unknown): void }, 'applySprite');
+  try {
+    for (let frame = 0; frame < 3; frame++) display.update(1 / 30);
+    expect(apply).not.toHaveBeenCalled();
+    instance.sprite.setOpacity(.5);
+    expect(apply).toHaveBeenCalledOnce();
+    expect(apply.mock.calls[0][0]).toBe(instance.sprite.sprite.peek());
+    display.update(1 / 30);
+    expect(apply).toHaveBeenCalledOnce();
+  } finally { apply.mockRestore(); instance.remove(); display.dispose(); }
+});

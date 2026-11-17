@@ -176,7 +176,7 @@ export class PrefabDisplay {
         if (this.disposed) return;
         ready = loaded;
         this.applyStatus(this.status.peek());
-        this.sync();
+        this.applySprite(this.json.peek());
       }, (error: unknown) => { this.sourceLoading = undefined; if (!this.disposed) console.error(`Unable to load ${options.name ?? 'a sprite'}`, error); });
     } else throw new Error('A display needs a sprite source');
     for (const dependency of options.dependencies ?? []) if (!dependency.peek()) void dependency.load().catch((error: unknown) => {
@@ -186,16 +186,14 @@ export class PrefabDisplay {
     const plain = first.clip.pose === undefined && first.clip.percent === undefined && (first.clip.loop ? !first.clip.finished : first.clip.finished);
     this.applied = { clip: plain ? first.clip : undefined, queue: 0, appearance: new Map() };
     const controller = this.engine;
-    // A frame, or a question about the drawn sprite, first brings it up to date with the entity's latest json.
-    const sync = () => this.sync();
     state.bind({
-      get currentAnimation() { sync(); return controller.currentAnimation; },
-      get numFrames() { sync(); return controller.numFrames; },
-      get currentAnimationLength() { sync(); return controller.currentAnimationLength; },
-      get pose() { sync(); return controller.pose; },
+      get currentAnimation() { return controller.currentAnimation; },
+      get numFrames() { return controller.numFrames; },
+      get currentAnimationLength() { return controller.currentAnimationLength; },
+      get pose() { return controller.pose; },
       get loaded() { return controller.loaded; },
       update: dt => {
-        sync(); this.alignVisual(false); controller.update(dt);
+        this.alignVisual(false); controller.update(dt);
         this.fx.update(dt, this.json.peek(), this.facing);
         if (this.fx.hasComposites) controller.setComposites?.(this.fx.compositeFrames());
         this.updateSymbolFollowers(this.json.peek());
@@ -220,14 +218,15 @@ export class PrefabDisplay {
     }
     this.listed = new DisplaySprite(this.model, json);
     const art = watchSignal(this.engine.art, stop => this.cleanups.push(stop));
-    this.cleanups.push(createEffect(() => this.applyStatus(status.get())));
-    this.cleanups.push(createEffect(() => this.applySprite(json.get())));
+    this.cleanups.push(createRenderEffect(() => this.applyStatus(status.get())));
+    // The drawn sprite follows each json the entity writes in the same task, as AnimState does.
+    this.cleanups.push(createRenderEffect(() => this.applySprite(json.get())));
     const followed = watchSignal(state.animationSource, stop => this.cleanups.push(stop));
     const declaredFx = watchSignal(state.fx, stop => this.cleanups.push(stop));
     this.cleanups.push(createEffect(() => this.follower.follow(followed.get())));
     this.fx = new FxAttachments(this.model, () => this.engine.setComposites?.(this.fx.compositeFrames()));
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
-    this.cleanups.push(createEffect(() => { art.get(); this.listed.setSprite(this.engine.instanced); this.sync(); this.dress(json.peek()); state.artChanged(); }));
+    this.cleanups.push(createEffect(() => { art.get(); this.listed.setSprite(this.engine.instanced); this.applySprite(this.json.peek()); this.dress(json.peek()); state.artChanged(); }));
     // A billboard turns to TheCamera itself, through its own bridge to the world's camera rotation.
     // The rotation changes every frame of a turn, so it applies before that frame renders, not a microtask later.
     // An asleep display has released its sprite, so it unsubscribes and resyncs to the camera when it wakes.
@@ -265,8 +264,6 @@ export class PrefabDisplay {
 
   /** A composited child supplies frame parts to its parent's merged billboard. */
   resolveFrame(): readonly ResolvedSprite[] {
-    this.applyStatus(this.status.peek());
-    this.sync();
     return this.engine.getResolvedFrame?.() ?? [];
   }
 
@@ -283,13 +280,9 @@ export class PrefabDisplay {
 
   /** Advance a display; the frame's camera rotation is a fallback for worlds without a bound camera signal. */
   update(dt: number, cameraRotation?: THREE.Quaternion): void {
-    if (this.disposed) return;
-    this.applyStatus(this.status.peek());
-    if (this.isRemoved || this.asleep) return;
+    if (this.disposed || this.isRemoved || this.asleep) return;
     if (cameraRotation && !this.followsWorldCamera && this.json.peek().billboard) this.faceCamera(cameraRotation);
     this.state.update(dt);
-    // Animation completion can remove the entity during this update.
-    this.applyStatus(this.status.peek());
   }
 
   /** Render entries of the effects that are shown now, for the owner's registry to sort with it. */
@@ -379,12 +372,6 @@ export class PrefabDisplay {
     if (home && !this.model.parent && !this.disposed) home.add(this.model);
   }
 
-  /** Applying a snapshot twice is a no-op, so the effect and the frame can both bring the sprite up to date. */
-  private sync(): void {
-    if (this.disposed) return;
-    const json = this.json.peek();
-    this.applySprite(json);
-  }
 
   private applySprite(json: SpriteJson): void {
     const { engine: controller, applied, state } = this;
@@ -521,7 +508,7 @@ export class PrefabDisplay {
         this.loadingArt.add(key);
         void this.loadSource(source).then(() => {
           this.loadingArt.delete(key);
-          if (!this.disposed) this.sync();
+          if (!this.disposed) this.applySprite(this.json.peek());
         }, (error: unknown) => {
           this.loadingArt.delete(key);
           if (!this.disposed) console.error(`Unable to load ${key} for ${this.model.name || 'a sprite'}`, error);
