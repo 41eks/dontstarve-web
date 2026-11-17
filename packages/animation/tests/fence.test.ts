@@ -1,4 +1,4 @@
-import { SpriteState, PrefabDisplayGroup } from '../../display/src';
+import { SpriteState, PrefabDisplayGroup, prefabDisplay } from '../../display/src';
 import { PrefabEntityManager, PrefabInstance, prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
@@ -275,6 +275,28 @@ it('settles a fence hit on sleep, reskins dormant art, restores mirroring, and c
     expect(instance.isRemoved).toBe(true);
   } finally { dispose(); restored.dispose(); content.unbind(); }
 }, 20000);
+
+it('draws narrow, wide and skinned fences in the shared batches, and keeps a fence there when SetOrientation swaps its bank', async () => {
+  const { registry, prefabs, dispose } = setup();
+  try {
+    await registry.restoreAll({ fence: [fenceRecord('narrow', [3, 0, 3]), fenceRecord('wide', [6, 0, 3], { rot: 1 }),
+      fenceRecord('skinned', [9, 0, 3], { rot: 1, skinId: 'fence_rose' })] });
+    const fence = (id: string) => prefabs.get(id) as FenceInstance;
+    // An instanced sprite hides its own meshes; the shared batch draws it.
+    const ownShown = (inst: FenceInstance) => meshes(inst.transform.model).filter(mesh => mesh.visible).length;
+    for (const id of ['narrow', 'wide', 'skinned']) await prefabDisplay(fence(id).transform.model)!.artLoaded();
+    expect(fence('narrow').sprite.sprite.peek().source).toMatchObject({ bank: 'fence_thin', buildArchive: 'fence.zip' });
+    expect(fence('wide').sprite.sprite.peek().source).toMatchObject({ bank: 'fence', buildArchive: 'fence.zip' });
+    expect(['narrow', 'wide', 'skinned'].map(id => ownShown(fence(id)))).toEqual([0, 0, 0]);
+    // fence.lua SetOrientation on a drawn fence: the archive sprite takes the other bank and stays batched.
+    const wide = fence('wide');
+    wide.SetOrientation(wide, 0);
+    await prefabDisplay(wide.transform.model)!.artLoaded(); await settle();
+    expect(wide.sprite.sprite.peek().source).toMatchObject({ bank: 'fence_thin' });
+    expect(wide.sprite.currentAnimation).toBe('idle');
+    expect(ownShown(wide)).toBe(0);
+  } finally { dispose(); }
+});
 
 it('c_spawn places a fence at the wall slot ahead of the player, and c_save reloads it', async () => {
   const first = setup(undefined, new THREE.Vector3(3, 0, -6)), second = setup(), inventory = testInventoryStore([], SAVE_CATALOG.items);

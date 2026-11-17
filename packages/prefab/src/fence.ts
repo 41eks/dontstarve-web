@@ -200,8 +200,15 @@ export function fencePrefabs(world: PrefabWorldContext): Readonly<Record<typeof 
     return {
         [FENCE_ID]: {
             fn: (_position, sprites) => fn(world, sprites),
-            // Both banks share the fence build; SetOrientation picks the bank.
-            factory: { animationArchive: 'fence.zip', extraAnimationArchives: ['fence_thin.zip'], buildArchive: 'fence.zip' },
+            // The shared archive of the bank SetOrientation last chose for the rotation; both banks share the fence
+            // build. A rotation that changes the bank while the fence is drawn reaches the archive sprite as
+            // AnimState SetBank (setArtSource).
+            instanceAssets: inst => {
+                const bank = isNarrowRotation(GetRotation(inst)) ? 'fence_thin' : 'fence';
+                return { animationArchive: `${bank}.zip`, buildArchives: ['fence.zip'], bank };
+            },
+            // idle is a held one-shot, hit plays once: every clip is drawn by the shared batches.
+            assetOptions: { instancedAnimations: 'all' },
             skins: FENCE_SKIN_ARCHIVES,
             // MakeObstaclePhysics(inst, .5); inst.Physics:SetDontRemoveOnSleep(true).
             physics: { make: (inst, radius) => MakeObstaclePhysics(inst, radius).SetDontRemoveOnSleep(true), radius: .5 },

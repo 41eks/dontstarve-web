@@ -353,9 +353,12 @@ export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefab
       bindItemWorld(inst, world);
       return inst;
     },
-    // butterfly.lua and moonbutterfly.lua share a bank; only the latter substitutes its build.
-    source: world.sprites.factory({ animationArchive: 'butterfly_basic.zip', buildArchive: 'butterfly_basic.zip',
-      skinArchive: prefab === BUTTERFLY_ID ? undefined : 'butterfly_moon.zip' }),
+    // SetBank("butterfly") from butterfly_basic.zip; SetBuild("butterfly_basic"), or moonbutterfly.lua's
+    // SetBuild("butterfly_moon"), which has every symbol but the unported frozen swap.
+    assets: { animationArchive: 'butterfly_basic.zip',
+      buildArchives: [prefab === BUTTERFLY_ID ? 'butterfly_basic.zip' : 'butterfly_moon.zip'], bank: 'butterfly' },
+    // SGbutterfly's loops and one-shots (whose completion drives the stategraph) are all drawn by the shared batches.
+    assetOptions: { instancedAnimations: 'all' },
     onSpawned: inst => {
       world.configureItem(inst);
       (prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(inst);
