@@ -407,6 +407,7 @@
     "moon_fissure",
     "watertree_pillar",
     "oceantree",
+    "oceantree_pillar",
     "oceanvine",
     "oceanvine_deco",
     "vault_pillar",
@@ -836,6 +837,10 @@
     "oceantree": {
       "source": 48,
       "imported": 48
+    },
+    "oceantree_pillar": {
+      "source": 1,
+      "imported": 1
     },
     "oceanvine": {
       "source": 45,
@@ -21647,6 +21652,18 @@
         -577.74,
         0,
         575.2
+      ],
+      "sourceNode": null
+    },
+    {
+      "id": "dst_03741E1B78B29575_oceantree_pillar_id_105496",
+      "prefab": "oceantree_pillar",
+      "sourceIndex": 1,
+      "sourceId": 105496,
+      "sourcePosition": [
+        380,
+        0,
+        -300
       ],
       "sourceNode": null
     },

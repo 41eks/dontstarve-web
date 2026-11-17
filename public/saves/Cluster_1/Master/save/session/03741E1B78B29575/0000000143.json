@@ -717768,6 +717768,24 @@
           }
         }
       ],
+      "oceantree_pillar": [
+        {
+          "id": "dst_03741E1B78B29575_oceantree_pillar_id_100306",
+          "transform": {
+            "position": [
+              1182.0,
+              0.0,
+              954.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "oceantreePillar": {
+              "droppedvines": true
+            }
+          }
+        }
+      ],
       "oceanvine": [
         {
           "id": "dst_03741E1B78B29575_oceanvine_id_108057",

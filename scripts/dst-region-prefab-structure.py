@@ -255,6 +255,13 @@ def oceanvine_deco_components(data):
     return {'animnum': data['animnum']} if 'animnum' in data else {}
 
 
+def oceantree_pillar_components(data):
+    # oceantree_pillar.lua OnSave: data.droppedvines, written only as true.
+    if set(data) - {'droppedvines'} or ('droppedvines' in data and data['droppedvines'] is not True):
+        raise ValueError(f'Unsupported oceantree_pillar save state: {data}')
+    return {'oceantreePillar': {'droppedvines': True}} if data else {}
+
+
 def archive_pillar_components(data):
     # archive_pillar.lua OnSave: data.broken, a boolean. Without it the constructor rolls one.
     if set(data) - {'broken'} or ('broken' in data and type(data['broken']) is not bool):

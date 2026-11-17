@@ -24,6 +24,8 @@ ASSETS = {
     'watertree_pillar': ['oceantree_pillar.zip', 'oceantree_pillar_build1.zip', 'oceantree_pillar_build2.zip'],
     # oceantree.lua: one bank and build per growth stage, and MakeEnriched's build.
     'oceantree': ['oceantree_short.zip', 'oceantree_normal.zip', 'oceantree_tall.zip', 'oceantree_tall_jammed_build.zip'],
+    # oceantree_pillar.lua: the bank, the build and the override build its four prefabs set.
+    'oceantree_pillar': ['oceantree_pillar_small.zip', 'oceantree_pillar_small_build1.zip', 'oceantree_pillar_small_build2.zip'],
     'oceanvine': ['oceanvine.zip'],
     # oceanvine_deco.lua: the vine_rainforest_border bank and its waterforest_vines build share one archive.
     'oceanvine_deco': ['waterforest_vines.zip'],
@@ -86,6 +88,12 @@ def main():
                                  ('normal', [*oceantree_clips, 'grow_short_to_normal']),
                                  ('tall', [*oceantree_clips, 'grow_normal_to_tall', 'gooped', 'ungooped', 'grow_tall_to_pillar'])]
             for clip in clips}
+    # oceantree_pillar.lua: every clip it plays, including those of OnSprout, chop_tree, chop_down_tree, OnBurnt and the
+    # unported ripples, roots and leaves children.
+    art |= {f'oceantree_pillar_small/{clip}': {'animationArchive': 'oceantree_pillar_small.zip',
+                                               'bank': 'oceantree_pillar_small', 'animation': clip}
+            for clip in ['idle', 'grow_tall_to_pillar', 'chop', 'fall', 'burnt', 'root_ripple', 'root_shadow',
+                         'leaf_fall_ground', 'leaf_fall_water']}
     # oceanvine.lua: every clip it plays.
     art |= {f'oceanvine/{clip}': {'animationArchive': 'oceanvine.zip', 'bank': 'oceanvine', 'animation': clip}
             for clip in ['idle_fruit', 'idle_nofruit', 'fruit_grow', 'harvest', 'spawn', 'burn', 'fall_land', 'fall_ocean']}

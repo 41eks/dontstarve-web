@@ -49,6 +49,8 @@ export interface SavedEntity {
     watertreePillar?: import('@dontstarve-web/prefab/watertree_pillar').WatertreePillarSaveState;
     /** oceantree.lua onsave. */
     oceantree?: import('@dontstarve-web/prefab/oceantree').OceanTreeSaveState;
+    /** oceantree_pillar.lua OnSave. */
+    oceantreePillar?: import('@dontstarve-web/prefab/oceantree_pillar').OceanTreePillarSaveState;
     /** oceanvine_deco.lua onsave: data.animnum, the idle_N clip. */
     animnum?: import('@dontstarve-web/prefab/oceanvine_deco').OceanVineDecoAnimNum;
     molehill?: import('../../packages/prefab/src/molehill').MolehillSave;

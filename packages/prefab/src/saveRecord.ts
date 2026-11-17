@@ -116,6 +116,8 @@ export interface PlacementSaveRecord {
     watertreePillar?: import('./watertree_pillar').WatertreePillarSaveState;
     /** oceantree.lua onsave. */
     oceantree?: import('./oceantree').OceanTreeSaveState;
+    /** oceantree_pillar.lua OnSave. */
+    oceantreePillar?: import('./oceantree_pillar').OceanTreePillarSaveState;
     /** oceanvine_deco.lua onsave: data.animnum, the idle_N clip. */
     animnum?: import('./oceanvine_deco').OceanVineDecoAnimNum;
     /** The wormhole's skin. */

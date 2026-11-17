@@ -42,6 +42,7 @@ import { atriumPillarPrefabs } from '@dontstarve-web/prefab/atrium_pillar';
 import { moonFissurePrefabs } from '@dontstarve-web/prefab/moon_fissure';
 import { watertreePillarPrefabs } from '@dontstarve-web/prefab/watertree_pillar';
 import { oceanTreePrefabs } from '@dontstarve-web/prefab/oceantree';
+import { oceanTreePillarPrefabs } from '@dontstarve-web/prefab/oceantree_pillar';
 import { oceanVinePrefabs } from '@dontstarve-web/prefab/oceanvine';
 import { oceanVineDecoPrefabs } from '@dontstarve-web/prefab/oceanvine_deco';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
@@ -184,6 +185,7 @@ const MANAGER_DEFINITIONS = {
   'moon_fissure': PREFAB_DEFINITIONS.moonFissures,
   'watertree_pillar': PREFAB_DEFINITIONS.watertreePillars,
   'oceantree': PREFAB_DEFINITIONS.oceanTrees,
+  'oceantree_pillar': PREFAB_DEFINITIONS.oceanTreePillars,
   'oceanvine': PREFAB_DEFINITIONS.oceanVines,
   'oceanvine_deco': PREFAB_DEFINITIONS.oceanVineDecos,
   'atrium_gate': PREFAB_DEFINITIONS.atriumGates,
@@ -220,6 +222,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.moonFissures,
   PREFAB_DEFINITIONS.watertreePillars,
   PREFAB_DEFINITIONS.oceanTrees,
+  PREFAB_DEFINITIONS.oceanTreePillars,
   PREFAB_DEFINITIONS.oceanVines,
   PREFAB_DEFINITIONS.oceanVineDecos,
   PREFAB_DEFINITIONS.atriumGates,
@@ -436,6 +439,7 @@ export async function createSceneEntities(
   registerMoonFissures(registry, worldState);
   registerWatertreePillars(registry, worldState);
   registerOceanTrees(registry, worldState);
+  registerOceanTreePillars(registry, worldState);
   registerOceanVines(registry, worldState);
   prefabs.register(oceanVineDecoPrefabs());
   registry.registerPrefabs(PREFAB_DEFINITIONS.oceanVineDecos);
@@ -1170,6 +1174,17 @@ export async function createSceneEntities(
       },
     }));
     registry.registerPrefabs(PREFAB_DEFINITIONS.oceanTrees);
+  }
+
+  function registerOceanTreePillars(registry: EntityRegistry, worldState: SceneWorldState) {
+    prefabs.register(oceanTreePillarPrefabs({
+      scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
+      spawnLoot: (prefab, position) => {
+        groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count: 1 }], position);
+        return undefined;
+      },
+    }));
+    registry.registerPrefabs(PREFAB_DEFINITIONS.oceanTreePillars);
   }
 
   function registerOceanVines(registry: EntityRegistry, worldState: SceneWorldState) {

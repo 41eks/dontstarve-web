@@ -76,6 +76,7 @@
     "./moon_fissure": "./src/moon_fissure.ts",
     "./watertree_pillar": "./src/watertree_pillar.ts",
     "./oceantree": "./src/oceantree.ts",
+    "./oceantree_pillar": "./src/oceantree_pillar.ts",
     "./oceanvine": "./src/oceanvine.ts",
     "./oceanvine_deco": "./src/oceanvine_deco.ts",
     "./vault_pillar": "./src/vault_pillar.ts",

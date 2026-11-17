@@ -16,6 +16,7 @@ import { CAVE_PILLAR_IDS, PILLAR_RUINS_ID } from '@dontstarve-web/prefab/pillar'
 import { PILLAR_ATRIUM_ID } from '@dontstarve-web/prefab/atrium_pillar';
 import { MOON_FISSURE_ID } from '@dontstarve-web/prefab/moon_fissure';
 import { WATERTREE_PILLAR_ARCHIVES, WATERTREE_PILLAR_ID, type WatertreePillarSaveState } from '@dontstarve-web/prefab/watertree_pillar';
+import { OCEANTREE_PILLAR_ARCHIVES, OCEANTREE_PILLAR_ID } from '@dontstarve-web/prefab/oceantree_pillar';
 import { OCEANTREE_ARCHIVES, OCEANTREE_ID, STAGES_TO_SUPERTALL, type OceanTreeSaveState } from '@dontstarve-web/prefab/oceantree';
 import { OCEANVINE_ID, OCEANVINE_REGROW_TIME } from '@dontstarve-web/prefab/oceanvine';
 import { OCEANVINE_DECO_ANIMNUMS, OCEANVINE_DECO_ID } from '@dontstarve-web/prefab/oceanvine_deco';
@@ -212,6 +213,14 @@ const oceanTree: PrefabComponentParser = (value, path, context) => {
   if (data.buds !== undefined) saved.buds = buds('buds');
   if (data.buds_used !== undefined) saved.buds_used = buds('buds_used');
   return { ...components, oceantree: saved };
+};
+/** oceantree_pillar.lua OnSave: data.droppedvines. */
+const oceanTreePillar: PrefabComponentParser = (value, path) => {
+  const { oceantreePillar: state } = object(value, path, ['oceantreePillar']);
+  if (state === undefined) return {};
+  const { droppedvines } = object(state, `${path}.oceantreePillar`, ['droppedvines']);
+  if (droppedvines !== true) fail(`${path}.oceantreePillar.droppedvines`, 'expected true');
+  return { oceantreePillar: { droppedvines: true } };
 };
 /** oceanvine_deco.lua onsave: data.animnum, 1..6. */
 const oceanVineDeco: PrefabComponentParser = (value, path) => {
@@ -447,6 +456,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   moonFissures: definePrefabs([MOON_FISSURE_ID], empty, true, ['moon_fissure.zip']),
   watertreePillars: definePrefabs([WATERTREE_PILLAR_ID], watertreePillar, true, WATERTREE_PILLAR_ARCHIVES),
   oceanTrees: definePrefabs([OCEANTREE_ID], oceanTree, true, [...OCEANTREE_ARCHIVES, 'snow.zip']),
+  oceanTreePillars: definePrefabs([OCEANTREE_PILLAR_ID], oceanTreePillar, true, OCEANTREE_PILLAR_ARCHIVES),
   // oceanvine.lua has no OnSave of its own; pickable's record is its whole save.
   oceanVines: definePrefabs([OCEANVINE_ID], componentParser({ keys: ['pickable'], regrowTime: OCEANVINE_REGROW_TIME }), true, ['oceanvine.zip']),
   oceanVineDecos: definePrefabs([OCEANVINE_DECO_ID], oceanVineDeco, true, ['waterforest_vines.zip']),
