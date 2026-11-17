@@ -22,7 +22,7 @@ import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { PhysicsState } from '../../componets/src/physicsState';
 import { registerActionEntity, disposeActionEntity } from './actionEntity';
-import { createPrefabEntity, PrefabInstance, prefabInstance, type EntityTask } from './prefabInstance';
+import { createArchiveEntity, PrefabInstance, prefabInstance, type EntityTask } from './prefabInstance';
 import { Builder, type BuilderWorld } from '../../componets/src/builder';
 import type { WilsonSoulHopHost } from '../../stategraphs/src/SGwilson';
 import type { PlayerAction } from '../../stategraphs/src/actionfns';
@@ -387,10 +387,13 @@ export function MakePlayerCharacter(
   return (assetBaseUrl, world, options = {}) => {
     const resources = new SpriteResources(assetBaseUrl);
     const inst = new PlayerInstance(name, new SpriteState({ name: 'idle_loop', billboard: true }));
-    const { display } = createPrefabEntity(name, resources.factory({
-      buildArchive: PlayerBuild(inst), animationArchive: animationArchives[0],
-      extraAnimationArchives: animationArchives.slice(1),
-    }), { name: 'idle_loop', billboard: true, instance: inst }, name, () => {
+    // The shared archive of the wilson bank across the character's ANIM assets; the body is dressed per entity (its
+    // AnimState, override builds and followers), so its display draws its own frames.
+    const { display } = createArchiveEntity(name, resources.archive({ animationArchive: animationArchives[0],
+      extraAnimationArchives: animationArchives.slice(1), buildArchives: [PlayerBuild(inst)], bank: 'wilson' },
+    // SGwilson's SetMultColour tints only this player.
+    { colour: [1, 1, 1] }),
+    { name: 'idle_loop', billboard: true, instance: inst }, name, () => {
       // SetBank("wilson"), SetBuild(name) from the prefab's ANIM assets.
       inst.AnimState.DeclareAnimationAssets(animationArchives, resources.archives);
       inst.AnimState.SetBank('wilson');
