@@ -53,7 +53,7 @@ import { inventoryReceiveEffect } from './inventoryReceive';
 import { createInventorySlotItem } from './inventorySlotItem';
 import { playerStats, playerGhostMode, getPlayerStats, setPlayerSanityPercent } from './playerStats';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
-import { createEffect, watchSignal } from '@dontstarve-web/signals';
+import { createEffect, createRenderEffect, watchSignal } from '@dontstarve-web/signals';
 
 // Independent startup loads begin together; each is awaited where it is first needed.
 const animRoot = `${import.meta.env.BASE_URL}dst/data/anim`;
@@ -86,12 +86,13 @@ gameUi.minimap.addEventListener('game:map-state', (event) => {
     mapAutopaused = autopaused;
   }
 });
-function syncPlayerStats(): void {
+const stopStatsUpdates: (() => void)[] = [];
+const watchedStats = [playerStats.health.current, playerStats.hunger.value, playerStats.sanity.value]
+  .map(stat => watchSignal<unknown>(stat, stop => stopStatsUpdates.push(stop)));
+createRenderEffect(() => {
+  watchedStats.forEach(stat => stat.get());
   gameUi.statusHud.setStats(getPlayerStats());
-}
-const stopStatsUpdates = [playerStats.health.current, playerStats.hunger.value, playerStats.sanity.value]
-  .map(stat => stat.subscribe(syncPlayerStats));
-syncPlayerStats();
+});
 export const inventory = createInventoryStore(itemWorld);
 const inventorySlotItem = createInventorySlotItem(inventory);
 export const handEquipment = inventory.handEquipment;
@@ -171,16 +172,14 @@ inventory.bodyEquipment.subscribe(equipment => {
 });
 
 
-function syncCraftingInventory(): void {
-  gameUi.crafting.setMaterialSummary(inventory.materialSummary());
-  gameUi.crafting.setBufferedRecipes(inventory.buffered());
-}
-
 // The inventory bar follows inventory.lua's slots as container panels follow their containers.
 gameUi.inventoryBar.bindInventory(inventory, inventorySlotItem);
-syncCraftingInventory();
 // Material counts and buffered builds change with transactions and stack consumption.
-inventory.subscribe(syncCraftingInventory);
+createRenderEffect(() => {
+  inventory.revision.get();
+  gameUi.crafting.setMaterialSummary(inventory.materialSummary());
+  gameUi.crafting.setBufferedRecipes(inventory.buffered());
+});
 
 const disposalResources = createDisposalResources({
   gameUi, view, screenProjection, inventory, playerEntity: playerInstance, locomotor,

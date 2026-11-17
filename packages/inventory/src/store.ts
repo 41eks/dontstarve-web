@@ -2,7 +2,7 @@ import { ItemEntity, ItemEntityRegistry, type ItemOwner } from './entity';
 import { planCraft } from './craft';
 import { Vector3 } from 'three';
 import {
-  batch, createEquipmentExistenceState, readonlySignal,
+  batch, createEquipmentExistenceState, createSignal, readonlySignal,
   type Equipment, type EquipmentSlot, type HandEquipment, type HeadEquipment, type BodyEquipment, type ReadonlySignal, type Signal,
 } from '@dontstarve-web/signals';
 import { PLAYER_INVENTORY_CONTAINER_ID, EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, PLAYER_EQUIPMENT_CONTAINER_ID, BACKPACK_SLOT_COUNT } from './addresses';
@@ -288,6 +288,9 @@ export class InventoryStore {
   private readonly bufferedBuilds = new Map<string, string | undefined>();
   private readonly itemSpecs = new Map<string, InventoryItemSpec>();
   private readonly listeners = new Set<InventoryListener>();
+  private readonly revisionState = createSignal(0);
+  /** Bumped on every slot notification, for consumers that recompute a whole-inventory view (material counts). */
+  readonly revision = readonlySignal(this.revisionState);
   private readonly accessibleStorageContainerIds = new Set<string>();
   private readonly worldContainers = new Map<string, Container<InventoryStack, ItemEntity, ItemSlot>>();
   private readonly skinSpecs: Readonly<Record<string, InventorySkinSpec>>;
@@ -1147,6 +1150,7 @@ export class InventoryStore {
     // Component or unrelated inventory updates must not restart equipment lifecycles.
     for (const kind of replacedEquipment) this.publishEquipmentExistenceState(kind);
     this.listeners.forEach((listener) => listener(changedSlots));
+    this.revisionState.set(this.revisionState.peek() + 1);
   }
 
   private requireItemSpec(itemId: string): InventoryItemSpec {

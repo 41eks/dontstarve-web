@@ -1,6 +1,6 @@
 import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
-import { createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
+import { createRenderEffect, createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { createArchiveEntity } from './prefabInstance';
 import { Burnable } from '../../componets/src/burnable';
 import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
@@ -124,7 +124,9 @@ export function bindBurnableItem(inst: ItemEntity, world: ItemPrefabWorld, fxLev
     loop?.stop(); loop = undefined;
     inst.light.set(null);
   };
+  // Runs only when the burning state flips; a rerun from another value read by the sounds or light changes nothing.
   const syncBurning = (burning: boolean) => {
+    if (burning === burningNow) return;
     if (burning) {
       burningNow = true;
       sound = PlaySound('dontstarve/common/campfire', inst.position);
@@ -137,8 +139,7 @@ export function bindBurnableItem(inst: ItemEntity, world: ItemPrefabWorld, fxLev
     }
   };
   inst.sprite.attachFx('fire', { sprite: fire.instance.sprite, display: fire.display, active: controller.burnable.burning, sortLayer: 2 });
-  const stopBurning = controller.burnable.burning.subscribe(syncBurning);
-  syncBurning(controller.burnable.IsBurning());
+  const stopBurning = createRenderEffect(() => syncBurning(controller.burnable.burning.get()));
   // inst:ListenForEvent("onignite", ...) fires only on a new ignition, not when a burning save is restored.
   const stopIgnite = igniteSound ? inst.ListenForEvent('onignite', () => { PlaySound(igniteSound, inst.position); }) : undefined;
   inst.onRemove(() => {

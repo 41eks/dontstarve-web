@@ -136,12 +136,13 @@ export class HatActivationController {
   private readonly activatedMemo: Memo<boolean>;
   private readonly stopActivated: () => void;
   private stopSanity?: () => void;
-  private active = false;
-  private hidden = false;
+  private readonly active = createSignal(false);
   private front: AlterguardianHatEquipped | undefined;
   private back: AlterguardianHatEquipped | undefined;
   /** Seconds since deactivation, until the 8-frame task restores the swap_hat. */
-  private restoring: number | undefined;
+  private readonly restoring = createSignal<number | undefined>(undefined);
+  private readonly hiddenMemo = createMemo(() => this.active.get() || this.restoring.get() !== undefined);
+  private readonly stopHidden: () => void;
 
   constructor(owner: PrefabInstance, options: HatActivationOptions) {
     this.owner = owner;
@@ -154,11 +155,12 @@ export class HatActivationController {
     });
     this.activated = readonlySignal(this.activatedMemo);
     this.stopActivated = this.activatedMemo.subscribe(active => this.apply(active));
+    this.stopHidden = this.hiddenMemo.subscribe(hidden => this.options.onSwapHatHidden?.(hidden));
   }
 
   /** The swap_hat is redrawn each frame until it is restored. */
-  get isAnimating(): boolean { return this.restoring !== undefined; }
-  get hidesSwapHat(): boolean { return this.active || this.restoring !== undefined; }
+  get isAnimating(): boolean { return this.restoring.peek() !== undefined; }
+  get hidesSwapHat(): boolean { return this.hiddenMemo.peek(); }
   /** The layers currently following the owner; a deactivated pair plays out on its own. */
   get layers(): { readonly front?: AlterguardianHatEquipped; readonly back?: AlterguardianHatEquipped } {
     return { front: this.front, back: this.back };
@@ -175,33 +177,27 @@ export class HatActivationController {
     if (this.stopSanity) this.stopSanity();
     else this.activatedMemo.dispose();
     this.removeAll();
+    this.stopHidden();
+    this.hiddenMemo.dispose();
   }
 
   update(dt: number): void {
-    if (this.restoring === undefined) return;
-    this.restoring += dt;
-    if (this.restoring >= 8 / 30) this.restoring = undefined;
-    this.syncHidden();
+    const restoring = this.restoring.peek();
+    if (restoring === undefined) return;
+    this.restoring.set(restoring + dt >= 8 / 30 ? undefined : restoring + dt);
   }
 
-  private syncHidden(): void {
-    if (this.hidesSwapHat === this.hidden) return;
-    this.hidden = this.hidesSwapHat;
-    this.options.onSwapHatHidden?.(this.hidden);
-  }
-
+  /** The swap_hat stays hidden across the switch: active turns on before a pending restore ends, and off after one starts. */
   private apply(active: boolean): void {
-    if (active === this.active) return;
-    this.active = active;
-    if (active) this.activate(); else this.deactivate();
-    this.syncHidden();
+    if (active === this.active.peek()) return;
+    if (active) { this.active.set(true); this.activate(); } else { this.deactivate(); this.active.set(false); }
   }
 
   private activate(): void {
     const { definition, skinId } = this.hat.peek()!;
     const config = definition.equip.activated!;
     const owner = this.owner;
-    this.restoring = undefined;
+    this.restoring.set(undefined);
     const skin = skinId === undefined ? undefined : definition.skinArchives[skinId];
     const assets = this.options.assets;
     const art = { archive: config.archive, peekFactory: (archive: string) => assets.peekFactory(archive), loadFactory: (archive: string) => assets.loadFactory(archive),
@@ -220,19 +216,18 @@ export class HatActivationController {
 
   private deactivate(): void {
     this.removeLight?.(); this.removeLight = null;
-    if (this.front) this.restoring = 0;
+    if (this.front) this.restoring.set(0);
     this.front?.OnDeactivated(); this.front = undefined;
     this.back?.OnDeactivated(); this.back = undefined;
   }
 
   /** alterguardian_onunequip: the light and both layers go at once. */
   private removeAll(): void {
-    this.active = false;
-    this.restoring = undefined;
+    this.restoring.set(undefined);
+    this.active.set(false);
     this.removeLight?.(); this.removeLight = null;
     this.front?.Remove(); this.front = undefined;
     this.back?.Remove(); this.back = undefined;
-    this.syncHidden();
   }
 }
 

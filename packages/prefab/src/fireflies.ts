@@ -54,7 +54,7 @@ export interface FirefliesWorld {
 /** fireflies.lua: stationary swarm, playerprox hysteresis and fixed-rate light fades. */
 export class FirefliesController {
   private fadeValue = 0;
-  private fadeRate = 0;
+  private readonly fadeRate = createSignal(0);
   private direction = 0;
   private playerClose = false;
   private readonly cycle?: WorldContentSignal<WorldPhase>;
@@ -62,9 +62,7 @@ export class FirefliesController {
   private readonly awake?: Signal<boolean>;
   private readonly activeState;
   readonly active;
-  private readonly updatingState = createSignal(false);
   /** StartUpdatingComponent while a fade or the visible swarm animation runs; idle swarms are not visited per frame. */
-  readonly updating = readonlySignal(this.updatingState);
   private readonly playerpositions?: PlayerPositionsSignal;
   private readonly handEquipment?: Signal<HandEquipment | null>;
   private readonly cleanups: (() => void)[] = [];
@@ -76,7 +74,11 @@ export class FirefliesController {
   private canWork = false;
   private canClick = false;
   private disposed = false;
-  private shown = false;
+  private readonly shown = createSignal(false);
+  /** updatefade runs while placed and the swarm is fading or drawn (or this owns its scheduler). */
+  private readonly updatingState = createMemo(() => this.placement.get() !== undefined
+    && (this.ownsScheduler || this.fadeRate.get() !== 0 || this.shown.get()));
+  readonly updating = readonlySignal(this.updatingState);
   private readonly instance: FirefliesInstance;
   /** Only the mouse-target registry is keyed by the display's model. */
   private readonly model: THREE.Group;
@@ -175,10 +177,10 @@ export class FirefliesController {
   get intensity(): number { return this.fadeValue; }
   get workable(): boolean { return !this.disposed && this.canWork; }
   /** Whether the swarm is drawn: from swarm_pre until swarm_pst ends. */
-  get visible(): boolean { return this.shown; }
+  get visible(): boolean { return this.shown.peek(); }
   get clickable(): boolean {
     const tool = equippedActionEntity(this.handEquipment?.peek());
-    return !this.disposed && !this.inInventory && this.shown && this.canClick && this.active.peek()
+    return !this.disposed && !this.inInventory && this.shown.peek() && this.canClick && this.active.peek()
       && !!tool && !tool.isRemoved && tool.hasTag('NET_tool') && tool.components.tool?.CanDoAction('NET') === true;
   }
 
@@ -187,23 +189,21 @@ export class FirefliesController {
     if (this.disposed) return;
     this.animation.setLightOverride(1);
     this.placement.set({ dropped });
-    this.syncUpdating();
   }
 
   update(dt: number): void {
     if (this.disposed || this.inInventory || this.awake?.peek() === false) return;
     if (this.ownsScheduler && Number.isFinite(dt) && dt > 0) this.scheduler.advance(dt);
     const step = Math.max(0, Math.min(dt, 0.1));
-    if (this.fadeRate !== 0) {
-      this.fadeValue = THREE.MathUtils.clamp(this.fadeValue + this.fadeRate * step, 0, FIREFLIES_LIGHT.intensity);
-      if ((this.fadeRate > 0 && this.fadeValue >= FIREFLIES_LIGHT.intensity)
-        || (this.fadeRate < 0 && this.fadeValue <= 0)) {
-        this.fadeRate = 0;
+    const rate = this.fadeRate.peek();
+    if (rate !== 0) {
+      this.fadeValue = THREE.MathUtils.clamp(this.fadeValue + rate * step, 0, FIREFLIES_LIGHT.intensity);
+      if ((rate > 0 && this.fadeValue >= FIREFLIES_LIGHT.intensity) || (rate < 0 && this.fadeValue <= 0)) {
+        this.fadeRate.set(0);
         if (this.fadeValue === 0) this.finishFadeOut();
       }
       this.refresh();
     }
-    if (this.fadeRate === 0) this.syncUpdating();
   }
 
   onPutInInventory(): void {
@@ -211,7 +211,8 @@ export class FirefliesController {
     this.canClick = this.canWork = false;
     for (const timer of this.checks.peek()) timer.stop();
     this.checks.set([]);
-    this.fadeValue = this.fadeRate = 0;
+    this.fadeValue = 0;
+    this.fadeRate.set(0);
     this.direction = 0;
     this.disableWork.stop();
     this.show(false);
@@ -224,6 +225,7 @@ export class FirefliesController {
     if (this.disposed) return;
     this.disposed = true;
     this.activeState.dispose();
+    this.updatingState.dispose();
     this.cleanups.splice(0).forEach(stop => stop());
     this.onPutInInventory();
     if (this.ownsScheduler) this.scheduler.dispose();
@@ -240,7 +242,8 @@ export class FirefliesController {
     for (const timer of this.checks.peek()) timer.stop();
     if (this.checks.peek().length) this.checks.set([]);
     this.disableWork.stop();
-    this.fadeValue = this.fadeRate = this.direction = 0;
+    this.fadeValue = this.direction = 0;
+    this.fadeRate.set(0);
     this.canClick = this.canWork = false;
     // Daylight came while asleep: settle where fadeout ends, with no animation playing.
     this.animation.clearAnimation();
@@ -266,7 +269,7 @@ export class FirefliesController {
       if (!this.disposed && this.direction > 0) this.animation.start('swarm_loop');
     });
     const byte = 1 + Math.min(30, Math.floor(this.random() * 31));
-    this.fadeRate = (FIREFLIES_LIGHT.intensity - this.fadeValue) / (3 + (byte - 1) / 15);
+    this.fadeRate.set((FIREFLIES_LIGHT.intensity - this.fadeValue) / (3 + (byte - 1) / 15));
     this.refresh();
   }
 
@@ -275,10 +278,10 @@ export class FirefliesController {
     this.direction = -1;
     // swarm_pst ends on an empty frame; with no animation after it, nothing is built or drawn until swarm_pre.
     this.animation.playOnce('swarm_pst', () => {
-      if (!this.disposed && this.direction < 0) { this.animation.clearAnimation(); this.show(false); this.syncUpdating(); }
+      if (!this.disposed && this.direction < 0) { this.animation.clearAnimation(); this.show(false); }
     });
     const byte = 32 + Math.min(31, Math.floor(this.random() * 32));
-    this.fadeRate = -this.fadeValue / (0.75 + (byte - 32) / 31);
+    this.fadeRate.set(-this.fadeValue / (0.75 + (byte - 32) / 31));
     if (this.fadeValue === 0) this.finishFadeOut();
   }
 
@@ -290,18 +293,12 @@ export class FirefliesController {
   }
 
   private show(shown: boolean): void {
-    if (shown === this.shown) return;
-    this.shown = shown;
+    if (shown === this.shown.peek()) return;
+    this.shown.set(shown);
     this.refreshClickability();
   }
 
-  private syncUpdating(): void {
-    this.updatingState.set(!this.disposed && !this.inInventory
-      && (this.ownsScheduler || this.fadeRate !== 0 || this.shown));
-  }
-
   private refresh(): void {
-    this.syncUpdating();
     this.instance.components?.workable?.SetWorkable(!this.disposed && this.canWork);
     this.refreshVisual();
   }

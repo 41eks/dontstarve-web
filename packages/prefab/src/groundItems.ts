@@ -7,7 +7,7 @@ import type { ItemEntity, InventoryItemSpec, InventorySkinSpec } from '@dontstar
 import { GROUND_TILE_DEFINITIONS, type GroundTileName } from './groundTiles';
 import catalog from './groundItems.json' with { type: 'json' };
 import type { ItemPrefabWorld } from './groundPrefab';
-import type { ReadonlySignal } from '@dontstarve-web/signals';
+import { createRenderEffect, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { PrefabEntityDefinition } from './prefabInstance';
 import { InventoryPhysics, type LootLaunch } from '../../componets/src/inventoryphysics';
@@ -199,13 +199,12 @@ export function bindComponentUpdates(inst: ItemEntity, updating: ReadonlySignal<
   updates: ComponentUpdates): void {
   let stop: (() => void) | undefined;
   const component = { OnUpdate: update };
-  const sync = (on: boolean) => {
+  const follow = (on: boolean) => {
     if (on && !inst.isRemoved) stop ??= updates.register(component);
     else { stop?.(); stop = undefined; }
   };
-  const unsubscribe = updating.subscribe(sync);
-  sync(updating.peek());
-  inst.onRemove(() => { unsubscribe(); sync(false); });
+  const unfollow = createRenderEffect(() => follow(updating.get()));
+  inst.onRemove(() => { unfollow(); follow(false); });
 }
 
 /** Keep the existing ground material names used by equipment and lighting. */
