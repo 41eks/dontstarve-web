@@ -5,16 +5,15 @@ import { readFile } from 'node:fs/promises';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BEEFALO_BEHAVIOR, beefaloPrefabs, BeefaloInstance, type BeefaloWorld } from '../../prefab/src/beefalo';
+import { BEEFALO_ART, BEEFALO_BEHAVIOR, BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, beefaloPrefabs, BeefaloInstance, type BeefaloWorld } from '../../prefab/src/beefalo';
 import { createSignal, getWatchWorldContent, type WorldPhase, type WorldContentEnvironment } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
-import { BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, createBeefaloSpriteFactory } from '../src/beefaloSprite';
+import { ArchiveSpriteAssets, createArchiveSprite } from '../src/archiveSprite';
+import { smallHash } from '../src/animationAssets';
 import { COLLISION } from '../../componets/src/physicsState';
 import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup, SpriteState } from '../../display/src';
-import { setSpriteEntityRenderOrder } from '../src/renderOrder';
-import { spriteController } from '../src/spriteController';
 import { updateSceneMatrices } from '../src/matrixUpdates';
 import { TransformRoot } from '../src/transformRoot';
 import { Pathfinder } from '../../prefab/src/pathfinder';
@@ -387,46 +386,49 @@ describe('beefalo saves', () => {
 });
 
 describe('original beefalo assets', () => {
-  it('shares the two build atlases, merges frames, hides HEAT, and preserves one-shot completion across facing and build changes', async () => {
+  it('draws every action clip in all six facings from its shared archive, hides HEAT, and keeps one-shot completion across facing and build changes', async () => {
     serveAssets();
-    const factory = await createBeefaloSpriteFactory('/dst/data/anim');
-    const a = factory.create({ initialAnimation: 'idle_loop' });
-    const b = factory.create({ initialAnimation: 'idle_loop' });
-    expect(a.children[0].children).toHaveLength(1);
-    setSpriteEntityRenderOrder(a, 7);
-    expect(a.children[0].renderOrder).toBe(7);
-    const mesh = a.children[0].children[0] as THREE.Mesh;
-    expect(mesh.material).toEqual((b.children[0].children[0] as THREE.Mesh).material);
-    for (const material of mesh.material as THREE.MeshBasicMaterial[]) expect(material.forceSinglePass).toBe(true);
-    const controller = spriteController(a);
-    if (!controller || !('setBuildArchive' in controller)) throw new Error('A beefalo sprite switches builds');
-    const complete = vi.fn();
-    controller.playOnce('sleep_pre', complete);
-    for (let i = 0; i < 6; i++) controller.update(0.1);
-    // Mirroring is a local write inside a factory sprite: it marks the entity's clean TransformRoot.
-    const scene = new THREE.Scene(), root = new TransformRoot();
-    root.add(a); scene.add(root);
-    updateSceneMatrices(scene); updateSceneMatrices(scene);
-    const facingRight = a.children[0].matrixWorld.elements[0];
-    controller.setFacing(32, true);
-    updateSceneMatrices(scene);
-    expect(a.children[0].matrixWorld.elements[0]).toBeCloseTo(-facingRight);
-    for (let i = 0; i < 6; i++) controller.update(0.1);
-    expect(complete).toHaveBeenCalledTimes(1);
-    for (const clip of ['walk_pre', 'walk_loop', 'walk_pst', 'graze2_pre', 'graze2_loop', 'graze2_pst',
-      'graze_loop', 'alert_pre', 'alert_idle', 'sleep_loop', 'sleep_pst', 'shake', 'bellow']) {
-      controller.start(clip);
-      for (const facing of [1, 4, 16, 32, 64, 128]) { controller.setFacing(facing); controller.update(0.1); }
-      expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    }
-    // AnimState:SetBuild swaps the whole build and keeps the clip.
-    controller.setBuildArchive(BEEFALO_SHAVED_BUILD);
-    controller.setBuildArchive(BEEFALO_BUILD);
-    expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    factory.dispose();
+    const assets = new ArchiveSpriteAssets('sprite', '/dst/data/anim');
+    try {
+      const sprite = await createArchiveSprite(assets, { ...BEEFALO_ART, animation: 'idle_loop', loop: true });
+      sprite.setBuildArchive(BEEFALO_BUILD);
+      const heat = smallHash('HEAT');
+      const drawn = () => sprite.getResolvedFrame();
+      expect(drawn().length).toBeGreaterThan(0);
+      const complete = vi.fn();
+      sprite.playOnce('sleep_pre', complete);
+      for (let i = 0; i < 6; i++) sprite.update(0.1);
+      // A left-hand facing draws the right-hand clip mirrored.
+      const scene = new THREE.Scene(), root = new TransformRoot();
+      root.add(sprite.model); scene.add(root);
+      updateSceneMatrices(scene);
+      const facingRight = sprite.model.children[0].matrixWorld.elements[0];
+      sprite.setFacing(32);
+      sprite.update(0);
+      updateSceneMatrices(scene);
+      expect(Math.sign(sprite.model.children[0].matrixWorld.elements[0])).toBe(-Math.sign(facingRight));
+      for (let i = 0; i < 6; i++) sprite.update(0.1);
+      expect(complete).toHaveBeenCalledTimes(1);
+      for (const clip of ['walk_pre', 'walk_loop', 'walk_pst', 'graze2_pre', 'graze2_loop', 'graze2_pst',
+        'graze_loop', 'alert_pre', 'alert_idle', 'sleep_loop', 'sleep_pst', 'shake', 'bellow']) {
+        sprite.start(clip);
+        for (const facing of [1, 4, 16, 32, 64, 128]) {
+          sprite.setFacing(facing); sprite.update(0.1);
+          expect(drawn().length, `${clip} facing ${facing}`).toBeGreaterThan(0);
+          expect(drawn().some(({ element }) => element.layerHash === heat)).toBe(false);
+        }
+      }
+      // AnimState:SetBuild swaps the whole build and keeps the clip.
+      sprite.setBuildArchive(BEEFALO_SHAVED_BUILD);
+      expect(sprite.currentAnimation).toBe('bellow');
+      expect(drawn().length).toBeGreaterThan(0);
+      sprite.setBuildArchive(BEEFALO_BUILD);
+      expect(drawn().length).toBeGreaterThan(0);
+      sprite.dispose();
+    } finally { assets.dispose(); }
   });
 
-  it('draws a spawned beefalo from the shared factory and releases it with the manager', async () => {
+  it('draws a spawned beefalo from its shared archive and releases it with the manager', async () => {
     const s = setup();
     const display = (await import('../../display/src')).prefabDisplay(s.inst.transform.model)!;
     await display.artLoaded();

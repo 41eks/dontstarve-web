@@ -3,8 +3,7 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as CANNON from 'cannon-es';
 import { getRegisteredPhysicsBodies } from '../../componets/src/physicsWorld';
 import * as THREE from 'three';
-import { BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, createBeefaloSpriteFactory } from '@dontstarve-web/animation/beefaloSprite';
-import { SpriteResources, SpriteState } from '@dontstarve-web/display';
+import { SpriteState } from '@dontstarve-web/display';
 import { createRenderEffect, type ReadonlySignal, type WorldPhase, type WorldContentContext } from '@dontstarve-web/signals';
 import { AnimState } from '../../componets/src/animstate';
 import { Beard, type BeardSave } from '../../componets/src/beard';
@@ -276,9 +275,18 @@ function OnUpdate(inst: BeefaloInstance, world: BeefaloWorld, dt: number): void 
   inst.components.locomotor.update(step);
 }
 
-/** The Prefab beefalo.lua returns, drawn by beefalo's sprite over its hairy and shaved builds. */
+/** AnimState:SetBuild names; the shaved build replaces the whole hairy build while hair regrows. */
+export const BEEFALO_BUILD = 'beefalo_build.zip';
+export const BEEFALO_SHAVED_BUILD = 'beefalo_shaved_build.zip';
+/**
+ * beefalo.lua SetBank("beefalo") over its basic, actions and domestic ANIM archives, with both builds it switches
+ * between, and Hide("HEAT"). Its six faces are the clips' facings, mirrored for the left-hand ones.
+ */
+export const BEEFALO_ART = { animationArchive: BEEFALO_BANKS[0], extraAnimationArchives: BEEFALO_BANKS.slice(1),
+  buildArchives: [BEEFALO_BUILD, BEEFALO_SHAVED_BUILD], bank: 'beefalo', hiddenLayers: ['HEAT'] };
+
+/** The Prefab beefalo.lua returns, drawn from its shared archive over its hairy and shaved builds. */
 export function beefaloPrefabs(world: BeefaloWorld): Readonly<Record<typeof BEEFALO_ID, PrefabEntityDefinition<BeefaloInstance>>> {
-  const sprites = new SpriteResources();
   return {
     [BEEFALO_ID]: {
       fn: position => {
@@ -288,7 +296,7 @@ export function beefaloPrefabs(world: BeefaloWorld): Readonly<Record<typeof BEEF
         inst.copyPosition(placed);
         return inst;
       },
-      source: { ...sprites.loaded(createBeefaloSpriteFactory, { name: BEEFALO_ID }), dispose: () => sprites.dispose() },
+      assets: BEEFALO_ART,
       // MakeCharacterPhysics(inst, 100, .5)
       physics: { make: (inst, radius) => MakeCharacterPhysics(inst, 100, radius), radius: .5 },
       onSpawned: inst => {
