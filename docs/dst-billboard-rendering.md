@@ -47,7 +47,7 @@ DST 的镜像部件会反转三角形绕序。Three.js 的透明 `DoubleSide` �
 
 批次父 Group 保持默认 `renderOrder = 0`，颜色 mesh 使用 `renderOrder = -0.4`，排在地皮 mesh（−2～−0.5）之后。Three 先比较 Group 的顺序，再比较 mesh 的顺序；把批次 Group 设为负值会让颜色 pass 早于不写深度的地皮，树便会被地皮覆盖。批次内部实例仍按脚点深度从远到近排列。
 
-实例批次的深度 mesh 不透明、写深度，先于所有透明物体绘制。挂在实例化主体上的 FX（燃烧物品与树的火焰）是普通 billboard，与主体同脚点、同朝向，处在同一平面：排序键让它画在主体之后，但两者深度只差两条顶点路径（实例矩阵与烘焙顶点）的 float32 舍入，深度测试会随相机朝向时过时不过，火焰被主体不透明处挡掉。`FxAttachments` 因此为画在主体之后的效果（`sortLayer > 1`）声明 `setDepthOffset(true)`，存于 sprite json，重载后由 display 重新应用；`SpriteFrameRenderer` 用该实体的私有材质副本绘制，`polygonOffsetUnits = -4`（因子 0：同朝向 billboard 斜率相同），共享源材质不变，主体改透明度或染色后同步副本。偏移只有几个深度单位，不会让效果越过真正在它前面的物体；实例批次绘制的帧不受影响。
+实例批次的深度 mesh 不透明、写深度，先于所有透明物体绘制。挂在实例化主体上的 FX（燃烧物品与树的火焰）是普通 billboard，与主体同脚点、同朝向，处在同一平面：排序键让它画在主体之后，但两者深度只差两条顶点路径（实例矩阵与烘焙顶点）的 float32 舍入，深度测试会随相机朝向时过时不过，火焰被主体不透明处挡掉。`FxAttachments` 因此为画在主体之后的效果（`sortLayer > 1`）声明 `setDepthOffset(true)`，存于 sprite json，重载后由 display 重新应用；`SpriteFrameRenderer` 用该实体的私有材质副本绘制，`polygonOffsetUnits = -4`（因子 0：同朝向 billboard 斜率相同），共享源材质不变，主体改透明度或染色后同步副本。偏移只有几个深度单位，不会让效果越过真正在它前面的物体。由实例批次绘制的效果（`fire.lua` 的火焰，`instancedAnimations: 'all'`）用 `InstancedSprite.setDepthOffset` 进入同一图集页的偏移批次：深度与颜色材质同样 `polygonOffsetUnits = -4`，`renderOrder` 排在普通实例批次之后（颜色 -.39、深度 -.395），所以画在主体的实例之后，仍在普通 billboard 之前；声明 `setDepthOffset` 的其他实例化 prefab（如猪王的 `SetFinalOffset(1)`）也走偏移批次。关掉偏移后实例回到普通批次。
 
 `InstancedArchiveSprites` 保留每个实体的世界包围球与视锥测试结果。visual 的世界矩阵或帧边界变化时重算包围球；相机投影、视图矩阵或坐标系变化时重新测试视锥。绘制条目、页成员数组与排序结果跨帧复用，只在脚点排序键或成员变化时重排，脚点可独立于 visual 移动。祖先的场景归属、显隐与光照覆盖每次 pass 按节点采样一次，兼容直接赋值与重新挂载。各槽位通过变换和外观版本跳过未变属性，固定边界的动画换帧只写 UV；增删成员、跨页、隐藏后复用批次时仍核对槽位身份。属性上传合并实际变化的 Float32 区间，并保留 WebGL 尚未消费的更新。
 

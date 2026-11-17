@@ -4,6 +4,7 @@ import { spritePerf } from './spritePerf';
 import { createResolvedRgbaSpriteAtlasComposer, type RgbaSpriteAtlasComposer, type RgbaSpriteAtlas, type RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
 import { watchWorldMatrixChanges } from './matrixUpdates';
+import { DEPTH_OFFSET_UNITS } from './animationAssets';
 
 interface Appearance {
   animation: Animation;
@@ -22,6 +23,11 @@ export interface InstancedSprite {
   setColour(value: readonly [number, number, number]): void;
   /** AnimState:SetErosionParams's amount, independent for each entity in a shared batch. */
   setErosion(value: number): void;
+  /**
+   * Drawn towards the camera after the ordinary batches, as an effect drawn after its owner on the owner's plane
+   * (fire.lua's SetFinalOffset): the depth its owner's batch wrote must not hide it.
+   */
+  setDepthOffset(enabled: boolean): void;
   dispose(): void;
 }
 /** A drawn sprite as the display layer lists it: its instance and its entity's AnimState light override. */
@@ -36,6 +42,7 @@ interface Entry extends InstancedSprite {
   colour: THREE.Color;
   opacity: number;
   erosion: number;
+  depthOffset: boolean;
   styleVersion: number;
   transformVersion: number;
   appearance?: Appearance;
@@ -47,6 +54,8 @@ interface Entry extends InstancedSprite {
   spatial?: { frame: RgbaSpriteAtlasFrame; transformVersion: number; sphere: THREE.Sphere; camera: number; visible: boolean; version: number };
 }
 interface DrawEntry { entry: Entry; member: InstancedSpriteMember; frame: RgbaSpriteAtlasFrame; depth: number; x: number; y: number; z: number; camera: number }
+/** One atlas page, drawn as is or towards the camera after the ordinary batches: each is its own batch. */
+interface PageKey { readonly atlas: RgbaSpriteAtlas; readonly offset: boolean }
 interface DrawPage {
   source: THREE.MeshBasicMaterial;
   members: DrawEntry[];
@@ -70,7 +79,7 @@ type BatchAttributes = {
 };
 type BatchMesh = THREE.InstancedMesh<THREE.BufferGeometry<BatchAttributes>, THREE.MeshBasicMaterial>;
 interface PageBatch {
-  atlas: RgbaSpriteAtlas;
+  key: PageKey;
   geometry: THREE.BufferGeometry<BatchAttributes>;
   colour: BatchMesh;
   depth: BatchMesh;
@@ -78,7 +87,7 @@ interface PageBatch {
   attributes: InstanceAttributes;
   transforms: InstanceState[];
 }
-interface SceneBatches { group: THREE.Group; pages: Map<RgbaSpriteAtlas, PageBatch>; spare: PageBatch[]; stopPass: () => void }
+interface SceneBatches { group: THREE.Group; pages: Map<PageKey, PageBatch>; spare: PageBatch[]; stopPass: () => void }
 
 /** Track actual Float32 changes, preserving any ranges not yet consumed by WebGL. */
 class InstanceAttributes {
@@ -165,7 +174,8 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   private readonly retained = new Set<Entry>();
   private members: ReadonlySet<InstancedSpriteMember> = new Set();
   private readonly scenes = new Map<THREE.Scene, SceneBatches>();
-  private readonly draws = new Map<THREE.Scene, Map<RgbaSpriteAtlas, DrawPage>>();
+  private readonly draws = new Map<THREE.Scene, Map<PageKey, DrawPage>>();
+  private readonly pageKeys = new WeakMap<RgbaSpriteAtlas, readonly [PageKey, PageKey]>();
   private readonly matrix = new THREE.Matrix4();
   private readonly frameMatrix = new THREE.Matrix4();
   private readonly frustumMatrix = new THREE.Matrix4();
@@ -223,7 +233,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     foot: THREE.Object3D = model): InstancedSprite {
     const stopPass = registerSceneRenderPass(model, this);
     const entry: Entry = { pass: this, model, foot, visual, colour: new THREE.Color().setRGB(...colour), opacity,
-      erosion: 0, styleVersion: 0, transformVersion: 0, frame: 0, disposed: false,
+      erosion: 0, depthOffset: false, styleVersion: 0, transformVersion: 0, frame: 0, disposed: false,
       show: (key, animation, resolve, frame) => {
         let appearance = this.appearances.get(key);
         if (!appearance) {
@@ -246,6 +256,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         const amount = Math.max(0, Math.min(1, value));
         if (entry.erosion !== amount) { entry.erosion = amount; entry.styleVersion++; }
       },
+      setDepthOffset: enabled => { entry.depthOffset = enabled; },
       dispose: () => {
         if (entry.disposed) return;
         // A display may still list it until its art changes; it draws nothing from now on.
@@ -261,7 +272,25 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   /** The display layer's list of drawn sprites of this pass; it adds and removes members as their art is drawn and released. */
   bindMembers(members: ReadonlySet<InstancedSpriteMember>): void { this.members = members; }
 
-  private createBatch(scene: SceneBatches, atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial, capacity: number): PageBatch {
+  private pageKey(atlas: RgbaSpriteAtlas, offset: boolean): PageKey {
+    let keys = this.pageKeys.get(atlas);
+    if (!keys) this.pageKeys.set(atlas, keys = [{ atlas, offset: false }, { atlas, offset: true }]);
+    return keys[offset ? 1 : 0];
+  }
+
+  /** An offset batch draws after the ordinary ones, a few depth-buffer steps towards the camera. */
+  private static layer(batch: PageBatch): void {
+    const { offset } = batch.key;
+    batch.colour.renderOrder = offset ? -.39 : -.4; batch.depth.renderOrder = offset ? -.395 : -.41;
+    for (const material of [batch.colour.material, batch.depth.material]) {
+      if (material.polygonOffset === offset) continue;
+      material.polygonOffset = offset; material.polygonOffsetFactor = 0; material.polygonOffsetUnits = offset ? DEPTH_OFFSET_UNITS : 0;
+      material.needsUpdate = true;
+    }
+  }
+
+  private createBatch(scene: SceneBatches, key: PageKey, source: THREE.MeshBasicMaterial, capacity: number): PageBatch {
+    const { atlas } = key;
     const geometry = new THREE.BufferGeometry<BatchAttributes>();
     geometry.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0], 3));
     geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2));
@@ -286,12 +315,13 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       mesh.raycast = () => {};
     }
     colour.name = 'ArchiveSpriteInstances:colour'; depth.name = 'ArchiveSpriteInstances:depth';
-    colour.renderOrder = -.4; depth.renderOrder = -.41;
     depth.instanceMatrix = colour.instanceMatrix;
     colour.setColorAt(0, new THREE.Color(1, 1, 1));
     colour.instanceColor!.setUsage(THREE.DynamicDrawUsage);
     scene.group.add(depth, colour);
-    return { atlas, geometry, colour, depth, capacity, attributes: new InstanceAttributes(), transforms: [] };
+    const batch: PageBatch = { key, geometry, colour, depth, capacity, attributes: new InstanceAttributes(), transforms: [] };
+    InstancedArchiveSprites.layer(batch);
+    return batch;
   }
 
   private disposeBatch(batch: PageBatch): void {
@@ -380,10 +410,11 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       if (!spatial.visible) continue;
       let pages = draws.get(scene);
       if (!pages) draws.set(scene, pages = new Map());
-      let page = pages.get(atlas);
+      const key = this.pageKey(atlas, entry.depthOffset);
+      let page = pages.get(key);
       if (!page) {
         const first = appearance.frames[0][0];
-        pages.set(atlas, page = { source: first.materials[first.image.sampler ?? 0], members: [], entries: [], count: 0, sortDirty: false });
+        pages.set(key, page = { source: first.materials[first.image.sampler ?? 0], members: [], entries: [], count: 0, sortDirty: false });
       }
       const world = entry.foot.matrixWorld.elements, view = camera.matrixWorldInverse.elements;
       const x = world[12], y = world[13], z = world[14];
@@ -417,13 +448,14 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     }
     for (const [scene, batches] of this.scenes) {
       const visiblePages = draws.get(scene);
-      for (const [atlas, batch] of batches.pages) {
+      for (const [key, batch] of batches.pages) {
         batch.colour.count = batch.depth.count = 0;
-        if (!visiblePages?.get(atlas)?.count) { batches.pages.delete(atlas); this.recycleBatch(batches, batch); }
+        if (!visiblePages?.get(key)?.count) { batches.pages.delete(key); this.recycleBatch(batches, batch); }
       }
-      for (const [atlas, page] of draws.get(scene) ?? []) {
+      for (const [key, page] of draws.get(scene) ?? []) {
         if (!page.count) continue;
-        let batch = batches.pages.get(atlas);
+        const { atlas } = key;
+        let batch = batches.pages.get(key);
         if (!batch || batch.capacity < page.entries.length) {
           if (batch) this.recycleBatch(batches, batch);
           const source = page.source, count = page.entries.length;
@@ -432,14 +464,15 @@ export class InstancedArchiveSprites implements SceneRenderPass {
             if (candidate.capacity >= count && (!reusable || candidate.capacity < reusable.capacity)) reusable = candidate;
           if (reusable) {
             batches.spare.splice(batches.spare.indexOf(reusable), 1);
-            batch = reusable; batch.atlas = atlas;
+            batch = reusable; batch.key = key;
             batches.group.add(batch.depth, batch.colour);
             for (const mesh of [batch.colour, batch.depth]) {
               const material = mesh.material;
               material.map = atlas.texture; material.color.copy(source.color);
             }
-          } else batch = spritePerf('createBatch', `${count}`, () => this.createBatch(batches, atlas, source, THREE.MathUtils.ceilPowerOfTwo(Math.max(1, count))));
-          batches.pages.set(atlas, batch);
+            InstancedArchiveSprites.layer(batch);
+          } else batch = spritePerf('createBatch', `${count}`, () => this.createBatch(batches, key, source, THREE.MathUtils.ceilPowerOfTwo(Math.max(1, count))));
+          batches.pages.set(key, batch);
         }
         const uv = batch.geometry.getAttribute('spriteUv');
         const opacity = batch.geometry.getAttribute('spriteOpacity');
@@ -490,7 +523,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     signal?.throwIfAborted();
     this.renderPass(renderer, camera, scene, Infinity, 'compose:prewarm');
     for (const { group, pages } of this.scenes.values()) {
-      for (const batch of pages.values()) renderer.initTexture(batch.atlas.texture);
+      for (const batch of pages.values()) renderer.initTexture(batch.key.atlas.texture);
       await renderer.compileAsync(group, camera);
       signal?.throwIfAborted();
     }

@@ -581,7 +581,7 @@ function constructArchiveSprite(
       instances?.setColour(colour);
     },
     setErosion(amount: number) { if (!disposed) instances?.setErosion(amount); },
-    setDepthOffset(enabled) { if (!disposed) renderer.setDepthOffset(enabled); },
+    setDepthOffset(enabled) { if (!disposed) { renderer.setDepthOffset(enabled); instances?.setDepthOffset(enabled); } },
     setSkin(next) {
       if (disposed) return;
       const replacement = own(next);

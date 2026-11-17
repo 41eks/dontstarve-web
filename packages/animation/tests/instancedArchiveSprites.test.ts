@@ -183,3 +183,23 @@ it('retains all unconsumed attribute update ranges across passes', () => {
     expect(uv.updateRanges).toEqual([{ start: 0, count: 11 }]);
   } finally { s.dispose(); }
 });
+
+it('draws a depth-offset instance in its own batch, towards the camera after the ordinary ones, and moves it back', () => {
+  const s = setup();
+  try {
+    const batches = () => s.scene.getObjectByName('InstancedArchiveSprites')!.children
+      .filter((mesh): mesh is THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> => mesh instanceof THREE.InstancedMesh);
+    const colours = () => batches().filter(mesh => mesh.name === 'ArchiveSpriteInstances:colour');
+    s.render();
+    expect(colours().map(mesh => [mesh.count, mesh.renderOrder, mesh.material.polygonOffset])).toEqual([[3, -.4, false]]);
+    // fire.lua SetFinalOffset: the owner effect is drawn after the ordinary batches, a few depth steps nearer the camera.
+    s.entries[1].handle.setDepthOffset(true); s.render();
+    const offset = colours().find(mesh => mesh.material.polygonOffset)!;
+    expect(colours().map(mesh => mesh.count).sort()).toEqual([1, 2]);
+    expect([offset.count, offset.renderOrder, offset.material.polygonOffsetUnits]).toEqual([1, -.39, -4]);
+    const depth = batches().find(mesh => mesh.name === 'ArchiveSpriteInstances:depth' && mesh.material.polygonOffset)!;
+    expect([depth.count, depth.renderOrder > -.4]).toEqual([1, true]);
+    s.entries[1].handle.setDepthOffset(false); s.render();
+    expect(colours().map(mesh => [mesh.count, mesh.renderOrder, mesh.material.polygonOffset])).toEqual([[3, -.4, false]]);
+  } finally { s.dispose(); }
+});

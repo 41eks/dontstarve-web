@@ -1,16 +1,23 @@
 import { addComponent } from './components';
 import { createEffect, createSignal, watchSignal } from '@dontstarve-web/signals';
-import type { LoadedSpriteSource } from '@dontstarve-web/display';
+import type { ArchiveSpriteSource } from '@dontstarve-web/display';
 import type { BurnFX } from '../../componets/src/burnable';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { FireFX, type FireFXInst, type FireFXLevel, type FireFXLight } from '../../componets/src/firefx';
 import { spawnLightEntity } from './localLight';
-import { createPrefabEntity, type PrefabComponents, type PrefabInstance } from './prefabInstance';
+import { createArchiveEntity, type PrefabComponents, type PrefabInstance } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { TILE_SIZE } from './tile';
 
 export const FIRE_ID = 'fire';
 export const FIRE_ARCHIVE = 'fire.zip';
+/** fire.lua SetBank("fire"), SetBuild("fire"). */
+export const FIRE_ART = { animationArchive: FIRE_ARCHIVE, buildArchives: [FIRE_ARCHIVE], bank: 'fire' };
+/**
+ * Every level loops, so the shared batches draw them all; SetFinalOffset(FINALOFFSET_MAX) is the depth offset the
+ * owner's effect declaration gives it, drawn in the offset batches. It stays attached to an owner that may move.
+ */
+export const FIRE_ART_OPTIONS = { instancedAnimations: 'all', dynamicParent: true } as const;
 
 /** fire.lua firelevels. Its controlled-burn clips, heater (heats 30–240) and extinguishsoundtest are not ported. */
 const FIRE_LEVELS: readonly FireFXLevel[] = [
@@ -42,9 +49,9 @@ export class Fire implements BurnFX, FireFXInst {
   private readonly cleanups: (() => void)[] = [];
 
   /** `updates` is firefx.lua's StartUpdatingComponent; without it the owner's Burnable:UpdateFX drives the flicker. */
-  constructor(source: LoadedSpriteSource, owner: PrefabInstance, updates?: ComponentUpdates) {
+  constructor(source: ArchiveSpriteSource, owner: PrefabInstance, updates?: ComponentUpdates) {
     this.owner = owner;
-    const { instance, display } = createPrefabEntity(FIRE_ID, source, { name: FIRE_LEVELS[0].anim, billboard: true }, FIRE_ID,
+    const { instance, display } = createArchiveEntity(FIRE_ID, source, { name: FIRE_LEVELS[0].anim, billboard: true }, FIRE_ID,
       instance => {
         instance.addTag('FX');
         instance.addTag('HASHEATER');

@@ -165,3 +165,18 @@ it('haunting fails with the source cooldown, and c_spawn plants save and reload 
   scheduler.advance(.2);
   expect(hauntable.IsHaunted()).toBe(false);
 });
+
+it('draws its fire in the shared batches, offset towards the camera after the plant', async () => {
+  const { plants, scene } = setup();
+  const plant = plants.spawn(MARSH_PLANT_ID, new THREE.Vector3());
+  plant.components.burnable!.Ignite();
+  const [fire] = plant.sprite.fx.peek().values();
+  await fire.display.artLoaded(); await new Promise(resolve => setTimeout(resolve, 0));
+  // fire.lua SetFinalOffset(FINALOFFSET_MAX): the effect declaration asks for the depth offset; the batch draws it.
+  expect(fire.sprite.sprite.peek()).toMatchObject({ clip: { name: 'level3', loop: true }, depthOffset: true });
+  let ownShown = 0;
+  fire.display.model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) ownShown++; });
+  expect(ownShown).toBe(0);
+  expect(fire.display.model.parent).toBe(plant.transform.model);
+  expect(scene.children).toContain(plant.transform.model);
+});

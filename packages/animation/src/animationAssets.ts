@@ -243,7 +243,7 @@ export class FrameGeometryCache {
 const CULL_RADIUS_SCALE = 2;
 const tightSphere = new THREE.Sphere();
 /** Depth-buffer steps towards the camera: past float rounding between coplanar billboards, far below any real gap. */
-const DEPTH_OFFSET_UNITS = -4;
+export const DEPTH_OFFSET_UNITS = -4;
 
 export class SpriteFrameRenderer {
   private readonly visual: THREE.Group;
@@ -286,7 +286,7 @@ export class SpriteFrameRenderer {
   /**
    * Draw towards the camera by a few depth-buffer steps, through private copies of the shown materials. An effect drawn
    * after its owner on the owner's plane is then not hidden by the depth the owner's instance batch wrote, whatever the
-   * camera heading. Frames drawn by an instance batch are not affected.
+   * camera heading. Frames drawn by an instance batch take the offset from their batch (`InstancedSprite.setDepthOffset`).
    */
   setDepthOffset(enabled: boolean): void {
     if (enabled === (this.offsetCopies !== undefined)) return;

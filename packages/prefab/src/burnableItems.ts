@@ -1,4 +1,5 @@
 import { addComponent } from './components';
+import { FIRE_ART, FIRE_ART_OPTIONS } from './fire';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { createRenderEffect, createSignal, readonlySignal, getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { createArchiveEntity } from './prefabInstance';
@@ -110,7 +111,7 @@ export function bindBurnableItem(inst: ItemEntity, world: ItemPrefabWorld, fxLev
   const controller = inst.getComponent<BurnableItemController>('burnable_item')!;
   controller.bind(world);
   if (controller.ownsClock) inst.onRemove(world.componentUpdates.register(controller));
-  const fireSource = world.sprites.archive({ animationArchive: 'fire.zip', buildArchives: ['fire.zip'], bank: 'fire' }, { dynamicParent: true });
+  const fireSource = world.sprites.archive(FIRE_ART, FIRE_ART_OPTIONS);
   // fire.lua: the burning fx entity, drawn by its own display as a child of the item; tags FX and HASHEATER.
   const fire = createArchiveEntity('fire', fireSource, { name: `level${fxLevel}`, billboard: true }, 'fire', undefined, inst.status);
   for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);

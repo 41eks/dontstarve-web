@@ -1,14 +1,14 @@
 import type * as THREE from 'three';
 import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import { prefabInstance, PrefabInstance } from './prefabInstance';
-import { SpriteResources, type LoadedSpriteSource } from '@dontstarve-web/display';
+import { SpriteResources, type ArchiveSpriteSource, type LoadedSpriteSource } from '@dontstarve-web/display';
 import { addComponent, removeComponent } from './components';
 import { Burnable, type BurnableInst, type BurnFXData } from '../../componets/src/burnable';
 import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { CAMPFIREFIRE_ARCHIVE, CAMPFIREFIRE_ID, CampfireFire } from './campfirefire';
-import { Fire, FIRE_ARCHIVE, FIRE_ID } from './fire';
+import { Fire, FIRE_ART, FIRE_ART_OPTIONS, FIRE_ID } from './fire';
 import { TILE_SIZE } from './tile';
 
 /** tuning.lua TREE_BURN_TIME. */
@@ -16,7 +16,7 @@ export const TREE_BURN_TIME = 45;
 
 /** Owner of fire.lua's and campfirefire.lua's shared art; the world injects one to whatever burns. */
 export class FireFxHost {
-  readonly source: LoadedSpriteSource;
+  readonly source: ArchiveSpriteSource;
   private readonly campfireSource: LoadedSpriteSource;
   private readonly fires = new Set<Fire | CampfireFire>();
   private readonly resources: SpriteResources;
@@ -25,7 +25,7 @@ export class FireFxHost {
   private constructor(assetBaseUrl?: string, updates?: ComponentUpdates) {
     this.updates = updates;
     this.resources = new SpriteResources(assetBaseUrl);
-    this.source = this.resources.factory({ animationArchive: FIRE_ARCHIVE, buildArchive: FIRE_ARCHIVE });
+    this.source = this.resources.archive(FIRE_ART, FIRE_ART_OPTIONS);
     this.campfireSource = this.resources.animated(CAMPFIREFIRE_ARCHIVE, {}, { name: CAMPFIREFIRE_ID });
   }
 
