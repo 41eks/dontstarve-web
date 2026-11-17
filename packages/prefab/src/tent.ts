@@ -16,7 +16,7 @@ export const TENT_ID = 'tent' as const;
 const declaration: BuildingDeclaration = definitions.animatedBuildings.tent;
 
 /** tent.lua MakePlacer("tent_placer", "tent", "tent", "idle"). */
-export const TENT_PLACER = buildingPlacer(declaration);
+export const TENT_PLACER = buildingPlacer(declaration, 'tent');
 /** TUNING.TENT_USES. */
 export const TENT_USES = 15;
 // TUNING.SLEEP_HEALTH_PER_TICK doubled by tent.lua, and TUNING.SLEEP_HUNGER_PER_TICK.

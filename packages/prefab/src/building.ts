@@ -27,12 +27,12 @@ export interface BuildingDeclaration {
   readonly skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
 }
 
-/** MakePlacer(name, bank, build, anim): the same build, in the selected skin. */
-export function buildingPlacer({ archive, buildArchive, buildLabel, name, idleAnimation = 'idle', previewAnimation = idleAnimation, skinArchives, skinSymbols,
-  baseSymbols, skinAnimationBanks }: BuildingDeclaration): BuildingPlacerSpec {
+/** MakePlacer(name, bank, build, anim): the building's own bank and build, in the selected skin. */
+export function buildingPlacer({ archive, buildArchive = archive, buildLabel, name, idleAnimation = 'idle', previewAnimation = idleAnimation, skinArchives, skinSymbols,
+  baseSymbols, skinAnimationBanks }: BuildingDeclaration, bank: string): BuildingPlacerSpec {
   return { buildLabel, name, animation: previewAnimation, art: (resources, skinId) => {
     if (skinId !== undefined && !skinArchives?.[skinId]) throw new Error(`Unsupported ${name} skin: ${skinId}`);
-    return { source: resources.animated(archive, buildArchive ? { buildArchive } : {}, { name, skinSymbols }), initialize: entity => {
+    return { archive: { animationArchive: archive, buildArchives: [buildArchive], bank }, initialize: entity => {
       entity.skinId = skinId;
       if (skinArchives) entity.sprite.setSkinSource({ art: resources.archives, archives: skinArchives, ...skinSymbols ? { symbols: skinSymbols } : {},
         ...baseSymbols ? { baseSymbols } : {}, ...skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {} });

@@ -26,7 +26,7 @@ export const MOONBASE_ID = 'moonbase' as const;
 const declaration: BuildingDeclaration = definitions.animatedBuildings.moonbase;
 
 /** The build flow's placer for moonbase, drawn from its own bank and build. */
-export const MOONBASE_PLACER = buildingPlacer(declaration);
+export const MOONBASE_PLACER = buildingPlacer(declaration, 'moonbase');
 export const MOONBASE_DAMAGED_WORK = 4;
 export const MOONBASE_COMPLETE_WORK = 6;
 export const MOONBASE_CHARGE_DELAY = 10;

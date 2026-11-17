@@ -11,7 +11,7 @@ export type CampfireId = typeof CAMPFIRE_ID;
 const declaration = definitions.animatedBuildings.campfire;
 
 /** campfire.lua MakePlacer("campfire_placer", "campfire", "campfire", "preview"). */
-export const CAMPFIRE_PLACER = buildingPlacer(declaration);
+export const CAMPFIRE_PLACER = buildingPlacer(declaration, 'campfire');
 
 function onbuilt(inst: PrefabInstance): void {
   inst.sprite.playOnce('place');

@@ -154,6 +154,9 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect(previewInstance.sprite).toBe(sprite);
     expect(sprite.sprite.peek().source?.bank).toBe('fence_thin');
     expect(previewInstance.skinId).toBe('fence_rose');
+    // The translucent, skinned placer is drawn by the shared batches, after its bank swap too.
+    await prefabDisplay(preview)!.artLoaded(); await settle();
+    expect(meshes(preview).filter(mesh => mesh.visible).length).toBe(0);
     // The placer has no LIGHT/HAMMER target and no fence tags.
     expect(findActionEntity(preview)).toBeUndefined();
     expect(previewInstance.hasTag('fence')).toBe(false);

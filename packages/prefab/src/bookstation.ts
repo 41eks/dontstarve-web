@@ -25,7 +25,7 @@ const declaration = definitions.animatedBuildings.bookstation;
 export const BOOKSTATION_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives;
 
 /** bookstation.lua MakePlacer("bookstation_placer", "bookstation", "bookstation", "idle"). */
-export const BOOKSTATION_PLACER = buildingPlacer(declaration);
+export const BOOKSTATION_PLACER = buildingPlacer(declaration, 'bookstation');
 
 // tuning.lua: seg_time, BOOKSTATION_BONUS_RANGE, BOOKSTATION_WICKER_BONUS.
 const BOOKSTATION_RESTORE_TIME = 30;

@@ -15,7 +15,7 @@ export type IceBoxId = typeof ICE_BOX_ID;
 const declaration = definitions.animatedBuildings.icebox;
 
 /** icebox.lua MakePlacer("icebox_placer", "icebox", "ice_box", "closed"). */
-export const ICE_BOX_PLACER = buildingPlacer(declaration);
+export const ICE_BOX_PLACER = buildingPlacer(declaration, 'icebox');
 
 function onopen(inst: PrefabInstance): void {
   inst.sprite.playOnce('open');

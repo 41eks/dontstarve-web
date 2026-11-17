@@ -17,7 +17,7 @@ export type TreasureChestId = typeof TREASURE_CHEST_ID;
 const declaration = definitions.animatedBuildings.treasurechest;
 
 /** treasurechest.lua MakePlacer("treasurechest_placer", "chest", "treasure_chest", "closed"). */
-export const TREASURE_CHEST_PLACER = buildingPlacer(declaration);
+export const TREASURE_CHEST_PLACER = buildingPlacer(declaration, 'chest');
 
 /** treasurechest.lua MakeChest: shared by the chests it builds, each with its own burnt and sound branches here. */
 export function onopen(inst: PrefabInstance): void {

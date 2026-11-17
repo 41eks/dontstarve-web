@@ -119,7 +119,7 @@ function createmachine(level: 3 | 4, name: MagicPrototyperId, soundprefix: 'lvl3
     }
 
     return {
-        placer: buildingPlacer(declaration),
+        placer: buildingPlacer(declaration, name),
         prefab: (world: PrefabWorldContext) => ({ ...buildingPrefab(declaration, name, .4, () => fn(world), world), minimapIcon: `${name}.png` }),
     };
 }

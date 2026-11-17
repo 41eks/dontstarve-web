@@ -16,7 +16,7 @@ const HAUNT_TINY = 1;
 
 const declaration = definitions.animatedBuildings.pandoraschest;
 
-export const PANDORAS_CHEST_PLACER = buildingPlacer(declaration);
+export const PANDORAS_CHEST_PLACER = buildingPlacer(declaration, 'pandoras_chest');
 
 /**
  * treasurechest.lua MakeChest("pandoraschest", "pandoras_chest", "pandoras_chest", indestructible = true,

@@ -21,7 +21,7 @@ const declaration: BuildingDeclaration = definitions.animatedBuildings.sculpting
 export const SCULPTING_TABLE_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives!;
 
 /** sculptingtable.lua MakePlacer("sculptingtable_placer", "sculpting_station", "sculpting_station", "idle"). */
-export const SCULPTING_TABLE_PLACER = buildingPlacer(declaration);
+export const SCULPTING_TABLE_PLACER = buildingPlacer(declaration, 'sculpting_station');
 
 /** sculptingtable.lua sculptable_materials: swapfile/symbol replace the table's block symbol. */
 export const SCULPTABLE_MATERIALS = {

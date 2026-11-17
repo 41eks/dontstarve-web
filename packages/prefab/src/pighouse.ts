@@ -14,7 +14,7 @@ export type PigHouseId = typeof PIG_HOUSE_ID;
 const declaration = definitions.animatedBuildings.pighouse;
 
 /** pighouse.lua's MakePlacer. */
-export const PIG_HOUSE_PLACER = buildingPlacer(declaration);
+export const PIG_HOUSE_PLACER = buildingPlacer(declaration, 'pig_house');
 
 function onworked(inst: PrefabInstance): void {
   if (inst.hasTag('burnt')) return;

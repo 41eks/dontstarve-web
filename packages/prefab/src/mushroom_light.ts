@@ -14,8 +14,8 @@ export type MushroomLightId = typeof MUSHROOM_LIGHT_IDS[number];
 
 /** mushroom_light.lua MakePlacer(name.."_placer", name, name, "idle"). */
 export const MUSHROOM_LIGHT_PLACERS = {
-  mushroom_light: buildingPlacer(definitions.animatedBuildings.mushroom_light),
-  mushroom_light2: buildingPlacer(definitions.animatedBuildings.mushroom_light2),
+  mushroom_light: buildingPlacer(definitions.animatedBuildings.mushroom_light, 'mushroom_light'),
+  mushroom_light2: buildingPlacer(definitions.animatedBuildings.mushroom_light2, 'mushroom_light2'),
 };
 
 function onworked(inst: PrefabInstance, _worker: Worker, workleft: number): void {

@@ -9,7 +9,7 @@ export const WARDROBE_ID = 'wardrobe' as const;
 const declaration = definitions.animatedBuildings.wardrobe;
 
 /** wardrobe.lua MakePlacer("wardrobe_placer", "wardrobe", "wardrobe", "closed"). */
-export const WARDROBE_PLACER = buildingPlacer(declaration);
+export const WARDROBE_PLACER = buildingPlacer(declaration, 'wardrobe');
 
 /** wardrobe.lua fn(), as far as it is ported: bank/build wardrobe, PlayAnimation("closed") and the obstacle. Appearance only. */
 export class WardrobeInstance extends PrefabInstance {

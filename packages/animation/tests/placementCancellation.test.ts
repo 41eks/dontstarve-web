@@ -4,10 +4,12 @@ import { playerDoer } from './playerDoer';
 import { prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import { actionTool } from './actionFixtures';
 import * as THREE from 'three';
+import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createAnimatedSpriteSource } from '../src/sprite';
 import { createStaticSpriteFactory, type StaticSpriteController } from '../src/wallSprite';
 import { setSpriteController } from '../src/spriteController';
+import { InstancedArchiveSprites, type InstancedSprite } from '../src/instancedArchiveSprites';
 import { PrefabDisplayGroup, SpriteResources, SpriteState } from '../../display/src';
 import { BuildingPlacer } from '../../prefab/src/buildingPlacer';
 import { buildingPlacer } from '../../prefab/src/building';
@@ -48,7 +50,28 @@ function model() {
   return result;
 }
 
+/** Fetches of the mirrored assets wait for this, when a test holds them back. */
+let fetchGate: Promise<void> | undefined;
+/** The shared-batch instances retained so far, in order, and those released since. */
+const retained: InstancedSprite[] = [];
+const released = new Set<InstancedSprite>();
+const live = () => retained.filter(instance => !released.has(instance));
+
 beforeEach(() => {
+  fetchGate = undefined; retained.length = 0; released.clear();
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    await fetchGate;
+    const relative = url.slice(url.indexOf('/dst/data/') + '/dst/data/'.length);
+    try { return new Response(await readFile(new URL(`../../../public/dst/data/${relative}`, import.meta.url))); }
+    catch { return new Response(null, { status: 404 }); }
+  }));
+  const retain = InstancedArchiveSprites.prototype.retain;
+  vi.spyOn(InstancedArchiveSprites.prototype, 'retain').mockImplementation(function (this: InstancedArchiveSprites, ...args) {
+    const instance = retain.apply(this, args), dispose = instance.dispose;
+    instance.dispose = () => { released.add(instance); dispose(); };
+    retained.push(instance);
+    return instance;
+  });
   vi.spyOn(GroundItemAssets.prototype, 'loadAnimation').mockResolvedValue({} as never);
   vi.spyOn(GroundItemAssets.prototype, 'loadBuild').mockResolvedValue({} as never);
   vi.mocked(createAnimatedSpriteSource).mockImplementation(async () => ({
@@ -75,7 +98,9 @@ afterEach(() => {
 
 /** A building's build flow as the application wires it: its placer, and the shared manager that spawns what it builds. */
 function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () => void) {
-  const declaration = { archive: 'building.zip', name: 'Building', buildLabel: 'building', skinArchives: { selected_skin: 'dynamic/selected_skin.zip' } };
+  // The placer draws treasure_chest's shared archive; the building it spawns is a mocked animated sprite.
+  const declaration = { archive: 'treasure_chest.zip', name: 'Building', buildLabel: 'building', idleAnimation: 'closed',
+    skinArchives: { treasurechest_cake: 'dynamic/treasurechest_cake.zip' } };
   const displays = new PrefabDisplayGroup(world.scene), sprites = new SpriteResources();
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, {}, { building: {
     fn: () => {
@@ -85,7 +110,7 @@ function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () =
     },
     source: sprites.animated(declaration.archive, {}, { name: declaration.name }), skins: declaration.skinArchives, alignBottom: true,
   } });
-  const placer = new BuildingPlacer<'building'>(world, () => buildingPlacer(declaration), consume,
+  const placer = new BuildingPlacer<'building'>(world, () => buildingPlacer(declaration, 'chest'), consume,
     (buildId, position, skinId) => { prefabs.spawn(buildId, position, undefined, skinId).PushEvent('onbuilt', undefined); });
   let disposed = false;
   return {
@@ -150,13 +175,13 @@ function setup(kind: 'animated' | 'wall') {
     recipeId: 'building', productId: 'building', productCount: 1,
     ingredients: { log: 2 }, buffered: kind === 'animated',
   };
-  expect(store.craft(recipe, kind === 'animated' ? 'selected_skin' : undefined)).toBe(true);
+  expect(store.craft(recipe, kind === 'animated' ? 'treasurechest_cake' : undefined)).toBe(true);
   const consume = vi.fn(() => store.takeBuffered('building') || store.takeItem('building'));
   const onbuilt = vi.fn();
   const placement = kind === 'animated' ? buildingFlow(world, consume, onbuilt) : wallFlow(world, consume);
   const begin = () => placement.begin('building', store.bufferedSkin('building'));
   const click = (button: number) => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
-  const load = kind === 'animated' ? vi.mocked(createAnimatedSpriteSource) : vi.mocked(createStaticSpriteFactory);
+  const load = vi.mocked(createStaticSpriteFactory);
   return { world, cameraFacing, cursor, store, recipe, consume, onbuilt, placement, begin, click, load };
 }
 
@@ -168,7 +193,9 @@ it('an accepted action cancels a paid preview through events and skips its own c
   const paidState = store.exportState();
   const preview = world.scene.children[1];
   await vi.waitFor(() => expect(lookupPrefabInstance(preview)!.sprite.loaded).toBe(true));
-  const geometry = vi.spyOn((preview.children[0].children[0].children[0] as THREE.Mesh).geometry, 'dispose');
+  // The placer is drawn by its resources' shared batches.
+  expect(retained).toHaveLength(1);
+  const released = vi.spyOn(retained[0], 'dispose');
   const equipped = createEquipmentExistenceState('HANDS');
   const tool = actionTool('reskin_tool');
   const model = withEntity(new THREE.Group(), 'icebox'); world.scene.add(model);
@@ -193,7 +220,7 @@ it('an accepted action cancels a paid preview through events and skips its own c
     expect(cast()).toBe(true);
     expect(cancel).toHaveBeenCalledOnce(); // The owner resets itself once; its event skips itself.
     expect(world.scene.children).toEqual([existing, model]);
-    expect(geometry).toHaveBeenCalledOnce();
+    expect(released).toHaveBeenCalledOnce();
     expect(cursor.hidden).toBe(true);
     expect(store.exportState()).toEqual(paidState);
     expect(consume).not.toHaveBeenCalled();
@@ -234,11 +261,11 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
 
   if (kind === 'animated') {
     expect(store.craft(recipe)).toBe(false);
-    expect(store.bufferedSkin('building')).toBe('selected_skin');
+    expect(store.bufferedSkin('building')).toBe('treasurechest_cake');
   }
   await begin();
   expect(store.exportState()).toEqual(paidState);
-  if (kind === 'animated') expect(lookupPrefabInstance(world.scene.children[1])?.skinId).toBe('selected_skin');
+  if (kind === 'animated') expect(lookupPrefabInstance(world.scene.children[1])?.skinId).toBe('treasurechest_cake');
   click(0);
   expect(consume).toHaveBeenCalledTimes(1);
   expect(displayLightOverride(world.scene.children[1])).toBe(0);
@@ -251,8 +278,9 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
 
 it.each(['animated', 'wall'] as const)('%s does not resurrect a preview cancelled while assets load', async (kind) => {
   const { world, cursor, store, consume, placement, begin, click, load } = setup(kind);
-  let resolve!: (value: never) => void;
-  load.mockImplementationOnce((() => new Promise<never>((done) => { resolve = done; })) as never);
+  let resolve!: (value: never) => void, release!: () => void;
+  if (kind === 'animated') fetchGate = new Promise(done => { release = done; });
+  else load.mockImplementationOnce((() => new Promise<never>((done) => { resolve = done; })) as never);
   const pending = begin();
   await new Promise(resolve => setTimeout(resolve, 0));
   const paidState = store.exportState();
@@ -264,8 +292,13 @@ it.each(['animated', 'wall'] as const)('%s does not resurrect a preview cancelle
   const source = { create: vi.fn(() => cancelled), disposeSprite: (sprite: THREE.Group) => sprite.removeFromParent(), dispose: vi.fn() };
   await begin();
   const resumed = world.scene.children[0];
-  resolve(source as never);
+  if (kind === 'animated') release(); else resolve(source as never);
   await pending;
+  if (kind === 'animated') {
+    // Whatever the cancelled placer's load built is released: only the resumed placer stays in the batches.
+    await vi.waitFor(() => expect(lookupPrefabInstance(resumed)!.sprite.loaded).toBe(true));
+    expect(live()).toHaveLength(1);
+  }
   expect(world.scene.children).toEqual([resumed]);
   expect(cursor.hidden).toBe(false);
   expect(consume).not.toHaveBeenCalled();
@@ -284,10 +317,13 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
     for (const model of world.scene.children) expect(lookupPrefabInstance(model)!.sprite.loaded).toBe(true);
   });
   const resources = world.scene.children.flatMap((model) => {
-    // A resident building returns its sprite to the shared source, which keeps the atlas materials.
+    // A resident building returns its sprite to the shared source, which keeps the atlas materials; an animated
+    // placer releases its instance in the shared batches.
+    if (kind === 'animated' && lookupPrefabInstance(model)!.hasTag('placer')) return [vi.spyOn(live()[0], 'dispose')];
     const mesh = model.children[0].children[0].children[0] as THREE.Mesh;
     return [vi.spyOn(mesh.geometry, 'dispose')];
   });
+  expect(resources).toHaveLength(2);
   placement.dispose(); placement.dispose();
   expect(world.scene.children).toEqual([]);
   expect(placement.exportRecords()).toEqual([]);

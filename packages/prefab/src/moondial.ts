@@ -20,7 +20,7 @@ const declaration: BuildingDeclaration = definitions.animatedBuildings.moondial;
 export const MOONDIAL_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives!;
 
 /** moondial.lua MakePlacer("moondial_placer", "moondial", "moondial_build", "idle_new"). */
-export const MOONDIAL_PLACER = buildingPlacer(declaration);
+export const MOONDIAL_PLACER = buildingPlacer(declaration, 'moondial');
 
 const WANING_BUILD = 'moondial_waning_build';
 const REFLECTION_SYMBOLS = ['reflection_quarter', 'reflection_half', 'reflection_threequarter'] as const;

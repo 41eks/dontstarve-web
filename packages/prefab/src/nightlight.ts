@@ -14,7 +14,7 @@ export type NightLightId = typeof NIGHT_LIGHT_ID;
 const declaration = definitions.animatedBuildings.nightlight;
 
 /** nightlight.lua MakePlacer("nightlight_placer", "nightmare_torch", "nightmare_torch", "idle"). */
-export const NIGHT_LIGHT_PLACER = buildingPlacer(declaration);
+export const NIGHT_LIGHT_PLACER = buildingPlacer(declaration, 'nightmare_torch');
 
 function onworked(inst: PrefabInstance): void {
   if (inst.hasTag('burnt')) return;

@@ -819,11 +819,11 @@ export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, 
 
 /** A new entity drawn with a shared archive sprite; `clip.held` is a one-shot clip that rests on its last frame. */
 export function createArchiveEntity<Instance extends PrefabInstance<SpriteState, object> & AnimatedSpriteInstance = PrefabInstance>(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip<Instance>, name?: string,
-  initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>):
+  initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom'>):
   { instance: Instance; display: PrefabDisplay } {
   const instance = entityInstance(prefab, clip), state = instance.sprite;
   initialize?.(instance);
-  const display = new PrefabDisplay({ root: instance.transform.model, name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });
+  const display = new PrefabDisplay({ root: instance.transform.model, ...displayOptions, name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
 }

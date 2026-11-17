@@ -29,7 +29,7 @@ const declaration: BuildingDeclaration = definitions.animatedBuildings.birdcage;
 export const BIRDCAGE_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives!;
 
 /** birdcage.lua MakePlacer("birdcage_placer", "birdcage", "bird_cage", "idle_empty"). */
-export const BIRDCAGE_PLACER = buildingPlacer(declaration);
+export const BIRDCAGE_PLACER = buildingPlacer(declaration, 'birdcage');
 
 /** birdcage.lua CAGE_STATES: the suffix of the idle and hit clips, and the saved CAGE_STATE. */
 export const CAGE_STATES = {

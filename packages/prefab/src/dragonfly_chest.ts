@@ -15,7 +15,7 @@ export type DragonflyChestId = typeof DRAGONFLY_CHEST_ID;
 const declaration = definitions.animatedBuildings.dragonflychest;
 
 /** dragonfly_chest.lua MakePlacer("dragonflychest_placer", "dragonfly_chest", "dragonfly_chest", "closed"). */
-export const DRAGONFLY_CHEST_PLACER = buildingPlacer(declaration);
+export const DRAGONFLY_CHEST_PLACER = buildingPlacer(declaration, 'dragonfly_chest');
 
 function onopen(inst: PrefabInstance): void {
   inst.sprite.playOnce('open');

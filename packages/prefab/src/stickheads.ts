@@ -27,8 +27,8 @@ const DECLARATIONS: Readonly<Record<StickHeadId, BuildingDeclaration>> = {
 
 /** stickheads.lua MakePlacer(name.."_placer", bankandbuild, bankandbuild, "idle_asleep"). */
 export const STICK_HEAD_PLACERS = {
-    [PIG_HEAD_ID]: buildingPlacer(DECLARATIONS[PIG_HEAD_ID]),
-    [MERM_HEAD_ID]: buildingPlacer(DECLARATIONS[MERM_HEAD_ID]),
+    [PIG_HEAD_ID]: buildingPlacer(DECLARATIONS[PIG_HEAD_ID], 'pig_head'),
+    [MERM_HEAD_ID]: buildingPlacer(DECLARATIONS[MERM_HEAD_ID], 'merm_head'),
 };
 
 const SHOWN = readonlySignal(createSignal(true));

@@ -1,17 +1,18 @@
-import * as THREE from 'three';
+import type * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { SpriteResources } from '@dontstarve-web/display';
 import { ArchiveSpriteAssets, createSharedArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
+import { PLACER_ARCHIVE_OPTIONS } from './buildingPlacer';
 import type { DeployPlacerMap } from './deployMap';
 import { FARM_PLOW_ITEM_ID, FARM_PLOW_PLACER_ART } from './farm_plow';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { createArchiveEntity, createPrefabEntity } from './prefabInstance';
+import { createArchiveEntity } from './prefabInstance';
 import type { WorldContext } from './worldContext';
 
 interface Placer {
-  readonly instance: ReturnType<typeof createPrefabEntity>['instance'];
-  readonly display: ReturnType<typeof createPrefabEntity>['display'];
+  readonly instance: ReturnType<typeof createArchiveEntity>['instance'];
+  readonly display: ReturnType<typeof createArchiveEntity>['display'];
   /** placer:LinkEntity: follows the placer's visibility. */
   readonly linked?: Pick<Placer, 'instance' | 'display'>;
   /** The hidden/shown state its sprite json was last told. */
@@ -63,9 +64,10 @@ export class DeployPlacer {
   }
 
   private createGridPlacer(item: ItemEntity): void {
-    // A private colour copy: the placer tints only itself.
+    // A private colour copy: the placer tints only itself. Its looping anim is drawn by the shared batches.
     const create = (clip: { name: string; loop: boolean }) => createSharedArchiveSprite(this.gridAssets, { animationArchive: 'gridplacer.zip',
-      buildArchives: ['gridplacer.zip'], bank: 'gridplacer', animation: clip.name, loop: clip.loop }, { name: 'TurfGridPlacer', colour: [1, 1, 1] });
+      buildArchives: ['gridplacer.zip'], bank: 'gridplacer', animation: clip.name, loop: clip.loop },
+      { name: 'TurfGridPlacer', colour: [1, 1, 1], instancedAnimations: 'all' });
     void create({ name: 'anim', loop: true }).then(initial => {
       if (this.disposed || this.item !== item) { initial.dispose(); return; }
       const entity = createArchiveEntity('gridplacer', { create, initial }, { name: 'anim' }, 'TurfGridPlacer');
@@ -90,8 +92,8 @@ export class DeployPlacer {
   /** farm_plow.lua placer_fn: snap_to_tile, with the tile_outline linked. */
   private createPlowPlacer(): void {
     const { animation, ...art } = FARM_PLOW_PLACER_ART;
-    // Placers own private translucent material copies, tinted only for themselves.
-    const appearance = { opacity: .65, colour: [1, 1, 1] as [number, number, number] };
+    // Placers own private translucent material copies, tinted only for themselves, drawn by the shared batches.
+    const appearance = PLACER_ARCHIVE_OPTIONS;
     const entity = createArchiveEntity('FarmPlowPlacer', this.resources.archive(art, appearance), { name: animation, billboard: true }, 'FarmPlowPlacer');
     const outline = createArchiveEntity('FarmPlowTileOutline', this.resources.archive({ animationArchive: 'gridplacer.zip',
       buildArchives: ['gridplacer.zip'], bank: 'gridplacer' }, appearance), { name: 'anim', billboard: false }, 'FarmPlowTileOutline');
@@ -114,26 +116,26 @@ export class DeployPlacer {
   private createPlantPlacer(item: ItemEntity): void {
     const definition = item.components.deployable?.placer;
     if (!definition) return;
-    const skinArchive = item.skinId && GROUND_ITEM_DEFINITIONS[item.prefab].skinArchives[item.skinId];
-    // The placer's display loads its art; it is hidden until the pointer is over the ground.
-    const entity = createPrefabEntity(`${item.prefab}_placer`, this.resources.factory({ buildArchive: `${definition.build}.zip`,
-      animationArchive: definition.animationArchive ?? `${definition.bank}.zip`, ...skinArchive ? { skinArchive } : {} }),
-      { name: definition.animation, billboard: true }, 'PlantPlacer');
-    const model = entity.display.model, { instance } = entity;
+    const skins = GROUND_ITEM_DEFINITIONS[item.prefab].skinArchives;
+    if (item.skinId !== undefined && !skins[item.skinId]) throw new Error(`Unsupported ${item.prefab} skin: ${item.skinId}`);
+    // MakePlacer(name, bank, build, anim) in the item's skin, drawn by the shared batches. The placer's display loads its
+    // art; it is hidden until the pointer is over the ground.
+    const entity = createArchiveEntity(`${item.prefab}_placer`, this.resources.archive({ animationArchive: definition.animationArchive ?? `${definition.bank}.zip`,
+      buildArchives: [`${definition.build}.zip`], bank: definition.bank }, PLACER_ARCHIVE_OPTIONS), { name: definition.animation, billboard: true }, 'PlantPlacer',
+      placer => {
+        if (item.skinId === undefined) return;
+        placer.skinId = item.skinId;
+        placer.sprite.setSkinSource({ art: this.resources.archives, archives: skins });
+      });
+    const { instance } = entity;
     this.tagPlacer(instance);
     instance.sprite.setVisible(false);
+    let tinted: boolean | undefined;
     this.placer = { instance, display: entity.display, visible: false, place: (point, valid) => {
       instance.copyPosition(point);
-      model.traverse(object => {
-        if (!(object instanceof THREE.Mesh)) return;
-        for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
-          if (!(material instanceof THREE.MeshBasicMaterial)) continue;
-          if (valid) material.color.setRGB(1, 1, 1); else material.color.setRGB(.75, .25, .25);
-          material.opacity = .65;
-        }
-      });
+      if (valid !== tinted) instance.sprite.setColour((tinted = valid) ? [1, 1, 1] : [.75, .25, .25]);
     } };
-    this.world.scene.add(model);
+    this.world.scene.add(entity.display.model);
   }
 
   private tagPlacer(instance: Placer['instance']): void {

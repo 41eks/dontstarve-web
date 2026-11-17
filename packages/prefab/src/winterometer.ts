@@ -19,7 +19,7 @@ const declaration: BuildingDeclaration = definitions.animatedBuildings.winterome
 export const WINTEROMETER_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives!;
 
 /** winterometer.lua MakePlacer("winterometer_placer", "winter_meter", "winter_meter", "idle"). */
-export const WINTEROMETER_PLACER = buildingPlacer(declaration);
+export const WINTEROMETER_PLACER = buildingPlacer(declaration, 'winter_meter');
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 

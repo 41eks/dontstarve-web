@@ -22,7 +22,7 @@ export type FirePitId = typeof FIRE_PIT_ID;
 const declaration = definitions.animatedBuildings.firepit;
 
 /** firepit.lua MakePlacer("firepit_placer", "firepit", "firepit", "preview"). */
-export const FIRE_PIT_PLACER = buildingPlacer(declaration);
+export const FIRE_PIT_PLACER = buildingPlacer(declaration, 'firepit');
 
 /** firepit.lua OnSave plus its fueled component's OnSave, nested as this project's saves hold them. */
 export interface FirePitSaveState { fueled?: FueledSave; queued_charcoal?: true }

@@ -14,7 +14,7 @@ export type SaltBoxId = typeof SALT_BOX_ID;
 const declaration = definitions.animatedBuildings.saltbox;
 
 /** saltbox.lua MakePlacer("saltbox_placer", "saltbox", "saltbox", "closed"). */
-export const SALT_BOX_PLACER = buildingPlacer(declaration);
+export const SALT_BOX_PLACER = buildingPlacer(declaration, 'saltbox');
 
 function onopen(inst: PrefabInstance): void { inst.sprite.playOnce('open'); }
 

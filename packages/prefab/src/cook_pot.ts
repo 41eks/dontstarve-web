@@ -26,7 +26,7 @@ const declaration = definitions.animatedBuildings.cookpot;
 export const COOK_POT_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives;
 
 /** cookpot.lua MakePlacer("cookpot_placer", "cook_pot", "cook_pot", "idle_empty"). */
-export const COOK_POT_PLACER = buildingPlacer(declaration);
+export const COOK_POT_PLACER = buildingPlacer(declaration, 'cook_pot');
 
 /** What the stewer holds, for views and tests: the phase it is in and the seconds left to cook. */
 export interface CookPotState {

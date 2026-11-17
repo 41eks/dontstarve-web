@@ -1,16 +1,18 @@
-import { PrefabDisplayGroup, SpriteResources, StaticImageSpriteState, type LoadedSpriteSource, type PrefabDisplay } from '@dontstarve-web/display';
+import { PrefabDisplayGroup, SpriteResources, StaticImageSpriteState, type PrefabDisplay } from '@dontstarve-web/display';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import * as THREE from 'three';
 import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
-import { createPrefabEntity, PrefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
+import { createArchiveEntity, createPrefabEntity, PrefabInstance, type PrefabEntityDefinition, type PrefabEntityManager } from './prefabInstance';
 import type { WorldContext } from './worldContext';
 
 /** prefabutil.lua MakePlacer(name, bank, build, anim): what a build's placer draws. */
 type StaticImages = NonNullable<Extract<PrefabEntityDefinition<PrefabInstance<StaticImageSpriteState>>, { staticImages: object }>['staticImages']>;
+/** The shared archive a placer draws: its bank, build and animation archives. */
+export type PlacerArchive = Parameters<SpriteResources['archive']>[0];
 export type PlacerArt =
-    | { readonly source: LoadedSpriteSource; readonly staticImages?: never; initialize?(entity: PrefabInstance): void }
-    | { readonly staticImages: StaticImages; readonly source?: never; initialize?(entity: PrefabInstance<StaticImageSpriteState>): void };
+    | { readonly archive: PlacerArchive; readonly staticImages?: never; initialize?(entity: PrefabInstance): void }
+    | { readonly staticImages: StaticImages; readonly archive?: never; initialize?(entity: PrefabInstance<StaticImageSpriteState>): void };
 
 export interface BuildingPlacerSpec {
     readonly buildLabel: string;
@@ -18,8 +20,9 @@ export interface BuildingPlacerSpec {
     readonly name: string;
     readonly animation: string;
     /**
-     * The art it draws and the appearance its entity declares before the first draw: an animated `source`, or, as the
-     * prefab definition pairs them, `staticImages` drawn by an entity whose sprite selects static poses and images.
+     * The art it draws and the appearance its entity declares before the first draw: a shared `archive`, drawn by the
+     * instanced batches, or, as the prefab definition pairs them, `staticImages` drawn by an entity whose sprite selects
+     * static poses and images.
      */
     art(resources: SpriteResources, skinId?: string): PlacerArt;
     /** Stands the placer's lowest point on the ground, as this project draws its buildings (the default). */
@@ -32,6 +35,11 @@ export interface BuildingPlacerSpec {
 
 /** This project draws placers translucent; MakePlacer itself only sets SetLightOverride(1). */
 const PLACER_OPACITY = 0.65;
+/**
+ * A placer's archive art: private translucent materials, with every clip drawn by its resources' shared batches, since
+ * MakePlacer loops its one clip and a placer changes only its bank (SetBank), skin and tint.
+ */
+export const PLACER_ARCHIVE_OPTIONS = { opacity: PLACER_OPACITY, colour: [1, 1, 1], instancedAnimations: 'all' } as const;
 
 /**
  * The build flow, apart from the buildings it makes: a separate `<name>_placer` entity that only declares its clip, light
@@ -99,7 +107,7 @@ export class BuildingPlacer<BuildId extends string> {
             ? createPrefabEntity(prefab, this.sprites.staticFactory(art.staticImages.buildArchive, art.staticImages.options),
                 { ...clip, instance: new PrefabInstance(prefab, new StaticImageSpriteState(clip)) }, `${spec.name}Placer`,
                 entity => { art.initialize?.(entity); declare(entity); }, undefined, options)
-            : createPrefabEntity(prefab, art.source, clip, `${spec.name}Placer`,
+            : createArchiveEntity(prefab, this.sprites.archive(art.archive, PLACER_ARCHIVE_OPTIONS), clip, `${spec.name}Placer`,
                 entity => { art.initialize?.(entity); declare(entity); }, undefined, options);
         this.ents?.track(instance);
         this.displays.mount(display);

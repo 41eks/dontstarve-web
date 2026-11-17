@@ -224,14 +224,19 @@ export function fencePrefabs(world: PrefabWorldContext): Readonly<Record<typeof 
 export function fencePlacer(buildId: FenceId, cameraHeading: ReadonlySignal<number>, snap: BuildingPlacerSpec['snap']): BuildingPlacerSpec {
     return {
         buildLabel: '栅栏', name: FENCE_ID, animation: 'idle', alignBottom: false, snap,
-        art: (resources, skinId) => ({
-            source: resources.factory({ animationArchive: FENCE_ANIMATION_ARCHIVES[0], extraAnimationArchives: FENCE_ANIMATION_ARCHIVES.slice(1), buildArchive: 'fence.zip' }),
-            initialize: placer => {
-                placer.skinId = fenceWorldSkin(buildId, skinId);
-                placer.sprite.setSkinSource({ art: resources.archives, archives: FENCE_SKIN_ARCHIVES });
-                SetOrientation(placer, placerRotation(cameraHeading.peek()), resources.archives);
-            },
-        }),
+        // The shared archive of the bank SetOrientation picks for the first rotation, as the fence's instanceAssets; a
+        // later rotation that changes the bank reaches the archive sprite as AnimState SetBank (setArtSource).
+        art: (resources, skinId) => {
+            const rotation = placerRotation(cameraHeading.peek()), bank = isNarrowRotation(rotation) ? 'fence_thin' : 'fence';
+            return {
+                archive: { animationArchive: `${bank}.zip`, buildArchives: ['fence.zip'], bank },
+                initialize: placer => {
+                    placer.skinId = fenceWorldSkin(buildId, skinId);
+                    placer.sprite.setSkinSource({ art: resources.archives, archives: FENCE_SKIN_ARCHIVES });
+                    SetOrientation(placer, rotation, resources.archives);
+                },
+            };
+        },
         // placer:OnUpdate sets the camera-relative rotation, then placerupdate -> FixUpFenceOrientation(inst, nil).
         onupdatetransform: placer => {
             SetOrientation(placer, placerRotation(cameraHeading.peek()));

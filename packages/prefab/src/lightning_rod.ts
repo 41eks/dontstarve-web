@@ -19,7 +19,7 @@ const declaration: BuildingDeclaration = definitions.animatedBuildings.lightning
 export const LIGHTNING_ROD_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives!;
 
 /** lightningrod.lua MakePlacer("lightning_rod_placer", "lightning_rod", "lightning_rod", "idle"). */
-export const LIGHTNING_ROD_PLACER = buildingPlacer(declaration);
+export const LIGHTNING_ROD_PLACER = buildingPlacer(declaration, 'lightning_rod');
 
 /** lightningrod.lua OnSave: data.charged and data.chargeleft only exist while the rod is charged. */
 export interface LightningRodSaveState { charged: true; chargeleft: number }
