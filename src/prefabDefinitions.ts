@@ -37,6 +37,7 @@ import { STATUEGLOMMER_ID, STATUEGLOMMER_WORK } from '@dontstarve-web/prefab/sta
 import { ATRIUM_GATE_ID, ATRIUM_GATE_TIMER_NAMES } from '@dontstarve-web/prefab/atrium_gate';
 import { RUINS_STATUE_MAGE_ID, RUINS_STATUE_MAGE_NOGEM_ID, RUINS_STATUE_HEAD_ID, RUINS_STATUE_HEAD_NOGEM_ID, RUINS_STATUE_GEMS } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { ATRIUM_STATUE_ID } from '@dontstarve-web/prefab/atrium_statue';
+import { ATRIUM_OVERGROWTH_ARCHIVES, ATRIUM_OVERGROWTH_ID, ATRIUM_OVERGROWTH_STORY_LINES } from '@dontstarve-web/prefab/atrium_overgrowth';
 import { CHESSJUNK_IDS } from '@dontstarve-web/prefab/chessjunk';
 import { CHESSPIECE_MALBATROSS_MARBLE_ID, CHESSPIECE_MARBLE_MATERIAL_ID } from '@dontstarve-web/prefab/chesspieces';
 import { ARCHIVE_CENTIPEDE_HUSK_ID } from '@dontstarve-web/prefab/archive_centipede';
@@ -229,6 +230,17 @@ const oceanVineDeco: PrefabComponentParser = (value, path) => {
   if (animnum === undefined) return {};
   return { animnum: OCEANVINE_DECO_ANIMNUMS.find(n => n === animnum) ?? fail(`${path}.animnum`, 'expected 1..6') };
 };
+/** atrium_overgrowth.lua rune_onsave: data.storyprogress, 1..NUM_STORY_LINES once assigned. */
+const atriumOvergrowth: PrefabComponentParser = (value, path) => {
+  const { atriumOvergrowth: state } = object(value, path, ['atriumOvergrowth']);
+  if (state === undefined) return {};
+  const { storyprogress } = object(state, `${path}.atriumOvergrowth`, ['storyprogress']);
+  if (storyprogress === undefined) return {};
+  if (typeof storyprogress !== 'number' || !Number.isInteger(storyprogress) || storyprogress < 1 || storyprogress > ATRIUM_OVERGROWTH_STORY_LINES) {
+    fail(`${path}.atriumOvergrowth.storyprogress`, `expected 1..${ATRIUM_OVERGROWTH_STORY_LINES}`);
+  }
+  return { atriumOvergrowth: { storyprogress } };
+};
 const archiveStatue = componentParser({ keys: ['archiveProp'], archivePropVariants: 4 });
 const archiveRune = componentParser({ keys: ['archiveProp'], archivePropVariants: 3, archiveStoryLines: 5 });
 const farmSoil = componentParser({ keys: ['farmSoil'] });
@@ -394,6 +406,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   }, true, id => [`ruins_${relicName(id)}.zip`]),
   // atrium_statue.lua has no OnSave data.
   atriumStatues: definePrefabs([ATRIUM_STATUE_ID], empty, true, ['atrium_statue.zip']),
+  atriumOvergrowths: definePrefabs([ATRIUM_OVERGROWTH_ID], atriumOvergrowth, true, ATRIUM_OVERGROWTH_ARCHIVES),
   chessJunk: definePrefabs(CHESSJUNK_IDS, (value, path) => {
     const data = object(value, path, ['chessJunk']);
     if (data.chessJunk === undefined) return {};

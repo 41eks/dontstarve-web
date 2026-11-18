@@ -89,6 +89,7 @@ import { statueGlommerPrefabs } from '@dontstarve-web/prefab/statueglommer';
 import { atriumGatePrefabs } from '@dontstarve-web/prefab/atrium_gate';
 import { ruinsStatuePrefabs, type RuinsStatueId } from '@dontstarve-web/prefab/ruins_statue_mage';
 import { atriumStatuePrefabs } from '@dontstarve-web/prefab/atrium_statue';
+import { atriumOvergrowthPrefabs } from '@dontstarve-web/prefab/atrium_overgrowth';
 import { chessJunkPrefabs } from '@dontstarve-web/prefab/chessjunk';
 import { chesspiecePrefabs } from '@dontstarve-web/prefab/chesspieces';
 import { archiveCentipedeHuskPrefabs } from '@dontstarve-web/prefab/archive_centipede';
@@ -195,6 +196,7 @@ const MANAGER_DEFINITIONS = {
   'ruins_statue_head_nogem': PREFAB_DEFINITIONS.ruinsStatueHeadsNoGem,
   'ruinsrelic': PREFAB_DEFINITIONS.ruinsRelics,
   'atrium_statue': PREFAB_DEFINITIONS.atriumStatues,
+  'atrium_overgrowth': PREFAB_DEFINITIONS.atriumOvergrowths,
   'chessjunk': PREFAB_DEFINITIONS.chessJunk,
   'chesspiece_malbatross_marble': PREFAB_DEFINITIONS.chesspieces,
   'archive_centipede_husk': PREFAB_DEFINITIONS.archiveCentipedeHusks,
@@ -231,6 +233,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.ruinsStatueHeads,
   PREFAB_DEFINITIONS.ruinsStatueHeadsNoGem,
   PREFAB_DEFINITIONS.atriumStatues,
+  PREFAB_DEFINITIONS.atriumOvergrowths,
   PREFAB_DEFINITIONS.buildings,
   PREFAB_DEFINITIONS.lightflierFlowers,
   PREFAB_DEFINITIONS.groundItems,
@@ -452,6 +455,8 @@ export async function createSceneEntities(
   Managers['ruins_statue_head_nogem'] = registerRuinsStatue(registry, 'ruins_statue_head_nogem');
   registerRuinsRelics(registry, worldState);
   registerAtriumStatue(registry);
+  prefabs.register(atriumOvergrowthPrefabs());
+  registry.registerPrefabs(PREFAB_DEFINITIONS.atriumOvergrowths);
   registerChessJunk(registry, worldState);
   registerChesspieces(registry, 'chesspiece_malbatross_marble', worldState);
   registerArchiveCentipedeHusks(registry, 'archive_centipede_husk', worldState);

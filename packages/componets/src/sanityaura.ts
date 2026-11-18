@@ -1,5 +1,7 @@
 /** tuning.lua SANITYAURA_SMALL: 100 / (seg_time * 8). */
 export const SANITYAURA_SMALL = 100 / (30 * 8);
+/** tuning.lua SANITYAURA_SUPERHUGE: 100 / (seg_time * .25). */
+export const SANITYAURA_SUPERHUGE = 100 / (30 * .25);
 
 /** components/sanityaura.lua's fixed-aura branch. */
 export class SanityAura {

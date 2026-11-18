@@ -100,6 +100,18 @@ def atrium_statue_components(data):
     return {}
 
 
+def atrium_overgrowth_components(data):
+    # atrium_overgrowth.lua rune_onsave: data.storyprogress, 1..NUM_STORY_LINES (5) once an inspection assigned it.
+    if set(data) - {'storyprogress'}:
+        raise ValueError(f'Unsupported atrium_overgrowth save state: {data}')
+    if 'storyprogress' not in data:
+        return {}
+    story = data['storyprogress']
+    if type(story) is not int or not 1 <= story <= 5:
+        raise ValueError(f'Unsupported atrium_overgrowth storyprogress: {story}')
+    return {'atriumOvergrowth': {'storyprogress': story}}
+
+
 def atrium_gate_components(data):
     # atrium_gate.lua OnSave plus the component records used by OnLoadPostPass.
     if set(data) - {'vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key',

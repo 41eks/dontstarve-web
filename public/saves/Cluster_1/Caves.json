@@ -230121,6 +230121,56 @@
           "components": {}
         }
       ],
+      "atrium_overgrowth": [
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_overgrowth_index_000001",
+          "transform": {
+            "position": [
+              825.0,
+              0.0,
+              1494.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_overgrowth_index_000002",
+          "transform": {
+            "position": [
+              894.0,
+              0.0,
+              1197.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_overgrowth_index_000003",
+          "transform": {
+            "position": [
+              657.0,
+              0.0,
+              1743.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_atrium_overgrowth_index_000004",
+          "transform": {
+            "position": [
+              591.0,
+              0.0,
+              1743.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "ruins_table": [
         {
           "id": "dst_04E26ADB66396E8D_ruins_table_id_105913",

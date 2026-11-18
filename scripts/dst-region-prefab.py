@@ -26,6 +26,7 @@ ENTITY_WHITELIST = {
     'statueglommer': WORKABLE['statueglommer_components'],
     'atrium_gate': STRUCTURE['atrium_gate_components'],
     'atrium_statue': STRUCTURE['atrium_statue_components'],
+    'atrium_overgrowth': STRUCTURE['atrium_overgrowth_components'],
     'ruinsrelic_table': STRUCTURE['ruins_relic_components']('ruinsrelic_table'),
     'ruinsrelic_chair': STRUCTURE['ruins_relic_components']('ruinsrelic_chair'),
     'ruinsrelic_vase': STRUCTURE['ruins_relic_components']('ruinsrelic_vase'),

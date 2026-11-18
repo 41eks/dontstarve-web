@@ -444,6 +444,7 @@
     "statueglommer",
     "atrium_gate",
     "atrium_statue",
+    "atrium_overgrowth",
     "ruinsrelic_table",
     "ruinsrelic_chair",
     "ruinsrelic_vase",
@@ -639,6 +640,10 @@
     "atrium_statue": {
       "source": 15,
       "imported": 15
+    },
+    "atrium_overgrowth": {
+      "source": 4,
+      "imported": 4
     },
     "ruinsrelic_table": {
       "source": 0,
@@ -1450,6 +1455,50 @@
         -390
       ],
       "sourceNode": "AtriumMaze:7:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_overgrowth_index_000001",
+      "prefab": "atrium_overgrowth",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        259,
+        0,
+        -518
+      ],
+      "sourceNode": "AtriumMaze:BG_29:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_overgrowth_index_000002",
+      "prefab": "atrium_overgrowth",
+      "sourceIndex": 2,
+      "sourcePosition": [
+        282,
+        0,
+        -419
+      ],
+      "sourceNode": "AtriumMaze:BG_32:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_overgrowth_index_000003",
+      "prefab": "atrium_overgrowth",
+      "sourceIndex": 3,
+      "sourcePosition": [
+        203,
+        0,
+        -601
+      ],
+      "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_atrium_overgrowth_index_000004",
+      "prefab": "atrium_overgrowth",
+      "sourceIndex": 4,
+      "sourcePosition": [
+        181,
+        0,
+        -601
+      ],
+      "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
     },
     {
       "id": "dst_04E26ADB66396E8D_ruins_table_id_112484",
