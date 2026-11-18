@@ -92,11 +92,14 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     const tileId = choice(tile.tileId, `${path}.tileId`, supportedTiles);
     const underTileId = tile.underTileId === undefined ? undefined
       : choice(tile.underTileId, `${path}.underTileId`, groundTiles.filter(id => id !== WORLD_TILES.FARMING_SOIL && id !== WORLD_TILES.MONKEY_DOCK));
-    if (underTileId !== undefined && tileId !== WORLD_TILES.FARMING_SOIL && tileId !== WORLD_TILES.MONKEY_DOCK && tileId !== WORLD_TILES.OCEAN_ICE) {
-      fail(`${path}.underTileId`, 'only farming soil, docks and ice floes have an underlying tile');
+    if (underTileId !== undefined && tileId !== WORLD_TILES.FARMING_SOIL && tileId !== WORLD_TILES.MONKEY_DOCK && tileId !== WORLD_TILES.OCEAN_ICE
+      && tileId !== WORLD_TILES.RIFT_MOON) {
+      fail(`${path}.underTileId`, 'only farming soil, docks, ice floes and lunar rift ground have an underlying tile');
     }
     if (tileId === WORLD_TILES.MONKEY_DOCK && (underTileId === undefined || !isOceanTile(underTileId))) fail(`${path}.underTileId`, 'a dock covers an ocean tile');
     if (tileId === WORLD_TILES.FARMING_SOIL && (underTileId !== undefined && isOceanTile(underTileId))) fail(`${path}.underTileId`, 'farming soil cannot cover ocean');
+    // rift_terraformer.lua only turns land into RIFT_MOON, recording the replaced tile with undertile.
+    if (tileId === WORLD_TILES.RIFT_MOON && (underTileId !== undefined && isOceanTile(underTileId))) fail(`${path}.underTileId`, 'lunar rift ground cannot cover ocean');
     let ropeBridge: RopeBridgeTileSave | undefined;
     if (tile.ropeBridge !== undefined) {
       const at = `${path}.ropeBridge`;

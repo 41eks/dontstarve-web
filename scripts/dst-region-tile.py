@@ -141,13 +141,16 @@ def convert_map(terrain, supported, origin_cell=None):
     for x, z, name, tile_id, _ in map_cells:
         # Source rows grow along DST +Z; project_position negates Z, so rows are mirrored around the origin.
         tile = {'col': x - origin_x, 'row': origin_z - z - 1, 'tileId': tile_id}
-        if name in ('FARMING_SOIL', 'MONKEY_DOCK', 'OCEAN_ICE') and z * width + x in underneath:
+        if name in ('FARMING_SOIL', 'MONKEY_DOCK', 'OCEAN_ICE', 'RIFT_MOON') and z * width + x in underneath:
             under_name = source_names.get(underneath[z * width + x])
             if under_name not in supported:
                 raise ValueError(f'Unsupported underlying terrain {under_name}')
             tile['underTileId'] = supported[under_name]
         if name == 'MONKEY_DOCK' and 'underTileId' not in tile:
             raise ValueError(f'Missing underlying ocean at dock ({x}, {z})')
+        if name == 'RIFT_MOON' and 'underTileId' not in tile:
+            # rift_terraformer.lua records the replaced tile; retrofitforestmap_anr.lua turns undertile-less RIFT_MOON into BEARD_RUG.
+            raise ValueError(f'Missing underlying terrain at lunar rift ground ({x}, {z})')
         if name == 'ROPE_BRIDGE':
             # Map:IsValidTileForRopeBridgeAtPoint only accepts the void, which DestroyRopeBridgeAtPoint restores.
             under_name = source_names.get(underneath.get(z * width + x))

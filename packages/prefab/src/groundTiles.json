@@ -1293,5 +1293,26 @@
       "texture": "levels/tiles/map_edge.tex",
       "noise": "levels/textures/quagmire_soil_mini.tex"
     }
+  },
+  "RIFT_MOON": {
+    "tileId": 274,
+    "plantable": false,
+    "name": "meteor",
+    "atlas": "levels/tiles/meteor.xml",
+    "texture": "levels/tiles/meteor.tex",
+    "noise": "levels/textures/ground_noise_lunarrift.tex",
+    "renderOrder": 66,
+    "cannotBeDug": true,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/Ground_noise_lunarrift_mini.tex"
+    }
   }
 }
