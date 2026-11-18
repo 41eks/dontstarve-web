@@ -5,15 +5,19 @@ import math
 
 def blue_mushroom_components(data):
     # mushrooms.lua OnSave: rain only while positive. The open/closed pose follows the world phase, and the pickable
-    # component saves nothing for an unpicked mushroom; a saved pickable (picked, caninteractwith...) is not carried over.
-    if set(data) - {'rain', 'pickable'} or data.get('pickable', {}) not in ({}, {'caninteractwith': True}):
+    # component saves nothing else for an unpicked mushroom: caninteractwith is dropped, and a picked pickable is not
+    # carried over. MakeNoGrowInWinter pauses it in winter, which pickable.lua OnSave keeps as paused = true.
+    pickable = data.get('pickable', {})
+    if set(data) - {'rain', 'pickable'} or not isinstance(pickable, dict) or set(pickable) - {'caninteractwith', 'paused'} \
+            or any(pickable[flag] is not True for flag in pickable):
         raise ValueError('Unsupported blue_mushroom save state')
+    components = {'pickable': {'paused': True}} if pickable.get('paused') else {}
     rain = data.get('rain')
     if rain is None:
-        return {}
+        return components
     if type(rain) is not int or not 1 <= rain <= 20:
         raise ValueError('Expected blue_mushroom rain in 1..20')
-    return {'mushroom': {'rain': rain}}
+    return {**components, 'mushroom': {'rain': rain}}
 
 
 def pickable_state(data, prefab):
