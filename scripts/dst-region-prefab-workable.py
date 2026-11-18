@@ -22,8 +22,15 @@ def chessjunk_components(data):
 def chesspiece_malbatross_marble_components(data):
     # chesspieces.lua onsave: materialid (onload: `or 1`, marble); submersible.lua OnSave: force_no_repositioning.
     # Stone and moonglass are other prefabs that this project has not ported, so they must not import as marble.
-    if set(data) - {'materialid', 'submersible'} or data.get('materialid', 1) != 1:
+    if set(data) - {'materialid', 'submersible', 'inventoryitemmoisture'} or data.get('materialid', 1) != 1:
         raise ValueError('Unsupported chesspiece_malbatross save state')
+    # inventoryitemmoisture.lua OnSave (moisture, wet) of the heavy piece is not ported: checked, then dropped.
+    moisture = data.get('inventoryitemmoisture')
+    if moisture is not None and (not isinstance(moisture, dict) or set(moisture) - {'moisture', 'wet'}
+                                 or ('wet' in moisture and type(moisture['wet']) is not bool)
+                                 or ('moisture' in moisture and (type(moisture['moisture']) not in (int, float)
+                                                                 or not 0 <= moisture['moisture'] <= 100))):
+        raise ValueError('Unsupported chesspiece_malbatross moisture')
     components = {'chesspiece': {'materialid': 1}}
     if 'submersible' in data:
         submersible = data['submersible']
