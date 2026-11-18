@@ -96,6 +96,8 @@ python3 scripts/import-dst-region.py \
 
 `ENTITY_WHITELIST` 中每项绑定专用的源状态转换函数；此外，导入器读取 groundItems 目录中可显示的散落物品分组，排除鼹鼠、鸟、蝴蝶等活体。其他实体、桥梁、墙、生物及地下环境规则尚未迁移。白名单内的全部记录均导入，包括无节点、虚空、悬边和地图边缘位置，不再因区域归属丢弃。未知状态、无对应支持的皮肤或平台数据仍报错。
 
+`lunarhailbuildup`（`MakeSnowCovered` 的月亮冰雹堆积，`lunarhailbuildup.lua` OnSave 的 `workleft`、`buildupcurrent`）未移植：任何白名单实体上的该字段只校验键名后丢弃，读档后堆积为 0。`Cluster_62` 地表快照 `0000000297`、`0000000298` 中约 3600 个树木、岩石、箱子等实体带有该字段。
+
 当前白名单及状态转换：
 
 - `pigking`：只接受空状态；交易与日夜／状态图状态由现有猪王 prefab 重建。

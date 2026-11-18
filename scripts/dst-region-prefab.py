@@ -187,6 +187,12 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
             data = record.get('data') or {}
             if not isinstance(data, dict):
                 raise ValueError(f'Expected {prefab} component data at source index {index}')
+            if 'lunarhailbuildup' in data:
+                # lunarhailbuildup.lua OnSave (MakeSnowCovered's buildup from lunar hail) is not ported: dropped on import.
+                buildup = data['lunarhailbuildup']
+                if not isinstance(buildup, dict) or set(buildup) - {'workleft', 'buildupcurrent'}:
+                    raise ValueError(f'Unsupported {prefab} lunarhailbuildup at source index {index}')
+                data = {key: value for key, value in data.items() if key != 'lunarhailbuildup'}
             source_id = record.get('id')
             if source_id is not None and (type(source_id) is not int or source_id < 0):
                 raise ValueError(f'Invalid {prefab} source ID')
