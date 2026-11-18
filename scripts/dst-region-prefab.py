@@ -90,6 +90,8 @@ ENTITY_WHITELIST = {
     'oasis_cactus': PICKABLE['cactus_components']('oasis_cactus'),
     # lichen.lua, like cactus.lua, has no OnSave of its own: only pickable state is saved.
     'lichen': PICKABLE['cactus_components']('lichen'),
+    # reeds.lua has no OnSave of its own either; SetUp leaves max_cycles nil, so pickable saves no cycles.
+    'reeds': PICKABLE['cactus_components']('reeds'),
     'evergreen': GROWABLE['evergreen_components'],
     'flower_cave': PICKABLE['flower_cave_components']('flower_cave'),
     'flower_cave_double': PICKABLE['flower_cave_components']('flower_cave_double'),

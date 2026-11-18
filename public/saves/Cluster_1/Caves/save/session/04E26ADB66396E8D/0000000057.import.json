@@ -506,6 +506,7 @@
     "cactus",
     "oasis_cactus",
     "lichen",
+    "reeds",
     "evergreen",
     "flower_cave",
     "flower_cave_double",
@@ -893,6 +894,10 @@
     "lichen": {
       "source": 258,
       "imported": 258
+    },
+    "reeds": {
+      "source": 0,
+      "imported": 0
     },
     "evergreen": {
       "source": 334,

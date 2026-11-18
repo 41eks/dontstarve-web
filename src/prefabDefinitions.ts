@@ -50,6 +50,7 @@ import { BERRYBUSH_ARCHIVE, BERRYBUSH_ID, BERRYBUSH_MAX_REGROW_TIME, BERRYBUSH_S
 import { MONKEYTAIL_ID, MONKEYTAIL_REGROW_TIME } from '@dontstarve-web/prefab/monkeytail';
 import { GRASS_ANIM_ARCHIVE, GRASS_BUILD_ARCHIVE, GRASS_CYCLES, GRASS_ID, GRASS_REGROW_TIME } from '@dontstarve-web/prefab/grass';
 import { LICHEN_ARCHIVE, LICHEN_ID, LICHEN_REGROW_TIME } from '@dontstarve-web/prefab/lichen';
+import { REEDS_ANIM_ARCHIVE, REEDS_BUILD_ARCHIVE, REEDS_ID, REEDS_REGROW_TIME } from '@dontstarve-web/prefab/reeds';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
 import { MARSH_PLANT_ID } from '@dontstarve-web/prefab/marsh_plant';
@@ -546,6 +547,9 @@ const WORLD_PREFAB_DEFINITIONS = {
   // lichen.lua: only pickable saves state.
   lichens: definePrefabs([LICHEN_ID], componentParser({ keys: ['pickable'], regrowTime: LICHEN_REGROW_TIME }), true,
     [{ animation: LICHEN_ARCHIVE, build: LICHEN_ARCHIVE }]),
+  // reeds.lua has no OnSave of its own: only pickable saves state.
+  reeds: definePrefabs([REEDS_ID], componentParser({ keys: ['pickable'], regrowTime: REEDS_REGROW_TIME }), true,
+    [{ animation: REEDS_ANIM_ARCHIVE, build: REEDS_BUILD_ARCHIVE }]),
   caveFerns: definePrefabs(CAVE_FERN_IDS, componentParser({ keys: ['pickable', 'variant'], plantVariants: CAVE_FERN_ANIMATIONS }), true,
     prefab => [{ animation: CAVE_FERN_ANIM_ARCHIVE, build: CAVE_FERN_BUILD_ARCHIVES[prefab] }]),
   cacti: definePrefabs(CACTUS_IDS, componentParser({ keys: ['pickable'], regrowTime: CACTUS_REGROW_TIME }), true,

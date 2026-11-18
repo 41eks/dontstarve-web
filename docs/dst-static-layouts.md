@@ -109,6 +109,7 @@ python3 scripts/import-dst-region.py \
 - `atrium_overgrowth` → `atriumOvergrowth`：保留 `storyprogress`（1～5 的整数，rune_onsave 只在检查分配后写入）；没有该字段时导入为空状态，其他字段或值报错。`Cluster_62` 洞穴的 4 条记录都没有数据。
 - `oceantree_pillar` → `oceantreePillar`：保留 `droppedvines`（源码只写 `true`）；没有该字段时导入为空状态，其他字段或值报错。
 - `oceanvine` → `pickable`（`picked`、`time` → `regrowSeconds`、`paused`、`protected_cycles`）。`oceanvine.lua` 的 fn 设 `max_cycles = nil`、`cycles_left = 1`，所以 pickable.lua 的 OnSave 总写 `cycles_left`；藤蔓不会被移栽，周期不会减少，转换器只接受 `cycles_left` 为 1 并交给 fn，同时丢弃默认的 `caninteractwith: true`；`max_cycles` 和其他字段报错。
+- `reeds` → `pickable`（`picked`、`time` → `regrowSeconds`、`paused`、`protected_cycles`），与 `lichen` 共用转换器；`reeds.lua` 没有自己的 `OnSave`，`SetUp` 不设 `max_cycles`，源存档没有周期字段；默认的 `caninteractwith: true` 不写入；其他字段报错。`Cluster_62` 地表 58 条记录中 1 条为已采并带再生剩余时间。
 - `oceanvine_deco` 保留 `animnum`（1～6 的整数）；缺失时由构造函数随机决定，其他字段报错。
 - `grass`、`sapling`、`cave_fern`、`cave_fern_withered`：迁移 `pickable` 状态；蕨类保留 `anim`（`f1`～`f10`）。草和树苗将 `witherable.withered/restore_cycles/delay_time_remaining/task_time_remaining` 转为现有组件字段；不支持的保护计时器仍报错。枯萎检查通过游戏时间调度器执行，保存和重载保留剩余时间。`houndbone` 保留 `bonetype`（1～3）。
 - `flower_cave`、`flower_cave_double`、`flower_cave_triple`：`light_state`、`plantname`、采摘及再生状态、亮灯／充能计时器 → `bulbPlant`。`lightflier_flower` → `lightflierFlower`，保留 `childspawner.childreninside`；外飞子实体 GUID 只在子实体同样导入时链接。`lightflier` 不在白名单中。

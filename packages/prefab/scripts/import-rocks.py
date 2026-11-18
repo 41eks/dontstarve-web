@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar and atrium overgrowth world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth and reeds world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
 from pathlib import Path
@@ -27,6 +27,8 @@ ASSETS = {
     # oceantree_pillar.lua: the bank, the build and the override build its four prefabs set.
     'oceantree_pillar': ['oceantree_pillar_small.zip', 'oceantree_pillar_small_build1.zip', 'oceantree_pillar_small_build2.zip'],
     'oceanvine': ['oceanvine.zip'],
+    # reeds.lua: the grass bank's archive and the reeds build.
+    'reeds': ['grass.zip', 'reeds.zip'],
     # atrium_overgrowth.lua: one archive holds the bank and the build.
     'atrium_overgrowth': ['atrium_overgrowth.zip'],
     # oceanvine_deco.lua: the vine_rainforest_border bank and its waterforest_vines build share one archive.
@@ -104,6 +106,9 @@ def main():
                                                  'animation': f'idle_{n}'} for n in range(1, 7)}
     # atrium_overgrowth.lua: fn's only clip.
     art |= {'atrium_overgrowth/idle': {'animationArchive': 'atrium_overgrowth.zip', 'bank': 'atrium_overgrowth', 'animation': 'idle'}}
+    # reeds.lua: fn's idle loop and the picking / picked / grow clips of its pickable callbacks.
+    art |= {f'grass/{clip}': {'animationArchive': 'grass.zip', 'bank': 'grass', 'animation': clip}
+            for clip in ['idle', 'picking', 'picked', 'grow']}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives')
 
