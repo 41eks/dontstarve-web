@@ -6,6 +6,7 @@ import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
 import { createMoleHabitat, molehillPrefabs, MolehillInstance } from '../packages/prefab/src/molehill';
 import { TUNING } from './tuning';
 import { DynamicMusic } from '../packages/componets/src/dynamicmusic';
+import { RopeBridgeManager } from '../packages/componets/src/ropebridgemanager';
 import { GetTemperatureAtXZ } from '../packages/componets/src/temperatureoverrider';
 import { PlaySound } from '@dontstarve-web/prefab/sound';
 import { type InventoryStack, type InventoryStore, ItemEntity, type ItemEntityFactory } from '@dontstarve-web/inventory';
@@ -45,6 +46,7 @@ import { oceanTreePrefabs } from '@dontstarve-web/prefab/oceantree';
 import { oceanTreePillarPrefabs } from '@dontstarve-web/prefab/oceantree_pillar';
 import { oceanVinePrefabs } from '@dontstarve-web/prefab/oceanvine';
 import { reedsPrefabs } from '@dontstarve-web/prefab/reeds';
+import { ROPE_BRIDGE_FX_ID, RopeBridgeFxInstance, ropeBridgePrefabs } from '@dontstarve-web/prefab/rope_bridge';
 import { mastMalbatrossPrefabs } from '@dontstarve-web/prefab/mast_malbatross';
 import { oceanVineDecoPrefabs } from '@dontstarve-web/prefab/oceanvine_deco';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
@@ -476,6 +478,8 @@ export async function createSceneEntities(
   Managers['ocean_waves'] = registerOceanWaves(registry, 'ocean_waves', worldState);
 
   registry.assertDefinitions(Object.values(PREFAB_DEFINITIONS));
+  // cave.lua AddComponent("ropebridgemanager"): its OnLoad spawns the bridge art of the saved ROPE_BRIDGE tiles.
+  const ropebridgemanager = initialSave.world.prefab === 'cave' ? registerRopeBridges() : undefined;
 
   const stopDugTurf = turfMap.onDig((point, tileId) => {
     const itemId = turfItemForTile(tileId);
@@ -486,7 +490,7 @@ export async function createSceneEntities(
   });
 
   const dispose = () => {
-    stopDugTurf(); farmMap.dispose(); Managers['lightflier_flower'].dispose();
+    stopDugTurf(); farmMap.dispose(); Managers['lightflier_flower'].dispose(); ropebridgemanager?.dispose();
     try { registry.dispose(); }
     finally {
       prefabDisplays.dispose(); prefabFire.dispose(); itemSprites.dispose(); dynamicMusic?.dispose();
@@ -1204,6 +1208,19 @@ export async function createSceneEntities(
   function registerMastMalbatross(registry: EntityRegistry, worldState: SceneWorldState) {
     prefabs.register(mastMalbatrossPrefabs({ scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
     registry.registerPrefabs(PREFAB_DEFINITIONS.mastMalbatross);
+  }
+
+  /** rope_bridge.lua's rope_bridge_fx (with its rope and icon entities) and the cave's ropebridgemanager. */
+  function registerRopeBridges(): RopeBridgeManager {
+    prefabs.register(ropeBridgePrefabs({ cameraFacing: view.cameraFacing, spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
+    return new RopeBridgeManager({
+      *ropeBridges() {
+        for (const tile of turfMap.exportTiles()) {
+          if (tile.tileId === WORLD_TILES.ROPE_BRIDGE && tile.ropeBridge) yield [tile.col, tile.row, tile.ropeBridge] as const;
+        }
+      },
+      tileCenter: (col, row) => ({ x: (col + .5) * TILE_SIZE, z: (row + .5) * TILE_SIZE }),
+    }, (x, z) => prefabs.spawnAs(RopeBridgeFxInstance, ROPE_BRIDGE_FX_ID, new THREE.Vector3(x, 0, z)));
   }
 
   function registerReeds(registry: EntityRegistry, worldState: SceneWorldState) {

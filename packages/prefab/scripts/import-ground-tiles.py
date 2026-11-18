@@ -52,7 +52,7 @@ def main():
     assets = set()
     read_tiles = runpy.run_path(str(Path(__file__).with_name('turf-source.py')))['read_tiles']
     for tile in read_tiles(scripts):
-        if not tile['turf'] and not tile['ocean'] and tile['name'] not in {'DIRT', 'FARMING_SOIL', 'OCEAN_ICE', 'MONKEY_DOCK', 'VAULT'}:
+        if not tile['turf'] and not tile['ocean'] and tile['name'] not in {'DIRT', 'FARMING_SOIL', 'OCEAN_ICE', 'MONKEY_DOCK', 'VAULT', 'ROPE_BRIDGE'}:
             continue
         ground = tile['ground']
         name = ground['name']
@@ -81,6 +81,8 @@ def main():
             'renderOrder': tile['renderOrder'], 'cannotBeDug': ground.get('cannotbedug') == 'true',
             'minimapColour': tile['minimapColour'],
             'minimap': {'atlas': mini_atlas_path, 'texture': mini_texture_path, 'noise': mini_noise_path},
+            # isinvisibletile: GROUND_INVISIBLETILES, whose top and skirt the ground renderer skips.
+            **({'invisible': True} if ground.get('isinvisibletile') == 'true' else {}),
         }
         assets.update([texture_path, atlas_path, noise_path, mini_atlas_path, mini_texture_path, mini_noise_path])
     # falloffdefs.lua FALLOFF_IDS.FALLOFF: the cliff face hanging under land edges that border non-land.

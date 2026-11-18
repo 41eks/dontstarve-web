@@ -25,6 +25,17 @@ export function facingFromRotation(rotation: number, heading: number): number {
   return FACING_BY_STEP[((steps % 8) + 8) % 8];
 }
 
+/**
+ * The facing an eight-faced inst with `rotation` shows where a rotation-0 inst shows `facing`: facingFromRotation with
+ * the camera's facing in place of its heading, exact for rotations in 45-degree steps.
+ */
+export function rotateFacing(facing: number, rotation: number): number {
+  const step = FACING_BY_STEP.findIndex(stepFacing => stepFacing === facing);
+  if (step < 0) throw new RangeError(`Not an eight-faced facing: ${facing}`);
+  const steps = step + Math.round(rotation / 45);
+  return FACING_BY_STEP[((steps % 8) + 8) % 8];
+}
+
 /** The facing an inst with rotation 0 shows to a camera at `heading`, e.g. walls. */
 export function facingFromHeading(heading: number): number {
   return facingFromRotation(0, heading);

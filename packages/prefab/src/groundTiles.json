@@ -1041,6 +1041,28 @@
       "noise": "levels/textures/mini_oceanice_noise.tex"
     }
   },
+  "ROPE_BRIDGE": {
+    "tileId": 266,
+    "plantable": false,
+    "name": "blocky",
+    "atlas": "levels/tiles/blocky.xml",
+    "texture": "levels/tiles/blocky.tex",
+    "noise": "levels/textures/noise_woodfloor.tex",
+    "renderOrder": 50,
+    "cannotBeDug": true,
+    "minimapColour": [
+      23,
+      51,
+      62,
+      102
+    ],
+    "minimap": {
+      "atlas": "levels/tiles/map_edge.xml",
+      "texture": "levels/tiles/map_edge.tex",
+      "noise": "levels/textures/mini_woodfloor_noise.tex"
+    },
+    "invisible": true
+  },
   "SCALE": {
     "tileId": 32,
     "plantable": false,

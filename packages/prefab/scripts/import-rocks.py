@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds and malbatross mast world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds, malbatross mast and rope bridge world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
 import zipfile
@@ -38,6 +38,8 @@ ASSETS = {
     # seafarer_mast_malbatross.zip is not ported.
     'mast': ['boat_mast_malbatross_wip.zip', 'boat_mast_malbatross_knots_wip.zip', 'boat_mast_malbatross_opens_wip.zip',
              'boat_mast_malbatross_build.zip'],
+    # rope_bridge.lua: rope_bridge_fx, its ropes and the kit share the rope_bridge bank and build.
+    'rope_bridge': ['rope_bridge.zip'],
 }
 # skinprefabs.lua: mast_malbatross's PREFAB_SKINS, each a dynamic build with its .dyn atlas package.
 SKINS = ['mast_malbatross_tesla', 'mast_malbatross_wagstaff']
@@ -136,6 +138,10 @@ def main():
                            ('boat_mast_malbatross_knots_wip.zip', ['knot_tie', 'knot_release']),
                            ('boat_mast_malbatross_opens_wip.zip', ['open_loop', 'open_pre', 'open_pst'])]:
         art |= {f'mast_malbatross/{clip}': {'animationArchive': archive, 'bank': 'mast_malbatross', 'animation': clip} for clip in clips}
+    # rope_bridge.lua: every clip rope_bridge_fx and its ropes play, including the unported shake and break branches.
+    art |= {f'rope_bridge/{clip}': {'animationArchive': 'rope_bridge.zip', 'bank': 'rope_bridge', 'animation': clip}
+            for clip in ['bridge_place', 'bridge_idle', 'bridge_shake', *(f'break_{n}' for n in range(1, 4)),
+                         *(f'rope_{state}_{n}' for state in ('place', 'support', 'shake', 'break') for n in range(1, 5))]}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives and {len(SKINS)} skin builds')
 

@@ -35,6 +35,17 @@ export interface TurfTileSave {
   tileId: number;
   /** undertile component: the tile restored when a farm soil is dug or a dock is destroyed. */
   underTileId?: number;
+  /** A ROPE_BRIDGE tile's ropebridgemanager data; the bridge covers the void, which needs no underTileId. */
+  ropeBridge?: import('../../componets/src/ropebridgemanager').RopeBridgeTileSave;
+}
+
+/** GROUND_INVISIBLETILES (isinvisibletile): the renderer skips their top and skirt. */
+const INVISIBLE_TILE_IDS: ReadonlySet<number> = new Set(Object.values(GROUND_TILE_DEFINITIONS).flatMap(tile =>
+  'invisible' in tile && tile.invisible ? [tile.tileId] : []));
+
+/** TileGroups.LandTilesWithDefaultFalloff: land without docks and invisible tiles (world.lua AddInvalidTile). */
+function hasDefaultFalloff(tileId: number): boolean {
+  return isLandTile(tileId) && tileId !== WORLD_TILES.MONKEY_DOCK && !INVISIBLE_TILE_IDS.has(tileId);
 }
 
 const MAX_GROUND_RENDER_ORDER = Math.max(...Object.values(GROUND_TILE_DEFINITIONS).map(tile => tile.renderOrder));
@@ -193,15 +204,19 @@ export class TurfMap implements GroundTerrain {
 
   isPassableAtPoint(world: Vector2): boolean { return isLandTile(this.getTileAtWorld(world)); }
 
-  /** falloffdefs.lua FALLOFF: a land cell (docks excepted) gets a cliff on each side whose neighbour is void. */
+  /**
+   * falloffdefs.lua FALLOFF: a LandTilesWithDefaultFalloff cell (not a dock or an invisible tile) gets a cliff on each
+   * side whose neighbour is void or an invisible tile, such as a rope bridge over the abyss. INVISIBLE's
+   * invisible_falloff on the invisible tile's own sides is not drawn.
+   */
   falloffEdges(): FalloffEdge[] {
     const edges: FalloffEdge[] = [];
     const { min, max } = this.cellRange();
     for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
-      const tile = this.tileAt(col, row);
-      if (!isLandTile(tile) || tile === WORLD_TILES.MONKEY_DOCK) continue;
+      if (!hasDefaultFalloff(this.tileAt(col, row))) continue;
       FALLOFF_EDGES.forEach(({ dx, dz }, edge) => {
-        if (this.isVoidAtCell(col + dx, row + dz)) edges.push({ col, row, edge });
+        const neighbour = this.tileAt(col + dx, row + dz);
+        if (this.isVoidAtCell(col + dx, row + dz) || INVISIBLE_TILE_IDS.has(neighbour)) edges.push({ col, row, edge });
       });
     }
     return edges;
@@ -224,9 +239,9 @@ export class TurfMap implements GroundTerrain {
   /** tiledefs.lua ocean colours of a cell's tile. */
   oceanColoursAt(col: number, row: number) { return OCEAN_COLOURS.get(this.tileAt(col, row)); }
 
-  /** world.lua: one render layer per land tile type, in source layer order (ocean is its own pass). */
+  /** world.lua: one render layer per land tile type, in source layer order (ocean is its own pass); invisible tiles draw none. */
   groundLayers(): readonly GroundLayerDeclaration[] {
-    return this.terrainNames().filter(name => !isOceanTile(WORLD_TILES[name])).map(name =>
+    return this.terrainNames().filter(name => !isOceanTile(WORLD_TILES[name]) && !INVISIBLE_TILE_IDS.has(WORLD_TILES[name])).map(name =>
       ({ tileId: WORLD_TILES[name], art: groundTileArt(name), renderOrder: groundLayerRenderOrder(name) }));
   }
 

@@ -8,7 +8,11 @@ import { GROUND_TILE_DEFINITIONS } from '@dontstarve-web/prefab/groundTiles';
 import { GROUND_ART_DEFINITIONS, GROUND_ART_VARIANTS } from '@dontstarve-web/prefab/groundItems';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { PREFAB_DEFINITIONS, prefabSaveParsers, type PrefabDefinition } from '../prefabDefinitions';
+import { ROPEBRIDGE_HEALTH, type RopeBridgeTileSave } from '../../packages/componets/src/ropebridgemanager';
 import { array, choice, fail, integer, number, object, snapshotId, string, timestamp } from './validation';
+
+/** TILE_SCALE: a rope bridge's direction is one tile's offset in DST units. */
+const ROPE_BRIDGE_DIRECTION_LIMIT = 4;
 
 export interface SaveCatalog {
   /** Defaults to the application's shared definitions; custom runtimes supply their own. */
@@ -81,7 +85,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   const tiles = map.tiles === undefined ? undefined : array(map.tiles, 'world.map.tiles',
     (Math.ceil(size / TILE_SIZE) + 1) ** 2).map((value, i) => {
     const path = `world.map.tiles[${i}]`;
-    const tile = object(value, path, ['col', 'row', 'tileId', 'underTileId']);
+    const tile = object(value, path, ['col', 'row', 'tileId', 'underTileId', 'ropeBridge']);
     const min = Math.floor(-size / 2 / TILE_SIZE), max = Math.ceil(size / 2 / TILE_SIZE) - 1;
     const col = integer(tile.col, `${path}.col`, min, max);
     const row = integer(tile.row, `${path}.row`, min, max);
@@ -93,10 +97,23 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     }
     if (tileId === WORLD_TILES.MONKEY_DOCK && (underTileId === undefined || !isOceanTile(underTileId))) fail(`${path}.underTileId`, 'a dock covers an ocean tile');
     if (tileId === WORLD_TILES.FARMING_SOIL && (underTileId !== undefined && isOceanTile(underTileId))) fail(`${path}.underTileId`, 'farming soil cannot cover ocean');
+    let ropeBridge: RopeBridgeTileSave | undefined;
+    if (tile.ropeBridge !== undefined) {
+      const at = `${path}.ropeBridge`;
+      if (tileId !== WORLD_TILES.ROPE_BRIDGE) fail(at, 'only rope bridge tiles carry bridge data');
+      const bridge = object(tile.ropeBridge, at, ['health', 'direction', 'iconOffset']);
+      const direction = object(bridge.direction, `${at}.direction`, ['x', 'z']);
+      const limit = ROPE_BRIDGE_DIRECTION_LIMIT;
+      ropeBridge = {
+        health: number(bridge.health, `${at}.health`, 0, ROPEBRIDGE_HEALTH),
+        direction: { x: number(direction.x, `${at}.direction.x`, -limit, limit), z: number(direction.z, `${at}.direction.z`, -limit, limit) },
+        ...(bridge.iconOffset === undefined ? {} : { iconOffset: integer(bridge.iconOffset, `${at}.iconOffset`, 0, 255) }),
+      };
+    }
     const key = `${col},${row}`;
     if (tileKeys.has(key)) fail(path, 'duplicate terrain tile');
     tileKeys.add(key);
-    return { col, row, tileId, ...(underTileId === undefined ? {} : { underTileId }) };
+    return { col, row, tileId, ...(underTileId === undefined ? {} : { underTileId }), ...(ropeBridge ? { ropeBridge } : {}) };
   });
 
   const transform = (value: unknown, path: string, grounded: boolean): SavedTransform => {
