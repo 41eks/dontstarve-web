@@ -51,6 +51,8 @@ export interface SavedEntity {
     oceantree?: import('@dontstarve-web/prefab/oceantree').OceanTreeSaveState;
     /** atrium_overgrowth.lua rune_onsave. */
     atriumOvergrowth?: import('@dontstarve-web/prefab/atrium_overgrowth').AtriumOvergrowthSaveState;
+    mastMalbatross?: import('@dontstarve-web/prefab/mast_malbatross').MastMalbatrossSaveState;
+    upgradeable?: import('../../packages/componets/src/upgradeable').UpgradeableSave;
     /** oceantree_pillar.lua OnSave. */
     oceantreePillar?: import('@dontstarve-web/prefab/oceantree_pillar').OceanTreePillarSaveState;
     /** oceanvine_deco.lua onsave: data.animnum, the idle_N clip. */

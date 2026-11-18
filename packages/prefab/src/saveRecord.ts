@@ -118,6 +118,9 @@ export interface PlacementSaveRecord {
     oceantree?: import('./oceantree').OceanTreeSaveState;
     /** atrium_overgrowth.lua rune_onsave. */
     atriumOvergrowth?: import('./atrium_overgrowth').AtriumOvergrowthSaveState;
+    /** mast.lua onsave of mast_malbatross, and its skin. */
+    mastMalbatross?: import('./mast_malbatross').MastMalbatrossSaveState;
+    upgradeable?: import('../../componets/src/upgradeable').UpgradeableSave;
     /** oceantree_pillar.lua OnSave. */
     oceantreePillar?: import('./oceantree_pillar').OceanTreePillarSaveState;
     /** oceanvine_deco.lua onsave: data.animnum, the idle_N clip. */

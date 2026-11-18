@@ -1,5 +1,7 @@
 # DST Lua prefab 的 c_spawn / c_give 静态核对
 
+2026-11-18 补充 `mast_malbatross`：`prefabs/mast.lua` 以 `Prefab("mast_malbatross", malbatrossfn, malbatross_assets, malbatross_prefabs)` 注册，`malbatrossfn` 没有 `inventoryitem`，原版可 `c_spawn("mast_malbatross")`，不能放入物品栏（物品是 `mast_malbatross_item`，未移植）。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，`onsave` 的 `rotation`、`is_sail_raised`（及 `burnt`）、`upgradeable` 的 `numupgrades`／`stage` 和皮肤随存档保存；灯和避雷针升级的字段未移植。`Cluster_62` 新的地表快照 `0000000302` 有 2 根，但该快照含导入脚本尚不支持的 `ROPE_BRIDGE` 地皮，默认存档 `Cluster_1` 仍由旧快照 `0000000148` 生成，暂时没有桅杆。
+
 2026-11-18 补充 `reeds`：`prefabs/reeds.lua` 以 `MakeReeds("reeds", "reeds", "reeds.png")` 注册 `Prefab("reeds", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("reeds")`，不能放入物品栏（物品是 `cutreeds`）。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档；`reeds.lua` 没有自己的 `OnSave`，存档只有 `pickable`（`picked`、`regrowSeconds` 等）。`Cluster_62` 最新地表快照有 58 株（1 株已采），导入 58 株；洞穴快照没有。
 
 2026-11-18 补充 `atrium_overgrowth`：`prefabs/atrium_overgrowth.lua` 注册 `Prefab("atrium_overgrowth", function() return fn("atrium_overgrowth") end, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("atrium_overgrowth")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，存档字段 `atriumOvergrowth` 保存 `storyprogress`（1～5，检查时才分配；`getstatus`／`descriptionfn` 未移植，所以 `c_spawn` 的实体不写该字段）；同文件已弃用的 `atrium_idol` 未移植。`Cluster_62` 最新洞穴快照有 4 个，导入 4 个；地表快照没有。
@@ -512,6 +514,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `ruins_statue_head_nogem` | 可生成 | 不能入栏 | `prefabs/statueruins.lua` |
 | `lichen` | 可生成 | 不能入栏 | `prefabs/lichen.lua` |
 | `reeds` | 可生成 | 不能入栏 | `prefabs/reeds.lua` |
+| `mast_malbatross` | 可生成 | 不能入栏 | `prefabs/mast.lua` |
 | `chessjunk1`、`chessjunk2`、`chessjunk3` | 可生成 | 不能入栏 | `prefabs/chessjunk.lua` |
 | `chesspiece_malbatross_marble` | 可生成 | 不能入栏 | `prefabs/chesspieces.lua`（存档组名 `chesspiece_malbatross`；其他材质和其他雕像未接入） |
 | `archive_centipede_husk` | 可生成 | 不能入栏 | `prefabs/archive_centipede.lua`（仅残骸；活体 `archive_centipede` 未接入） |

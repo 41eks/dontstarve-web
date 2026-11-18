@@ -51,6 +51,9 @@ import { MONKEYTAIL_ID, MONKEYTAIL_REGROW_TIME } from '@dontstarve-web/prefab/mo
 import { GRASS_ANIM_ARCHIVE, GRASS_BUILD_ARCHIVE, GRASS_CYCLES, GRASS_ID, GRASS_REGROW_TIME } from '@dontstarve-web/prefab/grass';
 import { LICHEN_ARCHIVE, LICHEN_ID, LICHEN_REGROW_TIME } from '@dontstarve-web/prefab/lichen';
 import { REEDS_ANIM_ARCHIVE, REEDS_BUILD_ARCHIVE, REEDS_ID, REEDS_REGROW_TIME } from '@dontstarve-web/prefab/reeds';
+import {
+  MAST_MALBATROSS_ANIMATION_ARCHIVES, MAST_MALBATROSS_BUILD_ARCHIVE, MAST_MALBATROSS_ID, MAST_MALBATROSS_SKINS,
+} from '@dontstarve-web/prefab/mast_malbatross';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
 import { MARSH_PLANT_ID } from '@dontstarve-web/prefab/marsh_plant';
@@ -77,7 +80,7 @@ import type { AnimationArchiveSpec } from '@dontstarve-web/animation/preloadArch
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
 import { componentParser, type PrefabComponentParser } from './save/prefabComponents';
 import { fail } from './save/validation';
-import { array, integer, number, object, string } from './save/validation';
+import { array, choice, integer, number, object, string } from './save/validation';
 
 /** The fields of a saved entity that choose its art, read while the save is scanned before restore. */
 export interface ArchiveSaveRecord {
@@ -241,6 +244,32 @@ const atriumOvergrowth: PrefabComponentParser = (value, path) => {
     fail(`${path}.atriumOvergrowth.storyprogress`, `expected 1..${ATRIUM_OVERGROWTH_STORY_LINES}`);
   }
   return { atriumOvergrowth: { storyprogress } };
+};
+/** mast.lua onsave of a mast off any boat (burnt, rotation, is_sail_raised) with its skin, and upgradeable:OnSave. */
+const mastMalbatross: PrefabComponentParser = (value, path) => {
+  const { mastMalbatross: state, upgradeable } = object(value, path, ['mastMalbatross', 'upgradeable']);
+  const result: ReturnType<PrefabComponentParser> = {};
+  if (state !== undefined) {
+    const at = `${path}.mastMalbatross`;
+    const { burnt, rotation, is_sail_raised, skinId } = object(state, at, ['burnt', 'rotation', 'is_sail_raised', 'skinId']);
+    if (burnt !== undefined && burnt !== true) fail(`${at}.burnt`, 'expected true');
+    if (is_sail_raised !== undefined && typeof is_sail_raised !== 'boolean') fail(`${at}.is_sail_raised`, 'expected a boolean');
+    result.mastMalbatross = {
+      ...(burnt ? { burnt: true } : {}),
+      ...(rotation === undefined ? {} : { rotation: number(rotation, `${at}.rotation`, -360, 360) }),
+      ...(is_sail_raised === undefined ? {} : { is_sail_raised }),
+      ...(skinId === undefined ? {} : { skinId: choice(skinId, `${at}.skinId`, MAST_MALBATROSS_SKINS) }),
+    };
+  }
+  if (upgradeable !== undefined) {
+    const at = `${path}.upgradeable`;
+    const { numupgrades, stage } = object(upgradeable, at, ['numupgrades', 'stage']);
+    result.upgradeable = {
+      numupgrades: integer(numupgrades, `${at}.numupgrades`),
+      ...(stage === undefined ? {} : { stage: integer(stage, `${at}.stage`, 1) }),
+    };
+  }
+  return result;
 };
 const archiveStatue = componentParser({ keys: ['archiveProp'], archivePropVariants: 4 });
 const archiveRune = componentParser({ keys: ['archiveProp'], archivePropVariants: 3, archiveStoryLines: 5 });
@@ -547,6 +576,8 @@ const WORLD_PREFAB_DEFINITIONS = {
   // lichen.lua: only pickable saves state.
   lichens: definePrefabs([LICHEN_ID], componentParser({ keys: ['pickable'], regrowTime: LICHEN_REGROW_TIME }), true,
     [{ animation: LICHEN_ARCHIVE, build: LICHEN_ARCHIVE }]),
+  mastMalbatross: definePrefabs([MAST_MALBATROSS_ID], mastMalbatross, true,
+    MAST_MALBATROSS_ANIMATION_ARCHIVES.map(animation => ({ animation, build: MAST_MALBATROSS_BUILD_ARCHIVE }))),
   // reeds.lua has no OnSave of its own: only pickable saves state.
   reeds: definePrefabs([REEDS_ID], componentParser({ keys: ['pickable'], regrowTime: REEDS_REGROW_TIME }), true,
     [{ animation: REEDS_ANIM_ARCHIVE, build: REEDS_BUILD_ARCHIVE }]),

@@ -112,6 +112,41 @@ def atrium_overgrowth_components(data):
     return {'atriumOvergrowth': {'storyprogress': story}}
 
 
+MAST_MALBATROSS_SKINS = {'mast_malbatross_tesla', 'mast_malbatross_wagstaff'}
+
+
+def mast_malbatross_components(data, context):
+    # mast.lua onsave off any boat: rotation and is_sail_raised, plus upgradeable:OnSave's numupgrades / stage.
+    # burnt and the lamp / lightning rod upgrade fields belong to unported branches; skinname lives on the entity record.
+    if set(data) - {'rotation', 'is_sail_raised', 'upgradeable'}:
+        raise ValueError(f'Unsupported mast_malbatross save state: {data}')
+    state = {}
+    if 'rotation' in data:
+        rotation = data['rotation']
+        if type(rotation) not in (int, float) or not math.isfinite(rotation) or not -360 <= rotation <= 360:
+            raise ValueError(f'Unsupported mast_malbatross rotation: {rotation}')
+        state['rotation'] = rotation
+    if 'is_sail_raised' in data:
+        if type(data['is_sail_raised']) is not bool:
+            raise ValueError(f'Unsupported mast_malbatross is_sail_raised: {data["is_sail_raised"]}')
+        state['is_sail_raised'] = data['is_sail_raised']
+    skin = context['skin']
+    if skin is not None:
+        if skin not in MAST_MALBATROSS_SKINS:
+            raise ValueError(f'Unsupported mast_malbatross skin: {skin}')
+        state['skinId'] = skin
+    result = {'mastMalbatross': state}
+    if 'upgradeable' in data:
+        upgradeable = data['upgradeable']
+        if not isinstance(upgradeable, dict) or set(upgradeable) - {'numupgrades', 'stage'} or 'numupgrades' not in upgradeable:
+            raise ValueError(f'Unsupported mast_malbatross upgradeable: {upgradeable}')
+        numupgrades, stage = upgradeable['numupgrades'], upgradeable.get('stage')
+        if type(numupgrades) is not int or numupgrades < 0 or (stage is not None and (type(stage) is not int or stage < 1)):
+            raise ValueError(f'Unsupported mast_malbatross upgradeable: {upgradeable}')
+        result['upgradeable'] = {'numupgrades': numupgrades, **({'stage': stage} if stage is not None else {})}
+    return result
+
+
 def atrium_gate_components(data):
     # atrium_gate.lua OnSave plus the component records used by OnLoadPostPass.
     if set(data) - {'vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key',

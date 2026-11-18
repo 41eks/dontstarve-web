@@ -27,6 +27,7 @@ ENTITY_WHITELIST = {
     'atrium_gate': STRUCTURE['atrium_gate_components'],
     'atrium_statue': STRUCTURE['atrium_statue_components'],
     'atrium_overgrowth': STRUCTURE['atrium_overgrowth_components'],
+    'mast_malbatross': STRUCTURE['mast_malbatross_components'],
     'ruinsrelic_table': STRUCTURE['ruins_relic_components']('ruinsrelic_table'),
     'ruinsrelic_chair': STRUCTURE['ruins_relic_components']('ruinsrelic_chair'),
     'ruinsrelic_vase': STRUCTURE['ruins_relic_components']('ruinsrelic_vase'),
@@ -142,7 +143,8 @@ TARGET_PREFABS = {'chesspiece_malbatross': 'chesspiece_malbatross_marble'}
 # Converters that also receive the record's skin and item converters.
 CONTAINER_PREFABS = {'treasurechest', 'pandoraschest'}
 ITEM_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'moonbase'}
-RECORD_CONTEXT_PREFABS = {'ruinsrelic_chair', *ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'}
+RECORD_CONTEXT_PREFABS = {'ruinsrelic_chair', *ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4',
+                          'mast_malbatross'}
 # Converters that also receive the record's project position and a converter for saved source positions.
 POSITION_CONTEXT_PREFABS = {'beefalo', 'dragonfly'}
 

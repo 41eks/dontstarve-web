@@ -80,6 +80,7 @@
     "./oceantree_pillar": "./src/oceantree_pillar.ts",
     "./oceanvine": "./src/oceanvine.ts",
     "./reeds": "./src/reeds.ts",
+    "./mast_malbatross": "./src/mast_malbatross.ts",
     "./oceanvine_deco": "./src/oceanvine_deco.ts",
     "./vault_pillar": "./src/vault_pillar.ts",
     "./monkeypillar": "./src/monkeypillar.ts",

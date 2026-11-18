@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth and reeds world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds and malbatross mast world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
+import zipfile
 from pathlib import Path
 
 
@@ -33,7 +34,13 @@ ASSETS = {
     'atrium_overgrowth': ['atrium_overgrowth.zip'],
     # oceanvine_deco.lua: the vine_rainforest_border bank and its waterforest_vines build share one archive.
     'oceanvine_deco': ['waterforest_vines.zip'],
+    # mast.lua malbatross_assets: the mast_malbatross bank's three archives and its build; the item's
+    # seafarer_mast_malbatross.zip is not ported.
+    'mast': ['boat_mast_malbatross_wip.zip', 'boat_mast_malbatross_knots_wip.zip', 'boat_mast_malbatross_opens_wip.zip',
+             'boat_mast_malbatross_build.zip'],
 }
+# skinprefabs.lua: mast_malbatross's PREFAB_SKINS, each a dynamic build with its .dyn atlas package.
+SKINS = ['mast_malbatross_tesla', 'mast_malbatross_wagstaff']
 
 
 def main():
@@ -58,6 +65,20 @@ def main():
             else:
                 output.parent.mkdir(parents=True, exist_ok=True)
                 output.write_bytes(data)
+    skin_lua = (args.source / 'databundles/scripts_unpacked/scripts/prefabs/skinprefabs.lua').read_text()
+    with zipfile.ZipFile(args.source / 'databundles/anim_dynamic.zip') as bundle:
+        for skin in SKINS:
+            if f'CreatePrefabSkin("{skin}",' not in skin_lua:
+                raise ValueError(f'{skin} is not a source skin')
+            for relative, data in ((Path(f'anim/dynamic/{skin}.zip'), bundle.read(f'anim/dynamic/{skin}.zip')),
+                                   (Path(f'anim/dynamic/{skin}.dyn'), (args.source / f'anim/dynamic/{skin}.dyn').read_bytes())):
+                output = target / relative
+                if args.check:
+                    if not output.is_file() or output.read_bytes() != data:
+                        raise ValueError(f'{output} differs from source')
+                else:
+                    output.parent.mkdir(parents=True, exist_ok=True)
+                    output.write_bytes(data)
     # Audit every source stalagmite and moon glass bank/pose without rendering every prefab ID and rock_type.
     check_clips = runpy.run_path(str(Path(__file__).with_name('static-ground-items.py')))['check_animation_clips']
     art = {f'{bank}/{clip}': {'animationArchive': f'{bank}.zip', 'bank': bank, 'animation': clip}
@@ -109,8 +130,14 @@ def main():
     # reeds.lua: fn's idle loop and the picking / picked / grow clips of its pickable callbacks.
     art |= {f'grass/{clip}': {'animationArchive': 'grass.zip', 'bank': 'grass', 'animation': clip}
             for clip in ['idle', 'picking', 'picked', 'grow']}
+    # mast.lua: every clip the mast_malbatross bank plays: fn's closed, on_hit's open2_hit / open_loop / closed_hit,
+    # onbuilt's place, and mast.lua's SailFurled / SailUnfurled / UnfurlSail / OnUpdate knots and opens.
+    for archive, clips in [('boat_mast_malbatross_wip.zip', ['closed', 'closed_hit', 'open2_hit', 'place']),
+                           ('boat_mast_malbatross_knots_wip.zip', ['knot_tie', 'knot_release']),
+                           ('boat_mast_malbatross_opens_wip.zip', ['open_loop', 'open_pre', 'open_pst'])]:
+        art |= {f'mast_malbatross/{clip}': {'animationArchive': archive, 'bank': 'mast_malbatross', 'animation': clip} for clip in clips}
     check_clips(art, {}, args.source)
-    print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives')
+    print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives and {len(SKINS)} skin builds')
 
 
 if __name__ == '__main__':

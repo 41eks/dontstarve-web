@@ -43,6 +43,7 @@ export class Burnable {
   private readonly burningState = createSignal(false);
   readonly burning = readonlySignal(this.burningState);
   private lightable = true;
+  private ignoresFuel = false;
   private readonly removedState = createSignal(false);
   private get removed(): boolean { return this.removedState.peek(); }
   private readonly scheduler: GameTimeScheduler;
@@ -96,6 +97,12 @@ export class Burnable {
   }
   get canlight(): boolean { return this.lightable; }
   set canlight(value: boolean) { this.lightable = value; this.refreshTags(); }
+  /** burnable.ignorefuel: igniting and extinguishing leave a fueled component alone; onignorefuel tags burnableignorefuel. */
+  get ignorefuel(): boolean { return this.ignoresFuel; }
+  set ignorefuel(value: boolean) {
+    this.ignoresFuel = value;
+    if (value) this.inst.addTag('burnableignorefuel'); else this.inst.removeTag('burnableignorefuel');
+  }
   SetBurnTime(time: number): void { this.burntime = time; }
   SetOnIgniteFn(fn: BurnableOnIgniteFn | undefined): void { this.onignite = fn; }
   SetOnExtinguishFn(fn: BurnableOnExtinguishFn | undefined): void { this.onextinguish = fn; }
@@ -126,7 +133,7 @@ export class Burnable {
     this.SpawnFX(immediate);
     this.inst.PushEvent?.('onignite', { source, doer });
     this.onignite?.(this.inst, source, doer);
-    this.fueled?.StartConsuming();
+    if (!this.ignorefuel) this.fueled?.StartConsuming();
     this.inst.components.propagator?.spreading.set(true);
   }
   StartWildfire(): void {
@@ -147,7 +154,7 @@ export class Burnable {
     this.inst.components.propagator?.spreading.set(false);
     this.setBurning(false);
     this.KillFX();
-    this.fueled?.StopConsuming();
+    if (!this.ignorefuel) this.fueled?.StopConsuming();
     this.onextinguish?.(this.inst);
     this.inst.PushEvent?.('onextinguish', undefined);
   }
@@ -201,7 +208,7 @@ export class Burnable {
     this.removedState.set(true);
     this.burnTimer.stop(); this.smolderTask.stop(); this.phaseMemo.dispose();
     if (this.ownsScheduler) this.scheduler.dispose();
-    for (const tag of ['canlight', 'nolight', 'fire', 'smolder']) this.inst.removeTag(tag);
+    for (const tag of ['canlight', 'nolight', 'fire', 'smolder', 'burnableignorefuel']) this.inst.removeTag(tag);
   }
   private refreshTags(): void {
     const lightable = this.lightable && !this.IsBurning() && !this.removed;

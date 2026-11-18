@@ -45,6 +45,7 @@ import { oceanTreePrefabs } from '@dontstarve-web/prefab/oceantree';
 import { oceanTreePillarPrefabs } from '@dontstarve-web/prefab/oceantree_pillar';
 import { oceanVinePrefabs } from '@dontstarve-web/prefab/oceanvine';
 import { reedsPrefabs } from '@dontstarve-web/prefab/reeds';
+import { mastMalbatrossPrefabs } from '@dontstarve-web/prefab/mast_malbatross';
 import { oceanVineDecoPrefabs } from '@dontstarve-web/prefab/oceanvine_deco';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
 import { vaultPillarPrefabs } from '@dontstarve-web/prefab/vault_pillar';
@@ -190,6 +191,7 @@ const MANAGER_DEFINITIONS = {
   'oceantree_pillar': PREFAB_DEFINITIONS.oceanTreePillars,
   'oceanvine': PREFAB_DEFINITIONS.oceanVines,
   'reeds': PREFAB_DEFINITIONS.reeds,
+  'mast_malbatross': PREFAB_DEFINITIONS.mastMalbatross,
   'oceanvine_deco': PREFAB_DEFINITIONS.oceanVineDecos,
   'atrium_gate': PREFAB_DEFINITIONS.atriumGates,
   'ruins_statue_mage': PREFAB_DEFINITIONS.ruinsStatueMages,
@@ -229,6 +231,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.oceanTreePillars,
   PREFAB_DEFINITIONS.oceanVines,
   PREFAB_DEFINITIONS.reeds,
+  PREFAB_DEFINITIONS.mastMalbatross,
   PREFAB_DEFINITIONS.oceanVineDecos,
   PREFAB_DEFINITIONS.atriumGates,
   PREFAB_DEFINITIONS.ruinsStatueMages,
@@ -448,6 +451,7 @@ export async function createSceneEntities(
   registerOceanTreePillars(registry, worldState);
   registerOceanVines(registry, worldState);
   registerReeds(registry, worldState);
+  registerMastMalbatross(registry, worldState);
   prefabs.register(oceanVineDecoPrefabs());
   registry.registerPrefabs(PREFAB_DEFINITIONS.oceanVineDecos);
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);
@@ -1195,6 +1199,11 @@ export async function createSceneEntities(
       spawnPrefab: (id, position) => prefabs.spawn(id, position),
     }));
     registry.registerPrefabs(PREFAB_DEFINITIONS.oceanTreePillars);
+  }
+
+  function registerMastMalbatross(registry: EntityRegistry, worldState: SceneWorldState) {
+    prefabs.register(mastMalbatrossPrefabs({ scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
+    registry.registerPrefabs(PREFAB_DEFINITIONS.mastMalbatross);
   }
 
   function registerReeds(registry: EntityRegistry, worldState: SceneWorldState) {
