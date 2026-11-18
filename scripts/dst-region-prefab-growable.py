@@ -5,14 +5,22 @@ import math
 
 def mushtree_components(data, medium):
     # mushtree.lua / mushtree_moon.lua OnSave plus growable/plantregrowth. plantregrowth (offspring regrowth) is not
-    # ported, so its timer is not carried over; a stump's decay timer is rebuilt when the stump is made.
+    # ported, so its timer is not carried over. A stump's makestump decay timer keeps its time left as mushtree.decay.
     # Acid rain is not ported either: its onsave fields and acidvisualsupdate timer are visual state, also not carried over.
     allowed = {'plantregrowth', 'stump', 'burnt', 'treestate', 'growable'} if medium else {'plantregrowth', 'stump', 'burnt'}
     timer = data.get('timer')
+    timers = timer['timers'] if isinstance(timer, dict) and isinstance(timer.get('timers'), dict) else None
     if set(data) - allowed - {'time_since_acid_infusion', 'acidrecoveryremaining', 'timer'} \
-            or (timer is not None and (not isinstance(timer, dict) or set(timer) != {'timers'}
-                                       or set(timer['timers']) != {'acidvisualsupdate'})):
+            or (timer is not None and (set(timer) != {'timers'} or timers is None
+                                       or not timers or set(timers) - {'acidvisualsupdate', 'decay'})):
         raise ValueError('Unsupported mushtree save state')
+    decay = timers.get('decay') if timers else None
+    if decay is not None:
+        if not data.get('stump'):
+            raise ValueError('Only a mushtree stump decays')
+        decay_timer_state({'timers': {'decay': decay}}, 'mushtree')
+        if decay['paused']:
+            raise ValueError('Unsupported paused mushtree decay timer')
     for flag in ('stump', 'burnt'):
         if flag in data and data[flag] is not True:
             raise ValueError(f'Expected a true mushtree {flag} flag')
@@ -24,6 +32,8 @@ def mushtree_components(data, medium):
         if data['treestate'] not in ('normal', 'bloom'):
             raise ValueError('Unsupported mushtree treestate')
         state['treestate'] = data['treestate']
+    if decay is not None:
+        state['decay'] = decay['timeleft']
     if state:
         components['mushtree'] = state
     growth = data.get('growable')
