@@ -115,7 +115,7 @@ export interface SymbolFollower {
   remove(): void;
 }
 
-export type PlayerCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'firestaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
+export type PlayerCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'firestaff' | 'telestaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
 
 /**
  * The ANIM assets MakePlayerCharacter and global.lua (player_idles) declare for every player, plus the emotes':
@@ -213,6 +213,9 @@ export class PlayerInstance extends PrefabInstance {
   /** bernie_active.lua / berniebigbrain.lua: the big Bernies this player leads, and the brief block after one grows. */
   bigbernies?: Set<object>;
   blockbigbernies?: EntityTask;
+  /** inst:ScreenFade(isfadein, time) / inst:SnapCamera(), bound by the front end while it shows this player. */
+  ScreenFade?: (isfadein: boolean, time: number) => void;
+  SnapCamera?: () => void;
   /** inst:ShowHUD(show) */
   ShowHUD!: (show: boolean) => void;
   /** The emote SGwilson's emote state is playing, with the art it was chosen with. */

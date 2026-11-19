@@ -26,6 +26,8 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'slip' | 'slip_pst' | 'slip_fall' | 'slip_fall_loop' | 'slip_fall_pst'
   | 'fishing_pre' | 'fishing' | 'fishing_pst' | 'fishing_nibble' | 'fishing_strain' | 'catchfish' | 'loserod'
   | 'shell_enter' | 'shell_idle' | 'shell_hit' | 'death'
+  /** SGwilson.lua forcetele: hidden while staff.lua's telestaff moves the player. */
+  | 'forcetele'
   /** SGwilsonghost.lua states; `idle`, `walk` and `run` are shared names in a separate state table. */
   | 'appear' | 'hit' | 'haunt_pre' | 'haunt'
   /** SGwilson.lua portal_rez: the player stepping out of the multiplayer portal after a haunt resurrection. */
@@ -149,6 +151,8 @@ export interface WilsonStateInst {
   Show(): void;
   IsVisible(): boolean;
   ShowHUD(show: boolean): void;
+  /** inst:ScreenFade(isfadein, time): the front end fades to black, or back in. */
+  ScreenFade?(isfadein: boolean, time: number): void;
   /** inst.HUD.controls: inventory:Hide() / Show() hide and show crafting and the inventory bar. */
   readonly HUD?: { readonly controls?: { HideCraftingAndInventory(): void; ShowCraftingAndInventory(): void } };
   SpawnPrefab?(prefab: string, position: Vector3): { remove(): void; SetUp?(colour: readonly [number, number, number], duration: number, delay: number): void } | undefined;
@@ -210,6 +214,8 @@ export interface WilsonStateMem {
   action_failed: boolean;
   /** portal_jumpin: where portal_jumpout teleports to. */
   dest: PortalJumpData;
+  /** forcetele: staff.lua's pending teleport_continue / teleport_end, cancelled when the state is interrupted. */
+  teleport_task: { Cancel(): void };
 }
 
 /** The data GoToState passes the states that read it. */
@@ -438,6 +444,32 @@ const states: WilsonState[] = [
       }),
     ],
     onexit: (inst) => SetSleeperAwakeState(inst.context.entity),
+  }),
+  State({
+    // SGwilson.lua forcetele. ClearStatusAilments and the rider's ActualDismount are not ported: no status ailment or
+    // mount is. inst:Hide() also hides the DynamicShadow.
+    name: 'forcetele',
+    tags: ['busy', 'nopredict', 'nomorph'],
+    onenter: (inst) => {
+      const { entity } = inst.context;
+      entity.locomotor?.stop();
+      entity.components.health?.SetInvincible(true);
+      entity.Hide();
+      entity.ScreenFade?.(false, 2);
+      entity.controllerEnabled = false;
+    },
+    onexit: (inst) => {
+      const { entity } = inst.context;
+      entity.components.health?.SetInvincible(false);
+      entity.Show();
+      if (inst.statemem.teleport_task !== undefined) {
+        // Still have a running teleport_task. Interrupt!
+        inst.statemem.teleport_task.Cancel();
+        inst.statemem.teleport_task = undefined;
+        entity.ScreenFade?.(true, .5);
+      }
+      entity.controllerEnabled = true;
+    },
   }),
   State({
     name: 'toolbroke',
@@ -1945,4 +1977,9 @@ export class WilsonStateGraph {
   }
   /** The locomote event for a sleeper. */
   pushLocomote(): void { this.sg.pushEvent('locomote'); }
+
+  /** inst.sg:GoToState(name) for the states staff.lua's teleport sends the player to. */
+  GoToState(state: 'forcetele' | 'wakeup' | 'appear'): void { this.sg.goToState(state); }
+  /** inst.sg.statemem, which staff.lua's teleport keeps its teleport_task in. */
+  get statemem(): Partial<WilsonStateMem> { return this.sg.statemem; }
 }

@@ -204,6 +204,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `moonrocknugget` | 可生成 | 可入栏 | `prefabs/moonrocknugget.lua:57`；原版 `repairer` 的 moonrock 材质与 2 点修复值 |
 | `opalstaff` | 可生成 | 可入栏 | `prefabs/staff.lua:770` |
 | `greenstaff` | 可生成 | 可入栏 | `prefabs/staff.lua:770`、`:953`；配方目标施法与 5 次耐久 |
+| `telestaff` | 可生成 | 可入栏 | `prefabs/staff.lua:887`（`purple()`）；物品栏自施法与生物目标随机传送，5 次耐久 |
 | `trident` | 可生成 | 可入栏 | `prefabs/trident.lua`；200 次耐久，仅可对水面点施法（`spellcaster.canuseonpoint_water`），经 `SGwilson.lua` 的 `play_strum`；`c_save()` 保留耐久与皮肤 `trident_merm` |
 | `opalpreciousgem` | 可生成 | 可入栏 | `prefabs/gem.lua:74`、`:96`；`buildgem("opal", true)` |
 | `reskin_tool` | 可生成 | 可入栏 | `prefabs/reskin_tool.lua:386` |
@@ -690,3 +691,5 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 2026-11-01：`ruinsrelic.lua` 六种复制品和 `smashables.lua` 九种天然遗迹 / 碎石支持 `c_spawn`；仅复制品 vase/chipbowl/bowl/plate 带 inventoryitem，另支持 `c_give`（不可堆叠）。天然版本和复制品 table/chair 无 `c_give`。`ruinsrelic.test.ts` 从命令执行器验证 `c_spawn`、`c_give`、`c_save()`、导出反序列化和重载，覆盖 ID、位置、生命值、rubble、椅子皮肤、装饰湿度载荷与物品数量。Lua 动画、tags、字段和依赖签名逐项核对见 [遗迹家具移植](dst-ruinsrelic.md)。
 
 2026-11-01：核对 `prefabs/stalagmite.lua` / `stalagmite_tall.lua` 的八个世界 prefab：`stalagmite`、`stalagmite_full/med/low`、`stalagmite_tall`、`stalagmite_tall_full/med/low`，均没有 inventoryitem，只提供 `c_spawn("完整ID")`。无 prefab OnSave/OnLoad，workable 不保存进度；高型左右款式和明暗按源码重新随机。`stalagmite.test.ts` 直接驱动命令执行器验证 c_spawn、拒绝 c_give、c_save ZIP 导出和重载，覆盖身份、位置、空组件字段、恢复动画与工作量重置。详见 [石笋移植说明](dst-stalagmite.md)。
+
+2026-11-20 补充 `telestaff`：`prefabs/staff.lua` 的 `purple()`（`spellcaster` 的 `canusefrominventory`、`canuseontargets`、`canonlyuseonlocomotorspvp`，`TELESTAFF_USES` = 5），可 `c_give` / `c_spawn`，`c_save()` 保留耐久。`teleport_func` → `teleport_start` / `teleport_continue` / `teleport_end` 与 `SGwilson.lua` 的 `forcetele` 按源时序；随机目的地取 `TheWorld.topology.nodes` 中可通行、非 `SeparatedRoom` 的节点中心。

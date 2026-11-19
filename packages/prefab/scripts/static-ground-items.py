@@ -64,8 +64,7 @@ def read_static_items(add, items, read):
         art(colour + 'amulet', 'amulets', 'amulets', colour + 'amulet', 'amulet',
             tags=['shadowlevel', 'repairshortaction'] if colour == 'orange' else ['shadowlevel'])
     # staff.lua commonfn computes colour.."staff"..suffix, not the colour alone.
-    for item, clip, tags in [('icestaff', 'bluestaff', ['icestaff', 'weapon', 'rangedweapon', 'extinguisher']),
-                             ('telestaff', 'purplestaff', ['nopunch'])]:
+    for item, clip, tags in [('icestaff', 'bluestaff', ['icestaff', 'weapon', 'rangedweapon', 'extinguisher'])]:
         art(item, 'staffs', 'staffs', clip, 'staff', tags=tags + ['shadowlevel'])
     art('horrorfuel', 'horrorfuel', 'horrorfuel', 'idle_loop', 'horrorfuel',
         loop=True, tags=['waterproofer', 'purehorror', 'mermbuffcast'])['multColour'] = [1, 1, 1, .5]

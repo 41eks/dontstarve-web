@@ -269,8 +269,9 @@ def main():
     add('yellowstaff', 'staffs', 'staffs', 'yellowstaff', 'staff')
     add('opalstaff', 'staffs', 'staffs', 'opalstaff', 'staff')
     add('greenstaff', 'staffs', 'staffs', 'greenstaff', 'staff')
-    # staff.lua commonfn: anim = colour .. 'staff'; red is registered as `firestaff`.
+    # staff.lua commonfn: anim = colour .. 'staff'; red is registered as `firestaff`, purple as `telestaff`.
     add('firestaff', 'staffs', 'staffs', 'redstaff', 'staff')
+    add('telestaff', 'staffs', 'staffs', 'purplestaff', 'staff')
     assets.update(['anim/swap_staffs.zip', 'anim/player_staff.zip', 'anim/star_hot.zip', 'anim/star_cold.zip', 'anim/moonbase_fx.zip'])
     # trident.lua: ground bank/build trident from trident.zip, held swap_trident; SGwilson play_strum uses player_strum.zip.
     # fx.lua crab_king_waterspout (bank Bubble_fx) is the spell's water-column fx.

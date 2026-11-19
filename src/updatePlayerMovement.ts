@@ -65,7 +65,8 @@ export function updateMovement(
             && ((sg.isPerformingAction('CASTSPELL') && !reskinning()) || sg.isPerformingAction('READ') || sg.isPerformingAction('PLAY'));
         // SGwilson's death state has the dead tag: the corpse never moves.
         const dead = instance.sg.isDead === true;
-        const acting = sg?.isPerformingAction('BLINK') || dead || slipping || sleeping || hiding || castingBusy || instance.emote !== null
+        // playercontroller:Enable(false) (forcetele, wakeup, portal_rez...) ignores movement input.
+        const acting = !instance.controllerEnabled || sg?.isPerformingAction('BLINK') || dead || slipping || sleeping || hiding || castingBusy || instance.emote !== null
             || reskinning() || (['NET', 'MINE', 'CHOP', 'HAMMER', 'TERRAFORM'] as const).some(action => sg?.isPerformingAction(action));
         if (slipping && instance.wantsToMoveForward) instance.sg.pushLocomote();
         if (acting) locomotor.stop();

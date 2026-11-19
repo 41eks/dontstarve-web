@@ -36,6 +36,7 @@ import {
   buildingContainerId, isStorageBuildingId,
 } from '@dontstarve-web/prefab/containers';
 import { executeDebugCommand } from './debugCommands';
+import { createScreenFade } from './screenFade';
 import { itemWorld } from './prefabWorld';
 import { isPlaceableBuildingId } from './placeableBuilding';
 import {
@@ -136,6 +137,14 @@ inventory.entities.bindEquipmentWorld({
   fireStaffWorld: {
     launch: (owner, target, attacker) => LaunchProjectile((prefab, position) => registry.SpawnPrefab(prefab, position), FIRE_PROJECTILE_ID, owner, target, attacker),
     createFuel: () => inventory.entities.create({ itemId: 'cutgrass', count: 1 }),
+  },
+  // staff.lua telestaff: TheWorld's cave tag, topology nodes, map, lightning and moisture.
+  teleStaffWorld: {
+    isCave: initialSave.world.prefab === 'cave',
+    topologyNodes: initialSave.world.map.topology?.nodes ?? [],
+    isPassableAtPoint: point => turfMap.isPassableAtPoint(point),
+    sendLightningStrike: position => { SendLightningStrike({ root: scene, fx: worldFx, sim: prefabs }, position); },
+    deltaMoisture: delta => worldState.weather.DeltaMoisture(delta),
   },
   tridentWorld: {
     map: spellCastMap,
@@ -255,6 +264,10 @@ playerInstance.HUD = {
   },
 };
 playerInstance.SpawnPrefab = (prefab, position) => registry.SpawnPrefab(prefab, position);
+// player_classified's fade and the camera follow the player inst.
+const screenFade = createScreenFade();
+playerInstance.ScreenFade = (isfadein, time) => screenFade.fade(isfadein, time);
+playerInstance.SnapCamera = () => followCamera.snap();
 // A saved ghost resumes as a ghost (OnLoad is_ghost → OnMakePlayerGhost({ loading = true })).
 if (initialSave.players.local.ghost) playerInstance.PushEvent('makeplayerghost', { loading: true });
 const stopGhostWatch: (() => void)[] = [];
@@ -267,6 +280,9 @@ disposalEvents.on('dispose', () => {
   stopGhostWatch.splice(0).forEach(stop => stop());
   playerInstance.deathHost = undefined;
   playerInstance.SpawnPrefab = undefined;
+  playerInstance.ScreenFade = undefined;
+  playerInstance.SnapCamera = undefined;
+  screenFade.dispose();
   delete playerInstance.HUD;
   if (playerInstance.components.playeractionpicker === view.mouseActions) delete playerInstance.components.playeractionpicker;
 });

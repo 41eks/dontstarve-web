@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { addComponent } from './components';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { ItemEntity } from '@dontstarve-web/inventory';
@@ -22,8 +23,8 @@ export const YELLOWSTAFF_ID = 'yellowstaff';
 export const YELLOWSTAFF_COLOUR = [223 / 255, 208 / 255, 69 / 255] as const;
 export const OPALSTAFF_ID = 'opalstaff';
 export const OPALSTAFF_COLOUR = [64 / 255, 64 / 255, 208 / 255] as const;
-export type StaffId = LightStaffId | 'greenstaff' | 'firestaff';
-export function isStaff(itemId: string | null | undefined): itemId is StaffId { return isLightStaff(itemId) || itemId === 'greenstaff' || itemId === 'firestaff'; }
+export type StaffId = LightStaffId | 'greenstaff' | 'firestaff' | 'telestaff';
+export function isStaff(itemId: string | null | undefined): itemId is StaffId { return isLightStaff(itemId) || itemId === 'greenstaff' || itemId === 'firestaff' || itemId === 'telestaff'; }
 export type LightStaffId = typeof YELLOWSTAFF_ID | typeof OPALSTAFF_ID;
 export const LIGHT_STAFF_USES = { yellowstaff: 20, opalstaff: 50 } as const;
 export const LIGHT_STAFF_SANITY_COST = 20;
@@ -50,7 +51,7 @@ export class LightStaffController implements HeldEquipFunctions {
     entity.fxcolour = entity.prefab === 'opalstaff' ? OPALSTAFF_COLOUR : YELLOWSTAFF_COLOUR;
     entity.components.finiteuses.setMaxUses(this.maxUses);
     this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster, world.map);
-    this.spellcaster.SetSpellFn((_staff, _target, position, doer) => this.createLight(position, doer));
+    this.spellcaster.SetSpellFn((_staff, _target, position, doer) => !!position && this.createLight(position, doer));
     this.spellcaster.canUseOnPoint = true;
     this.spellcaster.canUseOnPointWater = true;
   }
@@ -78,10 +79,14 @@ export function isLightStaff(itemId: string | null | undefined): itemId is Light
   return itemId === YELLOWSTAFF_ID || itemId === OPALSTAFF_ID;
 }
 export const YELLOWSTAFF_CAST_TIME = WILSON_ACTION_TIMES.cast;
-/** staff.lua onequip: `swap_<colour>staff` of swap_staffs, or the skin's; the red staff's prefab id is firestaff. */
+/** staff.lua commonfn's anim, colour.."staff": the red staff's prefab id is firestaff and the purple one's telestaff. */
+const STAFF_ANIMS: Readonly<Record<StaffId, string>> = {
+  yellowstaff: 'yellowstaff', opalstaff: 'opalstaff', greenstaff: 'greenstaff', firestaff: 'redstaff', telestaff: 'purplestaff',
+};
+/** staff.lua onequip: `swap_<anim>` of swap_staffs, or the skin's. */
 export function staffVisual(item: EquipmentVisualItem & { readonly prefab: StaffId }) {
   const skin = skinArchive(item.prefab, GROUND_ITEM_DEFINITIONS[item.prefab].skinArchives, item.skinId);
-  return handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_staffs'], `swap_${item.prefab === 'firestaff' ? 'redstaff' : item.prefab}`);
+  return handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_staffs'], `swap_${STAFF_ANIMS[item.prefab]}`);
 }
 
 export const yellowstaffVisual: EquipmentVisualFactory = item => {
@@ -273,3 +278,187 @@ export class GreenStaffController implements HeldEquipFunctions {
 export function getGreenStaffController(entity: ItemEntity, world: GreenStaffWorld): GreenStaffController {
   return entity.component('greenstaff', () => new GreenStaffController(entity, world));
 }
+
+// staff.lua purple(), registered as telestaff
+
+export const TELESTAFF_ID = 'telestaff' as const;
+/** tuning.lua TELESTAFF_USES, TELESTAFF_MOISTURE and SANITY_HUGE. */
+export const TELESTAFF_USES = 5;
+export const TELESTAFF_MOISTURE = 500;
+const SANITY_HUGE = 50;
+export const TELESTAFF_COLOUR = [104 / 255, 40 / 255, 121 / 255] as const;
+export const TELESTAFF_SOUND = 'dontstarve/common/staffteleport';
+/** constants.lua NODE_TYPE.SeparatedRoom: a room walled off by impassable ground. */
+const NODE_TYPE_SEPARATED_ROOM = 7;
+
+/** TheWorld as the teleport reads it. */
+export interface TeleStaffWorld {
+  /** TheWorld:HasTag("cave"). */
+  readonly isCave: boolean;
+  /** TheWorld.topology.nodes: each node's centre (node.x, node.y as the ground's X and Z) and its NODE_TYPE. */
+  readonly topologyNodes: readonly { readonly x: number; readonly z: number; readonly type: number }[];
+  /** TheWorld.Map:IsPassableAtPoint. */
+  isPassableAtPoint(position: THREE.Vector3): boolean;
+  /** TheWorld:PushEvent("ms_sendlightningstrike", pos). */
+  sendLightningStrike(position: THREE.Vector3): void;
+  /** TheWorld:PushEvent("ms_deltamoisture", delta). */
+  deltaMoisture(delta: number): void;
+}
+
+/** What the staff's teleport reads and writes on the inst it moves. */
+interface Teleportee {
+  readonly position: ReadonlyVector3;
+  readonly physics: { Teleport(): void };
+  readonly components: {
+    locomotor?: { StopMoving(): void };
+    health?: { SetInvincible(invincible: boolean): void };
+    sanity?: { DoDelta(delta: number): void };
+    staffsanity?: { doCastingDelta(delta: number): void };
+  };
+  hasTag(tag: string): boolean;
+  setPosition(x: number, y: number, z: number): void;
+  Hide(): void;
+  Show(): void;
+  PushEvent(name: string, data?: unknown): void;
+  DoTaskInTime(time: number, fn: () => void): { Cancel(): void };
+}
+/** The player inst: SGwilson's forcetele state holds the pending teleport_task in its statemem. */
+interface TeleporteePlayer extends Teleportee {
+  readonly sg: {
+    GoToState(state: 'forcetele' | 'wakeup' | 'appear'): void;
+    readonly statemem: { teleport_task?: { Cancel(): void } };
+  };
+  readonly SoundEmitter?: { PlaySound(path: SoundEventPath): void };
+  SnapCamera?(): void;
+  ScreenFade?(isfadein: boolean, time: number): void;
+}
+function isTeleporteePlayer(teleportee: Teleportee): teleportee is TeleporteePlayer {
+  return teleportee.hasTag('player') && 'sg' in teleportee;
+}
+
+/**
+ * getrandomposition: the centre of a random passable topology node outside the separated rooms, else the caster's
+ * position. The ocean branch (FindRandomPointInOcean / FindSwimmableOffset) is for an aquatic locomotor, which no
+ * creature here has.
+ */
+function getrandomposition(world: TeleStaffWorld, caster: Teleportee | undefined, teleportee: Teleportee): THREE.Vector3 {
+  const centers: THREE.Vector3[] = [];
+  for (const node of world.topologyNodes) {
+    const center = new THREE.Vector3(node.x, 0, node.z);
+    if (world.isPassableAtPoint(center) && node.type !== NODE_TYPE_SEPARATED_ROOM) centers.push(center);
+  }
+  if (centers.length > 0) return centers[Math.floor(Math.random() * centers.length)];
+  // caster:GetPosition(); a haunted staff has no caster, and the haunt is not ported.
+  const { x, y, z } = (caster ?? teleportee).position;
+  return new THREE.Vector3(x, y, z);
+}
+
+/** teleport_end: the arrival strike, then the player wakes up (or the creature reappears) at `locpos`. */
+function teleport_end(teleportee: Teleportee, locpos: THREE.Vector3, world: TeleStaffWorld): void {
+  // The loctarget's onteleto (a telebase) and the heavy-lifting drop are not ported. The preventburning guard is not
+  // needed: the lightning strike here does not ignite anything.
+  world.sendLightningStrike(locpos);
+  if (isTeleporteePlayer(teleportee)) {
+    teleportee.sg.statemem.teleport_task = undefined;
+    teleportee.sg.GoToState(teleportee.hasTag('playerghost') ? 'appear' : 'wakeup');
+    teleportee.SoundEmitter?.PlaySound(TELESTAFF_SOUND);
+  } else {
+    teleportee.Show();
+    teleportee.components.health?.SetInvincible(false);
+    teleportee.PushEvent('teleported');
+  }
+}
+
+/** teleport_continue: Physics:Teleport to `locpos`; the player fades back in and wakes up a second later. */
+function teleport_continue(teleportee: Teleportee, locpos: THREE.Vector3, world: TeleStaffWorld): void {
+  teleportee.setPosition(locpos.x, 0, locpos.z);
+  teleportee.physics.Teleport();
+  teleportee.PushEvent('teleport_move');
+  if (isTeleporteePlayer(teleportee)) {
+    teleportee.SnapCamera?.();
+    teleportee.ScreenFade?.(true, 1);
+    teleportee.sg.statemem.teleport_task = teleportee.DoTaskInTime(1, () => teleport_end(teleportee, locpos, world));
+  } else {
+    teleport_end(teleportee, locpos, world);
+  }
+}
+
+/**
+ * teleport_start: one use of the staff, then (above ground) the departure strike, the caster's sanity cost and the
+ * world's moisture; the player waits three seconds hidden in forcetele before moving.
+ */
+function teleport_start(teleportee: Teleportee, staff: ItemEntity, caster: Teleportee | undefined, no_teleport: boolean,
+  world: TeleStaffWorld): void {
+  // Gotta do this RIGHT AWAY in case anything happens to loctarget or caster. teleportedoverride and the telebase
+  // destinations are not ported, so the destination is always random.
+  let locpos: THREE.Vector3 | undefined;
+  if (!no_teleport) {
+    locpos = getrandomposition(world, caster, teleportee);
+    teleportee.components.locomotor?.StopMoving();
+  }
+  staff.components.finiteuses.use(1);
+  // There's a roof over your head, magic lightning can't strike! The ms_miniquake it pushes instead is not ported.
+  if (world.isCave) return;
+  let is_teleporting_player = false;
+  if (locpos) {
+    if (isTeleporteePlayer(teleportee)) {
+      is_teleporting_player = true;
+      teleportee.sg.GoToState('forcetele');
+    } else {
+      teleportee.components.health?.SetInvincible(true);
+      teleportee.Hide();
+    }
+  }
+  const { x, y, z } = teleportee.position;
+  world.sendLightningStrike(new THREE.Vector3(x, y, z));
+  if (caster) {
+    if (caster.components.staffsanity) caster.components.staffsanity.doCastingDelta(-SANITY_HUGE);
+    else caster.components.sanity?.DoDelta(-SANITY_HUGE);
+  }
+  world.deltaMoisture(TELESTAFF_MOISTURE);
+  if (!locpos) return;
+  const destination = locpos;
+  if (is_teleporting_player && isTeleporteePlayer(teleportee)) {
+    teleportee.sg.statemem.teleport_task = teleportee.DoTaskInTime(3, () => teleport_continue(teleportee, destination, world));
+  } else {
+    teleport_continue(teleportee, destination, world);
+  }
+}
+
+/**
+ * teleport_func: the target, or the caster when cast from the inventory. A `noteleport` target is still targetable
+ * but stays put. IsTeleportLinkingPermittedFromPoint always permits (no vault or wagpunk arena is ported), and the
+ * minigame, teleportedoverride, hitched and telebase destinations are not ported.
+ */
+function teleport_func(inst: ItemEntity, target: object | undefined, caster: SpellCastDoer): boolean {
+  const world = (inst.equipmentWorld as { teleStaffWorld?: TeleStaffWorld } | undefined)?.teleStaffWorld;
+  const casterInst = caster instanceof PrefabInstance ? caster as Teleportee : undefined;
+  const teleportee = target instanceof PrefabInstance ? target as Teleportee : casterInst;
+  if (!world || !teleportee || inst.isRemoved) return false;
+  teleport_start(teleportee, inst, casterInst, teleportee.hasTag('noteleport'), world);
+  return true;
+}
+
+/** staff.lua onfinished: the gem shatters as the staff is removed. */
+function onfinished(inst: ItemEntity): boolean {
+  PlaySound('dontstarve/common/gem_shatter', inst.components.inventoryitem.GetHeldPosition() ?? inst.position);
+  return inst.remove();
+}
+
+/** staff.lua purple(): a spellcaster usable on locomotors (other players only with PvP) and, from the inventory, on its holder. */
+export function configureTeleStaffEntity(inst: ItemEntity): void {
+  // commonfn: the nopunch tag and the shadowlevel component's pristine tag.
+  inst.addTag('nopunch'); inst.addTag('shadowlevel');
+  inst.fxcolour = TELESTAFF_COLOUR;
+  if (inst.components.spellcaster) return;
+  inst.components.finiteuses.setMaxUses(TELESTAFF_USES);
+  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
+  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster);
+  spellcaster.SetSpellFn((_staff, target, _pos, caster) => teleport_func(inst, target, caster));
+  spellcaster.canUseOnTargets = true;
+  spellcaster.canUseFromInventory = true;
+  spellcaster.canOnlyUseOnLocomotorsPvP = true;
+}
+
+/** swap_staffs symbol `swap_purplestaff`, or the skin build's. */
+export const teleStaffVisual: EquipmentVisualFactory = item => staffVisual({ ...item, prefab: TELESTAFF_ID });

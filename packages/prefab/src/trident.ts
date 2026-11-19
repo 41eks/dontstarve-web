@@ -40,7 +40,7 @@ export class TridentController implements HeldEquipFunctions {
       return entity.remove();
     });
     this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster, world.map);
-    this.spellcaster.SetSpellFn((_trident, _target, position) => this.createWaterExplosion(position));
+    this.spellcaster.SetSpellFn((_trident, _target, position) => !!position && this.createWaterExplosion(position));
     this.spellcaster.canUseOnPointWater = true;
   }
   onequip(): void {}

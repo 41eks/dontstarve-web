@@ -15,9 +15,10 @@ export interface SpellCastMap {
   isOceanAtPoint(position: THREE.Vector3): boolean;
   isGroundTargetBlocked(position: THREE.Vector3): boolean;
 }
+/** `position` is BufferedAction:GetActionPoint(): undefined for a cast from the inventory, which has no target either. */
 export interface SpellCasterComponent {
-  canCast(doer: SpellCastDoer, target: SpellTarget | undefined, position: THREE.Vector3): boolean;
-  castSpell(target: SpellTarget | undefined, position: THREE.Vector3, doer: SpellCastDoer): boolean;
+  canCast(doer: SpellCastDoer, target: SpellTarget | undefined, position: THREE.Vector3 | undefined): boolean;
+  castSpell(target: SpellTarget | undefined, position: THREE.Vector3 | undefined, doer: SpellCastDoer): boolean;
   dispose(): void;
 }
 export interface SpellCasterInst {
@@ -31,33 +32,39 @@ export interface SpellTarget {
   hasTag(tag: string): boolean;
   /** inst.entity:IsVisible() */
   IsVisible?(): boolean;
-  readonly components?: { readonly health?: { IsDead(): boolean } };
+  readonly components?: { readonly health?: { IsDead(): boolean }; readonly locomotor?: object };
   readonly sg?: { hasStateTag(tag: string): boolean };
 }
 
 /** spellcaster.lua spell(inst, target, pos, doer). */
-export type SpellFn = LuaFn<[inst: SpellCasterInst, target: object | undefined, position: THREE.Vector3, doer: SpellCastDoer], boolean>;
+export type SpellFn = LuaFn<[inst: SpellCasterInst, target: object | undefined, position: THREE.Vector3 | undefined, doer: SpellCastDoer], boolean>;
 /** spellcaster.lua can_cast_fn(doer, target, pos, inst): the doer comes first in the source. */
-export type SpellCanCastFn = LuaFn<[doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3, inst: SpellCasterInst], boolean>;
+export type SpellCanCastFn = LuaFn<[doer: SpellCastDoer, target: object | undefined, position: THREE.Vector3 | undefined, inst: SpellCasterInst], boolean>;
 
-/** Supported point and target branches of components/spellcaster.lua. */
+/** Supported point, target and inventory branches of components/spellcaster.lua. */
 export class SpellCaster implements SpellCasterComponent {
   private readonly item: SpellCasterInst;
   private readonly map: SpellCastMap | undefined;
   private spell?: SpellFn;
   private onPoint = false;
   private onWater = false;
+  private fromInventory = false;
   private onTargets = false;
   private onRecipes = false;
+  private onLocomotorsPvP = false;
   private onDead = false;
   private veryQuick = false;
   private canCastFn?: SpellCanCastFn;
   private disposed = false;
   constructor(item: SpellCasterInst, map?: SpellCastMap) { this.item = item; this.map = map; }
+  get canUseFromInventory(): boolean { return this.fromInventory; }
+  set canUseFromInventory(value: boolean) { this.fromInventory = value; this.refreshTags(); }
   get canUseOnTargets(): boolean { return this.onTargets; }
   set canUseOnTargets(value: boolean) { this.onTargets = value; this.refreshTags(); }
   get canOnlyUseOnRecipes(): boolean { return this.onRecipes; }
   set canOnlyUseOnRecipes(value: boolean) { this.onRecipes = value; this.refreshTags(); }
+  get canOnlyUseOnLocomotorsPvP(): boolean { return this.onLocomotorsPvP; }
+  set canOnlyUseOnLocomotorsPvP(value: boolean) { this.onLocomotorsPvP = value; this.refreshTags(); }
   get canUseOnDead(): boolean { return this.onDead; }
   set canUseOnDead(value: boolean) { this.onDead = value; }
   get veryQuickCast(): boolean { return this.veryQuick; }
@@ -70,28 +77,34 @@ export class SpellCaster implements SpellCasterComponent {
   SetSpellFn(spell: SpellFn | undefined): void {
     this.spell = spell; this.refreshTags();
   }
-  canCast(doer: SpellCastDoer, target: SpellTarget | undefined, position: THREE.Vector3): boolean {
+  canCast(doer: SpellCastDoer, target: SpellTarget | undefined, position: THREE.Vector3 | undefined): boolean {
     if (this.disposed || this.item.isRemoved || !this.spell
-      || ![position.x, position.y, position.z].every(Number.isFinite)) return false;
+      || (position && ![position.x, position.y, position.z].every(Number.isFinite))) return false;
     if (target) {
       const inst = target;
+      // TheNet:GetPVPEnabled() is false: a player casts on another player only with PvP.
       return this.onTargets && !inst.isRemoved && !inst.hasTag('INLIMBO') && inst.IsVisible?.() !== false
         && (this.onDead || !inst.components?.health?.IsDead())
         && !['death', 'flight', 'invisible', 'nospellcasting'].some(tag => inst.sg?.hasStateTag(tag))
         && ((this.onRecipes && 'prefab' in inst && typeof inst.prefab === 'string'
-          && !!getDeconstructionRecipe(inst.prefab)) || (this.canCastFn?.(doer, target, position, this.item) ?? false));
+          && !!getDeconstructionRecipe(inst.prefab))
+          || (!!inst.components?.locomotor && this.onLocomotorsPvP
+            && (Object.is(target, doer) || !(inst.hasTag('player') && doer.hasTag('player'))))
+          || (this.canCastFn?.(doer, target, position, this.item) ?? false));
     }
+    if (!position) return this.fromInventory;
     return (this.canCastFn?.(doer, target, position, this.item) ?? true) && !!this.map
       && (this.onPoint ? this.map.isAboveGroundAtPoint(position, this.onWater)
         : this.onWater && this.map.isOceanAtPoint(position)) && !this.map.isGroundTargetBlocked(position);
   }
-  castSpell(target: SpellTarget | undefined, position: THREE.Vector3, doer: SpellCastDoer): boolean {
+  castSpell(target: SpellTarget | undefined, position: THREE.Vector3 | undefined, doer: SpellCastDoer): boolean {
     return this.canCast(doer, target, position) && (this.spell?.(this.item, target, position, doer) ?? false);
   }
   dispose(): void { this.disposed = true; this.refreshTags(); }
   private refreshTags(): void {
-    for (const [tag, enabled] of [['castonpoint', this.onPoint], ['castonpointwater', this.onWater],
-      ['castontargets', this.onTargets && !this.onRecipes], ['castonrecipes', this.onTargets && this.onRecipes], ['veryquickcast', this.veryQuick]] as const) {
+    for (const [tag, enabled] of [['castfrominventory', this.fromInventory], ['castonpoint', this.onPoint], ['castonpointwater', this.onWater],
+      ['castontargets', this.onTargets && !this.onRecipes && !this.onLocomotorsPvP], ['castonrecipes', this.onTargets && this.onRecipes],
+      ['castonlocomotorspvp', this.onTargets && this.onLocomotorsPvP], ['veryquickcast', this.veryQuick]] as const) {
       if (!this.disposed && this.spell && enabled) this.item.addTag(tag);
       else this.item.removeTag(tag);
     }

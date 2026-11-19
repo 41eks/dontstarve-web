@@ -296,7 +296,8 @@ export const ACTION_FNS = {
   CASTSPELL: {
     // spellcaster:CanCast, then CastSpell at the action point; the item mimic and crushitemcast checks are not ported.
     fn: act => {
-      const spellcaster = act.invobject?.components.spellcaster, point = actionPoint(act);
+      // A cast from the inventory has neither a point nor a target: GetActionPoint() is nil.
+      const spellcaster = act.invobject?.components.spellcaster, point = act.pos || act.target ? actionPoint(act) : undefined;
       if (!spellcaster?.canCast(playerDoer(act), act.target, point)) return false;
       return spellcaster.castSpell(act.target, point, playerDoer(act));
     },

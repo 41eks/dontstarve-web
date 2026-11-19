@@ -23,7 +23,7 @@ import { configureReskinToolEntity, createReskinToolLifecycle, reskinToolVisual 
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
 import { configureTorchEntity, createTorchHandLifecycle, onattack as torchOnAttack, torchVisual } from './torch';
 import { getTridentController, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
-import { FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController, getGreenStaffController, getLightStaffController, GREENSTAFF_USES, yellowstaffVisual, type FireStaffWorld, type GreenStaffWorld, type LightStaffWorld } from './staff';
+import { configureTeleStaffEntity, FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController, getGreenStaffController, getLightStaffController, GREENSTAFF_USES, TELESTAFF_USES, teleStaffVisual, yellowstaffVisual, type FireStaffWorld, type GreenStaffWorld, type LightStaffWorld, type TeleStaffWorld } from './staff';
 
 /** Golden tools' saved uses move in 1 / GOLDENTOOLFACTOR steps. */
 const GOLDEN_USE_STEP = 1 / GOLDENTOOLFACTOR;
@@ -33,6 +33,8 @@ export interface HandEquipmentWorld {
   lightStaffWorld?: LightStaffWorld;
   greenStaffWorld?: GreenStaffWorld;
   fireStaffWorld?: FireStaffWorld;
+  /** TheWorld as staff.lua's teleport reads it, at the cast. */
+  teleStaffWorld?: TeleStaffWorld;
   tridentWorld?: TridentWorld;
   /** reskin_tool.lua SpawnPrefab(fx_prefab): the scene's reskin fx. */
   reskinEffects?: import('@dontstarve-web/stategraphs/reskin_tool').ReskinEffectPresenter;
@@ -78,6 +80,8 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
   // staff.lua red(): weapon damage 0 (the projectile only lights), FIRESTAFF_USES uses, ranged lighter tags.
   firestaff: { visual: fireStaffVisual, maxUses: FIRESTAFF_USES, tags: FIRESTAFF_TAGS, weapon: { damage: 0 },
     createLifecycle: (entity, context) => context.fireStaffWorld ? getFireStaffController(entity, context.fireStaffWorld) : undefined },
+  // staff.lua purple(): its spellcaster is configured at spawn, as casting from the inventory needs it unequipped too.
+  telestaff: { visual: teleStaffVisual, tags: ['nopunch'], maxUses: TELESTAFF_USES, configureEntity: configureTeleStaffEntity },
   // trident.lua: TRIDENT.DAMAGE over ground (OCEAN_DAMAGE applies only while the wielder stands on a boat or the sea).
   trident: { visual: tridentVisual, maxUses: TRIDENT_USES, tags: ['pointy', 'sharp'], weapon: { damage: TRIDENT_DAMAGE },
     createLifecycle: (entity, context) => context.tridentWorld ? getTridentController(entity, context.tridentWorld) : undefined },

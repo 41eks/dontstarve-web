@@ -112,7 +112,7 @@ const MATERIALS = ['wood', 'stone', 'hay', 'thulecite', 'gem', 'gears', 'moonroc
   'moon_altar', 'kelp', 'shell', 'nightmare', 'dreadstone', 'salt', 'vitae'] as const;
 /** constants.lua OCCUPANTTYPE. */
 const OCCUPANTTYPE = ['bird'] as const;
-export type InventoryAction = 'EAT' | 'PLAY' | 'READ';
+export type InventoryAction = 'EAT' | 'PLAY' | 'READ' | 'CASTSPELL';
 type InventoryFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: InventoryAction[], right: boolean) => void;
 type UseItemFn = (inst: ComponentActionEntity, doer: SceneActionDoer, target: ComponentActionEntity,
   actions: UseItemAction[], right: boolean) => void;
@@ -142,6 +142,8 @@ export const COMPONENT_ACTIONS: {
       if (eats) actions.push('EAT');
     },
     instrument: (_inst, _doer, actions) => { actions.push('PLAY'); },
+    // The crushitemcast rider / heavy-lifting gate is not ported: no doer has a mount.
+    spellcaster: (inst, _doer, actions) => { if (inst.hasTag('castfrominventory')) actions.push('CASTSPELL'); },
   },
   USEITEM: {
     // The rider gates of these entries are not ported: no doer has a mount.
@@ -264,10 +266,13 @@ export const COMPONENT_ACTIONS: {
       if (right && target.hasTag('canlight') && !((target.hasTag('fueldepleted') && !target.hasTag('burnableignorefuel'))
         || target.hasTag('INLIMBO'))) actions.push('LIGHT');
     },
-    // The castonlocomotors, castonworkable, castoncombat and crushitemcast branches are not ported.
-    spellcaster: (inst, _doer, target, actions, right) => {
+    // The castonlocomotors, castonworkable, castoncombat and crushitemcast branches are not ported. TheNet:GetPVPEnabled()
+    // is false, so castonlocomotorspvp reaches another player only when the doer is not one.
+    spellcaster: (inst, doer, target, actions, right) => {
       if (right && !target.hasTag('nomagic') && (inst.hasTag('castontargets')
-        || (inst.hasTag('castonrecipes') && !!target.prefab && !!getDeconstructionRecipe(target.prefab)))) actions.push('CASTSPELL');
+        || (inst.hasTag('castonrecipes') && !!target.prefab && !!getDeconstructionRecipe(target.prefab))
+        || (target.hasTag('locomotor') && inst.hasTag('castonlocomotorspvp')
+          && (Object.is(target, doer) || !(target.hasTag('player') && doer?.hasTag('player')))))) actions.push('CASTSPELL');
     },
     // Only the CanLightTarget (RANGEDLIGHT) branch is ported: there is no CanExtinguishTarget, and the left-button
     // attack on a combat target is not offered here.

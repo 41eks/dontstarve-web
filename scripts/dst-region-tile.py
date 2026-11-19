@@ -101,6 +101,18 @@ def decode_underneath(terrain):
     return grid
 
 
+def convert_topology_nodes(nodes, translation):
+    # TheWorld.topology.nodes as staff.lua getrandomposition reads them: each node's centre (node.x, node.y are the
+    # world X and Z) and its NODE_TYPE, projected like entity positions.
+    converted = []
+    for node in nodes:
+        if type(node.get('type')) is not int or any(type(node.get(axis)) not in (int, float) for axis in 'xy'):
+            raise ValueError(f'Unsupported topology node: {sorted(node)}')
+        x, _, z = project_position([node['x'], 0, node['y']], translation)
+        converted.append({'x': x, 'z': z, 'type': node['type']})
+    return converted
+
+
 def convert_map(terrain, supported, origin_cell=None):
     """The project world (without entities), the player's spawn position and the provenance report."""
     prefab = terrain['prefab']
@@ -171,11 +183,14 @@ def convert_map(terrain, supported, origin_cell=None):
     cx = sum(c[0] for c in spawn_cells) / len(spawn_cells)
     cz = sum(c[1] for c in spawn_cells) / len(spawn_cells)
     spawn = min(interior, key=lambda c: (c[0] - cx) ** 2 + (c[1] - cz) ** 2)
+    translation = [(source_grid_position(0, width) - origin_x) * TILE_SIZE, 0,
+                   (source_grid_position(0, height) - origin_z) * TILE_SIZE]
     world = {
         'shardId': shard_id, 'prefab': prefab, 'elapsedSeconds': 0, 'systems': {},
         'map': {'kind': 'generated', 'defaultTileId': 1, 'tiles': saved_tiles,
                 'generator': {'id': 'dst-map-v1', 'options': {
-                    'size': half * 2 * TILE_SIZE, 'moonTreeCount': 0, 'moonTreeExclusionRadiusSquared': 0}}},
+                    'size': half * 2 * TILE_SIZE, 'moonTreeCount': 0, 'moonTreeExclusionRadiusSquared': 0}},
+                'topology': {'nodes': convert_topology_nodes(terrain['topology']['nodes'], translation)}},
         'entities': {},
     }
     spawn_position = [(spawn[0] - origin_x + .5) * TILE_SIZE, 0, (origin_z - spawn[1] - .5) * TILE_SIZE]
@@ -184,8 +199,7 @@ def convert_map(terrain, supported, origin_cell=None):
         **({'unassignedNodeIds': sorted(unassigned_nodes)} if unassigned_nodes else {}),
         'sourceDimensions': [width, height], 'sourceBounds': [min_x, min_z, max_x, max_z],
         'sourceOriginCell': [origin_x, origin_z], 'worldScale': TILE_SIZE / 4, 'mirroredAxis': 'z',
-        'translation': [(source_grid_position(0, width) - origin_x) * TILE_SIZE, 0,
-                        (source_grid_position(0, height) - origin_z) * TILE_SIZE],
+        'translation': translation,
         'tileCounts': dict(sorted(Counter(c[2] for c in map_cells).items())),
         'landCells': len(land), 'savedCells': len(saved_tiles),
         'note': 'Original impassable gaps and FAKE_GROUND are non-walkable; only whitelisted source entities are imported. No bridges are generated.',

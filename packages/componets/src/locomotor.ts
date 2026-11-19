@@ -28,6 +28,8 @@ export interface LocoMotorInst {
   readonly components: { health?: { IsDead?(): boolean } };
   PushEvent(name: string, data?: unknown): void;
   PushBufferedAction(action: BufferedAction): void;
+  addTag(tag: string): void;
+  removeTag(tag: string): void;
 }
 
 // components/locomotor.lua constants and defaults (TUNING.WILSON_WALK_SPEED / WILSON_RUN_SPEED).
@@ -181,7 +183,10 @@ export class LocoMotor {
     this.inst = inst; this.options = options;
     this.arrive_dist = options.arriveDistance ?? ARRIVE_STEP;
     this.pathing = options.pathfinder && new LocoMotorPath(options.pathfinder, options.pathcaps, this.arrive_dist);
+    inst.addTag('locomotor');
   }
+
+  OnRemoveFromEntity(): void { this.inst.removeTag('locomotor'); }
 
   get isUpdating(): boolean { return this.updating; }
   GetWalkSpeed(): number { return this.walkspeed; }

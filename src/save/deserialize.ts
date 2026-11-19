@@ -79,7 +79,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   if (parentId !== null && parentId >= id) fail('snapshot.parentId', 'must refer to an earlier snapshot');
   const world = object(root.world, 'world', ['shardId', 'prefab', 'seed', 'elapsedSeconds', 'systems', 'map', 'entities']);
   const shardId = string(world.shardId, 'world.shardId');
-  const map = object(world.map, 'world.map', ['kind', 'generator', 'tiles', 'defaultTileId']);
+  const map = object(world.map, 'world.map', ['kind', 'generator', 'tiles', 'defaultTileId', 'topology']);
   const generator = object(map.generator, 'world.map.generator', ['id', 'seed', 'options']);
   const options = object(generator.options, 'world.map.generator.options', ['size', 'moonTreeCount', 'moonTreeExclusionRadiusSquared']);
   const size = number(options.size, 'world.map.generator.options.size', 1, 10_000);
@@ -91,6 +91,13 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   if (world.prefab === 'cave' && defaultTileId !== WORLD_TILES.IMPASSABLE) {
     fail('world.map.defaultTileId', 'cave maps require an impassable background');
   }
+  const topology = map.topology === undefined ? undefined : {
+    nodes: array(object(map.topology, 'world.map.topology', ['nodes']).nodes, 'world.map.topology.nodes', 100_000).map((value, i) => {
+      const path = `world.map.topology.nodes[${i}]`;
+      const node = object(value, path, ['x', 'z', 'type']);
+      return { x: number(node.x, `${path}.x`, -size, size), z: number(node.z, `${path}.z`, -size, size), type: integer(node.type, `${path}.type`, 0, 7) };
+    }),
+  };
   const tiles = map.tiles === undefined ? undefined : array(map.tiles, 'world.map.tiles',
     (Math.ceil(size / TILE_SIZE) + 1) ** 2).map((value, i) => {
     const path = `world.map.tiles[${i}]`;
@@ -405,6 +412,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
         kind: choice(map.kind, 'world.map.kind', ['generated']),
         ...(defaultTileId === undefined ? {} : { defaultTileId }),
         ...(tiles === undefined ? {} : { tiles }),
+        ...(topology === undefined ? {} : { topology }),
         generator: {
           id: string(generator.id, 'world.map.generator.id'),
           ...(generator.seed === undefined ? {} : { seed: string(generator.seed, 'world.map.generator.seed') }),

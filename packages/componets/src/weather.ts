@@ -50,7 +50,7 @@ function finite(value: number, name: string): number {
  * The precipitation part of components/weather.lua: moisture, its ceiling and floor, the precipitation type and the
  * derived precipitation rate, temperature-driven rain/snow transitions and snow accumulation/melting.
  * Moisture only moves by `ForcePrecipitation` (the `ms_forceprecipitation` event, used by
- * `book_rain`) and by dissipating while it precipitates. Wetness, entity snow cover, lightning, lunar hail, precipitation
+ * `book_rain`), by `DeltaMoisture` (`ms_deltamoisture`, the telestaff) and by dissipating while it precipitates. Wetness, entity snow cover, lightning, lunar hail, precipitation
  * modes and the seasonal moisture rate are not ported.
  */
 export class Weather {
@@ -138,6 +138,12 @@ export class Weather {
   /** weather.lua OnForcePrecipitation: jump moisture to its ceiling (`enable`) or floor; OnUpdate then reacts. */
   ForcePrecipitation(enable = true): void {
     this.moistureState.set(enable ? this.moistureceilState.peek() : this.moisturefloorState.peek());
+  }
+
+  /** weather.lua OnDeltaMoisture (ms_deltamoisture): moisture moves by `delta`, kept between its floor and ceiling. */
+  DeltaMoisture(delta: number): void {
+    const moisture = this.moistureState.peek() + finite(delta, 'delta');
+    this.moistureState.set(Math.min(Math.max(moisture, this.moisturefloorState.peek()), this.moistureceilState.peek()));
   }
 
   /** The moisture branches of OnUpdate: dissipate while precipitating, otherwise accumulate toward the ceiling. */

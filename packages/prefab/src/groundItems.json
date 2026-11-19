@@ -4093,6 +4093,29 @@
         "rangedlighter"
       ]
     },
+    "telestaff": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
+      "name": "传送魔杖",
+      "icon": "telestaff.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "staffs.zip",
+      "buildArchives": [
+        "staffs.zip"
+      ],
+      "bank": "staffs",
+      "animation": "purplestaff",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "telestaff_crystal": "dynamic/telestaff_crystal.zip",
+        "telestaff_mystical": "dynamic/telestaff_mystical.zip",
+        "telestaff_shadowbeam": "dynamic/telestaff_shadowbeam.zip"
+      },
+      "tags": [
+        "shadowlevel",
+        "nopunch"
+      ]
+    },
     "trident": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trident.lua",
       "name": "刺耳三叉戟",
@@ -7972,29 +7995,6 @@
         "shadowlevel"
       ]
     },
-    "telestaff": {
-      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
-      "name": "传送魔杖",
-      "icon": "telestaff.tex",
-      "atlas": "images/inventoryimages.xml",
-      "animationArchive": "staffs.zip",
-      "buildArchives": [
-        "staffs.zip"
-      ],
-      "bank": "staffs",
-      "animation": "purplestaff",
-      "loop": false,
-      "symbolOverrides": {},
-      "skinArchives": {
-        "telestaff_crystal": "dynamic/telestaff_crystal.zip",
-        "telestaff_mystical": "dynamic/telestaff_mystical.zip",
-        "telestaff_shadowbeam": "dynamic/telestaff_shadowbeam.zip"
-      },
-      "tags": [
-        "nopunch",
-        "shadowlevel"
-      ]
-    },
     "horrorfuel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/horrorfuel.lua",
       "name": "纯粹恐惧",
@@ -10191,6 +10191,24 @@
       "itemId": "yellowstaff",
       "name": "原始唤星者魔杖",
       "icon": "starstaff_swamp.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "telestaff_crystal": {
+      "itemId": "telestaff",
+      "name": "巫师法杖",
+      "icon": "telestaff_crystal.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "telestaff_mystical": {
+      "itemId": "telestaff",
+      "name": "神秘法杖",
+      "icon": "telestaff_mystical.tex",
+      "atlas": "images/inventoryimages3.xml"
+    },
+    "telestaff_shadowbeam": {
+      "itemId": "telestaff",
+      "name": "暗影束",
+      "icon": "telestaff_shadowbeam.tex",
       "atlas": "images/inventoryimages3.xml"
     },
     "torch_barber": {

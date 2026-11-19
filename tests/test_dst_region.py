@@ -72,7 +72,8 @@ class RegionImportTest(unittest.TestCase):
         encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
         terrain = {'prefab': 'cave', 'width': width, 'height': height,
                    'tiles': encode(tiles), 'nodeidtilemap': encode(nodes),
-                   'topology': {'ids': ['BlueForest:0:Forest', 'ArchiveMaze:0:Room']},
+                   'topology': {'ids': ['BlueForest:0:Forest', 'ArchiveMaze:0:Room'],
+                                'nodes': [{'x': 2, 'y': -4, 'type': 0, 'area': 9}, {'x': 6, 'y': 0, 'type': 7}]},
                    'world_tile_map': {'IMPASSABLE': 1, 'FUNGUS': 14, 'ARCHIVE': 45, 'FAKE_GROUND': 200}}
         template = {'players': {'local': {'ghost': True, 'inventory': {'old': 'discard'}}}}
         result, report = IMPORTER['convert'](terrain, template,
@@ -86,6 +87,9 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(result['players']['local']['transform']['position'], [-6, 0, -6])
         self.assertEqual(report['scope'], 'full-map')
         self.assertEqual(report['nodes'], terrain['topology']['ids'])
+        # TheWorld.topology.nodes keep their centre, projected as positions are, and their NODE_TYPE.
+        self.assertEqual(result['world']['map']['topology'],
+                         {'nodes': [{'x': 18.0, 'z': 0.0, 'type': 0}, {'x': 30.0, 'z': -12.0, 'type': 7}]})
         self.assertEqual(result['world']['map']['generator']['options']['size'], 144)
         self.assertNotIn('ghost', result['players']['local'])
         self.assertEqual(result['world']['entities'], {})
@@ -125,7 +129,7 @@ class RegionImportTest(unittest.TestCase):
                 if prefab == 'forest':
                     tiles[5 * 7 + 5] = 300  # OCEAN_ICE is land despite its name.
                 terrain = {'prefab': prefab, 'width': 7, 'height': 7, 'tiles': encode(tiles),
-                           'nodeidtilemap': encode([1] * 49), 'topology': {'ids': ['Room']},
+                           'nodeidtilemap': encode([1] * 49), 'topology': {'ids': ['Room'], 'nodes': []},
                            'world_tile_map': {'IMPASSABLE': 1, 'GRASS': 8, 'OCEAN_SWELL': 201, 'OCEAN_ICE': 300}}
                 source = 'tablefunctions["map_fn"] = function() return ' + literal(terrain) + '\nend\n'
                 (session / '0000000001').write_text(source)
@@ -539,7 +543,7 @@ end
                 encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
                 terrain = {'prefab': 'cave', 'width': width, 'height': height,
                            'tiles': encode(tiles), 'nodeidtilemap': encode(nodes),
-                           'topology': {'ids': ['BlueForest:0:Room']},
+                           'topology': {'ids': ['BlueForest:0:Room'], 'nodes': []},
                            'world_tile_map': {'IMPASSABLE': 1, 'WOODFLOOR': 10, 'FUNGUS': 14}}
                 save, report = IMPORTER['convert'](terrain, {'players': {'local': {}}},
                                                     {'WOODFLOOR': 10, 'FUNGUS': 14}, [3, 2])
