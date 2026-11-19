@@ -56,7 +56,7 @@ it('hammers a described player skeleton into two boneshards and keeps its pose a
     const [record] = deserializeSave(json, SAVE_CATALOG).world.entities.skeleton_player;
     expect(record.components.skeleton).toEqual({ anim: 4, char: 'waxwell', playername: 'Maxwell', cause: 'starvation' });
     restored.skeletons.spawn('skeleton_player', new THREE.Vector3(...record.transform.position),
-      { id: record.id, transform: record.transform, components: { skeleton: record.components.skeleton } });
+      { id: record.id, components: { skeleton: record.components.skeleton } });
     expect(restored.skeletons.exportRecords()).toEqual(s.skeletons.exportRecords());
 
     // SKELETON_WORK = 3 hammer hits; the last drops the `skeleton_player` table (two boneshards), collapses and removes it.
@@ -90,7 +90,7 @@ it('spawns a creature skeleton with its own pose range and shared table, droppin
 
     const [record] = s.skeletons.exportRecords();
     restored.skeletons.spawn('skeleton_notplayer_2', new THREE.Vector3(...record.record.transform.position),
-      { id: record.record.id, transform: record.record.transform, components: { skeleton: record.record.components.skeleton } });
+      { id: record.record.id, components: { skeleton: record.record.components.skeleton } });
     expect(restored.skeletons.exportRecords()).toEqual([record]);
 
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.

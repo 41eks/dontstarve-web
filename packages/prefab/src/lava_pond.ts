@@ -6,7 +6,7 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Heater } from '../../componets/src/heater';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type EntityTask, type PrefabComponents, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakePondPhysics } from './standardcomponents';
 import { WORLD_SCALE } from './tile';
 
@@ -77,13 +77,13 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
     });
   }
 
-  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: EntityPersistData): void {
     const rocks = this.rocksState.peek();
     data.lavaPond = rocks === undefined ? {} : { rocks: copyLayout(rocks) };
   }
 
   /** OnLoad cancels the pending task and spawns the saved rocks at once. */
-  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: EntityPersistData): void {
     const rocks = data.lavaPond?.rocks;
     if (rocks === undefined || this.rocksState.peek() !== undefined || !this.task) return;
     this.task.Cancel();

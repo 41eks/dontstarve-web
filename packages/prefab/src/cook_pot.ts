@@ -10,7 +10,7 @@ import { PrefabInstance, prefabInstance } from './prefabInstance';
 import { PlaySound } from './sound';
 import { Stewer } from '../../componets/src/stewer';
 import { BASE_COOK_TIME, GetRecipe } from '../../componets/src/cooking';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { DefaultBurntStructureFn, onloadBurnt, onsaveBurnt } from './standardcomponents';
 import { BurnableBinding } from './treeFire';
 import type { PrefabWorldContext } from './worldContext';
@@ -147,12 +147,12 @@ function onbuilt(inst: PrefabInstance): void {
 }
 
 /** onsave/onload, with the skin the building save shape keeps beside data.burnt. */
-function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: PrefabInstance, data: EntityPersistData): void {
     SaveBuildingSkin(inst, data);
     onsaveBurnt(inst, data);
 }
 
-function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: PrefabInstance, data: EntityPersistData): void {
     LoadBuildingSkin(inst, data);
     onloadBurnt(inst, data);
 }

@@ -175,7 +175,7 @@ it('spawns both forms with c_spawn and saves and reloads their health, a loaded 
     expect(entities.bernie_active).toHaveLength(1);
     const [record] = entities.bernie_big!;
     expect(record.components.health).toEqual({ current: 500, maximum: 2000 });
-    const reloaded = restored.prefabs.spawnAs(BernieInstance, BERNIE_BIG_ID, new THREE.Vector3(...record.transform.position), record);
+    const reloaded = restored.prefabs.restoreAs(BernieInstance, BERNIE_BIG_ID, record);
     expect(reloaded.components.health.currenthealth).toBe(500);
     expect(reloaded.sg.stateName).toBe('idle');
   } finally { s.dispose(); restored.dispose(); }

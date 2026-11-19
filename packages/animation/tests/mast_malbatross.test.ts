@@ -8,7 +8,7 @@ import {
   mastMalbatrossPrefabs, MAST_MALBATROSS_ID, MastMalbatrossInstance,
 } from '../../prefab/src/mast_malbatross';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -16,7 +16,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
-import type { SavedEntity } from '../../../src/save/types';
+
 import { createPickupInventory } from './pickupFixture';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -31,8 +31,8 @@ function setup(playerPosition = new THREE.Vector3()) {
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.mastMalbatross);
-  const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(MastMalbatrossInstance, MAST_MALBATROSS_ID, new THREE.Vector3(...record.transform.position), record);
+  const spawn = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(MastMalbatrossInstance, MAST_MALBATROSS_ID, record);
   const records = () => registry.exportRecords().mast_malbatross ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
@@ -43,7 +43,7 @@ function setup(playerPosition = new THREE.Vector3()) {
  * Cluster_62's 0000000302 Master snapshot has two masts, both `{ rotation = 0, upgradeable = { stage = 1,
  * numupgrades = 0 }, is_sail_raised = false }`; this is what scripts/dst-region-prefab.py converts them to.
  */
-const importedRecord = (id: string, position: [number, number, number]): PlacementSaveRecord => ({
+const importedRecord = (id: string, position: [number, number, number]): EntitySaveRecord => ({
   id, transform: { position, rotationY: 0 },
   components: { mastMalbatross: { rotation: 0, is_sail_raised: false }, upgradeable: { numupgrades: 0, stage: 1 } },
 });
@@ -143,7 +143,7 @@ it('keeps a c_spawn mast through c_save and a reload, and rejects c_give', async
     expect([loaded.components.mast.is_sail_raised, loaded.components.upgradeable.stage]).toEqual([true, 1]);
     expect(second.records()).toEqual(saved);
     // A rotated, skinned mast keeps its facing rotation and skin through the same round trip.
-    const skinned: SavedEntity = { id: 'skinned-mast', transform: { position: [5, 0, 1], rotationY: 0 },
+    const skinned: EntitySaveRecord = { id: 'skinned-mast', transform: { position: [5, 0, 1], rotationY: 0 },
       components: { mastMalbatross: { rotation: 135, is_sail_raised: true, skinId: 'mast_malbatross_wagstaff' },
         upgradeable: { numupgrades: 0, stage: 1 } } };
     await second.registry.restoreAll({ mast_malbatross: [skinned] });

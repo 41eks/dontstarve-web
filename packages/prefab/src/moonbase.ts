@@ -7,7 +7,7 @@ import { AnimState } from '@dontstarve-web/animation/animState';
 import definitions from './definitions.json' with { type: 'json' };
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { Workable } from '../../componets/src/workable';
 import { Repairable } from '../../componets/src/repairable';
 import { Trader, type TradeAcceptance, type TradeItem } from '../../componets/src/trader';
@@ -344,7 +344,7 @@ function UpdateWorkState(inst: MoonbaseInstance): void {
 }
 
 /** onsave: the workable's record and the prefab's staff and timers, which stay nested under `moonbase`. */
-function onsave(inst: MoonbaseInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: MoonbaseInstance, data: EntityPersistData): void {
   SaveBuildingSkin(inst, data);
   delete data.timer;
   delete data.pickable;
@@ -357,7 +357,7 @@ function onsave(inst: MoonbaseInstance, data: PlacementSaveRecord['components'])
 }
 
 /** onload: the workable has loaded its own record by now (SetPersistData); the timers and the staff are the prefab's. */
-function onload(inst: MoonbaseInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: MoonbaseInstance, data: EntityPersistData): void {
   LoadBuildingSkin(inst, data);
   inst.components.timer.OnLoad(data.moonbase?.timer);
   if (data.moonbase?.staff) OnStaffGiven(inst, undefined, CreateStaff(inst, data.moonbase.staff));

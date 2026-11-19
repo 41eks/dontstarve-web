@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it, vi } from 'vitest';
 import { EntityRegistry, type EntityRegistration } from '../../../src/entityRegistry';
-import type { SavedEntity } from '../../../src/save/types';
+
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { definePrefabs } from '../../../src/prefabDefinitions';
 import { componentParser } from '../../../src/save/prefabComponents';
@@ -10,11 +10,12 @@ import { serializeSave } from '../../../src/save/serialize';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
 import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 
 const health = componentParser({ keys: ['health'] });
 const definition = definePrefabs(['thing'], health, ['thing', 'thing_item']);
 
-const record = (id: string): SavedEntity => ({
+const record = (id: string): EntitySaveRecord => ({
   id, transform: { position: [3, 0, 4], rotationY: 0 },
   components: { health: { current: 50, maximum: 100 } },
 });

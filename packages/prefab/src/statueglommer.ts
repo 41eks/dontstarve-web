@@ -8,7 +8,7 @@ import { Leader, PointOfInterest } from '../../componets/src/statueglommerSignat
 import { Pickable } from './components/pickable';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { PlaySound } from './sound';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 
@@ -58,14 +58,14 @@ function OnWorked(inst: StatueGlommerInstance, _worker: unknown, workleft: numbe
  * OnSave: data.worked and data.spawned, kept under this project's `statueglommer` key. workable:OnSave also writes the
  * unset maxwork (-1), which this project's Workable leaves out, so the record adds it.
  */
-function OnSave(inst: StatueGlommerInstance, data: PlacementSaveRecord['components']): void {
+function OnSave(inst: StatueGlommerInstance, data: EntityPersistData): void {
     const worked = inst.components.workable === undefined;
     if (worked || inst.spawned) data.statueglommer = { ...(worked ? { worked: true } : {}), ...(inst.spawned ? { spawned: true } : {}) };
     const workable = inst.components.workable;
     if (workable) data.workable = { maxwork: workable.maxwork.peek(), workleft: workable.GetWorkLeft() };
 }
 
-function OnLoad(inst: StatueGlommerInstance, data: PlacementSaveRecord['components']): void {
+function OnLoad(inst: StatueGlommerInstance, data: EntityPersistData): void {
     const saved = data.statueglommer;
     if (saved) {
         if (saved.worked && inst.components.workable) {

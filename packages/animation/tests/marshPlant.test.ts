@@ -132,7 +132,7 @@ it('haunting fails with the source cooldown, and c_spawn plants save and reload 
     const registry = new EntityRegistry(), displays = new PrefabDisplayGroup(new THREE.Scene());
     const plants = prefabManager(displays, '/dst/data/anim', { scheduler, fire, spawnGroundItem: vi.fn() as never }, marshPlantPrefabs);
     registry.register(PREFAB_DEFINITIONS.marshPlants, {
-      restore: (id, record) => plants.spawn(id, new THREE.Vector3(...record.transform.position), record),
+      restore: (id, record) => plants.restore(id, record),
       debugSpawn: id => plants.spawn(id, position.clone()),
       exportRecords: () => plants.exportRecords(),
       dispose: () => { plants.dispose(); displays.dispose(); },

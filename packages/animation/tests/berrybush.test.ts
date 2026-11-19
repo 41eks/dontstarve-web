@@ -40,7 +40,7 @@ function setup() {
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.berrybushes, {
-    restore: (_, record) => drawn(bushes.spawn('berrybush', new THREE.Vector3(...record.transform.position), record).transform.model),
+    restore: (_, record) => drawn(bushes.restore('berrybush', record).transform.model),
     debugSpawn: () => drawn(bushes.spawn('berrybush', player.position).transform.model),
     exportRecords: () => bushes.exportRecords(), dispose: () => bushes.dispose(),
   });
@@ -85,7 +85,7 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.berrybush[0];
     restored.season.set({ season: 'winter', progress: 0 }); await settleEffects();
-    await drawn(restored.bushes.spawn('berrybush', new THREE.Vector3(...record.transform.position), record).transform.model);
+    await drawn(restored.bushes.restore('berrybush', record).transform.model);
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([record]);
@@ -157,7 +157,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.berrybush[0];
     expect(record.id).not.toBe(original.id);
     expect(record.components.plant?.skinId).toBe('berrybush_mystical');
-    await drawn(restored.bushes.spawn('berrybush', new THREE.Vector3(...record.transform.position), record).transform.model);
+    await drawn(restored.bushes.restore('berrybush', record).transform.model);
     expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([record]);
     for (let remaining = 4; remaining > 0; remaining--) {
       s.advance(pickable.remainingSeconds!); expect(pickable.pick(s.picker)).toBe(true);

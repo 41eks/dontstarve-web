@@ -10,7 +10,7 @@ import { bindTestWorld } from './worldContentFixture';
 import { mushtreePrefabs, MushtreeInstance, type MushtreeSpawnId } from '../../prefab/src/mushtree';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntityPersistRecord } from '../../prefab/src/saveRecord';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -45,7 +45,7 @@ function setup(season: 'summer' | 'autumn' | 'winter' = 'autumn', tickingarea?: 
   registry.registerPrefabs(PREFAB_DEFINITIONS.mushtrees);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return { scheduler, seasonSignal, ash, drops, scene, prefabs, registry, inventory,
-    spawn: (id: MushtreeSpawnId, position: THREE.Vector3, saved?: Pick<PlacementSaveRecord, 'id' | 'components'>) => prefabs.spawnAs(MushtreeInstance, id, position, saved),
+    spawn: (id: MushtreeSpawnId, position: THREE.Vector3, saved?: EntityPersistRecord) => prefabs.spawnAs(MushtreeInstance, id, position, saved),
     record: () => prefabs.exportRecords()[0].record,
     find: (id: string) => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).find(inst => inst?.prefab === id),
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,

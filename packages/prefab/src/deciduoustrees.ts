@@ -11,7 +11,7 @@ import type { Worker } from '../../componets/src/workable';
 import { addComponent, removeComponent } from './components';
 import { DeciduousTreeLeaves, type LeafWorld } from './deciduousTreeLeaves';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
@@ -335,7 +335,7 @@ function OnEntitySleep(inst: DeciduousInstance): void {
 }
 
 /** onsave: a burning tree is saved as burnt; a burning stump is still a stump. */
-function onsave(inst: DeciduousInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: DeciduousInstance, data: EntityPersistData): void {
   const burnt = !inst.hasTag('stump') && (inst.hasTag('burnt') || inst.fire?.burnable.IsBurning() === true);
   const saved = inst.leaves.OnSave();
   if (burnt) {
@@ -348,7 +348,7 @@ function onsave(inst: DeciduousInstance, data: PlacementSaveRecord['components']
   delete data.timer;
 }
 
-function onload(inst: DeciduousInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: DeciduousInstance, data: EntityPersistData): void {
   const saved = data.deciduoustree;
   if (saved) { inst.leaves.Initialize(saved); inst.leavesInitialized = true; }
   inst.components.timer.OnLoad(data.deciduousTimer);

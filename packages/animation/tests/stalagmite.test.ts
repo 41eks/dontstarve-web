@@ -19,9 +19,10 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 import { createInventoryStore } from './testInventory';
+import type { EntityPersistRecord, EntitySaveRecord } from '../../prefab/src/saveRecord';
 
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
-const record = { id: 'saved-stalagmite', transform: { position: [2, 0, -3] as [number, number, number], rotationY: .4 }, components: {} };
+const record: EntitySaveRecord = { id: 'saved-stalagmite', transform: { position: [2, 0, -3], rotationY: .4 }, components: {} };
 function setup() {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
@@ -32,7 +33,8 @@ function setup() {
   const registry = new EntityRegistry([], prefabs as never, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
   registry.registerPrefabs(PREFAB_DEFINITIONS.stalagmites);
   const manager = {
-    spawn: (id: StalagmiteId, position: THREE.Vector3, saved?: typeof record) => prefabs.spawn(id, position, saved).transform.model,
+    spawn: (id: StalagmiteId, position: THREE.Vector3, saved?: EntityPersistRecord) => prefabs.spawn(id, position, saved).transform.model,
+    restore: (id: StalagmiteId, saved: EntitySaveRecord) => prefabs.restore(id, saved).transform.model,
     exportRecords: () => prefabs.exportRecords(),
   };
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
@@ -55,7 +57,7 @@ it('constructs saved ordinary and tall rocks with their source poses, colour, ta
     expect(logical.components.workable!.OnSave()).toEqual({});
     for (const tag of ['boulder', 'inspectable', 'MINE_workable']) expect(logical.hasTag(tag)).toBe(true);
     logical.remove();
-    const normal = s.manager.spawn('stalagmite_med', new THREE.Vector3(...record.transform.position), record);
+    const normal = s.manager.restore('stalagmite_med', record);
     const tall = s.manager.spawn('stalagmite_tall_low', new THREE.Vector3(5, 0, 6), { ...record, id: 'tall-rock' });
     expect(prefabInstance(normal)!.sprite.sprite.peek().clip).toMatchObject({ name: 'med', loop: false });
     expect(prefabInstance(normal)!.components.workable!.GetWorkLeft()).toBe(4);
@@ -70,7 +72,7 @@ it('constructs saved ordinary and tall rocks with their source poses, colour, ta
 it('rebuilds the same tall rock after tile sleep with its declared pose, colour, identity and components', async () => {
   const s = setup(); vi.spyOn(Math, 'random').mockReturnValue(.25);
   try {
-    const model = s.manager.spawn('stalagmite_tall_med', new THREE.Vector3(...record.transform.position), record);
+    const model = s.manager.restore('stalagmite_tall_med', record);
     const instance = prefabInstance(model)!;
     await prefabDisplay(model)!.artLoaded();
     const { clip, colour } = instance.sprite.sprite.peek(), components = instance.components, saved = s.manager.exportRecords();

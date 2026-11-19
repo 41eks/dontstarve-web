@@ -26,7 +26,7 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
   const bushes = plantManager(berrybushPrefabs, scene, { tickingarea: () => createMemo(() => awake.get()),
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   try {
-    await drawn(bushes.spawn('berrybush', new THREE.Vector3(4, 0, 6), { id: 'bush:resident', transform: { position: [4, 0, 6], rotationY: 0 },
+    await drawn(bushes.spawn('berrybush', new THREE.Vector3(4, 0, 6), { id: 'bush:resident',
       components: { plant: { skinId: 'berrybush_cawnival' } } }).transform.model);
     await tick();
     const model = workTargets('DIG')[0].model;

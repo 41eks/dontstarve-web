@@ -8,7 +8,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { chesspiecePrefabs, CHESSPIECE_MALBATROSS_MARBLE_ID, ChesspieceInstance } from '../../prefab/src/chesspieces';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -32,13 +32,13 @@ function setup(playerPosition = new THREE.Vector3()) {
   registry.registerPrefabs(PREFAB_DEFINITIONS.chesspieces);
   const pieces = {
     /** SpawnSaveRecord. */
-    spawn: (record: PlacementSaveRecord) => prefabs.spawnAs(ChesspieceInstance, ID, new THREE.Vector3(...record.transform.position), record),
+    spawn: (record: EntitySaveRecord) => prefabs.restoreAs(ChesspieceInstance, ID, record),
     exportRecords: () => prefabs.exportRecords().map(({ record }) => record),
   };
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };
   return { scene, awake, displays, pieces, prefabs, registry, dropped, dispose };
 }
-const sourceRecord: PlacementSaveRecord = { id: 'dst_session_chesspiece_malbatross_id_210775',
+const sourceRecord: EntitySaveRecord = { id: 'dst_session_chesspiece_malbatross_id_210775',
   transform: { position: [12, 0, -6], rotationY: 0 },
   components: { chesspiece: { materialid: 1 }, submersible: { force_no_repositioning: true } } };
 

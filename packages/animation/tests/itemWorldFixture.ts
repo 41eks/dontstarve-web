@@ -10,11 +10,11 @@ import { GROUND_ART_DEFINITIONS, GroundItemAssets } from '../../prefab/src/groun
 import type { GroundItemDefinition, GroundSpawnOptions, ItemPrefabWorld } from '../../prefab/src/groundPrefab';
 import { flingLoot, itemPrefabs, spawnGroundStack } from '../../prefab/src/itemPrefabs';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PrefabSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldEventEmitter } from '../../prefab/src/worldContext';
 import { ITEM_PREFAB_IDS } from '../../../src/prefabDefinitions';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
-import type { SavedEntity } from '../../../src/save/types';
+
 import type { EntityRegistration } from '../../../src/entityRegistry';
 import { bindTestItemWorld } from './testInventory';
 
@@ -90,7 +90,7 @@ export class ItemWorldFixture {
   /** SpawnSaveRecord of an item record, as the registry restores it: the stack and the prefab's own records. */
   spawnFromSave(id: string, definition: GroundItemDefinition, position: ReadonlyVector3): THREE.Group {
     const { entity: _entity, name: _name, icon: _icon, atlas: _atlas, torchLit, lanternOn, playbackRemaining, ...stack } = definition;
-    const record: PrefabSaveRecord = {
+    const record: EntitySaveRecord = {
       id, transform: { position: [position.x, position.y, position.z], rotationY: 0 },
       components: { stack: { ...stack, entityId: undefined } as InventoryStack,
         ...torchLit ? { torch: { lit: true } } : {}, ...lanternOn === undefined ? {} : { lantern: { ison: lanternOn } },
@@ -120,24 +120,24 @@ export class ItemWorldFixture {
   }
 
   /** The item records Ents saves: insts in the scene, not held. */
-  exportRecords(): PrefabSaveRecord[] {
+  exportRecords(): EntitySaveRecord[] {
     return this.prefabs.exportRecords().map(({ record }) => record);
   }
 
   /** The same records as a save's `world.entities` holds them, by prefab. */
-  exportEntities(): Record<string, PrefabSaveRecord[]> {
-    const entities: Record<string, PrefabSaveRecord[]> = {};
+  exportEntities(): Record<string, EntitySaveRecord[]> {
+    const entities: Record<string, EntitySaveRecord[]> = {};
     for (const { prefabId, record } of this.prefabs.exportRecords()) (entities[prefabId] ??= []).push(record);
     return entities;
   }
 
   /** SpawnSaveRecord of one saved item record, as the scene's registry restores it. */
-  restore(prefabId: string, record: SavedEntity): THREE.Group {
-    return this.prefabs.spawn(prefabId, new THREE.Vector3(...record.transform.position), record).transform.model;
+  restore(prefabId: string, record: EntitySaveRecord): THREE.Group {
+    return this.prefabs.restore(prefabId, record).transform.model;
   }
 
   /** Restore every item record among a saved world's entities. */
-  restoreEntities(entities: Readonly<Record<string, readonly SavedEntity[]>>): THREE.Group[] {
+  restoreEntities(entities: Readonly<Record<string, readonly EntitySaveRecord[]>>): THREE.Group[] {
     const ids = new Set(ITEM_PREFAB_IDS);
     return Object.entries(entities).filter(([id]) => ids.has(id)).flatMap(([id, records]) => records.map(record => this.restore(id, record)));
   }

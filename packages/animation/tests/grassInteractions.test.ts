@@ -54,7 +54,7 @@ function setup() {
 it('digs mature/picked grass through workable, preserves dug-item commands and reloads fractional shovel uses and loot', async () => {
   const s = setup(), restored = setup(), registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.grasses, {
-    restore: (_prefab, record) => s.grass.spawn('grass', new THREE.Vector3(...record.transform.position), record).transform.model,
+    restore: (_prefab, record) => s.grass.restore('grass', record).transform.model,
     debugSpawn: () => s.grass.spawn('grass', s.player.position).transform.model,
     exportRecords: () => s.grass.exportRecords(),
     dispose: () => s.grass.dispose(),

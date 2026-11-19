@@ -7,7 +7,7 @@ import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { PlaySound } from './sound';
 
 export const ARCHIVE_CENTIPEDE_HUSK_ID = 'archive_centipede_husk' as const;
@@ -123,7 +123,7 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
   }
 
   /** huskfn has no OnSave; health:OnSave writes the current health, kept as the record's `{ current, maximum }`. */
-  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: EntityPersistData): void {
     const { health } = this.components;
     data.health = { current: health.currenthealth, maximum: health.maxhealth };
   }
@@ -132,7 +132,7 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
    * health:OnLoad: SetVal(data.health, "file_load") then ForceUpdateHUD(true), whose DoDelta(0) reaches OnHealthDelta
    * with equal percentages: no clip changes, but combat is removed below the bottom threshold.
    */
-  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: EntityPersistData): void {
     const saved = data.health;
     if (!saved) return;
     this.components.health.OnLoad({ health: saved.current, maxhealth: saved.maximum });

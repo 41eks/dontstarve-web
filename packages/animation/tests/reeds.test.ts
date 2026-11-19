@@ -6,7 +6,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { reedsPrefabs, REEDS_ID, REEDS_REGROW_TIME, ReedsInstance } from '../../prefab/src/reeds';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -14,7 +14,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
-import type { SavedEntity } from '../../../src/save/types';
+
 import { createPickupInventory } from './pickupFixture';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -29,8 +29,8 @@ function setup(playerPosition = new THREE.Vector3()) {
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.reeds);
-  const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(ReedsInstance, REEDS_ID, new THREE.Vector3(...record.transform.position), record);
+  const spawn = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(ReedsInstance, REEDS_ID, record);
   const records = () => registry.exportRecords().reeds ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
@@ -38,12 +38,12 @@ function setup(playerPosition = new THREE.Vector3()) {
   return { scene, awake, prefabs, registry, definitions, spawn, records, requested, dispose };
 }
 /** The imported default save's reeds, as the game's save reader parses them. */
-async function importedReeds(): Promise<PlacementSaveRecord[]> {
+async function importedReeds(): Promise<EntitySaveRecord[]> {
   const cluster = new URL('../../../public/saves/Cluster_1/', import.meta.url);
   const json = await readFile(new URL('Master.json', cluster), 'utf8');
   const { session } = JSON.parse(json) as { session: { playerFile: string } };
   const { player } = JSON.parse(await readFile(new URL(session.playerFile, cluster), 'utf8')) as { player: unknown };
-  return deserializeSave(json, SAVE_CATALOG, player).world.entities.reeds! as PlacementSaveRecord[];
+  return deserializeSave(json, SAVE_CATALOG, player).world.entities.reeds! as EntitySaveRecord[];
 }
 const clip = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -53,7 +53,7 @@ it('loads the imported save records with the clip, tags, bank and component valu
   expect(reeds).toHaveLength(56);
   // Every reed in Cluster_65's forest snapshot stands unpicked; the second one is saved as picked here.
   expect(reeds.every(record => !record.components.pickable?.picked)).toBe(true);
-  const [full, unpicked] = reeds as [PlacementSaveRecord, PlacementSaveRecord];
+  const [full, unpicked] = reeds as [EntitySaveRecord, EntitySaveRecord];
   const picked = [{ ...unpicked, components: { pickable: { picked: true, regrowSeconds: 600 } } }];
   const { spawn, records, definitions, requested, dispose } = setup();
   try {
@@ -86,7 +86,7 @@ it('loads the imported save records with the clip, tags, bank and component valu
 it('rebuilds the declared clip and appearance after tile sleep', async () => {
   const { scene, awake, spawn, records, dispose } = setup();
   try {
-    const saved: PlacementSaveRecord = { id: 'sleeping-reeds', transform: { position: [1, 0, 3], rotationY: 0 },
+    const saved: EntitySaveRecord = { id: 'sleeping-reeds', transform: { position: [1, 0, 3], rotationY: 0 },
       components: { pickable: { picked: true, regrowSeconds: 600 } } };
     const inst = spawn(saved);
     const model = inst.transform.model, before = inst.sprite.sprite.peek();
@@ -132,7 +132,7 @@ it('keeps a c_spawn reed through c_save and a reload, and rejects c_give', async
     expect(loaded.components.fuel.fuelvalue).toBe(15);
     expect(second.records()).toEqual(saved);
     // A picked reed keeps its picked state and regrow time through the same round trip.
-    const picked: SavedEntity = { id: 'picked-reeds', transform: { position: [5, 0, 1], rotationY: 0 },
+    const picked: EntitySaveRecord = { id: 'picked-reeds', transform: { position: [5, 0, 1], rotationY: 0 },
       components: { pickable: { picked: true, regrowSeconds: REEDS_REGROW_TIME / 2 } } };
     await second.registry.restoreAll({ reeds: [picked] });
     const empty = second.prefabs.get('picked-reeds')!;

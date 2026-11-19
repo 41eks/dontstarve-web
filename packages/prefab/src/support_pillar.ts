@@ -6,7 +6,7 @@ import { DeployHelper } from '../../componets/src/supportPillarSignatures';
 import { Workable } from '../../componets/src/workable';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 
@@ -50,13 +50,13 @@ function UpdateLevel(inst: SupportPillarInstance): void {
   }
 }
 
-function OnSave(inst: SupportPillarInstance, data: PlacementSaveRecord['components']): void {
+function OnSave(inst: SupportPillarInstance, data: EntityPersistData): void {
   // data.regen: the rock pillar never has a _regentask.
   if (inst.reinforced !== 0) data.supportPillar = { reinforced: inst.reinforced };
 }
 
 /** OnLoad, after constructionsite's OnLoad restored the materials. */
-function OnLoad(inst: SupportPillarInstance, data: PlacementSaveRecord['components']): void {
+function OnLoad(inst: SupportPillarInstance, data: EntityPersistData): void {
   inst.reinforced = data.supportPillar?.reinforced ?? 0;
   UpdateLevel(inst);
   // ToggleOrRestartRegen only acts when GetMaterial(inst.prefab) is "dreadstone"; this pillar takes rocks.

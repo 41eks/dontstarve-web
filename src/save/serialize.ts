@@ -1,10 +1,11 @@
 import { type InventoryState } from '@dontstarve-web/inventory';
 import { deserializeSave, type SaveCatalog } from './deserialize';
-import type { SaveDocument, SavedContainer, SavedEntity, SavedPlayer, SavedTransform } from './types';
+import type { SaveDocument, SavedContainer, SavedPlayer } from './types';
 import type { TurfTileSave } from '@dontstarve-web/prefab/turfMap';
+import type { EntitySaveRecord, SavedTransform } from '@dontstarve-web/prefab/saveRecord';
 
 export interface RuntimeSaveState {
-  entities: Record<string, SavedEntity[]>;
+  entities: Record<string, EntitySaveRecord[]>;
   playerTransform: SavedTransform;
   inventory: InventoryState;
   elapsedSeconds: number;

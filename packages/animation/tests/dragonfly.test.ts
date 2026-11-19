@@ -5,13 +5,13 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal, getWatchWorldContent } from '@dontstarve-web/signals';
 import { dragonflyPrefabs, DRAGONFLY_ID } from '../../prefab/src/dragonfly';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { createTestWorldSources } from './worldContentFixture';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-const record: PlacementSaveRecord & { transform: { position: [number, number, number] } } = { id: 'dragonfly-101512', transform: { position: [2, 0, 3], rotationY: .2 },
+const record: EntitySaveRecord = { id: 'dragonfly-101512', transform: { position: [2, 0, 3], rotationY: .2 },
   components: { dragonfly: { playercombat: true, health: { health: 26000 }, inventory: { items: {}, equip: {} },
     moisture: { moisture: 12 }, rampingspawner: { current_wave: 2, wave_num: 3, spawning_on: false },
     knownlocations: { locations: [{ name: 'home', x: 4, y: 0, z: 5 }] },
@@ -25,7 +25,7 @@ const setup = () => {
   const dragonflies = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
   dragonflies.register(dragonflyPrefabs({ scheduler, getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources) }));
   return { scene, scheduler, awake, dragonflies,
-    spawn: () => dragonflies.spawn(DRAGONFLY_ID, new THREE.Vector3(...record.transform.position), record).transform.model,
+    spawn: () => dragonflies.restore(DRAGONFLY_ID, record).transform.model,
     dispose: () => { dragonflies.dispose(); displays.dispose(); scheduler.dispose(); } };
 };
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

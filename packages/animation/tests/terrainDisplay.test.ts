@@ -84,7 +84,7 @@ it('grows an unloaded marble shrub and keeps shape, colour and the scheduled min
   const manager = marbleShrubWorld(scene, { scheduler, spawnGroundItem }, { tickingarea: () => createMemo(() => awake.get()) });
   try {
     const instance = manager.spawn('marbleshrub', new THREE.Vector3(12, 0, 24), {
-      id: 'growing-shrub', transform: { position: [12, 0, 24], rotationY: 0 },
+      id: 'growing-shrub',
       components: { growable: { stage: 1, time: 1 }, marbleShrub: { shapenumber: 3, color: .7 } },
     });
     const model = workTargets('MINE')[0].model;

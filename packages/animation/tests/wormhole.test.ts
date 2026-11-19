@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { wormholePrefabs, WORMHOLE_ID, WORMHOLE_SKINS, WORMHOLE_ENTER_DISTANCE, WORMHOLE_EXIT_DISTANCE, WormholeInstance } from '../../prefab/src/wormhole';
 import { PrefabEntityManager, type PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { loadSpriteSkinArchive } from '../src/animationAssets';
 import { isMouseTarget } from '../../stategraphs/src/mouseTargets';
 import { bindTestWorld, publishTestCamera } from './worldContentFixture';
@@ -40,7 +40,7 @@ function setup() {
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { scheduler });
   prefabs.register(wormholePrefabs({ scheduler, getWatchWorldContent: content.getWatchWorldContent }));
-  const spawn = (position: THREE.Vector3, record?: PlacementSaveRecord) => prefabs.spawnAs(WormholeInstance, WORMHOLE_ID, position, record);
+  const spawn = (position: THREE.Vector3, record?: EntitySaveRecord) => prefabs.spawnAs(WormholeInstance, WORMHOLE_ID, position, record);
   /** Player positions reach playerprox through its effect, which runs once the change settles. */
   const playerAt = async (x: number) => { content.playerpositions.set([new THREE.Vector3(x, 0, 0)]); await new Promise(resolve => setTimeout(resolve, 0)); };
   // Game time advances by whole frames, so a frame timeline lands on its frame without summing 1/30s.

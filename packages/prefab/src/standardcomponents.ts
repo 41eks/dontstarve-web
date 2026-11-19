@@ -2,7 +2,7 @@ import { removeComponent } from './components';
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { releaseBuildingContainer } from './containers';
 import type { PrefabInstance } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { ReadonlyVector3 } from './transform';
 import catalog from './groundItems.json' with { type: 'json' };
@@ -96,12 +96,12 @@ export function DefaultBurntStructureFn(inst: PrefabInstance): void {
 }
 
 /** The onsave of a burnable structure's prefab: a burning structure saves as burnt. */
-export function onsaveBurnt(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+export function onsaveBurnt(inst: PrefabInstance, data: EntityPersistData): void {
     if (inst.hasTag('burnt') || inst.components.burnable?.IsBurning()) (data.building ??= {}).burnt = true;
 }
 
 /** The onload of a burnable structure's prefab: data.burnt runs the burnable's onburnt. */
-export function onloadBurnt(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+export function onloadBurnt(inst: PrefabInstance, data: EntityPersistData): void {
     if (data.building?.burnt) inst.components.burnable!.onburnt?.(inst);
 }
 

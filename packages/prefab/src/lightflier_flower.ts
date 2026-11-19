@@ -14,7 +14,7 @@ import { Pickable, type PickableSaveState } from './components/pickable';
 import { bulbPlantLight, BULB_PLANT_LIGHT_SAMPLE_INTERVAL, type BulbPlantLightState } from './bulb_plant';
 import type { LightFlier, LightFlierHabitat } from './lightflier';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { WORLD_SCALE } from './standardcomponents';
 
 export const LIGHTFLIER_FLOWER_ID = 'lightflier_flower';
@@ -242,7 +242,7 @@ function OnEntityWake(inst: LightFlierFlowerInstance, awake: boolean): void {
   OnUpdateLight(inst);
 }
 
-function OnSave(flower: LightFlierFlowerInstance, data: PlacementSaveRecord['components']): void {
+function OnSave(flower: LightFlierFlowerInstance, data: EntityPersistData): void {
   const { pickable, childspawner, timer } = flower.components;
   const children = childspawner.OnSave();
   children.childrenoutside.push(...flower._pendingchildren);
@@ -254,7 +254,7 @@ function OnSave(flower: LightFlierFlowerInstance, data: PlacementSaveRecord['com
 }
 
 /** onload_single and OnLoadPostPass: the settled clip of the saved state, then the children outside as they load. */
-function OnLoad(flower: LightFlierFlowerInstance, data: PlacementSaveRecord['components']): void {
+function OnLoad(flower: LightFlierFlowerInstance, data: EntityPersistData): void {
   const saved = data.lightflierFlower;
   if (!saved) return;
   const { pickable, childspawner, timer } = flower.components;

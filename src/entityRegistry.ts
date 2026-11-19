@@ -1,12 +1,12 @@
 import type { ReadonlyVector3 } from '@dontstarve-web/animation/transformRoot';
 import type * as THREE from 'three';
-import { Vector3 } from 'three';
 import type { ResidentEntity } from '@dontstarve-web/animation/residentSprite';
-import type { SavedEntity } from './save/types';
+
 import type { PrefabDefinition } from './prefabDefinitions';
 import type { ArchiveSpriteCommands, PrefabDisplay, PrefabDisplayGroup } from '@dontstarve-web/display';
 import { PrefabInstance, PrefabEntityManager, prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import type { DisplayDrivenPrefabManager } from '@dontstarve-web/prefab/manager';
+import type { EntityPersistData, EntitySaveRecord } from '@dontstarve-web/prefab/saveRecord';
 
 /** What a restore handler hands back for the saved id: the logical entity, or for older managers its model. */
 export type RestoredEntity = THREE.Object3D | ResidentEntity | PrefabInstance<ArchiveSpriteCommands>;
@@ -26,12 +26,12 @@ export interface EntityRecord {
   record: {
     id: string;
     transform: { position: readonly [number, number, number]; rotationY: number };
-    components: SavedEntity['components'];
+    components: EntityPersistData;
   };
 }
 
 export interface EntityRegistration<PrefabId extends string> {
-  restore?: (prefabId: PrefabId, record: SavedEntity) => Promise<RestoredEntity> | RestoredEntity;
+  restore?: (prefabId: PrefabId, record: EntitySaveRecord) => Promise<RestoredEntity> | RestoredEntity;
   /** Only these IDs are exposed through c_spawn, including any aliases. */
   debugSpawn?: (prefabId: PrefabId) => unknown;
   /** SpawnPrefab(id, skin) then Transform:SetPosition for the source prefabs this family owns, synchronously. */
@@ -51,7 +51,7 @@ export interface DisplayDrivenEntityManager extends DisplayDrivenPrefabManager<E
 /** Routes scene lifecycles through the same declarations used by debug spawning. */
 export class EntityRegistry {
   readonly byEntityId = new Map<string, RestoredEntity>();
-  private readonly restorers = new Map<string, (record: SavedEntity) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>>();
+  private readonly restorers = new Map<string, (record: EntitySaveRecord) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>>();
   private readonly creators = new Map<string, () => unknown>();
   private readonly spawners = new Map<string, NonNullable<EntityRegistration<string>['spawnPrefab']>[string]>();
   private readonly registrations: (EntityRegistration<string> & { definition: PrefabDefinition })[] = [];
@@ -102,7 +102,7 @@ export class EntityRegistry {
     if (definition.debugSpawnIds.length && !this.spawnPosition) throw new Error('No debug spawn position');
     for (const id of new Set([...definition.prefabIds, ...definition.debugSpawnIds])) if (!this.prefabs.has(id)) throw new Error(`Missing prefab declaration: ${id}`);
     this.register(definition, {
-      restore: (id, record) => this.prefabs!.spawn(id, new Vector3(...record.transform.position), record),
+      restore: (id, record) => this.prefabs!.restore(id, record),
       debugSpawn: definition.debugSpawnIds.length ? id => this.prefabs!.spawn(id, this.spawnPosition!()) : undefined,
       exportRecords: () => [], dispose: () => {},
     });
@@ -150,7 +150,7 @@ export class EntityRegistry {
     return true;
   }
 
-  async restoreAll(entities: Readonly<Record<string, readonly SavedEntity[]>>): Promise<void> {
+  async restoreAll(entities: Readonly<Record<string, readonly EntitySaveRecord[]>>): Promise<void> {
     this.assertActive();
     const ids = new Set(this.byEntityId.keys());
     // Validate the entire batch before adding any models to the scene.
@@ -170,9 +170,9 @@ export class EntityRegistry {
     }
   }
 
-  exportRecords(): Record<string, SavedEntity[]> {
+  exportRecords(): Record<string, EntitySaveRecord[]> {
     this.assertActive();
-    const entities: Record<string, SavedEntity[]> = {};
+    const entities: Record<string, EntitySaveRecord[]> = {};
     const ids = new Set<string>();
     for (const registration of this.registrations) {
       for (const prefabId of registration.definition.prefabIds) entities[prefabId] ??= [];
@@ -183,14 +183,14 @@ export class EntityRegistry {
         // Saves must not share mutable component state with live entities.
         (entities[prefabId] ??= []).push(structuredClone({
           ...record, transform: { ...record.transform, position: [...record.transform.position] },
-        }) as SavedEntity);
+        }) as EntitySaveRecord);
       }
     }
     for (const { prefabId, record } of this.prefabs?.exportRecords() ?? []) {
       if (!this.restorers.has(prefabId)) throw new Error(`Unregistered exported prefab: ${prefabId}`);
       if (ids.has(record.id)) throw new Error(`Duplicate entity ID: ${record.id}`);
       ids.add(record.id);
-      (entities[prefabId] ??= []).push(structuredClone(record) as SavedEntity);
+      (entities[prefabId] ??= []).push(structuredClone(record) as EntitySaveRecord);
     }
     return entities;
   }

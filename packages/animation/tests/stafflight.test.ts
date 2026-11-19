@@ -358,7 +358,7 @@ it('spawns world lights through console definitions and saves and reloads their 
     const displays = new PrefabDisplayGroup(new THREE.Scene()), manager = prefabManager(displays, '/dst/data/anim', { scheduler }, staffLightPrefabs);
     managers.push(manager);
     registry.register(PREFAB_DEFINITIONS.staffLights, {
-      restore: (prefabId, record) => manager.spawn(prefabId, new THREE.Vector3(...record.transform.position), record),
+      restore: (prefabId, record) => manager.restore(prefabId, record),
       debugSpawn: prefabId => manager.spawn(prefabId, position.clone()),
       exportRecords: () => manager.exportRecords(),
       update: (dt, quaternion) => { publishTestCamera(quaternion); displays.update(dt); },

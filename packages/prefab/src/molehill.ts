@@ -7,7 +7,7 @@ import { Inventory } from '../../componets/src/inventory';
 import { Spawner } from '../../componets/src/spawner';
 import { Workable } from '../../componets/src/workable';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { ReadonlyVector3 } from './transform';
 import type { WorldFx } from './world_fx';
@@ -141,7 +141,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
   }
 
   /** The record keeps the inventory and spawner saves together under `molehill`. */
-  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: EntityPersistData): void {
     const { spawner, inventory } = this.components;
     delete data.inventory;
     data.molehill = { items: inventory.OnSave(),
@@ -151,7 +151,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
         : spawner.remainingSeconds === undefined ? {} : { startdelay: spawner.remainingSeconds }) };
   }
 
-  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: EntityPersistData): void {
     const saved = data.molehill;
     if (!saved) return;
     const { spawner, inventory } = this.components, world = this.world;

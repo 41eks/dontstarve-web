@@ -15,7 +15,7 @@ import type { BuildingDeclaration } from '../../prefab/src/building';
 import { managedBuildings } from './managedBuildings';
 import { createMemo, createSignal } from '../../signals/src';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { recipeSkins } from '../../ui/src/categories/generated';
 import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
@@ -205,7 +205,7 @@ describe('DST building skins', () => {
     const record = records()[0].record;
     expect(record.components.building).toEqual({ skinId });
     expect(record.transform.position).toEqual([3, 0, 4]);
-    const restored = await placement.spawnFromSave(prefabId, record as PlacementSaveRecord);
+    const restored = await placement.spawnFromSave(prefabId, record as EntitySaveRecord);
     expect(lookupPrefabInstance(restored)?.skinId).toBe(skinId);
     expect(records()[1].record).toEqual(record);
     await expect(placement.spawn(prefabId, 'missing_skin')).rejects.toThrow('Unsupported');

@@ -11,7 +11,7 @@ import { CanopyShadows, DistanceFade, LightningBlocker, WaterPhysics } from '../
 import { Workable } from '../../componets/src/workable';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeWaterObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 
@@ -65,11 +65,11 @@ export class OceanTreePillarInstance extends PrefabInstance {
   declare roots: PrefabInstance;
 }
 
-function OnSave(inst: OceanTreePillarInstance, data: PlacementSaveRecord['components']): void {
+function OnSave(inst: OceanTreePillarInstance, data: EntityPersistData): void {
   if (inst.droppedvines) data.oceantreePillar = { droppedvines: true };
 }
 
-function OnLoad(inst: OceanTreePillarInstance, data: PlacementSaveRecord['components']): void {
+function OnLoad(inst: OceanTreePillarInstance, data: EntityPersistData): void {
   if (data.oceantreePillar?.droppedvines) inst.droppedvines = true;
 }
 

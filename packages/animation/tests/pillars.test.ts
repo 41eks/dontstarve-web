@@ -10,7 +10,7 @@ import { archivePillarPrefabs, ARCHIVE_PILLAR_ID, ArchivePillarInstance } from '
 import { vaultPillarPrefabs, VAULT_PILLAR_ID, VaultPillarInstance } from '../../prefab/src/vault_pillar';
 import { monkeyPillarPrefabs, MONKEYPILLAR_ID, MonkeyPillarInstance } from '../../prefab/src/monkeypillar';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntityPersistData } from '../../prefab/src/saveRecord';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -26,7 +26,7 @@ import { createInventoryStore } from './testInventory';
 const IDS = [...CAVE_PILLAR_IDS, PILLAR_ATRIUM_ID, ARCHIVE_PILLAR_ID, VAULT_PILLAR_ID, MONKEYPILLAR_ID];
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 const at = new THREE.Vector3(3, 0, 6);
-const record = (components: PlacementSaveRecord['components'] = {}) => ({ id: 'saved', transform: { position: [3, 0, 6] as [number, number, number], rotationY: 0 }, components });
+const record = (components: EntityPersistData = {}) => ({ id: 'saved', transform: { position: [3, 0, 6] as [number, number, number], rotationY: 0 }, components });
 
 function setup() {
   const scene = new THREE.Scene(), awake = createSignal(true), scheduler = new GameTimeScheduler();

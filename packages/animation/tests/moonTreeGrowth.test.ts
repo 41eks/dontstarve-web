@@ -103,7 +103,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     const saved = deserializeSave(json, SAVE_CATALOG);
     restored = await setup();
     const record = saved.world.entities.moonbutterfly_sapling[0];
-    restored.prefabs.spawn('moonbutterfly_sapling', new THREE.Vector3(...record.transform.position), record);
+    restored.prefabs.restore('moonbutterfly_sapling', record);
     restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
     expect(restored.saplings()).toEqual(s.saplings());
     expect(restoredInventory.exportState()).toEqual(inventory.exportState());
@@ -194,7 +194,7 @@ it('restores a paused moon-tree decay timer while unloaded, then removes its log
   try {
     const timer = { timers: { decay: { timeleft: 10, initial_time: 200, paused: true } } };
     const tree = s.prefabs.spawn('moon_tree_short', new THREE.Vector3(300, 0, 0), { id: 'moon-stump',
-      transform: { position: [300, 0, 0], rotationY: 0 }, components: { moonTree: { size: 'short', stump: true }, growable: { stage: 1 }, moonTreeTimer: timer } });
+ components: { moonTree: { size: 'short', stump: true }, growable: { stage: 1 }, moonTreeTimer: timer } });
     const icon = prefabInstance(tree.transform.model)!.minimap;
     expect(prefabInstance(tree.transform.model)!.sprite.loaded).toBe(false);
     expect(icon).toMatchObject({ icon: 'moon_tree_stump.png', priority: -1 });

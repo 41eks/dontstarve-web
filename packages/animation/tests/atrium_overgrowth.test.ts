@@ -7,7 +7,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { SANITYAURA_SUPERHUGE } from '../../componets/src/sanityaura';
 import { atriumOvergrowthPrefabs, ATRIUM_OVERGROWTH_ID, AtriumOvergrowthInstance } from '../../prefab/src/atrium_overgrowth';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -29,8 +29,8 @@ function setup(playerPosition = new THREE.Vector3()) {
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.atriumOvergrowths);
-  const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(AtriumOvergrowthInstance, ATRIUM_OVERGROWTH_ID, new THREE.Vector3(...record.transform.position), record);
+  const spawn = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(AtriumOvergrowthInstance, ATRIUM_OVERGROWTH_ID, record);
   const records = () => registry.exportRecords().atrium_overgrowth ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
@@ -38,10 +38,10 @@ function setup(playerPosition = new THREE.Vector3()) {
   return { scene, awake, prefabs, registry, definitions, spawn, records, requested, dispose };
 }
 /** The imported default cave's overgrowths, as the game's save reader parses them. */
-async function importedOvergrowths(): Promise<PlacementSaveRecord[]> {
+async function importedOvergrowths(): Promise<EntitySaveRecord[]> {
   const cave = JSON.parse(await readFile(new URL('../../../public/saves/Cluster_1/Caves.json', import.meta.url), 'utf8'));
   cave.players = { local: { ...initialWorld.players.local, shardId: cave.world.shardId } };
-  return deserializeSave(JSON.stringify(cave), SAVE_CATALOG).world.entities.atrium_overgrowth! as PlacementSaveRecord[];
+  return deserializeSave(JSON.stringify(cave), SAVE_CATALOG).world.entities.atrium_overgrowth! as EntitySaveRecord[];
 }
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -74,7 +74,7 @@ it('loads the imported save record with the clip, tags, bank and component value
 it('rebuilds the declared clip and appearance after tile sleep', async () => {
   const { scene, awake, spawn, records, dispose } = setup();
   try {
-    const saved: PlacementSaveRecord = { id: 'sleeping-overgrowth', transform: { position: [1, 0, 3], rotationY: 0 },
+    const saved: EntitySaveRecord = { id: 'sleeping-overgrowth', transform: { position: [1, 0, 3], rotationY: 0 },
       components: { atriumOvergrowth: { storyprogress: 2 } } };
     const inst = spawn(saved);
     const model = inst.transform.model, before = inst.sprite.sprite.peek();

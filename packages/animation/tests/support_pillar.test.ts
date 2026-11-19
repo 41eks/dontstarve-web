@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { supportPillarPrefabs, SUPPORT_PILLAR_ID, SupportPillarInstance } from '../../prefab/src/support_pillar';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -28,8 +28,8 @@ function setup(playerPosition = new THREE.Vector3()) {
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.supportPillars);
-  const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(SupportPillarInstance, SUPPORT_PILLAR_ID, new THREE.Vector3(...record.transform.position), record);
+  const spawn = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(SupportPillarInstance, SUPPORT_PILLAR_ID, record);
   const records = () => registry.exportRecords().support_pillar ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
@@ -40,7 +40,7 @@ function setup(playerPosition = new THREE.Vector3()) {
  * Cluster_65's 0000000145 Caves snapshot has four pillars, each `{ reinforced = 5..9, constructionsite = { materials =
  * { rocks = 40 } } }`; this is what scripts/dst-region-prefab.py converts the first to.
  */
-const importedRecord = (id: string, position: [number, number, number], rocks = 40, reinforced?: number): PlacementSaveRecord => ({
+const importedRecord = (id: string, position: [number, number, number], rocks = 40, reinforced?: number): EntitySaveRecord => ({
   id, transform: { position, rotationY: 0 },
   components: { ...(reinforced === undefined ? {} : { supportPillar: { reinforced } }), constructionsite: { materials: { rocks } } },
 });

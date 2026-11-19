@@ -13,7 +13,7 @@ import { Timer } from '../../componets/src/timer';
 import { Workable } from '../../componets/src/workable';
 import { addComponent, removeComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeSnowCovered, MakeWaterObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 import { TREE_BURN_TIME } from './treeFire';
@@ -116,7 +116,7 @@ function showbuds(inst: OceanTreeInstance): void {
   for (const num of inst.buds_used) inst.sprite.showLayer(`tree_bud${num}`);
 }
 
-function onsave(inst: OceanTreeInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: OceanTreeInstance, data: EntityPersistData): void {
   const state: OceanTreeSaveState = { supertall_growth_progress: inst.supertall_growth_progress };
   if (inst.hasTag('burnt') || inst.components.burnable.IsBurning()) state.burnt = true;
   if (inst.hasTag('stump')) state.stump = true;
@@ -127,7 +127,7 @@ function onsave(inst: OceanTreeInstance, data: PlacementSaveRecord['components']
 }
 
 /** onload, without its stump and burnt branches (make_stump / OnBurnt are not ported; the save reader rejects them). */
-function onload(inst: OceanTreeInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: OceanTreeInstance, data: EntityPersistData): void {
   const saved = data.oceantree;
   if (!saved) return;
   inst.no_grow = saved.no_grow;

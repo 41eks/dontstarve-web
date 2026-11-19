@@ -7,7 +7,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { statueGlommerPrefabs, STATUEGLOMMER_ID, StatueGlommerInstance } from '../../prefab/src/statueglommer';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntityPersistData, EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -28,13 +28,13 @@ function setup(playerPosition = new THREE.Vector3()) {
   prefabs.register(statueGlommerPrefabs({ scheduler }));
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.glommerStatues);
-  const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(StatueGlommerInstance, STATUEGLOMMER_ID, new THREE.Vector3(...record.transform.position), record);
+  const spawn = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(StatueGlommerInstance, STATUEGLOMMER_ID, record);
   const records = () => registry.exportRecords().statueglommer ?? [];
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };
   return { scene, scheduler, awake, physics, prefabs, registry, spawn, records, dispose };
 }
-const record = (id: string, x: number, components: PlacementSaveRecord['components']): PlacementSaveRecord =>
+const record = (id: string, x: number, components: EntityPersistData): EntitySaveRecord =>
   ({ id, transform: { position: [x, 0, 3], rotationY: 0 }, components });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 

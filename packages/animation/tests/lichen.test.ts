@@ -30,7 +30,7 @@ function setup(player = new THREE.Vector3()) {
     spawnGroundItem: definition => { loot.push(definition.itemId); return undefined; } });
   const registry = new EntityRegistry(), inventory = createInventoryStore([]);
   registry.register(PREFAB_DEFINITIONS.lichens, {
-    restore: (_, record) => lichens.spawn('lichen', new THREE.Vector3(...record.transform.position), { id: record.id, transform: record.transform, components: { pickable: record.components.pickable } }).transform.model,
+    restore: (_, record) => lichens.spawn('lichen', new THREE.Vector3(...record.transform.position), { id: record.id, components: { pickable: record.components.pickable } }).transform.model,
     debugSpawn: () => lichens.spawn('lichen', player.clone()).transform.model,
     exportRecords: () => lichens.exportRecords(),
     update: (dt, quaternion) => tickWorld(scheduler, prefabDisplays(lichens), dt, quaternion),
@@ -52,7 +52,7 @@ const PICKED: LichenRecord = { id: 'picked-lichen', transform: { position: [450,
 it('loads ready and picked lichen with the lichen.lua clips, tag and tint, and picks cutlichen', async () => {
   const s = setup();
   try {
-    const ready = s.lichens.spawn('lichen', new THREE.Vector3(...READY.transform.position), READY).transform.model;
+    const ready = s.lichens.restore('lichen', READY).transform.model;
     const inst = plantInstance(ready);
     // fn: PlayAnimation("idle", true) on a random frame, SetMultColour(c, c, c, 1) with c in [.75, 1].
     expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
@@ -66,7 +66,7 @@ it('loads ready and picked lichen with the lichen.lua clips, tag and tint, and p
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/algae_bush.zip'));
 
     // Pickable:OnLoad -> makeemptyfn: PlayAnimation("picked"), resting on its last frame, with the saved regrow time.
-    const picked = plantInstance(s.lichens.spawn('lichen', new THREE.Vector3(...PICKED.transform.position), PICKED).transform.model);
+    const picked = plantInstance(s.lichens.restore('lichen', PICKED).transform.model);
     expect(picked.sprite.currentAnimation).toBe('picked');
     expect(picked.components.pickable.state.phase.peek()).toBe('picked');
     expect(picked.components.pickable.remainingSeconds).toBeCloseTo(600);
@@ -83,7 +83,7 @@ it('loads ready and picked lichen with the lichen.lua clips, tag and tint, and p
 it('releases a lichen while its tile sleeps and redraws the declared idle with its tint when it wakes', async () => {
   const s = setup();
   try {
-    const model = s.lichens.spawn('lichen', new THREE.Vector3(...READY.transform.position), READY).transform.model;
+    const model = s.lichens.restore('lichen', READY).transform.model;
     const inst = plantInstance(model);
     await prefabDisplay(model)!.artLoaded();
     const declared = inst.sprite.sprite.peek();

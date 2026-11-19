@@ -1,4 +1,4 @@
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { removeComponent } from './components';
 import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import type { BuildingPlacerSpec } from './buildingPlacer';
@@ -47,12 +47,12 @@ export function MakeBuildingPersist(inst: PrefabInstance): void {
 }
 
 /** The skin half of a building's OnSave; a prefab with its own onsave calls it first. */
-export function SaveBuildingSkin(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+export function SaveBuildingSkin(inst: PrefabInstance, data: EntityPersistData): void {
   data.building = inst.skinId === undefined ? {} : { skinId: inst.skinId };
 }
 
 /** The skin half of a building's OnLoad; a prefab with its own onload calls it first. */
-export function LoadBuildingSkin(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+export function LoadBuildingSkin(inst: PrefabInstance, data: EntityPersistData): void {
   if (data.building?.skinId !== undefined) inst.skinId = data.building.skinId;
 }
 

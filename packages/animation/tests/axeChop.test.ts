@@ -69,7 +69,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
   const axe = inventory.getEntity(equipmentSlotAddress('hand'))!;
   const forest = treeWorld(area.query, world => moonTreePrefabs(world), {});
   const { camera, scene, dropLoot } = forest;
-  const tree0 = forest.prefabs.spawn('moon_tree', new THREE.Vector3(1, 0, 0), { id: 'tree', transform: { position: [1, 0, 0], rotationY: 0 }, components: {} });
+  const tree0 = forest.prefabs.spawn('moon_tree', new THREE.Vector3(1, 0, 0), { id: 'tree', components: {} });
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const controller = new PlayerController(world, animation.sg, new Locomotor({ position: player.position, velocity: new THREE.Vector3() }, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const chop = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'CHOP', target: target.entity as never, invobject: axe })!);
@@ -141,7 +141,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     expect(workTargets('CHOP')).toEqual([]);
     const restored = treeWorld(area.query, world => moonTreePrefabs(world), {});
     try {
-      const stump = restored.prefabs.spawn('moon_tree_tall', new THREE.Vector3(1, 0, 0), { id: 'tree', transform: { position: [1, 0, 0], rotationY: 0 }, components: { moonTree: { stump: true } } });
+      const stump = restored.prefabs.spawn('moon_tree_tall', new THREE.Vector3(1, 0, 0), { id: 'tree', components: { moonTree: { stump: true } } });
       await area.visit(player.position);
       expect(prefabInstance(stump.transform.model)!.sprite.currentAnimation).toBe('stump_tall');
       expect(workTargets('CHOP')).toEqual([]);
@@ -161,8 +161,8 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
   const shovel = inventory.getEntity(equipmentSlotAddress('hand'))!;
   const forest = treeWorld(area.query, world => moonTreePrefabs(world), {});
   const { camera, scene, dropLoot } = forest;
-  const stumpTree = forest.prefabs.spawn('moon_tree_tall', new THREE.Vector3(1, 0, 0), { id: 'stump', transform: { position: [1, 0, 0], rotationY: 0 }, components: { moonTree: { stump: true } } });
-  const standingTree = forest.prefabs.spawn('moon_tree_tall', new THREE.Vector3(8, 0, 0), { id: 'standing', transform: { position: [8, 0, 0], rotationY: 0 }, components: {} });
+  const stumpTree = forest.prefabs.spawn('moon_tree_tall', new THREE.Vector3(1, 0, 0), { id: 'stump', components: { moonTree: { stump: true } } });
+  const standingTree = forest.prefabs.spawn('moon_tree_tall', new THREE.Vector3(8, 0, 0), { id: 'standing', components: {} });
   player.position.set(1, 0, 3);
   await area.visit(player.position);
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;

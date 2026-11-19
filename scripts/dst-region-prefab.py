@@ -242,6 +242,7 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
                 continue
             if 'stack' in components:
                 components['stack']['entityId'] = entity_id
+            # The project's EntitySaveRecord (packages/prefab/src/saveRecord.ts): `components` is its EntityPersistData.
             imported.append({'id': entity_id,
                              'transform': {'position': project_position([x, 0 if settling_boulder else y, z], translation),
                                            'rotationY': 0},

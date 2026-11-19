@@ -146,7 +146,7 @@ it('commits source axe work, cancels before impact, preserves logical components
     const record = s.records()[0];
     const restored = await setup();
     try {
-      const reloaded = restored.prefabs.spawn('evergreen', new THREE.Vector3(...record.transform.position), record);
+      const reloaded = restored.prefabs.restore('evergreen', record);
       expect(restored.records()[0]).toEqual(record);
       expect(prefabInstance(reloaded.transform.model)!.sprite.currentAnimation).toBe('stump_tall');
       const stump = workTargets('DIG', reloaded.transform.model)[0];
@@ -162,7 +162,7 @@ it('preserves an imported decay timer across visual unloading and save/load, the
   const s = await setup();
   try {
     s.prefabs.spawn('evergreen', new THREE.Vector3(), { id: 'imported-burnt',
-      transform: { position: [0, 0, 0], rotationY: 0 }, components: { evergreen: { burnt: true },
+ components: { evergreen: { burnt: true },
         evergreenTimer: { timers: { decay: { timeleft: 100, initial_time: 200, paused: false } } } } });
     s.scheduler.advance(25);
     await area.visit(new THREE.Vector3(1000, 0, 1000));

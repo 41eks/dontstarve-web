@@ -35,6 +35,7 @@ import { prefabDisplay } from '../../display/src/prefabDisplay';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { bufferingStategraph } from './bufferingStategraph';
 import { testItem } from './testInventory';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -159,7 +160,7 @@ it('shares FX geometry while keeping playback independent and discarding unused 
 it('cycles building skins while preserving the container root, identity, state and saved foot', async () => {
   const world = setupWorld();
   const placement = managedBuildings(world, { consume: () => false });
-  const record = { id: 'e_open_chest', transform: { position: [3, 0, 4] as const, rotationY: 0 },
+  const record: EntitySaveRecord = { id: 'e_open_chest', transform: { position: [3, 0, 4], rotationY: 0 },
     components: { building: {}, container: { slotCount: 9, slots: [] } } };
   const root = await placement.spawnFromSave('treasurechest', record);
   const target = reskinTargetOf(lookupPrefabInstance(root))!;

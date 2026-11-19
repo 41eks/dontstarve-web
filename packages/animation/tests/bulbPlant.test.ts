@@ -146,7 +146,7 @@ describe('flower_cave spawning, art and saving', () => {
       expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
       const entities = deserializeSave(json, SAVE_CATALOG).world.entities;
       for (const id of ['flower_cave', 'flower_cave_double', 'flower_cave_triple']) {
-        for (const record of entities[id] ?? []) restored.prefabs.spawn(id, new THREE.Vector3(...record.transform.position), record);
+        for (const record of entities[id] ?? []) restored.prefabs.restore(id, record);
       }
       const byId = (records: ReturnType<typeof s.prefabs.exportRecords>) => [...records].sort((a, b) => a.record.id.localeCompare(b.record.id));
       expect(byId(restored.prefabs.exportRecords())).toEqual(byId(s.prefabs.exportRecords()));

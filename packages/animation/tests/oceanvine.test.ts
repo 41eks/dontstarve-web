@@ -6,7 +6,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { oceanVinePrefabs, OCEANVINE_ID, OCEANVINE_REGROW_TIME, OceanVineInstance } from '../../prefab/src/oceanvine';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -28,8 +28,8 @@ function setup(playerPosition = new THREE.Vector3()) {
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.oceanVines);
-  const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(OceanVineInstance, OCEANVINE_ID, new THREE.Vector3(...record.transform.position), record);
+  const spawn = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(OceanVineInstance, OCEANVINE_ID, record);
   const records = () => registry.exportRecords().oceanvine ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
@@ -40,14 +40,14 @@ function setup(playerPosition = new THREE.Vector3()) {
 const layers = (inst: PrefabInstance) => Object.fromEntries([...inst.sprite.sprite.peek().appearance.values()]
   .flatMap(op => op.kind === 'layer' ? [[op.layer, op.hidden]] : []));
 /** The imported default save's vines, as the game's save reader parses them. */
-async function importedVines(): Promise<PlacementSaveRecord[]> {
+async function importedVines(): Promise<EntitySaveRecord[]> {
   const cluster = new URL('../../../public/saves/Cluster_1/', import.meta.url);
   const json = await readFile(new URL('Master.json', cluster), 'utf8');
   const { session } = JSON.parse(json) as { session: { playerFile: string } };
   const { player } = JSON.parse(await readFile(new URL(session.playerFile, cluster), 'utf8')) as { player: unknown };
-  return deserializeSave(json, SAVE_CATALOG, player).world.entities.oceanvine! as PlacementSaveRecord[];
+  return deserializeSave(json, SAVE_CATALOG, player).world.entities.oceanvine! as EntitySaveRecord[];
 }
-const picked = (id: string, x: number): PlacementSaveRecord => ({ id, transform: { position: [x, 0, 3], rotationY: 0 },
+const picked = (id: string, x: number): EntitySaveRecord => ({ id, transform: { position: [x, 0, 3], rotationY: 0 },
   components: { pickable: { picked: true, regrowSeconds: 600 } } });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
