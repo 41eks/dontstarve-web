@@ -126,6 +126,11 @@ it('spawns rope_bridge_fx for each saved bridge tile as ropebridgemanager OnLoad
 
     await prefabDisplay(fx.transform.model)!.artLoaded();
     expect((fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith('/dst/data/anim/rope_bridge.zip'))).toBe(true);
+    // Every facing draws the planks across local z, between the ropes; the turned root lays them across this z-run bridge.
+    scene.updateMatrixWorld(true);
+    const drawn = new THREE.Box3().setFromObject(fx.transform.model).getSize(new THREE.Vector3());
+    expect(drawn.x).toBeGreaterThan(drawn.z * 1.5);
+    expect(drawn.x / 2).toBeCloseTo(2.6 * UNIT, -1);
     const before = fx.sprite.sprite.peek();
     awake.set(false); await new Promise(resolve => setTimeout(resolve, 0));
     expect(fx.status.peek()).toBe('asleep');

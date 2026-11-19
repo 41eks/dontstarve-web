@@ -43,7 +43,11 @@ export class RopeBridgeRopeInstance extends PrefabInstance {
 /** rope_bridge.lua fn: rope_bridge_fx, the art ropebridgemanager spawns on each bridge tile. */
 export class RopeBridgeFxInstance extends PrefabInstance implements RopeBridgeFx {
   private readonly rotationState = createSignal(0);
-  /** Transform:SetRotation of the eight-faced inst; its root stays unturned, as the art is OnGround. */
+  /**
+   * Transform:SetRotation of the eight-faced inst. bridge_idle draws the same bridge under all eight facings, its
+   * planks across local z between the ropes, so the OnGround quad turns with the root as the engine's entity transform
+   * turns it; the facing alone would leave every bridge's planks across world z.
+   */
   readonly eightFacedRotation = readonlySignal(this.rotationState);
   /** inst.animdata (net_smallbyte): both ropes' variations and the anim state. */
   animdata = 0;
@@ -60,6 +64,7 @@ export class RopeBridgeFxInstance extends PrefabInstance implements RopeBridgeFx
   // conventions-allow instance-method: the engine's Transform:SetRotation; parented children follow the turned inst.
   SetRotation(degrees: number): void {
     this.rotationState.set(degrees);
+    this.transform.setRotation(degrees);
     placeChildren(this);
   }
 }
