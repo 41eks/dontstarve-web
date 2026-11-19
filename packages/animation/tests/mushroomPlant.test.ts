@@ -56,7 +56,7 @@ it('opens at night, is picked for a blue_cap, regrows after rainy periods and ke
 
     const restored = plantManager(mushroomPlantPrefabs, new THREE.Scene(), { rain: s.rain, spawnGroundItem: (definition, position, options) => s.ground.spawnGroundItem(definition, position, options) });
     try {
-      await drawn(restored.spawn('blue_mushroom', new THREE.Vector3(...record.transform.position), record).transform.model);
+      await drawn(restored.restore('blue_mushroom', record).transform.model);
       expect(restored.exportRecords()[0].record.components).toEqual(record.components);
     } finally { restored.dispose(); }
   } finally { s.dispose(); }

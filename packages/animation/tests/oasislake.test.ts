@@ -6,7 +6,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { oasislakePrefabs, OASISLAKE_ID, OasislakeInstance } from '../../prefab/src/oasislake';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -28,8 +28,8 @@ function setup(playerPosition = new THREE.Vector3()) {
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.oasislakes);
-  const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(OasislakeInstance, OASISLAKE_ID, new THREE.Vector3(...record.transform.position), record);
+  const spawn = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(OasislakeInstance, OASISLAKE_ID, record);
   const records = () => registry.exportRecords().oasislake ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
@@ -37,7 +37,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   return { scene, awake, prefabs, registry, definitions, spawn, records, requested, dispose };
 }
 /** Cluster_65's forest snapshot 0000000315 holds one lake, `{x=354.06,z=-93.94}` with no data, imported with empty components. */
-const importedRecord = (id: string, position: [number, number, number]): PlacementSaveRecord =>
+const importedRecord = (id: string, position: [number, number, number]): EntitySaveRecord =>
   ({ id, transform: { position, rotationY: 0 }, components: {} });
 const clip = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

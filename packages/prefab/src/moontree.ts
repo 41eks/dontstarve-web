@@ -12,7 +12,7 @@ import { addComponent, removeComponent } from './components';
 import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
 import { TILE_SIZE } from './tile';
@@ -305,7 +305,7 @@ function on_sleep(inst: MoonTreeInstance): void {
 }
 
 /** on_save: a burning tree is saved as burnt; a burning stump is still a stump. */
-function on_save(inst: MoonTreeInstance, data: PlacementSaveRecord['components']): void {
+function on_save(inst: MoonTreeInstance, data: EntityPersistData): void {
   const stump = inst.hasTag('stump');
   const burnt = !stump && (inst.hasTag('burnt') || inst.burn?.burnable.IsBurning() === true);
   data.moonTree = { size: sizeOf(inst), ...(stump ? { stump: true as const } : {}), ...(burnt ? { burnt: true as const } : {}) };
@@ -315,7 +315,7 @@ function on_save(inst: MoonTreeInstance, data: PlacementSaveRecord['components']
   delete data.timer;
 }
 
-function on_load(inst: MoonTreeInstance, data: PlacementSaveRecord['components']): void {
+function on_load(inst: MoonTreeInstance, data: EntityPersistData): void {
   const saved = data.moonTree, { growable, timer } = inst.components;
   timer.OnLoad(data.moonTreeTimer);
   // An older record without growth holds its size, and an older forest's empty record is a tall tree.

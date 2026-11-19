@@ -2,7 +2,7 @@ import { SpriteState } from '@dontstarve-web/display';
 import { Vector3 } from 'three';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import type { ReadonlyVector3 } from './transform';
 
@@ -60,13 +60,13 @@ export class NightmareGrowthInstance extends PrefabInstance {
   }
 
   /** The crack's rotation, or the loaded one its pending SpawnCrack has not applied yet. */
-  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: EntityPersistData): void {
     const crack = this._crack && !this._crack.isRemoved ? this._crack : undefined;
     const rotation = crack ? crack.GetRotation() : this._crack_rotation;
     if (rotation !== undefined) data.nightmareGrowth = { crackRotation: rotation };
   }
 
-  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: EntityPersistData): void {
     if (data.nightmareGrowth?.crackRotation !== undefined) this._crack_rotation = data.nightmareGrowth.crackRotation;
   }
 }

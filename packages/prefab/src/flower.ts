@@ -6,7 +6,7 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Pickable } from './components/pickable';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { DefaultBurnFn, DefaultBurntFn, DefaultExtinguishFn } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 import { BurnableBinding, type FireFxHost } from './treeFire';
@@ -45,11 +45,11 @@ function OnIsRoseDirty(inst: FlowerInstance): void {
   inst.scrapbook_proxy = inst.animname === 'rose' ? 'flower_rose' : undefined;
 }
 
-function onsave(flower: FlowerInstance, data: PlacementSaveRecord['components']): void {
+function onsave(flower: FlowerInstance, data: EntityPersistData): void {
   data.flower = { animation: flower.animname!, ...(flower.planted ? { planted: true } : {}) };
 }
 
-function onload(flower: FlowerInstance, data: PlacementSaveRecord['components']): void {
+function onload(flower: FlowerInstance, data: EntityPersistData): void {
   setflowertype(flower, data.flower?.animation);
   flower.planted = data.flower?.planted || undefined;
 }

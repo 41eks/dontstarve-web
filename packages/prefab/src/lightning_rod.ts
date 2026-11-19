@@ -10,7 +10,7 @@ import { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDecla
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import { PrefabInstance, type EntityTask } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import type { PrefabWorldContext } from './worldContext';
 
 export const LIGHTNING_ROD_ID = 'lightning_rod' as const;
@@ -135,13 +135,13 @@ function onlightning(inst: LightningRodInstance): void {
     inst.lightningRod.setcharged(3);
 }
 
-function onsave(inst: LightningRodInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: LightningRodInstance, data: EntityPersistData): void {
     const rod = inst.lightningRod;
     if (rod.charged) data.lightningrod = { charged: true, chargeleft: rod.chargeleft! };
 }
 
 /** A charged save restores its remaining charge (and zaps once, as setcharged does). */
-function onload(inst: LightningRodInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: LightningRodInstance, data: EntityPersistData): void {
     const saved = data.lightningrod;
     if (saved?.charged && saved.chargeleft > 0) inst.lightningRod.setcharged(saved.chargeleft);
 }

@@ -47,12 +47,12 @@ function setup() {
     spawnGroundItem: (definition: Parameters<typeof ground.spawnGroundItem>[0], position: Parameters<typeof ground.spawnGroundItem>[1], options?: Parameters<typeof ground.spawnGroundItem>[2]) => ground.spawnGroundItem(definition, position, options) }, rockAvocadoSaplingPrefabs);
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.rockAvocadoBushes, {
-    restore: (_, record) => bushes.spawn('rock_avocado_bush', new THREE.Vector3(...record.transform.position), record).transform.model,
+    restore: (_, record) => bushes.restore('rock_avocado_bush', record).transform.model,
     debugSpawn: () => bushes.spawn('rock_avocado_bush', player.position).transform.model,
     exportRecords: () => bushes.exportRecords(), dispose: () => bushes.dispose(),
   });
   registry.register(PREFAB_DEFINITIONS.rockAvocadoSaplings, {
-    restore: (_, record) => sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, new THREE.Vector3(...record.transform.position), record).transform.model,
+    restore: (_, record) => sprouts.restore(ROCK_AVOCADO_SAPLING_ID, record).transform.model,
     debugSpawn: () => sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, player.position).transform.model,
     exportRecords: () => sprouts.exportRecords(),
     dispose: () => sprouts.dispose(),
@@ -134,7 +134,7 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.rock_avocado_fruit_sprout_sapling[0];
     expect(record.components.saplingTimer?.timers.grow.timeleft).toBe(900);
-    restored.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, new THREE.Vector3(...record.transform.position), record);
+    restored.sprouts.restore(ROCK_AVOCADO_SAPLING_ID, record);
     restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.sprouts.exportRecords().map(({ record }) => record)).toEqual([record]);
@@ -180,7 +180,7 @@ it('cancels and restarts growth on ignition/extinguishing, reloads a stopped sou
     burnable.Ignite();
     const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.rock_avocado_fruit_sprout_sapling[0];
     expect(record.components.saplingTimer).toEqual({ timers: {} });
-    restored.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, new THREE.Vector3(...record.transform.position), record);
+    restored.sprouts.restore(ROCK_AVOCADO_SAPLING_ID, record);
     const loaded = workTargets('DIG', restored.scene)[0].model;
     expect(prefabInstance<RockAvocadoSaplingInstance>(loaded)!.components.timer.GetTimeLeft('grow')).toBe(1500);
     restored.scheduler.advance(1500);

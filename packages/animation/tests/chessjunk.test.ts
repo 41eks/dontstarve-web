@@ -7,7 +7,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Repairer } from '../../componets/src/repairer';
 import { chessJunkPrefabs, CHESSJUNK_IDS, type ChessJunkId, ChessJunkInstance } from '../../prefab/src/chessjunk';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -30,7 +30,7 @@ function setup(playerPosition = new THREE.Vector3()) {
     dropLoot: items => { for (const item of items) dropped.push(item.itemId); } }));
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.chessJunk);
-  const spawn = (id: ChessJunkId, record?: PlacementSaveRecord) =>
+  const spawn = (id: ChessJunkId, record?: EntitySaveRecord) =>
     prefabs.spawnAs(ChessJunkInstance, id, new THREE.Vector3(...record?.transform.position ?? [0, 0, 0]), record);
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };
   return { scheduler, prefabs, registry, spawn, dropped, collapses, dispose };

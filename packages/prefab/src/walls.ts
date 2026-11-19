@@ -12,7 +12,7 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Workable } from '../../componets/src/workable';
 import type { BuildingPlacerSpec } from './buildingPlacer';
 import { PathfindingWall } from './pathfinder';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { TILE_SIZE } from './tile';
@@ -211,7 +211,7 @@ function keeptargetfn(): boolean { return false; }
  * onload: a dead wall clears its obstacle. This project's record keeps health as `{ current, maximum }` under `health`,
  * which health:OnLoad reads here, and the skin under `wall`; the loaded health is shown as onhealthchange would.
  */
-function onload(inst: WallInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: WallInstance, data: EntityPersistData): void {
     const { health } = inst.components;
     if (data.health) health.OnLoad({ health: data.health.current, maxhealth: data.health.maximum });
     if (data.wall?.skinId !== undefined) inst.skinId = data.wall.skinId;
@@ -220,7 +220,7 @@ function onload(inst: WallInstance, data: PlacementSaveRecord['components']): vo
 }
 
 /** The record's `health` and `wall` entries, in place of health:OnSave's own shape. */
-function onsave(inst: WallInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: WallInstance, data: EntityPersistData): void {
     const { health } = inst.components;
     data.health = { current: health.currenthealth, maximum: health.maxhealth };
     if (inst.skinId !== undefined) data.wall = { skinId: inst.skinId };

@@ -6,7 +6,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ruinsRelicPrefabs, type RuinsRelicId, type RuinsRelicInstance } from '../../prefab/src/ruinsrelic';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntityPersistData, EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -19,7 +19,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { createInventoryStore } from './testInventory';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-const record = (components: PlacementSaveRecord['components']): PlacementSaveRecord => ({ id: 'saved-relic',
+const record = (components: EntityPersistData): EntitySaveRecord => ({ id: 'saved-relic',
   transform: { position: [2, 0, -3], rotationY: .4 }, components });
 function setup() {
   vi.stubGlobal('window', new EventTarget());
@@ -30,9 +30,9 @@ function setup() {
   prefabs.register(ruinsRelicPrefabs({ scheduler }));
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6), displays);
   registry.registerPrefabs(PREFAB_DEFINITIONS.ruinsRelics);
-  const spawn = (id: RuinsRelicId, position: THREE.Vector3, saved?: PlacementSaveRecord) => prefabs.spawn(id, position, saved).transform.model;
+  const restore = (id: RuinsRelicId, record: EntitySaveRecord) => prefabs.restore(id, record).transform.model;
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  return { scene, awake, registry, inventory, prefabs, displays, spawn,
+  return { scene, awake, registry, inventory, prefabs, displays, restore,
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
@@ -43,9 +43,9 @@ it('loads source records through construction, OnPreLoad and health.OnLoad, reta
   const s = setup();
   try {
     // A naturally intact chair saved as rubble, and an originally rubble vase saved after repair.
-    const chair = s.spawn('ruins_chair', new THREE.Vector3(2, 0, -3),
+    const chair = s.restore('ruins_chair',
       record({ ruinsRelic: { rubble: true }, health: { current: 18, maximum: 90 } }));
-    const vase = s.spawn('ruins_rubble_vase', new THREE.Vector3(2, 0, -3),
+    const vase = s.restore('ruins_rubble_vase',
       { ...record({ health: { current: 95, maximum: 95 } }), id: 'repaired-vase' });
     const inst = prefabInstance(chair)!;
     // The load's idle -> broken transition settles while the art is not drawn yet.
@@ -73,7 +73,7 @@ it('loads source records through construction, OnPreLoad and health.OnLoad, reta
 it('rebuilds a sleeping chair with its declared clip and skin using the shared display resources', async () => {
   const s = setup();
   try {
-    const model = s.spawn('ruinsrelic_chair', new THREE.Vector3(2, 0, -3),
+    const model = s.restore('ruinsrelic_chair',
       record({ ruinsRelic: { skinId: 'ruinsrelic_chair_tesla' } }));
     const inst = prefabInstance(model)!;
     await prefabDisplay(model)!.artLoaded();

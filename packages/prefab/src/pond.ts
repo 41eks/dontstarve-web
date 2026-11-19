@@ -10,7 +10,7 @@ import { WILSON_RUN_SPEED } from '../../componets/src/slipperyfeet';
 import { COLLISION } from '../../componets/src/physicsState';
 import { MARSH_PLANT_ID } from './marsh_plant';
 import { PrefabInstance, type PrefabComponents , type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { WORLD_SCALE } from './tile';
 import { MakePondPhysics } from './standardcomponents';
 
@@ -45,7 +45,7 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
   /** Undefined until the first OnSnowLevel, as in the source. */
   frozen?: boolean;
   /** inst.plants: where the plants stand, in DST units from the pond; they outlive a burnt plant, not a freeze. */
-  private plants?: NonNullable<PlacementSaveRecord['components']['plants']>;
+  private plants?: NonNullable<EntityPersistData['plants']>;
   private plant_ents?: PrefabInstance<SpriteState, object>[];
   private readonly spawnPrefab: PondWorld['spawnPrefab'];
   private readonly getWatchWorldContent?: GetWatchWorldContent;
@@ -80,12 +80,12 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
     this.OnSnowLevel(snowLevel?.peek() ?? 0);
   }
 
-  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: EntityPersistData): void {
     if (this.plants) data.plants = this.plants;
   }
 
   /** Always before OnInit here, while the source's inst.task is still pending. */
-  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: EntityPersistData): void {
     this.plants ??= data.plants;
   }
 

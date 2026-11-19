@@ -8,7 +8,7 @@ import { animationLengths } from './animationTimings';
 import { WormholeStateGraph, type WormholeStateInst } from '../../stategraphs/src/SGwormhole';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import type { SoundEmitter } from './soundEmitter';
 import { TILE_SIZE } from './tile';
 
@@ -65,10 +65,10 @@ function onfar(inst: WormholeInstance): void {
 }
 
 /** wormhole_init_fn's build swap is the skin; OnSave / OnLoad keep it under `wormhole`. */
-function OnSave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function OnSave(inst: PrefabInstance, data: EntityPersistData): void {
   if (inst.skinId !== undefined) data.wormhole = { skinId: inst.skinId };
 }
-function OnLoad(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function OnLoad(inst: PrefabInstance, data: EntityPersistData): void {
   const skinId = data.wormhole?.skinId;
   if (skinId === undefined) return;
   if (!WORMHOLE_SKINS.some(known => known === skinId)) throw new Error(`Unsupported wormhole skin: ${skinId}`);

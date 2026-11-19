@@ -45,7 +45,7 @@ function setup() {
   const load = (json: string) => {
     for (const [prefabId, records] of Object.entries(deserializeSave(json, SAVE_CATALOG).world.entities)) {
       if (!(PREFAB_DEFINITIONS.archiveProps.prefabIds as readonly string[]).includes(prefabId)) continue;
-      for (const record of records) prefabs.spawn(prefabId, new THREE.Vector3(...record.transform.position), record);
+      for (const record of records) prefabs.restore(prefabId, record);
     }
   };
   const find = <Instance extends PrefabInstance = PrefabInstance>(id: string) =>

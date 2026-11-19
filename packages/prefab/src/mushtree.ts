@@ -18,6 +18,7 @@ import { TILE_SIZE } from './tile';
 import type { WorldEventEmitter } from './worldContext';
 import catalog from './groundItems.json' with { type: 'json' };
 import { animationTiming } from './animationTimings';
+import type { EntityPersistData } from './saveRecord';
 
 export const MUSHTREE_MOON_ID = 'mushtree_moon' as const;
 export const MUSHTREE_MEDIUM_ID = 'mushtree_medium' as const;
@@ -330,7 +331,7 @@ export class MushtreeInstance extends PrefabInstance {
 }
 
 /** onsave: burnt, stump, treestate; the project's save keeps the stump's decay timer under `mushtree.decay`. */
-function onsave(inst: MushtreeInstance, data: Record<string, unknown>): void {
+function onsave(inst: MushtreeInstance, data: EntityPersistData): void {
   const decay = inst.components.timer.GetTimeLeft('decay');
   delete data.timer;
   const mushtree: MushtreeSaveState = { ...inst.stump ? { stump: true } : {},

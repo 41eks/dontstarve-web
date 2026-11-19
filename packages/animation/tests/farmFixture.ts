@@ -6,7 +6,7 @@ import { farmPrefabs, FARM_DECOR_IDS, FARM_PLOW_ID, PLANTED_SEED_IDS, type FarmW
 import { createFarmMap } from '../../prefab/src/farmMap';
 import { placementEntities, type PlacementQuery } from '../../prefab/src/placementEntities';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntityPersistData } from '../../prefab/src/saveRecord';
 import { newEntityId } from '../../prefab/src/saveRecord';
 import type { TurfMap } from '../../prefab/src/turfMap';
 
@@ -27,7 +27,7 @@ export function farmFixture(scene: THREE.Scene, turf: TurfMap, options: {
   return {
     scheduler, displays, prefabs, map,
     /** SpawnPrefab, or SpawnSaveRecord when components or an id are given. */
-    spawn: (prefab: string, position: THREE.Vector3, components?: PlacementSaveRecord['components'], id?: string) =>
+    spawn: (prefab: string, position: THREE.Vector3, components?: EntityPersistData, id?: string) =>
       prefabs.spawn(prefab, position, components || id ? { id: id ?? newEntityId(), components: components ?? {} } : undefined),
     plows: () => records([FARM_PLOW_ID]).map(({ record }) => record),
     decor: () => records(FARM_DECOR_IDS),

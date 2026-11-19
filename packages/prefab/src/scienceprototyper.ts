@@ -10,7 +10,7 @@ import type { BuildingPlacerSpec } from './buildingPlacer';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree, type TechTree } from '../../componets/src/techtree';
 import { DefaultBurntStructureFn, onloadBurnt, onsaveBurnt, WORLD_SCALE } from './standardcomponents';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { PlaySound } from './sound';
 import { BurnableBinding } from './treeFire';
 import type { PrefabWorldContext } from './worldContext';
@@ -57,12 +57,12 @@ function onturnoff(inst: PrefabInstance): void {
 }
 
 /** onsave/onload, with the skin the building save shape keeps beside data.burnt. */
-function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: PrefabInstance, data: EntityPersistData): void {
     SaveBuildingSkin(inst, data);
     onsaveBurnt(inst, data);
 }
 
-function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: PrefabInstance, data: EntityPersistData): void {
     LoadBuildingSkin(inst, data);
     onloadBurnt(inst, data);
 }

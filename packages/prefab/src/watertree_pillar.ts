@@ -10,7 +10,7 @@ import {
 } from '../../componets/src/watertreePillarSignatures';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeWaterObstaclePhysics } from './standardcomponents';
 
 export const WATERTREE_PILLAR_ID = 'watertree_pillar' as const;
@@ -54,7 +54,7 @@ export class WatertreePillarInstance extends PrefabInstance {
   declare players: Set<unknown>;
 }
 
-function OnSave(inst: WatertreePillarInstance, data: PlacementSaveRecord['components']): void {
+function OnSave(inst: WatertreePillarInstance, data: EntityPersistData): void {
   const { childreninside, childrenoutside } = data.childspawner ?? inst.components.childspawner.OnSave();
   data.watertreePillar = {
     num_oceantreenuts: inst.num_oceantreenuts,
@@ -67,7 +67,7 @@ function OnSave(inst: WatertreePillarInstance, data: PlacementSaveRecord['compon
 }
 
 /** The childspawner and timer components' OnLoad, which run before inst.OnLoad in the source, then OnLoad. */
-function OnLoad(inst: WatertreePillarInstance, data: PlacementSaveRecord['components']): void {
+function OnLoad(inst: WatertreePillarInstance, data: EntityPersistData): void {
   const saved = data.watertreePillar;
   if (!saved) return;
   inst.components.childspawner.OnLoad(saved.childspawner);

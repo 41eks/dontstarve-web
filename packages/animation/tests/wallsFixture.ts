@@ -1,5 +1,5 @@
 import { WALL_PREFAB_IDS, type WallId } from '../../prefab/src/walls';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { managedBuildings } from './managedBuildings';
 
@@ -17,7 +17,7 @@ export function wallsFixture(world: WorldContext, consume: (buildId: WallId, ski
     ...buildings,
     begin: (buildId: WallId, skinId?: string) => buildings.begin(buildId, skinId),
     async spawn(buildId: WallId, skinId?: string) { await buildings.spawn(buildId, skinId); scheduler.advance(0); },
-    async spawnFromSave(buildId: WallId, record: PlacementSaveRecord) {
+    async spawnFromSave(buildId: WallId, record: EntitySaveRecord) {
       const model = buildings.spawnFromSave(buildId, record);
       scheduler.advance(0);
       return model;

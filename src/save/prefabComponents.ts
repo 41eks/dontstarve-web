@@ -1,5 +1,5 @@
 import type { InventoryStack } from '@dontstarve-web/inventory';
-import type { SavedContainer, SavedEntity, SavedTransform } from './types';
+import type { SavedContainer } from './types';
 import type { SaveCatalog } from './deserialize';
 import type { BulbPlantVariant } from '@dontstarve-web/prefab/bulb_plant';
 import { FLOWER_ANIMATIONS } from '@dontstarve-web/prefab/flower';
@@ -21,6 +21,7 @@ const MOONBASE_TIMER_LIMITS_BY_NAME: Readonly<Partial<Record<string, number>>> =
 import { LAVA_POND_ROCK_TYPES } from '@dontstarve-web/prefab/lava_pond';
 import { BASE_COOK_TIME, GetRecipe } from '../../packages/componets/src/cooking';
 import { array, choice, fail, integer, number, object, string } from './validation';
+import type { EntityPersistData, SavedTransform } from '@dontstarve-web/prefab/saveRecord';
 
 /** Structures with a ported MakeXBurnable(inst, nil, nil, true), whose onsave can write burnt. */
 const BURNABLE_STRUCTURES: ReadonlySet<string> = new Set(['treasurechest', 'cookpot', 'winterometer', 'pighead', 'mermhead',
@@ -35,7 +36,7 @@ export interface EntitySaveContext {
 }
 
 export interface PrefabComponentSchema {
-  readonly keys: readonly (keyof SavedEntity['components'])[];
+  readonly keys: readonly (keyof EntityPersistData)[];
   readonly timerDuration?: number;
   readonly bulbVariants?: readonly BulbPlantVariant[];
   /** pickable.lua regentime bounding a saved regrow task. */
@@ -60,17 +61,17 @@ export interface PrefabComponentSchema {
   readonly grottoChildren?: number;
 }
 
-export type PrefabComponentParser = (value: unknown, path: string, context: EntitySaveContext) => SavedEntity['components'];
+export type PrefabComponentParser = (value: unknown, path: string, context: EntitySaveContext) => EntityPersistData;
 
 /** Component readers are reusable; the prefab definition chooses its schema. */
 export function componentParser(schema: PrefabComponentSchema): PrefabComponentParser {
   return (value, path, { prefab, catalog, stack, container, transform }) => {
     const { keys } = schema;
     const c = object(value, path, keys);
-    const components: SavedEntity['components'] = {};
+    const components: EntityPersistData = {};
     if (keys.includes('caveinBoulder') && c.caveinBoulder !== undefined) {
       const p = `${path}.caveinBoulder`, boulder = object(c.caveinBoulder, p, ['variation', 'raised', 'formed']);
-      const state: NonNullable<SavedEntity['components']['caveinBoulder']> = {
+      const state: NonNullable<EntityPersistData['caveinBoulder']> = {
         variation: integer(boulder.variation, `${p}.variation`, 1, 8),
       };
       for (const flag of ['raised', 'formed'] as const) if (boulder[flag] !== undefined) {
@@ -85,7 +86,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       components.allowspawn = c.allowspawn;
     }
     if (keys.includes('rock_type') && c.rock_type !== undefined) {
-      components.rock_type = integer(c.rock_type, `${path}.rock_type`, 1, 4) as NonNullable<SavedEntity['components']['rock_type']>;
+      components.rock_type = integer(c.rock_type, `${path}.rock_type`, 1, 4) as NonNullable<EntityPersistData['rock_type']>;
     }
     if (keys.includes('lightflierFlower')) {
       const p = `${path}.lightflierFlower`, data = object(c.lightflierFlower, p,

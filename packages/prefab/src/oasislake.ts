@@ -7,7 +7,7 @@ import { Oasis, WaterSource } from '../../componets/src/oasislakeSignatures';
 import { PointOfInterest } from '../../componets/src/statueglommerSignatures';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 
@@ -46,12 +46,12 @@ export class OasislakeInstance extends PrefabInstance {
   regrowth = false;
 }
 
-function OnSave(inst: OasislakeInstance, data: PlacementSaveRecord['components']): void {
+function OnSave(inst: OasislakeInstance, data: EntityPersistData): void {
   if (!inst.regrowth) data.oasislake = { regrowth: false };
 }
 
 /** `data == nil or data.regrowth ~= false`: a record without the field loads as regrowing. */
-function OnLoad(inst: OasislakeInstance, data: PlacementSaveRecord['components']): void {
+function OnLoad(inst: OasislakeInstance, data: EntityPersistData): void {
   inst.regrowth = data.oasislake?.regrowth !== false;
 }
 

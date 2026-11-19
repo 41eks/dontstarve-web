@@ -6,7 +6,7 @@ import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal, GameTimeScheduler } from '@dontstarve-web/signals';
 import { atriumGatePrefabs, ATRIUM_GATE_ID, AtriumGateInstance } from '../../prefab/src/atrium_gate';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntityPersistData } from '../../prefab/src/saveRecord';
 import { Pathfinder } from '../../prefab/src/pathfinder';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -20,7 +20,7 @@ import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 import { createInventoryStore } from './testInventory';
 
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
-const record = (x: number, components: PlacementSaveRecord['components']) =>
+const record = (x: number, components: EntityPersistData) =>
   ({ id: `atrium-${x}`, transform: { position: [x, 0, 7] as [number, number, number], rotationY: 0 }, components });
 
 function setup(pathfinder?: Pathfinder) {
@@ -33,7 +33,7 @@ function setup(pathfinder?: Pathfinder) {
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const instances = (prefab: string) => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).filter(inst => inst?.prefab === prefab && !inst.isRemoved);
   return { scene, awake, prefabs, registry, inventory, instances,
-    gate: (components: PlacementSaveRecord['components'], x = 5) =>
+    gate: (components: EntityPersistData, x = 5) =>
       prefabs.spawnAs(AtriumGateInstance, ATRIUM_GATE_ID, new THREE.Vector3(x, 0, 7), record(x, components)),
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),

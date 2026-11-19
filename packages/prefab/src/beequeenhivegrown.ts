@@ -4,7 +4,7 @@ import { Workable } from '../../componets/src/workable';
 import { Timer } from '../../componets/src/timer';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { ReadonlyVector3 } from './transform';
@@ -42,13 +42,13 @@ export class BeeQueenHiveInstance extends PrefabInstance {
   }
 
   /** The record keeps the timer component's save under beeQueenHiveTimer. */
-  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: EntityPersistData): void {
     const saved = data.timer; delete data.timer;
     if (saved) data.beeQueenHiveTimer = saved;
   }
 
   /** inst.OnLoad = RefreshHoneyState, after the saved workable and timer. */
-  override OnLoad(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnLoad(_inst: unknown, data: EntityPersistData): void {
     this.components.timer.OnLoad(data.beeQueenHiveTimer);
     setHoneyLevel(this, honeyLevel(this.components.workable.GetWorkLeft()));
   }

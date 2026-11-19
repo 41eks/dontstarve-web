@@ -7,7 +7,7 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { spawnStructureLoot } from './structureLoot';
 import type { WorldContext } from './worldContext';
@@ -90,14 +90,14 @@ function OnHit(inst: ChessJunkInstance): void {
   inst.SoundEmitter!.PlaySound('dontstarve/common/lightningrod');
 }
 
-function OnSave(pile: ChessJunkInstance, data: PlacementSaveRecord['components']): void {
+function OnSave(pile: ChessJunkInstance, data: EntityPersistData): void {
   if (!pile.repaired) return;
   data.chessJunk = { repaired: true,
     ...pile.repairerid === undefined ? {} : { repairerid: pile.repairerid },
     ...pile.repairerchar === undefined ? {} : { repairerchar: pile.repairerchar } };
 }
 
-function OnLoad(pile: ChessJunkInstance, data: PlacementSaveRecord['components']): void {
+function OnLoad(pile: ChessJunkInstance, data: EntityPersistData): void {
   const saved = data.chessJunk;
   if (!saved?.repaired) return;
   pile.components.workable.SetWorkLeft(MAXHITS);

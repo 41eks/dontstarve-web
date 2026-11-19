@@ -9,7 +9,7 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Worker } from '../../componets/src/workable';
 import { addComponent, removeComponent } from './components';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
 import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
@@ -272,7 +272,7 @@ function OnEntitySleep(inst: EvergreenInstance): void {
 }
 
 /** onsave: a burning tree is saved as burnt; a burning stump is still a stump. */
-function onsave(inst: EvergreenInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: EvergreenInstance, data: EntityPersistData): void {
   const stump = inst.hasTag('stump');
   const burnt = !stump && (inst.hasTag('burnt') || inst.fire?.burnable.IsBurning() === true);
   if (stump) data.evergreen = { stump: true };
@@ -283,7 +283,7 @@ function onsave(inst: EvergreenInstance, data: PlacementSaveRecord['components']
   delete data.timer;
 }
 
-function onload(inst: EvergreenInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: EvergreenInstance, data: EntityPersistData): void {
   inst.components.timer.OnLoad(data.evergreenTimer);
   if (data.evergreen?.stump) make_stump(inst);
   else if (data.evergreen?.burnt) {

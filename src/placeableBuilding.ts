@@ -7,7 +7,7 @@ import { wallWorldPrefab, wallWorldSkin } from '@dontstarve-web/prefab/wallSkins
 import { FENCE_ID, FENCE_IDS, fencePlacer, fencePrefabs, fenceWorldSkin, GetRotation, isFenceId, ondeploywall, type FenceId } from '@dontstarve-web/prefab/fence';
 import { snapToWallSlotCenter } from '@dontstarve-web/prefab/tile';
 import type { WorldContext } from '@dontstarve-web/prefab/worldContext';
-import type { PlacementSaveRecord } from '@dontstarve-web/prefab/saveRecord';
+import type { EntitySaveRecord } from '@dontstarve-web/prefab/saveRecord';
 import { TENT_ID, TENT_PLACER, tentPrefabs } from '@dontstarve-web/prefab/tent';
 import { PANDORAS_CHEST_ID, PANDORAS_CHEST_PLACER, pandorasChestPrefabs } from '@dontstarve-web/prefab/pandoraschest';
 import { MOONBASE_ID, MOONBASE_PLACER, moonbasePrefabs } from '@dontstarve-web/prefab/moonbase';
@@ -59,14 +59,14 @@ export function isPlaceableBuildingId(value: string): value is PlaceableBuilding
  */
 export class PlaceableBuildingPlacement {
     private readonly managed: BuildingPlacer<PlaceableBuildingId>;
-    private readonly prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'spawnAs' | 'register' | 'track'>;
+    private readonly prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'spawnAs' | 'restore' | 'register' | 'track'>;
     private readonly snapToWallSlot: (point: Vector3) => Vector3;
 
     constructor(
         world: WorldContext,
         consumeBufferedBuild: (buildId: PlaceableBuildingId, skinId?: string) => boolean,
         onInteractionChange: ((change: PlaceableBuildingInteractionChange) => void) | undefined,
-        prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'spawnAs' | 'register' | 'track'>,
+        prefabs: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'spawnAs' | 'restore' | 'register' | 'track'>,
     ) {
         this.prefabs = prefabs;
         const { scene: _scene, ...rest } = world;
@@ -106,8 +106,8 @@ export class PlaceableBuildingPlacement {
     }
 
     /** The saved world prefabs; a fence or wall item in the save is an ordinary item and is not restored here. */
-    spawnFromSave(buildId: PlaceableBuildingId, record: PlacementSaveRecord) {
-        return this.prefabs.spawn(buildId, new Vector3(...record.transform.position), record).transform.model;
+    spawnFromSave(buildId: PlaceableBuildingId, record: EntitySaveRecord) {
+        return this.prefabs.restore(buildId, record).transform.model;
     }
 
     /** Every placed prefab is saved by the shared PrefabEntityManager. */

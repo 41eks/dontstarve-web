@@ -306,15 +306,15 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
 
   /** The item's components save as one stack record, as the inventory saves its slots; the prefab's OnSave adds its own. */
-  override GetPersistData(): import('../../prefab/src/saveRecord').PlacementSaveRecord['components'] {
+  override GetPersistData(): import('../../prefab/src/saveRecord').EntityPersistData {
     this.flush();
     const { entityId: _id, ...stack } = this.snapshot(false);
-    const data: import('../../prefab/src/saveRecord').PlacementSaveRecord['components'] = { stack };
+    const data: import('../../prefab/src/saveRecord').EntityPersistData = { stack };
     this.OnSave?.(this, data);
     return data;
   }
   /** SpawnSaveRecord: the stack record restores the item's components, then the prefab's OnLoad runs. */
-  override SetPersistData(data: import('../../prefab/src/saveRecord').PlacementSaveRecord['components']): void {
+  override SetPersistData(data: import('../../prefab/src/saveRecord').EntityPersistData): void {
     if (data.stack) {
       this.apply({ ...data.stack, itemId: this.prefab, entityId: this.id });
       if (data.stack.container) this.components.container?.OnLoad(data.stack.container);

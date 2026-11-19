@@ -7,7 +7,7 @@ import type { AnimStateJson } from '@dontstarve-web/animation/animState';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { watertreePillarPrefabs, WATERTREE_PILLAR_ID, WatertreePillarInstance } from '../../prefab/src/watertree_pillar';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -29,8 +29,8 @@ function setup(playerPosition = new THREE.Vector3()) {
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.watertreePillars);
-  const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(WatertreePillarInstance, WATERTREE_PILLAR_ID, new THREE.Vector3(...record.transform.position), record);
+  const spawn = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(WatertreePillarInstance, WATERTREE_PILLAR_ID, record);
   const records = () => registry.exportRecords().watertree_pillar ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
@@ -43,12 +43,12 @@ const overrideBuilds = (inst: PrefabInstance) => {
   return op?.kind === 'anim-state' ? (op.state.peek() as AnimStateJson).overrideBuilds : undefined;
 };
 /** The imported default save's pillars, as the game's save reader parses them. */
-async function importedPillars(): Promise<PlacementSaveRecord[]> {
+async function importedPillars(): Promise<EntitySaveRecord[]> {
   const cluster = new URL('../../../public/saves/Cluster_1/', import.meta.url);
   const json = await readFile(new URL('Master.json', cluster), 'utf8');
   const { session } = JSON.parse(json) as { session: { playerFile: string } };
   const { player } = JSON.parse(await readFile(new URL(session.playerFile, cluster), 'utf8')) as { player: unknown };
-  return deserializeSave(json, SAVE_CATALOG, player).world.entities.watertree_pillar! as PlacementSaveRecord[];
+  return deserializeSave(json, SAVE_CATALOG, player).world.entities.watertree_pillar! as EntitySaveRecord[];
 }
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -92,7 +92,7 @@ it('loads an imported save record with the clip, tags, bank and component values
 it('rebuilds the declared clip and override build after tile sleep', async () => {
   const { scene, awake, spawn, records, dispose } = setup();
   try {
-    const saved: PlacementSaveRecord = { id: 'sleeping-pillar', transform: { position: [1, 0, 3], rotationY: 0 },
+    const saved: EntitySaveRecord = { id: 'sleeping-pillar', transform: { position: [1, 0, 3], rotationY: 0 },
       components: { watertreePillar: { num_oceantreenuts: 2, cocoons_to_regrow: 0, childspawner: { childreninside: 1, childrenoutside: [] } } } };
     const inst = spawn(saved);
     const model = inst.transform.model, before = inst.sprite.sprite.peek();

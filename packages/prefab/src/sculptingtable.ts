@@ -12,7 +12,7 @@ import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, typ
 import { Pickable } from './components/pickable';
 import { Trader, type TradeAcceptance, type TradeItem } from '../../componets/src/trader';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import type { PrefabWorldContext } from './worldContext';
 
 export const SCULPTING_TABLE_ID = 'sculptingtable' as const;
@@ -34,7 +34,7 @@ export function isSculptableMaterial(itemId: string): itemId is SculptableMateri
     return Object.hasOwn(SCULPTABLE_MATERIALS, itemId);
 }
 
-export type SculptingTableSaveState = NonNullable<PlacementSaveRecord['components']['sculptingtable']>;
+export type SculptingTableSaveState = NonNullable<EntityPersistData['sculptingtable']>;
 
 // pickable:SetUp(itemname, 1000000) then Pause(): the held item never regrows.
 const HELD_ITEM_REGEN_TIME = 1000000;
@@ -121,7 +121,7 @@ function onturnoff(inst: SculptingTableInstance): void {
 }
 
 /** onsave: data.itemname = caninteractwith and product or nil. The pickable's own record stays out of the save. */
-function onsave(inst: SculptingTableInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: SculptingTableInstance, data: EntityPersistData): void {
     SaveBuildingSkin(inst, data);
     delete data.pickable;
     const { pickable } = inst.components;
@@ -129,7 +129,7 @@ function onsave(inst: SculptingTableInstance, data: PlacementSaveRecord['compone
 }
 
 /** onload: giveitem restores the held block. */
-function onload(inst: SculptingTableInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: SculptingTableInstance, data: EntityPersistData): void {
     LoadBuildingSkin(inst, data);
     const itemname = data.sculptingtable?.itemname;
     if (itemname !== undefined && isSculptableMaterial(itemname)) giveitem(inst, itemname);

@@ -53,7 +53,7 @@ it('spawns cave_exit as a solid obstacle and keeps its identity and position thr
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const [record] = deserializeSave(json, SAVE_CATALOG).world.entities.cave_exit;
     expect([record.id, record.transform.position, record.components]).toEqual([exit.entityId, [5, 0, 7], {}]);
-    restored.prefabs.spawn(CAVE_EXIT_ID, new THREE.Vector3(...record.transform.position), record);
+    restored.prefabs.restore(CAVE_EXIT_ID, record);
     expect(restored.prefabs.exportRecords()).toEqual(s.prefabs.exportRecords());
     exit.remove();
     expect(s.physics.bodies).toHaveLength(0);

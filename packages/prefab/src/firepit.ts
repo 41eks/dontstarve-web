@@ -11,7 +11,7 @@ import { buildingPlacer, buildingPrefab, MakeBuildingPersist } from './building'
 import { CAMPFIREFIRE_ID } from './campfirefire';
 import { addComponent } from './components';
 import { PrefabInstance } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { PlaySound } from './sound';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import type { PrefabWorldContext } from './worldContext';
@@ -151,13 +151,13 @@ export class FirePitInstance extends PrefabInstance {
 }
 
 /** The fueled component's record stays nested under `firepit`, the shape existing saves hold. */
-function onsave(inst: FirePitInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: FirePitInstance, data: EntityPersistData): void {
     const { fueled } = data;
     delete data.fueled;
     if (fueled || inst.queued_charcoal) data.firepit = { ...(fueled ? { fueled } : {}), ...(inst.queued_charcoal ? { queued_charcoal: true as const } : {}) };
 }
 
-function onload(inst: FirePitInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: FirePitInstance, data: EntityPersistData): void {
     const saved = data.firepit;
     if (saved?.queued_charcoal) inst.queued_charcoal = true;
     if (saved?.fueled) inst.loadFuel(saved.fueled);

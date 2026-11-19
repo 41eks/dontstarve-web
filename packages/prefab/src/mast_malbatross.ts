@@ -11,7 +11,7 @@ import { Upgradeable, UPGRADETYPES } from '../../componets/src/upgradeable';
 import { Workable } from '../../componets/src/workable';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 
@@ -64,7 +64,7 @@ function GetRotation(inst: MastMalbatrossInstance): number {
 }
 
 /** onsave. The lamp and lightning rod upgrades are not ported, so neither of their branches saves. */
-function onsave(inst: MastMalbatrossInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: MastMalbatrossInstance, data: EntityPersistData): void {
   const saved: MastMalbatrossSaveState = {};
   if (inst.components.burnable.IsBurning() || inst.hasTag('burnt')) saved.burnt = true;
   // inst.components.mast.boat is always nil: SetBoat is not ported.
@@ -78,7 +78,7 @@ function onsave(inst: MastMalbatrossInstance, data: PlacementSaveRecord['compone
  * onload. burnable.onburnt and the onburnt listener are not registered, so a burnt record runs neither; the lamp_fuel
  * and lightningrod branches are not ported, and the save importer rejects those records.
  */
-function onload(inst: MastMalbatrossInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: MastMalbatrossInstance, data: EntityPersistData): void {
   const saved = data.mastMalbatross;
   if (!saved) return;
   if (saved.skinId !== undefined) {

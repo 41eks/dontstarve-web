@@ -122,7 +122,7 @@ it('drops two autumn acorns, preserves a saved stump and its seasonal build, and
     expect(record.components.growable).toEqual({ stage: 3 });
     const restored = await setup('winter');
     try {
-      const loaded = restored.prefabs.spawn('deciduoustree', new THREE.Vector3(...record.transform.position), record);
+      const loaded = restored.prefabs.restore('deciduoustree', record);
       expect(restored.records()[0]).toEqual(record);
       expect(prefabInstance(loaded.transform.model)!.sprite.currentAnimation).toBe('stump_tall');
       const icon = prefabInstance(loaded.transform.model)!.minimap;
@@ -161,7 +161,7 @@ it('retains an imported stump with no leaf target and its decay task while visua
   const s = await setup(), restored = await setup();
   try {
     s.prefabs.spawn('deciduoustree', new THREE.Vector3(), { id: 'dst-stump',
-      transform: { position: [0, 0, 0], rotationY: 0 }, components: {
+ components: {
         deciduoustree: { stump: true, leaf_state: 'normal' }, growable: { stage: 1, sleeptime: 4805 },
         deciduousTimer: { timers: { decay: { timeleft: 10, initial_time: 200, paused: false } } },
       } });

@@ -1094,7 +1094,7 @@ export async function createSceneEntities(
     };
     prefabs.register(beefaloPrefabs(beefaloWorld));
     registry.register(MANAGER_DEFINITIONS[prefabId], {
-      restore: (id, record) => prefabs.spawn(id, new THREE.Vector3(...record.transform.position), record),
+      restore: (id, record) => prefabs.restore(id, record),
       debugSpawn: id => prefabs.spawn(id, findBeefaloSpawnPoint(world, beefaloWorld, player.position)),
       exportRecords: () => [], dispose: () => {},
     });

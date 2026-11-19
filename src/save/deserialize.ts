@@ -1,7 +1,7 @@
 import type {
   InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec, InventoryStack,
 } from '@dontstarve-web/inventory';
-import type { SaveDocument, SavedContainer, SavedEntity, SavedTransform } from './types';
+import type { SaveDocument, SavedContainer } from './types';
 import type { BuildingContainerDefinition } from '@dontstarve-web/prefab/containers';
 import { WORLD_TILES, isOceanTile } from '@dontstarve-web/prefab/turfMap';
 import { GROUND_TILE_DEFINITIONS } from '@dontstarve-web/prefab/groundTiles';
@@ -10,6 +10,7 @@ import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
 import { PREFAB_DEFINITIONS, prefabSaveParsers, type PrefabDefinition } from '../prefabDefinitions';
 import { ROPEBRIDGE_HEALTH, type RopeBridgeTileSave } from '../../packages/componets/src/ropebridgemanager';
 import { array, choice, fail, integer, number, object, snapshotId, string, timestamp } from './validation';
+import type { EntitySaveRecord, SavedTransform } from '@dontstarve-web/prefab/saveRecord';
 
 /** TILE_SCALE: a rope bridge's direction is one tile's offset in DST units. */
 const ROPE_BRIDGE_DIRECTION_LIMIT = 4;
@@ -252,7 +253,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   const groups = object(world.entities, 'world.entities', [...parsers.keys()]);
   const entities = Object.fromEntries(Object.entries(groups).map(([prefab, values]) => {
     const path = `world.entities.${prefab}`;
-    const records = array(values, path, Number.MAX_SAFE_INTEGER).map((value, i): SavedEntity => {
+    const records = array(values, path, Number.MAX_SAFE_INTEGER).map((value, i): EntitySaveRecord => {
       const recordPath = `${path}[${i}]`;
       const o = object(value, recordPath, ['id', 'transform', 'components']);
       const id = string(o.id, `${recordPath}.id`);

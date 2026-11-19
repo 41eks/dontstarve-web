@@ -85,6 +85,7 @@ import definitions from '@dontstarve-web/prefab/definitions.json' with { type: '
 import { componentParser, type PrefabComponentParser } from './save/prefabComponents';
 import { fail } from './save/validation';
 import { array, choice, integer, number, object, string } from './save/validation';
+import type { EntityPersistData } from '@dontstarve-web/prefab/saveRecord';
 
 /** The fields of a saved entity that choose its art, read while the save is scanned before restore. */
 export interface ArchiveSaveRecord {
@@ -402,7 +403,7 @@ const WORLD_PREFAB_DEFINITIONS = {
     [{ animation: 'bernie.zip', build: 'bernie_build.zip' }, { animation: 'bernie_big.zip', build: 'bernie_build.zip' }]),
   glommerStatues: definePrefabs([STATUEGLOMMER_ID], (value, path) => {
     const data = object(value, path, ['statueglommer', 'pickable', 'workable']);
-    const components: import('./save/types').SavedEntity['components'] = {};
+    const components: EntityPersistData = {};
     if (data.statueglommer !== undefined) {
       const state = object(data.statueglommer, `${path}.statueglommer`, ['worked', 'spawned']);
       for (const key of ['worked', 'spawned'] as const) if (state[key] !== undefined && state[key] !== true)
@@ -426,7 +427,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   }, true, ['glommer_statue.zip', 'glommer_swap_flower.zip']),
   atriumGates: definePrefabs([ATRIUM_GATE_ID], (value, path) => {
     const data = object(value, path, ['atriumGate', 'pickable', 'charliecutscene', 'worldsettingstimer', 'entitytracker']);
-    const components: import('./save/types').SavedEntity['components'] = {};
+    const components: EntityPersistData = {};
     const flags = (value: unknown, field: string, keys: readonly string[]) => {
       const record = object(value, field, keys);
       for (const [key, flag] of Object.entries(record)) if (flag !== true) fail(`${field}.${key}`, 'expected true');
@@ -473,7 +474,7 @@ const WORLD_PREFAB_DEFINITIONS = {
     const replica = context.prefab.startsWith('ruinsrelic_');
     const decor = isRelicItem(context.prefab);
     const data = object(value, path, ['ruinsRelic', ...replica ? decor ? ['inventoryitemmoisture'] : [] : ['health']]);
-    const components: import('./save/types').SavedEntity['components'] = {};
+    const components: EntityPersistData = {};
     if (data.ruinsRelic !== undefined) {
       const state = object(data.ruinsRelic, `${path}.ruinsRelic`, replica ? context.prefab === 'ruinsrelic_chair' ? ['skinId'] : [] : ['rubble']);
       if (state.rubble !== undefined && state.rubble !== true) fail(`${path}.ruinsRelic.rubble`, 'expected true');
@@ -512,7 +513,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   // chesspieces.lua onsave writes materialid and submersible:OnSave its flag; this prefab is only ever marble.
   chesspieces: definePrefabs([CHESSPIECE_MALBATROSS_MARBLE_ID], (value, path) => {
     const data = object(value, path, ['chesspiece', 'submersible']);
-    const components: import('./save/types').SavedEntity['components'] = {};
+    const components: EntityPersistData = {};
     if (data.chesspiece !== undefined) {
       if (object(data.chesspiece, `${path}.chesspiece`, ['materialid']).materialid !== CHESSPIECE_MARBLE_MATERIAL_ID)
         fail(`${path}.chesspiece.materialid`, 'expected marble');

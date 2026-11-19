@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PANDORAS_CHEST_ID } from '../../prefab/src/pandoraschest';
 import { managedBuildings } from './managedBuildings';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
@@ -12,7 +12,7 @@ import { prefabDisplay } from '@dontstarve-web/display';
 import { testItem } from './testInventory';
 
 // An imported Caves record: the ruins chest with the chest_labyrinth loot it was saved with.
-const RECORD: PlacementSaveRecord = {
+const RECORD: EntitySaveRecord = {
   id: 'dst_04E26ADB66396E8D_pandoraschest_id_101861',
   transform: { position: [2316, 0, 852], rotationY: 0 },
   components: {

@@ -6,7 +6,7 @@ import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { atriumStatuePrefabs, ATRIUM_STATUE_ID, AtriumStatueInstance } from '../../prefab/src/atrium_statue';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -17,7 +17,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { createPickupInventory } from './pickupFixture';
 
 // An imported Caves record: the source statue has no id or data, so the importer derives the ID from its index.
-const RECORD: PlacementSaveRecord = {
+const RECORD: EntitySaveRecord = {
   id: 'dst_04E26ADB66396E8D_atrium_statue_index_000001', transform: { position: [696, 0, 1605], rotationY: 0 }, components: {},
 };
 
@@ -33,7 +33,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.atriumStatues);
   const spawn = (record = RECORD) =>
-    prefabs.spawnAs(AtriumStatueInstance, ATRIUM_STATUE_ID, new THREE.Vector3(...record.transform.position), record);
+    prefabs.restoreAs(AtriumStatueInstance, ATRIUM_STATUE_ID, record);
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); };
   return { scene, awake, physics, prefabs, registry, spawn, dispose };
 }

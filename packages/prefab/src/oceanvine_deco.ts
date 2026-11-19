@@ -2,7 +2,7 @@ import { SpriteState } from '@dontstarve-web/display';
 import { DistanceFade } from '../../componets/src/watertreePillarSignatures';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 
 export const OCEANVINE_DECO_ID = 'oceanvine_deco' as const;
 /** math.random(1, 6): the idle_N clips of vine_rainforest_border. */
@@ -15,11 +15,11 @@ export class OceanVineDecoInstance extends PrefabInstance {
   declare animnum: OceanVineDecoAnimNum;
 }
 
-function onsave(inst: OceanVineDecoInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: OceanVineDecoInstance, data: EntityPersistData): void {
   data.animnum = inst.animnum;
 }
 
-function onload(inst: OceanVineDecoInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: OceanVineDecoInstance, data: EntityPersistData): void {
   if (data.animnum === undefined) return;
   inst.animnum = data.animnum;
   inst.AnimState.PlayAnimation(`idle_${inst.animnum}`, true);

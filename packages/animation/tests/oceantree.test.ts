@@ -6,7 +6,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { oceanTreePrefabs, OCEANTREE_ID, OceanTreeInstance } from '../../prefab/src/oceantree';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -29,8 +29,8 @@ function setup(playerPosition = new THREE.Vector3()) {
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.oceanTrees);
-  const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(OceanTreeInstance, OCEANTREE_ID, new THREE.Vector3(...record.transform.position), record);
+  const spawn = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(OceanTreeInstance, OCEANTREE_ID, record);
   const records = () => registry.exportRecords().oceantree ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
@@ -48,12 +48,12 @@ const ownMeshesShown = (inst: PrefabInstance) => {
   return shown;
 };
 /** The imported default save's trees, as the game's save reader parses them. */
-async function importedTrees(): Promise<PlacementSaveRecord[]> {
+async function importedTrees(): Promise<EntitySaveRecord[]> {
   const cluster = new URL('../../../public/saves/Cluster_1/', import.meta.url);
   const json = await readFile(new URL('Master.json', cluster), 'utf8');
   const { session } = JSON.parse(json) as { session: { playerFile: string } };
   const { player } = JSON.parse(await readFile(new URL(session.playerFile, cluster), 'utf8')) as { player: unknown };
-  return deserializeSave(json, SAVE_CATALOG, player).world.entities.oceantree! as PlacementSaveRecord[];
+  return deserializeSave(json, SAVE_CATALOG, player).world.entities.oceantree! as EntitySaveRecord[];
 }
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -120,7 +120,7 @@ it('loads imported save records with the stage bank, sway clip, tags and compone
 it('rebuilds the declared bank, clip and layers after tile sleep', async () => {
   const { scene, awake, spawn, records, dispose } = setup();
   try {
-    const saved: PlacementSaveRecord = { id: 'sleeping-tree', transform: { position: [1, 0, 3], rotationY: 0 },
+    const saved: EntitySaveRecord = { id: 'sleeping-tree', transform: { position: [1, 0, 3], rotationY: 0 },
       components: { growable: { stage: 2, time: 900 }, oceantree: { buds: [1, 2, 3, 5, 6], buds_used: [7], supertall_growth_progress: 1 } } };
     const inst = spawn(saved);
     const model = inst.transform.model, before = inst.sprite.sprite.peek();

@@ -18,7 +18,7 @@ import { Inspectable } from '../../componets/src/inspectable';
 import { foods } from '../../componets/src/preparedfoods';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import type { PrefabWorldContext } from './worldContext';
 import { BIRD_SOUNDS, isBirdId } from './birds';
 import { PlaySound, type SoundEventPath } from './sound';
@@ -399,7 +399,7 @@ function OnLoseShelfItem(inst: BirdcageInstance): void {
 }
 
 /** OnSave: CAGE_STATE, bird_type, the occupant and the inventory slot. */
-function OnSave(inst: BirdcageInstance, data: PlacementSaveRecord['components']): void {
+function OnSave(inst: BirdcageInstance, data: EntityPersistData): void {
     SaveBuildingSkin(inst, data);
     // The slot's item is saved in the cage's own record, as the save format declares it.
     delete data.inventory;
@@ -416,7 +416,7 @@ function OnSave(inst: BirdcageInstance, data: PlacementSaveRecord['components'])
 }
 
 /** OnLoad, then OnLoadPostPass: components first (the occupant), then the inst data and the shelf. */
-function OnLoad(inst: BirdcageInstance, data: PlacementSaveRecord['components']): void {
+function OnLoad(inst: BirdcageInstance, data: EntityPersistData): void {
     LoadBuildingSkin(inst, data);
     const saved = data.birdcage;
     if (!saved) return;

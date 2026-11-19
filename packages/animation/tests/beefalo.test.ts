@@ -17,7 +17,7 @@ import { PrefabDisplayGroup, SpriteState } from '../../display/src';
 import { updateSceneMatrices } from '../src/matrixUpdates';
 import { TransformRoot } from '../src/transformRoot';
 import { Pathfinder } from '../../prefab/src/pathfinder';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { activeItemUse } from './inventoryUseFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -54,9 +54,9 @@ function beefaloWorld({ random = (): number => 0, physics = new CANNON.World() }
     constrainPosition: vi.fn(), getPoopPositions: () => poop, spawnPoop: vi.fn() };
   const displays = new PrefabDisplayGroup(new THREE.Scene());
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics }, beefaloPrefabs(world));
-  const spawn = (saved?: Pick<PlacementSaveRecord, 'id' | 'components' | 'transform'>, position = new THREE.Vector3()) =>
-    prefabs.spawnAs(BeefaloInstance, 'beefalo', position, saved);
-  return { world, prefabs, physics, scheduler, componentUpdates, spawn,
+  const spawn = (position = new THREE.Vector3()) => prefabs.spawnAs(BeefaloInstance, 'beefalo', position);
+  const restore = (record: EntitySaveRecord) => prefabs.restoreAs(BeefaloInstance, 'beefalo', record);
+  return { world, prefabs, physics, scheduler, componentUpdates, spawn, restore,
     /** A player the manager tracks, as the scene tracks its player instance for TheSim. */
     addPlayer: (position: THREE.Vector3) => {
       const player = new PrefabInstance('wilson', new SpriteState({ name: 'idle_loop', billboard: true }));
@@ -209,7 +209,7 @@ describe('wild beefalo behavior', () => {
     // GetPersistData: each component under its own name.
     const saved = s.record();
     expect(Object.keys(saved.components).sort()).toEqual(['beard', 'periodicspawner']);
-    const restored = s.spawn({ ...saved, id: 'restored' });
+    const restored = s.restore({ ...saved, id: 'restored' });
     expect(s.prefabs.exportRecords().find(({ record }) => record.id === 'restored')!.record.components).toEqual(saved.components);
     restored.remove();
     expect(restored.components.periodicspawner.timerState.peek()).toEqual({ status: 'stopped' });
@@ -299,7 +299,7 @@ describe('wild beefalo behavior', () => {
     beard.Shave(undefined); s.complete();
     const shaved = s.record();
     expect(shaved.components.beard).toMatchObject({ growth: 0, bits: 0 });
-    const restored = s.spawn({ ...shaved, id: 'restored' });
+    const restored = s.restore({ ...shaved, id: 'restored' });
     await new Promise(resolve => setTimeout(resolve, 0));
     const build = restored.sprite.sprite.peek().appearance.get('archive-build');
     expect(build?.kind === 'archive-build' && build.archive).toBe(BEEFALO_SHAVED_BUILD);
@@ -350,7 +350,7 @@ describe('wild beefalo behavior', () => {
     expect(heading).not.toBe(0);
     expect(s.inst.sprite.sprite.peek()).toMatchObject({ facingRotation: heading, facingMode: 6 });
     expect(s.inst.position.y).toBe(0);
-    const restored = s.spawn({ ...s.record(), id: 'restored' });
+    const restored = s.restore({ ...s.record(), id: 'restored' });
     expect(restored.transform.rotation).toBeCloseTo(heading);
     expect(restored.sprite.sprite.peek().facingRotation).toBeCloseTo(heading);
     s.dispose();
@@ -370,7 +370,7 @@ describe('beefalo saves', () => {
       elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     const [current, old] = deserializeSave(json, SAVE_CATALOG).world.entities.beefalo;
     expect(current.components).toEqual(s.record().components);
-    const restored = s.spawn(current), migrated = s.spawn(old, new THREE.Vector3(20, 0, 30));
+    const restored = s.restore(current), migrated = s.restore(old);
     expect(restored.components.beard.bits.peek()).toBe(0);
     expect(restored.components.knownlocations.GetLocation('herd')).toMatchObject({ x: 5, z: 6 });
     // The legacy fields load into the components they belong to, and the next save writes only those.

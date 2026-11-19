@@ -35,7 +35,7 @@ it('spawns grass through the debug command using its source bank and build, then
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.grasses, {
     restore: (_, record) => drawn(grasses.spawn('grass', new THREE.Vector3(...record.transform.position), {
-      id: record.id, transform: record.transform, components: {},
+      id: record.id, components: {},
     }).transform.model),
     debugSpawn: () => drawn(grasses.spawn('grass', new THREE.Vector3(4, 0, -6)).transform.model),
     exportRecords: () => grasses.exportRecords(),
@@ -79,7 +79,7 @@ it('spawns grass through the debug command using its source bank and build, then
   const pickedRecord = grasses.exportRecords().map(({ record }) => record)[0];
   expect(pickedRecord.components.pickable?.picked).toBe(true);
   expect(pickedRecord.components.pickable?.regrowSeconds).toBeCloseTo(1438);
-  const pickedRestored = await drawn(grasses.spawn('grass', new THREE.Vector3(...pickedRecord.transform.position), pickedRecord).transform.model);
+  const pickedRestored = await drawn(grasses.restore('grass', pickedRecord).transform.model);
   expect(plantInstance(pickedRestored).sprite.currentAnimation).toBe('picked');
   expect(plantInstance(pickedRestored).components.pickable.state.phase.peek()).toBe('picked');
   expect(plantInstance(pickedRestored).components.pickable.remainingSeconds).toBeCloseTo(1438);
@@ -90,7 +90,7 @@ it('spawns grass through the debug command using its source bank and build, then
   expect(controller.currentAnimation).toBe('idle');
 
   const restored = await drawn(grasses.spawn('grass', new THREE.Vector3(...record.transform.position), {
-    id: record.id, transform: record.transform, components: {},
+    id: record.id, components: {},
   }).transform.model);
   expect(restored.position.toArray()).toEqual([4, 0, -6]);
   expect(lookupPrefabInstance(restored)?.entityId).toBe(record.id);

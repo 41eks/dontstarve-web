@@ -6,7 +6,7 @@ import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { beehivePrefabs, BEEHIVE_ID, BeehiveInstance } from '../../prefab/src/beehive';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { wasphivePrefabs, WASPHIVE_ID, WasphiveInstance } from '../../prefab/src/wasphive';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -30,10 +30,10 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.beehives);
   registry.registerPrefabs(PREFAB_DEFINITIONS.wasphives);
-  const beehive = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(BeehiveInstance, BEEHIVE_ID, new THREE.Vector3(...record.transform.position), record);
-  const wasphive = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(WasphiveInstance, WASPHIVE_ID, new THREE.Vector3(...record.transform.position), record);
+  const beehive = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(BeehiveInstance, BEEHIVE_ID, record);
+  const wasphive = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(WasphiveInstance, WASPHIVE_ID, record);
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };
@@ -44,7 +44,7 @@ function setup(playerPosition = new THREE.Vector3()) {
  * childreninside = 5, emergencychildreninside = 8, ... }`; scripts/dst-region-prefab.py keeps these and drops the timing.
  */
 const importedRecord = (id: string, position: [number, number, number], health: number, maximum: number,
-  childreninside: number, emergencychildreninside: number): PlacementSaveRecord => ({
+  childreninside: number, emergencychildreninside: number): EntitySaveRecord => ({
   id, transform: { position, rotationY: 0 },
   components: { health: { current: health, maximum }, childspawner: { childreninside, childrenoutside: [], emergencychildreninside } },
 });

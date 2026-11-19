@@ -13,7 +13,7 @@ import { SymbolSwapData } from '../../componets/src/symbolswapdata';
 import { Workable } from '../../componets/src/workable';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeHeavyObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { WorldContext } from './worldContext';
@@ -72,7 +72,7 @@ export class ChesspieceInstance extends PrefabInstance {
   }
 
   /** onsave: materialid. workable.savestate is false, so the hammer work is not saved. */
-  override OnSave(_inst: unknown, data: PlacementSaveRecord['components']): void {
+  override OnSave(_inst: unknown, data: EntityPersistData): void {
     data.chesspiece = { materialid: CHESSPIECE_MARBLE_MATERIAL_ID };
   }
 

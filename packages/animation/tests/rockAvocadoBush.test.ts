@@ -38,7 +38,7 @@ function setup() {
     spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.rockAvocadoBushes, {
-    restore: (_, record) => drawn(bushes.spawn('rock_avocado_bush', new THREE.Vector3(...record.transform.position), record).transform.model),
+    restore: (_, record) => drawn(bushes.restore('rock_avocado_bush', record).transform.model),
     debugSpawn: () => drawn(bushes.spawn('rock_avocado_bush', player.position).transform.model),
     exportRecords: () => bushes.exportRecords(), dispose: () => bushes.dispose(),
   });
@@ -123,7 +123,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
       expect(pickable.pick(s.picker)).toBe(true); expect(pickable.cyclesLeft).toBe(cycle - 1);
       if (cycle === 3) {
         const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.rock_avocado_bush[0];
-        await drawn(restored.bushes.spawn('rock_avocado_bush', new THREE.Vector3(...record.transform.position), record).transform.model);
+        await drawn(restored.bushes.restore('rock_avocado_bush', record).transform.model);
         expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([record]);
       }
     }
@@ -163,7 +163,7 @@ it('exports and reloads debug commands, roots and fruit; a saved burning mature 
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
-    await drawn(restored.bushes.spawn('rock_avocado_bush', new THREE.Vector3(...record.transform.position), record).transform.model);
+    await drawn(restored.bushes.restore('rock_avocado_bush', record).transform.model);
     expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(restored.ground.exportRecords().slice(-4).map(item => item.components.stack?.itemId)).toEqual([
       'rock_avocado_fruit', 'rock_avocado_fruit', 'rock_avocado_fruit', 'ash']);

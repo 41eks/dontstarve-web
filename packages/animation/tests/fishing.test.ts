@@ -195,7 +195,7 @@ it('gives a fishing rod with c_give and saves worn rods and pond fish through c_
     expect(rod.components.finiteuses.remaining).toBeUndefined();
     rod.PushEvent('fishingcollect', undefined);
     expect(rod.components.finiteuses.remaining).toBe(8);
-    const pond = ponds.spawn(POND_ID, new THREE.Vector3(30, 0, 0), { id: 'pond-1', transform: { position: [30, 0, 0], rotationY: 1.25 }, components: { fishable: { fish: 7 } } });
+    const pond = ponds.restore(POND_ID, { id: 'pond-1', transform: { position: [30, 0, 0], rotationY: 1.25 }, components: { fishable: { fish: 7 } } });
     expect(pond.components.fishable!.fishleft).toBe(7);
     const before = inventory.exportState();
     let json = '';
@@ -212,7 +212,7 @@ it('gives a fishing rod with c_give and saves worn rods and pond fish through c_
     const record = saved.world.entities.pond.find(({ id }) => id === 'pond-1')!;
     expect(record.components.fishable).toEqual({ fish: 7 });
     expect(record.transform.rotationY).toBeCloseTo(1.25);
-    const again = restored.spawn(POND_ID, new THREE.Vector3(...record.transform.position), record);
+    const again = restored.restore(POND_ID, record);
     expect(again.components.fishable!.fishleft).toBe(7);
     expect(restored.exportRecords()[0].record.transform.rotationY).toBeCloseTo(1.25);
     scheduler.advance(160);

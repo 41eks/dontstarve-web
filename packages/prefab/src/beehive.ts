@@ -14,7 +14,7 @@ import { LunarHailBuildup } from '../../componets/src/pandoraschestSignatures';
 import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeObstaclePhysics, MakeSnowCovered, MakeSnowCoveredPristine } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 
@@ -56,13 +56,13 @@ export class BeehiveInstance extends PrefabInstance {
 }
 
 /** beehive.lua has no OnSave; health:OnSave writes the current health, kept as the record's `{ current, maximum }`. */
-export function saveHiveHealth(inst: PrefabInstance & { components: { health: Health } }, data: PlacementSaveRecord['components']): void {
+export function saveHiveHealth(inst: PrefabInstance & { components: { health: Health } }, data: EntityPersistData): void {
   const { health } = inst.components;
   data.health = { current: health.currenthealth, maximum: health.maxhealth };
 }
 
 /** health:OnLoad of the record's `{ current, maximum }`. */
-export function loadHiveHealth(inst: PrefabInstance & { components: { health: Health } }, data: PlacementSaveRecord['components']): void {
+export function loadHiveHealth(inst: PrefabInstance & { components: { health: Health } }, data: EntityPersistData): void {
   if (data.health) inst.components.health.OnLoad({ health: data.health.current, maxhealth: data.health.maximum });
 }
 

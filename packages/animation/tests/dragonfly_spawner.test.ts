@@ -6,7 +6,7 @@ import { createMemo, createSignal, getWatchWorldContent } from '@dontstarve-web/
 import { dragonflyPrefabs, DRAGONFLY_ID } from '../../prefab/src/dragonfly';
 import { dragonflySpawnerPrefabs, DRAGONFLY_SPAWNER_ID, DragonflySpawnerInstance } from '../../prefab/src/dragonfly_spawner';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -19,7 +19,7 @@ import { createTestWorldSources } from './worldContentFixture';
 import { createInventoryStore } from './testInventory';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-const saved: PlacementSaveRecord = { id: 'spawner-1', transform: { position: [0, 0, 0], rotationY: 0 },
+const saved: EntitySaveRecord = { id: 'spawner-1', transform: { position: [0, 0, 0], rotationY: 0 },
   components: { dragonflySpawner: { childspawner: { childreninside: 1, childrenoutside: [],
     spawning: true, regening: false, queued_spawn: true, timetonextspawn: 1, timetonextregen: 0,
     emergencychildreninside: 0 } } } };
@@ -39,12 +39,12 @@ function setup(initialAwake: boolean) {
   /** The dragonflies' save records, as the save loop exports them. */
   const dragonflies = {
     exportRecords: () => prefabs.exportRecords().filter(({ prefabId }) => prefabId === DRAGONFLY_ID),
-    spawn: (position: THREE.Vector3, record: PlacementSaveRecord) => prefabs.spawn(DRAGONFLY_ID, position, record),
+    spawn: (position: THREE.Vector3, record: EntitySaveRecord) => prefabs.spawn(DRAGONFLY_ID, position, record),
     getById: (id: string) => prefabs.get(id),
   };
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return { scheduler, awake, dragonflies, prefabs, registry, inventory,
-    spawner: (record?: PlacementSaveRecord) => prefabs.spawnAs(DragonflySpawnerInstance, DRAGONFLY_SPAWNER_ID, new THREE.Vector3(), record),
+    spawner: (record?: EntitySaveRecord) => prefabs.spawnAs(DragonflySpawnerInstance, DRAGONFLY_SPAWNER_ID, new THREE.Vector3(), record),
     spawnerRecord: () => prefabs.exportRecords().find(({ prefabId }) => prefabId === DRAGONFLY_SPAWNER_ID)!.record,
     save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
@@ -79,8 +79,8 @@ it('keeps the saved child queued while asleep and spawns it when the spawner wak
 
 it('relinks an outside dragonfly after load and regenerates one child after its removal', async () => {
   const first = setup(true);
-  let child: PlacementSaveRecord & { transform: { position: [number, number, number] } };
-  let spawner: PlacementSaveRecord;
+  let child: EntitySaveRecord;
+  let spawner: EntitySaveRecord;
   try {
     first.spawner(saved);
     await settle(); first.scheduler.advance(0); await settle();

@@ -6,7 +6,7 @@ import { createMemo, createSignal, type WorldMoonPhase, type WorldMoonState } fr
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { moonFissurePrefabs, MOON_FISSURE_ID, MoonFissureInstance } from '../../prefab/src/moon_fissure';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -30,15 +30,15 @@ function setup(phase: WorldMoonPhase = 'new', playerPosition = new THREE.Vector3
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.moonFissures);
-  const spawn = (record: PlacementSaveRecord) =>
-    prefabs.spawnAs(MoonFissureInstance, MOON_FISSURE_ID, new THREE.Vector3(...record.transform.position), record);
+  const spawn = (record: EntitySaveRecord) =>
+    prefabs.restoreAs(MoonFissureInstance, MOON_FISSURE_ID, record);
   const records = () => registry.exportRecords().moon_fissure ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };
   return { scene, awake, prefabs, registry, definitions, spawn, records, requested, dispose };
 }
-const record = (id: string, x: number): PlacementSaveRecord => ({ id, transform: { position: [x, 0, 3], rotationY: 0 }, components: {} });
+const record = (id: string, x: number): EntitySaveRecord => ({ id, transform: { position: [x, 0, 3], rotationY: 0 }, components: {} });
 /** The fissure's own Show / Hide layer declarations. */
 const layers = (inst: PrefabInstance) => Object.fromEntries([...inst.sprite.sprite.peek().appearance.values()]
   .flatMap(op => op.kind === 'layer' ? [[op.layer, op.hidden]] : []));

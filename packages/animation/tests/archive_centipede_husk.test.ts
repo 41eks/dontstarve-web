@@ -7,7 +7,7 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Health } from '../../componets/src/health';
 import { archiveCentipedeHuskPrefabs, ARCHIVE_CENTIPEDE_HUSK_ID } from '../../prefab/src/archive_centipede';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -29,7 +29,7 @@ function setup(player = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => player);
   registry.registerPrefabs(PREFAB_DEFINITIONS.archiveCentipedeHusks);
   /** SpawnPrefab with SpawnSaveRecord's position and SetPersistData; the husk's model, as its display draws it. */
-  const spawn = (position: THREE.Vector3, saved?: PlacementSaveRecord) => prefabs.spawn(ARCHIVE_CENTIPEDE_HUSK_ID, position, saved).transform.model;
+  const spawn = (position: THREE.Vector3, saved?: EntitySaveRecord) => prefabs.spawn(ARCHIVE_CENTIPEDE_HUSK_ID, position, saved).transform.model;
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
@@ -40,7 +40,7 @@ const health = (model: THREE.Object3D) => prefabInstance(model)!.components.heal
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 // The imported Caves record: health={health=300}.
-const IMPORTED: PlacementSaveRecord = { id: 'dst_04E26ADB66396E8D_archive_centipede_husk_id_105789',
+const IMPORTED: EntitySaveRecord = { id: 'dst_04E26ADB66396E8D_archive_centipede_husk_id_105789',
   transform: { position: [-2113.2, 0, 292.47], rotationY: 0 }, components: { health: { current: 300, maximum: 300 } } };
 
 it('loads a saved husk with huskfn\'s clip, tags and components, then plays idle2 and reacts to health', async () => {

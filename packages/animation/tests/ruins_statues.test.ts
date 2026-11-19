@@ -9,7 +9,7 @@ import {
   type RuinsStatueId, RuinsStatueInstance,
 } from '../../prefab/src/ruins_statue_mage';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { PlacementSaveRecord } from '../../prefab/src/saveRecord';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -40,7 +40,7 @@ function setup(player = new THREE.Vector3()) {
   const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   return { scene, awake, prefabs, registry, inventory, save,
-    spawn: (id: RuinsStatueId, position: THREE.Vector3, record?: PlacementSaveRecord) => prefabs.spawnAs(RuinsStatueInstance, id, position, record),
+    spawn: (id: RuinsStatueId, position: THREE.Vector3, record?: EntitySaveRecord) => prefabs.spawnAs(RuinsStatueInstance, id, position, record),
     dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });

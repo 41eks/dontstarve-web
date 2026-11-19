@@ -12,7 +12,7 @@ import definitions from './definitions.json' with { type: 'json' };
 import { buildingPlacer, buildingPrefab, LoadBuildingSkin, MakeBuildingContainer, SaveBuildingSkin } from './building';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { DefaultBurntStructureFn, onloadBurnt, onsaveBurnt } from './standardcomponents';
 import { BurnableBinding } from './treeFire';
 import type { PrefabWorldContext } from './worldContext';
@@ -58,12 +58,12 @@ function onhit(inst: BookstationInstance): void {
 }
 
 /** onsave/onload, with the skin the building save shape keeps beside data.burnt. */
-function onsave(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function onsave(inst: PrefabInstance, data: EntityPersistData): void {
     SaveBuildingSkin(inst, data);
     onsaveBurnt(inst, data);
 }
 
-function onload(inst: PrefabInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: PrefabInstance, data: EntityPersistData): void {
     LoadBuildingSkin(inst, data);
     onloadBurnt(inst, data);
 }

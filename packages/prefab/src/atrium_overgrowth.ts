@@ -4,7 +4,7 @@ import { RoseInspectable } from '../../componets/src/pandoraschestSignatures';
 import { SanityAura, SANITYAURA_SUPERHUGE } from '../../componets/src/sanityaura';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 
 export const ATRIUM_OVERGROWTH_ID = 'atrium_overgrowth' as const;
@@ -30,11 +30,11 @@ export class AtriumOvergrowthInstance extends PrefabInstance {
 /** The file's `local _storyprogress`: the highest story line handed out or loaded in this Lua state. */
 let _storyprogress = 0;
 
-function rune_onsave(inst: AtriumOvergrowthInstance, data: PlacementSaveRecord['components']): void {
+function rune_onsave(inst: AtriumOvergrowthInstance, data: EntityPersistData): void {
   if (inst.storyprogress !== undefined) data.atriumOvergrowth = { storyprogress: inst.storyprogress };
 }
 
-function rune_onload(inst: AtriumOvergrowthInstance, data: PlacementSaveRecord['components']): void {
+function rune_onload(inst: AtriumOvergrowthInstance, data: EntityPersistData): void {
   const saved = data.atriumOvergrowth;
   if (saved?.storyprogress !== undefined) {
     inst.storyprogress = saved.storyprogress;

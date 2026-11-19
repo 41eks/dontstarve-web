@@ -44,7 +44,7 @@ function setup(inventory = createPickupInventory()) {
   });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.saplings, {
-    restore: (id, record) => drawn(saplings.spawn(id, new THREE.Vector3(...record.transform.position), record).transform.model),
+    restore: (id, record) => drawn(saplings.restore(id, record).transform.model),
     debugSpawn: id => drawn(saplings.spawn(id, player.position.clone()).transform.model),
     exportRecords: () => saplings.exportRecords(),
     dispose: () => saplings.dispose(),
@@ -82,7 +82,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
     const [record] = saved.world.entities.sapling;
     expect(record.components.pickable).toEqual({ picked: true, regrowSeconds: 920 });
-    const copy = await drawn(restored.saplings.spawn('sapling', new THREE.Vector3(...record.transform.position), record).transform.model);
+    const copy = await drawn(restored.saplings.restore('sapling', record).transform.model);
     // Pickable:OnLoad calls makeemptyfn rather than replaying the pick.
     expect(plantInstance(copy).sprite.currentAnimation).toBe('empty');
     expect(lookupPrefabInstance(copy)?.entityId).toBe(lookupPrefabInstance(model)?.entityId);
@@ -131,14 +131,14 @@ it('restores an imported wither check through save/load, reschedules on expiry a
   const s = setup(), restored = setup();
   try {
     const model = await drawn(s.saplings.spawn('sapling', new THREE.Vector3(30, 0, 6), {
-      id: 'imported-sapling', transform: { position: [30, 0, 6], rotationY: 0 },
+      id: 'imported-sapling',
       components: { witherable: { taskSeconds: 2.5 } },
     }).transform.model);
     expect(prefabInstance(model)!.listTags()).toContain('witherable');
     tickWorld(s.scheduler, prefabDisplays(s.saplings), 1, new THREE.Quaternion());
     const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.sapling[0];
     expect(record.components.witherable).toEqual({ taskSeconds: 1.5 });
-    const copy = await drawn(restored.saplings.spawn('sapling', new THREE.Vector3(...record.transform.position), record).transform.model);
+    const copy = await drawn(restored.saplings.restore('sapling', record).transform.model);
     const witherable = plantInstance(copy).components.witherable;
     const timer = witherable!.state.timer.peek();
     tickWorld(restored.scheduler, prefabDisplays(restored.saplings), 1, new THREE.Quaternion());

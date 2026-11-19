@@ -19,7 +19,7 @@ import type { FaceEntityInst } from '../../brains/src/behaviours/faceentity';
 import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import { BeefaloStateGraph, type BeefaloStateName } from '../../stategraphs/src/SGBeefalo';
 import { PrefabInstance, type PrefabComponents, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { animationLengths } from './animationTimings';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 
@@ -148,7 +148,7 @@ function OnHairGrowth(inst: BeefaloInstance): void {
 }
 
 /** A save from before the components saved themselves: its fields load into the components they belong to. */
-function onload(inst: BeefaloInstance, data: PlacementSaveRecord['components']): void {
+function onload(inst: BeefaloInstance, data: EntityPersistData): void {
   const legacy = data.beefalo;
   if (!legacy) return;
   inst.setRotation(legacy.heading);

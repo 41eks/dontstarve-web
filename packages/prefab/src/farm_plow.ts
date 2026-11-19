@@ -12,7 +12,7 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { FarmPlantWorld } from '../../componets/src/farmplantable';
 import { addComponent } from './components';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
-import type { PlacementSaveRecord } from './saveRecord';
+import type { EntityPersistData } from './saveRecord';
 import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { snapToTileCenter, TILE_SIZE } from './tile';
@@ -224,7 +224,7 @@ function StartUp(inst: FarmPlowInstance): void {
   inst.startup_task = undefined;
 }
 
-function plowOnSave(plow: FarmPlowInstance, data: PlacementSaveRecord['components']): void {
+function plowOnSave(plow: FarmPlowInstance, data: EntityPersistData): void {
   const { timer } = plow.components;
   const drilling = timer.TimerExists('drilling');
   data.farmPlow = {
@@ -237,7 +237,7 @@ function plowOnSave(plow: FarmPlowInstance, data: PlacementSaveRecord['component
 }
 
 /** OnLoadPostPass: deploy_item, then a running drilling timer resumes DoDrilling in place of StartUp. */
-function plowOnLoad(plow: FarmPlowInstance, data: PlacementSaveRecord['components']): void {
+function plowOnLoad(plow: FarmPlowInstance, data: EntityPersistData): void {
   const saved = data.farmPlow;
   if (!saved) return;
   plow.deploy_item_save_record = saved.deployItem ? { ...saved.deployItem } : null;
@@ -314,11 +314,11 @@ export function SetPlowing(inst: FarmSoilInstance, plow: PrefabInstance): void {
   inst.addTag('NOCLICK');
 }
 
-function soilOnSave(soil: FarmSoilInstance, data: PlacementSaveRecord['components']): void {
+function soilOnSave(soil: FarmSoilInstance, data: EntityPersistData): void {
   data.farmSoil = { broken: soil.hasTag('NOBLOCK'), ...soil._plow ? { plowId: String(soil._plow.entityId) } : {} };
 }
 
-function soilOnLoad(soil: FarmSoilInstance, data: PlacementSaveRecord['components'], world: FarmWorld): void {
+function soilOnLoad(soil: FarmSoilInstance, data: EntityPersistData, world: FarmWorld): void {
   const saved = data.farmSoil;
   if (saved?.broken) {
     OnBreak(soil);
