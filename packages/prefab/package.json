@@ -82,6 +82,7 @@
     "./reeds": "./src/reeds.ts",
     "./rope_bridge": "./src/rope_bridge.ts",
     "./mast_malbatross": "./src/mast_malbatross.ts",
+    "./support_pillar": "./src/support_pillar.ts",
     "./oceanvine_deco": "./src/oceanvine_deco.ts",
     "./vault_pillar": "./src/vault_pillar.ts",
     "./monkeypillar": "./src/monkeypillar.ts",

@@ -121,6 +121,9 @@ export interface PlacementSaveRecord {
     /** mast.lua onsave of mast_malbatross, and its skin. */
     mastMalbatross?: import('./mast_malbatross').MastMalbatrossSaveState;
     upgradeable?: import('../../componets/src/upgradeable').UpgradeableSave;
+    /** support_pillar.lua OnSave, and constructionsite:OnSave. */
+    supportPillar?: import('./support_pillar').SupportPillarSaveState;
+    constructionsite?: import('../../componets/src/constructionsite').ConstructionSiteSave;
     /** oceantree_pillar.lua OnSave. */
     oceantreePillar?: import('./oceantree_pillar').OceanTreePillarSaveState;
     /** oceanvine_deco.lua onsave: data.animnum, the idle_N clip. */

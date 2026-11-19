@@ -20,6 +20,8 @@ export type LootSpawn = (prefab: string, position: ReturnType<LootInst['getPosit
 
 export class LootDropper {
   droprecipeloot = true;
+  /** y_speed: the upward fling speed of dropped loot; flinging is not ported. */
+  y_speed?: number;
   private chanceLootTable?: string;
   private loot: readonly string[] = [];
   private chanceLoot: { prefab: string; chance: number }[] = [];

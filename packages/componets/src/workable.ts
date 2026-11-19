@@ -83,6 +83,9 @@ export class Workable<Inst extends WorkableInst = WorkableInst> {
   WriteWorkLeft(work: number): void { if (!this.disposedState.peek()) this.workleftState.set(work); }
   GetWorkLeft(): number { return this.enabledState.peek() ? this.workleftState.peek() : 0; }
   SetWorkable(value: boolean): void { if (!this.disposedState.peek()) this.enabledState.set(value); }
+  /** tough, set by SetRequiresToughWork; the toughworker check in WorkedBy is not ported. */
+  tough?: boolean;
+  SetRequiresToughWork(tough: boolean): void { this.tough = tough; }
   // Domain checks use the same pure calculation on current inputs, including inside an outer batch.
   // Memo subscribers observe the committed result after all inputs have settled.
   CanBeWorked(): boolean {

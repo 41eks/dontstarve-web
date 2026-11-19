@@ -366,6 +366,7 @@
     "atrium_statue",
     "atrium_overgrowth",
     "mast_malbatross",
+    "support_pillar",
     "ruinsrelic_table",
     "ruinsrelic_chair",
     "ruinsrelic_vase",
@@ -691,6 +692,10 @@
     "mast_malbatross": {
       "source": 2,
       "imported": 2
+    },
+    "support_pillar": {
+      "source": 0,
+      "imported": 0
     },
     "ruinsrelic_table": {
       "source": 0,

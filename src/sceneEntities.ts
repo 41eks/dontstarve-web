@@ -48,6 +48,7 @@ import { oceanVinePrefabs } from '@dontstarve-web/prefab/oceanvine';
 import { reedsPrefabs } from '@dontstarve-web/prefab/reeds';
 import { ROPE_BRIDGE_FX_ID, RopeBridgeFxInstance, ropeBridgePrefabs } from '@dontstarve-web/prefab/rope_bridge';
 import { mastMalbatrossPrefabs } from '@dontstarve-web/prefab/mast_malbatross';
+import { supportPillarPrefabs } from '@dontstarve-web/prefab/support_pillar';
 import { oceanVineDecoPrefabs } from '@dontstarve-web/prefab/oceanvine_deco';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
 import { vaultPillarPrefabs } from '@dontstarve-web/prefab/vault_pillar';
@@ -194,6 +195,7 @@ const MANAGER_DEFINITIONS = {
   'oceanvine': PREFAB_DEFINITIONS.oceanVines,
   'reeds': PREFAB_DEFINITIONS.reeds,
   'mast_malbatross': PREFAB_DEFINITIONS.mastMalbatross,
+  'support_pillar': PREFAB_DEFINITIONS.supportPillars,
   'oceanvine_deco': PREFAB_DEFINITIONS.oceanVineDecos,
   'atrium_gate': PREFAB_DEFINITIONS.atriumGates,
   'ruins_statue_mage': PREFAB_DEFINITIONS.ruinsStatueMages,
@@ -234,6 +236,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.oceanVines,
   PREFAB_DEFINITIONS.reeds,
   PREFAB_DEFINITIONS.mastMalbatross,
+  PREFAB_DEFINITIONS.supportPillars,
   PREFAB_DEFINITIONS.oceanVineDecos,
   PREFAB_DEFINITIONS.atriumGates,
   PREFAB_DEFINITIONS.ruinsStatueMages,
@@ -454,6 +457,8 @@ export async function createSceneEntities(
   registerOceanVines(registry, worldState);
   registerReeds(registry, worldState);
   registerMastMalbatross(registry, worldState);
+  prefabs.register(supportPillarPrefabs());
+  registry.registerPrefabs(PREFAB_DEFINITIONS.supportPillars);
   prefabs.register(oceanVineDecoPrefabs());
   registry.registerPrefabs(PREFAB_DEFINITIONS.oceanVineDecos);
   Managers['atrium_gate'] = registerAtriumGate(registry, 'atrium_gate', worldState);

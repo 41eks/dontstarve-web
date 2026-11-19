@@ -230258,6 +230258,92 @@
           "components": {}
         }
       ],
+      "support_pillar": [
+        {
+          "id": "dst_04E26ADB66396E8D_support_pillar_id_102571",
+          "transform": {
+            "position": [
+              789.0,
+              0.0,
+              381.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "supportPillar": {
+              "reinforced": 9
+            },
+            "constructionsite": {
+              "materials": {
+                "rocks": 40
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_support_pillar_id_102573",
+          "transform": {
+            "position": [
+              1011.0,
+              0.0,
+              -459.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "supportPillar": {
+              "reinforced": 7
+            },
+            "constructionsite": {
+              "materials": {
+                "rocks": 40
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_support_pillar_id_102575",
+          "transform": {
+            "position": [
+              1176.0,
+              0.0,
+              -1524.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "supportPillar": {
+              "reinforced": 5
+            },
+            "constructionsite": {
+              "materials": {
+                "rocks": 40
+              }
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_support_pillar_id_102577",
+          "transform": {
+            "position": [
+              624.0,
+              0.0,
+              -204.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "supportPillar": {
+              "reinforced": 6
+            },
+            "constructionsite": {
+              "materials": {
+                "rocks": 40
+              }
+            }
+          }
+        }
+      ],
       "ruins_table": [
         {
           "id": "dst_04E26ADB66396E8D_ruins_table_id_102579",

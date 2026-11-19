@@ -54,6 +54,7 @@ import { REEDS_ANIM_ARCHIVE, REEDS_BUILD_ARCHIVE, REEDS_ID, REEDS_REGROW_TIME } 
 import {
   MAST_MALBATROSS_ANIMATION_ARCHIVES, MAST_MALBATROSS_BUILD_ARCHIVE, MAST_MALBATROSS_ID, MAST_MALBATROSS_SKINS,
 } from '@dontstarve-web/prefab/mast_malbatross';
+import { SUPPORT_PILLAR_ARCHIVES, SUPPORT_PILLAR_ID, SUPPORT_PILLAR_REINFORCED_LEVELS } from '@dontstarve-web/prefab/support_pillar';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
 import { MARSH_PLANT_ID } from '@dontstarve-web/prefab/marsh_plant';
@@ -268,6 +269,24 @@ const mastMalbatross: PrefabComponentParser = (value, path) => {
       numupgrades: integer(numupgrades, `${at}.numupgrades`),
       ...(stage === undefined ? {} : { stage: integer(stage, `${at}.stage`, 1) }),
     };
+  }
+  return result;
+};
+/** support_pillar.lua OnSave's data.reinforced (1..SUPPORT_PILLAR_REINFORCED_LEVELS), and constructionsite:OnSave's rocks. */
+const supportPillar: PrefabComponentParser = (value, path) => {
+  const { supportPillar: state, constructionsite } = object(value, path, ['supportPillar', 'constructionsite']);
+  const result: ReturnType<PrefabComponentParser> = {};
+  if (state !== undefined) {
+    const { reinforced } = object(state, `${path}.supportPillar`, ['reinforced']);
+    if (reinforced !== undefined) {
+      result.supportPillar = { reinforced: integer(reinforced, `${path}.supportPillar.reinforced`, 1, SUPPORT_PILLAR_REINFORCED_LEVELS) };
+    }
+  }
+  if (constructionsite !== undefined) {
+    const at = `${path}.constructionsite`;
+    const { materials } = object(constructionsite, at, ['materials']);
+    const { rocks } = object(materials, `${at}.materials`, ['rocks']);
+    result.constructionsite = { materials: { rocks: integer(rocks, `${at}.materials.rocks`, 1, 40) } };
   }
   return result;
 };
@@ -576,6 +595,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   // lichen.lua: only pickable saves state.
   lichens: definePrefabs([LICHEN_ID], componentParser({ keys: ['pickable'], regrowTime: LICHEN_REGROW_TIME }), true,
     [{ animation: LICHEN_ARCHIVE, build: LICHEN_ARCHIVE }]),
+  supportPillars: definePrefabs([SUPPORT_PILLAR_ID], supportPillar, true, SUPPORT_PILLAR_ARCHIVES),
   mastMalbatross: definePrefabs([MAST_MALBATROSS_ID], mastMalbatross, true,
     MAST_MALBATROSS_ANIMATION_ARCHIVES.map(animation => ({ animation, build: MAST_MALBATROSS_BUILD_ARCHIVE }))),
   // reeds.lua has no OnSave of its own: only pickable saves state.

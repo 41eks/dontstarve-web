@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds, malbatross mast and rope bridge world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds, malbatross mast, rope bridge and support pillar world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
 import zipfile
@@ -40,6 +40,9 @@ ASSETS = {
              'boat_mast_malbatross_build.zip'],
     # rope_bridge.lua: rope_bridge_fx, its ropes and the kit share the rope_bridge bank and build.
     'rope_bridge': ['rope_bridge.zip'],
+    # support_pillar.lua MakePillar("support_pillar", "support_pillar", "support_pillar"): one archive holds the bank and
+    # build; the dreadstone pillar's archive is not ported.
+    'support_pillar': ['support_pillar.zip'],
 }
 # skinprefabs.lua: mast_malbatross's PREFAB_SKINS, each a dynamic build with its .dyn atlas package.
 SKINS = ['mast_malbatross_tesla', 'mast_malbatross_wagstaff']
@@ -142,6 +145,12 @@ def main():
     art |= {f'rope_bridge/{clip}': {'animationArchive': 'rope_bridge.zip', 'bank': 'rope_bridge', 'animation': clip}
             for clip in ['bridge_place', 'bridge_idle', 'bridge_shake', *(f'break_{n}' for n in range(1, 4)),
                          *(f'rope_{state}_{n}' for state in ('place', 'support', 'shake', 'break') for n in range(1, 5))]}
+    # support_pillar.lua: every clip of the support_pillar bank, the pillar's levelled idle / hit / quake / repair clips,
+    # build and collapse, the scaffold's scaffold / place / scaffold_hit and the debris fx's collapse_top / hit_debris /
+    # quake_debris, though only the pillar is ported.
+    art |= {f'support_pillar/{clip}': {'animationArchive': 'support_pillar.zip', 'bank': 'support_pillar', 'animation': clip}
+            for clip in [*(f'idle{state}{suffix}' for state in ('', '_hit', '_quake', '_repair') for suffix in ('', '_1', '_2', '_3')),
+                         'idle_4', 'build', 'collapse', 'scaffold', 'place', 'scaffold_hit', 'collapse_top', 'hit_debris', 'quake_debris']}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives and {len(SKINS)} skin builds')
 

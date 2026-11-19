@@ -448,6 +448,7 @@
     "atrium_statue",
     "atrium_overgrowth",
     "mast_malbatross",
+    "support_pillar",
     "ruinsrelic_table",
     "ruinsrelic_chair",
     "ruinsrelic_vase",
@@ -683,6 +684,10 @@
     "mast_malbatross": {
       "source": 0,
       "imported": 0
+    },
+    "support_pillar": {
+      "source": 4,
+      "imported": 4
     },
     "ruinsrelic_table": {
       "source": 0,
@@ -1666,6 +1671,54 @@
         -601
       ],
       "sourceNode": "AtriumMaze:3:AtriumMazeRooms"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_support_pillar_id_102571",
+      "prefab": "support_pillar",
+      "sourceIndex": 1,
+      "sourceId": 102571,
+      "sourcePosition": [
+        247,
+        0,
+        -147
+      ],
+      "sourceNode": "LichenLand:BG_84:BGWilds"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_support_pillar_id_102573",
+      "prefab": "support_pillar",
+      "sourceIndex": 2,
+      "sourceId": 102573,
+      "sourcePosition": [
+        321,
+        0,
+        133
+      ],
+      "sourceNode": "CaveExitTask10:0:CaveExitRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_support_pillar_id_102575",
+      "prefab": "support_pillar",
+      "sourceIndex": 3,
+      "sourceId": 102575,
+      "sourcePosition": [
+        376,
+        0,
+        488
+      ],
+      "sourceNode": "CentipedeCaveTask:5:RockTreeRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_support_pillar_id_102577",
+      "prefab": "support_pillar",
+      "sourceIndex": 4,
+      "sourceId": 102577,
+      "sourcePosition": [
+        192,
+        0,
+        48
+      ],
+      "sourceNode": "CaveExitTask8:1:CaveExitRoom"
     },
     {
       "id": "dst_04E26ADB66396E8D_ruins_table_id_102579",

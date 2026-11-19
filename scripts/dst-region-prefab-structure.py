@@ -147,6 +147,30 @@ def mast_malbatross_components(data, context):
     return result
 
 
+def support_pillar_components(data):
+    # support_pillar.lua OnSave: data.reinforced (1..SUPPORT_PILLAR_REINFORCED_LEVELS when not 0), and
+    # constructionsite:OnSave's materials, which CONSTRUCTION_PLANS.support_pillar limits to 40 rocks. data.regen is
+    # only written by the dreadstone pillar's regen task.
+    if set(data) - {'reinforced', 'constructionsite'}:
+        raise ValueError(f'Unsupported support_pillar save state: {data}')
+    result = {}
+    if 'reinforced' in data:
+        reinforced = data['reinforced']
+        if type(reinforced) is not int or not 1 <= reinforced <= 10:
+            raise ValueError(f'Unsupported support_pillar reinforced: {reinforced}')
+        result['supportPillar'] = {'reinforced': reinforced}
+    if 'constructionsite' in data:
+        site = data['constructionsite']
+        if not isinstance(site, dict) or set(site) != {'materials'} or not isinstance(site['materials'], dict) \
+                or set(site['materials']) != {'rocks'}:
+            raise ValueError(f'Unsupported support_pillar constructionsite: {site}')
+        rocks = site['materials']['rocks']
+        if type(rocks) is not int or not 1 <= rocks <= 40:
+            raise ValueError(f'Unsupported support_pillar rocks: {rocks}')
+        result['constructionsite'] = {'materials': {'rocks': rocks}}
+    return result
+
+
 def atrium_gate_components(data):
     # atrium_gate.lua OnSave plus the component records used by OnLoadPostPass.
     if set(data) - {'vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key',
