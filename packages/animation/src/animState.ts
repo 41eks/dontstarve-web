@@ -175,30 +175,32 @@ const visibilityGroups = new Map([
   ['hair', 'HAIR'], ['hairfront', 'HAIR'], ['hairpigtails', 'HAIR'],
 ].map(([symbol, layer]) => [smallHash(symbol), smallHash(layer)]));
 
-/** AnimState symbol overrides and visibility, independent of prefab IDs and equipment slots. Art is named, not loaded. */
+function withAdded<T>(set: ReadonlySet<T> | undefined, value: T): Set<T> { return new Set(set).add(value); }
+function without<T>(set: ReadonlySet<T> | undefined, value: T): Set<T> {
+  const next = new Set(set);
+  next.delete(value);
+  return next;
+}
+function deleted<K, V>(map: ReadonlyMap<K, V>, key: K): Map<K, V> {
+  const next = new Map(map);
+  next.delete(key);
+  return next;
+}
+
+/**
+ * AnimState symbol overrides and visibility, independent of prefab IDs and equipment slots. Art is named, not loaded.
+ * The Lua-style setters each write a new `json` snapshot that copies only the collection they change.
+ */
 export class AnimState {
+  /** RegisterBuild's names; they only resolve archive names and are not part of the snapshot. */
   private readonly builds = new Map<string, string>();
-  private readonly overrides = new Map<number, SymbolOverrideJson>();
-  private readonly overrideBuilds = new Set<string>();
-  private readonly hiddenLayers = new Set<number>();
-  private readonly hiddenSymbols = new Set<number>();
-  private readonly shownLayers = new Set<number>();
-  private readonly shownSymbols = new Set<number>();
-  private readonly symbolLightOverrides = new Map<number, number>();
-  private readonly symbolAnimations = new Map<number, SymbolAnimationJson>();
-  private readonly blooms = new Set<number>();
-  private readonly attachments = new Set<AnimationAttachment>();
-  private readonly state = createSignal<AnimStateJson>({ overrides: new Map(), hiddenLayers: new Set(), hiddenSymbols: new Set(),
+  private readonly state = createSignal<AnimStateJson>({ overrides: new Map(), overrideBuilds: [], hiddenLayers: new Set(), hiddenSymbols: new Set(),
     shownLayers: new Set(), shownSymbols: new Set(), symbolLightOverrides: new Map(), symbolAnimations: new Map(), blooms: new Set(), attachments: [] });
   readonly json = readonlySignal(this.state);
-  private readonly onChanged: () => void;
 
-  constructor(changed: () => void = () => {}) { this.onChanged = changed; }
-  private changed(): void {
-    this.state.set({ overrides: new Map(this.overrides), overrideBuilds: [...this.overrideBuilds], hiddenLayers: new Set(this.hiddenLayers), hiddenSymbols: new Set(this.hiddenSymbols),
-      shownLayers: new Set(this.shownLayers), shownSymbols: new Set(this.shownSymbols), symbolLightOverrides: new Map(this.symbolLightOverrides), symbolAnimations: new Map(this.symbolAnimations),
-      blooms: new Set(this.blooms), attachments: [...this.attachments] });
-    this.onChanged();
+  private update(patch: (state: AnimStateJson) => Partial<AnimStateJson>): void {
+    const state = this.state.peek();
+    this.state.set({ ...state, ...patch(state) });
   }
   /** Names a build whose archive is not `<name>.zip`, such as a skin under `dynamic/`. */
   RegisterBuild(name: string, archive: string): void { this.builds.set(name, archive); }
@@ -208,14 +210,15 @@ export class AnimState {
   private archives(source: SymbolSource): readonly string[] {
     return (typeof source === 'string' ? [source] : source).map(build => this.archive(build));
   }
+  /** A build added again moves to the end, above the others. */
   AddOverrideBuild(build: string): void {
     const archive = this.archive(build);
-    this.overrideBuilds.delete(archive);
-    this.overrideBuilds.add(archive);
-    this.changed();
+    this.update(({ overrideBuilds = [] }) => ({ overrideBuilds: [...overrideBuilds.filter(other => other !== archive), archive] }));
   }
   ClearOverrideBuild(build: string): void {
-    if (this.overrideBuilds.delete(this.archive(build))) this.changed();
+    const archive = this.archive(build);
+    const { overrideBuilds = [] } = this.state.peek();
+    if (overrideBuilds.includes(archive)) this.update(() => ({ overrideBuilds: overrideBuilds.filter(other => other !== archive) }));
   }
   OverrideSymbol(symbol: string, build: SymbolSource, sourceSymbol: string): void {
     const hash = smallHash(sourceSymbol);
@@ -233,22 +236,34 @@ export class AnimState {
       ...(fallback === undefined ? [] : this.archives(fallback).map(archive => ({ archive, symbol: fallbackHash })))]);
   }
   private setOverride(symbol: string, sources: SymbolOverrideJson['sources']): void {
-    this.overrides.set(smallHash(symbol), { sources });
-    this.changed();
+    this.update(({ overrides }) => ({ overrides: new Map(overrides).set(smallHash(symbol), { sources }) }));
   }
-  ClearOverrideSymbol(symbol: string): void { this.overrides.delete(smallHash(symbol)); this.changed(); }
-  Show(layer: string): void { const hash = smallHash(layer.toLowerCase()); this.hiddenLayers.delete(hash); this.shownLayers.add(hash); this.changed(); }
-  Hide(layer: string): void { const hash = smallHash(layer.toLowerCase()); this.shownLayers.delete(hash); this.hiddenLayers.add(hash); this.changed(); }
-  ShowSymbol(symbol: string): void { const hash = smallHash(symbol); this.hiddenSymbols.delete(hash); this.shownSymbols.add(hash); this.changed(); }
-  HideSymbol(symbol: string): void { const hash = smallHash(symbol); this.shownSymbols.delete(hash); this.hiddenSymbols.add(hash); this.changed(); }
+  ClearOverrideSymbol(symbol: string): void { this.update(({ overrides }) => ({ overrides: deleted(overrides, smallHash(symbol)) })); }
+  Show(layer: string): void {
+    const hash = smallHash(layer.toLowerCase());
+    this.update(state => ({ hiddenLayers: without(state.hiddenLayers, hash), shownLayers: withAdded(state.shownLayers, hash) }));
+  }
+  Hide(layer: string): void {
+    const hash = smallHash(layer.toLowerCase());
+    this.update(state => ({ shownLayers: without(state.shownLayers, hash), hiddenLayers: withAdded(state.hiddenLayers, hash) }));
+  }
+  ShowSymbol(symbol: string): void {
+    const hash = smallHash(symbol);
+    this.update(state => ({ hiddenSymbols: without(state.hiddenSymbols, hash), shownSymbols: withAdded(state.shownSymbols, hash) }));
+  }
+  HideSymbol(symbol: string): void {
+    const hash = smallHash(symbol);
+    this.update(state => ({ shownSymbols: without(state.shownSymbols, hash), hiddenSymbols: withAdded(state.hiddenSymbols, hash) }));
+  }
   /** 0 restores the symbol to the entity's own light. */
   SetSymbolLightOverride(symbol: string, value: number): void {
     const hash = smallHash(symbol), clamped = Math.min(1, Math.max(0, value));
-    if (clamped > 0) this.symbolLightOverrides.set(hash, clamped); else this.symbolLightOverrides.delete(hash);
-    this.changed();
+    this.update(({ symbolLightOverrides }) => ({
+      symbolLightOverrides: clamped > 0 ? new Map(symbolLightOverrides).set(hash, clamped) : deleted(symbolLightOverrides, hash),
+    }));
   }
   /** SetBloomEffectHandle on the symbol's art. */
-  SetSymbolBloom(symbol: string): void { this.blooms.add(smallHash(symbol)); this.changed(); }
+  SetSymbolBloom(symbol: string): void { this.update(({ blooms }) => ({ blooms: withAdded(blooms, smallHash(symbol)) })); }
   IsVisible(element: AnimElement): boolean {
     return animStateVisible(this.state.peek(), element);
   }
@@ -257,13 +272,18 @@ export class AnimState {
     const hash = smallHash(symbol);
     const declared: SymbolAnimationJson = { bank: this.archive(follow.bank), animation: follow.animation, builds: this.archives(follow.builds),
       ...follow.symbols ? { symbols: follow.symbols.map(smallHash) } : {} };
-    this.symbolAnimations.set(hash, declared); this.changed();
-    return () => { if (this.symbolAnimations.get(hash) === declared) { this.symbolAnimations.delete(hash); this.changed(); } };
+    this.update(({ symbolAnimations }) => ({ symbolAnimations: new Map(symbolAnimations).set(hash, declared) }));
+    return () => {
+      if (this.state.peek().symbolAnimations.get(hash) === declared) {
+        this.update(({ symbolAnimations }) => ({ symbolAnimations: deleted(symbolAnimations, hash) }));
+      }
+    };
   }
+  /** An attachment added twice is held once, in its first place; the returned stop removes it. */
   AddAttachment(attachment: AnimationAttachment): () => void {
-    this.attachments.add(attachment); this.changed();
-    return () => { this.attachments.delete(attachment); this.changed(); };
+    this.update(({ attachments }) => ({ attachments: attachments.includes(attachment) ? attachments : [...attachments, attachment] }));
+    return () => this.update(({ attachments }) => ({ attachments: attachments.filter(other => other !== attachment) }));
   }
-  get isAnimating(): boolean { return [...this.attachments].some(attachment => attachment.isAnimating); }
-  Update(dt: number): void { for (const attachment of this.attachments) attachment.update(dt); }
+  get isAnimating(): boolean { return this.state.peek().attachments.some(attachment => attachment.isAnimating); }
+  Update(dt: number): void { for (const attachment of this.state.peek().attachments) attachment.update(dt); }
 }

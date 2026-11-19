@@ -53,7 +53,7 @@ it('loads original ground and separate equipped art, visible skins and hidden eq
     expect(GROUND_ITEM_DEFINITIONS.goldenshovel).toMatchObject({ bank: 'goldenshovel', animation: 'idle', atlas: 'images/inventoryimages.xml' });
     expect(inventoryItemEquipmentKind('shovel')).toBe('hand');
     expect(inventoryItemMaxStack('goldenshovel')).toBe(1);
-    const anim = new AnimState(() => {});
+    const anim = new AnimState();
     const owner = { AnimState: anim, PushEvent() {} };
     const equip = (prefab: string, skinId?: string) => shovelVisual({ id: prefab, prefab, skinId }).onequip(owner);
     equip('shovel');

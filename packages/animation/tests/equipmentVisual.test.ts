@@ -82,7 +82,7 @@ it('reads a lone skin_build as its dynamic archive, and keeps archive paths and 
 it('lets the hat prefab change source visibility groups and clear its own overrides while preserving the backpack', async () => {
   const assets = new GroundItemAssets();
   const context = { assets, hats: new HatEquipmentAssets('/dst/data/anim'), lightParent: createEmptyEntity('wilson').instance };
-  const anim = new AnimState(() => {});
+  const anim = new AnimState();
   const owner = { AnimState: anim, PushEvent() {} };
   const backpack = backpackVisual({ id: 'backpack', prefab: 'backpack' });
   backpack.onequip(owner);
@@ -114,7 +114,7 @@ it('lets the hat prefab change source visibility groups and clear its own overri
 it("draws a follow hat's own animation from its bank once the owner's display has loaded it", async () => {
   const assets = new GroundItemAssets();
   const context = { assets, hats: new HatEquipmentAssets('/dst/data/anim'), lightParent: createEmptyEntity('wilson').instance };
-  const anim = new AnimState(() => {});
+  const anim = new AnimState();
   const hat = hatVisual({ id: 'wagpunkhat', prefab: 'wagpunkhat' }, context);
   try {
     hat.onequip({ AnimState: anim, PushEvent() {} });

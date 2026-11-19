@@ -43,7 +43,7 @@ describe('original bugnet assets and Wilson action', () => {
     expect(meshes).toHaveLength(1);
     expect(meshes[0].geometry.drawRange.count).toBeGreaterThan(0);
     expect((meshes[0].material as THREE.MeshBasicMaterial[])[0].name).toBe('sprite:swap_bugnet');
-    const anim = new AnimState(() => {});
+    const anim = new AnimState();
     bugnetVisual({ id: 'bugnet', prefab: 'bugnet', skinId: 'bugnet_frog' }).onequip({ AnimState: anim, PushEvent() {} });
     expect(overrideArchives(anim, 'swap_object')).toEqual([GROUND_ITEM_DEFINITIONS.bugnet.skinArchives.bugnet_frog, 'swap_bugnet.zip']);
     const player = await createPlayer('/anim');

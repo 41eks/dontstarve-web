@@ -48,7 +48,7 @@ it('uses separate source ground and equipped art and renders a skin while moving
     });
     expect(Object.keys(GROUND_ITEM_DEFINITIONS.nightsword.skinArchives)).toHaveLength(5);
     expect(GROUND_ITEM_SKIN_SPECS.nightsword_cotl).toMatchObject({ itemId: 'nightsword', icon: 'nightsword_cotl.tex' });
-    const animState = new AnimState(() => {});
+    const animState = new AnimState();
     nightswordVisual({ id: 'nightsword', prefab: 'nightsword' }).onequip({ AnimState: animState, PushEvent() {} });
     expect((await declaredSymbol(animState, assets, 'swap_object'))?.[0].materials[0].name).toBe('ground:swap_nightmaresword');
     expect(() => nightswordVisual({ id: 'nightsword', prefab: 'nightsword', skinId: 'pickaxe_invisible' })).toThrow('Unknown nightsword skin');

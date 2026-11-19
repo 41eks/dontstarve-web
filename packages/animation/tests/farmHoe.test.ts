@@ -59,7 +59,7 @@ it('resolves both source ground builds, the separate golden held build and invis
     expect(GROUND_ITEM_DEFINITIONS.golden_farm_hoe).toMatchObject({ bank: 'goldenhoe', animation: 'idle', atlas: 'images/inventoryimages2.xml' });
     expect(inventoryItemEquipmentKind('farm_hoe')).toBe('hand');
     expect(inventoryItemMaxStack('golden_farm_hoe')).toBe(1);
-    const anim = new AnimState(() => {});
+    const anim = new AnimState();
     const owner = { AnimState: anim, PushEvent() {} };
     const equip = (prefab: string, skinId?: string) => farmHoeVisual({ id: prefab, prefab, skinId }).onequip(owner);
     equip('farm_hoe');

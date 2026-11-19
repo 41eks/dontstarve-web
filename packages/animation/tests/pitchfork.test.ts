@@ -37,7 +37,7 @@ describe('pitchfork source art and TERRAFORM timing', () => {
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect((mesh.material as THREE.Material[]).some((material) => material.name === `sprite:${tool}`)).toBe(true);
     for (const skin of Object.keys(GROUND_ITEM_DEFINITIONS[tool].skinArchives)) {
-      const anim = new AnimState(() => {});
+      const anim = new AnimState();
       pitchforkVisual({ id: tool, prefab: tool, skinId: skin }).onequip({ AnimState: anim, PushEvent() {} });
       expect(overrideArchives(anim, 'swap_object')).toEqual([GROUND_ITEM_DEFINITIONS[tool].skinArchives[skin], `swap_${tool}.zip`]);
       const skinned = await createGroundItemVisual(tool, skin);
