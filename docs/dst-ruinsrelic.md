@@ -42,7 +42,7 @@
 | 所有天然遗迹 | combat（KeepTarget=false）、health（初始最大值 90±20，完整 .8 / 碎石 .2）、lootdropper、inspectable、hauntable、roseinspectable；没有 workable |
 | 组件添加的相关 tags | inspectable 的 `inspectable`、sittable 的 `cansit`、workable 的 `HAMMER_workable`、repairable 的 `repairable_stone` / `healthrepairable`；hauntable 的临时 `haunted` |
 
-prefab 直接添加的 tags 都由实例持有。constructor-only 的 inspectable/sittable 不执行内部逻辑，因此由 prefab 显式保留其构造 tags；workable / repairable 的能力 tags 由现有组件的 `HasTag` 派生。
+prefab 直接添加的 tags 都由实例持有。constructor-only 的 inspectable/sittable 不执行内部逻辑，因此由 prefab 显式保留其构造 tags；workable / repairable 的能力 tags 由组件的 `derivedTags` memo 派生，经 `addComponent` 登记到实例上。
 
 天然源码 `OnSave` 写 `rubble = inst.rubble or nil` 和 `maxhealth = health.maxhealth`；health 组件写当前 `health`。项目格式以 `components.ruinsRelic.rubble` 和 `components.health.{current,maximum}` 保存，不另存一份可写 maxhealth。读取先设置 maximum、恢复 rubble，再加载 current；实体 ID、三维位置、旋转保留。没有数据表的早期快照保留相应 prefab 的构造默认值。
 

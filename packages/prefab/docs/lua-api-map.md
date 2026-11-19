@@ -21,6 +21,7 @@
 | `SpawnPrefab(id)` | `world.spawnPrefab(id, position)` | `vault_pillar.ts` | 注入，不是全局函数 |
 | `inst.entity:AddChild`（非存档子实体） | `child.entityParent = inst`，并 `inst.onRemove(() => child.remove())` | `vault_pillar.ts` | 子实体定义 `targetable: false` |
 | `inst:AddTag`、`RemoveTag`、`HasTag` | `addTag`、`removeTag`、`hasTag` | `atrium_pillar.ts` | 含 `Make*` 和组件构造函数加的标签 |
+| 组件属性 setter 按自身状态增删标签（`workable.lua` 的 `onworkable`／`onaction`、`repairable.lua` 的 `onworkrepairable` 等） | 组件实现 `DerivedTags`（`derivedTags` memo），`addComponent` 登记、`removeComponent` 取消；只在构造／`OnRemoveFromEntity` 增删的标签（`sleeper`、`bearded`、`battery`）直接 `inst.addTag`／`removeTag` | `workable.ts`、`repairable.ts`、`sleeper.ts` | `hasTag`、`listTags` 都包含派生标签；监听标签变化订阅 `inst.tags`（只读 memo，批次内读取也是当前值） |
 | `inst:AddOrRemoveTag(tag, cond)`、`HasTags`（`HasAllTags`）、`HasOneOfTags`（`HasAnyTag`） | 同名方法，多标签传数组：`inst.HasTags(['a', 'b'])` | `entityScript.test.ts` | 不支持 Lua 的可变参数写法；别名 `HasAllTags`、`HasAnyTag` 不另设 |
 | `inst:GetDistanceSqToInst`、`GetDistanceSqToPoint`、`IsNear` | 同名方法，点用 `Vector3` | `entityScript.test.ts` | `GetDistanceSqToInst` 与 Lua 一样要求两实体有效，否则抛错 |
 | `inst:GetAngleToPoint`、`FacePoint`、`ForceFacePoint` | 同名方法，传 `(x, y, z)` 或一个点；角度为度 | `entityScript.test.ts`、`locomotor.ts` | `FacePoint` 在 `sg` 有 `busy` 标签时不转向 |

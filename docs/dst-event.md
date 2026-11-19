@@ -20,9 +20,9 @@ prefab 通过 effect 声明 `SpriteState` 外观（符号／build 覆盖、图�
 
 [Workable](../packages/componets/src/workable.ts) 用私有可写 signal 保存 `workleft`、启用状态和工作动作，公开只读视图；组件停止状态和实体的只读 `removal` 信号共同参与纯 `createMemo`，派生 `canBeWorked` 和 `actionTag`。`GetWorkLeft()` 保留 Lua 语义：禁用时返回 0，原始剩余工作量仍保留。`SetWorkLeft()` 恢复启用状态并按源规则将工作量限制到至少 1；成功工作可将它扣到 0。
 
-库存实体的移除状态由自身 signal 保存，世界实体现有的 `model.userData.removed` 写入则通过属性访问器更新同一生命周期 signal。实体 `hasTag()` 从组件派生工作标签，静态 `model.userData.tags` 不再存储一份 `HAMMER_workable`、`DIG_workable` 等工作能力。动作收集、命中校验和其他组件都使用实体标签 API。
+库存实体的移除状态由自身 signal 保存，世界实体现有的 `model.userData.removed` 写入则通过属性访问器更新同一生命周期 signal。`HAMMER_workable`、`DIG_workable` 等工作能力标签由 workable 的 `derivedTags` memo 从动作、启用状态和剩余工作量派生（`DerivedTags`，`componets/src/derivedTags.ts`），`addComponent` 把它登记到实例上；实例的 `inst.tags` 是自身标签与组件派生标签的并集，不另存工作能力的副本。动作收集、命中校验和其他组件都使用实体标签 API（`hasTag()`），需要随标签变化更新的代码订阅 `inst.tags`。
 
-`WorkedBy()` 显式按 Lua 顺序执行：更新工作量 → worker 的 `working` → target 的 `worked` → `onwork` → 耗尽时 `onfinish` → `workfinished` → worker 的 `finishedwork`。memos 仅计算数值和标签，工作量的表现订阅仅观察状态，不根据数值变化补做完成回调；禁用、取消或 `OnLoad({ workleft: 0 })` 不执行完成回调。批次内动作和事件回调通过 `CanBeWorked()` / `hasTag()` 对当前权威输入应用同一纯计算，避免读取尚未提交的 memo 快照；memo 订阅在批次提交后观察完整结果。
+`WorkedBy()` 显式按 Lua 顺序执行：更新工作量 → worker 的 `working` → target 的 `worked` → `onwork` → 耗尽时 `onfinish` → `workfinished` → worker 的 `finishedwork`。memos 仅计算数值和标签，工作量的表现订阅仅观察状态，不根据数值变化补做完成回调；禁用、取消或 `OnLoad({ workleft: 0 })` 不执行完成回调。批次内读取 memo 时会先重算待算的 memo（见 [signals 调度表](../packages/signals/AGENTS.md)），所以动作和事件回调在批次内通过 `CanBeWorked()` / `hasTag()` 读到的是当前值；memo 的订阅方在批次提交后收到一次净变化。
 
 `OnSave()` 继续遵守 `savestate`：关闭时返回空组件状态，开启时保存剩余工作量；读取和载入不额外执行工作。普通墙和岩石保持源 Lua 的默认规则，读档恢复初始工作量。工作计数没有 timer、逐帧扣减或全局时钟依赖。永久移除时先更新生命周期，再释放组件 memo；取消墙预览、废弃换肤资源也释放临时实例的派生依赖，实际墙换肤保留原有工作组件。
 
@@ -68,7 +68,7 @@ createEffect(() => {
 
 `beard.lua` 的 `bits`、`daysgrowth`、`daysgrowthaccumulator` 是 [Beard](../packages/componets/src/beard.ts) 的私有 signal，只读视图对外；`hairy`（`bits > 0`）是纯 memo。`Shave`、`OnDayComplete`、`Reset`、`OnLoad` 在组件内按 Lua 顺序执行，成对写入用 `batch()`，回调与领域判断读取 `peek()` 的权威值，不读尚未提交的 memo。每日生长是调度器上到下一个日界的一个 `ComponentTimer`（私有 signal 快照，对外只读的 `dayTimerState`）：世界侧注入 `secondsUntilNextDay(now)`，`Beard` 不读时钟或 tuning，也不订阅全局时钟；到期执行 `OnDayComplete` 再登记下一个日界，跨多天时逐天补发，等待期间 signal 不变；销毁写入 `stopped`、撤销任务并释放 memo。timer 不入档，读档按当前世界时间重新登记。
 
-标签不保存副本：`Beard.HasTag('bearded')` 恒为真，牛的 `has_beard` 经 `HasTag` 从 `hairy` 派生，实体 `hasTag()` 读取同一份。表现 effect 只订阅牛自己的 `hairy`（`get()`），把 `beefalo_shaved_build` 与 `beefalo_build` 切换交给精灵控制器；世界昼夜等环境值由领域代码读取，不加入 effect 依赖。`hairGrowthPending` 对应 Lua 的 `inst.hairGrowthPending`，是 `BeefaloInstance` 上的字段，由第 3 天回调置位，`idle` 状态读取并在 `hair_growth_pop` 清除。
+`bearded` 按 `beard.lua` 在 `Beard` 构造时 `addTag`、`OnRemoveFromEntity` 时 `removeTag`，与胡须数量无关；牛的 `has_beard` 由 prefab 按 `hairy` 增删。表现 effect 只订阅牛自己的 `hairy`（`get()`），把 `beefalo_shaved_build` 与 `beefalo_build` 切换交给精灵控制器；世界昼夜等环境值由领域代码读取，不加入 effect 依赖。`hairGrowthPending` 对应 Lua 的 `inst.hairGrowthPending`，是 `BeefaloInstance` 上的字段，由第 3 天回调置位，`idle` 状态读取并在 `hair_growth_pop` 清除。
 
 [Sleeper](../packages/componets/src/sleeper.ts) 的 `isasleep` 是私有 signal，周期测试（4 ± 0.5 秒）由 `ComponentTimer` 在共享游戏时间调度器上登记，等待期间不逐帧扣减；`GoToSleep`、`WakeUp`、`StartTesting`、`StopTesting` 分别更新 signal 与 timer，销毁时停止测试。
 
