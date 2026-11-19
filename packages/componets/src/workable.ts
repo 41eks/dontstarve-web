@@ -91,15 +91,8 @@ export class Workable<Inst extends WorkableInst = WorkableInst> implements Deriv
   /** tough, set by SetRequiresToughWork; the toughworker check in WorkedBy is not ported. */
   tough?: boolean;
   SetRequiresToughWork(tough: boolean): void { this.tough = tough; }
-  // Domain checks use the same pure calculation on current inputs, including inside an outer batch.
-  // Memo subscribers observe the committed result after all inputs have settled.
-  CanBeWorked(): boolean {
-    return canWork(this.disposedState.peek(), this.inst.removal.peek(), this.enabledState.peek(), this.workleftState.peek());
-  }
-  currentTags(): readonly string[] {
-    const tag = workTag(this.CanBeWorked(), this.actionState.peek());
-    return tag ? [tag] : NO_TAGS;
-  }
+  // The memo is current inside a batch too; its subscribers observe the committed result.
+  CanBeWorked(): boolean { return this.canBeWorkedMemo.peek(); }
   SetOnWorkCallback(fn: WorkableOnWorkFn<Inst> | undefined): void { this.onwork = fn; }
   SetOnFinishCallback(fn: WorkableOnFinishFn<Inst> | undefined): void { this.onfinish = fn; }
 

@@ -54,14 +54,28 @@ it('createRenderEffect reruns synchronously on each change, and once after a bat
   stop();
 });
 
-it('createMemo is current synchronously, and inside a batch reads its pre-batch value until commit', () => {
-  const value = createSignal(1);
+it('createMemo is current synchronously and, read inside a batch, recomputes there while its observers wait for the commit', () => {
+  const value = createSignal(1), seen: number[] = [], rendered: number[] = [];
   const doubled = createMemo(() => value.get() * 2);
+  const quadrupled = createMemo(() => doubled.get() * 2);
   value.set(2);
-  expect(doubled.get()).toBe(4);
-  batch(() => { value.set(3); expect(doubled.get()).toBe(4); });
-  expect(doubled.get()).toBe(6);
-  doubled.dispose();
+  expect([doubled.get(), quadrupled.get()]).toEqual([4, 8]);
+  const stop = quadrupled.subscribe(next => seen.push(next));
+  const stopRender = createRenderEffect(() => rendered.push(quadrupled.get()));
+  batch(() => {
+    value.set(3);
+    // A chain reads current values, through get or peek alike.
+    expect([quadrupled.peek(), doubled.get()]).toEqual([12, 6]);
+    value.set(4);
+    expect(quadrupled.get()).toBe(16);
+    expect([seen, rendered]).toEqual([[], [8]]);
+  });
+  // Subscribers hear once of the net change after the commit; render effects run once.
+  expect([seen, rendered]).toEqual([[16], [8, 16]]);
+  batch(() => { value.set(5); expect(quadrupled.get()).toBe(20); value.set(4); expect(quadrupled.get()).toBe(16); });
+  // A batch that ends where it started notifies nobody.
+  expect(seen).toEqual([16]);
+  doubled.dispose(); quadrupled.dispose(); stop(); stopRender();
 });
 
 it('subscribe is synchronous per change, is not called on subscribe, and is deferred to the batch commit', () => {

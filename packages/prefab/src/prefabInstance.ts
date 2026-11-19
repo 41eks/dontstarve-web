@@ -419,10 +419,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   private readonly ownTags = createSignal<ReadonlySet<string>>(new Set());
   /** Components whose state decides some of the entity's tags; addComponent registers them. */
   private readonly tagSources = createSignal<readonly DerivedTags[]>([]);
-  /**
-   * Every tag of the entity, its own and its components', for subscribers. Reads go through hasTag, which also sees
-   * changes inside a batch before this memo settles.
-   */
+  /** Every tag of the entity, its own and its components'. Current when read inside a batch; subscribers hear of it after. */
   readonly tags: Memo<ReadonlySet<string>> = createMemo(() => {
     const own = this.ownTags.get(), sources = this.tagSources.get();
     if (!sources.length) return own;
@@ -643,10 +640,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     return radius === undefined ? fallback : radius * WORLD_SCALE;
   }
 
-  /** inst:HasTag: the entity's own tags and those its components derive from their current state. */
-  hasTag(tag: string): boolean {
-    return this.ownTags.peek().has(tag) || this.tagSources.peek().some(source => source.currentTags().includes(tag));
-  }
+  /** inst:HasTag: the entity's own tags and those its components derive from their state. */
+  hasTag(tag: string): boolean { return this.tags.peek().has(tag); }
   addTag(tag: string): void {
     const tags = this.ownTags.peek();
     if (!tags.has(tag)) this.ownTags.set(new Set(tags).add(tag));
@@ -665,11 +660,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   /** EntityScript:HasOneOfTags (HasAnyTag): at least one of the tags. */
   HasOneOfTags(tags: readonly string[]): boolean { return tags.some(tag => this.hasTag(tag)); }
   /** The current tags, own ones first in the order they were added, then the components' derived ones. */
-  listTags(): readonly string[] {
-    const tags = new Set(this.ownTags.peek());
-    for (const source of this.tagSources.peek()) for (const tag of source.currentTags()) tags.add(tag);
-    return Object.freeze([...tags]);
-  }
+  listTags(): readonly string[] { return Object.freeze([...this.tags.peek()]); }
   /** addComponent's registration of a component that derives tags, until the returned stop. */
   addTagSource(source: DerivedTags): () => void {
     this.tagSources.set([...this.tagSources.peek(), source]);
@@ -775,7 +766,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.lifecycle.set('removed');
     this.physicsBinding?.dispose();
     this.transform.dispose();
-    this.tags.dispose();
+    // inst.tags stays live: an item's runtime components still remove their tags after this. It only reads the
+    // entity's and its components' own signals, so it goes with them.
   }
 
   /** Entity-owned components and logical controllers stop when the inst is permanently removed. */

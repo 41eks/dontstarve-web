@@ -29,6 +29,8 @@ type Effect = {
     depsIndices: number[];  // 存它在各个 Signal.subscribers 数组里的下标
     disposed: boolean;
     synchronous: boolean;
+    /** A createMemo's computation: inside a batch, a read of any memo runs it before reading. */
+    memo?: true;
     owners?: Set<SignalObserverScope>;
 };
 
@@ -46,11 +48,24 @@ type SignalNode = {
 
 let activeEffect: Effect | null = null;
 let batchDepth = 0;
+/** Memo computations whose inputs changed inside the current batch. */
+const pendingDerived = new Set<Effect>();
+/** Render effects and watchSignal bridges whose inputs changed inside the current batch. */
 const pendingMemos = new Set<Effect>();
 const pendingListeners: (() => void)[] = [];
 
+/** Recompute the memos a batch has changed, so a memo read inside the batch sees the current inputs. */
+function settleDerived(): void {
+    while (pendingDerived.size) {
+        const effects = [...pendingDerived];
+        pendingDerived.clear();
+        for (const effect of effects) effect.runner();
+    }
+}
+
 function settleMemos(): void {
-    while (pendingMemos.size) {
+    while (pendingDerived.size || pendingMemos.size) {
+        settleDerived();
         const effects = [...pendingMemos];
         pendingMemos.clear();
         for (const effect of effects) effect.runner();
@@ -90,8 +105,13 @@ export function onCleanUp(fn: () => void) {
  * Full table: packages/signals/AGENTS.md "Effect scheduling" (pinned by tests/schedulingContract.test.ts).
  */
 export function createEffect(fn: () => void, synchronous = false) {
+    return createEffectInternal(fn, synchronous);
+}
+
+function createEffectInternal(fn: () => void, synchronous: boolean, memo?: true) {
     // 构造出一个标准的 Effect 对象
     const effect: Effect = {
+        ...memo ? { memo } : {},
         deps: [], // 初始化空账本
         depsIndices: [],
         cleanups: [],
@@ -134,6 +154,7 @@ function disposeEffect(effect: Effect): void {
     if (effect.disposed) return;
     effect.disposed = true;
     pendingMemos.delete(effect);
+    pendingDerived.delete(effect);
     queue.delete(effect.runner);
     for (const owner of effect.owners ?? []) owner.effects.delete(effect);
     effect.owners?.clear();
@@ -165,8 +186,9 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
             const effect = currentSubscribers[i];
             if (effect != activeEffect && !effect.disposed) {
                 if (effect.synchronous) {
-                    if (batchDepth > 0) pendingMemos.add(effect);
-                    else effect.runner();
+                    if (batchDepth === 0) effect.runner();
+                    else if (effect.memo) pendingDerived.add(effect);
+                    else pendingMemos.add(effect);
                 }
                 else enqueue(effect.runner);
             }
@@ -323,26 +345,46 @@ export function watchSignal<T>(source: ReadonlySignal<T>, registerCleanup: (stop
 }
 
 /**
- * Derived value, recomputed synchronously on each dependency change, so reads are current; inside a batch it reads
- * the pre-batch value until the batch commits. See AGENTS.md "Effect scheduling".
+ * Derived value, recomputed synchronously on each dependency change, so reads are current. Inside a batch a change
+ * only marks it pending; reading any memo recomputes the pending ones first, so reads stay current there too, while its
+ * subscribers and the render effects reading it still wait for the commit. See AGENTS.md "Effect scheduling".
  */
 export function createMemo<T>(fn: () => T): Memo<T> {
     const memoState = createSignal<T | undefined>(undefined);
+    const listeners = new Set<SignalListener<T>>();
+    /** The value before the current batch, while a commit notification is queued. */
+    let beforeBatch: { value: T } | undefined;
+    const notify = (value: T, previous: T) => { for (const listener of [...listeners]) if (listeners.has(listener)) listener(value, previous); };
 
     // Derived values stay current within a game frame; presentation effects
     // still use the normal microtask queue to batch their work.
-    const stop = createEffect(() => {
+    const stop = createEffectInternal(() => {
         const newValue = fn();
-
+        const previous = memoState.peek() as T;
+        if (newValue === previous) return;
         memoState.set(newValue);
-    }, true);
+        if (!listeners.size) return;
+        if (batchDepth === 0) { notify(newValue, previous); return; }
+        // Recomputed for reads inside the batch: subscribers hear once, at the commit, of the net change.
+        if (beforeBatch) return;
+        beforeBatch = { value: previous };
+        pendingListeners.push(() => {
+            const { value: before } = beforeBatch!;
+            beforeBatch = undefined;
+            const value = memoState.peek() as T;
+            if (value !== before) notify(value, before);
+        });
+    }, true, true);
     let disposed = false;
 
-    const read = () => memoState.get() as T;
+    const read = () => { if (pendingDerived.size) settleDerived(); return memoState.get() as T; };
     return Object.assign(read, {
         get: read,
-        peek: () => memoState.peek() as T,
-        subscribe: (listener: SignalListener<T>) => memoState.subscribe((value, previous) => listener(value as T, previous as T)),
+        peek: () => { if (pendingDerived.size) settleDerived(); return memoState.peek() as T; },
+        subscribe: (listener: SignalListener<T>) => {
+            listeners.add(listener);
+            return () => { listeners.delete(listener); };
+        },
         dispose() {
             if (disposed) return;
             disposed = true;

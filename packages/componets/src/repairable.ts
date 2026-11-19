@@ -36,14 +36,11 @@ export class Repairable implements DerivedTags {
       && workable.workleft.get() < workable.maxwork.get());
     this.workrepairable = readonlySignal(this.repairableMemo);
     const health = this.health;
+    // onhealthrepairable / onworkrepairable, which health.lua and workable.lua set from their own state.
     this.derivedTagsMemo = createMemo(() => repairTags(
       !this.disposed.get() && !!health && health.current.get() < health.maxWithPenalty.get(), this.repairableMemo.get()));
     this.derivedTags = readonlySignal(this.derivedTagsMemo);
     inst.addTag(`repairable_${repairmaterial}`);
-  }
-  /** onhealthrepairable / onworkrepairable, which health.lua and workable.lua set from their own state. */
-  currentTags(): readonly string[] {
-    return repairTags(!this.disposed.peek() && !!this.health?.IsHurt(), !this.disposed.peek() && this.CanRepairWork());
   }
   private CanRepairWork(): boolean {
     return !!this.workable && this.workable.enabled.peek() && this.workable.maxwork.peek() > 0

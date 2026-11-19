@@ -21,7 +21,7 @@ it('publishes own and component-derived tags on inst.tags, while hasTag reads th
     expect(inst.listTags()).toEqual(['structure', 'HAMMER_workable']);
     expect(changes).toHaveBeenLastCalledWith(['structure', 'HAMMER_workable']);
 
-    // The derived tag follows the workable's state, also before the batch's memos settle.
+    // The derived tag follows the workable's state inside the batch; subscribers hear of it at the commit.
     batch(() => {
       workable.SetWorkable(false);
       expect(inst.hasTag('HAMMER_workable')).toBe(false);

@@ -124,8 +124,7 @@ export class Perishable {
   IsStale(): boolean { return this.stage.peek() === 'stale'; }
   IsSpoiled(): boolean { return this.stage.peek() === 'spoiled'; }
   IsPerishing(): boolean { return this.timerState.peek().status === 'perishing'; }
-  /** Domain snapshots can be requested inside a scheduler batch before presentation memos settle. */
-  GetPercent(): number { return perishPercent(this.perishTimeState.peek(), this.timerState.peek()) ?? 0; }
+  GetPercent(): number { return this.percentMemo.peek() ?? 0; }
 
   SetPerishTime(time: number): void {
     if (!Number.isFinite(time) || time <= 0) throw new RangeError('Invalid perish time');
