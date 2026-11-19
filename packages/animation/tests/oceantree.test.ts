@@ -78,8 +78,8 @@ it('loads imported save records with the stage bank, sway clip, tags and compone
       assetOptions: { instancedAnimations: ['sway1_loop', 'sway2_loop'], staticBillboard: true, colour: [1, 1, 1] },
       physics: { radius: .8, height: 2 }, minimapIcon: 'oceantree_tall.png',
     });
-    expect(definitions.oceantree!.instanceAssets!(inst)).toEqual({ animationArchive: 'oceantree_tall.zip',
-      buildArchives: ['oceantree_tall.zip', 'snow.zip'], bank: 'oceantree_tall', hiddenLayers: ['snow'] });
+    expect(definitions.oceantree).toMatchObject({ assets: { animationArchive: 'oceantree_tall.zip',
+      buildArchives: ['oceantree_tall.zip', 'snow.zip'], bank: 'oceantree_tall', hiddenLayers: ['snow'] } });
     expect([inst.physicsRadiusOverride, inst.transform.scale.x]).toEqual([2.35, 1.1]);
     // Every bud hidden, none used; the snow layer follows the (absent) snow level.
     expect(layers(inst)).toMatchObject({ snow: true, ...Object.fromEntries([1, 2, 3, 4, 5, 6, 7].map(i => [`tree_bud${i}`, true])) });

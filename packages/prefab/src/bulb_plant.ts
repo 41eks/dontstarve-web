@@ -1,6 +1,6 @@
 import { addComponent } from './components';
 import * as THREE from 'three';
-import { SpriteState } from '@dontstarve-web/display';
+import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import type { GameTimeScheduler } from './components/gameTimeScheduler';
 import { ComponentTimer } from './components/timer';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
@@ -79,6 +79,15 @@ const STATE_ANIMS: Readonly<Record<BulbPlantLightState, readonly [string, string
  * drains it on the turnoff timer and recharges. The withered variants, burnable, lootdropper, halloweenmoonmutable and
  * hauntable are not ported. The record keeps the pickable state and the light timer inside `bulbPlant`.
  */
+/** flower_cave.lua assets: the four plantnames' ANIM archives; the withered builds are not ported. */
+const BULB_PLANT_ANIMATION_ARCHIVES = ['bulb_plant_single.zip', 'bulb_plant_double.zip', 'bulb_plant_triple.zip', 'bulb_plant_springy.zip'];
+
+/** commonfn / single / onload: AnimState:SetBank / SetBuild("bulb_plant"..inst.plantname). */
+function SetPlantArt(inst: BulbPlantInstance): void {
+  inst.AnimState.SetBank(`bulb_plant_${inst.variant}`);
+  inst.AnimState.SetBuild(`bulb_plant_${inst.variant}.zip`);
+}
+
 export class BulbPlantInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & { pickable: Pickable };
   /** plantname: flower_cave rolls single or springy; double and triple are fixed. SetBank / SetBuild follow it. */
@@ -98,12 +107,14 @@ export class BulbPlantInstance extends PrefabInstance {
   private entityAwake = false;
   private pickSound?: SoundHandle;
 
-  constructor(prefab: BulbPlantPrefabId, world: BulbPlantWorld) {
+  constructor(prefab: BulbPlantPrefabId, world: BulbPlantWorld, art: SpriteResources['archives']) {
     // PlayAnimation("off"): shown on its last frame, as a plant that has been off for a while.
     super(prefab, new SpriteState({ name: 'off', held: true, billboard: true }));
     this.world = world;
+    this.AnimState.DeclareAnimationAssets(BULB_PLANT_ANIMATION_ARCHIVES, art);
     this.variant = prefab === 'flower_cave_double' ? 'double' : prefab === 'flower_cave_triple' ? 'triple'
       : BULB_PLANT_VARIANTS[Math.min(1, Math.floor(Math.random() * 2))];
+    SetPlantArt(this);
     this.addTag('plant');
     const scheduler = world.scheduler;
     this.BindScheduler(scheduler);
@@ -135,6 +146,7 @@ export class BulbPlantInstance extends PrefabInstance {
       const saved = data.bulbPlant;
       if (!saved) return;
       this.variant = saved.variant;
+      SetPlantArt(this);
       this.light_state = saved.lightState;
       this.components.pickable.OnLoad(saved);
       this.lightOn = this.light_state === 'ON' && this.components.pickable.canBePicked;
@@ -258,8 +270,9 @@ export class BulbPlantInstance extends PrefabInstance {
 /** The Prefabs flower_cave.lua returns, without the withered ones. */
 export function bulbPlantPrefabs(world: BulbPlantWorld): Readonly<Record<BulbPlantPrefabId, PrefabEntityDefinition<BulbPlantInstance>>> {
   const define = (prefab: BulbPlantPrefabId): PrefabEntityDefinition<BulbPlantInstance> => ({
-    fn: () => new BulbPlantInstance(prefab, world),
-    instanceAssets: ({ variant }) => ({ animationArchive: `bulb_plant_${variant}.zip`, buildArchives: [`bulb_plant_${variant}.zip`], bank: `bulb_plant_${variant}` }),
+    fn: (_position, sprites) => new BulbPlantInstance(prefab, world, sprites.archives),
+    // commonfn's bank and build; the plantname's SetBank / SetBuild picks the drawn one.
+    assets: { animationArchive: 'bulb_plant_single.zip', buildArchives: ['bulb_plant_single.zip'], bank: 'bulb_plant_single' },
     assetOptions: { instancedAnimations: ['idle'], staticBillboard: true },
     minimapIcon: 'bulb_plant.png',
   });

@@ -107,11 +107,6 @@ function SetTall(inst: OceanTreeInstance): void {
 }
 
 /** The stage whose Set* fn last chose the bank: growable's, or SetTall's for a no_grow tree that has none. */
-function drawnStage(inst: OceanTreeInstance): 'short' | 'normal' | 'tall' {
-  const stage = inst.components.growable?.GetStage() ?? 3;
-  return (['short', 'normal', 'tall'] as const)[stage - 1]!;
-}
-
 function showbuds(inst: OceanTreeInstance): void {
   for (const num of inst.buds_used) inst.sprite.showLayer(`tree_bud${num}`);
 }
@@ -233,12 +228,9 @@ export function oceanTreePrefabs(world: OceanTreeWorld):
   return {
     [OCEANTREE_ID]: {
       fn: (_position, sprites) => fn(world, sprites),
-      // The shared archive of the stage the tree is drawn in: SetShort / SetNormal / SetTall's bank and build. A stage
-      // that changes while it is drawn reaches the archive sprite as AnimState SetBank / SetBuild (setArtSource).
-      instanceAssets: inst => {
-        const archive = `oceantree_${drawnStage(inst)}`;
-        return { animationArchive: `${archive}.zip`, buildArchives: [`${archive}.zip`, 'snow.zip'], bank: archive, hiddenLayers: ['snow'] };
-      },
+      // The bank and build come from SetShort / SetNormal / SetTall's AnimState SetBank / SetBuild, which fn and the
+      // growable's OnLoad declare before the display starts; a later stage reaches the drawn sprite the same way.
+      assets: { animationArchive: 'oceantree_tall.zip', buildArchives: ['oceantree_tall.zip', 'snow.zip'], bank: 'oceantree_tall', hiddenLayers: ['snow'] },
       // Every stage's sways share one batch per bank; the random tint is per instance.
       assetOptions: { instancedAnimations: [anims.sway1, anims.sway2], staticBillboard: true, colour: [1, 1, 1] },
       physics: { make: MakeWaterObstaclePhysics, radius: .8, height: 2 },

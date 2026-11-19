@@ -130,7 +130,7 @@ describe('flower_cave spawning, art and saving', () => {
       const lit = s.spawn('flower_cave', { id: 'e_springy', components: { bulbPlant: { variant: 'springy', lightState: 'ON', remainingSeconds: 50 } } });
       const [single, double, triple] = s.plants();
       expect(s.plants().map(plant => plant.variant)).toEqual(['single', 'double', 'triple', 'springy']);
-      // instanceAssets resolves each plant's SetBank / SetBuild after its SetPersistData, so springy loads its own archive.
+      // The display starts after SetPersistData, so it draws each plant's SetBank / SetBuild, springy's own included.
       await vi.waitFor(() => expect(s.plants().map(plant => plant.sprite.loaded)).toEqual([true, true, true, true]));
       await Promise.all(s.plants().map(plant => prefabDisplay(plant.transform.model)!.artLoaded()));
       expect(prefabDisplay(lit.transform.model)!.model.getObjectByProperty('isMesh', true)).toBeDefined();

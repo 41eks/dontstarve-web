@@ -1,6 +1,6 @@
 import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
-import { SpriteState } from '@dontstarve-web/display';
+import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { createRenderEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
@@ -194,6 +194,8 @@ export type MoonglassRockType = typeof MOONGLASS_ROCK_TYPES[number];
 SetSharedLootTable('rock_moon_glass', [['moonglass', 1], ['moonglass', 1], ['moonglass', .25]]);
 
 const moonglassRockBank = (type: MoonglassRockType): string => type === 1 ? 'moonglass_rock' : `moonglass_rock${type}`;
+/** rocks.lua moonglass assets: the four rock types' ANIM archives, each its own bank and build. */
+const MOONGLASS_ANIMATION_ARCHIVES = MOONGLASS_ROCK_TYPES.map(type => `${moonglassRockBank(type)}.zip`);
 
 /** The saved rocks' banks, so a scan of the save warms their decoders; an unsaved type is only rolled at spawn. */
 export function moonglassRockArchives(records: readonly { readonly components?: { readonly rock_type?: MoonglassRockType } }[]) {
@@ -207,8 +209,9 @@ export type MoonglassRockWorld = RockWorld;
 export class MoonglassRockInstance extends RockInstance {
   rock_type!: MoonglassRockType;
 
-  constructor(world: MoonglassRockWorld) {
+  constructor(world: MoonglassRockWorld, art: SpriteResources['archives']) {
     super(MOONGLASS_ROCK_ID, world, 'full', 'moonglass', 1);
+    this.AnimState.DeclareAnimationAssets(MOONGLASS_ANIMATION_ARCHIVES, art);
     this.components.lootdropper.SetChanceLootTable('rock_moon_glass');
     set_moonglass_type(this, MOONGLASS_ROCK_TYPES[Math.floor(Math.random() * MOONGLASS_ROCK_TYPES.length)]);
     this.OnSave = (_inst, data) => { data.rock_type = this.rock_type; };
@@ -216,20 +219,20 @@ export class MoonglassRockInstance extends RockInstance {
   }
 }
 
-/** The display builds its sprite from this choice: SetBuild and SetBank are the `instanceAssets` declaration below. */
 function set_moonglass_type(inst: MoonglassRockInstance, new_type: MoonglassRockType): void {
   inst.rock_type = new_type;
+  const anim_name = moonglassRockBank(new_type);
+  inst.AnimState.SetBuild(`${anim_name}.zip`);
+  inst.AnimState.SetBank(anim_name);
 }
 
 /** The moon glass rock's entry in the Prefab table rocks.lua returns; the other rocks are rockPrefabs above. */
 export function moonglassRockPrefabs(world: MoonglassRockWorld): Readonly<Record<typeof MOONGLASS_ROCK_ID, PrefabEntityDefinition<MoonglassRockInstance>>> {
   return {
     [MOONGLASS_ROCK_ID]: {
-      fn: () => new MoonglassRockInstance(world),
-      instanceAssets: inst => {
-        const bank = moonglassRockBank(inst.rock_type);
-        return { animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`, 'snow.zip'], bank, hiddenSymbols: ['snow'] };
-      },
+      fn: (_position, sprites) => new MoonglassRockInstance(world, sprites.archives),
+      // baserock_fn's moonglass_rock bank and build; set_moonglass_type's SetBank / SetBuild picks the drawn one.
+      assets: { animationArchive: 'moonglass_rock.zip', buildArchives: ['moonglass_rock.zip', 'snow.zip'], bank: 'moonglass_rock', hiddenSymbols: ['snow'] },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       physics: { make: MakeObstaclePhysics, radius: 1 },
       minimapIcon: 'rock_moonglass.png',
