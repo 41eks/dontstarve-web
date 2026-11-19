@@ -55,6 +55,7 @@ import {
   MAST_MALBATROSS_ANIMATION_ARCHIVES, MAST_MALBATROSS_BUILD_ARCHIVE, MAST_MALBATROSS_ID, MAST_MALBATROSS_SKINS,
 } from '@dontstarve-web/prefab/mast_malbatross';
 import { SUPPORT_PILLAR_ARCHIVES, SUPPORT_PILLAR_ID, SUPPORT_PILLAR_REINFORCED_LEVELS } from '@dontstarve-web/prefab/support_pillar';
+import { OASISLAKE_ARCHIVES, OASISLAKE_ID, OASISLAKE_MAX_FISH } from '@dontstarve-web/prefab/oasislake';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
 import { MARSH_PLANT_ID } from '@dontstarve-web/prefab/marsh_plant';
@@ -287,6 +288,21 @@ const supportPillar: PrefabComponentParser = (value, path) => {
     const { materials } = object(constructionsite, at, ['materials']);
     const { rocks } = object(materials, `${at}.materials`, ['rocks']);
     result.constructionsite = { materials: { rocks: integer(rocks, `${at}.materials.rocks`, 1, 40) } };
+  }
+  return result;
+};
+/** oasislake.lua OnSave's data.regrowth (only false), and fishable:OnSave's fish below OASISLAKE_MAX_FISH. */
+const oasislake: PrefabComponentParser = (value, path) => {
+  const { oasislake: state, fishable } = object(value, path, ['oasislake', 'fishable']);
+  const result: ReturnType<PrefabComponentParser> = {};
+  if (state !== undefined) {
+    const { regrowth } = object(state, `${path}.oasislake`, ['regrowth']);
+    if (regrowth !== false) throw new Error(`${path}.oasislake.regrowth must be false`);
+    result.oasislake = { regrowth };
+  }
+  if (fishable !== undefined) {
+    const { fish } = object(fishable, `${path}.fishable`, ['fish']);
+    result.fishable = { fish: integer(fish, `${path}.fishable.fish`, 0, OASISLAKE_MAX_FISH - 1) };
   }
   return result;
 };
@@ -596,6 +612,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   lichens: definePrefabs([LICHEN_ID], componentParser({ keys: ['pickable'], regrowTime: LICHEN_REGROW_TIME }), true,
     [{ animation: LICHEN_ARCHIVE, build: LICHEN_ARCHIVE }]),
   supportPillars: definePrefabs([SUPPORT_PILLAR_ID], supportPillar, true, SUPPORT_PILLAR_ARCHIVES),
+  oasislakes: definePrefabs([OASISLAKE_ID], oasislake, true, OASISLAKE_ARCHIVES),
   mastMalbatross: definePrefabs([MAST_MALBATROSS_ID], mastMalbatross, true,
     MAST_MALBATROSS_ANIMATION_ARCHIVES.map(animation => ({ animation, build: MAST_MALBATROSS_BUILD_ARCHIVE }))),
   // reeds.lua has no OnSave of its own: only pickable saves state.

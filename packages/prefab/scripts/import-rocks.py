@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds, malbatross mast, rope bridge and support pillar world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds, malbatross mast, rope bridge, support pillar and oasis lake world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
 import zipfile
@@ -43,6 +43,8 @@ ASSETS = {
     # support_pillar.lua MakePillar("support_pillar", "support_pillar", "support_pillar"): one archive holds the bank and
     # build; the dreadstone pillar's archive is not ported.
     'support_pillar': ['support_pillar.zip'],
+    # oasislake.lua: the oasis_tile bank and build, and splash.zip, which oasislake.lua itself never plays.
+    'oasislake': ['oasis_tile.zip', 'splash.zip'],
 }
 # skinprefabs.lua: mast_malbatross's PREFAB_SKINS, each a dynamic build with its .dyn atlas package.
 SKINS = ['mast_malbatross_tesla', 'mast_malbatross_wagstaff']
@@ -151,6 +153,10 @@ def main():
     art |= {f'support_pillar/{clip}': {'animationArchive': 'support_pillar.zip', 'bank': 'support_pillar', 'animation': clip}
             for clip in [*(f'idle{state}{suffix}' for state in ('', '_hit', '_quake', '_repair') for suffix in ('', '_1', '_2', '_3')),
                          'idle_4', 'build', 'collapse', 'scaffold', 'place', 'scaffold_hit', 'collapse_top', 'hit_debris', 'quake_debris']}
+    # oasislake.lua: fn's idle, OnIsWetChanged's wet / dry_pre / dry_idle and TryFillLake's dry_pst, and splash.zip's clip.
+    art |= {f'oasis_tile/{clip}': {'animationArchive': 'oasis_tile.zip', 'bank': 'oasis_tile', 'animation': clip}
+            for clip in ['idle', 'wet', 'dry_pre', 'dry_idle', 'dry_pst']}
+    art |= {'splash/splash': {'animationArchive': 'splash.zip', 'bank': 'splash', 'animation': 'splash'}}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives and {len(SKINS)} skin builds')
 

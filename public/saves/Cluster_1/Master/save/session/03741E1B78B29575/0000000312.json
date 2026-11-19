@@ -684758,6 +684758,24 @@
           }
         }
       ],
+      "oasislake": [
+        {
+          "id": "dst_03741E1B78B29575_oasislake_id_100157",
+          "transform": {
+            "position": [
+              1104.18,
+              0.0,
+              335.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "fishable": {
+              "fish": 10
+            }
+          }
+        }
+      ],
       "ruinsrelic_chair": [
         {
           "id": "dst_03741E1B78B29575_ruinsrelic_chair_index_000001",

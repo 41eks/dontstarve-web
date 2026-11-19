@@ -171,6 +171,25 @@ def support_pillar_components(data):
     return result
 
 
+def oasislake_components(data):
+    # oasislake.lua OnSave: data.regrowth, written only as false, and fishable:OnSave's fish while below
+    # OASISLAKE_MAX_FISH (15); a fresh lake keeps fishable's constructor fishleft of 10, so it saves fish = 10.
+    if set(data) - {'regrowth', 'fishable'}:
+        raise ValueError(f'Unsupported oasislake save state: {data}')
+    result = {}
+    if 'regrowth' in data:
+        if data['regrowth'] is not False:
+            raise ValueError(f'Unsupported oasislake regrowth: {data["regrowth"]}')
+        result['oasislake'] = {'regrowth': False}
+    if 'fishable' in data:
+        fishable = data['fishable']
+        if not isinstance(fishable, dict) or set(fishable) != {'fish'} or type(fishable['fish']) is not int \
+                or not 0 <= fishable['fish'] < 15:
+            raise ValueError(f'Unsupported oasislake fishable: {fishable}')
+        result['fishable'] = {'fish': fishable['fish']}
+    return result
+
+
 def atrium_gate_components(data):
     # atrium_gate.lua OnSave plus the component records used by OnLoadPostPass.
     if set(data) - {'vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key',

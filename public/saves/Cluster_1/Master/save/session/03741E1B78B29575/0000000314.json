@@ -684758,6 +684758,20 @@
           }
         }
       ],
+      "oasislake": [
+        {
+          "id": "dst_03741E1B78B29575_oasislake_index_000001",
+          "transform": {
+            "position": [
+              1104.18,
+              0.0,
+              335.82
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "ruinsrelic_chair": [
         {
           "id": "dst_03741E1B78B29575_ruinsrelic_chair_index_000001",

@@ -123,6 +123,8 @@ export interface PlacementSaveRecord {
     upgradeable?: import('../../componets/src/upgradeable').UpgradeableSave;
     /** support_pillar.lua OnSave, and constructionsite:OnSave. */
     supportPillar?: import('./support_pillar').SupportPillarSaveState;
+    /** oasislake.lua OnSave: data.regrowth. */
+    oasislake?: import('./oasislake').OasislakeSaveState;
     constructionsite?: import('../../componets/src/constructionsite').ConstructionSiteSave;
     /** oceantree_pillar.lua OnSave. */
     oceantreePillar?: import('./oceantree_pillar').OceanTreePillarSaveState;

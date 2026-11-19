@@ -55,6 +55,8 @@ export interface SavedEntity {
     upgradeable?: import('../../packages/componets/src/upgradeable').UpgradeableSave;
     /** support_pillar.lua OnSave, and constructionsite:OnSave. */
     supportPillar?: import('@dontstarve-web/prefab/support_pillar').SupportPillarSaveState;
+    /** oasislake.lua OnSave: data.regrowth. */
+    oasislake?: import('@dontstarve-web/prefab/oasislake').OasislakeSaveState;
     constructionsite?: import('../../packages/componets/src/constructionsite').ConstructionSiteSave;
     /** oceantree_pillar.lua OnSave. */
     oceantreePillar?: import('@dontstarve-web/prefab/oceantree_pillar').OceanTreePillarSaveState;

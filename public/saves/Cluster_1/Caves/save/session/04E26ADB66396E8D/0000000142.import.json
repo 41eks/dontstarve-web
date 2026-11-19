@@ -449,6 +449,7 @@
     "atrium_overgrowth",
     "mast_malbatross",
     "support_pillar",
+    "oasislake",
     "ruinsrelic_table",
     "ruinsrelic_chair",
     "ruinsrelic_vase",
@@ -687,6 +688,10 @@
     "support_pillar": {
       "source": 4,
       "imported": 4
+    },
+    "oasislake": {
+      "source": 0,
+      "imported": 0
     },
     "ruinsrelic_table": {
       "source": 0,
