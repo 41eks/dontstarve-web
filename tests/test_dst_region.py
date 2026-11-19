@@ -137,7 +137,8 @@ class RegionImportTest(unittest.TestCase):
                 user = session / 'USER'
                 user.mkdir()
                 (user / snapshot).write_text('return ' + literal(player))
-            # The newer cave snapshot is kept in Master even though Caves/shardindex names the same Session.
+            # The newer cave snapshot is kept in Master even though Caves/shardindex names the same Session; the
+            # Caves copy (0000000001, 0000000005) is left over and skipped.
             newer_cave = cluster / 'Master/save/session/CAVE'
             (newer_cave / 'USER').mkdir(parents=True)
             (newer_cave / '0000000006').write_text(source)
@@ -160,7 +161,9 @@ class RegionImportTest(unittest.TestCase):
             self.assertEqual(cave_player['player']['shardId'], 'caves')
             index = json.loads((output / 'session.json').read_text())
             self.assertEqual(index['activeShard'], 'Caves')
-            self.assertEqual(len(index['snapshots']), 5)
+            self.assertEqual(len(index['snapshots']), 3)
+            self.assertNotIn('Caves/save/session/CAVE/0000000005.json',
+                             [entry['worldFile'] for entry in index['snapshots']])
             self.assertEqual(index['snapshots'][-1]['worldFile'], 'Master/save/session/FOREST/0000000003.json')
             self.assertIn('Master/save/session/CAVE/0000000006',
                           json.loads((output / 'Caves.import.json').read_text())['source'])
@@ -182,7 +185,7 @@ class RegionImportTest(unittest.TestCase):
             self.assertNotEqual(subprocess.run([*command, '--check'], capture_output=True).returncode, 0)
             self.assertEqual((output / 'Master.json').read_text(), '{}')
             # Failure in the second shard must not replace the first shard's existing save.
-            (cluster / 'Caves/save/session/CAVE/0000000005').write_text('invalid snapshot')
+            (newer_cave / '0000000006').write_text('invalid snapshot')
             self.assertNotEqual(subprocess.run(command, capture_output=True).returncode, 0)
             self.assertEqual((output / 'Master.json').read_text(), '{}')
 

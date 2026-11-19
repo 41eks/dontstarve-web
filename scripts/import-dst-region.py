@@ -94,8 +94,13 @@ def import_shard(shard, template, supported, catalog, origin_cell=None, snapshot
 
 
 def cluster_snapshots(cluster):
-    """Every world Snapshot, including Session copies stored under another physical shard."""
-    found = {}
+    """Every world Snapshot, including Session copies stored under another physical shard.
+
+    A Session found under both physical shards keeps only the copy holding its newest Snapshot. The other copy stopped
+    being written when the host moved the Session: Cluster_65's Caves directory still holds the cave's creation-day
+    0000000002 (worldgen output) and 0000000003 (cycle 0) beside the Master copy's 0000000140 onwards.
+    """
+    copies = {}
     for physical in ('Master', 'Caves'):
         root = cluster / physical / 'save/session'
         if not root.is_dir():
@@ -107,12 +112,18 @@ def cluster_snapshots(cluster):
                 if prefab not in TILE['SHARDS']:
                     continue
                 shard = TILE['SHARDS'][prefab][0]
-                key = shard, session.name, source.name
-                if key in found:
-                    if source.read_bytes() != found[key].read_bytes():
-                        raise ValueError(f'Conflicting source snapshots for {key}')
-                    continue
-                found[key] = source
+                copies.setdefault((shard, session.name), {}).setdefault(physical, []).append(source)
+    found = {}
+    for (shard, session_id), by_physical in copies.items():
+        newest = max(sources[-1].name for sources in by_physical.values())
+        for sources in by_physical.values():
+            if sources[-1].name != newest:
+                continue
+            for source in sources:
+                key = shard, session_id, source.name
+                if key in found and source.read_bytes() != found[key].read_bytes():
+                    raise ValueError(f'Conflicting source snapshots for {key}')
+                found.setdefault(key, source)
     if not found:
         raise ValueError('No forest or cave snapshots found in cluster')
     return sorted(found.items())
