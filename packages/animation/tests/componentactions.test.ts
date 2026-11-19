@@ -2,6 +2,7 @@ import { collectEquippedItemActions } from '../../stategraphs/src/componentactio
 import { testPlayer } from './testPlayer';
 import { expect, it, vi } from 'vitest';
 import { Tool } from '../../componets/src/tool';
+import { addComponent } from '../../prefab/src/components';
 import { Workable } from '../../componets/src/workable';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { configureReskinToolEntity, nextReskin } from '../../prefab/src/reskin_tool';
@@ -15,8 +16,7 @@ it('selects work from component tags, revalidates changes at impact and consumes
   tool.components.tool = tool.component('tool', () => new Tool(tool));
   tool.components.tool.SetAction('HAMMER');
   const target = testItem({ itemId: 'test_structure', count: 1 });
-  const work = target.component('workable', () => new Workable(target));
-  target.components.workable = work;
+  const work = addComponent(target, 'workable', Workable);
   work.SetWorkAction('HAMMER'); work.SetWorkLeft(2);
   const hit = vi.fn(), finish = vi.fn(() => target.destroy());
   work.SetOnWorkCallback(hit); work.SetOnFinishCallback(finish);

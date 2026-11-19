@@ -178,7 +178,7 @@ export function marbleShrubPrefabs(world: MarbleShrubWorld): Readonly<Record<Mar
       bank: 'marbleshrub', hiddenSymbols: ['snow'] },
     assetOptions: { instancedAnimations: 'all', staticBillboard: true, colour: [1, 1, 1] },
     physics: { make: MakeObstaclePhysics, radius: PHYSICS_RADIUS },
-    onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
+    onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
   });
   return Object.fromEntries(MARBLESHRUB_SPAWN_IDS.map(prefab => [prefab, define(prefab)])) as Record<MarbleShrubSpawnId, PrefabEntityDefinition<MarbleShrubInstance>>;
 }

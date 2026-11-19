@@ -264,7 +264,6 @@ function make_stump(inst: DeciduousInstance): void {
   removeComponent(inst, 'workable');
   const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
-  inst.mouseTarget?.setWorkable(inst.components.workable);
   workable.SetOnFinishCallback(dig_up_stump);
   bindFire(inst);
 }
@@ -366,7 +365,7 @@ function onSpawned(inst: DeciduousInstance): void {
   if (inst.hasTag('stump')) inst.sprite.playOnce(rest(inst));
   applyBuild(inst);
   inst.components.growable.OnEntitySleep();
-  inst.mouseTarget = new ToolMouseTarget(inst, inst.components.workable, inst.world.handEquipment);
+  inst.mouseTarget = new ToolMouseTarget(inst, inst.world.handEquipment);
 }
 
 /** deciduoustrees.lua normal build: three size anims over one trunk, with the season's leaves as a symbol override. */

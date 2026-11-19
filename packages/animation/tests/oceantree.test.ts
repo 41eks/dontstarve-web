@@ -71,8 +71,7 @@ it('loads imported save records with the stage bank, sway clip, tags and compone
     // MakeWaterObstaclePhysics, fn's AddTag in order, MakeSnowCoveredPristine, then the burnable and inspectable
     // constructors; workable's SetWorkAction(CHOP) tag is derived from its state.
     expect(inst.listTags()).toEqual(['blocker', 'ignorewalkableplatforms', 'shelter', 'plant', 'event_trigger', 'tree',
-      'SnowCovered', 'canlight', 'inspectable']);
-    expect(inst.hasTag('CHOP_workable')).toBe(true);
+      'SnowCovered', 'canlight', 'inspectable', 'CHOP_workable']);
     expect(inst.sprite.sprite.peek().source).toMatchObject({ bank: 'oceantree_tall', buildArchive: 'oceantree_tall.zip' });
     expect(sway(inst)).toMatchObject({ name: expect.stringMatching(/^sway[12]_loop$/), loop: true });
     expect(definitions.oceantree).toMatchObject({

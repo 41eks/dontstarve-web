@@ -7,6 +7,8 @@ export type BeardTest = (inst: BeardInst, shaver: unknown) => BeardVerdict;
 
 export interface BeardInst {
   PushEvent(name: string, data?: unknown): void;
+  addTag(tag: string): void;
+  removeTag(tag: string): void;
   getPosition(): { x: number; y: number; z: number };
 }
 
@@ -58,14 +60,13 @@ export class Beard {
 
   constructor(inst: BeardInst, host: BeardHost) {
     this.inst = inst;
+    inst.addTag('bearded');
     this.host = host;
     this.dayTimer = new ComponentTimer(host.scheduler, () => this.onDayBoundary());
     this.dayTimerState = this.dayTimer.snapshot;
     this.EnableGrowth(true);
   }
 
-  /** beard.lua's constructor adds the "bearded" tag, whatever the bit count. */
-  HasTag(tag: string): boolean | undefined { return tag === 'bearded' && !this.disposed ? true : undefined; }
 
   /** Direct assignment of `bits` / `daysgrowth` by the owning prefab (beefalo.lua, SGBeefalo.lua). */
   SetBits(bits: number): void { this.bitsState.set(bits); }
@@ -146,6 +147,12 @@ export class Beard {
       if (data.growthaccumulator !== undefined) this.accumulatorState.set(data.growthaccumulator);
     });
     for (let k = 0; k <= this.daysgrowthState.peek(); k++) this.callbacks.get(k)?.(this.inst);
+  }
+
+  /** Beard:OnRemoveFromEntity: growth stops and the "bearded" tag goes. */
+  OnRemoveFromEntity(): void {
+    this.inst.removeTag('bearded');
+    this.dispose();
   }
 
   dispose(): void {

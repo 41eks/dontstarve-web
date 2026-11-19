@@ -69,8 +69,8 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     const [model] = s.scene.children.filter(child => lookupPrefabInstance(child)?.prefab === 'sapling') as THREE.Group[];
     const animation = plantInstance(model).sprite;
     expect(animation.currentAnimation).toBe('sway');
-    expect(prefabInstance(model)!.listTags().toSorted()).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'canlight', 'witherable'].sort());
-    expect(findActionEntity(model)!.hasTag('DIG_workable')).toBe(true);
+    expect(prefabInstance(model)!.listTags().toSorted()).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'canlight', 'witherable',
+      'DIG_workable'].sort());
     expect(canDoSceneAction('PICK', model)).toBe(true);
 
     expect(plantInstance(model).components.pickable.pick({ giveItem: (item: string, count: number) => s.inventory.add(item, count) })).toBe(true);

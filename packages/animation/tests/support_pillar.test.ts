@@ -54,8 +54,7 @@ it('loads a saved pillar with the clip, tags, bank and component values MakePill
     const inst = spawn(saved);
     // fn's MakeObstaclePhysics and AddTag, the constructionsite and inspectable tags, then UpdateLevel's quake_blocker.
     expect(inst.listTags()).toEqual(['blocker', 'structure', 'antlion_sinkhole_blocker', 'constructionsite',
-      'repairconstructionsite', 'inspectable', 'quake_blocker']);
-    expect(inst.hasTag('HAMMER_workable')).toBe(true);
+      'repairconstructionsite', 'inspectable', 'quake_blocker', 'HAMMER_workable']);
     // 40 rocks: level 0, suffix "", so OnLoad plays idle once; UpdateLevel disables the full construction site.
     expect([inst._level, inst.suffix, inst.reinforced]).toEqual([0, '', 9]);
     expect(clip(inst)).toMatchObject({ name: 'idle', loop: false });

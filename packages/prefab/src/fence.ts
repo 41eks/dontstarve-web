@@ -192,7 +192,7 @@ function fn(world: PrefabWorldContext, sprites: SpriteResources): FenceInstance 
 
 /** What the mouse and the tools find on a fence: the hammer and the reskin tool. */
 function onspawned(inst: FenceInstance, world: Pick<PrefabWorldContext, 'handEquipment'>): void {
-    new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
+    new ToolMouseTarget(inst, world.handEquipment);
 }
 
 /** The Prefab fence.lua returns for the placed fence; fence_item is a ground and inventory item. */

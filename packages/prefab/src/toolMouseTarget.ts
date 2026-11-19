@@ -1,5 +1,4 @@
 import { createEffect, createSignal, watchSignal, type HandEquipment, type ReadonlySignal } from '@dontstarve-web/signals';
-import type { Workable } from '../../componets/src/workable';
 import { collectEquippedItemActions, equippedActionEntity, type ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import type { PrefabInstance } from './prefabInstance';
 import { setMouseTargetEnabled } from './mouseTargets';
@@ -18,34 +17,24 @@ export class ToolMouseTarget {
   private readonly inst: PrefabInstance;
   private readonly options: ToolMouseTargetOptions;
   private readonly hand;
-  private readonly tagsChanged = createSignal(0);
   private readonly cleanups: (() => void)[] = [];
-  private stopWork: () => void = () => {};
   private disposed = false;
 
-  constructor(instance: PrefabInstance, workable: Workable | undefined, handEquipment?: ReadonlySignal<HandEquipment | null>,
-    options: ToolMouseTargetOptions = {}) {
+  /** The tool actions follow the target's tags, including the workable's `<ACTION>_workable`, so a new workable needs nothing here. */
+  constructor(instance: PrefabInstance, handEquipment?: ReadonlySignal<HandEquipment | null>, options: ToolMouseTargetOptions = {}) {
     this.inst = instance;
     this.options = options;
     this.hand = watchSignal(handEquipment ?? createSignal<HandEquipment | null>(null), stop => this.cleanups.push(stop));
     const status = watchSignal(instance.status, stop => this.cleanups.push(stop));
-    this.cleanups.push(instance.onTagChanged(() => this.tagsChanged.set(this.tagsChanged.peek() + 1)));
+    const tags = watchSignal(instance.tags, stop => this.cleanups.push(stop));
     setMouseTargetEnabled(instance.transform.model, false);
-    this.setWorkable(workable);
-    createEffect(() => { if (status.get() === 'removed') this.dispose(); });
-  }
-
-  /** Stumping replaces the workable on some trees; the old bridge owns its old input effect. */
-  setWorkable(workable: Workable | undefined): void {
-    if (this.disposed) return;
-    this.stopWork();
-    const workTag = watchSignal(workable?.actionTag ?? createSignal<string | undefined>(undefined), stop => { this.stopWork = stop; });
     createEffect(() => {
-      workTag.get();
-      this.tagsChanged.get();
+      if (this.disposed) return;
+      tags.get();
       const tool = equippedActionEntity(this.hand.get());
       setMouseTargetEnabled(this.inst.transform.model, this.canInteract(tool));
     });
+    createEffect(() => { if (status.get() === 'removed') this.dispose(); });
   }
 
   private canInteract(tool: ComponentActionEntity | undefined): boolean {
@@ -64,7 +53,6 @@ export class ToolMouseTarget {
     if (this.disposed) return;
     this.disposed = true;
     setMouseTargetEnabled(this.inst.transform.model, false);
-    this.stopWork();
     this.cleanups.splice(0).forEach(stop => stop());
   }
 }

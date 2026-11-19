@@ -12,6 +12,8 @@ type SleeperHome = { isValid(): boolean; getPosition(): Vector3Like };
  */
 export interface SleeperInst {
   isValid(): boolean;
+  addTag(tag: string): void;
+  removeTag(tag: string): void;
   PushEvent(name: string, data?: unknown): void;
   IsNear?(home: SleeperHome, distance: number): boolean;
   /** EntityScript:StopBrain / RestartBrain, for an inst with a brain. */
@@ -76,6 +78,7 @@ export class Sleeper {
     this.cycle = getWatchWorldContent(WorldContentKey.Cycle, stop => this.cleanups.push(stop));
     const { scheduler } = this.cycle;
     this.inst = inst;
+    inst.addTag('sleeper');
     this.random = random;
     this.test = new ComponentTimer(scheduler, () => this.runTest());
     this.wearoff = new ComponentTimer(scheduler, () => this.WearOff());
@@ -94,8 +97,6 @@ export class Sleeper {
 
   SetResistance(resist: number): void { this.resistance = resist; }
   IsAsleep(): boolean { return this.state.peek(); }
-  /** The sleeper tag the component adds to its inst; AddSleepiness listeners test for it. */
-  HasTag(tag: string): boolean | undefined { return tag === 'sleeper' ? !this.disposed : undefined; }
   /** Deep sleep means the sleeper was drugged, and shouldn't wake up to chase targets. */
   IsInDeepSleep(): boolean { return this.IsAsleep() && this.sleepiness > 0; }
 
@@ -157,6 +158,12 @@ export class Sleeper {
     inst.RestartBrain?.('sleeper');
     inst.PushEvent('onwakeup');
     this.StartTesting();
+  }
+
+  /** Sleeper:OnRemoveFromEntity: the "sleeper" tag goes with the tasks. */
+  OnRemoveFromEntity(): void {
+    this.inst.removeTag('sleeper');
+    this.dispose();
   }
 
   dispose(): void {

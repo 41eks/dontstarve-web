@@ -107,7 +107,7 @@ export function caveEntrancePrefabs(world: CaveEntranceWorld): Readonly<Record<C
     minimapIcon: id === CAVE_ENTRANCE_ID ? 'cave_closed.png' : 'cave_open.png',
     onSpawned: inst => {
       const workable = inst.components.workable;
-      if (workable) new ToolMouseTarget(inst, workable, world.handEquipment);
+      if (workable) new ToolMouseTarget(inst, world.handEquipment);
     },
   });
   return { cave_entrance: definition(CAVE_ENTRANCE_ID), cave_entrance_open: definition(CAVE_ENTRANCE_OPEN_ID) };

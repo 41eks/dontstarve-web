@@ -78,7 +78,7 @@ it('chops a moon mushtree into a diggable stump, drops catalogued loot, and keep
   try {
     expect((await executeDebugCommand('c_spawn("mushtree_moon")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     const tree = s.find('mushtree_moon') as MushtreeInstance;
-    expect(tree.listTags()).toEqual(['blocker', 'cavedweller', 'mushtree', 'plant', 'shelter', 'tree', 'canlight']);
+    expect(tree.listTags()).toEqual(['blocker', 'cavedweller', 'mushtree', 'plant', 'shelter', 'tree', 'canlight', 'CHOP_workable']);
     expect(tree.minimap.icon).toBe('mushtree_moon.png');
     await prefabDisplay(tree.transform.model)!.artLoaded();
     const axe = s.inventory.entities.create({ itemId: 'axe', count: 1 });

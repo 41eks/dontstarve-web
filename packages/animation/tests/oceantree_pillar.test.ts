@@ -63,8 +63,8 @@ it('loads the imported save record with the clip, tags, bank and component value
   try {
     const inst = spawn(pillars[0]!);
     // MakeWaterObstaclePhysics's blocker, fn's AddTag in order, then the inspectable and burnable constructors' tags.
-    expect(inst.listTags()).toEqual(['blocker', 'shadecanopysmall', 'event_trigger', 'ignorewalkableplatforms', 'inspectable', 'canlight']);
-    expect(inst.hasTag('CHOP_workable')).toBe(true);
+    expect(inst.listTags()).toEqual(['blocker', 'shadecanopysmall', 'event_trigger', 'ignorewalkableplatforms', 'inspectable', 'canlight',
+      'CHOP_workable']);
     expect(inst.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [], billboard: true });
     expect(definitions.oceantree_pillar).toMatchObject({
       assets: { animationArchive: 'oceantree_pillar_small.zip', buildArchives: ['oceantree_pillar_small_build1.zip'], bank: 'oceantree_pillar_small' },

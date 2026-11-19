@@ -1,11 +1,19 @@
+import { isDerivedTags, type DerivedTags } from '../../componets/src/derivedTags';
+
 /** EntityScript:AddComponent / RemoveComponent. inst.components is the component registry. */
-type Owner = { readonly components: object; onRemove(remove: () => void): () => void; readonly isRemoved: boolean };
+type Owner = {
+  readonly components: object; onRemove(remove: () => void): () => void; readonly isRemoved: boolean;
+  /** The entity's tags read a component's derived tags while it is added; see componets/src/derivedTags.ts. */
+  addTagSource?(source: DerivedTags): () => void;
+};
 type Lifecycle = { dispose?(): void; OnRemoveEntity?(): void; OnRemoveFromEntity?(): void };
 export type ComponentName<Inst extends Owner> = keyof Inst['components'] & string;
 type Declared<Inst extends Owner, Name extends ComponentName<Inst>> = NonNullable<Inst['components'][Name]>;
 
 // Only the entity-removal subscription lives here; inst.components holds the components themselves.
 const removals = new WeakMap<Owner, Map<string, () => void>>();
+/** The derived-tag registrations RemoveComponent ends; entity removal leaves them, as the components keep no tags then. */
+const tagSources = new WeakMap<Owner, Map<string, () => void>>();
 /** Components the entity's removal already tore down; a later RemoveComponent only unregisters them. */
 const tornDown = new WeakSet<object>();
 
@@ -23,6 +31,12 @@ export function addComponent<Inst extends Owner, Name extends ComponentName<Inst
   if (existing) return existing as T;
   const component = new Component(inst, ...args);
   Reflect.set(inst.components, name, component);
+  if (isDerivedTags(component) && inst.addTagSource) {
+    const stopTags = inst.addTagSource(component);
+    let sources = tagSources.get(inst);
+    if (!sources) tagSources.set(inst, sources = new Map());
+    sources.set(name, stopTags);
+  }
   let callbacks = removals.get(inst);
   if (!callbacks) removals.set(inst, callbacks = new Map());
   const entityCallbacks = callbacks;
@@ -43,6 +57,8 @@ export function removeComponent<Inst extends Owner>(inst: Inst, name: ComponentN
   if (!registered || typeof registered !== 'object') return;
   const component: Lifecycle = registered;
   Reflect.deleteProperty(inst.components, name);
+  tagSources.get(inst)?.get(name)?.();
+  tagSources.get(inst)?.delete(name);
   const callbacks = removals.get(inst);
   callbacks?.get(name)?.();
   callbacks?.delete(name);

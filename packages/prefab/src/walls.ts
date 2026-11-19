@@ -303,7 +303,7 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
         // MakeObstaclePhysics(inst, .5); inst.Physics:SetDontRemoveOnSleep(true).
         physics: { make: (inst, radius) => MakeObstaclePhysics(inst, radius).SetDontRemoveOnSleep(true), radius: .5 },
         onSpawned: inst => {
-            new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
+            new ToolMouseTarget(inst, world.handEquipment);
         },
     };
 

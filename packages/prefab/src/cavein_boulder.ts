@@ -111,7 +111,7 @@ export function caveinBoulderPrefabs(world: CaveinBoulderWorld): Readonly<Record
       assets: { animationArchive: 'cavein_boulder.zip', buildArchives: ['swap_cavein_boulder.zip'], bank: 'cavein_boulder' },
       assetOptions: { instancedAnimations: 'all' },
       physics: { make: MakeHeavyObstaclePhysics, radius: PHYSICS_RADIUS },
-      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable!, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
     },
   };
 }

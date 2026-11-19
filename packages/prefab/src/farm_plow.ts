@@ -435,7 +435,7 @@ export function farmPrefabs(world: FarmWorld): Readonly<Record<string, PrefabEnt
       assets: soil('farm_plow.zip', 'farm_plow'),
       physics: { make: MakeObstaclePhysics, radius: .5 },
       onSpawned: plow => {
-        new ToolMouseTarget(plow, plow.components.workable, world.handEquipment);
+        new ToolMouseTarget(plow, world.handEquipment);
       },
     } satisfies PrefabEntityDefinition<FarmPlowInstance>,
     farm_soil: { fn: () => soil_fn(world), assets: { animationArchive: 'farm_soil.zip', buildArchives: ['farm_soil.zip'], bank: 'farm_soil' } },

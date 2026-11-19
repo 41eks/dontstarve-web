@@ -4,14 +4,14 @@ import * as THREE from 'three';
 import { withEntity } from './entityFixture';
 import { expect, it, vi } from 'vitest';
 import { batch } from '../../signals/src';
+import { addComponent } from '../../prefab/src/components';
 import { Workable } from '../../componets/src/workable';
 import { registerActionEntity } from '../../prefab/src/actionEntity';
 import { testItem } from './testInventory';
 
 function itemWorkable(workleft = 3) {
   const entity = testItem({ itemId: 'test_workable', count: 1 });
-  const work = entity.component('workable', () => new Workable(entity));
-  entity.components.workable = work;
+  const work = addComponent(entity, 'workable', Workable);
   work.SetWorkAction('HAMMER'); work.SetWorkLeft(workleft);
   return { entity, work };
 }
@@ -91,8 +91,7 @@ it('reads current action eligibility during a transaction and publishes only the
 it('preserves savestate rules and reacts to world removal, releasing memo dependencies on component disposal', () => {
   const source = itemWorkable(), ordinary = itemWorkable(), persistent = itemWorkable();
   const model = withEntity(new THREE.Group(), 'test_world'), entity = registerActionEntity(prefabInstance(model)!);
-  const work = new Workable(entity);
-  prefabInstance(model)!.components.workable = work;
+  const work = addComponent(prefabInstance(model)!, 'workable', Workable);
   const reads = vi.spyOn(entity.removal, 'get'), eligibility = vi.fn(), finish = vi.fn();
   const stop = work.canBeWorked.subscribe(eligibility);
   work.SetOnFinishCallback(finish);

@@ -102,7 +102,7 @@ export function rockAvocadoSaplingPrefabs(world: RockAvocadoSaplingWorld): Reado
         bank: 'rock_avo_fruit_master', hiddenSymbols: ['snow'] },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       minimapIcon: 'rock_avocado.png',
-      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
     },
   };
 }

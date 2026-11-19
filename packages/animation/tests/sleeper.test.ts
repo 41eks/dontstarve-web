@@ -10,7 +10,7 @@ it('reacts to day/night after effects settle, preserves other checks and cancels
   const components = { combat: { target: undefined as object | undefined }, locomotor: { Stop: vi.fn() } };
   const PushEvent = vi.fn();
   let busy = true;
-  const sleeper = new Sleeper({ isValid: () => true, PushEvent, components,
+  const sleeper = new Sleeper({ isValid: () => true, PushEvent, components, addTag() {}, removeTag() {},
     sg: { hasStateTag: tag => tag === 'busy' && busy } }, (key, register) => getWatchWorldContent(key, register, sources), () => .5);
 
   cycle.set('night');
@@ -70,7 +70,7 @@ it('nocturnal sleepers own independent cycle watches and wake at dusk or night',
     requests(key); return getWatchWorldContent(key, register, sources);
   };
   const events = [vi.fn(), vi.fn()];
-  const sleepers = events.map(PushEvent => new Sleeper({ isValid: () => true, PushEvent, components: {} }, watch, () => .5));
+  const sleepers = events.map(PushEvent => new Sleeper({ isValid: () => true, PushEvent, components: {}, addTag() {}, removeTag() {} }, watch, () => .5));
   sleepers.forEach(sleeper => sleeper.SetNocturnal(true));
   expect(requests).toHaveBeenCalledTimes(2);
   try {

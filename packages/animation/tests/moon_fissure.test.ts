@@ -51,10 +51,8 @@ it('loads a save record with the clip, tags, bank and component values moon_fiss
     const saved = record('saved-fissure', 2);
     const inst = spawn(saved);
     // AddTag, then the inspectable and sanityaura constructors and repairable's repairmaterial setter, in fn's order.
-    expect(inst.listTags()).toEqual(['antlion_sinkhole_blocker', 'inspectable', 'sanityaura', 'repairable_moon_altar']);
-    // workleft 0 of maxwork 1: no CHOP_workable, and repairable's constructor sets workrepairable.
-    expect(inst.hasTag('CHOP_workable')).toBe(false);
-    expect(inst.hasTag('workrepairable')).toBe(true);
+    // workleft 0 of maxwork 1: no CHOP_workable, and repairable derives workrepairable.
+    expect(inst.listTags()).toEqual(['antlion_sinkhole_blocker', 'inspectable', 'sanityaura', 'repairable_moon_altar', 'workrepairable']);
     expect(inst.sprite.sprite.peek()).toMatchObject({ clip: { name: 'crack_idle', loop: true }, queue: [], billboard: true, depthOffset: true });
     expect(definitions.moon_fissure).toMatchObject({ assets: { animationArchive: 'moon_fissure.zip', buildArchives: ['moon_fissure.zip'], bank: 'moon_fissure' } });
     expect(inst.getPhysicsRadius()).toBeCloseTo(.4 * 3);

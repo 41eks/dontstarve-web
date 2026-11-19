@@ -232,7 +232,7 @@ export function archivePropsPrefabs(world: ArchivePropsWorld): Readonly<Record<A
         ['full', 'med', 'low'].map(state => `idle_${state}_${index + 1}`)).flat() },
       physics: obstacle,
       onSpawned: inst => {
-        new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
+        new ToolMouseTarget(inst, world.handEquipment);
       },
     },
     [ARCHIVE_RUNE_STATUE_ID]: {

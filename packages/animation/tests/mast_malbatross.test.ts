@@ -59,8 +59,7 @@ it('loads a saved mast with the clips, tags, bank and component values mast.lua 
     // fn_pre's MakeObstaclePhysics and AddTag, then the burnable (canlight, ignorefuel), inspectable, workable, upgradeable
     // and mast tags; onload's SailFurled turned sailraised (SetReveseDeploy) into saillowered.
     expect(inst.listTags()).toEqual(['blocker', 'structure', 'mast', 'rotatableobject', 'canlight', 'burnableignorefuel',
-      'inspectable', 'mast_upgradeable', 'saillowered']);
-    expect(inst.hasTag('HAMMER_workable')).toBe(true);
+      'inspectable', 'mast_upgradeable', 'saillowered', 'HAMMER_workable']);
     // onload: is_sail_raised == not inverted, so the inverted mast's SailFurled plays knot_tie, then loops open_loop.
     // knot_tie is requested before the art loads, so it settles (display AGENTS.md residency) into the queued loop.
     expect(clip(inst)).toMatchObject({ name: 'open_loop', loop: true });

@@ -2,7 +2,7 @@ import { MiniMapState } from '../../map/src/minimapState';
 import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
 import { type Object3D, type Vector3, type Vector3Like } from 'three';
-import { createSignal, readonlySignal, type GameTimeScheduler, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
+import { createMemo, createSignal, readonlySignal, type GameTimeScheduler, type Memo, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
 import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
@@ -14,6 +14,7 @@ import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
 import type { PlacementSaveRecord, PrefabSaveRecord } from './saveRecord';
 import type { EventData, EventDataArgs } from '../../componets/src/entityEvents';
+import type { DerivedTags } from '../../componets/src/derivedTags';
 import { newItemEntityId } from '../../inventory/src/entityId';
 import { registerActionEntity } from './actionEntity';
 import { watchTileActivity } from './tileActivity';
@@ -414,9 +415,21 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.brain = this.brainfn();
     if (!this.brainstopped) this.brain.Start();
   }
-  private readonly tags = new Set<string>();
-  private tagView?: readonly string[];
-  private readonly tagListeners = new Set<(tag: string) => void>();
+  /** inst:AddTag / RemoveTag: the tags the entity holds itself. */
+  private readonly ownTags = createSignal<ReadonlySet<string>>(new Set());
+  /** Components whose state decides some of the entity's tags; addComponent registers them. */
+  private readonly tagSources = createSignal<readonly DerivedTags[]>([]);
+  /**
+   * Every tag of the entity, its own and its components', for subscribers. Reads go through hasTag, which also sees
+   * changes inside a batch before this memo settles.
+   */
+  readonly tags: Memo<ReadonlySet<string>> = createMemo(() => {
+    const own = this.ownTags.get(), sources = this.tagSources.get();
+    if (!sources.length) return own;
+    const tags = new Set(own);
+    for (const source of sources) for (const tag of source.derivedTags.get()) tags.add(tag);
+    return tags;
+  });
   private readonly removalHandlers = new Set<() => void>();
   /** inst.event_listeners: who listens for this entity's events. Events belong to the logical entity, not to its model. */
   private event_listeners?: ListenerTable;
@@ -630,37 +643,37 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     return radius === undefined ? fallback : radius * WORLD_SCALE;
   }
 
-  /** inst:HasTag / AddTag / RemoveTag: the instance is the entity's only tag owner. */
+  /** inst:HasTag: the entity's own tags and those its components derive from their current state. */
   hasTag(tag: string): boolean {
-    for (const component of Object.values(this.components) as { HasTag?(tag: string): boolean | undefined }[]) {
-      const value = component?.HasTag?.(tag);
-      if (value !== undefined) return value;
-    }
-    return this.tags.has(tag);
+    return this.ownTags.peek().has(tag) || this.tagSources.peek().some(source => source.currentTags().includes(tag));
   }
   addTag(tag: string): void {
-    if (this.tags.has(tag)) return;
-    this.tags.add(tag);
-    this.tagsChanged(tag);
+    const tags = this.ownTags.peek();
+    if (!tags.has(tag)) this.ownTags.set(new Set(tags).add(tag));
   }
-  removeTag(tag: string): void { if (this.tags.delete(tag)) this.tagsChanged(tag); }
+  removeTag(tag: string): void {
+    const tags = this.ownTags.peek();
+    if (!tags.has(tag)) return;
+    const next = new Set(tags);
+    next.delete(tag);
+    this.ownTags.set(next);
+  }
   /** EntityScript:AddOrRemoveTag. */
   AddOrRemoveTag(tag: string, condition: boolean): void { if (condition) this.addTag(tag); else this.removeTag(tag); }
   /** EntityScript:HasTags (HasAllTags): every one of the tags. */
   HasTags(tags: readonly string[]): boolean { return tags.every(tag => this.hasTag(tag)); }
   /** EntityScript:HasOneOfTags (HasAnyTag): at least one of the tags. */
   HasOneOfTags(tags: readonly string[]): boolean { return tags.some(tag => this.hasTag(tag)); }
-  /** The current tags as a frozen list. */
-  listTags(): readonly string[] { return this.tagView ??= Object.freeze([...this.tags]); }
-  /** Called with each added or removed tag, e.g. to refresh the placement index. */
-  onTagChanged(listener: (tag: string) => void): () => void {
-    this.tagListeners.add(listener);
-    return () => { this.tagListeners.delete(listener); };
+  /** The current tags, own ones first in the order they were added, then the components' derived ones. */
+  listTags(): readonly string[] {
+    const tags = new Set(this.ownTags.peek());
+    for (const source of this.tagSources.peek()) for (const tag of source.currentTags()) tags.add(tag);
+    return Object.freeze([...tags]);
   }
-  private tagsChanged(tag: string): void {
-    this.tagView = undefined;
-    for (const listener of this.tagListeners) listener(tag);
-    this.PushEvent('tagchanged', tag);
+  /** addComponent's registration of a component that derives tags, until the returned stop. */
+  addTagSource(source: DerivedTags): () => void {
+    this.tagSources.set([...this.tagSources.peek(), source]);
+    return () => { this.tagSources.set(this.tagSources.peek().filter(other => other !== source)); };
   }
 
   /** Whether the entity's tile is in the ticking area; the entity is awake while it is and the entity is not in limbo. */
@@ -679,7 +692,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   /** EntityScript:RemoveFromScene: INLIMBO, hidden with its art and minimap icon, then `enterlimbo`. */
   RemoveFromScene(): void {
-    if (this.isRemoved || this.tags.has('INLIMBO')) return;
+    if (this.isRemoved || this.ownTags.peek().has('INLIMBO')) return;
     this.addTag('INLIMBO');
     this.minimap.SetEnabled(false);
     this.syncAwake();
@@ -690,7 +703,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   /** EntityScript:ReturnToScene: shown again where its tile lets it wake, then `exitlimbo`. */
   ReturnToScene(): void {
-    if (this.isRemoved || !this.tags.has('INLIMBO')) return;
+    if (this.isRemoved || !this.ownTags.peek().has('INLIMBO')) return;
     this.removeTag('INLIMBO');
     this.minimap.SetEnabled(true);
     this.syncAwake();
@@ -701,7 +714,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   private syncAwake(): void {
     if (this.lifecycle.peek() === 'removed') return;
-    const awake = this.tileAwake && !this.tags.has('INLIMBO');
+    const awake = this.tileAwake && !this.ownTags.peek().has('INLIMBO');
     this.sprite.setAwake(awake);
     this.lifecycle.set(awake ? 'active' : 'asleep');
     // After the entity's own sleep and wake handlers, as OnEntitySleep / OnEntityWake order them.
@@ -762,6 +775,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.lifecycle.set('removed');
     this.physicsBinding?.dispose();
     this.transform.dispose();
+    this.tags.dispose();
   }
 
   /** Entity-owned components and logical controllers stop when the inst is permanently removed. */
@@ -1056,7 +1070,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   private index(instance: Instance): () => void {
     this.grid.insert(instance);
     const stopMoved = instance.transform.onMoved(() => this.grid.move(instance));
-    const stopTags = instance.onTagChanged(this.changed);
+    const stopTags = instance.tags.subscribe(this.changed);
     this.changed();
     return () => { stopMoved(); stopTags(); this.grid.remove(instance); this.changed(); };
   }

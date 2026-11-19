@@ -260,7 +260,6 @@ function make_stump(inst: MoonTreeInstance): void {
   inst.addTag('stump');
   workable.SetWorkAction('DIG');
   workable.SetWorkLeft(1);
-  inst.mouseTarget?.setWorkable(inst.components.workable);
   workable.SetOnFinishCallback(dig_up_stump);
   bindFire(inst);
 }
@@ -332,7 +331,7 @@ function on_load(inst: MoonTreeInstance, data: PlacementSaveRecord['components']
 
 function onSpawned(inst: MoonTreeInstance): void {
   inst.components.growable.OnEntitySleep();
-  inst.mouseTarget = new ToolMouseTarget(inst, inst.components.workable, inst.world.handEquipment);
+  inst.mouseTarget = new ToolMouseTarget(inst, inst.world.handEquipment);
 }
 
 /** moonbutterfly's planted form: a timer until it becomes a short moon tree, or one DIG for twigs. */
@@ -397,7 +396,7 @@ export function moonTreePrefabs(world: MoonTreeWorld, random: () => number = Mat
       fn: position => new MoonButterflySaplingInstance(world, position, random),
       assets: { animationArchive: 'baby_moon_tree.zip', buildArchives: ['baby_moon_tree.zip'], bank: 'baby_moon_tree' },
       assetOptions: { staticBillboard: true, instancedAnimations: 'all' },
-      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
     },
   };
 }

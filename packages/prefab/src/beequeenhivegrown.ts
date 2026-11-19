@@ -110,7 +110,7 @@ export function beeQueenHivePrefabs(world: BeeQueenHiveWorld): Readonly<Record<t
       physics: { make: MakeObstaclePhysics, radius: 1.9 },
       minimapIcon: 'beequeenhivegrown.png',
       onSpawned: inst => {
-        new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
+        new ToolMouseTarget(inst, world.handEquipment);
       },
     },
   };

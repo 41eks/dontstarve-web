@@ -76,10 +76,9 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
     created.push(instance);
     display.mount(scene);
     instance.copyPosition(position);
-    const workable = new Workable(instance);
+    const workable = addComponent(instance, 'workable', Workable);
     workable.SetWorkAction(action);
     workable.SetWorkLeft(3);
-    instance.components.workable = workable;
     const entity = registerActionEntity(instance);
     pick.mockReturnValue({ object: display.model } as unknown as THREE.Intersection);
     return { instance, display, entity, workable };

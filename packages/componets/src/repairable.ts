@@ -1,4 +1,5 @@
-import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
+import { createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
+import { NO_TAGS, type DerivedTags } from './derivedTags';
 import type { WorkInst, Workable } from './workable';
 import type { Repairer } from './repairer';
 import type { Health } from './health';
@@ -8,11 +9,19 @@ export interface RepairItem {
   remove?(): boolean;
 }
 
+const HEALTH_TAGS = Object.freeze(['healthrepairable']), WORK_TAGS = Object.freeze(['workrepairable']);
+const BOTH_TAGS = Object.freeze(['healthrepairable', 'workrepairable']);
+/** Shared arrays, so a health change that keeps the same tags notifies nobody. */
+const repairTags = (health: boolean, work: boolean): readonly string[] =>
+  health && work ? BOTH_TAGS : health ? HEALTH_TAGS : work ? WORK_TAGS : NO_TAGS;
+
 /** repairable.lua's work and health branches. The inventory consumes one repair item. */
-export class Repairable {
+export class Repairable implements DerivedTags {
   private readonly disposed = createSignal(false);
   private readonly repairableMemo;
   readonly workrepairable;
+  private readonly derivedTagsMemo: Memo<readonly string[]>;
+  readonly derivedTags: ReadonlySignal<readonly string[]>;
   noannounce = false;
   /** repairable.lua onrepaired(inst, doer, repair_item); the inst is the callback's own closure. */
   onrepaired?: (doer: unknown) => void;
@@ -26,11 +35,15 @@ export class Repairable {
     this.repairableMemo = createMemo(() => !this.disposed.get() && !!workable && workable.enabled.get() && workable.maxwork.get() > 0
       && workable.workleft.get() < workable.maxwork.get());
     this.workrepairable = readonlySignal(this.repairableMemo);
+    const health = this.health;
+    this.derivedTagsMemo = createMemo(() => repairTags(
+      !this.disposed.get() && !!health && health.current.get() < health.maxWithPenalty.get(), this.repairableMemo.get()));
+    this.derivedTags = readonlySignal(this.derivedTagsMemo);
     inst.addTag(`repairable_${repairmaterial}`);
   }
-  HasTag(tag: string): boolean | undefined {
-    if (tag === 'healthrepairable') return !this.disposed.peek() && !!this.health?.IsHurt();
-    return tag === 'workrepairable' ? !this.disposed.peek() && this.CanRepairWork() : undefined;
+  /** onhealthrepairable / onworkrepairable, which health.lua and workable.lua set from their own state. */
+  currentTags(): readonly string[] {
+    return repairTags(!this.disposed.peek() && !!this.health?.IsHurt(), !this.disposed.peek() && this.CanRepairWork());
   }
   private CanRepairWork(): boolean {
     return !!this.workable && this.workable.enabled.peek() && this.workable.maxwork.peek() > 0
@@ -56,6 +69,7 @@ export class Repairable {
     if (this.disposed.peek()) return;
     this.disposed.set(true);
     this.inst.removeTag(`repairable_${this.repairmaterial}`);
+    this.derivedTagsMemo.dispose();
     this.repairableMemo.dispose();
     this.onrepaired = undefined;
   }

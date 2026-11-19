@@ -1,4 +1,5 @@
 import type { LuaFn } from './luaFn';
+import { NO_TAGS, type DerivedTags } from './derivedTags';
 import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { Vector3 } from 'three';
 
@@ -24,7 +25,6 @@ export interface Worker {
   components?: { inventory?: { GiveItem?(entity: unknown, source?: { x: number; y: number; z: number }): boolean } };
 }
 
-const WORKABLE_TAGS = new Set(['NET_workable', 'HAMMER_workable', 'MINE_workable', 'DIG_workable', 'CHOP_workable']);
 const canWork = (disposed: boolean, removed: boolean, enabled: boolean, workleft: number): boolean =>
   !disposed && !removed && enabled && workleft > 0;
 const workTag = (canBeWorked: boolean, action: WorkAction | undefined): string | undefined =>
@@ -36,7 +36,7 @@ export interface WorkableSaveData { workleft?: number; maxwork?: number }
 export type WorkableOnLoadFn<Inst> = LuaFn<[inst: Inst, data: WorkableSaveData]>;
 
 /** components/workable.lua: signals own work state; the action tag is a pure derived view. */
-export class Workable<Inst extends WorkableInst = WorkableInst> {
+export class Workable<Inst extends WorkableInst = WorkableInst> implements DerivedTags {
   private readonly actionState = createSignal<WorkAction | undefined>('CHOP');
   private readonly workleftState = createSignal(10);
   private readonly maxworkState = createSignal(-1);
@@ -52,6 +52,9 @@ export class Workable<Inst extends WorkableInst = WorkableInst> {
   private readonly actionTagMemo: Memo<string | undefined>;
   readonly canBeWorked: ReadonlySignal<boolean>;
   readonly actionTag: ReadonlySignal<string | undefined>;
+  private readonly derivedTagsMemo: Memo<readonly string[]>;
+  /** onworkable / onaction's `<ACTION>_workable`, while there is work left and the workable is enabled. */
+  readonly derivedTags: ReadonlySignal<readonly string[]>;
   private onwork?: WorkableOnWorkFn<Inst>;
   private onfinish?: WorkableOnFinishFn<Inst>;
   private onload?: WorkableOnLoadFn<Inst>;
@@ -67,6 +70,8 @@ export class Workable<Inst extends WorkableInst = WorkableInst> {
     this.actionTagMemo = createMemo(() => workTag(this.canBeWorkedMemo.get(), this.actionState.get()));
     this.canBeWorked = readonlySignal(this.canBeWorkedMemo);
     this.actionTag = readonlySignal(this.actionTagMemo);
+    this.derivedTagsMemo = createMemo(() => { const tag = this.actionTagMemo.get(); return tag ? [tag] : NO_TAGS; });
+    this.derivedTags = readonlySignal(this.derivedTagsMemo);
   }
 
   SetWorkAction(action: WorkAction | undefined): void {
@@ -91,8 +96,9 @@ export class Workable<Inst extends WorkableInst = WorkableInst> {
   CanBeWorked(): boolean {
     return canWork(this.disposedState.peek(), this.inst.removal.peek(), this.enabledState.peek(), this.workleftState.peek());
   }
-  HasTag(tag: string): boolean | undefined {
-    return WORKABLE_TAGS.has(tag) ? workTag(this.CanBeWorked(), this.actionState.peek()) === tag : undefined;
+  currentTags(): readonly string[] {
+    const tag = workTag(this.CanBeWorked(), this.actionState.peek());
+    return tag ? [tag] : NO_TAGS;
   }
   SetOnWorkCallback(fn: WorkableOnWorkFn<Inst> | undefined): void { this.onwork = fn; }
   SetOnFinishCallback(fn: WorkableOnFinishFn<Inst> | undefined): void { this.onfinish = fn; }
@@ -131,6 +137,7 @@ export class Workable<Inst extends WorkableInst = WorkableInst> {
   dispose(): void {
     if (this.disposedState.peek()) return;
     this.disposedState.set(true);
+    this.derivedTagsMemo.dispose();
     this.actionTagMemo.dispose();
     this.canBeWorkedMemo.dispose();
     this.onwork = undefined;

@@ -89,7 +89,7 @@ export function marbleBeanSaplingPrefabs(world: MarbleBeanSaplingWorld): Readonl
       fn: position => new MarbleBeanSaplingInstance(position, world),
       assets: { animationArchive: 'marblebean.zip', buildArchives: ['marblebean.zip'], bank: 'marblebean' },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
-      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
     },
   };
 }

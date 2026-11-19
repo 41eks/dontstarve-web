@@ -94,7 +94,7 @@ export function MakeBuildingContainer(inst: PrefabInstance, prefab: StorageBuild
 function MakeBuildingTargets(inst: PrefabInstance, world: Pick<PrefabWorldContext, 'handEquipment'>): void {
   if (!inst.components.workable) return;
   // A building that does something without a tool keeps its own actions under the mouse while no tool is held.
-  new ToolMouseTarget(inst, inst.components.workable, world.handEquipment, {
+  new ToolMouseTarget(inst, world.handEquipment, {
     canInteractWithoutTool: () => !inst.hasTag('burnt') && !!(inst.components.container || inst.components.trader || inst.components.fueled
       || inst.components.prototyper || inst.components.occupiable),
   });

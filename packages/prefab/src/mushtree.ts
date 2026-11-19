@@ -394,7 +394,7 @@ export function mushtreePrefabs(world: MushtreeWorld): Readonly<Record<MushtreeS
         if (inst.isRemoved) return;
         inst.startGrowth();
         if (stump) inst.makeStump();
-        new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
+        new ToolMouseTarget(inst, world.handEquipment);
       },
     });
     prefabs[id] = tree(false);

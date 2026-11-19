@@ -182,7 +182,7 @@ export function molehillPrefabs(world: MoleHabitat): Readonly<Record<typeof MOLE
       assets: { animationArchive: 'mole_basic.zip', buildArchives: ['mole_build.zip'], bank: 'mole' },
       onSpawned: inst => {
         inst.OnInit();
-        new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
+        new ToolMouseTarget(inst, world.handEquipment);
       },
     },
   };

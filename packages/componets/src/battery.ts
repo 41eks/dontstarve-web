@@ -6,17 +6,21 @@ export type BatteryCanBeUsedFn<Inst, User> = LuaFn<[inst: Inst, user: User | und
 export type BatteryOnUsedFn<Inst, User> = LuaFn<[inst: Inst, user: User | undefined, mult?: number]>;
 export type BatteryResolvePartialChargeMultFn<Inst, User> = LuaFn<[inst: Inst, user: User | undefined, mult: number], number | undefined>;
 
+export interface BatteryInst { addTag(tag: string): void; removeTag(tag: string): void }
+
 /** components/battery.lua: a charged structure that tools and machines can draw power from. */
-export class Battery<Inst = unknown, User = unknown> {
+export class Battery<Inst extends BatteryInst = BatteryInst, User = unknown> {
     private canbeused?: BatteryCanBeUsedFn<Inst, User>;
     private onused?: BatteryOnUsedFn<Inst, User>;
     private resolvepartialchargemult?: BatteryResolvePartialChargeMultFn<Inst, User>;
 
     private readonly inst: Inst;
-    constructor(inst: Inst) { this.inst = inst; }
+    constructor(inst: Inst) {
+        this.inst = inst;
+        inst.addTag('battery');
+    }
 
-    /** AddTag("battery") in the constructor, RemoveTag in OnRemoveFromEntity. */
-    HasTag(tag: string): true | undefined { return tag === 'battery' ? true : undefined; }
+    OnRemoveFromEntity(): void { this.inst.removeTag('battery'); }
 
     SetCanBeUsedFn(fn: BatteryCanBeUsedFn<Inst, User> | undefined): void { this.canbeused = fn; }
     SetOnUsedFn(fn: BatteryOnUsedFn<Inst, User> | undefined): void { this.onused = fn; }

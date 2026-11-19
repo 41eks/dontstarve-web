@@ -7,6 +7,7 @@ import { SpriteState } from '../../display/src';
 import { ItemEntity } from '../../inventory/src';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { Workable } from '../../componets/src/workable';
+import { addComponent, removeComponent } from '../../prefab/src/components';
 import { Burnable } from '../../componets/src/burnable';
 import { actionEntities, registerActionEntity, disposeActionEntity, findActionEntity } from '../../prefab/src/actionEntity';
 import { PrefabInstance, bindInstance, prefabInstance } from '../../prefab/src/prefabInstance';
@@ -28,9 +29,9 @@ function setup(options?: ToolMouseTargetOptions) {
   const instance = new PrefabInstance('evergreen', new SpriteState({ name: 'idle' }), new Transform(undefined, tree));
   bindInstance(tree, instance); instance.addTag('tree');
   const target = registerActionEntity(prefabInstance(tree)!); registerActionEntity(prefabInstance(withEntity(back, 'log'))!);
-  const workable = new Workable(target); target.components.workable = workable;
+  const workable = addComponent(target, 'workable', Workable);
   const burnable = new Burnable(target); target.components.burnable = burnable;
-  const binding = new ToolMouseTarget(instance, workable, hand, options);
+  const binding = new ToolMouseTarget(instance, hand, options);
   const camera = new THREE.PerspectiveCamera(60, 1, .1, 100);
   camera.position.z = 10; camera.updateMatrixWorld();
   const renderer = { domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) } } as unknown as THREE.WebGLRenderer;
@@ -46,7 +47,7 @@ function setup(options?: ToolMouseTargetOptions) {
   };
   return { hand, tree, back, target, instance, workable, burnable, binding, pick, equip,
     dispose() {
-      binding.dispose(); target.components.workable?.dispose(); burnable.dispose();
+      binding.dispose(); burnable.dispose();
       instance.remove(); disposeActionEntity(findActionEntity(tree)); disposeActionEntity(findActionEntity(back)); picker.dispose();
       for (const tool of tools) tool.destroy(); geometry.dispose(); material.dispose();
     } };
@@ -65,9 +66,8 @@ it('skips tree geometry with empty hands, follows CHOP to DIG replacement, and p
     // The source swaps workables when a standing tree becomes a stump.
     s.workable.SetWorkLeft(1);
     s.workable.SetOnFinishCallback(() => {
-      s.workable.dispose(); s.instance.addTag('stump');
-      const dig = new Workable(s.target); dig.SetWorkAction('DIG'); dig.SetWorkLeft(1);
-      s.target.components.workable = dig; s.binding.setWorkable(dig);
+      removeComponent(s.target, 'workable'); s.instance.addTag('stump');
+      const dig = addComponent(s.target, 'workable', Workable); dig.SetWorkAction('DIG'); dig.SetWorkLeft(1);
     });
     s.workable.WorkedBy(testPlayer(), 1); await flush();
     expect(s.pick()).toBe(s.back);

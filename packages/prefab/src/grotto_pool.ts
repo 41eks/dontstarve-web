@@ -310,7 +310,7 @@ export function grottoPoolPrefabs(world: GrottoPoolWorld): Readonly<Record<Grott
     fn: position => new GrottoGlassInstance(world, prefab, position),
     assets: PROP_ASSETS, assetOptions: INSTANCED,
     onSpawned: inst => {
-      new ToolMouseTarget(inst, inst.components.workable!, world.handEquipment);
+      new ToolMouseTarget(inst, world.handEquipment);
     },
   });
   return {

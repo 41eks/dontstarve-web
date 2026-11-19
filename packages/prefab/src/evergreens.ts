@@ -228,7 +228,6 @@ function make_stump(inst: EvergreenInstance): void {
   removeComponent(inst, 'workable');
   const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
-  inst.mouseTarget?.setWorkable(inst.components.workable);
   workable.SetOnFinishCallback(dig_up_stump);
   bindFire(inst);
 }
@@ -296,7 +295,7 @@ function onload(inst: EvergreenInstance, data: PlacementSaveRecord['components']
 function onSpawned(inst: EvergreenInstance): void {
   inst.sprite.start(rest(inst));
   inst.components.growable.OnEntitySleep();
-  inst.mouseTarget = new ToolMouseTarget(inst, inst.components.workable, inst.world.handEquipment);
+  inst.mouseTarget = new ToolMouseTarget(inst, inst.world.handEquipment);
 }
 
 /** evergreens.lua normal build: one bank for every stage; its clips are split across two anim archives. */

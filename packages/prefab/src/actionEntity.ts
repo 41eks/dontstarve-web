@@ -26,7 +26,7 @@ export function registerActionEntity<Instance extends ActionEntity>(instance: In
   const status = watchSignal(inst.status, stop => cleanups.push(stop));
   createEffect(() => mouse.setAwake(status.get() === 'active'));
   cleanups.push(registerPlacementEntity(inst));
-  cleanups.push(inst.onTagChanged(() => { syncPlacementEntity(model); mouse.refresh(); }));
+  cleanups.push(inst.tags.subscribe(() => { syncPlacementEntity(model); mouse.refresh(); }));
   const stopRemoval = inst.removal.subscribe(removed => { if (removed) disposeActionEntity(inst); });
   return instance;
 }

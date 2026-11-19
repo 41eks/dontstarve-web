@@ -96,7 +96,7 @@ export function chesspiecePrefabs(world: ChesspieceWorld): Readonly<Record<typeo
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       physics: { make: MakeHeavyObstaclePhysics, radius: PHYSICS_RADIUS },
       onSpawned: inst => {
-        new ToolMouseTarget(inst, inst.components.workable, world.handEquipment);
+        new ToolMouseTarget(inst, world.handEquipment);
       },
     },
   };

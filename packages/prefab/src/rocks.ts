@@ -181,7 +181,7 @@ export function rockPrefabs(world: RockShellWorld): Readonly<Record<RockPrefabId
       assetOptions: { instancedAnimations: 'all', colour: [1, 1, 1] },
       physics: { make: MakeObstaclePhysics, radius: 1 },
       minimapIcon: minimapicon,
-      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable!, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
     };
   }
   return prefabs;
@@ -233,7 +233,7 @@ export function moonglassRockPrefabs(world: MoonglassRockWorld): Readonly<Record
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       physics: { make: MakeObstaclePhysics, radius: 1 },
       minimapIcon: 'rock_moonglass.png',
-      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable!, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
     },
   };
 }

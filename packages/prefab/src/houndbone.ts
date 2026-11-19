@@ -74,7 +74,7 @@ export function houndbonePrefabs(world: HoundboneWorld): Readonly<Record<typeof 
       fn: position => new HoundboneInstance(world, position),
       assets: { animationArchive: 'hound_base.zip', buildArchives: ['hound_base.zip'], bank: 'houndbase' },
       assetOptions: { instancedAnimations: 'all' },
-      onSpawned: inst => { new ToolMouseTarget(inst, inst.components.workable, world.handEquipment); },
+      onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
     },
   };
 }
