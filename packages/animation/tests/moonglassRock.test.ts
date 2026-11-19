@@ -49,7 +49,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('restores a saved rock with its Lua clip, tags, type and bank, without rerolling the constructor type', async () => {
   const s = setup();
-  // math.random(4) rolls type 4, then OnLoad replaces it before any art is requested.
+  // math.random(4) rolls type 4, then OnLoad's set_moonglass_type replaces it before the display starts.
   vi.spyOn(Math, 'random').mockReturnValue(.99);
   try {
     const rock = s.spawn(new THREE.Vector3(3, 0, 6), 2);
@@ -58,8 +58,9 @@ it('restores a saved rock with its Lua clip, tags, type and bank, without reroll
     expect(rock.rock_type).toBe(2);
     for (const tag of ['boulder', 'moonglass', 'SnowCovered', 'inspectable', 'MINE_workable']) expect(rock.hasTag(tag)).toBe(true);
     await prefabDisplay(rock.transform.model)!.artLoaded();
+    // set_moonglass_type's SetBank / SetBuild: the display draws type 2, from the prefab's four ANIM assets.
+    expect(rock.sprite.sprite.peek().source).toMatchObject({ bank: 'moonglass_rock2', buildArchive: 'moonglass_rock2.zip' });
     expect(requested()).toContain('moonglass_rock2.zip');
-    expect(requested()).not.toContain('moonglass_rock4.zip');
     expect(rock.sprite.currentAnimation).toBe('full');
   } finally { s.dispose(); }
 });

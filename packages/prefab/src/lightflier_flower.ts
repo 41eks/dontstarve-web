@@ -1,6 +1,6 @@
 import type { EntityEventData } from '../../componets/src/entityEvents';
 import type * as THREE from 'three';
-import { SpriteState } from '@dontstarve-web/display';
+import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { createEffect, watchSignal, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { Timer } from '../../componets/src/timer';
 import { ChildSpawner, type ChildSpawnerSave } from '../../componets/src/childspawner';
@@ -73,15 +73,25 @@ export class LightFlierFlowerInstance extends PrefabInstance {
   _inlight = false;
   /** Saved children outside that OnLoadPostPass has not found yet. */
   _pendingchildren: string[] = [];
-  constructor(world: LightFlierFlowerWorld) {
+  constructor(world: LightFlierFlowerWorld, art: SpriteResources['archives']) {
     super(LIGHTFLIER_FLOWER_ID, new SpriteState({ name: 'off', held: true, billboard: true }));
     this.world = world;
+    this.AnimState.DeclareAnimationAssets(LIGHTFLIER_FLOWER_ANIMATION_ARCHIVES, art);
     this.plantname = random(world) < .5 ? 'single' : 'springy';
+    SetPlantArt(this);
     this._lightstart = world.scheduler.now - this._lighttime;
   }
 }
 
 const random = (world: LightFlierFlowerWorld) => (world.random ?? Math.random)();
+/** lightflier_flower.lua assets: the two plantnames' ANIM archives. */
+const LIGHTFLIER_FLOWER_ANIMATION_ARCHIVES = ['bulb_plant_single.zip', 'bulb_plant_springy.zip'];
+
+/** single / onload_single: AnimState:SetBank / SetBuild("bulb_plant"..inst.plantname). */
+function SetPlantArt(inst: LightFlierFlowerInstance): void {
+  inst.AnimState.SetBank(`bulb_plant_${inst.plantname}`);
+  inst.AnimState.SetBuild(`bulb_plant_${inst.plantname}.zip`);
+}
 /** math.random(LIGHT_MIN_TIME, LIGHT_MAX_TIME). */
 const tweenTime = (inst: LightFlierFlowerInstance) => LIGHT_MIN_TIME + Math.min(LIGHT_MAX_TIME - LIGHT_MIN_TIME, Math.floor(random(inst.world) * 5));
 
@@ -259,6 +269,7 @@ function OnLoad(flower: LightFlierFlowerInstance, data: EntityPersistData): void
   if (!saved) return;
   const { pickable, childspawner, timer } = flower.components;
   flower.plantname = saved.variant;
+  SetPlantArt(flower);
   pickable.OnLoad(saved);
   flower.light_state = saved.lightState;
   childspawner.OnLoad(saved.childspawner);
@@ -281,8 +292,8 @@ function OnLoad(flower: LightFlierFlowerInstance, data: EntityPersistData): void
   if (!pickable.canBePicked && outside.length >= TARGET_NUM_CHILDREN_OUTSIDE) StartCallForLightflierTask(flower);
 }
 
-function single(world: LightFlierFlowerWorld): LightFlierFlowerInstance {
-  const inst = new LightFlierFlowerInstance(world);
+function single(world: LightFlierFlowerWorld, art: SpriteResources['archives']): LightFlierFlowerInstance {
+  const inst = new LightFlierFlowerInstance(world, art);
   inst.BindScheduler(world.scheduler);
   inst.AddSoundEmitter();
   inst.addTag('plant');
@@ -324,8 +335,9 @@ function single(world: LightFlierFlowerWorld): LightFlierFlowerInstance {
 export function lightflierFlowerPrefabs(world: LightFlierFlowerWorld): Readonly<Record<typeof LIGHTFLIER_FLOWER_ID, PrefabEntityDefinition<LightFlierFlowerInstance>>> {
   return {
     [LIGHTFLIER_FLOWER_ID]: {
-      fn: () => single(world),
-      instanceAssets: ({ plantname }) => ({ animationArchive: `bulb_plant_${plantname}.zip`, buildArchives: [`bulb_plant_${plantname}.zip`], bank: `bulb_plant_${plantname}` }),
+      fn: (_position, sprites) => single(world, sprites.archives),
+      // The single bank and build; the plantname's SetBank / SetBuild picks the drawn one.
+      assets: { animationArchive: 'bulb_plant_single.zip', buildArchives: ['bulb_plant_single.zip'], bank: 'bulb_plant_single' },
       // Each plant owns its tint (SetMultColour), so its sprites are created with a colour.
       assetOptions: { instancedAnimations: ['idle'], staticBillboard: true, colour: [1, 1, 1] },
       minimapIcon: 'bulb_plant.png',

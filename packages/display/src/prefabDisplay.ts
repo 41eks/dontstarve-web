@@ -39,6 +39,11 @@ export interface PrefabDisplayOptions {
   readonly source?: SpriteSource | LoadedSpriteSource;
   /** Draw with a shared archive sprite. */
   readonly archive?: ArchiveSpriteSource;
+  /**
+   * The sprite json's `source` (AnimState SetBank / SetBuild) the archive was made from: its sprites already draw it, so
+   * the display only sends a later, different declaration to them.
+   */
+  readonly archiveDeclares?: SpriteSourceJson;
   /** Transform-only entities have no art to load. The display still owns their model and lifecycle. */
   readonly empty?: boolean;
   /** Keep the entity at its foot point, offsetting only its private drawn sprite. */
@@ -99,6 +104,7 @@ export class PrefabDisplay {
     this.engine.setAnimation(name);
   });
   private disposed = false;
+  private readonly archiveDeclares?: SpriteSourceJson;
   // The camera rotation the drawn sprite was turned to; a sprite drawn later is turned to it too.
   private facing: THREE.Quaternion | undefined;
   /** The root's world rotation that the visual was last turned against. */
@@ -184,7 +190,9 @@ export class PrefabDisplay {
     });
     // The controller starts in a looping or held clip; any other first clip is sent by the first snapshot.
     const plain = first.clip.percent === undefined && (first.clip.loop ? !first.clip.finished : first.clip.finished);
-    this.applied = { clip: plain ? first.clip : undefined, queue: 0, appearance: new Map() };
+    this.archiveDeclares = options.archiveDeclares;
+    this.applied = { clip: plain ? first.clip : undefined, queue: 0, appearance: new Map(),
+      ...options.archiveDeclares ? { source: options.archiveDeclares } : {} };
     const controller = this.engine;
     state.bind({
       get currentAnimation() { return controller.currentAnimation; },
@@ -218,6 +226,7 @@ export class PrefabDisplay {
     this.listed = new DisplaySprite(this.model, json);
     const art = watchSignal(this.engine.art, stop => this.cleanups.push(stop));
     this.cleanups.push(createRenderEffect(() => this.applyStatus(status.get())));
+    state.displayStarted();
     // The drawn sprite follows each json the entity writes in the same task, as AnimState does.
     this.cleanups.push(createRenderEffect(() => this.applySprite(json.get())));
     const followed = watchSignal(state.animationSource, stop => this.cleanups.push(stop));
@@ -379,8 +388,10 @@ export class PrefabDisplay {
     const { engine: controller, applied, state } = this;
     this.followFrameSource(json.frameSource);
     if (json.visible !== undefined) this.model.visible = json.visible;
-    const source = this.resolveSource(json.source);
-    if (json.source && !source) return;
+    // The declaration the archive was made from needs no art of its own: its sprites already draw it.
+    const declared = json.source === this.archiveDeclares;
+    const source = declared ? undefined : this.resolveSource(json.source);
+    if (json.source && !declared && !source) return;
     if (json.source !== applied.source) { applied.source = json.source; if (source) controller.setArtSource?.(source); }
     if (json.clip !== applied.clip) {
       const clip = json.clip;
@@ -443,8 +454,9 @@ export class PrefabDisplay {
   private dress(json: SpriteJson): void {
     const controller = this.engine;
     if (!controller.loaded) return;
-    const source = this.resolveSource(json.source);
-    if (json.source && !source) return;
+    const declared = json.source === this.archiveDeclares;
+    const source = declared ? undefined : this.resolveSource(json.source);
+    if (json.source && !declared && !source) return;
     const fresh = this.dressedVersion !== controller.art.peek();
     this.dressedVersion = controller.art.peek();
     const skin = json.appearance.get('skin');
@@ -666,7 +678,7 @@ export class PrefabDisplay {
       if (this.disposed) return;
       const json = this.json.peek(), skin = json.appearance.get('skin');
       const requests: Promise<unknown>[] = [];
-      if (json.source && 'art' in json.source && !this.resolveSource(json.source)) requests.push(this.loadSource(json.source));
+      if (json.source && json.source !== this.archiveDeclares && 'art' in json.source && !this.resolveSource(json.source)) requests.push(this.loadSource(json.source));
       if (skin?.kind === 'skin' && json.skinId !== undefined) {
         const { art, archives, materialOptions, animationBanks } = skin.skin, archive = archives[json.skinId];
         if (!archive) throw new Error(`Unsupported skin ${json.skinId}`);

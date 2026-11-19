@@ -1,5 +1,5 @@
 import { createSignal, readonlySignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import type { AnimStateArt, AnimStateJson, SymbolBuild } from '@dontstarve-web/animation/animState';
 import type { SpriteMaterialOptions } from '@dontstarve-web/animation/animationAssets';
 import type { FxJson } from './fxAttachments';
@@ -265,7 +265,34 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   }
 
   /** The display reports which drawn sprite answers questions about the entity, and when the drawn sprite changes. */
-  bind(probe: SpriteProbe | undefined): void { this.probe = probe; }
+  bind(probe: SpriteProbe | undefined): void {
+    this.probe = probe;
+    this.displayPending = false;
+  }
+  /**
+   * The display has built its first sprite, or is still loading its art. What was played or pushed while it was pending
+   * (the entity's OnLoad and onSpawned) settles now if nothing is drawn, as it would have on a display whose art was
+   * loading, and plays on otherwise; fn's own clips were played before any display, so they play.
+   */
+  displayStarted(): void {
+    if (!this.playedWhilePending) return;
+    this.playedWhilePending = false;
+    const { clip, queue } = this.state;
+    if (this.probe && !this.drawn && (queue.length > 0 || !clip.loop && !clip.finished && !clip.none)) this.settle();
+  }
+  /**
+   * A display starts once the entity's fn, OnLoad and onSpawned have run: until it binds, followers get their nodes and
+   * what they play waits for it, which settles or draws it as its art is loaded or not.
+   */
+  bindPendingDisplay(): void {
+    const state = this;
+    this.displayPending = true;
+    this.playedWhilePending = false;
+    this.probe = { get currentAnimation() { return state.state.clip.name; }, numFrames: 0, currentAnimationLength: 0, loaded: false,
+      update() {}, createFollower: () => new THREE.Object3D() };
+  }
+  private displayPending = false;
+  private playedWhilePending = false;
   artChanged(): void { this.artVersion.set(this.artVersion.peek() + 1); }
 
   get loaded(): boolean { return this.probe?.loaded ?? false; }
@@ -280,7 +307,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     this.awake = awake;
   }
   // Playing no animation, the sprite is built for the next clip, which is drawn rather than settled.
-  private get drawn(): boolean { return this.awake && (this.state.clip.none === true || (this.probe?.loaded ?? true)); }
+  private get drawn(): boolean { return this.awake && (this.state.clip.none === true || this.displayPending || (this.probe?.loaded ?? true)); }
   /** The completion state: the clip completes, and what was queued behind it is the clip now. */
   private settle(): void {
     const { clip, queue } = this.state;
@@ -301,6 +328,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   }
   playOnce(name: string, complete?: () => void): void {
     const clip: ClipJson = { name, loop: false, finished: false, complete }, drawn = this.drawn;
+    if (this.displayPending) this.playedWhilePending = true;
     this.write({ clip, queue: [], frame: undefined });
     // Nothing is drawn, so the transition completes at once.
     if (!drawn) this.finish(clip);
@@ -311,6 +339,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   }
   pushAnimation(name: string, loop = false): void {
     this.write({ queue: [...this.state.queue, { name, loop }] });
+    if (this.displayPending) this.playedWhilePending = true;
     if (!this.drawn) this.settle();
   }
   playTransient(name: string): void { this.write({ transient: { name } }); }

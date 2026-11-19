@@ -36,8 +36,8 @@
 | Lua | TS | 示例 | 差异 |
 | --- | --- | --- | --- |
 | `SetBank`、`SetBuild`（固定） | 定义的 `assets: { animationArchive, buildArchives, bank }` | `atrium_pillar.ts` | |
-| `SetBank`、`SetBuild`（按实例，构造或读档时定） | 定义的 `instanceAssets(inst)` | `archive_pillar.ts` | |
-| `SetBank`、`SetBuild`（运行中切换） | `inst.AnimState.DeclareAnimationAssets(archives, art)` 声明 Lua 的全部 ANIM 资源，之后 `inst.AnimState.SetBank(bank)`／`SetBuild(archive)`；`PlayAnimation` 在当前 bank 下跨这些文件找动画，`GetCurrentAnimationLength` 按同一组文件取时长。不按动画换文件 | `fence.ts`、`oceantree.ts`、`player_common_extensions.ts`（`makeGhost`／`makeAlive`） | 世界 prefab（植物、栅栏等）仍走共享 archive 路径：定义用 `instanceAssets` 按当前 bank 声明，运行中的切换经 archive 精灵的 `setArtSource` 生效并保持 `instancedAnimations` 合批；不要为此改用 `factory` |
+| `SetBank`、`SetBuild`（按实例，构造或读档时定） | 同下一行：在 `fn`／OnLoad 里 `inst.AnimState.DeclareAnimationAssets(archives, sprites.archives)`，再 `SetBank`／`SetBuild`；定义的 `assets` 写 `fn` 默认的 bank 和 build | `archive_pillar.ts`、`rocks.ts`（`set_moonglass_type`） | display 在读档之后创建，按实例声明的 bank 建共享 archive，并加载声明的全部 ANIM 资源（与引擎预载 prefab 的 Asset 列表一致） |
+| `SetBank`、`SetBuild`（运行中切换） | `inst.AnimState.DeclareAnimationAssets(archives, art)` 声明 Lua 的全部 ANIM 资源，之后 `inst.AnimState.SetBank(bank)`／`SetBuild(archive)`；`PlayAnimation` 在当前 bank 下跨这些文件找动画，`GetCurrentAnimationLength` 按同一组文件取时长。不按动画换文件 | `fence.ts`、`oceantree.ts`、`player_common_extensions.ts`（`makeGhost`／`makeAlive`） | 世界 prefab（植物、栅栏等）仍走共享 archive 路径：display 按实例创建时的声明建 archive，之后的切换经 archive 精灵的 `setArtSource` 生效；不要为此改用 `factory` |
 | 构造函数里 `PlayAnimation(x, true)` | `new SpriteState({ name: x })` | `atrium_pillar.ts` | |
 | 构造函数里 `PlayAnimation(x)` | `new SpriteState({ name: x, held: true })`，或构造后 `sprite.playOnce(x)` | `atrium_gate.ts`、`vault_pillar.ts` | |
 | `PlayAnimation(x, loop)` | `inst.AnimState.PlayAnimation(x, loop)`（循环转 `sprite.start(x)`，否则 `sprite.playOnce(x)`） | `birdcage.ts`、`fire.ts` | 循环方式按 Lua，不为实例化改动；不发 `animover`，要完成通知用下一行 |

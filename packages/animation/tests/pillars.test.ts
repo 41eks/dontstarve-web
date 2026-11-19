@@ -23,6 +23,8 @@ import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { createInventoryStore } from './testInventory';
 
+/** AnimState:SetBank, as the entity declares it on its sprite. */
+const bankOf = (inst: ArchivePillarInstance) => (inst.sprite.sprite.peek().source as { bank?: string } | undefined)?.bank;
 const IDS = [...CAVE_PILLAR_IDS, PILLAR_ATRIUM_ID, ARCHIVE_PILLAR_ID, VAULT_PILLAR_ID, MONKEYPILLAR_ID];
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 const at = new THREE.Vector3(3, 0, 6);
@@ -92,16 +94,17 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     expect(whole.minimap.icon).toBe('pillar_archive.png');
     expect(whole.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
     await artLoaded(whole);
+    // Like the engine with the prefab's Asset list, the display loads both ANIM archives and draws the declared bank.
     expect(requested('pillar_archive.zip')).toBe(true);
-    expect(requested('pillar_archive_broken.zip')).toBe(false);
+    expect(bankOf(whole)).toBe('pillar_archive');
     const broken = s.prefabs.spawnAs(ArchivePillarInstance, ARCHIVE_PILLAR_ID, at, record({ broken: true }));
-    expect(broken.bank).toBe('pillar_archive_broken');
+    expect(bankOf(broken)).toBe('pillar_archive_broken');
     await artLoaded(broken);
     expect(requested('pillar_archive_broken.zip')).toBe(true);
     expect(broken.GetPersistData()).toEqual({ broken: true });
     random.mockReturnValue(.1);
     const rolled = s.prefabs.spawnAs(ArchivePillarInstance, ARCHIVE_PILLAR_ID, at, record({ broken: false }));
-    expect([rolled.broken, rolled.bank]).toEqual([false, 'pillar_archive_broken']);
+    expect([rolled.broken, bankOf(rolled)]).toEqual([false, 'pillar_archive_broken']);
     random.mockRestore();
 
     const clips = { idle_upper: {}, idle_upper_capped: { capped: 1 }, idle_upper_capped_2: { capped: 2 }, idle_upper_broken: { broken: 1 } } as const;
@@ -173,7 +176,7 @@ it('sleeping releases the sprite and waking restores the declared clip and appea
     await Promise.all(pillars.map(artLoaded)); await turn();
     expect(looping.sprite.currentAnimation).toBe('idle');
     expect(looping.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
-    expect(broken.bank).toBe('pillar_archive_broken');
+    expect(bankOf(broken)).toBe('pillar_archive_broken');
     expect(capped.sprite.currentAnimation).toBe('idle_upper_capped_2');
     expect(capped.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_upper_capped_2', loop: false });
     // The drawn clip settled while unloaded holds its last frame; the logical clip resumes and its end plays the next.
@@ -220,7 +223,7 @@ it('c_spawn, c_save and reload keep every pillar, and c_give is refused', async 
       expect(pillar.position.toArray()).toEqual([12, 0, -6]);
     }
     expect(second.find(CAVE_PILLAR_IDS[0]).sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
-    expect(second.find<ArchivePillarInstance>(ARCHIVE_PILLAR_ID).bank).toBe('pillar_archive_broken');
+    expect(bankOf(second.find<ArchivePillarInstance>(ARCHIVE_PILLAR_ID))).toBe('pillar_archive_broken');
     expect(second.find(VAULT_PILLAR_ID).sprite.sprite.peek().clip).toMatchObject({ name: 'idle_upper', loop: false });
     expect(second.find(MONKEYPILLAR_ID).sprite.sprite.peek().clip).toMatchObject({ name: 'idle1', loop: false });
     expect(second.registry.exportRecords()).toEqual(records);

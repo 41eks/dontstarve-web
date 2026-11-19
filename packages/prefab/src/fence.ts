@@ -200,13 +200,9 @@ export function fencePrefabs(world: PrefabWorldContext): Readonly<Record<typeof 
     return {
         [FENCE_ID]: {
             fn: (_position, sprites) => fn(world, sprites),
-            // The shared archive of the bank SetOrientation last chose for the rotation; both banks share the fence
-            // build. A rotation that changes the bank while the fence is drawn reaches the archive sprite as
-            // AnimState SetBank (setArtSource).
-            instanceAssets: inst => {
-                const bank = isNarrowRotation(GetRotation(inst)) ? 'fence_thin' : 'fence';
-                return { animationArchive: `${bank}.zip`, buildArchives: ['fence.zip'], bank };
-            },
+            // The bank comes from SetOrientation's AnimState SetBank, which fn and onload declare before the display
+            // starts; a later rotation that changes the bank reaches the drawn sprite the same way.
+            assets: { animationArchive: 'fence.zip', buildArchives: ['fence.zip'], bank: 'fence' },
             // idle is a held one-shot, hit plays once: every clip is drawn by the shared batches.
             assetOptions: { instancedAnimations: 'all' },
             skins: FENCE_SKIN_ARCHIVES,
@@ -224,8 +220,8 @@ export function fencePrefabs(world: PrefabWorldContext): Readonly<Record<typeof 
 export function fencePlacer(buildId: FenceId, cameraHeading: ReadonlySignal<number>, snap: BuildingPlacerSpec['snap']): BuildingPlacerSpec {
     return {
         buildLabel: '栅栏', name: FENCE_ID, animation: 'idle', alignBottom: false, snap,
-        // The shared archive of the bank SetOrientation picks for the first rotation, as the fence's instanceAssets; a
-        // later rotation that changes the bank reaches the archive sprite as AnimState SetBank (setArtSource).
+        // The shared archive of the bank SetOrientation picks for the first rotation; a later rotation that changes the
+        // bank reaches the archive sprite as AnimState SetBank (setArtSource).
         art: (resources, skinId) => {
             const rotation = placerRotation(cameraHeading.peek()), bank = isNarrowRotation(rotation) ? 'fence_thin' : 'fence';
             return {

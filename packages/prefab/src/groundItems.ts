@@ -107,10 +107,17 @@ export function groundItemPrefab(itemId: string, world: ItemPrefabWorld, parts: 
   const art = GROUND_ART_DEFINITIONS[itemId];
   const inventoryItem = world.isInventoryItem(itemId);
   const materialOptions = art.multColour || art.pointFiltering ? { multColour: art.multColour, pointFiltering: art.pointFiltering } : undefined;
+  // Variants drawn from a bank and build of their own (blueprint's rare one), as their prefab's SetBank / SetBuild.
+  const bankVariants = Object.values(GROUND_ART_VARIANTS[itemId] ?? {}).filter(variant => variant.bank !== undefined);
   return {
-    fn: () => {
+    fn: (_position, sprites) => {
       const inst = world.newItem(itemId);
       inst.sprite.resetPresentation({ name: art.animation, held: !art.loop, billboard: !art.ground });
+      if (bankVariants.length) {
+        inst.AnimState.DeclareAnimationAssets([art.animationArchive, ...bankVariants.map(variant => variant.animationArchive!)], sprites.archives);
+        inst.AnimState.SetBank(art.bank);
+        inst.AnimState.SetBuild(art.buildArchives[0]!);
+      }
       for (const tag of art.tags ?? []) inst.addTag(tag);
       for (const [symbol, override] of Object.entries(art.symbolOverrides)) inst.sprite.setSymbolOverride(symbol, override.archive, override.symbol);
       for (const symbol of art.hiddenSymbols ?? []) inst.sprite.setSymbolHidden(symbol, true);
@@ -119,7 +126,7 @@ export function groundItemPrefab(itemId: string, world: ItemPrefabWorld, parts: 
       bindItemWorld(inst, world);
       return inst;
     },
-    instanceAssets: inst => groundArtArchive(itemId, inst.variant),
+    assets: art,
     assetOptions: { instancedAnimations: 'all' },
     ...Object.keys(art.skinArchives).length ? { skins: art.skinArchives } : {},
     ...materialOptions ? { materialOptions } : {},
@@ -130,6 +137,10 @@ export function groundItemPrefab(itemId: string, world: ItemPrefabWorld, parts: 
       else inst.components.inventoryitem.canbepickedup = false;
       // A variant's own clip and symbols, once the saved variant is known.
       const variant = groundArtArchive(itemId, inst.variant), clip = variant.animation;
+      if (variant.bank !== art.bank) {
+        inst.AnimState.SetBank(variant.bank);
+        inst.AnimState.SetBuild(variant.buildArchives[0]!);
+      }
       if (clip !== art.animation) { if (art.loop) inst.sprite.start(clip); else inst.sprite.holdLastFrame(clip); }
       if (variant.symbolOverrides !== art.symbolOverrides) {
         for (const [symbol, override] of Object.entries(variant.symbolOverrides)) inst.sprite.setSymbolOverride(symbol, override.archive, override.symbol);

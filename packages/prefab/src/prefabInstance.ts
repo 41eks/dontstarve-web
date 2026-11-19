@@ -3,7 +3,7 @@ import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
 import { type Object3D, Vector3, type Vector3Like } from 'three';
 import { createMemo, createSignal, readonlySignal, type GameTimeScheduler, type Memo, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
-import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource } from '@dontstarve-web/display';
+import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource, type SpriteSourceJson } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { TileTracker } from '../../componets/src/tileManager';
@@ -897,12 +897,15 @@ interface PrefabEntityCommon<Instance extends PrefabInstance<SpriteState, object
 /** The art fields, of which a definition declares at most one; the others are absent. */
 interface NoArt {
   assets?: never;
-  instanceAssets?: never;
   assetOptions?: never;
   icon?: never;
 }
 
-/** Archive art: a shared archive sprite in the world's resources. */
+/**
+ * Archive art: a shared archive sprite in the world's resources. An entity whose bank or build depends on its state
+ * declares them itself with `inst.AnimState` SetBank / SetBuild in fn or OnLoad, as in Lua; the display then draws that
+ * bank and build, with the rest of `assets` (its extra builds, hidden layers and symbols).
+ */
 interface ArchiveArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'assets' | 'assetOptions'> {
   /** `sprites` is the world's shared resource cache, for the sources of the fx children the prefab draws; declaring one performs no IO. */
   fn(position: ReadonlyVector3, sprites: SpriteResources): Instance;
@@ -911,11 +914,18 @@ interface ArchiveArt<Instance extends PrefabInstance<SpriteState, object>> exten
   assetOptions?: Parameters<SpriteResources['archive']>[1];
 }
 
-/** Archive art chosen by the instance: its own SetBank / SetBuild, which its OnLoad may still change as it spawns. */
-interface InstanceArchiveArt<Instance extends PrefabInstance<SpriteState, object>> extends Omit<NoArt, 'instanceAssets' | 'assetOptions'> {
-  fn(position: ReadonlyVector3, sprites: SpriteResources): Instance;
-  instanceAssets(instance: Instance): Parameters<SpriteResources['archive']>[0];
-  assetOptions?: Parameters<SpriteResources['archive']>[1];
+type ArchiveDefinition = Parameters<SpriteResources['archive']>[0];
+
+/**
+ * The shared archive for the bank and build the entity declared with AnimState SetBank / SetBuild: every ANIM asset it
+ * declared, as the engine finds the bank's clips in any of them, its build in place of the definition's first one, and
+ * the definition's other builds, layers and symbols. Without a declaration the definition's own archive.
+ */
+function declaredArchive(assets: ArchiveDefinition, declared: SpriteSourceJson | undefined): ArchiveDefinition {
+  if (!declared || !('art' in declared)) return assets;
+  const [animationArchive, ...extraAnimationArchives] = declared.animationArchives;
+  return { ...assets, animationArchive: animationArchive!, extraAnimationArchives, bank: declared.bank,
+    buildArchives: [declared.buildArchive, ...declared.fallbackBuilds ?? [], ...assets.buildArchives.slice(1)] };
 }
 
 /** The inventory image, drawn as a billboard. */
@@ -931,10 +941,10 @@ interface NoArtDefinition<Instance extends PrefabInstance<SpriteState, object>> 
 
 /**
  * Prefab(name, fn, assets): how one source prefab is built and which art its display declares. The art is one of
- * `assets`, `instanceAssets` or `icon`, or none.
+ * `assets` or `icon`, or none.
  */
 export type PrefabEntityDefinition<Instance extends PrefabInstance<SpriteState, object>> = PrefabEntityCommon<Instance> & (
-  | ArchiveArt<Instance> | InstanceArchiveArt<Instance> | IconArt<Instance> | NoArtDefinition<Instance>);
+  | ArchiveArt<Instance> | IconArt<Instance> | NoArtDefinition<Instance>);
 
 /**
  * The application's shared SpawnPrefab owner and save loop over Ents: one collection and shared texture cache
@@ -1024,10 +1034,12 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
-    const { fn, assets, instanceAssets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols,
+    const { fn, assets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols,
       baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon } = this.prefabs[prefabId];
     if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
     const instance = fn(position, this.resources);
+    // Its display starts after OnLoad; what OnLoad plays waits for it, which draws or settles it as its art has loaded.
+    instance.sprite.bindPendingDisplay();
     // The world's scheduler for inst:DoTaskInTime, unless the prefab's fn already bound the one it scheduled on; binding
     // also takes the spawn time of an fn that set its world services directly.
     const scheduler = instance.worldServices?.scheduler ?? this.scheduler;
@@ -1039,14 +1051,8 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     const iconSource = icon && this.iconSource(prefabId, icon);
     physics?.make(instance, physics.radius, physics.height);
     if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
-    // A shared archive holds a first one-shot clip while its art loads, so a new entity is drawn from its first frame.
-    const display = this.displays.add({ root: instance.transform.model, name: prefabId, alignBottom, status: instance.status, sprite: instance.sprite, light: instance.light,
-      // Spawning is synchronous, so instanceAssets runs after the SetPersistData below however early the display starts its sprite.
-      // conventions-allow prefab-io: the manager hands the display a deferred declaration; the display does the loading.
-      ...(instanceAssets ? { archive: { create: clip => Promise.resolve().then(() => this.resources.archive(instanceAssets(instance), assetOptions).create(clip)) } }
-        : assets ? { archive: this.resources.archive(assets, assetOptions) } : iconSource ? { source: iconSource } : { empty: true }) });
-    bindInstance(display.model, instance);
-    if (rayTestOnBB) display.model.userData.rayTestOnBB = true;
+    bindInstance(instance.transform.model, instance);
+    if (rayTestOnBB) instance.transform.model.userData.rayTestOnBB = true;
     instance.setPosition(position.x, 0, position.z);
     if (rotationY) instance.transform.setSavedRotation(rotationY);
     if (physics && this.physicsWorld) instance.bindPhysics(this.physicsWorld);
@@ -1058,7 +1064,16 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     }
     if (skinId !== undefined) instance.skinId = skinId;
     onSpawned?.(instance);
-    if ((assets || instanceAssets || icon) && targetable) registerActionEntity(instance);
+    // OnLoad may replace the entity, as a burnt tree turns to ash: a removed one gets no display or registration.
+    if (instance.isRemoved) return instance;
+    // The display starts once fn, OnLoad and onSpawned have declared the entity's clip and its AnimState SetBank /
+    // SetBuild, so its first sprite is drawn from the bank and build the entity is in, from its first frame.
+    const declared = instance.sprite.sprite.peek().source;
+    const archive = assets && declaredArchive(assets, declared);
+    const display = this.displays.add({ root: instance.transform.model, name: prefabId, alignBottom, status: instance.status, sprite: instance.sprite, light: instance.light,
+      ...(archive ? { archive: this.resources.archive(archive, assetOptions), ...archive !== assets ? { archiveDeclares: declared } : {} }
+        : iconSource ? { source: iconSource } : { empty: true }) });
+    if ((assets || icon) && targetable) registerActionEntity(instance);
     this.entities.add(instance);
     const entityId = String(instance.entityId);
     this.byEntityId.set(entityId, instance);
