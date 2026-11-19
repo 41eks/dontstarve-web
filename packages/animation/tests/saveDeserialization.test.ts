@@ -101,4 +101,19 @@ describe('save JSON deserialization', () => {
     expect(() => deserializeSave(text, catalog)).toThrow('nonfinite number');
   });
 
+  it('accepts saved state only where the item spec or the prefab declaration has it', () => {
+    const load = (prefab: string, components: object) => {
+      const data = structuredClone(initialWorld);
+      data.world.entities = { ...data.world.entities,
+        [prefab]: [{ id: `declared-${prefab}`, transform: { position: [10, 0, 10], rotationY: 0 }, components }] };
+      return deserializeSave(JSON.stringify(data), SAVE_CATALOG).world.entities[prefab][0].components;
+    };
+    // The heat rock's spec saves temperature; flint has no temperature component.
+    expect(load('heatrock', { stack: { itemId: 'heatrock', count: 1, temperature: { current: 40 } } }).stack?.temperature).toEqual({ current: 40 });
+    expect(() => load('flint', { stack: { itemId: 'flint', count: 1, temperature: { current: 40 } } })).toThrow('no temperature component');
+    // A chest is a burnable structure; an ice box is not.
+    expect(load('treasurechest', { building: { burnt: true } }).building).toEqual({ burnt: true });
+    expect(() => load('icebox', { building: { burnt: true } })).toThrow('burnt combustible building');
+  });
+
 });

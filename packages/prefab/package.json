@@ -26,7 +26,6 @@
     "./reskin_tool": "./src/reskin_tool.ts",
     "./sound": "./src/sound.ts",
     "./tradable": "./src/tradable.ts",
-    "./staticLayout": "./src/staticLayout.ts",
     "./nightmarerock": "./src/nightmarerock.ts",
     "./rain": "./src/rain.ts",
     "./snow": "./src/snow.ts",

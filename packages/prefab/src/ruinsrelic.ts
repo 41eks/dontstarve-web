@@ -50,6 +50,14 @@ export function relicName(id: RuinsRelicId): RelicName {
   if (!name) throw new Error(`${id} names no relic`);
   return name;
 }
+/** ruinsrelic.lua's replicas, as opposed to smashables.lua's natural relics and rubble. */
+export function isRelicReplica(id: RuinsRelicId): id is `ruinsrelic_${RelicName}` { return id.startsWith('ruinsrelic_'); }
+
+/** The skins a relic prefab takes: only the replica chair has any. */
+export function relicSkins(id: RuinsRelicId): typeof RUINS_CHAIR_SKINS | undefined {
+  return id === 'ruinsrelic_chair' ? RUINS_CHAIR_SKINS : undefined;
+}
+
 export function isRelicItem(id: string): id is typeof RUINS_RELIC_ITEM_IDS[number] {
   return RUINS_RELIC_ITEM_IDS.some(known => known === id);
 }
@@ -92,7 +100,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     super(prefabId, new SpriteState({ name: initialRubble ? 'broken' : 'idle', held: true, billboard: true }));
     this.worldServices = world;
     this.prefabId = prefabId;
-    this.name = relicName(prefabId); this.replica = prefabId.startsWith('ruinsrelic_');
+    this.name = relicName(prefabId); this.replica = isRelicReplica(prefabId);
     this.animated = ['table', 'chair', 'vase'].includes(this.name);
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce(initialRubble ? 'broken' : 'idle');
@@ -203,10 +211,10 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
 /** The Prefabs ruinsrelic.lua and smashables.lua return: six replicas, six natural relics and three rubble pieces. */
 export function ruinsRelicPrefabs(world: RuinsRelicWorld): Readonly<Record<RuinsRelicId, PrefabEntityDefinition<RuinsRelicInstance>>> {
   const define = (id: RuinsRelicId): PrefabEntityDefinition<RuinsRelicInstance> => {
-    const name = relicName(id), bank = `ruins_${name}`, replica = id.startsWith('ruinsrelic_');
+    const name = relicName(id), bank = `ruins_${name}`, replica = isRelicReplica(id);
     // MakeObstaclePhysics: replica chair .25 and table .5; every natural relic .25; replica decor has inventory physics.
     const radius = replica ? name === 'chair' ? .25 : name === 'table' ? .5 : undefined : .25;
-    const skins = id === 'ruinsrelic_chair' ? RUINS_CHAIR_SKINS : undefined;
+    const skins = relicSkins(id);
     return {
       fn: position => new RuinsRelicInstance(id, world, position),
       assets: { bank, animationArchive: `${bank}.zip`, buildArchives: [`${bank}.zip`] },

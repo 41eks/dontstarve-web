@@ -10,7 +10,6 @@ import { serializeSave } from '../../../src/save/serialize';
 import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { TILE_SIZE } from '../../prefab/src/tile';
-import { placeStaticLayout } from '../../prefab/src/staticLayout';
 import { importedSave } from './importedSave';
 import { drawGround, layerGeometry } from './groundDisplayFixture';
 
@@ -74,11 +73,6 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
     expect(save.world.entities.pigking).toHaveLength(1);
     expect(save.world.entities.researchlab2).toHaveLength(1);
     expect(save.world.entities.researchlab3[0].components.building?.skinId).toBe('researchlab3_nature');
-    const terrainChanged = vi.fn(); map.onTerrainChanged(terrainChanged);
-    map.setOriginalTiles(save.world.entities.pigking.flatMap(king =>
-      placeStaticLayout('default_pigking', new Vector3(...king.transform.position), 'pigking').tiles
-        .map(({ position, tile }) => ({ position, tileId: WORLD_TILES[tile] }))));
-    expect(terrainChanged).not.toHaveBeenCalled(); // Imported final tiles already cover the entire layout.
     expect(save.world.entities.flower.length).toBeGreaterThan(0);
     expect(save.world.entities.flower.every(entity => entity.components.flower?.planted === undefined)).toBe(true);
     expect(save.world.entities.fireflies?.length).toBeGreaterThan(0);

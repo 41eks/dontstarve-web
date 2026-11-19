@@ -29001,6 +29001,261 @@
           "col": 41,
           "row": 41,
           "tileId": 201
+        },
+        {
+          "col": -2,
+          "row": -2,
+          "tileId": 6
+        },
+        {
+          "col": -1,
+          "row": -2,
+          "tileId": 6
+        },
+        {
+          "col": 0,
+          "row": -2,
+          "tileId": 6
+        },
+        {
+          "col": 1,
+          "row": -2,
+          "tileId": 6
+        },
+        {
+          "col": -3,
+          "row": -1,
+          "tileId": 6
+        },
+        {
+          "col": -2,
+          "row": -1,
+          "tileId": 6
+        },
+        {
+          "col": -1,
+          "row": -1,
+          "tileId": 6
+        },
+        {
+          "col": 0,
+          "row": -1,
+          "tileId": 6
+        },
+        {
+          "col": 1,
+          "row": -1,
+          "tileId": 6
+        },
+        {
+          "col": -4,
+          "row": 0,
+          "tileId": 6
+        },
+        {
+          "col": -3,
+          "row": 0,
+          "tileId": 6
+        },
+        {
+          "col": -2,
+          "row": 0,
+          "tileId": 6
+        },
+        {
+          "col": -1,
+          "row": 0,
+          "tileId": 10
+        },
+        {
+          "col": 0,
+          "row": 0,
+          "tileId": 10
+        },
+        {
+          "col": 1,
+          "row": 0,
+          "tileId": 6
+        },
+        {
+          "col": 2,
+          "row": 0,
+          "tileId": 6
+        },
+        {
+          "col": 3,
+          "row": 0,
+          "tileId": 6
+        },
+        {
+          "col": -4,
+          "row": 1,
+          "tileId": 6
+        },
+        {
+          "col": -3,
+          "row": 1,
+          "tileId": 6
+        },
+        {
+          "col": -2,
+          "row": 1,
+          "tileId": 10
+        },
+        {
+          "col": -1,
+          "row": 1,
+          "tileId": 10
+        },
+        {
+          "col": 0,
+          "row": 1,
+          "tileId": 10
+        },
+        {
+          "col": 1,
+          "row": 1,
+          "tileId": 10
+        },
+        {
+          "col": 2,
+          "row": 1,
+          "tileId": 6
+        },
+        {
+          "col": 3,
+          "row": 1,
+          "tileId": 6
+        },
+        {
+          "col": -4,
+          "row": 2,
+          "tileId": 6
+        },
+        {
+          "col": -3,
+          "row": 2,
+          "tileId": 6
+        },
+        {
+          "col": -2,
+          "row": 2,
+          "tileId": 10
+        },
+        {
+          "col": -1,
+          "row": 2,
+          "tileId": 10
+        },
+        {
+          "col": 0,
+          "row": 2,
+          "tileId": 10
+        },
+        {
+          "col": 1,
+          "row": 2,
+          "tileId": 10
+        },
+        {
+          "col": 2,
+          "row": 2,
+          "tileId": 6
+        },
+        {
+          "col": 3,
+          "row": 2,
+          "tileId": 6
+        },
+        {
+          "col": -4,
+          "row": 3,
+          "tileId": 6
+        },
+        {
+          "col": -3,
+          "row": 3,
+          "tileId": 6
+        },
+        {
+          "col": -2,
+          "row": 3,
+          "tileId": 6
+        },
+        {
+          "col": -1,
+          "row": 3,
+          "tileId": 10
+        },
+        {
+          "col": 0,
+          "row": 3,
+          "tileId": 10
+        },
+        {
+          "col": 1,
+          "row": 3,
+          "tileId": 6
+        },
+        {
+          "col": 2,
+          "row": 3,
+          "tileId": 6
+        },
+        {
+          "col": 3,
+          "row": 3,
+          "tileId": 6
+        },
+        {
+          "col": -3,
+          "row": 4,
+          "tileId": 6
+        },
+        {
+          "col": -2,
+          "row": 4,
+          "tileId": 6
+        },
+        {
+          "col": -1,
+          "row": 4,
+          "tileId": 6
+        },
+        {
+          "col": 0,
+          "row": 4,
+          "tileId": 6
+        },
+        {
+          "col": 1,
+          "row": 4,
+          "tileId": 6
+        },
+        {
+          "col": 2,
+          "row": 4,
+          "tileId": 6
+        },
+        {
+          "col": -2,
+          "row": 5,
+          "tileId": 6
+        },
+        {
+          "col": -1,
+          "row": 5,
+          "tileId": 6
+        },
+        {
+          "col": 0,
+          "row": 5,
+          "tileId": 6
+        },
+        {
+          "col": 1,
+          "row": 5,
+          "tileId": 6
         }
       ],
       "generator": {

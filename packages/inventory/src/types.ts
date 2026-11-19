@@ -42,6 +42,14 @@ export interface InventoryItemSpec {
   perishTime?: number;
   /** perishable.onperishreplacement prefab. */
   perishReplacement?: string;
+  /** container.lua on the item itself, as a backpack: how many slots its saved `container` has. */
+  containerSlots?: number;
+  /** temperature.lua: the item saves `temperature`, and heatrock.lua its `highTemp` / `lowTemp`. */
+  savesTemperature?: true;
+  /** The creature state the item's prefab saves on its stack: mole.lua's `mole`, lightflier.lua's `lightflier`. */
+  creatureState?: 'mole' | 'lightflier';
+  /** inventory.lua on the item: the one item it holds and how many, as the phonograph holds a record. */
+  holds?: { itemId: string; slots: number };
 }
 
 export interface InventorySkinSpec {

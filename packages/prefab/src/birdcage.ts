@@ -31,6 +31,9 @@ export const BIRDCAGE_SKIN_ARCHIVES: Readonly<Record<string, string>> = declarat
 /** birdcage.lua MakePlacer("birdcage_placer", "birdcage", "bird_cage", "idle_empty"). */
 export const BIRDCAGE_PLACER = buildingPlacer(declaration, 'birdcage');
 
+/** birdcage.lua OnBirdStarve: the loot a starved bird leaves on the shelf, which rots there into a skeleton's. */
+export const BIRDCAGE_STARVE_LOOT = 'smallmeat';
+
 /** birdcage.lua CAGE_STATES: the suffix of the idle and hit clips, and the saved CAGE_STATE. */
 export const CAGE_STATES = {
     DEAD: '_death',
@@ -363,7 +366,7 @@ function OnBirdStarve(inst: BirdcageInstance, bird: ItemEntity): void {
     // Needed here because OnEmptied is called before this callback, which clears the build override.
     SetBirdType(inst, inst.bird_type);
     // Put loot on "shelf".
-    const loot = inst.worldServices?.spawnItem?.({ itemId: 'smallmeat', count: 1 });
+    const loot = inst.worldServices?.spawnItem?.({ itemId: BIRDCAGE_STARVE_LOOT, count: 1 });
     if (loot) {
         inst.components.inventory.GiveItem(loot);
         inst.components.shelf.PutItemOnShelf(loot);

@@ -13,19 +13,17 @@ import { FENCE_SKIN_ARCHIVES } from '@dontstarve-web/prefab/fenceSkins';
 import { FARM_PLOW_DRILLING_DURATION, FARM_PLOW_USES, FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { PHONOGRAPH_PLAY_TIME } from '@dontstarve-web/prefab/phonograph';
 import { SCULPTABLE_MATERIALS } from '@dontstarve-web/prefab/sculptingtable';
-import { CAGE_STATES } from '@dontstarve-web/prefab/birdcage';
+import { BIRDCAGE_STARVE_LOOT, CAGE_STATES } from '@dontstarve-web/prefab/birdcage';
+import { COOK_POT_ID } from '@dontstarve-web/prefab/cook_pot';
+import { MOLE_ID } from '@dontstarve-web/prefab/mole';
 import { BIRD_IDS, isBirdId } from '@dontstarve-web/prefab/birds';
-import { MOONBASE_TIMER_LIMITS } from '@dontstarve-web/prefab/moonbase';
+import { MOONBASE_KEY_STAFF, MOONBASE_MORPHED_STAFF, MOONBASE_TIMER_LIMITS } from '@dontstarve-web/prefab/moonbase';
 /** The moonbase timers' limits by the timer name a save holds; object() has already rejected unknown names. */
 const MOONBASE_TIMER_LIMITS_BY_NAME: Readonly<Partial<Record<string, number>>> = MOONBASE_TIMER_LIMITS;
 import { LAVA_POND_ROCK_TYPES } from '@dontstarve-web/prefab/lava_pond';
 import { BASE_COOK_TIME, GetRecipe } from '../../packages/componets/src/cooking';
 import { array, choice, fail, integer, number, object, string } from './validation';
 import type { EntityPersistData, SavedTransform } from '@dontstarve-web/prefab/saveRecord';
-
-/** Structures with a ported MakeXBurnable(inst, nil, nil, true), whose onsave can write burnt. */
-const BURNABLE_STRUCTURES: ReadonlySet<string> = new Set(['treasurechest', 'cookpot', 'winterometer', 'pighead', 'mermhead',
-  'bookstation', 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4']);
 
 export interface EntitySaveContext {
   readonly prefab: string;
@@ -37,6 +35,8 @@ export interface EntitySaveContext {
 
 export interface PrefabComponentSchema {
   readonly keys: readonly (keyof EntityPersistData)[];
+  /** MakeXBurnable(inst, nil, nil, true): a structure whose onsave can write `building.burnt`. */
+  readonly burntStructure?: true;
   readonly timerDuration?: number;
   readonly bulbVariants?: readonly BulbPlantVariant[];
   /** pickable.lua regentime bounding a saved regrow task. */
@@ -107,7 +107,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     if (keys.includes('molehill')) {
       const p = `${path}.molehill`, hill = object(c.molehill, p, ['items', 'child', 'childid', 'startdelay']);
       const child = hill.child === undefined ? undefined : stack(hill.child, `${p}.child`);
-      if (child && child.itemId !== 'mole') fail(`${p}.child`, 'expected mole');
+      if (child && child.itemId !== MOLE_ID) fail(`${p}.child`, `expected ${MOLE_ID}`);
       if (hill.child !== undefined && hill.childid !== undefined) fail(p, 'occupied child and childid are exclusive');
       components.molehill = { items: array(hill.items, `${p}.items`, 50).map((item, i) => stack(item, `${p}.items[${i}]`)),
         ...(child === undefined ? {} : { child }),
@@ -412,7 +412,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (skinId !== undefined && !Object.hasOwn(building.skinArchives ?? {}, skinId)) fail(`${path}.building.skinId`, 'unsupported building skin');
       components.building = skinId === undefined ? {} : { skinId };
       if (b.burnt !== undefined) {
-        if (b.burnt !== true || !BURNABLE_STRUCTURES.has(prefab)) fail(`${path}.building.burnt`, 'expected a burnt combustible building');
+        if (b.burnt !== true || !schema.burntStructure) fail(`${path}.building.burnt`, 'expected a burnt combustible building');
         components.building.burnt = true;
       }
       if (isContainer && (!b.burnt || c.container !== undefined)) {
@@ -439,7 +439,8 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (item && item.count !== 1) fail(`${p}.item`, 'expected one shelved item');
       if ((cageState === CAGE_STATES.FULL) !== (occupant !== undefined)) fail(p, 'an occupied cage needs exactly one occupant');
       if (cageState === CAGE_STATES.FULL && occupant!.itemId !== birdType) fail(`${p}.birdType`, 'must match the occupant');
-      const shelved = cageState === CAGE_STATES.DEAD ? 'smallmeat' : cageState === CAGE_STATES.SKELETON ? 'spoiled_food' : undefined;
+      const shelved = cageState === CAGE_STATES.DEAD ? BIRDCAGE_STARVE_LOOT
+        : cageState === CAGE_STATES.SKELETON ? catalog.items[BIRDCAGE_STARVE_LOOT].perishReplacement : undefined;
       if (item?.itemId !== shelved) fail(`${p}.item`, shelved ? `expected ${shelved} on the shelf` : 'unexpected shelved item');
       components.birdcage = { cageState, ...(birdType === undefined ? {} : { birdType }),
         ...(occupant ? { occupant } : {}), ...(item ? { item } : {}) };
@@ -472,7 +473,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       components.moonbase = {};
       if (moonbase.staff !== undefined) {
         const staff = stack(moonbase.staff, `${p}.staff`);
-        if (!['yellowstaff', 'opalstaff'].includes(staff.itemId) || staff.count !== 1) fail(`${p}.staff`, 'expected one light staff');
+        if ((staff.itemId !== MOONBASE_KEY_STAFF && staff.itemId !== MOONBASE_MORPHED_STAFF) || staff.count !== 1) fail(`${p}.staff`, 'expected one light staff');
         if ((components.workable?.workleft ?? 4) <= 0) fail(p, 'a destroyed moonbase cannot hold a staff');
         components.moonbase.staff = staff;
       }
@@ -488,7 +489,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
           parsed[name] = { timeleft: number(entry.timeleft, `${entryPath}.timeleft`, 0, initial_time), paused: entry.paused, initial_time };
         }
         const pending = ['mooncharge', 'moonchargepre', 'mooncharge2', 'mooncharge3'].some(name => Object.hasOwn(parsed, name));
-        if (pending && (components.moonbase.staff?.itemId !== 'yellowstaff' || (components.workable?.workleft ?? 4) <= 0)) fail(t, 'charging requires a yellowstaff and a live moonbase');
+        if (pending && (components.moonbase.staff?.itemId !== MOONBASE_KEY_STAFF || (components.workable?.workleft ?? 4) <= 0)) fail(t, `charging requires a ${MOONBASE_KEY_STAFF} and a live moonbase`);
         if (parsed.mooncharge && parsed.moonchargepre) fail(t, 'cannot prepare and charge together');
         if ((parsed.mooncharge2 || parsed.mooncharge3) && !parsed.mooncharge) fail(t, 'charge stages require the charge timer');
         if (parsed.mooncharge2 && parsed.mooncharge3) fail(t, 'cannot have both stage timers');
@@ -513,7 +514,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         components.stewer = {};
       } else {
         const product = string(stewer.product, `${p}.product`);
-        const recipe = GetRecipe('cookpot', product);
+        const recipe = GetRecipe(COOK_POT_ID, product);
         if (!recipe) fail(`${p}.product`, 'unknown cooking product');
         if (stewer.done !== undefined && stewer.done !== true) fail(`${p}.done`, 'expected true');
         const done = stewer.done === true;
@@ -533,21 +534,19 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     if (keys.includes('stack')) components.stack = stack(c.stack, `${path}.stack`);
     if (keys.includes('stack') && c.torch !== undefined) {
       const componentPath = `${path}.torch`;
-      if (components.stack?.itemId !== 'torch') fail(componentPath, 'torch state requires a torch');
       const torch = object(c.torch, componentPath, ['lit']);
       if (torch.lit !== true) fail(`${componentPath}.lit`, 'expected true');
       components.torch = { lit: true };
     }
     if (keys.includes('stack') && c.lantern !== undefined) {
       const componentPath = `${path}.lantern`;
-      if (components.stack?.itemId !== 'lantern') fail(componentPath, 'machine state requires a lantern');
       const machine = object(c.lantern, componentPath, ['ison']);
       if (typeof machine.ison !== 'boolean') fail(`${componentPath}.ison`, 'expected boolean');
       components.lantern = { ison: machine.ison };
     }
     if (keys.includes('stack') && c.phonograph !== undefined) {
       const componentPath = `${path}.phonograph`;
-      if (components.stack?.itemId !== 'phonograph' || !components.stack.phonographRecord) fail(componentPath, 'playing machine requires a record');
+      if (!components.stack?.phonographRecord) fail(componentPath, 'playing machine requires a record');
       const machine = object(c.phonograph, componentPath, ['remainingSeconds']);
       components.phonograph = { remainingSeconds: number(machine.remainingSeconds, `${componentPath}.remainingSeconds`, Number.MIN_VALUE, PHONOGRAPH_PLAY_TIME) };
     }

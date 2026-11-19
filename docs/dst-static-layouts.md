@@ -1,6 +1,6 @@
 # DST 静态布局导入（default_pigking）
 
-DST 的世界生成会把 `map/static_layouts/*.lua` 里的 Tiled 地图摆进世界：`BG_TILES` 图层写地皮，`FG_OBJECTS` 图层放置实体。本项目用脚本把这些源布局转换成数据，由运行时在猪王位置摆放；猪王预制体本身（`pigking.lua`）不创建任何地皮。目前只导入 `default_pigking`。
+DST 的世界生成会把 `map/static_layouts/*.lua` 里的 Tiled 地图摆进世界：`BG_TILES` 图层写地皮，`FG_OBJECTS` 图层放置实体。本项目在存档里完成这一步：从 DST 导入的存档地图已带有 worldgen 写好的地皮；手写的初始存档由脚本把源布局的地皮写进 `world.map.tiles`。运行时不摆放布局，猪王预制体本身（`pigking.lua`）也不创建任何地皮。目前只处理 `default_pigking`。
 
 源码根目录：`/data/copy/AssetArchive-Dev/data/DST/data/databundles/scripts_unpacked/scripts/`。
 
@@ -19,12 +19,13 @@ DST 的世界生成会把 `map/static_layouts/*.lua` 里的 Tiled 地图摆进�
 需要 `luajit`（用来执行 Lua 布局文件）和 Python 3。
 
 ```bash
-python3 packages/prefab/scripts/import-static-layouts.py            # 生成 packages/prefab/src/staticLayouts.json
-python3 packages/prefab/scripts/import-static-layouts.py --check    # 校验 JSON 与源布局一致，不一致时报错
+python3 packages/prefab/scripts/import-static-layouts.py            # 把布局地皮写进默认的初始存档
+python3 packages/prefab/scripts/import-static-layouts.py --check    # 校验存档已含布局地皮与岩石，不写文件
+python3 packages/prefab/scripts/import-static-layouts.py public/saves/initial-world.json   # 只处理指定存档
 python3 packages/prefab/scripts/import-static-layouts.py --source /path/to/DST/data
 ```
 
-等价的包脚本：`pnpm --filter @dontstarve-web/prefab static-layouts:import` / `static-layouts:check`。`--source` 默认是上面的 `.../DST/data`。导入的布局列表在脚本的 `LAYOUTS` 常量里，新增布局时加入文件名（不含 `.lua`）即可。
+等价的包脚本：`pnpm --filter @dontstarve-web/prefab static-layouts:import` / `static-layouts:check`。`--source` 默认是上面的 `.../DST/data`。布局及其锚点 prefab 在脚本的 `LAYOUTS` 常量里（`{'default_pigking': 'pigking'}`）；默认处理的存档在 `DEFAULT_SAVES`，保留每个文件原有的缩进。
 
 ## 转换规则（与 `static_layout.lua` 一致）
 
@@ -32,28 +33,17 @@ python3 packages/prefab/scripts/import-static-layouts.py --source /path/to/DST/d
 2. **地皮名**：取样值是 `GROUND_TYPES` 的 1 起始下标（顺序见 `static_layout.lua`，如 `6 → GRASS`、`9 → WOODFLOOR`），脚本从源文件读取该表并输出 `WORLD_TILES` 名称，不在脚本里写死。
 3. **对象坐标**（地皮单位，相对布局中心）：
    `x = (obj.x + obj.width / 2) / 64 − (layout.width / tilefactor) / 2`，`y` 同理使用 `obj.y`、`obj.height`、`layout.height`。
-4. **输出**：`packages/prefab/src/staticLayouts.json`，键为布局名：
-
-   ```json
-   { "default_pigking": {
-       "ground": [[null, null, "GRASS", "…"]],
-       "objects": [{ "prefab": "insanityrock", "x": -2.125, "y": 0.125 }]
-   } }
-   ```
-
-   `objects` 按 prefab、x、y 排序，保证输出稳定。`PrefabSwaps`（活动期间的 prefab 替换）不处理。
+4. **输出**：每个布局得到 `ground[row][column]`（`WORLD_TILES` 名称或空）和按 prefab、x、y 排序的 `objects`（地皮单位）。`PrefabSwaps`（活动期间的 prefab 替换）不处理。
 
 当前 `default_pigking` 的结果：8 × 8 的八边形，40 块 `GRASS` 加中央 12 块 `WOODFLOOR`；4 块 `insanityrock` 位于约 ±2.1 格的十字方向，4 块 `sanityrock` 位于约 ±1.1 格的对角方向，`pigking` 在中心（`0, 0`）。
 
-## 运行时摆放
+## 写入存档
 
-`placeStaticLayout(id, anchor, anchorPrefab)`（`packages/prefab/src/staticLayout.ts`）把 JSON 转成世界坐标，单位为场景单位（一个地皮 `TILE_SIZE = 12`，对应原版 4 单位）：
+脚本按 `object_layout.lua` `ReserveAndPlaceLayout`（`layout_position = CENTER`）在存档中每个锚点（猪王）处摆放布局，单位为场景单位（一个地皮 `TILE_SIZE = 12`，对应原版 4 单位）：
 
-- 以锚点（猪王位置）最近的**地皮角点**为布局中心，`ground[row][column]` 的格子中心为 `corner + (index − size / 2 + 0.5) × TILE_SIZE`（`column → x`，`row → z`）。
-- 对象位置为 `corner + (x, y) × TILE_SIZE`（`y → z`）；与 `anchorPrefab` 同名的对象（猪王）不单独返回，由存档中的猪王记录决定它的位置。
-- 主场景（`src/sceneEntities.ts`）对每个猪王调用它，把所有布局格子一次登记到 `TurfMap.setOriginalTiles`，不覆盖存档里已挖掘的地皮。只有有效地皮发生变化才统一重建一次并发布变更；完整导入存档已有最终地皮时不重建。
-
-岩石是普通实体：`initial-world.json` 与 `initial-world copy.json` 的 `entities.sanityrock` / `entities.insanityrock` 就是按上面的公式从布局算出的位置（猪王在 `(0, 0, 25)`，角点为 `(0, 24)`），由全局 `PrefabEntityManager` 按 `nightmareRockPrefabs` 恢复。需要重新生成这些记录时，用同一公式并保持 `e_<prefab>_<6 位序号>` 的 ID 格式。
+- 以锚点最近的**地皮角点**为布局中心，`ground[row][column]` 的格子中心为 `corner + (index − size / 2 + 0.5) × TILE_SIZE`（`column → x`，`row → z`），按格写入 `world.map.tiles` 的 `{ col, row, tileId }`。存档已有记录的格子保留原地皮（例如初始存档猪王旁的 `FARMING_SOIL`）。
+- 对象位置为 `corner + (x, y) × TILE_SIZE`（`y → z`）；锚点本身不处理。其他对象必须已是存档实体：`initial-world.json` 等的 `entities.sanityrock` / `entities.insanityrock` 就在这些位置（猪王在 `(0, 0, 25)`，角点为 `(0, 24)`），缺少时脚本报错。
+- 写入后再运行一次结果不变，`--check` 据此校验。
 
 ## 与原版 worldgen 的差异
 

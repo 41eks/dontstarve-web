@@ -143,9 +143,6 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       }
     }
     const itemId = string(o.itemId, `${path}.itemId`);
-    if ((o.temperature !== undefined || o.highTemp !== undefined || o.lowTemp !== undefined) && itemId !== 'heatrock') {
-      fail(path, 'item has no temperature component');
-    }
     const temperature = o.temperature === undefined ? undefined : (() => {
       const data = object(o.temperature, `${path}.temperature`, ['current']);
       return { current: number(data.current, `${path}.temperature.current`, -20, 90) };
@@ -160,6 +157,9 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       : ground && art ? { name: art.name, icon: art.icon ?? '', maxStack: Number.MAX_SAFE_INTEGER } : undefined;
     const variant = o.variant === undefined ? undefined : choice(o.variant, `${path}.variant`, Object.keys(GROUND_ART_VARIANTS[itemId] ?? {}));
     if (!spec) fail(`${path}.itemId`, `unknown item ${itemId}`);
+    if ((o.temperature !== undefined || o.highTemp !== undefined || o.lowTemp !== undefined) && !spec.savesTemperature) {
+      fail(path, 'item has no temperature component');
+    }
     const skinId = o.skinId === undefined ? undefined : string(o.skinId, `${path}.skinId`);
     if (skinId !== undefined) {
       const skin = Object.hasOwn(catalog.skins, skinId) ? catalog.skins[skinId] : undefined;
@@ -182,12 +182,13 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     if (o.wet !== undefined && typeof o.wet !== 'boolean') fail(`${path}.wet`, 'expected boolean');
     const wet = o.wet as boolean | undefined;
     const phonographRecord = o.phonographRecord === undefined ? undefined : string(o.phonographRecord, `${path}.phonographRecord`);
-    if (phonographRecord !== undefined && (itemId !== 'phonograph'
-      || (phonographRecord !== 'record' && catalog.skins[phonographRecord]?.itemId !== 'record'))) {
+    const held = spec.holds;
+    if (phonographRecord !== undefined && (!held
+      || (phonographRecord !== held.itemId && catalog.skins[phonographRecord]?.itemId !== held.itemId))) {
       fail(`${path}.phonographRecord`, 'invalid loaded record');
     }
     const lightflier = o.lightflier === undefined ? undefined : (() => {
-      if (itemId !== 'lightflier') fail(`${path}.lightflier`, 'item has no lightflier component');
+      if (spec.creatureState !== 'lightflier') fail(`${path}.lightflier`, 'item has no lightflier component');
       const p = `${path}.lightflier`, data = object(o.lightflier, p, ['health', 'age', 'homeId', 'knownHome']);
       const known = data.knownHome === undefined ? undefined : array(data.knownHome, `${p}.knownHome`, 3);
       if (known && known.length !== 3) fail(`${p}.knownHome`, 'expected three coordinates');
@@ -196,21 +197,21 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
         ...(known ? { knownHome: known.map((v, i) => number(v, `${p}.knownHome[${i}]`, -Number.MAX_SAFE_INTEGER)) as [number, number, number] } : {}) };
     })();
     const mole = o.mole === undefined ? undefined : (() => {
-      if (itemId !== 'mole') fail(`${path}.mole`, 'item has no mole component');
+      if (spec.creatureState !== 'mole') fail(`${path}.mole`, 'item has no mole component');
       const p = `${path}.mole`, data = object(o.mole, p, ['health', 'needsHomeElapsed', 'items']);
       return { health: number(data.health, `${p}.health`, 0, 30),
         ...(data.needsHomeElapsed === undefined ? {} : { needsHomeElapsed: number(data.needsHomeElapsed, `${p}.needsHomeElapsed`) }),
         items: array(data.items, `${p}.items`, 3).map((item, i) => stack(item, `${p}.items[${i}]`)) };
     })();
     const itemContainer = o.container === undefined ? undefined : (() => {
-      if (itemId !== 'backpack') fail(`${path}.container`, 'item has no container');
-      return container(o.container, `${path}.container`, numericKeys(8));
+      if (spec.containerSlots === undefined) fail(`${path}.container`, 'item has no container');
+      return container(o.container, `${path}.container`, numericKeys(spec.containerSlots));
     })();
     const inventory = o.inventory === undefined ? undefined : (() => {
-      if (itemId !== 'phonograph') fail(`${path}.inventory`, 'item has no inventory component');
-      const items = array(o.inventory, `${path}.inventory`, 1).map((item, i) => stack(item, `${path}.inventory[${i}]`));
-      if (items.some(item => item.itemId !== 'record' || item.count !== 1)) fail(`${path}.inventory`, 'invalid phonograph contents');
-      const song = items[0] ? items[0].skinId ?? 'record' : undefined;
+      if (!held) fail(`${path}.inventory`, 'item has no inventory component');
+      const items = array(o.inventory, `${path}.inventory`, held.slots).map((item, i) => stack(item, `${path}.inventory[${i}]`));
+      if (items.some(item => item.itemId !== held.itemId || item.count !== 1)) fail(`${path}.inventory`, `invalid ${itemId} contents`);
+      const song = items[0] ? items[0].skinId ?? held.itemId : undefined;
       if (song !== phonographRecord) fail(`${path}.phonographRecord`, 'record does not match inventory contents');
       return items;
     })();
@@ -237,7 +238,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       if (!keys.includes(slotKey) || seen.has(slotKey)) fail(`${slotPath}.slotKey`, 'invalid or duplicate slot');
       seen.add(slotKey);
       const item = stack(slot.item, `${slotPath}.item`);
-      if (!keys.includes('hand') && (item.itemId === 'backpack' || catalog.items[item.itemId].canGoInContainer === false)
+      if (!keys.includes('hand') && catalog.items[item.itemId].canGoInContainer === false
         && path !== 'players.local.inventory.containers.player:inventory'
         && path !== 'players.local.inventory.containers.player:cursor') fail(`${slotPath}.item`, 'item cannot go in a container');
       if (item.count > maxStack) fail(`${slotPath}.item.count`, `expected at most ${maxStack}`);
@@ -287,8 +288,8 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     const bags = [
       ...[...playerInventory.slots, ...playerEquipment.slots, ...playerCursor.slots].map(({ item }) => item),
       ...Object.values(entities).flat().flatMap(record => record.components.stack ? [record.components.stack] : []),
-    ].filter(item => item.itemId === 'backpack');
-    const owner = playerEquipment.slots.find(({ slotKey, item }) => slotKey === 'body' && item.itemId === 'backpack')?.item
+    ].filter(item => catalog.items[item.itemId]?.containerSlots);
+    const owner = playerEquipment.slots.find(({ slotKey, item }) => slotKey === 'body' && catalog.items[item.itemId]?.containerSlots)?.item
       ?? (bags.length === 1 ? bags[0] : undefined);
     if (legacy.slots.length) {
       if (!owner || owner.container !== undefined) fail('players.local.inventory.containers.player:backpack', 'ambiguous legacy backpack owner');

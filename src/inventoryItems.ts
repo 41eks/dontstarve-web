@@ -13,7 +13,7 @@ import { configureFertilizerEntity, FERTILIZER_CYCLES } from '../packages/prefab
 import { HAT_ITEM_SPECS } from '@dontstarve-web/prefab/hats';
 import { TURF_ITEM_SPECS } from '@dontstarve-web/prefab/groundItems';
 import { configureLightbulbEntity, LIGHTBULB_ID } from '@dontstarve-web/prefab/lightbulb';
-import { RECORD_ITEM_SPECS } from '@dontstarve-web/prefab/records';
+import { RECORD_ID, RECORD_ITEM_SPECS } from '@dontstarve-web/prefab/records';
 import { PHONOGRAPH_ID, configurePhonographEntity } from '@dontstarve-web/prefab/phonograph';
 import { BOOK_ITEM_SPECS } from '@dontstarve-web/prefab/books';
 import { BURNABLE_ITEM_DEFINITIONS, configureBurnableItemEntity } from '@dontstarve-web/prefab/burnableItems';
@@ -38,6 +38,7 @@ import {
   type ItemEntity,
   inventoryItemEquipmentKind,
   inventoryItemMaxStack,
+  BACKPACK_SLOT_COUNT,
   type InventoryItemSpec,
 } from '@dontstarve-web/inventory';
 
@@ -85,16 +86,17 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
         : { maxUses: getHandEquipmentDefinition(itemId)!.definition.maxUses }),
       ...(getHandEquipmentDefinition(itemId)?.definition.useStep === undefined ? {}
         : { useStep: getHandEquipmentDefinition(itemId)!.definition.useStep }),
-      ...(itemId === 'backpack' ? { canGoInContainer: false } : {}),
+      ...(itemId === 'backpack' ? { canGoInContainer: false, containerSlots: BACKPACK_SLOT_COUNT } : {}),
       ...(itemId === ARMORSNURTLESHELL_ID ? { maxArmor: ARMORSNURTLESHELL } : {}),
-      ...(itemId === 'mole' ? { perishTime: MOLE_PERISH_TIME } : {}),
-      ...(itemId === 'lightflier' ? { perishTime: LIGHTFLIER_PERISH_TIME } : {}),
+      ...(itemId === 'mole' ? { perishTime: MOLE_PERISH_TIME, creatureState: 'mole' as const } : {}),
+      ...(itemId === 'lightflier' ? { perishTime: LIGHTFLIER_PERISH_TIME, creatureState: 'lightflier' as const } : {}),
+      ...(itemId === PHONOGRAPH_ID ? { holds: { itemId: RECORD_ID, slots: 1 } } : {}),
       ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
       ...(itemId === AMULET_ID ? { maxUses: REDAMULET_USES } : {}),
       ...(itemId === PANFLUTE_ID ? { maxUses: PANFLUTE_USES } : {}),
       ...(isLightStaff(itemId) ? { maxUses: LIGHT_STAFF_USES[itemId] } : {}),
       ...(itemId === 'torch' ? { maxFuel: TORCH_FUEL } : {}),
-      ...(itemId === HEATROCK_ID ? { maxFuel: HEATROCK_FUEL } : {}),
+      ...(itemId === HEATROCK_ID ? { maxFuel: HEATROCK_FUEL, savesTemperature: true as const } : {}),
       ...(getHandEquipmentDefinition(itemId)?.definition.maxFuel === undefined ? {}
         : { maxFuel: getHandEquipmentDefinition(itemId)!.definition.maxFuel }),
       ...(Object.hasOwn(PERISHABLE_FOODS, itemId)

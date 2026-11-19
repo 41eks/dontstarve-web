@@ -20,7 +20,6 @@ import type { WorldEvents } from '../packages/prefab/src/worldContext';
 import { groundDisplay, pathfinder, turfMap } from './building';
 import { moonTreePrefabs } from '@dontstarve-web/prefab/moontree';
 import { WORLD_TILES, isLandTile } from '@dontstarve-web/prefab/turfMap';
-import { placeStaticLayout } from '@dontstarve-web/prefab/staticLayout';
 import { camera, followCamera } from './camera';
 import { flingLoot, itemPrefabs, spawnGroundStack } from '@dontstarve-web/prefab/itemPrefabs';
 import { turfItemForTile } from '@dontstarve-web/prefab/turfs';
@@ -1178,10 +1177,6 @@ export async function createSceneEntities(
   }
 
   function registerPigKings(registry: EntityRegistry, prefabId: 'pigking', worldState: SceneWorldState) {
-    // default_pigking.lua BG_TILES are world generation: commit the saved kings' layouts before rebuilding the terrain once.
-    turfMap.setOriginalTiles((initialSave.world.entities.pigking ?? []).flatMap(record =>
-      placeStaticLayout('default_pigking', new THREE.Vector3(...record.transform.position), 'pigking').tiles.map(({ tile, position }) =>
-        ({ position, tileId: WORLD_TILES[tile] }))));
     prefabs.register(pigKingPrefabs({
       camera, scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
       dropLoot: (items, position, launch) => {

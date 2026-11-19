@@ -18,6 +18,7 @@ import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import { MoonbaseEffects } from './moonbaseFx';
 import type { PrefabWorldContext } from './worldContext';
 import catalog from './groundItems.json' with { type: 'json' };
+import { OPALSTAFF_ID, YELLOWSTAFF_ID } from './staff';
 
 /** moonbase.lua's staff morph: the morphed staff's skin for each source staff skin. */
 const STAFF_MORPH_SKINS: Readonly<Partial<Record<string, string>>> = catalog.staffMorphSkins;
@@ -39,8 +40,11 @@ export const MOONBASE_TIMER_LIMITS = {
 } as const;
 export interface MoonbaseSaveState { staff?: InventoryStack; timer?: NamedTimerSave; }
 export type MoonbaseChargePhase = 'idle' | 'preparing' | 'charging_1' | 'charging_2' | 'charging_3' | 'complete';
-const KEY_STAFF = 'yellowstaff';
-const MORPHED_STAFF = 'opalstaff';
+/** moonbase.lua: the staff a full moon charges, and the staff it becomes. */
+export const MOONBASE_KEY_STAFF = YELLOWSTAFF_ID;
+export const MOONBASE_MORPHED_STAFF = OPALSTAFF_ID;
+const KEY_STAFF = MOONBASE_KEY_STAFF;
+const MORPHED_STAFF = MOONBASE_MORPHED_STAFF;
 const ITEM_SOUND = 'dontstarve/common/together/moonbase/moonstaff_place';
 const REPAIR_SOUND = 'dontstarve/common/together/moonbase/repair';
 

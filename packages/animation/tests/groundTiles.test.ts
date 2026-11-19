@@ -5,7 +5,6 @@ import { groundTileVariant, groundTileGeometry, loadGroundTileAssets, GROUND_FAL
 import { loadGroundFalloffAssets, groundFalloffGeometry, sortGroundFalloffGeometry } from '../../display/src/groundFalloff';
 import { GroundDepthPrepass } from '../../display/src/groundDepthPrepass';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
-import { placeStaticLayout } from '../../prefab/src/staticLayout';
 import { createSignal, type ClockState } from '../../signals/src';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawGround, layerGeometry, layerMeshes } from './groundDisplayFixture';
@@ -46,9 +45,12 @@ it('clips ground geometry without losing UVs, upward normals or large-map indice
   } finally { clipped.dispose(); large.dispose(); empty.dispose(); assets.material.dispose(); }
 });
 
-it('commits layout tiles once, preserves saved overrides and retains geometry on unchanged registration', async () => {
-  const tiles = placeStaticLayout('default_pigking', new THREE.Vector3(0, 0, 24), 'pigking').tiles
-    .map(({ position, tile }) => ({ position, tileId: WORLD_TILES[tile] }));
+it('commits generated tiles once, preserves saved overrides and retains geometry on unchanged registration', async () => {
+  // A generated 4x4 patch: grass around a 2x2 wood floor, the first grass cell of which the save has dug.
+  const tiles = Array.from({ length: 16 }, (_, i) => {
+    const column = i % 4, row = Math.floor(i / 4), inner = column > 0 && column < 3 && row > 0 && row < 3;
+    return { position: { x: (column - 1.5) * 12, z: 24 + (row - 1.5) * 12 }, tileId: inner ? WORLD_TILES.WOODFLOOR : WORLD_TILES.GRASS };
+  });
   const saved = [{ col: Math.floor(tiles[0].position.x / 12), row: Math.floor(tiles[0].position.z / 12), tileId: WORLD_TILES.DIRT }];
   const map = new TurfMap(240, saved), reference = new TurfMap(240, saved);
   try {

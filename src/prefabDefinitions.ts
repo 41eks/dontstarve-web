@@ -1,5 +1,5 @@
 import { STALAGMITE_IDS, stalagmiteBank } from '@dontstarve-web/prefab/stalagmite';
-import { RUINS_RELIC_IDS, RUINS_CHAIR_SKINS, relicName, isRelicItem } from '@dontstarve-web/prefab/ruinsrelic';
+import { RUINS_RELIC_IDS, relicName, isRelicItem, isRelicReplica, relicSkins, type RuinsRelicId } from '@dontstarve-web/prefab/ruinsrelic';
 import { BERNIE_ACTIVE_ID, BERNIE_BIG_ID, BERNIE_ITEM_ID } from '@dontstarve-web/prefab/bernie';
 import { HEATROCK_ID } from '@dontstarve-web/prefab/heatrock';
 import { NIGHTMARE_TIMEPIECE_ID } from '@dontstarve-web/prefab/nightmare_timepiece';
@@ -24,11 +24,11 @@ import { OCEANVINE_DECO_ANIMNUMS, OCEANVINE_DECO_ID } from '@dontstarve-web/pref
 import { ARCHIVE_PILLAR_ARCHIVES, ARCHIVE_PILLAR_ID } from '@dontstarve-web/prefab/archive_pillar';
 import { VAULT_PILLAR_ID } from '@dontstarve-web/prefab/vault_pillar';
 import { MONKEY_PILLAR_IDS, MONKEYPILLAR_ID } from '@dontstarve-web/prefab/monkeypillar';
-import { MOONGLASS_ROCK_ID, ROCK_PREFABS, isRockPrefab, moonglassRockArchives, rockArchives } from '@dontstarve-web/prefab/rocks';
+import { MOONGLASS_ROCK_ID, ROCK_PREFABS, moonglassRockArchives, rockArchives } from '@dontstarve-web/prefab/rocks';
 import { CAVEIN_BOULDER_ID } from '@dontstarve-web/prefab/cavein_boulder';
 import { MOONROCKSEED_ID } from '@dontstarve-web/prefab/moonrockseed';
 import { MARBLESHRUB_ID, MARBLESHRUB_SPAWN_IDS, MARBLESHRUB_MAX_GROW_TIME } from '@dontstarve-web/prefab/marbleshrub';
-import { ARCHIVE_PROP_IDS, ARCHIVE_PROP_SPAWN_IDS, ARCHIVE_MOON_STATUE_ID, ARCHIVE_RUNE_STATUE_ID } from '@dontstarve-web/prefab/archive_props';
+import { ARCHIVE_PROP_IDS, ARCHIVE_PROP_SPAWN_IDS, ARCHIVE_MOON_STATUE_ID, ARCHIVE_RUNE_STATUE_ID, ARCHIVE_PORTAL_ID, ARCHIVE_SWITCH_BASE_ID } from '@dontstarve-web/prefab/archive_props';
 import { HOUNDBONE_ID } from '@dontstarve-web/prefab/houndbone';
 import { BEEQUEENHIVEGROWN_ID, BEEQUEEN_HIVE_MAX_WORK } from '@dontstarve-web/prefab/beequeenhivegrown';
 import { DRAGONFLY_ID } from '@dontstarve-web/prefab/dragonfly';
@@ -42,7 +42,7 @@ import { CHESSJUNK_IDS } from '@dontstarve-web/prefab/chessjunk';
 import { CHESSPIECE_MALBATROSS_MARBLE_ID, CHESSPIECE_MARBLE_MATERIAL_ID } from '@dontstarve-web/prefab/chesspieces';
 import { ARCHIVE_CENTIPEDE_HUSK_ID } from '@dontstarve-web/prefab/archive_centipede';
 import { parseDragonflyState } from './save/dragonfly';
-import { isSkeletonId, SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
+import { SKELETON_IDS, SKELETON_ANIMS, SKELETON_PLAYER_ID } from '@dontstarve-web/prefab/skeleton';
 import { MARBLEBEAN_SAPLING_ID } from '@dontstarve-web/prefab/marblebean_sapling';
 import { ROCK_AVOCADO_SAPLING_ID, ROCK_AVOCADO_SPROUT_GROW_TIME } from '@dontstarve-web/prefab/rock_avocado_fruit_sprout_sapling';
 import { ROCK_AVOCADO_BUSH_ID, ROCK_AVOCADO_FRUIT_ID } from '@dontstarve-web/prefab/rock_avocado_bush';
@@ -86,6 +86,20 @@ import { componentParser, type PrefabComponentParser } from './save/prefabCompon
 import { fail } from './save/validation';
 import { array, choice, integer, number, object, string } from './save/validation';
 import type { EntityPersistData } from '@dontstarve-web/prefab/saveRecord';
+import { TORCH_ID } from '@dontstarve-web/prefab/torch';
+import { LANTERN_ID } from '@dontstarve-web/prefab/lantern';
+import { PHONOGRAPH_ID } from '@dontstarve-web/prefab/phonograph';
+import { COOK_POT_ID } from '@dontstarve-web/prefab/cook_pot';
+import { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
+import { BOOKSTATION_ID } from '@dontstarve-web/prefab/bookstation';
+import { WINTEROMETER_ID } from '@dontstarve-web/prefab/winterometer';
+import { PIG_HEAD_ID, MERM_HEAD_ID } from '@dontstarve-web/prefab/stickheads';
+import { RESEARCH_LAB_IDS } from '@dontstarve-web/prefab/scienceprototyper';
+import { SCULPTING_TABLE_ID } from '@dontstarve-web/prefab/sculptingtable';
+import { BIRDCAGE_ID } from '@dontstarve-web/prefab/birdcage';
+import { MOONBASE_ID } from '@dontstarve-web/prefab/moonbase';
+import { LIGHTNING_ROD_ID } from '@dontstarve-web/prefab/lightning_rod';
+import { FIRE_PIT_ID } from '@dontstarve-web/prefab/firepit';
 
 /** The fields of a saved entity that choose its art, read while the save is scanned before restore. */
 export interface ArchiveSaveRecord {
@@ -107,16 +121,40 @@ export interface PrefabDefinition<Id extends string = string> {
   archives(prefabId: Id, records: readonly ArchiveSaveRecord[]): readonly AnimationArchiveSpec[];
 }
 
-export function definePrefabs<const Id extends string>(
-  prefabIds: readonly Id[], parseComponents: PrefabComponentParser, debugSpawn: readonly Id[] | true = [],
-  archives: readonly AnimationArchiveSpec[] | ((prefabId: Id, records: readonly ArchiveSaveRecord[]) => readonly AnimationArchiveSpec[]) = [],
-): PrefabDefinition<Id> {
-  const debugSpawnIds = debugSpawn === true ? prefabIds : debugSpawn;
+/** A family's table of one value per prefab ID: the IDs a family lists, each to what that prefab declares. */
+export type PerPrefab<Id extends string, T> = { readonly [K in Id]: T };
+
+/** A table for every ID of a family: each ID's own entry, else the family's shared one. */
+export function perPrefab<const Id extends string, T>(prefabIds: readonly Id[], shared: T, own: Partial<PerPrefab<Id, T>>): PerPrefab<Id, T> {
+  return mapPrefabs(prefabIds, id => own[id] ?? shared);
+}
+
+/** A table for every ID of a family, each declared from its ID's own data. */
+export function mapPrefabs<const Id extends string, T>(prefabIds: readonly Id[], declare: (prefabId: Id) => T): PerPrefab<Id, T> {
+  return Object.fromEntries(prefabIds.map(id => [id, declare(id)])) as PerPrefab<Id, T>;
+}
+
+/**
+ * A family's save schema and art. The component schema and the archives are either the family's for every ID or a
+ * `PerPrefab` table, so a save record is read by its prefab's own declaration and never by a branch on its prefab ID.
+ */
+export function definePrefabs<const Id extends string, const SpawnId extends string = Id>(
+  prefabIds: readonly Id[], parseComponents: PrefabComponentParser | PerPrefab<Id, PrefabComponentParser>, debugSpawn: readonly SpawnId[] | true = [],
+  archives: readonly AnimationArchiveSpec[] | PerPrefab<Id, readonly AnimationArchiveSpec[]>
+    | ((prefabId: Id, records: readonly ArchiveSaveRecord[]) => readonly AnimationArchiveSpec[]) = [],
+): PrefabDefinition<Id | SpawnId> {
+  const debugSpawnIds: readonly (Id | SpawnId)[] = debugSpawn === true ? prefabIds : debugSpawn;
   if (new Set(prefabIds).size !== prefabIds.length || new Set(debugSpawnIds).size !== debugSpawnIds.length) {
     throw new Error('Duplicate prefab ID in definition');
   }
-  return Object.freeze({ prefabIds: Object.freeze([...prefabIds]), debugSpawnIds: Object.freeze([...debugSpawnIds]), parseComponents,
-    archives: typeof archives === 'function' ? archives : () => archives });
+  const parsers: Readonly<Record<string, PrefabComponentParser>> = typeof parseComponents === 'function'
+    ? Object.fromEntries(prefabIds.map(id => [id, parseComponents])) : parseComponents;
+  const archivesOf = typeof archives === 'function' ? archives
+    : Array.isArray(archives) ? () => archives : (prefabId: Id) => (archives as PerPrefab<Id, readonly AnimationArchiveSpec[]>)[prefabId];
+  return Object.freeze({ prefabIds: Object.freeze([...prefabIds]), debugSpawnIds: Object.freeze([...debugSpawnIds]),
+    parseComponents: typeof parseComponents === 'function' ? parseComponents
+      : (value, path, context) => (Object.hasOwn(parsers, context.prefab) ? parsers[context.prefab] : fail(path, `${context.prefab} is not in this family`))(value, path, context),
+    archives: archivesOf });
 }
 
 /** definitions.json's building and wall archives, by the prefab a save names. */
@@ -124,7 +162,6 @@ const ARCHIVED_BUILDINGS: Readonly<Partial<Record<string, { archive: string; bui
 const ARCHIVED_WALLS: Readonly<Partial<Record<string, { archive: string; buildArchive?: string }>>> = definitions.walls;
 /** Base art only; skins load when applied. definitions.json supplies each archive's bank and build. */
 function buildingArchives(prefab: string): readonly AnimationArchiveSpec[] {
-  if (prefab === FENCE_ID) return [{ animation: 'fence.zip', build: 'fence.zip' }, { animation: 'fence_thin.zip', build: 'fence.zip' }];
   const spec = ARCHIVED_BUILDINGS[prefab] ?? ARCHIVED_WALLS[prefab];
   return spec ? [{ animation: spec.archive, build: spec.buildArchive ?? spec.archive }] : [];
 }
@@ -339,19 +376,35 @@ const farmSoil = componentParser({ keys: ['farmSoil'] });
 const farmDebris = componentParser({ keys: ['farmDebris'] });
 const building = componentParser({ keys: ['building'] });
 const storage = componentParser({ keys: ['building', 'container'] });
+const burntBuilding = componentParser({ keys: ['building'], burntStructure: true });
+const burntStorage = componentParser({ keys: ['building', 'container'], burntStructure: true });
 const sculptingTable = componentParser({ keys: ['building', 'sculptingtable'] });
 const birdcage = componentParser({ keys: ['building', 'birdcage'] });
 const lightningRod = componentParser({ keys: ['building', 'lightningrod'] });
 const firepit = componentParser({ keys: ['building', 'firepit'] });
 const moonbase = componentParser({ keys: ['building', 'workable', 'moonbase'] });
 const tent = componentParser({ keys: ['building', 'finiteuses'], finiteUses: TENT_USES });
-const cookPot = componentParser({ keys: ['building', 'container', 'stewer'] });
+const cookPot = componentParser({ keys: ['building', 'container', 'stewer'], burntStructure: true });
 const wall = componentParser({ keys: ['wall', 'health'] });
 const fence = componentParser({ keys: ['fence'] });
 const bulbSingle = componentParser({ keys: ['bulbPlant'], bulbVariants: ['single', 'springy'] });
 const bulbDouble = componentParser({ keys: ['bulbPlant'], bulbVariants: ['double'] });
 const bulbTriple = componentParser({ keys: ['bulbPlant'], bulbVariants: ['triple'] });
 const caveinBoulder = componentParser({ keys: ['caveinBoulder'] });
+/** A placed building without its own OnSave: the catalog says whether it is a container, or a wall. */
+const catalogBuilding = (burntStructure: boolean): PrefabComponentParser => (value, path, context) => {
+  if (Object.hasOwn(context.catalog.buildings, context.prefab)) {
+    const container = context.catalog.buildings[context.prefab].container;
+    return (burntStructure ? container ? burntStorage : burntBuilding : container ? storage : building)(value, path, context);
+  }
+  if (context.catalog.walls.includes(context.prefab)) return wall(value, path, context);
+  return fail(path, `missing building definition for ${context.prefab}`);
+};
+/** The catalog buildings whose prefab makes them a burnable structure: MakeXBurnable(inst, nil, nil, true). */
+const BURNABLE_CATALOG_BUILDINGS = [TREASURE_CHEST_ID, WINTEROMETER_ID, BOOKSTATION_ID,
+  PIG_HEAD_ID, MERM_HEAD_ID, ...RESEARCH_LAB_IDS] as const;
+const PLACED_BUILDING_IDS = PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item'));
+const ROCK_FAMILY_IDS = [...ROCK_PREFABS, CAVEIN_BOULDER_ID, MOONROCKSEED_ID] as const;
 const beeQueenHiveComponents: PrefabComponentParser = (value, path) => {
   const data = object(value, path, ['workable', 'beeQueenHiveTimer']);
   const components: ReturnType<PrefabComponentParser> = {};
@@ -374,12 +427,40 @@ const beeQueenHiveComponents: PrefabComponentParser = (value, path) => {
   return components;
 };
 
+/** ruinsrelic.lua's replicas save their skin (decor items also moisture); smashables.lua's relics save rubble and health. */
+function ruinsRelicParser(id: RuinsRelicId): PrefabComponentParser {
+  const replica = isRelicReplica(id), decor = isRelicItem(id), skins = relicSkins(id);
+  return (value, path) => {
+    const data = object(value, path, ['ruinsRelic', ...replica ? decor ? ['inventoryitemmoisture'] : [] : ['health']]);
+    const components: EntityPersistData = {};
+    if (data.ruinsRelic !== undefined) {
+      const state = object(data.ruinsRelic, `${path}.ruinsRelic`, replica ? skins ? ['skinId'] : [] : ['rubble']);
+      if (state.rubble !== undefined && state.rubble !== true) fail(`${path}.ruinsRelic.rubble`, 'expected true');
+      if (state.skinId !== undefined && !Object.hasOwn(skins ?? {}, String(state.skinId))) fail(`${path}.ruinsRelic.skinId`, 'unsupported chair skin');
+      components.ruinsRelic = state as import('@dontstarve-web/prefab/ruinsrelic').RuinsRelicSaveState;
+    }
+    if (data.health !== undefined) {
+      const health = object(data.health, `${path}.health`, ['current', 'maximum']);
+      const maximum = number(health.maximum, `${path}.health.maximum`, Number.MIN_VALUE);
+      components.health = { maximum, current: number(health.current, `${path}.health.current`, 0, maximum) };
+    }
+    if (data.inventoryitemmoisture !== undefined) {
+      const moisture = object(data.inventoryitemmoisture, `${path}.inventoryitemmoisture`, ['moisture', 'wet']);
+      if (moisture.wet !== undefined && moisture.wet !== true) fail(`${path}.inventoryitemmoisture.wet`, 'expected true');
+      components.inventoryitemmoisture = {
+        ...moisture.moisture === undefined ? {} : { moisture: number(moisture.moisture, `${path}.inventoryitemmoisture.moisture`, 0, 100) },
+        ...moisture.wet === true ? { wet: true as const } : {},
+      };
+    }
+    return components;
+  };
+}
+
 /** One declaration supplies saved IDs, debug aliases and component schemas to both consumers. */
 const WORLD_PREFAB_DEFINITIONS = {
   farmPlow: definePrefabs([FARM_PLOW_ID], componentParser({ keys: ['farmPlow'] }), true),
   plantedSeeds: definePrefabs(PLANTED_SEED_IDS, empty, true),
-  farmDecor: definePrefabs(FARM_DECOR_IDS, (value, path, context) =>
-    (context.prefab === 'farm_soil' ? farmSoil : farmDebris)(value, path, context), true),
+  farmDecor: definePrefabs(FARM_DECOR_IDS, { farm_soil: farmSoil, farm_soil_debris: farmDebris }, true),
   moonTrees: definePrefabs(['moon_tree'], componentParser({ keys: ['moonTree', 'growable', 'moonTreeTimer'] }),
     ['moon_tree', 'moon_tree_short', 'moon_tree_normal', 'moon_tree_tall'],
     [definitions.moonTree.archive, 'tree_petal_fx.zip', 'baby_moon_tree.zip', 'snow.zip']),
@@ -470,32 +551,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   // statueruins.lua nogem(): onsave writes gem = nil.
   ruinsStatueMagesNoGem: definePrefabs([RUINS_STATUE_MAGE_NOGEM_ID], empty, true, ['statue_ruins.zip']),
   ruinsStatueHeadsNoGem: definePrefabs([RUINS_STATUE_HEAD_NOGEM_ID], empty, true, ['statue_ruins_small.zip']),
-  ruinsRelics: definePrefabs(RUINS_RELIC_IDS, (value, path, context) => {
-    const replica = context.prefab.startsWith('ruinsrelic_');
-    const decor = isRelicItem(context.prefab);
-    const data = object(value, path, ['ruinsRelic', ...replica ? decor ? ['inventoryitemmoisture'] : [] : ['health']]);
-    const components: EntityPersistData = {};
-    if (data.ruinsRelic !== undefined) {
-      const state = object(data.ruinsRelic, `${path}.ruinsRelic`, replica ? context.prefab === 'ruinsrelic_chair' ? ['skinId'] : [] : ['rubble']);
-      if (state.rubble !== undefined && state.rubble !== true) fail(`${path}.ruinsRelic.rubble`, 'expected true');
-      if (state.skinId !== undefined && !Object.hasOwn(RUINS_CHAIR_SKINS, String(state.skinId))) fail(`${path}.ruinsRelic.skinId`, 'unsupported chair skin');
-      components.ruinsRelic = state as import('@dontstarve-web/prefab/ruinsrelic').RuinsRelicSaveState;
-    }
-    if (data.health !== undefined) {
-      const health = object(data.health, `${path}.health`, ['current', 'maximum']);
-      const maximum = number(health.maximum, `${path}.health.maximum`, Number.MIN_VALUE);
-      components.health = { maximum, current: number(health.current, `${path}.health.current`, 0, maximum) };
-    }
-    if (data.inventoryitemmoisture !== undefined) {
-      const moisture = object(data.inventoryitemmoisture, `${path}.inventoryitemmoisture`, ['moisture', 'wet']);
-      if (moisture.wet !== undefined && moisture.wet !== true) fail(`${path}.inventoryitemmoisture.wet`, 'expected true');
-      components.inventoryitemmoisture = {
-        ...moisture.moisture === undefined ? {} : { moisture: number(moisture.moisture, `${path}.inventoryitemmoisture.moisture`, 0, 100) },
-        ...moisture.wet === true ? { wet: true as const } : {},
-      };
-    }
-    return components;
-  }, true, id => [`ruins_${relicName(id)}.zip`]),
+  ruinsRelics: definePrefabs(RUINS_RELIC_IDS, mapPrefabs(RUINS_RELIC_IDS, ruinsRelicParser), true, id => [`ruins_${relicName(id)}.zip`]),
   // atrium_statue.lua has no OnSave data.
   atriumStatues: definePrefabs([ATRIUM_STATUE_ID], empty, true, ['atrium_statue.zip']),
   atriumOvergrowths: definePrefabs([ATRIUM_OVERGROWTH_ID], atriumOvergrowth, true, ATRIUM_OVERGROWTH_ARCHIVES),
@@ -529,31 +585,26 @@ const WORLD_PREFAB_DEFINITIONS = {
   // archive_centipede.lua huskfn has no OnSave; health:OnSave writes the current health.
   archiveCentipedeHusks: definePrefabs([ARCHIVE_CENTIPEDE_HUSK_ID], componentParser({ keys: ['health'] }), true,
     [{ animation: 'archive_centipede.zip', build: 'archive_centipede_build.zip' }]),
-  buildings: definePrefabs(PLACEABLE_BUILDING_IDS.filter((id) => !id.endsWith('_item')), (value, path, context) => {
-    const spec = Object.hasOwn(context.catalog.buildings, context.prefab) ? context.catalog.buildings[context.prefab] : undefined;
-    if (spec) return (context.prefab === 'cookpot' ? cookPot : context.prefab === 'sculptingtable' ? sculptingTable
-      : context.prefab === 'birdcage' ? birdcage : context.prefab === TENT_ID ? tent
-      : context.prefab === 'moonbase' ? moonbase : context.prefab === 'lightning_rod' ? lightningRod
-      : context.prefab === 'firepit' ? firepit : spec.container ? storage : building)(value, path, context);
-    if (context.prefab === FENCE_ID) return fence(value, path, context);
-    if (context.catalog.walls.includes(context.prefab)) return wall(value, path, context);
-    return fail(path, `missing building definition for ${context.prefab}`);
-  }, // fence_item is an ordinary ground item (c_spawn) and inventory item (c_give); only `fence` is placed by c_spawn.
-    PLACEABLE_BUILDING_IDS.filter((id) => id !== FENCE_ITEM_ID), buildingArchives),
+  buildings: definePrefabs(PLACED_BUILDING_IDS, perPrefab(PLACED_BUILDING_IDS, catalogBuilding(false), {
+    ...mapPrefabs(BURNABLE_CATALOG_BUILDINGS, () => catalogBuilding(true)),
+    [COOK_POT_ID]: cookPot, [SCULPTING_TABLE_ID]: sculptingTable, [BIRDCAGE_ID]: birdcage, [TENT_ID]: tent, [MOONBASE_ID]: moonbase,
+    [LIGHTNING_ROD_ID]: lightningRod, [FIRE_PIT_ID]: firepit, [FENCE_ID]: fence,
+  }), // fence_item is an ordinary ground item (c_spawn) and inventory item (c_give); only `fence` is placed by c_spawn.
+    PLACEABLE_BUILDING_IDS.filter((id) => id !== FENCE_ITEM_ID), { ...mapPrefabs(PLACED_BUILDING_IDS, buildingArchives),
+      [FENCE_ID]: [{ animation: 'fence.zip', build: 'fence.zip' }, { animation: 'fence_thin.zip', build: 'fence.zip' }] }),
   flowers: definePrefabs(['flower'], componentParser({ keys: ['flower'] }), ['flower', 'flower_rose', 'planted_flower'], ['flowers.zip']),
   staffLights: definePrefabs([DWARF_STAR_ID, POLAR_LIGHT_ID], componentParser({ keys: ['timer'] }), true),
-  bulbPlants: definePrefabs(BULB_PLANT_PREFABS, (value, path, context) =>
-    (context.prefab === 'flower_cave' ? bulbSingle : context.prefab === 'flower_cave_double' ? bulbDouble : bulbTriple)(value, path, context), true,
+  bulbPlants: definePrefabs(BULB_PLANT_PREFABS, { flower_cave: bulbSingle, flower_cave_double: bulbDouble, flower_cave_triple: bulbTriple }, true,
     BULB_PLANT_VARIANTS.map(variant => `bulb_plant_${variant}.zip`)),
   lightflierFlowers: definePrefabs(['lightflier_flower'], componentParser({ keys: ['lightflierFlower'] }), true, ['bulb_plant_single.zip', 'bulb_plant_springy.zip', 'lightflier.zip']),
   molehills: definePrefabs(['molehill'], componentParser({ keys: ['molehill'] }), true),
   beefalos: definePrefabs(['beefalo'], componentParser({ keys: ['knownlocations', 'periodicspawner', 'beard', 'beefalo'] }), true),
   stalagmites: definePrefabs(STALAGMITE_IDS, empty, true, id => [`${stalagmiteBank(id)}.zip`]),
-  rocks: definePrefabs([...ROCK_PREFABS, CAVEIN_BOULDER_ID, MOONROCKSEED_ID], (value, path, context) =>
-    (context.prefab === CAVEIN_BOULDER_ID ? caveinBoulder : empty)(value, path, context), true,
-    prefab => isRockPrefab(prefab) ? rockArchives(prefab)
-      : prefab === CAVEIN_BOULDER_ID ? [{ animation: 'cavein_boulder.zip', build: 'swap_cavein_boulder.zip' }]
-      : [{ animation: 'moonrock_seed.zip', build: 'moonrock_seed.zip' }]),
+  rocks: definePrefabs(ROCK_FAMILY_IDS, perPrefab(ROCK_FAMILY_IDS, empty, { [CAVEIN_BOULDER_ID]: caveinBoulder }), true, {
+    ...mapPrefabs(ROCK_PREFABS, rockArchives),
+    [CAVEIN_BOULDER_ID]: [{ animation: 'cavein_boulder.zip', build: 'swap_cavein_boulder.zip' }],
+    [MOONROCKSEED_ID]: [{ animation: 'moonrock_seed.zip', build: 'moonrock_seed.zip' }],
+  }),
   moonglassRocks: definePrefabs([MOONGLASS_ROCK_ID], componentParser({ keys: ['rock_type'] }), true, (_prefab, records) => moonglassRockArchives(records)),
   caveHoles: definePrefabs([CAVE_HOLE_ID], componentParser({ keys: ['allowspawn'] }), true, ['cave_hole.zip']),
   pillarRuins: definePrefabs([PILLAR_RUINS_ID], empty, true, ['pillar_ruins.zip']),
@@ -579,15 +630,18 @@ const WORLD_PREFAB_DEFINITIONS = {
   caveExits: definePrefabs(CAVE_EXIT_IDS, empty, true, ['cave_exit.zip']),
   grottoPools: definePrefabs(GROTTO_IDS, componentParser({ keys: ['grottoPool', 'grottoGlass'], grottoChildren: 5 }), true,
     ['moonglasspool_tile.zip', 'moonglass_bigwaterfall.zip', 'moonglass_bigwaterfall_steam.zip', 'moon_tea_fx.zip']),
-  archiveProps: definePrefabs(ARCHIVE_PROP_IDS, (value, path, context) =>
-    context.prefab === ARCHIVE_MOON_STATUE_ID ? archiveStatue(value, path, context)
-      : context.prefab === ARCHIVE_RUNE_STATUE_ID ? archiveRune(value, path, context) : empty(value, path, context), ARCHIVE_PROP_SPAWN_IDS,
-    (prefab) => prefab === ARCHIVE_MOON_STATUE_ID ? [{ animation: 'archive_moon_statue.zip', build: 'archive_moon_statue.zip' }, 'structure_collapse_fx.zip']
-      : prefab === ARCHIVE_RUNE_STATUE_ID ? ['archive_runes.zip']
-      : prefab === 'archive_portal' ? ['archive_portal.zip', 'archive_portal_base.zip']
-      : prefab === 'archive_switch_base' ? ['archive_switch_ground.zip'] : []),
-  skeletons: definePrefabs(SKELETON_IDS, (value, path, context) =>
-    componentParser({ keys: ['skeleton'], skeletonAnims: SKELETON_ANIMS[isSkeletonId(context.prefab) ? context.prefab : fail(path, `${context.prefab} is not a skeleton`)], skeletonDescribed: context.prefab === SKELETON_PLAYER_ID })(value, path, context), true, ['skeletons.zip', 'structure_collapse_fx.zip']),
+  archiveProps: definePrefabs(ARCHIVE_PROP_IDS, perPrefab(ARCHIVE_PROP_IDS, empty,
+    { [ARCHIVE_MOON_STATUE_ID]: archiveStatue, [ARCHIVE_RUNE_STATUE_ID]: archiveRune }), ARCHIVE_PROP_SPAWN_IDS,
+  perPrefab(ARCHIVE_PROP_IDS, [], {
+    [ARCHIVE_MOON_STATUE_ID]: [{ animation: 'archive_moon_statue.zip', build: 'archive_moon_statue.zip' }, 'structure_collapse_fx.zip'],
+    [ARCHIVE_RUNE_STATUE_ID]: ['archive_runes.zip'],
+    [ARCHIVE_PORTAL_ID]: ['archive_portal.zip', 'archive_portal_base.zip'],
+    [ARCHIVE_SWITCH_BASE_ID]: ['archive_switch_ground.zip'],
+  })),
+  // skeleton.lua: each prefab's animnum range; only skeleton_player saves a description.
+  skeletons: definePrefabs(SKELETON_IDS, mapPrefabs(SKELETON_IDS, id => componentParser({ keys: ['skeleton'],
+    skeletonAnims: SKELETON_ANIMS[id], skeletonDescribed: id === SKELETON_PLAYER_ID })),
+  true, ['skeletons.zip', 'structure_collapse_fx.zip']),
   houndbones: definePrefabs([HOUNDBONE_ID], componentParser({ keys: ['houndbone'] }), true, ['hound_base.zip', 'structure_collapse_fx.zip']),
   beeQueenHives: definePrefabs([BEEQUEENHIVEGROWN_ID], beeQueenHiveComponents, true, ['bee_queen_hive.zip']),
   dragonflies: definePrefabs([DRAGONFLY_ID], (value, path) => {
@@ -682,7 +736,10 @@ export const ITEM_PREFAB_IDS: readonly string[] = (() => {
 
 export const PREFAB_DEFINITIONS = {
   ...WORLD_PREFAB_DEFINITIONS,
-  groundItems: definePrefabs(ITEM_PREFAB_IDS, componentParser({ keys: ['stack', 'phonograph', 'torch', 'lantern'] }),
+  // An item record is its stack, and the record of a machine its prefab's OnSave also writes.
+  groundItems: definePrefabs(ITEM_PREFAB_IDS, perPrefab(ITEM_PREFAB_IDS, componentParser({ keys: ['stack'] }), {
+    [TORCH_ID]: componentParser({ keys: ['stack', 'torch'] }), [LANTERN_ID]: componentParser({ keys: ['stack', 'lantern'] }),
+    [PHONOGRAPH_ID]: componentParser({ keys: ['stack', 'phonograph'] }) }),
     [...new Set([...GROUND_ART_SPAWN_IDS, ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', 'lightflier', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, NIGHTMARE_TIMEPIECE_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'moonglass', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'cactus_flower', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'])], groundItemArchives),
 } as const;
 
