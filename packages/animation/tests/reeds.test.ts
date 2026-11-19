@@ -50,10 +50,11 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('loads the imported save records with the clip, tags, bank and component values reeds.lua fn declares', async () => {
   const reeds = await importedReeds();
-  expect(reeds).toHaveLength(58);
-  const picked = reeds.filter(record => record.components.pickable?.picked);
-  expect(picked).toHaveLength(1);
-  const full = reeds.find(record => !record.components.pickable?.picked)!;
+  expect(reeds).toHaveLength(56);
+  // Every reed in Cluster_65's forest snapshot stands unpicked; the second one is saved as picked here.
+  expect(reeds.every(record => !record.components.pickable?.picked)).toBe(true);
+  const [full, unpicked] = reeds as [PlacementSaveRecord, PlacementSaveRecord];
+  const picked = [{ ...unpicked, components: { pickable: { picked: true, regrowSeconds: 600 } } }];
   const { spawn, records, definitions, requested, dispose } = setup();
   try {
     const inst = spawn(full);

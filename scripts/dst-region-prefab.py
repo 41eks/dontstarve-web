@@ -162,7 +162,7 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
     result, counts, sources, identities, imported_ids = {}, {}, [], set(), {}
     ground_art, variants = INVENTORY['ground_art_catalog']()
     converters = ENTITY_WHITELIST | {prefab: None for prefab in sorted(ground_art) if source_entities.get(prefab)}
-    ground_counts, container_items = {}, {'skipped': [], 'droppedComponents': []}
+    ground_counts, container_items, skipped = {}, {'skipped': [], 'droppedComponents': []}, []
     for prefab, convert_components in converters.items():
         static = convert_components is None
         records = source_entities.get(prefab, [])
@@ -228,6 +228,13 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
                     if record.get('data') is not None:
                         raise
                     components = {}
+            if components is None:
+                # The converter declined a source state the project cannot represent: the record is not imported.
+                identities.discard(entity_id)
+                imported_ids.pop(source_id, None)
+                skipped.append({'prefab': prefab, 'sourceIndex': index,
+                                **({'sourceId': source_id} if source_id is not None else {})})
+                continue
             if 'stack' in components:
                 components['stack']['entityId'] = entity_id
             imported.append({'id': entity_id,
@@ -254,5 +261,5 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
         outside = spawner['components']['dragonflySpawner']['childspawner']['childrenoutside']
         spawner['components']['dragonflySpawner']['childspawner']['childrenoutside'] = [imported_ids[source_id] for source_id in outside]
     return result, {'entityWhitelist': list(converters), 'entityCounts': counts, 'entitySources': sources,
-                    'groundItemCounts': ground_counts, 'containerItems': container_items,
+                    'groundItemCounts': ground_counts, 'containerItems': container_items, 'skippedEntities': skipped,
                     'groundItemScope': 'Ground art as item prefabs saved under their own IDs: identity, position, quantity, skin and visual variants. Existing prefab behavior is reused; art-only IDs add no gameplay components.'}

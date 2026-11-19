@@ -19,7 +19,7 @@ import { drawGround, layerMeshes } from './groundDisplayFixture';
 
 const UNIT = TILE_SIZE / 4;
 /**
- * What scripts/dst-region-tile.py makes of Cluster_62's cave snapshot 0000000135: three three-tile bridges and one
+ * What scripts/dst-region-tile.py makes of Cluster_65's cave snapshot 0000000145: two three-tile bridges and one
  * single tile, each with ropebridgemanager's health, direction (z mirrored) and the middle tiles' icon offset.
  */
 const BRIDGES: TurfTileSave[] = [
@@ -32,13 +32,8 @@ const BRIDGES: TurfTileSave[] = [
   { col: 82, row: -38, tileId: 266, ropeBridge: { health: 100, direction: { x: 0, z: -4 }, iconOffset: 0 } },
 ];
 
-/** The imported Caves save with the bridges the new snapshot added over its void, through the save reader. */
-function caveWithBridges() {
-  const save = importedSave('Caves');
-  const document = JSON.parse(JSON.stringify(save)) as typeof save;
-  document.world.map.tiles = [...document.world.map.tiles ?? [], ...BRIDGES];
-  return deserializeSave(JSON.stringify(document), SAVE_CATALOG, save.players.local);
-}
+/** The imported Caves save, whose bridges cross its void, through the save reader. */
+const caveWithBridges = () => importedSave('Caves');
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 

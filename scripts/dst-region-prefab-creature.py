@@ -7,6 +7,7 @@ BEEFALO_POOP_MAX_SECONDS = 100
 BEEFALO_BEARD_BITS = 3
 WILD_DOMESTICATION = {'domestication_latch': False, 'tendencies': [], 'obedience': 0, 'minobedience': 0,
                       'domestication': 0, 'domesticated': False}
+BEEFALO_TENDENCIES = ('DEFAULT', 'ORNERY', 'RIDER', 'PUDGY')  # beefalo.lua TENDENCY
 EMPTY_CLOTHING = {'clothing': {slot: '' for slot in ('beef_horn', 'beef_feet', 'beef_head', 'beef_tail', 'beef_body')}}
 
 
@@ -108,23 +109,42 @@ def dragonfly_spawner_components(data):
 
 def beefalo_components(data, context):
     # beefalo.lua OnSave (tendency, hascarrat) plus the component OnSaves. Only knownlocations, periodicspawner
-    # and beard are ported. A wild, unhurt, unclothed beefalo's other components are validated and dropped:
-    # health and hunger at their defaults, no domestication, ride or carrat, and no clothing. leader followers are
-    # babybeefalo, which is not ported; uniqueid, brushable and an unnamed writeable are rebuilt.
+    # and beard are ported. A wild, unclothed beefalo's other components are validated and dropped: hunger at its
+    # default, no carrat, and no clothing. leader followers are babybeefalo, which is not ported; uniqueid, brushable
+    # and an unnamed writeable are rebuilt. health is not ported: a hurt beefalo is skipped (returns None) rather
+    # than healed. Domestication, riding and the saddle are not ported either: a domesticated beefalo imports as a
+    # wild one, dropping domesticatable (with its rideable saddle), its tendency, eater and beefalometrics.
     if set(data) - {'periodicspawner', 'tendency', 'hascarrat', 'carratcolor', 'leader', 'knownlocations', 'uniqueid',
-                    'skinner_beefalo', 'brushable', 'domesticatable', 'health', 'hunger', 'beard', 'writeable'}:
+                    'skinner_beefalo', 'brushable', 'domesticatable', 'health', 'hunger', 'beard', 'writeable',
+                    'eater', 'beefalometrics'}:
         raise ValueError('Unsupported beefalo save state')
-    if data.get('tendency', 'DEFAULT') != 'DEFAULT' or data.get('hascarrat', False) is not False \
-            or data.get('carratcolor') is not None:
-        raise ValueError('Unsupported beefalo tendency or carrat')
-    domestication = {key: value for key, value in (data.get('domesticatable') or {}).items()
-                     if key not in ('lastdomesticationgaindelta', 'rideable')}
-    if domestication and domestication != WILD_DOMESTICATION:
-        raise ValueError('Unsupported domesticated beefalo')
+    domesticatable = data.get('domesticatable') or {}
+    if not isinstance(domesticatable, dict):
+        raise ValueError('Unsupported beefalo domestication')
+    domesticated = domesticatable.get('domesticated') is True
+    if domesticated:
+        if set(domesticatable) - set(WILD_DOMESTICATION) - {'lastdomesticationgaindelta', 'rideable'} \
+                or data.get('tendency') not in BEEFALO_TENDENCIES:
+            raise ValueError('Unsupported domesticated beefalo')
+    else:
+        if set(data) & {'eater', 'beefalometrics'} or data.get('tendency', 'DEFAULT') != 'DEFAULT':
+            raise ValueError('Unsupported beefalo tendency')
+        domestication = {key: value for key, value in domesticatable.items()
+                         if key not in ('lastdomesticationgaindelta', 'rideable')}
+        if domestication and domestication != WILD_DOMESTICATION:
+            raise ValueError('Unsupported domesticated beefalo')
+    if data.get('hascarrat', False) is not False or data.get('carratcolor') is not None:
+        raise ValueError('Unsupported beefalo carrat')
     if data.get('skinner_beefalo', EMPTY_CLOTHING) != EMPTY_CLOTHING:
         raise ValueError('Unsupported beefalo clothing')
-    if data.get('health', {'health': 1000}) != {'health': 1000} or data.get('hunger', {'hunger': 0}) != {'hunger': 0}:
-        raise ValueError('Unsupported beefalo health or hunger')
+    if data.get('hunger', {'hunger': 0}) != {'hunger': 0}:
+        raise ValueError('Unsupported beefalo hunger')
+    health = data.get('health', {'health': 1000})
+    if not isinstance(health, dict) or set(health) != {'health'} or not _finite(health['health']) \
+            or not 0 < health['health'] <= 1000:
+        raise ValueError('Unsupported beefalo health')
+    if health['health'] != 1000:
+        return None
     writeable = data.get('writeable')
     if writeable is not None and (not isinstance(writeable, dict) or writeable.get('text')):
         raise ValueError('Unsupported named beefalo')

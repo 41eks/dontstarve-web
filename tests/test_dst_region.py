@@ -442,6 +442,31 @@ end
         with self.assertRaisesRegex(ValueError, 'Unsupported pighead save state'):
             PREFAB['convert_entities'](terrain, groups, report, 'SESSION')
 
+    def test_beefalo_skips_a_hurt_one_and_imports_a_domesticated_one_as_wild(self):
+        terrain = {'width': 8, 'height': 6, 'topology': {'ids': ['Room']},
+                   'nodeidtilemap': base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack('<48H', *[1] * 48)).decode()}
+        report = {'nodes': ['Room'], 'translation': [0, 0, 0]}
+        clothing = '{clothing={beef_body="",beef_feet="",beef_head="",beef_horn="",beef_tail=""}}'
+        source = '''
+tablefunctions["ents_beefalo_fn"] = function()
+return {{id=1,x=0,z=0,data={health={health=998.9},hunger={hunger=0},tendency="DEFAULT",skinner_beefalo=CLOTHING}},
+{id=2,x=4,z=0,data={beefalometrics={lastdomesticator_id="KU_x"},eater={time_since_eat=10.5},health={health=1000},
+hunger={hunger=0},tendency="RIDER",skinner_beefalo=CLOTHING,writeable={netid="1",userid="KU_x"},
+domesticatable={domesticated=true,domestication=1,domestication_latch=false,lastdomesticationgaindelta=9.3,
+minobedience=0.95,obedience=0.95,rideable={lastridedelta=1.5,saddle={prefab="saddle_shadow",x=4,z=0}},
+tendencies={ORNERY=6.1,PUDGY=0,RIDER=4.6}},beard={bits=3,growth=177,growthaccumulator=0},periodicspawner={time=56}}}}
+end
+'''.replace('CLOTHING', clothing)
+        entities, entity_report = PREFAB['convert_entities'](
+            terrain, IMPORTER['LITERALS']['snapshot_entities'](source, ['beefalo']), report, 'S')
+        self.assertEqual(entity_report['skippedEntities'], [{'prefab': 'beefalo', 'sourceIndex': 1, 'sourceId': 1}])
+        self.assertEqual([entity['id'] for entity in entities['beefalo']], ['dst_S_beefalo_id_2'])
+        self.assertEqual(entities['beefalo'][0]['components'], {
+            'periodicspawner': {'time': 56}, 'beard': {'bits': 3, 'growth': 177, 'growthaccumulator': 0}})
+        with self.assertRaisesRegex(ValueError, 'Unsupported beefalo tendency'):
+            PREFAB['convert_entities'](terrain, {'beefalo': [{'id': 3, 'x': 0, 'z': 0, 'data': {'tendency': 'RIDER'}}]},
+                                       report, 'S')
+
     def test_player_snapshot_migrates_mirrored_position_and_inventory(self):
         literals = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/dst-save-literal.py'))
         # A dedicated server's player file wraps the table in a binary header and session trailer.

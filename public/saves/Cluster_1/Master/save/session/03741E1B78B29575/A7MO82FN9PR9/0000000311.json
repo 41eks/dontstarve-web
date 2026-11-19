@@ -1,0 +1,174 @@
+{
+  "player": {
+    "prefab": "wilson",
+    "shardId": "master",
+    "transform": {
+      "position": [
+        229.308,
+        0.0,
+        631.554
+      ],
+      "rotationY": 0
+    },
+    "stats": {
+      "health": 150,
+      "hunger": 150,
+      "sanity": 200
+    },
+    "inventory": {
+      "containers": {
+        "player:inventory": {
+          "slotCount": 15,
+          "slots": [
+            {
+              "slotKey": "0",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_0",
+                "itemId": "meatballs",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "1",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_1",
+                "itemId": "voidcloth_boomerang",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "2",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_2",
+                "itemId": "voidcloth_kit",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "3",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_3",
+                "itemId": "voidclothhat",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "4",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_4",
+                "itemId": "jellybean",
+                "count": 3
+              }
+            },
+            {
+              "slotKey": "5",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_5",
+                "itemId": "opalstaff",
+                "count": 1,
+                "skinId": "moonstaff_relic",
+                "remainingUses": 15
+              }
+            },
+            {
+              "slotKey": "6",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_6",
+                "itemId": "premiumwateringcan",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "7",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_7",
+                "itemId": "voidcloth",
+                "count": 7
+              }
+            },
+            {
+              "slotKey": "8",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_8",
+                "itemId": "lunarplant_husk",
+                "count": 5
+              }
+            },
+            {
+              "slotKey": "9",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_9",
+                "itemId": "horrorfuel",
+                "count": 2
+              }
+            },
+            {
+              "slotKey": "10",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_10",
+                "itemId": "spear_wathgrithr_lightning",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "11",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_11",
+                "itemId": "orangestaff",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "12",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_12",
+                "itemId": "pickaxe_lunarplant",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "13",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_13",
+                "itemId": "voidcloth_scythe",
+                "count": 1
+              }
+            },
+            {
+              "slotKey": "14",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_14",
+                "itemId": "seeds",
+                "count": 1
+              }
+            }
+          ]
+        },
+        "player:equipment": {
+          "slotCount": 3,
+          "slots": [
+            {
+              "slotKey": "head",
+              "item": {
+                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_equip_head",
+                "itemId": "lunarplanthat",
+                "count": 1,
+                "skinId": "lunarplanthat_brave"
+              }
+            }
+          ]
+        },
+        "player:cursor": {
+          "slotCount": 1,
+          "slots": []
+        }
+      },
+      "bufferedBuilds": []
+    }
+  },
+  "migration": {
+    "portalid": 4,
+    "worldid": "1",
+    "sessionid": "03741E1B78B29575"
+  }
+}
