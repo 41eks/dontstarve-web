@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds, malbatross mast, rope bridge, support pillar and oasis lake world art, retaining split animation/build archives and original bytes."""
+"""Mirror source rock, cave hole, pillar, moon fissure, water tree pillar, atrium overgrowth, reeds, malbatross mast, rope bridge, support pillar, oasis lake and hive world art, retaining split animation/build archives and original bytes."""
 import argparse
 import runpy
 import zipfile
@@ -45,6 +45,9 @@ ASSETS = {
     'support_pillar': ['support_pillar.zip'],
     # oasislake.lua: the oasis_tile bank and build, and splash.zip, which oasislake.lua itself never plays.
     'oasislake': ['oasis_tile.zip', 'splash.zip'],
+    # beehive.lua / wasphive.lua: one archive each for the bank and build; snow.zip is mirrored elsewhere.
+    'beehive': ['beehive.zip'],
+    'wasphive': ['wasphive.zip'],
 }
 # skinprefabs.lua: mast_malbatross's PREFAB_SKINS, each a dynamic build with its .dyn atlas package.
 SKINS = ['mast_malbatross_tesla', 'mast_malbatross_wagstaff']
@@ -157,6 +160,11 @@ def main():
     art |= {f'oasis_tile/{clip}': {'animationArchive': 'oasis_tile.zip', 'bank': 'oasis_tile', 'animation': clip}
             for clip in ['idle', 'wet', 'dry_pre', 'dry_idle', 'dry_pst']}
     art |= {'splash/splash': {'animationArchive': 'splash.zip', 'bank': 'splash', 'animation': 'splash'}}
+    # beehive.lua / wasphive.lua: fn's cocoon_small, OnHit's cocoon_small_hit, OnKilled's cocoon_dead and
+    # OnFreeze / OnThaw's frozen / frozen_loop_pst (the wasp hive's bank holds them too, though it never freezes).
+    art |= {f'{bank}/{clip}': {'animationArchive': f'{bank}.zip', 'bank': bank, 'animation': clip}
+            for bank in ('beehive', 'wasphive')
+            for clip in ['cocoon_small', 'cocoon_small_hit', 'cocoon_dead', 'frozen', 'frozen_loop_pst']}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives and {len(SKINS)} skin builds')
 

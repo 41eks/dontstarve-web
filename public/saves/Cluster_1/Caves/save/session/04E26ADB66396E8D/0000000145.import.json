@@ -450,6 +450,8 @@
     "mast_malbatross",
     "support_pillar",
     "oasislake",
+    "beehive",
+    "wasphive",
     "ruinsrelic_table",
     "ruinsrelic_chair",
     "ruinsrelic_vase",
@@ -691,6 +693,14 @@
       "imported": 4
     },
     "oasislake": {
+      "source": 0,
+      "imported": 0
+    },
+    "beehive": {
+      "source": 0,
+      "imported": 0
+    },
+    "wasphive": {
       "source": 0,
       "imported": 0
     },

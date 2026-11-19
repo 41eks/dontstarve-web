@@ -37,6 +37,8 @@ export interface SavedEntity {
     torch?: { lit: true };
     lantern?: { ison: boolean };
     health?: { current: number; maximum: number };
+    /** childspawner:OnSave of a hive (beehive.lua, wasphive.lua). */
+    childspawner?: import('../../packages/componets/src/childspawner').ChildSpawnerSave;
     timer?: import('../../packages/componets/src/timer').NamedTimerSave;
     flower?: { animation: FlowerAnimation; planted?: true };
     bulbPlant?: BulbPlantSaveState;

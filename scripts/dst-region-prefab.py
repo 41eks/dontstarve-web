@@ -30,6 +30,9 @@ ENTITY_WHITELIST = {
     'mast_malbatross': STRUCTURE['mast_malbatross_components'],
     'support_pillar': STRUCTURE['support_pillar_components'],
     'oasislake': STRUCTURE['oasislake_components'],
+    # tuning.lua: math.ceil(BEEHIVE_BEES * SPRING_COMBAT_MOD) bees in spring, health 200; WASPHIVE_WASPS, health 250.
+    'beehive': STRUCTURE['hive_components']('beehive', 7, 200),
+    'wasphive': STRUCTURE['hive_components']('wasphive', 5, 250),
     'ruinsrelic_table': STRUCTURE['ruins_relic_components']('ruinsrelic_table'),
     'ruinsrelic_chair': STRUCTURE['ruins_relic_components']('ruinsrelic_chair'),
     'ruinsrelic_vase': STRUCTURE['ruins_relic_components']('ruinsrelic_vase'),

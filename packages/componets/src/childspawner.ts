@@ -13,6 +13,7 @@ export interface ChildSpawnerSave {
   timetonextspawn?: number; timetonextregen?: number; emergencychildreninside?: number;
 }
 
+
 /** childspawner.lua's normal children branch. Ownership is separate from the inside population. */
 export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
   readonly childrenoutside = new Set<Child>();
@@ -20,6 +21,16 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
   maxchildren = 1;
   /** childspawner.childname: the prefab SpawnChild makes. Here children come from ConfigureSpawning's function. */
   childname?: string;
+  /**
+   * The emergency children's settings and inside count. Emergency spawning, its children outside and their regen are
+   * not ported; only spawners given SetMaxEmergencyChildren save the count.
+   */
+  emergencychildname?: string;
+  emergencychildrenperplayer = 1;
+  canemergencyspawn = true;
+  maxemergencychildren = 0;
+  emergencychildreninside = 0;
+  emergencydetectionradius = 10;
   onchildkilled?: (child: Child) => void;
   ongohome?: (child: Child) => void;
   private readonly listeners = new Map<Child, (() => void)[]>();
@@ -92,6 +103,13 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
     if (this.childreninside + this.numchildrenoutside >= max) this.regen.stop();
     this.startRegen(); this.startSpawnUpdate();
   }
+  /** ChildSpawner:SetMaxEmergencyChildren, with no emergency children outside. */
+  SetMaxEmergencyChildren(max: number): void {
+    this.emergencychildreninside = Math.max(0, max);
+    this.maxemergencychildren = max;
+  }
+  /** ChildSpawner:SetEmergencyRadius. */
+  SetEmergencyRadius(rad: number): void { this.emergencydetectionradius = rad; }
   TakeOwnership(child: Child): void {
     if (this.childrenoutside.has(child)) return;
     child.setHome(this.home); this.childrenoutside.add(child);
@@ -154,10 +172,15 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
   OnSave(): ChildSpawnerSave { return { childreninside: this.childreninside,
     childrenoutside: [...this.childrenoutside].map(child => child.id),
     ...(this.spawnChild ? { spawning: this.spawning, regening: this.regening, queued_spawn: this.queued,
-      timetonextspawn: Math.floor(this.nextSpawn), timetonextregen: Math.floor(this.nextRegen), emergencychildreninside: 0 } : {}) }; }
+      timetonextspawn: Math.floor(this.nextSpawn), timetonextregen: Math.floor(this.nextRegen) } : {}),
+    ...(this.spawnChild || this.maxemergencychildren > 0 ? { emergencychildreninside: this.emergencychildreninside } : {}) }; }
   /** ChildSpawner:OnLoad, after the prefab's fn: saved flags are or'ed into what fn set; the children outside link in LoadPostPass. */
   OnLoad(data: ChildSpawnerSave): void {
     if (data.childreninside !== undefined) { this.childreninside = 0; this.AddChildrenInside(data.childreninside); }
+    // AddEmergencyChildrenInside from 0: clamped to maxemergencychildren.
+    if (data.emergencychildreninside !== undefined) {
+      this.emergencychildreninside = Math.max(0, Math.min(this.maxemergencychildren, data.emergencychildreninside));
+    }
     this.spawning = data.spawning || this.spawning;
     this.regening = data.regening || this.regening;
     this.queued = data.queued_spawn || this.queued;

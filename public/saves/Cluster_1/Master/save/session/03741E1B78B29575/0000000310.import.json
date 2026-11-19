@@ -368,6 +368,8 @@
     "mast_malbatross",
     "support_pillar",
     "oasislake",
+    "beehive",
+    "wasphive",
     "ruinsrelic_table",
     "ruinsrelic_chair",
     "ruinsrelic_vase",
@@ -701,6 +703,14 @@
     "oasislake": {
       "source": 1,
       "imported": 1
+    },
+    "beehive": {
+      "source": 53,
+      "imported": 53
+    },
+    "wasphive": {
+      "source": 25,
+      "imported": 25
     },
     "ruinsrelic_table": {
       "source": 0,
@@ -1916,6 +1926,942 @@
         -93.94
       ],
       "sourceNode": "Lightning Bluff:0:LightningBluffOasis"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106149",
+      "prefab": "beehive",
+      "sourceIndex": 1,
+      "sourceId": 106149,
+      "sourcePosition": [
+        -103.36,
+        0,
+        112.67
+      ],
+      "sourceNode": "Beeeees!:3:BeeQueenBee"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106150",
+      "prefab": "beehive",
+      "sourceIndex": 2,
+      "sourceId": 106150,
+      "sourcePosition": [
+        327.76,
+        0,
+        259.63
+      ],
+      "sourceNode": "The hunters:6:BGGrass"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106151",
+      "prefab": "beehive",
+      "sourceIndex": 3,
+      "sourceId": 106151,
+      "sourcePosition": [
+        191.35,
+        0,
+        -187.35
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106152",
+      "prefab": "beehive",
+      "sourceIndex": 4,
+      "sourceId": 106152,
+      "sourcePosition": [
+        172.84,
+        0,
+        -171.99
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106153",
+      "prefab": "beehive",
+      "sourceIndex": 5,
+      "sourceId": 106153,
+      "sourcePosition": [
+        164.6,
+        0,
+        -192.42
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106154",
+      "prefab": "beehive",
+      "sourceIndex": 6,
+      "sourceId": 106154,
+      "sourcePosition": [
+        168.21,
+        0,
+        -248.13
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106155",
+      "prefab": "beehive",
+      "sourceIndex": 7,
+      "sourceId": 106155,
+      "sourcePosition": [
+        131.77,
+        0,
+        -275.52
+      ],
+      "sourceNode": "Killer bees!:0:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106156",
+      "prefab": "beehive",
+      "sourceIndex": 8,
+      "sourceId": 106156,
+      "sourcePosition": [
+        171.25,
+        0,
+        -168.01
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106157",
+      "prefab": "beehive",
+      "sourceIndex": 9,
+      "sourceId": 106157,
+      "sourcePosition": [
+        135.36,
+        0,
+        -248.84
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106158",
+      "prefab": "beehive",
+      "sourceIndex": 10,
+      "sourceId": 106158,
+      "sourcePosition": [
+        148.19,
+        0,
+        -220.86
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106159",
+      "prefab": "beehive",
+      "sourceIndex": 11,
+      "sourceId": 106159,
+      "sourcePosition": [
+        147.14,
+        0,
+        -248.48
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106160",
+      "prefab": "beehive",
+      "sourceIndex": 12,
+      "sourceId": 106160,
+      "sourcePosition": [
+        492.53,
+        0,
+        -79.71
+      ],
+      "sourceNode": "Kill the spiders:6:Clearing"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106161",
+      "prefab": "beehive",
+      "sourceIndex": 13,
+      "sourceId": 106161,
+      "sourcePosition": [
+        -7.53,
+        0,
+        -55.18
+      ],
+      "sourceNode": "Magic meadow:BG_24:Clearing"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106162",
+      "prefab": "beehive",
+      "sourceIndex": 14,
+      "sourceId": 106162,
+      "sourcePosition": [
+        343.88,
+        0,
+        316.68
+      ],
+      "sourceNode": "The hunters:7:BGGrass"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106163",
+      "prefab": "beehive",
+      "sourceIndex": 15,
+      "sourceId": 106163,
+      "sourcePosition": [
+        188.89,
+        0,
+        -192.61
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106164",
+      "prefab": "beehive",
+      "sourceIndex": 16,
+      "sourceId": 106164,
+      "sourcePosition": [
+        -128.24,
+        0,
+        156.98
+      ],
+      "sourceNode": "Beeeees!:1:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106165",
+      "prefab": "beehive",
+      "sourceIndex": 17,
+      "sourceId": 106165,
+      "sourcePosition": [
+        159.52,
+        0,
+        -192.45
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106166",
+      "prefab": "beehive",
+      "sourceIndex": 18,
+      "sourceId": 106166,
+      "sourcePosition": [
+        172.29,
+        0,
+        -143.89
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106167",
+      "prefab": "beehive",
+      "sourceIndex": 19,
+      "sourceId": 106167,
+      "sourcePosition": [
+        72.69,
+        0,
+        -279.44
+      ],
+      "sourceNode": "Killer bees!:0:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106168",
+      "prefab": "beehive",
+      "sourceIndex": 20,
+      "sourceId": 106168,
+      "sourcePosition": [
+        136.81,
+        0,
+        -292.87
+      ],
+      "sourceNode": "Killer bees!:0:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106169",
+      "prefab": "beehive",
+      "sourceIndex": 21,
+      "sourceId": 106169,
+      "sourcePosition": [
+        159.36,
+        0,
+        -156.04
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106170",
+      "prefab": "beehive",
+      "sourceIndex": 22,
+      "sourceId": 106170,
+      "sourcePosition": [
+        176.25,
+        0,
+        -172.95
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106171",
+      "prefab": "beehive",
+      "sourceIndex": 23,
+      "sourceId": 106171,
+      "sourcePosition": [
+        199.76,
+        0,
+        -203.5
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106172",
+      "prefab": "beehive",
+      "sourceIndex": 24,
+      "sourceId": 106172,
+      "sourcePosition": [
+        176.6,
+        0,
+        -216.97
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106173",
+      "prefab": "beehive",
+      "sourceIndex": 25,
+      "sourceId": 106173,
+      "sourcePosition": [
+        152.17,
+        0,
+        -171.3
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106174",
+      "prefab": "beehive",
+      "sourceIndex": 26,
+      "sourceId": 106174,
+      "sourcePosition": [
+        168.28,
+        0,
+        -183.51
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106175",
+      "prefab": "beehive",
+      "sourceIndex": 27,
+      "sourceId": 106175,
+      "sourcePosition": [
+        207.31,
+        0,
+        -192.08
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106176",
+      "prefab": "beehive",
+      "sourceIndex": 28,
+      "sourceId": 106176,
+      "sourcePosition": [
+        196.99,
+        0,
+        -204.42
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106177",
+      "prefab": "beehive",
+      "sourceIndex": 29,
+      "sourceId": 106177,
+      "sourcePosition": [
+        163.21,
+        0,
+        -176.61
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106178",
+      "prefab": "beehive",
+      "sourceIndex": 30,
+      "sourceId": 106178,
+      "sourcePosition": [
+        -115.01,
+        0,
+        232.52
+      ],
+      "sourceNode": "Beeeees!:0:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106179",
+      "prefab": "beehive",
+      "sourceIndex": 31,
+      "sourceId": 106179,
+      "sourcePosition": [
+        -132.78,
+        0,
+        215.48
+      ],
+      "sourceNode": "Beeeees!:0:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106180",
+      "prefab": "beehive",
+      "sourceIndex": 32,
+      "sourceId": 106180,
+      "sourcePosition": [
+        144.4,
+        0,
+        -248.12
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106181",
+      "prefab": "beehive",
+      "sourceIndex": 33,
+      "sourceId": 106181,
+      "sourcePosition": [
+        123.57,
+        0,
+        -300.27
+      ],
+      "sourceNode": "Killer bees!:0:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106182",
+      "prefab": "beehive",
+      "sourceIndex": 34,
+      "sourceId": 106182,
+      "sourcePosition": [
+        164.71,
+        0,
+        -255.55
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106183",
+      "prefab": "beehive",
+      "sourceIndex": 35,
+      "sourceId": 106183,
+      "sourcePosition": [
+        132.28,
+        0,
+        -231.8
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106184",
+      "prefab": "beehive",
+      "sourceIndex": 36,
+      "sourceId": 106184,
+      "sourcePosition": [
+        147.08,
+        0,
+        -231.39
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106185",
+      "prefab": "beehive",
+      "sourceIndex": 37,
+      "sourceId": 106185,
+      "sourcePosition": [
+        156.51,
+        0,
+        -239.28
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106186",
+      "prefab": "beehive",
+      "sourceIndex": 38,
+      "sourceId": 106186,
+      "sourcePosition": [
+        -43.05,
+        0,
+        -140.11
+      ],
+      "sourceNode": "Make a pick:BG_47:BGGrass"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106187",
+      "prefab": "beehive",
+      "sourceIndex": 39,
+      "sourceId": 106187,
+      "sourcePosition": [
+        -100.18,
+        0,
+        168.76
+      ],
+      "sourceNode": "Beeeees!:1:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106188",
+      "prefab": "beehive",
+      "sourceIndex": 40,
+      "sourceId": 106188,
+      "sourcePosition": [
+        171.48,
+        0,
+        -199.14
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106189",
+      "prefab": "beehive",
+      "sourceIndex": 41,
+      "sourceId": 106189,
+      "sourcePosition": [
+        156.28,
+        0,
+        -135.49
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106190",
+      "prefab": "beehive",
+      "sourceIndex": 42,
+      "sourceId": 106190,
+      "sourcePosition": [
+        175.86,
+        0,
+        -164.29
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106191",
+      "prefab": "beehive",
+      "sourceIndex": 43,
+      "sourceId": 106191,
+      "sourcePosition": [
+        -63.14,
+        0,
+        56.75
+      ],
+      "sourceNode": "Beeeees!:4:BeeClearing"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106192",
+      "prefab": "beehive",
+      "sourceIndex": 44,
+      "sourceId": 106192,
+      "sourcePosition": [
+        -168.48,
+        0,
+        239.63
+      ],
+      "sourceNode": "Beeeees!:0:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106193",
+      "prefab": "beehive",
+      "sourceIndex": 45,
+      "sourceId": 106193,
+      "sourcePosition": [
+        -91.77,
+        0,
+        167.24
+      ],
+      "sourceNode": "Beeeees!:2:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106194",
+      "prefab": "beehive",
+      "sourceIndex": 46,
+      "sourceId": 106194,
+      "sourcePosition": [
+        155.12,
+        0,
+        -247.13
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106195",
+      "prefab": "beehive",
+      "sourceIndex": 47,
+      "sourceId": 106195,
+      "sourcePosition": [
+        -96.23,
+        0,
+        151.09
+      ],
+      "sourceNode": "Beeeees!:2:FlowerPatch"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106196",
+      "prefab": "beehive",
+      "sourceIndex": 48,
+      "sourceId": 106196,
+      "sourcePosition": [
+        159.39,
+        0,
+        -144.77
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106197",
+      "prefab": "beehive",
+      "sourceIndex": 49,
+      "sourceId": 106197,
+      "sourcePosition": [
+        176.51,
+        0,
+        -156.73
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106198",
+      "prefab": "beehive",
+      "sourceIndex": 50,
+      "sourceId": 106198,
+      "sourcePosition": [
+        195.21,
+        0,
+        -212.82
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106199",
+      "prefab": "beehive",
+      "sourceIndex": 51,
+      "sourceId": 106199,
+      "sourcePosition": [
+        156.9,
+        0,
+        -183.84
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106200",
+      "prefab": "beehive",
+      "sourceIndex": 52,
+      "sourceId": 106200,
+      "sourcePosition": [
+        164.44,
+        0,
+        -188.28
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_beehive_id_106201",
+      "prefab": "beehive",
+      "sourceIndex": 53,
+      "sourceId": 106201,
+      "sourcePosition": [
+        168.22,
+        0,
+        -197
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117447",
+      "prefab": "wasphive",
+      "sourceIndex": 1,
+      "sourceId": 117447,
+      "sourcePosition": [
+        155.27,
+        0,
+        -151.45
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117448",
+      "prefab": "wasphive",
+      "sourceIndex": 2,
+      "sourceId": 117448,
+      "sourcePosition": [
+        -83.54,
+        0,
+        111.24
+      ],
+      "sourceNode": "Beeeees!:3:BeeQueenBee"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117449",
+      "prefab": "wasphive",
+      "sourceIndex": 3,
+      "sourceId": 117449,
+      "sourcePosition": [
+        163.77,
+        0,
+        -260.72
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117450",
+      "prefab": "wasphive",
+      "sourceIndex": 4,
+      "sourceId": 117450,
+      "sourcePosition": [
+        180.84,
+        0,
+        -159.92
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117451",
+      "prefab": "wasphive",
+      "sourceIndex": 5,
+      "sourceId": 117451,
+      "sourcePosition": [
+        147.71,
+        0,
+        -236.4
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117452",
+      "prefab": "wasphive",
+      "sourceIndex": 6,
+      "sourceId": 117452,
+      "sourcePosition": [
+        -100.15,
+        0,
+        99.6
+      ],
+      "sourceNode": "Beeeees!:3:BeeQueenBee"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117453",
+      "prefab": "wasphive",
+      "sourceIndex": 7,
+      "sourceId": 117453,
+      "sourcePosition": [
+        191.81,
+        0,
+        -203.13
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117454",
+      "prefab": "wasphive",
+      "sourceIndex": 8,
+      "sourceId": 117454,
+      "sourcePosition": [
+        155.72,
+        0,
+        -143.62
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117455",
+      "prefab": "wasphive",
+      "sourceIndex": 9,
+      "sourceId": 117455,
+      "sourcePosition": [
+        180.15,
+        0,
+        -216
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117456",
+      "prefab": "wasphive",
+      "sourceIndex": 10,
+      "sourceId": 117456,
+      "sourcePosition": [
+        179.54,
+        0,
+        -192.53
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117457",
+      "prefab": "wasphive",
+      "sourceIndex": 11,
+      "sourceId": 117457,
+      "sourcePosition": [
+        208.9,
+        0,
+        -200.77
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117458",
+      "prefab": "wasphive",
+      "sourceIndex": 12,
+      "sourceId": 117458,
+      "sourcePosition": [
+        191.66,
+        0,
+        -172.98
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117459",
+      "prefab": "wasphive",
+      "sourceIndex": 13,
+      "sourceId": 117459,
+      "sourcePosition": [
+        171,
+        0,
+        -204.39
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117460",
+      "prefab": "wasphive",
+      "sourceIndex": 14,
+      "sourceId": 117460,
+      "sourcePosition": [
+        163.96,
+        0,
+        -136.67
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117461",
+      "prefab": "wasphive",
+      "sourceIndex": 15,
+      "sourceId": 117461,
+      "sourcePosition": [
+        196.85,
+        0,
+        -188.76
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117462",
+      "prefab": "wasphive",
+      "sourceIndex": 16,
+      "sourceId": 117462,
+      "sourcePosition": [
+        184.41,
+        0,
+        -159.1
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117463",
+      "prefab": "wasphive",
+      "sourceIndex": 17,
+      "sourceId": 117463,
+      "sourcePosition": [
+        168.26,
+        0,
+        -152.73
+      ],
+      "sourceNode": "Killer bees!:5:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117464",
+      "prefab": "wasphive",
+      "sourceIndex": 18,
+      "sourceId": 117464,
+      "sourcePosition": [
+        144.51,
+        0,
+        -264.56
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117465",
+      "prefab": "wasphive",
+      "sourceIndex": 19,
+      "sourceId": 117465,
+      "sourcePosition": [
+        164.89,
+        0,
+        -231.02
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117466",
+      "prefab": "wasphive",
+      "sourceIndex": 20,
+      "sourceId": 117466,
+      "sourcePosition": [
+        131.62,
+        0,
+        -235.4
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117467",
+      "prefab": "wasphive",
+      "sourceIndex": 21,
+      "sourceId": 117467,
+      "sourcePosition": [
+        171.14,
+        0,
+        -227.53
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117468",
+      "prefab": "wasphive",
+      "sourceIndex": 22,
+      "sourceId": 117468,
+      "sourcePosition": [
+        163.87,
+        0,
+        -224.38
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117469",
+      "prefab": "wasphive",
+      "sourceIndex": 23,
+      "sourceId": 117469,
+      "sourcePosition": [
+        127.77,
+        0,
+        -260.44
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117470",
+      "prefab": "wasphive",
+      "sourceIndex": 24,
+      "sourceId": 117470,
+      "sourcePosition": [
+        144.79,
+        0,
+        -268.62
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wasphive_id_117471",
+      "prefab": "wasphive",
+      "sourceIndex": 25,
+      "sourceId": 117471,
+      "sourcePosition": [
+        172.44,
+        0,
+        -256.16
+      ],
+      "sourceNode": "Killer bees!:4:Waspnests"
     },
     {
       "id": "dst_03741E1B78B29575_ruinsrelic_chair_index_000001",

@@ -190,6 +190,54 @@ def oasislake_components(data):
     return result
 
 
+HIVE_CHILDSPAWNER = {'childreninside', 'childrenoutside', 'emergencychildreninside', 'emergencychildrenoutside',
+                     'spawning', 'regening', 'queued_spawn', 'timetonextspawn', 'timetonextregen'}
+HIVE_WORLDSETTINGS_TIMERS = {'ChildSpawner_SpawnPeriod', 'ChildSpawner_RegenPeriod'}
+
+
+def hive_components(prefab, max_children, max_health):
+    # beehive.lua / wasphive.lua have no OnSave: health:OnSave (health, maxhealth only with save_maxhealth) and
+    # childspawner:OnSave, with WorldSettings_ChildSpawner_*'s worldsettingstimer. The bees and killer bees outside are
+    # not ported, so their GUIDs are dropped and the hive regenerates them; the spawn/regen timing and
+    # worldsettingstimer drive only the unported spawning, so they are checked and dropped.
+    def finite(value):
+        return type(value) in (int, float) and math.isfinite(value)
+
+    def convert(data):
+        if not isinstance(data, dict) or set(data) - {'health', 'childspawner', 'worldsettingstimer'}:
+            raise ValueError(f'Unsupported {prefab} save state: {sorted(data or {})}')
+        result = {}
+        if 'health' in data:
+            health = data['health']
+            if not isinstance(health, dict) or set(health) != {'health'} or not finite(health['health']) \
+                    or not 0 <= health['health'] <= max_health:
+                raise ValueError(f'Unsupported {prefab} health: {health}')
+            result['health'] = {'current': health['health'], 'maximum': max_health}
+        if 'childspawner' in data:
+            child = data['childspawner']
+            if not isinstance(child, dict) or set(child) - HIVE_CHILDSPAWNER \
+                    or type(child.get('childreninside')) is not int or not 0 <= child['childreninside'] <= max_children \
+                    or type(child.get('emergencychildreninside', 0)) is not int \
+                    or not 0 <= child.get('emergencychildreninside', 0) <= 8 \
+                    or any(not isinstance(child.get(key, []), list) or any(type(guid) is not int for guid in child.get(key, []))
+                           for key in ('childrenoutside', 'emergencychildrenoutside')) \
+                    or any(key in child and type(child[key]) is not bool for key in ('spawning', 'regening', 'queued_spawn')) \
+                    or any(key in child and not finite(child[key]) for key in ('timetonextspawn', 'timetonextregen')):
+                raise ValueError(f'Unsupported {prefab} childspawner: {child}')
+            result['childspawner'] = {'childreninside': child['childreninside'], 'childrenoutside': []}
+            if 'emergencychildreninside' in child:
+                result['childspawner']['emergencychildreninside'] = child['emergencychildreninside']
+        if 'worldsettingstimer' in data:
+            timers = data['worldsettingstimer']
+            if not isinstance(timers, dict) or set(timers) != {'timers'} or not isinstance(timers['timers'], dict) \
+                    or set(timers['timers']) - HIVE_WORLDSETTINGS_TIMERS \
+                    or any(not isinstance(timer, dict) or set(timer) - {'timeleft', 'initial_time', 'paused'}
+                           for timer in timers['timers'].values()):
+                raise ValueError(f'Unsupported {prefab} worldsettingstimer: {timers}')
+        return result
+    return convert
+
+
 def atrium_gate_components(data):
     # atrium_gate.lua OnSave plus the component records used by OnLoadPostPass.
     if set(data) - {'vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key',

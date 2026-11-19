@@ -51,16 +51,19 @@ export function MakeNoGrowInWinter(inst: PrefabInstance & { components: { pickab
     toggle(season.peek().season === 'winter');
 }
 
+/** standardcomponents.lua MakeSnowCoveredPristine: the snow symbol override, the SnowCovered tag and the hidden snow layer. */
+export function MakeSnowCoveredPristine(inst: PrefabInstance): void {
+    inst.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
+    inst.addTag('SnowCovered');
+    inst.sprite.hideLayer('snow');
+}
+
 /**
  * standardcomponents.lua MakeSnowCoveredPristine + MakeSnowCovered: the snow symbol from snow.zip, shown while the world
  * is snow covered (weather.lua SNOW_COVERED_THRESHOLD). The prefab declares snow.zip and the hidden `snow` layer.
  */
 export function MakeSnowCovered(inst: PrefabInstance, watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent()): void {
-    if (!inst.hasTag('SnowCovered')) {
-        inst.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
-        inst.addTag('SnowCovered');
-        inst.sprite.hideLayer('snow');
-    }
+    if (!inst.hasTag('SnowCovered')) MakeSnowCoveredPristine(inst);
     const snow = watch?.(WorldContentKey.SnowLevel, stop => inst.onRemove(stop));
     inst.onRemove(createRenderEffect(() => {
         if ((snow?.get() ?? 0) >= .015) inst.sprite.showLayer('snow'); else inst.sprite.hideLayer('snow');

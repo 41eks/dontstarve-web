@@ -84,6 +84,8 @@
     "./mast_malbatross": "./src/mast_malbatross.ts",
     "./support_pillar": "./src/support_pillar.ts",
     "./oasislake": "./src/oasislake.ts",
+    "./beehive": "./src/beehive.ts",
+    "./wasphive": "./src/wasphive.ts",
     "./oceanvine_deco": "./src/oceanvine_deco.ts",
     "./vault_pillar": "./src/vault_pillar.ts",
     "./monkeypillar": "./src/monkeypillar.ts",

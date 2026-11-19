@@ -1,5 +1,6 @@
 # DST Lua prefab 的 c_spawn / c_give 静态核对
 
+2026-11-19 补充 `beehive`、`wasphive`：`prefabs/beehive.lua`、`prefabs/wasphive.lua` 分别注册 `Prefab("beehive", fn, assets, prefabs)`、`Prefab("wasphive", fn, assets, prefabs)`，`fn` 都没有 `inventoryitem`，原版可 `c_spawn`，不能放入物品栏。项目接入两个世界实体的 `c_spawn`、`c_save()` 与读档。两个文件都没有 `OnSave`／`OnLoad`：存档只有 `health:OnSave` 的当前血量（记为 `health.current`／`maximum`）和 `childspawner:OnSave` 的 `childreninside`、`emergencychildreninside`；外出的蜜蜂／杀人蜂未移植，存档不保留它们。`c_spawn` 的巢是满的（5 只蜜蜂、8 只应急蜜蜂）。`Cluster_65` 地表快照 `0000000315` 有 53 个 `beehive`、25 个 `wasphive`，全部导入；洞穴快照没有。
 2026-11-19 补充 `oasislake`：`prefabs/oasislake.lua` 注册 `Prefab("oasislake", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("oasislake")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档：`OnSave` 只在 `regrowth` 为假时写 `regrowth = false`，存为 `oasislake.regrowth`；`OnLoad` 对没有该字段的记录置 `regrowth = true`；`fishable:OnSave` 的 `fish` 随组件存档（`maxfish` 设为 15 而 `fishleft` 仍是构造时的 10，所以新湖总写 `fish = 10`）。`c_spawn` 的湖不走 `OnLoad`，保存时写 `regrowth = false`。`Cluster_65` 地表快照 `0000000315` 有 1 个（无存档数据），导入 1 个；洞穴快照没有。
 2026-11-19 补充 `support_pillar`：`prefabs/support_pillar.lua` 以 `MakePillar("support_pillar", "support_pillar", "support_pillar")` 注册 `Prefab(name, fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("support_pillar")`，不能放入物品栏（建造用的是 `support_pillar_scaffold`，未移植）。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，`OnSave` 的 `reinforced` 存为 `supportPillar.reinforced`，`constructionsite` 的 `materials.rocks` 随组件存档；`regen` 只由未移植的 `support_pillar_dreadstone` 写入。`c_spawn` 的新柱子没有石料，播 `idle_4`，不写任何存档字段。同文件的 `support_pillar_dreadstone`、两个脚手架和放置器未移植。`Cluster_65` 洞穴快照 `0000000145` 有 4 根（石料都是 40，`reinforced` 为 5～9），导入 4 根；地表快照没有。
 
@@ -520,6 +521,8 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `mast_malbatross` | 可生成 | 不能入栏 | `prefabs/mast.lua` |
 | `support_pillar` | 可生成 | 不能入栏 | `prefabs/support_pillar.lua` |
 | `oasislake` | 可生成 | 不能入栏 | `prefabs/oasislake.lua` |
+| `beehive` | 可生成 | 不能入栏 | `prefabs/beehive.lua` |
+| `wasphive` | 可生成 | 不能入栏 | `prefabs/wasphive.lua` |
 | `chessjunk1`、`chessjunk2`、`chessjunk3` | 可生成 | 不能入栏 | `prefabs/chessjunk.lua` |
 | `chesspiece_malbatross_marble` | 可生成 | 不能入栏 | `prefabs/chesspieces.lua`（存档组名 `chesspiece_malbatross`；其他材质和其他雕像未接入） |
 | `archive_centipede_husk` | 可生成 | 不能入栏 | `prefabs/archive_centipede.lua`（仅残骸；活体 `archive_centipede` 未接入） |

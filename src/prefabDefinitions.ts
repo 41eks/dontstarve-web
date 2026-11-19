@@ -56,6 +56,8 @@ import {
 } from '@dontstarve-web/prefab/mast_malbatross';
 import { SUPPORT_PILLAR_ARCHIVES, SUPPORT_PILLAR_ID, SUPPORT_PILLAR_REINFORCED_LEVELS } from '@dontstarve-web/prefab/support_pillar';
 import { OASISLAKE_ARCHIVES, OASISLAKE_ID, OASISLAKE_MAX_FISH } from '@dontstarve-web/prefab/oasislake';
+import { BEEHIVE_ARCHIVES, BEEHIVE_HEALTH, BEEHIVE_ID, BEEHIVE_MAX_BEES } from '@dontstarve-web/prefab/beehive';
+import { WASPHIVE_ARCHIVES, WASPHIVE_HEALTH, WASPHIVE_ID, WASPHIVE_WASPS } from '@dontstarve-web/prefab/wasphive';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
 import { MARSH_PLANT_ID } from '@dontstarve-web/prefab/marsh_plant';
@@ -303,6 +305,30 @@ const oasislake: PrefabComponentParser = (value, path) => {
   if (fishable !== undefined) {
     const { fish } = object(fishable, `${path}.fishable`, ['fish']);
     result.fishable = { fish: integer(fish, `${path}.fishable.fish`, 0, OASISLAKE_MAX_FISH - 1) };
+  }
+  return result;
+};
+/**
+ * beehive.lua / wasphive.lua have no OnSave: health:OnSave as the record's `{ current, maximum }`, and childspawner:OnSave.
+ * The bees outside are not ported, so a record keeps none outside, and only the hive's emergency children inside.
+ */
+const hive = (maxChildren: number, maxHealth: number): PrefabComponentParser => (value, path) => {
+  const { health, childspawner } = object(value, path, ['health', 'childspawner']);
+  const result: ReturnType<PrefabComponentParser> = {};
+  if (health !== undefined) {
+    const h = object(health, `${path}.health`, ['current', 'maximum']);
+    const maximum = number(h.maximum, `${path}.health.maximum`, maxHealth, maxHealth);
+    result.health = { current: number(h.current, `${path}.health.current`, 0, maximum), maximum };
+  }
+  if (childspawner !== undefined) {
+    const p = `${path}.childspawner`;
+    const child = object(childspawner, p, ['childreninside', 'childrenoutside', 'emergencychildreninside']);
+    array(child.childrenoutside, `${p}.childrenoutside`, 0);
+    result.childspawner = {
+      childreninside: integer(child.childreninside, `${p}.childreninside`, 0, maxChildren), childrenoutside: [],
+      ...child.emergencychildreninside === undefined ? {}
+        : { emergencychildreninside: integer(child.emergencychildreninside, `${p}.emergencychildreninside`, 0, 8) },
+    };
   }
   return result;
 };
@@ -613,6 +639,8 @@ const WORLD_PREFAB_DEFINITIONS = {
     [{ animation: LICHEN_ARCHIVE, build: LICHEN_ARCHIVE }]),
   supportPillars: definePrefabs([SUPPORT_PILLAR_ID], supportPillar, true, SUPPORT_PILLAR_ARCHIVES),
   oasislakes: definePrefabs([OASISLAKE_ID], oasislake, true, OASISLAKE_ARCHIVES),
+  beehives: definePrefabs([BEEHIVE_ID], hive(BEEHIVE_MAX_BEES, BEEHIVE_HEALTH), true, BEEHIVE_ARCHIVES),
+  wasphives: definePrefabs([WASPHIVE_ID], hive(WASPHIVE_WASPS, WASPHIVE_HEALTH), true, WASPHIVE_ARCHIVES),
   mastMalbatross: definePrefabs([MAST_MALBATROSS_ID], mastMalbatross, true,
     MAST_MALBATROSS_ANIMATION_ARCHIVES.map(animation => ({ animation, build: MAST_MALBATROSS_BUILD_ARCHIVE }))),
   // reeds.lua has no OnSave of its own: only pickable saves state.

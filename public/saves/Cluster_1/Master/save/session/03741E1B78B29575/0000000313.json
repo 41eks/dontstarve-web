@@ -684776,6 +684776,1726 @@
           }
         }
       ],
+      "beehive": [
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105613",
+          "transform": {
+            "position": [
+              -268.08,
+              0.0,
+              -284.01
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 1,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105614",
+          "transform": {
+            "position": [
+              1025.28,
+              0.0,
+              -724.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 104,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105615",
+          "transform": {
+            "position": [
+              616.05,
+              0.0,
+              616.05
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105616",
+          "transform": {
+            "position": [
+              560.52,
+              0.0,
+              569.97
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105617",
+          "transform": {
+            "position": [
+              535.8,
+              0.0,
+              631.26
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105618",
+          "transform": {
+            "position": [
+              546.63,
+              0.0,
+              798.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105619",
+          "transform": {
+            "position": [
+              437.31,
+              0.0,
+              880.56
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105620",
+          "transform": {
+            "position": [
+              555.75,
+              0.0,
+              558.03
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105621",
+          "transform": {
+            "position": [
+              448.08,
+              0.0,
+              800.52
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105622",
+          "transform": {
+            "position": [
+              486.57,
+              0.0,
+              716.58
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105623",
+          "transform": {
+            "position": [
+              483.42,
+              0.0,
+              799.44
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105624",
+          "transform": {
+            "position": [
+              1519.59,
+              0.0,
+              293.13
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 4,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105625",
+          "transform": {
+            "position": [
+              19.41,
+              0.0,
+              219.54
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105626",
+          "transform": {
+            "position": [
+              1073.64,
+              0.0,
+              -896.04
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105627",
+          "transform": {
+            "position": [
+              608.67,
+              0.0,
+              631.83
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105628",
+          "transform": {
+            "position": [
+              -342.72,
+              0.0,
+              -416.94
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105629",
+          "transform": {
+            "position": [
+              520.56,
+              0.0,
+              631.35
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105630",
+          "transform": {
+            "position": [
+              558.87,
+              0.0,
+              485.67
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105631",
+          "transform": {
+            "position": [
+              260.07,
+              0.0,
+              892.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105632",
+          "transform": {
+            "position": [
+              452.43,
+              0.0,
+              932.61
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105633",
+          "transform": {
+            "position": [
+              520.08,
+              0.0,
+              522.12
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105634",
+          "transform": {
+            "position": [
+              570.75,
+              0.0,
+              572.85
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105635",
+          "transform": {
+            "position": [
+              641.28,
+              0.0,
+              664.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105636",
+          "transform": {
+            "position": [
+              571.8,
+              0.0,
+              704.91
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105637",
+          "transform": {
+            "position": [
+              498.51,
+              0.0,
+              567.9
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105638",
+          "transform": {
+            "position": [
+              546.84,
+              0.0,
+              604.53
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105639",
+          "transform": {
+            "position": [
+              663.93,
+              0.0,
+              630.24
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105640",
+          "transform": {
+            "position": [
+              632.97,
+              0.0,
+              667.26
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105641",
+          "transform": {
+            "position": [
+              531.63,
+              0.0,
+              583.83
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105642",
+          "transform": {
+            "position": [
+              -303.03,
+              0.0,
+              -643.56
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 4,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105643",
+          "transform": {
+            "position": [
+              -356.34,
+              0.0,
+              -592.44
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 2,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105644",
+          "transform": {
+            "position": [
+              475.2,
+              0.0,
+              798.36
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105645",
+          "transform": {
+            "position": [
+              412.71,
+              0.0,
+              954.81
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105646",
+          "transform": {
+            "position": [
+              536.13,
+              0.0,
+              820.65
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105647",
+          "transform": {
+            "position": [
+              438.84,
+              0.0,
+              749.4
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105648",
+          "transform": {
+            "position": [
+              483.24,
+              0.0,
+              748.17
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105649",
+          "transform": {
+            "position": [
+              511.53,
+              0.0,
+              771.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105650",
+          "transform": {
+            "position": [
+              -87.15,
+              0.0,
+              474.33
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 170,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105651",
+          "transform": {
+            "position": [
+              -258.54,
+              0.0,
+              -452.28
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105652",
+          "transform": {
+            "position": [
+              556.44,
+              0.0,
+              651.42
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105653",
+          "transform": {
+            "position": [
+              510.84,
+              0.0,
+              460.47
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105654",
+          "transform": {
+            "position": [
+              569.58,
+              0.0,
+              546.87
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105655",
+          "transform": {
+            "position": [
+              -147.42,
+              0.0,
+              -116.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105656",
+          "transform": {
+            "position": [
+              -463.44,
+              0.0,
+              -664.89
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105657",
+          "transform": {
+            "position": [
+              -233.31,
+              0.0,
+              -447.72
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105658",
+          "transform": {
+            "position": [
+              507.36,
+              0.0,
+              795.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105659",
+          "transform": {
+            "position": [
+              -246.69,
+              0.0,
+              -399.27
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105660",
+          "transform": {
+            "position": [
+              520.17,
+              0.0,
+              488.31
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105661",
+          "transform": {
+            "position": [
+              571.53,
+              0.0,
+              524.19
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105662",
+          "transform": {
+            "position": [
+              627.63,
+              0.0,
+              692.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105663",
+          "transform": {
+            "position": [
+              512.7,
+              0.0,
+              605.52
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105664",
+          "transform": {
+            "position": [
+              535.32,
+              0.0,
+              618.84
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_beehive_id_105665",
+          "transform": {
+            "position": [
+              546.66,
+              0.0,
+              645.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 200,
+              "maximum": 200
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        }
+      ],
+      "wasphive": [
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116613",
+          "transform": {
+            "position": [
+              507.81,
+              0.0,
+              508.35
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 0,
+              "childrenoutside": [],
+              "emergencychildreninside": 7
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116614",
+          "transform": {
+            "position": [
+              -208.62,
+              0.0,
+              -279.72
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 0,
+              "childrenoutside": [],
+              "emergencychildreninside": 7
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116615",
+          "transform": {
+            "position": [
+              533.31,
+              0.0,
+              836.16
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116616",
+          "transform": {
+            "position": [
+              584.52,
+              0.0,
+              533.76
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116617",
+          "transform": {
+            "position": [
+              485.13,
+              0.0,
+              763.2
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116618",
+          "transform": {
+            "position": [
+              -258.45,
+              0.0,
+              -244.8
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116619",
+          "transform": {
+            "position": [
+              617.43,
+              0.0,
+              663.39
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116620",
+          "transform": {
+            "position": [
+              509.16,
+              0.0,
+              484.86
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116621",
+          "transform": {
+            "position": [
+              582.45,
+              0.0,
+              702.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116622",
+          "transform": {
+            "position": [
+              580.62,
+              0.0,
+              631.59
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116623",
+          "transform": {
+            "position": [
+              668.7,
+              0.0,
+              656.31
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116624",
+          "transform": {
+            "position": [
+              616.98,
+              0.0,
+              572.94
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116625",
+          "transform": {
+            "position": [
+              555.0,
+              0.0,
+              667.17
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116626",
+          "transform": {
+            "position": [
+              533.88,
+              0.0,
+              464.01
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116627",
+          "transform": {
+            "position": [
+              632.55,
+              0.0,
+              620.28
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116628",
+          "transform": {
+            "position": [
+              595.23,
+              0.0,
+              531.3
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116629",
+          "transform": {
+            "position": [
+              546.78,
+              0.0,
+              512.19
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 4,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116630",
+          "transform": {
+            "position": [
+              475.53,
+              0.0,
+              847.68
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116631",
+          "transform": {
+            "position": [
+              536.67,
+              0.0,
+              747.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116632",
+          "transform": {
+            "position": [
+              436.86,
+              0.0,
+              760.2
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116633",
+          "transform": {
+            "position": [
+              555.42,
+              0.0,
+              736.59
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116634",
+          "transform": {
+            "position": [
+              533.61,
+              0.0,
+              727.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116635",
+          "transform": {
+            "position": [
+              425.31,
+              0.0,
+              835.32
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116636",
+          "transform": {
+            "position": [
+              476.37,
+              0.0,
+              859.86
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_wasphive_id_116637",
+          "transform": {
+            "position": [
+              559.32,
+              0.0,
+              822.48
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 5,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            }
+          }
+        }
+      ],
       "ruinsrelic_chair": [
         {
           "id": "dst_03741E1B78B29575_ruinsrelic_chair_index_000001",
