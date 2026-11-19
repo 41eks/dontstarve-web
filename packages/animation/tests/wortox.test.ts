@@ -17,7 +17,7 @@ import { GetPointSpecialActions } from '../../prefab/src/wortoxPlayer';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { savedInventoryOf } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { importedSave } from './importedSave';
 
@@ -51,7 +51,7 @@ it('saves and restores Lua counters without persisting the transient finish task
   const template = importedSave('Caves');
   const document = deserializeSave(serializeSave(template, {
     entities: template.world.entities, playerTransform: template.players.local.transform,
-    inventory: inventoryStateFromSave(template), elapsedSeconds: template.world.elapsedSeconds,
+    inventory: savedInventoryOf(template), elapsedSeconds: template.world.elapsedSeconds,
     playerWortox: original.OnSave(),
   }, SAVE_CATALOG), SAVE_CATALOG);
   expect(document.players.local.wortox).toEqual({ freehops: 1, soulhopcost: 0 });

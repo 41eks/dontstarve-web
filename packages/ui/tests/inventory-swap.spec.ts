@@ -7,10 +7,10 @@ test('cursor swaps, rejected placement and save reload preserve inventory and ba
   test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto(savePageUrl(minimalSave({ inventory: [
-    { slotKey: '2', item: { itemId: 'torch', count: 1 } },
-    { slotKey: '4', item: { itemId: 'log', count: 8 } },
-  ] })));
+  await page.goto(savePageUrl(minimalSave({ items: {
+    3: { id: 'swap_torch', prefab: 'torch', components: {} },
+    5: { id: 'swap_logs', prefab: 'log', components: { stackable: { stack: 8 } } },
+  } })));
   const urls = Object.fromEntries(['main', 'save/deserialize', 'save/catalog'].map(name =>
     [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
   const original = await page.evaluate(async url => {
@@ -18,8 +18,8 @@ test('cursor swaps, rejected placement and save reload preserve inventory and ba
     inventory.setRemainingFuel({ containerId: 'player:inventory', slotKey: '2' }, 23.125);
     (window as any).swapInventory = inventory;
     return {
-      torch: inventory.getEntity({ containerId: 'player:inventory', slotKey: '2' })!.snapshot(),
-      logs: inventory.getEntity({ containerId: 'player:inventory', slotKey: '4' })!.snapshot(),
+      torch: inventory.getEntity({ containerId: 'player:inventory', slotKey: '2' })!.GetSaveRecord(),
+      logs: inventory.getEntity({ containerId: 'player:inventory', slotKey: '4' })!.GetSaveRecord(),
     };
   }, urls.main);
   const bar = page.locator('dst-inventory-bar');
@@ -86,15 +86,15 @@ test('cursor swaps, rejected placement and save reload preserve inventory and ba
     const { SAVE_CATALOG } = await import(urls['save/catalog']);
     return deserializeSave(json, SAVE_CATALOG);
   }, { json, urls });
-  const containers = saved.players.local.inventory.containers;
-  expect(containers['player:inventory'].slots.find(slot => slot.slotKey === '2')!.item).toEqual(original.logs);
-  const bag = containers['player:equipment'].slots.find(slot => slot.slotKey === 'body')!.item;
-  expect(bag.container!.slots).toEqual([]);
-  expect(containers['player:cursor'].slots[0].item).toEqual(original.torch);
+  // inventory.lua OnSave: one-based slots, the worn backpack's contents in its own record, the cursor's activeitem.
+  const { items, equip, activeitem } = saved.players.local.inventory;
+  expect(items['3']).toEqual(original.logs);
+  expect(equip.body!.components.container?.items ?? {}).toEqual({});
+  expect(activeitem).toEqual(original.torch);
   await gotoSave(page, saved);
   expect(await page.evaluate(async url => {
     const { inventory } = await import(url);
-    return inventory.getEntity({ containerId: 'player:cursor', slotKey: '0' })?.snapshot();
+    return inventory.getEntity({ containerId: 'player:cursor', slotKey: '0' })?.GetSaveRecord();
   }, urls.main)).toEqual(original.torch);
   await page.mouse.move(300, 300);
   await expect(preview.locator('.slot-drag-preview__percent')).toHaveText('31%');

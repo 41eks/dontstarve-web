@@ -31,7 +31,7 @@ function setup(player = new THREE.Vector3()) {
   /** SpawnPrefab with SpawnSaveRecord's position and SetPersistData; the husk's model, as its display draws it. */
   const spawn = (position: THREE.Vector3, saved?: EntitySaveRecord) => prefabs.spawn(ARCHIVE_CENTIPEDE_HUSK_ID, position, saved).transform.model;
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   return { scene, scheduler, awake, prefabs, spawn, registry, inventory, save,
     dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };

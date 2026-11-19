@@ -11,7 +11,7 @@ import { executeDebugCommand } from '../../../src/debugCommands';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { createPickupInventory } from './pickupFixture';
 import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { performPickupAction } from '../../stategraphs/src/pickup';
@@ -58,16 +58,16 @@ it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, po
     expect(golden.skinId).toBe(skinId);
     expect(pickup()).toBe(true);
     inventory.getEntity(inventorySlotAddress(5))!.components.finiteuses.useForAction('MINE');
-    const before = registry.exportRecords(), held = inventory.exportState();
+    const before = registry.exportRecords();
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-      json = serializeSave(template, { entities: before, inventory: held, elapsedSeconds: 12.5,
+      json = serializeSave(template, { entities: before, inventory: inventory.exportSaved(), elapsedSeconds: 12.5,
         playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities).toEqual(before);
-    restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restoredInventory, saved, SAVE_CATALOG.recipes);
     restored = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(),
       { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
       restoredInventory, '/dst/data/anim', player);

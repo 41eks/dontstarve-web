@@ -19,9 +19,9 @@ import { executeDebugCommand } from '../../../src/debugCommands';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+
 import { createInventorySlotItem } from '../../../src/inventorySlotItem';
-import { testItem } from './testInventory';
+import { testItem, testRestoreItem } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const held = inventorySlotAddress(0), chilled = { containerId: 'world:icebox:fridge', slotKey: '0' };
@@ -172,11 +172,11 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() },
     registerContainer: (...args: Parameters<typeof inventory.registerContainer>) => inventory.registerContainer(...args),
-    unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args), spawnItem: testItem } as unknown as WorldContext;
+    unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args), spawnItem: testItem, restoreItem: testRestoreItem } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   const restoredPlacement = managedBuildings({ ...world,
     registerContainer: (...args: Parameters<typeof restored.registerContainer>) => restored.registerContainer(...args),
-    unregisterContainer: (...args: Parameters<typeof restored.unregisterContainer>) => restored.unregisterContainer(...args), spawnItem: testItem } as unknown as WorldContext, { consume: () => false });
+    unregisterContainer: (...args: Parameters<typeof restored.unregisterContainer>) => restored.unregisterContainer(...args), spawnItem: testItem, restoreItem: testRestoreItem } as unknown as WorldContext, { consume: () => false });
   let restoredClock: WorldPerishClock | undefined;
   try {
     const spawn = async (id: string) => {
@@ -197,7 +197,7 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
       const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
       json = serializeSave(template, { entities: { icebox: placement.exportRecords().map(({ record }) => ({ ...record,
         transform: { ...record.transform, position: [...record.transform.position] } })) },
-        inventory: inventory.exportState(), elapsedSeconds: clock.GetTick().time,
+        inventory: inventory.exportSaved(), elapsedSeconds: clock.GetTick().time,
         playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const save = deserializeSave(json, SAVE_CATALOG), record = save.world.entities.icebox[0];
@@ -206,11 +206,12 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     const restoredWorld = createPerishWorld(ambient, save.world.elapsedSeconds);
     restoredClock = restoredWorld.perishClock;
     restored.entities.bindPerishWorld(restoredWorld);
-    expect(inventoryStateFromSave(save).slots.some(({ address }) => address.containerId === chilled.containerId)).toBe(false);
     restoredPlacement.spawnFromSave('icebox', record);
     const loaded = restored.getEntity(chilled)!;
     expect(loaded.snapshot()).toEqual(stone.snapshot());
     expect(loaded.getComponent<HeatRock>('heatrock')!.range.peek()).toBe(1);
+    // The loaded temperature reaches the stone's range clip, and so its image, through the sprite's effect.
+    await new Promise(resolve => setTimeout(resolve, 0));
     expect(restored.getStackSpec(loaded.snapshot())).toMatchObject({ icon: 'heatrock_fantasy1.tex', atlas: 'images/inventoryimages2.xml' });
     expect(restored.getEntity({ ...chilled, slotKey: '1' })!.snapshot()).toEqual(food.snapshot());
     loaded.components.temperature!.OnUpdate(10);
@@ -220,7 +221,7 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     restored.getEntity({ ...chilled, slotKey: '1' })!.components.perishable.flush();
     expect(restored.getEntity({ ...chilled, slotKey: '1' })!.components.perishable.GetPercent()).toBeCloseTo(1 - 8.5 / 4800);
     const invalid = JSON.parse(json);
-    invalid.world.entities.icebox[0].components.container.slots[0].item.temperature.current = 91;
+    invalid.world.entities.icebox[0].components.container.items[1].components.temperature.current = 91;
     expect(() => deserializeSave(JSON.stringify(invalid), SAVE_CATALOG)).toThrow();
   } finally { placement.dispose(); restoredPlacement.dispose(); inventory.dispose(); restored.dispose(); clock.dispose(); restoredClock?.dispose(); }
 });

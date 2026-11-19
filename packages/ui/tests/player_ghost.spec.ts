@@ -14,8 +14,8 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
     const response = await route.fetch(), save = await response.json();
     save.world.entities = {}; save.world.elapsedSeconds = 0;
     save.players.local.transform.position = [0, 0, 0];
-    for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
-    save.players.local.inventory.bufferedBuilds = [];
+    save.players.local.inventory = { items: {}, equip: {} };
+    save.players.local.builder = { bufferedBuilds: [] };
     await route.fulfill({ response, json: save });
   });
   const prepare = () => page.evaluate(async urls => {
@@ -74,8 +74,8 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
     save.world.entities = { multiplayer_portal_moonrock: [{ id: 'portal-1', transform: { position: [12, 0, 0], rotationY: 0 }, components: {} }] };
     save.world.elapsedSeconds = 0;
     save.players.local.transform.position = [0, 0, 0];
-    for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
-    save.players.local.inventory.bufferedBuilds = [];
+    save.players.local.inventory = { items: {}, equip: {} };
+    save.players.local.builder = { bufferedBuilds: [] };
     await route.fulfill({ response, json: save });
   });
   const urlOf = (path: string) => `/@fs${fileURLToPath(new URL(`../../../${path}`, import.meta.url))}`;

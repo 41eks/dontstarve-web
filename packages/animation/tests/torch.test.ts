@@ -220,7 +220,7 @@ describe('torch prefab burning lifecycle', () => {
       const [record] = manager.exportRecords();
       expect(record.id).toBe(entity.id);
       // Relit on the ground, the partly used torch charges its first period.
-      expect(record.components.stack?.remainingFuel).toBeCloseTo(TORCH_FUEL - FULL_FIRST_PERIOD - .75 - FIRST_PERIOD - .375, 9);
+      expect(record.components.fueled?.fuel).toBeCloseTo(TORCH_FUEL - FULL_FIRST_PERIOD - .75 - FIRST_PERIOD - .375, 9);
       expect(record.components.torch).toEqual({ lit: true });
       vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([{ object: model } as unknown as THREE.Intersection]);
       world.advance(0.125);
@@ -257,7 +257,8 @@ describe('torch prefab burning lifecycle', () => {
       const doer = testPlayer({ model: player, inventory });
       const saved = () => {
         const { components } = items.exportRecords().find(record => record.id === 'torch-lit')!;
-        return { remainingFuel: components.stack!.remainingFuel, torchLit: components.torch?.lit ?? false };
+        // fueled.lua OnSave omits a full torch.
+        return { remainingFuel: components.fueled?.fuel ?? TORCH_FUEL, torchLit: components.torch?.lit ?? false };
       };
       expect(model.userData).not.toHaveProperty('torch');
       expect(burning(entity)).toBe(true);

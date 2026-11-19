@@ -138,10 +138,12 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
     .toBeGreaterThanOrEqual(plainAtlases);
 
   const saved = await saveGame();
-  const record = saved.world.entities.birdcage[0].components.birdcage;
-  expect(saved.world.entities.birdcage[0].components.building.skinId).toBe('birdcage_adventure');
-  expect(record).toMatchObject({ cageState: '_bird', birdType: 'canary', occupant: { itemId: 'canary', count: 1 } });
-  expect(record.occupant.freshnessPercent).toBeGreaterThan(.99);
+  // birdcage.lua OnSave's CAGE_STATE and bird_type; occupiable saves the canary's GetSaveRecord.
+  const record = saved.world.entities.birdcage[0].components;
+  expect(record.building.skinId).toBe('birdcage_adventure');
+  expect(record).toMatchObject({ CAGE_STATE: '_bird', bird_type: 'canary', occupiable: { occupant: { prefab: 'canary' } } });
+  expect(record.occupiable.occupant.components.stackable).toBeUndefined();
+  expect(record.occupiable.occupant.components.perishable.time).toBeGreaterThan(0);
   expect(JSON.stringify(saved.players.local.inventory)).not.toContain('canary');
 
   // A skinned cage keeps drawing its canary from the override build.
@@ -153,7 +155,7 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
     const model = (window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage');
     return { skin: (window as any).__prefabInstance(model)?.skinId, atlases: (window as any).cageGame.cageMesh().material.length };
   })).toMatchObject({ skin: 'birdcage_circus', atlases: expect.any(Number) });
-  expect((await saveGame()).world.entities.birdcage[0].components.birdcage.occupant.entityId).toBe(record.occupant.entityId);
+  expect((await saveGame()).world.entities.birdcage[0].components.occupiable.occupant.id).toBe(record.occupiable.occupant.id);
 
   // Starvation: the bird's perishable ends, the cage shows the death state and shelves the meat.
   await page.evaluate(() => {
@@ -162,7 +164,8 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
   });
   await expect.poll(cage, { timeout: 60_000 }).toMatchObject({ state: '_death', status: 'DEAD', bird: null, shelf: 'smallmeat', tags: ['takeshelfitem'] });
   const dead = await saveGame();
-  expect(dead.world.entities.birdcage[0].components.birdcage).toMatchObject({ cageState: '_death', birdType: 'canary', item: { itemId: 'smallmeat' } });
+  expect(dead.world.entities.birdcage[0].components).toMatchObject({ CAGE_STATE: '_death', bird_type: 'canary',
+    inventory: { items: { 1: { prefab: 'smallmeat' } } } });
 
   // Rot: the shelved meat spoils into the skeleton state.
   await page.evaluate(() => {
@@ -170,7 +173,8 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
     (window as any).__prefabInstance(model).components.inventory.GetItemInSlot(1).components.perishable.SetPercent(.0001);
   });
   await expect.poll(cage, { timeout: 60_000 }).toMatchObject({ state: '_skeleton', status: 'SKELETON', shelf: 'spoiled_food', tags: ['takeshelfitem'] });
-  expect((await saveGame()).world.entities.birdcage[0].components.birdcage).toMatchObject({ cageState: '_skeleton', item: { itemId: 'spoiled_food' } });
+  expect((await saveGame()).world.entities.birdcage[0].components).toMatchObject({ CAGE_STATE: '_skeleton',
+    inventory: { items: { 1: { prefab: 'spoiled_food' } } } });
 
   // TAKEITEM mucks the cage out and re-enables the occupiable.
   await clickCage('TAKEITEM');
@@ -202,7 +206,7 @@ test('feeds, wakes, releases and hammers an occupied cage', async ({ page }) => 
   await slot('smallmeat').click();
   await clickCage('GIVE');
   await expect.poll(async () => (await cage())!.status, { timeout: 30_000 }).toBe('OCCUPIED');
-  await expect.poll(async () => JSON.stringify((await saveGame()).world.entities.bird_egg ?? [])).toContain('bird_egg');
+  await expect.poll(async () => (await saveGame()).world.entities.bird_egg?.length ?? 0).toBeGreaterThan(0);
   await expect(slot('smallmeat')).toHaveCount(0);
 
   // A sleeping cage refuses gifts; waking returns to the idle loop.
@@ -220,13 +224,14 @@ test('feeds, wakes, releases and hammers an occupied cage', async ({ page }) => 
 
   // HARVEST (FREE) returns the same inst, with its hunger, to the inventory.
   await page.evaluate(() => (window as any).__prefabInstance((window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage')).components.occupiable.GetOccupant().components.perishable.SetPercent(.7));
-  const before = (await saveGame()).world.entities.birdcage[0].components.birdcage.occupant;
+  const before = (await saveGame()).world.entities.birdcage[0].components.occupiable.occupant;
   await clickCage('HARVEST');
   await expect.poll(cage).toMatchObject({ state: '_empty', bird: null });
   await expect(slot('canary')).toHaveCount(1);
-  const freed = JSON.stringify((await saveGame()).players.local.inventory);
-  expect(freed).toContain(before.entityId);
-  expect(freed).toMatch(/"freshnessPercent":0\.[67]/);
+  // The same inst, with the perish time it had in the cage.
+  const freed = (Object.values((await saveGame()).players.local.inventory.items) as any[]).find(item => item.id === before.id);
+  expect(freed.components.perishable.time).toBeLessThanOrEqual(before.components.perishable.time);
+  expect(freed.components.perishable.time).toBeGreaterThan(before.components.perishable.time * .85);
 
   // Hammering an occupied cage drops the bird itself along with the recipe loot.
   await slot('canary').click();
@@ -238,6 +243,6 @@ test('feeds, wakes, releases and hammers an occupied cage', async ({ page }) => 
     for (let hit = 0; hit < 4; hit++) workable.WorkedBy({}, 1);
   });
   await expect.poll(cage).toBeNull();
-  await expect.poll(async () => JSON.stringify((await saveGame()).world.entities.canary ?? []), { timeout: 15_000 }).toContain('"itemId":"canary"');
+  await expect.poll(async () => (await saveGame()).world.entities.canary?.length ?? 0, { timeout: 15_000 }).toBeGreaterThan(0);
   expect(errors).toEqual([]);
 });

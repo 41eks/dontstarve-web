@@ -47,7 +47,7 @@ export interface InventoryItemSpec {
   /** temperature.lua: the item saves `temperature`, and heatrock.lua its `highTemp` / `lowTemp`. */
   savesTemperature?: true;
   /** The creature state the item's prefab saves on its stack: mole.lua's `mole`, lightflier.lua's `lightflier`. */
-  creatureState?: 'mole' | 'lightflier';
+  creatureState?: 'mole' | 'lightflier' | 'butterfly';
   /** inventory.lua on the item: the one item it holds and how many, as the phonograph holds a record. */
   holds?: { itemId: string; slots: number };
 }

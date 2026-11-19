@@ -87915,7 +87915,7 @@
       {
         "path": "inventory.equip.hands",
         "prefab": "voidcloth_scythe",
-        "reason": "not equippable in hand"
+        "reason": "not equippable in hands"
       },
       {
         "path": "inventory.equip.body",

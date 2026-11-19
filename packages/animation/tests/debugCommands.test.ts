@@ -9,7 +9,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { testInventoryStore } from './testInventory';
 
 function createInventory() {
@@ -108,14 +108,14 @@ describe('debug command sequences', () => {
       let json = '';
       const save = vi.fn(() => {
         json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-          entities: {}, inventory: before, elapsedSeconds: 12.5,
+          entities: {}, inventory: inventory.exportSaved(), elapsedSeconds: 12.5,
           playerTransform: { position: [3, 0, -6], rotationY: 0 },
         }, SAVE_CATALOG);
       });
       expect((await executeDebugCommand('c_save()', inventory, undefined, save)).ok).toBe(true);
       expect(save).toHaveBeenCalledTimes(1);
       const saved = deserializeSave(json, SAVE_CATALOG);
-      restored.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+      loadSavedInventory(restored, saved, SAVE_CATALOG.recipes);
       expect(restored.exportState()).toEqual(before);
       expect(restored.getEntity(inventorySlotAddress(1))!.hasTag('phonograph_record')).toBe(true);
     } finally { inventory.dispose(); restored.dispose(); }

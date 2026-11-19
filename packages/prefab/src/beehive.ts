@@ -14,7 +14,7 @@ import { LunarHailBuildup } from '../../componets/src/pandoraschestSignatures';
 import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { EntityPersistData } from './saveRecord';
+import { type EntityPersistData, structureHealth } from './saveRecord';
 import { MakeObstaclePhysics, MakeSnowCovered, MakeSnowCoveredPristine } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 
@@ -63,7 +63,8 @@ export function saveHiveHealth(inst: PrefabInstance & { components: { health: He
 
 /** health:OnLoad of the record's `{ current, maximum }`. */
 export function loadHiveHealth(inst: PrefabInstance & { components: { health: Health } }, data: EntityPersistData): void {
-  if (data.health) inst.components.health.OnLoad({ health: data.health.current, maxhealth: data.health.maximum });
+  const saved = structureHealth(data);
+  if (saved) inst.components.health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
 }
 
 function SeasonalSpawnChanges(inst: BeehiveInstance, season: WorldSeason | undefined): void {

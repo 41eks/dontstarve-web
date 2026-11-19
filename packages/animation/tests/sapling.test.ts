@@ -53,7 +53,7 @@ function setup(inventory = createPickupInventory()) {
   const save = () => serializeSave(template, {
     entities: { ...Object.fromEntries(['sapling', 'sapling_moon'].map(id => [id, saplings.exportRecords()
       .filter(({ prefabId }) => prefabId === id).map(({ record }) => record)])), ...ground.exportEntities() },
-    inventory: inventory.exportState(), elapsedSeconds: 100, playerTransform: { position: [0, 0, 0], rotationY: 0 },
+    inventory: inventory.exportSaved(), elapsedSeconds: 100, playerTransform: { position: [0, 0, 0], rotationY: 0 },
   }, SAVE_CATALOG);
   const dispose = () => { registry.dispose(); ground.dispose(); inventory.dispose(); unbind(); scheduler.dispose(); };
   return { inventory, scene, player, ground, saplings, season, scheduler, registry, save, dispose,
@@ -109,7 +109,7 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     const shovel = s.inventory.entities.create({ itemId: 'shovel', count: 1 }); s.inventory.GiveItem(shovel);
     s.inventory.configureItem(shovel);
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, s.worker, shovel)).toBe(true);
-    expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['twigs', 'dug_sapling_moon']);
+    expect(s.ground.groundStacks().map(stack => stack.itemId)).toEqual(['twigs', 'dug_sapling_moon']);
     expect(s.saplings.exportRecords()).toEqual([]);
 
     const model = await drawn(s.saplings.spawn('sapling', new THREE.Vector3(30, 0, 0)).transform.model);
@@ -123,7 +123,7 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     tickWorld(s.scheduler, prefabDisplays(s.saplings), 20, new THREE.Quaternion());
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull();
-    expect(s.ground.exportRecords().at(-1)?.components.stack).toMatchObject({ itemId: 'ash', count: 1 });
+    expect(s.ground.groundStacks().at(-1)).toMatchObject({ itemId: 'ash', count: 1 });
   } finally { s.dispose(); }
 });
 

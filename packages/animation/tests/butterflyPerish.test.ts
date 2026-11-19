@@ -7,7 +7,7 @@ import { ItemWorldFixture } from './itemWorldFixture';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { BUTTERFLY_PERISH_TIME } from '../../prefab/src/butterfly';
 import { createPerishWorld } from './perishWorldFixture';
@@ -47,10 +47,10 @@ it('settles captured butterflies every ten seconds and preserves freshness throu
     let json = '';
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      json = serializeSave(template, { entities: {}, inventory: inventory.exportState(), elapsedSeconds: world.scheduler.now,
+      json = serializeSave(template, { entities: {}, inventory: inventory.exportSaved(), elapsedSeconds: world.scheduler.now,
         playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
-    restored.replaceState(inventoryStateFromSave(deserializeSave(json, SAVE_CATALOG)), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored, deserializeSave(json, SAVE_CATALOG), SAVE_CATALOG.recipes);
     expect(restored.exportState()).toEqual(inventory.exportState());
     expect(restored.getEntity(cursorSlotAddress())!.components.perishable.GetPercent()).toBeCloseTo(1420 / 1440);
     // c_spawn creates a live butterfly whose starvation is stopped until captured.
@@ -66,13 +66,14 @@ it('settles captured butterflies every ten seconds and preserves freshness throu
       return true;
     })).ok).toBe(true);
     const butter = ground.exportRecords().find(record => record.id === 'butter:command')!;
-    expect(butter.components.stack).toMatchObject({ itemId: 'butter', count: 1, freshnessPercent: 1 });
+    // A fresh single butter: perishable's full remaining time and no stackable record.
+    expect(butter.components).toEqual({ perishable: { time: SAVE_CATALOG.items.butter.perishTime } });
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      json = serializeSave(template, { entities: { butter: [butter] }, inventory: inventory.exportState(), elapsedSeconds: world.scheduler.now,
+      json = serializeSave(template, { entities: { butter: [butter] }, inventory: inventory.exportSaved(), elapsedSeconds: world.scheduler.now,
         playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const savedButter = deserializeSave(json, SAVE_CATALOG);
-    restored.replaceState(inventoryStateFromSave(savedButter), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored, savedButter, SAVE_CATALOG.recipes);
     restoredGround.restoreEntities(savedButter.world.entities);
     expect(restoredGround.exportRecords()).toEqual([butter]);
     expect(restored.exportState()).toEqual(inventory.exportState());
@@ -104,9 +105,9 @@ it('starves an entire stack into independently rolled loot after removing the bu
     let saved = '';
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      saved = serializeSave(template, { entities: {}, inventory: inventory.exportState(), elapsedSeconds: world.scheduler.now,
+      saved = serializeSave(template, { entities: {}, inventory: inventory.exportSaved(), elapsedSeconds: world.scheduler.now,
         playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
-    expect(deserializeSave(saved, SAVE_CATALOG).players.local.inventory.containers['player:inventory'].slots.map(slot => slot.item?.itemId)).toEqual(['butter', 'butterflywings']);
+    expect(Object.values(deserializeSave(saved, SAVE_CATALOG).players.local.inventory.items).map(item => item.prefab)).toEqual(['butter', 'butterflywings']);
   } finally { items.dispose(); inventory.dispose(); }
 });

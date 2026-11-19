@@ -169,7 +169,7 @@ describe('nightmare_timepiece.lua', () => {
       let json = '';
       const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
       expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-        json = serializeSave(template, { entities: ground.exportEntities(), inventory: inventory.exportState(),
+        json = serializeSave(template, { entities: ground.exportEntities(), inventory: inventory.exportSaved(),
           elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
       })).ok).toBe(true);
       const saved = deserializeSave(json, SAVE_CATALOG);

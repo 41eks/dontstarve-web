@@ -55,8 +55,10 @@ export interface ItemPrefabWorld {
    */
   newItem(prefab: string): ItemEntity;
   newItem<Entity extends ItemEntity>(prefab: string, factory: ItemEntityFactory<Entity>): Entity;
-  /** SpawnPrefab of an item from its stack, as a container's SpawnSaveRecord makes its contents. */
+  /** SpawnPrefab of an item from its runtime stack. */
   spawnItem(state: InventoryStack): ItemEntity;
+  /** SpawnSaveRecord of an item a holder saved, as a container's or inventory's OnLoad makes its contents. */
+  restoreItem(record: import('./saveRecord').HeldEntityRecord): ItemEntity;
   /** inventoryitem:OnDropped of an inst a holder lets go of, at `position`. */
   dropItem?(entity: ItemEntity, position: ReadonlyVector3): void;
   /** Whether `prefab` is an inventory item; ground art alone is never picked up. */

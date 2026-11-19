@@ -1,5 +1,3 @@
-import type { InventoryStack } from '@dontstarve-web/inventory';
-import type { SavedContainer } from './types';
 import type { SaveCatalog } from './deserialize';
 import type { BulbPlantVariant } from '@dontstarve-web/prefab/bulb_plant';
 import { FLOWER_ANIMATIONS } from '@dontstarve-web/prefab/flower';
@@ -11,7 +9,6 @@ import { WORMHOLE_SKINS } from '@dontstarve-web/prefab/wormhole';
 import { WALL_SKIN_ARCHIVES } from '@dontstarve-web/prefab/wallSkins';
 import { FENCE_SKIN_ARCHIVES } from '@dontstarve-web/prefab/fenceSkins';
 import { FARM_PLOW_DRILLING_DURATION, FARM_PLOW_USES, FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
-import { PHONOGRAPH_PLAY_TIME } from '@dontstarve-web/prefab/phonograph';
 import { SCULPTABLE_MATERIALS } from '@dontstarve-web/prefab/sculptingtable';
 import { BIRDCAGE_STARVE_LOOT, CAGE_STATES } from '@dontstarve-web/prefab/birdcage';
 import { COOK_POT_ID } from '@dontstarve-web/prefab/cook_pot';
@@ -23,13 +20,17 @@ const MOONBASE_TIMER_LIMITS_BY_NAME: Readonly<Partial<Record<string, number>>> =
 import { LAVA_POND_ROCK_TYPES } from '@dontstarve-web/prefab/lava_pond';
 import { BASE_COOK_TIME, GetRecipe } from '../../packages/componets/src/cooking';
 import { array, choice, fail, integer, number, object, string } from './validation';
-import type { EntityPersistData, SavedTransform } from '@dontstarve-web/prefab/saveRecord';
+import type { EntityPersistData, HeldEntityRecord, SavedTransform, SlotItemsSave } from '@dontstarve-web/prefab/saveRecord';
 
 export interface EntitySaveContext {
   readonly prefab: string;
   readonly catalog: SaveCatalog;
-  stack(value: unknown, path: string): InventoryStack;
-  container(value: unknown, path: string, keys: readonly string[], maxStack?: number): SavedContainer;
+  /** GetSaveRecord of an item a holder saved; `refuse` names why the holder cannot hold that prefab. */
+  held(value: unknown, path: string, refuse?: (prefab: string) => string | undefined): HeldEntityRecord;
+  /** container.lua / inventory.lua OnSave's items by one-based slot, each stack within `maxStack`. */
+  slotItems(value: unknown, path: string, slotCount: number, refuse?: (prefab: string) => string | undefined, maxStack?: number): SlotItemsSave;
+  /** An item's GetPersistData, as its spec allows, with the prefab's own `extra` records. */
+  item(value: unknown, path: string, prefab: string, extra?: readonly (keyof EntityPersistData)[]): EntityPersistData;
   transform(value: unknown, path: string, grounded: boolean): SavedTransform;
 }
 
@@ -57,6 +58,8 @@ export interface PrefabComponentSchema {
   readonly skeletonAnims?: { min: number; max: number };
   readonly skeletonDescribed?: boolean;
   readonly archiveStoryLines?: number;
+  /** inventory.lua's slots of a structure whose inventory saves itself, as the molehill's. */
+  readonly inventorySlots?: number;
   /** grotto_pool_big.lua prefab_layout size. */
   readonly grottoChildren?: number;
 }
@@ -65,7 +68,7 @@ export type PrefabComponentParser = (value: unknown, path: string, context: Enti
 
 /** Component readers are reusable; the prefab definition chooses its schema. */
 export function componentParser(schema: PrefabComponentSchema): PrefabComponentParser {
-  return (value, path, { prefab, catalog, stack, container, transform }) => {
+  return (value, path, { prefab, catalog, held, slotItems, transform }) => {
     const { keys } = schema;
     const c = object(value, path, keys);
     const components: EntityPersistData = {};
@@ -104,15 +107,17 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         ...(data.turnoffSeconds === undefined ? {} : { turnoffSeconds: number(data.turnoffSeconds, `${p}.turnoffSeconds`, 0, 198) }),
         childspawner: { childreninside: integer(child.childreninside, `${p}.childspawner.childreninside`, 0, 1), childrenoutside: ids } };
     }
-    if (keys.includes('molehill')) {
-      const p = `${path}.molehill`, hill = object(c.molehill, p, ['items', 'child', 'childid', 'startdelay']);
-      const child = hill.child === undefined ? undefined : stack(hill.child, `${p}.child`);
-      if (child && child.itemId !== MOLE_ID) fail(`${p}.child`, `expected ${MOLE_ID}`);
-      if (hill.child !== undefined && hill.childid !== undefined) fail(p, 'occupied child and childid are exclusive');
-      components.molehill = { items: array(hill.items, `${p}.items`, 50).map((item, i) => stack(item, `${p}.items[${i}]`)),
-        ...(child === undefined ? {} : { child }),
-        ...(hill.childid === undefined ? {} : { childid: string(hill.childid, `${p}.childid`) }),
-        ...(hill.startdelay === undefined ? {} : { startdelay: number(hill.startdelay, `${p}.startdelay`, 0, 1200) }) };
+    if (keys.includes('inventory') && schema.inventorySlots !== undefined && c.inventory !== undefined) {
+      components.inventory = slotItems(c.inventory, `${path}.inventory`, schema.inventorySlots);
+    }
+    if (keys.includes('spawner') && c.spawner !== undefined) {
+      // spawner.lua OnSave writes one of the occupant's record, a living child's GUID or the spawn delay.
+      const p = `${path}.spawner`, saved = object(c.spawner, p, ['child', 'childid', 'startdelay']);
+      if (['child', 'childid', 'startdelay'].filter(key => saved[key] !== undefined).length > 1) fail(p, 'child, childid and startdelay are exclusive');
+      components.spawner = saved.child !== undefined
+        ? { child: held(saved.child, `${p}.child`, child => child === MOLE_ID ? undefined : `expected ${MOLE_ID}`) }
+        : saved.childid !== undefined ? { childid: string(saved.childid, `${p}.childid`) }
+        : saved.startdelay !== undefined ? { startdelay: number(saved.startdelay, `${p}.startdelay`, 0, 1200) } : {};
     }
     if (keys.includes('lavaPond') && c.lavaPond !== undefined) {
       const p = `${path}.lavaPond`, pond = object(c.lavaPond, p, ['rocks']);
@@ -193,23 +198,16 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     const building = keys.includes('building') ? catalog.buildings[prefab] : undefined;
     const containerDefinition = building?.container;
     const isContainer = containerDefinition !== undefined;
-    const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
     if (keys.includes('farmPlow')) {
       const componentPath = `${path}.farmPlow`;
       const plow = object(c.farmPlow, componentPath, ['phase', 'remainingSeconds', 'deployItem', 'returnUses']);
       const phase = choice(plow.phase, `${componentPath}.phase`, ['drill_pre', 'drill_loop', 'collapse']);
       const remainingSeconds = number(plow.remainingSeconds, `${componentPath}.remainingSeconds`, 0, FARM_PLOW_DRILLING_DURATION);
-      let deployItem: InventoryStack | null;
-      if (Object.hasOwn(plow, 'deployItem')) {
-        if (Object.hasOwn(plow, 'returnUses')) fail(componentPath, 'cannot combine deployItem and legacy returnUses');
-        deployItem = plow.deployItem === null ? null : stack(plow.deployItem, `${componentPath}.deployItem`);
-        if (deployItem && (deployItem.itemId !== FARM_PLOW_ITEM_ID || deployItem.count !== 1
-          || deployItem.remainingUses === undefined || deployItem.remainingUses >= FARM_PLOW_USES)) {
-          fail(`${componentPath}.deployItem`, 'expected one deployed farm_plow_item with remaining uses');
-        }
-      } else {
-        const returnUses = integer(plow.returnUses, `${componentPath}.returnUses`, 0, FARM_PLOW_USES - 1);
-        deployItem = returnUses === 0 ? null : { itemId: FARM_PLOW_ITEM_ID, count: 1, remainingUses: returnUses };
+      // farm_plow.lua deploy_item_save_record: the deployed item's GetSaveRecord, after finiteuses:Use(1).
+      const deployItem = plow.deployItem === null || plow.deployItem === undefined ? null
+        : held(plow.deployItem, `${componentPath}.deployItem`, item => item === FARM_PLOW_ITEM_ID ? undefined : `expected ${FARM_PLOW_ITEM_ID}`);
+      if (deployItem && (deployItem.components.finiteuses?.uses ?? FARM_PLOW_USES) >= FARM_PLOW_USES) {
+        fail(`${componentPath}.deployItem`, 'expected a deployed farm_plow_item with uses spent');
       }
       if (phase === 'collapse' && (remainingSeconds !== 0 || deployItem === null)) fail(componentPath, 'invalid fold-up state');
       components.farmPlow = { phase, remainingSeconds, deployItem };
@@ -416,9 +414,9 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         components.building.burnt = true;
       }
       if (isContainer && (!b.burnt || c.container !== undefined)) {
-        const slotCount = containerDefinition!.slotCount;
-        components.container = c.container === undefined ? { slotCount, slots: [] }
-          : container(c.container, `${path}.container`, numericKeys(slotCount),
+        components.container = c.container === undefined ? { items: {} }
+          : slotItems(c.container, `${path}.container`, containerDefinition!.slotCount,
+            item => catalog.items[item].canGoInContainer === false ? 'item cannot go in a container' : undefined,
             containerDefinition!.singleItems ? 1 : Infinity);
       }
     }
@@ -427,23 +425,26 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       const table = object(c.sculptingtable, componentPath, ['itemname']);
       components.sculptingtable = { itemname: choice(table.itemname, `${componentPath}.itemname`, Object.keys(SCULPTABLE_MATERIALS)) };
     }
-    if (keys.includes('birdcage') && c.birdcage !== undefined) {
-      const p = `${path}.birdcage`, cage = object(c.birdcage, p, ['cageState', 'birdType', 'occupant', 'item']);
+    if (keys.includes('CAGE_STATE') && c.CAGE_STATE !== undefined) {
+      // birdcage.lua OnSave: CAGE_STATE and bird_type; occupiable saves the bird, the inventory the shelf's item.
       // The poisoned (sick) state needs the unported toadstool gas.
-      const cageState = choice(cage.cageState, `${p}.cageState`,
-        [CAGE_STATES.DEAD, CAGE_STATES.SKELETON, CAGE_STATES.EMPTY, CAGE_STATES.FULL]);
-      const birdType = cage.birdType === undefined ? undefined : choice(cage.birdType, `${p}.birdType`, BIRD_IDS);
-      const occupant = cage.occupant === undefined ? undefined : stack(cage.occupant, `${p}.occupant`);
-      const item = cage.item === undefined ? undefined : stack(cage.item, `${p}.item`);
-      if (occupant && (!isBirdId(occupant.itemId) || occupant.count !== 1)) fail(`${p}.occupant`, 'expected one bird');
-      if (item && item.count !== 1) fail(`${p}.item`, 'expected one shelved item');
-      if ((cageState === CAGE_STATES.FULL) !== (occupant !== undefined)) fail(p, 'an occupied cage needs exactly one occupant');
-      if (cageState === CAGE_STATES.FULL && occupant!.itemId !== birdType) fail(`${p}.birdType`, 'must match the occupant');
+      const cageState = choice(c.CAGE_STATE, `${path}.CAGE_STATE`, [CAGE_STATES.DEAD, CAGE_STATES.SKELETON, CAGE_STATES.EMPTY, CAGE_STATES.FULL]);
+      const birdType = c.bird_type === undefined ? undefined : choice(c.bird_type, `${path}.bird_type`, BIRD_IDS);
+      const occupiable = c.occupiable === undefined ? undefined : object(c.occupiable, `${path}.occupiable`, ['occupant']);
+      const occupant = occupiable?.occupant === undefined ? undefined
+        : held(occupiable.occupant, `${path}.occupiable.occupant`, bird => isBirdId(bird) ? undefined : 'expected a bird');
+      if (occupant?.components.stackable) fail(`${path}.occupiable.occupant`, 'expected one bird');
+      const shelf = c.inventory === undefined ? undefined : slotItems(c.inventory, `${path}.inventory`, 1, undefined, 1);
+      const item = shelf?.items['1'];
+      if ((cageState === CAGE_STATES.FULL) !== (occupant !== undefined)) fail(path, 'an occupied cage needs exactly one occupant');
+      if (cageState === CAGE_STATES.FULL && occupant!.prefab !== birdType) fail(`${path}.bird_type`, 'must match the occupant');
       const shelved = cageState === CAGE_STATES.DEAD ? BIRDCAGE_STARVE_LOOT
         : cageState === CAGE_STATES.SKELETON ? catalog.items[BIRDCAGE_STARVE_LOOT].perishReplacement : undefined;
-      if (item?.itemId !== shelved) fail(`${p}.item`, shelved ? `expected ${shelved} on the shelf` : 'unexpected shelved item');
-      components.birdcage = { cageState, ...(birdType === undefined ? {} : { birdType }),
-        ...(occupant ? { occupant } : {}), ...(item ? { item } : {}) };
+      if (item?.prefab !== shelved) fail(`${path}.inventory`, shelved ? `expected ${shelved} on the shelf` : 'unexpected shelved item');
+      components.CAGE_STATE = cageState;
+      if (birdType !== undefined) components.bird_type = birdType;
+      if (occupant) components.occupiable = { occupant };
+      if (shelf && item) components.inventory = shelf;
     }
     if (keys.includes('workable') && c.workable !== undefined) {
       const p = `${path}.workable`, work = object(c.workable, p, ['workleft', 'maxwork']);
@@ -472,8 +473,8 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       const p = `${path}.moonbase`, moonbase = object(c.moonbase, p, ['staff', 'timer']);
       components.moonbase = {};
       if (moonbase.staff !== undefined) {
-        const staff = stack(moonbase.staff, `${p}.staff`);
-        if ((staff.itemId !== MOONBASE_KEY_STAFF && staff.itemId !== MOONBASE_MORPHED_STAFF) || staff.count !== 1) fail(`${p}.staff`, 'expected one light staff');
+        const staff = held(moonbase.staff, `${p}.staff`,
+          item => item === MOONBASE_KEY_STAFF || item === MOONBASE_MORPHED_STAFF ? undefined : 'expected one light staff');
         if ((components.workable?.workleft ?? 4) <= 0) fail(p, 'a destroyed moonbase cannot hold a staff');
         components.moonbase.staff = staff;
       }
@@ -489,7 +490,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
           parsed[name] = { timeleft: number(entry.timeleft, `${entryPath}.timeleft`, 0, initial_time), paused: entry.paused, initial_time };
         }
         const pending = ['mooncharge', 'moonchargepre', 'mooncharge2', 'mooncharge3'].some(name => Object.hasOwn(parsed, name));
-        if (pending && (components.moonbase.staff?.itemId !== MOONBASE_KEY_STAFF || (components.workable?.workleft ?? 4) <= 0)) fail(t, `charging requires a ${MOONBASE_KEY_STAFF} and a live moonbase`);
+        if (pending && (components.moonbase.staff?.prefab !== MOONBASE_KEY_STAFF || (components.workable?.workleft ?? 4) <= 0)) fail(t, `charging requires a ${MOONBASE_KEY_STAFF} and a live moonbase`);
         if (parsed.mooncharge && parsed.moonchargepre) fail(t, 'cannot prepare and charge together');
         if ((parsed.mooncharge2 || parsed.mooncharge3) && !parsed.mooncharge) fail(t, 'charge stages require the charge timer');
         if (parsed.mooncharge2 && parsed.mooncharge3) fail(t, 'cannot have both stage timers');
@@ -519,7 +520,7 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         if (stewer.done !== undefined && stewer.done !== true) fail(`${p}.done`, 'expected true');
         const done = stewer.done === true;
         if (done === (stewer.remainingtime !== undefined)) fail(p, 'cooking needs remaining time; done has none');
-        if (components.container?.slots.length) {
+        if (Object.keys(components.container?.items ?? {}).length) {
           fail(p, 'cooking and full pots must have no ingredients');
         }
         components.stewer = done ? { product, done: true }
@@ -530,25 +531,6 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         components.stewer.ingredient_prefabs = (stewer.ingredient_prefabs as unknown[]).map((value, index) => string(value, `${p}.ingredient_prefabs[${index}]`));
       }
       if (stewer.chef_id !== undefined) components.stewer.chef_id = string(stewer.chef_id, `${p}.chef_id`);
-    }
-    if (keys.includes('stack')) components.stack = stack(c.stack, `${path}.stack`);
-    if (keys.includes('stack') && c.torch !== undefined) {
-      const componentPath = `${path}.torch`;
-      const torch = object(c.torch, componentPath, ['lit']);
-      if (torch.lit !== true) fail(`${componentPath}.lit`, 'expected true');
-      components.torch = { lit: true };
-    }
-    if (keys.includes('stack') && c.lantern !== undefined) {
-      const componentPath = `${path}.lantern`;
-      const machine = object(c.lantern, componentPath, ['ison']);
-      if (typeof machine.ison !== 'boolean') fail(`${componentPath}.ison`, 'expected boolean');
-      components.lantern = { ison: machine.ison };
-    }
-    if (keys.includes('stack') && c.phonograph !== undefined) {
-      const componentPath = `${path}.phonograph`;
-      if (!components.stack?.phonographRecord) fail(componentPath, 'playing machine requires a record');
-      const machine = object(c.phonograph, componentPath, ['remainingSeconds']);
-      components.phonograph = { remainingSeconds: number(machine.remainingSeconds, `${componentPath}.remainingSeconds`, Number.MIN_VALUE, PHONOGRAPH_PLAY_TIME) };
     }
     const locations = (value: unknown, locationsPath: string) => {
       const saved = object(value, locationsPath, ['locations']);

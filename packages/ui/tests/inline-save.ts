@@ -1,6 +1,7 @@
 import type { Page } from '@playwright/test';
 
-type SavedSlot = { slotKey: string; item: Record<string, unknown> };
+/** A held item's GetSaveRecord: its prefab, skin and component records. */
+type HeldRecord = { id: string; prefab: string; skinname?: string; components: Record<string, unknown> };
 
 /**
  * A minimal forest save built in the test: one unbroken deciduous map, no entities and an empty player, so a page
@@ -9,8 +10,10 @@ type SavedSlot = { slotKey: string; item: Record<string, unknown> };
 export function minimalSave(options: {
   position?: [number, number, number];
   stats?: { health: number; hunger: number; sanity: number };
-  inventory?: SavedSlot[];
-  equipment?: SavedSlot[];
+  /** inventory.lua OnSave's items, by one-based slot. */
+  items?: Record<string, HeldRecord>;
+  /** inventory.lua OnSave's equip, by EQUIPSLOTS name. */
+  equip?: Record<string, HeldRecord>;
 } = {}) {
   return {
     format: 'three-roaming-save', schemaVersion: 1, gameVersion: '0.0.0',
@@ -26,14 +29,8 @@ export function minimalSave(options: {
         prefab: 'wilson', shardId: 'master',
         transform: { position: options.position ?? [0, 0, 0], rotationY: 0 },
         ...(options.stats ? { stats: options.stats } : {}),
-        inventory: {
-          containers: {
-            'player:inventory': { slotCount: 15, slots: options.inventory ?? [] },
-            'player:equipment': { slotCount: 3, slots: options.equipment ?? [] },
-            'player:cursor': { slotCount: 1, slots: [] },
-          },
-          bufferedBuilds: [],
-        },
+        inventory: { items: options.items ?? {}, equip: options.equip ?? {} },
+        builder: { bufferedBuilds: [] },
       },
     },
   };

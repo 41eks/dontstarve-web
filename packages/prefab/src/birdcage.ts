@@ -8,7 +8,7 @@ import definitions from './definitions.json' with { type: 'json' };
 import catalog from './groundItems.json' with { type: 'json' };
 import { AnimState, type AnimStateArt } from '@dontstarve-web/animation/animState';
 import { batch, type WorldPhase } from '@dontstarve-web/signals';
-import type { InventoryStack, ItemEntity } from '@dontstarve-web/inventory';
+import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Inventory } from '../../componets/src/inventory';
 import { Occupiable } from '../../componets/src/occupiable';
 import { Shelf } from '../../componets/src/shelf';
@@ -19,7 +19,7 @@ import { foods } from '../../componets/src/preparedfoods';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
 import type { EntityPersistData } from './saveRecord';
-import type { PrefabWorldContext } from './worldContext';
+import { restoreWorldItem, type PrefabWorldContext } from './worldContext';
 import { BIRD_SOUNDS, isBirdId } from './birds';
 import { PlaySound, type SoundEventPath } from './sound';
 
@@ -44,13 +44,8 @@ export const CAGE_STATES = {
 } as const;
 export type CageState = typeof CAGE_STATES[keyof typeof CAGE_STATES];
 export type BirdcageStatus = 'GENERIC' | 'SLEEPING' | 'STARVING' | 'HUNGRY' | 'OCCUPIED' | 'DEAD' | 'SKELETON';
-/** birdcage.lua OnSave plus the occupiable occupant and the inventory's only slot. */
-export interface BirdcageSaveStateData {
-    cageState: CageState;
-    birdType?: string;
-    occupant?: InventoryStack;
-    item?: InventoryStack;
-}
+/** occupiable.lua OnSave: the occupant's GetSaveRecord. */
+export interface OccupiableSave { occupant?: import('./saveRecord').HeldEntityRecord }
 
 // birdcage.lua BUILD_OVERRIDES: poisoned canaries and mutated birds are not ported.
 const BUILD_OVERRIDES: Readonly<Record<string, string>> = { canary_poisoned: 'canary', mutatedbird: 'bird_lunar' };
@@ -401,37 +396,26 @@ function OnLoseShelfItem(inst: BirdcageInstance): void {
     else OnEmptied(inst);
 }
 
-/** OnSave: CAGE_STATE, bird_type, the occupant and the inventory slot. */
+/** birdcage.lua OnSave: CAGE_STATE and bird_type; occupiable saves the bird and the inventory the shelf's item. */
 function OnSave(inst: BirdcageInstance, data: EntityPersistData): void {
     SaveBuildingSkin(inst, data);
-    // The slot's item is saved in the cage's own record, as the save format declares it.
-    delete data.inventory;
     const occupant = GetBird(inst);
-    occupant?.flush();
-    const item = inst.components.inventory.GetItemInSlot(1);
-    item?.flush();
-    data.birdcage = {
-        cageState: inst.CAGE_STATE,
-        ...(inst.bird_type === undefined ? {} : { birdType: inst.bird_type }),
-        ...(occupant ? { occupant: occupant.snapshot() } : {}),
-        ...(item ? { item: item.snapshot() } : {}),
-    };
+    if (occupant && !occupant.isRemoved) data.occupiable = { occupant: occupant.GetSaveRecord() };
+    data.CAGE_STATE = inst.CAGE_STATE;
+    if (inst.bird_type !== undefined) data.bird_type = inst.bird_type;
 }
 
 /** OnLoad, then OnLoadPostPass: components first (the occupant), then the inst data and the shelf. */
 function OnLoad(inst: BirdcageInstance, data: EntityPersistData): void {
     LoadBuildingSkin(inst, data);
-    const saved = data.birdcage;
-    if (!saved) return;
-    const spawnItem = inst.worldServices?.spawnItem;
+    if (data.CAGE_STATE === undefined) return;
+    const cageState = data.CAGE_STATE;
     batch(() => {
-        if (saved.occupant) {
-            const bird = spawnItem?.(saved.occupant);
-            if (bird) inst.components.occupiable?.Occupy(bird);
-        }
-        if (saved.item && spawnItem) inst.components.inventory.OnLoad([saved.item], spawnItem);
-        SetCageState(inst, saved.cageState);
-        if (saved.birdType !== undefined) SetBirdType(inst, saved.birdType);
+        // occupiable.lua OnLoad: SpawnSaveRecord of the occupant, then Occupy.
+        const occupant = data.occupiable?.occupant;
+        if (occupant) inst.components.occupiable?.Occupy(restoreWorldItem(inst, occupant));
+        SetCageState(inst, cageState);
+        if (data.bird_type !== undefined) SetBirdType(inst, data.bird_type);
     });
     PlayStateAnim(inst, 'idle', true);
     // Check in inventory, put on shelf if needed.

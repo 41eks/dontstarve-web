@@ -35,7 +35,7 @@ import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -64,7 +64,7 @@ function setup(random = () => .5) {
   const inventory = createInventoryStore([]), registry = new EntityRegistry([], prefabs, () => player.position);
   registry.registerPrefabs(PREFAB_DEFINITIONS.flowers);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(),
+  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(),
     elapsedSeconds: 100, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   return { world, flowers, prefabs, displays, inventory, registry, save,
     dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); fire.dispose(); inventory.dispose(); scheduler.dispose(); } };
@@ -107,7 +107,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     await restored.registry.restoreAll({ flower: saved.world.entities.flower });
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     expect(restored.flowers.exportRecords()).toEqual(s.flowers.exportRecords());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     expect(saved.world.entities.flower).toEqual([record]);
@@ -161,7 +161,7 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities.flower).toEqual([]);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
   } finally { controller.dispose(); graph.cancelAction(); s.dispose(); restored.dispose(); }
 });
@@ -231,12 +231,12 @@ it('perishes harvested petals in discrete batches and preserves freshness and qu
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-        entities: { flower: s.flowers.exportRecords(), ...ground.exportEntities() }, inventory: s.inventory.exportState(),
+        entities: { flower: s.flowers.exportRecords(), ...ground.exportEntities() }, inventory: s.inventory.exportSaved(),
         elapsedSeconds: world.scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 },
       }, SAVE_CATALOG);
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     const loaded = restored.inventory.getEntity(cursorSlotAddress())!;
     expect(loaded.components.perishable.GetPercent()).toBeCloseTo((PERISH_FAST - 13) / PERISH_FAST);
@@ -244,8 +244,9 @@ it('perishes harvested petals in discrete batches and preserves freshness and qu
     restoredGround.restoreEntities(saved.world.entities);
     expect(restoredGround.exportRecords()).toEqual(ground.exportRecords());
     restoredWorld.advance(480);
-    await vi.waitFor(() => expect(restoredGround.exportRecords()[0].components.stack?.itemId).toBe('spoiled_food'));
-    expect(restoredGround.exportRecords()[0]).toMatchObject({ transform: record.transform, components: { stack: { count: 1 } } });
+    await vi.waitFor(() => expect(restoredGround.groundStacks()[0].itemId).toBe('spoiled_food'));
+    expect(restoredGround.exportRecords()[0]).toMatchObject({ transform: record.transform });
+    expect(restoredGround.exportRecords()[0].components.stackable).toBeUndefined();
     restoredWorld.advance(PERISH_FAST - 480);
     expect(loaded.isRemoved).toBe(true);
     expect(loaded.components.perishable.updateTimer.peek()).toEqual({ status: 'stopped' });

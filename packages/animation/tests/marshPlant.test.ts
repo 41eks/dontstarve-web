@@ -145,7 +145,7 @@ it('haunting fails with the source cooldown, and c_spawn plants save and reload 
   const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);
   let exported = '';
   expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-    exported = serializeSave(template, { entities: { ...template.world.entities, ...registry.exportRecords() }, inventory: inventory.exportState(),
+    exported = serializeSave(template, { entities: { ...template.world.entities, ...registry.exportRecords() }, inventory: inventory.exportSaved(),
       playerTransform: { position: [6, 0, 9], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
   })).ok).toBe(true);
   const records = { marsh_plant: deserializeSave(exported, SAVE_CATALOG).world.entities.marsh_plant };

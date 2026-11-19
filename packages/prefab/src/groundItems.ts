@@ -171,7 +171,7 @@ export function iconItemPrefab(itemId: string, icon: { readonly atlas: string; r
 export function bindItemWorld(inst: ItemEntity, world: ItemPrefabWorld): void {
   addComponent(inst, 'inventoryphysics', InventoryPhysics, world.componentUpdates, TILE_SIZE / 4);
   const dropLoot = world.dropLoot;
-  inst.worldServices = { ...inst.worldServices, fx: world.fx, spawnItem: state => world.spawnItem(state), dropItem: world.dropItem,
+  inst.worldServices = { ...inst.worldServices, fx: world.fx, spawnItem: state => world.spawnItem(state), restoreItem: record => world.restoreItem(record), dropItem: world.dropItem,
     dropLoot: (items, position) => dropLoot?.(items.map(item => ({ ...GROUND_ITEM_DEFINITIONS[item.itemId], ...item })), position) };
   const settle = () => {
     inst.transform.tileTracker.sync();

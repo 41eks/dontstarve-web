@@ -139,7 +139,7 @@ it('draws each container prefab from its source bank and skin build, and keeps i
     const [skinId] = Object.keys(declaration.skinArchives ?? {});
     expect(PREFAB_DEFINITIONS.buildings.prefabIds).toContain(id);
     const record = { id: `saved-${id}`, transform: { position: [1, 0, 2] as [number, number, number], rotationY: 0 },
-      components: { building: skinId === undefined ? {} : { skinId }, container: { slotCount: declaration.container.slotCount, slots: [] } } };
+      components: { building: skinId === undefined ? {} : { skinId }, container: { items: {} } } };
     const model = buildings.spawnFromSave(id, record), inst = prefabInstance(model)!;
     await prefabDisplay(model)!.artLoaded();
     buildings.displays.update(1 / 30);
@@ -187,8 +187,8 @@ it('draws the moved animated buildings through their archive or controller art, 
   // The save parser accepts what GetPersistData writes, and reloading it exports the same records.
   const save = structuredClone(initialWorld) as unknown as SaveDocument;
   save.world.entities = Object.fromEntries(ids.map(id => [id, records.filter(({ prefabId }) => prefabId === id).map(({ record }) => ({ ...structuredClone(record), transform: { ...record.transform, position: [...record.transform.position] } }))]));
-  for (const container of Object.values(save.players.local.inventory.containers)) container.slots = [];
-  save.players.local.inventory.bufferedBuilds = [];
+  save.players.local.inventory = { items: {}, equip: {} };
+  save.players.local.builder = { bufferedBuilds: [] };
   const parsed = deserializeSave(JSON.stringify(save), SAVE_CATALOG).world.entities;
   for (const { record } of records) buildings.prefabs.get(record.id)!.remove();
   for (const id of ids) for (const record of parsed[id]) buildings.spawnFromSave(id, record);

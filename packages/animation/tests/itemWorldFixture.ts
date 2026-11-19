@@ -1,7 +1,7 @@
 import { publishTestCamera } from './worldContentFixture';
 import * as THREE from 'three';
 import { PrefabDisplayGroup, SpriteResources } from '../../display/src';
-import { ItemEntity, newItemEntityId, type InventoryStack, type InventoryStore, type ItemEntityFactory, type ItemEntityRegistry } from '../../inventory/src';
+import { ItemEntity, type InventoryStack, type InventoryStore, type ItemEntityFactory, type ItemEntityRegistry } from '../../inventory/src';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { LootLaunch } from '../../componets/src/inventoryphysics';
@@ -59,6 +59,7 @@ export class ItemWorldFixture {
     this.world = {
       newItem,
       spawnItem: state => inventory.entities.create(state),
+      restoreItem: record => inventory.entities.restore(record),
       isInventoryItem: prefab => inventory.hasItemSpec(prefab),
       configureItem: entity => { inventory.entities.adopt(entity); inventory.configureItem(entity); },
       dropItem: (entity, position) => inventory.DropItem(entity, position),
@@ -74,7 +75,7 @@ export class ItemWorldFixture {
     this.prefabs.register(Object.fromEntries(Object.entries(itemPrefabs(this.world, icons)).filter(([id]) => ids.has(id))));
     bindTestItemWorld(inventory.entities, {
       isItemPrefab: prefab => ids.has(prefab),
-      SpawnPrefab: state => this.prefabs.spawnAs(ItemEntity, state.itemId, ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } }),
+      SpawnPrefab: (prefab, saved) => this.prefabs.spawnAs(ItemEntity, prefab, ORIGIN, saved),
     });
     // DefaultBurntFn's ash.
     this.stopAsh = worldEvents?.on('spawnAsh', position => { this.spawnGroundItem({ ...SAVE_CATALOG.items.ash, itemId: 'ash', count: 1 }, position); });
@@ -122,6 +123,11 @@ export class ItemWorldFixture {
   /** The item records Ents saves: insts in the scene, not held. */
   exportRecords(): EntitySaveRecord[] {
     return this.prefabs.exportRecords().map(({ record }) => record);
+  }
+
+  /** What lies on the ground as the inventory sees it: each saved item inst's runtime stack, in save order. */
+  groundStacks(): InventoryStack[] {
+    return this.prefabs.exportRecords().map(({ record }) => (this.prefabs.get(record.id) as unknown as ItemEntity).snapshot());
   }
 
   /** The same records as a save's `world.entities` holds them, by prefab. */

@@ -69,7 +69,8 @@ it('snaps deployment, drills for 15 seconds, terraforms and returns a folded thr
     expect(farm.map.deploy(new THREE.Vector3(1, 0, 2), original)).toBe(true);
     expect(use).toHaveBeenCalledExactlyOnceWith(1);
     expect(original.isRemoved).toBe(true);
-    const savedItem = original.snapshot();
+    // deploy_item_save_record: the item's GetSaveRecord after its use, kept by id though the item is gone.
+    const savedItem = { id: original.id, prefab: 'farm_plow_item', components: { finiteuses: { uses: original.components.finiteuses.remaining } } };
     expect(farm.plows()[0]).toMatchObject({ transform: { position: [6, 0, 6] },
       components: { farmPlow: { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem: savedItem } } });
     expect(farm.map.canDeploy(new THREE.Vector3(4, 0, 4))).toBe(false);
@@ -114,7 +115,8 @@ it('does not return an exhausted item on its fourth use and one hammer hit recov
     target.work(); target.work();
     expect(target.isValid()).toBe(false);
     expect(farm.plows()).toEqual([]);
-    expect(returnItem).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(-18, 0, -6), original.snapshot());
+    expect(returnItem).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(-18, 0, -6),
+      { id: original.id, prefab: 'farm_plow_item', components: { finiteuses: { uses: original.components.finiteuses.remaining } } });
     expect(turf.getTileAtWorld({ x: -18, z: -6 })).toBe(WORLD_TILES.DECIDUOUS);
     expect(farm.decor().every(({ record }) => record.components.farmSoil?.plowId !== target.id)).toBe(true);
   } finally { farm.dispose(); }
@@ -178,7 +180,7 @@ it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and 
     actor.graph.update(1 / 30);
     const [record] = farm.plows();
     expect(record.transform.position).toEqual([6, 0, 6]);
-    expect(record.components.farmPlow!.deployItem).toMatchObject({ itemId: 'farm_plow_item', remainingUses: 3 });
+    expect(record.components.farmPlow!.deployItem).toMatchObject({ prefab: 'farm_plow_item', components: { finiteuses: { uses: 3 } } });
     expect(inventory.GetActiveItem()).toBeNull();
     placer.update();
     expect(world.scene.children.some(model => model.name === 'FarmPlowPlacer')).toBe(false);
@@ -188,10 +190,11 @@ it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and 
 it('restores drilling progress, attached soil and remaining item uses without restarting the timer', async () => {
   const { farm, returnItem, turf, advance } = setup();
   try {
-    const deployItem = { entityId: 'saved_item', itemId: 'farm_plow_item', count: 1, remainingUses: 1 };
+    // farm_plow.lua deploy_item_save_record: the item's GetSaveRecord, with one use left.
+    const deployItem = { id: 'saved_item', prefab: 'farm_plow_item', components: { finiteuses: { uses: 1 } } };
     farm.spawn('farm_plow', new THREE.Vector3(6, 0, 6), { farmPlow: { phase: 'drill_loop', remainingSeconds: 2, deployItem } }, 'saved_plow');
     const exported = farm.plows();
-    exported[0].components.farmPlow!.deployItem!.remainingUses = 3;
+    exported[0].components.farmPlow!.deployItem!.components.finiteuses = { uses: 3 };
     expect(farm.plows()[0].components.farmPlow!.deployItem).toEqual(deployItem);
     farm.spawn('farm_soil', new THREE.Vector3(6, 0, 10.5), { farmSoil: { broken: false, plowId: 'saved_plow' } }, 'saved_soil');
     await farm.advance(.1);
@@ -201,7 +204,7 @@ it('restores drilling progress, attached soil and remaining item uses without re
     const entities = { farm_plow: farm.plows(), farm_soil: farm.decor().map(({ record }) => record) }, inventory = createPickupInventory();
     try {
       const json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
-        { entities, inventory: inventory.exportState(), elapsedSeconds: 1, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+        { entities, inventory: inventory.exportSaved(), elapsedSeconds: 1, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
       const saved = deserializeSave(json, SAVE_CATALOG).world.entities;
       expect({ farm_plow: saved.farm_plow, farm_soil: saved.farm_soil }).toEqual(entities);
     } finally { inventory.dispose(); }

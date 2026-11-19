@@ -682,16 +682,13 @@ three-roaming-save-v1.json
               "skinId": "treasurechest_ancient"
             },
             "container": {
-              "slotCount": 9,
-              "slots": [
-                {
-                  "slotKey": "0",
-                  "item": {
-                    "itemId": "log",
-                    "count": 8
-                  }
+              "items": {
+                "1": {
+                  "id": "e_01J8Y2N6PMAZE47YDCA3KT2F0B",
+                  "prefab": "log",
+                  "components": { "stackable": { "stack": 8 } }
                 }
-              ]
+              }
             }
           }
         }
@@ -718,12 +715,7 @@ three-roaming-save-v1.json
             "position": [3.25, 0, 6.75],
             "rotationY": 0
           },
-          "components": {
-            "stack": {
-              "itemId": "twigs",
-              "count": 1
-            }
-          }
+          "components": {}
         }
       ]
     }
@@ -742,39 +734,15 @@ three-roaming-save-v1.json
         "sanity": 200
       },
       "inventory": {
-        "containers": {
-          "player:inventory": {
-            "slotCount": 15,
-            "slots": [
-              {
-                "slotKey": "0",
-                "item": {
-                  "itemId": "cutgrass",
-                  "count": 3
-                }
-              },
-              {
-                "slotKey": "1",
-                "item": {
-                  "itemId": "twigs",
-                  "count": 17
-                }
-              }
-            ]
-          },
-          "player:equipment": {
-            "slotCount": 3,
-            "slots": [
-              {
-                "slotKey": "hand",
-                "item": {
-                  "itemId": "torch",
-                  "count": 1
-                }
-              }
-            ]
-          }
+        "items": {
+          "1": { "id": "e_01J8Y2R1", "prefab": "cutgrass", "components": { "stackable": { "stack": 3 } } },
+          "2": { "id": "e_01J8Y2R2", "prefab": "twigs", "components": { "stackable": { "stack": 17 } } }
         },
+        "equip": {
+          "hands": { "id": "e_01J8Y2R3", "prefab": "torch", "components": { "fueled": { "fuel": 52.5 } } }
+        }
+      },
+      "builder": {
         "bufferedBuilds": [
           {
             "recipeId": "treasurechest",
@@ -886,28 +854,33 @@ three-roaming-save-v1.json
 
 工作中的 `farm_plow` 使用 `components.farmPlow = { phase, remainingSeconds, deployItem }`。`deployItem` 是部署时通过 finiteuses 扣减后保存的完整物品快照，保留 `entityId`、prefab、数量和所有已支持的组件字段；耗尽或直接调试生成的工作实体为 `null`。返还时从快照重建物品，恢复原身份。嵌套快照的身份也参与全局重复 ID 校验。旧 `returnUses` 字段只在读取时迁移为 `{ itemId: "farm_plow_item", count: 1, remainingUses }`，不再写入新存档。
 
-容器中的物品作为 `container.slots[].item` 嵌套保存，不同时出现在 `world.entities` 中；被持有的物品处于 limbo，世界存档循环跳过它们。运行时库存槽持有 `ItemEntity` 引用，拾取或丢弃只改变归属与场景表现，不销毁并重建物品实体。库存快照用可选 `entityId` 保存稳定身份，地面记录使用同一身份作为 `id`；读取器兼容缺少该字段的旧存档，拒绝重复物品身份以及与世界实体冲突的身份。只有拆堆、制造和读取存档创建新运行时实体，整件移动与换肤保持引用；合堆消耗完全合入的实体。控制器、owner 回调和模型不序列化，读档按组件快照重建。这继承了 DST “有父实体的对象不再作为顶层实体保存”的规则。
+容器中的物品按 `container.lua` 的 `OnSave` 作为 `container.items` 嵌套保存：键是一起始的槽位号，值是物品的 `GetSaveRecord`（见下文“物品记录”），不同时出现在 `world.entities` 中；被持有的物品处于 limbo，世界存档循环跳过它们。运行时库存槽持有 `ItemEntity` 引用，拾取或丢弃只改变归属与场景表现，不销毁并重建物品实体。物品记录用 `id` 保存稳定身份，地面记录使用同一身份作为 `id`；读取器拒绝重复物品身份以及与世界实体冲突的身份。只有拆堆、制造和读取存档创建新运行时实体，整件移动与换肤保持引用；合堆消耗完全合入的实体。控制器、owner 回调和模型不序列化，读档按组件快照重建。这继承了 DST “有父实体的对象不再作为顶层实体保存”的规则。
 
 ### 玩家与物品栏
 
 玩家记录独立于 `world.entities`，但通过 `shardId` 与本次世界快照关联。当前位置取玩家地面接触点，即 `player.position`，不保存 Cannon 刚体中心的高度偏移。
 
-物品栏使用项目已有的稳定地址：
+玩家的 `inventory` 是 `inventory.lua` `OnSave` 的形状（`InventoryStore.exportSaved()` 写出，`loadSaved()` 读回）：
 
-- 普通背包：`containerId = "player:inventory"`，`slotKey = "0"` 到 `"14"`。
-- 装备栏：`containerId = "player:equipment"`，`slotKey = "hand" | "body" | "head"`。
-- 鼠标槽：`containerId = "player:cursor"`，`slotKey = "0"`，`slotCount = 1`。保存完整物品快照，读档恢复鼠标持有；旧存档缺少该容器时按空槽加载。鼠标位置及归还来源地址不保存，重载后 Esc 尝试放回普通物品栏。
-- 背包实体容器：运行时 `containerId = "item:backpack:<entityId>"`，`slotKey = "0"` 到 `"7"`；存档随物品嵌套在 `item.container` 或地面 `components.stack.container`，每个背包独立保存，不再导出玩家级 `player:backpack`。旧共享容器仅在归属明确时迁移。
+- `items`：普通物品栏，键是一起始的槽位号 `"1"` 到 `"15"`（运行时地址 `player:inventory` 的 `slotKey` 为号码减一）。
+- `equip`：装备栏，键是 `EQUIPSLOTS` 名 `"hands" | "body" | "head"`（运行时装备类型 `hand` / `body` / `head`）。
+- `activeitem`：鼠标槽上的物品；鼠标位置及归还来源地址不保存，重载后 Esc 尝试放回普通物品栏。
+- 背包的内容在背包自己的记录里：`components.container.items`，与箱子相同；运行时容器 ID 为 `item:backpack:<entityId>`。
 
-JSON 按容器分组，只写非空槽，空槽由 `slotCount` 和缺失的 `slotKey` 推导。每个 `item` 保存权威字段 `entityId`、`itemId`、`skinId`、`count` 以及已支持的燃料、使用次数、唱片和嵌套容器状态；名称、图标、Atlas、最大堆叠数和装备类型都从当前 `INVENTORY_ITEM_SPECS` / `INVENTORY_SKIN_SPECS` 重建，避免元数据在存档中过期。
+只写有物品的槽。`builder.bufferedBuilds` 是 `InventoryStore` 的已缓存建造，也保存。
 
-`bufferedBuilds` 是 `InventoryStore` 的权威状态，也必须保存。读取时需要校验：
+#### 物品记录
 
-- `itemId` 和 `recipeId` 当前存在。
-- `count` 是正的安全整数，且不超过当前 `maxStack`。
-- `skinId` 属于对应物品或配方。
-- 装备物品可被目标 `hand`、`body` 或 `head` 槽接受。
-- 槽地址没有重复，普通背包索引在 `0..14` 内。
+被容器、物品栏、鸟笼、月台、犁地机等持有的物品都保存为 `EntityScript:GetSaveRecord` 的形状（`HeldEntityRecord`）：`{ id, prefab, skinname?, components }`，没有位置。`components` 是 `GetPersistData`：各组件 `OnSave` 的记录按组件名保存，与 Lua 一致——`stackable: { stack }`（只在多于一个时写）、`finiteuses: { uses }`、`fueled: { fuel }`（满燃料时省略）、`perishable: { time, paused? }`（剩余秒数）、`armor: { condition }`、`temperature: { current }`、`inventoryitemmoisture: { moisture?, wet? }`、`container` / `inventory: { items }`、`health`、`knownlocations`，以及 prefab 自己 `OnSave` 的字段（`heatrock.lua` 的 `highTemp` / `lowTemp`、`mole.lua` 的 `needs_home_time`、提灯 `machine` 开关）。地面物品是同样的数据，放在 `world.entities[prefab]` 的记录里，皮肤是记录上的 `skinname`。
+
+本项目的扩展字段：`groundVariant`（静态地面美术的显示分支，由导入器从 `anim`、`glassname`、`variation` 等源字段推出）、`torch: { lit }`、留声机的 `phonograph: { remainingSeconds }`（续播剩余时间；它不另存 `machine`，否则读档会从头播放）。建筑的皮肤仍在 `building.skinId` 等自己的数据里，不用记录上的 `skinname`。
+
+名称、图标、Atlas、最大堆叠数和装备类型都从当前 `INVENTORY_ITEM_SPECS` / `INVENTORY_SKIN_SPECS` 重建。读取时按物品规格校验（`src/save/deserialize.ts` 的 `item()`）：
+
+- `prefab` 和 `recipeId` 当前存在，`skinname` 属于该物品。
+- 物品只带规格具有的组件记录：`stackable.stack` 在 `2..maxStack`，`finiteuses` 需要 `maxUses`，`fueled` 需要 `maxFuel`，`perishable` 需要 `perishTime`，`temperature` / `highTemp` / `lowTemp` 需要 `savesTemperature`，`container` 需要 `containerSlots`，`inventory` 需要 `holds` 或鼹鼠，`health` / `knownlocations` 需要 `creatureState`。
+- 装备物品可被目标 `EQUIPSLOTS` 槽接受；不能进容器的物品（`canGoInContainer === false`，背包）不进箱子或背包。
+- 槽位号在容器、物品栏的范围内。
 
 不兼容的物品不能静默删除。加载器应拒绝该 Snapshot，并给出包含玩家 ID、容器和槽位的错误；以后如需支持被移除的 Mod 物品，应另行设计可恢复的 `orphanedItems` 机制。
 

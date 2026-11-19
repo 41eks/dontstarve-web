@@ -10,7 +10,7 @@ test('renders container slot insts through shared slots and releases replaced pa
     const { newItemEntity, StorageSlot } = await import(urls.inventory);
     const item = (record: any): any => newItemEntity(record, undefined, item);
     const panel = document.querySelector('dst-chest-panel')!;
-    const create = () => new Container({}, () => new StorageSlot(), item);
+    const create = () => new Container({}, () => new StorageSlot(), item, (record: any) => item({ itemId: record.prefab, count: 1 }));
     const toItem = (item: any) => ({
       id: item.prefab, name: item.prefab, icon: `${item.prefab}.tex`, count: 0, maxStack: 20, tile: item.tile,
     });
@@ -18,7 +18,7 @@ test('renders container slot insts through shared slots and releases replaced pa
     container.SetNumSlots(2);
     panel.open({ containerId: 'container:first', slotCount: 2 });
     const stop = panel.bindContainer(container.slots, toItem);
-    container.OnLoad({ slots: [{ slotKey: '1', item: { itemId: 'log', count: 3 } }] });
+    container.LoadSnapshot({ slots: [{ slotKey: '1', item: { itemId: 'log', count: 3 } }] });
     (window as any).containerBinding = { panel, container, create, toItem, stop };
   }, {
     container: `/@fs${fileURLToPath(new URL('../../componets/src/container.ts', import.meta.url))}`,
@@ -43,7 +43,7 @@ test('renders container slot insts through shared slots and releases replaced pa
     state.panel.bindContainer(next.slots, state.toItem);
     state.stop();
     state.container.GetItemInSlot(2).components.stackable.count = 9;
-    next.OnLoad({ slots: [{ slotKey: '0', item: { itemId: 'cutgrass', count: 4 } }] });
+    next.LoadSnapshot({ slots: [{ slotKey: '0', item: { itemId: 'cutgrass', count: 4 } }] });
     state.next = next;
   });
   await expect(panel.locator('[data-slot-key="0"]')).toHaveAttribute('data-item-id', 'cutgrass');

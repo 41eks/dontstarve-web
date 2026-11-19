@@ -12,7 +12,7 @@ import { executeDebugCommand } from '../../../src/debugCommands';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { createPickupInventory } from './pickupFixture';
 import { EventEmitter } from '@dontstarve-web/signals';
 import { AnimState, type AnimStateArt } from '../src/animState';
@@ -196,19 +196,19 @@ describe('lantern fuel', () => {
       expect(lightAt(prefabInstance(model)!)).toMatchObject({ radius: expect.any(Number) });
       expect(inventory.setRemainingFuel(inventorySlotAddress(1), 0)).toBe(true);
 
-      const before = registry.exportRecords(), held = inventory.exportState();
-      expect(before.lantern[0].components.lantern).toEqual({ ison: true });
+      const before = registry.exportRecords();
+      expect(before.lantern[0].components.machine).toEqual({ ison: true });
       let json = '';
       expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
         const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-        json = serializeSave(template, { entities: before, inventory: held, elapsedSeconds: 20,
+        json = serializeSave(template, { entities: before, inventory: inventory.exportSaved(), elapsedSeconds: 20,
           playerTransform: { position: [4, 0, -2], rotationY: 0 } }, SAVE_CATALOG);
       })).ok).toBe(true);
       const saved = deserializeSave(json, SAVE_CATALOG);
       expect(saved.world.entities).toEqual(before);
       // The world's SpawnPrefab is bound before the save loads, so held items are that world's insts.
       restored = createManager(restoredInventory);
-      restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+      loadSavedInventory(restoredInventory, saved, SAVE_CATALOG.recipes);
       restored.restoreEntities(saved.world.entities);
       const loaded = restored.entities.get('spawn:lantern')!;
       // machine:OnLoad turns it on again; StartConsuming charges a new first period on the next settlement.
@@ -223,10 +223,10 @@ describe('lantern fuel', () => {
       // An empty lantern dropped on the ground stays there, unlit, and saves ison = false.
       const empty = restoredInventory.getEntity(inventorySlotAddress(1))!;
       restoredInventory.DropItem(empty, { x: 8, y: 0, z: 8 });
-      await vi.waitFor(() => expect(restored!.exportRecords().find(record => record.id === empty.id)?.components.lantern).toBeDefined());
+      await vi.waitFor(() => expect(restored!.exportRecords().find(record => record.id === empty.id)?.components.machine).toBeDefined());
       expect(empty.components.machine!.IsOn()).toBe(false);
       expect(restored.exportRecords().find(record => record.id === empty.id)!.components)
-        .toMatchObject({ stack: { itemId: 'lantern', remainingFuel: 0 }, lantern: { ison: false } });
+        .toEqual({ fueled: { fuel: 0 }, machine: { ison: false } });
     } finally { registry.dispose(); restored?.dispose(); inventory.dispose(); restoredInventory.dispose(); }
   });
 });

@@ -17,7 +17,8 @@ import { bindTestWorld } from './worldContentFixture';
 import * as THREE from 'three';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { activeItemUse } from './inventoryUseFixture';
-import { createInventoryStore, testItem } from './testInventory';
+import { createInventoryStore, testItem, testSavedItem } from './testInventory';
+import type { HeldEntityRecord } from '../../prefab/src/saveRecord';
 
 function createBird(prefab = 'canary') {
   const perishWorld = createPerishWorld();
@@ -104,7 +105,8 @@ describe('caged birds', () => {
   it('keeps the starved bird meat in its inventory slot, replaces it when it rots and drops it from a failed take', () => {
     const scheduler = new GameTimeScheduler();
     const dropItem = vi.fn();
-    const world = { scheduler, dropItem, spawnItem: (state: InventoryStack) => testItem(state) } as unknown as WorldContext;
+    const world = { scheduler, dropItem, spawnItem: (state: InventoryStack) => testItem(state),
+      restoreItem: (record: HeldEntityRecord) => testSavedItem(record.prefab, record) } as unknown as WorldContext;
     const instance = new BirdcageInstance(world);
     const { components } = instance;
     const bird = createBird();
@@ -118,8 +120,8 @@ describe('caged birds', () => {
     expect(components.occupiable).toBeUndefined();
 
     const persisted = instance.GetPersistData();
-    expect(persisted).not.toHaveProperty('inventory');
-    expect(persisted.birdcage).toMatchObject({ cageState: '_death', birdType: 'canary', item: { itemId: 'smallmeat' } });
+    // birdcage.lua OnSave; the shelf's item is in the inventory's own record.
+    expect(persisted).toMatchObject({ CAGE_STATE: '_death', bird_type: 'canary', inventory: { items: { 1: { prefab: 'smallmeat' } } } });
     const restored = new BirdcageInstance(world);
     restored.SetPersistData(persisted);
     expect(restored.CAGE_STATE).toBe('_death');

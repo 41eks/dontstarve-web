@@ -161,7 +161,7 @@ it('cycles building skins while preserving the container root, identity, state a
   const world = setupWorld();
   const placement = managedBuildings(world, { consume: () => false });
   const record: EntitySaveRecord = { id: 'e_open_chest', transform: { position: [3, 0, 4], rotationY: 0 },
-    components: { building: {}, container: { slotCount: 9, slots: [] } } };
+    components: { building: {}, container: { items: {} } } };
   const root = await placement.spawnFromSave('treasurechest', record);
   const target = reskinTargetOf(lookupPrefabInstance(root))!;
   const skins = Object.keys(definitions.animatedBuildings.treasurechest.skinArchives);
@@ -203,7 +203,7 @@ it('reskins dropped items without changing their count or entity ID and preserve
   expect(first.isValid()).toBe(true);
   expect(manager.reskinTargets[0]).toBe(first);
   expect(manager.exportRecords()[0]).toMatchObject({ id: 'e_staff', transform: { position: [3, 0, 4] },
-    components: { stack: { itemId: 'greenstaff', count: 1, remainingUses: 4, skinId: 'greenstaff_an' } } });
+    skinname: 'greenstaff_an', components: { finiteuses: { uses: 4 } } });
   expect(manager.reskinTargets[0].isValid()).toBe(true);
   const canvas = world.renderer.domElement;
   Object.assign(canvas, { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });

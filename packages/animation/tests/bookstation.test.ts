@@ -16,8 +16,8 @@ import { executeDebugCommand } from '../../../src/debugCommands';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
-import { testItem } from './testInventory';
+
+import { testItem, testRestoreItem } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -36,7 +36,7 @@ function stationWorld(scheduler = new GameTimeScheduler(), tags: string[] = [], 
   const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     renderer: { domElement: new EventTarget() }, scheduler,
     registerContainer: (...args: Parameters<typeof inventory.registerContainer>) => inventory.registerContainer(...args),
-    unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args), spawnItem: testItem } as unknown as WorldContext;
+    unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args), spawnItem: testItem, restoreItem: testRestoreItem } as unknown as WorldContext;
   return { inventory, scheduler, buildings: managedBuildings(world) };
 }
 
@@ -76,7 +76,7 @@ it('accepts only bookcabinet items, shows shelf layers by fill level and restore
     // The period repeats and survives the saved fractional uses.
     scheduler.advance(30 * 39);
     expect(uses(0).remaining).toBe(5);
-    expect(container.OnSave().slots[0].item.remainingUses).toBe(5);
+    expect(container.OnSave().items[1].components.finiteuses?.uses).toBe(5);
 
     expect(inventory.transfer(shelf(0), second, 1)).toBe(true);
     await Promise.resolve();
@@ -135,12 +135,11 @@ it('spawns a skinned bookstation through c_spawn and keeps books with fractional
       const records = buildings.exportRecords().filter(({ prefabId }) => prefabId === 'bookstation');
       json = serializeSave(template, { entities: { bookstation: records.map(({ record }) => ({ ...record,
         transform: { ...record.transform, position: [...record.transform.position] } })) },
-        inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+        inventory: inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const save = deserializeSave(json, SAVE_CATALOG), record = save.world.entities.bookstation[0];
     expect(record.components.building?.skinId).toBe('bookstation_house');
-    expect(record.components.container?.slots).toHaveLength(2);
-    expect(inventoryStateFromSave(save).slots.some(({ address }) => address.containerId === library(0).containerId)).toBe(false);
+    expect(Object.keys(record.components.container?.items ?? {})).toHaveLength(2);
     restoredBuildings.spawnFromSave('bookstation', record);
     expect(restored.getEntity(library(0))!.snapshot()).toEqual(book.snapshot());
     expect(restored.getEntity(library(0))!.snapshot().remainingUses).toBeCloseTo(3.05);

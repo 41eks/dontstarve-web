@@ -168,7 +168,7 @@ it('spawns both forms with c_spawn and saves and reloads their health, a loaded 
     let json = '';
     const saved = await executeDebugCommand('c_save()', {} as never, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), { entities: s.registry.exportRecords(),
-        elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 }, inventory: { slots: [], bufferedBuilds: [] } }, SAVE_CATALOG);
+        elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 }, inventory: { inventory: { items: {}, equip: {} }, bufferedBuilds: [] } }, SAVE_CATALOG);
     });
     expect(saved, saved.message).toMatchObject({ ok: true });
     const { entities } = deserializeSave(json, SAVE_CATALOG).world;

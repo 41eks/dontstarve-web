@@ -16,8 +16,8 @@ test('plants butterflies and saplings, picks the restored flower and saves its p
     delete save.world.map.tiles;
     save.players.local.transform.position = [0, 0, 0];
     save.players.local.stats = { health: 150, hunger: 150, sanity: 100 };
-    for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
-    save.players.local.inventory.bufferedBuilds = [];
+    save.players.local.inventory = { items: {}, equip: {} };
+    save.players.local.builder = { bufferedBuilds: [] };
     await route.fulfill({ response, json: save });
   });
   const prepare = () => page.evaluate(async paths => {
@@ -59,9 +59,9 @@ test('plants butterflies and saplings, picks the restored flower and saves its p
   const restored = await saveGame();
   expect(restored.world.entities.flower).toEqual([flower]);
   expect(restored.world.entities.sapling[0]).toMatchObject({ id: sapling.id, transform: sapling.transform });
-  const slots = restored.players.local.inventory.containers['player:inventory'].slots;
-  expect(slots.map((slot: any) => [slot.item.itemId, slot.item.count])).toEqual([['butterfly', 1], ['dug_sapling', 1]]);
-  expect(slots[0].item.freshnessPercent).toBeGreaterThan(.9);
+  const items = Object.values(restored.players.local.inventory.items) as any[];
+  expect(items.map(item => [item.prefab, item.components.stackable?.stack ?? 1])).toEqual([['butterfly', 1], ['dug_sapling', 1]]);
+  expect(items[0].components.perishable.time).toBeGreaterThan(0);
   const pickPoint = await page.evaluate(() => {
     const { scene, view, playerStats } = (window as any).plantGame;
     const flower = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'flower');
@@ -82,8 +82,8 @@ test('plants butterflies and saplings, picks the restored flower and saves its p
   await expect.poll(() => page.evaluate(() => (window as any).plantGame.inventory.count('petals'))).toBe(1);
   const picked = await saveGame();
   expect(picked.world.entities.flower).toEqual([]);
-  const petals = picked.players.local.inventory.containers['player:inventory'].slots.find((slot: any) => slot.item.itemId === 'petals').item;
-  expect(petals.freshnessPercent).toBeGreaterThan(.9);
+  const petals = (Object.values(picked.players.local.inventory.items) as any[]).find(item => item.prefab === 'petals');
+  expect(petals.components.perishable.time).toBeGreaterThan(0);
   expect(picked.players.local.stats.sanity).toBe(pickPoint.sanity + 5);
   expect(picked.players.local.stats.health).toBe(restored.players.local.stats.health - (flower.components.flower.animation === 'rose' ? 1 : 0));
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: picked }));

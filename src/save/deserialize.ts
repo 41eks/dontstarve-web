@@ -1,16 +1,24 @@
 import type {
-  InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec, InventoryStack,
+  InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec,
 } from '@dontstarve-web/inventory';
-import type { SaveDocument, SavedContainer } from './types';
+import type { SaveDocument } from './types';
 import type { BuildingContainerDefinition } from '@dontstarve-web/prefab/containers';
 import { WORLD_TILES, isOceanTile } from '@dontstarve-web/prefab/turfMap';
 import { GROUND_TILE_DEFINITIONS } from '@dontstarve-web/prefab/groundTiles';
 import { GROUND_ART_DEFINITIONS, GROUND_ART_VARIANTS } from '@dontstarve-web/prefab/groundItems';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
-import { PREFAB_DEFINITIONS, prefabSaveParsers, type PrefabDefinition } from '../prefabDefinitions';
+import { ITEM_PREFAB_IDS, PREFAB_DEFINITIONS, prefabSaveParsers, type PrefabDefinition } from '../prefabDefinitions';
+import type { EntitySaveContext } from './prefabComponents';
+import { PHONOGRAPH_PLAY_TIME } from '@dontstarve-web/prefab/phonograph';
 import { ROPEBRIDGE_HEALTH, type RopeBridgeTileSave } from '../../packages/componets/src/ropebridgemanager';
 import { array, choice, fail, integer, number, object, snapshotId, string, timestamp } from './validation';
-import type { EntitySaveRecord, SavedTransform } from '@dontstarve-web/prefab/saveRecord';
+import type { EntityPersistData, EntitySaveRecord, HeldEntityRecord, PlayerInventorySave, SavedTransform, SlotItemsSave } from '@dontstarve-web/prefab/saveRecord';
+
+/** The item component records an item's GetPersistData may hold; its spec says which it has. */
+const ITEM_RECORDS = ['stackable', 'finiteuses', 'fueled', 'perishable', 'armor', 'temperature', 'highTemp', 'lowTemp',
+  'inventoryitemmoisture', 'container', 'inventory', 'health', 'knownlocations', 'needs_home_time', 'groundVariant'] as const;
+/** inventory.lua's EQUIPSLOTS names, by the equip kind of the item each takes. */
+const EQUIP_SLOTS: Readonly<Record<string, string>> = { hands: 'hand', body: 'body', head: 'head' };
 
 /** TILE_SCALE: a rope bridge's direction is one tile's offset in DST units. */
 const ROPE_BRIDGE_DIRECTION_LIMIT = 4;
@@ -131,174 +139,178 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     ];
     return { position, rotationY: number(o.rotationY, `${path}.rotationY`, -Number.MAX_VALUE) };
   };
-  const ids = new Set<string>();
-  const stack = (value: unknown, path: string): InventoryStack => {
-    const o = object(value, path, ['entityId', 'itemId', 'skinId', 'variant', 'count', 'remainingUses', 'remainingFuel', 'freshnessPercent', 'wet', 'phonographRecord', 'inventory', 'mole', 'lightflier', 'container', 'temperature', 'highTemp', 'lowTemp', 'armor']);
-    const entityId = o.entityId === undefined ? undefined : string(o.entityId, `${path}.entityId`);
-    if (entityId !== undefined) {
-      if (!/^[a-zA-Z0-9_:.-]+$/.test(entityId)) fail(`${path}.entityId`, 'invalid item entity ID');
-      if (!path.endsWith('.components.stack')) {
-        if (ids.has(entityId)) fail(`${path}.entityId`, 'duplicate item entity ID');
-        ids.add(entityId);
-      }
-    }
-    const itemId = string(o.itemId, `${path}.itemId`);
-    const temperature = o.temperature === undefined ? undefined : (() => {
-      const data = object(o.temperature, `${path}.temperature`, ['current']);
-      return { current: number(data.current, `${path}.temperature.current`, -20, 90) };
-    })();
-    const highTemp = o.highTemp === undefined ? undefined : integer(o.highTemp, `${path}.highTemp`, -20, 90);
-    const lowTemp = o.lowTemp === undefined ? undefined : integer(o.lowTemp, `${path}.lowTemp`, -20, 90);
-    if (highTemp !== undefined && lowTemp !== undefined) fail(path, 'thermal stone cannot have both temperature extrema');
-    // An item record in the world may be ground art alone, which no inventory holds.
-    const ground = path.startsWith('world.entities.') && path.endsWith('.components.stack');
-    const art = Object.hasOwn(GROUND_ART_DEFINITIONS, itemId) ? GROUND_ART_DEFINITIONS[itemId] : undefined;
-    const spec = Object.hasOwn(catalog.items, itemId) ? catalog.items[itemId]
-      : ground && art ? { name: art.name, icon: art.icon ?? '', maxStack: Number.MAX_SAFE_INTEGER } : undefined;
-    const variant = o.variant === undefined ? undefined : choice(o.variant, `${path}.variant`, Object.keys(GROUND_ART_VARIANTS[itemId] ?? {}));
-    if (!spec) fail(`${path}.itemId`, `unknown item ${itemId}`);
-    if ((o.temperature !== undefined || o.highTemp !== undefined || o.lowTemp !== undefined) && !spec.savesTemperature) {
-      fail(path, 'item has no temperature component');
-    }
-    const skinId = o.skinId === undefined ? undefined : string(o.skinId, `${path}.skinId`);
-    if (skinId !== undefined) {
-      const skin = Object.hasOwn(catalog.skins, skinId) ? catalog.skins[skinId] : undefined;
-      if ((!skin || (skin.itemId !== undefined && skin.itemId !== itemId)) && !(ground && art && Object.hasOwn(art.skinArchives, skinId))) fail(`${path}.skinId`, `invalid skin for ${itemId}`);
-    }
-    if (o.armor !== undefined && spec.maxArmor === undefined) fail(`${path}.armor`, `${itemId} has no armor`);
-    // armor.lua OnSave omits a full condition; a broken armor is removed rather than saved.
-    const armor = o.armor === undefined ? undefined
-      : { condition: number(object(o.armor, `${path}.armor`, ['condition']).condition, `${path}.armor.condition`, Number.MIN_VALUE, spec.maxArmor!) };
-    const remainingUses = o.remainingUses === undefined ? undefined
-      : number(o.remainingUses, `${path}.remainingUses`, spec.useStep ?? 1, spec.maxUses ?? 0);
-    if (remainingUses !== undefined && !Number.isSafeInteger(remainingUses / (spec.useStep ?? 1))) {
-      fail(`${path}.remainingUses`, 'invalid durability increment');
-    }
-    if (o.remainingFuel !== undefined && spec.maxFuel === undefined) fail(`${path}.remainingFuel`, `${itemId} has no fuel`);
-    const remainingFuel = o.remainingFuel === undefined ? undefined
-      : number(o.remainingFuel, `${path}.remainingFuel`, 0, spec.maxFuel!);
-    const freshnessPercent = o.freshnessPercent === undefined ? undefined
-      : number(o.freshnessPercent, `${path}.freshnessPercent`, 0, 1);
-    if (o.wet !== undefined && typeof o.wet !== 'boolean') fail(`${path}.wet`, 'expected boolean');
-    const wet = o.wet as boolean | undefined;
-    const phonographRecord = o.phonographRecord === undefined ? undefined : string(o.phonographRecord, `${path}.phonographRecord`);
-    const held = spec.holds;
-    if (phonographRecord !== undefined && (!held
-      || (phonographRecord !== held.itemId && catalog.skins[phonographRecord]?.itemId !== held.itemId))) {
-      fail(`${path}.phonographRecord`, 'invalid loaded record');
-    }
-    const lightflier = o.lightflier === undefined ? undefined : (() => {
-      if (spec.creatureState !== 'lightflier') fail(`${path}.lightflier`, 'item has no lightflier component');
-      const p = `${path}.lightflier`, data = object(o.lightflier, p, ['health', 'age', 'homeId', 'knownHome']);
-      const known = data.knownHome === undefined ? undefined : array(data.knownHome, `${p}.knownHome`, 3);
-      if (known && known.length !== 3) fail(`${p}.knownHome`, 'expected three coordinates');
-      return { health: number(data.health, `${p}.health`, 0, 25), age: number(data.age, `${p}.age`, 0),
-        ...(data.homeId === undefined ? {} : { homeId: string(data.homeId, `${p}.homeId`) }),
-        ...(known ? { knownHome: known.map((v, i) => number(v, `${p}.knownHome[${i}]`, -Number.MAX_SAFE_INTEGER)) as [number, number, number] } : {}) };
-    })();
-    const mole = o.mole === undefined ? undefined : (() => {
-      if (spec.creatureState !== 'mole') fail(`${path}.mole`, 'item has no mole component');
-      const p = `${path}.mole`, data = object(o.mole, p, ['health', 'needsHomeElapsed', 'items']);
-      return { health: number(data.health, `${p}.health`, 0, 30),
-        ...(data.needsHomeElapsed === undefined ? {} : { needsHomeElapsed: number(data.needsHomeElapsed, `${p}.needsHomeElapsed`) }),
-        items: array(data.items, `${p}.items`, 3).map((item, i) => stack(item, `${p}.items[${i}]`)) };
-    })();
-    const itemContainer = o.container === undefined ? undefined : (() => {
-      if (spec.containerSlots === undefined) fail(`${path}.container`, 'item has no container');
-      return container(o.container, `${path}.container`, numericKeys(spec.containerSlots));
-    })();
-    const inventory = o.inventory === undefined ? undefined : (() => {
-      if (!held) fail(`${path}.inventory`, 'item has no inventory component');
-      const items = array(o.inventory, `${path}.inventory`, held.slots).map((item, i) => stack(item, `${path}.inventory[${i}]`));
-      if (items.some(item => item.itemId !== held.itemId || item.count !== 1)) fail(`${path}.inventory`, `invalid ${itemId} contents`);
-      const song = items[0] ? items[0].skinId ?? held.itemId : undefined;
-      if (song !== phonographRecord) fail(`${path}.phonographRecord`, 'record does not match inventory contents');
-      return items;
-    })();
-    return { ...(lightflier === undefined ? {} : { lightflier }), ...(mole === undefined ? {} : { mole }), ...(itemContainer === undefined ? {} : { container: itemContainer }), ...(entityId === undefined ? {} : { entityId }), itemId, count: integer(o.count, `${path}.count`, 1, spec.maxStack), ...(skinId === undefined ? {} : { skinId }), ...(variant === undefined ? {} : { variant }),
-      ...(phonographRecord === undefined ? {} : { phonographRecord }),
-      ...(inventory === undefined ? {} : { inventory }),
-      ...(temperature === undefined ? {} : { temperature }),
-      ...(armor === undefined ? {} : { armor }),
-      ...(highTemp === undefined ? {} : { highTemp }),
-      ...(lowTemp === undefined ? {} : { lowTemp }),
-      ...(remainingFuel === undefined ? {} : { remainingFuel }),
-      ...(freshnessPercent === undefined ? {} : { freshnessPercent }),
-      ...(wet === undefined ? {} : { wet }),
-      ...(remainingUses === undefined ? {} : { remainingUses }) };
-  };
-  const container = (value: unknown, path: string, keys: readonly string[], maxStack = Infinity): SavedContainer => {
-    const o = object(value, path, ['slotCount', 'slots']);
-    if (o.slotCount !== keys.length) fail(`${path}.slotCount`, `expected ${keys.length}`);
-    const seen = new Set<string>();
-    const slots = array(o.slots, `${path}.slots`, keys.length).map((value, i) => {
-      const slotPath = `${path}.slots[${i}]`;
-      const slot = object(value, slotPath, ['slotKey', 'item']);
-      const slotKey = string(slot.slotKey, `${slotPath}.slotKey`);
-      if (!keys.includes(slotKey) || seen.has(slotKey)) fail(`${slotPath}.slotKey`, 'invalid or duplicate slot');
-      seen.add(slotKey);
-      const item = stack(slot.item, `${slotPath}.item`);
-      if (!keys.includes('hand') && catalog.items[item.itemId].canGoInContainer === false
-        && path !== 'players.local.inventory.containers.player:inventory'
-        && path !== 'players.local.inventory.containers.player:cursor') fail(`${slotPath}.item`, 'item cannot go in a container');
-      if (item.count > maxStack) fail(`${slotPath}.item.count`, `expected at most ${maxStack}`);
-      if (keys.includes('hand') && catalog.items[item.itemId].equippable !== slotKey) {
-        fail(`${slotPath}.item`, `item cannot be equipped in ${slotKey}`);
-      }
-      return { slotKey, item };
-    });
-    return { slotCount: keys.length, slots };
-  };
-  const numericKeys = (count: number) => Array.from({ length: count }, (_, i) => String(i));
   const parsers = prefabSaveParsers(catalog.prefabs ?? Object.values(PREFAB_DEFINITIONS));
+  const itemRecords = new Set<string>(ITEM_PREFAB_IDS);
+  const ids = new Set<string>();
+  /** A record's ID, unique among the save's entities and the items they hold. */
+  const entityId = (value: unknown, path: string): string => {
+    const id = string(value, path);
+    if (!/^[a-zA-Z0-9_:.-]+$/.test(id) || ids.has(id)) fail(path, 'invalid or duplicate entity ID');
+    ids.add(id);
+    return id;
+  };
+  /** An item's record.skinname: one of its own skins, or of its ground art for an item lying in the world. */
+  const itemSkin = (value: unknown, path: string, prefab: string, ground: boolean): string => {
+    const skinId = string(value, path);
+    const skin = Object.hasOwn(catalog.skins, skinId) ? catalog.skins[skinId] : undefined;
+    const art = Object.hasOwn(GROUND_ART_DEFINITIONS, prefab) ? GROUND_ART_DEFINITIONS[prefab] : undefined;
+    if ((!skin || (skin.itemId !== undefined && skin.itemId !== prefab)) && !(ground && art && Object.hasOwn(art.skinArchives, skinId))) {
+      fail(path, `invalid skin for ${prefab}`);
+    }
+    return skinId;
+  };
+  /** GetSaveRecord of an item a container or inventory holds; `refuse` names why its holder cannot hold that prefab. */
+  const held = (value: unknown, path: string, refuse?: (prefab: string) => string | undefined): HeldEntityRecord => {
+    const o = object(value, path, ['id', 'prefab', 'skinname', 'components']);
+    const id = entityId(o.id, `${path}.id`);
+    const prefab = string(o.prefab, `${path}.prefab`);
+    if (!Object.hasOwn(catalog.items, prefab) || !parsers.has(prefab)) fail(`${path}.prefab`, `unknown item ${prefab}`);
+    const reason = refuse?.(prefab);
+    if (reason) fail(`${path}.prefab`, reason);
+    const skinname = o.skinname === undefined ? undefined : itemSkin(o.skinname, `${path}.skinname`, prefab, false);
+    const components = parsers.get(prefab)!(o.components, `${path}.components`, context(prefab));
+    return { id, prefab, ...(skinname === undefined ? {} : { skinname }), components };
+  };
+  /** container.lua / inventory.lua OnSave's items: held records under one-based slots, each stack within `maxStack`. */
+  const slotItems = (value: unknown, path: string, slotCount: number, refuse?: (prefab: string) => string | undefined,
+    maxStack = Infinity): SlotItemsSave => {
+    const o = object(value, path, ['items']);
+    const saved = object(o.items, `${path}.items`, Array.from({ length: slotCount }, (_, i) => String(i + 1)));
+    return { items: Object.fromEntries(Object.entries(saved).map(([slot, record]) => {
+      const item = held(record, `${path}.items.${slot}`, refuse);
+      if ((item.components.stackable?.stack ?? 1) > maxStack) fail(`${path}.items.${slot}.components.stackable.stack`, `expected at most ${maxStack}`);
+      return [slot, item];
+    })) };
+  };
+  const inContainer = (prefab: string) => catalog.items[prefab].canGoInContainer === false ? 'item cannot go in a container' : undefined;
+  /** An item's GetPersistData: its components' records, bounded by what its spec says the item has. */
+  const item = (value: unknown, path: string, prefab: string, extra: readonly (keyof EntityPersistData)[] = []): EntityPersistData => {
+    const ground = path.startsWith('world.entities.');
+    const art = Object.hasOwn(GROUND_ART_DEFINITIONS, prefab) ? GROUND_ART_DEFINITIONS[prefab] : undefined;
+    // An item record in the world may be ground art alone, which no inventory holds.
+    const spec: InventoryItemSpec | undefined = Object.hasOwn(catalog.items, prefab) ? catalog.items[prefab]
+      : ground && art ? { name: art.name, icon: art.icon ?? '', maxStack: Number.MAX_SAFE_INTEGER } : undefined;
+    if (!spec) fail(path, `unknown item ${prefab}`);
+    const o = object(value, path, [...ITEM_RECORDS, ...extra]);
+    const has = (key: string, available: unknown): boolean => {
+      if (o[key] === undefined) return false;
+      if (!available) fail(`${path}.${key}`, `${prefab} has no ${key}`);
+      return true;
+    };
+    const data: EntityPersistData = {};
+    if (o.stackable !== undefined) {
+      const saved = object(o.stackable, `${path}.stackable`, ['stack']);
+      data.stackable = { stack: integer(saved.stack, `${path}.stackable.stack`, 2, spec.maxStack) };
+    }
+    if (has('finiteuses', spec.maxUses !== undefined)) {
+      const step = spec.useStep ?? 1;
+      const uses = number(object(o.finiteuses, `${path}.finiteuses`, ['uses']).uses, `${path}.finiteuses.uses`, step, spec.maxUses!);
+      if (!Number.isSafeInteger(uses / step)) fail(`${path}.finiteuses.uses`, 'invalid durability increment');
+      data.finiteuses = { uses };
+    }
+    if (has('fueled', spec.maxFuel !== undefined)) {
+      data.fueled = { fuel: number(object(o.fueled, `${path}.fueled`, ['fuel']).fuel, `${path}.fueled.fuel`, 0, spec.maxFuel!) };
+    }
+    if (has('perishable', spec.perishTime !== undefined)) {
+      const saved = object(o.perishable, `${path}.perishable`, ['time', 'paused']);
+      if (saved.paused !== undefined && saved.paused !== true) fail(`${path}.perishable.paused`, 'expected true');
+      data.perishable = { time: number(saved.time, `${path}.perishable.time`, 0, spec.perishTime!), ...saved.paused ? { paused: true as const } : {} };
+    }
+    if (has('armor', spec.maxArmor !== undefined)) {
+      // armor.lua OnSave omits a full condition; a broken armor is removed rather than saved.
+      data.armor = { condition: number(object(o.armor, `${path}.armor`, ['condition']).condition, `${path}.armor.condition`, Number.MIN_VALUE, spec.maxArmor!) };
+    }
+    if (has('temperature', spec.savesTemperature)) {
+      data.temperature = { current: number(object(o.temperature, `${path}.temperature`, ['current']).current, `${path}.temperature.current`, -20, 90) };
+    }
+    if (has('highTemp', spec.savesTemperature)) data.highTemp = integer(o.highTemp, `${path}.highTemp`, -20, 90);
+    if (has('lowTemp', spec.savesTemperature)) data.lowTemp = integer(o.lowTemp, `${path}.lowTemp`, -20, 90);
+    if (data.highTemp !== undefined && data.lowTemp !== undefined) fail(path, 'a heat rock saves one temperature extreme');
+    if (o.inventoryitemmoisture !== undefined) {
+      const saved = object(o.inventoryitemmoisture, `${path}.inventoryitemmoisture`, ['moisture', 'wet']);
+      if (saved.wet !== undefined && saved.wet !== true) fail(`${path}.inventoryitemmoisture.wet`, 'expected true');
+      data.inventoryitemmoisture = { ...saved.moisture === undefined ? {} : { moisture: number(saved.moisture, `${path}.inventoryitemmoisture.moisture`, 0, 100) },
+        ...saved.wet ? { wet: true as const } : {} };
+    }
+    if (has('container', spec.containerSlots !== undefined)) {
+      data.container = slotItems(o.container, `${path}.container`, spec.containerSlots!,
+        child => catalog.items[child].containerSlots !== undefined ? 'a container cannot hold another' : inContainer(child));
+    }
+    if (has('inventory', spec.holds ?? spec.creatureState === 'mole')) {
+      const holds = spec.holds;
+      data.inventory = holds ? slotItems(o.inventory, `${path}.inventory`, holds.slots, child => child === holds.itemId ? undefined : `expected ${holds.itemId}`, 1)
+        : slotItems(o.inventory, `${path}.inventory`, 3);
+    }
+    if (has('health', spec.creatureState)) {
+      const saved = object(o.health, `${path}.health`, ['health', 'maxhealth', 'penalty']);
+      // health.lua OnSave; this port's Health always writes its maximum.
+      const maxhealth = number(saved.maxhealth, `${path}.health.maxhealth`, Number.MIN_VALUE);
+      data.health = { health: number(saved.health, `${path}.health.health`, 0, maxhealth), maxhealth,
+        ...saved.penalty === undefined ? {} : { penalty: number(saved.penalty, `${path}.health.penalty`, 0, 1) } };
+    }
+    if (has('knownlocations', spec.creatureState)) {
+      const saved = object(o.knownlocations, `${path}.knownlocations`, ['locations']);
+      data.knownlocations = { locations: array(saved.locations, `${path}.knownlocations.locations`, 16).map((entry, i) => {
+        const p = `${path}.knownlocations.locations[${i}]`, location = object(entry, p, ['name', 'x', 'y', 'z']);
+        return { name: string(location.name, `${p}.name`), x: number(location.x, `${p}.x`, -Number.MAX_SAFE_INTEGER),
+          y: number(location.y, `${p}.y`, -Number.MAX_SAFE_INTEGER), z: number(location.z, `${p}.z`, -Number.MAX_SAFE_INTEGER) };
+      }) };
+    }
+    if (has('needs_home_time', spec.creatureState === 'mole')) data.needs_home_time = number(o.needs_home_time, `${path}.needs_home_time`, 0);
+    if (o.groundVariant !== undefined) data.groundVariant = choice(o.groundVariant, `${path}.groundVariant`, Object.keys(GROUND_ART_VARIANTS[prefab] ?? {}));
+    if (o.torch !== undefined) {
+      if (object(o.torch, `${path}.torch`, ['lit']).lit !== true) fail(`${path}.torch.lit`, 'expected true');
+      data.torch = { lit: true };
+    }
+    if (o.machine !== undefined) {
+      const machine = object(o.machine, `${path}.machine`, ['ison']);
+      if (typeof machine.ison !== 'boolean') fail(`${path}.machine.ison`, 'expected boolean');
+      data.machine = { ison: machine.ison };
+    }
+    if (o.phonograph !== undefined) {
+      if (!Object.keys(data.inventory?.items ?? {}).length) fail(`${path}.phonograph`, 'playing machine requires a record');
+      data.phonograph = { remainingSeconds: number(object(o.phonograph, `${path}.phonograph`, ['remainingSeconds']).remainingSeconds,
+        `${path}.phonograph.remainingSeconds`, Number.MIN_VALUE, PHONOGRAPH_PLAY_TIME) };
+    }
+    return data;
+  };
+  const context = (prefab: string): EntitySaveContext => ({ prefab, catalog, held, slotItems, item, transform });
   const groups = object(world.entities, 'world.entities', [...parsers.keys()]);
   const entities = Object.fromEntries(Object.entries(groups).map(([prefab, values]) => {
     const path = `world.entities.${prefab}`;
     const records = array(values, path, Number.MAX_SAFE_INTEGER).map((value, i): EntitySaveRecord => {
       const recordPath = `${path}[${i}]`;
-      const o = object(value, recordPath, ['id', 'transform', 'components']);
-      const id = string(o.id, `${recordPath}.id`);
-      if (!/^[a-zA-Z0-9_:.-]+$/.test(id) || ids.has(id)) fail(`${recordPath}.id`, 'invalid or duplicate entity ID');
-      ids.add(id);
-      const components = parsers.get(prefab)!(o.components, `${recordPath}.components`, {
-        prefab, catalog, stack, container, transform,
-      });
-      if (components.stack?.entityId !== undefined && components.stack.entityId !== id) {
-        fail(`${recordPath}.components.stack.entityId`, 'item ID must match entity record');
-      }
-      if (components.stack && components.stack.itemId !== prefab) fail(`${recordPath}.components.stack.itemId`, `expected ${prefab}`);
-      // An item's stack is saved where it lies; others stand on the ground.
-      return { id, transform: transform(o.transform, `${recordPath}.transform`, !components.stack), components };
+      const o = object(value, recordPath, ['id', 'transform', 'components', 'skinname']);
+      const id = entityId(o.id, `${recordPath}.id`);
+      // GetSaveRecord's skinname belongs to an item; structures save their skin in their own data.
+      const isItem = itemRecords.has(prefab);
+      if (o.skinname !== undefined && !isItem) fail(`${recordPath}.skinname`, 'only an item saves its skin on the record');
+      const skinname = o.skinname === undefined ? undefined : itemSkin(o.skinname, `${recordPath}.skinname`, prefab, true);
+      const components = parsers.get(prefab)!(o.components, `${recordPath}.components`, context(prefab));
+      // An item is saved where it lies; others stand on the ground.
+      return { id, transform: transform(o.transform, `${recordPath}.transform`, !isItem), components,
+        ...(skinname === undefined ? {} : { skinname }) };
     });
     return [prefab, records];
   }));
 
   const players = object(root.players, 'players', ['local']);
-  const player = object(players.local, 'players.local', ['prefab', 'shardId', 'transform', 'stats', 'ghost', 'wortox', 'inventory']);
+  const player = object(players.local, 'players.local', ['prefab', 'shardId', 'transform', 'stats', 'ghost', 'wortox', 'inventory', 'builder']);
   if (player.shardId !== shardId) fail('players.local.shardId', 'player must belong to this shard');
-  const inventory = object(player.inventory, 'players.local.inventory', ['containers', 'bufferedBuilds']);
-  const containers = object(inventory.containers, 'players.local.inventory.containers', ['player:inventory', 'player:equipment', 'player:cursor', 'player:backpack']);
-  const playerInventory = container(containers['player:inventory'], 'players.local.inventory.containers.player:inventory', numericKeys(15));
-  const playerEquipment = container(containers['player:equipment'], 'players.local.inventory.containers.player:equipment', ['hand', 'body', 'head']);
-  const playerCursor = containers['player:cursor'] === undefined ? { slotCount: 1, slots: [] }
-    : container(containers['player:cursor'], 'players.local.inventory.containers.player:cursor', ['0']);
-  // Migrate the old shared container only when its owner can be identified safely.
-  if (containers['player:backpack'] !== undefined) {
-    const legacy = container(containers['player:backpack'], 'players.local.inventory.containers.player:backpack', numericKeys(8));
-    const bags = [
-      ...[...playerInventory.slots, ...playerEquipment.slots, ...playerCursor.slots].map(({ item }) => item),
-      ...Object.values(entities).flat().flatMap(record => record.components.stack ? [record.components.stack] : []),
-    ].filter(item => catalog.items[item.itemId]?.containerSlots);
-    const owner = playerEquipment.slots.find(({ slotKey, item }) => slotKey === 'body' && catalog.items[item.itemId]?.containerSlots)?.item
-      ?? (bags.length === 1 ? bags[0] : undefined);
-    if (legacy.slots.length) {
-      if (!owner || owner.container !== undefined) fail('players.local.inventory.containers.player:backpack', 'ambiguous legacy backpack owner');
-      owner.container = legacy;
-    }
-  }
+  // inventory.lua OnSave of the player: items by slot, equip by EQUIPSLOTS name, and the cursor's activeitem.
+  const savedInventory = object(player.inventory, 'players.local.inventory', ['items', 'equip', 'activeitem']);
+  const equipped = object(savedInventory.equip ?? {}, 'players.local.inventory.equip', Object.keys(EQUIP_SLOTS));
+  const inventory: PlayerInventorySave = {
+    items: slotItems({ items: savedInventory.items ?? {} }, 'players.local.inventory', 15).items,
+    equip: Object.fromEntries(Object.entries(equipped).map(([equipslot, record]) => [equipslot,
+      held(record, `players.local.inventory.equip.${equipslot}`, prefab => catalog.items[prefab].equippable === EQUIP_SLOTS[equipslot]
+        ? undefined : `item cannot be equipped in ${equipslot}`)])),
+    ...(savedInventory.activeitem === undefined ? {} : { activeitem: held(savedInventory.activeitem, 'players.local.inventory.activeitem') }),
+  };
+  const builder = object(player.builder ?? { bufferedBuilds: [] }, 'players.local.builder', ['bufferedBuilds']);
   const bufferedIds = new Set<string>();
-  const bufferedBuilds = array(inventory.bufferedBuilds, 'players.local.inventory.bufferedBuilds', 1000).map((value, i) => {
-    const path = `players.local.inventory.bufferedBuilds[${i}]`;
+  const bufferedBuilds = array(builder.bufferedBuilds, 'players.local.builder.bufferedBuilds', 1000).map((value, i) => {
+    const path = `players.local.builder.bufferedBuilds[${i}]`;
     const o = object(value, path, ['recipeId', 'skinId']);
     const recipeId = string(o.recipeId, `${path}.recipeId`);
     if (!Object.hasOwn(catalog.recipes, recipeId) || !catalog.recipes[recipeId].buffered || bufferedIds.has(recipeId)) {
@@ -414,13 +426,8 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
           return { freehops: integer(saved.freehops, 'players.local.wortox.freehops', 0, 7),
             soulhopcost: number(saved.soulhopcost, 'players.local.wortox.soulhopcost', 0) };
         })() }),
-        inventory: {
-          containers: {
-            'player:inventory': playerInventory,
-            'player:equipment': playerEquipment,
-            'player:cursor': playerCursor,
-          }, bufferedBuilds,
-        },
+        inventory,
+        builder: { bufferedBuilds },
       },
     },
   };

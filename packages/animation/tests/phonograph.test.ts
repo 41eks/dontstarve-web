@@ -153,7 +153,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(PlaySound).toHaveBeenCalledTimes(soundCalls);
     expect(playingSound.stop).not.toHaveBeenCalled();
     const data = structuredClone(initialWorld) as any;
-    data.players.local.inventory.containers['player:equipment'].slots = [];
+    data.players.local.inventory.equip = {};
     data.world.entities.phonograph = manager.exportEntities().phonograph;
     expect(deserializeSave(JSON.stringify(data), SAVE_CATALOG).world.entities.phonograph).toEqual(manager.exportRecords());
     data.world.entities.phonograph[0].components.phonograph.remainingSeconds = 65;
@@ -163,9 +163,8 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     const restoredManager = new ItemWorldFixture(new THREE.Scene(), world.camera,
       { domElement: canvas } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip', restoredInventory, '/dst/data/anim', player);
     try {
-      const restored = await restoredManager.spawnFromSave(saved[0].id, {
-        ...spec, ...saved[0].components.stack!, playbackRemaining: saved[0].components.phonograph!.remainingSeconds,
-      }, position);
+      // SpawnSaveRecord of the saved phonograph: its inventory, machine and playback records.
+      const restored = restoredManager.restore('phonograph', saved[0]);
       const restoredEntity = restoredManager.entities.get(saved[0].id)!;
       expect(prefabInstance(restored)!.components.phonograph!.remainingSeconds).toBe(54);
       expect(restoredEntity.components.inventory!.GetItems()[0].snapshot()).toEqual(skinned.snapshot());
@@ -197,13 +196,13 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(droppedRecord.components.phonograph).toBeUndefined();
     // Replacing the record ejects its original skin; one hammer hit ejects the new record.
     expect(give(dropped, plain)).toBe(true);
-    expect(manager.exportRecords().some(({ components }) => components.stack?.skinId === 'record_creepyforest')).toBe(true);
+    expect(manager.groundStacks().some(stack => stack.skinId === 'record_creepyforest')).toBe(true);
     const ejected = manager.reskinTargets.find(({ prefab }) => prefab === 'record')!.transform.model;
     expect(manager.reskinTargets.find(target => target.transform.model === ejected)!.hasTag('phonograph_record')).toBe(true);
     expect(manager.entities.get(skinned.id)).toBe(skinned);
     expect(skinned.GetIsWet()).toBe(true);
     workTargets('HAMMER').find(({ model }) => model === dropped)!.work();
-    await vi.waitFor(() => expect(manager.exportRecords().filter(({ components }) => components.stack?.itemId === 'record')).toHaveLength(2));
+    await vi.waitFor(() => expect(manager.groundStacks().filter(stack => stack.itemId === 'record')).toHaveLength(2));
     expect(manager.exportRecords().some(({ id }) => id === droppedRecord.id)).toBe(false);
     plain.destroy(); skinned.destroy();
   } finally { controller.dispose(); graph.dispose(); manager.dispose(); inventory.dispose(); }

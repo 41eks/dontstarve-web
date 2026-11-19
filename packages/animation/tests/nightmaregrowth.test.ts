@@ -33,7 +33,7 @@ function setup(random = () => .25) {
   const save = async () => {
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      json = serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+      json = serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
         playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     return deserializeSave(json, SAVE_CATALOG).world.entities;

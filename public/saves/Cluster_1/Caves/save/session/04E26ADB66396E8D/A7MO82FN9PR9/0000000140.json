@@ -16,146 +16,121 @@
       "sanity": 200
     },
     "inventory": {
-      "containers": {
-        "player:inventory": {
-          "slotCount": 15,
-          "slots": [
-            {
-              "slotKey": "0",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_0",
-                "itemId": "opalstaff",
-                "count": 1,
-                "skinId": "moonstaff_relic",
-                "remainingUses": 12
-              }
-            },
-            {
-              "slotKey": "1",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_1",
-                "itemId": "voidcloth_boomerang",
-                "count": 1
-              }
-            },
-            {
-              "slotKey": "2",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_2",
-                "itemId": "twigs",
-                "count": 40
-              }
-            },
-            {
-              "slotKey": "3",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_3",
-                "itemId": "ruinshat",
-                "count": 1
-              }
-            },
-            {
-              "slotKey": "4",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_4",
-                "itemId": "jellybean",
-                "count": 2
-              }
-            },
-            {
-              "slotKey": "6",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_6",
-                "itemId": "premiumwateringcan",
-                "count": 1
-              }
-            },
-            {
-              "slotKey": "7",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_7",
-                "itemId": "goldnugget",
-                "count": 20
-              }
-            },
-            {
-              "slotKey": "8",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_8",
-                "itemId": "lunarplant_husk",
-                "count": 5
-              }
-            },
-            {
-              "slotKey": "9",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_9",
-                "itemId": "greengem",
-                "count": 12
-              }
-            },
-            {
-              "slotKey": "10",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_10",
-                "itemId": "heatrock",
-                "count": 1,
-                "skinId": "heatrock_fantasy"
-              }
-            },
-            {
-              "slotKey": "11",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_11",
-                "itemId": "goldnugget",
-                "count": 20
-              }
-            },
-            {
-              "slotKey": "12",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_12",
-                "itemId": "pickaxe_lunarplant",
-                "count": 1
-              }
-            },
-            {
-              "slotKey": "13",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_13",
-                "itemId": "multitool_axe_pickaxe",
-                "count": 1
-              }
-            },
-            {
-              "slotKey": "14",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_14",
-                "itemId": "goldenpickaxe",
-                "count": 1,
-                "remainingUses": 4.5
-              }
+      "items": {
+        "1": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_0",
+          "prefab": "opalstaff",
+          "skinname": "moonstaff_relic",
+          "components": {
+            "finiteuses": {
+              "uses": 12
             }
-          ]
+          }
         },
-        "player:equipment": {
-          "slotCount": 3,
-          "slots": [
-            {
-              "slotKey": "head",
-              "item": {
-                "entityId": "dst_04E26ADB66396E8D_A7MO82FN9PR9_equip_head",
-                "itemId": "voidclothhat",
-                "count": 1
-              }
+        "2": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_1",
+          "prefab": "voidcloth_boomerang",
+          "components": {}
+        },
+        "3": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_2",
+          "prefab": "twigs",
+          "components": {
+            "stackable": {
+              "stack": 40
             }
-          ]
+          }
         },
-        "player:cursor": {
-          "slotCount": 1,
-          "slots": []
+        "4": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_3",
+          "prefab": "ruinshat",
+          "components": {}
+        },
+        "5": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_4",
+          "prefab": "jellybean",
+          "components": {
+            "stackable": {
+              "stack": 2
+            }
+          }
+        },
+        "7": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_6",
+          "prefab": "premiumwateringcan",
+          "components": {}
+        },
+        "8": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_7",
+          "prefab": "goldnugget",
+          "components": {
+            "stackable": {
+              "stack": 20
+            }
+          }
+        },
+        "9": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_8",
+          "prefab": "lunarplant_husk",
+          "components": {
+            "stackable": {
+              "stack": 5
+            }
+          }
+        },
+        "10": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_9",
+          "prefab": "greengem",
+          "components": {
+            "stackable": {
+              "stack": 12
+            }
+          }
+        },
+        "11": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_10",
+          "prefab": "heatrock",
+          "skinname": "heatrock_fantasy",
+          "components": {}
+        },
+        "12": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_11",
+          "prefab": "goldnugget",
+          "components": {
+            "stackable": {
+              "stack": 20
+            }
+          }
+        },
+        "13": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_12",
+          "prefab": "pickaxe_lunarplant",
+          "components": {}
+        },
+        "14": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_13",
+          "prefab": "multitool_axe_pickaxe",
+          "components": {}
+        },
+        "15": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_items_14",
+          "prefab": "goldenpickaxe",
+          "components": {
+            "finiteuses": {
+              "uses": 4.5
+            }
+          }
         }
       },
+      "equip": {
+        "head": {
+          "id": "dst_04E26ADB66396E8D_A7MO82FN9PR9_equip_head",
+          "prefab": "voidclothhat",
+          "components": {}
+        }
+      }
+    },
+    "builder": {
       "bufferedBuilds": []
     }
   },

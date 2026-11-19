@@ -12,7 +12,7 @@ import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Workable } from '../../componets/src/workable';
 import type { BuildingPlacerSpec } from './buildingPlacer';
 import { PathfindingWall } from './pathfinder';
-import type { EntityPersistData } from './saveRecord';
+import { type EntityPersistData, structureHealth } from './saveRecord';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { TILE_SIZE } from './tile';
@@ -213,7 +213,8 @@ function keeptargetfn(): boolean { return false; }
  */
 function onload(inst: WallInstance, data: EntityPersistData): void {
     const { health } = inst.components;
-    if (data.health) health.OnLoad({ health: data.health.current, maxhealth: data.health.maximum });
+    const saved = structureHealth(data);
+    if (saved) health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
     if (data.wall?.skinId !== undefined) inst.skinId = data.wall.skinId;
     inst.sprite.playOnce(resolveWallAnim(health.GetPercent(), inst.position));
     if (health.IsDead()) clearobstacle(inst);

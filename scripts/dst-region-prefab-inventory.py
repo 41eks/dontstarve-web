@@ -18,13 +18,15 @@ def insect_components(prefab):
         if not isinstance(stackable, dict) or set(stackable) - {'stack'} \
                 or type(stackable.get('stack', 1)) is not int or not 1 <= stackable.get('stack', 1) <= 40:
             raise ValueError(f'Unsupported {prefab} stackable state')
-        stack = {'itemId': prefab, 'count': stackable.get('stack', 1)}
-        # InventoryItemMoisture:OnSave; the stack keeps only the wet flag, not the moisture level.
+        components = {'stackable': {'stack': stackable['stack']}} if stackable.get('stack', 1) != 1 else {}
+        # InventoryItemMoisture:OnSave.
         moisture = data.get('inventoryitemmoisture') or {}
         if not isinstance(moisture, dict) or set(moisture) - {'wet', 'moisture'} or moisture.get('wet') not in (None, True):
             raise ValueError(f'Unsupported {prefab} moisture state')
-        if moisture.get('wet'):
-            stack['wet'] = True
+        moisture = {**({'moisture': min(max(moisture['moisture'], 0), 100)} if moisture.get('moisture') else {}),
+                    **({'wet': True} if moisture.get('wet') else {})}
+        if moisture:
+            components['inventoryitemmoisture'] = moisture
         if prefab == 'butterfly':
             health = data.get('health') or {}
             if not isinstance(health, dict) or set(health) - {'health'} or type(health.get('health', 1)) not in (int, float) or health.get('health', 1) != 1:
@@ -39,8 +41,8 @@ def insect_components(prefab):
                         or type(perish.get('time')) not in (int, float) or not math.isfinite(perish['time']) \
                         or not 0 < perish['time'] <= 1440:
                     raise ValueError('Unsupported ground butterfly perishable state')
-                stack['freshnessPercent'] = perish['time'] / 1440
-        return {'stack': stack}
+                components['perishable'] = {'time': perish['time'], 'paused': True}
+        return components
     return convert
 
 
@@ -55,17 +57,15 @@ def ground_art_catalog():
 
 
 def static_ground_components(prefab, record, definitions, variants):
-    """Keep the saved visual branch and quantity; no interactive component is instantiated."""
+    """Keep the saved visual branch and quantity; no interactive component is instantiated. The skin is the record's."""
     data = record.get('data') or {}
     count = (data.get('stackable') or {}).get('stack', 1)
     if type(count) is not int or not 1 <= count <= 9007199254740991:
         raise ValueError(f'Invalid {prefab} ground stack')
-    state = {'itemId': prefab, 'count': count}
+    components = {'stackable': {'stack': count}} if count != 1 else {}
     skin = record.get('skinname')
-    if skin is not None:
-        if skin not in definitions[prefab]['skinArchives']:
-            raise ValueError(f'Unsupported {prefab} ground skin: {skin}')
-        state['skinId'] = skin
+    if skin is not None and skin not in definitions[prefab]['skinArchives']:
+        raise ValueError(f'Unsupported {prefab} ground skin: {skin}')
     variant = None
     if prefab in ('rocks', 'ice'):
         variant = data.get('anim')
@@ -85,5 +85,5 @@ def static_ground_components(prefab, record, definitions, variants):
     if variant is not None:
         if variant not in variants.get(prefab, {}):
             raise ValueError(f'Unsupported {prefab} ground variant: {variant}')
-        state['variant'] = variant
-    return {'stack': state}
+        components['groundVariant'] = variant
+    return components

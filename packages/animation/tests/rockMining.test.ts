@@ -117,7 +117,7 @@ function registered() {
   registry.registerPrefabs(PREFAB_DEFINITIONS.rocks);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return { scene, world, registry, inventory,
-    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); world.dispose(); inventory.dispose(); } };
 }

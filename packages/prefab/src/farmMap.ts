@@ -92,7 +92,7 @@ export function createFarmMap({ turf, entities, blockers }: { turf: TurfMap; ent
       item.components.finiteuses.setMaxUses(FARM_PLOW_USES);
       item.components.finiteuses.use(1);
       if (!item.isRemoved) {
-        plow.deploy_item_save_record = item.snapshot();
+        plow.deploy_item_save_record = item.GetSaveRecord();
         item.remove();
       }
       return true;

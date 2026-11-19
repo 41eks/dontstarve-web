@@ -16,7 +16,7 @@ import { inventorySlotAddress, equipmentSlotAddress } from '../../inventory/src'
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -44,7 +44,7 @@ function setup() {
   });
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, {
-    entities: { grass: grass.exportRecords().map(({ record }) => record), ...ground.exportEntities() }, inventory: inventory.exportState(),
+    entities: { grass: grass.exportRecords().map(({ record }) => record), ...ground.exportEntities() }, inventory: inventory.exportSaved(),
     elapsedSeconds: 100, playerTransform: { position: [3, 0, 6], rotationY: 0 },
   }, SAVE_CATALOG);
   const dispose = () => { grass.dispose(); ground.dispose(); inventory.dispose(); };
@@ -75,7 +75,7 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     expect(performToolWork('DIG', target.entity!, s.worker, shovel)).toBe(false);
     expect(oldState.isRemoved).toBe(true);
     expect(shovel.components.finiteuses.remaining).toBe(24.75);
-    expect(s.ground.exportRecords().slice(1).map(record => record.components.stack?.itemId)).toEqual(['cutgrass', 'dug_grass']);
+    expect(s.ground.groundStacks().slice(1).map(stack => stack.itemId)).toEqual(['cutgrass', 'dug_grass']);
     for (const record of s.ground.exportRecords().slice(1)) {
       const [x, y, z] = record.transform.position;
       expect(y).toBe(0);
@@ -85,7 +85,7 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities.grass).toEqual([]);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
@@ -99,7 +99,7 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     expect(performToolWork('DIG', pickedTarget.entity!, s.worker, shovel)).toBe(true);
     expect(s.inventory.GetEquippedItem('hand')).toBeNull();
     expect(s.inventory.handEquipment.peek()).toBeNull();
-    expect(s.ground.exportRecords().at(-1)?.components.stack?.itemId).toBe('dug_grass');
+    expect(s.ground.groundStacks().at(-1)?.itemId).toBe('dug_grass');
     tickWorld(s.scheduler, prefabDisplays(s.grass), 2000, new THREE.Quaternion());
     expect(s.grass.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(s.ground.exportRecords()).toHaveLength(4);
@@ -140,7 +140,7 @@ it('retains regrowth on extinguish, then burns to exactly one saved ash and rele
     expect(workTargets('DIG')).toEqual([]);
     expect(s.grass.renderEntities).toEqual([]);
     expect(s.ground.exportRecords()).toHaveLength(1);
-    expect(s.ground.exportRecords()[0].components.stack).toMatchObject({ itemId: 'ash', count: 1 });
+    expect(s.ground.groundStacks()[0]).toMatchObject({ itemId: 'ash', count: 1 });
     expect(s.ground.exportRecords()[0].transform.position).toEqual([3, 0, 6]);
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
     expect(saved.world.entities.grass).toEqual([]);

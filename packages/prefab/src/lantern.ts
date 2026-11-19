@@ -194,9 +194,10 @@ export function lanternPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefa
         configureLanternEntity(inst);
         const machine = inst.components.machine!;
         inst.sprite.playOnce(machine.IsOn() ? 'idle_on' : 'idle_off');
-        inst.OnSave = (_inst, data) => { inst.components.fueled?.Settle(); data.lantern = machine.OnSave(); };
-        // machine:OnLoad.
-        const saved = inst.saveRecord?.components.lantern;
+        // machine.lua OnSave writes the switch itself; fueled settles first.
+        inst.OnSave = () => { inst.components.fueled?.Settle(); };
+        // machine:OnLoad, once the machine's turnon / turnoff callbacks exist.
+        const saved = inst.saveRecord?.components.machine;
         if (saved) machine.OnLoad(saved);
       },
     }),

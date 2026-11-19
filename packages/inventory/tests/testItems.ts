@@ -1,6 +1,6 @@
 import {
   BodySlot, HandSlot, HeadSlot, InventorySlot, InventoryStore, ItemEntityRegistry, PreparedFoodSlot, StorageSlot, newItemEntity,
-  type InventoryStack, type ItemEntity, type ItemSlot,
+  type InventoryStack, type ItemEntity, type ItemSlot, type SpawnedItemRecord,
 } from '../src';
 import type { PerishWorld } from '../../componets/src/perishable';
 
@@ -9,12 +9,20 @@ import type { PerishWorld } from '../../componets/src/perishable';
  * these tests of the inventory's own rules have no world, so each inst here is constructed by itself.
  */
 export function testItem(state: InventoryStack, perishWorld?: PerishWorld): ItemEntity {
-  return newItemEntity(state, perishWorld, child => testItem(child, perishWorld));
+  return newItemEntity(state, perishWorld, (prefab, saved) => testSavedItem(prefab, saved, perishWorld));
+}
+
+/** SpawnSaveRecord of a test inst: the record's skin, then SetPersistData. */
+export function testSavedItem(prefab: string, saved: SpawnedItemRecord, perishWorld?: PerishWorld): ItemEntity {
+  const inst = testItem({ itemId: prefab, count: 1, entityId: saved.id }, perishWorld);
+  if (saved.skinname !== undefined) inst.skinId = saved.skinname;
+  inst.SetPersistData(saved.components);
+  return inst;
 }
 
 /** A registry whose SpawnPrefab is its own construction. */
 export function testItemRegistry(): ItemEntityRegistry {
-  const entities: ItemEntityRegistry = new ItemEntityRegistry(state => entities.construct(state));
+  const entities: ItemEntityRegistry = new ItemEntityRegistry((prefab, saved) => entities.constructSaved(prefab, saved));
   return entities;
 }
 

@@ -91,6 +91,7 @@ export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
       ...(itemId === 'mole' ? { perishTime: MOLE_PERISH_TIME, creatureState: 'mole' as const } : {}),
       ...(itemId === 'lightflier' ? { perishTime: LIGHTFLIER_PERISH_TIME, creatureState: 'lightflier' as const } : {}),
       ...(itemId === PHONOGRAPH_ID ? { holds: { itemId: RECORD_ID, slots: 1 } } : {}),
+      ...(itemId === 'butterfly' ? { creatureState: 'butterfly' as const } : {}),
       ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
       ...(itemId === AMULET_ID ? { maxUses: REDAMULET_USES } : {}),
       ...(itemId === PANFLUTE_ID ? { maxUses: PANFLUTE_USES } : {}),

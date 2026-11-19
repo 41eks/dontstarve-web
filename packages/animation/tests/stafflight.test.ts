@@ -376,7 +376,7 @@ it('spawns world lights through console definitions and saves and reloads their 
   let exported = '';
   const save = await executeDebugCommand('c_save()', inventory, undefined, () => {
     exported = serializeSave(template, {
-      entities: { ...template.world.entities, ...registry.exportRecords() }, inventory: inventory.exportState(),
+      entities: { ...template.world.entities, ...registry.exportRecords() }, inventory: inventory.exportSaved(),
       playerTransform: { position: [6, 0, 9], rotationY: 0 }, elapsedSeconds: 0.25,
     }, SAVE_CATALOG);
   });

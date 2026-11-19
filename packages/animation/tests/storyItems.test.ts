@@ -44,7 +44,7 @@ it('exposes the loot prefabs with their own ground clips, icon atlases and stack
     // Each spawned item lies awake in the scene, among the entries the renderer sorts.
     expect(ground.renderEntities).toHaveLength(4);
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-    const saved = deserializeSave(serializeSave(template, { entities: ground.exportEntities(), inventory: inventory.exportState(),
+    const saved = deserializeSave(serializeSave(template, { entities: ground.exportEntities(), inventory: inventory.exportSaved(),
       elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG), SAVE_CATALOG);
     expect(Object.keys(itemEntities(saved.world.entities)).sort())
       .toEqual(['blueprint', 'foliage', 'scrapbook_page', 'trinket_32']);

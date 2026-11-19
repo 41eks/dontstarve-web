@@ -22,7 +22,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -57,7 +57,7 @@ function setup() {
   registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, () => 'dug:command'));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, {
-    entities: { monkeytail: monkeytails.exportRecords().map(({ record }) => record), ...ground.exportEntities() }, inventory: inventory.exportState(),
+    entities: { monkeytail: monkeytails.exportRecords().map(({ record }) => record), ...ground.exportEntities() }, inventory: inventory.exportSaved(),
     elapsedSeconds: scheduler.now, playerTransform: { position: player.position.toArray() as [number, number, number], rotationY: 0 },
   }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(monkeytails).update(seconds); };
@@ -100,7 +100,7 @@ it('spawns wild monkeytail, picks reeds, pauses in winter and reloads its discre
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.monkeytail[0];
     restored.season.set({ season: 'winter', progress: 0 });
     await drawn(restored.monkeytails.restore('monkeytail', record).transform.model);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     expect(restored.monkeytails.exportRecords().map(({ record }) => record)).toEqual([record]);
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     s.advance(1000); expect(pickable.canBePicked).toBe(false);
@@ -176,7 +176,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     for (const record of saved.world.entities.monkeytail) await drawn(restored.monkeytails.restore('monkeytail', record).transform.model);
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.monkeytails.exportRecords().map(({ record }) => record)).toEqual(s.monkeytails.exportRecords().map(({ record }) => record));
@@ -207,11 +207,11 @@ it('withers in heat, reloads its recovery delay, regrows after rain and digs the
     expect(pickable.canBePicked).toBe(true);
     const mature = workTargets('DIG', s.scene)[0];
     expect(performToolWork('DIG', mature.entity!, testPlayer())).toBe(true);
-    expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutreeds', 'dug_monkeytail']);
+    expect(s.ground.groundStacks().map(stack => stack.itemId)).toEqual(['cutreeds', 'dug_monkeytail']);
     const dead = await drawn(s.monkeytails.spawn('monkeytail', new THREE.Vector3(80, 0, 6)).transform.model);
     plantInstance(dead).components.witherable!.ForceWither();
     expect(performToolWork('DIG', workTargets('DIG', s.scene)[0].entity!, {})).toBe(true);
-    expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutreeds', 'dug_monkeytail', 'cutreeds']);
+    expect(s.ground.groundStacks().map(stack => stack.itemId)).toEqual(['cutreeds', 'dug_monkeytail', 'cutreeds']);
     s.advance(2000); expect(s.monkeytails.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(witherable!.state.timer.peek()).toEqual({ status: 'stopped' });
   } finally { s.dispose(); restored.dispose(); }

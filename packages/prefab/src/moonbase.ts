@@ -38,7 +38,8 @@ export const MOONBASE_TIMER_LIMITS = {
   mooncharge: MOONBASE_CHARGE_DURATION, mooncharge2: MOONBASE_CHARGE_STAGE_DURATION,
   mooncharge3: MOONBASE_CHARGE_STAGE_DURATION,
 } as const;
-export interface MoonbaseSaveState { staff?: InventoryStack; timer?: NamedTimerSave; }
+/** moonbase.lua onsave's data.staff (the staff's GetSaveRecord) and the prefab's timers. */
+export interface MoonbaseSaveState { staff?: import('./saveRecord').HeldEntityRecord; timer?: NamedTimerSave; }
 export type MoonbaseChargePhase = 'idle' | 'preparing' | 'charging_1' | 'charging_2' | 'charging_3' | 'complete';
 /** moonbase.lua: the staff a full moon charges, and the staff it becomes. */
 export const MOONBASE_KEY_STAFF = YELLOWSTAFF_ID;
@@ -270,6 +271,12 @@ function CreateStaff(inst: MoonbaseInstance, state: InventoryStack): ItemEntity 
   return items.create(state);
 }
 
+function RestoreStaff(inst: MoonbaseInstance, record: import('./saveRecord').HeldEntityRecord): ItemEntity {
+  const items = inst.worldServices?.itemEntities;
+  if (!items) throw new Error('A moonbase needs the world item registry to load its staff');
+  return items.restore(record);
+}
+
 function DestroyStaff(inst: MoonbaseInstance, staff: ItemEntity): void {
   const items = inst.worldServices?.itemEntities;
   if (items) items.destroy(staff); else staff.destroy();
@@ -357,14 +364,15 @@ function onsave(inst: MoonbaseInstance, data: EntityPersistData): void {
   const staff = inst._staffinst;
   staff?.flush();
   const timers = timer.OnSave();
-  if (staff || timers) data.moonbase = { ...(staff ? { staff: staff.snapshot() } : {}), ...(timers ? { timer: timers } : {}) };
+  if (staff || timers) data.moonbase = { ...(staff ? { staff: staff.GetSaveRecord() } : {}), ...(timers ? { timer: timers } : {}) };
 }
 
 /** onload: the workable has loaded its own record by now (SetPersistData); the timers and the staff are the prefab's. */
 function onload(inst: MoonbaseInstance, data: EntityPersistData): void {
   LoadBuildingSkin(inst, data);
   inst.components.timer.OnLoad(data.moonbase?.timer);
-  if (data.moonbase?.staff) OnStaffGiven(inst, undefined, CreateStaff(inst, data.moonbase.staff));
+  // onload: SpawnSaveRecord(data.staff).
+  if (data.moonbase?.staff) OnStaffGiven(inst, undefined, RestoreStaff(inst, data.moonbase.staff));
   else OnStaffTaken(inst);
 }
 

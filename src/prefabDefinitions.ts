@@ -379,7 +379,7 @@ const storage = componentParser({ keys: ['building', 'container'] });
 const burntBuilding = componentParser({ keys: ['building'], burntStructure: true });
 const burntStorage = componentParser({ keys: ['building', 'container'], burntStructure: true });
 const sculptingTable = componentParser({ keys: ['building', 'sculptingtable'] });
-const birdcage = componentParser({ keys: ['building', 'birdcage'] });
+const birdcage = componentParser({ keys: ['building', 'CAGE_STATE', 'bird_type', 'occupiable', 'inventory'] });
 const lightningRod = componentParser({ keys: ['building', 'lightningrod'] });
 const firepit = componentParser({ keys: ['building', 'firepit'] });
 const moonbase = componentParser({ keys: ['building', 'workable', 'moonbase'] });
@@ -454,6 +454,11 @@ function ruinsRelicParser(id: RuinsRelicId): PrefabComponentParser {
     }
     return components;
   };
+}
+
+/** An item's GetPersistData: its components' records as its spec allows, and the `extra` records its prefab's OnSave writes. */
+function itemRecord(extra: readonly (keyof EntityPersistData)[] = []): PrefabComponentParser {
+  return (value, path, context) => context.item(value, path, context.prefab, extra);
 }
 
 /** One declaration supplies saved IDs, debug aliases and component schemas to both consumers. */
@@ -597,7 +602,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   bulbPlants: definePrefabs(BULB_PLANT_PREFABS, { flower_cave: bulbSingle, flower_cave_double: bulbDouble, flower_cave_triple: bulbTriple }, true,
     BULB_PLANT_VARIANTS.map(variant => `bulb_plant_${variant}.zip`)),
   lightflierFlowers: definePrefabs(['lightflier_flower'], componentParser({ keys: ['lightflierFlower'] }), true, ['bulb_plant_single.zip', 'bulb_plant_springy.zip', 'lightflier.zip']),
-  molehills: definePrefabs(['molehill'], componentParser({ keys: ['molehill'] }), true),
+  molehills: definePrefabs(['molehill'], componentParser({ keys: ['inventory', 'spawner'], inventorySlots: 50 }), true),
   beefalos: definePrefabs(['beefalo'], componentParser({ keys: ['knownlocations', 'periodicspawner', 'beard', 'beefalo'] }), true),
   stalagmites: definePrefabs(STALAGMITE_IDS, empty, true, id => [`${stalagmiteBank(id)}.zip`]),
   rocks: definePrefabs(ROCK_FAMILY_IDS, perPrefab(ROCK_FAMILY_IDS, empty, { [CAVEIN_BOULDER_ID]: caveinBoulder }), true, {
@@ -737,9 +742,8 @@ export const ITEM_PREFAB_IDS: readonly string[] = (() => {
 export const PREFAB_DEFINITIONS = {
   ...WORLD_PREFAB_DEFINITIONS,
   // An item record is its stack, and the record of a machine its prefab's OnSave also writes.
-  groundItems: definePrefabs(ITEM_PREFAB_IDS, perPrefab(ITEM_PREFAB_IDS, componentParser({ keys: ['stack'] }), {
-    [TORCH_ID]: componentParser({ keys: ['stack', 'torch'] }), [LANTERN_ID]: componentParser({ keys: ['stack', 'lantern'] }),
-    [PHONOGRAPH_ID]: componentParser({ keys: ['stack', 'phonograph'] }) }),
+  groundItems: definePrefabs(ITEM_PREFAB_IDS, perPrefab(ITEM_PREFAB_IDS, itemRecord(), {
+    [TORCH_ID]: itemRecord(['torch']), [LANTERN_ID]: itemRecord(['machine']), [PHONOGRAPH_ID]: itemRecord(['phonograph']) }),
     [...new Set([...GROUND_ART_SPAWN_IDS, ROCK_AVOCADO_FRUIT_ID, ...TURF_ITEM_IDS, 'backpack', 'armorsnurtleshell', 'amulet', 'fireflies', 'lightflier', ...BIRD_IDS, 'bird_egg', 'rottenegg', 'smallmeat', 'pondfish', HEATROCK_ID, NIGHTMARE_TIMEPIECE_ID, BERNIE_ITEM_ID, FARM_PLOW_ITEM_ID, 'torch', 'lantern', 'lightbulb', 'phonograph', 'record', 'seeds', ...VEGGIE_ITEM_IDS, 'meatballs', BANANAJUICE_ID, 'bananapop', ...MUSHROOM_ITEM_IDS, 'spoiled_food', 'farm_hoe', 'golden_farm_hoe', 'shovel', 'goldenshovel', 'pickaxe', 'goldenpickaxe', 'nightsword', 'dreadstone', 'wagpunk_bits', 'cutstone', 'marble', 'marblebean', 'moonrocknugget', 'moonglass', 'hammer', 'axe', 'goldenaxe', 'moonglassaxe', 'fishingrod', 'moon_tree_blossom', 'cactus_flower', 'foliage', 'beardhair', 'cookingrecipecard', 'scrapbook_page', 'blueprint', ...TRINKET_IDS, 'pinecone', 'acorn', 'mole', 'butterfly', 'butterflywings', 'butter', 'petals', 'moonbutterfly', 'moonbutterflywings', 'bugnet', 'razor', 'panflute', 'reskin_tool', 'greenstaff', 'firestaff', 'trident', 'opalstaff', 'opalpreciousgem', ...Object.keys(BURNABLE_ITEM_DEFINITIONS), 'ash'])], groundItemArchives),
 } as const;
 

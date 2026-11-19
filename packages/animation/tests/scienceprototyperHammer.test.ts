@@ -219,7 +219,7 @@ it('c_spawn then c_save reloads a research lab as a prototyper in the building s
     let exported = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       exported = serializeSave(template, { entities: { ...template.world.entities, ...first.registry.exportRecords() },
-        inventory: inventory.exportState(), playerTransform: { position: [0, 0, 0], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
+        inventory: inventory.exportSaved(), playerTransform: { position: [0, 0, 0], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
     })).ok).toBe(true);
     const records = deserializeSave(exported, SAVE_CATALOG).world.entities.researchlab4;
     expect(records).toHaveLength(1);

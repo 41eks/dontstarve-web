@@ -15,7 +15,7 @@ import { createPickupInventory } from './pickupFixture';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { inventorySlotAddress } from '../../inventory/src';
 import { createPerishWorld } from './perishWorldFixture';
-import { createInventoryStore, testItem } from './testInventory';
+import { createInventoryStore, testSavedItem } from './testInventory';
 
 const cleanups: (() => void)[] = [];
 afterEach(() => { cleanups.splice(0).forEach(stop => stop()); });
@@ -36,7 +36,7 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
   // TheSim: the butterfly, its flowers and the player are the entities one manager finds.
   const displays = new PrefabDisplayGroup(new THREE.Scene());
   const prefabs = new PrefabEntityManager<string, PrefabInstance<SpriteState, object>>(displays, '/dst/data/anim', {});
-  const entity = new ButterflyEntity(BUTTERFLY_DEFINITIONS[prefab], { itemId: prefab, count: 1 }, undefined, testItem);
+  const entity = new ButterflyEntity(BUTTERFLY_DEFINITIONS[prefab], { itemId: prefab, count: 1 }, undefined, testSavedItem);
   prefabs.track(entity);
   MakeButterflyCreature(entity, world, { animation, random: () => 0, dropLoot });
   const controller = entity;

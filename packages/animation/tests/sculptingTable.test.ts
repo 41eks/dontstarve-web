@@ -83,8 +83,8 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     const parse = (record: typeof saved) => {
       const save = structuredClone(initialWorld) as unknown as SaveDocument;
       save.world.entities = { sculptingtable: [{ ...structuredClone(record), transform: { ...record.transform, position: [...record.transform.position] } }] };
-      save.players.local.inventory.containers = { 'player:inventory': { slotCount: 15, slots: [] }, 'player:equipment': { slotCount: 3, slots: [] } };
-      save.players.local.inventory.bufferedBuilds = [];
+      save.players.local.inventory = { items: {}, equip: {} };
+      save.players.local.builder = { bufferedBuilds: [] };
       return deserializeSave(JSON.stringify(save), { items: {}, skins: {}, recipes: {}, recipeSkins: {},
         buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) });
     };

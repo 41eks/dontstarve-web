@@ -100,8 +100,8 @@ it('saves a dock as a MONKEY_DOCK tile over its ocean undertile and rejects one 
     const save = structuredClone(initialWorld) as unknown as SaveDocument;
     (save.world.map as { tiles?: unknown }).tiles = tiles;
     save.world.entities = {};
-    save.players.local.inventory.containers = { 'player:inventory': { slotCount: 15, slots: [] }, 'player:equipment': { slotCount: 3, slots: [] } };
-    save.players.local.inventory.bufferedBuilds = [];
+    save.players.local.inventory = { items: {}, equip: {} };
+    save.players.local.builder = { bufferedBuilds: [] };
     return deserializeSave(JSON.stringify(save), { items: {}, skins: {}, recipes: {}, recipeSkins: {},
       buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) });
   };

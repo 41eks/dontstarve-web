@@ -13,7 +13,7 @@ import { Floater, FurnitureDecor, InventoryItemMoisture, Sittable } from '../../
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type PrefabComponents, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
-import { clearPersistData, type EntityPersistData } from './saveRecord';
+import { clearPersistData, type EntityPersistData, structureHealth } from './saveRecord';
 import type { ReadonlyVector3 } from './transform';
 import type { WorldContext } from './worldContext';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
@@ -189,7 +189,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
    */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
     if (this.replica) { this.skinId = data.ruinsRelic?.skinId; return; }
-    const health = this.components.health!, saved = data.health;
+    const health = this.components.health!, saved = structureHealth(data);
     if (saved) health.SetMaxHealth(saved.maximum);
     const rubble = data.ruinsRelic?.rubble === true;
     if (rubble !== this.rubble) this.setRubble(rubble);

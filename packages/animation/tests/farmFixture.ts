@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import type { InventoryStack } from '@dontstarve-web/inventory';
+import type { HeldEntityRecord } from '../../prefab/src/saveRecord';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { farmPrefabs, FARM_DECOR_IDS, FARM_PLOW_ID, PLANTED_SEED_IDS, type FarmWorld } from '../../prefab/src/farm_plow';
@@ -13,7 +13,7 @@ import type { TurfMap } from '../../prefab/src/turfMap';
 /** The farm prefabs on a shared manager with TheWorld.Map's soil functions, as the scene registers them. */
 export function farmFixture(scene: THREE.Scene, turf: TurfMap, options: {
   blockers?: PlacementQuery; random?: () => number;
-  spawnSaveRecord?: (position: THREE.Vector3, item: InventoryStack) => void;
+  spawnSaveRecord?: (position: THREE.Vector3, item: HeldEntityRecord) => void;
   spawnLoot?: (itemId: string, position: THREE.Vector3) => void;
   fx?: FarmWorld['fx'];
 } = {}) {

@@ -10,8 +10,8 @@ async function start(page: Page, errors: string[]) {
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
   await page.route('**/saves/initial-world.json', async route => {
     const response = await route.fetch(), save = await response.json();
-    for (const container of Object.values(save.players.local.inventory.containers) as any[]) container.slots = [];
-    save.players.local.inventory.bufferedBuilds = [];
+    save.players.local.inventory = { items: {}, equip: {} };
+    save.players.local.builder = { bufferedBuilds: [] };
     await route.fulfill({ response, json: save });
   });
   // The routed save holds the pig king at (0, 0, 25) with its default_pigking layout.

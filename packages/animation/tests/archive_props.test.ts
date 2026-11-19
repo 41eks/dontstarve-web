@@ -39,7 +39,7 @@ function setup() {
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(0, 0, 0));
   registry.registerPrefabs(PREFAB_DEFINITIONS.archiveProps);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   /** Restore every archive prop of a saved world, as the scene loader does. */
   const load = (json: string) => {

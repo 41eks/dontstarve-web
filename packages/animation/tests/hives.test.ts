@@ -131,7 +131,7 @@ it('keeps c_spawn hives and imported ones through c_save and a reload, and rejec
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
-        { entities: before, inventory: inventory.exportState(), elapsedSeconds: 1, playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
+        { entities: before, inventory: inventory.exportSaved(), elapsedSeconds: 1, playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const { beehive: savedBees, wasphive: savedWasps } = deserializeSave(json, SAVE_CATALOG).world.entities;
     expect([savedBees, savedWasps]).toEqual([before.beehive, before.wasphive]);

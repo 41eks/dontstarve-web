@@ -45,15 +45,15 @@ class RegionImportTest(unittest.TestCase):
         }
         entities, provenance = PREFAB['convert_entities'](terrain, source, {'translation': [12, 0, 24]}, 'ART')
         records = {prefab: group[0] for prefab, group in entities.items()}
-        self.assertTrue(all(record['components']['stack']['itemId'] == prefab for prefab, group in entities.items() for record in group))
+        # Each item is saved under its own prefab, with stackable's record, its ground variant and GetSaveRecord's skinname.
         self.assertEqual(records['rocks'], {'id': 'dst_ART_rocks_id_1',
                          'transform': {'position': [18, 3, -15], 'rotationY': 0},
-                         'components': {'stack': {'entityId': 'dst_ART_rocks_id_1', 'itemId': 'rocks', 'count': 8, 'variant': 'f2'}}})
-        self.assertEqual(records['goldenaxe']['components']['stack'],
-                         {'entityId': 'dst_ART_goldenaxe_id_3', 'itemId': 'goldenaxe', 'count': 1, 'skinId': 'goldenaxe_invisible'})
-        self.assertEqual(records['bundle']['components']['stack']['variant'], 'medium')
-        self.assertEqual(records['blueprint']['components']['stack']['variant'], 'rare')
-        self.assertEqual(records['singingshell_octave3']['components']['stack']['variant'], '3')
+                         'components': {'stackable': {'stack': 8}, 'groundVariant': 'f2'}})
+        self.assertEqual(records['goldenaxe']['components'], {})
+        self.assertEqual(records['goldenaxe']['skinname'], 'goldenaxe_invisible')
+        self.assertEqual(records['bundle']['components']['groundVariant'], 'medium')
+        self.assertEqual(records['blueprint']['components']['groundVariant'], 'rare')
+        self.assertEqual(records['singingshell_octave3']['components']['groundVariant'], '3')
         self.assertNotIn('rabbit', provenance['groundItemCounts'])
         self.assertEqual(provenance['groundItemCounts']['rocks']['quantity'], 8)
         self.assertEqual(set(entities), set(records))
@@ -240,10 +240,8 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual([record['components']['flower'] for record in entities['flower']],
                          [{'animation': 'rose'}, {'animation': 'f9', 'planted': True}])
         insects = [*entities['fireflies'], *entities['butterfly']]
-        self.assertEqual([record['components']['stack']['itemId'] for record in insects], ['fireflies', 'butterfly'])
-        self.assertEqual([record['components']['stack']['count'] for record in insects], [8, 2])
-        self.assertEqual(insects[1]['components']['stack']['freshnessPercent'], .5)
-        self.assertTrue(all(record['components']['stack']['entityId'] == record['id'] for record in insects))
+        self.assertEqual([record['components']['stackable']['stack'] for record in insects], [8, 2])
+        self.assertEqual(insects[1]['components']['perishable'], {'time': 720, 'paused': True})
         self.assertEqual(provenance['entityCounts']['fireflies'], {'source': 1, 'imported': 1})
         self.assertEqual(provenance['entityCounts']['butterfly'], {'source': 1, 'imported': 1})
         self.assertEqual(PREFAB['convert_entities'](terrain, source, report, 'SURFACE')[0], entities)
@@ -331,9 +329,9 @@ class RegionImportTest(unittest.TestCase):
                                                'workable': {'maxwork': 6, 'workleft': 6}}})
         self.assertEqual(charging['components'], {
             'building': {'state': 'idle'}, 'workable': {'maxwork': 6, 'workleft': 2},
-            'moonbase': {'staff': {'entityId': 'dst_MOON_moonbase_id_9_staff', 'itemId': 'yellowstaff',
-                                   'count': 1, 'skinId': 'starstaff_crystal', 'remainingUses': 7}, 'timer': timer}})
-        self.assertEqual(legacy['components']['moonbase']['staff']['remainingUses'], 12)
+            'moonbase': {'staff': {'id': 'dst_MOON_moonbase_id_9_staff', 'prefab': 'yellowstaff',
+                                   'skinname': 'starstaff_crystal', 'components': {'finiteuses': {'uses': 7}}}, 'timer': timer}})
+        self.assertEqual(legacy['components']['moonbase']['staff']['components']['finiteuses'], {'uses': 12})
         self.assertEqual(report['entityCounts']['moonbase'], {'source': 3, 'imported': 3})
         self.assertIn('moonbase', PREFAB['source_prefabs']())
         convert = PREFAB['ENTITY_WHITELIST']['moonbase']
@@ -478,21 +476,20 @@ end
             'data={container={items={[2]={prefab="lantern",data={fueled={fuel=100}}}}}}}}}}}\x01\x00\x10SESSION\x00')
         catalog = {'items': {'meat': {'maxStack': 40, 'perishTime': 2880}, 'armorwood': {'maxStack': 40},
                              'hambat': {'maxStack': 40}, 'lantern': {'maxStack': 1, 'maxFuel': 468, 'equippable': 'hand'},
-                             'backpack': {'maxStack': 1, 'equippable': 'body', 'canGoInContainer': False}},
+                             'backpack': {'maxStack': 1, 'equippable': 'body', 'canGoInContainer': False, 'containerSlots': 8}},
                    'skins': {'backpack_catcoon': 'backpack'}}
-        position, containers, report = PLAYER['convert_player'](source, [12, 0, 24], 1000, 'dst_S_U', catalog)
+        position, inventory, report = PLAYER['convert_player'](source, [12, 0, 24], 1000, 'dst_S_U', catalog)
         self.assertEqual(position, [24, 0, -48])
-        self.assertEqual(containers['player:inventory']['slots'], [
-            {'slotKey': '0', 'item': {'entityId': 'dst_S_U_items_0', 'itemId': 'meat', 'count': 3, 'freshnessPercent': .5, 'wet': True}},
-            {'slotKey': '2', 'item': {'entityId': 'dst_S_U_items_2', 'itemId': 'armorwood', 'count': 1}}])
-        self.assertEqual(containers['player:equipment']['slots'], [{'slotKey': 'body', 'item': {
-            'entityId': 'dst_S_U_equip_body', 'itemId': 'backpack', 'count': 1, 'skinId': 'backpack_catcoon',
-            'container': {'slotCount': 8, 'slots': [{'slotKey': '1', 'item': {
-                'entityId': 'dst_S_U_equip_body_1', 'itemId': 'lantern', 'count': 1, 'remainingFuel': 100}}]}}}])
-        self.assertEqual(containers['player:cursor']['slots'], [])
+        # inventory.lua OnSave's records: items by one-based slot, equip by EQUIPSLOTS name, the item data as saved.
+        self.assertEqual(inventory, {
+            'items': {'1': {'id': 'dst_S_U_items_0', 'prefab': 'meat', 'components': {
+                'stackable': {'stack': 3}, 'perishable': {'time': 1440}, 'inventoryitemmoisture': {'moisture': 100, 'wet': True}}},
+                      '3': {'id': 'dst_S_U_items_2', 'prefab': 'armorwood', 'components': {}}},
+            'equip': {'body': {'id': 'dst_S_U_equip_body', 'prefab': 'backpack', 'skinname': 'backpack_catcoon', 'components': {
+                'container': {'items': {'2': {'id': 'dst_S_U_equip_body_1', 'prefab': 'lantern', 'components': {'fueled': {'fuel': 100}}}}}}}}})
         self.assertEqual(report['character'], 'wortox')
         self.assertEqual([(s['prefab'], s['reason']) for s in report['skipped']],
-                         [('unknown_item', 'unknown item'), ('hambat', 'not equippable in hand')])
+                         [('unknown_item', 'unknown item'), ('hambat', 'not equippable in hands')])
         self.assertEqual(report['droppedComponents'], [{'path': 'inventory.items.3', 'prefab': 'armorwood', 'components': ['armor']}])
 
     def test_treasurechest_import_preserves_contents_skin_and_burnt_state(self):
@@ -512,8 +509,7 @@ end
         entities, provenance = PREFAB['convert_entities'](terrain, source, report, 'BOX', catalog)
         chest, burnt = entities['treasurechest']
         self.assertEqual(chest['components'], {
-            'container': {'slotCount': 9, 'slots': [{'slotKey': '1', 'item': {
-                'entityId': 'dst_BOX_treasurechest_id_5_1', 'itemId': 'log', 'count': 7}}]},
+            'container': {'items': {'2': {'id': 'dst_BOX_treasurechest_id_5_1', 'prefab': 'log', 'components': {'stackable': {'stack': 7}}}}},
             'building': {'state': 'closed', 'skinId': 'treasurechest_cake'}})
         self.assertEqual(burnt['components'], {'building': {'state': 'closed', 'burnt': True}})
         self.assertEqual([(s['path'], s['reason']) for s in provenance['containerItems']['skipped']],

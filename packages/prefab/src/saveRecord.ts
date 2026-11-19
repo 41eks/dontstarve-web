@@ -20,15 +20,54 @@ export interface EntityPersistRecord {
  */
 export interface EntitySaveRecord extends EntityPersistRecord {
   transform: SavedTransform;
+  /** GetSaveRecord's record.skinname: an item's skin. */
+  skinname?: string;
+}
+
+/**
+ * GetSaveRecord of an entity another one holds, as container.lua and inventory.lua save each item: the prefab, the
+ * skin and GetPersistData, without a position. The ID keeps the inst's identity across saves.
+ */
+export interface HeldEntityRecord extends EntityPersistRecord {
+  prefab: string;
+  skinname?: string;
+}
+
+/** container.lua / inventory.lua OnSave's data.items: each held item's record by its one-based slot. */
+export interface SlotItemsSave {
+  items: { [slot: string]: HeldEntityRecord };
+}
+
+/** inventory.lua OnSave of a player: items by slot, equip by equip slot, and the cursor's activeitem. */
+export interface PlayerInventorySave extends SlotItemsSave {
+  equip: { [equipslot: string]: HeldEntityRecord };
+  activeitem?: HeldEntityRecord;
 }
 
 /** GetPersistData's record: each component's and the prefab OnSave's data, under the name it saves as. */
 export interface EntityPersistData {
-  /** An item inst's own state, as the inventory saves its stacks; the prefab's OnSave adds its own records. */
+  /**
+   * SpawnPrefab of an item from the inventory's runtime stack (a split, a craft, a drop): not a save record. Saves hold
+   * the item's component records below instead.
+   */
   stack?: import('@dontstarve-web/inventory').InventoryStack;
+  /** stackable.lua OnSave: written for a stack of more than one. */
+  stackable?: { stack: number };
+  /** perishable.lua OnSave: perishremainingtime, and whether perishing is stopped. */
+  perishable?: { time: number; paused?: true };
+  armor?: import('../../componets/src/armor').ArmorSaveData;
+  temperature?: import('../../componets/src/temperature').TemperatureSaveData;
+  /** machine.lua OnSave. */
+  machine?: { ison: boolean };
+  /** heatrock.lua OnSave: the temperature extreme it last reached. */
+  highTemp?: number;
+  lowTemp?: number;
+  /** mole.lua OnSave: seconds since it began needing a home. */
+  needs_home_time?: number;
+  /** The drawn branch of an item's ground art, which its prefab derives from its own saved fields (anim, glassname, …). */
+  groundVariant?: string;
   phonograph?: { remainingSeconds: number };
   torch?: { lit: true };
-  lantern?: { ison: boolean };
   flower?: import('./flower').FlowerSaveState;
   ruinsRelic?: import('./ruinsrelic').RuinsRelicSaveState;
   inventoryitemmoisture?: import('./ruinsrelic').RelicMoistureSave;
@@ -41,8 +80,9 @@ export interface EntityPersistData {
   burning?: true;
   building?: { skinId?: string; burnt?: true };
   stewer?: import('../../componets/src/stewer').StewerSaveData;
-  container?: { slotCount: number; slots: { slotKey: string; item: import('@dontstarve-web/inventory').InventoryStack }[] };
-  health?: { current: number; maximum: number };
+  container?: SlotItemsSave;
+  /** health.lua OnSave, or a structure's own { current, maximum } record (relics, walls). */
+  health?: { current: number; maximum: number } | import('../../componets/src/health').HealthSaveData;
   knownlocations?: { locations: { name: string; x: number; y: number; z: number }[] };
   periodicspawner?: { time: number };
   beard?: import('../../componets/src/beard').BeardSave;
@@ -53,13 +93,13 @@ export interface EntityPersistData {
   /** statueglommer.lua OnSave's worked / spawned. */
   statueglommer?: { worked?: true; spawned?: true };
   sculptingtable?: { itemname: string };
-  birdcage?: import('./birdcage').BirdcageSaveStateData;
+  /** birdcage.lua OnSave. */
+  CAGE_STATE?: import('./birdcage').CageState;
+  bird_type?: string;
+  occupiable?: import('./birdcage').OccupiableSave;
   workable?: { workleft: number; maxwork: number };
-  /**
-   * Records GetPersistData writes under the component's name. The prefabs that own these components fold them into
-   * their own record and delete these before the save is written.
-   */
-  inventory?: import('@dontstarve-web/inventory').InventoryStack[];
+  /** inventory.lua OnSave of a creature or a machine that holds items. */
+  inventory?: SlotItemsSave;
   childspawner?: import('../../componets/src/childspawner').ChildSpawnerSave;
   fueled?: import('../../componets/src/fueled').FueledSave;
   timer?: import('../../componets/src/timer').NamedTimerSave;
@@ -124,8 +164,7 @@ export interface EntityPersistData {
   lavaPond?: import('./lava_pond').LavaPondSaveState;
   /** nightmaregrowth.lua OnSave's crack_rotation. */
   nightmareGrowth?: import('./nightmaregrowth').NightmareGrowthSaveState;
-  /** molehill.lua's inventory and spawner saves. */
-  molehill?: import('./molehill').MolehillSave;
+  spawner?: import('./molehill').SpawnerSave;
   caveinBoulder?: import('./cavein_boulder').CaveinBoulderSave;
   /** farm_plow.lua's drilling timer and deploy_item, farm_soil.lua and farm_soil_debris.lua OnSave. */
   farmPlow?: import('./farm_plow').FarmPlowSaveState;
@@ -158,6 +197,12 @@ export interface EntityPersistData {
   /** chesspieces.lua onsave and submersible.lua OnSave. */
   chesspiece?: import('./chesspieces').ChesspieceSaveState;
   submersible?: import('./chesspieces').SubmersibleSaveState;
+}
+
+/** A structure's own { current, maximum } health record, as relics, walls, hives and Bernie save it. */
+export function structureHealth(data: EntityPersistData): { current: number; maximum: number } | undefined {
+  const health = data.health;
+  return health && 'current' in health ? health : undefined;
 }
 
 /** Empties an OnSave's record in place, for a prefab that writes its whole record itself. */

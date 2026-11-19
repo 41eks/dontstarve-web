@@ -49,7 +49,7 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
   registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, () => 'dug:command'));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, {
-    entities: registry.exportRecords(), inventory: inventory.exportState(),
+    entities: registry.exportRecords(), inventory: inventory.exportSaved(),
     elapsedSeconds: 0, playerTransform: { position: player.position.toArray() as [number, number, number], rotationY: 0 },
   }, SAVE_CATALOG);
   const springs = () => prefabs.exportRecords().filter(({ prefabId }) => prefabId === HOTSPRING_ID);

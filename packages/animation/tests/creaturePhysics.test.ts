@@ -4,13 +4,13 @@ import { BindMolePhysics, MakeMole, Mole, SetAbovePhysics, SetUnderPhysics } fro
 import { BindLightFlierPhysics, LightFlier, MakeLightFlier } from '../../prefab/src/lightflier';
 import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { MakeCharacterPhysics, MakeObstaclePhysics } from '../../prefab/src/standardcomponents';
-import { testItem } from './testInventory';
+import { testSavedItem } from './testInventory';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 it('keeps mole physics on its instance, collides with obstacles underground and restores character collisions above ground', async () => {
   const world = new CANNON.World();
-  const item = new Mole({ itemId: 'mole', count: 1 }, undefined, testItem), mole = item;
+  const item = new Mole({ itemId: 'mole', count: 1 }, undefined, testSavedItem), mole = item;
   MakeMole(item);
   const player = createEmptyEntity('wilson'), obstacle = createEmptyEntity('rock1');
   BindMolePhysics(mole, world);
@@ -38,7 +38,7 @@ it('keeps mole physics on its instance, collides with obstacles underground and 
 });
 
 it('declares lightflier ghost physics on its instance and excludes obstacle collisions', () => {
-  const world = new CANNON.World(), item = new LightFlier({ itemId: 'lightflier', count: 1 }, undefined, testItem);
+  const world = new CANNON.World(), item = new LightFlier({ itemId: 'lightflier', count: 1 }, undefined, testSavedItem);
   const obstacle = createEmptyEntity('rock1');
   MakeLightFlier(item);
   BindLightFlierPhysics(item, world);

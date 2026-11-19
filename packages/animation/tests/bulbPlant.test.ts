@@ -34,7 +34,7 @@ function setup() {
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(1, 0, 2));
   registry.registerPrefabs(PREFAB_DEFINITIONS.bulbPlants);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const spawn = (id: string, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawnAs(BulbPlantInstance, id, new THREE.Vector3(1, 0, 2), saved);
   return { scene, scheduler, awake, inventory, prefabs, registry, save, spawn, getLightLevel, setLight: (value: number) => { light = value; },

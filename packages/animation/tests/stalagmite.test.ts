@@ -39,7 +39,7 @@ function setup() {
   };
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return { scene, awake, registry, inventory, manager, world,
-    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }

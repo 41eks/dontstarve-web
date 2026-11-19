@@ -1,26 +1,13 @@
-import {
-  inventorySlotAddress, equipmentSlotAddress,
-  cursorSlotAddress, EQUIPMENT_KINDS,
-  type EquipmentKind, type InventoryState,
-} from '@dontstarve-web/inventory';
+import type { InventoryRecipeDefinition, InventoryStore } from '@dontstarve-web/inventory';
 import type { SaveDocument } from './types';
 
-/** A validated save's equipment slot key. */
-function equipmentKind(slotKey: string): EquipmentKind {
-  const kind = EQUIPMENT_KINDS.find(known => known === slotKey);
-  if (!kind) throw new Error(`Unknown equipment slot: ${slotKey}`);
-  return kind;
+/** The saved player's inventory.lua OnLoad and builder buffered builds, loaded into the player's store. */
+export function loadSavedInventory(store: InventoryStore, save: SaveDocument,
+  recipes: Readonly<Record<string, InventoryRecipeDefinition>>): void {
+  store.loadSaved(save.players.local.inventory, save.players.local.builder.bufferedBuilds, recipes);
 }
 
-export function inventoryStateFromSave(save: SaveDocument): InventoryState {
-  const slots: InventoryState['slots'][number][] = [];
-  for (const [id, container] of Object.entries(save.players.local.inventory.containers)) {
-    for (const { slotKey, item } of container.slots) {
-      const address = id === 'player:inventory'
-        ? inventorySlotAddress(Number(slotKey))
-        : id === 'player:cursor' ? cursorSlotAddress() : equipmentSlotAddress(equipmentKind(slotKey));
-      slots.push({ address, item: { ...item } });
-    }
-  }
-  return { slots, bufferedBuilds: save.players.local.inventory.bufferedBuilds.map((build) => ({ ...build })) };
+/** A loaded save's player inventory as serializeSave takes it back, for a save written without a live store. */
+export function savedInventoryOf(save: SaveDocument): ReturnType<InventoryStore['exportSaved']> {
+  return { inventory: structuredClone(save.players.local.inventory), bufferedBuilds: structuredClone(save.players.local.builder.bufferedBuilds) };
 }

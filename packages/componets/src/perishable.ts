@@ -177,6 +177,27 @@ export class Perishable {
     if (timer.status === 'perishing') this.timerState.set(Object.freeze({ status: 'paused', remainingSeconds: timer.remainingSeconds }));
   }
 
+  /** perishable.lua OnSave: perishremainingtime, and `paused` while no update task runs. */
+  OnSave(): { time: number; paused?: true } | undefined {
+    this.flush();
+    const timer = this.timerState.peek();
+    if (timer.status === 'perishing') return { time: timer.remainingSeconds };
+    if (timer.status === 'paused') return { time: timer.remainingSeconds, paused: true };
+    return undefined;
+  }
+
+  /** perishable.lua OnLoad: perishremainingtime, then StopPerishing when it was paused, else StartPerishing. */
+  OnLoad(data: { time?: number; paused?: true } | undefined): void {
+    if (!data || this.disposed || this.inst.isRemoved || this.perishTimeState.peek() === undefined) return;
+    if (data.time !== undefined) {
+      if (!Number.isFinite(data.time) || data.time < 0) throw new RangeError('Invalid perish time');
+      this.flush();
+      this.timerState.set(Object.freeze({ status: 'paused', remainingSeconds: data.time }));
+    }
+    if (data.paused) this.StopPerishing();
+    else if (data.time !== undefined) this.StartPerishing();
+  }
+
   /** Settle a partial period before saving, transferring, eating or changing the timer. */
   flush(): void {
     if (this.disposed || this.inst.isRemoved || !this.world) return;

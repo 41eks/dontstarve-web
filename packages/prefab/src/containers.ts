@@ -1,5 +1,5 @@
 import definitions from './definitions.json' with { type: 'json' };
-import { spawnWorldItem } from './worldContext';
+import { restoreWorldItem, spawnWorldItem } from './worldContext';
 import { type ItemEntity, PreparedFoodSlot, StorageSlot, type ItemSlot, type InventoryStack } from '@dontstarve-web/inventory';
 import { Container } from '../../componets/src/container';
 import { IsCookingIngredient } from '../../componets/src/cooking';
@@ -18,7 +18,8 @@ export function createBuildingContainer(prefab: StorageBuildingId, inst: PrefabI
             : new StorageSlot(prefab === 'bookstation' ? (_spec, itemId) => itemId !== undefined && isBookCabinetItem(itemId) : undefined);
     // SpawnSaveRecord of each content, in the building's world.
     const loadItem = (record: InventoryStack) => spawnWorldItem(inst, record);
-    const container = addComponent(inst, 'container', Container<InventoryStack, ItemEntity, ItemSlot>, createSlot, loadItem);
+    const container = addComponent(inst, 'container', Container<InventoryStack, ItemEntity, ItemSlot>, createSlot, loadItem,
+        record => restoreWorldItem(inst, record));
     container.type = definition.type;
     container.SetNumSlots(definition.slotCount);
     return container;

@@ -95,11 +95,10 @@ describe('ground item save records', () => {
     try {
       await original.manager.spawnFromSave('thermal-stone', stone, position);
       const record = original.manager.exportRecords()[0];
-      expect(record).toMatchObject({ id: 'thermal-stone', transform: { position: [4, 0, 5] },
-        components: { stack: { itemId: 'heatrock', count: 1, skinId: 'heatrock_fantasy',
-          remainingFuel: 62.5, temperature: { current: 66 }, highTemp: 66 } } });
-      await restored.manager.spawnFromSave(record.id, { ...stone, ...record.components.stack },
-        new THREE.Vector3(...record.transform.position));
+      // GetSaveRecord: the skin on the record; fueled, temperature and heatrock.lua's highTemp in its data.
+      expect(record).toMatchObject({ id: 'thermal-stone', transform: { position: [4, 0, 5] }, skinname: 'heatrock_fantasy',
+        components: { fueled: { fuel: 62.5 }, temperature: { current: 66 }, highTemp: 66 } });
+      restored.manager.restore('heatrock', record);
       expect(restored.manager.exportRecords()).toEqual([record]);
     } finally {
       original.manager.dispose(); original.inventory.dispose();
@@ -159,13 +158,10 @@ describe('ground item save records', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
       const records = first.manager.exportRecords();
       expect(records).toHaveLength(1);
-      expect(records[0]).toMatchObject({
-        transform: { position: [7, 0, 9] }, components: { stack: { itemId: 'ash', count: 1 } },
-      });
+      expect(records[0]).toMatchObject({ transform: { position: [7, 0, 9] }, components: {} });
+      expect(first.manager.exportEntities()).toHaveProperty('ash');
       expect(restored.manager.exportRecords()).toEqual([]);
-      await restored.manager.spawnFromSave(records[0].id,
-        { ...restored.inventory.getItemSpec('ash'), ...records[0].components.stack! },
-        new THREE.Vector3(...records[0].transform.position));
+      restored.manager.restore('ash', records[0]);
       expect(restored.manager.exportRecords()).toEqual(records);
       const spawn = vi.spyOn(first.manager, 'spawnFromSave');
       first.manager.dispose();
@@ -194,7 +190,7 @@ describe('ground item save records', () => {
       expect(records).toHaveLength(1);
       expect(records[0].id).toBe(entity.id);
       expect(records[0].transform.position).toEqual([4, 0, 5]);
-      expect(records[0].components.stack).toMatchObject({ itemId: 'log', count: 1 });
+      expect(records[0].components).toEqual({});
       // Its display loading the art adds no other record.
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(manager.exportRecords()).toEqual(records);
@@ -202,8 +198,7 @@ describe('ground item save records', () => {
       expect(inventory.count('log')).toBe(capacity);
       const restored = setup();
       try {
-        await restored.manager.spawnFromSave(records[0].id,
-          { ...definition, ...records[0].components.stack }, new THREE.Vector3(...records[0].transform.position));
+        restored.manager.restore('log', records[0]);
         expect(restored.manager.exportRecords()).toEqual(records);
       } finally { restored.manager.dispose(); restored.inventory.dispose(); }
     } finally { manager.dispose(); inventory.dispose(); }
@@ -216,14 +211,14 @@ describe('ground item save records', () => {
     expect(records).toHaveLength(1);
     expect(records[0].id).toBe(entity?.id);
     expect(records[0].transform.position).toEqual([4, 0, 5]);
-    expect(records[0].components.stack).toMatchObject({ itemId: 'log', count: 2 });
+    expect(records[0].components).toEqual({ stackable: { stack: 2 } });
     manager.dispose();
     expect(manager.exportRecords()).toEqual([]);
   });
   it('keeps the entity transform and root through rendering, reskinning, pickup, drop and saves', async () => {
     const { manager, scene, player, inventory, pick } = setup();
     const backpack = { itemId: 'backpack', count: 1, name: 'Backpack', icon: 'backpack.tex',
-      container: { slotCount: 8, slots: [{ slotKey: '2', item: { itemId: 'log', count: 3 } }] } };
+      container: { slotCount: 8, slots: [{ slotKey: '2', item: { entityId: 'bag:log', itemId: 'log', count: 3 } }] } };
     const model = await manager.spawnFromSave('bag:position', backpack, new THREE.Vector3(2, 0.25, 3));
     const entity = manager.entities.get('bag:position')!;
     expect(entity).toBeInstanceOf(PrefabInstance);
@@ -255,16 +250,17 @@ describe('ground item save records', () => {
     expect([...manager.iteratePrefabPositions('backpack')]).toEqual([entity.transform.position]);
     const saved = manager.exportRecords()[0];
     expect(saved.transform.position).toEqual([20, 0, 21]);
-    expect(saved.components.stack?.container).toEqual(entity.snapshot().container);
-    expect(saved.components.stack?.skinId).toBe(entity.skinId);
+    // container.lua OnSave in the backpack's own record; GetSaveRecord's skinname beside it.
+    expect(saved.components.container).toEqual({ items: { 3: { id: 'bag:log', prefab: 'log', components: { stackable: { stack: 3 } } } } });
+    expect(saved.skinname).toBe(entity.skinId);
     const restored = setup();
-    const restoredModel = await restored.manager.spawnFromSave(saved.id, { ...backpack, ...saved.components.stack }, new THREE.Vector3(...saved.transform.position));
+    const restoredModel = restored.manager.restore('backpack', saved);
     expect(restored.manager.entities.get(saved.id)!.transform.position).toBe(restoredModel.position);
     expect(restored.manager.exportRecords()).toEqual([saved]);
     // The restored definition named a skin; once the inst's sprite drops it, the save follows the inst alone.
-    expect(saved.components.stack?.skinId).toBeDefined();
+    expect(saved.skinname).toBeDefined();
     restored.manager.entities.get(saved.id)!.skinId = undefined;
-    expect(restored.manager.exportRecords()[0].components.stack).not.toHaveProperty('skinId');
+    expect(restored.manager.groundStacks()[0]).not.toHaveProperty('skinId');
     restored.manager.dispose();
 
     // Input checks current entity coordinates before the next active frame.
@@ -303,7 +299,7 @@ describe('ground item save records', () => {
       manager.flingLoot([{ ...definition, count: 3 }], new THREE.Vector3(1, 0, 2));
       const models = manager.renderEntities.map(({ object }) => object);
       expect(models).toHaveLength(3);
-      expect(manager.exportRecords().map(({ components }) => components.stack?.count)).toEqual([1, 1, 1]);
+      expect(manager.groundStacks().map(stack => stack.count)).toEqual([1, 1, 1]);
       manager.update(0.1, new THREE.Quaternion());
       expect(models.every((model) => model.children[0].position.y > 0 && model.position.y === 0)).toBe(true);
       expect(manager.exportRecords().every((record) => record.transform.position[1] === 0)).toBe(true);
@@ -366,9 +362,9 @@ describe('ground item save records', () => {
     const [record] = manager.exportRecords();
     expect(record.id).toBe(lookupPrefabInstance(scene.children[0])?.entityId);
     expect(record.transform.position).toEqual([8, 0, 9]);
-    expect(record.components.stack).toEqual({ itemId: 'log', count: 1 });
-    record.components.stack!.count = 20;
-    expect(manager.exportRecords()[0].components.stack?.count).toBe(1);
+    expect(record.components).toEqual({});
+    record.components.stackable = { stack: 20 };
+    expect(manager.groundStacks()[0].count).toBe(1);
     const entity = itemAt(scene.children[0]);
     pick(scene.children[0]);
     expect(pickup).toHaveBeenCalledWith(entity, new THREE.Vector3(8, 0, 9));
@@ -402,7 +398,7 @@ describe('ground item save records', () => {
       await new Promise(resolve => setTimeout(resolve, 0));
       await new Promise(resolve => setTimeout(resolve, 0));
       const records = manager.exportRecords();
-      expect(records.map(record => record.components.stack?.count)).toEqual([1, 1, 1]);
+      expect(manager.groundStacks().map(stack => stack.count)).toEqual([1, 1, 1]);
       expect(new Set(records.map(record => record.id)).size).toBe(3);
       expect(scene.children).toHaveLength(3);
     } finally { manager.dispose(); inventory.dispose(); }

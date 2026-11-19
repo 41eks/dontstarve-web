@@ -37,7 +37,7 @@ function setup(player = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => player.clone()), inventory = createInventoryStore([]);
   for (const definition of Object.values(DEFINITIONS)) registry.registerPrefabs(definition);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   return { scene, awake, prefabs, registry, inventory, save,
     spawn: (id: RuinsStatueId, position: THREE.Vector3, record?: EntitySaveRecord) => prefabs.spawnAs(RuinsStatueInstance, id, position, record),

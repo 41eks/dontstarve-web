@@ -120,8 +120,8 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
 
     const save = structuredClone(initialWorld) as unknown as SaveDocument;
     save.world.entities = { lightning_rod: [{ ...structuredClone(saved), transform: { ...saved.transform, position: [...saved.transform.position] } }] };
-    save.players.local.inventory.containers = { 'player:inventory': { slotCount: 15, slots: [] }, 'player:equipment': { slotCount: 3, slots: [] } };
-    save.players.local.inventory.bufferedBuilds = [];
+    save.players.local.inventory = { items: {}, equip: {} };
+    save.players.local.builder = { bufferedBuilds: [] };
     const record = deserializeSave(JSON.stringify(save), { items: {}, skins: {}, recipes: {}, recipeSkins: {},
       buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) }).world.entities.lightning_rod[0];
     const restored = await placement.spawnFromSave(LIGHTNING_ROD_ID, record);

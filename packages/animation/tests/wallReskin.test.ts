@@ -200,7 +200,7 @@ it('c_spawn places walls by their world and item IDs, and c_save reloads one res
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       json = serializeSave(template, { entities: { ...template.world.entities, ...first.registry.exportRecords() },
-        inventory: inventory.exportState(), playerTransform: { position: [3, 0, -6], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
+        inventory: inventory.exportSaved(), playerTransform: { position: [3, 0, -6], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG).world.entities.wall_stone!;
     expect(saved[0]).toEqual({ ...spawned.record, components: { health: { current: 200, maximum: 400 }, wall: { skinId: 'wall_stone_an' } } });

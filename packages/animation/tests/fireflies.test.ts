@@ -440,7 +440,7 @@ describe('real fireflies archive and ground transfers', () => {
     expect(scene.children).toHaveLength(0);
     const entity = manager.entities.create(definition);
     expect(await manager.drop(definition, new THREE.Vector3(8, 0, 9), () => entity)).toBe(true);
-    expect(manager.exportRecords().map(r => r.components.stack!.count)).toEqual([1, 1]);
+    expect(manager.groundStacks().map(stack => stack.count)).toEqual([1, 1]);
     const records = manager.exportRecords();
     expect(records[0].id).toBe(entity.id);
     expect(records[1].id).not.toBe(entity.id);

@@ -14,7 +14,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -45,7 +45,7 @@ function setup() {
   registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords().map(({ record }) => record), ...ground.exportEntities() },
-    inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+    inventory: inventory.exportSaved(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(bushes).update(seconds); };
   return { inventory, scene, physics, scheduler, season, snowLevel, ground, bushes, registry, save, advance,
     picker: { giveItem: (id: string, count: number) => inventory.add(id, count) },
@@ -98,10 +98,10 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
     const position = new THREE.Vector3(24, 0, 36);
     await drawn(s.bushes.spawn('rock_avocado_bush', position).transform.model);
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
-    const loot = s.ground.exportRecords();
-    expect(loot.map(record => record.components.stack?.itemId)).toEqual([
+    const loot = s.ground.groundStacks();
+    expect(loot.map(stack => stack.itemId)).toEqual([
       'rock_avocado_fruit', 'rock_avocado_fruit', 'rock_avocado_fruit', 'dug_rock_avocado_bush']);
-    expect(loot.map(record => record.components.stack?.count)).toEqual([1, 1, 1, 1]);
+    expect(loot.map(stack => stack.count)).toEqual([1, 1, 1, 1]);
     expect(s.physics.bodies).toHaveLength(0);
     const item = s.inventory.entities.create({ itemId: 'dug_rock_avocado_bush', count: 2 }); s.inventory.GiveItem(item);
     const root = s.inventory.extract(inventorySlotAddress(0), 1, item)!;
@@ -138,7 +138,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
     expect(witherable!.IsWithered()).toBe(false);
     witherable!.ForceWither();
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
-    expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.itemId)).toEqual(['twigs', 'twigs']);
+    expect(s.ground.groundStacks().slice(-2).map(stack => stack.itemId)).toEqual(['twigs', 'twigs']);
     s.advance(10000); expect(s.bushes.exportRecords().map(({ record }) => record)).toEqual([]); expect(s.physics.bodies).toHaveLength(0);
   } finally { s.dispose(); restored.dispose(); }
 });
@@ -159,16 +159,16 @@ it('exports and reloads debug commands, roots and fruit; a saved burning mature 
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.rock_avocado_bush[0];
     expect(record.id).toBe(beforeBurn.id); expect(record.transform).toEqual(beforeBurn.transform);
     expect(record.components.burning).toBe(true);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     await drawn(restored.bushes.restore('rock_avocado_bush', record).transform.model);
     expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
-    expect(restored.ground.exportRecords().slice(-4).map(item => item.components.stack?.itemId)).toEqual([
+    expect(restored.ground.groundStacks().slice(-4).map(stack => stack.itemId)).toEqual([
       'rock_avocado_fruit', 'rock_avocado_fruit', 'rock_avocado_fruit', 'ash']);
     s.advance(20); expect(s.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
-    expect(s.ground.exportRecords().slice(-4).map(item => item.components.stack?.itemId)).toEqual([
+    expect(s.ground.groundStacks().slice(-4).map(stack => stack.itemId)).toEqual([
       'rock_avocado_fruit', 'rock_avocado_fruit', 'rock_avocado_fruit', 'ash']);
   } finally { s.dispose(); restored.dispose(); }
 });

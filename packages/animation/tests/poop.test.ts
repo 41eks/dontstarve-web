@@ -126,7 +126,7 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     expect(mesh.parent!.renderOrder).toBe(2);
     expect(entries.find(entry => entry.object === flies)!.footPosition.toArray()).toEqual([0, 0, 0]);
     const [saved] = JSON.parse(JSON.stringify(manager.exportRecords()));
-    expect(saved).toMatchObject({ id: 'poop-identity', transform: { position: [0, 0, 0] }, components: { stack: { itemId: 'poop', count: 3 } } });
+    expect(saved).toMatchObject({ id: 'poop-identity', transform: { position: [0, 0, 0] }, components: { stackable: { stack: 3 } } });
     const entity = itemAt(model);
     expect(inventory.GiveItem(entity)).toBe(true);
     expect([...manager.iteratePrefabPositions('poop')]).toEqual([]);

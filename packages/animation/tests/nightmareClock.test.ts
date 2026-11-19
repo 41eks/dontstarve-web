@@ -124,7 +124,7 @@ describe('world nightmare clock', () => {
     const saved = cave.nightmareclock!.OnSave();
     const inventory = createInventoryStore([]);
     const json = serializeSave(template, {
-      entities: {}, inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 }, nightmareclock: saved,
+      entities: {}, inventory: inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 }, nightmareclock: saved,
     }, SAVE_CATALOG);
     inventory.dispose();
     expect(deserializeSave(json, SAVE_CATALOG).world.systems.nightmareclock).toEqual(saved);

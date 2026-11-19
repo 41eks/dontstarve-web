@@ -64,7 +64,7 @@ def moonbase_components(data, context):
                 or work.get('workleft', 4) <= 0:
             raise ValueError('Unsupported moonbase staff')
         state['staff'] = context['item'](staff, 'staff')
-        if state['staff'] is None or state['staff']['count'] != 1:
+        if state['staff'] is None or 'stackable' in state['staff']['components']:
             raise ValueError('Expected one supported moonbase staff')
     timer = data.get('timer')
     if timer is not None:
@@ -82,7 +82,7 @@ def moonbase_components(data, context):
                     or not 0 <= entry['timeleft'] <= entry['initial_time'] <= limits[name]:
                 raise ValueError(f'Unsupported moonbase {name} timer')
         charging = {'moonchargepre', 'mooncharge', 'mooncharge2', 'mooncharge3'} & timers.keys()
-        if (charging and state.get('staff', {}).get('itemId') != 'yellowstaff') \
+        if (charging and state.get('staff', {}).get('prefab') != 'yellowstaff') \
                 or ('moonchargepre' in timers and 'mooncharge' in timers) \
                 or ({'mooncharge2', 'mooncharge3'} & timers.keys() and 'mooncharge' not in timers) \
                 or {'mooncharge2', 'mooncharge3'} <= timers.keys():

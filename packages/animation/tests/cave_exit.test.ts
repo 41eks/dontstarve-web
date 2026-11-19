@@ -31,7 +31,7 @@ function setup(shard?: WorldMigratorShard) {
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(5, 0, 7));
   registry.registerPrefabs(PREFAB_DEFINITIONS.caveExits);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const exits = () => scene.children.map(model => prefabInstance<CaveExitInstance>(model)!).filter(inst => inst?.prefab === CAVE_EXIT_ID);
   return { scene, physics, prefabs, registry, inventory, save, exits,

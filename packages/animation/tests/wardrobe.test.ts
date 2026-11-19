@@ -92,7 +92,7 @@ it('c_spawn wardrobes save in the building shape and reload', async () => {
   const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);
   let exported = '';
   expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-    exported = serializeSave(template, { entities: { ...template.world.entities, ...registry.exportRecords() }, inventory: inventory.exportState(),
+    exported = serializeSave(template, { entities: { ...template.world.entities, ...registry.exportRecords() }, inventory: inventory.exportSaved(),
       playerTransform: { position: [0, 0, 0], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
   })).ok).toBe(true);
   const records = deserializeSave(exported, SAVE_CATALOG).world.entities.wardrobe;

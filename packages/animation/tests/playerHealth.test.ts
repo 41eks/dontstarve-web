@@ -96,7 +96,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
     expect(health.currenthealth).toBe(112.5);
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     const saved = deserializeSave(serializeSave(template, { entities: {}, elapsedSeconds: 3,
-      playerTransform: { position: [12, 0, 0], rotationY: 0 }, inventory: inventory.exportState(),
+      playerTransform: { position: [12, 0, 0], rotationY: 0 }, inventory: inventory.exportSaved(),
       playerStats: { health: health.currenthealth, penalty: health.penalty, hunger: stats.hunger.current, sanity: stats.sanity.current },
       playerGhost: ghost.peek(),
     }, SAVE_CATALOG), SAVE_CATALOG);

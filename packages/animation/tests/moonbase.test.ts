@@ -32,7 +32,7 @@ import { MoonbaseEffects } from '../../prefab/src/moonbaseFx';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { SpriteResources, SpriteState } from '@dontstarve-web/display';
 import { FRAMES } from '../../stategraphs/src/stategraph';
-import { createInventoryStore, testItem, testItemRegistry } from './testInventory';
+import { createInventoryStore, testItem, testRestoreItem, testItemRegistry } from './testInventory';
 
 const components = (model: THREE.Object3D) => prefabInstance(model)!.components;
 /** The moonbase's state, read the same way at each assertion. */
@@ -65,7 +65,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   const world = {
     scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
-    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), spawnItem: testItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), spawnItem: testItem, restoreItem: testRestoreItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
   world.player.position.set(30, 0, 40);
   const consume = vi.fn(() => false);
   const placement = managedBuildings(world, { consume });
@@ -98,11 +98,8 @@ it('spawns moonbase through the debug command using its source art and restores 
   save.world.entities = { moonbase: [{
     ...record, transform: { ...record.transform, position: [...record.transform.position] },
   }] };
-  save.players.local.inventory.containers = {
-    'player:inventory': { slotCount: 15, slots: [] },
-    'player:equipment': { slotCount: 3, slots: [] },
-  };
-  save.players.local.inventory.bufferedBuilds = [];
+  save.players.local.inventory = { items: {}, equip: {} };
+  save.players.local.builder = { bufferedBuilds: [] };
   const parsed = deserializeSave(JSON.stringify(save), {
     items: {}, skins: {}, recipes: {}, recipeSkins: {},
     buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls),
@@ -120,7 +117,7 @@ async function createMoonbase(options: Partial<WorldContext> = {}, saved?: Param
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), ground: new THREE.Group(),
     camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
-    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options, spawnItem: testItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options, spawnItem: testItem, restoreItem: testRestoreItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   if (saved) placement.spawnFromSave('moonbase', saved); else await placement.spawn('moonbase');
   const model = world.scene.children[0] as THREE.Group;
@@ -193,11 +190,11 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(play).toHaveBeenLastCalledWith('dontstarve/common/together/moonbase/moonstaff_place', model.position);
 
     const [{ record }] = placement.exportRecords();
-    expect(record.components.moonbase?.staff).toEqual(staff.snapshot());
+    expect(record.components.moonbase?.staff).toEqual(staff.GetSaveRecord());
     const save = structuredClone(initialWorld) as unknown as SaveDocument;
     save.world.entities = { moonbase: [{ ...record, transform: { ...record.transform, position: [...record.transform.position] } }] };
-    for (const container of Object.values(save.players.local.inventory.containers)) container.slots = [];
-    save.players.local.inventory.bufferedBuilds = [];
+    save.players.local.inventory = { items: {}, equip: {} };
+    save.players.local.builder = { bufferedBuilds: [] };
     const parsed = deserializeSave(JSON.stringify(save), SAVE_CATALOG);
     const restored = await placement.spawnFromSave('moonbase', parsed.world.entities.moonbase[0]);
     expect(components(restored).repairable).toBeUndefined();
@@ -250,8 +247,8 @@ it('charges through three source stages, restores the remaining timers and morph
   expect(record.components.moonbase?.timer?.timers).not.toHaveProperty('mooncharge2');
   const save = structuredClone(initialWorld) as unknown as SaveDocument;
   save.world.entities = { moonbase: [{ ...record, transform: { ...record.transform, position: [...record.transform.position] } }] };
-  for (const container of Object.values(save.players.local.inventory.containers)) container.slots = [];
-  save.players.local.inventory.bufferedBuilds = [];
+  save.players.local.inventory = { items: {}, equip: {} };
+  save.players.local.builder = { bufferedBuilds: [] };
   const parsed = deserializeSave(JSON.stringify(save), SAVE_CATALOG);
   stop(); placement.dispose(); scheduler.dispose(); rock.destroy();
 
@@ -265,7 +262,7 @@ it('charges through three source stages, restores the remaining timers and morph
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(next.charge.peek()).toBe('charging_2');
     expect(findActionEntity(restored.model)!.hasTag('intense')).toBe(true);
-    expect(next.staff.peek()?.snapshot()).toEqual(record.components.moonbase?.staff);
+    expect(next.staff.peek()?.GetSaveRecord()).toEqual(record.components.moonbase?.staff);
     expect(restored.placement.renderEntities.filter(entry => lookupPrefabInstance(entry.object)?.prefab?.startsWith('positron')).map(entry => 'sortLayer' in entry ? entry.sortLayer : undefined).sort()).toEqual([0, 2, 3]);
     restoredScheduler.advance(18.7);
     expect(next.charge.peek()).toBe('charging_3');

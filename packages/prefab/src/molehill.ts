@@ -2,12 +2,12 @@ import { addComponent } from './components';
 import type * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
 import { createEffect, WorldContentKey } from '@dontstarve-web/signals';
-import type { InventoryStack, ItemEntity } from '@dontstarve-web/inventory';
+import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Inventory } from '../../componets/src/inventory';
 import { Spawner } from '../../componets/src/spawner';
 import { Workable } from '../../componets/src/workable';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { EntityPersistData } from './saveRecord';
+import type { EntityPersistData, HeldEntityRecord } from './saveRecord';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { ReadonlyVector3 } from './transform';
 import type { WorldFx } from './world_fx';
@@ -16,7 +16,8 @@ import { BindMoleWorld, Mole, OnHomeDugUp, configureMoleEntity, type MoleWorld }
 export const MOLEHILL_ID = 'molehill' as const;
 // tuning.lua: day_time = 10 * 30; MOLE_RESPAWN_TIME = day_time * 4.
 export const MOLE_RESPAWN_TIME = 1200;
-export interface MolehillSave { items: InventoryStack[]; child?: InventoryStack; childid?: string; startdelay?: number }
+/** spawner.lua OnSave: the occupant's GetSaveRecord, the GUID of a living child outside, or the spawn delay. */
+export interface SpawnerSave { child?: HeldEntityRecord; childid?: string; startdelay?: number }
 
 /** What the scene gives the moles and their hills; hills and move FX are spawned through the shared prefab manager. */
 export interface MoleHabitatServices extends Omit<MoleWorld, 'getMoles' | 'makeHome' | 'registerMole' | 'spawnMoveFx'>, ToolMouseTargetWorld {
@@ -81,6 +82,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     // LAYER_BACKGROUND, sort order 3: the mound stays upright, above the turf and behind what stands on it.
     this.sprite.setLayer('background'); this.sprite.setMeshOrder(-.5);
     this.cycle = world.getWatchWorldContent(WorldContentKey.Cycle, stop => this.onRemove(stop));
+    this.worldServices = { ...this.worldServices, restoreItem: record => world.restoreItem(record) };
     const inventory = addComponent(this, 'inventory', Inventory, 50, world.dropItem, world.itemSpecs);
     const spawner = addComponent(this, 'spawner', Spawner<Mole>, this.cycle.scheduler, () => {
       const mole = world.spawnItem({ itemId: 'mole', count: 1 });
@@ -140,25 +142,23 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     this.components.inventory.DropEverything(); this.remove();
   }
 
-  /** The record keeps the inventory and spawner saves together under `molehill`. */
+  /** The inventory saves itself; spawner.lua OnSave writes the child under `spawner`. */
   override OnSave(_inst: unknown, data: EntityPersistData): void {
-    const { spawner, inventory } = this.components;
-    delete data.inventory;
-    data.molehill = { items: inventory.OnSave(),
-      ...(spawner.IsOccupied() ? { child: spawner.child!.snapshot() }
-        : spawner.child && !spawner.child.components.health.IsDead() ? { childid: spawner.child.id }
-        : this.pendingChildId ? { childid: this.pendingChildId }
-        : spawner.remainingSeconds === undefined ? {} : { startdelay: spawner.remainingSeconds }) };
+    const { spawner } = this.components;
+    data.spawner = spawner.IsOccupied() ? { child: spawner.child!.GetSaveRecord() }
+      : spawner.child && !spawner.child.components.health.IsDead() ? { childid: spawner.child.id }
+      : this.pendingChildId ? { childid: this.pendingChildId }
+      : spawner.remainingSeconds === undefined ? {} : { startdelay: spawner.remainingSeconds };
   }
 
+  /** spawner.lua OnLoad: SpawnSaveRecord of the occupant, the living child's relink, or the spawn delay. */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
-    const saved = data.molehill;
+    const saved = data.spawner;
     if (!saved) return;
-    const { spawner, inventory } = this.components, world = this.world;
-    inventory.OnLoad(saved.items, world.spawnItem);
+    const { spawner } = this.components, world = this.world;
     if (saved.child) {
       spawner.CancelSpawning();
-      const child = world.spawnItem(saved.child);
+      const child = world.restoreItem(saved.child);
       if (!(child instanceof Mole)) throw new Error('SpawnPrefab("mole") made no mole');
       configureMoleEntity(child); BindMoleWorld(child, world);
       const position = this.getPosition();

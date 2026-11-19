@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
-"""DST inventory item save records -> project InventoryStack, shared by the player and item containers."""
+"""DST inventory item save records -> the project's held records, shared by the player and item containers.
 
-BACKPACK_SLOT_COUNT = 8
+An item keeps GetSaveRecord's shape: its prefab, its skinname and the records of the components the project's item has
+(stackable, finiteuses, fueled, perishable, inventoryitemmoisture, container), as packages/prefab/src/saveRecord.ts
+HeldEntityRecord declares it.
+"""
 
 
 def lua_slots(items, path):
@@ -13,8 +16,47 @@ def lua_slots(items, path):
     return sorted(items.items())
 
 
+def item_components(prefab, data, spec, path, entity_id, catalog, report):
+    """An item's component records the project keeps, and the names of the ones it drops."""
+    components, dropped = {}, []
+    count = (data.get('stackable') or {}).get('stack', 1)
+    if type(count) is not int or not 1 <= count <= spec['maxStack']:
+        raise ValueError(f'{path}: stack {count} exceeds {prefab} maxStack {spec["maxStack"]}')
+    if count != 1:
+        components['stackable'] = {'stack': count}
+    for component, value in data.items():
+        if component == 'stackable':
+            continue
+        if component == 'finiteuses' and 'maxUses' in spec:
+            uses, step = value['uses'], spec.get('useStep', 1)
+            if not step <= uses <= spec['maxUses'] or uses / step != round(uses / step):
+                raise ValueError(f'{path}: {prefab} uses {uses} outside the project durability')
+            components['finiteuses'] = {'uses': uses}
+        elif component == 'fueled' and 'maxFuel' in spec:
+            fuel = value.get('fuel')
+            if fuel is None:
+                continue
+            if not 0 <= fuel <= spec['maxFuel']:
+                raise ValueError(f'{path}: {prefab} fuel {fuel} outside the project fuel')
+            components['fueled'] = {'fuel': fuel}
+        elif component == 'perishable' and 'perishTime' in spec and value.get('time') is not None:
+            # perishremainingtime, bounded by the project's perishable:SetPerishTime.
+            components['perishable'] = {'time': min(value['time'], spec['perishTime']), **({'paused': True} if value.get('paused') else {})}
+        elif component == 'inventoryitemmoisture':
+            moisture = {**({'moisture': min(max(value['moisture'], 0), 100)} if value.get('moisture') else {}),
+                        **({'wet': True} if value.get('wet') else {})}
+            if moisture:
+                components['inventoryitemmoisture'] = moisture
+        elif component == 'container' and 'containerSlots' in spec:
+            components['container'] = convert_slots(value.get('items', {}), f'{path}.container', spec['containerSlots'],
+                                                    entity_id, catalog, report)
+        else:
+            dropped.append(component)
+    return components, dropped
+
+
 def convert_item(record, path, entity_id, catalog, report):
-    """GetSaveRecord of an inventory item -> InventoryStack; unsupported items and components are reported."""
+    """GetSaveRecord of an inventory item -> held record; unsupported items and components are reported."""
     prefab = record.get('prefab')
     spec = catalog['items'].get(prefab)
     if spec is None:
@@ -23,51 +65,23 @@ def convert_item(record, path, entity_id, catalog, report):
     data = record.get('data') or {}
     if not isinstance(data, dict):
         raise ValueError(f'Expected component data at {path}')
-    item, dropped = {'entityId': entity_id, 'itemId': prefab}, []
-    count = (data.get('stackable') or {}).get('stack', 1)
-    if type(count) is not int or not 1 <= count <= spec['maxStack']:
-        raise ValueError(f'{path}: stack {count} exceeds {prefab} maxStack {spec["maxStack"]}')
-    item['count'] = count
+    item, dropped = {'id': entity_id, 'prefab': prefab}, []
     skin = record.get('skinname')
     if skin is not None:
         if skin in catalog['skins'] and catalog['skins'][skin] in (None, prefab):
-            item['skinId'] = skin
+            item['skinname'] = skin
         else:
             dropped.append('skinname')
-    for component, value in data.items():
-        if component == 'stackable':
-            continue
-        if component == 'finiteuses' and 'maxUses' in spec:
-            uses, step = value['uses'], spec.get('useStep', 1)
-            if not step <= uses <= spec['maxUses'] or uses / step != round(uses / step):
-                raise ValueError(f'{path}: {prefab} uses {uses} outside the project durability')
-            item['remainingUses'] = uses
-        elif component == 'fueled' and 'maxFuel' in spec:
-            fuel = value.get('fuel', spec['maxFuel'])
-            if not 0 <= fuel <= spec['maxFuel']:
-                raise ValueError(f'{path}: {prefab} fuel {fuel} outside the project fuel')
-            item['remainingFuel'] = fuel
-        elif component == 'perishable' and 'perishTime' in spec and value.get('time') is not None:
-            # perishremainingtime -> remaining fraction of perishable:SetPerishTime.
-            if value.get('paused'):
-                dropped.append('perishable.paused')
-            item['freshnessPercent'] = min(value['time'] / spec['perishTime'], 1)
-        elif component == 'inventoryitemmoisture':
-            if value.get('wet'):
-                item['wet'] = True
-        elif component == 'container' and prefab == 'backpack':
-            item['container'] = convert_slots(value.get('items', {}), f'{path}.container', BACKPACK_SLOT_COUNT,
-                                              entity_id, catalog, report)
-        else:
-            dropped.append(component)
+    item['components'], dropped_components = item_components(prefab, data, spec, path, entity_id, catalog, report)
+    dropped += dropped_components
     if dropped:
         report['droppedComponents'].append({'path': path, 'prefab': prefab, 'components': dropped})
     return item
 
 
 def convert_slots(items, path, slot_count, entity_prefix, catalog, report):
-    """Container:OnSave items -> saved container slots; items that cannot go in a container are reported."""
-    slots = []
+    """Container:OnSave items -> held records by one-based slot; items that cannot go in a container are reported."""
+    converted_items = {}
     for slot, child in lua_slots(items, path):
         child_path = f'{path}.{slot}'
         if slot > slot_count:
@@ -75,8 +89,9 @@ def convert_slots(items, path, slot_count, entity_prefix, catalog, report):
         converted = convert_item(child, child_path, f'{entity_prefix}_{slot - 1}', catalog, report)
         if converted is None:
             continue
-        if converted['itemId'] == 'backpack' or catalog['items'][converted['itemId']].get('canGoInContainer') is False:
-            report['skipped'].append({'path': child_path, 'prefab': converted['itemId'], 'reason': 'cannot go in a container'})
+        spec = catalog['items'][converted['prefab']]
+        if 'containerSlots' in spec or spec.get('canGoInContainer') is False:
+            report['skipped'].append({'path': child_path, 'prefab': converted['prefab'], 'reason': 'cannot go in a container'})
             continue
-        slots.append({'slotKey': str(slot - 1), 'item': converted})
-    return {'slotCount': slot_count, 'slots': slots}
+        converted_items[str(slot)] = converted
+    return {'items': converted_items}

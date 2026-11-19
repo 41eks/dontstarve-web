@@ -7,7 +7,7 @@ import { Locomotor } from '../../prefab/src/locomotor';
 import { Pathfinder } from '../../prefab/src/pathfinder';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { savedInventoryOf } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import { importedSave } from './importedSave';
@@ -77,13 +77,12 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
     expect(save.world.entities.flower.every(entity => entity.components.flower?.planted === undefined)).toBe(true);
     expect(save.world.entities.fireflies?.length).toBeGreaterThan(0);
     // Imported chest contents stay on the chest records; each chest's container loads them when it spawns.
-    const chestSlotCounts = save.world.entities.treasurechest.map(chest => chest.components.container?.slots.length ?? 0);
+    const chestSlotCounts = save.world.entities.treasurechest.map(chest => Object.keys(chest.components.container?.items ?? {}).length);
     expect(chestSlotCounts).toHaveLength(9);
     expect(chestSlotCounts.every(count => count > 0)).toBe(true);
-    expect(inventoryStateFromSave(save).slots.every(({ address }) => address.containerId.startsWith('player:'))).toBe(true);
     const restored = deserializeSave(serializeSave(save, {
       entities: save.world.entities, tiles: map.exportTiles(), playerTransform: save.players.local.transform,
-      inventory: inventoryStateFromSave(save), elapsedSeconds: 10,
+      inventory: savedInventoryOf(save), elapsedSeconds: 10,
     }, SAVE_CATALOG), SAVE_CATALOG);
     expect(restored.world.map).toEqual(save.world.map);
     expect(restored.world.entities).toEqual(save.world.entities);

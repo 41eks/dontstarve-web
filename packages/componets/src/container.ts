@@ -1,5 +1,6 @@
 import { batch, createEffect, createSignal, readonlySignal, watchSignal, WorldContentKey, type GetWatchWorldContent, type ReadonlySignal } from '../../signals/src';
 import type { Vector3 } from 'three';
+import type { HeldEntityRecord, SlotItemsSave } from '../../prefab/src/saveRecord';
 
 /** Logical scene-container hosts/openers. Bare transform holders remain supported by detached inventories. */
 interface ContainerEntity {
@@ -28,7 +29,7 @@ interface ContainerDoer {
 /** An entity that opens the container: what container.lua reads from the doer and from each opener. */
 type ContainerOpener = ContainerEntity & ContainerDoer;
 
-/** container.lua's data.items in the save document's shape: occupied slots under zero-based keys. */
+/** The occupied slots' runtime records under zero-based keys, as a held item's snapshot carries its contents. */
 export interface ContainerSaveData<TRecord> {
   slotCount: number;
   slots: { slotKey: string; item: TRecord }[];
@@ -37,6 +38,8 @@ export interface ContainerSaveData<TRecord> {
 export interface ContainerItem<TRecord> {
   readonly isRemoved: boolean;
   snapshot(): TRecord;
+  /** EntityScript:GetSaveRecord, as container.lua OnSave writes each item. */
+  GetSaveRecord(): HeldEntityRecord;
   flush(): void;
   destroy(): void;
   /** inst:Remove() through the item's inventory owner, when the item has one. */
@@ -71,6 +74,7 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   readonly openCount = readonlySignal(this.openCountState);
   private readonly createSlot: () => TSlot;
   private readonly loadItem: (record: TRecord) => TItem;
+  private readonly restoreItem: (record: HeldEntityRecord) => TItem;
   private autoCloseWorld?: GetWatchWorldContent;
   private autoCloseDistance = 3;
   private stopPositions?: () => void;
@@ -103,10 +107,13 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     }
   }
 
-  constructor(inst: ContainerInst, createSlot: () => TSlot, loadItem: (record: TRecord) => TItem) {
+  /** `loadItem` SpawnPrefabs an item from its runtime record; `restoreItem` is SpawnSaveRecord of a saved one. */
+  constructor(inst: ContainerInst, createSlot: () => TSlot, loadItem: (record: TRecord) => TItem,
+    restoreItem: (record: HeldEntityRecord) => TItem) {
     this.inst = inst;
     this.createSlot = createSlot;
     this.loadItem = loadItem;
+    this.restoreItem = restoreItem;
   }
 
   /** Existing inventory slots back the component; no second copy of item state. */
@@ -212,8 +219,8 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
   CanOpen(): boolean { return this.openlimit === undefined || this.opencount < this.openlimit; }
   GetOpeners(): object[] { return [...this.openlist]; }
 
-  /** The occupied slots' records as they stand, for a holder snapshotted outside a save. */
-  GetSaveData(): ContainerSaveData<TRecord> {
+  /** The occupied slots' runtime records as they stand, for a holder snapshotted outside a save. */
+  GetSnapshot(): ContainerSaveData<TRecord> {
     const slots: ContainerSaveData<TRecord>['slots'] = [];
     this.slots.forEach((slot, index) => {
       const item = slot.getEntity();
@@ -222,28 +229,43 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     return { slotCount: this.numslots, slots };
   }
 
-  /** Items settle their components before a save reads them. */
-  OnSave(): ContainerSaveData<TRecord> {
-    this.flush();
-    return this.GetSaveData();
+  /** container.lua OnSave: each valid, persisting item's GetSaveRecord under its one-based slot. */
+  OnSave(): SlotItemsSave {
+    // Each item's GetPersistData settles its components first.
+    const items: SlotItemsSave['items'] = {};
+    this.slots.forEach((slot, index) => {
+      const item = slot.getEntity();
+      if (item && !item.isRemoved && (item as { persists?: boolean }).persists !== false) items[String(index + 1)] = item.GetSaveRecord();
+    });
+    return { items };
   }
 
-  /** SpawnSaveRecord is injected; loading never stores the serialized records as live items. */
-  OnLoad(data: { slots?: readonly { slotKey: string; item: TRecord }[] }): void {
-    const entries = data.slots ?? [];
-    for (const { slotKey } of entries) {
-      const slot = Number(slotKey) + 1;
-      if (!Number.isSafeInteger(slot) || slot < 1 || slot > this.numslots || String(slot - 1) !== slotKey
-        || this.GetItemInSlot(slot)) throw new RangeError(`Invalid or occupied container slot: ${slotKey}`);
+  /** container.lua OnLoad: SpawnSaveRecord of each item, then GiveItem(inst, slot). */
+  OnLoad(data: Partial<SlotItemsSave>): void {
+    this.place(Object.entries(data.items ?? {}).map(([slot, record]) => [Number(slot), () => this.restoreItem(record)]));
+  }
+
+  /** A held item's runtime snapshot of its contents, as it travels as a stack. */
+  LoadSnapshot(data: { slots?: readonly { slotKey: string; item: TRecord }[] }): void {
+    this.place((data.slots ?? []).map(({ slotKey, item }) =>
+      [String(Number(slotKey)) === slotKey ? Number(slotKey) + 1 : Number.NaN, () => this.loadItem(item)]));
+  }
+
+  /** Spawns every item before any slot changes, so a failed load leaves the container as it was. */
+  private place(entries: readonly (readonly [number, () => TItem])[]): void {
+    for (const [slot] of entries) {
+      if (!Number.isSafeInteger(slot) || slot < 1 || slot > this.numslots || this.GetItemInSlot(slot)) {
+        throw new RangeError(`Invalid or occupied container slot: ${slot}`);
+      }
     }
     const pending: { slot: TSlot; item: TItem }[] = [];
     const seen = new Set(this.GetAllItems());
     try {
-      for (const { slotKey, item: record } of entries) {
-        const item = this.loadItem(record);
+      for (const [slotNumber, load] of entries) {
+        const item = load();
         if (item.isRemoved || seen.has(item)) throw new Error('Invalid or duplicate loaded container item');
         seen.add(item);
-        pending.push({ slot: this.slots[Number(slotKey)], item });
+        pending.push({ slot: this.slots[slotNumber - 1], item });
       }
     } catch (error) {
       for (const { item } of pending) item.destroy();

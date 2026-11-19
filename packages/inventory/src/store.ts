@@ -5,7 +5,8 @@ import {
   batch, createEquipmentExistenceState, createSignal, readonlySignal,
   type Equipment, type EquipmentSlot, type HandEquipment, type HeadEquipment, type BodyEquipment, type ReadonlySignal, type Signal,
 } from '@dontstarve-web/signals';
-import { PLAYER_INVENTORY_CONTAINER_ID, EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, PLAYER_EQUIPMENT_CONTAINER_ID, BACKPACK_SLOT_COUNT } from './addresses';
+import type { PlayerInventorySave } from '../../prefab/src/saveRecord';
+import { inventorySlotAddress, PLAYER_INVENTORY_CONTAINER_ID, EQUIPMENT_KINDS, equipmentSlotAddress, cursorSlotAddress, PLAYER_CURSOR_CONTAINER_ID, backpackContainerId, backpackSlotAddress, isBackpackContainerId, PLAYER_EQUIPMENT_CONTAINER_ID, BACKPACK_SLOT_COUNT } from './addresses';
 import { InventorySlot, StorageSlot, type ItemSlot } from './slots';
 import { PreparedFoodSlot } from './preparedFoodSlot';
 import type { Container, ContainerInst } from '../../componets/src/container';
@@ -82,6 +83,22 @@ function randomDropLaunch(heavy: boolean, random = Math.random): DropLaunch {
   const speed = (heavy ? 1 : 2) + random();
   const angle = random() * Math.PI * 2;
   return { angle: -angle, height: heavy ? .5 : 1, speed: { min: speed, range: 0 }, ySpeed: { min: speed * 3, range: 0 } };
+}
+
+/** inventory.lua's EQUIPSLOTS names, which the player's save keys its equip records by. */
+const LUA_EQUIP_SLOTS: Readonly<Record<EquipmentKind, string>> = { hand: 'hands', body: 'body', head: 'head' };
+
+/** The restored insts and everything their containers and inventories hold. */
+function heldTree(entities: readonly ItemEntity[]): Set<ItemEntity> {
+  const tree = new Set<ItemEntity>();
+  const visit = (entity: ItemEntity) => {
+    if (tree.has(entity)) return;
+    tree.add(entity);
+    for (const slot of entity.components.container?.slots ?? []) { const child = slot.getEntity(); if (child) visit(child); }
+    for (const child of entity.components.inventory?.GetItems() ?? []) visit(child);
+  };
+  entities.forEach(visit);
+  return tree;
 }
 
 export class InventoryStore {
@@ -417,10 +434,57 @@ export class InventoryStore {
     };
   }
 
-  /** Validates the whole replacement before updating any slots or notifying UI. */
+  /**
+   * inventory.lua OnSave of the player: each held item's GetSaveRecord under its one-based slot, its equip slot or the
+   * cursor's activeitem. A worn backpack's contents save inside its own record; the buffered builds are the builder's.
+   */
+  exportSaved(): { inventory: PlayerInventorySave; bufferedBuilds: InventoryState['bufferedBuilds'] } {
+    const inventory: PlayerInventorySave = { items: {}, equip: {} };
+    for (const { address, slot } of this.playerRegistrations()) {
+      const entity = slot.getEntity();
+      if (!entity || entity.isRemoved || !entity.persists || isBackpackContainerId(address.containerId)) continue;
+      const record = entity.GetSaveRecord();
+      if (address.containerId === PLAYER_INVENTORY_CONTAINER_ID) inventory.items[String(Number(address.slotKey) + 1)] = record;
+      else if (address.containerId === PLAYER_EQUIPMENT_CONTAINER_ID) inventory.equip[LUA_EQUIP_SLOTS[address.slotKey as EquipmentKind]] = record;
+      else if (address.containerId === PLAYER_CURSOR_CONTAINER_ID) inventory.activeitem = record;
+    }
+    return { inventory, bufferedBuilds: this.exportState().bufferedBuilds };
+  }
+
+  /** inventory.lua OnLoad of the player: SpawnSaveRecord of each item, given back to its saved slot in one commit. */
+  loadSaved(saved: PlayerInventorySave, bufferedBuilds: InventoryState['bufferedBuilds'],
+    recipes: Readonly<Record<string, InventoryRecipeDefinition>>): void {
+    const placed: { address: SlotAddress; record: import('../../prefab/src/saveRecord').HeldEntityRecord }[] = [
+      ...Object.entries(saved.items).map(([slot, record]) => ({ address: inventorySlotAddress(Number(slot) - 1), record })),
+      ...Object.entries(saved.equip).map(([equipslot, record]) => {
+        const kind = EQUIPMENT_KINDS.find(known => LUA_EQUIP_SLOTS[known] === equipslot);
+        if (!kind) throw new Error(`Unknown equip slot: ${equipslot}`);
+        return { address: equipmentSlotAddress(kind), record };
+      }),
+      ...saved.activeitem ? [{ address: cursorSlotAddress(), record: saved.activeitem }] : [],
+    ];
+    const restored: ItemEntity[] = [];
+    try {
+      const slots = placed.map(({ address, record }) => {
+        const entity = this.entities.restore(record);
+        restored.push(entity);
+        return { address, item: entity.snapshot() };
+      });
+      this.replaceState({ slots, bufferedBuilds }, recipes, heldTree(restored));
+    } catch (error) {
+      for (const entity of restored) if (!entity.isRemoved && !entity.components.inventoryitem.owner) this.entities.destroy(entity);
+      throw error;
+    }
+  }
+
+  /**
+   * Validates the whole replacement before updating any slots or notifying UI. `restored` are the insts a load has just
+   * made for these slots, which belong to no holder yet.
+   */
   replaceState(
     state: InventoryState,
     recipes: Readonly<Record<string, InventoryRecipeDefinition>>,
+    restored: ReadonlySet<ItemEntity> = new Set(),
   ): void {
     const next = new Map<string, InventoryStack | null>(
       this.playerRegistrations().map(({ address }) => [addressKey(address), null]),
@@ -452,7 +516,7 @@ export class InventoryStore {
             || this.requireItemSpec(child.itemId).canGoInContainer === false) throw new Error('Invalid container slot');
           keys.add(slotKey);
           const existing = child.entityId ? this.entities.get(child.entityId) : undefined;
-          if (existing && !this.registrations.some(({ slot }) => slot.getEntity() === existing)) {
+          if (existing && !restored.has(existing) && !this.registrations.some(({ slot }) => slot.getEntity() === existing)) {
             throw new Error(`Item entity already belongs to the world: ${child.entityId}`);
           }
           validateItem(child);
@@ -473,7 +537,7 @@ export class InventoryStore {
         }
         validateItem(item);
         const existing = item.entityId ? this.entities.get(item.entityId) : undefined;
-        if (existing && !this.registrations.some(({ slot }) => slot.getEntity() === existing)) {
+        if (existing && !restored.has(existing) && !this.registrations.some(({ slot }) => slot.getEntity() === existing)) {
           throw new Error(`Saved item entity already belongs to the world: ${item.entityId}`);
         }
       }

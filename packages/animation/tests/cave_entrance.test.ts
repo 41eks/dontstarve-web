@@ -42,7 +42,7 @@ function setup(world: Partial<CaveEntranceWorld> & { tickingarea?: TileStateQuer
   registry.registerPrefabs(PREFAB_DEFINITIONS.caveEntrances);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: registry.exportRecords(),
-    inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+    inventory: inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   return { inventory, scene, physics, ground, caves, registry, player, save, dispose: () => { registry.dispose(); caves.dispose(); displays.dispose(); ground.dispose(); inventory.dispose(); } };
 }
 
@@ -70,7 +70,7 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     expect(open.sprite.sprite.peek()).toMatchObject({ background: true, meshOrder: -.5 });
     expect(open.sprite.sprite.peek().ground).toBeUndefined();
     expect(open.minimap.icon).toBe('cave_open.png');
-    await vi.waitFor(() => expect(s.ground.exportRecords().map(r => r.components.stack?.itemId).sort())
+    await vi.waitFor(() => expect(s.ground.groundStacks().map(stack => stack.itemId).sort())
       .toEqual(['flint', 'flint', 'flint', 'rocks', 'rocks']));
 
     let json = '';

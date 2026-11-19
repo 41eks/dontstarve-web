@@ -33,7 +33,8 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
-import { createInventoryStore, testItem } from './testInventory';
+import { createInventoryStore, testItem, testSavedItem } from './testInventory';
+import type { HeldEntityRecord } from '../../prefab/src/saveRecord';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -46,11 +47,17 @@ async function fixture(daytime = false) {
   const scheduler = new GameTimeScheduler(), cycle = createSignal<WorldPhase>(daytime ? 'day' : 'dusk'), heading = createSignal(0), awake = createSignal(true);
   const items: ItemEntity[] = [], drops: { entity?: ItemEntity; prefab: string; position: THREE.Vector3 }[] = [];
   const spawnItem = (state: InventoryStack) => {
-    const item = state.itemId === 'mole' ? new Mole(state, undefined, testItem) : testItem(state); items.push(item);
+    const item = state.itemId === 'mole' ? new Mole(state, undefined, testSavedItem) : testItem(state); items.push(item);
     if (item instanceof Mole) { MakeMole(item); configureMoleEntity(item); } else configureMoleBaitEntity(item);
     // The item registry binds each inst to the world's scheduler; TheSim: the moles and the items they steal stand in
     // the manager that holds the hills.
     item.BindScheduler(scheduler); prefabs.track(item);
+    return item;
+  };
+  // SpawnSaveRecord: the inst, its record loaded once the item's prefab has configured it.
+  const restoreItem = (record: HeldEntityRecord) => {
+    const item = spawnItem({ itemId: record.prefab, count: 1, entityId: record.id });
+    item.SetPersistData(record.components); item.configure({});
     return item;
   };
   const sources: WorldContentEnvironment = { ...createTestWorldSources(scheduler), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
@@ -64,7 +71,8 @@ async function fixture(daytime = false) {
   const habitat = createMoleHabitat({
     getWatchWorldContent: watch, cameraHeading: heading, isWalkable: () => true,
     spawnPrefab: (prefab, position) => molehill(prefabs.spawn(prefab, position)), fx: { spawn: fx },
-    spawnItem, dropItem: (entity, position) => { entity.transform.copyPosition(position); entity.PushEvent('ondropped', undefined); drops.push({ entity, prefab: entity.prefab, position: position.clone() }); },
+    spawnItem, restoreItem,
+    dropItem: (entity, position) => { entity.transform.copyPosition(position); entity.PushEvent('ondropped', undefined); drops.push({ entity, prefab: entity.prefab, position: position.clone() }); },
     showMole: () => undefined, dropLoot: (prefab, position) => drops.push({ prefab, position }),
   });
   prefabs.register(molehillPrefabs(habitat));
@@ -110,9 +118,10 @@ it('uses the Lua brain to steal minerals, build a home and deposit the same item
   f.cycle.set('day'); await settle();
   await f.advance(25);
   const record = f.hills()[0];
-  expect(record.components.molehill!.items.map(e => e.entityId)).toContain(id);
-  expect(record.components.molehill!.child?.entityId).toBe(mole.id);
-  expect(record.components.molehill!.child?.mole?.health).toBe(30);
+  // The hill's inventory saves the stolen items; spawner.lua saves the occupant's GetSaveRecord.
+  expect(Object.values(record.components.inventory?.items ?? {}).map(item => item.id)).toContain(id);
+  expect(record.components.spawner!.child?.id).toBe(mole.id);
+  expect(record.components.spawner!.child?.components.health).toMatchObject({ health: 30 });
   expect(mole.hasTag('INLIMBO')).toBe(true);
   f.dispose();
 });
@@ -222,11 +231,12 @@ it('c_spawn and c_save keep a hill whose child is outside, which reclaims that m
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   let json = '';
   expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-    json = serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+    json = serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   })).ok).toBe(true);
   const { entities } = deserializeSave(json, SAVE_CATALOG).world, moleId = mole.id;
-  expect(entities.molehill).toEqual([expect.objectContaining({ id, components: { molehill: { items: [], childid: moleId } } })]);
+  // spawner.lua OnSave: the GUID of the living child outside; the empty inventory writes nothing.
+  expect(entities.molehill).toEqual([expect.objectContaining({ id, components: { spawner: { childid: moleId } } })]);
   registry.dispose(); f.dispose(); inventory.dispose();
 
   const restored = await fixture(true), restoredRegistry = new EntityRegistry([], restored.prefabs, () => new THREE.Vector3());
@@ -236,7 +246,8 @@ it('c_spawn and c_save keep a hill whose child is outside, which reclaims that m
   expect(loaded.position.toArray()).toEqual([6, 0, 3]);
   expect(loaded.components.spawner.child).toBeUndefined();
   // The saved childid is kept until the mole joins, as OnLoadPostPass's newents lookup.
-  expect(restored.hills()[0].components.molehill).toEqual({ items: [], childid: moleId });
+  expect(restored.hills()[0].components.spawner).toEqual({ childid: moleId });
+  expect(restored.hills()[0].components.inventory).toBeUndefined();
   const child = restored.mole(new THREE.Vector3(9, 0, 3), moleId);
   expect(loaded.components.spawner.child).toBe(child);
   expect(child.home).toBe(loaded);
@@ -303,7 +314,7 @@ it('spawns a mole as its own entity, whose brain stops while it is held and is r
   const habitat = (store: typeof inventory) => createMoleHabitat({
     getWatchWorldContent: watch, cameraHeading: createSignal(0), isWalkable: () => true,
     spawnPrefab: () => { throw new Error('no molehill in this test'); }, fx: { spawn: () => undefined },
-    spawnItem: state => store.entities.create(state), dropItem: () => {}, showMole: () => undefined, dropLoot: () => {},
+    spawnItem: state => store.entities.create(state), restoreItem: record => store.entities.restore(record), dropItem: () => {}, showMole: () => undefined, dropLoot: () => {},
   });
   const fixture = (store: typeof inventory) => new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined,
     '/dst/data/databundles/images.zip', store, '/dst/data/anim', new THREE.Group(), undefined, undefined, undefined, undefined, scheduler,

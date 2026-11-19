@@ -1,13 +1,14 @@
-import { type InventoryState } from '@dontstarve-web/inventory';
+import type { InventoryStore } from '@dontstarve-web/inventory';
 import { deserializeSave, type SaveCatalog } from './deserialize';
-import type { SaveDocument, SavedContainer, SavedPlayer } from './types';
+import type { SaveDocument, SavedPlayer } from './types';
 import type { TurfTileSave } from '@dontstarve-web/prefab/turfMap';
 import type { EntitySaveRecord, SavedTransform } from '@dontstarve-web/prefab/saveRecord';
 
 export interface RuntimeSaveState {
   entities: Record<string, EntitySaveRecord[]>;
   playerTransform: SavedTransform;
-  inventory: InventoryState;
+  /** The player's inventory.lua OnSave and buffered builds: InventoryStore.exportSaved(). */
+  inventory: ReturnType<InventoryStore['exportSaved']>;
   elapsedSeconds: number;
   playerStats?: SavedPlayer['stats'];
   playerGhost?: boolean;
@@ -29,21 +30,7 @@ export function serializeSave(
 ): string {
   const nextId = Number(parentId) + 1;
   if (!Number.isSafeInteger(nextId) || nextId > 9_999_999_999) throw new Error('Snapshot 编号已用尽');
-  const containers = new Map<string, SavedContainer>();
-  const playerContainer = (id: string): SavedContainer => {
-    const container = containers.get(id);
-    if (!container) throw new Error(`The inventory state has no ${id} container`);
-    return container;
-  };
-  containers.set('player:inventory', { slotCount: 15, slots: [] });
-  containers.set('player:equipment', { slotCount: 3, slots: [] });
-  containers.set('player:cursor', { slotCount: 1, slots: [] });
   const entities = structuredClone(state.entities);
-  for (const { address, item } of state.inventory.slots) {
-    const container = containers.get(address.containerId);
-    if (!container) throw new Error(`无法保存未知的玩家容器：${address.containerId}`);
-    if (item) container.slots.push({ slotKey: address.slotKey, item: { ...item } });
-  }
   const document: SaveDocument = {
     ...structuredClone(template),
     snapshot: { id: String(nextId).padStart(10, '0'), parentId, savedAt, reason: 'manual' },
@@ -68,14 +55,8 @@ export function serializeSave(
         ...(state.playerStats === undefined ? {} : { stats: { ...state.playerStats } }),
         ...(state.playerGhost ? { ghost: true as const } : {}),
         ...(state.playerWortox === undefined ? {} : { wortox: { ...state.playerWortox } }),
-        inventory: {
-          containers: {
-            'player:inventory': playerContainer('player:inventory'),
-            'player:equipment': playerContainer('player:equipment'),
-            'player:cursor': playerContainer('player:cursor'),
-          },
-          bufferedBuilds: state.inventory.bufferedBuilds.map((build) => ({ ...build })),
-        },
+        inventory: structuredClone(state.inventory.inventory),
+        builder: { bufferedBuilds: state.inventory.bufferedBuilds.map((build) => ({ ...build })) },
       },
     },
   };

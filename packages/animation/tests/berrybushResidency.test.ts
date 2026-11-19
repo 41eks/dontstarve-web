@@ -62,7 +62,7 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
     expect(instance.sprite.fx.peek().size).toBe(0);
     expect(lookupPrefabInstance(fire.display!.model)?.status.peek()).toBe('removed');
     expect(burnable.timer.peek()).toEqual({ status: 'stopped' });
-    expect(ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['ash']);
+    expect(ground.groundStacks().map(stack => stack.itemId)).toEqual(['ash']);
     plantInstance(model).remove();
     expect(model.parent).toBeNull();
     expect(bushes.exportRecords().map(({ record }) => record)).toHaveLength(0);

@@ -3,7 +3,7 @@ import { expect, it } from 'vitest';
 import { inventorySlotAddress } from '../../inventory/src';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { Sanity } from '../../componets/src/sanity';
 import {
@@ -92,11 +92,11 @@ it('keeps its condition through re-configuration, transfers and a save round tri
     expect(hat.entity.snapshot().armor).toEqual({ condition });
     const template = importedSave('Caves');
     const saved = deserializeSave(serializeSave(template, {
-      inventory: hat.inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 }, entities: {},
+      inventory: hat.inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 }, entities: {},
     }, SAVE_CATALOG), SAVE_CATALOG);
     const restored = createInventoryStore([]);
     try {
-      restored.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+      loadSavedInventory(restored, saved, SAVE_CATALOG.recipes);
       const entity = restored.GetEquippedItem('head')!;
       expect(entity.id).toBe(hat.entity.id);
       expect(entity.components.armor!.condition.peek()).toBe(condition);

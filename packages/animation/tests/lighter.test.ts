@@ -21,7 +21,7 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
-import { testItem } from './testInventory';
+import { testItem, testRestoreItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -111,7 +111,7 @@ function structureFixture(onInteraction?: (change: PlaceableBuildingInteractionC
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createPickupInventory(), scene = new THREE.Scene(), dropLoot = vi.fn();
-  const world: WorldContext = { spawnItem: testItem, scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
+  const world: WorldContext = { spawnItem: testItem, restoreItem: testRestoreItem, scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
     registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),
@@ -153,7 +153,7 @@ it('burns an open chest through DefaultBurntStructureFn, drops its contents at i
   });
   try {
     const model = await placement.spawnFromSave('treasurechest', { id: 'open_chest', transform: { position: [3, 0, -6], rotationY: 0 }, components: {
-      building: {}, container: { slotCount: 9, slots: [{ slotKey: '0', item: { entityId: 'chest_seeds', itemId: 'seeds', count: 3 } }] },
+      building: {}, container: { items: { 1: { id: 'chest_seeds', prefab: 'seeds', components: { stackable: { stack: 3 } } } } },
     } });
     const instance = prefabInstance(model)!, burntup = vi.fn();
     instance.ListenForEvent('burntup', burntup);

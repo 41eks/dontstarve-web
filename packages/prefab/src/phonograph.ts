@@ -163,13 +163,18 @@ export function configurePhonographEntity(entity: ItemEntity, scheduler?: GameTi
     // Old saves only named the song. New saves retain each stored inst's identity and state.
     const items = saved.inventory ?? (saved.phonographRecord ? [{ itemId: RECORD_ID, count: 1,
       ...(saved.phonographRecord === RECORD_ID ? {} : { skinId: saved.phonographRecord }) }] : []);
-    inventory.OnLoad(items, state => {
+    inventory.LoadSnapshot(items, state => {
       const item = spawnWorldItem(entity, state);
       configureRecordEntity(item);
       return item;
     });
   }
-  addComponent(entity, 'phonograph', PhonographController, scheduler);
+  const controller = addComponent(entity, 'phonograph', PhonographController, scheduler);
+  // The song's remaining time resumes it; machine:OnLoad would restart it, so the switch is not saved apart.
+  entity.OnSave = (_inst, data) => {
+    delete data.machine;
+    if (controller.isPlaying) data.phonograph = { remainingSeconds: controller.remainingSeconds };
+  };
   if (!entity.components.trader) {
     const trader = addComponent(entity, 'trader', Trader<ItemEntity>);
     trader.deleteitemonaccept = false;
@@ -200,9 +205,6 @@ export function phonographPrefabs(world: ItemPrefabWorld): Record<string, ItemPr
         const workable = inst.components.workable ?? addComponent(inst, 'workable', Workable);
         workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(1);
         workable.SetOnFinishCallback(onhammered);
-        inst.OnSave = (_inst, data) => {
-          if (controller.isPlaying) data.phonograph = { remainingSeconds: controller.remainingSeconds };
-        };
         // OnLoad: a loaded machine can be switched again, and a song that was playing plays on.
         controller.OnDropped();
         const saved = inst.saveRecord?.components.phonograph;

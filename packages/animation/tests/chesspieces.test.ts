@@ -92,7 +92,7 @@ it('keeps id, position, component fields and clip through c_spawn, c_save and a 
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
-        { entities: before, inventory: inventory.exportState(), elapsedSeconds: 1, playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
+        { entities: before, inventory: inventory.exportSaved(), elapsedSeconds: 1, playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG).world.entities[ID]!;
     expect(saved).toHaveLength(1);

@@ -52,7 +52,7 @@ function setup() {
   registry.registerPrefabs(PREFAB_DEFINITIONS.grottoPools);
   registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const all = () => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).filter(Boolean);
   return { inventory, scene, physics, ground, prefabs, registry, scheduler, awake, fx, save, waterfalls, all,
@@ -93,7 +93,7 @@ it('a small pool sets up its mist, waterfall and sound on its first frame; minin
     expect(fall.sprite.sprite.peek().clip).toMatchObject({ name: 'water_small2_mined', loop: true });
     expect(fall.hasTag('NOCLICK')).toBe(true);
     expect(fall.physicsRadiusOverride).toBeUndefined();
-    await vi.waitFor(() => expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['moonglass', 'moonglass']));
+    await vi.waitFor(() => expect(s.ground.groundStacks().map(stack => stack.itemId)).toEqual(['moonglass', 'moonglass']));
     expect(workTargets('MINE')).toHaveLength(0);
     expect(s.prefabs.exportRecords().find(({ prefabId }) => prefabId === 'grotto_waterfall_small2')!.record.components)
       .toEqual({ grottoGlass: { workleft: 0 } });
@@ -165,7 +165,7 @@ it('gives and spawns the moonglass that the props drop', async () => {
     expect((await executeDebugCommand('c_give("moonglass", 3)', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
     expect(JSON.stringify(s.inventory.exportState())).toContain('"itemId":"moonglass","count":3');
     expect((await executeDebugCommand('c_spawn("moonglass")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    await vi.waitFor(() => expect(s.ground.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['moonglass']));
+    await vi.waitFor(() => expect(s.ground.groundStacks().map(stack => stack.itemId)).toEqual(['moonglass']));
   } finally { s.dispose(); }
 }, 30000);
 

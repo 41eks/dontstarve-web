@@ -15,7 +15,7 @@ import { createPickupInventory } from './pickupFixture';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
-import { testItem } from './testInventory';
+import { testItem, testRestoreItem } from './testInventory';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -28,7 +28,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
   const canvas = new EventTarget();
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas }, spawnItem: testItem } as unknown as WorldContext;
+    camera: new THREE.PerspectiveCamera(), renderer: { domElement: canvas }, spawnItem: testItem, restoreItem: testRestoreItem } as unknown as WorldContext;
   const changed = vi.fn();
   const placement = managedBuildings(world, { onInteraction: changed });
   const model = await placement.spawnFromSave('cookpot', { id: 'pot:feed',
@@ -40,7 +40,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(placement.performContainerAction(model, 'COOK', world.player)).toBe(false);
   expect(cookPotState(model)).toBeUndefined();
   expect(animation.currentAnimation).toBe('cooking_pre_loop');
-  container!.OnLoad({ slots: ['twigs', 'red_cap', 'red_cap', 'red_cap']
+  container!.LoadSnapshot({ slots: ['twigs', 'red_cap', 'red_cap', 'red_cap']
     .map((itemId, index) => ({ slotKey: String(index), item: { itemId, count: 1 } })) });
   expect(placement.performContainerAction(model, 'COOK', world.player)).toBe(true);
   expect(container!.IsEmpty()).toBe(true);
@@ -125,7 +125,7 @@ it('reads the earlier { phase, remainingSeconds } stewer save as stewer.lua OnSa
   const json = serializeSave(template, { entities: { cookpot: [
     pot('pot:cooking', { product: 'kabobs', phase: 'cooking', remainingSeconds: 5 }),
     pot('pot:done', { product: 'kabobs', phase: 'done', remainingSeconds: 0 }),
-  ] } as never, inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+  ] } as never, inventory: inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   expect(deserializeSave(json, SAVE_CATALOG).world.entities.cookpot.map(({ components }) => components.stewer))
     .toEqual([{ product: 'kabobs', remainingtime: 5 }, { product: 'kabobs', done: true }]);
   inventory.dispose();

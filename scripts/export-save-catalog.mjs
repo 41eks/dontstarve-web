@@ -7,7 +7,7 @@ const server = await createServer({
 });
 try {
   const { SAVE_CATALOG } = await server.ssrLoadModule('/src/save/catalog.ts');
-  const fields = ['maxStack', 'maxUses', 'useStep', 'maxFuel', 'perishTime', 'equippable', 'canGoInContainer'];
+  const fields = ['maxStack', 'maxUses', 'useStep', 'maxFuel', 'perishTime', 'equippable', 'canGoInContainer', 'containerSlots'];
   const items = Object.fromEntries(Object.entries(SAVE_CATALOG.items).map(([itemId, spec]) =>
     [itemId, Object.fromEntries(fields.filter(field => spec[field] !== undefined).map(field => [field, spec[field]]))]));
   const skins = Object.fromEntries(Object.entries(SAVE_CATALOG.skins).map(([skinId, skin]) => [skinId, skin.itemId ?? null]));

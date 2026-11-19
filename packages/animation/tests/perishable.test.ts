@@ -10,7 +10,7 @@ import { executeDebugCommand } from '../../../src/debugCommands';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { createPickupInventory } from './pickupFixture';
 import { PERISH_MED, Perishable } from '../../componets/src/perishable';
 import { batch, createSignal } from '../../signals/src';
@@ -324,6 +324,8 @@ it('settles watched wetness from apply and setWet, preserving it on reload', asy
     const loaded = restored.getEntity(a)!;
     expect(loaded.snapshot()).toEqual(entity.snapshot());
     expect(loaded.GetIsWet()).toBe(true);
+    // The loaded inst's perishable settles the wetness it watches, as it does after apply and setWet above.
+    await new Promise(resolve => setTimeout(resolve, 0));
     world.advance(10);
     loaded.components.perishable.flush();
     expect(loaded.components.perishable.GetPercent()).toBeCloseTo((remainingSeconds - 13) / PERISH_MED, 9);
@@ -389,11 +391,11 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     ground.components.perishable.SetPercent(.3);
     inventory.getEntity(inventorySlotAddress(0))!.components.perishable.SetPercent(.6);
 
-    const before = registry.exportRecords(), held = inventory.exportState();
+    const before = registry.exportRecords();
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-      json = serializeSave(template, { entities: before, inventory: held, elapsedSeconds: clock.GetTick().time,
+      json = serializeSave(template, { entities: before, inventory: inventory.exportSaved(), elapsedSeconds: clock.GetTick().time,
         playerTransform: { position: [2, 0, -4], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
@@ -401,7 +403,7 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     const restoredWorld = createPerishWorld(createSignal(20), saved.world.elapsedSeconds);
     restoredClock = restoredWorld.perishClock;
     restoredInventory.entities.bindPerishWorld(restoredWorld);
-    restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restoredInventory, saved, SAVE_CATALOG.recipes);
     restored = createManager(restoredInventory);
     restored.restoreEntities(saved.world.entities);
     expect(restored.exportEntities()).toEqual(itemEntities(before));
@@ -425,10 +427,10 @@ it('spawns/gives red_cap, bananapop and spoiled_food, replaces a perished ground
     }
     loadedGround.components.perishable.flush();
     await vi.waitFor(() => expect(loadedGround.isRemoved).toBe(true));
-    const spoiled = restored.exportRecords().find(record => record.id !== 'spawn:spoiled_food'
-      && record.components.stack?.itemId === 'spoiled_food');
-    expect(spoiled).toMatchObject({ transform: { position: before.red_cap.find(record => record.id === 'spawn:red_cap')!.transform.position },
-      components: { stack: { itemId: 'spoiled_food', count: 1 } } });
+    // The spoiled replacement is saved under its own prefab, a single item without a stackable record.
+    const spoiled = restored.exportEntities().spoiled_food?.find(record => record.id !== 'spawn:spoiled_food');
+    expect(spoiled).toMatchObject({ transform: { position: before.red_cap.find(record => record.id === 'spawn:red_cap')!.transform.position } });
+    expect(spoiled!.components.stackable).toBeUndefined();
   } finally { registry.dispose(); restored?.dispose(); inventory.dispose(); restoredInventory.dispose(); clock.dispose(); restoredClock?.dispose(); }
 });
 

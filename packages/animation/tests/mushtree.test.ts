@@ -48,7 +48,7 @@ function setup(season: 'summer' | 'autumn' | 'winter' = 'autumn', tickingarea?: 
     spawn: (id: MushtreeSpawnId, position: THREE.Vector3, saved?: EntityPersistRecord) => prefabs.spawnAs(MushtreeInstance, id, position, saved),
     record: () => prefabs.exportRecords()[0].record,
     find: (id: string) => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).find(inst => inst?.prefab === id),
-    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); fire.dispose(); inventory.dispose(); bound.unbind(); scheduler.dispose(); } };
 }

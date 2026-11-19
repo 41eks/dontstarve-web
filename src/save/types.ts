@@ -1,25 +1,18 @@
-import type { InventoryStack } from '@dontstarve-web/inventory';
 import type { EntitySaveRecord, SavedTransform } from '@dontstarve-web/prefab/saveRecord';
 import type { TurfTileSave } from '@dontstarve-web/prefab/turfMap';
 import type { WorldTemperatureSaveData } from '../../packages/componets/src/worldtemperature';
 import type { WeatherSaveData } from '../../packages/componets/src/weather';
 import type { NightmareClockSaveData } from '../../packages/componets/src/nightmareclock';
 
-export interface SavedContainer {
-  slotCount: number;
-  slots: { slotKey: string; item: InventoryStack }[];
-}
-
-export interface SavedInventory {
-  containers: Record<string, SavedContainer>;
-  bufferedBuilds: { recipeId: string; skinId?: string }[];
-}
 
 export interface SavedPlayer {
   prefab: 'wilson';
   shardId: string;
   transform: SavedTransform;
-  inventory: SavedInventory;
+  /** inventory.lua OnSave of the player. */
+  inventory: import('@dontstarve-web/prefab/saveRecord').PlayerInventorySave;
+  /** builder.lua's buffered builds. */
+  builder: { bufferedBuilds: { recipeId: string; skinId?: string }[] };
   stats?: { health: number; hunger: number; sanity: number; penalty?: number; sanitySane?: boolean; sanityMode?: 0 | 1 };
   /** player_common.lua OnSave `is_ghost`: the player resumes as a ghost on load. */
   ghost?: true;

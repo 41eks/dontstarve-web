@@ -17,6 +17,7 @@ import { Fueled } from '../../componets/src/fueled';
 import { Temperature, type TemperatureWorld, type TemperatureSaveData } from '../../componets/src/temperature';
 import type { Heater } from '../../componets/src/heater';
 import { SpriteState } from '@dontstarve-web/display/spriteState';
+import type { EntityPersistData, HeldEntityRecord } from '../../prefab/src/saveRecord';
 
 export { newItemEntityId };
 
@@ -55,6 +56,9 @@ export class StackableComponent {
   }
   get count(): number { return this.state.peek(); }
   set count(value: number) { this.state.set(value); }
+  /** stackable.lua OnSave: only a stack of more than one is written. */
+  OnSave(): { stack: number } | undefined { return this.count !== 1 ? { stack: this.count } : undefined; }
+  OnLoad(data: { stack?: number }): void { if (data.stack !== undefined) this.count = data.stack; }
   /** stackable:Get():Remove(), without creating a temporary entity just to destroy it. The owner recounts materials. */
   Consume(): boolean {
     this.entity.flush();
@@ -85,6 +89,9 @@ export class FiniteUsesComponent {
     this.uses = readonlySignal(this.state);
   }
   GetPercent(): number { return this.percent.peek() ?? 1; }
+  /** finiteuses.lua OnSave: the uses left, unless the item is unused. */
+  OnSave(): { uses: number } | undefined { return this.remaining === undefined ? undefined : { uses: this.remaining }; }
+  OnLoad(data: { uses?: number }): void { if (data.uses !== undefined) this.remaining = data.uses; }
   get remaining(): number | undefined { return this.state.peek(); }
   set remaining(value: number | undefined) { this.state.set(value); }
   private get maximum(): number | undefined { return this.maximumState.peek(); }
@@ -294,32 +301,83 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
       ? this.freshnessState.get() : this.components.perishable.percent.get());
     if (this.prefab === 'backpack') {
       // container:OnLoad's GiveItem: each loaded inst is SpawnPrefab'd, then OnPutInInventory takes it out of the scene.
-      const container = addComponent(this, 'container', Container<InventoryStack, ItemEntity, StorageSlot>, () => new StorageSlot(), (item: InventoryStack) => {
-        const child = createItem(item);
-        child.RemoveFromScene();
-        return child;
-      });
+      const held = (child: ItemEntity) => { child.RemoveFromScene(); return child; };
+      const container = addComponent(this, 'container', Container<InventoryStack, ItemEntity, StorageSlot>, () => new StorageSlot(),
+        (item: InventoryStack) => held(createItem(item.itemId, stackRecord(item))), (record: HeldEntityRecord) => held(createItem(record.prefab, record)));
       container.SetNumSlots(BACKPACK_SLOT_COUNT);
-      container.OnLoad(state.container ?? {});
+      container.LoadSnapshot(state.container ?? {});
     }
     this.apply(state);
   }
 
-  /** The item's components save as one stack record, as the inventory saves its slots; the prefab's OnSave adds its own. */
-  override GetPersistData(): import('../../prefab/src/saveRecord').EntityPersistData {
+  /** GetSaveRecord's record.skinname: an item's skin is the inst's, saved beside its data. */
+  override get savedSkinName(): string | undefined { return this.skinId; }
+
+  /**
+   * EntityScript:GetPersistData: each component's OnSave under its name (stackable, finiteuses, perishable, fueled, armor,
+   * temperature, container, inventory, …), the item's moisture and heatrock.lua's extremes, then the prefab's OnSave.
+   */
+  override GetPersistData(): EntityPersistData {
     this.flush();
-    const { entityId: _id, ...stack } = this.snapshot(false);
-    const data: import('../../prefab/src/saveRecord').EntityPersistData = { stack };
-    this.OnSave?.(this, data);
+    const data = super.GetPersistData();
+    if (this.wetState.peek() && !data.inventoryitemmoisture) data.inventoryitemmoisture = { wet: true };
+    if (this.highTemp !== undefined) data.highTemp = Math.ceil(this.highTemp);
+    else if (this.lowTemp !== undefined) data.lowTemp = Math.floor(this.lowTemp);
+    if (this.variant !== undefined) data.groundVariant = this.variant;
+    // Components the prefab has not attached yet keep the state they were loaded with.
+    if (!this.components.fueled && this.savedFuel !== undefined) data.fueled = { fuel: this.savedFuel };
+    if (!this.components.armor && this.savedArmor) data.armor = this.savedArmor;
+    if (!this.components.temperature && this.savedTemperature) data.temperature = this.savedTemperature;
+    for (const loaded of [this.pendingPersist, this.unattached]) {
+      if (loaded) for (const [name, saved] of Object.entries(loaded)) if (!(name in data)) Reflect.set(data, name, saved);
+    }
     return data;
   }
-  /** SpawnSaveRecord: the stack record restores the item's components, then the prefab's OnLoad runs. */
-  override SetPersistData(data: import('../../prefab/src/saveRecord').EntityPersistData): void {
+
+  /**
+   * SetPersistData. A runtime `stack` restores the inventory's stack. A saved record loads its stack, uses, moisture and
+   * ground variant at once; the components and OnLoad of the item's prefab, which `configure` attaches after SpawnPrefab,
+   * load once it has run, as SetPersistData follows the prefab's fn in Lua.
+   */
+  override SetPersistData(data: EntityPersistData): void {
     if (data.stack) {
       this.apply({ ...data.stack, itemId: this.prefab, entityId: this.id });
-      if (data.stack.container) this.components.container?.OnLoad(data.stack.container);
+      if (data.stack.container) this.components.container?.LoadSnapshot(data.stack.container);
+      this.OnLoad?.(this, data);
+      return;
+    }
+    if (data.stackable) this.components.stackable.OnLoad(data.stackable);
+    if (data.finiteuses) this.components.finiteuses.OnLoad(data.finiteuses);
+    if (data.inventoryitemmoisture?.wet) this.wetState.set(true);
+    if (data.groundVariant !== undefined) this.variant = data.groundVariant;
+    if (data.highTemp !== undefined) { this.highTemp = data.highTemp; this.lowTemp = undefined; }
+    else if (data.lowTemp !== undefined) { this.lowTemp = data.lowTemp; this.highTemp = undefined; }
+    const { stackable: _stackable, finiteuses: _finiteuses, ...rest } = data;
+    this.pendingPersist = rest;
+    if (this.configured) this.loadPending();
+  }
+  private pendingPersist?: EntityPersistData;
+  /** Saved records of components the prefab attaches after configuring, as the mole its world's inventory. */
+  private unattached?: Record<string, unknown>;
+  private configured = false;
+  /** The saved components' OnLoad once the prefab has attached them, then the prefab's OnLoad. */
+  private loadPending(): void {
+    const data = this.pendingPersist;
+    if (!data) return;
+    this.pendingPersist = undefined;
+    for (const [name, saved] of Object.entries(data)) {
+      const component: unknown = Reflect.get(this.components, name);
+      if (component) loadComponent(component, saved);
+      else if (isComponentRecord(name)) (this.unattached ??= {})[name] = saved;
     }
     this.OnLoad?.(this, data);
+  }
+  /** A component the prefab attaches late loads the record it was saved with. */
+  onComponentAdded(name: string, component: object): void {
+    if (!this.unattached || !(name in this.unattached)) return;
+    const saved = this.unattached[name];
+    delete this.unattached[name];
+    loadComponent(component, saved);
   }
 
   GetIsWet(): boolean { return this.wetState.peek(); }
@@ -327,7 +385,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     return this.runtime.get(name) as T | undefined;
   }
   snapshot(includeIdentity = true): InventoryStack {
-    const inventory = this.components.inventory?.OnSave() ?? this.savedInventory;
+    const inventory = this.components.inventory?.GetSnapshot() ?? this.savedInventory;
     const temperature = this.components.temperature?.OnSave() ?? this.savedTemperature;
     const armor = this.components.armor ? this.components.armor.OnSave() : this.savedArmor;
     const freshness = this.components.perishable.perishtime.peek() === undefined
@@ -351,7 +409,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
       ...(this.wetState.peek() ? { wet: true } : {}),
       ...(this.phonographRecord === undefined ? {} : { phonographRecord: this.phonographRecord }),
       ...(inventory?.length ? { inventory } : {}),
-      ...(this.components.container === undefined ? {} : { container: this.components.container.GetSaveData() }),
+      ...(this.components.container === undefined ? {} : { container: this.components.container.GetSnapshot() }),
     };
   }
 
@@ -405,6 +463,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
       }
     });
     spec.configureEntity?.(this);
+    this.configured = true;
     // fueled.lua OnLoad runs after the prefab's InitializeFuelLevel.
     if (this.components.fueled && this.savedFuel !== undefined) {
       this.components.fueled.OnLoad({ fuel: this.savedFuel });
@@ -416,6 +475,7 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
       this.armorState.set(armor);
       if (this.savedArmor) armor.OnLoad(this.savedArmor);
     }
+    this.loadPending();
   }
 
   /** Component adapters publish itemtile's perishchange / wetnesschange state. */
@@ -476,8 +536,31 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
 }
 
-/** SpawnPrefab of an item from its stack: the prefab's inst, in the world it was spawned into. */
-export type ItemSpawner = (state: InventoryStack) => ItemEntity;
+function loadComponent(component: unknown, saved: unknown): void {
+  if (component && typeof component === 'object' && 'OnLoad' in component && typeof component.OnLoad === 'function') component.OnLoad(saved);
+}
+/** The records an item's components write; the rest of its data is its prefab's own OnSave. */
+const ITEM_COMPONENT_RECORDS = new Set(['perishable', 'fueled', 'armor', 'temperature', 'container', 'inventory', 'health',
+  'knownlocations', 'workable']);
+function isComponentRecord(name: string): boolean { return ITEM_COMPONENT_RECORDS.has(name); }
+
+/** What SpawnSaveRecord gives an item's SpawnPrefab: its identity, GetPersistData and skin. */
+export interface SpawnedItemRecord {
+  id: string;
+  components: EntityPersistData;
+  skinname?: string;
+}
+
+/**
+ * SpawnPrefab of an item, then SetPersistData: the prefab's inst, in the world it was spawned into. A runtime stack
+ * travels as the record's `stack` (`stackRecord`); a saved item as its own record.
+ */
+export type ItemSpawner = (prefab: string, saved: SpawnedItemRecord) => ItemEntity;
+
+/** The record of an item made from the inventory's runtime stack. */
+export function stackRecord(state: InventoryStack): SpawnedItemRecord {
+  return { id: state.entityId ?? newItemEntityId(), components: { stack: state } };
+}
 
 /**
  * How an item prefab's fn makes its inst: the prefab's own ItemEntity subclass, built with the registry's world and the
@@ -568,14 +651,32 @@ export class ItemEntityRegistry {
   construct(state: InventoryStack): ItemEntity;
   construct<Entity extends ItemEntity>(state: InventoryStack, factory: ItemEntityFactory<Entity>): Entity;
   construct(state: InventoryStack, factory: ItemEntityFactory = newItemEntity): ItemEntity {
-    const entity = factory(state, this.perishWorld, item => this.create(item));
+    const entity = factory(state, this.perishWorld, (prefab, saved) => this.spawn(prefab, saved));
     if (this.temperatureWorld) entity.BindTemperatureWorld(this.temperatureWorld);
     if (this.equipmentWorld) entity.equipmentWorld = this.equipmentWorld;
     return entity;
   }
+  /** SpawnPrefab of an item from the inventory's runtime stack. */
   create(state: InventoryStack): ItemEntity {
-    if (state.entityId && this.get(state.entityId)) throw new Error(`Duplicate item entity: ${state.entityId}`);
-    const entity = this.spawner(state);
+    return this.spawn(state.itemId, stackRecord(state));
+  }
+  /** SpawnSaveRecord of an item a container or inventory held: container.lua / inventory.lua OnLoad. */
+  restore(record: HeldEntityRecord): ItemEntity {
+    return this.spawn(record.prefab, record);
+  }
+  /**
+   * An inst constructed outside a world (a held building, a test) and given its record as SpawnSaveRecord does:
+   * the skin, then SetPersistData.
+   */
+  constructSaved(prefab: string, saved: SpawnedItemRecord): ItemEntity {
+    const entity = this.construct({ itemId: prefab, count: 1, entityId: saved.id });
+    if (saved.skinname !== undefined) entity.skinId = saved.skinname;
+    entity.SetPersistData(saved.components);
+    return entity;
+  }
+  private spawn(prefab: string, saved: SpawnedItemRecord): ItemEntity {
+    if (this.get(saved.id)) throw new Error(`Duplicate item entity: ${saved.id}`);
+    const entity = this.spawner(prefab, saved);
     this.register(entity);
     return entity;
   }

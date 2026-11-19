@@ -11,10 +11,11 @@ test('inline pandoraschest renders, c_spawn saves, and reload preserves identity
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const save = minimalSave();
-  const contents = { slotCount: 9, slots: [
-    { slotKey: '0', item: { entityId: 'inline-chest_0', itemId: 'footballhat', count: 1 } },
-    { slotKey: '4', item: { entityId: 'inline-chest_4', itemId: 'spear', count: 1 } },
-  ] };
+  // container.lua OnSave: each item's GetSaveRecord by one-based slot.
+  const contents = { items: {
+    1: { id: 'inline-chest_0', prefab: 'footballhat', components: {} },
+    5: { id: 'inline-chest_4', prefab: 'spear', components: {} },
+  } };
   save.world.entities = { pandoraschest: [{ id: 'inline-chest', transform: { position: [8, 0, 0], rotationY: 0 },
     components: { container: contents, building: {} } }] } as never;
   const prepare = () => page.evaluate(async ({ mainUrl, sceneUrl }) => {

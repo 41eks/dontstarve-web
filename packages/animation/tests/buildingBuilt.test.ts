@@ -126,7 +126,7 @@ it('gives placed and restored chests a map icon at their foot and releases it wi
     expect([built.position.x, built.position.z]).toEqual([3, 4]);
     const restored = await placement.spawnFromSave('treasurechest', {
       id: 'imported-chest', transform: { position: [-12, 0, 24], rotationY: 0 },
-      components: { building: {}, container: { slotCount: 9, slots: [] } } });
+      components: { building: {}, container: { items: {} } } });
     await settle();
     expect(icons().map(({ position }) => [position.x, position.z])).toEqual([[3, 4], [-12, 24]]);
     expect(prefabInstance(restored)!.hasTag('chest')).toBe(true);

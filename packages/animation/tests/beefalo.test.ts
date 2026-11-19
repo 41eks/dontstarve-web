@@ -366,7 +366,7 @@ describe('beefalo saves', () => {
     const legacy = { id: 'legacy', transform: { position: [20, 0, 30] as [number, number, number], rotationY: 0 }, components: { beefalo: {
       home: [21, 0, 31] as [number, number, number], heading: 90, poopRemainingSeconds: 51, beard: { growth: 1, growthaccumulator: 0, bits: 0 } } } };
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-    const json = serializeSave(template, { entities: { beefalo: [s.record(), legacy] } as never, inventory: createInventoryStore([]).exportState(),
+    const json = serializeSave(template, { entities: { beefalo: [s.record(), legacy] } as never, inventory: createInventoryStore([]).exportSaved(),
       elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     const [current, old] = deserializeSave(json, SAVE_CATALOG).world.entities.beefalo;
     expect(current.components).toEqual(s.record().components);

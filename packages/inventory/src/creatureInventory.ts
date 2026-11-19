@@ -4,9 +4,17 @@ import { batch } from '../../signals/src';
 import type { InventoryItemSpec, InventoryStack } from './types';
 import type { Vector3 } from 'three';
 import type { ContainerInst } from '../../componets/src/container';
+import type { HeldEntityRecord, SlotItemsSave } from '../../prefab/src/saveRecord';
 
 /** The creature whose inventory this is: its items' owner. */
-export interface CreatureInventoryInst { readonly id: string; hasTag(tag: string): boolean; getPosition(): Vector3; PushEvent(name: string, data?: unknown): void }
+export interface CreatureInventoryInst {
+  readonly id: string;
+  hasTag(tag: string): boolean;
+  getPosition(): Vector3;
+  PushEvent(name: string, data?: unknown): void;
+  /** SpawnSaveRecord of an item, in the creature's world, for OnLoad. */
+  readonly worldServices?: { readonly restoreItem?: (record: HeldEntityRecord) => ItemEntity };
+}
 
 /** inventory.lua's creature inventory, backed by authoritative inventory slots. */
 export class CreatureInventory {
@@ -95,9 +103,34 @@ export class CreatureInventory {
       item.flush(); this.RemoveItem(item); this.drop(item, position);
     }
   }
-  OnSave(): InventoryStack[] { return this.GetItems().map(item => { item.flush(); return item.snapshot(); }); }
-  OnLoad(items: readonly InventoryStack[], spawn: (state: InventoryStack) => ItemEntity): void {
+  /** The items' runtime stacks, as a held creature or machine carries its contents in its own stack. */
+  GetSnapshot(): InventoryStack[] { return this.GetItems().map(item => { item.flush(); return item.snapshot(); }); }
+  /** SpawnPrefab of each runtime stack a snapshot carried, given back to this inventory. */
+  LoadSnapshot(items: readonly InventoryStack[], spawn: (state: InventoryStack) => ItemEntity): void {
     for (const state of items) this.GiveItem(spawn(state));
+  }
+  /** inventory.lua OnSave: each persisting item's GetSaveRecord under its one-based slot. */
+  OnSave(): SlotItemsSave | undefined {
+    const items: SlotItemsSave['items'] = {};
+    this.slots.forEach((slot, index) => {
+      const item = slot.getEntity();
+      if (item && item.persists) items[String(index + 1)] = item.GetSaveRecord();
+    });
+    return Object.keys(items).length ? { items } : undefined;
+  }
+  /** inventory.lua OnLoad: SpawnSaveRecord of each item, then GiveItem(inst, slot). */
+  OnLoad(data: Partial<SlotItemsSave> | undefined): void {
+    const restore = this.inst.worldServices?.restoreItem;
+    const entries = Object.entries(data?.items ?? {});
+    if (!entries.length) return;
+    if (!restore) throw new Error(`${this.inst.id} has no world to load its inventory in`);
+    for (const [slot, record] of entries) {
+      const index = Number(slot) - 1;
+      if (!Number.isSafeInteger(index) || !this.slots[index] || this.slots[index].getEntity()) {
+        throw new RangeError(`Invalid or occupied inventory slot ${slot} for ${record.prefab}`);
+      }
+      this.PutInSlot(index, restore(record));
+    }
   }
   dispose(): void {
     for (const slot of this.slots) { const item = slot.getEntity(); slot.setEntity(null); if (item) { item.components.inventoryitem.owner = null; item.destroy(); } }

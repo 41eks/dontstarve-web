@@ -42,7 +42,7 @@ function setup() {
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return { scene, awake, scheduler, prefabs, registry, inventory,
     find: <Instance extends PrefabInstance = PrefabInstance>(id: string) => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).find(inst => inst.prefab === id) as Instance,
-    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }

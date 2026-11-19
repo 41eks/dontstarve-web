@@ -7,7 +7,7 @@ import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
-import type { EntityPersistData } from './saveRecord';
+import { type EntityPersistData, structureHealth } from './saveRecord';
 import { PlaySound } from './sound';
 
 export const ARCHIVE_CENTIPEDE_HUSK_ID = 'archive_centipede_husk' as const;
@@ -133,7 +133,7 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
    * with equal percentages: no clip changes, but combat is removed below the bottom threshold.
    */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
-    const saved = data.health;
+    const saved = structureHealth(data);
     if (!saved) return;
     this.components.health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
     this.components.health.ForceUpdateHUD(true);

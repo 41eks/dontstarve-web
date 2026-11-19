@@ -180,7 +180,7 @@ it('uses the item prefabs for c_spawn, c_save ZIP export and restore of skins, q
     let archive!: Uint8Array;
     const result = await executeDebugCommand('c_save()', world.inventory, undefined, async () => {
       archive = await createClusterSaveZip(serializeSave(deserializeSave(JSON.stringify(initial), SAVE_CATALOG), {
-        entities: before, inventory: world.inventory.exportState(), elapsedSeconds: 10,
+        entities: before, inventory: world.inventory.exportSaved(), elapsedSeconds: 10,
         playerTransform: { position: [0, 0, 0], rotationY: 0 },
       }, SAVE_CATALOG), 'forest');
     });
@@ -199,8 +199,8 @@ it('uses the item prefabs for c_spawn, c_save ZIP export and restore of skins, q
     }
     expect(restored.manager.exportEntities()).toEqual(world.manager.exportEntities());
     const invalid = structuredClone(saved);
-    invalid.world.entities.singingshell_octave3[0].components.stack!.variant = '999';
-    expect(() => deserializeSave(JSON.stringify(invalid), SAVE_CATALOG)).toThrow('variant');
+    invalid.world.entities.singingshell_octave3[0].components.groundVariant = '999';
+    expect(() => deserializeSave(JSON.stringify(invalid), SAVE_CATALOG)).toThrow('groundVariant');
     // Existing pickup/drop keeps the same logical item and source-saved appearance.
     const rocks = world.manager.entities.get('rocks')!;
     expect(world.inventory.GiveItem(rocks)).toBe(true);
@@ -208,8 +208,8 @@ it('uses the item prefabs for c_spawn, c_save ZIP export and restore of skins, q
     world.inventory.DropEverything();
     await turn(); await turn();
     expect(world.manager.entities.get('rocks')).toBe(rocks);
-    expect(world.manager.exportRecords().find(record => record.id === 'rocks')?.components.stack)
-      .toMatchObject({ itemId: 'rocks', count: 8, variant: 'f2' });
+    expect(world.manager.exportRecords().find(record => record.id === 'rocks')?.components)
+      .toEqual({ stackable: { stack: 8 }, groundVariant: 'f2' });
   } finally { registry.dispose(); restored.dispose(); world.dispose(); }
 }, CLUSTER_SAVE_ZIP_TIMEOUT);
 

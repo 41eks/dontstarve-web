@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
-import { ItemEntity, newItemEntityId, type InventoryStack } from '@dontstarve-web/inventory';
+import { ItemEntity } from '@dontstarve-web/inventory';
 import { PrefabEntityManager, type PrefabInstance } from '@dontstarve-web/prefab/prefabInstance';
 import type { ItemWorld } from './inventory';
 import { world, worldState } from './physics';
@@ -26,9 +26,9 @@ const ITEM_IDS = new Set(ITEM_PREFAB_IDS);
 /** SpawnPrefab for the inventory's item registry: every item inst is this world's prefab inst from its birth. */
 export const itemWorld: ItemWorld = {
   isItemPrefab: prefab => ITEM_IDS.has(prefab),
-  SpawnPrefab(state: InventoryStack): ItemEntity {
-    const entity = prefabs.spawn(state.itemId, ITEM_ORIGIN, { id: state.entityId ?? newItemEntityId(), components: { stack: state } });
-    if (!(entity instanceof ItemEntity)) throw new Error(`${state.itemId} does not spawn an item entity`);
+  SpawnPrefab(prefab, saved): ItemEntity {
+    const entity = prefabs.spawn(prefab, ITEM_ORIGIN, saved);
+    if (!(entity instanceof ItemEntity)) throw new Error(`${prefab} does not spawn an item entity`);
     return entity;
   },
 };

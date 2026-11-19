@@ -49,7 +49,7 @@ function setup() {
   registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: { marbleshrub: shrubs.exportRecords(), marblebean_sapling: saplings.exportRecords(), ...ground.exportEntities() },
-    inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+    inventory: inventory.exportSaved(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => {
     scheduler.advance(seconds); shrubs.update(seconds);
   };
@@ -57,7 +57,7 @@ function setup() {
     dispose: () => { registry.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
 
-const dropped = (s: ReturnType<typeof setup>) => s.ground.exportRecords().map(record => record.components.stack?.itemId).sort();
+const dropped = (s: ReturnType<typeof setup>) => s.ground.groundStacks().map(stack => stack.itemId).sort();
 
 it('plants a marblebean, digs it back up, and grows it into a mineable shrub that survives save/load', async () => {
   vi.spyOn(Math, 'random').mockReturnValue(.5);

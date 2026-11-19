@@ -156,7 +156,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     saveJson = serializeSave(template, {
       entities: { ...template.world.entities, [prefabId]: stars.exportRecords().map(entry => entry.record) },
       playerTransform: { position: [0, 0, 0], rotationY: 0 }, elapsedSeconds: 0,
-      inventory: inventory.exportState(), playerStats: { health: 150, hunger: 105, sanity: animation.stats.sanity.current },
+      inventory: inventory.exportSaved(), playerStats: { health: 150, hunger: 105, sanity: animation.stats.sanity.current },
     }, SAVE_CATALOG);
   });
   const saved = deserializeSave(saveJson, SAVE_CATALOG);

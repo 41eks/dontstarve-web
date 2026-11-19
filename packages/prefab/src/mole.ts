@@ -2,6 +2,7 @@ import type { EntityEventData } from '../../componets/src/entityEvents';
 import { addComponent } from './components';
 import { Vector3 } from 'three';
 import { createEffect, WorldContentKey, watchSignal, type ReadonlySignal, type WorldContentContext } from '@dontstarve-web/signals';
+import type { EntityPersistData, HeldEntityRecord } from './saveRecord';
 import { ItemEntity, type InventoryStack } from '@dontstarve-web/inventory';
 import { fourFacingFromRotation } from '@dontstarve-web/animation/facing';
 import { Eater } from '../../componets/src/eater';
@@ -41,6 +42,8 @@ export interface MoleWorld extends Pick<WorldContentContext, 'getWatchWorldConte
   /** TheWorld.Pathfinder. */
   pathfinder?: LocoMotorPathfinder;
   spawnItem(state: InventoryStack): ItemEntity;
+  /** SpawnSaveRecord of an item a holder saved: a mole or its stolen items, the occupant of a hill. */
+  restoreItem(record: HeldEntityRecord): ItemEntity;
   dropItem(item: ItemEntity, position: Vector3): void;
   dropLoot(prefab: string, position: Vector3): void;
   makeHome(mole: Mole): MolehillInstance;
@@ -65,6 +68,8 @@ export class Mole extends ItemEntity implements MoleBrainInst, LocoMotorInst {
   animstate!: AnimState;
   isunder = true;
   needs_home_time: number | undefined;
+  /** mole.lua OnLoad's needs_home_time, kept until its world's clock reads it. */
+  loadedNeedsHomeElapsed?: number;
   make_home_delay = 5;
   last_above_time = 0;
   peek_interval = 15;
@@ -161,6 +166,8 @@ export function MakeMole(inst: Mole, random: () => number = Math.random): void {
   addComponent(inst, 'homeseeker', HomeSeeker<MolehillInstance>);
   // The inventory saves the mole's own record with its stack.
   inst.component(MOLE_ID, () => ({ OnSave: () => MoleOnSave(inst), dispose: () => {} }));
+  inst.OnSave = (_inst, data) => OnSave(inst, data);
+  inst.OnLoad = (_inst, data) => OnLoad(inst, data);
   inst.ListenForEvent('ondropped', ondrop);
   inst.ListenForEvent('onputininventory', onpickup);
   inst.ListenForEvent('onwenthome', OnWentHome);
@@ -243,7 +250,8 @@ export function BindMoleWorld(inst: Mole, services: MoleWorld, lengths: Readonly
       return first !== from ? first : second;
     },
   };
-  addComponent(inst, 'inventory', Inventory, 3, services.dropItem, services.itemSpecs).OnLoad(inst.saved?.items ?? [], services.spawnItem);
+  inst.worldServices = { ...inst.worldServices, restoreItem: record => services.restoreItem(record) };
+  addComponent(inst, 'inventory', Inventory, 3, services.dropItem, services.itemSpecs).LoadSnapshot(inst.saved?.items ?? [], services.spawnItem);
   inst.locomotor = addComponent(inst, 'locomotor', LocoMotor, { arriveDistance: .15 * WORLD_SCALE, pathfinder: services.pathfinder, pathcaps: { ignorecreep: true, ignorebridges: true } });
   inst.locomotor.walkspeed = 2.75 * WORLD_SCALE; inst.locomotor.runspeed = 6 * WORLD_SCALE;
   inst.animstate = new AnimState(scheduler, lengths, event => inst.PushEvent(event));
@@ -254,8 +262,9 @@ export function BindMoleWorld(inst: Mole, services: MoleWorld, lengths: Readonly
   inst.SetBrain(mole => new MoleBrain(mole, WORLD_SCALE));
   if (!inWorld(inst)) inst.brain?.Stop();
   inst.homechecktask = inst.DoTaskInTime(inst.make_home_delay, TestForMakeHome);
-  if (inst.saved?.needsHomeElapsed !== undefined) inst.needs_home_time = inst.getTime() - inst.saved.needsHomeElapsed;
-  inst.saved = undefined;
+  const needsHomeElapsed = inst.saved?.needsHomeElapsed ?? inst.loadedNeedsHomeElapsed;
+  if (needsHomeElapsed !== undefined) inst.needs_home_time = inst.getTime() - needsHomeElapsed;
+  inst.saved = undefined; inst.loadedNeedsHomeElapsed = undefined;
   addComponent(inst, 'sleeper', Sleeper, getWatchWorldContent, inst.randomSource, WORLD_SCALE).SetNocturnal(true);
   inst.addTag('sleeper');
   if (inWorld(inst) && inst.dropPending) ondrop(inst);
@@ -349,12 +358,24 @@ export function UpdateMole(inst: Mole, dt: number): void {
   }
 }
 
-/** mole.lua OnSave: needs_home_time as the time elapsed since it was set, with health and the stolen items. */
+/** mole.lua OnSave: seconds since the mole began needing a home. */
+function OnSave(inst: Mole, data: EntityPersistData): void {
+  const elapsed = inst.needs_home_time === undefined ? inst.saved?.needsHomeElapsed ?? inst.loadedNeedsHomeElapsed
+    : inst.getTime() - inst.needs_home_time;
+  if (elapsed !== undefined) data.needs_home_time = elapsed;
+}
+
+/** mole.lua OnLoad: needs_home_time, which the mole's world converts to its clock once it binds. */
+function OnLoad(inst: Mole, data: EntityPersistData): void {
+  if (data.needs_home_time !== undefined) inst.loadedNeedsHomeElapsed = data.needs_home_time;
+}
+
+/** The runtime record a held mole carries in its stack: health, the time since it began needing a home, its items. */
 function MoleOnSave(inst: Mole): MoleSave {
   return { health: inst.components.health.currenthealth,
     ...(inst.needs_home_time === undefined ? inst.saved?.needsHomeElapsed === undefined ? {} : { needsHomeElapsed: inst.saved.needsHomeElapsed }
       : { needsHomeElapsed: inst.getTime() - inst.needs_home_time }),
-    items: inst.components.inventory?.OnSave() ?? inst.saved?.items ?? [] };
+    items: inst.components.inventory?.GetSnapshot() ?? inst.saved?.items ?? [] };
 }
 
 

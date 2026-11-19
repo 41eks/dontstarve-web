@@ -92,7 +92,7 @@ test('renders the inst\'s tile declaration without replacing the UI item and unb
   await page.goto('/tests/fixture.html');
   await page.evaluate(async url => {
     const { InventoryStore, InventorySlot, ItemEntityRegistry, inventorySlotAddress } = await import(url);
-    const entities = new ItemEntityRegistry((state: any) => entities.construct(state));
+    const entities = new ItemEntityRegistry((prefab: any, saved: any) => entities.constructSaved(prefab, saved));
     const address = inventorySlotAddress(0);
     const store = new InventoryStore([{ address, slot: new InventorySlot() }], {
       berries: { name: '浆果', icon: 'berries.tex', maxStack: 40 },

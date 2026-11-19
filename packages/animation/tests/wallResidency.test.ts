@@ -11,6 +11,7 @@ import { bindTestWorld } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
+import { structureHealth } from '../../prefab/src/saveRecord';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -69,7 +70,7 @@ it('shares layered wall art, releases only visuals, restores current health/faci
     health.DoDelta(-health.currenthealth);
     await settle();
     expect(world.physics!.bodies).toHaveLength(1);
-    expect(placement.exportRecords()[0].record.components.health!.current).toBe(0);
+    expect(structureHealth(placement.exportRecords()[0].record.components)!.current).toBe(0);
     awake.set(true); await settle();
     expect(instance.sprite).toBe(controller);
     expect(controller.currentAnimation).toBe('broken');

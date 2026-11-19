@@ -30,7 +30,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { testItem } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true, setVolume() {} })) }));
@@ -201,12 +201,12 @@ it('gives a fishing rod with c_give and saves worn rods and pond fish through c_
     let json = '';
     const save = () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-        entities: { pond: ponds.exportRecords().map(({ record }) => record) as never }, inventory: before, elapsedSeconds: 1, playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        entities: { pond: ponds.exportRecords().map(({ record }) => record) as never }, inventory: inventory.exportSaved(), elapsedSeconds: 1, playerTransform: { position: [0, 0, 0], rotationY: 0 },
       }, SAVE_CATALOG);
     };
     expect((await executeDebugCommand('c_save()', inventory, undefined, save)).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
-    restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restoredInventory, saved, SAVE_CATALOG.recipes);
     expect(restoredInventory.exportState()).toEqual(before);
     expect(restoredInventory.getEntity(inventorySlotAddress(0))!.components.finiteuses.remaining).toBe(8);
     const record = saved.world.entities.pond.find(({ id }) => id === 'pond-1')!;

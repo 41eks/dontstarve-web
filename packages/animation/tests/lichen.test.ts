@@ -38,7 +38,7 @@ function setup(player = new THREE.Vector3()) {
     dispose: () => lichens.dispose(),
   });
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   return { scene, scheduler, awake, lichens, registry, inventory, save, loot,
     dispose: () => { registry.dispose(); inventory.dispose(); world.unbind(); scheduler.dispose(); } };
@@ -109,7 +109,7 @@ it('c_spawn then c_save exports a lichen and a given cutlichen stack, and the ex
     expect((await executeDebugCommand('c_save()', first.inventory, undefined, () => { json = first.save(); })).ok).toBe(true);
   } finally { first.dispose(); }
   const saved = deserializeSave(json, SAVE_CATALOG);
-  expect(JSON.stringify(saved.players.local.inventory)).toMatch(/"itemId":"cutlichen","count":3/);
+  expect(Object.values(saved.players.local.inventory.items)).toContainEqual(expect.objectContaining({ prefab: 'cutlichen', components: { stackable: { stack: 3 } } }));
   const records = saved.world.entities[LICHEN_ID];
   expect(records).toHaveLength(1);
   expect(records[0]).toMatchObject({ transform: { position: [12, 0, -6], rotationY: 0 },

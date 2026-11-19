@@ -22,7 +22,7 @@ import { performPickupAction } from '../../stategraphs/src/pickup';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { Sanity } from '../../componets/src/sanity';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
@@ -120,13 +120,13 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-        entities: before, inventory: held, elapsedSeconds: 12.5,
+        entities: before, inventory: inventory.exportSaved(), elapsedSeconds: 12.5,
         playerTransform: { position: [3, 0, -6], rotationY: 0 },
         playerStats: { health: 150, hunger: 150, sanity: currentSanity.current },
       }, SAVE_CATALOG);
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
-    restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restoredInventory, saved, SAVE_CATALOG.recipes);
     restored.restoreEntities(saved.world.entities);
     expect(restored.exportEntities()).toEqual(itemEntities(before));
     expect(restoredInventory.exportState()).toEqual(held);

@@ -16,7 +16,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld, drawn, plantInstance } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -47,7 +47,7 @@ function setup() {
   registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: { berrybush: bushes.exportRecords().map(({ record }) => record), ...ground.exportEntities() },
-    inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+    inventory: inventory.exportSaved(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(bushes).update(seconds); };
   return { inventory, scene, physics, scheduler, season, snowLevel, ground, bushes, registry, save, advance,
     picker: { giveItem: (id: string, count: number) => inventory.add(id, count) },
@@ -86,7 +86,7 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.berrybush[0];
     restored.season.set({ season: 'winter', progress: 0 }); await settleEffects();
     await drawn(restored.bushes.restore('berrybush', record).transform.model);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([record]);
     expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
@@ -118,9 +118,9 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     const original = s.bushes.exportRecords().map(({ record }) => record)[0];
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
     expect(s.physics.bodies).toHaveLength(0);
-    const loot = s.ground.exportRecords();
-    expect(loot.map(record => record.components.stack?.itemId)).toEqual(['berries', 'dug_berrybush']);
-    const root = loot[1].components.stack!;
+    const loot = s.ground.groundStacks();
+    expect(loot.map(stack => stack.itemId)).toEqual(['berries', 'dug_berrybush']);
+    const { entityId: _id, ...root } = loot[1];
     expect(root.skinId).toBe('dug_berrybush_cawnival');
     // Inventory ownership changes retain the same root inst, its skin and its source animation.
     const item = s.inventory.entities.create(root);
@@ -129,7 +129,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     const detached = s.inventory.extract(inventorySlotAddress(0), 1, item)!;
     expect(s.ground.spawnGroundItem({ ...SAVE_CATALOG.items[root.itemId], ...detached.snapshot(), entity: detached },
       new THREE.Vector3(60, 0, 36))).toBe(detached);
-    expect(s.ground.exportRecords().at(-1)?.components.stack?.skinId).toBe(root.skinId);
+    expect(s.ground.groundStacks().at(-1)?.skinId).toBe(root.skinId);
     expect(item.components.deployable!.Deploy(position, { position, PushEvent: vi.fn() }, {
       canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
       isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
@@ -165,8 +165,8 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     expect(pickable.IsBarren()).toBe(true); expect(pickable.remainingSeconds).toBeUndefined();
     expect(plantInstance(replanted).sprite.currentAnimation).toBe('idle_to_dead');
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, {})).toBe(true);
-    expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.itemId)).toEqual(['twigs', 'twigs']);
-    expect(s.ground.exportRecords().slice(-2).map(record => record.components.stack?.count)).toEqual([1, 1]);
+    expect(s.ground.groundStacks().slice(-2).map(stack => stack.itemId)).toEqual(['twigs', 'twigs']);
+    expect(s.ground.groundStacks().slice(-2).map(stack => stack.count)).toEqual([1, 1]);
     s.advance(10000); expect(s.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(s.physics.bodies).toHaveLength(0);
   } finally { s.dispose(); restored.dispose(); }

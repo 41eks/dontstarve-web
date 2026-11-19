@@ -1,4 +1,4 @@
-import { InventoryStore, ItemEntityRegistry, newItemEntity, type InventoryStack, type ItemEntity, type ItemSlot } from '../../inventory/src';
+import { InventoryStore, ItemEntityRegistry, newItemEntity, type InventoryStack, type ItemEntity, type ItemSlot, type SpawnedItemRecord } from '../../inventory/src';
 import type { PerishWorld } from '../../componets/src/perishable';
 import { createInventoryStore as createWorldInventoryStore, createItemRegistry, type ItemWorld } from '../../../src/inventory';
 import type { InventoryItemDefinition } from '../../../src/inventoryItems';
@@ -13,9 +13,9 @@ const handles = new WeakMap<ItemEntityRegistry, { world?: ItemWorld }>();
 function handleWorld(handle: { world?: ItemWorld }): ItemWorld {
   return {
     isItemPrefab: prefab => handle.world?.isItemPrefab(prefab) ?? false,
-    SpawnPrefab: state => {
-      if (!handle.world) throw new Error(`No test item world spawns ${state.itemId}`);
-      return handle.world.SpawnPrefab(state);
+    SpawnPrefab: (prefab, saved) => {
+      if (!handle.world) throw new Error(`No test item world spawns ${prefab}`);
+      return handle.world.SpawnPrefab(prefab, saved);
     },
   };
 }
@@ -45,10 +45,25 @@ export function bindTestItemWorld(entities: ItemEntityRegistry, world: ItemWorld
 
 /** An item inst outside any world and registry, for tests of the inst alone; a backpack loads its contents the same way. */
 export function testItem(state: InventoryStack, perishWorld?: PerishWorld): ItemEntity {
-  const inst = newItemEntity(state, perishWorld, child => testItem(child, perishWorld));
+  const restore = (prefab: string, saved: SpawnedItemRecord) => testSavedItem(prefab, saved, perishWorld);
+  const inst = newItemEntity(state, perishWorld, restore);
   // What the inst itself loads (a phonograph's record) is spawned the same way.
-  inst.worldServices = { ...inst.worldServices, spawnItem: child => testItem(child, perishWorld) };
+  inst.worldServices = { ...inst.worldServices, spawnItem: child => testItem(child, perishWorld),
+    restoreItem: record => restore(record.prefab, record) };
   return inst;
+}
+
+/** SpawnSaveRecord of a test inst outside any world: the record's skin, then SetPersistData. */
+export function testSavedItem(prefab: string, saved: SpawnedItemRecord, perishWorld?: PerishWorld): ItemEntity {
+  const inst = testItem({ itemId: prefab, count: 1, entityId: saved.id }, perishWorld);
+  if (saved.skinname !== undefined) inst.skinId = saved.skinname;
+  inst.SetPersistData(saved.components);
+  return inst;
+}
+
+/** SpawnSaveRecord of a held record in a test world without an item registry. */
+export function testRestoreItem(record: { prefab: string } & SpawnedItemRecord): ItemEntity {
+  return testSavedItem(record.prefab, record);
 }
 
 /** `slot` holding a new test inst of `state`. */

@@ -73,7 +73,7 @@ it('digs an unpicked mushroom into two blue_caps without releasing a neighbourin
     const neighbourRecord = s.mushrooms.exportRecords()[1];
     const [dig] = workTargets('DIG');
     expect(performToolWork('DIG', dig.entity!, testPlayer())).toBe(true);
-    await vi.waitFor(() => expect(s.ground.exportRecords().map(r => r.components.stack?.itemId)).toEqual(['blue_cap', 'blue_cap']));
+    await vi.waitFor(() => expect(s.ground.groundStacks().map(stack => stack.itemId)).toEqual(['blue_cap', 'blue_cap']));
     expect(s.mushrooms.exportRecords()).toEqual([neighbourRecord]);
     expect(disposed).not.toHaveBeenCalled();
     s.mushrooms.dispose();

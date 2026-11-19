@@ -34,7 +34,7 @@ function setup() {
   registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: { ...ground.exportEntities() },
-    inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+    inventory: inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const spawn = (id: string, count: number, x: number) => ground.spawnFromSave(`test:${id}:${x}`,
     { ...SAVE_CATALOG.items[id], itemId: id, count }, new THREE.Vector3(x, 0, 0));
   const advance = (seconds: number) => { for (let t = 0; t < seconds; t += 1 / 30) { ground.update(1 / 30, new THREE.Quaternion()); fx.update(1 / 30, new THREE.Quaternion()); } };
@@ -65,10 +65,10 @@ it('lights gunpowder with a torch, explodes its stack, works nearby stone fruit 
     expect(near.isRemoved).toBe(true); expect(far.isRemoved).toBe(false);
     // explosive.lua lightonexplode reached the log inside the range; stone fruit loot is a ripe fruit with the mocked roll.
     expect(log.components.burnable!.IsBurning()).toBe(true);
-    const records = s.ground.exportRecords();
-    expect(records.filter(record => record.components.stack?.itemId === 'rock_avocado_fruit_ripe')
-      .reduce((sum, record) => sum + record.components.stack!.count, 0)).toBe(3);
-    expect(records.some(record => record.id === far.id)).toBe(true);
+    const records = s.ground.groundStacks();
+    expect(records.filter(stack => stack.itemId === 'rock_avocado_fruit_ripe')
+      .reduce((sum, stack) => sum + stack.count, 0)).toBe(3);
+    expect(records.some(stack => stack.entityId === far.id)).toBe(true);
     expect(s.fx.renderEntities).toHaveLength(1);
     // explode_small plays from its first frame once its art has loaded.
     await prefabDisplay(s.fx.renderEntities[0].object)!.artLoaded();
@@ -115,7 +115,9 @@ it('spawns and gives gunpowder through debug commands and keeps the stack throug
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
-    expect(itemEntities(saved.world.entities)).toMatchObject({ gunpowder: [{ components: { stack: { itemId: 'gunpowder', count: 1 } } }] });
+    // One gunpowder on the ground: saved under its own prefab, without a stackable record.
+    expect(itemEntities(saved.world.entities).gunpowder).toHaveLength(1);
+    expect(itemEntities(saved.world.entities).gunpowder![0].components.stackable).toBeUndefined();
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());
   } finally { s.dispose(); restored.dispose(); }

@@ -9,17 +9,17 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { prefabDisplay } from '@dontstarve-web/display';
-import { testItem } from './testInventory';
+import { testItem, testRestoreItem } from './testInventory';
 
 // An imported Caves record: the ruins chest with the chest_labyrinth loot it was saved with.
 const RECORD: EntitySaveRecord = {
   id: 'dst_04E26ADB66396E8D_pandoraschest_id_101861',
   transform: { position: [2316, 0, 852], rotationY: 0 },
   components: {
-    container: { slotCount: 9, slots: [
-      { slotKey: '0', item: { entityId: 'dst_04E26ADB66396E8D_pandoraschest_id_101861_0', itemId: 'footballhat', count: 1 } },
-      { slotKey: '1', item: { entityId: 'dst_04E26ADB66396E8D_pandoraschest_id_101861_1', itemId: 'spear', count: 1 } },
-    ] },
+    container: { items: {
+      1: { id: 'dst_04E26ADB66396E8D_pandoraschest_id_101861_0', prefab: 'footballhat', components: {} },
+      2: { id: 'dst_04E26ADB66396E8D_pandoraschest_id_101861_1', prefab: 'spear', components: {} },
+    } },
     building: {},
   },
 };
@@ -40,7 +40,7 @@ function createPlacement(awake = createSignal(true)) {
   const scheduler = new GameTimeScheduler();
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(), scheduler,
     camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
-    tickingarea: () => createMemo(() => awake.get()), spawnItem: testItem } as unknown as WorldContext;
+    tickingarea: () => createMemo(() => awake.get()), spawnItem: testItem, restoreItem: testRestoreItem } as unknown as WorldContext;
   const placement = managedBuildings(world);
   return { world, placement, awake, dispose: () => { placement.dispose(); scheduler.dispose(); } };
 }

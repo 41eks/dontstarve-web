@@ -55,8 +55,11 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
     }, { id, pointerUrl: `/@fs${fileURLToPath(new URL('../../stategraphs/src/pointerRaycaster.ts', import.meta.url))}` });
     await page.mouse.click(point.x, point.y, { button });
   };
-  const slots = (save: any) => Object.values(save.players.local.inventory.containers).flatMap((container: any) => container.slots) as any[];
-  const stones = (save: any) => slots(save).filter(slot => slot.item.itemId === 'heatrock').map(slot => slot.item);
+  const held = (save: any) => [...Object.values(save.players.local.inventory.items), ...Object.values(save.players.local.inventory.equip),
+    ...save.players.local.inventory.activeitem ? [save.players.local.inventory.activeitem] : []] as any[];
+  // A stone's saved state: its components' records (temperature, fueled, highTemp / lowTemp) and its skin.
+  const stone = (record: any) => ({ id: record.id, ...record.components, skinname: record.skinname });
+  const stones = (save: any) => held(save).filter(item => item.prefab === 'heatrock').map(stone);
   const expectStoneState = (actual: any, expected: any, elapsed: number) => {
     const { temperature: actualTemperature, ...actualState } = actual;
     const { temperature: expectedTemperature, ...expectedState } = expected;
@@ -90,7 +93,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   expect((await ground())[0].materials).toContain('sprite:heatrock_fantasy');
   const groundSave = await saveGame();
   const savedStone = groundSave.world.entities.heatrock.find((record: any) => record.id === spawned.id);
-  expect(savedStone.components.stack).toMatchObject({ itemId: 'heatrock', count: 1, skinId: 'heatrock_fantasy', remainingFuel: 75 });
+  expect(savedStone).toMatchObject({ skinname: 'heatrock_fantasy', components: { fueled: { fuel: 75 } } });
   expect(stones(groundSave)).toHaveLength(2);
 
   await clickStone(spawned.id, 'left');
@@ -100,8 +103,8 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   await page.keyboard.down('Shift'); await skinned.click({ button: 'right' }); await page.keyboard.up('Shift');
   await expect.poll(async () => (await ground()).some(stone => stone.id === spawned.id && stone.skin === 'heatrock_fantasy')).toBe(true);
   const dropped = await saveGame();
-  expectStoneState(dropped.world.entities.heatrock.find((record: any) => record.id === spawned.id).components.stack,
-    savedStone.components.stack, dropped.world.elapsedSeconds - groundSave.world.elapsedSeconds);
+  expectStoneState(stone(dropped.world.entities.heatrock.find((record: any) => record.id === spawned.id)),
+    stone(savedStone), dropped.world.elapsedSeconds - groundSave.world.elapsedSeconds);
   await gotoSave(page, dropped); await prepare();
   await expect.poll(async () => (await ground())[0]?.skin).toBe('heatrock_fantasy');
   const restored = await saveGame();
@@ -109,14 +112,13 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   restored.world.entities.heatrock.forEach((record: any, index: number) => {
     const expected = dropped.world.entities.heatrock[index];
     expect({ ...record, components: undefined }).toEqual({ ...expected, components: undefined });
-    expect({ ...record.components, stack: undefined }).toEqual({ ...expected.components, stack: undefined });
-    expectStoneState(record.components.stack, expected.components.stack,
+    expectStoneState(stone(record), stone(expected),
       restored.world.elapsedSeconds - dropped.world.elapsedSeconds);
   });
   expectInventoryStones(restored, dropped);
   await clickStone(spawned.id, 'left'); await expect(skinned).toBeVisible();
   const taken = await saveGame();
-  expectStoneState(stones(taken).find(item => item.entityId === spawned.id), { entityId: spawned.id, ...savedStone.components.stack },
+  expectStoneState(stones(taken).find(item => item.id === spawned.id), stone(savedStone),
     taken.world.elapsedSeconds - groundSave.world.elapsedSeconds);
   expect(taken.world.entities.heatrock ?? []).toEqual([]);
   await gotoSave(page, taken); await prepare();

@@ -12,7 +12,7 @@ import type { BehaviourContext } from '../../brains/src/behaviourtree';
 import type { StateGraphInstance } from '../../stategraphs/src/stategraph';
 import type { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import type { ComponentActionEntity } from '../../stategraphs/src/componentactions';
-import type { EntityPersistData, EntityPersistRecord, EntitySaveRecord } from './saveRecord';
+import type { EntityPersistData, EntityPersistRecord, EntitySaveRecord, HeldEntityRecord } from './saveRecord';
 import type { EventData, EventDataArgs } from '../../componets/src/entityEvents';
 import type { DerivedTags } from '../../componets/src/derivedTags';
 import { newItemEntityId } from '../../inventory/src/entityId';
@@ -186,6 +186,9 @@ function persistentComponent(component: unknown): PersistentComponent | undefine
   return component !== null && typeof component === 'object' ? component : undefined;
 }
 
+/** A record SpawnSaveRecord places: the persisted identity and data, and the record's skin. */
+type SpawnedRecord = EntityPersistRecord & { skinname?: string };
+
 /** spawnAs / restoreAs: the spawned entity, checked to be of the class the caller expects. */
 function checkedAs<Spawned>(type: abstract new (...args: never[]) => Spawned, prefabId: string, instance: unknown): Spawned {
   if (!(instance instanceof type)) throw new TypeError(`${prefabId} does not spawn a ${type.name}`);
@@ -256,6 +259,16 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   SetPersistData(data: EntityPersistData): void {
     for (const [name, saved] of Object.entries(data)) persistentComponent(Reflect.get(this.components, name))?.OnLoad?.(saved);
     this.OnLoad?.(this, data);
+  }
+  /**
+   * GetSaveRecord's record.skinname. Only an item's skin is saved there; a structure's skin is part of its own data
+   * (building.skinId, wall, fence).
+   */
+  get savedSkinName(): string | undefined { return undefined; }
+  /** EntityScript:GetSaveRecord of an inst another one holds: its prefab, skin and GetPersistData, without a position. */
+  GetSaveRecord(): HeldEntityRecord {
+    const skinname = this.savedSkinName;
+    return { id: String(this.entityId), prefab: this.prefab, ...skinname === undefined ? {} : { skinname }, components: this.GetPersistData() };
   }
   private readonly removedState = createSignal(false);
   readonly removal: ReadonlySignal<boolean> = readonlySignal(this.removedState);
@@ -1008,7 +1021,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
    * the entity is checked to be one, and a prefab that spawns another class is an error.
    */
   spawnAs<Spawned extends Instance>(type: abstract new (...args: never[]) => Spawned, prefabId: Id, position: ReadonlyVector3,
-    saved?: EntityPersistRecord, skinId?: string): Spawned {
+    saved?: SpawnedRecord, skinId?: string): Spawned {
     return checkedAs(type, prefabId, this.spawn(prefabId, position, saved, skinId));
   }
 
@@ -1016,7 +1029,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
    * SpawnPrefab and SetPosition, then SetPersistData of `saved` when the entity keeps an earlier identity and state, such
    * as an item dropped from a container: the entity exists now and its display loads the art.
    */
-  spawn(prefabId: Id, position: ReadonlyVector3, saved?: EntityPersistRecord, skinId?: string): Instance {
+  spawn(prefabId: Id, position: ReadonlyVector3, saved?: SpawnedRecord, skinId?: string): Instance {
     return this.create(prefabId, position, 0, saved, skinId);
   }
 
@@ -1030,7 +1043,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     return checkedAs(type, prefabId, this.restore(prefabId, record));
   }
 
-  private create(prefabId: Id, position: ReadonlyVector3, rotationY: number, saved: EntityPersistRecord | undefined, skinId?: string): Instance {
+  private create(prefabId: Id, position: ReadonlyVector3, rotationY: number, saved: SpawnedRecord | undefined, skinId?: string): Instance {
     if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
     if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
     if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
@@ -1058,7 +1071,10 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     if (physics && this.physicsWorld) instance.bindPhysics(this.physicsWorld);
     instance.entityId = saved?.id ?? newItemEntityId();
     if (saved) {
-      instance.saveRecord = { id: saved.id, components: saved.components, transform: { position: [position.x, 0, position.z], rotationY } };
+      instance.saveRecord = { id: saved.id, components: saved.components, transform: { position: [position.x, 0, position.z], rotationY },
+        ...saved.skinname === undefined ? {} : { skinname: saved.skinname } };
+      // SpawnSaveRecord's SpawnPrefab(record.prefab, record.skinname): the skin is the inst's before SetPersistData.
+      if (saved.skinname !== undefined) instance.skinId = saved.skinname;
       POPULATING = true;
       try { instance.SetPersistData(saved.components); } finally { POPULATING = false; }
     }
@@ -1162,6 +1178,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
       id: String(entity.entityId),
       transform: { position: [entity.position.x, 0, entity.position.z], rotationY: entity.transform.model.rotation.y },
       components: entity.GetPersistData(),
+      ...entity.savedSkinName === undefined ? {} : { skinname: entity.savedSkinName },
     } }));
   }
 

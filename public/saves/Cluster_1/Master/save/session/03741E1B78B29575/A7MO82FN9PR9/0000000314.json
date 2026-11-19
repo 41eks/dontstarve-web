@@ -16,145 +16,133 @@
       "sanity": 200
     },
     "inventory": {
-      "containers": {
-        "player:inventory": {
-          "slotCount": 15,
-          "slots": [
-            {
-              "slotKey": "0",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_0",
-                "itemId": "twigs",
-                "count": 40
-              }
-            },
-            {
-              "slotKey": "1",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_1",
-                "itemId": "voidcloth_boomerang",
-                "count": 1
-              }
-            },
-            {
-              "slotKey": "2",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_2",
-                "itemId": "beef_bell",
-                "count": 1
-              }
-            },
-            {
-              "slotKey": "3",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_3",
-                "itemId": "voidclothhat",
-                "count": 1
-              }
-            },
-            {
-              "slotKey": "4",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_4",
-                "itemId": "fireflies",
-                "count": 3
-              }
-            },
-            {
-              "slotKey": "5",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_5",
-                "itemId": "redgem",
-                "count": 10
-              }
-            },
-            {
-              "slotKey": "6",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_6",
-                "itemId": "meat",
-                "count": 4,
-                "freshnessPercent": 0.6300240592422223
-              }
-            },
-            {
-              "slotKey": "7",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_7",
-                "itemId": "yellowgem",
-                "count": 11
-              }
-            },
-            {
-              "slotKey": "8",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_8",
-                "itemId": "lunarplant_husk",
-                "count": 5
-              }
-            },
-            {
-              "slotKey": "9",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_9",
-                "itemId": "voidcloth_scythe",
-                "count": 1
-              }
-            },
-            {
-              "slotKey": "10",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_10",
-                "itemId": "lightninggoathorn",
-                "count": 9
-              }
-            },
-            {
-              "slotKey": "11",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_11",
-                "itemId": "pickaxe_lunarplant",
-                "count": 1
-              }
-            },
-            {
-              "slotKey": "12",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_12",
-                "itemId": "twigs",
-                "count": 40
-              }
-            },
-            {
-              "slotKey": "13",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_13",
-                "itemId": "opalstaff",
-                "count": 1,
-                "skinId": "moonstaff_relic",
-                "remainingUses": 9
-              }
-            },
-            {
-              "slotKey": "14",
-              "item": {
-                "entityId": "dst_03741E1B78B29575_A7MO82FN9PR9_items_14",
-                "itemId": "dragonfruit_seeds",
-                "count": 4,
-                "freshnessPercent": 0.9078886542064062
-              }
+      "items": {
+        "1": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_0",
+          "prefab": "twigs",
+          "components": {
+            "stackable": {
+              "stack": 40
             }
-          ]
+          }
         },
-        "player:equipment": {
-          "slotCount": 3,
-          "slots": []
+        "2": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_1",
+          "prefab": "voidcloth_boomerang",
+          "components": {}
         },
-        "player:cursor": {
-          "slotCount": 1,
-          "slots": []
+        "3": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_2",
+          "prefab": "beef_bell",
+          "components": {}
+        },
+        "4": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_3",
+          "prefab": "voidclothhat",
+          "components": {}
+        },
+        "5": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_4",
+          "prefab": "fireflies",
+          "components": {
+            "stackable": {
+              "stack": 3
+            }
+          }
+        },
+        "6": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_5",
+          "prefab": "redgem",
+          "components": {
+            "stackable": {
+              "stack": 10
+            }
+          }
+        },
+        "7": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_6",
+          "prefab": "meat",
+          "components": {
+            "stackable": {
+              "stack": 4
+            },
+            "perishable": {
+              "time": 1814.4692906176
+            }
+          }
+        },
+        "8": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_7",
+          "prefab": "yellowgem",
+          "components": {
+            "stackable": {
+              "stack": 11
+            }
+          }
+        },
+        "9": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_8",
+          "prefab": "lunarplant_husk",
+          "components": {
+            "stackable": {
+              "stack": 5
+            }
+          }
+        },
+        "10": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_9",
+          "prefab": "voidcloth_scythe",
+          "components": {}
+        },
+        "11": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_10",
+          "prefab": "lightninggoathorn",
+          "components": {
+            "stackable": {
+              "stack": 9
+            }
+          }
+        },
+        "12": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_11",
+          "prefab": "pickaxe_lunarplant",
+          "components": {}
+        },
+        "13": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_12",
+          "prefab": "twigs",
+          "components": {
+            "stackable": {
+              "stack": 40
+            }
+          }
+        },
+        "14": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_13",
+          "prefab": "opalstaff",
+          "skinname": "moonstaff_relic",
+          "components": {
+            "finiteuses": {
+              "uses": 9
+            }
+          }
+        },
+        "15": {
+          "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_14",
+          "prefab": "dragonfruit_seeds",
+          "components": {
+            "stackable": {
+              "stack": 4
+            },
+            "perishable": {
+              "time": 17431.462160763
+            }
+          }
         }
       },
+      "equip": {}
+    },
+    "builder": {
       "bufferedBuilds": []
     }
   },

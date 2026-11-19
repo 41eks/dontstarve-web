@@ -7,7 +7,8 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { createPickupInventory } from './pickupFixture';
 import { workTargets } from './workTargets';
-import { testItem } from './testInventory';
+import { testItem, testRestoreItem } from './testInventory';
+import { SAVE_CATALOG } from '../../../src/save/catalog';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
@@ -25,12 +26,12 @@ it('restores container contents, drops their live entities at the building foot 
   const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
     registerContainer: (id, container) => inventory.registerContainer(id, container),
-    unregisterContainer: (id, container) => inventory.unregisterContainer(id, container), spawnItem: testItem } as WorldContext;
+    unregisterContainer: (id, container) => inventory.unregisterContainer(id, container), spawnItem: testItem, restoreItem: testRestoreItem } as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   try {
     const model = await placement.spawnFromSave('icebox', { id: 'icebox', transform: { position: [3, 0, -6], rotationY: 0 },
-      components: { building: {}, container: { slotCount: 9,
-        slots: [{ slotKey: '0', item: { entityId: 'stored_food', itemId: 'seeds', count: 3, freshnessPercent: .6 } }] } } });
+      components: { building: {}, container: { items: { 1: { id: 'stored_food', prefab: 'seeds',
+        components: { stackable: { stack: 3 }, perishable: { time: .6 * SAVE_CATALOG.items.seeds.perishTime! } } } } } } });
     const target = workTargets('HAMMER')[0], address = { containerId: 'world:icebox:icebox', slotKey: '0' };
     const item = inventory.getEntity(address)!;
     const before = item.snapshot();
@@ -66,13 +67,13 @@ it('burns a chest through shared components, drops its live contents and restore
     cameraFacing: createSignal(8), cameraHeading: createSignal(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
     registerContainer: (id, container) => inventory.registerContainer(id, container),
-    unregisterContainer: (id, container) => inventory.unregisterContainer(id, container), spawnItem: testItem } as WorldContext;
+    unregisterContainer: (id, container) => inventory.unregisterContainer(id, container), spawnItem: testItem, restoreItem: testRestoreItem } as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   let restored: ReturnType<typeof managedBuildings> | undefined;
   try {
     const model = placement.spawnFromSave('treasurechest', { id: 'burning-chest', transform: { position: [3, 0, -6], rotationY: 0 },
-      components: { building: {}, container: { slotCount: 9,
-        slots: [{ slotKey: '0', item: { entityId: 'stored-seeds', itemId: 'seeds', count: 3, freshnessPercent: .6 } }] } } });
+      components: { building: {}, container: { items: { 1: { id: 'stored-seeds', prefab: 'seeds',
+        components: { stackable: { stack: 3 }, perishable: { time: .6 * SAVE_CATALOG.items.seeds.perishTime! } } } } } } });
     const inst = prefabInstance(model)!;
     const item = inventory.getEntity({ containerId: 'world:treasurechest:burning-chest', slotKey: '0' })!;
     const before = item.snapshot(), burnable = inst.components.burnable!;
@@ -105,7 +106,7 @@ it('burns a chest through shared components, drops its live contents and restore
     expect(restored.exportRecords()[0].record).toEqual(record);
     // A burnt record that still lists items: Container:OnLoad runs first, so the prefab's onload drops them.
     const stocked = prefabInstance(restored.spawnFromSave('treasurechest', { id: 'stocked-burnt', transform: { position: [8, 0, 1], rotationY: 0 }, components: {
-      building: { burnt: true }, container: { slotCount: 9, slots: [{ slotKey: '0', item: { entityId: 'saved-log', itemId: 'log', count: 2 } }] } } }))!;
+      building: { burnt: true }, container: { items: { 1: { id: 'saved-log', prefab: 'log', components: { stackable: { stack: 2 } } } } } } }))!;
     expect(stocked.components.container).toBeUndefined();
     const saved = inventory.entities.get('saved-log')!;
     expect(saved.components.inventoryitem.owner).toBeNull();

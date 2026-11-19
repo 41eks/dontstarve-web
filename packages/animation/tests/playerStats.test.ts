@@ -28,7 +28,7 @@ it('keeps the sanity hysteresis state through c_setsanity, c_save and reload', a
   try {
     const save = () => {
       exported = serializeSave(template, { entities: {}, elapsedSeconds: 0,
-        playerTransform: { position: [3, 0, -6], rotationY: 0 }, inventory: inventory.exportState(), playerStats: getPlayerStats(),
+        playerTransform: { position: [3, 0, -6], rotationY: 0 }, inventory: inventory.exportSaved(), playerStats: getPlayerStats(),
       }, SAVE_CATALOG);
     };
     expect((await executeDebugCommand('c_setsanity(.15); c_setsanity(.16); c_save()', inventory,

@@ -178,7 +178,7 @@ it('keeps a c_spawn pillar through c_save and a reload, leaves its children out,
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
-        { entities: before, inventory: inventory.exportState(), elapsedSeconds: 1, playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
+        { entities: before, inventory: inventory.exportSaved(), elapsedSeconds: 1, playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const entities = deserializeSave(json, SAVE_CATALOG).world.entities;
     expect([entities.oceantree_pillar_ripples, entities.oceantree_pillar_roots, entities.oceantree_pillar_leaves]).toEqual([undefined, undefined, undefined]);

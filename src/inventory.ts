@@ -52,7 +52,7 @@ function initialStacks(
 export interface ItemWorld {
   /** Whether `prefab` is an item prefab of this world. */
   isItemPrefab(prefab: string): boolean;
-  /** SpawnPrefab of an item prefab from its stack. */
+  /** SpawnPrefab of an item prefab, then SetPersistData of its record. */
   readonly SpawnPrefab: ItemSpawner;
 }
 
@@ -62,8 +62,8 @@ export interface ItemWorld {
  * constructed by the registry alone.
  */
 export function createItemRegistry(world: ItemWorld): ItemEntityRegistry {
-  const entities: ItemEntityRegistry = new ItemEntityRegistry(state =>
-    world.isItemPrefab(state.itemId) ? world.SpawnPrefab(state) : entities.construct(state));
+  const entities: ItemEntityRegistry = new ItemEntityRegistry((prefab, saved) =>
+    world.isItemPrefab(prefab) ? world.SpawnPrefab(prefab, saved) : entities.constructSaved(prefab, saved));
   return entities;
 }
 

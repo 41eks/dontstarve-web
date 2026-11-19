@@ -14,7 +14,7 @@ import { animationTiming } from './animationTimings';
 import { GROUND_ITEM_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import type { ItemPrefabWorld } from './groundPrefab';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
-import type { EntityPersistData } from './saveRecord';
+import { type EntityPersistData, structureHealth } from './saveRecord';
 import { MakeCharacterPhysics, WORLD_SCALE } from './standardcomponents';
 
 export type { BerniePlayer } from '../../brains/src/berniebrain';
@@ -169,9 +169,10 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
 
   /** health.lua OnLoad from the record; bernie_big.lua OnLoad then stands a loaded big Bernie idle instead of activating. */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
-    if (data.health) {
-      this.components.health.SetMaxHealth(data.health.maximum);
-      this.components.health.OnLoad({ health: data.health.current });
+    const saved = structureHealth(data);
+    if (saved) {
+      this.components.health.SetMaxHealth(saved.maximum);
+      this.components.health.OnLoad({ health: saved.current });
     }
     if (this.big) this.sg.goToState('idle');
   }

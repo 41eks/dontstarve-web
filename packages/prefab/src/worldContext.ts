@@ -47,6 +47,8 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
     isNight?: import('@dontstarve-web/signals').ReadonlySignal<boolean>;
     /** SpawnPrefab for an inventory item: a configured inst that nothing owns yet. */
     spawnItem?: (state: import('@dontstarve-web/inventory').InventoryStack) => import('@dontstarve-web/inventory').ItemEntity;
+    /** SpawnSaveRecord of an item a container or inventory held: a configured inst that nothing owns yet. */
+    restoreItem?: (record: import('./saveRecord').HeldEntityRecord) => import('@dontstarve-web/inventory').ItemEntity;
     /** SpawnPrefab for a planted crop; the farm prefab owner creates its logical instance and display. */
     spawnFarmPlant?: import('../../componets/src/farmplantable').FarmPlantWorld['spawnFarmPlant'];
     /** inventoryitem:OnDropped for an existing inst, placed on the ground at the position. */
@@ -68,4 +70,12 @@ export function spawnWorldItem(inst: { readonly prefab: string; readonly worldSe
     const spawn = inst.worldServices?.spawnItem;
     if (!spawn) throw new Error(`${inst.prefab} has no world to spawn ${state.itemId} in`);
     return spawn(state);
+}
+
+/** SpawnSaveRecord of an item a prefab loads into a container or inventory, in the inst's own world. */
+export function restoreWorldItem(inst: { readonly prefab: string; readonly worldServices?: Pick<WorldContext, 'restoreItem'> },
+    record: import('./saveRecord').HeldEntityRecord): import('@dontstarve-web/inventory').ItemEntity {
+    const restore = inst.worldServices?.restoreItem;
+    if (!restore) throw new Error(`${inst.prefab} has no world to load ${record.prefab} in`);
+    return restore(record);
 }

@@ -7,7 +7,7 @@ import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../invento
 import { deserializeSave, type SaveCatalog } from '../../../src/save/deserialize';
 import { TORCH_FUEL } from '../../prefab/src/torch';
 import { serializeSave } from '../../../src/save/serialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { savedInventoryOf } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { TurfMap } from '../../prefab/src/turfMap';
 
@@ -34,13 +34,13 @@ describe('save JSON deserialization', () => {
     data.world.entities.fireflies = Array.from({ length: 10_001 }, (_, i) => ({
       id: `large-save-fireflies-${i}`,
       transform: { position: [i % 100 - 50, 0, Math.floor(i / 100) - 50], rotationY: 0 },
-      components: { stack: { itemId: 'fireflies', count: 1 } },
+      components: {},
     }));
     data.world.map.generator.options.moonTreeCount = 10_001;
     const template = deserializeSave(JSON.stringify(data), SAVE_CATALOG);
     const restored = deserializeSave(serializeSave(template, {
       entities: template.world.entities, playerTransform: template.players.local.transform,
-      inventory: inventoryStateFromSave(template), elapsedSeconds: template.world.elapsedSeconds,
+      inventory: savedInventoryOf(template), elapsedSeconds: template.world.elapsedSeconds,
     }, SAVE_CATALOG), SAVE_CATALOG);
     expect(restored.world.entities).toEqual(template.world.entities);
     expect(restored.world.map.generator.options.moonTreeCount).toBe(10_001);
@@ -52,7 +52,7 @@ describe('save JSON deserialization', () => {
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     const map = new TurfMap(template.world.map.generator.options.size, template.world.map.tiles);
     const state = { entities: template.world.entities, tiles: map.exportTiles(),
-      playerTransform: template.players.local.transform, inventory: inventoryStateFromSave(template),
+      playerTransform: template.players.local.transform, inventory: savedInventoryOf(template),
       elapsedSeconds: template.world.elapsedSeconds };
     const restored = deserializeSave(serializeSave(template, state, SAVE_CATALOG), SAVE_CATALOG);
     expect(restored.world.map.tiles).toEqual(template.world.map.tiles);
@@ -72,7 +72,7 @@ describe('save JSON deserialization', () => {
     const json = serializeSave(template, {
       entities: { ...template.world.entities, beefalo: [beefalo] },
       playerTransform: template.players.local.transform,
-      inventory: inventoryStateFromSave(template), elapsedSeconds: template.world.elapsedSeconds,
+      inventory: savedInventoryOf(template), elapsedSeconds: template.world.elapsedSeconds,
     }, SAVE_CATALOG);
     const restored = deserializeSave(json, SAVE_CATALOG);
     expect(restored.world.entities.beefalo).toEqual([beefalo]);
@@ -109,8 +109,8 @@ describe('save JSON deserialization', () => {
       return deserializeSave(JSON.stringify(data), SAVE_CATALOG).world.entities[prefab][0].components;
     };
     // The heat rock's spec saves temperature; flint has no temperature component.
-    expect(load('heatrock', { stack: { itemId: 'heatrock', count: 1, temperature: { current: 40 } } }).stack?.temperature).toEqual({ current: 40 });
-    expect(() => load('flint', { stack: { itemId: 'flint', count: 1, temperature: { current: 40 } } })).toThrow('no temperature component');
+    expect(load('heatrock', { temperature: { current: 40 } }).temperature).toEqual({ current: 40 });
+    expect(() => load('flint', { temperature: { current: 40 } })).toThrow('flint has no temperature');
     // A chest is a burnable structure; an ice box is not.
     expect(load('treasurechest', { building: { burnt: true } }).building).toEqual({ burnt: true });
     expect(() => load('icebox', { building: { burnt: true } })).toThrow('burnt combustible building');

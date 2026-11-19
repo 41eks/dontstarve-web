@@ -36,7 +36,7 @@ function setup() {
   return { scene, awake, prefabs, registry, inventory, spawnGroundItem,
     spawn: (position: THREE.Vector3, rockType?: number) => prefabs.spawnAs(MoonglassRockInstance, MOONGLASS_ROCK_ID, position,
       rockType === undefined ? undefined : { id: 'saved-rock', components: { rock_type: rockType as 1 } }),
-    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }

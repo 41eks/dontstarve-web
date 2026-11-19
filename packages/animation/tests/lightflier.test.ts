@@ -19,7 +19,7 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { PrefabEntityManager, PrefabInstance, prefabInstance } from '../../prefab/src/prefabInstance';
-import { createInventoryStore, testItem } from './testInventory';
+import { createInventoryStore, testSavedItem } from './testInventory';
 
 /** The inst.Light an entity's model declares. */
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
@@ -41,7 +41,7 @@ function setup(players: LightFlierPlayer[] = [], withWorld = false) {
     inst.addTag('player'); inst.addTag('scarytoprey'); inst.setPosition(player.position.x, 0, player.position.z); prefabs.track(inst);
   }
   const habitat = new LightFlierHabitat({ scheduler, getWatchWorldContent: world?.getWatchWorldContent, tickingarea: world?.tickingarea, getPlayers: () => players,
-    spawnItem: state => { const entity = new LightFlier(state, undefined, testItem); MakeLightFlier(entity); prefabs.track(entity); entities.push(entity); return entity; }, dropLoot,
+    spawnItem: state => { const entity = new LightFlier(state, undefined, testSavedItem); MakeLightFlier(entity); prefabs.track(entity); entities.push(entity); return entity; }, dropLoot,
     getHomes: () => prefabs.instances(LIGHTFLIER_FLOWER_ID) as Iterable<LightFlierFlowerInstance> });
   prefabs.register(lightflierFlowerPrefabs({ scheduler, habitat, dropLoot, getWatchWorldContent: world?.getWatchWorldContent, getLightLevel: () => 1 }));
   const spawn = (position: THREE.Vector3, record?: EntitySaveRecord) => prefabs.spawnAs(LightFlierFlowerInstance, LIGHTFLIER_FLOWER_ID, position, record);
@@ -80,12 +80,12 @@ it('restores child ownership and returns home only at the source stategraph fram
     const inventory = createPickupInventory();
     try {
       const json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), { entities: { lightflier_flower: [record] },
-        inventory: inventory.exportState(), elapsedSeconds: 1, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+        inventory: inventory.exportSaved(), elapsedSeconds: 1, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
       expect(deserializeSave(json, SAVE_CATALOG).world.entities.lightflier_flower).toEqual([record]);
     } finally { inventory.dispose(); }
     expect(record.components.lightflierFlower).toMatchObject({ picked: true, paused: true, childspawner: { childrenoutside: [fly.id] } });
     const home = restored.spawn(new THREE.Vector3(), record);
-    const child = new LightFlier(state, undefined, testItem); restored.entities.push(child); MakeLightFlier(child); restored.prefabs.track(child); configureLightFlierEntity(child);
+    const child = new LightFlier(state, undefined, testSavedItem); restored.entities.push(child); MakeLightFlier(child); restored.prefabs.track(child); configureLightFlierEntity(child);
     restored.habitat.bind(child);
     expect(child.home).toBe(home); expect(home.components.childspawner.OnSave().childrenoutside).toEqual([fly.id]);
     child.getPosition().copy(home.getPosition()); home._lightflier_returning_home = child;

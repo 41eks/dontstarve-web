@@ -314,7 +314,7 @@ it('c_spawn places a fence at the wall slot ahead of the player, and c_save relo
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       json = serializeSave(template, { entities: { ...template.world.entities, ...first.registry.exportRecords() },
-        inventory: inventory.exportState(), playerTransform: { position: [3, 0, -6], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
+        inventory: inventory.exportSaved(), playerTransform: { position: [3, 0, -6], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG).world.entities.fence!;
     expect(saved).toEqual([{ id: String(fence.entityId), transform: { position: [x, 0, z], rotationY: 0 }, components: { fence: {} } }]);

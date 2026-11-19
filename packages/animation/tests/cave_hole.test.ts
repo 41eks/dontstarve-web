@@ -42,7 +42,7 @@ function setup(physics?: CANNON.World) {
   return { scene, awake, cameraFacing, prefabs, registry, inventory, instances,
     hole: () => instances().find(inst => inst.prefab === CAVE_HOLE_ID) as CaveHoleInstance,
     surface: () => instances().find(inst => inst.prefab === 'cave_hole_surface')!,
-    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); } };
 }

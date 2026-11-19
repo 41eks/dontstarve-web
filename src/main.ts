@@ -45,7 +45,6 @@ import { locomotor, startScene, worldState } from './scene';
 import { WortoxPlayer } from '../packages/prefab/src/wortoxPlayer';
 import { createDisposalResources } from './registerDisposal';
 import { initialSave } from './save/initialSave';
-import { inventoryStateFromSave } from './save/inventoryState';
 import { SAVE_CATALOG } from './save/catalog';
 import { serializeSave } from './save/serialize';
 import { downloadClusterSave } from './save/download';
@@ -54,6 +53,7 @@ import { createInventorySlotItem } from './inventorySlotItem';
 import { playerStats, playerGhostMode, getPlayerStats, setPlayerSanityPercent } from './playerStats';
 import { loadAnimationArchive } from '@dontstarve-web/animation/animationAssets';
 import { createEffect, createRenderEffect, watchSignal } from '@dontstarve-web/signals';
+import { loadSavedInventory } from './save/inventoryState';
 
 // Independent startup loads begin together; each is awaited where it is first needed.
 const animRoot = `${import.meta.env.BASE_URL}dst/data/anim`;
@@ -201,7 +201,7 @@ const sceneResources = await startScene(
 const { buildingPlacement, groundItems, worldFx, registry, prefabs, getSaveState, disposalEvents } = sceneResources;
 // The player's saved items are SpawnPrefab'd into the world the scene has just registered the item prefabs in; the
 // subscriptions above equip the restored items as their slots commit.
-inventory.replaceState(inventoryStateFromSave(initialSave), INVENTORY_RECIPES);
+loadSavedInventory(inventory, initialSave, INVENTORY_RECIPES);
 gameUi.minimap.bind({ terrain: turfMap, cellSize: TILE_SIZE, getPlayerPosition: () => player.position, cameraHeading: view.cameraHeading });
 const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
 document.body.append(sanityVignette.canvas);
@@ -276,7 +276,7 @@ let pendingSave = Promise.resolve();
 function saveGame(): Promise<void> {
   const save = pendingSave.then(() => gameUi.savingIndicator.whileSaving(async () => {
     const json = serializeSave(initialSave, {
-      ...getSaveState(), playerWortox: playerInstance.wortox?.OnSave(), inventory: inventory.exportState(), playerStats: getPlayerStats(), playerGhost: playerGhostMode.peek(),
+      ...getSaveState(), playerWortox: playerInstance.wortox?.OnSave(), inventory: inventory.exportSaved(), playerStats: getPlayerStats(), playerGhost: playerGhostMode.peek(),
     }, SAVE_CATALOG, lastSavedSnapshotId);
     lastSavedSnapshotId = (await downloadClusterSave(json, initialSave.world.prefab)).snapshot.id;
   }));

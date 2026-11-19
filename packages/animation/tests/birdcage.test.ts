@@ -15,6 +15,7 @@ import { ItemEntity, type InventoryStack } from '@dontstarve-web/inventory';
 import { createMemo, createSignal } from '@dontstarve-web/signals';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { testItem } from './testInventory';
+import type { HeldEntityRecord } from '../../prefab/src/saveRecord';
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -80,8 +81,16 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
     items.push(item);
     return item;
   };
+  // SpawnSaveRecord of a bird: SetPersistData, then the configuration its prefab's fn gives it.
+  const restoreItem = (record: HeldEntityRecord) => {
+    const item = testItem({ itemId: record.prefab, count: 1, entityId: record.id });
+    item.SetPersistData(record.components);
+    item.configure({ perishTime: BIRD_PERISH_TIME, configureEntity: configureBirdEntity });
+    items.push(item);
+    return item;
+  };
   const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() }, spawnItem,
+    camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() }, spawnItem, restoreItem,
     tickingarea: () => createMemo(() => awake.get()) } as unknown as WorldContext;
   const placement = managedBuildings(world);
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
@@ -139,7 +148,10 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
     const restoredInstance = prefabInstance(restored)!;
     await prefabDisplay(restored)!.artLoaded();
     expect(restoredInstance.skinId).toBe('birdcage_gothicp');
-    expect(placement.exportRecords()[0].record.components.birdcage).toEqual(saved.record.components.birdcage);
+    // birdcage.lua OnSave's CAGE_STATE and bird_type, occupiable's occupant and the shelf's inventory.
+    const cage = ({ CAGE_STATE, bird_type, occupiable, inventory }: import('../../prefab/src/saveRecord').EntityPersistData) =>
+      ({ CAGE_STATE, bird_type, occupiable, inventory });
+    expect(cage(placement.exportRecords()[0].record.components)).toEqual(cage(saved.record.components));
     expect(drawsBird(restored)).toBe(true);
     for (const key of ['components', 'animationController', 'display', 'skinIdSignal', 'removed']) {
       expect(Object.hasOwn(restored.userData, key), key).toBe(false);

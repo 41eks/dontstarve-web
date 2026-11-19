@@ -1,6 +1,6 @@
 import type { EntityEventData } from '../../componets/src/entityEvents';
 import * as THREE from 'three';
-import type { ItemEntity, InventoryStack } from '@dontstarve-web/inventory';
+import type { ItemEntity } from '@dontstarve-web/inventory';
 import { SpriteState } from '@dontstarve-web/display';
 import type { ReadonlySignal, HandEquipment } from '@dontstarve-web/signals';
 import { Workable } from '../../componets/src/workable';
@@ -43,7 +43,7 @@ export interface FarmPlowSaveState {
   phase: 'drill_pre' | 'drill_loop' | 'collapse';
   remainingSeconds: number;
   /** Lua deploy_item_save_record, captured after finiteuses:Use(1); null on depletion/debug spawn. */
-  deployItem: InventoryStack | null;
+  deployItem: import('./saveRecord').HeldEntityRecord | null;
 }
 /** farm_soil.lua OnSave: broken, and the plow it was dug by. */
 export interface FarmSoilSaveState { broken: boolean; plowId?: string }
@@ -78,7 +78,7 @@ export interface FarmWorld extends Partial<Pick<FarmPlantWorld, 'worldEvents'>> 
   /** The saved entity a plow's soil was dug by: OnLoadPostPass's newents. */
   getEntity(entityId: string): PrefabInstance | undefined;
   /** SpawnSaveRecord(deploy_item_save_record) at the position. */
-  spawnSaveRecord(position: THREE.Vector3, item: InventoryStack): void;
+  spawnSaveRecord(position: THREE.Vector3, item: import('./saveRecord').HeldEntityRecord): void;
   /** lootdropper:SpawnLootPrefab. */
   spawnLoot?(itemId: string, position: THREE.Vector3): void;
   fx?: WorldContext['fx'];
@@ -89,7 +89,7 @@ export interface FarmWorld extends Partial<Pick<FarmPlantWorld, 'worldEvents'>> 
 /** farm_plow main_fn's deploy_item_save_record and startup_task; folding is this port's fold-up before the item returns. */
 export class FarmPlowInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & { workable: Workable; timer: Timer };
-  deploy_item_save_record: InventoryStack | null = null;
+  deploy_item_save_record: import('./saveRecord').HeldEntityRecord | null = null;
   startup_task?: EntityTask;
   folding = false;
   readonly world: FarmWorld;
@@ -125,7 +125,7 @@ const dirtPuff = (world: FarmWorld, position: THREE.Vector3) => world.fx?.spawn(
 function onhammered(inst: FarmPlowInstance): void {
   const position = inst.position.clone();
   inst.world.fx?.collapse?.('small', position);
-  if (inst.deploy_item_save_record) inst.world.spawnSaveRecord(position, { ...inst.deploy_item_save_record });
+  if (inst.deploy_item_save_record) inst.world.spawnSaveRecord(position, structuredClone(inst.deploy_item_save_record));
   inst.remove();
 }
 
@@ -154,7 +154,7 @@ function Fold(inst: FarmPlowInstance): void {
   inst.components.workable.SetWorkable(false);
   inst.sprite.playOnce('collapse', () => {
     if (inst.isRemoved || !inst.deploy_item_save_record) return;
-    inst.world.spawnSaveRecord(inst.position.clone(), { ...inst.deploy_item_save_record });
+    inst.world.spawnSaveRecord(inst.position.clone(), structuredClone(inst.deploy_item_save_record));
     inst.remove();
   });
 }
@@ -230,7 +230,7 @@ function plowOnSave(plow: FarmPlowInstance, data: EntityPersistData): void {
   data.farmPlow = {
     phase: plow.folding ? 'collapse' : drilling ? 'drill_loop' : 'drill_pre',
     remainingSeconds: plow.folding ? 0 : drilling ? timer.GetTimeLeft('drilling')! : FARM_PLOW_DRILLING_DURATION,
-    deployItem: plow.deploy_item_save_record ? { ...plow.deploy_item_save_record } : null,
+    deployItem: plow.deploy_item_save_record ? structuredClone(plow.deploy_item_save_record) : null,
   };
   // The drilling timer is saved in farmPlow, the record existing saves hold.
   delete data.timer;
@@ -240,7 +240,7 @@ function plowOnSave(plow: FarmPlowInstance, data: EntityPersistData): void {
 function plowOnLoad(plow: FarmPlowInstance, data: EntityPersistData): void {
   const saved = data.farmPlow;
   if (!saved) return;
-  plow.deploy_item_save_record = saved.deployItem ? { ...saved.deployItem } : null;
+  plow.deploy_item_save_record = saved.deployItem ? structuredClone(saved.deployItem) : null;
   if (saved.phase === 'drill_pre') return;
   plow.startup_task?.Cancel(); plow.startup_task = undefined;
   if (saved.phase === 'collapse') { Fold(plow); return; }

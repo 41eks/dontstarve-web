@@ -22,8 +22,8 @@ test('map right clicks teleport across ocean for free, release autopause once an
   }
   source.players.local.transform.position = [6, 0, 6];
   source.players.local.wortox = { freehops: 1, soulhopcost: 0 };
-  for (const container of Object.values(source.players.local.inventory.containers) as any[]) container.slots = [];
-  source.players.local.inventory.bufferedBuilds = [];
+  source.players.local.inventory = { items: {}, equip: {} };
+  source.players.local.builder = { bufferedBuilds: [] };
   let loaded = source;
   await page.route('**/saves/Cluster_1/Master.json', route => route.fulfill({ json: loaded }));
   const prepare = () => page.evaluate(async urls => {
@@ -90,7 +90,7 @@ test('map right clicks teleport across ocean for free, release autopause once an
   expect(loaded.players.local.transform.position[0]).toBeCloseTo(282, 1);
   expect(loaded.players.local.transform.position[2]).toBeCloseTo(6, 1);
   expect(loaded.players.local.wortox).toEqual({ freehops: 1, soulhopcost: 0 });
-  expect(Object.values(loaded.players.local.inventory.containers).every((container: any) => container.slots.length === 0)).toBe(true);
+  expect(loaded.players.local.inventory).toEqual({ items: {}, equip: {} });
   await page.reload(); await prepare();
   expect(await snapshot()).toMatchObject({ x: 282, z: 6, state: 'idle', wortox: { freehops: 1, soulhopcost: 0 }, consumptions: 0 });
   expect(errors).toEqual([]);
@@ -110,8 +110,8 @@ test('empty-inventory right clicks soul-hop, show Soul Echo, preserve counters o
   source.world.map.tiles = [];
   for (let row = -3; row <= 3; row++) for (let col = -3; col <= 3; col++) source.world.map.tiles.push({ col, row, tileId: 3 });
   source.players.local.transform.position = [6, 0, 6];
-  for (const container of Object.values(source.players.local.inventory.containers) as any[]) container.slots = [];
-  source.players.local.inventory.bufferedBuilds = [];
+  source.players.local.inventory = { items: {}, equip: {} };
+  source.players.local.builder = { bufferedBuilds: [] };
   delete source.players.local.wortox;
   let loaded = source;
   await page.route('**/saves/Cluster_1/Caves.json', route => route.fulfill({ json: loaded }));
@@ -166,7 +166,7 @@ test('empty-inventory right clicks soul-hop, show Soul Echo, preserve counters o
   const saved = await save();
   expect(saved.players.local.wortox).toEqual({ freehops: 1, soulhopcost: 0 });
   expect(Object.keys(saved.world.entities)).not.toContain('wortox_portal_jumpin_fx');
-  expect(Object.values(saved.players.local.inventory.containers).every((container: any) => container.slots.length === 0)).toBe(true);
+  expect(saved.players.local.inventory).toEqual({ items: {}, equip: {} });
   loaded = saved;
   await page.reload(); await prepare();
   expect(await snapshot()).toMatchObject({ freehops: 1, timer: 'stopped' });

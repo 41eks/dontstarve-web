@@ -240,26 +240,25 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
                 skipped.append({'prefab': prefab, 'sourceIndex': index,
                                 **({'sourceId': source_id} if source_id is not None else {})})
                 continue
-            if 'stack' in components:
-                components['stack']['entityId'] = entity_id
-            # The project's EntitySaveRecord (packages/prefab/src/saveRecord.ts): `components` is its EntityPersistData.
+            # The project's EntitySaveRecord (packages/prefab/src/saveRecord.ts): `components` is its EntityPersistData,
+            # and an item's skin is GetSaveRecord's skinname.
+            skinname = record.get('skinname') if static else None
             imported.append({'id': entity_id,
                              'transform': {'position': project_position([x, 0 if settling_boulder else y, z], translation),
                                            'rotationY': 0},
-                             'components': components})
+                             'components': components, **({'skinname': skinname} if skinname is not None else {})})
             sources.append({'id': entity_id, 'prefab': prefab, 'sourceIndex': index,
                             **({'sourceId': source_id} if source_id is not None else {}),
                             'sourcePosition': coordinates, 'sourceNode': names[node - 1] if 0 < node <= len(names) else None})
         if imported:
             if static or prefab in ('fireflies', 'butterfly'):
                 # Items are saved under their own prefab, as Ents saves them.
-                for entity in imported:
-                    result.setdefault(entity['components']['stack']['itemId'], []).append(entity)
+                result.setdefault(prefab, []).extend(imported)
             else:
                 result.setdefault(TARGET_PREFABS.get(prefab, prefab), []).extend(imported)
         counts[prefab] = {'source': len(records), 'imported': len(imported)}
         if static:
-            ground_counts[prefab] = {'entities': len(records), 'quantity': sum(e['components']['stack']['count'] for e in imported),
+            ground_counts[prefab] = {'entities': len(records), 'quantity': sum(e['components'].get('stackable', {}).get('stack', 1) for e in imported),
                                      'sourceComponents': sorted({key for record in records for key in (record.get('data') or {})})}
     STRUCTURE['link_grotto_pools'](result, imported_ids)
     PICKABLE['link_lightflier_flowers'](result, imported_ids)

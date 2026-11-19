@@ -155,7 +155,7 @@ describe('nightmare rocks', () => {
       const registry = new EntityRegistry([], rocks.prefabs, () => position);
       registry.registerPrefabs(PREFAB_DEFINITIONS.nightmareRocks);
       const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-      const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+      const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
         playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
       return { scene, scheduler, physics, inventory, registry, save,
         dispose: () => { registry.dispose(); rocks.dispose(); inventory.dispose(); scheduler.dispose(); } };

@@ -173,7 +173,7 @@ describe('DST item identity and ownership', () => {
 
   it('makes every inst through the world\'s SpawnPrefab: created, restored, split and loaded into a backpack', () => {
     const spawned: string[] = [];
-    const entities: ItemEntityRegistry = new ItemEntityRegistry(state => { spawned.push(state.itemId); return entities.construct(state); });
+    const entities: ItemEntityRegistry = new ItemEntityRegistry((prefab, saved) => { spawned.push(prefab); return entities.constructSaved(prefab, saved); });
     const store = new InventoryStore([{ address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() }],
       { ...specs, backpack: { name: 'backpack', icon: 'backpack.tex', maxStack: 1 } }, {}, entities);
     entities.create({ itemId: 'torch', count: 1 });

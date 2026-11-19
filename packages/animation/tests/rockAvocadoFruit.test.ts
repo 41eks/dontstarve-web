@@ -21,7 +21,7 @@ import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { PlaySound } from '../../prefab/src/sound';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { bindTestWorld } from './worldContentFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -60,7 +60,7 @@ function setup() {
   registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords().map(({ record }) => record), ...ground.exportEntities(), rock_avocado_fruit_sprout_sapling: sprouts.exportRecords().map(({ record }) => record) },
-    inventory: inventory.exportState(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+    inventory: inventory.exportSaved(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(bushes).update(seconds); sproutDisplays.update(seconds); };
   return { inventory, player, scene, physics, scheduler, season, snowLevel, ground, bushes, sprouts, registry, save, advance,
     picker: { giveItem: (id: string, count: number) => inventory.add(id, count) },
@@ -86,13 +86,13 @@ it('mines a stack through the common tool action, rolls each consumed fruit, gro
     random.mockReturnValueOnce(.655).mockReturnValueOnce(.9).mockReturnValueOnce(.1);
     expect(entity.components.workable!.WorkedBy(worker, 3)).toBe(true);
     expect(entity.components.stackable.count).toBe(1); expect(entity.components.workable!.GetWorkLeft()).toBe(1);
-    const products = s.ground.exportRecords().filter(record => record.id !== entity.id);
-    expect(products.map(record => [record.components.stack?.itemId, record.components.stack?.count])).toEqual([
+    const products = s.ground.groundStacks().filter(stack => stack.entityId !== entity.id);
+    expect(products.map(stack => [stack.itemId, stack.count])).toEqual([
       ['rock_avocado_fruit_ripe', 1], ['rock_avocado_fruit_ripe', 1], ['rock_avocado_fruit_sprout', 1], ['rocks', 1]]);
-    expect(products[0].components.stack?.freshnessPercent).toBe(1);
+    expect(products[0].freshnessPercent).toBe(1);
     expect(model.parent).toBe(s.scene);
     for (let frame = 0; frame < 90; frame++) s.ground.update(1 / 30, new THREE.Quaternion());
-    expect(s.ground.exportRecords().find(record => record.id === products[0].id)!.transform.position[0]).toBeGreaterThan(point.x);
+    expect(s.ground.exportRecords().find(record => record.id === products[0].entityId)!.transform.position[0]).toBeGreaterThan(point.x);
     const before = s.ground.exportRecords();
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
     restored.ground.restoreEntities(saved.world.entities);
@@ -135,7 +135,7 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.rock_avocado_fruit_sprout_sapling[0];
     expect(record.components.saplingTimer?.timers.grow.timeleft).toBe(900);
     restored.sprouts.restore(ROCK_AVOCADO_SAPLING_ID, record);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.sprouts.exportRecords().map(({ record }) => record)).toEqual([record]);
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
@@ -190,9 +190,9 @@ it('cancels and restarts growth on ignition/extinguishing, reloads a stopped sou
     expect(workTargets('DIG', restored.scene)[0].work()).toBe(true);
     expect(completion.NextTime()).toBeUndefined();
     restored.scheduler.advance(5000); expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
-    expect(restored.ground.exportRecords().at(-1)?.components.stack?.itemId).toBe('rock_avocado_fruit_sprout');
+    expect(restored.ground.groundStacks().at(-1)?.itemId).toBe('rock_avocado_fruit_sprout');
     s.advance(7.5); expect(s.sprouts.exportRecords()).toEqual([]);
-    expect(s.ground.exportRecords().at(-1)?.components.stack?.itemId).toBe('ash');
+    expect(s.ground.groundStacks().at(-1)?.itemId).toBe('ash');
   } finally { s.dispose(); restored.dispose(); }
 }, 15000);
 

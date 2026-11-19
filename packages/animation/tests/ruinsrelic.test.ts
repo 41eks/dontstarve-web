@@ -13,7 +13,7 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { createInventoryStore } from './testInventory';
@@ -33,7 +33,7 @@ function setup() {
   const restore = (id: RuinsRelicId, record: EntitySaveRecord) => prefabs.restore(id, record).transform.model;
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return { scene, awake, registry, inventory, prefabs, displays, restore,
-    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportState(), elapsedSeconds: 0,
+    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
       playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
     dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
 }
@@ -108,9 +108,9 @@ it('c_spawn / c_give then c_save exports and reloads identity, transform, health
   const saved = deserializeSave(json, SAVE_CATALOG), second = setup();
   try {
     await second.registry.restoreAll(saved.world.entities);
-    second.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(second.inventory, saved, SAVE_CATALOG.recipes);
     expect(second.registry.exportRecords()).toEqual(entities!);
-    expect(second.inventory.exportState().slots.filter(slot => slot.item)).toEqual(inventoryStateFromSave(saved).slots);
+    expect(second.inventory.exportSaved()).toEqual({ inventory: saved.players.local.inventory, bufferedBuilds: saved.players.local.builder.bufferedBuilds });
     expect(second.inventory.exportState().slots.filter(slot => slot.item?.itemId === 'ruinsrelic_plate')).toHaveLength(2);
     expect(second.registry.exportRecords().ruins_chair[0].components.ruinsRelic).toEqual({ rubble: true });
     await Promise.all(second.scene.children.map(model => prefabDisplay(model)!.artLoaded()));

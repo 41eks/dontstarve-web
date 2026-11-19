@@ -5,6 +5,8 @@ type Owner = {
   readonly components: object; onRemove(remove: () => void): () => void; readonly isRemoved: boolean;
   /** The entity's tags read a component's derived tags while it is added; see componets/src/derivedTags.ts. */
   addTagSource?(source: DerivedTags): () => void;
+  /** The entity is told of each component it is given, as a loaded item gives a late component its saved record. */
+  onComponentAdded?(name: string, component: object): void;
 };
 type Lifecycle = { dispose?(): void; OnRemoveEntity?(): void; OnRemoveFromEntity?(): void };
 export type ComponentName<Inst extends Owner> = keyof Inst['components'] & string;
@@ -31,6 +33,7 @@ export function addComponent<Inst extends Owner, Name extends ComponentName<Inst
   if (existing) return existing as T;
   const component = new Component(inst, ...args);
   Reflect.set(inst.components, name, component);
+  inst.onComponentAdded?.(name, component);
   if (isDerivedTags(component) && inst.addTagSource) {
     const stopTags = inst.addTagSource(component);
     let sources = tagSources.get(inst);

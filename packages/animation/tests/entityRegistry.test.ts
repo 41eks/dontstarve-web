@@ -10,7 +10,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { PrefabDisplayGroup, SpriteState } from '@dontstarve-web/display';
 import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
-import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
+import { structureHealth, type EntitySaveRecord } from '../../prefab/src/saveRecord';
 
 const health = componentParser({ keys: ['health'] });
 const definition = definePrefabs(['thing'], health, ['thing', 'thing_item']);
@@ -89,7 +89,7 @@ describe('entity registry', () => {
       items: {}, skins: {}, recipes: {}, recipeSkins: {}, buildings: {}, walls: [] };
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     const json = serializeSave(template, { entities: registry.exportRecords(),
-      playerTransform: { position: [0, 0, 0], rotationY: 0 }, inventory: { slots: [], bufferedBuilds: [] }, elapsedSeconds: 0,
+      playerTransform: { position: [0, 0, 0], rotationY: 0 }, inventory: { inventory: { items: {}, equip: {} }, bufferedBuilds: [] }, elapsedSeconds: 0,
     }, catalog);
     const saved = deserializeSave(json, catalog);
     await registry.restoreAll(saved.world.entities);
@@ -100,7 +100,7 @@ describe('entity registry', () => {
     saved.world.entities.custom_alias = [];
     expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('world.entities.custom_alias');
     delete saved.world.entities.custom_alias;
-    saved.world.entities.custom_world[0].components.health!.current = 101;
+    structureHealth(saved.world.entities.custom_world[0].components)!.current = 101;
     expect(() => deserializeSave(JSON.stringify(saved), catalog)).toThrow('health.current');
     registry.dispose();
   });
@@ -134,9 +134,9 @@ describe('entity registry', () => {
     registry.register(definePrefabs(['empty'], health), { ...registration(), debugSpawn: undefined, exportRecords: () => [] });
     const snapshot = registry.exportRecords();
     snapshot.thing[0].transform.position[0] = 99;
-    snapshot.thing[0].components.health!.current = 0;
+    structureHealth(snapshot.thing[0].components)!.current = 0;
     expect(saved.transform.position[0]).toBe(3);
-    expect(saved.components.health!.current).toBe(50);
+    expect(structureHealth(saved.components)!.current).toBe(50);
     expect(snapshot.empty).toEqual([]);
   });
 

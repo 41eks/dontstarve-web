@@ -68,7 +68,7 @@ def import_shard(shard, template, supported, catalog, origin_cell=None, snapshot
     if player_source is not None:
         player = result['players']['local']
         source_player = LITERALS['player_snapshot'](player_source.read_text(encoding='utf-8', errors='surrogateescape'))
-        position, player['inventory']['containers'], player_report = PLAYER['convert_player'](
+        position, player['inventory'], player_report = PLAYER['convert_player'](
             source_player,
             report['translation'], result['world']['map']['generator']['options']['size'],
             f'dst_{session_id}_{user.name}', catalog)

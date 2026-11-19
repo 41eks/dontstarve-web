@@ -99172,7 +99172,7 @@
       {
         "path": "inventory.equip.hands",
         "prefab": "sword_lunarplant",
-        "reason": "not equippable in hand"
+        "reason": "not equippable in hands"
       },
       {
         "path": "inventory.equip.body",

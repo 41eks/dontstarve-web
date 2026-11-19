@@ -85,7 +85,7 @@ it('a right click walks, plants dug_grass barren at frame six, keeps the stack h
     let json = '';
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => {
-      json = serializeSave(template, { entities: { grass: grasses.exportRecords().map(({ record }) => record) }, inventory: s.inventory.exportState(),
+      json = serializeSave(template, { entities: { grass: grasses.exportRecords().map(({ record }) => record) }, inventory: s.inventory.exportSaved(),
         elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const reloaded = plantManager(grassPrefabs, s.scene, { spawnGroundItem: vi.fn() as never });

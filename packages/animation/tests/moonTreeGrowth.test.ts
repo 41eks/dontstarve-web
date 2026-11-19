@@ -16,7 +16,7 @@ import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { executeDebugCommand } from '../../../src/debugCommands';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import type { WorldContext } from '../../prefab/src/worldContext';
@@ -96,7 +96,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-        entities: { moonbutterfly_sapling: s.saplings() }, inventory: inventory.exportState(),
+        entities: { moonbutterfly_sapling: s.saplings() }, inventory: inventory.exportSaved(),
         elapsedSeconds: s.scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 },
       }, SAVE_CATALOG);
     })).ok).toBe(true);
@@ -104,7 +104,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     restored = await setup();
     const record = saved.world.entities.moonbutterfly_sapling[0];
     restored.prefabs.restore('moonbutterfly_sapling', record);
-    restoredInventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restoredInventory, saved, SAVE_CATALOG.recipes);
     expect(restored.saplings()).toEqual(s.saplings());
     expect(restoredInventory.exportState()).toEqual(inventory.exportState());
     s.scheduler.advance(225);
@@ -202,7 +202,7 @@ it('restores a paused moon-tree decay timer while unloaded, then removes its log
     const state = tree.GetPersistData();
     expect(state.moonTreeTimer).toEqual(timer);
     const save = deserializeSave(serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-      inventory: { slots: [], bufferedBuilds: [] },
+      inventory: { inventory: { items: {}, equip: {} }, bufferedBuilds: [] },
       entities: { moon_tree: [{ id: 'moon-stump', transform: { position: tree.position.toArray(), rotationY: 0 }, components: state }] },
       elapsedSeconds: s.scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 },
     }, SAVE_CATALOG), SAVE_CATALOG);

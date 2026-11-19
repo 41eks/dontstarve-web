@@ -36,7 +36,7 @@ function setup() {
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: { skeleton_player: skeletons.exportRecords().map(entry => entry.record),
     ...ground.exportEntities() },
-  inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+  inventory: inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
   return { inventory, scene, physics, ground, skeletons, registry, save, player, dispose: () => { registry.dispose(); skeletons.dispose(); displays.dispose(); inventory.dispose(); } };
 }
 
@@ -67,7 +67,7 @@ it('hammers a described player skeleton into two boneshards and keeps its pose a
     expect(performToolWork('HAMMER', target.entity, testPlayer(), hammer)).toBe(true);
     expect(workTargets('HAMMER', s.scene)).toEqual([]); expect(s.skeletons.exportRecords()).toEqual([]);
     expect(s.physics.bodies).toHaveLength(0);
-    await vi.waitFor(() => expect(s.ground.exportRecords().map(item => item.components.stack?.itemId)).toEqual(['boneshard', 'boneshard']));
+    await vi.waitFor(() => expect(s.ground.groundStacks().map(stack => stack.itemId)).toEqual(['boneshard', 'boneshard']));
   } finally { s.dispose(); restored.dispose(); }
 }, 20000);
 
@@ -96,7 +96,7 @@ it('spawns a creature skeleton with its own pose range and shared table, droppin
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const hammer = s.inventory.entities.create({ itemId: 'hammer', count: 1 }); s.inventory.GiveItem(hammer);
     for (let i = 0; i < 3; i++) expect(performToolWork('HAMMER', targets[1].entity, testPlayer(), hammer)).toBe(true);
-    await vi.waitFor(() => expect(s.ground.exportRecords().map(item => item.components.stack?.itemId).sort())
+    await vi.waitFor(() => expect(s.ground.groundStacks().map(stack => stack.itemId).sort())
       .toEqual(['boneshard', 'boneshard', 'scrapbook_page']));
   } finally { s.dispose(); restored.dispose(); }
 }, 20000);

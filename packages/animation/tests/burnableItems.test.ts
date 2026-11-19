@@ -17,7 +17,7 @@ import { performLightAction } from '../../stategraphs/src/componentactions';
 import { performPickupAction } from '../../stategraphs/src/pickup';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
+import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { EntityRegistry } from '../../../src/entityRegistry';
@@ -70,7 +70,7 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     expect(fireMaterials().every(material => material.polygonOffset)).toBe(true);
     expect(manager.renderEntities.filter(entry => entry.object.name === 'fire')).toHaveLength(2);
     const save = () => serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-      entities: manager.exportEntities(), inventory: inventory.exportState(), elapsedSeconds: 15,
+      entities: manager.exportEntities(), inventory: inventory.exportSaved(), elapsedSeconds: 15,
       playerTransform: { position: [3, 0, 6], rotationY: 0 },
     }, SAVE_CATALOG);
     let burningJson = '';
@@ -83,16 +83,16 @@ it('burns dropped live grass/log stacks to prepared ash, notifies signals and im
     manager.update(7.5, new THREE.Quaternion());
     expect(log.isRemoved).toBe(true); expect(fires()).toHaveLength(0);
     expect(notifications[1]).toHaveBeenCalledExactlyOnceWith(true, false);
-    const records = manager.exportRecords();
-    expect(records.map(record => record.components.stack)).toEqual([{ itemId: 'ash', count: 3 }, { itemId: 'ash', count: 7 }]);
-    expect(records.map(record => record.transform.position)).toEqual([[3, 0, 6], [40, 0, 8]]);
+    const records = manager.groundStacks();
+    expect(records.map(({ itemId, count }) => ({ itemId, count }))).toEqual([{ itemId: 'ash', count: 3 }, { itemId: 'ash', count: 7 }]);
+    expect(manager.exportRecords().map(record => record.transform.position)).toEqual([[3, 0, 6], [40, 0, 8]]);
     // Output is committed synchronously at burnout, with no promise/microtask gap before saving.
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => { json = save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     restored.manager.restoreEntities(saved.world.entities);
-    expect(restored.manager.exportRecords()).toEqual(records);
+    expect(restored.manager.groundStacks()).toEqual(records);
     expect(restored.inventory.exportState()).toEqual(inventory.exportState());
   } finally { manager.dispose(); inventory.dispose(); restored.manager.dispose(); restored.inventory.dispose(); }
 });
@@ -111,11 +111,11 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     let json = '';
     expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
       json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), { entities: normalRecords,
-        inventory: inventory.exportState(), elapsedSeconds: 0, playerTransform: { position: [3, 0, 6], rotationY: 0 } }, SAVE_CATALOG);
+        inventory: inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [3, 0, 6], rotationY: 0 } }, SAVE_CATALOG);
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities).toEqual(normalRecords);
-    restored.inventory.replaceState(inventoryStateFromSave(saved), SAVE_CATALOG.recipes);
+    loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     restored.manager.restoreEntities(saved.world.entities);
     expect(restored.manager.exportEntities()).toEqual(itemEntities(normalRecords));
     expect(restored.manager.entities.get('spawn:cutgrass')!.components.burnable!.IsBurning()).toBe(false);
@@ -143,6 +143,6 @@ it('supports c_spawn, blocks noncombustible targets and preserves identity/state
     expect(entity.snapshot()).toEqual(before); expect(entity.transform.position.toArray()).toEqual([8, 0, -4]);
     performLightAction(torch, findActionEntity(dropped)!, torch); manager.update(15, new THREE.Quaternion());
     expect(entity.isRemoved).toBe(true);
-    expect(manager.exportRecords().map(record => record.components.stack?.itemId)).toEqual(['cutgrass', 'ash', 'rocks', 'ash']);
+    expect(manager.groundStacks().map(stack => stack.itemId)).toEqual(['cutgrass', 'ash', 'rocks', 'ash']);
   } finally { registry.dispose(); inventory.dispose(); restored.manager.dispose(); restored.inventory.dispose(); }
 });

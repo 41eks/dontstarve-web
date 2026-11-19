@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""DST player snapshot -> project local player: position and inventory."""
+"""DST player snapshot -> project local player: position and inventory (inventory.lua OnSave's records)."""
 import math
 from pathlib import Path
 import runpy
@@ -8,7 +8,7 @@ TILE = runpy.run_path(str(Path(__file__).with_name('dst-region-tile.py')))
 ITEM = runpy.run_path(str(Path(__file__).with_name('dst-region-item.py')))
 project_position, lua_slots, convert_item = TILE['project_position'], ITEM['lua_slots'], ITEM['convert_item']
 
-# inventory.lua equipslots -> project equipment slot keys.
+# inventory.lua EQUIPSLOTS names, which the save keeps, -> the project equip kind an item declares.
 EQUIP_SLOTS = {'hands': 'hand', 'body': 'body', 'head': 'head'}
 PLAYER_SLOT_COUNT = 15
 
@@ -20,11 +20,8 @@ def reset_player(player, shard_id, position):
     player['transform'] = {'position': position, 'rotationY': 0}
     player.pop('ghost', None)
     player['stats'] = {'health': 150, 'hunger': 150, 'sanity': 200}
-    player['inventory'] = {'containers': {
-        'player:inventory': {'slotCount': PLAYER_SLOT_COUNT, 'slots': []},
-        'player:equipment': {'slotCount': 3, 'slots': []},
-        'player:cursor': {'slotCount': 1, 'slots': []},
-    }, 'bufferedBuilds': []}
+    player['inventory'] = {'items': {}, 'equip': {}}
+    player['builder'] = {'bufferedBuilds': []}
 
 
 def convert_player(source, translation, size, entity_prefix, catalog):
@@ -36,38 +33,33 @@ def convert_player(source, translation, size, entity_prefix, catalog):
     position = project_position(report['sourcePosition'], translation)
     if any(type(value) not in (int, float) or not math.isfinite(value) or abs(value) > size / 2 for value in position):
         raise ValueError('Player position is outside the imported map')
-    slots = []
+    converted = {'items': {}, 'equip': {}}
     for slot, record in lua_slots(inventory.get('items', {}), 'inventory.items'):
         if slot > PLAYER_SLOT_COUNT:
             raise ValueError(f'inventory.items.{slot} is outside the player inventory')
         item = convert_item(record, f'inventory.items.{slot}', f'{entity_prefix}_items_{slot - 1}', catalog, report)
         if item is not None:
-            slots.append({'slotKey': str(slot - 1), 'item': item})
-    equipment = []
-    for source_slot, record in (inventory.get('equip') or {}).items():
-        path = f'inventory.equip.{source_slot}'
-        slot = EQUIP_SLOTS.get(source_slot)
-        if slot is None:
-            report['skipped'].append({'path': path, 'prefab': record.get('prefab'), 'reason': 'unknown equipment slot'})
+            converted['items'][str(slot)] = item
+    for equipslot in EQUIP_SLOTS:
+        record = (inventory.get('equip') or {}).get(equipslot)
+        if record is None:
             continue
-        item = convert_item(record, path, f'{entity_prefix}_equip_{slot}', catalog, report)
+        path = f'inventory.equip.{equipslot}'
+        item = convert_item(record, path, f'{entity_prefix}_equip_{EQUIP_SLOTS[equipslot]}', catalog, report)
         if item is None:
             continue
-        if catalog['items'][item['itemId']].get('equippable') != slot:
-            report['skipped'].append({'path': path, 'prefab': item['itemId'], 'reason': f'not equippable in {slot}'})
+        if catalog['items'][item['prefab']].get('equippable') != EQUIP_SLOTS[equipslot]:
+            report['skipped'].append({'path': path, 'prefab': item['prefab'], 'reason': f'not equippable in {equipslot}'})
             continue
-        equipment.append({'slotKey': slot, 'item': item})
-    cursor = []
+        converted['equip'][equipslot] = item
+    for source_slot, record in (inventory.get('equip') or {}).items():
+        if source_slot not in EQUIP_SLOTS:
+            report['skipped'].append({'path': f'inventory.equip.{source_slot}', 'prefab': record.get('prefab'), 'reason': 'unknown equipment slot'})
     if inventory.get('activeitem'):
         item = convert_item(inventory['activeitem'], 'inventory.activeitem', f'{entity_prefix}_cursor', catalog, report)
         if item is not None:
-            cursor.append({'slotKey': '0', 'item': item})
-    containers = {
-        'player:inventory': {'slotCount': PLAYER_SLOT_COUNT, 'slots': slots},
-        'player:equipment': {'slotCount': 3, 'slots': sorted(equipment, key=lambda s: list(EQUIP_SLOTS.values()).index(s['slotKey']))},
-        'player:cursor': {'slotCount': 1, 'slots': cursor},
-    }
-    return position, containers, report
+            converted['activeitem'] = item
+    return position, converted, report
 
 
 def player_snapshot(session, snapshot):

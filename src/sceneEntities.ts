@@ -540,6 +540,7 @@ export async function createSceneEntities(
         fx: { spawn: (prefab, position) => { Managers['world_fx'].spawn(prefab, position); },
           collapse: (size, position, material) => Managers['world_fx'].collapse(size, position, material) },
         spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
+        restoreItem: record => { const entity = sceneInventory.entities.restore(record); sceneInventory.configureItem(entity); return entity; },
         dropItem: (entity, position) => { sceneInventory.DropItem(entity, position); },
         registerContainer: (id, container) => sceneInventory.registerContainer(id, container),
         unregisterContainer: (id, container) => sceneInventory.unregisterContainer(id, container), dropLoot: (items, position, launch) => {
@@ -605,6 +606,7 @@ export async function createSceneEntities(
       isWalkable: moleWalkable,
       pathfinder,
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
+      restoreItem: record => { const entity = sceneInventory.entities.restore(record); sceneInventory.configureItem(entity); return entity; },
       dropItem: (entity, position) => sceneInventory.DropItem(entity, position),
       // The spawned mole is set down where it comes out, as SpawnPrefab and Transform:SetPosition do.
       showMole: (entity, position) => { entity.setPosition(position.x, 0, position.z); },
@@ -642,6 +644,7 @@ export async function createSceneEntities(
     const items: ItemPrefabWorld = itemWorldInstance = {
       newItem,
       spawnItem: state => sceneInventory.entities.create(state),
+      restoreItem: record => sceneInventory.entities.restore(record),
       isInventoryItem: prefab => sceneInventory.hasItemSpec(prefab),
       configureItem: entity => { sceneInventory.entities.adopt(entity); sceneInventory.configureItem(entity); },
       dropItem: (entity, position) => sceneInventory.DropItem(entity, position),
@@ -1136,7 +1139,7 @@ export async function createSceneEntities(
       worldEvents: view.worldEvents, handEquipment: sceneInventory.handEquipment,
       spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
       getEntity: id => prefabs.get(id),
-      spawnSaveRecord: (position, item) => { sceneInventory.entities.create(item).setPosition(position.x, 0, position.z); },
+      spawnSaveRecord: (position, item) => { sceneInventory.entities.restore(item).setPosition(position.x, 0, position.z); },
       spawnLoot: (itemId, position) => groundItems.flingLoot([{ ...SAVE_CATALOG.items[itemId], itemId, count: 1 }], position) }));
     registry.registerPrefabs(PREFAB_DEFINITIONS.farmPlow);
     registry.registerPrefabs(PREFAB_DEFINITIONS.farmDecor);
