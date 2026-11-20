@@ -43,6 +43,27 @@ def main():
     def read(name):
         return (scripts / 'prefabs' / (name + '.lua')).read_text()
 
+    def sinks(item, source, source_text):
+        """inventoryitem:SetSinks(true) in the constructor that makes `item`."""
+        if 'SetSinks(true)' not in source_text:
+            return False
+        # veggies.lua: only fn_oversized and its waxed / rotten forms sink.
+        if source == 'veggies':
+            return False
+        # amulet.lua commonfn(anim, tag, should_sink): only the red amulet passes should_sink.
+        if source == 'amulet':
+            return item == 'amulet'
+        # walls.lua MakeWallType: item_floats for wood and hay.
+        if source == 'walls':
+            return item not in ('wall_wood_item', 'wall_hay_item')
+        # rock_avocado_fruit.lua: only rock_avocado_fruit_full.
+        if source == 'rock_avocado_fruit':
+            return item == 'rock_avocado_fruit'
+        # birds.lua makebird: a bird without a water_bank (all but the puffin).
+        if source == 'birds':
+            return item != 'puffin'
+        return True
+
     def add(item, bank, build, animation, source, animation_archive=None, overrides=None, loop=False, icon_name=None):
         animation_archive = animation_archive or build + '.zip'
         builds = [build + '.zip']
@@ -67,6 +88,8 @@ def main():
         if 'foodtype = FOODTYPE.ELEMENTAL' in source_text and (source != 'rock_avocado_fruit' or item == 'rock_avocado_fruit'):
             hunger = re.search(r'edible.hungervalue\s*=\s*(\d+(?:\.\d+)?)', source_text)
             definition['elementalFoodHunger'] = float(hunger[1]) if hunger else 10
+        if sinks(item, source, source_text):
+            definition['sinks'] = True
         items[item] = definition
         assets.update('anim/' + path for path in [animation_archive, *builds])
 

@@ -826,6 +826,10 @@ export async function createSceneEntities(
       animationBaseUrl: prefabBaseUrl,
       scheduler: worldState.scheduler,
       componentUpdates: worldState.componentUpdates,
+      map: {
+        isPassableAtPoint: (point, allowWater) =>
+          turfMap.isPassableAtPoint(point) || (allowWater && turfMap.isOceanAtWorld(point)),
+      },
       physics: world,
       fx: Managers['world_fx'],
       moleWorld: Managers['molehill'].habitat,
