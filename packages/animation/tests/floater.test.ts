@@ -87,13 +87,20 @@ describe('floater', () => {
       expect(fx.spawn).toHaveBeenCalledTimes(1);
       expect(fx.spawn).toHaveBeenCalledWith('splash', afloat.position);
       expect(ripples(afloat)).toEqual(['float_fx_back', 'float_fx_front']);
-      expect(afloat.sprite.fx.peek().get('float_fx_front')!.sprite.sprite.peek().clip.name).toBe('idle_front_med');
+      const front = afloat.sprite.fx.peek().get('float_fx_front')!.sprite.sprite.peek();
+      expect(front.clip.name).toBe('idle_front_med');
+      // float_fx.lua SetOceanBlendParams(EFFECT_TINT_AMOUNT); OnLandedClient's SetFloatParams(-0.05, 1.0, bob_percent).
+      expect(front.oceanShading).toEqual({ float: [0, 0, 0], blend: 0.6 });
+      expect(afloat.sprite.sprite.peek().oceanShading).toEqual({ float: [-0.05, 1, 1], blend: 0 });
+      expect(ashore.sprite.sprite.peek().oceanShading).toBeUndefined();
 
       // Taken out of the ocean, it no longer floats and its ripples go.
       expect(inventory.GiveItem(afloat)).toBe(true);
       expect(floater.IsFloating()).toBe(false);
       expect(events.mock.calls).toEqual([['start'], ['stop']]);
       expect(ripples(afloat)).toEqual([]);
+      // OnNoLongerLandedClient's SetFloatParams(0, 0, 0).
+      expect(afloat.sprite.sprite.peek().oceanShading).toBeUndefined();
     } finally {
       world.dispose();
     }

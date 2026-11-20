@@ -10,6 +10,12 @@ import {
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
 import { watchWorldMatrixChanges } from './matrixUpdates';
 import { DEPTH_OFFSET_UNITS } from './animationAssets';
+import {
+  injectOceanShading,
+  NO_OCEAN_SHADING,
+  oceanShadingInstanceValues,
+  type SpriteOceanShading,
+} from './oceanShading';
 
 interface Appearance {
   animation: Animation;
@@ -28,6 +34,8 @@ export interface InstancedSprite {
   setColour(value: readonly [number, number, number]): void;
   /** AnimState:SetErosionParams's amount, independent for each entity in a shared batch. */
   setErosion(value: number): void;
+  /** AnimState:SetFloatParams and SetOceanBlendParams, independent for each entity in a shared batch. */
+  setOceanShading(value: SpriteOceanShading): void;
   /**
    * Drawn towards the camera after the ordinary batches, as an effect drawn after its owner on the owner's plane
    * (fire.lua's SetFinalOffset): the depth its owner's batch wrote must not hide it.
@@ -47,6 +55,7 @@ interface Entry extends InstancedSprite {
   colour: THREE.Color;
   opacity: number;
   erosion: number;
+  ocean: SpriteOceanShading;
   depthOffset: boolean;
   styleVersion: number;
   transformVersion: number;
@@ -98,6 +107,7 @@ interface InstanceState {
   opacity: number;
   light: number;
   erosion: number;
+  ocean?: SpriteOceanShading;
 }
 /** A page batch's quad and its per-instance sprite attributes. */
 type BatchAttributes = {
@@ -107,6 +117,10 @@ type BatchAttributes = {
   spriteOpacity: THREE.InstancedBufferAttribute;
   spriteLightOverride: THREE.InstancedBufferAttribute;
   spriteErosion: THREE.InstancedBufferAttribute;
+  /** FLOAT_PARAMS in xyz, the ocean blend in w. */
+  spriteOcean: THREE.InstancedBufferAttribute;
+  /** The entity's world xz, which the float bob's phase follows (MatrixW's translation). */
+  spriteOceanOrigin: THREE.InstancedBufferAttribute;
 };
 type BatchMesh = THREE.InstancedMesh<THREE.BufferGeometry<BatchAttributes>, THREE.MeshBasicMaterial>;
 interface PageBatch {
@@ -237,8 +251,9 @@ function material(atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial): THRE
       }
     `,
       );
+    injectOceanShading(shader, { kind: 'attributes' });
   };
-  result.customProgramCacheKey = () => 'dst-instanced-archive-sprite-v3';
+  result.customProgramCacheKey = () => 'dst-instanced-archive-sprite-v4';
   return result;
 }
 
@@ -265,6 +280,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   private coordinateSystem?: THREE.Camera['coordinateSystem'];
   private readonly frustum = new THREE.Frustum();
   private readonly attributeValues = new Float32Array(4);
+  private readonly oceanValues: number[] = [0, 0, 0, 0];
   private renderer?: THREE.WebGLRenderer;
   private contextLost = false;
 
@@ -340,6 +356,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       colour: new THREE.Color().setRGB(...colour),
       opacity,
       erosion: 0,
+      ocean: NO_OCEAN_SHADING,
       depthOffset: false,
       styleVersion: 0,
       transformVersion: 0,
@@ -376,6 +393,12 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         const amount = Math.max(0, Math.min(1, value));
         if (entry.erosion !== amount) {
           entry.erosion = amount;
+          entry.styleVersion++;
+        }
+      },
+      setOceanShading: value => {
+        if (entry.ocean !== value) {
+          entry.ocean = value;
           entry.styleVersion++;
         }
       },
@@ -457,6 +480,14 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     geometry.setAttribute(
       'spriteErosion',
       new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1).setUsage(THREE.DynamicDrawUsage),
+    );
+    geometry.setAttribute(
+      'spriteOcean',
+      new THREE.InstancedBufferAttribute(new Float32Array(capacity * 4), 4).setUsage(THREE.DynamicDrawUsage),
+    );
+    geometry.setAttribute(
+      'spriteOceanOrigin',
+      new THREE.InstancedBufferAttribute(new Float32Array(capacity * 2), 2).setUsage(THREE.DynamicDrawUsage),
     );
     const colourMaterial = material(atlas, source),
       depthMaterial = colourMaterial.clone();
@@ -776,8 +807,11 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         const opacity = batch.geometry.getAttribute('spriteOpacity');
         const lightOverride = batch.geometry.getAttribute('spriteLightOverride');
         const erosion = batch.geometry.getAttribute('spriteErosion');
+        const ocean = batch.geometry.getAttribute('spriteOcean');
+        const oceanOrigin = batch.geometry.getAttribute('spriteOceanOrigin');
         const writer = batch.attributes,
-          values = this.attributeValues;
+          values = this.attributeValues,
+          oceanValues = this.oceanValues;
         writer.begin();
         for (let index = 0; index < page.entries.length; index++) {
           const { entry, member, frame } = page.entries[index];
@@ -800,6 +834,10 @@ export class InstancedArchiveSprites implements SceneRenderPass {
             this.frameMatrix.makeScale(frame.width, frame.height, 1).setPosition(frame.minX, frame.minY, 0);
             this.matrix.multiplyMatrices(entry.visual.matrixWorld, this.frameMatrix);
             writer.write(batch.colour.instanceMatrix, index, this.matrix.elements);
+            const origin = entry.visual.matrixWorld.elements;
+            values[0] = origin[12];
+            values[1] = origin[14];
+            writer.write(oceanOrigin, index, values);
             previous.transformVersion = entry.spatial!.version;
           }
           if (replaced || previous.frame !== frame) {
@@ -834,6 +872,10 @@ export class InstancedArchiveSprites implements SceneRenderPass {
             if (replaced || previous.erosion !== entry.erosion) {
               values[0] = previous.erosion = entry.erosion;
               writer.write(erosion, index, values);
+            }
+            if (replaced || previous.ocean !== entry.ocean) {
+              previous.ocean = entry.ocean;
+              writer.write(ocean, index, oceanShadingInstanceValues(entry.ocean, oceanValues));
             }
             previous.styleVersion = entry.styleVersion;
           }

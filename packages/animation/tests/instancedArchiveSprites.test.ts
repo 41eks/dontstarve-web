@@ -177,7 +177,7 @@ it('advances only UVs on stationary animation frames, reusing culling, depth ord
   }
 });
 
-it('draws only listed sprites, reads light from the members, and updates private tint, opacity, erosion and culling', () => {
+it('draws only listed sprites, reads light from the members, and updates private tint, opacity, erosion, ocean shading and culling', () => {
   const s = setup();
   try {
     s.render();
@@ -193,12 +193,22 @@ it('draws only listed sprites, reads light from the members, and updates private
     s.entries[0].handle.setColour([0.2, 0.3, 0.4]);
     s.entries[0].handle.setOpacity(0.5);
     s.entries[0].handle.setErosion(0.25);
+    s.entries[0].handle.setOceanShading({ float: [-0.05, 1, 1], blend: 0.6 });
     s.render();
     expect(mesh.count).toBe(3);
     expect(cull).not.toHaveBeenCalled();
     expect(mesh.instanceColor!.getX(0)).toBeCloseTo(0.2);
     expect(mesh.geometry.getAttribute('spriteOpacity').getX(0)).toBe(0.5);
     expect(mesh.geometry.getAttribute('spriteErosion').getX(0)).toBe(0.25);
+    // FLOAT_PARAMS and the ocean blend for this entity alone, and its world xz for the bob's phase.
+    const ocean = mesh.geometry.getAttribute('spriteOcean');
+    expect([ocean.getX(0), ocean.getY(0), ocean.getZ(0), ocean.getW(0)].map(v => +v.toFixed(3))).toEqual([
+      -0.05, 1, 1, 0.6,
+    ]);
+    expect([ocean.getX(1), ocean.getW(1)]).toEqual([0, 0]);
+    const origin = mesh.geometry.getAttribute('spriteOceanOrigin');
+    const world = s.entries[0].visual.matrixWorld.elements;
+    expect([origin.getX(0), origin.getY(0)]).toEqual([Math.fround(world[12]), Math.fround(world[14])]);
     s.entries[0].member.lightOverride = 0.1;
     s.render();
     expect(mesh.geometry.getAttribute('spriteLightOverride').getX(0)).toBeCloseTo(0.1);

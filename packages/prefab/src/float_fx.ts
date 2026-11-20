@@ -4,6 +4,8 @@ import type { Floater } from '../../componets/src/floater';
 import { createArchiveEntity, type PrefabInstance } from './prefabInstance';
 
 const SHOWN = readonlySignal(createSignal(true));
+/** TUNING.OCEAN_SHADER.EFFECT_TINT_AMOUNT: how far the effects under floating items take the ocean's colour. */
+const EFFECT_TINT_AMOUNT = 0.6;
 
 /** float_fx.lua: build float_fx, bank float_front or float_back. */
 function floatFxSource(sprites: SpriteResources, bank: 'float_front' | 'float_back') {
@@ -15,9 +17,10 @@ function floatFxSource(sprites: SpriteResources, bank: 'float_front' | 'float_ba
 
 /**
  * floater.lua OnLandedClient / OnNoLongerLandedClient: while the item floats, float_fx_front and float_fx_back loop
- * their idle_front_<size> / idle_back_<size> ripples on it, raised by the floater's vertical offset and scaled by its
- * scale; the back one is drawn behind the item (LAYER_BACKGROUND). AnimState:SetFloatParams' bobbing and
- * SetOceanBlendParams have no display counterpart and are skipped. `unitScale` converts DST units to scene units.
+ * their idle_front_<size> / idle_back_<size> ripples on it, raised by the floater's vertical offset, scaled by its
+ * scale and tinted by the ocean (SetOceanBlendParams); the back one is drawn behind the item (LAYER_BACKGROUND). The
+ * item itself bobs and is cut at the waterline (SetFloatParams(-0.05, 1.0, bob_percent)), until it stops floating
+ * (SetFloatParams(0, 0, 0)). `unitScale` converts DST units to scene units.
  */
 export function bindFloatFx(inst: PrefabInstance, floater: Floater, sprites: SpriteResources, unitScale: number): void {
   let shown: (() => void) | undefined;
@@ -39,6 +42,7 @@ export function bindFloatFx(inst: PrefabInstance, floater: Floater, sprites: Spr
         inst.status,
       );
       instance.sprite.start(clip);
+      instance.AnimState.SetOceanBlendParams(EFFECT_TINT_AMOUNT);
       // Floater:AttachEffect: Transform:SetPosition(0, vert_offset or 0, 0) and the floater's scale.
       instance.sprite.setVisualHeight((floater.vert_offset ?? 0) * unitScale);
       instance.setScale(floater.xscale, floater.yscale, floater.zscale);
@@ -61,9 +65,11 @@ export function bindFloatFx(inst: PrefabInstance, floater: Floater, sprites: Spr
     const floating = floater.floating.get();
     if (floating && !shown) {
       shown = show();
+      inst.AnimState.SetFloatParams(-0.05, 1.0, floater.bob_percent);
     } else if (!floating && shown) {
       shown();
       shown = undefined;
+      inst.AnimState.SetFloatParams(0.0, 0.0, 0.0);
     }
   });
   inst.onRemove(() => {

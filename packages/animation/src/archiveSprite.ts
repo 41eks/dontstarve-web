@@ -285,6 +285,8 @@ export interface ArchiveSprite {
   setColour(colour: readonly [number, number, number]): void;
   /** AnimState:SetErosionParams's amount on the shared-batch instance. */
   setErosion(amount: number): void;
+  /** AnimState:SetFloatParams and SetOceanBlendParams, on the sprite's own materials and its shared-batch instance. */
+  setOceanShading(shading: import('./oceanShading').SpriteOceanShading): void;
   /** Draw a few depth steps towards the camera, so an effect on its owner's plane is not hidden by the owner's depth. */
   setDepthOffset(enabled: boolean): void;
   /**
@@ -844,6 +846,12 @@ function constructArchiveSprite(
     setErosion(amount: number) {
       if (!disposed) {
         instances?.setErosion(amount);
+      }
+    },
+    setOceanShading(shading) {
+      if (!disposed) {
+        renderer.setOceanShading(shading);
+        instances?.setOceanShading(shading);
       }
     },
     setDepthOffset(enabled) {

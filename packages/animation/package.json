@@ -26,7 +26,8 @@
     "./atlasImage": "./src/atlasImage.ts",
     "./animState": "./src/animState.ts",
     "./transformRoot": "./src/transformRoot.ts",
-    "./units": "./src/units.ts"
+    "./units": "./src/units.ts",
+    "./oceanShading": "./src/oceanShading.ts"
   },
   "scripts": {
     "recipes:check": "node scripts/extract-recipes.mjs --check",

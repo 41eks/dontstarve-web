@@ -4,6 +4,7 @@ import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 import type { InstancedSprite } from '@dontstarve-web/animation/instancedArchiveSprites';
 import { ResidentSprite } from '@dontstarve-web/animation/residentSprite';
 import type { ResolvedAnimState } from '@dontstarve-web/animation/animState';
+import type { SpriteOceanShading } from '@dontstarve-web/animation/oceanShading';
 import type { ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import type { SpriteArtSource, SpriteTint, CompositeSpriteFrame, SpriteSkin } from '@dontstarve-web/animation/sprite';
 
@@ -53,6 +54,8 @@ export interface DisplayEngine {
   setColour(colour: readonly number[]): void;
   setOpacity(opacity: number): void;
   setErosion?(amount: number): void;
+  /** AnimState:SetFloatParams and SetOceanBlendParams. Archive sprites only. */
+  setOceanShading?(shading: SpriteOceanShading): void;
   setDepthOffset?(enabled: boolean): void;
   /** Archive sprites: drawn by the shared batches only while `follow()` holds. */
   setInstancedWhile?(follow: (() => boolean) | undefined): void;
@@ -151,6 +154,9 @@ export class ArchiveEngine implements DisplayEngine {
   }
   setErosion(amount: number): void {
     this.resident.setErosion(amount);
+  }
+  setOceanShading(shading: SpriteOceanShading): void {
+    this.resident.setOceanShading(shading);
   }
   setDepthOffset(enabled: boolean): void {
     this.resident.setDepthOffset(enabled);

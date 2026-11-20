@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { SpriteFrameRenderer, createMaterials, type BuildImage, type ResolvedSprite } from '../src/animationAssets';
 import { spriteSpatialRadius } from '../src/spatialBounds';
+import { NO_OCEAN_SHADING } from '../src/oceanShading';
 
 function image(sampler = 0): BuildImage {
   return {
@@ -60,6 +61,44 @@ describe('SpriteFrameRenderer', () => {
     renderer.setDepthOffset(false);
     expect(mesh.material).toEqual([source]);
     expect(disposed).toBe(1);
+    shared.geometry.dispose();
+    renderer.dispose();
+  });
+
+  it('floats and ocean-blends one entity through private copies compiled with the shading, alone or with a depth offset', () => {
+    const visual = new THREE.Group();
+    const renderer = new SpriteFrameRenderer(visual);
+    const mesh = visual.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+    const source = new THREE.MeshBasicMaterial({ transparent: true });
+    const shared = { geometry: new THREE.BufferGeometry(), materials: [source], visible: true };
+    renderer.showShared(shared);
+    renderer.setOceanShading({ float: [-0.05, 1, 1], blend: 0 });
+    const [copy] = mesh.material;
+    expect(copy).not.toBe(source);
+    expect(copy.polygonOffset).toBe(false);
+    expect(copy.customProgramCacheKey()).toContain('dst-ocean-shading');
+    // Its compile injects anim.ksh's float and blend, reading this copy's own values.
+    const shader = {
+      uniforms: {},
+      vertexShader: THREE.ShaderLib.basic.vertexShader,
+      fragmentShader: THREE.ShaderLib.basic.fragmentShader,
+    } as unknown as THREE.WebGLProgramParametersWithUniforms;
+    copy.onBeforeCompile(shader, undefined as unknown as THREE.WebGLRenderer);
+    const uniforms = shader.uniforms as { dstFloatParams: { value: THREE.Vector3 }; dstOceanBlend: { value: number } };
+    expect(uniforms.dstFloatParams.value.toArray()).toEqual([-0.05, 1, 1]);
+    // New values on the same copies, without recompiling.
+    renderer.setOceanShading({ float: [-0.05, 1, 0], blend: 0.6 });
+    expect(mesh.material[0]).toBe(copy);
+    expect([uniforms.dstFloatParams.value.z, uniforms.dstOceanBlend.value]).toEqual([0, 0.6]);
+    // With a depth offset too, one copy carries both.
+    renderer.setDepthOffset(true);
+    const [both] = mesh.material;
+    expect(both.polygonOffset).toBe(true);
+    expect(both.customProgramCacheKey()).toContain('dst-ocean-shading');
+    renderer.setOceanShading(NO_OCEAN_SHADING);
+    expect(mesh.material[0].customProgramCacheKey()).not.toContain('dst-ocean-shading');
+    renderer.setDepthOffset(false);
+    expect(mesh.material).toEqual([source]);
     shared.geometry.dispose();
     renderer.dispose();
   });

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { NO_OCEAN_SHADING } from '@dontstarve-web/animation/oceanShading';
 import {
   createEffect,
   createMemo,
@@ -177,6 +178,7 @@ export class PrefabDisplay {
     paused?: boolean;
     playbackRate?: number;
     erosion?: number;
+    oceanShading?: SpriteJson['oceanShading'];
     ground?: SpriteJson['ground'];
     meshOrder?: number;
     depthOffset?: boolean;
@@ -713,6 +715,10 @@ export class PrefabDisplay {
         controller.setErosion?.(json.erosion);
       }
     }
+    if (json.oceanShading !== applied.oceanShading) {
+      applied.oceanShading = json.oceanShading;
+      controller.setOceanShading?.(json.oceanShading ?? NO_OCEAN_SHADING);
+    }
     if (json.ground !== applied.ground) {
       applied.ground = json.ground;
       if (json.ground) {
@@ -802,6 +808,9 @@ export class PrefabDisplay {
     this.applyFrameSource(json, fresh);
     if (json.erosion !== undefined) {
       controller.setErosion?.(json.erosion);
+    }
+    if (json.oceanShading) {
+      controller.setOceanShading?.(json.oceanShading);
     }
     if (json.ground) {
       controller.setGround?.(json.ground.renderOrder, json.ground.flat);

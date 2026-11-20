@@ -1,5 +1,11 @@
 import { createMemo, createSignal, readonlySignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import * as THREE from 'three';
+import {
+  hasOceanShading,
+  NO_OCEAN_SHADING,
+  sameOceanShading,
+  type SpriteOceanShading,
+} from '@dontstarve-web/animation/oceanShading';
 import type { AnimStateArt, AnimStateJson, SymbolBuild } from '@dontstarve-web/animation/animState';
 import type { SpriteMaterialOptions } from '@dontstarve-web/animation/animationAssets';
 import type { FxJson } from './fxAttachments';
@@ -144,6 +150,11 @@ export interface SpriteDeclaration {
   readonly behindFoot?: boolean;
   /** Height of the drawn sprite above the entity's foot point, such as thrown loot in the air. The transform stays on the ground. */
   readonly visualHeight?: number;
+  /**
+   * AnimState:SetFloatParams(offset, enabled, bob) and SetOceanBlendParams(amount), as anim.ksh's FLOAT_PARAMS and
+   * OCEAN_BLEND_PARAMS.x. Absent while neither is set.
+   */
+  readonly oceanShading?: SpriteOceanShading;
   readonly appearance: ReadonlyMap<string, AppearanceJson>;
 }
 
@@ -204,6 +215,10 @@ export interface ArchiveSpriteCommands {
   setPaused(paused: boolean): void;
   setVisible(visible: boolean): void;
   setErosion(amount: number): void;
+  /** AnimState:SetFloatParams(offset, enabled, bob): bob at the waterline and cut what lies below it. */
+  setFloatParams(offset: number, enabled: number, bob: number): void;
+  /** AnimState:SetOceanBlendParams(amount): multiply the colour by the ocean's under it by `amount`. */
+  setOceanBlendParams(amount: number): void;
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void;
   setSymbolHidden(symbol: string, hidden: boolean): void;
   hideLayer(layer: string): void;
@@ -576,6 +591,19 @@ export class SpriteState
   }
   setVisible(visible: boolean): void {
     this.write({ visible });
+  }
+  setFloatParams(offset: number, enabled: number, bob: number): void {
+    this.writeOceanShading({ float: [offset, enabled, bob], blend: this.state.oceanShading?.blend ?? 0 });
+  }
+  setOceanBlendParams(amount: number): void {
+    this.writeOceanShading({ float: this.state.oceanShading?.float ?? NO_OCEAN_SHADING.float, blend: amount });
+  }
+  private writeOceanShading(shading: SpriteOceanShading): void {
+    const current = this.state.oceanShading ?? NO_OCEAN_SHADING;
+    if (sameOceanShading(current, shading)) {
+      return;
+    }
+    this.write({ oceanShading: hasOceanShading(shading) ? Object.freeze(shading) : undefined });
   }
   setErosion(erosion: number): void {
     this.write({ erosion });

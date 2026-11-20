@@ -1,4 +1,5 @@
 import type { ReadonlyVector3 } from './transformRoot';
+import { NO_OCEAN_SHADING, type SpriteOceanShading } from './oceanShading';
 import * as THREE from 'three';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import type { ArchiveSprite } from './archiveSprite';
@@ -179,6 +180,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   }
   private loading = false;
   private request?: Promise<void>;
+  private oceanShading: SpriteOceanShading = NO_OCEAN_SHADING;
   /** Settles when the sprite being built for the logical clip is drawn, or immediately when none is. */
   get pending(): Promise<void> | undefined {
     return this.request;
@@ -241,6 +243,9 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     this.model.add(sprite.model);
     if (this.facing) {
       sprite.faceCamera(this.facing);
+    }
+    if (this.oceanShading !== NO_OCEAN_SHADING) {
+      sprite.setOceanShading(this.oceanShading);
     }
     const renderGroup = sprite.model.children[0];
     if (!(renderGroup instanceof THREE.Group)) {
@@ -532,6 +537,11 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   /** Erosion is keyed by the drawn sprite model; its owner sets it every update. */
   setErosion(amount: number): void {
     this.sprite?.setErosion(amount);
+  }
+  /** Kept across releases: a sprite drawn later, on wake or a new appearance, floats and blends the same. */
+  setOceanShading(shading: SpriteOceanShading): void {
+    this.oceanShading = shading;
+    this.sprite?.setOceanShading(shading);
   }
   get instanced(): InstancedSprite | undefined {
     return this.sprite?.instanced;
