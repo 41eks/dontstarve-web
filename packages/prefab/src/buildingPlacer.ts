@@ -1,3 +1,4 @@
+import type { TheCamera } from './followcamera';
 import { PrefabDisplayGroup, SpriteResources, type PrefabDisplay } from '@dontstarve-web/display';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
@@ -52,7 +53,7 @@ export class BuildingPlacer<BuildId extends string> {
     private readonly stopPlacerGate?: () => void;
     private readonly ownsPointer: boolean;
     private readonly canvas: HTMLCanvasElement;
-    private readonly camera: THREE.Camera;
+    private readonly theCamera: TheCamera;
     private readonly ground: THREE.Object3D;
     private readonly player: THREE.Object3D;
     private readonly pointer: PointerRaycaster;
@@ -78,7 +79,7 @@ export class BuildingPlacer<BuildId extends string> {
         this.actionEvents = world.actionEvents;
         this.stopActionEvents = bindActionCancellation(world, this, () => this.cancel(), reason => reason === 'emote');
         this.canvas = world.renderer.domElement;
-        this.camera = world.camera;
+        this.theCamera = world.TheCamera;
         this.ground = world.ground;
         this.player = world.player;
         this.displays = new PrefabDisplayGroup(world.scene);
@@ -137,13 +138,9 @@ export class BuildingPlacer<BuildId extends string> {
         return model?.visible ? [{ object: model, footPosition: model.position, cameraDepth: 0, sortLayer: 1 }] : [];
     }
 
-    /** Where a debug spawn puts a building: on the ground ahead of the player, along the camera's direction. */
+    /** Where a debug spawn puts a building: on the ground ahead of the player, up the screen (-GetDownVec). */
     groundInFrontOfPlayer(): THREE.Vector3 {
-        const direction = new THREE.Vector3();
-        this.camera.getWorldDirection(direction);
-        direction.y = 0;
-        if (direction.lengthSq() === 0) direction.set(0, 0, 1);
-        else direction.normalize();
+        const direction = this.theCamera.GetDownVec().negate();
         const target = this.player.position.clone().addScaledVector(direction, 10);
         const rayOrigin = new THREE.Vector3(target.x, target.y + 1000, target.z);
         const hit = this.pointer.raycast(rayOrigin, new THREE.Vector3(0, -1, 0), this.ground);

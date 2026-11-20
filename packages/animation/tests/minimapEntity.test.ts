@@ -1,6 +1,7 @@
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { readFile } from 'node:fs/promises';
 import * as CANNON from 'cannon-es';
-import { PerspectiveCamera, Scene, Vector3 } from 'three';
+import { Scene, Vector3 } from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { MiniMapEntity } from '../../prefab/src/minimapEntity';
 import { loadMinimapIcon } from '../../map/src/minimapIcons';
@@ -92,7 +93,7 @@ it('initializes the source pig king icon and priority, and hides it on scene dis
     `../../../public/dst/data/${String(url).slice('/dst/data/'.length)}`, import.meta.url))));
   const displays = new PrefabDisplayGroup(new Scene());
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics: new CANNON.World() });
-  prefabs.register(pigKingPrefabs({ camera: new PerspectiveCamera(), scheduler: new GameTimeScheduler(), dropLoot: vi.fn() }));
+  prefabs.register(pigKingPrefabs({ TheCamera: fixedCamera(45), scheduler: new GameTimeScheduler(), dropLoot: vi.fn() }));
   const king = prefabs.spawn(PIGKING_ID, new Vector3(48, 0, 60));
   await new Promise(resolve => setTimeout(resolve, 0));
   const minimap = [...miniMapEntities()].find(icon => icon.position.x === 48 && icon.position.z === 60)!;

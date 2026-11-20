@@ -10,7 +10,7 @@ import { EventEmitter } from '@dontstarve-web/signals';
 import { animate, backTasks, middleTasks } from './animate';
 import { createAnimationUpdater } from './animation';
 import { ground, groundDisplay, turfMap, pathfinder } from './building';
-import { camera } from './camera';
+import { camera, followCamera } from './camera';
 import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
 import { player, playerBody, playerInstance, disposePlayer } from './player';
@@ -62,7 +62,7 @@ export const locomotor = new Locomotor(playerBody, {
   // player_common_extensions.lua.
   pathcaps: { player: true, ignorecreep: true },
 });
-const updatePlayerMovement = updateMovement(camera, player, playerBody, locomotor);
+const updatePlayerMovement = updateMovement(followCamera, player, playerBody, locomotor);
 const updateAnimation = createAnimationUpdater(player);
 const cameraWorldQuaternion = new THREE.Quaternion();
 const playerRenderEntries = [{ object: player, footPosition: player.position }];

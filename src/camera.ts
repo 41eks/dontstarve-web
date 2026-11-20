@@ -7,6 +7,7 @@ import { renderer } from './universal';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 import { facingFromHeading } from '@dontstarve-web/animation/facing';
 import { initialSave } from './save/initialSave';
+import { DownVecForHeading, RightVecForHeading, type TheCamera } from '../packages/prefab/src/followcamera';
 
 const DEFAULT_HEADING = 45;
 
@@ -53,7 +54,7 @@ function shortestAngleDelta(from: number, to: number): number {
  * separate current/target values. This gives player movement, 45-degree turns,
  * and wheel zoom the same independently smoothed behaviour as the game camera.
  */
-export class FollowCameraController {
+export class FollowCameraController implements TheCamera {
   readonly camera: THREE.PerspectiveCamera;
 
   private target: FollowCameraTarget | null;
@@ -124,6 +125,16 @@ export class FollowCameraController {
 
   setHeadingTarget(heading: number): void {
     this.headingTarget = normalizeDegrees(heading);
+  }
+
+  /** followcamera.lua GetDownVec: from headingtarget, not the heading still turning toward it. */
+  GetDownVec(out?: THREE.Vector3): THREE.Vector3 {
+    return DownVecForHeading(this.headingTarget, out);
+  }
+
+  /** followcamera.lua GetRightVec, in this scene's right-handed axes. */
+  GetRightVec(out?: THREE.Vector3): THREE.Vector3 {
+    return RightVecForHeading(this.headingTarget, out);
   }
 
   rotateLeft(): void {

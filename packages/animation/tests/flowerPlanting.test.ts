@@ -1,3 +1,4 @@
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { wilsonPlayer } from './wilsonPlayer';
 import { Sanity } from '../../componets/src/sanity';
 import { addComponent } from '../../prefab/src/components';
@@ -50,7 +51,7 @@ function setup(random = () => .5) {
   const scene = new THREE.Scene(), player = new THREE.Group(), canvas = new EventTarget();
   const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
     worldEvents: new EventEmitter<WorldEvents>(),
-    cameraFacing: createSignal(1), cameraHeading: createSignal(0),
+    cameraFacing: createSignal(1), cameraHeading: createSignal(0), TheCamera: fixedCamera(0),
     renderer: { domElement: canvas } as unknown as THREE.WebGLRenderer };
   const scheduler = new GameTimeScheduler(), fire = FireFxHost.create('/dst/data/anim'), displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {});

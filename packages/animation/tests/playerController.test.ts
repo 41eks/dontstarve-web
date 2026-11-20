@@ -1,3 +1,4 @@
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { Combat } from '../../componets/src/combat';
 import { testPlayer } from './testPlayer';
@@ -336,7 +337,7 @@ describe('PlayerController with the Wilson stategraph', () => {
     const net = actionTool('bugnet');
     hand.set(net);
     const controller = new PlayerController(world, animation.sg, locomotor, hand, playerDoer(player));
-    const move = updateMovement(camera, player, body, locomotor);
+    const move = updateMovement(fixedCamera(45), player, body, locomotor);
     try {
       expect(controller.DoAction(controller.createAction({ action: 'NET', target: butterfly, invobject: net.entity })!)).toBe(true);
       for (let frame = 0; frame < 100 && !captured.mock.calls.length; frame++) {

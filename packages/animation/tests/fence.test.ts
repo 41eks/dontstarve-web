@@ -1,3 +1,4 @@
+import { headingCamera } from '../../prefab/src/followcamera';
 import { SpriteState, PrefabDisplayGroup, prefabDisplay } from '../../display/src';
 import { PrefabEntityManager, PrefabInstance, prefabInstance as lookupPrefabInstance } from '../../prefab/src/prefabInstance';
 import * as CANNON from 'cannon-es';
@@ -55,7 +56,7 @@ function setup(consume: (id: string, skinId?: string) => boolean = () => true, p
   const dropLoot = vi.fn(), dropItem = vi.fn(), addWall = vi.fn(), removeWall = vi.fn();
   const spawnItem = vi.fn((state: { itemId: string; count: number }) => testItem(state));
   const player = new THREE.Group(); player.position.copy(playerPosition);
-  const world = { scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: heading, ground: new THREE.Group(),
+  const world = { scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: heading, TheCamera: headingCamera(() => heading.peek()), ground: new THREE.Group(),
     player, physics: new CANNON.World(), renderer: { domElement: canvas }, scheduler, fire,
     tickingarea: () => createMemo(() => awake.get()), pathfinder: { AddWall: addWall, RemoveWall: removeWall },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), dropLoot, dropItem, spawnItem,

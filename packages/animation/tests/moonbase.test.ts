@@ -1,3 +1,4 @@
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { wilsonPlayer } from './wilsonPlayer';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
@@ -64,7 +65,9 @@ it('spawns moonbase through the debug command using its source art and restores 
   vi.stubGlobal('window', new EventTarget());
   const world = {
     scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
+    camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(90),
+    // Heading 90 looks along -z: c_spawn puts the building 10 units up the screen from the player.
+    TheCamera: fixedCamera(90), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), spawnItem: testItem, restoreItem: testRestoreItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
   world.player.position.set(30, 0, 40);
   const consume = vi.fn(() => false);
@@ -116,7 +119,7 @@ async function createMoonbase(options: Partial<WorldContext> = {}, saved?: Param
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() },
+    camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), TheCamera: fixedCamera(45), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options, spawnItem: testItem, restoreItem: testRestoreItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   if (saved) placement.spawnFromSave('moonbase', saved); else await placement.spawn('moonbase');

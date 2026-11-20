@@ -1,3 +1,4 @@
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { readFile } from 'node:fs/promises';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
@@ -35,7 +36,7 @@ afterEach(() => {
 function setup() {
   const canvas = new EventTarget(), scene = new THREE.Scene(), physics = new CANNON.World(), displays = new PrefabDisplayGroup(scene);
   const world = { physics, scene, player: new THREE.Object3D(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: canvas },
+    cameraFacing: createSignal(8), cameraHeading: createSignal(45), TheCamera: fixedCamera(45), renderer: { domElement: canvas },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
   const consume = vi.fn(() => true), placement = new PlaceableBuildingPlacement(world, consume, undefined, prefabs);
