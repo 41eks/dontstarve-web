@@ -2,9 +2,9 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 
 /** TheWorld.Map as ocean_util.lua reads it. */
 export interface OceanMap {
-  /** Map:IsPassableAtPoint(x, 0, z, allow_water): land, and the ocean too when water is allowed. */
+  /** Map:IsPassableAtPoint(x, 0, z, allow_water): land and its overhang, and the ocean too when water is allowed. */
   isPassableAtPoint(point: ReadonlyVector3, allowWater: boolean): boolean;
-  /** Map:IsOceanAtPoint(x, 0, z) and not Map:IsVisualGroundAtPoint(x, 0, z): open water. */
+  /** Map:IsOceanAtPoint(x, 0, z): an ocean tile the land's overhang (Map:IsVisualGroundAtPoint) does not cover. */
   isOceanAtPoint(point: ReadonlyVector3): boolean;
 }
 

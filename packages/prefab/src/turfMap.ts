@@ -273,8 +273,79 @@ export class TurfMap implements GroundTerrain {
     return snapToTileCenter(world);
   }
 
+  /** Map:IsOceanTileAtPoint: the tile is in the ocean range, overhang included. */
   isOceanAtWorld(world: Vector2): boolean {
     return isOceanTile(this.getTileAtWorld(world));
+  }
+
+  /**
+   * map.lua Map:IsOceanAtPoint: an ocean tile that the land's overhang does not cover. Boats are not ported, so no
+   * platform is ever at the point.
+   */
+  isOceanAtPoint(world: Vector2): boolean {
+    return this.isOceanAtWorld(world) && !this.isVisualGroundAtPoint(world);
+  }
+
+  /**
+   * Map:IsVisualGroundAtPoint, as the engine computes it (dontstarve_steam_x64.exe 0x1400c8a50): a land tile, or the
+   * part of a non-land tile the land beside it overhangs. A land side neighbour covers the quarter of the tile next to
+   * it; a land corner, or a corner whose two sides are land, covers a diagonal band across that corner.
+   */
+  isVisualGroundAtPoint(world: Vector2): boolean {
+    const tile = this.getTileAtWorld(world);
+    if (tile === WORLD_TILES.INVALID) {
+      return false;
+    }
+    if (isLandTile(tile)) {
+      return true;
+    }
+    const col = Math.floor(world.x / TILE_SIZE),
+      row = Math.floor(world.z / TILE_SIZE);
+    const land = (dc: number, dr: number) => isLandTile(this.tileAt(col + dc, row + dr));
+    // The engine's neighbour mask, in DST's tile axes: rows run against DST's y (the imported map negates z), so its
+    // y - 1 neighbour is row + 1.
+    const mask =
+      (land(0, 1) ? 0x1 : 0) |
+      (land(1, 0) ? 0x2 : 0) |
+      (land(0, -1) ? 0x4 : 0) |
+      (land(-1, 0) ? 0x8 : 0) |
+      (land(1, 1) ? 0x10 : 0) |
+      (land(1, -1) ? 0x20 : 0) |
+      (land(-1, -1) ? 0x40 : 0) |
+      (land(-1, 1) ? 0x80 : 0);
+    if (mask === 0) {
+      return false;
+    }
+    // The point within the tile, 0..1 along DST's x and y.
+    const x = world.x / TILE_SIZE - col,
+      y = 1 - (world.z / TILE_SIZE - row);
+    if (
+      (mask & 0x1 && y <= 0.25) ||
+      (mask & 0x4 && y >= 0.75) ||
+      (mask & 0x8 && x <= 0.25) ||
+      (mask & 0x2 && x >= 0.75)
+    ) {
+      return true;
+    }
+    // Each corner: both sides and the corner land, the corner alone, or both sides without the corner.
+    const low = mask & 0x89,
+      right = mask & 0x13,
+      up = mask & 0x4c,
+      far = mask & 0x26;
+    return (
+      (low === 0x89 && 0.75 - x > y) ||
+      (right === 0x13 && x - 0.25 > y) ||
+      (up === 0x4c && y > x + 0.25) ||
+      (far === 0x26 && y > 1.25 - x) ||
+      (low === 0x80 && 0.25 - x >= y) ||
+      (right === 0x10 && x - 0.75 >= y) ||
+      (up === 0x40 && y >= x + 0.75) ||
+      (far === 0x20 && y >= 1.75 - x) ||
+      (low === 0x9 && 0.75 - x > y) ||
+      (right === 0x3 && x - 0.25 > y) ||
+      (up === 0xc && y > x + 0.25) ||
+      (far === 0x6 && y > 1.25 - x)
+    );
   }
 
   isPassableAtPoint(world: Vector2): boolean {

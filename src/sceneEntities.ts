@@ -826,9 +826,12 @@ export async function createSceneEntities(
       scheduler: worldState.scheduler,
       componentUpdates: worldState.componentUpdates,
       map: {
+        // map.lua IsPassableAtPointWithPlatformRadiusBias: land, the land's overhang, and the ocean when allowed.
         isPassableAtPoint: (point, allowWater) =>
-          turfMap.isPassableAtPoint(point) || (allowWater && turfMap.isOceanAtWorld(point)),
-        isOceanAtPoint: point => turfMap.isOceanAtWorld(point),
+          turfMap.isPassableAtPoint(point) ||
+          turfMap.isVisualGroundAtPoint(point) ||
+          (allowWater && turfMap.isOceanAtWorld(point)),
+        isOceanAtPoint: point => turfMap.isOceanAtPoint(point),
       },
       physics: world,
       fx: Managers['world_fx'],

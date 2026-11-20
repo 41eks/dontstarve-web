@@ -110,10 +110,9 @@ window.addEventListener('contextmenu', event => {
   event.preventDefault();
 });
 
-/** Map:IsOceanAtPoint: the dug OCEAN_COASTAL tiles are the only water, and none of them is a visual ground. */
 const spellCastMap: SpellCastMap = {
   isAboveGroundAtPoint: point => turfMap.getTileAtWorld(point) !== WORLD_TILES.INVALID,
-  isOceanAtPoint: point => turfMap.isOceanAtWorld(point),
+  isOceanAtPoint: point => turfMap.isOceanAtPoint(point),
   isGroundTargetBlocked: point => IsGroundTargetBlocked(prefabs, point, 0.5 * WORLD_SCALE),
 };
 

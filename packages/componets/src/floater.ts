@@ -37,7 +37,7 @@ export interface FloaterInst {
 
 /** TheWorld as the floater reaches it. */
 export interface FloaterWorld {
-  /** Map:IsOceanAtPoint(x, 0, z) and not Map:IsVisualGroundAtPoint(x, 0, z). */
+  /** Map:IsOceanAtPoint(x, 0, z), which already leaves out the land's overhang (Map:IsVisualGroundAtPoint). */
   isOceanAtPoint(point: ReadonlyVector3): boolean;
   /** SpawnPrefab("splash") at `position`. */
   SpawnSplash?(position: ReadonlyVector3): void;
