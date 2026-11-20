@@ -74,8 +74,11 @@ export interface EntityPersistData {
   pickable?: import('./components/pickable').PickableSaveState;
   witherable?: import('../../componets/src/witherable').WitherableSave;
   growable?: import('../../componets/src/growable').GrowableSave;
-  mushroom?: import('./pickablePlant').PickablePlantRecord['components']['mushroom'];
-  variant?: import('./pickablePlant').PickablePlantRecord['components']['variant'];
+  /** mushrooms.lua OnSave: the rain days left before a picked mushroom regrows. */
+  mushroom?: { rain: number };
+  /** cave_fern.lua OnSave: data.anim, the chosen pose clip. */
+  variant?: { anim: string };
+  /** rock_avocado_bush.lua on_save: data.burning. */
   burning?: true;
   building?: { burnt?: true };
   stewer?: import('../../componets/src/stewer').StewerSaveData;

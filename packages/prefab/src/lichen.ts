@@ -1,15 +1,13 @@
 import { addComponent } from './components';
-import type { PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { BurnableBinding } from './treeFire';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import {
-  PickablePlantInstance,
-  SpringGrowthMod,
-  type PickablePlantRecord,
-  type PickablePlantWorld,
-} from './pickablePlant';
+import { SpringGrowthMod } from './simutil';
+import type { PlantPrefabWorld } from './worldContext';
+import type { Propagator } from '../../componets/src/propagator';
+import type { Burnable } from '../../componets/src/burnable';
 
 export const LICHEN_ID = 'lichen' as const;
 /** TUNING.LICHEN_REGROW_TIME: total_day_time * 5. */
@@ -17,21 +15,27 @@ export const LICHEN_REGROW_TIME = 5 * 480;
 /** AnimState:SetBank / SetBuild("algae_bush"). */
 export const LICHEN_ARCHIVE = 'algae_bush.zip';
 
-export type LichenRecord = PickablePlantRecord;
-export type LichenWorld = PickablePlantWorld;
+/** lichen.lua's inst, with the components its fn adds. */
+export class LichenInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+  };
+}
 
-function onpickedfn(inst: PickablePlantInstance): void {
+function onpickedfn(inst: LichenInstance): void {
   inst.SoundEmitter!.PlaySound('dontstarve/wilson/pickup_lichen');
   inst.AnimState.PlayAnimation('picking');
   inst.AnimState.PushAnimation('picked', false);
 }
 
-function onregenfn(inst: PickablePlantInstance): void {
+function onregenfn(inst: LichenInstance): void {
   inst.AnimState.PlayAnimation('grow');
   inst.AnimState.PushAnimation('idle', true);
 }
 
-function makeemptyfn(inst: PickablePlantInstance): void {
+function makeemptyfn(inst: LichenInstance): void {
   inst.AnimState.PlayAnimation('picked');
 }
 
@@ -39,8 +43,8 @@ function makeemptyfn(inst: PickablePlantInstance): void {
  * lichen.lua fn: PICK cutlichen, small burnable and propagator, MakeNoGrowInWinter. No workable, so it cannot be dug.
  * MakeHauntableIgnite is not ported.
  */
-function fn(world: PickablePlantWorld): PickablePlantInstance {
-  const inst = new PickablePlantInstance(LICHEN_ID, new SpriteState({ name: 'idle', billboard: true }));
+function fn(world: PlantPrefabWorld): LichenInstance {
+  const inst = new LichenInstance(LICHEN_ID, new SpriteState({ name: 'idle', billboard: true }));
   inst.AddSoundEmitter();
   inst.BindScheduler(world.scheduler);
   inst.addTag('lichen');
@@ -87,8 +91,8 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
 
 /** lichen.lua's Prefab("lichen", fn, assets). */
 export function lichenPrefabs(
-  world: PickablePlantWorld,
-): Readonly<Record<typeof LICHEN_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+  world: PlantPrefabWorld,
+): Readonly<Record<typeof LICHEN_ID, PrefabEntityDefinition<LichenInstance>>> {
   return {
     [LICHEN_ID]: {
       fn: () => fn(world),

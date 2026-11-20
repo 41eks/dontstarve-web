@@ -2,8 +2,9 @@ import { afterEach } from 'vitest';
 import { getBoundWatchWorldContent, WorldContentKey } from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FireFxHost } from '../../prefab/src/treeFire';
-import type { PickablePlantInstance, PickablePlantWorld } from '../../prefab/src/pickablePlant';
-import type { PrefabEntityManager, PrefabEntityDefinition } from '../../prefab/src/prefabInstance';
+import type { PlantPrefabWorld } from '../../prefab/src/worldContext';
+import type { SpriteState } from '@dontstarve-web/display';
+import type { PrefabEntityManager, PrefabEntityDefinition, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { prefabManager } from './prefabManagerFixture';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import type { Scene } from 'three';
@@ -17,10 +18,10 @@ afterEach(() => {
 });
 
 /** Own the injected display/fire resources in tests; return the actual generic manager without adapting its API. */
-export function plantManager<Id extends string, Instance extends PickablePlantInstance>(
-  define: (world: PickablePlantWorld) => Readonly<Record<Id, PrefabEntityDefinition<Instance>>>,
+export function plantManager<Id extends string, Instance extends PrefabInstance<SpriteState, object>>(
+  define: (world: PlantPrefabWorld) => Readonly<Record<Id, PrefabEntityDefinition<Instance>>>,
   scene: Scene,
-  options: Omit<PickablePlantWorld, 'scheduler' | 'fire' | 'getWatchWorldContent'>,
+  options: Omit<PlantPrefabWorld, 'scheduler' | 'fire' | 'getWatchWorldContent'>,
 ): PrefabEntityManager<Id, Instance> {
   const displays = new PrefabDisplayGroup(scene),
     fire = FireFxHost.create('/dst/data/anim');

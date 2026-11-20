@@ -1,5 +1,5 @@
 import { addComponent } from './components';
-import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, POPULATING, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -7,13 +7,11 @@ import { Witherable } from '../../componets/src/witherable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { BurnableBinding } from './treeFire';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import {
-  PickablePlantInstance,
-  plantLootSpawner,
-  SpringGrowthMod,
-  type PickablePlantRecord,
-  type PickablePlantWorld,
-} from './pickablePlant';
+import { groundLootSpawner } from './groundPrefab';
+import { SpringGrowthMod } from './simutil';
+import type { PlantPrefabWorld } from './worldContext';
+import type { Propagator } from '../../componets/src/propagator';
+import type { Burnable } from '../../componets/src/burnable';
 
 export const GRASS_ID = 'grass' as const;
 export const GRASS_REGROW_TIME = 3 * 480;
@@ -22,10 +20,18 @@ export const GRASS_CYCLES = 20;
 export const GRASS_ANIM_ARCHIVE = 'grass.zip';
 export const GRASS_BUILD_ARCHIVE = 'grass1.zip';
 
-export type GrassRecord = PickablePlantRecord;
-export type GrassWorld = PickablePlantWorld;
+/** grass.lua's inst, with the components its fn adds. */
+export class GrassInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+    lootdropper: LootDropper;
+    witherable: Witherable;
+  };
+}
 
-function dig_up(inst: PickablePlantInstance): void {
+function dig_up(inst: GrassInstance): void {
   const { pickable, witherable } = inst.components,
     lootdropper = inst.components.lootdropper!;
   if (pickable.canBePicked) {
@@ -35,12 +41,12 @@ function dig_up(inst: PickablePlantInstance): void {
   inst.remove();
 }
 
-function onregenfn(inst: PickablePlantInstance): void {
+function onregenfn(inst: GrassInstance): void {
   inst.AnimState.PlayAnimation('grow');
   inst.AnimState.PushAnimation('idle', true);
 }
 
-function makeemptyfn(inst: PickablePlantInstance): void {
+function makeemptyfn(inst: GrassInstance): void {
   if (!POPULATING && (inst.components.witherable?.IsWithered() || inst.sprite.currentAnimation === 'idle_dead')) {
     inst.AnimState.PlayAnimation('dead_to_empty');
     inst.AnimState.PushAnimation('picked', false);
@@ -49,7 +55,7 @@ function makeemptyfn(inst: PickablePlantInstance): void {
   }
 }
 
-function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
+function makebarrenfn(inst: GrassInstance, wasempty: boolean): void {
   if (!POPULATING && inst.components.witherable?.IsWithered()) {
     inst.AnimState.PlayAnimation(wasempty ? 'empty_to_dead' : 'full_to_dead');
     inst.AnimState.PushAnimation('idle_dead', false);
@@ -58,7 +64,7 @@ function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
   }
 }
 
-function onpickedfn(inst: PickablePlantInstance): void {
+function onpickedfn(inst: GrassInstance): void {
   inst.SoundEmitter!.PlaySound('dontstarve/wilson/pickup_reeds');
   inst.AnimState.PlayAnimation('picking');
   if (inst.components.pickable.IsBarren()) {
@@ -70,7 +76,7 @@ function onpickedfn(inst: PickablePlantInstance): void {
 }
 
 /** The grass gekko morph timers are not ported. */
-function ontransplantfn(inst: PickablePlantInstance): void {
+function ontransplantfn(inst: GrassInstance): void {
   inst.components.pickable.MakeBarren();
 }
 
@@ -78,8 +84,8 @@ function ontransplantfn(inst: PickablePlantInstance): void {
  * grass.lua grass(name, stage) fn. Not ported: SetFrame / SetMultColour, the gekko morph, MakeHauntableIgnite,
  * MakeWaxablePlant and the lunarthrall herd save.
  */
-function fn(world: PickablePlantWorld): PickablePlantInstance {
-  const inst = new PickablePlantInstance(GRASS_ID, new SpriteState({ name: 'idle', billboard: true }));
+function fn(world: PlantPrefabWorld): GrassInstance {
+  const inst = new GrassInstance(GRASS_ID, new SpriteState({ name: 'idle', billboard: true }));
   inst.AddSoundEmitter();
   inst.BindScheduler(world.scheduler);
   inst.addTag('plant');
@@ -117,7 +123,7 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
     () => world.getLocalTemperature?.(inst.position) ?? 20,
     world.rain,
   );
-  addComponent(inst, 'lootdropper', LootDropper, plantLootSpawner(world));
+  addComponent(inst, 'lootdropper', LootDropper, groundLootSpawner(world));
 
   const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('DIG');
@@ -144,8 +150,8 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
 
 /** grass.lua's Prefab("grass", fn, assets). */
 export function grassPrefabs(
-  world: PickablePlantWorld,
-): Readonly<Record<typeof GRASS_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+  world: PlantPrefabWorld,
+): Readonly<Record<typeof GRASS_ID, PrefabEntityDefinition<GrassInstance>>> {
   return {
     [GRASS_ID]: {
       fn: () => fn(world),

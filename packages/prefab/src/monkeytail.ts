@@ -1,5 +1,5 @@
 import { addComponent } from './components';
-import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, POPULATING, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -7,12 +7,27 @@ import { Witherable } from '../../componets/src/witherable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { BurnableBinding } from './treeFire';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
-import { PickablePlantInstance, plantLootSpawner, SpringGrowthMod, type PickablePlantWorld } from './pickablePlant';
+import { groundLootSpawner } from './groundPrefab';
+import { SpringGrowthMod } from './simutil';
+import type { PlantPrefabWorld } from './worldContext';
+import type { Propagator } from '../../componets/src/propagator';
+import type { Burnable } from '../../componets/src/burnable';
 
 export const MONKEYTAIL_ID = 'monkeytail' as const;
 export const MONKEYTAIL_REGROW_TIME = 3 * 480;
 
-function dig_up(inst: PickablePlantInstance): void {
+/** monkeytail.lua's inst, with the components its fn adds. */
+export class MonkeytailInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+    lootdropper: LootDropper;
+    witherable: Witherable;
+  };
+}
+
+function dig_up(inst: MonkeytailInstance): void {
   const { pickable, witherable } = inst.components,
     lootdropper = inst.components.lootdropper!;
   if (pickable.canBePicked) {
@@ -22,12 +37,12 @@ function dig_up(inst: PickablePlantInstance): void {
   inst.remove();
 }
 
-function onregenfn(inst: PickablePlantInstance): void {
+function onregenfn(inst: MonkeytailInstance): void {
   inst.AnimState.PlayAnimation('grow');
   inst.AnimState.PushAnimation('idle', true);
 }
 
-function makeemptyfn(inst: PickablePlantInstance): void {
+function makeemptyfn(inst: MonkeytailInstance): void {
   if (!POPULATING && (inst.components.witherable?.IsWithered() || inst.sprite.currentAnimation === 'idle_dead')) {
     inst.AnimState.PlayAnimation('dead_to_empty');
     inst.AnimState.PushAnimation('picked', false);
@@ -36,7 +51,7 @@ function makeemptyfn(inst: PickablePlantInstance): void {
   }
 }
 
-function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
+function makebarrenfn(inst: MonkeytailInstance, wasempty: boolean): void {
   if (!POPULATING && inst.components.witherable?.IsWithered()) {
     inst.AnimState.PlayAnimation(wasempty ? 'empty_to_dead' : 'full_to_dead');
     inst.AnimState.PushAnimation('idle_dead', false);
@@ -45,7 +60,7 @@ function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
   }
 }
 
-function onpickedfn(inst: PickablePlantInstance): void {
+function onpickedfn(inst: MonkeytailInstance): void {
   inst.SoundEmitter!.PlaySound('dontstarve/wilson/pickup_reeds');
   inst.AnimState.PlayAnimation('picking');
   if (inst.components.pickable.IsBarren()) {
@@ -56,7 +71,7 @@ function onpickedfn(inst: PickablePlantInstance): void {
   }
 }
 
-function ontransplantfn(inst: PickablePlantInstance): void {
+function ontransplantfn(inst: MonkeytailInstance): void {
   inst.components.pickable.MakeBarren();
 }
 
@@ -64,8 +79,8 @@ function ontransplantfn(inst: PickablePlantInstance): void {
  * monkeytail.lua fn: wild reeds regrow indefinitely; transplanted ones go barren and need fertilizer. Not ported:
  * SetMultColour, fuel, MakeWaxablePlant and MakeHauntableIgnite.
  */
-function fn(world: PickablePlantWorld): PickablePlantInstance {
-  const inst = new PickablePlantInstance(MONKEYTAIL_ID, new SpriteState({ name: 'idle', billboard: true }));
+function fn(world: PlantPrefabWorld): MonkeytailInstance {
+  const inst = new MonkeytailInstance(MONKEYTAIL_ID, new SpriteState({ name: 'idle', billboard: true }));
   inst.AddSoundEmitter();
   inst.BindScheduler(world.scheduler);
   inst.deploySmartRadius = 1.5;
@@ -106,7 +121,7 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
     () => world.getLocalTemperature?.(inst.position) ?? 20,
     world.rain,
   );
-  addComponent(inst, 'lootdropper', LootDropper, plantLootSpawner(world));
+  addComponent(inst, 'lootdropper', LootDropper, groundLootSpawner(world));
 
   const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('DIG');
@@ -133,8 +148,8 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
 
 /** monkeytail.lua's Prefab("monkeytail", fn, assets). */
 export function monkeytailPrefabs(
-  world: PickablePlantWorld,
-): Readonly<Record<typeof MONKEYTAIL_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+  world: PlantPrefabWorld,
+): Readonly<Record<typeof MONKEYTAIL_ID, PrefabEntityDefinition<MonkeytailInstance>>> {
   return {
     [MONKEYTAIL_ID]: {
       fn: () => fn(world),

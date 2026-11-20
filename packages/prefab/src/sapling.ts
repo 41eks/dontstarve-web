@@ -1,5 +1,5 @@
 import { addComponent } from './components';
-import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, POPULATING, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -8,27 +8,33 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { BurnableBinding } from './treeFire';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter } from './standardcomponents';
 import { TILE_SIZE } from './tile';
-import {
-  PickablePlantInstance,
-  plantLootSpawner,
-  SpringGrowthMod,
-  type PickablePlantRecord,
-  type PickablePlantWorld,
-} from './pickablePlant';
+import { groundLootSpawner } from './groundPrefab';
+import { SpringGrowthMod } from './simutil';
+import type { PlantPrefabWorld } from './worldContext';
+import type { Propagator } from '../../componets/src/propagator';
+import type { Burnable } from '../../componets/src/burnable';
 
 export const SAPLING_PREFABS = ['sapling', 'sapling_moon'] as const;
 export type SaplingPrefabId = (typeof SAPLING_PREFABS)[number];
 /** TUNING.SAPLING_REGROW_TIME = total_day_time * 4. */
 export const SAPLING_REGROW_TIME = 4 * 480;
 
-export type SaplingRecord = PickablePlantRecord;
-export type SaplingWorld = PickablePlantWorld;
+/** sapling.lua's inst, with the components its fn adds. */
+export class SaplingInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+    lootdropper: LootDropper;
+    witherable: Witherable;
+  };
+}
 
-function ontransplantfn(inst: PickablePlantInstance): void {
+function ontransplantfn(inst: SaplingInstance): void {
   inst.components.pickable.MakeEmpty();
 }
 
-function dig_up(inst: PickablePlantInstance): void {
+function dig_up(inst: SaplingInstance): void {
   const { pickable, witherable } = inst.components,
     lootdropper = inst.components.lootdropper!;
   if (pickable.canBePicked) {
@@ -38,16 +44,16 @@ function dig_up(inst: PickablePlantInstance): void {
   inst.remove();
 }
 
-function onpickedfn(inst: PickablePlantInstance): void {
+function onpickedfn(inst: SaplingInstance): void {
   inst.AnimState.PlayAnimation('picked', false);
 }
 
-function onregenfn(inst: PickablePlantInstance): void {
+function onregenfn(inst: SaplingInstance): void {
   inst.AnimState.PlayAnimation('grow');
   inst.AnimState.PushAnimation('sway', true);
 }
 
-function makeemptyfn(inst: PickablePlantInstance): void {
+function makeemptyfn(inst: SaplingInstance): void {
   if (!POPULATING && (inst.components.witherable?.IsWithered() || inst.sprite.currentAnimation === 'idle_dead')) {
     inst.AnimState.PlayAnimation('dead_to_empty');
     inst.AnimState.PushAnimation('empty', false);
@@ -56,7 +62,7 @@ function makeemptyfn(inst: PickablePlantInstance): void {
   }
 }
 
-function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
+function makebarrenfn(inst: SaplingInstance, wasempty: boolean): void {
   if (!POPULATING && inst.components.witherable?.IsWithered()) {
     inst.AnimState.PlayAnimation(wasempty ? 'empty_to_dead' : 'full_to_dead');
     inst.AnimState.PushAnimation('idle_dead', false);
@@ -69,8 +75,8 @@ function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
  * sapling.lua sapling_common(inst, is_moon): bank and build are sapling_moon for the moon sapling; dig_up gives
  * dug_<prefab>. Not ported: MakeHauntableIgnite, MakeWaxablePlant, halloweenmoonmutable and the lunarthrall herd save.
  */
-function sapling_common(prefab: SaplingPrefabId, world: PickablePlantWorld): PickablePlantInstance {
-  const inst = new PickablePlantInstance(prefab, new SpriteState({ name: 'sway', billboard: true }));
+function sapling_common(prefab: SaplingPrefabId, world: PlantPrefabWorld): SaplingInstance {
+  const inst = new SaplingInstance(prefab, new SpriteState({ name: 'sway', billboard: true }));
   inst.BindScheduler(world.scheduler);
   // DEPLOYSPACING_RADIUS[DEPLOYSPACING.MEDIUM] / 2.
   inst.deploySmartRadius = 0.5 * (TILE_SIZE / 4);
@@ -110,7 +116,7 @@ function sapling_common(prefab: SaplingPrefabId, world: PickablePlantWorld): Pic
     () => world.getLocalTemperature?.(inst.position) ?? 20,
     world.rain,
   );
-  addComponent(inst, 'lootdropper', LootDropper, plantLootSpawner(world));
+  addComponent(inst, 'lootdropper', LootDropper, groundLootSpawner(world));
 
   const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('DIG');
@@ -137,9 +143,9 @@ function sapling_common(prefab: SaplingPrefabId, world: PickablePlantWorld): Pic
 
 /** sapling.lua: Prefab("sapling", fn) and Prefab("sapling_moon", moon_fn). */
 export function saplingPrefabs(
-  world: PickablePlantWorld,
-): Readonly<Record<SaplingPrefabId, PrefabEntityDefinition<PickablePlantInstance>>> {
-  const prefab = (id: SaplingPrefabId): PrefabEntityDefinition<PickablePlantInstance> => ({
+  world: PlantPrefabWorld,
+): Readonly<Record<SaplingPrefabId, PrefabEntityDefinition<SaplingInstance>>> {
+  const prefab = (id: SaplingPrefabId): PrefabEntityDefinition<SaplingInstance> => ({
     fn: () => sapling_common(id, world),
     assets: { animationArchive: `${id}.zip`, buildArchives: [`${id}.zip`], bank: id },
     assetOptions: { instancedAnimations: 'all', staticBillboard: true },

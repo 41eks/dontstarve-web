@@ -1,10 +1,13 @@
 import { addComponent } from './components';
-import type { PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { BurnableBinding } from './treeFire';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn } from './standardcomponents';
-import { PickablePlantInstance, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
+import type { PlantPrefabWorld } from './worldContext';
+import type { Propagator } from '../../componets/src/propagator';
+import type { Burnable } from '../../componets/src/burnable';
+import type { EntityPersistData } from './saveRecord';
 
 export const CAVE_FERN_ID = 'cave_fern' as const;
 export const CAVE_FERN_WITHERED_ID = 'cave_fern_withered' as const;
@@ -22,20 +25,22 @@ export const CAVE_FERN_BUILD_ARCHIVES: Readonly<Record<CaveFernId, string>> = {
 const CAVE_FERN_REGROW_TIME = 10;
 const PRODUCTS: Readonly<Record<CaveFernId, string>> = { cave_fern: 'foliage', cave_fern_withered: 'cutgrass' };
 
-export type CaveFernRecord = PickablePlantRecord;
-export type CaveFernWorld = PickablePlantWorld;
-
 /** cave_fern.lua's field on the inst. */
-export class CaveFernInstance extends PickablePlantInstance {
+export class CaveFernInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+  };
   /** inst.animname: the pose clip. */
   animname!: string;
 }
 
-function onsave(inst: CaveFernInstance, data: PickablePlantRecord['components']): void {
+function onsave(inst: CaveFernInstance, data: EntityPersistData): void {
   data.variant = { anim: inst.animname };
 }
 
-function onload(inst: CaveFernInstance, data: PickablePlantRecord['components']): void {
+function onload(inst: CaveFernInstance, data: EntityPersistData): void {
   const anim = data.variant?.anim;
   if (anim === undefined) {
     return;
@@ -51,7 +56,7 @@ function onload(inst: CaveFernInstance, data: PickablePlantRecord['components'])
  * cave_fern.lua / cave_fern_withered.lua fn: a random pose, PICK foliage / cutgrass with quickpick and
  * remove_when_picked, small burnable and propagator. MakeHauntableIgnite is not ported.
  */
-function fn(prefab: CaveFernId, world: PickablePlantWorld): CaveFernInstance {
+function fn(prefab: CaveFernId, world: PlantPrefabWorld): CaveFernInstance {
   const animname = CAVE_FERN_ANIMATIONS[Math.floor(Math.random() * CAVE_FERN_ANIMATIONS.length)];
   const inst = new CaveFernInstance(prefab, new SpriteState({ name: animname, billboard: true }));
   inst.BindScheduler(world.scheduler);
@@ -96,9 +101,9 @@ function fn(prefab: CaveFernId, world: PickablePlantWorld): CaveFernInstance {
 
 /** cave_fern.lua / cave_fern_withered.lua: Prefab(name, fn, assets). */
 export function caveFernPrefabs(
-  world: PickablePlantWorld,
-): Readonly<Record<CaveFernId, PrefabEntityDefinition<PickablePlantInstance>>> {
-  const prefab = (id: CaveFernId): PrefabEntityDefinition<PickablePlantInstance> => ({
+  world: PlantPrefabWorld,
+): Readonly<Record<CaveFernId, PrefabEntityDefinition<CaveFernInstance>>> {
+  const prefab = (id: CaveFernId): PrefabEntityDefinition<CaveFernInstance> => ({
     fn: () => fn(id, world),
     assets: { animationArchive: CAVE_FERN_ANIM_ARCHIVE, buildArchives: [CAVE_FERN_BUILD_ARCHIVES[id]], bank: 'ferns' },
     assetOptions: { instancedAnimations: 'all', staticBillboard: true },
