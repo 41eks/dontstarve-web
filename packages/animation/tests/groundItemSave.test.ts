@@ -11,7 +11,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ItemWorldFixture, itemAt } from './itemWorldFixture';
 import { EventEmitter } from '@dontstarve-web/signals';
 import type { WorldEvents } from '../../prefab/src/worldContext';
-import { placementEntities } from '../../prefab/src/placementEntities';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
 import { miniMapEntities } from '../../map/src/minimapEntities';
@@ -67,7 +66,7 @@ const definition = { itemId: 'log', count: 1, name: 'Log', icon: 'log.tex' };
 
 describe('ground item save records', () => {
   it('updates placement from logical movement and tags without forcing visual matrix updates', async () => {
-    const { manager, scene, inventory } = setup();
+    const { manager, inventory } = setup();
     try {
       const origin = new THREE.Vector3();
       const model = await manager.spawnFromSave('stationary:log', definition, origin);
@@ -77,15 +76,14 @@ describe('ground item save records', () => {
       expect(lookupPrefabInstance(model)!.position).toBe(model.position);
       const matrices = vi.spyOn(model, 'updateWorldMatrix');
       const copies = vi.spyOn(model.position, 'copy');
-      const query = placementEntities(scene);
       for (let frame = 0; frame < 10; frame++) {
         manager.update(0.1, new THREE.Quaternion());
       }
       expect(matrices).not.toHaveBeenCalled();
       expect(copies).not.toHaveBeenCalled();
-      expect(query.someNear(origin, 1, blocker => blocker.prefab === 'log')).toBe(true);
+      expect(entity.TheSim.FindEntities(origin, 1)).toEqual([entity]);
 
-      // A thrown inst comes down where its flight ends: its placement and tile follow it there (on_landed).
+      // A thrown inst comes down where its flight ends: the world's spatial index follows its position write.
       entity.transform.setPosition(24, 0, 0);
       entity.PushEvent('on_landed');
       expect(model.position.toArray()).toEqual([24, 0, 0]);
@@ -94,12 +92,6 @@ describe('ground item save records', () => {
       expect(copies).not.toHaveBeenCalled();
       expect(entity.TheSim.FindEntities(origin, 1)).toHaveLength(0);
       expect(entity.TheSim.FindEntities(entity.transform.position, 1).map(inst => inst.prefab)).toEqual(['log']);
-      expect(query.someNear(origin, 1, () => true)).toBe(false);
-      expect(query.someNear(entity.transform.position, 1, () => true)).toBe(true);
-      entity.addTag('NOBLOCK');
-      expect(query.someNear(entity.transform.position, 1, () => true)).toBe(false);
-      entity.removeTag('NOBLOCK');
-      expect(query.someNear(entity.transform.position, 1, () => true)).toBe(true);
       matrices.mockClear();
       const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 3);
       manager.update(0.1, turned);

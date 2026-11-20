@@ -2,45 +2,33 @@ import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { FarmTillerMap } from '../../componets/src/farmtiller';
 import {
-  FARM_DECOR_IDS,
   FARM_PLOW_ID,
   FARM_PLOW_ITEM_ID,
   FARM_PLOW_USES,
   FARM_SCALE,
   FARM_TILL_SPACING,
-  PLANTED_SEED_IDS,
   FarmPlowInstance,
   type FarmSoilMap,
 } from './farm_plow';
-import { hasPlacementTag, ignoresPlacement, type PlacementBlocker, type PlacementQuery } from './placementEntities';
+import { DEPLOY_IGNORE_TAGS, IsDeployPointClear, IsNearOther, type MapEntities } from './mapEntities';
 import type { PrefabEntityManager, PrefabInstance } from './prefabInstance';
 import { snapToTileCenter, TILE_SIZE } from './tile';
 import { WORLD_TILES, type TurfMap } from './turfMap';
 
-/** map.lua DEPLOY_IGNORE_TAGS plus TILLSOIL_IGNORE_TAGS' soil and merm. */
-const TILL_IGNORE_TAGS = [
-  'NOBLOCK',
-  'player',
-  'FX',
-  'INLIMBO',
-  'DECOR',
-  'walkableplatform',
-  'walkableperipheral',
-  'isdead',
-  'soil',
-  'merm',
-];
+/** map.lua TILLSOIL_IGNORE_TAGS: DEPLOY_IGNORE_TAGS plus soil and merm. */
+const TILL_IGNORE_TAGS = [...DEPLOY_IGNORE_TAGS, 'soil', 'merm'];
 /** farm_plow.lua can_plow_tile's ignored tags. */
 const PLOW_IGNORE_TAGS = ['NOBLOCK', 'locomotor', 'NOCLICK', 'FX', 'DECOR'];
-const FARM_ENTITY_IDS: readonly string[] = [FARM_PLOW_ID, ...FARM_DECOR_IDS, ...PLANTED_SEED_IDS];
 
-/** The live entities the farm prefabs spawn: TheSim:FindEntities over them and SpawnPrefab. */
-export interface FarmEntities extends Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'spawnAs'> {
+/** The world's entities: TheSim:FindEntities, Map:GetEntitiesOnTileAtPoint and SpawnPrefab. */
+export interface FarmEntities
+  extends MapEntities,
+    Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn' | 'spawnAs'> {
   instances(prefabId: string): Iterable<PrefabInstance>;
 }
 export interface FarmMap extends FarmSoilMap, FarmTillerMap {
-  /** farm_plow_item's can_plow_tile. */
-  canDeploy(point: THREE.Vector3): boolean;
+  /** farm_plow_item's can_plow_tile; `inst` is the item being deployed. */
+  canDeploy(point: THREE.Vector3, inst?: object): boolean;
   /** farm_plow_item's item_ondeploy. */
   deploy(point: THREE.Vector3, item: ItemEntity): boolean;
   dispose(): void;
@@ -53,59 +41,13 @@ function tileCenter(point: Pick<THREE.Vector3, 'x' | 'z'>): THREE.Vector3 {
 const tileOf = (point: Pick<THREE.Vector3, 'x' | 'z'>) =>
   `${Math.floor(point.x / TILE_SIZE)},${Math.floor(point.z / TILE_SIZE)}`;
 
-/**
- * TheWorld.Map's farm soil functions: CanTillSoilAtPoint, CollapseSoilAtPoint and the plow's terraform, over the
- * shared manager's farm entities and the other entities in the placement query.
- */
-export function createFarmMap({
-  turf,
-  entities,
-  blockers,
-}: {
-  turf: TurfMap;
-  entities: FarmEntities;
-  blockers: PlacementQuery;
-}): FarmMap {
-  function* farmEntities(): Generator<PrefabInstance> {
-    for (const id of FARM_ENTITY_IDS) {
-      yield* entities.instances(id);
-    }
-  }
-  // The farm entities are found above; the query holds everything else.
-  const external = (blocker: PlacementBlocker, ignored: readonly string[]) =>
-    !FARM_ENTITY_IDS.includes(blocker.prefab ?? '') &&
-    (blocker.logicalTree === true || !ignoresPlacement(blocker, ignored));
-  /** map.lua IsNearOther with deploy_smart_radius. */
-  const spacing = (smartRadius: number | undefined, minSpacing: number) =>
-    smartRadius !== undefined ? smartRadius + minSpacing / 2 : minSpacing;
-  /** map.lua IsDeployPointClear(pt, nil, min_spacing, nil, nil, nil, ignore_tags). */
-  function isDeployPointClear(point: THREE.Vector3, minSpacing: number, ignored: readonly string[]): boolean {
-    for (const inst of farmEntities()) {
-      if (ignored.some(tag => inst.hasTag(tag))) {
-        continue;
-      }
-      if (inst.position.distanceToSquared(point) < spacing(inst.deploySmartRadius, minSpacing) ** 2) {
-        return false;
-      }
-    }
-    return !blockers.someNear(
-      point,
-      minSpacing,
-      blocker =>
-        external(blocker, ignored) &&
-        blocker.position.distanceToSquared(point) <
-          spacing(
-            blocker.smartRadius ?? (hasPlacementTag(blocker, 'farm_plant') ? 0.5 * FARM_SCALE : undefined),
-            minSpacing,
-          ) **
-            2,
-    );
-  }
+/** TheWorld.Map's farm soil functions: CanTillSoilAtPoint, CollapseSoilAtPoint and the plow's terraform. */
+export function createFarmMap({ turf, entities }: { turf: TurfMap; entities: FarmEntities }): FarmMap {
   const map: FarmMap = {
     CanTillSoilAtPoint(point, ignoreTileType = false) {
       return (
         (ignoreTileType ? turf.canPlant(point) : turf.getTileAtWorld(point) === WORLD_TILES.FARMING_SOIL) &&
-        isDeployPointClear(point, FARM_TILL_SPACING, TILL_IGNORE_TAGS)
+        IsDeployPointClear(entities, point, undefined, FARM_TILL_SPACING, IsNearOther, TILL_IGNORE_TAGS)
       );
     },
     CollapseSoilAtPoint(point) {
@@ -135,18 +77,13 @@ export function createFarmMap({
       entities.spawn('farm_soil', position);
       return true;
     },
-    canDeploy(point) {
-      const center = tileCenter(point),
-        tile = tileOf(center);
-      if (!turf.canPlow(point) || turf.getTileAtWorld(center) === WORLD_TILES.INVALID) {
+    canDeploy(point, inst) {
+      if (!turf.canPlow(point) || turf.getTileAtWorld(tileCenter(point)) === WORLD_TILES.INVALID) {
         return false;
       }
-      for (const inst of farmEntities()) {
-        if (tileOf(inst.position) === tile && !PLOW_IGNORE_TAGS.some(tag => inst.hasTag(tag))) {
-          return false;
-        }
-      }
-      return !blockers.someOnTile(center, blocker => external(blocker, PLOW_IGNORE_TAGS));
+      return !entities
+        .GetEntitiesOnTileAtPoint(point)
+        .some(ent => ent !== inst && !PLOW_IGNORE_TAGS.some(tag => ent.hasTag(tag)));
     },
     deploy(point, item) {
       if (!map.canDeploy(point)) {

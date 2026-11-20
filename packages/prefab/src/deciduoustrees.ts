@@ -103,7 +103,6 @@ export class DeciduousInstance extends PrefabInstance {
     this.setActive(false);
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1;
-    this.logicalPlacement = true;
     this.minimap.SetPriority(-1);
     for (const tag of ['plant', 'tree', 'birchnut', 'deciduoustree', 'cattoyairborne', 'SnowCovered', '__combat']) {
       this.addTag(tag);

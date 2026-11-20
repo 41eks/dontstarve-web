@@ -10,7 +10,6 @@ import {
   type FarmWorld,
 } from '../../prefab/src/farm_plow';
 import { createFarmMap } from '../../prefab/src/farmMap';
-import { placementEntities, type PlacementQuery } from '../../prefab/src/placementEntities';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { EntityPersistData } from '../../prefab/src/saveRecord';
 import { newEntityId } from '../../prefab/src/saveRecord';
@@ -21,7 +20,6 @@ export function farmFixture(
   scene: THREE.Scene,
   turf: TurfMap,
   options: {
-    blockers?: PlacementQuery;
     random?: () => number;
     spawnSaveRecord?: (position: THREE.Vector3, item: HeldEntityRecord) => void;
     spawnLoot?: (itemId: string, position: THREE.Vector3) => void;
@@ -31,7 +29,7 @@ export function farmFixture(
   const scheduler = new GameTimeScheduler(),
     displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { scheduler });
-  const map = createFarmMap({ turf, entities: prefabs, blockers: options.blockers ?? placementEntities(scene) });
+  const map = createFarmMap({ turf, entities: prefabs });
   prefabs.register(
     farmPrefabs({
       scheduler,

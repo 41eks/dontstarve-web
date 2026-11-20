@@ -35,7 +35,6 @@ import {
 } from '@dontstarve-web/prefab/groundItems';
 import { farmPrefabs } from '@dontstarve-web/prefab/farm_plow';
 import { createFarmMap } from '@dontstarve-web/prefab/farmMap';
-import { placementEntities } from '@dontstarve-web/prefab/placementEntities';
 import { playerStats } from './playerStats';
 import { SpriteResources } from '@dontstarve-web/display';
 import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
@@ -1575,7 +1574,7 @@ export async function createSceneEntities(
 
   /** farm_plow, farm_soil, farm_soil_debris and the sown seeds, with TheWorld.Map's soil functions they share. */
   function registerFarm(registry: EntityRegistry, worldState: SceneWorldState) {
-    const farmMap = createFarmMap({ turf: turfMap, entities: prefabs, blockers: placementEntities(view.scene) });
+    const farmMap = createFarmMap({ turf: turfMap, entities: prefabs });
     prefabs.register(
       farmPrefabs({
         scheduler: worldState.scheduler,

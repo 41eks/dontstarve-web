@@ -1,6 +1,5 @@
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
-import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import { AnimState } from '../src/animState';
 import { smallHash } from '../src/animationAssets';
 import { readFile } from 'node:fs/promises';
@@ -18,6 +17,7 @@ import { actionTool } from './actionFixtures';
 import { playerDoer } from './playerDoer';
 import { createEquipmentExistenceState } from '../../signals/src';
 import { farmFixture } from './farmFixture';
+import { placeEntity } from './mapEntitiesFixture';
 import { PLANTED_SEED_ID } from '../../prefab/src/farm_plow';
 import { TurfMap } from '../../prefab/src/turfMap';
 import { playerInst, createPlayer, type PlayerInstance } from './playerVisual';
@@ -52,9 +52,8 @@ function setup(player = new THREE.Group()) {
     renderer: { domElement: new EventTarget() },
   } as unknown as WorldContext;
   const turf = new TurfMap(96);
-  const blockers = new SpatialIndex<{ position: THREE.Vector3; tags?: string[] }>(blocker => blocker.position);
-  const farm = farmFixture(world.scene, turf, { blockers: blockers as never });
-  return { farm, turf, world, blockers };
+  const farm = farmFixture(world.scene, turf);
+  return { farm, turf, world };
 }
 function advance(animation: PlayerInstance, frames: number) {
   for (let i = 0; i < frames; i++) {
@@ -106,17 +105,16 @@ it('resolves both source ground builds, the separate golden held build and invis
 });
 
 it('retills broken soil at the exact point, preserves blockers and crops, and restores saved holes', async () => {
-  const { farm, turf, blockers, world } = setup();
+  const { farm, turf, world } = setup();
   const point = new THREE.Vector3(3, 0, 3);
   try {
     expect(farm.map.canTill(point)).toBe(false);
     turf.plow(point);
     farm.spawn('farm_soil', point, { farmSoil: { broken: true } }, 'broken');
     farm.spawn('farm_soil', new THREE.Vector3(6, 0, 3), { farmSoil: { broken: false } }, 'neighbour');
-    const blocker = { position: point, tags: [] as string[] };
-    blockers.add(blocker);
+    const blocker = placeEntity(farm.prefabs, point);
     expect(farm.map.canTill(point)).toBe(false);
-    blocker.tags = ['FX'];
+    blocker.addTag('FX');
     expect(farm.map.canTill(point)).toBe(true);
     expect(farm.decor().map(({ record }) => record.id)).toEqual(['broken', 'neighbour']);
     expect(farm.map.till(point)).toBe(true);

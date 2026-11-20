@@ -6,7 +6,7 @@ import type { WorldFx } from './world_fx';
 import { CHARACTER_COLLISION_MASK, WORLD_SCALE } from './standardcomponents';
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import type { Wortox, WortoxSave } from './wortox';
-import { isGroundTargetBlocked, placementEntities, type PlacementQuery } from './placementEntities';
+import { IsGroundTargetBlocked } from './mapEntities';
 import { prefabInstance } from './prefabInstance';
 import { bindSoulHop, playerInst } from './player_common';
 
@@ -54,7 +54,6 @@ export function GetPointSpecialActions(
 export class WortoxPlayer {
   readonly state: Wortox;
   private readonly options: WortoxPlayerOptions;
-  private readonly blockers: PlacementQuery;
   /** statemem.isphysicstoggle */
   private physicsToggled = false;
   private disposed = false;
@@ -65,7 +64,6 @@ export class WortoxPlayer {
 
   private constructor(options: WortoxPlayerOptions) {
     this.options = options;
-    this.blockers = placementEntities(options.world.scene);
     const { world, body, fx } = options;
     const instance = playerInst(world.player);
     if (!instance.wortox) {
@@ -105,7 +103,7 @@ export class WortoxPlayer {
     if (![position.x, position.y, position.z].every(Number.isFinite) || !this.options.isPassableAtPoint(position)) {
       return false;
     }
-    return !isGroundTargetBlocked(this.blockers, position, 0.5 * WORLD_SCALE);
+    return !IsGroundTargetBlocked(playerInst(this.options.world.player).TheSim, position, 0.5 * WORLD_SCALE);
   }
 
   /** actions.lua map remap requires land; it does not use the normal ground-target blocker check. */

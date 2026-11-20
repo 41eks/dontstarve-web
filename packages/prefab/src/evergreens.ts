@@ -89,7 +89,6 @@ export class EvergreenInstance extends PrefabInstance {
     this.setActive(false);
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1;
-    this.logicalPlacement = true;
     this.minimap.SetPriority(-1);
     for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable', 'SnowCovered']) {
       this.addTag(tag);

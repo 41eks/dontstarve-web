@@ -2,8 +2,7 @@ import type * as THREE from 'three';
 import { ItemEntity } from '@dontstarve-web/inventory';
 import type { DeployMap } from '../../componets/src/deployable';
 import { createDockWorld } from './dock_kit';
-import { ignoresPlacement, type PlacementQuery } from './placementEntities';
-import { TILE_SIZE } from './tile';
+import { IsDeployPointClear, type MapEntities } from './mapEntities';
 import { isLandTile, type TurfMap } from './turfMap';
 import type { WorldContext } from './worldContext';
 
@@ -15,20 +14,24 @@ export interface DeployPlacerMap extends DeployMap {
 /** The Map:CanPlaceTurfAtPoint / CanDeployPlantAtPoint rules and the SpawnPrefab deployable items use. */
 export function createDeployMap({
   turf,
-  blockers,
+  ents,
   spawnPrefab,
   farm,
   worldEvents,
 }: {
   turf: TurfMap;
-  blockers: PlacementQuery;
+  /** The world's entities, which TheWorld.Map's placement checks find. */
+  ents: MapEntities;
   spawnPrefab?: DeployMap['SpawnPrefab'];
-  farm?: { canDeploy(point: THREE.Vector3): boolean; deploy(point: THREE.Vector3, item: ItemEntity): boolean };
+  farm?: {
+    canDeploy(point: THREE.Vector3, inst?: object): boolean;
+    deploy(point: THREE.Vector3, item: ItemEntity): boolean;
+  };
   worldEvents?: WorldContext['worldEvents'];
 }): DeployPlacerMap {
-  const docks = createDockWorld(turf, blockers);
+  const docks = createDockWorld(turf, ents);
   return {
-    canDeployPlow: point => farm?.canDeploy(point) ?? false,
+    canDeployPlow: (point, inst) => farm?.canDeploy(point, inst) ?? false,
     deployPlow: (point, inst) => inst instanceof ItemEntity && (farm?.deploy(point, inst) ?? false),
     canDeployDock: point => docks.canDeployDock(point),
     createDock: point => docks.createDock(point),
@@ -37,37 +40,9 @@ export function createDeployMap({
     canPlaceTurf: point => turf.canPlaceTurf(point),
     setTile: (col, row, tileId) => turf.setTile(col, row, tileId as Parameters<TurfMap['setTile']>[2]),
     tileCenter: point => turf.tileCenter(point),
+    // map.lua CanDeployPlantAtPoint.
     canDeployPlant: (point, inst, spacing) =>
-      turf.canDeployPlantAtPoint(point) &&
-      !blockers.someNear(point, spacing, blocker => {
-        // IsDeployPointClear's `v ~= inst`: the item being deployed never blocks itself.
-        if (blocker.inst !== undefined && blocker.inst === inst) {
-          return false;
-        }
-        if (
-          (blocker.visible === false && !blocker.logicalTree) ||
-          ignoresPlacement(blocker, [
-            'NOBLOCK',
-            'player',
-            'FX',
-            'INLIMBO',
-            'DECOR',
-            'walkableplatform',
-            'walkableperipheral',
-            'isdead',
-          ])
-        ) {
-          return false;
-        }
-        const inventoryRadius = blocker.getInventoryRadius?.(0.5 * (TILE_SIZE / 4)) ?? blocker.inventoryRadius;
-        const radius =
-          blocker.smartRadius !== undefined
-            ? blocker.smartRadius + spacing / 2
-            : inventoryRadius !== undefined
-              ? Math.min(spacing, inventoryRadius + spacing / 2)
-              : spacing;
-        return blocker.position.distanceToSquared(point) < radius ** 2;
-      }),
+      turf.canDeployPlantAtPoint(point) && IsDeployPointClear(ents, point, inst, spacing),
     SpawnPrefab: (prefab, position, skinId) => spawnPrefab?.(prefab, position, skinId),
     itemPlanted: (doer, pos) => worldEvents?.emit('itemplanted', { doer, pos }),
   };

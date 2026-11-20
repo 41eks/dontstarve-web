@@ -10,7 +10,6 @@ import { treeWorld } from './treeManagerFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import { createDeployMap } from '../../prefab/src/deployMap';
-import { placementEntities } from '../../prefab/src/placementEntities';
 import { deployActor, landTurf } from './deployActor';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { executeDebugCommand } from '../../../src/debugCommands';
@@ -102,7 +101,7 @@ it('plants one moonbutterfly with original baby-tree art and cycles short/normal
     inventory,
     createDeployMap({
       turf: landTurf({ canDeployPlantAtPoint: canPlant }),
-      blockers: placementEntities(scene),
+      ents: s.prefabs,
       spawnPrefab,
     }),
   );

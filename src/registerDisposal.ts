@@ -39,7 +39,6 @@ import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { registerFrontTask } from './animate';
 import { createDeployMap } from '../packages/prefab/src/deployMap';
 import { DeployPlacer } from '../packages/prefab/src/deployPlacer';
-import { placementEntities } from '../packages/prefab/src/placementEntities';
 import type { turfMap } from './building';
 import type { startScene } from './scene';
 import { setupEmoteWheel } from './emoteWheel';
@@ -111,6 +110,7 @@ interface ApplicationResourcesOptions {
 type SceneResources = Pick<
   Awaited<ReturnType<typeof startScene>>,
   | 'registry'
+  | 'prefabs'
   | 'buildingPlacement'
   | 'farmMap'
   | 'mushroomPlants'
@@ -313,7 +313,7 @@ export function createDisposalResources({
         // TheWorld.Map for ACTIONS.DEPLOY and the deployable items' placer.
         const deployMap = createDeployMap({
           turf: turfMap,
-          blockers: placementEntities(view.scene),
+          ents: scene.prefabs,
           worldEvents: view.worldEvents,
           farm: scene.farmMap,
           spawnPrefab: (prefab, position, skinId) => scene.registry.SpawnPrefab(prefab, position, skinId),
