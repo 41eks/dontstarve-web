@@ -285,6 +285,11 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
   }
 }
 
+/** The skins a reanimated form takes, as its save record's skinname may name them. */
+export function bernieFormSkins(prefab: BernieCreatureId): readonly string[] {
+  return Object.keys(formSkins(prefab === BERNIE_BIG_ID ? '_big' : '_active'));
+}
+
 /** skinprefabs.lua: each form's skins share the item skin's build. */
 const formSkins = (suffix: '_active' | '_big') =>
   Object.fromEntries(

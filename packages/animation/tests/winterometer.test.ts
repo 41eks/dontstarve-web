@@ -111,7 +111,7 @@ it('keeps its skin through c_save, restores the reading, and saves only the burn
     await placement.spawn(WINTEROMETER_ID);
     expect(reskinEntity(reskinTargetOf(prefabInstance(workTargets('HAMMER')[0].model))!)).toBe(true);
     const saved = placement.exportRecords()[0].record;
-    expect(saved.components.building).toMatchObject({ skinId: 'winterometer_circus' });
+    expect(saved.skinname).toBe('winterometer_circus');
     expect(saved.components.building).not.toHaveProperty('burnt');
 
     const parse = (record: typeof saved) => {

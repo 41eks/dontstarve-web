@@ -69,13 +69,12 @@ export class FirePitInstance extends PrefabInstance {
     // The pit lights in fn, and its fire's sounds start where the pit stands.
     this.setPosition(position.x, 0, position.z);
     MakeBuildingPersist(this);
-    const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
+    const { OnSave: saveBuilding } = this;
     this.OnSave = (inst, data) => {
       saveBuilding!(inst, data);
       onsave(this, data);
     };
-    this.OnLoad = (inst, data) => {
-      loadBuilding!(inst, data);
+    this.OnLoad = (_inst, data) => {
       onload(this, data);
     };
     this.minimap.SetPriority(1);

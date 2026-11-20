@@ -50,7 +50,8 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const model = await placement.spawnFromSave('cookpot', {
     id: 'pot:feed',
     transform: { position: [1, 0, 2], rotationY: 0 },
-    components: { building: { skinId: 'cookpot_candy' } },
+    skinname: 'cookpot_candy',
+    components: { building: {} },
   });
   const animation = prefabInstance<PrefabInstance>(model)!.sprite;
   expect(performRummageAction(findActionEntity(model)!, world.player)).toBe(true);
@@ -123,7 +124,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const fullRecord = restoredPlacement.exportRecords()[0].record;
   expect(fullRecord.id).toBe(saved.id);
   expect(fullRecord.transform).toEqual(saved.transform);
-  expect(fullRecord.components.building?.skinId).toBe('cookpot_cauldron');
+  expect(fullRecord.skinname).toBe('cookpot_cauldron');
   const full = await restoredPlacement.spawnFromSave('cookpot', fullRecord);
   expect(prefabInstance(full)!.sprite.currentAnimation).toBe('idle_full');
   const high = await restoredPlacement.spawnFromSave('cookpot', {
@@ -152,7 +153,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   const emptyRecord = restoredPlacement
     .exportRecords()
     .find(({ record }) => record.id === fullRecord.id && !record.components.stewer?.product)!.record;
-  expect(emptyRecord.components.building?.skinId).toBe('cookpot_cauldron');
+  expect(emptyRecord.skinname).toBe('cookpot_cauldron');
   expect(emptyRecord.transform).toEqual(saved.transform);
   const empty = await restoredPlacement.spawnFromSave('cookpot', emptyRecord);
   expect(prefabInstance(empty)!.components.container!.canbeopened).toBe(true);

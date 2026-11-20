@@ -194,7 +194,7 @@ it('cycles building skins while preserving the container root, identity, state a
   const root = await placement.spawnFromSave('treasurechest', record);
   const target = reskinTargetOf(lookupPrefabInstance(root))!;
   const skins = Object.keys(definitions.animatedBuildings.treasurechest.skinArchives);
-  expect(placement.exportRecords()[0].record.components.building?.skinId).toBeUndefined();
+  expect(placement.exportRecords()[0].record.skinname).toBeUndefined();
   const fx = { play: vi.fn(), dispose: vi.fn() };
   const tool = actionTool('reskin_tool');
   // spellCB chooses the skin at the cast and spawns its fx through the scene presenter the held tool is bound to.
@@ -207,7 +207,8 @@ it('cycles building skins while preserving the container root, identity, state a
   expect(placement.exportRecords()[0].record).toMatchObject({
     id: record.id,
     transform: record.transform,
-    components: { building: { skinId: skins[0] } },
+    skinname: skins[0],
+    components: { building: {} },
   });
   expect(lookupPrefabInstance(root)!.saveRecord!.components.container).toEqual(record.components.container);
   // The final skin returns to the base rather than dropping an unsupported skin ID into the save.
@@ -215,7 +216,7 @@ it('cycles building skins while preserving the container root, identity, state a
   expect(nextReskin(skins)).toBe(skins[0]);
   // GetNextSkin runs at each cast, from the skin the entity has then.
   expect(reskinEntity(target)).toBe(true);
-  expect(placement.exportRecords()[0].record.components.building?.skinId).toBe(skins[1]);
+  expect(placement.exportRecords()[0].record.skinname).toBe(skins[1]);
 });
 
 it('reskins dropped items without changing their count or entity ID and preserves the skin on pickup', async () => {

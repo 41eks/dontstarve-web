@@ -129,7 +129,7 @@ it('loads source records through construction, OnPreLoad and health.OnLoad, reta
 it('rebuilds a sleeping chair with its declared clip and skin using the shared display resources', async () => {
   const s = setup();
   try {
-    const model = s.restore('ruinsrelic_chair', record({ ruinsRelic: { skinId: 'ruinsrelic_chair_tesla' } }));
+    const model = s.restore('ruinsrelic_chair', { ...record({}), skinname: 'ruinsrelic_chair_tesla' });
     const inst = prefabInstance(model)!;
     await prefabDisplay(model)!.artLoaded();
     const saved = s.prefabs.exportRecords(),

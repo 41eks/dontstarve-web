@@ -72,15 +72,12 @@ export class TreasureChestInstance extends PrefabInstance {
     }
     this.worldServices = world;
     MakeBuildingPersist(this);
-    const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
+    const { OnSave: saveBuilding } = this;
     this.OnSave = (inst, data) => {
       saveBuilding!(inst, data);
       onsaveBurnt(inst, data);
     };
-    this.OnLoad = (inst, data) => {
-      loadBuilding!(inst, data);
-      onloadBurnt(inst, data);
-    };
+    this.OnLoad = onloadBurnt;
     this.addTag('structure');
     this.addTag('chest');
     const container = MakeBuildingContainer(this, TREASURE_CHEST_ID, world);

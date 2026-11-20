@@ -44,7 +44,6 @@ export const RUINS_CHAIR_SKINS = {
 } as const;
 export interface RuinsRelicSaveState {
   rubble?: true;
-  skinId?: keyof typeof RUINS_CHAIR_SKINS;
 }
 export interface RelicMoistureSave {
   moisture?: number;
@@ -55,15 +54,6 @@ export interface RuinsRelicWorld {
   fx?: WorldContext['fx'];
   dropLoot?: WorldContext['dropLoot'];
 }
-/** A skin the chair saves: only RUINS_CHAIR_SKINS reach a relic. */
-function ruinsChairSkin(skinId: string): keyof typeof RUINS_CHAIR_SKINS {
-  if (!isRuinsChairSkin(skinId)) {
-    throw new Error(`Unsupported ruins chair skin: ${skinId}`);
-  }
-  return skinId;
-}
-const isRuinsChairSkin = (skinId: string): skinId is keyof typeof RUINS_CHAIR_SKINS =>
-  Object.hasOwn(RUINS_CHAIR_SKINS, skinId);
 export function relicName(id: RuinsRelicId): RelicName {
   const name = RELIC_NAMES.find(relic => id.endsWith(`_${relic}`));
   if (!name) {
@@ -258,7 +248,6 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
    */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
     if (this.replica) {
-      this.skinId = data.ruinsRelic?.skinId;
       return;
     }
     const health = this.components.health!,
@@ -274,7 +263,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
       health.OnLoad({ health: saved.current });
     }
   }
-  /** ruinsrelic.lua has no OnSave; the skin and an unported moisture payload keep their record fields. smashables.lua saves rubble and health. */
+  /** ruinsrelic.lua has no OnSave; an unported moisture payload keeps its record field. smashables.lua saves rubble and health. */
   override OnSave(_inst: unknown, data: EntityPersistData): void {
     const health = this.components.health;
     clearPersistData(data);
@@ -282,7 +271,6 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
       data,
       this.replica
         ? {
-            ...(this.skinId ? { ruinsRelic: { skinId: ruinsChairSkin(this.skinId) } } : {}),
             ...(this.saveRecord?.components.inventoryitemmoisture
               ? { inventoryitemmoisture: { ...this.saveRecord.components.inventoryitemmoisture } }
               : {}),

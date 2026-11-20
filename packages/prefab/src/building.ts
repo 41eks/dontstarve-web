@@ -77,22 +77,17 @@ export function buildingPlacer(
   };
 }
 
-/** The building save shape: `components.building`, holding the skin it was built or reskinned with. */
+/**
+ * The building save shape: `components.building`, which a burnt structure marks. The skin it was built or reskinned
+ * with is the record's skinname, as for every entity.
+ */
 export function MakeBuildingPersist(inst: PrefabInstance): void {
-  inst.OnSave = SaveBuildingSkin;
-  inst.OnLoad = LoadBuildingSkin;
+  inst.OnSave = SaveBuilding;
 }
 
-/** The skin half of a building's OnSave; a prefab with its own onsave calls it first. */
-export function SaveBuildingSkin(inst: PrefabInstance, data: EntityPersistData): void {
-  data.building = inst.skinId === undefined ? {} : { skinId: inst.skinId };
-}
-
-/** The skin half of a building's OnLoad; a prefab with its own onload calls it first. */
-export function LoadBuildingSkin(inst: PrefabInstance, data: EntityPersistData): void {
-  if (data.building?.skinId !== undefined) {
-    inst.skinId = data.building.skinId;
-  }
+/** The building half of a building's OnSave; a prefab with its own onsave calls it first. */
+export function SaveBuilding(_inst: PrefabInstance, data: EntityPersistData): void {
+  data.building = {};
 }
 
 const addressedContainers = new WeakSet<PrefabInstance>();

@@ -9,7 +9,7 @@ import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { createRenderEffect } from '@dontstarve-web/signals';
 import { BOOK_USE_STEP, BOOKSTATION_RESTORE_AMOUNT, isBook } from './books';
 import definitions from './definitions.json' with { type: 'json' };
-import { buildingPlacer, buildingPrefab, LoadBuildingSkin, MakeBuildingContainer, SaveBuildingSkin } from './building';
+import { buildingPlacer, buildingPrefab, MakeBuildingContainer, SaveBuilding } from './building';
 import { PlaySound } from './sound';
 import { TILE_SIZE } from './tile';
 import type { EntityPersistData } from './saveRecord';
@@ -63,12 +63,11 @@ function onhit(inst: BookstationInstance): void {
 
 /** onsave/onload, with the skin the building save shape keeps beside data.burnt. */
 function onsave(inst: PrefabInstance, data: EntityPersistData): void {
-  SaveBuildingSkin(inst, data);
+  SaveBuilding(inst, data);
   onsaveBurnt(inst, data);
 }
 
 function onload(inst: PrefabInstance, data: EntityPersistData): void {
-  LoadBuildingSkin(inst, data);
   onloadBurnt(inst, data);
 }
 

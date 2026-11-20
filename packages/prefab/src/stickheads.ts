@@ -171,15 +171,12 @@ export class StickHeadInstance extends PrefabInstance {
     // The head's tile key is taken where it stands.
     this.setPosition(position.x, 0, position.z);
     MakeBuildingPersist(this);
-    const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
+    const { OnSave: saveBuilding } = this;
     this.OnSave = (inst, data) => {
       saveBuilding!(inst, data);
       onsaveBurnt(inst, data);
     };
-    this.OnLoad = (inst, data) => {
-      loadBuilding!(inst, data);
-      onloadBurnt(inst, data);
-    };
+    this.OnLoad = onloadBurnt;
     this.addTag('structure');
     this.addTag('beaverchewable'); // for werebeaver
     const workable = addComponent(this, 'workable', Workable);

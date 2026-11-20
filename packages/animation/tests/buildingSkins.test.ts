@@ -185,7 +185,8 @@ describe('DST building skins', () => {
       const model = buildings.spawnFromSave('researchlab4', {
         id: 'lab:hat',
         transform: { position: [3, 0, 4], rotationY: 0 },
-        components: { building: { skinId: 'researchlab4_chef' } },
+        skinname: 'researchlab4_chef',
+        components: { building: {} },
       }) as THREE.Group;
       const lab = prefabInstance(model)!,
         sprite = lab.sprite;
@@ -271,7 +272,8 @@ describe('DST building skins', () => {
         placement.update(0.1);
       }
       const record = records()[0].record;
-      expect(record.components.building).toEqual({ skinId });
+      expect(record.components.building).toEqual({});
+      expect(record.skinname).toBe(skinId);
       expect(record.transform.position).toEqual([3, 0, 4]);
       const restored = await placement.spawnFromSave(prefabId, record as EntitySaveRecord);
       expect(lookupPrefabInstance(restored)?.skinId).toBe(skinId);
@@ -307,7 +309,7 @@ describe('DST building skins', () => {
     expect(buildings.exportRecords()[0].record).toMatchObject({
       id: 'lab:signal',
       transform: { position: [3, 0, 4], rotationY: 0 },
-      components: { building: { skinId: signal.peek() } },
+      skinname: signal.peek(),
     });
     const removed = reskinTarget(model);
     const disposeCurrent = vi.spyOn(meshOf(model).geometry, 'dispose');
@@ -359,7 +361,7 @@ describe('DST building skins', () => {
     expect(model.parent).toBe(world.scene);
     expect(prefabInstance(model)!.sprite).toBe(animation);
     expect(animation.currentAnimation).toBe('proximity_loop');
-    expect(buildings.exportRecords()[0].record).toMatchObject({ components: { building: { skinId } } });
+    expect(buildings.exportRecords()[0].record.skinname).toBe(skinId);
     buildings.dispose();
     expect(meshes()).toBe(0);
   });

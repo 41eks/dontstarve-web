@@ -166,7 +166,8 @@ it('reskins through its target, draws the skin build and keeps it through the bu
   const { skinId } = house;
   expect(Object.keys(definitions.animatedBuildings.pighouse.skinArchives)).toContain(skinId);
   const [{ record }] = prefabs.exportRecords();
-  expect(record.components).toEqual({ building: { skinId } });
+  expect(record.components).toEqual({ building: {} });
+  expect(record.skinname).toBe(skinId);
   expect(PREFAB_DEFINITIONS.buildings.prefabIds).toContain(PIG_HOUSE_ID);
 
   const restored = prefabInstance(placement.spawnFromSave(PIG_HOUSE_ID, { ...record, id: 'restored' }))!;
@@ -215,7 +216,8 @@ it('draws each container prefab from its source bank and skin build, and keeps i
     const record = {
       id: `saved-${id}`,
       transform: { position: [1, 0, 2] as [number, number, number], rotationY: 0 },
-      components: { building: skinId === undefined ? {} : { skinId }, container: { items: {} } },
+      ...(skinId === undefined ? {} : { skinname: skinId }),
+      components: { building: {}, container: { items: {} } },
     };
     const model = buildings.spawnFromSave(id, record),
       inst = prefabInstance(model)!;
@@ -284,7 +286,8 @@ it('draws the moved animated buildings through their archive or controller art, 
     const model = buildings.spawnFromSave(id, {
       id: `saved-${id}`,
       transform: { position: [index * 10, 0, 2], rotationY: 0 },
-      components: { building: skinId === undefined ? {} : { skinId } },
+      ...(skinId === undefined ? {} : { skinname: skinId }),
+      components: { building: {} },
     });
     await prefabDisplay(model)!.artLoaded();
     buildings.displays.update(1 / 30);

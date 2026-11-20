@@ -20,7 +20,7 @@ export interface EntityPersistRecord {
  */
 export interface EntitySaveRecord extends EntityPersistRecord {
   transform: SavedTransform;
-  /** GetSaveRecord's record.skinname: an item's skin. */
+  /** EntityScript:GetSaveRecord's record.skinname: the entity's skin, applied before its data loads. */
   skinname?: string;
 }
 
@@ -74,11 +74,10 @@ export interface EntityPersistData {
   pickable?: import('./components/pickable').PickableSaveState;
   witherable?: import('../../componets/src/witherable').WitherableSave;
   growable?: import('../../componets/src/growable').GrowableSave;
-  plant?: import('./pickablePlant').PickablePlantRecord['components']['plant'];
   mushroom?: import('./pickablePlant').PickablePlantRecord['components']['mushroom'];
   variant?: import('./pickablePlant').PickablePlantRecord['components']['variant'];
   burning?: true;
-  building?: { skinId?: string; burnt?: true };
+  building?: { burnt?: true };
   stewer?: import('../../componets/src/stewer').StewerSaveData;
   container?: SlotItemsSave;
   /** health.lua OnSave, or a structure's own { current, maximum } record (relics, walls). */
@@ -88,7 +87,6 @@ export interface EntityPersistData {
   beard?: import('../../componets/src/beard').BeardSave;
   /** A beefalo save from before its components saved themselves; it loads and is not written. */
   beefalo?: import('./beefalo').LegacyBeefaloSave;
-  wall?: import('./wallSkins').WallSaveState;
   fence?: import('./fenceSkins').FenceSaveState;
   /** statueglommer.lua OnSave's worked / spawned. */
   statueglommer?: { worked?: true; spawned?: true };
@@ -192,7 +190,6 @@ export interface EntityPersistData {
   /** oceanvine_deco.lua onsave: data.animnum, the idle_N clip. */
   animnum?: import('./oceanvine_deco').OceanVineDecoAnimNum;
   /** The wormhole's skin. */
-  wormhole?: import('./wormhole').WormholeSaveState;
   /** chessjunk.lua OnSave. */
   chessJunk?: import('./chessjunk').ChessJunkSaveState;
   /** chesspieces.lua onsave and submersible.lua OnSave. */

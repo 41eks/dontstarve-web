@@ -31141,8 +31141,7 @@
           },
           "components": {
             "building": {
-              "state": "closed",
-              "skinId": "cookpot_cauldronp"
+              "state": "closed"
             },
             "container": {
               "items": {
@@ -31180,7 +31179,8 @@
                 }
               }
             }
-          }
+          },
+          "skinname": "cookpot_cauldronp"
         },
         {
           "id": "e_3cc364e5431c4c9c6b21a3e68725598c",
@@ -31194,13 +31194,13 @@
           },
           "components": {
             "building": {
-              "state": "closed",
-              "skinId": "cookpot_survival"
+              "state": "closed"
             },
             "container": {
               "items": {}
             }
-          }
+          },
+          "skinname": "cookpot_survival"
         }
       ],
       "firepit": [],
@@ -31317,8 +31317,7 @@
           },
           "components": {
             "building": {
-              "state": "closed",
-              "skinId": "treasurechest_poshprint"
+              "state": "closed"
             },
             "container": {
               "items": {
@@ -31342,7 +31341,8 @@
                 }
               }
             }
-          }
+          },
+          "skinname": "treasurechest_poshprint"
         }
       ],
       "tent": [

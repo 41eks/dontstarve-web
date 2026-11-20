@@ -223,8 +223,9 @@ it('keeps a c_spawn mast through c_save and a reload, and rejects c_give', async
     const skinned: EntitySaveRecord = {
       id: 'skinned-mast',
       transform: { position: [5, 0, 1], rotationY: 0 },
+      skinname: 'mast_malbatross_wagstaff',
       components: {
-        mastMalbatross: { rotation: 135, is_sail_raised: true, skinId: 'mast_malbatross_wagstaff' },
+        mastMalbatross: { rotation: 135, is_sail_raised: true },
         upgradeable: { numupgrades: 0, stage: 1 },
       },
     };

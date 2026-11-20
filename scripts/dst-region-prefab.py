@@ -243,8 +243,8 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
                                 **({'sourceId': source_id} if source_id is not None else {})})
                 continue
             # The project's EntitySaveRecord (packages/prefab/src/saveRecord.ts): `components` is its EntityPersistData,
-            # and an item's skin is GetSaveRecord's skinname.
-            skinname = record.get('skinname') if static else None
+            # and every entity's skin is GetSaveRecord's skinname, which only static art and the converters above accept.
+            skinname = record.get('skinname') if static or prefab in RECORD_CONTEXT_PREFABS else None
             imported.append({'id': entity_id,
                              'transform': {'position': project_position([x, 0 if settling_boulder else y, z], translation),
                                            'rotationY': 0},

@@ -392,11 +392,6 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.apply(state);
   }
 
-  /** GetSaveRecord's record.skinname: an item's skin is the inst's, saved beside its data. */
-  override get savedSkinName(): string | undefined {
-    return this.skinId;
-  }
-
   /**
    * EntityScript:GetPersistData: each component's OnSave under its name (stackable, finiteuses, perishable, fueled, armor,
    * temperature, container, inventory, …), the item's moisture and heatrock.lua's extremes, then the prefab's OnSave.

@@ -298,8 +298,8 @@ class RegionImportTest(unittest.TestCase):
              'components': {'building': {'state': 'idle'}}},
         ])
         self.assertEqual(entities['researchlab3'][0]['id'], 'dst_LAB_researchlab3_id_19')
-        self.assertEqual(entities['researchlab3'][0]['components'],
-                         {'building': {'state': 'idle', 'skinId': 'researchlab3_nature', 'burnt': True}})
+        self.assertEqual(entities['researchlab3'][0]['components'], {'building': {'state': 'idle', 'burnt': True}})
+        self.assertEqual(entities['researchlab3'][0]['skinname'], 'researchlab3_nature')
         self.assertEqual(report['entityCounts']['researchlab3'], {'source': 1, 'imported': 1})
         self.assertTrue({'researchlab', 'researchlab2', 'researchlab3', 'researchlab4'} <= set(report['entityWhitelist']))
         for bad in ({'burnt': False}, {'workable': {'workleft': 2}}, {'unknown': True}):
@@ -539,7 +539,8 @@ end
         chest, burnt = entities['treasurechest']
         self.assertEqual(chest['components'], {
             'container': {'items': {'2': {'id': 'dst_BOX_treasurechest_id_5_1', 'prefab': 'log', 'components': {'stackable': {'stack': 7}}}}},
-            'building': {'state': 'closed', 'skinId': 'treasurechest_cake'}})
+            'building': {'state': 'closed'}})
+        self.assertEqual(chest['skinname'], 'treasurechest_cake')
         self.assertEqual(burnt['components'], {'building': {'state': 'closed', 'burnt': True}})
         self.assertEqual([(s['path'], s['reason']) for s in provenance['containerItems']['skipped']],
                          [('treasurechest.id_5.container.3', 'cannot go in a container'),

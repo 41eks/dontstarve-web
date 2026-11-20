@@ -41,5 +41,4 @@ export function fenceWorldSkin(buildId: FenceId, skinId?: string): string | unde
 
 export interface FenceSaveState {
   rot?: number;
-  skinId?: string;
 }

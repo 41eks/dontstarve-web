@@ -168,7 +168,8 @@ it('spawns a skinned bookstation through c_spawn and keeps books with fractional
       buildings.spawnFromSave('bookstation', {
         id: 'library',
         transform: { position: [3, 0, -6], rotationY: 0 },
-        components: { building: { skinId: 'bookstation_house' } },
+        skinname: 'bookstation_house',
+        components: { building: {} },
       });
       return true;
     };
@@ -208,7 +209,7 @@ it('spawns a skinned bookstation through c_spawn and keeps books with fractional
     ).toBe(true);
     const save = deserializeSave(json, SAVE_CATALOG),
       record = save.world.entities.bookstation[0];
-    expect(record.components.building?.skinId).toBe('bookstation_house');
+    expect(record.skinname).toBe('bookstation_house');
     expect(Object.keys(record.components.container?.items ?? {})).toHaveLength(2);
     restoredBuildings.spawnFromSave('bookstation', record);
     expect(restored.getEntity(library(0))!.snapshot()).toEqual(book.snapshot());

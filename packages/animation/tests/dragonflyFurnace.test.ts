@@ -195,7 +195,8 @@ it('c_spawn and c_save keep a skinned furnace with its contents', async () => {
       placement.spawnFromSave('dragonflyfurnace', {
         id: 'furnace',
         transform: { position: [3, 0, -6], rotationY: 0 },
-        components: { building: { skinId: 'dragonflyfurnace_crystal' } },
+        skinname: 'dragonflyfurnace_crystal',
+        components: { building: {} },
       });
       return true;
     };
@@ -229,7 +230,7 @@ it('c_spawn and c_save keep a skinned furnace with its contents', async () => {
     ).toBe(true);
     const [record] = deserializeSave(json, SAVE_CATALOG).world.entities.dragonflyfurnace;
     expect(record.transform.position).toEqual([3, 0, -6]);
-    expect(record.components.building?.skinId).toBe('dragonflyfurnace_crystal');
+    expect(record.skinname).toBe('dragonflyfurnace_crystal');
     const loaded = prefabInstance(restored.placement.spawnFromSave('dragonflyfurnace', record))!;
     expect(loaded.skinId).toBe('dragonflyfurnace_crystal');
     expect(restoredInventory.getEntity(address)?.snapshot()).toMatchObject({ itemId: 'twigs', count: 4 });

@@ -115,7 +115,7 @@ it('shares layered wall art, releases only visuals, restores current health/faci
     for (const [key, component] of Object.entries(components)) {
       expect(instance.components[key as keyof typeof components]).toBe(component);
     }
-    expect(lookupPrefabInstance(model)?.skinId).toBe(saved[0].record.components.wall!.skinId);
+    expect(lookupPrefabInstance(model)?.skinId).toBe(saved[0].record.skinname);
     const restored = wallsFixture(world, () => false);
     try {
       const exportRecord = placement.exportRecords()[0];

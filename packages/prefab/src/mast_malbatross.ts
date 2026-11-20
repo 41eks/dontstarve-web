@@ -41,7 +41,6 @@ export interface MastMalbatrossSaveState {
   burnt?: true;
   rotation?: number;
   is_sail_raised?: boolean;
-  skinId?: string;
 }
 
 export interface MastMalbatrossWorld {
@@ -80,9 +79,6 @@ function onsave(inst: MastMalbatrossInstance, data: EntityPersistData): void {
   // inst.components.mast.boat is always nil: SetBoat is not ported.
   saved.rotation = GetRotation(inst);
   saved.is_sail_raised = inst.components.mast.is_sail_raised;
-  if (inst.skinId !== undefined) {
-    saved.skinId = inst.skinId;
-  }
   data.mastMalbatross = saved;
 }
 
@@ -94,12 +90,6 @@ function onload(inst: MastMalbatrossInstance, data: EntityPersistData): void {
   const saved = data.mastMalbatross;
   if (!saved) {
     return;
-  }
-  if (saved.skinId !== undefined) {
-    if (!MAST_MALBATROSS_SKINS.some(known => known === saved.skinId)) {
-      throw new Error(`Unsupported mast_malbatross skin: ${saved.skinId}`);
-    }
-    inst.skinId = saved.skinId;
   }
   if (saved.burnt) {
     inst.components.burnable.onburnt?.(inst);

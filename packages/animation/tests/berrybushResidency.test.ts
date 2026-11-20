@@ -50,7 +50,8 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
     await drawn(
       bushes.spawn('berrybush', new THREE.Vector3(4, 0, 6), {
         id: 'bush:resident',
-        components: { plant: { skinId: 'berrybush_cawnival' } },
+        skinname: 'berrybush_cawnival',
+        components: {},
       }).transform.model,
     );
     await tick();

@@ -8,7 +8,6 @@ import { animationLengths } from './animationTimings';
 import { WormholeStateGraph, type WormholeStateInst } from '../../stategraphs/src/SGwormhole';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
-import type { EntityPersistData } from './saveRecord';
 import type { SoundEmitter } from './soundEmitter';
 import { TILE_SIZE } from './tile';
 
@@ -29,9 +28,6 @@ export const WORMHOLE_EXIT_DISTANCE = 5 * (TILE_SIZE / 4);
 /** teleporter_worm's clips, from the source anim.bin; the skins swap only the build. */
 const ANIMATION_LENGTHS = animationLengths('teleporter_worm.zip');
 
-export interface WormholeSaveState {
-  skinId?: string;
-}
 export interface WormholeWorld {
   scheduler: GameTimeScheduler;
   /** The player positions playerprox follows. */
@@ -78,23 +74,6 @@ function onfar(inst: WormholeInstance): void {
   }
 }
 
-/** wormhole_init_fn's build swap is the skin; OnSave / OnLoad keep it under `wormhole`. */
-function OnSave(inst: PrefabInstance, data: EntityPersistData): void {
-  if (inst.skinId !== undefined) {
-    data.wormhole = { skinId: inst.skinId };
-  }
-}
-function OnLoad(inst: PrefabInstance, data: EntityPersistData): void {
-  const skinId = data.wormhole?.skinId;
-  if (skinId === undefined) {
-    return;
-  }
-  if (!WORMHOLE_SKINS.some(known => known === skinId)) {
-    throw new Error(`Unsupported wormhole skin: ${skinId}`);
-  }
-  inst.skinId = skinId;
-}
-
 function fn(world: WormholeWorld): WormholeInstance {
   const inst = new WormholeInstance();
   inst.BindScheduler(world.scheduler);
@@ -107,8 +86,6 @@ function fn(world: WormholeWorld): WormholeInstance {
   }
   inst.SetStateGraph(inst => WormholeStateGraph(inst, world.scheduler));
   addComponent(inst, 'inspectable', Inspectable);
-  inst.OnSave = OnSave;
-  inst.OnLoad = OnLoad;
   return inst;
 }
 

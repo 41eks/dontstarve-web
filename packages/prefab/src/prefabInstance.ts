@@ -364,16 +364,9 @@ export class PrefabInstance<
     }
     this.OnLoad?.(this, data);
   }
-  /**
-   * GetSaveRecord's record.skinname. Only an item's skin is saved there; a structure's skin is part of its own data
-   * (building.skinId, wall, fence).
-   */
-  get savedSkinName(): string | undefined {
-    return undefined;
-  }
-  /** EntityScript:GetSaveRecord of an inst another one holds: its prefab, skin and GetPersistData, without a position. */
+  /** EntityScript:GetSaveRecord of an inst another one holds: its prefab, record.skinname and GetPersistData, without a position. */
   GetSaveRecord(): HeldEntityRecord {
-    const skinname = this.savedSkinName;
+    const skinname = this.skinId;
     return {
       id: String(this.entityId),
       prefab: this.prefab,
@@ -1687,7 +1680,8 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
             rotationY: entity.transform.model.rotation.y,
           },
           components: entity.GetPersistData(),
-          ...(entity.savedSkinName === undefined ? {} : { skinname: entity.savedSkinName }),
+          // EntityScript:GetSaveRecord's record.skinname, whatever the entity.
+          ...(entity.skinId === undefined ? {} : { skinname: entity.skinId }),
         },
       }));
   }

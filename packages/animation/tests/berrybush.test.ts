@@ -273,7 +273,7 @@ it('preserves a reskinned bush through digging, item pickup/drop, transplant, fe
     const saved = deserializeSave(json, SAVE_CATALOG),
       record = saved.world.entities.berrybush[0];
     expect(record.id).not.toBe(original.id);
-    expect(record.components.plant?.skinId).toBe('berrybush_mystical');
+    expect(record.skinname).toBe('berrybush_mystical');
     await drawn(restored.bushes.restore('berrybush', record).transform.model);
     expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([record]);
     for (let remaining = 4; remaining > 0; remaining--) {
