@@ -131,4 +131,23 @@ describe('floater', () => {
       world.dispose();
     }
   });
+
+  it('floats the loose static art its source prefab floats, as a shadowheart in a cove', () => {
+    const { world, fx } = setup();
+    try {
+      const shadowhearts = [0, 15].map(x => world.prefabs.spawn('shadowheart', new THREE.Vector3(x, 0, 0)));
+      world.update(1 / 30);
+      const [ashore, afloat] = shadowhearts;
+      // shadowheart.lua MakeInventoryFloatable(inst, "small", 0.05, 0.8).
+      const floater = afloat.components.floater!;
+      expect([floater.size, floater.vert_offset, floater.xscale]).toEqual(['small', 0.05, 0.8]);
+      expect([ashore.components.floater?.IsFloating(), floater.IsFloating()]).toEqual([false, true]);
+      expect(ripples(afloat)).toEqual(['float_fx_back', 'float_fx_front']);
+      expect(afloat.sprite.sprite.peek().oceanShading).toEqual({ float: [-0.05, 1, 1], blend: 0 });
+      expect(fx.spawn).toHaveBeenCalledWith('splash', afloat.position);
+      expect(afloat.isRemoved).toBe(false);
+    } finally {
+      world.dispose();
+    }
+  });
 });

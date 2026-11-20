@@ -467,8 +467,8 @@ def main():
                                  'icon': icon, 'atlas': icons[icon]}
         assets.update(['anim/' + path, 'anim/' + str(Path(path).with_suffix('.dyn'))])
 
-    # The gameplay items' floaters; static art has none.
-    for item, definition in items.items():
+    # MakeInventoryFloatable of the gameplay items and of the loose static art alike (a shadowheart in a cove floats).
+    for item, definition in [*items.items(), *static_items.items()]:
         floater = read_floater(scripts, item, Path(definition['source']).stem, read)
         if floater is None:
             continue

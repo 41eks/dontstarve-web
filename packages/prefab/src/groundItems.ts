@@ -105,16 +105,23 @@ export type GroundArtDefinition = Omit<GroundItemAssetDefinition, 'icon' | 'atla
   readonly atlas?: string;
 };
 const CATALOG_STATIC_ITEMS: Readonly<
-  Record<string, Omit<GroundArtDefinition, 'multColour'> & { readonly multColour?: readonly number[] }>
+  Record<
+    string,
+    Omit<GroundArtDefinition, 'multColour' | 'floater'> & {
+      readonly multColour?: readonly number[];
+      readonly floater?: GroundItemCatalogEntry['floater'];
+    }
+  >
 > = catalog.staticItems;
 export const GROUND_ART_DEFINITIONS: Readonly<Record<string, GroundArtDefinition>> = {
   ...GROUND_ITEM_DEFINITIONS,
   ...Object.fromEntries(
-    Object.entries(CATALOG_STATIC_ITEMS).map(([id, { multColour, ...art }]) => [
+    Object.entries(CATALOG_STATIC_ITEMS).map(([id, { multColour, floater, ...art }]) => [
       id,
       {
         ...art,
         ...(multColour === undefined ? {} : { multColour: rgba(id, multColour) }),
+        ...(floater === undefined ? {} : { floater: itemFloater(id, floater) }),
       },
     ]),
   ),
@@ -181,7 +188,7 @@ export function groundItemPrefab(
   // Variants drawn from a bank and build of their own (blueprint's rare one), as their prefab's SetBank / SetBuild.
   const bankVariants = Object.values(GROUND_ART_VARIANTS[itemId] ?? {}).filter(variant => variant.bank !== undefined);
   // Floater:SwitchToFloatAnim draws a bank-swapping item from floating_items' floating_item bank.
-  const floatingBank = GROUND_ITEM_DEFINITIONS[itemId]?.floater?.bankSwap ? ['floating_items.zip'] : [];
+  const floatingBank = GROUND_ART_DEFINITIONS[itemId]?.floater?.bankSwap ? ['floating_items.zip'] : [];
   return {
     fn: (_position, sprites) => {
       const inst = world.newItem(itemId);
@@ -293,7 +300,8 @@ export function bindItemWorld(inst: ItemEntity, world: ItemPrefabWorld): void {
   inst.ListenForEvent('on_landed', settle);
   // inventoryitem's landing: it polls until the body rests, then sinks off the passable ground.
   const map = world.map;
-  const definition = GROUND_ITEM_DEFINITIONS[inst.prefab];
+  // The loose static art floats as its source prefab does, too.
+  const definition = GROUND_ART_DEFINITIONS[inst.prefab];
   if (definition?.sinks) {
     inst.components.inventoryitem.SetSinks(true);
   }

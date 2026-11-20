@@ -2637,7 +2637,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.0,
+        "scale": 0.9
       }
     },
     "trinket_3": {
@@ -2675,7 +2677,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.7
       }
     },
     "trinket_5": {
@@ -2694,7 +2698,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.6
       }
     },
     "trinket_6": {
@@ -2717,7 +2723,9 @@
         "cattoy"
       ],
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.7
       }
     },
     "trinket_7": {
@@ -2755,7 +2763,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.7
       }
     },
     "trinket_9": {
@@ -2774,7 +2784,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.9
       }
     },
     "trinket_10": {
@@ -2793,7 +2805,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.9
       }
     },
     "trinket_11": {
@@ -2812,7 +2826,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.9
       }
     },
     "trinket_12": {
@@ -2831,7 +2847,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.7
       }
     },
     "trinket_13": {
@@ -2850,7 +2868,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.7
       }
     },
     "trinket_14": {
@@ -2869,7 +2889,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.7
       }
     },
     "trinket_15": {
@@ -2888,7 +2910,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.15,
+        "scale": 0.5
       }
     },
     "trinket_16": {
@@ -2907,7 +2931,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.15,
+        "scale": 0.5
       }
     },
     "trinket_17": {
@@ -2964,7 +2990,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.9
       }
     },
     "trinket_20": {
@@ -3021,7 +3049,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.8
       }
     },
     "trinket_23": {
@@ -3059,7 +3089,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.8
       }
     },
     "trinket_25": {
@@ -3097,7 +3129,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.6
       }
     },
     "trinket_27": {
@@ -3135,7 +3169,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.15,
+        "scale": 0.5
       }
     },
     "trinket_29": {
@@ -3154,7 +3190,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.15,
+        "scale": 0.5
       }
     },
     "trinket_30": {
@@ -3173,7 +3211,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.15,
+        "scale": 0.5
       }
     },
     "trinket_31": {
@@ -3192,7 +3232,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.15,
+        "scale": 0.5
       }
     },
     "trinket_32": {
@@ -3211,7 +3253,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.2,
+        "scale": 1.0
       }
     },
     "trinket_33": {
@@ -3230,7 +3274,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.8
       }
     },
     "trinket_34": {
@@ -3268,7 +3314,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 1.0
       }
     },
     "trinket_36": {
@@ -3287,7 +3335,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.0,
+        "scale": 0.8
       }
     },
     "trinket_37": {
@@ -3325,7 +3375,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 1.0
       }
     },
     "trinket_39": {
@@ -3344,7 +3396,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 1.3
       }
     },
     "trinket_40": {
@@ -3382,7 +3436,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.15,
+        "scale": 0.65
       }
     },
     "trinket_42": {
@@ -3420,7 +3476,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.9
       }
     },
     "trinket_44": {
@@ -3439,7 +3497,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.7
       }
     },
     "trinket_45": {
@@ -3458,7 +3518,9 @@
       "skinArchives": {},
       "moleBait": true,
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.9
       }
     },
     "trinket_46": {
@@ -3547,7 +3609,8 @@
         "oceanfishing_lure"
       ],
       "floater": {
-        "size": "small"
+        "size": "small",
+        "scale": 0.8
       }
     },
     "red_cap": {
@@ -4199,7 +4262,13 @@
         "cookable"
       ],
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.55,
+          0.5,
+          0.55
+        ]
       }
     },
     "rottenegg": {
@@ -4804,7 +4873,7 @@
           0.9
         ],
         "bankSwap": {
-          "floatIndex": -13.0,
+          "floatIndex": -14.0,
           "build": "swap_staffs",
           "symbol": "swap_yellowstaff"
         }
@@ -4843,7 +4912,7 @@
           0.9
         ],
         "bankSwap": {
-          "floatIndex": -13.0,
+          "floatIndex": -14.0,
           "build": "swap_staffs",
           "symbol": "swap_opalstaff"
         }
@@ -4923,12 +4992,12 @@
         "size": "med",
         "verticalOffset": 0.1,
         "scale": [
-          0.9,
+          0.85,
           0.4,
-          0.9
+          0.85
         ],
         "bankSwap": {
-          "floatIndex": -13.0,
+          "floatIndex": -9.5,
           "build": "swap_staffs",
           "symbol": "swap_redstaff"
         }
@@ -5049,9 +5118,9 @@
         "size": "med",
         "verticalOffset": 0.1,
         "scale": [
-          0.9,
+          0.8,
           0.4,
-          0.9
+          0.8
         ],
         "bankSwap": {
           "floatIndex": -13.0,
@@ -5430,7 +5499,7 @@
       "animationArchive": "goldenpitchfork.zip",
       "buildArchives": [
         "goldenpitchfork.zip",
-        "swap_pitchfork.zip"
+        "swap_goldenshovel.zip"
       ],
       "bank": "goldenpitchfork",
       "animation": "idle",
@@ -5453,8 +5522,8 @@
         ],
         "bankSwap": {
           "floatIndex": 7.0,
-          "build": "swap_pitchfork",
-          "symbol": "swap_pitchfork"
+          "build": "swap_goldenshovel",
+          "symbol": "swap_goldenshovel"
         }
       }
     },
@@ -5954,7 +6023,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05
       }
     },
     "cookedmeat": {
@@ -5972,7 +6042,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05
       }
     },
     "meat_dried": {
@@ -6014,7 +6085,8 @@
         "cookable"
       ],
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05
       }
     },
     "cookedmonstermeat": {
@@ -6032,7 +6104,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05
       }
     },
     "monstermeat_dried": {
@@ -6068,7 +6141,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "scale": 0.9
       }
     },
     "cookedsmallmeat": {
@@ -6086,7 +6160,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "scale": 0.9
       }
     },
     "smallmeat_dried": {
@@ -6122,7 +6197,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.2
       }
     },
     "drumstick_cooked": {
@@ -6140,7 +6216,9 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.15,
+        "scale": 0.85
       }
     },
     "batwing": {
@@ -6158,7 +6236,9 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "med",
+        "verticalOffset": 0.02,
+        "scale": 0.8
       }
     },
     "batwing_cooked": {
@@ -6248,7 +6328,9 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.2,
+        "scale": 0.75
       }
     },
     "fishmeat_small_dried": {
@@ -6338,7 +6420,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1
       }
     },
     "humanmeat_cooked": {
@@ -6356,7 +6439,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.1
       }
     },
     "humanmeat_dried": {
@@ -6392,7 +6476,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05
       }
     },
     "barnacle_cooked": {
@@ -6410,7 +6495,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "small",
+        "verticalOffset": 0.05
       }
     },
     "batnose": {
@@ -6428,7 +6514,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "med",
+        "scale": 0.7
       }
     },
     "batnose_cooked": {
@@ -6446,7 +6533,8 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "floater": {
-        "size": "small"
+        "size": "med",
+        "scale": 0.7
       }
     },
     "mitegland": {
@@ -9261,7 +9349,12 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.2,
+        "scale": 0.95
+      }
     },
     "chum": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/chum.lua",
@@ -9279,7 +9372,12 @@
       "skinArchives": {},
       "tags": [
         "allow_action_on_impassable"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.8
+      }
     },
     "cookiecuttershell": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/cookiecuttershell.lua",
@@ -9295,7 +9393,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "small"
+      }
     },
     "coontail": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/coontail.lua",
@@ -9313,7 +9414,10 @@
       "skinArchives": {},
       "tags": [
         "cattoy"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "driftwood_log": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/driftwood.lua",
@@ -9331,7 +9435,12 @@
       "skinArchives": {},
       "tags": [
         "waterproofer"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.03,
+        "scale": 0.65
+      }
     },
     "glasscutter": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/glasscutter.lua",
@@ -9340,7 +9449,8 @@
       "atlas": "images/inventoryimages2.xml",
       "animationArchive": "glasscutter.zip",
       "buildArchives": [
-        "glasscutter.zip"
+        "glasscutter.zip",
+        "swap_glasscutter.zip"
       ],
       "bank": "glasscutter",
       "animation": "idle",
@@ -9353,7 +9463,21 @@
       "tags": [
         "sharp",
         "pointy"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          1.21,
+          0.4,
+          1.21
+        ],
+        "bankSwap": {
+          "floatIndex": -22.0,
+          "build": "swap_glasscutter",
+          "symbol": "swap_glasscutter"
+        }
+      }
     },
     "glommerflower": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/glommerflower.lua",
@@ -9375,7 +9499,11 @@
         "glommerflower",
         "nonpotatable",
         "irreplaceable"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.7
+      }
     },
     "lureplantbulb": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/lureplant_bulb.lua",
@@ -9393,7 +9521,12 @@
       "skinArchives": {
         "eyeplant_bulb_trap_plantera": "dynamic/eyeplant_trap_plantera.zip"
       },
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.95
+      }
     },
     "oceanfishingrod": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/oceanfishingrod.lua",
@@ -9402,7 +9535,8 @@
       "atlas": "images/inventoryimages2.xml",
       "animationArchive": "fishingrod_ocean.zip",
       "buildArchives": [
-        "fishingrod_ocean.zip"
+        "fishingrod_ocean.zip",
+        "swap_fishingrod_ocean.zip"
       ],
       "bank": "fishingrod_ocean",
       "animation": "idle",
@@ -9418,7 +9552,21 @@
         "weapon",
         "allow_action_on_impassable",
         "accepts_oceanfishingtackle"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.8,
+          0.4,
+          0.8
+        ],
+        "bankSwap": {
+          "floatIndex": -12.0,
+          "build": "swap_fishingrod_ocean",
+          "symbol": "swap_fishingrod_ocean"
+        }
+      }
     },
     "palmcone_scale": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/palmcone_scale.lua",
@@ -9434,7 +9582,12 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 0.68
+      }
     },
     "palmcone_seed": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pinecone.lua",
@@ -9454,7 +9607,12 @@
         "deployedplant",
         "cattoy",
         "treeseed"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.9
+      }
     },
     "pig_token": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pig_token.lua",
@@ -9470,7 +9628,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "scale": 0.71
+      }
     },
     "saltrock": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/saltrock.lua",
@@ -9490,7 +9652,10 @@
       "elementalFoodHunger": 1.0,
       "tags": [
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "sewing_kit": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/sewingkit.lua",
@@ -9506,7 +9671,12 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.8
+      }
     },
     "shadowheart": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/shadowheart.lua",
@@ -9524,7 +9694,12 @@
       "skinArchives": {},
       "tags": [
         "shadowheart"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.8
+      }
     },
     "shroom_skin": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/shroom_skin.lua",
@@ -9540,7 +9715,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "large",
+        "scale": 0.6
+      }
     },
     "sketch": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/sketch.lua",
@@ -9559,7 +9738,11 @@
       "tags": [
         "_named",
         "sketch"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "tentaclespike": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/tentaclespike.lua",
@@ -9568,7 +9751,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "tentacle_spike.zip",
       "buildArchives": [
-        "tentacle_spike.zip"
+        "tentacle_spike.zip",
+        "swap_spike.zip"
       ],
       "bank": "spike",
       "animation": "idle",
@@ -9578,7 +9762,21 @@
       "tags": [
         "sharp",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.9,
+          0.5,
+          0.9
+        ],
+        "bankSwap": {
+          "floatIndex": -17.0,
+          "build": "swap_spike",
+          "symbol": "swap_spike"
+        }
+      }
     },
     "twiggy_nut": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pinecone.lua",
@@ -9598,7 +9796,12 @@
         "deployedplant",
         "cattoy",
         "treeseed"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.9
+      }
     },
     "waxpaper": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/waxpaper.lua",
@@ -9614,7 +9817,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "beef_bell": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/beef_bell.lua",
@@ -9635,7 +9842,16 @@
       "tags": [
         "bell",
         "donotautopick"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": [
+          1.2,
+          1.0,
+          1.2
+        ]
+      }
     },
     "blowdart_pipe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/blowdart.lua",
@@ -9644,7 +9860,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "blow_dart.zip",
       "buildArchives": [
-        "blow_dart.zip"
+        "blow_dart.zip",
+        "swap_blowdart_pipe.zip"
       ],
       "bank": "blow_dart",
       "animation": "dart_pipe",
@@ -9656,7 +9873,21 @@
         "sharp",
         "weapon",
         "projectile"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.75,
+          0.5,
+          0.75
+        ],
+        "bankSwap": {
+          "floatIndex": -4.0,
+          "build": "swap_blowdart_pipe",
+          "symbol": "swap_blowdart_pipe"
+        }
+      }
     },
     "chester_eyebone": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/chester_eyebone.lua",
@@ -9725,7 +9956,11 @@
       "tags": [
         "deerantler",
         "klaussackkey"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.88
+      }
     },
     "deer_antler2": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/deer_antler.lua",
@@ -9744,7 +9979,11 @@
       "tags": [
         "deerantler",
         "klaussackkey"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.88
+      }
     },
     "deer_antler3": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/deer_antler.lua",
@@ -9763,7 +10002,11 @@
       "tags": [
         "deerantler",
         "klaussackkey"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.88
+      }
     },
     "dug_berrybush_juicy": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -9781,7 +10024,16 @@
       "skinArchives": {},
       "tags": [
         "deployedplant"
-      ]
+      ],
+      "floater": {
+        "size": "large",
+        "verticalOffset": 0.025,
+        "scale": [
+          0.65,
+          0.5,
+          0.65
+        ]
+      }
     },
     "dug_trap_starfish": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trap_starfish.lua",
@@ -9797,7 +10049,10 @@
       "loop": true,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med"
+      }
     },
     "greenamulet": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/amulet.lua",
@@ -9817,7 +10072,11 @@
       },
       "tags": [
         "shadowlevel"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.6
+      }
     },
     "orangeamulet": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/amulet.lua",
@@ -9839,7 +10098,11 @@
       "tags": [
         "shadowlevel",
         "repairshortaction"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.6
+      }
     },
     "horrorfuel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/horrorfuel.lua",
@@ -9865,7 +10128,10 @@
         1,
         1,
         0.5
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "lavae_egg": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/lavae_egg.lua",
@@ -9903,7 +10169,12 @@
         "cattoy",
         "tallbirdegg",
         "cookable"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.75
+      }
     },
     "messagebottle": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/messagebottle.lua",
@@ -9922,7 +10193,12 @@
       "tags": [
         "waterproofer",
         "mapspotrevealer"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 1.0
+      }
     },
     "oar": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/oar.lua",
@@ -9943,7 +10219,11 @@
       },
       "tags": [
         "allow_action_on_impassable"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "scale": 0.68
+      }
     },
     "oar_driftwood": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/oar.lua",
@@ -9965,7 +10245,11 @@
       "tags": [
         "allow_action_on_impassable",
         "waterproofer"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "scale": 0.68
+      }
     },
     "malbatross_beak": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/oar.lua",
@@ -9983,7 +10267,11 @@
       "skinArchives": {},
       "tags": [
         "allow_action_on_impassable"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "scale": 0.68
+      }
     },
     "sculpture_bishophead": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/sculpture_pieces.lua",
@@ -10050,7 +10338,12 @@
         "spoiledfood",
         "spoiled_fish"
       ],
-      "scale": 1.3
+      "scale": 1.3,
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.04,
+        "scale": 0.35
+      }
     },
     "tacklecontainer": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/tacklecontainer.lua",
@@ -10071,7 +10364,11 @@
       },
       "tags": [
         "portablestorage"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.2
+      }
     },
     "terrarium": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/terrarium.lua",
@@ -10113,7 +10410,16 @@
       },
       "tags": [
         "trap"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.8,
+          0.5,
+          0.8
+        ]
+      }
     },
     "bullkelp_beachedroot": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/bullkelp_beached.lua",
@@ -10127,7 +10433,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "small"
+      }
     },
     "bundle": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/bundle.lua",
@@ -10194,7 +10503,12 @@
       "tags": [
         "playbill",
         "furnituredecor"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.15,
+        "scale": 0.6
+      }
     },
     "playing_card": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/deck_of_cards.lua",
@@ -10209,7 +10523,12 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "tags": [],
-      "ground": true
+      "ground": true,
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 1.2
+      }
     },
     "singingshell_octave3": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/singingshell.lua",
@@ -10232,7 +10551,12 @@
       "skinArchives": {},
       "tags": [
         "singingshell"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.0,
+        "scale": 0.68
+      }
     },
     "singingshell_octave4": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/singingshell.lua",
@@ -10255,7 +10579,12 @@
       "skinArchives": {},
       "tags": [
         "singingshell"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.0,
+        "scale": 0.58
+      }
     },
     "singingshell_octave5": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/singingshell.lua",
@@ -10278,7 +10607,12 @@
       "skinArchives": {},
       "tags": [
         "singingshell"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.0,
+        "scale": 0.95
+      }
     },
     "strawhat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
@@ -10302,7 +10636,11 @@
       "tags": [
         "hat",
         "waterproofer"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1
+      }
     },
     "beefalohat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
@@ -10327,7 +10665,12 @@
       "tags": [
         "hat",
         "waterproofer"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": 0.65
+      }
     },
     "cookiecutterhat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
@@ -10346,7 +10689,10 @@
       "tags": [
         "hat",
         "waterproofer"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "dreadstonehat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
@@ -10371,7 +10717,10 @@
         "shadow_item",
         "waterproofer",
         "shadowlevel"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "footballhat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
@@ -10398,7 +10747,10 @@
       "tags": [
         "hat",
         "waterproofer"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "ruinshat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
@@ -10423,7 +10775,10 @@
         "metal",
         "hardarmor",
         "shadowlevel"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "mask_ancient_architecthat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
@@ -10442,7 +10797,10 @@
       "tags": [
         "hat",
         "ancient_reader"
-      ]
+      ],
+      "floater": {
+        "size": "med"
+      }
     },
     "mask_ancient_handmaidhat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
@@ -10461,7 +10819,10 @@
       "tags": [
         "hat",
         "ancient_reader"
-      ]
+      ],
+      "floater": {
+        "size": "med"
+      }
     },
     "mask_ancient_masonhat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hats.lua",
@@ -10480,7 +10841,10 @@
       "tags": [
         "hat",
         "ancient_reader"
-      ]
+      ],
+      "floater": {
+        "size": "med"
+      }
     }
   },
   "staticVariants": {
