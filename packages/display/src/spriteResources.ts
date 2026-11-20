@@ -39,8 +39,9 @@ export class SpriteResources {
           if (this.disposed) {
             throw new Error('Sprite resources disposed');
           }
+          const appearance = clip.source ? { artSource: clip.source } : undefined;
           if (loaded) {
-            return loaded(clip.name, clip.loop);
+            return loaded(clip.name, clip.loop, undefined, appearance);
           }
           pending ??= preloadSharedArchiveSprite(this.archives, definition, options).then(
             create => (loaded = create),
@@ -53,7 +54,7 @@ export class SpriteResources {
             if (this.disposed) {
               throw new Error('Sprite resources disposed');
             }
-            return create(clip.name, clip.loop);
+            return create(clip.name, clip.loop, undefined, appearance);
           });
         },
       };

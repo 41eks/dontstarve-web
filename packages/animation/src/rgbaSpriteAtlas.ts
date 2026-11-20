@@ -321,7 +321,9 @@ function* composeResolvedSteps(
     }
     yield;
   }
-  const resolutionScale = Math.min(1, density);
+  // A clip whose every frame is blank (floating_item before its swap symbol is dressed) has no texels to match: it
+  // composes at the build scale into one empty page rather than a zero scale with NaN bounds.
+  const resolutionScale = density > 0 ? Math.min(1, density) : 1;
   // A clip uses one origin and one texel grid. Cropping and rounding each frame
   // independently changes its sampling phase and stretches the last partial
   // texel back onto the quad, making stationary parts wobble between frames.
@@ -744,12 +746,15 @@ function* composeGpuPageSteps(
     for (const frame of layouts) {
       const end = spritePerfSpan('step:gpu-frame', `${frame.sprites.length} parts`);
       try {
-        scratch.drawFrame(frame, resolutionScale);
-        withRendererState(renderer, () => {
-          renderer.setRenderTarget(accumulation);
-          renderer.autoClear = false;
-          renderer.render(scratch.scene, scratch.camera);
-        });
+        // A blank frame leaves its cell transparent; the scratch may not even have buffers yet.
+        if (frame.sprites.length) {
+          scratch.drawFrame(frame, resolutionScale);
+          withRendererState(renderer, () => {
+            renderer.setRenderTarget(accumulation);
+            renderer.autoClear = false;
+            renderer.render(scratch.scene, scratch.camera);
+          });
+        }
       } finally {
         end();
       }

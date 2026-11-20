@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { compileSceneAsync } from '@dontstarve-web/animation/compileScene';
 
 /** Yield after each small GPU batch so the generating page can keep painting. */
 export function yieldLoadingFrame(): Promise<void> {
@@ -78,7 +79,7 @@ export async function prewarmScene(
       batch.environment = scene.environment;
       batch.fog = scene.fog;
       batch.children = [...lights, ...objects.slice(index, index + 4)];
-      await renderer.compileAsync(batch, camera, scene);
+      await compileSceneAsync(renderer, batch, camera, scene);
       signal?.throwIfAborted();
       if (staging) {
         // Exercise uniforms and geometry too, even without KHR_parallel_shader_compile.

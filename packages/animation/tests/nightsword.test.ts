@@ -61,7 +61,8 @@ it('uses separate source ground and equipped art and renders a skin while moving
       bank: 'nightmaresword',
       animation: 'idle',
       animationArchive: 'nightmaresword.zip',
-      buildArchives: ['nightmaresword.zip'],
+      // nightsword.lua's swap build too: the floater draws its swap symbol on floating_item.
+      buildArchives: ['nightmaresword.zip', 'swap_nightmaresword.zip'],
     });
     expect(Object.keys(GROUND_ITEM_DEFINITIONS.nightsword.skinArchives)).toHaveLength(5);
     expect(GROUND_ITEM_SKIN_SPECS.nightsword_cotl).toMatchObject({ itemId: 'nightsword', icon: 'nightsword_cotl.tex' });

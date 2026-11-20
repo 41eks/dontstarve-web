@@ -4777,7 +4777,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "staffs.zip",
       "buildArchives": [
-        "staffs.zip"
+        "staffs.zip",
+        "swap_staffs.zip"
       ],
       "bank": "staffs",
       "animation": "yellowstaff",
@@ -4816,7 +4817,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "staffs.zip",
       "buildArchives": [
-        "staffs.zip"
+        "staffs.zip",
+        "swap_staffs.zip"
       ],
       "bank": "staffs",
       "animation": "opalstaff",
@@ -4854,7 +4856,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "staffs.zip",
       "buildArchives": [
-        "staffs.zip"
+        "staffs.zip",
+        "swap_staffs.zip"
       ],
       "bank": "staffs",
       "animation": "greenstaff",
@@ -4891,7 +4894,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "staffs.zip",
       "buildArchives": [
-        "staffs.zip"
+        "staffs.zip",
+        "swap_staffs.zip"
       ],
       "bank": "staffs",
       "animation": "redstaff",
@@ -4937,7 +4941,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "staffs.zip",
       "buildArchives": [
-        "staffs.zip"
+        "staffs.zip",
+        "swap_staffs.zip"
       ],
       "bank": "staffs",
       "animation": "purplestaff",
@@ -4974,7 +4979,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "staffs.zip",
       "buildArchives": [
-        "staffs.zip"
+        "staffs.zip",
+        "swap_staffs.zip"
       ],
       "bank": "staffs",
       "animation": "orangestaff",
@@ -5015,7 +5021,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "staffs.zip",
       "buildArchives": [
-        "staffs.zip"
+        "staffs.zip",
+        "swap_staffs.zip"
       ],
       "bank": "staffs",
       "animation": "bluestaff",
@@ -5060,7 +5067,8 @@
       "atlas": "images/inventoryimages3.xml",
       "animationArchive": "trident.zip",
       "buildArchives": [
-        "trident.zip"
+        "trident.zip",
+        "swap_trident.zip"
       ],
       "bank": "trident",
       "animation": "idle",
@@ -5091,7 +5099,8 @@
       "atlas": "images/inventoryimages3.xml",
       "animationArchive": "reskin_tool.zip",
       "buildArchives": [
-        "reskin_tool.zip"
+        "reskin_tool.zip",
+        "swap_reskin_tool.zip"
       ],
       "bank": "reskin_tool",
       "animation": "idle",
@@ -5224,7 +5233,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "nightmaresword.zip",
       "buildArchives": [
-        "nightmaresword.zip"
+        "nightmaresword.zip",
+        "swap_nightmaresword.zip"
       ],
       "bank": "nightmaresword",
       "animation": "idle",
@@ -5342,7 +5352,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "fishingrod.zip",
       "buildArchives": [
-        "fishingrod.zip"
+        "fishingrod.zip",
+        "swap_fishingrod.zip"
       ],
       "bank": "fishingrod",
       "animation": "idle",
@@ -5380,7 +5391,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "pitchfork.zip",
       "buildArchives": [
-        "pitchfork.zip"
+        "pitchfork.zip",
+        "swap_pitchfork.zip"
       ],
       "bank": "pitchfork",
       "animation": "idle",
@@ -5417,7 +5429,8 @@
       "atlas": "images/inventoryimages2.xml",
       "animationArchive": "goldenpitchfork.zip",
       "buildArchives": [
-        "goldenpitchfork.zip"
+        "goldenpitchfork.zip",
+        "swap_pitchfork.zip"
       ],
       "bank": "goldenpitchfork",
       "animation": "idle",
@@ -5484,7 +5497,8 @@
       "atlas": "images/inventoryimages2.xml",
       "animationArchive": "goldenhoe.zip",
       "buildArchives": [
-        "goldenhoe.zip"
+        "goldenhoe.zip",
+        "swap_goldenhoe.zip"
       ],
       "bank": "goldenhoe",
       "animation": "idle",
@@ -5516,7 +5530,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "axe.zip",
       "buildArchives": [
-        "axe.zip"
+        "axe.zip",
+        "swap_axe.zip"
       ],
       "bank": "axe",
       "animation": "idle",
@@ -5558,7 +5573,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "goldenaxe.zip",
       "buildArchives": [
-        "goldenaxe.zip"
+        "goldenaxe.zip",
+        "swap_goldenaxe.zip"
       ],
       "bank": "goldenaxe",
       "animation": "idle",
@@ -5596,7 +5612,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "pickaxe.zip",
       "buildArchives": [
-        "pickaxe.zip"
+        "pickaxe.zip",
+        "swap_pickaxe.zip"
       ],
       "bank": "pickaxe",
       "animation": "idle",
@@ -5638,7 +5655,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "goldenpickaxe.zip",
       "buildArchives": [
-        "goldenpickaxe.zip"
+        "goldenpickaxe.zip",
+        "swap_goldenpickaxe.zip"
       ],
       "bank": "goldenpickaxe",
       "animation": "idle",
@@ -5675,7 +5693,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "shovel.zip",
       "buildArchives": [
-        "shovel.zip"
+        "shovel.zip",
+        "swap_shovel.zip"
       ],
       "bank": "shovel",
       "animation": "idle",
@@ -5716,7 +5735,8 @@
       "atlas": "images/inventoryimages.xml",
       "animationArchive": "goldenshovel.zip",
       "buildArchives": [
-        "goldenshovel.zip"
+        "goldenshovel.zip",
+        "swap_goldenshovel.zip"
       ],
       "bank": "goldenshovel",
       "animation": "idle",
@@ -5752,7 +5772,8 @@
       "atlas": "images/inventoryimages2.xml",
       "animationArchive": "glassaxe.zip",
       "buildArchives": [
-        "glassaxe.zip"
+        "glassaxe.zip",
+        "swap_glassaxe.zip"
       ],
       "bank": "glassaxe",
       "animation": "idle",

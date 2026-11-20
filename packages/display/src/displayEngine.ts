@@ -245,7 +245,8 @@ export class ArchiveEngine implements DisplayEngine {
 
 /** Creates an archive sprite in the clip an entity is logically in; `initial` is already built in the first clip. */
 export interface ArchiveSpriteSource {
-  create(clip: { name: string; loop: boolean }): ArchiveSprite | Promise<ArchiveSprite>;
+  /** `source`: the bank and build the entity has switched to, which a sprite built now starts in. */
+  create(clip: { name: string; loop: boolean; source?: SpriteArtSource }): ArchiveSprite | Promise<ArchiveSprite>;
   initial?: ArchiveSprite;
   /** Preserve artwork that rests its lowest point on the entity's ground origin. */
   alignBottom?: boolean;

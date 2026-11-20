@@ -10,6 +10,7 @@ import {
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
 import { watchWorldMatrixChanges } from './matrixUpdates';
 import { DEPTH_OFFSET_UNITS } from './animationAssets';
+import { compileSceneAsync } from './compileScene';
 import {
   injectOceanShading,
   NO_OCEAN_SHADING,
@@ -903,7 +904,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       for (const batch of pages.values()) {
         renderer.initTexture(batch.key.atlas.texture);
       }
-      await renderer.compileAsync(group, camera);
+      await compileSceneAsync(renderer, group, camera);
       signal?.throwIfAborted();
     }
     // Prepare the ordinary shared-frame material variant used when an entity starts working.
@@ -920,7 +921,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       proxy.visible = true;
     }
     try {
-      await renderer.compileAsync(staging, camera);
+      await compileSceneAsync(renderer, staging, camera);
     } finally {
       for (const proxy of proxies) {
         proxy.visible = false;

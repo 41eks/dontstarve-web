@@ -71,6 +71,8 @@ export interface ArchiveSpriteOptions {
   staticBillboard?: boolean;
   /** Ancestors are assumed static; set when the parent moves while this sprite stays attached to it. */
   dynamicParent?: boolean;
+  /** The bank and build the entity already switched to (AnimState:SetBank / SetBuild); its first clip is found there. */
+  artSource?: SpriteArtSource;
 }
 
 export interface ArchiveSpriteBuild {
@@ -399,7 +401,8 @@ function constructArchiveSprite(
     return result as T;
   };
   const builds = sharedBuilds.map(own);
-  let activeBuilds = builds;
+  let artSource: SpriteArtSource | undefined = options.artSource;
+  let activeBuilds = artSource ? [artSource.build, ...(artSource.fallbackBuilds ?? [])].map(own) : builds;
   let skin: ArchiveSpriteSkin | undefined = own(sharedSkin);
   const applyOpacity = (opacity: number) => {
     for (const material of ownedMaterials) {
@@ -414,7 +417,6 @@ function constructArchiveSprite(
   const bankHash = smallHash(definition.bank);
   let facing: number | undefined;
   let flipped = false;
-  let artSource: SpriteArtSource | undefined;
   const findClip = (name: string) => {
     const clips = artSource?.animations.animations ?? parsed.animations,
       bank = artSource?.bank ?? bankHash;
@@ -1009,7 +1011,12 @@ export async function preloadSharedArchiveSprite(
   definition: Omit<ArchiveSpriteDefinition, 'animation' | 'loop'>,
   options: Omit<ArchiveSpriteOptions, 'sharedAnimations'> = {},
 ): Promise<
-  (animation: string, loop: boolean, name?: string, appearance?: Pick<ArchiveSpriteOptions, 'colour'>) => ArchiveSprite
+  (
+    animation: string,
+    loop: boolean,
+    name?: string,
+    appearance?: Pick<ArchiveSpriteOptions, 'colour' | 'artSource'>,
+  ) => ArchiveSprite
 > {
   const shared = { ...options, sharedAnimations: 'all' } as const;
   const loaded = await spritePerfAsync('preload', `${definition.bank ?? ''} ${definition.animationArchive ?? ''}`, () =>

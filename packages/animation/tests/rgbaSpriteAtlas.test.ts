@@ -153,6 +153,26 @@ describe('RGBA sprite atlas', () => {
     }
   });
 
+  it('composes a clip whose every frame is blank into one empty page', () => {
+    vi.stubGlobal('document', { createElement: () => new FakeCanvas() });
+    // floating_item's frames show only swap_spear; before the swap symbol is dressed, nothing at all is drawn.
+    const animation: Animation = {
+      name: 'left',
+      facing: 0,
+      bankHash: 0,
+      frameRate: 30,
+      frames: [{ elements: [] }, { elements: [] }],
+    };
+    const pages = composeResolvedRgbaSpriteAtlases(animation, [[], []], 16);
+    try {
+      expect(pages).toHaveLength(1);
+      expect(pages[0].frames.map(frame => frame.frameIndex)).toEqual([0, 1]);
+      expect(pages[0].frames.every(frame => Number.isFinite(frame.width))).toBe(true);
+    } finally {
+      pages.forEach(page => page.texture.dispose());
+    }
+  });
+
   it('steps a resolved composition one frame at a time and matches the synchronous pages', () => {
     vi.stubGlobal('document', { createElement: () => new FakeCanvas() });
     const texture = new THREE.DataTexture(new Uint8Array(4 * 4 * 4), 4, 4);

@@ -61,7 +61,8 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
     extensions: { has: () => false },
     getContext: () => ({ isContextLost: () => false }),
     initTexture() {},
-    compileAsync: async () => {},
+    compile: () => new Set(),
+    properties: { get: () => ({}) },
   } as unknown as THREE.WebGLRenderer;
   const batches = () => {
     const result: THREE.InstancedMesh[] = [];

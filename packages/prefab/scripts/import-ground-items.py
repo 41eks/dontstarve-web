@@ -475,8 +475,11 @@ def main():
         definition['floater'] = floater
         swap = floater.get('bankSwap')
         if swap:
-            # Floater:SwitchToFloatAnim draws floating_items' floating_item bank with swap_spear from the swap build.
+            # Floater:SwitchToFloatAnim draws floating_items' floating_item bank with swap_spear from the swap build, one
+            # of the item's own ANIM assets.
             assets.update(['anim/floating_items.zip', 'anim/' + swap['build'] + '.zip'])
+            if swap['build'] + '.zip' not in definition['buildArchives']:
+                definition['buildArchives'].append(swap['build'] + '.zip')
     # float_fx.lua float_fx_front / float_fx_back, and fx.lua splash, beside a floating item.
     assets.update(['anim/float_fx.zip', 'anim/splash.zip'])
 

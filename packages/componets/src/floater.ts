@@ -33,8 +33,6 @@ export interface FloaterInst {
     setPaused(paused: boolean): void;
     setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void;
   };
-  /** AnimState:GetSkinBuild. */
-  GetSkinBuild?(): string | undefined;
 }
 
 /** TheWorld as the floater reaches it. */
@@ -119,22 +117,19 @@ export class Floater {
     if (!this.do_bank_swap) {
       return;
     }
+    // The swap symbol goes on first: each AnimState write is drawn at once, and floating_item's frame shows nothing
+    // but swap_spear, so the swapped bank is never drawn without it (the engine draws only at the end of the frame).
+    const swap = this.swap_data;
+    if (swap?.sym_build !== undefined) {
+      // OverrideSymbol from the swap build, one of the item's ANIM assets. OverrideItemSkinSymbol's skin build is not
+      // drawn: a sprite resolves overrides only from its own declared builds, so a skinned tool floats unskinned.
+      this.inst.sprite.setSymbolOverride('swap_spear', `${swap.sym_build}.zip`, swap.sym_name ?? swap.sym_build);
+    }
     this.inst.AnimState.SetBank('floating_item');
     this.inst.AnimState.PlayAnimation(this.float_index < 0 ? 'left' : 'right');
     // AnimState:SetFrame takes the whole frame of a fractional index.
     this.inst.sprite.setFrame(Math.floor(Math.abs(this.float_index)));
     this.inst.sprite.setPaused(true);
-    const swap = this.swap_data;
-    if (swap?.sym_build !== undefined) {
-      const symbol = swap.sym_name ?? swap.sym_build;
-      // OverrideItemSkinSymbol from the skin build, else OverrideSymbol from the swap build.
-      const skin = this.inst.GetSkinBuild?.();
-      this.inst.sprite.setSymbolOverride(
-        'swap_spear',
-        skin !== undefined ? `dynamic/${skin}.zip` : `${swap.sym_build}.zip`,
-        symbol,
-      );
-    }
   }
 
   SwitchToDefaultAnim(force_switch = false): void {

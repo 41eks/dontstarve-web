@@ -29,7 +29,10 @@ function setup() {
     setRenderTarget: (next: THREE.WebGLRenderTarget | null) => {
       current = next;
     },
-    compileAsync: vi.fn(async () => undefined),
+    // compileSceneAsync: compile, then wait for each program (ready at once without parallel compilation).
+    compile: vi.fn((): Set<THREE.Material> => new Set()),
+    extensions: { has: () => false },
+    properties: { get: () => ({}) },
     render: vi.fn(() => {
       expect(current?.width).toBe(1);
       expect(current?.height).toBe(1);
@@ -42,7 +45,7 @@ it('uploads shared/custom textures once, warms small batches and preserves paren
   const s = setup();
   await prewarmScene(s.renderer as unknown as THREE.WebGLRenderer, s.scene, new THREE.Camera());
   expect(s.renderer.initTexture.mock.calls).toEqual([[s.texture], [s.atlas]]);
-  expect(s.renderer.compileAsync).toHaveBeenCalledTimes(3);
+  expect(s.renderer.compile).toHaveBeenCalledTimes(3);
   expect(s.renderer.render).toHaveBeenCalledTimes(3);
   expect(s.renderer.getRenderTarget()).toBe(s.target);
   expect(s.parent.children).toEqual(s.meshes);
@@ -55,13 +58,14 @@ it('uploads shared/custom textures once, warms small batches and preserves paren
 it('stops later batches on cancellation without drawing or changing the render target', async () => {
   const s = setup();
   const controller = new AbortController();
-  s.renderer.compileAsync.mockImplementationOnce(async () => {
+  s.renderer.compile.mockImplementationOnce(() => {
     controller.abort();
+    return new Set();
   });
   await expect(
     prewarmScene(s.renderer as unknown as THREE.WebGLRenderer, s.scene, new THREE.Camera(), controller.signal),
   ).rejects.toThrow();
-  expect(s.renderer.compileAsync).toHaveBeenCalledOnce();
+  expect(s.renderer.compile).toHaveBeenCalledOnce();
   expect(s.renderer.render).not.toHaveBeenCalled();
   expect(s.renderer.getRenderTarget()).toBe(s.target);
   expect(s.meshes.every(mesh => mesh.parent === s.parent)).toBe(true);
