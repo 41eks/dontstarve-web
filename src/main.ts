@@ -408,6 +408,15 @@ gameUi.debugConsole.addEventListener('game:debug-command', event => {
     async () => {
       await SendLightningStrike({ root: scene, fx: worldFx, sim: prefabs }, player.position);
     },
+    (x, z) => {
+      // ThePlayer.Transform:SetPosition: stop walking, move the foot and body together, and snap the camera.
+      locomotor.stop();
+      playerInstance.setPosition(x, 0, z);
+      playerPhysics.Teleport();
+      playerBody.velocity.set(0, playerBody.velocity.y, 0);
+      playerInstance.tileTracker.sync();
+      playerInstance.SnapCamera?.();
+    },
   )
     .then(result => {
       if (result.ok) {

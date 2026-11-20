@@ -87,6 +87,35 @@ describe('debug command punctuation', () => {
     expect(inventory.get(equipmentSlotAddress('head'))).toBeNull();
   });
 
+  it.each([
+    'ThePlayer.Transform:SetPosition(10, 0, -20)',
+    ' ThePlayer . Transform : SetPosition （ 10 ， 0 ， -20 ） ; ',
+  ])('teleports the player using %s', async command => {
+    const teleport = vi.fn();
+    expect(
+      await executeDebugCommand(command, createInventory(), undefined, undefined, undefined, undefined, teleport),
+    ).toEqual({ ok: true, message: '已传送玩家到 (10, -20)' });
+    expect(teleport).toHaveBeenCalledExactlyOnceWith(10, -20);
+  });
+
+  it.each([
+    'ThePlayer.Transform:SetPosition(10, -20)',
+    'ThePlayer.Transform:SetPosition(10, 0)',
+    'ThePlayer.Transform:SetPosition(10, 0, NaN)',
+    'ThePlayer.Transform:SetPosition(10, 0, 1e999)',
+    'ThePlayer.Transform:SetPosition()',
+  ])('rejects an invalid player teleport: %s', async command => {
+    const teleport = vi.fn();
+    expect(
+      (await executeDebugCommand(command, createInventory(), undefined, undefined, undefined, undefined, teleport)).ok,
+    ).toBe(false);
+    expect(teleport).not.toHaveBeenCalled();
+  });
+
+  it('reports an unavailable player teleport', async () => {
+    expect((await executeDebugCommand('ThePlayer.Transform:SetPosition(0, 0, 0)', createInventory())).ok).toBe(false);
+  });
+
   it.each(['c_give("alterguardianhat"); c_save(;', 'c_give（"alterguardianhat"，0）'])(
     'rejects malformed input without mutating state: %s',
     async command => {
