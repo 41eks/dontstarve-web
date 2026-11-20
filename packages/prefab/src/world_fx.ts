@@ -79,6 +79,8 @@ const FX_PREFABS = {
   },
   // staff_projectile.lua OnHitFire → fx.lua fire_fail_fx: bank/build fire_fail_fx, clip fx, fireOut sound.
   fire_fail_fx: { archive: 'fire_fail_fx.zip', bank: 'fire_fail_fx', anim: 'fx', sound: 'dontstarve/common/fireOut' },
+  // fx.lua splash: bank/build splash, clip splash, FinalOffset1. Its turnoftides splash/bird sound is not mapped yet.
+  splash: { archive: 'splash.zip', bank: 'splash', anim: 'splash', finalOffset: 1 },
   // fx.lua lightning_rod_fx: bank/build lightning_rod_fx, clip idle.
   lightning_rod_fx: { archive: 'lightning_rod_fx.zip', bank: 'lightning_rod_fx', anim: 'idle' },
   // lightning.lua: bank/build lightning, clip anim, Transform:SetScale(2, 2, 2), thunder_close.

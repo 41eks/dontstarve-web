@@ -33,6 +33,9 @@ export interface ItemRuntimeComponent {
   BindScheduler?(scheduler: import('../../componets/src/gameTimeScheduler').GameTimeScheduler): void;
   dispose(): void;
 }
+/** TUNING.MOISTURE_DRY_THRESHOLD. */
+const MOISTURE_DRY_THRESHOLD = 15;
+
 /** inventoryitem.owner: the entity holding an item — the player, a chest's or a worn backpack's inst, or a creature. */
 export type ItemOwner = import('../../componets/src/inventoryitem').ItemHolder;
 
@@ -242,7 +245,7 @@ export interface ItemComponents {
   trader?: import('../../componets/src/trader').Trader;
   machine?: import('../../componets/src/machine').Machine;
   inspectable?: import('../../componets/src/inspectable').Inspectable;
-  floater?: import('../../componets/src/ruinsrelicSignatures').Floater;
+  floater?: import('../../componets/src/floater').Floater;
   furnituredecor?: import('../../componets/src/ruinsrelicSignatures').FurnitureDecor;
   inventoryitemmoisture?: import('../../componets/src/ruinsrelicSignatures').InventoryItemMoisture;
 }
@@ -645,6 +648,15 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
       this.components.perishable.SetPercent(percent);
     }
     return true;
+  }
+  /**
+   * inventoryitemmoisture:MakeMoistureAtLeast(min): the item is wet once `min` is above TUNING.MOISTURE_DRY_THRESHOLD;
+   * the moisture value itself is not kept, only whether the item is wet.
+   */
+  MakeMoistureAtLeast(min: number): void {
+    if (min > MOISTURE_DRY_THRESHOLD) {
+      this.setWet(true);
+    }
   }
   setWet(wet: boolean): boolean {
     if (this.isRemoved || typeof wet !== 'boolean') {

@@ -39,6 +39,8 @@ def main():
 
     # turfs.lua constructs every item from tiledefs.lua's sixth AddTile argument.
     read_tiles = runpy.run_path(str(Path(__file__).with_name('turf-source.py')))['read_tiles']
+    # standardcomponents.lua MakeInventoryFloatable as each item's constructor calls it.
+    read_floater = runpy.run_path(str(Path(__file__).with_name('floater-source.py')))['floater']
 
     def read(name):
         return (scripts / 'prefabs' / (name + '.lua')).read_text()
@@ -464,6 +466,19 @@ def main():
         skin_specs[match[1]] = {'itemId': base[1], 'name': messages.get('STRINGS.SKIN_NAMES.' + match[1], match[1]),
                                  'icon': icon, 'atlas': icons[icon]}
         assets.update(['anim/' + path, 'anim/' + str(Path(path).with_suffix('.dyn'))])
+
+    # The gameplay items' floaters; static art has none.
+    for item, definition in items.items():
+        floater = read_floater(scripts, item, Path(definition['source']).stem, read)
+        if floater is None:
+            continue
+        definition['floater'] = floater
+        swap = floater.get('bankSwap')
+        if swap:
+            # Floater:SwitchToFloatAnim draws floating_items' floating_item bank with swap_spear from the swap build.
+            assets.update(['anim/floating_items.zip', 'anim/' + swap['build'] + '.zip'])
+    # float_fx.lua float_fx_front / float_fx_back, and fx.lua splash, beside a floating item.
+    assets.update(['anim/float_fx.zip', 'anim/splash.zip'])
 
     output = package / 'src/groundItems.json'
     serialized = json.dumps({'items': items, 'staticItems': static_items, 'staticVariants': static_variants,

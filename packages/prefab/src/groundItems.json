@@ -19,7 +19,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_cotl_brick": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -40,7 +44,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_pebblebeach": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -61,7 +69,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_monkey_ground": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -82,7 +94,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_shellbeach": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -103,7 +119,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_marsh": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -124,7 +144,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_rocky": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -145,7 +169,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_savanna": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -166,7 +194,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_forest": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -187,7 +219,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_grass": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -208,7 +244,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_deciduous": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -229,7 +269,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_desertdirt": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -250,7 +294,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_cave": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -271,7 +319,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_fungus": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -292,7 +344,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_fungus_red": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -313,7 +369,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_fungus_green": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -334,7 +394,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_fungus_moon": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -355,7 +419,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_sinkhole": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -376,7 +444,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_underrock": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -397,7 +469,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_vent": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -418,7 +494,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_mud": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -439,7 +519,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_archive": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -460,7 +544,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_vault": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -481,7 +569,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_ruinsbrick_glow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -502,7 +594,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_ruinsbrick": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -523,7 +619,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_ruinstiles_glow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -544,7 +644,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_ruinstiles": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -565,7 +669,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_ruinstrim_glow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -586,7 +694,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_ruinstrim": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -607,7 +719,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_meteor": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -628,7 +744,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_dragonfly": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -649,7 +769,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_woodfloor": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -670,7 +794,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_cotl_gold": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -691,7 +819,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_checkerfloor": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -712,7 +844,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_mosaic_grey": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -733,7 +869,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_mosaic_red": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -754,7 +894,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_mosaic_blue": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -775,7 +919,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_carpetfloor2": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -796,7 +944,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_carpetfloor": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -817,7 +969,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turf_beard_rug": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/turfs.lua",
@@ -838,7 +994,11 @@
       "tags": [
         "groundtile",
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "cutgrass": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/cutgrass.lua",
@@ -858,7 +1018,12 @@
         "cattoy",
         "renewable",
         "cutgrass"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 0.68
+      }
     },
     "twigs": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/twigs.lua",
@@ -879,7 +1044,11 @@
         "renewable",
         "oceanfishing_bobber",
         "twigs"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.68
+      }
     },
     "log": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/log.lua",
@@ -897,7 +1066,12 @@
       "skinArchives": {},
       "tags": [
         "log"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": 0.75
+      }
     },
     "cutreeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/cutreeds.lua",
@@ -913,7 +1087,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "scale": 0.6
+      }
     },
     "boards": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/boards.lua",
@@ -929,7 +1107,16 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.15,
+        "scale": [
+          1.15,
+          0.8,
+          1.15
+        ]
+      }
     },
     "rope": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/rope.lua",
@@ -947,7 +1134,11 @@
       "skinArchives": {},
       "tags": [
         "cattoy"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05
+      }
     },
     "cutstone": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/cutstone.lua",
@@ -1032,7 +1223,11 @@
       "moleBait": true,
       "tags": [
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.7
+      }
     },
     "charcoal": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/charcoal.lua",
@@ -1051,7 +1246,12 @@
       "moleBait": true,
       "tags": [
         "molebait"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 0.6
+      }
     },
     "pigskin": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pigskin.lua",
@@ -1067,7 +1267,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "scale": 0.77
+      }
     },
     "silk": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/silk.lua",
@@ -1085,7 +1289,10 @@
       "skinArchives": {},
       "tags": [
         "cattoy"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "stinger": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/stinger.lua",
@@ -1103,7 +1310,12 @@
       "skinArchives": {},
       "tags": [
         "selfstacker"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.7
+      }
     },
     "houndstooth": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/houndstooth.lua",
@@ -1123,7 +1335,15 @@
         "blowpipeammo",
         "reloaditem_ammo",
         "selfstacker"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "scale": [
+          0.6,
+          0.55,
+          0.6
+        ]
+      }
     },
     "nitre": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/nitre.lua",
@@ -1161,7 +1381,12 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": 0.7
+      }
     },
     "nightmarefuel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/nightmarefuel.lua",
@@ -1186,7 +1411,10 @@
       "pointFiltering": true,
       "tags": [
         "waterproofer"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "petals": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/petals.lua",
@@ -1201,7 +1429,10 @@
       "animation": "anim",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "petals_evil": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/petals_evil.lua",
@@ -1219,7 +1450,10 @@
       "skinArchives": {},
       "tags": [
         "dryable"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "ash": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/ash.lua",
@@ -1254,7 +1488,11 @@
       "skinArchives": {},
       "tags": [
         "cattoy"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.67
+      }
     },
     "boneshard": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/boneshard.lua",
@@ -1270,7 +1508,12 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.15,
+        "scale": 0.8
+      }
     },
     "butterflywings": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/butterflywings.lua",
@@ -1285,7 +1528,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.03
+      }
     },
     "butter": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/butter.lua",
@@ -1300,7 +1547,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "honey": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/honey.lua",
@@ -1318,7 +1568,11 @@
       "skinArchives": {},
       "tags": [
         "honeyed"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.8
+      }
     },
     "honeycomb": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/honeycomb.lua",
@@ -1333,7 +1587,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.78
+      }
     },
     "thulecite": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/thulecite.lua",
@@ -1393,7 +1651,12 @@
       "skinArchives": {},
       "tags": [
         "fertilizerresearchable"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": 0.73
+      }
     },
     "tentaclespots": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/tentaclespots.lua",
@@ -1409,7 +1672,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "scale": 0.72
+      }
     },
     "spidergland": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/spidergland.lua",
@@ -1427,7 +1694,10 @@
       "skinArchives": {},
       "tags": [
         "cattoy"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "slurtleslime": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/slurtleslime.lua",
@@ -1442,7 +1712,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.73
+      }
     },
     "slurtle_shellpieces": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/slurtle_shellpieces.lua",
@@ -1457,7 +1731,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "walrus_tusk": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/walrus_tusk.lua",
@@ -1472,7 +1750,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.08
+      }
     },
     "deerclops_eyeball": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/deerclops_eyeball.lua",
@@ -1487,7 +1769,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.2,
+        "scale": 0.95
+      }
     },
     "bearger_fur": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/bearger_fur.lua",
@@ -1502,7 +1789,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.77
+      }
     },
     "dragon_scales": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/dragon_scales.lua",
@@ -1518,7 +1809,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "scale": 0.82
+      }
     },
     "glommerfuel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/glommerfuel.lua",
@@ -1536,7 +1831,10 @@
       "skinArchives": {},
       "tags": [
         "fertilizerresearchable"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "acorn": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/acorn.lua",
@@ -1559,7 +1857,11 @@
         "show_spoilage",
         "treeseed",
         "cookable"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.15
+      }
     },
     "marblebean": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/marblebean.lua",
@@ -1591,7 +1893,16 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.145,
+        "scale": [
+          0.77,
+          0.75,
+          0.77
+        ]
+      }
     },
     "wagpunk_bits": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/wagpunk_bits.lua",
@@ -1607,7 +1918,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "med",
+        "scale": 0.7
+      }
     },
     "moonrocknugget": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/moonrocknugget.lua",
@@ -1661,7 +1976,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.2,
+        "scale": 0.75
+      }
     },
     "papyrus": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/papyrus.lua",
@@ -1680,7 +2000,11 @@
       "tags": [
         "cattoy",
         "bookcabinet_item"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "featherpencil": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/featherpencil.lua",
@@ -1695,7 +2019,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.15,
+        "scale": 0.65
+      }
     },
     "foliage": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/foliage.lua",
@@ -1710,7 +2039,10 @@
       "animation": "anim",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "cutlichen": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/cutlichen.lua",
@@ -1725,7 +2057,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "beardhair": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/beardhair.lua",
@@ -1740,7 +2075,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "cookingrecipecard": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/cookingrecipecard.lua",
@@ -1756,7 +2095,11 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "tags": []
+      "tags": [],
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "scrapbook_page": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/scrapbook_page.lua",
@@ -1771,7 +2114,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "blueprint": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/blueprint.lua",
@@ -1795,7 +2142,11 @@
       },
       "tags": [
         "_named"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "nightmare_timepiece": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/nightmare_timepiece.lua",
@@ -1824,6 +2175,10 @@
           "icon": "nightmare_timepiece_nightmare.tex",
           "atlas": "images/inventoryimages.xml"
         }
+      },
+      "floater": {
+        "size": "med",
+        "scale": 0.62
       }
     },
     "rocks": {
@@ -1868,7 +2223,16 @@
         "frozen",
         "molebait",
         "watersource"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.5,
+          0.65
+        ]
+      }
     },
     "marble": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/inv_marble.lua",
@@ -1904,7 +2268,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "heatrock": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/heatrock.lua",
@@ -2012,7 +2379,11 @@
         "bait",
         "molebait",
         "HASHEATER"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.2
+      }
     },
     "razor": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/razor.lua",
@@ -2034,7 +2405,21 @@
       },
       "tags": [
         "donotautopick"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.08,
+        "scale": [
+          0.9,
+          0.7,
+          0.9
+        ],
+        "bankSwap": {
+          "floatIndex": -2.0,
+          "build": "swap_razor",
+          "symbol": "swap_razor"
+        }
+      }
     },
     "ruinsrelic_plate": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/ruinsrelic.lua",
@@ -2052,7 +2437,12 @@
       "skinArchives": {},
       "tags": [
         "furnituredecor"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.95
+      }
     },
     "ruinsrelic_bowl": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/ruinsrelic.lua",
@@ -2070,7 +2460,12 @@
       "skinArchives": {},
       "tags": [
         "furnituredecor"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.3,
+        "scale": 0.95
+      }
     },
     "ruinsrelic_chipbowl": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/ruinsrelic.lua",
@@ -2088,7 +2483,12 @@
       "skinArchives": {},
       "tags": [
         "furnituredecor"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.95
+      }
     },
     "ruinsrelic_vase": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/ruinsrelic.lua",
@@ -2106,7 +2506,12 @@
       "skinArchives": {},
       "tags": [
         "furnituredecor"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.3,
+        "scale": 0.95
+      }
     },
     "panflute": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/panflute.lua",
@@ -2130,7 +2535,12 @@
       "tags": [
         "flute",
         "tool"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.8
+      }
     },
     "moonbutterfly": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/moonbutterfly.lua",
@@ -2145,7 +2555,10 @@
       "animation": "idle",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "moonbutterflywings": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/moonbutterflywings.lua",
@@ -2160,7 +2573,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.03
+      }
     },
     "moon_tree_blossom": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/moontree_blossom.lua",
@@ -2180,7 +2597,10 @@
         "cattoy",
         "vasedecoration",
         "dryable"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_1": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2196,7 +2616,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_2": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2212,7 +2635,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_3": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2228,7 +2654,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_4": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2244,7 +2673,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_5": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2260,7 +2692,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_6": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2280,7 +2715,10 @@
       "tags": [
         "molebait",
         "cattoy"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_7": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2296,7 +2734,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_8": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2312,7 +2753,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_9": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2328,7 +2772,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_10": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2344,7 +2791,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_11": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2360,7 +2810,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_12": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2376,7 +2829,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_13": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2392,7 +2848,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_14": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2408,7 +2867,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_15": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2424,7 +2886,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_16": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2440,7 +2905,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_17": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2456,7 +2924,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_18": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2472,7 +2943,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_19": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2488,7 +2962,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_20": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2504,7 +2981,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_21": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2520,7 +3000,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_22": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2536,7 +3019,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_23": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2552,7 +3038,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_24": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2568,7 +3057,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_25": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2584,7 +3076,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_26": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2600,7 +3095,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_27": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2616,7 +3114,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_28": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2632,7 +3133,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_29": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2648,7 +3152,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_30": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2664,7 +3171,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_31": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2680,7 +3190,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_32": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2696,7 +3209,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_33": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2712,7 +3228,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_34": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2728,7 +3247,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_35": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2744,7 +3266,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_36": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2760,7 +3285,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_37": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2776,7 +3304,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_38": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2792,7 +3323,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_39": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2808,7 +3342,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_40": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2824,7 +3361,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_41": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2840,7 +3380,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_42": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2856,7 +3399,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_43": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2872,7 +3418,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_44": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2888,7 +3437,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_45": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2904,7 +3456,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "trinket_46": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trinkets.lua",
@@ -2920,7 +3475,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "bathbomb": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/bathbomb.lua",
@@ -2938,7 +3496,11 @@
       "skinArchives": {},
       "tags": [
         "show_spoilage"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.2
+      }
     },
     "seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/seeds.lua",
@@ -2959,7 +3521,10 @@
         "deployedfarmplant",
         "cookable",
         "oceanfishing_lure"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "seeds_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/seeds.lua",
@@ -2980,7 +3545,10 @@
         "deployedfarmplant",
         "cookable",
         "oceanfishing_lure"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "red_cap": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
@@ -2995,7 +3563,12 @@
       "animation": "red_cap",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.88
+      }
     },
     "red_cap_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
@@ -3010,7 +3583,12 @@
       "animation": "red_cap_cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.9
+      }
     },
     "green_cap": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
@@ -3025,7 +3603,12 @@
       "animation": "green_cap",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.88
+      }
     },
     "green_cap_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
@@ -3040,7 +3623,12 @@
       "animation": "green_cap_cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.9
+      }
     },
     "blue_cap": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
@@ -3055,7 +3643,12 @@
       "animation": "blue_cap",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.88
+      }
     },
     "blue_cap_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mushrooms.lua",
@@ -3070,7 +3663,12 @@
       "animation": "blue_cap_cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.9
+      }
     },
     "pinecone": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pinecone.lua",
@@ -3090,7 +3688,12 @@
         "deployedplant",
         "cattoy",
         "treeseed"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.9
+      }
     },
     "acorn_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/acorn.lua",
@@ -3113,7 +3716,11 @@
         "show_spoilage",
         "treeseed",
         "cookable"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1
+      }
     },
     "poop": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/poop.lua",
@@ -3131,7 +3738,12 @@
       "skinArchives": {},
       "tags": [
         "fertilizerresearchable"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": 0.73
+      }
     },
     "spoiled_food": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/spoiledfood.lua",
@@ -3146,7 +3758,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.04,
+        "scale": 0.73
+      }
     },
     "gunpowder": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gunpowder.lua",
@@ -3196,6 +3813,10 @@
         "fence_victorianblack_item": "dynamic/fence_victorianblack.zip",
         "fence_victorianbrass_item": "dynamic/fence_victorianbrass.zip",
         "fence_victorianbronze_item": "dynamic/fence_victorianbronze.zip"
+      },
+      "floater": {
+        "size": "small",
+        "scale": 1.1
       }
     },
     "redgem": {
@@ -3218,7 +3839,12 @@
         "molebait",
         "quakedebris",
         "gem"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.8
+      }
     },
     "bluegem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -3240,7 +3866,12 @@
         "molebait",
         "quakedebris",
         "gem"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.8
+      }
     },
     "purplegem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -3262,7 +3893,12 @@
         "molebait",
         "quakedebris",
         "gem"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.8
+      }
     },
     "greengem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -3284,7 +3920,12 @@
         "molebait",
         "quakedebris",
         "gem"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.75
+      }
     },
     "orangegem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -3306,7 +3947,12 @@
         "molebait",
         "quakedebris",
         "gem"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.82
+      }
     },
     "yellowgem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -3328,7 +3974,12 @@
         "molebait",
         "quakedebris",
         "gem"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.85
+      }
     },
     "opalpreciousgem": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/gem.lua",
@@ -3350,7 +4001,12 @@
         "molebait",
         "quakedebris",
         "gem"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.87
+      }
     },
     "feather_crow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
@@ -3369,7 +4025,12 @@
       "tags": [
         "cattoy",
         "birdfeather"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.95
+      }
     },
     "feather_robin": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
@@ -3388,7 +4049,12 @@
       "tags": [
         "cattoy",
         "birdfeather"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.95
+      }
     },
     "feather_robin_winter": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
@@ -3407,7 +4073,12 @@
       "tags": [
         "cattoy",
         "birdfeather"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.95
+      }
     },
     "feather_canary": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/feathers.lua",
@@ -3426,7 +4097,12 @@
       "tags": [
         "cattoy",
         "birdfeather"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.95
+      }
     },
     "crow": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/birds.lua",
@@ -3521,7 +4197,10 @@
       "tags": [
         "catfood",
         "cookable"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "rottenegg": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/egg.lua",
@@ -3543,7 +4222,11 @@
         "cattoy",
         "fertilizerresearchable",
         "spoiledfood"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.25
+      }
     },
     "torch": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/torch.lua",
@@ -3583,7 +4266,11 @@
         "complexprojectile",
         "special_action_toss",
         "keep_equip_toss"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.68
+      }
     },
     "backpack": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/backpack.lua",
@@ -3638,7 +4325,11 @@
       },
       "tags": [
         "backpack"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.2
+      }
     },
     "bernie_inactive": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/bernie_inactive.lua",
@@ -3672,7 +4363,12 @@
       "animation": "idle_packed",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.8
+      }
     },
     "lantern": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mininglantern.lua",
@@ -3703,7 +4399,12 @@
       },
       "tags": [
         "light"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.2,
+        "scale": 0.65
+      }
     },
     "phonograph": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/phonograph.lua",
@@ -3728,7 +4429,12 @@
       },
       "hiddenSymbols": [
         "snow"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.07,
+        "scale": 0.72
+      }
     },
     "record": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/records.lua",
@@ -3748,6 +4454,11 @@
         "record_drstyle": "dynamic/record_drstyle.zip",
         "record_efs": "dynamic/record_efs.zip",
         "record_hallowednights": "dynamic/record_hallowednights.zip"
+      },
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.02,
+        "scale": 0.7
       }
     },
     "lightbulb": {
@@ -3763,7 +4474,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.07,
+        "scale": 0.73
+      }
     },
     "rock_avocado_fruit": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/rock_avocado_fruit.lua",
@@ -3801,7 +4517,10 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "floater": {
+        "size": "small"
+      }
     },
     "rock_avocado_fruit_ripe_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/rock_avocado_fruit.lua",
@@ -3816,7 +4535,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "rock_avocado_fruit_sprout": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/rock_avocado_fruit.lua",
@@ -3834,7 +4556,11 @@
       "skinArchives": {},
       "tags": [
         "deployedplant"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "scale": 0.4
+      }
     },
     "dug_rock_avocado_bush": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3852,7 +4578,11 @@
       "skinArchives": {},
       "tags": [
         "deployedplant"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.95
+      }
     },
     "dug_berrybush": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3874,7 +4604,12 @@
       },
       "tags": [
         "deployedplant"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.2,
+        "scale": 0.95
+      }
     },
     "dug_monkeytail": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3892,7 +4627,12 @@
       "skinArchives": {},
       "tags": [
         "deployedplant"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": 0.92
+      }
     },
     "dug_grass": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3910,7 +4650,12 @@
       "skinArchives": {},
       "tags": [
         "deployedplant"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": 0.92
+      }
     },
     "dug_sapling": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3928,7 +4673,12 @@
       "skinArchives": {},
       "tags": [
         "deployedplant"
-      ]
+      ],
+      "floater": {
+        "size": "large",
+        "verticalOffset": 0.1,
+        "scale": 0.55
+      }
     },
     "dug_sapling_moon": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/plantables.lua",
@@ -3946,7 +4696,12 @@
       "skinArchives": {},
       "tags": [
         "deployedplant"
-      ]
+      ],
+      "floater": {
+        "size": "large",
+        "verticalOffset": 0.1,
+        "scale": 0.55
+      }
     },
     "mole": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/mole.lua",
@@ -3977,7 +4732,10 @@
       "animation": "idle",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "fireflies": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/fireflies.lua",
@@ -4007,7 +4765,10 @@
       "animation": "walk_loop",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "yellowstaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
@@ -4032,7 +4793,21 @@
         "shadowlevel",
         "nopunch",
         "allow_action_on_impassable"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": [
+          0.9,
+          0.4,
+          0.9
+        ],
+        "bankSwap": {
+          "floatIndex": -13.0,
+          "build": "swap_staffs",
+          "symbol": "swap_yellowstaff"
+        }
+      }
     },
     "opalstaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
@@ -4056,7 +4831,21 @@
       "tags": [
         "nopunch",
         "allow_action_on_impassable"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": [
+          0.9,
+          0.4,
+          0.9
+        ],
+        "bankSwap": {
+          "floatIndex": -13.0,
+          "build": "swap_staffs",
+          "symbol": "swap_opalstaff"
+        }
+      }
     },
     "greenstaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
@@ -4079,7 +4868,21 @@
       "tags": [
         "shadowlevel",
         "nopunch"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": [
+          0.9,
+          0.4,
+          0.9
+        ],
+        "bankSwap": {
+          "floatIndex": -13.0,
+          "build": "swap_staffs",
+          "symbol": "swap_greenstaff"
+        }
+      }
     },
     "firestaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
@@ -4111,7 +4914,21 @@
         "weapon",
         "rangedweapon",
         "rangedlighter"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": [
+          0.9,
+          0.4,
+          0.9
+        ],
+        "bankSwap": {
+          "floatIndex": -13.0,
+          "build": "swap_staffs",
+          "symbol": "swap_redstaff"
+        }
+      }
     },
     "telestaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
@@ -4134,7 +4951,21 @@
       "tags": [
         "shadowlevel",
         "nopunch"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": [
+          0.9,
+          0.4,
+          0.9
+        ],
+        "bankSwap": {
+          "floatIndex": -13.0,
+          "build": "swap_staffs",
+          "symbol": "swap_purplestaff"
+        }
+      }
     },
     "orangestaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
@@ -4161,7 +4992,21 @@
       "tags": [
         "shadowlevel",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": [
+          0.9,
+          0.4,
+          0.9
+        ],
+        "bankSwap": {
+          "floatIndex": -13.0,
+          "build": "swap_staffs",
+          "symbol": "swap_orangestaff"
+        }
+      }
     },
     "icestaff": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
@@ -4192,7 +5037,21 @@
         "weapon",
         "rangedweapon",
         "extinguisher"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.1,
+        "scale": [
+          0.9,
+          0.4,
+          0.9
+        ],
+        "bankSwap": {
+          "floatIndex": -13.0,
+          "build": "swap_staffs",
+          "symbol": "swap_bluestaff"
+        }
+      }
     },
     "trident": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trident.lua",
@@ -4209,6 +5068,20 @@
       "symbolOverrides": {},
       "skinArchives": {
         "trident_merm": "dynamic/trident_merm.zip"
+      },
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          1.1,
+          0.5,
+          1.1
+        ],
+        "bankSwap": {
+          "floatIndex": -9.0,
+          "build": "swap_trident",
+          "symbol": "swap_trident"
+        }
       }
     },
     "reskin_tool": {
@@ -4229,6 +5102,20 @@
         "reskin_tool_brush": "dynamic/reskin_tool_brush.zip",
         "reskin_tool_toilet": "dynamic/reskin_tool_toilet.zip",
         "reskin_tool_wand": "dynamic/reskin_tool_wand.zip"
+      },
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          1.0,
+          0.4,
+          1.0
+        ],
+        "bankSwap": {
+          "floatIndex": -20.0,
+          "build": "swap_reskin_tool",
+          "symbol": "swap_reskin_tool"
+        }
       }
     },
     "book_silviculture": {
@@ -4246,6 +5133,10 @@
       "symbolOverrides": {},
       "skinArchives": {
         "book_silviculture_livinglog": "dynamic/book_silviculture_livinglog.zip"
+      },
+      "floater": {
+        "size": "med",
+        "scale": 0.75
       }
     },
     "book_rain": {
@@ -4261,7 +5152,11 @@
       "animation": "book_rain",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "book_moon": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/books.lua",
@@ -4276,7 +5171,11 @@
       "animation": "book_moon",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "hammer": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/hammer.lua",
@@ -4302,7 +5201,21 @@
         "hammer",
         "tool",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.7,
+          0.4,
+          0.7
+        ],
+        "bankSwap": {
+          "floatIndex": -13.0,
+          "build": "swap_hammer",
+          "symbol": "swap_hammer"
+        }
+      }
     },
     "nightsword": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/nightsword.lua",
@@ -4323,6 +5236,20 @@
         "nightsword_lightsbane": "dynamic/nightsword_lightsbane.zip",
         "nightsword_sharp": "dynamic/nightsword_sharp.zip",
         "nightsword_wizard": "dynamic/nightsword_wizard.zip"
+      },
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          1.0,
+          0.4,
+          1.0
+        ],
+        "bankSwap": {
+          "floatIndex": -17.5,
+          "build": "swap_nightmaresword",
+          "symbol": "swap_nightmaresword"
+        }
       }
     },
     "armorsnurtleshell": {
@@ -4338,7 +5265,12 @@
       "animation": "anim",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.2,
+        "scale": 0.7
+      }
     },
     "amulet": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/amulet.lua",
@@ -4362,7 +5294,11 @@
       "sinks": true,
       "tags": [
         "shadowlevel"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "scale": 0.6
+      }
     },
     "bugnet": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/bugnet.lua",
@@ -4383,6 +5319,20 @@
         "bugnet_lavaproof": "dynamic/bugnet_lavaproof.zip",
         "bugnet_spider": "dynamic/bugnet_spider.zip",
         "bugnet_spider_white": "dynamic/bugnet_spider_white.zip"
+      },
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.09,
+        "scale": [
+          0.9,
+          0.4,
+          0.9
+        ],
+        "bankSwap": {
+          "floatIndex": -14.5,
+          "build": "swap_bugnet",
+          "symbol": "swap_bugnet"
+        }
       }
     },
     "fishingrod": {
@@ -4407,7 +5357,21 @@
         "fishingrod",
         "allow_action_on_impassable",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.8,
+          0.4,
+          0.8
+        ],
+        "bankSwap": {
+          "floatIndex": -12.0,
+          "build": "swap_fishingrod",
+          "symbol": "swap_fishingrod"
+        }
+      }
     },
     "pitchfork": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pitchfork.lua",
@@ -4430,7 +5394,21 @@
       "tags": [
         "sharp",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.78,
+          0.4,
+          0.78
+        ],
+        "bankSwap": {
+          "floatIndex": 7.0,
+          "build": "swap_pitchfork",
+          "symbol": "swap_pitchfork"
+        }
+      }
     },
     "goldenpitchfork": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pitchfork.lua",
@@ -4451,7 +5429,21 @@
       "tags": [
         "sharp",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.78,
+          0.4,
+          0.78
+        ],
+        "bankSwap": {
+          "floatIndex": 7.0,
+          "build": "swap_pitchfork",
+          "symbol": "swap_pitchfork"
+        }
+      }
     },
     "farm_hoe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/farm_hoe.lua",
@@ -4469,6 +5461,20 @@
       "skinArchives": {
         "farm_hoe_invisible": "dynamic/farm_hoe_invisible.zip",
         "farm_hoe_rustic": "dynamic/farm_hoe_rustic.zip"
+      },
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.8,
+          0.4,
+          0.8
+        ],
+        "bankSwap": {
+          "floatIndex": -7.0,
+          "build": "quagmire_hoe",
+          "symbol": "swap_quagmire_hoe"
+        }
       }
     },
     "golden_farm_hoe": {
@@ -4487,6 +5493,20 @@
       "skinArchives": {
         "golden_farmhoe_garden": "dynamic/golden_farmhoe_garden.zip",
         "golden_farmhoe_invisible": "dynamic/golden_farmhoe_invisible.zip"
+      },
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.8,
+          0.4,
+          0.8
+        ],
+        "bankSwap": {
+          "floatIndex": -7.0,
+          "build": "swap_goldenhoe",
+          "symbol": "swap_goldenhoe"
+        }
       }
     },
     "axe": {
@@ -4515,7 +5535,21 @@
         "possessable_axe",
         "tool",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": [
+          1.2,
+          0.75,
+          1.2
+        ],
+        "bankSwap": {
+          "floatIndex": -11.0,
+          "build": "swap_axe",
+          "symbol": "swap_axe"
+        }
+      }
     },
     "goldenaxe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/axe.lua",
@@ -4539,7 +5573,21 @@
         "possessable_axe",
         "tool",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": [
+          1.2,
+          0.75,
+          1.2
+        ],
+        "bankSwap": {
+          "floatIndex": -11.0,
+          "build": "swap_goldenaxe",
+          "symbol": "swap_goldenaxe"
+        }
+      }
     },
     "pickaxe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pickaxe.lua",
@@ -4567,7 +5615,21 @@
         "sharp",
         "tool",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.75,
+          0.4,
+          0.75
+        ],
+        "bankSwap": {
+          "floatIndex": -11.0,
+          "build": "swap_pickaxe",
+          "symbol": "swap_pickaxe"
+        }
+      }
     },
     "goldenpickaxe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pickaxe.lua",
@@ -4590,7 +5652,21 @@
         "sharp",
         "tool",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.75,
+          0.4,
+          0.75
+        ],
+        "bankSwap": {
+          "floatIndex": -11.0,
+          "build": "swap_goldenpickaxe",
+          "symbol": "swap_goldenpickaxe"
+        }
+      }
     },
     "shovel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/shovel.lua",
@@ -4617,7 +5693,21 @@
       "tags": [
         "tool",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.8,
+          0.4,
+          0.8
+        ],
+        "bankSwap": {
+          "floatIndex": 7.0,
+          "build": "swap_shovel",
+          "symbol": "swap_shovel"
+        }
+      }
     },
     "goldenshovel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/shovel.lua",
@@ -4639,7 +5729,21 @@
       "tags": [
         "tool",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.8,
+          0.4,
+          0.8
+        ],
+        "bankSwap": {
+          "floatIndex": 7.0,
+          "build": "swap_goldenshovel",
+          "symbol": "swap_goldenshovel"
+        }
+      }
     },
     "moonglassaxe": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/axe.lua",
@@ -4660,7 +5764,21 @@
         "possessable_axe",
         "tool",
         "weapon"
-      ]
+      ],
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": [
+          1.2,
+          0.75,
+          1.2
+        ],
+        "bankSwap": {
+          "floatIndex": -11.0,
+          "build": "swap_glassaxe",
+          "symbol": "swap_glassaxe"
+        }
+      }
     },
     "wall_stone_item": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
@@ -4701,6 +5819,9 @@
       "symbolOverrides": {},
       "skinArchives": {
         "wall_wood_ornateitem": "dynamic/wall_wood_ornate.zip"
+      },
+      "floater": {
+        "size": "small"
       }
     },
     "wall_hay_item": {
@@ -4718,6 +5839,9 @@
       "symbolOverrides": {},
       "skinArchives": {
         "wall_hay_cornitem": "dynamic/wall_hay_corn.zip"
+      },
+      "floater": {
+        "size": "small"
       }
     },
     "wall_ruins_item": {
@@ -4807,7 +5931,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "cookedmeat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4822,7 +5949,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "meat_dried": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4837,7 +5967,10 @@
       "animation": "idle_dried_large",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "monstermeat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4858,7 +5991,10 @@
         "dryable",
         "lureplant_bait",
         "cookable"
-      ]
+      ],
+      "floater": {
+        "size": "small"
+      }
     },
     "cookedmonstermeat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4873,7 +6009,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "monstermeat_dried": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4888,7 +6027,10 @@
       "animation": "idle_dried_monster",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "smallmeat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4903,7 +6045,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "cookedsmallmeat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4918,7 +6063,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "smallmeat_dried": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4933,7 +6081,10 @@
       "animation": "idle_dried_small",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "drumstick": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4948,7 +6099,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "drumstick_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4963,7 +6117,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "batwing": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4978,7 +6135,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "batwing_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -4993,7 +6153,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "plantmeat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5008,7 +6171,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "plantmeat_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5023,7 +6189,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "fishmeat_small": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5038,7 +6207,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "fishmeat_small_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5053,7 +6225,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "fishmeat_small_dried": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5068,7 +6243,10 @@
       "animation": "dried_fishmeat_small",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "fishmeat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5083,7 +6261,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "fishmeat_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5098,7 +6279,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "fishmeat_dried": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5113,7 +6297,10 @@
       "animation": "dried_fishmeat",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "humanmeat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5128,7 +6315,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "humanmeat_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5143,7 +6333,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "humanmeat_dried": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5158,7 +6351,10 @@
       "animation": "idle_dried_human",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "barnacle": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5173,7 +6369,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "barnacle_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5188,7 +6387,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "batnose": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5203,7 +6405,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "batnose_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5218,7 +6423,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "mitegland": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5233,7 +6441,10 @@
       "animation": "raw",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "mitegland_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5248,7 +6459,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "pondfish": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/pondfish.lua",
@@ -5279,7 +6493,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.9
+      }
     },
     "cave_banana_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5294,7 +6513,11 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "carrot": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5313,7 +6536,12 @@
       "tags": [
         "cookable",
         "weighable_OVERSIZEDVEGGIES"
-      ]
+      ],
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 0.8
+      }
     },
     "carrot_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5328,7 +6556,11 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1
+      }
     },
     "corn": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5343,7 +6575,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "corn_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5358,7 +6593,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "pumpkin": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5373,7 +6611,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "pumpkin_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5388,7 +6629,11 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1
+      }
     },
     "eggplant": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5403,7 +6648,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "eggplant_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5418,7 +6666,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "durian": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5433,7 +6684,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "durian_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5448,7 +6702,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "pomegranate": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5463,7 +6720,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "scale": 0.8
+      }
     },
     "pomegranate_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5478,7 +6739,11 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "scale": 0.8
+      }
     },
     "dragonfruit": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5493,7 +6758,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.8
+      }
     },
     "dragonfruit_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5508,7 +6778,11 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05
+      }
     },
     "berries": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5523,7 +6797,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.7
+      }
     },
     "berries_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5538,7 +6816,11 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "berries_juicy": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5553,7 +6835,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.7
+      }
     },
     "berries_juicy_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5568,7 +6854,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "fig": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5583,7 +6872,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.7
+      }
     },
     "fig_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5598,7 +6891,11 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "cactus_meat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5613,7 +6910,10 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "cactus_meat_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5628,7 +6928,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "watermelon": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5643,7 +6946,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 0.7
+      }
     },
     "watermelon_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5658,7 +6966,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "kelp": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5673,7 +6984,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.7
+      }
     },
     "kelp_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5688,7 +7003,11 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "tomato": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5703,7 +7022,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.75
+      }
     },
     "tomato_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5718,7 +7042,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "potato": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5733,7 +7060,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.65
+      }
     },
     "potato_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5748,7 +7080,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "asparagus": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5763,7 +7098,11 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.7
+      }
     },
     "asparagus_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5778,7 +7117,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "onion": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5793,7 +7135,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "large",
+        "verticalOffset": 0.05,
+        "scale": 0.45
+      }
     },
     "onion_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5808,7 +7155,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "garlic": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5823,7 +7173,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.775
+      }
     },
     "garlic_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5838,7 +7193,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "pepper": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5853,7 +7211,12 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.75
+      }
     },
     "pepper_cooked": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5868,7 +7231,10 @@
       "animation": "cooked",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "carrot_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5883,7 +7249,10 @@
       "animation": "carrot",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "corn_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5898,7 +7267,10 @@
       "animation": "corn",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "pumpkin_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5913,7 +7285,10 @@
       "animation": "pumpkin",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "eggplant_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5928,7 +7303,10 @@
       "animation": "eggplant",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "durian_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5943,7 +7321,10 @@
       "animation": "durian",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "pomegranate_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5958,7 +7339,10 @@
       "animation": "pomegranate",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "dragonfruit_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5973,7 +7357,10 @@
       "animation": "dragonfruit",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "watermelon_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -5988,7 +7375,10 @@
       "animation": "watermelon",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "tomato_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -6003,7 +7393,10 @@
       "animation": "tomato",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "potato_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -6018,7 +7411,10 @@
       "animation": "potato",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "asparagus_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -6033,7 +7429,10 @@
       "animation": "asparagus",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "onion_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -6048,7 +7447,10 @@
       "animation": "onion",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "garlic_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -6063,7 +7465,10 @@
       "animation": "garlic",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "pepper_seeds": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -6078,7 +7483,10 @@
       "animation": "pepper",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "kelp_dried": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -6093,7 +7501,10 @@
       "animation": "dried_kelp",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "butterflymuffin": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6113,7 +7524,12 @@
           "symbol": "butterflymuffin"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.7
+      }
     },
     "frogglebunwich": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6133,7 +7549,11 @@
           "symbol": "frogglebunwich"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.55
+      }
     },
     "taffy": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6153,7 +7573,11 @@
           "symbol": "taffy"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.6
+      }
     },
     "pumpkincookie": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6173,7 +7597,11 @@
           "symbol": "pumpkincookie"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "stuffedeggplant": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6193,7 +7621,11 @@
           "symbol": "stuffedeggplant"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "scale": 0.8
+      }
     },
     "fishsticks": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6213,7 +7645,10 @@
           "symbol": "fishsticks"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "honeynuggets": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6233,7 +7668,11 @@
           "symbol": "honeynuggets"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.7
+      }
     },
     "honeyham": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6253,7 +7692,10 @@
           "symbol": "honeyham"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "dragonpie": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6273,7 +7715,11 @@
           "symbol": "dragonpie"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.8
+      }
     },
     "kabobs": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6293,7 +7739,11 @@
           "symbol": "kabobs"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.55
+      }
     },
     "mandrakesoup": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6313,7 +7763,10 @@
           "symbol": "mandrakesoup"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "baconeggs": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6333,7 +7786,11 @@
           "symbol": "baconeggs"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.6
+      }
     },
     "meatballs": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6353,7 +7810,10 @@
           "symbol": "meatballs"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "bonestew": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6373,7 +7833,12 @@
           "symbol": "bonestew"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.8
+      }
     },
     "perogies": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6393,7 +7858,11 @@
           "symbol": "perogies"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "turkeydinner": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6413,7 +7882,11 @@
           "symbol": "turkeydinner"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "ratatouille": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6433,7 +7906,11 @@
           "symbol": "ratatouille"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.68
+      }
     },
     "jammypreserves": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6453,7 +7930,10 @@
           "symbol": "jammypreserves"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "fruitmedley": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6473,7 +7953,11 @@
           "symbol": "fruitmedley"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "scale": 0.6
+      }
     },
     "fishtacos": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6493,7 +7977,10 @@
           "symbol": "fishtacos"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "waffles": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6513,7 +8000,11 @@
           "symbol": "waffles"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.75
+      }
     },
     "monsterlasagna": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6533,7 +8024,11 @@
           "symbol": "monsterlasagna"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.58
+      }
     },
     "powcake": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6553,7 +8048,11 @@
           "symbol": "powcake"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "unagi": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6573,7 +8072,11 @@
           "symbol": "unagi"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.67
+      }
     },
     "wetgoop": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6593,7 +8096,10 @@
           "symbol": "wetgoop"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "flowersalad": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6613,7 +8119,10 @@
           "symbol": "flowersalad"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "icecream": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6633,7 +8142,10 @@
           "symbol": "icecream"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "watermelonicle": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6653,7 +8165,12 @@
           "symbol": "watermelonicle"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.82
+      }
     },
     "trailmix": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6673,7 +8190,11 @@
           "symbol": "trailmix"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05
+      }
     },
     "hotchili": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6693,7 +8214,10 @@
           "symbol": "hotchili"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "guacamole": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6713,7 +8237,11 @@
           "symbol": "guacamole"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "scale": 0.85
+      }
     },
     "jellybean": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6733,7 +8261,11 @@
           "symbol": "jellybean"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "scale": 0.85
+      }
     },
     "potatotornado": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6753,7 +8285,11 @@
           "symbol": "potatotornado"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05
+      }
     },
     "mashedpotatoes": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6773,7 +8309,16 @@
           "symbol": "mashedpotatoes"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": [
+          0.7,
+          0.6,
+          0.7
+        ]
+      }
     },
     "asparagussoup": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6793,7 +8338,16 @@
           "symbol": "asparagussoup"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.75,
+          0.65,
+          0.75
+        ]
+      }
     },
     "vegstinger": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6813,7 +8367,12 @@
           "symbol": "vegstinger"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": 0.6
+      }
     },
     "bananapop": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6833,7 +8392,12 @@
           "symbol": "bananapop"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.95
+      }
     },
     "frozenbananadaiquiri": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6853,7 +8417,12 @@
           "symbol": "frozenbananadaiquiri"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.05,
+        "scale": 0.7
+      }
     },
     "bananajuice": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6873,7 +8442,12 @@
           "symbol": "bananajuice"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 0.55
+      }
     },
     "ceviche": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6893,7 +8467,16 @@
           "symbol": "ceviche"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "salsa": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6913,7 +8496,16 @@
           "symbol": "salsa"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small",
+        "verticalOffset": 0.1,
+        "scale": [
+          0.7,
+          0.6,
+          0.7
+        ]
+      }
     },
     "pepperpopper": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6933,7 +8525,10 @@
           "symbol": "pepperpopper"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "californiaroll": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6953,7 +8548,16 @@
           "symbol": "californiaroll"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "seafoodgumbo": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6973,7 +8577,16 @@
           "symbol": "seafoodgumbo"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "surfnturf": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -6993,7 +8606,16 @@
           "symbol": "surfnturf"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "lobsterbisque": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7013,7 +8635,16 @@
           "symbol": "lobsterbisque"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "lobsterdinner": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7033,7 +8664,16 @@
           "symbol": "lobsterdinner"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "barnaclepita": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7053,7 +8693,16 @@
           "symbol": "barnaclepita"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "barnaclesushi": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7073,7 +8722,16 @@
           "symbol": "barnaclesushi"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "barnaclinguine": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7093,7 +8751,16 @@
           "symbol": "barnaclinguine"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "barnaclestuffedfishhead": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7113,7 +8780,16 @@
           "symbol": "barnaclestuffedfishhead"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "leafloaf": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7133,7 +8809,16 @@
           "symbol": "leafloaf"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "leafymeatburger": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7153,7 +8838,16 @@
           "symbol": "leafymeatburger"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "leafymeatsouffle": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7173,7 +8867,16 @@
           "symbol": "leafymeatsouffle"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "meatysalad": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7193,7 +8896,16 @@
           "symbol": "meatysalad"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": [
+          0.65,
+          0.6,
+          0.65
+        ]
+      }
     },
     "shroomcake": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7213,7 +8925,12 @@
           "symbol": "shroomcake"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 1.0
+      }
     },
     "sweettea": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7233,7 +8950,12 @@
           "symbol": "sweettea"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 0.65
+      }
     },
     "koalefig_trunk": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7253,7 +8975,12 @@
           "symbol": "koalefig_trunk"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 0.65
+      }
     },
     "figatoni": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7273,7 +9000,12 @@
           "symbol": "figatoni"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 0.65
+      }
     },
     "figkabab": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7293,7 +9025,11 @@
           "symbol": "figkabab"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.55
+      }
     },
     "frognewton": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7313,7 +9049,11 @@
           "symbol": "frognewton"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.55
+      }
     },
     "bunnystew": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7333,7 +9073,12 @@
           "symbol": "bunnystew"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 0.55
+      }
     },
     "justeggs": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7353,7 +9098,11 @@
           "symbol": "justeggs"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.85
+      }
     },
     "veggieomlet": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7373,7 +9122,11 @@
           "symbol": "veggieomlet"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.7
+      }
     },
     "talleggs": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7393,7 +9146,11 @@
           "symbol": "talleggs"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.65
+      }
     },
     "beefalofeed": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7413,7 +9170,10 @@
           "symbol": "beefalofeed"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "small"
+      }
     },
     "beefalotreat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7433,7 +9193,11 @@
           "symbol": "beefalotreat"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "scale": 0.85
+      }
     },
     "shroombait": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/preparedfoods.lua",
@@ -7453,7 +9217,12 @@
           "symbol": "shroombait"
         }
       },
-      "skinArchives": {}
+      "skinArchives": {},
+      "floater": {
+        "size": "med",
+        "verticalOffset": 0.05,
+        "scale": 1.0
+      }
     }
   },
   "staticItems": {

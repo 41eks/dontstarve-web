@@ -21,6 +21,7 @@ afterEach(() => {
 /** Land at x < 10, ocean from 10 to 20, and off the map beyond. */
 const map = {
   isPassableAtPoint: (point: ReadonlyVector3, allowWater: boolean) => point.x < 10 || (allowWater && point.x < 20),
+  isOceanAtPoint: (point: ReadonlyVector3) => point.x >= 10 && point.x < 20,
 };
 
 function setup() {

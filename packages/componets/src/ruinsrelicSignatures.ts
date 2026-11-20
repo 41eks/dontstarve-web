@@ -5,9 +5,6 @@ export class FurnitureDecor {
 export class Sittable {
   constructor(_inst: object) {}
 }
-export class Floater {
-  constructor(_inst: object) {}
-}
 export class InventoryItemMoisture {
   constructor(_inst: object) {}
 }

@@ -4,6 +4,8 @@ import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 export interface OceanMap {
   /** Map:IsPassableAtPoint(x, 0, z, allow_water): land, and the ocean too when water is allowed. */
   isPassableAtPoint(point: ReadonlyVector3, allowWater: boolean): boolean;
+  /** Map:IsOceanAtPoint(x, 0, z) and not Map:IsVisualGroundAtPoint(x, 0, z): open water. */
+  isOceanAtPoint(point: ReadonlyVector3): boolean;
 }
 
 /** The entity ShouldEntitySink and SinkEntity read. */

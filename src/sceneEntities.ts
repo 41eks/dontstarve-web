@@ -824,6 +824,7 @@ export async function createSceneEntities(
       map: {
         isPassableAtPoint: (point, allowWater) =>
           turfMap.isPassableAtPoint(point) || (allowWater && turfMap.isOceanAtWorld(point)),
+        isOceanAtPoint: point => turfMap.isOceanAtWorld(point),
       },
       physics: world,
       fx: Managers['world_fx'],

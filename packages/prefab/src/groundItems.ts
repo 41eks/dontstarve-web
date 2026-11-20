@@ -10,6 +10,9 @@ import type { PrefabEntityDefinition } from './prefabInstance';
 import { InventoryPhysics, type LootLaunch } from '../../componets/src/inventoryphysics';
 import { syncPlacementEntity } from './placementEntities';
 import { ShouldEntitySink, SinkEntity } from './ocean_util';
+import type { FloaterSize } from '../../componets/src/floater';
+import { MakeInventoryFloatable } from './standardcomponents';
+import { bindFloatFx } from './float_fx';
 import { TILE_SIZE } from './tile';
 import { configureTurfEntity } from './turfs';
 
@@ -26,6 +29,8 @@ export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
   readonly elementalFoodHunger?: number;
   /** inventoryitem:SetSinks(true): the item sinks in the ocean. */
   readonly sinks?: boolean;
+  /** MakeInventoryFloatable's arguments; an item without one has no floater. */
+  readonly floater?: ItemFloater;
   readonly tags?: readonly string[];
   readonly scale?: number;
   readonly ground?: boolean;
@@ -33,14 +38,42 @@ export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
   readonly skinArchives: Readonly<Record<string, string>>;
 }
 
+/** standardcomponents.lua MakeInventoryFloatable(inst, size, offset, scale, swap_bank, float_index, swap_data). */
+export interface ItemFloater {
+  readonly size: FloaterSize;
+  readonly verticalOffset?: number;
+  readonly scale?: number | readonly [number, number, number];
+  /** swap_bank: floating, the item is drawn as floating_item's frame `floatIndex` with `symbol` of `build` on swap_spear. */
+  readonly bankSwap?: { readonly floatIndex: number; readonly build: string; readonly symbol: string };
+}
+
 /**
  * A catalog entry as JSON types it: the tile name is a plain string and the colour a plain array until they are
- * checked against tiledefs and the four channels.
+ * checked against tiledefs and the four channels, and the floater's size and scale until they are checked too.
  */
-type GroundItemCatalogEntry = Omit<GroundItemAssetDefinition, 'groundTile' | 'multColour'> & {
+type GroundItemCatalogEntry = Omit<GroundItemAssetDefinition, 'groundTile' | 'multColour' | 'floater'> & {
   readonly groundTile?: string;
   readonly multColour?: readonly number[];
+  readonly floater?: Omit<ItemFloater, 'size' | 'scale'> & {
+    readonly size: string;
+    readonly scale?: number | readonly number[];
+  };
 };
+const FLOATER_SIZES: readonly string[] = ['small', 'med', 'large'] satisfies readonly FloaterSize[];
+function itemFloater(id: string, floater: NonNullable<GroundItemCatalogEntry['floater']>): ItemFloater {
+  const { size, scale } = floater;
+  if (!FLOATER_SIZES.includes(size)) {
+    throw new Error(`${id}: unknown floater size ${size}`);
+  }
+  if (typeof scale === 'object' && scale.length !== 3) {
+    throw new Error(`${id}: floater scale needs three axes`);
+  }
+  return {
+    ...floater,
+    size: size as FloaterSize,
+    scale: typeof scale === 'object' ? [scale[0]!, scale[1]!, scale[2]!] : scale,
+  };
+}
 const isGroundTileName = (name: string): name is GroundTileName => Object.hasOwn(GROUND_TILE_DEFINITIONS, name);
 function groundTileName(id: string, name: string): GroundTileName {
   if (!isGroundTileName(name)) {
@@ -57,12 +90,13 @@ function rgba(id: string, colour: readonly number[]): readonly [number, number, 
 }
 const CATALOG_ITEMS: Readonly<Record<string, GroundItemCatalogEntry>> = catalog.items;
 export const GROUND_ITEM_DEFINITIONS: Readonly<Record<string, GroundItemAssetDefinition>> = Object.fromEntries(
-  Object.entries(CATALOG_ITEMS).map(([id, { groundTile, multColour, ...item }]) => [
+  Object.entries(CATALOG_ITEMS).map(([id, { groundTile, multColour, floater, ...item }]) => [
     id,
     {
       ...item,
       ...(groundTile === undefined ? {} : { groundTile: groundTileName(id, groundTile) }),
       ...(multColour === undefined ? {} : { multColour: rgba(id, multColour) }),
+      ...(floater === undefined ? {} : { floater: itemFloater(id, floater) }),
     },
   ]),
 );
@@ -147,13 +181,15 @@ export function groundItemPrefab(
       : undefined;
   // Variants drawn from a bank and build of their own (blueprint's rare one), as their prefab's SetBank / SetBuild.
   const bankVariants = Object.values(GROUND_ART_VARIANTS[itemId] ?? {}).filter(variant => variant.bank !== undefined);
+  // Floater:SwitchToFloatAnim draws a bank-swapping item from floating_items' floating_item bank.
+  const floatingBank = GROUND_ITEM_DEFINITIONS[itemId]?.floater?.bankSwap ? ['floating_items.zip'] : [];
   return {
     fn: (_position, sprites) => {
       const inst = world.newItem(itemId);
       inst.sprite.resetPresentation({ name: art.animation, held: !art.loop, billboard: !art.ground });
-      if (bankVariants.length) {
+      if (bankVariants.length || floatingBank.length) {
         inst.AnimState.DeclareAnimationAssets(
-          [art.animationArchive, ...bankVariants.map(variant => variant.animationArchive!)],
+          [art.animationArchive, ...bankVariants.map(variant => variant.animationArchive!), ...floatingBank],
           sprites.archives,
         );
         inst.AnimState.SetBank(art.bank);
@@ -259,8 +295,32 @@ export function bindItemWorld(inst: ItemEntity, world: ItemPrefabWorld): void {
   inst.ListenForEvent('on_landed', settle);
   // inventoryitem's landing: it polls until the body rests, then sinks off the passable ground.
   const map = world.map;
-  if (GROUND_ITEM_DEFINITIONS[inst.prefab]?.sinks) {
+  const definition = GROUND_ITEM_DEFINITIONS[inst.prefab];
+  if (definition?.sinks) {
     inst.components.inventoryitem.SetSinks(true);
+  }
+  if (definition?.floater) {
+    const { size, verticalOffset, scale, bankSwap } = definition.floater;
+    const floater = MakeInventoryFloatable(
+      inst,
+      size,
+      verticalOffset,
+      scale,
+      bankSwap !== undefined,
+      bankSwap?.floatIndex,
+      // The default anim the swap restores is the item's own ground art.
+      bankSwap && {
+        sym_build: bankSwap.build,
+        sym_name: bankSwap.symbol,
+        bank: definition.bank,
+        anim: definition.animation,
+      },
+    );
+    floater.BindWorld({
+      isOceanAtPoint: point => map?.isOceanAtPoint(point) ?? false,
+      SpawnSplash: position => world.fx?.spawn('splash', position),
+    });
+    bindFloatFx(inst, floater, world.sprites, TILE_SIZE / 4);
   }
   inst.components.inventoryitem.BindLandingWorld({
     componentUpdates: world.componentUpdates,

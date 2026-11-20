@@ -9,10 +9,10 @@ import { InventoryItem } from '../../componets/src/inventoryitem';
 import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { RoseInspectable } from '../../componets/src/pandoraschestSignatures';
-import { Floater, FurnitureDecor, InventoryItemMoisture, Sittable } from '../../componets/src/ruinsrelicSignatures';
+import { FurnitureDecor, InventoryItemMoisture, Sittable } from '../../componets/src/ruinsrelicSignatures';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabInstance, type PrefabComponents, type PrefabEntityDefinition } from './prefabInstance';
-import { MakeObstaclePhysics } from './standardcomponents';
+import { MakeInventoryFloatable, MakeObstaclePhysics } from './standardcomponents';
 import { clearPersistData, type EntityPersistData, structureHealth } from './saveRecord';
 import type { ReadonlyVector3 } from './transform';
 import type { WorldContext } from './worldContext';
@@ -97,7 +97,7 @@ export function configureRuinsRelicItem(inst: ItemEntity): void {
   }
   inst.addTag('furnituredecor');
   addComponent(inst, 'furnituredecor', FurnitureDecor);
-  addComponent(inst, 'floater', Floater);
+  // The item's MakeInventoryFloatable comes from the ground item catalog with its world (bindItemWorld).
   addComponent(inst, 'inventoryitemmoisture', InventoryItemMoisture);
   addComponent(inst, 'inspectable', Inspectable).SetNameOverride('relic');
   addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
@@ -149,7 +149,8 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     if (isRelicItem(this.prefabId)) {
       this.addTag('furnituredecor');
       addComponent(this, 'inventoryitem', InventoryItem);
-      addComponent(this, 'floater', Floater);
+      // MakeInventoryFloatable(inst, "small", FLOATER_VERT_OFFSET, 0.95).
+      MakeInventoryFloatable(this, 'small', this.name === 'vase' || this.name === 'bowl' ? 0.3 : 0.1, 0.95);
       addComponent(this, 'furnituredecor', FurnitureDecor);
       addComponent(this, 'inventoryitemmoisture', InventoryItemMoisture);
     } else {

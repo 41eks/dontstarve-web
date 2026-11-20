@@ -51,6 +51,8 @@ export interface InventoryItemInstance {
   readonly inlimbo?: boolean;
   ListenForEvent?(event: string, fn: () => void): () => void;
   DoTaskInTime?(time: number, fn: () => void): unknown;
+  /** inventoryitemmoisture:MakeMoistureAtLeast, for an inst with moisture. */
+  MakeMoistureAtLeast?(min: number): void;
 }
 
 /**
@@ -235,6 +237,11 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
 
   get isLanded(): boolean {
     return this.is_landed;
+  }
+
+  /** inventoryitem:MakeMoistureAtLeast(min). */
+  MakeMoistureAtLeast(min: number): void {
+    this.inst.MakeMoistureAtLeast?.(min);
   }
 
   /** inventoryitem:IsHeld(). */

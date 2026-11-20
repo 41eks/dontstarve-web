@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { addComponent, removeComponent } from './components';
 import { Freezable } from '../../componets/src/freezable';
+import { Floater, type FloaterInst, type FloaterSize, type FloaterSwapData } from '../../componets/src/floater';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { releaseBuildingContainer } from './containers';
@@ -346,3 +347,32 @@ export const MakeHugeFreezableCharacter = (
   sym?: string,
   offset?: ShatterOffset,
 ) => MakeFreezableCharacter(inst, 5, 4, world, sym, offset);
+
+/**
+ * standardcomponents.lua MakeInventoryFloatable(inst, size, offset, scale, swap_bank, float_index, swap_data): the
+ * floater, its size, vertical offset and scale, and the bank it swaps to while floating.
+ */
+export function MakeInventoryFloatable(
+  inst: PrefabInstance & FloaterInst,
+  size: FloaterSize = 'small',
+  offset?: number,
+  scale?: number | readonly [number, number, number],
+  swap_bank?: boolean,
+  float_index?: number,
+  swap_data?: FloaterSwapData,
+): Floater {
+  const floater = addComponent(inst, 'floater', Floater);
+  floater.SetSize(size);
+  if (offset !== undefined) {
+    floater.SetVerticalOffset(offset);
+  }
+  if (scale !== undefined) {
+    floater.SetScale(scale);
+  }
+  if (swap_bank) {
+    floater.SetBankSwapOnFloat(swap_bank, float_index, swap_data);
+  } else if (swap_data) {
+    floater.SetSwapData(swap_data);
+  }
+  return floater;
+}

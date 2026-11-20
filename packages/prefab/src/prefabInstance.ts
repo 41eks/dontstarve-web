@@ -83,7 +83,7 @@ export interface PrefabComponents extends ActionComponents {
   symbolswapdata?: import('../../componets/src/symbolswapdata').SymbolSwapData;
   lunarhailbuildup?: import('../../componets/src/pandoraschestSignatures').LunarHailBuildup;
   roseinspectable?: import('../../componets/src/pandoraschestSignatures').RoseInspectable;
-  floater?: import('../../componets/src/ruinsrelicSignatures').Floater;
+  floater?: import('../../componets/src/floater').Floater;
   furnituredecor?: import('../../componets/src/ruinsrelicSignatures').FurnitureDecor;
   inventoryitemmoisture?: import('../../componets/src/ruinsrelicSignatures').InventoryItemMoisture;
   /** firefx.lua on a fire fx entity (fire, campfirefire), which its owner's burnable or fueled drives. */
