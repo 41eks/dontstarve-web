@@ -3,14 +3,14 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Hauntable, HAUNT_COOLDOWN_SMALL } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/inspectable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
-import { Floater } from '../../componets/src/ruinsrelicSignatures';
+import type { Floater } from '../../componets/src/floater';
 import { UPGRADETYPES, Upgradeable } from '../../componets/src/upgradeable';
 import { WaterPhysics } from '../../componets/src/watertreePillarSignatures';
 import { Workable } from '../../componets/src/workable';
 import { addComponent } from './components';
 import { POPULATING, PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { type EntityPersistData } from './saveRecord';
-import { MakeWaterObstaclePhysics } from './standardcomponents';
+import { MakeInventoryFloatable, MakeWaterObstaclePhysics } from './standardcomponents';
 
 export const SEASTACK_ID = 'seastack' as const;
 /** seastack.lua assets: one archive holds the water_rock01 bank and the water_rock_01 build. */
@@ -103,9 +103,10 @@ function fn(world: SeastackWorld): SeastackInstance {
   inst.sprite.hideLayer('paint_A');
   inst.sprite.hideLayer('paint_B');
 
-  // MakeInventoryFloatable(inst, "med", 0.1, {1.1, 0.9, 1.1}): only the signature component; its size, offset, scale,
-  // SetIsObstacle and bob_percent are skipped, as is the DoTaskInTime that calls floater:OnLandedServer().
-  addComponent(inst, 'floater', Floater);
+  const floater = MakeInventoryFloatable(inst, 'med', 0.1, [1.1, 0.9, 1.1]);
+  floater.SetIsObstacle();
+  floater.bob_percent = 0;
+  // The DoTaskInTime that calls floater:OnLandedServer() is skipped: the sea stack's world binds no map or ripples.
 
   addComponent(inst, 'inspectable', Inspectable);
 

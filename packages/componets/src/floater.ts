@@ -64,6 +64,8 @@ export class Floater {
   float_index = 1;
   swap_data?: FloaterSwapData;
   splash = true;
+  /** AnimState:SetFloatParams' bob amount; the bobbing itself is not drawn. */
+  bob_percent = 1;
   is_obstable = false;
   /** floater._is_landed / showing_effect. */
   private readonly landed = createSignal(false);
