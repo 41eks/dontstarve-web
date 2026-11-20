@@ -157,4 +157,4 @@ python3 scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output 
 
 这些记录按 prefab ID 存为 `world.entities.<prefab>[]`：数量是 `stackable: { stack }`（数量 1 时省略），皮肤是记录上的 `skinname`，外观分支是 `groundVariant`。石头／冰块的 anim、月亮碎片的 glassname、贝壳的 variation、稀有蓝图、包裹大小和扑克牌正面映射为白名单外观变体。保留源高度并按现有坐标比例及 Z 轴映射导入；平台坐标仍拒绝。其余源组件只在报告中记录名称，不因美术导入扩展组件实现；已有 prefab 沿用原工厂、组件及交互，仅有美术的 ID 不增加拾取／使用／装备目标、容器或计时器。
 
-所有记录由 `itemPrefabs` 的物品 prefab 在共享 `PrefabEntityManager` 上生成，复用 PrefabInstance/PrefabDisplay 和 tile 活动订阅；休眠释放 visual，保存保留逻辑记录，唤醒恢复外观。新增的 `c_spawn` ID、语法和例子见 [README 调试命令](../README.md)。
+所有记录由 `itemPrefabs` 的物品 prefab 在共享 `PrefabEntityManager` 上生成，复用 PrefabInstance/PrefabDisplay 和 tile 活动订阅；休眠释放 visual，保存保留逻辑记录，唤醒恢复外观。新增的 `c_spawn` ID、语法和例子见 [prefab README](../packages/prefab/README.md)。

@@ -633,14 +633,14 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 
 | 项目范围 | 当前依据 / 差异 |
 | --- | --- |
-| c_spawn 支持的 ID | [src/prefabDefinitions.ts](../src/prefabDefinitions.ts) 的 debugSpawnIds；[README 调试命令](../README.md#调试命令debugcommand) 列出支持对象。 |
+| c_spawn 支持的 ID | [src/prefabDefinitions.ts](../src/prefabDefinitions.ts) 的 debugSpawnIds；各 prefab 的命令说明见 [prefab README](../packages/prefab/README.md)。 |
 | c_give 支持的 ID | [src/inventoryItems.ts](../src/inventoryItems.ts) 的 INVENTORY_ITEM_SPECS；命令通过物品定义校验，并由库存系统添加。 |
 | 参数 | 项目支持 c_spawn("prefab_id") 和 c_give("item_id", count)，不支持原版的 dontselect，也未接入 c_spawn 的数量参数。 |
 | 墙物品的 c_spawn | 项目 wall_*_item 别名生成建成墙，与原版生成墙物品不同。 |
 | 背包入栏 | 项目将背包作为普通库存物品，每个占一格；原版的 cangoincontainer=false 不适用于当前项目库存模型。 |
 | torch 等普通物品 | 原版两种命令都可用；项目的 torch 已支持 c_give 与 c_spawn，其他普通物品的 c_spawn 仍需单独出现在 debugSpawnIds 中。 |
 
-此表记录源码调查及对应的项目实现说明；当前命令支持范围以 README 和注册表为准。
+此表记录源码调查及对应的项目实现说明；当前命令支持范围以注册表和 [prefab README](../packages/prefab/README.md) 为准。
 
 2026-10-14 补充石果灌木：`prefabs/rock_avocado_bush.lua` 注册世界实体 `rock_avocado_bush`（无 inventoryitem，只支持 `c_spawn`）；`prefabs/plantables.lua` 的 `name = "rock_avocado_bush"` 经共享构造注册 `dug_rock_avocado_bush`，带 inventoryitem 与 stackable，可 `c_spawn` / `c_give`；`prefabs/rock_avocado_fruit.lua` 注册硬壳 `rock_avocado_fruit`，库存实际图名为 `rock_avocado_fruit_rockhard`，同样支持两种命令。支持灌木采摘、四阶段生长、移植与施肥，以及硬壳果实的库存／地面形态。
 

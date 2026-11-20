@@ -32,7 +32,7 @@
 4. **建立供热实例。** 池实例挂 `Heater`，配置 heat=500，保留 `lava`、`antlion_sinkhole_blocker`、`birdblocker`、`blocker` 与组件拥有的 `HASHEATER` 标签。暂未实现的 cooker 分支不提供虚假的 COOK 动作。使用现有实体注册路径暴露位置、标签和组件，供以后通用温度组件查询；不新增熔岩池专用的升温控制器。
 5. **恢复焦岩布局。** 用共享游戏调度器和私有 `ComponentTimer` 对齐源 0 延迟初始化，位置确定后再创建子焦岩。读档先恢复布局，再执行初始化，避免随机生成后叠加。永久移除取消尚未执行的任务；只替换美术时保留布局与逻辑实例。
 6. **接入存档和命令。** 在 `src/prefabDefinitions.ts`、`src/sceneEntities.ts` 及现有存档类型／校验中注册池与独立焦岩。新增 `c_spawn("lava_pond")`、`c_spawn("lava_pond_rock")`、`c_spawn("lava_pond_rock2")`～`c_spawn("lava_pond_rock7")`；它们没有 inventoryitem，不支持 `c_give`。池保存 ID、transform 和 rocks 布局；子焦岩、常量 500、瞬时初始化任务不重复入档。独立生成的焦岩按自己的 prefab ID 保存。
-7. **释放和文档。** 显式移除／场景销毁时注销热源，释放碰撞体、局部光照、子焦岩、动画几何及共享工厂；不注册 pagehide 清理。更新 README 的命令语法、例子和支持 ID，补充 prefab 命令静态核对表及温度文档的供给端实现状态。
+7. **释放和文档。** 显式移除／场景销毁时注销热源，释放碰撞体、局部光照、子焦岩、动画几何及共享工厂；不注册 pagehide 清理。更新 [prefab README](../packages/prefab/README.md) 的命令语法、例子和支持 ID，补充 prefab 命令静态核对表及温度文档的供给端实现状态。
 
 所有 DST 距离统一经过现有场景比例换算：当前 1 个 DST 单位对应 3 个场景单位。碰撞半径为 5.85，热源消费搜索半径为 30，焦岩 offset 及光照半径也须一致换算；heat=500 保持不变。光照保留源 radius=1.5、falloff=0.66、intensity=0.66、colour=(235,121,12)/255。
 
