@@ -6,7 +6,9 @@ export default defineConfig({
   // Prebundle the game and loading-page dependencies so discovering React or
   // the CommonJS debugger cannot reload a running interaction test.
   optimizeDeps: {
-    entries: ['../../src/main.ts', '../../src/bootstrap.tsx'].map(path => fileURLToPath(new URL(path, import.meta.url))),
+    entries: ['../../src/main.ts', '../../src/bootstrap.tsx'].map(path =>
+      fileURLToPath(new URL(path, import.meta.url)),
+    ),
     include: ['three', 'cannon-es', 'fflate', '@dontstarve-web/animation > fflate', 'cannon-es-debugger'],
   },
   server: {

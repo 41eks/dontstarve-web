@@ -62,29 +62,48 @@ export class Deployable {
   private readonly candeploy?: (point: Vector3, map: DeployMap) => boolean;
   private readonly ondeploy: (point: Vector3, deployer: Deployer, map: DeployMap) => void | boolean;
 
-  constructor(inst: DeployInst, ondeploy: (point: Vector3, deployer: Deployer, map: DeployMap) => void | boolean,
-    options?: { mode: 'PLANT'; spacing: number; placer: DeployPlacerArt }
-      | { mode: 'CUSTOM'; spacing: number; usegridplacer: boolean; candeploy(point: Vector3, map: DeployMap): boolean }) {
+  constructor(
+    inst: DeployInst,
+    ondeploy: (point: Vector3, deployer: Deployer, map: DeployMap) => void | boolean,
+    options?:
+      | { mode: 'PLANT'; spacing: number; placer: DeployPlacerArt }
+      | { mode: 'CUSTOM'; spacing: number; usegridplacer: boolean; candeploy(point: Vector3, map: DeployMap): boolean },
+  ) {
     this.inst = inst;
     this.ondeploy = ondeploy;
-    this.mode = options?.mode ?? 'TURF'; this.spacing = options?.spacing ?? 2;
+    this.mode = options?.mode ?? 'TURF';
+    this.spacing = options?.spacing ?? 2;
     this.usegridplacer = options?.mode === 'CUSTOM' ? options.usegridplacer : this.mode === 'TURF';
-    if (options?.mode === 'CUSTOM') { this.candeploy = options.candeploy; }
-    if (options?.mode === 'PLANT') { this.placer = options.placer; }
+    if (options?.mode === 'CUSTOM') {
+      this.candeploy = options.candeploy;
+    }
+    if (options?.mode === 'PLANT') {
+      this.placer = options.placer;
+    }
   }
 
   CanDeploy(point: Vector3, map: DeployMap | undefined): boolean {
-    if (!map || this.inst.isRemoved) { return false; }
-    if (this.candeploy) { return this.candeploy(point, map); }
+    if (!map || this.inst.isRemoved) {
+      return false;
+    }
+    if (this.candeploy) {
+      return this.candeploy(point, map);
+    }
     return this.mode === 'PLANT' ? map.canDeployPlant(point, this.inst, this.spacing) : map.canPlaceTurf(point);
   }
 
   Deploy(point: Vector3, deployer: Deployer, map: DeployMap): boolean {
-    if (!this.CanDeploy(point, map)) { return false; }
+    if (!this.CanDeploy(point, map)) {
+      return false;
+    }
     const isplant = this.inst.hasTag('deployedplant');
-    if (this.ondeploy(point, deployer, map) === false) { return false; }
+    if (this.ondeploy(point, deployer, map) === false) {
+      return false;
+    }
     deployer.PushEvent('deployitem', { prefab: this.inst.prefab });
-    if (isplant) { map.itemPlanted(deployer, point); }
+    if (isplant) {
+      map.itemPlanted(deployer, point);
+    }
     return true;
   }
 

@@ -11,22 +11,42 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
 import { workTargets } from './workTargets';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop: vi.fn() })),
+}));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 async function waitForVisual(model: THREE.Object3D): Promise<void> {
-  for (let attempt = 0; attempt < 30 && !prefabInstance(model)!.sprite.loaded; attempt++) { await settle(); }
+  for (let attempt = 0; attempt < 30 && !prefabInstance(model)!.sprite.loaded; attempt++) {
+    await settle();
+  }
   expect(prefabInstance(model)!.sprite.loaded).toBe(true);
 }
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 const spawnGroundItem = () => undefined;
-const meshes = (model: THREE.Object3D) => { const found: THREE.Mesh[] = []; model.traverse(o => { if (o instanceof THREE.Mesh) { found.push(o); } }); return found; };
+const meshes = (model: THREE.Object3D) => {
+  const found: THREE.Mesh[] = [];
+  model.traverse(o => {
+    if (o instanceof THREE.Mesh) {
+      found.push(o);
+    }
+  });
+  return found;
+};
 
 it('releases rock, skeleton and houndbone sprites outside the tickingarea and redresses them on return', async () => {
-  const awake = createSignal(true), scheduler = new GameTimeScheduler();
+  const awake = createSignal(true),
+    scheduler = new GameTimeScheduler();
   const tickingarea = () => createMemo(() => awake.get());
   const scene = new THREE.Scene();
   const displays = new PrefabDisplayGroup(scene);
@@ -34,7 +54,7 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
   bones.register(rockPrefabs({ scheduler, spawnGroundItem, spawnPrefab: (id, position) => bones.spawn(id, position) }));
   bones.register(houndbonePrefabs({ spawnGroundItem }));
   bones.register(skeletonPrefabs({ spawnGroundItem }));
-  const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .6);
+  const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.6);
   // The displays turn themselves to the world's camera rotation.
   const content = bindTestWorld(scheduler);
   try {
@@ -46,7 +66,8 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
     const records = bones.exportRecords();
     const colour = (meshes(rock)[0].material as THREE.MeshBasicMaterial[])[0].color.r;
     const hammer = workTargets('HAMMER')[0];
-    awake.set(false); await settle();
+    awake.set(false);
+    await settle();
     for (const model of models) {
       expect(prefabInstance(model)!.status.peek()).toBe('asleep');
       expect(prefabInstance(model)!.sprite.loaded).toBe(false);
@@ -57,7 +78,8 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
     expect(bones.exportRecords()).toEqual(records);
     expect(hammer.isValid()).toBe(true);
     content.camerarotation.set(rotation);
-    awake.set(true); await settle();
+    awake.set(true);
+    await settle();
     await Promise.all(models.map(waitForVisual));
     displays.update(0);
     for (const model of models) {
@@ -69,8 +91,15 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
     // Awake billboards turn in the task that publishes the rotation, before that frame renders.
     const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 1.2);
     content.camerarotation.set(turned);
-    for (const model of models) { expect(model.children[0].quaternion.equals(turned)).toBe(true); }
+    for (const model of models) {
+      expect(model.children[0].quaternion.equals(turned)).toBe(true);
+    }
     expect((meshes(rock)[0].material as THREE.MeshBasicMaterial[])[0].color.r).toBe(colour);
     expect(bones.renderEntities).toHaveLength(3);
-  } finally { bones.dispose(); displays.dispose(); content.unbind(); scheduler.dispose(); }
+  } finally {
+    bones.dispose();
+    displays.dispose();
+    content.unbind();
+    scheduler.dispose();
+  }
 });

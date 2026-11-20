@@ -26,17 +26,34 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { workTargets } from './workTargets';
 import { canDoSceneAction } from './sceneActions';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop: vi.fn() })),
+}));
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function setup(inventory = createPickupInventory()) {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.stubGlobal('window', new EventTarget());
-  const scene = new THREE.Scene(), player = withEntity(new THREE.Group(), 'wilson');
-  const camera = new THREE.PerspectiveCamera(), renderer = { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer;
-  const ground = new ItemWorldFixture(scene, camera,
-    renderer, '/dst/data/databundles/images.zip',
-    inventory, '/dst/data/anim', player);
+  const scene = new THREE.Scene(),
+    player = withEntity(new THREE.Group(), 'wilson');
+  const camera = new THREE.PerspectiveCamera(),
+    renderer = { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer;
+  const ground = new ItemWorldFixture(
+    scene,
+    camera,
+    renderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    player,
+  );
   const scheduler = new GameTimeScheduler();
   const { season, unbind } = bindTestWorld(scheduler);
   const saplings = plantManager(saplingPrefabs, scene, {
@@ -50,30 +67,89 @@ function setup(inventory = createPickupInventory()) {
     dispose: () => saplings.dispose(),
   });
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, {
-    entities: { ...Object.fromEntries(['sapling', 'sapling_moon'].map(id => [id, saplings.exportRecords()
-      .filter(({ prefabId }) => prefabId === id).map(({ record }) => record)])), ...ground.exportEntities() },
-    inventory: inventory.exportSaved(), elapsedSeconds: 100, playerTransform: { position: [0, 0, 0], rotationY: 0 },
-  }, SAVE_CATALOG);
-  const dispose = () => { registry.dispose(); ground.dispose(); inventory.dispose(); unbind(); scheduler.dispose(); };
-  return { inventory, scene, player, ground, saplings, season, scheduler, registry, save, dispose,
-    world: { scene, player, camera, renderer, ground: new THREE.Group(), cameraFacing: createSignal(1), cameraHeading: createSignal(0) },
-    worker: pickupDoer(player, inventory) };
+  const save = () =>
+    serializeSave(
+      template,
+      {
+        entities: {
+          ...Object.fromEntries(
+            ['sapling', 'sapling_moon'].map(id => [
+              id,
+              saplings
+                .exportRecords()
+                .filter(({ prefabId }) => prefabId === id)
+                .map(({ record }) => record),
+            ]),
+          ),
+          ...ground.exportEntities(),
+        },
+        inventory: inventory.exportSaved(),
+        elapsedSeconds: 100,
+        playerTransform: { position: [0, 0, 0], rotationY: 0 },
+      },
+      SAVE_CATALOG,
+    );
+  const dispose = () => {
+    registry.dispose();
+    ground.dispose();
+    inventory.dispose();
+    unbind();
+    scheduler.dispose();
+  };
+  return {
+    inventory,
+    scene,
+    player,
+    ground,
+    saplings,
+    season,
+    scheduler,
+    registry,
+    save,
+    dispose,
+    world: {
+      scene,
+      player,
+      camera,
+      renderer,
+      ground: new THREE.Group(),
+      cameraFacing: createSignal(1),
+      cameraHeading: createSignal(0),
+    },
+    worker: pickupDoer(player, inventory),
+  };
 }
 
 it('picks twigs, regrows after four days through grow → sway, and saves/restores the empty sapling', async () => {
-  const s = setup(), restored = setup();
+  const s = setup(),
+    restored = setup();
   try {
     s.player.position.set(3, 0, 6);
     expect((await executeDebugCommand('c_spawn("sapling")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    const [model] = s.scene.children.filter(child => lookupPrefabInstance(child)?.prefab === 'sapling') as THREE.Group[];
+    const [model] = s.scene.children.filter(
+      child => lookupPrefabInstance(child)?.prefab === 'sapling',
+    ) as THREE.Group[];
     const animation = plantInstance(model).sprite;
     expect(animation.currentAnimation).toBe('sway');
-    expect(prefabInstance(model)!.listTags().toSorted()).toEqual(['plant', 'renewable', 'silviculture', 'lunarplant_target', 'pickable', 'canlight', 'witherable',
-      'DIG_workable'].sort());
+    expect(prefabInstance(model)!.listTags().toSorted()).toEqual(
+      [
+        'plant',
+        'renewable',
+        'silviculture',
+        'lunarplant_target',
+        'pickable',
+        'canlight',
+        'witherable',
+        'DIG_workable',
+      ].sort(),
+    );
     expect(canDoSceneAction('PICK', model)).toBe(true);
 
-    expect(plantInstance(model).components.pickable.pick({ giveItem: (item: string, count: number) => s.inventory.add(item, count) })).toBe(true);
+    expect(
+      plantInstance(model).components.pickable.pick({
+        giveItem: (item: string, count: number) => s.inventory.add(item, count),
+      }),
+    ).toBe(true);
     expect(s.inventory.count('twigs')).toBe(1);
     expect(animation.currentAnimation).toBe('picked');
     expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
@@ -90,23 +166,36 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     tickWorld(s.scheduler, prefabDisplays(s.saplings), 920, new THREE.Quaternion());
     expect(plantInstance(model).components.pickable.state.phase.peek()).toBe('ready');
     expect(animation.currentAnimation).toBe('grow');
-    for (let frame = 0; frame < 45; frame++) { tickWorld(s.scheduler, prefabDisplays(s.saplings), 1 / 30, new THREE.Quaternion()); }
+    for (let frame = 0; frame < 45; frame++) {
+      tickWorld(s.scheduler, prefabDisplays(s.saplings), 1 / 30, new THREE.Quaternion());
+    }
     expect(animation.currentAnimation).toBe('sway');
     // Regrowth tasks may not exceed TUNING.SAPLING_REGROW_TIME.
     const invalid = JSON.parse(s.save());
     invalid.world.entities.sapling = [{ ...record, components: { pickable: { picked: true, regrowSeconds: 1921 } } }];
     expect(() => deserializeSave(JSON.stringify(invalid), SAVE_CATALOG)).toThrow(/regrowSeconds/);
-  } finally { s.dispose(); restored.dispose(); }
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
 });
 
 it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked sapling to ash', async () => {
   const s = setup();
   try {
-    expect((await executeDebugCommand('c_give("dug_sapling_moon",2);c_give("shovel");c_spawn("sapling_moon")', s.inventory,
-      id => s.registry.spawn(id))).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand(
+          'c_give("dug_sapling_moon",2);c_give("shovel");c_spawn("sapling_moon")',
+          s.inventory,
+          id => s.registry.spawn(id),
+        )
+      ).ok,
+    ).toBe(true);
     expect(s.inventory.getItemSpec('dug_sapling_moon').maxStack).toBe(10);
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
-    const shovel = s.inventory.entities.create({ itemId: 'shovel', count: 1 }); s.inventory.GiveItem(shovel);
+    const shovel = s.inventory.entities.create({ itemId: 'shovel', count: 1 });
+    s.inventory.GiveItem(shovel);
     s.inventory.configureItem(shovel);
     expect(performToolWork('DIG', workTargets('DIG')[0].entity!, s.worker, shovel)).toBe(true);
     expect(s.ground.groundStacks().map(stack => stack.itemId)).toEqual(['twigs', 'dug_sapling_moon']);
@@ -115,7 +204,8 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     const model = await drawn(s.saplings.spawn('sapling', new THREE.Vector3(30, 0, 0)).transform.model);
     plantInstance(model).components.pickable.pick({ giveItem: () => true });
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
-    const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 }); s.inventory.GiveItem(torch);
+    const torch = s.inventory.entities.create({ itemId: 'torch', count: 1 });
+    s.inventory.GiveItem(torch);
     s.inventory.configureItem(torch);
     expect(collectEquippedItemActions(torch, undefined, findActionEntity(model)!, true)).toContain('LIGHT');
     plantInstance(model).components.burnable.Ignite();
@@ -124,26 +214,32 @@ it('digs sapling_moon into dug_sapling_moon plus ready twigs, and burns a picked
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(model.parent).toBeNull();
     expect(s.ground.groundStacks().at(-1)).toMatchObject({ itemId: 'ash', count: 1 });
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('restores an imported wither check through save/load, reschedules on expiry and cancels on removal', async () => {
-  const s = setup(), restored = setup();
+  const s = setup(),
+    restored = setup();
   try {
-    const model = await drawn(s.saplings.spawn('sapling', new THREE.Vector3(30, 0, 6), {
-      id: 'imported-sapling',
-      components: { witherable: { taskSeconds: 2.5 } },
-    }).transform.model);
+    const model = await drawn(
+      s.saplings.spawn('sapling', new THREE.Vector3(30, 0, 6), {
+        id: 'imported-sapling',
+        components: { witherable: { taskSeconds: 2.5 } },
+      }).transform.model,
+    );
     expect(prefabInstance(model)!.listTags()).toContain('witherable');
     tickWorld(s.scheduler, prefabDisplays(s.saplings), 1, new THREE.Quaternion());
-    const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.sapling[0];
+    const saved = deserializeSave(s.save(), SAVE_CATALOG),
+      record = saved.world.entities.sapling[0];
     expect(record.components.witherable).toEqual({ taskSeconds: 1.5 });
     const copy = await drawn(restored.saplings.restore('sapling', record).transform.model);
     const witherable = plantInstance(copy).components.witherable;
     const timer = witherable!.state.timer.peek();
     tickWorld(restored.scheduler, prefabDisplays(restored.saplings), 1, new THREE.Quaternion());
     expect(witherable!.state.timer.peek()).toBe(timer);
-    tickWorld(restored.scheduler, prefabDisplays(restored.saplings), .5, new THREE.Quaternion());
+    tickWorld(restored.scheduler, prefabDisplays(restored.saplings), 0.5, new THREE.Quaternion());
     expect(witherable!.state.timer.peek()).not.toBe(timer);
     expect(witherable!.state.timer.peek().status).toBe('scheduled');
     expect(plantInstance(copy).components.pickable.canBePicked).toBe(true);
@@ -151,5 +247,8 @@ it('restores an imported wither check through save/load, reschedules on expiry a
     expect(witherable!.state.timer.peek()).toEqual({ status: 'stopped' });
     tickWorld(restored.scheduler, prefabDisplays(restored.saplings), 60, new THREE.Quaternion());
     expect(restored.saplings.exportRecords()).toEqual([]);
-  } finally { s.dispose(); restored.dispose(); }
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
 });

@@ -17,8 +17,8 @@ const WORLD_SCALE = TILE_SIZE / 4;
 const OUTER_RADIUS = 2.75;
 const INNER_RADIUS = 1.5;
 /** LAYER_BACKGROUND and LAYER_WORLD_BACKGROUND, both sort order 2: above turf, and the hole above the surface. */
-const SURFACE_MESH_ORDER = -.5 + (2 - 3) * .01;
-const HOLE_MESH_ORDER = -.4 + (2 - 3) * .01;
+const SURFACE_MESH_ORDER = -0.5 + (2 - 3) * 0.01;
+const HOLE_MESH_ORDER = -0.4 + (2 - 3) * 0.01;
 const ASSETS = { animationArchive: 'cave_hole.zip', buildArchives: ['cave_hole.zip'], bank: 'cave_hole' };
 
 export interface CaveHoleWorld {
@@ -31,11 +31,15 @@ export interface CaveHoleWorld {
 
 /** build_hole_collision_mesh's walls around the origin, each segment two triangles; both loops run to `segments` inclusive. */
 function ringWall(radius: number, segments: number, height: number): number[] {
-  const triangles: number[] = [], span = Math.PI * 2 / segments;
+  const triangles: number[] = [],
+    span = (Math.PI * 2) / segments;
   for (let index = 0; index <= segments; index++) {
-    const angle0 = index * span - span / 2, angle1 = index * span + span / 2;
-    const x0 = Math.cos(angle0) * radius, z0 = Math.sin(angle0) * radius;
-    const x1 = Math.cos(angle1) * radius, z1 = Math.sin(angle1) * radius;
+    const angle0 = index * span - span / 2,
+      angle1 = index * span + span / 2;
+    const x0 = Math.cos(angle0) * radius,
+      z0 = Math.sin(angle0) * radius;
+    const x1 = Math.cos(angle1) * radius,
+      z1 = Math.sin(angle1) * radius;
     triangles.push(x0, 0, z0, x0, height, z0, x1, 0, z1, x1, 0, z1, x0, height, z0, x1, height, z1);
   }
   return triangles;
@@ -54,8 +58,12 @@ function makeHolePhysics(inst: CaveHoleInstance, radius: number, height = 6): vo
  * under DOWNLEFT and the reverse; with the other six facings it keeps the hole a wide oval, far wall on top, at every heading.
  */
 function pitFrame(facing: number): number {
-  if (facing === FACING.UPLEFT) { return FACING.DOWNLEFT; }
-  if (facing === FACING.DOWNLEFT) { return FACING.UPLEFT; }
+  if (facing === FACING.UPLEFT) {
+    return FACING.DOWNLEFT;
+  }
+  if (facing === FACING.DOWNLEFT) {
+    return FACING.UPLEFT;
+  }
   return facing;
 }
 
@@ -77,7 +85,9 @@ export class CaveHoleInstance extends PrefabInstance {
     super(CAVE_HOLE_ID, new SpriteState({ name: 'idle' }));
     // PlayerProx reads the position once.
     this.setPosition(position.x, 0, position.z);
-    for (const tag of ['groundhole', 'blocker', 'blinkfocus']) { this.addTag(tag); }
+    for (const tag of ['groundhole', 'blocker', 'blinkfocus']) {
+      this.addTag(tag);
+    }
     this._groundhole_innerradius = INNER_RADIUS * WORLD_SCALE;
     this._groundhole_outerradius = OUTER_RADIUS * WORLD_SCALE;
     this._groundhole_rangeoverride = 0;
@@ -92,8 +102,14 @@ export class CaveHoleInstance extends PrefabInstance {
     playerprox.SetDist(OUTER_RADIUS * WORLD_SCALE, OUTER_RADIUS * WORLD_SCALE);
     addComponent(this, 'objectspawner', ObjectSpawner);
 
-    this.OnSave = (_inst, data) => { data.allowspawn = this.allowspawn; };
-    this.OnLoad = (_inst, data) => { if (data.allowspawn !== undefined) { this.allowspawn = data.allowspawn; } };
+    this.OnSave = (_inst, data) => {
+      data.allowspawn = this.allowspawn;
+    };
+    this.OnLoad = (_inst, data) => {
+      if (data.allowspawn !== undefined) {
+        this.allowspawn = data.allowspawn;
+      }
+    };
   }
 }
 
@@ -107,8 +123,12 @@ function createSurfaceAnim(world: CaveHoleWorld): PrefabInstance {
 }
 
 /** The Prefab cave_hole.lua returns, and its surface child. */
-export function caveHolePrefabs(world: CaveHoleWorld): Readonly<Record<typeof CAVE_HOLE_ID, PrefabEntityDefinition<CaveHoleInstance>>
-  & Record<typeof CAVE_HOLE_SURFACE_ID, PrefabEntityDefinition<PrefabInstance>>> {
+export function caveHolePrefabs(
+  world: CaveHoleWorld,
+): Readonly<
+  Record<typeof CAVE_HOLE_ID, PrefabEntityDefinition<CaveHoleInstance>> &
+    Record<typeof CAVE_HOLE_SURFACE_ID, PrefabEntityDefinition<PrefabInstance>>
+> {
   return {
     [CAVE_HOLE_ID]: {
       fn: position => new CaveHoleInstance(world, position),

@@ -20,7 +20,10 @@ vi.mock('../../../src/animate', () => ({
 }));
 vi.mock('@dontstarve-web/ui', () => ({
   createChestInventoryPanel: vi.fn(() => ({
-    open: vi.fn(), close: vi.fn(), bindActions: vi.fn(), dispose: vi.fn(),
+    open: vi.fn(),
+    close: vi.fn(),
+    bindActions: vi.fn(),
+    dispose: vi.fn(),
   })),
   createFollowText: vi.fn(() => ({ update: vi.fn(), dispose: vi.fn() })),
 }));
@@ -30,8 +33,21 @@ vi.mock('../../../src/playerStats', () => ({
 }));
 vi.mock('../../../src/player', () => {
   const tags = new Set<string>();
-  return { playerInstance: { components: {}, isRemoved: false, onRemove: () => () => {}, PushEvent() {},
-    hasTag: (tag: string) => tags.has(tag), addTag: (tag: string) => { tags.add(tag); }, removeTag: (tag: string) => { tags.delete(tag); } } };
+  return {
+    playerInstance: {
+      components: {},
+      isRemoved: false,
+      onRemove: () => () => {},
+      PushEvent() {},
+      hasTag: (tag: string) => tags.has(tag),
+      addTag: (tag: string) => {
+        tags.add(tag);
+      },
+      removeTag: (tag: string) => {
+        tags.delete(tag);
+      },
+    },
+  };
 });
 
 it('updates application resources until scene disposal, then releases them once', () => {
@@ -40,14 +56,22 @@ it('updates application resources until scene disposal, then releases them once'
   const statusHud = { advanceClockAnimation: vi.fn(), dispose: vi.fn() };
   const frameController = { update: vi.fn(), dispose: vi.fn() };
   const actionController = { dispose: vi.fn() };
-  const stopInventoryReceived = vi.fn(), stopEmoteWheel = vi.fn(), stopContextMenu = vi.fn();
+  const stopInventoryReceived = vi.fn(),
+    stopEmoteWheel = vi.fn(),
+    stopContextMenu = vi.fn();
   registerDisposal(events, {
-    panels: [panel], statusHud,
-    frameControllers: [frameController], actionControllers: [actionController],
-    stopInventoryReceived, stopEmoteWheel, stopContextMenu,
+    panels: [panel],
+    statusHud,
+    frameControllers: [frameController],
+    actionControllers: [actionController],
+    stopInventoryReceived,
+    stopEmoteWheel,
+    stopContextMenu,
   });
   try {
-    for (const task of tasks) { task(0.25); }
+    for (const task of tasks) {
+      task(0.25);
+    }
     expect(statusHud.advanceClockAnimation).toHaveBeenCalledWith(0.25);
     expect(frameController.update).toHaveBeenCalledOnce();
     expect(panel.dispose).not.toHaveBeenCalled();
@@ -58,9 +82,15 @@ it('updates application resources until scene disposal, then releases them once'
     events.emit('dispose', undefined);
     events.emit('dispose', undefined);
     expect(tasks.size).toBe(0);
-    for (const cleanup of [panel.dispose, statusHud.dispose,
-      frameController.dispose, actionController.dispose,
-      stopInventoryReceived, stopEmoteWheel, stopContextMenu]) {
+    for (const cleanup of [
+      panel.dispose,
+      statusHud.dispose,
+      frameController.dispose,
+      actionController.dispose,
+      stopInventoryReceived,
+      stopEmoteWheel,
+      stopContextMenu,
+    ]) {
       expect(cleanup).toHaveBeenCalledOnce();
     }
     expect(frameController.update).toHaveBeenCalledOnce();
@@ -75,21 +105,43 @@ it('creates panels before scene initialization and owns subscriptions until expl
   const inventory = createPickupInventory();
   const stopReceived = vi.fn();
   const subscribeReceived = vi.spyOn(inventory, 'subscribeReceived').mockReturnValue(stopReceived);
-  const stopContextMenu = vi.fn(), subscribeContextMenu = vi.fn(() => stopContextMenu);
-  const player = new THREE.Group(), camera = new THREE.PerspectiveCamera();
-  const gameUi = { chestPanel: {}, cookPotPanel: {}, iceBoxPanel: {}, emoteWheel: {},
-    inventoryBar: { contextMenu: { subscribe: subscribeContextMenu },
-      containers: [{ id: 'player:inventory' }], animateReceive: vi.fn() },
-    statusHud: { advanceClockAnimation: vi.fn(), dispose: vi.fn() } };
+  const stopContextMenu = vi.fn(),
+    subscribeContextMenu = vi.fn(() => stopContextMenu);
+  const player = new THREE.Group(),
+    camera = new THREE.PerspectiveCamera();
+  const gameUi = {
+    chestPanel: {},
+    cookPotPanel: {},
+    iceBoxPanel: {},
+    emoteWheel: {},
+    inventoryBar: {
+      contextMenu: { subscribe: subscribeContextMenu },
+      containers: [{ id: 'player:inventory' }],
+      animateReceive: vi.fn(),
+    },
+    statusHud: { advanceClockAnimation: vi.fn(), dispose: vi.fn() },
+  };
   const screenPosition = { x: 200, y: 150 };
   const screenProjection = { GetScreenPos: vi.fn(() => screenPosition) };
-  const options = { gameUi, inventory, screenProjection, view: { player, camera, renderer: { domElement: {} } },
-    actionEvents: new EventEmitter(), inventorySlotItem: vi.fn(), handEquipmentBinding: { flush: vi.fn() },
-    isActionInterrupting: () => false, updateCursor: vi.fn(), locomotor: {}, turfMap: {},
+  const options = {
+    gameUi,
+    inventory,
+    screenProjection,
+    view: { player, camera, renderer: { domElement: {} } },
+    actionEvents: new EventEmitter(),
+    inventorySlotItem: vi.fn(),
+    handEquipmentBinding: { flush: vi.fn() },
+    isActionInterrupting: () => false,
+    updateCursor: vi.fn(),
+    locomotor: {},
+    turfMap: {},
   } as unknown as Parameters<typeof createDisposalResources>[0];
   const startIndex = vi.mocked(createChestInventoryPanel).mock.results.length;
   const resources = createDisposalResources(options);
-  const panels = vi.mocked(createChestInventoryPanel).mock.results.slice(startIndex).map(result => result.value);
+  const panels = vi
+    .mocked(createChestInventoryPanel)
+    .mock.results.slice(startIndex)
+    .map(result => result.value);
   try {
     expect(panels).toHaveLength(3);
     expect(panelTasks).toEqual([]);
@@ -102,7 +154,8 @@ it('creates panels before scene initialization and owns subscriptions until expl
     chest.Open(playerInstance);
     vi.mocked(createChestInventoryPanel).mock.calls[startIndex][1].closeContainer(display.model);
     expect(chest.IsOpen()).toBe(false);
-    instance.remove(); display.dispose();
+    instance.remove();
+    display.dispose();
     const worldFx = { spawn: vi.fn() };
     const scene = { buildingPlacement: {}, worldFx } as unknown as Parameters<typeof resources.register>[1];
     expect(resources.register(events, scene)).toBeUndefined();
@@ -112,9 +165,23 @@ it('creates panels before scene initialization and owns subscriptions until expl
     expect(playerInstance.hasTag('reader')).toBe(true);
     // book.lua spawns the book's fx at the reader; the reader's position is read through its own method.
     let bookWorld: { spawnFx?(prefab: string, reader: unknown): void } | undefined;
-    const book = { components: { book: { OnRead: (_reader: unknown, world: typeof bookWorld) => { bookWorld = world; return [true] as const; } } } };
+    const book = {
+      components: {
+        book: {
+          OnRead: (_reader: unknown, world: typeof bookWorld) => {
+            bookWorld = world;
+            return [true] as const;
+          },
+        },
+      },
+    };
     (playerInstance.components as { reader: { Read(book: unknown): unknown } }).reader.Read(book);
-    const reader = { position: new THREE.Vector3(4, 0, 3), getPosition() { return this.position; } };
+    const reader = {
+      position: new THREE.Vector3(4, 0, 3),
+      getPosition() {
+        return this.position;
+      },
+    };
     bookWorld!.spawnFx!('fx_book_rain', reader);
     expect(worldFx.spawn).toHaveBeenCalledExactlyOnceWith('fx_book_rain', new THREE.Vector3(4, 0, 3));
     const received = [{ slot: { containerId: 'player:inventory', slotKey: '0' }, itemId: 'rocks', delta: 2 }];
@@ -122,18 +189,29 @@ it('creates panels before scene initialization and owns subscriptions until expl
     expect(screenProjection.GetScreenPos).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(4, 0, 3));
     expect(gameUi.inventoryBar.animateReceive).toHaveBeenCalledExactlyOnceWith(received[0].slot, screenPosition, 2);
     expect(subscribeContextMenu).toHaveBeenCalledOnce();
-    expect(setupEmoteWheel).toHaveBeenCalledWith(gameUi.emoteWheel, options.view.renderer.domElement,
-      undefined, options.actionEvents, options.updateCursor);
-    for (const panel of panels) { expect(panel.bindActions).toHaveBeenCalledWith(scene.buildingPlacement); }
-    for (const task of tasks) { task(.25); }
-    expect(gameUi.statusHud.advanceClockAnimation).toHaveBeenCalledWith(.25);
+    expect(setupEmoteWheel).toHaveBeenCalledWith(
+      gameUi.emoteWheel,
+      options.view.renderer.domElement,
+      undefined,
+      options.actionEvents,
+      options.updateCursor,
+    );
+    for (const panel of panels) {
+      expect(panel.bindActions).toHaveBeenCalledWith(scene.buildingPlacement);
+    }
+    for (const task of tasks) {
+      task(0.25);
+    }
+    expect(gameUi.statusHud.advanceClockAnimation).toHaveBeenCalledWith(0.25);
     events.emit('dispose', undefined);
     events.emit('dispose', undefined);
     expect(tasks.size).toBe(0);
     expect(panelTasks).toEqual([]);
     expect(playerInstance.components.reader).toBeUndefined();
     expect(playerInstance.hasTag('reader')).toBe(false);
-    for (const panel of panels) { expect(panel.dispose).toHaveBeenCalledOnce(); }
+    for (const panel of panels) {
+      expect(panel.dispose).toHaveBeenCalledOnce();
+    }
     expect(stopReceived).toHaveBeenCalledOnce();
     expect(stopContextMenu).toHaveBeenCalledOnce();
     expect(vi.mocked(setupEmoteWheel).mock.results.at(-1)!.value).toHaveBeenCalledOnce();

@@ -4,16 +4,26 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { clockstate, seasonstate, moonphasestate } from '@dontstarve-web/signals';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('derives lighting with an effect, preserves transitions across progress updates and cancels pending work on disposal', async () => {
   let finishLoad!: () => void;
-  const pending = new Promise<void>((resolve) => { finishLoad = resolve; });
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-    await pending;
-    const file = await readFile(new URL(`../../../public/dst/data/images/colour_cubes/${url.split('/').at(-1)}`, import.meta.url));
-    return new Response(file);
-  }));
+  const pending = new Promise<void>(resolve => {
+    finishLoad = resolve;
+  });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      await pending;
+      const file = await readFile(
+        new URL(`../../../public/dst/data/images/colour_cubes/${url.split('/').at(-1)}`, import.meta.url),
+      );
+      return new Response(file);
+    }),
+  );
   clockstate.set({ phase: 'night', timeinphase: 0 });
   seasonstate.set({ season: 'spring', progress: 0.5 });
   moonphasestate.set('new');
@@ -53,11 +63,14 @@ it('derives lighting with an effect, preserves transitions across progress updat
     clockstate.set({ phase: 'day', timeinphase: 0 });
     seasonstate.set({ season: 'autumn', progress: 0.5 });
     moonphasestate.set('new');
-    lighting.dispose(); lighting.dispose();
+    lighting.dispose();
+    lighting.dispose();
     await Promise.resolve();
     expect(material.uniforms.destinationLut.value).toBe(appliedLut);
     expect(material.uniforms.lutBlend.value).toBe(1);
     expect(lighting.getPhase()).toBe('day');
     expect(lighting.getSeason()).toBe('autumn');
-  } finally { lighting.dispose(); }
+  } finally {
+    lighting.dispose();
+  }
 });

@@ -1,6 +1,7 @@
 import { Matrix4, type Object3D } from 'three';
 
-let nextTraversal = 0, traversal = 0;
+let nextTraversal = 0,
+  traversal = 0;
 
 /** One traversal shares ancestor comparisons; explicit queries outside it always
  * sample the current matrix. Nested traversals keep their own comparison scope.
@@ -8,8 +9,11 @@ let nextTraversal = 0, traversal = 0;
 export function updateSceneMatrices(scene: Object3D): void {
   const previous = traversal;
   traversal = ++nextTraversal;
-  try { scene.updateMatrixWorld(); }
-  finally { traversal = previous; }
+  try {
+    scene.updateMatrixWorld();
+  } finally {
+    traversal = previous;
+  }
 }
 
 interface WorldMatrixVersion {
@@ -45,18 +49,32 @@ type ManagedObject = Object3D & { [updateState]?: Updates };
 // is read through a private symbol, without allocating per-model call targets.
 function updateMatrixWorld(this: Object3D, force?: boolean): void {
   const state = (this as ManagedObject)[updateState]!;
-  if (state.worldVersion) { state.worldVersion.traversal = 0; }
+  if (state.worldVersion) {
+    state.worldVersion.traversal = 0;
+  }
   if (state.updater) {
-    if (state.updater.updateMatrixWorld(force)) { state.notify(); }
-  } else { state.original.updateMatrixWorld.call(this, force); state.notify(); }
+    if (state.updater.updateMatrixWorld(force)) {
+      state.notify();
+    }
+  } else {
+    state.original.updateMatrixWorld.call(this, force);
+    state.notify();
+  }
 }
 
 function updateWorldMatrix(this: Object3D, parents: boolean, children: boolean): void {
   const state = (this as ManagedObject)[updateState]!;
-  if (state.worldVersion) { state.worldVersion.traversal = 0; }
+  if (state.worldVersion) {
+    state.worldVersion.traversal = 0;
+  }
   if (state.updater) {
-    if (state.updater.updateWorldMatrix(parents, children)) { state.notify(); }
-  } else { state.original.updateWorldMatrix.call(this, parents, children); state.notify(); }
+    if (state.updater.updateWorldMatrix(parents, children)) {
+      state.notify();
+    }
+  } else {
+    state.original.updateWorldMatrix.call(this, parents, children);
+    state.notify();
+  }
 }
 
 /** A single wrapper owns both Three.js entry points. Cache and index lifetimes
@@ -65,19 +83,31 @@ function updateWorldMatrix(this: Object3D, parents: boolean, children: boolean):
 function retain(model: Object3D): Updates {
   const object = model as ManagedObject;
   let state = object[updateState];
-  if (state) { return state; }
+  if (state) {
+    return state;
+  }
   const original = { updateMatrixWorld: model.updateMatrixWorld, updateWorldMatrix: model.updateWorldMatrix };
   let notifying = false;
   const owned: Updates = {
-    original, observers: new Set(),
+    original,
+    observers: new Set(),
     notify() {
-      if (notifying) { return; }
+      if (notifying) {
+        return;
+      }
       notifying = true;
-      try { for (const observer of owned.observers) { observer(); } }
-      finally { notifying = false; }
+      try {
+        for (const observer of owned.observers) {
+          observer();
+        }
+      } finally {
+        notifying = false;
+      }
     },
     release() {
-      if (owned.updater || owned.worldVersion || owned.observers.size || object[updateState] !== owned) { return; }
+      if (owned.updater || owned.worldVersion || owned.observers.size || object[updateState] !== owned) {
+        return;
+      }
       model.updateMatrixWorld = original.updateMatrixWorld;
       model.updateWorldMatrix = original.updateWorldMatrix;
       delete object[updateState];
@@ -99,10 +129,14 @@ export function retainWorldMatrixVersion(model: Object3D): { read(): number; dis
     const matrix = new Matrix4().copy(model.matrixWorld);
     let revision = 0;
     const owned: WorldMatrixVersion = {
-      owners: 0, traversal: 0,
+      owners: 0,
+      traversal: 0,
       read() {
         if (!traversal || owned.traversal !== traversal) {
-          if (!matrix.equals(model.matrixWorld)) { matrix.copy(model.matrixWorld); revision++; }
+          if (!matrix.equals(model.matrixWorld)) {
+            matrix.copy(model.matrixWorld);
+            revision++;
+          }
           owned.traversal = traversal;
         }
         return revision;
@@ -113,18 +147,29 @@ export function retainWorldMatrixVersion(model: Object3D): { read(): number; dis
   version.owners++;
   const owned = version;
   let disposed = false;
-  return { read: owned.read, dispose() {
-    if (disposed) { return; }
-    disposed = true;
-    if (--owned.owners === 0) { state.worldVersion = undefined; state.release(); }
-  } };
+  return {
+    read: owned.read,
+    dispose() {
+      if (disposed) {
+        return;
+      }
+      disposed = true;
+      if (--owned.owners === 0) {
+        state.worldVersion = undefined;
+        state.release();
+      }
+    },
+  };
 }
 
 export function watchMatrixUpdates(model: Object3D, observer: () => void): () => void {
   const state = retain(model);
   const listener = () => observer();
   state.observers.add(listener);
-  return () => { state.observers.delete(listener); state.release(); };
+  return () => {
+    state.observers.delete(listener);
+    state.release();
+  };
 }
 
 /** Notify only after the matrix pipeline produces a different world transform.
@@ -134,7 +179,9 @@ export function watchMatrixUpdates(model: Object3D, observer: () => void): () =>
 export function watchWorldMatrixChanges(model: Object3D, observer: () => void): () => void {
   const previous = new Matrix4().copy(model.matrixWorld);
   return watchMatrixUpdates(model, () => {
-    if (previous.equals(model.matrixWorld)) { return; }
+    if (previous.equals(model.matrixWorld)) {
+      return;
+    }
     previous.copy(model.matrixWorld);
     observer();
   });
@@ -147,11 +194,15 @@ export function invalidateMatrixUpdates(model: Object3D): void {
 
 export function cacheMatrixUpdates(model: Object3D, create: (original: MatrixMethods) => MatrixUpdater) {
   const state = retain(model);
-  if (state.updater) { throw new Error('Object already has a matrix cache'); }
-  const updater = state.updater = create(state.original);
+  if (state.updater) {
+    throw new Error('Object already has a matrix cache');
+  }
+  const updater = (state.updater = create(state.original));
   return {
     dispose() {
-      if (state.updater !== updater) { return; }
+      if (state.updater !== updater) {
+        return;
+      }
       state.updater = undefined;
       model.updateMatrixWorld = updateMatrixWorld;
       state.release();

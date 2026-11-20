@@ -1,7 +1,13 @@
 import type { EntityEventData } from '../../componets/src/entityEvents';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { PrefabInstance, type EntityTask } from './prefabInstance';
-import { createEffect, WorldContentKey, type WorldContentSignal, type WorldMoonState, type WorldPhase } from '@dontstarve-web/signals';
+import {
+  createEffect,
+  WorldContentKey,
+  type WorldContentSignal,
+  type WorldMoonState,
+  type WorldPhase,
+} from '@dontstarve-web/signals';
 import { ItemEntity, type InventoryStack } from '@dontstarve-web/inventory';
 import { AnimState } from '@dontstarve-web/animation/animState';
 import definitions from './definitions.json' with { type: 'json' };
@@ -34,12 +40,17 @@ export const MOONBASE_CHARGE_DELAY = 10;
 export const MOONBASE_CHARGE_DURATION = 49.9;
 export const MOONBASE_CHARGE_STAGE_DURATION = 18.7;
 export const MOONBASE_TIMER_LIMITS = {
-  fullmoonstartdelay: MOONBASE_CHARGE_DELAY, moonchargepre: MOONBASE_CHARGE_DELAY,
-  mooncharge: MOONBASE_CHARGE_DURATION, mooncharge2: MOONBASE_CHARGE_STAGE_DURATION,
+  fullmoonstartdelay: MOONBASE_CHARGE_DELAY,
+  moonchargepre: MOONBASE_CHARGE_DELAY,
+  mooncharge: MOONBASE_CHARGE_DURATION,
+  mooncharge2: MOONBASE_CHARGE_STAGE_DURATION,
   mooncharge3: MOONBASE_CHARGE_STAGE_DURATION,
 } as const;
 /** moonbase.lua onsave's data.staff (the staff's GetSaveRecord) and the prefab's timers. */
-export interface MoonbaseSaveState { staff?: import('./saveRecord').HeldEntityRecord; timer?: NamedTimerSave; }
+export interface MoonbaseSaveState {
+  staff?: import('./saveRecord').HeldEntityRecord;
+  timer?: NamedTimerSave;
+}
 export type MoonbaseChargePhase = 'idle' | 'preparing' | 'charging_1' | 'charging_2' | 'charging_3' | 'complete';
 /** moonbase.lua: the staff a full moon charges, and the staff it becomes. */
 export const MOONBASE_KEY_STAFF = YELLOWSTAFF_ID;
@@ -79,7 +90,9 @@ export class MoonbaseInstance extends PrefabInstance {
   constructor(world: PrefabWorldContext, sprites: SpriteResources) {
     super(MOONBASE_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
     const { scheduler } = world;
-    if (!scheduler) { throw new Error('A moonbase needs the world scheduler'); }
+    if (!scheduler) {
+      throw new Error('A moonbase needs the world scheduler');
+    }
     this.worldServices = world;
     this.sprite.setAnimState(this.staffAnimState.json, sprites.archives);
     this.moon = world.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.onRemove(stop));
@@ -87,7 +100,9 @@ export class MoonbaseInstance extends PrefabInstance {
     this.effects = new MoonbaseEffects(this, scheduler, sprites);
 
     this.minimap.SetPriority(4);
-    for (const tag of ['moonbase', 'event_trigger', 'antlion_sinkhole_blocker', 'NPC_workable']) { this.addTag(tag); }
+    for (const tag of ['moonbase', 'event_trigger', 'antlion_sinkhole_blocker', 'NPC_workable']) {
+      this.addTag(tag);
+    }
 
     const workable = addComponent(this, 'workable', Workable<MoonbaseInstance>);
     workable.SetWorkAction(undefined); // Lua avoids PICK / MINE priority conflict.
@@ -142,32 +157,49 @@ export function GetChargePhase(inst: MoonbaseInstance): MoonbaseChargePhase {
     const { status } = timer.snapshot(name).peek();
     return status === 'scheduled' || status === 'paused';
   };
-  if (staff === MORPHED_STAFF) { return 'complete'; }
-  if (!IsFullMoon(inst) || workable.workleft.peek() <= 0 || staff !== KEY_STAFF) { return 'idle'; }
-  if (active('mooncharge')) { return active('mooncharge2') ? 'charging_1' : active('mooncharge3') ? 'charging_2' : 'charging_3'; }
+  if (staff === MORPHED_STAFF) {
+    return 'complete';
+  }
+  if (!IsFullMoon(inst) || workable.workleft.peek() <= 0 || staff !== KEY_STAFF) {
+    return 'idle';
+  }
+  if (active('mooncharge')) {
+    return active('mooncharge2') ? 'charging_1' : active('mooncharge3') ? 'charging_2' : 'charging_3';
+  }
   return active('moonchargepre') ? 'preparing' : 'idle';
 }
 
 function RestingAnimation(inst: MoonbaseInstance): string {
-  const phase = GetChargePhase(inst), state = GetAnimState(inst);
+  const phase = GetChargePhase(inst),
+    state = GetAnimState(inst);
   return phase.startsWith('charging_') || phase === 'preparing' ? `recharging_${state}` : state;
 }
 
 /** The queued PushAnimation after a hit_ or fix_ clip, which a removed entity no longer plays. */
 function ResumeRestingAnimation(inst: MoonbaseInstance): void {
-  if (inst.isValid()) { inst.sprite.start(RestingAnimation(inst)); }
+  if (inst.isValid()) {
+    inst.sprite.start(RestingAnimation(inst));
+  }
 }
 
 function DoPlaySound(inst: MoonbaseInstance, path: SoundEventPath): void {
-  for (const sound of inst.sounds) { if (!sound.isPlaying()) { inst.sounds.delete(sound); } }
+  for (const sound of inst.sounds) {
+    if (!sound.isPlaying()) {
+      inst.sounds.delete(sound);
+    }
+  }
   inst.sounds.add(PlaySound(path, inst.position));
 }
 
 function PushMusic(inst: MoonbaseInstance): void {
   StopMusic(inst);
-  if (!inst.components.timer.TimerExists('mooncharge')) { return; }
+  if (!inst.components.timer.TimerExists('mooncharge')) {
+    return;
+  }
   const { player, dynamicMusic } = inst.worldServices ?? {};
-  if (player && player.position.distanceTo(inst.position) < 90) { dynamicMusic?.TriggerMoonbase(GetChargePhase(inst) === 'charging_3' ? 2 : 1); }
+  if (player && player.position.distanceTo(inst.position) < 90) {
+    dynamicMusic?.TriggerMoonbase(GetChargePhase(inst) === 'charging_3' ? 2 : 1);
+  }
   inst._musictask = inst.DoTaskInTime(1, PushMusic);
 }
 
@@ -183,8 +215,11 @@ function StopMusic(inst: MoonbaseInstance): void {
 
 function UpdateTrading(inst: MoonbaseInstance): void {
   const { pickable, trader } = inst.components;
-  if (IsFixed(inst) && !pickable.canInteractWith) { trader.Enable(); }
-  else { trader.Disable(); }
+  if (IsFixed(inst) && !pickable.canInteractWith) {
+    trader.Enable();
+  } else {
+    trader.Disable();
+  }
 }
 
 function ToggleMoonCharge(inst: MoonbaseInstance, restored = false): void {
@@ -193,36 +228,53 @@ function ToggleMoonCharge(inst: MoonbaseInstance, restored = false): void {
     if (timer.TimerExists('mooncharge')) {
       const phase = GetChargePhase(inst);
       inst.effects.start(phase === 'charging_1' ? 1 : phase === 'charging_2' ? 2 : 3, restored);
-      if (!inst._musictask) { StartMusic(inst); }
+      if (!inst._musictask) {
+        StartMusic(inst);
+      }
       // A loaded charge is past mooncharge2's AddTag("intense").
-      if (phase === 'charging_2' || phase === 'charging_3') { inst.addTag('intense'); }
+      if (phase === 'charging_2' || phase === 'charging_3') {
+        inst.addTag('intense');
+      }
     } else if (!timer.TimerExists('moonchargepre')) {
       timer.StartTimer('moonchargepre', Math.max(1, timer.GetTimeLeft('fullmoonstartdelay') ?? 1));
       timer.StopTimer('fullmoonstartdelay');
     }
   } else {
-    for (const name of ['moonchargepre', 'mooncharge', 'mooncharge2', 'mooncharge3']) { timer.StopTimer(name); }
+    for (const name of ['moonchargepre', 'mooncharge', 'mooncharge2', 'mooncharge3']) {
+      timer.StopTimer(name);
+    }
     inst.removeTag('intense');
     StopMusic(inst);
     inst.effects.stop();
     UpdateTrading(inst);
   }
   const current = inst.sprite.currentAnimation;
-  if (!current.startsWith('fix_') && !current.startsWith('hit_')) { inst.sprite.start(RestingAnimation(inst)); }
+  if (!current.startsWith('fix_') && !current.startsWith('hit_')) {
+    inst.sprite.start(RestingAnimation(inst));
+  }
 }
 
 function ItemTradeTest(_inst: MoonbaseInstance, item: TradeItem): TradeAcceptance {
-  if (!item.prefab.endsWith('staff')) { return { ok: false, reason: 'NOTSTAFF' }; }
+  if (!item.prefab.endsWith('staff')) {
+    return { ok: false, reason: 'NOTSTAFF' };
+  }
   return { ok: (item.prefab === KEY_STAFF || item.prefab === MORPHED_STAFF) && item instanceof ItemEntity };
 }
 
 /** OverrideItemSkinSymbol / OverrideSymbol("swap_staffs", ...) follow the held staff; the display dresses every drawn sprite in the AnimState. */
 function OverrideStaffSymbol(inst: MoonbaseInstance): void {
   const staff = inst._staffinst;
-  if (!staff) { inst.staffAnimState.ClearOverrideSymbol('swap_staffs'); return; }
-  const skin = staff.skinId === undefined ? undefined : GROUND_ITEM_DEFINITIONS[staff.prefab]?.skinArchives?.[staff.skinId];
-  if (skin !== undefined) { inst.staffAnimState.OverrideItemSkinSymbol('swap_staffs', skin, staff.prefab, String(staff.id), 'staffs'); }
-  else { inst.staffAnimState.OverrideSymbol('swap_staffs', 'staffs', staff.prefab); }
+  if (!staff) {
+    inst.staffAnimState.ClearOverrideSymbol('swap_staffs');
+    return;
+  }
+  const skin =
+    staff.skinId === undefined ? undefined : GROUND_ITEM_DEFINITIONS[staff.prefab]?.skinArchives?.[staff.skinId];
+  if (skin !== undefined) {
+    inst.staffAnimState.OverrideItemSkinSymbol('swap_staffs', skin, staff.prefab, String(staff.id), 'staffs');
+  } else {
+    inst.staffAnimState.OverrideSymbol('swap_staffs', 'staffs', staff.prefab);
+  }
 }
 
 function OnStaffGiven(inst: MoonbaseInstance, _giver: unknown, staff: ItemEntity): void {
@@ -235,8 +287,14 @@ function OnStaffGiven(inst: MoonbaseInstance, _giver: unknown, staff: ItemEntity
   pickable.pause();
   pickable.canInteractWith = true;
   DoPlaySound(inst, ITEM_SOUND);
-  if (staff.prefab === MORPHED_STAFF) { inst.effects.showCold(); } else { inst.effects.hideCold(); }
-  if (!inst._loading) { ToggleMoonCharge(inst); }
+  if (staff.prefab === MORPHED_STAFF) {
+    inst.effects.showCold();
+  } else {
+    inst.effects.hideCold();
+  }
+  if (!inst._loading) {
+    ToggleMoonCharge(inst);
+  }
 }
 
 function OnStaffTaken(inst: MoonbaseInstance): void {
@@ -245,14 +303,18 @@ function OnStaffTaken(inst: MoonbaseInstance): void {
   if (staff) {
     // inst:RemoveChild(staff), staff:ReturnToScene(); a picker's inventory has already taken it into limbo as its owner.
     inst.RemoveChild(staff);
-    if (!staff.components.inventoryitem.owner) { staff.ReturnToScene(); }
+    if (!staff.components.inventoryitem.owner) {
+      staff.ReturnToScene();
+    }
   }
   OverrideStaffSymbol(inst);
   inst.components.pickable.canInteractWith = false;
   DoPlaySound(inst, ITEM_SOUND);
   inst.effects.hideCold();
   UpdateTrading(inst);
-  if (!inst._loading) { ToggleMoonCharge(inst); }
+  if (!inst._loading) {
+    ToggleMoonCharge(inst);
+  }
 }
 
 /**
@@ -267,19 +329,27 @@ function HoldStaff(inst: MoonbaseInstance, staff: ItemEntity): void {
 
 function CreateStaff(inst: MoonbaseInstance, state: InventoryStack): ItemEntity {
   const items = inst.worldServices?.itemEntities;
-  if (!items) { throw new Error('A moonbase needs the world item registry to spawn its staff'); }
+  if (!items) {
+    throw new Error('A moonbase needs the world item registry to spawn its staff');
+  }
   return items.create(state);
 }
 
 function RestoreStaff(inst: MoonbaseInstance, record: import('./saveRecord').HeldEntityRecord): ItemEntity {
   const items = inst.worldServices?.itemEntities;
-  if (!items) { throw new Error('A moonbase needs the world item registry to load its staff'); }
+  if (!items) {
+    throw new Error('A moonbase needs the world item registry to load its staff');
+  }
   return items.restore(record);
 }
 
 function DestroyStaff(inst: MoonbaseInstance, staff: ItemEntity): void {
   const items = inst.worldServices?.itemEntities;
-  if (items) { items.destroy(staff); } else { staff.destroy(); }
+  if (items) {
+    items.destroy(staff);
+  } else {
+    staff.destroy();
+  }
 }
 
 function OnTimerDone(inst: MoonbaseInstance, { name }: EntityEventData['timerdone']): void {
@@ -297,7 +367,10 @@ function OnTimerDone(inst: MoonbaseInstance, { name }: EntityEventData['timerdon
   } else if (name === 'mooncharge2') {
     inst.effects.setLevel(2);
     inst.addTag('intense');
-    timer.StartTimer('mooncharge3', Math.min(MOONBASE_CHARGE_STAGE_DURATION, MOONBASE_CHARGE_DURATION - MOONBASE_CHARGE_STAGE_DURATION));
+    timer.StartTimer(
+      'mooncharge3',
+      Math.min(MOONBASE_CHARGE_STAGE_DURATION, MOONBASE_CHARGE_DURATION - MOONBASE_CHARGE_STAGE_DURATION),
+    );
   } else if (name === 'mooncharge3') {
     inst.effects.setLevel(3);
     // Source switches music immediately at stage 3; subsequent pushes recur once per second.
@@ -306,7 +379,12 @@ function OnTimerDone(inst: MoonbaseInstance, { name }: EntityEventData['timerdon
     // morph staff
     const old = inst._staffinst;
     const skinId = old.skinId === undefined ? undefined : STAFF_MORPH_SKINS[old.skinId];
-    const staff = CreateStaff(inst, { itemId: MORPHED_STAFF, count: 1, remainingUses: 50, ...(skinId ? { skinId } : {}) });
+    const staff = CreateStaff(inst, {
+      itemId: MORPHED_STAFF,
+      count: 1,
+      remainingUses: 50,
+      ...(skinId ? { skinId } : {}),
+    });
     staff.components.finiteuses.setMaxUses(50);
     DestroyStaff(inst, old);
     inst._staffinst = staff;
@@ -331,14 +409,20 @@ function OnRepaired(inst: MoonbaseInstance): void {
     if (state !== 'low') {
       DoPlaySound(inst, REPAIR_SOUND);
       inst.sprite.playOnce(`fix_${state}`, () => ResumeRestingAnimation(inst));
-    } else { inst.sprite.start('low'); }
+    } else {
+      inst.sprite.start('low');
+    }
   }
   UpdateTrading(inst);
-  if (!inst._loading) { ToggleMoonCharge(inst); }
+  if (!inst._loading) {
+    ToggleMoonCharge(inst);
+  }
 }
 
 function MakeRepairable(inst: MoonbaseInstance): void {
-  if (inst.components.repairable) { return; }
+  if (inst.components.repairable) {
+    return;
+  }
   const repairable = addComponent(inst, 'repairable', Repairable, inst.components.workable, 'moonrock');
   repairable.onrepaired = () => OnRepaired(inst);
   repairable.noannounce = true;
@@ -346,12 +430,20 @@ function MakeRepairable(inst: MoonbaseInstance): void {
 
 function UpdateWorkState(inst: MoonbaseInstance): void {
   const state = GetAnimState(inst);
-  if (state !== 'low') { inst.sprite.playOnce(`hit_${state}`, () => ResumeRestingAnimation(inst)); }
-  else { inst.sprite.start('low'); }
-  if (state !== 'full') { MakeRepairable(inst); }
-  else { removeComponent(inst, 'repairable'); }
+  if (state !== 'low') {
+    inst.sprite.playOnce(`hit_${state}`, () => ResumeRestingAnimation(inst));
+  } else {
+    inst.sprite.start('low');
+  }
+  if (state !== 'full') {
+    MakeRepairable(inst);
+  } else {
+    removeComponent(inst, 'repairable');
+  }
   UpdateTrading(inst);
-  if (!inst._loading) { ToggleMoonCharge(inst); }
+  if (!inst._loading) {
+    ToggleMoonCharge(inst);
+  }
 }
 
 /** onsave: the workable's record and the prefab's staff and timers, which stay nested under `moonbase`. */
@@ -364,21 +456,29 @@ function onsave(inst: MoonbaseInstance, data: EntityPersistData): void {
   const staff = inst._staffinst;
   staff?.flush();
   const timers = timer.OnSave();
-  if (staff || timers) { data.moonbase = { ...(staff ? { staff: staff.GetSaveRecord() } : {}), ...(timers ? { timer: timers } : {}) }; }
+  if (staff || timers) {
+    data.moonbase = { ...(staff ? { staff: staff.GetSaveRecord() } : {}), ...(timers ? { timer: timers } : {}) };
+  }
 }
 
 /** onload: the workable has loaded its own record by now (SetPersistData); the timers and the staff are the prefab's. */
 function onload(inst: MoonbaseInstance, data: EntityPersistData): void {
   inst.components.timer.OnLoad(data.moonbase?.timer);
   // onload: SpawnSaveRecord(data.staff).
-  if (data.moonbase?.staff) { OnStaffGiven(inst, undefined, RestoreStaff(inst, data.moonbase.staff)); }
-  else { OnStaffTaken(inst); }
+  if (data.moonbase?.staff) {
+    OnStaffGiven(inst, undefined, RestoreStaff(inst, data.moonbase.staff));
+  } else {
+    OnStaffTaken(inst);
+  }
 }
 
 function OnFullmoon(inst: MoonbaseInstance, isfullmoon: boolean): void {
   const { timer } = inst.components;
-  if (isfullmoon) { timer.StartTimer('fullmoonstartdelay', MOONBASE_CHARGE_DELAY); }
-  else { timer.StopTimer('fullmoonstartdelay'); }
+  if (isfullmoon) {
+    timer.StartTimer('fullmoonstartdelay', MOONBASE_CHARGE_DELAY);
+  } else {
+    timer.StopTimer('fullmoonstartdelay');
+  }
   ToggleMoonCharge(inst);
 }
 
@@ -386,24 +486,44 @@ function init(inst: MoonbaseInstance): void {
   inst._loading = undefined;
   let previous = IsFullMoon(inst);
   // inst:WatchWorldState("isfullmoon", OnFullmoon)
-  inst.onRemove(createEffect(() => {
-    const moon = inst.moon?.get(), cycle = inst.cycle?.get();
-    const isfullmoon = moon?.phase === 'full' && cycle === 'night';
-    if (isfullmoon === previous) { return; }
-    previous = isfullmoon;
-    OnFullmoon(inst, isfullmoon);
-  }));
+  inst.onRemove(
+    createEffect(() => {
+      const moon = inst.moon?.get(),
+        cycle = inst.cycle?.get();
+      const isfullmoon = moon?.phase === 'full' && cycle === 'night';
+      if (isfullmoon === previous) {
+        return;
+      }
+      previous = isfullmoon;
+      OnFullmoon(inst, isfullmoon);
+    }),
+  );
   ToggleMoonCharge(inst, true);
 }
 
 function OnRemoveEntity(inst: MoonbaseInstance): void {
   inst.effects.dispose();
-  for (const sound of inst.sounds) { sound.stop(); }
+  for (const sound of inst.sounds) {
+    sound.stop();
+  }
   inst.sounds.clear();
-  if (inst._staffinst) { DestroyStaff(inst, inst._staffinst); }
+  if (inst._staffinst) {
+    DestroyStaff(inst, inst._staffinst);
+  }
   inst._staffinst = undefined;
 }
 
 export function moonbasePrefabs(world: PrefabWorldContext) {
-  return { [MOONBASE_ID]: { ...buildingPrefab(declaration, 'moonbase', 1, (_position, sprites) => new MoonbaseInstance(world, sprites), world), minimapIcon: 'moonbase.png' } };
+  return {
+    [MOONBASE_ID]: {
+      ...buildingPrefab(
+        declaration,
+        'moonbase',
+        1,
+        (_position, sprites) => new MoonbaseInstance(world, sprites),
+        world,
+      ),
+      minimapIcon: 'moonbase.png',
+    },
+  };
 }

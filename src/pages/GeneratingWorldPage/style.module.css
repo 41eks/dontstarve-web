@@ -24,8 +24,12 @@
   height: 100%;
 }
 
-.stageBackground { z-index: 0; }
-.canvasHost { z-index: 1; }
+.stageBackground {
+  z-index: 0;
+}
+.canvasHost {
+  z-index: 1;
+}
 
 .loader,
 .error {
@@ -36,26 +40,41 @@
   place-content: center;
   justify-items: center;
   gap: 18px;
-  color: rgba(23, 23, 19, .75);
+  color: rgba(23, 23, 19, 0.75);
   background: #ca30d1;
-  font: 700 12px/1 "Noto Sans SC", system-ui, sans-serif;
-  letter-spacing: .14em;
+  font:
+    700 12px/1 'Noto Sans SC',
+    system-ui,
+    sans-serif;
+  letter-spacing: 0.14em;
 }
 
 .loader i {
   width: 42px;
   height: 42px;
-  border: 2px solid rgba(23, 23, 19, .18);
+  border: 2px solid rgba(23, 23, 19, 0.18);
   border-top-color: #171713;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
 
-.error b { color: #6b1425; }
-.error span { max-width: min(80vw, 640px); text-align: center; opacity: .72; }
+.error b {
+  color: #6b1425;
+}
+.error span {
+  max-width: min(80vw, 640px);
+  text-align: center;
+  opacity: 0.72;
+}
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .loader i { animation: none; }
+  .loader i {
+    animation: none;
+  }
 }

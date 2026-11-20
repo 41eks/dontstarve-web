@@ -12,15 +12,28 @@ import { TILE_SIZE } from './tile';
 export const CAMPFIREFIRE_ID = 'campfirefire';
 export const CAMPFIREFIRE_ARCHIVE = 'campfire_fire.zip';
 /** campfirefire.lua SetBank/SetBuild("campfire_fire"). Its frames are merged into the owner's, never batched on their own. */
-export const CAMPFIREFIRE_ART = { animationArchive: CAMPFIREFIRE_ARCHIVE, buildArchives: [CAMPFIREFIRE_ARCHIVE], bank: 'campfire_fire' };
-export const CAMPFIREFIRE_SOUNDS = ['dontstarve/common/campfire', 'dontstarve/common/fireBurstSmall',
-  'dontstarve/common/fireBurstLarge', 'dontstarve/common/fireOut'] as const satisfies readonly SoundEventPath[];
+export const CAMPFIREFIRE_ART = {
+  animationArchive: CAMPFIREFIRE_ARCHIVE,
+  buildArchives: [CAMPFIREFIRE_ARCHIVE],
+  bank: 'campfire_fire',
+};
+export const CAMPFIREFIRE_SOUNDS = [
+  'dontstarve/common/campfire',
+  'dontstarve/common/fireBurstSmall',
+  'dontstarve/common/fireBurstLarge',
+  'dontstarve/common/fireOut',
+] as const satisfies readonly SoundEventPath[];
 
 const LIGHT_COLOUR = [1, 1, 192 / 255] as const;
 /** campfirefire.lua firelevels. Its heater (heats 70–115) is not ported; the entity keeps the HASHEATER tag. */
-const FIRE_LEVELS: readonly FireFXLevel[] = [.1, .3, .6, 1].map((soundintensity, i) => ({
-  anim: `level${i + 1}`, sound: 'dontstarve/common/campfire', radius: i + 2, intensity: .8, falloff: .33,
-  colour: LIGHT_COLOUR, soundintensity,
+const FIRE_LEVELS: readonly FireFXLevel[] = [0.1, 0.3, 0.6, 1].map((soundintensity, i) => ({
+  anim: `level${i + 1}`,
+  sound: 'dontstarve/common/campfire',
+  radius: i + 2,
+  intensity: 0.8,
+  falloff: 0.33,
+  colour: LIGHT_COLOUR,
+  soundintensity,
 }));
 
 // A follower is shown for as long as it exists; its removal takes the declaration away.
@@ -35,9 +48,15 @@ let nextId = 0;
 export class CampfireFire implements BurnFX, FireFXInst {
   readonly instance: PrefabInstance;
   /** The fx is the inst its firefx sees; the component is stored on, and torn down with, the fx's prefab instance. */
-  get components(): PrefabComponents { return this.instance.components; }
-  get isRemoved(): boolean { return this.instance.isRemoved; }
-  onRemove(remove: () => void): () => void { return this.instance.onRemove(remove); }
+  get components(): PrefabComponents {
+    return this.instance.components;
+  }
+  get isRemoved(): boolean {
+    return this.instance.isRemoved;
+  }
+  onRemove(remove: () => void): () => void {
+    return this.instance.onRemove(remove);
+  }
   private readonly owner: PrefabInstance;
   private readonly key = `${CAMPFIREFIRE_ID}:${nextId++}`;
   private readonly sounds = new Map<string, SoundHandle>();
@@ -47,48 +66,78 @@ export class CampfireFire implements BurnFX, FireFXInst {
   /** `updates` is firefx.lua's StartUpdatingComponent, as for fire.lua. */
   constructor(source: ArchiveSpriteSource, owner: PrefabInstance, data: BurnFXData, updates?: ComponentUpdates) {
     this.owner = owner;
-    const { instance, display } = createArchiveEntity(CAMPFIREFIRE_ID, source, { name: FIRE_LEVELS[0].anim }, CAMPFIREFIRE_ID, instance => {
-      instance.addTag('FX');
-      instance.addTag('HASHEATER');
-      instance.persists = false;
-    }, owner.status);
+    const { instance, display } = createArchiveEntity(
+      CAMPFIREFIRE_ID,
+      source,
+      { name: FIRE_LEVELS[0].anim },
+      CAMPFIREFIRE_ID,
+      instance => {
+        instance.addTag('FX');
+        instance.addTag('HASHEATER');
+        instance.persists = false;
+      },
+      owner.status,
+    );
     this.instance = instance;
-    owner.sprite.attachFx(this.key, { sprite: instance.sprite, display, active: SHOWN, sortLayer: 2,
-      composite: { symbol: data.follow, offset: [data.x, data.y] } });
+    owner.sprite.attachFx(this.key, {
+      sprite: instance.sprite,
+      display,
+      active: SHOWN,
+      sortLayer: 2,
+      composite: { symbol: data.follow, offset: [data.x, data.y] },
+    });
     const firefx = addComponent(this, 'firefx', FireFX);
     firefx.levels = FIRE_LEVELS;
-    if (updates) { this.cleanups.push(updates.register(firefx)); }
+    if (updates) {
+      this.cleanups.push(updates.register(firefx));
+    }
     firefx.SetLevel(1);
     // OnEntitySleep / OnEntityWake follow the owner's tile with the fx entity.
     const status = watchSignal(instance.status, stop => this.cleanups.push(stop));
     createEffect(() => {
       const value = status.get();
-      if (value === 'asleep') { firefx.OnEntitySleep(); }
-      else if (value === 'active') { firefx.OnEntityWake(); }
+      if (value === 'asleep') {
+        firefx.OnEntitySleep();
+      } else if (value === 'active') {
+        firefx.OnEntityWake();
+      }
     });
   }
 
   Remove(): void {
-    if (this.instance.status.peek() === 'removed') { return; }
+    if (this.instance.status.peek() === 'removed') {
+      return;
+    }
     this.onAnimOver = undefined;
     this.cleanups.splice(0).forEach(stop => stop());
-    for (const sound of this.sounds.values()) { sound.stop(); }
+    for (const sound of this.sounds.values()) {
+      sound.stop();
+    }
     this.sounds.clear();
     this.owner.sprite.detachFx(this.key);
     this.instance.remove();
   }
 
-  RemoveOnAnimOver(): void { this.onAnimOver = () => this.Remove(); }
+  RemoveOnAnimOver(): void {
+    this.onAnimOver = () => this.Remove();
+  }
 
   PlayAnimation(name: string, loop = false): void {
-    if (loop) { this.instance.sprite.start(name); }
-    else { this.instance.sprite.playOnce(name, () => this.onAnimOver?.()); }
+    if (loop) {
+      this.instance.sprite.start(name);
+    } else {
+      this.instance.sprite.playOnce(name, () => this.onAnimOver?.());
+    }
   }
-  PushAnimation(name: string, loop = false): void { this.instance.sprite.pushAnimation(name, loop); }
+  PushAnimation(name: string, loop = false): void {
+    this.instance.sprite.pushAnimation(name, loop);
+  }
 
   PlaySound(path: SoundEventPath, name?: string): void {
     const sound = PlaySound(path, this.owner.position);
-    if (name === undefined) { return; }
+    if (name === undefined) {
+      return;
+    }
     this.sounds.get(name)?.stop();
     this.sounds.set(name, sound);
   }
@@ -96,9 +145,15 @@ export class CampfireFire implements BurnFX, FireFXInst {
     this.sounds.get(name)?.stop();
     this.sounds.delete(name);
   }
-  PlayingSound(name: string): boolean { return this.sounds.get(name)?.isPlaying() ?? false; }
-  SetSoundParameter(name: string, parameter: string, value: number): void { this.sounds.get(name)?.setParameter?.(parameter, value); }
-  IsAsleep(): boolean { return this.instance.status.peek() === 'asleep'; }
+  PlayingSound(name: string): boolean {
+    return this.sounds.get(name)?.isPlaying() ?? false;
+  }
+  SetSoundParameter(name: string, parameter: string, value: number): void {
+    this.sounds.get(name)?.setParameter?.(parameter, value);
+  }
+  IsAsleep(): boolean {
+    return this.instance.status.peek() === 'asleep';
+  }
 
   /** SpawnPrefab("firefx_light"): its radius is in DST units. */
   SpawnLight(): FireFXLight {

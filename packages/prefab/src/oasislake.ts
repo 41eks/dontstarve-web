@@ -24,19 +24,25 @@ const WATER_RADIUS = 3.8;
 const PHYSICS_RADIUS = 6;
 const UNIT = TILE_SIZE / 4;
 /** LAYER_BACKGROUND with SetSortOrder(-3), on the ground under the turf-level art. */
-const MESH_ORDER = -.5 + (-3 - 3) * .01;
+const MESH_ORDER = -0.5 + (-3 - 3) * 0.01;
 
 /** OnSave's field: data.regrowth, written only as false. */
 export interface OasislakeSaveState {
   regrowth?: false;
 }
 
-export interface OasislakeWorld { scheduler: GameTimeScheduler }
+export interface OasislakeWorld {
+  scheduler: GameTimeScheduler;
+}
 
 /** oasislake.lua fn: the fields it sets on inst. */
 export class OasislakeInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    pointofinterest: PointOfInterest; inspectable: Inspectable; fishable: Fishable; hauntable: Hauntable; oasis: Oasis;
+    pointofinterest: PointOfInterest;
+    inspectable: Inspectable;
+    fishable: Fishable;
+    hauntable: Hauntable;
+    oasis: Oasis;
     watersource: WaterSource;
   };
   no_wet_prefix = true;
@@ -47,7 +53,9 @@ export class OasislakeInstance extends PrefabInstance {
 }
 
 function OnSave(inst: OasislakeInstance, data: EntityPersistData): void {
-  if (!inst.regrowth) { data.oasislake = { regrowth: false }; }
+  if (!inst.regrowth) {
+    data.oasislake = { regrowth: false };
+  }
 }
 
 /** `data == nil or data.regrowth ~= false`: a record without the field loads as regrowing. */
@@ -103,7 +111,9 @@ function fn(world: OasislakeWorld): OasislakeInstance {
 }
 
 /** The Prefab oasislake.lua returns. */
-export function oasislakePrefabs(world: OasislakeWorld): Readonly<Record<typeof OASISLAKE_ID, PrefabEntityDefinition<OasislakeInstance>>> {
+export function oasislakePrefabs(
+  world: OasislakeWorld,
+): Readonly<Record<typeof OASISLAKE_ID, PrefabEntityDefinition<OasislakeInstance>>> {
   return {
     [OASISLAKE_ID]: {
       fn: () => fn(world),

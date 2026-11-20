@@ -4,7 +4,11 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { nightmareGrowthPrefabs, NightmareGrowthCrackInstance, type NightmareGrowthInstance } from '../../prefab/src/nightmaregrowth';
+import {
+  nightmareGrowthPrefabs,
+  NightmareGrowthCrackInstance,
+  type NightmareGrowthInstance,
+} from '../../prefab/src/nightmaregrowth';
 import { PrefabEntityManager, prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
@@ -17,39 +21,85 @@ import { createInventoryStore } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
-function setup(random = () => .25) {
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), physics = new CANNON.World(), inventory = createInventoryStore([]);
+function setup(random = () => 0.25) {
+  const scene = new THREE.Scene(),
+    scheduler = new GameTimeScheduler(),
+    physics = new CANNON.World(),
+    inventory = createInventoryStore([]);
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
-  prefabs.register(nightmareGrowthPrefabs({ scheduler, random,
-    spawnPrefab: (prefab, position) => prefabs.spawnAs(NightmareGrowthCrackInstance, prefab, position) }));
+  prefabs.register(
+    nightmareGrowthPrefabs({
+      scheduler,
+      random,
+      spawnPrefab: (prefab, position) => prefabs.spawnAs(NightmareGrowthCrackInstance, prefab, position),
+    }),
+  );
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(9, 0, -6));
   registry.registerPrefabs(PREFAB_DEFINITIONS.nightmareGrowths);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = async () => {
     let json = '';
-    expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      json = serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
-        playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
-    })).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand('c_save()', inventory, undefined, () => {
+          json = serializeSave(
+            template,
+            {
+              entities: registry.exportRecords(),
+              inventory: inventory.exportSaved(),
+              elapsedSeconds: 0,
+              playerTransform: { position: [0, 0, 0], rotationY: 0 },
+            },
+            SAVE_CATALOG,
+          );
+        })
+      ).ok,
+    ).toBe(true);
     return deserializeSave(json, SAVE_CATALOG).world.entities;
   };
   // inst._crack: a separate, unsaved entity rather than a parented child.
   const crackOf = (growth: NightmareGrowthInstance) => growth._crack;
-  return { scene, scheduler, inventory, prefabs, registry, save, crackOf,
-    dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
+  return {
+    scene,
+    scheduler,
+    inventory,
+    prefabs,
+    registry,
+    save,
+    crackOf,
+    dispose: () => {
+      registry.dispose();
+      prefabs.dispose();
+      displays.dispose();
+      inventory.dispose();
+      scheduler.dispose();
+    },
+  };
 }
 
 it('c_spawn draws the growth and spawns its nonpersistent ground crack next frame; c_save reloads the crack rotation', async () => {
   const s = setup();
   let entities;
   try {
-    expect((await executeDebugCommand('c_spawn("nightmaregrowth")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    const [{ record: { id } }] = s.prefabs.exportRecords();
+    expect((await executeDebugCommand('c_spawn("nightmaregrowth")', s.inventory, id => s.registry.spawn(id))).ok).toBe(
+      true,
+    );
+    const [
+      {
+        record: { id },
+      },
+    ] = s.prefabs.exportRecords();
     const growth = s.prefabs.get(id) as NightmareGrowthInstance;
     expect(growth.hasTag('ancient_text')).toBe(true);
     expect(growth.minimap.icon).toBe('nightmaregrowth.png');
@@ -63,19 +113,26 @@ it('c_spawn draws the growth and spawns its nonpersistent ground crack next fram
     expect(s.scene.children.map(model => prefabInstance(model))).toContain(crack);
     expect(crack.persists).toBe(false);
     expect(crack.listTags()).toEqual(expect.arrayContaining(['FX', 'NOCLICK', 'DECOR']));
-    expect(crack.sprite.sprite.peek()).toMatchObject({ ground: { flat: true }, meshOrder: -.5 });
+    expect(crack.sprite.sprite.peek()).toMatchObject({ ground: { flat: true }, meshOrder: -0.5 });
     expect(crack.GetRotation()).toBe(90);
     await prefabDisplay(crack.transform.model)!.artLoaded();
     expect(crack.sprite.currentAnimation).toBe('crack_idle');
     entities = await s.save();
-    expect(entities.nightmaregrowth).toEqual([expect.objectContaining({ id, transform: { position: [9, 0, -6], rotationY: 0 },
-      components: { nightmareGrowth: { crackRotation: 90 } } })]);
+    expect(entities.nightmaregrowth).toEqual([
+      expect.objectContaining({
+        id,
+        transform: { position: [9, 0, -6], rotationY: 0 },
+        components: { nightmareGrowth: { crackRotation: 90 } },
+      }),
+    ]);
     expect(entities.nightmaregrowth_crack).toBeUndefined();
     growth.remove();
     expect(crack.isRemoved).toBe(true);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 
-  const restored = setup(() => .75);
+  const restored = setup(() => 0.75);
   try {
     await restored.registry.restoreAll({ nightmaregrowth: entities.nightmaregrowth });
     const growth = restored.prefabs.get(entities.nightmaregrowth[0].id) as NightmareGrowthInstance;
@@ -84,5 +141,7 @@ it('c_spawn draws the growth and spawns its nonpersistent ground crack next fram
     restored.scheduler.advance(0);
     expect(restored.crackOf(growth)!.GetRotation()).toBe(90);
     expect(restored.prefabs.exportRecords()).toHaveLength(1);
-  } finally { restored.dispose(); }
+  } finally {
+    restored.dispose();
+  }
 });

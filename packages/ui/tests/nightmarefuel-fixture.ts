@@ -9,18 +9,32 @@ import { renderSceneWithPasses } from '../../animation/src/sceneRenderPass';
 export async function checkNightmareFuelTransparency() {
   const inventory = createPickupInventory();
   // The item lies in a world of its own; each sample moves its model into the rendered scene.
-  const world = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
-    inventory, '/dst/data/anim', new THREE.Group());
+  const world = new ItemWorldFixture(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(),
+    undefined,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    new THREE.Group(),
+  );
   const assets = world.archives;
   const source = GROUND_ITEM_DEFINITIONS.nightmarefuel;
-  const fuel = { model: world.spawnFromSave('fuel', { itemId: 'nightmarefuel', count: 1, name: 'nightmarefuel', icon: '' }, new THREE.Vector3()) };
+  const fuel = {
+    model: world.spawnFromSave(
+      'fuel',
+      { itemId: 'nightmarefuel', count: 1, name: 'nightmarefuel', icon: '' },
+      new THREE.Vector3(),
+    ),
+  };
   await prefabDisplay(fuel.model)!.artLoaded();
   const opaque = await createArchiveSprite(assets, { ...source, multColour: [1, 1, 1, 1] });
   const renderer = new THREE.WebGLRenderer({ preserveDrawingBuffer: true });
   renderer.setSize(128, 128);
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-2, 2, 2.5, -1.5, 0.1, 10);
-  camera.position.set(0, 0, 5); camera.lookAt(0, 0, 0);
+  camera.position.set(0, 0, 5);
+  camera.lookAt(0, 0, 0);
   const pixels = () => {
     assets.instancedSprites.flush(renderer);
     renderSceneWithPasses(renderer, scene, camera);
@@ -38,18 +52,31 @@ export async function checkNightmareFuelTransparency() {
     scene.remove(model);
     return { white, green };
   };
-  const control = sample(opaque.model), actual = sample(fuel.model);
-  let opaqueInterior = 0, translucentInterior = 0;
+  const control = sample(opaque.model),
+    actual = sample(fuel.model);
+  let opaqueInterior = 0,
+    translucentInterior = 0;
   for (let i = 0; i < control.white.length; i += 4) {
     // Opaque black source pixels hide both backgrounds. The corrected same
     // pose must reveal both the green channel and the changed red background.
-    if (control.white[i] + control.white[i + 1] + control.white[i + 2] > 90
-      || Math.abs(control.white[i] - control.green[i]) > 2) { continue; }
+    if (
+      control.white[i] + control.white[i + 1] + control.white[i + 2] > 90 ||
+      Math.abs(control.white[i] - control.green[i]) > 2
+    ) {
+      continue;
+    }
     opaqueInterior++;
-    if (actual.white[i] > control.white[i] + 50
-      && actual.green[i + 1] > control.green[i + 1] + 50
-      && actual.white[i] > actual.green[i] + 50) { translucentInterior++; }
+    if (
+      actual.white[i] > control.white[i] + 50 &&
+      actual.green[i + 1] > control.green[i + 1] + 50 &&
+      actual.white[i] > actual.green[i] + 50
+    ) {
+      translucentInterior++;
+    }
   }
-  opaque.dispose(); world.dispose(); inventory.dispose(); renderer.dispose();
+  opaque.dispose();
+  world.dispose();
+  inventory.dispose();
+  renderer.dispose();
   return { opaqueInterior, translucentInterior };
 }

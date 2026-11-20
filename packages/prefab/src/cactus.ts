@@ -6,15 +6,20 @@ import { BurnableBinding } from './treeFire';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeObstaclePhysics } from './standardcomponents';
 import { WorldContentKey, type SeasonState, type WorldContentSignal } from '@dontstarve-web/signals';
 import type { PickDoer } from '@dontstarve-web/stategraphs/pick';
-import { PickablePlantInstance, SpringGrowthMod, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
+import {
+  PickablePlantInstance,
+  SpringGrowthMod,
+  type PickablePlantRecord,
+  type PickablePlantWorld,
+} from './pickablePlant';
 
 export const CACTUS_ID = 'cactus' as const;
 export const OASIS_CACTUS_ID = 'oasis_cactus' as const;
 export const CACTUS_IDS = [CACTUS_ID, OASIS_CACTUS_ID] as const;
-export type CactusId = typeof CACTUS_IDS[number];
+export type CactusId = (typeof CACTUS_IDS)[number];
 export const CACTUS_FLOWER_ID = 'cactus_flower';
 /** tuning.lua CACTUS_DAMAGE = wilson_health * .04. */
-export const CACTUS_DAMAGE = 150 * .04;
+export const CACTUS_DAMAGE = 150 * 0.04;
 /** tuning.lua CACTUS_REGROW_TIME = total_day_time * 4. */
 export const CACTUS_REGROW_TIME = 4 * 480;
 
@@ -51,8 +56,11 @@ function onpickedfn(inst: CactusInstance, doer?: PickDoer): void {
       // You get a cactus flower, yay.
       const loot = inst.world.spawnItem?.({ itemId: CACTUS_FLOWER_ID, count: 1 });
       if (loot) {
-        if (inventory?.GiveItem) { inventory.GiveItem(loot, inst.position.clone()); }
-        else { inst.world.dropItem?.(loot, inst.position.clone()); }
+        if (inventory?.GiveItem) {
+          inventory.GiveItem(loot, inst.position.clone());
+        } else {
+          inst.world.dropItem?.(loot, inst.position.clone());
+        }
       }
     }
   }
@@ -103,26 +111,51 @@ function cactusfn(prefab: CactusId, world: PickablePlantWorld): CactusInstance {
 
   inst.sprite.setFrameAt(Math.random());
 
-  const pickable = addComponent(inst, 'pickable', Pickable, 'cactus_meat', CACTUS_REGROW_TIME, 1, doer => onpickedfn(inst, doer), () => onregenfn(inst), undefined, {
-    scheduler: world.scheduler, growthDuration: SpringGrowthMod(inst, world.getWatchWorldContent),
-    onEmpty: () => makeemptyfn(inst), onTransplant: () => ontransplantfn(inst),
-  });
+  const pickable = addComponent(
+    inst,
+    'pickable',
+    Pickable,
+    'cactus_meat',
+    CACTUS_REGROW_TIME,
+    1,
+    doer => onpickedfn(inst, doer),
+    () => onregenfn(inst),
+    undefined,
+    {
+      scheduler: world.scheduler,
+      growthDuration: SpringGrowthMod(inst, world.getWatchWorldContent),
+      onEmpty: () => makeemptyfn(inst),
+      onTransplant: () => ontransplantfn(inst),
+    },
+  );
   pickable.picksound = 'dontstarve/wilson/harvest_sticks';
 
   // MakeLargeBurnable + MakeMediumPropagator.
-  const burn = new BurnableBinding(inst, { propagator: 'medium', burnTime: 30, fxLevel: 4,
-    onIgnite: () => DefaultBurnFn(inst), onExtinguish: () => DefaultExtinguishFn(inst), onBurnt: () => DefaultBurntFn(inst, world) }, world);
+  const burn = new BurnableBinding(
+    inst,
+    {
+      propagator: 'medium',
+      burnTime: 30,
+      fxLevel: 4,
+      onIgnite: () => DefaultBurnFn(inst),
+      onExtinguish: () => DefaultExtinguishFn(inst),
+      onBurnt: () => DefaultBurntFn(inst, world),
+    },
+    world,
+  );
   inst.onRemove(() => burn.dispose());
   return inst;
 }
 
 /** cactus.lua: MakeCactus("cactus") and MakeCactus("oasis_cactus"); bank and build share the name. */
-export function cactusPrefabs(world: PickablePlantWorld): Readonly<Record<CactusId, PrefabEntityDefinition<CactusInstance>>> {
+export function cactusPrefabs(
+  world: PickablePlantWorld,
+): Readonly<Record<CactusId, PrefabEntityDefinition<CactusInstance>>> {
   const prefab = (id: CactusId): PrefabEntityDefinition<CactusInstance> => ({
     fn: () => cactusfn(id, world),
     assets: { animationArchive: `${id}.zip`, buildArchives: [`${id}.zip`], bank: id },
     assetOptions: { instancedAnimations: 'all', staticBillboard: true },
-    physics: { make: MakeObstaclePhysics, radius: .3 },
+    physics: { make: MakeObstaclePhysics, radius: 0.3 },
     minimapIcon: `${id}.png`,
     // inst.OnEntityWake: a spawned or loaded cactus wakes with the season's flower.
     onSpawned: OnEntityWake,

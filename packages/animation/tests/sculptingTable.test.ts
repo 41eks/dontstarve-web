@@ -14,14 +14,26 @@ import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
 import { managedBuildings } from './managedBuildings';
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 async function createPlacement() {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const dropLoot = vi.fn();
-  const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, dropLoot } as unknown as WorldContext;
+  const world = {
+    scene: new THREE.Scene(),
+    player: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+    dropLoot,
+  } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   return { placement, dropLoot };
 }
@@ -29,7 +41,9 @@ async function createPlacement() {
 /** The held block the table's own AnimState declares for its sprite: OverrideSymbol("cutstone01", swapfile, symbol). */
 const heldBlock = (model: THREE.Object3D) => {
   const declared = prefabInstance(model)!.sprite.sprite.peek().appearance.get('anim-state');
-  return declared?.kind === 'anim-state' ? declared.state.peek().overrides.get(smallHash('cutstone01'))?.sources : undefined;
+  return declared?.kind === 'anim-state'
+    ? declared.state.peek().overrides.get(smallHash('cutstone01'))?.sources
+    : undefined;
 };
 
 const offer = (prefab: string) => {
@@ -49,14 +63,18 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
   try {
     placement.spawn(SCULPTING_TABLE_ID);
     const [{ model }] = workTargets('HAMMER');
-    const trader = prefabInstance(model)!.components.trader, pickable = prefabInstance(model)!.components.pickable;
+    const trader = prefabInstance(model)!.components.trader,
+      pickable = prefabInstance(model)!.components.pickable;
     expect(heldBlock(model)).toBeUndefined();
     expect(prefabInstance(model)!.listTags()).toContain('trader');
     expect(prefabInstance(model)!.listTags()).not.toContain('pickable');
     expect(placement.exportRecords()[0].record.components).not.toHaveProperty('sculptingtable');
 
     // abletoaccepttest: only sculptable materials, and only into an empty slot.
-    expect(trader!.AbleToAccept({ prefab: 'log', hasTag: () => false })).toEqual({ ok: false, reason: 'NOTSCULPTABLE' });
+    expect(trader!.AbleToAccept({ prefab: 'log', hasTag: () => false })).toEqual({
+      ok: false,
+      reason: 'NOTSCULPTABLE',
+    });
     const log = offer('log');
     expect(trader!.AcceptGift(log.entity, log.take)).toBe(false);
     expect(log.take).not.toHaveBeenCalled();
@@ -82,13 +100,25 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     const saved = placement.exportRecords()[0].record;
     const parse = (record: typeof saved) => {
       const save = structuredClone(initialWorld) as unknown as SaveDocument;
-      save.world.entities = { sculptingtable: [{ ...structuredClone(record), transform: { ...record.transform, position: [...record.transform.position] } }] };
+      save.world.entities = {
+        sculptingtable: [
+          { ...structuredClone(record), transform: { ...record.transform, position: [...record.transform.position] } },
+        ],
+      };
       save.players.local.inventory = { items: {}, equip: {} };
       save.players.local.builder = { bufferedBuilds: [] };
-      return deserializeSave(JSON.stringify(save), { items: {}, skins: {}, recipes: {}, recipeSkins: {},
-        buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) });
+      return deserializeSave(JSON.stringify(save), {
+        items: {},
+        skins: {},
+        recipes: {},
+        recipeSkins: {},
+        buildings: definitions.animatedBuildings,
+        walls: Object.keys(definitions.walls),
+      });
     };
-    expect(() => parse({ ...saved, components: { ...saved.components, sculptingtable: { itemname: 'log' } } })).toThrow(/itemname/);
+    expect(() => parse({ ...saved, components: { ...saved.components, sculptingtable: { itemname: 'log' } } })).toThrow(
+      /itemname/,
+    );
     const restored = await placement.spawnFromSave(SCULPTING_TABLE_ID, parse(saved).world.entities.sculptingtable[0]);
     expect(prefabInstance(restored)!.components.pickable!.product).toBe('marble');
     expect(prefabInstance(restored)!.listTags()).toContain('pickable');
@@ -117,7 +147,9 @@ it('accepts one marble or cutstone, hands it back on PICK and restores it from a
     expect(trader!.AcceptGift(cutstone.entity, cutstone.take)).toBe(true);
     expect(play).toHaveBeenCalledTimes(4);
     expect(placement.exportRecords()[0].record.components.sculptingtable).toEqual({ itemname: 'cutstone' });
-  } finally { placement.dispose(); }
+  } finally {
+    placement.dispose();
+  }
   expect(handles.every(handle => vi.mocked(handle.stop).mock.calls.length === 1)).toBe(true);
 });
 
@@ -129,11 +161,15 @@ it('drops the held block with the recipe loot when hammered', async () => {
     const marble = offer('marble');
     prefabInstance(model)!.components.trader!.AcceptGift(marble.entity, marble.take);
     const target = workTargets('HAMMER')[0];
-    for (let hit = 0; hit < 4; hit++) { target.work(); }
+    for (let hit = 0; hit < 4; hit++) {
+      target.work();
+    }
     const items = dropLoot.mock.calls.flatMap(([items]) => items) as { itemId: string; count: number }[];
     expect(items).toContainEqual({ itemId: 'marble', count: 1 });
     expect(items.some(({ itemId }) => itemId === 'boards')).toBe(true);
     expect(placement.exportRecords()).toEqual([]);
     expect(prefabInstance(model)!.isRemoved).toBe(true);
-  } finally { placement.dispose(); }
+  } finally {
+    placement.dispose();
+  }
 });

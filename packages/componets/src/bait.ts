@@ -5,9 +5,15 @@ export class Bait {
   private readonly stop: () => void;
   constructor(inst: ItemEntity) {
     this.stop = inst.ListenForEvent('onstolen', (_inst, data) => {
-      if (!inst.isRemoved && !inst.components.inventoryitem.owner) { data.thief.components.inventory?.GiveItem(inst); }
+      if (!inst.isRemoved && !inst.components.inventoryitem.owner) {
+        data.thief.components.inventory?.GiveItem(inst);
+      }
     });
   }
-  IsFree(): boolean { return true; }
-  dispose(): void { this.stop(); }
+  IsFree(): boolean {
+    return true;
+  }
+  dispose(): void {
+    this.stop();
+  }
 }

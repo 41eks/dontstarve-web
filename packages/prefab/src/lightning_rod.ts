@@ -22,179 +22,217 @@ export const LIGHTNING_ROD_SKIN_ARCHIVES: Readonly<Record<string, string>> = dec
 export const LIGHTNING_ROD_PLACER = buildingPlacer(declaration, 'lightning_rod');
 
 /** lightningrod.lua OnSave: data.charged and data.chargeleft only exist while the rod is charged. */
-export interface LightningRodSaveState { charged: true; chargeleft: number }
+export interface LightningRodSaveState {
+  charged: true;
+  chargeleft: number;
+}
 
 /** inst.Light: radius 1.5, falloff 1, intensity .5, orange. Radius is in DST units. */
-const LIGHT = { radius: 1.5 * (TILE_SIZE / 4), intensity: .5, falloff: 1, colour: [235 / 255, 121 / 255, 12 / 255] } as const;
+const LIGHT = {
+  radius: 1.5 * (TILE_SIZE / 4),
+  intensity: 0.5,
+  falloff: 1,
+  colour: [235 / 255, 121 / 255, 12 / 255],
+} as const;
 const ZAP_SOUND = 'dontstarve/common/lightningrod';
 const CRAFT_SOUND = 'dontstarve/common/lightning_rod_craft';
 
 /** lightningrod.lua's inst.charged / inst.chargeleft / inst.zaptask and WatchWorldState("cycles", ondaycomplete). */
 class LightningRod {
-    charged = false;
-    chargeleft: number | undefined;
-    /** inst.zaptask */
-    private zaptask?: EntityTask;
-    /** WatchWorldState("cycles", ondaycomplete), as the once-per-day task armed while charged. */
-    private daytask?: EntityTask;
-    readonly battery: Battery<LightningRodInstance>;
+  charged = false;
+  chargeleft: number | undefined;
+  /** inst.zaptask */
+  private zaptask?: EntityTask;
+  /** WatchWorldState("cycles", ondaycomplete), as the once-per-day task armed while charged. */
+  private daytask?: EntityTask;
+  readonly battery: Battery<LightningRodInstance>;
 
-    private readonly inst: PrefabInstance;
+  private readonly inst: PrefabInstance;
 
-    constructor(inst: LightningRodInstance) {
-        this.inst = inst;
-        this.battery = addComponent(inst, 'battery', Battery<LightningRodInstance>);
-        this.battery.SetCanBeUsedFn((_inst, _user, mult) => {
-            if (mult) {
-                const charge = this.actualCharge;
-                if (charge !== undefined && charge >= mult) { return [true]; }
-            } else if (this.charged) { return [true]; }
-            return [false, 'NOT_ENOUGH_CHARGE'];
-        });
-        this.battery.SetOnUsedFn((_inst, _user, mult) => {
-            if (mult) {
-                const charge = this.actualCharge;
-                if (charge !== undefined && charge > mult) {
-                    this.dozap();
-                    this.chargeleft! -= mult;
-                    return;
-                }
-            }
-            this.discharge();
-        });
-        this.battery.SetResolvePartialChargeMultFn((_inst, _user, mult) => {
-            const charge = this.actualCharge;
-            return charge === undefined ? mult : Math.min(mult, charge);
-        });
-    }
-
-    /**
-     * CalcActualCharge: functionally, the rod holds 1 charge that decays over 3 days, not 3 separate charges.
-     */
-    get actualCharge(): number | undefined {
-        return this.chargeleft === undefined ? undefined : this.chargeleft - (Math.ceil(this.chargeleft) - 1);
-    }
-
-    private get removed(): boolean { return this.inst.isRemoved; }
-
-    private armDay(): void {
-        const world = this.inst.worldServices;
-        if (!this.charged || !world?.scheduler || !world.secondsUntilNextDay) { return; }
-        this.daytask?.Cancel();
-        this.daytask = this.inst.DoTaskInTime(world.secondsUntilNextDay(world.scheduler.now), () => {
-            this.daytask = undefined;
-            this.ondaycomplete();
-            this.armDay();
-        });
-    }
-
-    /** dozap: the sound and fx at the rod, then the next zap in 10–40 seconds. */
-    dozap(): void {
-        if (this.removed) { return; }
-        PlaySound(ZAP_SOUND, this.inst.position);
-        this.inst.worldServices?.fx?.spawn('lightning_rod_fx', this.inst.position);
-        this.zaptask?.Cancel();
-        if (this.inst.worldServices?.scheduler) { this.zaptask = this.inst.DoTaskInTime(10 + Math.floor(Math.random() * 31), () => this.dozap()); }
-    }
-
-    discharge(): void {
-        if (!this.charged) { return; }
-        this.daytask?.Cancel(); this.daytask = undefined;
-        // AnimState:ClearBloomEffectHandle has no renderer here; the light is the visible charge.
-        this.charged = false;
-        this.chargeleft = undefined;
-        this.inst.light.set(null);
-        this.zaptask?.Cancel(); this.zaptask = undefined;
-    }
-
-    private ondaycomplete(): void {
-        this.dozap();
-        if (this.chargeleft! > 1) { this.chargeleft! -= 1; }
-        else { this.discharge(); }
-    }
-
-    setcharged(charges: number): void {
-        if (!this.charged) {
-            this.inst.light.set(LIGHT);
-            this.charged = true;
-            this.armDay();
+  constructor(inst: LightningRodInstance) {
+    this.inst = inst;
+    this.battery = addComponent(inst, 'battery', Battery<LightningRodInstance>);
+    this.battery.SetCanBeUsedFn((_inst, _user, mult) => {
+      if (mult) {
+        const charge = this.actualCharge;
+        if (charge !== undefined && charge >= mult) {
+          return [true];
         }
-        this.chargeleft = Math.max(this.chargeleft ?? 0, charges);
-        this.dozap();
-    }
+      } else if (this.charged) {
+        return [true];
+      }
+      return [false, 'NOT_ENOUGH_CHARGE'];
+    });
+    this.battery.SetOnUsedFn((_inst, _user, mult) => {
+      if (mult) {
+        const charge = this.actualCharge;
+        if (charge !== undefined && charge > mult) {
+          this.dozap();
+          this.chargeleft! -= mult;
+          return;
+        }
+      }
+      this.discharge();
+    });
+    this.battery.SetResolvePartialChargeMultFn((_inst, _user, mult) => {
+      const charge = this.actualCharge;
+      return charge === undefined ? mult : Math.min(mult, charge);
+    });
+  }
 
-    dispose(): void {
-        this.inst.light.set(null);
+  /**
+   * CalcActualCharge: functionally, the rod holds 1 charge that decays over 3 days, not 3 separate charges.
+   */
+  get actualCharge(): number | undefined {
+    return this.chargeleft === undefined ? undefined : this.chargeleft - (Math.ceil(this.chargeleft) - 1);
+  }
+
+  private get removed(): boolean {
+    return this.inst.isRemoved;
+  }
+
+  private armDay(): void {
+    const world = this.inst.worldServices;
+    if (!this.charged || !world?.scheduler || !world.secondsUntilNextDay) {
+      return;
     }
+    this.daytask?.Cancel();
+    this.daytask = this.inst.DoTaskInTime(world.secondsUntilNextDay(world.scheduler.now), () => {
+      this.daytask = undefined;
+      this.ondaycomplete();
+      this.armDay();
+    });
+  }
+
+  /** dozap: the sound and fx at the rod, then the next zap in 10–40 seconds. */
+  dozap(): void {
+    if (this.removed) {
+      return;
+    }
+    PlaySound(ZAP_SOUND, this.inst.position);
+    this.inst.worldServices?.fx?.spawn('lightning_rod_fx', this.inst.position);
+    this.zaptask?.Cancel();
+    if (this.inst.worldServices?.scheduler) {
+      this.zaptask = this.inst.DoTaskInTime(10 + Math.floor(Math.random() * 31), () => this.dozap());
+    }
+  }
+
+  discharge(): void {
+    if (!this.charged) {
+      return;
+    }
+    this.daytask?.Cancel();
+    this.daytask = undefined;
+    // AnimState:ClearBloomEffectHandle has no renderer here; the light is the visible charge.
+    this.charged = false;
+    this.chargeleft = undefined;
+    this.inst.light.set(null);
+    this.zaptask?.Cancel();
+    this.zaptask = undefined;
+  }
+
+  private ondaycomplete(): void {
+    this.dozap();
+    if (this.chargeleft! > 1) {
+      this.chargeleft! -= 1;
+    } else {
+      this.discharge();
+    }
+  }
+
+  setcharged(charges: number): void {
+    if (!this.charged) {
+      this.inst.light.set(LIGHT);
+      this.charged = true;
+      this.armDay();
+    }
+    this.chargeleft = Math.max(this.chargeleft ?? 0, charges);
+    this.dozap();
+  }
+
+  dispose(): void {
+    this.inst.light.set(null);
+  }
 }
-
 
 /** onlightning: the same source onhit declaration, then a full three-day charge. */
 function onlightning(inst: LightningRodInstance): void {
-    onhit(inst);
-    inst.lightningRod.setcharged(3);
+  onhit(inst);
+  inst.lightningRod.setcharged(3);
 }
 
 function onsave(inst: LightningRodInstance, data: EntityPersistData): void {
-    const rod = inst.lightningRod;
-    if (rod.charged) { data.lightningrod = { charged: true, chargeleft: rod.chargeleft! }; }
+  const rod = inst.lightningRod;
+  if (rod.charged) {
+    data.lightningrod = { charged: true, chargeleft: rod.chargeleft! };
+  }
 }
 
 /** A charged save restores its remaining charge (and zaps once, as setcharged does). */
 function onload(inst: LightningRodInstance, data: EntityPersistData): void {
-    const saved = data.lightningrod;
-    if (saved?.charged && saved.chargeleft > 0) { inst.lightningRod.setcharged(saved.chargeleft); }
+  const saved = data.lightningrod;
+  if (saved?.charged && saved.chargeleft > 0) {
+    inst.lightningRod.setcharged(saved.chargeleft);
+  }
 }
 
 /** lightningrod.lua fn(), as far as it is ported: the charge, its battery and the hammer workable. */
 export class LightningRodInstance extends PrefabInstance {
-    readonly lightningRod: LightningRod;
-    declare readonly components: PrefabInstance['components'] & {
-        battery: Battery<LightningRodInstance>;
+  readonly lightningRod: LightningRod;
+  declare readonly components: PrefabInstance['components'] & {
+    battery: Battery<LightningRodInstance>;
+  };
+
+  constructor(world: PrefabWorldContext) {
+    super(LIGHTNING_ROD_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
+    this.worldServices = world;
+    MakeBuildingPersist(this);
+    const { OnSave: saveBuilding } = this;
+    this.OnSave = (inst, data) => {
+      saveBuilding!(inst, data);
+      onsave(inst, data);
     };
+    this.OnLoad = onload;
+    const workable = addComponent(this, 'workable', Workable);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(4);
+    workable.SetOnWorkCallback(onhit);
+    workable.SetOnFinishCallback(onhammered);
+    addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
 
-    constructor(world: PrefabWorldContext) {
-        super(LIGHTNING_ROD_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
-        this.worldServices = world;
-        MakeBuildingPersist(this);
-        const { OnSave: saveBuilding } = this;
-        this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsave(inst, data); };
-        this.OnLoad = onload;
-        const workable = addComponent(this, 'workable', Workable);
-        workable.SetWorkAction('HAMMER');
-        workable.SetWorkLeft(4);
-        workable.SetOnWorkCallback(onhit);
-        workable.SetOnFinishCallback(onhammered);
-        addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
-
-        const rod = this.lightningRod = new LightningRod(this);
-        this.addTag('structure');
-        this.addTag('lightningrod');
-        // getstatus: inst.charged and "CHARGED" or nil
-        addComponent(this, 'inspectable', Inspectable).getstatus = () => rod.charged ? 'CHARGED' : undefined;
-        this.ListenForEvent('lightningstrike', () => onlightning(this));
-        this.ListenForEvent('onbuilt', () => onbuilt(this));
-        this.onRemove(() => rod.dispose());
-    }
+    const rod = (this.lightningRod = new LightningRod(this));
+    this.addTag('structure');
+    this.addTag('lightningrod');
+    // getstatus: inst.charged and "CHARGED" or nil
+    addComponent(this, 'inspectable', Inspectable).getstatus = () => (rod.charged ? 'CHARGED' : undefined);
+    this.ListenForEvent('lightningstrike', () => onlightning(this));
+    this.ListenForEvent('onbuilt', () => onbuilt(this));
+    this.onRemove(() => rod.dispose());
+  }
 }
 
 function onbuilt(inst: PrefabInstance): void {
-    inst.sprite.playOnce('place');
-    inst.sprite.pushAnimation('idle', true);
-    PlaySound(CRAFT_SOUND, inst.position);
+  inst.sprite.playOnce('place');
+  inst.sprite.pushAnimation('idle', true);
+  PlaySound(CRAFT_SOUND, inst.position);
 }
 
 function onhit(inst: PrefabInstance): void {
-    inst.sprite.playOnce('hit');
-    inst.sprite.pushAnimation('idle', false);
+  inst.sprite.playOnce('hit');
+  inst.sprite.pushAnimation('idle', false);
 }
 
 function onhammered(inst: PrefabInstance): void {
-    inst.components.lootdropper!.DropLoot();
-    inst.worldServices?.fx?.collapse?.('small', inst.position, 'metal');
-    inst.remove();
+  inst.components.lootdropper!.DropLoot();
+  inst.worldServices?.fx?.collapse?.('small', inst.position, 'metal');
+  inst.remove();
 }
 
 export function lightningRodPrefabs(world: PrefabWorldContext) {
-    return { [LIGHTNING_ROD_ID]: { ...buildingPrefab(declaration, 'lightning_rod', undefined, () => new LightningRodInstance(world), world), minimapIcon: 'lightningrod.png' } };
+  return {
+    [LIGHTNING_ROD_ID]: {
+      ...buildingPrefab(declaration, 'lightning_rod', undefined, () => new LightningRodInstance(world), world),
+      minimapIcon: 'lightningrod.png',
+    },
+  };
 }

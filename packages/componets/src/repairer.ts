@@ -7,11 +7,17 @@ export class Repairer {
   readonly workrepairvalue: number;
   readonly healthrepairvalue: number;
   constructor(inst: WorkInst, repairmaterial: string, workrepairvalue: number, healthrepairvalue = 0) {
-    this.inst = inst; this.repairmaterial = repairmaterial;
-    this.workrepairvalue = workrepairvalue; this.healthrepairvalue = healthrepairvalue;
+    this.inst = inst;
+    this.repairmaterial = repairmaterial;
+    this.workrepairvalue = workrepairvalue;
+    this.healthrepairvalue = healthrepairvalue;
     inst.addTag('repairer');
-    if (workrepairvalue > 0) { inst.addTag(`work_${repairmaterial}`); }
-    if (healthrepairvalue > 0) { inst.addTag(`health_${repairmaterial}`); }
+    if (workrepairvalue > 0) {
+      inst.addTag(`work_${repairmaterial}`);
+    }
+    if (healthrepairvalue > 0) {
+      inst.addTag(`health_${repairmaterial}`);
+    }
   }
   dispose(): void {
     this.inst.removeTag('repairer');

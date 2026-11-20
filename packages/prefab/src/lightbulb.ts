@@ -11,8 +11,12 @@ export const LIGHTBULB_ID = 'lightbulb';
 export const LIGHTBULB_FUEL = 90;
 
 export function configureLightbulbEntity(entity: ItemEntity): void {
-  for (const tag of ['lightbattery', 'vasedecoration', 'light']) { entity.addTag(tag); }
-  if (entity.components.fuel) { return; }
+  for (const tag of ['lightbattery', 'vasedecoration', 'light']) {
+    entity.addTag(tag);
+  }
+  if (entity.components.fuel) {
+    return;
+  }
   const fuel = addComponent(entity, 'fuel', Fuel);
   fuel.fueltype = 'CAVE';
   fuel.fuelvalue = LIGHTBULB_FUEL;
@@ -28,5 +32,7 @@ export const LIGHTBULB_LIGHT: PrefabLocalLight = {
 
 /** lightbulb.lua: its Light is on while it is in the scene; RemoveFromScene turns it off while it is held. */
 export function lightbulbPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
-  return { [LIGHTBULB_ID]: groundItemPrefab(LIGHTBULB_ID, world, { configure: inst => inst.light.set(LIGHTBULB_LIGHT) }) };
+  return {
+    [LIGHTBULB_ID]: groundItemPrefab(LIGHTBULB_ID, world, { configure: inst => inst.light.set(LIGHTBULB_LIGHT) }),
+  };
 }

@@ -7,14 +7,17 @@ import { GroundDisplay } from '@dontstarve-web/display';
 import { initialSave } from './save/initialSave';
 
 const ground = await createTurfGround({
-    assetBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
-    noiseTexture: 'Ground_noise_deciduous',
-    tileAtlas: 'DECIDUOUS',
-    size: initialSave.world.map.generator.options.size,
+  assetBaseUrl: `${import.meta.env.BASE_URL}dst/data`,
+  noiseTexture: 'Ground_noise_deciduous',
+  tileAtlas: 'DECIDUOUS',
+  size: initialSave.world.map.generator.options.size,
 });
 
-export const turfMap = new TurfMap(initialSave.world.map.generator.options.size, initialSave.world.map.tiles,
-    initialSave.world.map.defaultTileId);
+export const turfMap = new TurfMap(
+  initialSave.world.map.generator.options.size,
+  initialSave.world.map.tiles,
+  initialSave.world.map.defaultTileId,
+);
 /** TheWorld.Pathfinder. */
 export const pathfinder = new Pathfinder(turfMap);
 // The plane remains a pointer target; local maps draw only their saved land cells.

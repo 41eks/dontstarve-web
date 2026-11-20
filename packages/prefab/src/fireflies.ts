@@ -1,6 +1,22 @@
 import { addComponent } from './components';
 import * as THREE from 'three';
-import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, GameTimeScheduler, WorldContentKey, type GetWatchWorldContent, type HandEquipment, type PlayerPositionsSignal, type ReadonlySignal, type TileStateQuery, type Signal, type WorldContentSignal, type WorldPhase } from '@dontstarve-web/signals';
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  readonlySignal,
+  watchSignal,
+  GameTimeScheduler,
+  WorldContentKey,
+  type GetWatchWorldContent,
+  type HandEquipment,
+  type PlayerPositionsSignal,
+  type ReadonlySignal,
+  type TileStateQuery,
+  type Signal,
+  type WorldContentSignal,
+  type WorldPhase,
+} from '@dontstarve-web/signals';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
 import type { PrefabInstance } from './prefabInstance';
 import { TILE_SIZE } from './tile';
@@ -18,7 +34,9 @@ export function configureFirefliesEntity(entity: ItemEntity): void {
   entity.components.inventoryitem.canbepickedup = false;
   entity.components.inventoryitem.canbepickedupalive = true;
   entity.addTag('catchable');
-  for (const tag of [...FIREFLIES_TAGS, 'NOCLICK']) { entity.addTag(tag); }
+  for (const tag of [...FIREFLIES_TAGS, 'NOCLICK']) {
+    entity.addTag(tag);
+  }
   if (!entity.components.workable) {
     const workable = addComponent(entity, 'workable', Workable);
     workable.SetWorkAction('NET');
@@ -43,7 +61,10 @@ export const FIREFLIES_LIGHT = {
 export type FirefliesSprite = Pick<ArchiveSpriteCommands, 'start' | 'playOnce' | 'clearAnimation' | 'setLightOverride'>;
 
 /** The swarm's ground entity: its tags, its sprite and its inst.Light. */
-export type FirefliesInstance = Pick<PrefabInstance<ArchiveSpriteCommands>, 'addTag' | 'removeTag' | 'light'> & { readonly sprite: FirefliesSprite; readonly components?: Pick<ItemEntity['components'], 'workable'> };
+export type FirefliesInstance = Pick<PrefabInstance<ArchiveSpriteCommands>, 'addTag' | 'removeTag' | 'light'> & {
+  readonly sprite: FirefliesSprite;
+  readonly components?: Pick<ItemEntity['components'], 'workable'>;
+};
 
 export interface FirefliesWorld {
   getWatchWorldContent?: GetWatchWorldContent;
@@ -76,8 +97,9 @@ export class FirefliesController {
   private disposed = false;
   private readonly shown = createSignal(false);
   /** updatefade runs while placed and the swarm is fading or drawn (or this owns its scheduler). */
-  private readonly updatingState = createMemo(() => this.placement.get() !== undefined
-    && (this.ownsScheduler || this.fadeRate.get() !== 0 || this.shown.get()));
+  private readonly updatingState = createMemo(
+    () => this.placement.get() !== undefined && (this.ownsScheduler || this.fadeRate.get() !== 0 || this.shown.get()),
+  );
   readonly updating = readonlySignal(this.updatingState);
   private readonly instance: FirefliesInstance;
   /** Only the mouse-target registry is keyed by the display's model. */
@@ -101,34 +123,52 @@ export class FirefliesController {
     this.random = random;
     const area = transform.getTileActivity(world.tickingarea, stop => this.cleanups.push(stop));
     const options = area ? { active: area } : undefined;
-    if (area) { this.awake = watchSignal(area, stop => this.cleanups.push(stop)); }
+    if (area) {
+      this.awake = watchSignal(area, stop => this.cleanups.push(stop));
+    }
     this.cycle = world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop), options);
-    this.playerpositions = world.getWatchWorldContent?.(WorldContentKey.PlayerPositions, stop => this.cleanups.push(stop), options);
+    this.playerpositions = world.getWatchWorldContent?.(
+      WorldContentKey.PlayerPositions,
+      stop => this.cleanups.push(stop),
+      options,
+    );
     this.activeState = createMemo(() => this.awake?.get() ?? true);
     this.active = readonlySignal(this.activeState);
-    if (world.handEquipment) { this.handEquipment = watchSignal(world.handEquipment, stop => this.cleanups.push(stop), this.awake); }
+    if (world.handEquipment) {
+      this.handEquipment = watchSignal(world.handEquipment, stop => this.cleanups.push(stop), this.awake);
+    }
     const scheduler = this.cycle?.scheduler ?? this.playerpositions?.scheduler;
     this.scheduler = scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = scheduler === undefined;
-    this.disableWork = new ComponentTimer(this.scheduler, () => { this.canWork = false; this.refresh(); });
+    this.disableWork = new ComponentTimer(this.scheduler, () => {
+      this.canWork = false;
+      this.refresh();
+    });
     // The pointer tests the swarm's bounding box rather than its sparse particles.
     model.userData.rayTestOnBB = true;
     // Source uses the bloom shader; its luminous swarm art stays visible at night.
     this.animation.setLightOverride(1);
-    for (const tag of FIREFLIES_TAGS) { instance.addTag(tag); }
+    for (const tag of FIREFLIES_TAGS) {
+      instance.addTag(tag);
+    }
     this.refresh();
-    if (this.handEquipment) { createEffect(() => {
-      this.handEquipment!.get();
-      this.active.get();
-      this.refreshClickability();
-    }); }
+    if (this.handEquipment) {
+      createEffect(() => {
+        this.handEquipment!.get();
+        this.active.get();
+        this.refreshClickability();
+      });
+    }
     if (this.cycle) {
       let previousNight = this.cycle.peek() === 'night';
       createEffect(() => {
-        const phase = this.cycle!.get(), night = phase === 'night';
+        const phase = this.cycle!.get(),
+          night = phase === 'night';
         if (night !== previousNight) {
           previousNight = night;
-          if (!this.inInventory && phase !== 'day') { this.scheduleLightCheck(); }
+          if (!this.inInventory && phase !== 'day') {
+            this.scheduleLightCheck();
+          }
         }
       });
     }
@@ -137,8 +177,11 @@ export class FirefliesController {
     const stopLight = createEffect(() => {
       // Wake resyncs the gated world inputs. Recheck daylight even when no
       // placement or delayed check changed while this swarm was asleep.
-      if (this.awake?.get() === false) { return; }
-      const phase = this.cycle?.get(), night = phase === 'night';
+      if (this.awake?.get() === false) {
+        return;
+      }
+      const phase = this.cycle?.get(),
+        night = phase === 'night';
       const placement = this.placement.get();
       const placed = placement !== previousPlacement;
       previousPlacement = placement;
@@ -149,14 +192,20 @@ export class FirefliesController {
         return;
       }
       const checks = new Map(this.checks.get().map(timer => [timer, timer.snapshot.get().status] as const));
-      const expired = [...checks].some(([timer, status]) => status === 'expired' && previousChecks.get(timer) !== 'expired');
+      const expired = [...checks].some(
+        ([timer, status]) => status === 'expired' && previousChecks.get(timer) !== 'expired',
+      );
       previousChecks = checks;
-      if (!placement) { return; }
+      if (!placement) {
+        return;
+      }
       if (!night) {
         if (placed && placement.dropped) {
           this.fadeIn();
           this.scheduleLightCheck();
-        } else if (placed || expired) { this.fadeOut(); }
+        } else if (placed || expired) {
+          this.fadeOut();
+        }
         return;
       }
       const positions = this.playerpositions?.get() ?? [];
@@ -165,42 +214,72 @@ export class FirefliesController {
         this.fadeIn();
         this.scheduleLightCheck();
       } else if (placed || proximityChanged || expired) {
-        if (!this.playerClose) { this.fadeIn(); }
-        else { this.fadeOut(); }
+        if (!this.playerClose) {
+          this.fadeIn();
+        } else {
+          this.fadeOut();
+        }
       }
     });
     // Watched world signals own this effect; standalone visuals only have local inputs.
-    if (!this.cycle && !this.playerpositions) { this.cleanups.push(stopLight); }
+    if (!this.cycle && !this.playerpositions) {
+      this.cleanups.push(stopLight);
+    }
   }
 
-  private get inInventory(): boolean { return this.placement.peek() === undefined; }
-  get intensity(): number { return this.fadeValue; }
-  get workable(): boolean { return !this.disposed && this.canWork; }
+  private get inInventory(): boolean {
+    return this.placement.peek() === undefined;
+  }
+  get intensity(): number {
+    return this.fadeValue;
+  }
+  get workable(): boolean {
+    return !this.disposed && this.canWork;
+  }
   /** Whether the swarm is drawn: from swarm_pre until swarm_pst ends. */
-  get visible(): boolean { return this.shown.peek(); }
+  get visible(): boolean {
+    return this.shown.peek();
+  }
   get clickable(): boolean {
     const tool = equippedActionEntity(this.handEquipment?.peek());
-    return !this.disposed && !this.inInventory && this.shown.peek() && this.canClick && this.active.peek()
-      && !!tool && !tool.isRemoved && tool.hasTag('NET_tool') && tool.components.tool?.CanDoAction('NET') === true;
+    return (
+      !this.disposed &&
+      !this.inInventory &&
+      this.shown.peek() &&
+      this.canClick &&
+      this.active.peek() &&
+      !!tool &&
+      !tool.isRemoved &&
+      tool.hasTag('NET_tool') &&
+      tool.components.tool?.CanDoAction('NET') === true
+    );
   }
 
   /** Called after assigning the source ground origin, for both drops and restores. */
   place(dropped: boolean): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.animation.setLightOverride(1);
     this.placement.set({ dropped });
   }
 
   update(dt: number): void {
-    if (this.disposed || this.inInventory || this.awake?.peek() === false) { return; }
-    if (this.ownsScheduler && Number.isFinite(dt) && dt > 0) { this.scheduler.advance(dt); }
+    if (this.disposed || this.inInventory || this.awake?.peek() === false) {
+      return;
+    }
+    if (this.ownsScheduler && Number.isFinite(dt) && dt > 0) {
+      this.scheduler.advance(dt);
+    }
     const step = Math.max(0, Math.min(dt, 0.1));
     const rate = this.fadeRate.peek();
     if (rate !== 0) {
       this.fadeValue = THREE.MathUtils.clamp(this.fadeValue + rate * step, 0, FIREFLIES_LIGHT.intensity);
       if ((rate > 0 && this.fadeValue >= FIREFLIES_LIGHT.intensity) || (rate < 0 && this.fadeValue <= 0)) {
         this.fadeRate.set(0);
-        if (this.fadeValue === 0) { this.finishFadeOut(); }
+        if (this.fadeValue === 0) {
+          this.finishFadeOut();
+        }
       }
       this.refresh();
     }
@@ -209,7 +288,9 @@ export class FirefliesController {
   onPutInInventory(): void {
     this.placement.set(undefined);
     this.canClick = this.canWork = false;
-    for (const timer of this.checks.peek()) { timer.stop(); }
+    for (const timer of this.checks.peek()) {
+      timer.stop();
+    }
     this.checks.set([]);
     this.fadeValue = 0;
     this.fadeRate.set(0);
@@ -222,13 +303,17 @@ export class FirefliesController {
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     this.activeState.dispose();
     this.updatingState.dispose();
     this.cleanups.splice(0).forEach(stop => stop());
     this.onPutInInventory();
-    if (this.ownsScheduler) { this.scheduler.dispose(); }
+    if (this.ownsScheduler) {
+      this.scheduler.dispose();
+    }
   }
 
   /** fireflies.lua OnIsNight: defer the light check by 2..3 seconds. */
@@ -239,8 +324,12 @@ export class FirefliesController {
   }
 
   private hideForDay(): void {
-    for (const timer of this.checks.peek()) { timer.stop(); }
-    if (this.checks.peek().length) { this.checks.set([]); }
+    for (const timer of this.checks.peek()) {
+      timer.stop();
+    }
+    if (this.checks.peek().length) {
+      this.checks.set([]);
+    }
     this.disableWork.stop();
     this.fadeValue = this.direction = 0;
     this.fadeRate.set(0);
@@ -254,19 +343,25 @@ export class FirefliesController {
   private updateProximity(positions: readonly THREE.Vector3[]): boolean {
     const distance = (this.playerClose ? 5 : 3) * (TILE_SIZE / 4);
     const close = positions.some(player => player.distanceToSquared(this.transform.position) < distance ** 2);
-    if (close === this.playerClose) { return false; }
+    if (close === this.playerClose) {
+      return false;
+    }
     this.playerClose = close;
     return true;
   }
 
   private fadeIn(): void {
-    if (this.direction > 0) { return; }
+    if (this.direction > 0) {
+      return;
+    }
     this.direction = 1;
     this.canWork = this.canClick = true;
     this.disableWork.stop();
     this.show(true);
     this.animation.playOnce('swarm_pre', () => {
-      if (!this.disposed && this.direction > 0) { this.animation.start('swarm_loop'); }
+      if (!this.disposed && this.direction > 0) {
+        this.animation.start('swarm_loop');
+      }
     });
     const byte = 1 + Math.min(30, Math.floor(this.random() * 31));
     this.fadeRate.set((FIREFLIES_LIGHT.intensity - this.fadeValue) / (3 + (byte - 1) / 15));
@@ -274,15 +369,22 @@ export class FirefliesController {
   }
 
   private fadeOut(): void {
-    if (this.direction <= 0) { return; }
+    if (this.direction <= 0) {
+      return;
+    }
     this.direction = -1;
     // swarm_pst ends on an empty frame; with no animation after it, nothing is built or drawn until swarm_pre.
     this.animation.playOnce('swarm_pst', () => {
-      if (!this.disposed && this.direction < 0) { this.animation.clearAnimation(); this.show(false); }
+      if (!this.disposed && this.direction < 0) {
+        this.animation.clearAnimation();
+        this.show(false);
+      }
     });
     const byte = 32 + Math.min(31, Math.floor(this.random() * 32));
     this.fadeRate.set(-this.fadeValue / (0.75 + (byte - 32) / 31));
-    if (this.fadeValue === 0) { this.finishFadeOut(); }
+    if (this.fadeValue === 0) {
+      this.finishFadeOut();
+    }
   }
 
   /** updatefade at zero light: NOCLICK and no work; swarm_pst keeps playing until its empty last frame. */
@@ -293,7 +395,9 @@ export class FirefliesController {
   }
 
   private show(shown: boolean): void {
-    if (shown === this.shown.peek()) { return; }
+    if (shown === this.shown.peek()) {
+      return;
+    }
     this.shown.set(shown);
     this.refreshClickability();
   }
@@ -306,7 +410,11 @@ export class FirefliesController {
   /** NOCLICK follows fireflies.lua fadein/updatefade; the held-net gate only limits mouse ray candidates. */
   private refreshClickability(): void {
     const noclick = this.disposed || !this.canClick;
-    if (noclick) { this.instance.addTag('NOCLICK'); } else { this.instance.removeTag('NOCLICK'); }
+    if (noclick) {
+      this.instance.addTag('NOCLICK');
+    } else {
+      this.instance.removeTag('NOCLICK');
+    }
     setMouseTargetEnabled(this.model, this.clickable);
   }
 
@@ -322,7 +430,10 @@ export class FirefliesController {
  * swarm_loop joins one instance batch. The controller runs updatefade while a fade or the visible swarm runs.
  */
 export function firefliesPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
-  const firefliesWorld = { ...world.firefliesWorld, handEquipment: world.firefliesWorld.handEquipment ?? world.handEquipment };
+  const firefliesWorld = {
+    ...world.firefliesWorld,
+    handEquipment: world.firefliesWorld.handEquipment ?? world.handEquipment,
+  };
   return {
     [FIREFLIES_ID]: {
       fn: () => {

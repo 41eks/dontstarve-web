@@ -11,19 +11,27 @@ const play = (name: string) => [{ key: 'wortox_portal' as const, name: `wortox_p
 
 export const wortoxStates: WilsonState[] = [
   state({
-    name: 'portal_jumpin_pre', tags: ['busy'],
+    name: 'portal_jumpin_pre',
+    tags: ['busy'],
     onenter: inst => {
       inst.context.entity.locomotor?.stop();
       inst.context.playClips(play('jumpin_pre'));
       const pos = inst.context.getBufferedAction()?.pos;
-      if (pos) { inst.context.entity.soulHopHost?.facePoint(pos as Vector3); }
+      if (pos) {
+        inst.context.entity.soulHopHost?.facePoint(pos as Vector3);
+      }
     },
-    events: [EventHandler('animover', inst => {
-      if (inst.context.animationDone && !inst.context.performBufferedAction()) { inst.context.finish(); }
-    })],
+    events: [
+      EventHandler('animover', inst => {
+        if (inst.context.animationDone && !inst.context.performBufferedAction()) {
+          inst.context.finish();
+        }
+      }),
+    ],
   }),
   state({
-    name: 'portal_jumpin', tags: ['busy', 'pausepredict', 'nodangle', 'nomorph'],
+    name: 'portal_jumpin',
+    tags: ['busy', 'pausepredict', 'nodangle', 'nomorph'],
     onenter: (inst, data) => {
       inst.statemem.dest = data;
       inst.context.entity.locomotor?.stop();
@@ -33,12 +41,17 @@ export const wortoxStates: WilsonState[] = [
     },
     timeline: [
       time(1, inst => {
-        inst.context.entity.SoundEmitter.PlaySound('dontstarve/creatures/together/toad_stool/infection_post', undefined, .7);
-        inst.context.entity.SoundEmitter.PlaySound('dontstarve/characters/wortox/soul/spawn', undefined, .5);
+        inst.context.entity.SoundEmitter.PlaySound(
+          'dontstarve/creatures/together/toad_stool/infection_post',
+          undefined,
+          0.7,
+        );
+        inst.context.entity.SoundEmitter.PlaySound('dontstarve/characters/wortox/soul/spawn', undefined, 0.5);
       }),
-      tint(2, .1), tint(3, .3),
+      tint(2, 0.1),
+      tint(3, 0.3),
       time(4, inst => {
-        inst.context.entity.soulHopHost?.setTint(.6);
+        inst.context.entity.soulHopHost?.setTint(0.6);
         inst.addStateTag('noattack');
         inst.context.entity.components.health?.SetInvincible(true);
       }),
@@ -53,14 +66,19 @@ export const wortoxStates: WilsonState[] = [
     },
   }),
   state({
-    name: 'portal_jumpout', tags: ['busy', 'nopredict', 'nomorph', 'noattack', 'nointerrupt'],
+    name: 'portal_jumpout',
+    tags: ['busy', 'nopredict', 'nomorph', 'noattack', 'nointerrupt'],
     onenter: (inst, data) => {
       inst.context.entity.soulHopHost?.setPhysicsEnabled(false);
       inst.context.entity.locomotor?.stop();
       // Without data the player comes out where it stands.
-      if (data) { inst.context.entity.soulHopHost?.teleport(data.dest); }
+      if (data) {
+        inst.context.entity.soulHopHost?.teleport(data.dest);
+      }
       inst.context.entity.soulHopHost?.resetMinimapOffset?.();
-      if (data?.from_map) { inst.context.entity.soulHopHost?.snapCamera?.(); }
+      if (data?.from_map) {
+        inst.context.entity.soulHopHost?.snapCamera?.();
+      }
       inst.context.playClips(play('jumpout'));
       inst.context.entity.soulHopHost?.spawnFx('wortox_portal_jumpout_fx');
       inst.context.entity.soulHopHost?.setTint(1);
@@ -70,9 +88,10 @@ export const wortoxStates: WilsonState[] = [
     },
     timeline: [
       time(1, inst => inst.context.entity.SoundEmitter.PlaySound('dontstarve/characters/wortox/soul/hop_out')),
-      tint(5, .9), tint(6, .7),
+      tint(5, 0.9),
+      tint(6, 0.7),
       time(7, inst => {
-        inst.context.entity.soulHopHost?.setTint(.4);
+        inst.context.entity.soulHopHost?.setTint(0.4);
         inst.context.entity.components.health?.SetInvincible(false);
         inst.removeStateTag('noattack');
         inst.context.entity.SoundEmitter.PlaySound('dontstarve/movement/bodyfall_dirt');

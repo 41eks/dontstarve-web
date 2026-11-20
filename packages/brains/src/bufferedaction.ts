@@ -8,22 +8,38 @@ import type { BrainEntity, BrainInst, Vec3 } from './types';
  */
 const ACTION_FNS: Readonly<Record<string, (doer: BrainInst, target: BrainEntity | undefined) => boolean | void>> = {
   POLLINATE: (doer, target) => {
-    if (doer.components.pollinator && target) { return doer.components.pollinator.Pollinate(target) as boolean | void; }
+    if (doer.components.pollinator && target) {
+      return doer.components.pollinator.Pollinate(target) as boolean | void;
+    }
     return undefined;
   },
   GOHOME: (doer, target) => {
-    if (doer.force_onwenthome_message) { doer.PushEvent('onwenthome'); }
+    if (doer.force_onwenthome_message) {
+      doer.PushEvent('onwenthome');
+    }
     const { spawner, childspawner } = target?.components ?? {};
-    if (spawner) { return spawner.GoHome(doer); }
-    if (childspawner) { return childspawner.GoHome(doer); }
+    if (spawner) {
+      return spawner.GoHome(doer);
+    }
+    if (childspawner) {
+      return childspawner.GoHome(doer);
+    }
     return false;
   },
 };
 
 /** BufferedAction(doer, target, action, invobject, pos, recipe, distance, forced, rotation, arrivedist). */
-export function CreateBufferedAction<Target extends BrainEntity>(doer: BrainInst, target: Target | undefined, action: 'POLLINATE' | 'GOHOME',
-  pos?: Vec3, distance?: number): BufferedAction<string, Target> {
-  return new BufferedAction(action, () => ACTION_FNS[action](doer, target),
+export function CreateBufferedAction<Target extends BrainEntity>(
+  doer: BrainInst,
+  target: Target | undefined,
+  action: 'POLLINATE' | 'GOHOME',
+  pos?: Vec3,
+  distance?: number,
+): BufferedAction<string, Target> {
+  return new BufferedAction(
+    action,
+    () => ACTION_FNS[action](doer, target),
     () => doer.isValid() && (target === undefined || target.isValid()),
-    { target, pos, distance });
+    { target, pos, distance },
+  );
 }

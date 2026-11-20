@@ -15,7 +15,12 @@ import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { type EntityPersistData, structureHealth } from './saveRecord';
-import { MakeMediumFreezableCharacter, MakeObstaclePhysics, MakeSnowCovered, MakeSnowCoveredPristine } from './standardcomponents';
+import {
+  MakeMediumFreezableCharacter,
+  MakeObstaclePhysics,
+  MakeSnowCovered,
+  MakeSnowCoveredPristine,
+} from './standardcomponents';
 import { TILE_SIZE } from './tile';
 
 export const BEEHIVE_ID = 'beehive' as const;
@@ -53,23 +58,39 @@ type HiveChildSpawner<Inst> = ChildSpawner<Inst, ChildSpawnerChild<Inst>>;
 /** beehive.lua fn: the components it adds. */
 export class BeehiveInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    health: Health; childspawner: HiveChildSpawner<BeehiveInstance>; worldsettingstimer: WorldSettingsTimer;
-    lootdropper: LootDropper; burnable: Burnable; freezable: Freezable; combat: Combat; propagator: Propagator;
-    lunarhailbuildup: LunarHailBuildup; hauntable: Hauntable; inspectable: Inspectable;
+    health: Health;
+    childspawner: HiveChildSpawner<BeehiveInstance>;
+    worldsettingstimer: WorldSettingsTimer;
+    lootdropper: LootDropper;
+    burnable: Burnable;
+    freezable: Freezable;
+    combat: Combat;
+    propagator: Propagator;
+    lunarhailbuildup: LunarHailBuildup;
+    hauntable: Hauntable;
+    inspectable: Inspectable;
   };
   scrapbook_anim = 'cocoon_small';
 }
 
 /** beehive.lua has no OnSave; health:OnSave writes the current health, kept as the record's `{ current, maximum }`. */
-export function saveHiveHealth(inst: PrefabInstance & { components: { health: Health } }, data: EntityPersistData): void {
+export function saveHiveHealth(
+  inst: PrefabInstance & { components: { health: Health } },
+  data: EntityPersistData,
+): void {
   const { health } = inst.components;
   data.health = { current: health.currenthealth, maximum: health.maxhealth };
 }
 
 /** health:OnLoad of the record's `{ current, maximum }`. */
-export function loadHiveHealth(inst: PrefabInstance & { components: { health: Health } }, data: EntityPersistData): void {
+export function loadHiveHealth(
+  inst: PrefabInstance & { components: { health: Health } },
+  data: EntityPersistData,
+): void {
   const saved = structureHealth(data);
-  if (saved) { inst.components.health.OnLoad({ health: saved.current, maxhealth: saved.maximum }); }
+  if (saved) {
+    inst.components.health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
+  }
 }
 
 function SeasonalSpawnChanges(inst: BeehiveInstance, season: WorldSeason | undefined): void {
@@ -133,7 +154,12 @@ function fn(world: HiveWorld): BeehiveInstance {
 
   addComponent(inst, 'health', Health, undefined, world.scheduler).SetMaxHealth(BEEHIVE_HEALTH);
 
-  const childspawner = addComponent(inst, 'childspawner', ChildSpawner<BeehiveInstance, ChildSpawnerChild<BeehiveInstance>>, world.scheduler);
+  const childspawner = addComponent(
+    inst,
+    'childspawner',
+    ChildSpawner<BeehiveInstance, ChildSpawnerChild<BeehiveInstance>>,
+    world.scheduler,
+  );
   childspawner.childname = 'bee';
   const season = world.getWatchWorldContent?.(WorldContentKey.Season, stop => inst.onRemove(stop));
   SeasonalSpawnChanges(inst, season?.peek().season);
@@ -161,8 +187,16 @@ function fn(world: HiveWorld): BeehiveInstance {
   addComponent(inst, 'combat', Combat, () => world.scheduler.now);
 
   // MakeLargePropagator(inst), without SetOnFlashPoint.
-  addComponent(inst, 'propagator', Propagator, 'large', radius =>
-    inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS), UNIT, world.scheduler, world.getWatchWorldContent);
+  addComponent(
+    inst,
+    'propagator',
+    Propagator,
+    'large',
+    radius => inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS),
+    UNIT,
+    world.scheduler,
+    world.getWatchWorldContent,
+  );
   MakeSnowCovered(inst, world.getWatchWorldContent);
   // MakeSnowCovered's MakeLunarHailBuildup.
   addComponent(inst, 'lunarhailbuildup', LunarHailBuildup);
@@ -177,12 +211,19 @@ function fn(world: HiveWorld): BeehiveInstance {
 }
 
 /** The Prefab beehive.lua returns. */
-export function beehivePrefabs(world: HiveWorld): Readonly<Record<typeof BEEHIVE_ID, PrefabEntityDefinition<BeehiveInstance>>> {
+export function beehivePrefabs(
+  world: HiveWorld,
+): Readonly<Record<typeof BEEHIVE_ID, PrefabEntityDefinition<BeehiveInstance>>> {
   return {
     [BEEHIVE_ID]: {
       fn: () => fn(world),
-      assets: { animationArchive: 'beehive.zip', buildArchives: BEEHIVE_ARCHIVES, bank: 'beehive', hiddenLayers: ['snow'] },
-      physics: { make: MakeObstaclePhysics, radius: .5 },
+      assets: {
+        animationArchive: 'beehive.zip',
+        buildArchives: BEEHIVE_ARCHIVES,
+        bank: 'beehive',
+        hiddenLayers: ['snow'],
+      },
+      physics: { make: MakeObstaclePhysics, radius: 0.5 },
       minimapIcon: 'beehive.png',
     },
   };

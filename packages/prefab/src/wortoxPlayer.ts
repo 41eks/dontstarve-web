@@ -33,12 +33,20 @@ export interface WortoxDoer {
 }
 
 /** wortox.lua GetPointSpecialActions: BLINK on the right button, at the map's point while checkingmapactions. */
-export function GetPointSpecialActions(inst: WortoxDoer, instPosition: THREE.Vector3, pos: THREE.Vector3,
-  useitem: unknown, right: boolean): readonly string[] {
-  if (!right || useitem !== undefined) { return []; }
+export function GetPointSpecialActions(
+  inst: WortoxDoer,
+  instPosition: THREE.Vector3,
+  pos: THREE.Vector3,
+  useitem: unknown,
+  right: boolean,
+): readonly string[] {
+  if (!right || useitem !== undefined) {
+    return [];
+  }
   // PlayerController:GetMapActions sets checkingmapactions while it asks for the map's actions.
   const canblink = inst.checkingmapactions
-    ? inst.CanBlinkFromWithMap?.(inst.checkingmapactions_pos ?? instPosition) : inst.CanBlinkTo?.(pos);
+    ? inst.CanBlinkFromWithMap?.(inst.checkingmapactions_pos ?? instPosition)
+    : inst.CanBlinkTo?.(pos);
   return canblink && inst.CanSoulhop?.() ? ['BLINK'] : [];
 }
 
@@ -60,7 +68,9 @@ export class WortoxPlayer {
     this.blockers = placementEntities(options.world.scene);
     const { world, body, fx } = options;
     const instance = playerInst(world.player);
-    if (!instance.wortox) { throw new Error('Expected wortox master_postinit to have run'); }
+    if (!instance.wortox) {
+      throw new Error('Expected wortox master_postinit to have run');
+    }
     this.state = instance.wortox;
     this.state.OnLoad(options.saved);
     bindSoulHop(instance, {
@@ -92,8 +102,10 @@ export class WortoxPlayer {
 
   /** wortox.lua CanBlinkTo: passable terrain and an unblocked ground target. Crossing obstacles is allowed. */
   canBlinkTo(position: THREE.Vector3): boolean {
-    if (![position.x, position.y, position.z].every(Number.isFinite) || !this.options.isPassableAtPoint(position)) { return false; }
-    return !isGroundTargetBlocked(this.blockers, position, .5 * WORLD_SCALE);
+    if (![position.x, position.y, position.z].every(Number.isFinite) || !this.options.isPassableAtPoint(position)) {
+      return false;
+    }
+    return !isGroundTargetBlocked(this.blockers, position, 0.5 * WORLD_SCALE);
   }
 
   /** actions.lua map remap requires land; it does not use the normal ground-target blocker check. */
@@ -107,20 +119,31 @@ export class WortoxPlayer {
   }
 
   private setPhysicsEnabled(enabled: boolean): void {
-    if (enabled !== this.physicsToggled) { return; }
+    if (enabled !== this.physicsToggled) {
+      return;
+    }
     this.physicsToggled = !enabled;
     // SGwilson ToggleOnPhysics / ToggleOffPhysics.
-    if (enabled) { this.options.physics.SetCollisionMask(...CHARACTER_COLLISION_MASK); }
-    else { this.options.physics.SetCollisionMask(COLLISION.GROUND); }
+    if (enabled) {
+      this.options.physics.SetCollisionMask(...CHARACTER_COLLISION_MASK);
+    } else {
+      this.options.physics.SetCollisionMask(COLLISION.GROUND);
+    }
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     const { world } = this.options;
-    if (world.mouseActions) { (world.mouseActions as PlayerActionPicker).pointspecialactionsfn = undefined; }
+    if (world.mouseActions) {
+      (world.mouseActions as PlayerActionPicker).pointspecialactionsfn = undefined;
+    }
     const instance = playerInst(world.player);
-    instance.CanSoulhop = undefined; instance.CanBlinkTo = undefined; instance.CanBlinkFromWithMap = undefined;
+    instance.CanSoulhop = undefined;
+    instance.CanBlinkTo = undefined;
+    instance.CanBlinkFromWithMap = undefined;
     bindSoulHop(instance, undefined);
     this.setPhysicsEnabled(true);
   }

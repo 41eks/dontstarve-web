@@ -16,11 +16,19 @@ export class FindFlower extends BehaviourNode {
     this.inst = inst;
   }
 
-  override DBString(): string { return `Go to flower ${this.inst.components.pollinator?.target?.prefab}`; }
+  override DBString(): string {
+    return `Go to flower ${this.inst.components.pollinator?.target?.prefab}`;
+  }
 
   private isTargetedByOther(flower: BrainEntity): boolean {
-    return this.inst.world.findEntity(flower, 2,
-      guy => guy !== this.inst && guy.components.pollinator?.target === flower, FINDFLOWER_MUST_TAGS) !== undefined;
+    return (
+      this.inst.world.findEntity(
+        flower,
+        2,
+        guy => guy !== this.inst && guy.components.pollinator?.target === flower,
+        FINDFLOWER_MUST_TAGS,
+      ) !== undefined
+    );
   }
 
   override Visit(): void {
@@ -32,11 +40,15 @@ export class FindFlower extends BehaviourNode {
         const action = CreateBufferedAction(this.inst, pollinator.target, 'POLLINATE', undefined, 0.1);
         this.inst.components.locomotor!.PushAction(action, this.shouldrun);
         this.status = RUNNING;
-      } else { this.status = FAILED; }
+      } else {
+        this.status = FAILED;
+      }
     }
     if (this.status === RUNNING) {
       const target = pollinator.target;
-      if (!target || !pollinator.CanPollinate(target) || this.isTargetedByOther(target)) { this.status = FAILED; }
+      if (!target || !pollinator.CanPollinate(target) || this.isTargetedByOther(target)) {
+        this.status = FAILED;
+      }
     }
   }
 
@@ -44,8 +56,10 @@ export class FindFlower extends BehaviourNode {
     const pollinator = this.inst.components.pollinator;
     const closestFlower = this.inst.world.getClosestInstWithTag(FLOWER_TAGS, this.inst, SEE_DIST);
     if (pollinator) {
-      pollinator.target = closestFlower && pollinator.CanPollinate(closestFlower) && !this.isTargetedByOther(closestFlower)
-        ? closestFlower : undefined;
+      pollinator.target =
+        closestFlower && pollinator.CanPollinate(closestFlower) && !this.isTargetedByOther(closestFlower)
+          ? closestFlower
+          : undefined;
     }
   }
 }

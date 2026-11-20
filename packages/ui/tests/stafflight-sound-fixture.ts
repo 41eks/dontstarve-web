@@ -21,55 +21,117 @@ export async function prepareStarAudioCheck() {
     const source = createSource.call(this);
     const entry = { source, stops: 0 };
     const stop = source.stop.bind(source);
-    source.stop = (...args) => { entry.stops += 1; stop(...args); };
+    source.stop = (...args) => {
+      entry.stops += 1;
+      stop(...args);
+    };
     sources.push(entry);
     return source;
   };
   const scheduler = new GameTimeScheduler();
-  const displays = new PrefabDisplayGroup(new THREE.Scene()), manager = prefabManager(displays, '/dst/data/anim', { scheduler }, staffLightPrefabs);
+  const displays = new PrefabDisplayGroup(new THREE.Scene()),
+    manager = prefabManager(displays, '/dst/data/anim', { scheduler }, staffLightPrefabs);
   // As the scene does before it starts, so each star's sounds play when it is spawned.
   await PrewarmSounds();
   await manager.spawn(DWARF_STAR_ID, new THREE.Vector3());
   await manager.spawn(DWARF_STAR_ID, new THREE.Vector3(2, 0, 3));
-  const restored = await manager.spawn(DWARF_STAR_ID, new THREE.Vector3(4, 0, 5), { id: 'e_saved', components: { timer: { timers: { extinguish: { timeleft: 0.1, paused: false, initial_time: DWARF_STAR_DURATION } } } } });
-  const samples = sources.map(({ source }) => ({ loop: source.loop, length: source.buffer!.length,
-    channels: source.buffer!.numberOfChannels, sampleRate: source.buffer!.sampleRate }));
+  const restored = await manager.spawn(DWARF_STAR_ID, new THREE.Vector3(4, 0, 5), {
+    id: 'e_saved',
+    components: {
+      timer: { timers: { extinguish: { timeleft: 0.1, paused: false, initial_time: DWARF_STAR_DURATION } } },
+    },
+  });
+  const samples = sources.map(({ source }) => ({
+    loop: source.loop,
+    length: source.buffer!.length,
+    channels: source.buffer!.numberOfChannels,
+    sampleRate: source.buffer!.sampleRate,
+  }));
   const player = wortox('/dst/data/anim', new CANNON.World()).model;
   registerPlayer(player);
   await prefabDisplay(player).artLoaded();
   const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   // SGwilson's equip/unequip handlers play item_out/item_in from idle; let them finish.
-  const settleEquip = () => { for (let frame = 0; frame < 24; frame++) { advancePlayer(animation, 1 / 30); } };
-  await animationEquipper.equip('yellowstaff'); settleEquip();
+  const settleEquip = () => {
+    for (let frame = 0; frame < 24; frame++) {
+      advancePlayer(animation, 1 / 30);
+    }
+  };
+  await animationEquipper.equip('yellowstaff');
+  settleEquip();
   let casts = 0;
-  animation.sg.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
-    invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
-  }));
-  for (let i = 0; i < 12; i++) { advancePlayer(animation, 1 / 30); }
+  animation.sg.pushBufferedAction(
+    new BufferedAction(
+      'CASTSPELL',
+      () => {
+        casts += 1;
+      },
+      undefined,
+      {
+        invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
+      },
+    ),
+  );
+  for (let i = 0; i < 12; i++) {
+    advancePlayer(animation, 1 / 30);
+  }
   const beforeSoundFrame = sources.length;
   advancePlayer(animation, 1 / 30);
   const onSoundFrame = sources.length;
-  for (let i = 0; i < 50; i++) { advancePlayer(animation, 1 / 30); }
+  for (let i = 0; i < 50; i++) {
+    advancePlayer(animation, 1 / 30);
+  }
   const afterCastSources = sources.length;
-  await animationEquipper.equip(null); settleEquip();
-  await animationEquipper.equip('yellowstaff'); settleEquip();
-  animation.sg.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
-    invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
-  }));
-  for (let i = 0; i < 12; i++) { advancePlayer(animation, 1 / 30); }
-  await animationEquipper.equip(null); settleEquip();
-  for (let i = 0; i < 30; i++) { advancePlayer(animation, 1 / 30); }
+  await animationEquipper.equip(null);
+  settleEquip();
+  await animationEquipper.equip('yellowstaff');
+  settleEquip();
+  animation.sg.pushBufferedAction(
+    new BufferedAction(
+      'CASTSPELL',
+      () => {
+        casts += 1;
+      },
+      undefined,
+      {
+        invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
+      },
+    ),
+  );
+  for (let i = 0; i < 12; i++) {
+    advancePlayer(animation, 1 / 30);
+  }
+  await animationEquipper.equip(null);
+  settleEquip();
+  for (let i = 0; i < 30; i++) {
+    advancePlayer(animation, 1 / 30);
+  }
   const cancelledBeforeSound = sources.length === afterCastSources && casts === 1;
   const castBuffer = sources[6].source.buffer!;
-  (window as unknown as { checkStarAudio: (action: string) => unknown }).checkStarAudio = (action) => {
+  (window as unknown as { checkStarAudio: (action: string) => unknown }).checkStarAudio = action => {
     if (action === 'expire') {
-      for (let i = 0; i < 72; i++) { scheduler.advance(1 / 60); displays.update(1 / 60, new THREE.Quaternion()); }
+      for (let i = 0; i < 72; i++) {
+        scheduler.advance(1 / 60);
+        displays.update(1 / 60, new THREE.Quaternion());
+      }
     }
-    if (action === 'dispose') { manager.dispose(); DisposeSounds(); }
-    return { state: context.state, restoredRemoved: restored.isRemoved,
-      stops: sources.map(({ stops }) => stops) };
+    if (action === 'dispose') {
+      manager.dispose();
+      DisposeSounds();
+    }
+    return { state: context.state, restoredRemoved: restored.isRemoved, stops: sources.map(({ stops }) => stops) };
   };
-  return { samples, casting: { beforeSoundFrame, onSoundFrame, afterCastSources, casts, cancelledBeforeSound,
-    duration: castBuffer.length / castBuffer.sampleRate, loop: sources[6].source.loop } };
+  return {
+    samples,
+    casting: {
+      beforeSoundFrame,
+      onSoundFrame,
+      afterCastSources,
+      casts,
+      cancelledBeforeSound,
+      duration: castBuffer.length / castBuffer.sampleRate,
+      loop: sources[6].source.loop,
+    },
+  };
 }

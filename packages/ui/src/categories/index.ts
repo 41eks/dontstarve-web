@@ -4,11 +4,28 @@ import type { CategoryConfig } from './types';
 
 export type { CategoryConfig, Recipe, RecipeIngredient, RecipeSkin } from './types';
 
-function category(id: string, filter: keyof typeof filterRecipeIds, name: string, icon: string, iconAtlas?: string): CategoryConfig {
-  return { id, name, icon, ...(iconAtlas ? { iconAtlas } : {}), recipes: filterRecipeIds[filter].map((recipeId) => createRecipe(recipeId)) };
+function category(
+  id: string,
+  filter: keyof typeof filterRecipeIds,
+  name: string,
+  icon: string,
+  iconAtlas?: string,
+): CategoryConfig {
+  return {
+    id,
+    name,
+    icon,
+    ...(iconAtlas ? { iconAtlas } : {}),
+    recipes: filterRecipeIds[filter].map(recipeId => createRecipe(recipeId)),
+  };
 }
 
-export const favoritesCategory: CategoryConfig = { id: 'favorites', name: '收藏', icon: 'filter_favorites.tex', recipes: [] };
+export const favoritesCategory: CategoryConfig = {
+  id: 'favorites',
+  name: '收藏',
+  icon: 'filter_favorites.tex',
+  recipes: [],
+};
 export const craftingStationCategory = category('crafting-station', 'CRAFTING_STATION', '制作站', 'filter_none.tex');
 export const specialEventCategory = category('special-event', 'SPECIAL_EVENT', '活动', 'filter_events.tex');
 

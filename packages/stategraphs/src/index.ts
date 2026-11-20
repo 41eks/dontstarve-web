@@ -4,8 +4,17 @@ export { ActionHandler, EventHandler, FRAMES, State, StateGraphInstance, TimeEve
 export type { StateActionHandler, StateDefinition, StateEvent, TimelineEvent } from './stategraph.ts';
 export { WilsonStateGraph, WILSON_ACTION_TIMES } from './SGwilson.ts';
 export type {
-  WilsonAction, WilsonAnimationClip, WilsonAnimationKey, WilsonMovementState,
-  WilsonOneShotState, WilsonStateName, WilsonFx, WilsonCombat, WilsonSleepAnnounce, WilsonDeathHost, WilsonFishingHost,
+  WilsonAction,
+  WilsonAnimationClip,
+  WilsonAnimationKey,
+  WilsonMovementState,
+  WilsonOneShotState,
+  WilsonStateName,
+  WilsonFx,
+  WilsonCombat,
+  WilsonSleepAnnounce,
+  WilsonDeathHost,
+  WilsonFishingHost,
 } from './SGwilson.ts';
 
 export type { ActionWorldContext, ActionLocomotor, CursorLabel } from './actionContext.ts';

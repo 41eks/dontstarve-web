@@ -18,7 +18,9 @@ import { createPickupInventory } from './pickupFixture';
 import { playerStatsFixture } from './playerStatsFixture';
 
 beforeEach(() => {
-  playerStats.health.SetVal(140); playerStats.hunger.SetCurrent(90); playerStats.sanity.SetCurrent(120);
+  playerStats.health.SetVal(140);
+  playerStats.hunger.SetCurrent(90);
+  playerStats.sanity.SetCurrent(120);
 });
 
 it('keeps the sanity hysteresis state through c_setsanity, c_save and reload', async () => {
@@ -27,12 +29,29 @@ it('keeps the sanity hysteresis state through c_setsanity, c_save and reload', a
   let exported = '';
   try {
     const save = () => {
-      exported = serializeSave(template, { entities: {}, elapsedSeconds: 0,
-        playerTransform: { position: [3, 0, -6], rotationY: 0 }, inventory: inventory.exportSaved(), playerStats: getPlayerStats(),
-      }, SAVE_CATALOG);
+      exported = serializeSave(
+        template,
+        {
+          entities: {},
+          elapsedSeconds: 0,
+          playerTransform: { position: [3, 0, -6], rotationY: 0 },
+          inventory: inventory.exportSaved(),
+          playerStats: getPlayerStats(),
+        },
+        SAVE_CATALOG,
+      );
     };
-    expect((await executeDebugCommand('c_setsanity(.15); c_setsanity(.16); c_save()', inventory,
-      undefined, save, setPlayerSanityPercent)).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand(
+          'c_setsanity(.15); c_setsanity(.16); c_save()',
+          inventory,
+          undefined,
+          save,
+          setPlayerSanityPercent,
+        )
+      ).ok,
+    ).toBe(true);
     const document = deserializeSave(exported, SAVE_CATALOG);
     expect(document.players.local.stats).toMatchObject({ sanity: 32, sanitySane: false, hunger: 90 });
     const restored = playerStatsFixture(document.players.local.stats!);
@@ -42,7 +61,9 @@ it('keeps the sanity hysteresis state through c_setsanity, c_save and reload', a
     restored.components.sanity!.SetCurrent(35);
     expect(restored.components.sanity!.IsSane()).toBe(true);
     restored.remove();
-  } finally { inventory.dispose(); }
+  } finally {
+    inventory.dispose();
+  }
 });
 
 it('restores all stats into signals and exports detached numerical snapshots', () => {
@@ -65,14 +86,18 @@ it('restores all stats into signals and exports detached numerical snapshots', (
 });
 
 it('publishes bounded stat changes until subscriptions are released', () => {
-  const health = vi.fn(), hungerPercent = vi.fn();
+  const health = vi.fn(),
+    hungerPercent = vi.fn();
   const stopHealth = playerStats.health.current.subscribe(health);
   const stopHunger = playerStats.hunger.percent.subscribe(hungerPercent);
   try {
-    playerStats.health.DoDelta(8); playerStats.hunger.DoDelta(25); playerStats.sanity.DoDelta(33);
+    playerStats.health.DoDelta(8);
+    playerStats.hunger.DoDelta(25);
+    playerStats.sanity.DoDelta(33);
     expect(health).toHaveBeenCalledExactlyOnceWith(148, 140);
     expect(hungerPercent).toHaveBeenCalledExactlyOnceWith(115 / 150, 0.6);
-    playerStats.health.DoDelta(100); playerStats.hunger.DoDelta(100);
+    playerStats.health.DoDelta(100);
+    playerStats.hunger.DoDelta(100);
     expect(getPlayerStats()).toEqual({ health: 150, hunger: 150, sanity: 153 });
     playerStats.health.SetVal(200);
     expect(health).toHaveBeenCalledTimes(2);
@@ -81,9 +106,14 @@ it('publishes bounded stat changes until subscriptions are released', () => {
     expect(() => playerStats.health.SetVal(NaN)).toThrow('health must be finite');
     expect(() => playerStats.hunger.SetCurrent(Infinity)).toThrow('Hunger must be finite');
     expect(getPlayerStats()).toEqual({ health: 150, hunger: 0, sanity: 153 });
-    stopHealth(); stopHunger();
-    playerStats.health.SetVal(50); playerStats.hunger.SetCurrent(50);
+    stopHealth();
+    stopHunger();
+    playerStats.health.SetVal(50);
+    playerStats.hunger.SetCurrent(50);
     expect(health).toHaveBeenCalledTimes(2);
     expect(hungerPercent).toHaveBeenCalledTimes(3);
-  } finally { stopHealth(); stopHunger(); }
+  } finally {
+    stopHealth();
+    stopHunger();
+  }
 });

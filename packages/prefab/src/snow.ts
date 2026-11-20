@@ -47,22 +47,40 @@ export class SnowEffect {
     this.options = options;
     this.entity.instance.persists = false;
     this.entity.instance.addTag('FX');
-    this.snowfall = new Snowfall({ root: this.entity.display.model, scene: options.scene, dataBaseUrl: options.dataBaseUrl,
-      fx: SNOW_FX, getFocus: options.getFocus, camera: options.camera, rate: options.rate });
+    this.snowfall = new Snowfall({
+      root: this.entity.display.model,
+      scene: options.scene,
+      dataBaseUrl: options.dataBaseUrl,
+      fx: SNOW_FX,
+      getFocus: options.getFocus,
+      camera: options.camera,
+      rate: options.rate,
+    });
     // weather.lua's overlay belongs to the ground map: above turf ([-1, -0.6)), below LAYER_BACKGROUND decor (ponds: -0.5).
-    options.groundOverlay.declareOverlay('snow', { texture: SNOW_GROUND_TEXTURE, cover: options.cover, renderOrder: -0.55 });
+    options.groundOverlay.declareOverlay('snow', {
+      texture: SNOW_GROUND_TEXTURE,
+      cover: options.cover,
+      renderOrder: -0.55,
+    });
   }
 
   /** weather.lua calls snow.lua PostInit on a snowy load to populate existing flakes. */
-  PostInit(): void { this.snowfall.PostInit(); }
+  PostInit(): void {
+    this.snowfall.PostInit();
+  }
 
-  update(dt: number, cameraQuaternion: THREE.Quaternion): void { this.snowfall.update(dt, cameraQuaternion); }
+  update(dt: number, cameraQuaternion: THREE.Quaternion): void {
+    this.snowfall.update(dt, cameraQuaternion);
+  }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     this.options.groundOverlay.declareOverlay('snow', undefined);
     this.snowfall.dispose();
-    this.entity.instance.remove(); this.entity.display.dispose();
+    this.entity.instance.remove();
+    this.entity.display.dispose();
   }
 }

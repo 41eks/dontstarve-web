@@ -23,20 +23,44 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { createInventoryStore } from './testInventory';
 
 const setParameter = vi.hoisted(() => vi.fn());
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), setParameter })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop: vi.fn(), setParameter })),
+}));
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
-afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
 
 /** A 96-unit world: land for cols -4..-1, an ocean field for cols 0..3 (rows -4..3). */
-const oceanTiles = (): TurfTileSave[] => Array.from({ length: 32 }, (_, i) => ({
-  col: Math.floor(i / 8), row: (i % 8) - 4, tileId: WORLD_TILES.OCEAN_COASTAL }));
+const oceanTiles = (): TurfTileSave[] =>
+  Array.from({ length: 32 }, (_, i) => ({
+    col: Math.floor(i / 8),
+    row: (i % 8) - 4,
+    tileId: WORLD_TILES.OCEAN_COASTAL,
+  }));
 const centre = (col: number, row: number) => new THREE.Vector3(col * 12 + 6, 0, row * 12 + 6);
 
-function setup(tiles = oceanTiles(), blockers = new SpatialIndex<PlacementBlocker>(blocker => blocker.position, blocker => blocker.smartRadius ?? 0)) {
-  const turf = new TurfMap(96, tiles), renderer = { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer;
+function setup(
+  tiles = oceanTiles(),
+  blockers = new SpatialIndex<PlacementBlocker>(
+    blocker => blocker.position,
+    blocker => blocker.smartRadius ?? 0,
+  ),
+) {
+  const turf = new TurfMap(96, tiles),
+    renderer = { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer;
   const camera = new THREE.PerspectiveCamera();
-  const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera, ground: new THREE.Group(), renderer,
-    mouseActions: new PlayerActionPicker(new PointerRaycaster({ camera, renderer })) } as unknown as WorldContext;
+  const world = {
+    scene: new THREE.Scene(),
+    player: new THREE.Group(),
+    camera,
+    ground: new THREE.Group(),
+    renderer,
+    mouseActions: new PlayerActionPicker(new PointerRaycaster({ camera, renderer })),
+  } as unknown as WorldContext;
   return { turf, world, blockers, docks: createDockWorld(turf, blockers as never) };
 }
 
@@ -77,15 +101,27 @@ it('refuses a tile with an unrelated entity standing in the water or a dockjamme
   const obstacle = { position: new THREE.Vector3(8, 0, 8), tags: [] };
   blockers.add(obstacle);
   expect(docks.canDeployDock(centre(0, 0))).toBe(false);
-  blockers.delete(obstacle); blockers.add({ position: centre(0, 0), tags: ['dockjammer'] });
+  blockers.delete(obstacle);
+  blockers.add({ position: centre(0, 0), tags: ['dockjammer'] });
   expect(docks.canDeployDock(centre(0, 0))).toBe(false);
 });
 
 it('dockmanager breaks only docks with no path to a permanent root', () => {
-  const tiles = new Map<string, number>([['0,0', 1], ['1,0', 2], ['2,0', 2], ['5,5', 2]]); // 1 land, 2 dock
-  const map: DockMap = { getTile: (c, r) => tiles.get(`${c},${r}`) ?? 0, setTile: (c, r, t) => { tiles.set(`${c},${r}`, t); },
+  const tiles = new Map<string, number>([
+    ['0,0', 1],
+    ['1,0', 2],
+    ['2,0', 2],
+    ['5,5', 2],
+  ]); // 1 land, 2 dock
+  const map: DockMap = {
+    getTile: (c, r) => tiles.get(`${c},${r}`) ?? 0,
+    setTile: (c, r, t) => {
+      tiles.set(`${c},${r}`, t);
+    },
     cellsOfTile: t => [...tiles].filter(([, v]) => v === t).map(([k]) => k.split(',').map(Number) as [number, number]),
-    isLandTile: t => t !== 0, isTemporaryTile: t => t === 2 };
+    isLandTile: t => t !== 0,
+    isTemporaryTile: t => t === 2,
+  };
   const queued: string[] = [];
   const manager = new DockManager(map, { dock: 2, farmingSoil: 3 }, (c, r) => queued.push(`${c},${r}`));
   expect(manager.IsRoot(1, 0)).toBe(true);
@@ -102,8 +138,14 @@ it('saves a dock as a MONKEY_DOCK tile over its ocean undertile and rejects one 
     save.world.entities = {};
     save.players.local.inventory = { items: {}, equip: {} };
     save.players.local.builder = { bufferedBuilds: [] };
-    return deserializeSave(JSON.stringify(save), { items: {}, skins: {}, recipes: {}, recipeSkins: {},
-      buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) });
+    return deserializeSave(JSON.stringify(save), {
+      items: {},
+      skins: {},
+      recipes: {},
+      recipeSkins: {},
+      buildings: definitions.animatedBuildings,
+      walls: Object.keys(definitions.walls),
+    });
   };
   const ocean = { col: 0, row: 0, tileId: WORLD_TILES.OCEAN_COASTAL };
   const dock = { col: 1, row: 0, tileId: WORLD_TILES.MONKEY_DOCK, underTileId: WORLD_TILES.OCEAN_COASTAL };
@@ -113,10 +155,14 @@ it('saves a dock as a MONKEY_DOCK tile over its ocean undertile and rejects one 
 });
 
 it('walks to the shore through DEPLOY, reaches over the water, consumes one kit at frame six and shows the gridplacer', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const { turf, world, blockers } = setup();
   const inventory = createInventoryStore([{ slot_index: 0, id: 'dock_kit', num: 2 }]);
-  const map = createDeployMap({ turf, blockers }), actor = deployActor(world, inventory, map);
+  const map = createDeployMap({ turf, blockers }),
+    actor = deployActor(world, inventory, map);
   const placer = new DeployPlacer(world, map, () => inventory.GetActiveItem());
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(centre(0, 0));
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined as never);
@@ -125,11 +171,14 @@ it('walks to the shore through DEPLOY, reaches over the water, consumes one kit 
     expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
     const entity = inventory.GetActiveItem()!;
     expect(entity.components.deployable).toMatchObject({ mode: 'CUSTOM', usegridplacer: true });
-    for (const tag of ['groundtile', 'deploykititem', 'usedeployspacingasoffset']) { expect(entity.hasTag(tag)).toBe(true); }
+    for (const tag of ['groundtile', 'deploykititem', 'usedeployspacingasoffset']) {
+      expect(entity.hasTag(tag)).toBe(true);
+    }
 
     placer.update();
     await vi.waitFor(() => expect(world.scene.children).toHaveLength(1));
-    const [outline] = world.scene.children, instance = prefabInstance(outline)!;
+    const [outline] = world.scene.children,
+      instance = prefabInstance(outline)!;
     placer.update();
     await prefabDisplay(outline)!.artLoaded();
     expect(instance.sprite.currentAnimation).toBe('anim');
@@ -145,7 +194,7 @@ it('walks to the shore through DEPLOY, reaches over the water, consumes one kit 
     expect(turf.tileIdAtCell(0, 0)).toBe(WORLD_TILES.OCEAN_COASTAL);
     actor.graph.update(1 / 30);
     expect(turf.tileIdAtCell(0, 0)).toBe(WORLD_TILES.MONKEY_DOCK);
-    expect(setParameter).toHaveBeenCalledWith('intensity', .8);
+    expect(setParameter).toHaveBeenCalledWith('intensity', 0.8);
     expect(inventory.get(cursorSlotAddress())?.count).toBe(1);
 
     // Not ocean any more: no action at the pointer, and the rest of the stack returns on a right click.
@@ -156,5 +205,9 @@ it('walks to the shore through DEPLOY, reaches over the water, consumes one kit 
     placer.update();
     expect(instance.isRemoved).toBe(true);
     expect(world.scene.children).toEqual([]);
-  } finally { placer.dispose(); actor.controller.dispose(); inventory.dispose(); }
+  } finally {
+    placer.dispose();
+    actor.controller.dispose();
+    inventory.dispose();
+  }
 });

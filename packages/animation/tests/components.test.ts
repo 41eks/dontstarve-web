@@ -14,7 +14,8 @@ function entity() {
 }
 
 it('returns an existing component without replacing its state and keeps it while the entity sleeps', () => {
-  const inst = entity(), scheduler = new GameTimeScheduler();
+  const inst = entity(),
+    scheduler = new GameTimeScheduler();
   const burnable = addComponent(inst, 'burnable', Burnable, scheduler);
   const burnt = vi.fn();
   burnable.SetBurnTime(5);
@@ -28,11 +29,15 @@ it('returns an existing component without replacing its state and keeps it while
     expect(burnable.IsBurning()).toBe(true);
     scheduler.advance(3);
     expect(burnt).toHaveBeenCalledOnce();
-  } finally { inst.remove(); scheduler.dispose(); }
+  } finally {
+    inst.remove();
+    scheduler.dispose();
+  }
 });
 
 it('detaches before teardown, permits reattachment and tears down exactly once on entity removal', () => {
-  const inst = entity(), scheduler = new GameTimeScheduler();
+  const inst = entity(),
+    scheduler = new GameTimeScheduler();
   const burnable = addComponent(inst, 'burnable', Burnable, scheduler);
   const extinguished = vi.fn(() => expect(inst.components.burnable).toBeUndefined());
   const extinguishEvents = vi.fn();
@@ -47,13 +52,15 @@ it('detaches before teardown, permits reattachment and tears down exactly once o
   expect(dispose).toHaveBeenCalledOnce();
 
   const replacement = addComponent(inst, 'burnable', Burnable, scheduler);
-  const removed = vi.spyOn(replacement, 'dispose'), burnt = vi.fn();
+  const removed = vi.spyOn(replacement, 'dispose'),
+    burnt = vi.fn();
   expect(replacement).not.toBe(burnable);
   replacement.SetBurnTime(1);
   replacement.SetOnBurntFn(burnt);
   replacement.SetOnExtinguishFn(extinguished);
   replacement.Ignite();
-  inst.remove(); inst.remove();
+  inst.remove();
+  inst.remove();
   scheduler.advance(2);
   // EntityScript:Remove calls OnRemoveEntity and leaves inst.components in place.
   expect(inst.components.burnable).toBe(replacement);
@@ -72,7 +79,10 @@ it('retains the concrete prefab host in workable callbacks and validates constru
   const worked = vi.fn();
   workable.SetWorkAction('HAMMER');
   workable.SetWorkLeft(2);
-  workable.SetOnWorkCallback(host => { host.sprite.start('hit'); worked(host); });
+  workable.SetOnWorkCallback(host => {
+    host.sprite.start('hit');
+    worked(host);
+  });
   workable.WorkedBy(testPlayer(), 1);
   expect(worked).toHaveBeenCalledExactlyOnceWith(inst);
   expect(inst.sprite.currentAnimation).toBe('hit');

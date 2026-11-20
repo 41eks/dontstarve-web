@@ -14,10 +14,17 @@ export function gunpowderPrefabs(world: ItemPrefabWorld): Record<string, ItemPre
     [GUNPOWDER_ID]: groundItemPrefab(GUNPOWDER_ID, world, {
       configure: inst => {
         const fx = world.fx;
-        if (!fx) { throw new Error('Gunpowder requires the explode_small effect'); }
+        if (!fx) {
+          throw new Error('Gunpowder requires the explode_small effect');
+        }
         bindBurnableItem(inst, world);
-        const explosive = addComponent(inst, 'explosive', Explosive,
-          (center, radius) => inst.TheSim.FindEntities(center, radius, [], CANT_TAGS), TILE_SIZE / 4);
+        const explosive = addComponent(
+          inst,
+          'explosive',
+          Explosive,
+          (center, radius) => inst.TheSim.FindEntities(center, radius, [], CANT_TAGS),
+          TILE_SIZE / 4,
+        );
         explosive.SetOnExplodeFn(entity => fx.spawn('explode_small', entity.getPosition()));
       },
     }),

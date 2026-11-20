@@ -22,13 +22,21 @@ export function setupEmoteWheel(
   const handleRequest = (event: GameUiEventMap['game:emote-request']) => {
     const { emote } = event.detail;
     actionEvents?.emit('action:interrupt', { reason: 'emote' });
-    try { if (player) { playEmote(player, emote); } } catch (error) {
+    try {
+      if (player) {
+        playEmote(player, emote);
+      }
+    } catch (error) {
       console.error(`Unable to play emote ${emote}`, error);
     }
   };
   // Clicking the world interrupts a looping emote.
   const handleWorldPointer = (event: PointerEvent) => {
-    if (event.button === 0 || event.button === 2) { if (player) { cancelEmote(player); } }
+    if (event.button === 0 || event.button === 2) {
+      if (player) {
+        cancelEmote(player);
+      }
+    }
   };
   wheel.addEventListener('game:emote-wheel-toggle', handleToggle);
   wheel.addEventListener('game:emote-request', handleRequest);

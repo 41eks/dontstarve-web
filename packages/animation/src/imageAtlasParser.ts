@@ -47,7 +47,11 @@ function decodeXmlValue(value: string) {
       return String.fromCodePoint(Number.parseInt(digits, radix));
     }
     const named: Record<string, string> = {
-      '&amp;': '&', '&apos;': "'", '&gt;': '>', '&lt;': '<', '&quot;': '"',
+      '&amp;': '&',
+      '&apos;': "'",
+      '&gt;': '>',
+      '&lt;': '<',
+      '&quot;': '"',
     };
     return named[entity.toLowerCase()] ?? entity;
   });
@@ -64,21 +68,27 @@ function attributes(source: string) {
 
 function coordinate(value: string | undefined, name: string, label: string) {
   const parsed = Number(value);
-  if (!Number.isFinite(parsed)) { throw new Error(`${label}: invalid ${name} coordinate`); }
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${label}: invalid ${name} coordinate`);
+  }
   return parsed;
 }
 
 export function parseImageAtlasXml(xml: string, label = 'image atlas XML'): ParsedImageAtlasXml {
   const textureTag = /<Texture\b([^>]*)\/?\s*>/i.exec(xml);
   const texture = textureTag ? attributes(textureTag[1]).get('filename') : undefined;
-  if (!texture) { throw new Error(`${label}: missing Texture filename`); }
+  if (!texture) {
+    throw new Error(`${label}: missing Texture filename`);
+  }
 
   const elements = new Map<string, ImageAtlasElement>();
   const elementPattern = /<Element\b([^>]*)\/?\s*>/gi;
   for (const match of xml.matchAll(elementPattern)) {
     const values = attributes(match[1]);
     const name = values.get('name');
-    if (!name) { throw new Error(`${label}: Element is missing a name`); }
+    if (!name) {
+      throw new Error(`${label}: Element is missing a name`);
+    }
     elements.set(name, {
       name,
       u1: coordinate(values.get('u1'), 'u1', label),
@@ -87,7 +97,9 @@ export function parseImageAtlasXml(xml: string, label = 'image atlas XML'): Pars
       v2: coordinate(values.get('v2'), 'v2', label),
     });
   }
-  if (!elements.size) { throw new Error(`${label}: atlas contains no elements`); }
+  if (!elements.size) {
+    throw new Error(`${label}: atlas contains no elements`);
+  }
   return { texture, elements };
 }
 
@@ -109,9 +121,13 @@ function resolveTexturePath(xmlPath: string, texture: string) {
   const combined = `${dirname(xmlPath)}${normalizePath(texture)}`;
   const segments: string[] = [];
   for (const segment of combined.split('/')) {
-    if (!segment || segment === '.') { continue; }
+    if (!segment || segment === '.') {
+      continue;
+    }
     if (segment === '..') {
-      if (!segments.pop()) { throw new Error(`${xmlPath}: texture path escapes the archive root`); }
+      if (!segments.pop()) {
+        throw new Error(`${xmlPath}: texture path escapes the archive root`);
+      }
     } else {
       segments.push(segment);
     }
@@ -137,33 +153,40 @@ function xmlPathsFromArchive(data: Uint8Array, requestedPath: string) {
   const requestedKey = pathKey(requestedPath);
   const requestedDirectory = dirname(requestedKey);
   const inventoryAlias = requestedKey.endsWith('/inventoryimages.xml') || requestedKey === 'inventoryimages.xml';
-  const inventoryPattern = new RegExp(`^${requestedDirectory.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}inventoryimages\\d+\\.xml$`);
-  const xmlEntries = archiveEntries(data, (path) => inventoryAlias
-    ? inventoryPattern.test(path)
-    : path === requestedKey || path.endsWith(`/${requestedKey}`));
+  const inventoryPattern = new RegExp(
+    `^${requestedDirectory.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}inventoryimages\\d+\\.xml$`,
+  );
+  const xmlEntries = archiveEntries(data, path =>
+    inventoryAlias ? inventoryPattern.test(path) : path === requestedKey || path.endsWith(`/${requestedKey}`),
+  );
 
   let paths = [...xmlEntries.values()].map(({ path }) => path);
-  if (inventoryAlias) { paths.sort((a, b) => inventoryPageNumber(a) - inventoryPageNumber(b)); }
-  if (!paths.length && inventoryAlias) {
-    const legacy = archiveEntries(data, (path) => path === requestedKey || path.endsWith(`/${requestedKey}`));
-    paths = [...legacy.values()].map(({ path }) => path);
-    for (const [key, value] of legacy) { xmlEntries.set(key, value); }
+  if (inventoryAlias) {
+    paths.sort((a, b) => inventoryPageNumber(a) - inventoryPageNumber(b));
   }
-  if (!paths.length) { throw new Error(`ZIP archive does not contain ${requestedPath}`); }
+  if (!paths.length && inventoryAlias) {
+    const legacy = archiveEntries(data, path => path === requestedKey || path.endsWith(`/${requestedKey}`));
+    paths = [...legacy.values()].map(({ path }) => path);
+    for (const [key, value] of legacy) {
+      xmlEntries.set(key, value);
+    }
+  }
+  if (!paths.length) {
+    throw new Error(`ZIP archive does not contain ${requestedPath}`);
+  }
   return { paths, xmlEntries };
 }
 
-export function atlasElementBounds(
-  texture: Pick<DecodedTexture, 'width' | 'height'>,
-  element: ImageAtlasElement,
-) {
+export function atlasElementBounds(texture: Pick<DecodedTexture, 'width' | 'height'>, element: ImageAtlasElement) {
   const left = Math.max(0, Math.floor(texture.width * element.u1));
   const top = Math.max(0, Math.floor(texture.height * (1 - element.v2)));
   const right = Math.min(texture.width, Math.floor(texture.width * element.u2) + 1);
   const bottom = Math.min(texture.height, Math.floor(texture.height * (1 - element.v1)) + 1);
   const width = right - left;
   const height = bottom - top;
-  if (width <= 0 || height <= 0) { throw new Error(`${element.name}: invalid atlas bounds`); }
+  if (width <= 0 || height <= 0) {
+    throw new Error(`${element.name}: invalid atlas bounds`);
+  }
   return { x: left, y: top, width, height };
 }
 
@@ -188,18 +211,24 @@ export class DecodedImageAtlas implements ImageAtlas {
     for (const page of pages) {
       for (const element of page.elements.values()) {
         const key = element.name.toLowerCase();
-        if (!this.index.has(key)) { this.index.set(key, { page, element }); }
+        if (!this.index.has(key)) {
+          this.index.set(key, { page, element });
+        }
       }
     }
   }
 
   get(name: string) {
     const names = /\.[^./\\]+$/.test(name) ? [name] : [name, `${name}.tex`, `${name}.png`];
-    const indexed = names.map((candidate) => this.index.get(candidate.toLowerCase())).find(Boolean);
-    if (!indexed) { return undefined; }
+    const indexed = names.map(candidate => this.index.get(candidate.toLowerCase())).find(Boolean);
+    if (!indexed) {
+      return undefined;
+    }
     const cacheKey = indexed.element.name.toLowerCase();
     const cached = this.sprites.get(cacheKey);
-    if (cached) { return cached; }
+    if (cached) {
+      return cached;
+    }
     const cropped = cropAtlasTexture(indexed.page.decodedTexture, indexed.element);
     const sprite: ImageAtlasSprite = {
       ...cropped,
@@ -213,27 +242,30 @@ export class DecodedImageAtlas implements ImageAtlas {
 
   require(name: string) {
     const sprite = this.get(name);
-    if (!sprite) { throw new Error(`Image atlas does not contain ${name}`); }
+    if (!sprite) {
+      throw new Error(`Image atlas does not contain ${name}`);
+    }
     return sprite;
   }
 }
 
-export function parseImageAtlasArchive(
-  data: Uint8Array,
-  atlasPath = 'images/inventoryimages.xml',
-): ImageAtlas {
+export function parseImageAtlasArchive(data: Uint8Array, atlasPath = 'images/inventoryimages.xml'): ImageAtlas {
   const { paths, xmlEntries } = xmlPathsFromArchive(data, atlasPath);
-  const definitions = paths.map((path) => {
+  const definitions = paths.map(path => {
     const xmlEntry = xmlEntries.get(pathKey(path));
-    if (!xmlEntry) { throw new Error(`ZIP archive does not contain ${path}`); }
+    if (!xmlEntry) {
+      throw new Error(`ZIP archive does not contain ${path}`);
+    }
     const definition = parseImageAtlasXml(utf8.decode(xmlEntry.data), path);
     return { path, definition, texturePath: resolveTexturePath(path, definition.texture) };
   });
   const textureKeys = new Set(definitions.map(({ texturePath }) => pathKey(texturePath)));
-  const textures = archiveEntries(data, (path) => textureKeys.has(path));
+  const textures = archiveEntries(data, path => textureKeys.has(path));
   const pages = definitions.map(({ path, definition, texturePath }): ImageAtlasPage => {
     const texture = textures.get(pathKey(texturePath));
-    if (!texture) { throw new Error(`ZIP archive does not contain ${texturePath}`); }
+    if (!texture) {
+      throw new Error(`ZIP archive does not contain ${texturePath}`);
+    }
     return {
       path,
       texture: definition.texture,

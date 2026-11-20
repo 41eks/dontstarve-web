@@ -25,9 +25,16 @@ export class Occupier<Owner = unknown> {
   private ownerRef: Owner | undefined;
   /** Lua's occupier.onoccupied(occupier, cage). */
   onoccupied?: (cage: Owner | undefined) => void;
-  GetOwner(): Owner | undefined { return this.ownerRef; }
-  SetOwner(owner: Owner | undefined): void { this.ownerRef = owner; }
-  dispose(): void { this.ownerRef = undefined; this.onoccupied = undefined; }
+  GetOwner(): Owner | undefined {
+    return this.ownerRef;
+  }
+  SetOwner(owner: Owner | undefined): void {
+    this.ownerRef = owner;
+  }
+  dispose(): void {
+    this.ownerRef = undefined;
+    this.onoccupied = undefined;
+  }
 }
 
 /** components/occupiable.lua: one occupant that leaves when it perishes, is removed or is harvested. */
@@ -46,29 +53,49 @@ export class Occupiable<Item extends OccupantItem<OccupiableInst>, Inst extends 
     this.inst = inst;
   }
 
-  get occupanttype(): string | undefined { return this.type; }
+  get occupanttype(): string | undefined {
+    return this.type;
+  }
   set occupanttype(value: string | undefined) {
     const old = this.type;
     this.type = value;
-    if (this.occupantState.peek()) { return; }
-    if (old !== undefined) { this.inst.removeTag(`${old}_occupiable`); }
-    if (value !== undefined) { this.inst.addTag(`${value}_occupiable`); }
+    if (this.occupantState.peek()) {
+      return;
+    }
+    if (old !== undefined) {
+      this.inst.removeTag(`${old}_occupiable`);
+    }
+    if (value !== undefined) {
+      this.inst.addTag(`${value}_occupiable`);
+    }
   }
 
-  IsOccupied(): boolean { return this.occupantState.peek() !== undefined; }
-  GetOccupant(): Item | undefined { return this.occupantState.peek(); }
+  IsOccupied(): boolean {
+    return this.occupantState.peek() !== undefined;
+  }
+  GetOccupant(): Item | undefined {
+    return this.occupantState.peek();
+  }
 
   CanOccupy(occupier: Item): boolean {
-    return !this.IsOccupied() && this.type !== undefined && occupier.hasTag(this.type)
-      && occupier.components.occupier !== undefined;
+    return (
+      !this.IsOccupied() &&
+      this.type !== undefined &&
+      occupier.hasTag(this.type) &&
+      occupier.components.occupier !== undefined
+    );
   }
 
   /** The caller has already removed the item from its previous owner (inventoryitem:RemoveFromOwner). */
   Occupy(occupier: Item | undefined): boolean {
     const occupierComponent = occupier?.components.occupier;
-    if (this.IsOccupied() || !occupier || !occupierComponent || occupier.isRemoved) { return false; }
+    if (this.IsOccupied() || !occupier || !occupierComponent || occupier.isRemoved) {
+      return false;
+    }
     occupier.flush();
-    if (occupier.isRemoved || this.IsOccupied()) { return false; }
+    if (occupier.isRemoved || this.IsOccupied()) {
+      return false;
+    }
     // occupiableonperish / occupiableonremove are registered after the callbacks, as in Lua.
     this.setOccupant(occupier);
     occupierComponent.SetOwner(this.inst);
@@ -88,7 +115,13 @@ export class Occupiable<Item extends OccupantItem<OccupiableInst>, Inst extends 
       this.onemptied?.(this.inst);
       this.setOccupant(undefined);
     });
-    const stop = () => { stopPerish(); stopRemove(); if (this.stopListening === stop) { this.stopListening = undefined; } };
+    const stop = () => {
+      stopPerish();
+      stopRemove();
+      if (this.stopListening === stop) {
+        this.stopListening = undefined;
+      }
+    };
     this.stopListening = stop;
     return true;
   }
@@ -96,9 +129,13 @@ export class Occupiable<Item extends OccupantItem<OccupiableInst>, Inst extends 
   /** The occupant leaves alive; the caller gives it to the harvester. */
   Harvest(): Item | undefined {
     const item = this.occupantState.peek();
-    if (!item) { return undefined; }
+    if (!item) {
+      return undefined;
+    }
     item.flush();
-    if (item.isRemoved || this.occupantState.peek() !== item) { return undefined; }
+    if (item.isRemoved || this.occupantState.peek() !== item) {
+      return undefined;
+    }
     item.components.occupier?.SetOwner(undefined);
     this.stopListening?.();
     this.setOccupant(undefined);
@@ -109,7 +146,9 @@ export class Occupiable<Item extends OccupantItem<OccupiableInst>, Inst extends 
 
   dispose(): void {
     this.stopListening?.();
-    if (this.type !== undefined) { this.inst.removeTag(`${this.type}_occupiable`); }
+    if (this.type !== undefined) {
+      this.inst.removeTag(`${this.type}_occupiable`);
+    }
     this.inst.removeTag('occupied');
     this.occupantState.set(undefined);
   }
@@ -119,10 +158,14 @@ export class Occupiable<Item extends OccupantItem<OccupiableInst>, Inst extends 
     this.occupantState.set(item);
     if (item) {
       this.inst.addTag('occupied');
-      if (this.type !== undefined) { this.inst.removeTag(`${this.type}_occupiable`); }
+      if (this.type !== undefined) {
+        this.inst.removeTag(`${this.type}_occupiable`);
+      }
     } else {
       this.inst.removeTag('occupied');
-      if (this.type !== undefined) { this.inst.addTag(`${this.type}_occupiable`); }
+      if (this.type !== undefined) {
+        this.inst.addTag(`${this.type}_occupiable`);
+      }
     }
   }
 }

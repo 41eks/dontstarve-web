@@ -28,11 +28,17 @@ export interface ReskinTarget {
  * reskin_tool.lua GetNextSkin: the tool's cached skin for the prefab when it differs from the current one, otherwise the
  * skin after the current one; past the last skin it returns to the base (undefined).
  */
-export function nextReskin(skins: readonly string[], current?: string,
-  cache?: ReadonlyMap<string, string | undefined>, prefab?: string): string | undefined {
+export function nextReskin(
+  skins: readonly string[],
+  current?: string,
+  cache?: ReadonlyMap<string, string | undefined>,
+  prefab?: string,
+): string | undefined {
   if (cache && prefab) {
     const cached = cache.get(prefab);
-    if (cached !== current) { return cached; }
+    if (cached !== current) {
+      return cached;
+    }
   }
   return skins[(current === undefined ? -1 : skins.indexOf(current)) + 1];
 }

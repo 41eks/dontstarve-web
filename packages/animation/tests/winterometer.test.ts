@@ -17,16 +17,28 @@ import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
 import { managedBuildings } from './managedBuildings';
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 async function createPlacement(temperature: { value: number }) {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.spyOn(sound, 'PlaySound').mockReturnValue({ stop: vi.fn(), isPlaying: () => true, setVolume: vi.fn() });
   const scheduler = new GameTimeScheduler();
-  const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler,
-    getLocalTemperature: (x: number, z: number) => GetTemperatureAtXZ(() => temperature.value, x, z) } as unknown as WorldContext;
+  const world = {
+    scene: new THREE.Scene(),
+    player: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+    scheduler,
+    getLocalTemperature: (x: number, z: number) => GetTemperatureAtXZ(() => temperature.value, x, z),
+  } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   return { placement, scheduler };
 }
@@ -60,7 +72,9 @@ it('reads the local temperature once per second, clamped to 0..OVERHEAT_TEMP, an
     const calls = percent.mock.calls.length;
     scheduler.advance(5);
     expect(percent).toHaveBeenCalledTimes(calls);
-  } finally { placement.dispose(); }
+  } finally {
+    placement.dispose();
+  }
 });
 
 it('cancels the check while the hit clip plays and restarts it when the clip ends', async () => {
@@ -68,7 +82,9 @@ it('cancels the check while the hit clip plays and restarts it when the clip end
   const { placement, scheduler } = await createPlacement(temperature);
   try {
     placement.spawn(WINTEROMETER_ID);
-    const [hammerTarget] = workTargets('HAMMER'), { model } = hammerTarget.display, playHit = () => hammerTarget.work();
+    const [hammerTarget] = workTargets('HAMMER'),
+      { model } = hammerTarget.display,
+      playHit = () => hammerTarget.work();
     const sprite = prefabInstance(model)!.sprite as SpriteState;
     // The hit clip plays out only once the display has drawn the meter.
     await vi.waitFor(() => expect(sprite.loaded).toBe(true));
@@ -78,10 +94,14 @@ it('cancels the check while the hit clip plays and restarts it when the clip end
     expect(sprite.currentAnimation).toBe('hit');
     scheduler.advance(3);
     expect(percent).not.toHaveBeenCalled();
-    for (let i = 0; i < 90; i++) { placement.displays.update(1 / 30); }
+    for (let i = 0; i < 90; i++) {
+      placement.displays.update(1 / 30);
+    }
     scheduler.advance(0);
     expect(percent).toHaveBeenLastCalledWith('meter', 0);
-  } finally { placement.dispose(); }
+  } finally {
+    placement.dispose();
+  }
 });
 
 it('keeps its skin through c_save, restores the reading, and saves only the burnt state of a burnt one', async () => {
@@ -96,11 +116,21 @@ it('keeps its skin through c_save, restores the reading, and saves only the burn
 
     const parse = (record: typeof saved) => {
       const save = structuredClone(initialWorld) as unknown as SaveDocument;
-      save.world.entities = { winterometer: [{ ...structuredClone(record), transform: { ...record.transform, position: [...record.transform.position] } }] };
+      save.world.entities = {
+        winterometer: [
+          { ...structuredClone(record), transform: { ...record.transform, position: [...record.transform.position] } },
+        ],
+      };
       save.players.local.inventory = { items: {}, equip: {} };
       save.players.local.builder = { bufferedBuilds: [] };
-      return deserializeSave(JSON.stringify(save), { items: {}, skins: {}, recipes: {}, recipeSkins: {},
-        buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls) }).world.entities.winterometer[0];
+      return deserializeSave(JSON.stringify(save), {
+        items: {},
+        skins: {},
+        recipes: {},
+        recipeSkins: {},
+        buildings: definitions.animatedBuildings,
+        walls: Object.keys(definitions.walls),
+      }).world.entities.winterometer[0];
     };
     const restored = await placement.spawnFromSave(WINTEROMETER_ID, parse(saved));
     expect(lookupPrefabInstance(restored)?.skinId).toBe('winterometer_circus');
@@ -108,11 +138,18 @@ it('keeps its skin through c_save, restores the reading, and saves only the burn
     scheduler.advance(0);
     expect(percent).toHaveBeenLastCalledWith('meter', 0.5);
 
-    const burnt = await placement.spawnFromSave(WINTEROMETER_ID, parse({ ...saved,
-      components: { ...saved.components, building: { ...saved.components.building!, burnt: true } } }));
+    const burnt = await placement.spawnFromSave(
+      WINTEROMETER_ID,
+      parse({
+        ...saved,
+        components: { ...saved.components, building: { ...saved.components.building!, burnt: true } },
+      }),
+    );
     const burntPercent = spyPercent(burnt);
     scheduler.advance(5);
     expect(burntPercent).not.toHaveBeenCalled();
     expect(placement.exportRecords().at(-1)!.record.components.building).toMatchObject({ burnt: true });
-  } finally { placement.dispose(); }
+  } finally {
+    placement.dispose();
+  }
 });

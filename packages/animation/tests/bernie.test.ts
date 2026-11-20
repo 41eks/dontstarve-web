@@ -4,7 +4,15 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { ItemEntity } from '../../inventory/src/entity';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { BERNIE_ACTIVE_ID, BERNIE_BIG_ID, BERNIE_ITEM_ID, berniePrefabs, BernieInstance, type BerniePlayer, type BernieWorld } from '../../prefab/src/bernie';
+import {
+  BERNIE_ACTIVE_ID,
+  BERNIE_BIG_ID,
+  BERNIE_ITEM_ID,
+  berniePrefabs,
+  BernieInstance,
+  type BerniePlayer,
+  type BernieWorld,
+} from '../../prefab/src/bernie';
 import { itemAt, ItemWorldFixture } from './itemWorldFixture';
 import { createPickupInventory } from './pickupFixture';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
@@ -24,21 +32,32 @@ beforeEach(() => {
   // The brains' PriorityNodes scatter their first evaluation with math.random().
   vi.spyOn(Math, 'random').mockReturnValue(0);
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
-const length = (archive: string, name: string) => { const clip = animationTiming(archive, name); return clip.frames / clip.frameRate; };
+const length = (archive: string, name: string) => {
+  const clip = animationTiming(archive, name);
+  return clip.frames / clip.frameRate;
+};
 
 function setup() {
-  const scheduler = new GameTimeScheduler(), displays = new PrefabDisplayGroup(new THREE.Scene());
+  const scheduler = new GameTimeScheduler(),
+    displays = new PrefabDisplayGroup(new THREE.Scene());
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {});
   let crazy = true;
-  const tags = new Set(['player']), position = new THREE.Vector3(2, 0, 0);
+  const tags = new Set(['player']),
+    position = new THREE.Vector3(2, 0, 0);
   const player: BerniePlayer = {
     position,
     hasTag: tag => tags.has(tag),
-    components: { sanity: { IsCrazy: () => crazy, GetPercent: () => crazy ? .1 : 1 } },
+    components: { sanity: { IsCrazy: () => crazy, GetPercent: () => (crazy ? 0.1 : 1) } },
     IsVisible: () => true,
     DoTaskInTime: (time, fn) => ({ Cancel: scheduler.schedule(time, fn) }),
   };
@@ -59,20 +78,55 @@ function setup() {
   registry.registerPrefabs(PREFAB_DEFINITIONS.bernies);
   const records = () => prefabs.exportRecords();
   /** The live Bernie of that prefab, as Ents holds it. */
-  const live = (id: string) => prefabs.get(records().find(({ prefabId }) => prefabId === id)!.record.id) as BernieInstance;
-  return { scheduler, prefabs, registry, world, player, position, tags, inactive, live,
+  const live = (id: string) =>
+    prefabs.get(records().find(({ prefabId }) => prefabId === id)!.record.id) as BernieInstance;
+  return {
+    scheduler,
+    prefabs,
+    registry,
+    world,
+    player,
+    position,
+    tags,
+    inactive,
+    live,
     bernies: () => records().map(({ prefabId }) => prefabId),
-    setCrazy: (value: boolean) => { crazy = value; },
-    dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); } };
+    setCrazy: (value: boolean) => {
+      crazy = value;
+    },
+    dispose: () => {
+      registry.dispose();
+      prefabs.dispose();
+      displays.dispose();
+      scheduler.dispose();
+    },
+  };
 }
 
 it('reanimates the item on the ground near a crazy, visible player, carrying its skin to bernie_active', () => {
   const s = setup();
   const inventory = createPickupInventory();
-  const ground = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
-    inventory, '/dst/data/anim', new THREE.Group(), undefined, undefined, s.world, undefined, s.scheduler);
-  const item = itemAt(ground.spawnFromSave('bernie', { ...GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID], itemId: BERNIE_ITEM_ID, count: 1,
-    skinId: 'bernie_cat' }, new THREE.Vector3()));
+  const ground = new ItemWorldFixture(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(),
+    undefined,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    new THREE.Group(),
+    undefined,
+    undefined,
+    s.world,
+    undefined,
+    s.scheduler,
+  );
+  const item = itemAt(
+    ground.spawnFromSave(
+      'bernie',
+      { ...GROUND_ITEM_DEFINITIONS[BERNIE_ITEM_ID], itemId: BERNIE_ITEM_ID, count: 1, skinId: 'bernie_cat' },
+      new THREE.Vector3(),
+    ),
+  );
   try {
     expect(item.sprite.currentAnimation).toBe('inactive');
     // A sane player, or one beyond 16 units, leaves it lying; tryreanimate runs once a second.
@@ -89,30 +143,40 @@ it('reanimates the item on the ground near a crazy, visible player, carrying its
     s.scheduler.advance(2);
     expect(s.bernies()).toEqual([]);
     inventory.DropItem(item, new THREE.Vector3());
-    s.scheduler.advance(.99);
+    s.scheduler.advance(0.99);
     expect(s.bernies()).toEqual([]);
-    s.scheduler.advance(.01);
+    s.scheduler.advance(0.01);
     expect(s.bernies()).toEqual([BERNIE_ACTIVE_ID]);
     expect(item.isRemoved).toBe(true);
     const active = s.live(BERNIE_ACTIVE_ID);
     expect(active.skinId).toBe('bernie_cat_active');
     expect(active.position.toArray()).toEqual([0, 0, 0]);
     expect(['smallcreature', 'companion', 'soulless'].every(tag => active.hasTag(tag))).toBe(true);
-  } finally { ground.dispose(); inventory.dispose(); s.dispose(); }
+  } finally {
+    ground.dispose();
+    inventory.dispose();
+    s.dispose();
+  }
 });
 
 it('runs SGbernie: activates, idles, and sits back down as the item once no crazy player is near', () => {
   const s = setup();
   try {
-    const active = s.prefabs.spawnAs(BernieInstance, BERNIE_ACTIVE_ID, new THREE.Vector3(1, 0, 1), undefined, 'bernie_dog_active');
+    const active = s.prefabs.spawnAs(
+      BernieInstance,
+      BERNIE_ACTIVE_ID,
+      new THREE.Vector3(1, 0, 1),
+      undefined,
+      'bernie_dog_active',
+    );
     expect(active.sg.stateName).toBe('activate');
     expect(active.sprite.currentAnimation).toBe('activate');
     // The crazy player keeps it up; without a Willow it never goes big.
     s.scheduler.advance(length('bernie.zip', 'activate'));
     expect(active.sg.stateName).toBe('idle_nodir');
-    s.scheduler.advance(.5);
+    s.scheduler.advance(0.5);
     expect(active.sprite.currentAnimation).toBe('idle_loop');
-    s.scheduler.advance(length('bernie.zip', 'idle_loop_nodir') - .5);
+    s.scheduler.advance(length('bernie.zip', 'idle_loop_nodir') - 0.5);
     expect(active.sg.stateName).toBe('idle');
     // The player recovers: the next brain update sends Bernie to deactivate, whose animover leaves the item behind.
     s.setCrazy(false);
@@ -121,7 +185,9 @@ it('runs SGbernie: activates, idles, and sits back down as the item once no craz
     s.scheduler.advance(length('bernie.zip', 'deactivate'));
     expect(active.isRemoved).toBe(true);
     expect(s.inactive.map(item => [item.skinId, item.position.toArray()])).toEqual([['bernie_dog', [1, 0, 1]]]);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('grows next to a crazy Willow, and the big Bernie deactivates straight back to the item once she recovers', () => {
@@ -129,24 +195,26 @@ it('grows next to a crazy Willow, and the big Bernie deactivates straight back t
   try {
     s.tags.add('bernieowner');
     const active = s.prefabs.spawnAs(BernieInstance, BERNIE_ACTIVE_ID, new THREE.Vector3(1, 0, 0));
-    active.components.health.SetPercent(.5);
+    active.components.health.SetPercent(0.5);
     // Busy while activating; the brain's first PriorityNode evaluation (scattered to 1.5 seconds) then goes big.
     s.scheduler.advance(1.5);
     expect(active.isRemoved).toBe(false);
-    s.scheduler.advance(.1);
+    s.scheduler.advance(0.1);
     expect(active.isRemoved).toBe(true);
     const big = s.live(BERNIE_BIG_ID);
-    expect(big.components.health.GetPercent()).toBe(.5);
+    expect(big.components.health.GetPercent()).toBe(0.5);
     expect(s.player.bigbernies).toEqual(new Set([big]));
     expect(big.bernieleader).toBe(s.player);
     expect(['largecreature', 'crazy', 'bigbernie'].every(tag => big.hasTag(tag))).toBe(true);
     expect(big.sg.stateName).toBe('activate');
-    s.scheduler.advance(length('bernie_big.zip', 'activate') + .5);
+    s.scheduler.advance(length('bernie_big.zip', 'activate') + 0.5);
     expect(big.sprite.currentAnimation).toBe('idle_loop');
 
     // Once Willow recovers, berniebigbrain waits out MIN_ACTIVE_TIME, then deactivates without returning to bernie_active.
     s.setCrazy(false);
-    for (let step = 0; step < 50 && big.sg.stateName !== 'deactivate'; step++) { s.scheduler.advance(.1); }
+    for (let step = 0; step < 50 && big.sg.stateName !== 'deactivate'; step++) {
+      s.scheduler.advance(0.1);
+    }
     expect(big.sg.stateName).toBe('deactivate');
     expect(big.GetTimeAlive()).toBeGreaterThanOrEqual(4);
     expect(big.GetTimeAlive()).toBeLessThan(4.2);
@@ -157,18 +225,35 @@ it('grows next to a crazy Willow, and the big Bernie deactivates straight back t
     expect(big.isRemoved).toBe(true);
     expect(s.player.bigbernies).toBeUndefined();
     expect(s.inactive).toHaveLength(1);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('spawns both forms with c_spawn and saves and reloads their health, a loaded big Bernie standing idle', async () => {
-  const s = setup(), restored = setup();
+  const s = setup(),
+    restored = setup();
   try {
-    expect((await executeDebugCommand('c_spawn("bernie_active");c_spawn("bernie_big")', {} as never, id => s.registry.spawn(id))).ok).toBe(true);
-    s.live(BERNIE_BIG_ID).components.health.SetPercent(.25);
+    expect(
+      (
+        await executeDebugCommand('c_spawn("bernie_active");c_spawn("bernie_big")', {} as never, id =>
+          s.registry.spawn(id),
+        )
+      ).ok,
+    ).toBe(true);
+    s.live(BERNIE_BIG_ID).components.health.SetPercent(0.25);
     let json = '';
     const saved = await executeDebugCommand('c_save()', {} as never, undefined, () => {
-      json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), { entities: s.registry.exportRecords(),
-        elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 }, inventory: { inventory: { items: {}, equip: {} }, bufferedBuilds: [] } }, SAVE_CATALOG);
+      json = serializeSave(
+        deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
+        {
+          entities: s.registry.exportRecords(),
+          elapsedSeconds: 0,
+          playerTransform: { position: [0, 0, 0], rotationY: 0 },
+          inventory: { inventory: { items: {}, equip: {} }, bufferedBuilds: [] },
+        },
+        SAVE_CATALOG,
+      );
     });
     expect(saved, saved.message).toMatchObject({ ok: true });
     const { entities } = deserializeSave(json, SAVE_CATALOG).world;
@@ -178,5 +263,8 @@ it('spawns both forms with c_spawn and saves and reloads their health, a loaded 
     const reloaded = restored.prefabs.restore(BERNIE_BIG_ID, record) as BernieInstance;
     expect(reloaded.components.health.currenthealth).toBe(500);
     expect(reloaded.sg.stateName).toBe('idle');
-  } finally { s.dispose(); restored.dispose(); }
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
 });

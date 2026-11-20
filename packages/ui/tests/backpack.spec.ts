@@ -1,25 +1,34 @@
 import { test, expect } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 
-test('equipping a backpack opens eight usable side slots and switches independent backpack contents', async ({ page }) => {
+test('equipping a backpack opens eight usable side slots and switches independent backpack contents', async ({
+  page,
+}) => {
   test.setTimeout(120_000);
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('pageerror', error => errors.push(error.message));
   await page.goto('/tests/dst-lighting.html');
-  await page.evaluate(async (urls) => {
-    const main = await import(urls.main);
-    const { player } = await import(urls.player);
-    const { executeDebugCommand } = await import(urls.debug);
-    main.inventory.replaceState({ slots: [], bufferedBuilds: [] }, {});
-    const result = await executeDebugCommand('c_give("backpack", 2)', main.inventory);
-    if (!result.ok) { throw new Error(result.message); }
-    if (!main.inventory.add('cutgrass', 3)) { throw new Error('Test inventory could not receive cutgrass'); }
-    (window as any).backpackGame = { main, player };
-  }, {
-    main: `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`,
-    player: `/@fs${fileURLToPath(new URL('../../../src/player.ts', import.meta.url))}`,
-    debug: `/@fs${fileURLToPath(new URL('../../../src/debugCommands.ts', import.meta.url))}`,
-  });
+  await page.evaluate(
+    async urls => {
+      const main = await import(urls.main);
+      const { player } = await import(urls.player);
+      const { executeDebugCommand } = await import(urls.debug);
+      main.inventory.replaceState({ slots: [], bufferedBuilds: [] }, {});
+      const result = await executeDebugCommand('c_give("backpack", 2)', main.inventory);
+      if (!result.ok) {
+        throw new Error(result.message);
+      }
+      if (!main.inventory.add('cutgrass', 3)) {
+        throw new Error('Test inventory could not receive cutgrass');
+      }
+      (window as any).backpackGame = { main, player };
+    },
+    {
+      main: `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`,
+      player: `/@fs${fileURLToPath(new URL('../../../src/player.ts', import.meta.url))}`,
+      debug: `/@fs${fileURLToPath(new URL('../../../src/debugCommands.ts', import.meta.url))}`,
+    },
+  );
   const bar = page.locator('dst-inventory-bar');
   const body = bar.locator('[data-slot-key="body"]');
   const pack = page.locator('dst-backpack-panel');
@@ -32,8 +41,15 @@ test('equipping a backpack opens eight usable side slots and switches independen
   await expect(background).toHaveAttribute('data-playing', 'false');
   await expect(pack.locator('.inventory-slot')).toHaveCount(8);
   await expect(pack.locator('.inventory-slot').last()).toBeVisible();
-  await expect.poll(() => page.evaluate(() => (window as any).backpackGame.player.getObjectByProperty('isMesh', true).material
-    .some((material: any) => material.name === 'ground:swap_backpack'))).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        (window as any).backpackGame.player
+          .getObjectByProperty('isMesh', true)
+          .material.some((material: any) => material.name === 'ground:swap_backpack'),
+      ),
+    )
+    .toBe(true);
 
   for (const width of [1280, 640]) {
     await page.setViewportSize({ width, height: 720 });
@@ -49,12 +65,22 @@ test('equipping a backpack opens eight usable side slots and switches independen
   const stored = pack.locator('[data-slot-key="7"]');
   await grass.dragTo(stored);
   await expect(stored).toHaveAttribute('data-item-id', 'cutgrass');
-  const count = await page.evaluate(() => (window as any).backpackGame.main.inventory.get({ containerId: document.querySelector('dst-backpack-panel')!.slotContainer!.id, slotKey: '7' }).count);
+  const count = await page.evaluate(
+    () =>
+      (window as any).backpackGame.main.inventory.get({
+        containerId: document.querySelector('dst-backpack-panel')!.slotContainer!.id,
+        slotKey: '7',
+      }).count,
+  );
   await page.evaluate(() => {
     const panel = document.querySelector('dst-backpack-panel')!;
-    panel.addEventListener('game:chest-close', () => {
-      (window as any).backpackCloseAnimation = panel.shadowRoot!.querySelector('canvas')!.dataset.animation;
-    }, { once: true });
+    panel.addEventListener(
+      'game:chest-close',
+      () => {
+        (window as any).backpackCloseAnimation = panel.shadowRoot!.querySelector('canvas')!.dataset.animation;
+      },
+      { once: true },
+    );
   });
   await body.click({ button: 'right' });
   expect(await page.evaluate(() => (window as any).backpackCloseAnimation)).toBe('close');
@@ -65,7 +91,15 @@ test('equipping a backpack opens eight usable side slots and switches independen
   await bar.locator('.inventory-bar__items [data-item-id="backpack"]').first().dragTo(body);
   await expect(background).toHaveAttribute('data-playing', 'false');
   await expect(stored).toHaveAttribute('data-item-id', 'cutgrass');
-  expect(await page.evaluate(() => (window as any).backpackGame.main.inventory.get({ containerId: document.querySelector('dst-backpack-panel')!.slotContainer!.id, slotKey: '7' }).count)).toBe(count);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).backpackGame.main.inventory.get({
+          containerId: document.querySelector('dst-backpack-panel')!.slotContainer!.id,
+          slotKey: '7',
+        }).count,
+    ),
+  ).toBe(count);
   await page.screenshot({ path: '/tmp/three-roaming-backpack.png' });
   const empty = bar.locator('.inventory-bar__items [data-item-id=""]').first();
   await stored.dragTo(empty);

@@ -2,7 +2,14 @@ import type * as THREE from 'three';
 import { getActionPriority, type ActionDescription } from './actions.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import { isMouseTarget } from './mouseTargets.ts';
-import { collectEquippedItemActions, collectPointActions, collectSceneActions, type EquippedActionDoer, type PointActionDoer, type SceneActionDoer } from './componentactions.ts';
+import {
+  collectEquippedItemActions,
+  collectPointActions,
+  collectSceneActions,
+  type EquippedActionDoer,
+  type PointActionDoer,
+  type SceneActionDoer,
+} from './componentactions.ts';
 import type { ItemEntity } from '../../inventory/src/entity';
 import type { PlayerActionTarget } from './actionfns.ts';
 import { findActionEntity } from '../../prefab/src/actionEntity';
@@ -36,26 +43,41 @@ export class PlayerActionPicker {
   private selectedModel?: THREE.Object3D;
   private player?: { readonly doer: SceneActionDoer & PointActionDoer; equippedItem(): ItemEntity | undefined };
   private readonly actionFilters: { fn: ActionFilter; priority: number }[] = [];
-  get targetModel(): THREE.Object3D | undefined { return this.selectedModel; }
+  get targetModel(): THREE.Object3D | undefined {
+    return this.selectedModel;
+  }
 
-  constructor(pointer: PointerRaycaster, isEnabled = () => true) { this.pointer = pointer; this.isEnabled = isEnabled; }
+  constructor(pointer: PointerRaycaster, isEnabled = () => true) {
+    this.pointer = pointer;
+    this.isEnabled = isEnabled;
+  }
 
   /** Only the highest priority filter is active (the latest pushed among equals), as OnUpdateActionFilterStack picks. */
-  PushActionFilter(fn: ActionFilter, priority = 0): void { this.actionFilters.push({ fn, priority }); }
+  PushActionFilter(fn: ActionFilter, priority = 0): void {
+    this.actionFilters.push({ fn, priority });
+  }
   PopActionFilter(fn: ActionFilter): void {
     const index = this.actionFilters.findLastIndex(filter => filter.fn === fn);
-    if (index >= 0) { this.actionFilters.splice(index, 1); }
+    if (index >= 0) {
+      this.actionFilters.splice(index, 1);
+    }
   }
   private get actionFilter(): ActionFilter | undefined {
     return this.actionFilters.reduce<{ fn: ActionFilter; priority: number } | undefined>(
-      (top, filter) => !top || filter.priority >= top.priority ? filter : top, undefined)?.fn;
+      (top, filter) => (!top || filter.priority >= top.priority ? filter : top),
+      undefined,
+    )?.fn;
   }
 
   /** playeractionpicker.inst: the player whose hand item and scene actions the picker collects itself. */
   bindPlayer(doer: SceneActionDoer & PointActionDoer, equippedItem: () => ItemEntity | undefined): () => void {
     const player = { doer, equippedItem };
     this.player = player;
-    return () => { if (this.player === player) { this.player = undefined; } };
+    return () => {
+      if (this.player === player) {
+        this.player = undefined;
+      }
+    };
   }
 
   /**
@@ -63,25 +85,47 @@ export class PlayerActionPicker {
    * component actions for the bound player, on each button.
    */
   private componentActions(target: THREE.Object3D | undefined): MouseActionCandidate[] {
-    const player = this.player, entity = findActionEntity(target);
-    if (!player) { return []; }
+    const player = this.player,
+      entity = findActionEntity(target);
+    if (!player) {
+      return [];
+    }
     const activeItem = player.doer.components?.inventory?.GetActiveItem?.();
-    if (!entity || !target) { return activeItem ? this.activeItemPointActions(player, activeItem) : this.pointActions(player); }
+    if (!entity || !target) {
+      return activeItem ? this.activeItemPointActions(player, activeItem) : this.pointActions(player);
+    }
     if (activeItem) {
       // GetRightClickActions: only an entity that does not catch the mouse leaves the active item's point actions.
-      if (entity.hasTag('walkableplatform') || entity.hasTag('ignoremouseover')) { return this.activeItemPointActions(player, activeItem); }
-      const uses = ([false, true] as const).flatMap(right => this.GetUseItemActions(entity, activeItem, right).map(action => ({
-        action, button: right ? 'right' as const : 'left' as const, model: target, source: 'inventory' as const })));
+      if (entity.hasTag('walkableplatform') || entity.hasTag('ignoremouseover')) {
+        return this.activeItemPointActions(player, activeItem);
+      }
+      const uses = ([false, true] as const).flatMap(right =>
+        this.GetUseItemActions(entity, activeItem, right).map(action => ({
+          action,
+          button: right ? ('right' as const) : ('left' as const),
+          model: target,
+          source: 'inventory' as const,
+        })),
+      );
       return entity.hasTag('walkableperipheral') ? [...uses, ...this.activeItemPointActions(player, activeItem)] : uses;
     }
-    const item = player.equippedItem(), doer = player.doer;
+    const item = player.equippedItem(),
+      doer = player.doer;
     return ([false, true] as const).flatMap(right => {
-      const button = right ? 'right' as const : 'left' as const;
+      const button = right ? ('right' as const) : ('left' as const);
       return [
         ...(item ? collectEquippedItemActions(item, doer, entity, right) : []).map(action => ({
-          action: { action, doer, invobject: item, target: entity }, button, model: target, source: 'equipped' as const })),
+          action: { action, doer, invobject: item, target: entity },
+          button,
+          model: target,
+          source: 'equipped' as const,
+        })),
         ...collectSceneActions(entity, doer, right).map(action => ({
-          action: { action, doer, target: entity }, button, model: target, source: 'scene' as const })),
+          action: { action, doer, target: entity },
+          button,
+          model: target,
+          source: 'scene' as const,
+        })),
       ];
     });
   }
@@ -89,8 +133,11 @@ export class PlayerActionPicker {
   /** playeractionpicker.lua GetUseItemActions / SortActionList, including the current action filter. */
   GetUseItemActions(target: PlayerActionTarget, item: ItemEntity, right = false): ActionDescription[] {
     const doer = this.player?.doer;
-    if (!doer) { return []; }
-    return collectUseItemActions(item, doer, target, right).map(action => ({ action, doer, target, invobject: item }))
+    if (!doer) {
+      return [];
+    }
+    return collectUseItemActions(item, doer, target, right)
+      .map(action => ({ action, doer, target, invobject: item }))
       .filter(action => !this.actionFilter || this.actionFilter(action))
       .sort((a, b) => getActionPriority(b) - getActionPriority(a));
   }
@@ -98,8 +145,11 @@ export class PlayerActionPicker {
   /** playeractionpicker.lua GetInventoryActions without the drop modifier: the item's INVENTORY actions, sorted. */
   GetInventoryActions(useitem: ItemEntity, right = false): ActionDescription[] {
     const doer = this.player?.doer;
-    if (!doer) { return []; }
-    return collectInventoryActions(useitem, doer, right).map(action => ({ action, doer, invobject: useitem }))
+    if (!doer) {
+      return [];
+    }
+    return collectInventoryActions(useitem, doer, right)
+      .map(action => ({ action, doer, invobject: useitem }))
       .filter(action => !this.actionFilter || this.actionFilter(action))
       .sort((a, b) => getActionPriority(b) - getActionPriority(a));
   }
@@ -108,20 +158,35 @@ export class PlayerActionPicker {
    * playeractionpicker.pointspecialactionsfn: the player prefab's own point actions (wortox.lua GetPointSpecialActions),
    * offered when the hand item has none there.
    */
-  pointspecialactionsfn?: (doer: SceneActionDoer & EquippedActionDoer, pos: THREE.Vector3, useitem: undefined, right: boolean) => readonly string[];
+  pointspecialactionsfn?: (
+    doer: SceneActionDoer & EquippedActionDoer,
+    pos: THREE.Vector3,
+    useitem: undefined,
+    right: boolean,
+  ) => readonly string[];
 
   /** PlayerActionPicker:GetPointSpecialActions without an active item. */
   GetPointSpecialActions(pos: THREE.Vector3, right: boolean): readonly string[] {
     const doer = this.player?.doer;
-    return doer ? this.pointspecialactionsfn?.(doer, pos, undefined, right) ?? [] : [];
+    return doer ? (this.pointspecialactionsfn?.(doer, pos, undefined, right) ?? []) : [];
   }
 
   /** GetPointActions(position, useitem, true) for the active item; of its POINT entries only deployable is ported. */
-  private activeItemPointActions(player: NonNullable<PlayerActionPicker['player']>, item: ItemEntity): MouseActionCandidate[] {
+  private activeItemPointActions(
+    player: NonNullable<PlayerActionPicker['player']>,
+    item: ItemEntity,
+  ): MouseActionCandidate[] {
     const point = this.pointer.groundPoint();
-    if (!point) { return []; }
-    return collectPointActions(item, player.doer, point, true).filter(action => action === 'DEPLOY' || action === 'DEPLOY_TILEARRIVE').map(action => ({
-      action: { action, doer: player.doer, invobject: item, pos: point }, button: 'right' as const, source: 'inventory' as const }));
+    if (!point) {
+      return [];
+    }
+    return collectPointActions(item, player.doer, point, true)
+      .filter(action => action === 'DEPLOY' || action === 'DEPLOY_TILEARRIVE')
+      .map(action => ({
+        action: { action, doer: player.doer, invobject: item, pos: point },
+        button: 'right' as const,
+        source: 'inventory' as const,
+      }));
   }
 
   /**
@@ -130,36 +195,55 @@ export class PlayerActionPicker {
    */
   private pointActions(player: NonNullable<PlayerActionPicker['player']>): MouseActionCandidate[] {
     const point = this.pointer.groundPoint();
-    if (!point) { return []; }
-    const item = player.equippedItem(), pos = point.clone(), doer = player.doer;
+    if (!point) {
+      return [];
+    }
+    const item = player.equippedItem(),
+      pos = point.clone(),
+      doer = player.doer;
     return ([false, true] as const).flatMap(right => {
-      const button = right ? 'right' as const : 'left' as const;
+      const button = right ? ('right' as const) : ('left' as const);
       return [
         ...(item ? collectPointActions(item, doer, pos, right) : []).map(action => ({
-          action: { action, doer, invobject: item, pos }, button, source: 'equipped' as const })),
+          action: { action, doer, invobject: item, pos },
+          button,
+          source: 'equipped' as const,
+        })),
         ...(this.pointspecialactionsfn?.(doer, pos, undefined, right) ?? []).map(action => ({
-          action: { action, doer, pos }, button, source: 'special' as const })),
+          action: { action, doer, pos },
+          button,
+          source: 'special' as const,
+        })),
       ];
     });
   }
 
   register(provider: (target: THREE.Object3D | undefined) => readonly MouseActionCandidate[]): () => void {
     this.providers.add(provider);
-    return () => { this.providers.delete(provider); };
+    return () => {
+      this.providers.delete(provider);
+    };
   }
   /** PlayerController's build placer: while one is shown, a click places or cancels it instead of picking an action. */
   registerPlacer(source: () => boolean): () => void {
     this.placerSources.add(source);
-    return () => { this.placerSources.delete(source); };
+    return () => {
+      this.placerSources.delete(source);
+    };
   }
 
   /** OnRightClick returns before reading an action while a placer is up or the controller is disabled. */
-  canPickClickAction(): boolean { return this.isEnabled() && ![...this.placerSources].some(source => source()); }
+  canPickClickAction(): boolean {
+    return this.isEnabled() && ![...this.placerSources].some(source => source());
+  }
 
   getMouseActions(event?: PointerEvent): MouseActions {
     if (event) {
       const cached = this.eventActions.get(event);
-      if (cached) { this.selectedModel = cached.target; return cached.actions; }
+      if (cached) {
+        this.selectedModel = cached.target;
+        return cached.actions;
+      }
       this.pointer.trackPointer(event);
       // OnLeftClick / OnRightClick return before GetLeft/RightMouseAction while placer_recipe is set.
       if ([...this.placerSources].some(source => source())) {
@@ -168,42 +252,81 @@ export class PlayerActionPicker {
         return {};
       }
     }
-    if (!this.isEnabled()) { this.selectedModel = undefined; return {}; }
+    if (!this.isEnabled()) {
+      this.selectedModel = undefined;
+      return {};
+    }
     this.pointer.beginFrame();
     try {
       const hit = this.pointer.pickMouseTarget();
       let target = hit?.object ?? null;
-      while (target && !isMouseTarget(target)) { target = target.parent; }
+      while (target && !isMouseTarget(target)) {
+        target = target.parent;
+      }
       this.selectedModel = target ?? undefined;
-      const candidates = [...this.componentActions(target ?? undefined), ...[...this.providers].flatMap(provider => provider(target ?? undefined))];
+      const candidates = [
+        ...this.componentActions(target ?? undefined),
+        ...[...this.providers].flatMap(provider => provider(target ?? undefined)),
+      ];
       const filter = this.actionFilter;
       const activeItem = !!this.player?.doer.components?.inventory?.GetActiveItem?.();
       const result: MouseActions = {};
       for (const button of ['left', 'right'] as const) {
-        const available = candidates.filter(candidate => candidate.button === button && candidate.available !== false
-          && (!filter || filter(candidate.action)) && (!activeItem || candidate.source === 'inventory'));
+        const available = candidates.filter(
+          candidate =>
+            candidate.button === button &&
+            candidate.available !== false &&
+            (!filter || filter(candidate.action)) &&
+            (!activeItem || candidate.source === 'inventory'),
+        );
         // Equipped/scene actions take precedence over a point action, as in GetLeft/RightClickActions.
         const entityActions = target ? available.filter(candidate => candidate.model === target) : [];
         const points = available.filter(candidate => !candidate.model);
         // GetPointSpecialActions is only the fallback after ordinary equipped point actions.
         const ordinaryPoints = points.filter(candidate => candidate.source !== 'special');
         const actions = entityActions.length ? entityActions : ordinaryPoints.length ? ordinaryPoints : points;
-        actions.sort((a, b) => Number(b.source === 'equipped') - Number(a.source === 'equipped')
-          || getActionPriority(b.action) - getActionPriority(a.action));
+        actions.sort(
+          (a, b) =>
+            Number(b.source === 'equipped') - Number(a.source === 'equipped') ||
+            getActionPriority(b.action) - getActionPriority(a.action),
+        );
         result[button] = actions[0]?.action;
       }
       // GetLeftClickActions: CONTROL_FORCE_INSPECT (Alt) examines whatever else the click would do, even on the move.
-      const doer = this.player?.doer, entity = findActionEntity(target ?? undefined);
-      if (event?.altKey && doer && entity?.hasTag('inspectable') && (!doer.sg || ['moving', 'idle', 'channeling'].some(tag => doer.sg!.hasStateTag(tag)))) {
+      const doer = this.player?.doer,
+        entity = findActionEntity(target ?? undefined);
+      if (
+        event?.altKey &&
+        doer &&
+        entity?.hasTag('inspectable') &&
+        (!doer.sg || ['moving', 'idle', 'channeling'].some(tag => doer.sg!.hasStateTag(tag)))
+      ) {
         const inspect = { action: 'LOOKAT', doer, target: entity };
-        if (!filter || filter(inspect)) { result.left = inspect; }
+        if (!filter || filter(inspect)) {
+          result.left = inspect;
+        }
       }
-      if (result.left && result.right && result.left.action === result.right.action
-        && result.left.invobject === result.right.invobject) { result.right = undefined; }
-      if (event) { this.eventActions.set(event, { actions: result, target: this.selectedModel }); }
+      if (
+        result.left &&
+        result.right &&
+        result.left.action === result.right.action &&
+        result.left.invobject === result.right.invobject
+      ) {
+        result.right = undefined;
+      }
+      if (event) {
+        this.eventActions.set(event, { actions: result, target: this.selectedModel });
+      }
       return result;
-    } finally { this.pointer.endFrame(); }
+    } finally {
+      this.pointer.endFrame();
+    }
   }
 
-  dispose(): void { this.player = undefined; this.providers.clear(); this.placerSources.clear(); this.pointer.dispose(); }
+  dispose(): void {
+    this.player = undefined;
+    this.providers.clear();
+    this.placerSources.clear();
+    this.pointer.dispose();
+  }
 }

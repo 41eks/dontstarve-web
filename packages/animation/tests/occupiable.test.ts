@@ -38,7 +38,7 @@ const settle = (bird: ReturnType<typeof createBird>, seconds: number) => {
 describe('caged birds', () => {
   it('subscribes to sleeper state for status and animation, stops idle tasks and detaches removed sleepers', async () => {
     const scheduler = new GameTimeScheduler();
-    const random = vi.spyOn(Math, 'random').mockReturnValue(.9);
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.9);
     const { cycle, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
     const instance = new BirdcageInstance({ scheduler, getWatchWorldContent } as unknown as WorldContext);
     instance.entityId = 'birdcage:test';
@@ -53,7 +53,10 @@ describe('caged birds', () => {
     await new Promise(resolve => setTimeout(resolve, 0));
     sleeper.StopTesting();
     expect(status()).toBe('SLEEPING');
-    expect(instance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'sleep_pre', loop: false }, queue: [{ name: 'sleep_loop', loop: true }] });
+    expect(instance.sprite.sprite.peek()).toMatchObject({
+      clip: { name: 'sleep_pre', loop: false },
+      queue: [{ name: 'sleep_loop', loop: true }],
+    });
     const calls = playOnce.mock.calls.length;
     scheduler.advance(6);
     expect(playOnce).toHaveBeenCalledTimes(calls);
@@ -62,11 +65,14 @@ describe('caged birds', () => {
     cycle.set('day');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(status()).toBe('OCCUPIED');
-    expect(instance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'sleep_pst', loop: false }, queue: [{ name: 'idle_bird', loop: true }] });
+    expect(instance.sprite.sprite.peek()).toMatchObject({
+      clip: { name: 'sleep_pst', loop: false },
+      queue: [{ name: 'idle_bird', loop: true }],
+    });
     scheduler.advance(6);
     expect(playOnce).toHaveBeenLastCalledWith('hop');
 
-    bird.components.perishable.SetPercent(.2);
+    bird.components.perishable.SetPercent(0.2);
     cycle.set('night');
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(sleeper.IsAsleep()).toBe(false);
@@ -105,13 +111,17 @@ describe('caged birds', () => {
   it('keeps the starved bird meat in its inventory slot, replaces it when it rots and drops it from a failed take', () => {
     const scheduler = new GameTimeScheduler();
     const dropItem = vi.fn();
-    const world = { scheduler, dropItem, spawnItem: (state: InventoryStack) => testItem(state),
-      restoreItem: (record: HeldEntityRecord) => testSavedItem(record.prefab, record) } as unknown as WorldContext;
+    const world = {
+      scheduler,
+      dropItem,
+      spawnItem: (state: InventoryStack) => testItem(state),
+      restoreItem: (record: HeldEntityRecord) => testSavedItem(record.prefab, record),
+    } as unknown as WorldContext;
     const instance = new BirdcageInstance(world);
     const { components } = instance;
     const bird = createBird();
     components.occupiable!.Occupy(bird);
-    bird.components.perishable.SetPercent(.0001);
+    bird.components.perishable.SetPercent(0.0001);
     settle(bird, 30);
     expect(instance.CAGE_STATE).toBe('_death');
     const meat = components.inventory.GetItemInSlot(1)!;
@@ -121,7 +131,11 @@ describe('caged birds', () => {
 
     const persisted = instance.GetPersistData();
     // birdcage.lua OnSave; the shelf's item is in the inventory's own record.
-    expect(persisted).toMatchObject({ CAGE_STATE: '_death', bird_type: 'canary', inventory: { items: { 1: { prefab: 'smallmeat' } } } });
+    expect(persisted).toMatchObject({
+      CAGE_STATE: '_death',
+      bird_type: 'canary',
+      inventory: { items: { 1: { prefab: 'smallmeat' } } },
+    });
     const restored = new BirdcageInstance(world);
     restored.SetPersistData(persisted);
     expect(restored.CAGE_STATE).toBe('_death');
@@ -132,7 +146,7 @@ describe('caged birds', () => {
     meat.PushEvent('perished');
     expect(meat.components.inventoryitem.slot!.replace('spoiled_food')).toBe(true);
     expect(meat.isRemoved).toBe(true);
-    scheduler.advance(.1);
+    scheduler.advance(0.1);
     const spoiled = components.inventory.GetItemInSlot(1)!;
     expect(spoiled.prefab).toBe('spoiled_food');
     expect(components.shelf.itemonshelf.peek()).toBe(spoiled);
@@ -149,7 +163,11 @@ describe('caged birds', () => {
   });
 
   it('leaves a perished item in a creature inventory that was given no spawner', () => {
-    const inventory = new Inventory({ id: 'mole', hasTag: () => false, getPosition: () => new THREE.Vector3(), PushEvent: vi.fn() }, 1, vi.fn());
+    const inventory = new Inventory(
+      { id: 'mole', hasTag: () => false, getPosition: () => new THREE.Vector3(), PushEvent: vi.fn() },
+      1,
+      vi.fn(),
+    );
     const meat = testItem({ itemId: 'smallmeat', count: 1 });
     inventory.GiveItem(meat);
     expect(meat.components.inventoryitem.slot!.replace('spoiled_food')).toBe(false);
@@ -163,10 +181,15 @@ describe('caged birds', () => {
     const instance = new BirdcageInstance({ scheduler } as unknown as WorldContext);
     const inventory = createInventoryStore([]);
     const graph = wilsonPlayer(() => 1).sg;
-    const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), renderer: { domElement: new EventTarget() } };
+    const world = {
+      scene: new THREE.Scene(),
+      player: new THREE.Object3D(),
+      renderer: { domElement: new EventTarget() },
+    };
     const use = activeItemUse(world, graph, inventory);
     try {
-      inventory.add('canary', 1); inventory.add('rocks', 1);
+      inventory.add('canary', 1);
+      inventory.add('rocks', 1);
       expect(inventory.transfer(inventorySlotAddress(1), cursorSlotAddress(), 1)).toBe(true);
       expect(use.actions(instance)).not.toContain('STORE');
       expect(inventory.transfer(cursorSlotAddress(), inventorySlotAddress(1), 1)).toBe(true);
@@ -175,14 +198,22 @@ describe('caged birds', () => {
       expect(use.actions(instance)).toEqual(['STORE']);
       expect(use.useOn(instance)).toBe(true);
       expect(use.controller.bufferedAction?.action).toBe('STORE');
-      use.arrive(); graph.update(5 / 30);
+      use.arrive();
+      graph.update(5 / 30);
       expect(inventory.GetActiveItem()).toBe(bird);
       graph.update(1 / 30);
       expect(inventory.GetActiveItem()).toBeNull();
       expect(instance.components.occupiable!.GetOccupant()).toBe(bird);
       expect(bird.isRemoved).toBe(false);
       expect(instance.hasTag('occupied')).toBe(true);
-    } finally { use.dispose(); graph.dispose(); instance.remove(); inventory.dispose(); scheduler.dispose(); vi.unstubAllGlobals(); }
+    } finally {
+      use.dispose();
+      graph.dispose();
+      instance.remove();
+      inventory.dispose();
+      scheduler.dispose();
+      vi.unstubAllGlobals();
+    }
   });
 
   it('starve at the cage rate, not the ground rate, and a ground bird does not starve at all', () => {
@@ -197,7 +228,7 @@ describe('caged birds', () => {
     expect(occupiable.Occupy(caged)).toBe(true);
     settle(caged, 600);
     // perishable.lua Update: an occupant with no owner uses its cage's PERISH_CAGE_MULT.
-    expect(caged.components.perishable.GetPercent()).toBeCloseTo(1 - 600 * PERISH_CAGE_MULT / BIRD_PERISH_TIME, 5);
+    expect(caged.components.perishable.GetPercent()).toBeCloseTo(1 - (600 * PERISH_CAGE_MULT) / BIRD_PERISH_TIME, 5);
 
     const carried = createBird();
     carried.components.inventoryitem.owner = createEmptyEntity('wilson').instance;
@@ -220,7 +251,7 @@ describe('caged birds', () => {
     expect([...cage.set]).toEqual(['occupied']);
     expect(occupiable.CanOccupy(createBird('crow'))).toBe(false);
 
-    bird.components.perishable.SetPercent(.0001);
+    bird.components.perishable.SetPercent(0.0001);
     settle(bird, 30);
     expect(order).toEqual(['occupied', 'emptied', 'perished:true']);
     expect(occupiable.IsOccupied()).toBe(false);
@@ -247,22 +278,32 @@ describe('caged birds', () => {
 
   it('a starved carried bird is replaced by its loot', () => {
     const bird = createBird('canary');
-    const replace = vi.fn(() => true), murdered = vi.fn();
+    const replace = vi.fn(() => true),
+      murdered = vi.fn();
     // Carried by the player: its owner is the player and its slot the player's.
     const holder = createEmptyEntity('wilson').instance;
     holder.ListenForEvent('murdered', (_inst, data) => murdered(data));
-    bird.components.inventoryitem.SetOwner(holder, { address: { containerId: 'player:inventory', slotKey: '0' }, changed() {}, remove: () => false, replace });
-    bird.components.perishable.SetPercent(.0001);
+    bird.components.inventoryitem.SetOwner(holder, {
+      address: { containerId: 'player:inventory', slotKey: '0' },
+      changed() {},
+      remove: () => false,
+      replace,
+    });
+    bird.components.perishable.SetPercent(0.0001);
     const random = vi.spyOn(Math, 'random');
-    try { random.mockReturnValue(.2); settle(bird, 30); }
-    finally { random.mockRestore(); }
+    try {
+      random.mockReturnValue(0.2);
+      settle(bird, 30);
+    } finally {
+      random.mockRestore();
+    }
     expect(replace).toHaveBeenCalledWith('smallmeat');
     expect(murdered).toHaveBeenCalledWith(expect.objectContaining({ victim: bird, negligent: true }));
     // Canary feathers are a tenth as likely as meat; other birds weigh them equally.
-    expect(generateBirdLoot('canary', () => .08)).toBe('feather_canary');
-    expect(generateBirdLoot('canary', () => .2)).toBe('smallmeat');
-    expect(generateBirdLoot('crow', () => .49)).toBe('feather_crow');
-    expect(generateBirdLoot('crow', () => .51)).toBe('smallmeat');
+    expect(generateBirdLoot('canary', () => 0.08)).toBe('feather_canary');
+    expect(generateBirdLoot('canary', () => 0.2)).toBe('smallmeat');
+    expect(generateBirdLoot('crow', () => 0.49)).toBe('feather_crow');
+    expect(generateBirdLoot('crow', () => 0.51)).toBe('smallmeat');
   });
 });
 
@@ -314,11 +355,23 @@ describe('what the cage eats', () => {
   });
 
   it('accepts meat and seeds, refuses eggs and the rest, and picks the digested product', () => {
-    expect(['smallmeat', 'meatballs', 'seeds', 'carrot', 'carrot_seeds'].map(birdcageAcceptsItem)).toEqual([true, true, true, true, true]);
-    expect(['bird_egg', 'rottenegg', 'log', 'seeds_cooked', 'butterflywings'].map(birdcageAcceptsItem)).toEqual([false, false, false, false, false]);
+    expect(['smallmeat', 'meatballs', 'seeds', 'carrot', 'carrot_seeds'].map(birdcageAcceptsItem)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(['bird_egg', 'rottenegg', 'log', 'seeds_cooked', 'butterflywings'].map(birdcageAcceptsItem)).toEqual([
+      false,
+      false,
+      false,
+      false,
+      false,
+    ]);
     expect(digestedFoodProduct('smallmeat')).toBe('bird_egg');
     expect(digestedFoodProduct('carrot')).toBe('carrot_seeds');
-    expect(digestedFoodProduct('seeds', () => .32)).toBe('guano');
-    expect(digestedFoodProduct('seeds', () => .34)).toBeUndefined();
+    expect(digestedFoodProduct('seeds', () => 0.32)).toBe('guano');
+    expect(digestedFoodProduct('seeds', () => 0.34)).toBeUndefined();
   });
 });

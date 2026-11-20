@@ -1,6 +1,13 @@
 import * as THREE from 'three';
 import { expect, it } from 'vitest';
-import { GroundPathSearch, Pathfinder, PathfindingWall, STATUS_CALCULATING, STATUS_FOUNDPATH, STATUS_NOPATH } from '../../prefab/src/pathfinder';
+import {
+  GroundPathSearch,
+  Pathfinder,
+  PathfindingWall,
+  STATUS_CALCULATING,
+  STATUS_FOUNDPATH,
+  STATUS_NOPATH,
+} from '../../prefab/src/pathfinder';
 
 const point = (x: number, z = 0) => new THREE.Vector3(x, 0, z);
 /** Land within 60 of the origin along z, ocean for x beyond 30. */
@@ -11,11 +18,17 @@ const map = {
 /** A wall line across x = 10, one path tile thick, from z = -30 to 30. */
 function walled(pathfinder: Pathfinder, halfSpan = 30) {
   const walls = [];
-  for (let z = -halfSpan; z <= halfSpan; z += 3) { const wall = point(10.5, z + .5); pathfinder.AddWall(wall); walls.push(wall); }
+  for (let z = -halfSpan; z <= halfSpan; z += 3) {
+    const wall = point(10.5, z + 0.5);
+    pathfinder.AddWall(wall);
+    walls.push(wall);
+  }
   return walls;
 }
 function finish(pathfinder: Pathfinder, handle: number) {
-  for (let i = 0; i < 100 && pathfinder.GetSearchStatus(handle) === STATUS_CALCULATING; i++) { pathfinder.update(); }
+  for (let i = 0; i < 100 && pathfinder.GetSearchStatus(handle) === STATUS_CALCULATING; i++) {
+    pathfinder.update();
+  }
   return pathfinder.GetSearchStatus(handle);
 }
 
@@ -30,7 +43,8 @@ it('reports a clear line by ground, ocean caps and walls', () => {
   expect(pathfinder.IsClear(point(0), point(20))).toBe(false);
   expect(pathfinder.IsClear(point(0), point(20), { ignorewalls: true })).toBe(true);
   // A second wall on the same path tile keeps it blocked until both have gone.
-  pathfinder.AddWall(wall); pathfinder.RemoveWall(wall);
+  pathfinder.AddWall(wall);
+  pathfinder.RemoveWall(wall);
   expect(pathfinder.IsClear(point(0), point(20))).toBe(false);
   pathfinder.RemoveWall(wall);
   expect(pathfinder.IsClear(point(0), point(20))).toBe(true);
@@ -39,7 +53,9 @@ it('reports a clear line by ground, ocean caps and walls', () => {
 it('searches across updates around a wall, with the start as the first step', () => {
   const pathfinder = new Pathfinder(map);
   walled(pathfinder);
-  const from = point(0), to = point(20), handle = pathfinder.SubmitSearch(from, to);
+  const from = point(0),
+    to = point(20),
+    handle = pathfinder.SubmitSearch(from, to);
   from.set(99, 0, 99);
   expect(pathfinder.GetSearchStatus(handle)).toBe(STATUS_CALCULATING);
   expect(pathfinder.GetSearchResult(handle)).toBeUndefined();
@@ -51,7 +67,9 @@ it('searches across updates around a wall, with the start as the first step', ()
   expect(steps[0].toArray()).toEqual([0, 0, 0]);
   expect(steps.at(-1)!.toArray()).toEqual(to.toArray());
   for (const [index, step] of steps.entries()) {
-    if (index) { expect(pathfinder.IsClear(steps[index - 1], step)).toBe(true); }
+    if (index) {
+      expect(pathfinder.IsClear(steps[index - 1], step)).toBe(true);
+    }
   }
   expect(Math.max(...steps.map(step => Math.abs(step.z)))).toBeGreaterThan(30);
 });
@@ -69,14 +87,15 @@ it('gives a straight line two steps and an unreachable destination no path', () 
 it('shares the budget among searches in order, and a killed handle reads as lost', () => {
   const pathfinder = new Pathfinder(map);
   walled(pathfinder);
-  const killed = pathfinder.SubmitSearch(point(0), point(20)), next = pathfinder.SubmitSearch(point(0, 3), point(20, 3));
+  const killed = pathfinder.SubmitSearch(point(0), point(20)),
+    next = pathfinder.SubmitSearch(point(0, 3), point(20, 3));
   pathfinder.update(1);
   pathfinder.KillSearch(killed);
   expect(pathfinder.GetSearchStatus(killed)).toBeUndefined();
   expect(pathfinder.GetSearchResult(killed)).toBeUndefined();
   expect(() => pathfinder.KillSearch(killed)).not.toThrow();
   expect(finish(pathfinder, next)).toBe(STATUS_FOUNDPATH);
-  expect(pathfinder.GetPathTileIndexFromPoint(point(-.5, 3))).toEqual([-1, 1]);
+  expect(pathfinder.GetPathTileIndexFromPoint(point(-0.5, 3))).toEqual([-1, 1]);
 });
 
 it('finds the same path in slices as all at once', () => {
@@ -87,18 +106,29 @@ it('finds the same path in slices as all at once', () => {
   search.advance(Infinity);
   const whole = search.result!;
   const handle = walls.SubmitSearch(point(0), point(20));
-  while (walls.GetSearchStatus(handle) === STATUS_CALCULATING) { walls.update(7); }
-  expect(walls.GetSearchResult(handle)!.steps.slice(1).map(step => step.toArray())).toEqual(whole.map(step => step.toArray()));
+  while (walls.GetSearchStatus(handle) === STATUS_CALCULATING) {
+    walls.update(7);
+  }
+  expect(
+    walls
+      .GetSearchResult(handle)!
+      .steps.slice(1)
+      .map(step => step.toArray()),
+  ).toEqual(whole.map(step => step.toArray()));
 });
 
 it('stops a search at its limit, and a wall leaves the grid only when it stops being an obstacle', () => {
-  const isWalkable = (position: THREE.Vector3) => Math.abs(position.x) < 10 && Math.abs(position.z) < 10 && !(position.x >= 3 && position.x <= 5);
+  const isWalkable = (position: THREE.Vector3) =>
+    Math.abs(position.x) < 10 && Math.abs(position.z) < 10 && !(position.x >= 3 && position.x <= 5);
   const limited = new GroundPathSearch(point(0), point(8), { isWalkable, maxVisited: 100 });
   limited.advance(Infinity);
   expect(limited.result).toBeNull();
-  const pathfinder = new Pathfinder(map), wall = new PathfindingWall(pathfinder, () => point(10.5));
-  wall.set(true); wall.set(true);
+  const pathfinder = new Pathfinder(map),
+    wall = new PathfindingWall(pathfinder, () => point(10.5));
+  wall.set(true);
+  wall.set(true);
   expect(pathfinder.IsClear(point(0), point(20))).toBe(false);
-  wall.set(false); wall.set(false);
+  wall.set(false);
+  wall.set(false);
   expect(pathfinder.IsClear(point(0), point(20))).toBe(true);
 });

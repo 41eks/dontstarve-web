@@ -12,13 +12,19 @@ import { bindTestWorld } from './worldContentFixture';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { testItem } from './testInventory';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })),
+}));
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-    const bytes = await readFile(new URL(`../../../public${url}`, import.meta.url));
-    return new Response(bytes);
-  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      const bytes = await readFile(new URL(`../../../public${url}`, import.meta.url));
+      return new Response(bytes);
+    }),
+  );
 });
 
 afterEach(() => {
@@ -28,7 +34,9 @@ afterEach(() => {
 
 const item = (itemId: string, tradable = true) => {
   const entity = testItem({ itemId, count: 1 });
-  if (tradable) { configureTradableEntity(entity); }
+  if (tradable) {
+    configureTradableEntity(entity);
+  }
   return entity;
 };
 
@@ -37,8 +45,17 @@ async function setup() {
   const world = bindTestWorld(scheduler);
   const dropLoot = vi.fn();
   const displays = new PrefabDisplayGroup(new THREE.Scene());
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics: new CANNON.World() });
-  prefabs.register(pigKingPrefabs({ TheCamera: fixedCamera(45), scheduler, getWatchWorldContent: world.getWatchWorldContent, dropLoot }));
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {
+    physics: new CANNON.World(),
+  });
+  prefabs.register(
+    pigKingPrefabs({
+      TheCamera: fixedCamera(45),
+      scheduler,
+      getWatchWorldContent: world.getWatchWorldContent,
+      dropLoot,
+    }),
+  );
   const instance = prefabs.spawnAs(PigKingInstance, PIGKING_ID, new THREE.Vector3(6, 0, 6));
   // The stategraph's animover follows the drawn clips; a clip with nothing drawn completes at once.
   await prefabDisplay(instance.transform.model)!.artLoaded();
@@ -47,13 +64,25 @@ async function setup() {
   // WatchWorldState("isnight") reads the world's day phase.
   const setNight = (night: boolean) => world.cycle.set(night ? 'night' : 'day');
   const run = (seconds: number) => {
-    for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) { scheduler.advance(1 / 30); displays.update(1 / 30); }
+    for (let elapsed = 0; elapsed < seconds; elapsed += 1 / 30) {
+      scheduler.advance(1 / 30);
+      displays.update(1 / 30);
+    }
   };
-  const dispose = () => { prefabs.dispose(); displays.dispose(); world.unbind(); scheduler.dispose(); };
+  const dispose = () => {
+    prefabs.dispose();
+    displays.dispose();
+    world.unbind();
+    scheduler.dispose();
+  };
   return { king, instance, setNight, scheduler, dropLoot, run, dispose };
 }
 
-const give = (king: { trader: { AcceptGift(item: ItemEntity, take: () => boolean, giver?: unknown): boolean } }, entity: ItemEntity, giver?: unknown) => {
+const give = (
+  king: { trader: { AcceptGift(item: ItemEntity, take: () => boolean, giver?: unknown): boolean } },
+  entity: ItemEntity,
+  giver?: unknown,
+) => {
   const take = vi.fn(() => true);
   return { accepted: king.trader.AcceptGift(entity, take, giver), take };
 };

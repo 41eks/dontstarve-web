@@ -23,7 +23,9 @@
   border: 4px solid #21180f;
   border-radius: 8px;
   background: linear-gradient(145deg, #795b38, #40301f 72%);
-  box-shadow: 0 12px 36px rgb(0 0 0 / 58%), inset 0 0 0 2px #aa8151;
+  box-shadow:
+    0 12px 36px rgb(0 0 0 / 58%),
+    inset 0 0 0 2px #aa8151;
   color: #f4dfb6;
   filter: drop-shadow(2px 4px 2px rgb(0 0 0 / 45%));
   pointer-events: auto;
@@ -47,7 +49,9 @@
 .chest-panel h2 {
   margin: 0;
   color: inherit;
-  font: 700 16px/1.2 system-ui, sans-serif;
+  font:
+    700 16px/1.2 system-ui,
+    sans-serif;
 }
 
 .chest-panel__close {
@@ -59,7 +63,9 @@
   background: #9a7447;
   color: #24190f;
   cursor: pointer;
-  font: 700 18px/20px system-ui, sans-serif;
+  font:
+    700 18px/20px system-ui,
+    sans-serif;
 }
 
 .chest-panel__slots {
@@ -134,20 +140,29 @@
   position: absolute;
   left: var(--chest-art-origin-x, 50%);
   /* buttoninfo.position.y is the button's centre; the CSS box is placed by its top edge, about 20 source px higher. */
-  top: calc(var(--chest-art-origin-y, 50%) + (var(--container-button-y, 165) - 20) / 64 * var(--inventory-slot-layout-size));
+  top: calc(
+    var(--chest-art-origin-y, 50%) + (var(--container-button-y, 165) - 20) / 64 * var(--inventory-slot-layout-size)
+  );
   transform: translateX(-50%);
   padding: 5px 16px;
   border: 2px solid #251a10;
   border-radius: 5px;
   background: #9a7447;
   color: #f4dfb6;
-  font: 700 18px/1.2 system-ui, sans-serif;
+  font:
+    700 18px/1.2 system-ui,
+    sans-serif;
   cursor: pointer;
 }
 
-.cook-pot-panel__cook:disabled { opacity: 0.5; cursor: default; }
+.cook-pot-panel__cook:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .cook-pot-panel.is-opening .cook-pot-panel__cook,
-.cook-pot-panel.is-closing .cook-pot-panel__cook { visibility: hidden; }
+.cook-pot-panel.is-closing .cook-pot-panel__cook {
+  visibility: hidden;
+}
 
 .backpack-panel {
   top: 50%;

@@ -22,20 +22,46 @@ const ANGLE_VARIANCE = 10;
 
 /** tumbleweed.lua MakeLoot: weights as written. Chess sketches need chessunlocks, which is absent here. */
 export const TUMBLEWEED_LOOT: readonly { chance: number; item: string; aggro?: true }[] = [
-  { chance: 40, item: 'cutgrass' }, { chance: 40, item: 'twigs' }, { chance: 1, item: 'petals' },
-  { chance: 1, item: 'foliage' }, { chance: 1, item: 'silk' }, { chance: 1, item: 'rope' },
-  { chance: 2, item: 'seeds' }, { chance: 0.01, item: 'purplegem' }, { chance: 0.04, item: 'bluegem' },
-  { chance: 0.02, item: 'redgem' }, { chance: 0.02, item: 'orangegem' }, { chance: 0.01, item: 'yellowgem' },
-  { chance: 0.02, item: 'greengem' }, { chance: 0.5, item: 'trinket_6' }, { chance: 0.5, item: 'trinket_4' },
-  { chance: 1, item: 'cutreeds' }, { chance: 0.33, item: 'feather_crow' }, { chance: 0.33, item: 'feather_robin' },
-  { chance: 0.33, item: 'feather_robin_winter' }, { chance: 0.33, item: 'feather_canary' },
-  { chance: 1, item: 'trinket_3' }, { chance: 1, item: 'beefalowool' }, { chance: 0.1, item: 'rabbit' },
-  { chance: 0.1, item: 'mole' }, { chance: 0.1, item: 'spider', aggro: true }, { chance: 0.1, item: 'frog', aggro: true },
-  { chance: 0.1, item: 'bee', aggro: true }, { chance: 0.1, item: 'mosquito', aggro: true },
-  { chance: 1, item: 'butterflywings' }, { chance: .02, item: 'beardhair' }, { chance: 1, item: 'berries' },
-  { chance: 1, item: 'blueprint' }, { chance: 1, item: 'petals_evil' }, { chance: 1, item: 'trinket_8' },
-  { chance: 1, item: 'houndstooth' }, { chance: 1, item: 'stinger' }, { chance: 1, item: 'gears' },
-  { chance: 0.1, item: 'boneshard' }, { chance: 0.25, item: 'cookingrecipecard' }, { chance: 0.25, item: 'scrapbook_page' },
+  { chance: 40, item: 'cutgrass' },
+  { chance: 40, item: 'twigs' },
+  { chance: 1, item: 'petals' },
+  { chance: 1, item: 'foliage' },
+  { chance: 1, item: 'silk' },
+  { chance: 1, item: 'rope' },
+  { chance: 2, item: 'seeds' },
+  { chance: 0.01, item: 'purplegem' },
+  { chance: 0.04, item: 'bluegem' },
+  { chance: 0.02, item: 'redgem' },
+  { chance: 0.02, item: 'orangegem' },
+  { chance: 0.01, item: 'yellowgem' },
+  { chance: 0.02, item: 'greengem' },
+  { chance: 0.5, item: 'trinket_6' },
+  { chance: 0.5, item: 'trinket_4' },
+  { chance: 1, item: 'cutreeds' },
+  { chance: 0.33, item: 'feather_crow' },
+  { chance: 0.33, item: 'feather_robin' },
+  { chance: 0.33, item: 'feather_robin_winter' },
+  { chance: 0.33, item: 'feather_canary' },
+  { chance: 1, item: 'trinket_3' },
+  { chance: 1, item: 'beefalowool' },
+  { chance: 0.1, item: 'rabbit' },
+  { chance: 0.1, item: 'mole' },
+  { chance: 0.1, item: 'spider', aggro: true },
+  { chance: 0.1, item: 'frog', aggro: true },
+  { chance: 0.1, item: 'bee', aggro: true },
+  { chance: 0.1, item: 'mosquito', aggro: true },
+  { chance: 1, item: 'butterflywings' },
+  { chance: 0.02, item: 'beardhair' },
+  { chance: 1, item: 'berries' },
+  { chance: 1, item: 'blueprint' },
+  { chance: 1, item: 'petals_evil' },
+  { chance: 1, item: 'trinket_8' },
+  { chance: 1, item: 'houndstooth' },
+  { chance: 1, item: 'stinger' },
+  { chance: 1, item: 'gears' },
+  { chance: 0.1, item: 'boneshard' },
+  { chance: 0.25, item: 'cookingrecipecard' },
+  { chance: 0.25, item: 'scrapbook_page' },
 ];
 
 /** Three independent weighted rolls, as tumbleweed.lua's `while num_loots > 0` loop. */
@@ -46,7 +72,10 @@ export function rollTumbleweedLoot(random: () => number = Math.random): string[]
     let roll = random() * total;
     for (const entry of TUMBLEWEED_LOOT) {
       roll -= entry.chance;
-      if (roll <= 0) { loot.push(entry.item); break; }
+      if (roll <= 0) {
+        loot.push(entry.item);
+        break;
+      }
     }
   }
   return loot;
@@ -91,16 +120,34 @@ export class TumbleweedInstance extends PrefabInstance {
     super(TUMBLEWEED_ID, new SpriteState({ name: 'move_loop', billboard: true }));
     this.world = world;
     this.BindScheduler(world.scheduler);
-    const random = this.random = world.random ?? Math.random;
+    const random = (this.random = world.random ?? Math.random);
     this.sprite.setFacingRotation(0, 4);
     // AddComponent("locomotor") and AddComponent("blowinwind") on the inst itself.
     this.locomotor = new LocoMotor(this);
-    this.locomotor.walkspeed = DEFAULT_WALK_SPEED * WORLD_SCALE; this.locomotor.runspeed = DEFAULT_RUN_SPEED * WORLD_SCALE;
-    this.blowinwind = new BlowInWind(this, (DEFAULT_RUN_SPEED + DEFAULT_WALK_SPEED) / 2 * WORLD_SCALE, this.locomotor, random);
+    this.locomotor.walkspeed = DEFAULT_WALK_SPEED * WORLD_SCALE;
+    this.locomotor.runspeed = DEFAULT_RUN_SPEED * WORLD_SCALE;
+    this.blowinwind = new BlowInWind(
+      this,
+      ((DEFAULT_RUN_SPEED + DEFAULT_WALK_SPEED) / 2) * WORLD_SCALE,
+      this.locomotor,
+      random,
+    );
     this.loot = rollTumbleweedLoot(random);
     // AddComponent("pickable"): onpickedfn = onpickup, remove_when_picked, canbepicked = true.
-    const pickable = addComponent(this, 'pickable', Pickable, undefined, undefined, 1, () => { this.onpickup(); }, undefined, undefined,
-      { scheduler: world.scheduler });
+    const pickable = addComponent(
+      this,
+      'pickable',
+      Pickable,
+      undefined,
+      undefined,
+      1,
+      () => {
+        this.onpickup();
+      },
+      undefined,
+      undefined,
+      { scheduler: world.scheduler },
+    );
     pickable.picksound = 'dontstarve/wilson/harvest_sticks';
     pickable.remove_when_picked = true;
     const cleanups: (() => void)[] = [world.componentUpdates.register({ OnUpdate: dt => this.OnUpdate(dt) })];
@@ -108,7 +155,9 @@ export class TumbleweedInstance extends PrefabInstance {
     cleanups.push(this.ListenForEvent('startlongaction', () => this.OnLongAction()));
     const wind = world.getWatchWorldContent
       ? world.getWatchWorldContent(WorldContentKey.Wind, stop => cleanups.push(stop))
-      : world.wind ? watchSignal(world.wind.windchange, stop => cleanups.push(stop)) : undefined;
+      : world.wind
+        ? watchSignal(world.wind.windchange, stop => cleanups.push(stop))
+        : undefined;
     if (wind) {
       this.angle = varyAngle(wind.peek().angle, random);
       this.blowinwind.Start(this.angle * DEGREES);
@@ -116,18 +165,24 @@ export class TumbleweedInstance extends PrefabInstance {
     }
     this.onRemove(() => {
       this.blowinwind.dispose();
-      for (const cleanup of cleanups.splice(0)) { cleanup(); }
+      for (const cleanup of cleanups.splice(0)) {
+        cleanup();
+      }
     });
   }
 
   /** MakeCharacterPhysics's body, which the wind drives and the entity follows; the manager binds it at the spawn position. */
-  private get body(): CANNON.Body { return this.physicsBody!; }
+  private get body(): CANNON.Body {
+    return this.physicsBody!;
+  }
 
   /** The spawn point inside the world's edge; the body moves with it. */
   placeOnSpawn(): void {
     const placed = this.position.clone();
     this.world.constrainPosition(placed);
-    if (placed.equals(this.position)) { return; }
+    if (placed.equals(this.position)) {
+      return;
+    }
     this.copyPosition(placed);
     this.physics.Teleport();
   }
@@ -146,11 +201,16 @@ export class TumbleweedInstance extends PrefabInstance {
   }
 
   private DoDirectionChange(change: WorldWindChange): void {
-    if (this.asleep || this.isRemoved) { return; }
+    if (this.asleep || this.isRemoved) {
+      return;
+    }
     const first = this.angle === undefined;
     this.angle = varyAngle(change.angle, this.random);
-    if (first) { this.blowinwind.Start(this.angle * DEGREES, change.velocity); }
-    else { this.blowinwind.ChangeDirection(this.angle * DEGREES, change.velocity); }
+    if (first) {
+      this.blowinwind.Start(this.angle * DEGREES, change.velocity);
+    } else {
+      this.blowinwind.ChangeDirection(this.angle * DEGREES, change.velocity);
+    }
   }
 
   /** The bounce tasks of startmoving / OnEntityWake: their sounds are not ported, so only CheckGround remains. */
@@ -160,11 +220,15 @@ export class TumbleweedInstance extends PrefabInstance {
     });
   }
   private CheckGround(): void {
-    if (!this.world.isOnValidGround(this.position)) { this.remove(); }
+    if (!this.world.isOnValidGround(this.position)) {
+      this.remove();
+    }
   }
 
   private startmoving(): void {
-    if (this.asleep || this.isRemoved) { return; }
+    if (this.asleep || this.isRemoved) {
+      return;
+    }
     this.sprite.start('move_loop');
     this.armGroundCheck();
     this.blowinwind.Start();
@@ -173,19 +237,26 @@ export class TumbleweedInstance extends PrefabInstance {
   private stopPhysics(): void {
     this.locomotor.StopMoving();
     const body = this.physicsBody;
-    if (body) { body.velocity.set(0, body.velocity.y, 0); }
+    if (body) {
+      body.velocity.set(0, body.velocity.y, 0);
+    }
     this.blowinwind.Stop();
   }
 
   private CancelRunningTasks(): void {
-    this.bouncepretask?.Cancel(); this.bouncepretask = undefined;
-    this.bouncetask?.Cancel(); this.bouncetask = undefined;
-    this.restartmovementtask?.Cancel(); this.restartmovementtask = undefined;
+    this.bouncepretask?.Cancel();
+    this.bouncepretask = undefined;
+    this.bouncetask?.Cancel();
+    this.bouncetask = undefined;
+    this.restartmovementtask?.Cancel();
+    this.restartmovementtask = undefined;
   }
 
   /** OnEntitySleep comes first so a clip the sleep settles cannot start moving; OnEntityWake plays once the display is awake. */
   override setActive(active: boolean): void {
-    if (this.isRemoved) { return; }
+    if (this.isRemoved) {
+      return;
+    }
     if (active) {
       this.asleep = false;
       super.setActive(true);
@@ -202,7 +273,9 @@ export class TumbleweedInstance extends PrefabInstance {
 
   /** OnLongAction: stop, settle, and roll again after two to six seconds. */
   private OnLongAction(): void {
-    if (this.isRemoved) { return; }
+    if (this.isRemoved) {
+      return;
+    }
     this.stopPhysics();
     this.CancelRunningTasks();
     this.sprite.playOnce('move_pst');
@@ -215,7 +288,9 @@ export class TumbleweedInstance extends PrefabInstance {
 
   /** onpickup: loot at the tumbleweed, the break fx, and no item for the picker. */
   private onpickup(): boolean {
-    if (this.isRemoved) { return false; }
+    if (this.isRemoved) {
+      return false;
+    }
     const position = this.position.clone();
     this.world.dropLoot(this.loot, position);
     this.world.spawnPrefab(TUMBLEWEED_BREAKFX_ID, position);
@@ -228,20 +303,25 @@ export class TumbleweedInstance extends PrefabInstance {
    * velocity that the next step applies.
    */
   private OnUpdate(dt: number): void {
-    if (!Number.isFinite(dt) || dt < 0) { return; }
+    if (!Number.isFinite(dt) || dt < 0) {
+      return;
+    }
     const body = this.physicsBody;
     if (body) {
       const position = new THREE.Vector3(body.position.x, 0, body.position.z);
       this.world.constrainPosition(position);
       this.copyPosition(position);
     }
-    this.blowinwind.Update(Math.min(dt, .1));
+    this.blowinwind.Update(Math.min(dt, 0.1));
   }
 }
 
 /** tumbleweedbreakfx (burntfxfn's sibling fxfn): FX, not persistent, removed by its own animover. */
 function breakfxfn(): PrefabInstance {
-  const inst = new PrefabInstance(TUMBLEWEED_BREAKFX_ID, new SpriteState({ name: 'break', held: true, billboard: true }));
+  const inst = new PrefabInstance(
+    TUMBLEWEED_BREAKFX_ID,
+    new SpriteState({ name: 'break', held: true, billboard: true }),
+  );
   inst.addTag('FX');
   inst.persists = false;
   inst.sprite.setFacingRotation(0, 4);
@@ -251,15 +331,22 @@ function breakfxfn(): PrefabInstance {
 }
 
 /** The Prefab table tumbleweed.lua returns. */
-export function tumbleweedPrefabs(world: TumbleweedWorld): Readonly<Record<TumbleweedPrefabId, PrefabEntityDefinition<PrefabInstance>>> {
-  const assets = { animationArchive: 'tumbleweed.zip', buildArchives: ['tumbleweed.zip'], bank: 'tumbleweed',
+export function tumbleweedPrefabs(
+  world: TumbleweedWorld,
+): Readonly<Record<TumbleweedPrefabId, PrefabEntityDefinition<PrefabInstance>>> {
+  const assets = {
+    animationArchive: 'tumbleweed.zip',
+    buildArchives: ['tumbleweed.zip'],
+    bank: 'tumbleweed',
     // swap_fire is the burn fx attach point (AddBurnFX); it has no art in the build.
-    hiddenSymbols: ['swap_fire'] };
+    hiddenSymbols: ['swap_fire'],
+  };
   return {
     [TUMBLEWEED_ID]: {
-      fn: () => new TumbleweedInstance(world), assets,
+      fn: () => new TumbleweedInstance(world),
+      assets,
       // MakeCharacterPhysics(inst, .5, 1).
-      physics: { make: (inst, radius) => MakeCharacterPhysics(inst, .5, radius), radius: 1 },
+      physics: { make: (inst, radius) => MakeCharacterPhysics(inst, 0.5, radius), radius: 1 },
       onSpawned: inst => inst.placeOnSpawn(),
     } satisfies PrefabEntityDefinition<TumbleweedInstance>,
     [TUMBLEWEED_BREAKFX_ID]: { fn: breakfxfn, assets, targetable: false },

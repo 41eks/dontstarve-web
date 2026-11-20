@@ -2,7 +2,11 @@ import { expect, it } from 'vitest';
 import { Transform } from '../../prefab/src/transform';
 import { LootFling } from '../../componets/src/inventoryphysics';
 
-const transform = (x = 0, z = 0) => { const result = new Transform(); result.setPosition(x, 0, z); return result; };
+const transform = (x = 0, z = 0) => {
+  const result = new Transform();
+  result.setPosition(x, 0, z);
+  return result;
+};
 
 it('uses Lua random direction, speed, vertical variance and collision-radius offset', () => {
   const samples = [0.25, 0.5, 0.75];

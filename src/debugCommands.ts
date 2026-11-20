@@ -37,10 +37,11 @@ export async function executeDebugCommand(
   sendLightning?: DebugSendLightning,
 ): Promise<DebugCommandResult> {
   const commands = splitCommands(command)?.map(parseCommand);
-  if (!commands?.length || commands.some((entry) => entry === undefined)) {
+  if (!commands?.length || commands.some(entry => entry === undefined)) {
     return {
       ok: false,
-      message: '无效命令：请使用 c_give("item_id", count)、c_spawn("prefab_id")、c_setsanity(percent)、c_lightning() 或 c_save()；多条命令用分号分隔',
+      message:
+        '无效命令：请使用 c_give("item_id", count)、c_spawn("prefab_id")、c_setsanity(percent)、c_lightning() 或 c_save()；多条命令用分号分隔',
     };
   }
 
@@ -48,7 +49,9 @@ export async function executeDebugCommand(
   for (const entry of commands) {
     const result = await executeSingleCommand(entry!, inventory, spawnPrefab, saveGame, setSanity, sendLightning);
     messages.push(result.message);
-    if (!result.ok) { return { ok: false, message: messages.join('\n') }; }
+    if (!result.ok) {
+      return { ok: false, message: messages.join('\n') };
+    }
   }
   return { ok: true, message: messages.join('\n') };
 }
@@ -60,31 +63,49 @@ function splitCommands(input: string): string[] | undefined {
   for (let index = 0; index < input.length; index++) {
     const character = input[index];
     if (quote) {
-      if (character === quote) { quote = undefined; }
+      if (character === quote) {
+        quote = undefined;
+      }
     } else if (character === '"' || character === "'") {
       quote = character;
     } else if (character === ';') {
       const command = input.slice(start, index).trim();
-      if (!command) { return undefined; }
+      if (!command) {
+        return undefined;
+      }
       commands.push(command);
       start = index + 1;
     }
   }
-  if (quote) { return undefined; }
+  if (quote) {
+    return undefined;
+  }
   const last = input.slice(start).trim();
-  if (last) { commands.push(last); }
+  if (last) {
+    commands.push(last);
+  }
   return commands;
 }
 
 function parseCommand(command: string): ParsedCommand | undefined {
   const sanity = SANITY_COMMAND.exec(command);
-  if (sanity) { return { type: 'sanity', percent: Number(sanity[1]) }; }
-  if (SAVE_COMMAND.test(command)) { return { type: 'save' }; }
-  if (LIGHTNING_COMMAND.test(command)) { return { type: 'lightning' }; }
+  if (sanity) {
+    return { type: 'sanity', percent: Number(sanity[1]) };
+  }
+  if (SAVE_COMMAND.test(command)) {
+    return { type: 'save' };
+  }
+  if (LIGHTNING_COMMAND.test(command)) {
+    return { type: 'lightning' };
+  }
   const give = parseGiveCommand(command);
-  if (give) { return { type: 'give', give }; }
+  if (give) {
+    return { type: 'give', give };
+  }
   const prefabId = parseSpawnCommand(command);
-  if (prefabId) { return { type: 'spawn', prefabId }; }
+  if (prefabId) {
+    return { type: 'spawn', prefabId };
+  }
   return undefined;
 }
 
@@ -101,17 +122,23 @@ async function executeSingleCommand(
     if (!Number.isFinite(percent) || percent < 0 || percent > 1) {
       return { ok: false, message: '理智比例必须是 0 到 1 的数字' };
     }
-    if (!setSanity) { return { ok: false, message: '当前无法设置理智' }; }
+    if (!setSanity) {
+      return { ok: false, message: '当前无法设置理智' };
+    }
     setSanity(percent);
     return { ok: true, message: `已设置理智为 ${percent * 100}%` };
   }
   if (command.type === 'lightning') {
-    if (!sendLightning) { return { ok: false, message: '当前无法触发闪电' }; }
+    if (!sendLightning) {
+      return { ok: false, message: '当前无法触发闪电' };
+    }
     await sendLightning();
     return { ok: true, message: '已在玩家位置触发闪电' };
   }
   if (command.type === 'save') {
-    if (!saveGame) { return { ok: false, message: '当前无法保存游戏' }; }
+    if (!saveGame) {
+      return { ok: false, message: '当前无法保存游戏' };
+    }
     try {
       await saveGame();
       return { ok: true, message: '已下载存档 Cluster_1.zip' };
@@ -119,10 +146,12 @@ async function executeSingleCommand(
       return { ok: false, message: `保存失败：${error instanceof Error ? error.message : String(error)}` };
     }
   }
-  if (command.type === 'give') { return executeGive(command.give, inventory); }
+  if (command.type === 'give') {
+    return executeGive(command.give, inventory);
+  }
 
   const { prefabId } = command;
-  if (!spawnPrefab || !await spawnPrefab(prefabId)) {
+  if (!spawnPrefab || !(await spawnPrefab(prefabId))) {
     return { ok: false, message: `未知场景对象：${prefabId}` };
   }
   return { ok: true, message: `已生成 ${prefabId}` };
@@ -143,9 +172,13 @@ function executeGive(give: GiveCommand, inventory: InventoryStore): DebugCommand
 
 function parseGiveCommand(command: string): GiveCommand | undefined {
   const match = GIVE_COMMAND.exec(command);
-  if (!match) { return undefined; }
+  if (!match) {
+    return undefined;
+  }
   const count = match[3] === undefined ? 1 : Number(match[3]);
-  if (!Number.isSafeInteger(count) || count <= 0) { return undefined; }
+  if (!Number.isSafeInteger(count) || count <= 0) {
+    return undefined;
+  }
   return { itemId: match[2], count };
 }
 

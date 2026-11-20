@@ -13,12 +13,15 @@ import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../invento
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { testItem } from './testInventory';
 
-vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false } }));
+vi.mock('../../../src/InputManager', () => ({
+  input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false },
+}));
 
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
-
-
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('original bugnet assets and Wilson action', () => {
   function useRealAssets() {
@@ -30,7 +33,9 @@ describe('original bugnet assets and Wilson action', () => {
   }
 
   function advance(controller: PlayerInstance, frames: number) {
-    for (let i = 0; i < frames; i++) { advancePlayer(controller, 1 / 60); }
+    for (let i = 0; i < frames; i++) {
+      advancePlayer(controller, 1 / 60);
+    }
   }
 
   it('uses the source ground pose, hand swap and skin builds', async () => {
@@ -39,13 +44,23 @@ describe('original bugnet assets and Wilson action', () => {
     expect(inventoryItemEquipmentKind('bugnet')).toBe('hand');
     const ground = await createGroundItemVisual('bugnet');
     const meshes: THREE.Mesh[] = [];
-    ground.model.traverse(object => { if (object instanceof THREE.Mesh) { meshes.push(object); } });
+    ground.model.traverse(object => {
+      if (object instanceof THREE.Mesh) {
+        meshes.push(object);
+      }
+    });
     expect(meshes).toHaveLength(1);
     expect(meshes[0].geometry.drawRange.count).toBeGreaterThan(0);
     expect((meshes[0].material as THREE.MeshBasicMaterial[])[0].name).toBe('sprite:swap_bugnet');
     const anim = new AnimState();
-    bugnetVisual({ id: 'bugnet', prefab: 'bugnet', skinId: 'bugnet_frog' }).onequip({ AnimState: anim, PushEvent() {} });
-    expect(overrideArchives(anim, 'swap_object')).toEqual([GROUND_ITEM_DEFINITIONS.bugnet.skinArchives.bugnet_frog, 'swap_bugnet.zip']);
+    bugnetVisual({ id: 'bugnet', prefab: 'bugnet', skinId: 'bugnet_frog' }).onequip({
+      AnimState: anim,
+      PushEvent() {},
+    });
+    expect(overrideArchives(anim, 'swap_object')).toEqual([
+      GROUND_ITEM_DEFINITIONS.bugnet.skinArchives.bugnet_frog,
+      'swap_bugnet.zip',
+    ]);
     const player = await createPlayer('/anim');
     const controller = playerInst(player);
     const controllerEquipper = createPlayerEquipper(controller);
@@ -54,7 +69,11 @@ describe('original bugnet assets and Wilson action', () => {
     advance(controller, 20);
     const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
     // The player's display loads the named swap build, then draws it.
-    await vi.waitFor(() => expect((mesh.material as THREE.MeshBasicMaterial[]).some(material => material.name === 'ground:swap_bugnet')).toBe(true));
+    await vi.waitFor(() =>
+      expect(
+        (mesh.material as THREE.MeshBasicMaterial[]).some(material => material.name === 'ground:swap_bugnet'),
+      ).toBe(true),
+    );
     expect((mesh.material as THREE.MeshBasicMaterial[]).every(material => material.forceSinglePass)).toBe(true);
     ground.dispose();
   });
@@ -65,8 +84,10 @@ describe('original bugnet assets and Wilson action', () => {
     const controller = playerInst(player);
     const controllerEquipper = createPlayerEquipper(controller);
     const capture = vi.fn();
-    const net = testItem({ itemId: 'bugnet', count: 1 }); net.addTag('NET_tool');
-    const swing = () => controller.sg.pushBufferedAction(new BufferedAction('NET', capture, undefined, { invobject: net }));
+    const net = testItem({ itemId: 'bugnet', count: 1 });
+    net.addTag('NET_tool');
+    const swing = () =>
+      controller.sg.pushBufferedAction(new BufferedAction('NET', capture, undefined, { invobject: net }));
     const netting = () => controller.sg.isPerformingAction('NET');
     await controllerEquipper.equip('bugnet');
     expect(swing()).toBe(true);
@@ -86,6 +107,4 @@ describe('original bugnet assets and Wilson action', () => {
     expect(netting()).toBe(false);
     expect(capture).toHaveBeenCalledOnce();
   });
-
 });
-

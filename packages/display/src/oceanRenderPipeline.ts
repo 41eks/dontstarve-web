@@ -1,10 +1,17 @@
 import * as THREE from 'three';
-import { registerSceneRenderPass, type ScenePassLighting, type SceneRenderPass } from '@dontstarve-web/animation/sceneRenderPass';
+import {
+  registerSceneRenderPass,
+  type ScenePassLighting,
+  type SceneRenderPass,
+} from '@dontstarve-web/animation/sceneRenderPass';
 
 export interface OceanColourMap {
   readonly size: number;
   readonly tileSize: number;
-  oceanColoursAt?(col: number, row: number): { primary: readonly number[]; day: readonly number[]; dusk: readonly number[] } | undefined;
+  oceanColoursAt?(
+    col: number,
+    row: number,
+  ): { primary: readonly number[]; day: readonly number[]; dusk: readonly number[] } | undefined;
   isOceanTileAt(col: number, row: number): boolean;
 }
 
@@ -12,13 +19,13 @@ export interface OceanColourMap {
 const OCEAN = { primary: [220, 255, 255, 28], day: [25, 123, 167, 100], dusk: [10, 120, 125, 120] };
 const LAND = { primary: [0, 0, 0, 25], day: [0, 20, 33, 0], dusk: [0, 20, 33, 80] };
 
-const QUAD_VERTEX = /* glsl */`
+const QUAD_VERTEX = /* glsl */ `
   varying vec2 vUv;
   void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }
 `;
 
 // blurh.ksh / blurv.ksh: nine taps, intentionally retaining the source's 0.98 sum.
-const BLUR_FRAGMENT = /* glsl */`
+const BLUR_FRAGMENT = /* glsl */ `
   uniform sampler2D sourceTexture;
   uniform vec2 pixelStep;
   varying vec2 vUv;
@@ -37,7 +44,7 @@ const BLUR_FRAGMENT = /* glsl */`
 `;
 
 // blendoceantexture.ksh mixes all four channels of the blurred day/dusk textures.
-const BLEND_FRAGMENT = /* glsl */`
+const BLEND_FRAGMENT = /* glsl */ `
   uniform sampler2D dayTexture;
   uniform sampler2D duskTexture;
   uniform float textureBlend;
@@ -45,7 +52,7 @@ const BLEND_FRAGMENT = /* glsl */`
   void main() { gl_FragColor = mix(texture2D(dayTexture, vUv), texture2D(duskTexture, vUv), textureBlend); }
 `;
 
-const WORLD_VERTEX = /* glsl */`
+const WORLD_VERTEX = /* glsl */ `
   varying vec2 vWorldXZ;
   varying vec3 vScreen;
   varying vec2 vUv;
@@ -60,7 +67,7 @@ const WORLD_VERTEX = /* glsl */`
 
 // ocean_combined.ksh: world-space palette, moving green-channel noise,
 // display-space lightmap, then an unpremultiplied 2x encoding into a float target.
-const COMBINED_FRAGMENT = /* glsl */`
+const COMBINED_FRAGMENT = /* glsl */ `
   uniform sampler2D baseTexture;
   uniform sampler2D primaryTexture;
   uniform sampler2D noiseTexture;
@@ -94,7 +101,7 @@ const COMBINED_FRAGMENT = /* glsl */`
 
 // ocean.ksh: screen-space sampling, 0.5 decoding and premultiplied composition.
 // Three's world target is linear; convert the decoded DST display colour before blending.
-const RESOLVE_FRAGMENT = /* glsl */`
+const RESOLVE_FRAGMENT = /* glsl */ `
   uniform sampler2D encodedTexture;
   varying vec3 vScreen;
   varying vec2 vUv;
@@ -107,7 +114,7 @@ const RESOLVE_FRAGMENT = /* glsl */`
   }
 `;
 
-const FLOOR_FRAGMENT = /* glsl */`
+const FLOOR_FRAGMENT = /* glsl */ `
   uniform vec3 floorColour;
   void main() {
     gl_FragColor = sRGBTransferEOTF(vec4(floorColour, 1.0));
@@ -117,8 +124,11 @@ const FLOOR_FRAGMENT = /* glsl */`
 
 function target(name: string, width: number, height: number): THREE.WebGLRenderTarget {
   const result = new THREE.WebGLRenderTarget(width, height, {
-    type: THREE.HalfFloatType, depthBuffer: false, stencilBuffer: false,
-    minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
+    type: THREE.HalfFloatType,
+    depthBuffer: false,
+    stencilBuffer: false,
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
   });
   result.texture.name = name;
   result.texture.colorSpace = THREE.NoColorSpace;
@@ -145,32 +155,59 @@ export function mergeCellRectangles(width: number, has: (col: number, row: numbe
   let open = new Map<number, { start: number; end: number; row: number }>();
   for (let row = 0; row <= width; row++) {
     const next = new Map<number, { start: number; end: number; row: number }>();
-    for (let col = 0; row < width && col < width;) {
-      if (!has(col, row)) { col++; continue; }
+    for (let col = 0; row < width && col < width; ) {
+      if (!has(col, row)) {
+        col++;
+        continue;
+      }
       const start = col;
-      while (col < width && has(col, row)) { col++; }
-      const key = start * (width + 1) + col, previous = open.get(key);
-      if (previous) { open.delete(key); next.set(key, previous); } else { next.set(key, { start, end: col, row }); }
+      while (col < width && has(col, row)) {
+        col++;
+      }
+      const key = start * (width + 1) + col,
+        previous = open.get(key);
+      if (previous) {
+        open.delete(key);
+        next.set(key, previous);
+      } else {
+        next.set(key, { start, end: col, row });
+      }
     }
-    for (const run of open.values()) { rects.push(run.start, run.end, run.row, row); }
+    for (const run of open.values()) {
+      rects.push(run.start, run.end, run.row, row);
+    }
     open = next;
   }
   return rects;
 }
 
 /** Position-only quads for merged rectangles, clipped to the world and placed through `inverse` (a surface's local space). */
-export function cellRectangleGeometry(rects: readonly number[], min: number, tile: number, half: number,
-  inverse: THREE.Matrix4): THREE.BufferGeometry {
-  const positions = new Float32Array(rects.length * 3), indices = new Uint32Array(rects.length * 1.5);
+export function cellRectangleGeometry(
+  rects: readonly number[],
+  min: number,
+  tile: number,
+  half: number,
+  inverse: THREE.Matrix4,
+): THREE.BufferGeometry {
+  const positions = new Float32Array(rects.length * 3),
+    indices = new Uint32Array(rects.length * 1.5);
   const point = new THREE.Vector3();
-  let vertices = 0, indexCount = 0;
+  let vertices = 0,
+    indexCount = 0;
   for (let i = 0; i < rects.length; i += 4) {
-    const x0 = Math.max(-half, (rects[i] + min) * tile), x1 = Math.min(half, (rects[i + 1] + min) * tile);
-    const z0 = Math.max(-half, (rects[i + 2] + min) * tile), z1 = Math.min(half, (rects[i + 3] + min) * tile);
-    if (x1 <= x0 || z1 <= z0) { continue; }
+    const x0 = Math.max(-half, (rects[i] + min) * tile),
+      x1 = Math.min(half, (rects[i + 1] + min) * tile);
+    const z0 = Math.max(-half, (rects[i + 2] + min) * tile),
+      z1 = Math.min(half, (rects[i + 3] + min) * tile);
+    if (x1 <= x0 || z1 <= z0) {
+      continue;
+    }
     const offset = vertices;
     for (let corner = 0; corner < 4; corner++, vertices++) {
-      point.set(corner < 2 ? x0 : x1, 0, corner % 2 === 0 ? z0 : z1).applyMatrix4(inverse).toArray(positions, vertices * 3);
+      point
+        .set(corner < 2 ? x0 : x1, 0, corner % 2 === 0 ? z0 : z1)
+        .applyMatrix4(inverse)
+        .toArray(positions, vertices * 3);
     }
     indices.set([offset, offset + 1, offset + 2, offset + 2, offset + 1, offset + 3], indexCount);
     indexCount += 6;
@@ -178,7 +215,10 @@ export function cellRectangleGeometry(rects: readonly number[], min: number, til
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions.subarray(0, vertices * 3), 3));
   geometry.setIndex(new THREE.BufferAttribute(indices.subarray(0, indexCount), 1));
-  if (vertices) { geometry.computeBoundingBox(); geometry.computeBoundingSphere(); }
+  if (vertices) {
+    geometry.computeBoundingBox();
+    geometry.computeBoundingSphere();
+  }
   return geometry;
 }
 
@@ -232,9 +272,9 @@ export class OceanRenderPipeline implements SceneRenderPass {
     this.min = Math.floor(-map.size / 2 / map.tileSize);
     this.width = Math.ceil(map.size / 2 / map.tileSize) - this.min;
     const pixels = () => new Uint8Array(this.width * this.width * 4);
-    this.day = palette('DST ocean day palette', this.dayPixels = pixels(), this.width, this.width);
-    this.dusk = palette('DST ocean dusk palette', this.duskPixels = pixels(), this.width, this.width);
-    this.primary = palette('DST ocean primary palette', this.primaryPixels = pixels(), this.width, this.width);
+    this.day = palette('DST ocean day palette', (this.dayPixels = pixels()), this.width, this.width);
+    this.dusk = palette('DST ocean dusk palette', (this.duskPixels = pixels()), this.width, this.width);
+    this.primary = palette('DST ocean primary palette', (this.primaryPixels = pixels()), this.width, this.width);
     this.dayBlur = target('DST ocean blurred day', this.width, this.width);
     this.duskBlur = target('DST ocean blurred dusk', this.width, this.width);
     this.primaryBlur = target('DST ocean blurred primary', this.width, this.width);
@@ -243,18 +283,25 @@ export class OceanRenderPipeline implements SceneRenderPass {
     this.blended = target('DST ocean day-dusk blend', this.width, this.width);
     noise.colorSpace = THREE.NoColorSpace;
     this.blurMaterial = this.material('DST ocean nine-tap blur', QUAD_VERTEX, BLUR_FRAGMENT, {
-      sourceTexture: { value: this.day }, pixelStep: { value: this.pixelStep },
+      sourceTexture: { value: this.day },
+      pixelStep: { value: this.pixelStep },
     });
     this.blendMaterial = this.material('DST ocean colour texture blend', QUAD_VERTEX, BLEND_FRAGMENT, {
-      dayTexture: { value: this.dayBlur.texture }, duskTexture: { value: this.duskBlur.texture }, textureBlend: { value: 0 },
+      dayTexture: { value: this.dayBlur.texture },
+      duskTexture: { value: this.duskBlur.texture },
+      textureBlend: { value: 0 },
     });
     const span = this.width * map.tileSize;
     this.combinedMaterial = this.material('DST ocean combined colour and light', WORLD_VERTEX, COMBINED_FRAGMENT, {
-      baseTexture: { value: this.blended.texture }, primaryTexture: { value: this.primaryBlur.texture },
-      noiseTexture: { value: noise }, oceanTime: { value: 0 },
+      baseTexture: { value: this.blended.texture },
+      primaryTexture: { value: this.primaryBlur.texture },
+      noiseTexture: { value: noise },
+      oceanTime: { value: 0 },
       oceanExtents: { value: new THREE.Vector4(this.min * map.tileSize, this.min * map.tileSize, 1 / span, 1 / span) },
-      lightmap: { value: this.white }, lightmapExtents: { value: this.lightmapExtents },
-      ambient: { value: this.ambient }, useLightmap: { value: 0 },
+      lightmap: { value: this.white },
+      lightmapExtents: { value: this.lightmapExtents },
+      ambient: { value: this.ambient },
+      useLightmap: { value: 0 },
     });
     this.resolveMaterial = this.material('DST ocean screen resolve', WORLD_VERTEX, RESOLVE_FRAGMENT, {
       encodedTexture: { value: this.encoded.texture },
@@ -280,10 +327,23 @@ export class OceanRenderPipeline implements SceneRenderPass {
     this.rebuildColours();
   }
 
-  private material(name: string, vertexShader: string, fragmentShader: string,
-    uniforms: Record<string, THREE.IUniform>): THREE.ShaderMaterial {
-    const material = new THREE.ShaderMaterial({ name, vertexShader, fragmentShader, uniforms,
-      depthTest: false, depthWrite: false, toneMapped: false, blending: THREE.NoBlending, side: THREE.DoubleSide });
+  private material(
+    name: string,
+    vertexShader: string,
+    fragmentShader: string,
+    uniforms: Record<string, THREE.IUniform>,
+  ): THREE.ShaderMaterial {
+    const material = new THREE.ShaderMaterial({
+      name,
+      vertexShader,
+      fragmentShader,
+      uniforms,
+      depthTest: false,
+      depthWrite: false,
+      toneMapped: false,
+      blending: THREE.NoBlending,
+      side: THREE.DoubleSide,
+    });
     material.forceSinglePass = true;
     return material;
   }
@@ -305,46 +365,65 @@ export class OceanRenderPipeline implements SceneRenderPass {
   }
 
   rebuildColours(): void {
-    for (let row = 0; row < this.width; row++) { for (let col = 0; col < this.width; col++) {
-      const colour = this.map.oceanColoursAt?.(col + this.min, row + this.min)
-        ?? (this.map.isOceanTileAt(col + this.min, row + this.min) ? OCEAN : LAND);
-      const offset = (row * this.width + col) * 4;
-      this.dayPixels.set(colour.day, offset);
-      this.duskPixels.set(colour.dusk, offset);
-      this.primaryPixels.set(colour.primary, offset);
-    } }
+    for (let row = 0; row < this.width; row++) {
+      for (let col = 0; col < this.width; col++) {
+        const colour =
+          this.map.oceanColoursAt?.(col + this.min, row + this.min) ??
+          (this.map.isOceanTileAt(col + this.min, row + this.min) ? OCEAN : LAND);
+        const offset = (row * this.width + col) * 4;
+        this.dayPixels.set(colour.day, offset);
+        this.duskPixels.set(colour.dusk, offset);
+        this.primaryPixels.set(colour.primary, offset);
+      }
+    }
     this.day.needsUpdate = this.dusk.needsUpdate = this.primary.needsUpdate = true;
     this.rebuildFloor();
     this.coloursDirty = true;
   }
 
   setPhase(blend: number, floor: THREE.Vector3): void {
-    if (this.blendMaterial.uniforms.textureBlend.value !== blend) { this.blendDirty = true; }
+    if (this.blendMaterial.uniforms.textureBlend.value !== blend) {
+      this.blendDirty = true;
+    }
     this.blendMaterial.uniforms.textureBlend.value = blend;
     this.floorColour.copy(floor);
   }
 
-  update(dt: number): void { this.combinedMaterial.uniforms.oceanTime.value += dt; }
+  update(dt: number): void {
+    this.combinedMaterial.uniforms.oceanTime.value += dt;
+  }
 
   private syncGeometry(): void {
-    if (!this.surface) { return; }
+    if (!this.surface) {
+      return;
+    }
     this.combinedMesh.geometry = this.surface.geometry;
     this.combinedMesh.matrix.copy(this.surface.matrixWorld);
   }
 
   private resize(renderer: THREE.WebGLRenderer): void {
     const current = renderer.getRenderTarget();
-    if (current) { this.bufferSize.set(current.width, current.height); }
-    else { renderer.getDrawingBufferSize(this.bufferSize); }
+    if (current) {
+      this.bufferSize.set(current.width, current.height);
+    } else {
+      renderer.getDrawingBufferSize(this.bufferSize);
+    }
     if (this.encoded.width !== this.bufferSize.x || this.encoded.height !== this.bufferSize.y) {
       this.encoded.setSize(this.bufferSize.x, this.bufferSize.y);
     }
-    if (this.renderer !== renderer) { this.renderer = renderer; this.coloursDirty = true; }
+    if (this.renderer !== renderer) {
+      this.renderer = renderer;
+      this.coloursDirty = true;
+    }
   }
 
   private withRendererState(renderer: THREE.WebGLRenderer, run: () => void): void {
-    const previous = renderer.getRenderTarget(), face = renderer.getActiveCubeFace(), mip = renderer.getActiveMipmapLevel();
-    const autoClear = renderer.autoClear, alpha = renderer.getClearAlpha(), scissorTest = renderer.getScissorTest();
+    const previous = renderer.getRenderTarget(),
+      face = renderer.getActiveCubeFace(),
+      mip = renderer.getActiveMipmapLevel();
+    const autoClear = renderer.autoClear,
+      alpha = renderer.getClearAlpha(),
+      scissorTest = renderer.getScissorTest();
     const colour = renderer.getClearColor(this.clearColour);
     try {
       renderer.autoClear = true;
@@ -359,7 +438,11 @@ export class OceanRenderPipeline implements SceneRenderPass {
     }
   }
 
-  private drawQuad(renderer: THREE.WebGLRenderer, material: THREE.ShaderMaterial, output: THREE.WebGLRenderTarget): void {
+  private drawQuad(
+    renderer: THREE.WebGLRenderer,
+    material: THREE.ShaderMaterial,
+    output: THREE.WebGLRenderTarget,
+  ): void {
     this.quad.material = material;
     renderer.setRenderTarget(output);
     renderer.render(this.quadScene, this.quadCamera);
@@ -395,15 +478,22 @@ export class OceanRenderPipeline implements SceneRenderPass {
   }
 
   render(renderer: THREE.WebGLRenderer, camera: THREE.Camera, lighting?: ScenePassLighting): void {
-    if (this.disposed || !this.surface) { return; }
+    if (this.disposed || !this.surface) {
+      return;
+    }
     this.syncGeometry();
     this.resize(renderer);
     const uniforms = this.combinedMaterial.uniforms;
     uniforms.lightmap.value = lighting?.texture ?? this.white;
     uniforms.useLightmap.value = lighting ? 1 : 0;
-    if (lighting) { this.ambient.copy(lighting.ambient); }
-    else { this.ambient.set(1, 1, 1); }
-    if (lighting) { this.lightmapExtents.copy(lighting.extents); }
+    if (lighting) {
+      this.ambient.copy(lighting.ambient);
+    } else {
+      this.ambient.set(1, 1, 1);
+    }
+    if (lighting) {
+      this.lightmapExtents.copy(lighting.extents);
+    }
     this.withRendererState(renderer, () => {
       this.renderColourTextures(renderer);
       renderer.setRenderTarget(this.encoded);
@@ -430,14 +520,24 @@ export class OceanRenderPipeline implements SceneRenderPass {
   }
 
   async prewarm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, signal?: AbortSignal): Promise<void> {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.syncGeometry();
     this.resize(renderer);
-    for (const texture of [this.day, this.dusk, this.primary, this.white, this.combinedMaterial.uniforms.noiseTexture.value]) {
+    for (const texture of [
+      this.day,
+      this.dusk,
+      this.primary,
+      this.white,
+      this.combinedMaterial.uniforms.noiseTexture.value,
+    ]) {
       signal?.throwIfAborted();
       renderer.initTexture(texture);
     }
-    for (const output of this.targets()) { renderer.initRenderTarget(output); }
+    for (const output of this.targets()) {
+      renderer.initRenderTarget(output);
+    }
     for (const material of [this.blurMaterial, this.blendMaterial]) {
       signal?.throwIfAborted();
       this.quad.material = material;
@@ -454,15 +554,31 @@ export class OceanRenderPipeline implements SceneRenderPass {
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     this.unregister?.();
     this.floorMesh.removeFromParent();
-    if (this.ownsPlaceholderGeometry) { this.combinedMesh.geometry.dispose(); }
+    if (this.ownsPlaceholderGeometry) {
+      this.combinedMesh.geometry.dispose();
+    }
     this.floorMesh.geometry.dispose();
-    for (const output of this.targets()) { output.dispose(); }
-    for (const texture of [this.day, this.dusk, this.primary, this.white]) { texture.dispose(); }
-    for (const material of [this.blurMaterial, this.blendMaterial, this.combinedMaterial, this.resolveMaterial, this.floorMaterial]) { material.dispose(); }
+    for (const output of this.targets()) {
+      output.dispose();
+    }
+    for (const texture of [this.day, this.dusk, this.primary, this.white]) {
+      texture.dispose();
+    }
+    for (const material of [
+      this.blurMaterial,
+      this.blendMaterial,
+      this.combinedMaterial,
+      this.resolveMaterial,
+      this.floorMaterial,
+    ]) {
+      material.dispose();
+    }
     this.quad.geometry.dispose();
     this.combinedScene.clear();
     this.quadScene.clear();

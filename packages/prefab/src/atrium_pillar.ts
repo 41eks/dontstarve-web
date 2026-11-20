@@ -16,14 +16,19 @@ function createAtriumPillar(position: ReadonlyVector3): PrefabInstance {
   return inst;
 }
 
-export function atriumPillarPrefabs(): Readonly<Record<typeof PILLAR_ATRIUM_ID, PrefabEntityDefinition<PrefabInstance>>> {
+export function atriumPillarPrefabs(): Readonly<
+  Record<typeof PILLAR_ATRIUM_ID, PrefabEntityDefinition<PrefabInstance>>
+> {
   return {
     [PILLAR_ATRIUM_ID]: {
       fn: createAtriumPillar,
       assets: { animationArchive: 'pillar_atrium.zip', buildArchives: ['pillar_atrium.zip'], bank: 'pillar_atrium' },
       assetOptions: { instancedAnimations: ['idle'], staticBillboard: true },
       physics: {
-        make: (inst, radius) => { MakeObstaclePhysics(inst, radius); inst.physics.SetCylinder(2.35, 6); },
+        make: (inst, radius) => {
+          MakeObstaclePhysics(inst, radius);
+          inst.physics.SetCylinder(2.35, 6);
+        },
         radius: 2.5,
       },
     },

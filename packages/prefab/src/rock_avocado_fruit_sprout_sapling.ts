@@ -50,25 +50,42 @@ export class RockAvocadoSaplingInstance extends PrefabInstance {
     // DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2, in world units.
     this.deploySmartRadius = TILE_SIZE / 4;
     const workable = addComponent(this, 'workable', Workable);
-    workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
+    workable.SetWorkAction('DIG');
+    workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(dig_sprout);
     const timer = addComponent(this, 'timer', Timer, world.scheduler, ['grow']);
     this.ListenForEvent('timerdone', (_inst, data) => on_grow_timer_done(this, data.name));
     // MakeSmallBurnable + MakeSmallPropagator; DefaultBurnFn and DefaultExtinguishFn give way to these callbacks.
-    const burn = new BurnableBinding(this, { propagator: 'small', burnTime: BURN_TIME, fxLevel: BURN_FX_LEVEL,
-      onIgnite: () => stop_sprout_growing(this), onExtinguish: () => start_sprout_growing(this), onBurnt: () => DefaultBurntFn(this, world) }, world);
+    const burn = new BurnableBinding(
+      this,
+      {
+        propagator: 'small',
+        burnTime: BURN_TIME,
+        fxLevel: BURN_FX_LEVEL,
+        onIgnite: () => stop_sprout_growing(this),
+        onExtinguish: () => start_sprout_growing(this),
+        onBurnt: () => DefaultBurntFn(this, world),
+      },
+      world,
+    );
     this.onRemove(() => burn.dispose());
     start_sprout_growing(this);
     this.OnSave = (_inst, data) => {
       // The timer's record keeps the name existing saves hold; a stopped timer writes an empty one.
-      data.saplingTimer = data.timer ?? { timers: {} }; delete data.timer;
+      data.saplingTimer = data.timer ?? { timers: {} };
+      delete data.timer;
     };
-    this.OnLoad = (_inst, data) => { timer.OnLoad(data.saplingTimer); };
+    this.OnLoad = (_inst, data) => {
+      timer.OnLoad(data.saplingTimer);
+    };
   }
 }
 
 function dig_sprout(inst: RockAvocadoSaplingInstance): void {
-  inst.world.spawnGroundItem({ ...catalog.items.rock_avocado_fruit_sprout, itemId: 'rock_avocado_fruit_sprout', count: 1 }, inst.position);
+  inst.world.spawnGroundItem(
+    { ...catalog.items.rock_avocado_fruit_sprout, itemId: 'rock_avocado_fruit_sprout', count: 1 },
+    inst.position,
+  );
   inst.remove();
 }
 
@@ -79,14 +96,18 @@ function grow_anim_over(inst: RockAvocadoSaplingInstance): void {
 }
 
 function on_grow_timer_done(inst: RockAvocadoSaplingInstance, name: string): void {
-  if (name !== 'grow') { return; }
+  if (name !== 'grow') {
+    return;
+  }
   inst.seedGrowth = inst.DoTaskInTime(SEED_GROWTH_SECONDS, grow_anim_over);
   inst.sprite.playOnce('seed_growth');
 }
 
 function start_sprout_growing(inst: RockAvocadoSaplingInstance): void {
   const { timer } = inst.components;
-  if (!timer.TimerExists('grow')) { timer.StartTimer('grow', ROCK_AVOCADO_SPROUT_GROW_TIME); }
+  if (!timer.TimerExists('grow')) {
+    timer.StartTimer('grow', ROCK_AVOCADO_SPROUT_GROW_TIME);
+  }
 }
 
 function stop_sprout_growing(inst: RockAvocadoSaplingInstance): void {
@@ -94,15 +115,23 @@ function stop_sprout_growing(inst: RockAvocadoSaplingInstance): void {
 }
 
 /** The sapling's entry in the Prefab table rock_avocado_fruit.lua returns; the fruits are inventory items. */
-export function rockAvocadoSaplingPrefabs(world: RockAvocadoSaplingWorld): Readonly<Record<typeof ROCK_AVOCADO_SAPLING_ID, PrefabEntityDefinition<RockAvocadoSaplingInstance>>> {
+export function rockAvocadoSaplingPrefabs(
+  world: RockAvocadoSaplingWorld,
+): Readonly<Record<typeof ROCK_AVOCADO_SAPLING_ID, PrefabEntityDefinition<RockAvocadoSaplingInstance>>> {
   return {
     [ROCK_AVOCADO_SAPLING_ID]: {
       fn: () => new RockAvocadoSaplingInstance(world),
-      assets: { animationArchive: 'rock_avocado_fruit.zip', buildArchives: ['rock_avocado_fruit_build.zip'],
-        bank: 'rock_avo_fruit_master', hiddenSymbols: ['snow'] },
+      assets: {
+        animationArchive: 'rock_avocado_fruit.zip',
+        buildArchives: ['rock_avocado_fruit_build.zip'],
+        bank: 'rock_avo_fruit_master',
+        hiddenSymbols: ['snow'],
+      },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       minimapIcon: 'rock_avocado.png',
-      onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
+      onSpawned: inst => {
+        new ToolMouseTarget(inst, world.handEquipment);
+      },
     },
   };
 }

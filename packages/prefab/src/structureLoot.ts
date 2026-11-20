@@ -5,9 +5,19 @@ import type { PrefabWorldContext } from './worldContext';
 /** AllRecipes includes both crafting recipes and DeconstructRecipe returnIngredients. */
 export const STRUCTURE_LOOT_RECIPES = new Map<string, LootRecipe>([
   ...recipeData.recipes
-    .filter(recipe => recipe.ingredients.every(ingredient => typeof ingredient.type === 'string' && typeof ingredient.amount === 'number'))
-    .map((recipe): [string, LootRecipe] => [recipe.name, { ingredients: recipe.ingredients as LootRecipe['ingredients'] }]),
-  ...recipeData.deconstructionRecipes.map((recipe): [string, LootRecipe] => [recipe.name, { ingredients: recipe.returnIngredients as LootRecipe['ingredients'] }]),
+    .filter(recipe =>
+      recipe.ingredients.every(
+        ingredient => typeof ingredient.type === 'string' && typeof ingredient.amount === 'number',
+      ),
+    )
+    .map((recipe): [string, LootRecipe] => [
+      recipe.name,
+      { ingredients: recipe.ingredients as LootRecipe['ingredients'] },
+    ]),
+  ...recipeData.deconstructionRecipes.map((recipe): [string, LootRecipe] => [
+    recipe.name,
+    { ingredients: recipe.returnIngredients as LootRecipe['ingredients'] },
+  ]),
 ]);
 
 /** The structure lootdropper's spawn: the world's item spawning services; loot rules stay in the component. */

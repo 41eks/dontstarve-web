@@ -14,8 +14,12 @@ import { TILE_SIZE } from './tile';
 export const WORMHOLE_ID = 'wormhole' as const;
 // prefabskins.lua order; wormhole_init_fn swaps the build, retaining the base bank.
 export const WORMHOLE_SKINS = [
-  'wormhole_claw', 'wormhole_fantasy', 'wormhole_gothic',
-  'wormhole_lureplant', 'wormhole_spider', 'wormhole_worm',
+  'wormhole_claw',
+  'wormhole_fantasy',
+  'wormhole_gothic',
+  'wormhole_lureplant',
+  'wormhole_spider',
+  'wormhole_worm',
 ] as const;
 /** playerprox:SetDist(4, 5). */
 export const WORMHOLE_ENTER_DISTANCE = 4 * (TILE_SIZE / 4);
@@ -45,21 +49,29 @@ export class WormholeInstance extends PrefabInstance implements WormholeStateIns
   // conventions-allow instance-method: the AnimState call SGwormhole makes; the logical clip's end is the animover.
   playAnimation(name: string, loop = false): void {
     this.animstate.PlayAnimation(name, loop);
-    if (loop) { this.sprite.start(name); } else { this.sprite.playOnce(name); }
+    if (loop) {
+      this.sprite.start(name);
+    } else {
+      this.sprite.playOnce(name);
+    }
   }
   // conventions-allow instance-method: SGwormhole's SetGroundLayering / SetBBLayering.
   setGroundLayering(ground: boolean): void {
     this.sprite.setLayer(ground ? 'background' : 'world');
-    this.sprite.setMeshOrder(ground ? -.5 : 0);
+    this.sprite.setMeshOrder(ground ? -0.5 : 0);
   }
 }
 
 function onnear(inst: WormholeInstance): void {
-  if (!inst.sg.hasStateTag('open')) { inst.sg.goToState('opening'); }
+  if (!inst.sg.hasStateTag('open')) {
+    inst.sg.goToState('opening');
+  }
 }
 
 function onfar(inst: WormholeInstance): void {
-  if (inst.sg.hasStateTag('open')) { inst.sg.goToState('closing'); }
+  if (inst.sg.hasStateTag('open')) {
+    inst.sg.goToState('closing');
+  }
 }
 
 function fn(world: WormholeWorld): WormholeInstance {
@@ -69,18 +81,26 @@ function fn(world: WormholeWorld): WormholeInstance {
   inst.animstate = new AnimState(world.scheduler, ANIMATION_LENGTHS, event => inst.PushEvent(event));
   inst.onRemove(() => inst.animstate.dispose());
   inst.sprite.start('idle_loop');
-  for (const tag of ['trader', 'alltrader', 'antlion_sinkhole_blocker', 'wormhole']) { inst.addTag(tag); }
+  for (const tag of ['trader', 'alltrader', 'antlion_sinkhole_blocker', 'wormhole']) {
+    inst.addTag(tag);
+  }
   inst.SetStateGraph(inst => WormholeStateGraph(inst, world.scheduler));
   addComponent(inst, 'inspectable', Inspectable);
   return inst;
 }
 
 /** The Prefab wormhole.lua returns, with its PREFAB_SKINS. */
-export function wormholePrefabs(world: WormholeWorld): Readonly<Record<typeof WORMHOLE_ID, PrefabEntityDefinition<WormholeInstance>>> {
+export function wormholePrefabs(
+  world: WormholeWorld,
+): Readonly<Record<typeof WORMHOLE_ID, PrefabEntityDefinition<WormholeInstance>>> {
   return {
     [WORMHOLE_ID]: {
       fn: () => fn(world),
-      assets: { animationArchive: 'teleporter_worm.zip', buildArchives: ['teleporter_worm_build.zip'], bank: 'teleporter_worm' },
+      assets: {
+        animationArchive: 'teleporter_worm.zip',
+        buildArchives: ['teleporter_worm_build.zip'],
+        bank: 'teleporter_worm',
+      },
       skins: Object.fromEntries(WORMHOLE_SKINS.map(id => [id, `dynamic/${id}.zip`])),
       minimapIcon: 'wormhole.png',
       onSpawned: inst => {

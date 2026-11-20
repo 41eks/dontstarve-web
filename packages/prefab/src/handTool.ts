@@ -18,13 +18,19 @@ export const GOLDENTOOLFACTOR = 4;
 /** inst:AddComponent("weapon") and SetDamage; weapon:OnAttack wears finiteuses only when the inst has them. */
 export function AddWeapon(inst: ItemEntity, damage: number, hasFiniteUses: boolean): Weapon {
   inst.addTag('weapon');
-  if (!inst.components.weapon) { addComponent(inst, 'weapon', Weapon, () => hasFiniteUses ? inst.components.finiteuses : undefined).SetDamage(damage); }
+  if (!inst.components.weapon) {
+    addComponent(inst, 'weapon', Weapon, () => (hasFiniteUses ? inst.components.finiteuses : undefined)).SetDamage(
+      damage,
+    );
+  }
   return inst.components.weapon!;
 }
 
 /** inst:AddComponent("tool") and SetAction(action, effectiveness); the component adds the "tool" tag. */
 export function AddTool(inst: ItemEntity, action: ToolAction, effectiveness?: number): Tool {
-  if (inst.components.tool) { return inst.components.tool; }
+  if (inst.components.tool) {
+    return inst.components.tool;
+  }
   const tool = addComponent(inst, 'tool', Tool);
   tool.SetAction(action, effectiveness);
   return tool;
@@ -35,11 +41,13 @@ export function AddFiniteUses(inst: ItemEntity, maxUses: number, action?: string
   const finiteuses = inst.components.finiteuses;
   finiteuses.setMaxUses(maxUses);
   finiteuses.setOnFinished(() => inst.remove());
-  if (action !== undefined) { finiteuses.setConsumption(action, consumption); }
+  if (action !== undefined) {
+    finiteuses.setConsumption(action, consumption);
+  }
 }
 
 /** Held symbols come from the swap build, or from the skin build when the ground item has a skin. */
 export function heldToolVisual(item: EquipmentVisualItem, swap: { archive: string; symbol: string }): EquipmentVisual {
   const skin = skinArchive(item.prefab, GROUND_ITEM_DEFINITIONS[item.prefab].skinArchives, item.skinId);
-  return handEquipmentVisual(item, [...skin ? [skin] : [], swap.archive], swap.symbol);
+  return handEquipmentVisual(item, [...(skin ? [skin] : []), swap.archive], swap.symbol);
 }

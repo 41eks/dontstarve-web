@@ -4,9 +4,12 @@ export const MINIMAP_ZOOM_MAX = 20;
 /** Native MiniMapRenderer constructor; Lua MapScreen reads it through GetZoom(). */
 export const MINIMAP_ZOOM_DEFAULT = 3;
 /** Padding on each side, relative to the terrain's side length. */
-export const MINIMAP_MARGIN_RATIO = .1;
+export const MINIMAP_MARGIN_RATIO = 0.1;
 
-export interface MinimapPoint { x: number; z: number }
+export interface MinimapPoint {
+  x: number;
+  z: number;
+}
 
 /**
  * Pure view transform of the fullscreen map. Source zoom is a distance: 1 is
@@ -36,32 +39,47 @@ export class MinimapView {
     this.height = height;
   }
 
-  get boundsSize(): number { return this.worldSize * (1 + 2 * MINIMAP_MARGIN_RATIO); }
+  get boundsSize(): number {
+    return this.worldSize * (1 + 2 * MINIMAP_MARGIN_RATIO);
+  }
 
-  get zoom(): number { return this.zoomDistance; }
+  get zoom(): number {
+    return this.zoomDistance;
+  }
   set zoom(value: number) {
     this.zoomDistance = Math.min(MINIMAP_ZOOM_MAX, Math.max(MINIMAP_ZOOM_MIN, value));
     this.clampCenter();
   }
 
-  get heading(): number { return this.headingDegrees; }
+  get heading(): number {
+    return this.headingDegrees;
+  }
 
   set heading(degrees: number) {
     this.headingDegrees = degrees;
-    const radians = degrees * Math.PI / 180;
-    this.forwardX = -Math.cos(radians); this.forwardZ = -Math.sin(radians);
+    const radians = (degrees * Math.PI) / 180;
+    this.forwardX = -Math.cos(radians);
+    this.forwardZ = -Math.sin(radians);
     // Three.js is right-handed: looking along forward with +Y up, screen right is forward x up.
-    this.rightX = Math.sin(radians); this.rightZ = -Math.cos(radians);
+    this.rightX = Math.sin(radians);
+    this.rightZ = -Math.cos(radians);
     // Cancel float residue so the unrotated map stays pixel-exact.
-    for (const key of ['forwardX', 'forwardZ', 'rightX', 'rightZ'] as const) { if (Math.abs(this[key]) < 1e-12) { this[key] = 0; } }
+    for (const key of ['forwardX', 'forwardZ', 'rightX', 'rightZ'] as const) {
+      if (Math.abs(this[key]) < 1e-12) {
+        this[key] = 0;
+      }
+    }
     this.clampCenter();
   }
 
   /** Screen pixels per world unit. */
-  get scale(): number { return 1.5 * Math.max(this.width, this.height) / this.boundsSize * MINIMAP_ZOOM_MAX / this.zoom; }
+  get scale(): number {
+    return (((1.5 * Math.max(this.width, this.height)) / this.boundsSize) * MINIMAP_ZOOM_MAX) / this.zoom;
+  }
 
   worldToScreen(x: number, z: number): MinimapPoint {
-    const dx = x - this.centerX, dz = z - this.centerZ;
+    const dx = x - this.centerX,
+      dz = z - this.centerZ;
     return {
       x: this.width / 2 + (dx * this.rightX + dz * this.rightZ) * this.scale,
       z: this.height / 2 - (dx * this.forwardX + dz * this.forwardZ) * this.scale,
@@ -69,7 +87,8 @@ export class MinimapView {
   }
 
   screenToWorld(x: number, y: number): MinimapPoint {
-    const right = (x - this.width / 2) / this.scale, forward = -(y - this.height / 2) / this.scale;
+    const right = (x - this.width / 2) / this.scale,
+      forward = -(y - this.height / 2) / this.scale;
     return {
       x: this.centerX + right * this.rightX + forward * this.forwardX,
       z: this.centerZ + right * this.rightZ + forward * this.forwardZ,
@@ -78,7 +97,8 @@ export class MinimapView {
 
   /** Canvas matrix [a, b, c, d, e, f] taking a pixel grid whose origin is world (originX, originZ), `unit` world units per pixel, to the screen. */
   canvasTransform(originX: number, originZ: number, unit: number): [number, number, number, number, number, number] {
-    const k = unit * this.scale, origin = this.worldToScreen(originX, originZ);
+    const k = unit * this.scale,
+      origin = this.worldToScreen(originX, originZ);
     return [this.rightX * k, -this.forwardX * k, this.rightZ * k, -this.forwardZ * k, origin.x, origin.z];
   }
 
@@ -90,7 +110,8 @@ export class MinimapView {
 
   /** Drag by a screen-space delta. */
   pan(dx: number, dy: number): void {
-    const right = dx / this.scale, forward = -dy / this.scale;
+    const right = dx / this.scale,
+      forward = -dy / this.scale;
     this.centerX -= right * this.rightX + forward * this.forwardX;
     this.centerZ -= right * this.rightZ + forward * this.forwardZ;
     this.clampCenter();
@@ -100,7 +121,8 @@ export class MinimapView {
   zoomAt(screenX: number, screenY: number, zoom: number): void {
     const anchor = this.screenToWorld(screenX, screenY);
     this.zoom = Math.min(MINIMAP_ZOOM_MAX, Math.max(MINIMAP_ZOOM_MIN, zoom));
-    const right = (screenX - this.width / 2) / this.scale, forward = -(screenY - this.height / 2) / this.scale;
+    const right = (screenX - this.width / 2) / this.scale,
+      forward = -(screenY - this.height / 2) / this.scale;
     this.centerX = anchor.x - right * this.rightX - forward * this.forwardX;
     this.centerZ = anchor.z - right * this.rightZ - forward * this.forwardZ;
     this.clampCenter();
@@ -117,7 +139,8 @@ export class MinimapView {
     const half = this.boundsSize / 2;
     const extentX = (Math.abs(this.rightX) * this.width + Math.abs(this.forwardX) * this.height) / (2 * this.scale);
     const extentZ = (Math.abs(this.rightZ) * this.width + Math.abs(this.forwardZ) * this.height) / (2 * this.scale);
-    const limitX = Math.max(0, half - extentX), limitZ = Math.max(0, half - extentZ);
+    const limitX = Math.max(0, half - extentX),
+      limitZ = Math.max(0, half - extentZ);
     this.centerX = Math.min(limitX, Math.max(-limitX, this.centerX));
     this.centerZ = Math.min(limitZ, Math.max(-limitZ, this.centerZ));
   }

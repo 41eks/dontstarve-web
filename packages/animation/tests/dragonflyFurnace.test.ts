@@ -21,9 +21,14 @@ import { createPickupInventory } from './pickupFixture';
 import { sceneActions, sceneDoer } from './sceneActions';
 import { testItem, testRestoreItem } from './testInventory';
 
-vi.mock('../../prefab/src/sound', async importOriginal => ({ ...await importOriginal<object>(),
-  PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => false, setVolume: vi.fn() })) }));
-afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
+vi.mock('../../prefab/src/sound', async importOriginal => ({
+  ...(await importOriginal<object>()),
+  PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => false, setVolume: vi.fn() })),
+}));
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
 
 const FIRE_LOOP = 'dontstarve/common/together/dragonfly_furnace/fire_LP';
 const played = () => vi.mocked(PlaySound).mock.calls.map(([path]) => path);
@@ -31,27 +36,53 @@ const played = () => vi.mocked(PlaySound).mock.calls.map(([path]) => path);
 /** A world whose building containers are addressed in `inventory`, as the scene registers them. */
 function setup(inventory = createPickupInventory(), dropLoot = vi.fn()) {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
-    cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() }, dropLoot,
-    registerContainer: (...args: Parameters<typeof inventory.registerContainer>) => inventory.registerContainer(...args),
-    unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) => inventory.unregisterContainer(...args),
-    spawnItem: testItem, restoreItem: testRestoreItem } as unknown as WorldContext;
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+  const world = {
+    scene: new THREE.Scene(),
+    player: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    cameraFacing: createSignal(8),
+    cameraHeading: createSignal(45),
+    renderer: { domElement: new EventTarget() },
+    dropLoot,
+    registerContainer: (...args: Parameters<typeof inventory.registerContainer>) =>
+      inventory.registerContainer(...args),
+    unregisterContainer: (...args: Parameters<typeof inventory.unregisterContainer>) =>
+      inventory.unregisterContainer(...args),
+    spawnItem: testItem,
+    restoreItem: testRestoreItem,
+  } as unknown as WorldContext;
   return { inventory, dropLoot, placement: managedBuildings(world, { consume: () => false }) };
 }
 
 it('builds on the source timeline, heats and lights, and hammers down to its loot and contents', async () => {
   const { inventory, dropLoot, placement } = setup();
   try {
-    const model = placement.spawnFromSave('dragonflyfurnace', { id: 'furnace', transform: { position: [3, 0, -6], rotationY: 0 },
-      components: { building: {}, container: { items: { 1: { id: 'stored-seeds', prefab: 'seeds', components: { stackable: { stack: 2 } } } } } } });
+    const model = placement.spawnFromSave('dragonflyfurnace', {
+      id: 'furnace',
+      transform: { position: [3, 0, -6], rotationY: 0 },
+      components: {
+        building: {},
+        container: { items: { 1: { id: 'stored-seeds', prefab: 'seeds', components: { stackable: { stack: 2 } } } } },
+      },
+    });
     const inst = prefabInstance<DragonflyFurnaceInstance>(model)!;
     // A drawn sprite plays its clips through; with nothing drawn they settle at once.
     await prefabDisplay(model)!.artLoaded();
     placement.update(FRAMES);
-    for (const tag of ['structure', 'wildfireprotected', 'cooker', 'HASHEATER']) { expect(inst.hasTag(tag), tag).toBe(true); }
+    for (const tag of ['structure', 'wildfireprotected', 'cooker', 'HASHEATER']) {
+      expect(inst.hasTag(tag), tag).toBe(true);
+    }
     expect(inst.components.heater!.GetHeat()).toBe(115);
-    expect(inst.light.json.peek()).toMatchObject({ intensity: .5, falloff: .9, colour: [235 / 255, 121 / 255, 12 / 255] });
+    expect(inst.light.json.peek()).toMatchObject({
+      intensity: 0.5,
+      falloff: 0.9,
+      colour: [235 / 255, 121 / 255, 12 / 255],
+    });
     expect(inst.minimap.icon).toBe('dragonfly_furnace.png');
     expect(inst.sprite.currentAnimation).toBe('hi');
     // OnEntityWake: the fire loop runs while the furnace is awake.
@@ -67,7 +98,8 @@ it('builds on the source timeline, heats and lights, and hammers down to its loo
     placement.update(10 * FRAMES);
     expect(played().slice(-2)).toEqual(['dontstarve/common/together/dragonfly_furnace/light', FIRE_LOOP]);
 
-    const workable = inst.components.workable!, address = { containerId: 'world:dragonflyfurnace:furnace', slotKey: '0' };
+    const workable = inst.components.workable!,
+      address = { containerId: 'world:dragonflyfurnace:furnace', slotKey: '0' };
     expect(inventory.getEntity(address)?.prefab).toBe('seeds');
     workable.WorkedBy(sceneDoer);
     expect(inst.sprite.currentAnimation).toBe('hi_hit');
@@ -77,17 +109,30 @@ it('builds on the source timeline, heats and lights, and hammers down to its loo
     expect(inst.isRemoved).toBe(true);
     const loot = dropLoot.mock.calls.flatMap(([items]) => items).map(({ itemId }: { itemId: string }) => itemId);
     expect(new Set(loot)).toEqual(new Set(['dragon_scales', 'redgem', 'charcoal']));
-  } finally { placement.dispose(); inventory.dispose(); }
+  } finally {
+    placement.dispose();
+    inventory.dispose();
+  }
 });
 
 it('incinerates what its open container holds from the panel button or a right click, then reopens after the clip', async () => {
   const { inventory, placement } = setup();
   try {
-    const model = placement.spawnFromSave('dragonflyfurnace', { id: 'furnace', transform: { position: [3, 0, -6], rotationY: 0 },
-      components: { building: {}, container: { items: {
-        1: { id: 'stored-twigs', prefab: 'twigs', components: { stackable: { stack: 3 } } },
-        2: { id: 'stored-grass', prefab: 'cutgrass', components: {} } } } } });
-    const inst = prefabInstance<DragonflyFurnaceInstance>(model)!, container = inst.components.container!;
+    const model = placement.spawnFromSave('dragonflyfurnace', {
+      id: 'furnace',
+      transform: { position: [3, 0, -6], rotationY: 0 },
+      components: {
+        building: {},
+        container: {
+          items: {
+            1: { id: 'stored-twigs', prefab: 'twigs', components: { stackable: { stack: 3 } } },
+            2: { id: 'stored-grass', prefab: 'cutgrass', components: {} },
+          },
+        },
+      },
+    });
+    const inst = prefabInstance<DragonflyFurnaceInstance>(model)!,
+      container = inst.components.container!;
     await prefabDisplay(model)!.artLoaded();
     placement.update(FRAMES);
     // containers.lua params.dragonflyfurnace.itemtestfn refuses irreplaceable items.
@@ -95,8 +140,12 @@ it('incinerates what its open container holds from the panel button or a right c
     expect(container.slots[3].accepts(spec, 'glommerflower')).toBe(false);
     expect(container.slots[3].accepts(spec, 'twigs')).toBe(true);
     // ShouldIncinerateItem keeps fruitcake and a container that still holds something.
-    const item = (prefab: string, holds = false) => ({ prefab, hasTag: () => false,
-      components: holds ? { container: { IsEmpty: () => false } } : {} }) as unknown as ItemEntity;
+    const item = (prefab: string, holds = false) =>
+      ({
+        prefab,
+        hasTag: () => false,
+        components: holds ? { container: { IsEmpty: () => false } } : {},
+      }) as unknown as ItemEntity;
     const incinerator = inst.components.incinerator!;
     expect(incinerator.ShouldIncinerateItem(item('winter_food4'))).toBe(false);
     expect(incinerator.ShouldIncinerateItem(item('backpack', true))).toBe(false);
@@ -128,34 +177,67 @@ it('incinerates what its open container holds from the panel button or a right c
     placement.update(2 * FRAMES);
     expect(container.canbeopened).toBe(true);
     expect(sceneActions(model, sceneDoer)).toContain('RUMMAGE');
-  } finally { placement.dispose(); inventory.dispose(); }
+  } finally {
+    placement.dispose();
+    inventory.dispose();
+  }
 });
 
 it('c_spawn and c_save keep a skinned furnace with its contents', async () => {
   const { inventory, placement } = setup();
-  const restoredInventory = createPickupInventory(), restored = setup(restoredInventory);
+  const restoredInventory = createPickupInventory(),
+    restored = setup(restoredInventory);
   try {
     const spawn = async (id: string) => {
-      if (id !== 'dragonflyfurnace') { return false; }
-      placement.spawnFromSave('dragonflyfurnace', { id: 'furnace', transform: { position: [3, 0, -6], rotationY: 0 },
-        skinname: 'dragonflyfurnace_crystal', components: { building: {} } });
+      if (id !== 'dragonflyfurnace') {
+        return false;
+      }
+      placement.spawnFromSave('dragonflyfurnace', {
+        id: 'furnace',
+        transform: { position: [3, 0, -6], rotationY: 0 },
+        skinname: 'dragonflyfurnace_crystal',
+        components: { building: {} },
+      });
       return true;
     };
-    expect((await executeDebugCommand('c_spawn("dragonflyfurnace"); c_give("twigs", 4)', inventory, spawn)).ok).toBe(true);
+    expect((await executeDebugCommand('c_spawn("dragonflyfurnace"); c_give("twigs", 4)', inventory, spawn)).ok).toBe(
+      true,
+    );
     const address = { containerId: 'world:dragonflyfurnace:furnace', slotKey: '1' };
     expect(inventory.transfer(inventorySlotAddress(0), address, 4)).toBe(true);
     let json = '';
-    expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-      json = serializeSave(template, { entities: { dragonflyfurnace: placement.exportRecords().map(({ record }) => ({ ...record,
-        transform: { ...record.transform, position: [...record.transform.position] } })) },
-        inventory: inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
-    })).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand('c_save()', inventory, undefined, () => {
+          const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+          json = serializeSave(
+            template,
+            {
+              entities: {
+                dragonflyfurnace: placement.exportRecords().map(({ record }) => ({
+                  ...record,
+                  transform: { ...record.transform, position: [...record.transform.position] },
+                })),
+              },
+              inventory: inventory.exportSaved(),
+              elapsedSeconds: 0,
+              playerTransform: { position: [0, 0, 0], rotationY: 0 },
+            },
+            SAVE_CATALOG,
+          );
+        })
+      ).ok,
+    ).toBe(true);
     const [record] = deserializeSave(json, SAVE_CATALOG).world.entities.dragonflyfurnace;
     expect(record.transform.position).toEqual([3, 0, -6]);
     expect(record.skinname).toBe('dragonflyfurnace_crystal');
     const loaded = prefabInstance(restored.placement.spawnFromSave('dragonflyfurnace', record))!;
     expect(loaded.skinId).toBe('dragonflyfurnace_crystal');
     expect(restoredInventory.getEntity(address)?.snapshot()).toMatchObject({ itemId: 'twigs', count: 4 });
-  } finally { placement.dispose(); inventory.dispose(); restored.placement.dispose(); restoredInventory.dispose(); }
+  } finally {
+    placement.dispose();
+    inventory.dispose();
+    restored.placement.dispose();
+    restoredInventory.dispose();
+  }
 });

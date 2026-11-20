@@ -6,7 +6,11 @@ import type { PlayerInstance } from '../../prefab/src/player_common';
 import { testItemRegistry } from './testInventory';
 
 type Kind = 'hand' | 'head' | 'body';
-const ESLOTS: Readonly<Record<Kind, import('../../componets/src/entityEvents').EquipSlot>> = { hand: 'HANDS', head: 'HEAD', body: 'BODY' };
+const ESLOTS: Readonly<Record<Kind, import('../../componets/src/entityEvents').EquipSlot>> = {
+  hand: 'HANDS',
+  head: 'HEAD',
+  body: 'BODY',
+};
 
 /**
  * The player inst as equipment owner, as main.ts binds it: its own events reach SGwilson, and its OpenEquipmentView
@@ -33,19 +37,26 @@ export function createPlayerEquipper(animation: PlayerInstance) {
   const worn = new Map<Kind, ItemEntity>();
   const unequip = (kind: Kind) => {
     const item = worn.get(kind);
-    if (!item) { return; }
+    if (!item) {
+      return;
+    }
     worn.delete(kind);
     item.components.equippable?.Unequip(owner);
     owner.PushEvent('unequip', { item, eslot: ESLOTS[kind] });
   };
   return {
-    owner, registry,
+    owner,
+    registry,
     equip(prefab: string | null, skinId?: string, kind?: Kind): ItemEntity | undefined {
       const spec = prefab === null ? undefined : INVENTORY_ITEM_SPECS[prefab];
       const slot = kind ?? spec?.equippable ?? 'hand';
       unequip(slot);
-      if (prefab === null) { return undefined; }
-      if (!spec) { throw new Error(`Unknown item: ${prefab}`); }
+      if (prefab === null) {
+        return undefined;
+      }
+      if (!spec) {
+        throw new Error(`Unknown item: ${prefab}`);
+      }
       const item = registry.create({ itemId: prefab, count: 1, ...(skinId === undefined ? {} : { skinId }) });
       item.configure(spec);
       worn.set(slot, item);
@@ -53,6 +64,11 @@ export function createPlayerEquipper(animation: PlayerInstance) {
       owner.PushEvent('equip', { item, eslot: ESLOTS[slot] });
       return item;
     },
-    dispose() { for (const kind of [...worn.keys()]) { unequip(kind); } registry.dispose(); },
+    dispose() {
+      for (const kind of [...worn.keys()]) {
+        unequip(kind);
+      }
+      registry.dispose();
+    },
   };
 }

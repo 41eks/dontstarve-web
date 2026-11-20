@@ -31,16 +31,24 @@ export async function checkDstLocalLighting() {
   const pixels = new Uint8Array(4);
   const sample = (x: number, z: number) => {
     const point = new THREE.Vector3(x, 0.1, z).project(camera);
-    renderer.getContext().readPixels(
-      Math.floor((point.x + 1) * 200), Math.floor((point.y + 1) * 200),
-      1, 1, renderer.getContext().RGBA, renderer.getContext().UNSIGNED_BYTE, pixels,
-    );
+    renderer
+      .getContext()
+      .readPixels(
+        Math.floor((point.x + 1) * 200),
+        Math.floor((point.y + 1) * 200),
+        1,
+        1,
+        renderer.getContext().RGBA,
+        renderer.getContext().UNSIGNED_BYTE,
+        pixels,
+      );
     return Array.from(pixels.slice(0, 3));
   };
   const draw = () => lighting.render(scene, camera);
   draw();
   const night = { phase: lighting.getPhase(), season: lighting.getSeason(), centre: sample(0, 0), far: sample(15, 0) };
-  const torchLight = spawnLightEntity('torchfire_light', ownerInstance); torchLight.instance.light.set(TORCH_LIGHT);
+  const torchLight = spawnLightEntity('torchfire_light', ownerInstance);
+  torchLight.instance.light.set(TORCH_LIGHT);
   const removeTorchLight = torchLight.remove;
   // Its display lists the declared light once the declaration settles.
   await new Promise(resolve => setTimeout(resolve, 0));

@@ -14,27 +14,49 @@ import type { WorldContext } from './worldContext';
 
 export const CHESSJUNK_IDS = ['chessjunk1', 'chessjunk2', 'chessjunk3'] as const;
 /** chessjunk.lua makes each pile with its style number. */
-const CHESSJUNK_STYLE = { chessjunk1: 1, chessjunk2: 2, chessjunk3: 3 } as const satisfies Record<typeof CHESSJUNK_IDS[number], 1 | 2 | 3>;
-export type ChessJunkId = typeof CHESSJUNK_IDS[number];
+const CHESSJUNK_STYLE = { chessjunk1: 1, chessjunk2: 2, chessjunk3: 3 } as const satisfies Record<
+  (typeof CHESSJUNK_IDS)[number],
+  1 | 2 | 3
+>;
+export type ChessJunkId = (typeof CHESSJUNK_IDS)[number];
 /** chessjunk.lua OnSave: repaired, repairerid and repairerchar. */
-export interface ChessJunkSaveState { repaired: true; repairerid?: string; repairerchar?: string }
+export interface ChessJunkSaveState {
+  repaired: true;
+  repairerid?: string;
+  repairerchar?: string;
+}
 export interface ChessJunkWorld {
   scheduler: GameTimeScheduler;
   fx?: WorldContext['fx'];
   dropLoot?: WorldContext['dropLoot'];
 }
-interface Repairer { readonly prefab?: string; readonly userid?: string }
+interface Repairer {
+  readonly prefab?: string;
+  readonly userid?: string;
+}
 
 const MAXHITS = 6;
 
 SetSharedLootTable('chess_junk', [
-  ['trinket_6', 1], ['trinket_6', .55], ['trinket_1', .25], ['gears', .25], ['redgem', .25],
-  ['greengem', .05], ['yellowgem', .05], ['purplegem', .05], ['orangegem', .05], ['thulecite', .01],
+  ['trinket_6', 1],
+  ['trinket_6', 0.55],
+  ['trinket_1', 0.25],
+  ['gears', 0.25],
+  ['redgem', 0.25],
+  ['greengem', 0.05],
+  ['yellowgem', 0.05],
+  ['purplegem', 0.05],
+  ['orangegem', 0.05],
+  ['thulecite', 0.01],
 ]);
 
 /** BasePile's inst.style, inst.repaired, inst.repairerid and inst.repairerchar. */
 export class ChessJunkInstance extends PrefabInstance {
-  declare readonly components: PrefabInstance['components'] & { workable: Workable; lootdropper: LootDropper; repairable: Repairable };
+  declare readonly components: PrefabInstance['components'] & {
+    workable: Workable;
+    lootdropper: LootDropper;
+    repairable: Repairable;
+  };
   readonly style: 1 | 2 | 3;
   repaired = false;
   repairerid?: string;
@@ -51,7 +73,7 @@ export class ChessJunkInstance extends PrefabInstance {
  * bishop/rook/knight_nightmare are not ported, so no scion follows.
  */
 function OnPlayerRepaired(inst: ChessJunkInstance): void {
-  inst.components.lootdropper.AddChanceLoot('gears', .1);
+  inst.components.lootdropper.AddChanceLoot('gears', 0.1);
   inst.components.lootdropper.DropLoot();
   inst.remove();
 }
@@ -64,7 +86,7 @@ function OnRepaired(inst: ChessJunkInstance, doer?: Repairer): void {
   } else {
     inst.sprite.start(`hit${inst.style}`);
     inst.SoundEmitter!.PlaySound('dontstarve/common/chesspile_ressurect');
-    inst.DoTaskInTime(.7, OnPlayerRepaired);
+    inst.DoTaskInTime(0.7, OnPlayerRepaired);
     inst.repaired = true;
     if (doer?.userid) {
       inst.repairerid = doer.userid;
@@ -91,15 +113,21 @@ function OnHit(inst: ChessJunkInstance): void {
 }
 
 function OnSave(pile: ChessJunkInstance, data: EntityPersistData): void {
-  if (!pile.repaired) { return; }
-  data.chessJunk = { repaired: true,
-    ...pile.repairerid === undefined ? {} : { repairerid: pile.repairerid },
-    ...pile.repairerchar === undefined ? {} : { repairerchar: pile.repairerchar } };
+  if (!pile.repaired) {
+    return;
+  }
+  data.chessJunk = {
+    repaired: true,
+    ...(pile.repairerid === undefined ? {} : { repairerid: pile.repairerid }),
+    ...(pile.repairerchar === undefined ? {} : { repairerchar: pile.repairerchar }),
+  };
 }
 
 function OnLoad(pile: ChessJunkInstance, data: EntityPersistData): void {
   const saved = data.chessJunk;
-  if (!saved?.repaired) { return; }
+  if (!saved?.repaired) {
+    return;
+  }
   pile.components.workable.SetWorkLeft(MAXHITS);
   OnRepaired(pile);
   pile.repairerid = saved.repairerid;
@@ -139,13 +167,22 @@ function BasePile(world: ChessJunkWorld, prefab: ChessJunkId): ChessJunkInstance
 }
 
 /** chessjunk1–3. The random `chessjunk` and the ruins respawners are not ported. */
-export function chessJunkPrefabs(world: ChessJunkWorld): Readonly<Record<ChessJunkId, PrefabEntityDefinition<ChessJunkInstance>>> {
+export function chessJunkPrefabs(
+  world: ChessJunkWorld,
+): Readonly<Record<ChessJunkId, PrefabEntityDefinition<ChessJunkInstance>>> {
   const pile = (prefab: ChessJunkId): PrefabEntityDefinition<ChessJunkInstance> => ({
     fn: () => BasePile(world, prefab),
-    assets: { animationArchive: 'chessmonster_ruins.zip', buildArchives: ['chessmonster_ruins.zip'], bank: 'chessmonster_ruins' },
+    assets: {
+      animationArchive: 'chessmonster_ruins.zip',
+      buildArchives: ['chessmonster_ruins.zip'],
+      bank: 'chessmonster_ruins',
+    },
     assetOptions: { instancedAnimations: 'all' },
     physics: { make: MakeObstaclePhysics, radius: 1.2 },
     minimapIcon: 'chessjunk.png',
   });
-  return Object.fromEntries(CHESSJUNK_IDS.map(id => [id, pile(id)])) as Record<ChessJunkId, PrefabEntityDefinition<ChessJunkInstance>>;
+  return Object.fromEntries(CHESSJUNK_IDS.map(id => [id, pile(id)])) as Record<
+    ChessJunkId,
+    PrefabEntityDefinition<ChessJunkInstance>
+  >;
 }

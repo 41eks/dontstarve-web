@@ -6,7 +6,7 @@ import { MakeObstaclePhysics } from './standardcomponents';
 export const PILLAR_RUINS_ID = 'pillar_ruins' as const;
 /** pillar.lua's other pillar(name, true) entries: identical except for the name that is their bank and build. */
 export const CAVE_PILLAR_IDS = ['pillar_cave', 'pillar_cave_flintless', 'pillar_cave_rock', 'pillar_algae'] as const;
-export type CavePillarId = typeof CAVE_PILLAR_IDS[number];
+export type CavePillarId = (typeof CAVE_PILLAR_IDS)[number];
 const PHYSICS_RADIUS = 2.35;
 
 /** pillar.lua makefn("pillar_ruins", true). Its shake listener (doshake) is not ported. */
@@ -30,7 +30,9 @@ function createCavePillar(prefab: CavePillarId, position: ReadonlyVector3): Pref
   return inst;
 }
 
-export function pillarPrefabs(): Readonly<Record<typeof PILLAR_RUINS_ID | CavePillarId, PrefabEntityDefinition<PrefabInstance>>> {
+export function pillarPrefabs(): Readonly<
+  Record<typeof PILLAR_RUINS_ID | CavePillarId, PrefabEntityDefinition<PrefabInstance>>
+> {
   const cavePillar = (prefab: CavePillarId): PrefabEntityDefinition<PrefabInstance> => ({
     fn: position => createCavePillar(prefab, position),
     assets: { animationArchive: `${prefab}.zip`, buildArchives: [`${prefab}.zip`], bank: prefab },

@@ -3,7 +3,12 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import { FishingRod, type FishingWorld } from '../../componets/src/fishingrod';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
-import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
+import {
+  handEquipmentVisual,
+  skinArchive,
+  type EquipmentVisualFactory,
+  type HeldEquipFunctions,
+} from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { AddFiniteUses, AddWeapon, WILSON_ATTACK } from './handTool';
 
@@ -14,11 +19,15 @@ export const FISHINGROD_WAIT_TIMES = [4, 40] as const;
 export const FISHINGROD_STRAIN_TIMES = [0, 5] as const;
 /** SGwilson.lua fishing states. */
 export const FISHING_SOUNDS = [
-  'dontstarve/common/fishingpole_cast', 'dontstarve/common/fishingpole_baitsplash', 'dontstarve/common/fishingpole_fishinwater',
-  'dontstarve/common/fishingpole_fishcaught', 'dontstarve/common/fishingpole_fishland', 'dontstarve/common/fishingpole_lostrod',
+  'dontstarve/common/fishingpole_cast',
+  'dontstarve/common/fishingpole_baitsplash',
+  'dontstarve/common/fishingpole_fishinwater',
+  'dontstarve/common/fishingpole_fishcaught',
+  'dontstarve/common/fishingpole_fishland',
+  'dontstarve/common/fishingpole_lostrod',
 ] as const;
 
-const FISHINGROD_DAMAGE = WILSON_ATTACK * .125; // tuning.lua FISHINGROD_DAMAGE
+const FISHINGROD_DAMAGE = WILSON_ATTACK * 0.125; // tuning.lua FISHINGROD_DAMAGE
 
 /**
  * fishingrod.lua fn: weapon, and finiteuses that removes the rod with each collected fish costing one use. The fishingrod
@@ -31,7 +40,9 @@ export function configureFishingRodEntity(inst: ItemEntity): void {
   weapon.attackwear = 4;
   AddFiniteUses(inst, FISHINGROD_USES);
   inst.component('fishingrod_uses', () => {
-    const stop = inst.ListenForEvent('fishingcollect', () => { inst.components.finiteuses.use(1); });
+    const stop = inst.ListenForEvent('fishingcollect', () => {
+      inst.components.finiteuses.use(1);
+    });
     return { dispose: stop };
   });
 }
@@ -43,7 +54,12 @@ export interface FishingRodWorld extends FishingWorld {
 }
 
 /** The rod component is attached when the rod is first held in a running scene, which supplies its scheduler and world. */
-export function getFishingRod(entity: ItemEntity, scheduler: GameTimeScheduler, world: FishingWorld, updates?: ComponentUpdates): FishingRod {
+export function getFishingRod(
+  entity: ItemEntity,
+  scheduler: GameTimeScheduler,
+  world: FishingWorld,
+  updates?: ComponentUpdates,
+): FishingRod {
   let rod = entity.components.fishingrod;
   if (!rod) {
     rod = addComponent(entity, 'fishingrod', FishingRod, scheduler, world, updates);
@@ -57,15 +73,19 @@ export function getFishingRod(entity: ItemEntity, scheduler: GameTimeScheduler, 
 /** Holding the rod in the scene gives it its fishingrod component; the rod stops fishing once it leaves the hand. */
 export function createFishingRodLifecycle(entity: ItemEntity, world: FishingRodWorld): HeldEquipFunctions {
   return {
-    onequip() { getFishingRod(entity, world.scheduler, world, world.componentUpdates); },
-    onunequip() { entity.components.fishingrod?.StopFishing(); },
+    onequip() {
+      getFishingRod(entity, world.scheduler, world, world.componentUpdates);
+    },
+    onunequip() {
+      entity.components.fishingrod?.StopFishing();
+    },
   };
 }
 
 /** fishingrod.lua onequip: swap_object plus the fishingline and FX_fishing symbols from swap_fishingrod. */
 export const fishingRodVisual: EquipmentVisualFactory = item => {
   const skin = skinArchive('fishingrod', GROUND_ITEM_DEFINITIONS.fishingrod.skinArchives, item.skinId);
-  const visual = handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_fishingrod'], 'swap_fishingrod');
+  const visual = handEquipmentVisual(item, [...(skin ? [skin] : []), 'swap_fishingrod'], 'swap_fishingrod');
   let owner: Parameters<typeof visual.onequip>[0] | undefined;
   return {
     onequip(equipper) {

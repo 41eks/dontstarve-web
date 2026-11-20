@@ -18,9 +18,11 @@ useTestTileMap();
 const SYMBOL = 'swap_acidglob1';
 
 it('owns position, scale and degree heading before display and preserves them across replacement displays', () => {
-  const dirty = vi.fn(), transform = new Transform(dirty);
+  const dirty = vi.fn(),
+    transform = new Transform(dirty);
   const instance = new PrefabInstance('transform-only', new SpriteState({ name: '', none: true }), transform);
-  const position = instance.position, scale = instance.scale;
+  const position = instance.position,
+    scale = instance.scale;
   instance.setPosition(3, 0, 6);
   instance.setRotation(90);
   instance.setScale(2);
@@ -31,7 +33,7 @@ it('owns position, scale and degree heading before display and preserves them ac
   const camera = bindTestCamera();
   const first = createEmptyEntity(instance.prefab, undefined, { instance, billboard: true });
   expect(first.display.model).toBe(transform.model);
-  const cameraRotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -.3);
+  const cameraRotation = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -0.3);
   camera.turn(cameraRotation);
   expect(instance.rotation).toBeCloseTo(90);
   expect(first.display.model.children[0].getWorldQuaternion(new Quaternion()).angleTo(cameraRotation)).toBeCloseTo(0);
@@ -46,12 +48,17 @@ it('owns position, scale and degree heading before display and preserves them ac
     expect(position.toArray()).toEqual([3, 0, 6]);
     expect(scale.toArray()).toEqual([2, 2, 2]);
     expect(instance.rotation).toBeCloseTo(90);
-  } finally { second.display.dispose(); instance.remove(); }
+  } finally {
+    second.display.dispose();
+    instance.remove();
+  }
 });
 
 it('only writes a position through the transform, which keeps the tile tracker and the entity root in step', () => {
-  const transform = new Transform(), root = transform.model as TransformRoot;
-  const tile = transform.tileTracker.tile, origin = tile.peek();
+  const transform = new Transform(),
+    root = transform.model as TransformRoot;
+  const tile = transform.tileTracker.tile,
+    origin = tile.peek();
   updateSceneMatrices(root);
   const typeChecked = () => {
     // @ts-expect-error A position is read-only; a direct write would miss the tracker and the dirty mark.
@@ -66,7 +73,10 @@ it('only writes a position through the transform, which keeps the tile tracker a
   expect(transform.position.x).toBe(24);
   expect(root.transformDirty).toBe(true);
   // Writes refresh the tile once per interval, not on each write.
-  for (let write = 1; write < 60; write++) { expect(tile.peek()).toBe(origin); transform.copyPosition(new Vector3(24, 0, 0)); }
+  for (let write = 1; write < 60; write++) {
+    expect(tile.peek()).toBe(origin);
+    transform.copyPosition(new Vector3(24, 0, 0));
+  }
   expect(tile.peek()).not.toBe(origin);
   transform.setPosition(0, 0, 0);
   expect(tile.peek()).not.toBe(origin);
@@ -76,9 +86,11 @@ it('only writes a position through the transform, which keeps the tile tracker a
 });
 
 it('gives every entity a TransformRoot and marks it after logical writes and a display-local change', () => {
-  const transform = new Transform(), root = transform.model as TransformRoot;
+  const transform = new Transform(),
+    root = transform.model as TransformRoot;
   expect(root).toBeInstanceOf(TransformRoot);
-  const point = new Group(); root.add(point);
+  const point = new Group();
+  root.add(point);
   updateSceneMatrices(root);
   expect(root.transformDirty).toBe(false);
   transform.setPosition(3, 0, 6);
@@ -93,20 +105,33 @@ it('gives every entity a TransformRoot and marks it after logical writes and a d
 });
 
 it('keeps a symbol follower on a camera-facing archive sprite, whatever the camera and the entity heading', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const assets = new ArchiveSpriteAssets();
-  const drawn = await createSharedArchiveSprite(assets, { animationArchive: 'mushroom_tree_tall.zip', buildArchives: ['mushroom_tree_tall.zip'],
-    bank: 'mushroom_tree', animation: 'idle_loop', loop: true });
+  const drawn = await createSharedArchiveSprite(assets, {
+    animationArchive: 'mushroom_tree_tall.zip',
+    buildArchives: ['mushroom_tree_tall.zip'],
+    bank: 'mushroom_tree',
+    animation: 'idle_loop',
+    loop: true,
+  });
   const world = bindTestCamera();
   const instance = new PrefabInstance('archive-follower-host', new SpriteState({ name: 'idle_loop', billboard: true }));
   instance.setPosition(3, 0, 6);
-  const display = new PrefabDisplay({ root: instance.transform.model, name: 'host', sprite: instance.sprite,
-    art: { archive: { create: () => drawn, initial: drawn } } });
+  const display = new PrefabDisplay({
+    root: instance.transform.model,
+    name: 'host',
+    sprite: instance.sprite,
+    art: { archive: { create: () => drawn, initial: drawn } },
+  });
   const follower = instance.sprite.followSymbol(SYMBOL, 20, -110);
   const turned = (radians: number) => new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), radians);
   /** The follower's world point beside the same symbol point read from the drawn sprite itself. */
   const points = (camera: Quaternion) => {
-    world.turn(camera); display.update(0);
+    world.turn(camera);
+    display.update(0);
     const follows = follower.node.getWorldPosition(new Vector3());
     const symbol = new Vector3();
     expect(drawn.getSymbolPosition(SYMBOL, 20, -110, symbol)).toBe(true);
@@ -123,25 +148,57 @@ it('keeps a symbol follower on a camera-facing archive sprite, whatever the came
     expect(headed.follows.distanceTo(first.follows)).toBeCloseTo(0);
     expect(headed.follows.distanceTo(headed.symbol)).toBeCloseTo(0);
     const other = points(turned(-Math.PI / 4));
-    expect(other.follows.distanceTo(first.follows)).toBeGreaterThan(.01);
+    expect(other.follows.distanceTo(first.follows)).toBeGreaterThan(0.01);
     expect(other.follows.distanceTo(other.symbol)).toBeCloseTo(0);
     expect(follower.node.parent).toBe(display.model);
-  } finally { follower.remove(); display.dispose(); instance.remove(); assets.dispose(); world.unbind(); vi.unstubAllGlobals(); }
+  } finally {
+    follower.remove();
+    display.dispose();
+    instance.remove();
+    assets.dispose();
+    world.unbind();
+    vi.unstubAllGlobals();
+  }
 });
 
 it('lifts the drawn archive sprite off a grounded entity, across deferred art and reloading', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const assets = new ArchiveSpriteAssets();
-  const settle = async (display: PrefabDisplay) => { await new Promise(resolve => setTimeout(resolve, 0)); await display.artLoaded(); display.update(0); };
+  const settle = async (display: PrefabDisplay) => {
+    await new Promise(resolve => setTimeout(resolve, 0));
+    await display.artLoaded();
+    display.update(0);
+  };
   // A fresh resource owner each time: the sprite is drawn only after its source has loaded.
   const draw = (name: string) => {
     const instance = new PrefabInstance(name, new SpriteState({ name: 'idle_loop', billboard: true }));
-    const display = new PrefabDisplay({ root: instance.transform.model, name, sprite: instance.sprite, alignBottom: true,
-      art: { archive: { create: () => createSharedArchiveSprite(assets, { animationArchive: 'mushroom_tree_tall.zip', buildArchives: ['mushroom_tree_tall.zip'], bank: 'mushroom_tree', animation: 'idle_loop', loop: true }) } } });
+    const display = new PrefabDisplay({
+      root: instance.transform.model,
+      name,
+      sprite: instance.sprite,
+      alignBottom: true,
+      art: {
+        archive: {
+          create: () =>
+            createSharedArchiveSprite(assets, {
+              animationArchive: 'mushroom_tree_tall.zip',
+              buildArchives: ['mushroom_tree_tall.zip'],
+              bank: 'mushroom_tree',
+              animation: 'idle_loop',
+              loop: true,
+            }),
+        },
+      },
+    });
     return { instance, display };
   };
-  const resting = draw('resting'), { instance, display } = draw('lifted');
-  const root = instance.transform.model, fx = new Group();
+  const resting = draw('resting'),
+    { instance, display } = draw('lifted');
+  const root = instance.transform.model,
+    fx = new Group();
   const drawnHeight = () => root.children.find(child => child !== fx)!.position.y;
   try {
     // An attached child comes before a sprite that is drawn later.
@@ -168,14 +225,23 @@ it('lifts the drawn archive sprite off a grounded entity, across deferred art an
     display.update(0);
     expect(drawnHeight()).toBeCloseTo(rest + 7);
     expect(instance.position.y).toBe(0);
-  } finally { display.dispose(); instance.remove(); resting.display.dispose(); resting.instance.remove(); assets.dispose(); vi.unstubAllGlobals(); }
+  } finally {
+    display.dispose();
+    instance.remove();
+    resting.display.dispose();
+    resting.instance.remove();
+    assets.dispose();
+    vi.unstubAllGlobals();
+  }
 });
 
 it('shares one activity query and tracker, retaining the result until the final consumer leaves', () => {
-  const transform = new Transform(), playerActive = createSignal(true);
+  const transform = new Transform(),
+    playerActive = createSignal(true);
   const origin = GetTileKeyAtPoint(new Vector3());
   const query = vi.fn(tile => createMemo(() => playerActive.get() && tile.get() === origin));
-  const firstCleanup: (() => void)[] = [], secondCleanup: (() => void)[] = [];
+  const firstCleanup: (() => void)[] = [],
+    secondCleanup: (() => void)[] = [];
   const first = transform.getTileActivity(query, stop => firstCleanup.push(stop))!;
   const second = transform.getTileActivity(query, stop => secondCleanup.push(stop))!;
   const dispose = vi.spyOn(first, 'dispose');
@@ -204,9 +270,12 @@ it('turns the visual only when the camera, the root or an ancestor turned', () =
   const { display } = createEmptyEntity(instance.prefab, undefined, { instance, billboard: true });
   const parent = new Group();
   display.mount(parent);
-  const faceCamera = vi.spyOn((display as unknown as { engine: { faceCamera(rotation: Quaternion): void } }).engine, 'faceCamera');
+  const faceCamera = vi.spyOn(
+    (display as unknown as { engine: { faceCamera(rotation: Quaternion): void } }).engine,
+    'faceCamera',
+  );
   const worldQuery = vi.spyOn(display.model, 'getWorldQuaternion');
-  const camera = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -.3);
+  const camera = new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), -0.3);
   const facesCamera = () => display.model.children[0].getWorldQuaternion(new Quaternion()).angleTo(camera);
   try {
     world.turn(camera);
@@ -228,11 +297,16 @@ it('turns the visual only when the camera, the root or an ancestor turned', () =
     expect(faceCamera).toHaveBeenCalledTimes(2);
     expect(facesCamera()).toBeCloseTo(0);
     expect(instance.rotation).toBeCloseTo(90);
-  } finally { display.dispose(); instance.remove(); world.unbind(); }
+  } finally {
+    display.dispose();
+    instance.remove();
+    world.unbind();
+  }
 });
 
 it('draws an entity from its sprite json alone, whose status a child takes from its owner by sleeping and waking with it', () => {
-  const owner = createEmptyEntity('owner'), child = createEmptyEntity('fx', owner.instance.status);
+  const owner = createEmptyEntity('owner'),
+    child = createEmptyEntity('fx', owner.instance.status);
   const scene = new Group().add(owner.display.model, child.display.model);
   expect(child.instance.sprite.sprite.peek().status).toBe('active');
   owner.instance.setActive(false);

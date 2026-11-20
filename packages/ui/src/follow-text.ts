@@ -23,18 +23,29 @@ export function createFollowText({ camera, canvas, target, height, line }: Follo
   element.hidden = true;
   document.body.append(element);
   Object.assign(element.style, {
-    position: 'fixed', left: '0', top: '0', pointerEvents: 'none', zIndex: '5', whiteSpace: 'pre-line', textAlign: 'center',
-    color: '#fff', font: '24px serif', textShadow: '0 0 3px #000, 0 1px 2px #000', transform: 'translate(-50%, -100%)',
+    position: 'fixed',
+    left: '0',
+    top: '0',
+    pointerEvents: 'none',
+    zIndex: '5',
+    whiteSpace: 'pre-line',
+    textAlign: 'center',
+    color: '#fff',
+    font: '24px serif',
+    textShadow: '0 0 3px #000, 0 1px 2px #000',
+    transform: 'translate(-50%, -100%)',
   });
   const point = new THREE.Vector3();
   const update = () => {
-    if (element.hidden) { return; }
+    if (element.hidden) {
+      return;
+    }
     point.copy(target.position);
     point.y += height;
     point.project(camera);
     const bounds = canvas.getBoundingClientRect();
-    element.style.left = `${bounds.left + (point.x + 1) * bounds.width / 2}px`;
-    element.style.top = `${bounds.top + (1 - point.y) * bounds.height / 2}px`;
+    element.style.left = `${bounds.left + ((point.x + 1) * bounds.width) / 2}px`;
+    element.style.top = `${bounds.top + ((1 - point.y) * bounds.height) / 2}px`;
   };
   const stop = createEffect(() => {
     const text = line.get();
@@ -42,5 +53,12 @@ export function createFollowText({ camera, canvas, target, height, line }: Follo
     element.textContent = text ?? '';
     update();
   });
-  return { element, update, dispose() { stop(); element.remove(); } };
+  return {
+    element,
+    update,
+    dispose() {
+      stop();
+      element.remove();
+    },
+  };
 }

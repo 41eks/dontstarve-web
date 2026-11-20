@@ -30,30 +30,44 @@ export class FireFxHost {
   }
 
   /** Each fire is spawned at once; its display draws it when the shared art has loaded. */
-  static create(assetBaseUrl?: string, updates?: ComponentUpdates): FireFxHost { return new FireFxHost(assetBaseUrl, updates); }
+  static create(assetBaseUrl?: string, updates?: ComponentUpdates): FireFxHost {
+    return new FireFxHost(assetBaseUrl, updates);
+  }
 
   /** SpawnPrefab("fire") for a Burnable:SpawnFX on `owner`. */
   spawn(owner: PrefabInstance): Fire {
-    if (this.disposed) { throw new Error('Fire effects have been disposed'); }
+    if (this.disposed) {
+      throw new Error('Fire effects have been disposed');
+    }
     return this.add(new Fire(this.source, owner, this.updates));
   }
 
   /** SpawnPrefab("campfirefire") for a Burnable:SpawnFX on `owner`. */
   spawnCampfire(owner: PrefabInstance, data: BurnFXData): CampfireFire {
-    if (this.disposed) { throw new Error('Fire effects have been disposed'); }
+    if (this.disposed) {
+      throw new Error('Fire effects have been disposed');
+    }
     return this.add(new CampfireFire(this.campfireSource, owner, data, this.updates));
   }
 
   private add<Effect extends Fire | CampfireFire>(fire: Effect): Effect {
-    for (const other of this.fires) { if (other.instance.status.peek() === 'removed') { this.fires.delete(other); } }
+    for (const other of this.fires) {
+      if (other.instance.status.peek() === 'removed') {
+        this.fires.delete(other);
+      }
+    }
     this.fires.add(fire);
     return fire;
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
-    for (const fire of this.fires) { fire.Remove(); }
+    for (const fire of this.fires) {
+      fire.Remove();
+    }
     this.fires.clear();
     this.resources.dispose();
   }
@@ -82,32 +96,55 @@ export class BurnableBinding {
   private readonly inst: PrefabInstance;
   private disposed = false;
 
-  constructor(inst: BurnableInst, spec: BurnSpec, env: Pick<BurnEnvironment, 'fire'> & Partial<Pick<BurnEnvironment, 'scheduler'>>) {
+  constructor(
+    inst: BurnableInst,
+    spec: BurnSpec,
+    env: Pick<BurnEnvironment, 'fire'> & Partial<Pick<BurnEnvironment, 'scheduler'>>,
+  ) {
     const owner = inst instanceof PrefabInstance ? inst : prefabInstance((inst as { model?: THREE.Object3D }).model);
-    if (!owner) { throw new Error('Burnable fire effects need a logical prefab owner'); }
+    if (!owner) {
+      throw new Error('Burnable fire effects need a logical prefab owner');
+    }
     this.inst = owner;
     this.burnable = addComponent(owner, 'burnable', Burnable, env.scheduler);
     this.burnable.SetFXLevel(spec.fxLevel);
     this.burnable.SetBurnTime(spec.burnTime);
-    this.burnable.SetFXSpawner(data => data.prefab === FIRE_ID ? env.fire.spawn(owner) : undefined);
+    this.burnable.SetFXSpawner(data => (data.prefab === FIRE_ID ? env.fire.spawn(owner) : undefined));
     this.burnable.AddBurnFX(FIRE_ID, { x: 0, y: 0, z: 0 });
     this.burnable.SetOnIgniteFn(spec.onIgnite ? () => spec.onIgnite!() : undefined);
     this.burnable.SetOnExtinguishFn(spec.onExtinguish ? () => spec.onExtinguish!() : undefined);
     this.burnable.SetOnBurntFn(() => spec.onBurnt());
     // propagator.lua OnUpdate: TheSim:FindEntities(x, y, z, prop_range, nil, TARGET_CANT_TAGS).
-    this.propagator = addComponent(owner, 'propagator', Propagator, spec.propagator, radius =>
-      owner.TheSim.FindEntities(owner.position, radius, undefined, PROPAGATOR_CANT_TAGS), TILE_SIZE / 4, env.scheduler, getBoundWatchWorldContent(), spec.propagatorValues);
+    this.propagator = addComponent(
+      owner,
+      'propagator',
+      Propagator,
+      spec.propagator,
+      radius => owner.TheSim.FindEntities(owner.position, radius, undefined, PROPAGATOR_CANT_TAGS),
+      TILE_SIZE / 4,
+      env.scheduler,
+      getBoundWatchWorldContent(),
+      spec.propagatorValues,
+    );
   }
 
   /** StartUpdatingComponent of the fire's firefx: its light flickers each frame. */
-  update(dt: number): void { this.burnable.UpdateFX(dt); }
+  update(dt: number): void {
+    this.burnable.UpdateFX(dt);
+  }
 
   /** RemoveComponent("burnable") / RemoveComponent("propagator"): extinguishes, without the extinguish callback. */
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     this.burnable.SetOnExtinguishFn(undefined);
-    if (this.inst.components.burnable === this.burnable) { removeComponent(this.inst, 'burnable'); }
-    if (this.inst.components.propagator === this.propagator) { removeComponent(this.inst, 'propagator'); }
+    if (this.inst.components.burnable === this.burnable) {
+      removeComponent(this.inst, 'burnable');
+    }
+    if (this.inst.components.propagator === this.propagator) {
+      removeComponent(this.inst, 'propagator');
+    }
   }
 }

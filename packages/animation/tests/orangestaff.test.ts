@@ -23,17 +23,29 @@ import { createInventoryStore, testInventoryStore } from './testInventory';
 import { testPlayer } from './testPlayer';
 import { wilsonPlayer, played } from './wilsonPlayer';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {} })),
+}));
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
-afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
 
 const FRAMES = 1 / 30;
 
 /** An orangestaff in the player's hand; land is x < 80 and a blocker stands at (40, 0, 40). */
 function fixture(remainingUses?: number) {
-  const hand = equipmentSlotAddress('hand'), bag = inventorySlotAddress(0);
-  const store = testInventoryStore([{ address: hand, slot: new HandSlot() }, { address: bag, slot: new InventorySlot() }],
-    INVENTORY_ITEM_SPECS);
+  const hand = equipmentSlotAddress('hand'),
+    bag = inventorySlotAddress(0);
+  const store = testInventoryStore(
+    [
+      { address: hand, slot: new HandSlot() },
+      { address: bag, slot: new InventorySlot() },
+    ],
+    INVENTORY_ITEM_SPECS,
+  );
   const world: BlinkStaffWorld = {
     map: {
       isAboveGroundAtPoint: point => point.x < 80,
@@ -71,7 +83,9 @@ it('is a cane that speeds its wearer up, hits for cane damage without wearing ou
     expect(collectPointActions(s.staff, s.doer as never, new THREE.Vector3(40, 0, 40), true)).toEqual([]);
     s.store.transfer(s.hand, inventorySlotAddress(0), 1);
     expect(GetSpeedMultiplier(s.player)).toBe(1);
-  } finally { s.store.dispose(); }
+  } finally {
+    s.store.dispose();
+  }
 });
 
 it('blinks on quicktele frame 8 and reappears at the point a quarter second later', () => {
@@ -83,7 +97,7 @@ it('blinks on quicktele frame 8 and reappears at the point a quarter second late
     expect(s.world.spawnFx).not.toHaveBeenCalled();
     s.player.sg.update(FRAMES);
     // Blink: puffs at the start, the presound, the caster hidden, sanity and one use.
-    expect(s.world.spawnFx).toHaveBeenNthCalledWith(1, 'sand_puff_large_back', new THREE.Vector3(0, -.1, 0));
+    expect(s.world.spawnFx).toHaveBeenNthCalledWith(1, 'sand_puff_large_back', new THREE.Vector3(0, -0.1, 0));
     expect(s.world.spawnFx).toHaveBeenNthCalledWith(2, 'sand_puff_large_front', new THREE.Vector3(0, 0, 0));
     expect(played(s.player)).toEqual(['dontstarve/wilson/attack_weapon', 'dontstarve/common/staff_blink']);
     expect([s.player.IsVisible(), s.player.sg.hasStateTag('noattack')]).toEqual([false, true]);
@@ -92,14 +106,16 @@ it('blinks on quicktele frame 8 and reappears at the point a quarter second late
     // Frame 18 keeps busy while hidden; OnBlinked ends it.
     s.player.sg.update(10 * FRAMES);
     expect(s.player.sg.hasStateTag('busy')).toBe(true);
-    s.scheduler.advance(.24);
+    s.scheduler.advance(0.24);
     expect(s.player.position.x).toBe(0);
-    s.scheduler.advance(.01);
+    s.scheduler.advance(0.01);
     expect([s.player.position.x, s.player.position.z, s.player.IsVisible()]).toEqual([30, -6, true]);
     expect(s.player.sg.hasStateTag('busy')).toBe(false);
     expect(s.world.spawnFx).toHaveBeenLastCalledWith('sand_puff_large_front', new THREE.Vector3(30, 0, -6));
     expect(played(s.player).at(-1)).toBe('dontstarve/common/staff_blink');
-  } finally { s.store.dispose(); }
+  } finally {
+    s.store.dispose();
+  }
 });
 
 it('refuses an impassable point and shows the player again when quicktele is interrupted', () => {
@@ -118,16 +134,36 @@ it('refuses an impassable point and shows the player again when quicktele is int
     expect(s.player.IsVisible()).toBe(false);
     s.player.sg.GoToState('wakeup');
     expect(s.player.IsVisible()).toBe(true);
-  } finally { s.store.dispose(); }
+  } finally {
+    s.store.dispose();
+  }
 });
 
 it('is given by c_give, spawned by c_spawn, and keeps its uses through c_save', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group();
-  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
-    '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+  const inventory = createInventoryStore([]),
+    scene = new THREE.Scene(),
+    player = new THREE.Group();
+  const ground = new ItemWorldFixture(
+    scene,
+    new THREE.PerspectiveCamera(),
+    { domElement: new EventTarget() } as THREE.WebGLRenderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    player,
+  );
   const registry = new EntityRegistry();
-  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `dug:${id}`));
+  registry.register(
+    PREFAB_DEFINITIONS.groundItems,
+    ground.registration(
+      () => player.position,
+      id => `dug:${id}`,
+    ),
+  );
   try {
     expect((await executeDebugCommand('c_spawn("orangestaff")', inventory, id => registry.spawn(id))).ok).toBe(true);
     expect(Object.keys(itemEntities(ground.exportEntities()))).toEqual(['orangestaff']);
@@ -135,8 +171,22 @@ it('is given by c_give, spawned by c_spawn, and keeps its uses through c_save', 
     const staff = inventory.FindItem(item => item.prefab === 'orangestaff')!;
     expect(staff.components.finiteuses.use(3)).toBe(true);
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-    const saved = deserializeSave(serializeSave(template, { entities: {}, inventory: inventory.exportSaved(), elapsedSeconds: 0,
-      playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG), SAVE_CATALOG);
+    const saved = deserializeSave(
+      serializeSave(
+        template,
+        {
+          entities: {},
+          inventory: inventory.exportSaved(),
+          elapsedSeconds: 0,
+          playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        },
+        SAVE_CATALOG,
+      ),
+      SAVE_CATALOG,
+    );
     expect(JSON.stringify(saved.players.local)).toMatch(/"prefab":"orangestaff".*"finiteuses":\{"uses":17\}/);
-  } finally { registry.dispose(); inventory.dispose(); }
+  } finally {
+    registry.dispose();
+    inventory.dispose();
+  }
 });

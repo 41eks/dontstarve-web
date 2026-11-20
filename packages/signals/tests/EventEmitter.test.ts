@@ -4,13 +4,15 @@ import { EventEmitter } from '../src/EventEmitter';
 it('delivers synchronously with typed data and keeps scene instances independent', () => {
   const first = new EventEmitter<{ begin: { owner: object } }>();
   const second = new EventEmitter<{ begin: { owner: object } }>();
-  const owner = {}, seen: object[] = [];
+  const owner = {},
+    seen: object[] = [];
   const stop = first.on('begin', event => seen.push(event.owner));
   second.emit('begin', { owner });
   expect(seen).toEqual([]);
   first.emit('begin', { owner });
   expect(seen).toEqual([owner]);
-  stop(); stop();
+  stop();
+  stop();
   first.emit('begin', { owner });
   expect(seen).toEqual([owner]);
 });

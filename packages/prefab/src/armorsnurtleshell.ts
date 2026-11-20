@@ -31,18 +31,25 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
   private task?: EntityTask;
   private readonly ownerListeners: (() => void)[] = [];
 
-  constructor(inst: ItemEntity) { this.inst = inst; }
+  constructor(inst: ItemEntity) {
+    this.inst = inst;
+  }
 
   /** OnBlocked */
-  private readonly OnBlocked = (): void => { this.owner?.SoundEmitter?.PlaySound('dontstarve/wilson/hit_armour'); };
+  private readonly OnBlocked = (): void => {
+    this.owner?.SoundEmitter?.PlaySound('dontstarve/wilson/hit_armour');
+  };
 
   /** ProtectionLevels: the owner's equipped body armor follows whether its state is a shell state. */
   private readonly ProtectionLevels = (): void => {
     const owner = this.owner;
     const equippedArmor = owner?.components?.inventory?.GetEquippedItem('body');
-    if (!owner || !equippedArmor) { return; }
-    if (owner.sg?.hasStateTag('shell')) { equippedArmor.components.armor?.SetAbsorption(FULL_ABSORPTION); }
-    else {
+    if (!owner || !equippedArmor) {
+      return;
+    }
+    if (owner.sg?.hasStateTag('shell')) {
+      equippedArmor.components.armor?.SetAbsorption(FULL_ABSORPTION);
+    } else {
       equippedArmor.components.armor?.SetAbsorption(ARMORSNURTLESHELL_ABSORPTION);
       equippedArmor.components.useableitem?.StopUsingItem();
     }
@@ -51,21 +58,30 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
   /** droptargets: combat entities around a hiding owner stop targeting it. */
   private droptargets(): void {
     this.task = undefined;
-    const owner = this.owner, position = owner?.getPosition?.();
-    if (!owner || !position || !owner.sg?.hasStateTag('shell')) { return; }
+    const owner = this.owner,
+      position = owner?.getPosition?.();
+    if (!owner || !position || !owner.sg?.hasStateTag('shell')) {
+      return;
+    }
     // TARGET_MUST_TAGS { "_combat" } is the combat component's replica tag.
     for (const v of this.inst.TheSim.FindEntities(position, DROPTARGETS_RANGE, [], TARGET_CANT_TAGS)) {
       const combat = (v.components as { combat?: Combat }).combat;
-      if ((combat?.target as object | undefined) === owner) { combat!.DropTarget(); }
+      if ((combat?.target as object | undefined) === owner) {
+        combat!.DropTarget();
+      }
     }
   }
 
   onuse(): void {
     const owner = this.owner;
-    if (!owner) { return; }
+    if (!owner) {
+      return;
+    }
     owner.sg?.goToState('shell_enter');
     this.task?.Cancel();
-    if (!this.inst.worldServices?.scheduler) { return; }
+    if (!this.inst.worldServices?.scheduler) {
+      return;
+    }
     this.task = this.inst.DoTaskInTime(DROPTARGETS_DELAY, () => this.droptargets());
   }
 
@@ -81,7 +97,10 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
     this.worn = wornOwner(owner);
     this.worn?.AnimState.OverrideSymbol('swap_body_tall', 'armor_slurtleshell', 'swap_body_tall');
     if (owner.ListenForEvent) {
-      this.ownerListeners.push(owner.ListenForEvent('blocked', this.OnBlocked), owner.ListenForEvent('newstate', this.ProtectionLevels));
+      this.ownerListeners.push(
+        owner.ListenForEvent('blocked', this.OnBlocked),
+        owner.ListenForEvent('newstate', this.ProtectionLevels),
+      );
     }
     // The slurtlehat pairing achievement is not ported.
   }
@@ -94,7 +113,9 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
     this.owner = undefined;
   }
 
-  dispose(): void { this.onunequip(); }
+  dispose(): void {
+    this.onunequip();
+  }
 }
 
 /** armor_snurtleshell.lua fn: tags, armor, a body equippable with onequip/onunequip and the useableitem's onuse/onstopuse. */
@@ -102,9 +123,11 @@ export function configureArmorSnurtleshellEntity(inst: ItemEntity): void {
   inst.addTag('shell');
   inst.addTag('hardarmor');
   // The inventory configures an inst again on every commit; components are added once, as AddComponent in fn.
-  if (inst.getComponent('armorsnurtleshell')) { return; }
+  if (inst.getComponent('armorsnurtleshell')) {
+    return;
+  }
   const shell = inst.component('armorsnurtleshell', () => new ArmorSnurtleshell(inst));
-  (addComponent(inst, 'armor', Armor)).InitCondition(ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION);
+  addComponent(inst, 'armor', Armor).InitCondition(ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION);
   const equippable = addComponent(inst, 'equippable', Equippable<ItemEntity>, 'body');
   equippable.SetOnEquip((_inst, owner) => shell.onequip(owner));
   equippable.SetOnUnequip(() => shell.onunequip());

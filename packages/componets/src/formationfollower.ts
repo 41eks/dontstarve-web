@@ -10,13 +10,28 @@ export class FormationFollower<Target, Member extends FormationMember<Target>> {
   onenterformation?: () => void;
   onleaveformation?: () => void;
   private readonly inst: Member;
-  constructor(inst: Member) { this.inst = inst; }
+  constructor(inst: Member) {
+    this.inst = inst;
+  }
   SearchForFormation(leaders: readonly FormationLeader<Target, Member>[]): boolean {
-    for (const leader of leaders) { if (!leader.IsFormationFull() && leader.NewFormationMember(this.inst)) { return true; } }
+    for (const leader of leaders) {
+      if (!leader.IsFormationFull() && leader.NewFormationMember(this.inst)) {
+        return true;
+      }
+    }
     return false;
   }
-  LeaveFormation(): void { this.formationleader?.OnLostFormationMember(this.inst); }
-  StopUpdating(): void { this.updating = false; }
-  StartUpdating(): void { this.updating = true; }
-  dispose(): void { this.LeaveFormation(); this.StopUpdating(); }
+  LeaveFormation(): void {
+    this.formationleader?.OnLostFormationMember(this.inst);
+  }
+  StopUpdating(): void {
+    this.updating = false;
+  }
+  StartUpdating(): void {
+    this.updating = true;
+  }
+  dispose(): void {
+    this.LeaveFormation();
+    this.StopUpdating();
+  }
 }

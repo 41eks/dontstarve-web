@@ -23,7 +23,9 @@ export class Tool {
     inst.addTag('tool');
     // tool.lua PercentChanged: a depleted, non-rechargeable tool tells its owner it broke.
     this.stopPercentListener = inst.ListenForEvent?.('percentusedchange', (_inst, data) => {
-      if (data.percent > 0 || inst.components.rechargeable) { return; }
+      if (data.percent > 0 || inst.components.rechargeable) {
+        return;
+      }
       inst.components.inventoryitem?.owner?.PushEvent('toolbroke', { tool: inst });
     });
   }
@@ -31,12 +33,18 @@ export class Tool {
     this.actions.set(action, effectiveness);
     this.inst.addTag(`${action}_tool`);
   }
-  CanDoAction(action: ToolAction): boolean { return this.actions.has(action); }
-  GetEffectiveness(action: ToolAction): number { return this.actions.get(action) ?? 0; }
+  CanDoAction(action: ToolAction): boolean {
+    return this.actions.has(action);
+  }
+  GetEffectiveness(action: ToolAction): number {
+    return this.actions.get(action) ?? 0;
+  }
   dispose(): void {
     this.stopPercentListener?.();
     this.inst.removeTag('tool');
-    for (const action of this.actions.keys()) { this.inst.removeTag(`${action}_tool`); }
+    for (const action of this.actions.keys()) {
+      this.inst.removeTag(`${action}_tool`);
+    }
     this.actions.clear();
   }
 }

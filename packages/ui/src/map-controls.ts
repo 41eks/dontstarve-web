@@ -49,11 +49,9 @@ export class DstMapControlsElement extends AssetElement {
       this.emit('game:pause-toggle', { isPaused });
     });
 
-    root.querySelectorAll<HTMLButtonElement>('.map-controls__turn').forEach((button) => {
+    root.querySelectorAll<HTMLButtonElement>('.map-controls__turn').forEach(button => {
       button.addEventListener('click', () => {
-        const direction: CameraTurnDirection = button.classList.contains('map-controls__turn--left')
-          ? 'left'
-          : 'right';
+        const direction: CameraTurnDirection = button.classList.contains('map-controls__turn--left') ? 'left' : 'right';
         this.emit('game:camera-turn', { direction });
       });
     });
@@ -68,7 +66,9 @@ export class DstMapControlsElement extends AssetElement {
     button?.setAttribute('aria-label', isOpen ? '关闭地图' : '打开地图');
     // screens/mapscreen.lua hides pauseBtn on the map's own controls.
     const pause = this.shadowRoot?.querySelector<HTMLButtonElement>('.map-controls__pause');
-    if (pause) { pause.hidden = isOpen; }
+    if (pause) {
+      pause.hidden = isOpen;
+    }
   }
 
   private emit<T>(type: string, detail: T): void {

@@ -7,4 +7,3 @@ export function isMouseTarget(model: Object3D): boolean {
   const entity = findActionEntity(model);
   return entity !== undefined && mouseTargets.has(entity);
 }
-

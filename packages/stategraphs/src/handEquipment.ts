@@ -8,8 +8,13 @@ export function watchHandEquipment(
   onChange: (equipment: HandEquipment | null, previous: HandEquipment | null) => void,
 ): () => void {
   return state.subscribe((equipment, previous) => {
-    if (equipment?.itemId === previous?.itemId && equipment?.skinId === previous?.skinId
-      && equipment?.entity === previous?.entity) { return; }
+    if (
+      equipment?.itemId === previous?.itemId &&
+      equipment?.skinId === previous?.skinId &&
+      equipment?.entity === previous?.entity
+    ) {
+      return;
+    }
     onChange(equipment, previous);
   });
 }

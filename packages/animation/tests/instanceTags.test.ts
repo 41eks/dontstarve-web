@@ -7,7 +7,10 @@ import { addComponent, removeComponent } from '../../prefab/src/components';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 
 class TaggedInstance extends PrefabInstance {
-  declare readonly components: PrefabInstance['components'] & { workable?: Workable; battery?: Battery<TaggedInstance> };
+  declare readonly components: PrefabInstance['components'] & {
+    workable?: Workable;
+    battery?: Battery<TaggedInstance>;
+  };
 }
 
 it('publishes own and component-derived tags on inst.tags, while hasTag reads the current inputs inside a batch', () => {
@@ -17,7 +20,8 @@ it('publishes own and component-derived tags on inst.tags, while hasTag reads th
   try {
     inst.addTag('structure');
     const workable = addComponent(inst, 'workable', Workable);
-    workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(2);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(2);
     expect(inst.listTags()).toEqual(['structure', 'HAMMER_workable']);
     expect(changes).toHaveBeenLastCalledWith(['structure', 'HAMMER_workable']);
 
@@ -41,5 +45,8 @@ it('publishes own and component-derived tags on inst.tags, while hasTag reads th
     removeComponent(inst, 'workable');
     expect([inst.hasTag('HAMMER_workable'), inst.listTags()]).toEqual([false, ['structure']]);
     expect(changes).toHaveBeenLastCalledWith(['structure']);
-  } finally { stop(); inst.remove(); }
+  } finally {
+    stop();
+    inst.remove();
+  }
 });

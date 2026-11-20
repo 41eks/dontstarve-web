@@ -16,13 +16,15 @@ export class Panic extends BehaviourNode {
       this.PickNewDirection();
       this.status = RUNNING;
     } else {
-      if (this.now > this.waittime) { this.PickNewDirection(); }
+      if (this.now > this.waittime) {
+        this.PickNewDirection();
+      }
       this.Sleep(this.waittime - this.now);
     }
   }
 
   PickNewDirection(): void {
     this.inst.components.locomotor!.RunInDirection(this.context.random() * 360);
-    this.waittime = this.now + .25 + this.context.random() * .25;
+    this.waittime = this.now + 0.25 + this.context.random() * 0.25;
   }
 }

@@ -81,13 +81,37 @@ export function inventoryItemMaxStack(itemId: string): number {
 }
 
 export function inventoryItemEquipmentKind(itemId: string): EquipmentKind | undefined {
-  if (itemId === 'backpack' || itemId === 'armorsnurtleshell' || itemId === 'amulet') { return 'body'; }
-  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'greenstaff' || itemId === 'firestaff' || itemId === 'telestaff' || itemId === 'orangestaff' || itemId === 'icestaff' || itemId === 'trident' || itemId === 'bugnet' || itemId === 'fishingrod'
-    || itemId === 'hammer' || itemId === 'nightsword' || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
-    || itemId === 'axe' || itemId === 'goldenaxe' || itemId === 'moonglassaxe'
-    || itemId === 'pitchfork' || itemId === 'goldenpitchfork' || itemId === 'reskin_tool'
-    || itemId === 'farm_hoe' || itemId === 'golden_farm_hoe'
-    || itemId === 'shovel' || itemId === 'goldenshovel' ? 'hand' : undefined;
+  if (itemId === 'backpack' || itemId === 'armorsnurtleshell' || itemId === 'amulet') {
+    return 'body';
+  }
+  return itemId === 'torch' ||
+    itemId === 'lantern' ||
+    itemId === 'yellowstaff' ||
+    itemId === 'opalstaff' ||
+    itemId === 'greenstaff' ||
+    itemId === 'firestaff' ||
+    itemId === 'telestaff' ||
+    itemId === 'orangestaff' ||
+    itemId === 'icestaff' ||
+    itemId === 'trident' ||
+    itemId === 'bugnet' ||
+    itemId === 'fishingrod' ||
+    itemId === 'hammer' ||
+    itemId === 'nightsword' ||
+    itemId === 'pickaxe' ||
+    itemId === 'goldenpickaxe' ||
+    itemId === 'axe' ||
+    itemId === 'goldenaxe' ||
+    itemId === 'moonglassaxe' ||
+    itemId === 'pitchfork' ||
+    itemId === 'goldenpitchfork' ||
+    itemId === 'reskin_tool' ||
+    itemId === 'farm_hoe' ||
+    itemId === 'golden_farm_hoe' ||
+    itemId === 'shovel' ||
+    itemId === 'goldenshovel'
+    ? 'hand'
+    : undefined;
 }
 
 export class InventorySlot implements ItemSlot {
@@ -104,8 +128,12 @@ export class InventorySlot implements ItemSlot {
     return this.entityState.peek()?.snapshot(false) ?? null;
   }
 
-  getEntity(): ItemEntity | null { return this.entityState.peek(); }
-  setEntity(entity: ItemEntity | null): void { this.entityState.set(entity); }
+  getEntity(): ItemEntity | null {
+    return this.entityState.peek();
+  }
+  setEntity(entity: ItemEntity | null): void {
+    this.entityState.set(entity);
+  }
 
   accepts(): boolean {
     return true;
@@ -131,8 +159,12 @@ export class StorageSlot implements ItemSlot {
     return this.entityState.peek()?.snapshot(false) ?? null;
   }
 
-  getEntity(): ItemEntity | null { return this.entityState.peek(); }
-  setEntity(entity: ItemEntity | null): void { this.entityState.set(entity); }
+  getEntity(): ItemEntity | null {
+    return this.entityState.peek();
+  }
+  setEntity(entity: ItemEntity | null): void {
+    this.entityState.set(entity);
+  }
 
   accepts(spec: InventoryItemSpec, itemId?: string): boolean {
     return spec.canGoInContainer !== false && this.itemTest(spec, itemId);
@@ -148,8 +180,12 @@ export class HandSlot implements ItemSlot {
     return this.entityState.peek()?.snapshot(false) ?? null;
   }
 
-  getEntity(): ItemEntity | null { return this.entityState.peek(); }
-  setEntity(entity: ItemEntity | null): void { this.entityState.set(entity); }
+  getEntity(): ItemEntity | null {
+    return this.entityState.peek();
+  }
+  setEntity(entity: ItemEntity | null): void {
+    this.entityState.set(entity);
+  }
 
   accepts(spec: InventoryItemSpec): boolean {
     return spec.equippable === 'hand';
@@ -165,8 +201,12 @@ export class BodySlot implements ItemSlot {
     return this.entityState.peek()?.snapshot(false) ?? null;
   }
 
-  getEntity(): ItemEntity | null { return this.entityState.peek(); }
-  setEntity(entity: ItemEntity | null): void { this.entityState.set(entity); }
+  getEntity(): ItemEntity | null {
+    return this.entityState.peek();
+  }
+  setEntity(entity: ItemEntity | null): void {
+    this.entityState.set(entity);
+  }
 
   accepts(spec: InventoryItemSpec): boolean {
     return spec.equippable === 'body';
@@ -182,8 +222,12 @@ export class HeadSlot implements ItemSlot {
     return this.entityState.peek()?.snapshot(false) ?? null;
   }
 
-  getEntity(): ItemEntity | null { return this.entityState.peek(); }
-  setEntity(entity: ItemEntity | null): void { this.entityState.set(entity); }
+  getEntity(): ItemEntity | null {
+    return this.entityState.peek();
+  }
+  setEntity(entity: ItemEntity | null): void {
+    this.entityState.set(entity);
+  }
 
   accepts(spec: InventoryItemSpec): boolean {
     return spec.equippable === 'head';

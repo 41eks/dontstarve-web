@@ -16,12 +16,19 @@ import { testItem } from './testInventory';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-    const relative = String(url).slice(String(url).indexOf('dst/data/') + 9);
-    return new Response(await readFile(new URL(`../../../public/dst/data/${relative}`, import.meta.url)));
-  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      const relative = String(url).slice(String(url).indexOf('dst/data/') + 9);
+      return new Response(await readFile(new URL(`../../../public/dst/data/${relative}`, import.meta.url)));
+    }),
+  );
 });
-afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  DisposeSounds();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('loads the Wortox build with shared player animations and renders every facing with equipment', async () => {
   const player = await createPlayer('/dst/data/anim');
@@ -37,9 +44,12 @@ it('loads the Wortox build with shared player animations and renders every facin
   expect(urls).not.toContain('/dst/data/anim/wilson.zip');
   animationEquipper.equip('strawhat', undefined, 'head');
   animationEquipper.equip('torch');
-  const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<
+    THREE.BufferGeometry,
+    THREE.MeshBasicMaterial[]
+  >;
   // The player's display loads the hat and torch builds the prefabs name.
-  await vi.waitFor(() => expect(mesh.material.some((material) => material.name === 'ground:hat_straw')).toBe(true));
+  await vi.waitFor(() => expect(mesh.material.some(material => material.name === 'ground:hat_straw')).toBe(true));
   const visual = mesh.parent!;
   for (const facing of ['up', 'down', 'side'] as const) {
     for (const mirrored of [false, true]) {
@@ -48,8 +58,8 @@ it('loads the Wortox build with shared player animations and renders every facin
       advancePlayer(animation, 1 / 30);
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
       expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
-      expect(mesh.material.some((material) => material.name === 'ground:hat_straw')).toBe(true);
-      expect(mesh.material.every((material) => material.forceSinglePass)).toBe(true);
+      expect(mesh.material.some(material => material.name === 'ground:hat_straw')).toBe(true);
+      expect(mesh.material.every(material => material.forceSinglePass)).toBe(true);
       expect(visual.children).toHaveLength(1);
     }
   }
@@ -68,7 +78,9 @@ it('loads the Wortox build with shared player animations and renders every facin
   expect(mesh.material[0].map).not.toBe(livingTexture);
   expect((mesh.material[0].map as THREE.DataTexture).image.width).toBeGreaterThan(0);
   makeAlive(animation);
-  for (let frame = 0; frame < 120; frame++) { advancePlayer(animation, 1 / 30); }
+  for (let frame = 0; frame < 120; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
   expect(animation.sg.isGhost).toBe(false);
   expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
   expect(mesh.material[0].map).toBe(livingTexture);
@@ -79,14 +91,19 @@ it('keeps the source mining timeline when Wortox changes facing and emits one ac
   const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('pickaxe');
-  const hit = vi.fn(), events: string[] = [];
-  animation.sg.listenForEvent('performaction', (data) => {
+  const hit = vi.fn(),
+    events: string[] = [];
+  animation.sg.listenForEvent('performaction', data => {
     events.push((data as { action: { action: string } }).action.action);
   });
   expect(animation.sg.pushBufferedAction(new BufferedAction('MINE', hit))).toBe(true);
   for (let frame = 1; frame <= 15; frame++) {
-    if (frame === 5) { facePlayer(animation, 'up'); }
-    if (frame === 12) { facePlayer(animation, 'side', true); }
+    if (frame === 5) {
+      facePlayer(animation, 'up');
+    }
+    if (frame === 12) {
+      facePlayer(animation, 'side', true);
+    }
     advancePlayer(animation, 1 / 30);
   }
   expect(hit).not.toHaveBeenCalled();
@@ -94,26 +111,36 @@ it('keeps the source mining timeline when Wortox changes facing and emits one ac
   advancePlayer(animation, 1 / 30);
   expect(hit).toHaveBeenCalledOnce();
   expect(events).toEqual(['MINE']);
-  for (let frame = 0; frame < 60; frame++) { advancePlayer(animation, 1 / 30); }
+  for (let frame = 0; frame < 60; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
   expect(hit).toHaveBeenCalledOnce();
   expect(animation.sg.stateName).toBe('idle');
 });
 
 it('keeps a buffered action when the same action, target and invobject is pushed again, as PushBufferedAction does', async () => {
   const animation = playerInst(await createPlayer('/dst/data/anim'));
-  const rod = testItem({ itemId: 'fishingrod', count: 1 }); rod.addTag('fishingrod');
+  const rod = testItem({ itemId: 'fishingrod', count: 1 });
+  rod.addTag('fishingrod');
   const pondEntity = () => new PrefabInstance('pond', new SpriteState({ name: 'idle', billboard: true }));
   const pond = pondEntity();
-  const fish = (fn: () => void, target = pond): PlayerAction<'FISH'> => new BufferedAction('FISH', fn, undefined, { invobject: rod, target });
+  const fish = (fn: () => void, target = pond): PlayerAction<'FISH'> =>
+    new BufferedAction('FISH', fn, undefined, { invobject: rod, target });
   const failed: unknown[] = [];
   animation.sg.listenForEvent('actionfailed', data => failed.push((data as { action: unknown }).action));
-  const cast = vi.fn(), repeat = vi.fn(), other = vi.fn();
+  const cast = vi.fn(),
+    repeat = vi.fn(),
+    other = vi.fn();
   const first = fish(cast);
   expect(animation.sg.pushBufferedAction(first)).toBe(true);
-  for (let frame = 0; frame < 5; frame++) { advancePlayer(animation, 1 / 30); }
+  for (let frame = 0; frame < 5; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
   // fishing_pre is not busy: the duplicate is dropped and the first cast keeps its timeline.
   expect(animation.sg.pushBufferedAction(fish(repeat))).toBe(false);
-  for (let frame = 0; frame < 11 && !cast.mock.calls.length; frame++) { advancePlayer(animation, 1 / 30); }
+  for (let frame = 0; frame < 11 && !cast.mock.calls.length; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
   expect(cast).toHaveBeenCalledOnce();
   expect(repeat).not.toHaveBeenCalled();
   // Another target replaces the buffered action; the replaced one fails.
@@ -125,38 +152,51 @@ it('keeps a buffered action when the same action, target and invobject is pushed
 
 it('performs a drop on the doshortaction frame and reports a cancelled drop', async () => {
   const animation = playerInst(await createPlayer('/dst/data/anim'));
-  const drop = vi.fn(() => true), cancelled = vi.fn();
+  const drop = vi.fn(() => true),
+    cancelled = vi.fn();
   expect(playDrop(animation, drop, cancelled)).toBe(true);
   expect(animation.sg.stateName).toBe('doshortaction');
-  for (let frame = 0; frame < 5; frame++) { advancePlayer(animation, 1 / 30); }
+  for (let frame = 0; frame < 5; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
   expect(drop).not.toHaveBeenCalled();
-  for (let frame = 0; frame < 3; frame++) { advancePlayer(animation, 1 / 30); }
+  for (let frame = 0; frame < 3; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
   expect(drop).toHaveBeenCalledOnce();
   expect(cancelled).not.toHaveBeenCalled();
-  for (let frame = 0; frame < 30; frame++) { advancePlayer(animation, 1 / 30); }
+  for (let frame = 0; frame < 30; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
 
   const never = vi.fn(() => true);
   expect(playDrop(animation, never, cancelled)).toBe(true);
   animation.sg.cancelAction('DROP');
   expect(cancelled).toHaveBeenCalledOnce();
-  for (let frame = 0; frame < 30; frame++) { advancePlayer(animation, 1 / 30); }
+  for (let frame = 0; frame < 30; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
   expect(never).not.toHaveBeenCalled();
 });
 
 it('advances rendered frames in animation without reading the stategraph clock or publishing frame state', async () => {
   const player = await createPlayer('/dst/data/anim');
-  const instance = playerInst(player), animation = instance;
+  const instance = playerInst(player),
+    animation = instance;
   const display = prefabDisplay(player)!;
   try {
     startMovement(animation, 'walk');
-    await display.artLoaded(); display.update(0);
+    await display.artLoaded();
+    display.update(0);
     const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh;
     const before = Array.from(mesh.geometry.getAttribute('position').array);
     const json = instance.sprite.sprite.peek();
     const readClock = vi.spyOn(animation.sg, 'animationTime', 'get');
     const publish = vi.fn();
     const stop = instance.sprite.sprite.subscribe(publish);
-    for (let frame = 0; frame < 4; frame++) { display.update(.1); }
+    for (let frame = 0; frame < 4; frame++) {
+      display.update(0.1);
+    }
     expect(readClock).not.toHaveBeenCalled();
     readClock.mockRestore();
     expect(animation.sg.animationTime).toBe(0);
@@ -164,5 +204,8 @@ it('advances rendered frames in animation without reading the stategraph clock o
     expect(instance.sprite.sprite.peek()).toBe(json);
     expect(publish).not.toHaveBeenCalled();
     stop();
-  } finally { instance.remove(); display.dispose(); }
+  } finally {
+    instance.remove();
+    display.dispose();
+  }
 });

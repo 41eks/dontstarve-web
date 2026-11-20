@@ -58,8 +58,9 @@ export class Pickable implements PickableComponent {
   private readonly ownsScheduler: boolean;
   private readonly growthDuration: (seconds: number) => number;
   private readonly timer: ComponentTimer;
-  private readonly phaseMemo = createMemo(() => this.removed.get() ? 'removed'
-    : this.ready.get() ? 'ready' : this.cycles.get() === 0 ? 'barren' : 'picked');
+  private readonly phaseMemo = createMemo(() =>
+    this.removed.get() ? 'removed' : this.ready.get() ? 'ready' : this.cycles.get() === 0 ? 'barren' : 'picked',
+  );
   private readonly regrowingMemo;
   readonly state;
   /** pickable.lua quickpick defaults to false; SGwilson reads this field. */
@@ -73,7 +74,9 @@ export class Pickable implements PickableComponent {
   onpickedfn?: LuaFn<[inst: PickableInst, picker: unknown, loot: unknown]>;
   /** Prefabs retaining an original item provide it instead of spawning a product copy. */
   getProductEntity?: () => ItemEntity | undefined;
-  get productEntity(): ItemEntity | undefined { return this.getProductEntity?.(); }
+  get productEntity(): ItemEntity | undefined {
+    return this.getProductEntity?.();
+  }
 
   private readonly inst: PickableInst;
   private productName: string | undefined;
@@ -82,12 +85,22 @@ export class Pickable implements PickableComponent {
   private readonly onPicked: (doer?: PickDoer) => void;
   private readonly onRegen: () => void;
 
-  constructor(inst: PickableInst, product: string | undefined, regenTime: number | undefined,
-    numToHarvest = 1, onPicked: (doer?: PickDoer) => void = () => {},
-    onRegen: () => void = () => {}, saved?: PickableSaveState, timing?: PickableTiming) {
+  constructor(
+    inst: PickableInst,
+    product: string | undefined,
+    regenTime: number | undefined,
+    numToHarvest = 1,
+    onPicked: (doer?: PickDoer) => void = () => {},
+    onRegen: () => void = () => {},
+    saved?: PickableSaveState,
+    timing?: PickableTiming,
+  ) {
     this.inst = inst;
-    this.productName = product; this.regrowTime = regenTime;
-    this.harvestCount = numToHarvest; this.onPicked = onPicked; this.onRegen = onRegen;
+    this.productName = product;
+    this.regrowTime = regenTime;
+    this.harvestCount = numToHarvest;
+    this.onPicked = onPicked;
+    this.onRegen = onRegen;
     this.scheduler = timing?.scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = !timing;
     this.growthDuration = timing?.growthDuration ?? (seconds => seconds);
@@ -98,75 +111,143 @@ export class Pickable implements PickableComponent {
     this.protection.set(saved?.protectedCycles);
     this.timer = new ComponentTimer(this.scheduler, () => this.regen());
     this.regrowingMemo = createMemo(() => this.timer.snapshot.get().status === 'scheduled');
-    this.state = Object.freeze({ canBePicked: readonlySignal(this.ready), canInteractWith: readonlySignal(this.interactable),
-      removed: readonlySignal(this.removed), paused: readonlySignal(this.paused), timer: this.timer.snapshot,
-      phase: readonlySignal(this.phaseMemo), regrowing: readonlySignal(this.regrowingMemo),
-      cyclesLeft: readonlySignal(this.cycles), transplanted: readonlySignal(this.transplanted),
-      protectedCycles: readonlySignal(this.protection) });
+    this.state = Object.freeze({
+      canBePicked: readonlySignal(this.ready),
+      canInteractWith: readonlySignal(this.interactable),
+      removed: readonlySignal(this.removed),
+      paused: readonlySignal(this.paused),
+      timer: this.timer.snapshot,
+      phase: readonlySignal(this.phaseMemo),
+      regrowing: readonlySignal(this.regrowingMemo),
+      cyclesLeft: readonlySignal(this.cycles),
+      transplanted: readonlySignal(this.transplanted),
+      protectedCycles: readonlySignal(this.protection),
+    });
     this.ready.set(!saved?.picked);
     this.paused.set(saved?.paused ?? false);
     if (saved?.regrowSeconds !== undefined) {
-      if (saved.paused) { this.timer.restorePaused(saved.regrowSeconds); }
-      else { this.timer.start(saved.regrowSeconds); }
+      if (saved.paused) {
+        this.timer.restorePaused(saved.regrowSeconds);
+      } else {
+        this.timer.start(saved.regrowSeconds);
+      }
     }
     this.refreshTag();
   }
 
-  get product(): string | undefined { return this.productName; }
-  get regenTime(): number | undefined { return this.regrowTime; }
-  ChangeProduct(product: string | undefined): void { this.productName = product; }
-  get numToHarvest(): number { return this.harvestCount; }
+  get product(): string | undefined {
+    return this.productName;
+  }
+  get regenTime(): number | undefined {
+    return this.regrowTime;
+  }
+  ChangeProduct(product: string | undefined): void {
+    this.productName = product;
+  }
+  get numToHarvest(): number {
+    return this.harvestCount;
+  }
 
   /** pickable.lua SetUp: a new product is immediately pickable. */
   SetUp(product: string, regenTime: number, numToHarvest = 1): void {
-    if (this.removed.peek()) { return; }
+    if (this.removed.peek()) {
+      return;
+    }
     batch(() => {
-      this.productName = product; this.regrowTime = regenTime; this.harvestCount = numToHarvest;
+      this.productName = product;
+      this.regrowTime = regenTime;
+      this.harvestCount = numToHarvest;
       this.ready.set(true);
       this.refreshTag();
     });
   }
 
-  get canBePicked(): boolean { return !this.removed.peek() && this.ready.peek(); }
-  set canBePicked(value: boolean) { this.ready.set(value); this.refreshTag(); }
-  get canInteractWith(): boolean { return this.interactable.peek(); }
-  set canInteractWith(value: boolean) { this.interactable.set(value); this.refreshTag(); }
-  get remainingSeconds(): number | undefined { return this.timer.remainingSeconds; }
-  get cyclesLeft(): number | undefined { return this.cycles.peek(); }
-  get maximumCycles(): number | undefined { return this.maxCycles; }
-  set cyclesLeft(value: number | undefined) { this.cycles.set(value); this.refreshTag(); }
-  IsBarren(): boolean { return this.cycles.peek() === 0; }
-  CanBeFertilized(): boolean { return !this.removed.peek() && (this.IsBarren() || this.inst.hasTag('withered')); }
+  get canBePicked(): boolean {
+    return !this.removed.peek() && this.ready.peek();
+  }
+  set canBePicked(value: boolean) {
+    this.ready.set(value);
+    this.refreshTag();
+  }
+  get canInteractWith(): boolean {
+    return this.interactable.peek();
+  }
+  set canInteractWith(value: boolean) {
+    this.interactable.set(value);
+    this.refreshTag();
+  }
+  get remainingSeconds(): number | undefined {
+    return this.timer.remainingSeconds;
+  }
+  get cyclesLeft(): number | undefined {
+    return this.cycles.peek();
+  }
+  get maximumCycles(): number | undefined {
+    return this.maxCycles;
+  }
+  set cyclesLeft(value: number | undefined) {
+    this.cycles.set(value);
+    this.refreshTag();
+  }
+  IsBarren(): boolean {
+    return this.cycles.peek() === 0;
+  }
+  CanBeFertilized(): boolean {
+    return !this.removed.peek() && (this.IsBarren() || this.inst.hasTag('withered'));
+  }
 
   MakeBarren(): void {
-    if (this.removed.peek()) { return; }
+    if (this.removed.peek()) {
+      return;
+    }
     batch(() => {
       const wasEmpty = !this.ready.peek();
-      this.cycles.set(0); this.ready.set(false); this.timer.stop(); this.refreshTag();
+      this.cycles.set(0);
+      this.ready.set(false);
+      this.timer.stop();
+      this.refreshTag();
       this.callbacks?.onBarren?.(wasEmpty);
     });
   }
 
   OnTransplant(): void {
-    if (this.removed.peek()) { return; }
-    this.transplanted.set(true); this.callbacks?.onTransplant?.();
+    if (this.removed.peek()) {
+      return;
+    }
+    this.transplanted.set(true);
+    this.callbacks?.onTransplant?.();
   }
 
   MakeEmpty(): void {
-    if (this.removed.peek()) { return; }
+    if (this.removed.peek()) {
+      return;
+    }
     batch(() => {
-      this.timer.stop(); this.callbacks?.onEmpty?.(); this.ready.set(false); this.refreshTag();
-      if (!this.paused.peek() && this.regrowTime !== undefined) { this.timer.start(this.nextGrowthDuration()); }
+      this.timer.stop();
+      this.callbacks?.onEmpty?.();
+      this.ready.set(false);
+      this.refreshTag();
+      if (!this.paused.peek() && this.regrowTime !== undefined) {
+        this.timer.start(this.nextGrowthDuration());
+      }
     });
   }
 
   /** pickable.lua Fertilize(fertilizer, doer): the doer's SoundEmitter plays the fertilizer's fertilize_sound. */
-  Fertilize(fertilizer: { components?: { fertilizer?: { withered_cycles: number; readonly fertilize_sound?: SoundEventPath } } },
-    doer?: { readonly SoundEmitter?: { PlaySound(path: SoundEventPath): void } }): boolean {
-    if (!this.CanBeFertilized()) { return false; }
+  Fertilize(
+    fertilizer: {
+      components?: { fertilizer?: { withered_cycles: number; readonly fertilize_sound?: SoundEventPath } };
+    },
+    doer?: { readonly SoundEmitter?: { PlaySound(path: SoundEventPath): void } },
+  ): boolean {
+    if (!this.CanBeFertilized()) {
+      return false;
+    }
     this.inst.components.burnable?.StopSmoldering();
     const sound = fertilizer.components?.fertilizer?.fertilize_sound;
-    if (sound !== undefined) { doer?.SoundEmitter?.PlaySound(sound); }
+    if (sound !== undefined) {
+      doer?.SoundEmitter?.PlaySound(sound);
+    }
     batch(() => {
       this.cycles.set(this.maxCycles);
       const witherable = this.inst.components.witherable;
@@ -174,9 +255,14 @@ export class Pickable implements PickableComponent {
         const protection = (this.protection.peek() ?? 0) + (fertilizer.components?.fertilizer?.withered_cycles ?? 0);
         this.protection.set(protection > 0 ? protection : undefined);
         witherable.Enable(protection <= 0);
-        if (witherable.IsWithered()) { witherable.ForceRejuvenate(); }
-        else { this.MakeEmpty(); }
-      } else { this.MakeEmpty(); }
+        if (witherable.IsWithered()) {
+          witherable.ForceRejuvenate();
+        } else {
+          this.MakeEmpty();
+        }
+      } else {
+        this.MakeEmpty();
+      }
       this.refreshTag();
     });
     return true;
@@ -188,25 +274,40 @@ export class Pickable implements PickableComponent {
 
   /** pickable.lua permits Pick() without a picker (e.g. a lightflier flower releasing its child). */
   Pick(doer?: PickDoer): boolean {
-    if (!this.canBePicked || !this.canInteractWith) { return false; }
-    const position = this.inst.getPosition(), entity = this.productEntity;
-    if (entity ? !doer?.giveEntity?.(entity, position)
-      : this.product !== undefined && !doer?.giveItem(this.product, this.numToHarvest, position)) { return false; }
+    if (!this.canBePicked || !this.canInteractWith) {
+      return false;
+    }
+    const position = this.inst.getPosition(),
+      entity = this.productEntity;
+    if (
+      entity
+        ? !doer?.giveEntity?.(entity, position)
+        : this.product !== undefined && !doer?.giveItem(this.product, this.numToHarvest, position)
+    ) {
+      return false;
+    }
     // Lua invokes the prefab callback while canbepicked is still true, then clears it.
     batch(() => {
       const cycles = this.cycles.peek();
-      if (this.transplanted.peek() && cycles !== undefined) { this.cycles.set(Math.max(0, cycles - 1)); }
+      if (this.transplanted.peek() && cycles !== undefined) {
+        this.cycles.set(Math.max(0, cycles - 1));
+      }
       const protectedCycles = this.protection.peek();
       if (protectedCycles !== undefined) {
         const protection = protectedCycles - 1;
         this.protection.set(protection > 0 ? protection : undefined);
-        if (protection <= 0) { this.inst.components.witherable?.Enable(true); }
+        if (protection <= 0) {
+          this.inst.components.witherable?.Enable(true);
+        }
       }
       this.onPicked(doer);
       this.onpickedfn?.(this.inst, doer?.picker ?? doer, doer?.loot);
       this.ready.set(false);
-      if (this.regrowTime !== undefined && !this.paused.peek() && !this.IsBarren() && !this.inst.hasTag('withered')) { this.timer.start(this.nextGrowthDuration()); }
-      else { this.timer.stop(); }
+      if (this.regrowTime !== undefined && !this.paused.peek() && !this.IsBarren() && !this.inst.hasTag('withered')) {
+        this.timer.start(this.nextGrowthDuration());
+      } else {
+        this.timer.stop();
+      }
       this.refreshTag();
     });
     this.inst.PushEvent?.('picked', { picker: doer?.picker ?? doer, loot: doer?.loot, plant: this.inst });
@@ -218,46 +319,78 @@ export class Pickable implements PickableComponent {
   }
 
   regen(): void {
-    if (this.removed.peek()) { return; }
-    if (this.timer.snapshot.peek().status === 'scheduled') { this.timer.stop(); }
-    batch(() => { this.ready.set(true); this.refreshTag(); this.onRegen(); this.makefullfn?.(this.inst); });
+    if (this.removed.peek()) {
+      return;
+    }
+    if (this.timer.snapshot.peek().status === 'scheduled') {
+      this.timer.stop();
+    }
+    batch(() => {
+      this.ready.set(true);
+      this.refreshTag();
+      this.onRegen();
+      this.makefullfn?.(this.inst);
+    });
   }
 
   /** pickable.lua FinishGrowing: only a pending regrow task completes early; paused plants keep waiting. */
   finishGrowing(): boolean {
-    if (this.removed.peek() || this.ready.peek() || this.timer.snapshot.peek().status !== 'scheduled') { return false; }
+    if (this.removed.peek() || this.ready.peek() || this.timer.snapshot.peek().status !== 'scheduled') {
+      return false;
+    }
     this.regen();
     return true;
   }
 
   pause(): void {
-    if (this.removed.peek() || this.paused.peek()) { return; }
-    batch(() => { this.paused.set(true); this.timer.pause(); });
+    if (this.removed.peek() || this.paused.peek()) {
+      return;
+    }
+    batch(() => {
+      this.paused.set(true);
+      this.timer.pause();
+    });
   }
 
   resume(): void {
-    if (this.removed.peek() || !this.paused.peek()) { return; }
+    if (this.removed.peek() || !this.paused.peek()) {
+      return;
+    }
     batch(() => {
       this.paused.set(false);
-      if (this.regrowTime !== undefined && !this.ready.peek() && !this.IsBarren()) { this.timer.start(this.timer.remainingSeconds === undefined
-        ? this.nextGrowthDuration() : this.growthDuration(this.timer.remainingSeconds)); }
+      if (this.regrowTime !== undefined && !this.ready.peek() && !this.IsBarren()) {
+        this.timer.start(
+          this.timer.remainingSeconds === undefined
+            ? this.nextGrowthDuration()
+            : this.growthDuration(this.timer.remainingSeconds),
+        );
+      }
     });
   }
 
   /** Standalone components own a local clock; scene components use the shared scheduler. */
-  update(dt: number): void { if (this.ownsScheduler && !this.removed.peek()) { this.scheduler.advance(dt); } }
+  update(dt: number): void {
+    if (this.ownsScheduler && !this.removed.peek()) {
+      this.scheduler.advance(dt);
+    }
+  }
 
   /** Pickable:OnSave writes caninteractwith whenever it is true. Reloading it only matters to a prefab whose
    * constructor turns interaction off; that prefab sets this, and other pickables' records stay without it. */
   savesCanInteractWith = false;
 
   OnSave(): PickableSaveState {
-    return { ...this.exportState(), ...this.savesCanInteractWith && this.canInteractWith ? { caninteractwith: true } : {} };
+    return {
+      ...this.exportState(),
+      ...(this.savesCanInteractWith && this.canInteractWith ? { caninteractwith: true } : {}),
+    };
   }
 
   /** pickable.lua OnLoad: restore data and timers through this component's own state. */
   OnLoad(saved: PickableSaveState): void {
-    if (!saved || this.removed.peek()) { return; }
+    if (!saved || this.removed.peek()) {
+      return;
+    }
     batch(() => {
       this.timer.stop();
       this.maxCycles = saved.maxCycles ?? this.maxCycles;
@@ -266,13 +399,26 @@ export class Pickable implements PickableComponent {
       this.transplanted.set(saved.transplanted ?? false);
       this.protection.set(saved.protectedCycles);
       if (saved.picked || saved.regrowSeconds !== undefined) {
-        if (this.IsBarren()) { this.callbacks?.onBarren?.(true); } else { this.callbacks?.onEmpty?.(); }
+        if (this.IsBarren()) {
+          this.callbacks?.onBarren?.(true);
+        } else {
+          this.callbacks?.onEmpty?.();
+        }
         this.ready.set(false);
-      } else { this.makefullfn?.(this.inst); this.ready.set(true); }
+      } else {
+        this.makefullfn?.(this.inst);
+        this.ready.set(true);
+      }
       this.paused.set(saved.paused ?? false);
-      if (saved.caninteractwith) { this.interactable.set(true); }
+      if (saved.caninteractwith) {
+        this.interactable.set(true);
+      }
       if (saved.regrowSeconds !== undefined) {
-        if (saved.paused) { this.timer.restorePaused(saved.regrowSeconds); } else { this.timer.start(saved.regrowSeconds); }
+        if (saved.paused) {
+          this.timer.restorePaused(saved.regrowSeconds);
+        } else {
+          this.timer.start(saved.regrowSeconds);
+        }
       }
       this.inst.components.witherable?.Enable(!(saved.protectedCycles && saved.protectedCycles > 0));
       this.refreshTag();
@@ -280,21 +426,34 @@ export class Pickable implements PickableComponent {
   }
 
   exportState(): PickableSaveState {
-    return { ...(!this.ready.peek() ? { picked: true } : {}),
+    return {
+      ...(!this.ready.peek() ? { picked: true } : {}),
       ...(this.timer.remainingSeconds !== undefined ? { regrowSeconds: this.timer.remainingSeconds } : {}),
       ...(this.paused.peek() ? { paused: true } : {}),
       ...(this.transplanted.peek() ? { transplanted: true } : {}),
       // Pickable:OnSave writes the cycles only once a transplanted plant has used some.
-      ...(this.maxCycles === undefined || this.cycles.peek() === this.maxCycles ? {} : { cyclesLeft: this.cycles.peek(), maxCycles: this.maxCycles }),
-      ...(this.protection.peek() === undefined ? {} : { protectedCycles: this.protection.peek() }) };
+      ...(this.maxCycles === undefined || this.cycles.peek() === this.maxCycles
+        ? {}
+        : { cyclesLeft: this.cycles.peek(), maxCycles: this.maxCycles }),
+      ...(this.protection.peek() === undefined ? {} : { protectedCycles: this.protection.peek() }),
+    };
   }
 
   dispose(): void {
-    if (this.removed.peek()) { return; }
-    batch(() => { this.removed.set(true); this.timer.stop(); this.refreshTag(); });
-    this.phaseMemo.dispose(); this.regrowingMemo.dispose();
+    if (this.removed.peek()) {
+      return;
+    }
+    batch(() => {
+      this.removed.set(true);
+      this.timer.stop();
+      this.refreshTag();
+    });
+    this.phaseMemo.dispose();
+    this.regrowingMemo.dispose();
     this.getProductEntity = undefined;
-    if (this.ownsScheduler) { this.scheduler.dispose(); }
+    if (this.ownsScheduler) {
+      this.scheduler.dispose();
+    }
   }
 
   private nextGrowthDuration(): number {
@@ -302,9 +461,15 @@ export class Pickable implements PickableComponent {
   }
 
   private refreshTag(): void {
-    for (const [tag, present] of [['pickable', this.canBePicked && this.canInteractWith],
-      ['barren', !this.removed.peek() && this.IsBarren()]] as const) {
-      if (present) { this.inst.addTag(tag); } else { this.inst.removeTag(tag); }
+    for (const [tag, present] of [
+      ['pickable', this.canBePicked && this.canInteractWith],
+      ['barren', !this.removed.peek() && this.IsBarren()],
+    ] as const) {
+      if (present) {
+        this.inst.addTag(tag);
+      } else {
+        this.inst.removeTag(tag);
+      }
     }
   }
 }

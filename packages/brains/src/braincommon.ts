@@ -13,7 +13,9 @@ export function PanicTrigger(inst: BrainInst): BehaviourNode {
   return WhileNode(() => ShouldTriggerPanic(inst), 'PanicTrigger', new Panic(inst));
 }
 
-export function ShouldAvoidElectricFence(inst: BrainInst): boolean { return inst.panic_electric_field !== undefined; }
+export function ShouldAvoidElectricFence(inst: BrainInst): boolean {
+  return inst.panic_electric_field !== undefined;
+}
 
 export function ElectricFencePanicTrigger(inst: BrainInst): BehaviourNode {
   return WhileNode(() => ShouldAvoidElectricFence(inst), 'ElectricShock', new AvoidElectricFence(inst));

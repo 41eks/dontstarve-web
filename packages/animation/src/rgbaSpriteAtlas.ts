@@ -77,7 +77,9 @@ function createCanvas(width: number, height: number) {
 
 function context2d(canvas: HTMLCanvasElement) {
   const context = canvas.getContext('2d');
-  if (!context) { throw new Error('Unable to create a 2D canvas context'); }
+  if (!context) {
+    throw new Error('Unable to create a 2D canvas context');
+  }
   return context;
 }
 
@@ -93,7 +95,12 @@ function transformedBounds(sprites: ResolvedSprite[]) {
     const y0 = image.y - image.height / 2;
     const x1 = x0 + image.width;
     const y1 = y0 + image.height;
-    for (const [x, y] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) {
+    for (const [x, y] of [
+      [x0, y0],
+      [x1, y0],
+      [x1, y1],
+      [x0, y1],
+    ]) {
       const transformedX = a * x + c * y + tx;
       const transformedY = b * x + d * y + ty;
       minX = Math.min(minX, transformedX);
@@ -113,22 +120,16 @@ function transformedBounds(sprites: ResolvedSprite[]) {
   return { minX, minY, maxX, maxY };
 }
 
-function resolveFrame(
-  buildPackage: BuildPackage,
-  animation: Animation,
-  frameIndex: number,
-): FrameLayout {
+function resolveFrame(buildPackage: BuildPackage, animation: Animation, frameIndex: number): FrameLayout {
   const frame = animation.frames[frameIndex];
   if (!frame) {
     throw new Error(`Animation ${animation.name} does not contain frame ${frameIndex}`);
   }
   const sprites = [...frame.elements]
     .sort((a, b) => b.z - a.z)
-    .map((element) => {
+    .map(element => {
       const image = findImage(buildPackage.build, element.imageHash, element.imageIndex);
-      return image
-        ? { element, image, materials: [] as THREE.MeshBasicMaterial[] }
-        : undefined;
+      return image ? { element, image, materials: [] as THREE.MeshBasicMaterial[] } : undefined;
     })
     .filter((sprite): sprite is ResolvedSprite => Boolean(sprite));
   return layoutFrame(animation, frameIndex, sprites);
@@ -157,7 +158,8 @@ const DECODE_CHUNK_PIXELS = 1 << 19;
 function* decodeTextureSteps(texture: BuildPackage['atlases'][number]): Generator<void, HTMLCanvasElement> {
   const canvas = createCanvas(texture.width, texture.height);
   const context = context2d(canvas);
-  const { width, height } = texture, pixels = atlasPixels(texture);
+  const { width, height } = texture,
+    pixels = atlasPixels(texture);
   const rows = Math.max(1, Math.floor(DECODE_CHUNK_PIXELS / width));
   for (let y = 0; y < height; y += rows) {
     const count = Math.min(rows, height - y);
@@ -181,8 +183,14 @@ export function composeRgbaSpriteAtlas(
   options: Omit<RgbaSpriteAtlasOptions, 'animationName'> = {},
 ): RgbaSpriteAtlas {
   let sources: HTMLCanvasElement[] | undefined;
-  return drain(composeAtlasSteps(animation, index => resolveFrame(buildPackage, animation, index),
-    sprite => (sources ??= buildPackage.atlases.map(decodedTextureCanvas))[sprite.image.sampler ?? 0], options));
+  return drain(
+    composeAtlasSteps(
+      animation,
+      index => resolveFrame(buildPackage, animation, index),
+      sprite => (sources ??= buildPackage.atlases.map(decodedTextureCanvas))[sprite.image.sampler ?? 0],
+      options,
+    ),
+  );
 }
 
 /** Yielded while a released source atlas is decoded again; a budgeted composer gives the rest of its frame back. */
@@ -192,7 +200,9 @@ type ComposeStep = void | typeof ATLAS_PENDING;
 function drain<T>(steps: Generator<ComposeStep, T>): T {
   for (;;) {
     const next = steps.next();
-    if (next.done) { return next.value; }
+    if (next.done) {
+      return next.value;
+    }
     if (next.value === ATLAS_PENDING) {
       steps.return(undefined as T);
       throw new Error('A source atlas is being decoded again; compose it with createResolvedRgbaSpriteAtlasComposer');
@@ -228,25 +238,47 @@ export function createResolvedRgbaSpriteAtlasComposer(
   maxTextureSize: number,
   renderer?: THREE.WebGLRenderer,
 ): RgbaSpriteAtlasComposer {
-  const steps = composeResolvedSteps(animation, frames, maxTextureSize, renderer && canComposeAtlasOnGpu(renderer) ? renderer : undefined);
+  const steps = composeResolvedSteps(
+    animation,
+    frames,
+    maxTextureSize,
+    renderer && canComposeAtlasOnGpu(renderer) ? renderer : undefined,
+  );
   let pages: RgbaSpriteAtlas[] | undefined;
   let cancelled = false;
   return {
     step(budgetMs) {
-      if (cancelled) { throw new Error('Atlas composition cancelled'); }
-      if (pages) { return pages; }
+      if (cancelled) {
+        throw new Error('Atlas composition cancelled');
+      }
+      if (pages) {
+        return pages;
+      }
       const deadline = performance.now() + budgetMs;
       do {
         const end = spritePerfSpan('step:next', animation.name);
         let next: IteratorResult<ComposeStep, RgbaSpriteAtlas[]>;
-        try { next = steps.next(); } catch (error) { cancelled = true; throw error; } finally { end(); }
-        if (next.done) { return pages = next.value; }
-        if (next.value === ATLAS_PENDING) { return undefined; }
+        try {
+          next = steps.next();
+        } catch (error) {
+          cancelled = true;
+          throw error;
+        } finally {
+          end();
+        }
+        if (next.done) {
+          return (pages = next.value);
+        }
+        if (next.value === ATLAS_PENDING) {
+          return undefined;
+        }
       } while (performance.now() < deadline);
       return undefined;
     },
     cancel() {
-      if (cancelled || pages) { return; }
+      if (cancelled || pages) {
+        return;
+      }
       cancelled = true;
       steps.return([]);
     },
@@ -271,39 +303,68 @@ function* composeResolvedSteps(
       layouts.push(layoutFrame(animation, index, sprites));
       for (const { image, materials } of sprites) {
         const texture = materials[image.sampler ?? 0].map!;
-        if (!(texture instanceof THREE.DataTexture)) { throw new Error('Instanced sprite source must be a decoded atlas'); }
-        density = Math.max(density, texture.image.width / image.canvasWidth!, texture.image.height / image.canvasHeight!);
+        if (!(texture instanceof THREE.DataTexture)) {
+          throw new Error('Instanced sprite source must be a decoded atlas');
+        }
+        density = Math.max(
+          density,
+          texture.image.width / image.canvasWidth!,
+          texture.image.height / image.canvasHeight!,
+        );
       }
-    } finally { end(); }
+    } finally {
+      end();
+    }
     yield;
   }
   const resolutionScale = Math.min(1, density);
   // A clip uses one origin and one texel grid. Cropping and rounding each frame
   // independently changes its sampling phase and stretches the last partial
   // texel back onto the quad, making stationary parts wobble between frames.
-  let boundsMinX = Infinity, boundsMinY = Infinity, boundsMaxX = -Infinity, boundsMaxY = -Infinity;
+  let boundsMinX = Infinity,
+    boundsMinY = Infinity,
+    boundsMaxX = -Infinity,
+    boundsMaxY = -Infinity;
   for (const frame of layouts) {
-    boundsMinX = Math.min(boundsMinX, frame.minX); boundsMinY = Math.min(boundsMinY, frame.minY);
-    boundsMaxX = Math.max(boundsMaxX, frame.maxX); boundsMaxY = Math.max(boundsMaxY, frame.maxY);
+    boundsMinX = Math.min(boundsMinX, frame.minX);
+    boundsMinY = Math.min(boundsMinY, frame.minY);
+    boundsMaxX = Math.max(boundsMaxX, frame.maxX);
+    boundsMaxY = Math.max(boundsMaxY, frame.maxY);
   }
   const minX = Math.floor(boundsMinX * resolutionScale) / resolutionScale;
   const minY = Math.floor(boundsMinY * resolutionScale) / resolutionScale;
   const maxX = Math.ceil(boundsMaxX * resolutionScale) / resolutionScale;
   const maxY = Math.ceil(boundsMaxY * resolutionScale) / resolutionScale;
-  for (const frame of layouts) { Object.assign(frame, { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY }); }
+  for (const frame of layouts) {
+    Object.assign(frame, { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY });
+  }
   const cellWidth = Math.ceil((maxX - minX) * resolutionScale) + 4;
   const cellHeight = Math.ceil((maxY - minY) * resolutionScale) + 4;
-  const columns = Math.floor(maxTextureSize / cellWidth), rows = Math.floor(maxTextureSize / cellHeight);
-  if (columns < 1 || rows < 1) { throw new Error('Sprite frame exceeds the maximum atlas size'); }
+  const columns = Math.floor(maxTextureSize / cellWidth),
+    rows = Math.floor(maxTextureSize / cellHeight);
+  if (columns < 1 || rows < 1) {
+    throw new Error('Sprite frame exceeds the maximum atlas size');
+  }
   const capacity = columns * rows;
-  for (const { sprites } of gpu ? [] : layouts) { for (const { image, materials } of sprites) {
-    const texture = materials[image.sampler ?? 0].map;
-    if (!(texture instanceof THREE.DataTexture)) { throw new Error('Instanced sprite source must be a decoded atlas'); }
-    if (decodedSources.has(texture)) { continue; }
-    let pixels: Uint8Array | undefined;
-    while (!(pixels = atlasTexturePixels(texture))) { yield ATLAS_PENDING; }
-    decodedSources.set(texture, yield* decodeTextureSteps({ width: texture.image.width, height: texture.image.height, pixels }));
-  } }
+  for (const { sprites } of gpu ? [] : layouts) {
+    for (const { image, materials } of sprites) {
+      const texture = materials[image.sampler ?? 0].map;
+      if (!(texture instanceof THREE.DataTexture)) {
+        throw new Error('Instanced sprite source must be a decoded atlas');
+      }
+      if (decodedSources.has(texture)) {
+        continue;
+      }
+      let pixels: Uint8Array | undefined;
+      while (!(pixels = atlasTexturePixels(texture))) {
+        yield ATLAS_PENDING;
+      }
+      decodedSources.set(
+        texture,
+        yield* decodeTextureSteps({ width: texture.image.width, height: texture.image.height, pixels }),
+      );
+    }
+  }
   const sourceOf = ({ image, materials }: ResolvedSprite) => decodedSources.get(materials[image.sampler ?? 0].map!)!;
   const pages: RgbaSpriteAtlas[] = [];
   const scratch = gpu ? new GpuAtlasScratch() : undefined;
@@ -312,14 +373,27 @@ function* composeResolvedSteps(
     for (let offset = 0; offset < layouts.length; offset += capacity) {
       const frameIndices = layouts.slice(offset, offset + capacity).map((_, index) => index + offset);
       const options = { columns, frameIndices, resolutionScale };
-      pages.push(gpu ? yield* composeGpuPageSteps(gpu, scratch!, animation, frameIndices.map(index => layouts[index]), options)
-        : yield* composeAtlasSteps(animation, index => layouts[index], sourceOf, options));
+      pages.push(
+        gpu
+          ? yield* composeGpuPageSteps(
+              gpu,
+              scratch!,
+              animation,
+              frameIndices.map(index => layouts[index]),
+              options,
+            )
+          : yield* composeAtlasSteps(animation, index => layouts[index], sourceOf, options),
+      );
     }
     delivered = true;
     return pages;
   } finally {
     scratch?.dispose();
-    if (!delivered) { for (const page of pages) { page.texture.dispose(); } }
+    if (!delivered) {
+      for (const page of pages) {
+        page.texture.dispose();
+      }
+    }
   }
 }
 
@@ -330,7 +404,7 @@ function layoutAtlasPage(layouts: FrameLayout[], options: Omit<RgbaSpriteAtlasOp
   if (!Number.isFinite(resolutionScale) || resolutionScale <= 0) {
     throw new Error('RGBA sprite atlas resolutionScale must be greater than 0');
   }
-  layouts.forEach((frame) => {
+  layouts.forEach(frame => {
     frame.pixelWidth = Math.max(1, Math.ceil(frame.width * resolutionScale));
     frame.pixelHeight = Math.max(1, Math.ceil(frame.height * resolutionScale));
   });
@@ -339,8 +413,8 @@ function layoutAtlasPage(layouts: FrameLayout[], options: Omit<RgbaSpriteAtlasOp
     Math.min(layouts.length, Math.floor(options.columns ?? Math.ceil(Math.sqrt(layouts.length)))),
   );
   const rows = Math.ceil(layouts.length / columns);
-  const cellWidth = Math.max(...layouts.map((frame) => frame.pixelWidth)) + padding * 2;
-  const cellHeight = Math.max(...layouts.map((frame) => frame.pixelHeight)) + padding * 2;
+  const cellWidth = Math.max(...layouts.map(frame => frame.pixelWidth)) + padding * 2;
+  const cellHeight = Math.max(...layouts.map(frame => frame.pixelHeight)) + padding * 2;
   layouts.forEach((frame, index) => {
     frame.atlasX = (index % columns) * cellWidth + padding;
     frame.atlasY = Math.floor(index / columns) * cellHeight + padding;
@@ -348,15 +422,21 @@ function layoutAtlasPage(layouts: FrameLayout[], options: Omit<RgbaSpriteAtlasOp
   return { width: cellWidth * columns, height: cellHeight * rows, resolutionScale };
 }
 
-function atlasResult(animation: Animation, layouts: FrameLayout[], texture: THREE.Texture, width: number, height: number,
-  resolutionScale: number): RgbaSpriteAtlas {
+function atlasResult(
+  animation: Animation,
+  layouts: FrameLayout[],
+  texture: THREE.Texture,
+  width: number,
+  height: number,
+  resolutionScale: number,
+): RgbaSpriteAtlas {
   return {
     texture,
     frameRate: animation.frameRate,
     resolutionScale,
     width,
     height,
-    frames: layouts.map((frame) => ({
+    frames: layouts.map(frame => ({
       animationName: frame.animationName,
       frameIndex: frame.frameIndex,
       minX: frame.minX,
@@ -414,14 +494,19 @@ const GPU_RESOLVE_FRAGMENT = `
 /** Runs `draw` against the renderer and puts back the state the surrounding pass was using. */
 function withRendererState(renderer: THREE.WebGLRenderer, draw: () => void) {
   const target = renderer.getRenderTarget();
-  const face = renderer.getActiveCubeFace(), level = renderer.getActiveMipmapLevel();
-  const autoClear = renderer.autoClear, clearAlpha = renderer.getClearAlpha();
+  const face = renderer.getActiveCubeFace(),
+    level = renderer.getActiveMipmapLevel();
+  const autoClear = renderer.autoClear,
+    clearAlpha = renderer.getClearAlpha();
   const clearColor = renderer.getClearColor(new THREE.Color());
-  const { info } = renderer, autoReset = info.autoReset;
+  const { info } = renderer,
+    autoReset = info.autoReset;
   const { calls, triangles, points, lines } = info.render;
   const counters = { calls, triangles, points, lines };
   info.autoReset = false;
-  try { draw(); } finally {
+  try {
+    draw();
+  } finally {
     renderer.setRenderTarget(target, face, level);
     renderer.autoClear = autoClear;
     renderer.setClearColor(clearColor, clearAlpha);
@@ -446,48 +531,80 @@ class GpuAtlasScratch {
   private uvs = new Float32Array();
   private capacity = 0;
   readonly resolve = new THREE.ShaderMaterial({
-    uniforms: { map: { value: null as THREE.Texture | null } }, vertexShader: GPU_RESOLVE_VERTEX,
-    fragmentShader: GPU_RESOLVE_FRAGMENT, blending: THREE.NoBlending, depthTest: false, depthWrite: false,
+    uniforms: { map: { value: null as THREE.Texture | null } },
+    vertexShader: GPU_RESOLVE_VERTEX,
+    fragmentShader: GPU_RESOLVE_FRAGMENT,
+    blending: THREE.NoBlending,
+    depthTest: false,
+    depthWrite: false,
   });
   readonly resolveScene = new THREE.Scene();
   private readonly quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.resolve);
 
   constructor() {
     this.mesh.frustumCulled = this.quad.frustumCulled = false;
-    this.scene.add(this.mesh); this.resolveScene.add(this.quad);
+    this.scene.add(this.mesh);
+    this.resolveScene.add(this.quad);
   }
 
   private ensureCapacity(count: number): void {
-    if (count > 0x3fff) { throw new Error('A sprite frame cannot contain more than 16383 parts'); }
-    if (count <= this.capacity) { return; }
+    if (count > 0x3fff) {
+      throw new Error('A sprite frame cannot contain more than 16383 parts');
+    }
+    if (count <= this.capacity) {
+      return;
+    }
     // Dispose old GPU buffers before replacing attributes on this task's private geometry.
-    if (this.capacity) { this.geometry.dispose(); }
+    if (this.capacity) {
+      this.geometry.dispose();
+    }
     this.capacity = Math.min(0x3fff, THREE.MathUtils.ceilPowerOfTwo(count));
     this.positions = new Float32Array(this.capacity * 12);
     this.uvs = new Float32Array(this.capacity * 8);
     const indices = new Uint16Array(this.capacity * 6);
     for (let part = 0; part < this.capacity; part++) {
-      const vertex = part * 4, offset = part * 6;
-      indices[offset] = vertex; indices[offset + 1] = vertex + 1; indices[offset + 2] = vertex + 2;
-      indices[offset + 3] = vertex; indices[offset + 4] = vertex + 2; indices[offset + 5] = vertex + 3;
+      const vertex = part * 4,
+        offset = part * 6;
+      indices[offset] = vertex;
+      indices[offset + 1] = vertex + 1;
+      indices[offset + 2] = vertex + 2;
+      indices[offset + 3] = vertex;
+      indices[offset + 4] = vertex + 2;
+      indices[offset + 5] = vertex + 3;
     }
-    this.geometry.setAttribute('position', new THREE.BufferAttribute(this.positions, 3).setUsage(THREE.DynamicDrawUsage));
+    this.geometry.setAttribute(
+      'position',
+      new THREE.BufferAttribute(this.positions, 3).setUsage(THREE.DynamicDrawUsage),
+    );
     this.geometry.setAttribute('uv', new THREE.BufferAttribute(this.uvs, 2).setUsage(THREE.DynamicDrawUsage));
     this.geometry.setIndex(new THREE.BufferAttribute(indices, 1));
   }
 
   private materialIndex(map: THREE.Texture): number {
     let index = this.materialIndices.get(map);
-    if (index !== undefined) { return index; }
+    if (index !== undefined) {
+      return index;
+    }
     index = this.materials.length;
     this.materialIndices.set(map, index);
-    this.materials.push(new THREE.ShaderMaterial({
-      uniforms: { map: { value: map }, size: this.size }, vertexShader: GPU_VERTEX, fragmentShader: GPU_PART_FRAGMENT,
-      transparent: true, depthTest: false, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true,
-      blending: THREE.CustomBlending, blendEquation: THREE.AddEquation,
-      blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor,
-      blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
-    }));
+    this.materials.push(
+      new THREE.ShaderMaterial({
+        uniforms: { map: { value: map }, size: this.size },
+        vertexShader: GPU_VERTEX,
+        fragmentShader: GPU_PART_FRAGMENT,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        side: THREE.DoubleSide,
+        forceSinglePass: true,
+        blending: THREE.CustomBlending,
+        blendEquation: THREE.AddEquation,
+        blendSrc: THREE.OneFactor,
+        blendDst: THREE.OneMinusSrcAlphaFactor,
+        blendSrcAlpha: THREE.OneFactor,
+        blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
+      }),
+    );
     return index;
   }
 
@@ -495,42 +612,64 @@ class GpuAtlasScratch {
     const count = frame.sprites.length;
     this.ensureCapacity(count);
     this.geometry.clearGroups();
-    let run = -1, runStart = 0;
+    let run = -1,
+      runStart = 0;
     for (let part = 0; part < count; part++) {
       const { element, image, materials } = frame.sprites[part];
       const [a, b, c, d, tx, ty] = element.matrix;
-      const x0 = image.x - image.width / 2, y0 = image.y - image.height / 2;
-      const u0 = image.bbx! / image.canvasWidth!, u1 = (image.bbx! + image.width) / image.canvasWidth!;
-      const v0 = image.bby! / image.canvasHeight!, v1 = (image.bby! + image.height) / image.canvasHeight!;
+      const x0 = image.x - image.width / 2,
+        y0 = image.y - image.height / 2;
+      const u0 = image.bbx! / image.canvasWidth!,
+        u1 = (image.bbx! + image.width) / image.canvasWidth!;
+      const v0 = image.bby! / image.canvasHeight!,
+        v1 = (image.bby! + image.height) / image.canvasHeight!;
       for (let corner = 0; corner < 4; corner++) {
-        const right = corner === 1 || corner === 2, bottom = corner >= 2;
-        const x = x0 + (right ? image.width : 0), y = y0 + (bottom ? image.height : 0);
+        const right = corner === 1 || corner === 2,
+          bottom = corner >= 2;
+        const x = x0 + (right ? image.width : 0),
+          y = y0 + (bottom ? image.height : 0);
         const vertex = part * 4 + corner;
         this.positions[vertex * 3] = (a * x + c * y + tx - frame.minX) * scale + frame.atlasX;
         this.positions[vertex * 3 + 1] = (b * x + d * y + ty - frame.minY) * scale + frame.atlasY;
-        this.uvs[vertex * 2] = right ? u1 : u0; this.uvs[vertex * 2 + 1] = bottom ? v1 : v0;
+        this.uvs[vertex * 2] = right ? u1 : u0;
+        this.uvs[vertex * 2 + 1] = bottom ? v1 : v0;
       }
       const material = this.materialIndex(materials[image.sampler ?? 0].map!);
       if (material !== run) {
-        if (run >= 0) { this.geometry.addGroup(runStart * 6, (part - runStart) * 6, run); }
-        run = material; runStart = part;
+        if (run >= 0) {
+          this.geometry.addGroup(runStart * 6, (part - runStart) * 6, run);
+        }
+        run = material;
+        runStart = part;
       }
     }
-    if (count) { this.geometry.addGroup(runStart * 6, (count - runStart) * 6, run); }
+    if (count) {
+      this.geometry.addGroup(runStart * 6, (count - runStart) * 6, run);
+    }
     this.geometry.setDrawRange(0, count * 6);
-    for (const [name, length] of [['position', count * 12], ['uv', count * 8]] as const) {
+    for (const [name, length] of [
+      ['position', count * 12],
+      ['uv', count * 8],
+    ] as const) {
       const attribute = this.geometry.getAttribute(name);
       // A render may not have consumed previous writes (e.g. during context loss).
       let end = length;
-      for (const range of attribute.updateRanges) { end = Math.max(end, range.start + range.count); }
-      attribute.clearUpdateRanges(); attribute.addUpdateRange(0, end); attribute.needsUpdate = true;
+      for (const range of attribute.updateRanges) {
+        end = Math.max(end, range.start + range.count);
+      }
+      attribute.clearUpdateRanges();
+      attribute.addUpdateRange(0, end);
+      attribute.needsUpdate = true;
     }
   }
 
   dispose(): void {
-    this.geometry.dispose(); this.materials.forEach(material => material.dispose());
-    this.quad.geometry.dispose(); this.resolve.dispose();
-    this.scene.clear(); this.resolveScene.clear();
+    this.geometry.dispose();
+    this.materials.forEach(material => material.dispose());
+    this.quad.geometry.dispose();
+    this.resolve.dispose();
+    this.scene.clear();
+    this.resolveScene.clear();
   }
 }
 
@@ -542,31 +681,53 @@ function* composeGpuPageSteps(
   layouts: FrameLayout[],
   options: Omit<RgbaSpriteAtlasOptions, 'animationName'>,
 ): Generator<ComposeStep, RgbaSpriteAtlas> {
-  if (layouts.length === 0) { throw new Error('At least one sprite frame is required'); }
+  if (layouts.length === 0) {
+    throw new Error('At least one sprite frame is required');
+  }
   const { width, height, resolutionScale } = layoutAtlasPage(layouts, options);
-  for (const frame of layouts) { for (const { image, materials } of frame.sprites) {
-    const texture = materials[image.sampler ?? 0].map!;
-    if (scratch.uploaded.has(texture)) { continue; }
-    const upload = () => {
-      const end = spritePerfSpan('step:gpu-upload', texture.name || texture.uuid);
-      try { return prepareAtlasTexture(renderer, texture); } finally { end(); }
-    };
-    // A released atlas whose GPU copy is being rebuilt would compose blank frames into the cached pages.
-    while (!upload()) { yield ATLAS_PENDING; }
-    scratch.uploaded.add(texture);
-    yield;
-  } }
-  const accumulation = new THREE.WebGLRenderTarget(width, height, { type: THREE.HalfFloatType, depthBuffer: false,
-    minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false });
-  const target = new THREE.WebGLRenderTarget(width, height, { depthBuffer: false,
-    minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false });
+  for (const frame of layouts) {
+    for (const { image, materials } of frame.sprites) {
+      const texture = materials[image.sampler ?? 0].map!;
+      if (scratch.uploaded.has(texture)) {
+        continue;
+      }
+      const upload = () => {
+        const end = spritePerfSpan('step:gpu-upload', texture.name || texture.uuid);
+        try {
+          return prepareAtlasTexture(renderer, texture);
+        } finally {
+          end();
+        }
+      };
+      // A released atlas whose GPU copy is being rebuilt would compose blank frames into the cached pages.
+      while (!upload()) {
+        yield ATLAS_PENDING;
+      }
+      scratch.uploaded.add(texture);
+      yield;
+    }
+  }
+  const accumulation = new THREE.WebGLRenderTarget(width, height, {
+    type: THREE.HalfFloatType,
+    depthBuffer: false,
+    minFilter: THREE.NearestFilter,
+    magFilter: THREE.NearestFilter,
+    generateMipmaps: false,
+  });
+  const target = new THREE.WebGLRenderTarget(width, height, {
+    depthBuffer: false,
+    minFilter: THREE.LinearFilter,
+    magFilter: THREE.LinearFilter,
+    generateMipmaps: false,
+  });
   target.texture.colorSpace = THREE.SRGBColorSpace;
   let delivered = false;
   try {
     scratch.size.value.set(width, height);
     withRendererState(renderer, () => {
       renderer.setRenderTarget(accumulation);
-      renderer.setClearColor(0x000000, 0); renderer.clear();
+      renderer.setClearColor(0x000000, 0);
+      renderer.clear();
     });
     yield;
     for (const frame of layouts) {
@@ -574,20 +735,26 @@ function* composeGpuPageSteps(
       try {
         scratch.drawFrame(frame, resolutionScale);
         withRendererState(renderer, () => {
-          renderer.setRenderTarget(accumulation); renderer.autoClear = false;
+          renderer.setRenderTarget(accumulation);
+          renderer.autoClear = false;
           renderer.render(scratch.scene, scratch.camera);
         });
-      } finally { end(); }
+      } finally {
+        end();
+      }
       yield;
     }
     const end = spritePerfSpan('step:gpu-resolve', `${width}x${height}`);
     try {
       scratch.resolve.uniforms.map.value = accumulation.texture;
       withRendererState(renderer, () => {
-        renderer.setRenderTarget(target); renderer.autoClear = false;
+        renderer.setRenderTarget(target);
+        renderer.autoClear = false;
         renderer.render(scratch.resolveScene, scratch.camera);
       });
-    } finally { end(); }
+    } finally {
+      end();
+    }
     const atlas = atlasResult(animation, layouts, target.texture, width, height, resolutionScale);
     target.texture.addEventListener('dispose', () => target.dispose());
     delivered = true;
@@ -595,7 +762,9 @@ function* composeGpuPageSteps(
   } finally {
     scratch.resolve.uniforms.map.value = null;
     accumulation.dispose();
-    if (!delivered) { target.dispose(); }
+    if (!delivered) {
+      target.dispose();
+    }
   }
 }
 
@@ -606,7 +775,9 @@ function* composeAtlasSteps(
   options: Omit<RgbaSpriteAtlasOptions, 'animationName'>,
 ): Generator<void, RgbaSpriteAtlas> {
   const frameIndices = options.frameIndices ?? animation.frames.map((_, index) => index);
-  if (frameIndices.length === 0) { throw new Error('At least one sprite frame is required'); }
+  if (frameIndices.length === 0) {
+    throw new Error('At least one sprite frame is required');
+  }
   const layouts = frameIndices.map(resolve);
   const { width, height, resolutionScale } = layoutAtlasPage(layouts, options);
   const endCanvas = spritePerfSpan('step:canvas', `${width}x${height}`);
@@ -675,9 +846,7 @@ export async function createRgbaSpriteAtlas(
   options: RgbaSpriteAtlasOptions,
 ): Promise<RgbaSpriteAtlas> {
   const { buildPackage, animations } = await loadAnimationArchive(file, assetBaseUrl);
-  const animation = animations.animations.find(
-    (candidate) => candidate.name === options.animationName,
-  );
+  const animation = animations.animations.find(candidate => candidate.name === options.animationName);
   if (!animation) {
     throw new Error(`Sprite animation ${options.animationName} is unavailable in ${file}`);
   }
@@ -691,7 +860,8 @@ export function updateRgbaSpriteFrameGeometry(
 ) {
   const yOffset = options.anchor === 'bottom' ? -frame.maxY : 0;
   // A geometry that lacks them (or holds interleaved ones) gets its own four-vertex attributes.
-  const position = geometry.getAttribute('position'), uv = geometry.getAttribute('uv');
+  const position = geometry.getAttribute('position'),
+    uv = geometry.getAttribute('uv');
   let positions = position instanceof THREE.BufferAttribute ? position : undefined;
   let uvs = uv instanceof THREE.BufferAttribute ? uv : undefined;
   if (!positions || positions.count !== 4) {

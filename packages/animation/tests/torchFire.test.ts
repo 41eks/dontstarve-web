@@ -4,19 +4,30 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
 import { TORCH_FIRE_VFX } from '../../prefab/src/torchfire';
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('lets the holder display load the declared fire VFX, emit fire before delayed smoke and remove the particles with the follower', async () => {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-    return new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)));
-  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      return new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)));
+    }),
+  );
   const sprite = new SpriteState({ name: 'idle' });
   const display = new PrefabDisplay({ root: new THREE.Group(), sprite, art: { empty: true } });
   const follower = sprite.followSymbol('swap_object', 0, -110, TORCH_FIRE_VFX);
   await display.artLoaded();
-  expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/dst/data/fx/smoke.tex', '/dst/data/fx/torchfire.tex']);
+  expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual([
+    '/dst/data/fx/smoke.tex',
+    '/dst/data/fx/torchfire.tex',
+  ]);
   expect(follower.node.children).toHaveLength(2);
-  for (let i = 0; i < 12; i++) { sprite.update(1 / 30); }
+  for (let i = 0; i < 12; i++) {
+    sprite.update(1 / 30);
+  }
   const flame = follower.node.getObjectByName('fx/torchfire.tex') as THREE.Mesh;
   expect(flame.geometry.drawRange.count).toBeGreaterThan(0);
   // Smoke starts after its source delay (-50 particles at 80 per second).

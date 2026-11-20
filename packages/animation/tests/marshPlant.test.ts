@@ -22,23 +22,52 @@ import { testInventoryStore } from './testInventory';
 
 const cleanups: (() => void)[] = [];
 beforeEach(() => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
 });
 afterEach(() => {
-  for (const cleanup of cleanups.splice(0)) { cleanup(); }
-  vi.restoreAllMocks(); vi.unstubAllGlobals();
+  for (const cleanup of cleanups.splice(0)) {
+    cleanup();
+  }
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 function setup() {
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), updates = new ComponentUpdates(), fire = FireFxHost.create('/dst/data/anim', updates);
-  const snow = createSignal(0), spawnGroundItem = vi.fn();
-  const plantDisplays = new PrefabDisplayGroup(scene), pondDisplays = new PrefabDisplayGroup(scene);
-  const plants = prefabManager(plantDisplays, '/dst/data/anim', { scheduler, fire, spawnGroundItem: spawnGroundItem as never }, marshPlantPrefabs);
+  const scene = new THREE.Scene(),
+    scheduler = new GameTimeScheduler(),
+    updates = new ComponentUpdates(),
+    fire = FireFxHost.create('/dst/data/anim', updates);
+  const snow = createSignal(0),
+    spawnGroundItem = vi.fn();
+  const plantDisplays = new PrefabDisplayGroup(scene),
+    pondDisplays = new PrefabDisplayGroup(scene);
+  const plants = prefabManager(
+    plantDisplays,
+    '/dst/data/anim',
+    { scheduler, fire, spawnGroundItem: spawnGroundItem as never },
+    marshPlantPrefabs,
+  );
   const spawned: MarshPlantInstance[] = [];
-  const world = { scheduler, getWatchWorldContent: (() => snow) as never,
-    spawnPrefab: (_: string, position: THREE.Vector3) => { const plant = plants.spawn(MARSH_PLANT_ID, position); spawned.push(plant); return plant; } };
+  const world = {
+    scheduler,
+    getWatchWorldContent: (() => snow) as never,
+    spawnPrefab: (_: string, position: THREE.Vector3) => {
+      const plant = plants.spawn(MARSH_PLANT_ID, position);
+      spawned.push(plant);
+      return plant;
+    },
+  };
   const ponds = prefabManager(pondDisplays, '/dst/data/anim', world, pondPrefabs);
-  cleanups.push(() => { ponds.dispose(); plants.dispose(); pondDisplays.dispose(); plantDisplays.dispose(); fire.dispose(); });
+  cleanups.push(() => {
+    ponds.dispose();
+    plants.dispose();
+    pondDisplays.dispose();
+    plantDisplays.dispose();
+    fire.dispose();
+  });
   return { updates, plantDisplays, scene, scheduler, snow, plants, ponds, spawned, spawnGroundItem, world };
 }
 const offsets = (pond: PondInstance) => pond.GetPersistData().plants;
@@ -66,7 +95,7 @@ it('restores saved offsets, loses them to a freeze and thaws with new ones, as t
   const pond = ponds.spawn(POND_ID, new THREE.Vector3(), { id: 'pond', components: { plants: saved } });
   expect(spawned.map(plant => plant.position.toArray())).toEqual([[WORLD_SCALE, 0, -2 * WORLD_SCALE]]);
   expect(offsets(pond)).toEqual(saved);
-  snow.set(.5);
+  snow.set(0.5);
   expect(spawned[0].isRemoved).toBe(true);
   expect(offsets(pond)).toBeUndefined();
   snow.set(0);
@@ -75,7 +104,7 @@ it('restores saved offsets, loses them to a freeze and thaws with new ones, as t
 
   // Loaded into a frozen world: the first OnSnowLevel drops them before any plant exists.
   const count = spawned.length;
-  snow.set(.5);
+  snow.set(0.5);
   const frozen = ponds.spawn(POND_ID, new THREE.Vector3(90, 0, 0), { id: 'frozen', components: { plants: saved } });
   expect(spawned).toHaveLength(count);
   expect(offsets(frozen)).toBeUndefined();
@@ -84,7 +113,8 @@ it('restores saved offsets, loses them to a freeze and thaws with new ones, as t
 it('flickers only while its fire exists, on the world component updates', () => {
   const { plants, updates, scheduler } = setup();
   // Far apart: a burning plant's propagator would relight a neighbour.
-  const burnt = plants.spawn(MARSH_PLANT_ID, new THREE.Vector3()), extinguished = plants.spawn(MARSH_PLANT_ID, new THREE.Vector3(1000, 0, 0));
+  const burnt = plants.spawn(MARSH_PLANT_ID, new THREE.Vector3()),
+    extinguished = plants.spawn(MARSH_PLANT_ID, new THREE.Vector3(1000, 0, 0));
   const onUpdate = vi.spyOn(FireFX.prototype, 'OnUpdate');
   updates.update(1 / 30);
   expect(onUpdate).not.toHaveBeenCalled();
@@ -106,7 +136,10 @@ it('flickers only while its fire exists, on the world component updates', () => 
 
 it('burns to ash where it stands; a burnt plant stays gone from the world but not from the pond', async () => {
   const { ponds, plants, plantDisplays, scene, scheduler, spawned, spawnGroundItem } = setup();
-  const pond = ponds.spawn(POND_ID, new THREE.Vector3(), { id: 'pond', components: { plants: [{ offset: [1, 0, 0] }, { offset: [-1, 0, 0] }] } });
+  const pond = ponds.spawn(POND_ID, new THREE.Vector3(), {
+    id: 'pond',
+    components: { plants: [{ offset: [1, 0, 0] }, { offset: [-1, 0, 0] }] },
+  });
   const [burnt, extinguished] = spawned;
   // The source's instanced art path: the display loads the mirrored archive.
   await prefabDisplay(scene.children.find(child => child === burnt.transform.model)!)!.artLoaded();
@@ -127,27 +160,62 @@ it('burns to ash where it stands; a burnt plant stays gone from the world but no
 });
 
 it('haunting fails with the source cooldown, and c_spawn plants save and reload on their own', async () => {
-  const scheduler = new GameTimeScheduler(), position = new THREE.Vector3(6, 0, 9), fire = FireFxHost.create('/dst/data/anim');
+  const scheduler = new GameTimeScheduler(),
+    position = new THREE.Vector3(6, 0, 9),
+    fire = FireFxHost.create('/dst/data/anim');
   const createRegistry = () => {
-    const registry = new EntityRegistry(), displays = new PrefabDisplayGroup(new THREE.Scene());
-    const plants = prefabManager(displays, '/dst/data/anim', { scheduler, fire, spawnGroundItem: vi.fn() as never }, marshPlantPrefabs);
+    const registry = new EntityRegistry(),
+      displays = new PrefabDisplayGroup(new THREE.Scene());
+    const plants = prefabManager(
+      displays,
+      '/dst/data/anim',
+      { scheduler, fire, spawnGroundItem: vi.fn() as never },
+      marshPlantPrefabs,
+    );
     registry.register(PREFAB_DEFINITIONS.marshPlants, {
       restore: (id, record) => plants.restore(id, record),
       debugSpawn: id => plants.spawn(id, position.clone()),
       exportRecords: () => plants.exportRecords(),
-      dispose: () => { plants.dispose(); displays.dispose(); },
+      dispose: () => {
+        plants.dispose();
+        displays.dispose();
+      },
     });
     return registry;
   };
-  const registry = createRegistry(), restored = createRegistry(), inventory = testInventoryStore([], SAVE_CATALOG.items);
-  cleanups.push(() => { registry.dispose(); restored.dispose(); inventory.dispose(); fire.dispose(); });
-  expect((await executeDebugCommand('c_spawn("marsh_plant")', inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
-  const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);
+  const registry = createRegistry(),
+    restored = createRegistry(),
+    inventory = testInventoryStore([], SAVE_CATALOG.items);
+  cleanups.push(() => {
+    registry.dispose();
+    restored.dispose();
+    inventory.dispose();
+    fire.dispose();
+  });
+  expect((await executeDebugCommand('c_spawn("marsh_plant")', inventory, prefab => registry.spawn(prefab))).ok).toBe(
+    true,
+  );
+  const template = deserializeSave(
+    await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'),
+    SAVE_CATALOG,
+  );
   let exported = '';
-  expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-    exported = serializeSave(template, { entities: { ...template.world.entities, ...registry.exportRecords() }, inventory: inventory.exportSaved(),
-      playerTransform: { position: [6, 0, 9], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
-  })).ok).toBe(true);
+  expect(
+    (
+      await executeDebugCommand('c_save()', inventory, undefined, () => {
+        exported = serializeSave(
+          template,
+          {
+            entities: { ...template.world.entities, ...registry.exportRecords() },
+            inventory: inventory.exportSaved(),
+            playerTransform: { position: [6, 0, 9], rotationY: 0 },
+            elapsedSeconds: 0,
+          },
+          SAVE_CATALOG,
+        );
+      })
+    ).ok,
+  ).toBe(true);
   const records = { marsh_plant: deserializeSave(exported, SAVE_CATALOG).world.entities.marsh_plant };
   expect(records.marsh_plant).toHaveLength(1);
   expect(records.marsh_plant[0].transform.position).toEqual([6, 0, 9]);
@@ -162,7 +230,7 @@ it('haunting fails with the source cooldown, and c_spawn plants save and reload 
   expect(hauntable.IsHaunted()).toBe(true);
   scheduler.advance(4.9);
   expect(hauntable.IsHaunted()).toBe(true);
-  scheduler.advance(.2);
+  scheduler.advance(0.2);
   expect(hauntable.IsHaunted()).toBe(false);
 });
 
@@ -172,10 +240,15 @@ it('draws its fire in the shared batches only while the plant is batched, offset
   await prefabDisplay(plant.transform.model)!.artLoaded();
   plant.components.burnable!.Ignite();
   const [fire] = plant.sprite.fx.peek().values();
-  await fire.display.artLoaded(); await new Promise(resolve => setTimeout(resolve, 0));
+  await fire.display.artLoaded();
+  await new Promise(resolve => setTimeout(resolve, 0));
   const ownShown = (model: THREE.Object3D) => {
     let shown = 0;
-    model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) { shown++; } });
+    model.traverse(object => {
+      if (object instanceof THREE.Mesh && object.visible) {
+        shown++;
+      }
+    });
     return shown;
   };
   // fire.lua SetFinalOffset(FINALOFFSET_MAX): the effect declaration asks for the depth offset; the batch draws it.
@@ -185,9 +258,12 @@ it('draws its fire in the shared batches only while the plant is batched, offset
   expect(scene.children).toContain(plant.transform.model);
   // A plant drawn as its own billboard (dressed with runtime overrides) draws after every batch: its fire leaves the
   // batches with it, so it is still drawn after the plant, and returns once the plant does.
-  plant.sprite.setSymbolOverrides(new Map(), ['shadow']); plantDisplays.update(1 / 30);
+  plant.sprite.setSymbolOverrides(new Map(), ['shadow']);
+  plantDisplays.update(1 / 30);
   expect(ownShown(plant.transform.model)).toBeGreaterThan(0);
   expect(ownShown(fire.display.model)).toBeGreaterThan(0);
-  plant.sprite.setSymbolOverrides(new Map()); plantDisplays.update(1 / 30); plantDisplays.update(1 / 30);
+  plant.sprite.setSymbolOverrides(new Map());
+  plantDisplays.update(1 / 30);
+  plantDisplays.update(1 / 30);
   expect([ownShown(plant.transform.model), ownShown(fire.display.model)]).toEqual([0, 0]);
 });

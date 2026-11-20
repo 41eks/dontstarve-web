@@ -17,7 +17,12 @@ export function listenInventoryEvents(
   inst: InventoryEventSource,
   handlers: Partial<Record<keyof PrefabInventoryEventMap, () => void>>,
 ): () => void {
-  const stops = (Object.entries(handlers) as [keyof PrefabInventoryEventMap, () => void][])
-    .map(([event, handler]) => inst.ListenForEvent(event, () => handler()));
-  return () => { for (const stop of stops.splice(0)) { stop(); } };
+  const stops = (Object.entries(handlers) as [keyof PrefabInventoryEventMap, () => void][]).map(([event, handler]) =>
+    inst.ListenForEvent(event, () => handler()),
+  );
+  return () => {
+    for (const stop of stops.splice(0)) {
+      stop();
+    }
+  };
 }

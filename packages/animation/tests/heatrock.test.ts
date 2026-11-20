@@ -17,9 +17,15 @@ import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { testItem } from './testInventory';
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('creates individual unequippable stones with source tags and preserves their fueled durability', () => {
   const inventory = createPickupInventory();
@@ -36,20 +42,27 @@ it('creates individual unequippable stones with source tags and preserves their 
     expect(first.tile.peek().durabilityPercent).toBe(1);
     expect(inventory.transfer(inventorySlotAddress(0), equipmentSlotAddress('hand'), 1)).toBe(false);
     expect(inventory.getEntity(inventorySlotAddress(0))).toBe(first);
-    saved.configure(heatrockSpec); saved.configure(heatrockSpec);
+    saved.configure(heatrockSpec);
+    saved.configure(heatrockSpec);
     expect(saved.snapshot().remainingFuel).toBe(62.5);
-    expect(saved.tile.peek().durabilityPercent).toBe(.625);
-  } finally { inventory.dispose(); saved.destroy(); }
+    expect(saved.tile.peek().durabilityPercent).toBe(0.625);
+  } finally {
+    inventory.dispose();
+    saved.destroy();
+  }
 });
 
 it('registers temperature updates once, moves them between worlds and unregisters during removal', () => {
-  const inventory = createPickupInventory(), updates = new ComponentUpdates(), nextUpdates = new ComponentUpdates();
+  const inventory = createPickupInventory(),
+    updates = new ComponentUpdates(),
+    nextUpdates = new ComponentUpdates();
   const temperature = createSignal(35);
   inventory.entities.bindTemperatureWorld({ temperature, componentUpdates: updates });
   try {
     inventory.add('log', 1);
     inventory.add('heatrock', 2);
-    const first = inventory.getEntity(inventorySlotAddress(1))!, second = inventory.getEntity(inventorySlotAddress(2))!;
+    const first = inventory.getEntity(inventorySlotAddress(1))!,
+      second = inventory.getEntity(inventorySlotAddress(2))!;
     inventory.configureItem(first);
     inventory.configureItem(first);
     const firstUpdate = vi.spyOn(first.components.temperature!, 'OnUpdate');
@@ -60,7 +73,8 @@ it('registers temperature updates once, moves them between worlds and unregister
     expect(firstUpdate).toHaveBeenCalledTimes(1);
     expect(secondUpdate).toHaveBeenCalledTimes(1);
     inventory.entities.bindTemperatureWorld({ temperature, componentUpdates: nextUpdates });
-    firstUpdate.mockClear(); secondUpdate.mockClear();
+    firstUpdate.mockClear();
+    secondUpdate.mockClear();
     updates.update(10);
     expect(firstUpdate).not.toHaveBeenCalled();
     expect(secondUpdate).not.toHaveBeenCalled();
@@ -77,15 +91,21 @@ it('registers temperature updates once, moves them between worlds and unregister
     inventory.dispose();
     nextUpdates.update(1);
     expect(secondUpdate).toHaveBeenCalledTimes(2);
-  } finally { inventory.dispose(); updates.dispose(); nextUpdates.dispose(); }
+  } finally {
+    inventory.dispose();
+    updates.dispose();
+    nextUpdates.dispose();
+  }
 });
 
 it('derives range from temperature signals, updates icons in effects and preserves synchronous usage accounting', async () => {
-  const ambient = createSignal(35), updates = new ComponentUpdates();
+  const ambient = createSignal(35),
+    updates = new ComponentUpdates();
   const entity = testItem({ itemId: 'heatrock', count: 1, temperature: { current: 66 }, remainingFuel: 75 });
   entity.configure(heatrockSpec);
   entity.BindTemperatureWorld({ temperature: ambient, componentUpdates: updates });
-  const temperature = entity.components.temperature!, rock = entity.getComponent<HeatRock>('heatrock')!;
+  const temperature = entity.components.temperature!,
+    rock = entity.getComponent<HeatRock>('heatrock')!;
   const image = () => entity.components.inventoryitem.image.peek()!.icon;
   try {
     expect('set' in temperature.current).toBe(false);
@@ -93,7 +113,10 @@ it('derives range from temperature signals, updates icons in effects and preserv
     expect(rock.range.peek()).toBe(5);
     expect(image()).toBe('heat_rock5.tex');
     // Domain events must account for both transitions before the batched memo/effect settles.
-    batch(() => { updates.update(21); updates.update(1); });
+    batch(() => {
+      updates.update(21);
+      updates.update(1);
+    });
     expect(temperature.current.peek()).toBe(44);
     expect(rock.range.peek()).toBe(3);
     expect(entity.snapshot()).toMatchObject({ temperature: { current: 44 }, remainingFuel: 62.5 });
@@ -101,9 +124,11 @@ it('derives range from temperature signals, updates icons in effects and preserv
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(image()).toBe('heat_rock3.tex');
     // Ambient-only changes also derive a new range; the exact +30 boundary stays in range 4.
-    ambient.set(13); updates.update(0);
+    ambient.set(13);
+    updates.update(0);
     expect(rock.range.peek()).toBe(5);
-    ambient.set(14); updates.update(0);
+    ambient.set(14);
+    updates.update(0);
     expect(temperature.current.peek()).toBe(44);
     expect(rock.range.peek()).toBe(4);
     expect(entity.snapshot().remainingFuel).toBe(62.5);
@@ -113,9 +138,14 @@ it('derives range from temperature signals, updates icons in effects and preserv
     configureHeatRockEntity(entity);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(image()).toBe('heatrock_fantasy4.tex');
-    expect(entity.snapshot()).toMatchObject({ temperature: { current: 44 }, remainingFuel: 62.5, skinId: 'heatrock_fantasy' });
+    expect(entity.snapshot()).toMatchObject({
+      temperature: { current: 44 },
+      remainingFuel: 62.5,
+      skinId: 'heatrock_fantasy',
+    });
     // The item tile derives the image from the sprite json; sprite writes that keep the image do not reach it.
-    const tile = entity.tile, published = vi.fn();
+    const tile = entity.tile,
+      published = vi.fn();
     expect(tile.peek().image?.icon).toBe('heatrock_fantasy4.tex');
     const stopTile = tile.subscribe(published);
     entity.sprite.setFrame(3);
@@ -127,7 +157,10 @@ it('derives range from temperature signals, updates icons in effects and preserv
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(rock.range.peek()).toBe(5);
     expect(tile.peek().image).toBeUndefined();
-  } finally { entity.destroy(); updates.dispose(); }
+  } finally {
+    entity.destroy();
+    updates.dispose();
+  }
 });
 
 it('renders the source neutral pose for base and skinned stones and resolves their crafting icons', async () => {
@@ -137,21 +170,44 @@ it('renders the source neutral pose for base and skinned stones and resolves the
       expect(sprite.currentAnimation).toBe('3');
       sprite.update(60);
       expect(sprite.currentAnimation).toBe('3');
-      const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+      const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh<
+        THREE.BufferGeometry,
+        THREE.MeshBasicMaterial[]
+      >;
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
       expect(mesh.material.some(material => material.name === `sprite:${skin ?? 'heat_rock'}`)).toBe(true);
       expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
-    } finally { sprite.dispose(); }
+    } finally {
+      sprite.dispose();
+    }
   }
   const recipe = createRecipe('heatrock');
   expect(recipe.inventoryIcon).toBe('heat_rock3.tex');
   expect(recipe.skins.find(skin => skin.id === 'heatrock_fantasy')?.inventoryIcon).toBe('heatrock_fantasy3.tex');
   // A cold inst dropped or reskinned receives its own range, rather than the catalog's neutral pose.
   const inventory = createPickupInventory();
-  const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
-    inventory, '/dst/data/anim', new THREE.Group());
-  const model = items.spawnFromSave('heatrock', { itemId: 'heatrock', count: 1, skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0,
-    name: '暖石', icon: 'heatrock_fantasy1.tex' }, new THREE.Vector3());
+  const items = new ItemWorldFixture(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(),
+    undefined,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    new THREE.Group(),
+  );
+  const model = items.spawnFromSave(
+    'heatrock',
+    {
+      itemId: 'heatrock',
+      count: 1,
+      skinId: 'heatrock_fantasy',
+      temperature: { current: 0 },
+      lowTemp: 0,
+      name: '暖石',
+      icon: 'heatrock_fantasy1.tex',
+    },
+    new THREE.Vector3(),
+  );
   const entity = itemAt(model);
   try {
     // The prefab only declares what the sprite follows; the display applies it.
@@ -165,12 +221,19 @@ it('renders the source neutral pose for base and skinned stones and resolves the
     items.update(1);
     expect(entity.snapshot()).toMatchObject({ skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
     let mesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-    model.traverse(object => { if (object instanceof THREE.Mesh) { mesh ??= object as typeof mesh; } });
+    model.traverse(object => {
+      if (object instanceof THREE.Mesh) {
+        mesh ??= object as typeof mesh;
+      }
+    });
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect(mesh.material.some(material => material.name === 'sprite:heatrock_fantasy')).toBe(true);
     entity.components.temperature!.SetTemperature(80);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(sprite.currentAnimation).toBe('5');
     expect(entity.components.inventoryitem.image.peek()?.icon).toBe('heatrock_fantasy5.tex');
-  } finally { items.dispose(); inventory.dispose(); }
+  } finally {
+    items.dispose();
+    inventory.dispose();
+  }
 });

@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { getDstCycle } from '../../../src/tuning';
 
 describe('DST default day cycle', () => {
-
   it.each([
     [0, 0, 'day', 0],
     [150, 0, 'day', 0.5],

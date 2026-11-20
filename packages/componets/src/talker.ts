@@ -24,12 +24,19 @@ export class Talker {
     this.task = new ComponentTimer(scheduler, () => this.finish());
   }
 
-  IsTalking(): boolean { return this.lineState.peek() !== undefined; }
+  IsTalking(): boolean {
+    return this.lineState.peek() !== undefined;
+  }
 
   /** Talker:Say(script, time, noanim, force); a script of several lines is not used by anything ported. */
   Say(script: string, time?: number, noanim?: boolean, force?: boolean): void {
-    const { health, sleeper } = (this.inst.components ?? {}) as { health?: { IsDead(): boolean }; sleeper?: { IsAsleep(): boolean } };
-    if (!force && (health?.IsDead() || sleeper?.IsAsleep())) { return; }
+    const { health, sleeper } = (this.inst.components ?? {}) as {
+      health?: { IsDead(): boolean };
+      sleeper?: { IsAsleep(): boolean };
+    };
+    if (!force && (health?.IsDead() || sleeper?.IsAsleep())) {
+      return;
+    }
     this.ShutUp();
     const duration = Math.min(time ?? DEFAULT_TALKER_DURATION, MAX_TALKER_DURATION);
     this.lineState.set(script);
@@ -39,7 +46,9 @@ export class Talker {
 
   /** CancelSay: a line in progress ends now, with its donetalking. */
   ShutUp(): void {
-    if (!this.IsTalking()) { return; }
+    if (!this.IsTalking()) {
+      return;
+    }
     this.task.stop();
     this.finish();
   }
@@ -49,5 +58,7 @@ export class Talker {
     this.inst.PushEvent('donetalking');
   }
 
-  OnRemoveEntity(): void { this.ShutUp(); }
+  OnRemoveEntity(): void {
+    this.ShutUp();
+  }
 }

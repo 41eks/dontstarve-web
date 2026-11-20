@@ -17,7 +17,9 @@ const declaration = definitions.animatedBuildings.nightlight;
 export const NIGHT_LIGHT_PLACER = buildingPlacer(declaration, 'nightmare_torch');
 
 function onworked(inst: PrefabInstance): void {
-  if (inst.hasTag('burnt')) { return; }
+  if (inst.hasTag('burnt')) {
+    return;
+  }
   inst.sprite.playOnce('hit');
   inst.sprite.pushAnimation('idle', false);
 }
@@ -51,5 +53,10 @@ export class NightLightInstance extends PrefabInstance {
 }
 
 export function nightLightPrefabs(world: PrefabWorldContext) {
-  return { [NIGHT_LIGHT_ID]: { ...buildingPrefab(declaration, 'nightmare_torch', .1, () => new NightLightInstance(world), world), minimapIcon: 'nightlight.png' } };
+  return {
+    [NIGHT_LIGHT_ID]: {
+      ...buildingPrefab(declaration, 'nightmare_torch', 0.1, () => new NightLightInstance(world), world),
+      minimapIcon: 'nightlight.png',
+    },
+  };
 }

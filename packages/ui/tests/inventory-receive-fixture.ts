@@ -20,33 +20,56 @@ export async function createReceiveFixture() {
   camera.position.set(0, 12, 20);
   camera.lookAt(0, 0, 0);
   const canvas = document.createElement('canvas');
-  canvas.width = 640; canvas.height = 480;
+  canvas.width = 640;
+  canvas.height = 480;
   Object.assign(canvas.style, { position: 'fixed', left: '40px', top: '60px', width: '320px', height: '240px' });
   document.body.append(canvas);
   const screenProjection = new ScreenProjection(camera, canvas);
   inventoryBar.bindInventory(inventory, createInventorySlotItem(inventory));
   const scene = new THREE.Scene();
   inventory.subscribeReceived((received, source) => {
-    if (source) { inventoryReceiveEffect(ui,
-      screenProjection.GetScreenPos(new THREE.Vector3(source.x, source.y, source.z)))(received); }
+    if (source) {
+      inventoryReceiveEffect(
+        ui,
+        screenProjection.GetScreenPos(new THREE.Vector3(source.x, source.y, source.z)),
+      )(received);
+    }
   });
-  const worldState = createWorldState({ elapsedSeconds: 450, systems: {}, map: { ...initialWorld.world.map, kind: 'generated' } });
+  const worldState = createWorldState({
+    elapsedSeconds: 450,
+    systems: {},
+    map: { ...initialWorld.world.map, kind: 'generated' },
+  });
   // Keep the capture scene in tickingarea, with the player outside the swarm's hide radius.
   worldState.playerpositions.set([new THREE.Vector3(20, 0, 3)]);
-  const ground = new ItemWorldFixture(scene, camera, { domElement: canvas } as unknown as THREE.WebGLRenderer,
-    '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group(), undefined,
-    { getWatchWorldContent: worldState.getWatchWorldContent });
+  const ground = new ItemWorldFixture(
+    scene,
+    camera,
+    { domElement: canvas } as unknown as THREE.WebGLRenderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    new THREE.Group(),
+    undefined,
+    { getWatchWorldContent: worldState.getWatchWorldContent },
+  );
   return {
-    inventory, inventoryBar, backpackPanel,
+    inventory,
+    inventoryBar,
+    backpackPanel,
     equipBackpack() {
       const backpack = inventory.entities.create({ itemId: 'backpack', count: 1 });
-      if (!inventory.Equip(backpack)) { throw new Error('Could not equip backpack'); }
+      if (!inventory.Equip(backpack)) {
+        throw new Error('Could not equip backpack');
+      }
       const containerId = backpackContainerId(backpack.id);
       const container = backpack.components.container!;
       backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
       backpackPanel.bindContainer(container.slots, createInventorySlotItem(inventory));
       const maxStack = inventory.getItemSpec('rocks').maxStack;
-      if (!inventory.add('rocks', INVENTORY_SLOT_COUNT * maxStack)) { throw new Error('Could not fill inventory'); }
+      if (!inventory.add('rocks', INVENTORY_SLOT_COUNT * maxStack)) {
+        throw new Error('Could not fill inventory');
+      }
       // Leave capacity for one item so one receipt spans the main inventory and backpack.
       inventory.applySlotChanges([{ slot: inventorySlotAddress(0), itemId: 'rocks', delta: -1 }]);
       return { containerId, maxStack };
@@ -61,8 +84,11 @@ export async function createReceiveFixture() {
       return { ok, source };
     },
     craft() {
-      return inventory.craft(INVENTORY_RECIPES.rope, undefined,
-        inventoryReceiveEffect(ui, screenProjection.GetScreenPos(new THREE.Vector3())));
+      return inventory.craft(
+        INVENTORY_RECIPES.rope,
+        undefined,
+        inventoryReceiveEffect(ui, screenProjection.GetScreenPos(new THREE.Vector3())),
+      );
     },
     async capture() {
       const position = new THREE.Vector3(4, 0, 3);
@@ -70,8 +96,9 @@ export async function createReceiveFixture() {
       await ground.spawnFromSave('e_flight_fireflies', { itemId: 'fireflies', count: 1, ...spec }, position);
       const source = screenProjection.GetScreenPos(position);
       const firefly = [...actionEntities()].find(entity => entity.hasTag('NET_workable'))!;
-      const ok = performToolWork('NET', firefly, testPlayer({ inventory }))
-        && (!!firefly.components.inventoryitem?.owner || firefly.isRemoved);
+      const ok =
+        performToolWork('NET', firefly, testPlayer({ inventory })) &&
+        (!!firefly.components.inventoryitem?.owner || firefly.isRemoved);
       return { ok, source, remaining: ground.exportRecords().length };
     },
     remove(index: number) {
@@ -79,6 +106,12 @@ export async function createReceiveFixture() {
       const stack = inventory.get(slot)!;
       inventory.applySlotChanges([{ slot, itemId: stack.itemId, skinId: stack.skinId, delta: -stack.count }]);
     },
-    dispose() { ground.dispose(); worldState.dispose(); inventoryBar.remove(); backpackPanel.remove(); canvas.remove(); },
+    dispose() {
+      ground.dispose();
+      worldState.dispose();
+      inventoryBar.remove();
+      backpackPanel.remove();
+      canvas.remove();
+    },
   };
 }

@@ -12,15 +12,14 @@ export interface SlotContextMenuRequest extends SlotContextMenuDetail {
 }
 
 /** invslot.lua:OnControl -> DropItem / UseItem; concrete actions belong to inventory. */
-export function bindSlotContextMenuInput(
-  input: ReadonlySignal<SlotSecondaryInput | null>,
-  slot: SlotModel,
-) {
+export function bindSlotContextMenuInput(input: ReadonlySignal<SlotSecondaryInput | null>, slot: SlotModel) {
   const request = createSignal<SlotContextMenuRequest | null>(null);
   // Subscribe to each input transition: effects may coalesce repeated clicks and
   // must never execute an action again when only the slot's UI projection changes.
   const dispose = input.subscribe(control => {
-    if (!control) { return; }
+    if (!control) {
+      return;
+    }
     const item = slot.getItem();
     request.set({
       slot: { ...slot.address },

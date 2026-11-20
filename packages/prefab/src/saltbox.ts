@@ -16,12 +16,18 @@ const declaration = definitions.animatedBuildings.saltbox;
 /** saltbox.lua MakePlacer("saltbox_placer", "saltbox", "saltbox", "closed"). */
 export const SALT_BOX_PLACER = buildingPlacer(declaration, 'saltbox');
 
-function onopen(inst: PrefabInstance): void { inst.sprite.playOnce('open'); }
+function onopen(inst: PrefabInstance): void {
+  inst.sprite.playOnce('open');
+}
 
-function onclose(inst: PrefabInstance): void { inst.sprite.playOnce('close'); }
+function onclose(inst: PrefabInstance): void {
+  inst.sprite.playOnce('close');
+}
 
 function onworked(inst: PrefabInstance): void {
-  if (inst.hasTag('burnt')) { return; }
+  if (inst.hasTag('burnt')) {
+    return;
+  }
   inst.sprite.playOnce('hit');
   inst.sprite.pushAnimation('closed', false);
   inst.components.container?.DropEverything(inst.position);
@@ -62,7 +68,11 @@ export class SaltBoxInstance extends PrefabInstance {
 }
 
 export function saltBoxPrefabs(world: PrefabWorldContext) {
-  return { [SALT_BOX_ID]: { ...buildingPrefab(declaration, 'saltbox', undefined, () => new SaltBoxInstance(world), world),
-    // fn: MiniMapEntity:SetIcon("saltbox.png").
-    minimapIcon: 'saltbox.png' } };
+  return {
+    [SALT_BOX_ID]: {
+      ...buildingPrefab(declaration, 'saltbox', undefined, () => new SaltBoxInstance(world), world),
+      // fn: MiniMapEntity:SetIcon("saltbox.png").
+      minimapIcon: 'saltbox.png',
+    },
+  };
 }

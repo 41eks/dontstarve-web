@@ -7,8 +7,13 @@ import { Combat, type CombatActor } from '../../componets/src/combat';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FREEZE_COLOUR } from '../../componets/src/freezable';
-import { iceStaffLifecycle } from '../../prefab/src/staff';
-import { ICE_PROJECTILE_ID, LaunchProjectile, staffProjectilePrefabs, type StaffProjectileInstance } from '../../prefab/src/staff_projectile';
+import type { HandEquipmentWorld } from '../../prefab/src/handEquipment';
+import {
+  ICE_PROJECTILE_ID,
+  LaunchProjectile,
+  staffProjectilePrefabs,
+  type StaffProjectileInstance,
+} from '../../prefab/src/staff_projectile';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { beehivePrefabs, BEEHIVE_ID, BeehiveInstance } from '../../prefab/src/beehive';
 import { PlaySound } from '../../prefab/src/sound';
@@ -22,45 +27,99 @@ import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { createInventoryStore } from './testInventory';
 
-vi.mock('../../prefab/src/sound', async importOriginal => ({ ...await importOriginal<object>(),
-  PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => false })) }));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+vi.mock('../../prefab/src/sound', async importOriginal => ({
+  ...(await importOriginal<object>()),
+  PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => false })),
+}));
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 /** The player's combat with an ice staff from its inventory, and a real beehive as the target. */
 function setup() {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const inventory = createInventoryStore([{ slot_index: 0, id: 'icestaff', num: 1 }]);
-  const scheduler = new GameTimeScheduler(), componentUpdates = new ComponentUpdates();
+  const scheduler = new GameTimeScheduler(),
+    componentUpdates = new ComponentUpdates();
   const fx = { spawn: vi.fn(), shatter: vi.fn() };
   const displays = new PrefabDisplayGroup(new THREE.Scene());
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { scheduler }, {
-    ...staffProjectilePrefabs({ fx, componentUpdates }), ...beehivePrefabs({ scheduler, fx }) });
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(
+    displays,
+    '/dst/data/anim',
+    { scheduler },
+    {
+      ...staffProjectilePrefabs({ fx, componentUpdates }),
+      ...beehivePrefabs({ scheduler, fx }),
+    },
+  );
   const staff = inventory.getEntity(inventorySlotAddress(0))!;
   const sanity = vi.fn();
   const attacker: CombatActor = {
-    getPosition: () => new THREE.Vector3(0, 0, 0), getPhysicsRadius: () => .5, hasTag: tag => tag === 'player',
+    getPosition: () => new THREE.Vector3(0, 0, 0),
+    getPhysicsRadius: () => 0.5,
+    hasTag: tag => tag === 'player',
     components: { sanity: { DoDelta: sanity } },
   };
-  const combat = new Combat(attacker, () => scheduler.now, () => staff.components.weapon);
+  const combat = new Combat(
+    attacker,
+    () => scheduler.now,
+    () => staff.components.weapon,
+  );
   combat.SetRange(2);
   attacker.components.combat = combat;
-  iceStaffLifecycle(staff, { launch: (owner, target, from) =>
-    LaunchProjectile((prefab, position) => prefabs.spawn(prefab, position), ICE_PROJECTILE_ID, owner, target, from) });
+  inventory.entities.bindEquipmentWorld({
+    iceStaffWorld: {
+      launch: (owner, target, from) =>
+        LaunchProjectile((prefab, position) => prefabs.spawn(prefab, position), ICE_PROJECTILE_ID, owner, target, from),
+    },
+  } satisfies HandEquipmentWorld);
   const hive = prefabs.spawnAs(BeehiveInstance, BEEHIVE_ID, new THREE.Vector3(12, 0, 0));
-  const fly = (seconds: number) => { for (let t = 0; t < seconds; t += 1 / 60) { componentUpdates.update(1 / 60); } };
+  const fly = (seconds: number) => {
+    for (let t = 0; t < seconds; t += 1 / 60) {
+      componentUpdates.update(1 / 60);
+    }
+  };
   /** One left-click attack: combat:DoAttack launches the projectile, which hits the hive in flight. */
-  const shoot = () => { expect(combat.DoAttack(hive as never)).toBe(true); fly(1); };
+  const shoot = () => {
+    expect(combat.DoAttack(hive as never)).toBe(true);
+    fly(1);
+  };
   const tint = () => hive.sprite.sprite.peek().tint?.add;
   const override = () => hive.sprite.sprite.peek().appearance.get('archive-symbol:swap_frozen');
-  return { inventory, staff, combat, attacker, sanity, hive, prefabs, fx, scheduler, shoot, tint, override,
-    dispose: () => { prefabs.dispose(); displays.dispose(); componentUpdates.dispose(); scheduler.dispose(); inventory.dispose(); } };
+  return {
+    inventory,
+    staff,
+    combat,
+    attacker,
+    sanity,
+    hive,
+    prefabs,
+    fx,
+    scheduler,
+    shoot,
+    tint,
+    override,
+    dispose: () => {
+      prefabs.dispose();
+      displays.dispose();
+      componentUpdates.dispose();
+      scheduler.dispose();
+      inventory.dispose();
+    },
+  };
 }
 
 it('is a ranged extinguisher weapon whose ice projectile freezes a beehive on its second hit, which thaws and shatters', () => {
   const s = setup();
   try {
-    expect(['icestaff', 'weapon', 'rangedweapon', 'extinguisher', 'shadowlevel'].every(tag => s.staff.hasTag(tag))).toBe(true);
+    expect(
+      ['icestaff', 'weapon', 'rangedweapon', 'extinguisher', 'shadowlevel'].every(tag => s.staff.hasTag(tag)),
+    ).toBe(true);
     expect([s.staff.components.weapon!.GetDamage(), s.staff.icestaff_coldness]).toEqual([0, 1]);
     // EQUIPPED weapon: the left button attacks a combat target; the right button does nothing to it.
     expect(collectEquippedItemActions(s.staff, s.attacker as never, s.hive as never, false)).toEqual(['ATTACK']);
@@ -73,7 +132,7 @@ it('is a ranged extinguisher weapon whose ice projectile freezes a beehive on it
     expect(projectile).toBeUndefined();
     // One coldness of two: half the freeze tint, one sanity point and one use.
     expect(freezable.coldness.peek()).toBe(1);
-    expect(s.tint()).toEqual(FREEZE_COLOUR.slice(0, 3).map(value => value * .5));
+    expect(s.tint()).toEqual(FREEZE_COLOUR.slice(0, 3).map(value => value * 0.5));
     expect([s.sanity.mock.calls, s.staff.components.finiteuses.remaining]).toEqual([[[-1]], 19]);
     // onattack_blue's SpawnShatterFX plays the hive's level 3 shatter at the hive.
     expect(s.fx.shatter).toHaveBeenLastCalledWith(new THREE.Vector3(12, 0, 0), 3);
@@ -93,7 +152,9 @@ it('is a ranged extinguisher weapon whose ice projectile freezes a beehive on it
     expect(s.override()).toMatchObject({ archive: undefined });
     expect(s.tint()).toEqual([0, 0, 0]);
     expect(s.fx.shatter).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(12, 0, 0), 3);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('breaks the ice on any attack, wears coldness off point by point, and extinguishes a burning target on either button', () => {
@@ -115,10 +176,14 @@ it('breaks the ice on any attack, wears coldness off point by point, and extingu
     for (const right of [false, true]) {
       expect(collectEquippedItemActions(s.staff, s.attacker as never, s.hive as never, right)).toEqual(['ATTACK']);
     }
-    expect(getActionString({ action: 'ATTACK', doer: s.attacker as never, target: s.hive as never, invobject: s.staff })).toBe('扑灭');
+    expect(
+      getActionString({ action: 'ATTACK', doer: s.attacker as never, target: s.hive as never, invobject: s.staff }),
+    ).toBe('扑灭');
     s.shoot();
     expect(burnable.IsBurning()).toBe(false);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('is given by c_give and spawned by c_spawn, and keeps its uses through c_save', async () => {
@@ -128,8 +193,21 @@ it('is given by c_give and spawned by c_spawn, and keeps its uses through c_save
     const staff = inventory.FindItem(item => item.prefab === 'icestaff')!;
     expect(staff.components.finiteuses.use(5)).toBe(true);
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-    const saved = deserializeSave(serializeSave(template, { entities: {}, inventory: inventory.exportSaved(), elapsedSeconds: 0,
-      playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG), SAVE_CATALOG);
+    const saved = deserializeSave(
+      serializeSave(
+        template,
+        {
+          entities: {},
+          inventory: inventory.exportSaved(),
+          elapsedSeconds: 0,
+          playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        },
+        SAVE_CATALOG,
+      ),
+      SAVE_CATALOG,
+    );
     expect(JSON.stringify(saved.players.local)).toMatch(/"prefab":"icestaff".*"finiteuses":\{"uses":15\}/);
-  } finally { inventory.dispose(); }
+  } finally {
+    inventory.dispose();
+  }
 });

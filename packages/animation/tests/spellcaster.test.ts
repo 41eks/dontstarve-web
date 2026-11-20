@@ -11,63 +11,118 @@ import { InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } f
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { collectPointActions } from '../../stategraphs/src/componentactions';
 import { Locomotor } from '../../prefab/src/locomotor';
-import { getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_CAST_SOUND, type LightStaffId } from '../../prefab/src/staff';
+import { LIGHT_STAFF_USES, LIGHT_STAFF_CAST_SOUND, type LightStaffId } from '../../prefab/src/staff';
 import { PlaySound } from '../../prefab/src/sound';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { testInventoryStore } from './testInventory';
+import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 
 /** staff_castinglight, which is not ported: an fx entity whose SetUp the castspell state calls. */
 class CastingLight extends PrefabInstance {
   readonly SetUp = vi.fn((_colour: readonly [number, number, number], _duration: number, _delay: number) => {});
 }
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {} })),
+}));
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
-afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function fixture(itemId: LightStaffId, remainingUses?: number) {
   const hand = equipmentSlotAddress('hand');
-  const store = testInventoryStore([
-    { address: hand, slot: new HandSlot() },
-    ...[0, 1].map(index => ({ address: inventorySlotAddress(index), slot: new InventorySlot() })),
-  ], Object.fromEntries(Object.entries(LIGHT_STAFF_USES).map(([id, maxUses]) => [id, {
-    name: id, icon: `${id}.tex`, maxStack: 1, maxUses, equippable: 'hand',
-  }])));
+  const store = testInventoryStore(
+    [
+      { address: hand, slot: new HandSlot() },
+      ...[0, 1].map(index => ({ address: inventorySlotAddress(index), slot: new InventorySlot() })),
+    ],
+    Object.fromEntries(
+      Object.entries(LIGHT_STAFF_USES).map(([id, maxUses]) => [
+        id,
+        {
+          name: id,
+          icon: `${id}.tex`,
+          maxStack: 1,
+          maxUses,
+          equippable: 'hand',
+          configureEntity: configureEquipmentEntity,
+        },
+      ]),
+    ),
+  );
+  let blocked = false;
+  const map = {
+    isAboveGroundAtPoint: vi.fn(() => true),
+    isOceanAtPoint: () => false,
+    isGroundTargetBlocked: () => blocked,
+  };
+  const spawn = vi.fn(),
+    worldServices = { map, spawnPrefab: spawn };
+  store.entities.bindEquipmentWorld({ lightStaffWorld: worldServices });
   store.add(itemId, 1, undefined, undefined, remainingUses);
   store.transfer(inventorySlotAddress(0), hand, 1);
   const entity = store.getEntity(hand)!;
-  let blocked = false;
-  const map = { isAboveGroundAtPoint: vi.fn(() => true), isOceanAtPoint: () => false, isGroundTargetBlocked: () => blocked };
-  const spawn = vi.fn(), worldServices = { map, spawnPrefab: spawn };
-  const staff = getLightStaffController(entity, worldServices);
-  staff.onequip();
   // SpawnPrefab("staff_castinglight") on the player inst; the castspell state sets it up.
   const castingLight = new CastingLight('staff_castinglight', new SpriteState({ name: '' }));
   vi.spyOn(castingLight, 'remove');
   const casting = vi.fn((_prefab: string, _position: THREE.Vector3) => castingLight);
-  const inst = wilsonPlayer(name => (name === 'staff_pre' ? 15 : name === 'staff' ? 65 : 30) / 30, inst => { inst.SpawnPrefab = casting; });
+  const inst = wilsonPlayer(
+    name => (name === 'staff_pre' ? 15 : name === 'staff' ? 65 : 30) / 30,
+    inst => {
+      inst.SpawnPrefab = casting;
+    },
+  );
   const sound = inst.SoundEmitter.PlaySound;
-  const graph = inst.sg, player = inst.transform.model;
-  const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
+  const graph = inst.sg,
+    player = inst.transform.model;
+  const world = {
+    scene: new THREE.Scene(),
+    player,
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
     actionEvents: new EventEmitter<PlayerActionEvents>(),
-    renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
+    renderer: { domElement: new EventTarget() },
+  } as unknown as ActionWorldContext;
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() });
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity.
   const playerDoer = testPlayer({ model: player, inventory: store });
   const doDelta = vi.spyOn(addComponent(playerDoer, 'sanity', Sanity, 200), 'DoDelta');
-  const controller = new PlayerController(world, graph, locomotor,
-    store.handEquipment, playerDoer, () => false);
+  const controller = new PlayerController(world, graph, locomotor, store.handEquipment, playerDoer, () => false);
   const input = {
     // GetPointActions(position, equipitem) on the right button, then DoAction.
-    request: (point: THREE.Vector3) => collectPointActions(entity, playerDoer, point, true).includes('CASTSPELL')
-      && controller.DoAction(controller.createAction({ action: 'CASTSPELL', invobject: entity, pos: point.clone() })!),
+    request: (point: THREE.Vector3) =>
+      collectPointActions(entity, playerDoer, point, true).includes('CASTSPELL') &&
+      controller.DoAction(controller.createAction({ action: 'CASTSPELL', invobject: entity, pos: point.clone() })!),
     dispose: () => controller.dispose(),
   };
-  return { store, hand, entity, staff, world, worldServices, graph, input, spawn, doDelta, sound, casting, castingLight, locomotor, player,
-    setBlocked: (value: boolean) => { blocked = value; },
-    dispose: () => { input.dispose(); store.dispose(); } };
+  return {
+    store,
+    hand,
+    entity,
+    world,
+    worldServices,
+    graph,
+    input,
+    spawn,
+    doDelta,
+    sound,
+    casting,
+    castingLight,
+    locomotor,
+    player,
+    setBlocked: (value: boolean) => {
+      blocked = value;
+    },
+    dispose: () => {
+      input.dispose();
+      store.dispose();
+    },
+  };
 }
 
 it('uses source capabilities and the real invobject, approaches distant points, and commits the opal spell at frame 53', async () => {
@@ -99,7 +154,9 @@ it('uses source capabilities and the real invobject, approaches distant points, 
     s.graph.update(16 / 30);
     expect(s.graph.hasStateTag('busy')).toBe(false);
     expect(s.worldServices.map.isAboveGroundAtPoint).toHaveBeenCalledWith(new THREE.Vector3(90, 0, 0), true);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('consumes the last yellow use through the store, clears only its equipment and preserves committed effects', async () => {
@@ -117,5 +174,7 @@ it('consumes the last yellow use through the store, clears only its equipment an
     expect(s.casting).toHaveBeenCalledExactlyOnceWith('staff_castinglight', expect.anything());
     expect(s.castingLight.SetUp).toHaveBeenCalledOnce();
     expect(s.castingLight.remove).not.toHaveBeenCalled(); // Source releases FX ownership before the final-use unequip.
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });

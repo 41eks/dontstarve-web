@@ -18,34 +18,59 @@ import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
 import { createPickupInventory } from './pickupFixture';
 
 vi.mock('../../prefab/src/sound', async importOriginal => ({
-  ...await importOriginal<typeof import('../../prefab/src/sound')>(),
+  ...(await importOriginal<typeof import('../../prefab/src/sound')>()),
   PlaySound: vi.fn(() => ({ stop: vi.fn(), setVolume: vi.fn() })),
 }));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 async function setup() {
   const archives = new Map<string, Uint8Array>();
   for (const file of ['cactus.zip', 'oasis_cactus.zip', 'fire.zip']) {
     archives.set(file, await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url)));
   }
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(new Uint8Array(archives.get(url.split('/').pop()!)!))));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => new Response(new Uint8Array(archives.get(url.split('/').pop()!)!))),
+  );
   vi.stubGlobal('window', new EventTarget());
   const scheduler = new GameTimeScheduler();
   const world = bindTestWorld(scheduler);
   const inventory = createPickupInventory();
   const cacti = plantManager(cactusPrefabs, new THREE.Scene(), {
     spawnGroundItem: () => undefined,
-    spawnItem: state => { const entity = inventory.entities.create(state); inventory.configureItem(entity); return entity; },
+    spawnItem: state => {
+      const entity = inventory.entities.create(state);
+      inventory.configureItem(entity);
+      return entity;
+    },
   });
   // The picker: player combat whose GetAttacked runs through the inventory's worn armor.
   const picker = testPlayer({ inventory });
   const health = addComponent(picker, 'health', Health, 150);
   addComponent(picker, 'combat', Combat, () => scheduler.now);
   const events: string[] = [];
-  for (const name of ['attacked', 'thorns']) { picker.ListenForEvent(name, () => events.push(name)); }
+  for (const name of ['attacked', 'thorns']) {
+    picker.ListenForEvent(name, () => events.push(name));
+  }
   const pick = (model: THREE.Group) => plantInstance(model).components.pickable.pick({ picker, giveItem: () => true });
-  return { scheduler, world, inventory, cacti, picker, events, pick, health: () => health.currenthealth,
-    dispose() { cacti.dispose(); inventory.dispose(); world.unbind(); } };
+  return {
+    scheduler,
+    world,
+    inventory,
+    cacti,
+    picker,
+    events,
+    pick,
+    health: () => health.currenthealth,
+    dispose() {
+      cacti.dispose();
+      inventory.dispose();
+      world.unbind();
+    },
+  };
 }
 
 it('pricks the picker through worn armor, empties and regrows, giving a flower only in summer', async () => {
@@ -55,15 +80,15 @@ it('pricks the picker through worn armor, empties and regrows, giving a flower o
     expect(plantInstance(cactus).sprite.currentAnimation).toBe('idle');
     expect(prefabInstance(cactus)!.minimap.icon).toBe('cactus.png');
     const physics = () => prefabInstance(cactus)!.physics.json.peek()!.active;
-    expect(prefabInstance(cactus)!.physics.json.peek()!.capsule.radius).toBe(.3);
+    expect(prefabInstance(cactus)!.physics.json.peek()!.capsule.radius).toBe(0.3);
     test.inventory.add(DREADSTONEHAT_ID, 1);
     const hat = test.inventory.getEntity(inventorySlotAddress(0))!;
     expect(test.inventory.EquipFromInventory(hat)).toBe(true);
 
     expect(test.pick(cactus)).toBe(true);
     // inventory:ApplyDamage: the hat absorbs 90% and loses that much condition.
-    expect(test.health()).toBeCloseTo(150 - CACTUS_DAMAGE * .1);
-    expect(hat.components.armor!.condition.peek()).toBeCloseTo(ARMOR_DREADSTONEHAT - CACTUS_DAMAGE * .9);
+    expect(test.health()).toBeCloseTo(150 - CACTUS_DAMAGE * 0.1);
+    expect(hat.components.armor!.condition.peek()).toBeCloseTo(ARMOR_DREADSTONEHAT - CACTUS_DAMAGE * 0.9);
     expect(test.events).toEqual(['attacked', 'thorns']);
     expect(physics()).toBe(false);
     expect(test.inventory.count('cactus_flower')).toBe(0);
@@ -76,7 +101,9 @@ it('pricks the picker through worn armor, empties and regrows, giving a flower o
     expect(physics()).toBe(true);
     expect(test.pick(cactus)).toBe(true);
     expect(test.inventory.count('cactus_flower')).toBe(1);
-  } finally { test.dispose(); }
+  } finally {
+    test.dispose();
+  }
 });
 
 it('spares bramble_resistant pickers and restores a picked cactus empty', async () => {
@@ -94,11 +121,16 @@ it('spares bramble_resistant pickers and restores a picked cactus empty', async 
     const [{ prefabId, record }] = test.cacti.exportRecords();
     expect(prefabId).toBe('oasis_cactus');
     expect(record.components.pickable).toMatchObject({ picked: true, regrowSeconds: CACTUS_REGROW_TIME });
-    expect(PREFAB_DEFINITIONS.cacti.parseComponents(record.components, 'oasis_cactus', { grounded: true } as never)).toEqual(record.components);
-    const restored = await test.cacti.spawn('oasis_cactus', new THREE.Vector3(3, 0, 3), { ...record, id: 'restored' }).transform.model;
+    expect(
+      PREFAB_DEFINITIONS.cacti.parseComponents(record.components, 'oasis_cactus', { grounded: true } as never),
+    ).toEqual(record.components);
+    const restored = await test.cacti.spawn('oasis_cactus', new THREE.Vector3(3, 0, 3), { ...record, id: 'restored' })
+      .transform.model;
     expect(plantInstance(restored).components.pickable.canBePicked).toBe(false);
     expect(plantInstance(restored).sprite.currentAnimation).toBe('empty');
-  } finally { test.dispose(); }
+  } finally {
+    test.dispose();
+  }
 });
 
 it('flinches a living player into hit for six frames, and shells into shell_hit', () => {

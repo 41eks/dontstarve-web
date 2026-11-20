@@ -18,6 +18,8 @@ export function layerMeshes(display: GroundDisplay, name: string, prefix = 'Turf
 /** One layer's chunks merged, for whole-layer assertions; the caller disposes it. */
 export function layerGeometry(display: GroundDisplay, name: string): THREE.BufferGeometry {
   const parts = layerMeshes(display, name).map(mesh => mesh.geometry);
-  if (!parts.length) { throw new Error(`No ${name} ground quads`); }
+  if (!parts.length) {
+    throw new Error(`No ${name} ground quads`);
+  }
   return mergeGeometries(parts)!;
 }

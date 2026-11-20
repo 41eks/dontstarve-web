@@ -8,7 +8,10 @@ import { MakeObstaclePhysics } from './standardcomponents';
 export const ATRIUM_STATUE_ID = 'atrium_statue' as const;
 
 export class AtriumStatueInstance extends PrefabInstance {
-  declare readonly components: PrefabInstance['components'] & { inspectable: Inspectable; roseinspectable: RoseInspectable };
+  declare readonly components: PrefabInstance['components'] & {
+    inspectable: Inspectable;
+    roseinspectable: RoseInspectable;
+  };
   /** inst._suffix: "_night" while the nightmare phase is wild. */
   declare _suffix: string;
 }
@@ -19,7 +22,10 @@ export class AtriumStatueInstance extends PrefabInstance {
  */
 function fn(): AtriumStatueInstance {
   // SetBank / SetBuild("atrium_statue"), PlayAnimation("idle_full") without looping.
-  const inst = new AtriumStatueInstance(ATRIUM_STATUE_ID, new SpriteState({ name: 'idle_full', held: true, billboard: true }));
+  const inst = new AtriumStatueInstance(
+    ATRIUM_STATUE_ID,
+    new SpriteState({ name: 'idle_full', held: true, billboard: true }),
+  );
   inst.minimap.SetIcon('atrium_statue.png');
   addComponent(inst, 'inspectable', Inspectable);
   inst._suffix = '';
@@ -33,13 +39,15 @@ function fn(): AtriumStatueInstance {
 }
 
 /** The Prefab atrium_statue.lua returns for atrium_statue; atrium_statue_facing (savedrotation) is not ported. */
-export function atriumStatuePrefabs(): Readonly<Record<typeof ATRIUM_STATUE_ID, PrefabEntityDefinition<AtriumStatueInstance>>> {
+export function atriumStatuePrefabs(): Readonly<
+  Record<typeof ATRIUM_STATUE_ID, PrefabEntityDefinition<AtriumStatueInstance>>
+> {
   return {
     [ATRIUM_STATUE_ID]: {
       fn,
       assets: { animationArchive: 'atrium_statue.zip', buildArchives: ['atrium_statue.zip'], bank: 'atrium_statue' },
       assetOptions: { instancedAnimations: 'all' },
-      physics: { make: MakeObstaclePhysics, radius: .45 },
+      physics: { make: MakeObstaclePhysics, radius: 0.45 },
     },
   };
 }

@@ -4,7 +4,10 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
 const view = vi.hoisted(() => ({ render: vi.fn(), update: vi.fn(), cursor: vi.fn() }));
 vi.mock('../../../src/universal', () => ({
-  scene: {}, renderer: {}, cursorUi: { tick: view.cursor }, dstLighting: { render: view.render, update: view.update },
+  scene: {},
+  renderer: {},
+  cursorUi: { tick: view.cursor },
+  dstLighting: { render: view.render, update: view.update },
   resizeRendererToDisplaySize: () => ({ width: 800, height: 600, needsResize: false }),
 }));
 vi.mock('../../../src/debugStats', () => ({ createDebugStats: () => undefined }));
@@ -17,21 +20,28 @@ beforeEach(() => {
   now = 60_000;
   frames.clear();
   vi.spyOn(performance, 'now').mockImplementation(() => now);
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.set(++nextId, callback); return nextId; });
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.set(++nextId, callback);
+    return nextId;
+  });
   vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
 });
 afterEach(() => {
   frontTasks.length = middleTasks.length = backTasks.length = 0;
-  vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.clearAllMocks();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
 });
 
 function frame() {
   const [id, callback] = frames.entries().next().value!;
-  frames.delete(id); callback(now);
+  frames.delete(id);
+  callback(now);
 }
 
 it('starts on a fresh frame, resolves readiness after exactly one draw and excludes loading time', async () => {
-  const step = vi.fn(), updates = vi.fn();
+  const step = vi.fn(),
+    updates = vi.fn();
   backTasks.push(updates);
   const loop = animate({ step } as unknown as World, new THREE.PerspectiveCamera());
   expect(step).not.toHaveBeenCalled();
@@ -43,7 +53,7 @@ it('starts on a fresh frame, resolves readiness after exactly one draw and exclu
   expect(updates).toHaveBeenLastCalledWith(0, 0);
   now += 100;
   frame();
-  expect(updates).toHaveBeenLastCalledWith(.1, .1);
+  expect(updates).toHaveBeenLastCalledWith(0.1, 0.1);
   expect(view.render).toHaveBeenCalledTimes(2);
   loop.stop();
   expect(frames.size).toBe(0);

@@ -10,25 +10,36 @@ declare global {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/tests/dst-lighting.html');
-  await page.evaluate(async (url) => {
-    const { input } = await import(url);
-    window.inputFixture = { input, changes: 0 };
-    input.keys.subscribe(() => window.inputFixture.changes++);
-  }, `/@fs${fileURLToPath(new URL('../../../src/InputManager.ts', import.meta.url))}`);
+  await page.evaluate(
+    async url => {
+      const { input } = await import(url);
+      window.inputFixture = { input, changes: 0 };
+      input.keys.subscribe(() => window.inputFixture.changes++);
+    },
+    `/@fs${fileURLToPath(new URL('../../../src/InputManager.ts', import.meta.url))}`,
+  );
 });
 
 function state(page: Page) {
   return page.evaluate(() => {
     const { input, changes } = window.inputFixture;
-    return { keys: [...input.keys.peek()], manual: input.isManualMovement(),
-      interrupting: input.isActionInterrupting(), changes };
+    return {
+      keys: [...input.keys.peek()],
+      manual: input.isManualMovement(),
+      interrupting: input.isActionInterrupting(),
+      changes,
+    };
   });
 }
 
-test('combines movement and jump input synchronously, ignoring repeats and preserving previous key sets', async ({ page }) => {
+test('combines movement and jump input synchronously, ignoring repeats and preserving previous key sets', async ({
+  page,
+}) => {
   await page.keyboard.down('w');
   expect(await state(page)).toEqual({ keys: ['KeyW'], manual: true, interrupting: true, changes: 1 });
-  await page.evaluate(() => { window.inputFixture.held = window.inputFixture.input.keys.peek(); });
+  await page.evaluate(() => {
+    window.inputFixture.held = window.inputFixture.input.keys.peek();
+  });
   await page.keyboard.down('w');
   await page.keyboard.press('g');
   expect((await state(page)).changes).toBe(1);
@@ -40,7 +51,9 @@ test('combines movement and jump input synchronously, ignoring repeats and prese
   expect(await state(page)).toEqual({ keys: [], manual: false, interrupting: false, changes: 4 });
 });
 
-test('filters shadow text input, releases held keys from text input, and clears blocked or blurred input', async ({ page }) => {
+test('filters shadow text input, releases held keys from text input, and clears blocked or blurred input', async ({
+  page,
+}) => {
   await page.keyboard.down('w');
   await page.evaluate(() => {
     const host = document.createElement('div');
@@ -71,23 +84,33 @@ test('filters shadow text input, releases held keys from text input, and clears 
 test('dispose clears input and releases only its own listeners and memo dependencies', async ({ page }) => {
   await page.keyboard.down('w');
   await page.keyboard.down('Space');
-  expect(await page.evaluate(async (url) => {
-    const { InputManager } = await import(url);
-    const other = new InputManager();
-    const { input } = window.inputFixture;
-    input.dispose();
-    input.dispose();
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD' }));
-    const observed = {
-      disposedKeys: [...input.keys.peek()], disposedMovement: input.isManualMovement(),
-      disposedInterrupting: input.isActionInterrupting(),
-      otherKeys: [...other.keys.peek()], otherMovement: other.isManualMovement(),
-    };
-    other.dispose();
-    return observed;
-  }, `/@fs${fileURLToPath(new URL('../../../src/InputManager.ts', import.meta.url))}`)).toEqual({
-    disposedKeys: [], disposedMovement: false, disposedInterrupting: false,
-    otherKeys: ['KeyD'], otherMovement: true,
+  expect(
+    await page.evaluate(
+      async url => {
+        const { InputManager } = await import(url);
+        const other = new InputManager();
+        const { input } = window.inputFixture;
+        input.dispose();
+        input.dispose();
+        window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyD' }));
+        const observed = {
+          disposedKeys: [...input.keys.peek()],
+          disposedMovement: input.isManualMovement(),
+          disposedInterrupting: input.isActionInterrupting(),
+          otherKeys: [...other.keys.peek()],
+          otherMovement: other.isManualMovement(),
+        };
+        other.dispose();
+        return observed;
+      },
+      `/@fs${fileURLToPath(new URL('../../../src/InputManager.ts', import.meta.url))}`,
+    ),
+  ).toEqual({
+    disposedKeys: [],
+    disposedMovement: false,
+    disposedInterrupting: false,
+    otherKeys: ['KeyD'],
+    otherMovement: true,
   });
   await page.keyboard.up('w');
   await page.keyboard.up('Space');

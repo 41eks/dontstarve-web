@@ -46,23 +46,39 @@ import type { PlayerInstance } from '../../prefab/src/player_common';
 import type { BookWorld } from '../../prefab/src/books';
 import { testItem } from './testInventory';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, setVolume() {}, isPlaying: () => true })) }));
-vi.mock('../../../src/InputManager', () => ({ input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false } }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {}, setVolume() {}, isPlaying: () => true })),
+}));
+vi.mock('../../../src/InputManager', () => ({
+  input: { isPressed: () => false, isManualMovement: () => false, isActionInterrupting: () => false },
+}));
 
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
-afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
 
 /** A player with a picker, a real locomotor on the player's own position and a buffering stategraph. */
 function setup(tool: Parameters<typeof actionTool>[0]) {
-  const scene = new THREE.Scene(), canvas = new EventTarget();
+  const scene = new THREE.Scene(),
+    canvas = new EventTarget();
   const { instance: playerInstance, display: playerDisplay } = createEmptyEntity('player');
   const player = playerDisplay.model;
   const actionEvents = new EventEmitter<PlayerActionEvents>();
-  const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
-    renderer: { domElement: canvas }, actionEvents } as unknown as ActionWorldContext;
+  const world = {
+    player,
+    scene,
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    renderer: { domElement: canvas },
+    actionEvents,
+  } as unknown as ActionWorldContext;
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
   const body = { position: player.position, velocity: new THREE.Vector3() };
-  const locomotor = new Locomotor(body, { physicsRadius: .5 * WORLD_SCALE });
+  const locomotor = new Locomotor(body, { physicsRadius: 0.5 * WORLD_SCALE });
   const hand = createEquipmentExistenceState('HANDS');
   const equipped = actionTool(tool);
   hand.set(equipped);
@@ -89,9 +105,29 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
     canvas.dispatchEvent(event);
     return event;
   };
-  return { world, player, playerInstance, locomotor, hand, equipped, animation, controller, target, click, actionEvents,
-    moveManually: () => { manual = true; },
-    dispose: () => { playerInstance.remove(); playerDisplay.dispose(); controller.dispose(); world.mouseActions!.dispose(); created.forEach(instance => instance.remove()); } };
+  return {
+    world,
+    player,
+    playerInstance,
+    locomotor,
+    hand,
+    equipped,
+    animation,
+    controller,
+    target,
+    click,
+    actionEvents,
+    moveManually: () => {
+      manual = true;
+    },
+    dispose: () => {
+      playerInstance.remove();
+      playerDisplay.dispose();
+      controller.dispose();
+      world.mouseActions!.dispose();
+      created.forEach(instance => instance.remove());
+    },
+  };
 }
 
 describe('PlayerController', () => {
@@ -100,16 +136,24 @@ describe('PlayerController', () => {
     try {
       const rock = s.target('rock1', 'MINE', new THREE.Vector3(10, 0, 0));
       // componentactions tool: MINE on the left button; the right button repeats it, so the picker keeps only one.
-      expect(s.world.mouseActions!.getMouseActions()).toMatchObject({ left: { action: 'MINE', target: rock.entity, invobject: s.equipped.entity } });
+      expect(s.world.mouseActions!.getMouseActions()).toMatchObject({
+        left: { action: 'MINE', target: rock.entity, invobject: s.equipped.entity },
+      });
       expect(s.world.mouseActions!.getMouseActions().right).toBeUndefined();
       expect(s.click(0).defaultPrevented).toBe(true);
-      expect(s.controller.bufferedAction).toMatchObject({ action: 'MINE', target: rock.entity, invobject: s.equipped.entity });
+      expect(s.controller.bufferedAction).toMatchObject({
+        action: 'MINE',
+        target: rock.entity,
+        invobject: s.equipped.entity,
+      });
       expect(s.locomotor.bufferedAction).toBeDefined();
       expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
       // ARRIVE_STEP plus both physics radii: the target has none, the player .5.
-      s.player.position.x = 10 - 2.1; s.locomotor.update(16, 1 / 30);
+      s.player.position.x = 10 - 2.1;
+      s.locomotor.update(16, 1 / 30);
       expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
-      s.player.position.x = 10 - 1.9; s.locomotor.update(16, 1 / 30);
+      s.player.position.x = 10 - 1.9;
+      s.locomotor.update(16, 1 / 30);
       expect(s.animation.sg.pushBufferedAction).toHaveBeenCalledOnce();
       expect(s.playerInstance.sprite.sprite.peek().facingRotation).toBeCloseTo(0);
       expect(s.locomotor.bufferedAction).toBeUndefined();
@@ -122,41 +166,65 @@ describe('PlayerController', () => {
       s.click(0);
       expect(s.animation.sg.cancelAction).toHaveBeenCalledWith('MINE');
       expect(s.controller.bufferedAction).toBeUndefined();
-    } finally { s.dispose(); }
+    } finally {
+      s.dispose();
+    }
   });
 
   it('takes HAMMER only on the right button and DIG only as an rmb action', () => {
     const s = setup('hammer');
     try {
       const wall = s.target('wall_stone', 'HAMMER', new THREE.Vector3(1, 0, 0));
-      expect(s.world.mouseActions!.getMouseActions()).toEqual({ right: expect.objectContaining({ action: 'HAMMER', target: wall.entity }) });
+      expect(s.world.mouseActions!.getMouseActions()).toEqual({
+        right: expect.objectContaining({ action: 'HAMMER', target: wall.entity }),
+      });
       expect(s.click(0).defaultPrevented).toBe(false);
       expect(s.click(2).defaultPrevented).toBe(true);
       expect(s.animation.last).toMatchObject({ action: 'HAMMER', invobject: s.equipped.entity });
-      const shovel = actionTool('shovel').entity, plant = s.target('grass', 'DIG', new THREE.Vector3(1, 0, 0)).entity;
+      const shovel = actionTool('shovel').entity,
+        plant = s.target('grass', 'DIG', new THREE.Vector3(1, 0, 0)).entity;
       expect(collectEquippedItemActions(shovel, undefined, plant, false)).toEqual([]);
       expect(collectEquippedItemActions(shovel, undefined, plant, true)).toEqual(['DIG']);
-    } finally { s.dispose(); }
+    } finally {
+      s.dispose();
+    }
   });
 
   it.each(['manual movement', 'Escape', 'another action', 'an unequipped tool', 'an invalid target'] as const)(
-    'drops the walked-to action on %s', (reason) => {
+    'drops the walked-to action on %s',
+    reason => {
       const s = setup('pickaxe');
       try {
         const rock = s.target('rock1', 'MINE', new THREE.Vector3(10, 0, 0));
         s.click(0);
         expect(s.locomotor.bufferedAction).toBeDefined();
-        if (reason === 'manual movement') { s.moveManually(); s.controller.update(); }
-        if (reason === 'Escape') { window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' })); }
-        if (reason === 'another action') { s.actionEvents.emit('action:begin', { owner: {}, action: 'MIGRATE' }); }
-        if (reason === 'an unequipped tool') { s.hand.set(null); }
-        if (reason === 'an invalid target') { rock.workable.SetWorkable(false); s.locomotor.update(16, 1 / 30); }
+        if (reason === 'manual movement') {
+          s.moveManually();
+          s.controller.update();
+        }
+        if (reason === 'Escape') {
+          window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
+        }
+        if (reason === 'another action') {
+          s.actionEvents.emit('action:begin', { owner: {}, action: 'MIGRATE' });
+        }
+        if (reason === 'an unequipped tool') {
+          s.hand.set(null);
+        }
+        if (reason === 'an invalid target') {
+          rock.workable.SetWorkable(false);
+          s.locomotor.update(16, 1 / 30);
+        }
         expect(s.controller.bufferedAction).toBeUndefined();
         expect(s.locomotor.bufferedAction).toBeUndefined();
-        s.player.position.x = 9; s.locomotor.update(16, 1 / 30);
+        s.player.position.x = 9;
+        s.locomotor.update(16, 1 / 30);
         expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
-      } finally { s.dispose(); }
-    });
+      } finally {
+        s.dispose();
+      }
+    },
+  );
 });
 
 describe('PlayerController scene actions', () => {
@@ -173,7 +241,9 @@ describe('PlayerController scene actions', () => {
       hauntable.SetOnHauntFn(haunted);
       instance.components.hauntable = hauntable;
       const entity = registerActionEntity(instance);
-      vi.mocked(PointerRaycaster.prototype.pickMouseTarget).mockReturnValue({ object: display.model } as unknown as THREE.Intersection);
+      vi.mocked(PointerRaycaster.prototype.pickMouseTarget).mockReturnValue({
+        object: display.model,
+      } as unknown as THREE.Intersection);
       const picker = s.world.mouseActions!;
       // player_common.lua PlayerActionFilter (default priority) and the ghost's GhostActionFilter above it.
       picker.PushActionFilter(PlayerActionFilter, -99);
@@ -182,16 +252,21 @@ describe('PlayerController scene actions', () => {
       expect(picker.getMouseActions().left).toMatchObject({ action: 'HAUNT', target: entity });
       expect(s.click(0).defaultPrevented).toBe(true);
       // mindistance = 2 outweighs ARRIVE_STEP plus the player's .5 radius.
-      s.player.position.x = 10 - 2.1 * WORLD_SCALE; s.locomotor.update(16, 1 / 30);
+      s.player.position.x = 10 - 2.1 * WORLD_SCALE;
+      s.locomotor.update(16, 1 / 30);
       expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
-      s.player.position.x = 10 - 1.9 * WORLD_SCALE; s.locomotor.update(16, 1 / 30);
+      s.player.position.x = 10 - 1.9 * WORLD_SCALE;
+      s.locomotor.update(16, 1 / 30);
       expect(s.animation.last).toMatchObject({ action: 'HAUNT', target: entity });
       expect(s.animation.hit()).toBe(true);
       expect(haunted).toHaveBeenCalledOnce();
       picker.PopActionFilter(isGhostValidAction);
       expect(picker.getMouseActions().left).toBeUndefined();
       instance.remove();
-    } finally { s.dispose(); scheduler.dispose(); }
+    } finally {
+      s.dispose();
+      scheduler.dispose();
+    }
   });
 });
 
@@ -202,7 +277,12 @@ describe('PlayerController equipped actions', () => {
     const target = new PrefabInstance('evergreen', new SpriteState({ name: 'idle', billboard: true }));
     // The doer's combat:CanLightTarget is the rule under test's input: only its answer matters here.
     const doer = testPlayer();
-    const canLight = vi.spyOn(addComponent(doer, 'combat', Combat, () => 0), 'CanLightTarget').mockReturnValue(true);
+    const canLight = vi
+      .spyOn(
+        addComponent(doer, 'combat', Combat, () => 0),
+        'CanLightTarget',
+      )
+      .mockReturnValue(true);
     // componentactions EQUIPPED.weapon: combat:CanLightTarget on the right button only.
     expect(collectEquippedItemActions(weapon, doer, target, false)).toEqual([]);
     expect(collectEquippedItemActions(weapon, doer, target, true)).toEqual(['ATTACK']);
@@ -218,7 +298,9 @@ describe('PlayerController point actions', () => {
   it('takes TERRAFORM from the held terraformer at the ground point, walks there and digs the tile at the hit frame', () => {
     const s = setup('pitchfork');
     const map = new TurfMap(1000);
-    const lifecycle = getHandEquipmentDefinition('pitchfork')!.definition.createLifecycle!(s.equipped.entity, { terraformMap: map } as never)!;
+    const lifecycle = getHandEquipmentDefinition('pitchfork')!.definition.createLifecycle!(s.equipped.entity, {
+      terraformMap: map,
+    } as never)!;
     const point = new THREE.Vector3(12.1, 0, 0.1);
     pickNothing();
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
@@ -226,11 +308,15 @@ describe('PlayerController point actions', () => {
       // The terraformer reaches TheWorld.Map only while the pitchfork is held in a world.
       expect(s.world.mouseActions!.getMouseActions().right).toBeUndefined();
       lifecycle.onequip();
-      expect(s.world.mouseActions!.getMouseActions().right).toMatchObject({ action: 'TERRAFORM', invobject: s.equipped.entity });
+      expect(s.world.mouseActions!.getMouseActions().right).toMatchObject({
+        action: 'TERRAFORM',
+        invobject: s.equipped.entity,
+      });
       expect(s.click(2).defaultPrevented).toBe(true);
       expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
       // No action distance: ARRIVE_STEP plus the player's radius from the point itself.
-      s.player.position.set(12.1 - 1.9, 0, 0.1); s.locomotor.update(16, 1 / 30);
+      s.player.position.set(12.1 - 1.9, 0, 0.1);
+      s.locomotor.update(16, 1 / 30);
       expect(s.animation.sg.pushBufferedAction).toHaveBeenCalledOnce();
       expect(map.getTileAtWorld(point)).toBe(WORLD_TILES.DECIDUOUS);
       expect(s.animation.hit()).toBe(true);
@@ -240,11 +326,15 @@ describe('PlayerController point actions', () => {
       const other = new THREE.Vector3(30, 0, 30);
       vi.mocked(PointerRaycaster.prototype.groundPoint).mockReturnValue(other);
       s.click(2);
-      s.player.position.copy(other); s.locomotor.update(16, 1 / 30);
+      s.player.position.copy(other);
+      s.locomotor.update(16, 1 / 30);
       s.hand.set(null);
       expect(s.animation.hit()).toBe(false);
       expect(map.getTileAtWorld(other)).toBe(WORLD_TILES.DECIDUOUS);
-    } finally { lifecycle.onunequip(); s.dispose(); }
+    } finally {
+      lifecycle.onunequip();
+      s.dispose();
+    }
   });
 });
 
@@ -254,7 +344,10 @@ function pickNothing() {
 
 describe('PlayerController with the Wilson stategraph', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+    vi.stubGlobal(
+      'fetch',
+      async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+    );
   });
 
   it('commits mining at frame seven and preserves durability when cancelled, finished elsewhere or unequipped', async () => {
@@ -269,24 +362,45 @@ describe('PlayerController with the Wilson stategraph', () => {
     const scene = new THREE.Scene();
     const loot = vi.fn(() => undefined);
     const rocks = rockWorld(scene, { spawnGroundItem: loot });
-    const world = { player, scene, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
-      renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
+    const world = {
+      player,
+      scene,
+      camera: new THREE.PerspectiveCamera(),
+      ground: new THREE.Group(),
+      renderer: { domElement: new EventTarget() },
+    } as unknown as ActionWorldContext;
     const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() });
-    const controller = new PlayerController(world, animation.sg, locomotor, inventory.handEquipment, playerDoer(player));
-    const advance = (frames: number) => { for (let i = 0; i < frames; i++) { advancePlayer(animation, 1 / 30); } };
-    const mine = () => controller.createAction({ action: 'MINE', target: workTargets('MINE')[0].entity, invobject: tool })!;
+    const controller = new PlayerController(
+      world,
+      animation.sg,
+      locomotor,
+      inventory.handEquipment,
+      playerDoer(player),
+    );
+    const advance = (frames: number) => {
+      for (let i = 0; i < frames; i++) {
+        advancePlayer(animation, 1 / 30);
+      }
+    };
+    const mine = () =>
+      controller.createAction({ action: 'MINE', target: workTargets('MINE')[0].entity, invobject: tool })!;
     const begin = () => {
       expect(controller.DoAction(mine())).toBe(true);
-      while (animation.sg.stateName === 'mine_start') { advancePlayer(animation, 1 / 30); }
+      while (animation.sg.stateName === 'mine_start') {
+        advancePlayer(animation, 1 / 30);
+      }
     };
     try {
       rocks.spawn('rock_flintless_low', new THREE.Vector3(1, 0, 0));
       player.position.set(0, 0, 15);
       expect(controller.DoAction(mine())).toBe(true);
       expect(locomotor.destination).toBeDefined();
-      player.position.set(1, 0, 3); locomotor.update(16, 1 / 30);
+      player.position.set(1, 0, 3);
+      locomotor.update(16, 1 / 30);
       expect(animation.sg.stateName).toBe('mine_start');
-      while (animation.sg.stateName === 'mine_start') { advancePlayer(animation, 1 / 30); }
+      while (animation.sg.stateName === 'mine_start') {
+        advancePlayer(animation, 1 / 30);
+      }
       advance(6);
       expect(tool.components.finiteuses.remaining).toBeUndefined();
       expect(workTargets('MINE')[0].entity.components.workable!.GetWorkLeft()).toBe(2);
@@ -295,11 +409,15 @@ describe('PlayerController with the Wilson stategraph', () => {
       expect(workTargets('MINE')[0].entity.components.workable!.GetWorkLeft()).toBe(1);
       expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/use_pick_rock', undefined);
       advance(60);
-      begin(); advance(6); controller.cancel(); advance(60);
+      begin();
+      advance(6);
+      controller.cancel();
+      advance(60);
       expect(tool.components.finiteuses.remaining).toBe(32.75);
-      begin(); advance(6);
+      begin();
+      advance(6);
       // Another worker completes this boulder before the buffered action lands.
-      vi.spyOn(Math, 'random').mockReturnValue(.9);
+      vi.spyOn(Math, 'random').mockReturnValue(0.9);
       expect(workTargets('MINE')[0].work()).toBe(true);
       advance(60);
       expect(tool.components.finiteuses.remaining).toBe(32.75);
@@ -307,10 +425,17 @@ describe('PlayerController with the Wilson stategraph', () => {
       expect(rocks.exportRecords()).toEqual([]);
       expect(loot).toHaveBeenCalledTimes(2);
       rocks.spawn('rock1', new THREE.Vector3(1, 0, 0));
-      begin(); advance(6); inventory.transfer(equipmentSlotAddress('hand'), inventorySlotAddress(0), 1); advance(60);
+      begin();
+      advance(6);
+      inventory.transfer(equipmentSlotAddress('hand'), inventorySlotAddress(0), 1);
+      advance(60);
       expect(tool.components.finiteuses.remaining).toBe(32.75);
       expect(workTargets('MINE')[0].entity.components.workable!.GetWorkLeft()).toBe(6);
-    } finally { controller.dispose(); rocks.dispose(); inventory.dispose(); }
+    } finally {
+      controller.dispose();
+      rocks.dispose();
+      inventory.dispose();
+    }
   });
 
   it('follows a moving butterfly through slow frames and nets it at the swing', async () => {
@@ -327,9 +452,14 @@ describe('PlayerController with the Wilson stategraph', () => {
     body.canJump = true;
     const physics = new CANNON.World();
     physics.addBody(body);
-    const locomotor = new Locomotor(body, { physicsRadius: .5 * WORLD_SCALE });
+    const locomotor = new Locomotor(body, { physicsRadius: 0.5 * WORLD_SCALE });
     const camera = new THREE.PerspectiveCamera();
-    const world = { player, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
+    const world = {
+      player,
+      camera,
+      ground: new THREE.Group(),
+      renderer: { domElement: new EventTarget() },
+    } as unknown as ActionWorldContext;
     const captured = vi.fn();
     const butterfly = netEntity(captured);
     butterfly.transform.setPosition(8, 0, 0);
@@ -339,7 +469,9 @@ describe('PlayerController with the Wilson stategraph', () => {
     const controller = new PlayerController(world, animation.sg, locomotor, hand, playerDoer(player));
     const move = updateMovement(fixedCamera(45), player, body, locomotor);
     try {
-      expect(controller.DoAction(controller.createAction({ action: 'NET', target: butterfly, invobject: net.entity })!)).toBe(true);
+      expect(
+        controller.DoAction(controller.createAction({ action: 'NET', target: butterfly, invobject: net.entity })!),
+      ).toBe(true);
       for (let frame = 0; frame < 100 && !captured.mock.calls.length; frame++) {
         move(16, 0.5);
         advancePlayer(animation, 0.5);
@@ -348,25 +480,45 @@ describe('PlayerController with the Wilson stategraph', () => {
       }
       expect(captured).toHaveBeenCalledOnce();
       expect(body.position.x).toBeGreaterThan(8);
-    } finally { controller.dispose(); }
+    } finally {
+      controller.dispose();
+    }
   });
   it('uses a book and the pan flute from their slots: GetInventoryActions, the stategraph frame and ACTIONS.READ / PLAY', async () => {
     const player = await createPlayer('/dst/data/anim');
     const animation = playerInst(player);
     const inventory = createPickupInventory();
-    inventory.add('book_rain', 1); inventory.add('panflute', 1);
-    const book = inventory.getEntity(inventorySlotAddress(0))!, flute = inventory.getEntity(inventorySlotAddress(1))!;
+    inventory.add('book_rain', 1);
+    inventory.add('panflute', 1);
+    const book = inventory.getEntity(inventorySlotAddress(0))!,
+      flute = inventory.getEntity(inventorySlotAddress(1))!;
     // The player inst reads with its own sanity component.
     const doer = playerDoer(player, { inventory });
     const sanity = vi.spyOn(animation.stats.sanity, 'DoDelta');
-    const world = { player, scene: new THREE.Scene(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
-      renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
+    const world = {
+      player,
+      scene: new THREE.Scene(),
+      camera: new THREE.PerspectiveCamera(),
+      ground: new THREE.Group(),
+      renderer: { domElement: new EventTarget() },
+    } as unknown as ActionWorldContext;
     const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() });
     const controller = new PlayerController(world, animation.sg, locomotor, inventory.handEquipment, doer);
     const ForcePrecipitation = vi.fn();
-    const bookWorld = { root: world.scene, scheduler: new GameTimeScheduler(), getWatchWorldContent: () => { throw new Error('unused'); },
-      weather: { preciptype: createSignal('none'), ForcePrecipitation }, moon: { SetMoonPhase: vi.fn() } } as unknown as BookWorld;
-    const finish = () => { for (let i = 0; i < 300 && animation.sg.stateName !== 'idle'; i++) { advancePlayer(animation, 1 / 30); } };
+    const bookWorld = {
+      root: world.scene,
+      scheduler: new GameTimeScheduler(),
+      getWatchWorldContent: () => {
+        throw new Error('unused');
+      },
+      weather: { preciptype: createSignal('none'), ForcePrecipitation },
+      moon: { SetMoonPhase: vi.fn() },
+    } as unknown as BookWorld;
+    const finish = () => {
+      for (let i = 0; i < 300 && animation.sg.stateName !== 'idle'; i++) {
+        advancePlayer(animation, 1 / 30);
+      }
+    };
     try {
       // componentactions.lua book INVENTORY: only a reader is offered READ.
       expect(controller.GetInventoryItemAction(book)).toBeUndefined();
@@ -390,6 +542,9 @@ describe('PlayerController with the Wilson stategraph', () => {
       // ACTIONS.PLAY.fn, then BufferedAction:Do's finiteuses:OnUsedAsItem("PLAY").
       expect(flute.components.finiteuses.uses.peek()).toBe(9);
       reader.OnRemoveFromEntity();
-    } finally { controller.dispose(); inventory.dispose(); }
+    } finally {
+      controller.dispose();
+      inventory.dispose();
+    }
   });
 });

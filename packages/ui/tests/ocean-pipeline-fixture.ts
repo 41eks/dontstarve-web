@@ -33,20 +33,30 @@ export async function checkOceanPipeline() {
   const targets = new Map<string, THREE.WebGLRenderTarget>();
   const setTarget = renderer.setRenderTarget.bind(renderer);
   renderer.setRenderTarget = (target, face, mip) => {
-    if (target?.texture.name.startsWith('DST ocean ')) { targets.set(target.texture.name, target); }
+    if (target?.texture.name.startsWith('DST ocean ')) {
+      targets.set(target.texture.name, target);
+    }
     setTarget(target, face, mip);
   };
   await prewarmScenePasses(renderer, scene, camera);
-  const lighting = { texture: lightmap, extents: new THREE.Vector4(-192, -192, 1 / 384, 1 / 384),
-    ambient: new THREE.Vector3(1, 1, 1) };
+  const lighting = {
+    texture: lightmap,
+    extents: new THREE.Vector4(-192, -192, 1 / 384, 1 / 384),
+    ambient: new THREE.Vector3(1, 1, 1),
+  };
   renderScenePasses(renderer, scene, camera, lighting);
-  const statePreserved = renderer.getRenderTarget() === output && renderer.autoClear === false
-    && renderer.getClearAlpha() === 0.42 && renderer.getScissorTest()
-    && JSON.stringify(renderer.getCurrentViewport(new THREE.Vector4()).toArray()) === JSON.stringify(beforeViewport)
-    && JSON.stringify(renderer.getClearColor(new THREE.Color()).toArray()) === JSON.stringify(beforeColour);
+  const statePreserved =
+    renderer.getRenderTarget() === output &&
+    renderer.autoClear === false &&
+    renderer.getClearAlpha() === 0.42 &&
+    renderer.getScissorTest() &&
+    JSON.stringify(renderer.getCurrentViewport(new THREE.Vector4()).toArray()) === JSON.stringify(beforeViewport) &&
+    JSON.stringify(renderer.getClearColor(new THREE.Color()).toArray()) === JSON.stringify(beforeColour);
   const readHalf = (name: string, x: number, y: number) => {
     const target = targets.get(name);
-    if (!target) { throw new Error(`Missing ocean stage: ${name}`); }
+    if (!target) {
+      throw new Error(`Missing ocean stage: ${name}`);
+    }
     const values = new Uint16Array(4);
     renderer.readRenderTargetPixels(target, x, y, 1, 1, values);
     return [...values].map(value => THREE.DataUtils.fromHalfFloat(value));
@@ -58,7 +68,8 @@ export async function checkOceanPipeline() {
   const landBoundary = readHalf('DST ocean blurred day', 15, 16);
   const seaBoundary = readHalf('DST ocean blurred day', 16, 16);
   const sample = new THREE.Vector3(180, 0, 6).project(camera);
-  const px = Math.floor((sample.x + 1) * 120), py = Math.floor((sample.y + 1) * 80);
+  const px = Math.floor((sample.x + 1) * 120),
+    py = Math.floor((sample.y + 1) * 80);
   const encoded = readHalf('DST ocean encoded screen colour', px, py);
   const screen = targets.get('DST ocean encoded screen colour')!;
   const initialSize = [screen.width, screen.height];
@@ -68,7 +79,12 @@ export async function checkOceanPipeline() {
   renderer.render(scene, camera);
   const resolved = new Uint8Array(4);
   renderer.readRenderTargetPixels(output, px, py, 1, 1, resolved);
-  const decodedLinear = new THREE.Color().setRGB(encoded[0] * 0.5, encoded[1] * 0.5, encoded[2] * 0.5, THREE.SRGBColorSpace);
+  const decodedLinear = new THREE.Color().setRGB(
+    encoded[0] * 0.5,
+    encoded[1] * 0.5,
+    encoded[2] * 0.5,
+    THREE.SRGBColorSpace,
+  );
   const floorLinear = new THREE.Color().setRGB(floor.x, floor.y, floor.z, THREE.SRGBColorSpace);
   const expectedResolved = floorLinear.lerp(decodedLinear, encoded[3]).toArray();
   output.setSize(96, 64);
@@ -76,9 +92,13 @@ export async function checkOceanPipeline() {
   renderScenePasses(renderer, scene, camera, lighting);
   const resized = [screen.width, screen.height];
   let borrowedNoiseDisposed = false;
-  noise.addEventListener('dispose', () => { borrowedNoiseDisposed = true; });
+  noise.addEventListener('dispose', () => {
+    borrowedNoiseDisposed = true;
+  });
   let targetsDisposed = 0;
-  for (const target of targets.values()) { target.addEventListener('dispose', () => targetsDisposed++); }
+  for (const target of targets.values()) {
+    target.addEventListener('dispose', () => targetsDisposed++);
+  }
   // The flat clear colour's 16×32 ocean cells merge into a single rectangle in the surface's local space.
   const floorGeometry = (mesh.getObjectByName('OceanClearColour') as THREE.Mesh).geometry;
   const floorTriangles = floorGeometry.index!.count / 3;
@@ -88,10 +108,29 @@ export async function checkOceanPipeline() {
   const beforeRemovedPass = renderer.info.render.frame;
   renderScenePasses(renderer, scene, camera, lighting);
   const removedPass = renderer.info.render.frame === beforeRemovedPass;
-  const result = { dayFar, duskFar, primaryFar, blendFar, landBoundary, seaBoundary, encoded,
-    resolved: [...resolved].map(value => value / 255), expectedResolved, initialSize, resized,
-    statePreserved, floorTriangles, floorBounds, targetsDisposed, borrowedNoiseDisposed, removedPass };
+  const result = {
+    dayFar,
+    duskFar,
+    primaryFar,
+    blendFar,
+    landBoundary,
+    seaBoundary,
+    encoded,
+    resolved: [...resolved].map(value => value / 255),
+    expectedResolved,
+    initialSize,
+    resized,
+    statePreserved,
+    floorTriangles,
+    floorBounds,
+    targetsDisposed,
+    borrowedNoiseDisposed,
+    removedPass,
+  };
   mesh.geometry.dispose();
-  noise.dispose(); lightmap.dispose(); output.dispose(); renderer.dispose();
+  noise.dispose();
+  lightmap.dispose();
+  output.dispose();
+  renderer.dispose();
   return result;
 }

@@ -2,7 +2,11 @@ import { prefabManager } from './prefabManagerFixture';
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it, vi } from 'vitest';
 import { dwarfStarLight } from '../../prefab/src/stafflight';
-import { staffCastingLightPrefabs, StaffCastingLightInstance, type StaffCastingLightId } from '../../prefab/src/staff_castinglight';
+import {
+  staffCastingLightPrefabs,
+  StaffCastingLightInstance,
+  type StaffCastingLightId,
+} from '../../prefab/src/staff_castinglight';
 import { BufferedAction } from '../../stategraphs/src/bufferedaction';
 import { createPlayer, playerInst } from './playerVisual';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
@@ -24,44 +28,59 @@ describe('yellowstaff source lighting', () => {
   });
 
   const setupLights = () => {
-    const scene = new THREE.Scene(), scheduler = new GameTimeScheduler();
-    const displays = new PrefabDisplayGroup(scene), lights = prefabManager(displays, undefined, { scheduler }, staffCastingLightPrefabs);
-    const advanceFrames = (count: number) => { for (let i = 0; i < count; i++) { scheduler.advance(FRAME); } };
+    const scene = new THREE.Scene(),
+      scheduler = new GameTimeScheduler();
+    const displays = new PrefabDisplayGroup(scene),
+      lights = prefabManager(displays, undefined, { scheduler }, staffCastingLightPrefabs);
+    const advanceFrames = (count: number) => {
+      for (let i = 0; i < count; i++) {
+        scheduler.advance(FRAME);
+      }
+    };
     return { lights, displays, scheduler, advanceFrames };
   };
 
-  it('stays at the caster\'s spawn position, grows after its delay and removes itself two frames after going dark', () => {
+  it("stays at the caster's spawn position, grows after its delay and removes itself two frames after going dark", () => {
     const { lights, displays, advanceFrames } = setupLights();
     const light = lights.spawn('staff_castinglight', new THREE.Vector3(6, 0, 9));
-    light.SetUp([1, 0, 0], 1.9, .33);
+    light.SetUp([1, 0, 0], 1.9, 0.33);
     expect(light.position.toArray()).toEqual([6, 0, 9]);
     expect(light.hasTag('FX')).toBe(true);
     expect(lights.exportRecords()).toEqual([]);
     // It draws nothing, so the frame's foot sort passes over it.
     expect(displays.renderEntities).toEqual([]);
     expect(() => updateSpriteRenderOrders(displays.renderEntities, new THREE.Matrix4())).not.toThrow();
-    expect(light.light.peek()).toEqual({ radius: .3 * 3, intensity: .8, falloff: .9, colour: [1, 0, 0] });
+    expect(light.light.peek()).toEqual({ radius: 0.3 * 3, intensity: 0.8, falloff: 0.9, colour: [1, 0, 0] });
     advanceFrames(9);
-    expect(light.light.peek()!.radius).toBeCloseTo(.9);
+    expect(light.light.peek()!.radius).toBeCloseTo(0.9);
     advanceFrames(1); // .33 seconds: the first OnUpdate, _value 1 of 57.
     const k = (1 / 57) ** 5;
-    expect(light.light.peek()!.radius).toBeCloseTo((.3 + 10 * k) * 3);
+    expect(light.light.peek()!.radius).toBeCloseTo((0.3 + 10 * k) * 3);
     advanceFrames(55); // _value 56.
     const last = (56 / 57) ** 5;
-    expect(light.light.peek()).toMatchObject({ intensity: expect.closeTo(.8 - .6 * last), falloff: expect.closeTo(.9 - .4 * last) });
+    expect(light.light.peek()).toMatchObject({
+      intensity: expect.closeTo(0.8 - 0.6 * last),
+      falloff: expect.closeTo(0.9 - 0.4 * last),
+    });
     advanceFrames(1); // _value 57: Light:Enable(false), then DoTaskInTime(2 * FRAMES, inst.Remove).
     expect(light.light.peek()).toBeUndefined();
     expect(light.isRemoved).toBe(false);
     advanceFrames(2);
     expect(light.isRemoved).toBe(true);
-    lights.dispose(); displays.dispose();
+    lights.dispose();
+    displays.dispose();
   });
 
   it('spawns one light per cast at the player: an interrupted cast removes it, a committed one leaves it to finish', async () => {
-    vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+    vi.stubGlobal(
+      'fetch',
+      async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+    );
     const { lights, displays } = setupLights();
-    const model = await createPlayer('/dst/data/anim'), player = playerInst(model);
-    const controller = player, graph = controller.sg;
+    const model = await createPlayer('/dst/data/anim'),
+      player = playerInst(model);
+    const controller = player,
+      graph = controller.sg;
     const setUp = vi.spyOn(StaffCastingLightInstance.prototype, 'SetUp');
     const spawned: StaffCastingLightInstance[] = [];
     controller.SpawnPrefab = (prefab, position) => {
@@ -70,12 +89,15 @@ describe('yellowstaff source lighting', () => {
       return light;
     };
     player.setPosition(6, 0, 9);
-    const cast = () => graph.pushBufferedAction(new BufferedAction('CASTSPELL', () => {}, undefined, {
-      invobject: { prefab: 'yellowstaff', fxcolour: [1, 0, 0], hasTag: () => false },
-    } as never));
+    const cast = () =>
+      graph.pushBufferedAction(
+        new BufferedAction('CASTSPELL', () => {}, undefined, {
+          invobject: { prefab: 'yellowstaff', fxcolour: [1, 0, 0], hasTag: () => false },
+        } as never),
+      );
     cast();
     expect(graph.stateName).toBe('castspell');
-    expect(setUp).toHaveBeenLastCalledWith([1, 0, 0], 1.9, .33);
+    expect(setUp).toHaveBeenLastCalledWith([1, 0, 0], 1.9, 0.33);
     expect(spawned[0].position.toArray()).toEqual([6, 0, 9]);
     player.setPosition(12, 0, 9);
     expect(spawned[0].position.toArray()).toEqual([6, 0, 9]);
@@ -92,21 +114,28 @@ describe('yellowstaff source lighting', () => {
     graph.update(0);
     expect(setUp).toHaveBeenLastCalledWith([150 / 255, 46 / 255, 46 / 255], 1.7, 1);
     setUp.mockRestore();
-    player.remove(); lights.dispose(); displays.dispose();
+    player.remove();
+    lights.dispose();
+    displays.dispose();
     vi.unstubAllGlobals();
   });
 
   it('uses the small settings, and removing it cancels its tasks', () => {
     const { lights, displays, advanceFrames } = setupLights();
     const small = lights.spawn('staff_castinglight_small', new THREE.Vector3());
-    small.SetUp([1, 1, 1], .75, 0);
+    small.SetUp([1, 1, 1], 0.75, 0);
     advanceFrames(11); // No delay: the first OnUpdate is due at once, so _value is 12 of 23.
     const k = (12 / 23) ** 5;
-    expect(small.light.peek()).toMatchObject({ radius: expect.closeTo((.3 + 4 * k) * 3), intensity: expect.closeTo(.8 - .7 * k), falloff: expect.closeTo(1.1 + .3 * k) });
+    expect(small.light.peek()).toMatchObject({
+      radius: expect.closeTo((0.3 + 4 * k) * 3),
+      intensity: expect.closeTo(0.8 - 0.7 * k),
+      falloff: expect.closeTo(1.1 + 0.3 * k),
+    });
     small.remove();
     const removed = small.light.peek();
     advanceFrames(5);
     expect(small.light.peek()).toBe(removed);
-    lights.dispose(); displays.dispose();
+    lights.dispose();
+    displays.dispose();
   });
 });

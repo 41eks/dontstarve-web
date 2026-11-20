@@ -17,7 +17,9 @@ export const HOUNDBONE_PIECES = ['piece1', 'piece2', 'piece3'] as const;
 SetSharedLootTable('houndbone', [['boneshard', 1]]);
 
 /** houndbone.lua onsave: data.bonetype. */
-export interface HoundboneSaveState { bonetype: number }
+export interface HoundboneSaveState {
+  bonetype: number;
+}
 
 export interface HoundboneWorld extends ToolMouseTargetWorld {
   /** SpawnPrefab("collapse_small") and SetMaterial("rock") when the bone is hammered. */
@@ -41,24 +43,39 @@ export class HoundboneInstance extends PrefabInstance {
     workable.SetWorkAction('HAMMER');
     workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(() => onhammered(this, world));
-    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
-      { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) =>
+      world.spawnGroundItem(
+        { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 },
+        new THREE.Vector3(point.x, point.y, point.z),
+        { fling: true },
+      ),
+    );
     lootdropper.SetChanceLootTable('houndbone');
 
     SetBoneType(this, 1 + Math.floor(Math.random() * HOUNDBONE_PIECES.length));
 
     // workable.savestate is false: a surviving bone reloads with its full work count.
-    this.OnSave = (_inst, data) => { data.houndbone = { bonetype: this.bonetype }; };
-    this.OnLoad = (_inst, data) => { if (data.houndbone?.bonetype !== undefined) { SetBoneType(this, data.houndbone.bonetype); } };
+    this.OnSave = (_inst, data) => {
+      data.houndbone = { bonetype: this.bonetype };
+    };
+    this.OnLoad = (_inst, data) => {
+      if (data.houndbone?.bonetype !== undefined) {
+        SetBoneType(this, data.houndbone.bonetype);
+      }
+    };
   }
 }
 
 function SetBoneType(inst: HoundboneInstance, bonetype: number): void {
-  if (!Number.isInteger(bonetype) || bonetype < 1 || bonetype > HOUNDBONE_PIECES.length) { throw new RangeError(`Unsupported houndbone type: ${bonetype}`); }
+  if (!Number.isInteger(bonetype) || bonetype < 1 || bonetype > HOUNDBONE_PIECES.length) {
+    throw new RangeError(`Unsupported houndbone type: ${bonetype}`);
+  }
   inst.bonetype = bonetype;
   inst.sprite.playOnce(HOUNDBONE_PIECES[bonetype - 1]);
   inst.components.lootdropper.ClearChanceLoot();
-  if (bonetype === 3) { inst.components.lootdropper.AddChanceLoot('houndstooth', .5); }
+  if (bonetype === 3) {
+    inst.components.lootdropper.AddChanceLoot('houndstooth', 0.5);
+  }
 }
 
 function onhammered(inst: HoundboneInstance, world: HoundboneWorld): void {
@@ -68,13 +85,17 @@ function onhammered(inst: HoundboneInstance, world: HoundboneWorld): void {
 }
 
 /** The Prefab houndbone.lua returns. */
-export function houndbonePrefabs(world: HoundboneWorld): Readonly<Record<typeof HOUNDBONE_ID, PrefabEntityDefinition<HoundboneInstance>>> {
+export function houndbonePrefabs(
+  world: HoundboneWorld,
+): Readonly<Record<typeof HOUNDBONE_ID, PrefabEntityDefinition<HoundboneInstance>>> {
   return {
     [HOUNDBONE_ID]: {
       fn: position => new HoundboneInstance(world, position),
       assets: { animationArchive: 'hound_base.zip', buildArchives: ['hound_base.zip'], bank: 'houndbase' },
       assetOptions: { instancedAnimations: 'all' },
-      onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
+      onSpawned: inst => {
+        new ToolMouseTarget(inst, world.handEquipment);
+      },
     },
   };
 }

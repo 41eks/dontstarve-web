@@ -25,7 +25,11 @@ export interface OceanVineWorld {
 /** oceanvine.lua commonfn. */
 export class OceanVineInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    inspectable?: Inspectable; pickable: Pickable; burnable: Burnable; propagator: Propagator; hauntable: Hauntable;
+    inspectable?: Inspectable;
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+    hauntable: Hauntable;
   };
 }
 
@@ -33,7 +37,9 @@ export class OceanVineInstance extends PrefabInstance {
 function makeempty(inst: OceanVineInstance): void {
   inst.sprite.hideLayer('fig');
   inst.AnimState.PlayAnimation('idle_nofruit', true);
-  if (inst.components.inspectable) { removeComponent(inst, 'inspectable'); }
+  if (inst.components.inspectable) {
+    removeComponent(inst, 'inspectable');
+  }
 }
 
 /** pickable.makefullfn: the fig shown, settled while loading or grown, and inspectable again. */
@@ -45,7 +51,9 @@ function makefull(inst: OceanVineInstance): void {
     inst.AnimState.PlayAnimation('fruit_grow', false);
     inst.AnimState.PushAnimation('idle_fruit', true);
   }
-  if (!inst.components.inspectable) { addComponent(inst, 'inspectable', Inspectable); }
+  if (!inst.components.inspectable) {
+    addComponent(inst, 'inspectable', Inspectable);
+  }
 }
 
 function onloadpostpass(inst: OceanVineInstance): void {
@@ -68,7 +76,8 @@ function commonfn(world: OceanVineWorld): OceanVineInstance {
   inst.addTag('high_dolongaction');
   addComponent(inst, 'inspectable', Inspectable);
   const pickable = addComponent(inst, 'pickable', Pickable, undefined, undefined, 1, undefined, undefined, undefined, {
-    scheduler: world.scheduler, onEmpty: () => makeempty(inst),
+    scheduler: world.scheduler,
+    onEmpty: () => makeempty(inst),
   });
   pickable.picksound = 'dontstarve/wilson/harvest_berries';
   pickable.makefullfn = () => makefull(inst);
@@ -81,16 +90,25 @@ function commonfn(world: OceanVineWorld): OceanVineInstance {
   burnable.SetBurnTime(10);
   burnable.SetBurnTime(BURN_DURATION + 5);
   // MakeSmallPropagator(inst), without SetOnFlashPoint.
-  addComponent(inst, 'propagator', Propagator, 'small', radius =>
-    inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS), TILE_SIZE / 4, world.scheduler, world.getWatchWorldContent);
+  addComponent(
+    inst,
+    'propagator',
+    Propagator,
+    'small',
+    radius => inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS),
+    TILE_SIZE / 4,
+    world.scheduler,
+    world.getWatchWorldContent,
+  );
   // MakeHauntableIgnite(inst), without SetOnHauntFn.
   addComponent(inst, 'hauntable', Hauntable, world.scheduler).SetCooldown(HAUNT_COOLDOWN_MEDIUM);
   return inst;
 }
 
 /** The oceanvine Prefab oceanvine.lua returns; oceanvine_patch is not ported. */
-export function oceanVinePrefabs(world: OceanVineWorld):
-  Readonly<Record<typeof OCEANVINE_ID, PrefabEntityDefinition<OceanVineInstance>>> {
+export function oceanVinePrefabs(
+  world: OceanVineWorld,
+): Readonly<Record<typeof OCEANVINE_ID, PrefabEntityDefinition<OceanVineInstance>>> {
   return {
     [OCEANVINE_ID]: {
       fn: () => commonfn(world),

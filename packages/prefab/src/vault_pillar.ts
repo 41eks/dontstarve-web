@@ -4,7 +4,11 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 
 export const VAULT_PILLAR_ID = 'vault_pillar' as const;
 const VAULT_PILLAR_BOTTOM_ID = 'vault_pillar_bottom' as const;
-const ASSETS = { animationArchive: 'pillar_vault_deep.zip', buildArchives: ['pillar_vault_deep.zip'], bank: 'pillar_vault' };
+const ASSETS = {
+  animationArchive: 'pillar_vault_deep.zip',
+  buildArchives: ['pillar_vault_deep.zip'],
+  bank: 'pillar_vault',
+};
 
 export interface VaultPillarWorld {
   /** SpawnPrefab for the bottom child, whose display loads its art. */
@@ -29,13 +33,21 @@ export class VaultPillarInstance extends PrefabInstance {
     bottom.entityParent = this;
 
     this.OnSave = (_inst, data) => {
-      if (this.capped !== undefined) { data.capped = this.capped; }
-      if (this.broken !== undefined) { data.broken = this.broken; }
+      if (this.capped !== undefined) {
+        data.capped = this.capped;
+      }
+      if (this.broken !== undefined) {
+        data.broken = this.broken;
+      }
     };
     this.OnLoad = (_inst, data) => {
-      if (data.capped) { this.MakeCapped(data.capped); }
-      else if (data.broken) { this.MakeBroken(true); }
-      else if (data.random && Math.random() < .5) { this.MakeBroken(true); }
+      if (data.capped) {
+        this.MakeCapped(data.capped);
+      } else if (data.broken) {
+        this.MakeBroken(true);
+      } else if (data.random && Math.random() < 0.5) {
+        this.MakeBroken(true);
+      }
     };
   }
 
@@ -68,8 +80,12 @@ function createBottom(position: ReadonlyVector3): PrefabInstance {
 }
 
 /** The Prefab vault_pillar.lua returns, and its bottom child. */
-export function vaultPillarPrefabs(world: VaultPillarWorld): Readonly<Record<typeof VAULT_PILLAR_ID, PrefabEntityDefinition<VaultPillarInstance>>
-  & Record<typeof VAULT_PILLAR_BOTTOM_ID, PrefabEntityDefinition<PrefabInstance>>> {
+export function vaultPillarPrefabs(
+  world: VaultPillarWorld,
+): Readonly<
+  Record<typeof VAULT_PILLAR_ID, PrefabEntityDefinition<VaultPillarInstance>> &
+    Record<typeof VAULT_PILLAR_BOTTOM_ID, PrefabEntityDefinition<PrefabInstance>>
+> {
   return {
     [VAULT_PILLAR_ID]: {
       fn: position => new VaultPillarInstance(world, position),

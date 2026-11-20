@@ -10,10 +10,14 @@ export const playerGhostMode = playerInstance.ghostMode;
 /** Persist numerical stats rather than runtime signals and subscriptions. */
 export function getPlayerStats(): NonNullable<SavedPlayer['stats']> {
   const sanity = playerStats.sanity.OnSave();
-  return { health: playerStats.health.currenthealth, hunger: playerStats.hunger.current, sanity: sanity.current,
-    ...playerStats.health.penalty > 0 ? { penalty: playerStats.health.penalty } : {},
-    ...sanity.sane ? {} : { sanitySane: false },
-    ...sanity.mode === 0 ? {} : { sanityMode: sanity.mode } };
+  return {
+    health: playerStats.health.currenthealth,
+    hunger: playerStats.hunger.current,
+    sanity: sanity.current,
+    ...(playerStats.health.penalty > 0 ? { penalty: playerStats.health.penalty } : {}),
+    ...(sanity.sane ? {} : { sanitySane: false }),
+    ...(sanity.mode === 0 ? {} : { sanityMode: sanity.mode }),
+  };
 }
 
 export function setPlayerSanityPercent(percent: number): void {

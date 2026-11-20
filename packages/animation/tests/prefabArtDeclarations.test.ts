@@ -14,6 +14,9 @@ it('pairs each definition with one kind of art', () => {
   // @ts-expect-error Two art sources: the manager would draw only one of them.
   const both: PrefabEntityDefinition<PrefabInstance> = { fn: animated, assets, icon: { atlas: 'a', image: 'b' } };
   // @ts-expect-error Instanced-batch options belong to archive art.
-  const optionsWithoutArchive: PrefabEntityDefinition<PrefabInstance> = { fn: animated, assetOptions: { staticBillboard: true } };
+  const optionsWithoutArchive: PrefabEntityDefinition<PrefabInstance> = {
+    fn: animated,
+    assetOptions: { staticBillboard: true },
+  };
   expect([definitions.length, both, optionsWithoutArchive].length).toBe(3);
 });

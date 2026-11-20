@@ -3,7 +3,9 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Fertilizer } from '../../componets/src/fertilizer';
 
 // poop.lua, guano.lua, spoiledfood.lua: TUNING.*_WITHEREDCYCLES.
-export const FERTILIZER_CYCLES: Readonly<Record<string, number>> = { poop: 1, guano: 1, spoiled_food: .5 };
+export const FERTILIZER_CYCLES: Readonly<Record<string, number>> = { poop: 1, guano: 1, spoiled_food: 0.5 };
 export function configureFertilizerEntity(entity: ItemEntity): void {
-  if (!entity.components.fertilizer) { addComponent(entity, 'fertilizer', Fertilizer, FERTILIZER_CYCLES[entity.prefab]); }
+  if (!entity.components.fertilizer) {
+    addComponent(entity, 'fertilizer', Fertilizer, FERTILIZER_CYCLES[entity.prefab]);
+  }
 }

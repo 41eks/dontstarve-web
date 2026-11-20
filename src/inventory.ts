@@ -12,11 +12,7 @@ import {
   type InventoryStack,
   type ItemSpawner,
 } from '@dontstarve-web/inventory';
-import {
-  INVENTORY_ITEM_SPECS,
-  INVENTORY_SKIN_SPECS,
-  type InventoryItemDefinition,
-} from './inventoryItems';
+import { INVENTORY_ITEM_SPECS, INVENTORY_SKIN_SPECS, type InventoryItemDefinition } from './inventoryItems';
 
 export { InventoryStore } from '@dontstarve-web/inventory';
 export type {
@@ -27,14 +23,14 @@ export type {
   InventoryStack,
 } from '@dontstarve-web/inventory';
 
-function initialStacks(
-  definitions: readonly InventoryItemDefinition[],
-): ReadonlyMap<number, InventoryStack> {
+function initialStacks(definitions: readonly InventoryItemDefinition[]): ReadonlyMap<number, InventoryStack> {
   const stacks = new Map<number, InventoryStack>();
   for (const definition of definitions) {
-    if (!Number.isInteger(definition.slot_index)
-      || definition.slot_index < 0
-      || definition.slot_index >= INVENTORY_SLOT_COUNT) {
+    if (
+      !Number.isInteger(definition.slot_index) ||
+      definition.slot_index < 0 ||
+      definition.slot_index >= INVENTORY_SLOT_COUNT
+    ) {
       throw new RangeError(`Invalid inventory slot index: ${definition.slot_index}`);
     }
     if (stacks.has(definition.slot_index)) {
@@ -63,7 +59,8 @@ export interface ItemWorld {
  */
 export function createItemRegistry(world: ItemWorld): ItemEntityRegistry {
   const entities: ItemEntityRegistry = new ItemEntityRegistry((prefab, saved) =>
-    world.isItemPrefab(prefab) ? world.SpawnPrefab(prefab, saved) : entities.constructSaved(prefab, saved));
+    world.isItemPrefab(prefab) ? world.SpawnPrefab(prefab, saved) : entities.constructSaved(prefab, saved),
+  );
   return entities;
 }
 
@@ -73,21 +70,25 @@ export function createInventoryStore(
 ): InventoryStore {
   const stacks = initialStacks(definitions);
   const entities = createItemRegistry(world);
-  const inventorySlots = Array.from(
-    { length: INVENTORY_SLOT_COUNT },
-    (_, index) => {
-      const slot = new InventorySlot(INVENTORY_ITEM_SPECS), stack = stacks.get(index);
-      if (stack) { slot.setEntity(entities.create(stack)); }
-      return { address: inventorySlotAddress(index), slot };
-    },
-  );
+  const inventorySlots = Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index) => {
+    const slot = new InventorySlot(INVENTORY_ITEM_SPECS),
+      stack = stacks.get(index);
+    if (stack) {
+      slot.setEntity(entities.create(stack));
+    }
+    return { address: inventorySlotAddress(index), slot };
+  });
   const equipmentSlots = [
     { address: equipmentSlotAddress('hand'), slot: new HandSlot() },
     { address: equipmentSlotAddress('body'), slot: new BodySlot() },
     { address: equipmentSlotAddress('head'), slot: new HeadSlot() },
   ];
   return new InventoryStore(
-    [...inventorySlots, ...equipmentSlots, { address: cursorSlotAddress(), slot: new InventorySlot(INVENTORY_ITEM_SPECS) }],
+    [
+      ...inventorySlots,
+      ...equipmentSlots,
+      { address: cursorSlotAddress(), slot: new InventorySlot(INVENTORY_ITEM_SPECS) },
+    ],
     INVENTORY_ITEM_SPECS,
     INVENTORY_SKIN_SPECS,
     entities,

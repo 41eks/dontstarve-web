@@ -3,7 +3,15 @@ import { unzipSync, zipSync } from 'fflate';
 import { afterEach, expect, it, vi } from 'vitest';
 import * as THREE from 'three';
 import { ArchiveSpriteAssets, createArchiveSprite } from '../src/archiveSprite';
-import { createMaterials, loadAnim, loadBuild, loadAnimationArchive, loadSpriteSkinArchive, findImage, smallHash } from '../src/animationAssets';
+import {
+  createMaterials,
+  loadAnim,
+  loadBuild,
+  loadAnimationArchive,
+  loadSpriteSkinArchive,
+  findImage,
+  smallHash,
+} from '../src/animationAssets';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -26,14 +34,17 @@ it('shares concurrent and repeated parsed assets while keeping GPU textures inde
   const second = createMaterials(build);
   expect(first[0]).not.toBe(second[0]);
   expect(first[0].map).not.toBe(second[0].map);
-  expect((first[0].map!.image as { data: Uint8Array }).data)
-    .toBe((second[0].map!.image as { data: Uint8Array }).data);
-  for (const material of [...first, ...second]) { material.map!.dispose(); material.dispose(); }
+  expect((first[0].map!.image as { data: Uint8Array }).data).toBe((second[0].map!.image as { data: Uint8Array }).data);
+  for (const material of [...first, ...second]) {
+    material.map!.dispose();
+    material.dispose();
+  }
 }, 30_000);
 
 it('retries a failed shared archive load', async () => {
   const bytes = await chestArchive();
-  const fetchAsset = vi.fn()
+  const fetchAsset = vi
+    .fn()
     .mockResolvedValueOnce(new Response(null, { status: 503 }))
     .mockImplementation(async () => new Response(bytes));
   vi.stubGlobal('fetch', fetchAsset);
@@ -42,14 +53,19 @@ it('retries a failed shared archive load', async () => {
     loadAnim('treasure_chest.zip', '/dst/data/anim'),
   ]);
   expect(failed.every(({ status }) => status === 'rejected')).toBe(true);
-  expect((await loadAnimationArchive('treasure_chest.zip', '/dst/data/anim')).buildPackage.atlases[0].pixels!.length).toBeGreaterThan(0);
+  expect(
+    (await loadAnimationArchive('treasure_chest.zip', '/dst/data/anim')).buildPackage.atlases[0].pixels!.length,
+  ).toBeGreaterThan(0);
   expect(fetchAsset).toHaveBeenCalledTimes(2);
 });
 
 it('accepts build-only skins without weakening required animation validation', async () => {
   const entries = unzipSync(await chestArchive());
   delete entries['anim.bin'];
-  vi.stubGlobal('fetch', vi.fn(async () => new Response(zipSync(entries))));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(zipSync(entries))),
+  );
   const skin = await loadSpriteSkinArchive('build-only.zip', '/dst/data/anim');
   expect(skin.animations).toBeUndefined();
   expect(skin.buildPackage.build.symbols.size).toBeGreaterThan(0);
@@ -57,14 +73,20 @@ it('accepts build-only skins without weakening required animation validation', a
 });
 
 it('keeps absent birch leaf slots invisible instead of repeating the first three images', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const [{ build }, bank] = await Promise.all([
     loadBuild('tree_leaf_green_build.zip', '/dst/data/anim'),
     loadAnim('tree_leaf_tall.zip', '/dst/data/anim'),
   ]);
   const hash = smallHash('swap_leaves');
-  const slots = bank.animations.find(clip => clip.name === 'sway1_loop_tall')!.frames[0].elements
-    .filter(element => element.imageHash === hash).sort((a, b) => b.z - a.z).map(element => element.imageIndex);
+  const slots = bank.animations
+    .find(clip => clip.name === 'sway1_loop_tall')!
+    .frames[0].elements.filter(element => element.imageHash === hash)
+    .sort((a, b) => b.z - a.z)
+    .map(element => element.imageIndex);
   expect(slots).toEqual([2, 1, 0, 18, 17, 19]);
   expect(slots.filter(slot => findImage(build, hash, slot))).toEqual([2, 1, 0]);
   const [first] = build.symbols.get(hash)!;
@@ -73,7 +95,10 @@ it('keeps absent birch leaf slots invisible instead of repeating the first three
 });
 
 it('keeps the base bank clip when a skin archive ships a stub anim.bin', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const [{ animations }, skin] = await Promise.all([
     loadAnimationArchive('hat_dreadstone.zip', '/dst/data/anim'),
     loadSpriteSkinArchive('dynamic/hat_dreadstone_horn.zip', '/dst/data/anim'),
@@ -83,12 +108,23 @@ it('keeps the base bank clip when a skin archive ships a stub anim.bin', async (
   expect(animations.animations[0].frames[0].elements[0].imageIndex).toBe(3);
   expect(skin.animations!.animations[0].frames[0].elements[0].imageIndex).toBe(1);
   const assets = new ArchiveSpriteAssets('sprite', '/dst/data/anim');
-  const sprite = await createArchiveSprite(assets, { animationArchive: 'hat_dreadstone.zip', buildArchives: ['hat_dreadstone.zip'],
-    bank: 'dreadstonehat', animation: 'anim', loop: false }, { skinArchive: 'dynamic/hat_dreadstone_horn.zip' });
+  const sprite = await createArchiveSprite(
+    assets,
+    {
+      animationArchive: 'hat_dreadstone.zip',
+      buildArchives: ['hat_dreadstone.zip'],
+      bank: 'dreadstonehat',
+      animation: 'anim',
+      loop: false,
+    },
+    { skinArchive: 'dynamic/hat_dreadstone_horn.zip' },
+  );
   const mesh = sprite.model.getObjectByProperty('isMesh', true) as THREE.Mesh;
   const box = new THREE.Box3().setFromBufferAttribute(mesh.geometry.getAttribute('position') as THREE.BufferAttribute);
-  const aspect = (image: number) => findImage(skin.buildPackage.build, hash, image)!.width / findImage(skin.buildPackage.build, hash, image)!.height;
+  const aspect = (image: number) =>
+    findImage(skin.buildPackage.build, hash, image)!.width / findImage(skin.buildPackage.build, hash, image)!.height;
   expect((box.max.x - box.min.x) / (box.max.y - box.min.y)).toBeCloseTo(aspect(3), 2);
   expect(aspect(3)).not.toBeCloseTo(aspect(1), 1);
-  sprite.dispose(); assets.dispose();
+  sprite.dispose();
+  assets.dispose();
 });

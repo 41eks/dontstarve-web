@@ -9,13 +9,18 @@ declare global {
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/tests/dst-lighting.html');
-  await page.evaluate(async (url) => {
-    const { createEmoteFixture } = await import(url);
-    window.emoteFixture = await createEmoteFixture();
-  }, `/@fs${fileURLToPath(new URL('./emote-fixture.ts', import.meta.url))}`);
+  await page.evaluate(
+    async url => {
+      const { createEmoteFixture } = await import(url);
+      window.emoteFixture = await createEmoteFixture();
+    },
+    `/@fs${fileURLToPath(new URL('./emote-fixture.ts', import.meta.url))}`,
+  );
 });
 
-test('G opens nested wheel; mouse direction selects source icons and plays emotes without world clicks', async ({ page }) => {
+test('G opens nested wheel; mouse direction selects source icons and plays emotes without world clicks', async ({
+  page,
+}) => {
   const wheel = page.locator('dst-emote-wheel');
   await page.keyboard.down('w');
   await page.keyboard.press('g');
@@ -35,8 +40,9 @@ test('G opens nested wheel; mouse direction selects source icons and plays emote
   await page.mouse.click(bounds!.x + bounds!.width / 2, bounds!.y + bounds!.height * 0.28);
   await expect(wheel.getByRole('dialog')).toBeHidden();
   await expect.poll(() => page.evaluate(() => window.emoteFixture.currentEmote)).toBe('wave');
-  expect(await page.evaluate(() => ({ requests: window.emoteFixture.requests, clicks: window.emoteFixture.worldClicks })))
-    .toEqual({ requests: ['wave'], clicks: 0 });
+  expect(
+    await page.evaluate(() => ({ requests: window.emoteFixture.requests, clicks: window.emoteFixture.worldClicks })),
+  ).toEqual({ requests: ['wave'], clicks: 0 });
   await page.evaluate(() => window.emoteFixture.tick(240));
   expect(await page.evaluate(() => window.emoteFixture.currentEmote)).toBeNull();
 
@@ -83,7 +89,9 @@ test('cancel, back, repeat G, blur and shadow text input do not execute a select
   expect(await page.evaluate(() => window.emoteFixture.requests)).toEqual([]);
 });
 
-test('Space interrupts an emote and jumps during automatic travel; opposing movement keys cancel the destination', async ({ page }) => {
+test('Space interrupts an emote and jumps during automatic travel; opposing movement keys cancel the destination', async ({
+  page,
+}) => {
   await page.evaluate(async () => {
     const { locomotor, model } = window.emoteFixture;
     window.emoteFixture.playEmote('dance');
@@ -91,19 +99,23 @@ test('Space interrupts an emote and jumps during automatic travel; opposing move
   });
   await page.keyboard.down('Space');
   await page.evaluate(() => window.emoteFixture.tick());
-  expect(await page.evaluate(() => ({
-    emote: window.emoteFixture.currentEmote,
-    velocity: window.emoteFixture.velocity,
-    destination: window.emoteFixture.locomotor.destination?.toArray(),
-  }))).toEqual({ emote: null, velocity: [6, 10, 0], destination: [8, 0, 0] });
+  expect(
+    await page.evaluate(() => ({
+      emote: window.emoteFixture.currentEmote,
+      velocity: window.emoteFixture.velocity,
+      destination: window.emoteFixture.locomotor.destination?.toArray(),
+    })),
+  ).toEqual({ emote: null, velocity: [6, 10, 0], destination: [8, 0, 0] });
   await page.keyboard.up('Space');
   await page.keyboard.down('w');
   await page.keyboard.down('s');
   await page.evaluate(() => window.emoteFixture.tick());
-  expect(await page.evaluate(() => ({
-    horizontalSpeed: Math.hypot(window.emoteFixture.velocity[0], window.emoteFixture.velocity[2]),
-    hasDestination: !!window.emoteFixture.locomotor.destination,
-  }))).toEqual({ horizontalSpeed: 0, hasDestination: false });
+  expect(
+    await page.evaluate(() => ({
+      horizontalSpeed: Math.hypot(window.emoteFixture.velocity[0], window.emoteFixture.velocity[2]),
+      hasDestination: !!window.emoteFixture.locomotor.destination,
+    })),
+  ).toEqual({ horizontalSpeed: 0, hasDestination: false });
   await page.keyboard.up('w');
   await page.keyboard.up('s');
 });

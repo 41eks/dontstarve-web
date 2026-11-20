@@ -2,7 +2,14 @@ import { testMap } from './tileMapFixture';
 import { describe, expect, it, vi } from 'vitest';
 import { createWorldState, createWorldClockUpdater } from '../../../src/worldState';
 import { getDstCycle } from '../../../src/tuning';
-import { clockstate, seasonstate, moonphasestate, WorldContentKey, createSignal, GetTileStateAtPoint } from '../../signals/src';
+import {
+  clockstate,
+  seasonstate,
+  moonphasestate,
+  WorldContentKey,
+  createSignal,
+  GetTileStateAtPoint,
+} from '../../signals/src';
 import { GetTileKeyAtPoint, INVALID_TILE_KEY, TileTracker } from '../../componets/src/tileManager';
 import { Vector3 } from 'three';
 
@@ -29,7 +36,8 @@ describe('session world temperature', () => {
       expect(GetTileKeyAtPoint(point)).toBe(INVALID_TILE_KEY);
       tracker.sync();
       expect(tracker.tile.peek()).toBe(key);
-      point.set(0, 0, 0); tracker.sync();
+      point.set(0, 0, 0);
+      tracker.sync();
       await new Promise(resolve => setTimeout(resolve, 0));
       expect(active()).toBe(false);
       large.dispose();
@@ -41,7 +49,10 @@ describe('session world temperature', () => {
       expect(smallActive()).toBe(true);
       small.dispose();
       expect(GetTileKeyAtPoint(point)).toBe(INVALID_TILE_KEY);
-    } finally { large.dispose(); small?.dispose(); }
+    } finally {
+      large.dispose();
+      small?.dispose();
+    }
   });
 
   it('binds cached tile queries to player snapshots and releases their pending updates with the world', async () => {
@@ -67,7 +78,10 @@ describe('session world temperature', () => {
       expect(reads).not.toHaveBeenCalled();
       expect(active()).toBe(false);
       expect(() => GetTileStateAtPoint(position)).toThrow('not bound');
-    } finally { reads.mockRestore(); state.dispose(); }
+    } finally {
+      reads.mockRestore();
+      state.dispose();
+    }
   });
 
   it('publishes independent player position snapshots every 60 active frames, including across clock flushes', () => {
@@ -81,30 +95,38 @@ describe('session world temperature', () => {
       expect(initial[0]).not.toBe(players[0]);
       players[0].set(12, 0, 15);
       for (let frame = 0; frame < 59; frame++) {
-        updater.update(frame % 2 === 0 ? .01 : .04);
+        updater.update(frame % 2 === 0 ? 0.01 : 0.04);
         updater.update(0);
-        if (frame === 29) { updater.flush(); }
+        if (frame === 29) {
+          updater.flush();
+        }
       }
       expect(state.playerpositions.peek()).toBe(initial);
       expect(initial[0]).toEqual(new Vector3(3, 0, 4));
       expect(positions).toHaveBeenCalledOnce();
-      updater.update(.02);
+      updater.update(0.02);
       const published = state.playerpositions.peek();
       expect(published).toEqual(players);
       expect(published).not.toBe(initial);
       expect(positions).toHaveBeenCalledTimes(2);
       players.pop();
       players[0].set(20, 0, 30);
-      for (let frame = 0; frame < 59; frame++) { updater.update(.02); }
+      for (let frame = 0; frame < 59; frame++) {
+        updater.update(0.02);
+      }
       expect(state.playerpositions.peek()).toBe(published);
       expect(published).toHaveLength(2);
       expect(published[0]).toEqual(new Vector3(12, 0, 15));
-      updater.update(.02);
+      updater.update(0.02);
       expect(state.playerpositions.peek()).toEqual([new Vector3(20, 0, 30)]);
       const stationary = state.playerpositions.peek();
-      for (let frame = 0; frame < 120; frame++) { updater.update(.02); }
+      for (let frame = 0; frame < 120; frame++) {
+        updater.update(0.02);
+      }
       expect(state.playerpositions.peek()).toBe(stationary);
-    } finally { state.dispose(); }
+    } finally {
+      state.dispose();
+    }
   });
 
   it('injects component wind and perish signals at init, preserves live queries and stops world tasks on disposal', () => {
@@ -113,8 +135,10 @@ describe('session world temperature', () => {
     const wind = state.getWatchWorldContent(WorldContentKey.Wind, stop => cleanups.push(stop));
     const perish = state.getWatchWorldContent(WorldContentKey.PerishClock, stop => cleanups.push(stop));
     const moon = state.getWatchWorldContent(WorldContentKey.Moon, stop => cleanups.push(stop));
-    const windChanged = vi.fn(), perishChanged = vi.fn();
-    wind.subscribe(windChanged); perish.subscribe(perishChanged);
+    const windChanged = vi.fn(),
+      perishChanged = vi.fn();
+    wind.subscribe(windChanged);
+    perish.subscribe(perishChanged);
     const updater = createWorldClockUpdater(state, 0);
     try {
       expect(state.wind).toBe(state.worldwind.windchange);
@@ -140,7 +164,9 @@ describe('session world temperature', () => {
       expect(perishChanged).toHaveBeenCalledOnce();
 
       cleanups.splice(0).forEach(stop => stop());
-      updater.update(31); state.scheduler.advanceTo(updater.elapsedSeconds); updater.flush();
+      updater.update(31);
+      state.scheduler.advanceTo(updater.elapsedSeconds);
+      updater.flush();
       expect(windChanged).toHaveBeenCalledOnce();
       expect(perishChanged).toHaveBeenCalledOnce();
       expect(state.perishClock.GetTick().time).toBe(32);
@@ -148,7 +174,10 @@ describe('session world temperature', () => {
       expect(state.worldwind.timerSnapshot.peek().status).toBe('stopped');
       state.scheduler.advance(100);
       expect(windChanged).toHaveBeenCalledOnce();
-    } finally { cleanups.splice(0).forEach(stop => stop()); state.dispose(); }
+    } finally {
+      cleanups.splice(0).forEach(stop => stop());
+      state.dispose();
+    }
   });
 
   it('settles clock, moon phase and temperature every 60 active frames using actual dt and flushes partial batches', () => {
@@ -162,16 +191,19 @@ describe('session world temperature', () => {
     expect(localTemperature.peek()).toBe(state.temperature.peek());
     expect(localCycle.scheduler.now).toBe(initialElapsedSeconds);
     const observed = vi.fn();
-    const cycleChanges = vi.fn(), stopCycle = state.cycle.subscribe(cycleChanges);
+    const cycleChanges = vi.fn(),
+      stopCycle = state.cycle.subscribe(cycleChanges);
     expect(state.cycle.peek()).toBe('night');
     expect('set' in state.cycle).toBe(false);
-    const nightChanges = vi.fn(), stopNight = state.isNight.subscribe(nightChanges);
+    const nightChanges = vi.fn(),
+      stopNight = state.isNight.subscribe(nightChanges);
     expect(state.isNight.peek()).toBe(true);
     expect('set' in state.isNight).toBe(false);
     const updater = createWorldClockUpdater(state, initialElapsedSeconds);
     const perishSnapshot = state.perishClock.snapshot.peek();
     const stop = state.temperature.subscribe(observed);
-    const clock = state.clock.peek(), temperature = state.temperature.peek();
+    const clock = state.clock.peek(),
+      temperature = state.temperature.peek();
     expect(state.moonPhase.peek()).toBe('threequarter');
     let elapsed = 0;
     for (let frame = 0; frame < 59; frame++) {
@@ -214,7 +246,9 @@ describe('session world temperature', () => {
     const before = updater.elapsedSeconds;
     expect(() => updater.update(-1)).toThrow(RangeError);
     expect(updater.elapsedSeconds).toBe(before);
-    stop(); cleanups.forEach(stop => stop()); state.dispose();
+    stop();
+    cleanups.forEach(stop => stop());
+    state.dispose();
     expect(() => localCycle.scheduler.schedule(1, () => {})).toThrow('disposed');
     state.clock.set({ phase: 'night', timeinphase: 0 });
     expect(state.isNight.peek()).toBe(false);
@@ -226,16 +260,25 @@ describe('session world temperature', () => {
   });
 
   it('initializes legacy worlds at their current clock and publishes updates to a read-only signal', () => {
-    const state = createWorldState({ map: testMap(), elapsedSeconds: 419.5, systems: {
-      season: { name: 'winter', daysRemaining: 7 },
-    } });
+    const state = createWorldState({
+      map: testMap(),
+      elapsedSeconds: 419.5,
+      systems: {
+        season: { name: 'winter', daysRemaining: 7 },
+      },
+    });
     expect(state.clock).toBe(clockstate);
     expect(state.season).toBe(seasonstate);
     expect(state.moonPhase).toBe(moonphasestate);
-    expect(state.worldtemperature.OnSave()).toMatchObject({ season: 'winter', seasontemperature: -25, noisetime: 419.5 });
+    expect(state.worldtemperature.OnSave()).toMatchObject({
+      season: 'winter',
+      seasontemperature: -25,
+      noisetime: 419.5,
+    });
     expect(state.temperature.peek()).toBe(state.worldtemperature.GetTemperature());
     expect('set' in state.temperature).toBe(false);
-    const observed = vi.fn(), stop = state.temperature.subscribe(observed);
+    const observed = vi.fn(),
+      stop = state.temperature.subscribe(observed);
     updateClock(state, 421, 1.5);
     expect(state.worldtemperature.OnSave().noisetime).toBe(421);
     expect(observed).toHaveBeenCalled();

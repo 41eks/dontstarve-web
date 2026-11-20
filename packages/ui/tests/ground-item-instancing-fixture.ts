@@ -6,14 +6,23 @@ import { createPickupInventory } from '../../animation/tests/pickupFixture';
 import type { ItemEntity } from '../../inventory/src';
 
 export async function checkGroundItemInstancing() {
-  const scene = new THREE.Scene(), inventory = createPickupInventory();
-  const world = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip', inventory,
-    '/dst/data/anim', new THREE.Group());
+  const scene = new THREE.Scene(),
+    inventory = createPickupInventory();
+  const world = new ItemWorldFixture(
+    scene,
+    new THREE.PerspectiveCamera(),
+    undefined,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    new THREE.Group(),
+  );
   const renderer = new THREE.WebGLRenderer();
   renderer.setSize(128, 128);
   // The torches lie on the ground plane; the camera looks down on it.
-  const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, .1, 100);
-  camera.position.set(0, 20, 0); camera.lookAt(0, 0, 0);
+  const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 100);
+  camera.position.set(0, 20, 0);
+  camera.lookAt(0, 0, 0);
   const items: ItemEntity[] = [];
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   const sample = () => {
@@ -25,11 +34,16 @@ export async function checkGroundItemInstancing() {
   try {
     // Static held poses and split animation/build archives use the same instancing path as loops.
     for (let index = 0; index < 24; index++) {
-      const model = world.spawnFromSave(`torch:${index}`, { itemId: 'torch', count: 1, name: 'torch', icon: '' },
-        new THREE.Vector3(index % 6 * 3 - 8, 0, Math.floor(index / 6) * 3 - 5));
+      const model = world.spawnFromSave(
+        `torch:${index}`,
+        { itemId: 'torch', count: 1, name: 'torch', icon: '' },
+        new THREE.Vector3((index % 6) * 3 - 8, 0, Math.floor(index / 6) * 3 - 5),
+      );
       await prefabDisplay(model)!.artLoaded();
       items.push(itemAt(model));
-      if (index === 0) { sample(); }
+      if (index === 0) {
+        sample();
+      }
     }
     const many = sample();
     const batch = scene.getObjectByName('ArchiveSpriteInstances:colour') as THREE.InstancedMesh;
@@ -48,11 +62,15 @@ export async function checkGroundItemInstancing() {
     items[0].remove();
     await tick();
     const removed = sample();
-    for (const item of items.slice(1)) { item.remove(); }
+    for (const item of items.slice(1)) {
+      item.remove();
+    }
     await tick();
     const empty = sample();
     return { many, asleep, awake, sameBatch, sameTexture, position, removed, empty };
   } finally {
-    world.dispose(); inventory.dispose(); renderer.dispose();
+    world.dispose();
+    inventory.dispose();
+    renderer.dispose();
   }
 }

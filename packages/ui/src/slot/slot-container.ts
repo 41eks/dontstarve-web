@@ -18,20 +18,24 @@ export interface CreateSlotContainerOptions {
 }
 
 export function createSlotContainer(options: CreateSlotContainerOptions): SlotContainer {
-  if (!options.id) { throw new TypeError('Slot container id must not be empty'); }
+  if (!options.id) {
+    throw new TypeError('Slot container id must not be empty');
+  }
 
   const uniqueKeys = new Set(options.slotKeys);
   if (uniqueKeys.size !== options.slotKeys.length || uniqueKeys.has('')) {
     throw new TypeError('Slot keys must be unique and non-empty');
   }
 
-  const slots = options.slotKeys.map((slotKey) => options.kind === 'cookpot'
-    ? new PreparedFoodSlot({ containerId: options.id, slotKey })
-    : createSlot({
-      address: { containerId: options.id, slotKey },
-      accepts: (item) => options.accepts?.(slotKey, item) ?? true,
-    }));
-  const slotsByKey = new Map(slots.map((slot) => [slot.address.slotKey, slot]));
+  const slots = options.slotKeys.map(slotKey =>
+    options.kind === 'cookpot'
+      ? new PreparedFoodSlot({ containerId: options.id, slotKey })
+      : createSlot({
+          address: { containerId: options.id, slotKey },
+          accepts: item => options.accepts?.(slotKey, item) ?? true,
+        }),
+  );
+  const slotsByKey = new Map(slots.map(slot => [slot.address.slotKey, slot]));
 
   return {
     id: options.id,
@@ -39,7 +43,9 @@ export function createSlotContainer(options: CreateSlotContainerOptions): SlotCo
     slots,
     getSlot(slotKey) {
       const slot = slotsByKey.get(slotKey);
-      if (!slot) { throw new RangeError(`Unknown slot ${options.id}:${slotKey}`); }
+      if (!slot) {
+        throw new RangeError(`Unknown slot ${options.id}:${slotKey}`);
+      }
       return slot;
     },
   };

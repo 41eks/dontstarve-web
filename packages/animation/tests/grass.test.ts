@@ -34,9 +34,13 @@ it('spawns grass through the debug command using its source bank and build, then
   });
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.grasses, {
-    restore: (_, record) => drawn(grasses.spawn('grass', new THREE.Vector3(...record.transform.position), {
-      id: record.id, components: {},
-    }).transform.model),
+    restore: (_, record) =>
+      drawn(
+        grasses.spawn('grass', new THREE.Vector3(...record.transform.position), {
+          id: record.id,
+          components: {},
+        }).transform.model,
+      ),
     debugSpawn: () => drawn(grasses.spawn('grass', new THREE.Vector3(4, 0, -6)).transform.model),
     exportRecords: () => grasses.exportRecords(),
     update: (dt, quaternion) => tickWorld(scheduler, prefabDisplays(grasses), dt, quaternion),
@@ -44,11 +48,14 @@ it('spawns grass through the debug command using its source bank and build, then
     dispose: () => grasses.dispose(),
   });
 
-  expect(await executeDebugCommand('c_spawn("grass")', {} as InventoryStore, (id) => registry.spawn(id)))
-    .toEqual({ ok: true, message: '已生成 grass' });
+  expect(await executeDebugCommand('c_spawn("grass")', {} as InventoryStore, id => registry.spawn(id))).toEqual({
+    ok: true,
+    message: '已生成 grass',
+  });
   // grass.lua ships the bank in grass.zip and the build in grass1.zip.
-  expect([...archives.keys()].sort()).toEqual([...fetchAsset.mock.calls.map((call) =>
-    String(call[0]).split('/').pop()!)].sort());
+  expect([...archives.keys()].sort()).toEqual(
+    [...fetchAsset.mock.calls.map(call => String(call[0]).split('/').pop()!)].sort(),
+  );
 
   const [model] = scene.children;
   expect(lookupPrefabInstance(model)?.prefab).toBe(GRASS_ID);
@@ -58,7 +65,11 @@ it('spawns grass through the debug command using its source bank and build, then
   const controller = plantInstance(model).sprite as { currentAnimation: string; update: (dt: number) => void };
   expect(controller.currentAnimation).toBe('idle');
   let mesh: THREE.Mesh | undefined;
-  model.traverse(object => { if (!mesh && object instanceof THREE.Mesh) { mesh = object; } });
+  model.traverse(object => {
+    if (!mesh && object instanceof THREE.Mesh) {
+      mesh = object;
+    }
+  });
   expect(mesh).toBeDefined();
   expect(mesh!.geometry.getAttribute('position').count).toBeGreaterThan(4);
 
@@ -74,7 +85,9 @@ it('spawns grass through the debug command using its source bank and build, then
   const pickable = plantInstance(model).components.pickable;
   expect(pickable.pick({ giveItem: (id: string, count: number) => id === 'cutgrass' && count === 1 })).toBe(true);
   expect(controller.currentAnimation).toBe('picking');
-  for (let i = 0; i < 60; i++) { tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion()); }
+  for (let i = 0; i < 60; i++) {
+    tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion());
+  }
   expect(controller.currentAnimation).toBe('picked');
   const pickedRecord = grasses.exportRecords().map(({ record }) => record)[0];
   expect(pickedRecord.components.pickable?.picked).toBe(true);
@@ -86,12 +99,17 @@ it('spawns grass through the debug command using its source bank and build, then
   tickWorld(scheduler, prefabDisplays(grasses), pickable.remainingSeconds!, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('grow');
   expect(pickable.state.phase.peek()).toBe('ready');
-  for (let i = 0; i < 60; i++) { tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion()); }
+  for (let i = 0; i < 60; i++) {
+    tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion());
+  }
   expect(controller.currentAnimation).toBe('idle');
 
-  const restored = await drawn(grasses.spawn('grass', new THREE.Vector3(...record.transform.position), {
-    id: record.id, components: {},
-  }).transform.model);
+  const restored = await drawn(
+    grasses.spawn('grass', new THREE.Vector3(...record.transform.position), {
+      id: record.id,
+      components: {},
+    }).transform.model,
+  );
   expect(restored.position.toArray()).toEqual([4, 0, -6]);
   expect(lookupPrefabInstance(restored)?.entityId).toBe(record.id);
 

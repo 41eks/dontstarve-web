@@ -12,13 +12,17 @@ import {
 import { inventorySlot, storageSlot as storageSlotHolding, testInventoryStore } from './testItems';
 
 const specs: Readonly<Record<string, InventoryItemSpec>> = Object.fromEntries(
-  ['log', 'rocks', 'goldnugget', 'gears', 'cutstone', 'axe'].map((itemId) => [
-    itemId, { name: itemId, icon: `${itemId}.tex`, maxStack: itemId === 'log' ? 20 : 40 },
+  ['log', 'rocks', 'goldnugget', 'gears', 'cutstone', 'axe'].map(itemId => [
+    itemId,
+    { name: itemId, icon: `${itemId}.tex`, maxStack: itemId === 'log' ? 20 : 40 },
   ]),
 );
 const firepit: InventoryRecipeDefinition = {
-  recipeId: 'firepit', productId: 'firepit', productCount: 1,
-  ingredients: { log: 2, rocks: 12 }, buffered: true,
+  recipeId: 'firepit',
+  productId: 'firepit',
+  productCount: 1,
+  ingredients: { log: 2, rocks: 12 },
+  buffered: true,
 };
 
 function storageSlot(containerId: string, index: number, stack: InventoryStack | null) {
@@ -26,7 +30,6 @@ function storageSlot(containerId: string, index: number, stack: InventoryStack |
 }
 
 describe('crafting with accessible storage', () => {
-
   it('combines the backpack and open containers, preserving remaining stacks and their skins', () => {
     const backpack = { address: inventorySlotAddress(0), slot: inventorySlot({ itemId: 'log', count: 1 }) };
     const log = storageSlot('chest:1', 0, { itemId: 'log', count: 3, skinId: 'log_skin' });
@@ -48,10 +51,13 @@ describe('crafting with accessible storage', () => {
   });
 
   it('rejects ingredients in a chest closed before crafting, without changing state', () => {
-    const store = testInventoryStore([
-      storageSlot('chest:1', 0, { itemId: 'log', count: 2 }),
-      storageSlot('chest:1', 1, { itemId: 'rocks', count: 12 }),
-    ], specs);
+    const store = testInventoryStore(
+      [
+        storageSlot('chest:1', 0, { itemId: 'log', count: 2 }),
+        storageSlot('chest:1', 1, { itemId: 'rocks', count: 12 }),
+      ],
+      specs,
+    );
     store.setStorageAccessible('chest:1', true);
     expect(store.materialSummary()).toMatchObject(firepit.ingredients);
     store.setStorageAccessible('chest:1', false);
@@ -71,7 +77,11 @@ describe('crafting with accessible storage', () => {
     const store = testInventoryStore([backpack, chest], specs);
     store.setStorageAccessible('chest:1', true);
     const recipe: InventoryRecipeDefinition = {
-      recipeId: 'axe', productId: 'axe', productCount: 1, ingredients: { log: 2 }, buffered: false,
+      recipeId: 'axe',
+      productId: 'axe',
+      productCount: 1,
+      ingredients: { log: 2 },
+      buffered: false,
     };
     const before = store.exportState();
     const listener = vi.fn();

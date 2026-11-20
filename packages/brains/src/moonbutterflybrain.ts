@@ -16,12 +16,15 @@ const GetHomePos = (inst: BrainInst) => inst.components.knownlocations?.GetLocat
 export class MoonButterflyBrain extends Brain {
   protected override OnStart(): void {
     const inst = this.inst;
-    const root = new PriorityNode([
-      PanicTrigger(inst),
-      ElectricFencePanicTrigger(inst),
-      new RunAway(inst, RUN_AWAY_PARAMS, RUN_AWAY_DIST, STOP_RUN_AWAY_DIST),
-      new Wander(inst, GetHomePos, MAX_WANDER_DIST),
-    ], 1);
+    const root = new PriorityNode(
+      [
+        PanicTrigger(inst),
+        ElectricFencePanicTrigger(inst),
+        new RunAway(inst, RUN_AWAY_PARAMS, RUN_AWAY_DIST, STOP_RUN_AWAY_DIST),
+        new Wander(inst, GetHomePos, MAX_WANDER_DIST),
+      ],
+      1,
+    );
     this.bt = new BT(inst, root);
   }
 

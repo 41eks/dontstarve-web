@@ -29,24 +29,42 @@ import { wilsonPlayer, played } from './wilsonPlayer';
 class Creature extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & { locomotor?: LocoMotor };
   motorSpeed = 0;
-  setMotorSpeed(speed: number): void { this.motorSpeed = speed; }
+  setMotorSpeed(speed: number): void {
+    this.motorSpeed = speed;
+  }
 }
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {} })),
+}));
 beforeEach(() => vi.stubGlobal('window', new EventTarget()));
-afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
 
 /**
  * A telestaff in the player's first inventory slot. TheWorld's topology has one passable node at (30, 0, 0), a
  * separated room at (60, 0, 0) and a node over the void at (90, 0, 0): only the first is a destination.
  */
 function fixture({ isCave = false, remainingUses }: { isCave?: boolean; remainingUses?: number } = {}) {
-  const hand = equipmentSlotAddress('hand'), bag = inventorySlotAddress(0);
-  const store = testInventoryStore([{ address: hand, slot: new HandSlot() }, { address: bag, slot: new InventorySlot() }],
-    INVENTORY_ITEM_SPECS);
+  const hand = equipmentSlotAddress('hand'),
+    bag = inventorySlotAddress(0);
+  const store = testInventoryStore(
+    [
+      { address: hand, slot: new HandSlot() },
+      { address: bag, slot: new InventorySlot() },
+    ],
+    INVENTORY_ITEM_SPECS,
+  );
   const world: TeleStaffWorld = {
     isCave,
-    topologyNodes: [{ x: 30, z: 0, type: 0 }, { x: 60, z: 0, type: 7 }, { x: 90, z: 0, type: 0 }],
+    topologyNodes: [
+      { x: 30, z: 0, type: 0 },
+      { x: 60, z: 0, type: 7 },
+      { x: 90, z: 0, type: 0 },
+    ],
     isPassableAtPoint: point => point.x < 80,
     sendLightningStrike: vi.fn(),
     deltaMoisture: vi.fn(),
@@ -65,7 +83,10 @@ function fixture({ isCave = false, remainingUses }: { isCave?: boolean; remainin
   // The caster is the player inst that owns the store, as the application's act.doer is.
   const doer = testPlayer({ model: player.transform.model, inventory: store });
   const sanity = vi.spyOn(addComponent(doer, 'sanity', Sanity, 200), 'DoDelta');
-  const advance = (seconds: number) => { player.sg.update(seconds); scheduler.advance(seconds); };
+  const advance = (seconds: number) => {
+    player.sg.update(seconds);
+    scheduler.advance(seconds);
+  };
   return { store, staff, world, player, doer, sanity, scheduler, advance, bag };
 }
 
@@ -73,11 +94,16 @@ it('teleports its holder from the inventory to a random topology node after the 
   const s = fixture();
   try {
     // purple(): castfrominventory and castonlocomotorspvp, not castontargets.
-    expect(['castfrominventory', 'castonlocomotorspvp', 'castontargets', 'nopunch', 'shadowlevel'].map(tag => s.staff.hasTag(tag)))
-      .toEqual([true, true, false, true, true]);
+    expect(
+      ['castfrominventory', 'castonlocomotorspvp', 'castontargets', 'nopunch', 'shadowlevel'].map(tag =>
+        s.staff.hasTag(tag),
+      ),
+    ).toEqual([true, true, false, true, true]);
     expect(collectInventoryActions(s.staff, s.doer, true)).toEqual(['CASTSPELL']);
     // inventory.lua UseItemFromInvTile: the action has neither a target nor a point.
-    expect(s.player.sg.pushBufferedAction(createBufferedAction('CASTSPELL', { doer: s.doer, invobject: s.staff }))).toBe(true);
+    expect(
+      s.player.sg.pushBufferedAction(createBufferedAction('CASTSPELL', { doer: s.doer, invobject: s.staff })),
+    ).toBe(true);
     expect(s.player.sg.stateName).toBe('castspell');
     s.player.sg.update(53 / 30);
     // teleport_start: one use, the departure strike, the caster's sanity and the world's moisture, then forcetele.
@@ -91,7 +117,7 @@ it('teleports its holder from the inventory to a random topology node after the 
     // teleport_continue three seconds later; teleport_end one second after that.
     s.advance(2.9);
     expect(s.player.position.x).toBe(0);
-    s.advance(.1);
+    s.advance(0.1);
     expect([s.player.position.x, s.player.position.z]).toEqual([30, 0]);
     expect(s.player.SnapCamera).toHaveBeenCalledOnce();
     expect(s.player.ScreenFade).toHaveBeenLastCalledWith(true, 1);
@@ -103,7 +129,9 @@ it('teleports its holder from the inventory to a random topology node after the 
     expect([s.player.IsVisible(), s.player.controllerEnabled]).toEqual([true, false]);
     // The staff keeps its uses in its save record.
     expect(s.staff.components.finiteuses.OnSave()).toEqual({ uses: TELESTAFF_USES - 1 });
-  } finally { s.store.dispose(); }
+  } finally {
+    s.store.dispose();
+  }
 });
 
 it('stays put when forcetele is interrupted, and only spends the use in a cave; the last use shatters the gem', () => {
@@ -113,11 +141,13 @@ it('stays put when forcetele is interrupted, and only spends the use in a cave; 
     s.player.sg.update(53 / 30);
     // forcetele's onexit cancels the pending teleport_task and fades back in.
     s.player.sg.GoToState('wakeup');
-    expect(s.player.ScreenFade).toHaveBeenLastCalledWith(true, .5);
+    expect(s.player.ScreenFade).toHaveBeenLastCalledWith(true, 0.5);
     s.advance(5);
     expect(s.player.position.x).toBe(0);
     expect(s.player.IsVisible()).toBe(true);
-  } finally { s.store.dispose(); }
+  } finally {
+    s.store.dispose();
+  }
 
   const cave = fixture({ isCave: true, remainingUses: 1 });
   try {
@@ -129,7 +159,9 @@ it('stays put when forcetele is interrupted, and only spends the use in a cave; 
     expect(cave.staff.isRemoved).toBe(true);
     expect(cave.store.get(cave.bag)).toBeNull();
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/common/gem_shatter', expect.anything());
-  } finally { cave.store.dispose(); }
+  } finally {
+    cave.store.dispose();
+  }
 });
 
 it('moves a locomotor target at once, but never another player without PvP', () => {
@@ -160,28 +192,70 @@ it('moves a locomotor target at once, but never another player without PvP', () 
     expect(createBufferedAction('CASTSPELL', { doer: s.doer, target: creature, invobject: s.staff }).do()).toBe(true);
     expect(creature.position.x).toBe(-10);
     expect(s.staff.components.finiteuses.remaining).toBe(TELESTAFF_USES - 2);
-  } finally { s.store.dispose(); }
+  } finally {
+    s.store.dispose();
+  }
 });
 
 it('is given by c_give, spawned by c_spawn, and keeps its uses and the world topology through c_save', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group();
-  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
-    '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+  const inventory = createInventoryStore([]),
+    scene = new THREE.Scene(),
+    player = new THREE.Group();
+  const ground = new ItemWorldFixture(
+    scene,
+    new THREE.PerspectiveCamera(),
+    { domElement: new EventTarget() } as THREE.WebGLRenderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    player,
+  );
   const registry = new EntityRegistry();
-  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `dug:${id}`));
+  registry.register(
+    PREFAB_DEFINITIONS.groundItems,
+    ground.registration(
+      () => player.position,
+      id => `dug:${id}`,
+    ),
+  );
   try {
     expect((await executeDebugCommand('c_spawn("telestaff")', inventory, id => registry.spawn(id))).ok).toBe(true);
     expect(Object.keys(itemEntities(ground.exportEntities()))).toEqual(['telestaff']);
     expect((await executeDebugCommand('c_give("telestaff")', inventory)).ok).toBe(true);
     const staff = inventory.FindItem(item => item.prefab === 'telestaff')!;
     expect(staff.components.finiteuses.use(1)).toBe(true);
-    const nodes = [{ x: 30, z: -12, type: 0 }, { x: 60, z: 0, type: 7 }];
-    const template = deserializeSave(JSON.stringify({ ...initialWorld,
-      world: { ...initialWorld.world, map: { ...initialWorld.world.map, topology: { nodes } } } }), SAVE_CATALOG);
-    const saved = deserializeSave(serializeSave(template, { entities: {}, inventory: inventory.exportSaved(), elapsedSeconds: 0,
-      playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG), SAVE_CATALOG);
+    const nodes = [
+      { x: 30, z: -12, type: 0 },
+      { x: 60, z: 0, type: 7 },
+    ];
+    const template = deserializeSave(
+      JSON.stringify({
+        ...initialWorld,
+        world: { ...initialWorld.world, map: { ...initialWorld.world.map, topology: { nodes } } },
+      }),
+      SAVE_CATALOG,
+    );
+    const saved = deserializeSave(
+      serializeSave(
+        template,
+        {
+          entities: {},
+          inventory: inventory.exportSaved(),
+          elapsedSeconds: 0,
+          playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        },
+        SAVE_CATALOG,
+      ),
+      SAVE_CATALOG,
+    );
     expect(saved.world.map.topology).toEqual({ nodes });
     expect(JSON.stringify(saved.players.local)).toMatch(/"prefab":"telestaff".*"finiteuses":\{"uses":4\}/);
-  } finally { registry.dispose(); inventory.dispose(); }
+  } finally {
+    registry.dispose();
+    inventory.dispose();
+  }
 });

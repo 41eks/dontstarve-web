@@ -9,8 +9,12 @@ class Decoder {
   onmessage?: (event: { data: TextureWorkerResponse }) => void;
   onerror?: (event: { message: string }) => void;
   onmessageerror?: () => void;
-  constructor() { Decoder.instances.push(this); }
-  postMessage(request: TextureWorkerRequest) { this.messages.push(request); }
+  constructor() {
+    Decoder.instances.push(this);
+  }
+  postMessage(request: TextureWorkerRequest) {
+    this.messages.push(request);
+  }
 }
 
 beforeEach(() => {
@@ -18,7 +22,10 @@ beforeEach(() => {
   vi.stubGlobal('Worker', Decoder);
   vi.stubGlobal('document', { baseURI: 'https://example.test/game/' });
 });
-afterEach(() => { disposeTextureAssets(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  disposeTextureAssets();
+  vi.unstubAllGlobals();
+});
 
 it('coalesces texture requests and preserves the worker pixels for independent GPU owners', async () => {
   const first = loadKtexTexture('./ground.tex');
@@ -42,7 +49,9 @@ it('retries failed decodes without poisoning other cached textures', async () =>
   const retry = loadKtexTexture('./ground.tex');
   expect(retry).not.toBe(first);
   expect(decoder.messages).toHaveLength(2);
-  decoder.onmessage!({ data: { id: decoder.messages[1].id, texture: { width: 1, height: 1, pixels: new Uint8Array(4) } } });
+  decoder.onmessage!({
+    data: { id: decoder.messages[1].id, texture: { width: 1, height: 1, pixels: new Uint8Array(4) } },
+  });
   await retry;
 });
 

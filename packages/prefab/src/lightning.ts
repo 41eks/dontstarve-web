@@ -8,10 +8,10 @@ const LIGHTNINGSTRIKE_ONEOF_TAGS = ['lightningrod'];
 const LIGHTNINGSTRIKE_SEARCH_RANGE = 40 * (TILE_SIZE / 4);
 
 export interface LightningStrikeWorld {
-    root: THREE.Object3D;
-    /** TheSim for the rods around the strike. */
-    sim: EntityQuery;
-    fx: Pick<WorldFx, 'spawn'>;
+  root: THREE.Object3D;
+  /** TheSim for the rods around the strike. */
+  sim: EntityQuery;
+  fx: Pick<WorldFx, 'spawn'>;
 }
 
 /**
@@ -20,10 +20,16 @@ export interface LightningStrikeWorld {
  * playerlightningtarget, moonstorm lightning and StrikeLightningAtPoint's shock and fire are not ported.
  */
 export function SendLightningStrike(world: LightningStrikeWorld, position: THREE.Vector3): THREE.Vector3 {
-    const [rod] = world.sim.FindEntities(position, LIGHTNINGSTRIKE_SEARCH_RANGE, [], LIGHTNINGSTRIKE_CANT_TAGS, LIGHTNINGSTRIKE_ONEOF_TAGS);
-    const strike = rod ? rod.getPosition().clone() : position.clone();
-    // SpawnPrefab("lightning") is placed after the rod has handled the event.
-    rod?.PushEvent('lightningstrike', undefined);
-    world.fx.spawn('lightning', strike);
-    return strike;
+  const [rod] = world.sim.FindEntities(
+    position,
+    LIGHTNINGSTRIKE_SEARCH_RANGE,
+    [],
+    LIGHTNINGSTRIKE_CANT_TAGS,
+    LIGHTNINGSTRIKE_ONEOF_TAGS,
+  );
+  const strike = rod ? rod.getPosition().clone() : position.clone();
+  // SpawnPrefab("lightning") is placed after the rod has handled the event.
+  rod?.PushEvent('lightningstrike', undefined);
+  world.fx.spawn('lightning', strike);
+  return strike;
 }

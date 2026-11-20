@@ -15,21 +15,44 @@ import { reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
 import { workTargets } from './workTargets';
 import { managedBuildings } from './managedBuildings';
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 async function createPlacement() {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const stop = vi.fn();
   const play = vi.spyOn(sound, 'PlaySound').mockReturnValue({ stop, isPlaying: () => true, setVolume: vi.fn() });
   const scheduler = new GameTimeScheduler();
   const { moon, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
-  const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    ground: new THREE.Group(), renderer: { domElement: new EventTarget() }, scheduler, getWatchWorldContent } as unknown as WorldContext;
+  const world = {
+    scene: new THREE.Scene(),
+    player: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+    scheduler,
+    getWatchWorldContent,
+  } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
-  return { placement, scheduler, moon, play, stop, dispose: () => { placement.dispose(); unbind(); scheduler.dispose(); } };
+  return {
+    placement,
+    scheduler,
+    moon,
+    play,
+    stop,
+    dispose: () => {
+      placement.dispose();
+      unbind();
+      scheduler.dispose();
+    },
+  };
 }
-
 
 /** The world's own 20-day clock: TheWorld.state.moonphase / iswaxingmoon on a given day. */
 const dayMoon = (day: number) => {
@@ -51,17 +74,22 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     const model = workTargets('HAMMER')[0].display.model;
     expect(lookupPrefabInstance(model)?.skinId).toBe('moondial_an');
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('wane_to_half');
-    expect(displayLightOverride(model)).toBe(.1);
+    expect(displayLightOverride(model)).toBe(0.1);
     // The waning look is the dial's own AnimState, so the new skin's sprite is dressed with it too.
     const declared = sprite.sprite.peek().appearance.get('anim-state')!;
-    if (declared.kind !== 'anim-state') { throw new Error('Missing the dial AnimState'); }
-    expect(declared.state.peek().overrides.get(smallHash('reflection_half'))?.sources)
-      .toEqual([{ archive: 'moondial_waning_build.zip', symbol: smallHash('reflection_half') }]);
+    if (declared.kind !== 'anim-state') {
+      throw new Error('Missing the dial AnimState');
+    }
+    expect(declared.state.peek().overrides.get(smallHash('reflection_half'))?.sources).toEqual([
+      { archive: 'moondial_waning_build.zip', symbol: smallHash('reflection_half') },
+    ]);
     expect(placement.exportRecords()[0].record.skinname).toBe('moondial_an');
     placement.dispose();
     const readMoon = vi.spyOn(moon, 'get');
     moon.set({ phase: 'full', waxing: true });
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(readMoon).not.toHaveBeenCalled();
-  } finally { dispose(); }
+  } finally {
+    dispose();
+  }
 });

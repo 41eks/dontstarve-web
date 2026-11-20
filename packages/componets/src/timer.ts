@@ -17,26 +17,38 @@ export class ComponentTimer {
   private readonly onDone: () => void;
 
   constructor(scheduler: GameTimeScheduler, onDone: () => void) {
-    this.scheduler = scheduler; this.onDone = onDone;
+    this.scheduler = scheduler;
+    this.onDone = onDone;
   }
 
   get remainingSeconds(): number | undefined {
     const timer = this.state.peek();
-    return timer.status === 'scheduled' ? Math.max(0, timer.endTime - this.scheduler.now)
-      : timer.status === 'paused' ? timer.remainingSeconds : undefined;
+    return timer.status === 'scheduled'
+      ? Math.max(0, timer.endTime - this.scheduler.now)
+      : timer.status === 'paused'
+        ? timer.remainingSeconds
+        : undefined;
   }
 
   /** Moving an inst to a world preserves its remaining task time. */
   BindScheduler(scheduler: GameTimeScheduler): void {
-    if (scheduler === this.scheduler) { return; }
-    const running = this.state.peek().status === 'scheduled', remaining = this.remainingSeconds;
-    this.cancelTask?.(); this.cancelTask = undefined;
+    if (scheduler === this.scheduler) {
+      return;
+    }
+    const running = this.state.peek().status === 'scheduled',
+      remaining = this.remainingSeconds;
+    this.cancelTask?.();
+    this.cancelTask = undefined;
     this.scheduler = scheduler;
-    if (running) { this.start(remaining!); }
+    if (running) {
+      this.start(remaining!);
+    }
   }
 
   start(seconds: number): void {
-    if (!Number.isFinite(seconds) || seconds < 0) { throw new RangeError('Invalid timer duration'); }
+    if (!Number.isFinite(seconds) || seconds < 0) {
+      throw new RangeError('Invalid timer duration');
+    }
     this.cancelTask?.();
     this.cancelTask = this.scheduler.schedule(seconds, () => {
       this.cancelTask = undefined;
@@ -49,28 +61,45 @@ export class ComponentTimer {
   }
 
   pause(): void {
-    if (this.state.peek().status !== 'scheduled') { return; }
+    if (this.state.peek().status !== 'scheduled') {
+      return;
+    }
     const remainingSeconds = this.remainingSeconds!;
-    this.cancelTask?.(); this.cancelTask = undefined;
+    this.cancelTask?.();
+    this.cancelTask = undefined;
     this.state.set(Object.freeze({ status: 'paused', remainingSeconds }));
   }
 
   restorePaused(remainingSeconds: number): void {
-    if (!Number.isFinite(remainingSeconds) || remainingSeconds < 0) { throw new RangeError('Invalid paused duration'); }
-    this.cancelTask?.(); this.cancelTask = undefined;
+    if (!Number.isFinite(remainingSeconds) || remainingSeconds < 0) {
+      throw new RangeError('Invalid paused duration');
+    }
+    this.cancelTask?.();
+    this.cancelTask = undefined;
     this.state.set(Object.freeze({ status: 'paused', remainingSeconds }));
   }
 
   stop(): void {
-    this.cancelTask?.(); this.cancelTask = undefined;
-    if (this.state.peek().status !== 'stopped') { this.state.set(Object.freeze({ status: 'stopped' })); }
+    this.cancelTask?.();
+    this.cancelTask = undefined;
+    if (this.state.peek().status !== 'stopped') {
+      this.state.set(Object.freeze({ status: 'stopped' }));
+    }
   }
 }
 
-export interface SavedNamedTimer { timeleft: number; paused: boolean; initial_time: number; }
-export interface NamedTimerSave { timers: Record<string, SavedNamedTimer>; }
+export interface SavedNamedTimer {
+  timeleft: number;
+  paused: boolean;
+  initial_time: number;
+}
+export interface NamedTimerSave {
+  timers: Record<string, SavedNamedTimer>;
+}
 
-export interface TimerInst { PushEvent(name: string, data: unknown): void }
+export interface TimerInst {
+  PushEvent(name: string, data: unknown): void;
+}
 
 /** timer.lua: named tasks keep distinct stopped/expired snapshots; only live timers persist. */
 export class Timer {
@@ -80,56 +109,99 @@ export class Timer {
   private disposed = false;
   /** `names` are timers whose snapshots are read before they first start. */
   constructor(inst: TimerInst, scheduler: GameTimeScheduler, names: readonly string[] = []) {
-    this.inst = inst; this.scheduler = scheduler;
-    for (const name of names) { this.ensure(name); }
+    this.inst = inst;
+    this.scheduler = scheduler;
+    for (const name of names) {
+      this.ensure(name);
+    }
   }
   private ensure(name: string) {
     let entry = this.timers.get(name);
     if (!entry) {
       // OnTimerDone: inst:PushEvent("timerdone", { name = name }).
-      entry = { timer: new ComponentTimer(this.scheduler, () => this.inst.PushEvent('timerdone', { name })), initialTime: 0 };
+      entry = {
+        timer: new ComponentTimer(this.scheduler, () => this.inst.PushEvent('timerdone', { name })),
+        initialTime: 0,
+      };
       this.timers.set(name, entry);
     }
     return entry;
   }
-  snapshot(name: string) { return this.ensure(name).timer.snapshot; }
+  snapshot(name: string) {
+    return this.ensure(name).timer.snapshot;
+  }
   TimerExists(name: string): boolean {
     const status = this.timers.get(name)?.timer.snapshot.peek().status;
     return status === 'scheduled' || status === 'paused';
   }
   StartTimer(name: string, seconds: number, paused = false, initialTime = seconds): boolean {
-    if (this.disposed || this.TimerExists(name)) { return false; }
-    const entry = this.ensure(name); entry.initialTime = initialTime;
-    if (paused) { entry.timer.restorePaused(seconds); } else { entry.timer.start(seconds); }
+    if (this.disposed || this.TimerExists(name)) {
+      return false;
+    }
+    const entry = this.ensure(name);
+    entry.initialTime = initialTime;
+    if (paused) {
+      entry.timer.restorePaused(seconds);
+    } else {
+      entry.timer.start(seconds);
+    }
     return true;
   }
-  StopTimer(name: string): void { if (this.TimerExists(name)) { this.timers.get(name)?.timer.stop(); } }
-  GetTimeLeft(name: string): number | undefined { return this.timers.get(name)?.timer.remainingSeconds; }
+  StopTimer(name: string): void {
+    if (this.TimerExists(name)) {
+      this.timers.get(name)?.timer.stop();
+    }
+  }
+  GetTimeLeft(name: string): number | undefined {
+    return this.timers.get(name)?.timer.remainingSeconds;
+  }
   GetTimeElapsed(name: string): number | undefined {
-    const entry = this.timers.get(name), remaining = entry?.timer.remainingSeconds;
+    const entry = this.timers.get(name),
+      remaining = entry?.timer.remainingSeconds;
     return entry && remaining !== undefined ? entry.initialTime - remaining : undefined;
   }
-  PauseTimer(name: string): void { this.timers.get(name)?.timer.pause(); }
+  PauseTimer(name: string): void {
+    this.timers.get(name)?.timer.pause();
+  }
   ResumeTimer(name: string): boolean {
     const entry = this.timers.get(name);
-    if (this.disposed || entry?.timer.snapshot.peek().status !== 'paused') { return false; }
-    entry.timer.start(entry.timer.remainingSeconds!); return true;
+    if (this.disposed || entry?.timer.snapshot.peek().status !== 'paused') {
+      return false;
+    }
+    entry.timer.start(entry.timer.remainingSeconds!);
+    return true;
   }
   OnSave(): NamedTimerSave | undefined {
-    const timers = Object.fromEntries([...this.timers].filter(([name]) => this.TimerExists(name)).map(([name, entry]) =>
-      [name, { timeleft: Math.min(entry.initialTime, entry.timer.remainingSeconds!),
-        paused: entry.timer.snapshot.peek().status === 'paused', initial_time: entry.initialTime }]));
+    const timers = Object.fromEntries(
+      [...this.timers]
+        .filter(([name]) => this.TimerExists(name))
+        .map(([name, entry]) => [
+          name,
+          {
+            timeleft: Math.min(entry.initialTime, entry.timer.remainingSeconds!),
+            paused: entry.timer.snapshot.peek().status === 'paused',
+            initial_time: entry.initialTime,
+          },
+        ]),
+    );
     return Object.keys(timers).length ? { timers } : undefined;
   }
   OnLoad(data?: NamedTimerSave): void {
-    if (!data || this.disposed) { return; }
+    if (!data || this.disposed) {
+      return;
+    }
     for (const [name, saved] of Object.entries(data.timers)) {
-      this.StopTimer(name); this.StartTimer(name, saved.timeleft, saved.paused, saved.initial_time);
+      this.StopTimer(name);
+      this.StartTimer(name, saved.timeleft, saved.paused, saved.initial_time);
     }
   }
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
-    for (const name of this.timers.keys()) { this.StopTimer(name); }
+    for (const name of this.timers.keys()) {
+      this.StopTimer(name);
+    }
   }
 }

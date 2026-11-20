@@ -5,11 +5,30 @@ import { EventHandler, FRAMES, StateGraphInstance, TimeEvent, type StateDefiniti
  * SGlightninggoat.lua and the commonstates.lua sleep states. The combat (attack, hit, death), frozen and corpse states
  * and their handlers are not ported, as the goat has no combat or freezing here.
  */
-export type LightningGoatStateName = 'idle' | 'bleet' | 'walk_start' | 'walk' | 'walk_stop' | 'taunt'
-  | 'discharge' | 'electrocute' | 'shocked' | 'sleep' | 'sleeping' | 'wake';
+export type LightningGoatStateName =
+  | 'idle'
+  | 'bleet'
+  | 'walk_start'
+  | 'walk'
+  | 'walk_stop'
+  | 'taunt'
+  | 'discharge'
+  | 'electrocute'
+  | 'shocked'
+  | 'sleep'
+  | 'sleeping'
+  | 'wake';
 
-export type LightningGoatSound = 'jacobshorn' | 'chew' | 'jump' | 'taunt' | 'hoof' | 'bleet' | 'shocked_electric'
-  | 'shocked_bleet' | 'sleep';
+export type LightningGoatSound =
+  | 'jacobshorn'
+  | 'chew'
+  | 'jump'
+  | 'taunt'
+  | 'hoof'
+  | 'bleet'
+  | 'shocked_electric'
+  | 'shocked_bleet'
+  | 'sleep';
 
 export interface LightningGoatStateInst {
   readonly locomotor: {
@@ -34,14 +53,22 @@ export interface LightningGoatStateInst {
   random(): number;
 }
 
-interface LightningGoatSpec { mem: { jacobsladdersfxtask: () => void }; data: { [K in LightningGoatStateName]: unknown }; action: never }
+interface LightningGoatSpec {
+  mem: { jacobsladdersfxtask: () => void };
+  data: { [K in LightningGoatStateName]: unknown };
+  action: never;
+}
 type SG = StateGraphInstance<LightningGoatStateInst, LightningGoatStateName, LightningGoatSpec>;
 type State = StateDefinition<LightningGoatStateInst, LightningGoatStateName, LightningGoatSpec>;
 const Event = <E extends string>(name: E, fn: (sg: SG) => void) =>
   EventHandler<LightningGoatStateInst, LightningGoatStateName, E, LightningGoatSpec>(name, sg => fn(sg));
 const Time = TimeEvent<LightningGoatStateInst, LightningGoatStateName, LightningGoatSpec>;
 const goToIdle = (sg: SG) => sg.goToState('idle');
-const hornIfCharged = (sg: SG) => { if (sg.context.charged()) { sg.context.playSound('jacobshorn'); } };
+const hornIfCharged = (sg: SG) => {
+  if (sg.context.charged()) {
+    sg.context.playSound('jacobshorn');
+  }
+};
 
 /** GetRandomWithVariance(baseval, randomval): evaluated once, as the source's timeline table is built at load. */
 const withVariance = (base: number, variance: number) => base + (Math.random() * 2 * variance - variance);
@@ -49,7 +76,8 @@ const IDLE_CHEW_FRAMES = [withVariance(8, 3), withVariance(33, 3)];
 
 const states: State[] = [
   {
-    name: 'idle', tags: ['idle', 'canrotate'],
+    name: 'idle',
+    tags: ['idle', 'canrotate'],
     onenter: sg => {
       const inst = sg.context;
       inst.locomotor.StopMoving();
@@ -66,12 +94,14 @@ const states: State[] = [
     timeline: IDLE_CHEW_FRAMES.map(frames => Time(frames * FRAMES, sg => sg.context.playSound('chew'))),
   },
   {
-    name: 'walk_start', tags: ['moving', 'canrotate'],
+    name: 'walk_start',
+    tags: ['moving', 'canrotate'],
     onenter: sg => sg.context.playAnimation('walk_pre'),
     events: [Event('animover', sg => sg.goToState('walk'))],
   },
   {
-    name: 'walk', tags: ['moving', 'canrotate'],
+    name: 'walk',
+    tags: ['moving', 'canrotate'],
     onenter: sg => {
       sg.context.locomotor.WalkForward();
       sg.context.playAnimation('walk');
@@ -85,12 +115,17 @@ const states: State[] = [
     events: [Event('animover', sg => sg.goToState('walk'))],
   },
   {
-    name: 'walk_stop', tags: ['canrotate'],
-    onenter: sg => { sg.context.locomotor.StopMoving(); sg.context.playAnimation('walk_pst', false); },
+    name: 'walk_stop',
+    tags: ['canrotate'],
+    onenter: sg => {
+      sg.context.locomotor.StopMoving();
+      sg.context.playAnimation('walk_pst', false);
+    },
     events: [Event('animover', goToIdle)],
   },
   {
-    name: 'taunt', tags: ['busy'],
+    name: 'taunt',
+    tags: ['busy'],
     onenter: sg => {
       sg.context.locomotor.StopMoving();
       sg.context.playAnimation('taunt_pre');
@@ -109,16 +144,18 @@ const states: State[] = [
     events: [Event('animqueueover', goToIdle)],
   },
   {
-    name: 'bleet', tags: ['idle'],
-    onenter: sg => { sg.context.locomotor.StopMoving(); sg.context.playAnimation('bleet'); },
-    timeline: [
-      Time(1 * FRAMES, hornIfCharged),
-      Time(10 * FRAMES, sg => sg.context.playSound('bleet')),
-    ],
+    name: 'bleet',
+    tags: ['idle'],
+    onenter: sg => {
+      sg.context.locomotor.StopMoving();
+      sg.context.playAnimation('bleet');
+    },
+    timeline: [Time(1 * FRAMES, hornIfCharged), Time(10 * FRAMES, sg => sg.context.playSound('bleet'))],
     events: [Event('animover', goToIdle)],
   },
   {
-    name: 'discharge', tags: ['busy'],
+    name: 'discharge',
+    tags: ['busy'],
     onenter: sg => {
       sg.context.locomotor.StopMoving();
       sg.context.playAnimation('trans');
@@ -130,7 +167,8 @@ const states: State[] = [
   // New electrocute mechanics depend on this state name existing. Forward to old state for backward compatibility.
   { name: 'electrocute', onenter: sg => sg.goToState('shocked') },
   {
-    name: 'shocked', tags: ['busy'],
+    name: 'shocked',
+    tags: ['busy'],
     onenter: sg => {
       sg.context.locomotor.StopMoving();
       sg.context.playAnimation('shock');
@@ -145,29 +183,39 @@ const states: State[] = [
   // commonstates.lua AddSleepStates. SGlightninggoat passes its first timeline as `startsleeptimeline`, a key
   // AddSleepStates does not read (it reads `starttimeline`), so the source's sleep state plays no jacobshorn.
   {
-    name: 'sleep', tags: ['busy', 'sleeping'],
-    onenter: sg => { sg.context.locomotor.StopMoving(); sg.context.playAnimation('sleep_pre'); },
+    name: 'sleep',
+    tags: ['busy', 'sleeping'],
+    onenter: sg => {
+      sg.context.locomotor.StopMoving();
+      sg.context.playAnimation('sleep_pre');
+    },
     events: [Event('animover', sg => sg.goToState('sleeping')), Event('onwakeup', onwakeup)],
   },
   {
-    name: 'sleeping', tags: ['busy', 'sleeping'],
+    name: 'sleeping',
+    tags: ['busy', 'sleeping'],
     onenter: sg => sg.context.playAnimation('sleep_loop'),
     timeline: [Time(41 * FRAMES, sg => sg.context.playSound('sleep'))],
     events: [Event('animover', sg => sg.goToState('sleeping')), Event('onwakeup', onwakeup)],
   },
   {
-    name: 'wake', tags: ['busy', 'waking'],
+    name: 'wake',
+    tags: ['busy', 'waking'],
     onenter: sg => {
       sg.context.locomotor.StopMoving();
       sg.context.playAnimation('sleep_pst');
-      if (sg.context.sleeper.IsAsleep()) { sg.context.sleeper.WakeUp(); }
+      if (sg.context.sleeper.IsAsleep()) {
+        sg.context.sleeper.WakeUp();
+      }
     },
     events: [Event('animover', goToIdle)],
   },
 ];
 
 function onwakeup(sg: SG): void {
-  if (!sg.hasStateTag('nowake')) { sg.goToState('wake'); }
+  if (!sg.hasStateTag('nowake')) {
+    sg.goToState('wake');
+  }
 }
 
 /** SGlightninggoat's StateGraph("lightninggoat", states, events, "init"): AddInitState enters idle. */
@@ -178,19 +226,37 @@ export class LightningGoatStateGraph {
     this.sg = new StateGraphInstance(inst, states, [], scheduler);
     // CommonHandlers.OnLocomote(false, true): the goat only walks.
     this.sg.listenForEvent('locomote', () => {
-      const moving = this.sg.hasStateTag('moving'), wants = inst.locomotor.WantsToMoveForward();
-      if (moving && !wants) { this.sg.goToState('walk_stop'); }
-      else if (this.sg.hasStateTag('idle') && wants) { this.sg.goToState('walk_start'); }
+      const moving = this.sg.hasStateTag('moving'),
+        wants = inst.locomotor.WantsToMoveForward();
+      if (moving && !wants) {
+        this.sg.goToState('walk_stop');
+      } else if (this.sg.hasStateTag('idle') && wants) {
+        this.sg.goToState('walk_start');
+      }
     });
     // CommonHandlers.OnSleep(): health and electrocute checks have nothing to stop here.
-    this.sg.listenForEvent('gotosleep', () => this.sg.goToState(this.sg.hasStateTag('sleeping') ? 'sleeping' : 'sleep'));
+    this.sg.listenForEvent('gotosleep', () =>
+      this.sg.goToState(this.sg.hasStateTag('sleeping') ? 'sleeping' : 'sleep'),
+    );
     this.sg.goToState('idle');
   }
 
-  get stateName(): LightningGoatStateName { return this.sg.stateName; }
-  hasStateTag(tag: string): boolean { return this.sg.hasStateTag(tag); }
-  pushEvent(name: string, data?: unknown): void { this.sg.pushEvent(name, data); }
-  goToState(name: LightningGoatStateName): void { this.sg.goToState(name); }
-  update(dt: number): void { this.sg.update(dt); }
-  dispose(): void { this.sg.dispose(); }
+  get stateName(): LightningGoatStateName {
+    return this.sg.stateName;
+  }
+  hasStateTag(tag: string): boolean {
+    return this.sg.hasStateTag(tag);
+  }
+  pushEvent(name: string, data?: unknown): void {
+    this.sg.pushEvent(name, data);
+  }
+  goToState(name: LightningGoatStateName): void {
+    this.sg.goToState(name);
+  }
+  update(dt: number): void {
+    this.sg.update(dt);
+  }
+  dispose(): void {
+    this.sg.dispose();
+  }
 }

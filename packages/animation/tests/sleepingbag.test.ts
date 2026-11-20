@@ -6,17 +6,36 @@ import { SleepingBagUser } from '../../componets/src/sleepingbaguser';
 import { createSignal, type WorldPhase } from '../../signals/src';
 
 function setup(hunger = 100) {
-  const scheduler = new GameTimeScheduler(), phase = createSignal<WorldPhase>('night');
+  const scheduler = new GameTimeScheduler(),
+    phase = createSignal<WorldPhase>('night');
   const stats = { hunger, sanity: 50, health: 50 };
   const tags = new Set<string>();
   const goToWakeup = vi.fn();
-  const user = new SleepingBagUser({}, {
-    scheduler, phase,
-    hunger: { DoDelta: delta => { stats.hunger = Math.max(0, stats.hunger + delta); }, IsStarving: () => stats.hunger <= 0 },
-    sanity: { DoDelta: delta => { stats.sanity += delta; }, GetPercentWithPenalty: () => stats.sanity / 200 },
-    health: { DoDelta: delta => { stats.health += delta; } },
-    goToWakeup,
-  });
+  const user = new SleepingBagUser(
+    {},
+    {
+      scheduler,
+      phase,
+      hunger: {
+        DoDelta: delta => {
+          stats.hunger = Math.max(0, stats.hunger + delta);
+        },
+        IsStarving: () => stats.hunger <= 0,
+      },
+      sanity: {
+        DoDelta: delta => {
+          stats.sanity += delta;
+        },
+        GetPercentWithPenalty: () => stats.sanity / 200,
+      },
+      health: {
+        DoDelta: delta => {
+          stats.health += delta;
+        },
+      },
+      goToWakeup,
+    },
+  );
   const bag = new SleepingBag({ addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag) });
   bag.health_tick = 2;
   return { scheduler, phase, stats, tags, goToWakeup, user, bag };

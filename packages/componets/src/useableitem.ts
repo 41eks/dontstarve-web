@@ -18,20 +18,34 @@ export class UseableItem {
   private onstopusefn?: UseableItemOnStopUseFn;
   private readonly inst: UseableItemInst;
 
-  constructor(inst: UseableItemInst) { this.inst = inst; }
+  constructor(inst: UseableItemInst) {
+    this.inst = inst;
+  }
 
-  SetOnUseFn(fn: UseableItemOnUseFn | undefined): void { this.onusefn = fn; }
-  SetOnStopUseFn(fn: UseableItemOnStopUseFn | undefined): void { this.onstopusefn = fn; }
+  SetOnUseFn(fn: UseableItemOnUseFn | undefined): void {
+    this.onusefn = fn;
+  }
+  SetOnStopUseFn(fn: UseableItemOnStopUseFn | undefined): void {
+    this.onstopusefn = fn;
+  }
   /** `inst.replica.equippable:IsEquipped()`. */
-  CanInteract(): boolean { return !this.inuseState.peek() && !!this.inst.components.equippable?.IsEquipped(); }
+  CanInteract(): boolean {
+    return !this.inuseState.peek() && !!this.inst.components.equippable?.IsEquipped();
+  }
 
   private setInUse(inuse: boolean): void {
     this.inuseState.set(inuse);
-    if (inuse) { this.inst.addTag('inuse'); } else { this.inst.removeTag('inuse'); }
+    if (inuse) {
+      this.inst.addTag('inuse');
+    } else {
+      this.inst.removeTag('inuse');
+    }
   }
   StartUsingItem(): boolean {
     this.setInUse(true);
-    if (this.onusefn) { this.setInUse(this.onusefn(this.inst) !== false); }
+    if (this.onusefn) {
+      this.setInUse(this.onusefn(this.inst) !== false);
+    }
     return this.inuseState.peek();
   }
   StopUsingItem(): void {
@@ -39,5 +53,9 @@ export class UseableItem {
     this.onstopusefn?.(this.inst);
   }
   /** OnRemoveFromEntity */
-  dispose(): void { this.inst.removeTag('inuse'); this.onusefn = undefined; this.onstopusefn = undefined; }
+  dispose(): void {
+    this.inst.removeTag('inuse');
+    this.onusefn = undefined;
+    this.onstopusefn = undefined;
+  }
 }

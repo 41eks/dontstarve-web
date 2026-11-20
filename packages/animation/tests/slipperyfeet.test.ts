@@ -14,25 +14,45 @@ function setup(options: { speed?: number; pond?: boolean } = {}) {
   const ice = { components: {} as { slipperyfeettarget?: SlipperyFeetTarget } };
   if (options.pond !== false) {
     ice.components.slipperyfeettarget = new SlipperyFeetTarget({
-      addTag: tag => tags.add(tag), removeTag: tag => tags.delete(tag),
-      getPosition: () => ({ x: 1, z: 0 }), getPhysicsRadius: () => 3,
+      addTag: tag => tags.add(tag),
+      removeTag: tag => tags.delete(tag),
+      getPosition: () => ({ x: 1, z: 0 }),
+      getPhysicsRadius: () => 3,
     });
-    ice.components.slipperyfeettarget.SetSlipperyRate((_, target) => (target as { getMotorSpeed(): number }).getMotorSpeed() > 6 ? 50 : 5);
+    ice.components.slipperyfeettarget.SetSlipperyRate((_, target) =>
+      (target as { getMotorSpeed(): number }).getMotorSpeed() > 6 ? 50 : 5,
+    );
   }
   // The player inst the slip states read: its run speed, motor speed, wish to move forward and slipperyfeet.
   let feet!: SlipperyFeet;
-  const inst = wilsonPlayer(() => 14 * FRAME, inst => {
-    inst.runSpeed = 6;
-    inst.currentMotorSpeed = options.speed ?? 5.33;
-    // AddComponent("slipperyfeet") on the player, finding the ice around it.
-    inst.slipperyfeet = feet = new SlipperyFeet(inst, { scheduler, random: () => 1, findSlipperyEntities: () => options.pond === false ? [] : [ice] });
-    const reset = feet.SetCurrent.bind(feet);
-    // SGwilson's slip states reset the slippiness the feet have accumulated.
-    vi.spyOn(feet, 'SetCurrent').mockImplementation((value: number) => { if (value === 0 && feet.slippiness > 0) { log.resets++; } reset(value); });
-  });
+  const inst = wilsonPlayer(
+    () => 14 * FRAME,
+    inst => {
+      inst.runSpeed = 6;
+      inst.currentMotorSpeed = options.speed ?? 5.33;
+      // AddComponent("slipperyfeet") on the player, finding the ice around it.
+      inst.slipperyfeet = feet = new SlipperyFeet(inst, {
+        scheduler,
+        random: () => 1,
+        findSlipperyEntities: () => (options.pond === false ? [] : [ice]),
+      });
+      const reset = feet.SetCurrent.bind(feet);
+      // SGwilson's slip states reset the slippiness the feet have accumulated.
+      vi.spyOn(feet, 'SetCurrent').mockImplementation((value: number) => {
+        if (value === 0 && feet.slippiness > 0) {
+          log.resets++;
+        }
+        reset(value);
+      });
+    },
+  );
   const graph = inst.sg;
   const step = (frames: number) => {
-    for (let i = 0; i < frames; i++) { scheduler.advance(FRAME); feet.update(FRAME); graph.update(FRAME); }
+    for (let i = 0; i < frames; i++) {
+      scheduler.advance(FRAME);
+      feet.update(FRAME);
+      graph.update(FRAME);
+    }
   };
   // The player's own position, which a test moves off the pond.
   return { graph, feet, log, inst, step, tags, ice, position: inst.getPosition() };
@@ -48,7 +68,9 @@ it('slides a running player over a slipperyfeettarget, then falls on held input 
   step(2);
   expect(feet.IsSlippery()).toBe(true);
   expect(feet.isUpdating).toBe(true);
-  for (let i = 0; i < 90 && graph.stateName === 'run'; i++) { step(1); }
+  for (let i = 0; i < 90 && graph.stateName === 'run'; i++) {
+    step(1);
+  }
   expect(graph.stateName).toBe('slip');
   expect(feet.slippiness).toBe(0);
   expect(log.resets).toBe(1);
@@ -90,7 +112,9 @@ it('does not accumulate while standing, slips more slowly when walking off the i
   const slide = setup();
   slide.graph.requestMovement('run');
   slide.step(31);
-  for (let i = 0; i < 90 && slide.graph.stateName === 'run'; i++) { slide.step(1); }
+  for (let i = 0; i < 90 && slide.graph.stateName === 'run'; i++) {
+    slide.step(1);
+  }
   slide.step(28); // slip_pre + slip_loop
   expect(slide.graph.stateName).toBe('slip_pst');
   expect(slide.inst.motorSpeed).toBeCloseTo(6 * 0.15);

@@ -1,8 +1,17 @@
 /** Straight-alpha RGBA pixels, top row first. */
-export interface MinimapPixels { readonly data: Uint8ClampedArray; readonly width: number; readonly height: number }
+export interface MinimapPixels {
+  readonly data: Uint8ClampedArray;
+  readonly width: number;
+  readonly height: number;
+}
 
 /** A mask's rectangle in its atlas, as top-down texture coordinates. */
-export interface MinimapMaskRect { readonly u0: number; readonly v0: number; readonly u1: number; readonly v1: number }
+export interface MinimapMaskRect {
+  readonly u0: number;
+  readonly v0: number;
+  readonly u1: number;
+  readonly v1: number;
+}
 
 /** Inputs of MapLayerManager:CreateRenderLayer, in source layer order. */
 export interface MinimapTileLayer {
@@ -23,9 +32,18 @@ export interface MinimapTileLayerArt {
   readonly renderOrder: number;
 }
 
-export interface MinimapTileQuad { readonly col: number; readonly row: number; readonly variant: number }
+export interface MinimapTileQuad {
+  readonly col: number;
+  readonly row: number;
+  readonly variant: number;
+}
 
-export interface MinimapCellBounds { minCol: number; minRow: number; maxCol: number; maxRow: number }
+export interface MinimapCellBounds {
+  minCol: number;
+  minRow: number;
+  maxCol: number;
+  maxRow: number;
+}
 
 /** Terrain read model, independent of the live icon collection and map view. */
 export interface MinimapTerrain {

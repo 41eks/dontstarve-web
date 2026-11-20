@@ -9,9 +9,12 @@ export function configureMoleBaitEntity(entity: ItemEntity): void {
   const definition = GROUND_ITEM_DEFINITIONS[entity.prefab];
   if (definition?.elementalFoodHunger !== undefined && !entity.components.edible) {
     const edible = addComponent(entity, 'edible', Edible, () => entity.components.perishable.stage.peek());
-    edible.hungervalue = definition.elementalFoodHunger; entity.addTag('edible_ELEMENTAL');
+    edible.hungervalue = definition.elementalFoodHunger;
+    entity.addTag('edible_ELEMENTAL');
   }
-  if (!definition?.moleBait) { return; }
+  if (!definition?.moleBait) {
+    return;
+  }
   entity.addTag('molebait');
   addComponent(entity, 'bait', Bait);
 }

@@ -1,31 +1,53 @@
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { groundTileVariant, groundTileGeometry, loadGroundTileAssets, GROUND_FALLOFF_ART } from '../../prefab/src/groundTiles';
-import { loadGroundFalloffAssets, groundFalloffGeometry, sortGroundFalloffGeometry } from '../../display/src/groundFalloff';
+import {
+  groundTileVariant,
+  groundTileGeometry,
+  loadGroundTileAssets,
+  GROUND_FALLOFF_ART,
+} from '../../prefab/src/groundTiles';
+import {
+  loadGroundFalloffAssets,
+  groundFalloffGeometry,
+  sortGroundFalloffGeometry,
+} from '../../display/src/groundFalloff';
 import { GroundDepthPrepass } from '../../display/src/groundDepthPrepass';
 import { TurfMap, WORLD_TILES } from '../../prefab/src/turfMap';
 import { createSignal, type ClockState } from '../../signals/src';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { drawGround, layerGeometry, layerMeshes } from './groundDisplayFixture';
 
-beforeEach(() => vi.stubGlobal('fetch', async (url: string) => {
-  const bytes = await readFile(new URL(`../../../public/dst/data/${String(url).slice('/dst/data/'.length)}`, import.meta.url));
-  return new Response(bytes);
-}));
+beforeEach(() =>
+  vi.stubGlobal('fetch', async (url: string) => {
+    const bytes = await readFile(
+      new URL(`../../../public/dst/data/${String(url).slice('/dst/data/'.length)}`, import.meta.url),
+    );
+    return new Response(bytes);
+  }),
+);
 afterEach(() => vi.unstubAllGlobals());
 
 it('clips ground geometry without losing UVs, upward normals or large-map indices', async () => {
   const assets = await loadGroundTileAssets('/dst/data', 'GRASS');
-  const clipped = groundTileGeometry([
-    { col: -1, row: -1, variant: 2 }, { col: 99, row: 0, variant: 1 }, { col: 0, row: 0, variant: 1 },
-  ], assets, 18);
-  const large = groundTileGeometry(Array.from({ length: 16385 }, (_, col) => ({ col, row: 0, variant: 1 })), assets, 400000);
+  const clipped = groundTileGeometry(
+    [
+      { col: -1, row: -1, variant: 2 },
+      { col: 99, row: 0, variant: 1 },
+      { col: 0, row: 0, variant: 1 },
+    ],
+    assets,
+    18,
+  );
+  const large = groundTileGeometry(
+    Array.from({ length: 16385 }, (_, col) => ({ col, row: 0, variant: 1 })),
+    assets,
+    400000,
+  );
   const empty = groundTileGeometry([], assets, 18);
   try {
     expect(Array.from(clipped.getAttribute('position').array)).toEqual([
-      -9, 0, -9, -9, 0, 0, 0, 0, -9, 0, 0, 0,
-      0, 0, 0, 0, 0, 9, 9, 0, 0, 9, 0, 9,
+      -9, 0, -9, -9, 0, 0, 0, 0, -9, 0, 0, 0, 0, 0, 0, 0, 0, 9, 9, 0, 0, 9, 0, 9,
     ]);
     expect(Array.from(clipped.index!.array)).toEqual([0, 1, 2, 2, 1, 3, 4, 5, 6, 6, 5, 7]);
     expect(clipped.boundingBox!.min.toArray()).toEqual([-9, 0, -9]);
@@ -42,46 +64,77 @@ it('clips ground geometry without losing UVs, upward normals or large-map indice
     expect(large.getAttribute('position').count).toBe(65540);
     expect(empty.index!.count).toBe(0);
     expect(empty.getAttribute('normal').count).toBe(0);
-  } finally { clipped.dispose(); large.dispose(); empty.dispose(); assets.material.dispose(); }
+  } finally {
+    clipped.dispose();
+    large.dispose();
+    empty.dispose();
+    assets.material.dispose();
+  }
 });
 
 it('commits generated tiles once, preserves saved overrides and retains geometry on unchanged registration', async () => {
   // A generated 4x4 patch: grass around a 2x2 wood floor, the first grass cell of which the save has dug.
   const tiles = Array.from({ length: 16 }, (_, i) => {
-    const column = i % 4, row = Math.floor(i / 4), inner = column > 0 && column < 3 && row > 0 && row < 3;
-    return { position: { x: (column - 1.5) * 12, z: 24 + (row - 1.5) * 12 }, tileId: inner ? WORLD_TILES.WOODFLOOR : WORLD_TILES.GRASS };
+    const column = i % 4,
+      row = Math.floor(i / 4),
+      inner = column > 0 && column < 3 && row > 0 && row < 3;
+    return {
+      position: { x: (column - 1.5) * 12, z: 24 + (row - 1.5) * 12 },
+      tileId: inner ? WORLD_TILES.WOODFLOOR : WORLD_TILES.GRASS,
+    };
   });
-  const saved = [{ col: Math.floor(tiles[0].position.x / 12), row: Math.floor(tiles[0].position.z / 12), tileId: WORLD_TILES.DIRT }];
-  const map = new TurfMap(240, saved), reference = new TurfMap(240, saved);
+  const saved = [
+    { col: Math.floor(tiles[0].position.x / 12), row: Math.floor(tiles[0].position.z / 12), tileId: WORLD_TILES.DIRT },
+  ];
+  const map = new TurfMap(240, saved),
+    reference = new TurfMap(240, saved);
   try {
     const display = await drawGround(map);
-    const changed = vi.fn(); map.onTerrainChanged(changed);
+    const changed = vi.fn();
+    map.onTerrainChanged(changed);
     map.setOriginalTiles(tiles);
     expect(changed).toHaveBeenCalledOnce();
     expect(map.getTileAtWorld(tiles[0].position)).toBe(WORLD_TILES.DIRT);
     expect(map.exportTiles()).toEqual(saved);
-    for (const { position, tileId } of tiles) { reference.setOriginalTile(position, tileId); }
+    for (const { position, tileId } of tiles) {
+      reference.setOriginalTile(position, tileId);
+    }
     const referenceDisplay = await drawGround(reference);
     for (const name of ['GRASS', 'WOODFLOOR', 'DECIDUOUS']) {
-      const geometry = layerGeometry(display, name), expected = layerGeometry(referenceDisplay, name);
+      const geometry = layerGeometry(display, name),
+        expected = layerGeometry(referenceDisplay, name);
       expect(geometry.getAttribute('position').array).toEqual(expected.getAttribute('position').array);
       expect(geometry.getAttribute('groundTileUv').array).toEqual(expected.getAttribute('groundTileUv').array);
-      geometry.dispose(); expected.dispose();
+      geometry.dispose();
+      expected.dispose();
     }
-    const wood = layerMeshes(display, 'WOODFLOOR'), geometries = wood.map(mesh => mesh.geometry);
+    const wood = layerMeshes(display, 'WOODFLOOR'),
+      geometries = wood.map(mesh => mesh.geometry);
     const disposed = geometries.map(geometry => vi.spyOn(geometry, 'dispose'));
     map.setOriginalTiles(tiles);
     map.setOriginalTile(tiles[0].position, WORLD_TILES.WOODFLOOR); // Saved dirt still wins.
     expect(changed).toHaveBeenCalledTimes(1);
     expect(layerMeshes(display, 'WOODFLOOR').map(mesh => mesh.geometry)).toEqual(geometries);
-    for (const spy of disposed) { expect(spy).not.toHaveBeenCalled(); }
-    display.dispose(); referenceDisplay.dispose();
-  } finally { map.dispose(); reference.dispose(); }
+    for (const spy of disposed) {
+      expect(spy).not.toHaveBeenCalled();
+    }
+    display.dispose();
+    referenceDisplay.dispose();
+  } finally {
+    map.dispose();
+    reference.dispose();
+  }
 });
 
 it('sorts merged cliff faces across negative coordinates without replacing vertices', async () => {
   const assets = await loadGroundFalloffAssets('/dst/data', GROUND_FALLOFF_ART, 12);
-  const geometry = groundFalloffGeometry([{ col: 0, row: -2, edge: 0 }, { col: 0, row: -1, edge: 0 }], assets);
+  const geometry = groundFalloffGeometry(
+    [
+      { col: 0, row: -2, edge: 0 },
+      { col: 0, row: -1, edge: 0 },
+    ],
+    assets,
+  );
   try {
     const vertices = geometry.getAttribute('position');
     sortGroundFalloffGeometry(geometry, new THREE.Matrix4().makeRotationY(Math.PI));
@@ -92,38 +145,48 @@ it('sorts merged cliff faces across negative coordinates without replacing verti
     sortGroundFalloffGeometry(geometry, new THREE.Matrix4());
     expect(geometry.index!.getX(0)).toBe(0);
     expect(geometry.getAttribute('position')).toBe(vertices);
-  } finally { geometry.dispose(); assets.material.dispose(); }
+  } finally {
+    geometry.dispose();
+    assets.material.dispose();
+  }
 });
 
 it('borrows ground geometry and atlas shaders for depth, updates replacements, and releases only its own material', async () => {
   const assets = await loadGroundTileAssets('/dst/data', 'FUNGUS');
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), assets.material), pass = new GroundDepthPrepass();
-  const original = mesh.geometry, originalDispose = vi.spyOn(original, 'dispose');
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), assets.material),
+    pass = new GroundDepthPrepass();
+  const original = mesh.geometry,
+    originalDispose = vi.spyOn(original, 'dispose');
   const sourceDispose = vi.spyOn(assets.material, 'dispose');
   pass.add(mesh);
   const depth = mesh.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>;
   const depthDispose = vi.spyOn(depth.material, 'dispose');
   expect(depth.material.onBeforeCompile).toBe(assets.material.onBeforeCompile);
   expect(depth.geometry).toBe(original);
-  mesh.geometry = new THREE.PlaneGeometry(2, 2); pass.sync(mesh); original.dispose();
+  mesh.geometry = new THREE.PlaneGeometry(2, 2);
+  pass.sync(mesh);
+  original.dispose();
   expect(depth.geometry).toBe(mesh.geometry);
   pass.dispose();
   expect(originalDispose).toHaveBeenCalledOnce();
   expect(depthDispose).toHaveBeenCalledOnce();
   expect(sourceDispose).not.toHaveBeenCalled();
   expect(depth.parent).toBeNull();
-  mesh.geometry.dispose(); assets.material.dispose();
+  mesh.geometry.dispose();
+  assets.material.dispose();
 });
 
 it('selects every source mask for the 256 possible neighbours, with adjacent diagonal bits suppressed', () => {
   const variants = new Set<number>();
-  for (let c = 0; c < 16; c++) { for (let d = 0; d < 16; d++) {
-    const variant = groundTileVariant(false, c, d);
-    expect(variant).toBeGreaterThanOrEqual(2);
-    expect(variant).toBeLessThanOrEqual(48);
-    expect(groundTileVariant(true, c, d)).toBe(1);
-    variants.add(variant);
-  } }
+  for (let c = 0; c < 16; c++) {
+    for (let d = 0; d < 16; d++) {
+      const variant = groundTileVariant(false, c, d);
+      expect(variant).toBeGreaterThanOrEqual(2);
+      expect(variant).toBeLessThanOrEqual(48);
+      expect(groundTileVariant(true, c, d)).toBe(1);
+      variants.add(variant);
+    }
+  }
   expect(variants.size).toBe(47);
   expect(groundTileVariant(false, 0, 0)).toBe(17);
   expect(groundTileVariant(false, 1, 9)).toBe(2); // west absorbs northwest/southwest
@@ -138,7 +201,11 @@ it('updates the outer boundary of contiguous dirt while leaving its interior fre
   expect(layerMeshes(display, 'DECIDUOUS')).toHaveLength(0);
   map.dig({ x: 6, z: 6 });
   expect(layerGeometry(display, 'DECIDUOUS').getIndex()!.count).toBe(9 * 6);
-  for (let col = 0; col < 3; col++) { for (let row = 0; row < 3; row++) { map.dig({ x: col * 12 + 6, z: row * 12 + 6 }); } }
+  for (let col = 0; col < 3; col++) {
+    for (let row = 0; row < 3; row++) {
+      map.dig({ x: col * 12 + 6, z: row * 12 + 6 });
+    }
+  }
   const edge = layerGeometry(display, 'DECIDUOUS');
   expect(edge.getIndex()!.count).toBe(24 * 6);
   const positions = edge.getAttribute('position');
@@ -147,15 +214,20 @@ it('updates the outer boundary of contiguous dirt while leaving its interior fre
   }
   const restored = new TurfMap(1000, map.exportTiles());
   const restoredDisplay = await drawGround(restored);
-  expect(layerGeometry(restoredDisplay, 'DECIDUOUS').getAttribute('groundTileUv').array).toEqual(edge.getAttribute('groundTileUv').array);
-  display.dispose(); restoredDisplay.dispose();
+  expect(layerGeometry(restoredDisplay, 'DECIDUOUS').getAttribute('groundTileUv').array).toEqual(
+    edge.getAttribute('groundTileUv').array,
+  );
+  display.dispose();
+  restoredDisplay.dispose();
 });
 
 it('renders woodfloor above deciduous and dirt, with a concave mask around an excavated wood tile', async () => {
   const map = new TurfMap(1000);
-  for (let col = 0; col < 3; col++) { for (let row = 0; row < 3; row++) {
-    map.setOriginalTile({ x: col * 12 + 6, z: row * 12 + 6 }, WORLD_TILES.WOODFLOOR);
-  } }
+  for (let col = 0; col < 3; col++) {
+    for (let row = 0; row < 3; row++) {
+      map.setOriginalTile({ x: col * 12 + 6, z: row * 12 + 6 }, WORLD_TILES.WOODFLOOR);
+    }
+  }
   const display = await drawGround(map);
   expect(layerGeometry(display, 'WOODFLOOR').getIndex()!.count).toBe(25 * 6);
   const order = Object.fromEntries(map.groundLayers().map(({ art, renderOrder }) => [art.name, renderOrder]));
@@ -178,21 +250,31 @@ it('renders woodfloor above deciduous and dirt, with a concave mask around an ex
   const cell = assets.elements.get('16')!;
   let matched = false;
   for (let i = 0; i < position.count; i += 4) {
-    if (position.getX(i) !== 12 || position.getZ(i) !== 12) { continue; }
+    if (position.getX(i) !== 12 || position.getZ(i) !== 12) {
+      continue;
+    }
     expect(uvs.getX(i)).toBeCloseTo(cell.u1);
     expect(uvs.getY(i)).toBeCloseTo(1 - cell.v2);
     matched = true;
   }
   expect(matched).toBe(true);
-  assets.material.dispose(); display.dispose();
+  assets.material.dispose();
+  display.dispose();
 });
 
 it('draws the ocean surface as merged rectangles instead of a quad per cell', async () => {
   const tiles = [];
-  for (let row = 0; row < 3; row++) { for (let col = -3; col < 0; col++) { tiles.push({ col, row, tileId: WORLD_TILES.OCEAN_COASTAL }); } }
+  for (let row = 0; row < 3; row++) {
+    for (let col = -3; col < 0; col++) {
+      tiles.push({ col, row, tileId: WORLD_TILES.OCEAN_COASTAL });
+    }
+  }
   const map = new TurfMap(96, tiles);
   const display = await drawGround(map);
-  const ocean = display.root.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  const ocean = display.root.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<
+    THREE.BufferGeometry,
+    THREE.Material
+  >;
   expect(ocean.geometry.getIndex()!.count).toBe(6);
   expect(ocean.geometry.getAttribute('position').count).toBe(4);
   const box = new THREE.Box3().setFromBufferAttribute(ocean.geometry.getAttribute('position') as THREE.BufferAttribute);
@@ -212,7 +294,10 @@ it('restores ocean terrain, rejects land actions and keeps ground overlays on la
   expect(map.canPlant(oceanPoint)).toBe(false);
   expect(map.exportTiles()).toEqual(tiles);
   const display = await drawGround(map);
-  const ocean = display.root.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
+  const ocean = display.root.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<
+    THREE.BufferGeometry,
+    THREE.Material
+  >;
   const clock = createSignal<ClockState>({ phase: 'day', timeinphase: 0 });
   vi.spyOn(clock, 'get');
   display.bindOceanClock(clock);
@@ -232,7 +317,9 @@ it('restores ocean terrain, rejects land actions and keeps ground overlays on la
   const shoreCell = assets.elements.get('16')!;
   let foundCoast = false;
   for (let i = 0; i < positions.count; i += 4) {
-    if (positions.getX(i) !== -12 || positions.getZ(i) !== 0) { continue; }
+    if (positions.getX(i) !== -12 || positions.getZ(i) !== 0) {
+      continue;
+    }
     expect(tileUvs.getX(i)).toBeCloseTo(shoreCell.u1);
     expect(tileUvs.getY(i)).toBeCloseTo(1 - shoreCell.v2);
     foundCoast = true;
@@ -245,7 +332,8 @@ it('restores ocean terrain, rejects land actions and keeps ground overlays on la
   await vi.waitFor(() => expect(overlayMeshes.every(mesh => !mesh.visible)).toBe(true));
   expect(overlayMeshes[0].geometry).toBe(geometry);
   const atlas = (overlayMeshes[0].material as THREE.MeshLambertMaterial).userData.prewarmTextures[0] as THREE.Texture;
-  const atlasDisposed = vi.fn(), overlayMaterialDisposed = vi.fn();
+  const atlasDisposed = vi.fn(),
+    overlayMaterialDisposed = vi.fn();
   atlas.addEventListener('dispose', atlasDisposed);
   (overlayMeshes[0].material as THREE.Material).addEventListener('dispose', overlayMaterialDisposed);
   // Withdrawing the overlay releases its meshes and materials, not the terrain art they borrow.

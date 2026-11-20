@@ -47,10 +47,13 @@ export function wallWorldPrefab(prefabId: string): string {
 }
 
 export function wallWorldSkin(prefabId: string, skinId?: string): string | undefined {
-  if (skinId === undefined) { return undefined; }
+  if (skinId === undefined) {
+    return undefined;
+  }
   const skins = WALL_SKIN_ARCHIVES[wallWorldPrefab(prefabId)] ?? {};
-  const worldSkin = prefabId.endsWith('_item') ? ITEM_SKINS[skinId] ?? skinId : skinId;
-  if (!worldSkin || !Object.hasOwn(skins, worldSkin)) { throw new Error(`Unsupported ${prefabId} skin: ${skinId}`); }
+  const worldSkin = prefabId.endsWith('_item') ? (ITEM_SKINS[skinId] ?? skinId) : skinId;
+  if (!worldSkin || !Object.hasOwn(skins, worldSkin)) {
+    throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
+  }
   return worldSkin;
 }
-

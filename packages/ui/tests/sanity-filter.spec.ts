@@ -1,4 +1,3 @@
-
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
@@ -6,8 +5,10 @@ test('source vig animation draws red screen edges, follows sanity state and rele
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/tests/dst-lighting.html');
-  const result = await page.evaluate(async url => (await import(url)).checkSanityVignette(),
-    `/@fs${fileURLToPath(new URL('./sanity-vignette-fixture.ts', import.meta.url))}`);
+  const result = await page.evaluate(
+    async url => (await import(url)).checkSanityVignette(),
+    `/@fs${fileURLToPath(new URL('./sanity-vignette-fixture.ts', import.meta.url))}`,
+  );
   expect(result.edgeRedPixels).toBeGreaterThan(1000);
   expect(result.centreAlpha).toBe(0);
   expect(result.initialFrame).toBe('0');
@@ -22,17 +23,24 @@ test('source vig animation draws red screen edges, follows sanity state and rele
   expect(errors).toEqual([]);
 });
 
-test('insanity LUTs use discrete grading levels, fade across phases and distort only screen edges', async ({ page }) => {
+test('insanity LUTs use discrete grading levels, fade across phases and distort only screen edges', async ({
+  page,
+}) => {
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => {
-    if (message.type() === 'error') { errors.push(message.text()); }
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error') {
+      errors.push(message.text());
+    }
   });
   await page.goto('/tests/dst-lighting.html');
-  const result = await page.evaluate(async (url) => {
-    const { checkSanityFilter } = await import(url);
-    return checkSanityFilter();
-  }, `/@fs${fileURLToPath(new URL('./sanity-filter-fixture.ts', import.meta.url))}`);
+  const result = await page.evaluate(
+    async url => {
+      const { checkSanityFilter } = await import(url);
+      return checkSanityFilter();
+    },
+    `/@fs${fileURLToPath(new URL('./sanity-filter-fixture.ts', import.meta.url))}`,
+  );
   expect(result.initialPercent).toBe(35 / 200);
   for (const phase of result.phases) {
     expect(phase.restored).toEqual(phase.normal);

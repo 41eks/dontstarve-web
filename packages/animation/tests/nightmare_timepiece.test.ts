@@ -22,21 +22,37 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { createInventoryStore } from './testInventory';
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
-const ITEM = 'nightmare_timepiece', SLOT = inventorySlotAddress(0);
+const ITEM = 'nightmare_timepiece',
+  SLOT = inventorySlotAddress(0);
 
 function setup(prefab: 'cave' | 'forest' = 'cave') {
   const world = createWorldState({ map: testMap(48), elapsedSeconds: 0, systems: {}, prefab });
   const inventory = createPickupInventory();
   const { instance: player, display } = createEmptyEntity('wilson');
   pickupDoer(display.model, inventory);
-  return { world, inventory, player, dispose() { inventory.dispose(); display.dispose(); world.dispose(); } };
+  return {
+    world,
+    inventory,
+    player,
+    dispose() {
+      inventory.dispose();
+      display.dispose();
+      world.dispose();
+    },
+  };
 }
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.stubGlobal('window', new EventTarget());
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('nightmare_timepiece.lua', () => {
   it('is a single unstackable c_give item with its source recipe', async () => {
@@ -47,16 +63,20 @@ describe('nightmare_timepiece.lua', () => {
       expect((await executeDebugCommand(`c_give("${ITEM}", 2)`, s.inventory)).ok).toBe(true);
       expect(s.inventory.count(ITEM)).toBe(2);
       expect(s.inventory.get(SLOT)).toMatchObject({ itemId: ITEM, count: 1 });
-    } finally { s.dispose(); }
+    } finally {
+      s.dispose();
+    }
   });
 
   it('shows and reports the nightmare phase through its clip, inventory image and status', async () => {
     const s = setup();
     try {
       s.inventory.add(ITEM, 1);
-      const entity = s.inventory.getEntity(SLOT)!, clock = s.world.nightmareclock!;
+      const entity = s.inventory.getEntity(SLOT)!,
+        clock = s.world.nightmareclock!;
       const image = () => entity.components.inventoryitem.image.peek()?.icon;
-      const status = () => (entity.components as unknown as { inspectable: { getstatus(): string } }).inspectable.getstatus();
+      const status = () =>
+        (entity.components as unknown as { inspectable: { getstatus(): string } }).inspectable.getstatus();
       const clip = () => entity.sprite.sprite.peek().clip;
       await flush();
       expect(clip()).toMatchObject({ name: 'idle_1', loop: false });
@@ -76,7 +96,7 @@ describe('nightmare_timepiece.lua', () => {
       expect(status()).toBe('WAXING');
       s.world.scheduler.advance(clock.remainingTimeInPhase / 2);
       expect(status()).toBe('STEADY');
-      s.world.scheduler.advance(clock.remainingTimeInPhase * .8);
+      s.world.scheduler.advance(clock.remainingTimeInPhase * 0.8);
       expect(status()).toBe('WANING');
 
       clock.SetPhase('dawn');
@@ -84,7 +104,9 @@ describe('nightmare_timepiece.lua', () => {
       expect(clip().name).toBe('idle_1');
       expect(image()).toBe('nightmare_timepiece.tex');
       expect(status()).toBe('DAWN');
-    } finally { s.dispose(); }
+    } finally {
+      s.dispose();
+    }
   });
 
   it('reports no magic where the world has no nightmare clock', async () => {
@@ -94,8 +116,12 @@ describe('nightmare_timepiece.lua', () => {
       const entity = s.inventory.getEntity(SLOT)!;
       await flush();
       expect(entity.sprite.sprite.peek().clip.name).toBe('idle_1');
-      expect((entity.components as unknown as { inspectable: { getstatus(): string } }).inspectable.getstatus()).toBe('NOMAGIC');
-    } finally { s.dispose(); }
+      expect((entity.components as unknown as { inspectable: { getstatus(): string } }).inspectable.getstatus()).toBe(
+        'NOMAGIC',
+      );
+    } finally {
+      s.dispose();
+    }
   });
 
   it('a saved watch built before its world follows the phase once the item is bound to the world', async () => {
@@ -108,7 +134,10 @@ describe('nightmare_timepiece.lua', () => {
       world.nightmareclock!.SetPhase('wild');
       await flush();
       expect(entity.sprite.sprite.peek().clip.name).toBe('idle_3');
-    } finally { inventory.dispose(); world.dispose(); }
+    } finally {
+      inventory.dispose();
+      world.dispose();
+    }
   });
 
   it('marks its holder as a nightmare tracker until the holder has no watch left', () => {
@@ -118,7 +147,8 @@ describe('nightmare_timepiece.lua', () => {
       expect(tracking()).toBe(false);
       s.inventory.add(ITEM, 2);
       expect(tracking()).toBe(true);
-      const first = s.inventory.getEntity(SLOT)!, second = s.inventory.getEntity(inventorySlotAddress(1))!;
+      const first = s.inventory.getEntity(SLOT)!,
+        second = s.inventory.getEntity(inventorySlotAddress(1))!;
       // Moving inside the holder's own inventory changes nothing.
       expect(s.inventory.transfer(SLOT, inventorySlotAddress(5), 1)).toBe(true);
       expect(tracking()).toBe(true);
@@ -141,7 +171,9 @@ describe('nightmare_timepiece.lua', () => {
       second.remove();
       expect(tracking()).toBe(false);
       first.destroy();
-    } finally { s.dispose(); }
+    } finally {
+      s.dispose();
+    }
   });
 
   it('restores the tag from a saved inventory, as inventory.lua OnLoad gives the item back', () => {
@@ -154,34 +186,76 @@ describe('nightmare_timepiece.lua', () => {
       s.inventory.replaceState(saved, INVENTORY_RECIPES);
       expect(s.inventory.count(ITEM)).toBe(1);
       expect(s.player.hasTag('nightmaretracker')).toBe(true);
-    } finally { s.dispose(); }
+    } finally {
+      s.dispose();
+    }
   });
 
   it('saves a spawned watch and a held one through c_save', async () => {
     const world = createWorldState({ map: testMap(48), elapsedSeconds: 0, systems: {}, prefab: 'cave' });
-    const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = withEntity(new THREE.Group(), 'wilson');
-    const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
-      '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
+    const inventory = createInventoryStore([]),
+      scene = new THREE.Scene(),
+      player = withEntity(new THREE.Group(), 'wilson');
+    const ground = new ItemWorldFixture(
+      scene,
+      new THREE.PerspectiveCamera(),
+      { domElement: new EventTarget() } as THREE.WebGLRenderer,
+      '/dst/data/databundles/images.zip',
+      inventory,
+      '/dst/data/anim',
+      player,
+    );
     const registry = new EntityRegistry();
-    registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `dug:${id}`));
+    registry.register(
+      PREFAB_DEFINITIONS.groundItems,
+      ground.registration(
+        () => player.position,
+        id => `dug:${id}`,
+      ),
+    );
     try {
-      expect((await executeDebugCommand(`c_spawn("${ITEM}"); c_give("${ITEM}")`, inventory, id => registry.spawn(id))).ok).toBe(true);
+      expect(
+        (await executeDebugCommand(`c_spawn("${ITEM}"); c_give("${ITEM}")`, inventory, id => registry.spawn(id))).ok,
+      ).toBe(true);
       let json = '';
       const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-      expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-        json = serializeSave(template, { entities: ground.exportEntities(), inventory: inventory.exportSaved(),
-          elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
-      })).ok).toBe(true);
+      expect(
+        (
+          await executeDebugCommand('c_save()', inventory, undefined, () => {
+            json = serializeSave(
+              template,
+              {
+                entities: ground.exportEntities(),
+                inventory: inventory.exportSaved(),
+                elapsedSeconds: 0,
+                playerTransform: { position: [0, 0, 0], rotationY: 0 },
+              },
+              SAVE_CATALOG,
+            );
+          })
+        ).ok,
+      ).toBe(true);
       const saved = deserializeSave(json, SAVE_CATALOG);
       expect(Object.keys(itemEntities(saved.world.entities))).toEqual([ITEM]);
       expect(JSON.stringify(saved.players.local)).toContain(ITEM);
-    } finally { registry.dispose(); inventory.dispose(); world.dispose(); }
+    } finally {
+      registry.dispose();
+      inventory.dispose();
+      world.dispose();
+    }
   });
 
   it('draws the phase clip on the ground, also in a visual made after the phase changed', async () => {
     const s = setup();
-    const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
-      s.inventory, '/dst/data/anim', new THREE.Group());
+    const items = new ItemWorldFixture(
+      new THREE.Scene(),
+      new THREE.PerspectiveCamera(),
+      undefined,
+      '/dst/data/databundles/images.zip',
+      s.inventory,
+      '/dst/data/anim',
+      new THREE.Group(),
+    );
     s.inventory.add(ITEM, 1);
     const entity = s.inventory.extract(SLOT, 1)!;
     s.world.nightmareclock!.SetPhase('wild');
@@ -193,8 +267,15 @@ describe('nightmare_timepiece.lua', () => {
       await flush();
       expect(entity.sprite.currentAnimation).toBe('idle_3');
       let mesh!: THREE.Mesh;
-      entity.transform.model.traverse(object => { if (object instanceof THREE.Mesh) { mesh ??= object; } });
+      entity.transform.model.traverse(object => {
+        if (object instanceof THREE.Mesh) {
+          mesh ??= object;
+        }
+      });
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    } finally { items.dispose(); s.dispose(); }
+    } finally {
+      items.dispose();
+      s.dispose();
+    }
   });
 });

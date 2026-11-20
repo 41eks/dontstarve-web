@@ -1,6 +1,11 @@
 import { addComponent } from './components';
 import type * as THREE from 'three';
-import { WorldContentKey, type GetWatchWorldContent, type ReadonlySignal, type WorldMoonPhase } from '@dontstarve-web/signals';
+import {
+  WorldContentKey,
+  type GetWatchWorldContent,
+  type ReadonlySignal,
+  type WorldMoonPhase,
+} from '@dontstarve-web/signals';
 import type { InventoryItemSpec, ItemEntity } from '@dontstarve-web/inventory';
 import type { BookDef } from '@dontstarve-web/stategraphs';
 import { Book, type BookFxWorld, type BookReaderInst, type BookResult } from '../../componets/src/book';
@@ -37,25 +42,41 @@ export type BookComponent = Book<ItemEntity, BookReader, BookWorld>;
 
 // TUNING.BOOK_USES_LARGE, TUNING.SANITY_LARGE.
 /** TUNING.BOOKSTATION_RESTORE_AMOUNT: the fraction of the maximum a bookstation restores per period. */
-export const BOOKSTATION_RESTORE_AMOUNT = .01;
+export const BOOKSTATION_RESTORE_AMOUNT = 0.01;
 /** Whole uses and restored amounts (integer maximum * 1%) are all multiples of this, whatever the book's maximum. */
-export const BOOK_USE_STEP = .01;
+export const BOOK_USE_STEP = 0.01;
 const BOOK_USES_SMALL = 3;
 const BOOK_USES_LARGE = 5;
 const SANITY_LARGE = 33;
 const SANITY_HUGE = 50;
 const SILVICULTURE_RANGE = 30 * (TILE_SIZE / 4);
 const SILVICULTURE_ONEOF_TAGS = ['leif', 'silviculture', 'tree', 'winter_tree'];
-const SILVICULTURE_CANT_TAGS = ['magicgrowth', 'player', 'FX', 'pickable', 'stump', 'withered', 'barren', 'INLIMBO', 'ancienttree'];
+const SILVICULTURE_CANT_TAGS = [
+  'magicgrowth',
+  'player',
+  'FX',
+  'pickable',
+  'stump',
+  'withered',
+  'barren',
+  'INLIMBO',
+  'ancienttree',
+];
 
 type GrowthTarget = PrefabInstance & { components: PrefabInstance['components'] & { pickable?: Pickable } };
 
 /** books.lua trygrowth for the ported pickable branch; growable, crop, harvestable and leif are not ported. */
 function trygrowth(inst: GrowthTarget): boolean {
-  if (inst.isRemoved || inst.hasTag('INLIMBO') || inst.hasTag('withered')) { return false; }
+  if (inst.isRemoved || inst.hasTag('INLIMBO') || inst.hasTag('withered')) {
+    return false;
+  }
   const pickable = inst.components.pickable;
-  if (!pickable) { return false; }
-  if (pickable.canBePicked && pickable.canInteractWith) { return false; }
+  if (!pickable) {
+    return false;
+  }
+  if (pickable.canBePicked && pickable.canInteractWith) {
+    return false;
+  }
   // ConsumeCycles(1) only changes transplanted/protected cycle counts, which these plants do not keep.
   return pickable.finishGrowing();
 }
@@ -73,13 +94,22 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
     fx_under_prefab: 'fx_roots_under_book',
     layer_sound: { frame: 17, sound: 'wickerbottom_rework/book_spells/silviculture' },
     fn(inst, reader, world) {
-      const ents = inst.TheSim.FindEntities(reader.getPosition(), SILVICULTURE_RANGE, [], SILVICULTURE_CANT_TAGS, SILVICULTURE_ONEOF_TAGS)
-        .filter(v => v.components.pickable !== undefined || v.hasTag('leif'));
-      if (ents.length === 0) { return [false, 'NOSILVICULTURE']; }
+      const ents = inst.TheSim.FindEntities(
+        reader.getPosition(),
+        SILVICULTURE_RANGE,
+        [],
+        SILVICULTURE_CANT_TAGS,
+        SILVICULTURE_ONEOF_TAGS,
+      ).filter(v => v.components.pickable !== undefined || v.hasTag('leif'));
+      if (ents.length === 0) {
+        return [false, 'NOSILVICULTURE'];
+      }
       trygrowth(ents.splice(Math.floor(Math.random() * ents.length), 1)[0]);
       if (ents.length > 0) {
         const timevar = 1 - 1 / (ents.length + 1);
-        for (const v of ents) { world.scheduler.schedule(timevar * Math.random(), () => trygrowth(v)); }
+        for (const v of ents) {
+          world.scheduler.schedule(timevar * Math.random(), () => trygrowth(v));
+        }
       }
       return [true];
     },
@@ -104,22 +134,34 @@ const BOOK_DEFS: Readonly<Record<BookId, BookDefinition>> = {
       const cleanups: (() => void)[] = [];
       try {
         const moon = world.getWatchWorldContent(WorldContentKey.Moon, stop => cleanups.push(stop));
-        if (moon.peek().phase === 'full') { return [false, 'ALREADYFULLMOON']; }
+        if (moon.peek().phase === 'full') {
+          return [false, 'ALREADYFULLMOON'];
+        }
         world.moon.SetMoonPhase('full');
         return [true];
-      } finally { cleanups.forEach(stop => stop()); }
+      } finally {
+        cleanups.forEach(stop => stop());
+      }
     },
   },
 };
 
 /** Items with the `bookcabinet_item` tag: books.lua MakeBook and papyrus.lua (cookbook.lua is not ported). */
-export function isBookCabinetItem(itemId: string): boolean { return isBook(itemId) || itemId === 'papyrus'; }
-export function isBook(itemId: string): itemId is BookId { return Object.hasOwn(BOOK_DEFS, itemId); }
-export function getBookDef(itemId: BookId): BookDef { return BOOK_DEFS[itemId]; }
+export function isBookCabinetItem(itemId: string): boolean {
+  return isBook(itemId) || itemId === 'papyrus';
+}
+export function isBook(itemId: string): itemId is BookId {
+  return Object.hasOwn(BOOK_DEFS, itemId);
+}
+export function getBookDef(itemId: BookId): BookDef {
+  return BOOK_DEFS[itemId];
+}
 
 /** books.lua MakeBook: tags, book, finiteuses and MakeSmallBurnable on the inventory inst. */
 export function configureBookEntity(entity: ItemEntity): void {
-  if (!isBook(entity.prefab)) { return; }
+  if (!isBook(entity.prefab)) {
+    return;
+  }
   const def = BOOK_DEFS[entity.prefab];
   entity.addTag('book');
   entity.addTag('bookcabinet_item');
@@ -141,13 +183,31 @@ export function getBookComponent(entity: ItemEntity): BookComponent | undefined 
 }
 
 export const BOOK_ITEM_SPECS: Readonly<Record<BookId, InventoryItemSpec>> = {
-  book_silviculture: { name: catalog.items.book_silviculture.name, icon: catalog.items.book_silviculture.icon,
-    atlas: catalog.items.book_silviculture.atlas, maxStack: 1,
-    maxUses: BOOK_USES_LARGE, useStep: BOOK_USE_STEP, configureEntity: configureBookEntity },
-  book_moon: { name: catalog.items.book_moon.name, icon: catalog.items.book_moon.icon,
-    atlas: catalog.items.book_moon.atlas, maxStack: 1,
-    maxUses: BOOK_USES_SMALL, useStep: BOOK_USE_STEP, configureEntity: configureBookEntity },
-  book_rain: { name: catalog.items.book_rain.name, icon: catalog.items.book_rain.icon,
-    atlas: catalog.items.book_rain.atlas, maxStack: 1,
-    maxUses: BOOK_USES_LARGE, useStep: BOOK_USE_STEP, configureEntity: configureBookEntity },
+  book_silviculture: {
+    name: catalog.items.book_silviculture.name,
+    icon: catalog.items.book_silviculture.icon,
+    atlas: catalog.items.book_silviculture.atlas,
+    maxStack: 1,
+    maxUses: BOOK_USES_LARGE,
+    useStep: BOOK_USE_STEP,
+    configureEntity: configureBookEntity,
+  },
+  book_moon: {
+    name: catalog.items.book_moon.name,
+    icon: catalog.items.book_moon.icon,
+    atlas: catalog.items.book_moon.atlas,
+    maxStack: 1,
+    maxUses: BOOK_USES_SMALL,
+    useStep: BOOK_USE_STEP,
+    configureEntity: configureBookEntity,
+  },
+  book_rain: {
+    name: catalog.items.book_rain.name,
+    icon: catalog.items.book_rain.icon,
+    atlas: catalog.items.book_rain.atlas,
+    maxStack: 1,
+    maxUses: BOOK_USES_LARGE,
+    useStep: BOOK_USE_STEP,
+    configureEntity: configureBookEntity,
+  },
 };

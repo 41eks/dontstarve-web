@@ -13,7 +13,12 @@ import type { HeldEntityRecord } from '../../prefab/src/saveRecord';
 
 /** A chest's container whose SpawnSaveRecord is `restoreItem`. */
 function createContainer(restoreItem = (record: HeldEntityRecord) => testSavedItem(record.prefab, record)) {
-  return new Container(createEmptyEntity('treasurechest').instance, () => new StorageSlot(), (record: InventoryStack) => testItem(record), restoreItem);
+  return new Container(
+    createEmptyEntity('treasurechest').instance,
+    () => new StorageSlot(),
+    (record: InventoryStack) => testItem(record),
+    restoreItem,
+  );
 }
 
 describe('Lua container component', () => {
@@ -28,7 +33,8 @@ describe('Lua container component', () => {
       container.Open(doer);
       return container;
     };
-    const chest = open('treasurechest'), pot = open('cookpot');
+    const chest = open('treasurechest'),
+      pot = open('cookpot');
     expect(chest.IsOpenedBy(doer) && pot.IsOpenedBy(doer)).toBe(true);
     // containers.lua: the icebox is a "chest" too; the cookpot is a "cooker".
     const icebox = open('icebox');
@@ -44,35 +50,49 @@ describe('Lua container component', () => {
     icebox.Close(doer);
     expect(closed).toHaveBeenCalledOnce();
     expect(doer.components.inventory.opencontainers.size).toBe(1);
-    for (const { instance, display } of entities) { instance.remove(); display.dispose(); }
+    for (const { instance, display } of entities) {
+      instance.remove();
+      display.dispose();
+    }
   });
 
   it('checks actual openers on position changes and releases subscriptions when the last opener leaves', async () => {
-    const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler);
+    const scheduler = new GameTimeScheduler(),
+      world = bindTestWorld(scheduler);
     const container = createContainer();
     container.SetAutoClose(world.getWatchWorldContent, 9);
     const first = { position: new Vector3(), removal: createSignal(false) };
     const second = { position: new Vector3(1, 0, 0), removal: createSignal(false) };
-    const closed = container.onclosefn = vi.fn();
+    const closed = (container.onclosefn = vi.fn());
     const check = vi.spyOn(container, 'CheckOpeners');
     const settle = () => new Promise(resolve => setTimeout(resolve, 0));
     try {
-      container.Open(first); container.Open(second);
-      check.mockClear(); scheduler.advance(30); await settle();
+      container.Open(first);
+      container.Open(second);
+      check.mockClear();
+      scheduler.advance(30);
+      await settle();
       expect(check).not.toHaveBeenCalled();
       first.position.x = 9.01;
-      world.playerpositions.set([first.position.clone(), second.position.clone()]); await settle();
+      world.playerpositions.set([first.position.clone(), second.position.clone()]);
+      await settle();
       expect(container.GetOpeners()).toEqual([second]);
       expect(closed).not.toHaveBeenCalled();
       // Opener removal closes without waiting for another position snapshot.
-      second.removal.set(true); await settle();
+      second.removal.set(true);
+      await settle();
       expect(closed).toHaveBeenCalledOnce();
       check.mockClear();
-      world.playerpositions.set([new Vector3(100, 0, 0)]); await settle();
+      world.playerpositions.set([new Vector3(100, 0, 0)]);
+      await settle();
       expect(check).not.toHaveBeenCalled();
-    } finally { container.dispose(); world.unbind(); scheduler.dispose(); }
+    } finally {
+      container.dispose();
+      world.unbind();
+      scheduler.dispose();
+    }
   });
-  it('publishes each slot\'s inst as a read-only signal, through loads and clearing', () => {
+  it("publishes each slot's inst as a read-only signal, through loads and clearing", () => {
     const container = createContainer();
     container.SetNumSlots(2);
     const slots = container.slots;
@@ -81,10 +101,12 @@ describe('Lua container component', () => {
     const observed = vi.fn();
     const stops = slots.map(slot => slot.entity.subscribe(observed));
     // container.lua OnLoad: each record by its one-based slot.
-    container.OnLoad({ items: {
-      1: { id: 'slot_log', prefab: 'log', components: { stackable: { stack: 3 } } },
-      2: { id: 'slot_torch', prefab: 'torch', components: { fueled: { fuel: 12.5 } } },
-    } });
+    container.OnLoad({
+      items: {
+        1: { id: 'slot_log', prefab: 'log', components: { stackable: { stack: 3 } } },
+        2: { id: 'slot_torch', prefab: 'torch', components: { fueled: { fuel: 12.5 } } },
+      },
+    });
     expect(observed).toHaveBeenCalledTimes(2);
     // The slots hold the insts themselves, not copies of their records.
     expect(slots[0].entity.peek()).toBe(container.GetItemInSlot(1));
@@ -109,9 +131,12 @@ describe('Lua container component', () => {
     expect(container.NumItems()).toBe(1);
     expect(container.IsFull()).toBe(false);
     expect(() => container.SetNumSlots(1)).toThrow(RangeError);
-    const first = {}, second = {};
+    const first = {},
+      second = {};
     container.openlimit = 2;
-    container.Open(first); container.Open(first); container.Open(second);
+    container.Open(first);
+    container.Open(first);
+    container.Open(second);
     expect(container.opencount).toBe(2);
     expect(container.CanOpen()).toBe(false);
     expect(container.IsOpenedByOthers(first)).toBe(true);
@@ -146,22 +171,32 @@ describe('Lua container component', () => {
     expect(restored.GetOpeners()).toEqual([]);
     saved.items[8].components.fueled = { fuel: 1 };
     expect(container.GetItemInSlot(8)!.snapshot().remainingFuel).toBe(12.5);
-    container.dispose(); restored.dispose();
+    container.dispose();
+    restored.dispose();
   });
 
   it('validates loads before changing slots and disposes prepared items if restoration fails', () => {
     const prepared = testItem({ itemId: 'log', count: 1 });
     const restoreItem = vi.fn((record: HeldEntityRecord) => {
-      if (record.prefab === 'missing') { throw new Error('Missing prefab'); }
+      if (record.prefab === 'missing') {
+        throw new Error('Missing prefab');
+      }
       return prepared;
     });
     const container = createContainer(restoreItem);
     container.SetNumSlots(2);
-    expect(() => container.OnLoad({ items: { 3: { id: 'outside', prefab: 'log', components: {} } } })).toThrow(RangeError);
+    expect(() => container.OnLoad({ items: { 3: { id: 'outside', prefab: 'log', components: {} } } })).toThrow(
+      RangeError,
+    );
     expect(restoreItem).not.toHaveBeenCalled();
-    expect(() => container.OnLoad({ items: {
-      1: { id: 'first', prefab: 'log', components: {} }, 2: { id: 'second', prefab: 'missing', components: {} },
-    } })).toThrow('Missing prefab');
+    expect(() =>
+      container.OnLoad({
+        items: {
+          1: { id: 'first', prefab: 'log', components: {} },
+          2: { id: 'second', prefab: 'missing', components: {} },
+        },
+      }),
+    ).toThrow('Missing prefab');
     expect(container.IsEmpty()).toBe(true);
     expect(prepared.isRemoved).toBe(true);
     container.dispose();

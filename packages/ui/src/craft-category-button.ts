@@ -14,7 +14,7 @@ export function createCategoryButtonMapper({
   atlasImage,
   selectCategory,
 }: CategoryButtonMapperOptions): (category: CategoryConfig) => HTMLButtonElement {
-  return (category) => {
+  return category => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'craft-category';
@@ -28,11 +28,9 @@ export function createCategoryButtonMapper({
       <img class="craft-category-frame craft-category-frame-inactive" src="${inactiveBackground}" alt="" />
       <img class="craft-category-frame craft-category-frame-active" src="${activeBackground}" alt="" />
     `;
-    button.append(atlasImage(
-      'craft-category-icon',
-      category.iconAtlas ?? 'images/crafting_menu_icons.xml',
-      category.icon,
-    ));
+    button.append(
+      atlasImage('craft-category-icon', category.iconAtlas ?? 'images/crafting_menu_icons.xml', category.icon),
+    );
     button.addEventListener('click', () => selectCategory(category, button));
     return button;
   };

@@ -13,8 +13,13 @@ export class DoAction extends BehaviourNode {
   private time = 0;
   private pendingstatus?: BehaviourStatus;
 
-  constructor(inst: BrainInst, getactionfn: (inst: BrainInst) => BufferedAction | undefined, name?: string,
-    run?: boolean | (() => boolean), timeout?: number) {
+  constructor(
+    inst: BrainInst,
+    getactionfn: (inst: BrainInst) => BufferedAction | undefined,
+    name?: string,
+    run?: boolean | (() => boolean),
+    timeout?: number,
+  ) {
     super(name ?? 'DoAction');
     this.inst = inst;
     this.shouldrun = run;
@@ -22,8 +27,12 @@ export class DoAction extends BehaviourNode {
     this.timeout = timeout;
   }
 
-  OnFail(): void { this.pendingstatus = FAILED; }
-  OnSucceed(): void { this.pendingstatus = SUCCESS; }
+  OnFail(): void {
+    this.pendingstatus = FAILED;
+  }
+  OnSucceed(): void {
+    this.pendingstatus = SUCCESS;
+  }
 
   override Visit(): void {
     if (this.status === READY) {
@@ -31,17 +40,32 @@ export class DoAction extends BehaviourNode {
       this.action = action;
       this.pendingstatus = undefined;
       if (action) {
-        action.addFailAction(() => { if (action === this.action && this.pendingstatus === undefined) { this.OnFail(); } });
-        action.addSuccessAction(() => { if (action === this.action) { this.OnSucceed(); } });
+        action.addFailAction(() => {
+          if (action === this.action && this.pendingstatus === undefined) {
+            this.OnFail();
+          }
+        });
+        action.addSuccessAction(() => {
+          if (action === this.action) {
+            this.OnSucceed();
+          }
+        });
         this.inst.components.locomotor!.PushAction(action, FunctionOrValue(this.shouldrun ?? false));
         this.time = this.now;
         this.status = RUNNING;
-      } else { this.status = FAILED; }
+      } else {
+        this.status = FAILED;
+      }
     }
     if (this.status === RUNNING) {
-      if (this.timeout !== undefined && this.now - this.time > this.timeout) { this.status = FAILED; }
-      if (this.pendingstatus) { this.status = this.pendingstatus; }
-      else if (!this.action!.isValid()) { this.status = FAILED; }
+      if (this.timeout !== undefined && this.now - this.time > this.timeout) {
+        this.status = FAILED;
+      }
+      if (this.pendingstatus) {
+        this.status = this.pendingstatus;
+      } else if (!this.action!.isValid()) {
+        this.status = FAILED;
+      }
     }
   }
 }

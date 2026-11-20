@@ -16,12 +16,19 @@ import { drawGround, layerGeometry } from './groundDisplayFixture';
 afterEach(() => vi.unstubAllGlobals());
 
 it('draws cave land only and blocks keyboard velocity and paths across void or fake ground', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  const map = new TurfMap(96, [
-    { col: 0, row: 0, tileId: WORLD_TILES.FUNGUS },
-    { col: 1, row: 0, tileId: WORLD_TILES.FAKE_GROUND },
-    { col: 2, row: 0, tileId: WORLD_TILES.ARCHIVE },
-  ], WORLD_TILES.IMPASSABLE);
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+  const map = new TurfMap(
+    96,
+    [
+      { col: 0, row: 0, tileId: WORLD_TILES.FUNGUS },
+      { col: 1, row: 0, tileId: WORLD_TILES.FAKE_GROUND },
+      { col: 2, row: 0, tileId: WORLD_TILES.ARCHIVE },
+    ],
+    WORLD_TILES.IMPASSABLE,
+  );
   try {
     const display = await drawGround(map);
     for (const name of ['FUNGUS', 'ARCHIVE']) {
@@ -37,26 +44,32 @@ it('draws cave land only and blocks keyboard velocity and paths across void or f
     body.position.set(10.9, 1, 6);
     const pathfinder = new Pathfinder(map);
     const locomotor = new Locomotor(body, {
-      footprintRadius: 1, isPassable: (x, z) => map.isPassableAtPoint({ x, z }),
+      footprintRadius: 1,
+      isPassable: (x, z) => map.isPassableAtPoint({ x, z }),
       pathfinder,
     });
-    locomotor.update(16, .1, new Vector3(1, 0, 0));
+    locomotor.update(16, 0.1, new Vector3(1, 0, 0));
     expect(body.velocity.x).toBe(0);
     // Across the void there is no path, so the body heads straight for it and stops at the edge.
     expect(locomotor.goToPoint(new Vector3(30, 0, 6))).toBe(true);
     pathfinder.update(Infinity);
-    locomotor.update(16, .1);
+    locomotor.update(16, 0.1);
     expect(body.velocity.x).toBe(0);
     expect(locomotor.destination).toBeUndefined();
     expect(locomotor.goToPoint(new Vector3(6, 0, 6))).toBe(true);
     display.dispose();
-  } finally { map.dispose(); }
+  } finally {
+    map.dispose();
+  }
 });
 
 it('loads the imported forest with distinct ocean types, ice, underlying dock tiles and retained entity state', async () => {
   const save = importedSave('Master');
   const map = new TurfMap(save.world.map.generator.options.size, save.world.map.tiles, save.world.map.defaultTileId);
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   try {
     expect(save.world.prefab).toBe('forest');
     expect(save.players.local.shardId).toBe('master');
@@ -64,11 +77,15 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
     expect(map.cellsOfTile(WORLD_TILES.OCEAN_SWELL)).toHaveLength(34173);
     expect(map.cellsOfTile(WORLD_TILES.OCEAN_ICE)).toHaveLength(21);
     const [col, row] = map.cellsOfTile(WORLD_TILES.OCEAN_ROUGH)[0];
-    expect(map.isOceanAtWorld(new Vector3((col + .5) * TILE_SIZE, 0, (row + .5) * TILE_SIZE))).toBe(true);
-    expect(map.isPassableAtPoint(new Vector3((col + .5) * TILE_SIZE, 0, (row + .5) * TILE_SIZE))).toBe(false);
+    expect(map.isOceanAtWorld(new Vector3((col + 0.5) * TILE_SIZE, 0, (row + 0.5) * TILE_SIZE))).toBe(true);
+    expect(map.isPassableAtPoint(new Vector3((col + 0.5) * TILE_SIZE, 0, (row + 0.5) * TILE_SIZE))).toBe(false);
     const [iceCol, iceRow] = map.cellsOfTile(WORLD_TILES.OCEAN_ICE)[0];
-    expect(map.isPassableAtPoint(new Vector3((iceCol + .5) * TILE_SIZE, 0, (iceRow + .5) * TILE_SIZE))).toBe(true);
-    expect(save.world.map.tiles!.filter(tile => tile.tileId === WORLD_TILES.MONKEY_DOCK).every(tile => tile.underTileId !== undefined)).toBe(true);
+    expect(map.isPassableAtPoint(new Vector3((iceCol + 0.5) * TILE_SIZE, 0, (iceRow + 0.5) * TILE_SIZE))).toBe(true);
+    expect(
+      save.world.map
+        .tiles!.filter(tile => tile.tileId === WORLD_TILES.MONKEY_DOCK)
+        .every(tile => tile.underTileId !== undefined),
+    ).toBe(true);
     expect(save.world.entities.evergreen.some(entity => entity.components.evergreenTimer)).toBe(true);
     expect(save.world.entities.pigking).toHaveLength(1);
     expect(save.world.entities.researchlab2).toHaveLength(1);
@@ -77,14 +94,28 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
     expect(save.world.entities.flower.every(entity => entity.components.flower?.planted === undefined)).toBe(true);
     expect(save.world.entities.fireflies?.length).toBeGreaterThan(0);
     // Imported chest contents stay on the chest records; each chest's container loads them when it spawns.
-    const chestSlotCounts = save.world.entities.treasurechest.map(chest => Object.keys(chest.components.container?.items ?? {}).length);
+    const chestSlotCounts = save.world.entities.treasurechest.map(
+      chest => Object.keys(chest.components.container?.items ?? {}).length,
+    );
     expect(chestSlotCounts).toHaveLength(9);
     expect(chestSlotCounts.every(count => count > 0)).toBe(true);
-    const restored = deserializeSave(serializeSave(save, {
-      entities: save.world.entities, tiles: map.exportTiles(), playerTransform: save.players.local.transform,
-      inventory: savedInventoryOf(save), elapsedSeconds: 10,
-    }, SAVE_CATALOG), SAVE_CATALOG);
+    const restored = deserializeSave(
+      serializeSave(
+        save,
+        {
+          entities: save.world.entities,
+          tiles: map.exportTiles(),
+          playerTransform: save.players.local.transform,
+          inventory: savedInventoryOf(save),
+          elapsedSeconds: 10,
+        },
+        SAVE_CATALOG,
+      ),
+      SAVE_CATALOG,
+    );
     expect(restored.world.map).toEqual(save.world.map);
     expect(restored.world.entities).toEqual(save.world.entities);
-  } finally { map.dispose(); }
+  } finally {
+    map.dispose();
+  }
 });

@@ -11,14 +11,20 @@ export class FarmTiller {
   /** TheWorld.Map, bound while the tool is held in a world. */
   map: FarmTillerMap | undefined;
 
-  CanTillSoilAtPoint(pt: Vector3): boolean { return this.map?.canTill(pt) ?? false; }
+  CanTillSoilAtPoint(pt: Vector3): boolean {
+    return this.map?.canTill(pt) ?? false;
+  }
 
   /** Till: collapse the soil near the point and spawn farm_soil there; the doer hears "tilling". */
   Till(pt: Vector3, doer?: { PushEvent?(name: string, data?: unknown): void }): boolean {
-    if (!this.map?.canTill(pt) || !this.map.till(pt)) { return false; }
+    if (!this.map?.canTill(pt) || !this.map.till(pt)) {
+      return false;
+    }
     doer?.PushEvent?.('tilling');
     return true;
   }
 
-  dispose(): void { this.map = undefined; }
+  dispose(): void {
+    this.map = undefined;
+  }
 }

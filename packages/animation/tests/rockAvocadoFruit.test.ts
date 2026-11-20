@@ -6,7 +6,11 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { rockAvocadoSaplingPrefabs, ROCK_AVOCADO_SAPLING_ID, type RockAvocadoSaplingInstance } from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
+import {
+  rockAvocadoSaplingPrefabs,
+  ROCK_AVOCADO_SAPLING_ID,
+  type RockAvocadoSaplingInstance,
+} from '../../prefab/src/rock_avocado_fruit_sprout_sapling';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { rockAvocadoProduct } from '../../prefab/src/rock_avocado_fruit';
@@ -28,28 +32,65 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { workTargets } from './workTargets';
 import { createInventoryStore } from './testInventory';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop: vi.fn() })),
+}));
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 const settleEffects = () => new Promise(resolve => setTimeout(resolve, 0));
 
 function setup() {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.stubGlobal('window', new EventTarget());
-  const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), physics = new CANNON.World();
+  const inventory = createInventoryStore([]),
+    scene = new THREE.Scene(),
+    player = new THREE.Group(),
+    physics = new CANNON.World();
   const scheduler = new GameTimeScheduler();
-  const ground = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(), { domElement: new EventTarget() } as THREE.WebGLRenderer,
-    '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
+  const ground = new ItemWorldFixture(
+    scene,
+    new THREE.PerspectiveCamera(),
+    { domElement: new EventTarget() } as THREE.WebGLRenderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    player,
+  );
   const { season, snowLevel } = bindTestWorld(scheduler);
-  const bushes = plantManager(rockAvocadoBushPrefabs, scene, { physics,
-    spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
-  const sproutDisplays = new PrefabDisplayGroup(scene), fire = FireFxHost.create('/dst/data/anim');
-  const sprouts = prefabManager(sproutDisplays, '/dst/data/anim', { scheduler, fire, spawnPrefab: (id: 'rock_avocado_bush', position: Parameters<typeof bushes.spawn>[1]) => bushes.spawn(id, position),
-    spawnGroundItem: (definition: Parameters<typeof ground.spawnGroundItem>[0], position: Parameters<typeof ground.spawnGroundItem>[1], options?: Parameters<typeof ground.spawnGroundItem>[2]) => ground.spawnGroundItem(definition, position, options) }, rockAvocadoSaplingPrefabs);
+  const bushes = plantManager(rockAvocadoBushPrefabs, scene, {
+    physics,
+    spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options),
+  });
+  const sproutDisplays = new PrefabDisplayGroup(scene),
+    fire = FireFxHost.create('/dst/data/anim');
+  const sprouts = prefabManager(
+    sproutDisplays,
+    '/dst/data/anim',
+    {
+      scheduler,
+      fire,
+      spawnPrefab: (id: 'rock_avocado_bush', position: Parameters<typeof bushes.spawn>[1]) =>
+        bushes.spawn(id, position),
+      spawnGroundItem: (
+        definition: Parameters<typeof ground.spawnGroundItem>[0],
+        position: Parameters<typeof ground.spawnGroundItem>[1],
+        options?: Parameters<typeof ground.spawnGroundItem>[2],
+      ) => ground.spawnGroundItem(definition, position, options),
+    },
+    rockAvocadoSaplingPrefabs,
+  );
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.rockAvocadoBushes, {
     restore: (_, record) => bushes.restore('rock_avocado_bush', record).transform.model,
     debugSpawn: () => bushes.spawn('rock_avocado_bush', player.position).transform.model,
-    exportRecords: () => bushes.exportRecords(), dispose: () => bushes.dispose(),
+    exportRecords: () => bushes.exportRecords(),
+    dispose: () => bushes.dispose(),
   });
   registry.register(PREFAB_DEFINITIONS.rockAvocadoSaplings, {
     restore: (_, record) => sprouts.restore(ROCK_AVOCADO_SAPLING_ID, record).transform.model,
@@ -57,82 +98,201 @@ function setup() {
     exportRecords: () => sprouts.exportRecords(),
     dispose: () => sprouts.dispose(),
   });
-  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, id => `command:${id}`));
+  registry.register(
+    PREFAB_DEFINITIONS.groundItems,
+    ground.registration(
+      () => player.position,
+      id => `command:${id}`,
+    ),
+  );
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: { rock_avocado_bush: bushes.exportRecords().map(({ record }) => record), ...ground.exportEntities(), rock_avocado_fruit_sprout_sapling: sprouts.exportRecords().map(({ record }) => record) },
-    inventory: inventory.exportSaved(), elapsedSeconds: scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
-  const advance = (seconds: number) => { scheduler.advance(seconds); prefabDisplays(bushes).update(seconds); sproutDisplays.update(seconds); };
-  return { inventory, player, scene, physics, scheduler, season, snowLevel, ground, bushes, sprouts, registry, save, advance,
+  const save = () =>
+    serializeSave(
+      template,
+      {
+        entities: {
+          rock_avocado_bush: bushes.exportRecords().map(({ record }) => record),
+          ...ground.exportEntities(),
+          rock_avocado_fruit_sprout_sapling: sprouts.exportRecords().map(({ record }) => record),
+        },
+        inventory: inventory.exportSaved(),
+        elapsedSeconds: scheduler.now,
+        playerTransform: { position: [0, 0, 0], rotationY: 0 },
+      },
+      SAVE_CATALOG,
+    );
+  const advance = (seconds: number) => {
+    scheduler.advance(seconds);
+    prefabDisplays(bushes).update(seconds);
+    sproutDisplays.update(seconds);
+  };
+  return {
+    inventory,
+    player,
+    scene,
+    physics,
+    scheduler,
+    season,
+    snowLevel,
+    ground,
+    bushes,
+    sprouts,
+    registry,
+    save,
+    advance,
     picker: { giveItem: (id: string, count: number) => inventory.add(id, count) },
-    dispose: () => { registry.dispose(); sproutDisplays.dispose(); fire.dispose(); inventory.dispose(); scheduler.dispose(); } };
+    dispose: () => {
+      registry.dispose();
+      sproutDisplays.dispose();
+      fire.dispose();
+      inventory.dispose();
+      scheduler.dispose();
+    },
+  };
 }
 
 it('mines a stack through the common tool action, rolls each consumed fruit, groups loot, and reloads the remaining stack', async () => {
-  const random = vi.spyOn(Math, 'random').mockReturnValue(.5);
-  const s = setup(), restored = setup();
+  const random = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+  const s = setup(),
+    restored = setup();
   try {
-    expect([0, .649999, .65, .659999, .66, .999].map(rockAvocadoProduct)).toEqual([
-      'rock_avocado_fruit_ripe', 'rock_avocado_fruit_ripe', 'rock_avocado_fruit_sprout', 'rock_avocado_fruit_sprout', 'rocks', 'rocks']);
+    expect([0, 0.649999, 0.65, 0.659999, 0.66, 0.999].map(rockAvocadoProduct)).toEqual([
+      'rock_avocado_fruit_ripe',
+      'rock_avocado_fruit_ripe',
+      'rock_avocado_fruit_sprout',
+      'rock_avocado_fruit_sprout',
+      'rocks',
+      'rocks',
+    ]);
     const point = new THREE.Vector3(24, 0, 36);
-    const model = await s.ground.spawnFromSave('hard-fruit:stack', { ...SAVE_CATALOG.items.rock_avocado_fruit, itemId: 'rock_avocado_fruit', count: 5 }, point);
-    const target = workTargets('MINE', s.scene)[0], entity = s.ground.entities.get('hard-fruit:stack')!;
-    const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
+    const model = await s.ground.spawnFromSave(
+      'hard-fruit:stack',
+      { ...SAVE_CATALOG.items.rock_avocado_fruit, itemId: 'rock_avocado_fruit', count: 5 },
+      point,
+    );
+    const target = workTargets('MINE', s.scene)[0],
+      entity = s.ground.entities.get('hard-fruit:stack')!;
+    const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
+    s.inventory.GiveItem(pickaxe);
     const uses = pickaxe.components.finiteuses.remaining ?? s.inventory.getItemSpec('pickaxe').maxUses!;
     // The miner is a player inst; a second one stands at `point`.
-    const miner = testPlayer({ position: new THREE.Vector3(21, 0, 36) }), worker = testPlayer({ position: point });
+    const miner = testPlayer({ position: new THREE.Vector3(21, 0, 36) }),
+      worker = testPlayer({ position: point });
     expect(performToolWork('MINE', target.entity, miner, pickaxe)).toBe(true);
     expect(pickaxe.components.finiteuses.remaining).toBe(uses! - 1);
-    expect(entity.components.stackable.count).toBe(4); expect(entity.components.workable!.GetWorkLeft()).toBe(4);
-    random.mockReturnValueOnce(.655).mockReturnValueOnce(.9).mockReturnValueOnce(.1);
+    expect(entity.components.stackable.count).toBe(4);
+    expect(entity.components.workable!.GetWorkLeft()).toBe(4);
+    random.mockReturnValueOnce(0.655).mockReturnValueOnce(0.9).mockReturnValueOnce(0.1);
     expect(entity.components.workable!.WorkedBy(worker, 3)).toBe(true);
-    expect(entity.components.stackable.count).toBe(1); expect(entity.components.workable!.GetWorkLeft()).toBe(1);
+    expect(entity.components.stackable.count).toBe(1);
+    expect(entity.components.workable!.GetWorkLeft()).toBe(1);
     const products = s.ground.groundStacks().filter(stack => stack.entityId !== entity.id);
     expect(products.map(stack => [stack.itemId, stack.count])).toEqual([
-      ['rock_avocado_fruit_ripe', 1], ['rock_avocado_fruit_ripe', 1], ['rock_avocado_fruit_sprout', 1], ['rocks', 1]]);
+      ['rock_avocado_fruit_ripe', 1],
+      ['rock_avocado_fruit_ripe', 1],
+      ['rock_avocado_fruit_sprout', 1],
+      ['rocks', 1],
+    ]);
     expect(products[0].freshnessPercent).toBe(1);
     expect(model.parent).toBe(s.scene);
-    for (let frame = 0; frame < 90; frame++) { s.ground.update(1 / 30, new THREE.Quaternion()); }
-    expect(s.ground.exportRecords().find(record => record.id === products[0].entityId)!.transform.position[0]).toBeGreaterThan(point.x);
+    for (let frame = 0; frame < 90; frame++) {
+      s.ground.update(1 / 30, new THREE.Quaternion());
+    }
+    expect(
+      s.ground.exportRecords().find(record => record.id === products[0].entityId)!.transform.position[0],
+    ).toBeGreaterThan(point.x);
     const before = s.ground.exportRecords();
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.ground.exportRecords()).toEqual(before);
     expect(workTargets('MINE', restored.scene)[0].id).toBe(entity.id);
-    random.mockReturnValueOnce(.8);
+    random.mockReturnValueOnce(0.8);
     expect(performToolWork('MINE', target.entity, testPlayer(), pickaxe)).toBe(true);
-    expect(entity.isRemoved).toBe(true); expect(workTargets('MINE', s.scene)).toEqual([]);
+    expect(entity.isRemoved).toBe(true);
+    expect(workTargets('MINE', s.scene)).toEqual([]);
     expect(performToolWork('MINE', target.entity, testPlayer(), pickaxe)).toBe(false);
     expect(pickaxe.components.finiteuses.remaining).toBe(uses! - 2);
-  } finally { s.dispose(); restored.dispose(); }
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
 }, 15000);
 
 it('plants one sprout, preserves its named deadline through save/load, and becomes a natural bush after seed_growth without rendering', async () => {
-  vi.spyOn(Math, 'random').mockReturnValue(.5);
-  const s = setup(), restored = setup();
+  vi.spyOn(Math, 'random').mockReturnValue(0.5);
+  const s = setup(),
+    restored = setup();
   try {
-    expect((await executeDebugCommand('c_give("rock_avocado_fruit_sprout",2);c_give("rock_avocado_fruit_ripe",2);c_give("rock_avocado_fruit_ripe_cooked");c_spawn("rock_avocado_fruit_sprout");c_spawn("rock_avocado_fruit_ripe_cooked")',
-      s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    const point = new THREE.Vector3(12, 0, 24), item = s.inventory.getEntity(inventorySlotAddress(0))!;
-    expect(item.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
-      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
-      isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => false, SpawnPrefab: () => s.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, point),
-    })).toBe(false);
+    expect(
+      (
+        await executeDebugCommand(
+          'c_give("rock_avocado_fruit_sprout",2);c_give("rock_avocado_fruit_ripe",2);c_give("rock_avocado_fruit_ripe_cooked");c_spawn("rock_avocado_fruit_sprout");c_spawn("rock_avocado_fruit_ripe_cooked")',
+          s.inventory,
+          id => s.registry.spawn(id),
+        )
+      ).ok,
+    ).toBe(true);
+    const point = new THREE.Vector3(12, 0, 24),
+      item = s.inventory.getEntity(inventorySlotAddress(0))!;
+    expect(
+      item.components.deployable!.Deploy(
+        point,
+        { position: point, PushEvent: vi.fn() },
+        {
+          canPlaceTurf: () => false,
+          setTile: vi.fn(),
+          itemPlanted: vi.fn(),
+          canDeployDock: () => false,
+          createDock: vi.fn(),
+          canDeployPlow: () => false,
+          deployPlow: () => false,
+          isPassableAtPoint: () => true,
+          isOceanTileAtPoint: () => false,
+          canDeployPlant: () => false,
+          SpawnPrefab: () => s.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, point),
+        },
+      ),
+    ).toBe(false);
     expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(2);
     const root = s.inventory.extract(inventorySlotAddress(0), 1, item)!;
-    expect(root.components.deployable!.Deploy(point, { position: point, PushEvent: vi.fn() }, {
-      canPlaceTurf: () => false, setTile: vi.fn(), itemPlanted: vi.fn(), canDeployDock: () => false, createDock: vi.fn(), canDeployPlow: () => false, deployPlow: () => false, 
-      isPassableAtPoint: () => true, isOceanTileAtPoint: () => false,
-      canDeployPlant: () => true, SpawnPrefab: () => s.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, point),
-    })).toBe(true);
-    expect(root.isRemoved).toBe(true); expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(1);
-    const model = workTargets('DIG', s.scene)[0].model, { timer } = prefabInstance<RockAvocadoSaplingInstance>(model)!.components;
+    expect(
+      root.components.deployable!.Deploy(
+        point,
+        { position: point, PushEvent: vi.fn() },
+        {
+          canPlaceTurf: () => false,
+          setTile: vi.fn(),
+          itemPlanted: vi.fn(),
+          canDeployDock: () => false,
+          createDock: vi.fn(),
+          canDeployPlow: () => false,
+          deployPlow: () => false,
+          isPassableAtPoint: () => true,
+          isOceanTileAtPoint: () => false,
+          canDeployPlant: () => true,
+          SpawnPrefab: () => s.sprouts.spawn(ROCK_AVOCADO_SAPLING_ID, point),
+        },
+      ),
+    ).toBe(true);
+    expect(root.isRemoved).toBe(true);
+    expect(s.inventory.count('rock_avocado_fruit_sprout')).toBe(1);
+    const model = workTargets('DIG', s.scene)[0].model,
+      { timer } = prefabInstance<RockAvocadoSaplingInstance>(model)!.components;
     const snapshot = timer.snapshot('grow').peek();
-    s.advance(600); expect(timer.snapshot('grow').peek()).toBe(snapshot);
-    s.season.set({ season: 'winter', progress: .5 }); await settleEffects();
+    s.advance(600);
+    expect(timer.snapshot('grow').peek()).toBe(snapshot);
+    s.season.set({ season: 'winter', progress: 0.5 });
+    await settleEffects();
     let json = '';
-    expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
-    const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.rock_avocado_fruit_sprout_sapling[0];
+    expect(
+      (
+        await executeDebugCommand('c_save()', s.inventory, undefined, () => {
+          json = s.save();
+        })
+      ).ok,
+    ).toBe(true);
+    const saved = deserializeSave(json, SAVE_CATALOG),
+      record = saved.world.entities.rock_avocado_fruit_sprout_sapling[0];
     expect(record.components.saplingTimer?.timers.grow.timeleft).toBe(900);
     restored.sprouts.restore(ROCK_AVOCADO_SAPLING_ID, record);
     loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
@@ -149,7 +309,8 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     s.scheduler.advanceTo(completion!);
     expect(s.sprouts.exportRecords()).toEqual([]);
     const bush = s.bushes.exportRecords().map(({ record }) => record)[0];
-    expect(bush.transform.position).toEqual(point.toArray()); expect(bush.id).not.toBe(record.id);
+    expect(bush.transform.position).toEqual(point.toArray());
+    expect(bush.id).not.toBe(record.id);
     // Pickable:OnSave omits unused cycles.
     expect(bush.components.pickable?.cyclesLeft).toBeUndefined();
     expect(bush.components.pickable?.transplanted).toBeUndefined();
@@ -158,27 +319,47 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     // Sample the animated path too: seed_growth contains an unresolved engine snow placeholder.
     restored.scheduler.advance(900);
     const loaded = workTargets('DIG', restored.scene)[0].model;
-    for (let frame = 0; frame < 180 && loaded.parent; frame++) { restored.advance(1 / 30); }
+    for (let frame = 0; frame < 180 && loaded.parent; frame++) {
+      restored.advance(1 / 30);
+    }
     expect(loaded.parent).toBeNull();
-  } finally { s.dispose(); restored.dispose(); }
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
 }, 15000);
 
 it('cancels and restarts growth on ignition/extinguishing, reloads a stopped source timer, and cancels replacement when dug', async () => {
-  vi.spyOn(Math, 'random').mockReturnValue(.5);
-  const s = setup(), restored = setup();
+  vi.spyOn(Math, 'random').mockReturnValue(0.5);
+  const s = setup(),
+    restored = setup();
   try {
-    s.player.position.y = .3;
-    expect((await executeDebugCommand('c_spawn("rock_avocado_fruit_sprout_sapling")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
-    const model = workTargets('DIG', s.scene)[0].model, { timer } = prefabInstance<RockAvocadoSaplingInstance>(model)!.components, burnable = prefabInstance(model)!.components.burnable!;
-    s.advance(400); burnable.Ignite(); expect(timer.snapshot('grow').peek().status).toBe('stopped');
+    s.player.position.y = 0.3;
+    expect(
+      (
+        await executeDebugCommand('c_spawn("rock_avocado_fruit_sprout_sapling")', s.inventory, id =>
+          s.registry.spawn(id),
+        )
+      ).ok,
+    ).toBe(true);
+    const model = workTargets('DIG', s.scene)[0].model,
+      { timer } = prefabInstance<RockAvocadoSaplingInstance>(model)!.components,
+      burnable = prefabInstance(model)!.components.burnable!;
+    s.advance(400);
+    burnable.Ignite();
+    expect(timer.snapshot('grow').peek().status).toBe('stopped');
     const { sprite } = prefabInstance<RockAvocadoSaplingInstance>(model)!;
     expect(sprite.fx.peek().size).toBe(1);
-    s.advance(5); vi.mocked(PlaySound).mockClear(); burnable.Extinguish(); expect(timer.GetTimeLeft('grow')).toBe(1500);
+    s.advance(5);
+    vi.mocked(PlaySound).mockClear();
+    burnable.Extinguish();
+    expect(timer.GetTimeLeft('grow')).toBe(1500);
     // firefx plays this for the sprout's fire; the sprout's own callback only restarts its timer.
     expect(vi.mocked(PlaySound).mock.calls.filter(([path]) => path === 'dontstarve/common/fireOut')).toHaveLength(1);
     expect(sprite.fx.peek().size).toBe(0);
     burnable.Ignite();
-    const saved = deserializeSave(s.save(), SAVE_CATALOG), record = saved.world.entities.rock_avocado_fruit_sprout_sapling[0];
+    const saved = deserializeSave(s.save(), SAVE_CATALOG),
+      record = saved.world.entities.rock_avocado_fruit_sprout_sapling[0];
     expect(record.components.saplingTimer).toEqual({ timers: {} });
     restored.sprouts.restore(ROCK_AVOCADO_SAPLING_ID, record);
     const loaded = workTargets('DIG', restored.scene)[0].model;
@@ -189,10 +370,14 @@ it('cancels and restarts growth on ignition/extinguishing, reloads a stopped sou
     // Digging removes the sprout, which cancels its pending task.
     expect(workTargets('DIG', restored.scene)[0].work()).toBe(true);
     expect(completion.NextTime()).toBeUndefined();
-    restored.scheduler.advance(5000); expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
+    restored.scheduler.advance(5000);
+    expect(restored.bushes.exportRecords().map(({ record }) => record)).toEqual([]);
     expect(restored.ground.groundStacks().at(-1)?.itemId).toBe('rock_avocado_fruit_sprout');
-    s.advance(7.5); expect(s.sprouts.exportRecords()).toEqual([]);
+    s.advance(7.5);
+    expect(s.sprouts.exportRecords()).toEqual([]);
     expect(s.ground.groundStacks().at(-1)?.itemId).toBe('ash');
-  } finally { s.dispose(); restored.dispose(); }
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
 }, 15000);
-

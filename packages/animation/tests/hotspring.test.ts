@@ -31,14 +31,32 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 useTestTileMap();
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function setup(tickingarea?: TileStateQuery, random?: () => number) {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.stubGlobal('window', new EventTarget());
-  const inventory = createInventoryStore([]), scene = new THREE.Scene(), player = new THREE.Group(), scheduler = new GameTimeScheduler();
-  const camera = new THREE.PerspectiveCamera(), renderer = { domElement: new EventTarget() } as THREE.WebGLRenderer;
-  const ground = new ItemWorldFixture(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
+  const inventory = createInventoryStore([]),
+    scene = new THREE.Scene(),
+    player = new THREE.Group(),
+    scheduler = new GameTimeScheduler();
+  const camera = new THREE.PerspectiveCamera(),
+    renderer = { domElement: new EventTarget() } as THREE.WebGLRenderer;
+  const ground = new ItemWorldFixture(
+    scene,
+    camera,
+    renderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    player,
+  );
   const physics = new PhysicsWorld({}, tickingarea);
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea, physics });
@@ -46,34 +64,87 @@ function setup(tickingarea?: TileStateQuery, random?: () => number) {
   prefabs.register(hotspringPrefabs({ scheduler, fx: worldFxSpawner(prefabs), random }));
   const registry = new EntityRegistry([], prefabs, () => player.position);
   registry.registerPrefabs(PREFAB_DEFINITIONS.hotsprings);
-  registry.register(PREFAB_DEFINITIONS.groundItems, ground.registration(() => player.position, () => 'dug:command'));
+  registry.register(
+    PREFAB_DEFINITIONS.groundItems,
+    ground.registration(
+      () => player.position,
+      () => 'dug:command',
+    ),
+  );
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, {
-    entities: registry.exportRecords(), inventory: inventory.exportSaved(),
-    elapsedSeconds: 0, playerTransform: { position: player.position.toArray() as [number, number, number], rotationY: 0 },
-  }, SAVE_CATALOG);
+  const save = () =>
+    serializeSave(
+      template,
+      {
+        entities: registry.exportRecords(),
+        inventory: inventory.exportSaved(),
+        elapsedSeconds: 0,
+        playerTransform: { position: player.position.toArray() as [number, number, number], rotationY: 0 },
+      },
+      SAVE_CATALOG,
+    );
   const springs = () => prefabs.exportRecords().filter(({ prefabId }) => prefabId === HOTSPRING_ID);
   /** Game time and the displays, one 0.1 s frame at a time. */
   const tick = async (seconds: number) => {
-    for (let i = 0; i < Math.round(seconds * 10); i++) { scheduler.advance(.1); displays.update(.1); await settle(); }
+    for (let i = 0; i < Math.round(seconds * 10); i++) {
+      scheduler.advance(0.1);
+      displays.update(0.1);
+      await settle();
+    }
   };
-  return { inventory, scene, player, prefabs, displays, physics, registry, scheduler, save, springs, tick,
-    spawn: (position: THREE.Vector3, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawnAs(HotspringInstance, HOTSPRING_ID, position, saved),
+  return {
+    inventory,
+    scene,
+    player,
+    prefabs,
+    displays,
+    physics,
+    registry,
+    scheduler,
+    save,
+    springs,
+    tick,
+    spawn: (position: THREE.Vector3, saved?: Parameters<typeof prefabs.spawn>[2]) =>
+      prefabs.spawnAs(HotspringInstance, HOTSPRING_ID, position, saved),
     world: { scene, player, camera, renderer, ground: new THREE.Group() },
-    dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); physics.dispose(); inventory.dispose(); scheduler.dispose(); } };
+    dispose: () => {
+      registry.dispose();
+      prefabs.dispose();
+      displays.dispose();
+      physics.dispose();
+      inventory.dispose();
+      scheduler.dispose();
+    },
+  };
 }
 
 it('lights and heats a spring only after a cursor-held bath bomb is tossed in, then saves and reloads the state', async () => {
-  const s = setup(), restored = setup();
+  const s = setup(),
+    restored = setup();
   const graph = wilsonPlayer(() => 1).sg;
   let toss: ReturnType<typeof activeItemUse> | undefined;
   try {
-    expect((await executeDebugCommand('c_give("bathbomb",2);c_spawn("hotspring")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
+    expect(
+      (await executeDebugCommand('c_give("bathbomb",2);c_spawn("hotspring")', s.inventory, id => s.registry.spawn(id)))
+        .ok,
+    ).toBe(true);
     expect(s.inventory.getItemSpec('bathbomb').maxStack).toBe(20);
     expect(s.springs()).toHaveLength(1);
-    const spring = s.scene.children.map(child => prefabInstance<HotspringInstance>(child)!).find(inst => inst?.prefab === HOTSPRING_ID)!;
-    const model = spring.transform.model, inst = findActionEntity(model)!, heater = spring.components.heater;
-    expect(spring.listTags()).toEqual(['watersource', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable', 'HASHEATER', 'bathbombable', 'blocker']);
+    const spring = s.scene.children
+      .map(child => prefabInstance<HotspringInstance>(child)!)
+      .find(inst => inst?.prefab === HOTSPRING_ID)!;
+    const model = spring.transform.model,
+      inst = findActionEntity(model)!,
+      heater = spring.components.heater;
+    expect(spring.listTags()).toEqual([
+      'watersource',
+      'antlion_sinkhole_blocker',
+      'birdblocker',
+      'inspectable',
+      'HASHEATER',
+      'bathbombable',
+      'blocker',
+    ]);
     expect(spring.minimap.icon).toBe('hotspring.png');
     expect(heater.GetHeat()).toBe(45);
     expect(declaredLight(spring)).toBeUndefined();
@@ -84,13 +155,17 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     toss = activeItemUse(s.world, graph, s.inventory);
     expect(toss.actions(inst)).toEqual(['BATHBOMB']);
     expect(toss.useOn(inst)).toBe(true);
-    toss.arrive(); graph.update(5 / 30);
+    toss.arrive();
+    graph.update(5 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
-    toss.controller.cancel(); graph.update(1);
-    expect(heater.GetHeat()).toBe(45); expect(spring.hasTag('bathbombable')).toBe(true);
+    toss.controller.cancel();
+    graph.update(1);
+    expect(heater.GetHeat()).toBe(45);
+    expect(spring.hasTag('bathbombable')).toBe(true);
 
     expect(toss.useOn(inst)).toBe(true);
-    toss.arrive(); graph.update(6 / 30);
+    toss.arrive();
+    graph.update(6 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(1);
     expect(heater.GetHeat()).toBe(90);
     expect(spring.hasTag('bathbombable')).toBe(false);
@@ -103,7 +178,11 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     expect(toss.actions(inst)).toEqual([]);
 
     let json = '';
-    expect(await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).toMatchObject({ ok: true });
+    expect(
+      await executeDebugCommand('c_save()', s.inventory, undefined, () => {
+        json = s.save();
+      }),
+    ).toMatchObject({ ok: true });
     const record = deserializeSave(json, SAVE_CATALOG).world.entities.hotspring[0];
     expect(record.components.hotspring).toEqual({ isbathbombed: true });
     const reloaded = restored.spawn(new THREE.Vector3(...record.transform.position), record);
@@ -116,7 +195,11 @@ it('lights and heats a spring only after a cursor-held bath bomb is tossed in, t
     spring.remove();
     expect(reloaded.TheSim.FindEntities(model.position, 1, ['HASHEATER'])).toEqual([reloaded]);
     expect(declaredLight(spring)).toBeUndefined();
-  } finally { toss?.dispose(); s.dispose(); restored.dispose(); }
+  } finally {
+    toss?.dispose();
+    s.dispose();
+    restored.dispose();
+  }
 });
 
 it('faces the camera on LAYER_BACKGROUND while keeping the saved foot point and physics fixed', async () => {
@@ -125,16 +208,17 @@ it('faces the camera on LAYER_BACKGROUND while keeping the saved foot point and 
   const s = setup();
   try {
     const position = new THREE.Vector3(12, 0, -24);
-    const spring = s.spawn(position), model = spring.transform.model;
+    const spring = s.spawn(position),
+      model = spring.transform.model;
     await prefabDisplay(model)!.artLoaded();
     // SetLayer(LAYER_BACKGROUND): a fixed order below the world entities, not laid flat.
-    expect(spring.sprite.sprite.peek()).toMatchObject({ billboard: true, background: true, meshOrder: -.5 });
+    expect(spring.sprite.sprite.peek()).toMatchObject({ billboard: true, background: true, meshOrder: -0.5 });
     expect(s.registry.renderEntities.map(entry => entry.object)).not.toContain(model);
     const visual = model.children[0];
     const records = s.springs();
     const physicsPosition = spring.physicsBody!.position.toArray();
     for (const heading of [0, Math.PI / 2]) {
-      s.world.camera.rotation.set(-.65, heading, 0, 'YXZ');
+      s.world.camera.rotation.set(-0.65, heading, 0, 'YXZ');
       const quaternion = s.world.camera.quaternion;
       content.camerarotation.set(quaternion.clone());
       await settle();
@@ -147,27 +231,37 @@ it('faces the camera on LAYER_BACKGROUND while keeping the saved foot point and 
       expect(spring.physicsBody!.position.toArray()).toEqual(physicsPosition);
       expect(s.springs()).toEqual(records);
     }
-  } finally { s.dispose(); content.unbind(); }
+  } finally {
+    s.dispose();
+    content.unbind();
+  }
 });
 
 it('toggles tile visibility, physics and the steam task while preserving inactive saves and cleaning up each spring independently', async () => {
   const state = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} });
   state.playerpositions.set([new THREE.Vector3()]);
-  const s = setup(state.tickingarea), restored = setup(state.tickingarea);
+  const s = setup(state.tickingarea),
+    restored = setup(state.tickingarea);
   try {
-    const first = s.spawn(new THREE.Vector3(), { id: 'tile-spring', components: { hotspring: { isbathbombed: true } } });
+    const first = s.spawn(new THREE.Vector3(), {
+      id: 'tile-spring',
+      components: { hotspring: { isbathbombed: true } },
+    });
     const second = s.spawn(new THREE.Vector3(1, 0, 1));
     await settle();
-    const firstBody = first.physicsBody, secondBody = second.physicsBody;
+    const firstBody = first.physicsBody,
+      secondBody = second.physicsBody;
     const records = s.springs();
-    expect(first.transform.model.parent).toBe(s.scene); expect(second.transform.model.parent).toBe(s.scene);
+    expect(first.transform.model.parent).toBe(s.scene);
+    expect(second.transform.model.parent).toBe(s.scene);
     expect(s.physics.bodies).toEqual([firstBody, secondBody]);
     expect(first._fx_task).toBeDefined();
 
     state.playerpositions.set([new THREE.Vector3(300, 0, 0)]);
     await settle();
     expect([first.status.peek(), second.status.peek()]).toEqual(['asleep', 'asleep']);
-    expect(first.transform.model.parent).toBeNull(); expect(second.transform.model.parent).toBeNull();
+    expect(first.transform.model.parent).toBeNull();
+    expect(second.transform.model.parent).toBeNull();
     expect(s.physics.bodies).toEqual([]);
     expect([...s.physics.registeredBodies]).toEqual([firstBody, secondBody]);
     // OnEntitySleep: StopFx.
@@ -175,12 +269,20 @@ it('toggles tile visibility, physics and the steam task while preserving inactiv
     expect(s.springs()).toEqual(records);
     expect(first.components.heater.GetHeat()).toBe(90);
     let json = '';
-    expect(await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).toMatchObject({ ok: true });
+    expect(
+      await executeDebugCommand('c_save()', s.inventory, undefined, () => {
+        json = s.save();
+      }),
+    ).toMatchObject({ ok: true });
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities.hotspring).toEqual(records.map(entry => entry.record));
-    const loaded = restored.spawn(new THREE.Vector3(...saved.world.entities.hotspring[0].transform.position), saved.world.entities.hotspring[0]);
+    const loaded = restored.spawn(
+      new THREE.Vector3(...saved.world.entities.hotspring[0].transform.position),
+      saved.world.entities.hotspring[0],
+    );
     await settle();
-    expect(loaded.transform.model.parent).toBeNull(); expect(restored.physics.bodies).toEqual([]);
+    expect(loaded.transform.model.parent).toBeNull();
+    expect(restored.physics.bodies).toEqual([]);
     expect(restored.springs()[0]).toEqual(records[0]);
     expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'glow_loop' });
 
@@ -189,29 +291,37 @@ it('toggles tile visibility, physics and the steam task while preserving inactiv
     state.playerpositions.set([new THREE.Vector3()]);
     await settle();
     expect(first.transform.model.parent).toBeNull();
-    expect(second.transform.model.parent).toBe(s.scene); expect(loaded.transform.model.parent).toBe(restored.scene);
+    expect(second.transform.model.parent).toBe(s.scene);
+    expect(loaded.transform.model.parent).toBe(restored.scene);
     expect(s.physics.bodies).toEqual([secondBody]);
     expect([...s.physics.registeredBodies]).toEqual([secondBody]);
     expect(restored.physics.bodies).toEqual([loaded.physicsBody]);
     expect(declaredLight(loaded)).toEqual(HOTSPRING_LIGHT);
     // OnEntityWake restarts the task of a spring that can still steam.
     expect(second._fx_task).toBeDefined();
-  } finally { s.dispose(); restored.dispose(); state.dispose(); }
+  } finally {
+    s.dispose();
+    restored.dispose();
+    state.dispose();
+  }
 });
 
 it('emits slow steam, switches to crater steam once bombed, stops while asleep and restarts on wake', async () => {
   const state = createWorldState({ map: testMap(), elapsedSeconds: 0, systems: {} });
   state.playerpositions.set([new THREE.Vector3()]);
   // random() = .5: first delay 2s (then every 3s), steam3 for both families.
-  const s = setup(state.tickingarea, () => .5);
-  const steam = () => s.scene.children.map(child => prefabInstance(child)!).filter(inst => /steam_fx/.test(inst?.prefab ?? ''));
+  const s = setup(state.tickingarea, () => 0.5);
+  const steam = () =>
+    s.scene.children.map(child => prefabInstance(child)!).filter(inst => /steam_fx/.test(inst?.prefab ?? ''));
   try {
     const spring = s.spawn(new THREE.Vector3(2, 0, 3));
-    await s.tick(1.8); expect(steam()).toHaveLength(0);
-    await s.tick(.5);
+    await s.tick(1.8);
+    expect(steam()).toHaveLength(0);
+    await s.tick(0.5);
     expect(steam().map(fx => fx.prefab)).toEqual(['slow_steam_fx3']);
     const [fx] = steam();
-    expect(fx.position.toArray()).toEqual([2, 0, 3]); expect(fx.persists).toBe(false);
+    expect(fx.position.toArray()).toEqual([2, 0, 3]);
+    expect(fx.persists).toBe(false);
     // fx.lua FinalOffset1: drawn in front of the world entity at the same foot.
     expect(fx.sprite.sprite.peek().depthOffset).toBe(true);
 
@@ -222,15 +332,22 @@ it('emits slow steam, switches to crater steam once bombed, stops while asleep a
     expect(steam().map(other => other.prefab)).toEqual(['crater_steam_fx3']);
 
     // OnEntitySleep stops the task; OnEntityWake starts it again with a fresh random delay.
-    state.playerpositions.set([new THREE.Vector3(300, 0, 0)]); await settle();
+    state.playerpositions.set([new THREE.Vector3(300, 0, 0)]);
+    await settle();
     expect(spring._fx_task).toBeUndefined();
-    await s.tick(10); expect(steam()).toHaveLength(0);
-    state.playerpositions.set([new THREE.Vector3()]); await settle();
+    await s.tick(10);
+    expect(steam()).toHaveLength(0);
+    state.playerpositions.set([new THREE.Vector3()]);
+    await settle();
     expect(spring._fx_task).toBeDefined();
-    await s.tick(2.3); expect(steam().map(other => other.prefab)).toEqual(['crater_steam_fx3']);
+    await s.tick(2.3);
+    expect(steam().map(other => other.prefab)).toEqual(['crater_steam_fx3']);
 
     // Remove cancels the pending task.
     spring.remove();
     expect(spring._fx_task?.NextTime()).toBeUndefined();
-  } finally { s.dispose(); state.dispose(); }
+  } finally {
+    s.dispose();
+    state.dispose();
+  }
 });

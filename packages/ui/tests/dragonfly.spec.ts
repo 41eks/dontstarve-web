@@ -11,27 +11,60 @@ test('inline dragonfly save renders, c_spawn adds one, and c_save reloads both',
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   const save = minimalSave();
-  save.world.entities = { dragonfly: [{ id: 'dragonfly-inline', transform: { position: [4, 0, 4], rotationY: 0 },
-    components: { dragonfly: { health: { health: 27000 }, inventory: { items: {}, equip: {} },
-      moisture: { moisture: 7 }, rampingspawner: { current_wave: 1, wave_num: 1, spawning_on: false } } } }] };
+  save.world.entities = {
+    dragonfly: [
+      {
+        id: 'dragonfly-inline',
+        transform: { position: [4, 0, 4], rotationY: 0 },
+        components: {
+          dragonfly: {
+            health: { health: 27000 },
+            inventory: { items: {}, equip: {} },
+            moisture: { moisture: 7 },
+            rampingspawner: { current_wave: 1, wave_num: 1, spawning_on: false },
+          },
+        },
+      },
+    ],
+  };
   const boot = async (data: unknown) => {
     await gotoSave(page, data);
-    await page.evaluate(async ({ mainUrl, sceneUrl }) => {
-      const main = await import(mainUrl); await main.gameReady;
-      const { scene } = await import(sceneUrl);
-      (window as any).dragonflyGame = { scene };
-    }, { mainUrl, sceneUrl });
+    await page.evaluate(
+      async ({ mainUrl, sceneUrl }) => {
+        const main = await import(mainUrl);
+        await main.gameReady;
+        const { scene } = await import(sceneUrl);
+        (window as any).dragonflyGame = { scene };
+      },
+      { mainUrl, sceneUrl },
+    );
   };
-  const entities = () => page.evaluate(() => (window as any).dragonflyGame.scene.children
-    .filter((child: any) => (window as any).__prefabInstance(child)?.prefab === 'dragonfly')
-    .map((model: any) => ({ id: (window as any).__prefabInstance(model).entityId, position: model.position.toArray(),
-      clip: (window as any).__prefabInstance(model).sprite.currentAnimation, loaded: (window as any).__prefabInstance(model).sprite.loaded,
-      meshes: model.getObjectsByProperty('isMesh', true).length })));
-  const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
-    new CustomEvent('game:debug-command', { detail: { command } })), command);
+  const entities = () =>
+    page.evaluate(() =>
+      (window as any).dragonflyGame.scene.children
+        .filter((child: any) => (window as any).__prefabInstance(child)?.prefab === 'dragonfly')
+        .map((model: any) => ({
+          id: (window as any).__prefabInstance(model).entityId,
+          position: model.position.toArray(),
+          clip: (window as any).__prefabInstance(model).sprite.currentAnimation,
+          loaded: (window as any).__prefabInstance(model).sprite.loaded,
+          meshes: model.getObjectsByProperty('isMesh', true).length,
+        })),
+    );
+  const submit = (command: string) =>
+    page.evaluate(
+      command =>
+        document
+          .querySelector('dst-debug-console')!
+          .dispatchEvent(new CustomEvent('game:debug-command', { detail: { command } })),
+      command,
+    );
   await boot(save);
-  await expect.poll(entities).toEqual([expect.objectContaining({ id: 'dragonfly-inline', clip: 'idle', loaded: true,
-    meshes: expect.any(Number) })]);
+  await expect
+    .poll(entities)
+    .toEqual([
+      expect.objectContaining({ id: 'dragonfly-inline', clip: 'idle', loaded: true, meshes: expect.any(Number) }),
+    ]);
   expect((await entities())[0].meshes).toBeGreaterThan(0);
   await submit('c_spawn("dragonfly")');
   await expect.poll(entities).toHaveLength(2);
@@ -40,11 +73,17 @@ test('inline dragonfly save renders, c_spawn adds one, and c_save reloads both',
   await submit('c_save()');
   const exported = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   expect(exported.world.entities.dragonfly).toHaveLength(2);
-  expect(exported.world.entities.dragonfly[0]).toMatchObject({ id: before[0].id,
-    transform: { position: before[0].position }, components: { dragonfly: {
-      health: { health: 27000 }, moisture: { moisture: 7 },
-      rampingspawner: { current_wave: 1, wave_num: 1, spawning_on: false },
-    } } });
+  expect(exported.world.entities.dragonfly[0]).toMatchObject({
+    id: before[0].id,
+    transform: { position: before[0].position },
+    components: {
+      dragonfly: {
+        health: { health: 27000 },
+        moisture: { moisture: 7 },
+        rampingspawner: { current_wave: 1, wave_num: 1, spawning_on: false },
+      },
+    },
+  });
   await boot(exported);
   await expect.poll(entities).toEqual(before);
   expect(errors).toEqual([]);

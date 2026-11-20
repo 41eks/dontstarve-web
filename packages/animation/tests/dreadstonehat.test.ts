@@ -7,7 +7,11 @@ import { loadSavedInventory } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { Sanity } from '../../componets/src/sanity';
 import {
-  ARMOR_DREADSTONEHAT, ARMOR_DREADSTONE_REGEN_MAXRATE, ARMOR_DREADSTONE_REGEN_MINRATE, CRAZINESS_MED, DREADSTONEHAT_ID,
+  ARMOR_DREADSTONEHAT,
+  ARMOR_DREADSTONE_REGEN_MAXRATE,
+  ARMOR_DREADSTONE_REGEN_MINRATE,
+  CRAZINESS_MED,
+  DREADSTONEHAT_ID,
 } from '../../prefab/src/dreadstonehat';
 import { createPickupInventory } from './pickupFixture';
 import { testPlayer } from './testPlayer';
@@ -16,7 +20,8 @@ import { createPerishWorld } from './perishWorldFixture';
 import { createInventoryStore } from './testInventory';
 
 function wornHat(sanityPoints: number) {
-  const inventory = createPickupInventory(), world = createPerishWorld();
+  const inventory = createPickupInventory(),
+    world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
   // The wearer is a player inst with its own sanity; inventory:Equip calls equippable:Equip(owner) with it.
   const owner = testPlayer({ inventory });
@@ -31,15 +36,31 @@ function wornHat(sanityPoints: number) {
     onunequip: () => entity.components.equippable!.Unequip(owner),
   };
   const armor = entity.components.armor!;
-  return { inventory, world, entity, armor, current, sanity, lifecycle,
-    dispose() { lifecycle.onunequip(); owner.remove(); inventory.dispose(); } };
+  return {
+    inventory,
+    world,
+    entity,
+    armor,
+    current,
+    sanity,
+    lifecycle,
+    dispose() {
+      lifecycle.onunequip();
+      owner.remove();
+      inventory.dispose();
+    },
+  };
 }
 
 it('regenerates once per second after damage, faster at lower sanity, draining sanity until repaired', () => {
   const hat = wornHat(0);
   try {
     expect(hat.entity.components.equippable).toMatchObject({ equipslot: 'head', is_magic_dapperness: true });
-    expect(['hat', 'dreadstone', 'hardarmor', 'shadow_item', 'waterproofer', 'shadowlevel'].every(tag => hat.entity.hasTag(tag))).toBe(true);
+    expect(
+      ['hat', 'dreadstone', 'hardarmor', 'shadow_item', 'waterproofer', 'shadowlevel'].every(tag =>
+        hat.entity.hasTag(tag),
+      ),
+    ).toBe(true);
     expect(hat.armor.maxcondition).toBe(ARMOR_DREADSTONEHAT);
     expect(hat.sanity.GetRate()).toBe(0);
     hat.armor.TakeDamage(10);
@@ -49,15 +70,22 @@ it('regenerates once per second after damage, faster at lower sanity, draining s
     hat.world.advance(0.5);
     expect(hat.armor.condition.peek()).toBe(ARMOR_DREADSTONEHAT - 10);
     hat.world.advance(0.5);
-    expect(hat.armor.condition.peek()).toBeCloseTo(ARMOR_DREADSTONEHAT - 10 + ARMOR_DREADSTONEHAT * ARMOR_DREADSTONE_REGEN_MAXRATE);
+    expect(hat.armor.condition.peek()).toBeCloseTo(
+      ARMOR_DREADSTONEHAT - 10 + ARMOR_DREADSTONEHAT * ARMOR_DREADSTONE_REGEN_MAXRATE,
+    );
     hat.current.SetCurrent(200);
     hat.world.advance(1);
-    expect(hat.armor.condition.peek()).toBeCloseTo(ARMOR_DREADSTONEHAT - 10
-      + ARMOR_DREADSTONEHAT * (ARMOR_DREADSTONE_REGEN_MAXRATE + ARMOR_DREADSTONE_REGEN_MINRATE));
+    expect(hat.armor.condition.peek()).toBeCloseTo(
+      ARMOR_DREADSTONEHAT -
+        10 +
+        ARMOR_DREADSTONEHAT * (ARMOR_DREADSTONE_REGEN_MAXRATE + ARMOR_DREADSTONE_REGEN_MINRATE),
+    );
     hat.world.advance(60);
     expect(hat.armor.IsDamaged()).toBe(false);
     expect(hat.sanity.GetRate()).toBe(0);
-  } finally { hat.dispose(); }
+  } finally {
+    hat.dispose();
+  }
 });
 
 it('starts only while worn and damaged, and unequipping cancels the task', () => {
@@ -76,7 +104,9 @@ it('starts only while worn and damaged, and unequipping cancels the task', () =>
     hat.lifecycle.onequip();
     hat.world.advance(1);
     expect(hat.armor.condition.peek()).toBeGreaterThan(ARMOR_DREADSTONEHAT - 51);
-  } finally { hat.dispose(); }
+  } finally {
+    hat.dispose();
+  }
 });
 
 it('keeps its condition through re-configuration, transfers and a save round trip', async () => {
@@ -91,9 +121,19 @@ it('keeps its condition through re-configuration, transfers and a save round tri
     expect(hat.armor.condition.peek()).toBe(condition);
     expect(hat.entity.snapshot().armor).toEqual({ condition });
     const template = importedSave('Caves');
-    const saved = deserializeSave(serializeSave(template, {
-      inventory: hat.inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 }, entities: {},
-    }, SAVE_CATALOG), SAVE_CATALOG);
+    const saved = deserializeSave(
+      serializeSave(
+        template,
+        {
+          inventory: hat.inventory.exportSaved(),
+          elapsedSeconds: 0,
+          playerTransform: { position: [0, 0, 0], rotationY: 0 },
+          entities: {},
+        },
+        SAVE_CATALOG,
+      ),
+      SAVE_CATALOG,
+    );
     const restored = createInventoryStore([]);
     try {
       loadSavedInventory(restored, saved, SAVE_CATALOG.recipes);
@@ -103,6 +143,10 @@ it('keeps its condition through re-configuration, transfers and a save round tri
       // armor.lua OnSave omits a full condition.
       entity.components.armor!.Repair(100);
       expect(entity.snapshot().armor).toBeUndefined();
-    } finally { restored.dispose(); }
-  } finally { hat.dispose(); }
+    } finally {
+      restored.dispose();
+    }
+  } finally {
+    hat.dispose();
+  }
 }, 60_000);

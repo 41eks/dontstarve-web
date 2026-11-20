@@ -1,34 +1,65 @@
 import { expect, it, vi } from 'vitest';
 import { playerEntity } from './playerEntity';
-import { InventoryStore, InventorySlot, HandSlot, HeadSlot, BodySlot, equipmentSlotAddress, inventorySlotAddress } from '../src';
+import {
+  InventoryStore,
+  InventorySlot,
+  HandSlot,
+  HeadSlot,
+  BodySlot,
+  equipmentSlotAddress,
+  inventorySlotAddress,
+} from '../src';
 import { bodySlot, headSlot, inventorySlot, testInventoryStore } from './testItems';
 
-const head = equipmentSlotAddress('head'), body = equipmentSlotAddress('body');
-const a = inventorySlotAddress(0), b = inventorySlotAddress(1);
+const head = equipmentSlotAddress('head'),
+  body = equipmentSlotAddress('body');
+const a = inventorySlotAddress(0),
+  b = inventorySlotAddress(1);
 const specs = {
   strawhat: { name: 'hat', icon: 'strawhat.tex', maxStack: 1, equippable: 'head' as const },
   backpack: { name: 'backpack', icon: 'backpack.tex', maxStack: 1, equippable: 'body' as const },
   cutgrass: { name: 'grass', icon: 'cutgrass.tex', maxStack: 40 },
 };
 const skins = {
-  backpack_babybeef: { itemId: 'backpack', name: 'backpack', icon: 'backpack_babybeef.tex', atlas: 'images/inventoryimages.xml' },
+  backpack_babybeef: {
+    itemId: 'backpack',
+    name: 'backpack',
+    icon: 'backpack_babybeef.tex',
+    atlas: 'images/inventoryimages.xml',
+  },
 };
 
 it('publishes committed head/body identity, preserves transfers and restores the resulting equipment', () => {
-  const store = testInventoryStore([
-    { address: a, slot: inventorySlot() }, { address: b, slot: inventorySlot() },
-    { address: head, slot: headSlot() }, { address: body, slot: bodySlot() },
-  ], specs, skins);
-  const headChanges = vi.fn(), bodyChanges = vi.fn();
+  const store = testInventoryStore(
+    [
+      { address: a, slot: inventorySlot() },
+      { address: b, slot: inventorySlot() },
+      { address: head, slot: headSlot() },
+      { address: body, slot: bodySlot() },
+    ],
+    specs,
+    skins,
+  );
+  const headChanges = vi.fn(),
+    bodyChanges = vi.fn();
   const stopHead = store.headEquipment.subscribe(equipment => headChanges(equipment, store.getEntity(head)));
   const stopBody = store.bodyEquipment.subscribe(equipment => bodyChanges(equipment, store.getEntity(body)));
   try {
-    store.add('strawhat', 1); store.transfer(a, head, 1);
-    store.add('backpack', 1, 'backpack_babybeef'); store.transfer(a, body, 1);
-    const hat = store.getEntity(head)!, backpack = store.getEntity(body)!;
-    const headEquipment = store.headEquipment.peek(), bodyEquipment = store.bodyEquipment.peek();
+    store.add('strawhat', 1);
+    store.transfer(a, head, 1);
+    store.add('backpack', 1, 'backpack_babybeef');
+    store.transfer(a, body, 1);
+    const hat = store.getEntity(head)!,
+      backpack = store.getEntity(body)!;
+    const headEquipment = store.headEquipment.peek(),
+      bodyEquipment = store.bodyEquipment.peek();
     expect(headEquipment).toEqual({ itemId: 'strawhat', EQUIPSLOTS: 'HEAD', entity: hat });
-    expect(bodyEquipment).toEqual({ itemId: 'backpack', EQUIPSLOTS: 'BODY', skinId: 'backpack_babybeef', entity: backpack });
+    expect(bodyEquipment).toEqual({
+      itemId: 'backpack',
+      EQUIPSLOTS: 'BODY',
+      skinId: 'backpack_babybeef',
+      entity: backpack,
+    });
     expect(headChanges).toHaveBeenCalledExactlyOnceWith(headEquipment, hat);
     expect(bodyChanges).toHaveBeenCalledExactlyOnceWith(bodyEquipment, backpack);
     store.add('cutgrass', 3);
@@ -51,13 +82,18 @@ it('publishes committed head/body identity, preserves transfers and restores the
     expect(hat.isRemoved).toBe(true);
     expect(store.getEntity(body)).toBe(backpack);
 
-    const saved = store.exportState(), snapshot = backpack.snapshot();
+    const saved = store.exportState(),
+      snapshot = backpack.snapshot();
     store.replaceState(saved, {});
     expect(store.headEquipment.peek()).toBeNull();
     expect(store.bodyEquipment.peek()?.entity).toBe(store.getEntity(body));
     expect(store.getEntity(body)).not.toBe(backpack);
     expect(store.getEntity(body)?.snapshot()).toEqual(snapshot);
-  } finally { stopHead(); stopBody(); store.dispose(); }
+  } finally {
+    stopHead();
+    stopBody();
+    store.dispose();
+  }
 });
 
 it('publishes late head/body registrations once', () => {
@@ -71,27 +107,41 @@ it('publishes late head/body registrations once', () => {
     expect(() => store.registerSlots([{ address: head, slot: headSlot() }])).toThrow('Duplicate slot address');
     expect(store.headEquipment.peek()?.entity).toBe(store.getEntity(head));
     expect(store.bodyEquipment.peek()?.entity).toBe(store.getEntity(body));
-  } finally { store.dispose(); }
+  } finally {
+    store.dispose();
+  }
 });
 
 it('runs equippable Equip/Unequip with the actor in inventory.lua order, once per inst', () => {
-  const store = testInventoryStore([
-    { address: a, slot: inventorySlot() }, { address: b, slot: inventorySlot() },
-    { address: head, slot: headSlot() },
-  ], { ...specs, flowerhat: { name: 'garland', icon: 'flowerhat.tex', maxStack: 1, equippable: 'head' as const } });
+  const store = testInventoryStore(
+    [
+      { address: a, slot: inventorySlot() },
+      { address: b, slot: inventorySlot() },
+      { address: head, slot: headSlot() },
+    ],
+    { ...specs, flowerhat: { name: 'garland', icon: 'flowerhat.tex', maxStack: 1, equippable: 'head' as const } },
+  );
   const calls: string[] = [];
   // The player inst the inventory belongs to: inventory.lua pushes equip and unequip on it.
   const actor = playerEntity();
-  for (const name of ['equip', 'unequip']) { actor.ListenForEvent(name, (_inst, data) => calls.push(`${name}:${(data as { item?: { prefab: string } }).item?.prefab}`)); }
+  for (const name of ['equip', 'unequip']) {
+    actor.ListenForEvent(name, (_inst, data) =>
+      calls.push(`${name}:${(data as { item?: { prefab: string } }).item?.prefab}`),
+    );
+  }
   store.bindActor(actor);
   const watch = (prefab: string) => {
     store.add(prefab, 1);
     const item = store.FindItem(entity => entity.prefab === prefab)!;
-    item.components.equippable!.SetOnEquip((_inst, owner) => { expect(owner).toBe(actor); calls.push(`onequip:${prefab}`); });
+    item.components.equippable!.SetOnEquip((_inst, owner) => {
+      expect(owner).toBe(actor);
+      calls.push(`onequip:${prefab}`);
+    });
     item.components.equippable!.SetOnUnequip(() => calls.push(`onunequip:${prefab}`));
     return item;
   };
-  const straw = watch('strawhat'), flower = watch('flowerhat');
+  const straw = watch('strawhat'),
+    flower = watch('flowerhat');
   expect(store.EquipFromInventory(straw)).toBe(true);
   expect(straw.components.equippable!.IsEquipped()).toBe(true);
   expect(calls).toEqual(['onequip:strawhat', 'equip:strawhat']);

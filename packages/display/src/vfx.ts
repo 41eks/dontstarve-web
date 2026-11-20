@@ -45,7 +45,7 @@ const RENDER_ORDER = 1_000_000;
 /** The engine's particle scale unit is not world units; calibrated by eye. */
 const SCALE_FACTOR = 0.8;
 
-const VERTEX_SHADER = /* glsl */`
+const VERTEX_SHADER = /* glsl */ `
   attribute vec2 corner;
   attribute vec4 tint;
   attribute vec2 size;
@@ -60,7 +60,7 @@ const VERTEX_SHADER = /* glsl */`
     gl_Position = projectionMatrix * view;
   }
 `;
-const FRAGMENT_SHADER = /* glsl */`
+const FRAGMENT_SHADER = /* glsl */ `
   uniform sampler2D map;
   varying vec2 vUv;
   varying vec4 vTint;
@@ -78,7 +78,9 @@ const FRAGMENT_SHADER = /* glsl */`
 function sample<T extends readonly number[]>(stops: readonly Stop<T>[], t: number): number[] {
   for (let i = 1; i < stops.length; i++) {
     const [t1, v1] = stops[i];
-    if (t > t1 && i < stops.length - 1) { continue; }
+    if (t > t1 && i < stops.length - 1) {
+      continue;
+    }
     const [t0, v0] = stops[i - 1];
     const k = THREE.MathUtils.clamp((t - t0) / (t1 - t0), 0, 1);
     return v0.map((value, axis) => value + (v1[axis] - value) * k);
@@ -105,8 +107,11 @@ class Emitter {
   constructor(spec: VfxEmitterJson, texture: THREE.Texture) {
     this.spec = spec;
     const max = spec.maxParticles;
-    this.position = new Float32Array(max * 3); this.velocity = new Float32Array(max * 3);
-    this.age = new Float32Array(max); this.lifetime = new Float32Array(max); this.uvOffset = new Float32Array(max);
+    this.position = new Float32Array(max * 3);
+    this.velocity = new Float32Array(max * 3);
+    this.age = new Float32Array(max);
+    this.lifetime = new Float32Array(max);
+    this.uvOffset = new Float32Array(max);
     this.toEmit = spec.initialCount;
     const geometry = new THREE.BufferGeometry<VfxAttributes>();
     const corners = new Float32Array(max * 8);
@@ -115,8 +120,8 @@ class Emitter {
       corners.set([-1, -1, 1, -1, 1, 1, -1, 1], i * 8);
       index.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3], i * 6);
     }
-    const dynamic = (size: number) => new THREE.BufferAttribute(new Float32Array(max * 4 * size), size)
-      .setUsage(THREE.DynamicDrawUsage);
+    const dynamic = (size: number) =>
+      new THREE.BufferAttribute(new Float32Array(max * 4 * size), size).setUsage(THREE.DynamicDrawUsage);
     geometry.setAttribute('position', dynamic(3));
     geometry.setAttribute('uv', dynamic(2));
     geometry.setAttribute('tint', dynamic(4));
@@ -126,8 +131,12 @@ class Emitter {
     geometry.setDrawRange(0, 0);
     const premultiplied = spec.blendMode === 'premultiplied';
     const material = new THREE.ShaderMaterial({
-      uniforms: { map: { value: texture } }, vertexShader: VERTEX_SHADER, fragmentShader: FRAGMENT_SHADER,
-      defines: premultiplied ? { PREMULTIPLIED: '' } : {}, transparent: true, depthWrite: false,
+      uniforms: { map: { value: texture } },
+      vertexShader: VERTEX_SHADER,
+      fragmentShader: FRAGMENT_SHADER,
+      defines: premultiplied ? { PREMULTIPLIED: '' } : {},
+      transparent: true,
+      depthWrite: false,
       side: THREE.DoubleSide,
       ...(premultiplied
         ? { blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor }
@@ -142,10 +151,16 @@ class Emitter {
   /** emit_fn: AddParticleUV inside the sphere emitter, with a random UV frame column. */
   private emit(origin: THREE.Vector3): void {
     const { spec } = this;
-    if (this.count >= spec.maxParticles) { return; }
+    if (this.count >= spec.maxParticles) {
+      return;
+    }
     const i = this.count++;
     let x: number, y: number, z: number;
-    do { x = unitRand(); y = unitRand(); z = unitRand(); } while (x * x + y * y + z * z > 1);
+    do {
+      x = unitRand();
+      y = unitRand();
+      z = unitRand();
+    } while (x * x + y * y + z * z > 1);
     const radius = spec.sphereRadius * WORLD_SCALE;
     this.position.set([origin.x + x * radius, origin.y + y * radius, origin.z + z * radius], i * 3);
     for (let axis = 0; axis < 3; axis++) {
@@ -165,7 +180,7 @@ class Emitter {
   }
 
   simulate(dt: number): void {
-    for (let i = 0; i < this.count;) {
+    for (let i = 0; i < this.count; ) {
       if ((this.age[i] += dt) >= this.lifetime[i]) {
         const last = --this.count;
         if (i !== last) {
@@ -177,13 +192,16 @@ class Emitter {
         }
         continue;
       }
-      for (let axis = 0; axis < 3; axis++) { this.position[i * 3 + axis] += this.velocity[i * 3 + axis] * dt; }
+      for (let axis = 0; axis < 3; axis++) {
+        this.position[i * 3 + axis] += this.velocity[i * 3 + axis] * dt;
+      }
       i++;
     }
   }
 
   write(): void {
-    const { geometry } = this.mesh, { spec } = this;
+    const { geometry } = this.mesh,
+      { spec } = this;
     const position = geometry.getAttribute('position');
     const uv = geometry.getAttribute('uv');
     const tint = geometry.getAttribute('tint');
@@ -201,7 +219,9 @@ class Emitter {
         size.setXY(v, width * SCALE_FACTOR * WORLD_SCALE, height * SCALE_FACTOR * WORLD_SCALE);
       }
     }
-    for (const attribute of [position, uv, tint, size]) { attribute.needsUpdate = true; }
+    for (const attribute of [position, uv, tint, size]) {
+      attribute.needsUpdate = true;
+    }
     geometry.setDrawRange(0, this.count * 6);
   }
 
@@ -225,17 +245,23 @@ export class VfxEffect {
   constructor(node: THREE.Object3D, vfx: VfxJson, textures: readonly THREE.Texture[]) {
     this.node = node;
     this.emitters = vfx.emitters.map((spec, i) => new Emitter(spec, textures[i]));
-    for (const emitter of this.emitters) { node.add(emitter.mesh); }
+    for (const emitter of this.emitters) {
+      node.add(emitter.mesh);
+    }
   }
 
   update(dt: number): void {
-    if (!Number.isFinite(dt) || dt <= 0) { return; }
+    if (!Number.isFinite(dt) || dt <= 0) {
+      return;
+    }
     this.node.updateWorldMatrix(true, false);
     this.origin.setFromMatrixPosition(this.node.matrixWorld);
     this.tickRemainder = Math.min(this.tickRemainder + dt, TICK_TIME * MAX_TICKS_PER_FRAME);
     while (this.tickRemainder >= TICK_TIME) {
       this.tickRemainder -= TICK_TIME;
-      for (const emitter of this.emitters) { emitter.tick(this.origin); }
+      for (const emitter of this.emitters) {
+        emitter.tick(this.origin);
+      }
     }
     for (const emitter of this.emitters) {
       emitter.simulate(dt);
@@ -244,7 +270,9 @@ export class VfxEffect {
   }
 
   dispose(): void {
-    for (const emitter of this.emitters) { emitter.dispose(); }
+    for (const emitter of this.emitters) {
+      emitter.dispose();
+    }
     this.emitters.length = 0;
   }
 }

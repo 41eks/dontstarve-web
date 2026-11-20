@@ -15,22 +15,35 @@ export class Instrument<Musician, Listener, Inst = unknown> {
 
   /** `findListeners` is the prefab's TheSim:FindEntities(x, y, z, range, nil, {FX, DECOR, INLIMBO}) at the musician. */
   constructor(inst: Inst, findListeners: (musician: Musician, range: number) => Iterable<Listener>) {
-    this.inst = inst; this.findListeners = findListeners;
+    this.inst = inst;
+    this.findListeners = findListeners;
   }
 
-  dispose(): void { /* no timers or subscriptions */ }
+  dispose(): void {
+    /* no timers or subscriptions */
+  }
 
-  SetRange(range: number): void { this.range = range; }
-  SetOnHeardFn(fn: InstrumentOnHeardFn<Inst, Musician, Listener> | undefined): void { this.onheard = fn; }
-  SetOnPlayedFn(fn: InstrumentOnPlayedFn<Inst, Musician> | undefined): void { this.onplayed = fn; }
-  SetOnFinishedPlayingFn(fn: InstrumentOnFinishedPlayingFn<Inst, Musician> | undefined): void { this.onfinishedplaying = fn; }
+  SetRange(range: number): void {
+    this.range = range;
+  }
+  SetOnHeardFn(fn: InstrumentOnHeardFn<Inst, Musician, Listener> | undefined): void {
+    this.onheard = fn;
+  }
+  SetOnPlayedFn(fn: InstrumentOnPlayedFn<Inst, Musician> | undefined): void {
+    this.onplayed = fn;
+  }
+  SetOnFinishedPlayingFn(fn: InstrumentOnFinishedPlayingFn<Inst, Musician> | undefined): void {
+    this.onfinishedplaying = fn;
+  }
 
   Play(musician: Musician): boolean {
     this.onplayed?.(this.inst, musician);
     if (this.onheard) {
       const self: unknown = this.inst; // listeners are entities like the instrument; only identity is compared
       for (const listener of this.findListeners(musician, this.range)) {
-        if (listener !== self) { this.onheard(listener, musician, this.inst); }
+        if (listener !== self) {
+          this.onheard(listener, musician, this.inst);
+        }
       }
     }
     this.onfinishedplaying?.(this.inst, musician);

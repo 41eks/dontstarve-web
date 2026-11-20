@@ -23,7 +23,7 @@ export function createCraftingBackground(root: ShadowRoot): { dispose(): void } 
   let layoutKey = '';
   let imageUrl: string | undefined;
 
-  const assets = Promise.all(names.map((name) => getAtlasImage(atlasPath, name))).then(async (regions) => {
+  const assets = Promise.all(names.map(name => getAtlasImage(atlasPath, name))).then(async regions => {
     const image = new Image();
     image.src = regions[0].imageUrl;
     await image.decode();
@@ -31,17 +31,24 @@ export function createCraftingBackground(root: ShadowRoot): { dispose(): void } 
   });
 
   const render = async (layout: Layout, requestVersion: number) => {
-    const { image, regions: [top, bar, bottom, side] } = await assets;
-    if (disposed || requestVersion !== version) { return; }
+    const {
+      image,
+      regions: [top, bar, bottom, side],
+    } = await assets;
+    if (disposed || requestVersion !== version) {
+      return;
+    }
     const scale = layout.width / top.width;
-    const topMargin = top.height * scale / 2;
-    const bottomMargin = bottom.height * scale / 2;
+    const topMargin = (top.height * scale) / 2;
+    const bottomMargin = (bottom.height * scale) / 2;
     const height = layout.height + topMargin + bottomMargin;
     const canvas = document.createElement('canvas');
     canvas.width = Math.ceil(layout.width * layout.pixelRatio);
     canvas.height = Math.ceil(height * layout.pixelRatio);
     const context = canvas.getContext('2d');
-    if (!context) { throw new Error('Canvas 2D context is unavailable'); }
+    if (!context) {
+      throw new Error('Canvas 2D context is unavailable');
+    }
     context.scale(canvas.width / layout.width, canvas.height / height);
 
     const draw = (region: AtlasImageRegion, x: number, y: number, width: number, height: number) => {
@@ -68,7 +75,7 @@ export function createCraftingBackground(root: ShadowRoot): { dispose(): void } 
     // Overlap the side strips; the horizontal pieces always paint last.
     const barLeft = corner - 10 * scale;
     const barWidth = layout.width - barLeft * 2;
-    const barHeight = bar.height * barWidth / bar.width;
+    const barHeight = (bar.height * barWidth) / bar.width;
     for (const divider of [layout.categoryDivider, layout.detailDivider]) {
       draw(bar, barLeft, topMargin + divider - barHeight / 2, barWidth, barHeight);
     }
@@ -76,9 +83,11 @@ export function createCraftingBackground(root: ShadowRoot): { dispose(): void } 
     draw(bottom, 0, topMargin + layout.height - bottomMargin, layout.width, bottom.height * scale);
 
     const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((value) => value ? resolve(value) : reject(new Error('Unable to encode crafting background')));
+      canvas.toBlob(value => (value ? resolve(value) : reject(new Error('Unable to encode crafting background'))));
     });
-    if (disposed || requestVersion !== version) { return; }
+    if (disposed || requestVersion !== version) {
+      return;
+    }
     const nextUrl = URL.createObjectURL(blob);
     try {
       const composed = new Image();
@@ -95,7 +104,9 @@ export function createCraftingBackground(root: ShadowRoot): { dispose(): void } 
       background.style.backgroundImage = `url("${nextUrl}")`;
       background.dataset.loaded = 'true';
       delete background.dataset.error;
-      if (previousUrl) { URL.revokeObjectURL(previousUrl); }
+      if (previousUrl) {
+        URL.revokeObjectURL(previousUrl);
+      }
     } catch (error) {
       URL.revokeObjectURL(nextUrl);
       throw error;
@@ -104,7 +115,9 @@ export function createCraftingBackground(root: ShadowRoot): { dispose(): void } 
 
   const refresh = () => {
     frame = 0;
-    if (disposed) { return; }
+    if (disposed) {
+      return;
+    }
     const layout: Layout = {
       width: panel.offsetWidth,
       height: panel.offsetHeight,
@@ -112,27 +125,39 @@ export function createCraftingBackground(root: ShadowRoot): { dispose(): void } 
       detailDivider: marker.offsetTop + marker.offsetHeight / 2,
       pixelRatio: window.devicePixelRatio || 1,
     };
-    if (!layout.width || !layout.height) { return; }
+    if (!layout.width || !layout.height) {
+      return;
+    }
     const nextKey = JSON.stringify(layout);
-    if (nextKey === layoutKey) { return; }
+    if (nextKey === layoutKey) {
+      return;
+    }
     layoutKey = nextKey;
     delete background.dataset.loaded;
     const requestVersion = ++version;
     void render(layout, requestVersion).catch((error: unknown) => {
-      if (disposed || requestVersion !== version) { return; }
+      if (disposed || requestVersion !== version) {
+        return;
+      }
       layoutKey = '';
       background.dataset.error = error instanceof Error ? error.message : String(error);
     });
   };
   const schedule = () => {
-    if (!disposed && !frame) { frame = requestAnimationFrame(refresh); }
+    if (!disposed && !frame) {
+      frame = requestAnimationFrame(refresh);
+    }
   };
   const observer = new ResizeObserver(schedule);
-  for (const element of [panel, categories, marker]) { observer.observe(element); }
+  for (const element of [panel, categories, marker]) {
+    observer.observe(element);
+  }
   window.addEventListener('resize', schedule);
   // Handle a failed source decode even while the panel remains collapsed.
   void assets.catch((error: unknown) => {
-    if (!disposed) { background.dataset.error = error instanceof Error ? error.message : String(error); }
+    if (!disposed) {
+      background.dataset.error = error instanceof Error ? error.message : String(error);
+    }
   });
   schedule();
 
@@ -142,8 +167,12 @@ export function createCraftingBackground(root: ShadowRoot): { dispose(): void } 
       version++;
       observer.disconnect();
       window.removeEventListener('resize', schedule);
-      if (frame) { cancelAnimationFrame(frame); }
-      if (imageUrl) { URL.revokeObjectURL(imageUrl); }
+      if (frame) {
+        cancelAnimationFrame(frame);
+      }
+      if (imageUrl) {
+        URL.revokeObjectURL(imageUrl);
+      }
     },
   };
 }

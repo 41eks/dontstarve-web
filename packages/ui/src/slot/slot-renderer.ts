@@ -60,20 +60,24 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   let stopContextMenu: (() => void) | undefined;
   const secondaryInput = createSignal<SlotSecondaryInput | null>(null);
   let suppressNextClick = false;
-  const receiveAnimation = new SlotReceiveAnimation(button, () => options.slot.item.peek(), () => {
-    const item = options.slot.item.peek();
-    return item?.tile?.peek().count ?? item?.count ?? 0;
-  });
+  const receiveAnimation = new SlotReceiveAnimation(
+    button,
+    () => options.slot.item.peek(),
+    () => {
+      const item = options.slot.item.peek();
+      return item?.tile?.peek().count ?? item?.count ?? 0;
+    },
+  );
 
   const content = button.querySelector<HTMLElement>('.inventory-slot__content')!;
   const percent = button.querySelector<HTMLElement>('.inventory-slot__percent')!;
   const freshness = button.querySelector<HTMLCanvasElement>('.inventory-slot__freshness')!;
   const wetness = button.querySelector<HTMLCanvasElement>('.inventory-slot__wetness')!;
-  const percentText = (value: number | undefined) => value === undefined ? ''
-    : `${value > 0 ? Math.max(1, Math.round(value * 100)) : 0}%`;
+  const percentText = (value: number | undefined) =>
+    value === undefined ? '' : `${value > 0 ? Math.max(1, Math.round(value * 100)) : 0}%`;
 
   /** A live item's tile declaration over its static fields, as it is now. */
-  const shown = (item: SlotItem | null) => item?.tile ? slotItemWithTile(item, item.tile.peek()) : item;
+  const shown = (item: SlotItem | null) => (item?.tile ? slotItemWithTile(item, item.tile.peek()) : item);
   const updateItem = (slotItem: SlotItem | null) => {
     const item = shown(slotItem);
     button.classList.toggle('is-empty', item === null);
@@ -88,14 +92,20 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     }
     const atlasPath = item.atlas ?? 'images/inventoryimages.xml';
     const iconKey = `${atlasPath}\n${item.icon}`;
-    if (content.dataset.iconKey === iconKey) { return; }
+    if (content.dataset.iconKey === iconKey) {
+      return;
+    }
     content.dataset.iconKey = iconKey;
     content.replaceChildren(createAtlasImage('inventory-slot__icon', atlasPath, item.icon));
   };
 
-  const sameAppearance = (left: SlotItem | null, right: SlotItem | null) => left?.entityId === right?.entityId
-    && left?.id === right?.id && left?.skinId === right?.skinId && left?.name === right?.name
-    && left?.icon === right?.icon && left?.atlas === right?.atlas;
+  const sameAppearance = (left: SlotItem | null, right: SlotItem | null) =>
+    left?.entityId === right?.entityId &&
+    left?.id === right?.id &&
+    left?.skinId === right?.skinId &&
+    left?.name === right?.name &&
+    left?.icon === right?.icon &&
+    left?.atlas === right?.atlas;
 
   const updateQuantity = () => {
     // Receive animations own the displayed count while their items are in flight.
@@ -108,21 +118,35 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   };
   const updateFreshness = (value: number | undefined) => {
     freshness.hidden = value === undefined;
-    if (spoilBackground) { spoilBackground.hidden = value === undefined; }
-    if (value === undefined) { return; }
+    if (spoilBackground) {
+      spoilBackground.hidden = value === undefined;
+    }
+    if (value === undefined) {
+      return;
+    }
     if (!spoilBackground) {
       spoilBackground = createAtlasImage('inventory-slot__spoil-background', 'images/hud.xml', 'inv_slot_spoiled.tex');
       button.insertBefore(spoilBackground, freshness);
     }
-    freshnessMeter ??= new AnimatedBackground(freshness, `${import.meta.env.BASE_URL}dst/data/anim/spoiled_meter.zip`, () => {});
+    freshnessMeter ??= new AnimatedBackground(
+      freshness,
+      `${import.meta.env.BASE_URL}dst/data/anim/spoiled_meter.zip`,
+      () => {},
+    );
     // widgets/itemtile.lua:SetPerishPercent deliberately excludes the final spoiled pose.
     freshnessMeter.setPercent('anim', Math.max(0, Math.min(0.99, 1 - value)));
   };
   const updateWetness = (wet: boolean) => {
     wetness.hidden = !wet;
     button.classList.toggle('is-wet', wet);
-    if (!wet) { return; }
-    wetnessMeter ??= new AnimatedBackground(wetness, `${import.meta.env.BASE_URL}dst/data/anim/wet_meter.zip`, () => {});
+    if (!wet) {
+      return;
+    }
+    wetnessMeter ??= new AnimatedBackground(
+      wetness,
+      `${import.meta.env.BASE_URL}dst/data/anim/wet_meter.zip`,
+      () => {},
+    );
     wetnessMeter.playOnce('idle');
   };
   const updateSelection = () => {
@@ -136,9 +160,12 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     const durability = percentText(item?.durabilityPercent);
     const fresh = percentText(item?.freshnessPercent);
     const wet = item?.wet ?? false;
-    button.setAttribute('aria-label', item
-      ? `${item.name}，数量 ${count}${durability ? `，耐久 ${durability}` : ''}${fresh ? `，新鲜度 ${fresh}` : ''}${wet ? '，潮湿' : ''}`
-      : options.label);
+    button.setAttribute(
+      'aria-label',
+      item
+        ? `${item.name}，数量 ${count}${durability ? `，耐久 ${durability}` : ''}${fresh ? `，新鲜度 ${fresh}` : ''}${wet ? '，潮湿' : ''}`
+        : options.label,
+    );
   };
   const renderAll = () => {
     const item = shown(options.slot.item.peek());
@@ -152,67 +179,102 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   };
 
   const bindItem = (item: SlotItem | null, previous: SlotItem | null) => {
-    if (!sameAppearance(item, previous)) { updateItem(item); }
-    if (item?.tile && item.tile === previous?.tile) { return; }
+    if (!sameAppearance(item, previous)) {
+      updateItem(item);
+    }
+    if (item?.tile && item.tile === previous?.tile) {
+      return;
+    }
     stopItemValues.forEach(stop => stop());
     stopItemValues = [];
     // A live item's tile declaration is the inst's own; the UI creates no value state of its own.
     const present = (next: SlotItem | null, last: SlotItem | null) => {
-      if (next?.icon !== last?.icon || next?.atlas !== last?.atlas) { updateItem(next); }
-      if (next?.count !== last?.count || !last) { updateQuantity(); }
-      if (next?.durabilityPercent !== last?.durabilityPercent || !last) { updateDurability(next?.durabilityPercent); }
-      if (next?.freshnessPercent !== last?.freshnessPercent || !last) { updateFreshness(next?.freshnessPercent); }
-      if (next?.wet !== last?.wet || !last) { updateWetness(next?.wet ?? false); }
+      if (next?.icon !== last?.icon || next?.atlas !== last?.atlas) {
+        updateItem(next);
+      }
+      if (next?.count !== last?.count || !last) {
+        updateQuantity();
+      }
+      if (next?.durabilityPercent !== last?.durabilityPercent || !last) {
+        updateDurability(next?.durabilityPercent);
+      }
+      if (next?.freshnessPercent !== last?.freshnessPercent || !last) {
+        updateFreshness(next?.freshnessPercent);
+      }
+      if (next?.wet !== last?.wet || !last) {
+        updateWetness(next?.wet ?? false);
+      }
     };
     const tile = item?.tile;
     if (item && tile) {
       let last: SlotItem | null = null;
-      const update = () => { const next = slotItemWithTile(item, tile.peek()); present(next, last); last = next; };
+      const update = () => {
+        const next = slotItemWithTile(item, tile.peek());
+        present(next, last);
+        last = next;
+      };
       stopItemValues.push(tile.subscribe(update));
       update();
-    } else { present(item, previous?.tile ? null : previous); }
+    } else {
+      present(item, previous?.tile ? null : previous);
+    }
   };
 
-  button.addEventListener('click', (event) => {
+  button.addEventListener('click', event => {
     if (suppressNextClick) {
       suppressNextClick = false;
       return;
     }
     // Selection runs first so a placeable item can claim the click for placement
     // instead of being picked up for a transfer.
-    if (options.onSelect?.(options.slot)) { return; }
+    if (options.onSelect?.(options.slot)) {
+      return;
+    }
     const result = slotTransferController.click(event, options.slot);
-    if (result.request) { options.onTransfer?.(result.request); }
+    if (result.request) {
+      options.onTransfer?.(result.request);
+    }
   });
-  button.addEventListener('contextmenu', (event) => {
+  button.addEventListener('contextmenu', event => {
     event.preventDefault();
     secondaryInput.set({ shiftKey: event.shiftKey });
   });
-  button.addEventListener('pointerdown', (event) => {
+  button.addEventListener('pointerdown', event => {
     slotTransferController.begin(event, options.slot);
   });
-  button.addEventListener('pointermove', (event) => {
+  button.addEventListener('pointermove', event => {
     slotTransferController.move(event);
   });
-  button.addEventListener('pointerup', (event) => {
+  button.addEventListener('pointerup', event => {
     const result = slotTransferController.end(event);
-    if (result.dragged) { suppressNextClick = true; }
-    if (result.request) { options.onTransfer?.(result.request); }
+    if (result.dragged) {
+      suppressNextClick = true;
+    }
+    if (result.request) {
+      options.onTransfer?.(result.request);
+    }
   });
-  button.addEventListener('pointercancel', (event) => {
+  button.addEventListener('pointercancel', event => {
     slotTransferController.cancel(event);
   });
 
   return {
     button,
     connect() {
-      if (stopSubscriptions) { return; }
+      if (stopSubscriptions) {
+        return;
+      }
       stopSubscriptions = [];
       const contextMenu = bindSlotContextMenuInput(secondaryInput, options.slot);
       const stopRequests = contextMenu.request.subscribe(request => {
-        if (request) { options.onContextMenu?.(request); }
+        if (request) {
+          options.onContextMenu?.(request);
+        }
       });
-      stopContextMenu = () => { stopRequests(); contextMenu.dispose(); };
+      stopContextMenu = () => {
+        stopRequests();
+        contextMenu.dispose();
+      };
       unregister = slotTransferController.register(options.slot, button);
       renderAll();
       bindItem(options.slot.item.peek(), null);
@@ -227,8 +289,10 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       stopSubscriptions = undefined;
       stopItemValues.forEach(stop => stop());
       stopItemValues = [];
-      freshnessMeter?.dispose(); freshnessMeter = undefined;
-      wetnessMeter?.dispose(); wetnessMeter = undefined;
+      freshnessMeter?.dispose();
+      freshnessMeter = undefined;
+      wetnessMeter?.dispose();
+      wetnessMeter = undefined;
       unregister?.();
       unregister = undefined;
     },
@@ -236,7 +300,9 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       updateItem(options.slot.item.peek());
       receiveAnimation.receive(source, amount);
     },
-    cancelReceiveAnimation() { receiveAnimation.cancel(); },
+    cancelReceiveAnimation() {
+      receiveAnimation.cancel();
+    },
     refresh() {
       if (!options.backgroundAtlas) {
         button.querySelector<HTMLImageElement>('.inventory-slot__background')!.src = options.backgroundUrl();

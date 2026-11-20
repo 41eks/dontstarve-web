@@ -25,39 +25,83 @@ export class CreatureInventory {
   private readonly spawn?: (state: InventoryStack) => ItemEntity;
   /** inventory.lua opencontainers: every inventory has it, so a creature that opens a container is tracked as the player is. */
   readonly opencontainers = new Set<ContainerInst>();
-  constructor(inst: CreatureInventoryInst, maxslots: number, drop: (item: ItemEntity, position: Vector3) => void, itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {}, spawn?: (state: InventoryStack) => ItemEntity) {
-    this.inst = inst; this.drop = drop; this.spawn = spawn;
+  constructor(
+    inst: CreatureInventoryInst,
+    maxslots: number,
+    drop: (item: ItemEntity, position: Vector3) => void,
+    itemSpecs: Readonly<Record<string, Pick<InventoryItemSpec, 'maxStack'>>> = {},
+    spawn?: (state: InventoryStack) => ItemEntity,
+  ) {
+    this.inst = inst;
+    this.drop = drop;
+    this.spawn = spawn;
     this.slots = Array.from({ length: maxslots }, () => new InventorySlot(itemSpecs));
   }
   /** inventory.lua ApplyDamage: a creature inventory has no equip slots, so nothing absorbs. */
-  ApplyDamage(damage: number): number { return damage; }
+  ApplyDamage(damage: number): number {
+    return damage;
+  }
   /** inventory.lua GetEquippedItem: `self.equipslots[eslot]`, which a creature inventory leaves empty. */
-  GetEquippedItem(_eslot: string): null { return null; }
-  IsFull(): boolean { return this.slots.every(slot => slot.getEntity() !== null); }
-  GetItems(): ItemEntity[] { return this.slots.flatMap(slot => slot.getEntity() ?? []); }
+  GetEquippedItem(_eslot: string): null {
+    return null;
+  }
+  IsFull(): boolean {
+    return this.slots.every(slot => slot.getEntity() !== null);
+  }
+  GetItems(): ItemEntity[] {
+    return this.slots.flatMap(slot => slot.getEntity() ?? []);
+  }
   /** inventory.lua GetItemInSlot: slots count from 1. */
-  GetItemInSlot(slot: number): ItemEntity | undefined { return this.slots[slot - 1]?.getEntity() ?? undefined; }
+  GetItemInSlot(slot: number): ItemEntity | undefined {
+    return this.slots[slot - 1]?.getEntity() ?? undefined;
+  }
   GiveItem(item: ItemEntity): boolean {
-    if (item.isRemoved || item.components.inventoryitem.owner) { return false; }
+    if (item.isRemoved || item.components.inventoryitem.owner) {
+      return false;
+    }
     item.flush();
     const stackLimit = this.slots[0]?.maxStack(item.prefab) ?? 1;
-    if (stackLimit > 1) { for (const slot of this.slots) {
-      const current = slot.getEntity();
-      if (!current || current.prefab !== item.prefab || current.skinId !== item.skinId || current.components.stackable.count >= stackLimit) { continue; }
-      current.flush();
-      const previous = current.components.stackable.count, received = Math.min(stackLimit - previous, item.components.stackable.count);
-      const a = current.snapshot().freshnessPercent, b = item.snapshot().freshnessPercent;
-      const consumed = received === item.components.stackable.count;
-      batch(() => {
-        if (a !== undefined && b !== undefined) { current.setFreshnessPercent((a * previous + b * received) / (previous + received)); }
-        if (item.GetIsWet()) { current.setWet(true); }
-        current.components.stackable.count += received;
-        if (consumed) { item.destroy(); } else { item.components.stackable.count -= received; }
-      });
-      if (consumed) { return true; }
-    } }
+    if (stackLimit > 1) {
+      for (const slot of this.slots) {
+        const current = slot.getEntity();
+        if (
+          !current ||
+          current.prefab !== item.prefab ||
+          current.skinId !== item.skinId ||
+          current.components.stackable.count >= stackLimit
+        ) {
+          continue;
+        }
+        current.flush();
+        const previous = current.components.stackable.count,
+          received = Math.min(stackLimit - previous, item.components.stackable.count);
+        const a = current.snapshot().freshnessPercent,
+          b = item.snapshot().freshnessPercent;
+        const consumed = received === item.components.stackable.count;
+        batch(() => {
+          if (a !== undefined && b !== undefined) {
+            current.setFreshnessPercent((a * previous + b * received) / (previous + received));
+          }
+          if (item.GetIsWet()) {
+            current.setWet(true);
+          }
+          current.components.stackable.count += received;
+          if (consumed) {
+            item.destroy();
+          } else {
+            item.components.stackable.count -= received;
+          }
+        });
+        if (consumed) {
+          return true;
+        }
+      }
+    }
     const index = this.slots.findIndex(slot => slot.getEntity() === null);
-    if (index < 0) { this.drop(item, this.inst.getPosition().clone()); return true; }
+    if (index < 0) {
+      this.drop(item, this.inst.getPosition().clone());
+      return true;
+    }
     item.flush();
     this.PutInSlot(index, item);
     return true;
@@ -68,9 +112,19 @@ export class CreatureInventory {
     item.components.inventoryitem.SetOwner(this.inst, {
       address: { containerId: `creature:${this.inst.id}`, slotKey: String(index) },
       changed: () => undefined,
-      remove: () => { if (slot.getEntity() !== item) { return false; } slot.setEntity(null); item.components.inventoryitem.owner = null; item.destroy(); return true; },
+      remove: () => {
+        if (slot.getEntity() !== item) {
+          return false;
+        }
+        slot.setEntity(null);
+        item.components.inventoryitem.owner = null;
+        item.destroy();
+        return true;
+      },
       replace: prefab => {
-        if (!this.spawn || slot.getEntity() !== item) { return false; }
+        if (!this.spawn || slot.getEntity() !== item) {
+          return false;
+        }
         const replacement = this.spawn({ itemId: prefab, count: item.components.stackable.count });
         this.RemoveItem(item);
         item.destroy();
@@ -83,38 +137,61 @@ export class CreatureInventory {
   }
   /** inventory.lua RemoveItem with wholestack: the item leaves its slot and stays valid. */
   RemoveItem(item: ItemEntity): void {
-    const slot = this.slots.find(slot => slot.getEntity() === item); if (!slot) { return; }
-    slot.setEntity(null); item.components.inventoryitem.owner = null;
+    const slot = this.slots.find(slot => slot.getEntity() === item);
+    if (!slot) {
+      return;
+    }
+    slot.setEntity(null);
+    item.components.inventoryitem.owner = null;
   }
   /** inventory.lua DropItem; an item already removed from its slot, as a failed shelf take leaves it, still drops. */
   DropItem(item: ItemEntity): void {
-    item.flush(); this.RemoveItem(item); this.drop(item, this.inst.getPosition().clone());
+    item.flush();
+    this.RemoveItem(item);
+    this.drop(item, this.inst.getPosition().clone());
   }
   TransferInventory(receiver: { components: { inventory?: CreatureInventory } }): void {
     const target = receiver.components.inventory;
-    if (!target) { return; }
+    if (!target) {
+      return;
+    }
     for (const item of this.GetItems()) {
-      item.flush(); this.RemoveItem(item); if (!target.GiveItem(item)) { this.drop(item, this.inst.getPosition().clone()); }
+      item.flush();
+      this.RemoveItem(item);
+      if (!target.GiveItem(item)) {
+        this.drop(item, this.inst.getPosition().clone());
+      }
     }
   }
   DropEverything(): void {
     const position = this.inst.getPosition().clone();
     for (const item of this.GetItems()) {
-      item.flush(); this.RemoveItem(item); this.drop(item, position);
+      item.flush();
+      this.RemoveItem(item);
+      this.drop(item, position);
     }
   }
   /** The items' runtime stacks, as a held creature or machine carries its contents in its own stack. */
-  GetSnapshot(): InventoryStack[] { return this.GetItems().map(item => { item.flush(); return item.snapshot(); }); }
+  GetSnapshot(): InventoryStack[] {
+    return this.GetItems().map(item => {
+      item.flush();
+      return item.snapshot();
+    });
+  }
   /** SpawnPrefab of each runtime stack a snapshot carried, given back to this inventory. */
   LoadSnapshot(items: readonly InventoryStack[], spawn: (state: InventoryStack) => ItemEntity): void {
-    for (const state of items) { this.GiveItem(spawn(state)); }
+    for (const state of items) {
+      this.GiveItem(spawn(state));
+    }
   }
   /** inventory.lua OnSave: each persisting item's GetSaveRecord under its one-based slot. */
   OnSave(): SlotItemsSave | undefined {
     const items: SlotItemsSave['items'] = {};
     this.slots.forEach((slot, index) => {
       const item = slot.getEntity();
-      if (item && item.persists) { items[String(index + 1)] = item.GetSaveRecord(); }
+      if (item && item.persists) {
+        items[String(index + 1)] = item.GetSaveRecord();
+      }
     });
     return Object.keys(items).length ? { items } : undefined;
   }
@@ -122,8 +199,12 @@ export class CreatureInventory {
   OnLoad(data: Partial<SlotItemsSave> | undefined): void {
     const restore = this.inst.worldServices?.restoreItem;
     const entries = Object.entries(data?.items ?? {});
-    if (!entries.length) { return; }
-    if (!restore) { throw new Error(`${this.inst.id} has no world to load its inventory in`); }
+    if (!entries.length) {
+      return;
+    }
+    if (!restore) {
+      throw new Error(`${this.inst.id} has no world to load its inventory in`);
+    }
     for (const [slot, record] of entries) {
       const index = Number(slot) - 1;
       if (!Number.isSafeInteger(index) || !this.slots[index] || this.slots[index].getEntity()) {
@@ -133,6 +214,13 @@ export class CreatureInventory {
     }
   }
   dispose(): void {
-    for (const slot of this.slots) { const item = slot.getEntity(); slot.setEntity(null); if (item) { item.components.inventoryitem.owner = null; item.destroy(); } }
+    for (const slot of this.slots) {
+      const item = slot.getEntity();
+      slot.setEntity(null);
+      if (item) {
+        item.components.inventoryitem.owner = null;
+        item.destroy();
+      }
+    }
   }
 }

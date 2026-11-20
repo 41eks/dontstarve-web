@@ -24,46 +24,104 @@ import { FRAMES } from '../../stategraphs/src/stategraph';
 import { createInventoryStore } from './testInventory';
 
 /** AnimState:SetBank, as the entity declares it on its sprite. */
-const bankOf = (inst: ArchivePillarInstance) => (inst.sprite.sprite.peek().source as { bank?: string } | undefined)?.bank;
+const bankOf = (inst: ArchivePillarInstance) =>
+  (inst.sprite.sprite.peek().source as { bank?: string } | undefined)?.bank;
 const IDS = [...CAVE_PILLAR_IDS, PILLAR_ATRIUM_ID, ARCHIVE_PILLAR_ID, VAULT_PILLAR_ID, MONKEYPILLAR_ID];
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
 const at = new THREE.Vector3(3, 0, 6);
-const record = (components: EntityPersistData = {}) => ({ id: 'saved', transform: { position: [3, 0, 6] as [number, number, number], rotationY: 0 }, components });
+const record = (components: EntityPersistData = {}) => ({
+  id: 'saved',
+  transform: { position: [3, 0, 6] as [number, number, number], rotationY: 0 },
+  components,
+});
 
 function setup() {
-  const scene = new THREE.Scene(), awake = createSignal(true), scheduler = new GameTimeScheduler();
+  const scene = new THREE.Scene(),
+    awake = createSignal(true),
+    scheduler = new GameTimeScheduler();
   const displays = new PrefabDisplayGroup(scene);
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
-  for (const declared of [pillarPrefabs(), atriumPillarPrefabs(), archivePillarPrefabs(), monkeyPillarPrefabs({ scheduler }),
-    vaultPillarPrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) })]) { prefabs.register(declared); }
-  const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
-  for (const definition of [PREFAB_DEFINITIONS.cavePillars, PREFAB_DEFINITIONS.atriumPillars, PREFAB_DEFINITIONS.archivePillars,
-    PREFAB_DEFINITIONS.vaultPillars, PREFAB_DEFINITIONS.monkeyPillars]) { registry.registerPrefabs(definition); }
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {
+    tickingarea: () => createMemo(() => awake.get()),
+  });
+  for (const declared of [
+    pillarPrefabs(),
+    atriumPillarPrefabs(),
+    archivePillarPrefabs(),
+    monkeyPillarPrefabs({ scheduler }),
+    vaultPillarPrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) }),
+  ]) {
+    prefabs.register(declared);
+  }
+  const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)),
+    inventory = createInventoryStore([]);
+  for (const definition of [
+    PREFAB_DEFINITIONS.cavePillars,
+    PREFAB_DEFINITIONS.atriumPillars,
+    PREFAB_DEFINITIONS.archivePillars,
+    PREFAB_DEFINITIONS.vaultPillars,
+    PREFAB_DEFINITIONS.monkeyPillars,
+  ]) {
+    registry.registerPrefabs(definition);
+  }
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  return { scene, awake, scheduler, prefabs, registry, inventory,
-    find: <Instance extends PrefabInstance = PrefabInstance>(id: string) => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).find(inst => inst.prefab === id) as Instance,
-    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
-      playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
-    dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
+  return {
+    scene,
+    awake,
+    scheduler,
+    prefabs,
+    registry,
+    inventory,
+    find: <Instance extends PrefabInstance = PrefabInstance>(id: string) =>
+      scene.children.map(model => prefabInstance<PrefabInstance>(model)!).find(inst => inst.prefab === id) as Instance,
+    save: () =>
+      serializeSave(
+        template,
+        {
+          entities: registry.exportRecords(),
+          inventory: inventory.exportSaved(),
+          elapsedSeconds: 0,
+          playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        },
+        SAVE_CATALOG,
+      ),
+    dispose() {
+      registry.dispose();
+      prefabs.dispose();
+      displays.dispose();
+      inventory.dispose();
+      scheduler.dispose();
+    },
+  };
 }
 /** The Lua tags, in order; `tickingarea` is this project's own activity tag. */
 const tags = (inst: PrefabInstance) => inst.listTags();
 const artLoaded = (inst: PrefabInstance) => prefabDisplay(inst.transform.model)!.artLoaded();
-const requested = (archive: string) => (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
+const requested = (archive: string) =>
+  (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) =>
+    String(url).endsWith(`/dst/data/anim/${archive}`),
+  );
 /** Frames the drawn clip to its end, as the display group does: its animover replaces the declared clip, even with one of the same name. */
 /** Advances game time to the end of the pillar's playing clip, whose animover plays the next one. */
 const finishClip = async (scheduler: GameTimeScheduler, pillar: MonkeyPillarInstance) => {
   const playing = pillar.animstate.animation.peek();
-  for (let frame = 0; frame < 300 && pillar.animstate.animation.peek() === playing; frame++) { scheduler.advance(FRAMES); }
+  for (let frame = 0; frame < 300 && pillar.animstate.animation.peek() === playing; frame++) {
+    scheduler.advance(FRAMES);
+  }
   expect(pillar.animstate.animation.peek()).not.toBe(playing);
   await turn();
 };
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))),
+  );
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('save records load with the clip, tags and bank their Lua declares', async () => {
   const s = setup();
@@ -87,7 +145,7 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     expect(requested('pillar_atrium.zip')).toBe(true);
 
     // choosebroken: a saved true sets the broken bank; a saved false never restores what the constructor's roll picked.
-    const random = vi.spyOn(Math, 'random').mockReturnValue(.5);
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.5);
     const whole = s.prefabs.spawnAs(ArchivePillarInstance, ARCHIVE_PILLAR_ID, at, record({ broken: false }));
     expect(tags(whole)).toEqual(['blocker', 'archive_pillar']);
     expect(whole.physics.json.peek()!.capsule).toEqual({ radius: 1.8, height: 6 });
@@ -102,12 +160,17 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     await artLoaded(broken);
     expect(requested('pillar_archive_broken.zip')).toBe(true);
     expect(broken.GetPersistData()).toEqual({ broken: true });
-    random.mockReturnValue(.1);
+    random.mockReturnValue(0.1);
     const rolled = s.prefabs.spawnAs(ArchivePillarInstance, ARCHIVE_PILLAR_ID, at, record({ broken: false }));
     expect([rolled.broken, bankOf(rolled)]).toEqual([false, 'pillar_archive_broken']);
     random.mockRestore();
 
-    const clips = { idle_upper: {}, idle_upper_capped: { capped: 1 }, idle_upper_capped_2: { capped: 2 }, idle_upper_broken: { broken: 1 } } as const;
+    const clips = {
+      idle_upper: {},
+      idle_upper_capped: { capped: 1 },
+      idle_upper_capped_2: { capped: 2 },
+      idle_upper_broken: { broken: 1 },
+    } as const;
     for (const [clip, components] of Object.entries(clips)) {
       const vault = s.prefabs.spawnAs(VaultPillarInstance, VAULT_PILLAR_ID, at, record(components));
       expect(tags(vault)).toEqual(['decor', 'nomagic', 'nohighlight']);
@@ -129,25 +192,35 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     // AnimState starts empty; OnLoad's setpillartype plays the saved idle once and animover chains the next.
     const monkey = s.prefabs.spawnAs(MonkeyPillarInstance, MONKEYPILLAR_ID, at, record({ pillar_id: 3 }));
     expect(tags(monkey)).toEqual(['blocker', 'SnowCovered', 'inspectable']);
-    expect(monkey.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle3', loop: false }, frame: expect.any(Number), lightOverride: .25 });
-    expect(monkey.physics.json.peek()!.capsule).toEqual({ radius: .6, height: 24 });
-    expect(monkey.light.peek()).toMatchObject({ intensity: .6, falloff: .8 });
+    expect(monkey.sprite.sprite.peek()).toMatchObject({
+      clip: { name: 'idle3', loop: false },
+      frame: expect.any(Number),
+      lightOverride: 0.25,
+    });
+    expect(monkey.physics.json.peek()!.capsule).toEqual({ radius: 0.6, height: 24 });
+    expect(monkey.light.peek()).toMatchObject({ intensity: 0.6, falloff: 0.8 });
     await artLoaded(monkey);
     expect(requested('pillar_monkey.zip') && requested('snow.zip')).toBe(true);
     // SetFrame's random frame shortens the logical clip by as much as the drawn one: 159 frames in all.
-    const first = monkey.animstate.animation.peek(), start = monkey.sprite.sprite.peek().frame as number;
-    s.scheduler.advance((159 - start - .5) * FRAMES);
+    const first = monkey.animstate.animation.peek(),
+      start = monkey.sprite.sprite.peek().frame as number;
+    s.scheduler.advance((159 - start - 0.5) * FRAMES);
     expect(monkey.animstate.animation.peek()).toBe(first);
-    s.scheduler.advance(FRAMES); await turn();
+    s.scheduler.advance(FRAMES);
+    await turn();
     expect(monkey.animstate.animation.peek()).not.toBe(first);
     expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle3', loop: false, finished: false });
     // The move trigger, 15 to 25 seconds after spawning, plays idle3_move at the next animover, then idle3 again.
-    for (let clip = 0; clip < 6 && monkey.animstate.animation.peek().name !== 'idle3_move'; clip++) { await finishClip(s.scheduler, monkey); }
+    for (let clip = 0; clip < 6 && monkey.animstate.animation.peek().name !== 'idle3_move'; clip++) {
+      await finishClip(s.scheduler, monkey);
+    }
     expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle3_move', loop: false, finished: false });
     await finishClip(s.scheduler, monkey);
     expect(monkey.sprite.sprite.peek().clip.name).toBe('idle3');
     expect(monkey.GetPersistData()).toEqual({ pillar_id: 3 });
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('sleeping releases the sprite and waking restores the declared clip and appearance', async () => {
@@ -161,7 +234,8 @@ it('sleeping releases the sprite and waking restores the declared clip and appea
     await Promise.all(pillars.map(artLoaded));
     const before = s.prefabs.exportRecords();
 
-    s.awake.set(false); await turn();
+    s.awake.set(false);
+    await turn();
     for (const pillar of pillars) {
       expect(pillar.status.peek()).toBe('asleep');
       expect(pillar.sprite.loaded).toBe(false);
@@ -172,8 +246,10 @@ it('sleeping releases the sprite and waking restores the declared clip and appea
     s.scheduler.advance(30);
     expect(monkey.animstate.animation.peek()).toBe(playing);
 
-    s.awake.set(true); await turn();
-    await Promise.all(pillars.map(artLoaded)); await turn();
+    s.awake.set(true);
+    await turn();
+    await Promise.all(pillars.map(artLoaded));
+    await turn();
     expect(looping.sprite.currentAnimation).toBe('idle');
     expect(looping.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
     expect(bankOf(broken)).toBe('pillar_archive_broken');
@@ -186,46 +262,71 @@ it('sleeping releases the sprite and waking restores the declared clip and appea
     await finishClip(s.scheduler, monkey);
     expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle2', finished: false });
     expect(s.prefabs.exportRecords()).toEqual(before);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
-it('c_spawn, c_save and reload keep every pillar, and c_give is refused', async () => {
-  const first = setup(); let zip!: Uint8Array, records!: ReturnType<EntityRegistry['exportRecords']>;
-  // Rolls a broken archive pillar and the string pillar_id "1".
-  const random = vi.spyOn(Math, 'random').mockReturnValue(.1);
-  try {
-    for (const id of IDS) {
-      expect((await executeDebugCommand(`c_spawn("${id}")`, first.inventory, spawned => first.registry.spawn(spawned))).ok).toBe(true);
-      expect((await executeDebugCommand(`c_give("${id}")`, first.inventory)).ok).toBe(false);
+it(
+  'c_spawn, c_save and reload keep every pillar, and c_give is refused',
+  async () => {
+    const first = setup();
+    let zip!: Uint8Array, records!: ReturnType<EntityRegistry['exportRecords']>;
+    // Rolls a broken archive pillar and the string pillar_id "1".
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.1);
+    try {
+      for (const id of IDS) {
+        expect(
+          (await executeDebugCommand(`c_spawn("${id}")`, first.inventory, spawned => first.registry.spawn(spawned))).ok,
+        ).toBe(true);
+        expect((await executeDebugCommand(`c_give("${id}")`, first.inventory)).ok).toBe(false);
+      }
+      records = first.registry.exportRecords();
+      const components = { archive_pillar: { broken: true }, monkeypillar: { pillar_id: '1' } } as Record<
+        string,
+        object
+      >;
+      for (const id of IDS) {
+        expect(records[id]).toHaveLength(1);
+        expect(records[id][0]).toMatchObject({
+          transform: { position: [12, 0, -6] },
+          components: components[id] ?? {},
+        });
+      }
+      expect(records.vault_pillar_bottom).toBeUndefined();
+      expect(
+        (
+          await executeDebugCommand('c_save()', first.inventory, undefined, async () => {
+            zip = await createClusterSaveZip(first.save(), 'forest');
+          })
+        ).ok,
+      ).toBe(true);
+    } finally {
+      first.dispose();
     }
-    records = first.registry.exportRecords();
-    const components = { archive_pillar: { broken: true }, monkeypillar: { pillar_id: '1' } } as Record<string, object>;
-    for (const id of IDS) {
-      expect(records[id]).toHaveLength(1);
-      expect(records[id][0]).toMatchObject({ transform: { position: [12, 0, -6] }, components: components[id] ?? {} });
+    random.mockReturnValue(0.5);
+    const files = unzipSync(zip),
+      text = strFromU8(files['Cluster_1/Master.json']);
+    const exported = JSON.parse(text) as { session: { playerFile: string } };
+    const { player } = JSON.parse(strFromU8(files[`Cluster_1/${exported.session.playerFile}`])) as { player: unknown };
+    const saved = deserializeSave(text, SAVE_CATALOG, player),
+      second = setup();
+    try {
+      expect(saved.world.entities).toEqual(records);
+      await second.registry.restoreAll(saved.world.entities);
+      for (const id of IDS) {
+        const pillar = second.find(id);
+        expect(pillar.entityId).toBe(records[id][0].id);
+        expect(pillar.position.toArray()).toEqual([12, 0, -6]);
+      }
+      expect(second.find(CAVE_PILLAR_IDS[0]).sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
+      expect(bankOf(second.find<ArchivePillarInstance>(ARCHIVE_PILLAR_ID))).toBe('pillar_archive_broken');
+      expect(second.find(VAULT_PILLAR_ID).sprite.sprite.peek().clip).toMatchObject({ name: 'idle_upper', loop: false });
+      expect(second.find(MONKEYPILLAR_ID).sprite.sprite.peek().clip).toMatchObject({ name: 'idle1', loop: false });
+      expect(second.registry.exportRecords()).toEqual(records);
+    } finally {
+      second.dispose();
     }
-    expect(records.vault_pillar_bottom).toBeUndefined();
-    expect((await executeDebugCommand('c_save()', first.inventory, undefined, async () => {
-      zip = await createClusterSaveZip(first.save(), 'forest');
-    })).ok).toBe(true);
-  } finally { first.dispose(); }
-  random.mockReturnValue(.5);
-  const files = unzipSync(zip), text = strFromU8(files['Cluster_1/Master.json']);
-  const exported = JSON.parse(text) as { session: { playerFile: string } };
-  const { player } = JSON.parse(strFromU8(files[`Cluster_1/${exported.session.playerFile}`])) as { player: unknown };
-  const saved = deserializeSave(text, SAVE_CATALOG, player), second = setup();
-  try {
-    expect(saved.world.entities).toEqual(records);
-    await second.registry.restoreAll(saved.world.entities);
-    for (const id of IDS) {
-      const pillar = second.find(id);
-      expect(pillar.entityId).toBe(records[id][0].id);
-      expect(pillar.position.toArray()).toEqual([12, 0, -6]);
-    }
-    expect(second.find(CAVE_PILLAR_IDS[0]).sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
-    expect(bankOf(second.find<ArchivePillarInstance>(ARCHIVE_PILLAR_ID))).toBe('pillar_archive_broken');
-    expect(second.find(VAULT_PILLAR_ID).sprite.sprite.peek().clip).toMatchObject({ name: 'idle_upper', loop: false });
-    expect(second.find(MONKEYPILLAR_ID).sprite.sprite.peek().clip).toMatchObject({ name: 'idle1', loop: false });
-    expect(second.registry.exportRecords()).toEqual(records);
-  } finally { second.dispose(); }
-}, CLUSTER_SAVE_ZIP_TIMEOUT);
+  },
+  CLUSTER_SAVE_ZIP_TIMEOUT,
+);

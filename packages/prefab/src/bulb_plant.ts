@@ -11,21 +11,23 @@ import { PlaySound, type SoundHandle } from './sound';
 
 export const BULB_PLANT_ID = 'flower_cave';
 export const BULB_PLANT_PREFABS = ['flower_cave', 'flower_cave_double', 'flower_cave_triple'] as const;
-export type BulbPlantPrefabId = typeof BULB_PLANT_PREFABS[number];
+export type BulbPlantPrefabId = (typeof BULB_PLANT_PREFABS)[number];
 export function isBulbPlantPrefab(value: string): value is BulbPlantPrefabId {
   return BULB_PLANT_PREFABS.some(known => known === value);
 }
 export const BULB_PLANT_VARIANTS = ['single', 'springy', 'double', 'triple'] as const;
 export const BULB_PLANT_LIGHT_STATES = ['ON', 'CHARGED', 'RECHARGING'] as const;
-export type BulbPlantVariant = typeof BULB_PLANT_VARIANTS[number];
-export type BulbPlantLightState = typeof BULB_PLANT_LIGHT_STATES[number];
+export type BulbPlantVariant = (typeof BULB_PLANT_VARIANTS)[number];
+export type BulbPlantLightState = (typeof BULB_PLANT_LIGHT_STATES)[number];
 export interface BulbPlantSaveState extends PickableSaveState {
   variant: BulbPlantVariant;
   lightState: BulbPlantLightState;
   remainingSeconds?: number;
 }
 export const BULB_PLANT_LIGHT: PrefabLocalLight = {
-  radius: 3 * (TILE_SIZE / 4), intensity: 0.8, falloff: 0.5,
+  radius: 3 * (TILE_SIZE / 4),
+  intensity: 0.8,
+  falloff: 0.5,
   colour: [237 / 255, 237 / 255, 209 / 255],
 };
 export const BULB_PLANT_MAX_ON_TIME = 108; // 90 + random integer 4–8 + random 0–10.
@@ -40,23 +42,39 @@ const BASE_LIGHTS = Object.freeze({
 });
 
 /** Shared OnUpdateLight curve from flower_cave.lua and lightflier_flower.lua. */
-export function bulbPlantLight(on: boolean, progress: number, variant: BulbPlantVariant = 'single'): PrefabLocalLight | null {
+export function bulbPlantLight(
+  on: boolean,
+  progress: number,
+  variant: BulbPlantVariant = 'single',
+): PrefabLocalLight | null {
   const k = THREE.MathUtils.clamp(progress, 0, 1);
   const base = BASE_LIGHTS[variant === 'double' || variant === 'triple' ? 'large' : 'small'];
-  if (!on && k >= 1 || on && k <= 0) { return null; }
+  if ((!on && k >= 1) || (on && k <= 0)) {
+    return null;
+  }
   // The tween has settled: reuse the shared steady-state light rather than allocating one per frame.
-  if (on && k >= 1) { return base; }
-  if (!on) { return { ...base,
-    radius: base.radius * (1 - k), intensity: base.intensity * (1 - k),
-    falloff: k + base.falloff * (1 - k) }; }
+  if (on && k >= 1) {
+    return base;
+  }
+  if (!on) {
+    return {
+      ...base,
+      radius: base.radius * (1 - k),
+      intensity: base.intensity * (1 - k),
+      falloff: k + base.falloff * (1 - k),
+    };
+  }
   if (k < 0.33) {
     const t = k / 0.33;
-    return { ...base, radius: base.radius * 1.33 * t,
-      intensity: base.intensity * t, falloff: base.falloff * 0.8 * t + 1 - t };
+    return {
+      ...base,
+      radius: base.radius * 1.33 * t,
+      intensity: base.intensity * t,
+      falloff: base.falloff * 0.8 * t + 1 - t,
+    };
   }
   const t = (k - 0.33) / 0.67;
-  return { ...base, radius: base.radius * (t + 1.33 * (1 - t)),
-    falloff: base.falloff * (t + 0.8 * (1 - t)) };
+  return { ...base, radius: base.radius * (t + 1.33 * (1 - t)), falloff: base.falloff * (t + 0.8 * (1 - t)) };
 }
 
 /** LightWatcher sampling period in game seconds; samples are timer-driven rather than per frame. */
@@ -71,7 +89,9 @@ export interface BulbPlantWorld {
 
 /** STATE_ANIMS: the first clip plays once, then the second; only `idle` loops. */
 const STATE_ANIMS: Readonly<Record<BulbPlantLightState, readonly [string, string]>> = {
-  ON: ['recharge', 'idle'], CHARGED: ['revive', 'off'], RECHARGING: ['drain', 'withered'],
+  ON: ['recharge', 'idle'],
+  CHARGED: ['revive', 'off'],
+  RECHARGING: ['drain', 'withered'],
 };
 
 /**
@@ -80,7 +100,12 @@ const STATE_ANIMS: Readonly<Record<BulbPlantLightState, readonly [string, string
  * hauntable are not ported. The record keeps the pickable state and the light timer inside `bulbPlant`.
  */
 /** flower_cave.lua assets: the four plantnames' ANIM archives; the withered builds are not ported. */
-const BULB_PLANT_ANIMATION_ARCHIVES = ['bulb_plant_single.zip', 'bulb_plant_double.zip', 'bulb_plant_triple.zip', 'bulb_plant_springy.zip'];
+const BULB_PLANT_ANIMATION_ARCHIVES = [
+  'bulb_plant_single.zip',
+  'bulb_plant_double.zip',
+  'bulb_plant_triple.zip',
+  'bulb_plant_springy.zip',
+];
 
 /** commonfn / single / onload: AnimState:SetBank / SetBuild("bulb_plant"..inst.plantname). */
 function SetPlantArt(inst: BulbPlantInstance): void {
@@ -112,8 +137,12 @@ export class BulbPlantInstance extends PrefabInstance {
     super(prefab, new SpriteState({ name: 'off', held: true, billboard: true }));
     this.world = world;
     this.AnimState.DeclareAnimationAssets(BULB_PLANT_ANIMATION_ARCHIVES, art);
-    this.variant = prefab === 'flower_cave_double' ? 'double' : prefab === 'flower_cave_triple' ? 'triple'
-      : BULB_PLANT_VARIANTS[Math.min(1, Math.floor(Math.random() * 2))];
+    this.variant =
+      prefab === 'flower_cave_double'
+        ? 'double'
+        : prefab === 'flower_cave_triple'
+          ? 'triple'
+          : BULB_PLANT_VARIANTS[Math.min(1, Math.floor(Math.random() * 2))];
     SetPlantArt(this);
     this.addTag('plant');
     const scheduler = world.scheduler;
@@ -121,43 +150,71 @@ export class BulbPlantInstance extends PrefabInstance {
     this.tweenStartedAt = scheduler.now - this.tweenDuration;
     this.rechargeTimer = new ComponentTimer(scheduler, () => this.Recharge());
     this.turnoffTimer = new ComponentTimer(scheduler, () => this.TurnOff());
-    addComponent(this, 'pickable', Pickable, 'lightbulb', bulbPlantRegrowTime(this.variant), this.variant === 'double' ? 2 : this.variant === 'triple' ? 3 : 1,
-      () => this.onpickedfn(), () => this.onregenfn(), undefined, { scheduler: scheduler });
+    addComponent(
+      this,
+      'pickable',
+      Pickable,
+      'lightbulb',
+      bulbPlantRegrowTime(this.variant),
+      this.variant === 'double' ? 2 : this.variant === 'triple' ? 3 : 1,
+      () => this.onpickedfn(),
+      () => this.onregenfn(),
+      undefined,
+      { scheduler: scheduler },
+    );
     // OnWake: DoTaskInTime(1, TurnOnInLight); the LightWatcher only reports enterlight after it.
     this.DoTaskInTime(1, () => {
       this.awake = true;
       this.sampleLight();
-      if (this.inLight) { this.TurnOn(); }
+      if (this.inLight) {
+        this.TurnOn();
+      }
     });
     this.onRemove(() => {
-      this.rechargeTimer.stop(); this.turnoffTimer.stop();
+      this.rechargeTimer.stop();
+      this.turnoffTimer.stop();
       this.components.pickable.dispose();
-      this.pickSound?.stop(); this.pickSound = undefined;
+      this.pickSound?.stop();
+      this.pickSound = undefined;
       this.light.set(null);
     });
 
     this.OnSave = (_inst, data) => {
-      const remainingSeconds = this.light_state === 'ON' ? this.turnoffTimer.remainingSeconds : this.rechargeTimer.remainingSeconds;
-      data.bulbPlant = { variant: this.variant, lightState: this.light_state,
-        ...(remainingSeconds === undefined ? {} : { remainingSeconds }), ...this.components.pickable.exportState() };
+      const remainingSeconds =
+        this.light_state === 'ON' ? this.turnoffTimer.remainingSeconds : this.rechargeTimer.remainingSeconds;
+      data.bulbPlant = {
+        variant: this.variant,
+        lightState: this.light_state,
+        ...(remainingSeconds === undefined ? {} : { remainingSeconds }),
+        ...this.components.pickable.exportState(),
+      };
       delete data.pickable;
     };
     this.OnLoad = (_inst, data) => {
       const saved = data.bulbPlant;
-      if (!saved) { return; }
+      if (!saved) {
+        return;
+      }
       this.variant = saved.variant;
       SetPlantArt(this);
       this.light_state = saved.lightState;
       this.components.pickable.OnLoad(saved);
       this.lightOn = this.light_state === 'ON' && this.components.pickable.canBePicked;
       if (saved.remainingSeconds !== undefined) {
-        if (this.light_state === 'ON') { this.turnoffTimer.start(saved.remainingSeconds); }
-        else if (this.light_state === 'RECHARGING') { this.rechargeTimer.start(saved.remainingSeconds); }
+        if (this.light_state === 'ON') {
+          this.turnoffTimer.start(saved.remainingSeconds);
+        } else if (this.light_state === 'RECHARGING') {
+          this.rechargeTimer.start(saved.remainingSeconds);
+        }
       }
       // ForceOn / ForceOff(on_load): the state's settled clip, without replaying its transition.
-      if (!this.components.pickable.canBePicked) { this.sprite.holdLastFrame('picked'); }
-      else if (this.lightOn) { this.sprite.start('idle'); }
-      else { this.sprite.holdLastFrame(STATE_ANIMS[this.light_state][1]); }
+      if (!this.components.pickable.canBePicked) {
+        this.sprite.holdLastFrame('picked');
+      } else if (this.lightOn) {
+        this.sprite.start('idle');
+      } else {
+        this.sprite.holdLastFrame(STATE_ANIMS[this.light_state][1]);
+      }
       this.refreshLight();
     };
   }
@@ -166,11 +223,15 @@ export class BulbPlantInstance extends PrefabInstance {
   override setActive(active: boolean): void {
     if (active !== this.entityAwake && !this.isRemoved) {
       this.entityAwake = active;
-      this.sampletask?.Cancel(); this.sampletask = undefined;
+      this.sampletask?.Cancel();
+      this.sampletask = undefined;
       if (active) {
         this.checkLight();
-        this.sampletask = this.DoPeriodicTask(BULB_PLANT_LIGHT_SAMPLE_INTERVAL, () => this.checkLight(),
-          BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + Math.random() * 0.5));
+        this.sampletask = this.DoPeriodicTask(
+          BULB_PLANT_LIGHT_SAMPLE_INTERVAL,
+          () => this.checkLight(),
+          BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + Math.random() * 0.5),
+        );
         this.refreshLight();
       }
     }
@@ -179,7 +240,9 @@ export class BulbPlantInstance extends PrefabInstance {
 
   /** TurnOn: only a pickable, CHARGED plant. */
   TurnOn(): void {
-    if (this.isRemoved || !this.components.pickable.canBePicked || this.light_state !== 'CHARGED') { return; }
+    if (this.isRemoved || !this.components.pickable.canBePicked || this.light_state !== 'CHARGED') {
+      return;
+    }
     this.SetLightState('ON');
     this.lightOn = true;
     this.startTween();
@@ -188,7 +251,9 @@ export class BulbPlantInstance extends PrefabInstance {
 
   /** TurnOff: the turnoff timer, or a regrowth, starts recharging. */
   TurnOff(): void {
-    if (this.isRemoved) { return; }
+    if (this.isRemoved) {
+      return;
+    }
     this.SetLightState('RECHARGING');
     this.lightOn = false;
     this.startTween();
@@ -198,12 +263,16 @@ export class BulbPlantInstance extends PrefabInstance {
   private Recharge(): void {
     this.SetLightState('CHARGED');
     this.sampleLight();
-    if (this.inLight) { this.TurnOn(); }
+    if (this.inLight) {
+      this.TurnOn();
+    }
   }
 
   private onpickedfn(): void {
     // ForceOff, then StopTimer turnoff / recharge.
-    if (this.light_state === 'ON') { this.SetLightState('RECHARGING'); }
+    if (this.light_state === 'ON') {
+      this.SetLightState('RECHARGING');
+    }
     this.lightOn = false;
     this.endTween();
     this.turnoffTimer.stop();
@@ -232,7 +301,9 @@ export class BulbPlantInstance extends PrefabInstance {
   private checkLight(): void {
     const wasInLight = this.inLight;
     this.sampleLight();
-    if (this.awake && !wasInLight && this.inLight) { this.TurnOn(); }
+    if (this.awake && !wasInLight && this.inLight) {
+      this.TurnOn();
+    }
   }
 
   /** LightWatcher SetLightThresh(.075) / SetDarkThresh(.05). */
@@ -256,25 +327,40 @@ export class BulbPlantInstance extends PrefabInstance {
 
   /** OnUpdateLight, repeated every FRAMES by OnLightDirty's periodic task until the tween ends. */
   private refreshLight(): void {
-    if (this.isRemoved) { return; }
+    if (this.isRemoved) {
+      return;
+    }
     // The last step lands on the tween's end, as OnUpdateLight clamps _lightframe to _lightmaxframe.
     const remaining = this.tweenStartedAt + this.tweenDuration - this.world.scheduler.now;
     const done = remaining <= 1e-9;
     this.light.set(bulbPlantLight(this.lightOn, done ? 1 : 1 - remaining / this.tweenDuration, this.variant));
     if (!done && !this._lighttask) {
-      this._lighttask = this.DoTaskInTime(Math.min(FRAMES, remaining), () => { this._lighttask = undefined; this.refreshLight(); });
+      this._lighttask = this.DoTaskInTime(Math.min(FRAMES, remaining), () => {
+        this._lighttask = undefined;
+        this.refreshLight();
+      });
     }
   }
 }
 
 /** The Prefabs flower_cave.lua returns, without the withered ones. */
-export function bulbPlantPrefabs(world: BulbPlantWorld): Readonly<Record<BulbPlantPrefabId, PrefabEntityDefinition<BulbPlantInstance>>> {
+export function bulbPlantPrefabs(
+  world: BulbPlantWorld,
+): Readonly<Record<BulbPlantPrefabId, PrefabEntityDefinition<BulbPlantInstance>>> {
   const define = (prefab: BulbPlantPrefabId): PrefabEntityDefinition<BulbPlantInstance> => ({
     fn: (_position, sprites) => new BulbPlantInstance(prefab, world, sprites.archives),
     // commonfn's bank and build; the plantname's SetBank / SetBuild picks the drawn one.
-    assets: { animationArchive: 'bulb_plant_single.zip', buildArchives: ['bulb_plant_single.zip'], bank: 'bulb_plant_single' },
+    assets: {
+      animationArchive: 'bulb_plant_single.zip',
+      buildArchives: ['bulb_plant_single.zip'],
+      bank: 'bulb_plant_single',
+    },
     assetOptions: { instancedAnimations: ['idle'], staticBillboard: true },
     minimapIcon: 'bulb_plant.png',
   });
-  return { flower_cave: define('flower_cave'), flower_cave_double: define('flower_cave_double'), flower_cave_triple: define('flower_cave_triple') };
+  return {
+    flower_cave: define('flower_cave'),
+    flower_cave_double: define('flower_cave_double'),
+    flower_cave_triple: define('flower_cave_triple'),
+  };
 }

@@ -9,7 +9,12 @@ import type { EntityPersistData } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { ReadonlyVector3 } from './transform';
 import catalog from './groundItems.json' with { type: 'json' };
-import { createRenderEffect, getBoundWatchWorldContent, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
+import {
+  createRenderEffect,
+  getBoundWatchWorldContent,
+  WorldContentKey,
+  type GetWatchWorldContent,
+} from '@dontstarve-web/signals';
 import type { Pickable } from './components/pickable';
 
 /** World units per DST unit. */
@@ -19,58 +24,92 @@ export { WORLD_SCALE } from './tile';
 export { GROUND_COLLISION_GROUP } from '../../componets/src/physicsBinding';
 
 /** An entity with a declared inst.Physics; `PrefabInstance` is one. */
-export interface PhysicsEntity { readonly physics: PhysicsState }
+export interface PhysicsEntity {
+  readonly physics: PhysicsState;
+}
 
 /** standardcomponents.lua defaults used by the non-structure burnable prefabs. */
 export function DefaultBurnFn(inst: PrefabInstance): void {
-    if (!inst.hasTag('tree') && !inst.hasTag('structure')) { inst.persists = false; }
+  if (!inst.hasTag('tree') && !inst.hasTag('structure')) {
+    inst.persists = false;
+  }
 }
 
 export function DefaultExtinguishFn(inst: PrefabInstance): void {
-    if (!inst.hasTag('tree') && !inst.hasTag('structure')) { inst.persists = true; }
+  if (!inst.hasTag('tree') && !inst.hasTag('structure')) {
+    inst.persists = true;
+  }
 }
 
-export function DefaultBurntFn(inst: PrefabInstance, world: {
+export function DefaultBurntFn(
+  inst: PrefabInstance,
+  world: {
     spawnGroundItem: SpawnGroundItem;
     isOcean?(position: ReadonlyVector3): boolean;
-}): void {
-    inst.components.growable?.StopGrowing();
-    if (inst.components.workable?.GetWorkAction() !== 'HAMMER') { inst.components.workable?.SetWorkLeft(0); }
-    if (!world.isOcean?.(inst.position)) { world.spawnGroundItem({ ...catalog.items.ash, itemId: 'ash', count: 1 }, inst.position); }
-    inst.remove();
+  },
+): void {
+  inst.components.growable?.StopGrowing();
+  if (inst.components.workable?.GetWorkAction() !== 'HAMMER') {
+    inst.components.workable?.SetWorkLeft(0);
+  }
+  if (!world.isOcean?.(inst.position)) {
+    world.spawnGroundItem({ ...catalog.items.ash, itemId: 'ash', count: 1 }, inst.position);
+  }
+  inst.remove();
 }
 
 /** standardcomponents.lua MakeNoGrowInWinter: the instance owns the world-state binding. */
-export function MakeNoGrowInWinter(inst: PrefabInstance & { components: { pickable: Pickable } },
-    watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent()): void {
-    const season = watch?.(WorldContentKey.Season, stop => inst.onRemove(stop));
-    if (!season) { return; }
-    const toggle = (winter: boolean) => {
-        if (winter) { inst.components.pickable.pause(); } else { inst.components.pickable.resume(); }
-    };
-    season.subscribe((current, previous) => {
-        if ((current.season === 'winter') !== (previous.season === 'winter')) { toggle(current.season === 'winter'); }
-    });
-    toggle(season.peek().season === 'winter');
+export function MakeNoGrowInWinter(
+  inst: PrefabInstance & { components: { pickable: Pickable } },
+  watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent(),
+): void {
+  const season = watch?.(WorldContentKey.Season, stop => inst.onRemove(stop));
+  if (!season) {
+    return;
+  }
+  const toggle = (winter: boolean) => {
+    if (winter) {
+      inst.components.pickable.pause();
+    } else {
+      inst.components.pickable.resume();
+    }
+  };
+  season.subscribe((current, previous) => {
+    if ((current.season === 'winter') !== (previous.season === 'winter')) {
+      toggle(current.season === 'winter');
+    }
+  });
+  toggle(season.peek().season === 'winter');
 }
 
 /** standardcomponents.lua MakeSnowCoveredPristine: the snow symbol override, the SnowCovered tag and the hidden snow layer. */
 export function MakeSnowCoveredPristine(inst: PrefabInstance): void {
-    inst.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
-    inst.addTag('SnowCovered');
-    inst.sprite.hideLayer('snow');
+  inst.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
+  inst.addTag('SnowCovered');
+  inst.sprite.hideLayer('snow');
 }
 
 /**
  * standardcomponents.lua MakeSnowCoveredPristine + MakeSnowCovered: the snow symbol from snow.zip, shown while the world
  * is snow covered (weather.lua SNOW_COVERED_THRESHOLD). The prefab declares snow.zip and the hidden `snow` layer.
  */
-export function MakeSnowCovered(inst: PrefabInstance, watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent()): void {
-    if (!inst.hasTag('SnowCovered')) { MakeSnowCoveredPristine(inst); }
-    const snow = watch?.(WorldContentKey.SnowLevel, stop => inst.onRemove(stop));
-    inst.onRemove(createRenderEffect(() => {
-        if ((snow?.get() ?? 0) >= .015) { inst.sprite.showLayer('snow'); } else { inst.sprite.hideLayer('snow'); }
-    }));
+export function MakeSnowCovered(
+  inst: PrefabInstance,
+  watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent(),
+): void {
+  if (!inst.hasTag('SnowCovered')) {
+    MakeSnowCoveredPristine(inst);
+  }
+  const snow = watch?.(WorldContentKey.SnowLevel, stop => inst.onRemove(stop));
+  inst.onRemove(
+    createRenderEffect(() => {
+      if ((snow?.get() ?? 0) >= 0.015) {
+        inst.sprite.showLayer('snow');
+      } else {
+        inst.sprite.hideLayer('snow');
+      }
+    }),
+  );
 }
 
 /**
@@ -78,34 +117,40 @@ export function MakeSnowCovered(inst: PrefabInstance, watch: GetWatchWorldConten
  * RemoveComponent("burnable"), belongs to the BurnableBinding's owner, which removes the propagator with it.
  */
 export function DefaultBurntStructureFn(inst: PrefabInstance): void {
-    inst.addTag('burnt');
-    inst.components.burnable!.canlight = false;
-    inst.sprite.start('burnt');
-    inst.PushEvent('burntup', undefined);
-    for (const name of ['idlesound', 'sound', 'loop', 'snd']) { inst.SoundEmitter?.KillSound(name); }
-    inst.components.workable?.SetWorkLeft(1);
-    const container = inst.components.container;
-    if (container) {
-        container.DropEverything(inst.position);
-        container.Close();
-        releaseBuildingContainer(inst);
-    }
-    const stewer = inst.components.stewer;
-    if (stewer) {
-        stewer.StopCooking('fire');
-        removeComponent(inst, 'stewer');
-    }
-    removeComponent(inst, 'prototyper');
+  inst.addTag('burnt');
+  inst.components.burnable!.canlight = false;
+  inst.sprite.start('burnt');
+  inst.PushEvent('burntup', undefined);
+  for (const name of ['idlesound', 'sound', 'loop', 'snd']) {
+    inst.SoundEmitter?.KillSound(name);
+  }
+  inst.components.workable?.SetWorkLeft(1);
+  const container = inst.components.container;
+  if (container) {
+    container.DropEverything(inst.position);
+    container.Close();
+    releaseBuildingContainer(inst);
+  }
+  const stewer = inst.components.stewer;
+  if (stewer) {
+    stewer.StopCooking('fire');
+    removeComponent(inst, 'stewer');
+  }
+  removeComponent(inst, 'prototyper');
 }
 
 /** The onsave of a burnable structure's prefab: a burning structure saves as burnt. */
 export function onsaveBurnt(inst: PrefabInstance, data: EntityPersistData): void {
-    if (inst.hasTag('burnt') || inst.components.burnable?.IsBurning()) { (data.building ??= {}).burnt = true; }
+  if (inst.hasTag('burnt') || inst.components.burnable?.IsBurning()) {
+    (data.building ??= {}).burnt = true;
+  }
 }
 
 /** The onload of a burnable structure's prefab: data.burnt runs the burnable's onburnt. */
 export function onloadBurnt(inst: PrefabInstance, data: EntityPersistData): void {
-    if (data.building?.burnt) { inst.components.burnable!.onburnt?.(inst); }
+  if (data.building?.burnt) {
+    inst.components.burnable!.onburnt?.(inst);
+  }
 }
 
 /**
@@ -139,7 +184,11 @@ export function MakeWaterObstaclePhysics(inst: PhysicsEntity, rad: number, heigh
  * standardcomponents.lua MakeHeavyObstaclePhysics(inst, rad, height): the same static capsule as an obstacle, plus the
  * `blocker` tag. Friction, damping and restitution only matter once the heavyobstaclephysics component turns it into an item.
  */
-export function MakeHeavyObstaclePhysics(inst: PhysicsEntity & { addTag(tag: string): void }, rad: number, height = 2): PhysicsState {
+export function MakeHeavyObstaclePhysics(
+  inst: PhysicsEntity & { addTag(tag: string): void },
+  rad: number,
+  height = 2,
+): PhysicsState {
   inst.addTag('blocker');
   return MakeObstaclePhysics(inst, rad, height);
 }
@@ -167,8 +216,13 @@ export function MakeFlyingGiantCharacterPhysics(inst: PhysicsEntity, mass: numbe
 }
 
 /** COLLISION masks of a character: SGwilson ToggleOnPhysics and ChangeToCharacterPhysics share it. */
-export const CHARACTER_COLLISION_MASK = [COLLISION.WORLD, COLLISION.OBSTACLES, COLLISION.SMALLOBSTACLES, COLLISION.CHARACTERS,
-  COLLISION.GIANTS] as const;
+export const CHARACTER_COLLISION_MASK = [
+  COLLISION.WORLD,
+  COLLISION.OBSTACLES,
+  COLLISION.SMALLOBSTACLES,
+  COLLISION.CHARACTERS,
+  COLLISION.GIANTS,
+] as const;
 
 /**
  * standardcomponents.lua MakeCharacterPhysics(inst, mass, rad): a moving capsule, a circle on the ground plane.
@@ -201,7 +255,11 @@ export function MakeGhostPhysics(inst: PhysicsEntity, mass: number, rad: number)
 }
 
 /** standardcomponents.lua MakePondPhysics(inst, rad, height). */
-export function MakePondPhysics(inst: PhysicsEntity & { addTag(tag: string): void }, rad: number, height = 2): PhysicsState {
+export function MakePondPhysics(
+  inst: PhysicsEntity & { addTag(tag: string): void },
+  rad: number,
+  height = 2,
+): PhysicsState {
   inst.addTag('blocker');
   return MakeObstaclePhysics(inst, rad, height);
 }
@@ -209,9 +267,14 @@ export function MakePondPhysics(inst: PhysicsEntity & { addTag(tag: string): voi
 /** standardcomponents.lua RemovePhysicsColliders(inst): a static body keeps its radius but stops colliding. */
 export function RemovePhysicsColliders(inst: PhysicsEntity): void {
   const phys = inst.physics;
-  if (!phys.json.peek()) { return; }
-  if (phys.GetMass() > 0) { phys.SetCollisionMask(COLLISION.GROUND); }
-  else { phys.ClearCollisionMask(); }
+  if (!phys.json.peek()) {
+    return;
+  }
+  if (phys.GetMass() > 0) {
+    phys.SetCollisionMask(COLLISION.GROUND);
+  } else {
+    phys.ClearCollisionMask();
+  }
 }
 
 /** standardcomponents.lua shatterfx.character. */
@@ -224,7 +287,9 @@ export interface FreezableWorld {
 }
 
 /** An inst that takes freezable, as the Make*FreezableCharacter callers declare it. */
-export type FreezableCharacter = PrefabInstance & { readonly components: PrefabInstance['components'] & { freezable?: Freezable } };
+export type FreezableCharacter = PrefabInstance & {
+  readonly components: PrefabInstance['components'] & { freezable?: Freezable };
+};
 type ShatterOffset = { readonly x: number; readonly y: number; readonly z: number };
 
 /**
@@ -232,24 +297,52 @@ type ShatterOffset = { readonly x: number; readonly y: number; readonly z: numbe
  * level and resistance, and one `shatter` fx at `offset`. The fx is placed at the inst's position plus the offset; its
  * Follower on `sym` (a symbol of the inst's art) is not ported.
  */
-function MakeFreezableCharacter(inst: FreezableCharacter, fxlevel: number, resistance: number | undefined, world: FreezableWorld,
-  sym?: string, offset: ShatterOffset = { x: 0, y: 0, z: 0 }): Freezable {
+function MakeFreezableCharacter(
+  inst: FreezableCharacter,
+  fxlevel: number,
+  resistance: number | undefined,
+  world: FreezableWorld,
+  sym?: string,
+  offset: ShatterOffset = { x: 0, y: 0, z: 0 },
+): Freezable {
   const freezable = addComponent(inst, 'freezable', Freezable, world.scheduler, (fx, level) => {
     const { x, y, z } = inst.position;
     world.fx?.shatter(new THREE.Vector3(x + fx.x, y + fx.y, z + fx.z), level);
   });
   freezable.SetShatterFXLevel(fxlevel);
-  if (resistance !== undefined) { freezable.SetResistance(resistance); }
+  if (resistance !== undefined) {
+    freezable.SetResistance(resistance);
+  }
   freezable.AddShatterFX(SHATTER_FX_CHARACTER, offset, sym);
   return freezable;
 }
-export const MakeTinyFreezableCharacter = (inst: FreezableCharacter, world: FreezableWorld, sym?: string, offset?: ShatterOffset) =>
-  MakeFreezableCharacter(inst, 1, undefined, world, sym, offset);
-export const MakeSmallFreezableCharacter = (inst: FreezableCharacter, world: FreezableWorld, sym?: string, offset?: ShatterOffset) =>
-  MakeFreezableCharacter(inst, 2, undefined, world, sym, offset);
-export const MakeMediumFreezableCharacter = (inst: FreezableCharacter, world: FreezableWorld, sym?: string, offset?: ShatterOffset) =>
-  MakeFreezableCharacter(inst, 3, 2, world, sym, offset);
-export const MakeLargeFreezableCharacter = (inst: FreezableCharacter, world: FreezableWorld, sym?: string, offset?: ShatterOffset) =>
-  MakeFreezableCharacter(inst, 4, 3, world, sym, offset);
-export const MakeHugeFreezableCharacter = (inst: FreezableCharacter, world: FreezableWorld, sym?: string, offset?: ShatterOffset) =>
-  MakeFreezableCharacter(inst, 5, 4, world, sym, offset);
+export const MakeTinyFreezableCharacter = (
+  inst: FreezableCharacter,
+  world: FreezableWorld,
+  sym?: string,
+  offset?: ShatterOffset,
+) => MakeFreezableCharacter(inst, 1, undefined, world, sym, offset);
+export const MakeSmallFreezableCharacter = (
+  inst: FreezableCharacter,
+  world: FreezableWorld,
+  sym?: string,
+  offset?: ShatterOffset,
+) => MakeFreezableCharacter(inst, 2, undefined, world, sym, offset);
+export const MakeMediumFreezableCharacter = (
+  inst: FreezableCharacter,
+  world: FreezableWorld,
+  sym?: string,
+  offset?: ShatterOffset,
+) => MakeFreezableCharacter(inst, 3, 2, world, sym, offset);
+export const MakeLargeFreezableCharacter = (
+  inst: FreezableCharacter,
+  world: FreezableWorld,
+  sym?: string,
+  offset?: ShatterOffset,
+) => MakeFreezableCharacter(inst, 4, 3, world, sym, offset);
+export const MakeHugeFreezableCharacter = (
+  inst: FreezableCharacter,
+  world: FreezableWorld,
+  sym?: string,
+  offset?: ShatterOffset,
+) => MakeFreezableCharacter(inst, 5, 4, world, sym, offset);

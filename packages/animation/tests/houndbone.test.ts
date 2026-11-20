@@ -20,20 +20,31 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   for (const file of ['hound_base.zip', 'structure_collapse_fx.zip']) {
     archives.set(file, await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url)));
   }
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(new Uint8Array(archives.get(url.split('/').pop()!)!))));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => new Response(new Uint8Array(archives.get(url.split('/').pop()!)!))),
+  );
   vi.stubGlobal('window', new EventTarget());
 
   const dropped: string[] = [];
   const scene = new THREE.Scene();
   const displays = new PrefabDisplayGroup(scene);
   const bones = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {});
-  bones.register(houndbonePrefabs({
-    fx: createTestWorldFx(scene),
-    spawnGroundItem: (definition: GroundItemDefinition) => { dropped.push(definition.itemId); return undefined; },
-  }));
+  bones.register(
+    houndbonePrefabs({
+      fx: createTestWorldFx(scene),
+      spawnGroundItem: (definition: GroundItemDefinition) => {
+        dropped.push(definition.itemId);
+        return undefined;
+      },
+    }),
+  );
 
-  const record = (bonetype: number, id: string) => ({ id, transform: { position: [1, 0, 2] as [number, number, number], rotationY: 0 },
-    components: { houndbone: { bonetype } } });
+  const record = (bonetype: number, id: string) => ({
+    id,
+    transform: { position: [1, 0, 2] as [number, number, number], rotationY: 0 },
+    components: { houndbone: { bonetype } },
+  });
   const one = bones.spawn(HOUNDBONE_ID, new THREE.Vector3(1, 0, 2), record(1, 'a')).transform.model;
   const three = bones.spawn(HOUNDBONE_ID, new THREE.Vector3(3, 0, 2), record(3, 'c')).transform.model;
   // houndbone.lua: bonetype n plays piece<n>; the entity carries the `bone` tag and a HAMMER workable of 1.
@@ -41,10 +52,15 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   expect(prefabInstance(three)!.sprite.currentAnimation).toBe('piece3');
   expect(prefabInstance(one)!.listTags()).toContain('bone');
   expect(bones.exportRecords().map(({ record }) => record.components.houndbone?.bonetype)).toEqual([1, 3]);
-  expect(() => PREFAB_DEFINITIONS.houndbones.parseComponents({ houndbone: { bonetype: 4 } }, 'x', { grounded: true } as never)).toThrow();
+  expect(() =>
+    PREFAB_DEFINITIONS.houndbones.parseComponents({ houndbone: { bonetype: 4 } }, 'x', { grounded: true } as never),
+  ).toThrow();
 
   const restored = bones.spawn(HOUNDBONE_ID, new THREE.Vector3(5, 0, 5)).transform.model;
-  expect([1, 2, 3]).toContain(bones.exportRecords().find(({ record }) => record.id === lookupPrefabInstance(restored)?.entityId)?.record.components.houndbone?.bonetype);
+  expect([1, 2, 3]).toContain(
+    bones.exportRecords().find(({ record }) => record.id === lookupPrefabInstance(restored)?.entityId)?.record
+      .components.houndbone?.bonetype,
+  );
 
   const target = workTargets('HAMMER').find(target => target.model === one)!;
   target.work();
@@ -56,5 +72,6 @@ it('hammers a hound bone once into boneshards, adds a houndstooth chance for pie
   expect(bones.exportRecords().map(({ record }) => record.id)).not.toContain('a');
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(scene.children).not.toContain(one);
-  bones.dispose(); displays.dispose();
+  bones.dispose();
+  displays.dispose();
 });

@@ -5,7 +5,11 @@ export class Submersible {
 
   constructor(_inst: object) {}
 
-  OnSave(): { force_no_repositioning: boolean } { return { force_no_repositioning: this.force_no_repositioning }; }
+  OnSave(): { force_no_repositioning: boolean } {
+    return { force_no_repositioning: this.force_no_repositioning };
+  }
 
-  OnLoad(data: { force_no_repositioning?: boolean }): void { this.force_no_repositioning = data.force_no_repositioning ?? false; }
+  OnLoad(data: { force_no_repositioning?: boolean }): void {
+    this.force_no_repositioning = data.force_no_repositioning ?? false;
+  }
 }

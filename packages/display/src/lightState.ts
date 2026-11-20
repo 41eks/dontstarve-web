@@ -17,12 +17,18 @@ export class LightState {
   readonly json: ReadonlySignal<LightJson | undefined> = readonlySignal(this.state);
   private readonly slotState = createSignal<ReadonlyMap<string, ReadonlySignal<LightJson | undefined>>>(new Map());
   /** Lights of other entities parented to this one, by key. */
-  readonly slots: ReadonlySignal<ReadonlyMap<string, ReadonlySignal<LightJson | undefined>>> = readonlySignal(this.slotState);
+  readonly slots: ReadonlySignal<ReadonlyMap<string, ReadonlySignal<LightJson | undefined>>> = readonlySignal(
+    this.slotState,
+  );
 
   /** Light:Enable(true) with these settings; `null` is Light:Enable(false). */
-  set(light: LightJson | null): void { this.state.set(light ?? undefined); }
+  set(light: LightJson | null): void {
+    this.state.set(light ?? undefined);
+  }
 
-  peek(): LightJson | undefined { return this.state.peek(); }
+  peek(): LightJson | undefined {
+    return this.state.peek();
+  }
 
   /**
    * Another entity's inst.Light, by its json signal, parented here with entity:SetParent: this entity's display lists it at
@@ -31,9 +37,13 @@ export class LightState {
   declare(key: string, light: ReadonlySignal<LightJson | undefined> | undefined): void {
     const slots = new Map(this.slotState.peek());
     if (light) {
-      if (slots.get(key) === light) { return; }
+      if (slots.get(key) === light) {
+        return;
+      }
       slots.set(key, light);
-    } else if (!slots.delete(key)) { return; }
+    } else if (!slots.delete(key)) {
+      return;
+    }
     this.slotState.set(slots);
   }
 }

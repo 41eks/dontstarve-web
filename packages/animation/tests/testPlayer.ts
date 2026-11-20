@@ -39,16 +39,32 @@ export interface TestPlayerOptions {
  * The entity that acts in a test, as the application's player inst does: it is tagged "player", owns `inventory`
  * (inventory.inst, the store's actor and its items' owner) and is every action's doer.
  */
-export function testPlayer({ entity, model, inventory = createInventoryStore([]), position, map, prefab = 'wilson', tags = [] }: TestPlayerOptions = {}): TestPlayer {
+export function testPlayer({
+  entity,
+  model,
+  inventory = createInventoryStore([]),
+  position,
+  map,
+  prefab = 'wilson',
+  tags = [],
+}: TestPlayerOptions = {}): TestPlayer {
   // A new player entity is tracked in a world of its own, so its TheSim finds what a test adds there.
   const existing = entity ?? (model && prefabInstance(model));
-  const inst: PrefabInstance<ArchiveSpriteCommands> = existing
-    ?? testEnts().track(model ? entityOf(model, prefab) : createEmptyEntity(prefab).instance);
-  for (const tag of ['player', ...tags]) { inst.addTag(tag); }
-  if (position) { inst.setPosition(position.x, position.y, position.z); }
+  const inst: PrefabInstance<ArchiveSpriteCommands> =
+    existing ?? testEnts().track(model ? entityOf(model, prefab) : createEmptyEntity(prefab).instance);
+  for (const tag of ['player', ...tags]) {
+    inst.addTag(tag);
+  }
+  if (position) {
+    inst.setPosition(position.x, position.y, position.z);
+  }
   inst.components.inventory = inventory;
   inventory.bindActor(inst);
-  if (!ownsStore(inst)) { throw new Error('A test player owns its inventory store'); }
-  if (map) { inst.Map = map; }
+  if (!ownsStore(inst)) {
+    throw new Error('A test player owns its inventory store');
+  }
+  if (map) {
+    inst.Map = map;
+  }
   return inst;
 }

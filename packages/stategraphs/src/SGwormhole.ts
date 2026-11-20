@@ -4,7 +4,9 @@ import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { SoundEmitter } from '../../prefab/src/soundEmitter';
 
 export type WormholeStateName = 'idle' | 'open' | 'opening' | 'closing';
-export type WormholeSound = 'dontstarve/common/teleportworm/idle' | 'dontstarve/common/teleportworm/open'
+export type WormholeSound =
+  | 'dontstarve/common/teleportworm/idle'
+  | 'dontstarve/common/teleportworm/open'
   | 'dontstarve/common/teleportworm/close';
 
 /** What SGwormhole.lua reads from and writes to its inst. */

@@ -37,7 +37,15 @@ export interface PhysicsJson {
   readonly dontRemoveOnSleep: boolean;
 }
 
-const DEFAULTS: PhysicsJson = { capsule: { radius: 0, height: 0 }, mass: 0, damping: 0, group: 0, mask: 0, active: true, dontRemoveOnSleep: false };
+const DEFAULTS: PhysicsJson = {
+  capsule: { radius: 0, height: 0 },
+  mass: 0,
+  damping: 0,
+  group: 0,
+  mask: 0,
+  active: true,
+  dontRemoveOnSleep: false,
+};
 
 /**
  * inst.Physics: the entity only declares its collider here. A `PhysicsBinding` subscribes to `json` and keeps
@@ -51,25 +59,57 @@ export class PhysicsState {
   readonly moved: ReadonlySignal<number> = readonlySignal(this.teleports);
 
   private write(change: Partial<PhysicsJson>): void {
-    this.state.set({ ...this.state.peek() ?? DEFAULTS, ...change });
+    this.state.set({ ...(this.state.peek() ?? DEFAULTS), ...change });
   }
 
-  SetCapsule(radius: number, height = 2): void { this.write({ capsule: { radius, height } }); }
+  SetCapsule(radius: number, height = 2): void {
+    this.write({ capsule: { radius, height } });
+  }
   /** Physics:SetCylinder(rad, height): `PhysicsBinding` already builds a static capsule on a cylinder of this size. */
-  SetCylinder(radius: number, height: number): void { this.write({ capsule: { radius, height } }); }
-  SetTriangleMesh(triangleMesh: readonly number[]): void { this.write({ triangleMesh }); }
-  SetMass(mass: number): void { this.write({ mass }); }
-  SetFriction(friction: number): void { this.write({ friction }); }
-  SetDamping(damping: number): void { this.write({ damping }); }
-  SetCollisionGroup(group: number): void { this.write({ group }); }
-  SetCollisionMask(...groups: number[]): void { this.write({ mask: groups.reduce((mask, group) => mask | group, 0) }); }
-  ClearCollisionMask(): void { this.write({ mask: 0 }); }
-  SetActive(active: boolean): void { if (this.state.peek()?.active !== active) { this.write({ active }); } }
-  IsActive(): boolean { return this.state.peek()?.active ?? false; }
-  SetDontRemoveOnSleep(dontRemoveOnSleep: boolean): void { this.write({ dontRemoveOnSleep }); }
-  GetMass(): number { return this.state.peek()?.mass ?? 0; }
+  SetCylinder(radius: number, height: number): void {
+    this.write({ capsule: { radius, height } });
+  }
+  SetTriangleMesh(triangleMesh: readonly number[]): void {
+    this.write({ triangleMesh });
+  }
+  SetMass(mass: number): void {
+    this.write({ mass });
+  }
+  SetFriction(friction: number): void {
+    this.write({ friction });
+  }
+  SetDamping(damping: number): void {
+    this.write({ damping });
+  }
+  SetCollisionGroup(group: number): void {
+    this.write({ group });
+  }
+  SetCollisionMask(...groups: number[]): void {
+    this.write({ mask: groups.reduce((mask, group) => mask | group, 0) });
+  }
+  ClearCollisionMask(): void {
+    this.write({ mask: 0 });
+  }
+  SetActive(active: boolean): void {
+    if (this.state.peek()?.active !== active) {
+      this.write({ active });
+    }
+  }
+  IsActive(): boolean {
+    return this.state.peek()?.active ?? false;
+  }
+  SetDontRemoveOnSleep(dontRemoveOnSleep: boolean): void {
+    this.write({ dontRemoveOnSleep });
+  }
+  GetMass(): number {
+    return this.state.peek()?.mass ?? 0;
+  }
   /** Physics:GetRadius, in DST units; undefined without physics. */
-  GetRadius(): number | undefined { return this.state.peek()?.capsule.radius; }
+  GetRadius(): number | undefined {
+    return this.state.peek()?.capsule.radius;
+  }
   /** Physics:Teleport: the caller has already moved the entity's transform; the binding moves the body at once. */
-  Teleport(): void { this.teleports.set(this.teleports.peek() + 1); }
+  Teleport(): void {
+    this.teleports.set(this.teleports.peek() + 1);
+  }
 }

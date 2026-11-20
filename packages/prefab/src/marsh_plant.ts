@@ -29,20 +29,34 @@ export class MarshPlantInstance extends PrefabInstance {
     super(MARSH_PLANT_ID, new SpriteState({ name: 'idle', billboard: true }));
     this.addTag('plant');
     // MakeMediumBurnable(inst) + MakeSmallPropagator(inst).
-    const burn = new BurnableBinding(this, { propagator: 'small', burnTime: BURN_TIME, fxLevel: BURN_FX_LEVEL,
-      onIgnite: () => DefaultBurnFn(this), onExtinguish: () => DefaultExtinguishFn(this), onBurnt: () => DefaultBurntFn(this, world) }, world);
+    const burn = new BurnableBinding(
+      this,
+      {
+        propagator: 'small',
+        burnTime: BURN_TIME,
+        fxLevel: BURN_FX_LEVEL,
+        onIgnite: () => DefaultBurnFn(this),
+        onExtinguish: () => DefaultExtinguishFn(this),
+        onBurnt: () => DefaultBurntFn(this, world),
+      },
+      world,
+    );
     // MakeHauntableIgnite: the source's #HAUNTFIX comments out igniting, so a haunt only fails.
     const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetCooldown(HAUNT_COOLDOWN_MEDIUM);
     hauntable.SetOnHauntFn(() => false);
     addComponent(this, 'inspectable', Inspectable);
     this.addTag('inspectable');
-    this.onRemove(() => { burn.dispose(); });
+    this.onRemove(() => {
+      burn.dispose();
+    });
   }
 }
 
 /** The Prefab table marsh_plant.lua returns, as far as it is ported: pond_algae belongs to the unported pond_cave. */
-export function marshPlantPrefabs(world: MarshPlantWorld): Readonly<Record<typeof MARSH_PLANT_ID, PrefabEntityDefinition<MarshPlantInstance>>> {
+export function marshPlantPrefabs(
+  world: MarshPlantWorld,
+): Readonly<Record<typeof MARSH_PLANT_ID, PrefabEntityDefinition<MarshPlantInstance>>> {
   return {
     [MARSH_PLANT_ID]: {
       fn: () => new MarshPlantInstance(world),

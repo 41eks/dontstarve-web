@@ -30,7 +30,10 @@
   bottom: 0;
   white-space: nowrap;
   color: rgb(241 199 66);
-  font: 700 24px / 1.2 'Noto Sans SC', system-ui, sans-serif;
+  font:
+    700 24px / 1.2 'Noto Sans SC',
+    system-ui,
+    sans-serif;
   text-shadow: 1px 2px 2px #000;
 }
 

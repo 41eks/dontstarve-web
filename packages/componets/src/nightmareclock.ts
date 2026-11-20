@@ -51,14 +51,20 @@ export class NightmareClock {
     this.segTime = options.segTime;
     this.segVariation = options.segVariation;
     this.random = options.random ?? Math.random;
-    this.phaseTimer = new ComponentTimer(scheduler, () => { if (this.lockedPhase === undefined) { this.advance(this.current.peek()); } });
+    this.phaseTimer = new ComponentTimer(scheduler, () => {
+      if (this.lockedPhase === undefined) {
+        this.advance(this.current.peek());
+      }
+    });
     this.timer = this.phaseTimer.snapshot;
     // Initialization is the one place the source sets a phase's time without the random variation.
     this.totalTimeInPhase = this.segs.calm * this.segTime;
     this.setRemaining(this.totalTimeInPhase);
   }
 
-  get remainingTimeInPhase(): number { return this.phaseTimer.remainingSeconds ?? 0; }
+  get remainingTimeInPhase(): number {
+    return this.phaseTimer.remainingSeconds ?? 0;
+  }
 
   /** worldstate.lua nightmaretimeinphase; sampled on demand because the phase timer stays discrete. */
   GetTimeInPhase(): number {
@@ -77,7 +83,9 @@ export class NightmareClock {
 
   /** ms_setnightmarephase */
   SetPhase(phase: NightmarePhase): void {
-    if (this.lockedPhase !== undefined) { return; }
+    if (this.lockedPhase !== undefined) {
+      return;
+    }
     this.totalTimeInPhase = this.rollTime(phase);
     this.current.set(phase);
     this.setRemaining(this.totalTimeInPhase);
@@ -85,13 +93,17 @@ export class NightmareClock {
 
   /** ms_nextnightmarephase */
   NextPhase(): void {
-    if (this.lockedPhase !== undefined) { return; }
+    if (this.lockedPhase !== undefined) {
+      return;
+    }
     this.setRemaining(0);
   }
 
   /** ms_nextnightmarecycle: from the last phase, so the next one is the first. */
   NextCycle(): void {
-    if (this.lockedPhase !== undefined) { return; }
+    if (this.lockedPhase !== undefined) {
+      return;
+    }
     this.phaseTimer.stop();
     this.advance('dawn');
   }
@@ -126,7 +138,9 @@ export class NightmareClock {
     this.setRemaining(Math.min(data.remainingtimeinphase, data.totaltimeinphase));
   }
 
-  dispose(): void { this.phaseTimer.stop(); }
+  dispose(): void {
+    this.phaseTimer.stop();
+  }
 
   private rollTime(phase: NightmarePhase): number {
     return this.segs[phase] * this.segTime + this.random() * this.segVariation * this.segTime;
@@ -134,14 +148,20 @@ export class NightmareClock {
 
   /** OnUpdate's two branches: time left runs down; none left moves on unless the phase is locked. */
   private setRemaining(seconds: number): void {
-    if (seconds > 0) { this.phaseTimer.start(seconds); return; }
+    if (seconds > 0) {
+      this.phaseTimer.start(seconds);
+      return;
+    }
     this.phaseTimer.stop();
-    if (this.lockedPhase === undefined) { this.advance(this.current.peek()); }
+    if (this.lockedPhase === undefined) {
+      this.advance(this.current.peek());
+    }
   }
 
   /** Skips phases that roll no time, publishing only the phase it stops on. */
   private advance(from: NightmarePhase): void {
-    let phase = from, total: number;
+    let phase = from,
+      total: number;
     do {
       phase = PHASE_NAMES[(PHASE_NAMES.indexOf(phase) + 1) % PHASE_NAMES.length];
       total = this.rollTime(phase);

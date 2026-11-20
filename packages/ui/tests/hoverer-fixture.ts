@@ -10,7 +10,7 @@ export async function setupHoverer() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.domElement.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh';
   document.body.append(renderer.domElement);
-  const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, .1, 100);
+  const camera = new THREE.OrthographicCamera(-10, 10, 10, -10, 0.1, 100);
   camera.position.z = 10;
   camera.updateMatrixWorld();
   const scene = new THREE.Scene();
@@ -27,7 +27,8 @@ export async function setupHoverer() {
   const ui = new CursorLabelUi(renderer.domElement, '/dst/data/fonts/controllers.zip');
   ui.setMouseActions(picker);
   await ui.ready;
-  let valid = true, equipped = true;
+  let valid = true,
+    equipped = true;
   const sources: MouseActionCandidate[] = [
     { action: { action: 'NET' }, button: 'left', model: target },
     { action: { action: 'CASTSPELL', modifier: 'RESKIN' }, button: 'right', model: target },
@@ -39,16 +40,48 @@ export async function setupHoverer() {
   });
   const tooltip = ui.createLabel(pointer);
   const inactive = ui.createLabel(pointer);
-  const step = () => { renderer.render(scene, camera); ui.update(); };
-  Object.assign(window, { hoverer: {
-    step,
-    get queries() { return queries; },
-    updateInactive: () => { inactive.update(); inactive.hide(); },
-    coverWorld: (covered: boolean) => ui.setWorldCovered(covered),
-    equip: (value: boolean) => { equipped = value; step(); },
-    valid: (value: boolean) => { valid = value; step(); },
-    scaleTarget: (scale: number) => { target.scale.setScalar(scale); step(); },
-    tooltip: (value: boolean) => { if (value) { tooltip.show('建造预览'); } else { tooltip.hide(); } },
-    dispose: () => { disposeActionEntity(findActionEntity(target)); unregister(); picker.dispose(); ui.dispose(); renderer.dispose(); renderer.domElement.remove(); },
-  } });
+  const step = () => {
+    renderer.render(scene, camera);
+    ui.update();
+  };
+  Object.assign(window, {
+    hoverer: {
+      step,
+      get queries() {
+        return queries;
+      },
+      updateInactive: () => {
+        inactive.update();
+        inactive.hide();
+      },
+      coverWorld: (covered: boolean) => ui.setWorldCovered(covered),
+      equip: (value: boolean) => {
+        equipped = value;
+        step();
+      },
+      valid: (value: boolean) => {
+        valid = value;
+        step();
+      },
+      scaleTarget: (scale: number) => {
+        target.scale.setScalar(scale);
+        step();
+      },
+      tooltip: (value: boolean) => {
+        if (value) {
+          tooltip.show('建造预览');
+        } else {
+          tooltip.hide();
+        }
+      },
+      dispose: () => {
+        disposeActionEntity(findActionEntity(target));
+        unregister();
+        picker.dispose();
+        ui.dispose();
+        renderer.dispose();
+        renderer.domElement.remove();
+      },
+    },
+  });
 }

@@ -9,7 +9,9 @@ export interface TemperatureOwner {
 }
 export interface TemperatureInst {
   readonly isRemoved: boolean;
-  readonly components: { inventoryitem: { readonly owner: TemperatureOwner | null; GetHeldPosition(): Vector3 | undefined } };
+  readonly components: {
+    inventoryitem: { readonly owner: TemperatureOwner | null; GetHeldPosition(): Vector3 | undefined };
+  };
   getPosition(): Vector3;
   GetIsWet(): boolean;
   PushEvent(name: string, data: unknown): void;
@@ -28,7 +30,9 @@ export interface TemperatureWorld {
   getLocalTemperature?(position: Vector3): number;
   findHeaters?(position: Vector3, radius: number, ignoredTags: readonly string[]): readonly TemperatureSource[];
 }
-export interface TemperatureSaveData { readonly current: number; }
+export interface TemperatureSaveData {
+  readonly current: number;
+}
 
 /** temperature.lua's non-player item branch, including refrigeration and world heaters. */
 export class Temperature {
@@ -51,11 +55,18 @@ export class Temperature {
   private readonly inst: TemperatureInst;
   constructor(inst: TemperatureInst, world?: TemperatureWorld, saved?: TemperatureSaveData) {
     this.inst = inst;
-    if (saved) { this.currentState.set(saved.current); this.initialized = true; }
-    if (world) { this.BindWorld(world); }
+    if (saved) {
+      this.currentState.set(saved.current);
+      this.initialized = true;
+    }
+    if (world) {
+      this.BindWorld(world);
+    }
   }
   BindWorld(world: TemperatureWorld): void {
-    if (this.disposed || this.world === world) { return; }
+    if (this.disposed || this.world === world) {
+      return;
+    }
     this.cleanups.splice(0).forEach(stop => stop());
     this.world = world;
     this.ambient = watchSignal(world.temperature, stop => this.cleanups.push(stop));
@@ -66,89 +77,142 @@ export class Temperature {
       this.initialized = true;
     }
     this.OnUpdate(0);
-    if (!this.disposed && !this.inst.isRemoved) { this.cleanups.push(world.componentUpdates.register(this)); }
+    if (!this.disposed && !this.inst.isRemoved) {
+      this.cleanups.push(world.componentUpdates.register(this));
+    }
   }
-  GetCurrent(): number { return this.currentState.peek(); }
-  GetMax(): number { return this.maxtemp; }
+  GetCurrent(): number {
+    return this.currentState.peek();
+  }
+  GetMax(): number {
+    return this.maxtemp;
+  }
   GetAmbientTemperature(): number {
     const owner = this.inst.components.inventoryitem.owner;
-    return owner?.hasTag('pocketdimension_container') ? this.ambient?.peek() ?? 35
-      : this.world?.getLocalTemperature?.(this.getPosition()) ?? this.ambient?.peek() ?? 35;
+    return owner?.hasTag('pocketdimension_container')
+      ? (this.ambient?.peek() ?? 35)
+      : (this.world?.getLocalTemperature?.(this.getPosition()) ?? this.ambient?.peek() ?? 35);
   }
   private getPosition(): Vector3 {
     // A held inst is its holder's child, at the holder's position.
     return this.inst.components.inventoryitem.GetHeldPosition() ?? this.inst.getPosition();
   }
-  IgnoreTags(...tags: string[]): void { this.ignoreheatertags = ['INLIMBO', ...tags]; }
+  IgnoreTags(...tags: string[]): void {
+    this.ignoreheatertags = ['INLIMBO', ...tags];
+  }
   SetTemp(value?: number): void {
     this.settemp = value;
-    if (value !== undefined) { this.SetTemperature(value); }
+    if (value !== undefined) {
+      this.SetTemperature(value);
+    }
   }
   SetTemperature(value: number): void {
-    if (this.disposed || this.inst.isRemoved) { return; }
-    if (!Number.isFinite(value)) { throw new RangeError('Invalid entity temperature'); }
-    const last = this.GetCurrent(), current = Math.max(this.mintemp, Math.min(this.maxtemp, value));
+    if (this.disposed || this.inst.isRemoved) {
+      return;
+    }
+    if (!Number.isFinite(value)) {
+      throw new RangeError('Invalid entity temperature');
+    }
+    const last = this.GetCurrent(),
+      current = Math.max(this.mintemp, Math.min(this.maxtemp, value));
     this.currentState.set(current);
-    if ((current < 0) !== (last < 0)) { this.inst.PushEvent(current < 0 ? 'startfreezing' : 'stopfreezing', undefined); }
-    if ((current > this.overheattemp) !== (last > this.overheattemp)) {
+    if (current < 0 !== last < 0) {
+      this.inst.PushEvent(current < 0 ? 'startfreezing' : 'stopfreezing', undefined);
+    }
+    if (current > this.overheattemp !== last > this.overheattemp) {
       this.inst.PushEvent(current > this.overheattemp ? 'startoverheating' : 'stopoverheating', undefined);
     }
     this.inst.PushEvent('temperaturedelta', { last, new: current, hasrate: this.rate !== 0 });
   }
   GetInsulation(): readonly [number, number] {
     const phase = this.clock?.peek().phase;
-    return [Math.max(0, this.inherentinsulation), Math.max(0, this.inherentsummerinsulation
-      + (phase === 'dusk' ? 60 : phase === 'night' ? 120 : 0))];
+    return [
+      Math.max(0, this.inherentinsulation),
+      Math.max(0, this.inherentsummerinsulation + (phase === 'dusk' ? 60 : phase === 'night' ? 120 : 0)),
+    ];
   }
   DoDelta(delta: number, skipinsulation = false): void {
     const [winter, summer] = this.GetInsulation();
     this.SetTemperature(this.GetCurrent() + delta * (skipinsulation ? 1 : 30 / (30 + (delta > 0 ? summer : winter))));
   }
   OnUpdate(dt: number): void {
-    if (this.disposed || this.inst.isRemoved) { return; }
-    if (!Number.isFinite(dt) || dt < 0) { throw new RangeError('Invalid temperature dt'); }
+    if (this.disposed || this.inst.isRemoved) {
+      return;
+    }
+    if (!Number.isFinite(dt) || dt < 0) {
+      throw new RangeError('Invalid temperature dt');
+    }
     this.rate = 0;
-    if (this.settemp !== undefined) { return; }
-    const current = this.GetCurrent(), ambient = this.GetAmbientTemperature();
+    if (this.settemp !== undefined) {
+      return;
+    }
+    const current = this.GetCurrent(),
+      ambient = this.GetAmbientTemperature();
     const owner = this.inst.components.inventoryitem.owner;
     let minimum = this.mintemp;
     if (owner?.hasTag('fridge') && !owner.hasTag('nocool')) {
       minimum = Math.max(minimum, Math.min(0, ambient));
-      this.rate = owner.hasTag('lowcool') ? -.5 : -1;
+      this.rate = owner.hasTag('lowcool') ? -0.5 : -1;
     } else {
       let delta = ambient - current;
       if (!owner?.hasTag('pocketdimension_container')) {
-        const position = this.getPosition(), scale = this.world?.unitScale ?? 1, radius = 10 * scale;
+        const position = this.getPosition(),
+          scale = this.world?.unitScale ?? 1,
+          radius = 10 * scale;
         const self: object = this.inst; // a heater found here may be this inst itself; only identity is compared
         for (const source of this.world?.findHeaters?.(position, radius, this.ignoreheatertags) ?? []) {
-          if (source === self || this.ignoreheatertags.some(tag => source.hasTag(tag))) { continue; }
-          const heater = source.components.heater, heat = heater?.GetHeat(this.inst);
-          if (heat === undefined || !heater || (!heater.IsExothermic() && !heater.IsEndothermic())) { continue; }
+          if (source === self || this.ignoreheatertags.some(tag => source.hasTag(tag))) {
+            continue;
+          }
+          const heater = source.components.heater,
+            heat = heater?.GetHeat(this.inst);
+          if (heat === undefined || !heater || (!heater.IsExothermic() && !heater.IsEndothermic())) {
+            continue;
+          }
           const distanceSquared = position.distanceToSquared(source.getPosition());
           let factor = heater.ShouldFalloff() ? 1 - distanceSquared / (radius * radius) : 1;
           const cutoff = heater.GetHeatRadiusCutoff();
-          if (cutoff !== undefined && distanceSquared > (cutoff * scale) ** 2) { factor = 0; }
-          if (factor <= 0) { continue; }
-          if (this.inst.GetIsWet()) { factor *= heat > 0 ? .75 : heat < 0 ? 1 / .75 : 1; }
-          const target = heater.IsExothermic() ? heat * factor : (heat - this.overheattemp) * factor + this.overheattemp;
-          if (heater.IsExothermic() ? target > current : target < current) { delta += target - current; }
+          if (cutoff !== undefined && distanceSquared > (cutoff * scale) ** 2) {
+            factor = 0;
+          }
+          if (factor <= 0) {
+            continue;
+          }
+          if (this.inst.GetIsWet()) {
+            factor *= heat > 0 ? 0.75 : heat < 0 ? 1 / 0.75 : 1;
+          }
+          const target = heater.IsExothermic()
+            ? heat * factor
+            : (heat - this.overheattemp) * factor + this.overheattemp;
+          if (heater.IsExothermic() ? target > current : target < current) {
+            delta += target - current;
+          }
         }
       }
       const [winter, summer] = this.GetInsulation();
-      this.rate = ambient >= 35
-        ? delta > 0 ? Math.min(delta, 30 / (30 + summer)) : Math.max(delta, current >= this.overheattemp ? -5 : -1)
-        : delta < 0 ? Math.max(delta, -30 / (30 + winter)) : Math.min(delta, current <= 0 ? 5 : 1);
+      this.rate =
+        ambient >= 35
+          ? delta > 0
+            ? Math.min(delta, 30 / (30 + summer))
+            : Math.max(delta, current >= this.overheattemp ? -5 : -1)
+          : delta < 0
+            ? Math.max(delta, -30 / (30 + winter))
+            : Math.min(delta, current <= 0 ? 5 : 1);
     }
     this.SetTemperature(Math.max(minimum, Math.min(this.maxtemp, current + this.rate * dt)));
   }
-  OnSave(): TemperatureSaveData { return { current: this.GetCurrent() }; }
+  OnSave(): TemperatureSaveData {
+    return { current: this.GetCurrent() };
+  }
   OnLoad(data: TemperatureSaveData): void {
     this.initialized = true;
     this.currentState.set(data.current);
     this.OnUpdate(0);
   }
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     this.cleanups.splice(0).forEach(stop => stop());
     this.world = undefined;

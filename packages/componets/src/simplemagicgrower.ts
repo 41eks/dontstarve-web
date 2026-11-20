@@ -10,20 +10,40 @@ export class SimpleMagicGrower {
   private removed = false;
   private readonly inst: { addTag(tag: string): void; removeTag(tag: string): void };
   private readonly growable: Growable;
-  constructor(inst: { addTag(tag: string): void; removeTag(tag: string): void }, growable: Growable, scheduler: GameTimeScheduler) {
-    this.inst = inst; this.growable = growable;
+  constructor(
+    inst: { addTag(tag: string): void; removeTag(tag: string): void },
+    growable: Growable,
+    scheduler: GameTimeScheduler,
+  ) {
+    this.inst = inst;
+    this.growable = growable;
     this.task = new ComponentTimer(scheduler, () => this.Grow());
     this.timer = this.task.snapshot;
   }
-  SetLastStage(stage: number): void { this.lastStage = stage; }
+  SetLastStage(stage: number): void {
+    this.lastStage = stage;
+  }
   Grow(): void {
-    if (this.removed || this.lastStage === undefined) { return; }
+    if (this.removed || this.lastStage === undefined) {
+      return;
+    }
     if (this.growable.GetStage() < this.lastStage) {
-      this.growable.DoGrowth(); this.task.start(Math.random());
+      this.growable.DoGrowth();
+      this.task.start(Math.random());
     } else {
-      this.growable.StartGrowing(); this.inst.removeTag('magicgrowth');
+      this.growable.StartGrowing();
+      this.inst.removeTag('magicgrowth');
     }
   }
-  StartGrowing(): void { if (!this.removed) { this.inst.addTag('magicgrowth'); this.Grow(); } }
-  dispose(): void { this.removed = true; this.task.stop(); this.inst.removeTag('magicgrowth'); }
+  StartGrowing(): void {
+    if (!this.removed) {
+      this.inst.addTag('magicgrowth');
+      this.Grow();
+    }
+  }
+  dispose(): void {
+    this.removed = true;
+    this.task.stop();
+    this.inst.removeTag('magicgrowth');
+  }
 }

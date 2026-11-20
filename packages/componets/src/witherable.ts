@@ -35,46 +35,84 @@ export class Witherable {
   private readonly pickable: WitherablePickable;
   private readonly temperature: () => number;
   private readonly random: () => number;
-  constructor(inst: { addTag(tag: string): void; removeTag(tag: string): void },
-    pickable: WitherablePickable, scheduler: GameTimeScheduler,
-    temperature: () => number, rain?: ReadonlySignal<'none' | 'rain' | 'snow'>,
-    saved?: WitherableSave, protectedCycles?: number, random = Math.random) {
-    this.inst = inst; this.pickable = pickable; this.temperature = temperature; this.random = random;
+  constructor(
+    inst: { addTag(tag: string): void; removeTag(tag: string): void },
+    pickable: WitherablePickable,
+    scheduler: GameTimeScheduler,
+    temperature: () => number,
+    rain?: ReadonlySignal<'none' | 'rain' | 'snow'>,
+    saved?: WitherableSave,
+    protectedCycles?: number,
+    random = Math.random,
+  ) {
+    this.inst = inst;
+    this.pickable = pickable;
+    this.temperature = temperature;
+    this.random = random;
     inst.addTag('witherable');
     this.witherTemp = 70 + Math.floor(random() * 25);
     this.rejuvenateTemp = 45 + Math.floor(random() * 11);
     this.task = new ComponentTimer(scheduler, () => this.check());
     this.delay = new ComponentTimer(scheduler, () => this.Start());
     this.protection = new ComponentTimer(scheduler, () => {});
-    this.state = Object.freeze({ withered: readonlySignal(this.withered), timer: this.task.snapshot,
-      delayTimer: this.delay.snapshot, protectionTimer: this.protection.snapshot });
+    this.state = Object.freeze({
+      withered: readonlySignal(this.withered),
+      timer: this.task.snapshot,
+      delayTimer: this.delay.snapshot,
+      protectionTimer: this.protection.snapshot,
+    });
     this.rain = rain && watchSignal(rain, cleanup => this.cleanups.push(cleanup));
     this.restoreCycles = saved?.restoreCycles;
-    if (saved?.withered) { this.withered.set(true); inst.addTag('withered'); }
+    if (saved?.withered) {
+      this.withered.set(true);
+      inst.addTag('withered');
+    }
     this.enabled = !(protectedCycles && protectedCycles > 0);
     if (this.enabled) {
-      if (saved?.delaySeconds !== undefined) { this.delay.start(saved.delaySeconds); }
-      else if (saved?.taskSeconds !== undefined) { this.task.start(saved.taskSeconds); }
-      else { this.Start(); }
+      if (saved?.delaySeconds !== undefined) {
+        this.delay.start(saved.delaySeconds);
+      } else if (saved?.taskSeconds !== undefined) {
+        this.task.start(saved.taskSeconds);
+      } else {
+        this.Start();
+      }
     }
-    if (saved?.protectSeconds !== undefined) { this.Protect(saved.protectSeconds); }
+    if (saved?.protectSeconds !== undefined) {
+      this.Protect(saved.protectSeconds);
+    }
     let wasRaining = this.rain?.peek() === 'rain';
     createEffect(() => {
       const raining = this.rain?.get() === 'rain';
       if (raining && !wasRaining && this.IsWithered() && this.delay.remainingSeconds !== undefined) {
-        this.Stop(); this.Start();
+        this.Stop();
+        this.Start();
       }
       wasRaining = raining;
     });
   }
-  IsWithered(): boolean { return this.withered.peek(); }
+  IsWithered(): boolean {
+    return this.withered.peek();
+  }
   Enable(enable: boolean): void {
-    if (this.removed || enable === this.enabled) { return; }
+    if (this.removed || enable === this.enabled) {
+      return;
+    }
     this.enabled = enable;
-    if (enable) { this.Start(); } else { this.Stop(); }
+    if (enable) {
+      this.Start();
+    } else {
+      this.Stop();
+    }
   }
   Start(): void {
-    if (this.removed || !this.enabled || this.task.remainingSeconds !== undefined || this.delay.remainingSeconds !== undefined) { return; }
+    if (
+      this.removed ||
+      !this.enabled ||
+      this.task.remainingSeconds !== undefined ||
+      this.delay.remainingSeconds !== undefined
+    ) {
+      return;
+    }
     if (this.protection.remainingSeconds !== undefined) {
       this.delay.start(this.protection.remainingSeconds);
       return;
@@ -82,72 +120,128 @@ export class Witherable {
     this.task.start(30 + Math.floor(this.random() * 31));
   }
   Protect(seconds: number): void {
-    if (this.removed || seconds <= (this.protection.remainingSeconds ?? 0)) { return; }
+    if (this.removed || seconds <= (this.protection.remainingSeconds ?? 0)) {
+      return;
+    }
     this.protection.start(seconds);
-    if (this.IsWithered()) { this.ForceRejuvenate(); }
+    if (this.IsWithered()) {
+      this.ForceRejuvenate();
+    }
     if (this.enabled && seconds > (this.delay.remainingSeconds ?? 0)) {
       this.Stop();
       this.delay.start(seconds);
     }
   }
-  Stop(): void { this.task.stop(); this.delay.stop(); }
+  Stop(): void {
+    this.task.stop();
+    this.delay.stop();
+  }
   private check(): void {
     const raining = this.rain?.peek() === 'rain';
     if (this.IsWithered()) {
-      if (this.temperature() < this.rejuvenateTemp || raining) { this.ForceRejuvenate(); }
-      else { this.Start(); }
-    } else if (this.temperature() > this.witherTemp && !raining) { this.ForceWither(); }
-    else { this.Start(); }
+      if (this.temperature() < this.rejuvenateTemp || raining) {
+        this.ForceRejuvenate();
+      } else {
+        this.Start();
+      }
+    } else if (this.temperature() > this.witherTemp && !raining) {
+      this.ForceWither();
+    } else {
+      this.Start();
+    }
   }
   ForceWither(): void {
-    if (this.removed || this.IsWithered()) { return; }
+    if (this.removed || this.IsWithered()) {
+      return;
+    }
     this.Stop();
     batch(() => {
-      this.withered.set(true); this.inst.addTag('withered');
+      this.withered.set(true);
+      this.inst.addTag('withered');
       this.restoreCycles = this.pickable.cyclesLeft;
-      if (!this.pickable.IsBarren()) { this.pickable.MakeBarren(); }
+      if (!this.pickable.IsBarren()) {
+        this.pickable.MakeBarren();
+      }
     });
-    if (this.enabled) { if (this.rain?.peek() !== 'rain') { this.delay.start(480); } else { this.Start(); } }
+    if (this.enabled) {
+      if (this.rain?.peek() !== 'rain') {
+        this.delay.start(480);
+      } else {
+        this.Start();
+      }
+    }
   }
   ForceRejuvenate(): void {
-    if (this.removed || !this.IsWithered()) { return; }
+    if (this.removed || !this.IsWithered()) {
+      return;
+    }
     this.Stop();
     batch(() => {
-      this.pickable.cyclesLeft = this.restoreCycles === undefined ? undefined
-        : Math.max(this.pickable.cyclesLeft ?? 0, this.restoreCycles);
+      this.pickable.cyclesLeft =
+        this.restoreCycles === undefined ? undefined : Math.max(this.pickable.cyclesLeft ?? 0, this.restoreCycles);
       this.restoreCycles = undefined;
       // makeemptyfn sees the withered tag during dead_to_empty.
-      if (!this.pickable.IsBarren()) { this.pickable.MakeEmpty(); }
-      this.withered.set(false); this.inst.removeTag('withered');
+      if (!this.pickable.IsBarren()) {
+        this.pickable.MakeEmpty();
+      }
+      this.withered.set(false);
+      this.inst.removeTag('withered');
     });
-    if (this.enabled) { this.delay.start(15); }
+    if (this.enabled) {
+      this.delay.start(15);
+    }
   }
-  OnSave(): WitherableSave { return this.exportState(); }
+  OnSave(): WitherableSave {
+    return this.exportState();
+  }
 
   /** witherable.lua OnLoad: restore the saved checks without recreating this component. */
   OnLoad(saved: WitherableSave): void {
-    if (!saved || this.removed) { return; }
-    this.Stop(); this.protection.stop();
+    if (!saved || this.removed) {
+      return;
+    }
+    this.Stop();
+    this.protection.stop();
     this.restoreCycles = saved.restoreCycles;
     this.withered.set(saved.withered ?? false);
-    if (saved.withered) { this.inst.addTag('withered'); } else { this.inst.removeTag('withered'); }
-    if (this.enabled) {
-      if (saved.delaySeconds !== undefined) { this.delay.start(saved.delaySeconds); }
-      else if (saved.taskSeconds !== undefined) { this.task.start(saved.taskSeconds); }
-      else { this.Start(); }
+    if (saved.withered) {
+      this.inst.addTag('withered');
+    } else {
+      this.inst.removeTag('withered');
     }
-    if (saved.protectSeconds !== undefined) { this.Protect(saved.protectSeconds); }
+    if (this.enabled) {
+      if (saved.delaySeconds !== undefined) {
+        this.delay.start(saved.delaySeconds);
+      } else if (saved.taskSeconds !== undefined) {
+        this.task.start(saved.taskSeconds);
+      } else {
+        this.Start();
+      }
+    }
+    if (saved.protectSeconds !== undefined) {
+      this.Protect(saved.protectSeconds);
+    }
   }
 
   exportState(): WitherableSave {
-    return { ...(this.IsWithered() ? { withered: true, ...(this.restoreCycles === undefined ? {} : { restoreCycles: this.restoreCycles }) } : {}),
+    return {
+      ...(this.IsWithered()
+        ? { withered: true, ...(this.restoreCycles === undefined ? {} : { restoreCycles: this.restoreCycles }) }
+        : {}),
       ...(this.delay.remainingSeconds === undefined ? {} : { delaySeconds: this.delay.remainingSeconds }),
       ...(this.task.remainingSeconds === undefined ? {} : { taskSeconds: this.task.remainingSeconds }),
-      ...(this.protection.remainingSeconds === undefined ? {} : { protectSeconds: this.protection.remainingSeconds }) };
+      ...(this.protection.remainingSeconds === undefined ? {} : { protectSeconds: this.protection.remainingSeconds }),
+    };
   }
   dispose(): void {
-    if (this.removed) { return; }
-    this.removed = true; this.Stop(); this.protection.stop(); this.cleanups.splice(0).forEach(cleanup => cleanup());
-    this.inst.removeTag('witherable'); this.inst.removeTag('withered');
+    if (this.removed) {
+      return;
+    }
+    this.removed = true;
+    this.Stop();
+    this.protection.stop();
+    this.cleanups.splice(0).forEach(cleanup => cleanup());
+    this.inst.removeTag('witherable');
+    this.inst.removeTag('withered');
   }
 }

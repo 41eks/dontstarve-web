@@ -10,7 +10,9 @@ const textureLoaderUrl = `/@fs${fileURLToPath(new URL('../../animation/src/textu
 
 function pixelHash(pixels: Uint8Array): number {
   let hash = 2166136261;
-  for (const value of pixels) { hash = Math.imul(hash ^ value, 16777619); }
+  for (const value of pixels) {
+    hash = Math.imul(hash ^ value, 16777619);
+  }
   return hash >>> 0;
 }
 
@@ -33,7 +35,9 @@ test('keeps world generation visible until the complete game renders and preserv
     const postMessage = Worker.prototype.postMessage;
     Worker.prototype.postMessage = function (...args: Parameters<typeof postMessage>) {
       const request = args[0];
-      if (request && typeof request.url === 'string') { (window as any).textureRequests.push(request.url); }
+      if (request && typeof request.url === 'string') {
+        (window as any).textureRequests.push(request.url);
+      }
       return postMessage.apply(this, args);
     };
   });
@@ -44,7 +48,9 @@ test('keeps world generation visible until the complete game renders and preserv
     await route.fulfill({ response, json: save });
   });
   let release!: () => void;
-  const pending = new Promise<void>(resolve => { release = resolve; });
+  const pending = new Promise<void>(resolve => {
+    release = resolve;
+  });
   let waiting = false;
   await page.route('**/dst/data/anim/vig.zip', async route => {
     waiting = true;
@@ -52,7 +58,9 @@ test('keeps world generation visible until the complete game renders and preserv
     await route.continue();
   });
   let releaseSound!: () => void;
-  const pendingSound = new Promise<void>(resolve => { releaseSound = resolve; });
+  const pendingSound = new Promise<void>(resolve => {
+    releaseSound = resolve;
+  });
   let waitingForSound = false;
   // An event absent from the empty save must still be ready for a later summon.
   await page.route('**/dst/data/sound/sfx.fsb-796.wav', async route => {
@@ -67,46 +75,59 @@ test('keeps world generation visible until the complete game renders and preserv
   await expect(generatingPage).toBeVisible({ timeout: 30_000 });
   await expect.poll(() => waiting, { timeout: 90_000 }).toBe(true);
   await expect(canvas).toHaveAttribute('data-loaded', 'false');
-  const clock = await page.evaluate(async ({ sceneUrl, lightingUrl }) => {
-    const { world, worldState } = await import(sceneUrl);
-    const { DstLightingRenderer } = await import(lightingUrl);
-    const prewarm = DstLightingRenderer.prototype.prewarm;
-    DstLightingRenderer.prototype.prewarm = async function (...args: any[]) {
-      await prewarm.apply(this, args);
-      (window as any).loadingGraphicsPrepared = true;
-    };
-    (window as any).loadingWorld = worldState;
-    (window as any).loadingSteps = 0;
-    (window as any).loadingDraws = 0;
-    const step = world.step;
-    world.step = (...args: any[]) => { (window as any).loadingSteps++; return step.apply(world, args); };
-    const render = DstLightingRenderer.prototype.render;
-    DstLightingRenderer.prototype.render = function (...args: any[]) {
-      (window as any).loadingDraws++;
-      return render.apply(this, args);
-    };
-    const observer = new MutationObserver(() => {
-      if (document.querySelector('canvas[data-game-canvas][data-loaded="true"]')) {
-        (window as any).drawsAtReady = (window as any).loadingDraws;
-        observer.disconnect();
-      }
-    });
-    observer.observe(document.querySelector('canvas[data-game-canvas]')!, { attributes: true });
-    return worldState.clock.peek();
-  }, { sceneUrl, lightingUrl });
+  const clock = await page.evaluate(
+    async ({ sceneUrl, lightingUrl }) => {
+      const { world, worldState } = await import(sceneUrl);
+      const { DstLightingRenderer } = await import(lightingUrl);
+      const prewarm = DstLightingRenderer.prototype.prewarm;
+      DstLightingRenderer.prototype.prewarm = async function (...args: any[]) {
+        await prewarm.apply(this, args);
+        (window as any).loadingGraphicsPrepared = true;
+      };
+      (window as any).loadingWorld = worldState;
+      (window as any).loadingSteps = 0;
+      (window as any).loadingDraws = 0;
+      const step = world.step;
+      world.step = (...args: any[]) => {
+        (window as any).loadingSteps++;
+        return step.apply(world, args);
+      };
+      const render = DstLightingRenderer.prototype.render;
+      DstLightingRenderer.prototype.render = function (...args: any[]) {
+        (window as any).loadingDraws++;
+        return render.apply(this, args);
+      };
+      const observer = new MutationObserver(() => {
+        if (document.querySelector('canvas[data-game-canvas][data-loaded="true"]')) {
+          (window as any).drawsAtReady = (window as any).loadingDraws;
+          observer.disconnect();
+        }
+      });
+      observer.observe(document.querySelector('canvas[data-game-canvas]')!, { attributes: true });
+      return worldState.clock.peek();
+    },
+    { sceneUrl, lightingUrl },
+  );
   // Waiting longer than the former five-second delay must not reveal the game.
   await page.waitForTimeout(5_500);
   await expect(generatingPage).toBeVisible();
   await expect(generatingPage).toHaveCSS('pointer-events', 'auto');
-  expect(await page.evaluate(() => ({ steps: (window as any).loadingSteps, draws: (window as any).loadingDraws,
-    clock: (window as any).loadingWorld.clock.peek() }))).toEqual({ steps: 0, draws: 0, clock });
+  expect(
+    await page.evaluate(() => ({
+      steps: (window as any).loadingSteps,
+      draws: (window as any).loadingDraws,
+      clock: (window as any).loadingWorld.clock.peek(),
+    })),
+  ).toEqual({ steps: 0, draws: 0, clock });
   await page.evaluate(() => {
     const map = document.querySelector('dst-minimap') as any;
     const prepare = map.prepareTerrain.bind(map);
     map.prepareTerrain = async () => {
       await prepare();
       (window as any).loadingTerrainPrepared = (await map.inspect()).ready;
-      await new Promise<void>(resolve => { (window as any).releaseTerrain = resolve; });
+      await new Promise<void>(resolve => {
+        (window as any).releaseTerrain = resolve;
+      });
     };
   });
   release();
@@ -119,8 +140,13 @@ test('keeps world generation visible until the complete game renders and preserv
   await expect.poll(() => page.evaluate(() => (window as any).loadingGraphicsPrepared), { timeout: 30_000 }).toBe(true);
   await expect(generatingPage).toBeVisible();
   await expect(canvas).toHaveAttribute('data-loaded', 'false');
-  expect(await page.evaluate(() => ({ steps: (window as any).loadingSteps, draws: (window as any).loadingDraws,
-    clock: (window as any).loadingWorld.clock.peek() }))).toEqual({ steps: 0, draws: 0, clock });
+  expect(
+    await page.evaluate(() => ({
+      steps: (window as any).loadingSteps,
+      draws: (window as any).loadingDraws,
+      clock: (window as any).loadingWorld.clock.peek(),
+    })),
+  ).toEqual({ steps: 0, draws: 0, clock });
   releaseSound();
   await expect(canvas).toHaveAttribute('data-loaded', 'true', { timeout: 30_000 });
   await expect(generatingPage).toHaveCount(0);
@@ -128,14 +154,23 @@ test('keeps world generation visible until the complete game renders and preserv
   await expect(page.locator('#app > dst-crafting-ui')).toHaveCount(1);
   await page.keyboard.press('Backquote');
   await expect(page.locator('dst-debug-console input')).toBeFocused();
-  const source = parseKtex(await readFile(new URL('../../../public/dst/data/levels/tiles/deciduous.tex', import.meta.url)));
+  const source = parseKtex(
+    await readFile(new URL('../../../public/dst/data/levels/tiles/deciduous.tex', import.meta.url)),
+  );
   const decoded = await page.evaluate(async textureLoaderUrl => {
     const { loadKtexTexture } = await import(textureLoaderUrl);
     const texture = await loadKtexTexture('/dst/data/levels/tiles/deciduous.tex');
     let hash = 2166136261;
-    for (const value of texture.pixels) { hash = Math.imul(hash ^ value, 16777619); }
-    return { width: texture.width, height: texture.height, hash: hash >>> 0,
-      requests: (window as any).textureRequests.filter((url: string) => url.endsWith('/levels/tiles/deciduous.tex')).length };
+    for (const value of texture.pixels) {
+      hash = Math.imul(hash ^ value, 16777619);
+    }
+    return {
+      width: texture.width,
+      height: texture.height,
+      hash: hash >>> 0,
+      requests: (window as any).textureRequests.filter((url: string) => url.endsWith('/levels/tiles/deciduous.tex'))
+        .length,
+    };
   }, textureLoaderUrl);
   expect(decoded).toEqual({ width: source.width, height: source.height, hash: pixelHash(source.pixels), requests: 1 });
   expect(errors).toEqual([]);

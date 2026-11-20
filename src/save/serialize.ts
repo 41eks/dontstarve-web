@@ -29,13 +29,17 @@ export function serializeSave(
   savedAt = new Date().toISOString(),
 ): string {
   const nextId = Number(parentId) + 1;
-  if (!Number.isSafeInteger(nextId) || nextId > 9_999_999_999) { throw new Error('Snapshot 编号已用尽'); }
+  if (!Number.isSafeInteger(nextId) || nextId > 9_999_999_999) {
+    throw new Error('Snapshot 编号已用尽');
+  }
   const entities = structuredClone(state.entities);
   const document: SaveDocument = {
     ...structuredClone(template),
     snapshot: { id: String(nextId).padStart(10, '0'), parentId, savedAt, reason: 'manual' },
     world: {
-      ...structuredClone(template.world), elapsedSeconds: state.elapsedSeconds, entities,
+      ...structuredClone(template.world),
+      elapsedSeconds: state.elapsedSeconds,
+      entities,
       systems: {
         ...structuredClone(template.world.systems),
         ...(state.worldtemperature === undefined ? {} : { worldtemperature: { ...state.worldtemperature } }),
@@ -56,7 +60,7 @@ export function serializeSave(
         ...(state.playerGhost ? { ghost: true as const } : {}),
         ...(state.playerWortox === undefined ? {} : { wortox: { ...state.playerWortox } }),
         inventory: structuredClone(state.inventory.inventory),
-        builder: { bufferedBuilds: state.inventory.bufferedBuilds.map((build) => ({ ...build })) },
+        builder: { bufferedBuilds: state.inventory.bufferedBuilds.map(build => ({ ...build })) },
       },
     },
   };

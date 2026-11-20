@@ -12,15 +12,21 @@ test('ground items share two draw calls and retain the batch across sleep, wake 
     return checkGroundItemInstancing();
   }, moduleUrl('./ground-item-instancing-fixture.ts'));
   expect(result).toEqual({
-    many: { calls: 2, count: 24 }, asleep: { calls: 2, count: 23 }, awake: { calls: 2, count: 24 },
-    sameBatch: true, sameTexture: true, position: [-8, 0, -5], removed: { calls: 2, count: 23 }, empty: { calls: 0, count: 0 },
+    many: { calls: 2, count: 24 },
+    asleep: { calls: 2, count: 23 },
+    awake: { calls: 2, count: 24 },
+    sameBatch: true,
+    sameTexture: true,
+    position: [-8, 0, -5],
+    removed: { calls: 2, count: 23 },
+    empty: { calls: 0, count: 0 },
   });
   expect(errors).toEqual([]);
 });
 
 test('base turf and woodfloor preserve complete ground sprites at different camera angles', async ({ page }) => {
   await page.goto('/tests/fixture.html');
-  const result = await page.evaluate(async (url) => {
+  const result = await page.evaluate(async url => {
     const { checkTurfOcclusion } = await import(url);
     return checkTurfOcclusion();
   }, moduleUrl('./turf-fixture.ts'));

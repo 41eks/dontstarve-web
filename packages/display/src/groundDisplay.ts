@@ -1,15 +1,34 @@
 import * as THREE from 'three';
 import { createEffect, watchSignal, type ClockState, type ReadonlySignal } from '@dontstarve-web/signals';
-import { groundOverlayBlend, groundOverlayMaterial, groundTileGeometry, loadGroundTexture, loadGroundTileAssets,
-  type GroundTileArt, type GroundTileAssets, type GroundTileQuad } from './groundAssets';
-import { groundFalloffGeometry, loadGroundFalloffAssets, sortGroundFalloffGeometry,
-  type FalloffEdge, type GroundFalloffArt, type GroundFalloffAssets } from './groundFalloff';
+import {
+  groundOverlayBlend,
+  groundOverlayMaterial,
+  groundTileGeometry,
+  loadGroundTexture,
+  loadGroundTileAssets,
+  type GroundTileArt,
+  type GroundTileAssets,
+  type GroundTileQuad,
+} from './groundAssets';
+import {
+  groundFalloffGeometry,
+  loadGroundFalloffAssets,
+  sortGroundFalloffGeometry,
+  type FalloffEdge,
+  type GroundFalloffArt,
+  type GroundFalloffAssets,
+} from './groundFalloff';
 import { GroundDepthPrepass } from './groundDepthPrepass';
 import { cellRectangleGeometry, mergeCellRectangles, type OceanColourMap } from './oceanRenderPipeline';
 import { OceanSurface } from './oceanSurface';
 
 /** Inclusive-exclusive signed cells. */
-export interface GroundCellBounds { minCol: number; minRow: number; maxCol: number; maxRow: number }
+export interface GroundCellBounds {
+  minCol: number;
+  minRow: number;
+  maxCol: number;
+  maxRow: number;
+}
 
 /** One render layer the world declares: MapLayerManager:CreateRenderLayer plus Map:AddRenderLayer. */
 export interface GroundLayerDeclaration {
@@ -57,7 +76,11 @@ const CHUNK_CELLS = 32;
 /** Keeps an overlay's per-layer meshes in source layer order, as the groups of one mesh were drawn. */
 const OVERLAY_LAYER_STEP = 1e-4;
 
-interface Layer { readonly declaration: GroundLayerDeclaration; assets?: GroundTileAssets; loading?: Promise<void> }
+interface Layer {
+  readonly declaration: GroundLayerDeclaration;
+  assets?: GroundTileAssets;
+  loading?: Promise<void>;
+}
 interface Overlay {
   readonly declaration: GroundOverlayDeclaration;
   readonly blend: { value: THREE.Vector3 };
@@ -66,9 +89,17 @@ interface Overlay {
   visible: boolean;
   stop?: () => void;
 }
-interface Chunk extends GroundCellBounds { readonly meshes: THREE.Mesh[]; readonly overlays: Map<string, THREE.Mesh[]> }
+interface Chunk extends GroundCellBounds {
+  readonly meshes: THREE.Mesh[];
+  readonly overlays: Map<string, THREE.Mesh[]>;
+}
 
-const releaseMeshes = (meshes: THREE.Mesh[]) => { for (const mesh of meshes.splice(0)) { mesh.removeFromParent(); mesh.geometry.dispose(); } };
+const releaseMeshes = (meshes: THREE.Mesh[]) => {
+  for (const mesh of meshes.splice(0)) {
+    mesh.removeFromParent();
+    mesh.geometry.dispose();
+  }
+};
 
 /** Draws the world's declared ground layers, ground overlays, cliffs and ocean surface. A terrain change rebuilds only
  * the layer chunks it reaches; a newly declared layer or overlay loads its art here and then draws wherever its tiles are.
@@ -96,14 +127,29 @@ export class GroundDisplay implements GroundOverlayHost {
     this.assetBaseUrl = assetBaseUrl;
     this.root.name = 'GroundLayers';
     const { min, max } = terrain.cellRange();
-    for (let row = min; row < max; row += CHUNK_CELLS) { for (let col = min; col < max; col += CHUNK_CELLS) {
-      this.chunks.push({ minCol: col, minRow: row, maxCol: Math.min(max, col + CHUNK_CELLS), maxRow: Math.min(max, row + CHUNK_CELLS),
-        meshes: [], overlays: new Map() });
-    } }
+    for (let row = min; row < max; row += CHUNK_CELLS) {
+      for (let col = min; col < max; col += CHUNK_CELLS) {
+        this.chunks.push({
+          minCol: col,
+          minRow: row,
+          maxCol: Math.min(max, col + CHUNK_CELLS),
+          maxRow: Math.min(max, row + CHUNK_CELLS),
+          meshes: [],
+          overlays: new Map(),
+        });
+      }
+    }
     this.stopTerrain = terrain.onTerrainChanged(bounds => {
       this.declare(true);
       // Variants read the eight neighbours, so an edit reaches one cell beyond its bounds.
-      this.rebuild(bounds && { minCol: bounds.minCol - 1, minRow: bounds.minRow - 1, maxCol: bounds.maxCol + 1, maxRow: bounds.maxRow + 1 });
+      this.rebuild(
+        bounds && {
+          minCol: bounds.minCol - 1,
+          minRow: bounds.minRow - 1,
+          maxCol: bounds.maxCol + 1,
+          maxRow: bounds.maxRow + 1,
+        },
+      );
       this.rebuildCliffsAndOcean();
     });
   }
@@ -111,7 +157,9 @@ export class GroundDisplay implements GroundOverlayHost {
   /** Loads every declared layer's art, the cliff art and the ocean art, and draws the whole map. */
   async prepare(): Promise<void> {
     await Promise.all([...this.declare(false), this.prepareFalloff(), this.prepareOcean()]);
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.rebuild();
     this.rebuildCliffsAndOcean();
   }
@@ -122,14 +170,19 @@ export class GroundDisplay implements GroundOverlayHost {
     this.ocean?.bindClock(clock);
   }
 
-  update(dt: number): void { this.ocean?.update(dt); }
+  update(dt: number): void {
+    this.ocean?.update(dt);
+  }
 
   private async prepareFalloff(): Promise<void> {
     const assets = await loadGroundFalloffAssets(this.assetBaseUrl, this.terrain.falloffArt, this.terrain.tileSize);
-    if (this.disposed) { assets.material.dispose(); return; }
+    if (this.disposed) {
+      assets.material.dispose();
+      return;
+    }
     this.falloffAssets = assets;
     // Only the falloff writes depth (prepass); turf layers stay depth-free and are ordered by renderOrder.
-    const mesh = this.falloffMesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
+    const mesh = (this.falloffMesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material));
     mesh.name = 'TurfFalloff';
     // Above ocean (-1.75) but below every turf layer, dirt included (>= -1): turf is drawn after, so it covers the falloff where they are coplanar.
     mesh.renderOrder = -1.25;
@@ -144,9 +197,14 @@ export class GroundDisplay implements GroundOverlayHost {
 
   private async prepareOcean(): Promise<void> {
     const art = this.terrain.oceanArt();
-    if (!art) { return; }
+    if (!art) {
+      return;
+    }
     const assets = await loadGroundTileAssets(this.assetBaseUrl, art);
-    if (this.disposed) { assets.material.dispose(); return; }
+    if (this.disposed) {
+      assets.material.dispose();
+      return;
+    }
     this.ocean = new OceanSurface(assets.material, this.terrain);
     this.oceanMaterial = assets.material;
     this.oceanMesh = new THREE.Mesh(new THREE.BufferGeometry(), assets.material);
@@ -154,11 +212,15 @@ export class GroundDisplay implements GroundOverlayHost {
     this.oceanMesh.renderOrder = -1.75;
     this.ocean.attach(this.oceanMesh);
     this.root.add(this.oceanMesh);
-    if (this.oceanClock) { this.ocean.bindClock(this.oceanClock); }
+    if (this.oceanClock) {
+      this.ocean.bindClock(this.oceanClock);
+    }
   }
 
   private rebuildCliffsAndOcean(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.rebuildOcean();
     this.rebuildFalloff();
     this.ocean?.rebuildColours();
@@ -167,18 +229,30 @@ export class GroundDisplay implements GroundOverlayHost {
   /** The ocean surface's footprint: its cells merged into rectangles. */
   private rebuildOcean(): void {
     const mesh = this.oceanMesh;
-    if (!mesh) { return; }
+    if (!mesh) {
+      return;
+    }
     const { min, max } = this.terrain.cellRange();
     const surface = new Set<string>();
-    for (const [col, row] of this.terrain.oceanSurfaceCells()) { surface.add(`${col},${row}`); }
+    for (const [col, row] of this.terrain.oceanSurfaceCells()) {
+      surface.add(`${col},${row}`);
+    }
     const rects = mergeCellRectangles(max - min, (col, row) => surface.has(`${col + min},${row + min}`));
     mesh.geometry.dispose();
-    mesh.geometry = cellRectangleGeometry(rects, min, this.terrain.tileSize, this.terrain.size / 2, new THREE.Matrix4());
+    mesh.geometry = cellRectangleGeometry(
+      rects,
+      min,
+      this.terrain.tileSize,
+      this.terrain.size / 2,
+      new THREE.Matrix4(),
+    );
     mesh.visible = rects.length > 0;
   }
 
   private rebuildFalloff(): void {
-    if (!this.falloffAssets || !this.falloffMesh) { return; }
+    if (!this.falloffAssets || !this.falloffMesh) {
+      return;
+    }
     const edges = this.terrain.falloffEdges();
     this.falloffMesh.geometry.dispose();
     this.falloffMesh.geometry = groundFalloffGeometry(edges, this.falloffAssets);
@@ -188,36 +262,67 @@ export class GroundDisplay implements GroundOverlayHost {
 
   /** Adds, replaces or (with `undefined`) withdraws an overlay. Its texture loads here; it draws once loaded. */
   declareOverlay(key: string, declaration: GroundOverlayDeclaration | undefined): void {
-    if (this.disposed || this.overlays.get(key)?.declaration === declaration) { return; }
+    if (this.disposed || this.overlays.get(key)?.declaration === declaration) {
+      return;
+    }
     this.withdrawOverlay(key);
-    if (!declaration) { return; }
-    const overlay: Overlay = { declaration, blend: { value: new THREE.Vector3() }, materials: new Map(), visible: false };
+    if (!declaration) {
+      return;
+    }
+    const overlay: Overlay = {
+      declaration,
+      blend: { value: new THREE.Vector3() },
+      materials: new Map(),
+      visible: false,
+    };
     this.overlays.set(key, overlay);
-    const cover = watchSignal(declaration.cover, stop => { overlay.stop = stop; });
+    const cover = watchSignal(declaration.cover, stop => {
+      overlay.stop = stop;
+    });
     createEffect(() => {
       const value = cover.get();
       groundOverlayBlend(value, overlay.blend.value);
       overlay.visible = value > 0;
-      for (const chunk of this.chunks) { for (const mesh of chunk.overlays.get(key) ?? []) { mesh.visible = overlay.visible; } }
+      for (const chunk of this.chunks) {
+        for (const mesh of chunk.overlays.get(key) ?? []) {
+          mesh.visible = overlay.visible;
+        }
+      }
     });
-    void loadGroundTexture(this.assetBaseUrl, declaration.texture, true).then(texture => {
-      if (this.overlays.get(key) !== overlay) { texture.dispose(); return; }
-      // ground_overlay.ksh uses RGB as three masks, not as visible colours.
-      texture.colorSpace = THREE.NoColorSpace;
-      overlay.texture = texture;
-      for (const chunk of this.chunks) { this.buildOverlay(chunk, key, overlay, this.terrain.landOverlayQuads(chunk)); }
-    }).catch((error: unknown) => {
-      if (this.overlays.get(key) === overlay) { console.error(`Unable to load ground overlay ${declaration.texture}`, error); }
-    });
+    void loadGroundTexture(this.assetBaseUrl, declaration.texture, true)
+      .then(texture => {
+        if (this.overlays.get(key) !== overlay) {
+          texture.dispose();
+          return;
+        }
+        // ground_overlay.ksh uses RGB as three masks, not as visible colours.
+        texture.colorSpace = THREE.NoColorSpace;
+        overlay.texture = texture;
+        for (const chunk of this.chunks) {
+          this.buildOverlay(chunk, key, overlay, this.terrain.landOverlayQuads(chunk));
+        }
+      })
+      .catch((error: unknown) => {
+        if (this.overlays.get(key) === overlay) {
+          console.error(`Unable to load ground overlay ${declaration.texture}`, error);
+        }
+      });
   }
 
   private withdrawOverlay(key: string): void {
     const overlay = this.overlays.get(key);
-    if (!overlay) { return; }
+    if (!overlay) {
+      return;
+    }
     this.overlays.delete(key);
     overlay.stop?.();
-    for (const chunk of this.chunks) { releaseMeshes(chunk.overlays.get(key) ?? []); chunk.overlays.delete(key); }
-    for (const material of overlay.materials.values()) { material.dispose(); }
+    for (const chunk of this.chunks) {
+      releaseMeshes(chunk.overlays.get(key) ?? []);
+      chunk.overlays.delete(key);
+    }
+    for (const material of overlay.materials.values()) {
+      material.dispose();
+    }
     overlay.texture?.dispose();
   }
 
@@ -226,24 +331,46 @@ export class GroundDisplay implements GroundOverlayHost {
     const pending: Promise<void>[] = [];
     for (const declaration of this.terrain.groundLayers()) {
       let layer = this.layers.get(declaration.tileId);
-      if (!layer) { this.layers.set(declaration.tileId, layer = { declaration }); }
-      if (layer.assets) { continue; }
-      layer.loading ??= loadGroundTileAssets(this.assetBaseUrl, declaration.art).then(assets => {
-        if (this.disposed) { assets.material.dispose(); return; }
-        layer.assets = assets;
-        // A layer joining later draws wherever its tiles already are.
-        if (redraw) { this.rebuild(); }
-      }).finally(() => { layer.loading = undefined; });
+      if (!layer) {
+        this.layers.set(declaration.tileId, (layer = { declaration }));
+      }
+      if (layer.assets) {
+        continue;
+      }
+      layer.loading ??= loadGroundTileAssets(this.assetBaseUrl, declaration.art)
+        .then(assets => {
+          if (this.disposed) {
+            assets.material.dispose();
+            return;
+          }
+          layer.assets = assets;
+          // A layer joining later draws wherever its tiles already are.
+          if (redraw) {
+            this.rebuild();
+          }
+        })
+        .finally(() => {
+          layer.loading = undefined;
+        });
       pending.push(layer.loading);
     }
     return pending;
   }
 
   private rebuild(bounds?: GroundCellBounds): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     for (const chunk of this.chunks) {
-      if (bounds && (chunk.maxCol <= bounds.minCol || chunk.minCol >= bounds.maxCol
-        || chunk.maxRow <= bounds.minRow || chunk.minRow >= bounds.maxRow)) { continue; }
+      if (
+        bounds &&
+        (chunk.maxCol <= bounds.minCol ||
+          chunk.minCol >= bounds.maxCol ||
+          chunk.maxRow <= bounds.minRow ||
+          chunk.minRow >= bounds.maxRow)
+      ) {
+        continue;
+      }
       this.build(chunk);
     }
   }
@@ -252,35 +379,69 @@ export class GroundDisplay implements GroundOverlayHost {
     releaseMeshes(chunk.meshes);
     for (const [tileId, layerQuads] of this.terrain.groundLayerQuads(chunk)) {
       const layer = this.layers.get(tileId);
-      if (!layer?.assets || !layerQuads.length) { continue; }
-      const mesh = this.mesh(layerQuads, layer.assets, layer.assets.material, `TurfBlend:${layer.declaration.art.name}`, layer.declaration.renderOrder);
+      if (!layer?.assets || !layerQuads.length) {
+        continue;
+      }
+      const mesh = this.mesh(
+        layerQuads,
+        layer.assets,
+        layer.assets.material,
+        `TurfBlend:${layer.declaration.art.name}`,
+        layer.declaration.renderOrder,
+      );
       chunk.meshes.push(mesh);
     }
     let coverage: ReadonlyMap<number, readonly GroundTileQuad[]> | undefined;
     for (const [key, overlay] of this.overlays) {
-      if (overlay.texture) { this.buildOverlay(chunk, key, overlay, coverage ??= this.terrain.landOverlayQuads(chunk)); }
+      if (overlay.texture) {
+        this.buildOverlay(chunk, key, overlay, (coverage ??= this.terrain.landOverlayQuads(chunk)));
+      }
     }
   }
 
   /** ground_overlay.ksh samples each layer's atlas alpha, coastal skirts included, with world-space noise UVs. */
-  private buildOverlay(chunk: Chunk, key: string, overlay: Overlay, coverage: ReadonlyMap<number, readonly GroundTileQuad[]>): void {
+  private buildOverlay(
+    chunk: Chunk,
+    key: string,
+    overlay: Overlay,
+    coverage: ReadonlyMap<number, readonly GroundTileQuad[]>,
+  ): void {
     const meshes = chunk.overlays.get(key) ?? [];
     chunk.overlays.set(key, meshes);
     releaseMeshes(meshes);
     const ordered = [...this.layers.values()].sort((a, b) => a.declaration.renderOrder - b.declaration.renderOrder);
     ordered.forEach(({ declaration, assets }, rank) => {
       const quads = coverage.get(declaration.tileId);
-      if (!assets || !quads?.length) { return; }
+      if (!assets || !quads?.length) {
+        return;
+      }
       let material = overlay.materials.get(declaration.tileId);
-      if (!material) { overlay.materials.set(declaration.tileId, material = groundOverlayMaterial(overlay.texture!, overlay.blend, assets.atlas)); }
-      const mesh = this.mesh(quads, assets, material, `GroundOverlay:${key}`, overlay.declaration.renderOrder + rank * OVERLAY_LAYER_STEP);
+      if (!material) {
+        overlay.materials.set(
+          declaration.tileId,
+          (material = groundOverlayMaterial(overlay.texture!, overlay.blend, assets.atlas)),
+        );
+      }
+      const mesh = this.mesh(
+        quads,
+        assets,
+        material,
+        `GroundOverlay:${key}`,
+        overlay.declaration.renderOrder + rank * OVERLAY_LAYER_STEP,
+      );
       mesh.receiveShadow = false;
       mesh.visible = overlay.visible;
       meshes.push(mesh);
     });
   }
 
-  private mesh(quads: readonly GroundTileQuad[], assets: GroundTileAssets, material: THREE.Material, name: string, renderOrder: number): THREE.Mesh {
+  private mesh(
+    quads: readonly GroundTileQuad[],
+    assets: GroundTileAssets,
+    material: THREE.Material,
+    name: string,
+    renderOrder: number,
+  ): THREE.Mesh {
     const mesh = new THREE.Mesh(groundTileGeometry(quads, assets, this.terrain.size, this.terrain.tileSize), material);
     mesh.name = name;
     mesh.renderOrder = renderOrder;
@@ -291,20 +452,29 @@ export class GroundDisplay implements GroundOverlayHost {
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
-    for (const key of [...this.overlays.keys()]) { this.withdrawOverlay(key); }
+    if (this.disposed) {
+      return;
+    }
+    for (const key of [...this.overlays.keys()]) {
+      this.withdrawOverlay(key);
+    }
     this.disposed = true;
     this.stopTerrain();
     this.root.removeFromParent();
-    for (const chunk of this.chunks) { releaseMeshes(chunk.meshes); }
-    for (const { assets } of this.layers.values()) { assets?.material.dispose(); }
+    for (const chunk of this.chunks) {
+      releaseMeshes(chunk.meshes);
+    }
+    for (const { assets } of this.layers.values()) {
+      assets?.material.dispose();
+    }
     this.layers.clear();
     this.depthPrepass.dispose();
     this.ocean?.dispose();
     this.ocean = undefined;
     this.oceanMesh?.geometry.dispose();
     this.oceanMaterial?.dispose();
-    this.oceanMesh = undefined; this.oceanMaterial = undefined;
+    this.oceanMesh = undefined;
+    this.oceanMaterial = undefined;
     this.falloffMesh?.geometry.dispose();
     this.falloffMesh = undefined;
     this.falloffAssets?.material.dispose();

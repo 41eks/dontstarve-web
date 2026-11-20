@@ -26,50 +26,89 @@ export class Machine {
 
   /** `scheduler` is the inst's game time, needed only for a cooldown. */
   constructor(inst: MachineInst, scheduler?: () => GameTimeScheduler | undefined) {
-    this.inst = inst; this.scheduler = scheduler;
+    this.inst = inst;
+    this.scheduler = scheduler;
     inst.addTag('enabled');
   }
 
   /** SetGroundOnlyMachine: the `groundonlymachine` tag keeps a held or floating machine from being switched. */
   SetGroundOnlyMachine(groundonly: boolean): void {
-    if (groundonly) { this.inst.addTag('groundonlymachine'); } else { this.inst.removeTag('groundonlymachine'); }
+    if (groundonly) {
+      this.inst.addTag('groundonlymachine');
+    } else {
+      this.inst.removeTag('groundonlymachine');
+    }
   }
 
-  IsOn(): boolean { return this.isonState.peek(); }
+  IsOn(): boolean {
+    return this.isonState.peek();
+  }
   /** Prefab turnon/turnoff functions set ison themselves, as mininglantern.lua does. */
   set isOn(ison: boolean) {
     this.isonState.set(ison);
-    if (ison) { this.inst.addTag('turnedon'); } else { this.inst.removeTag('turnedon'); }
+    if (ison) {
+      this.inst.addTag('turnedon');
+    } else {
+      this.inst.removeTag('turnedon');
+    }
   }
-  get enabled(): boolean { return this.enabledValue; }
+  get enabled(): boolean {
+    return this.enabledValue;
+  }
   set enabled(enabled: boolean) {
     this.enabledValue = enabled;
-    if (enabled) { this.inst.addTag('enabled'); } else { this.inst.removeTag('enabled'); }
+    if (enabled) {
+      this.inst.addTag('enabled');
+    } else {
+      this.inst.removeTag('enabled');
+    }
   }
-  get oncooldown(): boolean { return this.oncooldownValue; }
+  get oncooldown(): boolean {
+    return this.oncooldownValue;
+  }
   private set oncooldown(oncooldown: boolean) {
     this.oncooldownValue = oncooldown;
-    if (oncooldown) { this.inst.addTag('cooldown'); } else { this.inst.removeTag('cooldown'); }
+    if (oncooldown) {
+      this.inst.addTag('cooldown');
+    } else {
+      this.inst.removeTag('cooldown');
+    }
   }
 
-  OnSave(): { ison: boolean } { return { ison: this.IsOn() }; }
+  OnSave(): { ison: boolean } {
+    return { ison: this.IsOn() };
+  }
   OnLoad(data: { ison?: boolean } | undefined): void {
-    if (!data) { return; }
+    if (!data) {
+      return;
+    }
     this.isOn = data.ison === true;
-    if (this.IsOn()) { this.TurnOn(); } else { this.TurnOff(); }
+    if (this.IsOn()) {
+      this.TurnOn();
+    } else {
+      this.TurnOff();
+    }
   }
 
   StartCooldown(): void {
-    if (this.cooldowntime <= 0) { return; }
+    if (this.cooldowntime <= 0) {
+      return;
+    }
     const scheduler = this.scheduler?.();
-    if (!scheduler) { throw new Error('A machine cooldown needs the inst\'s game time'); }
+    if (!scheduler) {
+      throw new Error("A machine cooldown needs the inst's game time");
+    }
     this.oncooldown = true;
     this.cooldownTimer?.stop();
-    this.cooldownTimer = new ComponentTimer(scheduler, () => { this.oncooldown = false; });
+    this.cooldownTimer = new ComponentTimer(scheduler, () => {
+      this.oncooldown = false;
+    });
     this.cooldownTimer.start(this.cooldowntime);
   }
   StopCooldown(): void {
-    if (!this.cooldownTimer) { return; }
+    if (!this.cooldownTimer) {
+      return;
+    }
     this.cooldownTimer.stop();
     this.cooldownTimer = undefined;
     this.oncooldown = false;

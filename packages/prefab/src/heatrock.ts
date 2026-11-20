@@ -11,7 +11,9 @@ export const HEATROCK_FUEL = 100;
 const HEATROCK_NUMUSES = 8;
 export const HEATROCK_IMAGES = catalog.items.heatrock.inventoryImageVariants;
 /** The variant images by texture name, as SetImageFromSprite builds it. */
-const HEATROCK_IMAGES_BY_NAME: Readonly<Partial<Record<string, typeof HEATROCK_IMAGES[keyof typeof HEATROCK_IMAGES]>>> = HEATROCK_IMAGES;
+const HEATROCK_IMAGES_BY_NAME: Readonly<
+  Partial<Record<string, (typeof HEATROCK_IMAGES)[keyof typeof HEATROCK_IMAGES]>>
+> = HEATROCK_IMAGES;
 
 const THRESHOLDS = [-30, -10, 10, 30];
 const EMITTED_TEMPERATURES = [-10, 10, 25, 40, 60];
@@ -50,38 +52,57 @@ export class HeatRock {
       this.heater.SetThermics(range >= 4, range <= 2);
       return EMITTED_TEMPERATURES[range - 1];
     });
-    this.stopTemperature = entity.ListenForEvent('temperaturedelta', (_inst, data) => this.TemperatureChange(data.hasrate));
+    this.stopTemperature = entity.ListenForEvent('temperaturedelta', (_inst, data) =>
+      this.TemperatureChange(data.hasrate),
+    );
     // Evaluate restored temperature without spending a charge; fresh stones remain neutral.
     this.TemperatureChange(false);
     // UpdateImages: PlayAnimation(range, true) on the inst's own AnimState, on the ground, in a container or equipped.
-    this.stopAnimation = createEffect(() => { entity.sprite.start(String(this.rangeMemo.get())); });
+    this.stopAnimation = createEffect(() => {
+      entity.sprite.start(String(this.rangeMemo.get()));
+    });
     // ChangeImageName(skinname..range): the inventory image is a pure function of the sprite json's skin and range
     // clip. Catalog entries are constant, so sprite writes that keep the image do not reach the item tile.
     entity.components.inventoryitem.SetImageFromSprite(({ skinId, clip }) => {
       const name = `${skinId ?? 'heat_rock'}${clip.name}.tex`;
       const image = HEATROCK_IMAGES_BY_NAME[name];
-      if (!image) { throw new Error(`Missing thermal stone image: ${name}`); }
+      if (!image) {
+        throw new Error(`Missing thermal stone image: ${name}`);
+      }
       return image;
     });
   }
   private TemperatureChange(hasrate: boolean): void {
-    const current = this.temperature.GetCurrent(), ambient = this.temperature.GetAmbientTemperature();
+    const current = this.temperature.GetCurrent(),
+      ambient = this.temperature.GetAmbientTemperature();
     // Sample GetLocalTemperature on every event, including when current stays clamped or unchanged.
     this.ambientTemperature.set(ambient);
-    const range = GetHeatRockRange(current, ambient), entity = this.entity;
+    const range = GetHeatRockRange(current, ambient),
+      entity = this.entity;
     if (range <= 1) {
-      if (entity.lowTemp === undefined || entity.lowTemp > current) { entity.lowTemp = Math.floor(current); }
+      if (entity.lowTemp === undefined || entity.lowTemp > current) {
+        entity.lowTemp = Math.floor(current);
+      }
       entity.highTemp = undefined;
     } else if (range >= 5) {
-      if (entity.highTemp === undefined || entity.highTemp < current) { entity.highTemp = Math.ceil(current); }
+      if (entity.highTemp === undefined || entity.highTemp < current) {
+        entity.highTemp = Math.ceil(current);
+      }
       entity.lowTemp = undefined;
     } else if (entity.lowTemp !== undefined) {
-      if (GetHeatRockRange(entity.lowTemp, ambient) >= 3) { entity.lowTemp = undefined; }
-    } else if (entity.highTemp !== undefined && GetHeatRockRange(entity.highTemp, ambient) <= 3) { entity.highTemp = undefined; }
-    if (range === this.previousRange) { return; }
+      if (GetHeatRockRange(entity.lowTemp, ambient) >= 3) {
+        entity.lowTemp = undefined;
+      }
+    } else if (entity.highTemp !== undefined && GetHeatRockRange(entity.highTemp, ambient) <= 3) {
+      entity.highTemp = undefined;
+    }
+    if (range === this.previousRange) {
+      return;
+    }
     this.previousRange = range;
     if (hasrate && ((entity.lowTemp !== undefined && range >= 3) || (entity.highTemp !== undefined && range <= 3))) {
-      entity.lowTemp = undefined; entity.highTemp = undefined;
+      entity.lowTemp = undefined;
+      entity.highTemp = undefined;
       // Each use costs 1 / HEATROCK_NUMUSES; SetDepletedFn(inst.Remove) removes a spent rock.
       const fueled = entity.components.fueled!;
       fueled.SetPercent(fueled.GetPercent() - 1 / HEATROCK_NUMUSES);
@@ -98,16 +119,22 @@ export class HeatRock {
 /** A new ground visual presents the item's sprite in its default clip; the stone keeps playing its range, `1`..`5`. */
 export function declareHeatRockSprite(entity: ItemEntity, sprite: ArchiveSpriteCommands): void {
   const rock = entity.getComponent<HeatRock>('heatrock');
-  if (rock) { sprite.start(String(rock.range.peek())); }
+  if (rock) {
+    sprite.start(String(rock.range.peek()));
+  }
 }
 
 export function configureHeatRockEntity(entity: ItemEntity): void {
-  for (const tag of ['heatrock', 'icebox_valid', 'bait', 'molebait', 'HASHEATER', 'tradable']) { entity.addTag(tag); }
+  for (const tag of ['heatrock', 'icebox_valid', 'bait', 'molebait', 'HASHEATER', 'tradable']) {
+    entity.addTag(tag);
+  }
   if (!entity.components.fueled) {
     const fueled = entity.AddFueled();
     fueled.fueltype = 'USAGE';
     fueled.InitializeFuelLevel(HEATROCK_FUEL);
-    fueled.SetDepletedFn(inst => { inst.remove(); });
+    fueled.SetDepletedFn(inst => {
+      inst.remove();
+    });
   }
   entity.component('heatrock', () => new HeatRock(entity));
 }

@@ -2,7 +2,13 @@ import { isBlinkCaster } from '../../componets/src/blinkstaff';
 import { BufferedAction } from './bufferedaction.ts';
 import { Vector3 } from 'three';
 import { snapToTileCenter, TILE_SIZE, WORLD_SCALE } from '../../prefab/src/tile';
-import { performLightAction, performToolWork, type ComponentActionEntity, type ComponentActionTarget, type ToolAction } from './componentactions.ts';
+import {
+  performLightAction,
+  performToolWork,
+  type ComponentActionEntity,
+  type ComponentActionTarget,
+  type ToolAction,
+} from './componentactions.ts';
 import { preparePickReceiver } from './pick.ts';
 import { canPickUp, performPickupAction, type PickupDoer } from './pickup.ts';
 import { performRummageAction } from './rummage.ts';
@@ -26,7 +32,12 @@ export interface PlayerActionDoer extends PickupDoer {
 }
 
 /** BufferedAction(player, target, action, invobject): the target, the inventory item it is done with, and the player. */
-export type PlayerAction<Action extends string = string> = BufferedAction<Action, PlayerActionTarget, ItemEntity, PlayerActionDoer>;
+export type PlayerAction<Action extends string = string> = BufferedAction<
+  Action,
+  PlayerActionTarget,
+  ItemEntity,
+  PlayerActionDoer
+>;
 
 /** actions.lua ACTIONS.<id>.fn and validfn, for the actions the PlayerController buffers. */
 interface ActionFns {
@@ -40,7 +51,9 @@ interface ActionFns {
 
 /** act.doer: every player action is made with its doer. */
 function playerDoer(act: PlayerAction): PlayerActionDoer {
-  if (!act.doer) { throw new Error(`${act.action} has no doer`); }
+  if (!act.doer) {
+    throw new Error(`${act.action} has no doer`);
+  }
   return act.doer;
 }
 /** The components actions.lua reaches on act.target. */
@@ -49,14 +62,18 @@ const components = (act: PlayerAction): ComponentActionEntity['components'] => a
 /** actions.lua ValidToolWork. */
 function validToolWork(act: PlayerAction, action: ToolAction): boolean {
   const workable = act.target?.components.workable;
-  return !!workable?.CanBeWorked() && workable.GetWorkAction() === action
-    && !act.invobject?.components.equippable?.IsRestricted();
+  return (
+    !!workable?.CanBeWorked() &&
+    workable.GetWorkAction() === action &&
+    !act.invobject?.components.equippable?.IsRestricted()
+  );
 }
 
 /** actions.lua DoToolWork: the workable is worked by the doer with the tool's effectiveness. */
 function toolWork(action: ToolAction): ActionFns {
   return {
-    fn: act => validToolWork(act, action) && !!act.target && performToolWork(action, act.target, playerDoer(act), act.invobject),
+    fn: act =>
+      validToolWork(act, action) && !!act.target && performToolWork(action, act.target, playerDoer(act), act.invobject),
     validfn: act => validToolWork(act, action),
   };
 }
@@ -64,21 +81,34 @@ function toolWork(action: ToolAction): ActionFns {
 /** stewer.lua / pickable.lua: a spawned product goes to the doer's inventory, dropped at the doer when full. */
 function productReceiver(act: PlayerAction): StewerHarvester {
   const inventory = playerDoer(act).components.inventory;
-  return { giveItem: (itemId, count, position) => !!inventory
-    && inventory.GiveItem(inventory.entities.create({ itemId, count }), new Vector3(position.x, position.y, position.z)) };
+  return {
+    giveItem: (itemId, count, position) =>
+      !!inventory &&
+      inventory.GiveItem(inventory.entities.create({ itemId, count }), new Vector3(position.x, position.y, position.z)),
+  };
 }
 
 /** actions.lua PICK.validfn: the pickable can be picked; SCENE.pickable already required the pickable tag. */
 function canPick(act: PlayerAction): boolean {
   const target = act.target;
-  return !!target && !!components(act).pickable?.canBePicked && target.hasTag('pickable') && !target.hasTag('fire') && !target.hasTag('intense');
+  return (
+    !!target &&
+    !!components(act).pickable?.canBePicked &&
+    target.hasTag('pickable') &&
+    !target.hasTag('fire') &&
+    !target.hasTag('intense')
+  );
 }
 
 /** BufferedAction:GetActionPoint: the action's pos, else its target's position. */
 function actionPoint(act: PlayerAction): Vector3 {
   const pos = act.pos;
-  if (pos) { return new Vector3(pos.x, pos.y, pos.z); }
-  if (!act.target) { throw new Error(`${act.action} has neither a point nor a target`); }
+  if (pos) {
+    return new Vector3(pos.x, pos.y, pos.z);
+  }
+  if (!act.target) {
+    throw new Error(`${act.action} has neither a point nor a target`);
+  }
   return act.target.getPosition();
 }
 
@@ -89,43 +119,71 @@ function onUsedAsItem(act: PlayerAction): void {
 
 /** actions.lua ACTIONS.DEPLOY.fn, which DEPLOY_TILEARRIVE shares. */
 function deploy(act: PlayerAction): boolean {
-    const item = act.invobject, doer = playerDoer(act), map = doer.Map;
-    const point = actionPoint(act);
-    if (!item || !map || !item.components.deployable?.CanDeploy(point, map)) { return false; }
-    const inventory = doer.components.inventory, obj = inventory.RemoveItem(item);
-    if (!obj) { return false; }
-    if (obj.components.deployable?.Deploy(point, doer, map)) { return true; }
-    inventory.GiveItem(obj);
+  const item = act.invobject,
+    doer = playerDoer(act),
+    map = doer.Map;
+  const point = actionPoint(act);
+  if (!item || !map || !item.components.deployable?.CanDeploy(point, map)) {
     return false;
+  }
+  const inventory = doer.components.inventory,
+    obj = inventory.RemoveItem(item);
+  if (!obj) {
+    return false;
+  }
+  if (obj.components.deployable?.Deploy(point, doer, map)) {
+    return true;
+  }
+  inventory.GiveItem(obj);
+  return false;
 }
 
 export const ACTION_FNS = {
   GIVE: {
     fn: act => {
-      const item = act.invobject, trader = act.target?.components.trader;
-      if (!item || !trader) { return false; }
+      const item = act.invobject,
+        trader = act.target?.components.trader;
+      if (!item || !trader) {
+        return false;
+      }
       const inventory = playerDoer(act).components.inventory;
-      return trader.AcceptGift(item, deleteItem => {
-        const taken = inventory.RemoveItem(item);
-        if (!taken) { return false; }
-        if (deleteItem) { taken.remove(); }
-        return taken;
-      }, act.doer);
+      return trader.AcceptGift(
+        item,
+        deleteItem => {
+          const taken = inventory.RemoveItem(item);
+          if (!taken) {
+            return false;
+          }
+          if (deleteItem) {
+            taken.remove();
+          }
+          return taken;
+        },
+        act.doer,
+      );
     },
   },
   // The crop, grower, quagmire and doer's fertilizable branches are not ported, nor CHEVO_fertilized.
   FERTILIZE: {
     fn: act => {
-      const item = act.invobject, fertilizer = item?.components.fertilizer, pickable = act.target?.components.pickable;
-      if (!item || !fertilizer || !pickable?.CanBeFertilized() || !pickable.Fertilize(item, act.doer)) { return false; }
+      const item = act.invobject,
+        fertilizer = item?.components.fertilizer,
+        pickable = act.target?.components.pickable;
+      if (!item || !fertilizer || !pickable?.CanBeFertilized() || !pickable.Fertilize(item, act.doer)) {
+        return false;
+      }
       fertilizer.OnApplied(act.doer, act.target);
       return true;
     },
   },
   BATHBOMB: {
     fn: act => {
-      const item = act.invobject, bathbombable = act.target?.components.bathbombable, bathbomb = item?.components.bathbomb;
-      if (!item || !bathbomb || !bathbombable?.can_be_bathbombed) { return false; }
+      const item = act.invobject,
+        bathbombable = act.target?.components.bathbombable,
+        bathbomb = item?.components.bathbomb;
+      if (!item || !bathbomb || !bathbombable?.can_be_bathbombed) {
+        return false;
+      }
       bathbombable.OnBathBombed(item, act.doer);
       playerDoer(act).components.inventory.RemoveItem(item)?.remove();
       return true;
@@ -134,7 +192,8 @@ export const ACTION_FNS = {
   // The heavy-lifting body material and the forgerepairable branch are not ported.
   REPAIR: {
     fn: act => {
-      const repairable = act.target?.components.repairable, material = act.invobject;
+      const repairable = act.target?.components.repairable,
+        material = act.invobject;
       return !!repairable && !!material?.components.repairer && repairable.Repair(act.doer, material);
     },
   },
@@ -143,22 +202,28 @@ export const ACTION_FNS = {
     fn: act => {
       // act.target or else act.doer: the player has no beard component, so shaving oneself is not ported.
       const beard = act.target?.components.beard;
-      if (!act.invobject?.components.shaver || !beard) { return false; }
+      if (!act.invobject?.components.shaver || !beard) {
+        return false;
+      }
       return beard.Shave(act.doer).ok;
     },
   },
   // Only the occupier branch is ported; container stores go through the container panels.
   STORE: {
     fn: act => {
-      const item = act.invobject, occupiable = act.target?.components.occupiable;
-      if (!item?.components.occupier || !occupiable?.CanOccupy(item)) { return false; }
+      const item = act.invobject,
+        occupiable = act.target?.components.occupiable;
+      if (!item?.components.occupier || !occupiable?.CanOccupy(item)) {
+        return false;
+      }
       // inventoryitem:RemoveFromOwner(): the same inst leaves the doer's inventory.
       return occupiable.Occupy(playerDoer(act).components.inventory.RemoveItem(item) ?? undefined);
     },
   },
   FEED: {
     fn: act => {
-      const item = act.invobject, eater = act.target?.components.eater;
+      const item = act.invobject,
+        eater = act.target?.components.eater;
       return !!item && !!eater && eater.CanEat(item) && eater.Eat(item, act.doer);
     },
   },
@@ -168,10 +233,16 @@ export const ACTION_FNS = {
     // actions.lua ExtraDeployDist: a doer on land reaches a target it cannot walk onto. The projectile and
     // void branches and inst.extra_deploy_distance have no ported user.
     extra_arrive_dist: act => {
-      const map = playerDoer(act).Map, item = act.invobject, target = actionPoint(act);
-      if (!map || !item || !map.isPassableAtPoint(playerDoer(act).position)) { return 0; }
-      if (!map.isOceanTileAtPoint(target) || map.isPassableAtPoint(target)) { return 0; }
-      return (item.hasTag('usedeployspacingasoffset') ? item.components.deployable?.spacing ?? 0 : 0) + WORLD_SCALE;
+      const map = playerDoer(act).Map,
+        item = act.invobject,
+        target = actionPoint(act);
+      if (!map || !item || !map.isPassableAtPoint(playerDoer(act).position)) {
+        return 0;
+      }
+      if (!map.isOceanTileAtPoint(target) || map.isPassableAtPoint(target)) {
+        return 0;
+      }
+      return (item.hasTag('usedeployspacingasoffset') ? (item.components.deployable?.spacing ?? 0) : 0) + WORLD_SCALE;
     },
     fn: deploy,
   },
@@ -179,7 +250,8 @@ export const ACTION_FNS = {
     fn: deploy,
     // actions.lua CheckTileWithinRange: anywhere on the target's tile.
     customarrivecheck: act => {
-      const center = snapToTileCenter(actionPoint(act)), doer = playerDoer(act).position;
+      const center = snapToTileCenter(actionPoint(act)),
+        doer = playerDoer(act).position;
       return Math.abs(center.x - doer.x) <= TILE_SIZE / 2 && Math.abs(center.z - doer.z) <= TILE_SIZE / 2;
     },
   },
@@ -187,10 +259,16 @@ export const ACTION_FNS = {
     fn: act => {
       const inventory = playerDoer(act).components.inventory;
       const soil = act.target;
-      if (!act.invobject || !(soil instanceof PrefabInstance) || !soil.hasTag('soil')) { return false; }
+      if (!act.invobject || !(soil instanceof PrefabInstance) || !soil.hasTag('soil')) {
+        return false;
+      }
       const seed = inventory.RemoveItem(act.invobject);
-      if (!seed) { return false; }
-      if (seed.components.farmplantable?.Plant(soil, act.doer)) { return true; }
+      if (!seed) {
+        return false;
+      }
+      if (seed.components.farmplantable?.Plant(soil, act.doer)) {
+        return true;
+      }
       inventory.GiveItem(seed);
       return false;
     },
@@ -204,10 +282,17 @@ export const ACTION_FNS = {
     // pickable:Pick(act.doer) spawns the product for the picker.
     fn: act => {
       const pickable = components(act).pickable;
-      if (!pickable) { return false; }
-      const receiver = pickable.product ? preparePickReceiver(playerDoer(act), pickable.product, pickable.numToHarvest ?? 1,
-        pickable.productEntity) : { picker: playerDoer(act), giveItem: () => false, dispose: () => {} };
-      try { return pickable.pick(receiver); } finally { receiver.dispose(); }
+      if (!pickable) {
+        return false;
+      }
+      const receiver = pickable.product
+        ? preparePickReceiver(playerDoer(act), pickable.product, pickable.numToHarvest ?? 1, pickable.productEntity)
+        : { picker: playerDoer(act), giveItem: () => false, dispose: () => {} };
+      try {
+        return pickable.pick(receiver);
+      } finally {
+        receiver.dispose();
+      }
     },
     validfn: canPick,
   },
@@ -216,15 +301,22 @@ export const ACTION_FNS = {
       const inst = act.target;
       return inst instanceof ItemEntity && performPickupAction(inst, playerDoer(act));
     },
-    validfn: act => { const inst = act.target; return inst instanceof ItemEntity && canPickUp(inst); },
+    validfn: act => {
+      const inst = act.target;
+      return inst instanceof ItemEntity && canPickUp(inst);
+    },
   },
   HARVEST: {
     // The crop, harvestable and dryer branches are not ported.
     fn: act => {
       const { stewer, occupiable } = components(act);
-      if (stewer) { return stewer.Harvest(productReceiver(act)); }
+      if (stewer) {
+        return stewer.Harvest(productReceiver(act));
+      }
       const item = occupiable?.Harvest();
-      if (item === undefined) { return false; }
+      if (item === undefined) {
+        return false;
+      }
       playerDoer(act).components.inventory.GiveItem(item, actionPoint(act));
       return true;
     },
@@ -235,8 +327,11 @@ export const ACTION_FNS = {
   },
   TAKEITEM: {
     fn: act => {
-      const shelf = components(act).shelf, source = actionPoint(act);
-      if (!shelf?.cantakeitem) { return false; }
+      const shelf = components(act).shelf,
+        source = actionPoint(act);
+      if (!shelf?.cantakeitem) {
+        return false;
+      }
       shelf.TakeItem({ GiveItem: (item: ItemEntity) => playerDoer(act).components.inventory.GiveItem(item, source) });
       return true;
     },
@@ -244,7 +339,9 @@ export const ACTION_FNS = {
   TURNON: {
     fn: act => {
       const machine = components(act).machine;
-      if (!machine || machine.IsOn()) { return false; }
+      if (!machine || machine.IsOn()) {
+        return false;
+      }
       machine.TurnOn();
       return true;
     },
@@ -252,7 +349,9 @@ export const ACTION_FNS = {
   TURNOFF: {
     fn: act => {
       const machine = components(act).machine;
-      if (!machine?.IsOn()) { return false; }
+      if (!machine?.IsOn()) {
+        return false;
+      }
       machine.TurnOff();
       return true;
     },
@@ -263,9 +362,12 @@ export const ACTION_FNS = {
   LOOKAT: {
     // ACTIONS.LOOKAT.fn without closeinspector, which has no port.
     fn: act => {
-      const doer = playerDoer(act), inspectable = (act.target ?? act.invobject)?.components.inspectable;
+      const doer = playerDoer(act),
+        inspectable = (act.target ?? act.invobject)?.components.inspectable;
       const desc = inspectable?.GetDescription(doer);
-      if (desc === undefined) { return false; }
+      if (desc === undefined) {
+        return false;
+      }
       doer.components.talker?.Say(desc, undefined, inspectable?.noanim);
       return true;
     },
@@ -273,14 +375,19 @@ export const ACTION_FNS = {
   SLEEPIN: {
     // sleepingbag:DoSleep(act.doer) hands the bed to the doer's sleepingbaguser.
     fn: act => {
-      const bag = components(act).sleepingbag, sleeper = playerDoer(act).components.sleepingbaguser;
-      if (!bag || !sleeper) { return false; }
+      const bag = components(act).sleepingbag,
+        sleeper = playerDoer(act).components.sleepingbaguser;
+      if (!bag || !sleeper) {
+        return false;
+      }
       bag.DoSleep(sleeper);
       return true;
     },
     validfn: act => {
       const { sleepingbag, finiteuses } = components(act);
-      return !!sleepingbag && !sleepingbag.InUse() && !act.target?.hasTag('burnt') && (finiteuses?.GetUses?.() ?? 1) > 0;
+      return (
+        !!sleepingbag && !sleepingbag.InUse() && !act.target?.hasTag('burnt') && (finiteuses?.GetUses?.() ?? 1) > 0
+      );
     },
   },
   MIGRATE: {
@@ -289,38 +396,60 @@ export const ACTION_FNS = {
   },
   ATTACK: {
     // The propattack, thrusting and helmsplitting branches are not ported; combat:DoAttack uses the equipped weapon.
-    fn: act => { if (act.target) { playerDoer(act).components.combat?.DoAttack(act.target); } return true; },
+    fn: act => {
+      if (act.target) {
+        playerDoer(act).components.combat?.DoAttack(act.target);
+      }
+      return true;
+    },
     validfn: act => {
-      const combat = playerDoer(act).components.combat, target = act.target;
-      return !!combat && !!target && !target.hasTag('stealth') && (combat.CanTarget(target)
-        || combat.CanExtinguishTarget(target, act.invobject?.components.weapon)
-        || combat.CanLightTarget(target, act.invobject?.components.weapon));
+      const combat = playerDoer(act).components.combat,
+        target = act.target;
+      return (
+        !!combat &&
+        !!target &&
+        !target.hasTag('stealth') &&
+        (combat.CanTarget(target) ||
+          combat.CanExtinguishTarget(target, act.invobject?.components.weapon) ||
+          combat.CanLightTarget(target, act.invobject?.components.weapon))
+      );
     },
   },
   CASTSPELL: {
     // spellcaster:CanCast, then CastSpell at the action point; the item mimic and crushitemcast checks are not ported.
     fn: act => {
       // A cast from the inventory has neither a point nor a target: GetActionPoint() is nil.
-      const spellcaster = act.invobject?.components.spellcaster, point = act.pos || act.target ? actionPoint(act) : undefined;
-      if (!spellcaster?.canCast(playerDoer(act), act.target, point)) { return false; }
+      const spellcaster = act.invobject?.components.spellcaster,
+        point = act.pos || act.target ? actionPoint(act) : undefined;
+      if (!spellcaster?.canCast(playerDoer(act), act.target, point)) {
+        return false;
+      }
       return spellcaster.castSpell(act.target, point, playerDoer(act));
     },
     validfn: act => !act.target?.hasTag('nomagic'),
   },
   LIGHT: {
-    fn: act => !!act.invobject && !!act.target
-      && performLightAction(act.invobject, act.target, playerDoer(act)),
+    fn: act => !!act.invobject && !!act.target && performLightAction(act.invobject, act.target, playerDoer(act)),
   },
   FISH: {
-    fn: act => { if (act.target) { act.invobject?.components.fishingrod?.StartFishing(act.target, playerDoer(act)); } return true; },
+    fn: act => {
+      if (act.target) {
+        act.invobject?.components.fishingrod?.StartFishing(act.target, playerDoer(act));
+      }
+      return true;
+    },
   },
   REEL: {
     fn: act => {
       const rod = act.invobject?.components.fishingrod;
       if (rod?.IsFishing()) {
-        if (rod.HasHookedFish()) { rod.Reel(); }
-        else if (rod.FishIsBiting()) { rod.Hook(); }
-        else { rod.StopFishing(); }
+        if (rod.HasHookedFish()) {
+          rod.Reel();
+        } else if (rod.FishIsBiting()) {
+          rod.Hook();
+        } else {
+          rod.StopFishing();
+        }
       }
       return true;
     },
@@ -337,7 +466,9 @@ export const ACTION_FNS = {
     fn: act => {
       const blinkstaff = act.invobject?.components.blinkstaff;
       const doer = playerDoer(act);
-      if (act.invobject) { return !!blinkstaff && isBlinkCaster(doer) && blinkstaff.Blink(actionPoint(act), doer); }
+      if (act.invobject) {
+        return !!blinkstaff && isBlinkCaster(doer) && blinkstaff.Blink(actionPoint(act), doer);
+      }
       return act.doer?.sg?.beginPortalJump?.(actionPoint(act)) ?? false;
     },
     validfn: act => !!act.invobject || (!!act.doer?.CanSoulhop?.() && !!act.doer.CanBlinkTo?.(actionPoint(act))),
@@ -349,14 +480,17 @@ export const ACTION_FNS = {
   // The souleater and oceanfishable branches are not ported.
   EAT: {
     fn: act => {
-      const obj = act.target ?? act.invobject, eater = act.doer?.components.eater;
+      const obj = act.target ?? act.invobject,
+        eater = act.doer?.components.eater;
       return !!obj?.components.edible && !!eater && eater.Eat(obj, act.doer);
     },
   },
   PLAY: {
     fn: act => {
       const instrument = act.invobject?.components.instrument;
-      if (!instrument?.Play(act.doer)) { return false; }
+      if (!instrument?.Play(act.doer)) {
+        return false;
+      }
       onUsedAsItem(act);
       return true;
     },
@@ -364,14 +498,25 @@ export const ACTION_FNS = {
   // The simplebook branch is not ported.
   READ: {
     fn: act => {
-      const targ = act.target ?? act.invobject, reader = act.doer?.components.reader;
+      const targ = act.target ?? act.invobject,
+        reader = act.doer?.components.reader;
       return !!targ?.components.book && !!reader && (reader.Read(targ)?.[0] ?? false);
     },
   },
   HAUNT: {
     fn: act => {
-      const target = act.target, hauntable = components(act).hauntable;
-      if (!target || !hauntable || target.components.inventoryitem?.owner || target.hasTag('haunted') || target.hasTag('catchable') || target.hasTag('INLIMBO')) { return false; }
+      const target = act.target,
+        hauntable = components(act).hauntable;
+      if (
+        !target ||
+        !hauntable ||
+        target.components.inventoryitem?.owner ||
+        target.hasTag('haunted') ||
+        target.hasTag('catchable') ||
+        target.hasTag('INLIMBO')
+      ) {
+        return false;
+      }
       playerDoer(act).PushEvent('haunt', { target });
       hauntable.DoHaunt(playerDoer(act));
       return true;
@@ -386,11 +531,17 @@ export type PlayerActionId = keyof typeof ACTION_FNS;
 /** actions.lua ADDFUEL: detach one live item; return rejected fuel to the active stack or inventory. */
 function addFuel(act: PlayerAction): boolean {
   const source = act.invobject;
-  if (!source) { return false; }
+  if (!source) {
+    return false;
+  }
   const inventory = playerDoer(act).components.inventory;
   const fuel = inventory.RemoveItem(source);
-  if (!fuel) { return false; }
-  if (act.target?.components.fueled?.TakeFuelItem(fuel, act.doer)) { return true; }
+  if (!fuel) {
+    return false;
+  }
+  if (act.target?.components.fueled?.TakeFuelItem(fuel, act.doer)) {
+    return true;
+  }
   const held = source.components.inventoryitem.slot;
   if (fuel === source || inventory.GetActiveItem() !== source || !held || !inventory.receiveAt(held.address, fuel)) {
     inventory.GiveItem(fuel);
@@ -398,9 +549,13 @@ function addFuel(act: PlayerAction): boolean {
   return false;
 }
 
-export function hasActionFn(action: string): action is PlayerActionId { return Object.hasOwn(ACTION_FNS, action); }
+export function hasActionFn(action: string): action is PlayerActionId {
+  return Object.hasOwn(ACTION_FNS, action);
+}
 
-function actionFns(action: string): ActionFns | undefined { return hasActionFn(action) ? ACTION_FNS[action] : undefined; }
+function actionFns(action: string): ActionFns | undefined {
+  return hasActionFn(action) ? ACTION_FNS[action] : undefined;
+}
 
 /** locomotor.lua: action.extra_arrive_dist(doer, dest, bufferedaction). */
 /** locomotor.lua OnUpdate: action.customarrivecheck(doer, dest, bufferedaction), when the action has one. */
@@ -409,22 +564,33 @@ export function customArriveCheck(act: PlayerAction): (() => boolean) | undefine
   return check && (() => check(act));
 }
 
-export function extraArriveDist(act: PlayerAction): number { return actionFns(act.action)?.extra_arrive_dist?.(act) ?? 0; }
+export function extraArriveDist(act: PlayerAction): number {
+  return actionFns(act.action)?.extra_arrive_dist?.(act) ?? 0;
+}
 
 /**
  * bufferedaction.lua BufferedAction(doer, target, action, invobject): Do runs ACTIONS[action].fn, and IsValid
  * requires the invobject and target to be valid, then the caller's validfn and the action's validfn.
  */
-export function createBufferedAction<Action extends string>(action: Action, objects: {
-  readonly doer: PlayerActionDoer;
-  readonly pos?: { readonly x: number; readonly y: number; readonly z: number };
-  readonly target?: PlayerActionTarget;
-  readonly invobject?: ItemEntity;
-}, validfn: () => boolean = () => true): PlayerAction<Action> {
+export function createBufferedAction<Action extends string>(
+  action: Action,
+  objects: {
+    readonly doer: PlayerActionDoer;
+    readonly pos?: { readonly x: number; readonly y: number; readonly z: number };
+    readonly target?: PlayerActionTarget;
+    readonly invobject?: ItemEntity;
+  },
+  validfn: () => boolean = () => true,
+): PlayerAction<Action> {
   const fns = actionFns(action);
-  if (!fns) { throw new Error(`No actions.lua fn ported for ${action}`); }
-  const buffered: PlayerAction<Action> = new BufferedAction(action, () => fns.fn(buffered),
+  if (!fns) {
+    throw new Error(`No actions.lua fn ported for ${action}`);
+  }
+  const buffered: PlayerAction<Action> = new BufferedAction(
+    action,
+    () => fns.fn(buffered),
     () => !objects.invobject?.isRemoved && !objects.target?.isRemoved && validfn() && (fns.validfn?.(buffered) ?? true),
-    objects);
+    objects,
+  );
   return buffered;
 }

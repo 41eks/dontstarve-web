@@ -6,10 +6,13 @@ import type { SlotItem } from '@dontstarve-web/ui';
  * durability, freshness, wetness) and its equip slot. The static fields are the tile's current values, kept only
  * for the item's identity and stack limit; save records are not involved.
  */
-export function createInventorySlotItem(inventory: Pick<InventoryStore, 'getItemSpec'>): (entity: ItemEntity) => SlotItem {
-  return (entity) => {
+export function createInventorySlotItem(
+  inventory: Pick<InventoryStore, 'getItemSpec'>,
+): (entity: ItemEntity) => SlotItem {
+  return entity => {
     const spec = inventory.getItemSpec(entity.prefab, entity.skinId);
-    const tile = entity.tile, current = tile.peek();
+    const tile = entity.tile,
+      current = tile.peek();
     const equipslot = entity.components.equippable?.equipslot;
     return {
       entityId: entity.id,

@@ -45,4 +45,3 @@ export function wall_hay_init_fn(skinId: string): PrefabSkinInitialization {
 export function wall_wood_init_fn(skinId: string): PrefabSkinInitialization {
   return basic_init_fn(skinId, 'wall_wood');
 }
-

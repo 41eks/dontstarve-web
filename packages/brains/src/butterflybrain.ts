@@ -17,13 +17,17 @@ const FLOWER_TAGS = ['flower'];
 
 function NearestFlowerPos(inst: BrainInst): Vec3 | undefined {
   const flower = inst.world.getClosestInstWithTag(FLOWER_TAGS, inst, SEE_FLOWER_DIST);
-  if (flower?.isValid()) { return { ...flower.getPosition() }; }
+  if (flower?.isValid()) {
+    return { ...flower.getPosition() };
+  }
   return undefined;
 }
 
 function GoHomeAction(inst: BrainInst) {
   const flower = inst.world.getClosestInstWithTag(FLOWER_TAGS, inst, SEE_FLOWER_DIST);
-  if (flower?.isValid()) { return CreateBufferedAction(inst, flower, 'GOHOME', { ...flower.getPosition() }); }
+  if (flower?.isValid()) {
+    return CreateBufferedAction(inst, flower, 'GOHOME', { ...flower.getPosition() });
+  }
   return undefined;
 }
 
@@ -36,16 +40,22 @@ export const RUN_AWAY_PARAMS = {
 export class ButterflyBrain extends Brain {
   protected override OnStart(): void {
     const inst = this.inst;
-    const root = new PriorityNode([
-      PanicTrigger(inst),
-      ElectricFencePanicTrigger(inst),
-      new RunAway(inst, RUN_AWAY_PARAMS, RUN_AWAY_DIST, STOP_RUN_AWAY_DIST),
-      IfNode(() => !inst.world.isDay, 'IsNight', new DoAction(inst, GoHomeAction, 'go home', true)),
-      IfNode(() => !!inst.components.pollinator?.HasCollectedEnough(), 'IsFullOfPollen',
-        new DoAction(inst, GoHomeAction, 'go home', true)),
-      new FindFlower(inst),
-      new Wander(inst, NearestFlowerPos, MAX_WANDER_DIST),
-    ], 1);
+    const root = new PriorityNode(
+      [
+        PanicTrigger(inst),
+        ElectricFencePanicTrigger(inst),
+        new RunAway(inst, RUN_AWAY_PARAMS, RUN_AWAY_DIST, STOP_RUN_AWAY_DIST),
+        IfNode(() => !inst.world.isDay, 'IsNight', new DoAction(inst, GoHomeAction, 'go home', true)),
+        IfNode(
+          () => !!inst.components.pollinator?.HasCollectedEnough(),
+          'IsFullOfPollen',
+          new DoAction(inst, GoHomeAction, 'go home', true),
+        ),
+        new FindFlower(inst),
+        new Wander(inst, NearestFlowerPos, MAX_WANDER_DIST),
+      ],
+      1,
+    );
     this.bt = new BT(inst, root);
   }
 }

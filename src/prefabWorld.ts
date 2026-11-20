@@ -16,9 +16,17 @@ export const prefabDisplays = new PrefabDisplayGroup(scene);
  * The world's one PrefabEntityManager. It exists before anything that spawns into it, the inventory included, so an
  * inst can only be made by SpawnPrefab; the scene registers the prefab definitions on it and disposes it.
  */
-export const prefabs = new PrefabEntityManager<string, PrefabInstance>(prefabDisplays, PREFAB_BASE_URL,
+export const prefabs = new PrefabEntityManager<string, PrefabInstance>(
+  prefabDisplays,
+  PREFAB_BASE_URL,
   // Items without ground art are drawn from their inventory image.
-  { tickingarea: worldState.tickingarea, physics: world, scheduler: worldState.scheduler, iconArchiveUrl: `${import.meta.env.BASE_URL}dst/data/databundles/images.zip` });
+  {
+    tickingarea: worldState.tickingarea,
+    physics: world,
+    scheduler: worldState.scheduler,
+    iconArchiveUrl: `${import.meta.env.BASE_URL}dst/data/databundles/images.zip`,
+  },
+);
 
 const ITEM_ORIGIN = new THREE.Vector3();
 const ITEM_IDS = new Set(ITEM_PREFAB_IDS);
@@ -28,7 +36,9 @@ export const itemWorld: ItemWorld = {
   isItemPrefab: prefab => ITEM_IDS.has(prefab),
   SpawnPrefab(prefab, saved): ItemEntity {
     const entity = prefabs.spawn(prefab, ITEM_ORIGIN, saved);
-    if (!(entity instanceof ItemEntity)) { throw new Error(`${prefab} does not spawn an item entity`); }
+    if (!(entity instanceof ItemEntity)) {
+      throw new Error(`${prefab} does not spawn an item entity`);
+    }
     return entity;
   },
 };

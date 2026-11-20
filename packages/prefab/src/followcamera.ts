@@ -29,7 +29,10 @@ export function RightVecForHeading(heading: number, out = new THREE.Vector3()): 
 
 /** A camera whose heading target is `heading()`, for worlds without a follow camera (tests, tools). */
 export function headingCamera(heading: () => number): TheCamera {
-  return { GetDownVec: out => DownVecForHeading(heading(), out), GetRightVec: out => RightVecForHeading(heading(), out) };
+  return {
+    GetDownVec: out => DownVecForHeading(heading(), out),
+    GetRightVec: out => RightVecForHeading(heading(), out),
+  };
 }
 
 /** A camera fixed at one heading. */

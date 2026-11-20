@@ -27,7 +27,10 @@ export interface SupportPillarSaveState {
 /** support_pillar.lua MakePillar's fn: the fields it sets on inst. */
 export class SupportPillarInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    deployhelper: DeployHelper; constructionsite: ConstructionSite; inspectable: Inspectable; lootdropper: LootDropper;
+    deployhelper: DeployHelper;
+    constructionsite: ConstructionSite;
+    inspectable: Inspectable;
+    lootdropper: LootDropper;
     workable: Workable;
   };
   /** inst._level (net_tinybyte): 0 full of material .. 4 empty. */
@@ -43,16 +46,21 @@ function UpdateLevel(inst: SupportPillarInstance): void {
   const num = inst.components.constructionsite.GetSlotCount(1);
   inst._level = num >= 40 ? 0 : num >= 20 ? 1 : num >= 10 ? 2 : num > 0 ? 3 : 4;
   inst.suffix = inst._level > 0 ? `_${inst._level}` : '';
-  if (inst.suffix === '_4') { inst.removeTag('quake_blocker'); }
-  else {
+  if (inst.suffix === '_4') {
+    inst.removeTag('quake_blocker');
+  } else {
     inst.addTag('quake_blocker');
-    if (inst.suffix === '') { inst.components.constructionsite.Disable(); }
+    if (inst.suffix === '') {
+      inst.components.constructionsite.Disable();
+    }
   }
 }
 
 function OnSave(inst: SupportPillarInstance, data: EntityPersistData): void {
   // data.regen: the rock pillar never has a _regentask.
-  if (inst.reinforced !== 0) { data.supportPillar = { reinforced: inst.reinforced }; }
+  if (inst.reinforced !== 0) {
+    data.supportPillar = { reinforced: inst.reinforced };
+  }
 }
 
 /** OnLoad, after constructionsite's OnLoad restored the materials. */
@@ -72,7 +80,10 @@ function OnLoad(inst: SupportPillarInstance, data: EntityPersistData): void {
  */
 function fn(): SupportPillarInstance {
   // SetBank / SetBuild("support_pillar"), PlayAnimation("idle_4") without looping.
-  const inst = new SupportPillarInstance(SUPPORT_PILLAR_ID, new SpriteState({ name: 'idle_4', held: true, billboard: true }));
+  const inst = new SupportPillarInstance(
+    SUPPORT_PILLAR_ID,
+    new SpriteState({ name: 'idle_4', held: true, billboard: true }),
+  );
   // MakeObstaclePhysics(inst, PHYSICS_RADIUS, 6): the tag here, the body from the definition's physics.
   inst.addTag('blocker');
   inst.deploySmartRadius = DEPLOY_SMART_RADIUS * UNIT;
@@ -105,11 +116,17 @@ function fn(): SupportPillarInstance {
 }
 
 /** The support_pillar Prefab support_pillar.lua returns; the dreadstone pillar, the scaffolds and placers are not ported. */
-export function supportPillarPrefabs(): Readonly<Record<typeof SUPPORT_PILLAR_ID, PrefabEntityDefinition<SupportPillarInstance>>> {
+export function supportPillarPrefabs(): Readonly<
+  Record<typeof SUPPORT_PILLAR_ID, PrefabEntityDefinition<SupportPillarInstance>>
+> {
   return {
     [SUPPORT_PILLAR_ID]: {
       fn,
-      assets: { animationArchive: 'support_pillar.zip', buildArchives: SUPPORT_PILLAR_ARCHIVES, bank: 'support_pillar' },
+      assets: {
+        animationArchive: 'support_pillar.zip',
+        buildArchives: SUPPORT_PILLAR_ARCHIVES,
+        bank: 'support_pillar',
+      },
       physics: { make: MakeObstaclePhysics, radius: PHYSICS_RADIUS, height: 6 },
       minimapIcon: 'support_pillar.png',
     },

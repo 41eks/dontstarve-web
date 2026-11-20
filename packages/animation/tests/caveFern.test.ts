@@ -21,14 +21,17 @@ it('preserves cave fern poses and components across residency, then picks foliag
   for (const file of ['cave_ferns.zip', 'cave_ferns_withered_build.zip', 'fire.zip']) {
     archives.set(file, await readFile(new URL(`../../../public/dst/data/anim/${file}`, import.meta.url)));
   }
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(new Uint8Array(archives.get(url.split('/').pop()!)!))));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => new Response(new Uint8Array(archives.get(url.split('/').pop()!)!))),
+  );
   vi.stubGlobal('window', new EventTarget());
 
   const scene = new THREE.Scene();
   const scheduler = new GameTimeScheduler();
   const awake = createSignal(true);
   const { camerarotation } = bindTestWorld(scheduler);
-  const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .8);
+  const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.8);
   camerarotation.set(rotation);
   const ferns = plantManager(caveFernPrefabs, scene, {
     tickingarea: () => createMemo(() => awake.get()),
@@ -44,18 +47,26 @@ it('preserves cave fern poses and components across residency, then picks foliag
   expect(workTargets('DIG')).toEqual([]);
   const records = ferns.exportRecords();
   expect(records.map(({ prefabId, record }) => [prefabId, record.components.variant?.anim])).toEqual([
-    ['cave_fern', pose(fern)], ['cave_fern_withered', pose(withered)]]);
-  expect(() => PREFAB_DEFINITIONS.caveFerns.parseComponents(
-    { variant: { anim: 'f11' } }, 'x', { grounded: true } as never)).toThrow();
+    ['cave_fern', pose(fern)],
+    ['cave_fern_withered', pose(withered)],
+  ]);
+  expect(() =>
+    PREFAB_DEFINITIONS.caveFerns.parseComponents({ variant: { anim: 'f11' } }, 'x', { grounded: true } as never),
+  ).toThrow();
 
-  const restored = await ferns.spawn('cave_fern', new THREE.Vector3(5, 0, 5), { ...records[0].record, id: 'restored' }).transform.model;
+  const restored = await ferns.spawn('cave_fern', new THREE.Vector3(5, 0, 5), { ...records[0].record, id: 'restored' })
+    .transform.model;
   expect(pose(restored)).toBe(pose(fern));
 
   const plants = [fern, withered];
   const components = plants.map(plant => plantInstance(plant).components);
   const meshCount = (plant: THREE.Group) => {
     let count = 0;
-    plant.traverse(object => { if ((object as THREE.Mesh).isMesh) { count++; } });
+    plant.traverse(object => {
+      if ((object as THREE.Mesh).isMesh) {
+        count++;
+      }
+    });
     return count;
   };
   await new Promise(resolve => setTimeout(resolve, 0));
@@ -84,8 +95,22 @@ it('preserves cave fern poses and components across residency, then picks foliag
 
   const given: string[] = [];
   expect(plantInstance(fern).components.pickable.quickpick).toBe(true);
-  expect(plantInstance(fern).components.pickable.pick({ giveItem: (id: string) => { given.push(id); return true; } })).toBe(true);
-  expect(plantInstance(withered).components.pickable.pick({ giveItem: (id: string) => { given.push(id); return true; } })).toBe(true);
+  expect(
+    plantInstance(fern).components.pickable.pick({
+      giveItem: (id: string) => {
+        given.push(id);
+        return true;
+      },
+    }),
+  ).toBe(true);
+  expect(
+    plantInstance(withered).components.pickable.pick({
+      giveItem: (id: string) => {
+        given.push(id);
+        return true;
+      },
+    }),
+  ).toBe(true);
   expect(given).toEqual(['foliage', 'cutgrass']);
   tickWorld(scheduler, prefabDisplays(ferns), 1 / 30, new THREE.Quaternion());
   // remove_when_picked: nothing remains to save or render but the restored fern.

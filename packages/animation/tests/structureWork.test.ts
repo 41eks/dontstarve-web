@@ -12,21 +12,29 @@ import { createTestWorldFx } from './worldFxFixture';
 import { readFile } from 'node:fs/promises';
 import * as sound from '../../prefab/src/sound';
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('runs a prefab’s work callbacks without loaded art and leaves component state on the same instance', () => {
-  const dropLoot = vi.fn(), collapse = vi.fn();
+  const dropLoot = vi.fn(),
+    collapse = vi.fn();
   const inst = new IceBoxInstance({ dropLoot, fx: { spawn: vi.fn(), collapse } } as unknown as PrefabWorldContext);
   inst.setPosition(3, 0, -7);
   inst.entityId = 'saved-icebox';
   inst.skinId = 'icebox_crystal';
   const container = inst.components.container!;
-  vi.spyOn(container, 'DropEverything'); vi.spyOn(container, 'Close');
+  vi.spyOn(container, 'DropEverything');
+  vi.spyOn(container, 'Close');
   const work = inst.components.workable!;
   try {
     expect(inst.sprite.loaded).toBe(false);
     expect(work.WorkedBy(testPlayer())).toBe(true);
-    expect(inst.sprite.sprite.peek()).toMatchObject({ clip: { name: 'hit', loop: false }, queue: [{ name: 'closed', loop: false }] });
+    expect(inst.sprite.sprite.peek()).toMatchObject({
+      clip: { name: 'hit', loop: false },
+      queue: [{ name: 'closed', loop: false }],
+    });
     expect(container.DropEverything).toHaveBeenCalledExactlyOnceWith(inst.position);
     expect(container.Close).toHaveBeenCalledOnce();
     expect(inst.entityId).toBe('saved-icebox');
@@ -37,16 +45,23 @@ it('runs a prefab’s work callbacks without loaded art and leaves component sta
 
     expect(work.WorkedBy(testPlayer())).toBe(true);
     expect(collapse).toHaveBeenCalledExactlyOnceWith('small', inst.position, 'metal');
-    const dropped = dropLoot.mock.calls.flatMap(([items]) => items.flatMap(({ itemId, count }: { itemId: string; count: number }) => Array(count).fill(itemId)));
+    const dropped = dropLoot.mock.calls.flatMap(([items]) =>
+      items.flatMap(({ itemId, count }: { itemId: string; count: number }) => Array(count).fill(itemId)),
+    );
     expect(dropped.sort()).toEqual(['cutstone', 'gears', 'goldnugget']);
     expect(inst.isRemoved).toBe(true);
     expect(work.WorkedBy(testPlayer())).toBe(false);
-  } finally { work.dispose(); inst.remove(); }
+  } finally {
+    work.dispose();
+    inst.remove();
+  }
 });
 
 it('checks the lamp’s declared light and skips the final hit before running its finish callback', () => {
   const collapse = vi.fn();
-  const inst = new MushroomLightInstance('mushroom_light', { fx: { spawn: vi.fn(), collapse } } as unknown as PrefabWorldContext);
+  const inst = new MushroomLightInstance('mushroom_light', {
+    fx: { spawn: vi.fn(), collapse },
+  } as unknown as PrefabWorldContext);
   const container = inst.components.container!;
   vi.spyOn(container, 'DropEverything');
   const work = inst.components.workable!;
@@ -55,7 +70,7 @@ it('checks the lamp’s declared light and skips the final hit before running it
     inst.sprite.start('idle_on');
     work.WorkedBy(testPlayer());
     expect(inst.sprite.currentAnimation).toBe('hit');
-    inst.light.set({ radius: 2, intensity: .5, falloff: .8, colour: [1, 1, 1] });
+    inst.light.set({ radius: 2, intensity: 0.5, falloff: 0.8, colour: [1, 1, 1] });
     inst.sprite.start('idle');
     work.WorkedBy(testPlayer());
     expect(inst.sprite.currentAnimation).toBe('hit_on');
@@ -66,14 +81,22 @@ it('checks the lamp’s declared light and skips the final hit before running it
     expect(container.DropEverything).toHaveBeenCalledOnce();
     expect(collapse).toHaveBeenCalledOnce();
     expect(inst.isRemoved).toBe(true);
-  } finally { work.dispose(); inst.remove(); }
+  } finally {
+    work.dispose();
+    inst.remove();
+  }
 });
 
 it('lets collapse effects finish independently and reuses their art after a previous effect is removed', async () => {
-  const fetch = vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  const fetch = vi.fn(
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.stubGlobal('fetch', fetch);
   vi.spyOn(sound, 'PlaySound').mockReturnValue({ stop: vi.fn(), isPlaying: () => false, setVolume: vi.fn() });
-  const scene = new Scene(), fx = createTestWorldFx(scene), position = new Vector3(2, 0, -4), rotation = new Quaternion();
+  const scene = new Scene(),
+    fx = createTestWorldFx(scene),
+    position = new Vector3(2, 0, -4),
+    rotation = new Quaternion();
   try {
     fx.collapse('small', position, 'wood');
     const first = prefabInstance(fx.renderEntities[0].object)!;
@@ -83,7 +106,9 @@ it('lets collapse effects finish independently and reuses their art after a prev
     expect(first.position.equals(position)).toBe(true);
     await prefabDisplay(fx.renderEntities[0].object)!.artLoaded();
     expect(first.sprite.loaded).toBe(true);
-    for (let i = 0; i < 90; i++) { fx.update(1 / 30, rotation); }
+    for (let i = 0; i < 90; i++) {
+      fx.update(1 / 30, rotation);
+    }
     expect(first.isRemoved).toBe(true);
     expect(fx.renderEntities).toEqual([]);
     expect(scene.children).toEqual([]);
@@ -97,17 +122,30 @@ it('lets collapse effects finish independently and reuses their art after a prev
     fx.dispose();
     expect(second.isRemoved).toBe(true);
     expect(scene.children).toEqual([]);
-  } finally { fx.dispose(); }
+  } finally {
+    fx.dispose();
+  }
 });
 
 it('hammers a replica decor through its real instance, declaring material FX before component salvage and removal', () => {
-  const scheduler = new GameTimeScheduler(), calls: string[] = [];
-  const collapse = vi.fn(() => { calls.push('collapse'); });
-  const dropLoot = vi.fn(() => { calls.push('loot'); });
-  const inst = new RuinsRelicInstance('ruinsrelic_plate', { scheduler, fx: { spawn: vi.fn(), collapse }, dropLoot },
-    new Vector3(4, 0, -3));
-  inst.onRemove(() => { calls.push('remove'); });
-  const worked = vi.fn(); inst.ListenForEvent('worked', worked);
+  const scheduler = new GameTimeScheduler(),
+    calls: string[] = [];
+  const collapse = vi.fn(() => {
+    calls.push('collapse');
+  });
+  const dropLoot = vi.fn(() => {
+    calls.push('loot');
+  });
+  const inst = new RuinsRelicInstance(
+    'ruinsrelic_plate',
+    { scheduler, fx: { spawn: vi.fn(), collapse }, dropLoot },
+    new Vector3(4, 0, -3),
+  );
+  inst.onRemove(() => {
+    calls.push('remove');
+  });
+  const worked = vi.fn();
+  inst.ListenForEvent('worked', worked);
   const worker = testPlayer();
   try {
     expect(inst.sprite.loaded).toBe(false);
@@ -115,8 +153,12 @@ it('hammers a replica decor through its real instance, declaring material FX bef
     expect(worked).toHaveBeenCalledWith(inst, { worker, workleft: 0 });
     expect(collapse).toHaveBeenCalledExactlyOnceWith('small', inst.position, 'pot');
     expect(dropLoot).toHaveBeenCalled();
-    expect(calls[0]).toBe('collapse'); expect(calls.at(-1)).toBe('remove');
+    expect(calls[0]).toBe('collapse');
+    expect(calls.at(-1)).toBe('remove');
     expect(inst.isRemoved).toBe(true);
     expect(inst.components.workable!.WorkedBy(worker)).toBe(false);
-  } finally { inst.remove(); scheduler.dispose(); }
+  } finally {
+    inst.remove();
+    scheduler.dispose();
+  }
 });

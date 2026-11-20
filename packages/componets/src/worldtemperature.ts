@@ -1,7 +1,19 @@
 import { ImprovedNoise } from 'three/addons/math/ImprovedNoise.js';
 import {
-  batch, createMemo, createSignal, watchSignal, clockstate, seasonstate, type Memo,
-  type Signal, type WorldSeason, type WorldPhase, type SeasonTick, type ClockTick, type ClockState, type SeasonState,
+  batch,
+  createMemo,
+  createSignal,
+  watchSignal,
+  clockstate,
+  seasonstate,
+  type Memo,
+  type Signal,
+  type WorldSeason,
+  type WorldPhase,
+  type SeasonTick,
+  type ClockTick,
+  type ClockState,
+  type SeasonState,
 } from '../../signals/src';
 
 export interface WorldTemperatureSaveData {
@@ -19,26 +31,37 @@ export interface WorldTemperatureOptions {
   onTemperatureTick?: (temperature: number) => void;
 }
 
-const TEMPERATURE_NOISE_SCALE = .025;
+const TEMPERATURE_NOISE_SCALE = 0.025;
 const TEMPERATURE_NOISE_MAG = 8;
 const PHASE_TEMPERATURES: Record<WorldPhase, number> = { day: 5, dusk: 0, night: -6 };
 
 /** worldtemperature.lua seasonal curves, preserving saved temperature terms. */
 function getWorldSeasonTemperature(state: SeasonState): number {
-  if ('temperature' in state) { return state.temperature; }
+  if ('temperature' in state) {
+    return state.temperature;
+  }
   const p = state.progress;
   switch (state.season) {
-    case 'winter': return 5 - 30 * Math.sin(Math.PI * p);
-    case 'spring': return 5 + 50 * p;
-    case 'summer': return 55 + 40 * Math.sin(Math.PI * p);
-    case 'autumn': return 55 - 50 * p;
-    default: throw new RangeError(`Invalid season: ${state.season}`);
+    case 'winter':
+      return 5 - 30 * Math.sin(Math.PI * p);
+    case 'spring':
+      return 5 + 50 * p;
+    case 'summer':
+      return 55 + 40 * Math.sin(Math.PI * p);
+    case 'autumn':
+      return 55 - 50 * p;
+    default:
+      throw new RangeError(`Invalid season: ${state.season}`);
   }
 }
 
 function getWorldPhaseTemperature(state: ClockState): number {
-  if ('temperature' in state) { return state.temperature; }
-  if (!Object.hasOwn(PHASE_TEMPERATURES, state.phase)) { throw new RangeError(`Invalid phase: ${state.phase}`); }
+  if ('temperature' in state) {
+    return state.temperature;
+  }
+  if (!Object.hasOwn(PHASE_TEMPERATURES, state.phase)) {
+    throw new RangeError(`Invalid phase: ${state.phase}`);
+  }
   return PHASE_TEMPERATURES[state.phase] * Math.sin(Math.PI * state.timeinphase);
 }
 
@@ -50,12 +73,16 @@ function defaultPerlin(x: number, y: number, z: number): number {
 }
 
 function finite(value: number, name: string): number {
-  if (!Number.isFinite(value)) { throw new RangeError(`${name} must be finite`); }
+  if (!Number.isFinite(value)) {
+    throw new RangeError(`${name} must be finite`);
+  }
   return value;
 }
 
 function nonnegative(value: number, name: string): number {
-  if (finite(value, name) < 0) { throw new RangeError(`${name} must be nonnegative`); }
+  if (finite(value, name) < 0) {
+    throw new RangeError(`${name} must be nonnegative`);
+  }
   return value;
 }
 
@@ -77,13 +104,24 @@ export class WorldTemperature {
     try {
       this.temperature = createMemo(() => {
         const sample = this.perlin(0, 0, this.noisetime.get() * TEMPERATURE_NOISE_SCALE);
-        if (!Number.isFinite(sample)) { throw new RangeError('perlin must be finite'); }
-        if (sample < 0 || sample > 1) { throw new RangeError('perlin must be between 0 and 1'); }
+        if (!Number.isFinite(sample)) {
+          throw new RangeError('perlin must be finite');
+        }
+        if (sample < 0 || sample > 1) {
+          throw new RangeError('perlin must be between 0 and 1');
+        }
         const noise = 2 * TEMPERATURE_NOISE_MAG * sample - TEMPERATURE_NOISE_MAG;
         const { multiplier, locus } = this.modifiers.get();
-        return (noise + getWorldSeasonTemperature(this.season.get()) + getWorldPhaseTemperature(this.clock.get()) - locus) * multiplier + locus;
+        return (
+          (noise + getWorldSeasonTemperature(this.season.get()) + getWorldPhaseTemperature(this.clock.get()) - locus) *
+            multiplier +
+          locus
+        );
       });
-    } catch (error) { this.cleanups.splice(0).forEach(stop => stop()); throw error; }
+    } catch (error) {
+      this.cleanups.splice(0).forEach(stop => stop());
+      throw error;
+    }
     if (options.onTemperatureTick) {
       options.onTemperatureTick(this.temperature.peek());
       this.stopTemperatureTick = this.temperature.subscribe(value => options.onTemperatureTick!(value));
@@ -116,10 +154,13 @@ export class WorldTemperature {
     this.noisetime.set(nexttime);
   }
 
-  LongUpdate(dt: number): void { this.OnUpdate(dt); }
+  LongUpdate(dt: number): void {
+    this.OnUpdate(dt);
+  }
 
   OnSave(): WorldTemperatureSaveData {
-    const season = this.season.peek(), clock = this.clock.peek();
+    const season = this.season.peek(),
+      clock = this.clock.peek();
     return {
       ...(clock.phase === 'day' ? { daylight: true } : {}),
       season: season.season,
@@ -133,7 +174,7 @@ export class WorldTemperature {
   OnLoad(data: Partial<WorldTemperatureSaveData>): void {
     // Validate all fields before changing state, so a rejected load preserves the world.
     const season = data.season ?? 'autumn';
-    const fallback = getWorldSeasonTemperature({ season, progress: .5 });
+    const fallback = getWorldSeasonTemperature({ season, progress: 0.5 });
     const seasontemperature = finite(data.seasontemperature ?? fallback, 'seasontemperature');
     const phasetemperature = finite(data.phasetemperature ?? 0, 'phasetemperature');
     const noisetime = nonnegative(data.noisetime ?? 0, 'noisetime');

@@ -8,10 +8,14 @@ import { TileTracker } from './tileManager';
  */
 export class MiniMapEntity extends MiniMapState {
   private readonly getPosition: () => ReadonlyVector3;
-  get position(): ReadonlyVector3 { return this.getPosition(); }
+  get position(): ReadonlyVector3 {
+    return this.getPosition();
+  }
   readonly tileTracker: TileTracker;
   private readonly stopWatching: () => void;
-  get minimap(): MiniMapState { return this; }
+  get minimap(): MiniMapState {
+    return this;
+  }
 
   constructor(position: ReadonlyVector3 | (() => ReadonlyVector3), tileTracker?: TileTracker) {
     super();
@@ -19,5 +23,8 @@ export class MiniMapEntity extends MiniMapState {
     this.tileTracker = tileTracker ?? new TileTracker(this.getPosition);
     this.stopWatching = watchMiniMapEntity(this);
   }
-  dispose(): void { this.SetEnabled(false); this.stopWatching(); }
+  dispose(): void {
+    this.SetEnabled(false);
+    this.stopWatching();
+  }
 }

@@ -50,6 +50,8 @@ export interface ActionLocomotor {
  * than reskin_tool's veryquickcast, or a bug-net swing, keeps the hand until it ends.
  */
 export function isHandActionBusy(stategraph: WilsonStateGraph): boolean {
-  return stategraph.isPerformingAction('NET')
-    || (stategraph.isPerformingAction('CASTSPELL') && !stategraph.isPerformingAction('CASTSPELL', 'reskin_tool'));
+  return (
+    stategraph.isPerformingAction('NET') ||
+    (stategraph.isPerformingAction('CASTSPELL') && !stategraph.isPerformingAction('CASTSPELL', 'reskin_tool'))
+  );
 }

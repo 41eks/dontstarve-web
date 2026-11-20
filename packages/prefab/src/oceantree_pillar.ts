@@ -7,7 +7,12 @@ import { Inspectable } from '../../componets/src/inspectable';
 import { LootDropper, type LootSpawn } from '../../componets/src/lootdropper';
 import { PlayerProx } from '../../componets/src/playerprox';
 import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator';
-import { CanopyShadows, DistanceFade, LightningBlocker, WaterPhysics } from '../../componets/src/watertreePillarSignatures';
+import {
+  CanopyShadows,
+  DistanceFade,
+  LightningBlocker,
+  WaterPhysics,
+} from '../../componets/src/watertreePillarSignatures';
 import { Workable } from '../../componets/src/workable';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
@@ -21,10 +26,16 @@ export const OCEANTREE_PILLAR_ROOTS_ID = 'oceantree_pillar_roots' as const;
 export const OCEANTREE_PILLAR_LEAVES_ID = 'oceantree_pillar_leaves' as const;
 type OceanTreePillarChildId = typeof OCEANTREE_PILLAR_RIPPLES_ID | typeof OCEANTREE_PILLAR_ROOTS_ID;
 /** Asset("ANIM", ...): the bank's archive, SetBuild's and AddOverrideBuild's. */
-export const OCEANTREE_PILLAR_ARCHIVES = ['oceantree_pillar_small.zip', 'oceantree_pillar_small_build1.zip', 'oceantree_pillar_small_build2.zip'];
+export const OCEANTREE_PILLAR_ARCHIVES = [
+  'oceantree_pillar_small.zip',
+  'oceantree_pillar_small_build1.zip',
+  'oceantree_pillar_small_build2.zip',
+];
 
 /** tuning.lua SHADE_CANOPY_RANGE_SMALL, WATERTREE_PILLAR_CANOPY_BUFFER and OCEANTREE_PILLAR_CHOPS. */
-const SHADE_CANOPY_RANGE_SMALL = 22, WATERTREE_PILLAR_CANOPY_BUFFER = 1, OCEANTREE_PILLAR_CHOPS = 25;
+const SHADE_CANOPY_RANGE_SMALL = 22,
+  WATERTREE_PILLAR_CANOPY_BUFFER = 1,
+  OCEANTREE_PILLAR_CHOPS = 25;
 const MIN = SHADE_CANOPY_RANGE_SMALL;
 const MAX = MIN + WATERTREE_PILLAR_CANOPY_BUFFER;
 /**
@@ -53,9 +64,16 @@ export interface OceanTreePillarWorld {
 /** oceantree_pillar.lua fn: the fields it sets on inst. */
 export class OceanTreePillarInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    waterphysics: WaterPhysics; distancefade: DistanceFade; canopyshadows: CanopyShadows; lootdropper: LootDropper;
-    playerprox: PlayerProx<OceanTreePillarInstance>; workable: Workable; inspectable: Inspectable;
-    lightningblocker: LightningBlocker; burnable: Burnable; propagator: Propagator;
+    waterphysics: WaterPhysics;
+    distancefade: DistanceFade;
+    canopyshadows: CanopyShadows;
+    lootdropper: LootDropper;
+    playerprox: PlayerProx<OceanTreePillarInstance>;
+    workable: Workable;
+    inspectable: Inspectable;
+    lightningblocker: LightningBlocker;
+    burnable: Burnable;
+    propagator: Propagator;
   };
   /** inst.players: the players OnNear has counted; OnNear is not ported. */
   declare players: Set<unknown>;
@@ -66,11 +84,15 @@ export class OceanTreePillarInstance extends PrefabInstance {
 }
 
 function OnSave(inst: OceanTreePillarInstance, data: EntityPersistData): void {
-  if (inst.droppedvines) { data.oceantreePillar = { droppedvines: true }; }
+  if (inst.droppedvines) {
+    data.oceantreePillar = { droppedvines: true };
+  }
 }
 
 function OnLoad(inst: OceanTreePillarInstance, data: EntityPersistData): void {
-  if (data.oceantreePillar?.droppedvines) { inst.droppedvines = true; }
+  if (data.oceantreePillar?.droppedvines) {
+    inst.droppedvines = true;
+  }
 }
 
 /**
@@ -95,7 +117,15 @@ function fn(world: OceanTreePillarWorld, position: ReadonlyVector3, sprites: Spr
   addComponent(inst, 'distancefade', DistanceFade);
   addComponent(inst, 'canopyshadows', CanopyShadows);
 
-  addComponent(inst, 'lootdropper', LootDropper, world.spawnLoot).SetLoot(['log', 'log', 'log', 'log', 'twigs', 'twigs', 'twigs']);
+  addComponent(inst, 'lootdropper', LootDropper, world.spawnLoot).SetLoot([
+    'log',
+    'log',
+    'log',
+    'log',
+    'twigs',
+    'twigs',
+    'twigs',
+  ]);
   inst.players = new Set();
   const playerprox = addComponent(inst, 'playerprox', PlayerProx<OceanTreePillarInstance>, world.getWatchWorldContent);
   playerprox.SetDist(MIN, MAX);
@@ -111,8 +141,16 @@ function fn(world: OceanTreePillarWorld, position: ReadonlyVector3, sprites: Spr
   const burnable = addComponent(inst, 'burnable', Burnable, world.scheduler);
   burnable.SetFXLevel(4);
   burnable.SetBurnTime(LARGE_BURNABLE_DEFAULT_TIME);
-  addComponent(inst, 'propagator', Propagator, 'medium', radius =>
-    inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS), TILE_SIZE / 4, world.scheduler, world.getWatchWorldContent);
+  addComponent(
+    inst,
+    'propagator',
+    Propagator,
+    'medium',
+    radius => inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS),
+    TILE_SIZE / 4,
+    world.scheduler,
+    world.getWatchWorldContent,
+  );
   burnable.SetFXLevel(6);
 
   inst._ripples = world.spawnPrefab(OCEANTREE_PILLAR_RIPPLES_ID, position);
@@ -127,7 +165,10 @@ function fn(world: OceanTreePillarWorld, position: ReadonlyVector3, sprites: Spr
 
 /** ripples_fn: the FX | NOCLICK root_ripple loop. SetOceanBlendParams has no declaration and is skipped. */
 function ripples_fn(sprites: SpriteResources): PrefabInstance {
-  const inst = new PrefabInstance(OCEANTREE_PILLAR_RIPPLES_ID, new SpriteState({ name: 'root_ripple', billboard: true }));
+  const inst = new PrefabInstance(
+    OCEANTREE_PILLAR_RIPPLES_ID,
+    new SpriteState({ name: 'root_ripple', billboard: true }),
+  );
   inst.addTag('FX');
   inst.addTag('NOCLICK');
   inst.AnimState.AddOverrideBuild('oceantree_pillar_small_build2');
@@ -155,7 +196,10 @@ function roots_fn(sprites: SpriteResources): PrefabInstance {
  * DoTaskInTime(0) that plays leaf_fall_water where IsVisualGroundAtPoint fails, and the SoundEmitter.
  */
 function leaves_fn(sprites: SpriteResources): PrefabInstance {
-  const inst = new PrefabInstance(OCEANTREE_PILLAR_LEAVES_ID, new SpriteState({ name: 'leaf_fall_ground', billboard: true }));
+  const inst = new PrefabInstance(
+    OCEANTREE_PILLAR_LEAVES_ID,
+    new SpriteState({ name: 'leaf_fall_ground', billboard: true }),
+  );
   inst.addTag('FX');
   inst.addTag('NOCLICK');
   inst.sprite.playOnce('leaf_fall_ground');
@@ -167,7 +211,9 @@ function leaves_fn(sprites: SpriteResources): PrefabInstance {
 
 /** SetBank("oceantree_pillar_small") and SetBuild("oceantree_pillar_small_build1"), shared by all the file's prefabs. */
 const ASSETS = {
-  animationArchive: 'oceantree_pillar_small.zip', buildArchives: ['oceantree_pillar_small_build1.zip'], bank: 'oceantree_pillar_small',
+  animationArchive: 'oceantree_pillar_small.zip',
+  buildArchives: ['oceantree_pillar_small_build1.zip'],
+  bank: 'oceantree_pillar_small',
 } as const;
 
 /** The four Prefabs oceantree_pillar.lua returns. */
@@ -184,7 +230,11 @@ export function oceanTreePillarPrefabs(world: OceanTreePillarWorld): Readonly<{
       physics: { make: MakeWaterObstaclePhysics, radius: 1.5, height: 2 },
       minimapIcon: 'oceantree_pillar_small.png',
     },
-    [OCEANTREE_PILLAR_RIPPLES_ID]: { fn: (_position, sprites) => ripples_fn(sprites), assets: ASSETS, targetable: false },
+    [OCEANTREE_PILLAR_RIPPLES_ID]: {
+      fn: (_position, sprites) => ripples_fn(sprites),
+      assets: ASSETS,
+      targetable: false,
+    },
     [OCEANTREE_PILLAR_ROOTS_ID]: { fn: (_position, sprites) => roots_fn(sprites), assets: ASSETS, targetable: false },
     [OCEANTREE_PILLAR_LEAVES_ID]: { fn: (_position, sprites) => leaves_fn(sprites), assets: ASSETS, targetable: false },
   };

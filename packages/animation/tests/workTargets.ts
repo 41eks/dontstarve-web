@@ -23,7 +23,11 @@ export interface WorkTarget {
 
 /** `model` itself, or drawn somewhere below `root` (its scene, say). */
 function contains(root: Object3D, model: Object3D): boolean {
-  for (let node: Object3D | null = model; node; node = node.parent) { if (node === root) { return true; } }
+  for (let node: Object3D | null = model; node; node = node.parent) {
+    if (node === root) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -34,14 +38,27 @@ function contains(root: Object3D, model: Object3D): boolean {
 export function workTargets(action: WorkAction, filter?: Object3D | string): WorkTarget[] {
   // An asleep entity keeps its components: it cannot be picked, but an action still reaches it.
   const isValid = (entity: ActionEntity) => !entity.isRemoved && entity.hasTag(`${action}_workable`);
-  return [...actionEntities()].filter(entity => isValid(entity)
-    && (filter === undefined || (typeof filter === 'string' ? entity.prefab === filter : contains(filter, entity.transform.model))))
-    .map((entity): WorkTarget => ({
-      entity, model: entity.transform.model,
-      id: entity.entityId ?? '',
-      get display() { return prefabDisplay(entity.transform.model)!; },
-      get position() { return entity.getPosition(); },
-      isValid: () => isValid(entity),
-      work: (doer = {}, tool) => createBufferedAction(action, { doer: actionDoer(doer.components), target: entity, invobject: tool }).do(),
-    }));
+  return [...actionEntities()]
+    .filter(
+      entity =>
+        isValid(entity) &&
+        (filter === undefined ||
+          (typeof filter === 'string' ? entity.prefab === filter : contains(filter, entity.transform.model))),
+    )
+    .map(
+      (entity): WorkTarget => ({
+        entity,
+        model: entity.transform.model,
+        id: entity.entityId ?? '',
+        get display() {
+          return prefabDisplay(entity.transform.model)!;
+        },
+        get position() {
+          return entity.getPosition();
+        },
+        isValid: () => isValid(entity),
+        work: (doer = {}, tool) =>
+          createBufferedAction(action, { doer: actionDoer(doer.components), target: entity, invobject: tool }).do(),
+      }),
+    );
 }

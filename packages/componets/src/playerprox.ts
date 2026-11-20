@@ -1,10 +1,24 @@
 import type { LuaFn } from './luaFn';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
-import { createSignal, readonlySignal, createEffect, createMemo, watchSignal, WorldContentKey, getBoundWatchWorldContent, type GetWatchWorldContent, type Memo, type PlayerPositionsSignal } from '../../signals/src';
+import {
+  createSignal,
+  readonlySignal,
+  createEffect,
+  createMemo,
+  watchSignal,
+  WorldContentKey,
+  getBoundWatchWorldContent,
+  type GetWatchWorldContent,
+  type Memo,
+  type PlayerPositionsSignal,
+} from '../../signals/src';
 import { GetTileCoordsAtPoint, TileTracker } from './tileManager';
 import { TILE_SIZE } from '../../prefab/src/tile';
 
-export interface PlayerProxInst { isValid(): boolean; getPosition(): ReadonlyVector3 }
+export interface PlayerProxInst {
+  isValid(): boolean;
+  getPosition(): ReadonlyVector3;
+}
 /**
  * playerprox.lua onnear(inst, player) / onfar(inst). The position signal carries no player entities, so the
  * player argument is not passed.
@@ -17,7 +31,8 @@ export type PlayerProxOnFarFn<Inst> = LuaFn<[inst: Inst]>;
 const tileDistances = new Map<string, number>();
 
 function getTileDistance(a: readonly [number, number], b: readonly [number, number]): number {
-  const aKey = `${a[0]},${a[1]}`, bKey = `${b[0]},${b[1]}`;
+  const aKey = `${a[0]},${a[1]}`,
+    bKey = `${b[0]},${b[1]}`;
   const key = aKey < bKey ? `${aKey}|${bKey}` : `${bKey}|${aKey}`;
   let distance = tileDistances.get(key);
   if (distance === undefined) {
@@ -50,56 +65,116 @@ export class PlayerProx<Inst extends PlayerProxInst = PlayerProxInst> {
     this.inst = inst;
     // A private tile key gates the player positions by tickingarea; the inst's position is read once, so it must not move.
     const tracker = new TileTracker(() => inst.getPosition());
-    this.playerpositions = getWatchWorldContent?.(WorldContentKey.PlayerPositions, stop => { this.stopPlayers = stop; }, { tile: tracker.tile });
-    if (this.playerpositions) { this.playerTiles = createMemo(() => this.playerpositions!.get().map(GetTileCoordsAtPoint)); }
-    if (this.playerpositions) { createEffect(() => {
-      this.playerpositions!.get();
-      this.ForceUpdate();
-    }); }
+    this.playerpositions = getWatchWorldContent?.(
+      WorldContentKey.PlayerPositions,
+      stop => {
+        this.stopPlayers = stop;
+      },
+      { tile: tracker.tile },
+    );
+    if (this.playerpositions) {
+      this.playerTiles = createMemo(() => this.playerpositions!.get().map(GetTileCoordsAtPoint));
+    }
+    if (this.playerpositions) {
+      createEffect(() => {
+        this.playerpositions!.get();
+        this.ForceUpdate();
+      });
+    }
     this.Schedule();
     const area = this.playerpositions?.area;
     if (area) {
       // The private position bridge resyncs when this tile becomes active again.
-      const active = watchSignal(area, stop => { this.stopArea = stop; });
+      const active = watchSignal(area, stop => {
+        this.stopArea = stop;
+      });
       let previous = active.peek();
       createEffect(() => {
         const now = active.get();
-        if (now === previous) { return; }
+        if (now === previous) {
+          return;
+        }
         previous = now;
-        if (!now) { if (this.enabled) { this.ForceUpdate(); this.Stop(); this.pausedByArea = true; } }
-        else if (this.pausedByArea) { this.pausedByArea = false; this.Schedule(); this.ForceUpdate(); }
+        if (!now) {
+          if (this.enabled) {
+            this.ForceUpdate();
+            this.Stop();
+            this.pausedByArea = true;
+          }
+        } else if (this.pausedByArea) {
+          this.pausedByArea = false;
+          this.Schedule();
+          this.ForceUpdate();
+        }
       });
     }
   }
-  SetDist(near: number, far: number): void { this.near = near; this.far = far; }
-  SetOnPlayerNear(fn: PlayerProxOnNearFn<Inst> | undefined): void { this.onnear = fn; }
-  SetOnPlayerFar(fn: PlayerProxOnFarFn<Inst> | undefined): void { this.onfar = fn; }
-  IsPlayerClose(): boolean { return this.close.peek(); }
+  SetDist(near: number, far: number): void {
+    this.near = near;
+    this.far = far;
+  }
+  SetOnPlayerNear(fn: PlayerProxOnNearFn<Inst> | undefined): void {
+    this.onnear = fn;
+  }
+  SetOnPlayerFar(fn: PlayerProxOnFarFn<Inst> | undefined): void {
+    this.onfar = fn;
+  }
+  IsPlayerClose(): boolean {
+    return this.close.peek();
+  }
   Schedule(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.enabled = true;
   }
   ForceUpdate(): void {
-    if (!this.enabled || this.disposed || !this.inst.isValid()) { return; }
-    const origin = this.inst.getPosition(), wasClose = this.close.peek();
+    if (!this.enabled || this.disposed || !this.inst.isValid()) {
+      return;
+    }
+    const origin = this.inst.getPosition(),
+      wasClose = this.close.peek();
     const distance = wasClose ? this.far : this.near;
     const tile = GetTileCoordsAtPoint(origin);
     const tileRange = Math.ceil(Math.abs(distance) / TILE_SIZE);
     const playerTiles = this.playerTiles?.peek();
-    const isClose = this.playerpositions?.peek().some((point, index) => {
-      if (getTileDistance(tile, playerTiles![index]) > tileRange) { return false; }
-      // Entities in one tile can straddle the radius boundary; only the tile
-      // distance is shared, while exact distance and hysteresis remain private.
-      return point.distanceToSquared(origin) < distance ** 2;
-    }) ?? false;
-    if (wasClose === isClose) { return; }
+    const isClose =
+      this.playerpositions?.peek().some((point, index) => {
+        if (getTileDistance(tile, playerTiles![index]) > tileRange) {
+          return false;
+        }
+        // Entities in one tile can straddle the radius boundary; only the tile
+        // distance is shared, while exact distance and hysteresis remain private.
+        return point.distanceToSquared(origin) < distance ** 2;
+      }) ?? false;
+    if (wasClose === isClose) {
+      return;
+    }
     this.close.set(isClose);
-    if (isClose) { this.onnear?.(this.inst); } else { this.onfar?.(this.inst); }
+    if (isClose) {
+      this.onnear?.(this.inst);
+    } else {
+      this.onfar?.(this.inst);
+    }
   }
-  Stop(): void { this.enabled = false; this.pausedByArea = false; }
-  OnEntityWake(): void { this.Schedule(); this.ForceUpdate(); }
-  OnEntitySleep(): void { this.ForceUpdate(); this.Stop(); }
+  Stop(): void {
+    this.enabled = false;
+    this.pausedByArea = false;
+  }
+  OnEntityWake(): void {
+    this.Schedule();
+    this.ForceUpdate();
+  }
+  OnEntitySleep(): void {
+    this.ForceUpdate();
+    this.Stop();
+  }
   dispose(): void {
-    this.disposed = true; this.Stop(); this.stopArea?.(); this.stopArea = undefined; this.stopPlayers?.(); this.stopPlayers = undefined;
+    this.disposed = true;
+    this.Stop();
+    this.stopArea?.();
+    this.stopArea = undefined;
+    this.stopPlayers?.();
+    this.stopPlayers = undefined;
   }
 }

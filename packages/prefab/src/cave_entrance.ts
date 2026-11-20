@@ -16,7 +16,7 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 export const CAVE_ENTRANCE_ID = 'cave_entrance' as const;
 export const CAVE_ENTRANCE_OPEN_ID = 'cave_entrance_open' as const;
 export const CAVE_ENTRANCE_IDS = [CAVE_ENTRANCE_ID, CAVE_ENTRANCE_OPEN_ID] as const;
-export type CaveEntranceId = typeof CAVE_ENTRANCE_IDS[number];
+export type CaveEntranceId = (typeof CAVE_ENTRANCE_IDS)[number];
 
 /** tuning.lua ROCKS_MINE. */
 const ROCKS_MINE = 6;
@@ -25,7 +25,7 @@ const PHYSICS_RADIUS = 1;
 /** cave_entrance.lua closed_fn SetLoot. */
 const CLOSED_LOOT = ['rocks', 'rocks', 'flint', 'flint', 'flint'] as const;
 /** LAYER_BACKGROUND with sort order 3: drawn above the turf and under the world entities, still facing the camera. */
-const BACKGROUND_MESH_ORDER = -.5;
+const BACKGROUND_MESH_ORDER = -0.5;
 
 /** cave_entrance.lua open_fn `worldmigrator.shard_name`. */
 export const CAVES_SHARD = 'Caves';
@@ -39,7 +39,11 @@ export interface CaveEntranceWorld extends ToolMouseTargetWorld {
   spawnPrefab(prefab: typeof CAVE_ENTRANCE_OPEN_ID, position: ReadonlyVector3): unknown;
 }
 
-const NO_SHARD: WorldMigratorShard = { isWorldAvailable: () => false, isWorldFull: () => false, migratePlayer: () => {} };
+const NO_SHARD: WorldMigratorShard = {
+  isWorldAvailable: () => false,
+  isWorldFull: () => false,
+  migratePlayer: () => {},
+};
 
 /**
  * cave_entrance.lua fn / closed_fn / open_fn: a MINE-able sealed entrance that becomes `cave_entrance_open`.
@@ -48,19 +52,32 @@ const NO_SHARD: WorldMigratorShard = { isWorldAvailable: () => false, isWorldFul
  */
 export class CaveEntranceInstance extends PrefabInstance {
   declare readonly prefab: CaveEntranceId;
-  declare readonly components: PrefabInstance['components'] & { inspectable: Inspectable; workable?: Workable; lootdropper?: LootDropper; worldmigrator?: WorldMigrator };
+  declare readonly components: PrefabInstance['components'] & {
+    inspectable: Inspectable;
+    workable?: Workable;
+    lootdropper?: LootDropper;
+    worldmigrator?: WorldMigrator;
+  };
 
   constructor(prefab: CaveEntranceId, world: CaveEntranceWorld, position: ReadonlyVector3) {
     const open = prefab === CAVE_ENTRANCE_OPEN_ID;
     super(prefab, new SpriteState({ name: open ? 'no_access' : 'idle_closed', held: !open, billboard: true }));
     this.setPosition(position.x, 0, position.z);
     // PlayAnimation("idle_closed") plays once rather than resting on its last frame.
-    if (!open) { this.sprite.playOnce('idle_closed'); }
-    else { this.sprite.setLayer('background'); this.sprite.setMeshOrder(BACKGROUND_MESH_ORDER); }
+    if (!open) {
+      this.sprite.playOnce('idle_closed');
+    } else {
+      this.sprite.setLayer('background');
+      this.sprite.setMeshOrder(BACKGROUND_MESH_ORDER);
+    }
     this.addTag('antlion_sinkhole_blocker');
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
-    if (open) { open_fn(this, world); } else { closed_fn(this, world); }
+    if (open) {
+      open_fn(this, world);
+    } else {
+      closed_fn(this, world);
+    }
   }
 }
 
@@ -69,16 +86,20 @@ function closed_fn(inst: CaveEntranceInstance, world: CaveEntranceWorld): void {
   const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('MINE');
   workable.SetWorkLeft(ROCKS_MINE);
-  const lootdropper = addComponent(inst, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
-    { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+  const lootdropper = addComponent(inst, 'lootdropper', LootDropper, (itemId, point) =>
+    world.spawnGroundItem(
+      { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 },
+      new THREE.Vector3(point.x, point.y, point.z),
+      { fling: true },
+    ),
+  );
   lootdropper.SetLoot(CLOSED_LOOT);
   workable.SetOnWorkCallback((_inst, _worker, workleft) => OnWork(inst, world, workleft));
-
 }
 
 function OnWork(inst: CaveEntranceInstance, world: CaveEntranceWorld, workleft: number): void {
   if (workleft > 0) {
-    inst.sprite.playOnce(workleft < ROCKS_MINE / 3 ? 'low' : workleft < ROCKS_MINE * 2 / 3 ? 'med' : 'idle_closed');
+    inst.sprite.playOnce(workleft < ROCKS_MINE / 3 ? 'low' : workleft < (ROCKS_MINE * 2) / 3 ? 'med' : 'idle_closed');
     return;
   }
   // rock_break_fx, DropLoot, then cave_entrance_open takes the closed entrance's place.
@@ -99,7 +120,9 @@ function open_fn(inst: CaveEntranceInstance, world: CaveEntranceWorld): void {
 }
 
 /** The two Prefabs cave_entrance.lua returns that are ported. */
-export function caveEntrancePrefabs(world: CaveEntranceWorld): Readonly<Record<CaveEntranceId, PrefabEntityDefinition<CaveEntranceInstance>>> {
+export function caveEntrancePrefabs(
+  world: CaveEntranceWorld,
+): Readonly<Record<CaveEntranceId, PrefabEntityDefinition<CaveEntranceInstance>>> {
   const definition = (id: CaveEntranceId): PrefabEntityDefinition<CaveEntranceInstance> => ({
     fn: position => new CaveEntranceInstance(id, world, position),
     assets: { animationArchive: 'cave_entrance.zip', buildArchives: ['cave_entrance.zip'], bank: 'cave_entrance' },
@@ -107,7 +130,9 @@ export function caveEntrancePrefabs(world: CaveEntranceWorld): Readonly<Record<C
     minimapIcon: id === CAVE_ENTRANCE_ID ? 'cave_closed.png' : 'cave_open.png',
     onSpawned: inst => {
       const workable = inst.components.workable;
-      if (workable) { new ToolMouseTarget(inst, world.handEquipment); }
+      if (workable) {
+        new ToolMouseTarget(inst, world.handEquipment);
+      }
     },
   });
   return { cave_entrance: definition(CAVE_ENTRANCE_ID), cave_entrance_open: definition(CAVE_ENTRANCE_OPEN_ID) };

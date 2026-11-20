@@ -9,21 +9,32 @@ export function initializeUiImageAtlases(): void {
   const baseUrl = import.meta.env.BASE_URL;
   const archive = new URL(`${baseUrl}dst/data/databundles/images.zip`, document.baseURI).href;
   const paths = new Set([
-    'images/crafting_menu.xml', 'images/crafting_menu_icons.xml',
-    'images/hud.xml', 'images/hud2.xml', 'images/textboxes.xml',
+    'images/crafting_menu.xml',
+    'images/crafting_menu_icons.xml',
+    'images/hud.xml',
+    'images/hud2.xml',
+    'images/textboxes.xml',
     'images/inventoryimages.xml',
   ]);
   for (const category of categories) {
-    if ('iconAtlas' in category && category.iconAtlas) { paths.add(category.iconAtlas); }
+    if ('iconAtlas' in category && category.iconAtlas) {
+      paths.add(category.iconAtlas);
+    }
     for (const recipe of category.recipes) {
-      if (recipe.inventoryAtlas) { paths.add(recipe.inventoryAtlas); }
+      if (recipe.inventoryAtlas) {
+        paths.add(recipe.inventoryAtlas);
+      }
       for (const item of [...recipe.ingredients, ...recipe.skins]) {
-        if (item.inventoryAtlas) { paths.add(item.inventoryAtlas); }
+        if (item.inventoryAtlas) {
+          paths.add(item.inventoryAtlas);
+        }
       }
     }
   }
   for (const item of [...Object.values(INVENTORY_ITEM_DISPLAY_SPECS), ...Object.values(INVENTORY_SKIN_SPECS)]) {
-    if (item.atlas) { paths.add(item.atlas); }
+    if (item.atlas) {
+      paths.add(item.atlas);
+    }
   }
-  registerImageAtlases(Object.fromEntries([...paths].map((path) => [path, () => loadImageAtlas(archive, path)])));
+  registerImageAtlases(Object.fromEntries([...paths].map(path => [path, () => loadImageAtlas(archive, path)])));
 }

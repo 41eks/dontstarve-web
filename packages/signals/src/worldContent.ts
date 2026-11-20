@@ -5,12 +5,27 @@ import type { Quaternion, Vector3 } from 'three';
 
 /** Named world inputs; compatible with erasableSyntaxOnly. */
 export const WorldContentKey = {
-  Cycle: 'cycle', NightmarePhase: 'nightmarephase', Moon: 'moon', Season: 'season', Temperature: 'temperature', Wind: 'wind', PerishClock: 'perishTick', SnowLevel: 'snowLevel',
-  PlayerPositions: 'playerpositions', CameraRotation: 'camerarotation',
-  Moisture: 'moisture', MoistureCeil: 'moistureceil', MoistureFloor: 'moisturefloor', PrecipType: 'preciptype',
-  PeakPrecipitationRate: 'peakprecipitationrate', PrecipitationRate: 'precipitationRate', RainRate: 'rainRate', SnowRate: 'snowRate', SnowCover: 'snowCover',
+  Cycle: 'cycle',
+  NightmarePhase: 'nightmarephase',
+  Moon: 'moon',
+  Season: 'season',
+  Temperature: 'temperature',
+  Wind: 'wind',
+  PerishClock: 'perishTick',
+  SnowLevel: 'snowLevel',
+  PlayerPositions: 'playerpositions',
+  CameraRotation: 'camerarotation',
+  Moisture: 'moisture',
+  MoistureCeil: 'moistureceil',
+  MoistureFloor: 'moisturefloor',
+  PrecipType: 'preciptype',
+  PeakPrecipitationRate: 'peakprecipitationrate',
+  PrecipitationRate: 'precipitationRate',
+  RainRate: 'rainRate',
+  SnowRate: 'snowRate',
+  SnowCover: 'snowCover',
 } as const;
-export type WorldContentKey = typeof WorldContentKey[keyof typeof WorldContentKey];
+export type WorldContentKey = (typeof WorldContentKey)[keyof typeof WorldContentKey];
 
 export interface WorldContentValues {
   cycle: WorldPhase;
@@ -39,21 +54,45 @@ export interface WorldContentValues {
 /** Dry-weather sources for standalone worlds and fixtures that have no Weather component. */
 export function createIdleWeatherSources() {
   return {
-    moisture: readonlySignal(createSignal(0)), moistureceil: readonlySignal(createSignal(0)), moisturefloor: readonlySignal(createSignal(0)),
-    preciptype: readonlySignal(createSignal<WorldPrecipitationType>('none')), peakprecipitationrate: readonlySignal(createSignal(1)),
-    precipitationRate: readonlySignal(createSignal(0)), rainRate: readonlySignal(createSignal(0)), snowRate: readonlySignal(createSignal(0)),
+    moisture: readonlySignal(createSignal(0)),
+    moistureceil: readonlySignal(createSignal(0)),
+    moisturefloor: readonlySignal(createSignal(0)),
+    preciptype: readonlySignal(createSignal<WorldPrecipitationType>('none')),
+    peakprecipitationrate: readonlySignal(createSignal(1)),
+    precipitationRate: readonlySignal(createSignal(0)),
+    rainRate: readonlySignal(createSignal(0)),
+    snowRate: readonlySignal(createSignal(0)),
     snowCover: readonlySignal(createSignal(0)),
-  } satisfies Pick<WorldContentSources, 'moisture' | 'moistureceil' | 'moisturefloor' | 'preciptype' | 'peakprecipitationrate'
-    | 'precipitationRate' | 'rainRate' | 'snowRate' | 'snowCover'>;
+  } satisfies Pick<
+    WorldContentSources,
+    | 'moisture'
+    | 'moistureceil'
+    | 'moisturefloor'
+    | 'preciptype'
+    | 'peakprecipitationrate'
+    | 'precipitationRate'
+    | 'rainRate'
+    | 'snowRate'
+    | 'snowCover'
+  >;
 }
 
 export type WorldPrecipitationType = 'none' | 'rain' | 'snow';
 
 /** Publish moonphase and iswaxingmoon together, without an intermediate mixed pair. */
-export interface WorldMoonState { readonly phase: WorldMoonPhase; readonly waxing: boolean; }
+export interface WorldMoonState {
+  readonly phase: WorldMoonPhase;
+  readonly waxing: boolean;
+}
 
-export interface WorldWindChange { readonly angle: number; readonly velocity: number; }
-export interface PerishTick { readonly time: number; readonly total: number; }
+export interface WorldWindChange {
+  readonly angle: number;
+  readonly velocity: number;
+}
+export interface PerishTick {
+  readonly time: number;
+  readonly total: number;
+}
 /** Live and historical prefix queries are separate from the last published snapshot. */
 export interface PerishClock {
   GetTick(time?: number): PerishTick;
@@ -108,7 +147,9 @@ export type PlayerPositionsSignal = WorldContentSignal<WorldContentValues['playe
 
 /** Bound to world sources, never to a consumer's cleanup or local signals. */
 export type GetWatchWorldContent = <K extends WorldContentKey>(
-  key: K, registerCleanup: (stop: () => void) => void, options?: WatchWorldContentOptions,
+  key: K,
+  registerCleanup: (stop: () => void) => void,
+  options?: WatchWorldContentOptions,
 ) => WorldContentSignal<WorldContentValues[K]>;
 
 /** Shared contract for the application world and prefab world context. */
@@ -122,40 +163,69 @@ let currentWorld: WorldContentEnvironment | undefined;
 /** The world owns the sources. Disposing an older world cannot unbind a newer world. */
 export function bindWorldContent(sources: WorldContentEnvironment): () => void {
   currentWorld = sources;
-  return () => { if (currentWorld === sources) { currentWorld = undefined; } };
+  return () => {
+    if (currentWorld === sources) {
+      currentWorld = undefined;
+    }
+  };
 }
 
 /** Standalone contexts without a world binding can skip world-driven behaviour. */
-export function isWorldContentBound(): boolean { return currentWorld !== undefined; }
+export function isWorldContentBound(): boolean {
+  return currentWorld !== undefined;
+}
 
 /** Resolve the current world's query without passing its player position source to prefabs. */
 export function GetTileStateAtPoint(tile: ReadonlySignal<number>, radius = 10): Memo<boolean> | undefined {
   const query = currentWorld?.tickingarea;
-  if (!query) { throw new Error('World tile activity is not bound'); }
+  if (!query) {
+    throw new Error('World tile activity is not bound');
+  }
   return query(tile, radius);
 }
 
 /** The bound world's getter for consumers that take world content as a parameter; undefined when standalone. */
 export function getBoundWatchWorldContent(): GetWatchWorldContent | undefined {
   const world = currentWorld;
-  return world ? (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, world, options) : undefined;
+  return world
+    ? (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, world, options)
+    : undefined;
 }
 
 /** A key resolves to a shared world input; each caller receives its own lifecycle-managed signal. */
 export function getWatchWorldContent<K extends WorldContentKey>(
-  key: K, registerCleanup: (stop: () => void) => void,
-  sources?: WorldContentEnvironment, options?: WatchWorldContentOptions,
+  key: K,
+  registerCleanup: (stop: () => void) => void,
+  sources?: WorldContentEnvironment,
+  options?: WatchWorldContentOptions,
 ): WorldContentSignal<WorldContentValues[K]> {
   const world = sources ?? currentWorld;
-  if (!world) { throw new Error(`World content ${key} is not bound`); }
+  if (!world) {
+    throw new Error(`World content ${key} is not bound`);
+  }
   const signals: WorldContentSources = world;
   const source = signals[key];
-  if (!source) { throw new Error(`World content ${key} is not bound`); }
-  if (!world.scheduler) { throw new Error('World scheduler is not bound'); }
-  if (options?.tile && options.active) { throw new Error(`World content ${key} is gated by either a tile or an activity`); }
+  if (!source) {
+    throw new Error(`World content ${key} is not bound`);
+  }
+  if (!world.scheduler) {
+    throw new Error('World scheduler is not bound');
+  }
+  if (options?.tile && options.active) {
+    throw new Error(`World content ${key} is gated by either a tile or an activity`);
+  }
   const area = options?.tile ? world.tickingarea?.(options.tile) : undefined;
-  const local = watchSignal<WorldContentValues[K]>(source,
-    area ? stop => registerCleanup(() => { stop(); area.dispose(); }) : registerCleanup, area ?? options?.active);
+  const local = watchSignal<WorldContentValues[K]>(
+    source,
+    area
+      ? stop =>
+          registerCleanup(() => {
+            stop();
+            area.dispose();
+          })
+      : registerCleanup,
+    area ?? options?.active,
+  );
   return Object.defineProperties(local, {
     scheduler: { value: world.scheduler, enumerable: true },
     perishClock: { value: world.perishClock, enumerable: true },

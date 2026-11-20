@@ -12,7 +12,10 @@ export abstract class AssetElement extends HTMLElement {
   }
 
   protected dataAsset(path: string): string {
-    const base = new URL(this.assetBaseUrl.endsWith('/') ? this.assetBaseUrl : `${this.assetBaseUrl}/`, document.baseURI);
+    const base = new URL(
+      this.assetBaseUrl.endsWith('/') ? this.assetBaseUrl : `${this.assetBaseUrl}/`,
+      document.baseURI,
+    );
     return new URL(`../${path}`, base).href;
   }
 

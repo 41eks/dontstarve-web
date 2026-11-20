@@ -35,7 +35,9 @@ export interface EntityRegistration<PrefabId extends string> {
   /** Only these IDs are exposed through c_spawn, including any aliases. */
   debugSpawn?: (prefabId: PrefabId) => unknown;
   /** SpawnPrefab(id, skin) then Transform:SetPosition for the source prefabs this family owns, synchronously. */
-  spawnPrefab?: Readonly<Record<string, (position: THREE.Vector3, skinId?: string) => THREE.Object3D | PrefabInstance | undefined>>;
+  spawnPrefab?: Readonly<
+    Record<string, (position: THREE.Vector3, skinId?: string) => THREE.Object3D | PrefabInstance | undefined>
+  >;
   exportRecords: () => readonly EntityRecord[];
   beforePhysics?: (dt: number) => void;
   update?: (dt: number, cameraQuaternion: THREE.Quaternion) => void;
@@ -51,7 +53,10 @@ export interface DisplayDrivenEntityManager extends DisplayDrivenPrefabManager<E
 /** Routes scene lifecycles through the same declarations used by debug spawning. */
 export class EntityRegistry {
   readonly byEntityId = new Map<string, RestoredEntity>();
-  private readonly restorers = new Map<string, (record: EntitySaveRecord) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>>();
+  private readonly restorers = new Map<
+    string,
+    (record: EntitySaveRecord) => ReturnType<NonNullable<EntityRegistration<string>['restore']>>
+  >();
   private readonly creators = new Map<string, () => unknown>();
   private readonly spawners = new Map<string, NonNullable<EntityRegistration<string>['spawnPrefab']>[string]>();
   private readonly registrations: (EntityRegistration<string> & { definition: PrefabDefinition })[] = [];
@@ -66,51 +71,88 @@ export class EntityRegistry {
   private readonly prefabDisplays?: PrefabDisplayGroup;
 
   /** Construction dependencies may differ from the required frame/update and disposal order. */
-  constructor(lifecycleOrder: readonly PrefabDefinition[] = [], prefabs?: PrefabEntityManager<string, PrefabInstance>, spawnPosition?: () => THREE.Vector3,
-    prefabDisplays?: PrefabDisplayGroup) {
-    this.prefabs = prefabs; this.spawnPosition = spawnPosition;
+  constructor(
+    lifecycleOrder: readonly PrefabDefinition[] = [],
+    prefabs?: PrefabEntityManager<string, PrefabInstance>,
+    spawnPosition?: () => THREE.Vector3,
+    prefabDisplays?: PrefabDisplayGroup,
+  ) {
+    this.prefabs = prefabs;
+    this.spawnPosition = spawnPosition;
     this.prefabDisplays = prefabDisplays;
     this.lifecycleOrder = new Map(lifecycleOrder.map((definition, index) => [definition, index]));
   }
 
-  register<PrefabId extends string>(definition: PrefabDefinition<PrefabId>, registration: EntityRegistration<PrefabId>): void {
+  register<PrefabId extends string>(
+    definition: PrefabDefinition<PrefabId>,
+    registration: EntityRegistration<PrefabId>,
+  ): void {
     // this.assertActive();
     const savedIds = definition.prefabIds;
     const debugIds = definition.debugSpawnIds;
-    if (savedIds.length && !registration.restore) { throw new Error('Persistent entities require a restore handler'); }
-    if (debugIds.length && !registration.debugSpawn) { throw new Error('Debug prefabs require a spawn handler'); }
-    if (this.registrations.some((entry) => entry.definition === definition)
-      || new Set(savedIds).size !== savedIds.length || new Set(debugIds).size !== debugIds.length
-      || savedIds.some((id) => this.restorers.has(id)) || debugIds.some((id) => this.creators.has(id))) {
+    if (savedIds.length && !registration.restore) {
+      throw new Error('Persistent entities require a restore handler');
+    }
+    if (debugIds.length && !registration.debugSpawn) {
+      throw new Error('Debug prefabs require a spawn handler');
+    }
+    if (
+      this.registrations.some(entry => entry.definition === definition) ||
+      new Set(savedIds).size !== savedIds.length ||
+      new Set(debugIds).size !== debugIds.length ||
+      savedIds.some(id => this.restorers.has(id)) ||
+      debugIds.some(id => this.creators.has(id))
+    ) {
       throw new Error('Duplicate entity registration');
     }
-    for (const id of savedIds) { this.restorers.set(id, (record) => registration.restore!(id, record)); }
-    for (const id of debugIds) { this.creators.set(id, () => registration.debugSpawn!(id)); }
+    for (const id of savedIds) {
+      this.restorers.set(id, record => registration.restore!(id, record));
+    }
+    for (const id of debugIds) {
+      this.creators.set(id, () => registration.debugSpawn!(id));
+    }
     for (const [id, spawn] of Object.entries(registration.spawnPrefab ?? {})) {
-      if (this.spawners.has(id)) { throw new Error('Duplicate entity registration'); }
+      if (this.spawners.has(id)) {
+        throw new Error('Duplicate entity registration');
+      }
       this.spawners.set(id, spawn);
     }
     // Prefab IDs have been bound above; lifecycle callbacks no longer accept IDs.
     this.registrations.push({ ...registration, definition, restore: undefined, debugSpawn: undefined });
-    this.registrations.sort((a, b) =>
-      (this.lifecycleOrder.get(a.definition) ?? this.lifecycleOrder.size) - (this.lifecycleOrder.get(b.definition) ?? this.lifecycleOrder.size));
+    this.registrations.sort(
+      (a, b) =>
+        (this.lifecycleOrder.get(a.definition) ?? this.lifecycleOrder.size) -
+        (this.lifecycleOrder.get(b.definition) ?? this.lifecycleOrder.size),
+    );
   }
 
   /** Expose a registered prefab family through commands/restoration; its shared owner is advanced and saved once. */
   registerPrefabs<PrefabId extends string>(definition: PrefabDefinition<PrefabId>): void {
-    if (!this.prefabs) { throw new Error('No shared prefab manager'); }
-    if (definition.debugSpawnIds.length && !this.spawnPosition) { throw new Error('No debug spawn position'); }
-    for (const id of new Set([...definition.prefabIds, ...definition.debugSpawnIds])) { if (!this.prefabs.has(id)) { throw new Error(`Missing prefab declaration: ${id}`); } }
+    if (!this.prefabs) {
+      throw new Error('No shared prefab manager');
+    }
+    if (definition.debugSpawnIds.length && !this.spawnPosition) {
+      throw new Error('No debug spawn position');
+    }
+    for (const id of new Set([...definition.prefabIds, ...definition.debugSpawnIds])) {
+      if (!this.prefabs.has(id)) {
+        throw new Error(`Missing prefab declaration: ${id}`);
+      }
+    }
     this.register(definition, {
       restore: (id, record) => this.prefabs!.restore(id, record),
       debugSpawn: definition.debugSpawnIds.length ? id => this.prefabs!.spawn(id, this.spawnPosition!()) : undefined,
-      exportRecords: () => [], dispose: () => {},
+      exportRecords: () => [],
+      dispose: () => {},
     });
   }
 
   /** Bind a display-driven manager without exposing an update callback at the scene registration site. */
-  registerDisplayManager<PrefabId extends string>(definition: PrefabDefinition<PrefabId>, manager: DisplayDrivenEntityManager,
-    handlers: Pick<EntityRegistration<PrefabId>, 'restore' | 'debugSpawn'>): void {
+  registerDisplayManager<PrefabId extends string>(
+    definition: PrefabDefinition<PrefabId>,
+    manager: DisplayDrivenEntityManager,
+    handlers: Pick<EntityRegistration<PrefabId>, 'restore' | 'debugSpawn'>,
+  ): void {
     this.register(definition, {
       ...handlers,
       exportRecords: () => manager.exportRecords(),
@@ -128,15 +170,21 @@ export class EntityRegistry {
     // this.assertActive();
     const bound = new Set(this.prefabDefinitions);
     for (const definition of definitions) {
-      if (!bound.has(definition)) { throw new Error(`Unbound prefab definition: ${definition.prefabIds.join(', ') || 'transient effects'}`); }
+      if (!bound.has(definition)) {
+        throw new Error(`Unbound prefab definition: ${definition.prefabIds.join(', ') || 'transient effects'}`);
+      }
     }
   }
 
   /** SpawnPrefab for game code: the logical inst exists now and its display loads the art. */
   SpawnPrefab(prefabId: string, position: THREE.Vector3, skinId?: string): PrefabInstance | undefined {
-    if (this.prefabs?.has(prefabId)) { return this.prefabs.spawn(prefabId, position, undefined, skinId); }
+    if (this.prefabs?.has(prefabId)) {
+      return this.prefabs.spawn(prefabId, position, undefined, skinId);
+    }
     const spawn = this.spawners.get(prefabId);
-    if (!spawn) { throw new Error(`No SpawnPrefab registered for ${prefabId}`); }
+    if (!spawn) {
+      throw new Error(`No SpawnPrefab registered for ${prefabId}`);
+    }
     const spawned = spawn(position, skinId);
     return spawned instanceof PrefabInstance ? spawned : spawned && prefabInstance(spawned);
   }
@@ -144,7 +192,9 @@ export class EntityRegistry {
   async spawn(prefabId: string): Promise<boolean> {
     // this.assertActive();
     const create = this.creators.get(prefabId);
-    if (!create) { return false; }
+    if (!create) {
+      return false;
+    }
     await create();
     // this.assertActive();
     return true;
@@ -162,7 +212,9 @@ export class EntityRegistry {
     for (const [prefabId, records] of Object.entries(entities)) {
       for (const record of records) {
         const restore = this.restorers.get(prefabId);
-        if (!restore) { throw new Error(`No restorer for saved prefab ${prefabId}`); }
+        if (!restore) {
+          throw new Error(`No restorer for saved prefab ${prefabId}`);
+        }
         const entity = await restore(record);
         this.assertActive();
         this.byEntityId.set(record.id, entity);
@@ -175,20 +227,33 @@ export class EntityRegistry {
     const entities: Record<string, EntitySaveRecord[]> = {};
     const ids = new Set<string>();
     for (const registration of this.registrations) {
-      for (const prefabId of registration.definition.prefabIds) { entities[prefabId] ??= []; }
+      for (const prefabId of registration.definition.prefabIds) {
+        entities[prefabId] ??= [];
+      }
       for (const { prefabId, record } of registration.exportRecords()) {
-        if (!registration.definition.prefabIds.includes(prefabId)) { throw new Error(`Unregistered exported prefab: ${prefabId}`); }
-        if (ids.has(record.id)) { throw new Error(`Duplicate entity ID: ${record.id}`); }
+        if (!registration.definition.prefabIds.includes(prefabId)) {
+          throw new Error(`Unregistered exported prefab: ${prefabId}`);
+        }
+        if (ids.has(record.id)) {
+          throw new Error(`Duplicate entity ID: ${record.id}`);
+        }
         ids.add(record.id);
         // Saves must not share mutable component state with live entities.
-        (entities[prefabId] ??= []).push(structuredClone({
-          ...record, transform: { ...record.transform, position: [...record.transform.position] },
-        }) as EntitySaveRecord);
+        (entities[prefabId] ??= []).push(
+          structuredClone({
+            ...record,
+            transform: { ...record.transform, position: [...record.transform.position] },
+          }) as EntitySaveRecord,
+        );
       }
     }
     for (const { prefabId, record } of this.prefabs?.exportRecords() ?? []) {
-      if (!this.restorers.has(prefabId)) { throw new Error(`Unregistered exported prefab: ${prefabId}`); }
-      if (ids.has(record.id)) { throw new Error(`Duplicate entity ID: ${record.id}`); }
+      if (!this.restorers.has(prefabId)) {
+        throw new Error(`Unregistered exported prefab: ${prefabId}`);
+      }
+      if (ids.has(record.id)) {
+        throw new Error(`Duplicate entity ID: ${record.id}`);
+      }
       ids.add(record.id);
       (entities[prefabId] ??= []).push(structuredClone(record) as EntitySaveRecord);
     }
@@ -196,47 +261,81 @@ export class EntityRegistry {
   }
 
   beforePhysics(dt: number): void {
-    if (!this.disposed) { for (const registration of this.registrations) { registration.beforePhysics?.(dt); } }
+    if (!this.disposed) {
+      for (const registration of this.registrations) {
+        registration.beforePhysics?.(dt);
+      }
+    }
   }
 
   /** Scene-owned animation ticks for prefab displays; each display leaves the set when it is removed. */
   trackDisplay(display: PrefabDisplay): void {
-    if (this.disposed || display.isRemoved) { return; }
+    if (this.disposed || display.isRemoved) {
+      return;
+    }
     this.displays.add(display);
     display.onDispose(() => this.displays.delete(display));
   }
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    if (this.disposed) { return; }
-    for (const registration of this.registrations) { registration.update?.(dt, cameraQuaternion); }
+    if (this.disposed) {
+      return;
+    }
+    for (const registration of this.registrations) {
+      registration.update?.(dt, cameraQuaternion);
+    }
     this.prefabDisplays?.update(dt);
-    for (const display of this.displays) { display.update(dt); }
+    for (const display of this.displays) {
+      display.update(dt);
+    }
   }
 
   /** Every registration's entries, in one list that the next read refills. */
   get renderEntities(): readonly EntityRenderEntry[] {
     const entries = this.renderEntries;
     entries.length = 0;
-    if (this.disposed) { return entries; }
+    if (this.disposed) {
+      return entries;
+    }
     for (const registration of this.registrations) {
       const provided = registration.renderEntities?.();
-      if (provided) { for (let i = 0; i < provided.length; i++) { entries.push(provided[i]); } }
+      if (provided) {
+        for (let i = 0; i < provided.length; i++) {
+          entries.push(provided[i]);
+        }
+      }
     }
-    if (this.prefabs) { for (const entry of this.prefabs.renderEntities) { entries.push(entry); } }
+    if (this.prefabs) {
+      for (const entry of this.prefabs.renderEntities) {
+        entries.push(entry);
+      }
+    }
     return entries;
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     this.byEntityId.clear();
     const errors: unknown[] = [];
     for (const registration of [...this.registrations].reverse()) {
-      try { registration.dispose(); } catch (error) { errors.push(error); }
+      try {
+        registration.dispose();
+      } catch (error) {
+        errors.push(error);
+      }
     }
-    try { this.prefabs?.dispose(); } catch (error) { errors.push(error); }
+    try {
+      this.prefabs?.dispose();
+    } catch (error) {
+      errors.push(error);
+    }
     this.displays.clear();
-    if (errors.length) { throw new AggregateError(errors, 'Unable to dispose scene entities'); }
+    if (errors.length) {
+      throw new AggregateError(errors, 'Unable to dispose scene entities');
+    }
   }
 
   private assertActive(): void {

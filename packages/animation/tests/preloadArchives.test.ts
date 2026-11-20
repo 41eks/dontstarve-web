@@ -10,11 +10,16 @@ describe('saved prefab archive scan', () => {
   });
 
   it('keeps split animation and build archives together', () => {
-    expect(savedPrefabArchives(definitions, { grass: [{}] })).toEqual([{ animation: 'grass.zip', build: 'grass1.zip' }]);
+    expect(savedPrefabArchives(definitions, { grass: [{}] })).toEqual([
+      { animation: 'grass.zip', build: 'grass1.zip' },
+    ]);
   });
 
   it('lists tree art and per-building archives from the catalog', () => {
-    expect(savedPrefabArchives(definitions, { evergreen: [{}, {}] })).toContainEqual({ animation: 'evergreen_tall_old.zip', build: 'evergreen_new.zip' });
+    expect(savedPrefabArchives(definitions, { evergreen: [{}, {}] })).toContainEqual({
+      animation: 'evergreen_tall_old.zip',
+      build: 'evergreen_new.zip',
+    });
     const buildings = savedPrefabArchives(definitions, { moondial: [{}], wall_wood: [{}], fence: [{}] });
     expect(buildings).toContainEqual({ animation: 'moondial.zip', build: 'moondial_build.zip' });
     expect(buildings).toContainEqual({ animation: 'wall_wood.zip', build: 'wall_wood.zip' });
@@ -22,10 +27,12 @@ describe('saved prefab archive scan', () => {
     expect(buildings).not.toContainEqual({ animation: 'tent.zip', build: 'tent.zip' });
   });
 
-  it('resolves ground item art from each record\'s catalog entry, including symbol overrides and skins', () => {
+  it("resolves ground item art from each record's catalog entry, including symbol overrides and skins", () => {
     const stack = (itemId: string, skinId?: string) => ({ components: { stack: { itemId, count: 1, skinId } } });
     const archives = savedPrefabArchives(definitions, {
-      axe: [stack('axe', 'axe_heart')], meatballs: [stack('meatballs')], not_an_item: [stack('not_an_item')],
+      axe: [stack('axe', 'axe_heart')],
+      meatballs: [stack('meatballs')],
+      not_an_item: [stack('not_an_item')],
     });
     expect(archives).toContainEqual({ animation: 'axe.zip', build: 'axe.zip' });
     expect(archives).toContain('dynamic/axe_heart.zip');

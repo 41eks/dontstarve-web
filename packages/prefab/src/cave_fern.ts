@@ -9,7 +9,7 @@ import { PickablePlantInstance, type PickablePlantRecord, type PickablePlantWorl
 export const CAVE_FERN_ID = 'cave_fern' as const;
 export const CAVE_FERN_WITHERED_ID = 'cave_fern_withered' as const;
 export const CAVE_FERN_IDS = [CAVE_FERN_ID, CAVE_FERN_WITHERED_ID] as const;
-export type CaveFernId = typeof CAVE_FERN_IDS[number];
+export type CaveFernId = (typeof CAVE_FERN_IDS)[number];
 /** cave_fern.lua / cave_fern_withered.lua `names`. */
 export const CAVE_FERN_ANIMATIONS = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10'] as const;
 export const CAVE_FERN_ANIM_ARCHIVE = 'cave_ferns.zip';
@@ -37,8 +37,12 @@ function onsave(inst: CaveFernInstance, data: PickablePlantRecord['components'])
 
 function onload(inst: CaveFernInstance, data: PickablePlantRecord['components']): void {
   const anim = data.variant?.anim;
-  if (anim === undefined) { return; }
-  if (!CAVE_FERN_ANIMATIONS.some(known => known === anim)) { throw new Error(`Unsupported ${inst.prefab} variant: ${anim}`); }
+  if (anim === undefined) {
+    return;
+  }
+  if (!CAVE_FERN_ANIMATIONS.some(known => known === anim)) {
+    throw new Error(`Unsupported ${inst.prefab} variant: ${anim}`);
+  }
   inst.animname = anim;
   inst.AnimState.PlayAnimation(inst.animname);
 }
@@ -54,15 +58,35 @@ function fn(prefab: CaveFernId, world: PickablePlantWorld): CaveFernInstance {
   inst.animname = animname;
   inst.AnimState.PlayAnimation(inst.animname);
 
-  const pickable = addComponent(inst, 'pickable', Pickable, PRODUCTS[prefab], CAVE_FERN_REGROW_TIME, 1, undefined, undefined, undefined,
-    { scheduler: world.scheduler, onRemove: () => inst.remove() });
+  const pickable = addComponent(
+    inst,
+    'pickable',
+    Pickable,
+    PRODUCTS[prefab],
+    CAVE_FERN_REGROW_TIME,
+    1,
+    undefined,
+    undefined,
+    undefined,
+    { scheduler: world.scheduler, onRemove: () => inst.remove() },
+  );
   pickable.picksound = 'dontstarve/wilson/pickup_plants';
   pickable.remove_when_picked = true;
   pickable.quickpick = true;
 
   // MakeSmallBurnable + MakeSmallPropagator.
-  const burn = new BurnableBinding(inst, { propagator: 'small', burnTime: 10, fxLevel: 2,
-    onIgnite: () => DefaultBurnFn(inst), onExtinguish: () => DefaultExtinguishFn(inst), onBurnt: () => DefaultBurntFn(inst, world) }, world);
+  const burn = new BurnableBinding(
+    inst,
+    {
+      propagator: 'small',
+      burnTime: 10,
+      fxLevel: 2,
+      onIgnite: () => DefaultBurnFn(inst),
+      onExtinguish: () => DefaultExtinguishFn(inst),
+      onBurnt: () => DefaultBurntFn(inst, world),
+    },
+    world,
+  );
   inst.onRemove(() => burn.dispose());
 
   inst.OnSave = (_inst, data) => onsave(inst, data);
@@ -71,7 +95,9 @@ function fn(prefab: CaveFernId, world: PickablePlantWorld): CaveFernInstance {
 }
 
 /** cave_fern.lua / cave_fern_withered.lua: Prefab(name, fn, assets). */
-export function caveFernPrefabs(world: PickablePlantWorld): Readonly<Record<CaveFernId, PrefabEntityDefinition<PickablePlantInstance>>> {
+export function caveFernPrefabs(
+  world: PickablePlantWorld,
+): Readonly<Record<CaveFernId, PrefabEntityDefinition<PickablePlantInstance>>> {
   const prefab = (id: CaveFernId): PrefabEntityDefinition<PickablePlantInstance> => ({
     fn: () => fn(id, world),
     assets: { animationArchive: CAVE_FERN_ANIM_ARCHIVE, buildArchives: [CAVE_FERN_BUILD_ARCHIVES[id]], bank: 'ferns' },

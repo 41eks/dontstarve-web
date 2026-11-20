@@ -1,6 +1,18 @@
-import { InventoryStore, ItemEntityRegistry, newItemEntity, type InventoryStack, type ItemEntity, type ItemSlot, type SpawnedItemRecord } from '../../inventory/src';
+import {
+  InventoryStore,
+  ItemEntityRegistry,
+  newItemEntity,
+  type InventoryStack,
+  type ItemEntity,
+  type ItemSlot,
+  type SpawnedItemRecord,
+} from '../../inventory/src';
 import type { PerishWorld } from '../../componets/src/perishable';
-import { createInventoryStore as createWorldInventoryStore, createItemRegistry, type ItemWorld } from '../../../src/inventory';
+import {
+  createInventoryStore as createWorldInventoryStore,
+  createItemRegistry,
+  type ItemWorld,
+} from '../../../src/inventory';
 import type { InventoryItemDefinition } from '../../../src/inventoryItems';
 
 /**
@@ -14,7 +26,9 @@ function handleWorld(handle: { world?: ItemWorld }): ItemWorld {
   return {
     isItemPrefab: prefab => handle.world?.isItemPrefab(prefab) ?? false,
     SpawnPrefab: (prefab, saved) => {
-      if (!handle.world) { throw new Error(`No test item world spawns ${prefab}`); }
+      if (!handle.world) {
+        throw new Error(`No test item world spawns ${prefab}`);
+      }
       return handle.world.SpawnPrefab(prefab, saved);
     },
   };
@@ -39,7 +53,9 @@ export function createInventoryStore(definitions: readonly InventoryItemDefiniti
 /** Puts a test registry in a test scene's world, or takes it out again with `undefined`. */
 export function bindTestItemWorld(entities: ItemEntityRegistry, world: ItemWorld | undefined): void {
   const handle = handles.get(entities);
-  if (!handle) { throw new Error('This item registry was not made by testInventory'); }
+  if (!handle) {
+    throw new Error('This item registry was not made by testInventory');
+  }
   handle.world = world;
 }
 
@@ -48,15 +64,20 @@ export function testItem(state: InventoryStack, perishWorld?: PerishWorld): Item
   const restore = (prefab: string, saved: SpawnedItemRecord) => testSavedItem(prefab, saved, perishWorld);
   const inst = newItemEntity(state, perishWorld, restore);
   // What the inst itself loads (a phonograph's record) is spawned the same way.
-  inst.worldServices = { ...inst.worldServices, spawnItem: child => testItem(child, perishWorld),
-    restoreItem: record => restore(record.prefab, record) };
+  inst.worldServices = {
+    ...inst.worldServices,
+    spawnItem: child => testItem(child, perishWorld),
+    restoreItem: record => restore(record.prefab, record),
+  };
   return inst;
 }
 
 /** SpawnSaveRecord of a test inst outside any world: the record's skin, then SetPersistData. */
 export function testSavedItem(prefab: string, saved: SpawnedItemRecord, perishWorld?: PerishWorld): ItemEntity {
   const inst = testItem({ itemId: prefab, count: 1, entityId: saved.id }, perishWorld);
-  if (saved.skinname !== undefined) { inst.skinId = saved.skinname; }
+  if (saved.skinname !== undefined) {
+    inst.skinId = saved.skinname;
+  }
   inst.SetPersistData(saved.components);
   return inst;
 }
@@ -73,7 +94,12 @@ export function slotWith<Slot extends ItemSlot>(slot: Slot, state: InventoryStac
 }
 
 /** An InventoryStore over the given slots on a test item registry. */
-export function testInventoryStore(...[registrations, itemSpecs, skinSpecs = {}]:
-  [ConstructorParameters<typeof InventoryStore>[0], ConstructorParameters<typeof InventoryStore>[1], ConstructorParameters<typeof InventoryStore>[2]?]): InventoryStore {
+export function testInventoryStore(
+  ...[registrations, itemSpecs, skinSpecs = {}]: [
+    ConstructorParameters<typeof InventoryStore>[0],
+    ConstructorParameters<typeof InventoryStore>[1],
+    ConstructorParameters<typeof InventoryStore>[2]?,
+  ]
+): InventoryStore {
   return new InventoryStore(registrations, itemSpecs, skinSpecs, testItemRegistry());
 }
