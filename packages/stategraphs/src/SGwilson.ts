@@ -28,6 +28,8 @@ export type WilsonStateName = WilsonMovementState | WilsonOneShotState | 'build'
   | 'shell_enter' | 'shell_idle' | 'shell_hit' | 'death'
   /** SGwilson.lua forcetele: hidden while staff.lua's telestaff moves the player. */
   | 'forcetele'
+  /** SGwilson.lua quicktele: the swing a blinkstaff (orangestaff) blinks from. */
+  | 'quicktele'
   /** SGwilsonghost.lua states; `idle`, `walk` and `run` are shared names in a separate state table. */
   | 'appear' | 'hit' | 'haunt_pre' | 'haunt'
   /** SGwilson.lua portal_rez: the player stepping out of the multiplayer portal after a haunt resurrection. */
@@ -216,6 +218,10 @@ export interface WilsonStateMem {
   dest: PortalJumpData;
   /** forcetele: staff.lua's pending teleport_continue / teleport_end, cancelled when the state is interrupted. */
   teleport_task: { Cancel(): void };
+  /** quicktele: what blinkstaff.lua calls as the caster vanishes and reappears, and the deferred end of busy. */
+  onstartblinking: () => void;
+  onstopblinking: () => void;
+  endbusy: boolean;
 }
 
 /** The data GoToState passes the states that read it. */
@@ -444,6 +450,49 @@ const states: WilsonState[] = [
       }),
     ],
     onexit: (inst) => SetSleeperAwakeState(inst.context.entity),
+  }),
+  State({
+    // SGwilson.lua quicktele, unmounted (the rider's player_atk clips are not ported). inst:Hide() also hides the
+    // DynamicShadow.
+    name: 'quicktele',
+    tags: ['doing', 'busy', 'canrotate'],
+    onenter: (inst) => {
+      const { entity } = inst.context;
+      entity.locomotor?.stop();
+      inst.context.playClips([clip('atk_pre'), clip('atk')]);
+      entity.SoundEmitter.PlaySound('dontstarve/wilson/attack_weapon');
+      // called by blinkstaff component
+      inst.statemem.onstartblinking = () => {
+        inst.addStateTag('noattack');
+        entity.components.health?.SetInvincible(true);
+        entity.Hide();
+      };
+      inst.statemem.onstopblinking = () => {
+        inst.removeStateTag('noattack');
+        if (inst.statemem.endbusy) inst.removeStateTag('busy');
+        entity.components.health?.SetInvincible(false);
+        entity.Show();
+      };
+    },
+    timeline: [
+      TimeEvent(8 * FRAMES, (inst) => { inst.context.performBufferedAction(); }),
+      TimeEvent(18 * FRAMES, (inst) => {
+        if (inst.hasStateTag('noattack')) inst.statemem.endbusy = true;
+        else inst.removeStateTag('busy');
+      }),
+    ],
+    events: [
+      EventHandler('animqueueover', (inst) => {
+        if (inst.context.animationDone) inst.goToState('idle');
+      }),
+    ],
+    onexit: (inst) => {
+      if (inst.hasStateTag('noattack')) {
+        // interrupted
+        inst.context.entity.components.health?.SetInvincible(false);
+        inst.context.entity.Show();
+      }
+    },
   }),
   State({
     // SGwilson.lua forcetele. ClearStatusAilments and the rider's ActualDismount are not ported: no status ailment or
@@ -1556,7 +1605,8 @@ const applicationStates: WilsonState[] = [
 
 /** SGwilson.lua action handlers for the supported, unmounted player/tool branches. */
 const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName, WilsonStateSpec>[] = [
-  ActionHandler('BLINK', (inst, action) => !action.invobject && inst.context.entity.soulHopHost ? 'portal_jumpin_pre' : null),
+  // A soul hop without an item is Wortox's; any other BLINK is a blinkstaff's quicktele.
+  ActionHandler('BLINK', (inst, action) => !action.invobject ? (inst.context.entity.soulHopHost ? 'portal_jumpin_pre' : null) : 'quicktele'),
   ActionHandler('BLINK_MAP', (inst, action) => !action.invobject && inst.context.entity.soulHopHost ? 'portal_jumpin_pre' : null),
   // Ranged, blowdart and mounted destinations need unported states.
   ActionHandler('ATTACK', (inst, action) =>

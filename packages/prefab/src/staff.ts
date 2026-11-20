@@ -16,6 +16,9 @@ import { PlaySound, type SoundEventPath } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
 import { FIRE_PROJECTILE_ID } from './staff_projectile';
 import { PrefabInstance } from './prefabInstance';
+import { Weapon } from '../../componets/src/weapon';
+import { BlinkStaff, type BlinkCaster, type BlinkStaffWorld } from '../../componets/src/blinkstaff';
+import { WILSON_ATTACK } from './handTool';
 
 /** staff.lua: the staffs share swap_staffs and the spellcaster or weapon each colour configures. */
 
@@ -23,8 +26,8 @@ export const YELLOWSTAFF_ID = 'yellowstaff';
 export const YELLOWSTAFF_COLOUR = [223 / 255, 208 / 255, 69 / 255] as const;
 export const OPALSTAFF_ID = 'opalstaff';
 export const OPALSTAFF_COLOUR = [64 / 255, 64 / 255, 208 / 255] as const;
-export type StaffId = LightStaffId | 'greenstaff' | 'firestaff' | 'telestaff';
-export function isStaff(itemId: string | null | undefined): itemId is StaffId { return isLightStaff(itemId) || itemId === 'greenstaff' || itemId === 'firestaff' || itemId === 'telestaff'; }
+export type StaffId = LightStaffId | 'greenstaff' | 'firestaff' | 'telestaff' | 'orangestaff';
+export function isStaff(itemId: string | null | undefined): itemId is StaffId { return isLightStaff(itemId) || itemId === 'greenstaff' || itemId === 'firestaff' || itemId === 'telestaff' || itemId === 'orangestaff'; }
 export type LightStaffId = typeof YELLOWSTAFF_ID | typeof OPALSTAFF_ID;
 export const LIGHT_STAFF_USES = { yellowstaff: 20, opalstaff: 50 } as const;
 export const LIGHT_STAFF_SANITY_COST = 20;
@@ -81,7 +84,7 @@ export function isLightStaff(itemId: string | null | undefined): itemId is Light
 export const YELLOWSTAFF_CAST_TIME = WILSON_ACTION_TIMES.cast;
 /** staff.lua commonfn's anim, colour.."staff": the red staff's prefab id is firestaff and the purple one's telestaff. */
 const STAFF_ANIMS: Readonly<Record<StaffId, string>> = {
-  yellowstaff: 'yellowstaff', opalstaff: 'opalstaff', greenstaff: 'greenstaff', firestaff: 'redstaff', telestaff: 'purplestaff',
+  yellowstaff: 'yellowstaff', opalstaff: 'opalstaff', greenstaff: 'greenstaff', firestaff: 'redstaff', telestaff: 'purplestaff', orangestaff: 'orangestaff',
 };
 /** staff.lua onequip: `swap_<anim>` of swap_staffs, or the skin's. */
 export function staffVisual(item: EquipmentVisualItem & { readonly prefab: StaffId }) {
@@ -462,3 +465,49 @@ export function configureTeleStaffEntity(inst: ItemEntity): void {
 
 /** swap_staffs symbol `swap_purplestaff`, or the skin build's. */
 export const teleStaffVisual: EquipmentVisualFactory = item => staffVisual({ ...item, prefab: TELESTAFF_ID });
+
+// staff.lua orange()
+
+export const ORANGESTAFF_ID = 'orangestaff' as const;
+/** tuning.lua ORANGESTAFF_USES, SANITY_MED, CANE_DAMAGE (wilson_attack * .5) and CANE_SPEED_MULT. */
+export const ORANGESTAFF_USES = 20;
+const SANITY_MED = 15;
+export const CANE_DAMAGE = WILSON_ATTACK * .5;
+export const CANE_SPEED_MULT = 1.25;
+export const ORANGESTAFF_COLOUR = [1, 145 / 255, 0] as const;
+
+/** onblink: the caster's sanity and one use of the staff. */
+function onblink(staff: ItemEntity, _pos: THREE.Vector3, caster: BlinkCaster): void {
+  if (caster.components.staffsanity) caster.components.staffsanity.doCastingDelta(-SANITY_MED);
+  else caster.components.sanity?.DoDelta(-SANITY_MED);
+  staff.components.finiteuses.use(1);
+}
+
+/**
+ * staff.lua orange(), the parts every inst has: a cane's weapon whose attacks never wear its uses
+ * (SetIgnoreCombatDurabilityLoss), the fx colour and cast sound. walkspeedmult is its hand definition's.
+ */
+export function configureOrangeStaffEntity(inst: ItemEntity): void {
+  inst.addTag('shadowlevel');
+  inst.fxcolour = ORANGESTAFF_COLOUR;
+  inst.castsound = LIGHT_STAFF_CAST_SOUND;
+  if (inst.components.weapon) return;
+  inst.components.finiteuses.setMaxUses(ORANGESTAFF_USES);
+  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
+  // weapon.lua adds the "weapon" tag; without finiteuses the attacks cost no uses.
+  addComponent(inst, 'weapon', Weapon).SetDamage(CANE_DAMAGE);
+  inst.addTag('weapon');
+}
+
+/** inst:AddComponent("blinkstaff"), bound to TheWorld's map and fx once the scene gives the staff its world. */
+export function orangeStaffLifecycle(inst: ItemEntity, world: BlinkStaffWorld): HeldEquipFunctions {
+  if (!inst.components.blinkstaff) {
+    const blinkstaff = addComponent(inst, 'blinkstaff', BlinkStaff<ItemEntity>, world);
+    blinkstaff.SetFX('sand_puff_large_front', 'sand_puff_large_back');
+    blinkstaff.onblinkfn = onblink;
+  }
+  return { onequip() {}, onunequip() {} };
+}
+
+/** swap_staffs symbol `swap_orangestaff`, or the skin build's. */
+export const orangeStaffVisual: EquipmentVisualFactory = item => staffVisual({ ...item, prefab: ORANGESTAFF_ID });

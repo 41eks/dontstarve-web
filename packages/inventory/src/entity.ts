@@ -160,6 +160,7 @@ export interface ItemComponents {
   instrument?: ItemRuntimeComponent & { Play(musician: unknown): boolean };
   workable?: import('../../componets/src/workable').Workable;
   spellcaster?: import('../../componets/src/spellcaster').SpellCasterComponent;
+  blinkstaff?: import('../../componets/src/blinkstaff').BlinkStaff<ItemEntity>;
   fishingrod?: import('../../componets/src/fishingrod').FishingRod;
   terraformer?: import('../../componets/src/terraformer').Terraformer;
   farmtiller?: import('../../componets/src/farmtiller').FarmTiller;

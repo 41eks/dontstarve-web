@@ -1,3 +1,4 @@
+import { isBlinkCaster } from '../../componets/src/blinkstaff';
 import { BufferedAction } from './bufferedaction.ts';
 import { Vector3 } from 'three';
 import { snapToTileCenter, TILE_SIZE, WORLD_SCALE } from '../../prefab/src/tile';
@@ -327,11 +328,16 @@ export const ACTION_FNS = {
   TILL: {
     fn: act => act.invobject?.components.farmtiller?.Till(actionPoint(act), playerDoer(act)) ?? false,
   },
-  // TryToSoulhop: in portal_jumpin_pre the doer's TryToPortalHop spends its souls and the stategraph enters
-  // portal_jumpin; the blinkstaff (invobject) branch is not ported.
+  // The invobject's blinkstaff:Blink; otherwise TryToSoulhop: in portal_jumpin_pre the doer's TryToPortalHop spends
+  // its souls and the stategraph enters portal_jumpin. The item mimic check is not ported.
   BLINK: {
-    fn: act => act.doer?.sg?.beginPortalJump?.(actionPoint(act)) ?? false,
-    validfn: act => !!act.doer?.CanSoulhop?.() && !!act.doer.CanBlinkTo?.(actionPoint(act)),
+    fn: act => {
+      const blinkstaff = act.invobject?.components.blinkstaff;
+      const doer = playerDoer(act);
+      if (act.invobject) return !!blinkstaff && isBlinkCaster(doer) && blinkstaff.Blink(actionPoint(act), doer);
+      return act.doer?.sg?.beginPortalJump?.(actionPoint(act)) ?? false;
+    },
+    validfn: act => !!act.invobject || (!!act.doer?.CanSoulhop?.() && !!act.doer.CanBlinkTo?.(actionPoint(act))),
   },
   BLINK_MAP: {
     fn: act => act.doer?.sg?.beginPortalJump?.(actionPoint(act), true) ?? false,

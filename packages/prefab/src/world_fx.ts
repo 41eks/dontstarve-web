@@ -17,6 +17,8 @@ interface FxDefinition {
   /** Frames between animover and Remove, as wortox_portal_fx.lua's DoTaskInTime(2 * FRAMES). */
   readonly lingerFrames?: number;
   readonly tags?: readonly string[];
+  /** AnimState:Hide(layer) in the entry's fn. */
+  readonly hideLayers?: readonly string[];
 }
 
 /**
@@ -64,6 +66,11 @@ const FX_PREFABS = {
   mole_move_fx: { archive: 'mole_move_fx.zip', bank: 'mole_fx', anim: 'move' },
   // fx.lua dirt_puff: bank small_puff, build smoke_puff_small, clip puff, FinalOffset1 (its sound is commented out).
   dirt_puff: { archive: 'smoke_puff_small.zip', bank: 'small_puff', anim: 'puff', finalOffset: 1 },
+  // fx.lua sand_puff_large_front / _back (blinkstaff SetFX): bank/build sand_puff, clip forage_out, scale 1.5; the
+  // front hides the back layer, plays deathpoof and has FinalOffset2; the back hides the front layer.
+  sand_puff_large_front: { archive: 'sand_puff.zip', bank: 'sand_puff', anim: 'forage_out', sound: 'dontstarve/common/deathpoof',
+    scale: 1.5, finalOffset: 2, hideLayers: ['back'] },
+  sand_puff_large_back: { archive: 'sand_puff.zip', bank: 'sand_puff', anim: 'forage_out', scale: 1.5, hideLayers: ['front'] },
   // fx.lua crater_steam_fx1..4 / slow_steam_fx1..5 (hotspring.lua push_special_idle): bank = build, anim steam<N>, FinalOffset1.
   crater_steam_fx1: { archive: 'crater_steam.zip', bank: 'crater_steam', anim: 'steam1', finalOffset: 1 },
   crater_steam_fx2: { archive: 'crater_steam.zip', bank: 'crater_steam', anim: 'steam2', finalOffset: 1 },
@@ -95,7 +102,7 @@ export function isWorldFx(prefab: string): prefab is WorldFxPrefab { return Obje
 export interface WorldFxWorld { readonly scheduler: GameTimeScheduler }
 
 function define(prefab: string, definition: FxDefinition, world: WorldFxWorld): PrefabEntityDefinition<PrefabInstance> {
-  const { archive, bank, anim, sound, opacity = 1, scale, tint = [1, 1, 1], finalOffset, lingerFrames, tags } = definition;
+  const { archive, bank, anim, sound, opacity = 1, scale, tint = [1, 1, 1], finalOffset, lingerFrames, tags, hideLayers } = definition;
   return {
     fn: () => {
       const inst = new PrefabInstance(prefab, new SpriteState({ name: anim, billboard: true }));
@@ -105,6 +112,7 @@ function define(prefab: string, definition: FxDefinition, world: WorldFxWorld): 
       for (const tag of tags ?? []) inst.addTag(tag);
       if (scale !== undefined) inst.setScale(scale);
       if (finalOffset) inst.sprite.setDepthOffset(true);
+      for (const layer of hideLayers ?? []) inst.sprite.hideLayer(layer);
       inst.sprite.playOnce(anim, () => {
         if (!lingerFrames) { inst.remove(); return; }
         inst.DoTaskInTime(lingerFrames * FRAMES, inst => inst.remove());

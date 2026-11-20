@@ -153,6 +153,8 @@ const sounds = {
   'dontstarve/common/staff_star_LP': { bank: 'common', streams: [274], loop: true },
   'dontstarve/wilson/use_gemstaff': { bank: 'common', streams: [284], loop: false },
   'dontstarve/common/staffteleport': { bank: 'common', streams: [284], loop: false },
+  // blinkstaff.lua presound / postsound → dontstarve.fev sounddef 925 (sfx/objects/teleportstaff), common file_index 283 + 1.
+  'dontstarve/common/staff_blink': { bank: 'common', streams: [284], loop: false },
   // trident.lua / SGwilson.lua play_strum and fx.lua crab_king_waterspout → hookline_2.fev sounddefs 43 / 32
   // (trident_gnarwail_DST-001..003 at file_index 302–304; waterspike_V2_crabking_DST-001..015 at 286–300), each + 1.
   'hookline_2/characters/trident_attack': { bank: 'hookline_2', streams: [303, 304, 305], loop: false },

@@ -48,6 +48,8 @@ prefab 包内原先直接持有 `scene` 的 38 个类改由 `PrefabDisplayGroup`
 
 传送魔杖 `telestaff`（`staff.lua` 的 `purple()`）可 `c_give("telestaff")` / `c_spawn("telestaff")`，5 次耐久，`c_save()` 保留剩余次数与皮肤。在物品栏或手部槽右键它（`castfrominventory`）对自己施法；装备后右键带 `locomotor` 的生物（`castonlocomotorspvp`，无 PvP 时不能对其他玩家）传送该生物。施法第 53 帧消耗 1 次耐久，在出发点落雷，施法者理智 -50，世界湿度 +500；玩家进入 `forcetele` 隐身无敌、屏幕 2 秒渐黑，3 秒后传送到随机一个可通行且非 `SeparatedRoom` 的地形节点中心（存档 `world.map.topology.nodes`，由 `scripts/import-dst-region.py` 从源存档 `topology.nodes` 导入），再 1 秒后在目的地落雷并进入 `wakeup`。洞穴中只消耗耐久（`ms_miniquake` 未移植）；`noteleport` 目标只扣耐久与代价、不移动。传送阵 `telebase`、`teleportedoverride`、海上传送和作祟触发未移植。
 
+懒人魔杖 `orangestaff`（`staff.lua` 的 `orange()`）可 `c_give("orangestaff")` / `c_spawn("orangestaff")`，20 次耐久，`c_save()` 保留剩余次数与皮肤。装备时移速 ×1.25（`equippable.walkspeedmult`，玩家移速按 `locomotor:GetSpeedMultiplier` 取所有已装备物品的乘积），也是伤害 17 的武器，攻击不消耗耐久。装备后右键可通行、未被阻挡的陆地点发起 `BLINK`：`SGwilson` 的 `quicktele` 在第 8 帧执行 `blinkstaff:Blink`，在原地生成 `sand_puff_large_back` / `_front` 并播 `staff_blink`，玩家隐身无敌，理智 -15、耐久 -1；0.25 秒后瞬移到该点并再次生成沙尘与音效。船上、作祟触发、手柄准星和物品拟态检查未移植。
+
 
 手持地皮或种植物品时的右键按原版 `OnRightClick` 处理：指向可部署的空地才执行 `DEPLOY`（悬停文字取自源字符串，分别为「放置地皮」「栽种」）；位置无效，或鼠标指着不提供动作的实体时，整叠物品放回物品栏（优先来源槽，没有完整空位时仍由鼠标持有）；实体上有其他物品动作时交给该动作。`c_give("dug_grass", 2)` 拿到鼠标后右键空地可种回草丛：第 6 帧消耗 1 个，生成需要施肥的枯萎 `grass`（`OnTransplant`），`c_save()` 保留植株状态和鼠标上剩余的堆叠。命令语法和支持 ID 不变。
 

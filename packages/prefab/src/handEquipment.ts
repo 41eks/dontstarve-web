@@ -23,7 +23,7 @@ import { configureReskinToolEntity, createReskinToolLifecycle, reskinToolVisual 
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
 import { configureTorchEntity, createTorchHandLifecycle, onattack as torchOnAttack, torchVisual } from './torch';
 import { getTridentController, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
-import { configureTeleStaffEntity, FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController, getGreenStaffController, getLightStaffController, GREENSTAFF_USES, TELESTAFF_USES, teleStaffVisual, yellowstaffVisual, type FireStaffWorld, type GreenStaffWorld, type LightStaffWorld, type TeleStaffWorld } from './staff';
+import { configureOrangeStaffEntity, orangeStaffLifecycle, orangeStaffVisual, ORANGESTAFF_USES, CANE_SPEED_MULT, configureTeleStaffEntity, FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController, getGreenStaffController, getLightStaffController, GREENSTAFF_USES, TELESTAFF_USES, teleStaffVisual, yellowstaffVisual, type FireStaffWorld, type GreenStaffWorld, type LightStaffWorld, type TeleStaffWorld } from './staff';
 
 /** Golden tools' saved uses move in 1 / GOLDENTOOLFACTOR steps. */
 const GOLDEN_USE_STEP = 1 / GOLDENTOOLFACTOR;
@@ -33,6 +33,8 @@ export interface HandEquipmentWorld {
   lightStaffWorld?: LightStaffWorld;
   greenStaffWorld?: GreenStaffWorld;
   fireStaffWorld?: FireStaffWorld;
+  /** TheWorld's map and fx for blinkstaff.lua. */
+  blinkStaffWorld?: import('../../componets/src/blinkstaff').BlinkStaffWorld;
   /** TheWorld as staff.lua's teleport reads it, at the cast. */
   teleStaffWorld?: TeleStaffWorld;
   tridentWorld?: TridentWorld;
@@ -61,6 +63,8 @@ export interface HandEquipmentDefinition {
   readonly maxFuel?: number;
   /** The prefab's weapon component: SetDamage and attackwear, for a prefab whose configureEntity does not add it. */
   readonly weapon?: { readonly damage: number; readonly attackwear?: number; readonly onattack?: Weapon['onattack'] };
+  /** equippable.walkspeedmult. */
+  readonly walkspeedmult?: number;
   /** Source tags read by SGwilson's attack branches ("light", "nopunch"). */
   readonly tags?: readonly string[];
   configureEntity?(entity: ItemEntity): void;
@@ -82,6 +86,9 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
     createLifecycle: (entity, context) => context.fireStaffWorld ? getFireStaffController(entity, context.fireStaffWorld) : undefined },
   // staff.lua purple(): its spellcaster is configured at spawn, as casting from the inventory needs it unequipped too.
   telestaff: { visual: teleStaffVisual, tags: ['nopunch'], maxUses: TELESTAFF_USES, configureEntity: configureTeleStaffEntity },
+  // staff.lua orange(): a cane (CANE_DAMAGE, CANE_SPEED_MULT) that blinks to the point it is cast at.
+  orangestaff: { visual: orangeStaffVisual, maxUses: ORANGESTAFF_USES, walkspeedmult: CANE_SPEED_MULT, configureEntity: configureOrangeStaffEntity,
+    createLifecycle: (entity, context) => context.blinkStaffWorld ? orangeStaffLifecycle(entity, context.blinkStaffWorld) : undefined },
   // trident.lua: TRIDENT.DAMAGE over ground (OCEAN_DAMAGE applies only while the wielder stands on a boat or the sea).
   trident: { visual: tridentVisual, maxUses: TRIDENT_USES, tags: ['pointy', 'sharp'], weapon: { damage: TRIDENT_DAMAGE },
     createLifecycle: (entity, context) => context.tridentWorld ? getTridentController(entity, context.tridentWorld) : undefined },
@@ -121,6 +128,7 @@ export function configureEquipmentEntity(entity: ItemEntity): void {
   if (!entity.getComponent('handequipment')) {
     const held = entity.component('handequipment', () => new HeldEquipment(entity, definition));
     const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'hand');
+    if (definition.walkspeedmult !== undefined) equippable.walkspeedmult = definition.walkspeedmult;
     equippable.SetOnEquip((_inst, owner) => held.onequip(owner));
     equippable.SetOnUnequip(() => held.onunequip());
   }

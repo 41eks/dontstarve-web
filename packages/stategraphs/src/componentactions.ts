@@ -34,6 +34,7 @@ export interface ComponentActionEntity extends WorkInst {
     workable?: Workable;
     tool?: Tool;
     spellcaster?: SpellCasterComponent;
+    blinkstaff?: import('../../componets/src/blinkstaff').BlinkStaff;
     equippable?: { IsRestricted(): boolean };
     finiteuses?: { use?(amount: number): boolean; Use?(amount: number): void; GetUses?(): number; useForAction?(action: WorkAction): boolean };
     lighter?: Lighter;
@@ -104,7 +105,7 @@ export interface EquippedActionDoer {
   /** TheWorld.Map, as deployable:CanDeploy reaches it. */
   readonly Map?: import('../../componets/src/deployable').DeployMap;
 }
-export type EquippedAction = ToolAction | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL' | 'DEPLOY' | 'DEPLOY_TILEARRIVE';
+export type EquippedAction = ToolAction | 'BLINK' | 'CASTSPELL' | 'LIGHT' | 'ATTACK' | 'FISH' | 'REEL' | 'TERRAFORM' | 'TILL' | 'DEPLOY' | 'DEPLOY_TILEARRIVE';
 export type UseItemAction = 'GIVE' | 'FEED' | 'ADDFUEL' | 'ADDWETFUEL' | 'PLANTSOIL' | 'FERTILIZE' | 'BATHBOMB' | 'REPAIR'
   | 'SHAVE' | 'STORE';
 /** constants.lua MATERIALS: the repairable_<material> tags USEITEM.repairer looks for. */
@@ -234,6 +235,12 @@ export const COMPONENT_ACTIONS: {
     worldmigrator: (inst, _doer, actions) => { if (inst.hasTag('migrator')) actions.push('MIGRATE'); },
   },
   POINT: {
+    // GetPlatformAtPoint is not ported (no boats); IsTeleportingPermittedFromPointToPoint always permits.
+    blinkstaff: (inst, doer, pos, actions, right) => {
+      const map = inst.components.blinkstaff?.world.map;
+      if (right && map && map.isAboveGroundAtPoint(pos, false) && !map.isGroundTargetBlocked(pos)
+        && !doer.hasTag('steeringboat') && !doer.hasTag('rotatingboat')) actions.push('BLINK');
+    },
     deployable: (inst, doer, pos, actions, right) => {
       if (right && inst.components.inventoryitem && inst.components.deployable?.CanDeploy(pos, doer.Map)) {
         actions.push(inst.hasTag('tile_deploy') ? 'DEPLOY_TILEARRIVE' : 'DEPLOY');

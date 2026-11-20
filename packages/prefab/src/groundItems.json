@@ -4116,6 +4116,33 @@
         "nopunch"
       ]
     },
+    "orangestaff": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
+      "name": "懒人魔杖",
+      "icon": "orangestaff.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "staffs.zip",
+      "buildArchives": [
+        "staffs.zip"
+      ],
+      "bank": "staffs",
+      "animation": "orangestaff",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "orangestaff_ancient": "dynamic/orangestaff_ancient.zip",
+        "orangestaff_candycane": "dynamic/orangestaff_candycane.zip",
+        "orangestaff_harlequin": "dynamic/orangestaff_harlequin.zip",
+        "orangestaff_rodofdiscord": "dynamic/orangestaff_rodofdiscord.zip",
+        "orangestaff_rose": "dynamic/orangestaff_rose.zip",
+        "orangestaff_sharp": "dynamic/orangestaff_sharp.zip",
+        "orangestaff_victorian": "dynamic/orangestaff_victorian.zip"
+      },
+      "tags": [
+        "shadowlevel",
+        "weapon"
+      ]
+    },
     "trident": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trident.lua",
       "name": "刺耳三叉戟",
@@ -9976,6 +10003,48 @@
       "name": "诅咒之剑",
       "icon": "nightsword_wizard.tex",
       "atlas": "images/inventoryimages2.xml"
+    },
+    "orangestaff_ancient": {
+      "itemId": "orangestaff",
+      "name": "远古懒人魔杖",
+      "icon": "orangestaff_ancient.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "orangestaff_candycane": {
+      "itemId": "orangestaff",
+      "name": "糖果懒人魔杖",
+      "icon": "orangestaff_candycane.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "orangestaff_harlequin": {
+      "itemId": "orangestaff",
+      "name": "愚人探索手杖",
+      "icon": "orangestaff_harlequin.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "orangestaff_rodofdiscord": {
+      "itemId": "orangestaff",
+      "name": "混沌传送杖",
+      "icon": "orangestaff_rodofdiscord.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "orangestaff_rose": {
+      "itemId": "orangestaff",
+      "name": "浪漫旅行者",
+      "icon": "orangestaff_rose.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "orangestaff_sharp": {
+      "itemId": "orangestaff",
+      "name": "腐败魔杖",
+      "icon": "orangestaff_sharp.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "orangestaff_victorian": {
+      "itemId": "orangestaff",
+      "name": "华丽懒人魔杖",
+      "icon": "orangestaff_victorian.tex",
+      "atlas": "images/inventoryimages.xml"
     },
     "panflute_an": {
       "itemId": "panflute",

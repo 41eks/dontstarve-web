@@ -22,6 +22,8 @@ export type EquippableDappernessFn<Inst> = LuaFn<[inst: Inst, owner: EquippableO
 /** equippable.lua: the equip slot, dapperness and the prefab's onequip/onunequip; the owner's inventory calls Equip/Unequip. */
 export class Equippable<Inst extends EquippableInst = EquippableInst> {
   equipslot: EquipmentKind;
+  /** equippable.lua walkspeedmult: the wearer's locomotor speed multiplier while equipped (nil is 1). */
+  walkspeedmult?: number;
   dapperness = 0;
   is_magic_dapperness = false;
   dapperfn?: EquippableDappernessFn<Inst>;
@@ -53,6 +55,8 @@ export class Equippable<Inst extends EquippableInst = EquippableInst> {
     this.inst.PushEvent('unequipped', { owner });
   }
   IsRestricted(): boolean { return false; }
+  /** equippable.lua GetWalkSpeedMult; the owner's vigorbuff and speed modifier fn are not ported. */
+  GetWalkSpeedMult(): number { return this.walkspeedmult ?? 1; }
   SetDappernessFn(fn: EquippableDappernessFn<Inst> | undefined): void { this.dapperfn = fn; }
   GetDapperness(owner?: EquippableOwner, ignoreWetness = false): number {
     let dapperness = this.dapperfn ? this.dapperfn(this.inst, owner) : this.dapperness;

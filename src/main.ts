@@ -30,6 +30,7 @@ import { createEquipmentViews } from '@dontstarve-web/prefab/equipmentVisual';
 import { getHandEquipmentDefinition, type HandEquipmentWorld } from '@dontstarve-web/prefab/handEquipment';
 import { cursorUi, renderer, scene } from './universal';
 import { SendLightningStrike } from '@dontstarve-web/prefab/lightning';
+import { isWorldFx } from '@dontstarve-web/prefab/world_fx';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { DstLightingRenderer } from './dstLighting';
 import {
@@ -137,6 +138,16 @@ inventory.entities.bindEquipmentWorld({
   fireStaffWorld: {
     launch: (owner, target, attacker) => LaunchProjectile((prefab, position) => registry.SpawnPrefab(prefab, position), FIRE_PROJECTILE_ID, owner, target, attacker),
     createFuel: () => inventory.entities.create({ itemId: 'cutgrass', count: 1 }),
+  },
+  // blinkstaff.lua: TheWorld.Map and SpawnPrefab of its sand puffs.
+  blinkStaffWorld: {
+    map: {
+      // Map:IsAboveGroundAtPoint without allow_water: a land tile.
+      isAboveGroundAtPoint: point => turfMap.isPassableAtPoint(point),
+      isPassableAtPoint: point => turfMap.isPassableAtPoint(point),
+      isGroundTargetBlocked: point => isGroundTargetBlocked(groundTargetBlockers, point, .5 * WORLD_SCALE),
+    },
+    spawnFx: (prefab, position) => { if (isWorldFx(prefab)) worldFx.spawn(prefab, position); },
   },
   // staff.lua telestaff: TheWorld's cave tag, topology nodes, map, lightning and moisture.
   teleStaffWorld: {

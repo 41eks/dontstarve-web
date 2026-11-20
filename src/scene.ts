@@ -14,6 +14,7 @@ import { camera } from './camera';
 import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
 import { player, playerBody, playerInstance, disposePlayer } from './player';
+import { GetSpeedMultiplier } from '@dontstarve-web/prefab/player_common';
 import {
   type PlaceableBuildingInteractionChange,
   type PlaceableBuildingId,
@@ -73,8 +74,9 @@ function updateCharacterRenderOrder(registry: EntityRegistry) {
   updateSpriteRenderOrders(registry.renderEntities, camera.matrixWorldInverse);
 }
 
+/** The player's run speed, times locomotor:GetSpeedMultiplier (equipped items' walkspeedmult). */
 function getVelocity(): number {
-  return 16;
+  return 16 * GetSpeedMultiplier(playerInstance);
 }
 
 middleTasks.push((dt: number) => {

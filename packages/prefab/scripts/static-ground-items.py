@@ -135,6 +135,7 @@ def preserve_catalog_tags(items, read):
         elif source == 'staff':
             definition['tags'] = ([] if item == 'opalstaff' else ['shadowlevel']) + (
                 ['firestaff', 'weapon', 'rangedweapon', 'rangedlighter'] if item == 'firestaff' else
+                ['weapon'] if item == 'orangestaff' else
                 ['nopunch', 'allow_action_on_impassable'] if item in ('yellowstaff', 'opalstaff') else ['nopunch'])
         elif item == 'bird_egg':
             definition['tags'] = ['catfood', 'cookable']

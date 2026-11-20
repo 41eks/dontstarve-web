@@ -204,6 +204,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `moonrocknugget` | 可生成 | 可入栏 | `prefabs/moonrocknugget.lua:57`；原版 `repairer` 的 moonrock 材质与 2 点修复值 |
 | `opalstaff` | 可生成 | 可入栏 | `prefabs/staff.lua:770` |
 | `greenstaff` | 可生成 | 可入栏 | `prefabs/staff.lua:770`、`:953`；配方目标施法与 5 次耐久 |
+| `orangestaff` | 可生成 | 可入栏 | `prefabs/staff.lua:976`（`orange()`）；`blinkstaff` 点地瞬移、移速 ×1.25、20 次耐久 |
 | `telestaff` | 可生成 | 可入栏 | `prefabs/staff.lua:887`（`purple()`）；物品栏自施法与生物目标随机传送，5 次耐久 |
 | `trident` | 可生成 | 可入栏 | `prefabs/trident.lua`；200 次耐久，仅可对水面点施法（`spellcaster.canuseonpoint_water`），经 `SGwilson.lua` 的 `play_strum`；`c_save()` 保留耐久与皮肤 `trident_merm` |
 | `opalpreciousgem` | 可生成 | 可入栏 | `prefabs/gem.lua:74`、`:96`；`buildgem("opal", true)` |
@@ -693,3 +694,5 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 2026-11-01：核对 `prefabs/stalagmite.lua` / `stalagmite_tall.lua` 的八个世界 prefab：`stalagmite`、`stalagmite_full/med/low`、`stalagmite_tall`、`stalagmite_tall_full/med/low`，均没有 inventoryitem，只提供 `c_spawn("完整ID")`。无 prefab OnSave/OnLoad，workable 不保存进度；高型左右款式和明暗按源码重新随机。`stalagmite.test.ts` 直接驱动命令执行器验证 c_spawn、拒绝 c_give、c_save ZIP 导出和重载，覆盖身份、位置、空组件字段、恢复动画与工作量重置。详见 [石笋移植说明](dst-stalagmite.md)。
 
 2026-11-20 补充 `telestaff`：`prefabs/staff.lua` 的 `purple()`（`spellcaster` 的 `canusefrominventory`、`canuseontargets`、`canonlyuseonlocomotorspvp`，`TELESTAFF_USES` = 5），可 `c_give` / `c_spawn`，`c_save()` 保留耐久。`teleport_func` → `teleport_start` / `teleport_continue` / `teleport_end` 与 `SGwilson.lua` 的 `forcetele` 按源时序；随机目的地取 `TheWorld.topology.nodes` 中可通行、非 `SeparatedRoom` 的节点中心。
+
+2026-11-20 补充 `orangestaff`：`prefabs/staff.lua` 的 `orange()`（`weapon` 伤害 `CANE_DAMAGE`、攻击不耗耐久，`walkspeedmult` = `CANE_SPEED_MULT`，`ORANGESTAFF_USES` = 20），可 `c_give` / `c_spawn`，`c_save()` 保留耐久。`components/blinkstaff.lua`、`componentactions.lua` POINT `blinkstaff`、`ACTIONS.BLINK` 的物品分支与 `SGwilson.lua` 的 `quicktele` 按源时序；特效为 `fx.lua` 的 `sand_puff_large_front` / `sand_puff_large_back`。

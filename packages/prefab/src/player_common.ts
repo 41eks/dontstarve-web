@@ -115,7 +115,7 @@ export interface SymbolFollower {
   remove(): void;
 }
 
-export type PlayerCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'firestaff' | 'telestaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
+export type PlayerCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'firestaff' | 'telestaff' | 'orangestaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
 
 /**
  * The ANIM assets MakePlayerCharacter and global.lua (player_idles) declare for every player, plus the emotes':
@@ -253,6 +253,20 @@ export interface PlayerPrefabOptions {
   stats?: PlayerStatsSave;
   scheduler?: GameTimeScheduler;
   componentUpdates?: ComponentUpdates;
+}
+
+/**
+ * locomotor.lua GetSpeedMultiplier for the player: the product of its equipped items' walkspeedmult. External speed
+ * multipliers, the rider's saddle and mightiness are not ported.
+ */
+export function GetSpeedMultiplier(inst: PlayerInstance): number {
+  const inventory = inst.components.inventory;
+  if (!inventory) return 1;
+  let mult = 1;
+  for (const kind of ['hand', 'body', 'head'] as const) {
+    mult *= inventory.GetEquippedItem(kind)?.components.equippable?.GetWalkSpeedMult() ?? 1;
+  }
+  return mult;
 }
 
 /** player_common.lua fns.ShowHUD, assigned to inst.ShowHUD in master_postinit. */
