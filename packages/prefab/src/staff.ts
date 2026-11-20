@@ -15,7 +15,6 @@ import {
   skinArchive,
   type EquipmentVisualFactory,
   type EquipmentVisualItem,
-  type HeldEquipFunctions,
 } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound, type SoundEventPath } from './sound';
@@ -615,8 +614,9 @@ function onblink(staff: ItemEntity, _pos: THREE.Vector3, caster: BlinkCaster): v
 }
 
 /**
- * staff.lua orange(), the parts every inst has: a cane's weapon whose attacks never wear its uses
- * (SetIgnoreCombatDurabilityLoss), the fx colour and cast sound. walkspeedmult is its hand definition's.
+ * staff.lua orange(): a cane's weapon whose attacks never wear its uses (SetIgnoreCombatDurabilityLoss), the fx colour
+ * and cast sound, and a blinkstaff that reads TheWorld's map and fx when it blinks. walkspeedmult is its hand
+ * definition's.
  */
 export function configureOrangeStaffEntity(inst: ItemEntity): void {
   inst.addTag('shadowlevel');
@@ -630,16 +630,14 @@ export function configureOrangeStaffEntity(inst: ItemEntity): void {
   // weapon.lua adds the "weapon" tag; without finiteuses the attacks cost no uses.
   addComponent(inst, 'weapon', Weapon).SetDamage(CANE_DAMAGE);
   inst.addTag('weapon');
+  const blinkstaff = addComponent(inst, 'blinkstaff', BlinkStaff<ItemEntity>, () => blinkStaffWorld(inst));
+  blinkstaff.SetFX('sand_puff_large_front', 'sand_puff_large_back');
+  blinkstaff.onblinkfn = onblink;
 }
 
-/** inst:AddComponent("blinkstaff"), bound to TheWorld's map and fx once the scene gives the staff its world. */
-export function orangeStaffLifecycle(inst: ItemEntity, world: BlinkStaffWorld): HeldEquipFunctions {
-  if (!inst.components.blinkstaff) {
-    const blinkstaff = addComponent(inst, 'blinkstaff', BlinkStaff<ItemEntity>, world);
-    blinkstaff.SetFX('sand_puff_large_front', 'sand_puff_large_back');
-    blinkstaff.onblinkfn = onblink;
-  }
-  return { onequip() {}, onunequip() {} };
+/** TheWorld as the blinkstaff reads it. */
+function blinkStaffWorld(inst: ItemEntity): BlinkStaffWorld | undefined {
+  return (inst.equipmentWorld as { blinkStaffWorld?: BlinkStaffWorld } | undefined)?.blinkStaffWorld;
 }
 
 /** swap_staffs symbol `swap_orangestaff`, or the skin build's. */
@@ -711,30 +709,36 @@ function onattack_blue(
   }
 }
 
+/** TheWorld as the ice staff reads it when it shoots. */
+function iceStaffWorld(inst: ItemEntity): IceStaffWorld | undefined {
+  return (inst.equipmentWorld as { iceStaffWorld?: IceStaffWorld } | undefined)?.iceStaffWorld;
+}
+
 /**
- * staff.lua blue_common's fn, the parts every inst has: projectiledelay and icestaff_coldness. Its weapon (damage 0) is
- * the hand definition's; the range, onattack and projectile need the world and are set by iceStaffLifecycle.
+ * staff.lua blue_common("blue", 1): a weapon of damage 0 and range 8 / 10 that wears one use per attack and throws an
+ * ice_projectile, whose hit runs onattack_blue.
  */
 export function configureIceStaffEntity(inst: ItemEntity): void {
   inst.projectiledelay = PROJECTILE_DELAY;
   inst.icestaff_coldness = 1;
-}
-
-/** weapon:SetRange(8, 10), SetOnAttack(onattack_blue) and SetProjectile("ice_projectile"), bound to TheWorld's spawn. */
-export function iceStaffLifecycle(inst: ItemEntity, world: IceStaffWorld): HeldEquipFunctions {
-  const weapon = inst.components.weapon;
-  if (weapon && !weapon.CanRangedAttack()) {
-    weapon.SetRange(ATTACK_RANGE, HIT_RANGE);
-    weapon.SetOnAttack((_, attacker, target) =>
-      onattack_blue(inst, attacker as FireStaffAttacker | undefined, target as IceStaffTarget),
-    );
-    weapon.SetProjectile(ICE_PROJECTILE_ID, (attacker, target) => {
-      const projectile = world.launch(inst, target, attacker);
-      projectile.DelayVisibility(inst.projectiledelay ?? 0);
-      return projectile;
-    });
+  if (inst.components.weapon) {
+    return;
   }
-  return { onequip() {}, onunequip() {} };
+  inst.components.finiteuses.setMaxUses(ICESTAFF_USES);
+  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
+  // weapon.lua adds the "weapon" tag; weapon:OnAttack wears finiteuses.
+  const weapon = addComponent(inst, 'weapon', Weapon, () => inst.components.finiteuses);
+  weapon.SetDamage(0);
+  weapon.SetRange(ATTACK_RANGE, HIT_RANGE);
+  weapon.SetOnAttack((_inst, attacker, target) =>
+    onattack_blue(inst, attacker as FireStaffAttacker | undefined, target as IceStaffTarget),
+  );
+  weapon.SetProjectile(ICE_PROJECTILE_ID, (attacker, target) => {
+    const projectile = iceStaffWorld(inst)?.launch(inst, target, attacker);
+    projectile?.DelayVisibility(inst.projectiledelay ?? 0);
+    return projectile;
+  });
+  inst.addTag('weapon');
 }
 
 /** swap_staffs symbol `swap_bluestaff`, or the skin build's. */

@@ -29,16 +29,14 @@ import type { PrefabInstance } from './prefabInstance';
 import { configureReskinToolEntity, createReskinToolLifecycle, reskinToolVisual } from './reskin_tool';
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
 import { configureTorchEntity, createTorchHandLifecycle, onattack as torchOnAttack, torchVisual } from './torch';
-import { getTridentController, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
+import { configureTridentEntity, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
 import {
   configureIceStaffEntity,
-  iceStaffLifecycle,
   iceStaffVisual,
   ICESTAFF_TAGS,
   ICESTAFF_USES,
   type IceStaffWorld,
   configureOrangeStaffEntity,
-  orangeStaffLifecycle,
   orangeStaffVisual,
   ORANGESTAFF_USES,
   CANE_SPEED_MULT,
@@ -156,15 +154,12 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
     maxUses: TELESTAFF_USES,
     configureEntity: configureTeleStaffEntity,
   },
-  // staff.lua blue_common("blue", 1): weapon damage 0, ICESTAFF_USES, a projectile that adds coldness.
+  // staff.lua blue_common("blue", 1): its weapon (damage 0, a projectile that adds coldness) is configured at spawn.
   icestaff: {
     visual: iceStaffVisual,
     maxUses: ICESTAFF_USES,
     tags: ICESTAFF_TAGS,
-    weapon: { damage: 0 },
     configureEntity: configureIceStaffEntity,
-    createLifecycle: (entity, context) =>
-      context.iceStaffWorld ? iceStaffLifecycle(entity, context.iceStaffWorld) : undefined,
   },
   // staff.lua orange(): a cane (CANE_DAMAGE, CANE_SPEED_MULT) that blinks to the point it is cast at.
   orangestaff: {
@@ -172,8 +167,6 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
     maxUses: ORANGESTAFF_USES,
     walkspeedmult: CANE_SPEED_MULT,
     configureEntity: configureOrangeStaffEntity,
-    createLifecycle: (entity, context) =>
-      context.blinkStaffWorld ? orangeStaffLifecycle(entity, context.blinkStaffWorld) : undefined,
   },
   // trident.lua: TRIDENT.DAMAGE over ground (OCEAN_DAMAGE applies only while the wielder stands on a boat or the sea).
   trident: {
@@ -181,8 +174,7 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
     maxUses: TRIDENT_USES,
     tags: ['pointy', 'sharp'],
     weapon: { damage: TRIDENT_DAMAGE },
-    createLifecycle: (entity, context) =>
-      context.tridentWorld ? getTridentController(entity, context.tridentWorld) : undefined,
+    configureEntity: configureTridentEntity,
   },
   // Hand tools: configureEntity is the source prefab's fn (tags, weapon, tool, finiteuses).
   bugnet: { visual: bugnetVisual, maxUses: BUGNET_USES, configureEntity: configureBugNetEntity },

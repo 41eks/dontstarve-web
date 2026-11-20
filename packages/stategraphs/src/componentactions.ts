@@ -430,7 +430,7 @@ export const COMPONENT_ACTIONS: {
   POINT: {
     // GetPlatformAtPoint is not ported (no boats); IsTeleportingPermittedFromPointToPoint always permits.
     blinkstaff: (inst, doer, pos, actions, right) => {
-      const map = inst.components.blinkstaff?.world.map;
+      const map = inst.components.blinkstaff?.world?.map;
       if (
         right &&
         map &&

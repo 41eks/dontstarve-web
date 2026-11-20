@@ -3,12 +3,7 @@ import type { ItemEntity } from '@dontstarve-web/inventory';
 import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import type * as THREE from 'three';
 import { SpellCaster } from '../../componets/src/spellcaster';
-import {
-  handEquipmentVisual,
-  skinArchive,
-  type EquipmentVisualFactory,
-  type HeldEquipFunctions,
-} from './equipmentVisual';
+import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory } from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { TILE_SIZE } from './tile';
 
@@ -29,54 +24,54 @@ export interface TridentWorld {
   spawnWaterspout(position: THREE.Vector3): void;
 }
 
-/** trident.lua: one point spellcaster that works only on water, and its finiteuses cost per explosion. */
-export class TridentController implements HeldEquipFunctions {
-  readonly spellcaster: SpellCaster;
-  private readonly entity: ItemEntity;
-  private readonly world: TridentWorld;
-  constructor(entity: ItemEntity, world: TridentWorld) {
-    this.entity = entity;
-    this.world = world;
-    entity.addTag('allow_action_on_impassable');
-    entity.addTag('guitar');
-    entity.addTag('pointy');
-    entity.addTag('sharp');
-    entity.components.finiteuses.setMaxUses(TRIDENT_USES);
-    // on_uses_finished: the owner hears toolbroke before the item removes itself.
-    entity.components.finiteuses.setOnFinished(() => {
-      entity.components.inventoryitem.owner?.PushEvent('toolbroke', { tool: entity });
-      return entity.remove();
-    });
-    this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster, () => world.map);
-    this.spellcaster.SetSpellFn((_trident, _target, position) => !!position && this.createWaterExplosion(position));
-    this.spellcaster.canUseOnPointWater = true;
-  }
-  onequip(): void {}
-  onunequip(): void {}
-  dispose(): void {}
-
-  /** create_water_explosion: waterspouts at four spokes around the target, then the use cost. */
-  private createWaterExplosion(position: THREE.Vector3): boolean {
-    if (this.entity.isRemoved || !this.entity.components.inventoryitem.owner) {
-      return false;
-    }
-    // GetRandomWithVariance(-45, 20)
-    let angle = -45 + (Math.random() * 2 - 1) * 20;
-    for (let i = 0; i < 4; i++) {
-      angle += 90;
-      const point = position.clone();
-      point.x += FX_RADIUS * Math.cos((angle * Math.PI) / 180);
-      point.z -= FX_RADIUS * Math.sin((angle * Math.PI) / 180);
-      if (this.world.map.isOceanAtPoint(point)) {
-        this.world.spawnWaterspout(point);
-      }
-    }
-    return this.entity.components.finiteuses.use(COST_PER_EXPLOSION);
-  }
+/** TheWorld as the trident's spell reads it. */
+function tridentWorld(inst: ItemEntity): TridentWorld | undefined {
+  return (inst.equipmentWorld as { tridentWorld?: TridentWorld } | undefined)?.tridentWorld;
 }
 
-export function getTridentController(entity: ItemEntity, world: TridentWorld): TridentController {
-  return entity.component('trident', () => new TridentController(entity, world));
+/** on_uses_finished: the owner hears toolbroke before the item removes itself. */
+function on_uses_finished(inst: ItemEntity): boolean {
+  inst.components.inventoryitem.owner?.PushEvent('toolbroke', { tool: inst });
+  return inst.remove();
+}
+
+/**
+ * create_water_explosion(inst, target, position): waterspouts at four spokes around the point, then the use cost. The
+ * water explosion's gameplay effects, boat leaks and farm plant tending are not ported.
+ */
+function create_water_explosion(inst: ItemEntity, position: THREE.Vector3 | undefined): boolean {
+  const world = tridentWorld(inst);
+  if (!world || !position || inst.isRemoved || !inst.components.inventoryitem.owner) {
+    return false;
+  }
+  // GetRandomWithVariance(-45, 20)
+  let angle = -45 + (Math.random() * 2 - 1) * 20;
+  for (let i = 0; i < 4; i++) {
+    angle += 90;
+    const point = position.clone();
+    point.x += FX_RADIUS * Math.cos((angle * Math.PI) / 180);
+    point.z -= FX_RADIUS * Math.sin((angle * Math.PI) / 180);
+    if (world.map.isOceanAtPoint(point)) {
+      world.spawnWaterspout(point);
+    }
+  }
+  return inst.components.finiteuses.use(COST_PER_EXPLOSION);
+}
+
+/** trident.lua fn: its tags, finiteuses and a spellcaster usable only on water. Its weapon is the hand definition's. */
+export function configureTridentEntity(inst: ItemEntity): void {
+  inst.addTag('allow_action_on_impassable');
+  inst.addTag('guitar');
+  inst.addTag('pointy');
+  inst.addTag('sharp');
+  if (inst.components.spellcaster) {
+    return;
+  }
+  inst.components.finiteuses.setMaxUses(TRIDENT_USES);
+  inst.components.finiteuses.setOnFinished(() => on_uses_finished(inst));
+  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster, () => tridentWorld(inst)?.map);
+  spellcaster.SetSpellFn((_inst, _target, position) => create_water_explosion(inst, position));
+  spellcaster.canUseOnPointWater = true;
 }
 
 /** trident.lua on_equipped: swap_object uses swap_trident, or the same symbol of the skin build. SGwilson's play_strum names the plain swap_trident. */

@@ -235,8 +235,7 @@ export {
   TRIDENT_DAMAGE,
   TRIDENT_USES,
   TRIDENT_STRUM_SOUND,
-  TridentController,
-  getTridentController,
+  configureTridentEntity,
   tridentVisual,
   type TridentWorld,
 } from './trident';

@@ -59,12 +59,17 @@ export class BlinkStaff<Inst extends BlinkStaffInst = BlinkStaffInst> {
   presound = '';
   postsound = '';
   readonly inst: Inst;
-  readonly world: BlinkStaffWorld;
+  private readonly getWorld: () => BlinkStaffWorld | undefined;
 
-  constructor(inst: Inst, world: BlinkStaffWorld) {
+  constructor(inst: Inst, world: () => BlinkStaffWorld | undefined) {
     this.inst = inst;
-    this.world = world;
+    this.getWorld = world;
     this.ResetSoundFX();
+  }
+
+  /** TheWorld: its map and SpawnPrefab, once the scene has one. */
+  get world(): BlinkStaffWorld | undefined {
+    return this.getWorld();
   }
 
   SetFX(front?: string, back?: string): void {
@@ -82,17 +87,19 @@ export class BlinkStaff<Inst extends BlinkStaffInst = BlinkStaffInst> {
 
   SpawnEffect(inst: BlinkCaster): void {
     const { x, y, z } = inst.position;
+    const world = this.world;
     if (this.backfx !== undefined) {
-      this.world.spawnFx(this.backfx, new THREE.Vector3(x, y - 0.1, z));
+      world?.spawnFx(this.backfx, new THREE.Vector3(x, y - 0.1, z));
     }
     if (this.frontfx !== undefined) {
-      this.world.spawnFx(this.frontfx, new THREE.Vector3(x, y, z));
+      world?.spawnFx(this.frontfx, new THREE.Vector3(x, y, z));
     }
   }
 
   Blink(pt: THREE.Vector3, caster: BlinkCaster): boolean {
-    const { map } = this.world;
+    const map = this.world?.map;
     if (
+      !map ||
       this.inst.isRemoved ||
       (caster.sg !== undefined && caster.sg.stateName !== 'quicktele') ||
       !map.isPassableAtPoint(pt) ||
@@ -126,8 +133,8 @@ function OnBlinked(caster: BlinkCaster, self: BlinkStaff, pt: THREE.Vector3): vo
   } else {
     caster.sg.statemem.onstopblinking?.();
   }
-  const { map } = self.world;
-  if (map.isPassableAtPoint(pt) && !map.isGroundTargetBlocked(pt)) {
+  const map = self.world?.map;
+  if (map && map.isPassableAtPoint(pt) && !map.isGroundTargetBlocked(pt)) {
     caster.setPosition(pt.x, pt.y, pt.z);
     caster.physics.Teleport();
   }
