@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { PrefabDisplay, SpriteState } from '@dontstarve-web/display';
-import { createSignal } from '@dontstarve-web/signals';
 import { TORCH_FIRE_VFX } from '../../prefab/src/torchfire';
 
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
@@ -12,7 +11,7 @@ it('lets the holder display load the declared fire VFX, emit fire before delayed
     return new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)));
   }));
   const sprite = new SpriteState({ name: 'idle' });
-  const display = new PrefabDisplay({ root: new THREE.Group(), sprite, status: createSignal('active'), empty: true });
+  const display = new PrefabDisplay({ root: new THREE.Group(), sprite, art: { empty: true } });
   const follower = sprite.followSymbol('swap_object', 0, -110, TORCH_FIRE_VFX);
   await display.artLoaded();
   expect(vi.mocked(fetch).mock.calls.map(([url]) => url)).toEqual(['/dst/data/fx/smoke.tex', '/dst/data/fx/torchfire.tex']);

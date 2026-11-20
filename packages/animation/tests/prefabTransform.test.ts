@@ -100,8 +100,8 @@ it('keeps a symbol follower on a camera-facing archive sprite, whatever the came
   const world = bindTestCamera();
   const instance = new PrefabInstance('archive-follower-host', new SpriteState({ name: 'idle_loop', billboard: true }));
   instance.setPosition(3, 0, 6);
-  const display = new PrefabDisplay({ root: instance.transform.model, name: 'host', sprite: instance.sprite, status: instance.status,
-    archive: { create: () => drawn, initial: drawn } });
+  const display = new PrefabDisplay({ root: instance.transform.model, name: 'host', sprite: instance.sprite,
+    art: { archive: { create: () => drawn, initial: drawn } } });
   const follower = instance.sprite.followSymbol(SYMBOL, 20, -110);
   const turned = (radians: number) => new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), radians);
   /** The follower's world point beside the same symbol point read from the drawn sprite itself. */
@@ -136,8 +136,8 @@ it('lifts the drawn archive sprite off a grounded entity, across deferred art an
   // A fresh resource owner each time: the sprite is drawn only after its source has loaded.
   const draw = (name: string) => {
     const instance = new PrefabInstance(name, new SpriteState({ name: 'idle_loop', billboard: true }));
-    const display = new PrefabDisplay({ root: instance.transform.model, name, sprite: instance.sprite, status: instance.status, alignBottom: true,
-      archive: { create: () => createSharedArchiveSprite(assets, { animationArchive: 'mushroom_tree_tall.zip', buildArchives: ['mushroom_tree_tall.zip'], bank: 'mushroom_tree', animation: 'idle_loop', loop: true }) } });
+    const display = new PrefabDisplay({ root: instance.transform.model, name, sprite: instance.sprite, alignBottom: true,
+      art: { archive: { create: () => createSharedArchiveSprite(assets, { animationArchive: 'mushroom_tree_tall.zip', buildArchives: ['mushroom_tree_tall.zip'], bank: 'mushroom_tree', animation: 'idle_loop', loop: true }) } } });
     return { instance, display };
   };
   const resting = draw('resting'), { instance, display } = draw('lifted');
@@ -229,4 +229,22 @@ it('turns the visual only when the camera, the root or an ancestor turned', () =
     expect(facesCamera()).toBeCloseTo(0);
     expect(instance.rotation).toBeCloseTo(90);
   } finally { display.dispose(); instance.remove(); world.unbind(); }
+});
+
+it('draws an entity from its sprite json alone, whose status a child takes from its owner by sleeping and waking with it', () => {
+  const owner = createEmptyEntity('owner'), child = createEmptyEntity('fx', owner.instance.status);
+  const scene = new Group().add(owner.display.model, child.display.model);
+  expect(child.instance.sprite.sprite.peek().status).toBe('active');
+  owner.instance.setActive(false);
+  expect(child.instance.status.peek()).toBe('asleep');
+  expect(child.instance.sprite.sprite.peek().status).toBe('asleep');
+  expect(child.display.model.parent).toBeNull();
+  owner.instance.setActive(true);
+  expect(child.display.model.parent).toBe(scene);
+  // The owner removed, the child sleeps until it is removed itself, which releases its display and its subscription.
+  owner.instance.remove();
+  expect(child.display.model.parent).toBeNull();
+  expect(child.display.isRemoved).toBe(false);
+  child.instance.remove();
+  expect(child.display.isRemoved).toBe(true);
 });

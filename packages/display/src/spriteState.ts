@@ -1,4 +1,4 @@
-import { createSignal, readonlySignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
+import { createMemo, createSignal, readonlySignal, type ReadonlySignal, type Signal } from '@dontstarve-web/signals';
 import * as THREE from 'three';
 import type { AnimStateArt, AnimStateJson, SymbolBuild } from '@dontstarve-web/animation/animState';
 import type { SpriteMaterialOptions } from '@dontstarve-web/animation/animationAssets';
@@ -75,8 +75,11 @@ export type AppearanceJson =
   | { readonly kind: 'archive-build'; readonly archive: string }
   | { readonly kind: 'build'; readonly name: string; readonly override: LoadedBuildOverride | undefined };
 
-/** What an entity looks like, as plain data. The prefab writes it; the display draws it. */
-export interface SpriteJson {
+/** active: drawn and in the scene; asleep: nothing drawn and out of the scene; removed: everything released. */
+export type PrefabStatus = 'active' | 'asleep' | 'removed';
+
+/** What an entity looks like, as plain data. The prefab writes it through its `SpriteState`. */
+export interface SpriteDeclaration {
   readonly skinId?: string;
   readonly clip: ClipJson;
   readonly source?: SpriteSourceJson;
@@ -123,6 +126,14 @@ export interface SpriteJson {
   readonly appearance: ReadonlyMap<string, AppearanceJson>;
 }
 
+/** What the display draws: the entity's declaration in the entity's lifecycle, derived from both. */
+export interface SpriteJson extends SpriteDeclaration {
+  readonly status: PrefabStatus;
+}
+
+/** The lifecycle of a sprite that no entity has bound its own to. */
+const ALWAYS_ACTIVE: ReadonlySignal<PrefabStatus> = readonlySignal(createSignal<PrefabStatus>('active'));
+
 /** What the drawn sprite answers; set by the display while it has one. */
 export interface SpriteProbe {
   readonly currentAnimation: string;
@@ -149,6 +160,8 @@ export interface ArchiveSpriteCommands {
   readonly numFrames: number;
   update(dt: number): void;
   setAwake(awake: boolean): void;
+  /** The entity binds its lifecycle, which the json it is drawn from carries. */
+  bindStatus(status: ReadonlySignal<PrefabStatus>): void;
   start(name: string): void;
   playOnce(name: string, complete?: () => void): void;
   pushAnimation(name: string, loop?: boolean): void;
@@ -192,7 +205,7 @@ export interface ArchiveSpriteCommands {
 /** The first clip of a presentation, declared by the entity's constructor or by a new presentation of it. */
 export interface SpriteClipDeclaration { readonly name: string; readonly held?: boolean; readonly none?: boolean; readonly billboard?: boolean }
 
-function initialJson(clip: SpriteClipDeclaration): SpriteJson {
+function initialJson(clip: SpriteClipDeclaration): SpriteDeclaration {
   return {
     clip: clip.none ? { name: clip.name, loop: false, finished: true, none: true }
       : { name: clip.name, loop: !clip.held, finished: clip.held === true }, queue: [], appearance: new Map(),
@@ -201,8 +214,10 @@ function initialJson(clip: SpriteClipDeclaration): SpriteJson {
 }
 
 export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimationController, PercentAnimationController, LayerAnimationController {
-  private readonly json: ReturnType<typeof createSignal<SpriteJson>>;
-  /** Snapshots of the entity's sprite; the display subscribes to this. */
+  private readonly declared: Signal<SpriteDeclaration>;
+  /** The lifecycle of the entity this sprite belongs to; the entity binds its own. */
+  private readonly lifecycle = createSignal(ALWAYS_ACTIVE);
+  /** Snapshots of the entity's sprite in its lifecycle, derived from both; the display subscribes to this alone. */
   readonly sprite: ReadonlySignal<SpriteJson>;
   /** A projection of json.skinId for existing skin consumers; it stores no second value. */
   readonly skinId: Signal<string | undefined>;
@@ -225,11 +240,11 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
    */
   constructor(clip: SpriteClipDeclaration) {
     this.initialAnimation = clip.name;
-    this.json = createSignal<SpriteJson>(initialJson(clip));
-    this.sprite = readonlySignal(this.json);
+    this.declared = createSignal(initialJson(clip));
+    this.sprite = readonlySignal(createMemo<SpriteJson>(() => ({ ...this.declared.get(), status: this.lifecycle.get().get() })));
     this.skinId = {
-      get: () => this.json.get().skinId, peek: () => this.state.skinId, set: value => this.setSkinId(value),
-      subscribe: listener => this.json.subscribe((value, previous) => {
+      get: () => this.declared.get().skinId, peek: () => this.state.skinId, set: value => this.setSkinId(value),
+      subscribe: listener => this.declared.subscribe((value, previous) => {
         if (value.skinId !== previous.skinId) listener(value.skinId, previous.skinId);
       }),
     };
@@ -244,13 +259,15 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     const { skinId } = this.state;
     this.initialAnimation = clip.name;
     this.awake = true;
-    this.json.set({ ...initialJson(clip), ...skinId === undefined ? {} : { skinId } });
+    this.declared.set({ ...initialJson(clip), ...skinId === undefined ? {} : { skinId } });
     this.fxDeclared.set(new Map());
     this.followed.set(undefined);
   }
 
-  private get state(): SpriteJson { return this.json.peek(); }
-  protected write(patch: Partial<SpriteJson>): void { this.json.set({ ...this.state, ...patch }); }
+  /** The entity's lifecycle, owned by the entity: its sprite is drawn in it. */
+  bindStatus(status: ReadonlySignal<PrefabStatus>): void { this.lifecycle.set(status); }
+  private get state(): SpriteDeclaration { return this.declared.peek(); }
+  protected write(patch: Partial<SpriteDeclaration>): void { this.declared.set({ ...this.state, ...patch }); }
   setSkinId(skinId: string | undefined): void { if (skinId !== this.state.skinId) this.write({ skinId }); }
   setSkinSource(skin: SkinJson): void { this.withAppearance('skin', { kind: 'skin', skin }); }
   /** The skins the declared skin source can draw, in its order: PREFAB_SKINS for this entity. */

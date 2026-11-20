@@ -8,7 +8,7 @@
 
 prefab 通过 effect 声明 `SpriteState` 外观（符号／build 覆盖、图层、朝向、颜色和透明度）时使用 `createRenderEffect`：依赖变化时同步写入外观 json，`batch()` 内则在提交时合并执行。依赖 `sprite.art` 的外观恢复也使用它，释放函数仍由实体或私有 `watchSignal` 的生命周期持有。`PrefabDisplay` 消费声明的调度保持现状；动画转换、组件领域逻辑和计时完成继续使用原有回调、调度器与 `createEffect`。
 
-玩家的 `AnimState` 发布外观快照，由私有 `watchSignal` 与 `createRenderEffect` 写入 `instance.sprite`；状态图声明 clip 和当前帧，继续负责动作结算。`PrefabDisplay` 使用 wilson bank 的共享 archive 绘制（逐实体穿戴，不进入合批），并在重建时恢复 bank/build、符号覆盖、朝向和颜色。读书／工具破损 FX 各自是带 `FX` 标签、`persists = false` 的实例，其显示状态由自身与父实例的 `status` 纯派生，无额外 `parentActive` 状态；帧合入玩家的 billboard，保留符号层序。FX 的 `ComponentTimer` 在 visual 休眠时继续计时，到期才移除逻辑实体。离开 scene 或临时换父节点不作为释放依据，visual 仍按实例生命周期释放。
+玩家的 `AnimState` 发布外观快照，由私有 `watchSignal` 与 `createRenderEffect` 写入 `instance.sprite`；状态图声明 clip 和当前帧，继续负责动作结算。`PrefabDisplay` 使用 wilson bank 的共享 archive 绘制（逐实体穿戴，不进入合批），并在重建时恢复 bank/build、符号覆盖、朝向和颜色。读书／工具破损 FX 各自是带 `FX` 标签、`persists = false` 的实例，随父实例休眠／唤醒（创建时传入父实例 `status`，子实例 `setActive()` 跟随），display 只从子实例的 sprite json 读取生命周期；帧合入玩家的 billboard，保留符号层序。FX 的 `ComponentTimer` 在 visual 休眠时继续计时，到期才移除逻辑实体。离开 scene 或临时换父节点不作为释放依据，visual 仍按实例生命周期释放。
 
 ## 场景的灰烬生成事件
 

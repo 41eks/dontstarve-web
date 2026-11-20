@@ -4,7 +4,7 @@ import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import definitions from './definitions.json' with { type: 'json' };
-import { createEffect, createMemo, createSignal, readonlySignal, watchSignal, WorldContentKey, type Memo } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, readonlySignal, WorldContentKey, type Memo } from '@dontstarve-web/signals';
 import { FliesController } from './flies';
 import { createArchiveEntity, PrefabInstance } from './prefabInstance';
 import type { ReadonlyVector3 } from './transform';
@@ -54,9 +54,6 @@ class StickHead {
             this.flies.instance.sprite.art.get();
             flies.traverse(object => { object.raycast = () => {}; });
         }));
-        // OnEntitySleep/OnEntityWake: the swarm sleeps and wakes with the head.
-        const status = watchSignal(inst.status, stop => this.cleanups.push(stop));
-        this.cleanups.push(createEffect(() => { const value = status.get(); if (value !== 'removed') this.flies.instance.setActive(value === 'active'); }));
         if (world.scheduler) this.fliesController = new FliesController(this.flies.instance, inst.position, world.scheduler, world.getWatchWorldContent);
         // The head never moves, so its private tile key gates the moon and phase inputs by tickingarea: outside it they hold their last value.
         const area = inst.transform.getTileActivity(world.tickingarea, stop => this.cleanups.push(stop));

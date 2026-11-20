@@ -27,7 +27,7 @@ it('uses private player position updates for source hysteresis and releases each
   const sprite = () => ({ model: new THREE.Group(), currentAnimation: '', frameCount: 1, start: vi.fn(), playOnce: vi.fn(),
     setPaused: vi.fn(), setAnimation: vi.fn(), setFrame: vi.fn(), setOpacity: vi.fn(), setFacing: vi.fn(),
     setBuildArchive: vi.fn(), setSymbolHidden: vi.fn(), faceCamera: vi.fn(), refreshTransform: vi.fn(),
-    setVisible: vi.fn(), update: vi.fn(), dispose: vi.fn() });
+    setVisible: vi.fn(), update: vi.fn(), dispose: vi.fn(), bindStatus: vi.fn() });
   const a = sprite(), b = sprite();
   const first = new FliesController(new PrefabInstance('flies', a as never), new THREE.Vector3(), scheduler, world.getWatchWorldContent);
   const second = new FliesController(new PrefabInstance('flies', b as never), new THREE.Vector3(-20, 0, 0), scheduler, world.getWatchWorldContent);

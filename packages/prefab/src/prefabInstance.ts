@@ -3,7 +3,7 @@ import { watchMiniMapEntity } from '../../map/src/minimapEntities';
 import type * as CANNON from 'cannon-es';
 import { type Object3D, Vector3, type Vector3Like } from 'three';
 import { createMemo, createSignal, readonlySignal, type GameTimeScheduler, type Memo, type ReadonlySignal, type TileStateQuery } from '@dontstarve-web/signals';
-import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource, type SpriteSourceJson } from '@dontstarve-web/display';
+import { IconSpriteAtlases, LightState, PrefabDisplay, SpriteResources, SpriteState, type ArchiveSpriteCommands, type PrefabDisplayGroup, type ArchiveSpriteSource, type LoadedSpriteSource, type PrefabDisplayArt, type PrefabDisplayOptions, type PrefabStatus, type SpriteSource, type SpriteSourceJson } from '@dontstarve-web/display';
 import { bindPhysics, type PhysicsBinding } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import type { TileTracker } from '../../componets/src/tileManager';
@@ -197,8 +197,8 @@ function checkedAs<Spawned>(type: abstract new (...args: never[]) => Spawned, pr
 
 /**
  * The logical entity behind a placed prefab: identity, save record, skin, persistence, lifecycle `status` and the
- * `sprite` json. Its Transform owns the stable root borrowed by its display. A `PrefabDisplay` subscribes to `status` and
- * `sprite` and draws them: asleep releases the visual and takes the model out of the scene, removed releases the display’s resources.
+ * `sprite` json. Its Transform owns the stable root borrowed by its display. The sprite json carries `status`, bound
+ * at construction, and a `PrefabDisplay` subscribes to that json alone and draws it: asleep releases the visual and takes the model out of the scene, removed releases the display’s resources.
  * `physics` is declared the same way; a `PhysicsBinding` keeps its body until the entity is removed.
  */
 export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, Components extends object = PrefabComponents> {
@@ -464,6 +464,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   constructor(prefab: string, sprite: Sprite, transform = new Transform()) {
     this.prefab = prefab;
     this.sprite = sprite;
+    // The display draws the entity from its sprite json, in this lifecycle.
+    sprite.bindStatus(this.status);
     this.transform = transform;
   }
 
@@ -814,6 +816,17 @@ export function prefabInstance<Instance extends AnyPrefabInstance = PrefabInstan
 }
 
 
+/**
+ * A child entity sleeps and wakes with its owner, as OnEntitySleep / OnEntityWake reach an entity's children, and sleeps
+ * once its owner is removed; it is removed on its own.
+ */
+function followOwner(instance: AnyPrefabInstance, ownerStatus: ReadonlySignal<PrefabStatus> | undefined): void {
+  if (!ownerStatus) return;
+  const follow = (status: PrefabStatus) => instance.setActive(status === 'active');
+  follow(ownerStatus.peek());
+  instance.onRemove(ownerStatus.subscribe(follow));
+}
+
 /** A new entity and the display that borrows its transform root. */
 /**
  * The first clip drawn by a display. `instance` reuses a logical entity, including its identity, components, tags,
@@ -833,32 +846,35 @@ function entityInstance<Instance extends PrefabInstance<SpriteState, object>>(pr
 
 export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, source: SpriteSource | LoadedSpriteSource, clip: EntityClip<Instance>, name?: string,
   /** Sets the entity's appearance before the first sprite is drawn, so it is drawn dressed. */
-  initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom' | 'dependencies'>):
+  initialize?: (instance: Instance) => void, ownerStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom' | 'dependencies'>):
   { instance: Instance; display: PrefabDisplay } {
   const instance = entityInstance(prefab, clip);
   initialize?.(instance);
-  const display = new PrefabDisplay({ root: instance.transform.model, ...displayOptions, name, source, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
+  followOwner(instance, ownerStatus);
+  const display = new PrefabDisplay({ root: instance.transform.model, ...displayOptions, name, art: { source }, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
 }
 
 /** A new entity drawn with a shared archive sprite; `clip.held` is a one-shot clip that rests on its last frame. */
 export function createArchiveEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip<Instance>, name?: string,
-  initialize?: (instance: Instance) => void, parentStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom'>):
+  initialize?: (instance: Instance) => void, ownerStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom'>):
   { instance: Instance; display: PrefabDisplay } {
-  const instance = entityInstance(prefab, clip), state = instance.sprite;
+  const instance = entityInstance(prefab, clip);
   initialize?.(instance);
-  const display = new PrefabDisplay({ root: instance.transform.model, ...displayOptions, name, archive, status: instance.status, parentStatus, sprite: state, light: instance.light });
+  followOwner(instance, ownerStatus);
+  const display = new PrefabDisplay({ root: instance.transform.model, ...displayOptions, name, art: { archive }, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
 }
 
 /** Transform-only prefab with the same entity-owned root and display lifecycle; a billboard display turns its visual to the camera. */
-export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, parentStatus?: ReadonlySignal<PrefabStatus>,
+export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, ownerStatus?: ReadonlySignal<PrefabStatus>,
   { billboard = false, instance: original }: { billboard?: boolean; instance?: Instance } = {}):
   { instance: Instance; display: PrefabDisplay } {
   const instance = entityInstance(prefab, { name: '', billboard, instance: original });
-  const display = new PrefabDisplay({ root: instance.transform.model, name: prefab, empty: true, status: instance.status, parentStatus, sprite: instance.sprite, light: instance.light });
+  followOwner(instance, ownerStatus);
+  const display = new PrefabDisplay({ root: instance.transform.model, name: prefab, art: { empty: true }, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
 }
@@ -1081,9 +1097,9 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     // SetBuild, so its first sprite is drawn from the bank and build the entity is in, from its first frame.
     const declared = instance.sprite.sprite.peek().source;
     const archive = assets && declaredArchive(assets, declared);
-    const display = this.displays.add({ root: instance.transform.model, name: prefabId, alignBottom, status: instance.status, sprite: instance.sprite, light: instance.light,
-      ...(archive ? { archive: this.resources.archive(archive, assetOptions), ...archive !== assets ? { archiveDeclares: declared } : {} }
-        : iconSource ? { source: iconSource } : { empty: true }) });
+    const art: PrefabDisplayArt = archive ? { archive: this.resources.archive(archive, assetOptions), declares: archive !== assets ? declared : undefined }
+      : iconSource ? { source: iconSource } : { empty: true };
+    const display = this.displays.add({ root: instance.transform.model, name: prefabId, alignBottom, art, sprite: instance.sprite, light: instance.light });
     if ((assets || icon) && targetable) registerActionEntity(instance);
     this.entities.add(instance);
     const entityId = String(instance.entityId);

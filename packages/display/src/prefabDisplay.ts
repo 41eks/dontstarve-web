@@ -7,16 +7,13 @@ import { FollowerFxSlot } from './followerFx';
 import { ArchiveEngine, type ArchiveSpriteSource, type DisplayEngine } from './displayEngine';
 import { DisplaySprite, listDisplayLight, type DisplayLight } from './displaySprites';
 import type { LightJson, LightState } from './lightState';
-import { animStateDeclarations, type AppearanceJson, type ClipJson, type NamedSpriteArt, type SkinJson, type SpriteJson, type SpriteSourceJson, type SpriteState } from './spriteState';
+import { animStateDeclarations, type AppearanceJson, type PrefabStatus, type ClipJson, type NamedSpriteArt, type SkinJson, type SpriteJson, type SpriteSourceJson, type SpriteState } from './spriteState';
 import { smallHash, type ResolvedSprite } from '@dontstarve-web/animation/animationAssets';
 import type { SpriteArtSource, SpriteSkin } from '@dontstarve-web/animation/sprite';
 import { mergeAnimStates, resolveAnimState, type AnimStateArt, type AnimStateJson } from '@dontstarve-web/animation/animState';
 import { facingFromRotation, fourFacingFromRotation, sixFacingFromRotation, selectsFacing } from '@dontstarve-web/animation/facing';
 
-/** active: drawn and in the scene; asleep: nothing drawn and out of the scene; removed: everything released. */
 const isDefined = <T>(value: T | undefined): value is T => value !== undefined;
-
-export type PrefabStatus = 'active' | 'asleep' | 'removed';
 
 /** The entity's shared sprite source. It owns the atlases; the display only builds and returns drawn sprites. */
 export interface SpriteSource {
@@ -31,21 +28,27 @@ export interface SpriteSource {
  */
 export interface LoadedSpriteSource { peek(): SpriteSource | undefined; load(): Promise<SpriteSource> }
 
+/** What the display draws the entity with. */
+export type PrefabDisplayArt =
+  /** A shared archive sprite. */
+  | {
+    readonly archive: ArchiveSpriteSource;
+    /**
+     * The sprite json's `source` (AnimState SetBank / SetBuild) the archive was made from: its sprites already draw it,
+     * so the display only sends a later, different declaration to them.
+     */
+    readonly declares?: SpriteSourceJson;
+  }
+  /** Factory sprites. */
+  | { readonly source: SpriteSource | LoadedSpriteSource }
+  /** A transform-only entity has no art to load. The display still owns its model and lifecycle. */
+  | { readonly empty: true };
+
 export interface PrefabDisplayOptions {
   /** Entity-owned root. Display owns scene membership and its visual children. */
   readonly root: THREE.Group;
   readonly name?: string;
-  /** Draw with factory sprites; exactly one of `source` and `archive` is given. */
-  readonly source?: SpriteSource | LoadedSpriteSource;
-  /** Draw with a shared archive sprite. */
-  readonly archive?: ArchiveSpriteSource;
-  /**
-   * The sprite json's `source` (AnimState SetBank / SetBuild) the archive was made from: its sprites already draw it, so
-   * the display only sends a later, different declaration to them.
-   */
-  readonly archiveDeclares?: SpriteSourceJson;
-  /** Transform-only entities have no art to load. The display still owns their model and lifecycle. */
-  readonly empty?: boolean;
+  readonly art: PrefabDisplayArt;
   /** Keep the entity at its foot point, offsetting only its private drawn sprite. */
   readonly alignBottom?: boolean;
   /**
@@ -53,11 +56,10 @@ export interface PrefabDisplayOptions {
    * so a transition such as a collapse is drawn when it is spawned rather than settled undrawn.
    */
   readonly dependencies?: readonly LoadedSpriteSource[];
-  /** The entity's lifecycle, written by the logical side. */
-  readonly status: ReadonlySignal<PrefabStatus>;
-  /** A child shares its owner's tile residency; its own removed state still ends its display. */
-  readonly parentStatus?: ReadonlySignal<PrefabStatus>;
-  /** The entity's sprite json, written by the prefab. The first sprite is drawn in its clip; the rest is dressed at once. */
+  /**
+   * The entity's sprite json, written by the prefab, in the entity's lifecycle. The first sprite is drawn in its clip;
+   * the rest is dressed at once.
+   */
   readonly sprite: SpriteState;
   /** The entity's inst.Light declaration, listed for the renderer while the entity is active. */
   readonly light?: LightState;
@@ -71,8 +73,8 @@ const localFacing = new THREE.Quaternion();
 export function prefabDisplay(model: THREE.Object3D): PrefabDisplay | undefined { return displaysByModel.get(model); }
 
 /**
- * Draws one entity. It borrows the entity's transform root, owns the visual and scene membership, subscribes to `status` and `sprite` and
- * reacts: the prefab only changes data. While asleep the model leaves the scene and returns to the same parent on wake.
+ * Draws one entity. It borrows the entity's transform root, owns the visual and scene membership, subscribes to the sprite json alone
+ * (the entity's declaration in its lifecycle) and reacts: the prefab only changes data. While asleep the model leaves the scene and returns to the same parent on wake.
  */
 export class PrefabDisplay {
   private readonly engine: DisplayEngine;
@@ -128,13 +130,13 @@ export class PrefabDisplay {
   readonly empty: boolean;
 
   constructor(options: PrefabDisplayOptions) {
-    const { archive, sprite: state } = options;
-    const source = options.source ?? (options.empty ? { create: () => new THREE.Group().add(new THREE.Group()), release: (model: THREE.Group) => model.removeFromParent() } : undefined);
+    const { art: drawWith, sprite: state } = options;
     this.state = state;
-    this.empty = !archive && !options.source && options.empty === true;
+    this.empty = 'empty' in drawWith;
     const first = state.sprite.peek();
     const held = first.clip.finished && !first.clip.loop;
-    if (archive) {
+    if ('archive' in drawWith) {
+      const { archive } = drawWith;
       const clip = { name: first.clip.name, loop: !held, none: first.clip.none };
       const prepare = (drawn: import('@dontstarve-web/animation/archiveSprite').ArchiveSprite) => {
         if (archive.alignBottom || options.alignBottom) {
@@ -149,7 +151,9 @@ export class PrefabDisplay {
         return drawn instanceof Promise ? drawn.then(prepare) : prepare(drawn);
       };
       this.engine = new ArchiveEngine(new ResidentSprite(options.root, create, clip, archive.initial && prepare(archive.initial), options.name));
-    } else if (source) {
+    } else {
+      const source = 'source' in drawWith ? drawWith.source
+        : { create: () => new THREE.Group().add(new THREE.Group()), release: (model: THREE.Group) => model.removeFromParent() };
       let ready = 'load' in source ? source.peek() : source;
       // The foot offset is measured once, on the entity's first clip, so that every sprite drawn later, in whatever clip
       // the entity is in by then (a deferred source's first one included), stands at the same point.
@@ -184,15 +188,14 @@ export class PrefabDisplay {
         this.applyStatus(this.status.peek());
         this.applySprite(this.json.peek());
       }, (error: unknown) => { this.sourceLoading = undefined; if (!this.disposed) console.error(`Unable to load ${options.name ?? 'a sprite'}`, error); });
-    } else throw new Error('A display needs a sprite source');
+    }
     for (const dependency of options.dependencies ?? []) if (!dependency.peek()) void dependency.load().catch((error: unknown) => {
       if (!this.disposed) console.error(`Unable to load a dependency of ${options.name ?? 'a sprite'}`, error);
     });
     // The controller starts in a looping or held clip; any other first clip is sent by the first snapshot.
     const plain = first.clip.percent === undefined && (first.clip.loop ? !first.clip.finished : first.clip.finished);
-    this.archiveDeclares = options.archiveDeclares;
-    this.applied = { clip: plain ? first.clip : undefined, queue: 0, appearance: new Map(),
-      ...options.archiveDeclares ? { source: options.archiveDeclares } : {} };
+    this.archiveDeclares = 'archive' in drawWith ? drawWith.declares : undefined;
+    this.applied = { clip: plain ? first.clip : undefined, queue: 0, appearance: new Map(), source: this.archiveDeclares };
     const controller = this.engine;
     state.bind({
       get currentAnimation() { return controller.currentAnimation; },
@@ -209,13 +212,10 @@ export class PrefabDisplay {
       createFollower: () => new THREE.Object3D(),
     });
     this.model.addEventListener('added', this.onAdded);
-    const ownStatus = watchSignal(options.status, stop => this.cleanups.push(stop));
-    const parentStatus = options.parentStatus && watchSignal(options.parentStatus, stop => this.cleanups.push(stop));
-    const status = this.status = parentStatus ? createMemo<PrefabStatus>(() => {
-      const own = ownStatus.get();
-      return own === 'removed' ? own : own === 'asleep' || parentStatus.get() !== 'active' ? 'asleep' : 'active';
-    }) : ownStatus;
     const json = this.json = watchSignal(state.sprite, stop => this.cleanups.push(stop));
+    const status = createMemo(() => json.get().status);
+    this.status = status;
+    this.cleanups.push(() => status.dispose());
     if (options.light) {
       const light = watchSignal(options.light.json, stop => this.cleanups.push(stop));
       let listed: DisplayLight | undefined;
@@ -385,6 +385,8 @@ export class PrefabDisplay {
 
 
   private applySprite(json: SpriteJson): void {
+    // A removed entity's display is released by its status, whichever of the two follows the json first.
+    if (json.status === 'removed') return;
     const { engine: controller, applied, state } = this;
     this.followFrameSource(json.frameSource);
     if (json.visible !== undefined) this.model.visible = json.visible;
