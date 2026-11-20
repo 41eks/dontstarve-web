@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { backTasks } from './animate';
-import { player } from './player';
+import { playerInstance } from './player';
+import type { ReadonlyVector3 } from '../packages/animation/src/transformRoot';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
 import { renderer } from './universal';
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
@@ -25,6 +26,14 @@ const ROTATION_STEP = 45;
 const EPSILON = 0.01;
 const ORIGIN = new THREE.Vector3();
 
+/**
+ * What the camera follows: an entity's logical transform (Transform:GetWorldPosition), not its display object. The
+ * player is not parented, so its position is its world position.
+ */
+export interface FollowCameraTarget {
+  readonly position: ReadonlyVector3;
+}
+
 function normalizeDegrees(angle: number): number {
   return THREE.MathUtils.euclideanModulo(angle, 360);
 }
@@ -47,7 +56,7 @@ function shortestAngleDelta(from: number, to: number): number {
 export class FollowCameraController {
   readonly camera: THREE.PerspectiveCamera;
 
-  private target: THREE.Object3D | null;
+  private target: FollowCameraTarget | null;
   private readonly targetOffset = new THREE.Vector3(0, 1.5, 0);
   private readonly targetPosition = new THREE.Vector3();
   private readonly currentPosition = new THREE.Vector3();
@@ -81,7 +90,7 @@ export class FollowCameraController {
   readonly distanceGain = 1;
   readonly zoomStep = 4 * WORLD_SCALE;
 
-  constructor(target: THREE.Object3D, defaults: FollowCameraDefaults = FOREST_CAMERA) {
+  constructor(target: FollowCameraTarget, defaults: FollowCameraDefaults = FOREST_CAMERA) {
     this.target = target;
     this.distance = this.distanceTarget = defaults.distanceTarget * WORLD_SCALE;
     this.minDistance = defaults.minDist * WORLD_SCALE;
@@ -97,7 +106,7 @@ export class FollowCameraController {
     this.snap();
   }
 
-  setTarget(target: THREE.Object3D | null): void {
+  setTarget(target: FollowCameraTarget | null): void {
     this.target = target;
   }
 
@@ -192,7 +201,8 @@ export class FollowCameraController {
 
   private updateTargetPosition(): void {
     if (this.target) {
-      this.target.getWorldPosition(this.targetPosition);
+      const { x, y, z } = this.target.position;
+      this.targetPosition.set(x, y, z);
     } else {
       this.targetPosition.set(0, 0, 0);
     }
@@ -239,7 +249,7 @@ export class FollowCameraController {
   }
 }
 
-export const followCamera = new FollowCameraController(player, initialSave.world.prefab === 'cave' ? CAVE_CAMERA : FOREST_CAMERA);
+export const followCamera = new FollowCameraController(playerInstance, initialSave.world.prefab === 'cave' ? CAVE_CAMERA : FOREST_CAMERA);
 export const camera = followCamera.camera;
 
 // followcamera.lua keeps updating under SetAutopaused (e.g. the open map), so use the unpaused frame time.
