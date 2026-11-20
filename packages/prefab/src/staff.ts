@@ -30,7 +30,8 @@ export type StaffId = LightStaffId | 'greenstaff' | 'firestaff' | 'telestaff' | 
 export function isStaff(itemId: string | null | undefined): itemId is StaffId { return isLightStaff(itemId) || itemId === 'greenstaff' || itemId === 'firestaff' || itemId === 'telestaff' || itemId === 'orangestaff' || itemId === 'icestaff'; }
 export type LightStaffId = typeof YELLOWSTAFF_ID | typeof OPALSTAFF_ID;
 export const LIGHT_STAFF_USES = { yellowstaff: 20, opalstaff: 50 } as const;
-export const LIGHT_STAFF_SANITY_COST = 20;
+/** tuning.lua SANITY_MEDLARGE: what the light and green staffs cost their caster. */
+const SANITY_MEDLARGE = 20;
 export const LIGHT_STAFF_CAST_SOUND = 'dontstarve/common/staffteleport';
 export interface LightStaffWorld {
   readonly map: SpellCastMap;
@@ -38,45 +39,37 @@ export interface LightStaffWorld {
   spawnPrefab(prefab: 'stafflight' | 'staffcoldlight', position: ReadonlyVector3): void;
 }
 
-/** staff.lua yellow/opal: configure one spellcaster on the actual inventory entity. */
-export class LightStaffController implements HeldEquipFunctions {
-  readonly spellcaster: SpellCaster;
-  private readonly entity: ItemEntity;
-  private readonly world: LightStaffWorld;
-  /** finiteuses' maximum, which an unworn staff's uses default to. */
-  private readonly maxUses: number;
-  constructor(entity: ItemEntity, world: LightStaffWorld) {
-    if (!isLightStaff(entity.prefab)) { throw new Error('LightStaffController requires a light staff'); }
-    this.entity = entity; this.world = world; this.maxUses = LIGHT_STAFF_USES[entity.prefab];
-    entity.addTag('nopunch'); entity.addTag('allow_action_on_impassable');
-    if (entity.prefab === 'yellowstaff') { entity.addTag('shadowlevel'); }
-    entity.castsound = LIGHT_STAFF_CAST_SOUND;
-    entity.fxcolour = entity.prefab === 'opalstaff' ? OPALSTAFF_COLOUR : YELLOWSTAFF_COLOUR;
-    entity.components.finiteuses.setMaxUses(this.maxUses);
-    this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster, world.map);
-    this.spellcaster.SetSpellFn((_staff, _target, position, doer) => !!position && this.createLight(position, doer));
-    this.spellcaster.canUseOnPoint = true;
-    this.spellcaster.canUseOnPointWater = true;
-  }
-  private get product(): 'stafflight' | 'staffcoldlight' {
-    return this.entity.prefab === 'opalstaff' ? 'staffcoldlight' : 'stafflight';
-  }
-  onequip(): void {}
-  onunequip(): void {}
-  dispose(): void {}
-  private createLight(position: ReadonlyVector3, doer: SpellCastDoer): boolean {
-    if (this.entity.isRemoved) { return false; }
-    this.world.spawnPrefab(this.product, position);
-    const depleted = (this.entity.components.finiteuses.remaining ?? this.maxUses) === 1;
-    if (!this.entity.components.finiteuses.use(1)) { return false; }
-    if (depleted) { PlaySound('dontstarve/common/gem_shatter', doer.position); }
-    if (doer.components.staffsanity) { doer.components.staffsanity.doCastingDelta(-LIGHT_STAFF_SANITY_COST); }
-    else { doer.components.sanity?.DoDelta(-LIGHT_STAFF_SANITY_COST); }
-    return true;
-  }
+/** TheWorld as the light staffs read it at the cast. */
+function lightStaffWorld(inst: ItemEntity): LightStaffWorld | undefined {
+  return (inst.equipmentWorld as { lightStaffWorld?: LightStaffWorld } | undefined)?.lightStaffWorld;
 }
-export function getLightStaffController(entity: ItemEntity, world: LightStaffWorld): LightStaffController {
-  return entity.component('lightstaff', () => new LightStaffController(entity, world));
+
+/** createlight(staff, target, pos): the star at the point, one use, then the caster's sanity. */
+function createlight(staff: ItemEntity, pos: ReadonlyVector3 | undefined, caster: SpellCastDoer): boolean {
+  const world = lightStaffWorld(staff);
+  if (!world || !pos || staff.isRemoved) { return false; }
+  world.spawnPrefab(staff.prefab === 'opalstaff' ? 'staffcoldlight' : 'stafflight', pos);
+  staff.components.finiteuses.use(1);
+  if (caster.components.staffsanity) { caster.components.staffsanity.doCastingDelta(-SANITY_MEDLARGE); }
+  else { caster.components.sanity?.DoDelta(-SANITY_MEDLARGE); }
+  return true;
+}
+
+/** staff.lua yellow() and opal(): a spellcaster usable on any point, land or water. */
+export function configureLightStaffEntity(inst: ItemEntity): void {
+  if (!isLightStaff(inst.prefab)) { throw new Error(`${inst.prefab} is not a light staff`); }
+  // commonfn: the tags, and the shadowlevel component's pristine tag on the yellow staff only.
+  inst.addTag('nopunch'); inst.addTag('allow_action_on_impassable');
+  if (inst.prefab === 'yellowstaff') { inst.addTag('shadowlevel'); }
+  inst.fxcolour = inst.prefab === 'opalstaff' ? OPALSTAFF_COLOUR : YELLOWSTAFF_COLOUR;
+  inst.castsound = LIGHT_STAFF_CAST_SOUND;
+  if (inst.components.spellcaster) { return; }
+  inst.components.finiteuses.setMaxUses(LIGHT_STAFF_USES[inst.prefab]);
+  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
+  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster, () => lightStaffWorld(inst)?.map);
+  spellcaster.SetSpellFn((_staff, _target, pos, caster) => createlight(inst, pos, caster));
+  spellcaster.canUseOnPoint = true;
+  spellcaster.canUseOnPointWater = true;
 }
 export function isLightStaff(itemId: string | null | undefined): itemId is LightStaffId {
   return itemId === YELLOWSTAFF_ID || itemId === OPALSTAFF_ID;
@@ -141,57 +134,58 @@ export interface FireStaffAttacker extends CombatActor {
   };
 }
 
-/** staff.lua red: a ranged lighter whose projectile ignites, unfreezes and wakes its target. */
-export class FireStaffController implements HeldEquipFunctions {
-  private readonly entity: ItemEntity;
-  private readonly world: FireStaffWorld;
-  constructor(entity: ItemEntity, world: FireStaffWorld) {
-    this.entity = entity; this.world = world;
-    entity.projectiledelay = PROJECTILE_DELAY;
-    entity.components.finiteuses.setMaxUses(FIRESTAFF_USES);
-    const weapon = entity.components.weapon!;
-    weapon.SetRange(ATTACK_RANGE, HIT_RANGE);
-    weapon.SetOnAttack((_, attacker, target) => this.onAttack(attacker, target));
-    weapon.SetProjectile(FIRE_PROJECTILE_ID, (attacker, target) => {
-      const projectile = world.launch(entity, target, attacker);
-      projectile.DelayVisibility(entity.projectiledelay ?? 0);
-      return projectile;
-    });
+/** onattack_red(inst, attacker, target, skipsanity) */
+function onattack_red(inst: ItemEntity, attacker: FireStaffAttacker | undefined, target: FireStaffTarget, skipsanity = false): void {
+  if (!skipsanity && attacker) {
+    if (attacker.components.staffsanity) { attacker.components.staffsanity.doCastingDelta(-SANITY_SUPERTINY); }
+    else { attacker.components.sanity?.DoDelta(-SANITY_SUPERTINY); }
   }
-  onequip(): void {}
-  onunequip(): void {}
-  dispose(): void {}
-
-  /** onattack_red(inst, attacker, target, skipsanity) */
-  private onAttack(attacker: FireStaffAttacker | undefined, target: FireStaffTarget, skipsanity = false): void {
-    if (!skipsanity && attacker) {
-      if (attacker.components.staffsanity) { attacker.components.staffsanity.doCastingDelta(-SANITY_SUPERTINY); }
-      else { attacker.components.sanity?.DoDelta(-SANITY_SUPERTINY); }
+  if (target.isRemoved) { return; } // killed or removed in the combat damage phase
+  const { burnable, freezable, fueled, sleeper, combat } = target.components;
+  if (burnable && !burnable.IsBurning()) {
+    if (freezable?.IsFrozen()) { freezable.Unfreeze(); }
+    else if (!fueled || (fueled.fueltype !== 'BURNABLE' && fueled.secondaryfueltype !== 'BURNABLE')) {
+      // Does not take burnable fuel, so just burn it.
+      if (burnable.canlight || combat) { burnable.Ignite(true, inst, attacker); }
+    } else if (fueled.accepting) {
+      // Takes burnable fuel, so fuel it.
+      const fuel = fireStaffWorld(inst)?.createFuel?.();
+      if (fuel) { if (fuel.components.fuel?.fueltype !== 'BURNABLE' || !fueled.TakeFuelItem(fuel)) { fuel.remove(); } }
     }
-    if (target.isRemoved) { return; } // killed or removed in the combat damage phase
-    const { burnable, freezable, fueled, sleeper, combat } = target.components;
-    if (burnable && !burnable.IsBurning()) {
-      if (freezable?.IsFrozen()) { freezable.Unfreeze(); }
-      else if (!fueled || (fueled.fueltype !== 'BURNABLE' && fueled.secondaryfueltype !== 'BURNABLE')) {
-        // Does not take burnable fuel, so just burn it.
-        if (burnable.canlight || combat) { burnable.Ignite(true, this.entity, attacker); }
-      } else if (fueled.accepting) {
-        // Takes burnable fuel, so fuel it.
-        const fuel = this.world.createFuel?.();
-        if (fuel) { if (fuel.components.fuel?.fueltype !== 'BURNABLE' || !fueled.TakeFuelItem(fuel)) { fuel.remove(); } }
-      }
-    }
-    if (freezable) {
-      freezable.AddColdness(-1);
-      if (freezable.IsFrozen()) { freezable.Unfreeze(); }
-    }
-    if (sleeper?.IsAsleep()) { sleeper.WakeUp(); }
-    target.PushEvent?.('attacked', { attacker, damage: 0, weapon: this.entity });
   }
+  if (freezable) {
+    freezable.AddColdness(-1);
+    if (freezable.IsFrozen()) { freezable.Unfreeze(); }
+  }
+  if (sleeper?.IsAsleep()) { sleeper.WakeUp(); }
+  target.PushEvent?.('attacked', { attacker, damage: 0, weapon: inst });
 }
 
-export function getFireStaffController(entity: ItemEntity, world: FireStaffWorld): FireStaffController {
-  return entity.component('firestaff', () => new FireStaffController(entity, world));
+/** TheWorld as the fire staff reads it when it shoots. */
+function fireStaffWorld(inst: ItemEntity): FireStaffWorld | undefined {
+  return (inst.equipmentWorld as { fireStaffWorld?: FireStaffWorld } | undefined)?.fireStaffWorld;
+}
+
+/**
+ * staff.lua red(): a weapon of damage 0 and range 8 / 10 that wears one use per attack and throws a fire_projectile,
+ * whose hit runs onattack_red.
+ */
+export function configureFireStaffEntity(inst: ItemEntity): void {
+  inst.projectiledelay = PROJECTILE_DELAY;
+  if (inst.components.weapon) { return; }
+  inst.components.finiteuses.setMaxUses(FIRESTAFF_USES);
+  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
+  // weapon.lua adds the "weapon" tag; weapon:OnAttack wears finiteuses.
+  const weapon = addComponent(inst, 'weapon', Weapon, () => inst.components.finiteuses);
+  weapon.SetDamage(0);
+  weapon.SetRange(ATTACK_RANGE, HIT_RANGE);
+  weapon.SetOnAttack((_inst, attacker, target) => onattack_red(inst, attacker, target));
+  weapon.SetProjectile(FIRE_PROJECTILE_ID, (attacker, target) => {
+    const projectile = fireStaffWorld(inst)?.launch(inst, target, attacker);
+    projectile?.DelayVisibility(inst.projectiledelay ?? 0);
+    return projectile;
+  });
+  inst.addTag('weapon');
 }
 
 /** swap_staffs symbol `swap_redstaff`, plus the swing and impact sounds. */
@@ -199,9 +193,8 @@ export const fireStaffVisual: EquipmentVisualFactory = item => staffVisual({ ...
 
 // staff.lua green()
 
-/** tuning.lua GREENSTAFF_USES and SANITY_MEDLARGE. */
+/** tuning.lua GREENSTAFF_USES. */
 export const GREENSTAFF_USES = 5;
-const SANITY_MEDLARGE = 20;
 export const GREENSTAFF_COLOUR = [51 / 255, 153 / 255, 51 / 255] as const;
 /** What staff.lua destroystructure reads from the entity it deconstructs. */
 export interface DeconstructionComponents {

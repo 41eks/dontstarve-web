@@ -44,7 +44,8 @@ export type SpellCanCastFn = LuaFn<[doer: SpellCastDoer, target: object | undefi
 /** Supported point, target and inventory branches of components/spellcaster.lua. */
 export class SpellCaster implements SpellCasterComponent {
   private readonly item: SpellCasterInst;
-  private readonly map: SpellCastMap | undefined;
+  /** TheWorld.Map, read when a point is checked. */
+  private readonly map: () => SpellCastMap | undefined;
   private spell?: SpellFn;
   private onPoint = false;
   private onWater = false;
@@ -56,7 +57,7 @@ export class SpellCaster implements SpellCasterComponent {
   private veryQuick = false;
   private canCastFn?: SpellCanCastFn;
   private disposed = false;
-  constructor(item: SpellCasterInst, map?: SpellCastMap) { this.item = item; this.map = map; }
+  constructor(item: SpellCasterInst, map: () => SpellCastMap | undefined = () => undefined) { this.item = item; this.map = map; }
   get canUseFromInventory(): boolean { return this.fromInventory; }
   set canUseFromInventory(value: boolean) { this.fromInventory = value; this.refreshTags(); }
   get canUseOnTargets(): boolean { return this.onTargets; }
@@ -93,9 +94,10 @@ export class SpellCaster implements SpellCasterComponent {
           || (this.canCastFn?.(doer, target, position, this.item) ?? false));
     }
     if (!position) { return this.fromInventory; }
-    return (this.canCastFn?.(doer, target, position, this.item) ?? true) && !!this.map
-      && (this.onPoint ? this.map.isAboveGroundAtPoint(position, this.onWater)
-        : this.onWater && this.map.isOceanAtPoint(position)) && !this.map.isGroundTargetBlocked(position);
+    const map = this.map();
+    return (this.canCastFn?.(doer, target, position, this.item) ?? true) && !!map
+      && (this.onPoint ? map.isAboveGroundAtPoint(position, this.onWater)
+        : this.onWater && map.isOceanAtPoint(position)) && !map.isGroundTargetBlocked(position);
   }
   castSpell(target: SpellTarget | undefined, position: THREE.Vector3 | undefined, doer: SpellCastDoer): boolean {
     return this.canCast(doer, target, position) && (this.spell?.(this.item, target, position, doer) ?? false);

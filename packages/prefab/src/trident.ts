@@ -39,7 +39,7 @@ export class TridentController implements HeldEquipFunctions {
       entity.components.inventoryitem.owner?.PushEvent('toolbroke', { tool: entity });
       return entity.remove();
     });
-    this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster, world.map);
+    this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster, () => world.map);
     this.spellcaster.SetSpellFn((_trident, _target, position) => !!position && this.createWaterExplosion(position));
     this.spellcaster.canUseOnPointWater = true;
   }

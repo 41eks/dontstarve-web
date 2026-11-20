@@ -1,9 +1,9 @@
 import * as THREE from 'three';
+import type { HandEquipmentWorld } from '../../prefab/src/handEquipment';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { Burnable } from '../../componets/src/burnable';
 import { Combat, type CombatActor } from '../../componets/src/combat';
-import { getFireStaffController } from '../../prefab/src/staff';
 import { FIRE_PROJECTILE_ID, LaunchProjectile, staffProjectilePrefabs, type StaffProjectileInstance } from '../../prefab/src/staff_projectile';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { PrefabDisplayGroup } from '../../display/src';
@@ -30,8 +30,8 @@ function setup() {
   const combat = new Combat(attacker, () => 0, () => staff.components.weapon);
   combat.SetRange(2);
   attacker.components.combat = combat;
-  getFireStaffController(staff, { launch: (owner, target, from) =>
-    LaunchProjectile((prefab, position) => projectiles.spawn(prefab, position), FIRE_PROJECTILE_ID, owner, target, from) });
+  inventory.entities.bindEquipmentWorld({ fireStaffWorld: { launch: (owner, target, from) =>
+    LaunchProjectile((prefab, position) => projectiles.spawn(prefab, position), FIRE_PROJECTILE_ID, owner, target, from) } } satisfies HandEquipmentWorld);
   const tags = new Set<string>();
   const target = {
     isRemoved: false, prefab: 'evergreen', components: {} as { burnable?: Burnable; combat?: Combat },

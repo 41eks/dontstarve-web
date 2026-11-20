@@ -7,13 +7,14 @@ import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests
 import { PrefabDisplayGroup } from '../../display/src';
 import { prefabDisplay } from '../../display/src';
 import * as THREE from 'three';
+import type { HandEquipmentWorld } from '../../prefab/src/handEquipment';
 import { DstLightingRenderer } from '../../../src/dstLighting';
 import { playerInst, type PlayerInstance } from '../../prefab/src/player_common';
 import { testPlayer } from '../../animation/tests/testPlayer';
 import { testLocomotor } from '../../animation/tests/testLocomotor';
 import type { PrefabDisplay } from '../../display/src';
 import { GROUND_ITEM_DEFINITIONS } from '../../prefab/src/groundItems';
-import { getLightStaffController, type LightStaffId } from '../../prefab/src/staff';
+import type { LightStaffId } from '../../prefab/src/staff';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { staffLightPrefabs, DWARF_STAR_DURATION, POLAR_LIGHT_DURATION } from '../../prefab/src/stafflight';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -103,12 +104,11 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const entity = inventory.getEntity(equipmentSlotAddress('hand'))!;
   // The cast's SpawnPrefab creates the star at once; its display loads the art after the commit.
   const summoned: PrefabInstance[] = [];
-  const staff = getLightStaffController(entity, {
+  inventory.entities.bindEquipmentWorld({ lightStaffWorld: {
     map: { isAboveGroundAtPoint: point => Math.abs(point.x) <= 130 && Math.abs(point.z) <= 130,
       isOceanAtPoint: () => false, isGroundTargetBlocked: () => false },
     spawnPrefab: (_prefab, point) => { summoned.push(stars.spawn(prefabId, point)); },
-  });
-  staff.onequip();
+  } } satisfies HandEquipmentWorld);
   // The player inst as act.doer: spellcaster.lua reads its position, tags and sanity; the point is in CASTSPELL range.
   const doer = testPlayer({ model: player, inventory });
   // The player's own locomotor: the cast point is within reach, so the walk arrives at once.
@@ -190,7 +190,6 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   await settle();
   tick(20);
   inventory.transfer(equipmentSlotAddress('hand'), inventorySlotAddress(0), 1);
-  staff.onunequip();
   await animationEquipper.equip(null); settleEquip();
   tick(90);
   const cancelled = !animation.sg.isPerformingAction('CASTSPELL') && stars.exportRecords().length === 1;

@@ -11,12 +11,13 @@ import { InventorySlot, HandSlot, inventorySlotAddress, equipmentSlotAddress } f
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { collectPointActions } from '../../stategraphs/src/componentactions';
 import { Locomotor } from '../../prefab/src/locomotor';
-import { getLightStaffController, LIGHT_STAFF_USES, LIGHT_STAFF_CAST_SOUND, type LightStaffId } from '../../prefab/src/staff';
+import { LIGHT_STAFF_USES, LIGHT_STAFF_CAST_SOUND, type LightStaffId } from '../../prefab/src/staff';
 import { PlaySound } from '../../prefab/src/sound';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { EventEmitter } from '../../signals/src/EventEmitter';
 import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { testInventoryStore } from './testInventory';
+import { configureEquipmentEntity } from '../../prefab/src/handEquipment';
 
 /** staff_castinglight, which is not ported: an fx entity whose SetUp the castspell state calls. */
 class CastingLight extends PrefabInstance {
@@ -33,16 +34,15 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
     { address: hand, slot: new HandSlot() },
     ...[0, 1].map(index => ({ address: inventorySlotAddress(index), slot: new InventorySlot() })),
   ], Object.fromEntries(Object.entries(LIGHT_STAFF_USES).map(([id, maxUses]) => [id, {
-    name: id, icon: `${id}.tex`, maxStack: 1, maxUses, equippable: 'hand',
+    name: id, icon: `${id}.tex`, maxStack: 1, maxUses, equippable: 'hand', configureEntity: configureEquipmentEntity,
   }])));
-  store.add(itemId, 1, undefined, undefined, remainingUses);
-  store.transfer(inventorySlotAddress(0), hand, 1);
-  const entity = store.getEntity(hand)!;
   let blocked = false;
   const map = { isAboveGroundAtPoint: vi.fn(() => true), isOceanAtPoint: () => false, isGroundTargetBlocked: () => blocked };
   const spawn = vi.fn(), worldServices = { map, spawnPrefab: spawn };
-  const staff = getLightStaffController(entity, worldServices);
-  staff.onequip();
+  store.entities.bindEquipmentWorld({ lightStaffWorld: worldServices });
+  store.add(itemId, 1, undefined, undefined, remainingUses);
+  store.transfer(inventorySlotAddress(0), hand, 1);
+  const entity = store.getEntity(hand)!;
   // SpawnPrefab("staff_castinglight") on the player inst; the castspell state sets it up.
   const castingLight = new CastingLight('staff_castinglight', new SpriteState({ name: '' }));
   vi.spyOn(castingLight, 'remove');
@@ -65,7 +65,7 @@ function fixture(itemId: LightStaffId, remainingUses?: number) {
       && controller.DoAction(controller.createAction({ action: 'CASTSPELL', invobject: entity, pos: point.clone() })!),
     dispose: () => controller.dispose(),
   };
-  return { store, hand, entity, staff, world, worldServices, graph, input, spawn, doDelta, sound, casting, castingLight, locomotor, player,
+  return { store, hand, entity, world, worldServices, graph, input, spawn, doDelta, sound, casting, castingLight, locomotor, player,
     setBlocked: (value: boolean) => { blocked = value; },
     dispose: () => { input.dispose(); store.dispose(); } };
 }
