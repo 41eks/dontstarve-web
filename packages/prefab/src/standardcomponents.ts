@@ -1,4 +1,7 @@
-import { removeComponent } from './components';
+import * as THREE from 'three';
+import { addComponent, removeComponent } from './components';
+import { Freezable } from '../../componets/src/freezable';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { COLLISION, type PhysicsState } from '../../componets/src/physicsState';
 import { releaseBuildingContainer } from './containers';
 import type { PrefabInstance } from './prefabInstance';
@@ -210,3 +213,43 @@ export function RemovePhysicsColliders(inst: PhysicsEntity): void {
   if (phys.GetMass() > 0) phys.SetCollisionMask(COLLISION.GROUND);
   else phys.ClearCollisionMask();
 }
+
+/** standardcomponents.lua shatterfx.character. */
+const SHATTER_FX_CHARACTER = 'shatter';
+
+/** What a freezable character reaches in its world: game time and SpawnPrefab of its shatter fx. */
+export interface FreezableWorld {
+  readonly scheduler: GameTimeScheduler;
+  readonly fx?: Pick<import('./world_fx').WorldFx, 'shatter'>;
+}
+
+/** An inst that takes freezable, as the Make*FreezableCharacter callers declare it. */
+export type FreezableCharacter = PrefabInstance & { readonly components: PrefabInstance['components'] & { freezable?: Freezable } };
+type ShatterOffset = { readonly x: number; readonly y: number; readonly z: number };
+
+/**
+ * standardcomponents.lua Make{Tiny,Small,Medium,Large,Huge}FreezableCharacter: freezable with the size's shatter fx
+ * level and resistance, and one `shatter` fx at `offset`. The fx is placed at the inst's position plus the offset; its
+ * Follower on `sym` (a symbol of the inst's art) is not ported.
+ */
+function MakeFreezableCharacter(inst: FreezableCharacter, fxlevel: number, resistance: number | undefined, world: FreezableWorld,
+  sym?: string, offset: ShatterOffset = { x: 0, y: 0, z: 0 }): Freezable {
+  const freezable = addComponent(inst, 'freezable', Freezable, world.scheduler, (fx, level) => {
+    const { x, y, z } = inst.position;
+    world.fx?.shatter(new THREE.Vector3(x + fx.x, y + fx.y, z + fx.z), level);
+  });
+  freezable.SetShatterFXLevel(fxlevel);
+  if (resistance !== undefined) freezable.SetResistance(resistance);
+  freezable.AddShatterFX(SHATTER_FX_CHARACTER, offset, sym);
+  return freezable;
+}
+export const MakeTinyFreezableCharacter = (inst: FreezableCharacter, world: FreezableWorld, sym?: string, offset?: ShatterOffset) =>
+  MakeFreezableCharacter(inst, 1, undefined, world, sym, offset);
+export const MakeSmallFreezableCharacter = (inst: FreezableCharacter, world: FreezableWorld, sym?: string, offset?: ShatterOffset) =>
+  MakeFreezableCharacter(inst, 2, undefined, world, sym, offset);
+export const MakeMediumFreezableCharacter = (inst: FreezableCharacter, world: FreezableWorld, sym?: string, offset?: ShatterOffset) =>
+  MakeFreezableCharacter(inst, 3, 2, world, sym, offset);
+export const MakeLargeFreezableCharacter = (inst: FreezableCharacter, world: FreezableWorld, sym?: string, offset?: ShatterOffset) =>
+  MakeFreezableCharacter(inst, 4, 3, world, sym, offset);
+export const MakeHugeFreezableCharacter = (inst: FreezableCharacter, world: FreezableWorld, sym?: string, offset?: ShatterOffset) =>
+  MakeFreezableCharacter(inst, 5, 4, world, sym, offset);

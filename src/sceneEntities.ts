@@ -476,7 +476,7 @@ export async function createSceneEntities(
   registry.registerPrefabs(PREFAB_DEFINITIONS.supportPillars);
   prefabs.register(oasislakePrefabs({ scheduler: worldState.scheduler }));
   registry.registerPrefabs(PREFAB_DEFINITIONS.oasislakes);
-  prefabs.register(beehivePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
+  prefabs.register(beehivePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent, fx: Managers['world_fx'] }));
   registry.registerPrefabs(PREFAB_DEFINITIONS.beehives);
   prefabs.register(shadowForgePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
   registry.registerPrefabs(PREFAB_DEFINITIONS.shadowForges);
@@ -689,6 +689,7 @@ export async function createSceneEntities(
       maxMovementStep: MAX_PHYSICS_FRAME_TIME,
       scheduler: scheduler ?? worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent, tickingarea: worldState.tickingarea, cameraHeading: view.cameraHeading,
       getPlayers: () => [lightFlierPlayer],
+      fx: Managers['world_fx'],
       spawnItem: state => { const entity = sceneInventory.entities.create(state); sceneInventory.configureItem(entity); return entity; },
       dropLoot,
       getHomes: () => prefabs.instances(prefabId) as Iterable<import('../packages/prefab/src/lightflier_flower').LightFlierFlowerInstance>,

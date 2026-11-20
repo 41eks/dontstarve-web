@@ -273,6 +273,11 @@ def main():
     add('firestaff', 'staffs', 'staffs', 'redstaff', 'staff')
     add('telestaff', 'staffs', 'staffs', 'purplestaff', 'staff')
     add('orangestaff', 'staffs', 'staffs', 'orangestaff', 'staff')
+    # staff.lua blue_common("blue", 1) is registered as `icestaff`.
+    add('icestaff', 'staffs', 'staffs', 'bluestaff', 'staff')
+    # staff_projectile.lua ice(): shatter.lua's frozen_shatter fx; commonstates' frozen states and freezable owners
+    # OverrideSymbol("swap_frozen", "frozen", "frozen") from frozen.zip.
+    assets.update(['anim/frozen_shatter.zip', 'anim/frozen.zip'])
     # blinkstaff SetFX: fx.lua sand_puff_large_front / sand_puff_large_back (bank/build sand_puff, clip forage_out).
     assets.add('anim/sand_puff.zip')
     assets.update(['anim/swap_staffs.zip', 'anim/player_staff.zip', 'anim/star_hot.zip', 'anim/star_cold.zip', 'anim/moonbase_fx.zip'])

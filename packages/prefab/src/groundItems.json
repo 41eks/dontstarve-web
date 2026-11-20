@@ -4143,6 +4143,37 @@
         "weapon"
       ]
     },
+    "icestaff": {
+      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
+      "name": "冰魔杖",
+      "icon": "icestaff.tex",
+      "atlas": "images/inventoryimages.xml",
+      "animationArchive": "staffs.zip",
+      "buildArchives": [
+        "staffs.zip"
+      ],
+      "bank": "staffs",
+      "animation": "bluestaff",
+      "loop": false,
+      "symbolOverrides": {},
+      "skinArchives": {
+        "icestaff_bee": "dynamic/icestaff_bee.zip",
+        "icestaff_gungnir": "dynamic/icestaff_gungnir.zip",
+        "icestaff_hockey": "dynamic/icestaff_hockey.zip",
+        "icestaff_icerod": "dynamic/icestaff_icerod.zip",
+        "icestaff_lance": "dynamic/icestaff_lance.zip",
+        "icestaff_northern": "dynamic/icestaff_northern.zip",
+        "icestaff_rose": "dynamic/icestaff_rose.zip",
+        "icestaff_rw_swamp": "dynamic/icestaff_rw_swamp.zip"
+      },
+      "tags": [
+        "shadowlevel",
+        "icestaff",
+        "weapon",
+        "rangedweapon",
+        "extinguisher"
+      ]
+    },
     "trident": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/trident.lua",
       "name": "刺耳三叉戟",
@@ -7991,37 +8022,6 @@
         "repairshortaction"
       ]
     },
-    "icestaff": {
-      "source": "databundles/scripts_unpacked/scripts/prefabs/staff.lua",
-      "name": "冰魔杖",
-      "icon": "icestaff.tex",
-      "atlas": "images/inventoryimages.xml",
-      "animationArchive": "staffs.zip",
-      "buildArchives": [
-        "staffs.zip"
-      ],
-      "bank": "staffs",
-      "animation": "bluestaff",
-      "loop": false,
-      "symbolOverrides": {},
-      "skinArchives": {
-        "icestaff_bee": "dynamic/icestaff_bee.zip",
-        "icestaff_gungnir": "dynamic/icestaff_gungnir.zip",
-        "icestaff_hockey": "dynamic/icestaff_hockey.zip",
-        "icestaff_icerod": "dynamic/icestaff_icerod.zip",
-        "icestaff_lance": "dynamic/icestaff_lance.zip",
-        "icestaff_northern": "dynamic/icestaff_northern.zip",
-        "icestaff_rose": "dynamic/icestaff_rose.zip",
-        "icestaff_rw_swamp": "dynamic/icestaff_rw_swamp.zip"
-      },
-      "tags": [
-        "icestaff",
-        "weapon",
-        "rangedweapon",
-        "extinguisher",
-        "shadowlevel"
-      ]
-    },
     "horrorfuel": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/horrorfuel.lua",
       "name": "纯粹恐惧",
@@ -9876,6 +9876,54 @@
       "itemId": "heatrock",
       "name": "烈焰核心",
       "icon": "heatrock_planet3.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "icestaff_bee": {
+      "itemId": "icestaff",
+      "name": "冰蜂魔杖",
+      "icon": "icestaff_bee.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "icestaff_gungnir": {
+      "itemId": "icestaff",
+      "name": "冰冷尖刺魔杖",
+      "icon": "icestaff_gungnir.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "icestaff_hockey": {
+      "itemId": "icestaff",
+      "name": "寒冰竞技魔杖",
+      "icon": "icestaff_hockey.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "icestaff_icerod": {
+      "itemId": "icestaff",
+      "name": "冰雪魔杖",
+      "icon": "icestaff_icerod.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "icestaff_lance": {
+      "itemId": "icestaff",
+      "name": "冰冷螺旋魔杖",
+      "icon": "icestaff_lance.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "icestaff_northern": {
+      "itemId": "icestaff",
+      "name": "北欧冰杖",
+      "icon": "icestaff_northern.tex",
+      "atlas": "images/inventoryimages2.xml"
+    },
+    "icestaff_rose": {
+      "itemId": "icestaff",
+      "name": "玫瑰冰魔杖",
+      "icon": "icestaff_rose.tex",
+      "atlas": "images/inventoryimages.xml"
+    },
+    "icestaff_rw_swamp": {
+      "itemId": "icestaff",
+      "name": "倒钩冰魔杖",
+      "icon": "icestaff_rw_swamp.tex",
       "atlas": "images/inventoryimages2.xml"
     },
     "lantern_crystal": {

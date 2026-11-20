@@ -19,6 +19,8 @@ interface FxDefinition {
   readonly tags?: readonly string[];
   /** AnimState:Hide(layer) in the entry's fn. */
   readonly hideLayers?: readonly string[];
+  /** shatterfx.lua levels: the clip waits for SetLevel, which plays levels[level - 1]. */
+  readonly levels?: readonly string[];
 }
 
 /**
@@ -66,6 +68,10 @@ const FX_PREFABS = {
   mole_move_fx: { archive: 'mole_move_fx.zip', bank: 'mole_fx', anim: 'move' },
   // fx.lua dirt_puff: bank small_puff, build smoke_puff_small, clip puff, FinalOffset1 (its sound is commented out).
   dirt_puff: { archive: 'smoke_puff_small.zip', bank: 'small_puff', anim: 'puff', finalOffset: 1 },
+  // shatter.lua PlayShatterAnim: bank/build frozen_shatter, FinalOffset3, break_iceblock; shatterfx:SetLevel picks the
+  // clip (shatterlevels) and animover removes it.
+  shatter: { archive: 'frozen_shatter.zip', bank: 'frozen_shatter', anim: 'tiny', sound: 'dontstarve/common/break_iceblock',
+    finalOffset: 3, levels: ['tiny', 'small', 'medium', 'large', 'huge'] },
   // fx.lua sand_puff_large_front / _back (blinkstaff SetFX): bank/build sand_puff, clip forage_out, scale 1.5; the
   // front hides the back layer, plays deathpoof and has FinalOffset2; the back hides the front layer.
   sand_puff_large_front: { archive: 'sand_puff.zip', bank: 'sand_puff', anim: 'forage_out', sound: 'dontstarve/common/deathpoof',
@@ -102,7 +108,7 @@ export function isWorldFx(prefab: string): prefab is WorldFxPrefab { return Obje
 export interface WorldFxWorld { readonly scheduler: GameTimeScheduler }
 
 function define(prefab: string, definition: FxDefinition, world: WorldFxWorld): PrefabEntityDefinition<PrefabInstance> {
-  const { archive, bank, anim, sound, opacity = 1, scale, tint = [1, 1, 1], finalOffset, lingerFrames, tags, hideLayers } = definition;
+  const { archive, bank, anim, sound, opacity = 1, scale, tint = [1, 1, 1], finalOffset, lingerFrames, tags, hideLayers, levels } = definition;
   return {
     fn: () => {
       const inst = new PrefabInstance(prefab, new SpriteState({ name: anim, billboard: true }));
@@ -113,7 +119,7 @@ function define(prefab: string, definition: FxDefinition, world: WorldFxWorld): 
       if (scale !== undefined) inst.setScale(scale);
       if (finalOffset) inst.sprite.setDepthOffset(true);
       for (const layer of hideLayers ?? []) inst.sprite.hideLayer(layer);
-      inst.sprite.playOnce(anim, () => {
+      if (!levels) inst.sprite.playOnce(anim, () => {
         if (!lingerFrames) { inst.remove(); return; }
         inst.DoTaskInTime(lingerFrames * FRAMES, inst => inst.remove());
       });
@@ -142,11 +148,21 @@ function SetMaterial(inst: PrefabInstance, material?: CollapseMaterial): void {
 export interface WorldFx {
   spawn(prefab: WorldFxPrefab, position: ReadonlyVector3): void;
   collapse(size: 'small' | 'big', position: ReadonlyVector3, material?: CollapseMaterial): void;
+  /** SpawnPrefab("shatter") and shatterfx:SetLevel(level). */
+  shatter(position: ReadonlyVector3, level: number): void;
+}
+
+/** shatterfx.lua SetLevel: min(level, #levels) picks the clip; looping, it is removed on its first animover. */
+function SetShatterLevel(inst: PrefabInstance, level: number): void {
+  const levels = FX_PREFABS.shatter.levels;
+  const anim = levels[Math.max(1, Math.min(level, levels.length)) - 1];
+  inst.sprite.playOnce(anim, () => inst.remove());
 }
 
 export function worldFxSpawner(manager: Pick<PrefabEntityManager<string, PrefabInstance>, 'spawn'>): WorldFx {
   return {
     spawn: (prefab, position) => { manager.spawn(prefab, position); },
     collapse: (size, position, material) => SetMaterial(manager.spawn(`collapse_${size}`, position), material),
+    shatter: (position, level) => SetShatterLevel(manager.spawn('shatter', position), level),
   };
 }

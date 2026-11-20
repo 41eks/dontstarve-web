@@ -161,6 +161,8 @@ export interface ArchiveSpriteCommands {
   setFacing(facing: number): void;
   facePoint(from: THREE.Vector3, to: THREE.Vector3): void;
   setColour(colour: readonly number[]): void;
+  /** AnimState:SetAddColour's rgb. */
+  setAddColour(add: readonly number[]): void;
   setOpacity(opacity: number): void;
   /** null clears it: the model keeps no minimum light. */
   setLightOverride(value: number | null): void;
@@ -368,7 +370,14 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     else if (!appearance.delete(slot)) return;
     this.write({ appearance });
   }
-  setTint(tint: SpriteTint): void { this.write({ tint }); }
+  /** Wortox's blend tint; AnimState:SetAddColour's rgb, which setAddColour declares, is kept. */
+  setTint(tint: SpriteTint): void { const add = this.state.tint?.add; this.write({ tint: add ? { ...tint, add } : tint }); }
+  /** AnimState:SetAddColour(r, g, b, a): added to the art in proportion to its alpha; any blend tint is kept. */
+  setAddColour(add: readonly number[]): void {
+    const tint = this.state.tint ?? { colour: [0, 0, 0], amount: 0 };
+    if (tint.add?.every((value, i) => value === add[i]) ?? add.every(value => value === 0)) return;
+    this.write({ tint: { ...tint, add: [add[0], add[1], add[2]] } });
+  }
   followSymbol(symbol: string, x: number, y: number, fx?: FollowerFx): { readonly node: THREE.Object3D; remove(): void } {
     const node = this.probe?.createFollower?.();
     if (!node) throw new Error('The sprite has no display for a symbol follower');

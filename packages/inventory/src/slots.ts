@@ -33,6 +33,7 @@ const ITEM_MAX_STACKS: Readonly<Record<string, number>> = {
   greenstaff: 1,
   telestaff: 1,
   orangestaff: 1,
+  icestaff: 1,
   trident: 1, // trident.lua has no stackable component.
   reskin_tool: 1,
   bugnet: 1,
@@ -81,7 +82,7 @@ export function inventoryItemMaxStack(itemId: string): number {
 
 export function inventoryItemEquipmentKind(itemId: string): EquipmentKind | undefined {
   if (itemId === 'backpack' || itemId === 'armorsnurtleshell' || itemId === 'amulet') return 'body';
-  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'greenstaff' || itemId === 'firestaff' || itemId === 'telestaff' || itemId === 'orangestaff' || itemId === 'trident' || itemId === 'bugnet' || itemId === 'fishingrod'
+  return itemId === 'torch' || itemId === 'lantern' || itemId === 'yellowstaff' || itemId === 'opalstaff' || itemId === 'greenstaff' || itemId === 'firestaff' || itemId === 'telestaff' || itemId === 'orangestaff' || itemId === 'icestaff' || itemId === 'trident' || itemId === 'bugnet' || itemId === 'fishingrod'
     || itemId === 'hammer' || itemId === 'nightsword' || itemId === 'pickaxe' || itemId === 'goldenpickaxe'
     || itemId === 'axe' || itemId === 'goldenaxe' || itemId === 'moonglassaxe'
     || itemId === 'pitchfork' || itemId === 'goldenpitchfork' || itemId === 'reskin_tool'

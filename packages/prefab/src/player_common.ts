@@ -115,7 +115,7 @@ export interface SymbolFollower {
   remove(): void;
 }
 
-export type PlayerCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'firestaff' | 'telestaff' | 'orangestaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
+export type PlayerCarryItem = 'torch' | 'lantern' | 'yellowstaff' | 'opalstaff' | 'greenstaff' | 'firestaff' | 'telestaff' | 'orangestaff' | 'icestaff' | 'trident' | 'bugnet' | 'fishingrod' | 'hammer' | 'nightsword' | 'reskin_tool' | PickaxeTool | AxeTool | PitchforkTool | FarmHoeTool | ShovelTool;
 
 /**
  * The ANIM assets MakePlayerCharacter and global.lua (player_idles) declare for every player, plus the emotes':

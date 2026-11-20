@@ -291,6 +291,7 @@ export const ACTION_FNS = {
     validfn: act => {
       const combat = playerDoer(act).components.combat, target = act.target;
       return !!combat && !!target && !target.hasTag('stealth') && (combat.CanTarget(target)
+        || combat.CanExtinguishTarget(target, act.invobject?.components.weapon)
         || combat.CanLightTarget(target, act.invobject?.components.weapon));
     },
   },

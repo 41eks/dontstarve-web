@@ -35,7 +35,11 @@ export interface CompositeSpriteFrame {
   readonly offset?: readonly [number, number];
 }
 
-export interface SpriteTint { readonly colour: readonly number[]; readonly amount: number }
+/**
+ * `colour` / `amount` blend the art towards a colour (Wortox's portal tint); `add` is AnimState:SetAddColour's rgb, added to
+ * the art in proportion to its alpha.
+ */
+export interface SpriteTint { readonly colour: readonly number[]; readonly amount: number; readonly add?: readonly number[] }
 
 export function sameComposites(a: readonly CompositeSpriteFrame[], b: readonly CompositeSpriteFrame[]): boolean {
   return a.length === b.length && a.every((frame, i) => frame.sprites === b[i].sprites
@@ -68,13 +72,16 @@ export class SpriteMaterialDresser {
   private opacity = 1;
   private readonly tintAmount = { value: 0 };
   private readonly tintColour = { value: new THREE.Color() };
+  private readonly addColour = { value: new THREE.Color(0, 0, 0) };
   private readonly privateMaterials = new Map<THREE.MeshBasicMaterial, THREE.MeshBasicMaterial>();
   private readonly bloomMaterials = new Map<THREE.MeshBasicMaterial, Map<BuildImage, THREE.MeshBasicMaterial>>();
 
   /** Nothing dresses the source materials, so frames may be shared. */
   get plain(): boolean { return this.privateMaterials.size === 0 && this.undressed; }
   private get undressed(): boolean {
-    return this.opacity === 1 && this.tintAmount.value === 0 && this.colour.r === 1 && this.colour.g === 1 && this.colour.b === 1;
+    const add = this.addColour.value;
+    return this.opacity === 1 && this.tintAmount.value === 0 && add.r === 0 && add.g === 0 && add.b === 0
+      && this.colour.r === 1 && this.colour.g === 1 && this.colour.b === 1;
   }
 
   setColour(colour: readonly number[]): void { this.colour.setRGB(colour[0], colour[1], colour[2]); this.refresh(); }
@@ -82,6 +89,8 @@ export class SpriteMaterialDresser {
   setTint(tint: SpriteTint): void {
     this.tintAmount.value = tint.amount;
     this.tintColour.value.setRGB(tint.colour[0], tint.colour[1], tint.colour[2]);
+    const add = tint.add ?? [0, 0, 0];
+    this.addColour.value.setRGB(add[0], add[1], add[2]);
   }
 
   private refresh(): void {
@@ -106,8 +115,9 @@ export class SpriteMaterialDresser {
         previousCompile(shader, renderer);
         shader.uniforms.spriteTintAmount = this.tintAmount;
         shader.uniforms.spriteTintColour = this.tintColour;
-        shader.fragmentShader = 'uniform float spriteTintAmount;\nuniform vec3 spriteTintColour;\n' + shader.fragmentShader.replace(
-          '#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = diffuseColor.rgb * (1.0 - spriteTintAmount) + spriteTintColour * spriteTintAmount;');
+        shader.uniforms.spriteAddColour = this.addColour;
+        shader.fragmentShader = 'uniform float spriteTintAmount;\nuniform vec3 spriteTintColour;\nuniform vec3 spriteAddColour;\n' + shader.fragmentShader.replace(
+          '#include <color_fragment>', '#include <color_fragment>\ndiffuseColor.rgb = diffuseColor.rgb * (1.0 - spriteTintAmount) + spriteTintColour * spriteTintAmount + spriteAddColour * diffuseColor.a;');
       };
       material.customProgramCacheKey = () => previousKey + ':spriteTint';
       this.privateMaterials.set(source, material);

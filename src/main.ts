@@ -1,5 +1,5 @@
 // src/main.ts
-import { FIRE_PROJECTILE_ID, LaunchProjectile } from '@dontstarve-web/prefab/staff_projectile';
+import { FIRE_PROJECTILE_ID, ICE_PROJECTILE_ID, LaunchProjectile } from '@dontstarve-web/prefab/staff_projectile';
 
 import './style.css';
 import { prefabInstance } from '@dontstarve-web/prefab/prefabInstance';
@@ -138,6 +138,9 @@ inventory.entities.bindEquipmentWorld({
   fireStaffWorld: {
     launch: (owner, target, attacker) => LaunchProjectile((prefab, position) => registry.SpawnPrefab(prefab, position), FIRE_PROJECTILE_ID, owner, target, attacker),
     createFuel: () => inventory.entities.create({ itemId: 'cutgrass', count: 1 }),
+  },
+  iceStaffWorld: {
+    launch: (owner, target, attacker) => LaunchProjectile((prefab, position) => registry.SpawnPrefab(prefab, position), ICE_PROJECTILE_ID, owner, target, attacker),
   },
   // blinkstaff.lua: TheWorld.Map and SpawnPrefab of its sand puffs.
   blinkStaffWorld: {

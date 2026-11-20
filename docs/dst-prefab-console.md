@@ -207,6 +207,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `opalstaff` | 可生成 | 可入栏 | `prefabs/staff.lua:770` |
 | `greenstaff` | 可生成 | 可入栏 | `prefabs/staff.lua:770`、`:953`；配方目标施法与 5 次耐久 |
 | `orangestaff` | 可生成 | 可入栏 | `prefabs/staff.lua:976`（`orange()`）；`blinkstaff` 点地瞬移、移速 ×1.25、20 次耐久 |
+| `icestaff` | 可生成 | 可入栏 | `prefabs/staff.lua:846`（`blue_common("blue", 1)`）；冰冻投射物 `ice_projectile`、扑灭、20 次耐久 |
 | `telestaff` | 可生成 | 可入栏 | `prefabs/staff.lua:887`（`purple()`）；物品栏自施法与生物目标随机传送，5 次耐久 |
 | `trident` | 可生成 | 可入栏 | `prefabs/trident.lua`；200 次耐久，仅可对水面点施法（`spellcaster.canuseonpoint_water`），经 `SGwilson.lua` 的 `play_strum`；`c_save()` 保留耐久与皮肤 `trident_merm` |
 | `opalpreciousgem` | 可生成 | 可入栏 | `prefabs/gem.lua:74`、`:96`；`buildgem("opal", true)` |
@@ -701,3 +702,5 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 2026-11-20 补充 `orangestaff`：`prefabs/staff.lua` 的 `orange()`（`weapon` 伤害 `CANE_DAMAGE`、攻击不耗耐久，`walkspeedmult` = `CANE_SPEED_MULT`，`ORANGESTAFF_USES` = 20），可 `c_give` / `c_spawn`，`c_save()` 保留耐久。`components/blinkstaff.lua`、`componentactions.lua` POINT `blinkstaff`、`ACTIONS.BLINK` 的物品分支与 `SGwilson.lua` 的 `quicktele` 按源时序；特效为 `fx.lua` 的 `sand_puff_large_front` / `sand_puff_large_back`。
 
 2026-11-20 补充 `lightninggoat`：`prefabs/lightninggoat.lua` 的世界生物，只可 `c_spawn`，`c_save()` 保存健康值、`knownlocations` 与充电（`charged` / `chargeleft`）。被引来的落雷或 `electrocute` 使其充电三天；见 [伏特羊](dst-lightninggoat.md)。
+
+2026-11-20 补充 `icestaff`：`prefabs/staff.lua` 的 `blue_common("blue", 1)`（tags `icestaff`、`weapon`、`rangedweapon`、`extinguisher`、`shadowlevel`，`weapon` 伤害 0、`SetRange(8, 10)`、`SetOnAttack(onattack_blue)`、`SetProjectile("ice_projectile")`，`ICESTAFF_USES` = 20），可 `c_give` / `c_spawn`，`c_save()` 保留耐久与皮肤。`componentactions.lua` EQUIPPED `weapon` 的扑灭（`CanExtinguishTarget`，左右键）与左键攻击战斗目标分支随之移植，`ACTIONS.ATTACK.strfn` 的 `RANGEDSMOTHER`（"扑灭"）同步。冰冻按 `components/freezable.lua` 完整移植（寒冷值衰减、`FREEZE_COLOUR` 加色、`damagetobreak`、额外抗性与其存档、碎冰 `shatter`），`beehive` 的 `OnFreeze`／`OnThaw`／`OnUnFreeze` 与 `SGlightflier` 的 `AddFrozenStates` 显示 `frozen`／`frozen_loop_pst` 和 `swap_frozen`。`icestaff2`、`icestaff3` 未移植。

@@ -64,7 +64,7 @@ it('loads saved hives with the clip, tags, bank and component values beehive.lua
     expect([appearance.get('archive-symbol:snow'), appearance.get('layer:snow')]).toEqual([
       { kind: 'archive-symbol', symbol: 'snow', archive: 'snow.zip', sourceSymbol: 'snow' }, { kind: 'layer', layer: 'snow', hidden: true }]);
     expect(definitions.beehive).toMatchObject({
-      assets: { animationArchive: 'beehive.zip', buildArchives: ['beehive.zip', 'snow.zip'], bank: 'beehive' },
+      assets: { animationArchive: 'beehive.zip', buildArchives: ['beehive.zip', 'snow.zip', 'frozen.zip'], bank: 'beehive' },
       physics: { radius: .5 }, minimapIcon: 'beehive.png',
     });
     expect(Object.keys(bees.components)).toEqual(['health', 'childspawner', 'worldsettingstimer', 'lootdropper', 'burnable',

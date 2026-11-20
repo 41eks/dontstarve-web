@@ -18,7 +18,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 function setup() {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createInventoryStore([{ slot_index: 0, id: 'firestaff', num: 1 }]), scene = new THREE.Scene();
-  const fx = { spawn: vi.fn() };
+  const fx = { spawn: vi.fn(), shatter: vi.fn() };
   const componentUpdates = new ComponentUpdates(), displays = new PrefabDisplayGroup(scene);
   const projectiles = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {}, staffProjectilePrefabs({ fx, componentUpdates }));
   const staff = inventory.getEntity(inventorySlotAddress(0))!;

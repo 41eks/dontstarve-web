@@ -7,7 +7,7 @@ export const ACTIONS = {
   BLINK: { priority: 10, rmb: true, distance: 36, strings: { GENERIC: '传送', SOUL: '灵魂跳跃', FREESOUL: '灵魂回声' } },
   BLINK_MAP: { priority: 10, rmb: true, map_action: true, arrive_anywhere: true, strings: { GENERIC: '灵魂跳跃' } },
   NET: { priority: 3, strings: { GENERIC: '捕捉' } },
-  ATTACK: { priority: 2, strings: { GENERIC: '攻击', RANGEDLIGHT: '点燃' } },
+  ATTACK: { priority: 2, strings: { GENERIC: '攻击', RANGEDSMOTHER: '扑灭', RANGEDLIGHT: '点燃' } },
   HAMMER: { priority: 3, strings: { GENERIC: '敲' } },
   MINE: { priority: 0, strings: { GENERIC: '开采' } },
   CHOP: { priority: 0, distance: 1.75, strings: { GENERIC: '砍' } },
@@ -124,9 +124,10 @@ function strfn(act: ActionDescription): string | undefined {
       return !act.invobject && doer?.hasTag('soulstealer') ? ((doer._freesoulhop_counter ?? 0) > 0 ? 'FREESOUL' : 'SOUL') : undefined;
     }
     case 'ATTACK': {
-      // The invobject is the weapon; PROP, RANGEDSMOTHER and WHACK are not ported.
+      // The invobject is the weapon; PROP and WHACK are not ported.
       const combat = act.doer?.components?.combat, weapon = act.invobject?.components.weapon;
-      return target && act.invobject && combat?.CanLightTarget(target, weapon) ? 'RANGEDLIGHT' : undefined;
+      if (!target || !act.invobject || !combat) return undefined;
+      return combat.CanExtinguishTarget(target, weapon) ? 'RANGEDSMOTHER' : combat.CanLightTarget(target, weapon) ? 'RANGEDLIGHT' : undefined;
     }
     case 'REEL': {
       const rod = act.invobject?.components.fishingrod;

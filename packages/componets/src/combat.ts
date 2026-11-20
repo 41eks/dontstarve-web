@@ -50,6 +50,12 @@ export class Combat {
 
   target?: CombatInst;
   DropTarget(): void { this.target = undefined; }
+  /** combat.lua SuggestTarget: take the target when there is none; cansuggesttargetfn and SetTarget's events are not ported. */
+  SuggestTarget(target: CombatInst | undefined): boolean {
+    if (this.target !== undefined || target === undefined) return false;
+    this.target = target;
+    return true;
+  }
 
   SetDefaultDamage(damage: number): void { this.defaultdamage = damage; }
   SetAttackPeriod(period: number): void { this.min_attack_period = period; }
@@ -83,6 +89,13 @@ export class Combat {
 
   CanBeAttacked(): boolean { return !this.inst.isRemoved && !(this.inst.components.health?.IsDead() ?? false); }
 
+  /** combat.lua CanExtinguishTarget: a smouldering or burning burnable, and an extinguisher weapon or attacker. */
+  CanExtinguishTarget(target: CombatInst, weapon = this.getWeapon()): boolean {
+    const burnable = (target.components as { burnable?: { IsSmoldering(): boolean; IsBurning(): boolean } }).burnable;
+    return !!burnable && (burnable.IsSmoldering() || burnable.IsBurning())
+      && (!!weapon?.hasTag('extinguisher') || this.inst.hasTag('extinguisher'));
+  }
+
   /** combat.lua CanLightTarget: a rangedlighter weapon and a burnable that can light and is not already alight. */
   CanLightTarget(target: CombatInst, weapon = this.getWeapon()): boolean {
     const burnable = (target.components as { burnable?: { canlight: boolean; IsBurning(): boolean } }).burnable;
@@ -91,7 +104,7 @@ export class Combat {
 
   CanHitTarget(target: CombatInst, weapon = this.getWeapon()): boolean {
     if (this.inst.isRemoved || target.isRemoved || target.hasTag('INLIMBO')) return false;
-    if (!this.CanLightTarget(target, weapon) && !target.components.combat?.CanBeAttacked()) return false;
+    if (!this.CanLightTarget(target, weapon) && !this.CanExtinguishTarget(target, weapon) && !target.components.combat?.CanBeAttacked()) return false;
     if (this.ignorehitrange) return true;
     return distanceSq(this.inst.getPosition(), target.getPosition()) <= this.CalcHitRangeSq(target);
   }

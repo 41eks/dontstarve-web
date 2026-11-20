@@ -147,6 +147,11 @@ export class Burnable {
     this.smolderRemaining.set(undefined);
     this.inst.removeTag('smolder');
   }
+  /**
+   * burnable.lua SmotherSmolder(smotherer): StopSmoldering. The smotherer's cost (finiteuses, stack or fire damage) and
+   * StopSmoldering's heatpct for the propagator are not ported.
+   */
+  SmotherSmolder(): void { this.StopSmoldering(); }
   Extinguish(): void {
     this.StopSmoldering();
     if (!this.IsBurning()) return;

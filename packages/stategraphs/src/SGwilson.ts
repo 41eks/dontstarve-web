@@ -56,6 +56,12 @@ export type WilsonAnimationKey = 'dial_loop' | 'wortox_portal' | WilsonMovementS
   /** player_amulet_resurrect.zip: amulet_rebirth's clip. */
   | 'amulet_rebirth';
 
+/**
+ * SGwilson.lua GetIceStaffProjectileSound. Its icestaff_coldness > 1 branches (attack_deepfreezestaff and _lvl2) belong
+ * to icestaff2 and icestaff3, which are not ported.
+ */
+function GetIceStaffProjectileSound(): SoundEventPath { return 'dontstarve/wilson/attack_icestaff'; }
+
 /** SGwilson.lua portal_rez colourtweener duration. */
 const PORTAL_REZ_TWEEN_TIME = 14 * FRAMES;
 
@@ -1202,12 +1208,12 @@ const states: WilsonState[] = [
           // Projectiles stay hidden for their first frames, so the swing starts early to keep the animation in sync.
           inst.statemem.projectiledelay = 8 * FRAMES - projectiledelay;
           if (inst.statemem.projectiledelay > FRAMES) {
-            inst.statemem.projectilesound = equip.hasTag('firestaff') ? 'dontstarve/wilson/attack_firestaff' : 'dontstarve/wilson/attack_weapon';
+            inst.statemem.projectilesound = equip.hasTag('icestaff') ? GetIceStaffProjectileSound() : equip.hasTag('firestaff') ? 'dontstarve/wilson/attack_firestaff' : 'dontstarve/wilson/attack_weapon';
           } else if (inst.statemem.projectiledelay <= 0) inst.statemem.projectiledelay = undefined;
         }
         if (inst.statemem.projectilesound === undefined) {
           inst.context.entity.SoundEmitter.PlaySound(equip.hasTag('shadow') ? 'dontstarve/wilson/attack_nightsword'
-            : equip.hasTag('firestaff') ? 'dontstarve/wilson/attack_firestaff' : 'dontstarve/wilson/attack_weapon');
+            : equip.hasTag('icestaff') ? GetIceStaffProjectileSound() : equip.hasTag('firestaff') ? 'dontstarve/wilson/attack_firestaff' : 'dontstarve/wilson/attack_weapon');
         }
         cooldown = Math.max(cooldown, 13 * FRAMES);
       } else if (equip?.hasTag('light') || equip?.hasTag('nopunch')) {

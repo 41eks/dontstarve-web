@@ -27,7 +27,7 @@ export const TRADABLE_GOLD_VALUES: Readonly<Record<string, number>> = {
   log: 0, moonbutterflywings: 0, moonrocknugget: 0, moonglass: 0, nitre: 0, record: 0, rope: 0, silk: 0, spidergland: 0,
   thulecite: 0, thulecite_pieces: 0, twigs: 0,
   // staff.lua's common fn adds tradable to every staff.
-  yellowstaff: 0, opalstaff: 0, greenstaff: 0, firestaff: 0, telestaff: 0, orangestaff: 0,
+  yellowstaff: 0, opalstaff: 0, greenstaff: 0, firestaff: 0, telestaff: 0, orangestaff: 0, icestaff: 0,
 };
 
 export function hasTradableGoldValue(itemId: string): boolean {

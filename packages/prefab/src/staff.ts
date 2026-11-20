@@ -14,7 +14,7 @@ import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type Equ
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound, type SoundEventPath } from './sound';
 import { WORLD_SCALE } from './standardcomponents';
-import { FIRE_PROJECTILE_ID } from './staff_projectile';
+import { FIRE_PROJECTILE_ID, ICE_PROJECTILE_ID } from './staff_projectile';
 import { PrefabInstance } from './prefabInstance';
 import { Weapon } from '../../componets/src/weapon';
 import { BlinkStaff, type BlinkCaster, type BlinkStaffWorld } from '../../componets/src/blinkstaff';
@@ -26,8 +26,8 @@ export const YELLOWSTAFF_ID = 'yellowstaff';
 export const YELLOWSTAFF_COLOUR = [223 / 255, 208 / 255, 69 / 255] as const;
 export const OPALSTAFF_ID = 'opalstaff';
 export const OPALSTAFF_COLOUR = [64 / 255, 64 / 255, 208 / 255] as const;
-export type StaffId = LightStaffId | 'greenstaff' | 'firestaff' | 'telestaff' | 'orangestaff';
-export function isStaff(itemId: string | null | undefined): itemId is StaffId { return isLightStaff(itemId) || itemId === 'greenstaff' || itemId === 'firestaff' || itemId === 'telestaff' || itemId === 'orangestaff'; }
+export type StaffId = LightStaffId | 'greenstaff' | 'firestaff' | 'telestaff' | 'orangestaff' | 'icestaff';
+export function isStaff(itemId: string | null | undefined): itemId is StaffId { return isLightStaff(itemId) || itemId === 'greenstaff' || itemId === 'firestaff' || itemId === 'telestaff' || itemId === 'orangestaff' || itemId === 'icestaff'; }
 export type LightStaffId = typeof YELLOWSTAFF_ID | typeof OPALSTAFF_ID;
 export const LIGHT_STAFF_USES = { yellowstaff: 20, opalstaff: 50 } as const;
 export const LIGHT_STAFF_SANITY_COST = 20;
@@ -84,7 +84,7 @@ export function isLightStaff(itemId: string | null | undefined): itemId is Light
 export const YELLOWSTAFF_CAST_TIME = WILSON_ACTION_TIMES.cast;
 /** staff.lua commonfn's anim, colour.."staff": the red staff's prefab id is firestaff and the purple one's telestaff. */
 const STAFF_ANIMS: Readonly<Record<StaffId, string>> = {
-  yellowstaff: 'yellowstaff', opalstaff: 'opalstaff', greenstaff: 'greenstaff', firestaff: 'redstaff', telestaff: 'purplestaff', orangestaff: 'orangestaff',
+  yellowstaff: 'yellowstaff', opalstaff: 'opalstaff', greenstaff: 'greenstaff', firestaff: 'redstaff', telestaff: 'purplestaff', orangestaff: 'orangestaff', icestaff: 'bluestaff',
 };
 /** staff.lua onequip: `swap_<anim>` of swap_staffs, or the skin's. */
 export function staffVisual(item: EquipmentVisualItem & { readonly prefab: StaffId }) {
@@ -511,3 +511,79 @@ export function orangeStaffLifecycle(inst: ItemEntity, world: BlinkStaffWorld): 
 
 /** swap_staffs symbol `swap_orangestaff`, or the skin build's. */
 export const orangeStaffVisual: EquipmentVisualFactory = item => staffVisual({ ...item, prefab: ORANGESTAFF_ID });
+
+// staff.lua blue_common("blue", 1), registered as icestaff
+
+export const ICESTAFF_ID = 'icestaff' as const;
+/** tuning.lua ICESTAFF_USES. */
+export const ICESTAFF_USES = 20;
+/** staff.lua blue_common's tags; shadowlevel comes from commonfn. */
+export const ICESTAFF_TAGS = ['icestaff', 'rangedweapon', 'extinguisher', 'shadowlevel'] as const;
+
+export interface IceStaffWorld {
+  /** SpawnPrefab("ice_projectile") at the attacker, thrown at the target. */
+  launch(owner: ItemEntity, target: ProjectileTarget, attacker: CombatActor): Projectile;
+}
+
+/** What onattack_blue reads from a target. */
+export interface IceStaffTarget extends CombatInst {
+  readonly components: CombatInst['components'] & {
+    burnable?: Pick<Burnable, 'IsBurning' | 'IsSmoldering' | 'Extinguish' | 'SmotherSmolder'>;
+    freezable?: { AddColdness(coldness: number): void; SpawnShatterFX(): void };
+    sleeper?: { IsAsleep(): boolean; WakeUp(): void };
+  };
+  readonly isRemoved?: boolean;
+  readonly sg?: { hasStateTag(tag: string): boolean };
+  PushEvent?(name: string, data: unknown): void;
+}
+
+/** onattack_blue(inst, attacker, target, skipsanity). The skin's skin_sound is not ported. */
+function onattack_blue(inst: ItemEntity, attacker: FireStaffAttacker | undefined, target: IceStaffTarget, skipsanity = false): void {
+  if (!skipsanity && attacker) {
+    if (attacker.components.staffsanity) attacker.components.staffsanity.doCastingDelta(-SANITY_SUPERTINY);
+    else attacker.components.sanity?.DoDelta(-SANITY_SUPERTINY);
+  }
+  if (target.isRemoved) return; // target killed or removed in combat damage phase
+  const { sleeper, burnable, combat } = target.components;
+  if (sleeper?.IsAsleep()) sleeper.WakeUp();
+  if (burnable) {
+    if (burnable.IsBurning()) burnable.Extinguish();
+    else if (burnable.IsSmoldering()) burnable.SmotherSmolder();
+  }
+  // The attacker is the player inst, a combat entity itself.
+  combat?.SuggestTarget(attacker as CombatInst | undefined);
+  if (target.sg && !target.sg.hasStateTag('frozen')) target.PushEvent?.('attacked', { attacker, damage: 0, weapon: inst });
+  // valid check in case any of the previous callbacks or events removed the target
+  const freezable = target.components.freezable;
+  if (freezable && !target.isRemoved) {
+    freezable.AddColdness(inst.icestaff_coldness ?? 1);
+    freezable.SpawnShatterFX();
+  }
+}
+
+/**
+ * staff.lua blue_common's fn, the parts every inst has: projectiledelay and icestaff_coldness. Its weapon (damage 0) is
+ * the hand definition's; the range, onattack and projectile need the world and are set by iceStaffLifecycle.
+ */
+export function configureIceStaffEntity(inst: ItemEntity): void {
+  inst.projectiledelay = PROJECTILE_DELAY;
+  inst.icestaff_coldness = 1;
+}
+
+/** weapon:SetRange(8, 10), SetOnAttack(onattack_blue) and SetProjectile("ice_projectile"), bound to TheWorld's spawn. */
+export function iceStaffLifecycle(inst: ItemEntity, world: IceStaffWorld): HeldEquipFunctions {
+  const weapon = inst.components.weapon;
+  if (weapon && !weapon.CanRangedAttack()) {
+    weapon.SetRange(ATTACK_RANGE, HIT_RANGE);
+    weapon.SetOnAttack((_, attacker, target) => onattack_blue(inst, attacker as FireStaffAttacker | undefined, target as IceStaffTarget));
+    weapon.SetProjectile(ICE_PROJECTILE_ID, (attacker, target) => {
+      const projectile = world.launch(inst, target, attacker);
+      projectile.DelayVisibility(inst.projectiledelay ?? 0);
+      return projectile;
+    });
+  }
+  return { onequip() {}, onunequip() {} };
+}
+
+/** swap_staffs symbol `swap_bluestaff`, or the skin build's. */
+export const iceStaffVisual: EquipmentVisualFactory = item => staffVisual({ ...item, prefab: ICESTAFF_ID });

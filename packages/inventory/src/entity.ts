@@ -272,6 +272,8 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   _cached_reskinname?: Map<string, string | undefined>;
   castsound?: import('../../prefab/src/sound').SoundEventPath;
   projectiledelay?: number;
+  /** staff.lua blue_common: inst.icestaff_coldness, the coldness each hit adds. */
+  icestaff_coldness?: number;
   fxcolour?: readonly [number, number, number];
   /** books.lua inst.def, inst.swap_build and inst.swap_prefix, read by SGwilson's book state. */
   def?: import('../../stategraphs/src/bufferedaction').BookDef;

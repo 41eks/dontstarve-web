@@ -150,9 +150,14 @@ it('freezes and thaws through scheduler tasks, and returns an offscreen child ho
   try {
     const home = s.spawn(new THREE.Vector3());
     home.components.pickable.Pick(); const fly = [...s.habitat.flies][0]; await task();
+    const swapFrozen = () => fly.sprite.sprite.peek().appearance.get('archive-symbol:swap_frozen');
     fly.components.freezable!.AddColdness(1, 1); expect(fly.stategraph.stateName).toBe('frozen');
+    // commonstates' frozen states: swap_frozen from frozen.zip while frozen or thawing, cleared on unfreeze.
+    expect(swapFrozen()).toMatchObject({ archive: 'frozen.zip', sourceSymbol: 'frozen' });
     s.scheduler.advance(1); expect(fly.components.freezable!.IsThawing()).toBe(true); expect(fly.stategraph.stateName).toBe('thaw');
+    expect(swapFrozen()).toMatchObject({ archive: 'frozen.zip' });
     s.scheduler.advance(10); expect(fly.components.freezable!.IsFrozen()).toBe(false); expect(fly.stategraph.stateName).toBe('hit');
+    expect(swapFrozen()).toMatchObject({ archive: undefined });
     s.awake.set(false); await task(); expect(fly.active.peek()).toBe(false);
     s.scheduler.advance(11); // No visual/update() call; entity sleep's daytime callback owns the commit.
     expect(fly.isRemoved).toBe(true); expect(home.components.pickable.canBePicked).toBe(true);

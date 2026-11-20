@@ -23,7 +23,7 @@ import { configureReskinToolEntity, createReskinToolLifecycle, reskinToolVisual 
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
 import { configureTorchEntity, createTorchHandLifecycle, onattack as torchOnAttack, torchVisual } from './torch';
 import { getTridentController, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
-import { configureOrangeStaffEntity, orangeStaffLifecycle, orangeStaffVisual, ORANGESTAFF_USES, CANE_SPEED_MULT, configureTeleStaffEntity, FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController, getGreenStaffController, getLightStaffController, GREENSTAFF_USES, TELESTAFF_USES, teleStaffVisual, yellowstaffVisual, type FireStaffWorld, type GreenStaffWorld, type LightStaffWorld, type TeleStaffWorld } from './staff';
+import { configureIceStaffEntity, iceStaffLifecycle, iceStaffVisual, ICESTAFF_TAGS, ICESTAFF_USES, type IceStaffWorld, configureOrangeStaffEntity, orangeStaffLifecycle, orangeStaffVisual, ORANGESTAFF_USES, CANE_SPEED_MULT, configureTeleStaffEntity, FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController, getGreenStaffController, getLightStaffController, GREENSTAFF_USES, TELESTAFF_USES, teleStaffVisual, yellowstaffVisual, type FireStaffWorld, type GreenStaffWorld, type LightStaffWorld, type TeleStaffWorld } from './staff';
 
 /** Golden tools' saved uses move in 1 / GOLDENTOOLFACTOR steps. */
 const GOLDEN_USE_STEP = 1 / GOLDENTOOLFACTOR;
@@ -33,6 +33,8 @@ export interface HandEquipmentWorld {
   lightStaffWorld?: LightStaffWorld;
   greenStaffWorld?: GreenStaffWorld;
   fireStaffWorld?: FireStaffWorld;
+  /** SpawnPrefab("ice_projectile") for the ice staff's weapon. */
+  iceStaffWorld?: IceStaffWorld;
   /** TheWorld's map and fx for blinkstaff.lua. */
   blinkStaffWorld?: import('../../componets/src/blinkstaff').BlinkStaffWorld;
   /** TheWorld as staff.lua's teleport reads it, at the cast. */
@@ -86,6 +88,9 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
     createLifecycle: (entity, context) => context.fireStaffWorld ? getFireStaffController(entity, context.fireStaffWorld) : undefined },
   // staff.lua purple(): its spellcaster is configured at spawn, as casting from the inventory needs it unequipped too.
   telestaff: { visual: teleStaffVisual, tags: ['nopunch'], maxUses: TELESTAFF_USES, configureEntity: configureTeleStaffEntity },
+  // staff.lua blue_common("blue", 1): weapon damage 0, ICESTAFF_USES, a projectile that adds coldness.
+  icestaff: { visual: iceStaffVisual, maxUses: ICESTAFF_USES, tags: ICESTAFF_TAGS, weapon: { damage: 0 }, configureEntity: configureIceStaffEntity,
+    createLifecycle: (entity, context) => context.iceStaffWorld ? iceStaffLifecycle(entity, context.iceStaffWorld) : undefined },
   // staff.lua orange(): a cane (CANE_DAMAGE, CANE_SPEED_MULT) that blinks to the point it is cast at.
   orangestaff: { visual: orangeStaffVisual, maxUses: ORANGESTAFF_USES, walkspeedmult: CANE_SPEED_MULT, configureEntity: configureOrangeStaffEntity,
     createLifecycle: (entity, context) => context.blinkStaffWorld ? orangeStaffLifecycle(entity, context.blinkStaffWorld) : undefined },

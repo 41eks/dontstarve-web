@@ -31,7 +31,7 @@ import type { BrainEntity, BrainWorld } from '../../brains/src/types';
 import type { ItemPrefabWorld } from './groundPrefab';
 import { bindItemWorld, dropStackIndividually, type ItemPrefabDefinition } from './groundItems';
 import type { LightFlierFlowerInstance } from './lightflier_flower';
-import { WORLD_SCALE, MakeGhostPhysics } from './standardcomponents';
+import { WORLD_SCALE, MakeGhostPhysics, MakeSmallFreezableCharacter } from './standardcomponents';
 
 export const LIGHTFLIER_ID = 'lightflier';
 export const LIGHTFLIER_PERISH_TIME = 2 * 480;
@@ -59,6 +59,8 @@ export interface LightFlierServices {
   dropLoot(prefab: string, count: number, position: Vector3): void;
   /** FindEntity(inst, MAX_WANDER_DIST, nil, { "lightflier_home" }): the live lightflier_flower entities. */
   getHomes(): Iterable<LightFlierFlowerInstance>;
+  /** SpawnPrefab("shatter") for MakeSmallFreezableCharacter's shatter fx. */
+  fx?: Pick<import('./world_fx').WorldFx, 'shatter'>;
 }
 type Leader = FormationLeader<LightFlierPlayer, LightFlier>;
 
@@ -298,6 +300,8 @@ function stateContext(inst: LightFlier): LightFlierStateInst {
     enableBuzz: enabled => EnableBuzz(inst, enabled),
     land: landed => { if (landed) inst.removeTag('flying'); else inst.addTag('flying'); },
     get SoundEmitter() { return inst.SoundEmitter!; },
+    overrideFrozen: frozen => inst.sprite.setSymbolOverride('swap_frozen', frozen ? 'frozen.zip' : undefined, frozen ? 'frozen' : undefined),
+    get freezable() { return inst.components.freezable; },
     dropDeathLoot: () => DropDeathLoot(inst),
   };
 }
@@ -335,7 +339,7 @@ function BindLightFlierWorld(inst: LightFlier, habitat: LightFlierHabitat, lengt
   inst.SetBrain(fly => new LightFlierBrain(fly, WORLD_SCALE));
   inst.targetSearchEnabled = true;
   inst.erosion = new ErodeAway(scheduler, amount => { inst.erosionAmount = amount; }, () => inst.remove());
-  addComponent(inst, 'freezable', Freezable, scheduler);
+  MakeSmallFreezableCharacter(inst, { scheduler, fx: services.fx }, 'lightbulb');
   const burnable = addComponent(inst, 'burnable', Burnable, scheduler);
   burnable.canlight = false; burnable.SetBurnTime(6 * 4 / 3);
   addComponent(inst, 'propagator', Propagator, 'small', () => [], WORLD_SCALE, scheduler, services.getWatchWorldContent).acceptsheat = false;
@@ -491,7 +495,8 @@ export function lightflierPrefabs(world: ItemPrefabWorld): Record<string, ItemPr
         bindItemWorld(inst, world);
         return inst;
       },
-      assets: { animationArchive: 'lightflier.zip', buildArchives: ['lightflier.zip'], bank: 'lightflier' },
+      // The frozen states' swap_frozen symbol comes from frozen.zip.
+      assets: { animationArchive: 'lightflier.zip', buildArchives: ['lightflier.zip', 'frozen.zip'], bank: 'lightflier' },
       onSpawned: inst => {
         if (!(inst instanceof LightFlier)) return;
         MakeLightFlier(inst);

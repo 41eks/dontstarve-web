@@ -4,7 +4,7 @@ import type { ArchiveSpriteCommands, SpriteState } from '@dontstarve-web/display
 import { bankAnimationTiming } from './animationTimings';
 
 /** The sprite commands AnimState playback is written with. */
-export type AnimStateSprite = Pick<ArchiveSpriteCommands, 'start' | 'playOnce' | 'pushAnimation' | 'setColour'>
+export type AnimStateSprite = Pick<ArchiveSpriteCommands, 'start' | 'playOnce' | 'pushAnimation' | 'setColour' | 'setAddColour'>
   /** A factory sprite's state also takes a named bank and build and a playback rate. */
   & Partial<Pick<SpriteState, 'setArtSource' | 'setPlaybackRate'>>;
 
@@ -72,4 +72,6 @@ export class InstanceAnimState extends AnimState {
 
   /** AnimState:SetMultColour(r, g, b, a): the entity's own multiplied colour; the source's callers keep alpha 1. */
   SetMultColour(r: number, g: number, b: number, _a = 1): void { this.sprite.setColour([r, g, b]); }
+  /** AnimState:SetAddColour(r, g, b, a): the entity's added colour; the source's freeze tint keeps alpha 0. */
+  SetAddColour(r: number, g: number, b: number, _a = 0): void { this.sprite.setAddColour([r, g, b]); }
 }

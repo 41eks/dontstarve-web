@@ -19,7 +19,21 @@ export interface LightFlierStateInst {
   enableBuzz(enabled: boolean): void;
   land(landed: boolean): void;
   readonly SoundEmitter: Pick<SoundEmitter, 'PlaySound' | 'KillSound'>;
+  /** AnimState:OverrideSymbol("swap_frozen", "frozen", "frozen") / ClearOverrideSymbol("swap_frozen"). */
+  overrideFrozen(frozen: boolean): void;
+  /** inst.components.freezable: IsFrozen / IsThawing, undefined without the component. */
+  readonly freezable?: { IsFrozen(): boolean; IsThawing(): boolean };
   dropDeathLoot(): void;
+}
+/** SGlightflier.lua Land / Liftoff: the buzz and LandFlyingCreature / RaiseFlyingCreature. */
+function Land(inst: LightFlierStateInst): void { inst.enableBuzz(false); inst.land(true); }
+function Liftoff(inst: LightFlierStateInst): void { inst.enableBuzz(true); inst.land(false); }
+type SG = StateGraphInstance<LightFlierStateInst, LightFlierState>;
+/** commonstates.lua onunfreeze: the hit state, which SGlightflier has. */
+function onunfreeze(sg: SG): void { sg.goToState('hit'); }
+function onthaw(sg: SG): void {
+  sg.statemem.thawing = true;
+  sg.goToState('thaw');
 }
 const over = (next: LightFlierState, queue = false) => [EventHandler<LightFlierStateInst, LightFlierState>(queue ? 'animqueueover' : 'animover', sg => sg.goToState(next))];
 const states: StateDefinition<LightFlierStateInst, LightFlierState>[] = [
@@ -47,10 +61,41 @@ const states: StateDefinition<LightFlierStateInst, LightFlierState>[] = [
     events: [EventHandler('animover', sg => sg.goToState(sg.context.isSleeping() ? 'sleeping' : 'wake'))],
     onexit: sg => { sg.context.enableBuzz(true); sg.context.land(false); } },
   { name: 'wake', tags: ['busy', 'waking', 'nosleep'], onenter: sg => { sg.context.stopPhysics(); sg.context.playAnimation('sleep_pst'); sg.context.wakeUp(); }, events: over('idle') },
-  { name: 'frozen', tags: ['busy', 'frozen'], onenter: sg => { sg.context.locomotor.StopMoving(); sg.context.playAnimation('frozen', true); sg.context.land(true); sg.context.enableBuzz(false); },
-    onexit: sg => { sg.context.land(false); sg.context.enableBuzz(true); } },
-  { name: 'thaw', tags: ['busy', 'thawing'], onenter: sg => { sg.context.playAnimation('frozen_loop_pst', true); sg.context.land(true); sg.context.enableBuzz(false); },
-    onexit: sg => { sg.context.land(false); sg.context.enableBuzz(true); } },
+  // commonstates.lua AddFrozenStates(states, Land, Liftoff).
+  { name: 'frozen', tags: ['busy', 'frozen'],
+    onenter: sg => {
+      // onenterfrozenpre
+      sg.context.locomotor.StopMoving();
+      sg.context.playAnimation('frozen', true);
+      sg.context.SoundEmitter.PlaySound('dontstarve/common/freezecreature');
+      sg.context.overrideFrozen(true);
+      Land(sg.context);
+      // onenterfrozenpst: freezable and the stategraph must match.
+      const freezable = sg.context.freezable;
+      if (!freezable) onunfreeze(sg);
+      else if (freezable.IsThawing()) onthaw(sg);
+      else if (!freezable.IsFrozen()) onunfreeze(sg);
+    },
+    events: [EventHandler('unfreeze', onunfreeze), EventHandler('onthaw', onthaw)],
+    onexit: sg => {
+      if (!sg.statemem.thawing) sg.context.overrideFrozen(false);
+      Liftoff(sg.context);
+    } },
+  { name: 'thaw', tags: ['busy', 'thawing'],
+    onenter: sg => {
+      sg.context.locomotor.StopMoving();
+      sg.context.playAnimation('frozen_loop_pst', true);
+      sg.context.SoundEmitter.PlaySound('dontstarve/common/freezethaw', 'thawing');
+      sg.context.overrideFrozen(true);
+      Land(sg.context);
+      if (!sg.context.freezable?.IsFrozen()) onunfreeze(sg);
+    },
+    events: [EventHandler('unfreeze', onunfreeze)],
+    onexit: sg => {
+      sg.context.SoundEmitter.KillSound('thawing');
+      sg.context.overrideFrozen(false);
+      Liftoff(sg.context);
+    } },
   { name: 'electrocute', tags: ['busy', 'electrocute'], onenter: sg => { sg.context.locomotor.StopMoving(); sg.context.playAnimation('shock'); }, events: over('idle') },
 ];
 
@@ -70,9 +115,8 @@ export class LightFlierStateGraph {
     this.sg.listenForEvent('death', () => this.goToState('death'));
     this.sg.listenForEvent('gotosleep', () => { if (!inst.isDead() && !this.hasStateTag('nosleep')) this.goToState('sleep'); });
     this.sg.listenForEvent('onwakeup', () => { if (this.hasStateTag('sleeping') && !this.hasStateTag('nowake')) this.goToState('wake'); });
-    this.sg.listenForEvent('freeze', () => this.goToState('frozen'));
-    this.sg.listenForEvent('onthaw', () => this.goToState('thaw'));
-    this.sg.listenForEvent('unfreeze', () => this.goToState('hit'));
+    // CommonHandlers.OnFreeze(); onthaw and unfreeze are the frozen states' own events.
+    this.sg.listenForEvent('freeze', () => { if (!inst.isDead()) this.goToState('frozen'); });
     this.sg.listenForEvent('electrocute', () => { if (!inst.isDead()) this.goToState('electrocute'); });
     this.goToState('idle');
   }

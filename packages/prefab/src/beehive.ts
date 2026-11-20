@@ -15,12 +15,15 @@ import { Propagator, PROPAGATOR_CANT_TAGS } from '../../componets/src/propagator
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { type EntityPersistData, structureHealth } from './saveRecord';
-import { MakeObstaclePhysics, MakeSnowCovered, MakeSnowCoveredPristine } from './standardcomponents';
+import { MakeMediumFreezableCharacter, MakeObstaclePhysics, MakeSnowCovered, MakeSnowCoveredPristine } from './standardcomponents';
 import { TILE_SIZE } from './tile';
 
 export const BEEHIVE_ID = 'beehive' as const;
-/** beehive.lua assets: one archive holds the beehive bank and build; MakeSnowCovered's symbol comes from snow.zip. */
-export const BEEHIVE_ARCHIVES = ['beehive.zip', 'snow.zip'];
+/**
+ * beehive.lua assets: one archive holds the beehive bank and build; MakeSnowCovered's symbol comes from snow.zip and
+ * OnFreeze's swap_frozen from frozen.zip.
+ */
+export const BEEHIVE_ARCHIVES = ['beehive.zip', 'snow.zip', 'frozen.zip'];
 /** tuning.lua: seg_time 30, day_time 240. */
 const BEEHIVE_BEES = 5;
 const BEEHIVE_EMERGENCY_BEES = 8;
@@ -41,6 +44,8 @@ const UNIT = TILE_SIZE / 4;
 export interface HiveWorld {
   scheduler: GameTimeScheduler;
   getWatchWorldContent?: GetWatchWorldContent;
+  /** SpawnPrefab("shatter") for the beehive's MakeMediumFreezableCharacter shatter fx. */
+  fx?: Pick<import('./world_fx').WorldFx, 'shatter'>;
 }
 
 type HiveChildSpawner<Inst> = ChildSpawner<Inst, ChildSpawnerChild<Inst>>;
@@ -81,17 +86,39 @@ function SeasonalSpawnChanges(inst: BeehiveInstance, season: WorldSeason | undef
 }
 
 /**
- * beehive.lua fn, for loading, drawing and saving. Not ported: the SoundEmitter and OnEntitySleep / OnEntityWake's
- * loop, the season watch (WatchWorldState("season", SeasonalSpawnChanges): fn's own call applies the season the hive
+ * beehive.lua fn, for loading, drawing and saving, with the freezable's shatter fx and freeze listeners. Not ported:
+ * OnEntitySleep / OnEntityWake's loop sound, the season watch (WatchWorldState("season", SeasonalSpawnChanges): fn's own call applies the season the hive
  * spawns in), OnInit's isday watch with StartSpawning / StopSpawning, so no bee leaves the hive, OnPreLoad
  * (WorldSettings_ChildSpawner_PreLoad), WorldSettings_ChildSpawner_*'s external timers, burnable's AddBurnFX and
- * OnIgnite / DefaultExtinguishFn / DefaultBurntFn, freezable's shatter fx and the freeze / onthaw / unfreeze listeners
- * (OnFreeze, OnThaw, OnUnFreeze), combat's SetOnHit (OnHit), the death listener (OnKilled), propagator's
+ * OnIgnite / DefaultExtinguishFn / DefaultBurntFn, combat's SetOnHit (OnHit), the death listener (OnKilled), propagator's
  * SetOnFlashPoint, SetLunarHailBuildupAmountSmall and hauntable's SetOnHauntFn (OnHaunt).
  */
+/**
+ * OnFreeze / OnThaw / OnUnFreeze: the frozen clips with swap_frozen from frozen.zip and the freeze sounds. Their
+ * StopSpawning / StartSpawning have nothing to stop or start: the hive's spawning is not ported.
+ */
+function OnFreeze(inst: BeehiveInstance): void {
+  inst.SoundEmitter?.PlaySound('dontstarve/common/freezecreature');
+  inst.sprite.start('frozen');
+  inst.sprite.setSymbolOverride('swap_frozen', 'frozen.zip', 'frozen');
+}
+
+function OnThaw(inst: BeehiveInstance): void {
+  inst.sprite.start('frozen_loop_pst');
+  inst.SoundEmitter?.PlaySound('dontstarve/common/freezethaw', 'thawing');
+  inst.sprite.setSymbolOverride('swap_frozen', 'frozen.zip', 'frozen');
+}
+
+function OnUnFreeze(inst: BeehiveInstance): void {
+  inst.sprite.start('cocoon_small');
+  inst.SoundEmitter?.KillSound('thawing');
+  inst.sprite.setSymbolOverride('swap_frozen');
+}
+
 function fn(world: HiveWorld): BeehiveInstance {
   const inst = new BeehiveInstance(BEEHIVE_ID, new SpriteState({ name: 'cocoon_small', billboard: true }));
   // MakeObstaclePhysics(inst, .5): the tag here, the body from the definition's physics.
+  inst.AddSoundEmitter();
   inst.addTag('blocker');
   // SetBank / SetBuild("beehive"), PlayAnimation("cocoon_small", true).
   inst.scrapbook_anim = 'cocoon_small';
@@ -126,8 +153,10 @@ function fn(world: HiveWorld): BeehiveInstance {
   burnable.SetFXLevel(4);
   burnable.SetBurnTime(LARGE_BURN_TIME);
 
-  // MakeMediumFreezableCharacter(inst), without its shatter fx.
-  addComponent(inst, 'freezable', Freezable, world.scheduler).resistance = 2;
+  MakeMediumFreezableCharacter(inst, world);
+  inst.ListenForEvent('freeze', () => OnFreeze(inst));
+  inst.ListenForEvent('onthaw', () => OnThaw(inst));
+  inst.ListenForEvent('unfreeze', () => OnUnFreeze(inst));
 
   addComponent(inst, 'combat', Combat, () => world.scheduler.now);
 

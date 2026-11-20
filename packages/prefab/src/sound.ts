@@ -166,6 +166,12 @@ const sounds = {
   'dontstarve/common/staff_star_LP': { bank: 'common', streams: [274], loop: true },
   'dontstarve/wilson/use_gemstaff': { bank: 'common', streams: [284], loop: false },
   'dontstarve/common/staffteleport': { bank: 'common', streams: [284], loop: false },
+  // freezable / commonstates frozen states, shatter.lua and SGwilson's ice staff swing → dontstarve.fev sounddefs 511, 512
+  // (freeze_thaw_LP_V2, looped under the "thawing" name), 530 and 561; file_index + 1.
+  'dontstarve/common/freezecreature': { bank: 'common', streams: [342], loop: false, volume: 0.5011872053146362, pitchOctaves: -0.125 },
+  'dontstarve/common/freezethaw': { bank: 'common', streams: [343], loop: true, volume: 0.17782793939113617, pitchOctaves: 0.0 },
+  'dontstarve/common/break_iceblock': { bank: 'common', streams: [208], loop: false, volume: 0.5011872053146362, pitchOctaves: 0.0 },
+  'dontstarve/wilson/attack_icestaff': { bank: 'sfx', streams: [1278, 1279, 1280], loop: false, volume: 0.42904219031333923, pitchOctaves: 0.0 },
   // blinkstaff.lua presound / postsound → dontstarve.fev sounddef 925 (sfx/objects/teleportstaff), common file_index 283 + 1.
   'dontstarve/common/staff_blink': { bank: 'common', streams: [284], loop: false },
   // trident.lua / SGwilson.lua play_strum and fx.lua crab_king_waterspout → hookline_2.fev sounddefs 43 / 32

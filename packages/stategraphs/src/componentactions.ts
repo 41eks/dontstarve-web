@@ -101,7 +101,7 @@ type SceneFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: Sce
 export interface EquippedActionDoer {
   hasTag(tag: string): boolean;
   readonly sg?: { hasStateTag(tag: string): boolean };
-  readonly components?: { combat?: Pick<import('../../componets/src/combat').Combat, 'CanLightTarget'> };
+  readonly components?: { combat?: Pick<import('../../componets/src/combat').Combat, 'CanLightTarget' | 'CanExtinguishTarget' | 'CanTarget'> };
   /** TheWorld.Map, as deployable:CanDeploy reaches it. */
   readonly Map?: import('../../componets/src/deployable').DeployMap;
 }
@@ -281,11 +281,19 @@ export const COMPONENT_ACTIONS: {
         || (target.hasTag('locomotor') && inst.hasTag('castonlocomotorspvp')
           && (Object.is(target, doer) || !(target.hasTag('player') && doer?.hasTag('player')))))) actions.push('CASTSPELL');
     },
-    // Only the CanLightTarget (RANGEDLIGHT) branch is ported: there is no CanExtinguishTarget, and the left-button
-    // attack on a combat target is not offered here.
+    // The rider gate, the item mimic, TargetForceAttackOnly and combat:IsAlly (no followers or allies) are not ported.
     weapon: (inst, doer, target, actions, right) => {
-      if (inst.hasTag('outofammo') || !doer?.components?.combat) return;
-      if (right && doer.components.combat.CanLightTarget(target, inst.components.weapon)) actions.push('ATTACK');
+      const combat = doer?.components?.combat, weapon = inst.components.weapon;
+      if (inst.hasTag('outofammo') || !combat) return;
+      if (combat.CanExtinguishTarget(target, weapon) || (right && combat.CanLightTarget(target, weapon))) {
+        actions.push('ATTACK');
+      } else if (!right && !(target.hasTag('wall') || target.hasTag('mustforceattack'))
+        && target.components.combat !== undefined && combat.CanTarget(target) && target.components.combat.CanBeAttacked()) {
+        if (target.hasTag('mole') && inst.hasTag('hammer')) actions.push('ATTACK');
+        else if (!(doer?.hasTag('player') && target.hasTag('player')) && !(inst.hasTag('tranquilizer') && !target.hasTag('sleeper'))) {
+          actions.push('ATTACK');
+        }
+      }
     },
     tool: (inst, _doer, target, actions, right) => {
       if (target.hasTag('INLIMBO') || inst.components.equippable?.IsRestricted()) return;

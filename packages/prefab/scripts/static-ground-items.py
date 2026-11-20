@@ -63,9 +63,6 @@ def read_static_items(add, items, read):
     for colour in ['green', 'orange']:
         art(colour + 'amulet', 'amulets', 'amulets', colour + 'amulet', 'amulet',
             tags=['shadowlevel', 'repairshortaction'] if colour == 'orange' else ['shadowlevel'])
-    # staff.lua commonfn computes colour.."staff"..suffix, not the colour alone.
-    for item, clip, tags in [('icestaff', 'bluestaff', ['icestaff', 'weapon', 'rangedweapon', 'extinguisher'])]:
-        art(item, 'staffs', 'staffs', clip, 'staff', tags=tags + ['shadowlevel'])
     art('horrorfuel', 'horrorfuel', 'horrorfuel', 'idle_loop', 'horrorfuel',
         loop=True, tags=['waterproofer', 'purehorror', 'mermbuffcast'])['multColour'] = [1, 1, 1, .5]
     art('lavae_egg', 'lavae_egg', 'lavae_egg', 'idle', 'lavae_egg', scale=.75)
@@ -136,6 +133,7 @@ def preserve_catalog_tags(items, read):
             definition['tags'] = ([] if item == 'opalstaff' else ['shadowlevel']) + (
                 ['firestaff', 'weapon', 'rangedweapon', 'rangedlighter'] if item == 'firestaff' else
                 ['weapon'] if item == 'orangestaff' else
+                ['icestaff', 'weapon', 'rangedweapon', 'extinguisher'] if item == 'icestaff' else
                 ['nopunch', 'allow_action_on_impassable'] if item in ('yellowstaff', 'opalstaff') else ['nopunch'])
         elif item == 'bird_egg':
             definition['tags'] = ['catfood', 'cookable']
