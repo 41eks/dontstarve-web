@@ -68,6 +68,26 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
   ) => void;
 }
 
+/** TheWorld and SpawnPrefab as the pickable plant prefabs' fns reach them. */
+export interface PlantPrefabWorld {
+  readonly scheduler: import('./components/gameTimeScheduler').GameTimeScheduler;
+  readonly fire: import('./treeFire').FireFxHost;
+  readonly getWatchWorldContent?: import('@dontstarve-web/signals').GetWatchWorldContent;
+  /** Rain belongs to the injected world. */
+  rain?: import('@dontstarve-web/signals').ReadonlySignal<'none' | 'rain' | 'snow'>;
+  /** Without it every plant is active. */
+  tickingarea?: import('@dontstarve-web/signals').TileStateQuery;
+  physics?: CANNON.World;
+  getLocalTemperature?(position: ReadonlyVector3): number;
+  /** Loot, ash and dug plants are spawned when they are produced; their displays load the art. */
+  spawnGroundItem: import('./groundPrefab').SpawnGroundItem;
+  isOcean?(position: ReadonlyVector3): boolean;
+  /** SpawnPrefab for an inventory item a prefab hands to its picker. */
+  spawnItem?(state: import('@dontstarve-web/inventory').InventoryStack): import('@dontstarve-web/inventory').ItemEntity;
+  /** inventoryitem:DoDropPhysics at the plant, for pickers without an inventory. */
+  dropItem?(entity: import('@dontstarve-web/inventory').ItemEntity, position: ReadonlyVector3): void;
+}
+
 /** The subset a prefab needs to turn raw pointer events into raycasts. */
 export type PointerContext = Pick<WorldContext, 'camera' | 'renderer'>;
 

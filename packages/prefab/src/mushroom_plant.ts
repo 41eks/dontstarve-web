@@ -1,5 +1,5 @@
 import { addComponent } from './components';
-import type { EntityTask, PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
@@ -14,13 +14,12 @@ import {
   type ReadonlySignal,
   type WorldPhase,
 } from '@dontstarve-web/signals';
-import {
-  PickablePlantInstance,
-  plantLootSpawner,
-  SpringGrowthMod,
-  type PickablePlantRecord,
-  type PickablePlantWorld,
-} from './pickablePlant';
+import { groundLootSpawner } from './groundPrefab';
+import { SpringGrowthMod } from './simutil';
+import type { PlantPrefabWorld } from './worldContext';
+import type { Propagator } from '../../componets/src/propagator';
+import type { Burnable } from '../../componets/src/burnable';
+import type { EntityPersistData } from './saveRecord';
 
 export const BLUE_MUSHROOM_ID = 'blue_mushroom' as const;
 export const RED_MUSHROOM_ID = 'red_mushroom' as const;
@@ -43,7 +42,13 @@ const MUSHROOM_DATA: Record<MushroomPlantId, MushroomData> = {
 };
 
 /** mushrooms.lua's fields on the inst. */
-export class MushroomPlantInstance extends PickablePlantInstance {
+export class MushroomPlantInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+    lootdropper: LootDropper;
+  };
   data!: MushroomData;
   rain = 0;
   growtask?: EntityTask;
@@ -55,13 +60,13 @@ export class MushroomPlantInstance extends PickablePlantInstance {
   raining?: ReadonlySignal<'none' | 'rain' | 'snow'>;
 }
 
-function onsave(inst: MushroomPlantInstance, data: PickablePlantRecord['components']): void {
+function onsave(inst: MushroomPlantInstance, data: EntityPersistData): void {
   if (inst.rain > 0) {
     data.mushroom = { rain: inst.rain };
   }
 }
 
-function onload(inst: MushroomPlantInstance, data: PickablePlantRecord['components']): void {
+function onload(inst: MushroomPlantInstance, data: EntityPersistData): void {
   if (data.mushroom) {
     inst.rain = data.mushroom.rain;
   }
@@ -128,7 +133,7 @@ function OnIsOpenPhase(inst: MushroomPlantInstance, isopen: boolean): void {
  */
 function mushcommonfn(
   prefab: MushroomPlantId,
-  world: PickablePlantWorld,
+  world: PlantPrefabWorld,
   position: ReadonlyVector3,
 ): MushroomPlantInstance {
   const data = MUSHROOM_DATA[prefab];
@@ -178,7 +183,7 @@ function mushcommonfn(
 
   inst.rain = 0;
 
-  addComponent(inst, 'lootdropper', LootDropper, plantLootSpawner(world));
+  addComponent(inst, 'lootdropper', LootDropper, groundLootSpawner(world));
   const workable = addComponent(inst, 'workable', Workable<MushroomPlantInstance>);
   workable.SetWorkAction('DIG');
   workable.SetOnFinishCallback(inst => {
@@ -247,7 +252,7 @@ export function isMushroomPlantPrefab(value: string): value is MushroomPlantId {
 
 /** mushrooms.lua MakeMushroom(data): red (day), green (dusk) and blue (night) mushrooms share mushcommonfn. */
 export function mushroomPlantPrefabs(
-  world: PickablePlantWorld,
+  world: PlantPrefabWorld,
 ): Readonly<Record<MushroomPlantId, PrefabEntityDefinition<MushroomPlantInstance>>> {
   const prefab = (id: MushroomPlantId): PrefabEntityDefinition<MushroomPlantInstance> => ({
     fn: position => mushcommonfn(id, world, position),

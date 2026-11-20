@@ -1,5 +1,5 @@
 import { addComponent } from './components';
-import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, POPULATING, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { Workable } from '../../componets/src/workable';
@@ -9,13 +9,12 @@ import { Growable, type GrowthStage } from '../../componets/src/growable';
 import { SimpleMagicGrower } from '../../componets/src/simplemagicgrower';
 import { BurnableBinding } from './treeFire';
 import { DefaultExtinguishFn, DefaultBurntFn, MakeSmallObstaclePhysics, MakeSnowCovered } from './standardcomponents';
-import {
-  PickablePlantInstance,
-  plantLootSpawner,
-  SpringGrowthMod,
-  type PickablePlantRecord,
-  type PickablePlantWorld,
-} from './pickablePlant';
+import { groundLootSpawner } from './groundPrefab';
+import { SpringGrowthMod } from './simutil';
+import type { PlantPrefabWorld } from './worldContext';
+import type { Propagator } from '../../componets/src/propagator';
+import type { Burnable } from '../../componets/src/burnable';
+import type { EntityPersistData } from './saveRecord';
 
 export const ROCK_AVOCADO_BUSH_ID = 'rock_avocado_bush' as const;
 export const ROCK_AVOCADO_FRUIT_ID = 'rock_avocado_fruit' as const;
@@ -29,11 +28,15 @@ const BUSH_ANIMS = [
 ] as const;
 
 /** rock_avocado_bush.lua's inst, with the components its fn adds. */
-export interface RockAvocadoBushInstance extends PickablePlantInstance {
-  readonly components: PickablePlantInstance['components'] & {
+export class RockAvocadoBushInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+    lootdropper: LootDropper;
+    witherable: Witherable;
     growable: Growable;
     simplemagicgrower: SimpleMagicGrower;
-    lootdropper: LootDropper;
   };
 }
 
@@ -88,7 +91,7 @@ function onregenfn(inst: RockAvocadoBushInstance): void {
   }
 }
 
-function on_bush_burnt(inst: RockAvocadoBushInstance, world: PickablePlantWorld): void {
+function on_bush_burnt(inst: RockAvocadoBushInstance, world: PlantPrefabWorld): void {
   if (inst.components.growable.GetStage() === 3) {
     for (let i = 0; i < 3; i++) {
       inst.components.lootdropper.SpawnLootPrefab(ROCK_AVOCADO_FRUIT_ID);
@@ -164,7 +167,7 @@ function ontransplantfn(inst: RockAvocadoBushInstance): void {
   inst.components.pickable.MakeBarren();
 }
 
-function on_save(inst: RockAvocadoBushInstance, data: PickablePlantRecord['components']): void {
+function on_save(inst: RockAvocadoBushInstance, data: EntityPersistData): void {
   if (inst.components.burnable?.IsBurning()) {
     data.burning = true;
   }
@@ -175,11 +178,7 @@ function on_save(inst: RockAvocadoBushInstance, data: PickablePlantRecord['compo
  * in the record's order (Lua's is pairs order), so growable's SetStage may replace the barren pose that pickable's
  * makebarrenfn set; a barren bush settles into it again here.
  */
-function on_load(
-  inst: RockAvocadoBushInstance,
-  data: PickablePlantRecord['components'],
-  world: PickablePlantWorld,
-): void {
+function on_load(inst: RockAvocadoBushInstance, data: EntityPersistData, world: PlantPrefabWorld): void {
   if (data.burning) {
     on_bush_burnt(inst, world);
   } else if (inst.components.witherable?.IsWithered()) {
@@ -193,11 +192,8 @@ function on_load(
  * rock_avocado_bush.lua rock_avocado_bush(): Growable owns the stage deadlines; Pickable has no regeneration task.
  * Not ported: MakeHauntableIgnite, MakeWaxablePlant and the lunar hail buildup.
  */
-function rock_avocado_bush(world: PickablePlantWorld): RockAvocadoBushInstance {
-  const inst = new PickablePlantInstance(
-    ROCK_AVOCADO_BUSH_ID,
-    new SpriteState({ name: 'idle1', billboard: true }),
-  ) as RockAvocadoBushInstance;
+function rock_avocado_bush(world: PlantPrefabWorld): RockAvocadoBushInstance {
+  const inst = new RockAvocadoBushInstance(ROCK_AVOCADO_BUSH_ID, new SpriteState({ name: 'idle1', billboard: true }));
   inst.BindScheduler(world.scheduler);
   inst.AnimState.PlayAnimation('idle1');
   inst.deploySmartRadius = 3;
@@ -222,7 +218,7 @@ function rock_avocado_bush(world: PickablePlantWorld): RockAvocadoBushInstance {
   );
   inst.onRemove(() => burn.dispose());
 
-  addComponent(inst, 'lootdropper', LootDropper, plantLootSpawner(world));
+  addComponent(inst, 'lootdropper', LootDropper, groundLootSpawner(world));
   const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('DIG');
   workable.SetWorkLeft(1);
@@ -279,8 +275,8 @@ function rock_avocado_bush(world: PickablePlantWorld): RockAvocadoBushInstance {
 
 /** rock_avocado_bush.lua's Prefab("rock_avocado_bush", rock_avocado_bush, assets). */
 export function rockAvocadoBushPrefabs(
-  world: PickablePlantWorld,
-): Readonly<Record<typeof ROCK_AVOCADO_BUSH_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+  world: PlantPrefabWorld,
+): Readonly<Record<typeof ROCK_AVOCADO_BUSH_ID, PrefabEntityDefinition<RockAvocadoBushInstance>>> {
   return {
     [ROCK_AVOCADO_BUSH_ID]: {
       fn: () => rock_avocado_bush(world),

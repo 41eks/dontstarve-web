@@ -1,17 +1,15 @@
 import { addComponent } from './components';
-import type { PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import { Pickable } from './components/pickable';
 import { BurnableBinding } from './treeFire';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeObstaclePhysics } from './standardcomponents';
 import { WorldContentKey, type SeasonState, type WorldContentSignal } from '@dontstarve-web/signals';
 import type { PickDoer } from '@dontstarve-web/stategraphs/pick';
-import {
-  PickablePlantInstance,
-  SpringGrowthMod,
-  type PickablePlantRecord,
-  type PickablePlantWorld,
-} from './pickablePlant';
+import { SpringGrowthMod } from './simutil';
+import type { PlantPrefabWorld } from './worldContext';
+import type { Propagator } from '../../componets/src/propagator';
+import type { Burnable } from '../../componets/src/burnable';
 
 export const CACTUS_ID = 'cactus' as const;
 export const OASIS_CACTUS_ID = 'oasis_cactus' as const;
@@ -23,16 +21,19 @@ export const CACTUS_DAMAGE = 150 * 0.04;
 /** tuning.lua CACTUS_REGROW_TIME = total_day_time * 4. */
 export const CACTUS_REGROW_TIME = 4 * 480;
 
-export type CactusRecord = PickablePlantRecord;
-
 /** cactus.lua's fields on the inst. */
-export class CactusInstance extends PickablePlantInstance {
+export class CactusInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+  };
   /** inst.has_flower: not saved; OnEntityWake sets it from the season. */
   has_flower = false;
   /** TheWorld.state.season, as this cactus's callbacks read it. */
   season?: WorldContentSignal<SeasonState>;
   /** SpawnPrefab and DoDropPhysics for the flower. */
-  world!: PickablePlantWorld;
+  world!: PlantPrefabWorld;
 }
 
 const issummer = (inst: CactusInstance) => inst.season?.peek().season === 'summer';
@@ -101,7 +102,7 @@ function OnEntityWake(inst: CactusInstance): void {
  * also gives its flower. MakeObstaclePhysics(.3) is the prefab's `physics`. Not ported: AddToRegrowthManager and
  * MakeHauntableIgnite.
  */
-function cactusfn(prefab: CactusId, world: PickablePlantWorld): CactusInstance {
+function cactusfn(prefab: CactusId, world: PlantPrefabWorld): CactusInstance {
   const inst = new CactusInstance(prefab, new SpriteState({ name: 'idle', billboard: true }));
   inst.BindScheduler(world.scheduler);
   inst.world = world;
@@ -149,7 +150,7 @@ function cactusfn(prefab: CactusId, world: PickablePlantWorld): CactusInstance {
 
 /** cactus.lua: MakeCactus("cactus") and MakeCactus("oasis_cactus"); bank and build share the name. */
 export function cactusPrefabs(
-  world: PickablePlantWorld,
+  world: PlantPrefabWorld,
 ): Readonly<Record<CactusId, PrefabEntityDefinition<CactusInstance>>> {
   const prefab = (id: CactusId): PrefabEntityDefinition<CactusInstance> => ({
     fn: () => cactusfn(id, world),

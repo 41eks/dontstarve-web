@@ -14,15 +14,35 @@ import {
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { Object3D } from 'three';
 import { prefabDisplay } from '../../display/src/prefabDisplay';
-import { prefabInstance } from '../../prefab/src/prefabInstance';
-import { PickablePlantInstance } from '../../prefab/src/pickablePlant';
+import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import type { Pickable } from '../../prefab/src/components/pickable';
+import type { Burnable } from '../../componets/src/burnable';
+import type { Propagator } from '../../componets/src/propagator';
+import type { LootDropper } from '../../componets/src/lootdropper';
+import type { Witherable } from '../../componets/src/witherable';
+import type { Growable } from '../../componets/src/growable';
+import type { SimpleMagicGrower } from '../../componets/src/simplemagicgrower';
 
-export function plantInstance(model: Object3D): PickablePlantInstance {
+/** A pickable plant prefab's inst as these tests reach it: the components every one adds, and those only some add. */
+export type TestPlantInstance = PrefabInstance & {
+  readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+    lootdropper?: LootDropper;
+    witherable?: Witherable;
+    growable?: Growable;
+    simplemagicgrower?: SimpleMagicGrower;
+  };
+};
+
+export function plantInstance(model: Object3D): TestPlantInstance {
   const instance = prefabInstance(model);
-  if (!(instance instanceof PickablePlantInstance)) {
-    throw new Error(`Not a pickable plant: ${model.name}`);
+  // A burnt plant has lost its components but is still the plant's inst, so only the inst itself is checked.
+  if (!instance) {
+    throw new Error(`No inst for ${model.name}`);
   }
-  return instance;
+  return instance as TestPlantInstance;
 }
 
 /** Complete world inputs shared by standalone component fixtures. */

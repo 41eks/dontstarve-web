@@ -1,5 +1,5 @@
 import { addComponent } from './components';
-import { POPULATING, type PrefabEntityDefinition } from './prefabInstance';
+import { PrefabInstance, POPULATING, type PrefabEntityDefinition } from './prefabInstance';
 import { SpriteState } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { Witherable } from '../../componets/src/witherable';
@@ -14,7 +14,11 @@ import {
   MakeSmallObstaclePhysics,
   MakeSnowCovered,
 } from './standardcomponents';
-import { PickablePlantInstance, plantLootSpawner, SpringGrowthMod, type PickablePlantWorld } from './pickablePlant';
+import { groundLootSpawner } from './groundPrefab';
+import { SpringGrowthMod } from './simutil';
+import type { PlantPrefabWorld } from './worldContext';
+import type { Propagator } from '../../componets/src/propagator';
+import type { Burnable } from '../../componets/src/burnable';
 
 export const BERRYBUSH_ID = 'berrybush' as const;
 export const BERRYBUSH_ARCHIVE = 'berrybush.zip';
@@ -30,7 +34,18 @@ export function berrybushRegrowTime(pickable: Pickable): number {
   return BERRYBUSH_REGROW_TIME + 240 * Math.max(0, maximum - (pickable.cyclesLeft ?? maximum)) + 960 * Math.random();
 }
 
-function setberries(inst: PickablePlantInstance, pct?: number): void {
+/** berrybush.lua's inst, with the components its fn adds. */
+export class BerrybushInstance extends PrefabInstance {
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    burnable: Burnable;
+    propagator: Propagator;
+    lootdropper: LootDropper;
+    witherable: Witherable;
+  };
+}
+
+function setberries(inst: BerrybushInstance, pct?: number): void {
   const berries = pct === undefined ? undefined : pct >= 0.9 ? 'berriesmost' : pct >= 0.33 ? 'berriesmore' : 'berries';
   for (const berry_type of BERRY_TYPES) {
     if (berry_type === berries) {
@@ -41,7 +56,7 @@ function setberries(inst: PickablePlantInstance, pct?: number): void {
   }
 }
 
-function makeemptyfn(inst: PickablePlantInstance): void {
+function makeemptyfn(inst: BerrybushInstance): void {
   if (POPULATING) {
     inst.AnimState.PlayAnimation('idle', true);
     inst.sprite.setFrameAt(Math.random());
@@ -58,7 +73,7 @@ function makeemptyfn(inst: PickablePlantInstance): void {
  * cancelsetberriesonanimover hides the berries a pending setberriesonanimover would have. Every source path that
  * shows berries before this also plays a clip, so hiding them here keeps the same result.
  */
-function makebarrenfn(inst: PickablePlantInstance): void {
+function makebarrenfn(inst: BerrybushInstance): void {
   if (!POPULATING && (inst.hasTag('withered') || inst.sprite.currentAnimation === 'idle')) {
     inst.AnimState.PlayAnimation('idle_to_dead');
     inst.AnimState.PushAnimation('dead', false);
@@ -69,7 +84,7 @@ function makebarrenfn(inst: PickablePlantInstance): void {
 }
 
 /** The perd spawn is not ported. */
-function onpickedfn(inst: PickablePlantInstance): void {
+function onpickedfn(inst: BerrybushInstance): void {
   if (inst.components.pickable.IsBarren()) {
     inst.AnimState.PlayAnimation('idle_to_dead');
     inst.AnimState.PushAnimation('dead', false);
@@ -82,7 +97,7 @@ function onpickedfn(inst: PickablePlantInstance): void {
   }
 }
 
-function makefullfn(inst: PickablePlantInstance): void {
+function makefullfn(inst: BerrybushInstance): void {
   const { pickable } = inst.components;
   let anim = 'idle',
     berries: number | undefined;
@@ -103,7 +118,7 @@ function makefullfn(inst: PickablePlantInstance): void {
   setberries(inst, berries);
 }
 
-function dig_up_normal(inst: PickablePlantInstance): void {
+function dig_up_normal(inst: BerrybushInstance): void {
   const { pickable, witherable } = inst.components,
     lootdropper = inst.components.lootdropper!;
   if (witherable?.IsWithered() || pickable.IsBarren()) {
@@ -118,7 +133,7 @@ function dig_up_normal(inst: PickablePlantInstance): void {
   inst.remove();
 }
 
-function ontransplantfn(inst: PickablePlantInstance): void {
+function ontransplantfn(inst: BerrybushInstance): void {
   inst.AnimState.PlayAnimation('dead');
   setberries(inst);
   inst.components.pickable.MakeBarren();
@@ -128,8 +143,8 @@ function ontransplantfn(inst: PickablePlantInstance): void {
  * berrybush.lua createbush(name, ...) fn with normal_postinit. Not ported: the perd and its shake, hauntables,
  * MakeWaxablePlant, lunar hail buildup and the lunarthrall herd save.
  */
-function fn(world: PickablePlantWorld): PickablePlantInstance {
-  const inst = new PickablePlantInstance(BERRYBUSH_ID, new SpriteState({ name: 'idle', billboard: true }));
+function fn(world: PlantPrefabWorld): BerrybushInstance {
+  const inst = new BerrybushInstance(BERRYBUSH_ID, new SpriteState({ name: 'idle', billboard: true }));
   inst.BindScheduler(world.scheduler);
   inst.deploySmartRadius = 3;
   // MakeSmallObstaclePhysics(inst, .1) is the prefab's `physics`; it adds the blocker tag.
@@ -191,7 +206,7 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
   );
   inst.onRemove(() => burn.dispose());
 
-  addComponent(inst, 'lootdropper', LootDropper, plantLootSpawner(world));
+  addComponent(inst, 'lootdropper', LootDropper, groundLootSpawner(world));
   const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('DIG');
   workable.SetWorkLeft(1);
@@ -207,8 +222,8 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
 
 /** berrybush.lua's createbush("berrybush", ...); berrybush2 and the juicy bush are separate source prefabs. */
 export function berrybushPrefabs(
-  world: PickablePlantWorld,
-): Readonly<Record<typeof BERRYBUSH_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+  world: PlantPrefabWorld,
+): Readonly<Record<typeof BERRYBUSH_ID, PrefabEntityDefinition<BerrybushInstance>>> {
   return {
     [BERRYBUSH_ID]: {
       fn: () => fn(world),

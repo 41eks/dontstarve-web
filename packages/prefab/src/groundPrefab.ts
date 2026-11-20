@@ -7,6 +7,7 @@ import type { ButterflyWorld } from './butterfly';
 import type { FirefliesWorld } from './fireflies';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { HandEquipment, ReadonlySignal } from '@dontstarve-web/signals';
+import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export interface GroundItemDefinition {
   mole?: import('@dontstarve-web/inventory').InventoryStack['mole'];
@@ -93,6 +94,18 @@ export interface GroundSpawnOptions {
 }
 
 /** Creates the inst and its display now; returns undefined when the world can no longer spawn. */
+/** lootdropper:SpawnLootPrefab's SpawnPrefab: the loot is flung from the dropper as a ground item. */
+export function groundLootSpawner(world: {
+  readonly spawnGroundItem: SpawnGroundItem;
+}): import('../../componets/src/lootdropper').LootSpawn {
+  return (prefab, point, skinId) =>
+    world.spawnGroundItem(
+      { ...GROUND_ITEM_DEFINITIONS[prefab], itemId: prefab, count: 1, ...(skinId ? { skinId } : {}) },
+      point,
+      { fling: true },
+    );
+}
+
 export type SpawnGroundItem = (
   definition: GroundItemDefinition,
   position: ReadonlyVector3,

@@ -1,5 +1,5 @@
 import { addComponent } from './components';
-import * as THREE from 'three';
+import { groundLootSpawner } from './groundPrefab';
 import { SpriteState } from '@dontstarve-web/display';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { Equippable } from '../../componets/src/equippable';
@@ -17,7 +17,6 @@ import type { EntityPersistData } from './saveRecord';
 import { MakeHeavyObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { WorldContext } from './worldContext';
-import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const CHESSPIECE_MALBATROSS_MARBLE_ID = 'chesspiece_malbatross_marble' as const;
 /** chesspieces.lua SetPrefabName: a saved sculpture's source group has no material suffix; data.materialid selects it. */
@@ -67,13 +66,7 @@ export class ChesspieceInstance extends PrefabInstance {
     workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(() => this.onworkfinished());
     // SetMaterial: MATERIALS[marble].prefab.
-    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) =>
-      world.spawnGroundItem(
-        { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 },
-        new THREE.Vector3(point.x, point.y, point.z),
-        { fling: true },
-      ),
-    );
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, groundLootSpawner(world));
     lootdropper.SetLoot(['marble']);
     const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetHauntValue(TUNING_HAUNT_TINY);

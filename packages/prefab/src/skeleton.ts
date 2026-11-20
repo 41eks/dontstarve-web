@@ -1,6 +1,6 @@
 import { addComponent } from './components';
+import { groundLootSpawner } from './groundPrefab';
 import { SpriteState } from '@dontstarve-web/display';
-import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -10,7 +10,6 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { MakeSmallObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import type { WorldFx } from './world_fx';
-import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const SKELETON_PLAYER_ID = 'skeleton_player' as const;
 export const SKELETON_IDS = [
@@ -99,13 +98,7 @@ export class SkeletonInstance extends PrefabInstance {
     } // creature_custominit
     this.addTag('inspectable');
 
-    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) =>
-      world.spawnGroundItem(
-        { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 },
-        new THREE.Vector3(point.x, point.y, point.z),
-        { fling: true },
-      ),
-    );
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, groundLootSpawner(world));
     lootdropper.SetChanceLootTable(player ? 'skeleton_player' : 'skeleton');
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');

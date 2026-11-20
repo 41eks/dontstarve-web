@@ -5,7 +5,7 @@ import { grassPrefabs, GRASS_REGROW_TIME } from '../../prefab/src/grass';
 import { rockAvocadoBushPrefabs } from '../../prefab/src/rock_avocado_bush';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FireFxHost } from '../../prefab/src/treeFire';
-import type { PickablePlantWorld } from '../../prefab/src/pickablePlant';
+import type { PlantPrefabWorld } from '../../prefab/src/worldContext';
 import type { SpriteResources, SpriteState } from '@dontstarve-web/display';
 import type { PrefabEntityDefinition, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { bindTestWorld } from './worldContentFixture';
@@ -25,7 +25,7 @@ function setup() {
     fire = FireFxHost.create('/dst/data/anim');
   const { season, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   const spawnGroundItem = vi.fn();
-  const world: PickablePlantWorld = { scheduler, fire, getWatchWorldContent, spawnGroundItem };
+  const world: PlantPrefabWorld = { scheduler, fire, getWatchWorldContent, spawnGroundItem };
   const position = new Vector3(3, 0, 6);
   /** The prefab's fn, then SpawnPrefab's SetPosition, without a manager or display. */
   const spawn = <T extends PrefabInstance<SpriteState, object>>(definition: PrefabEntityDefinition<T>): T => {

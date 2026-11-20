@@ -102,7 +102,6 @@
     "./monkeytail": "./src/monkeytail.ts",
     "./plantables": "./src/plantables.ts",
     "./sapling": "./src/sapling.ts",
-    "./pickablePlant": "./src/pickablePlant.ts",
     "./pond": "./src/pond.ts",
     "./marsh_plant": "./src/marsh_plant.ts",
     "./wormhole": "./src/wormhole.ts",

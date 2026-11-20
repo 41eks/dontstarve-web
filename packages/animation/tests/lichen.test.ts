@@ -12,7 +12,8 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
-import { lichenPrefabs, LICHEN_ID, type LichenRecord } from '../../prefab/src/lichen';
+import { lichenPrefabs, LICHEN_ID } from '../../prefab/src/lichen';
+import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { createInventoryStore } from './testInventory';
@@ -86,12 +87,12 @@ function setup(player = new THREE.Vector3()) {
 }
 
 // Imported Caves records: pickable={caninteractwith=true} is pickable's default, so a ready lichen saves no components.
-const READY: LichenRecord = {
+const READY: EntitySaveRecord = {
   id: 'dst_04E26ADB66396E8D_lichen_id_114188',
   transform: { position: [447, 0, 151.26], rotationY: 0 },
   components: {},
 };
-const PICKED: LichenRecord = {
+const PICKED: EntitySaveRecord = {
   id: 'picked-lichen',
   transform: { position: [450, 0, 151], rotationY: 0 },
   components: { pickable: { picked: true, regrowSeconds: 600 } },

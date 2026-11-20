@@ -1,6 +1,6 @@
 import { addComponent } from './components';
+import { groundLootSpawner } from './groundPrefab';
 import { SpriteState } from '@dontstarve-web/display';
-import * as THREE from 'three';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LootDropper } from '../../componets/src/lootdropper';
@@ -11,7 +11,6 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound } from './sound';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 export const CAVE_ENTRANCE_ID = 'cave_entrance' as const;
 export const CAVE_ENTRANCE_OPEN_ID = 'cave_entrance_open' as const;
@@ -86,13 +85,7 @@ function closed_fn(inst: CaveEntranceInstance, world: CaveEntranceWorld): void {
   const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('MINE');
   workable.SetWorkLeft(ROCKS_MINE);
-  const lootdropper = addComponent(inst, 'lootdropper', LootDropper, (itemId, point) =>
-    world.spawnGroundItem(
-      { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 },
-      new THREE.Vector3(point.x, point.y, point.z),
-      { fling: true },
-    ),
-  );
+  const lootdropper = addComponent(inst, 'lootdropper', LootDropper, groundLootSpawner(world));
   lootdropper.SetLoot(CLOSED_LOOT);
   workable.SetOnWorkCallback((_inst, _worker, workleft) => OnWork(inst, world, workleft));
 }
