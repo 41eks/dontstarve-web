@@ -31,7 +31,7 @@ function setup(phase: WorldMoonPhase = 'new', playerPosition = new THREE.Vector3
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.moonFissures);
   const spawn = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(MoonFissureInstance, MOON_FISSURE_ID, record);
+    prefabs.restore(MOON_FISSURE_ID, record) as MoonFissureInstance;
   const records = () => registry.exportRecords().moon_fissure ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));

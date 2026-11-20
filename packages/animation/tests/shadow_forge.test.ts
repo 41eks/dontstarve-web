@@ -29,7 +29,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.shadowForges);
-  const spawn = (record: EntitySaveRecord) => prefabs.restoreAs(ShadowForgeInstance, SHADOW_FORGE_ID, record);
+  const spawn = (record: EntitySaveRecord) => prefabs.restore(SHADOW_FORGE_ID, record) as ShadowForgeInstance;
   const records = () => registry.exportRecords().shadow_forge ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));

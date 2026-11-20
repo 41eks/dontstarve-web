@@ -30,7 +30,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.watertreePillars);
   const spawn = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(WatertreePillarInstance, WATERTREE_PILLAR_ID, record);
+    prefabs.restore(WATERTREE_PILLAR_ID, record) as WatertreePillarInstance;
   const records = () => registry.exportRecords().watertree_pillar ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));

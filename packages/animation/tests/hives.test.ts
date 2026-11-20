@@ -31,9 +31,9 @@ function setup(playerPosition = new THREE.Vector3()) {
   registry.registerPrefabs(PREFAB_DEFINITIONS.beehives);
   registry.registerPrefabs(PREFAB_DEFINITIONS.wasphives);
   const beehive = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(BeehiveInstance, BEEHIVE_ID, record);
+    prefabs.restore(BEEHIVE_ID, record) as BeehiveInstance;
   const wasphive = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(WasphiveInstance, WASPHIVE_ID, record);
+    prefabs.restore(WASPHIVE_ID, record) as WasphiveInstance;
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };

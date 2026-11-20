@@ -29,7 +29,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.oceanVineDecos);
   const spawn = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(OceanVineDecoInstance, OCEANVINE_DECO_ID, record);
+    prefabs.restore(OCEANVINE_DECO_ID, record) as OceanVineDecoInstance;
   const records = () => registry.exportRecords().oceanvine_deco ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));

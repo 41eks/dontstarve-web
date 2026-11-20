@@ -189,7 +189,7 @@ function persistentComponent(component: unknown): PersistentComponent | undefine
 /** A record SpawnSaveRecord places: the persisted identity and data, and the record's skin. */
 type SpawnedRecord = EntityPersistRecord & { skinname?: string };
 
-/** spawnAs / restoreAs: the spawned entity, checked to be of the class the caller expects. */
+/** spawnAs: the spawned entity, checked to be of the class the caller expects. */
 function checkedAs<Spawned>(type: abstract new (...args: never[]) => Spawned, prefabId: string, instance: unknown): Spawned {
   if (!(instance instanceof type)) throw new TypeError(`${prefabId} does not spawn a ${type.name}`);
   return instance;
@@ -1036,11 +1036,6 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   /** SpawnSaveRecord: a save's `world.entities[prefab]` record, placed where and as it was saved. */
   restore(prefabId: Id, record: EntitySaveRecord): Instance {
     return this.create(prefabId, new Vector3(...record.transform.position), record.transform.rotationY, record);
-  }
-
-  /** SpawnSaveRecord for a caller that needs the prefab's own instance class, as spawnAs checks it. */
-  restoreAs<Restored extends Instance>(type: abstract new (...args: never[]) => Restored, prefabId: Id, record: EntitySaveRecord): Restored {
-    return checkedAs(type, prefabId, this.restore(prefabId, record));
   }
 
   private create(prefabId: Id, position: ReadonlyVector3, rotationY: number, saved: SpawnedRecord | undefined, skinId?: string): Instance {

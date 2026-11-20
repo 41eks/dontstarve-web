@@ -29,7 +29,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.glommerStatues);
   const spawn = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(StatueGlommerInstance, STATUEGLOMMER_ID, record);
+    prefabs.restore(STATUEGLOMMER_ID, record) as StatueGlommerInstance;
   const records = () => registry.exportRecords().statueglommer ?? [];
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };
   return { scene, scheduler, awake, physics, prefabs, registry, spawn, records, dispose };

@@ -30,7 +30,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.reeds);
   const spawn = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(ReedsInstance, REEDS_ID, record);
+    prefabs.restore(REEDS_ID, record) as ReedsInstance;
   const records = () => registry.exportRecords().reeds ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));

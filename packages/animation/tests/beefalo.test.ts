@@ -55,7 +55,7 @@ function beefaloWorld({ random = (): number => 0, physics = new CANNON.World() }
   const displays = new PrefabDisplayGroup(new THREE.Scene());
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics }, beefaloPrefabs(world));
   const spawn = (position = new THREE.Vector3()) => prefabs.spawnAs(BeefaloInstance, 'beefalo', position);
-  const restore = (record: EntitySaveRecord) => prefabs.restoreAs(BeefaloInstance, 'beefalo', record);
+  const restore = (record: EntitySaveRecord) => prefabs.restore('beefalo', record) as BeefaloInstance;
   return { world, prefabs, physics, scheduler, componentUpdates, spawn, restore,
     /** A player the manager tracks, as the scene tracks its player instance for TheSim. */
     addPlayer: (position: THREE.Vector3) => {

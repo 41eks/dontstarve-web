@@ -30,7 +30,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.atriumOvergrowths);
   const spawn = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(AtriumOvergrowthInstance, ATRIUM_OVERGROWTH_ID, record);
+    prefabs.restore(ATRIUM_OVERGROWTH_ID, record) as AtriumOvergrowthInstance;
   const records = () => registry.exportRecords().atrium_overgrowth ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));

@@ -49,7 +49,7 @@ function setup(random: () => number = () => 0) {
     build: () => { const build = inst.sprite.sprite.peek().appearance.get('archive-build'); return build?.kind === 'archive-build' ? build.archive : undefined; },
     fxShown: () => { const layer = inst.sprite.sprite.peek().appearance.get('layer:fx'); return layer?.kind === 'layer' && !layer.hidden; },
     record: () => prefabs.exportRecords().find(({ record }) => record.id === inst.entityId)!.record,
-    restore: (record: EntitySaveRecord) => prefabs.restoreAs(LightningGoatInstance, 'lightninggoat', record),
+    restore: (record: EntitySaveRecord) => prefabs.restore('lightninggoat', record) as LightningGoatInstance,
     strike: (position: THREE.Vector3) => SendLightningStrike({ root: new THREE.Scene(), sim: prefabs, fx: { spawn: vi.fn() } }, position),
     endDay: () => { scheduler.advance(world.secondsUntilNextDay(scheduler.now)); },
     tick: (seconds: number) => {

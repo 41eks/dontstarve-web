@@ -32,7 +32,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   registry.registerPrefabs(PREFAB_DEFINITIONS.chesspieces);
   const pieces = {
     /** SpawnSaveRecord. */
-    spawn: (record: EntitySaveRecord) => prefabs.restoreAs(ChesspieceInstance, ID, record),
+    spawn: (record: EntitySaveRecord) => prefabs.restore(ID, record) as ChesspieceInstance,
     exportRecords: () => prefabs.exportRecords().map(({ record }) => record),
   };
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };

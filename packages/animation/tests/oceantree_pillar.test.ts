@@ -31,7 +31,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.oceanTreePillars);
   const spawn = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(OceanTreePillarInstance, OCEANTREE_PILLAR_ID, record);
+    prefabs.restore(OCEANTREE_PILLAR_ID, record) as OceanTreePillarInstance;
   const records = () => registry.exportRecords().oceantree_pillar ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));

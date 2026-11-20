@@ -33,7 +33,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.atriumStatues);
   const spawn = (record = RECORD) =>
-    prefabs.restoreAs(AtriumStatueInstance, ATRIUM_STATUE_ID, record);
+    prefabs.restore(ATRIUM_STATUE_ID, record) as AtriumStatueInstance;
   const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); };
   return { scene, awake, physics, prefabs, registry, spawn, dispose };
 }

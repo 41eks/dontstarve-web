@@ -29,7 +29,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.oasislakes);
   const spawn = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(OasislakeInstance, OASISLAKE_ID, record);
+    prefabs.restore(OASISLAKE_ID, record) as OasislakeInstance;
   const records = () => registry.exportRecords().oasislake ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));

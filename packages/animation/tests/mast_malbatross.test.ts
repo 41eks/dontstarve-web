@@ -32,7 +32,7 @@ function setup(playerPosition = new THREE.Vector3()) {
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.mastMalbatross);
   const spawn = (record: EntitySaveRecord) =>
-    prefabs.restoreAs(MastMalbatrossInstance, MAST_MALBATROSS_ID, record);
+    prefabs.restore(MAST_MALBATROSS_ID, record) as MastMalbatrossInstance;
   const records = () => registry.exportRecords().mast_malbatross ?? [];
   const requested = (archive: string) =>
     (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
