@@ -144,7 +144,7 @@ it('loads a saved stage 3 den with the clip, tags, bank and components spiderden
     ]);
     // workable:SetWorkAction(nil) derives no <ACTION>_workable tag.
     expect(workable.GetWorkAction()).toBeUndefined();
-    expect(lootdropper.loot).toEqual(['silk', 'silk', 'silk', 'silk', 'silk', 'silk', 'spidereggsack']);
+    expect(lootdropper.GenerateLoot()).toEqual(['silk', 'silk', 'silk', 'silk', 'silk', 'silk', 'spidereggsack']);
     expect(den.components.sleepingbag?.health_tick).toBe(1.5);
     expect(den.minimap.icon).toBe('spiderden_3.png');
 
