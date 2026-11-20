@@ -117,6 +117,19 @@ const sounds = {
   'dontstarve/wilson/equip_item_gold': { bank: 'wilson', streams: [115], loop: false },
   'dontstarve/wilson/dig': { bank: 'wilson', streams: [64, 65, 66], loop: false },
   'dontstarve_DLC001/creatures/mole/emerge': { bank: 'mole', streams: [2, 3, 4], loop: false, volume: 0.2818382978439331, pitchOctaves: 0.0 },
+  // SGlightninggoat.lua / lightninggoat.lua → dontstarve_DLC001.fev creatures/lightninggoat sounddefs 25–37, lightninggoat.fsb
+  // file_index + 1. headbutt (sounddef 67, bank stuff) belongs to the unported attack timeline.
+  'dontstarve_DLC001/creatures/lightninggoat/bleet': { bank: 'lightninggoat', streams: [1, 2, 3, 4, 5, 6, 7, 8, 9], loop: false, volume: 0.3981071710586548, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/lightninggoat/jump': { bank: 'lightninggoat', streams: [10], loop: false, volume: 0.10000000149011612, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/lightninggoat/chew': { bank: 'lightninggoat', streams: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24], loop: false, volume: 0.1412537544965744, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/lightninggoat/death': { bank: 'lightninggoat', streams: [25, 26, 27], loop: false, volume: 0.3162277638912201, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/lightninggoat/hoof': { bank: 'lightninggoat', streams: [28, 29, 30], loop: false, volume: 0.25118863582611084, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/lightninggoat/hurt': { bank: 'lightninggoat', streams: [31, 32, 33, 34], loop: false, volume: 0.3162277638912201, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/lightninggoat/jacobshorn': { bank: 'lightninggoat', streams: [35, 36, 37, 38, 39], loop: false, volume: 0.1412537544965744, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/lightninggoat/shocked_bleet': { bank: 'lightninggoat', streams: [40, 41, 42, 43, 44, 45], loop: false, volume: 0.3162277638912201, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/lightninggoat/shocked_electric': { bank: 'lightninggoat', streams: [46, 47, 48], loop: false, volume: 0.4466835856437683, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/lightninggoat/sleep': { bank: 'lightninggoat', streams: [49, 50, 51, 52, 53, 54, 55, 56], loop: false, volume: 0.08912509679794312, pitchOctaves: 0.0 },
+  'dontstarve_DLC001/creatures/lightninggoat/taunt': { bank: 'lightninggoat', streams: [57, 58, 59, 60, 61, 62], loop: false, volume: 0.4466835856437683, pitchOctaves: 0.0 },
   // SGmole.lua → dontstarve_DLC001.fev sounddefs 12–18 / 68–70; file_index + 1.
   'dontstarve_DLC001/creatures/mole/death': { bank: 'mole', streams: [1], loop: false, volume: 0.17782793939113617, pitchOctaves: -0.125 },
   'dontstarve_DLC001/creatures/mole/emerge_voice': { bank: 'mole', streams: [5, 6, 7], loop: false, volume: 0.2818382978439331, pitchOctaves: -0.125 },

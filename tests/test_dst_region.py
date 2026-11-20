@@ -444,6 +444,27 @@ end
         with self.assertRaisesRegex(ValueError, 'Unsupported pighead save state'):
             PREFAB['convert_entities'](terrain, groups, report, 'SESSION')
 
+    def test_lightninggoat_keeps_health_herd_location_and_charge(self):
+        terrain = {'width': 8, 'height': 6, 'topology': {'ids': ['Room']},
+                   'nodeidtilemap': base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack('<48H', *[1] * 48)).decode()}
+        report = {'nodes': ['Room'], 'translation': [0, 0, 0]}
+        source = '''
+tablefunctions["ents_lightninggoat_fn"] = function()
+return {{id=1,x=4,z=8,data={health={health=460},knownlocations={locations={{name="herd",x=4,y=0,z=8}}},charged=true,chargeleft=2}}}
+end
+'''
+        entities, entity_report = PREFAB['convert_entities'](
+            terrain, IMPORTER['LITERALS']['snapshot_entities'](source, ['lightninggoat']), report, 'S')
+        self.assertEqual(entity_report['skippedEntities'], [])
+        self.assertEqual(entities['lightninggoat'][0]['components'], {
+            'health': {'health': 460, 'maxhealth': 700},
+            'knownlocations': {'locations': [{'name': 'herd', 'x': 12, 'y': 0, 'z': -24}]},
+            'lightninggoat': {'charged': True, 'chargeleft': 2}})
+        for data, message in [({'health': {'health': 701}}, 'health'), ({'charged': True}, 'charge'),
+                              ({'burnable': {}}, 'save state')]:
+            with self.assertRaisesRegex(ValueError, f'Unsupported lightninggoat {message}'):
+                PREFAB['convert_entities'](terrain, {'lightninggoat': [{'id': 2, 'x': 0, 'z': 0, 'data': data}]}, report, 'S')
+
     def test_beefalo_keeps_a_hurt_ones_health_and_imports_a_domesticated_one_as_wild(self):
         terrain = {'width': 8, 'height': 6, 'topology': {'ids': ['Room']},
                    'nodeidtilemap': base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack('<48H', *[1] * 48)).decode()}

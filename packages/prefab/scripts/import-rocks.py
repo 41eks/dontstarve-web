@@ -48,6 +48,9 @@ ASSETS = {
     # beehive.lua / wasphive.lua: one archive each for the bank and build; snow.zip is mirrored elsewhere.
     'beehive': ['beehive.zip'],
     'wasphive': ['wasphive.zip'],
+    # lightninggoat.lua: the lightning_goat bank's basic and actions archives, the build and the charged (shocked) build.
+    'lightninggoat': ['lightning_goat_basic.zip', 'lightning_goat_actions.zip', 'lightning_goat_build.zip',
+                      'lightning_goat_shocked_build.zip'],
 }
 # skinprefabs.lua: mast_malbatross's PREFAB_SKINS, each a dynamic build with its .dyn atlas package.
 SKINS = ['mast_malbatross_tesla', 'mast_malbatross_wagstaff']
@@ -165,6 +168,14 @@ def main():
     art |= {f'{bank}/{clip}': {'animationArchive': f'{bank}.zip', 'bank': bank, 'animation': clip}
             for bank in ('beehive', 'wasphive')
             for clip in ['cocoon_small', 'cocoon_small_hit', 'cocoon_dead', 'frozen', 'frozen_loop_pst']}
+    # SGlightninggoat.lua: every clip its states play, from the basic archive (idle, walk, frozen) and the actions archive.
+    art |= {f'lightning_goat/{clip}': {'animationArchive': archive, 'bank': 'lightning_goat', 'animation': clip}
+            for archive, clips in [('lightning_goat_basic.zip', ['idle_loop', 'walk_pre', 'walk', 'walk_pst', 'frozen',
+                                                                 'frozen_loop_pst']),
+                                   ('lightning_goat_actions.zip', ['bleet', 'taunt_pre', 'taunt', 'taunt_pst', 'trans', 'shock',
+                                                                   'shock_pst', 'atk', 'hit', 'death', 'death_2', 'sleep_pre',
+                                                                   'sleep_loop', 'sleep_pst'])]
+            for clip in clips}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives and {len(SKINS)} skin builds')
 

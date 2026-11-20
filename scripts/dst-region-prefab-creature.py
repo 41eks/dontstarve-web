@@ -180,3 +180,43 @@ def beefalo_components(data, context):
             raise ValueError('Unsupported beefalo beard state')
         components['beard'] = dict(beard)
     return components
+
+
+LIGHTNING_GOAT_HEALTH = 700  # tuning.lua LIGHTNING_GOAT_HEALTH = 350 * 2
+
+
+def _known_locations(data, context, prefab):
+    locations = []
+    for location in (data.get('knownlocations') or {}).get('locations', []):
+        if not isinstance(location, dict) or set(location) != {'name', 'x', 'y', 'z'} \
+                or not isinstance(location['name'], str) or not all(_finite(location[axis]) for axis in 'xyz'):
+            raise ValueError(f'Unsupported {prefab} known location')
+        # Adding 0.0 turns a rounded -0.0 (a source y of -2e-08) into 0, as a save round trip writes it back.
+        x, y, z = (value + 0.0 for value in context['project']([location['x'], location['y'], location['z']]))
+        locations.append({'name': location['name'], 'x': x, 'y': y, 'z': z})
+    if len({location['name'] for location in locations}) != len(locations):
+        raise ValueError(f'Duplicate {prefab} known location')
+    return locations
+
+
+def lightninggoat_components(data, context):
+    # lightninggoat.lua OnSave (charged, chargeleft) plus the component OnSaves. health, knownlocations (spawnpoint and
+    # herd) and the charge are ported; the herd entity is not, so the herd location stays where the herd was. An
+    # unsalted saltlicker and an empty timer save nothing.
+    if set(data) - {'health', 'knownlocations', 'charged', 'chargeleft'}:
+        raise ValueError(f'Unsupported lightninggoat save state: {sorted(set(data))}')
+    components = {}
+    health = data.get('health', {'health': LIGHTNING_GOAT_HEALTH})
+    if not isinstance(health, dict) or set(health) != {'health'} or not _finite(health['health']) \
+            or not 0 < health['health'] <= LIGHTNING_GOAT_HEALTH:
+        raise ValueError('Unsupported lightninggoat health')
+    # health:OnSave writes no maxhealth (save_maxhealth is unset); this port's Health saves its maximum too.
+    components['health'] = {'health': health['health'], 'maxhealth': LIGHTNING_GOAT_HEALTH}
+    locations = _known_locations(data, context, 'lightninggoat')
+    if locations:
+        components['knownlocations'] = {'locations': locations}
+    if 'charged' in data or 'chargeleft' in data:
+        if data.get('charged') is not True or type(data.get('chargeleft')) is not int or not 1 <= data['chargeleft'] <= 3:
+            raise ValueError('Unsupported lightninggoat charge')
+        components['lightninggoat'] = {'charged': True, 'chargeleft': data['chargeleft']}
+    return components

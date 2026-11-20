@@ -555,6 +555,7 @@
     "treasurechest",
     "pandoraschest",
     "beefalo",
+    "lightninggoat",
     "dragonfly",
     "dragonfly_spawner",
     "amulet",
@@ -1113,6 +1114,10 @@
       "imported": 0
     },
     "beefalo": {
+      "source": 0,
+      "imported": 0
+    },
+    "lightninggoat": {
       "source": 0,
       "imported": 0
     },

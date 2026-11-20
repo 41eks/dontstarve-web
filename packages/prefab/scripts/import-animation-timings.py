@@ -19,12 +19,15 @@ ARCHIVES = (
     'book_fx_wicker.zip', 'fx_books.zip', 'broken_tool.zip',
     'mushroom_tree_med.zip', 'mushroom_tree_tall.zip',
     'beefalo_basic.zip', 'beefalo_actions.zip', 'beefalo_actions_domestic.zip',
+    'lightning_goat_basic.zip', 'lightning_goat_actions.zip',
     'portal_moonrock.zip', 'pillar_monkey.zip', 'star_hot.zip', 'star_cold.zip',
     'moonbase_fx.zip', 'teleporter_worm.zip', 'blocker_sanity.zip', 'pig_king.zip',
 )
 # Clips whose length differs by facing; the logical AnimState has one length per clip, so the first facing's is kept.
 # beefalo walk_pre is 12 frames facing down or sideways and 7 facing up; switch is unused by SGBeefalo.
-FACING_DEPENDENT = {('beefalo_basic.zip', 'walk_pre'), ('beefalo_basic.zip', 'switch')}
+# lightning_goat walk is 18/17/18 frames and walk_pst 15/14/14 by facing.
+FACING_DEPENDENT = {('beefalo_basic.zip', 'walk_pre'), ('beefalo_basic.zip', 'switch'),
+                    ('lightning_goat_basic.zip', 'walk'), ('lightning_goat_basic.zip', 'walk_pst')}
 OUTPUT = pathlib.Path(__file__).resolve().parents[1] / 'src/animationTimings.json'
 
 

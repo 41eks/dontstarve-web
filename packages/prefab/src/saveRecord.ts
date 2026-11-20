@@ -111,6 +111,7 @@ export interface EntityPersistData {
   finiteuses?: { uses: number };
   moonbase?: import('./moonbase').MoonbaseSaveState;
   lightningrod?: import('./lightning_rod').LightningRodSaveState;
+  lightninggoat?: import('./lightninggoat').LightningGoatSaveState;
   firepit?: import('./firepit').FirePitSaveState;
   evergreen?: import('./evergreens').EvergreenSaveState;
   evergreenTimer?: import('../../componets/src/timer').NamedTimerSave;

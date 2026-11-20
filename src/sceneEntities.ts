@@ -101,6 +101,7 @@ import { chessJunkPrefabs } from '@dontstarve-web/prefab/chessjunk';
 import { chesspiecePrefabs } from '@dontstarve-web/prefab/chesspieces';
 import { archiveCentipedeHuskPrefabs } from '@dontstarve-web/prefab/archive_centipede';
 import { BEEFALO_BEHAVIOR, beefaloPrefabs, findBeefaloSpawnPoint, type BeefaloWorld } from '@dontstarve-web/prefab/beefalo';
+import { LIGHTNING_GOAT_RADIUS, lightningGoatPrefabs, type LightningGoatWorld } from '@dontstarve-web/prefab/lightninggoat';
 import type { LootLaunch } from '../packages/componets/src/inventoryphysics';
 
 /** Where SpawnPrefab makes an inst before it is set down or given to its holder. */
@@ -183,6 +184,7 @@ const MANAGER_DEFINITIONS = {
   'multiplayer_portal_moonrock': PREFAB_DEFINITIONS.portals,
   'nightmaregrowth': PREFAB_DEFINITIONS.nightmareGrowths,
   'beefalo': PREFAB_DEFINITIONS.beefalos,
+  'lightninggoat': PREFAB_DEFINITIONS.lightningGoats,
   'evergreen': PREFAB_DEFINITIONS.evergreens,
   'deciduoustree': PREFAB_DEFINITIONS.deciduousTrees,
   'farm_plow': PREFAB_DEFINITIONS.farmPlow,
@@ -262,6 +264,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.bulbPlants,
   PREFAB_DEFINITIONS.molehills,
   PREFAB_DEFINITIONS.beefalos,
+  PREFAB_DEFINITIONS.lightningGoats,
   PREFAB_DEFINITIONS.stalagmites,
   PREFAB_DEFINITIONS.rocks,
   PREFAB_DEFINITIONS.moonglassRocks,
@@ -451,6 +454,7 @@ export async function createSceneEntities(
   Managers['multiplayer_portal_moonrock'] = registerPortals(registry, 'multiplayer_portal_moonrock', worldState);
   registerNightmareGrowths(registry, 'nightmaregrowth', worldState);
   registerBeefalos(registry, 'beefalo', worldState);
+  registerLightningGoats(registry, 'lightninggoat', worldState);
   Managers['evergreen'] = registerEvergreens(registry, 'evergreen', worldState);
   Managers['deciduoustree'] = registerDeciduousTrees(registry, 'deciduoustree', worldState);
   const farmMap = registerFarm(registry, worldState);
@@ -1098,6 +1102,45 @@ export async function createSceneEntities(
     registry.register(MANAGER_DEFINITIONS[prefabId], {
       restore: (id, record) => prefabs.restore(id, record),
       debugSpawn: id => prefabs.spawn(id, findBeefaloSpawnPoint(world, beefaloWorld, player.position)),
+      exportRecords: () => [], dispose: () => {},
+    });
+  }
+
+  function registerLightningGoats(registry: EntityRegistry, prefabId: 'lightninggoat', worldState: SceneWorldState) {
+    // Colliders only change between frames, so one frame's wander and path queries share an obstacle grid.
+    let planningAt: number | undefined;
+    let planningObstacles: ((point: THREE.Vector3) => boolean) | undefined;
+    const edge = initialSave.world.map.generator.options.size / 2 - LIGHTNING_GOAT_RADIUS;
+    const goatWorld: LightningGoatWorld = {
+      scheduler: scheduler ?? worldState.scheduler,
+      componentUpdates: worldState.componentUpdates,
+      // The scheduler runs on world seconds (src/scene.ts), so the next boundary is the next multiple of the day length.
+      secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - now % TUNING.TOTAL_DAY_TIME,
+      clock: worldState.clock,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      pathfinder,
+      isWalkable(point) {
+        const now = goatWorld.scheduler.now;
+        if (planningAt !== now || !planningObstacles) {
+          planningAt = now;
+          planningObstacles = staticObstacleTest(getRegisteredPhysicsBodies(world), LIGHTNING_GOAT_RADIUS);
+        }
+        return Math.abs(point.x) <= edge && Math.abs(point.z) <= edge && turfMap.isPassableAtPoint(point) && !planningObstacles(point);
+      },
+      constrainPosition(position) {
+        position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
+        position.z = THREE.MathUtils.clamp(position.z, -edge, edge);
+      },
+      spawnLoot(prefab, position) {
+        groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count: 1 }], new THREE.Vector3(position.x, position.y, position.z));
+        return undefined;
+      },
+    };
+    prefabs.register(lightningGoatPrefabs(goatWorld));
+    registry.register(MANAGER_DEFINITIONS[prefabId], {
+      restore: (id, record) => prefabs.restore(id, record),
+      // The same clear ring search as c_spawn("beefalo"), for a goat-sized collider.
+      debugSpawn: id => prefabs.spawn(id, findBeefaloSpawnPoint(world, goatWorld, player.position)),
       exportRecords: () => [], dispose: () => {},
     });
   }

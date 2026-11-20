@@ -56,7 +56,7 @@
 | 工具、玩家帽子 | 可生成 | 可入栏 | `torch`、`hammer`、`lantern`、`reskin_tool`、`footballhat` |
 | 有 inventoryitem 的生物 | 可生成 | 可入栏；角色与状态影响后续操作 | `rabbit`、`crow`、`bee`、`butterfly`、`fireflies`、`spider` |
 | 建筑、植物、地形实体 | 可生成 | 无 inventoryitem 的实例不能入栏 | `icebox`、`treasurechest`、`grass`、`sapling`、`pond` |
-| 无 inventoryitem 的生物 | 可生成 | 不能入栏 | `beefalo`、`pigman`、`hound`、`deerclops`、`dragonfly` |
+| 无 inventoryitem 的生物 | 可生成 | 不能入栏 | `beefalo`、`lightninggoat`、`pigman`、`hound`、`deerclops`、`dragonfly` |
 | 部署物品与建成实体 | 两种形态分别生成 | 只有物品形态可入栏 | `wall_stone_item` / `wall_stone`、`farm_plow_item` / `farm_plow` |
 | 特殊持有或转换 | 可生成 | 需看容器限制与拾取回调 | `backpack`、`bernie_active` |
 | 皮肤注册项 | DebugSpawn 排除 is_skin 项 | 同样不能通过 DebugSpawn 生成 | 使用基础 prefab 的换肤流程 |
@@ -696,3 +696,5 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 2026-11-20 补充 `telestaff`：`prefabs/staff.lua` 的 `purple()`（`spellcaster` 的 `canusefrominventory`、`canuseontargets`、`canonlyuseonlocomotorspvp`，`TELESTAFF_USES` = 5），可 `c_give` / `c_spawn`，`c_save()` 保留耐久。`teleport_func` → `teleport_start` / `teleport_continue` / `teleport_end` 与 `SGwilson.lua` 的 `forcetele` 按源时序；随机目的地取 `TheWorld.topology.nodes` 中可通行、非 `SeparatedRoom` 的节点中心。
 
 2026-11-20 补充 `orangestaff`：`prefabs/staff.lua` 的 `orange()`（`weapon` 伤害 `CANE_DAMAGE`、攻击不耗耐久，`walkspeedmult` = `CANE_SPEED_MULT`，`ORANGESTAFF_USES` = 20），可 `c_give` / `c_spawn`，`c_save()` 保留耐久。`components/blinkstaff.lua`、`componentactions.lua` POINT `blinkstaff`、`ACTIONS.BLINK` 的物品分支与 `SGwilson.lua` 的 `quicktele` 按源时序；特效为 `fx.lua` 的 `sand_puff_large_front` / `sand_puff_large_back`。
+
+2026-11-20 补充 `lightninggoat`：`prefabs/lightninggoat.lua` 的世界生物，只可 `c_spawn`，`c_save()` 保存健康值、`knownlocations` 与充电（`charged` / `chargeleft`）。被引来的落雷或 `electrocute` 使其充电三天；见 [伏特羊](dst-lightninggoat.md)。

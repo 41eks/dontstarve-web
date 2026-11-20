@@ -473,6 +473,7 @@
     "treasurechest",
     "pandoraschest",
     "beefalo",
+    "lightninggoat",
     "dragonfly",
     "dragonfly_spawner",
     "amulet",
@@ -1122,6 +1123,10 @@
     "beefalo": {
       "source": 68,
       "imported": 68
+    },
+    "lightninggoat": {
+      "source": 2,
+      "imported": 2
     },
     "dragonfly": {
       "source": 0,
@@ -69446,6 +69451,30 @@
         498.072
       ],
       "sourceNode": "For a nice walk:10:BeefalowPlain"
+    },
+    {
+      "id": "dst_03741E1B78B29575_lightninggoat_id_116625",
+      "prefab": "lightninggoat",
+      "sourceIndex": 1,
+      "sourceId": 116625,
+      "sourcePosition": [
+        314.207,
+        0,
+        -441.5
+      ],
+      "sourceNode": "MoonIsland_IslandShards:1:Empty_Cove"
+    },
+    {
+      "id": "dst_03741E1B78B29575_lightninggoat_id_116626",
+      "prefab": "lightninggoat",
+      "sourceIndex": 2,
+      "sourceId": 116626,
+      "sourcePosition": [
+        313,
+        0,
+        -462
+      ],
+      "sourceNode": "MoonIsland_IslandShards:5:MoonIsland_IslandShard"
     },
     {
       "id": "dst_03741E1B78B29575_dragonfly_spawner_id_109262",

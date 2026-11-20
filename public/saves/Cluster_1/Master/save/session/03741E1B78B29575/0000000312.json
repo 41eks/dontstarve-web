@@ -787708,6 +787708,74 @@
           }
         }
       ],
+      "lightninggoat": [
+        {
+          "id": "dst_03741E1B78B29575_lightninggoat_id_116625",
+          "transform": {
+            "position": [
+              984.621,
+              0.0,
+              1378.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 700,
+              "maxhealth": 700
+            },
+            "knownlocations": {
+              "locations": [
+                {
+                  "name": "herd",
+                  "x": 967.43399,
+                  "y": 0.0,
+                  "z": 601.437012
+                },
+                {
+                  "name": "spawnpoint",
+                  "x": 984.621002,
+                  "y": 0.0,
+                  "z": 1378.5
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_lightninggoat_id_116626",
+          "transform": {
+            "position": [
+              981.0,
+              0.0,
+              1440.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 700,
+              "maxhealth": 700
+            },
+            "knownlocations": {
+              "locations": [
+                {
+                  "name": "herd",
+                  "x": 901.39801,
+                  "y": 0.0,
+                  "z": 547.460999
+                },
+                {
+                  "name": "spawnpoint",
+                  "x": 913.421265,
+                  "y": 0.0,
+                  "z": 528.460052
+                }
+              ]
+            }
+          }
+        }
+      ],
       "dragonfly_spawner": [
         {
           "id": "dst_03741E1B78B29575_dragonfly_spawner_id_109262",

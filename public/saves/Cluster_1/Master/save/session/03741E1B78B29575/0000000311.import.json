@@ -473,6 +473,7 @@
     "treasurechest",
     "pandoraschest",
     "beefalo",
+    "lightninggoat",
     "dragonfly",
     "dragonfly_spawner",
     "amulet",
@@ -1123,6 +1124,10 @@
     "beefalo": {
       "source": 68,
       "imported": 68
+    },
+    "lightninggoat": {
+      "source": 4,
+      "imported": 4
     },
     "dragonfly": {
       "source": 0,
@@ -69477,6 +69482,54 @@
       "sourceNode": "Great Plains:0:BeefalowPlain"
     },
     {
+      "id": "dst_03741E1B78B29575_lightninggoat_id_116524",
+      "prefab": "lightninggoat",
+      "sourceIndex": 1,
+      "sourceId": 116524,
+      "sourcePosition": [
+        314.207,
+        0,
+        -441.5
+      ],
+      "sourceNode": "MoonIsland_IslandShards:1:Empty_Cove"
+    },
+    {
+      "id": "dst_03741E1B78B29575_lightninggoat_id_116525",
+      "prefab": "lightninggoat",
+      "sourceIndex": 2,
+      "sourceId": 116525,
+      "sourcePosition": [
+        313,
+        0,
+        -462
+      ],
+      "sourceNode": "MoonIsland_IslandShards:5:MoonIsland_IslandShard"
+    },
+    {
+      "id": "dst_03741E1B78B29575_lightninggoat_id_116526",
+      "prefab": "lightninggoat",
+      "sourceIndex": 3,
+      "sourceId": 116526,
+      "sourcePosition": [
+        308.478,
+        0,
+        -182.479
+      ],
+      "sourceNode": "Lightning Bluff:BG_107:BGLightningBluff"
+    },
+    {
+      "id": "dst_03741E1B78B29575_lightninggoat_id_116527",
+      "prefab": "lightninggoat",
+      "sourceIndex": 4,
+      "sourceId": 116527,
+      "sourcePosition": [
+        286.466,
+        0,
+        -164.487
+      ],
+      "sourceNode": "Lightning Bluff:BG_107:BGLightningBluff"
+    },
+    {
       "id": "dst_03741E1B78B29575_dragonfly_spawner_id_109720",
       "prefab": "dragonfly_spawner",
       "sourceIndex": 1,
@@ -99214,13 +99267,6 @@
         "prefab": "spear_wathgrithr_lightning",
         "components": [
           "upgradeable"
-        ]
-      },
-      {
-        "path": "inventory.items.12",
-        "prefab": "orangestaff",
-        "components": [
-          "finiteuses"
         ]
       },
       {

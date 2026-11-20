@@ -78,7 +78,11 @@
         "12": {
           "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_11",
           "prefab": "orangestaff",
-          "components": {}
+          "components": {
+            "finiteuses": {
+              "uses": 7
+            }
+          }
         },
         "13": {
           "id": "dst_03741E1B78B29575_A7MO82FN9PR9_items_12",

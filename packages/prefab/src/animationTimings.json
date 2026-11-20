@@ -2631,6 +2631,160 @@
       "frames": 7
     }
   ],
+  "lightning_goat_basic.zip": [
+    {
+      "name": "lightning_goat",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "idle_loop",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 44
+    },
+    {
+      "name": "walk_pre",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 7
+    },
+    {
+      "name": "walk",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 18
+    },
+    {
+      "name": "walk_pst",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "frozen",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "frozen_loop_pst",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "reference",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 6
+    }
+  ],
+  "lightning_goat_actions.zip": [
+    {
+      "name": "lightning_goat",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "taunt_pre",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "taunt",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 78
+    },
+    {
+      "name": "taunt_pst",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 12
+    },
+    {
+      "name": "shock",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 18
+    },
+    {
+      "name": "shock_pst",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "atk",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 30
+    },
+    {
+      "name": "sleep_pre",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 79
+    },
+    {
+      "name": "sleep_loop",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 56
+    },
+    {
+      "name": "sleep_pst",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 56
+    },
+    {
+      "name": "bleet",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 40
+    },
+    {
+      "name": "death",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 43
+    },
+    {
+      "name": "trans",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 44
+    },
+    {
+      "name": "hit",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "death_2",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 43
+    },
+    {
+      "name": "corpse",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 2
+    },
+    {
+      "name": "corpse_hit",
+      "bank": 788301520,
+      "frameRate": 30.0,
+      "frames": 11
+    }
+  ],
   "portal_moonrock.zip": [
     {
       "name": "idle_off",

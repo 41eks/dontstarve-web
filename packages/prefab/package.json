@@ -112,6 +112,7 @@
     "./portal": "./src/portal.ts",
     "./nightmaregrowth": "./src/nightmaregrowth.ts",
     "./beefalo": "./src/beefalo.ts",
+    "./lightninggoat": "./src/lightninggoat.ts",
     "./emotes": "./src/emotes.ts",
     "./buildCursor": "./src/buildCursor.ts",
     "./buildingPlacer": "./src/buildingPlacer.ts",

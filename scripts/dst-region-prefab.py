@@ -140,6 +140,7 @@ ENTITY_WHITELIST = {
     'treasurechest': CONTAINER['treasurechest_components'],
     'pandoraschest': CONTAINER['pandoraschest_components'],
     'beefalo': CREATURE['beefalo_components'],
+    'lightninggoat': CREATURE['lightninggoat_components'],
     'dragonfly': CREATURE['dragonfly_components'],
     'dragonfly_spawner': CREATURE['dragonfly_spawner_components'],
 }
@@ -151,7 +152,7 @@ ITEM_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'moonbase'}
 RECORD_CONTEXT_PREFABS = {'ruinsrelic_chair', *ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4',
                           'mast_malbatross'}
 # Converters that also receive the record's project position and a converter for saved source positions.
-POSITION_CONTEXT_PREFABS = {'beefalo', 'dragonfly'}
+POSITION_CONTEXT_PREFABS = {'beefalo', 'lightninggoat', 'dragonfly'}
 
 
 def source_prefabs():

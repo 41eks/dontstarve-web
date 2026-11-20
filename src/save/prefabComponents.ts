@@ -466,6 +466,12 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (rod.charged !== true) fail(`${p}.charged`, 'expected true');
       components.lightningrod = { charged: true, chargeleft: number(rod.chargeleft, `${p}.chargeleft`, Number.MIN_VALUE, 3) };
     }
+    if (keys.includes('lightninggoat') && c.lightninggoat !== undefined) {
+      const p = `${path}.lightninggoat`, goat = object(c.lightninggoat, p, ['charged', 'chargeleft']);
+      // OnSave only writes charged goats; setcharged gives three charges and each day boundary takes one.
+      if (goat.charged !== true) fail(`${p}.charged`, 'expected true');
+      components.lightninggoat = { charged: true, chargeleft: integer(goat.chargeleft, `${p}.chargeleft`, 1, 3) };
+    }
     if (keys.includes('firepit') && c.firepit !== undefined) {
       const p = `${path}.firepit`, firepit = object(c.firepit, p, ['fueled', 'queued_charcoal']);
       if (firepit.queued_charcoal !== undefined && firepit.queued_charcoal !== true) fail(`${p}.queued_charcoal`, 'expected true');

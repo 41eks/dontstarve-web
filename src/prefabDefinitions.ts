@@ -604,6 +604,7 @@ const WORLD_PREFAB_DEFINITIONS = {
   lightflierFlowers: definePrefabs(['lightflier_flower'], componentParser({ keys: ['lightflierFlower'] }), true, ['bulb_plant_single.zip', 'bulb_plant_springy.zip', 'lightflier.zip']),
   molehills: definePrefabs(['molehill'], componentParser({ keys: ['inventory', 'spawner'], inventorySlots: 50 }), true),
   beefalos: definePrefabs(['beefalo'], componentParser({ keys: ['health', 'knownlocations', 'periodicspawner', 'beard', 'beefalo'], componentHealth: true }), true),
+  lightningGoats: definePrefabs(['lightninggoat'], componentParser({ keys: ['health', 'knownlocations', 'lightninggoat'], componentHealth: true }), true),
   stalagmites: definePrefabs(STALAGMITE_IDS, empty, true, id => [`${stalagmiteBank(id)}.zip`]),
   rocks: definePrefabs(ROCK_FAMILY_IDS, perPrefab(ROCK_FAMILY_IDS, empty, { [CAVEIN_BOULDER_ID]: caveinBoulder }), true, {
     ...mapPrefabs(ROCK_PREFABS, rockArchives),

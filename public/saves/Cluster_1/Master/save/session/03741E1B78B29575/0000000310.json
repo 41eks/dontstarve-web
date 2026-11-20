@@ -787106,6 +787106,128 @@
           }
         }
       ],
+      "lightninggoat": [
+        {
+          "id": "dst_03741E1B78B29575_lightninggoat_id_117296",
+          "transform": {
+            "position": [
+              984.621,
+              0.0,
+              1378.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 700,
+              "maxhealth": 700
+            },
+            "knownlocations": {
+              "locations": [
+                {
+                  "name": "herd",
+                  "x": 967.43399,
+                  "y": 0.0,
+                  "z": 601.437012
+                },
+                {
+                  "name": "spawnpoint",
+                  "x": 984.621002,
+                  "y": 0.0,
+                  "z": 1378.5
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_lightninggoat_id_117297",
+          "transform": {
+            "position": [
+              981.0,
+              0.0,
+              1440.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 700,
+              "maxhealth": 700
+            },
+            "knownlocations": {
+              "locations": [
+                {
+                  "name": "herd",
+                  "x": 901.39801,
+                  "y": 0.0,
+                  "z": 547.460999
+                },
+                {
+                  "name": "spawnpoint",
+                  "x": 913.421265,
+                  "y": 0.0,
+                  "z": 528.460052
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_lightninggoat_id_189828",
+          "transform": {
+            "position": [
+              967.434,
+              0.0,
+              601.437
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 520,
+              "maxhealth": 700
+            },
+            "knownlocations": {
+              "locations": [
+                {
+                  "name": "herd",
+                  "x": 967.43399,
+                  "y": 0.0,
+                  "z": 601.437012
+                }
+              ]
+            }
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_lightninggoat_id_186606",
+          "transform": {
+            "position": [
+              901.398,
+              0.0,
+              547.461
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 400,
+              "maxhealth": 700
+            },
+            "knownlocations": {
+              "locations": [
+                {
+                  "name": "herd",
+                  "x": 901.39801,
+                  "y": 0.0,
+                  "z": 547.460999
+                }
+              ]
+            }
+          }
+        }
+      ],
       "dragonfly_spawner": [
         {
           "id": "dst_03741E1B78B29575_dragonfly_spawner_id_108869",
