@@ -84,6 +84,10 @@ function context2d(canvas: HTMLCanvasElement) {
 }
 
 function transformedBounds(sprites: ResolvedSprite[]) {
+  // A blank source frame is legal (the ordinary frame renderer hides its mesh); compose it as a transparent cell.
+  if (!sprites.length) {
+    return { minX: 0, minY: 0, maxX: 0, maxY: 0 };
+  }
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -326,10 +330,17 @@ function* composeResolvedSteps(
     boundsMaxX = -Infinity,
     boundsMaxY = -Infinity;
   for (const frame of layouts) {
+    // A blank frame draws nothing and must not widen the shared cell grid.
+    if (!frame.sprites.length) {
+      continue;
+    }
     boundsMinX = Math.min(boundsMinX, frame.minX);
     boundsMinY = Math.min(boundsMinY, frame.minY);
     boundsMaxX = Math.max(boundsMaxX, frame.maxX);
     boundsMaxY = Math.max(boundsMaxY, frame.maxY);
+  }
+  if (!Number.isFinite(boundsMinX)) {
+    boundsMinX = boundsMinY = boundsMaxX = boundsMaxY = 0;
   }
   const minX = Math.floor(boundsMinX * resolutionScale) / resolutionScale;
   const minY = Math.floor(boundsMinY * resolutionScale) / resolutionScale;

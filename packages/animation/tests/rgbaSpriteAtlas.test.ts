@@ -114,6 +114,45 @@ describe('RGBA sprite atlas', () => {
     }
   });
 
+  it('composes a blank source frame as a transparent cell instead of failing the page', () => {
+    vi.stubGlobal('document', { createElement: () => new FakeCanvas() });
+    const texture = new THREE.DataTexture(new Uint8Array(4 * 4 * 4), 4, 4);
+    const material = new THREE.MeshBasicMaterial({ map: texture });
+    const part: ResolvedSprite = {
+      element: { imageHash: 1, imageIndex: 0, layerHash: 1, matrix: [1, 0, 0, 1, 0, 0], z: 0 },
+      image: {
+        index: 0,
+        duration: 1,
+        x: 0,
+        y: 0,
+        width: 2,
+        height: 2,
+        vertexIndex: 0,
+        vertexCount: 6,
+        bbx: 0,
+        bby: 0,
+        canvasWidth: 4,
+        canvasHeight: 4,
+      },
+      materials: [material],
+    };
+    const animation: Animation = {
+      name: 'rain',
+      facing: 0,
+      bankHash: 0,
+      frameRate: 30,
+      frames: [{ elements: [part.element] }, { elements: [] }],
+    };
+    const pages = composeResolvedRgbaSpriteAtlases(animation, [[part], []], 16);
+    try {
+      expect(pages.flatMap(page => page.frames.map(frame => frame.frameIndex))).toEqual([0, 1]);
+    } finally {
+      pages.forEach(page => page.texture.dispose());
+      texture.dispose();
+      material.dispose();
+    }
+  });
+
   it('steps a resolved composition one frame at a time and matches the synchronous pages', () => {
     vi.stubGlobal('document', { createElement: () => new FakeCanvas() });
     const texture = new THREE.DataTexture(new Uint8Array(4 * 4 * 4), 4, 4);

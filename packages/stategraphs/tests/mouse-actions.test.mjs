@@ -1,11 +1,34 @@
 import { Group, Object3D, Scene } from 'three';
-import { registerMouseTarget } from '../src/mouseTargets.ts';
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import { PlayerActionPicker } from '../src/playeractionpicker.ts';
+import { disposeActionEntity, findActionEntity, registerActionEntity } from '../../prefab/src/actionEntity.ts';
+import { prefabInstance } from '../../prefab/src/prefabInstance.ts';
+import { withEntity } from '../../animation/tests/entityFixture.ts';
+
+/** A picker whose ray only reports the object the test says is under the pointer. */
+function pointerFor(pick, groundPoint = () => undefined) {
+  return {
+    beginFrame() {},
+    endFrame() {},
+    dispose() {},
+    groundPoint,
+    pickMouseTarget: pick,
+  };
+}
+
+function actionEntity(model) {
+  const entity = registerActionEntity(prefabInstance(withEntity(model, 'pickable')));
+  new Scene().add(model);
+  return entity;
+}
 
 test('Wortox point specials are fallbacks after equipped actions and never displace active-item actions', () => {
-  const picker = new PlayerActionPicker({ beginFrame() {}, endFrame() {}, dispose() {}, pickMouseTarget() {} });
+  let active = false;
+  const item = { prefab: 'log' };
+  const doer = { components: { inventory: { GetActiveItem: () => (active ? item : undefined) } } };
+  const picker = new PlayerActionPicker(pointerFor(() => undefined));
+  picker.bindPlayer(doer, () => undefined);
   const blink = { action: 'BLINK' },
     cast = { action: 'CASTSPELL' },
     deploy = { action: 'DEPLOY' };
@@ -14,8 +37,7 @@ test('Wortox point specials are fallbacks after equipped actions and never displ
   const stopCast = picker.register(() => [{ action: cast, button: 'right' }]);
   assert.equal(picker.getMouseActions().right, cast);
   stopCast();
-  let active = true;
-  picker.registerActiveItemSource(() => active);
+  active = true;
   assert.equal(picker.getMouseActions().right, undefined);
   picker.register(() => [{ action: deploy, button: 'right', source: 'inventory' }]);
   assert.equal(picker.getMouseActions().right, deploy);
@@ -27,21 +49,17 @@ test('shared picking resolves one entity and chooses independent button actions 
   const root = new Group(),
     child = new Object3D();
   root.add(child);
-  new Scene().add(root);
-  const mouseTarget = registerMouseTarget(root, () => true);
-  t.after(() => mouseTarget.dispose());
+  const entity = actionEntity(root);
+  t.onTestFinished(() => disposeActionEntity(entity));
   let casts = 0,
     begin = 0,
     end = 0;
-  const pointer = {
-    beginFrame: () => begin++,
-    endFrame: () => end++,
-    dispose() {},
-    pickMouseTarget: () => {
-      casts++;
-      return { object: child };
-    },
-  };
+  const pointer = pointerFor(() => {
+    casts++;
+    return { object: child };
+  });
+  pointer.beginFrame = () => begin++;
+  pointer.endFrame = () => end++;
   const picker = new PlayerActionPicker(pointer);
   const net = { action: 'NET' },
     mine = { action: 'MINE' },
@@ -60,20 +78,14 @@ test('shared picking resolves one entity and chooses independent button actions 
 test('an unavailable foreground target blocks picking through it and unregistering preserves other sources', t => {
   const front = new Group(),
     back = new Group();
-  new Scene().add(front, back);
-  const frontTarget = registerMouseTarget(front, () => true),
-    backTarget = registerMouseTarget(back, () => true);
-  t.after(() => {
-    frontTarget.dispose();
-    backTarget.dispose();
+  const frontEntity = actionEntity(front),
+    backEntity = actionEntity(back);
+  t.onTestFinished(() => {
+    disposeActionEntity(frontEntity);
+    disposeActionEntity(backEntity);
   });
   let foreground = true;
-  const pointer = {
-    beginFrame() {},
-    endFrame() {},
-    dispose() {},
-    pickMouseTarget: () => ({ object: foreground ? front : back }),
-  };
+  const pointer = pointerFor(() => ({ object: foreground ? front : back }));
   const picker = new PlayerActionPicker(pointer);
   const point = { action: 'TERRAFORM' },
     net = { action: 'NET' };
@@ -85,7 +97,7 @@ test('an unavailable foreground target blocks picking through it and unregisteri
   assert.deepEqual(picker.getMouseActions(), { left: undefined, right: point });
   removeFront();
   assert.deepEqual(picker.getMouseActions(), { left: undefined, right: point });
-  frontTarget.dispose();
+  disposeActionEntity(findActionEntity(front));
   foreground = false;
   assert.deepEqual(picker.getMouseActions(), { left: net, right: point });
 });

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import { test } from 'vitest';
 import {
   ActionHandler,
   BufferedAction,
@@ -59,10 +59,67 @@ test('scheduler-backed state timers stay discrete, prioritize timeout and cancel
 });
 
 function taggedObject(prefab, tags = []) {
-  return { prefab, hasTag: tag => tags.includes(tag) };
+  return { prefab, components: {}, hasTag: tag => tags.includes(tag) };
 }
 const reskinTool = taggedObject('reskin_tool', ['veryquickcast']);
 const bugnet = taggedObject('bugnet', ['NET_tool']);
+
+/**
+ * A player inst for SGwilson without the prefab: its AnimState reports each clip's length through `playAnimation`, its
+ * SoundEmitter and PushEvent reach the callbacks below, and the remaining fields are what the states read.
+ */
+function createEntity(host = {}) {
+  let animationLength = 1;
+  return {
+    SoundEmitter: {
+      PlaySound: (cue, name) => {
+        if (name && host.playNamedSound) {
+          host.playNamedSound(name, cue);
+        } else {
+          host.playSound?.(cue, name);
+        }
+      },
+      KillSound: cue => host.stopSound?.(cue),
+      PlayingSound: cue => host.isPlayingNamedSound?.(cue) ?? false,
+      SetVolume: (cue, volume) => host.setNamedSoundVolume?.(cue, volume),
+    },
+    AnimState: {
+      PlayAnimation: (name, loop) => {
+        animationLength = host.playAnimation?.({ key: name, name, loop }) ?? 1;
+      },
+      GetCurrentAnimationLength: () => animationLength,
+      SetDeltaTimeMultiplier() {},
+      OverrideSymbol: (...args) => host.overrideSymbol?.(...args),
+      OverrideItemSkinSymbol: (...args) => host.overrideItemSkinSymbol?.(...args),
+      ClearOverrideSymbol: (...args) => host.clearOverrideSymbol?.(...args),
+      Show: (...args) => host.showSymbol?.(...args),
+      Hide: (...args) => host.hideSymbol?.(...args),
+      SetMultColour: (...args) => host.setMultColour?.(...args),
+    },
+    position: { clone: () => ({}) },
+    TheSim: { FindEntities: () => [] },
+    prefab: 'wilson',
+    hasTag: () => false,
+    components: {},
+    PushEvent: (name, data) => {
+      if (name === 'newstate') {
+        host.onStateChanged?.(data.statename);
+      } else {
+        host.pushPlayerEvent?.(name, data);
+      }
+    },
+    Hide() {},
+    Show() {},
+    IsVisible: () => true,
+    ShowHUD: show => host.showHud?.(show),
+    SpawnPrefab: () => host.castLight?.(),
+    bookFx: { spawn: (prefab, follow) => host.spawnFx?.(prefab, follow) },
+    deathHost: host.deathHost,
+    controllerEnabled: true,
+    runSpeed: 4,
+    wantsToMoveForward: false,
+  };
+}
 
 function actor() {
   const played = [],
@@ -83,10 +140,10 @@ function actor() {
     atk_pre: 5,
     atk: 15,
   };
-  const graph = new WilsonStateGraph({
+  const entity = createEntity({
     playAnimation: clip => {
       played.push(clip.name);
-      return (frames[clip.key] ?? 30) / ((clip.frameRate ?? 30) * (clip.playbackRate ?? 1));
+      return (frames[clip.key] ?? 30) / (clip.frameRate ?? 30);
     },
     playSound: cue => sounds.push(cue),
     stopSound: cue => stopped.push(cue),
@@ -96,7 +153,8 @@ function actor() {
     },
     onStateChanged() {},
   });
-  return { graph, played, sounds, casting, stopped };
+  const graph = new WilsonStateGraph(entity);
+  return { graph, entity, played, sounds, casting, stopped };
 }
 
 test('HARVEST commits at the one-second long-action timeout and cancellation preserves the product', () => {
@@ -110,7 +168,7 @@ test('HARVEST commits at the one-second long-action timeout and cancellation pre
   assert.equal(graph.hasStateTag('doing'), true);
   assert.equal(graph.hasStateTag('nodangle'), true);
   assert.equal(graph.hasStateTag('busy'), true);
-  assert.deepEqual(sounds, ['make']);
+  assert.deepEqual(sounds, ['dontstarve/wilson/make_trap']);
   graph.update(4 * FRAMES);
   assert.equal(graph.hasStateTag('busy'), false);
   graph.update(0.99 - 4 * FRAMES);
@@ -205,7 +263,7 @@ for (const [label, action, commitFrame, invobject] of [
         );
         graph.update(2 * FRAMES);
         if (reason === 'unequip') {
-          graph.pushEvent('unequip');
+          graph.pushEvent('unequip', { eslot: 'HANDS' });
         }
         if (reason === 'cancel') {
           graph.cancelAction();
@@ -226,14 +284,14 @@ test('cast sound precedes commitment, committed effects keep running and early i
   graph.update(12 * FRAMES);
   assert.deepEqual(sounds, []);
   graph.update(FRAMES);
-  assert.deepEqual(sounds, ['cast']);
+  assert.deepEqual(sounds, ['dontstarve/wilson/use_gemstaff']);
   graph.update(100 * FRAMES);
   assert.deepEqual(casting, [true]);
   graph.pushBufferedAction(new BufferedAction('CASTSPELL', () => {}));
   graph.update(12 * FRAMES);
   graph.cancelAction();
   graph.update(10);
-  assert.deepEqual(sounds, ['cast']);
+  assert.deepEqual(sounds, ['dontstarve/wilson/use_gemstaff']);
   assert.deepEqual(casting, [true, true, false]);
 });
 
@@ -630,44 +688,46 @@ function readingActor() {
   const fx = [];
   const frames = { action_uniqueitem_pre: 8, book: 81 };
   let layerPlaying = false;
-  const graph = new WilsonStateGraph({
-    playAnimation: clip => {
-      log.push(`anim:${clip.name}`);
-      return (frames[clip.key] ?? 30) * FRAMES;
-    },
-    playSound: (cue, event) => log.push(`sound:${event ?? cue}`),
-    playNamedSound: (_name, event) => {
-      layerPlaying = true;
-      log.push(`layer:${event}`);
-    },
-    isPlayingNamedSound: () => layerPlaying,
-    setNamedSoundVolume: (_name, volume) => log.push(`volume:${volume}`),
-    spawnFx: (prefab, follow) => {
-      const inst = {
-        prefab,
-        follow,
-        valid: true,
-        detached: false,
-        events: [],
-        isValid() {
-          return this.valid;
-        },
-        remove() {
-          this.valid = false;
-        },
-        detach() {
-          this.detached = true;
-        },
-        pushEvent(name) {
-          this.events.push(name);
-        },
-      };
-      fx.push(inst);
-      return inst;
-    },
-    overrideSymbol: (symbol, build, source) => log.push(`symbol:${symbol}=${build}.${source}`),
-    onStateChanged() {},
-  });
+  const graph = new WilsonStateGraph(
+    createEntity({
+      playAnimation: clip => {
+        log.push(`anim:${clip.name}`);
+        return (frames[clip.key] ?? 30) * FRAMES;
+      },
+      playSound: (cue, event) => log.push(`sound:${event ?? cue}`),
+      playNamedSound: (_name, event) => {
+        layerPlaying = true;
+        log.push(`layer:${event}`);
+      },
+      isPlayingNamedSound: () => layerPlaying,
+      setNamedSoundVolume: (_name, volume) => log.push(`volume:${volume}`),
+      spawnFx: (prefab, follow) => {
+        const inst = {
+          prefab,
+          follow,
+          valid: true,
+          detached: false,
+          events: [],
+          isValid() {
+            return this.valid;
+          },
+          remove() {
+            this.valid = false;
+          },
+          detach() {
+            this.detached = true;
+          },
+          pushEvent(name) {
+            this.events.push(name);
+          },
+        };
+        fx.push(inst);
+        return inst;
+      },
+      overrideSymbol: (symbol, build, source) => log.push(`symbol:${symbol}=${build}.${source}`),
+      onStateChanged() {},
+    }),
+  );
   const book = {
     prefab: 'book_silviculture',
     swap_build: 'swap_books',
@@ -724,9 +784,9 @@ test('READ plays book then book2, commits at frame 50 and detaches book_fx befor
       'symbol:book_open=swap_books.book_silviculture_open',
       'symbol:book_closed=swap_books.book_silviculture_closed',
       'layer:silviculture',
-      'sound:bookLight',
+      'sound:dontstarve/common/use_book_light',
       'sound:dontstarve/common/book_spell',
-      'sound:bookClose',
+      'sound:dontstarve/common/use_book_close',
       'symbol:book_open=player_actions_uniqueitem.book_open',
       'symbol:book_closed=player_actions_uniqueitem.book_closed',
       'volume:0.5',
@@ -764,15 +824,16 @@ test('a failed READ plays fail_fx, and an interrupt before the layer sound cance
 });
 
 test('toolbroke interrupts work, plays the break feedback and re-equips the same tool on exit', () => {
-  const { graph, played, sounds } = actor();
+  const { graph, entity, played, sounds } = actor();
   const spawned = [],
     equipped = [];
-  graph.host.spawnFx = prefab => {
+  entity.bookFx.spawn = prefab => {
     spawned.push(prefab);
   };
-  graph.host.equipSamePrefab = prefab => {
-    equipped.push(prefab);
-    return true;
+  entity.components.inventory = {
+    FindItem: predicate =>
+      predicate({ prefab: 'bugnet', components: { equippable: {} } }) ? { prefab: 'bugnet' } : undefined,
+    EquipFromInventory: item => equipped.push(item.prefab),
   };
   let netted = 0;
   graph.pushBufferedAction(
@@ -789,7 +850,7 @@ test('toolbroke interrupts work, plays the break feedback and re-equips the same
   graph.pushEvent('toolbroke', { tool: { prefab: 'bugnet' } });
   assert.equal(graph.stateName, 'toolbroke');
   assert.equal(played.at(-1), 'hit');
-  assert.deepEqual(sounds.at(-1), 'useBreak');
+  assert.deepEqual(sounds.at(-1), 'dontstarve/wilson/use_break');
   assert.deepEqual(spawned, ['brokentool']);
   assert.equal(graph.hasStateTag('busy'), true);
   graph.update(30 * FRAMES);
@@ -803,15 +864,16 @@ test('toolbroke interrupts work, plays the break feedback and re-equips the same
 
 function shellActor() {
   const log = [];
-  const graph = new WilsonStateGraph({
-    playAnimation: clip => {
-      log.push(`anim:${clip.name}`);
-      return 30 * FRAMES;
-    },
-    playSound() {},
-    playEvent: event => log.push(`event:${event}`),
-    onStateChanged: name => log.push(`state:${name}`),
-  });
+  const graph = new WilsonStateGraph(
+    createEntity({
+      playAnimation: clip => {
+        log.push(`anim:${clip.name}`);
+        return 30 * FRAMES;
+      },
+      playSound: cue => log.push(`sound:${cue}`),
+      onStateChanged: name => log.push(`state:${name}`),
+    }),
+  );
   return { graph, log };
 }
 
@@ -820,9 +882,9 @@ test('armorsnurtleshell shell states hide, block hits, and yield to movement or 
   graph.goToState('shell_enter');
   assert.equal(graph.hasStateTag('busy'), true);
   graph.update(5 * FRAMES);
-  assert.equal(log.includes('event:dontstarve/movement/foley/hideshell'), false);
+  assert.equal(log.includes('sound:dontstarve/movement/foley/hideshell'), false);
   graph.update(2 * FRAMES);
-  assert.equal(log.filter(entry => entry === 'event:dontstarve/movement/foley/hideshell').length, 1);
+  assert.equal(log.filter(entry => entry === 'sound:dontstarve/movement/foley/hideshell').length, 1);
   graph.pushEvent('locomote');
   assert.equal(graph.stateName, 'shell_enter', 'the busy entry ignores locomote');
   graph.update(17 * FRAMES);
@@ -832,12 +894,12 @@ test('armorsnurtleshell shell states hide, block hits, and yield to movement or 
 
   graph.pushEvent('blocked');
   assert.equal(graph.stateName, 'shell_hit');
-  assert.equal(log.at(-2), 'event:dontstarve/wilson/hit');
+  assert.equal(log.at(-2), 'sound:dontstarve/wilson/hit');
   graph.update(3 * FRAMES);
   assert.equal(graph.stateName, 'shell_idle');
 
   graph.pushEvent('blocked');
-  graph.pushEvent('unequip');
+  graph.pushEvent('unequip', { eslot: 'HANDS' });
   graph.update(3 * FRAMES);
   assert.equal(graph.stateName, 'idle', 'unequipping during a hit returns to idle, not the shell');
 
@@ -845,37 +907,33 @@ test('armorsnurtleshell shell states hide, block hits, and yield to movement or 
   graph.pushEvent('locomote');
   assert.equal(graph.hasStateTag('shell'), false);
   graph.goToState('shell_idle');
-  graph.pushEvent('unequip');
-  assert.equal(graph.stateName, 'item_out');
+  graph.pushEvent('unequip', { eslot: 'HANDS' });
+  assert.equal(graph.stateName, 'item_in');
   graph.pushEvent('blocked');
-  assert.equal(graph.stateName, 'item_out', 'blocked only matters while hiding');
+  assert.equal(graph.stateName, 'item_in', 'blocked only matters while hiding');
 });
 
 test('death drops everything, plays the clip and holds the dead state against every later request', () => {
   const log = [];
-  let controller = true,
-    passable = true;
-  const graph = new WilsonStateGraph({
-    death: { dropEverything: () => log.push('drop'), isPassableAtPoint: () => passable },
+  let passable = true;
+  const entity = createEntity({
+    deathHost: { dropEverything: () => log.push('drop'), isPassableAtPoint: () => passable },
     playAnimation: clip => {
       log.push(`anim:${clip.name}`);
       return 60 * FRAMES;
     },
-    playSound() {},
-    playEvent: event => log.push(`event:${event}`),
-    setControllerEnabled: enabled => {
-      controller = enabled;
-    },
+    playSound: cue => log.push(`sound:${cue}`),
     pushPlayerEvent: (name, data) => log.push(`player:${name}:${JSON.stringify(data)}`),
     onStateChanged: name => log.push(`state:${name}`),
   });
+  const graph = new WilsonStateGraph(entity);
   graph.pushEvent('death', { cause: 'unknown' });
   assert.equal(graph.stateName, 'death');
   assert.equal(graph.hasStateTag('dead'), true);
-  assert.equal(controller, false);
-  assert.deepEqual(log.slice(log.indexOf('event:dontstarve/wilson/death')), [
-    'event:dontstarve/wilson/death',
-    'event:dontstarve/characters/maxwell/death_voice',
+  assert.equal(entity.controllerEnabled, false);
+  assert.deepEqual(log.slice(log.indexOf('sound:dontstarve/wilson/death')), [
+    'sound:dontstarve/wilson/death',
+    'sound:dontstarve/characters/maxwell/death_voice',
     'drop',
     'anim:death',
     'state:death',
@@ -884,7 +942,7 @@ test('death drops everything, plays the clip and holds the dead state against ev
   graph.requestMovement('run');
   graph.requestCrafting(true);
   graph.requestOneShot('item_out');
-  graph.pushEvent('unequip');
+  graph.pushEvent('unequip', { eslot: 'HANDS' });
   graph.pushEvent('death');
   graph.update(120 * FRAMES);
   assert.equal(graph.stateName, 'death', 'nothing leaves the death state');
@@ -898,35 +956,36 @@ test('death drops everything, plays the clip and holds the dead state against ev
 
 test('a ghost idles, runs, howls on appear and hit, refuses actions and never jumps', () => {
   const log = [];
-  const graph = new WilsonStateGraph({
-    playAnimation: clip => {
-      log.push(`anim:${clip.key}:${clip.name}`);
-      return 30 * FRAMES;
-    },
-    playSound() {},
-    playEvent: event => log.push(`event:${event}`),
-    onStateChanged: name => log.push(`state:${name}`),
-  });
+  const graph = new WilsonStateGraph(
+    createEntity({
+      playAnimation: clip => {
+        log.push(`anim:${clip.name}`);
+        return 30 * FRAMES;
+      },
+      playSound: cue => log.push(`sound:${cue}`),
+      onStateChanged: name => log.push(`state:${name}`),
+    }),
+  );
   graph.pushEvent('death');
   graph.becomeGhost();
   assert.equal(graph.isGhost, true);
   assert.equal(graph.hasStateTag('dead'), false, 'SGwilsonghost has no dead state');
-  assert.deepEqual(log.slice(log.indexOf('anim:ghost:appear')), [
-    'anim:ghost:appear',
-    'event:dontstarve/ghost/ghost_howl',
+  assert.deepEqual(log.slice(log.indexOf('anim:appear')), [
+    'anim:appear',
+    'sound:dontstarve/ghost/ghost_howl',
     'state:appear',
   ]);
   graph.update(40 * FRAMES);
   assert.equal(graph.stateName, 'idle');
-  assert.equal(log.at(-2), 'anim:ghost:idle');
+  assert.equal(log.at(-2), 'anim:idle');
 
   graph.requestMovement('jump');
   assert.equal(graph.stateName, 'idle', 'the ghost floats');
   graph.requestMovement('run');
   assert.equal(graph.stateName, 'run');
-  const idleStarts = log.filter(entry => entry === 'anim:ghost:idle').length;
+  const idleStarts = log.filter(entry => entry === 'anim:idle').length;
   graph.requestMovement('walk');
-  assert.equal(log.filter(entry => entry === 'anim:ghost:idle').length, idleStarts, 'running keeps the idle loop');
+  assert.equal(log.filter(entry => entry === 'anim:idle').length, idleStarts, 'running keeps the idle loop');
   graph.requestCrafting(true);
   graph.requestOneShot('eat');
   assert.equal(graph.isCrafting, false);
@@ -941,7 +1000,7 @@ test('a ghost idles, runs, howls on appear and hit, refuses actions and never ju
   graph.update(40 * FRAMES);
   assert.equal(graph.stateName, 'walk', 'idle resumes the requested movement');
 
-  const loaded = new WilsonStateGraph({ playAnimation: () => 1, playSound() {}, onStateChanged() {} });
+  const loaded = new WilsonStateGraph(createEntity({ playAnimation: () => 1 }));
   loaded.becomeGhost(true);
   assert.equal(loaded.stateName, 'idle', 'a saved ghost skips appear');
 });

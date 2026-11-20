@@ -686154,10 +686154,10 @@
           },
           "components": {
             "building": {
-              "state": "idle",
-              "skinId": "researchlab3_nature"
+              "state": "idle"
             }
-          }
+          },
+          "skinname": "researchlab3_nature"
         }
       ],
       "statueglommer": [

@@ -92,6 +92,12 @@ export async function checkLightbulbLighting() {
   const failedDropBrightness = await sample(5);
   await manager.drop(definition, new THREE.Vector3(5, 20, 0), () => true);
   manager.update(0.05, camera.quaternion);
+  // The dropped bulb is a billboard; face it to the fixture's top-down camera so the click can hit its art.
+  const droppedModel = manager.reskinTargets[0].transform.model;
+  await (prefabDisplay(droppedModel) as PrefabDisplay).artLoaded();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  droppedModel.quaternion.copy(camera.quaternion);
+  manager.update(0, camera.quaternion);
   const dropped = await sample(5);
   const click = () => {
     const model = manager.reskinTargets[0].transform.model;

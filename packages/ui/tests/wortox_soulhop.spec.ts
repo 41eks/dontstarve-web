@@ -17,6 +17,8 @@ test('map right clicks teleport across ocean for free, release autopause once an
   source.world.entities = {};
   source.world.elapsedSeconds = 0;
   source.world.map.generator.options.size = 768;
+  // The synthetic 64x64 ocean map has no worldgen topology; the imported nodes lie outside the shrunk world.
+  source.world.map.topology = { nodes: [] };
   source.world.map.defaultTileId = 1;
   source.world.map.tiles = [];
   for (let row = -32; row < 32; row++) {
