@@ -8,14 +8,17 @@
     "build": "tsc && vite build",
     "test:asset-cache": "pnpm build && node --test tests/asset-cache-build.test.mjs && pnpm --filter @dontstarve-web/ui exec playwright test --config asset-cache.playwright.config.ts",
     "preview": "vite preview",
-    "check:conventions": "node scripts/check-conventions.mjs --summary --baseline scripts/conventions-baseline.json"
+    "check:conventions": "node scripts/check-conventions.mjs --summary --baseline scripts/conventions-baseline.json",
+    "lint": "eslint ."
   },
   "devDependencies": {
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@types/three": "^0.184.1",
+    "eslint": "9.39.4",
     "stats-gl": "^4.2.3",
     "typescript": "~6.0.2",
+    "typescript-eslint": "8.67.0",
     "vite": "^8.0.12"
   },
   "dependencies": {
