@@ -964,6 +964,7 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
+      "sinks": true,
       "tags": [
         "molebait"
       ]
@@ -984,6 +985,7 @@
       "skinArchives": {},
       "moleBait": true,
       "elementalFoodHunger": 1.0,
+      "sinks": true,
       "tags": [
         "molebait",
         "renewable",
@@ -1006,6 +1008,7 @@
       "skinArchives": {},
       "moleBait": true,
       "elementalFoodHunger": 2.0,
+      "sinks": true,
       "tags": [
         "molebait",
         "quakedebris",
@@ -1138,6 +1141,7 @@
       "skinArchives": {},
       "moleBait": true,
       "elementalFoodHunger": 2.0,
+      "sinks": true,
       "tags": [
         "molebait",
         "quakedebris"
@@ -1231,7 +1235,8 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
-      "moleBait": true
+      "moleBait": true,
+      "sinks": true
     },
     "beefalowool": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/beefalowool.lua",
@@ -1346,6 +1351,7 @@
       "skinArchives": {},
       "moleBait": true,
       "elementalFoodHunger": 3.0,
+      "sinks": true,
       "tags": [
         "molebait"
       ]
@@ -1366,6 +1372,7 @@
       "skinArchives": {},
       "moleBait": true,
       "elementalFoodHunger": 1.0,
+      "sinks": true,
       "tags": [
         "molebait"
       ]
@@ -1567,7 +1574,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "sinks": true
     },
     "dreadstone": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/dreadstone.lua",
@@ -1616,6 +1624,7 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "elementalFoodHunger": 1.0,
+      "sinks": true,
       "tags": []
     },
     "moonglass": {
@@ -1632,6 +1641,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "sinks": true,
       "tags": [
         "moonglass_piece",
         "lunarhaildebris",
@@ -1832,6 +1842,7 @@
       "skinArchives": {},
       "moleBait": true,
       "elementalFoodHunger": 1.0,
+      "sinks": true,
       "tags": [
         "molebait",
         "quakedebris",
@@ -1874,6 +1885,7 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
+      "sinks": true,
       "tags": [
         "molebait",
         "quakedebris"
@@ -3151,6 +3163,7 @@
       "symbolOverrides": {},
       "skinArchives": {},
       "moleBait": true,
+      "sinks": true,
       "tags": [
         "molebait",
         "explosive"
@@ -3429,6 +3442,7 @@
       "loop": true,
       "symbolOverrides": {},
       "skinArchives": {},
+      "sinks": true,
       "hiddenSymbols": [
         "bird_gem"
       ]
@@ -3447,6 +3461,7 @@
       "loop": true,
       "symbolOverrides": {},
       "skinArchives": {},
+      "sinks": true,
       "hiddenSymbols": [
         "bird_gem"
       ]
@@ -3465,6 +3480,7 @@
       "loop": true,
       "symbolOverrides": {},
       "skinArchives": {},
+      "sinks": true,
       "hiddenSymbols": [
         "bird_gem"
       ]
@@ -3483,6 +3499,7 @@
       "loop": true,
       "symbolOverrides": {},
       "skinArchives": {},
+      "sinks": true,
       "hiddenSymbols": [
         "bird_gem"
       ]
@@ -3639,7 +3656,8 @@
       "skinArchives": {
         "bernie_cat": "dynamic/bernie_cat.zip",
         "bernie_dog": "dynamic/bernie_dog.zip"
-      }
+      },
+      "sinks": true
     },
     "farm_plow_item": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/farm_plow.lua",
@@ -3763,6 +3781,7 @@
       "skinArchives": {},
       "moleBait": true,
       "elementalFoodHunger": 2.0,
+      "sinks": true,
       "tags": [
         "molebait",
         "quakedebris"
@@ -3942,7 +3961,8 @@
       "animation": "idle_under",
       "loop": true,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "sinks": true
     },
     "butterfly": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/butterfly.lua",
@@ -4339,6 +4359,7 @@
         "amulet_red_relic": "dynamic/amulet_red_relic.zip",
         "amulet_red_rose": "dynamic/amulet_red_rose.zip"
       },
+      "sinks": true,
       "tags": [
         "shadowlevel"
       ]
@@ -4662,7 +4683,8 @@
         "wall_stone_roseitem": "dynamic/wall_stone_rose.zip",
         "wall_stone_shellitem": "dynamic/wall_stone_shell.zip",
         "wall_stone_victorianitem": "dynamic/wall_stone_victorian.zip"
-      }
+      },
+      "sinks": true
     },
     "wall_wood_item": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
@@ -4717,7 +4739,8 @@
         "wall_ruins_thulecite_alt_item": "dynamic/wall_ruins_thulecite.zip",
         "wall_ruins_thuleciteitem": "dynamic/wall_ruins_thulecite.zip",
         "wall_ruins_victorianitem": "dynamic/wall_ruins_victorian.zip"
-      }
+      },
+      "sinks": true
     },
     "wall_moonrock_item": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
@@ -4734,7 +4757,8 @@
       "symbolOverrides": {},
       "skinArchives": {
         "wall_moonrock_victorianitem": "dynamic/wall_moonrock_victorian.zip"
-      }
+      },
+      "sinks": true
     },
     "wall_scrap_item": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
@@ -4749,7 +4773,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "sinks": true
     },
     "wall_dreadstone_item": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/walls.lua",
@@ -4766,7 +4791,8 @@
       "symbolOverrides": {},
       "skinArchives": {
         "wall_dreadstone_relicitem": "dynamic/wall_dreadstone_relic.zip"
-      }
+      },
+      "sinks": true
     },
     "meat": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/meats.lua",
@@ -5237,7 +5263,8 @@
       "animation": "idle",
       "loop": false,
       "symbolOverrides": {},
-      "skinArchives": {}
+      "skinArchives": {},
+      "sinks": true
     },
     "cave_banana": {
       "source": "databundles/scripts_unpacked/scripts/prefabs/veggies.lua",
@@ -7860,6 +7887,7 @@
         "chester_eyebone_mystical": "dynamic/chester_mystical.zip",
         "chester_eyebone_walrus": "dynamic/chester_walrus.zip"
       },
+      "sinks": true,
       "tags": [
         "chester_eyebone",
         "irreplaceable",
@@ -7883,6 +7911,7 @@
         "hutch_fishbowl_fantasy": "dynamic/hutch_fantasy.zip",
         "hutch_fishbowl_swamp": "dynamic/hutch_swamp.zip"
       },
+      "sinks": true,
       "tags": [
         "hutch_fishbowl",
         "irreplaceable",
@@ -8062,6 +8091,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "sinks": true,
       "tags": [],
       "scale": 0.75
     },
@@ -8179,6 +8209,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "sinks": true,
       "tags": [
         "irreplaceable",
         "nonpotatable",
@@ -8199,6 +8230,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "sinks": true,
       "tags": [
         "irreplaceable",
         "nonpotatable",
@@ -8265,6 +8297,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "sinks": true,
       "tags": [
         "irreplaceable",
         "trader",
@@ -8327,6 +8360,7 @@
         "bundle_mystical": "dynamic/bundle_mystical.zip",
         "bundle_vintage": "dynamic/bundle_vintage.zip"
       },
+      "sinks": true,
       "tags": [
         "bundle",
         "unwrappable",
@@ -8347,6 +8381,7 @@
       "loop": false,
       "symbolOverrides": {},
       "skinArchives": {},
+      "sinks": true,
       "tags": [
         "bundle",
         "unwrappable"

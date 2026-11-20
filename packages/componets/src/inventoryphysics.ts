@@ -111,12 +111,11 @@ export interface InventoryPhysicsInst {
   readonly inlimbo?: boolean;
   /** The sprite is drawn this high above the inst's ground position while it flies. */
   readonly sprite: { setVisualHeight(height: number): void };
-  PushEvent(name: string, data?: unknown): void;
 }
 
 /**
  * MakeInventoryPhysics as the items' flights use it: lootdropper FlingItem, inventory DropItem's random direction and
- * LaunchAt give the body a velocity, and it flies until it rests on the ground (`on_landed`). Only a flying body is
+ * LaunchAt give the body a velocity, and it flies until it rests on the ground. Only a flying body is
  * visited each frame.
  */
 export class InventoryPhysics implements UpdatingComponent {
@@ -155,8 +154,8 @@ export class InventoryPhysics implements UpdatingComponent {
     flight.update(dt);
     this.inst.sprite.setVisualHeight(flight.height);
     if (flight.settled) {
+      // The body is at rest: inventoryitem's landing poll sees it and pushes on_landed.
       this.Stop();
-      this.inst.PushEvent('on_landed');
     }
   }
 

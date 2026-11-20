@@ -9,6 +9,7 @@ import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { PrefabEntityDefinition } from './prefabInstance';
 import { InventoryPhysics, type LootLaunch } from '../../componets/src/inventoryphysics';
 import { syncPlacementEntity } from './placementEntities';
+import { ShouldEntitySink, SinkEntity } from './ocean_util';
 import { TILE_SIZE } from './tile';
 import { configureTurfEntity } from './turfs';
 
@@ -23,6 +24,8 @@ export interface GroundItemAssetDefinition extends ArchiveSpriteDefinition {
   readonly moleBait?: boolean;
   /** edible.hungervalue of an ELEMENTAL food. */
   readonly elementalFoodHunger?: number;
+  /** inventoryitem:SetSinks(true): the item sinks in the ocean. */
+  readonly sinks?: boolean;
   readonly tags?: readonly string[];
   readonly scale?: number;
   readonly ground?: boolean;
@@ -230,7 +233,7 @@ export function iconItemPrefab(
 
 /**
  * MakeInventoryPhysics and TheWorld's services every item's callbacks read. A thrown inst lands where its flight ends,
- * and its placement and tile follow it there.
+ * and its placement and tile follow it there; off the passable ground it sinks.
  */
 export function bindItemWorld(inst: ItemEntity, world: ItemPrefabWorld): void {
   addComponent(inst, 'inventoryphysics', InventoryPhysics, world.componentUpdates, TILE_SIZE / 4);
@@ -254,6 +257,16 @@ export function bindItemWorld(inst: ItemEntity, world: ItemPrefabWorld): void {
   };
   inst.ListenForEvent('ondropped', settle);
   inst.ListenForEvent('on_landed', settle);
+  // inventoryitem's landing: it polls until the body rests, then sinks off the passable ground.
+  const map = world.map;
+  if (GROUND_ITEM_DEFINITIONS[inst.prefab]?.sinks) {
+    inst.components.inventoryitem.SetSinks(true);
+  }
+  inst.components.inventoryitem.BindLandingWorld({
+    componentUpdates: world.componentUpdates,
+    ShouldEntitySink: (item, sinks) => ShouldEntitySink(item, sinks, map),
+    SinkEntity,
+  });
   // physics.lua LaunchAt, from whoever throws the inst.
   inst.ListenForEvent('launch', (_inst, launch) => inst.components.inventoryphysics?.Launch(launch as LootLaunch));
   // RemoveFromScene takes the body out of the physics world: a flight caught mid-air ends at once.

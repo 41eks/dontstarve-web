@@ -62,6 +62,7 @@ export class ItemWorldFixture {
     lightflierWorld?: ItemPrefabWorld['lightflierWorld'],
     tickingarea?: import('../../signals/src').TileStateQuery,
     physics?: import('cannon-es').World,
+    map?: ItemPrefabWorld['map'],
   ) {
     this.inventory = inventory;
     this.ownsScheduler = !scheduler;
@@ -71,6 +72,7 @@ export class ItemWorldFixture {
     this.prefabs = new PrefabEntityManager(this.displays, animationBaseUrl, {
       tickingarea: tickingarea ?? firefliesWorld.tickingarea,
       physics,
+      scheduler: this.scheduler,
       iconArchiveUrl: archiveUrl,
     });
     function newItem(prefab: string): ItemEntity;
@@ -93,6 +95,7 @@ export class ItemWorldFixture {
       animationBaseUrl,
       scheduler: this.scheduler,
       componentUpdates: this.componentUpdates,
+      map,
       physics,
       fx,
       moleWorld,

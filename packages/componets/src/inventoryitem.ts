@@ -2,6 +2,7 @@ import type { LuaFn } from './luaFn';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { MiniMapEntity } from './minimapentity';
 import { createMemo, createSignal, type Memo, type ReadonlySignal } from '../../signals/src';
+import type { ComponentUpdates } from './componentUpdates';
 
 export interface ItemPosition {
   readonly x: number;
@@ -46,6 +47,20 @@ export interface InventoryItemInstance {
   ReturnToScene?(): void;
   /** The inst's sprite json: its skin, and the clip a prefab may derive its inventory image from. */
   readonly sprite: { readonly sprite: ReadonlySignal<InventoryItemSprite> };
+  /** inst.inlimbo. */
+  readonly inlimbo?: boolean;
+  ListenForEvent?(event: string, fn: () => void): () => void;
+  DoTaskInTime?(time: number, fn: () => void): unknown;
+}
+
+/**
+ * The world inventoryitem's landing reaches: StartUpdatingComponent for the landing poll, and ocean_util.lua's
+ * ShouldEntitySink and SinkEntity.
+ */
+export interface InventoryItemLandingWorld<Inst> {
+  readonly componentUpdates: ComponentUpdates;
+  ShouldEntitySink(inst: Inst, sinks: boolean): boolean;
+  SinkEntity(inst: Inst): void;
 }
 
 export type InventoryItemOnPickupFn<Inst> = LuaFn<
@@ -126,6 +141,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
     return this.derived.image;
   }
   dispose(): void {
+    this.StopPolling();
     // Disposed memos keep their final value; a removed inst does not derive them again.
     this.memos?.image.dispose();
     this.memos?.appearance.dispose();
@@ -190,8 +206,111 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
   onputininventoryfn?: InventoryItemOnPutInInventoryFn<Instance>;
   ondropfn?: InventoryItemOnDroppedFn<Instance>;
 
+  /** inventoryitem.sinks: the inst sinks in the ocean, not only off the map's passable ground. */
+  sinks = false;
+  /** inventoryitem.nobounce: a dropped inst is on the ground at once. */
+  nobounce = false;
+  pushlandedevents = true;
+  private is_landed = false;
+  /** The constructor's SetLanded(false, true): the inst polls for landing once its world is bound. */
+  private pollingForLanding = true;
+  private landingWorld?: InventoryItemLandingWorld<Instance>;
+  private stopPolling?: () => void;
+  private readonly poll = { OnUpdate: () => this.OnUpdate() };
+
   constructor(inst: Instance) {
     this.inst = inst;
+  }
+
+  /**
+   * The world's map and component updates, bound once with the inst's world: the constructor's landing poll starts,
+   * and its enterlimbo / exitlimbo listeners stop and restart it.
+   */
+  BindLandingWorld(world: InventoryItemLandingWorld<Instance>): void {
+    this.landingWorld = world;
+    this.inst.ListenForEvent?.('enterlimbo', () => this.SetLanded(false, false));
+    this.inst.ListenForEvent?.('exitlimbo', () => this.SetLanded(false, true));
+    this.SetLanded(this.is_landed, this.pollingForLanding);
+  }
+
+  get isLanded(): boolean {
+    return this.is_landed;
+  }
+
+  /** inventoryitem:IsHeld(). */
+  IsHeld(): boolean {
+    return this.ownerValue !== null;
+  }
+
+  /**
+   * inventoryitem:SetLanded: a falling inst polls each frame until it rests; landing pushes `on_landed` and tries to
+   * sink, taking off pushes `on_no_longer_landed`.
+   */
+  SetLanded(is_landed: boolean, should_poll_for_landing: boolean): void {
+    if (!is_landed) {
+      if (should_poll_for_landing) {
+        this.StartPolling();
+      } else {
+        this.StopPolling();
+      }
+      if (this.pushlandedevents && this.is_landed) {
+        this.inst.PushEvent('on_no_longer_landed', undefined);
+      }
+    } else {
+      this.StopPolling();
+      if (this.pushlandedevents && !this.is_landed) {
+        this.inst.PushEvent('on_landed', undefined);
+        this.TryToSink();
+      }
+    }
+    this.is_landed = is_landed;
+  }
+
+  /** inventoryitem:SetSinks: an inst that has already landed tries to sink at once. */
+  SetSinks(should_sink: boolean): void {
+    this.sinks = should_sink;
+    if (this.is_landed) {
+      this.TryToSink();
+    }
+  }
+
+  /** inventoryitem:ShouldSink. */
+  ShouldSink(): boolean {
+    return this.landingWorld?.ShouldEntitySink(this.inst, this.sinks) ?? false;
+  }
+
+  /** inventoryitem:TryToSink: DoTaskInTime(0, SinkEntity). */
+  TryToSink(): void {
+    const world = this.landingWorld;
+    if (world?.ShouldEntitySink(this.inst, this.sinks)) {
+      this.inst.DoTaskInTime?.(0, () => world.SinkEntity(this.inst));
+    }
+  }
+
+  /** inventoryitem:OnUpdate: the inst has landed once its body is at rest (MakeInventoryPhysics' flight is over). */
+  OnUpdate(): void {
+    if (this.inst.isRemoved) {
+      this.StopPolling();
+      return;
+    }
+    const physics = (this.inst.components as { inventoryphysics?: { readonly flying: boolean } } | undefined)
+      ?.inventoryphysics;
+    if (!physics?.flying) {
+      this.SetLanded(true, false);
+    }
+  }
+
+  private StartPolling(): void {
+    this.pollingForLanding = true;
+    if (this.landingWorld && !this.inst.isRemoved) {
+      this.stopPolling ??= this.landingWorld.componentUpdates.register(this.poll);
+    }
+  }
+
+  private StopPolling(): void {
+    this.pollingForLanding = false;
+    this.stopPolling?.();
+    this.stopPolling = undefined;
   }
   CanBePickedUp(doer: InventoryActor): boolean {
     if (this.grabbableoverridetag && doer.hasTag(this.grabbableoverridetag)) {
@@ -209,6 +328,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
     this.ondropfn = fn;
   }
   OnPickup(doer: InventoryActor, source?: ItemPosition): boolean {
+    this.SetLanded(false, false);
     this.inst.PushEvent('onpickup', { owner: doer });
     return this.onpickupfn?.(this.inst, doer, source) === true;
   }
@@ -225,6 +345,8 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
     this.owner = null;
     // OnRemoved's ReturnToScene, also for an inst a holder took out of the scene without a store owner.
     this.inst.ReturnToScene?.();
+    // DoDropPhysics: nobounce items are on the ground at once.
+    this.SetLanded(this.nobounce, true);
     if (launch) {
       (
         this.inst.components as

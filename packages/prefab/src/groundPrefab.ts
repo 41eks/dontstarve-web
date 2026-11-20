@@ -72,6 +72,8 @@ export interface ItemPrefabWorld {
   scheduler: GameTimeScheduler;
   /** StartUpdatingComponent / StopUpdatingComponent. */
   componentUpdates: ComponentUpdates;
+  /** TheWorld.Map for ocean_util.lua ShouldEntitySink; without it no item sinks. */
+  map?: import('./ocean_util').OceanMap;
   physics?: import('cannon-es').World;
   moleWorld?: import('./molehill').MoleHabitat;
   lightflierWorld?: import('./lightflier').LightFlierHabitat;
