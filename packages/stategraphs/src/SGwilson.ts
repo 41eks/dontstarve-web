@@ -1663,6 +1663,7 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName, Wils
   ActionHandler('TURNON', 'give'),
   // SGwilson.lua RUMMAGE: the pocket rummage branches (invobject, mount) are not ported.
   ActionHandler('RUMMAGE', 'doshortaction'),
+  ActionHandler('INCINERATE', 'doshortaction'),
   ActionHandler('GIVE', (_inst, action) => action.target?.hasTag('give_dolongaction') ? 'dolongaction' : 'give'),
   ActionHandler('PICK', (_inst, action) => {
     // SGwilson.lua:1043-1077 — jostle/skill/riding branches remain unported.

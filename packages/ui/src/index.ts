@@ -27,7 +27,7 @@ export {
   type ChestInventoryPanelController,
   type ChestInventoryPanelOptions,
 } from './chest-inventory-panel';
-export { DstCookPotPanelElement, type CookRequestDetail } from './cook-pot-panel';
+export { DstCookPotPanelElement, type ContainerButtonRequestDetail } from './cook-pot-panel';
 export { DstIceBoxPanelElement } from './ice-box-panel';
 export { DstBackpackPanelElement } from './backpack-panel';
 export { PreparedFoodSlot } from './slot/prepared-food-slot';

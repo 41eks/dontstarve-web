@@ -38,6 +38,7 @@ export interface ComponentActionEntity extends WorkInst {
     equippable?: { IsRestricted(): boolean };
     finiteuses?: { use?(amount: number): boolean; Use?(amount: number): void; GetUses?(): number; useForAction?(action: WorkAction): boolean };
     lighter?: Lighter;
+    incinerator?: { Incinerate(doer?: object): boolean };
     burnable?: Burnable;
     propagator?: Propagator;
     bathbombable?: import('../../componets/src/bathbombable').BathBombable;
@@ -95,7 +96,8 @@ export interface SceneActionDoer {
     CanAccessItem?(item: import('../../inventory/src/entity').ItemEntity): boolean;
   } };
 }
-export type SceneAction = 'LOOKAT' | 'PICKUP' | 'PICK' | 'HARVEST' | 'TURNON' | 'TURNOFF' | 'RUMMAGE' | 'SLEEPIN' | 'MIGRATE' | 'TAKEITEM' | 'HAUNT';
+export type SceneAction = 'LOOKAT' | 'PICKUP' | 'PICK' | 'HARVEST' | 'TURNON' | 'TURNOFF' | 'RUMMAGE' | 'SLEEPIN' | 'MIGRATE' | 'TAKEITEM' | 'HAUNT'
+  | 'INCINERATE';
 type SceneFn = (inst: ComponentActionEntity, doer: SceneActionDoer, actions: SceneAction[], right: boolean) => void;
 /** The acting player as EQUIPPED / POINT entries read it. */
 export interface EquippedActionDoer {
@@ -199,6 +201,11 @@ export const COMPONENT_ACTIONS: {
       // The bundle branch (WRAPBUNDLE / APPLYCONSTRUCTION) is not ported.
       if (!inst.hasTag('bundle') && !inst.hasTag('burnt') && inst.components.container?.canbeopened
         && doer.components?.inventory) actions.push('RUMMAGE');
+    },
+    // The rider gate is not ported: no doer has a mount.
+    incinerator: (inst, doer, actions, right) => {
+      const container = inst.components.container;
+      if (!inst.hasTag('burnt') && right && container && !container.IsEmpty() && container.IsOpenedBy(doer)) actions.push('INCINERATE');
     },
     inspectable: (inst, doer, actions) => {
       if (inst !== doer && (!doer.sg || (doer.sg.hasStateTag('idle') && !doer.sg.hasStateTag('moving')) || doer.sg.hasStateTag('channeling'))) actions.push('LOOKAT');

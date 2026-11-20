@@ -133,7 +133,7 @@ it('draws each container prefab from its source bank and skin build, and keeps i
     renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
   const buildings = managedBuildings(world);
   cleanups.push(() => buildings.dispose());
-  const ids = ['treasurechest', 'pandoraschest', 'icebox', 'dragonflychest', 'saltbox', 'mushroom_light', 'mushroom_light2'] as const;
+  const ids = ['treasurechest', 'pandoraschest', 'icebox', 'dragonflychest', 'dragonflyfurnace', 'saltbox', 'mushroom_light', 'mushroom_light2'] as const;
   for (const id of ids) {
     const declaration = definitions.animatedBuildings[id] as { container: { slotCount: number }; idleAnimation: string; skinArchives?: Record<string, string> };
     const [skinId] = Object.keys(declaration.skinArchives ?? {});

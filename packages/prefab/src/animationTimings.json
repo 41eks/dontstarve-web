@@ -3166,5 +3166,79 @@
       "frameRate": 30.0,
       "frames": 31
     }
+  ],
+  "dragonfly_furnace.zip": [
+    {
+      "name": "idle",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 6
+    },
+    {
+      "name": "place",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 40
+    },
+    {
+      "name": "hi_pre",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "hi",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 32
+    },
+    {
+      "name": "med_pre",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "med",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 32
+    },
+    {
+      "name": "lo_pre",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "lo",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 32
+    },
+    {
+      "name": "hi_hit",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "medi_hit",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "loi_hit",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 8
+    },
+    {
+      "name": "incinerate",
+      "bank": 3824038617,
+      "frameRate": 30.0,
+      "frames": 42
+    }
   ]
 }

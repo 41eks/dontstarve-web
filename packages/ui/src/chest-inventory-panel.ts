@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { DstChestPanelElement } from './chest-panel';
 import type { EntitySlots } from './slot/slot-binding';
-import { buildingContainerDefinition, containerPanelAnchor, type ContainerPanelAnchor, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
+import { buildingContainerDefinition, containerPanelAnchor, type ContainerButtonAction, type ContainerPanelAnchor, type StorageBuildingId } from '@dontstarve-web/prefab/containers';
 import { PLAYER_COLLIDER_RADIUS } from '@dontstarve-web/prefab/player_common';
 import definitions from '@dontstarve-web/prefab/definitions.json' with { type: 'json' };
 import type { ItemEntity } from '@dontstarve-web/inventory';
@@ -25,8 +25,13 @@ export interface ChestPanelContents {
 export interface ChestInventoryPanelController {
   open(model: THREE.Object3D, prefab: StorageBuildingId, contents: ChestPanelContents): void;
   close(model: THREE.Object3D): void;
-  bindActions(dispatcher: { performContainerAction(model: THREE.Object3D, action: 'COOK', doer: object): boolean }): void;
+  bindActions(dispatcher: ContainerActionDispatcher): void;
   dispose(): void;
+}
+
+/** widget.buttoninfo.fn: BufferedAction(doer, inst, ACTIONS[action]):Do() on the open container's entity. */
+export interface ContainerActionDispatcher {
+  performContainerAction(model: THREE.Object3D, action: ContainerButtonAction, doer: object): boolean;
 }
 
 export interface ChestInventoryPanelOptions {
@@ -51,13 +56,14 @@ export function createChestInventoryPanel(
   const anchor = new THREE.Vector3();
   let openModel: THREE.Object3D | undefined;
   let panelAnchor: ContainerPanelAnchor = 'player-top';
-  let actions: { performContainerAction(model: THREE.Object3D, action: 'COOK', doer: object): boolean } | undefined;
-  const cook = (event: GameUiEventMap['game:cook-request']) => {
+  let actions: ContainerActionDispatcher | undefined;
+  let openButton: ContainerButtonAction | undefined;
+  const pressButton = (event: GameUiEventMap['game:container-button']) => {
     const { containerId } = event.detail;
-    if (!openModel || element.slotContainer?.id !== containerId) return;
-    actions?.performContainerAction(openModel, 'COOK', player);
+    if (!openModel || !openButton || element.slotContainer?.id !== containerId) return;
+    actions?.performContainerAction(openModel, openButton, player);
   };
-  element.addEventListener('game:cook-request', cook);
+  element.addEventListener('game:container-button', pressButton);
 
   const update = () => {
     if (!openModel || !openModel.visible || (!element.slotContainer && !element.isClosing)) {
@@ -136,7 +142,7 @@ export function createChestInventoryPanel(
     bindActions(dispatcher) { actions = dispatcher; },
     dispose() {
       cleanups.forEach(stop => stop());
-      element.removeEventListener('game:cook-request', cook);
+      element.removeEventListener('game:container-button', pressButton);
       element.removeEventListener('game:chest-close', close);
       actions = undefined; openModel = undefined;
     },
@@ -147,6 +153,7 @@ export function createChestInventoryPanel(
       bounds0.makeEmpty();
       const container = buildingContainerDefinition(prefab);
       panelAnchor = containerPanelAnchor(prefab);
+      openButton = container.button?.action;
       element.open({
         containerId,
         slotCount: container.slotCount,
@@ -154,6 +161,8 @@ export function createChestInventoryPanel(
         panelArchive: container.panelArchive,
         slotGrid: container.slotGrid,
         singleItems: container.singleItems,
+        slotBackground: container.slotBackground,
+        button: container.button,
         title: definitions.animatedBuildings[prefab].buildLabel,
       });
       if (toItem) element.bindContainer(slots, toItem);

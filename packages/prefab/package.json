@@ -182,6 +182,7 @@
     "./deployMap": "./src/deployMap.ts",
     "./worldContext": "./src/worldContext.ts",
     "./dragonfly_chest": "./src/dragonfly_chest.ts",
+    "./dragonfly_furnace": "./src/dragonfly_furnace.ts",
     "./bookstation": "./src/bookstation.ts",
     "./campfire": "./src/campfire.ts",
     "./saltbox": "./src/saltbox.ts",

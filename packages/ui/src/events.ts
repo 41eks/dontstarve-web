@@ -1,6 +1,6 @@
 import type { SlotAddress } from '@dontstarve-web/inventory';
 import type { ChestCloseDetail } from './chest-panel';
-import type { CookRequestDetail } from './cook-pot-panel';
+import type { ContainerButtonRequestDetail } from './cook-pot-panel';
 import type { CraftingStateDetail, CraftRequestDetail } from './crafting-ui';
 import type { DebugCommandDetail } from './debug-console';
 import type { EmoteRequestDetail, EmoteWheelToggleDetail } from './emote-wheel';
@@ -20,7 +20,7 @@ export interface GameUiEventMap {
   'game:map-state': CustomEvent<MinimapStateDetail>;
   'game:map-action-request': CustomEvent<MinimapActionRequestDetail>;
   'game:chest-close': CustomEvent<ChestCloseDetail>;
-  'game:cook-request': CustomEvent<CookRequestDetail>;
+  'game:container-button': CustomEvent<ContainerButtonRequestDetail>;
   'game:debug-console-toggle': CustomEvent<{ isOpen: boolean }>;
   'game:debug-command': CustomEvent<DebugCommandDetail>;
   'game:slot-transfer-request': CustomEvent<SlotTransferRequest>;

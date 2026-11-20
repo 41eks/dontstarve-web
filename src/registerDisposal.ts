@@ -107,7 +107,9 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
   const iceBoxInventoryPanel = createChestInventoryPanel(gameUi.iceBoxPanel, inventoryPanelOptions);
   return {
     setContainerOpen(buildId: StorageBuildingId, model: Object3D, isOpen: boolean): void {
-      const panel = buildId === 'cookpot' ? cookPotInventoryPanel : buildId === 'icebox' ? iceBoxInventoryPanel : chestInventoryPanel;
+      // The containers with a widget button share the cook pot's panel.
+      const panel = buildId === 'cookpot' || buildId === 'dragonflyfurnace' ? cookPotInventoryPanel
+        : buildId === 'icebox' ? iceBoxInventoryPanel : chestInventoryPanel;
       if (!isOpen) { panel.close(model); return; }
       const instance = prefabInstance(model), slots = instance?.components.container?.slots;
       if (instance && slots) panel.open(model, buildId, { containerId: buildingContainerId(buildId, String(instance.entityId)), slots });

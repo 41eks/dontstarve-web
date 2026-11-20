@@ -480,6 +480,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `coldfire` | 可生成 | 不能入栏 | `prefabs/coldfire.lua` |
 | `icebox` | 可生成 | 不能入栏 | `prefabs/icebox.lua` |
 | `saltbox` | 可生成 | 不能入栏 | `prefabs/saltbox.lua` |
+| `dragonflyfurnace` | 可生成 | 不能入栏 | `prefabs/dragonfurnace.lua`（`fn`）；`saladfurnace` 未移植 |
 | `bookstation` | 可生成 | 不能入栏 | `prefabs/bookstation.lua` |
 | `tent` | 可生成 | 不能入栏 | `prefabs/tent.lua` |
 | `siestahut` | 可生成 | 不能入栏 | `prefabs/tent.lua` |
@@ -704,3 +705,5 @@ spider.lua 还有其他共享构造的蜘蛛，但本表只单列已查看的 `s
 2026-11-20 补充 `lightninggoat`：`prefabs/lightninggoat.lua` 的世界生物，只可 `c_spawn`，`c_save()` 保存健康值、`knownlocations` 与充电（`charged` / `chargeleft`）。被引来的落雷或 `electrocute` 使其充电三天；见 [伏特羊](dst-lightninggoat.md)。
 
 2026-11-20 补充 `icestaff`：`prefabs/staff.lua` 的 `blue_common("blue", 1)`（tags `icestaff`、`weapon`、`rangedweapon`、`extinguisher`、`shadowlevel`，`weapon` 伤害 0、`SetRange(8, 10)`、`SetOnAttack(onattack_blue)`、`SetProjectile("ice_projectile")`，`ICESTAFF_USES` = 20），可 `c_give` / `c_spawn`，`c_save()` 保留耐久与皮肤。`componentactions.lua` EQUIPPED `weapon` 的扑灭（`CanExtinguishTarget`，左右键）与左键攻击战斗目标分支随之移植，`ACTIONS.ATTACK.strfn` 的 `RANGEDSMOTHER`（"扑灭"）同步。冰冻按 `components/freezable.lua` 完整移植（寒冷值衰减、`FREEZE_COLOUR` 加色、`damagetobreak`、额外抗性与其存档、碎冰 `shatter`），`beehive` 的 `OnFreeze`／`OnThaw`／`OnUnFreeze` 与 `SGlightflier` 的 `AddFrozenStates` 显示 `frozen`／`frozen_loop_pst` 和 `swap_frozen`。`icestaff2`、`icestaff3` 未移植。
+
+2026-11-20 补充 `dragonflyfurnace`：`prefabs/dragonfurnace.lua` 的 `fn`（tags `structure`、`wildfireprotected`、`cooker`、`HASHEATER`，`heater.heat` = 115，`Light` 半径 1、衰减 .9、强度 .5，`workable` 锤 6 次，`container:WidgetSetup("dragonflyfurnace")`，`incinerator`，`onbuilt` 的 30／40 帧时间线，`OnEntitySleep`／`OnEntityWake` 的 `fire_LP`），可 `c_spawn`，`c_save()` 保留位置、皮肤（3 款）与容器内容。`components/incinerator.lua`、`container:DestroyContentsConditionally`、`ACTIONS.INCINERATE`（"摧毁"，`doshortaction`）与 `componentactions.lua` SCENE `incinerator`（右键、容器由玩家打开且非空）随之移植；容器面板的按钮按 `containers.lua` 的 `buttoninfo` 显示“摧毁”，非空时可用。`cooker` 组件（火上烹饪）、`SetBloomEffectHandle`、`saladfurnace` 与 `salad` 存档标记未移植。

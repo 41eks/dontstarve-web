@@ -33,7 +33,8 @@ export interface SaveCatalog {
   buildings: Readonly<Record<string, {
     archive: string;
     skinArchives?: Readonly<Record<string, string>>;
-    container?: BuildingContainerDefinition;
+    /** The parts of the container definition the save parser reads. */
+    container?: Pick<BuildingContainerDefinition, 'slotCount' | 'singleItems'>;
   }>>;
   walls: readonly string[];
 }

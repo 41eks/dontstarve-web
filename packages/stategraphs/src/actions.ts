@@ -44,6 +44,7 @@ export const ACTIONS = {
   MIGRATE: { priority: 0, rmb: false, ghost_valid: true, strings: { GENERIC: '进入' } },
   HAUNT: { priority: 0, rmb: false, mindistance: 2, ghost_valid: true, ghost_exclusive: true, strings: { GENERIC: '作祟' } },
   RUMMAGE: { priority: -1, strings: { GENERIC: '打开', CLOSE: '关闭' } },
+  INCINERATE: { priority: 1, strings: { GENERIC: '摧毁' } },
   LOOKAT: { priority: -3, instant: true, distance: 3, ghost_valid: true, strings: { GENERIC: '检查' } },
 } as const;
 

@@ -132,16 +132,34 @@ export class Container<TRecord, TItem extends ContainerItem<TRecord>, TSlot exte
     this.slotList.push(...added);
   }
 
-  /** container.lua removes items through their inventory owner before destroying them. */
-  DestroyContents(): void {
+  /**
+   * container.lua removes items through their inventory owner before destroying them; onpredestroyitemcallbackfn sees
+   * each item first. Lua's RemoveItemBySlot and item:Remove() are one removal here, so the callback runs while the item
+   * is still in its slot.
+   */
+  DestroyContents(onpredestroyitemcallbackfn?: (inst: ContainerInst, item: TItem) => void): void {
     for (const slot of this.slots) {
       const item = slot.getEntity();
-      if (!item) continue;
-      if (item.remove) {
-        if (item.remove() && slot.getEntity() === item) slot.setEntity(null);
-      }
-      else { slot.setEntity(null); item.destroy(); }
+      if (item) this.destroySlotItem(slot, item, onpredestroyitemcallbackfn);
     }
+  }
+
+  /** container.lua DestroyContentsConditionally: only the items filterfn accepts; without one, every item. */
+  DestroyContentsConditionally(filterfn: ((inst: ContainerInst, item: TItem) => boolean) | undefined,
+    onpredestroyitemcallbackfn?: (inst: ContainerInst, item: TItem) => void): void {
+    if (!filterfn) { this.DestroyContents(onpredestroyitemcallbackfn); return; }
+    for (const slot of this.slots) {
+      const item = slot.getEntity();
+      if (item && filterfn(this.inst, item)) this.destroySlotItem(slot, item, onpredestroyitemcallbackfn);
+    }
+  }
+
+  private destroySlotItem(slot: TSlot, item: TItem, onpredestroyitemcallbackfn?: (inst: ContainerInst, item: TItem) => void): void {
+    onpredestroyitemcallbackfn?.(this.inst, item);
+    if (item.remove) {
+      if (item.remove() && slot.getEntity() === item) slot.setEntity(null);
+    }
+    else { slot.setEntity(null); item.destroy(); }
   }
 
   GetNumSlots(): number { return this.numslots; }

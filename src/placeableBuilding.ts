@@ -19,6 +19,8 @@ import { Vector3, type Group, type Object3D } from 'three';
 import { FIRE_PIT_ID, FIRE_PIT_PLACER, firePitPrefabs } from '@dontstarve-web/prefab/firepit';
 import { ICE_BOX_ID, ICE_BOX_PLACER, iceBoxPrefabs } from '@dontstarve-web/prefab/icebox';
 import { DRAGONFLY_CHEST_ID, DRAGONFLY_CHEST_PLACER, dragonflyChestPrefabs } from '@dontstarve-web/prefab/dragonfly_chest';
+import { DRAGONFLY_FURNACE_ID, DRAGONFLY_FURNACE_PLACER, dragonflyFurnacePrefabs } from '@dontstarve-web/prefab/dragonfly_furnace';
+import type { ContainerButtonAction } from '@dontstarve-web/prefab/containers';
 import { BOOKSTATION_ID, BOOKSTATION_PLACER, bookstationPrefabs } from '@dontstarve-web/prefab/bookstation';
 import { CAMPFIRE_ID, CAMPFIRE_PLACER, campfirePrefabs } from '@dontstarve-web/prefab/campfire';
 import { SALT_BOX_ID, SALT_BOX_PLACER, saltBoxPrefabs } from '@dontstarve-web/prefab/saltbox';
@@ -37,7 +39,7 @@ export { TENT_ID } from '@dontstarve-web/prefab/tent';
 
 /** Buildings declared on the shared PrefabEntityManager; the rest move here as they migrate. */
 const MANAGED_BUILDING_PLACERS = { [WARDROBE_ID]: WARDROBE_PLACER, [CAMPFIRE_ID]: CAMPFIRE_PLACER, [NIGHT_LIGHT_ID]: NIGHT_LIGHT_PLACER, [PIG_HOUSE_ID]: PIG_HOUSE_PLACER,
-    [TREASURE_CHEST_ID]: TREASURE_CHEST_PLACER, [PANDORAS_CHEST_ID]: PANDORAS_CHEST_PLACER, [ICE_BOX_ID]: ICE_BOX_PLACER, [DRAGONFLY_CHEST_ID]: DRAGONFLY_CHEST_PLACER, [SALT_BOX_ID]: SALT_BOX_PLACER,
+    [TREASURE_CHEST_ID]: TREASURE_CHEST_PLACER, [PANDORAS_CHEST_ID]: PANDORAS_CHEST_PLACER, [ICE_BOX_ID]: ICE_BOX_PLACER, [DRAGONFLY_CHEST_ID]: DRAGONFLY_CHEST_PLACER, [DRAGONFLY_FURNACE_ID]: DRAGONFLY_FURNACE_PLACER, [SALT_BOX_ID]: SALT_BOX_PLACER,
     ...MUSHROOM_LIGHT_PLACERS, [FIRE_PIT_ID]: FIRE_PIT_PLACER, [TENT_ID]: TENT_PLACER, [MOONBASE_ID]: MOONBASE_PLACER, [MOONDIAL_ID]: MOONDIAL_PLACER,
     [SCULPTING_TABLE_ID]: SCULPTING_TABLE_PLACER, [WINTEROMETER_ID]: WINTEROMETER_PLACER, [LIGHTNING_ROD_ID]: LIGHTNING_ROD_PLACER, ...STICK_HEAD_PLACERS,
     [BIRDCAGE_ID]: BIRDCAGE_PLACER, ...RESEARCH_LAB_PLACERS, [COOK_POT_ID]: COOK_POT_PLACER, [BOOKSTATION_ID]: BOOKSTATION_PLACER } as const;
@@ -72,7 +74,7 @@ export class PlaceableBuildingPlacement {
         const { scene: _scene, ...rest } = world;
         const services = { ...rest, onContainerInteraction: onInteractionChange as WorldContext['onContainerInteraction'] };
         prefabs.register({ ...wardrobePrefabs(services), ...campfirePrefabs(services), ...nightLightPrefabs(services), ...pigHousePrefabs(services),
-            ...treasureChestPrefabs(services), ...pandorasChestPrefabs(services), ...iceBoxPrefabs(services), ...dragonflyChestPrefabs(services), ...saltBoxPrefabs(services), ...mushroomLightPrefabs(services), ...firePitPrefabs(services),
+            ...treasureChestPrefabs(services), ...pandorasChestPrefabs(services), ...iceBoxPrefabs(services), ...dragonflyChestPrefabs(services), ...dragonflyFurnacePrefabs(services), ...saltBoxPrefabs(services), ...mushroomLightPrefabs(services), ...firePitPrefabs(services),
             ...tentPrefabs(services), ...moonbasePrefabs(services), ...moondialPrefabs(services), ...sculptingTablePrefabs(services), ...winterometerPrefabs(services),
             ...lightningRodPrefabs(services), ...stickHeadPrefabs(services), ...birdcagePrefabs(services), ...researchLabPrefabs(services),
             ...cookPotPrefabs(services), ...bookstationPrefabs(services), ...fencePrefabs(services) });
@@ -115,10 +117,14 @@ export class PlaceableBuildingPlacement {
         return [];
     }
 
-    /** The container widget's Cook button: ACTIONS.COOK on the entity whose container is open. */
-    performContainerAction(model: Object3D, action: 'COOK', doer: object): boolean {
+    /**
+     * The container widget's button: BufferedAction(doer, inst, ACTIONS.COOK / ACTIONS.INCINERATE):Do() on the entity
+     * whose container is open.
+     */
+    performContainerAction(model: Object3D, action: ContainerButtonAction, doer: object): boolean {
         const inst = prefabInstance(model);
-        return action === 'COOK' && inst !== undefined && !inst.isRemoved && model.visible && performCookAction(inst, doer);
+        if (inst === undefined || inst.isRemoved || !model.visible) return false;
+        return action === 'COOK' ? performCookAction(inst, doer) : inst.components.incinerator?.Incinerate(doer) ?? false;
     }
 
     dispose(): void {

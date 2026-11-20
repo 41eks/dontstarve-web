@@ -172,6 +172,18 @@ const sounds = {
   'dontstarve/common/freezethaw': { bank: 'common', streams: [343], loop: true, volume: 0.17782793939113617, pitchOctaves: 0.0 },
   'dontstarve/common/break_iceblock': { bank: 'common', streams: [208], loop: false, volume: 0.5011872053146362, pitchOctaves: 0.0 },
   'dontstarve/wilson/attack_icestaff': { bank: 'sfx', streams: [1278, 1279, 1280], loop: false, volume: 0.42904219031333923, pitchOctaves: 0.0 },
+  // dragonfurnace.lua → dontstarve.fev: fire_LP is sounddefs 2207 / 2208 / 2209, three simultaneous looping layers
+  // (DSS_Chiminea_Fire_layer1..3, together file_index 1159–1161); place is sounddef 1365 (file_index 1162); light is
+  // sounddef 1886 (dragonfly_hurt_voice_1..5, together file_index 0–4) over 2083 (fireball_explo, sfx 1259) and 2087
+  // (firestaff_swing_1..4, sfx 1260–1263).
+  'dontstarve/common/together/dragonfly_furnace/fire_LP': { bank: 'together', streams: [1160], loop: true, volume: 0.36391502618789673,
+    pitchOctaves: -0.1041666641831398, layers: [{ bank: 'together', streams: [1161] }, { bank: 'together', streams: [1162] }] },
+  'dontstarve/common/together/dragonfly_furnace/place': { bank: 'together', streams: [1163], loop: false, volume: 0.5623413324356079,
+    pitchOctaves: 0.02083333395421505 },
+  'dontstarve/common/together/dragonfly_furnace/light': { bank: 'together', streams: [1, 2, 3, 4, 5], loop: false, volume: 0.3162277638912201,
+    pitchOctaves: 0.1041666641831398, layers: [{ bank: 'sfx', streams: [1260] }, { bank: 'sfx', streams: [1261, 1262, 1263, 1264] }] },
+  // OnIncinerateItems → qol1.fev sounddef 46: dragonflyfurnace_incinerate_DST_-001..003 (qol1 file_index 59–61).
+  'qol1/dragonfly_furnace/incinerate': { bank: 'qol1', streams: [60, 61, 62], loop: false, volume: 0.7943282127380371, pitchOctaves: 0.0 },
   // blinkstaff.lua presound / postsound → dontstarve.fev sounddef 925 (sfx/objects/teleportstaff), common file_index 283 + 1.
   'dontstarve/common/staff_blink': { bank: 'common', streams: [284], loop: false },
   // trident.lua / SGwilson.lua play_strum and fx.lua crab_king_waterspout → hookline_2.fev sounddefs 43 / 32

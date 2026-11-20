@@ -125,7 +125,7 @@
   transform-origin: left center;
 }
 
-.cook-pot-panel .chest-panel__slots {
+.cook-pot-panel:not(.has-slot-grid) .chest-panel__slots {
   grid-template-columns: var(--inventory-slot-layout-size);
   row-gap: calc(var(--inventory-slot-layout-size) / 8);
 }
@@ -133,7 +133,8 @@
 .cook-pot-panel__cook {
   position: absolute;
   left: var(--chest-art-origin-x, 50%);
-  top: calc(var(--chest-art-origin-y, 50%) + 145 / 64 * var(--inventory-slot-layout-size));
+  /* buttoninfo.position.y is the button's centre; the CSS box is placed by its top edge, about 20 source px higher. */
+  top: calc(var(--chest-art-origin-y, 50%) + (var(--container-button-y, 165) - 20) / 64 * var(--inventory-slot-layout-size));
   transform: translateX(-50%);
   padding: 5px 16px;
   border: 2px solid #251a10;

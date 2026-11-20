@@ -70,7 +70,13 @@
         "type": "cooker",
         "slotCount": 4,
         "columns": 1,
-        "singleItems": true
+        "singleItems": true,
+        "button": {
+          "action": "COOK",
+          "text": "烹饪",
+          "validfn": "full",
+          "y": -165
+        }
       }
     },
     "researchlab": {
@@ -226,6 +232,41 @@
       "archive": "tent.zip",
       "buildLabel": "帐篷",
       "name": "Tent"
+    },
+    "dragonflyfurnace": {
+      "archive": "dragonfly_furnace.zip",
+      "buildLabel": "龙鳞火炉",
+      "idleAnimation": "hi",
+      "previewAnimation": "idle",
+      "name": "DragonflyFurnace",
+      "skinArchives": {
+        "dragonflyfurnace_adventure": "dynamic/dragonflyfurnace_adventure.zip",
+        "dragonflyfurnace_antique": "dynamic/dragonflyfurnace_antique.zip",
+        "dragonflyfurnace_crystal": "dynamic/dragonflyfurnace_crystal.zip"
+      },
+      "container": {
+        "type": "cooker",
+        "slotCount": 4,
+        "columns": 2,
+        "singleItems": false,
+        "panelArchive": "ui_dragonflyfurnace_2x2.zip",
+        "slotGrid": {
+          "x": -37.5,
+          "y": 36,
+          "columnSpacing": 75,
+          "rowSpacing": 72
+        },
+        "slotBackground": {
+          "asset": "inv_slot_dragonflyfurnace.tex",
+          "atlas": "images/hud2.xml"
+        },
+        "button": {
+          "action": "INCINERATE",
+          "text": "摧毁",
+          "validfn": "notempty",
+          "y": -100
+        }
+      }
     },
     "dragonflychest": {
       "archive": "dragonfly_chest.zip",

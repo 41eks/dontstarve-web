@@ -10,6 +10,9 @@ export {
   DRAGONFLY_CHEST_ID, DRAGONFLY_CHEST_PLACER, DragonflyChestInstance, dragonflyChestPrefabs, type DragonflyChestId,
 } from './dragonfly_chest';
 export {
+  DRAGONFLY_FURNACE_ID, DRAGONFLY_FURNACE_PLACER, DragonflyFurnaceInstance, dragonflyFurnacePrefabs, type DragonflyFurnaceId,
+} from './dragonfly_furnace';
+export {
   BOOKSTATION_ID, BOOKSTATION_PLACER, BOOKSTATION_SKIN_ARCHIVES, BookstationInstance,
   bookstationPrefabs, type BookstationId,
 } from './bookstation';

@@ -258,6 +258,8 @@ export const ACTION_FNS = {
     },
   },
   RUMMAGE: { fn: act => !!act.target && performRummageAction(act.target, playerDoer(act)) },
+  // ACTIONS.INCINERATE.fn: the target's incinerator burns what its container holds.
+  INCINERATE: { fn: act => act.target?.components.incinerator?.Incinerate(playerDoer(act)) ?? false },
   LOOKAT: {
     // ACTIONS.LOOKAT.fn without closeinspector, which has no port.
     fn: act => {

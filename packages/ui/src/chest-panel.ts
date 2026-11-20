@@ -19,6 +19,10 @@ export interface OpenChestOptions {
   columns?: number;
   singleItems?: boolean;
   slotGrid?: BuildingContainerDefinition['slotGrid'];
+  /** widget.slotbg, when the container gives its slots their own background. */
+  slotBackground?: BuildingContainerDefinition['slotBackground'];
+  /** widget.buttoninfo. */
+  button?: BuildingContainerDefinition['button'];
 }
 
 export interface ChestCloseDetail {
@@ -31,6 +35,8 @@ export class DstChestPanelElement extends AssetElement {
   private panelArchive = 'ui_chest_3x3.zip';
   private columns = 3;
   private slotGrid?: BuildingContainerDefinition['slotGrid'];
+  private slotBackground?: BuildingContainerDefinition['slotBackground'];
+  private button?: BuildingContainerDefinition['button'];
   private readonly renderers: SlotRenderer[] = [];
   private readonly selectedSlot = createSignal<SlotAddress | null>(null);
   private background?: AnimatedBackground;
@@ -58,6 +64,8 @@ export class DstChestPanelElement extends AssetElement {
   protected get anchorPlacement(): 'above' | 'beside' { return 'above'; }
   protected get panelModifierClass(): string { return ''; }
   protected get showCloseButton(): boolean { return false; }
+  /** The open container's widget.buttoninfo. */
+  protected get buttonInfo(): BuildingContainerDefinition['button'] { return this.button; }
 
   private get slotsElement(): HTMLElement {
     return this.panel!.querySelector<HTMLElement>('.chest-panel__slots')!;
@@ -108,6 +116,8 @@ export class DstChestPanelElement extends AssetElement {
     this.panelArchive = options.panelArchive ?? this.defaultPanelArchive;
     this.columns = options.columns ?? this.defaultColumns;
     this.slotGrid = options.slotGrid;
+    this.slotBackground = options.slotBackground;
+    this.button = options.button;
     this.selectedSlot.set(null);
     if (this.isConnected) this.render();
   }
@@ -205,6 +215,7 @@ export class DstChestPanelElement extends AssetElement {
     panel.hidden = !active;
     panel.classList.remove('is-opening', 'is-closing', 'is-loading');
     panel.style.setProperty('--storage-columns', String(this.columns));
+    panel.classList.toggle('has-slot-grid', this.slotGrid !== undefined);
     // The canvas carries per-clip dataset state, so each opening starts from a fresh one.
     const canvas = document.createElement('canvas');
     canvas.className = 'chest-panel__background';
@@ -256,8 +267,8 @@ export class DstChestPanelElement extends AssetElement {
       const renderer = createSlotRenderer({
         slot,
         label: `${this.panelTitle} ${index + 1}`,
-        backgroundAsset: this.backgroundAsset,
-        backgroundAtlas: this.backgroundAtlas,
+        backgroundAsset: this.slotBackground?.asset ?? this.backgroundAsset,
+        backgroundAtlas: this.slotBackground?.atlas ?? this.backgroundAtlas,
         backgroundUrl: () => this.asset('bag/ingredient_slot.tex.png'),
         selectedSlot: this.selectedSlot.get,
         onSelect: (selected) => this.selectSlot(selected),
