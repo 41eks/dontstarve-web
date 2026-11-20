@@ -177,6 +177,34 @@ it('suspends detection outside the tickingarea and resyncs when it becomes activ
   }
 });
 
+it("gates the player positions by the tile of an inst that moves, as its transform's tracker follows it", async () => {
+  const scheduler = new GameTimeScheduler();
+  const awakeTile = 2;
+  const { playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler, tile =>
+    createMemo(() => tile.get() === awakeTile),
+  );
+  const tile = createSignal(1);
+  const origin = new THREE.Vector3();
+  const prox = new PlayerProx(
+    { isValid: () => true, getPosition: () => origin, tileTracker: { tile } },
+    getWatchWorldContent,
+  );
+  prox.SetDist(3, 5);
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  try {
+    playerpositions.set([new THREE.Vector3(1, 0, 0)]);
+    await settle();
+    expect(prox.IsPlayerClose()).toBe(false); // Its tile is asleep: the positions do not reach it.
+    tile.set(awakeTile);
+    await settle();
+    expect(prox.IsPlayerClose()).toBe(true);
+  } finally {
+    prox.dispose();
+    unbind();
+    scheduler.dispose();
+  }
+});
+
 function vi_fn() {
   const state = {
     calls: 0,

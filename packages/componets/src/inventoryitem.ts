@@ -53,6 +53,8 @@ export type InventoryItemOnPickupFn<Inst> = LuaFn<
   boolean | void
 >;
 export type InventoryItemOnPutInInventoryFn<Inst> = LuaFn<[inst: Inst, owner: ItemHolder]>;
+/** inventoryitem.lua ondropfn(inst). */
+export type InventoryItemOnDroppedFn<Inst> = LuaFn<[inst: Inst]>;
 
 export interface InventoryImage {
   readonly icon: string;
@@ -186,6 +188,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
   grabbableoverridetag?: string;
   onpickupfn?: InventoryItemOnPickupFn<Instance>;
   onputininventoryfn?: InventoryItemOnPutInInventoryFn<Instance>;
+  ondropfn?: InventoryItemOnDroppedFn<Instance>;
 
   constructor(inst: Instance) {
     this.inst = inst;
@@ -202,13 +205,16 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
   SetOnPutInInventoryFn(fn: InventoryItemOnPutInInventoryFn<Instance> | undefined): void {
     this.onputininventoryfn = fn;
   }
+  SetOnDroppedFn(fn: InventoryItemOnDroppedFn<Instance> | undefined): void {
+    this.ondropfn = fn;
+  }
   OnPickup(doer: InventoryActor, source?: ItemPosition): boolean {
     this.inst.PushEvent('onpickup', { owner: doer });
     return this.onpickupfn?.(this.inst, doer, source) === true;
   }
   /**
    * inventoryitem.lua OnDropped: OnRemoved returns the inst to the scene where it was put down, DoDropPhysics throws a
-   * body in `launch`'s direction, then `ondropped`. An inst without a body lands where it is.
+   * body in `launch`'s direction, then ondropfn and `ondropped`. An inst without a body lands where it is.
    */
   OnDropped(launch?: import('./inventoryphysics').LootLaunch): void {
     if (this.inst.isRemoved) {
@@ -226,6 +232,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
           | undefined
       )?.inventoryphysics?.Launch(launch);
     }
+    this.ondropfn?.(this.inst);
     this.inst.PushEvent('ondropped', undefined);
   }
   OnPutInInventory(doer: ItemHolder): void {

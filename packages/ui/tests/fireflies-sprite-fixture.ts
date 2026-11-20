@@ -144,9 +144,11 @@ export async function checkFirefliesInstances() {
     const retainedOffscreen = sourceMeshes().every(mesh => mesh !== undefined);
     swarms.forEach((swarm, index) => prefabInstance(swarm.model)!.copyPosition(positions[index]));
     calls.push(draw());
-    // Hide during the first one-shot, then return to the loop through its callback.
-    prefabInstance(swarms[0].model)!.PushEvent('onputininventory');
-    prefabInstance(swarms[0].model)!.PushEvent('ondropped');
+    // The inventoryitem callbacks of a swarm caught and let go where it lies: fadein replays swarm_pre, drawn by the
+    // swarm's own sprite until its loop rejoins the batch.
+    const caught = entities[0].components.inventoryitem;
+    caught.onputininventoryfn?.(entities[0], entities[1]);
+    caught.ondropfn?.(entities[0]);
     await settle();
     calls.push(draw());
     const preVisible = sourceMeshes()[0]?.visible;
@@ -173,8 +175,8 @@ export async function checkFirefliesInstances() {
     await settle();
     calls.push(draw());
     registrations.push(mouseTargets.size);
-    // Sleep through sunrise, then reload the old night clip in an active tile.
-    // The wake effect must hide it before it can rejoin the instance draw.
+    // Sleep through sunrise, then wake in an active tile: the loop rejoins the instance draw until OnIsNight's
+    // updatelight, 2–3 s after isnight changed, fades it out.
     awake.set(false);
     await settle();
     cycle.set('day');

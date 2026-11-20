@@ -87,6 +87,8 @@
 | `inst:AddComponent("x")` | `const x = addComponent(this, 'x', X, ...args)`（`src/components.ts`） | `moontree.ts` | 只能这样加组件，见 [AGENTS.md](../AGENTS.md#components)；`inst:RemoveComponent("x")` 用 `removeComponent`；查有没有实现：`dst-lua-inventory.py` |
 | `inst.components.workable.workleft = n`（直接写字段） | `workable.WriteWorkLeft(n)` | `moon_fissure.ts` | 不钳制、不改 `workable` 开关；`SetWorkLeft` 至少为 1 |
 | 组件回调（`SetOnFinishCallback` 等） | 同名方法 | `chesspieces.ts` | 回调写在所属 prefab 模块 |
+| `inventoryitem:SetOnDroppedFn(fn)`、`SetOnPutInInventoryFn(fn)` | 同名方法 | `fireflies.ts` | `ondropfn` 在 `OnDropped` 推 `ondropped` 之前调用，与 Lua 相同；只推事件不会调用它们 |
+| `inst:WatchWorldState("isnight", fn)`（只在值变化时调用） | 世界 `Cycle` 信号上的 `createMemo` + `createEffect`，比较上一次的值再调用，`inst.onRemove` 里停止 | `fireflies.ts`（`WatchIsNight`） | |
 | `inst:ListenForEvent(event, fn, source)`、`PushEvent`、`RemoveEventCallback` | 同名方法 | `mushroom_light.ts` | `fn(inst, data)`，`inst` 是推送事件的实体；`source` 监听别的实体，双方记账，任一方 Remove 时自动解除；`ListenForEvent` 另返回取消函数；`PushEvent` 在 `inst.sg` 监听该事件时转发给它，再转给 `inst.brain`，不要再手写转发；不用 `model` 事件 |
 | 事件的 `data`（如 `{ name = name }`） | 推送方在 `EntityEventData`（`componets/src/entityEvents.ts`）登记数据形状；prefab 自己推的事件在推送方旁用 `declare module '../../componets/src/entityEvents'` 补登记 | `timer.ts`、`player_common_extensions.ts` | `ListenForEvent`、`PushEvent`、`EventHandler`、`sg.listenForEvent` 按事件名推出 `data` 类型，监听方不再写 `data as`；已登记事件 `PushEvent` 必须带数据（数据可缺省的事件除外），未登记事件的 `data` 是 `unknown`；组件的结构接口用 `EventListening['ListenForEvent']` |
 | `inst:WatchWorldState("snowlevel", fn)` | `world.getWatchWorldContent(WorldContentKey.SnowLevel, cleanup)` + effect | `monkeypillar.ts` | 也有注入的世界信号；按相邻 prefab 选用 |

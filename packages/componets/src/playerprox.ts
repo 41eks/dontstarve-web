@@ -11,6 +11,7 @@ import {
   type GetWatchWorldContent,
   type Memo,
   type PlayerPositionsSignal,
+  type ReadonlySignal,
 } from '../../signals/src';
 import { GetTileCoordsAtPoint, TileTracker } from './tileManager';
 import { TILE_SIZE } from '../../prefab/src/tile';
@@ -18,6 +19,8 @@ import { TILE_SIZE } from '../../prefab/src/tile';
 export interface PlayerProxInst {
   isValid(): boolean;
   getPosition(): ReadonlyVector3;
+  /** The transform's tile key, which follows an entity that moves (an item dropped or carried). */
+  readonly tileTracker?: { readonly tile: ReadonlySignal<number> };
 }
 /**
  * playerprox.lua onnear(inst, player) / onfar(inst). The position signal carries no player entities, so the
@@ -63,14 +66,15 @@ export class PlayerProx<Inst extends PlayerProxInst = PlayerProxInst> {
 
   constructor(inst: Inst, getWatchWorldContent: GetWatchWorldContent | undefined = getBoundWatchWorldContent()) {
     this.inst = inst;
-    // A private tile key gates the player positions by tickingarea; the inst's position is read once, so it must not move.
-    const tracker = new TileTracker(() => inst.getPosition());
+    // The tile key gates the player positions by tickingarea: the entity's own, or else a private key read once, for
+    // an inst without a transform that must not move.
+    const tile = inst.tileTracker?.tile ?? new TileTracker(() => inst.getPosition()).tile;
     this.playerpositions = getWatchWorldContent?.(
       WorldContentKey.PlayerPositions,
       stop => {
         this.stopPlayers = stop;
       },
-      { tile: tracker.tile },
+      { tile },
     );
     if (this.playerpositions) {
       this.playerTiles = createMemo(() => this.playerpositions!.get().map(GetTileCoordsAtPoint));

@@ -3,23 +3,20 @@ import { createPickupInventory } from './pickupFixture';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FirefliesController, FIREFLIES_LIGHT, configureFirefliesEntity } from '../../prefab/src/fireflies';
+import { FIREFLIES_LIGHT, FirefliesEntity } from '../../prefab/src/fireflies';
 import { ItemWorldFixture } from './itemWorldFixture';
 
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { createMemo, createSignal, type HandEquipment, type ReadonlySignal } from '../../signals/src';
-import { DisposeTileStates, GetTileKeyAtPoint, GetTileStateAtPoint } from '../../componets/src/tileManager';
+import { createSignal, type HandEquipment } from '../../signals/src';
+import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tileManager';
 import { bindTestWorld } from './worldContentFixture';
 import { configureBugNetEntity } from '../../prefab/src/bugnet';
-import {
-  actionEntities,
-  registerActionEntity,
-  disposeActionEntity,
-  findActionEntity,
-} from '../../prefab/src/actionEntity';
+import { findActionEntity } from '../../prefab/src/actionEntity';
 import { mouseTargets } from '../../prefab/src/mouseTargets';
-import { bindInstance, prefabInstance } from '../../prefab/src/prefabInstance';
+import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { displayLights } from '../../display/src/displaySprites';
+import { WORLD_SCALE } from '../../prefab/src/tile';
+import { FRAMES } from '../../stategraphs/src/stategraph';
 import { workTargets } from './workTargets';
 import { testItem } from './testInventory';
 
@@ -27,6 +24,7 @@ import { testItem } from './testInventory';
 const declaredLight = (model: THREE.Object3D) => prefabInstance(model)?.light.peek();
 /** Whether the renderer reads a light at `model`. */
 const listed = (model: THREE.Object3D) => [...displayLights()].some(entry => entry.model === model);
+const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 useTestTileMap();
 
 const cleanups: (() => void)[] = [];
@@ -36,370 +34,167 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function netEquipment(itemId = 'bugnet'): HandEquipment {
-  const entity = testItem({ itemId, count: 1 });
-  configureBugNetEntity(entity);
-  cleanups.push(() => entity.destroy());
-  return { itemId, EQUIPSLOTS: 'HANDS', entity };
+function assets() {
+  vi.stubGlobal(
+    'fetch',
+    async () => new Response(await readFile(new URL('../../../public/dst/data/anim/fireflies.zip', import.meta.url))),
+  );
 }
 
-function setup(night = true, position = new THREE.Vector3(10, 0, 0), random = () => 0) {
+function netEquipment(): HandEquipment {
+  const entity = testItem({ itemId: 'bugnet', count: 1 });
+  configureBugNetEntity(entity);
+  cleanups.push(() => entity.destroy());
+  return { itemId: 'bugnet', EQUIPSLOTS: 'HANDS', entity };
+}
+
+/** A swarm spawned at the origin of an item world, with math.random at 0: 3 s fadein, .75 s fadeout, 2 s checks. */
+function setup(night: boolean) {
+  assets();
+  vi.spyOn(Math, 'random').mockReturnValue(0);
   const scheduler = new GameTimeScheduler();
-  const { cycle, playerpositions, getWatchWorldContent, tickingarea, unbind } = bindTestWorld(scheduler);
+  const { cycle, playerpositions, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   cycle.set(night ? 'night' : 'day');
-  playerpositions.set([position.clone()]);
-  const entity = testItem({ itemId: 'fireflies', count: 1 });
-  const model = entity.transform.model;
-  const animation = {
-    start: vi.spyOn(entity.sprite, 'start'),
-    playOnce: vi.spyOn(entity.sprite, 'playOnce'),
-    clearAnimation: vi.spyOn(entity.sprite, 'clearAnimation'),
-    setLightOverride: vi.spyOn(entity.sprite, 'setLightOverride'),
-  };
-  const handEquipment = createSignal<HandEquipment | null>(netEquipment());
-  const instance = entity;
-  // As the swarm's display does: its model carries the swarm entity.
-  bindInstance(model, instance);
-  const controller = new FirefliesController(
-    instance,
-    model,
-    { getWatchWorldContent, tickingarea, handEquipment },
-    entity.transform,
-    random,
+  playerpositions.set([new THREE.Vector3(40, 0, 0)]);
+  const handEquipment = createSignal<HandEquipment | null>(null);
+  const inventory = createPickupInventory();
+  const manager = new ItemWorldFixture(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(),
+    undefined,
+    'images.zip',
+    inventory,
+    '/anim',
+    new THREE.Group(),
+    undefined,
+    { getWatchWorldContent, handEquipment },
+    undefined,
+    undefined,
+    scheduler,
   );
   cleanups.push(() => {
-    controller.dispose();
+    manager.dispose();
+    inventory.dispose();
     unbind();
     scheduler.dispose();
   });
+  const model = manager.spawnFromSave(
+    'fireflies:a',
+    { itemId: 'fireflies', count: 1, name: '萤火虫', icon: 'fireflies.tex' },
+    new THREE.Vector3(),
+  );
+  const inst = prefabInstance(model);
+  if (!(inst instanceof FirefliesEntity)) {
+    throw new Error('no fireflies');
+  }
   return {
+    inst,
     model,
-    instance,
-    entity,
-    animation,
-    controller,
     cycle,
     playerpositions,
     handEquipment,
-    setNight: (value: boolean) => {
-      cycle.set(value ? 'night' : 'day');
-    },
-    setPlayers: (value: THREE.Vector3[]) => {
-      playerpositions.set(value.map(player => player.clone()));
-    },
     tick: (seconds: number) => {
-      for (let i = 0; i < Math.round(seconds * 100); i++) {
-        scheduler.advance(0.01);
-        controller.update(0.01);
+      for (let i = 0; i < Math.round(seconds / FRAMES); i++) {
+        scheduler.advance(FRAMES);
       }
+    },
+    /** The clip played, undefined while none is (an undrawn swarm_pst settles into none at once). */
+    clip: () => {
+      const clip = inst.sprite.sprite.peek().clip;
+      return clip.none ? undefined : clip.name;
     },
   };
 }
 
-describe('source fireflies light and proximity', () => {
-  it('requires an equipped NET-capable entity for mouse targeting without changing the swarm light or NET work state', async () => {
-    const s = setup();
-    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-    configureFirefliesEntity(s.entity);
-    new THREE.Scene().add(s.model);
-    const projected = registerActionEntity(s.entity);
-    cleanups.push(() => {
-      disposeActionEntity(findActionEntity(s.model));
-      s.entity.destroy();
-    });
-    expect(mouseTargets.has(projected)).toBe(false);
-    s.controller.place(false);
-    await settle();
-    s.tick(3.1);
-    expect(s.controller.clickable).toBe(true);
-    expect(mouseTargets.has(projected)).toBe(true);
-    expect(s.entity.hasTag('NOCLICK')).toBe(false);
-    expect(s.entity.hasTag('NOBLOCK')).toBe(true);
-    const light = s.instance.light.peek(),
-      clips = s.animation.playOnce.mock.calls.length;
-    for (const hand of [
-      { itemId: 'axe', EQUIPSLOTS: 'HANDS' } as const,
-      { itemId: 'bugnet', EQUIPSLOTS: 'HANDS' } as const,
-      null,
-    ]) {
-      s.handEquipment.set(hand);
-      await settle();
-      expect(s.controller.clickable).toBe(false);
-      expect(mouseTargets.has(projected)).toBe(false);
-      expect([...actionEntities()]).toContain(projected);
-      // The held-net gate only drops the mouse candidate; NOCLICK still follows the source fade.
-      expect(s.entity.hasTag('NOCLICK')).toBe(false);
-      expect(s.instance.hasTag('NOCLICK')).toBe(false);
-      expect(s.controller.workable).toBe(true);
-      expect(s.instance.light.peek()).toBe(light);
-    }
-    s.handEquipment.set(netEquipment('test_net'));
-    await settle();
-    expect(s.controller.clickable).toBe(true);
-    expect(mouseTargets.has(projected)).toBe(true);
-    expect(s.entity.hasTag('NOCLICK')).toBe(false);
-    expect(s.animation.playOnce).toHaveBeenCalledTimes(clips);
-    s.setNight(false);
-    await settle();
-    s.tick(2.1);
-    await settle();
-    s.tick(0.8);
-    expect(s.entity.hasTag('NOCLICK')).toBe(true);
-    expect(mouseTargets.has(projected)).toBe(false);
-    s.controller.dispose();
-    const reads = vi.spyOn(s.handEquipment, 'get');
-    s.handEquipment.set(null);
-    await settle();
-    expect(reads).not.toHaveBeenCalled();
-  });
-
-  it('skips hidden daytime animation and keeps settled light data unchanged between transitions', async () => {
-    const s = setup(false);
-    s.controller.place(false);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    s.tick(1);
-    // Hidden by day: the manager does not visit the swarm, so its display advances no frames.
-    expect(s.controller.updating.peek()).toBe(false);
-    s.setNight(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    s.tick(2.1);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    s.tick(3.1);
-    expect(s.controller.updating.peek()).toBe(true);
-    const light = s.instance.light.peek();
-    expect(light?.intensity).toBe(0.5);
-    s.tick(1);
-    expect(s.instance.light.peek()).toBe(light);
-  });
-
-  it('uses private world cycle changes for the delayed night check and releases world inputs on disposal', async () => {
-    const s = setup(false);
-    s.controller.place(false);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    s.setPlayers([new THREE.Vector3(10, 0, 0)]);
-    const distance = vi.spyOn(s.playerpositions.peek()[0], 'distanceToSquared');
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(distance).not.toHaveBeenCalled();
-    s.cycle.set('dusk');
-    await new Promise(resolve => setTimeout(resolve, 0));
-    s.tick(3);
-    expect(s.controller.clickable).toBe(false);
-    s.setNight(true);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(distance).toHaveBeenCalled();
-    s.tick(1.9);
-    expect(s.controller.clickable).toBe(false);
-    s.tick(0.2);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(s.controller.clickable).toBe(true);
-    s.tick(3);
-    s.setNight(false);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(s.controller.intensity).toBe(0);
-    expect(s.controller.workable).toBe(false);
-    expect(s.controller.visible).toBe(false);
-    expect(s.instance.light.peek()).toBeUndefined();
-    s.controller.dispose();
-    const readCycle = vi.spyOn(s.cycle, 'get');
-    const readPositions = vi.spyOn(s.playerpositions, 'get');
-    s.setNight(true);
-    s.setPlayers([new THREE.Vector3()]);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(readCycle).not.toHaveBeenCalled();
-    expect(readPositions).not.toHaveBeenCalled();
-  });
-
-  it('fades in at night and uses the source radius, intensity, colour and falloff', async () => {
-    const s = setup();
-    s.controller.place(false);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('swarm_pre', expect.any(Function));
-    expect(s.controller.clickable).toBe(true);
-    expect(s.controller.workable).toBe(true);
+describe('fireflies.lua light, proximity and isnight', () => {
+  it('fades in at night with the source light and fades out while a player is near, keeping NET briefly', async () => {
+    const s = setup(true);
+    // fn's own updatelight: fadein plays swarm_pre into swarm_loop with the light enabled at zero.
+    expect(s.inst.hasTag('NOCLICK')).toBe(false);
+    expect(s.inst.hasTag('NET_workable')).toBe(true);
+    expect(s.inst.light.peek()).toEqual({ ...FIREFLIES_LIGHT, intensity: 0 });
+    expect(['swarm_pre', 'swarm_loop']).toContain(s.clip());
     s.tick(1.5);
-    expect(s.controller.intensity).toBeCloseTo(0.25);
+    expect(s.inst._fadeval).toBeCloseTo(0.25);
     s.tick(1.6);
-    expect(s.instance.light.peek()).toEqual(FIREFLIES_LIGHT);
-    expect(s.animation.setLightOverride).toHaveBeenLastCalledWith(1);
-    const complete = s.animation.playOnce.mock.calls[0][1] as () => void;
-    complete();
-    expect(s.animation.start).toHaveBeenLastCalledWith('swarm_loop');
-  });
+    expect(s.inst.light.peek()).toEqual(FIREFLIES_LIGHT);
 
-  it('uses published player snapshots and scaled near/far boundaries, retaining NET briefly during fade-out', async () => {
-    const player = new THREE.Vector3(10, 0, 0);
-    const s = setup(true, player);
-    s.controller.place(false);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    s.tick(3.1);
-    player.set(0, 0, 0);
-    s.tick(1);
-    expect(s.controller.intensity).toBe(0.5); // Moving the live player does not mutate the world snapshot.
-    s.setPlayers([new THREE.Vector3(9, 0, 0)]);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    s.tick(0.1);
-    expect(s.controller.intensity).toBe(0.5); // Source near boundary is strictly < 3 * TILE_SIZE / 4.
-    s.setPlayers([new THREE.Vector3(30, 0, 0), new THREE.Vector3(8.99, 0, 0)]);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    s.tick(0.4);
-    expect(s.animation.playOnce).toHaveBeenLastCalledWith('swarm_pst', expect.any(Function));
-    expect(s.controller.intensity).toBeLessThan(0.5);
-    s.tick(0.4);
-    expect(s.controller.clickable).toBe(false);
-    expect(s.instance.hasTag('NOCLICK')).toBe(true);
-    expect(s.controller.workable).toBe(true);
-    expect(s.instance.light.peek()).toBeUndefined();
+    // playerprox SetDist(3, 5): near is strictly inside 3, far is outside 5.
+    s.playerpositions.set([new THREE.Vector3(3 * WORLD_SCALE, 0, 0)]);
+    await settle();
+    expect(s.inst._fadeval).toBe(0.5);
+    s.playerpositions.set([new THREE.Vector3(2.99 * WORLD_SCALE, 0, 0)]);
+    await settle();
+    expect(['swarm_pst', undefined]).toContain(s.clip());
+    s.tick(0.8);
+    expect(s.inst.light.peek()).toBeUndefined();
+    expect(s.inst.hasTag('NOCLICK')).toBe(true);
+    expect(s.inst.hasTag('NET_workable')).toBe(true);
     s.tick(1.6);
-    expect(s.controller.workable).toBe(false);
-    s.setPlayers([new THREE.Vector3(14.99, 0, 0)]);
-    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(s.inst.hasTag('NET_workable')).toBe(false);
+
+    s.playerpositions.set([new THREE.Vector3(4.99 * WORLD_SCALE, 0, 0)]);
+    await settle();
     s.tick(1);
-    expect(s.controller.intensity).toBe(0);
-    s.setPlayers([new THREE.Vector3(15, 0, 0)]);
-    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(s.inst.light.peek()).toBeUndefined();
+    s.playerpositions.set([new THREE.Vector3(5 * WORLD_SCALE, 0, 0)]);
+    await settle();
+    expect(s.inst.hasTag('NOCLICK')).toBe(false);
+    expect(s.inst.hasTag('NET_workable')).toBe(true);
     s.tick(0.1);
-    expect(s.controller.intensity).toBeGreaterThan(0);
-    expect(s.controller.workable).toBe(true);
+    expect(s.inst.light.peek()?.intensity).toBeGreaterThan(0);
   });
 
-  it('reverses a fade without restarting the light at zero and removes light on disposal', async () => {
-    const s = setup();
-    s.controller.place(false);
-    await new Promise(resolve => setTimeout(resolve, 0));
+  it('starts dark by day and checks the light 2–3 seconds after each isnight change', async () => {
+    const s = setup(false);
+    expect(s.clip()).toBeUndefined();
+    expect(s.inst.light.peek()).toBeUndefined();
+    expect(s.inst.hasTag('NOCLICK')).toBe(true);
+    expect(s.inst.hasTag('NET_workable')).toBe(false);
+
+    s.cycle.set('dusk');
+    await settle();
+    s.tick(3);
+    expect(s.inst.light.peek()).toBeUndefined();
+    s.cycle.set('night');
+    await settle();
+    s.tick(1.9);
+    expect(s.inst.light.peek()).toBeUndefined();
+    s.tick(0.2);
+    expect(s.inst.hasTag('NOCLICK')).toBe(false);
     s.tick(3.1);
-    s.setPlayers([new THREE.Vector3()]);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    s.tick(0.3);
-    const value = s.controller.intensity;
-    s.setPlayers([]);
-    await new Promise(resolve => setTimeout(resolve, 0));
-    s.tick(0.1);
-    expect(s.controller.intensity).toBeGreaterThan(value);
-    const stale = s.animation.playOnce.mock.calls[1][1] as () => void;
-    stale();
-    expect(s.controller.visible).toBe(true);
-    s.controller.dispose();
-    s.tick(5);
-    expect(s.instance.light.peek()).toBeUndefined();
-    expect(s.controller.workable).toBe(false);
+    expect(s.inst.light.peek()).toEqual(FIREFLIES_LIGHT);
+
+    s.cycle.set('day');
+    await settle();
+    s.tick(2.1);
+    expect(['swarm_pst', undefined]).toContain(s.clip());
+    s.tick(1);
+    expect(s.inst.light.peek()).toBeUndefined();
+    expect(s.inst.hasTag('NOCLICK')).toBe(true);
   });
-});
 
-describe('fireflies tickingarea gate', () => {
-  it('keeps world inputs asleep and checks daylight on wake before retaining any old light or fade', async () => {
-    const scheduler = new GameTimeScheduler();
-    const awake = createSignal(true),
-      queried: ReadonlySignal<number>[] = [];
-    const area = createMemo(() => awake.get());
-    const query = (tile: ReadonlySignal<number>) => {
-      queried.push(tile);
-      return area;
-    };
-    const { cycle, playerpositions, getWatchWorldContent, tickingarea, unbind } = bindTestWorld(scheduler, query);
-    cycle.set('day');
-    playerpositions.set([new THREE.Vector3(1, 0, 0)]);
-    const entity = testItem({ itemId: 'fireflies', count: 1 });
-    const model = entity.transform.model;
-    const animation = {
-      start: vi.spyOn(entity.sprite, 'start'),
-      playOnce: vi.spyOn(entity.sprite, 'playOnce'),
-      clearAnimation: vi.spyOn(entity.sprite, 'clearAnimation'),
-      setLightOverride: vi.spyOn(entity.sprite, 'setLightOverride'),
-    };
-    const instance = entity;
-    const controller = new FirefliesController(
-      instance,
-      model,
-      { getWatchWorldContent, tickingarea, handEquipment: createSignal<HandEquipment | null>(netEquipment()) },
-      entity.transform,
-      () => 0,
-    );
-    cleanups.push(() => {
-      controller.dispose();
-      unbind();
-      scheduler.dispose();
-    });
-    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-    const tick = (seconds: number) => {
-      for (let i = 0; i < Math.round(seconds * 100); i++) {
-        scheduler.advance(0.01);
-        controller.update(0.01);
-      }
-    };
-    // Both watched inputs share the transform's single activity query.
-    expect(queried).toHaveLength(1);
-    entity.transform.setPosition(4, 0, 6);
-    controller.place(false);
+  it('is a mouse target only while lit and a held tool can NET it', async () => {
+    const s = setup(false);
+    const target = findActionEntity(s.model);
+    expect(target).toBeDefined();
+    s.handEquipment.set(netEquipment());
     await settle();
-    expect(queried[0].peek()).toBe(GetTileKeyAtPoint(new THREE.Vector3(4, 0, 6)));
-    expect(controller.clickable).toBe(false);
-
-    awake.set(false);
-    cycle.set('night');
-    playerpositions.set([new THREE.Vector3(40, 0, 6)]);
+    // NOCLICK by day.
+    expect(mouseTargets.has(target!)).toBe(false);
+    s.cycle.set('night');
     await settle();
-    tick(5);
-    expect(controller.clickable).toBe(false); // Sleeping swarms cannot see night or the new player snapshot.
-    expect(controller.visible).toBe(false); // OnEntitySleep: no fadein while the tile sleeps
-
-    awake.set(true);
+    s.tick(2.1);
     await settle();
-    tick(3.1);
+    expect(mouseTargets.has(target!)).toBe(true);
+    s.handEquipment.set({ itemId: 'axe', EQUIPSLOTS: 'HANDS' });
     await settle();
-    expect(controller.visible).toBe(true);
-    expect(controller.updating.peek()).toBe(true);
-    expect(controller.clickable).toBe(true); // wake resyncs cycle and positions and runs the usual night check
-
-    const stale = animation.playOnce.mock.calls.at(-1)![1] as () => void;
-    awake.set(false);
-    await settle();
-    const sleepingIntensity = controller.intensity;
-    cycle.set('day');
-    playerpositions.set([new THREE.Vector3(50, 0, 6)]);
-    await settle();
-    expect(controller.intensity).toBe(sleepingIntensity); // World inputs stay gated during sleep.
-    const daytimePlayerDistance = vi.spyOn(playerpositions.peek()[0], 'distanceToSquared');
-    awake.set(true);
-    await settle(); // The wake effect extinguishes it without any animation frame update.
-    expect(controller.intensity).toBe(0);
-    expect(controller.workable).toBe(false);
-    expect(controller.updating.peek()).toBe(false);
-    expect(controller.visible).toBe(false);
-    expect(instance.hasTag('NOCLICK')).toBe(true);
-    expect(instance.light.peek()).toBeUndefined();
-    expect(daytimePlayerDistance).not.toHaveBeenCalled();
-    stale();
-    expect(animation.start).not.toHaveBeenCalled();
-
-    controller.place(true);
-    await settle(); // Daytime drops cannot start another fade or delayed flash.
-    tick(10);
-    await settle();
-    expect(controller.visible).toBe(false);
-    expect(controller.intensity).toBe(0);
-    expect(controller.clickable).toBe(false);
-    expect(controller.workable).toBe(false);
-    expect(instance.light.peek()).toBeUndefined();
-
-    cycle.set('night');
-    await settle();
-    tick(2.1);
-    await settle();
-    tick(3.1);
-    expect(controller.visible).toBe(true);
-    expect(controller.intensity).toBe(0.5);
-    expect(controller.clickable).toBe(true);
+    expect(mouseTargets.has(target!)).toBe(false);
+    expect(s.inst.hasTag('NOCLICK')).toBe(false);
   });
 });
 
 describe('real fireflies archive and ground transfers', () => {
-  function assets() {
-    vi.stubGlobal(
-      'fetch',
-      async () => new Response(await readFile(new URL('../../../public/dst/data/anim/fireflies.zip', import.meta.url))),
-    );
-  }
-
   it('orients active billboards from the world camera rotation signal only when it changes', async () => {
     assets();
     const scheduler = new GameTimeScheduler();
@@ -450,64 +245,6 @@ describe('real fireflies archive and ground transfers', () => {
     expect(later.children[0].quaternion.equals(turned)).toBe(true);
   });
 
-  it('visits a swarm in the frame loop only while it fades or shows its animation', async () => {
-    assets();
-    const scheduler = new GameTimeScheduler();
-    const { cycle, playerpositions, getWatchWorldContent, tickingarea, unbind } = bindTestWorld(scheduler);
-    cycle.set('day');
-    playerpositions.set([new THREE.Vector3(100, 0, 0)]);
-    const scene = new THREE.Scene(),
-      inventory = createPickupInventory();
-    const canvas = Object.assign(new EventTarget(), {
-      getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }),
-    });
-    const manager = new ItemWorldFixture(
-      scene,
-      new THREE.PerspectiveCamera(),
-      { domElement: canvas } as unknown as THREE.WebGLRenderer,
-      'images.zip',
-      inventory,
-      '/anim',
-      new THREE.Group(),
-      undefined,
-      { getWatchWorldContent, tickingarea },
-      undefined,
-      undefined,
-      scheduler,
-      undefined,
-      undefined,
-      undefined,
-    );
-    cleanups.push(() => {
-      manager.dispose();
-      inventory.dispose();
-      unbind();
-      scheduler.dispose();
-    });
-    const model = await manager.spawnFromSave(
-      'fireflies:idle',
-      { itemId: 'fireflies', count: 1, name: '萤火虫', icon: 'fireflies.tex' },
-      new THREE.Vector3(),
-    );
-    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-    await settle();
-    const update = vi.spyOn(FirefliesController.prototype, 'update');
-    for (let i = 0; i < 5; i++) {
-      scheduler.advance(0.1);
-      manager.update(0.1, new THREE.Quaternion());
-    }
-    expect(update).not.toHaveBeenCalled();
-    cycle.set('night');
-    await settle();
-    for (let i = 0; i < 40; i++) {
-      scheduler.advance(0.1);
-      manager.update(0.1, new THREE.Quaternion());
-      await settle();
-    }
-    expect(update).toHaveBeenCalled();
-    expect(declaredLight(model)?.intensity).toBeGreaterThan(0);
-  });
-
   it('keeps resources only in active tiles, disposes departing geometry and restores the same logical entities on return', async () => {
     assets();
     const scheduler = new GameTimeScheduler();
@@ -544,7 +281,6 @@ describe('real fireflies archive and ground transfers', () => {
     const definition = { itemId: 'fireflies', count: 1, name: '萤火虫', icon: 'fireflies.tex' };
     const near = await manager.spawnFromSave('fireflies:near', definition, new THREE.Vector3(30, 0, 0));
     const far = await manager.spawnFromSave('fireflies:far', definition, new THREE.Vector3(300, 0, 0));
-    const settle = () => new Promise(resolve => setTimeout(resolve, 0));
     await settle();
     const geometry = (model: THREE.Object3D) => {
       let result: THREE.BufferGeometry | undefined;
@@ -617,7 +353,7 @@ describe('real fireflies archive and ground transfers', () => {
     const inventory = createPickupInventory();
     const pickup = vi.spyOn(inventory, 'GiveItem');
     pickup.mockImplementationOnce(entity => {
-      entity.PushEvent('ondropped', undefined);
+      entity.components.inventoryitem.OnDropped();
       return false;
     });
     const scheduler = new GameTimeScheduler();
