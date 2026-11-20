@@ -13,7 +13,7 @@
 prefab 如何声明 `AnimState` 与使用插槽见 [prefab 显示声明](../prefab/docs/display-declarations.md)；此处只规定 display 的合并与订阅。
 
 - 合并顺序：display 先绘制实体自己的 `anim-state`，再按插槽首次声明的顺序叠加 `anim-state:<key>`；同一 key 再次声明保持原位，移除后再声明则排到最后。后者的 override、显示／隐藏的图层与符号覆盖前者，其余（light override、bloom、symbol animation、attachment）叠加；`shownLayers`／`shownSymbols` 使上层显示下层隐藏的部分，未提及的沿用下层。
-- 订阅：`PrefabDisplay` 像 `FxAttachments` 跟随 `active` 一样，用 `watchSignal` 跟随每个声明的信号，信号变化时重新合并并绘制，声明被移除或 display 释放时停止跟随；display 只订阅实体的 sprite json：`SpriteState.sprite` 是实体声明与实例 `status`（`bindStatus` 绑定）经 `createMemo` 派生的快照，display 不另收 `status`／`parentStatus`；子实体随宿主休眠由 prefab 侧 `instance.setActive()` 表达。json 及从中派生的 status 由 `createRenderEffect` 在写入的同一任务内应用，帧更新和查询已绘制 sprite 的 getter 都不再补应用快照；只有美术加载完成时按当前 json 重新应用。每个声明从自己的 `art` 加载缺失的 build／anim，加载完成后按当前声明重新合并。display 不复制声明，也不向任何 `AnimState` 写入。
+- 订阅：`PrefabDisplay` 像 `FxAttachments` 跟随 `active` 一样，用 `watchSignal` 跟随每个声明的信号，信号变化时重新合并并绘制，声明被移除或 display 释放时停止跟随；display 只订阅实体的 sprite json：`SpriteState.sprite` 是实体声明与实例 `status`（`bindStatus` 绑定）经 `createMemo` 派生的快照，display 不另收 `status`／`parentStatus`；子实体随宿主休眠由 prefab 侧表达：子实例创建时接收宿主 `status`，自己的 `status` 由两者 `createMemo` 派生。json 及从中派生的 status 由 `createRenderEffect` 在写入的同一任务内应用，帧更新和查询已绘制 sprite 的 getter 都不再补应用快照；只有美术加载完成时按当前 json 重新应用。每个声明从自己的 `art` 加载缺失的 build／anim，加载完成后按当前声明重新合并。display 不复制声明，也不向任何 `AnimState` 写入。
 
 ## Signal effects
 

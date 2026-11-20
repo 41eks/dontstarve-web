@@ -204,7 +204,13 @@ function checkedAs<Spawned>(type: abstract new (...args: never[]) => Spawned, pr
 export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, Components extends object = PrefabComponents> {
   readonly prefab: string;
   private readonly lifecycle = createSignal<PrefabStatus>('active');
-  readonly status: ReadonlySignal<PrefabStatus> = readonlySignal(this.lifecycle);
+  /**
+   * The entity's lifecycle: its own, and asleep while the owner it was spawned as a child of is not active. A child's
+   * is derived from both, so nothing writes it into the child.
+   */
+  readonly status: ReadonlySignal<PrefabStatus>;
+  /** Stops a child's status following its owner, once it has derived `removed`. */
+  private readonly releaseStatus?: () => void;
   /** What the prefab may tell the sprite; an archive entity is narrowed to what an archive can draw. */
   readonly sprite: Sprite;
   readonly transform: Transform;
@@ -460,10 +466,22 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   /** inst.AnimState: playback on `sprite`, and the symbol overrides and layers the entity declares with `sprite.setAnimState`. */
   get AnimState(): InstanceAnimState { return this.animState ??= new InstanceAnimState(this.sprite); }
 
-  /** `sprite` is the entity's sprite state, typed by what its display can draw. */
-  constructor(prefab: string, sprite: Sprite, transform = new Transform()) {
+  /**
+   * `sprite` is the entity's sprite state, typed by what its display can draw. `ownerStatus` is the lifecycle of the
+   * entity this one is a child of: it sleeps and wakes with its owner, and sleeps once its owner is removed.
+   */
+  constructor(prefab: string, sprite: Sprite, transform = new Transform(), ownerStatus?: ReadonlySignal<PrefabStatus>) {
     this.prefab = prefab;
     this.sprite = sprite;
+    if (ownerStatus) {
+      const lifecycle = this.lifecycle;
+      const status = createMemo<PrefabStatus>(() => {
+        const own = lifecycle.get();
+        return own !== 'active' || ownerStatus.get() === 'active' ? own : 'asleep';
+      });
+      this.status = status;
+      this.releaseStatus = () => status.dispose();
+    } else this.status = readonlySignal(this.lifecycle);
     // The display draws the entity from its sprite json, in this lifecycle.
     sprite.bindStatus(this.status);
     this.transform = transform;
@@ -694,7 +712,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   get inlimbo(): boolean { return this.hasTag('INLIMBO'); }
 
   /** EntityScript:IsAsleep: the entity's tile is outside the ticking area or it is in limbo. */
-  IsAsleep(): boolean { return this.lifecycle.peek() === 'asleep'; }
+  IsAsleep(): boolean { return this.status.peek() === 'asleep'; }
 
   /** OnEntitySleep / OnEntityWake: follows the entity's tile; a removed entity stays removed. */
   setActive(active: boolean): void {
@@ -727,7 +745,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   private syncAwake(): void {
     if (this.lifecycle.peek() === 'removed') return;
     const awake = this.tileAwake && !this.ownTags.peek().has('INLIMBO');
-    this.sprite.setAwake(awake);
+    if (!awake) this.sprite.settleAsleep();
     this.lifecycle.set(awake ? 'active' : 'asleep');
     // After the entity's own sleep and wake handlers, as OnEntitySleep / OnEntityWake order them.
     if (awake) this.enableBrain(); else this.disableBrain();
@@ -785,6 +803,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.sg?.dispose?.();
     this.removedState.set(true);
     this.lifecycle.set('removed');
+    this.releaseStatus?.();
     this.physicsBinding?.dispose();
     this.transform.dispose();
     // inst.tags stays live: an item's runtime components still remove their tags after this. It only reads the
@@ -816,17 +835,6 @@ export function prefabInstance<Instance extends AnyPrefabInstance = PrefabInstan
 }
 
 
-/**
- * A child entity sleeps and wakes with its owner, as OnEntitySleep / OnEntityWake reach an entity's children, and sleeps
- * once its owner is removed; it is removed on its own.
- */
-function followOwner(instance: AnyPrefabInstance, ownerStatus: ReadonlySignal<PrefabStatus> | undefined): void {
-  if (!ownerStatus) return;
-  const follow = (status: PrefabStatus) => instance.setActive(status === 'active');
-  follow(ownerStatus.peek());
-  instance.onRemove(ownerStatus.subscribe(follow));
-}
-
 /** A new entity and the display that borrows its transform root. */
 /**
  * The first clip drawn by a display. `instance` reuses a logical entity, including its identity, components, tags,
@@ -835,22 +843,24 @@ function followOwner(instance: AnyPrefabInstance, ownerStatus: ReadonlySignal<Pr
 export type EntityClip<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance> =
   ConstructorParameters<typeof SpriteState>[0] & { readonly instance?: Instance };
 
-function entityInstance<Instance extends PrefabInstance<SpriteState, object>>(prefab: string, clip: EntityClip<Instance>): Instance {
+function entityInstance<Instance extends PrefabInstance<SpriteState, object>>(prefab: string, clip: EntityClip<Instance>,
+  ownerStatus: ReadonlySignal<PrefabStatus> | undefined): Instance {
   if (clip.instance) {
     if (clip.instance.isRemoved || clip.instance.prefab !== prefab) throw new Error('Cannot display a removed or different prefab instance');
+    // Whose child an entity is belongs to the entity, not to one presentation of it.
+    if (ownerStatus) throw new Error('Cannot give an existing prefab instance an owner');
     clip.instance.sprite.resetPresentation(clip);
     return clip.instance;
   }
-  return new PrefabInstance(prefab, new SpriteState(clip)) as Instance;
+  return new PrefabInstance(prefab, new SpriteState(clip), undefined, ownerStatus) as Instance;
 }
 
 export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, source: SpriteSource | LoadedSpriteSource, clip: EntityClip<Instance>, name?: string,
   /** Sets the entity's appearance before the first sprite is drawn, so it is drawn dressed. */
   initialize?: (instance: Instance) => void, ownerStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom' | 'dependencies'>):
   { instance: Instance; display: PrefabDisplay } {
-  const instance = entityInstance(prefab, clip);
+  const instance = entityInstance(prefab, clip, ownerStatus);
   initialize?.(instance);
-  followOwner(instance, ownerStatus);
   const display = new PrefabDisplay({ root: instance.transform.model, ...displayOptions, name, art: { source }, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
@@ -860,9 +870,8 @@ export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, 
 export function createArchiveEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, archive: ArchiveSpriteSource, clip: EntityClip<Instance>, name?: string,
   initialize?: (instance: Instance) => void, ownerStatus?: ReadonlySignal<PrefabStatus>, displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom'>):
   { instance: Instance; display: PrefabDisplay } {
-  const instance = entityInstance(prefab, clip);
+  const instance = entityInstance(prefab, clip, ownerStatus);
   initialize?.(instance);
-  followOwner(instance, ownerStatus);
   const display = new PrefabDisplay({ root: instance.transform.model, ...displayOptions, name, art: { archive }, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };
@@ -872,8 +881,7 @@ export function createArchiveEntity<Instance extends PrefabInstance<SpriteState,
 export function createEmptyEntity<Instance extends PrefabInstance<SpriteState, object> = PrefabInstance>(prefab: string, ownerStatus?: ReadonlySignal<PrefabStatus>,
   { billboard = false, instance: original }: { billboard?: boolean; instance?: Instance } = {}):
   { instance: Instance; display: PrefabDisplay } {
-  const instance = entityInstance(prefab, { name: '', billboard, instance: original });
-  followOwner(instance, ownerStatus);
+  const instance = entityInstance(prefab, { name: '', billboard, instance: original }, ownerStatus);
   const display = new PrefabDisplay({ root: instance.transform.model, name: prefab, art: { empty: true }, sprite: instance.sprite, light: instance.light });
   bindInstance(display.model, instance);
   return { instance, display };

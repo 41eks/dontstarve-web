@@ -159,7 +159,8 @@ export interface ArchiveSpriteCommands {
   readonly currentAnimation: string;
   readonly numFrames: number;
   update(dt: number): void;
-  setAwake(awake: boolean): void;
+  /** The entity falls asleep: what was playing ends in its completion state. */
+  settleAsleep(): void;
   /** The entity binds its lifecycle, which the json it is drawn from carries. */
   bindStatus(status: ReadonlySignal<PrefabStatus>): void;
   start(name: string): void;
@@ -232,7 +233,6 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   readonly art = readonlySignal(this.artVersion);
   protected initialAnimation: string;
   private probe: SpriteProbe | undefined;
-  private awake = true;
 
   /**
    * `held` marks an initial clip shown on its last frame; `none` starts with no animation playing, as an AnimState that
@@ -258,7 +258,6 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   resetPresentation(clip: SpriteClipDeclaration): void {
     const { skinId } = this.state;
     this.initialAnimation = clip.name;
-    this.awake = true;
     this.declared.set({ ...initialJson(clip), ...skinId === undefined ? {} : { skinId } });
     this.fxDeclared.set(new Map());
     this.followed.set(undefined);
@@ -321,12 +320,9 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   update(dt: number): void { this.probe?.update(dt); }
 
   /** Nothing is drawn while the entity sleeps; a transition that was playing is not replayed but ends in its completion state. */
-  setAwake(awake: boolean): void {
-    if (!awake) this.settle();
-    this.awake = awake;
-  }
-  // Playing no animation, the sprite is built for the next clip, which is drawn rather than settled.
-  private get drawn(): boolean { return this.awake && (this.state.clip.none === true || this.displayPending || (this.probe?.loaded ?? true)); }
+  settleAsleep(): void { this.settle(); }
+  // Drawn only while the entity is active. Playing no animation, the sprite is built for the next clip, which is drawn rather than settled.
+  private get drawn(): boolean { return this.lifecycle.peek().peek() === 'active' && (this.state.clip.none === true || this.displayPending || (this.probe?.loaded ?? true)); }
   /** The completion state: the clip completes, and what was queued behind it is the clip now. */
   private settle(): void {
     const { clip, queue } = this.state;
