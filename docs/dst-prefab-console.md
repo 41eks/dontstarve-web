@@ -4,6 +4,8 @@
 2026-11-19 补充 `oasislake`：`prefabs/oasislake.lua` 注册 `Prefab("oasislake", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("oasislake")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档：`OnSave` 只在 `regrowth` 为假时写 `regrowth = false`，存为 `oasislake.regrowth`；`OnLoad` 对没有该字段的记录置 `regrowth = true`；`fishable:OnSave` 的 `fish` 随组件存档（`maxfish` 设为 15 而 `fishleft` 仍是构造时的 10，所以新湖总写 `fish = 10`）。`c_spawn` 的湖不走 `OnLoad`，保存时写 `regrowth = false`。`Cluster_65` 地表快照 `0000000315` 有 1 个（无存档数据），导入 1 个；洞穴快照没有。
 2026-11-19 补充 `support_pillar`：`prefabs/support_pillar.lua` 以 `MakePillar("support_pillar", "support_pillar", "support_pillar")` 注册 `Prefab(name, fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("support_pillar")`，不能放入物品栏（建造用的是 `support_pillar_scaffold`，未移植）。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，`OnSave` 的 `reinforced` 存为 `supportPillar.reinforced`，`constructionsite` 的 `materials.rocks` 随组件存档；`regen` 只由未移植的 `support_pillar_dreadstone` 写入。`c_spawn` 的新柱子没有石料，播 `idle_4`，不写任何存档字段。同文件的 `support_pillar_dreadstone`、两个脚手架和放置器未移植。`Cluster_65` 洞穴快照 `0000000145` 有 4 根（石料都是 40，`reinforced` 为 5～9），导入 4 根；地表快照没有。
 
+2026-11-20 补充 `shadow_forge`：`prefabs/shadow_forge.lua` 注册 `Prefab("shadow_forge", fn, assets, prefabs)`，同文件的 `shadow_forge_kit`（`MakeDeployableKitItem`）与 `shadow_forge_kit_placer` 不移植。只可 `c_spawn("shadow_forge")`，`c_give` 拒绝；`c_save()` 只保存 ID 与位置（源没有 `OnSave`，`workable` 不设 `savestate`）。原版 `onhit` 播放的 `hit_close` 在 `shadow_forge` bank 中不存在（bank 里是 `hit_closed`）。
+
 2026-11-18 补充 `mast_malbatross`：`prefabs/mast.lua` 以 `Prefab("mast_malbatross", malbatrossfn, malbatross_assets, malbatross_prefabs)` 注册，`malbatrossfn` 没有 `inventoryitem`，原版可 `c_spawn("mast_malbatross")`，不能放入物品栏（物品是 `mast_malbatross_item`，未移植）。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，`onsave` 的 `rotation`、`is_sail_raised`（及 `burnt`）、`upgradeable` 的 `numupgrades`／`stage` 和皮肤随存档保存；灯和避雷针升级的字段未移植。`Cluster_62` 新的地表快照 `0000000302` 有 2 根，但该快照含导入脚本尚不支持的 `ROPE_BRIDGE` 地皮，默认存档 `Cluster_1` 仍由旧快照 `0000000148` 生成，暂时没有桅杆。
 
 2026-11-18 补充 `reeds`：`prefabs/reeds.lua` 以 `MakeReeds("reeds", "reeds", "reeds.png")` 注册 `Prefab("reeds", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("reeds")`，不能放入物品栏（物品是 `cutreeds`）。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档；`reeds.lua` 没有自己的 `OnSave`，存档只有 `pickable`（`picked`、`regrowSeconds` 等）。`Cluster_62` 最新地表快照有 58 株（1 株已采），导入 58 株；洞穴快照没有。
@@ -522,6 +524,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `reeds` | 可生成 | 不能入栏 | `prefabs/reeds.lua` |
 | `mast_malbatross` | 可生成 | 不能入栏 | `prefabs/mast.lua` |
 | `support_pillar` | 可生成 | 不能入栏 | `prefabs/support_pillar.lua` |
+| `shadow_forge` | 可生成 | 不能入栏 | `prefabs/shadow_forge.lua` |
 | `oasislake` | 可生成 | 不能入栏 | `prefabs/oasislake.lua` |
 | `beehive` | 可生成 | 不能入栏 | `prefabs/beehive.lua` |
 | `wasphive` | 可生成 | 不能入栏 | `prefabs/wasphive.lua` |

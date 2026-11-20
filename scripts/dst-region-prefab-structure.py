@@ -582,3 +582,10 @@ def ruins_relic_components(prefab):
         result['health'] = {'current': current, 'maximum': maximum}
         return result
     return convert
+
+
+def shadow_forge_components(data):
+    """shadow_forge.lua has no OnSave and its components save nothing (workable sets no savestate)."""
+    if data not in (None, {}):
+        raise ValueError(f'Unsupported shadow_forge save state: {sorted(data) if isinstance(data, dict) else data}')
+    return {}

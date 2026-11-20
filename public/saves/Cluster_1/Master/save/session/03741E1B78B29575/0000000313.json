@@ -785491,6 +785491,20 @@
           }
         }
       ],
+      "shadow_forge": [
+        {
+          "id": "dst_03741E1B78B29575_shadow_forge_index_000001",
+          "transform": {
+            "position": [
+              1194.0,
+              0.0,
+              978.0
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "beefalo": [
         {
           "id": "dst_03741E1B78B29575_beefalo_id_112724",

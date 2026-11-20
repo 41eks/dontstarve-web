@@ -82,6 +82,7 @@
     "./rope_bridge": "./src/rope_bridge.ts",
     "./mast_malbatross": "./src/mast_malbatross.ts",
     "./support_pillar": "./src/support_pillar.ts",
+    "./shadow_forge": "./src/shadow_forge.ts",
     "./oasislake": "./src/oasislake.ts",
     "./beehive": "./src/beehive.ts",
     "./wasphive": "./src/wasphive.ts",

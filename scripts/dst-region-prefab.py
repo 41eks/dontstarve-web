@@ -139,6 +139,7 @@ ENTITY_WHITELIST = {
     'lava_pond': STRUCTURE['lava_pond_components'],
     'treasurechest': CONTAINER['treasurechest_components'],
     'pandoraschest': CONTAINER['pandoraschest_components'],
+    'shadow_forge': STRUCTURE['shadow_forge_components'],
     'beefalo': CREATURE['beefalo_components'],
     'lightninggoat': CREATURE['lightninggoat_components'],
     'dragonfly': CREATURE['dragonfly_components'],

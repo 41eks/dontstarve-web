@@ -57,6 +57,7 @@ import {
 import { SUPPORT_PILLAR_ARCHIVES, SUPPORT_PILLAR_ID, SUPPORT_PILLAR_REINFORCED_LEVELS } from '@dontstarve-web/prefab/support_pillar';
 import { OASISLAKE_ARCHIVES, OASISLAKE_ID, OASISLAKE_MAX_FISH } from '@dontstarve-web/prefab/oasislake';
 import { BEEHIVE_ARCHIVES, BEEHIVE_HEALTH, BEEHIVE_ID, BEEHIVE_MAX_BEES } from '@dontstarve-web/prefab/beehive';
+import { SHADOW_FORGE_ARCHIVES, SHADOW_FORGE_ID } from '@dontstarve-web/prefab/shadow_forge';
 import { WASPHIVE_ARCHIVES, WASPHIVE_HEALTH, WASPHIVE_ID, WASPHIVE_WASPS } from '@dontstarve-web/prefab/wasphive';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
@@ -701,6 +702,8 @@ const WORLD_PREFAB_DEFINITIONS = {
   supportPillars: definePrefabs([SUPPORT_PILLAR_ID], supportPillar, true, SUPPORT_PILLAR_ARCHIVES),
   oasislakes: definePrefabs([OASISLAKE_ID], oasislake, true, OASISLAKE_ARCHIVES),
   beehives: definePrefabs([BEEHIVE_ID], hive(BEEHIVE_MAX_BEES, BEEHIVE_HEALTH), true, BEEHIVE_ARCHIVES),
+  // shadow_forge.lua has no OnSave, and its workable sets no savestate: the record is identity and position only.
+  shadowForges: definePrefabs([SHADOW_FORGE_ID], empty, true, SHADOW_FORGE_ARCHIVES),
   wasphives: definePrefabs([WASPHIVE_ID], hive(WASPHIVE_WASPS, WASPHIVE_HEALTH), true, WASPHIVE_ARCHIVES),
   mastMalbatross: definePrefabs([MAST_MALBATROSS_ID], mastMalbatross, true,
     MAST_MALBATROSS_ANIMATION_ARCHIVES.map(animation => ({ animation, build: MAST_MALBATROSS_BUILD_ARCHIVE }))),

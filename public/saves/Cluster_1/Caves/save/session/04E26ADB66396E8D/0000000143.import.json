@@ -554,6 +554,7 @@
     "lava_pond",
     "treasurechest",
     "pandoraschest",
+    "shadow_forge",
     "beefalo",
     "lightninggoat",
     "dragonfly",
@@ -1112,6 +1113,10 @@
     "pandoraschest": {
       "source": 0,
       "imported": 0
+    },
+    "shadow_forge": {
+      "source": 1,
+      "imported": 1
     },
     "beefalo": {
       "source": 0,
@@ -74979,6 +74984,17 @@
         479
       ],
       "sourceNode": "CentipedeCaveTask:6:VentsRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_shadow_forge_index_000001",
+      "prefab": "shadow_forge",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        306.5,
+        0,
+        135.5
+      ],
+      "sourceNode": "CaveExitTask6:BG_4:BGSinkhole"
     },
     {
       "id": "dst_04E26ADB66396E8D_amulet_index_000001",

@@ -329309,6 +329309,20 @@
           }
         }
       ],
+      "shadow_forge": [
+        {
+          "id": "dst_04E26ADB66396E8D_shadow_forge_index_000001",
+          "transform": {
+            "position": [
+              967.5,
+              0.0,
+              -466.5
+            ],
+            "rotationY": 0
+          },
+          "components": {}
+        }
+      ],
       "amulet": [
         {
           "id": "dst_04E26ADB66396E8D_amulet_index_000001",

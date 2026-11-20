@@ -50,6 +50,7 @@ import { mastMalbatrossPrefabs } from '@dontstarve-web/prefab/mast_malbatross';
 import { supportPillarPrefabs } from '@dontstarve-web/prefab/support_pillar';
 import { oasislakePrefabs } from '@dontstarve-web/prefab/oasislake';
 import { beehivePrefabs } from '@dontstarve-web/prefab/beehive';
+import { shadowForgePrefabs } from '@dontstarve-web/prefab/shadow_forge';
 import { wasphivePrefabs } from '@dontstarve-web/prefab/wasphive';
 import { oceanVineDecoPrefabs } from '@dontstarve-web/prefab/oceanvine_deco';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
@@ -202,6 +203,7 @@ const MANAGER_DEFINITIONS = {
   'support_pillar': PREFAB_DEFINITIONS.supportPillars,
   'oasislake': PREFAB_DEFINITIONS.oasislakes,
   'beehive': PREFAB_DEFINITIONS.beehives,
+  'shadow_forge': PREFAB_DEFINITIONS.shadowForges,
   'wasphive': PREFAB_DEFINITIONS.wasphives,
   'oceanvine_deco': PREFAB_DEFINITIONS.oceanVineDecos,
   'atrium_gate': PREFAB_DEFINITIONS.atriumGates,
@@ -246,6 +248,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.supportPillars,
   PREFAB_DEFINITIONS.oasislakes,
   PREFAB_DEFINITIONS.beehives,
+  PREFAB_DEFINITIONS.shadowForges,
   PREFAB_DEFINITIONS.wasphives,
   PREFAB_DEFINITIONS.oceanVineDecos,
   PREFAB_DEFINITIONS.atriumGates,
@@ -475,6 +478,8 @@ export async function createSceneEntities(
   registry.registerPrefabs(PREFAB_DEFINITIONS.oasislakes);
   prefabs.register(beehivePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
   registry.registerPrefabs(PREFAB_DEFINITIONS.beehives);
+  prefabs.register(shadowForgePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
+  registry.registerPrefabs(PREFAB_DEFINITIONS.shadowForges);
   prefabs.register(wasphivePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }));
   registry.registerPrefabs(PREFAB_DEFINITIONS.wasphives);
   prefabs.register(oceanVineDecoPrefabs());

@@ -48,6 +48,8 @@ ASSETS = {
     # beehive.lua / wasphive.lua: one archive each for the bank and build; snow.zip is mirrored elsewhere.
     'beehive': ['beehive.zip'],
     'wasphive': ['wasphive.zip'],
+    # shadow_forge.lua: one archive holds the bank and the build; snow.zip is mirrored elsewhere.
+    'shadow_forge': ['shadow_forge.zip'],
     # lightninggoat.lua: the lightning_goat bank's basic and actions archives, the build and the charged (shocked) build.
     'lightninggoat': ['lightning_goat_basic.zip', 'lightning_goat_actions.zip', 'lightning_goat_build.zip',
                       'lightning_goat_shocked_build.zip'],
@@ -176,6 +178,11 @@ def main():
                                                                    'shock_pst', 'atk', 'hit', 'death', 'death_2', 'sleep_pre',
                                                                    'sleep_loop', 'sleep_pst'])]
             for clip in clips}
+    # shadow_forge.lua: every clip of the shadow_forge bank. onhit's PlayAnimation("hit_close") names no clip the bank has
+    # (it holds hit_closed), so the audit lists the bank's own clips.
+    art |= {f'shadow_forge/{clip}': {'animationArchive': 'shadow_forge.zip', 'bank': 'shadow_forge', 'animation': clip}
+            for clip in ['idle', 'place', 'use', 'kit', 'hit_open', 'hit_closed', 'proximity_pre', 'proximity_loop',
+                         'proximity_pst']}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives and {len(SKINS)} skin builds')
 
