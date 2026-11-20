@@ -58,6 +58,7 @@
 
 | Lua | TS | 示例 | 差异 |
 | --- | --- | --- | --- |
+| `AnimState:SetFloatParams(offset, enabled, bob)`、`SetOceanBlendParams(amount)` | `inst.AnimState` 同名方法，写入 sprite json 的 `oceanShading` | `float_fx.ts`、`oceantree_pillar.ts` | 由 animation 的 `oceanShading` 按 `anim.ksh` 起伏、截水线并乘海洋颜色 |
 | `OverrideSymbol`（prefab 自身） | `sprite.setSymbolOverride(symbol, archive, source)` | `monkeypillar.ts` | 写入 sprite json，跨休眠保留 |
 | `OverrideSymbol`、`Show`、`Hide` 等（共用 `AnimState`） | `inst.AnimState` 同名方法 + 一次 `sprite.setAnimState(inst.AnimState.json, art)` | `sculptingtable.ts`、`player_common.ts` | 只声明一次，不回写快照；`inst.AnimState` 与播放是同一个对象 |
 | 装备改写 `owner.AnimState` | `EquipmentAnimState` 插槽（`declareAnimState`） | `equipmentVisual.ts` | 分层，不是后写者生效 |
@@ -115,6 +116,11 @@
 | `inst.Light` | `inst.light.set({ radius, falloff, intensity, colour })` | `atrium_gate.ts` | 项目单位，见示例换算 |
 | `inst.entity:AddSoundEmitter()`、`inst.SoundEmitter:PlaySound(path, name)` 等 | `inst.AddSoundEmitter()`；之后 prefab 和状态图都调用 `inst.SoundEmitter` 同名方法，状态图接口声明 `SoundEmitter: Pick<SoundEmitter, ...>` | `nightmarerock.ts`、`SGmole.ts` | 路径写源码原文；其余见 [sound](sound.md) |
 | `inst:Hide()`、`inst:Show()` | `inst.Hide()`、`inst.Show()`（`PrefabInstance`） | `SGnightmarerock.ts` | 只停止绘制实体 |
+| `TheWorld.Map:IsPassableAtPoint(x, y, z)` | `TurfMap.isPassableAtPoint(point)`，经注入的 world 接口传给 prefab／组件 | `wortoxPlayer.ts`、`staff.ts` | 陆地格加陆地裙边；平台未移植。见 [陆地裙边](../../../docs/dst-visual-ground.md) |
+| `TheWorld.Map:IsAboveGroundAtPoint(x, y, z)`、`IsLandTileAtPoint` | `TurfMap.isLandTileAtPoint(point)` | `beefalo.ts`（`isWalkable`） | 只看 tile，不含裙边；`allow_water` 时另加 `isOceanAtWorld` |
+| `TheWorld.Map:IsVisualGroundAtPoint(x, y, z)`、`inst:IsOnValidGround()` | `TurfMap.isVisualGroundAtPoint(point)` | `tumbleweed.ts`（`isOnValidGround`） | 按引擎反汇编实现 |
+| `TheWorld.Map:IsOceanAtPoint(x, y, z)` | `TurfMap.isOceanAtPoint(point)` | `floater.ts`、`trident.ts` | 海洋格去掉裙边；船未移植 |
+| `TheWorld.Map:IsOceanTileAtPoint(x, y, z)` | `TurfMap.isOceanAtWorld(point)` | `deployMap.ts` | 只看 tile |
 | `MakeSnowCovered` | `setSymbolOverride('snow', 'snow.zip', 'snow')` + `setSymbolHidden` 跟雪量；植物用 `snowCovered: true` | `monkeypillar.ts`、`berrybush.ts` | `buildArchives` 要加 `snow.zip`，`hiddenSymbols: ['snow']` |
 
 | `inst.components.inspectable`、`GetDescription(viewer, inst, status)` | `addComponent(inst, 'inspectable', Inspectable)`；`getstatus` 返回 Lua 的状态键 | `archive_props.ts` | 物品默认都有；文本来自 `componets/src/strings.json`（`import-speech.py` 由 `chinese_s.po` 生成），只含 GENERIC 和 WORTOX |
@@ -129,4 +135,3 @@
 | `SetAddColour` | 没有对应声明 |
 | 整个实体的 `SetBloomEffectHandle` | 没有渲染路径，只有按符号的 `SetSymbolBloom` 近似 |
 | `SetLayer(LAYER_BELOW_GROUND)` 的其他排序（`BOAT_TRAIL`、`BOAT_LIP`） | 没有对应声明；水下的 `UNDERWATER` 见上表 |
-| `SetOceanBlendParams` | 没有对应声明（海洋颜色对特效的染色） |
