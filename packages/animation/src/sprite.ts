@@ -1,5 +1,11 @@
 import type * as THREE from 'three';
-import { createMaterials, loadSpriteSkinArchive, smallHash, type ParsedAnim, type ParsedBuild } from './animationAssets';
+import {
+  createMaterials,
+  loadSpriteSkinArchive,
+  smallHash,
+  type ParsedAnim,
+  type ParsedBuild,
+} from './animationAssets';
 import type { SymbolBuild } from './animState';
 import type { SymbolOverride } from './spriteDressing';
 
@@ -52,14 +58,27 @@ export interface SpriteArtSource {
 }
 
 /** A build symbol that can replace another symbol at runtime, with its own atlas materials. */
-export interface LoadedSymbolOverride extends SymbolOverride { dispose(): void }
+export interface LoadedSymbolOverride extends SymbolOverride {
+  dispose(): void;
+}
 
-export async function loadSymbolOverride(assetBaseUrl: string, archive: string, symbol: string): Promise<LoadedSymbolOverride> {
+export async function loadSymbolOverride(
+  assetBaseUrl: string,
+  archive: string,
+  symbol: string,
+): Promise<LoadedSymbolOverride> {
   const loaded = await loadSpriteSkinArchive(archive, assetBaseUrl);
   const materials = createMaterials(loaded.buildPackage);
   return {
-    build: loaded.buildPackage.build, materials, symbolHash: smallHash(symbol),
-    dispose() { for (const material of materials) { material.map?.dispose(); material.dispose(); } },
+    build: loaded.buildPackage.build,
+    materials,
+    symbolHash: smallHash(symbol),
+    dispose() {
+      for (const material of materials) {
+        material.map?.dispose();
+        material.dispose();
+      }
+    },
   };
 }
 
@@ -74,7 +93,13 @@ export async function loadBuildOverride(assetBaseUrl: string, archive: string): 
   const loaded = await loadSpriteSkinArchive(archive, assetBaseUrl);
   const materials = createMaterials(loaded.buildPackage);
   return {
-    build: loaded.buildPackage.build, materials,
-    dispose() { for (const material of materials) { material.map?.dispose(); material.dispose(); } },
+    build: loaded.buildPackage.build,
+    materials,
+    dispose() {
+      for (const material of materials) {
+        material.map?.dispose();
+        material.dispose();
+      }
+    },
   };
 }

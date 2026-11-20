@@ -6,7 +6,8 @@ it('records cumulative temperature-weighted intervals, queries historical ticks 
   const temperature = createSignal(-1);
   const read = vi.spyOn(temperature, 'get');
   const clock = new WorldPerishClock(temperature, 100);
-  const changed = vi.fn(), stop = clock.snapshot.subscribe(changed);
+  const changed = vi.fn(),
+    stop = clock.snapshot.subscribe(changed);
   clock.OnUpdate(4);
   clock.OnUpdate(6);
   temperature.set(71);
@@ -27,5 +28,6 @@ it('records cumulative temperature-weighted intervals, queries historical ticks 
   const reads = read.mock.calls.length;
   temperature.set(-10);
   expect(read).toHaveBeenCalledTimes(reads);
-  stop(); read.mockRestore();
+  stop();
+  read.mockRestore();
 });

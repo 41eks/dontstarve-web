@@ -15,4 +15,8 @@ export function configureNightswordEntity(entity: ItemEntity): void {
 
 /** nightsword.lua onequip: the player's swap_object is overridden with swap_nightmaresword, or the skin build's. */
 export const nightswordVisual: EquipmentVisualFactory = item =>
-  handEquipmentVisual(item, [skinArchive('nightsword', GROUND_ITEM_DEFINITIONS.nightsword.skinArchives, item.skinId) ?? 'swap_nightmaresword'], 'swap_nightmaresword');
+  handEquipmentVisual(
+    item,
+    [skinArchive('nightsword', GROUND_ITEM_DEFINITIONS.nightsword.skinArchives, item.skinId) ?? 'swap_nightmaresword'],
+    'swap_nightmaresword',
+  );

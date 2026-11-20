@@ -23,13 +23,34 @@ import type { WorldContext } from './worldContext';
 export const FARM_PLOW_ITEM_ID = 'farm_plow_item';
 export const FARM_PLOW_ID = 'farm_plow';
 export const PLANTED_SEED_ID = 'farm_plant_randomseed';
-interface PlantedSeedArt { animationArchive: string; buildArchives: string[]; bank: string; pre: string; idle: string }
+interface PlantedSeedArt {
+  animationArchive: string;
+  buildArchives: string[];
+  bank: string;
+  pre: string;
+  idle: string;
+}
 /** farm_plants.lua: randomseed plays sow → sow_idle; stage "seed" plays grow_seed → crop_seed over farm_soil's soil01. */
 const PLANTED_SEED_ART: Readonly<Record<string, PlantedSeedArt>> = {
-  [PLANTED_SEED_ID]: { animationArchive: 'farm_soil.zip', buildArchives: ['farm_soil.zip'], bank: 'farm_soil', pre: 'sow', idle: 'sow_idle' },
-  ...Object.fromEntries(Object.entries(FARM_PLANT_ART).map(([id, { bank, build }]) => [id, {
-    animationArchive: `${bank}.zip`, buildArchives: [`${build}.zip`, 'farm_soil.zip'], bank, pre: 'grow_seed', idle: 'crop_seed',
-  }])),
+  [PLANTED_SEED_ID]: {
+    animationArchive: 'farm_soil.zip',
+    buildArchives: ['farm_soil.zip'],
+    bank: 'farm_soil',
+    pre: 'sow',
+    idle: 'sow_idle',
+  },
+  ...Object.fromEntries(
+    Object.entries(FARM_PLANT_ART).map(([id, { bank, build }]) => [
+      id,
+      {
+        animationArchive: `${bank}.zip`,
+        buildArchives: [`${build}.zip`, 'farm_soil.zip'],
+        bank,
+        pre: 'grow_seed',
+        idle: 'crop_seed',
+      },
+    ]),
+  ),
 };
 export const PLANTED_SEED_IDS = Object.keys(PLANTED_SEED_ART);
 /** tuning.lua FARM_PLOW_USES. */
@@ -37,7 +58,7 @@ export const FARM_PLOW_USES = 4;
 /** tuning.lua FARM_PLOW_DRILLING_DURATION: seg_time * 0.5. */
 export const FARM_PLOW_DRILLING_DURATION = 15;
 export const FARM_DECOR_IDS = ['farm_soil', 'farm_soil_debris'] as const;
-export type FarmDecorId = typeof FARM_DECOR_IDS[number];
+export type FarmDecorId = (typeof FARM_DECOR_IDS)[number];
 /** The plow's record: its drilling timer, its deploy_item_save_record, and whether it is folding up. */
 export interface FarmPlowSaveState {
   phase: 'drill_pre' | 'drill_loop' | 'collapse';
@@ -46,10 +67,15 @@ export interface FarmPlowSaveState {
   deployItem: import('./saveRecord').HeldEntityRecord | null;
 }
 /** farm_soil.lua OnSave: broken, and the plow it was dug by. */
-export interface FarmSoilSaveState { broken: boolean; plowId?: string }
+export interface FarmSoilSaveState {
+  broken: boolean;
+  plowId?: string;
+}
 /** farm_soil_debris.lua onsave: anim. */
 const FARM_DEBRIS_ANIMATIONS = ['f1', 'f2', 'f3', 'f4'] as const;
-export interface FarmDebrisSaveState { animation: typeof FARM_DEBRIS_ANIMATIONS[number] }
+export interface FarmDebrisSaveState {
+  animation: (typeof FARM_DEBRIS_ANIMATIONS)[number];
+}
 
 /** In scene units: map.lua's distances are in Lua units, a quarter tile each. */
 export const FARM_SCALE = TILE_SIZE / 4;
@@ -57,9 +83,15 @@ export const FARM_SCALE = TILE_SIZE / 4;
 export const FARM_TILL_SPACING = 1.25 * FARM_SCALE;
 const soilOverride = { soil01: { archive: 'farm_soil.zip', symbol: 'soil01' } };
 /** farm_soil_debris.lua chance_loot. */
-const DEBRIS_LOOT = [['twigs', 40], ['rocks', 25], ['flint', 20], ['nitre', 10], ['goldnugget', 5]] as const;
+const DEBRIS_LOOT = [
+  ['twigs', 40],
+  ['rocks', 25],
+  ['flint', 20],
+  ['nitre', 10],
+  ['goldnugget', 5],
+] as const;
 /** tuning.lua FARM_SOIL_DEBRIS_LOOT_CHANCE. */
-const DEBRIS_LOOT_CHANCE = .25;
+const DEBRIS_LOOT_CHANCE = 0.25;
 
 /** TheWorld.Map's soil functions the farm prefabs call. */
 export interface FarmSoilMap {
@@ -125,7 +157,9 @@ const dirtPuff = (world: FarmWorld, position: THREE.Vector3) => world.fx?.spawn(
 function onhammered(inst: FarmPlowInstance): void {
   const position = inst.position.clone();
   inst.world.fx?.collapse?.('small', position);
-  if (inst.deploy_item_save_record) { inst.world.spawnSaveRecord(position, structuredClone(inst.deploy_item_save_record)); }
+  if (inst.deploy_item_save_record) {
+    inst.world.spawnSaveRecord(position, structuredClone(inst.deploy_item_save_record));
+  }
   inst.remove();
 }
 
@@ -153,47 +187,83 @@ function Fold(inst: FarmPlowInstance): void {
   inst.folding = true;
   inst.components.workable.SetWorkable(false);
   inst.sprite.playOnce('collapse', () => {
-    if (inst.isRemoved || !inst.deploy_item_save_record) { return; }
+    if (inst.isRemoved || !inst.deploy_item_save_record) {
+      return;
+    }
     inst.world.spawnSaveRecord(inst.position.clone(), structuredClone(inst.deploy_item_save_record));
     inst.remove();
   });
 }
 
 function OnTerraform(inst: FarmPlowInstance): void {
-  const { world } = inst, center = tileCenter(inst.position);
-  const extents = TILE_SIZE * .9, spawned: THREE.Vector3[] = [];
+  const { world } = inst,
+    center = tileCenter(inst.position);
+  const extents = TILE_SIZE * 0.9,
+    spawned: THREE.Vector3[] = [];
   // math.random(FARM_PLOW_DRILLING_DEBRIS_MIN, FARM_PLOW_DRILLING_DEBRIS_MAX).
   const count = 2 + Math.floor(random(world) * 3);
   for (let i = 0; i < count; i++) {
-    const position = new THREE.Vector3(center.x + random(world) * extents - extents / 2, 0, center.z + random(world) * extents - extents / 2);
-    if (spawned.some(previous => previous.distanceToSquared(position) < FARM_SCALE ** 2)) { continue; }
+    const position = new THREE.Vector3(
+      center.x + random(world) * extents - extents / 2,
+      0,
+      center.z + random(world) * extents - extents / 2,
+    );
+    if (spawned.some(previous => previous.distanceToSquared(position) < FARM_SCALE ** 2)) {
+      continue;
+    }
     spawned.push(position);
     world.map.CollapseSoilAtPoint(position);
     world.spawnPrefab('farm_soil_debris', position);
   }
-  for (const [dx, dz] of [[1, 1], [-1, 1], [1, -1], [-1, -1]]) { dirtPuff(world, new THREE.Vector3(
-    center.x + dx * (random(world) + 1) * FARM_SCALE, 0, center.z + dz * (random(world) + 1) * FARM_SCALE)); }
+  for (const [dx, dz] of [
+    [1, 1],
+    [-1, 1],
+    [1, -1],
+    [-1, -1],
+  ]) {
+    dirtPuff(
+      world,
+      new THREE.Vector3(
+        center.x + dx * (random(world) + 1) * FARM_SCALE,
+        0,
+        center.z + dz * (random(world) + 1) * FARM_SCALE,
+      ),
+    );
+  }
   Finished(inst);
 }
 
 function dirt_anim(inst: FarmPlowInstance, quad: number, timer: number): void {
   // The source plow is removed at Finished, which ends these tasks; this one stays to fold up.
-  if (inst.folding) { return; }
+  if (inst.folding) {
+    return;
+  }
   const { world } = inst;
-  let x = 1 - random(world) ** 2, z = 1 - random(world) ** 2;
-  x *= 2; z *= 2;
-  if (quad === 1) { x = -x; z = -z; } else if (quad === 2) { z = -z; } else if (quad === 3) { x = -x; }
-  if (x * x + z * z > .75 * .75) {
+  let x = 1 - random(world) ** 2,
+    z = 1 - random(world) ** 2;
+  x *= 2;
+  z *= 2;
+  if (quad === 1) {
+    x = -x;
+    z = -z;
+  } else if (quad === 2) {
+    z = -z;
+  } else if (quad === 3) {
+    x = -x;
+  }
+  if (x * x + z * z > 0.75 * 0.75) {
     const position = inst.position.clone().add(new THREE.Vector3(x * FARM_SCALE, 0, z * FARM_SCALE));
     if (world.map.CanTillSoilAtPoint(position, true)) {
       world.map.CollapseSoilAtPoint(position);
       const soil = world.spawnPrefab('farm_soil', position);
-      if (soil instanceof FarmSoilInstance) { SetPlowing(soil, inst); }
+      if (soil instanceof FarmSoilInstance) {
+        SetPlowing(soil, inst);
+      }
     }
   }
   const t = Math.min(1, timer / FARM_PLOW_DRILLING_DURATION);
   // Lerp(FARM_PLOW_DRILLING_DIRT_DELAY_BASE_START, _END, t) + math.random() * FARM_PLOW_DRILLING_DIRT_DELAY_VAR.
-  const delay = 1.5 + (.2 - 1.5) * t + random(world) * .3;
+  const delay = 1.5 + (0.2 - 1.5) * t + random(world) * 0.3;
   inst.DoTaskInTime(delay, plow => dirt_anim(plow, quad, timer + delay));
 }
 
@@ -202,24 +272,36 @@ function DoDrilling(inst: FarmPlowInstance): void {
   inst.SoundEmitter!.PlaySound('farming/common/farm/plow/LP', 'loop');
   const { timer } = inst.components;
   let fxTime = 0;
-  if (!timer.TimerExists('drilling')) { timer.StartTimer('drilling', FARM_PLOW_DRILLING_DURATION); }
-  else { fxTime = FARM_PLOW_DRILLING_DURATION - timer.GetTimeLeft('drilling')!; }
+  if (!timer.TimerExists('drilling')) {
+    timer.StartTimer('drilling', FARM_PLOW_DRILLING_DURATION);
+  } else {
+    fxTime = FARM_PLOW_DRILLING_DURATION - timer.GetTimeLeft('drilling')!;
+  }
   const r = () => random(inst.world);
-  inst.DoTaskInTime(r() * .2, plow => dirt_anim(plow, 1, fxTime));
-  inst.DoTaskInTime(.2 + r() * .3, plow => dirt_anim(plow, 2, fxTime));
-  inst.DoTaskInTime(1 + r() * .5, plow => dirt_anim(plow, 3, fxTime));
-  inst.DoTaskInTime(.5 + r() * .3, plow => dirt_anim(plow, 4, fxTime));
+  inst.DoTaskInTime(r() * 0.2, plow => dirt_anim(plow, 1, fxTime));
+  inst.DoTaskInTime(0.2 + r() * 0.3, plow => dirt_anim(plow, 2, fxTime));
+  inst.DoTaskInTime(1 + r() * 0.5, plow => dirt_anim(plow, 3, fxTime));
+  inst.DoTaskInTime(0.5 + r() * 0.3, plow => dirt_anim(plow, 4, fxTime));
 }
 
 function timerdone(inst: FarmPlowInstance, data: EntityEventData['timerdone']): void {
-  if (data.name !== 'drilling') { return; }
-  if (inst.world.map.Terraform(inst.position.clone())) { OnTerraform(inst); }
-  else { Finished(inst); }
+  if (data.name !== 'drilling') {
+    return;
+  }
+  if (inst.world.map.Terraform(inst.position.clone())) {
+    OnTerraform(inst);
+  } else {
+    Finished(inst);
+  }
 }
 
 function StartUp(inst: FarmPlowInstance): void {
   // ListenForEvent("animover", DoDrilling): the display reports the end of drill_pre.
-  inst.sprite.playOnce('drill_pre', () => { if (!inst.isRemoved && !inst.folding) { DoDrilling(inst); } });
+  inst.sprite.playOnce('drill_pre', () => {
+    if (!inst.isRemoved && !inst.folding) {
+      DoDrilling(inst);
+    }
+  });
   inst.SoundEmitter!.PlaySound('farming/common/farm/plow/drill_pre');
   inst.startup_task = undefined;
 }
@@ -239,11 +321,19 @@ function plowOnSave(plow: FarmPlowInstance, data: EntityPersistData): void {
 /** OnLoadPostPass: deploy_item, then a running drilling timer resumes DoDrilling in place of StartUp. */
 function plowOnLoad(plow: FarmPlowInstance, data: EntityPersistData): void {
   const saved = data.farmPlow;
-  if (!saved) { return; }
+  if (!saved) {
+    return;
+  }
   plow.deploy_item_save_record = saved.deployItem ? structuredClone(saved.deployItem) : null;
-  if (saved.phase === 'drill_pre') { return; }
-  plow.startup_task?.Cancel(); plow.startup_task = undefined;
-  if (saved.phase === 'collapse') { Fold(plow); return; }
+  if (saved.phase === 'drill_pre') {
+    return;
+  }
+  plow.startup_task?.Cancel();
+  plow.startup_task = undefined;
+  if (saved.phase === 'collapse') {
+    Fold(plow);
+    return;
+  }
   plow.components.timer.StartTimer('drilling', saved.remainingSeconds, false, FARM_PLOW_DRILLING_DURATION);
   DoDrilling(plow);
 }
@@ -273,7 +363,9 @@ function main_fn(world: FarmWorld): FarmPlowInstance {
 // farm_soil.lua
 
 function OnBreak(inst: FarmSoilInstance): void {
-  if (!inst.hasTag('soil') || inst.hasTag('NOBLOCK')) { return; }
+  if (!inst.hasTag('soil') || inst.hasTag('NOBLOCK')) {
+    return;
+  }
   inst.addTag('NOCLICK');
   inst.addTag('NOBLOCK');
   inst.sprite.playOnce('collapse');
@@ -281,20 +373,25 @@ function OnBreak(inst: FarmSoilInstance): void {
 }
 
 function CancelPlowing(inst: FarmSoilInstance): void {
-  for (const stop of inst._plowListeners) { stop(); }
+  for (const stop of inst._plowListeners) {
+    stop();
+  }
   inst._plowListeners = [];
   inst._plow = undefined;
 }
 
 function OnCollapse(inst: FarmSoilInstance): void {
   CancelPlowing(inst);
-  if (!inst.hasTag('soil')) { return; }
+  if (!inst.hasTag('soil')) {
+    return;
+  }
   inst.removeTag('soil');
   inst.persists = false;
   // ListenForEvent("animover", inst.Remove).
   const remove = () => inst.remove();
-  if (inst.hasTag('NOBLOCK')) { inst.sprite.playOnce('collapse_remove', remove); }
-  else {
+  if (inst.hasTag('NOBLOCK')) {
+    inst.sprite.playOnce('collapse_remove', remove);
+  } else {
     inst.addTag('NOCLICK');
     inst.addTag('NOBLOCK');
     inst.sprite.playOnce('till_remove', remove);
@@ -306,16 +403,22 @@ export function SetPlowing(inst: FarmSoilInstance, plow: PrefabInstance): void {
   inst._plow = plow;
   inst._plowListeners = [
     inst.ListenForEvent('onremove', () => OnCollapse(inst), plow),
-    inst.ListenForEvent('finishplowing', () => {
-      CancelPlowing(inst);
-      if (!inst.hasTag('NOBLOCK')) { inst.removeTag('NOCLICK'); }
-    }, plow),
+    inst.ListenForEvent(
+      'finishplowing',
+      () => {
+        CancelPlowing(inst);
+        if (!inst.hasTag('NOBLOCK')) {
+          inst.removeTag('NOCLICK');
+        }
+      },
+      plow,
+    ),
   ];
   inst.addTag('NOCLICK');
 }
 
 function soilOnSave(soil: FarmSoilInstance, data: EntityPersistData): void {
-  data.farmSoil = { broken: soil.hasTag('NOBLOCK'), ...soil._plow ? { plowId: String(soil._plow.entityId) } : {} };
+  data.farmSoil = { broken: soil.hasTag('NOBLOCK'), ...(soil._plow ? { plowId: String(soil._plow.entityId) } : {}) };
 }
 
 function soilOnLoad(soil: FarmSoilInstance, data: EntityPersistData, world: FarmWorld): void {
@@ -323,15 +426,22 @@ function soilOnLoad(soil: FarmSoilInstance, data: EntityPersistData, world: Farm
   if (saved?.broken) {
     OnBreak(soil);
     soil.sprite.playOnce('collapse_idle');
-  } else { soil.sprite.playOnce('till_idle'); }
+  } else {
+    soil.sprite.playOnce('till_idle');
+  }
   const plowId = saved?.plowId;
-  if (plowId === undefined) { return; }
+  if (plowId === undefined) {
+    return;
+  }
   // OnLoadPostPass runs once every saved entity exists: the plow may be restored after its soil.
   soil.addTag('NOCLICK');
   soil.DoTaskInTime(0, () => {
     const plow = world.getEntity(plowId);
-    if (plow && !plow.isRemoved) { SetPlowing(soil, plow); }
-    else { OnCollapse(soil); }
+    if (plow && !plow.isRemoved) {
+      SetPlowing(soil, plow);
+    } else {
+      OnCollapse(soil);
+    }
   });
 }
 
@@ -341,14 +451,17 @@ function soil_fn(world: FarmWorld): FarmSoilInstance {
   inst.sprite.pushAnimation('till_idle', false);
   inst.addTag('soil');
   // SetDeploySmartRadius(0.5): seeds use CUSTOM spacing.
-  inst.deploySmartRadius = .5 * FARM_SCALE;
+  inst.deploySmartRadius = 0.5 * FARM_SCALE;
   // farmplantable:Plant's SpawnPrefab("farm_plant_*") replaces this soil.
-  inst.worldServices = { scheduler: world.scheduler, worldEvents: world.worldEvents as never,
+  inst.worldServices = {
+    scheduler: world.scheduler,
+    worldEvents: world.worldEvents as never,
     spawnFarmPlant: (prefab: string, position: THREE.Vector3) => {
       const plant = world.spawnPrefab(prefab, position);
       PlaySound('dontstarve/common/plant', position);
       return plant;
-    } };
+    },
+  };
   inst.ListenForEvent('breaksoil', () => OnBreak(inst));
   inst.ListenForEvent('collapsesoil', () => OnCollapse(inst));
   inst.OnSave = soilOnSave;
@@ -365,7 +478,11 @@ function onfinishcallback(inst: FarmDebrisInstance): void {
   // FARM_SOIL_DEBRIS_LOOT_CHANCE without the luck formulas, then weighted_random_choice(chance_loot).
   if (random(inst.world) < DEBRIS_LOOT_CHANCE) {
     let roll = random(inst.world) * 100;
-    const loot = DEBRIS_LOOT.find(([, weight]) => { roll -= weight; return roll < 0; })?.[0] ?? 'goldnugget';
+    const loot =
+      DEBRIS_LOOT.find(([, weight]) => {
+        roll -= weight;
+        return roll < 0;
+      })?.[0] ?? 'goldnugget';
     inst.components.lootdropper.SpawnLootPrefab(loot, position);
   }
 }
@@ -383,11 +500,16 @@ function debris_fn(world: FarmWorld): FarmDebrisInstance {
   workable.SetWorkLeft(1);
   workable.SetOnFinishCallback(onfinishcallback);
   addComponent(inst, 'lootdropper', LootDropper, (prefab, position) => {
-    world.spawnLoot?.(prefab, new THREE.Vector3(position.x, 0, position.z)); return undefined;
+    world.spawnLoot?.(prefab, new THREE.Vector3(position.x, 0, position.z));
+    return undefined;
   });
-  inst.OnSave = (_inst, data) => { data.farmDebris = { animation: inst.animname }; };
+  inst.OnSave = (_inst, data) => {
+    data.farmDebris = { animation: inst.animname };
+  };
   inst.OnLoad = (_inst, data) => {
-    if (!data.farmDebris) { return; }
+    if (!data.farmDebris) {
+      return;
+    }
     inst.animname = data.farmDebris.animation;
     inst.sprite.playOnce(inst.animname);
   };
@@ -399,9 +521,11 @@ function debris_fn(world: FarmWorld): FarmDebrisInstance {
 function seed_fn(prefab: string): PrefabInstance {
   const { pre, idle } = PLANTED_SEED_ART[prefab];
   const inst = new PrefabInstance(prefab, new SpriteState({ name: idle, billboard: true }));
-  for (const tag of ['plantedsoil', 'farm_plant', 'planted_seed']) { inst.addTag(tag); }
+  for (const tag of ['plantedsoil', 'farm_plant', 'planted_seed']) {
+    inst.addTag(tag);
+  }
   // SetDeploySmartRadius(0.5).
-  inst.deploySmartRadius = .5 * FARM_SCALE;
+  inst.deploySmartRadius = 0.5 * FARM_SCALE;
   inst.sprite.playOnce(pre);
   inst.sprite.pushAnimation(idle, true);
   // A loaded seed only loops its idle.
@@ -410,38 +534,65 @@ function seed_fn(prefab: string): PrefabInstance {
 }
 
 function tileCenter(point: Pick<THREE.Vector3, 'x' | 'z'>): THREE.Vector3 {
-  const center = snapToTileCenter(point); return new THREE.Vector3(center.x, 0, center.z);
+  const center = snapToTileCenter(point);
+  return new THREE.Vector3(center.x, 0, center.z);
 }
 
 /** The farm_plow_item_placer's art: farm_plow's idle_place with its soil symbol. */
-export const FARM_PLOW_PLACER_ART = { animationArchive: 'farm_plow.zip', buildArchives: ['farm_plow.zip', 'farm_soil.zip'], bank: 'farm_plow',
-  symbolOverrides: soilOverride, animation: 'idle_place' };
+export const FARM_PLOW_PLACER_ART = {
+  animationArchive: 'farm_plow.zip',
+  buildArchives: ['farm_plow.zip', 'farm_soil.zip'],
+  bank: 'farm_plow',
+  symbolOverrides: soilOverride,
+  animation: 'idle_place',
+};
 
 /** farm_plow.lua item_fn: tile_deploy with the deploy string, deployable(CUSTOM) on can_plow_tile, item_ondeploy. */
 export function configureFarmPlowItemEntity(entity: ItemEntity): void {
-  if (entity.prefab !== FARM_PLOW_ITEM_ID || entity.components.deployable) { return; }
-  for (const tag of ['usedeploystring', 'tile_deploy', 'deployable']) { entity.addTag(tag); }
-  addComponent(entity, 'deployable', Deployable,
-    (point, _deployer, map) => map.deployPlow(point, entity),
-    { mode: 'CUSTOM', spacing: 2 * FARM_SCALE, usegridplacer: false, candeploy: (point, map) => map.canDeployPlow(point) });
+  if (entity.prefab !== FARM_PLOW_ITEM_ID || entity.components.deployable) {
+    return;
+  }
+  for (const tag of ['usedeploystring', 'tile_deploy', 'deployable']) {
+    entity.addTag(tag);
+  }
+  addComponent(entity, 'deployable', Deployable, (point, _deployer, map) => map.deployPlow(point, entity), {
+    mode: 'CUSTOM',
+    spacing: 2 * FARM_SCALE,
+    usegridplacer: false,
+    candeploy: (point, map) => map.canDeployPlow(point),
+  });
 }
 
 /** farm_plow, farm_soil, farm_soil_debris and the sown seeds. */
 export function farmPrefabs(world: FarmWorld): Readonly<Record<string, PrefabEntityDefinition<PrefabInstance>>> {
-  const soil = (archive: string, bank: string) => ({ animationArchive: archive, buildArchives: [archive, 'farm_soil.zip'], bank, symbolOverrides: soilOverride });
+  const soil = (archive: string, bank: string) => ({
+    animationArchive: archive,
+    buildArchives: [archive, 'farm_soil.zip'],
+    bank,
+    symbolOverrides: soilOverride,
+  });
   return {
     [FARM_PLOW_ID]: {
       fn: () => main_fn(world),
       assets: soil('farm_plow.zip', 'farm_plow'),
-      physics: { make: MakeObstaclePhysics, radius: .5 },
+      physics: { make: MakeObstaclePhysics, radius: 0.5 },
       onSpawned: plow => {
         new ToolMouseTarget(plow, world.handEquipment);
       },
     } satisfies PrefabEntityDefinition<FarmPlowInstance>,
-    farm_soil: { fn: () => soil_fn(world), assets: { animationArchive: 'farm_soil.zip', buildArchives: ['farm_soil.zip'], bank: 'farm_soil' } },
+    farm_soil: {
+      fn: () => soil_fn(world),
+      assets: { animationArchive: 'farm_soil.zip', buildArchives: ['farm_soil.zip'], bank: 'farm_soil' },
+    },
     farm_soil_debris: { fn: () => debris_fn(world), assets: soil('farm_soil_debris.zip', 'farm_soil_debris') },
-    ...Object.fromEntries(Object.entries(PLANTED_SEED_ART).map(([prefab, { animationArchive, buildArchives, bank }]) => [prefab, {
-      fn: () => seed_fn(prefab), assets: { animationArchive, buildArchives, bank, symbolOverrides: soilOverride },
-    }])),
+    ...Object.fromEntries(
+      Object.entries(PLANTED_SEED_ART).map(([prefab, { animationArchive, buildArchives, bank }]) => [
+        prefab,
+        {
+          fn: () => seed_fn(prefab),
+          assets: { animationArchive, buildArchives, bank, symbolOverrides: soilOverride },
+        },
+      ]),
+    ),
   };
 }

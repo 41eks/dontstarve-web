@@ -1,131 +1,125 @@
 import { createSignal, readonlySignal } from '@dontstarve-web/signals';
 // src/animation.ts
 
-
-
-import { AnimationMixer, type Group, type AnimationAction, type AnimationClip } from "three";
+import { AnimationMixer, type Group, type AnimationAction, type AnimationClip } from 'three';
 import { input } from './InputManager';
 import { prefabInstance } from '../packages/prefab/src/prefabInstance';
 import { startMovement, updatePlayer, PlayerInstance } from '@dontstarve-web/prefab/player_common';
 
 export default class ModelAnimation {
-    // 显式声明属性类型
-    private mixer: AnimationMixer;
-    private animations: AnimationClip[];
-    private actionObj: Record<string, AnimationAction>;
-    private currentAct: AnimationAction | null; // 修正了拼写 currnet -> current
-    // private previousAct: AnimationAction | null;
+  // 显式声明属性类型
+  private mixer: AnimationMixer;
+  private animations: AnimationClip[];
+  private actionObj: Record<string, AnimationAction>;
+  private currentAct: AnimationAction | null; // 修正了拼写 currnet -> current
+  // private previousAct: AnimationAction | null;
 
-    constructor(model: Group) {
-        this.mixer = new AnimationMixer(model);
-        this.animations = model.animations;
-        this.actionObj = {};
-        this.currentAct = null;
-        // this.previousAct = null;
+  constructor(model: Group) {
+    this.mixer = new AnimationMixer(model);
+    this.animations = model.animations;
+    this.actionObj = {};
+    this.currentAct = null;
+    // this.previousAct = null;
 
-        // 初始化动作对象
-        this.animations.forEach((clip: AnimationClip) => {
-            const action = this.mixer.clipAction(clip);
-            this.actionObj[clip.name] = action;
-        });
+    // 初始化动作对象
+    this.animations.forEach((clip: AnimationClip) => {
+      const action = this.mixer.clipAction(clip);
+      this.actionObj[clip.name] = action;
+    });
+  }
+
+  // 在 ModelAnimation 类中添加逻辑
+  public start(name: string): void {
+    // 1. 检查：如果要切换的动画就是当前正在播放的动画，则直接返回，不要重复 play()
+    if (this.currentAct && this.currentAct === this.actionObj[name]) {
+      return;
     }
 
-    // 在 ModelAnimation 类中添加逻辑
-    public start(name: string): void {
-        // 1. 检查：如果要切换的动画就是当前正在播放的动画，则直接返回，不要重复 play()
-        if (this.currentAct && this.currentAct === this.actionObj[name]) {
-            return;
-        }
-
-        // 2. 如果之前有动画在播放，平滑地停止（可选：做淡出处理）
-        if (this.currentAct) {
-            this.currentAct.stop(); // 或者使用 crossFadeTo 实现平滑过渡
-        }
-
-        // 3. 切换新动画
-        this.actionInit(name);
+    // 2. 如果之前有动画在播放，平滑地停止（可选：做淡出处理）
+    if (this.currentAct) {
+      this.currentAct.stop(); // 或者使用 crossFadeTo 实现平滑过渡
     }
 
-    /**
-     * 初始化动画动作
-     */
-    private actionInit(name: string = 'idle'): void {
-        const nextAction = this.actionObj[name];
+    // 3. 切换新动画
+    this.actionInit(name);
+  }
 
-        if (!nextAction) {
-            console.warn(`Animation "${name}" not found.`);
-            return;
-        }
+  /**
+   * 初始化动画动作
+   */
+  private actionInit(name: string = 'idle'): void {
+    const nextAction = this.actionObj[name];
 
-        this.currentAct = nextAction;
-        this.currentAct.play();
-
-        console.log("Available Actions:", this.actionObj);
+    if (!nextAction) {
+      console.warn(`Animation "${name}" not found.`);
+      return;
     }
 
-    /**
-     * 更新动画循环 (在 requestAnimationFrame 中调用)
-     * @param dt - 时间增量 (Delta Time)
-     */
-    public update(dt: number): void {
-        this.mixer.update(dt);
-    }
+    this.currentAct = nextAction;
+    this.currentAct.play();
+
+    console.log('Available Actions:', this.actionObj);
+  }
+
+  /**
+   * 更新动画循环 (在 requestAnimationFrame 中调用)
+   * @param dt - 时间增量 (Delta Time)
+   */
+  public update(dt: number): void {
+    this.mixer.update(dt);
+  }
 }
 
 import * as THREE from 'three';
-import { playerBody } from "./player";
+import { playerBody } from './player';
 import { JUMP_VELOCITY } from './updatePlayerMovement';
 export function createAnimationUpdater(model: THREE.Group) {
+  const inst = prefabInstance(model);
 
-    const inst = prefabInstance(model);
+  if (inst instanceof PlayerInstance) {
+    const sprite = inst.sprite;
+    const jumpProgress = createSignal<number | undefined>(undefined);
+    sprite.setFrameSource({ name: 'jump', progress: readonlySignal(jumpProgress) });
+    const direction = new THREE.Vector3();
+    const origin = new THREE.Vector3();
 
-    if (inst instanceof PlayerInstance) {
-        const sprite = inst.sprite;
-        const jumpProgress = createSignal<number | undefined>(undefined);
-        sprite.setFrameSource({ name: 'jump', progress: readonlySignal(jumpProgress) });
-        const direction = new THREE.Vector3();
-        const origin = new THREE.Vector3();
+    return function listener(dt: number) {
+      direction.set(playerBody.velocity.x, 0, playerBody.velocity.z);
+      const isMoving = direction.lengthSq() > 0.0001;
+      const isJumping = input.isPressed('Space') || !playerBody.canJump;
 
-        return function listener(dt: number) {
-            direction.set(playerBody.velocity.x, 0, playerBody.velocity.z);
-            const isMoving = direction.lengthSq() > 0.0001;
-            const isJumping = input.isPressed('Space') || !playerBody.canJump;
+      if (isMoving) {
+        sprite.facePoint(origin, direction);
+      }
 
-            if (isMoving) { sprite.facePoint(origin, direction); }
-
-            startMovement(inst, isJumping ? 'jump' : isMoving
-                ? (input.isPressed('ShiftLeft') ? 'run' : 'walk')
-                : 'idle');
-            jumpProgress.set(isJumping ? (JUMP_VELOCITY - playerBody.velocity.y) / (2 * JUMP_VELOCITY) : undefined);
-            updatePlayer(inst, dt);
-        };
-    }
-
-    const modelAnimathion = new ModelAnimation(model);
-    modelAnimathion.start('idle');
-    function updateAnimation() {
-        const isMoving = Math.hypot(playerBody.velocity.x, playerBody.velocity.z) > 0.01;
-        const isShift = input.isPressed('ShiftLeft');
-        const isJumping = input.isPressed('Space') || !playerBody.canJump;
-
-        let targetState = 'idle';
-        if (isJumping) {
-            targetState = 'jump'
-        } else
-            if (isMoving) {
-                targetState = isShift ? 'run' : 'walk';
-            }
-
-        // 这样只会当状态发生变化时才调用
-        modelAnimathion.start(targetState);
+      startMovement(inst, isJumping ? 'jump' : isMoving ? (input.isPressed('ShiftLeft') ? 'run' : 'walk') : 'idle');
+      jumpProgress.set(isJumping ? (JUMP_VELOCITY - playerBody.velocity.y) / (2 * JUMP_VELOCITY) : undefined);
+      updatePlayer(inst, dt);
     };
+  }
 
-    function listener(dt: number) {
+  const modelAnimathion = new ModelAnimation(model);
+  modelAnimathion.start('idle');
+  function updateAnimation() {
+    const isMoving = Math.hypot(playerBody.velocity.x, playerBody.velocity.z) > 0.01;
+    const isShift = input.isPressed('ShiftLeft');
+    const isJumping = input.isPressed('Space') || !playerBody.canJump;
 
-
-        updateAnimation();
-
-        modelAnimathion.update(dt);
+    let targetState = 'idle';
+    if (isJumping) {
+      targetState = 'jump';
+    } else if (isMoving) {
+      targetState = isShift ? 'run' : 'walk';
     }
-    return listener;
+
+    // 这样只会当状态发生变化时才调用
+    modelAnimathion.start(targetState);
+  }
+
+  function listener(dt: number) {
+    updateAnimation();
+
+    modelAnimathion.update(dt);
+  }
+  return listener;
 }

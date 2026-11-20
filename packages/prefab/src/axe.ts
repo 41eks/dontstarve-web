@@ -3,7 +3,7 @@ import type { EquipmentVisualFactory } from './equipmentVisual';
 import { AddFiniteUses, AddTool, AddWeapon, GOLDENTOOLFACTOR, heldToolVisual, WILSON_ATTACK } from './handTool';
 
 export const AXE_USES = 100; // tuning.lua AXE_USES
-const AXE_DAMAGE = WILSON_ATTACK * .8; // tuning.lua AXE_DAMAGE
+const AXE_DAMAGE = WILSON_ATTACK * 0.8; // tuning.lua AXE_DAMAGE
 /** tuning.lua MOONGLASSAXE: EFFECTIVENESS, CONSUMPTION, DAMAGE = wilson_attack, ATTACKWEAR. */
 const MOONGLASSAXE = { EFFECTIVENESS: 2.5, CONSUMPTION: 1.25, DAMAGE: WILSON_ATTACK, ATTACKWEAR: 2 } as const;
 

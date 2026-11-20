@@ -17,25 +17,53 @@ import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src'
 import { performPickupAction } from '../../stategraphs/src/pickup';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, positions, quantities and uses', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const inventory = createPickupInventory();
-  const scene = new THREE.Scene(), player = withEntity(new THREE.Group(), 'wilson');
+  const scene = new THREE.Scene(),
+    player = withEntity(new THREE.Group(), 'wilson');
   player.position.set(3, 0, -6);
-  const manager = new ItemWorldFixture(scene, new THREE.PerspectiveCamera(),
-    { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
-    inventory, '/dst/data/anim', player);
+  const manager = new ItemWorldFixture(
+    scene,
+    new THREE.PerspectiveCamera(),
+    { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    player,
+  );
   const registry = new EntityRegistry();
-  registry.register(PREFAB_DEFINITIONS.groundItems, manager.registration(() => player.position, id => `spawn:${id}`));
+  registry.register(
+    PREFAB_DEFINITIONS.groundItems,
+    manager.registration(
+      () => player.position,
+      id => `spawn:${id}`,
+    ),
+  );
   const restoredInventory = createPickupInventory();
   let restored: ItemWorldFixture | undefined;
   try {
     const ids = ['dreadstone', 'wagpunk_bits', 'hammer', 'bugnet', 'reskin_tool', 'pickaxe', 'goldenpickaxe'];
     for (const id of ids) {
-      expect((await executeDebugCommand(`c_spawn("${id}")`, inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
-      expect((await executeDebugCommand(`c_give("${id}", ${id === 'dreadstone' || id === 'wagpunk_bits' ? 3 : 1})`, inventory)).ok).toBe(true);
+      expect((await executeDebugCommand(`c_spawn("${id}")`, inventory, prefab => registry.spawn(prefab))).ok).toBe(
+        true,
+      );
+      expect(
+        (
+          await executeDebugCommand(
+            `c_give("${id}", ${id === 'dreadstone' || id === 'wagpunk_bits' ? 3 : 1})`,
+            inventory,
+          )
+        ).ok,
+      ).toBe(true);
     }
     const hammer = manager.entities.get('spawn:hammer')!;
     expect(hammer.components.finiteuses.use(1)).toBe(true);
@@ -48,29 +76,55 @@ it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, po
     const skinId = golden.skinId;
     expect(skinId).toBeDefined();
     const hand = equipmentSlotAddress('hand');
-    const pickup = () => performPickupAction(itemAt(manager.reskinTargets.find(target => target.id === golden.id)!
-      .transform.model), pickupDoer(player, inventory));
+    const pickup = () =>
+      performPickupAction(
+        itemAt(manager.reskinTargets.find(target => target.id === golden.id)!.transform.model),
+        pickupDoer(player, inventory),
+      );
     expect(pickup()).toBe(true);
     expect(inventory.getEntity(hand)).toBe(golden);
-    expect(await manager.drop({ ...SAVE_CATALOG.items.goldenpickaxe, ...golden.snapshot() }, player.position,
-      () => inventory.extract(hand, 1, golden) ?? false)).toBe(true);
+    expect(
+      await manager.drop(
+        { ...SAVE_CATALOG.items.goldenpickaxe, ...golden.snapshot() },
+        player.position,
+        () => inventory.extract(hand, 1, golden) ?? false,
+      ),
+    ).toBe(true);
     expect(golden.components.finiteuses.remaining).toBe(32.75);
     expect(golden.skinId).toBe(skinId);
     expect(pickup()).toBe(true);
     inventory.getEntity(inventorySlotAddress(5))!.components.finiteuses.useForAction('MINE');
     const before = registry.exportRecords();
     let json = '';
-    expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-      json = serializeSave(template, { entities: before, inventory: inventory.exportSaved(), elapsedSeconds: 12.5,
-        playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
-    })).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand('c_save()', inventory, undefined, () => {
+          const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+          json = serializeSave(
+            template,
+            {
+              entities: before,
+              inventory: inventory.exportSaved(),
+              elapsedSeconds: 12.5,
+              playerTransform: { position: [3, 0, -6], rotationY: 0 },
+            },
+            SAVE_CATALOG,
+          );
+        })
+      ).ok,
+    ).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities).toEqual(before);
     loadSavedInventory(restoredInventory, saved, SAVE_CATALOG.recipes);
-    restored = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(),
-      { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
-      restoredInventory, '/dst/data/anim', player);
+    restored = new ItemWorldFixture(
+      new THREE.Scene(),
+      new THREE.PerspectiveCamera(),
+      { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
+      '/dst/data/databundles/images.zip',
+      restoredInventory,
+      '/dst/data/anim',
+      player,
+    );
     restored.restoreEntities(saved.world.entities);
     expect(restored.exportEntities()).toEqual(itemEntities(before));
     expect(restored.entities.get('spawn:hammer')!.components.finiteuses.remaining).toBe(74);
@@ -80,8 +134,14 @@ it('spawns/gives tool and wall-loot IDs, then exports and reloads identities, po
     expect(restoredInventory.getEntity(hand)!.components.finiteuses.remaining).toBe(32.75);
     expect(restoredInventory.getEntity(hand)!.hasTag('MINE_tool')).toBe(true);
     for (let index = 0; index < ids.length; index++) {
-      expect(restoredInventory.getEntity(inventorySlotAddress(index))!.snapshot())
-        .toEqual(inventory.getEntity(inventorySlotAddress(index))!.snapshot());
+      expect(restoredInventory.getEntity(inventorySlotAddress(index))!.snapshot()).toEqual(
+        inventory.getEntity(inventorySlotAddress(index))!.snapshot(),
+      );
     }
-  } finally { registry.dispose(); restored?.dispose(); inventory.dispose(); restoredInventory.dispose(); }
+  } finally {
+    registry.dispose();
+    restored?.dispose();
+    inventory.dispose();
+    restoredInventory.dispose();
+  }
 });

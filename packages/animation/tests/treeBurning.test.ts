@@ -18,32 +18,66 @@ import { FireFxHost } from '../../prefab/src/treeFire';
 import { prefabManager } from './prefabManagerFixture';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Lighter } from '../../componets/src/lighter';
-import { performLightAction, performToolWork, type ComponentActionEntity, type ComponentActionTarget } from '../../stategraphs/src/componentactions';
+import {
+  performLightAction,
+  performToolWork,
+  type ComponentActionEntity,
+  type ComponentActionTarget,
+} from '../../stategraphs/src/componentactions';
 import { createSignal, type SeasonState } from '@dontstarve-web/signals';
 
 useTestTileMap();
 let area: ReturnType<typeof createTestArea>;
-beforeEach(async () => { area = createTestArea(); await area.ready; });
+beforeEach(async () => {
+  area = createTestArea();
+  await area.ready;
+});
 afterEach(() => area.dispose());
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {} })),
+}));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
 });
 const cleanups: (() => void)[] = [];
-afterEach(() => { cleanups.splice(0).forEach(stop => stop()); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  cleanups.splice(0).forEach(stop => stop());
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 /** A torch-like tool: only its lighter component matters to the LIGHT action. */
 function torch(): ComponentActionEntity {
   const tags = new Set<string>();
-  const inst: ComponentActionEntity = { prefab: 'torch', isRemoved: false, components: {},
-    hasTag: tag => tags.has(tag), addTag: tag => { tags.add(tag); }, removeTag: tag => { tags.delete(tag); } };
+  const inst: ComponentActionEntity = {
+    prefab: 'torch',
+    isRemoved: false,
+    components: {},
+    hasTag: tag => tags.has(tag),
+    addTag: tag => {
+      tags.add(tag);
+    },
+    removeTag: tag => {
+      tags.delete(tag);
+    },
+  };
   inst.components.lighter = new Lighter(inst);
   return inst;
 }
-const doer = (): ComponentActionEntity => ({ prefab: 'wilson', isRemoved: false, components: {},
-  hasTag: () => false, addTag() {}, removeTag() {} });
+const doer = (): ComponentActionEntity => ({
+  prefab: 'wilson',
+  isRemoved: false,
+  components: {},
+  hasTag: () => false,
+  addTag() {},
+  removeTag() {},
+});
 const light = (target: ComponentActionTarget) => {
   const tool = torch();
   expect(collectEquippedItemActions(tool, undefined, target, true)).toEqual(['LIGHT']);
@@ -51,17 +85,31 @@ const light = (target: ComponentActionTarget) => {
 };
 /** Presentation effects (fire art) run on the signal queue, after the synchronous domain change. */
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
-const fires = (scene: THREE.Object3D) => { let count = 0; scene.traverse(child => { if (lookupPrefabInstance(child)?.prefab === 'fire') { count++; } }); return count; };
+const fires = (scene: THREE.Object3D) => {
+  let count = 0;
+  scene.traverse(child => {
+    if (lookupPrefabInstance(child)?.prefab === 'fire') {
+      count++;
+    }
+  });
+  return count;
+};
 const prefabsIn = (scene: THREE.Object3D, prefab: string) => {
   const found: NonNullable<ReturnType<typeof lookupPrefabInstance>>[] = [];
-  scene.traverse(child => { const instance = lookupPrefabInstance(child); if (instance?.prefab === prefab) { found.push(instance); } });
+  scene.traverse(child => {
+    const instance = lookupPrefabInstance(child);
+    if (instance?.prefab === prefab) {
+      found.push(instance);
+    }
+  });
   return found;
 };
 
 /** The lights the renderer reads at `model`. */
-const lightsAt = (model: THREE.Object3D) => [...displayLights()].filter(listed => listed.model === model).map(({ light }) => light);
+const lightsAt = (model: THREE.Object3D) =>
+  [...displayLights()].filter(listed => listed.model === model).map(({ light }) => light);
 
-async function evergreens(random = () => .5) {
+async function evergreens(random = () => 0.5) {
   const world = treeWorld(area.query, world => evergreenPrefabs(world, random), {});
   const ashSpawned = vi.fn();
   cleanups.push(world.worldEvents.on('spawnAsh', ashSpawned));
@@ -75,25 +123,34 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
     const tree = s.prefabs.spawn('evergreen_normal', new THREE.Vector3(3, 0, 0));
     const icon = lookupPrefabInstance(tree.transform.model)!.minimap;
     expect(icon).toMatchObject({ icon: 'evergreen.png', priority: -1 });
-    const model = tree.transform.model, target = findActionEntity(model)!;
-    expect(light(target)).toBe(true); await flush();
-    expect(fires(s.scene)).toBe(1); expect(target.hasTag('fire')).toBe(true); expect(target.hasTag('canlight')).toBe(false);
+    const model = tree.transform.model,
+      target = findActionEntity(model)!;
+    expect(light(target)).toBe(true);
+    await flush();
+    expect(fires(s.scene)).toBe(1);
+    expect(target.hasTag('fire')).toBe(true);
+    expect(target.hasTag('canlight')).toBe(false);
     // SetFXLevel(5): fire.lua's fifth level draws level4, and firefx_light, parented to the tree, is listed at the tree.
     expect(prefabsIn(s.scene, 'fire')[0].sprite.currentAnimation).toBe('level4');
-    expect(lightsAt(model).map(light => light.falloff)).toEqual([.2]);
+    expect(lightsAt(model).map(light => light.falloff)).toEqual([0.2]);
     s.scheduler.advance(44);
     expect(target.hasTag('burnt')).toBe(false);
     // A burning tree is saved as burnt, without a growth timer.
     expect(s.records()[0].components).toEqual({ evergreen: { burnt: true }, growable: { stage: 2 } });
-    s.scheduler.advance(1); await flush();
-    expect(fires(s.scene)).toBe(0); expect(lightsAt(model)).toEqual([]); expect(target.hasTag('burnt')).toBe(true);
+    s.scheduler.advance(1);
+    await flush();
+    expect(fires(s.scene)).toBe(0);
+    expect(lightsAt(model)).toEqual([]);
+    expect(target.hasTag('burnt')).toBe(true);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('burnt_normal');
     expect(icon.icon).toBe('evergreen_burnt.png');
     // burnt_changes follow .5 seconds later: no burnable, shelter or growth, and a single chop.
     expect(target.components.burnable).toBeDefined();
-    s.scheduler.advance(.5);
-    expect(target.components.burnable).toBeUndefined(); expect(target.components.propagator).toBeUndefined();
-    expect(target.hasTag('shelter')).toBe(false); expect(target.hasTag('canlight')).toBe(false);
+    s.scheduler.advance(0.5);
+    expect(target.components.burnable).toBeUndefined();
+    expect(target.components.propagator).toBeUndefined();
+    expect(target.hasTag('shelter')).toBe(false);
+    expect(target.hasTag('canlight')).toBe(false);
     expect(target.components.workable!.GetWorkLeft()).toBe(1);
     const record = s.records()[0];
     expect(record.components).toEqual({ evergreen: { burnt: true }, growable: { stage: 2 } });
@@ -108,15 +165,21 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
       expect(prefabInstance(reloaded.transform.model)!.sprite.currentAnimation).toBe('burnt_normal');
       expect(findActionEntity(reloaded.transform.model)!.components.burnable).toBeUndefined();
       expect(restored.records()[0]).toEqual(record);
-    } finally { restored.dispose(); }
+    } finally {
+      restored.dispose();
+    }
 
     expect(performToolWork('CHOP', target, testPlayer())).toBe(true);
     expect(s.dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('chop_burnt_normal');
     expect(performToolWork('CHOP', target, testPlayer())).toBe(false);
-    for (let i = 0; i < 60; i++) { s.displays.update(1 / 30); }
+    for (let i = 0; i < 60; i++) {
+      s.displays.update(1 / 30);
+    }
     expect(s.records()).toEqual([]);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('burns an evergreen stump to ash and removes it, and finishes a burning tree as burnt when it unloads', async () => {
@@ -124,91 +187,128 @@ it('burns an evergreen stump to ash and removes it, and finishes a burning tree 
   try {
     const stumpTree = s.prefabs.spawn('evergreen_short', new THREE.Vector3(2, 0, 0));
     const stump = findActionEntity(stumpTree.transform.model)!;
-    expect(performToolWork('CHOP', stump, testPlayer())).toBe(true); expect(stump.components.workable!.WorkedBy(testPlayer(), 4)).toBe(true);
+    expect(performToolWork('CHOP', stump, testPlayer())).toBe(true);
+    expect(stump.components.workable!.WorkedBy(testPlayer(), 4)).toBe(true);
     expect(stump.hasTag('stump')).toBe(true);
-    expect(light(stump)).toBe(true); await flush();
+    expect(light(stump)).toBe(true);
+    await flush();
     expect(fires(s.scene)).toBe(1);
     // The save of a burning stump is still the stump.
     expect(s.records()[0].components.evergreen).toEqual({ stump: true });
-    s.scheduler.advance(10); await flush();
+    s.scheduler.advance(10);
+    await flush();
     expect(s.ashSpawned).toHaveBeenCalledWith(new THREE.Vector3(2, 0, 0));
-    expect(s.records()).toEqual([]); expect(stump.isRemoved).toBe(true); expect(fires(s.scene)).toBe(0);
+    expect(s.records()).toEqual([]);
+    expect(stump.isRemoved).toBe(true);
+    expect(fires(s.scene)).toBe(0);
 
     const tree = s.prefabs.spawn('evergreen_tall', new THREE.Vector3(4, 0, 0));
     const target = findActionEntity(tree.transform.model)!;
-    expect(light(target)).toBe(true); await flush();
-    await area.visit(new THREE.Vector3(500, 0, 0)); await flush(); // OnEntitySleep
+    expect(light(target)).toBe(true);
+    await flush();
+    await area.visit(new THREE.Vector3(500, 0, 0));
+    await flush(); // OnEntitySleep
     expect(fires(s.scene)).toBe(0);
     expect(s.records()[0].components).toEqual({ evergreen: { burnt: true }, growable: { stage: 3 } });
     await area.visit(new THREE.Vector3());
     expect(prefabInstance(tree.transform.model)!.sprite.currentAnimation).toBe('burnt_tall');
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('burns a deciduous tree, keeps its season-independent burnt save, and drops charcoal when chopped', async () => {
-  const season = createSignal<SeasonState>({ season: 'summer', progress: .5 });
-  const s = treeWorld(area.query, world => deciduousPrefabs(world, () => .5), { season, secondsUntilNextDay: (now: number) => 480 - now % 480 });
+  const season = createSignal<SeasonState>({ season: 'summer', progress: 0.5 });
+  const s = treeWorld(area.query, world => deciduousPrefabs(world, () => 0.5), {
+    season,
+    secondsUntilNextDay: (now: number) => 480 - (now % 480),
+  });
   const { scene, scheduler, dropLoot } = s;
   await area.visit(new THREE.Vector3());
   try {
     const tree = s.prefabs.spawn('deciduoustree_normal', new THREE.Vector3(3, 0, 0));
     const target = findActionEntity(tree.transform.model)!;
-    expect(light(target)).toBe(true); await flush(); expect(fires(scene)).toBe(1);
-    scheduler.advance(45.5); await flush();
+    expect(light(target)).toBe(true);
+    await flush();
+    expect(fires(scene)).toBe(1);
+    scheduler.advance(45.5);
+    await flush();
     expect(fires(scene)).toBe(0);
     expect(prefabInstance(tree.transform.model)!.sprite.currentAnimation).toBe('burnt_normal');
-    expect(target.hasTag('shelter')).toBe(false); expect(target.hasTag('cattoyairborne')).toBe(false);
+    expect(target.hasTag('shelter')).toBe(false);
+    expect(target.hasTag('cattoyairborne')).toBe(false);
     const { components } = s.records()[0];
-    expect(components.deciduoustree!.burnt).toBe(true); expect(components.deciduoustree!.stump).toBeUndefined();
+    expect(components.deciduoustree!.burnt).toBe(true);
+    expect(components.deciduoustree!.stump).toBeUndefined();
     expect(components.growable).toEqual({ stage: 2 });
-    season.set({ season: 'autumn', progress: .5 }); await flush(); // leaves no longer change on a burnt tree
+    season.set({ season: 'autumn', progress: 0.5 });
+    await flush(); // leaves no longer change on a burnt tree
     expect(s.records()[0].components.deciduoustree!.leaf_state).toBe(components.deciduoustree!.leaf_state);
     expect(performToolWork('CHOP', target, testPlayer())).toBe(true);
     expect(dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('burns a moon tree for its size-scaled time and keeps burnt state through unloading, save and chopping', async () => {
-  const s = treeWorld(area.query, world => moonTreePrefabs(world, () => .5), {});
+  const s = treeWorld(area.query, world => moonTreePrefabs(world, () => 0.5), {});
   const { scene, scheduler, dropLoot } = s;
   await area.visit(new THREE.Vector3());
   try {
     const tree = s.prefabs.spawn('moon_tree_tall', new THREE.Vector3(3, 0, 0));
     const target = findActionEntity(tree.transform.model)!;
-    expect(light(target)).toBe(true); await flush();
+    expect(light(target)).toBe(true);
+    await flush();
     expect(fires(scene)).toBe(1);
-    scheduler.advance(67); expect(target.hasTag('burnt')).toBe(false); // TREE_BURN_TIME * 1.5
+    scheduler.advance(67);
+    expect(target.hasTag('burnt')).toBe(false); // TREE_BURN_TIME * 1.5
     scheduler.advance(1);
     expect(prefabInstance(tree.transform.model)!.sprite.currentAnimation).toBe('burnt_tall');
-    scheduler.advance(.5);
-    expect(target.components.burnable).toBeUndefined(); expect(target.components.workable!.GetWorkLeft()).toBe(1);
-    expect((tree as MoonTreeInstance).GetPersistData()).toEqual({ moonTree: { size: 'tall', burnt: true }, growable: { stage: 3 },
-      moonTreeTimer: { timers: { decay: { timeleft: 14399, initial_time: 14400, paused: false } } } });
+    scheduler.advance(0.5);
+    expect(target.components.burnable).toBeUndefined();
+    expect(target.components.workable!.GetWorkLeft()).toBe(1);
+    expect((tree as MoonTreeInstance).GetPersistData()).toEqual({
+      moonTree: { size: 'tall', burnt: true },
+      growable: { stage: 3 },
+      moonTreeTimer: { timers: { decay: { timeleft: 14399, initial_time: 14400, paused: false } } },
+    });
     expect(lookupPrefabInstance(tree.transform.model)!.minimap.icon).toBe('moon_tree_burnt.png');
-    await area.visit(new THREE.Vector3(500, 0, 0)); await area.visit(new THREE.Vector3());
+    await area.visit(new THREE.Vector3(500, 0, 0));
+    await area.visit(new THREE.Vector3());
     expect(prefabInstance(tree.transform.model)!.sprite.currentAnimation).toBe('burnt_tall');
     // lootdropper.lua GenerateLoot: a burnt inst adds charcoal when math.random() < .4.
-    const random = vi.spyOn(Math, 'random').mockReturnValue(.5);
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.5);
     expect(performToolWork('CHOP', findActionEntity(tree.transform.model)!, {})).toBe(true);
     random.mockRestore();
     expect(dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
-    for (let i = 0; i < 60; i++) { s.displays.update(1 / 30); }
+    for (let i = 0; i < 60; i++) {
+      s.displays.update(1 / 30);
+    }
     expect(s.records()).toEqual([]);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('burns a planted flower to ash, leaving it out of the save while it burns', async () => {
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), spawnGroundItem = vi.fn();
-  const displays = new PrefabDisplayGroup(scene), fire = FireFxHost.create('/dst/data/anim');
+  const scene = new THREE.Scene(),
+    scheduler = new GameTimeScheduler(),
+    spawnGroundItem = vi.fn();
+  const displays = new PrefabDisplayGroup(scene),
+    fire = FireFxHost.create('/dst/data/anim');
   const flowers = prefabManager(displays, '/dst/data/anim', { scheduler, fire, spawnGroundItem }, flowerPrefabs);
   try {
     const instance = flowers.spawn('planted_flower', new THREE.Vector3(3, 0, 4));
-    const model = instance.transform.model, target = findActionEntity(model)!;
+    const model = instance.transform.model,
+      target = findActionEntity(model)!;
     const saved = flowers.exportRecords();
     expect(instance.persists).toBe(true);
-    expect(light(target)).toBe(true); await flush();
+    expect(light(target)).toBe(true);
+    await flush();
     expect(instance.persists).toBe(false);
-    expect(fires(scene)).toBe(1); expect(flowers.exportRecords()).toEqual([]);
+    expect(fires(scene)).toBe(1);
+    expect(flowers.exportRecords()).toEqual([]);
     target.components.burnable!.Extinguish();
     expect(instance.persists).toBe(true);
     expect(flowers.exportRecords()).toEqual(saved);
@@ -216,9 +316,21 @@ it('burns a planted flower to ash, leaving it out of the save while it burns', a
     expect(spawnGroundItem).not.toHaveBeenCalled();
     expect(light(target)).toBe(true);
     expect(instance.persists).toBe(false);
-    scheduler.advance(10); await flush(); displays.update(0);
-    expect(spawnGroundItem).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ itemId: 'ash', count: 1 }), instance.position);
-    expect(fires(scene)).toBe(0); expect(model.parent).toBeNull(); expect(target.isRemoved).toBe(true);
+    scheduler.advance(10);
+    await flush();
+    displays.update(0);
+    expect(spawnGroundItem).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ itemId: 'ash', count: 1 }),
+      instance.position,
+    );
+    expect(fires(scene)).toBe(0);
+    expect(model.parent).toBeNull();
+    expect(target.isRemoved).toBe(true);
     expect(flowers.exportRecords()).toEqual([]);
-  } finally { flowers.dispose(); displays.dispose(); fire.dispose(); scheduler.dispose(); }
+  } finally {
+    flowers.dispose();
+    displays.dispose();
+    fire.dispose();
+    scheduler.dispose();
+  }
 });

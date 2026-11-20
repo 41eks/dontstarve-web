@@ -14,8 +14,12 @@ import { createInventoryStore } from './testInventory';
 
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(), PreloadSounds: vi.fn(async () => {}) }));
 
-beforeEach(() => vi.stubGlobal('fetch', async (url: string) =>
-  new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
+beforeEach(() =>
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  ),
+);
 afterEach(() => vi.unstubAllGlobals());
 
 it('renders shared, renamed and independent turf poses from native builds and resolves crafting atlases', async () => {
@@ -23,32 +27,42 @@ it('renders shared, renamed and independent turf poses from native builds and re
   try {
     // Sample the shared bank with a renamed clip, drama build, and separate CotL/beard builds.
     for (const [id, clip, build] of [
-      ['turf_underrock', 'rock', 'turf'], ['turf_carpetfloor2', 'carpet2', 'turf_drama'],
-      ['turf_cotl_brick', 'cotl_brick', 'turf_cotl'], ['turf_beard_rug', 'turf_beard', 'turf_beard'],
+      ['turf_underrock', 'rock', 'turf'],
+      ['turf_carpetfloor2', 'carpet2', 'turf_drama'],
+      ['turf_cotl_brick', 'cotl_brick', 'turf_cotl'],
+      ['turf_beard_rug', 'turf_beard', 'turf_beard'],
     ]) {
       const sprite = await createGroundItemVisual(id);
       try {
         expect(sprite.currentAnimation).toBe(clip);
-        const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+        const mesh = sprite.model.children[0].children[0].children[0] as THREE.Mesh<
+          THREE.BufferGeometry,
+          THREE.MeshBasicMaterial[]
+        >;
         expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
         expect(mesh.material.some(material => material.name === `sprite:${build}`)).toBe(true);
         expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
         const pose = Array.from(mesh.geometry.getAttribute('position').array);
         sprite.update(10);
         expect(Array.from(mesh.geometry.getAttribute('position').array)).toEqual(pose);
-      } finally { sprite.dispose(); }
+      } finally {
+        sprite.dispose();
+      }
     }
     expect(createRecipe('turf_woodfloor').inventoryAtlas).toBe('images/inventoryimages.xml');
     const cotl = createRecipe('turf_cotl_brick');
     expect(cotl.inventoryAtlas).toBe('images/inventoryimages3.xml');
     expect(cotl.inventoryIcon).toBe('turf_cotl_brick.tex');
     expect(cotl.skins).toEqual([]);
-  } finally { assets.dispose(); }
+  } finally {
+    assets.dispose();
+  }
 });
 
 it('loads the direct-path white road noise and the vault terrain independently of item names', async () => {
   for (const [name, path] of [
-    ['ROAD', 'images/square.tex'], ['VAULT_CLEAN', 'levels/textures/Ground_noise_vault_clean.tex'],
+    ['ROAD', 'images/square.tex'],
+    ['VAULT_CLEAN', 'levels/textures/Ground_noise_vault_clean.tex'],
   ] as const) {
     const assets = await loadGroundTileAssets('/dst/data', name);
     try {
@@ -56,7 +70,9 @@ it('loads the direct-path white road noise and the vault terrain independently o
       expect((assets.material.map as THREE.DataTexture).image.width).toBeGreaterThan(0);
       expect(assets.elements.size).toBe(48);
       expect(assets.material.depthWrite).toBe(false);
-    } finally { assets.material.dispose(); }
+    } finally {
+      assets.material.dispose();
+    }
   }
 });
 
@@ -64,7 +80,8 @@ it('deploys one CotL turf on dirt, rejects covered ground and restores terrain a
   const inventory = createInventoryStore([{ slot_index: 0, id: 'turf_cotl_brick', num: 2 }]);
   const map = new TurfMap(48);
   const deployMap = createDeployMap({ turf: map, blockers: { someNear: () => false } as never });
-  const point = new THREE.Vector3(6, 0, 6), address = inventorySlotAddress(0);
+  const point = new THREE.Vector3(6, 0, 6),
+    address = inventorySlotAddress(0);
   const deployer = { position: new THREE.Vector3(), PushEvent: vi.fn() };
   let restored: TurfMap | undefined;
   try {
@@ -92,11 +109,18 @@ it('deploys one CotL turf on dirt, rejects covered ground and restores terrain a
     expect(map.tileLayerQuads().get(WORLD_TILES.COTL_BRICK)).toHaveLength(9);
     restored = new TurfMap(48, map.exportTiles());
     const restoredDisplay = await drawGround(restored);
-    expect(layerGeometry(restoredDisplay, 'COTL_BRICK').getAttribute('groundTileUv').array).toEqual(brick.getAttribute('groundTileUv').array);
+    expect(layerGeometry(restoredDisplay, 'COTL_BRICK').getAttribute('groundTileUv').array).toEqual(
+      brick.getAttribute('groundTileUv').array,
+    );
     expect(turfItemForTile(restored.getTileAtWorld(point))).toBe('turf_cotl_brick');
     expect(restored.dig(point)).toBe(true);
     expect(restored.getTileAtWorld(point)).toBe(WORLD_TILES.DIRT);
     expect(layerMeshes(restoredDisplay, 'COTL_BRICK')).toHaveLength(0);
-    display.dispose(); restoredDisplay.dispose();
-  } finally { restored?.dispose(); map.dispose(); inventory.dispose(); }
+    display.dispose();
+    restoredDisplay.dispose();
+  } finally {
+    restored?.dispose();
+    map.dispose();
+    inventory.dispose();
+  }
 });

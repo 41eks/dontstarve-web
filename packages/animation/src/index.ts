@@ -18,10 +18,22 @@ export {
   type PercentAnimationController,
   type TransientSpriteAnimationController,
 } from './sprite';
-export { isSpriteEntityRendered, isSpriteEntityVisible, setSpriteEntityRenderOrder, spriteRenderOrderKey, updateSpriteRenderOrders } from './renderOrder';
 export {
-  ArchiveSpriteAssets, createArchiveSprite, createSharedArchiveSprite, preloadSharedArchiveSprite,
-  type ArchiveSprite, type ArchiveSpriteDefinition, type ArchiveSpriteOptions, type ArchiveSpriteBuild,
+  isSpriteEntityRendered,
+  isSpriteEntityVisible,
+  setSpriteEntityRenderOrder,
+  spriteRenderOrderKey,
+  updateSpriteRenderOrders,
+} from './renderOrder';
+export {
+  ArchiveSpriteAssets,
+  createArchiveSprite,
+  createSharedArchiveSprite,
+  preloadSharedArchiveSprite,
+  type ArchiveSprite,
+  type ArchiveSpriteDefinition,
+  type ArchiveSpriteOptions,
+  type ArchiveSpriteBuild,
 } from './archiveSprite';
 export {
   basic_init_fn,
@@ -47,7 +59,11 @@ export {
 } from './rgbaSpriteAtlas';
 
 export {
-  createAtlasImage, getAtlasImage, registerImageAtlases, disposeAtlasImages,
-  type AtlasImageElement, type AtlasImageRegion,
+  createAtlasImage,
+  getAtlasImage,
+  registerImageAtlases,
+  disposeAtlasImages,
+  type AtlasImageElement,
+  type AtlasImageRegion,
 } from './atlasImage';
 export { ResidentSprite, ResidentSpriteController, type ResidentEntity } from './residentSprite';

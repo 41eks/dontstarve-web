@@ -20,10 +20,26 @@ export const TUNING = {
 export type DstCyclePhase = 'day' | 'dusk' | 'night';
 
 export const MOON_PHASE_CYCLES = [
-  'new', 'quarter', 'quarter', 'quarter', 'half', 'half', 'half',
-  'threequarter', 'threequarter', 'threequarter', 'full',
-  'threequarter', 'threequarter', 'threequarter', 'half', 'half', 'half',
-  'quarter', 'quarter', 'quarter',
+  'new',
+  'quarter',
+  'quarter',
+  'quarter',
+  'half',
+  'half',
+  'half',
+  'threequarter',
+  'threequarter',
+  'threequarter',
+  'full',
+  'threequarter',
+  'threequarter',
+  'threequarter',
+  'half',
+  'half',
+  'half',
+  'quarter',
+  'quarter',
+  'quarter',
 ] as const;
 
 /** `cycles` counts completed days, as in DST's components/clock.lua. */
@@ -57,7 +73,7 @@ export function getDstClock(elapsedSeconds: number, moonCycleOffset = 0) {
   return {
     cycles: cycle.cycles,
     phase: cycle.phase,
-    time: Math.max(0, elapsedSeconds) % TUNING.TOTAL_DAY_TIME / TUNING.TOTAL_DAY_TIME,
+    time: (Math.max(0, elapsedSeconds) % TUNING.TOTAL_DAY_TIME) / TUNING.TOTAL_DAY_TIME,
     daySegments: TUNING.DAY_SEGS_DEFAULT,
     duskSegments: TUNING.DUSK_SEGS_DEFAULT,
     moonPhase: MOON_PHASE_CYCLES[moonIndex],

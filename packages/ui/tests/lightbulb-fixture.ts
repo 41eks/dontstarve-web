@@ -35,14 +35,34 @@ export async function checkLightbulbLighting() {
     lighting.render(scene, camera);
     const point = new THREE.Vector3(x, 0, z).project(camera);
     const gl = renderer.getContext();
-    gl.readPixels(Math.floor((point.x + 1) * 200), Math.floor((point.y + 1) * 200), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+    gl.readPixels(
+      Math.floor((point.x + 1) * 200),
+      Math.floor((point.y + 1) * 200),
+      1,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixel,
+    );
     return pixel[0] + pixel[1] + pixel[2];
   };
   const baseline = await sample(0);
   // A bulb lying in the world lights it; held (RemoveFromScene) it does not.
   const bulbInventory = createPickupInventory();
-  const bulbs = new ItemWorldFixture(scene, camera, renderer, '/missing-atlas.zip', bulbInventory, '/dst/data/anim', new THREE.Group());
-  const bulbModel = bulbs.spawnFromSave('bulb', { itemId: 'lightbulb', name: '荧光果', icon: 'missing.tex', count: 1 }, new THREE.Vector3());
+  const bulbs = new ItemWorldFixture(
+    scene,
+    camera,
+    renderer,
+    '/missing-atlas.zip',
+    bulbInventory,
+    '/dst/data/anim',
+    new THREE.Group(),
+  );
+  const bulbModel = bulbs.spawnFromSave(
+    'bulb',
+    { itemId: 'lightbulb', name: '荧光果', icon: 'missing.tex', count: 1 },
+    new THREE.Vector3(),
+  );
   const bulb = itemAt(bulbModel);
   await (prefabDisplay(bulbModel) as PrefabDisplay).artLoaded();
   bulbModel.quaternion.copy(camera.quaternion);
@@ -54,10 +74,19 @@ export async function checkLightbulbLighting() {
   const reenabled = await sample(0);
   bulb.remove();
   const disposed = await sample(0);
-  bulbs.dispose(); bulbInventory.dispose();
+  bulbs.dispose();
+  bulbInventory.dispose();
   const pickup = fixturePickup(scene, camera, renderer);
   pickup.setAllowed(false);
-  const manager = new ItemWorldFixture(scene, camera, renderer, '/missing-atlas.zip', pickup.inventory, '/dst/data/anim', new THREE.Group());
+  const manager = new ItemWorldFixture(
+    scene,
+    camera,
+    renderer,
+    '/missing-atlas.zip',
+    pickup.inventory,
+    '/dst/data/anim',
+    new THREE.Group(),
+  );
   const definition = { itemId: 'lightbulb', name: '荧光果', icon: 'missing.tex', count: 1 };
   const failedDrop = await manager.drop(definition, new THREE.Vector3(5, 20, 0), () => false);
   const failedDropBrightness = await sample(5);
@@ -70,29 +99,51 @@ export async function checkLightbulbLighting() {
     const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry>;
     const bounds = new THREE.Box3();
     const vertices = mesh.geometry.getAttribute('position');
-    for (let i = 0; i < mesh.geometry.drawRange.count / 6 * 4; i++)
-      { bounds.expandByPoint(mesh.localToWorld(new THREE.Vector3().fromBufferAttribute(vertices, i))); }
+    for (let i = 0; i < (mesh.geometry.drawRange.count / 6) * 4; i++) {
+      bounds.expandByPoint(mesh.localToWorld(new THREE.Vector3().fromBufferAttribute(vertices, i)));
+    }
     const point = bounds.getCenter(new THREE.Vector3()).project(camera);
     const canvas = renderer.domElement.getBoundingClientRect();
-    renderer.domElement.dispatchEvent(new MouseEvent('pointerdown', {
-      button: 0, clientX: canvas.left + (point.x + 1) * canvas.width / 2,
-      clientY: canvas.top + (1 - point.y) * canvas.height / 2,
-    }));
+    renderer.domElement.dispatchEvent(
+      new MouseEvent('pointerdown', {
+        button: 0,
+        clientX: canvas.left + ((point.x + 1) * canvas.width) / 2,
+        clientY: canvas.top + ((1 - point.y) * canvas.height) / 2,
+      }),
+    );
   };
-  click(); pickup.settle();
+  click();
+  pickup.settle();
   const failedPickupCount = manager.exportRecords().length;
   const failedPickupBrightness = await sample(5);
   const saved = manager.exportRecords()[0];
   pickup.setAllowed(true);
-  click(); pickup.settle();
+  click();
+  pickup.settle();
   const pickedUp = { count: manager.exportRecords().length, brightness: await sample(5) };
   const restored = await manager.spawnFromSave('restored-bulb', definition, new THREE.Vector3(5, 0, 0));
   const restoredBrightness = await sample(5);
   const restoredLit = !!getDeclaredLight(restored);
-  pickup.dispose(); manager.dispose();
+  pickup.dispose();
+  manager.dispose();
   lighting.dispose();
   renderer.dispose();
-  return { baseline, parameters, glowing, disabled, reenabled, disposed,
-    failedDrop, failedDropBrightness, dropped, failedPickupCount, failedPickupBrightness,
-    saved, pickedUp, restoredBrightness, restoredLit, source: GROUND_ITEM_DEFINITIONS.lightbulb };
+  return {
+    baseline,
+    parameters,
+    glowing,
+    disabled,
+    reenabled,
+    disposed,
+    failedDrop,
+    failedDropBrightness,
+    dropped,
+    failedPickupCount,
+    failedPickupBrightness,
+    saved,
+    pickedUp,
+    restoredBrightness,
+    restoredLit,
+    source: GROUND_ITEM_DEFINITIONS.lightbulb,
+  };
 }

@@ -2,10 +2,12 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prewarmScene } from '../../../src/prewarmScene';
 
-beforeEach(() => vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-  queueMicrotask(() => callback(0));
-  return 1;
-}));
+beforeEach(() =>
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    queueMicrotask(() => callback(0));
+    return 1;
+  }),
+);
 afterEach(() => vi.unstubAllGlobals());
 
 function setup() {
@@ -24,9 +26,14 @@ function setup() {
   const renderer = {
     initTexture: vi.fn(),
     getRenderTarget: () => current,
-    setRenderTarget: (next: THREE.WebGLRenderTarget | null) => { current = next; },
+    setRenderTarget: (next: THREE.WebGLRenderTarget | null) => {
+      current = next;
+    },
     compileAsync: vi.fn(async () => undefined),
-    render: vi.fn(() => { expect(current?.width).toBe(1); expect(current?.height).toBe(1); }),
+    render: vi.fn(() => {
+      expect(current?.width).toBe(1);
+      expect(current?.height).toBe(1);
+    }),
   };
   return { scene, parent, texture, atlas, meshes, target, renderer };
 }
@@ -48,9 +55,12 @@ it('uploads shared/custom textures once, warms small batches and preserves paren
 it('stops later batches on cancellation without drawing or changing the render target', async () => {
   const s = setup();
   const controller = new AbortController();
-  s.renderer.compileAsync.mockImplementationOnce(async () => { controller.abort(); });
-  await expect(prewarmScene(s.renderer as unknown as THREE.WebGLRenderer, s.scene, new THREE.Camera(), controller.signal))
-    .rejects.toThrow();
+  s.renderer.compileAsync.mockImplementationOnce(async () => {
+    controller.abort();
+  });
+  await expect(
+    prewarmScene(s.renderer as unknown as THREE.WebGLRenderer, s.scene, new THREE.Camera(), controller.signal),
+  ).rejects.toThrow();
   expect(s.renderer.compileAsync).toHaveBeenCalledOnce();
   expect(s.renderer.render).not.toHaveBeenCalled();
   expect(s.renderer.getRenderTarget()).toBe(s.target);

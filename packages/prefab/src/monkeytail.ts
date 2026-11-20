@@ -13,8 +13,11 @@ export const MONKEYTAIL_ID = 'monkeytail' as const;
 export const MONKEYTAIL_REGROW_TIME = 3 * 480;
 
 function dig_up(inst: PickablePlantInstance): void {
-  const { pickable, witherable } = inst.components, lootdropper = inst.components.lootdropper!;
-  if (pickable.canBePicked) { lootdropper.SpawnLootPrefab(pickable.product!); }
+  const { pickable, witherable } = inst.components,
+    lootdropper = inst.components.lootdropper!;
+  if (pickable.canBePicked) {
+    lootdropper.SpawnLootPrefab(pickable.product!);
+  }
   lootdropper.SpawnLootPrefab(witherable?.IsWithered() ? 'cutreeds' : 'dug_monkeytail');
   inst.remove();
 }
@@ -28,14 +31,18 @@ function makeemptyfn(inst: PickablePlantInstance): void {
   if (!POPULATING && (inst.components.witherable?.IsWithered() || inst.sprite.currentAnimation === 'idle_dead')) {
     inst.AnimState.PlayAnimation('dead_to_empty');
     inst.AnimState.PushAnimation('picked', false);
-  } else { inst.AnimState.PlayAnimation('picked'); }
+  } else {
+    inst.AnimState.PlayAnimation('picked');
+  }
 }
 
 function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
   if (!POPULATING && inst.components.witherable?.IsWithered()) {
     inst.AnimState.PlayAnimation(wasempty ? 'empty_to_dead' : 'full_to_dead');
     inst.AnimState.PushAnimation('idle_dead', false);
-  } else { inst.AnimState.PlayAnimation('idle_dead'); }
+  } else {
+    inst.AnimState.PlayAnimation('idle_dead');
+  }
 }
 
 function onpickedfn(inst: PickablePlantInstance): void {
@@ -44,7 +51,9 @@ function onpickedfn(inst: PickablePlantInstance): void {
   if (inst.components.pickable.IsBarren()) {
     inst.AnimState.PushAnimation('empty_to_dead', false);
     inst.AnimState.PushAnimation('idle_dead', false);
-  } else { inst.AnimState.PushAnimation('picked', false); }
+  } else {
+    inst.AnimState.PushAnimation('picked', false);
+  }
 }
 
 function ontransplantfn(inst: PickablePlantInstance): void {
@@ -67,13 +76,36 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
   inst.sprite.setFrameAt(Math.random());
 
   // TUNING.MONKEYTAIL_CYCLES + math.random(TUNING.MONKEYTAIL_CYCLES_VAR).
-  const pickable = addComponent(inst, 'pickable', Pickable, 'cutreeds', MONKEYTAIL_REGROW_TIME, 1, () => onpickedfn(inst), () => onregenfn(inst), undefined, {
-    scheduler: world.scheduler, growthDuration: SpringGrowthMod(inst, world.getWatchWorldContent), maxCycles: 5 + Math.floor(Math.random() * 3),
-    onEmpty: () => makeemptyfn(inst), onBarren: wasempty => makebarrenfn(inst, wasempty), onTransplant: () => ontransplantfn(inst),
-  });
+  const pickable = addComponent(
+    inst,
+    'pickable',
+    Pickable,
+    'cutreeds',
+    MONKEYTAIL_REGROW_TIME,
+    1,
+    () => onpickedfn(inst),
+    () => onregenfn(inst),
+    undefined,
+    {
+      scheduler: world.scheduler,
+      growthDuration: SpringGrowthMod(inst, world.getWatchWorldContent),
+      maxCycles: 5 + Math.floor(Math.random() * 3),
+      onEmpty: () => makeemptyfn(inst),
+      onBarren: wasempty => makebarrenfn(inst, wasempty),
+      onTransplant: () => ontransplantfn(inst),
+    },
+  );
   pickable.picksound = 'dontstarve/wilson/pickup_reeds';
 
-  addComponent(inst, 'witherable', Witherable, pickable, world.scheduler, () => world.getLocalTemperature?.(inst.position) ?? 20, world.rain);
+  addComponent(
+    inst,
+    'witherable',
+    Witherable,
+    pickable,
+    world.scheduler,
+    () => world.getLocalTemperature?.(inst.position) ?? 20,
+    world.rain,
+  );
   addComponent(inst, 'lootdropper', LootDropper, plantLootSpawner(world));
 
   const workable = addComponent(inst, 'workable', Workable);
@@ -82,15 +114,27 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
   workable.SetWorkLeft(1);
 
   // MakeSmallBurnable(inst, TUNING.SMALL_FUEL) + MakeSmallPropagator.
-  const burn = new BurnableBinding(inst, { propagator: 'small', burnTime: 15, fxLevel: 2,
-    onIgnite: () => DefaultBurnFn(inst), onExtinguish: () => DefaultExtinguishFn(inst), onBurnt: () => DefaultBurntFn(inst, world) }, world);
+  const burn = new BurnableBinding(
+    inst,
+    {
+      propagator: 'small',
+      burnTime: 15,
+      fxLevel: 2,
+      onIgnite: () => DefaultBurnFn(inst),
+      onExtinguish: () => DefaultExtinguishFn(inst),
+      onBurnt: () => DefaultBurntFn(inst, world),
+    },
+    world,
+  );
   inst.onRemove(() => burn.dispose());
   MakeNoGrowInWinter(inst, world.getWatchWorldContent);
   return inst;
 }
 
 /** monkeytail.lua's Prefab("monkeytail", fn, assets). */
-export function monkeytailPrefabs(world: PickablePlantWorld): Readonly<Record<typeof MONKEYTAIL_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+export function monkeytailPrefabs(
+  world: PickablePlantWorld,
+): Readonly<Record<typeof MONKEYTAIL_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
   return {
     [MONKEYTAIL_ID]: {
       fn: () => fn(world),

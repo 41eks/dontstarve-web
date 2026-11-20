@@ -6,7 +6,12 @@ import { Inspectable } from '../../componets/src/inspectable';
 import { PlayerProx } from '../../componets/src/playerprox';
 import { Timer, type NamedTimerSave } from '../../componets/src/timer';
 import {
-  CanopyLightRays, CanopyShadows, DistanceFade, LightningBlocker, WaterPhysics, WorldSettingsTimer,
+  CanopyLightRays,
+  CanopyShadows,
+  DistanceFade,
+  LightningBlocker,
+  WaterPhysics,
+  WorldSettingsTimer,
 } from '../../componets/src/watertreePillarSignatures';
 import { addComponent } from './components';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
@@ -15,11 +20,18 @@ import { MakeWaterObstaclePhysics } from './standardcomponents';
 
 export const WATERTREE_PILLAR_ID = 'watertree_pillar' as const;
 /** Asset("ANIM", ...): the bank's archive, SetBuild's and AddOverrideBuild's. */
-export const WATERTREE_PILLAR_ARCHIVES = ['oceantree_pillar.zip', 'oceantree_pillar_build1.zip', 'oceantree_pillar_build2.zip'];
+export const WATERTREE_PILLAR_ARCHIVES = [
+  'oceantree_pillar.zip',
+  'oceantree_pillar_build1.zip',
+  'oceantree_pillar_build2.zip',
+];
 
 /** tuning.lua: seg_time is 30. */
-const GRASSGATOR_REGEN_TIME = 30 * 4, GRASSGATOR_RELEASE_TIME = 30, GRASSGATOR_MAXCHILDREN = 1;
-const SHADE_CANOPY_RANGE = 28, WATERTREE_PILLAR_CANOPY_BUFFER = 1;
+const GRASSGATOR_REGEN_TIME = 30 * 4,
+  GRASSGATOR_RELEASE_TIME = 30,
+  GRASSGATOR_MAXCHILDREN = 1;
+const SHADE_CANOPY_RANGE = 28,
+  WATERTREE_PILLAR_CANOPY_BUFFER = 1;
 const MIN = SHADE_CANOPY_RANGE;
 const MAX = MIN + WATERTREE_PILLAR_CANOPY_BUFFER;
 const START_NUM_OCEANTREENUTS = 1;
@@ -42,10 +54,16 @@ export interface WatertreePillarWorld {
 /** watertree_pillar.lua fn: the fields it sets on inst. */
 export class WatertreePillarInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    waterphysics: WaterPhysics; distancefade: DistanceFade; canopyshadows: CanopyShadows; canopylightrays: CanopyLightRays;
-    playerprox: PlayerProx<WatertreePillarInstance>; inspectable: Inspectable;
+    waterphysics: WaterPhysics;
+    distancefade: DistanceFade;
+    canopyshadows: CanopyShadows;
+    canopylightrays: CanopyLightRays;
+    playerprox: PlayerProx<WatertreePillarInstance>;
+    inspectable: Inspectable;
     childspawner: ChildSpawner<WatertreePillarInstance, ChildSpawnerChild<WatertreePillarInstance>>;
-    worldsettingstimer: WorldSettingsTimer; timer: Timer; lightningblocker: LightningBlocker;
+    worldsettingstimer: WorldSettingsTimer;
+    timer: Timer;
+    lightningblocker: LightningBlocker;
   };
   declare num_oceantreenuts: number;
   declare last_ram_time?: number;
@@ -58,23 +76,30 @@ function OnSave(inst: WatertreePillarInstance, data: EntityPersistData): void {
   const { childreninside, childrenoutside } = data.childspawner ?? inst.components.childspawner.OnSave();
   data.watertreePillar = {
     num_oceantreenuts: inst.num_oceantreenuts,
-    ...inst.last_ram_time !== undefined ? { last_ram_time: inst.last_ram_time } : {},
-    ...inst._cocoons_to_regrow !== undefined ? { cocoons_to_regrow: inst._cocoons_to_regrow } : {},
+    ...(inst.last_ram_time !== undefined ? { last_ram_time: inst.last_ram_time } : {}),
+    ...(inst._cocoons_to_regrow !== undefined ? { cocoons_to_regrow: inst._cocoons_to_regrow } : {}),
     childspawner: { childreninside, childrenoutside },
-    ...data.timer ? { timer: data.timer } : {},
+    ...(data.timer ? { timer: data.timer } : {}),
   };
-  delete data.childspawner; delete data.timer;
+  delete data.childspawner;
+  delete data.timer;
 }
 
 /** The childspawner and timer components' OnLoad, which run before inst.OnLoad in the source, then OnLoad. */
 function OnLoad(inst: WatertreePillarInstance, data: EntityPersistData): void {
   const saved = data.watertreePillar;
-  if (!saved) { return; }
+  if (!saved) {
+    return;
+  }
   inst.components.childspawner.OnLoad(saved.childspawner);
   inst.components.timer.OnLoad(saved.timer);
   inst.num_oceantreenuts = saved.num_oceantreenuts;
-  if (saved.last_ram_time !== undefined) { inst.last_ram_time = saved.last_ram_time; }
-  if (saved.cocoons_to_regrow !== undefined) { inst._cocoons_to_regrow = saved.cocoons_to_regrow; }
+  if (saved.last_ram_time !== undefined) {
+    inst.last_ram_time = saved.last_ram_time;
+  }
+  if (saved.cocoons_to_regrow !== undefined) {
+    inst._cocoons_to_regrow = saved.cocoons_to_regrow;
+  }
 }
 
 /**
@@ -104,8 +129,12 @@ function fn(world: WatertreePillarWorld, sprites: SpriteResources): WatertreePil
   const playerprox = addComponent(inst, 'playerprox', PlayerProx<WatertreePillarInstance>, world.getWatchWorldContent);
   playerprox.SetDist(MIN, MAX);
   addComponent(inst, 'inspectable', Inspectable);
-  const childspawner = addComponent(inst, 'childspawner',
-    ChildSpawner<WatertreePillarInstance, ChildSpawnerChild<WatertreePillarInstance>>, world.scheduler);
+  const childspawner = addComponent(
+    inst,
+    'childspawner',
+    ChildSpawner<WatertreePillarInstance, ChildSpawnerChild<WatertreePillarInstance>>,
+    world.scheduler,
+  );
   childspawner.childname = 'grassgator';
   childspawner.SetRegenPeriod(GRASSGATOR_REGEN_TIME);
   childspawner.SetSpawnPeriod(GRASSGATOR_RELEASE_TIME);
@@ -121,12 +150,17 @@ function fn(world: WatertreePillarWorld, sprites: SpriteResources): WatertreePil
 }
 
 /** The watertree_pillar Prefab watertree_pillar.lua returns; watertree_pillar_ripples and _roots are not ported. */
-export function watertreePillarPrefabs(world: WatertreePillarWorld):
-  Readonly<Record<typeof WATERTREE_PILLAR_ID, PrefabEntityDefinition<WatertreePillarInstance>>> {
+export function watertreePillarPrefabs(
+  world: WatertreePillarWorld,
+): Readonly<Record<typeof WATERTREE_PILLAR_ID, PrefabEntityDefinition<WatertreePillarInstance>>> {
   return {
     [WATERTREE_PILLAR_ID]: {
       fn: (_position, sprites) => fn(world, sprites),
-      assets: { animationArchive: 'oceantree_pillar.zip', buildArchives: ['oceantree_pillar_build1.zip'], bank: 'oceantree_pillar' },
+      assets: {
+        animationArchive: 'oceantree_pillar.zip',
+        buildArchives: ['oceantree_pillar_build1.zip'],
+        bank: 'oceantree_pillar',
+      },
       // Not instanced: the canopy's idle frame (SetAABB(60, 20)) is larger than the 4096 px instanced sprite atlas.
       physics: { make: MakeWaterObstaclePhysics, radius: 4, height: 2 },
       minimapIcon: 'oceantree_pillar.png',

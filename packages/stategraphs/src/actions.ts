@@ -4,7 +4,12 @@ import type { EquippedActionDoer, SceneActionDoer } from './componentactions.ts'
 
 /** Supported action strings from strings.lua + languages/chinese_s.po; priorities from actions.lua. */
 export const ACTIONS = {
-  BLINK: { priority: 10, rmb: true, distance: 36, strings: { GENERIC: '传送', SOUL: '灵魂跳跃', FREESOUL: '灵魂回声' } },
+  BLINK: {
+    priority: 10,
+    rmb: true,
+    distance: 36,
+    strings: { GENERIC: '传送', SOUL: '灵魂跳跃', FREESOUL: '灵魂回声' },
+  },
   BLINK_MAP: { priority: 10, rmb: true, map_action: true, arrive_anywhere: true, strings: { GENERIC: '灵魂跳跃' } },
   NET: { priority: 3, strings: { GENERIC: '捕捉' } },
   ATTACK: { priority: 2, strings: { GENERIC: '攻击', RANGEDSMOTHER: '扑灭', RANGEDLIGHT: '点燃' } },
@@ -42,7 +47,14 @@ export const ACTIONS = {
   SHAVE: { priority: 0, strings: { GENERIC: '刮', SELF: '给自己刮胡子' } },
   SLEEPIN: { priority: 0, strings: { GENERIC: '睡觉' } },
   MIGRATE: { priority: 0, rmb: false, ghost_valid: true, strings: { GENERIC: '进入' } },
-  HAUNT: { priority: 0, rmb: false, mindistance: 2, ghost_valid: true, ghost_exclusive: true, strings: { GENERIC: '作祟' } },
+  HAUNT: {
+    priority: 0,
+    rmb: false,
+    mindistance: 2,
+    ghost_valid: true,
+    ghost_exclusive: true,
+    strings: { GENERIC: '作祟' },
+  },
   RUMMAGE: { priority: -1, strings: { GENERIC: '打开', CLOSE: '关闭' } },
   INCINERATE: { priority: 1, strings: { GENERIC: '摧毁' } },
   LOOKAT: { priority: -3, instant: true, distance: 3, ghost_valid: true, strings: { GENERIC: '检查' } },
@@ -65,9 +77,13 @@ export interface ActionDef {
 }
 const ACTION_DEFS: ReadonlyMap<string, ActionDef> = new Map(Object.entries(ACTIONS));
 /** ACTIONS[id], for an id the ported table has. */
-export function getActionDef(id: string): ActionDef | undefined { return ACTION_DEFS.get(id); }
+export function getActionDef(id: string): ActionDef | undefined {
+  return ACTION_DEFS.get(id);
+}
 /** Whether ACTIONS has an entry for `id`. */
-export function isMouseActionId(id: string): id is MouseActionId { return ACTION_DEFS.has(id); }
+export function isMouseActionId(id: string): id is MouseActionId {
+  return ACTION_DEFS.has(id);
+}
 /** The player as the picker describes it to the actions' strfns: Wortox keeps its free soul-hop count on the inst. */
 export type ActionDescriptionDoer = SceneActionDoer & EquippedActionDoer & { readonly _freesoulhop_counter?: number };
 
@@ -110,33 +126,59 @@ export function getActionString(action: ActionDescription): string {
 function strfn(act: ActionDescription): string | undefined {
   const target = act.target;
   switch (act.action) {
-    case 'CASTSPELL': return act.invobject?.spelltype;
+    case 'CASTSPELL':
+      return act.invobject?.spelltype;
     case 'DEPLOY':
     case 'DEPLOY_TILEARRIVE':
-      return act.invobject?.hasTag('usedeploystring') ? 'DEPLOY' : act.invobject?.hasTag('groundtile') ? 'GROUNDTILE' : undefined;
-    case 'EAT': return act.invobject?.hasTag('fooddrink') ? 'DRINK' : undefined;
-    case 'RUMMAGE': return act.doer && target?.components.container?.IsOpenedBy(act.doer) ? 'CLOSE' : undefined;
-    case 'HARVEST': return target?.prefab === 'birdcage' ? 'FREE' : undefined;
+      return act.invobject?.hasTag('usedeploystring')
+        ? 'DEPLOY'
+        : act.invobject?.hasTag('groundtile')
+          ? 'GROUNDTILE'
+          : undefined;
+    case 'EAT':
+      return act.invobject?.hasTag('fooddrink') ? 'DRINK' : undefined;
+    case 'RUMMAGE':
+      return act.doer && target?.components.container?.IsOpenedBy(act.doer) ? 'CLOSE' : undefined;
+    case 'HARVEST':
+      return target?.prefab === 'birdcage' ? 'FREE' : undefined;
     // The stewer COOK / SPICE and decoratable branches are not ported.
-    case 'STORE': return target?.prefab === 'birdcage' ? 'IMPRISON' : undefined;
-    case 'TAKEITEM': return target?.prefab === 'birdcage' ? 'BIRDCAGE' : 'GENERIC';
+    case 'STORE':
+      return target?.prefab === 'birdcage' ? 'IMPRISON' : undefined;
+    case 'TAKEITEM':
+      return target?.prefab === 'birdcage' ? 'BIRDCAGE' : 'GENERIC';
     case 'BLINK': {
       const doer = act.doer;
-      return !act.invobject && doer?.hasTag('soulstealer') ? ((doer._freesoulhop_counter ?? 0) > 0 ? 'FREESOUL' : 'SOUL') : undefined;
+      return !act.invobject && doer?.hasTag('soulstealer')
+        ? (doer._freesoulhop_counter ?? 0) > 0
+          ? 'FREESOUL'
+          : 'SOUL'
+        : undefined;
     }
     case 'ATTACK': {
       // The invobject is the weapon; PROP and WHACK are not ported.
-      const combat = act.doer?.components?.combat, weapon = act.invobject?.components.weapon;
-      if (!target || !act.invobject || !combat) { return undefined; }
-      return combat.CanExtinguishTarget(target, weapon) ? 'RANGEDSMOTHER' : combat.CanLightTarget(target, weapon) ? 'RANGEDLIGHT' : undefined;
+      const combat = act.doer?.components?.combat,
+        weapon = act.invobject?.components.weapon;
+      if (!target || !act.invobject || !combat) {
+        return undefined;
+      }
+      return combat.CanExtinguishTarget(target, weapon)
+        ? 'RANGEDSMOTHER'
+        : combat.CanLightTarget(target, weapon)
+          ? 'RANGEDLIGHT'
+          : undefined;
     }
     case 'REEL': {
       const rod = act.invobject?.components.fishingrod;
-      if (!rod || rod.target !== act.target) { return undefined; }
-      if (rod.HasHookedFish()) { return 'REEL'; }
+      if (!rod || rod.target !== act.target) {
+        return undefined;
+      }
+      if (rod.HasHookedFish()) {
+        return 'REEL';
+      }
       // act.doer:HasTag("nibble"): the hook string is REEL's GENERIC.
       return act.doer?.sg?.hasStateTag('nibble') ? undefined : 'CANCEL';
     }
-    default: return undefined;
+    default:
+      return undefined;
   }
 }

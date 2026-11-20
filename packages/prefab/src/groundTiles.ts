@@ -1,6 +1,12 @@
 import * as THREE from 'three';
-import { loadGroundTileAssets as loadGroundArt,
-  groundTileGeometry as drawGroundQuads, type GroundFalloffArt, type GroundTileArt, type GroundTileAssets, type GroundTileQuad } from '@dontstarve-web/display';
+import {
+  loadGroundTileAssets as loadGroundArt,
+  groundTileGeometry as drawGroundQuads,
+  type GroundFalloffArt,
+  type GroundTileArt,
+  type GroundTileAssets,
+  type GroundTileQuad,
+} from '@dontstarve-web/display';
 import definitions from './groundTiles.json';
 import falloff from './groundFalloff.json';
 import { TILE_SIZE } from './tile';
@@ -38,7 +44,11 @@ export function groundTileMinimapArt(name: GroundTileName): GroundTileMinimapArt
 }
 
 /** Quads of one terrain layer in world tiles. */
-export function groundTileGeometry(quads: readonly GroundTileQuad[], assets: GroundTileAssets, size: number): THREE.BufferGeometry {
+export function groundTileGeometry(
+  quads: readonly GroundTileQuad[],
+  assets: GroundTileAssets,
+  size: number,
+): THREE.BufferGeometry {
   return drawGroundQuads(quads, assets, size, TILE_SIZE);
 }
 

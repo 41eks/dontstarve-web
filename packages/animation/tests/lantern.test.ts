@@ -25,10 +25,14 @@ import { createPerishWorld } from './perishWorldFixture';
 import { sceneActions } from './sceneActions';
 
 /** The lanternlight entity parented to `owner`, by the light signal it declares there. */
-const lightSlot = (owner: LightParent) => [...owner.light.slots.peek()].find(([key]) => key.startsWith('lanternlight:'))?.[1];
+const lightSlot = (owner: LightParent) =>
+  [...owner.light.slots.peek()].find(([key]) => key.startsWith('lanternlight:'))?.[1];
 const lightAt = (owner: LightParent) => lightSlot(owner)?.peek();
 
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 /** An inventory whose actor opens equipment views on a holder sprite whose own AnimState hides LANTERN_OVERLAY, as the player's does. */
 function lanternOwner() {
@@ -37,31 +41,44 @@ function lanternOwner() {
   const events = new EventEmitter<Record<string, unknown>>();
   const pushed = vi.fn();
   const owner: import('../../signals/src').EquipmentOwner & { hasTag(): boolean; getPosition(): THREE.Vector3 } = {
-    hasTag: () => true, getPosition: () => player.getPosition(),
-    PushEvent: (name: string, data?: unknown) => { pushed(name, data); events.emit(name, data); },
-    ListenForEvent: (name: string, listener: (inst: unknown, data: unknown) => void) => events.on(name, data => listener(owner, data)),
+    hasTag: () => true,
+    getPosition: () => player.getPosition(),
+    PushEvent: (name: string, data?: unknown) => {
+      pushed(name, data);
+      events.emit(name, data);
+    },
+    ListenForEvent: (name: string, listener: (inst: unknown, data: unknown) => void) =>
+      events.on(name, data => listener(owner, data)),
   };
   inventory.bindActor(owner);
   const world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
-  const sprite = new SpriteState({ name: 'idle' }), own = new AnimState();
+  const sprite = new SpriteState({ name: 'idle' }),
+    own = new AnimState();
   own.Hide('LANTERN_OVERLAY');
   sprite.setAnimState(own.json);
   const overlay = () => declaredAnimState(sprite).IsVisible(element('lantern_overlay', 'LANTERN_OVERLAY'));
   // equippable:Equip opens the owner's view: the lantern's slot of its sprite, and AttachLightTo(owner).
   // No animation assets or player controller are needed to create the light.
-  owner.OpenEquipmentView = createEquipmentViews(owner, { sprite: { sprite, art: {} as AnimStateArt }, assets: {} as never, hats: {} as never, lightParent: player });
+  owner.OpenEquipmentView = createEquipmentViews(owner, {
+    sprite: { sprite, art: {} as AnimStateArt },
+    assets: {} as never,
+    hats: {} as never,
+    lightParent: player,
+  });
   return { inventory, player, owner, pushed, world, overlay };
 }
 
 describe('lantern fuel', () => {
   it('consumes only while on, settles on its game-time period and stays as an empty unlit item', () => {
     const { inventory, pushed, world, overlay } = lanternOwner();
-    const slot = inventorySlotAddress(0), hand = equipmentSlotAddress('hand');
+    const slot = inventorySlotAddress(0),
+      hand = equipmentSlotAddress('hand');
     expect(inventoryItemEquipmentKind('lantern')).toBe('hand');
     expect(inventoryItemMaxStack('lantern')).toBe(1);
     expect(inventory.add('lantern', 1)).toBe(true);
-    const entity = inventory.getEntity(slot)!, ison = () => entity.components.machine!.IsOn();
+    const entity = inventory.getEntity(slot)!,
+      ison = () => entity.components.machine!.IsOn();
     try {
       expect(ison()).toBe(false);
       expect(inventory.transfer(slot, hand, 1)).toBe(true);
@@ -94,7 +111,9 @@ describe('lantern fuel', () => {
       expect(entity.isRemoved).toBe(false);
       expect(entity.components.fueled!.currentfuel).toBe(0);
       expect(ison()).toBe(false);
-      expect(pushed.mock.calls.filter(([name]) => name === 'torchranout')).toEqual([['torchranout', { prefab: 'lantern', equipslot: 'HANDS' }]]);
+      expect(pushed.mock.calls.filter(([name]) => name === 'torchranout')).toEqual([
+        ['torchranout', { prefab: 'lantern', equipslot: 'HANDS' }],
+      ]);
       expect(overlay()).toBe(false);
       expect(entity.tile.peek().durabilityPercent).toBe(0);
       expect(inventory.transfer(hand, slot, 1)).toBe(true);
@@ -102,28 +121,32 @@ describe('lantern fuel', () => {
       expect(ison()).toBe(false);
       expect(overlay()).toBe(false);
       expect(inventory.get(hand)).toMatchObject({ itemId: 'lantern', remainingFuel: 0 });
-    } finally { inventory.dispose(); }
+    } finally {
+      inventory.dispose();
+    }
   });
 
   it('owns a child light independently of worn art, pockets it through inventory hooks and releases old-owner listeners', async () => {
     const { inventory, player, owner, world, overlay } = lanternOwner();
     try {
       inventory.add('lantern', 1);
-      const slot = inventorySlotAddress(0), hand = equipmentSlotAddress('hand');
-      const entity = inventory.getEntity(slot)!, ison = () => entity.components.machine!.IsOn();
+      const slot = inventorySlotAddress(0),
+        hand = equipmentSlotAddress('hand');
+      const entity = inventory.getEntity(slot)!,
+        ison = () => entity.components.machine!.IsOn();
       expect(inventory.transfer(slot, hand, 1)).toBe(true);
       const node = lightSlot(player)!;
       expect(node).toBeDefined();
       expect(player.light.peek()).toBeUndefined();
-      expect(lightAt(player)).toMatchObject({ radius: 15, intensity: .6 });
+      expect(lightAt(player)).toMatchObject({ radius: 15, intensity: 0.6 });
       expect(overlay()).toBe(true);
       // fueled:SetUpdateFn(fuelupdate): the light follows the fuel on fueled's updates.
       entity.setRemainingFuel(LANTERN_FUEL / 2 + 1 + 1 / 60);
-      expect(lightAt(player)).toMatchObject({ radius: 15, intensity: .6 });
+      expect(lightAt(player)).toMatchObject({ radius: 15, intensity: 0.6 });
       world.advance(1);
       expect(lightSlot(player)).toBe(node);
       expect(lightAt(player)!.radius).toBeCloseTo(12, 9);
-      expect(lightAt(player)!.intensity).toBeCloseTo(.5, 9);
+      expect(lightAt(player)!.intensity).toBeCloseTo(0.5, 9);
       expect(inventory.transfer(hand, slot, 1)).toBe(true);
       expect(ison()).toBe(false);
       expect(lightAt(player)).toBeUndefined();
@@ -140,9 +163,12 @@ describe('lantern fuel', () => {
       inventory.GiveItem(detached);
       inventory.transfer(slot, hand, 1);
       // starttrackingowner: the unequip while on listens for the owner's next equip; removal stops listening.
-      const listen = owner.ListenForEvent!, stops: ReturnType<typeof vi.fn>[] = [];
+      const listen = owner.ListenForEvent!,
+        stops: ReturnType<typeof vi.fn>[] = [];
       vi.spyOn(owner, 'ListenForEvent').mockImplementation((name, listener) => {
-        const stop = vi.fn(listen(name, listener)); stops.push(stop); return stop;
+        const stop = vi.fn(listen(name, listener));
+        stops.push(stop);
+        return stop;
       });
       inventory.Unequip('hand');
       expect(stops).toHaveLength(1);
@@ -152,25 +178,46 @@ describe('lantern fuel', () => {
       expect(entity.setRemainingFuel(1)).toBe(false);
       world.advance(1);
       expect(lightAt(player)).toBeUndefined();
-    } finally { inventory.dispose(); }
+    } finally {
+      inventory.dispose();
+    }
   });
 
   it('spawns/gives lanterns, then saves and reloads ground switch state and fuel, including an empty lantern', async () => {
-    vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-    const inventory = createPickupInventory(), restoredInventory = createPickupInventory();
+    vi.stubGlobal(
+      'fetch',
+      async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+    );
+    const inventory = createPickupInventory(),
+      restoredInventory = createPickupInventory();
     const world = createPerishWorld();
     const player = new THREE.Group();
     player.position.set(4, 0, -2);
-    const createManager = (store: typeof inventory) => new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(),
-      { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, '/dst/data/databundles/images.zip',
-      store, '/dst/data/anim', player);
+    const createManager = (store: typeof inventory) =>
+      new ItemWorldFixture(
+        new THREE.Scene(),
+        new THREE.PerspectiveCamera(),
+        { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
+        '/dst/data/databundles/images.zip',
+        store,
+        '/dst/data/anim',
+        player,
+      );
     const manager = createManager(inventory);
     manager.entities.bindPerishWorld(world);
     const registry = new EntityRegistry();
-    registry.register(PREFAB_DEFINITIONS.groundItems, manager.registration(() => player.position, id => `spawn:${id}`));
+    registry.register(
+      PREFAB_DEFINITIONS.groundItems,
+      manager.registration(
+        () => player.position,
+        id => `spawn:${id}`,
+      ),
+    );
     let restored: ItemWorldFixture | undefined;
     try {
-      expect((await executeDebugCommand('c_spawn("lantern")', inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
+      expect((await executeDebugCommand('c_spawn("lantern")', inventory, prefab => registry.spawn(prefab))).ok).toBe(
+        true,
+      );
       expect((await executeDebugCommand('c_give("lantern", 2)', inventory)).ok).toBe(true);
       const ground = manager.entities.get('spawn:lantern')!;
       const model = manager.reskinTargets[0].transform.model;
@@ -199,11 +246,23 @@ describe('lantern fuel', () => {
       const before = registry.exportRecords();
       expect(before.lantern[0].components.machine).toEqual({ ison: true });
       let json = '';
-      expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-        const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-        json = serializeSave(template, { entities: before, inventory: inventory.exportSaved(), elapsedSeconds: 20,
-          playerTransform: { position: [4, 0, -2], rotationY: 0 } }, SAVE_CATALOG);
-      })).ok).toBe(true);
+      expect(
+        (
+          await executeDebugCommand('c_save()', inventory, undefined, () => {
+            const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
+            json = serializeSave(
+              template,
+              {
+                entities: before,
+                inventory: inventory.exportSaved(),
+                elapsedSeconds: 20,
+                playerTransform: { position: [4, 0, -2], rotationY: 0 },
+              },
+              SAVE_CATALOG,
+            );
+          })
+        ).ok,
+      ).toBe(true);
       const saved = deserializeSave(json, SAVE_CATALOG);
       expect(saved.world.entities).toEqual(before);
       // The world's SpawnPrefab is bound before the save loads, so held items are that world's insts.
@@ -215,18 +274,28 @@ describe('lantern fuel', () => {
       expect(loaded.components.machine!.IsOn()).toBe(true);
       expect(loaded.components.fueled!.currentfuel).toBe(ground.components.fueled!.currentfuel);
       for (const index of [0, 1]) {
-        expect(restoredInventory.getEntity(inventorySlotAddress(index))!.snapshot())
-          .toEqual(inventory.getEntity(inventorySlotAddress(index))!.snapshot());
+        expect(restoredInventory.getEntity(inventorySlotAddress(index))!.snapshot()).toEqual(
+          inventory.getEntity(inventorySlotAddress(index))!.snapshot(),
+        );
       }
       expect(restoredInventory.get(inventorySlotAddress(1))).toMatchObject({ itemId: 'lantern', remainingFuel: 0 });
 
       // An empty lantern dropped on the ground stays there, unlit, and saves ison = false.
       const empty = restoredInventory.getEntity(inventorySlotAddress(1))!;
       restoredInventory.DropItem(empty, { x: 8, y: 0, z: 8 });
-      await vi.waitFor(() => expect(restored!.exportRecords().find(record => record.id === empty.id)?.components.machine).toBeDefined());
+      await vi.waitFor(() =>
+        expect(restored!.exportRecords().find(record => record.id === empty.id)?.components.machine).toBeDefined(),
+      );
       expect(empty.components.machine!.IsOn()).toBe(false);
-      expect(restored.exportRecords().find(record => record.id === empty.id)!.components)
-        .toEqual({ fueled: { fuel: 0 }, machine: { ison: false } });
-    } finally { registry.dispose(); restored?.dispose(); inventory.dispose(); restoredInventory.dispose(); }
+      expect(restored.exportRecords().find(record => record.id === empty.id)!.components).toEqual({
+        fueled: { fuel: 0 },
+        machine: { ison: false },
+      });
+    } finally {
+      registry.dispose();
+      restored?.dispose();
+      inventory.dispose();
+      restoredInventory.dispose();
+    }
   });
 });

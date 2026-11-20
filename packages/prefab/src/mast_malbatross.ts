@@ -21,13 +21,15 @@ export const MAST_MALBATROSS_ID = 'mast_malbatross' as const;
  * archives (closed / place / hits, the knots and the opens), and SetBuild("boat_mast_malbatross_build").
  */
 export const MAST_MALBATROSS_ANIMATION_ARCHIVES = [
-  'boat_mast_malbatross_wip.zip', 'boat_mast_malbatross_knots_wip.zip', 'boat_mast_malbatross_opens_wip.zip',
+  'boat_mast_malbatross_wip.zip',
+  'boat_mast_malbatross_knots_wip.zip',
+  'boat_mast_malbatross_opens_wip.zip',
 ] as const;
 export const MAST_MALBATROSS_BUILD_ARCHIVE = 'boat_mast_malbatross_build.zip';
 /** skinprefabs.lua: mast_malbatross_init_fn's AnimState:SetSkin(build_name, "boat_mast_malbatross_build"). */
 export const MAST_MALBATROSS_SKINS = ['mast_malbatross_tesla', 'mast_malbatross_wagstaff'] as const;
 /** DEPLOYSPACING_RADIUS[DEPLOYSPACING.LESS] / 2, in DST units. */
-const DEPLOY_SMART_RADIUS = .75 / 2;
+const DEPLOY_SMART_RADIUS = 0.75 / 2;
 /** MakeLargeBurnable's default burn time. */
 const LARGE_BURN_TIME = 30;
 /** tuning.lua HAUNT_TINY. */
@@ -50,8 +52,14 @@ export interface MastMalbatrossWorld {
 /** mast.lua malbatrossfn. */
 export class MastMalbatrossInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    burnable: Burnable; propagator: Propagator; hauntable: Hauntable; inspectable: Inspectable; mast: Mast;
-    lootdropper: LootDropper; workable: Workable; upgradeable: Upgradeable;
+    burnable: Burnable;
+    propagator: Propagator;
+    hauntable: Hauntable;
+    inspectable: Inspectable;
+    mast: Mast;
+    lootdropper: LootDropper;
+    workable: Workable;
+    upgradeable: Upgradeable;
   };
 }
 
@@ -66,11 +74,15 @@ function GetRotation(inst: MastMalbatrossInstance): number {
 /** onsave. The lamp and lightning rod upgrades are not ported, so neither of their branches saves. */
 function onsave(inst: MastMalbatrossInstance, data: EntityPersistData): void {
   const saved: MastMalbatrossSaveState = {};
-  if (inst.components.burnable.IsBurning() || inst.hasTag('burnt')) { saved.burnt = true; }
+  if (inst.components.burnable.IsBurning() || inst.hasTag('burnt')) {
+    saved.burnt = true;
+  }
   // inst.components.mast.boat is always nil: SetBoat is not ported.
   saved.rotation = GetRotation(inst);
   saved.is_sail_raised = inst.components.mast.is_sail_raised;
-  if (inst.skinId !== undefined) { saved.skinId = inst.skinId; }
+  if (inst.skinId !== undefined) {
+    saved.skinId = inst.skinId;
+  }
   data.mastMalbatross = saved;
 }
 
@@ -80,19 +92,29 @@ function onsave(inst: MastMalbatrossInstance, data: EntityPersistData): void {
  */
 function onload(inst: MastMalbatrossInstance, data: EntityPersistData): void {
   const saved = data.mastMalbatross;
-  if (!saved) { return; }
+  if (!saved) {
+    return;
+  }
   if (saved.skinId !== undefined) {
-    if (!MAST_MALBATROSS_SKINS.some(known => known === saved.skinId)) { throw new Error(`Unsupported mast_malbatross skin: ${saved.skinId}`); }
+    if (!MAST_MALBATROSS_SKINS.some(known => known === saved.skinId)) {
+      throw new Error(`Unsupported mast_malbatross skin: ${saved.skinId}`);
+    }
     inst.skinId = saved.skinId;
   }
   if (saved.burnt) {
     inst.components.burnable.onburnt?.(inst);
     inst.PushEvent('onburnt', undefined);
   }
-  if (saved.rotation !== undefined) { inst.sprite.setFacingRotation(saved.rotation); }
+  if (saved.rotation !== undefined) {
+    inst.sprite.setFacingRotation(saved.rotation);
+  }
   const mast = inst.components.mast;
   if (saved.is_sail_raised === !mast.inverted) {
-    if (mast.inverted) { mast.SailFurled(); } else { mast.SailUnfurled(); }
+    if (mast.inverted) {
+      mast.SailFurled();
+    } else {
+      mast.SailUnfurled();
+    }
   }
 }
 
@@ -106,7 +128,10 @@ function onload(inst: MastMalbatrossInstance, data: EntityPersistData): void {
  */
 function fn(world: MastMalbatrossWorld): MastMalbatrossInstance {
   // SetBank("mast_malbatross"), SetBuild("boat_mast_malbatross_build"), PlayAnimation("closed") without looping.
-  const inst = new MastMalbatrossInstance(MAST_MALBATROSS_ID, new SpriteState({ name: 'closed', held: true, billboard: true }));
+  const inst = new MastMalbatrossInstance(
+    MAST_MALBATROSS_ID,
+    new SpriteState({ name: 'closed', held: true, billboard: true }),
+  );
   inst.BindScheduler(world.scheduler);
   inst.deploySmartRadius = DEPLOY_SMART_RADIUS * UNIT;
   // MakeObstaclePhysics(inst, .2): the tag here, the body from the definition's physics.
@@ -123,8 +148,16 @@ function fn(world: MastMalbatrossWorld): MastMalbatrossInstance {
   burnable.SetBurnTime(LARGE_BURN_TIME);
   burnable.ignorefuel = true;
   // MakeLargePropagator(inst), without SetOnFlashPoint.
-  addComponent(inst, 'propagator', Propagator, 'large', radius =>
-    inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS), UNIT, world.scheduler, world.getWatchWorldContent);
+  addComponent(
+    inst,
+    'propagator',
+    Propagator,
+    'large',
+    radius => inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS),
+    UNIT,
+    world.scheduler,
+    world.getWatchWorldContent,
+  );
 
   addComponent(inst, 'hauntable', Hauntable, world.scheduler);
   addComponent(inst, 'inspectable', Inspectable);
@@ -154,17 +187,20 @@ function fn(world: MastMalbatrossWorld): MastMalbatrossInstance {
 }
 
 /** The mast_malbatross Prefab mast.lua returns, with its PREFAB_SKINS; mast, mast_yotd, the items and placers are not ported. */
-export function mastMalbatrossPrefabs(world: MastMalbatrossWorld):
-  Readonly<Record<typeof MAST_MALBATROSS_ID, PrefabEntityDefinition<MastMalbatrossInstance>>> {
+export function mastMalbatrossPrefabs(
+  world: MastMalbatrossWorld,
+): Readonly<Record<typeof MAST_MALBATROSS_ID, PrefabEntityDefinition<MastMalbatrossInstance>>> {
   return {
     [MAST_MALBATROSS_ID]: {
       fn: () => fn(world),
       assets: {
-        animationArchive: MAST_MALBATROSS_ANIMATION_ARCHIVES[0], extraAnimationArchives: MAST_MALBATROSS_ANIMATION_ARCHIVES.slice(1),
-        buildArchives: [MAST_MALBATROSS_BUILD_ARCHIVE], bank: 'mast_malbatross',
+        animationArchive: MAST_MALBATROSS_ANIMATION_ARCHIVES[0],
+        extraAnimationArchives: MAST_MALBATROSS_ANIMATION_ARCHIVES.slice(1),
+        buildArchives: [MAST_MALBATROSS_BUILD_ARCHIVE],
+        bank: 'mast_malbatross',
       },
       skins: Object.fromEntries(MAST_MALBATROSS_SKINS.map(id => [id, `dynamic/${id}.zip`])),
-      physics: { make: MakeObstaclePhysics, radius: .2 },
+      physics: { make: MakeObstaclePhysics, radius: 0.2 },
       minimapIcon: 'mast_malbatross.png',
     },
   };

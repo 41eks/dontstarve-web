@@ -13,7 +13,9 @@ function loadTexture(url: string): Promise<THREE.DataTexture> {
   if (!request) {
     request = (async () => {
       const response = await fetch(url);
-      if (!response.ok) { throw new Error(`Unable to load ${url}: ${response.status}`); }
+      if (!response.ok) {
+        throw new Error(`Unable to load ${url}: ${response.status}`);
+      }
       const decoded = parseKtex(new Uint8Array(await response.arrayBuffer()), url);
       const texture = new THREE.DataTexture(decoded.pixels, decoded.width, decoded.height, THREE.RGBAFormat);
       // The engine blends texel values directly; no sRGB decode.
@@ -36,16 +38,30 @@ export class FollowerFxSlot {
   private removed = false;
   readonly loaded: Promise<void>;
 
-  constructor(node: THREE.Object3D, fx: FollowerFx, label: string, dataBaseUrl = `${import.meta.env.BASE_URL}dst/data`) {
+  constructor(
+    node: THREE.Object3D,
+    fx: FollowerFx,
+    label: string,
+    dataBaseUrl = `${import.meta.env.BASE_URL}dst/data`,
+  ) {
     const base = dataBaseUrl.replace(/\/$/, '');
-    this.loaded = Promise.all(fx.emitters.map(({ texture }) => loadTexture(`${base}/${texture}`))).then((loaded) => {
-      if (!this.removed) { this.instance = new VfxEffect(node, fx, loaded); }
-    }, (error: unknown) => {
-      if (!this.removed) { console.error(`Unable to load the follower effect of ${label}`, error); }
-    });
+    this.loaded = Promise.all(fx.emitters.map(({ texture }) => loadTexture(`${base}/${texture}`))).then(
+      loaded => {
+        if (!this.removed) {
+          this.instance = new VfxEffect(node, fx, loaded);
+        }
+      },
+      (error: unknown) => {
+        if (!this.removed) {
+          console.error(`Unable to load the follower effect of ${label}`, error);
+        }
+      },
+    );
   }
 
-  update(dt: number): void { this.instance?.update(dt); }
+  update(dt: number): void {
+    this.instance?.update(dt);
+  }
 
   dispose(): void {
     this.removed = true;

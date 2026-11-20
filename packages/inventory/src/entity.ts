@@ -1,7 +1,14 @@
 import { Inspectable } from '../../componets/src/inspectable';
 import { addComponent } from '../../prefab/src/components';
 import type { ItemTileJson, InventoryItemSpec, InventoryStack, SlotAddress } from './types';
-import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal } from '@dontstarve-web/signals';
+import {
+  batch,
+  createMemo,
+  createSignal,
+  readonlySignal,
+  type Memo,
+  type ReadonlySignal,
+} from '@dontstarve-web/signals';
 import { newItemEntityId } from './entityId';
 import { StorageSlot } from './slots';
 import { Container } from '../../componets/src/container';
@@ -54,16 +61,30 @@ export class StackableComponent {
     this.state = createSignal(count);
     this.size = readonlySignal(this.state);
   }
-  get count(): number { return this.state.peek(); }
-  set count(value: number) { this.state.set(value); }
+  get count(): number {
+    return this.state.peek();
+  }
+  set count(value: number) {
+    this.state.set(value);
+  }
   /** stackable.lua OnSave: only a stack of more than one is written. */
-  OnSave(): { stack: number } | undefined { return this.count !== 1 ? { stack: this.count } : undefined; }
-  OnLoad(data: { stack?: number }): void { if (data.stack !== undefined) { this.count = data.stack; } }
+  OnSave(): { stack: number } | undefined {
+    return this.count !== 1 ? { stack: this.count } : undefined;
+  }
+  OnLoad(data: { stack?: number }): void {
+    if (data.stack !== undefined) {
+      this.count = data.stack;
+    }
+  }
   /** stackable:Get():Remove(), without creating a temporary entity just to destroy it. The owner recounts materials. */
   Consume(): boolean {
     this.entity.flush();
-    if (this.entity.isRemoved || this.count < 1) { return false; }
-    if (this.count === 1) { return this.entity.remove(); }
+    if (this.entity.isRemoved || this.count < 1) {
+      return false;
+    }
+    if (this.count === 1) {
+      return this.entity.remove();
+    }
     this.count--;
     this.entity.components.inventoryitem.slot?.changed();
     return true;
@@ -88,46 +109,79 @@ export class FiniteUsesComponent {
     this.state = createSignal(remaining);
     this.uses = readonlySignal(this.state);
   }
-  GetPercent(): number { return this.percent.peek() ?? 1; }
+  GetPercent(): number {
+    return this.percent.peek() ?? 1;
+  }
   /** finiteuses.lua OnSave: the uses left, unless the item is unused. */
-  OnSave(): { uses: number } | undefined { return this.remaining === undefined ? undefined : { uses: this.remaining }; }
-  OnLoad(data: { uses?: number }): void { if (data.uses !== undefined) { this.remaining = data.uses; } }
-  get remaining(): number | undefined { return this.state.peek(); }
-  set remaining(value: number | undefined) { this.state.set(value); }
-  private get maximum(): number | undefined { return this.maximumState.peek(); }
+  OnSave(): { uses: number } | undefined {
+    return this.remaining === undefined ? undefined : { uses: this.remaining };
+  }
+  OnLoad(data: { uses?: number }): void {
+    if (data.uses !== undefined) {
+      this.remaining = data.uses;
+    }
+  }
+  get remaining(): number | undefined {
+    return this.state.peek();
+  }
+  set remaining(value: number | undefined) {
+    this.state.set(value);
+  }
+  private get maximum(): number | undefined {
+    return this.maximumState.peek();
+  }
   setMaxUses(maximum: number): void {
-    if (!Number.isSafeInteger(maximum) || maximum <= 0
-      || (this.remaining !== undefined && this.remaining > maximum)) { throw new RangeError('Invalid finiteuses maximum'); }
+    if (!Number.isSafeInteger(maximum) || maximum <= 0 || (this.remaining !== undefined && this.remaining > maximum)) {
+      throw new RangeError('Invalid finiteuses maximum');
+    }
     this.maximumState.set(maximum);
   }
   use(amount = 1): boolean {
-    if (this.entity.isRemoved || !Number.isFinite(amount) || amount <= 0 || this.maximum === undefined) { return false; }
+    if (this.entity.isRemoved || !Number.isFinite(amount) || amount <= 0 || this.maximum === undefined) {
+      return false;
+    }
     const remaining = this.remaining ?? this.maximum;
     const next = Math.max(0, remaining - amount);
     // finiteuses.lua SetUses pushes percentusedchange before onfinished removes the inst.
     this.entity.PushEvent('percentusedchange', { percent: next / this.maximum });
     if (next === 0) {
       // Inventory removal must commit through the bound owner before publishing zero uses.
-      if (!(this.onFinished ? this.onFinished() : this.entity.remove())) { return false; }
+      if (!(this.onFinished ? this.onFinished() : this.entity.remove())) {
+        return false;
+      }
       this.remaining = 0;
-    } else { this.remaining = next; }
+    } else {
+      this.remaining = next;
+    }
     return true;
   }
   /** finiteuses.lua SetPercent: SetUses(total * percent), keeping the saved step exact. */
   setPercent(percent: number, step: number): boolean {
-    if (this.entity.isRemoved || this.maximum === undefined || !Number.isFinite(percent) || percent <= 0) { return false; }
-    const next = Math.round(Math.min(1, percent) * this.maximum / step) * step;
+    if (this.entity.isRemoved || this.maximum === undefined || !Number.isFinite(percent) || percent <= 0) {
+      return false;
+    }
+    const next = Math.round((Math.min(1, percent) * this.maximum) / step) * step;
     this.entity.PushEvent('percentusedchange', { percent: next / this.maximum });
     this.remaining = next;
     return true;
   }
   setConsumption(action: string, amount: number): void {
-    if (!Number.isFinite(amount) || amount <= 0) { throw new RangeError('Invalid use consumption'); }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new RangeError('Invalid use consumption');
+    }
     this.consumption.set(action, amount);
   }
-  setOnFinished(fn: () => boolean): void { this.onFinished = fn; }
-  useForAction(action: string): boolean { return this.use(this.consumption.get(action) ?? 1); }
-  dispose(): void { this.percent.dispose(); this.consumption.clear(); this.onFinished = undefined; }
+  setOnFinished(fn: () => boolean): void {
+    this.onFinished = fn;
+  }
+  useForAction(action: string): boolean {
+    return this.use(this.consumption.get(action) ?? 1);
+  }
+  dispose(): void {
+    this.percent.dispose();
+    this.consumption.clear();
+    this.onFinished = undefined;
+  }
 }
 
 /** Like DST's inst: identity and components survive changes of inventory owner and scene art. */
@@ -194,23 +248,28 @@ export interface ItemComponents {
 }
 
 export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
-  get id(): string { return this.entityId!; }
+  get id(): string {
+    return this.entityId!;
+  }
 
   private tileMemo?: Memo<ItemTileJson>;
   /** The item tile's declaration, derived on first use; UI subscribes to it as display does to the sprite json. */
   get tile(): ReadonlySignal<ItemTileJson> {
-    return this.tileMemo ??= createMemo((): ItemTileJson => {
+    return (this.tileMemo ??= createMemo((): ItemTileJson => {
       const { inventoryitem, stackable } = this.components;
-      const appearance = inventoryitem.appearance.get(), image = inventoryitem.image.get();
-      const durabilityPercent = this.durability.get(), freshnessPercent = this.freshness.get();
+      const appearance = inventoryitem.appearance.get(),
+        image = inventoryitem.image.get();
+      const durabilityPercent = this.durability.get(),
+        freshnessPercent = this.freshness.get();
       return Object.freeze({
-        ...(appearance ? { name: appearance.name } : {}), ...(image ? { image } : {}),
+        ...(appearance ? { name: appearance.name } : {}),
+        ...(image ? { image } : {}),
         count: stackable.size.get(),
         ...(durabilityPercent === undefined ? {} : { durabilityPercent }),
         ...(freshnessPercent === undefined ? {} : { freshnessPercent }),
         wet: this.wetState.get(),
       });
-    });
+    }));
   }
   /** Display-only itemtile freshness for items without a perishable timer. */
   private readonly freshnessState = createSignal<number | undefined>(undefined);
@@ -225,7 +284,9 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   /** The saved fuel, loaded once the prefab has added and initialized its fueled. */
   private savedFuel?: number;
   private miniMapEntity?: MiniMapEntity;
-  get MiniMapEntity(): MiniMapEntity | undefined { return this.miniMapEntity; }
+  get MiniMapEntity(): MiniMapEntity | undefined {
+    return this.miniMapEntity;
+  }
   /** AddMiniMapEntity is owned by the logical inst, independently of its art. */
   AddMiniMapEntity(): MiniMapEntity {
     if (!this.miniMapEntity) {
@@ -248,7 +309,9 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   /** inst:AddComponent("fueled"), consuming on the game time of the item's world. */
   AddFueled(): Fueled<ItemEntity> {
     let fueled = this.components.fueled;
-    if (fueled) { return fueled; }
+    if (fueled) {
+      return fueled;
+    }
     fueled = addComponent(this, 'fueled', Fueled<ItemEntity>, this.components.perishable.scheduler);
     this.fueledState.set(fueled);
     return fueled;
@@ -298,15 +361,31 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     addComponent(this, 'inventoryitem', InventoryItem<ItemEntity, ItemOwner, HeldSlot>);
     addComponent(this, 'inspectable', Inspectable);
     addComponent(this, 'perishable', Perishable, readonlySignal(this.wetState), perishWorld);
-    this.durability = createMemo(() => this.components.finiteuses.percent.get() ?? this.fueledState.get()?.percent.get()
-      ?? this.armorState.get()?.percent.get());
-    this.freshness = createMemo(() => this.components.perishable.perishtime.get() === undefined
-      ? this.freshnessState.get() : this.components.perishable.percent.get());
+    this.durability = createMemo(
+      () =>
+        this.components.finiteuses.percent.get() ??
+        this.fueledState.get()?.percent.get() ??
+        this.armorState.get()?.percent.get(),
+    );
+    this.freshness = createMemo(() =>
+      this.components.perishable.perishtime.get() === undefined
+        ? this.freshnessState.get()
+        : this.components.perishable.percent.get(),
+    );
     if (this.prefab === 'backpack') {
       // container:OnLoad's GiveItem: each loaded inst is SpawnPrefab'd, then OnPutInInventory takes it out of the scene.
-      const held = (child: ItemEntity) => { child.RemoveFromScene(); return child; };
-      const container = addComponent(this, 'container', Container<InventoryStack, ItemEntity, StorageSlot>, () => new StorageSlot(),
-        (item: InventoryStack) => held(createItem(item.itemId, stackRecord(item))), (record: HeldEntityRecord) => held(createItem(record.prefab, record)));
+      const held = (child: ItemEntity) => {
+        child.RemoveFromScene();
+        return child;
+      };
+      const container = addComponent(
+        this,
+        'container',
+        Container<InventoryStack, ItemEntity, StorageSlot>,
+        () => new StorageSlot(),
+        (item: InventoryStack) => held(createItem(item.itemId, stackRecord(item))),
+        (record: HeldEntityRecord) => held(createItem(record.prefab, record)),
+      );
       container.SetNumSlots(BACKPACK_SLOT_COUNT);
       container.LoadSnapshot(state.container ?? {});
     }
@@ -314,7 +393,9 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   }
 
   /** GetSaveRecord's record.skinname: an item's skin is the inst's, saved beside its data. */
-  override get savedSkinName(): string | undefined { return this.skinId; }
+  override get savedSkinName(): string | undefined {
+    return this.skinId;
+  }
 
   /**
    * EntityScript:GetPersistData: each component's OnSave under its name (stackable, finiteuses, perishable, fueled, armor,
@@ -323,16 +404,35 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   override GetPersistData(): EntityPersistData {
     this.flush();
     const data = super.GetPersistData();
-    if (this.wetState.peek() && !data.inventoryitemmoisture) { data.inventoryitemmoisture = { wet: true }; }
-    if (this.highTemp !== undefined) { data.highTemp = Math.ceil(this.highTemp); }
-    else if (this.lowTemp !== undefined) { data.lowTemp = Math.floor(this.lowTemp); }
-    if (this.variant !== undefined) { data.groundVariant = this.variant; }
+    if (this.wetState.peek() && !data.inventoryitemmoisture) {
+      data.inventoryitemmoisture = { wet: true };
+    }
+    if (this.highTemp !== undefined) {
+      data.highTemp = Math.ceil(this.highTemp);
+    } else if (this.lowTemp !== undefined) {
+      data.lowTemp = Math.floor(this.lowTemp);
+    }
+    if (this.variant !== undefined) {
+      data.groundVariant = this.variant;
+    }
     // Components the prefab has not attached yet keep the state they were loaded with.
-    if (!this.components.fueled && this.savedFuel !== undefined) { data.fueled = { fuel: this.savedFuel }; }
-    if (!this.components.armor && this.savedArmor) { data.armor = this.savedArmor; }
-    if (!this.components.temperature && this.savedTemperature) { data.temperature = this.savedTemperature; }
+    if (!this.components.fueled && this.savedFuel !== undefined) {
+      data.fueled = { fuel: this.savedFuel };
+    }
+    if (!this.components.armor && this.savedArmor) {
+      data.armor = this.savedArmor;
+    }
+    if (!this.components.temperature && this.savedTemperature) {
+      data.temperature = this.savedTemperature;
+    }
     for (const loaded of [this.pendingPersist, this.unattached]) {
-      if (loaded) { for (const [name, saved] of Object.entries(loaded)) { if (!(name in data)) { Reflect.set(data, name, saved); } } }
+      if (loaded) {
+        for (const [name, saved] of Object.entries(loaded)) {
+          if (!(name in data)) {
+            Reflect.set(data, name, saved);
+          }
+        }
+      }
     }
     return data;
   }
@@ -345,19 +445,36 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   override SetPersistData(data: EntityPersistData): void {
     if (data.stack) {
       this.apply({ ...data.stack, itemId: this.prefab, entityId: this.id });
-      if (data.stack.container) { this.components.container?.LoadSnapshot(data.stack.container); }
+      if (data.stack.container) {
+        this.components.container?.LoadSnapshot(data.stack.container);
+      }
       this.OnLoad?.(this, data);
       return;
     }
-    if (data.stackable) { this.components.stackable.OnLoad(data.stackable); }
-    if (data.finiteuses) { this.components.finiteuses.OnLoad(data.finiteuses); }
-    if (data.inventoryitemmoisture?.wet) { this.wetState.set(true); }
-    if (data.groundVariant !== undefined) { this.variant = data.groundVariant; }
-    if (data.highTemp !== undefined) { this.highTemp = data.highTemp; this.lowTemp = undefined; }
-    else if (data.lowTemp !== undefined) { this.lowTemp = data.lowTemp; this.highTemp = undefined; }
+    if (data.stackable) {
+      this.components.stackable.OnLoad(data.stackable);
+    }
+    if (data.finiteuses) {
+      this.components.finiteuses.OnLoad(data.finiteuses);
+    }
+    if (data.inventoryitemmoisture?.wet) {
+      this.wetState.set(true);
+    }
+    if (data.groundVariant !== undefined) {
+      this.variant = data.groundVariant;
+    }
+    if (data.highTemp !== undefined) {
+      this.highTemp = data.highTemp;
+      this.lowTemp = undefined;
+    } else if (data.lowTemp !== undefined) {
+      this.lowTemp = data.lowTemp;
+      this.highTemp = undefined;
+    }
     const { stackable: _stackable, finiteuses: _finiteuses, ...rest } = data;
     this.pendingPersist = rest;
-    if (this.configured) { this.loadPending(); }
+    if (this.configured) {
+      this.loadPending();
+    }
   }
   private pendingPersist?: EntityPersistData;
   /** Saved records of components the prefab attaches after configuring, as the mole its world's inventory. */
@@ -366,24 +483,33 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   /** The saved components' OnLoad once the prefab has attached them, then the prefab's OnLoad. */
   private loadPending(): void {
     const data = this.pendingPersist;
-    if (!data) { return; }
+    if (!data) {
+      return;
+    }
     this.pendingPersist = undefined;
     for (const [name, saved] of Object.entries(data)) {
       const component: unknown = Reflect.get(this.components, name);
-      if (component) { loadComponent(component, saved); }
-      else if (isComponentRecord(name)) { (this.unattached ??= {})[name] = saved; }
+      if (component) {
+        loadComponent(component, saved);
+      } else if (isComponentRecord(name)) {
+        (this.unattached ??= {})[name] = saved;
+      }
     }
     this.OnLoad?.(this, data);
   }
   /** A component the prefab attaches late loads the record it was saved with. */
   onComponentAdded(name: string, component: object): void {
-    if (!this.unattached || !(name in this.unattached)) { return; }
+    if (!this.unattached || !(name in this.unattached)) {
+      return;
+    }
     const saved = this.unattached[name];
     delete this.unattached[name];
     loadComponent(component, saved);
   }
 
-  GetIsWet(): boolean { return this.wetState.peek(); }
+  GetIsWet(): boolean {
+    return this.wetState.peek();
+  }
   getComponent<T extends ItemRuntimeComponent>(name: string): T | undefined {
     return this.runtime.get(name) as T | undefined;
   }
@@ -391,10 +517,17 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     const inventory = this.components.inventory?.GetSnapshot() ?? this.savedInventory;
     const temperature = this.components.temperature?.OnSave() ?? this.savedTemperature;
     const armor = this.components.armor ? this.components.armor.OnSave() : this.savedArmor;
-    const freshness = this.components.perishable.perishtime.peek() === undefined
-      ? this.freshnessState.peek() : this.components.perishable.GetPercent();
-    const mole = this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['mole']> }>('mole')?.OnSave() ?? this.mole;
-    const lightflier = this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['lightflier']> }>('lightflier')?.OnSave() ?? this.lightflier;
+    const freshness =
+      this.components.perishable.perishtime.peek() === undefined
+        ? this.freshnessState.peek()
+        : this.components.perishable.GetPercent();
+    const mole =
+      this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['mole']> }>('mole')?.OnSave() ??
+      this.mole;
+    const lightflier =
+      this.getComponent<ItemRuntimeComponent & { OnSave(): NonNullable<InventoryStack['lightflier']> }>(
+        'lightflier',
+      )?.OnSave() ?? this.lightflier;
     const remainingFuel = this.components.fueled ? this.components.fueled.OnSave()?.fuel : this.savedFuel;
     return {
       ...(lightflier === undefined ? {} : { lightflier }),
@@ -403,11 +536,15 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
       ...(armor === undefined ? {} : { armor }),
       ...(this.highTemp === undefined ? {} : { highTemp: Math.ceil(this.highTemp) }),
       ...(this.lowTemp === undefined ? {} : { lowTemp: Math.floor(this.lowTemp) }),
-      ...(includeIdentity ? { entityId: this.id } : {}), itemId: this.prefab, count: this.components.stackable.count,
+      ...(includeIdentity ? { entityId: this.id } : {}),
+      itemId: this.prefab,
+      count: this.components.stackable.count,
       ...(this.skinId === undefined ? {} : { skinId: this.skinId }),
       ...(this.variant === undefined ? {} : { variant: this.variant }),
       ...(remainingFuel === undefined ? {} : { remainingFuel }),
-      ...(this.components.finiteuses.remaining === undefined ? {} : { remainingUses: this.components.finiteuses.remaining }),
+      ...(this.components.finiteuses.remaining === undefined
+        ? {}
+        : { remainingUses: this.components.finiteuses.remaining }),
       ...(freshness === undefined ? {} : { freshnessPercent: freshness }),
       ...(this.wetState.peek() ? { wet: true } : {}),
       ...(this.phonographRecord === undefined ? {} : { phonographRecord: this.phonographRecord }),
@@ -418,7 +555,9 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
 
   /** Store commits call this only after the complete transaction has been validated. */
   apply(state: InventoryStack): void {
-    if (state.itemId !== this.prefab || this.isRemoved) { throw new Error('Cannot change a removed entity or its prefab'); }
+    if (state.itemId !== this.prefab || this.isRemoved) {
+      throw new Error('Cannot change a removed entity or its prefab');
+    }
     this.mole = state.mole;
     this.lightflier = state.lightflier;
     this.skinId = state.skinId;
@@ -433,33 +572,50 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.savedInventory = state.inventory;
     this.savedArmor = state.armor;
     const armor = this.components.armor;
-    if (armor && state.armor && state.armor.condition !== armor.condition.peek()) { armor.OnLoad(state.armor); }
+    if (armor && state.armor && state.armor.condition !== armor.condition.peek()) {
+      armor.OnLoad(state.armor);
+    }
     batch(() => {
       this.components.stackable.count = state.count;
       const fueled = this.components.fueled;
       // fueled.lua OnSave omits a full inst.
-      if (!fueled) { this.savedFuel = state.remainingFuel; }
-      else if ((state.remainingFuel ?? fueled.maxfuel) !== fueled.currentfuel) { fueled.OnLoad({ fuel: state.remainingFuel ?? fueled.maxfuel }); }
+      if (!fueled) {
+        this.savedFuel = state.remainingFuel;
+      } else if ((state.remainingFuel ?? fueled.maxfuel) !== fueled.currentfuel) {
+        fueled.OnLoad({ fuel: state.remainingFuel ?? fueled.maxfuel });
+      }
       this.components.finiteuses.remaining = state.remainingUses;
-      if (this.components.perishable.perishtime.peek() === undefined) { this.freshnessState.set(state.freshnessPercent); }
-      else if (state.freshnessPercent !== undefined) { this.components.perishable.SetPercent(state.freshnessPercent); }
+      if (this.components.perishable.perishtime.peek() === undefined) {
+        this.freshnessState.set(state.freshnessPercent);
+      } else if (state.freshnessPercent !== undefined) {
+        this.components.perishable.SetPercent(state.freshnessPercent);
+      }
       this.wetState.set(state.wet ?? false);
     });
   }
 
-  configure(spec: Pick<InventoryItemSpec, 'maxUses' | 'maxFuel' | 'perishTime' | 'perishReplacement' | 'equippable' | 'canGoInContainer' | 'configureEntity'>): void {
+  configure(
+    spec: Pick<
+      InventoryItemSpec,
+      'maxUses' | 'maxFuel' | 'perishTime' | 'perishReplacement' | 'equippable' | 'canGoInContainer' | 'configureEntity'
+    >,
+  ): void {
     if (spec.equippable) {
       addComponent(this, 'equippable', Equippable<ItemEntity>, spec.equippable).equipslot = spec.equippable;
     }
     this.components.inventoryitem.cangoincontainer = spec.canGoInContainer !== false;
     batch(() => {
-      if (spec.maxUses !== undefined) { this.components.finiteuses.setMaxUses(spec.maxUses); }
+      if (spec.maxUses !== undefined) {
+        this.components.finiteuses.setMaxUses(spec.maxUses);
+      }
       const perishable = this.components.perishable;
       if (spec.perishTime !== undefined && perishable.perishtime.peek() === undefined) {
         // SetPerishTime starts full; a stack's saved/transferred percent then restores perishremainingtime.
         const saved = this.freshnessState.peek();
         perishable.SetPerishTime(spec.perishTime);
-        if (saved !== undefined) { perishable.SetPercent(saved); }
+        if (saved !== undefined) {
+          perishable.SetPercent(saved);
+        }
         this.freshnessState.set(undefined);
         perishable.onperishreplacement = spec.perishReplacement;
         perishable.StartPerishing();
@@ -476,20 +632,29 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     const armor = this.components.armor;
     if (armor && this.armorState.peek() !== armor) {
       this.armorState.set(armor);
-      if (this.savedArmor) { armor.OnLoad(this.savedArmor); }
+      if (this.savedArmor) {
+        armor.OnLoad(this.savedArmor);
+      }
     }
     this.loadPending();
   }
 
   /** Component adapters publish itemtile's perishchange / wetnesschange state. */
   setFreshnessPercent(percent: number): boolean {
-    if (this.isRemoved || !Number.isFinite(percent)) { return false; }
-    if (this.components.perishable.perishtime.peek() === undefined) { this.freshnessState.set(Math.max(0, Math.min(1, percent))); }
-    else { this.components.perishable.SetPercent(percent); }
+    if (this.isRemoved || !Number.isFinite(percent)) {
+      return false;
+    }
+    if (this.components.perishable.perishtime.peek() === undefined) {
+      this.freshnessState.set(Math.max(0, Math.min(1, percent)));
+    } else {
+      this.components.perishable.SetPercent(percent);
+    }
     return true;
   }
   setWet(wet: boolean): boolean {
-    if (this.isRemoved || typeof wet !== 'boolean') { return false; }
+    if (this.isRemoved || typeof wet !== 'boolean') {
+      return false;
+    }
     this.wetState.set(wet);
     return true;
   }
@@ -497,16 +662,25 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
   /** fueled.lua DoDelta to `seconds`, after settling elapsed consumption; depletion belongs to the prefab's callbacks. */
   setRemainingFuel(seconds: number): boolean {
     const fueled = this.components.fueled;
-    if (this.isRemoved || !fueled || !Number.isFinite(seconds) || seconds < 0) { return false; }
+    if (this.isRemoved || !fueled || !Number.isFinite(seconds) || seconds < 0) {
+      return false;
+    }
     fueled.Settle();
-    if (!this.isRemoved) { fueled.DoDelta(seconds - fueled.currentfuel); }
+    if (!this.isRemoved) {
+      fueled.DoDelta(seconds - fueled.currentfuel);
+    }
     return true;
   }
 
   component<T extends ItemRuntimeComponent>(name: string, create: () => T): T {
-    if (this.isRemoved) { throw new Error('Cannot attach a component to a removed entity'); }
+    if (this.isRemoved) {
+      throw new Error('Cannot attach a component to a removed entity');
+    }
     let component = this.runtime.get(name);
-    if (!component) { component = create(); this.runtime.set(name, component); }
+    if (!component) {
+      component = create();
+      this.runtime.set(name, component);
+    }
     return component as T;
   }
 
@@ -514,24 +688,36 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
     this.components.perishable.flush();
     this.components.fueled?.Settle();
     this.components.container?.flush();
-    for (const component of this.runtime.values()) { component.flush?.(); }
+    for (const component of this.runtime.values()) {
+      component.flush?.();
+    }
   }
   override remove(): boolean {
-    if (this.isRemoved) { return false; }
+    if (this.isRemoved) {
+      return false;
+    }
     const slot = this.components.inventoryitem.slot;
-    if (slot) { return slot.remove(); }
+    if (slot) {
+      return slot.remove();
+    }
     this.destroy();
     return true;
   }
   destroy(): void {
-    if (this.isRemoved) { return; }
+    if (this.isRemoved) {
+      return;
+    }
     this.flush();
-    if (this.isRemoved) { return; }
+    if (this.isRemoved) {
+      return;
+    }
     // EntityScript:Remove pushes onremove first.
     super.remove();
     this.components.inventoryitem.owner = null;
     this.miniMapEntity?.dispose();
-    for (const component of this.runtime.values()) { component.dispose(); }
+    for (const component of this.runtime.values()) {
+      component.dispose();
+    }
     this.runtime.clear();
     this.tileMemo?.dispose();
     this.durability.dispose();
@@ -540,12 +726,25 @@ export class ItemEntity extends PrefabInstance<SpriteState, ItemComponents> {
 }
 
 function loadComponent(component: unknown, saved: unknown): void {
-  if (component && typeof component === 'object' && 'OnLoad' in component && typeof component.OnLoad === 'function') { component.OnLoad(saved); }
+  if (component && typeof component === 'object' && 'OnLoad' in component && typeof component.OnLoad === 'function') {
+    component.OnLoad(saved);
+  }
 }
 /** The records an item's components write; the rest of its data is its prefab's own OnSave. */
-const ITEM_COMPONENT_RECORDS = new Set(['perishable', 'fueled', 'armor', 'temperature', 'container', 'inventory', 'health',
-  'knownlocations', 'workable']);
-function isComponentRecord(name: string): boolean { return ITEM_COMPONENT_RECORDS.has(name); }
+const ITEM_COMPONENT_RECORDS = new Set([
+  'perishable',
+  'fueled',
+  'armor',
+  'temperature',
+  'container',
+  'inventory',
+  'health',
+  'knownlocations',
+  'workable',
+]);
+function isComponentRecord(name: string): boolean {
+  return ITEM_COMPONENT_RECORDS.has(name);
+}
 
 /** What SpawnSaveRecord gives an item's SpawnPrefab: its identity, GetPersistData and skin. */
 export interface SpawnedItemRecord {
@@ -569,20 +768,29 @@ export function stackRecord(state: InventoryStack): SpawnedItemRecord {
  * How an item prefab's fn makes its inst: the prefab's own ItemEntity subclass, built with the registry's world and the
  * SpawnPrefab its containers load through.
  */
-export type ItemEntityFactory<Entity extends ItemEntity = ItemEntity> =
-  (state: InventoryStack, perishWorld: PerishWorld | undefined, createItem: ItemSpawner) => Entity;
+export type ItemEntityFactory<Entity extends ItemEntity = ItemEntity> = (
+  state: InventoryStack,
+  perishWorld: PerishWorld | undefined,
+  createItem: ItemSpawner,
+) => Entity;
 
 /** Each item prefab's own ItemEntity subclass, by item id; the prefab module registers it where it defines it. */
 const itemEntityClasses = new Map<string, ItemEntityFactory>();
 
 /** The item prefab declares that every `itemId` inst is made by `factory`, wherever the inventory constructs one. */
 export function registerItemEntityClass(itemId: string, factory: ItemEntityFactory): void {
-  if (itemEntityClasses.has(itemId)) { throw new Error(`Item entity class already registered: ${itemId}`); }
+  if (itemEntityClasses.has(itemId)) {
+    throw new Error(`Item entity class already registered: ${itemId}`);
+  }
   itemEntityClasses.set(itemId, factory);
 }
 
 /** An `itemId` inst as its prefab makes it: its registered subclass, or a plain ItemEntity. */
-export function newItemEntity(state: InventoryStack, perishWorld: PerishWorld | undefined, createItem: ItemSpawner): ItemEntity {
+export function newItemEntity(
+  state: InventoryStack,
+  perishWorld: PerishWorld | undefined,
+  createItem: ItemSpawner,
+): ItemEntity {
   const factory = itemEntityClasses.get(state.itemId);
   return factory ? factory(state, perishWorld, createItem) : new ItemEntity(state, perishWorld, createItem);
 }
@@ -597,27 +805,46 @@ export class ItemEntityRegistry {
   /** Only actual icon primitives are visited, independently of the item population and loaded art. */
   get miniMapEntities(): readonly MiniMapEntity[] {
     const icons: MiniMapEntity[] = [];
-    for (const icon of this.miniMapIcons) { if (icon.enabled) { icons.push(icon); } }
+    for (const icon of this.miniMapIcons) {
+      if (icon.enabled) {
+        icons.push(icon);
+      }
+    }
     return icons;
   }
   private register(entity: ItemEntity): void {
     this.entities.set(entity.id, entity);
-    if (entity.components.container) { this.containerEntities.set(entity.id, entity); }
-    if (this.entityCleanups.has(entity)) { return; }
-    const addIcon = () => { if (entity.MiniMapEntity) { this.miniMapIcons.add(entity.MiniMapEntity); } };
+    if (entity.components.container) {
+      this.containerEntities.set(entity.id, entity);
+    }
+    if (this.entityCleanups.has(entity)) {
+      return;
+    }
+    const addIcon = () => {
+      if (entity.MiniMapEntity) {
+        this.miniMapIcons.add(entity.MiniMapEntity);
+      }
+    };
     addIcon();
     const stopAdded = entity.ListenForEvent('minimapentityadded', addIcon);
     const stopRemoved = entity.ListenForEvent('onremove', () => this.unregister(entity));
     this.entityCleanups.set(entity, () => {
-      stopAdded(); stopRemoved();
-      if (entity.MiniMapEntity) { this.miniMapIcons.delete(entity.MiniMapEntity); }
+      stopAdded();
+      stopRemoved();
+      if (entity.MiniMapEntity) {
+        this.miniMapIcons.delete(entity.MiniMapEntity);
+      }
     });
   }
   private unregister(entity: ItemEntity): void {
     this.entityCleanups.get(entity)?.();
     this.entityCleanups.delete(entity);
-    if (this.entities.get(entity.id) === entity) { this.entities.delete(entity.id); }
-    if (this.containerEntities.get(entity.id) === entity) { this.containerEntities.delete(entity.id); }
+    if (this.entities.get(entity.id) === entity) {
+      this.entities.delete(entity.id);
+    }
+    if (this.containerEntities.get(entity.id) === entity) {
+      this.containerEntities.delete(entity.id);
+    }
   }
   private perishWorld?: PerishWorld;
   private temperatureWorld?: TemperatureWorld;
@@ -625,22 +852,31 @@ export class ItemEntityRegistry {
   /** TheWorld's map, spawns and fx as equipment uses them; each inst reads it when its callbacks run. */
   bindEquipmentWorld(world: object): void {
     this.equipmentWorld = world;
-    for (const entity of this.values()) { entity.equipmentWorld = world; }
+    for (const entity of this.values()) {
+      entity.equipmentWorld = world;
+    }
   }
   bindTemperatureWorld(world: TemperatureWorld): void {
     this.temperatureWorld = world;
-    for (const entity of this.values()) { entity.BindTemperatureWorld(world); }
+    for (const entity of this.values()) {
+      entity.BindTemperatureWorld(world);
+    }
   }
   /** Existing, newly created, adopted and nested entities share the current world's integral. */
   bindPerishWorld(world: PerishWorld): void {
     // The perished inst's onperishreplacement is SpawnPrefab'd through this registry, as any other item.
-    this.perishWorld = { ...world, SpawnPrefab: world.SpawnPrefab ?? (prefab => this.create({ itemId: prefab, count: 1 })) };
+    this.perishWorld = {
+      ...world,
+      SpawnPrefab: world.SpawnPrefab ?? (prefab => this.create({ itemId: prefab, count: 1 })),
+    };
     world = this.perishWorld;
     for (const entity of this.values()) {
       entity.BindPerishWorld(world);
       for (const slot of entity.components.container?.slots ?? []) {
         const child = slot.getEntity();
-        if (child) { this.adopt(child); }
+        if (child) {
+          this.adopt(child);
+        }
       }
     }
   }
@@ -649,14 +885,20 @@ export class ItemEntityRegistry {
    * prefab's inst in that world from its birth and only leaves and re-enters the scene. There is no other way to make one.
    */
   private readonly spawner: ItemSpawner;
-  constructor(spawner: ItemSpawner) { this.spawner = spawner; }
+  constructor(spawner: ItemSpawner) {
+    this.spawner = spawner;
+  }
   /** The item prefab's own construction, bound to this registry's worlds but not yet registered. */
   construct(state: InventoryStack): ItemEntity;
   construct<Entity extends ItemEntity>(state: InventoryStack, factory: ItemEntityFactory<Entity>): Entity;
   construct(state: InventoryStack, factory: ItemEntityFactory = newItemEntity): ItemEntity {
     const entity = factory(state, this.perishWorld, (prefab, saved) => this.spawn(prefab, saved));
-    if (this.temperatureWorld) { entity.BindTemperatureWorld(this.temperatureWorld); }
-    if (this.equipmentWorld) { entity.equipmentWorld = this.equipmentWorld; }
+    if (this.temperatureWorld) {
+      entity.BindTemperatureWorld(this.temperatureWorld);
+    }
+    if (this.equipmentWorld) {
+      entity.equipmentWorld = this.equipmentWorld;
+    }
     return entity;
   }
   /** SpawnPrefab of an item from the inventory's runtime stack. */
@@ -673,19 +915,26 @@ export class ItemEntityRegistry {
    */
   constructSaved(prefab: string, saved: SpawnedItemRecord): ItemEntity {
     const entity = this.construct({ itemId: prefab, count: 1, entityId: saved.id });
-    if (saved.skinname !== undefined) { entity.skinId = saved.skinname; }
+    if (saved.skinname !== undefined) {
+      entity.skinId = saved.skinname;
+    }
     entity.SetPersistData(saved.components);
     return entity;
   }
   private spawn(prefab: string, saved: SpawnedItemRecord): ItemEntity {
-    if (this.get(saved.id)) { throw new Error(`Duplicate item entity: ${saved.id}`); }
+    if (this.get(saved.id)) {
+      throw new Error(`Duplicate item entity: ${saved.id}`);
+    }
     const entity = this.spawner(prefab, saved);
     this.register(entity);
     return entity;
   }
   get(id: string): ItemEntity | undefined {
     const entity = this.entities.get(id);
-    if (entity?.isRemoved) { this.unregister(entity); return undefined; }
+    if (entity?.isRemoved) {
+      this.unregister(entity);
+      return undefined;
+    }
     return entity;
   }
   values(): readonly ItemEntity[] {
@@ -696,16 +945,28 @@ export class ItemEntityRegistry {
   }
   adopt(entity: ItemEntity): void {
     const existing = this.get(entity.id);
-    if (entity.isRemoved || (existing && existing !== entity)) { throw new Error(`Invalid item entity: ${entity.id}`); }
-    if (this.perishWorld) { entity.BindPerishWorld(this.perishWorld); }
-    if (this.temperatureWorld) { entity.BindTemperatureWorld(this.temperatureWorld); }
-    if (this.equipmentWorld) { entity.equipmentWorld = this.equipmentWorld; }
+    if (entity.isRemoved || (existing && existing !== entity)) {
+      throw new Error(`Invalid item entity: ${entity.id}`);
+    }
+    if (this.perishWorld) {
+      entity.BindPerishWorld(this.perishWorld);
+    }
+    if (this.temperatureWorld) {
+      entity.BindTemperatureWorld(this.temperatureWorld);
+    }
+    if (this.equipmentWorld) {
+      entity.equipmentWorld = this.equipmentWorld;
+    }
     this.register(entity);
     for (const slot of entity.components.container?.slots ?? []) {
       const child = slot.getEntity();
-      if (child) { this.adopt(child); }
+      if (child) {
+        this.adopt(child);
+      }
     }
-    for (const child of entity.components.inventory?.GetItems() ?? []) { this.adopt(child); }
+    for (const child of entity.components.inventory?.GetItems() ?? []) {
+      this.adopt(child);
+    }
   }
   destroy(entity: ItemEntity): void {
     entity.destroy();
@@ -719,7 +980,9 @@ export class ItemEntityRegistry {
     }
     this.entities.clear();
     this.containerEntities.clear();
-    for (const cleanup of this.entityCleanups.values()) { cleanup(); }
+    for (const cleanup of this.entityCleanups.values()) {
+      cleanup();
+    }
     this.entityCleanups.clear();
     this.miniMapIcons.clear();
     this.perishWorld = undefined;

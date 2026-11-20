@@ -21,8 +21,14 @@ export class ArchivePillarInstance extends PrefabInstance {
     this.addTag('blocker'); // MakeObstaclePhysics
     this.addTag('archive_pillar');
     choosebroken(this);
-    this.OnSave = (_inst, data) => { data.broken = this.broken; };
-    this.OnLoad = (_inst, data) => { if (data.broken !== undefined) { choosebroken(this, data.broken === true); } };
+    this.OnSave = (_inst, data) => {
+      data.broken = this.broken;
+    };
+    this.OnLoad = (_inst, data) => {
+      if (data.broken !== undefined) {
+        choosebroken(this, data.broken === true);
+      }
+    };
   }
 }
 
@@ -30,7 +36,7 @@ export class ArchivePillarInstance extends PrefabInstance {
  * As in the source, a false `broken` does not restore the bank: a pillar loaded as not broken still keeps the broken art
  * if its constructor's roll picked it.
  */
-function choosebroken(inst: ArchivePillarInstance, broken: boolean = Math.random() < .2): void {
+function choosebroken(inst: ArchivePillarInstance, broken: boolean = Math.random() < 0.2): void {
   inst.broken = broken;
   if (broken) {
     inst.AnimState.SetBank('pillar_archive_broken');
@@ -38,7 +44,9 @@ function choosebroken(inst: ArchivePillarInstance, broken: boolean = Math.random
   }
 }
 
-export function archivePillarPrefabs(): Readonly<Record<typeof ARCHIVE_PILLAR_ID, PrefabEntityDefinition<ArchivePillarInstance>>> {
+export function archivePillarPrefabs(): Readonly<
+  Record<typeof ARCHIVE_PILLAR_ID, PrefabEntityDefinition<ArchivePillarInstance>>
+> {
   return {
     [ARCHIVE_PILLAR_ID]: {
       fn: (position, sprites) => new ArchivePillarInstance(position, sprites.archives),
@@ -46,7 +54,10 @@ export function archivePillarPrefabs(): Readonly<Record<typeof ARCHIVE_PILLAR_ID
       assets: { animationArchive: 'pillar_archive.zip', buildArchives: ['pillar_archive.zip'], bank: 'pillar_archive' },
       assetOptions: { instancedAnimations: ['idle'], staticBillboard: true },
       physics: {
-        make: (inst, radius) => { MakeObstaclePhysics(inst, radius); inst.physics.SetCylinder(1.8, 6); },
+        make: (inst, radius) => {
+          MakeObstaclePhysics(inst, radius);
+          inst.physics.SetCylinder(1.8, 6);
+        },
         radius: 2.5,
       },
       minimapIcon: 'pillar_archive.png',

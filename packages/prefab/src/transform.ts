@@ -13,7 +13,9 @@ export class Transform {
   readonly #onDirty: TransformDirtyHandler;
   #tracker?: TileTracker;
   readonly #areas = new Map<TileStateQuery, { area: Memo<boolean> | undefined; owners: number }>();
-  readonly #syncTile = () => { this.#tracker?.sync(); };
+  readonly #syncTile = () => {
+    this.#tracker?.sync();
+  };
 
   constructor(onDirty: TransformDirtyHandler = markTransformDirty, model: Group = new TransformRoot()) {
     this.#model = model;
@@ -22,12 +24,22 @@ export class Transform {
   }
 
   /** Root passed to display; logical code uses the transform methods. */
-  get model(): Group { return this.#model; }
-  get position(): ReadonlyVector3 { return this.#model.position; }
-  get scale(): ReadonlyVector3 { return this.#model.scale; }
-  get tileTracker(): TileTracker { return this.#tracker ??= new TileTracker(() => this.position); }
+  get model(): Group {
+    return this.#model;
+  }
+  get position(): ReadonlyVector3 {
+    return this.#model.position;
+  }
+  get scale(): ReadonlyVector3 {
+    return this.#model.scale;
+  }
+  get tileTracker(): TileTracker {
+    return (this.#tracker ??= new TileTracker(() => this.position));
+  }
   /** Lua Transform rotation is a heading in degrees. */
-  get rotation(): number { return MathUtils.radToDeg(this.#model.rotation.y); }
+  get rotation(): number {
+    return MathUtils.radToDeg(this.#model.rotation.y);
+  }
 
   setPosition(x: number, y: number, z: number): void {
     this.#model.position.set(x, y, z);
@@ -43,13 +55,21 @@ export class Transform {
    * the entity's cell current with it. One index owns an entity, so a second watcher is an error.
    */
   onMoved(listener: () => void): () => void {
-    if (this.#moved) { throw new Error('Transform position already has a watcher'); }
+    if (this.#moved) {
+      throw new Error('Transform position already has a watcher');
+    }
     this.#moved = listener;
-    return () => { if (this.#moved === listener) { this.#moved = undefined; } };
+    return () => {
+      if (this.#moved === listener) {
+        this.#moved = undefined;
+      }
+    };
   }
 
   /** Transform:SetPosition(pt:Get()). */
-  copyPosition(point: Vector3Like): void { this.setPosition(point.x, point.y, point.z); }
+  copyPosition(point: Vector3Like): void {
+    this.setPosition(point.x, point.y, point.z);
+  }
 
   offsetPosition(dx: number, dy: number, dz: number): void {
     const position = this.position;
@@ -79,8 +99,13 @@ export class Transform {
   }
 
   /** One query per transform/world, shared by display residency, actions and world-input gates. */
-  getTileActivity(query: TileStateQuery | undefined, registerCleanup: (stop: () => void) => void): Memo<boolean> | undefined {
-    if (!query) { return undefined; }
+  getTileActivity(
+    query: TileStateQuery | undefined,
+    registerCleanup: (stop: () => void) => void,
+  ): Memo<boolean> | undefined {
+    if (!query) {
+      return undefined;
+    }
     let entry = this.#areas.get(query);
     if (!entry) {
       entry = { area: query(this.tileTracker.tile), owners: 0 };
@@ -90,7 +115,9 @@ export class Transform {
     const owned = entry;
     let released = false;
     registerCleanup(() => {
-      if (released) { return; }
+      if (released) {
+        return;
+      }
       released = true;
       if (--owned.owners === 0 && this.#areas.get(query) === owned) {
         owned.area?.dispose();
@@ -102,7 +129,9 @@ export class Transform {
 
   dispose(): void {
     this.#model.removeEventListener('added', this.#syncTile);
-    for (const { area } of this.#areas.values()) { area?.dispose(); }
+    for (const { area } of this.#areas.values()) {
+      area?.dispose();
+    }
     this.#areas.clear();
   }
 }

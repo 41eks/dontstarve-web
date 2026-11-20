@@ -18,7 +18,8 @@ export interface EquipmentVisualOwner extends EquipmentOwnerView {
 export function wornOwner(owner: EquipmentOwner): EquipmentVisualOwner | undefined {
   return isWorn(owner) ? owner : undefined;
 }
-const isWorn = (owner: EquipmentOwner): owner is EquipmentVisualOwner => 'AnimState' in owner && Boolean(owner.AnimState);
+const isWorn = (owner: EquipmentOwner): owner is EquipmentVisualOwner =>
+  'AnimState' in owner && Boolean(owner.AnimState);
 
 /** The holder's sprite, on which each equipped item declares its own AnimState slot, and the art its display loads them from. */
 export interface EquipmentSprite {
@@ -38,10 +39,16 @@ export class EquipmentAnimState {
   private readonly holder: EquipmentSprite;
   private readonly key = `equipment:${nextSlot++}`;
 
-  constructor(holder: EquipmentSprite) { this.holder = holder; }
+  constructor(holder: EquipmentSprite) {
+    this.holder = holder;
+  }
 
-  equip(): void { this.holder.sprite.declareAnimState(this.key, this.AnimState.json, this.holder.art); }
-  unequip(): void { this.holder.sprite.declareAnimState(this.key, undefined); }
+  equip(): void {
+    this.holder.sprite.declareAnimState(this.key, this.AnimState.json, this.holder.art);
+  }
+  unequip(): void {
+    this.holder.sprite.declareAnimState(this.key, undefined);
+  }
 }
 /** A hand prefab's equip functions for one equip, called from its equippable's onequip/onunequip. */
 export interface HeldEquipFunctions {
@@ -50,7 +57,11 @@ export interface HeldEquipFunctions {
   /** Settles consumption before a save or transfer reads the inst. */
   flush?(): void;
 }
-export interface EquipmentVisualItem { readonly id: string; readonly prefab: string; readonly skinId?: string }
+export interface EquipmentVisualItem {
+  readonly id: string;
+  readonly prefab: string;
+  readonly skinId?: string;
+}
 /** What an item's worn art writes: owner.AnimState (its slot) and owner:PushEvent for the skin events. */
 export type EquipmentArtOwner = Pick<EquipmentOwner, 'PushEvent'> & { readonly AnimState: AnimState };
 export interface EquipmentVisual {
@@ -61,10 +72,18 @@ export interface EquipmentVisual {
 export type EquipmentVisualFactory = (item: EquipmentVisualItem) => EquipmentVisual;
 
 /** The skin's build, from the prefab's own skin table; an unknown skin is an error. */
-export function skinArchive(prefab: string, skins: Readonly<Record<string, string>>, skinId: string | undefined): string | undefined {
-  if (skinId === undefined) { return undefined; }
+export function skinArchive(
+  prefab: string,
+  skins: Readonly<Record<string, string>>,
+  skinId: string | undefined,
+): string | undefined {
+  if (skinId === undefined) {
+    return undefined;
+  }
   const archive = skins[skinId];
-  if (!archive) { throw new Error(`Unknown ${prefab} skin: ${skinId}`); }
+  if (!archive) {
+    throw new Error(`Unknown ${prefab} skin: ${skinId}`);
+  }
   return archive;
 }
 
@@ -80,20 +99,31 @@ export function handEquipmentVisual(
   return {
     onequip(equipper) {
       owner = equipper;
-      if (item.skinId) { owner.PushEvent('equipskinneditem', item.skinId); }
+      if (item.skinId) {
+        owner.PushEvent('equipskinneditem', item.skinId);
+      }
       for (const { symbol, source } of [{ symbol: 'swap_object', source: sourceSymbol }, ...extraSymbols]) {
-        if (item.skinId) { owner.AnimState.OverrideItemSkinSymbol(symbol, builds, source, item.id); }
-        else { owner.AnimState.OverrideSymbol(symbol, builds, source); }
+        if (item.skinId) {
+          owner.AnimState.OverrideItemSkinSymbol(symbol, builds, source, item.id);
+        } else {
+          owner.AnimState.OverrideSymbol(symbol, builds, source);
+        }
       }
       owner.AnimState.Show('ARM_carry');
       owner.AnimState.Hide('ARM_normal');
     },
     onunequip() {
-      if (!owner) { return; }
+      if (!owner) {
+        return;
+      }
       owner.AnimState.Hide('ARM_carry');
       owner.AnimState.Show('ARM_normal');
-      if (item.skinId && unequipSkinEvent) { owner.PushEvent('unequipskinneditem', item.skinId); }
-      for (const { symbol } of extraSymbols) { owner.AnimState.ClearOverrideSymbol(symbol); }
+      if (item.skinId && unequipSkinEvent) {
+        owner.PushEvent('unequipskinneditem', item.skinId);
+      }
+      for (const { symbol } of extraSymbols) {
+        owner.AnimState.ClearOverrideSymbol(symbol);
+      }
       owner = undefined;
     },
   };
@@ -109,7 +139,12 @@ export interface EquipmentPresentation {
   readonly hats: import('./hats').HatEquipmentAssets;
   readonly sanityPercent?: import('@dontstarve-web/signals').ReadonlySignal<number>;
   /** owner's FollowSymbol, for fx that follow swap_object. */
-  followSymbol?(symbol: string, offsetX: number, offsetY: number, fx?: FollowerFx): { node: THREE.Object3D; remove(): void };
+  followSymbol?(
+    symbol: string,
+    offsetX: number,
+    offsetY: number,
+    fx?: FollowerFx,
+  ): { node: THREE.Object3D; remove(): void };
   /** Where the owner's equipment sounds play. */
   readonly soundPosition?: import('../../animation/src/transformRoot').ReadonlyVector3;
 }
@@ -118,28 +153,55 @@ export interface EquipmentPresentation {
  * owner.OpenEquipmentView: each equipped inst writes its own AnimState slot of the owner's sprite, declared from equip
  * until the view closes (or, retained, until the last hold is released), so unequipping leaves what lies beneath.
  */
-export function createEquipmentViews(owner: EquipmentOwner, presentation: EquipmentPresentation): (inst: object) => EquipmentVisualOwner {
+export function createEquipmentViews(
+  owner: EquipmentOwner,
+  presentation: EquipmentPresentation,
+): (inst: object) => EquipmentVisualOwner {
   return () => {
     const slot = new EquipmentAnimState(presentation.sprite);
     slot.equip();
-    let holds = 0, closed = false;
-    const settle = () => { if (closed && holds === 0) { slot.unequip(); } };
+    let holds = 0,
+      closed = false;
+    const settle = () => {
+      if (closed && holds === 0) {
+        slot.unequip();
+      }
+    };
     // The owner's own members act on the owner itself; only AnimState is this inst's slot of its sprite.
     const view: EquipmentVisualOwner = {
       ListenForEvent: owner.ListenForEvent && ((name, listener) => owner.ListenForEvent!(name, listener)),
       PushEvent: (name, data) => owner.PushEvent(name, data),
       getPosition: owner.getPosition && (() => owner.getPosition!()),
-      get sg() { return owner.sg; },
-      get SoundEmitter() { return owner.SoundEmitter; },
-      get components() { return owner.components; },
+      get sg() {
+        return owner.sg;
+      },
+      get SoundEmitter() {
+        return owner.SoundEmitter;
+      },
+      get components() {
+        return owner.components;
+      },
       AnimState: slot.AnimState,
       presentation,
       Retain() {
         holds++;
         let released = false;
-        return () => { if (released) { return; } released = true; holds--; settle(); };
+        return () => {
+          if (released) {
+            return;
+          }
+          released = true;
+          holds--;
+          settle();
+        };
       },
-      close() { if (closed) { return; } closed = true; settle(); },
+      close() {
+        if (closed) {
+          return;
+        }
+        closed = true;
+        settle();
+      },
     };
     return view;
   };

@@ -1,20 +1,25 @@
 import { expect, test } from '@playwright/test';
 import { createSignal } from '@dontstarve-web/signals';
 import { createSlot, type SlotItem } from '../src/slot/slot-model';
-import {
-  bindSlotContextMenuInput,
-  type SlotContextMenuRequest,
-  type SlotSecondaryInput,
-} from '../src/slot/slot-input';
+import { bindSlotContextMenuInput, type SlotContextMenuRequest, type SlotSecondaryInput } from '../src/slot/slot-input';
 
 test('samples the current UI slot on every input without replaying actions on slot changes', () => {
   const slot = createSlot({ address: { containerId: 'player:inventory', slotKey: '0' } });
   const input = createSignal<SlotSecondaryInput | null>(null);
   const binding = bindSlotContextMenuInput(input, slot);
   const requests: SlotContextMenuRequest[] = [];
-  binding.request.subscribe(request => { if (request) { requests.push(request); } });
+  binding.request.subscribe(request => {
+    if (request) {
+      requests.push(request);
+    }
+  });
   const item: SlotItem = {
-    entityId: 'first', id: 'seeds', name: '种子', count: 3, maxStack: 40, icon: 'seeds.tex',
+    entityId: 'first',
+    id: 'seeds',
+    name: '种子',
+    count: 3,
+    maxStack: 40,
+    icon: 'seeds.tex',
   };
   slot.setItem(item);
   input.set({ shiftKey: false });

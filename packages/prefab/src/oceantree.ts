@@ -20,24 +20,48 @@ import { TREE_BURN_TIME } from './treeFire';
 
 export const OCEANTREE_ID = 'oceantree' as const;
 /** Asset("ANIM", ...): one bank and build per growth stage, and MakeEnriched's build. */
-export const OCEANTREE_ARCHIVES = ['oceantree_short.zip', 'oceantree_normal.zip', 'oceantree_tall.zip', 'oceantree_tall_jammed_build.zip'];
+export const OCEANTREE_ARCHIVES = [
+  'oceantree_short.zip',
+  'oceantree_normal.zip',
+  'oceantree_tall.zip',
+  'oceantree_tall_jammed_build.zip',
+];
 /** The archives that hold the stage banks SetShort / SetNormal / SetTall pick. */
 const ANIMATION_ARCHIVES = ['oceantree_short.zip', 'oceantree_normal.zip', 'oceantree_tall.zip'];
 
 /** tuning.lua EVERGREEN_GROW_TIME[1..3] (day_time 300) and EVERGREEN_CHOPS_SMALL / _NORMAL / _TALL. */
-const EVERGREEN_GROW_TIME = [{ base: 450, random: 150 }, { base: 1500, random: 600 }, { base: 1500, random: 600 }] as const;
-const EVERGREEN_CHOPS_SMALL = 5, EVERGREEN_CHOPS_NORMAL = 10, EVERGREEN_CHOPS_TALL = 15;
+const EVERGREEN_GROW_TIME = [
+  { base: 450, random: 150 },
+  { base: 1500, random: 600 },
+  { base: 1500, random: 600 },
+] as const;
+const EVERGREEN_CHOPS_SMALL = 5,
+  EVERGREEN_CHOPS_NORMAL = 10,
+  EVERGREEN_CHOPS_TALL = 15;
 /** TUNING.OCEANTREE_STAGES_TO_SUPERTALL. */
 export const STAGES_TO_SUPERTALL = 4;
 
 const tree_data = {
-  normal_loot: ['log', 'log'], short_loot: ['log'], tall_loot: ['log', 'log', 'log'],
-  oceantreenut_chance_short: undefined, oceantreenut_chance_medium: .25, oceantreenut_chance_tall: 1,
+  normal_loot: ['log', 'log'],
+  short_loot: ['log'],
+  tall_loot: ['log', 'log', 'log'],
+  oceantreenut_chance_short: undefined,
+  oceantreenut_chance_medium: 0.25,
+  oceantreenut_chance_tall: 1,
 } as const;
 
 const anims = {
-  idle: 'idle', sway1: 'sway1_loop', sway2: 'sway2_loop', chop: 'chop', fallleft: 'fallleft', fallright: 'fallright',
-  stump: 'stump', burning: 'burning_loop', burnt: 'burnt', chop_burnt: 'chop_burnt', idle_chop_burnt: 'idle_chop_burnt',
+  idle: 'idle',
+  sway1: 'sway1_loop',
+  sway2: 'sway2_loop',
+  chop: 'chop',
+  fallleft: 'fallleft',
+  fallright: 'fallright',
+  stump: 'stump',
+  burning: 'burning_loop',
+  burnt: 'burnt',
+  chop_burnt: 'chop_burnt',
+  idle_chop_burnt: 'idle_chop_burnt',
 } as const;
 
 /** onsave's fields. `burnt` and `stump` are written as the source does, but loading them is not ported. */
@@ -62,9 +86,18 @@ export interface OceanTreeWorld {
 /** oceantree.lua tree("oceantree", 0): the fields fn sets on inst. */
 export class OceanTreeInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    waterphysics: WaterPhysics; burnable: Burnable; propagator: Propagator; inspectable: Inspectable; workable?: Workable;
-    lootdropper: LootDropper; growable?: Growable; simplemagicgrower: SimpleMagicGrower; timer: Timer; hauntable: Hauntable;
-    lunarhailbuildup: LunarHailBuildup; waxable: Waxable;
+    waterphysics: WaterPhysics;
+    burnable: Burnable;
+    propagator: Propagator;
+    inspectable: Inspectable;
+    workable?: Workable;
+    lootdropper: LootDropper;
+    growable?: Growable;
+    simplemagicgrower: SimpleMagicGrower;
+    timer: Timer;
+    hauntable: Hauntable;
+    lunarhailbuildup: LunarHailBuildup;
+    waxable: Waxable;
   };
   declare anims: typeof anims;
   declare supertall_growth_progress: number;
@@ -77,7 +110,7 @@ export class OceanTreeInstance extends PrefabInstance {
 const GetRandomWithVariance = (base: number, variance: number) => base + (Math.random() * 2 - 1) * variance;
 
 function Sway(inst: OceanTreeInstance): void {
-  inst.AnimState.PlayAnimation(Math.random() > .5 ? inst.anims.sway1 : inst.anims.sway2, true);
+  inst.AnimState.PlayAnimation(Math.random() > 0.5 ? inst.anims.sway1 : inst.anims.sway2, true);
 }
 
 /**
@@ -85,7 +118,12 @@ function Sway(inst: OceanTreeInstance): void {
  * SetLunarHailBuildupAmount* call is skipped (lunarhailbuildup is a signature), and update_ripples_roots's children are
  * not ported.
  */
-function SetStageArt(inst: OceanTreeInstance, name: 'short' | 'normal' | 'tall', chops: number, loot: readonly string[]): void {
+function SetStageArt(
+  inst: OceanTreeInstance,
+  name: 'short' | 'normal' | 'tall',
+  chops: number,
+  loot: readonly string[],
+): void {
   inst.AnimState.SetBank(`oceantree_${name}`);
   inst.AnimState.SetBuild(`oceantree_${name}.zip`);
   inst.components.workable?.SetWorkLeft(chops);
@@ -108,14 +146,22 @@ function SetTall(inst: OceanTreeInstance): void {
 
 /** The stage whose Set* fn last chose the bank: growable's, or SetTall's for a no_grow tree that has none. */
 function showbuds(inst: OceanTreeInstance): void {
-  for (const num of inst.buds_used) { inst.sprite.showLayer(`tree_bud${num}`); }
+  for (const num of inst.buds_used) {
+    inst.sprite.showLayer(`tree_bud${num}`);
+  }
 }
 
 function onsave(inst: OceanTreeInstance, data: EntityPersistData): void {
   const state: OceanTreeSaveState = { supertall_growth_progress: inst.supertall_growth_progress };
-  if (inst.hasTag('burnt') || inst.components.burnable.IsBurning()) { state.burnt = true; }
-  if (inst.hasTag('stump')) { state.stump = true; }
-  if (inst.no_grow !== undefined) { state.no_grow = inst.no_grow; }
+  if (inst.hasTag('burnt') || inst.components.burnable.IsBurning()) {
+    state.burnt = true;
+  }
+  if (inst.hasTag('stump')) {
+    state.stump = true;
+  }
+  if (inst.no_grow !== undefined) {
+    state.no_grow = inst.no_grow;
+  }
   state.buds = [...inst.buds];
   state.buds_used = [...inst.buds_used];
   data.oceantree = state;
@@ -124,14 +170,22 @@ function onsave(inst: OceanTreeInstance, data: EntityPersistData): void {
 /** onload, without its stump and burnt branches (make_stump / OnBurnt are not ported; the save reader rejects them). */
 function onload(inst: OceanTreeInstance, data: EntityPersistData): void {
   const saved = data.oceantree;
-  if (!saved) { return; }
+  if (!saved) {
+    return;
+  }
   inst.no_grow = saved.no_grow;
   if (inst.no_grow) {
     SetTall(inst);
-    if (inst.components.growable) { removeComponent(inst, 'growable'); }
+    if (inst.components.growable) {
+      removeComponent(inst, 'growable');
+    }
   }
-  if (saved.buds) { inst.buds = [...saved.buds]; }
-  if (saved.buds_used) { inst.buds_used = [...saved.buds_used]; }
+  if (saved.buds) {
+    inst.buds = [...saved.buds];
+  }
+  if (saved.buds_used) {
+    inst.buds_used = [...saved.buds_used];
+  }
   inst.supertall_growth_progress = saved.supertall_growth_progress;
 }
 
@@ -140,7 +194,9 @@ function onload(inst: OceanTreeInstance, data: EntityPersistData): void {
  * supertall_growth_progress of STAGES_TO_SUPERTALL; the save reader rejects both, as neither is ported.
  */
 function onloadpostpass(inst: OceanTreeInstance): void {
-  if (inst.isRemoved) { return; }
+  if (inst.isRemoved) {
+    return;
+  }
   showbuds(inst);
 }
 
@@ -174,31 +230,57 @@ function fn(world: OceanTreeWorld, sprites: SpriteResources): OceanTreeInstance 
   inst.AnimState.SetBuild(`oceantree_${['short', 'normal', 'tall'][stage - 1]}.zip`);
   inst.supertall_growth_progress = 0;
   inst.anims = anims;
-  const color = .5 + Math.random() * .5;
+  const color = 0.5 + Math.random() * 0.5;
   inst.sprite.setColour([color, color, color, 1]);
 
   // MakeLargeBurnable(inst, TUNING.TREE_BURN_TIME) and MakeMediumPropagator(inst), without their callbacks and fx.
   const burnable = addComponent(inst, 'burnable', Burnable, world.scheduler);
   burnable.SetFXLevel(4);
   burnable.SetBurnTime(TREE_BURN_TIME);
-  addComponent(inst, 'propagator', Propagator, 'medium', radius =>
-    inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS), TILE_SIZE / 4, world.scheduler, world.getWatchWorldContent);
+  addComponent(
+    inst,
+    'propagator',
+    Propagator,
+    'medium',
+    radius => inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS),
+    TILE_SIZE / 4,
+    world.scheduler,
+    world.getWatchWorldContent,
+  );
   burnable.SetFXLevel(5);
   addComponent(inst, 'inspectable', Inspectable);
   const workable = addComponent(inst, 'workable', Workable);
   workable.SetWorkAction('CHOP');
   addComponent(inst, 'lootdropper', LootDropper, world.spawnLoot);
-  const growable = addComponent(inst, 'growable', Growable, world.scheduler, [
-    { time: () => GetRandomWithVariance(EVERGREEN_GROW_TIME[0].base, EVERGREEN_GROW_TIME[0].random), fn: () => SetShort(inst) },
-    { time: () => GetRandomWithVariance(EVERGREEN_GROW_TIME[1].base, EVERGREEN_GROW_TIME[1].random), fn: () => SetNormal(inst) },
-    { time: () => GetRandomWithVariance(EVERGREEN_GROW_TIME[2].base, EVERGREEN_GROW_TIME[2].random), fn: () => SetTall(inst) },
-  ], seconds => world.growthDuration?.(seconds) ?? seconds);
+  const growable = addComponent(
+    inst,
+    'growable',
+    Growable,
+    world.scheduler,
+    [
+      {
+        time: () => GetRandomWithVariance(EVERGREEN_GROW_TIME[0].base, EVERGREEN_GROW_TIME[0].random),
+        fn: () => SetShort(inst),
+      },
+      {
+        time: () => GetRandomWithVariance(EVERGREEN_GROW_TIME[1].base, EVERGREEN_GROW_TIME[1].random),
+        fn: () => SetNormal(inst),
+      },
+      {
+        time: () => GetRandomWithVariance(EVERGREEN_GROW_TIME[2].base, EVERGREEN_GROW_TIME[2].random),
+        fn: () => SetTall(inst),
+      },
+    ],
+    seconds => world.growthDuration?.(seconds) ?? seconds,
+  );
   growable.SetStage(stage);
   growable.loopstages = true;
   growable.springgrowth = true;
   growable.magicgrowable = true;
   growable.StartGrowing();
-  addComponent(inst, 'simplemagicgrower', SimpleMagicGrower, growable, world.scheduler).SetLastStage(growable.stages.length);
+  addComponent(inst, 'simplemagicgrower', SimpleMagicGrower, growable, world.scheduler).SetLastStage(
+    growable.stages.length,
+  );
   addComponent(inst, 'timer', Timer, world.scheduler);
   addComponent(inst, 'hauntable', Hauntable, world.scheduler);
   inst.OnSave = onsave;
@@ -210,30 +292,43 @@ function fn(world: OceanTreeWorld, sprites: SpriteResources): OceanTreeInstance 
   inst.sprite.setFrameAt(Math.random());
   inst.buds = [1, 2, 3, 5, 6, 7];
   inst.buds_used = [];
-  for (let i = 1; i <= 7; i++) { inst.sprite.hideLayer(`tree_bud${i}`); }
+  for (let i = 1; i <= 7; i++) {
+    inst.sprite.hideLayer(`tree_bud${i}`);
+  }
   // The engine's component OnEntitySleep / OnEntityWake: growable pauses asleep and catches up on waking. The entity
   // starts asleep, as a loaded entity does, so its tile's first activation is the wake that settles a saved sleeptime.
   inst.setActive(false);
-  inst.onRemove(createEffect(() => {
-    const status = inst.status.get();
-    if (status === 'asleep') { inst.components.growable?.OnEntitySleep(); }
-    else if (status === 'active') { inst.components.growable?.OnEntityWake(); }
-  }));
+  inst.onRemove(
+    createEffect(() => {
+      const status = inst.status.get();
+      if (status === 'asleep') {
+        inst.components.growable?.OnEntitySleep();
+      } else if (status === 'active') {
+        inst.components.growable?.OnEntityWake();
+      }
+    }),
+  );
   return inst;
 }
 
 /** The oceantree Prefab oceantree.lua returns; its sized, burnt, stump, ripples, roots and falling prefabs are not ported. */
-export function oceanTreePrefabs(world: OceanTreeWorld):
-  Readonly<Record<typeof OCEANTREE_ID, PrefabEntityDefinition<OceanTreeInstance>>> {
+export function oceanTreePrefabs(
+  world: OceanTreeWorld,
+): Readonly<Record<typeof OCEANTREE_ID, PrefabEntityDefinition<OceanTreeInstance>>> {
   return {
     [OCEANTREE_ID]: {
       fn: (_position, sprites) => fn(world, sprites),
       // The bank and build come from SetShort / SetNormal / SetTall's AnimState SetBank / SetBuild, which fn and the
       // growable's OnLoad declare before the display starts; a later stage reaches the drawn sprite the same way.
-      assets: { animationArchive: 'oceantree_tall.zip', buildArchives: ['oceantree_tall.zip', 'snow.zip'], bank: 'oceantree_tall', hiddenLayers: ['snow'] },
+      assets: {
+        animationArchive: 'oceantree_tall.zip',
+        buildArchives: ['oceantree_tall.zip', 'snow.zip'],
+        bank: 'oceantree_tall',
+        hiddenLayers: ['snow'],
+      },
       // Every stage's sways share one batch per bank; the random tint is per instance.
       assetOptions: { instancedAnimations: [anims.sway1, anims.sway2], staticBillboard: true, colour: [1, 1, 1] },
-      physics: { make: MakeWaterObstaclePhysics, radius: .8, height: 2 },
+      physics: { make: MakeWaterObstaclePhysics, radius: 0.8, height: 2 },
       minimapIcon: 'oceantree_tall.png',
       onSpawned: onloadpostpass,
     },

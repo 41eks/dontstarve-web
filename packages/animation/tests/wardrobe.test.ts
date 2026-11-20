@@ -21,31 +21,59 @@ import { testInventoryStore } from './testInventory';
 
 const cleanups: (() => void)[] = [];
 beforeEach(() => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('document', { createElement: () => ({ setAttribute: vi.fn(), style: {} }), body: { appendChild: vi.fn() } });
+  vi.stubGlobal('document', {
+    createElement: () => ({ setAttribute: vi.fn(), style: {} }),
+    body: { appendChild: vi.fn() },
+  });
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 4));
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
 });
 afterEach(() => {
-  for (const cleanup of cleanups.splice(0)) { cleanup(); }
-  vi.restoreAllMocks(); vi.unstubAllGlobals();
+  for (const cleanup of cleanups.splice(0)) {
+    cleanup();
+  }
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 function setup() {
-  const canvas = new EventTarget(), scene = new THREE.Scene(), physics = new CANNON.World(), displays = new PrefabDisplayGroup(scene);
-  const world = { physics, scene, player: new THREE.Object3D(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    cameraFacing: createSignal(8), cameraHeading: createSignal(45), TheCamera: fixedCamera(45), renderer: { domElement: canvas },
-    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
+  const canvas = new EventTarget(),
+    scene = new THREE.Scene(),
+    physics = new CANNON.World(),
+    displays = new PrefabDisplayGroup(scene);
+  const world = {
+    physics,
+    scene,
+    player: new THREE.Object3D(),
+    ground: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(),
+    cameraFacing: createSignal(8),
+    cameraHeading: createSignal(45),
+    TheCamera: fixedCamera(45),
+    renderer: { domElement: canvas },
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
+  } as unknown as WorldContext;
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics });
-  const consume = vi.fn(() => true), placement = new PlaceableBuildingPlacement(world, consume, undefined, prefabs);
+  const consume = vi.fn(() => true),
+    placement = new PlaceableBuildingPlacement(world, consume, undefined, prefabs);
   const registry = new EntityRegistry([], prefabs);
   registry.register(PREFAB_DEFINITIONS.buildings, {
-    restore: (id, record) => placement.spawnFromSave(id, record), debugSpawn: id => placement.spawn(id),
-    exportRecords: () => placement.exportRecords(), dispose: () => placement.dispose(),
+    restore: (id, record) => placement.spawnFromSave(id, record),
+    debugSpawn: id => placement.spawn(id),
+    exportRecords: () => placement.exportRecords(),
+    dispose: () => placement.dispose(),
   });
-  cleanups.push(() => { registry.dispose(); prefabs.dispose(); displays.dispose(); });
+  cleanups.push(() => {
+    registry.dispose();
+    prefabs.dispose();
+    displays.dispose();
+  });
   const click = (button = 0) => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
   return { physics, displays, prefabs, consume, placement, registry, click };
 }
@@ -59,14 +87,19 @@ it('builds through its placer: a refused or cancelled build makes nothing, a com
   click();
   expect(consume).not.toHaveBeenCalled();
   await placement.begin(WARDROBE_ID);
-  consume.mockReturnValueOnce(false); click();
+  consume.mockReturnValueOnce(false);
+  click();
   expect(prefabs.exportRecords()).toEqual([]);
   click();
   expect(consume).toHaveBeenCalledTimes(2);
   const wardrobe = spawn.mock.results[0].value as PrefabInstance;
   expect(wardrobe.position.toArray()).toEqual([3, 0, 4]);
-  expect(pushed.mock.contexts.filter((inst, index) => inst === wardrobe && pushed.mock.calls[index][0] === 'onbuilt')).toHaveLength(1);
-  expect(physics.bodies[0].shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === .75 * WORLD_SCALE)).toBe(true);
+  expect(
+    pushed.mock.contexts.filter((inst, index) => inst === wardrobe && pushed.mock.calls[index][0] === 'onbuilt'),
+  ).toHaveLength(1);
+  expect(
+    physics.bodies[0].shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === 0.75 * WORLD_SCALE),
+  ).toBe(true);
   // The placer has gone: another click builds nothing.
   click();
   expect(spawn).toHaveBeenCalledOnce();
@@ -87,15 +120,32 @@ it('stands its sprite on the ground, and the greenstaff can deconstruct it', asy
 });
 
 it('c_spawn wardrobes save in the building shape and reload', async () => {
-  const { registry } = setup(), { registry: restored } = setup(), inventory = testInventoryStore([], SAVE_CATALOG.items);
+  const { registry } = setup(),
+    { registry: restored } = setup(),
+    inventory = testInventoryStore([], SAVE_CATALOG.items);
   cleanups.push(() => inventory.dispose());
   expect((await executeDebugCommand('c_spawn("wardrobe")', inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
-  const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);
+  const template = deserializeSave(
+    await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'),
+    SAVE_CATALOG,
+  );
   let exported = '';
-  expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-    exported = serializeSave(template, { entities: { ...template.world.entities, ...registry.exportRecords() }, inventory: inventory.exportSaved(),
-      playerTransform: { position: [0, 0, 0], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
-  })).ok).toBe(true);
+  expect(
+    (
+      await executeDebugCommand('c_save()', inventory, undefined, () => {
+        exported = serializeSave(
+          template,
+          {
+            entities: { ...template.world.entities, ...registry.exportRecords() },
+            inventory: inventory.exportSaved(),
+            playerTransform: { position: [0, 0, 0], rotationY: 0 },
+            elapsedSeconds: 0,
+          },
+          SAVE_CATALOG,
+        );
+      })
+    ).ok,
+  ).toBe(true);
   const records = deserializeSave(exported, SAVE_CATALOG).world.entities.wardrobe;
   expect(records).toHaveLength(1);
   expect(records[0].components).toEqual({ building: {} });

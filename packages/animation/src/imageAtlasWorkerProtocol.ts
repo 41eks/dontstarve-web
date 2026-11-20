@@ -6,6 +6,4 @@ export interface ImageAtlasWorkerRequest {
   atlasPath: string;
 }
 
-export type ImageAtlasWorkerResponse =
-  | { id: number; pages: readonly ImageAtlasPage[] }
-  | { id: number; error: string };
+export type ImageAtlasWorkerResponse = { id: number; pages: readonly ImageAtlasPage[] } | { id: number; error: string };

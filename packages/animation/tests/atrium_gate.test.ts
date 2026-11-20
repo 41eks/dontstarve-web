@@ -20,31 +20,72 @@ import { CLUSTER_SAVE_ZIP_TIMEOUT } from './importedSave';
 import { createInventoryStore } from './testInventory';
 
 const turn = () => new Promise(resolve => setTimeout(resolve, 0));
-const record = (x: number, components: EntityPersistData) =>
-  ({ id: `atrium-${x}`, transform: { position: [x, 0, 7] as [number, number, number], rotationY: 0 }, components });
+const record = (x: number, components: EntityPersistData) => ({
+  id: `atrium-${x}`,
+  transform: { position: [x, 0, 7] as [number, number, number], rotationY: 0 },
+  components,
+});
 
 function setup(pathfinder?: Pathfinder) {
-  const scene = new THREE.Scene(), awake = createSignal(true), scheduler = new GameTimeScheduler();
+  const scene = new THREE.Scene(),
+    awake = createSignal(true),
+    scheduler = new GameTimeScheduler();
   const displays = new PrefabDisplayGroup(scene);
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
-  prefabs.register(atriumGatePrefabs({ scheduler, pathfinder, spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
-  const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {
+    tickingarea: () => createMemo(() => awake.get()),
+  });
+  prefabs.register(
+    atriumGatePrefabs({ scheduler, pathfinder, spawnPrefab: (id, position) => prefabs.spawn(id, position) }),
+  );
+  const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)),
+    inventory = createInventoryStore([]);
   registry.registerPrefabs(PREFAB_DEFINITIONS.atriumGates);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const instances = (prefab: string) => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).filter(inst => inst?.prefab === prefab && !inst.isRemoved);
-  return { scene, awake, prefabs, registry, inventory, instances,
+  const instances = (prefab: string) =>
+    scene.children
+      .map(model => prefabInstance<PrefabInstance>(model)!)
+      .filter(inst => inst?.prefab === prefab && !inst.isRemoved);
+  return {
+    scene,
+    awake,
+    prefabs,
+    registry,
+    inventory,
+    instances,
     gate: (components: EntityPersistData, x = 5) =>
       prefabs.spawnAs(AtriumGateInstance, ATRIUM_GATE_ID, new THREE.Vector3(x, 0, 7), record(x, components)),
-    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
-      playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
-    dispose() { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
+    save: () =>
+      serializeSave(
+        template,
+        {
+          entities: registry.exportRecords(),
+          inventory: inventory.exportSaved(),
+          elapsedSeconds: 0,
+          playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        },
+        SAVE_CATALOG,
+      ),
+    dispose() {
+      registry.dispose();
+      prefabs.dispose();
+      displays.dispose();
+      inventory.dispose();
+      scheduler.dispose();
+    },
+  };
 }
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))),
+  );
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('restores the source save states with their clips, build, children and component records', async () => {
   const s = setup();
@@ -63,28 +104,53 @@ it('restores the source save states with their clips, build, children and compon
     // Children are never saved, and the gate's record parses back to itself.
     expect(exported.map(({ prefabId }) => prefabId)).toEqual([ATRIUM_GATE_ID]);
     expect(exported[0].record).toMatchObject({ id: 'atrium-5', components: { pickable: { picked: true } } });
-    expect(PREFAB_DEFINITIONS.atriumGates.parseComponents(exported[0].record.components, 'atrium', {} as never)).toEqual(exported[0].record.components);
+    expect(
+      PREFAB_DEFINITIONS.atriumGates.parseComponents(exported[0].record.components, 'atrium', {} as never),
+    ).toEqual(exported[0].record.components);
     await prefabDisplay(gate.transform.model)!.artLoaded();
     expect(gate.sprite.currentAnimation).toBe('idle');
 
-    const cooldownSave = { charliecutscene: { gatefixed: true as const }, worldsettingstimer: { timers: { cooldown: { timeleft: .5, paused: false } } } };
+    const cooldownSave = {
+      charliecutscene: { gatefixed: true as const },
+      worldsettingstimer: { timers: { cooldown: { timeleft: 0.5, paused: false } } },
+    };
     const cooldown = s.gate(cooldownSave, 8);
     expect(cooldown.sprite.sprite.peek().clip).toMatchObject({ name: 'cooldown', loop: true });
-    expect(cooldown.sprite.sprite.peek().appearance.get('archive-build')).toMatchObject({ archive: 'atrium_gate_build.zip' });
+    expect(cooldown.sprite.sprite.peek().appearance.get('archive-build')).toMatchObject({
+      archive: 'atrium_gate_build.zip',
+    });
     expect(cooldown.minimap.json.peek()).toMatchObject({ icon: 'atrium_gate_fixed.png' });
     expect(cooldown.GetPersistData()).toEqual({ pickable: { picked: true }, ...cooldownSave });
 
-    const destabilizing = s.gate({ atriumGate: { vault_key_socketed: true }, worldsettingstimer: { timers: { destabilizing: { timeleft: .5, paused: false } } } }, 11);
-    expect(destabilizing.sprite.sprite.peek()).toMatchObject({ clip: { name: 'overload_pre', loop: false },
-      queue: [expect.objectContaining({ name: 'overload_loop', loop: true })] });
-    expect(destabilizing.sprite.sprite.peek().appearance.get('layer:KEY')).toEqual({ kind: 'layer', layer: 'KEY', hidden: false });
+    const destabilizing = s.gate(
+      {
+        atriumGate: { vault_key_socketed: true },
+        worldsettingstimer: { timers: { destabilizing: { timeleft: 0.5, paused: false } } },
+      },
+      11,
+    );
+    expect(destabilizing.sprite.sprite.peek()).toMatchObject({
+      clip: { name: 'overload_pre', loop: false },
+      queue: [expect.objectContaining({ name: 'overload_loop', loop: true })],
+    });
+    expect(destabilizing.sprite.sprite.peek().appearance.get('layer:KEY')).toEqual({
+      kind: 'layer',
+      layer: 'KEY',
+      hidden: false,
+    });
     const [fx] = s.instances('atrium_gate_activatedfx');
     expect(fx.listTags()).toEqual(['DECOR', 'NOCLICK']);
     // Its display is already up when SetFX plays: the unloaded pre settles per ResidentSprite's contract into the queued loop.
     expect(fx.sprite.sprite.peek().clip).toMatchObject({ name: 'overload_loop', loop: true });
 
     // OnKeyGiven with a queued destabilize: interaction is off again, so the save drops caninteractwith.
-    const delayed = s.gate({ pickable: { picked: true, caninteractwith: true }, worldsettingstimer: { timers: { destabilizedelay: { timeleft: .5, paused: false } } } }, 14);
+    const delayed = s.gate(
+      {
+        pickable: { picked: true, caninteractwith: true },
+        worldsettingstimer: { timers: { destabilizedelay: { timeleft: 0.5, paused: false } } },
+      },
+      14,
+    );
     expect(delayed.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_fight', loop: true });
     expect(delayed.hasTag('intense')).toBe(false);
     expect(delayed.minimap.json.peek()).toMatchObject({ icon: 'atrium_gate_active.png' });
@@ -95,7 +161,9 @@ it('restores the source save states with their clips, build, children and compon
 
     destabilizing.remove();
     expect(fx.isRemoved).toBe(true);
-  } finally { s.dispose(); }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('rebuilds the declared idle clip and floor after tile sleep', async () => {
@@ -103,21 +171,28 @@ it('rebuilds the declared idle clip and floor after tile sleep', async () => {
   try {
     const gate = s.gate({ pickable: { picked: true } }, 1);
     const [floor] = s.instances('atrium_gate_floor');
-    await prefabDisplay(gate.transform.model)!.artLoaded(); await prefabDisplay(floor.transform.model)!.artLoaded();
-    s.awake.set(false); await turn();
+    await prefabDisplay(gate.transform.model)!.artLoaded();
+    await prefabDisplay(floor.transform.model)!.artLoaded();
+    s.awake.set(false);
+    await turn();
     expect(gate.status.peek()).toBe('asleep');
     expect([gate.sprite.loaded, floor.sprite.loaded]).toEqual([false, false]);
     expect(gate.transform.model.parent).toBeNull();
-    s.awake.set(true); await turn();
+    s.awake.set(true);
+    await turn();
     expect(gate.transform.model.parent).toBe(s.scene);
     expect(gate.sprite.currentAnimation).toBe('idle');
     expect(floor.sprite.currentAnimation).toBe('idle_active');
     await prefabDisplay(floor.transform.model)!.artLoaded();
     // LAYER_BACKGROUND: its own mesh draws after every turf layer (< -0.6), outside the depth-writing instance batch.
     const meshes = floor.transform.model.getObjectsByProperty('isMesh', true) as THREE.Mesh[];
-    expect(meshes.filter(mesh => mesh.visible).map(mesh => mesh.renderOrder)).toEqual([-.56]);
-    for (let node = meshes[0].parent; node && node !== floor.transform.model; node = node.parent) { expect(node.renderOrder).toBe(0); }
-  } finally { s.dispose(); }
+    expect(meshes.filter(mesh => mesh.visible).map(mesh => mesh.renderOrder)).toEqual([-0.56]);
+    for (let node = meshes[0].parent; node && node !== floor.transform.model; node = node.parent) {
+      expect(node.renderOrder).toBe(0);
+    }
+  } finally {
+    s.dispose();
+  }
 });
 
 it('walls off its 2×2 path tiles until it is removed', () => {
@@ -133,31 +208,59 @@ it('walls off its 2×2 path tiles until it is removed', () => {
   s.dispose();
 });
 
-it('c_spawn, c_save and reload keep the gate records, and c_give is refused', async () => {
-  const first = setup(); let zip!: Uint8Array, records!: ReturnType<EntityRegistry['exportRecords']>;
-  try {
-    await first.registry.restoreAll({ atrium_gate: [record(8, { pickable: { picked: true }, charliecutscene: { gatefixed: true } })] });
-    expect((await executeDebugCommand('c_spawn("atrium_gate")', first.inventory, spawned => first.registry.spawn(spawned))).ok).toBe(true);
-    expect((await executeDebugCommand('c_give("atrium_gate")', first.inventory)).ok).toBe(false);
-    records = first.registry.exportRecords();
-    expect(records.atrium_gate).toEqual([
-      expect.objectContaining({ id: 'atrium-8', components: { pickable: { picked: true }, charliecutscene: { gatefixed: true } } }),
-      expect.objectContaining({ transform: { position: [12, 0, -6], rotationY: 0 }, components: { pickable: { picked: true } } }),
-    ]);
-    expect(Object.keys(records)).toEqual(['atrium_gate']);
-    expect((await executeDebugCommand('c_save()', first.inventory, undefined, async () => {
-      zip = await createClusterSaveZip(first.save(), 'forest');
-    })).ok).toBe(true);
-  } finally { first.dispose(); }
-  const files = unzipSync(zip), text = strFromU8(files['Cluster_1/Master.json']);
-  const exported = JSON.parse(text) as { session: { playerFile: string } };
-  const { player } = JSON.parse(strFromU8(files[`Cluster_1/${exported.session.playerFile}`])) as { player: unknown };
-  const saved = deserializeSave(text, SAVE_CATALOG, player), second = setup();
-  try {
-    expect(saved.world.entities).toEqual(records);
-    await second.registry.restoreAll(saved.world.entities);
-    const gates = second.instances(ATRIUM_GATE_ID);
-    expect(gates.map(gate => [gate.entityId, gate.sprite.sprite.peek().clip.name])).toEqual(records.atrium_gate.map(({ id }) => [id, 'idle']));
-    expect(second.registry.exportRecords()).toEqual(records);
-  } finally { second.dispose(); }
-}, CLUSTER_SAVE_ZIP_TIMEOUT);
+it(
+  'c_spawn, c_save and reload keep the gate records, and c_give is refused',
+  async () => {
+    const first = setup();
+    let zip!: Uint8Array, records!: ReturnType<EntityRegistry['exportRecords']>;
+    try {
+      await first.registry.restoreAll({
+        atrium_gate: [record(8, { pickable: { picked: true }, charliecutscene: { gatefixed: true } })],
+      });
+      expect(
+        (await executeDebugCommand('c_spawn("atrium_gate")', first.inventory, spawned => first.registry.spawn(spawned)))
+          .ok,
+      ).toBe(true);
+      expect((await executeDebugCommand('c_give("atrium_gate")', first.inventory)).ok).toBe(false);
+      records = first.registry.exportRecords();
+      expect(records.atrium_gate).toEqual([
+        expect.objectContaining({
+          id: 'atrium-8',
+          components: { pickable: { picked: true }, charliecutscene: { gatefixed: true } },
+        }),
+        expect.objectContaining({
+          transform: { position: [12, 0, -6], rotationY: 0 },
+          components: { pickable: { picked: true } },
+        }),
+      ]);
+      expect(Object.keys(records)).toEqual(['atrium_gate']);
+      expect(
+        (
+          await executeDebugCommand('c_save()', first.inventory, undefined, async () => {
+            zip = await createClusterSaveZip(first.save(), 'forest');
+          })
+        ).ok,
+      ).toBe(true);
+    } finally {
+      first.dispose();
+    }
+    const files = unzipSync(zip),
+      text = strFromU8(files['Cluster_1/Master.json']);
+    const exported = JSON.parse(text) as { session: { playerFile: string } };
+    const { player } = JSON.parse(strFromU8(files[`Cluster_1/${exported.session.playerFile}`])) as { player: unknown };
+    const saved = deserializeSave(text, SAVE_CATALOG, player),
+      second = setup();
+    try {
+      expect(saved.world.entities).toEqual(records);
+      await second.registry.restoreAll(saved.world.entities);
+      const gates = second.instances(ATRIUM_GATE_ID);
+      expect(gates.map(gate => [gate.entityId, gate.sprite.sprite.peek().clip.name])).toEqual(
+        records.atrium_gate.map(({ id }) => [id, 'idle']),
+      );
+      expect(second.registry.exportRecords()).toEqual(records);
+    } finally {
+      second.dispose();
+    }
+  },
+  CLUSTER_SAVE_ZIP_TIMEOUT,
+);

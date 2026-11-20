@@ -15,7 +15,13 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import definitions from '../../prefab/src/definitions.json' with { type: 'json' };
 import type { WorldContext } from '../../prefab/src/worldContext';
 import { configureMoonrockNugget } from '../../prefab/src/moonrocknugget';
-import { GetAnimState, GetChargePhase, MOONBASE_CHARGE_DURATION, MOONBASE_TIMER_LIMITS, type MoonbaseInstance } from '../../prefab/src/moonbase';
+import {
+  GetAnimState,
+  GetChargePhase,
+  MOONBASE_CHARGE_DURATION,
+  MOONBASE_TIMER_LIMITS,
+  type MoonbaseInstance,
+} from '../../prefab/src/moonbase';
 import * as sound from '../../prefab/src/sound';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { activeItemUse } from './inventoryUseFixture';
@@ -39,8 +45,15 @@ const components = (model: THREE.Object3D) => prefabInstance(model)!.components;
 /** The moonbase's state, read the same way at each assertion. */
 function getMoonbaseState(model: THREE.Object3D) {
   const inst = prefabInstance(model) as MoonbaseInstance;
-  return { phase: { peek: () => GetAnimState(inst) }, charge: { peek: () => GetChargePhase(inst) }, staff: { peek: () => inst._staffinst }, workleft: inst.components.workable.workleft,
-    timers: Object.fromEntries(Object.keys(MOONBASE_TIMER_LIMITS).map(name => [name, inst.components.timer.snapshot(name)])) };
+  return {
+    phase: { peek: () => GetAnimState(inst) },
+    charge: { peek: () => GetChargePhase(inst) },
+    staff: { peek: () => inst._staffinst },
+    workleft: inst.components.workable.workleft,
+    timers: Object.fromEntries(
+      Object.keys(MOONBASE_TIMER_LIMITS).map(name => [name, inst.components.timer.snapshot(name)]),
+    ),
+  };
 }
 
 const worldCleanups: (() => void)[] = [];
@@ -52,7 +65,6 @@ function moonWorld(scheduler: GameTimeScheduler, full: boolean) {
   return world;
 }
 
-
 afterEach(() => {
   worldCleanups.splice(0).forEach(stop => stop());
   vi.restoreAllMocks();
@@ -60,20 +72,33 @@ afterEach(() => {
 });
 
 it('spawns moonbase through the debug command using its source art and restores its saved position', async () => {
-  const fetchAsset = vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  const fetchAsset = vi.fn(
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.stubGlobal('fetch', fetchAsset);
   vi.stubGlobal('window', new EventTarget());
   const world = {
-    scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(90),
+    scene: new THREE.Scene(),
+    player: new THREE.Object3D(),
+    ground: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(),
+    cameraFacing: createSignal(8),
+    cameraHeading: createSignal(90),
     // Heading 90 looks along -z: c_spawn puts the building 10 units up the screen from the player.
-    TheCamera: fixedCamera(90), renderer: { domElement: new EventTarget() },
-    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), spawnItem: testItem, restoreItem: testRestoreItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
+    TheCamera: fixedCamera(90),
+    renderer: { domElement: new EventTarget() },
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
+    spawnItem: testItem,
+    restoreItem: testRestoreItem,
+    itemEntities: testItemRegistry(),
+  } as unknown as WorldContext;
   world.player.position.set(30, 0, 40);
   const consume = vi.fn(() => false);
   const placement = managedBuildings(world, { consume });
-  const result = await executeDebugCommand('c_spawn("moonbase")', {} as InventoryStore, async (prefabId) => {
-    if (!isPlaceableBuildingId(prefabId)) { return false; }
+  const result = await executeDebugCommand('c_spawn("moonbase")', {} as InventoryStore, async prefabId => {
+    if (!isPlaceableBuildingId(prefabId)) {
+      return false;
+    }
     await placement.spawn(prefabId);
     return true;
   });
@@ -98,14 +123,23 @@ it('spawns moonbase through the debug command using its source art and restores 
   expect(record.components).toEqual({ building: {}, workable: { workleft: 4, maxwork: 6 } });
   // The save parser uses the same building catalog as the application.
   const save = structuredClone(initialWorld) as unknown as SaveDocument;
-  save.world.entities = { moonbase: [{
-    ...record, transform: { ...record.transform, position: [...record.transform.position] },
-  }] };
+  save.world.entities = {
+    moonbase: [
+      {
+        ...record,
+        transform: { ...record.transform, position: [...record.transform.position] },
+      },
+    ],
+  };
   save.players.local.inventory = { items: {}, equip: {} };
   save.players.local.builder = { bufferedBuilds: [] };
   const parsed = deserializeSave(JSON.stringify(save), {
-    items: {}, skins: {}, recipes: {}, recipeSkins: {},
-    buildings: definitions.animatedBuildings, walls: Object.keys(definitions.walls),
+    items: {},
+    skins: {},
+    recipes: {},
+    recipeSkins: {},
+    buildings: definitions.animatedBuildings,
+    walls: Object.keys(definitions.walls),
   });
   const restored = await placement.spawnFromSave('moonbase', parsed.world.entities.moonbase[0]);
   expect(restored.position.toArray()).toEqual(model.position.toArray());
@@ -115,14 +149,36 @@ it('spawns moonbase through the debug command using its source art and restores 
   placement.dispose();
 });
 
-async function createMoonbase(options: Partial<WorldContext> = {}, saved?: Parameters<PlaceableBuildingPlacement['spawnFromSave']>[1]) {
+async function createMoonbase(
+  options: Partial<WorldContext> = {},
+  saved?: Parameters<PlaceableBuildingPlacement['spawnFromSave']>[1],
+) {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  const world = { scene: new THREE.Scene(), player: new THREE.Group(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), TheCamera: fixedCamera(45), renderer: { domElement: new EventTarget() },
-    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options, spawnItem: testItem, restoreItem: testRestoreItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+  const world = {
+    scene: new THREE.Scene(),
+    player: new THREE.Group(),
+    ground: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(),
+    cameraFacing: createSignal(8),
+    cameraHeading: createSignal(45),
+    TheCamera: fixedCamera(45),
+    renderer: { domElement: new EventTarget() },
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
+    ...options,
+    spawnItem: testItem,
+    restoreItem: testRestoreItem,
+    itemEntities: testItemRegistry(),
+  } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
-  if (saved) { placement.spawnFromSave('moonbase', saved); } else { await placement.spawn('moonbase'); }
+  if (saved) {
+    placement.spawnFromSave('moonbase', saved);
+  } else {
+    await placement.spawn('moonbase');
+  }
   const model = world.scene.children[0] as THREE.Group;
   // One-shot clips such as fix_full play out only once the display has drawn the moonbase.
   await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
@@ -142,21 +198,36 @@ it('restores the converted native moonbase as repaired and preserves its identit
     expect(prefabInstance(model)!.components.repairable).toBeUndefined();
     expect(prefabInstance(model)!.components.trader!.isEnabled).toBe(true);
     expect(placement.exportRecords()).toEqual([{ prefabId: 'moonbase', record }]);
-    save.world.entities = { moonbase: placement.exportRecords().map(({ record }) => ({ ...record, transform: { ...record.transform, position: [...record.transform.position] } })) };
+    save.world.entities = {
+      moonbase: placement.exportRecords().map(({ record }) => ({
+        ...record,
+        transform: { ...record.transform, position: [...record.transform.position] },
+      })),
+    };
     expect(deserializeSave(JSON.stringify(save), SAVE_CATALOG).world.entities.moonbase).toEqual([record]);
-  } finally { placement.dispose(); }
+  } finally {
+    placement.dispose();
+  }
 });
 
 it('repairs with one moonrock and preserves a skinned, partly used staff through insertion, save/load and PICK', async () => {
   const play = vi.spyOn(sound, 'PlaySound');
   const { placement, model } = await createMoonbase();
-  const staff = testItem({ entityId: 'test_moonbase_staff', itemId: 'yellowstaff', count: 1,
-    skinId: 'starstaff_crystal', remainingUses: 7 });
-  const rock = testItem({ itemId: 'moonrocknugget', count: 2 }); configureMoonrockNugget(rock);
+  const staff = testItem({
+    entityId: 'test_moonbase_staff',
+    itemId: 'yellowstaff',
+    count: 1,
+    skinId: 'starstaff_crystal',
+    remainingUses: 7,
+  });
+  const rock = testItem({ itemId: 'moonrocknugget', count: 2 });
+  configureMoonrockNugget(rock);
   const { trader, workable } = components(model);
   const staffSymbol = () => {
     const declared = prefabInstance(model)!.sprite.sprite.peek().appearance.get('anim-state');
-    return declared?.kind === 'anim-state' ? declared.state.peek().overrides.get(smallHash('swap_staffs'))?.sources : undefined;
+    return declared?.kind === 'anim-state'
+      ? declared.state.peek().overrides.get(smallHash('swap_staffs'))?.sources
+      : undefined;
   };
   try {
     expect(workable!.GetWorkAction()).toBeUndefined();
@@ -185,8 +256,10 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(staff.inlimbo).toBe(true);
     await new Promise(resolve => setTimeout(resolve, 0));
     // OverrideItemSkinSymbol("swap_staffs", skin_build, "yellowstaff", item.GUID, "staffs")
-    expect(staffSymbol()).toEqual([{ archive: 'dynamic/starstaff_crystal.zip', symbol: smallHash('yellowstaff') },
-      { archive: 'staffs.zip', symbol: smallHash('yellowstaff') }]);
+    expect(staffSymbol()).toEqual([
+      { archive: 'dynamic/starstaff_crystal.zip', symbol: smallHash('yellowstaff') },
+      { archive: 'staffs.zip', symbol: smallHash('yellowstaff') },
+    ]);
     expect(components(model).pickable!.productEntity).toBe(staff);
     expect(trader!.isEnabled).toBe(false);
     expect(trader!.AcceptGift(staff, take)).toBe(false);
@@ -195,7 +268,9 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     const [{ record }] = placement.exportRecords();
     expect(record.components.moonbase?.staff).toEqual(staff.GetSaveRecord());
     const save = structuredClone(initialWorld) as unknown as SaveDocument;
-    save.world.entities = { moonbase: [{ ...record, transform: { ...record.transform, position: [...record.transform.position] } }] };
+    save.world.entities = {
+      moonbase: [{ ...record, transform: { ...record.transform, position: [...record.transform.position] } }],
+    };
     save.players.local.inventory = { items: {}, equip: {} };
     save.players.local.builder = { bufferedBuilds: [] };
     const parsed = deserializeSave(JSON.stringify(save), SAVE_CATALOG);
@@ -219,28 +294,43 @@ it('repairs with one moonrock and preserves a skinned, partly used staff through
     expect(components(restored).trader!.isEnabled).toBe(true);
     expect(placement.exportRecords()[1].record.components.moonbase).toBeUndefined();
     held.destroy();
-  } finally { placement.dispose(); rock.destroy(); }
+  } finally {
+    placement.dispose();
+    rock.destroy();
+  }
 });
 
 it('charges through three source stages, restores the remaining timers and morphs a skinned staff at full durability', async () => {
   const scheduler = new GameTimeScheduler();
   const { moon, getWatchWorldContent } = moonWorld(scheduler, false);
   const { placement, model } = await createMoonbase({ getWatchWorldContent, scheduler });
-  const rock = testItem({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
+  const rock = testItem({ itemId: 'moonrocknugget', count: 1 });
+  configureMoonrockNugget(rock);
   components(model).repairable!.Repair(undefined, rock);
   scheduler.advance(0);
-  const original = testItem({ entityId: 'charging_staff', itemId: 'yellowstaff', count: 1, skinId: 'starstaff_crystal', remainingUses: 7 });
+  const original = testItem({
+    entityId: 'charging_staff',
+    itemId: 'yellowstaff',
+    count: 1,
+    skinId: 'starstaff_crystal',
+    remainingUses: 7,
+  });
   components(model).trader!.AcceptGift(original, () => true);
-  const state = getMoonbaseState(model), changed = vi.fn();
+  const state = getMoonbaseState(model),
+    changed = vi.fn();
   const stop = state.timers.mooncharge.subscribe(changed);
   moon.set({ phase: 'full', waxing: true });
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(state.charge.peek()).toBe('preparing');
-  scheduler.advance(9.99); expect(state.charge.peek()).toBe('preparing');
-  scheduler.advance(.01); expect(state.charge.peek()).toBe('charging_1');
-  const start = scheduler.now, deadline = state.timers.mooncharge.peek();
+  scheduler.advance(9.99);
+  expect(state.charge.peek()).toBe('preparing');
+  scheduler.advance(0.01);
+  expect(state.charge.peek()).toBe('charging_1');
+  const start = scheduler.now,
+    deadline = state.timers.mooncharge.peek();
   scheduler.advance(5);
-  expect(state.timers.mooncharge.peek()).toBe(deadline); expect(changed).toHaveBeenCalledTimes(1);
+  expect(state.timers.mooncharge.peek()).toBe(deadline);
+  expect(changed).toHaveBeenCalledTimes(1);
   scheduler.advanceTo(start + 18.7);
   expect(state.charge.peek()).toBe('charging_2');
   expect(findActionEntity(model)!.hasTag('intense')).toBe(true);
@@ -249,15 +339,23 @@ it('charges through three source stages, restores the remaining timers and morph
   expect(record.components.moonbase?.timer?.timers.mooncharge.timeleft).toBeCloseTo(MOONBASE_CHARGE_DURATION - 18.7);
   expect(record.components.moonbase?.timer?.timers).not.toHaveProperty('mooncharge2');
   const save = structuredClone(initialWorld) as unknown as SaveDocument;
-  save.world.entities = { moonbase: [{ ...record, transform: { ...record.transform, position: [...record.transform.position] } }] };
+  save.world.entities = {
+    moonbase: [{ ...record, transform: { ...record.transform, position: [...record.transform.position] } }],
+  };
   save.players.local.inventory = { items: {}, equip: {} };
   save.players.local.builder = { bufferedBuilds: [] };
   const parsed = deserializeSave(JSON.stringify(save), SAVE_CATALOG);
-  stop(); placement.dispose(); scheduler.dispose(); rock.destroy();
+  stop();
+  placement.dispose();
+  scheduler.dispose();
+  rock.destroy();
 
   const restoredScheduler = new GameTimeScheduler(1000);
   const restoredWorld = moonWorld(restoredScheduler, true);
-  const restored = await createMoonbase({ getWatchWorldContent: restoredWorld.getWatchWorldContent, scheduler: restoredScheduler }, parsed.world.entities.moonbase[0]);
+  const restored = await createMoonbase(
+    { getWatchWorldContent: restoredWorld.getWatchWorldContent, scheduler: restoredScheduler },
+    parsed.world.entities.moonbase[0],
+  );
   const next = getMoonbaseState(restored.model);
   try {
     restoredScheduler.advance(0);
@@ -266,13 +364,23 @@ it('charges through three source stages, restores the remaining timers and morph
     expect(next.charge.peek()).toBe('charging_2');
     expect(findActionEntity(restored.model)!.hasTag('intense')).toBe(true);
     expect(next.staff.peek()?.GetSaveRecord()).toEqual(record.components.moonbase?.staff);
-    expect(restored.placement.renderEntities.filter(entry => lookupPrefabInstance(entry.object)?.prefab?.startsWith('positron')).map(entry => 'sortLayer' in entry ? entry.sortLayer : undefined).sort()).toEqual([0, 2, 3]);
+    expect(
+      restored.placement.renderEntities
+        .filter(entry => lookupPrefabInstance(entry.object)?.prefab?.startsWith('positron'))
+        .map(entry => ('sortLayer' in entry ? entry.sortLayer : undefined))
+        .sort(),
+    ).toEqual([0, 2, 3]);
     restoredScheduler.advance(18.7);
     expect(next.charge.peek()).toBe('charging_3');
     restoredScheduler.advance(MOONBASE_CHARGE_DURATION - 37.4);
     expect(next.charge.peek()).toBe('complete');
     const opal = next.staff.peek()!;
-    expect(opal.snapshot()).toMatchObject({ itemId: 'opalstaff', skinId: 'moonstaff_crystal', remainingUses: 50, count: 1 });
+    expect(opal.snapshot()).toMatchObject({
+      itemId: 'opalstaff',
+      skinId: 'moonstaff_crystal',
+      remainingUses: 50,
+      count: 1,
+    });
     expect(opal.id).not.toBe(original.id);
     expect(next.timers.mooncharge.peek().status).toBe('expired');
     expect(findActionEntity(restored.model)!.hasTag('intense')).toBe(false);
@@ -280,7 +388,7 @@ it('charges through three source stages, restores the remaining timers and morph
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(restored.placement.renderEntities.some(entry => entry.object.name === 'staffcoldlightfx')).toBe(true);
     // stafflight.lua pulse_light: the cold star's light pulses on its .1 s task.
-    restoredScheduler.advance(.1);
+    restoredScheduler.advance(0.1);
     const star = restored.placement.renderEntities.find(entry => entry.object.name === 'staffcoldlightfx')!;
     expect(lookupPrefabInstance(star.object)!.light.peek()).toMatchObject({ intensity: expect.any(Number) });
     const giveEntity = vi.fn(() => true);
@@ -289,98 +397,152 @@ it('charges through three source stages, restores the remaining timers and morph
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(restored.placement.renderEntities.some(entry => entry.object.name === 'staffcoldlightfx')).toBe(false);
     opal.destroy();
-  } finally { restored.placement.dispose(); restoredScheduler.dispose(); }
+  } finally {
+    restored.placement.dispose();
+    restoredScheduler.dispose();
+  }
 });
 
 it('cancels charge on early retrieval or moonset, then starts fresh and releases pending tasks on removal', async () => {
   const scheduler = new GameTimeScheduler();
   const { cycle, getWatchWorldContent } = moonWorld(scheduler, true);
   const { placement, model } = await createMoonbase({ getWatchWorldContent, scheduler });
-  const rock = testItem({ itemId: 'moonrocknugget', count: 1 }); configureMoonrockNugget(rock);
+  const rock = testItem({ itemId: 'moonrocknugget', count: 1 });
+  configureMoonrockNugget(rock);
   components(model).repairable!.Repair(undefined, rock);
   scheduler.advance(0);
   const staff = testItem({ itemId: 'yellowstaff', count: 1 });
   const { trader, pickable } = components(model);
   const state = getMoonbaseState(model);
   trader!.AcceptGift(staff, () => true);
-  scheduler.advance(1); expect(state.charge.peek()).toBe('charging_1');
+  scheduler.advance(1);
+  expect(state.charge.peek()).toBe('charging_1');
   scheduler.advance(5);
   expect(pickable!.pick({ giveItem: () => true, giveEntity: () => true })).toBe(true);
   expect(state.timers.mooncharge.peek().status).toBe('stopped');
   expect(state.charge.peek()).toBe('idle');
-  trader!.AcceptGift(staff, () => true); scheduler.advance(1);
+  trader!.AcceptGift(staff, () => true);
+  scheduler.advance(1);
   expect(components(model).timer!.GetTimeLeft('mooncharge')).toBeCloseTo(MOONBASE_CHARGE_DURATION);
-  scheduler.advance(19); expect(state.charge.peek()).toBe('charging_2');
+  scheduler.advance(19);
+  expect(state.charge.peek()).toBe('charging_2');
   cycle.set('day');
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(state.charge.peek()).toBe('idle');
   expect(findActionEntity(model)!.hasTag('intense')).toBe(false);
   expect(state.staff.peek()).toBe(staff);
   cycle.set('night');
-  await new Promise(resolve => setTimeout(resolve, 0)); scheduler.advance(10);
+  await new Promise(resolve => setTimeout(resolve, 0));
+  scheduler.advance(10);
   expect(state.charge.peek()).toBe('charging_1');
   placement.dispose();
   expect(state.timers.mooncharge.peek().status).toBe('stopped');
-  scheduler.advance(200); cycle.set('day');
+  scheduler.advance(200);
+  cycle.set('day');
   await new Promise(resolve => setTimeout(resolve, 0));
-  expect(staff.isRemoved).toBe(true); expect(placement.renderEntities).toEqual([]);
-  rock.destroy(); scheduler.dispose();
+  expect(staff.isRemoved).toBe(true);
+  expect(placement.renderEntities).toEqual([]);
+  rock.destroy();
+  scheduler.dispose();
 });
 
 it('persists paused named timers without ticking their snapshots and keeps expiry distinct from cancellation', () => {
-  const scheduler = new GameTimeScheduler(), done = vi.fn(), inst = { PushEvent: (name: string, data: unknown) => { if (name === 'timerdone') { done((data as { name: string }).name); } } };
+  const scheduler = new GameTimeScheduler(),
+    done = vi.fn(),
+    inst = {
+      PushEvent: (name: string, data: unknown) => {
+        if (name === 'timerdone') {
+          done((data as { name: string }).name);
+        }
+      },
+    };
   const timer = new Timer(inst, scheduler, ['charge']);
-  timer.StartTimer('charge', 10); scheduler.advance(3); timer.PauseTimer('charge');
+  timer.StartTimer('charge', 10);
+  scheduler.advance(3);
+  timer.PauseTimer('charge');
   expect(timer.snapshot('charge').peek()).toEqual({ status: 'paused', remainingSeconds: 7 });
-  scheduler.advance(100); expect(done).not.toHaveBeenCalled();
-  const restored = new Timer(inst, scheduler, ['charge']); restored.OnLoad(timer.OnSave());
+  scheduler.advance(100);
+  expect(done).not.toHaveBeenCalled();
+  const restored = new Timer(inst, scheduler, ['charge']);
+  restored.OnLoad(timer.OnSave());
   expect(restored.GetTimeLeft('charge')).toBe(7);
-  restored.ResumeTimer('charge'); scheduler.advance(7);
+  restored.ResumeTimer('charge');
+  scheduler.advance(7);
   expect(done).toHaveBeenCalledExactlyOnceWith('charge');
-  restored.StopTimer('charge'); expect(restored.snapshot('charge').peek().status).toBe('expired');
-  timer.StopTimer('charge'); expect(timer.snapshot('charge').peek().status).toBe('stopped');
-  timer.dispose(); restored.dispose(); scheduler.dispose();
+  restored.StopTimer('charge');
+  expect(restored.snapshot('charge').peek().status).toBe('expired');
+  timer.StopTimer('charge');
+  expect(timer.snapshot('charge').peek().status).toBe('stopped');
+  timer.dispose();
+  restored.dispose();
+  scheduler.dispose();
 });
 
 it('walks to the moonbase through the player controller, cancels before consumption, and commits REPAIR and GIVE at their source times', async () => {
   const { placement, world, model } = await createMoonbase();
-  const graph = wilsonPlayer(() => .8).sg;
+  const graph = wilsonPlayer(() => 0.8).sg;
   const inventory = createInventoryStore([]);
-  inventory.add('moonrocknugget', 1); inventory.add('yellowstaff', 1);
+  inventory.add('moonrocknugget', 1);
+  inventory.add('yellowstaff', 1);
   let manual = false;
   const use = activeItemUse(world, graph, inventory, () => manual);
-  const target = findActionEntity(model)!, workable = (target.components ?? prefabInstance(model)!.components).workable!;
+  const target = findActionEntity(model)!,
+    workable = (target.components ?? prefabInstance(model)!.components).workable!;
   try {
     expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
     // componentactions.lua USEITEM.repairer is a right-click action.
     expect(use.actions(target, true)).toEqual(['REPAIR']);
     expect(use.actions(target)).not.toContain('REPAIR');
-    expect(use.useOn(target)).toBe(true); expect(use.walking).toBe(true);
-    use.arrive(); expect(graph.stateName).toBe('dolongaction');
-    graph.update(.5); manual = true; use.controller.update(); graph.update(1);
-    expect(inventory.GetActiveItem()?.prefab).toBe('moonrocknugget'); expect(workable.GetWorkLeft()).toBe(4);
-    manual = false; expect(use.useOn(target)).toBe(true); use.arrive();
-    graph.update(.99); expect(inventory.GetActiveItem()).not.toBeNull();
-    graph.update(.01); expect(inventory.GetActiveItem()).toBeNull(); expect(workable.GetWorkLeft()).toBe(6);
-    graph.finish(); use.controller.update();
+    expect(use.useOn(target)).toBe(true);
+    expect(use.walking).toBe(true);
+    use.arrive();
+    expect(graph.stateName).toBe('dolongaction');
+    graph.update(0.5);
+    manual = true;
+    use.controller.update();
+    graph.update(1);
+    expect(inventory.GetActiveItem()?.prefab).toBe('moonrocknugget');
+    expect(workable.GetWorkLeft()).toBe(4);
+    manual = false;
+    expect(use.useOn(target)).toBe(true);
+    use.arrive();
+    graph.update(0.99);
+    expect(inventory.GetActiveItem()).not.toBeNull();
+    graph.update(0.01);
+    expect(inventory.GetActiveItem()).toBeNull();
+    expect(workable.GetWorkLeft()).toBe(6);
+    graph.finish();
+    use.controller.update();
     // The trader's tag effect follows its Enable on the repaired moonbase.
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(inventory.transfer(inventorySlotAddress(1), cursorSlotAddress(), 1)).toBe(true);
     const staff = inventory.GetActiveItem()!;
-    expect(use.useOn(target)).toBe(true); use.arrive();
-    expect(graph.stateName).toBe('give'); graph.update(12 / 30);
+    expect(use.useOn(target)).toBe(true);
+    use.arrive();
+    expect(graph.stateName).toBe('give');
+    graph.update(12 / 30);
     expect(inventory.GetActiveItem()).toBe(staff);
-    graph.update(1 / 30); expect(inventory.GetActiveItem()).toBeNull();
+    graph.update(1 / 30);
+    expect(inventory.GetActiveItem()).toBeNull();
     expect(getMoonbaseState(model).staff.peek()).toBe(staff);
-  } finally { use.dispose(); graph.dispose(); placement.dispose(); inventory.dispose(); }
+  } finally {
+    use.dispose();
+    graph.dispose();
+    placement.dispose();
+    inventory.dispose();
+  }
 });
 
 it('ends the beam, pulse and cold star clips on game time while their art never loads', () => {
-  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => new Promise<Response>(() => {})),
+  );
   const scheduler = new GameTimeScheduler();
   const owner = new PrefabInstance('moonbase', new SpriteState({ name: 'idle_full', billboard: true }));
   const effects = new MoonbaseEffects(owner, scheduler, new SpriteResources('/dst/data/anim'));
-  const attached = (prefab: string) => [...owner.sprite.fx.peek().entries()].filter(([key]) => key.startsWith(`${prefab}:`)).map(([, fx]) => fx.sprite);
+  const attached = (prefab: string) =>
+    [...owner.sprite.fx.peek().entries()].filter(([key]) => key.startsWith(`${prefab}:`)).map(([, fx]) => fx.sprite);
   const clip = (prefab: string) => attached(prefab)[0]?.sprite.peek().clip.name;
   const advance = (frames: number) => scheduler.advance(frames * FRAMES);
   try {
@@ -411,5 +573,8 @@ it('ends the beam, pulse and cold star clips on game time while their art never 
     expect(attached('positronpulse')).toHaveLength(1);
     advance(1);
     expect(attached('positronpulse')).toHaveLength(0);
-  } finally { effects.dispose(); scheduler.dispose(); }
+  } finally {
+    effects.dispose();
+    scheduler.dispose();
+  }
 });

@@ -9,8 +9,11 @@ async function setup(page: Page) {
     Element.prototype.animate = function (...args: Parameters<Element['animate']>) {
       const animation = original.apply(this, args);
       // Keep flight and landing frames deterministic; other game animations run normally.
-      if (this.classList.contains('inventory-receive-flight')
-        || this.classList.contains('inventory-slot__content') || this.classList.contains('inventory-slot__count')) {
+      if (
+        this.classList.contains('inventory-receive-flight') ||
+        this.classList.contains('inventory-slot__content') ||
+        this.classList.contains('inventory-slot__count')
+      ) {
         animation.pause();
         animation.currentTime = 0;
       }
@@ -18,14 +21,16 @@ async function setup(page: Page) {
     };
   });
   await page.goto('/tests/dst-lighting.html');
-  await page.evaluate(async (url) => {
+  await page.evaluate(async url => {
     (window as any).receiveFixture = await (await import(url)).createReceiveFixture();
   }, moduleUrl('./inventory-receive-fixture.ts'));
 }
 
-test('captured fireflies fly from their projected foot point into the actual slot with Lua easing and a landing pulse', async ({ page }) => {
+test('captured fireflies fly from their projected foot point into the actual slot with Lua easing and a landing pulse', async ({
+  page,
+}) => {
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('pageerror', error => errors.push(error.message));
   await setup(page);
   const result = await page.evaluate(() => (window as any).receiveFixture.capture());
   expect(result).toMatchObject({ ok: true, remaining: 0 });
@@ -36,29 +41,36 @@ test('captured fireflies fly from their projected foot point into the actual slo
   const slot = page.locator('dst-inventory-bar .inventory-slot[data-item-id="fireflies"]');
   await expect(slot.locator('.inventory-slot__content')).toBeHidden();
   const start = (await flight.boundingBox())!;
-  const destination = await slot.locator('.inventory-slot__content').evaluate((element) => {
+  const destination = await slot.locator('.inventory-slot__content').evaluate(element => {
     const rect = element.getBoundingClientRect();
     return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
   });
   expect(start.x + start.width / 2).toBeCloseTo(result.source.x, 1);
   expect(start.y + start.height / 2).toBeCloseTo(result.source.y, 1);
-  expect(await flight.evaluate((element) => element.getAnimations()[0].effect!.getTiming().duration)).toBe(300);
-  await flight.evaluate((element) => { element.getAnimations()[0].currentTime = 150; });
+  expect(await flight.evaluate(element => element.getAnimations()[0].effect!.getTiming().duration)).toBe(300);
+  await flight.evaluate(element => {
+    element.getAnimations()[0].currentTime = 150;
+  });
   const middle = (await flight.boundingBox())!;
   expect(middle.x + middle.width / 2).toBeCloseTo(result.source.x + (destination.x - result.source.x) * 0.875, 1);
   expect(middle.y + middle.height / 2).toBeCloseTo(result.source.y + (destination.y - result.source.y) * 0.875, 1);
-  await flight.evaluate((element) => element.getAnimations()[0].finish());
+  await flight.evaluate(element => element.getAnimations()[0].finish());
   await expect(flight).toHaveCount(0);
   await expect(slot.locator('.inventory-slot__content')).toBeVisible();
-  const landing = await slot.locator('.inventory-slot__content').evaluate((element) => {
+  const landing = await slot.locator('.inventory-slot__content').evaluate(element => {
     const animation = element.getAnimations()[0];
-    return { scale: new DOMMatrix(getComputedStyle(element).transform).a, duration: animation.effect!.getTiming().duration };
+    return {
+      scale: new DOMMatrix(getComputedStyle(element).transform).a,
+      duration: animation.effect!.getTiming().duration,
+    };
   });
   expect(landing).toEqual({ scale: 2, duration: 250 });
   expect(errors).toEqual([]);
 });
 
-test('pickup receipts reach both inventory and backpack slots and closing the backpack preserves received stacks', async ({ page }) => {
+test('pickup receipts reach both inventory and backpack slots and closing the backpack preserves received stacks', async ({
+  page,
+}) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await setup(page);
@@ -72,8 +84,9 @@ test('pickup receipts reach both inventory and backpack slots and closing the ba
   const mainSlot = page.locator('dst-inventory-bar .inventory-bar__items .inventory-slot').first();
   await expect(mainSlot.locator('.inventory-slot__count')).toHaveText(String(maxStack - 1));
   await expect(packSlot.locator('.inventory-slot__content')).toBeHidden();
-  expect(await flights.evaluateAll(elements => elements.map(element => (element as HTMLElement).dataset.containerId).sort()))
-    .toEqual([containerId, 'player:inventory'].sort());
+  expect(
+    await flights.evaluateAll(elements => elements.map(element => (element as HTMLElement).dataset.containerId).sort()),
+  ).toEqual([containerId, 'player:inventory'].sort());
   await expect(flights.first()).toBeVisible();
   await expect(flights.last()).toBeVisible();
   await flights.evaluateAll(elements => elements.forEach(element => element.getAnimations()[0].finish()));
@@ -90,11 +103,18 @@ test('pickup receipts reach both inventory and backpack slots and closing the ba
   // A receipt without a visible destination must still leave the inventory transaction intact.
   expect(await page.evaluate(() => (window as any).receiveFixture.give('rocks', 1))).toBe(true);
   await expect(flights).toHaveCount(0);
-  expect(await page.evaluate(id => (window as any).receiveFixture.inventory.get({ containerId: id, slotKey: '0' }).count, containerId)).toBe(4);
+  expect(
+    await page.evaluate(
+      id => (window as any).receiveFixture.inventory.get({ containerId: id, slotKey: '0' }).count,
+      containerId,
+    ),
+  ).toBe(4);
   expect(errors).toEqual([]);
 });
 
-test('failed acquisition, removing an item, resizing and disconnecting the UI leave no stale flights', async ({ page }) => {
+test('failed acquisition, removing an item, resizing and disconnecting the UI leave no stale flights', async ({
+  page,
+}) => {
   await setup(page);
   await page.evaluate(() => (window as any).receiveFixture.add('cutgrass', 1));
   const flight = page.locator('.inventory-receive-flight');
@@ -118,53 +138,71 @@ test('failed acquisition, removing an item, resizing and disconnecting the UI le
 });
 
 for (const viewport of [{ width: 375, height: 667 }]) {
-test(`the production crafting event keeps the flying icon in its slot size at ${viewport.width}px`, async ({ page }) => {
-  test.setTimeout(120_000);
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.setViewportSize(viewport);
-  await setup(page);
-  await page.evaluate(() => (window as any).receiveFixture.dispose());
-  const result = await page.evaluate(async (urls) => {
-    const { inventory } = await import(urls.main);
-    const { player } = await import(urls.player);
-    const { screenProjection } = await import(urls.view);
-    const changes = inventory.addresses().filter((slot: any) => slot.containerId === 'player:inventory')
-      .flatMap((slot: any) => {
-        const stack = inventory.get(slot);
-        return stack ? [{ slot, itemId: stack.itemId, skinId: stack.skinId, delta: -stack.count }] : [];
-      });
-    inventory.applySlotChanges(changes);
-    if (!inventory.add('cutgrass', 3)) { throw new Error('No room for ingredients'); }
-    const source = screenProjection.GetScreenPos(player.position);
-    document.querySelector('dst-crafting-ui')!.dispatchEvent(new CustomEvent('game:craft-request', {
-      detail: { recipeId: 'rope' }, bubbles: true, composed: true,
-    }));
-    return { source, count: inventory.count('rope') };
-  }, { main: moduleUrl('../../../src/main.ts'), player: moduleUrl('../../../src/player.ts'),
-    view: moduleUrl('../../../src/view.ts') });
-  expect(result.count).toBe(1);
-  const flight = page.locator('.inventory-receive-flight');
-  await expect(flight).toBeVisible();
-  await expect(flight).toHaveAttribute('data-item-id', 'rope');
-  const rect = (await flight.boundingBox())!;
-  const icon = (await flight.locator('.inventory-slot__icon').boundingBox())!;
-  const slot = page.locator('dst-inventory-bar .inventory-slot[data-item-id="rope"]');
-  const slotRect = (await slot.boundingBox())!;
-  expect(icon.width).toBeCloseTo(rect.width, 1);
-  expect(icon.height).toBeCloseTo(rect.height, 1);
-  expect(icon.width).toBeLessThan(slotRect.width);
-  expect(icon.height).toBeLessThan(slotRect.height);
-  expect(icon.x).toBeGreaterThanOrEqual(0);
-  expect(icon.y).toBeGreaterThanOrEqual(0);
-  expect(icon.x + icon.width).toBeLessThanOrEqual(viewport.width);
-  expect(icon.y + icon.height).toBeLessThanOrEqual(viewport.height);
-  expect(rect.x + rect.width / 2).toBeCloseTo(result.source.x, 1);
-  expect(rect.y + rect.height / 2).toBeCloseTo(result.source.y, 1);
-  expect(icon.x + icon.width / 2).toBeCloseTo(result.source.x, 1);
-  expect(icon.y + icon.height / 2).toBeCloseTo(result.source.y, 1);
-  await flight.evaluate((element) => element.getAnimations()[0].finish());
-  await expect(page.locator('dst-inventory-bar .inventory-slot[data-item-id="rope"] .inventory-slot__content')).toBeVisible();
-  expect(errors).toEqual([]);
-});
+  test(`the production crafting event keeps the flying icon in its slot size at ${viewport.width}px`, async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const errors: string[] = [];
+    page.on('pageerror', error => errors.push(error.message));
+    await page.setViewportSize(viewport);
+    await setup(page);
+    await page.evaluate(() => (window as any).receiveFixture.dispose());
+    const result = await page.evaluate(
+      async urls => {
+        const { inventory } = await import(urls.main);
+        const { player } = await import(urls.player);
+        const { screenProjection } = await import(urls.view);
+        const changes = inventory
+          .addresses()
+          .filter((slot: any) => slot.containerId === 'player:inventory')
+          .flatMap((slot: any) => {
+            const stack = inventory.get(slot);
+            return stack ? [{ slot, itemId: stack.itemId, skinId: stack.skinId, delta: -stack.count }] : [];
+          });
+        inventory.applySlotChanges(changes);
+        if (!inventory.add('cutgrass', 3)) {
+          throw new Error('No room for ingredients');
+        }
+        const source = screenProjection.GetScreenPos(player.position);
+        document.querySelector('dst-crafting-ui')!.dispatchEvent(
+          new CustomEvent('game:craft-request', {
+            detail: { recipeId: 'rope' },
+            bubbles: true,
+            composed: true,
+          }),
+        );
+        return { source, count: inventory.count('rope') };
+      },
+      {
+        main: moduleUrl('../../../src/main.ts'),
+        player: moduleUrl('../../../src/player.ts'),
+        view: moduleUrl('../../../src/view.ts'),
+      },
+    );
+    expect(result.count).toBe(1);
+    const flight = page.locator('.inventory-receive-flight');
+    await expect(flight).toBeVisible();
+    await expect(flight).toHaveAttribute('data-item-id', 'rope');
+    const rect = (await flight.boundingBox())!;
+    const icon = (await flight.locator('.inventory-slot__icon').boundingBox())!;
+    const slot = page.locator('dst-inventory-bar .inventory-slot[data-item-id="rope"]');
+    const slotRect = (await slot.boundingBox())!;
+    expect(icon.width).toBeCloseTo(rect.width, 1);
+    expect(icon.height).toBeCloseTo(rect.height, 1);
+    expect(icon.width).toBeLessThan(slotRect.width);
+    expect(icon.height).toBeLessThan(slotRect.height);
+    expect(icon.x).toBeGreaterThanOrEqual(0);
+    expect(icon.y).toBeGreaterThanOrEqual(0);
+    expect(icon.x + icon.width).toBeLessThanOrEqual(viewport.width);
+    expect(icon.y + icon.height).toBeLessThanOrEqual(viewport.height);
+    expect(rect.x + rect.width / 2).toBeCloseTo(result.source.x, 1);
+    expect(rect.y + rect.height / 2).toBeCloseTo(result.source.y, 1);
+    expect(icon.x + icon.width / 2).toBeCloseTo(result.source.x, 1);
+    expect(icon.y + icon.height / 2).toBeCloseTo(result.source.y, 1);
+    await flight.evaluate(element => element.getAnimations()[0].finish());
+    await expect(
+      page.locator('dst-inventory-bar .inventory-slot[data-item-id="rope"] .inventory-slot__content'),
+    ).toBeVisible();
+    expect(errors).toEqual([]);
+  });
 }

@@ -2,18 +2,25 @@ import type { LuaFn } from './luaFn';
 import type { Health, HealthAfflicter } from './health';
 import type { Weapon } from './weapon';
 
-export interface CombatInst<HealthComponent extends Pick<Health, 'IsDead' | 'DoDelta'> = Health> extends HealthAfflicter {
+export interface CombatInst<HealthComponent extends Pick<Health, 'IsDead' | 'DoDelta'> = Health>
+  extends HealthAfflicter {
   readonly isRemoved?: boolean;
   /** Ground contact. */
   getPosition(): import('three').Vector3;
   getPhysicsRadius(): number;
   hasTag(tag: string): boolean;
   PushEvent?(name: string, data: unknown): void;
-  readonly components: { combat?: Combat; health?: HealthComponent; sanity?: { DoDelta(delta: number): void };
+  readonly components: {
+    combat?: Combat;
+    health?: HealthComponent;
+    sanity?: { DoDelta(delta: number): void };
     /** inventory:ApplyDamage: equipped armor absorbs its share before health; creature inventories wear none. */
-    inventory?: { ApplyDamage?(damage: number, attacker?: CombatActor, weapon?: Weapon): number;
+    inventory?: {
+      ApplyDamage?(damage: number, attacker?: CombatActor, weapon?: Weapon): number;
       /** inventory:GiveItem, as the work an attacker does gives it what it works loose. */
-      GiveItem?(entity: unknown, source?: { x: number; y: number; z: number }): boolean } };
+      GiveItem?(entity: unknown, source?: { x: number; y: number; z: number }): boolean;
+    };
+  };
 }
 
 /** Combat needs only these operations from the actor's health component. */
@@ -49,26 +56,45 @@ export class Combat {
   }
 
   target?: CombatInst;
-  DropTarget(): void { this.target = undefined; }
+  DropTarget(): void {
+    this.target = undefined;
+  }
   /** combat.lua SuggestTarget: take the target when there is none; cansuggesttargetfn and SetTarget's events are not ported. */
   SuggestTarget(target: CombatInst | undefined): boolean {
-    if (this.target !== undefined || target === undefined) { return false; }
+    if (this.target !== undefined || target === undefined) {
+      return false;
+    }
     this.target = target;
     return true;
   }
 
-  SetDefaultDamage(damage: number): void { this.defaultdamage = damage; }
-  SetAttackPeriod(period: number): void { this.min_attack_period = period; }
-  SetRange(attack: number, hit = attack): void { this.attackrange = attack; this.hitrange = hit; }
-  SetKeepTargetFunction(fn: CombatKeepTargetFn | undefined): void { this.keeptargetfn = fn; }
-  GetWeapon(): Weapon | undefined { return this.getWeapon(); }
+  SetDefaultDamage(damage: number): void {
+    this.defaultdamage = damage;
+  }
+  SetAttackPeriod(period: number): void {
+    this.min_attack_period = period;
+  }
+  SetRange(attack: number, hit = attack): void {
+    this.attackrange = attack;
+    this.hitrange = hit;
+  }
+  SetKeepTargetFunction(fn: CombatKeepTargetFn | undefined): void {
+    this.keeptargetfn = fn;
+  }
+  GetWeapon(): Weapon | undefined {
+    return this.getWeapon();
+  }
 
   InCooldown(): boolean {
     return this.laststartattacktime !== undefined && this.laststartattacktime + this.min_attack_period > this.now();
   }
-  StartAttack(): void { this.laststartattacktime = this.now(); }
+  StartAttack(): void {
+    this.laststartattacktime = this.now();
+  }
   /** Combat.CancelAttack = ResetCooldown. */
-  CancelAttack(): void { this.laststartattacktime = undefined; }
+  CancelAttack(): void {
+    this.laststartattacktime = undefined;
+  }
 
   GetAttackRange(): number {
     const weapon = this.getWeapon();
@@ -78,39 +104,74 @@ export class Combat {
     const weapon = this.getWeapon();
     return weapon?.hitrange !== undefined ? this.hitrange + weapon.hitrange : this.hitrange;
   }
-  CalcAttackRangeSq(target: CombatInst): number { return (target.getPhysicsRadius() + this.GetAttackRange()) ** 2; }
-  CalcHitRangeSq(target: CombatInst): number { return (target.getPhysicsRadius() + this.GetHitRange()) ** 2; }
+  CalcAttackRangeSq(target: CombatInst): number {
+    return (target.getPhysicsRadius() + this.GetAttackRange()) ** 2;
+  }
+  CalcHitRangeSq(target: CombatInst): number {
+    return (target.getPhysicsRadius() + this.GetHitRange()) ** 2;
+  }
 
   /** replica combat:CanTarget for the ported cases: live, attackable, not in limbo. */
   CanTarget(target: CombatInst): boolean {
-    return target !== this.inst && !target.isRemoved && !target.hasTag('INLIMBO') && !target.hasTag('notarget') && !target.hasTag('noattack')
-      && target.components.combat !== undefined && target.components.health !== undefined && !target.components.health.IsDead();
+    return (
+      target !== this.inst &&
+      !target.isRemoved &&
+      !target.hasTag('INLIMBO') &&
+      !target.hasTag('notarget') &&
+      !target.hasTag('noattack') &&
+      target.components.combat !== undefined &&
+      target.components.health !== undefined &&
+      !target.components.health.IsDead()
+    );
   }
 
-  CanBeAttacked(): boolean { return !this.inst.isRemoved && !(this.inst.components.health?.IsDead() ?? false); }
+  CanBeAttacked(): boolean {
+    return !this.inst.isRemoved && !(this.inst.components.health?.IsDead() ?? false);
+  }
 
   /** combat.lua CanExtinguishTarget: a smouldering or burning burnable, and an extinguisher weapon or attacker. */
   CanExtinguishTarget(target: CombatInst, weapon = this.getWeapon()): boolean {
     const burnable = (target.components as { burnable?: { IsSmoldering(): boolean; IsBurning(): boolean } }).burnable;
-    return !!burnable && (burnable.IsSmoldering() || burnable.IsBurning())
-      && (!!weapon?.hasTag('extinguisher') || this.inst.hasTag('extinguisher'));
+    return (
+      !!burnable &&
+      (burnable.IsSmoldering() || burnable.IsBurning()) &&
+      (!!weapon?.hasTag('extinguisher') || this.inst.hasTag('extinguisher'))
+    );
   }
 
   /** combat.lua CanLightTarget: a rangedlighter weapon and a burnable that can light and is not already alight. */
   CanLightTarget(target: CombatInst, weapon = this.getWeapon()): boolean {
     const burnable = (target.components as { burnable?: { canlight: boolean; IsBurning(): boolean } }).burnable;
-    return !!weapon?.hasTag('rangedlighter') && !!burnable && burnable.canlight && !burnable.IsBurning() && !target.hasTag('burnt');
+    return (
+      !!weapon?.hasTag('rangedlighter') &&
+      !!burnable &&
+      burnable.canlight &&
+      !burnable.IsBurning() &&
+      !target.hasTag('burnt')
+    );
   }
 
   CanHitTarget(target: CombatInst, weapon = this.getWeapon()): boolean {
-    if (this.inst.isRemoved || target.isRemoved || target.hasTag('INLIMBO')) { return false; }
-    if (!this.CanLightTarget(target, weapon) && !this.CanExtinguishTarget(target, weapon) && !target.components.combat?.CanBeAttacked()) { return false; }
-    if (this.ignorehitrange) { return true; }
+    if (this.inst.isRemoved || target.isRemoved || target.hasTag('INLIMBO')) {
+      return false;
+    }
+    if (
+      !this.CanLightTarget(target, weapon) &&
+      !this.CanExtinguishTarget(target, weapon) &&
+      !target.components.combat?.CanBeAttacked()
+    ) {
+      return false;
+    }
+    if (this.ignorehitrange) {
+      return true;
+    }
     return distanceSq(this.inst.getPosition(), target.getPosition()) <= this.CalcHitRangeSq(target);
   }
 
   CalcDamage(target: CombatInst, weapon = this.getWeapon()): number {
-    if (target.hasTag('alwaysblock')) { return 0; }
+    if (target.hasTag('alwaysblock')) {
+      return 0;
+    }
     // No player damage multiplier applies to weapons or to non-player targets.
     return (weapon ? weapon.GetDamage() : this.defaultdamage) * this.damagemultiplier;
   }
@@ -136,16 +197,22 @@ export class Combat {
   /** combat.lua GetAttacked: armor first, then health; fully absorbed damage is "blocked" instead of "attacked". */
   GetAttacked(attacker: CombatActor, damage: number, weapon?: Weapon): boolean {
     const health = this.inst.components.health;
-    if (!health || health.IsDead()) { return true; }
+    if (!health || health.IsDead()) {
+      return true;
+    }
     const original_damage = damage;
     const inventory = this.inst.components.inventory;
-    if (inventory?.ApplyDamage) { damage = inventory.ApplyDamage(damage, attacker, weapon); }
+    if (inventory?.ApplyDamage) {
+      damage = inventory.ApplyDamage(damage, attacker, weapon);
+    }
     if (damage <= 0 && original_damage > 0) {
       this.inst.PushEvent?.('blocked', { attacker, damage, original_damage });
       return false;
     }
     // Only positive damage reaches health; it fires ondelta before onhitfn.
-    if (damage > 0) { health.DoDelta(-damage, false, attacker.hasTag('player') ? 'player' : undefined, false, attacker); }
+    if (damage > 0) {
+      health.DoDelta(-damage, false, attacker.hasTag('player') ? 'player' : undefined, false, attacker);
+    }
     this.inst.PushEvent?.('attacked', { attacker, damage, original_damage, weapon });
     this.onhitfn?.(this.inst, attacker, damage);
     return true;

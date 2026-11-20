@@ -11,7 +11,7 @@ import type { WorldFxPrefab } from './world_fx';
 import { COLLISION } from '../../componets/src/physicsState';
 
 export const NIGHTMAREROCK_IDS = ['sanityrock', 'insanityrock'] as const;
-export type NightmareRockId = typeof NIGHTMAREROCK_IDS[number];
+export type NightmareRockId = (typeof NIGHTMAREROCK_IDS)[number];
 
 /** What nightmarerock.lua reads from AllPlayers. */
 export interface NightmareRockPlayer {
@@ -34,7 +34,7 @@ const ANIMATION_LENGTHS = animationLengths('blocker_sanity.zip');
 const COLLISION_SIZE = 1;
 const NEAR_DIST_SQ = (10 * WORLD_SCALE) ** 2;
 const FAR_DIST_SQ = (11 * WORLD_SCALE) ** 2;
-const UPDATE_INTERVAL = .2;
+const UPDATE_INTERVAL = 0.2;
 const FRAMES = 1 / 30;
 /** Used to stagger periodic updates across entities: a file-level local of nightmarerock.lua, advanced by each AddRefreshTask. */
 let UPDATE_OFFSET = 0;
@@ -79,7 +79,9 @@ function updatephysics(inst: NightmareRockInstance): void {
   let mask: number = COLLISION.WORLD;
   if (!inst.conceal) {
     mask |= COLLISION.ITEMS;
-    if (inst.active) { mask |= COLLISION.CHARACTERS; }
+    if (inst.active) {
+      mask |= COLLISION.CHARACTERS;
+    }
   }
   inst.physics.SetCollisionMask(mask);
 }
@@ -100,8 +102,11 @@ function dotransition(inst: NightmareRockInstance): void {
   inst.transition_task = undefined;
   if (inst.conceal !== inst.conceal_queued) {
     if (!inst.sg.hasStateTag('busy')) {
-      if (inst.conceal_queued) { inst.sg.goToState('conceal', inst.active); }
-      else { inst.sg.goToState('reveal'); }
+      if (inst.conceal_queued) {
+        inst.sg.goToState('conceal', inst.active);
+      } else {
+        inst.sg.goToState('reveal');
+      }
     }
   } else if (inst.active !== inst.active_queue && !inst.conceal_queued) {
     inst.sg.goToState(inst.active_queue ? 'raise' : 'lower');
@@ -118,20 +123,28 @@ function refresh(inst: NightmareRockInstance): void {
   } else {
     // A raised rock lets go only beyond FAR_DIST, a lowered one rises within NEAR_DIST.
     const limit = inst.active ? FAR_DIST_SQ : NEAR_DIST_SQ;
-    inst.active_queue = inst.world.getPlayers().some(player => matchessanity(inst, player)
-      && player.position.distanceToSquared(inst.position) < limit);
+    inst.active_queue = inst.world
+      .getPlayers()
+      .some(player => matchessanity(inst, player) && player.position.distanceToSquared(inst.position) < limit);
   }
-  if ((inst.conceal !== inst.conceal_queued || inst.active_queue !== inst.active) && inst.transition_task === undefined) {
+  if (
+    (inst.conceal !== inst.conceal_queued || inst.active_queue !== inst.active) &&
+    inst.transition_task === undefined
+  ) {
     inst.transition_task = inst.DoTaskInTime(Math.random(), dotransition);
   }
 }
 
 /** DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET), then stagger the next spawned entity. */
 function AddRefreshTask(inst: NightmareRockInstance): void {
-  if (inst._refreshtask) { return; }
+  if (inst._refreshtask) {
+    return;
+  }
   inst._refreshtask = inst.DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET);
   UPDATE_OFFSET += FRAMES;
-  if (UPDATE_OFFSET > UPDATE_INTERVAL) { UPDATE_OFFSET = 0; }
+  if (UPDATE_OFFSET > UPDATE_INTERVAL) {
+    UPDATE_OFFSET = 0;
+  }
 }
 
 function ConcealForMinigame(inst: NightmareRockInstance, conceal: boolean): void {
@@ -159,12 +172,20 @@ function commonfn(world: NightmareRockWorld, id: NightmareRockId): NightmareRock
 }
 
 /** nightmarerock.lua sanityrock / insanityrock: obelisks that rise and lower with the nearby player's sanity. */
-export function nightmareRockPrefabs(world: NightmareRockWorld): Readonly<Record<NightmareRockId, PrefabEntityDefinition<NightmareRockInstance>>> {
+export function nightmareRockPrefabs(
+  world: NightmareRockWorld,
+): Readonly<Record<NightmareRockId, PrefabEntityDefinition<NightmareRockInstance>>> {
   const prefab = (id: NightmareRockId): PrefabEntityDefinition<NightmareRockInstance> => ({
     fn: () => commonfn(world, id),
     assets: { animationArchive: 'blocker_sanity.zip', buildArchives: ['blocker_sanity.zip'], bank: 'blocker_sanity' },
     // MakeObstaclePhysics(inst, COLLISION_SIZE), then updatephysics for the lowered rock.
-    physics: { make: (inst, radius) => { MakeObstaclePhysics(inst, radius); updatephysics(inst); }, radius: COLLISION_SIZE },
+    physics: {
+      make: (inst, radius) => {
+        MakeObstaclePhysics(inst, radius);
+        updatephysics(inst);
+      },
+      radius: COLLISION_SIZE,
+    },
     minimapIcon: 'obelisk.png',
   });
   return { sanityrock: prefab('sanityrock'), insanityrock: prefab('insanityrock') };

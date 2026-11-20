@@ -11,7 +11,12 @@ import { configureVeggieEntity, VEGGIE_FOOD_EFFECTS, VEGGIE_PERISH_TIMES } from 
 
 export const BANANAJUICE_ID = 'bananajuice';
 export const MUSHROOM_ITEM_IDS = [
-  'red_cap', 'red_cap_cooked', 'green_cap', 'green_cap_cooked', 'blue_cap', 'blue_cap_cooked',
+  'red_cap',
+  'red_cap_cooked',
+  'green_cap',
+  'green_cap_cooked',
+  'blue_cap',
+  'blue_cap_cooked',
 ] as const;
 
 export interface FoodEffects {
@@ -58,7 +63,9 @@ export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
 };
 
 /** SetPerishTime, StartPerishing and spoiled_food replacement from the owning prefab file. */
-export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: number; readonly replacement?: string }>> = {
+export const PERISHABLE_FOODS: Readonly<
+  Record<string, { readonly perishTime: number; readonly replacement?: string }>
+> = {
   // petals.lua: PERISH_FAST, StartPerishing, spoiled_food replacement.
   petals: { perishTime: PERISH_FAST, replacement: 'spoiled_food' },
   butterfly: { perishTime: BUTTERFLY_PERISH_TIME },
@@ -92,7 +99,9 @@ export const PERISHABLE_FOODS: Readonly<Record<string, { readonly perishTime: nu
   // prefabs/preparedfoods.lua uses the recipe's perishtime.
   bananapop: { perishTime: foods.bananapop.perishtime!, replacement: 'spoiled_food' },
   // prefabs/veggies.lua sets perishable with spoiled_food on every raw, cooked, dried and seed item.
-  ...Object.fromEntries(Object.entries(VEGGIE_PERISH_TIMES).map(([id, perishTime]) => [id, { perishTime, replacement: 'spoiled_food' }])),
+  ...Object.fromEntries(
+    Object.entries(VEGGIE_PERISH_TIMES).map(([id, perishTime]) => [id, { perishTime, replacement: 'spoiled_food' }]),
+  ),
 };
 
 /** The supported prefab branches install edible on the food inst, as in Lua. */
@@ -100,20 +109,30 @@ export function configureFoodEntity(entity: ItemEntity): void {
   configureVeggieEntity(entity);
   configureSeedEntity(entity);
   const values = FOOD_EFFECTS[entity.prefab];
-  if (!values) { return; }
+  if (!values) {
+    return;
+  }
   if (!entity.components.edible) {
     const perishable = entity.components.perishable;
-    const edible = addComponent(entity, 'edible', Edible,
-      () => perishable.perishtime.peek() === undefined ? undefined : perishable.stage.peek());
+    const edible = addComponent(entity, 'edible', Edible, () =>
+      perishable.perishtime.peek() === undefined ? undefined : perishable.stage.peek(),
+    );
     edible.healthvalue = values.health;
     edible.hungervalue = values.hunger;
     edible.sanityvalue = values.sanity;
-    const foodtype = entity.prefab === 'seeds' ? 'SEEDS'
-      : entity.prefab === 'meatballs' || entity.prefab === 'pondfish' ? 'MEAT'
-      : entity.prefab === 'butter' ? 'GENERIC' : 'VEGGIE';
+    const foodtype =
+      entity.prefab === 'seeds'
+        ? 'SEEDS'
+        : entity.prefab === 'meatballs' || entity.prefab === 'pondfish'
+          ? 'MEAT'
+          : entity.prefab === 'butter'
+            ? 'GENERIC'
+            : 'VEGGIE';
     entity.addTag(`edible_${foodtype}`);
   }
-  if (values.foodDrink) { entity.addTag('fooddrink'); }
+  if (values.foodDrink) {
+    entity.addTag('fooddrink');
+  }
 }
 
 /** Read the food's existing edible component, including its current perish stage. */

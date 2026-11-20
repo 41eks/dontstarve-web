@@ -28,7 +28,11 @@ import { configurePanfluteEntity, PANFLUTE_ID, PANFLUTE_USES } from '@dontstarve
 import { configureEquipmentEntity, getHandEquipmentDefinition } from '@dontstarve-web/prefab/handEquipment';
 import { configureBirdEntity, isBirdId } from '@dontstarve-web/prefab/birds';
 import { configureBackpackEntity } from '@dontstarve-web/prefab/backpack';
-import { ARMORSNURTLESHELL, ARMORSNURTLESHELL_ID, configureArmorSnurtleshellEntity } from '@dontstarve-web/prefab/armorsnurtleshell';
+import {
+  ARMORSNURTLESHELL,
+  ARMORSNURTLESHELL_ID,
+  configureArmorSnurtleshellEntity,
+} from '@dontstarve-web/prefab/armorsnurtleshell';
 import { AMULET_ID, REDAMULET_USES, configureAmuletEntity } from '@dontstarve-web/prefab/amulet';
 import { configureIceEntity, ICE_ID } from '@dontstarve-web/prefab/ice';
 import { PERISHABLE_FOODS, configureFoodEntity } from '@dontstarve-web/prefab/food';
@@ -48,62 +52,120 @@ export interface InventoryItemDefinition {
   num: number;
 }
 
-function withTradable(itemId: string, configure: ((entity: ItemEntity) => void) | undefined): ((entity: ItemEntity) => void) | undefined {
+function withTradable(
+  itemId: string,
+  configure: ((entity: ItemEntity) => void) | undefined,
+): ((entity: ItemEntity) => void) | undefined {
   return entity => {
-    configure?.(entity); configureFoodEntity(entity); configureMoleBaitEntity(entity); configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity); configureDockKitEntity(entity); configureFarmPlowItemEntity(entity); configureMarbleBeanEntity(entity);
-    if (Object.hasOwn(FERTILIZER_CYCLES, itemId)) { configureFertilizerEntity(entity); }
-    if (itemId === BATHBOMB_ID) { configureBathbombEntity(entity); }
-    if (hasTradableGoldValue(itemId)) { configureTradableEntity(entity); }
+    configure?.(entity);
+    configureFoodEntity(entity);
+    configureMoleBaitEntity(entity);
+    configurePlantableEntity(entity);
+    configureRockAvocadoFruitEntity(entity);
+    configureDockKitEntity(entity);
+    configureFarmPlowItemEntity(entity);
+    configureMarbleBeanEntity(entity);
+    if (Object.hasOwn(FERTILIZER_CYCLES, itemId)) {
+      configureFertilizerEntity(entity);
+    }
+    if (itemId === BATHBOMB_ID) {
+      configureBathbombEntity(entity);
+    }
+    if (hasTradableGoldValue(itemId)) {
+      configureTradableEntity(entity);
+    }
   };
 }
 
-export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> =
-  { ...Object.fromEntries(Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([itemId, display]) => {
-    const equippable = inventoryItemEquipmentKind(itemId);
-    return [itemId, {
-      ...display,
-      maxStack: isRelicItem(itemId) ? 1 : inventoryItemMaxStack(itemId),
-      configureEntity: withTradable(itemId, isRelicItem(itemId) ? configureRuinsRelicItem
-        : isBirdId(itemId) ? configureBirdEntity
-        : itemId === 'butterfly' ? configureButterflyEntity
-        : itemId === 'moonbutterfly' ? configureMoonButterflyEntity
-        : itemId === 'mole' ? configureMoleEntity
-        : itemId === 'lightflier' ? configureLightFlierEntity
-        : itemId === 'backpack' ? configureBackpackEntity
-        : itemId === ARMORSNURTLESHELL_ID ? configureArmorSnurtleshellEntity
-        : itemId === AMULET_ID ? configureAmuletEntity
-        : itemId === LIGHTBULB_ID ? configureLightbulbEntity
-        : itemId === HEATROCK_ID ? configureHeatRockEntity
-        : itemId === NIGHTMARE_TIMEPIECE_ID ? configureNightmareTimepieceEntity
-        : itemId === RAZOR_ID ? configureRazorEntity
-        : itemId === PANFLUTE_ID ? configurePanfluteEntity
-        : itemId === PHONOGRAPH_ID ? configurePhonographEntity
-        : itemId === 'moonrocknugget' ? configureMoonrockNugget
-        : itemId === ICE_ID ? configureIceEntity
-        : Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, itemId) ? configureBurnableItemEntity
-        : getHandEquipmentDefinition(itemId) ? configureEquipmentEntity : undefined),
-      ...(getHandEquipmentDefinition(itemId)?.definition.maxUses === undefined ? {}
-        : { maxUses: getHandEquipmentDefinition(itemId)!.definition.maxUses }),
-      ...(getHandEquipmentDefinition(itemId)?.definition.useStep === undefined ? {}
-        : { useStep: getHandEquipmentDefinition(itemId)!.definition.useStep }),
-      ...(itemId === 'backpack' ? { canGoInContainer: false, containerSlots: BACKPACK_SLOT_COUNT } : {}),
-      ...(itemId === ARMORSNURTLESHELL_ID ? { maxArmor: ARMORSNURTLESHELL } : {}),
-      ...(itemId === 'mole' ? { perishTime: MOLE_PERISH_TIME, creatureState: 'mole' as const } : {}),
-      ...(itemId === 'lightflier' ? { perishTime: LIGHTFLIER_PERISH_TIME, creatureState: 'lightflier' as const } : {}),
-      ...(itemId === PHONOGRAPH_ID ? { holds: { itemId: RECORD_ID, slots: 1 } } : {}),
-      ...(itemId === 'butterfly' ? { creatureState: 'butterfly' as const } : {}),
-      ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
-      ...(itemId === AMULET_ID ? { maxUses: REDAMULET_USES } : {}),
-      ...(itemId === PANFLUTE_ID ? { maxUses: PANFLUTE_USES } : {}),
-      ...(isLightStaff(itemId) ? { maxUses: LIGHT_STAFF_USES[itemId] } : {}),
-      ...(itemId === 'torch' ? { maxFuel: TORCH_FUEL } : {}),
-      ...(itemId === HEATROCK_ID ? { maxFuel: HEATROCK_FUEL, savesTemperature: true as const } : {}),
-      ...(getHandEquipmentDefinition(itemId)?.definition.maxFuel === undefined ? {}
-        : { maxFuel: getHandEquipmentDefinition(itemId)!.definition.maxFuel }),
-      ...(Object.hasOwn(PERISHABLE_FOODS, itemId)
-        ? { perishTime: PERISHABLE_FOODS[itemId].perishTime, perishReplacement: PERISHABLE_FOODS[itemId].replacement } : {}),
-      ...(equippable === undefined ? {} : { equippable }),
-    }];
-  })), ...HAT_ITEM_SPECS, ...RECORD_ITEM_SPECS, ...BOOK_ITEM_SPECS, ...TURF_ITEM_SPECS };
+export const INVENTORY_ITEM_SPECS: Readonly<Record<string, InventoryItemSpec>> = {
+  ...Object.fromEntries(
+    Object.entries(INVENTORY_ITEM_DISPLAY_SPECS).map(([itemId, display]) => {
+      const equippable = inventoryItemEquipmentKind(itemId);
+      return [
+        itemId,
+        {
+          ...display,
+          maxStack: isRelicItem(itemId) ? 1 : inventoryItemMaxStack(itemId),
+          configureEntity: withTradable(
+            itemId,
+            isRelicItem(itemId)
+              ? configureRuinsRelicItem
+              : isBirdId(itemId)
+                ? configureBirdEntity
+                : itemId === 'butterfly'
+                  ? configureButterflyEntity
+                  : itemId === 'moonbutterfly'
+                    ? configureMoonButterflyEntity
+                    : itemId === 'mole'
+                      ? configureMoleEntity
+                      : itemId === 'lightflier'
+                        ? configureLightFlierEntity
+                        : itemId === 'backpack'
+                          ? configureBackpackEntity
+                          : itemId === ARMORSNURTLESHELL_ID
+                            ? configureArmorSnurtleshellEntity
+                            : itemId === AMULET_ID
+                              ? configureAmuletEntity
+                              : itemId === LIGHTBULB_ID
+                                ? configureLightbulbEntity
+                                : itemId === HEATROCK_ID
+                                  ? configureHeatRockEntity
+                                  : itemId === NIGHTMARE_TIMEPIECE_ID
+                                    ? configureNightmareTimepieceEntity
+                                    : itemId === RAZOR_ID
+                                      ? configureRazorEntity
+                                      : itemId === PANFLUTE_ID
+                                        ? configurePanfluteEntity
+                                        : itemId === PHONOGRAPH_ID
+                                          ? configurePhonographEntity
+                                          : itemId === 'moonrocknugget'
+                                            ? configureMoonrockNugget
+                                            : itemId === ICE_ID
+                                              ? configureIceEntity
+                                              : Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, itemId)
+                                                ? configureBurnableItemEntity
+                                                : getHandEquipmentDefinition(itemId)
+                                                  ? configureEquipmentEntity
+                                                  : undefined,
+          ),
+          ...(getHandEquipmentDefinition(itemId)?.definition.maxUses === undefined
+            ? {}
+            : { maxUses: getHandEquipmentDefinition(itemId)!.definition.maxUses }),
+          ...(getHandEquipmentDefinition(itemId)?.definition.useStep === undefined
+            ? {}
+            : { useStep: getHandEquipmentDefinition(itemId)!.definition.useStep }),
+          ...(itemId === 'backpack' ? { canGoInContainer: false, containerSlots: BACKPACK_SLOT_COUNT } : {}),
+          ...(itemId === ARMORSNURTLESHELL_ID ? { maxArmor: ARMORSNURTLESHELL } : {}),
+          ...(itemId === 'mole' ? { perishTime: MOLE_PERISH_TIME, creatureState: 'mole' as const } : {}),
+          ...(itemId === 'lightflier'
+            ? { perishTime: LIGHTFLIER_PERISH_TIME, creatureState: 'lightflier' as const }
+            : {}),
+          ...(itemId === PHONOGRAPH_ID ? { holds: { itemId: RECORD_ID, slots: 1 } } : {}),
+          ...(itemId === 'butterfly' ? { creatureState: 'butterfly' as const } : {}),
+          ...(itemId === 'farm_plow_item' ? { maxUses: 4 } : {}),
+          ...(itemId === AMULET_ID ? { maxUses: REDAMULET_USES } : {}),
+          ...(itemId === PANFLUTE_ID ? { maxUses: PANFLUTE_USES } : {}),
+          ...(isLightStaff(itemId) ? { maxUses: LIGHT_STAFF_USES[itemId] } : {}),
+          ...(itemId === 'torch' ? { maxFuel: TORCH_FUEL } : {}),
+          ...(itemId === HEATROCK_ID ? { maxFuel: HEATROCK_FUEL, savesTemperature: true as const } : {}),
+          ...(getHandEquipmentDefinition(itemId)?.definition.maxFuel === undefined
+            ? {}
+            : { maxFuel: getHandEquipmentDefinition(itemId)!.definition.maxFuel }),
+          ...(Object.hasOwn(PERISHABLE_FOODS, itemId)
+            ? {
+                perishTime: PERISHABLE_FOODS[itemId].perishTime,
+                perishReplacement: PERISHABLE_FOODS[itemId].replacement,
+              }
+            : {}),
+          ...(equippable === undefined ? {} : { equippable }),
+        },
+      ];
+    }),
+  ),
+  ...HAT_ITEM_SPECS,
+  ...RECORD_ITEM_SPECS,
+  ...BOOK_ITEM_SPECS,
+  ...TURF_ITEM_SPECS,
+};
 
 export { INVENTORY_SKIN_SPECS };

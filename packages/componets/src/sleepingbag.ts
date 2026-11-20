@@ -40,14 +40,24 @@ export class SleepingBag {
   readonly sleeper = readonlySignal(this.sleeperState);
   private readonly inst: SleepingBagInst;
 
-  constructor(inst: SleepingBagInst) { this.inst = inst; }
+  constructor(inst: SleepingBagInst) {
+    this.inst = inst;
+  }
 
-  SetSleepPhase(phase: WorldPhase): void { this.sleep_phase = phase; }
-  GetSleepPhase(): WorldPhase { return this.sleep_phase; }
-  SetTemperatureTickFn(fn: SleepingBagTemperatureTickFn | undefined): void { this.temperaturetickfn = fn; }
+  SetSleepPhase(phase: WorldPhase): void {
+    this.sleep_phase = phase;
+  }
+  GetSleepPhase(): WorldPhase {
+    return this.sleep_phase;
+  }
+  SetTemperatureTickFn(fn: SleepingBagTemperatureTickFn | undefined): void {
+    this.temperaturetickfn = fn;
+  }
 
   DoSleep(doer: SleepingBagSleeper): void {
-    if (this.sleeperState.peek() !== undefined || doer.bed !== undefined) { return; }
+    if (this.sleeperState.peek() !== undefined || doer.bed !== undefined) {
+      return;
+    }
     this.sleeperState.set(doer);
     this.inst.addTag('hassleeper');
     doer.DoSleep(this);
@@ -56,7 +66,9 @@ export class SleepingBag {
 
   DoWakeUp(nostatechange = false): void {
     const sleeper = this.sleeperState.peek();
-    if (!sleeper || sleeper.bed !== this) { return; }
+    if (!sleeper || sleeper.bed !== this) {
+      return;
+    }
     sleeper.DoWakeUp(nostatechange);
     this.sleeperState.set(undefined);
     this.inst.removeTag('hassleeper');
@@ -64,10 +76,16 @@ export class SleepingBag {
   }
 
   /** The bed's temperaturetickfn, run by every sleeper tick. */
-  TemperatureTick(sleeper: SleepingBagSleeper): void { this.temperaturetickfn?.(this.inst, sleeper); }
+  TemperatureTick(sleeper: SleepingBagSleeper): void {
+    this.temperaturetickfn?.(this.inst, sleeper);
+  }
 
-  InUse(): boolean { return this.sleeperState.peek() !== undefined; }
+  InUse(): boolean {
+    return this.sleeperState.peek() !== undefined;
+  }
 
   /** OnRemoveFromEntity / OnRemoveEntity: wake the sleeper before the bed goes away. */
-  dispose(): void { this.DoWakeUp(); }
+  dispose(): void {
+    this.DoWakeUp();
+  }
 }

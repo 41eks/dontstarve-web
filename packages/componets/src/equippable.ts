@@ -34,10 +34,19 @@ export class Equippable<Inst extends EquippableInst = EquippableInst> {
   /** The owner's view for this equip; its AnimState slot is closed after onunequip. */
   private view?: EquipmentOwnerView;
 
-  constructor(inst: Inst, equipslot: EquipmentKind) { this.inst = inst; this.equipslot = equipslot; }
-  SetOnEquip(fn: EquippableOnEquipFn<Inst> | undefined): void { this.onequipfn = fn; }
-  SetOnUnequip(fn: EquippableOnUnequipFn<Inst> | undefined): void { this.onunequipfn = fn; }
-  IsEquipped(): boolean { return this.isequipped; }
+  constructor(inst: Inst, equipslot: EquipmentKind) {
+    this.inst = inst;
+    this.equipslot = equipslot;
+  }
+  SetOnEquip(fn: EquippableOnEquipFn<Inst> | undefined): void {
+    this.onequipfn = fn;
+  }
+  SetOnUnequip(fn: EquippableOnUnequipFn<Inst> | undefined): void {
+    this.onunequipfn = fn;
+  }
+  IsEquipped(): boolean {
+    return this.isequipped;
+  }
   Equip(owner: EquipmentOwner): void {
     this.isequipped = true;
     this.inst.components?.burnable?.StopSmoldering();
@@ -54,13 +63,21 @@ export class Equippable<Inst extends EquippableInst = EquippableInst> {
     view?.close();
     this.inst.PushEvent('unequipped', { owner });
   }
-  IsRestricted(): boolean { return false; }
+  IsRestricted(): boolean {
+    return false;
+  }
   /** equippable.lua GetWalkSpeedMult; the owner's vigorbuff and speed modifier fn are not ported. */
-  GetWalkSpeedMult(): number { return this.walkspeedmult ?? 1; }
-  SetDappernessFn(fn: EquippableDappernessFn<Inst> | undefined): void { this.dapperfn = fn; }
+  GetWalkSpeedMult(): number {
+    return this.walkspeedmult ?? 1;
+  }
+  SetDappernessFn(fn: EquippableDappernessFn<Inst> | undefined): void {
+    this.dapperfn = fn;
+  }
   GetDapperness(owner?: EquippableOwner, ignoreWetness = false): number {
     let dapperness = this.dapperfn ? this.dapperfn(this.inst, owner) : this.dapperness;
-    if (!ignoreWetness && this.inst.GetIsWet()) { dapperness -= .1; } // TUNING.WET_ITEM_DAPPERNESS
+    if (!ignoreWetness && this.inst.GetIsWet()) {
+      dapperness -= 0.1;
+    } // TUNING.WET_ITEM_DAPPERNESS
     return dapperness;
   }
 }

@@ -3,16 +3,37 @@ import { InventoryStore, InventorySlot, HandSlot, inventorySlotAddress, equipmen
 import { addFueled } from './fueled';
 import { handSlot, inventorySlot, testInventoryStore } from './testItems';
 
-const hand = equipmentSlotAddress('hand'), bag = inventorySlotAddress(0);
-const specs = { torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' as const, configureEntity: addFueled(75) } };
+const hand = equipmentSlotAddress('hand'),
+  bag = inventorySlotAddress(0);
+const specs = {
+  torch: {
+    name: 'torch',
+    icon: 'torch.tex',
+    maxStack: 1,
+    maxFuel: 75,
+    equippable: 'hand' as const,
+    configureEntity: addFueled(75),
+  },
+};
 function createStore() {
-  return testInventoryStore([{ address: bag, slot: inventorySlot() }, { address: hand, slot: handSlot() }], specs, {});
+  return testInventoryStore(
+    [
+      { address: bag, slot: inventorySlot() },
+      { address: hand, slot: handSlot() },
+    ],
+    specs,
+    {},
+  );
 }
 
 it('publishes equipment identity after commits; a transfer keeps the entity and a removal clears the slot', () => {
   const store = createStore();
   const observed: unknown[] = [];
-  const stop = store.handEquipment.subscribe(equipment => { if (equipment === null) { observed.push(store.getEntity(hand)); } });
+  const stop = store.handEquipment.subscribe(equipment => {
+    if (equipment === null) {
+      observed.push(store.getEntity(hand));
+    }
+  });
   try {
     store.add('torch', 1, undefined, undefined, undefined, undefined, 18.5);
     const entity = store.getEntity(bag)!;
@@ -36,7 +57,10 @@ it('publishes equipment identity after commits; a transfer keeps the entity and 
     expect(store.handEquipment.peek()).toBeNull();
     expect(observed).toEqual([null, null]);
     expect(store.exportState().slots.find(slot => slot.address.slotKey === 'hand')?.item).toBeNull();
-  } finally { stop(); store.dispose(); }
+  } finally {
+    stop();
+    store.dispose();
+  }
 });
 
 it('publishes the initial equipment when a hand slot is registered later', () => {
@@ -45,5 +69,7 @@ it('publishes the initial equipment when a hand slot is registered later', () =>
     expect(store.handEquipment.peek()).toBeNull();
     store.registerSlots([{ address: hand, slot: handSlot({ itemId: 'torch', count: 1, remainingFuel: 18.5 }) }]);
     expect(store.handEquipment.peek()?.entity).toBe(store.getEntity(hand));
-  } finally { store.dispose(); }
+  } finally {
+    store.dispose();
+  }
 });

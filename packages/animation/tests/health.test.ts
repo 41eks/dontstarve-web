@@ -3,7 +3,8 @@ import { Health } from '../../componets/src/health';
 
 describe('basic health component', () => {
   it('uses the same invincibility, healing and absorption rules for every host, preserving direct assignments', () => {
-    const events = vi.fn(), stateTags = new Set<string>();
+    const events = vi.fn(),
+      stateTags = new Set<string>();
     const health = new Health({ PushEvent: events, sg: { hasStateTag: tag => stateTags.has(tag) } }, 150);
     health.SetInvincible(true);
     expect(events).toHaveBeenLastCalledWith('invincibletoggle', { invincible: true });
@@ -14,7 +15,7 @@ describe('basic health component', () => {
     health.canheal = false;
     // Lua canheal is action metadata: walls still accept repair through DoDelta.
     expect(health.DoDelta(20)).toBe(20);
-    health.absorb = .5;
+    health.absorb = 0.5;
     expect(health.DoDelta(-20)).toBe(-10);
     health.canheal = true;
     stateTags.add('temp_invincible');
@@ -31,10 +32,11 @@ describe('basic health component', () => {
 
   it('caps healing with the resurrection penalty and restores it atomically through component saves', () => {
     const health = new Health({}, 150);
-    health.DeltaPenalty(.25);
+    health.DeltaPenalty(0.25);
     expect(health.currenthealth).toBe(112.5);
     expect(health.IsHurt()).toBe(false);
-    health.DoDelta(-20); health.DoDelta(100);
+    health.DoDelta(-20);
+    health.DoDelta(100);
     expect(health.currenthealth).toBe(112.5);
     health.SetMaxHealth(200);
     expect(health.currenthealth).toBe(150);
@@ -49,7 +51,8 @@ describe('basic health component', () => {
     expect(restored.GetMaxWithPenalty()).toBe(50);
     restored.DeltaPenalty(-10);
     expect(restored.penalty).toBe(0);
-    health.dispose(); restored.dispose();
+    health.dispose();
+    restored.dispose();
   });
   it('heals and damages without exceeding the health bounds, including zero health', () => {
     const health = new Health({});
@@ -69,7 +72,7 @@ describe('basic health component', () => {
     expect(health.IsDead()).toBe(false);
   });
 
-  it.each([83.5])('round-trips current health %s and its maximum through JSON', (current) => {
+  it.each([83.5])('round-trips current health %s and its maximum through JSON', current => {
     const health = new Health({}, 150);
     health.SetVal(current);
     const saved = health.OnSave();
@@ -97,7 +100,7 @@ describe('basic health component', () => {
     expect(health.currenthealth).toBe(10);
   });
 
-  it.each([NaN])('rejects invalid numbers %s without corrupting state', (invalid) => {
+  it.each([NaN])('rejects invalid numbers %s without corrupting state', invalid => {
     const health = new Health({}, 150);
     health.SetVal(50);
     const before = health.OnSave();

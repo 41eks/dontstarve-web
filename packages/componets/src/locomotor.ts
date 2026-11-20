@@ -1,7 +1,11 @@
 import type { LuaFn } from './luaFn';
 import type { BufferedAction, BufferedActionObject } from '../../stategraphs/src/bufferedaction';
 
-export interface LocoMotorPoint { x: number; y: number; z: number }
+export interface LocoMotorPoint {
+  x: number;
+  y: number;
+  z: number;
+}
 
 /** An entity a buffered action can walk to. */
 export interface LocoMotorTarget extends BufferedActionObject {
@@ -33,7 +37,7 @@ export interface LocoMotorInst {
 }
 
 // components/locomotor.lua constants and defaults (TUNING.WILSON_WALK_SPEED / WILSON_RUN_SPEED).
-export const ARRIVE_STEP = .15;
+export const ARRIVE_STEP = 0.15;
 export const DEFAULT_WALK_SPEED = 4;
 export const DEFAULT_RUN_SPEED = 6;
 
@@ -44,8 +48,12 @@ class Dest {
     this.target = target;
     this.point = point;
   }
-  isValid(): boolean { return this.target ? this.target.isValid() : this.point !== undefined; }
-  getPoint(): LocoMotorPoint { return this.target ? this.target.getPosition() : this.point!; }
+  isValid(): boolean {
+    return this.target ? this.target.isValid() : this.point !== undefined;
+  }
+  getPoint(): LocoMotorPoint {
+    return this.target ? this.target.getPosition() : this.point!;
+  }
 }
 
 const distanceSquared = (a: LocoMotorPoint, b: LocoMotorPoint) => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
@@ -92,13 +100,19 @@ export class LocoMotorPath {
 
   /** `arriveStep` is arrive_step_dist in the caller's units. */
   constructor(pathfinder: LocoMotorPathfinder, pathcaps: PathCaps | undefined, arriveStep: number) {
-    this.pathfinder = pathfinder; this.pathcaps = pathcaps; this.arriveStep = arriveStep;
+    this.pathfinder = pathfinder;
+    this.pathcaps = pathcaps;
+    this.arriveStep = arriveStep;
   }
 
-  WaitingForPathSearch(): boolean { return this.handle !== undefined; }
+  WaitingForPathSearch(): boolean {
+    return this.handle !== undefined;
+  }
 
   ResetPath(): void {
-    if (this.handle !== undefined) { this.pathfinder.KillSearch(this.handle); }
+    if (this.handle !== undefined) {
+      this.pathfinder.KillSearch(this.handle);
+    }
     this.handle = undefined;
     this.steps = undefined;
   }
@@ -111,21 +125,32 @@ export class LocoMotorPath {
 
   FindPath(from: LocoMotorPoint, to: LocoMotorPoint): void {
     const desttile = this.pathfinder.GetPathTileIndexFromPoint(to);
-    if (this.lastdesttile && desttile[0] === this.lastdesttile[0] && desttile[1] === this.lastdesttile[1]) { return; }
+    if (this.lastdesttile && desttile[0] === this.lastdesttile[0] && desttile[1] === this.lastdesttile[1]) {
+      return;
+    }
     this.lastdesttile = desttile;
-    if (this.pathfinder.IsClear(from, to, this.pathcaps)) { this.ResetPath(); return; }
+    if (this.pathfinder.IsClear(from, to, this.pathcaps)) {
+      this.ResetPath();
+      return;
+    }
     // While chasing, keep any path until the new one arrives, and let a first search finish.
     if (this.steps || !this.WaitingForPathSearch()) {
-      if (this.handle !== undefined) { this.pathfinder.KillSearch(this.handle); }
+      if (this.handle !== undefined) {
+        this.pathfinder.KillSearch(this.handle);
+      }
       this.handle = this.pathfinder.SubmitSearch(from, to, this.pathcaps);
     }
   }
 
   /** OnUpdate: take a finished search's path. A straight line of two steps is discarded, and with no path the old one stands. */
   UpdateSearch(): void {
-    if (this.handle === undefined) { return; }
+    if (this.handle === undefined) {
+      return;
+    }
     const status = this.pathfinder.GetSearchStatus(this.handle);
-    if (status === STATUS_CALCULATING) { return; }
+    if (status === STATUS_CALCULATING) {
+      return;
+    }
     if (status === STATUS_FOUNDPATH) {
       const steps = this.pathfinder.GetSearchResult(this.handle)?.steps;
       if (steps) {
@@ -140,10 +165,14 @@ export class LocoMotorPath {
   /** OnUpdate's FOLLOW PATH: where to head now. The last step is the destination itself, wherever it has moved. */
   GetMoveStep(position: LocoMotorPoint, destination: LocoMotorPoint, physicsRadius: number): LocoMotorPoint {
     const { steps } = this;
-    if (!steps || this.currentstep >= steps.length - 1) { return destination; }
+    if (!steps || this.currentstep >= steps.length - 1) {
+      return destination;
+    }
     const step = steps[this.currentstep];
     // Add tolerance to step points that aren't the final destination.
-    if (distanceSquared(position, step) - (physicsRadius * 2) ** 2 > this.arriveStep ** 2) { return step; }
+    if (distanceSquared(position, step) - (physicsRadius * 2) ** 2 > this.arriveStep ** 2) {
+      return step;
+    }
     this.currentstep += 1;
     return this.currentstep < steps.length - 1 ? steps[this.currentstep] : destination;
   }
@@ -180,28 +209,51 @@ export class LocoMotor {
   private movePoint?: LocoMotorPoint;
 
   constructor(inst: LocoMotorInst, options: LocoMotorOptions = {}) {
-    this.inst = inst; this.options = options;
+    this.inst = inst;
+    this.options = options;
     this.arrive_dist = options.arriveDistance ?? ARRIVE_STEP;
     this.pathing = options.pathfinder && new LocoMotorPath(options.pathfinder, options.pathcaps, this.arrive_dist);
     inst.addTag('locomotor');
   }
 
-  OnRemoveFromEntity(): void { this.inst.removeTag('locomotor'); }
+  OnRemoveFromEntity(): void {
+    this.inst.removeTag('locomotor');
+  }
 
-  get isUpdating(): boolean { return this.updating; }
-  GetWalkSpeed(): number { return this.walkspeed; }
-  GetRunSpeed(): number { return this.runspeed; }
+  get isUpdating(): boolean {
+    return this.updating;
+  }
+  GetWalkSpeed(): number {
+    return this.walkspeed;
+  }
+  GetRunSpeed(): number {
+    return this.runspeed;
+  }
   /** Creatures here are terrestrial or flying and never pathfind on water. */
-  IsAquatic(): boolean { return false; }
-  CanPathfindOnWater(): boolean { return false; }
-  SetReachDestinationCallback(fn: LocoMotorReachDestinationFn | undefined): void { this.atdestfn = fn; }
-  WantsToRun(): boolean { return this.wantstorun; }
-  WantsToMoveForward(): boolean { return this.wantstomoveforward; }
-  HasDestination(): boolean { return this.dest !== undefined; }
+  IsAquatic(): boolean {
+    return false;
+  }
+  CanPathfindOnWater(): boolean {
+    return false;
+  }
+  SetReachDestinationCallback(fn: LocoMotorReachDestinationFn | undefined): void {
+    this.atdestfn = fn;
+  }
+  WantsToRun(): boolean {
+    return this.wantstorun;
+  }
+  WantsToMoveForward(): boolean {
+    return this.wantstomoveforward;
+  }
+  HasDestination(): boolean {
+    return this.dest !== undefined;
+  }
 
   WalkForward(direct = false): void {
     this.isrunning = false;
-    if (direct) { this.wantstomoveforward = true; }
+    if (direct) {
+      this.wantstomoveforward = true;
+    }
     this.inst.setMotorSpeed(this.GetWalkSpeed());
     this.updating = true;
   }
@@ -214,7 +266,9 @@ export class LocoMotor {
 
   RunForward(direct = false): void {
     this.isrunning = true;
-    if (direct) { this.wantstomoveforward = true; }
+    if (direct) {
+      this.wantstomoveforward = true;
+    }
     this.inst.setMotorSpeed(this.GetRunSpeed());
     this.updating = true;
   }
@@ -237,10 +291,14 @@ export class LocoMotor {
     this.inst.setRotation(this.inst.GetAngleToPoint(x, y, z));
   }
 
-  SetMoveDir(direction: number): void { this.inst.setRotation(direction); }
+  SetMoveDir(direction: number): void {
+    this.inst.setRotation(direction);
+  }
 
   PushAction(action: BufferedAction | undefined, run = false): void {
-    if (!action) { return; }
+    if (!action) {
+      return;
+    }
     if (!action.isValid()) {
       this.inst.PushEvent('actionfailed', { action, reason: undefined });
       return;
@@ -253,44 +311,75 @@ export class LocoMotor {
         const { x, y, z } = target.getPosition();
         this.FaceMovePoint(x, y, z);
         this.inst.PushBufferedAction(action);
-      } else { this.GoToEntity(target, action, run); }
-    } else if (!action.pos) { this.inst.PushBufferedAction(action); }
-    else if (action.distance !== undefined && action.distance >= Infinity) {
+      } else {
+        this.GoToEntity(target, action, run);
+      }
+    } else if (!action.pos) {
+      this.inst.PushBufferedAction(action);
+    } else if (action.distance !== undefined && action.distance >= Infinity) {
       this.FaceMovePoint(action.pos.x, action.pos.y, action.pos.z);
       this.inst.PushBufferedAction(action);
-    } else { this.GoToPoint(undefined, action, run); }
+    } else {
+      this.GoToPoint(undefined, action, run);
+    }
   }
 
   GoToEntity(target: LocoMotorTarget, action?: BufferedAction, run = false): void {
     this.dest = new Dest(target);
     this.SetBufferedAction(action);
     this.wantstomoveforward = true;
-    if (action?.arrivedist !== undefined) { this.arrive_dist = action.arrivedist; }
-    else if (action?.distance !== undefined) {
+    if (action?.arrivedist !== undefined) {
+      this.arrive_dist = action.arrivedist;
+    } else if (action?.distance !== undefined) {
       // NOTE: the physical radii are the fallback if the action's distance is too small.
-      this.arrive_dist = Math.max(ARRIVE_STEP + target.getPhysicsRadius(0) + this.inst.getPhysicsRadius(0), action.distance);
-    } else { this.arrive_dist = ARRIVE_STEP + target.getPhysicsRadius(0) + this.inst.getPhysicsRadius(0); }
+      this.arrive_dist = Math.max(
+        ARRIVE_STEP + target.getPhysicsRadius(0) + this.inst.getPhysicsRadius(0),
+        action.distance,
+      );
+    } else {
+      this.arrive_dist = ARRIVE_STEP + target.getPhysicsRadius(0) + this.inst.getPhysicsRadius(0);
+    }
     this.wantstorun = run;
     this.updating = true;
-    if (this.directdrive) { if (run) { this.RunForward(); } else { this.WalkForward(); } }
-    else { this.pathing?.FindPath(this.inst.getPosition(), target.getPosition()); }
+    if (this.directdrive) {
+      if (run) {
+        this.RunForward();
+      } else {
+        this.WalkForward();
+      }
+    } else {
+      this.pathing?.FindPath(this.inst.getPosition(), target.getPosition());
+    }
     // Try an instant arrive check if we're not moving.
-    if (!this.inst.sg?.hasStateTag('moving')) { this.update(0, true); }
+    if (!this.inst.sg?.hasStateTag('moving')) {
+      this.update(0, true);
+    }
   }
 
   GoToPoint(point?: LocoMotorPoint, action?: BufferedAction, run = false): void {
     const destination = point ?? action?.pos;
-    if (!destination) { throw new Error('GoToPoint requires a point or an action position'); }
+    if (!destination) {
+      throw new Error('GoToPoint requires a point or an action position');
+    }
     this.dest = new Dest(undefined, { ...destination });
     const arriveDistance = this.options.arriveDistance ?? ARRIVE_STEP;
-    this.arrive_dist = action ? action.arrivedist ?? action.distance ?? arriveDistance : arriveDistance;
+    this.arrive_dist = action ? (action.arrivedist ?? action.distance ?? arriveDistance) : arriveDistance;
     this.wantstorun = run;
     this.wantstomoveforward = true;
     this.SetBufferedAction(action);
     this.updating = true;
-    if (this.directdrive) { if (run) { this.RunForward(); } else { this.WalkForward(); } }
-    else { this.pathing?.FindPath(this.inst.getPosition(), destination); }
-    if (!this.inst.sg?.hasStateTag('moving')) { this.update(0, true); }
+    if (this.directdrive) {
+      if (run) {
+        this.RunForward();
+      } else {
+        this.WalkForward();
+      }
+    } else {
+      this.pathing?.FindPath(this.inst.getPosition(), destination);
+    }
+    if (!this.inst.sg?.hasStateTag('moving')) {
+      this.update(0, true);
+    }
   }
 
   Stop(): void {
@@ -308,15 +397,25 @@ export class LocoMotor {
     this.SetBufferedAction(undefined);
     this.dest = undefined;
     this.pathing?.Stop();
-    if (!this.inst.sg || this.inst.sg.hasStateTag('canrotate')) { this.SetMoveDir(direction); }
+    if (!this.inst.sg || this.inst.sg.hasStateTag('canrotate')) {
+      this.SetMoveDir(direction);
+    }
     this.wantstomoveforward = true;
     this.wantstorun = shouldRun;
-    if (this.directdrive) { if (shouldRun) { this.RunForward(); } else { this.WalkForward(); } }
+    if (this.directdrive) {
+      if (shouldRun) {
+        this.RunForward();
+      } else {
+        this.WalkForward();
+      }
+    }
     this.inst.PushEvent('locomote');
     this.updating = true;
   }
 
-  RunInDirection(direction: number): void { this.WalkInDirection(direction, true); }
+  RunInDirection(direction: number): void {
+    this.WalkInDirection(direction, true);
+  }
 
   /** LocoMotor:OnUpdate; `arriveCheckOnly` is the instant check made when a destination is set. */
   update(dt: number, arriveCheckOnly = false): void {
@@ -335,10 +434,11 @@ export class LocoMotor {
         this.Clear();
         return;
       }
-      const destination = this.dest.getPoint(), position = this.inst.getPosition();
+      const destination = this.dest.getPoint(),
+        position = this.inst.getPosition();
       let arriveDistanceSquared = this.arrive_dist * this.arrive_dist;
       if (dt > 0) {
-        const runDistance = this.GetRunSpeed() * dt * .5;
+        const runDistance = this.GetRunSpeed() * dt * 0.5;
         arriveDistanceSquared = Math.max(arriveDistanceSquared, runDistance * runDistance);
       }
       if (distanceSquared(destination, position) <= arriveDistanceSquared) {
@@ -361,7 +461,7 @@ export class LocoMotor {
       if (!arriveCheckOnly) {
         this.pathing?.UpdateSearch();
         const canrotate = !sg || sg.hasStateTag('canrotate');
-        if (canrotate && !(sg?.hasStateTag('busy'))) {
+        if (canrotate && !sg?.hasStateTag('busy')) {
           const point = this.pathing?.GetMoveStep(position, destination, this.inst.getPhysicsRadius(0)) ?? destination;
           this.movePoint = point;
           this.SetMoveDir(this.inst.GetAngleToPoint(point.x, point.y, point.z));
@@ -369,21 +469,30 @@ export class LocoMotor {
         this.wantstomoveforward = true;
       }
     }
-    if (arriveCheckOnly) { return; }
+    if (arriveCheckOnly) {
+      return;
+    }
 
     const isMoving = sg?.hasStateTag('moving') ?? false;
     const isRunning = sg?.hasStateTag('running') ?? false;
     const shouldLocomote = isMoving !== this.wantstomoveforward || (isMoving && isRunning !== this.wantstorun);
-    if (shouldLocomote) { this.inst.PushEvent('locomote'); }
-    else if (!this.wantstomoveforward) { this.updating = false; }
+    if (shouldLocomote) {
+      this.inst.PushEvent('locomote');
+    } else if (!this.wantstomoveforward) {
+      this.updating = false;
+    }
 
     // locomote may have just entered walk_stop; never restart its stopped motor.
     if (sg?.hasStateTag('moving')) {
       let speed = this.isrunning ? this.GetRunSpeed() : this.GetWalkSpeed();
       if (this.dest?.isValid()) {
         const distanceToDestination = distanceSquared(this.dest.getPoint(), this.inst.getPosition());
-        if (distanceToDestination <= .25) { speed *= Math.max(.33, Math.sqrt(distanceToDestination)); }
-        if (!this.isGroundAhead(speed * dt)) { speed = 0; }
+        if (distanceToDestination <= 0.25) {
+          speed *= Math.max(0.33, Math.sqrt(distanceToDestination));
+        }
+        if (!this.isGroundAhead(speed * dt)) {
+          speed = 0;
+        }
       }
       this.inst.setMotorSpeed(speed);
     }
@@ -391,11 +500,19 @@ export class LocoMotor {
 
   private isGroundAhead(distance: number): boolean {
     const point = this.movePoint;
-    if (!this.pathing || !point) { return true; }
+    if (!this.pathing || !point) {
+      return true;
+    }
     const position = this.inst.getPosition();
     const length = Math.hypot(point.x - position.x, point.z - position.z);
-    if (length === 0) { return true; }
+    if (length === 0) {
+      return true;
+    }
     const reach = (distance + this.inst.getPhysicsRadius(0)) / length;
-    return this.pathing.IsGroundAhead(position, { x: position.x + (point.x - position.x) * reach, y: position.y, z: position.z + (point.z - position.z) * reach });
+    return this.pathing.IsGroundAhead(position, {
+      x: position.x + (point.x - position.x) * reach,
+      y: position.y,
+      z: position.z + (point.z - position.z) * reach,
+    });
   }
 }

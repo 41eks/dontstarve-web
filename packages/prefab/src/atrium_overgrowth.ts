@@ -21,7 +21,9 @@ export interface AtriumOvergrowthSaveState {
 /** atrium_overgrowth.lua fn: the fields it sets on inst. */
 export class AtriumOvergrowthInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    sanityaura: SanityAura; inspectable: Inspectable; roseinspectable: RoseInspectable;
+    sanityaura: SanityAura;
+    inspectable: Inspectable;
+    roseinspectable: RoseInspectable;
   };
   /** inst.storyprogress: rune_AdvanceStory assigns it on the first inspection, which is not ported; OnLoad restores it. */
   declare storyprogress?: number;
@@ -31,7 +33,9 @@ export class AtriumOvergrowthInstance extends PrefabInstance {
 let _storyprogress = 0;
 
 function rune_onsave(inst: AtriumOvergrowthInstance, data: EntityPersistData): void {
-  if (inst.storyprogress !== undefined) { data.atriumOvergrowth = { storyprogress: inst.storyprogress }; }
+  if (inst.storyprogress !== undefined) {
+    data.atriumOvergrowth = { storyprogress: inst.storyprogress };
+  }
 }
 
 function rune_onload(inst: AtriumOvergrowthInstance, data: EntityPersistData): void {
@@ -51,7 +55,10 @@ function rune_onload(inst: AtriumOvergrowthInstance, data: EntityPersistData): v
  */
 function fn(): AtriumOvergrowthInstance {
   // SetBuild / SetBank("atrium_overgrowth"), PlayAnimation("idle") without looping.
-  const inst = new AtriumOvergrowthInstance(ATRIUM_OVERGROWTH_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
+  const inst = new AtriumOvergrowthInstance(
+    ATRIUM_OVERGROWTH_ID,
+    new SpriteState({ name: 'idle', held: true, billboard: true }),
+  );
   inst.addTag('ancient_text');
   // MakeObstaclePhysics(inst, 1.5): the tag here, the body from the definition's physics.
   inst.addTag('blocker');
@@ -67,12 +74,17 @@ function fn(): AtriumOvergrowthInstance {
 }
 
 /** The atrium_overgrowth Prefab atrium_overgrowth.lua returns; the deprecated atrium_idol is not ported. */
-export function atriumOvergrowthPrefabs():
-  Readonly<Record<typeof ATRIUM_OVERGROWTH_ID, PrefabEntityDefinition<AtriumOvergrowthInstance>>> {
+export function atriumOvergrowthPrefabs(): Readonly<
+  Record<typeof ATRIUM_OVERGROWTH_ID, PrefabEntityDefinition<AtriumOvergrowthInstance>>
+> {
   return {
     [ATRIUM_OVERGROWTH_ID]: {
       fn,
-      assets: { animationArchive: 'atrium_overgrowth.zip', buildArchives: ['atrium_overgrowth.zip'], bank: 'atrium_overgrowth' },
+      assets: {
+        animationArchive: 'atrium_overgrowth.zip',
+        buildArchives: ['atrium_overgrowth.zip'],
+        bank: 'atrium_overgrowth',
+      },
       physics: { make: MakeObstaclePhysics, radius: 1.5 },
       minimapIcon: 'atrium_overgrowth.png',
     },

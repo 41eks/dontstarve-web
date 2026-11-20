@@ -8,7 +8,10 @@ export interface SlipperyFeetTargetInst {
   getPhysicsRadius(): number | undefined;
 }
 
-export type SlipperyFeetTargetIsSlipperyAtPointFn = LuaFn<[inst: SlipperyFeetTargetInst, x: number, y: number, z: number], boolean>;
+export type SlipperyFeetTargetIsSlipperyAtPointFn = LuaFn<
+  [inst: SlipperyFeetTargetInst, x: number, y: number, z: number],
+  boolean
+>;
 export type SlipperyFeetTargetRateFn = LuaFn<[inst: SlipperyFeetTargetInst, target: unknown], number>;
 
 /** components/slipperyfeettarget.lua: marks a surface that slipperyfeet users can slide on. */
@@ -22,20 +25,33 @@ export class SlipperyFeetTarget {
     inst.addTag('slipperyfeettarget');
   }
 
-  OnRemoveFromEntity(): void { this.inst.removeTag('slipperyfeettarget'); }
+  OnRemoveFromEntity(): void {
+    this.inst.removeTag('slipperyfeettarget');
+  }
 
-  SetIsSlipperyAtPoint(fn: SlipperyFeetTargetIsSlipperyAtPointFn | undefined): void { this.isslipperyatfeetfn = fn; }
+  SetIsSlipperyAtPoint(fn: SlipperyFeetTargetIsSlipperyAtPointFn | undefined): void {
+    this.isslipperyatfeetfn = fn;
+  }
 
   IsSlipperyAtPosition(x: number, z: number): boolean {
-    if (this.isslipperyatfeetfn) { return this.isslipperyatfeetfn(this.inst, x, 0, z); }
+    if (this.isslipperyatfeetfn) {
+      return this.isslipperyatfeetfn(this.inst, x, 0, z);
+    }
     const radius = this.inst.getPhysicsRadius();
-    if (radius === undefined) { return false; }
+    if (radius === undefined) {
+      return false;
+    }
     const position = this.inst.getPosition();
-    const dx = position.x - x, dz = position.z - z;
+    const dx = position.x - x,
+      dz = position.z - z;
     return dx * dx + dz * dz < radius * radius;
   }
 
-  SetSlipperyRate(fn: SlipperyFeetTargetRateFn | undefined): void { this.ratefn = fn; }
+  SetSlipperyRate(fn: SlipperyFeetTargetRateFn | undefined): void {
+    this.ratefn = fn;
+  }
 
-  GetSlipperyRate(target: unknown): number { return this.ratefn ? this.ratefn(this.inst, target) : 1; }
+  GetSlipperyRate(target: unknown): number {
+    return this.ratefn ? this.ratefn(this.inst, target) : 1;
+  }
 }

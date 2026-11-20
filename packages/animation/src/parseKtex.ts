@@ -72,9 +72,13 @@ function decodeBC(data: Uint8Array, width: number, height: number, type: 1 | 2 |
         alphaTable[0] = alpha0;
         alphaTable[1] = alpha1;
         if (alpha0 > alpha1) {
-          for (let index = 1; index <= 6; index++) { alphaTable[index + 1] = Math.round(((7 - index) * alpha0 + index * alpha1) / 7); }
+          for (let index = 1; index <= 6; index++) {
+            alphaTable[index + 1] = Math.round(((7 - index) * alpha0 + index * alpha1) / 7);
+          }
         } else {
-          for (let index = 1; index <= 4; index++) { alphaTable[index + 1] = Math.round(((5 - index) * alpha0 + index * alpha1) / 5); }
+          for (let index = 1; index <= 4; index++) {
+            alphaTable[index + 1] = Math.round(((5 - index) * alpha0 + index * alpha1) / 5);
+          }
           alphaTable[6] = 0;
           alphaTable[7] = 255;
         }
@@ -89,43 +93,59 @@ function decodeBC(data: Uint8Array, width: number, height: number, type: 1 | 2 |
 
       const c0 = data[offset] | (data[offset + 1] << 8);
       const c1 = data[offset + 2] | (data[offset + 3] << 8);
-      const r0 = Math.round(((c0 >>> 11) & 31) * 255 / 31);
-      const g0 = Math.round(((c0 >>> 5) & 63) * 255 / 63);
-      const b0 = Math.round((c0 & 31) * 255 / 31);
-      const r1 = Math.round(((c1 >>> 11) & 31) * 255 / 31);
-      const g1 = Math.round(((c1 >>> 5) & 63) * 255 / 63);
-      const b1 = Math.round((c1 & 31) * 255 / 31);
-      colours[0] = r0; colours[1] = g0; colours[2] = b0;
-      colours[4] = r1; colours[5] = g1; colours[6] = b1;
+      const r0 = Math.round((((c0 >>> 11) & 31) * 255) / 31);
+      const g0 = Math.round((((c0 >>> 5) & 63) * 255) / 63);
+      const b0 = Math.round(((c0 & 31) * 255) / 31);
+      const r1 = Math.round((((c1 >>> 11) & 31) * 255) / 31);
+      const g1 = Math.round((((c1 >>> 5) & 63) * 255) / 63);
+      const b1 = Math.round(((c1 & 31) * 255) / 31);
+      colours[0] = r0;
+      colours[1] = g0;
+      colours[2] = b0;
+      colours[4] = r1;
+      colours[5] = g1;
+      colours[6] = b1;
       const fourColours = c0 > c1 || type !== 1;
       if (fourColours) {
-        colours[8] = Math.round((2 * r0 + r1) / 3); colours[9] = Math.round((2 * g0 + g1) / 3); colours[10] = Math.round((2 * b0 + b1) / 3);
-        colours[12] = Math.round((r0 + 2 * r1) / 3); colours[13] = Math.round((g0 + 2 * g1) / 3); colours[14] = Math.round((b0 + 2 * b1) / 3);
+        colours[8] = Math.round((2 * r0 + r1) / 3);
+        colours[9] = Math.round((2 * g0 + g1) / 3);
+        colours[10] = Math.round((2 * b0 + b1) / 3);
+        colours[12] = Math.round((r0 + 2 * r1) / 3);
+        colours[13] = Math.round((g0 + 2 * g1) / 3);
+        colours[14] = Math.round((b0 + 2 * b1) / 3);
       } else {
-        colours[8] = Math.round((r0 + r1) / 2); colours[9] = Math.round((g0 + g1) / 2); colours[10] = Math.round((b0 + b1) / 2);
+        colours[8] = Math.round((r0 + r1) / 2);
+        colours[9] = Math.round((g0 + g1) / 2);
+        colours[10] = Math.round((b0 + b1) / 2);
         colours[12] = colours[13] = colours[14] = 0;
       }
-      const indices = (data[offset + 4] | (data[offset + 5] << 8) |
-        (data[offset + 6] << 16) | (data[offset + 7] << 24)) >>> 0;
+      const indices =
+        (data[offset + 4] | (data[offset + 5] << 8) | (data[offset + 6] << 16) | (data[offset + 7] << 24)) >>> 0;
       offset += 8;
       for (let y = 0; y < 4; y++) {
         const sourceY = blockY * 4 + y;
-        if (sourceY >= height) { break; }
+        if (sourceY >= height) {
+          break;
+        }
         const rowStart = (height - 1 - sourceY) * width;
         for (let x = 0; x < 4; x++) {
           const targetX = blockX * 4 + x;
-          if (targetX >= width) { break; }
+          if (targetX >= width) {
+            break;
+          }
           const pixel = y * 4 + x;
           const colourIndex = (indices >>> (pixel * 2)) & 3;
           const target = (rowStart + targetX) * 4;
           const source = colourIndex * 4;
           const alpha = type === 1 ? (!fourColours && colourIndex === 3 ? 0 : 255) : alphas[pixel];
           output[target + 3] = alpha;
-          if (!alpha) { continue; }
+          if (!alpha) {
+            continue;
+          }
           if (premultiplied && alpha !== 255) {
-            output[target] = Math.min(255, Math.round(colours[source] * 255 / alpha));
-            output[target + 1] = Math.min(255, Math.round(colours[source + 1] * 255 / alpha));
-            output[target + 2] = Math.min(255, Math.round(colours[source + 2] * 255 / alpha));
+            output[target] = Math.min(255, Math.round((colours[source] * 255) / alpha));
+            output[target + 1] = Math.min(255, Math.round((colours[source + 1] * 255) / alpha));
+            output[target + 2] = Math.min(255, Math.round((colours[source + 2] * 255) / alpha));
           } else {
             output[target] = colours[source];
             output[target + 1] = colours[source + 1];
@@ -143,36 +163,44 @@ const BC_TYPES = [1, 2, 3] as const;
 
 export function parseKtex(data: Uint8Array, label = 'KTEX'): DecodedTexture {
   const reader = new KtexReader(data, label);
-  if (reader.ascii(4) !== 'KTEX') { throw new Error(`${label}: invalid KTEX signature`); }
+  if (reader.ascii(4) !== 'KTEX') {
+    throw new Error(`${label}: invalid KTEX signature`);
+  }
   const header = reader.u32();
   const mipCount = Math.floor(header / 8192) % 32;
   const pixelFormat = Math.floor(header / 16) % 32;
   const mips = Array.from({ length: mipCount }, () => ({
-    width: reader.u16(), height: reader.u16(), pitch: reader.u16(), size: reader.u32(),
+    width: reader.u16(),
+    height: reader.u16(),
+    pitch: reader.u16(),
+    size: reader.u32(),
   }));
   const first = mips[0];
-  if (!first) { throw new Error(`${label}: texture contains no mip levels`); }
+  if (!first) {
+    throw new Error(`${label}: texture contains no mip levels`);
+  }
   const source = reader.bytes(first.size);
   if (pixelFormat <= 2) {
     return {
-      width: first.width, height: first.height,
+      width: first.width,
+      height: first.height,
       pixels: decodeBC(source, first.width, first.height, BC_TYPES[pixelFormat]),
     };
   }
   let pixels: Uint8Array;
-  if (pixelFormat === 4) { pixels = new Uint8Array(source.subarray(0, first.width * first.height * 4)); }
-  else if (pixelFormat === 5) {
+  if (pixelFormat === 4) {
+    pixels = new Uint8Array(source.subarray(0, first.width * first.height * 4));
+  } else if (pixelFormat === 5) {
     pixels = new Uint8Array(first.width * first.height * 4);
-    for (let sourceIndex = 0, targetIndex = 0;
-      targetIndex < pixels.length;
-      sourceIndex += 3, targetIndex += 4) {
+    for (let sourceIndex = 0, targetIndex = 0; targetIndex < pixels.length; sourceIndex += 3, targetIndex += 4) {
       pixels[targetIndex] = source[sourceIndex];
       pixels[targetIndex + 1] = source[sourceIndex + 1];
       pixels[targetIndex + 2] = source[sourceIndex + 2];
       pixels[targetIndex + 3] = 255;
     }
+  } else {
+    throw new Error(`${label}: unsupported KTEX pixel format ${pixelFormat}`);
   }
-  else { throw new Error(`${label}: unsupported KTEX pixel format ${pixelFormat}`); }
 
   const rowSize = first.width * 4;
   const flipped = new Uint8Array(pixels.length);

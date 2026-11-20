@@ -9,20 +9,37 @@ import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import type { Scene } from 'three';
 
 const plantFixtures = new Set<() => void>();
-afterEach(() => { for (const dispose of plantFixtures) { dispose(); } plantFixtures.clear(); });
+afterEach(() => {
+  for (const dispose of plantFixtures) {
+    dispose();
+  }
+  plantFixtures.clear();
+});
 
 /** Own the injected display/fire resources in tests; return the actual generic manager without adapting its API. */
 export function plantManager<Id extends string, Instance extends PickablePlantInstance>(
   define: (world: PickablePlantWorld) => Readonly<Record<Id, PrefabEntityDefinition<Instance>>>,
-  scene: Scene, options: Omit<PickablePlantWorld, 'scheduler' | 'fire' | 'getWatchWorldContent'>,
+  scene: Scene,
+  options: Omit<PickablePlantWorld, 'scheduler' | 'fire' | 'getWatchWorldContent'>,
 ): PrefabEntityManager<Id, Instance> {
-  const displays = new PrefabDisplayGroup(scene), fire = FireFxHost.create('/dst/data/anim');
+  const displays = new PrefabDisplayGroup(scene),
+    fire = FireFxHost.create('/dst/data/anim');
   const getWatchWorldContent = getBoundWatchWorldContent();
   let stopSeason: (() => void) | undefined;
-  const season = getWatchWorldContent?.(WorldContentKey.Season, stop => { stopSeason = stop; });
+  const season = getWatchWorldContent?.(WorldContentKey.Season, stop => {
+    stopSeason = stop;
+  });
   const scheduler = season?.scheduler ?? new GameTimeScheduler();
   const world = { ...options, scheduler, fire, getWatchWorldContent };
   const manager = prefabManager(displays, '/dst/data/anim', world, define);
-  plantFixtures.add(() => { manager.dispose(); displays.dispose(); fire.dispose(); stopSeason?.(); if (!season) { scheduler.dispose(); } });
+  plantFixtures.add(() => {
+    manager.dispose();
+    displays.dispose();
+    fire.dispose();
+    stopSeason?.();
+    if (!season) {
+      scheduler.dispose();
+    }
+  });
   return manager;
 }

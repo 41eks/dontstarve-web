@@ -14,19 +14,34 @@ export const landTurf = (rules: Partial<Record<keyof TurfMap, unknown>>) =>
   ({ getTileAtWorld: () => WORLD_TILES.DIRT, isOceanAtWorld: () => false, ...rules }) as unknown as TurfMap;
 
 /** A player whose controller walks to DEPLOY with its own locomotor, which `deploy` lets arrive. */
-export function deployActor(world: WorldContext, inventory: InventoryStore, map: DeployMap,
-  graph = wilsonPlayer(() => 1).sg) {
+export function deployActor(
+  world: WorldContext,
+  inventory: InventoryStore,
+  map: DeployMap,
+  graph = wilsonPlayer(() => 1).sg,
+) {
   const walker = testLocomotor(world.player);
   // The player inst deploys from its own inventory, onto TheWorld.Map.
   const doer = testPlayer({ model: world.player, inventory, map });
   const controller = new PlayerController(world, graph, walker.locomotor, createEquipmentExistenceState('HANDS'), doer);
-  return { graph, locomotor: walker, doer, controller,
+  return {
+    graph,
+    locomotor: walker,
+    doer,
+    controller,
     canDeploy: (point: THREE.Vector3) => inventory.GetActiveItem()!.components.deployable!.CanDeploy(point, map),
     /** PlayerController:DoAction with the active item, then the locomotor's arrival. */
     deploy(point: THREE.Vector3): boolean {
-      const action = controller.createAction({ action: 'DEPLOY', invobject: inventory.GetActiveItem() as never, pos: point });
-      if (!action || !controller.DoAction(action)) { return false; }
+      const action = controller.createAction({
+        action: 'DEPLOY',
+        invobject: inventory.GetActiveItem() as never,
+        pos: point,
+      });
+      if (!action || !controller.DoAction(action)) {
+        return false;
+      }
       walker.arrive();
       return true;
-    } };
+    },
+  };
 }

@@ -16,19 +16,24 @@ const RECORD: EntitySaveRecord = {
   id: 'dst_04E26ADB66396E8D_pandoraschest_id_101861',
   transform: { position: [2316, 0, 852], rotationY: 0 },
   components: {
-    container: { items: {
-      1: { id: 'dst_04E26ADB66396E8D_pandoraschest_id_101861_0', prefab: 'footballhat', components: {} },
-      2: { id: 'dst_04E26ADB66396E8D_pandoraschest_id_101861_1', prefab: 'spear', components: {} },
-    } },
+    container: {
+      items: {
+        1: { id: 'dst_04E26ADB66396E8D_pandoraschest_id_101861_0', prefab: 'footballhat', components: {} },
+        2: { id: 'dst_04E26ADB66396E8D_pandoraschest_id_101861_1', prefab: 'spear', components: {} },
+      },
+    },
     building: {},
   },
 };
 
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-    const relative = url.slice(url.indexOf('/dst/data/') + '/dst/data/'.length);
-    return new Response(await readFile(new URL(`../../../public/dst/data/${relative}`, import.meta.url)));
-  }));
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      const relative = url.slice(url.indexOf('/dst/data/') + '/dst/data/'.length);
+      return new Response(await readFile(new URL(`../../../public/dst/data/${relative}`, import.meta.url)));
+    }),
+  );
 });
 
 afterEach(() => {
@@ -38,11 +43,27 @@ afterEach(() => {
 
 function createPlacement(awake = createSignal(true)) {
   const scheduler = new GameTimeScheduler();
-  const world = { scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(), scheduler,
-    camera: new THREE.PerspectiveCamera(), renderer: { domElement: new EventTarget() },
-    tickingarea: () => createMemo(() => awake.get()), spawnItem: testItem, restoreItem: testRestoreItem } as unknown as WorldContext;
+  const world = {
+    scene: new THREE.Scene(),
+    player: new THREE.Object3D(),
+    ground: new THREE.Group(),
+    scheduler,
+    camera: new THREE.PerspectiveCamera(),
+    renderer: { domElement: new EventTarget() },
+    tickingarea: () => createMemo(() => awake.get()),
+    spawnItem: testItem,
+    restoreItem: testRestoreItem,
+  } as unknown as WorldContext;
   const placement = managedBuildings(world);
-  return { world, placement, awake, dispose: () => { placement.dispose(); scheduler.dispose(); } };
+  return {
+    world,
+    placement,
+    awake,
+    dispose: () => {
+      placement.dispose();
+      scheduler.dispose();
+    },
+  };
 }
 
 it('loads a saved chest with MakeChest tags and components and the non-looping closed clip, and saves it unchanged', async () => {
@@ -56,15 +77,24 @@ it('loads a saved chest with MakeChest tags and components and the non-looping c
     await prefabDisplay(model)!.artLoaded();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/pandoras_chest.zip'));
     expect(instance.sprite.currentAnimation).toBe('closed');
-    for (const tag of ['structure', 'chest', 'SnowCovered']) { expect(instance.hasTag(tag)).toBe(true); }
+    for (const tag of ['structure', 'chest', 'SnowCovered']) {
+      expect(instance.hasTag(tag)).toBe(true);
+    }
     // indestructible = true: no workable, lootdropper or burnable.
-    expect(Object.keys(instance.components).sort())
-      .toEqual(['container', 'hauntable', 'inspectable', 'lunarhailbuildup', 'roseinspectable']);
+    expect(Object.keys(instance.components).sort()).toEqual([
+      'container',
+      'hauntable',
+      'inspectable',
+      'lunarhailbuildup',
+      'roseinspectable',
+    ]);
     expect(instance.hasTag('HAMMER_workable')).toBe(false);
     expect(instance.components.container!.GetNumSlots()).toBe(9);
     expect(instance.entityId).toBe(RECORD.id);
     expect(placement.exportRecords()).toEqual([{ prefabId: PANDORAS_CHEST_ID, record: RECORD }]);
-  } finally { dispose(); }
+  } finally {
+    dispose();
+  }
 });
 
 it('releases the chest art while its tile sleeps and redraws the declared closed clip when it wakes', async () => {
@@ -72,24 +102,30 @@ it('releases the chest art while its tile sleeps and redraws the declared closed
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
     const model = await placement.spawnFromSave(PANDORAS_CHEST_ID, RECORD);
-    const instance = prefabInstance(model)!, display = prefabDisplay(model)!;
+    const instance = prefabInstance(model)!,
+      display = prefabDisplay(model)!;
     await display.artLoaded();
     const declared = instance.sprite.sprite.peek().clip;
     expect(model.getObjectsByProperty('isMesh', true).length).toBeGreaterThan(0);
 
-    awake.set(false); await tick();
+    awake.set(false);
+    await tick();
     expect(instance.status.peek()).toBe('asleep');
     expect(model.parent).toBeNull();
     expect(instance.sprite.loaded).toBe(false);
     expect(model.getObjectsByProperty('isMesh', true)).toHaveLength(0);
     expect(instance.components.container!.GetNumSlots()).toBe(9);
 
-    awake.set(true); await tick(); await display.artLoaded();
+    awake.set(true);
+    await tick();
+    await display.artLoaded();
     expect(model.parent).toBe(world.scene);
     expect(instance.sprite.loaded).toBe(true);
     expect(instance.sprite.sprite.peek().clip).toEqual(declared);
     expect(instance.sprite.currentAnimation).toBe('closed');
     expect(model.getObjectsByProperty('isMesh', true).length).toBeGreaterThan(0);
     expect(placement.exportRecords()[0].record).toEqual(RECORD);
-  } finally { dispose(); }
+  } finally {
+    dispose();
+  }
 });

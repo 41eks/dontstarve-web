@@ -15,7 +15,10 @@ import { workTargets } from './workTargets';
 
 useTestTileMap();
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {} })),
+}));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => {
@@ -23,14 +26,28 @@ beforeEach(() => {
     return new Response(await readFile(new URL(`../../../public/dst/data/${file}`, import.meta.url)));
   });
 });
-afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function setup(physics: CANNON.World = new CANNON.World()) {
   const camera = new THREE.PerspectiveCamera();
-  camera.position.set(0, 12, 40); camera.lookAt(0, 0, 0); camera.updateMatrixWorld();
+  camera.position.set(0, 12, 40);
+  camera.lookAt(0, 0, 0);
+  camera.updateMatrixWorld();
   const pathfinder = new Pathfinder({ isPassableAtPoint: () => true, isOceanAtWorld: () => false });
-  const world = { physics, pathfinder, scene: new THREE.Scene(), camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), ground: new THREE.Group(), player: new THREE.Group(),
-    renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
+  const world = {
+    physics,
+    pathfinder,
+    scene: new THREE.Scene(),
+    camera,
+    cameraFacing: createSignal(8),
+    cameraHeading: createSignal(45),
+    ground: new THREE.Group(),
+    player: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
   return { physics, pathfinder, placement: wallsFixture(world, () => false) };
 }
@@ -44,14 +61,19 @@ it('blocks with a static obstacle at the foot point only while the wall has heal
   const { physics, placement, pathfinder } = setup();
   const pathBlocked = () => !pathfinder.IsClear({ x: 0, y: 0, z: -6 }, { x: 6, y: 0, z: -6 });
   try {
-    await placement.spawnFromSave('wall_stone', { id: 'wall', transform: { position: [3, 0, -6], rotationY: 0 },
-      components: { health: { current: 100, maximum: 400 } } });
+    await placement.spawnFromSave('wall_stone', {
+      id: 'wall',
+      transform: { position: [3, 0, -6], rotationY: 0 },
+      components: { health: { current: 100, maximum: 400 } },
+    });
     await new Promise(resolve => setTimeout(resolve, 0));
     const [body] = wallBodies(physics);
     // walls.lua MakeObstaclePhysics(inst, .5) on the ground origin
     expect(body.position.x).toBe(3);
     expect(body.position.z).toBe(-6);
-    expect(body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === WALL_PHYSICS_RADIUS)).toBe(true);
+    expect(body.shapes.some(shape => shape instanceof CANNON.Sphere && shape.radius === WALL_PHYSICS_RADIUS)).toBe(
+      true,
+    );
     expect(pathBlocked()).toBe(true);
 
     healthOf(placement, 0).DoDelta(-100); // to zero: clearobstacle
@@ -65,7 +87,9 @@ it('blocks with a static obstacle at the foot point only while the wall has heal
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(wallBodies(physics)).toEqual([body]);
     expect(pathBlocked()).toBe(true);
-  } finally { placement.dispose(); }
+  } finally {
+    placement.dispose();
+  }
   expect(wallBodies(physics)).toHaveLength(0);
   expect(pathBlocked()).toBe(false);
 });
@@ -73,17 +97,31 @@ it('blocks with a static obstacle at the foot point only while the wall has heal
 it('restores a saved broken wall without an obstacle and releases the obstacle when hammered out', async () => {
   const { physics, placement } = setup();
   try {
-    await placement.spawnFromSave('wall_stone', { id: 'broken', transform: { position: [3, 0, -6], rotationY: 0 },
-      components: { health: { current: 0, maximum: 400 } } });
-    await placement.spawnFromSave('wall_stone', { id: 'live', transform: { position: [7, 0, -6], rotationY: 0 },
-      components: { health: { current: 200, maximum: 400 } } });
+    await placement.spawnFromSave('wall_stone', {
+      id: 'broken',
+      transform: { position: [3, 0, -6], rotationY: 0 },
+      components: { health: { current: 0, maximum: 400 } },
+    });
+    await placement.spawnFromSave('wall_stone', {
+      id: 'live',
+      transform: { position: [7, 0, -6], rotationY: 0 },
+      components: { health: { current: 200, maximum: 400 } },
+    });
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(wallBodies(physics).map(body => body.position.x)).toEqual([7]);
-    workTargets('HAMMER').find(target => target.id === 'live')!.work();
-    workTargets('HAMMER').find(target => target.id === 'live')!.work();
-    workTargets('HAMMER').find(target => target.id === 'live')!.work();
+    workTargets('HAMMER')
+      .find(target => target.id === 'live')!
+      .work();
+    workTargets('HAMMER')
+      .find(target => target.id === 'live')!
+      .work();
+    workTargets('HAMMER')
+      .find(target => target.id === 'live')!
+      .work();
     expect(wallBodies(physics)).toHaveLength(0);
-  } finally { placement.dispose(); }
+  } finally {
+    placement.dispose();
+  }
 });
 
 it('keeps a wall colliding outside the ticking area (SetDontRemoveOnSleep) while health decides SetActive', async () => {
@@ -93,21 +131,31 @@ it('keeps a wall colliding outside the ticking area (SetDontRemoveOnSleep) while
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
     // A pen far from the player still holds what it encloses.
-    await placement.spawnFromSave('wall_stone', { id: 'dormant-wall', transform: { position: [240, 0, 0], rotationY: 0 },
-      components: { health: { current: 100, maximum: 400 } } });
+    await placement.spawnFromSave('wall_stone', {
+      id: 'dormant-wall',
+      transform: { position: [240, 0, 0], rotationY: 0 },
+      components: { health: { current: 100, maximum: 400 } },
+    });
     await settle();
     const [body] = [...physics.registeredBodies];
     expect(physics.bodies).toEqual([body]);
     healthOf(placement, 0).DoDelta(-100);
-    position.set(new THREE.Vector3(240, 0, 0)); await settle();
+    position.set(new THREE.Vector3(240, 0, 0));
+    await settle();
     expect(physics.bodies).toEqual([]);
     expect([...physics.registeredBodies]).toEqual([]);
     healthOf(placement, 0).DoDelta(50);
-    position.set(new THREE.Vector3()); await settle();
+    position.set(new THREE.Vector3());
+    await settle();
     expect(physics.bodies).toEqual([body]);
     placement.dispose();
-    position.set(new THREE.Vector3(240, 0, 0)); await settle();
+    position.set(new THREE.Vector3(240, 0, 0));
+    await settle();
     expect(physics.bodies).toEqual([]);
     expect([...physics.registeredBodies]).toEqual([]);
-  } finally { placement.dispose(); physics.dispose(); DisposeTileStates(position); }
+  } finally {
+    placement.dispose();
+    physics.dispose();
+    DisposeTileStates(position);
+  }
 });

@@ -6,9 +6,12 @@ import { createWorldState } from './worldState';
 
 /** The world and its physics exist before the player, whose physics binding registers the player's body here. */
 export const worldState = createWorldState(initialSave.world);
-export const world = new PhysicsWorld({
-  gravity: new CANNON.Vec3(0, -9.82, 0),
-}, worldState.tickingarea);
+export const world = new PhysicsWorld(
+  {
+    gravity: new CANNON.Vec3(0, -9.82, 0),
+  },
+  worldState.tickingarea,
+);
 
 const groundMaterial = new CANNON.Material('ground');
 const groundBody = new CANNON.Body({

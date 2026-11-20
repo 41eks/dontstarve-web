@@ -29,8 +29,8 @@ export class StaffCastingLightInstance extends PrefabInstance {
   /** SetUp(colour, duration, delay): DoPeriodicTask(FRAMES, OnUpdate, delay or 0), lit from now at its initial settings. */
   SetUp(colour: readonly [number, number, number], duration: number, delay = 0): void {
     this.colour = colour;
-    this._duration = Math.floor(duration / FRAMES + .5);
-    this.setLight(.3, .8, .9);
+    this._duration = Math.floor(duration / FRAMES + 0.5);
+    this.setLight(0.3, 0.8, 0.9);
     this.task = this.DoPeriodicTask(FRAMES, () => this.OnUpdate(), delay);
   }
 
@@ -38,11 +38,15 @@ export class StaffCastingLightInstance extends PrefabInstance {
     this._value += 1;
     if (this._value < this._duration) {
       const k = (this._value / this._duration) ** 5;
-      if (this.is_small) { this.setLight(.3 + 4 * k, .8 - .7 * k, 1.1 + .3 * k); }
-      else { this.setLight(.3 + 10 * k, .8 - .6 * k, .9 - .4 * k); }
+      if (this.is_small) {
+        this.setLight(0.3 + 4 * k, 0.8 - 0.7 * k, 1.1 + 0.3 * k);
+      } else {
+        this.setLight(0.3 + 10 * k, 0.8 - 0.6 * k, 0.9 - 0.4 * k);
+      }
     } else {
       this.light.set(null);
-      this.task?.Cancel(); this.task = undefined;
+      this.task?.Cancel();
+      this.task = undefined;
       this.DoTaskInTime(2 * FRAMES, inst => inst.remove());
     }
   }
@@ -53,9 +57,14 @@ export class StaffCastingLightInstance extends PrefabInstance {
 }
 
 /** The Prefab table staff_castinglight.lua returns; neither prefab has assets. */
-export function staffCastingLightPrefabs(world: { readonly scheduler: GameTimeScheduler; readonly tickingarea?: TileStateQuery }): Readonly<Record<StaffCastingLightId, PrefabEntityDefinition<StaffCastingLightInstance>>> {
+export function staffCastingLightPrefabs(world: {
+  readonly scheduler: GameTimeScheduler;
+  readonly tickingarea?: TileStateQuery;
+}): Readonly<Record<StaffCastingLightId, PrefabEntityDefinition<StaffCastingLightInstance>>> {
   return {
     [STAFF_CASTINGLIGHT_ID]: { fn: () => new StaffCastingLightInstance(STAFF_CASTINGLIGHT_ID, false, world.scheduler) },
-    [STAFF_CASTINGLIGHT_SMALL_ID]: { fn: () => new StaffCastingLightInstance(STAFF_CASTINGLIGHT_SMALL_ID, true, world.scheduler) },
+    [STAFF_CASTINGLIGHT_SMALL_ID]: {
+      fn: () => new StaffCastingLightInstance(STAFF_CASTINGLIGHT_SMALL_ID, true, world.scheduler),
+    },
   };
 }

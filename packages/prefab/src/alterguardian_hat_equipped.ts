@@ -21,7 +21,10 @@ let nextId = 0;
  * merged into the owner's; SetMultColour needs the sprite's own material copies.
  */
 export function alterguardianHatEquippedSource(sprites: SpriteResources, archive: string) {
-  return sprites.archive({ animationArchive: archive, buildArchives: [archive], bank: 'hat_alterguardian_equipped' }, { colour: [1, 1, 1] });
+  return sprites.archive(
+    { animationArchive: archive, buildArchives: [archive], bank: 'hat_alterguardian_equipped' },
+    { colour: [1, 1, 1] },
+  );
 }
 
 /**
@@ -39,17 +42,24 @@ export class AlterguardianHatEquipped {
   constructor(art: AlterguardianHatEquippedArt, owner: PrefabInstance<ArchiveSpriteCommands>) {
     this.art = art;
     this.owner = owner;
-    const anim = this.anim = new AnimState();
+    const anim = (this.anim = new AnimState());
     // The display loads the archive before it draws the layer.
-    const { instance, display } = createArchiveEntity(PREFAB, alterguardianHatEquippedSource(art.sprites, art.archive), { name: 'idle' }, PREFAB, instance => {
-      // hats.lua's empty spore container: alterguardianhat_animstatemult sets SetMultColour(0.7, 0.7, 0.7) on both entities.
-      instance.sprite.setColour([0.7, 0.7, 0.7]);
-      // The layer's own AnimState, by its json signal: its display follows it.
-      instance.sprite.setAnimState(anim.json, art.skin?.art);
-      instance.addTag('FX');
-      instance.addTag('DECOR');
-      instance.persists = false;
-    }, owner.status);
+    const { instance, display } = createArchiveEntity(
+      PREFAB,
+      alterguardianHatEquippedSource(art.sprites, art.archive),
+      { name: 'idle' },
+      PREFAB,
+      instance => {
+        // hats.lua's empty spore container: alterguardianhat_animstatemult sets SetMultColour(0.7, 0.7, 0.7) on both entities.
+        instance.sprite.setColour([0.7, 0.7, 0.7]);
+        // The layer's own AnimState, by its json signal: its display follows it.
+        instance.sprite.setAnimState(anim.json, art.skin?.art);
+        instance.addTag('FX');
+        instance.addTag('DECOR');
+        instance.persists = false;
+      },
+      owner.status,
+    );
     this.instance = instance;
     this.display = display;
     // SetSymbolMultColour("flame_swap", ...) is not ported: flame_swap only has art once SetFlameLevel overrides it.
@@ -62,8 +72,13 @@ export class AlterguardianHatEquipped {
   /** Follower:FollowSymbol(owner, "hair") on one side of the owner, then activate_pre into the activate_loop. */
   OnActivated(isFront: boolean): void {
     this.anim.Hide(isFront ? 'back' : 'front');
-    this.owner.sprite.attachFx(this.key, { sprite: this.instance.sprite, display: this.display, active: SHOWN, sortLayer: 2,
-      composite: { symbol: 'hair', finalOffset: isFront ? 1 : -1, noFaced: true } });
+    this.owner.sprite.attachFx(this.key, {
+      sprite: this.instance.sprite,
+      display: this.display,
+      active: SHOWN,
+      sortLayer: 2,
+      composite: { symbol: 'hair', finalOffset: isFront ? 1 : -1, noFaced: true },
+    });
     this.instance.sprite.playOnce('activate_pre');
     this.instance.sprite.pushAnimation('activate_loop', true);
   }
@@ -76,9 +91,15 @@ export class AlterguardianHatEquipped {
   /** The item skin replaces p4_piece and fx_glow; every other symbol stays the FX build's. */
   SetSkin(): void {
     const skin = this.art.skin;
-    if (!skin) { return; }
-    for (const symbol of ['p4_piece', 'fx_glow']) { this.anim.OverrideItemSkinSymbol(symbol, skin.archive, symbol, this.key, this.art.archive); }
+    if (!skin) {
+      return;
+    }
+    for (const symbol of ['p4_piece', 'fx_glow']) {
+      this.anim.OverrideItemSkinSymbol(symbol, skin.archive, symbol, this.key, this.art.archive);
+    }
   }
 
-  Remove(): void { this.instance.remove(); }
+  Remove(): void {
+    this.instance.remove();
+  }
 }

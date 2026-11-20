@@ -4,9 +4,12 @@ import type { ArchiveSpriteCommands, SpriteState } from '@dontstarve-web/display
 import { bankAnimationTiming } from './animationTimings';
 
 /** The sprite commands AnimState playback is written with. */
-export type AnimStateSprite = Pick<ArchiveSpriteCommands, 'start' | 'playOnce' | 'pushAnimation' | 'setColour' | 'setAddColour'>
+export type AnimStateSprite = Pick<
+  ArchiveSpriteCommands,
+  'start' | 'playOnce' | 'pushAnimation' | 'setColour' | 'setAddColour'
+> &
   /** A factory sprite's state also takes a named bank and build and a playback rate. */
-  & Partial<Pick<SpriteState, 'setArtSource' | 'setPlaybackRate'>>;
+  Partial<Pick<SpriteState, 'setArtSource' | 'setPlaybackRate'>>;
 
 /**
  * inst.AnimState: one AnimState for the entity, as in Lua. Playback writes the entity's sprite json; symbol overrides
@@ -36,42 +39,74 @@ export class InstanceAnimState extends AnimState {
   }
 
   /** AnimState:SetBank(bank). */
-  SetBank(bank: string): void { if (bank !== this.bank) { this.bank = bank; this.applyArt(); } }
+  SetBank(bank: string): void {
+    if (bank !== this.bank) {
+      this.bank = bank;
+      this.applyArt();
+    }
+  }
 
   /** AnimState:SetBuild(build), named by its archive. */
-  SetBuild(buildArchive: string): void { if (buildArchive !== this.buildArchive) { this.buildArchive = buildArchive; this.applyArt(); } }
+  SetBuild(buildArchive: string): void {
+    if (buildArchive !== this.buildArchive) {
+      this.buildArchive = buildArchive;
+      this.applyArt();
+    }
+  }
 
   private applyArt(): void {
-    if (!this.assets || this.bank === undefined || this.buildArchive === undefined) { return; }
-    if (!this.sprite.setArtSource) { throw new Error('This sprite cannot change its bank or build'); }
-    this.sprite.setArtSource({ animationArchives: this.assets.animationArchives, bank: this.bank, buildArchive: this.buildArchive, art: this.assets.art });
+    if (!this.assets || this.bank === undefined || this.buildArchive === undefined) {
+      return;
+    }
+    if (!this.sprite.setArtSource) {
+      throw new Error('This sprite cannot change its bank or build');
+    }
+    this.sprite.setArtSource({
+      animationArchives: this.assets.animationArchives,
+      bank: this.bank,
+      buildArchive: this.buildArchive,
+      art: this.assets.art,
+    });
   }
 
   /** AnimState:PlayAnimation(name, loop): replaces the clip and clears the queue. */
   PlayAnimation(name: string, loop = false): void {
     this.currentAnimation = name;
-    if (loop) { this.sprite.start(name); }
-    else { this.sprite.playOnce(name); }
+    if (loop) {
+      this.sprite.start(name);
+    } else {
+      this.sprite.playOnce(name);
+    }
   }
 
   /** AnimState:PushAnimation(name, loop); the loop the source omits is decided by the caller (see lua-api-map). */
-  PushAnimation(name: string, loop = false): void { this.sprite.pushAnimation(name, loop); }
+  PushAnimation(name: string, loop = false): void {
+    this.sprite.pushAnimation(name, loop);
+  }
 
   /** AnimState:GetCurrentAnimationLength(): the played clip's length in seconds at its own frame rate, from the source anim.bin. */
   GetCurrentAnimationLength(): number {
-    if (!this.assets || this.bank === undefined || this.currentAnimation === undefined) { throw new Error('AnimState has no declared clip playing'); }
+    if (!this.assets || this.bank === undefined || this.currentAnimation === undefined) {
+      throw new Error('AnimState has no declared clip playing');
+    }
     const timing = bankAnimationTiming(this.assets.animationArchives, this.currentAnimation, smallHash(this.bank));
     return timing.frames / timing.frameRate;
   }
 
   /** AnimState:SetDeltaTimeMultiplier(multiplier). */
   SetDeltaTimeMultiplier(multiplier: number): void {
-    if (!this.sprite.setPlaybackRate) { throw new Error('This sprite cannot change its playback rate'); }
+    if (!this.sprite.setPlaybackRate) {
+      throw new Error('This sprite cannot change its playback rate');
+    }
     this.sprite.setPlaybackRate(multiplier);
   }
 
   /** AnimState:SetMultColour(r, g, b, a): the entity's own multiplied colour; the source's callers keep alpha 1. */
-  SetMultColour(r: number, g: number, b: number, _a = 1): void { this.sprite.setColour([r, g, b]); }
+  SetMultColour(r: number, g: number, b: number, _a = 1): void {
+    this.sprite.setColour([r, g, b]);
+  }
   /** AnimState:SetAddColour(r, g, b, a): the entity's added colour; the source's freeze tint keeps alpha 0. */
-  SetAddColour(r: number, g: number, b: number, _a = 0): void { this.sprite.setAddColour([r, g, b]); }
+  SetAddColour(r: number, g: number, b: number, _a = 0): void {
+    this.sprite.setAddColour([r, g, b]);
+  }
 }

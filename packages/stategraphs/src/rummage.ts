@@ -20,13 +20,17 @@ export interface RummageTarget extends BufferedActionObject {
 export function performRummageAction(target: RummageTarget, doer: object): boolean {
   const container = target.components.container;
   const events = doer as { PushEvent?(name: string, data?: unknown): void };
-  if (target.isRemoved || !container) { return false; }
+  if (target.isRemoved || !container) {
+    return false;
+  }
   if (container.IsOpenedBy(doer)) {
     container.Close(doer);
     events.PushEvent?.('closecontainer', { container: target });
     return true;
   }
-  if (!container.CanOpen() || !container.canbeopened) { return false; }
+  if (!container.CanOpen() || !container.canbeopened) {
+    return false;
+  }
   events.PushEvent?.('opencontainer', { container: target });
   container.Open(doer);
   return true;

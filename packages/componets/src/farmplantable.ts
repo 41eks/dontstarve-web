@@ -19,11 +19,15 @@ interface Seed {
 export class FarmPlantable {
   plant?: string;
   private readonly inst: Seed;
-  constructor(inst: Seed) { this.inst = inst; }
+  constructor(inst: Seed) {
+    this.inst = inst;
+  }
 
   Plant(target: FarmSoil, planter: unknown): boolean {
     const world = target.worldServices;
-    if (!this.plant || target.isRemoved || !target.hasTag('soil') || !world?.spawnFarmPlant) { return false; }
+    if (!this.plant || target.isRemoved || !target.hasTag('soil') || !world?.spawnFarmPlant) {
+      return false;
+    }
     const position = target.getPosition().clone();
     target.remove();
     const plant = world.spawnFarmPlant(this.plant, position);

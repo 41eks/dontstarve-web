@@ -21,5 +21,10 @@ export class WardrobeInstance extends PrefabInstance {
 
 /** The Prefab table wardrobe.lua returns; the placer is the build flow's. */
 export function wardrobePrefabs(world: PrefabWorldContext) {
-  return { [WARDROBE_ID]: { ...buildingPrefab(declaration, 'wardrobe', .75, () => new WardrobeInstance(), world), minimapIcon: 'wardrobe.png' } };
+  return {
+    [WARDROBE_ID]: {
+      ...buildingPrefab(declaration, 'wardrobe', 0.75, () => new WardrobeInstance(), world),
+      minimapIcon: 'wardrobe.png',
+    },
+  };
 }

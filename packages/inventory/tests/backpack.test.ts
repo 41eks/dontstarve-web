@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Container } from '../../componets/src/container';
-import { ItemEntity, InventoryStore, InventorySlot, BodySlot, StorageSlot, backpackSlotAddress, equipmentSlotAddress, inventorySlotAddress } from '../src';
+import {
+  ItemEntity,
+  InventoryStore,
+  InventorySlot,
+  BodySlot,
+  StorageSlot,
+  backpackSlotAddress,
+  equipmentSlotAddress,
+  inventorySlotAddress,
+} from '../src';
 import { addFueled } from './fueled';
 import { bodySlot, inventorySlot, storageSlot, testInventoryStore, testItem } from './testItems';
 
@@ -9,35 +18,53 @@ const specs = {
   log: { name: '木头', icon: 'log.tex', maxStack: 20 },
   torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75, configureEntity: addFueled(75) },
 };
-const body = equipmentSlotAddress('body'), a = inventorySlotAddress(0), b = inventorySlotAddress(1), item = inventorySlotAddress(2);
+const body = equipmentSlotAddress('body'),
+  a = inventorySlotAddress(0),
+  b = inventorySlotAddress(1),
+  item = inventorySlotAddress(2);
 function store() {
-  return testInventoryStore([
-    { address: a, slot: inventorySlot(null, specs) },
-    { address: b, slot: inventorySlot(null, specs) },
-    { address: item, slot: inventorySlot(null, specs) },
-    { address: body, slot: bodySlot() },
-    { address: { containerId: 'chest:1', slotKey: '0' }, slot: storageSlot() },
-  ], specs, { backpack_babybeef: { itemId: 'backpack', name: '小牛背包', icon: 'backpack_babybeef.tex', atlas: 'images/inventoryimages.xml' } });
+  return testInventoryStore(
+    [
+      { address: a, slot: inventorySlot(null, specs) },
+      { address: b, slot: inventorySlot(null, specs) },
+      { address: item, slot: inventorySlot(null, specs) },
+      { address: body, slot: bodySlot() },
+      { address: { containerId: 'chest:1', slotKey: '0' }, slot: storageSlot() },
+    ],
+    specs,
+    {
+      backpack_babybeef: {
+        itemId: 'backpack',
+        name: '小牛背包',
+        icon: 'backpack_babybeef.tex',
+        atlas: 'images/inventoryimages.xml',
+      },
+    },
+  );
 }
 
 describe('entity-owned backpack containers', () => {
-  it('publishes slot insts after transfers, while in-place stack and fuel changes stay on the inst\'s tile', () => {
+  it("publishes slot insts after transfers, while in-place stack and fuel changes stay on the inst's tile", () => {
     const inventory = store();
     inventory.add('backpack', 1);
     const bag = inventory.getEntity(a)!;
     inventory.transfer(a, body, 1);
-    const container = bag.components.container!, slots = container.slots;
-    const first = backpackSlotAddress(bag.id, 0), last = backpackSlotAddress(bag.id, 7);
+    const container = bag.components.container!,
+      slots = container.slots;
+    const first = backpackSlotAddress(bag.id, 0),
+      last = backpackSlotAddress(bag.id, 7);
     inventory.add('log', 3);
     expect(inventory.transfer(a, first, 3)).toBe(true);
     const log = slots[0].entity.peek()!;
     const observed: unknown[] = [];
-    const stops = [slots[0], slots[7]].map(slot => slot.entity.subscribe(item => {
-      observed.push(item);
-      // A transaction commits every slot before any subscriber runs.
-      expect(slots[0].entity.peek()?.components.stackable.count ?? 0).toBe(inventory.get(first)?.count ?? 0);
-      expect(slots[7].entity.peek()?.components.stackable.count ?? 0).toBe(inventory.get(last)?.count ?? 0);
-    }));
+    const stops = [slots[0], slots[7]].map(slot =>
+      slot.entity.subscribe(item => {
+        observed.push(item);
+        // A transaction commits every slot before any subscriber runs.
+        expect(slots[0].entity.peek()?.components.stackable.count ?? 0).toBe(inventory.get(first)?.count ?? 0);
+        expect(slots[7].entity.peek()?.components.stackable.count ?? 0).toBe(inventory.get(last)?.count ?? 0);
+      }),
+    );
     // Splitting keeps the source inst in place: only the receiving slot changes.
     expect(inventory.transfer(first, last, 1)).toBe(true);
     expect(observed).toHaveLength(1);
@@ -50,21 +77,25 @@ describe('entity-owned backpack containers', () => {
     expect(slots[7].entity.peek()).toBeNull();
     expect(inventory.add('torch', 1, undefined, undefined, undefined, undefined, 12)).toBe(true);
     expect(inventory.transfer(b, last, 1)).toBe(true);
-    const torch = slots[7].entity.peek()!, tile = vi.fn();
+    const torch = slots[7].entity.peek()!,
+      tile = vi.fn();
     const beforeFuel = observed.length;
     const stopTile = torch.tile.subscribe(tile);
     expect(inventory.setRemainingFuel(last, 8)).toBe(true);
     expect(observed).toHaveLength(beforeFuel);
     expect(tile).toHaveBeenCalledOnce();
-    stopTile(); stops.forEach(stop => stop());
+    stopTile();
+    stops.forEach(stop => stop());
     inventory.dispose();
   });
 
   it('switches independent contents and preserves entities across dropping, pickup, reskinning and restore', () => {
     const inventory = store();
     expect(inventory.add('backpack', 2)).toBe(true);
-    const first = inventory.getEntity(a)!, second = inventory.getEntity(b)!;
-    const firstSlot = backpackSlotAddress(first.id, 7), secondSlot = backpackSlotAddress(second.id, 0);
+    const first = inventory.getEntity(a)!,
+      second = inventory.getEntity(b)!;
+    const firstSlot = backpackSlotAddress(first.id, 7),
+      secondSlot = backpackSlotAddress(second.id, 0);
     expect(first.components.container).toBeInstanceOf(Container);
     expect(first.components.container!.IsOpen()).toBe(false);
     expect(inventory.transfer(a, body, 1)).toBe(true);
@@ -116,11 +147,14 @@ describe('entity-owned backpack containers', () => {
     expect(restored.getEntity(secondSlot)!.id).toBe(log.id);
     expect(restored.transfer(body, a, 1)).toBe(true);
     expect(restored.transfer(b, body, 1)).toBe(true);
-    expect(restored.craft({ recipeId: 'test', productId: 'log', productCount: 1, ingredients: { log: 1 }, buffered: false })).toBe(true);
+    expect(
+      restored.craft({ recipeId: 'test', productId: 'log', productCount: 1, ingredients: { log: 1 }, buffered: false }),
+    ).toBe(true);
     expect(restored.getEntity(firstSlot)!.id).toBe(torch.id);
     expect(restored.getEntity(secondSlot)!.id).toBe(log.id);
     expect(restored.get(secondSlot)!.count).toBe(2);
-    inventory.dispose(); restored.dispose();
+    inventory.dispose();
+    restored.dispose();
   });
 
   it('rejects inaccessible transfers, nested backpacks and invalid restores without changing contents', () => {

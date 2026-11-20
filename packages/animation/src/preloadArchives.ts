@@ -8,15 +8,22 @@ export type AnimationArchiveSpec = string | { readonly animation: string; readon
  * Failures are ignored here: the prefab that actually needs the archive still reports its own load error.
  */
 export async function preloadAnimationArchives(
-  specs: Iterable<AnimationArchiveSpec>, assetBaseUrl: string, signal?: AbortSignal,
+  specs: Iterable<AnimationArchiveSpec>,
+  assetBaseUrl: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   signal?.throwIfAborted();
   const requests = new Map<string, () => Promise<unknown>>();
   const add = (file: string, kind: 'animation' | 'build') =>
     requests.set(`${kind}\n${file}`, () => loadAnimationArchivePart(file, assetBaseUrl, kind));
   for (const spec of specs) {
-    if (typeof spec === 'string') { add(spec, 'animation'); add(spec, 'build'); }
-    else { add(spec.animation, 'animation'); add(spec.build, 'build'); }
+    if (typeof spec === 'string') {
+      add(spec, 'animation');
+      add(spec, 'build');
+    } else {
+      add(spec.animation, 'animation');
+      add(spec.build, 'build');
+    }
   }
   await Promise.allSettled([...requests.values()].map(start => start()));
   signal?.throwIfAborted();

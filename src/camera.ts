@@ -20,9 +20,21 @@ interface FollowCameraDefaults {
   maxDistPitch: number;
 }
 
-const FOREST_CAMERA: FollowCameraDefaults = { distanceTarget: 30, minDist: 15, maxDist: 50, minDistPitch: 30, maxDistPitch: 60 };
+const FOREST_CAMERA: FollowCameraDefaults = {
+  distanceTarget: 30,
+  minDist: 15,
+  maxDist: 50,
+  minDistPitch: 30,
+  maxDistPitch: 60,
+};
 /** SetDefault's TheWorld:HasTag("cave") branch: a closer, flatter camera. */
-const CAVE_CAMERA: FollowCameraDefaults = { distanceTarget: 25, minDist: 15, maxDist: 35, minDistPitch: 25, maxDistPitch: 40 };
+const CAVE_CAMERA: FollowCameraDefaults = {
+  distanceTarget: 25,
+  minDist: 15,
+  maxDist: 35,
+  minDistPitch: 25,
+  maxDistPitch: 40,
+};
 const ROTATION_STEP = 45;
 const EPSILON = 0.01;
 const ORIGIN = new THREE.Vector3();
@@ -98,12 +110,7 @@ export class FollowCameraController implements TheCamera {
     this.maxDistance = defaults.maxDist * WORLD_SCALE;
     this.minDistancePitch = defaults.minDistPitch;
     this.maxDistancePitch = defaults.maxDistPitch;
-    this.camera = new THREE.PerspectiveCamera(
-      35,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      5000,
-    );
+    this.camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 5000);
     this.snap();
   }
 
@@ -150,11 +157,7 @@ export class FollowCameraController implements TheCamera {
   }
 
   setDistance(distance: number): void {
-    this.distanceTarget = THREE.MathUtils.clamp(
-      distance,
-      this.minDistance,
-      this.maxDistance,
-    );
+    this.distanceTarget = THREE.MathUtils.clamp(distance, this.minDistance, this.maxDistance);
   }
 
   zoomIn(step = this.zoomStep): void {
@@ -178,7 +181,9 @@ export class FollowCameraController implements TheCamera {
   }
 
   update(dt: number): void {
-    if (this.paused) { return; }
+    if (this.paused) {
+      return;
+    }
 
     this.updateTargetPosition();
     const panAmount = dt * this.panGain;
@@ -192,19 +197,13 @@ export class FollowCameraController implements TheCamera {
     if (Math.abs(headingDelta) <= EPSILON) {
       this.heading = this.headingTarget;
     } else {
-      this.heading = normalizeDegrees(
-        this.heading + headingDelta * THREE.MathUtils.clamp(dt * this.headingGain, 0, 1),
-      );
+      this.heading = normalizeDegrees(this.heading + headingDelta * THREE.MathUtils.clamp(dt * this.headingGain, 0, 1));
     }
 
     if (Math.abs(this.distance - this.distanceTarget) <= EPSILON) {
       this.distance = this.distanceTarget;
     } else {
-      this.distance = clampedLerp(
-        this.distance,
-        this.distanceTarget,
-        dt * this.distanceGain,
-      );
+      this.distance = clampedLerp(this.distance, this.distanceTarget, dt * this.distanceGain);
     }
 
     this.apply();
@@ -238,9 +237,7 @@ export class FollowCameraController implements TheCamera {
       -Math.sin(pitchRadians),
       -cosPitch * Math.sin(headingRadians),
     );
-    this.camera.position
-      .copy(this.currentPosition)
-      .addScaledVector(this.cameraDirection, -this.distance);
+    this.camera.position.copy(this.currentPosition).addScaledVector(this.cameraDirection, -this.distance);
 
     const rightRadians = THREE.MathUtils.degToRad(this.heading + 90);
     this.cameraRight.set(Math.cos(rightRadians), 0, Math.sin(rightRadians));
@@ -260,32 +257,53 @@ export class FollowCameraController implements TheCamera {
   }
 }
 
-export const followCamera = new FollowCameraController(playerInstance, initialSave.world.prefab === 'cave' ? CAVE_CAMERA : FOREST_CAMERA);
+export const followCamera = new FollowCameraController(
+  playerInstance,
+  initialSave.world.prefab === 'cave' ? CAVE_CAMERA : FOREST_CAMERA,
+);
 export const camera = followCamera.camera;
 
 // followcamera.lua keeps updating under SetAutopaused (e.g. the open map), so use the unpaused frame time.
 backTasks.push((dt, unpausedDt = dt) => followCamera.update(unpausedDt));
 
-window.addEventListener('game:camera-turn', (event) => {
+window.addEventListener('game:camera-turn', event => {
   const direction = event.detail.direction;
-  if (direction === 'left') { followCamera.rotateRight(); }
-  else if (direction === 'right') { followCamera.rotateLeft(); }
+  if (direction === 'left') {
+    followCamera.rotateRight();
+  } else if (direction === 'right') {
+    followCamera.rotateLeft();
+  }
 });
 
-window.addEventListener('keydown', (event) => {
+window.addEventListener('keydown', event => {
   const target = event.target;
-  const isTextInput = target instanceof HTMLInputElement
-    || target instanceof HTMLTextAreaElement
-    || (target instanceof HTMLElement && target.isContentEditable);
-  if (isTextInput || event.repeat || event.ctrlKey || event.metaKey || event.altKey) { return; }
+  const isTextInput =
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    (target instanceof HTMLElement && target.isContentEditable);
+  if (isTextInput || event.repeat || event.ctrlKey || event.metaKey || event.altKey) {
+    return;
+  }
 
-  if (event.code === 'KeyQ') { followCamera.rotateRight(); }
-  else if (event.code === 'KeyE') { followCamera.rotateLeft(); }
+  if (event.code === 'KeyQ') {
+    followCamera.rotateRight();
+  } else if (event.code === 'KeyE') {
+    followCamera.rotateLeft();
+  }
 });
 
-renderer.domElement.addEventListener('wheel', (event) => {
-  if (event.deltaY === 0) { return; }
-  event.preventDefault();
-  if (event.deltaY < 0) { followCamera.zoomIn(); }
-  else { followCamera.zoomOut(); }
-}, { passive: false });
+renderer.domElement.addEventListener(
+  'wheel',
+  event => {
+    if (event.deltaY === 0) {
+      return;
+    }
+    event.preventDefault();
+    if (event.deltaY < 0) {
+      followCamera.zoomIn();
+    } else {
+      followCamera.zoomOut();
+    }
+  },
+  { passive: false },
+);

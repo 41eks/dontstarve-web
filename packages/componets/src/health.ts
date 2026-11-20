@@ -1,5 +1,13 @@
 import type { LuaFn } from './luaFn';
-import { batch, createMemo, createSignal, readonlySignal, type Memo, type ReadonlySignal, type Signal } from '../../signals/src';
+import {
+  batch,
+  createMemo,
+  createSignal,
+  readonlySignal,
+  type Memo,
+  type ReadonlySignal,
+  type Signal,
+} from '../../signals/src';
 import type { GameTimeScheduler } from '../../signals/src/gameTimeScheduler';
 
 export interface HealthSaveData {
@@ -18,12 +26,16 @@ export interface HealthLoadData {
 }
 
 function finite(value: number, name: string): number {
-  if (!Number.isFinite(value)) { throw new RangeError(`${name} must be finite`); }
+  if (!Number.isFinite(value)) {
+    throw new RangeError(`${name} must be finite`);
+  }
   return value;
 }
 
 function maximum(value: number): number {
-  if (finite(value, 'maxhealth') <= 0) { throw new RangeError('maxhealth must be positive'); }
+  if (finite(value, 'maxhealth') <= 0) {
+    throw new RangeError('maxhealth must be positive');
+  }
   return value;
 }
 
@@ -38,10 +50,12 @@ export interface HealthInst {
   readonly is_teleporting?: boolean;
 }
 
-export interface HealthAfflicter { hasTag(tag: string): boolean }
+export interface HealthAfflicter {
+  hasTag(tag: string): boolean;
+}
 
 /** tuning.lua MAXIMUM_HEALTH_PENALTY. */
-export const MAXIMUM_HEALTH_PENALTY = .75;
+export const MAXIMUM_HEALTH_PENALTY = 0.75;
 
 /** health.lua state; current and maximum health are signals so presentation can derive from them. */
 export class Health {
@@ -60,7 +74,17 @@ export class Health {
   /** Healing action capability; Lua still allows repair and other direct DoDelta calls when false. */
   canheal = true;
   nofadeout = false;
-  ondelta?: LuaFn<[inst: HealthInst, oldPercent: number, newPercent: number, overtime?: boolean, cause?: string, afflicter?: HealthAfflicter, amount?: number]>;
+  ondelta?: LuaFn<
+    [
+      inst: HealthInst,
+      oldPercent: number,
+      newPercent: number,
+      overtime?: boolean,
+      cause?: string,
+      afflicter?: HealthAfflicter,
+      amount?: number,
+    ]
+  >;
   readonly inst: HealthInst;
   /** inst:DoPeriodicTask for StartRegen; absent for health that never regenerates. */
   private readonly scheduler?: GameTimeScheduler;
@@ -78,9 +102,15 @@ export class Health {
     this.maxWithPenalty = createMemo(() => this.maximumState.get() * (1 - this.penaltyState.get()));
   }
 
-  get maxhealth(): number { return this.maximumState.peek(); }
-  get currenthealth(): number { return this.currentState.peek(); }
-  get penalty(): number { return this.penaltyState.peek(); }
+  get maxhealth(): number {
+    return this.maximumState.peek();
+  }
+  get currenthealth(): number {
+    return this.currentState.peek();
+  }
+  get penalty(): number {
+    return this.penaltyState.peek();
+  }
 
   SetInvincible(value: boolean): void {
     this.invincible = value;
@@ -96,14 +126,23 @@ export class Health {
     this.SetPenalty(this.penalty + finite(delta, 'penalty delta'));
     this.ForceUpdateHUD(false);
   }
-  GetMaxWithPenalty(): number { return this.maxhealth * (1 - this.penalty); }
-  GetPercentWithPenalty(): number { return this.currenthealth / this.GetMaxWithPenalty(); }
-  ForceUpdateHUD(overtime?: boolean): void { this.DoDelta(0, overtime, undefined, true, undefined, true); }
+  GetMaxWithPenalty(): number {
+    return this.maxhealth * (1 - this.penalty);
+  }
+  GetPercentWithPenalty(): number {
+    return this.currenthealth / this.GetMaxWithPenalty();
+  }
+  ForceUpdateHUD(overtime?: boolean): void {
+    this.DoDelta(0, overtime, undefined, true, undefined, true);
+  }
 
   /** As in Lua, configuring maximum health also fills the health bar. */
   SetMaxHealth(amount: number): void {
     const value = maximum(amount);
-    batch(() => { this.maximumState.set(value); this.currentState.set(value); });
+    batch(() => {
+      this.maximumState.set(value);
+      this.currentState.set(value);
+    });
     this.ForceUpdateHUD(true);
   }
 
@@ -112,31 +151,54 @@ export class Health {
     this.currentState.set(finite(amount, 'health'));
   }
 
-  SetAbsorptionAmountFromPlayer(amount: number): void { this.playerabsorb = finite(amount, 'playerabsorb'); }
+  SetAbsorptionAmountFromPlayer(amount: number): void {
+    this.playerabsorb = finite(amount, 'playerabsorb');
+  }
 
   SetVal(value: number, cause?: string, afflicter?: HealthAfflicter): void {
     const old = this.currentState.peek();
     this.currentState.set(clamp(finite(value, 'health'), this.GetMaxWithPenalty()));
     // health.lua pushes "death" when health first reaches zero.
-    if (old > 0 && this.currentState.peek() <= 0) { this.inst.PushEvent?.('death', { cause, afflicter }); }
+    if (old > 0 && this.currentState.peek() <= 0) {
+      this.inst.PushEvent?.('death', { cause, afflicter });
+    }
   }
 
   /** Positive amounts heal; negative amounts damage after absorption. Returns the applied delta, as in Lua. */
-  DoDelta(amount: number, overtime?: boolean, cause?: string, ignoreInvincible = false, afflicter?: HealthAfflicter, ignoreAbsorb = false): number {
+  DoDelta(
+    amount: number,
+    overtime?: boolean,
+    cause?: string,
+    ignoreInvincible = false,
+    afflicter?: HealthAfflicter,
+    ignoreAbsorb = false,
+  ): number {
     finite(amount, 'amount');
-    if (!ignoreInvincible && (this.IsInvincible() || this.inst.is_teleporting)) { return 0; }
+    if (!ignoreInvincible && (this.IsInvincible() || this.inst.is_teleporting)) {
+      return 0;
+    }
     const oldPercent = this.GetPercent();
     if (amount < 0 && !ignoreAbsorb) {
-      const absorb = this.playerabsorb !== 0 && afflicter?.hasTag('player') ? this.playerabsorb + this.absorb : this.absorb;
+      const absorb =
+        this.playerabsorb !== 0 && afflicter?.hasTag('player') ? this.playerabsorb + this.absorb : this.absorb;
       amount *= Math.max(0, Math.min(1, 1 - absorb));
     }
     this.SetVal(this.currentState.peek() + amount, cause, afflicter);
-    this.inst.PushEvent?.('healthdelta', { oldpercent: oldPercent, newpercent: this.GetPercent(), overtime, cause, afflicter, amount });
+    this.inst.PushEvent?.('healthdelta', {
+      oldpercent: oldPercent,
+      newpercent: this.GetPercent(),
+      overtime,
+      cause,
+      afflicter,
+      amount,
+    });
     this.ondelta?.(this.inst, oldPercent, this.GetPercent(), overtime, cause, afflicter, amount);
     return amount;
   }
 
-  GetPercent(): number { return this.currenthealth / this.maxhealth; }
+  GetPercent(): number {
+    return this.currenthealth / this.maxhealth;
+  }
 
   SetPercent(percent: number, overtime?: boolean, cause?: string): void {
     this.SetVal(Math.max(0, Math.min(finite(percent, 'percent'), 1)) * this.maximumState.peek(), cause);
@@ -145,16 +207,24 @@ export class Health {
 
   /** health.lua StartRegen: DoDelta(amount, true, "regen") every `period` seconds while not dead. */
   StartRegen(amount: number, period: number, interruptcurrentregen?: boolean): void {
-    if (!this.scheduler) { throw new Error('Health regen needs a scheduler'); }
-    if (interruptcurrentregen !== false) { this.StopRegen(); }
-    const regen = this.regen ??= { amount, period };
+    if (!this.scheduler) {
+      throw new Error('Health regen needs a scheduler');
+    }
+    if (interruptcurrentregen !== false) {
+      this.StopRegen();
+    }
+    const regen = (this.regen ??= { amount, period });
     regen.amount = finite(amount, 'regen amount');
     regen.period = finite(period, 'regen period');
-    if (regen.task) { return; }
+    if (regen.task) {
+      return;
+    }
     const scheduler = this.scheduler;
     const tick = () => {
       regen.task = scheduler.schedule(regen.period, tick);
-      if (!this.IsDead()) { this.DoDelta(regen.amount, true, 'regen'); }
+      if (!this.IsDead()) {
+        this.DoDelta(regen.amount, true, 'regen');
+      }
     };
     regen.task = scheduler.schedule(regen.period, tick);
   }
@@ -164,31 +234,51 @@ export class Health {
     this.regen = undefined;
   }
 
-  IsDead(): boolean { return this.currentState.peek() <= 0; }
-  IsHurt(): boolean { return this.currentState.peek() < this.GetMaxWithPenalty(); }
+  IsDead(): boolean {
+    return this.currentState.peek() <= 0;
+  }
+  IsHurt(): boolean {
+    return this.currentState.peek() < this.GetMaxWithPenalty();
+  }
 
   /** Always include the maximum so this component can restore without prefab metadata. */
   OnSave(): HealthSaveData {
-    return { health: this.currentState.peek(), maxhealth: this.maximumState.peek(),
-      ...(this.penalty > 0 ? { penalty: this.penalty } : {}) };
+    return {
+      health: this.currentState.peek(),
+      maxhealth: this.maximumState.peek(),
+      ...(this.penalty > 0 ? { penalty: this.penalty } : {}),
+    };
   }
 
   OnLoad(data: HealthLoadData): void {
     // Validate the complete change before applying it to avoid a partial load.
     const maxhealth = data.maxhealth === undefined ? this.maximumState.peek() : maximum(data.maxhealth);
-    const penalty = data.penalty === undefined ? this.penalty
-      : Math.max(0, Math.min(finite(data.penalty, 'penalty'), MAXIMUM_HEALTH_PENALTY));
-    const health = data.health !== undefined ? finite(data.health, 'health')
-      : data.percent !== undefined ? Math.max(0, Math.min(finite(data.percent, 'percent'), 1)) * maxhealth
-      : this.currentState.peek();
+    const penalty =
+      data.penalty === undefined
+        ? this.penalty
+        : Math.max(0, Math.min(finite(data.penalty, 'penalty'), MAXIMUM_HEALTH_PENALTY));
+    const health =
+      data.health !== undefined
+        ? finite(data.health, 'health')
+        : data.percent !== undefined
+          ? Math.max(0, Math.min(finite(data.percent, 'percent'), 1)) * maxhealth
+          : this.currentState.peek();
     batch(() => {
-      this.maximumState.set(maxhealth); this.penaltyState.set(penalty);
+      this.maximumState.set(maxhealth);
+      this.penaltyState.set(penalty);
       this.currentState.set(clamp(health, maxhealth * (1 - penalty)));
-      if (data.invincible !== undefined) { this.invincible = data.invincible; }
+      if (data.invincible !== undefined) {
+        this.invincible = data.invincible;
+      }
     });
   }
 
-  dispose(): void { this.StopRegen(); this.percent.dispose(); this.maxWithPenalty.dispose(); this.ondelta = undefined; }
+  dispose(): void {
+    this.StopRegen();
+    this.percent.dispose();
+    this.maxWithPenalty.dispose();
+    this.ondelta = undefined;
+  }
 }
 
 export default Health;

@@ -16,40 +16,76 @@ export class AnimState {
   constructor(scheduler: GameTimeScheduler, lengths: ReadonlyMap<string, number>, event: (name: string) => void) {
     this.lengths = lengths;
     this.task = new ComponentTimer(scheduler, () => {
-      const complete = this.completeTask; this.completeTask = undefined;
+      const complete = this.completeTask;
+      this.completeTask = undefined;
       complete?.();
     });
     this.timer = this.task.snapshot;
-    this.playback = new AnimationPlayback(clip => {
-      const length = lengths.get(clip.name);
-      if (length === undefined || length <= 0) { throw new Error(`Missing animation ${clip.name}`); }
-      this.state.set({ name: clip.name, loop: clip.loop === true, revision: this.state.peek().revision + 1 });
-      return length;
-    }, (seconds, complete) => {
-      this.completeTask = complete; this.task.start(seconds);
-      return () => { this.task.stop(); if (this.completeTask === complete) { this.completeTask = undefined; } };
-    });
+    this.playback = new AnimationPlayback(
+      clip => {
+        const length = lengths.get(clip.name);
+        if (length === undefined || length <= 0) {
+          throw new Error(`Missing animation ${clip.name}`);
+        }
+        this.state.set({ name: clip.name, loop: clip.loop === true, revision: this.state.peek().revision + 1 });
+        return length;
+      },
+      (seconds, complete) => {
+        this.completeTask = complete;
+        this.task.start(seconds);
+        return () => {
+          this.task.stop();
+          if (this.completeTask === complete) {
+            this.completeTask = undefined;
+          }
+        };
+      },
+    );
     this.playback.on('animover', () => event('animover'));
     this.playback.on('animqueueover', () => event('animqueueover'));
   }
-  get length(): number { return this.lengths.get(this.state.peek().name)!; }
-  PlayAnimation(name: string, loop = false): void { this.playback.play([{ name, loop }]); }
+  get length(): number {
+    return this.lengths.get(this.state.peek().name)!;
+  }
+  PlayAnimation(name: string, loop = false): void {
+    this.playback.play([{ name, loop }]);
+  }
   PushAnimation(name: string, loop = false): void {
     const playing = !this.playback.done;
     this.playback.push([{ name, loop }]);
     const current = this.state.peek();
-    if (playing && current.loop) { this.state.set({ ...current, loop: false }); }
+    if (playing && current.loop) {
+      this.state.set({ ...current, loop: false });
+    }
   }
-  stop(): void { this.playback.stop(); }
+  stop(): void {
+    this.playback.stop();
+  }
   /** AnimState:SetTime(seconds): the playing clip continues from that point, ending after the rest of its length. */
   SetTime(seconds: number): void {
-    const remaining = this.length - seconds, status = this.task.snapshot.peek().status;
-    if (!(remaining > 0)) { throw new RangeError(`Invalid time ${seconds} in ${this.state.peek().name}`); }
-    if (status === 'scheduled') { this.task.start(remaining); }
-    else if (status === 'paused') { this.task.restorePaused(remaining); }
+    const remaining = this.length - seconds,
+      status = this.task.snapshot.peek().status;
+    if (!(remaining > 0)) {
+      throw new RangeError(`Invalid time ${seconds} in ${this.state.peek().name}`);
+    }
+    if (status === 'scheduled') {
+      this.task.start(remaining);
+    } else if (status === 'paused') {
+      this.task.restorePaused(remaining);
+    }
   }
   /** Entity sleep: the playing clip keeps its remaining time, as the stategraph that waits for its animover does. */
-  pause(): void { if (this.task.snapshot.peek().status === 'scheduled') { this.task.pause(); } }
-  resume(): void { if (this.task.snapshot.peek().status === 'paused') { this.task.start(this.task.remainingSeconds!); } }
-  dispose(): void { this.stop(); }
+  pause(): void {
+    if (this.task.snapshot.peek().status === 'scheduled') {
+      this.task.pause();
+    }
+  }
+  resume(): void {
+    if (this.task.snapshot.peek().status === 'paused') {
+      this.task.start(this.task.remainingSeconds!);
+    }
+  }
+  dispose(): void {
+    this.stop();
+  }
 }

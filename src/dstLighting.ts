@@ -1,7 +1,15 @@
 import * as THREE from 'three';
 import { prewarmScenePasses, renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
-import { createEffect, watchSignal, clockstate, seasonstate, moonphasestate, type ReadonlySignal, type WorldSeason } from '@dontstarve-web/signals';
+import {
+  createEffect,
+  watchSignal,
+  clockstate,
+  seasonstate,
+  moonphasestate,
+  type ReadonlySignal,
+  type WorldSeason,
+} from '@dontstarve-web/signals';
 import { DstLocalLighting } from './dstLocalLighting';
 import { prewarmScene, yieldLoadingFrame } from './prewarmScene';
 
@@ -46,7 +54,7 @@ function currentLightPhase(): DstLightPhase {
 }
 const SANITY_GRADING_STEPS = 10;
 // postprocess_distort.ksh's orbit repeats every 2π / TIME_SCALE seconds.
-const DISTORTION_PERIOD = Math.PI * 2 / 50;
+const DISTORTION_PERIOD = (Math.PI * 2) / 50;
 
 const LUT_PATHS: Record<DstSeason, Record<DstLightPhase, string>> = {
   autumn: {
@@ -99,9 +107,15 @@ const NIGHT_WEATHER_RANGE: Record<DstSeason, number> = {
 };
 
 function ambientFor(season: DstSeason, phase: DstLightPhase): THREE.Vector3 {
-  if (phase === 'full_moon') { return FULL_MOON_AMBIENT; }
-  if (phase === 'night') { return NIGHT_AMBIENT; }
-  if (phase === 'dusk') { return season === 'spring' ? SPRING_DUSK_AMBIENT : DUSK_AMBIENT; }
+  if (phase === 'full_moon') {
+    return FULL_MOON_AMBIENT;
+  }
+  if (phase === 'night') {
+    return NIGHT_AMBIENT;
+  }
+  if (phase === 'dusk') {
+    return season === 'spring' ? SPRING_DUSK_AMBIENT : DUSK_AMBIENT;
+  }
   return season === 'spring' ? SPRING_DAY_AMBIENT : DAY_AMBIENT;
 }
 
@@ -117,11 +131,11 @@ export function calculateDstWeatherLight(
   snow = false,
 ): number {
   const amount = THREE.MathUtils.clamp(precipitation, 0, 1);
-  if (amount === 0) { return 1; }
+  if (amount === 0) {
+    return 1;
+  }
   const rangeSeason = snow ? 'winter' : season;
-  const dynamicRange = phase === 'day'
-    ? DAY_WEATHER_RANGE[rangeSeason]
-    : NIGHT_WEATHER_RANGE[rangeSeason];
+  const dynamicRange = phase === 'day' ? DAY_WEATHER_RANGE[rangeSeason] : NIGHT_WEATHER_RANGE[rangeSeason];
   const remainingLight = 1 - amount;
   return remainingLight * remainingLight * dynamicRange + 1 - dynamicRange;
 }
@@ -129,18 +143,15 @@ export function calculateDstWeatherLight(
 async function loadLut(root: string, path: string): Promise<THREE.DataTexture> {
   const url = `${root.replace(/\/$/, '')}/${path}`;
   const response = await fetch(url);
-  if (!response.ok) { throw new Error(`Unable to load DST colour cube ${url}: HTTP ${response.status}`); }
+  if (!response.ok) {
+    throw new Error(`Unable to load DST colour cube ${url}: HTTP ${response.status}`);
+  }
   const decoded = parseKtex(new Uint8Array(await response.arrayBuffer()), path);
   if (decoded.width !== decoded.height * decoded.height) {
     throw new Error(`${path}: expected a horizontally packed square colour cube`);
   }
 
-  const texture = new THREE.DataTexture(
-    decoded.pixels,
-    decoded.width,
-    decoded.height,
-    THREE.RGBAFormat,
-  );
+  const texture = new THREE.DataTexture(decoded.pixels, decoded.width, decoded.height, THREE.RGBAFormat);
   // LUT values are converted explicitly by the post-process shader.
   texture.colorSpace = THREE.NoColorSpace;
   texture.flipY = false;
@@ -154,7 +165,7 @@ async function loadLut(root: string, path: string): Promise<THREE.DataTexture> {
   return texture;
 }
 
-const VERTEX_SHADER = /* glsl */`
+const VERTEX_SHADER = /* glsl */ `
   uniform float distortionTime;
   varying vec2 vUv;
   varying vec2 vDistortedUv;
@@ -173,7 +184,7 @@ const VERTEX_SHADER = /* glsl */`
 // combine_colour_cubes.ksh: blends the source/destination cubes of every layer
 // into one cube only when a blend input changes, so the full-screen pass below
 // (postprocess_colourcube.ksh) samples a single cube regardless of transitions.
-const BAKE_FRAGMENT_SHADER = /* glsl */`
+const BAKE_FRAGMENT_SHADER = /* glsl */ `
   uniform sampler2D sourceLut;
   uniform sampler2D destinationLut;
   uniform sampler2D sourceInsanityLut;
@@ -194,7 +205,7 @@ const BAKE_FRAGMENT_SHADER = /* glsl */`
   }
 `;
 
-const FRAGMENT_SHADER = /* glsl */`
+const FRAGMENT_SHADER = /* glsl */ `
   uniform sampler2D sceneTexture;
   uniform sampler2D colourCube;
   uniform float lutSize;
@@ -249,12 +260,16 @@ export class DstLightingRenderer {
     colourCubeRoot: string,
     initialState: DstLightingState = {},
   ): Promise<DstLightingRenderer> {
-    const uniquePaths = [...new Set([
-      ...Object.values(LUT_PATHS).flatMap((phases) => Object.values(phases)),
-      ...Object.values(INSANITY_LUT_PATHS),
-      GHOST_LUT_PATH,
-    ])];
-    const loaded = await Promise.all(uniquePaths.map(async (path) => [path, await loadLut(colourCubeRoot, path)] as const));
+    const uniquePaths = [
+      ...new Set([
+        ...Object.values(LUT_PATHS).flatMap(phases => Object.values(phases)),
+        ...Object.values(INSANITY_LUT_PATHS),
+        GHOST_LUT_PATH,
+      ]),
+    ];
+    const loaded = await Promise.all(
+      uniquePaths.map(async path => [path, await loadLut(colourCubeRoot, path)] as const),
+    );
     return new DstLightingRenderer(renderer, new Map(loaded), initialState);
   }
 
@@ -300,7 +315,9 @@ export class DstLightingRenderer {
     const season = seasonstate.peek().season;
     const phase = this.getPhase();
     const ghostVision = initialState.ghostVision
-      ? watchSignal(initialState.ghostVision, stop => { this.stopGhostVision = stop; })
+      ? watchSignal(initialState.ghostVision, stop => {
+          this.stopGhostVision = stop;
+        })
       : undefined;
     const initialLut = this.requireLut(season, phase, ghostVision?.peek() ?? false);
     const initialInsanityLut = this.requireInsanityLut(phase);
@@ -366,16 +383,8 @@ export class DstLightingRenderer {
       precision: 'highp',
     });
     const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute([
-      -1, -1, 0,
-      3, -1, 0,
-      -1, 3, 0,
-    ], 3));
-    geometry.setAttribute('uv', new THREE.Float32BufferAttribute([
-      0, 0,
-      2, 0,
-      0, 2,
-    ], 2));
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 3, -1, 0, -1, 3, 0], 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 2, 0, 0, 2], 2));
     const quad = new THREE.Mesh(geometry, this.material);
     quad.frustumCulled = false;
     this.postScene.add(quad);
@@ -395,8 +404,12 @@ export class DstLightingRenderer {
       const phase = currentLightPhase();
       const ghost = ghostVision?.get() ?? false;
       const palette = LUT_PATHS[season];
-      const duration = ghost !== previousGhost ? OVERRIDE_BLEND_SECONDS
-        : palette !== previousPalette ? SEASON_BLEND_SECONDS : PHASE_BLEND_SECONDS[phase];
+      const duration =
+        ghost !== previousGhost
+          ? OVERRIDE_BLEND_SECONDS
+          : palette !== previousPalette
+            ? SEASON_BLEND_SECONDS
+            : PHASE_BLEND_SECONDS[phase];
       previousPalette = palette;
       previousGhost = ghost;
       this.transitionAmbient(ambientFor(season, phase), duration);
@@ -405,7 +418,9 @@ export class DstLightingRenderer {
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     this.stopWorldLighting();
     this.stopGhostVision?.();
@@ -416,8 +431,14 @@ export class DstLightingRenderer {
     this.bakeTarget.dispose();
     this.bakeMaterial.dispose();
     this.bakeScene.clear();
-    for (const texture of this.textures.values()) { texture.dispose(); }
-    for (const quad of this.postScene.children) { if (quad instanceof THREE.Mesh) { quad.geometry.dispose(); } }
+    for (const texture of this.textures.values()) {
+      texture.dispose();
+    }
+    for (const quad of this.postScene.children) {
+      if (quad instanceof THREE.Mesh) {
+        quad.geometry.dispose();
+      }
+    }
     this.postScene.clear();
     this.material.dispose();
   }
@@ -437,7 +458,9 @@ export class DstLightingRenderer {
 
   /** Apply DST's quadratic grading using the nearest 10% sanity level. */
   private applySanityPercent(percent: number): void {
-    if (!Number.isFinite(percent)) { throw new Error('Sanity percent must be finite'); }
+    if (!Number.isFinite(percent)) {
+      throw new Error('Sanity percent must be finite');
+    }
     this.sanityPercent = THREE.MathUtils.clamp(percent, 0, 1);
     const gradingPercent = Math.round(this.sanityPercent * SANITY_GRADING_STEPS) / SANITY_GRADING_STEPS;
     this.bakeMaterial.uniforms.insanityIntensity.value = (1 - gradingPercent) ** 2;
@@ -465,10 +488,9 @@ export class DstLightingRenderer {
     const elapsed = Math.max(0, dt);
     // Keep trigonometric inputs small on every GPU, including after a long
     // session or a large simulation step. Wrapping does not change the orbit.
-    this.material.uniforms.distortionTime.value = (
-      this.material.uniforms.distortionTime.value
-      + (elapsed * this.distortionSpeed) % DISTORTION_PERIOD
-    ) % DISTORTION_PERIOD;
+    this.material.uniforms.distortionTime.value =
+      (this.material.uniforms.distortionTime.value + ((elapsed * this.distortionSpeed) % DISTORTION_PERIOD)) %
+      DISTORTION_PERIOD;
     if (this.ambientBlendRemaining > 0) {
       this.ambientBlendRemaining = Math.max(0, this.ambientBlendRemaining - elapsed);
       const alpha = 1 - this.ambientBlendRemaining / this.ambientBlendTotal;
@@ -484,8 +506,7 @@ export class DstLightingRenderer {
 
   private resizeRenderTarget(): void {
     this.renderer.getDrawingBufferSize(this.drawingBufferSize);
-    if (this.renderTarget.width !== this.drawingBufferSize.x
-      || this.renderTarget.height !== this.drawingBufferSize.y) {
+    if (this.renderTarget.width !== this.drawingBufferSize.x || this.renderTarget.height !== this.drawingBufferSize.y) {
       this.renderTarget.setSize(this.drawingBufferSize.x, this.drawingBufferSize.y);
       this.sceneTexelSize.set(1 / this.drawingBufferSize.x, 1 / this.drawingBufferSize.y);
     }
@@ -515,7 +536,9 @@ export class DstLightingRenderer {
 
   /** combine_colour_cubes: re-blend the cube only after a blend input changed. */
   private bakeColourCube(): void {
-    if (!this.bakeDirty) { return; }
+    if (!this.bakeDirty) {
+      return;
+    }
     this.bakeDirty = false;
     const previousTarget = this.renderer.getRenderTarget();
     this.renderer.setRenderTarget(this.bakeTarget);
@@ -552,19 +575,31 @@ export class DstLightingRenderer {
   }
 
   private transitionAmbient(target: THREE.Vector3, duration: number): void {
-    if (this.ambientTarget.equals(target)) { return; }
+    if (this.ambientTarget.equals(target)) {
+      return;
+    }
     this.ambientStart.copy(this.ambientCurrent);
     this.ambientTarget.copy(target);
     this.ambientBlendRemaining = duration;
     this.ambientBlendTotal = duration;
   }
 
-  private transitionLut(destination: THREE.DataTexture, insanityDestination: THREE.DataTexture, duration: number): void {
+  private transitionLut(
+    destination: THREE.DataTexture,
+    insanityDestination: THREE.DataTexture,
+    duration: number,
+  ): void {
     const uniforms = this.bakeMaterial.uniforms;
-    if (destination === uniforms.destinationLut.value
-      && insanityDestination === uniforms.destinationInsanityLut.value) { return; }
-    if (destination.image.height !== this.material.uniforms.lutSize.value
-      || insanityDestination.image.height !== this.material.uniforms.lutSize.value) {
+    if (
+      destination === uniforms.destinationLut.value &&
+      insanityDestination === uniforms.destinationInsanityLut.value
+    ) {
+      return;
+    }
+    if (
+      destination.image.height !== this.material.uniforms.lutSize.value ||
+      insanityDestination.image.height !== this.material.uniforms.lutSize.value
+    ) {
       throw new Error('DST colour cubes must share one dimension');
     }
     uniforms.sourceInsanityLut.value = uniforms.destinationInsanityLut.value;
@@ -578,23 +613,25 @@ export class DstLightingRenderer {
   }
 
   private applyAmbientUniform(): void {
-    this.litAmbient
-      .copy(this.ambientCurrent)
-      .multiplyScalar(this.weatherLight);
+    this.litAmbient.copy(this.ambientCurrent).multiplyScalar(this.weatherLight);
     this.localLighting.setAmbientColour(this.litAmbient);
   }
 
   private requireInsanityLut(phase: DstLightPhase): THREE.DataTexture {
     const path = INSANITY_LUT_PATHS[phase];
     const texture = this.textures.get(path);
-    if (!texture) { throw new Error(`DST colour cube was not loaded: ${path}`); }
+    if (!texture) {
+      throw new Error(`DST colour cube was not loaded: ${path}`);
+    }
     return texture;
   }
 
   private requireLut(season: DstSeason, phase: DstLightPhase, ghost = false): THREE.DataTexture {
     const path = ghost ? GHOST_LUT_PATH : LUT_PATHS[season][phase];
     const texture = this.textures.get(path);
-    if (!texture) { throw new Error(`DST colour cube was not loaded: ${path}`); }
+    if (!texture) {
+      throw new Error(`DST colour cube was not loaded: ${path}`);
+    }
     return texture;
   }
 }

@@ -66,7 +66,12 @@ export class Rainfall {
   private stopRate!: () => void;
   private mesh?: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
   /** The mesh's dynamic quad attributes and the arrays they upload. */
-  private quads?: { position: THREE.BufferAttribute; positions: Float32Array; uv: THREE.BufferAttribute; uvs: Float32Array };
+  private quads?: {
+    position: THREE.BufferAttribute;
+    positions: Float32Array;
+    uv: THREE.BufferAttribute;
+    uvs: Float32Array;
+  };
   private disposed = false;
   private tickRemainder = 0;
   private particlesPerTick = 0;
@@ -89,17 +94,26 @@ export class Rainfall {
     this.position = new Float32Array(max * 3);
     this.velocity = new Float32Array(max * 3);
     this.age = new Float32Array(max);
-    this.rate = watchSignal(options.rate, cleanup => { this.stopRate = cleanup; });
-    createEffect(() => { this.particlesPerTick = options.fx.particlesPerTick * this.rate.get(); });
+    this.rate = watchSignal(options.rate, cleanup => {
+      this.stopRate = cleanup;
+    });
+    createEffect(() => {
+      this.particlesPerTick = options.fx.particlesPerTick * this.rate.get();
+    });
     void this.loadParticles().catch((error: unknown) => {
-      if (!this.disposed) { console.error('Unable to load rain particles', error); }
+      if (!this.disposed) {
+        console.error('Unable to load rain particles', error);
+      }
     });
   }
 
   private async loadParticles(): Promise<void> {
     const { fx } = this.options;
     const texture = await loadGroundTexture(this.options.dataBaseUrl, fx.texture, false);
-    if (this.disposed) { texture.dispose(); return; }
+    if (this.disposed) {
+      texture.dispose();
+      return;
+    }
     const geometry = new THREE.BufferGeometry();
     const uv = new Float32Array(fx.maxParticles * 8);
     const index = new Uint16Array(fx.maxParticles * 6);
@@ -108,34 +122,47 @@ export class Rainfall {
       index.set([i * 4, i * 4 + 1, i * 4 + 2, i * 4, i * 4 + 2, i * 4 + 3], i * 6);
     }
     const positions = new Float32Array(fx.maxParticles * 12);
-    const quads = this.quads = {
-      position: new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage), positions,
-      uv: new THREE.BufferAttribute(uv, 2), uvs: uv,
-    };
+    const quads = (this.quads = {
+      position: new THREE.BufferAttribute(positions, 3).setUsage(THREE.DynamicDrawUsage),
+      positions,
+      uv: new THREE.BufferAttribute(uv, 2),
+      uvs: uv,
+    });
     geometry.setAttribute('position', quads.position);
     geometry.setAttribute('uv', quads.uv);
     geometry.setIndex(new THREE.BufferAttribute(index, 1));
     geometry.setDrawRange(0, 0);
     // BLENDMODE.Premultiplied with a white colour envelope: opacity scales the white texture.
     const material = new THREE.MeshBasicMaterial({
-      map: texture, transparent: true, opacity: fx.colourAlpha * OPACITY_FACTOR, side: THREE.DoubleSide,
-      depthTest: true, depthWrite: false, toneMapped: false,
+      map: texture,
+      transparent: true,
+      opacity: fx.colourAlpha * OPACITY_FACTOR,
+      side: THREE.DoubleSide,
+      depthTest: true,
+      depthWrite: false,
+      toneMapped: false,
     });
-    const mesh = this.mesh = new THREE.Mesh(geometry, material);
+    const mesh = (this.mesh = new THREE.Mesh(geometry, material));
     mesh.name = 'rain';
     mesh.frustumCulled = false;
     mesh.renderOrder = RENDER_ORDER;
     this.root.add(mesh);
     this.options.scene.add(this.root);
-    if (this.rate.peek() > 0) { this.PostInit(); }
+    if (this.rate.peek() > 0) {
+      this.PostInit();
+    }
   }
 
   /** rain.lua's emit_fn: a particle in the box over the emitter (CreateBoxEmitter + UnitRand). */
   private emitParticle(x: number, z: number): void {
-    if (this.count >= this.options.fx.maxParticles) { return; }
+    if (this.count >= this.options.fx.maxParticles) {
+      return;
+    }
     const i = this.count++;
-    this.position.set([x + EMIT_HALF_EXTENT * unitRand(), this.options.fx.emitHeight * WORLD_SCALE,
-      z + EMIT_HALF_EXTENT * unitRand()], i * 3);
+    this.position.set(
+      [x + EMIT_HALF_EXTENT * unitRand(), this.options.fx.emitHeight * WORLD_SCALE, z + EMIT_HALF_EXTENT * unitRand()],
+      i * 3,
+    );
     // vy = -2 - 8 * UnitRand(), along screen-down.
     const speed = (2 + 8 * unitRand()) * WORLD_SCALE;
     this.velocity.set([this.fall.x * speed, this.fall.y * speed, this.fall.z * speed], i * 3);
@@ -155,7 +182,7 @@ export class Rainfall {
   private simulate(dt: number): void {
     const { drag: dragCoefficient, gravity, lifetime } = this.options.fx;
     const drag = Math.exp(-dragCoefficient * dt);
-    for (let i = 0; i < this.count;) {
+    for (let i = 0; i < this.count; ) {
       if ((this.age[i] += dt) >= lifetime) {
         // Swap in the last live particle.
         const last = --this.count;
@@ -177,25 +204,40 @@ export class Rainfall {
 
   /** Stretched, screen-facing quads of the scale envelope; the part under the ground is clipped away. */
   private writeGeometry(): void {
-    if (!this.mesh || !this.quads) { return; }
+    if (!this.mesh || !this.quads) {
+      return;
+    }
     const { position: attribute, positions: out, uv, uvs: uvOut } = this.quads;
     const { scale } = this.options.fx;
-    const fullWidth = scale[0] * SCALE_FACTOR[0] * WORLD_SCALE / 2;
-    const fullHeight = scale[1] * SCALE_FACTOR[1] * WORLD_SCALE / 2;
+    const fullWidth = (scale[0] * SCALE_FACTOR[0] * WORLD_SCALE) / 2;
+    const fullHeight = (scale[1] * SCALE_FACTOR[1] * WORLD_SCALE) / 2;
     const { right, up, cameraPosition } = this;
     cameraPosition.setFromMatrixPosition(this.options.camera.matrixWorld);
     const focusDistance = cameraPosition.distanceTo(this.options.getFocus());
     let quads = 0;
     for (let i = 0; i < this.count; i++) {
-      const cx = this.position[i * 3], cy = this.position[i * 3 + 1], cz = this.position[i * 3 + 2];
-      const nearness = Math.min(1, Math.hypot(cameraPosition.x - cx, cameraPosition.y - cy, cameraPosition.z - cz) / focusDistance);
-      const halfWidth = fullWidth * nearness, halfHeight = fullHeight * nearness;
+      const cx = this.position[i * 3],
+        cy = this.position[i * 3 + 1],
+        cz = this.position[i * 3 + 2];
+      const nearness = Math.min(
+        1,
+        Math.hypot(cameraPosition.x - cx, cameraPosition.y - cy, cameraPosition.z - cz) / focusDistance,
+      );
+      const halfWidth = fullWidth * nearness,
+        halfHeight = fullHeight * nearness;
       // EnableDepthTest against the terrain: keep only the part of the streak at or above y = 0.
       const bottom = up.y > 1e-4 ? Math.max(-halfHeight, -cy / up.y) : -halfHeight;
-      if (bottom >= halfHeight) { continue; }
+      if (bottom >= halfHeight) {
+        continue;
+      }
       const v = (halfHeight - bottom) / (2 * halfHeight);
       const base = quads * 12;
-      const points = [[-halfWidth, bottom], [halfWidth, bottom], [halfWidth, halfHeight], [-halfWidth, halfHeight]] as const;
+      const points = [
+        [-halfWidth, bottom],
+        [halfWidth, bottom],
+        [halfWidth, halfHeight],
+        [-halfWidth, halfHeight],
+      ] as const;
       for (let k = 0; k < 4; k++) {
         out[base + k * 3] = cx + right.x * points[k][0] + up.x * points[k][1];
         out[base + k * 3 + 1] = cy + right.y * points[k][0] + up.y * points[k][1];
@@ -231,7 +273,9 @@ export class Rainfall {
 
   /** Advance by `dt` game seconds; `cameraQuaternion` orients the billboards. */
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    if (this.disposed || !Number.isFinite(dt) || dt <= 0) { return; }
+    if (this.disposed || !Number.isFinite(dt) || dt <= 0) {
+      return;
+    }
     this.orient(cameraQuaternion);
     this.tickRemainder = Math.min(this.tickRemainder + dt, TICK_TIME * MAX_TICKS_PER_FRAME);
     while (this.tickRemainder >= TICK_TIME) {
@@ -243,7 +287,9 @@ export class Rainfall {
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     this.stopRate();
     const mesh = this.mesh;

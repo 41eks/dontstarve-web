@@ -1,13 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseKtex } from '@dontstarve-web/animation/parseKtex';
 
-function makeKtex(
-  pixelFormat: number,
-  width: number,
-  height: number,
-  data: Uint8Array,
-  mipCount = 1,
-) {
+function makeKtex(pixelFormat: number, width: number, height: number, data: Uint8Array, mipCount = 1) {
   const output = new Uint8Array(8 + mipCount * 10 + data.length);
   output.set([0x4b, 0x54, 0x45, 0x58]);
   const view = new DataView(output.buffer);
@@ -33,35 +27,23 @@ function makeColourBlock(c0: number, c1: number, indices: number) {
 
 describe('parseKtex', () => {
   it('decodes and vertically flips uncompressed RGBA textures', () => {
-    const source = new Uint8Array([
-      255, 0, 0, 255, 0, 255, 0, 128,
-      0, 0, 255, 64, 1, 2, 3, 4,
-    ]);
+    const source = new Uint8Array([255, 0, 0, 255, 0, 255, 0, 128, 0, 0, 255, 64, 1, 2, 3, 4]);
 
     const texture = parseKtex(makeKtex(4, 2, 2, source));
 
     expect(texture.width).toBe(2);
     expect(texture.height).toBe(2);
-    expect(Array.from(texture.pixels)).toEqual([
-      0, 0, 255, 64, 1, 2, 3, 4,
-      255, 0, 0, 255, 0, 255, 0, 128,
-    ]);
+    expect(Array.from(texture.pixels)).toEqual([0, 0, 255, 64, 1, 2, 3, 4, 255, 0, 0, 255, 0, 255, 0, 128]);
   });
 
   it('decodes and vertically flips uncompressed RGB textures', () => {
-    const source = new Uint8Array([
-      255, 0, 0, 0, 255, 0,
-      0, 0, 255, 1, 2, 3,
-    ]);
+    const source = new Uint8Array([255, 0, 0, 0, 255, 0, 0, 0, 255, 1, 2, 3]);
 
     const texture = parseKtex(makeKtex(5, 2, 2, source));
 
     expect(texture.width).toBe(2);
     expect(texture.height).toBe(2);
-    expect(Array.from(texture.pixels)).toEqual([
-      0, 0, 255, 255, 1, 2, 3, 255,
-      255, 0, 0, 255, 0, 255, 0, 255,
-    ]);
+    expect(Array.from(texture.pixels)).toEqual([0, 0, 255, 255, 1, 2, 3, 255, 255, 0, 0, 255, 0, 255, 0, 255]);
   });
 
   it('decodes BC1 colours and flips their rows', () => {
@@ -83,7 +65,7 @@ describe('parseKtex', () => {
 
     const texture = parseKtex(makeKtex(0, 4, 4, block));
 
-    expect(texture.pixels.every((channel) => channel === 0)).toBe(true);
+    expect(texture.pixels.every(channel => channel === 0)).toBe(true);
   });
 
   it('decodes BC2 four-bit alpha values', () => {
@@ -94,7 +76,7 @@ describe('parseKtex', () => {
     const texture = parseKtex(makeKtex(1, 4, 4, block));
 
     expect(Array.from(texture.pixels.slice(0, 4))).toEqual([255, 255, 255, 136]);
-    expect(texture.pixels.filter((_, index) => index % 4 === 3).every((alpha) => alpha === 136)).toBe(true);
+    expect(texture.pixels.filter((_, index) => index % 4 === 3).every(alpha => alpha === 136)).toBe(true);
   });
 
   it('decodes BC3 interpolated alpha values', () => {
@@ -102,7 +84,9 @@ describe('parseKtex', () => {
     block[0] = 200;
     block[1] = 100;
     let alphaIndices = 0n;
-    for (let pixel = 0; pixel < 16; pixel++) { alphaIndices |= 2n << BigInt(pixel * 3); }
+    for (let pixel = 0; pixel < 16; pixel++) {
+      alphaIndices |= 2n << BigInt(pixel * 3);
+    }
     for (let byte = 0; byte < 6; byte++) {
       block[2 + byte] = Number((alphaIndices >> BigInt(byte * 8)) & 0xffn);
     }
@@ -111,13 +95,12 @@ describe('parseKtex', () => {
     const texture = parseKtex(makeKtex(2, 4, 4, block));
 
     expect(Array.from(texture.pixels.slice(0, 4))).toEqual([255, 255, 255, 186]);
-    expect(texture.pixels.filter((_, index) => index % 4 === 3).every((alpha) => alpha === 186)).toBe(true);
+    expect(texture.pixels.filter((_, index) => index % 4 === 3).every(alpha => alpha === 186)).toBe(true);
   });
 
   it('rejects truncated input', () => {
     const truncated = makeKtex(4, 1, 1, new Uint8Array([1, 2, 3, 4])).subarray(0, 20);
 
-    expect(() => parseKtex(truncated, 'truncated.tex'))
-      .toThrow('truncated.tex: unexpected end of file at byte 18');
+    expect(() => parseKtex(truncated, 'truncated.tex')).toThrow('truncated.tex: unexpected end of file at byte 18');
   });
 });

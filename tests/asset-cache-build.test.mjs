@@ -18,7 +18,10 @@ test('production worker version is stable and changes when public asset bytes ch
 
     async function buildWorker() {
       const result = await build({
-        root, configFile: false, logLevel: 'silent', base: '/preview/',
+        root,
+        configFile: false,
+        logLevel: 'silent',
+        base: '/preview/',
         plugins: [assetCachePlugin()],
         build: { write: false },
       });

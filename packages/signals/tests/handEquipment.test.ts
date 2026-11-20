@@ -17,15 +17,20 @@ it('accepts hand equipment and null, rejecting invalid slots without changing st
     handEquipmentExistenceState.set(null);
     expect(handEquipmentExistenceState.peek()).toBeNull();
     expect(listener).toHaveBeenCalledExactlyOnceWith(null, item);
-  } finally { unsubscribe(); }
+  } finally {
+    unsubscribe();
+  }
 });
 
 it('creates independent head/body states and rejects equipment for the wrong slot', () => {
-  const head = createEquipmentExistenceState('HEAD'), body = createEquipmentExistenceState('BODY');
+  const head = createEquipmentExistenceState('HEAD'),
+    body = createEquipmentExistenceState('BODY');
   const hat = { itemId: 'strawhat', EQUIPSLOTS: 'HEAD' as const };
   const backpack = { itemId: 'backpack', EQUIPSLOTS: 'BODY' as const };
-  head.set(hat); body.set(backpack);
-  const changes = vi.fn(), stop = head.subscribe(changes);
+  head.set(hat);
+  body.set(backpack);
+  const changes = vi.fn(),
+    stop = head.subscribe(changes);
   try {
     // @ts-expect-error Body equipment cannot be published in a head slot.
     expect(() => head.set(backpack)).toThrow('EQUIPSLOTS = "HEAD"');
@@ -33,7 +38,9 @@ it('creates independent head/body states and rejects equipment for the wrong slo
     expect(changes).not.toHaveBeenCalled();
     body.set(null);
     expect(head.peek()).toBe(hat);
-  } finally { stop(); }
+  } finally {
+    stop();
+  }
 });
 
 it('creates independent states and observes subsequent writes synchronously without replay', () => {
@@ -50,7 +57,10 @@ it('creates independent states and observes subsequent writes synchronously with
   expect(listener).not.toHaveBeenCalled();
   handEquipmentExistenceState.set(null);
   handEquipmentExistenceState.set(second);
-  expect(listener.mock.calls).toEqual([[null, first], [second, null]]);
+  expect(listener.mock.calls).toEqual([
+    [null, first],
+    [second, null],
+  ]);
   stop();
   handEquipmentExistenceState.set(null);
   expect(listener).toHaveBeenCalledTimes(2);

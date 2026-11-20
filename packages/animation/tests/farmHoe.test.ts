@@ -27,23 +27,39 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { inventoryItemEquipmentKind, inventoryItemMaxStack } from '../../inventory/src/slots';
 import { PlaySound } from '../../prefab/src/sound';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => true })),
+}));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
 });
-afterEach(() => { vi.clearAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function setup(player = new THREE.Group()) {
-  const world = { scene: new THREE.Scene(), player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
-    renderer: { domElement: new EventTarget() } } as unknown as WorldContext;
+  const world = {
+    scene: new THREE.Scene(),
+    player,
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+  } as unknown as WorldContext;
   const turf = new TurfMap(96);
   const blockers = new SpatialIndex<{ position: THREE.Vector3; tags?: string[] }>(blocker => blocker.position);
   const farm = farmFixture(world.scene, turf, { blockers: blockers as never });
   return { farm, turf, world, blockers };
 }
 function advance(animation: PlayerInstance, frames: number) {
-  for (let i = 0; i < frames; i++) { advancePlayer(animation, 1 / 30); }
+  for (let i = 0; i < frames; i++) {
+    advancePlayer(animation, 1 / 30);
+  }
 }
 
 it('resolves both source ground builds, the separate golden held build and invisible equipment', async () => {
@@ -52,18 +68,30 @@ it('resolves both source ground builds, the separate golden held build and invis
     const ordinary = await createGroundItemVisual('farm_hoe');
     const gold = await createGroundItemVisual('golden_farm_hoe', 'golden_farmhoe_garden');
     for (const sprite of [ordinary, gold]) {
-      expect((sprite.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
+      expect((sprite.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(
+        0,
+      );
       sprite.dispose();
     }
-    expect(GROUND_ITEM_DEFINITIONS.farm_hoe).toMatchObject({ bank: 'quagmire_hoe', animation: 'idle', atlas: 'images/inventoryimages2.xml' });
-    expect(GROUND_ITEM_DEFINITIONS.golden_farm_hoe).toMatchObject({ bank: 'goldenhoe', animation: 'idle', atlas: 'images/inventoryimages2.xml' });
+    expect(GROUND_ITEM_DEFINITIONS.farm_hoe).toMatchObject({
+      bank: 'quagmire_hoe',
+      animation: 'idle',
+      atlas: 'images/inventoryimages2.xml',
+    });
+    expect(GROUND_ITEM_DEFINITIONS.golden_farm_hoe).toMatchObject({
+      bank: 'goldenhoe',
+      animation: 'idle',
+      atlas: 'images/inventoryimages2.xml',
+    });
     expect(inventoryItemEquipmentKind('farm_hoe')).toBe('hand');
     expect(inventoryItemMaxStack('golden_farm_hoe')).toBe(1);
     const anim = new AnimState();
     const owner = { AnimState: anim, PushEvent() {} };
     const equip = (prefab: string, skinId?: string) => farmHoeVisual({ id: prefab, prefab, skinId }).onequip(owner);
     equip('farm_hoe');
-    expect(anim.json.peek().overrides.get(smallHash('swap_object'))?.sources[0].symbol).toBe(smallHash('swap_quagmire_hoe'));
+    expect(anim.json.peek().overrides.get(smallHash('swap_object'))?.sources[0].symbol).toBe(
+      smallHash('swap_quagmire_hoe'),
+    );
     equip('golden_farm_hoe');
     expect(overrideArchives(anim, 'swap_object')).toEqual(['swap_goldenhoe.zip']);
     equip('golden_farm_hoe', 'golden_farmhoe_garden');
@@ -72,7 +100,9 @@ it('resolves both source ground builds, the separate golden held build and invis
     expect(heldSkin[0].materials[0].name).toBe('ground:golden_farmhoe_garden');
     equip('golden_farm_hoe', 'golden_farmhoe_invisible');
     expect(await declaredSymbol(anim, assets, 'swap_object')).toHaveLength(0);
-  } finally { assets.dispose(); }
+  } finally {
+    assets.dispose();
+  }
 });
 
 it('retills broken soil at the exact point, preserves blockers and crops, and restores saved holes', async () => {
@@ -102,7 +132,9 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
       restored.farm.spawn('farm_soil', point, { farmSoil: hole.record.components.farmSoil }, hole.record.id);
       expect(restored.farm.decor()).toEqual([hole]);
       expect(restored.farm.decor()[0].record.id).toBe(hole.record.id);
-    } finally { restored.farm.dispose(); }
+    } finally {
+      restored.farm.dispose();
+    }
     farm.spawn(PLANTED_SEED_ID, point, {}, 'crop');
     const crops = farm.seeds();
     expect(farm.map.canTill(point)).toBe(false);
@@ -110,7 +142,9 @@ it('retills broken soil at the exact point, preserves blockers and crops, and re
     expect(farm.seeds()).toEqual(crops);
     farm.spawn('farm_soil_debris', new THREE.Vector3(9, 0, 9), { farmDebris: { animation: 'f1' } });
     expect(farm.map.canTill(new THREE.Vector3(9, 0, 9))).toBe(false);
-  } finally { farm.dispose(); }
+  } finally {
+    farm.dispose();
+  }
   expect(world.scene.children).toHaveLength(0);
 });
 
@@ -123,19 +157,26 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
   const { world, farm, turf } = setup(player);
   world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
   const body = { position: player.position, velocity: new THREE.Vector3() };
-  const locomotor = new Locomotor(body, { physicsRadius: .5 * WORLD_SCALE });
+  const locomotor = new Locomotor(body, { physicsRadius: 0.5 * WORLD_SCALE });
   const hand = createEquipmentExistenceState('HANDS');
   const tool = actionTool('golden_farm_hoe');
-  const lifecycle = getHandEquipmentDefinition('golden_farm_hoe')!.definition.createLifecycle!(tool.entity, { farmTillMap: farm.map } as never)!;
+  const lifecycle = getHandEquipmentDefinition('golden_farm_hoe')!.definition.createLifecycle!(tool.entity, {
+    farmTillMap: farm.map,
+  } as never)!;
   lifecycle.onequip();
   const controller = new PlayerController(world, animation.sg, locomotor, hand, playerDoer(player));
   const point = new THREE.Vector3(3, 0, 3);
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget').mockReturnValue(undefined as never);
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
-  const rightClick = () => (world.renderer.domElement as EventTarget).dispatchEvent(
-    Object.assign(new Event('pointerdown', { cancelable: true }), { button: 2 }));
-  const walkIn = () => { player.position.set(3, 0, 3.5); locomotor.update(16, 1 / 30); };
+  const rightClick = () =>
+    (world.renderer.domElement as EventTarget).dispatchEvent(
+      Object.assign(new Event('pointerdown', { cancelable: true }), { button: 2 }),
+    );
+  const walkIn = () => {
+    player.position.set(3, 0, 3.5);
+    locomotor.update(16, 1 / 30);
+  };
   turf.plow(point);
   try {
     hand.set({ itemId: 'torch', EQUIPSLOTS: 'HANDS' });
@@ -148,11 +189,17 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
     expect(locomotor.bufferedAction).toBeDefined();
     expect(farm.decor()).toEqual([]);
     walkIn();
-    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.sg.stateName).toBe('till_start'); });
-    while (animation.sg.stateName === 'till_start') { advancePlayer(animation, 1 / 30); }
+    await vi.waitFor(() => {
+      advancePlayer(animation, 1 / 30);
+      expect(animation.sg.stateName).toBe('till_start');
+    });
+    while (animation.sg.stateName === 'till_start') {
+      advancePlayer(animation, 1 / 30);
+    }
     advance(animation, 10);
     expect(farm.decor()).toEqual([]);
-    facePlayer(animation, 'side', true); advancePlayer(animation, 1 / 30);
+    facePlayer(animation, 'side', true);
+    advancePlayer(animation, 1 / 30);
     expect(farm.decor()).toHaveLength(1);
     advancePlayer(animation, 1 / 30);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/dig', undefined);
@@ -160,13 +207,29 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
     advance(animation, 60);
     expect(farm.decor()).toHaveLength(1);
     const preserved = farm.decor();
-    rightClick(); walkIn();
-    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.sg.isPerformingAction('TILL')).toBe(true); });
-    window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' })); advance(animation, 60);
+    rightClick();
+    walkIn();
+    await vi.waitFor(() => {
+      advancePlayer(animation, 1 / 30);
+      expect(animation.sg.isPerformingAction('TILL')).toBe(true);
+    });
+    window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
+    advance(animation, 60);
     expect(farm.decor()).toEqual(preserved);
-    rightClick(); walkIn();
-    await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.sg.isPerformingAction('TILL')).toBe(true); });
-    hand.set(null); await animationEquipper.equip(null); advance(animation, 60);
+    rightClick();
+    walkIn();
+    await vi.waitFor(() => {
+      advancePlayer(animation, 1 / 30);
+      expect(animation.sg.isPerformingAction('TILL')).toBe(true);
+    });
+    hand.set(null);
+    await animationEquipper.equip(null);
+    advance(animation, 60);
     expect(farm.decor()).toEqual(preserved);
-  } finally { controller.dispose(); world.mouseActions.dispose(); lifecycle.onunequip(); farm.dispose(); }
+  } finally {
+    controller.dispose();
+    world.mouseActions.dispose();
+    lifecycle.onunequip();
+    farm.dispose();
+  }
 });

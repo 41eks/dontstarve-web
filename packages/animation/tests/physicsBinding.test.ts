@@ -4,12 +4,22 @@ import { Vector3 } from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { bindPhysics, GROUND_COLLISION_GROUP } from '../../componets/src/physicsBinding';
 import { COLLISION, PhysicsState } from '../../componets/src/physicsState';
-import { CHARACTER_COLLISION_MASK, MakeCharacterPhysics, MakeGhostPhysics, WORLD_SCALE } from '../../prefab/src/standardcomponents';
+import {
+  CHARACTER_COLLISION_MASK,
+  MakeCharacterPhysics,
+  MakeGhostPhysics,
+  WORLD_SCALE,
+} from '../../prefab/src/standardcomponents';
 import { createPlayerPrefab, PLAYER_PHYSICS_RADIUS } from './playerVisual';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
-afterEach(() => { vi.unstubAllGlobals(); });
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {} })),
+}));
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -18,17 +28,20 @@ it('binds a moving character: frictionless damped sphere, ghost and toggled mask
   const ground = new CANNON.Body({ mass: 0, shape: new CANNON.Plane(), material: new CANNON.Material('ground') });
   ground.collisionFilterGroup = GROUND_COLLISION_GROUP;
   world.addBody(ground);
-  const entity = { physics: new PhysicsState() }, position = new Vector3(3, 0, -6);
-  MakeCharacterPhysics(entity, 75, .5);
+  const entity = { physics: new PhysicsState() },
+    position = new Vector3(3, 0, -6);
+  MakeCharacterPhysics(entity, 75, 0.5);
   const binding = bindPhysics(world, entity.physics, () => position);
   // The body exists as soon as it is bound, standing its radius above the ground origin.
   const body = binding.body!;
   expect(world.bodies).toContain(body);
   expect(body.type).toBe(CANNON.Body.DYNAMIC);
   expect(body.mass).toBe(75);
-  expect(body.shapes).toEqual([expect.objectContaining({ radius: .5 * WORLD_SCALE })]);
-  expect(body.position.toArray()).toEqual([3, .5 * WORLD_SCALE, -6]);
-  expect(body.collisionFilterMask).toBe((CHARACTER_COLLISION_MASK.reduce((mask, group) => mask | group, 0) & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP);
+  expect(body.shapes).toEqual([expect.objectContaining({ radius: 0.5 * WORLD_SCALE })]);
+  expect(body.position.toArray()).toEqual([3, 0.5 * WORLD_SCALE, -6]);
+  expect(body.collisionFilterMask).toBe(
+    (CHARACTER_COLLISION_MASK.reduce((mask, group) => mask | group, 0) & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP,
+  );
   // SetFriction(0) against the ground already registered.
   expect(world.getContactMaterial(body.material!, ground.material!)?.friction).toBe(0);
 
@@ -43,22 +56,28 @@ it('binds a moving character: frictionless damped sphere, ghost and toggled mask
   expect([body.position.x, body.position.z]).toEqual([-9, 12]);
 
   // MakeGhostPhysics excludes obstacles while retaining world, characters and giants.
-  MakeGhostPhysics(entity, 1, .5);
+  MakeGhostPhysics(entity, 1, 0.5);
   await settle();
   expect(binding.body).toBe(body);
   expect(body.mass).toBe(1);
-  expect(body.collisionFilterMask).toBe((COLLISION.WORLD & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP | COLLISION.CHARACTERS | COLLISION.GIANTS);
+  expect(body.collisionFilterMask).toBe(
+    (COLLISION.WORLD & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP | COLLISION.CHARACTERS | COLLISION.GIANTS,
+  );
   expect([body.position.x, body.position.z]).toEqual([-9, 12]);
-  MakeCharacterPhysics(entity, 75, .5);
+  MakeCharacterPhysics(entity, 75, 0.5);
   await settle();
-  expect(body.collisionFilterMask).toBe((CHARACTER_COLLISION_MASK.reduce((mask, group) => mask | group, 0) & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP);
+  expect(body.collisionFilterMask).toBe(
+    (CHARACTER_COLLISION_MASK.reduce((mask, group) => mask | group, 0) & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP,
+  );
   // SGwilson ToggleOffPhysics / ToggleOnPhysics.
   entity.physics.SetCollisionMask(COLLISION.GROUND);
   await settle();
   expect(body.collisionFilterMask).toBe(GROUND_COLLISION_GROUP);
   entity.physics.SetCollisionMask(...CHARACTER_COLLISION_MASK);
   await settle();
-  expect(body.collisionFilterMask).toBe((CHARACTER_COLLISION_MASK.reduce((mask, group) => mask | group, 0) & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP);
+  expect(body.collisionFilterMask).toBe(
+    (CHARACTER_COLLISION_MASK.reduce((mask, group) => mask | group, 0) & ~COLLISION.GROUND) | GROUND_COLLISION_GROUP,
+  );
 
   binding.dispose();
   expect(world.bodies).toEqual([ground]);
@@ -68,7 +87,10 @@ it('binds a moving character: frictionless damped sphere, ghost and toggled mask
 });
 
 it('makes the player instance own its tags, collider and permanent removal', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const world = new CANNON.World();
   const { model, physics, instance: playerInstance, body } = await createPlayerPrefab('/dst/data/anim', world);
   const instance = prefabInstance(model)!;

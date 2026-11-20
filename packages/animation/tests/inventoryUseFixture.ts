@@ -32,27 +32,41 @@ export function inventoryUse(world: object, stategraph: WilsonStateGraph, doer: 
  * The player's PlayerController holding an active (cursor) item over a world target: GetItemUseAction picks from
  * COMPONENT_ACTIONS.USEITEM and DoAction hands it to locomotor:PushAction, which `arrive()` completes.
  */
-export function activeItemUse(world: object, stategraph: WilsonStateGraph,
-  inventory: InventoryStore, isManualMovement = () => false) {
+export function activeItemUse(
+  world: object,
+  stategraph: WilsonStateGraph,
+  inventory: InventoryStore,
+  isManualMovement = () => false,
+) {
   // The player inst uses the item from its own inventory, walking with its own locomotor.
   const doer = testPlayer({ model: (world as ActionWorldContext).player, inventory });
   const walker = testLocomotor(doer.transform.model);
-  const controller = new PlayerController(world as ActionWorldContext, stategraph, walker.locomotor, createSignal(null),
-    doer, isManualMovement);
+  const controller = new PlayerController(
+    world as ActionWorldContext,
+    stategraph,
+    walker.locomotor,
+    createSignal(null),
+    doer,
+    isManualMovement,
+  );
   return {
-    controller, doer,
+    controller,
+    doer,
     /** CollectActions("USEITEM"): the action names the active item offers on the target for one button. */
     actions(target: PlayerActionTarget, right = false): string[] {
       const item = inventory.GetActiveItem();
       return item ? collectUseItemActions(item, doer, target, right) : [];
     },
     useOn(target: PlayerActionTarget): boolean {
-      const item = inventory.GetActiveItem(), action = item && controller.GetItemUseAction(item, target);
+      const item = inventory.GetActiveItem(),
+        action = item && controller.GetItemUseAction(item, target);
       return !!action && controller.DoAction(action);
     },
     /** locomotor OnUpdate at the destination. */
     arrive: () => walker.arrive(),
-    get walking() { return walker.walking; },
+    get walking() {
+      return walker.walking;
+    },
     dispose: () => controller.dispose(),
   };
 }

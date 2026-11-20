@@ -5,9 +5,18 @@ export class GroundDepthPrepass {
   private readonly meshes = new Map<THREE.Mesh, THREE.Mesh<THREE.BufferGeometry, THREE.MeshLambertMaterial>>();
 
   add(colour: THREE.Mesh): void {
-    if (!(colour.material instanceof THREE.MeshLambertMaterial)) { throw new Error('Ground depth requires a single terrain material'); }
-    const material = new THREE.MeshLambertMaterial({ map: colour.material.map, alphaMap: colour.material.alphaMap,
-      side: colour.material.side, forceSinglePass: true, colorWrite: false, depthWrite: true, alphaTest: .98 });
+    if (!(colour.material instanceof THREE.MeshLambertMaterial)) {
+      throw new Error('Ground depth requires a single terrain material');
+    }
+    const material = new THREE.MeshLambertMaterial({
+      map: colour.material.map,
+      alphaMap: colour.material.alphaMap,
+      side: colour.material.side,
+      forceSinglePass: true,
+      colorWrite: false,
+      depthWrite: true,
+      alphaTest: 0.98,
+    });
     // Ground layers need their atlas alpha, not just the noise map; borrow textures without cloning userData.
     material.onBeforeCompile = colour.material.onBeforeCompile;
     material.customProgramCacheKey = colour.material.customProgramCacheKey;
@@ -22,7 +31,9 @@ export class GroundDepthPrepass {
   /** The colour owner replaces/disposes shared geometry; this pass only borrows it. */
   sync(colour: THREE.Mesh): void {
     const depth = this.meshes.get(colour);
-    if (depth) { depth.geometry = colour.geometry; }
+    if (depth) {
+      depth.geometry = colour.geometry;
+    }
   }
 
   dispose(): void {

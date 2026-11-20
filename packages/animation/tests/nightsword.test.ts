@@ -27,70 +27,137 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { Sanity } from '../../componets/src/sanity';
 import { reskinEntity } from '../../prefab/src/reskin_tool';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {} })),
+}));
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('uses separate source ground and equipped art and renders a skin while moving and changing facing', async () => {
   const assets = new GroundItemAssets();
   const player = await createPlayer('/dst/data/anim');
   const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
-  const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+  const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<
+    THREE.BufferGeometry,
+    THREE.MeshBasicMaterial[]
+  >;
   const usedMaterials = () => mesh.geometry.groups.map(group => mesh.material[group.materialIndex!].name);
   try {
     expect(GROUND_ITEM_DEFINITIONS.nightsword).toMatchObject({
-      name: '暗夜剑', icon: 'nightsword.tex', atlas: 'images/inventoryimages.xml',
-      bank: 'nightmaresword', animation: 'idle', animationArchive: 'nightmaresword.zip', buildArchives: ['nightmaresword.zip'],
+      name: '暗夜剑',
+      icon: 'nightsword.tex',
+      atlas: 'images/inventoryimages.xml',
+      bank: 'nightmaresword',
+      animation: 'idle',
+      animationArchive: 'nightmaresword.zip',
+      buildArchives: ['nightmaresword.zip'],
     });
     expect(Object.keys(GROUND_ITEM_DEFINITIONS.nightsword.skinArchives)).toHaveLength(5);
     expect(GROUND_ITEM_SKIN_SPECS.nightsword_cotl).toMatchObject({ itemId: 'nightsword', icon: 'nightsword_cotl.tex' });
     const animState = new AnimState();
     nightswordVisual({ id: 'nightsword', prefab: 'nightsword' }).onequip({ AnimState: animState, PushEvent() {} });
-    expect((await declaredSymbol(animState, assets, 'swap_object'))?.[0].materials[0].name).toBe('ground:swap_nightmaresword');
-    expect(() => nightswordVisual({ id: 'nightsword', prefab: 'nightsword', skinId: 'pickaxe_invisible' })).toThrow('Unknown nightsword skin');
+    expect((await declaredSymbol(animState, assets, 'swap_object'))?.[0].materials[0].name).toBe(
+      'ground:swap_nightmaresword',
+    );
+    expect(() => nightswordVisual({ id: 'nightsword', prefab: 'nightsword', skinId: 'pickaxe_invisible' })).toThrow(
+      'Unknown nightsword skin',
+    );
     for (const skinId of [undefined, 'nightsword_cotl']) {
       const ground = await createGroundItemVisual('nightsword', skinId);
       try {
-        const groundMesh = ground.model.children[0].children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+        const groundMesh = ground.model.children[0].children[0].children[0] as THREE.Mesh<
+          THREE.BufferGeometry,
+          THREE.MeshBasicMaterial[]
+        >;
         expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
-        expect(groundMesh.material.some(material => material.name === `sprite:${skinId ?? 'nightmaresword'}`)).toBe(true);
+        expect(groundMesh.material.some(material => material.name === `sprite:${skinId ?? 'nightmaresword'}`)).toBe(
+          true,
+        );
         animationEquipper.equip('nightsword', skinId);
         // SGwilson's equip handler plays item_out from idle; the held art shows as it runs.
-        await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`); });
-        for (const [facing, mirrored] of [['up', false], ['down', false], ['side', true]] as const) {
-          facePlayer(animation, facing, mirrored); startMovement(animation, 'walk'); advancePlayer(animation, 1 / 30);
+        await vi.waitFor(() => {
+          advancePlayer(animation, 1 / 30);
+          expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`);
+        });
+        for (const [facing, mirrored] of [
+          ['up', false],
+          ['down', false],
+          ['side', true],
+        ] as const) {
+          facePlayer(animation, facing, mirrored);
+          startMovement(animation, 'walk');
+          advancePlayer(animation, 1 / 30);
           expect(usedMaterials()).toContain(`ground:${skinId ?? 'swap_nightmaresword'}`);
           expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite)).toBe(true);
           expect(mesh.material.every(material => material.forceSinglePass)).toBe(true);
         }
-      } finally { ground.dispose(); }
+      } finally {
+        ground.dispose();
+      }
     }
     await animationEquipper.equip(null);
     expect(usedMaterials()).not.toContain('ground:nightsword_cotl');
     expect(usedMaterials()).not.toContain('ground:swap_nightmaresword');
-  } finally { assets.dispose(); }
+  } finally {
+    assets.dispose();
+  }
 });
 
 it('spawns/gives individual swords, preserves failed drops and reskin/pickup identity, then saves and reloads ground and equipped swords', async () => {
-  const inventory = createPickupInventory(), restoredInventory = createPickupInventory();
-  const scene = new THREE.Scene(), camera = new THREE.PerspectiveCamera(), player = withEntity(new THREE.Group(), 'wilson');
+  const inventory = createPickupInventory(),
+    restoredInventory = createPickupInventory();
+  const scene = new THREE.Scene(),
+    camera = new THREE.PerspectiveCamera(),
+    player = withEntity(new THREE.Group(), 'wilson');
   const renderer = { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer;
   player.position.set(3, 0, -6);
-  const manager = new ItemWorldFixture(scene, camera, renderer, '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', player);
-  const restored = new ItemWorldFixture(new THREE.Scene(), camera, renderer, '/dst/data/databundles/images.zip', restoredInventory, '/dst/data/anim', player);
+  const manager = new ItemWorldFixture(
+    scene,
+    camera,
+    renderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    player,
+  );
+  const restored = new ItemWorldFixture(
+    new THREE.Scene(),
+    camera,
+    renderer,
+    '/dst/data/databundles/images.zip',
+    restoredInventory,
+    '/dst/data/anim',
+    player,
+  );
   const registry = new EntityRegistry();
   const sanity = new Sanity({ components: { inventory }, hasTag: () => false }, 200);
   sanity.SetCurrent(100);
   const currentSanity = sanity;
-  registry.register(PREFAB_DEFINITIONS.groundItems, manager.registration(() => player.position, id => `spawn:${id}`));
+  registry.register(
+    PREFAB_DEFINITIONS.groundItems,
+    manager.registration(
+      () => player.position,
+      id => `spawn:${id}`,
+    ),
+  );
   try {
-    expect((await executeDebugCommand('c_spawn("nightsword")', inventory, prefab => registry.spawn(prefab))).ok).toBe(true);
+    expect((await executeDebugCommand('c_spawn("nightsword")', inventory, prefab => registry.spawn(prefab))).ok).toBe(
+      true,
+    );
     expect((await executeDebugCommand('c_give("nightsword", 2)', inventory)).ok).toBe(true);
-    const hand = equipmentSlotAddress('hand'), bag = inventorySlotAddress(0);
+    const hand = equipmentSlotAddress('hand'),
+      bag = inventorySlotAddress(0);
     expect(inventory.get(bag)).toMatchObject({ itemId: 'nightsword', count: 1 });
     expect(inventory.get(inventorySlotAddress(1))).toMatchObject({ itemId: 'nightsword', count: 1 });
     expect(inventory.transfer(bag, hand, 1)).toBe(true);
@@ -116,15 +183,26 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
     expect(manager.exportRecords().some(record => record.id === entity.id)).toBe(false);
     sanity.OnUpdate(30);
     expect(currentSanity.current).toBeCloseTo(87);
-    const before = registry.exportRecords(), held = inventory.exportState();
+    const before = registry.exportRecords(),
+      held = inventory.exportState();
     let json = '';
-    expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-        entities: before, inventory: inventory.exportSaved(), elapsedSeconds: 12.5,
-        playerTransform: { position: [3, 0, -6], rotationY: 0 },
-        playerStats: { health: 150, hunger: 150, sanity: currentSanity.current },
-      }, SAVE_CATALOG);
-    })).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand('c_save()', inventory, undefined, () => {
+          json = serializeSave(
+            deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
+            {
+              entities: before,
+              inventory: inventory.exportSaved(),
+              elapsedSeconds: 12.5,
+              playerTransform: { position: [3, 0, -6], rotationY: 0 },
+              playerStats: { health: 150, hunger: 150, sanity: currentSanity.current },
+            },
+            SAVE_CATALOG,
+          );
+        })
+      ).ok,
+    ).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     loadSavedInventory(restoredInventory, saved, SAVE_CATALOG.recipes);
     restored.restoreEntities(saved.world.entities);
@@ -138,5 +216,11 @@ it('spawns/gives individual swords, preserves failed drops and reskin/pickup ide
     restoredComponent.OnUpdate(30);
     expect(restoredSanity.current).toBeCloseTo(74);
     restoredComponent.dispose();
-  } finally { sanity.dispose(); registry.dispose(); restored.dispose(); inventory.dispose(); restoredInventory.dispose(); }
+  } finally {
+    sanity.dispose();
+    registry.dispose();
+    restored.dispose();
+    inventory.dispose();
+    restoredInventory.dispose();
+  }
 });

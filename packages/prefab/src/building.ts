@@ -2,7 +2,14 @@ import type { EntityPersistData } from './saveRecord';
 import { removeComponent } from './components';
 import { getBoundWatchWorldContent } from '@dontstarve-web/signals';
 import type { BuildingPlacerSpec } from './buildingPlacer';
-import { buildingContainerId, createBuildingContainer, isStorageBuildingId, releaseBuildingContainer, type BuildingContainer, type StorageBuildingId } from './containers';
+import {
+  buildingContainerId,
+  createBuildingContainer,
+  isStorageBuildingId,
+  releaseBuildingContainer,
+  type BuildingContainer,
+  type StorageBuildingId,
+} from './containers';
 import type { PrefabEntityDefinition, PrefabEntityFn, PrefabInstance } from './prefabInstance';
 import { MakeObstaclePhysics } from './standardcomponents';
 import { TILE_SIZE } from './tile';
@@ -28,16 +35,46 @@ export interface BuildingDeclaration {
 }
 
 /** MakePlacer(name, bank, build, anim): the building's own bank and build, in the selected skin. */
-export function buildingPlacer({ archive, buildArchive = archive, buildLabel, name, idleAnimation = 'idle', previewAnimation = idleAnimation, skinArchives, skinSymbols,
-  baseSymbols, skinAnimationBanks }: BuildingDeclaration, bank: string): BuildingPlacerSpec {
-  return { buildLabel, name, animation: previewAnimation, art: (resources, skinId) => {
-    if (skinId !== undefined && !skinArchives?.[skinId]) { throw new Error(`Unsupported ${name} skin: ${skinId}`); }
-    return { archive: { animationArchive: archive, buildArchives: [buildArchive], bank }, initialize: entity => {
-      entity.skinId = skinId;
-      if (skinArchives) { entity.sprite.setSkinSource({ art: resources.archives, archives: skinArchives, ...skinSymbols ? { symbols: skinSymbols } : {},
-        ...baseSymbols ? { baseSymbols } : {}, ...skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {} }); }
-    } };
-  } };
+export function buildingPlacer(
+  {
+    archive,
+    buildArchive = archive,
+    buildLabel,
+    name,
+    idleAnimation = 'idle',
+    previewAnimation = idleAnimation,
+    skinArchives,
+    skinSymbols,
+    baseSymbols,
+    skinAnimationBanks,
+  }: BuildingDeclaration,
+  bank: string,
+): BuildingPlacerSpec {
+  return {
+    buildLabel,
+    name,
+    animation: previewAnimation,
+    art: (resources, skinId) => {
+      if (skinId !== undefined && !skinArchives?.[skinId]) {
+        throw new Error(`Unsupported ${name} skin: ${skinId}`);
+      }
+      return {
+        archive: { animationArchive: archive, buildArchives: [buildArchive], bank },
+        initialize: entity => {
+          entity.skinId = skinId;
+          if (skinArchives) {
+            entity.sprite.setSkinSource({
+              art: resources.archives,
+              archives: skinArchives,
+              ...(skinSymbols ? { symbols: skinSymbols } : {}),
+              ...(baseSymbols ? { baseSymbols } : {}),
+              ...(skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {}),
+            });
+          }
+        },
+      };
+    },
+  };
 }
 
 /** The building save shape: `components.building`, holding the skin it was built or reskinned with. */
@@ -53,7 +90,9 @@ export function SaveBuildingSkin(inst: PrefabInstance, data: EntityPersistData):
 
 /** The skin half of a building's OnLoad; a prefab with its own onload calls it first. */
 export function LoadBuildingSkin(inst: PrefabInstance, data: EntityPersistData): void {
-  if (data.building?.skinId !== undefined) { inst.skinId = data.building.skinId; }
+  if (data.building?.skinId !== undefined) {
+    inst.skinId = data.building.skinId;
+  }
 }
 
 const addressedContainers = new WeakSet<PrefabInstance>();
@@ -61,9 +100,13 @@ const addressedContainers = new WeakSet<PrefabInstance>();
 /** Gives the UI and item moves an address for the slots the entity's container already owns; it needs the entity's ID. */
 function registerBuildingContainer(inst: PrefabInstance): void {
   const container: BuildingContainer | undefined = inst.components.container;
-  if (!container || addressedContainers.has(inst)) { return; }
+  if (!container || addressedContainers.has(inst)) {
+    return;
+  }
   addressedContainers.add(inst);
-  if (!isStorageBuildingId(inst.prefab)) { throw new Error(`${inst.prefab} is not a storage building`); }
+  if (!isStorageBuildingId(inst.prefab)) {
+    throw new Error(`${inst.prefab} is not a storage building`);
+  }
   inst.worldServices?.registerContainer?.(buildingContainerId(inst.prefab, String(inst.entityId)), container);
 }
 
@@ -72,31 +115,52 @@ function registerBuildingContainer(inst: PrefabInstance): void {
  * items by the time inst.OnLoad runs, so the address comes first: an onload that burns the building must be able to drop
  * them. Call this after setting the prefab's own OnLoad.
  */
-export function MakeBuildingContainer(inst: PrefabInstance, prefab: StorageBuildingId, world: PrefabWorldContext): BuildingContainer {
-  const notify = (isOpen: boolean) => world.onContainerInteraction?.({ buildId: prefab, isOpen, model: inst.transform.model });
+export function MakeBuildingContainer(
+  inst: PrefabInstance,
+  prefab: StorageBuildingId,
+  world: PrefabWorldContext,
+): BuildingContainer {
+  const notify = (isOpen: boolean) =>
+    world.onContainerInteraction?.({ buildId: prefab, isOpen, model: inst.transform.model });
   const stopOpen = inst.ListenForEvent('onopen', () => notify(true));
   const stopClose = inst.ListenForEvent('onclose', () => notify(false));
   // Registered before the component's own removal: the store destroys the contents through its address.
   inst.onRemove(() => {
-    stopOpen(); stopClose();
+    stopOpen();
+    stopClose();
     const container: BuildingContainer | undefined = inst.components.container;
-    if (container) { container.onopenfn = undefined; container.onclosefn = undefined; }
+    if (container) {
+      container.onopenfn = undefined;
+      container.onclosefn = undefined;
+    }
     releaseBuildingContainer(inst);
   });
   const container = createBuildingContainer(prefab, inst);
   container.SetAutoClose(world.getWatchWorldContent ?? getBoundWatchWorldContent(), 3 * (TILE_SIZE / 4));
   const onload = inst.OnLoad;
-  inst.OnLoad = (loaded, data) => { registerBuildingContainer(loaded); onload?.(loaded, data); };
+  inst.OnLoad = (loaded, data) => {
+    registerBuildingContainer(loaded);
+    onload?.(loaded, data);
+  };
   return container;
 }
 
 /** What the mouse and the tools find on a building once it has its display: the greenstaff, the reskin tool and its workable. */
 function MakeBuildingTargets(inst: PrefabInstance, world: Pick<PrefabWorldContext, 'handEquipment'>): void {
-  if (!inst.components.workable) { return; }
+  if (!inst.components.workable) {
+    return;
+  }
   // A building that does something without a tool keeps its own actions under the mouse while no tool is held.
   new ToolMouseTarget(inst, world.handEquipment, {
-    canInteractWithoutTool: () => !inst.hasTag('burnt') && !!(inst.components.container || inst.components.trader || inst.components.fueled
-      || inst.components.prototyper || inst.components.occupiable),
+    canInteractWithoutTool: () =>
+      !inst.hasTag('burnt') &&
+      !!(
+        inst.components.container ||
+        inst.components.trader ||
+        inst.components.fueled ||
+        inst.components.prototyper ||
+        inst.components.occupiable
+      ),
   });
   inst.onRemove(() => removeComponent(inst, 'workable'));
 }
@@ -105,18 +169,26 @@ function MakeBuildingTargets(inst: PrefabInstance, world: Pick<PrefabWorldContex
  * Prefab(name, fn, assets) for a building drawn from its definitions.json entry; `radius` is its source MakeObstaclePhysics,
  * if it has one.
  */
-export function buildingPrefab<Instance extends PrefabInstance>(declaration: BuildingDeclaration, bank: string, radius: number | undefined,
-  fn: PrefabEntityFn<Instance>, world: Pick<PrefabWorldContext, 'handEquipment'>): PrefabEntityDefinition<Instance> {
+export function buildingPrefab<Instance extends PrefabInstance>(
+  declaration: BuildingDeclaration,
+  bank: string,
+  radius: number | undefined,
+  fn: PrefabEntityFn<Instance>,
+  world: Pick<PrefabWorldContext, 'handEquipment'>,
+): PrefabEntityDefinition<Instance> {
   const { archive, buildArchive = archive, skinArchives, skinSymbols, baseSymbols, skinAnimationBanks } = declaration;
   return {
     fn,
     assets: { animationArchive: archive, buildArchives: [buildArchive], bank },
     skins: skinArchives,
-    ...skinSymbols ? { skinSymbols } : {},
-    ...baseSymbols ? { baseSymbols } : {},
-    ...skinAnimationBanks ? { skinAnimationBanks } : {},
+    ...(skinSymbols ? { skinSymbols } : {}),
+    ...(baseSymbols ? { baseSymbols } : {}),
+    ...(skinAnimationBanks ? { skinAnimationBanks } : {}),
     alignBottom: true,
-    ...radius === undefined ? {} : { physics: { make: MakeObstaclePhysics, radius } },
-    onSpawned: inst => { MakeBuildingTargets(inst, world); registerBuildingContainer(inst); },
+    ...(radius === undefined ? {} : { physics: { make: MakeObstaclePhysics, radius } }),
+    onSpawned: inst => {
+      MakeBuildingTargets(inst, world);
+      registerBuildingContainer(inst);
+    },
   };
 }

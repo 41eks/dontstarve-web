@@ -35,11 +35,16 @@ export function fn(inst: TentInstance, model: { userData: Record<string, unknown
 test('reports the rule each construct breaks, and honours an allowance', () => {
   const root = tree({ 'packages/prefab/src/tent.ts': prefab });
   try {
-    const { violations } = JSON.parse(execFileSync(process.execPath, [script, '--root', root, '--json'], { encoding: 'utf8' }));
-    assert.deepEqual(violations.map(({ line, rule }) => `${line} ${rule}`), [
-      '4 instance-method', '7 components-write', '9 userdata', '12 sg-forward',
-    ]);
-  } finally { rmSync(root, { recursive: true }); }
+    const { violations } = JSON.parse(
+      execFileSync(process.execPath, [script, '--root', root, '--json'], { encoding: 'utf8' }),
+    );
+    assert.deepEqual(
+      violations.map(({ line, rule }) => `${line} ${rule}`),
+      ['4 instance-method', '7 components-write', '9 userdata', '12 sg-forward'],
+    );
+  } finally {
+    rmSync(root, { recursive: true });
+  }
 });
 
 test('the baseline fails only where a file gains a violation of a rule', () => {
@@ -48,12 +53,17 @@ test('the baseline fails only where a file gains a violation of a rule', () => {
   try {
     assert.equal(run(root, '--write-baseline', baseline).status, 0);
     assert.equal(run(root, '--baseline', baseline).status, 0);
-    writeFileSync(join(root, 'packages/prefab/src/tent.ts'), `${prefab}\nexport const more = (inst: TentInstance) => { inst.components.health = undefined; };\n`);
+    writeFileSync(
+      join(root, 'packages/prefab/src/tent.ts'),
+      `${prefab}\nexport const more = (inst: TentInstance) => { inst.components.health = undefined; };\n`,
+    );
     const grown = run(root, '--baseline', baseline);
     assert.equal(grown.status, 1);
     // Both components-write lines are listed (the rule's count grew in that file); the unchanged userdata is not.
     const listed = grown.stdout.split('\nrule ')[0];
     assert.equal(listed.match(/components-write/g)?.length, 2);
     assert.doesNotMatch(listed, /userdata/);
-  } finally { rmSync(root, { recursive: true }); }
+  } finally {
+    rmSync(root, { recursive: true });
+  }
 });

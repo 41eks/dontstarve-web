@@ -57,7 +57,11 @@
   border-radius: 4px;
   background: rgb(40 34 24 / 85%);
   color: #e8dcc0;
-  font: 14px system-ui, 'Segoe UI', Roboto, sans-serif;
+  font:
+    14px system-ui,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   cursor: pointer;
 }
 

@@ -14,11 +14,16 @@ import { clockstate } from '../../signals/src';
 import { BufferedAction } from '../../stategraphs/src';
 import { createPlayerPrefab } from './playerVisual';
 
-afterEach(() => { clockstate.set({ phase: 'day', timeinphase: 0 }); });
+afterEach(() => {
+  clockstate.set({ phase: 'day', timeinphase: 0 });
+});
 
 it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, waking and despawning in bed', async () => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   const scheduler = new GameTimeScheduler();
   const { model, instance } = await createPlayerPrefab('/dst/data/anim', new World(), { scheduler });
   const animation = instance;
@@ -30,10 +35,22 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   tent.addTag('tent');
   const bag = addComponent(tent, 'sleepingbag', SleepingBag);
   const tags = { has: (tag: string) => tent.hasTag(tag) };
-  const frames = (count: number) => { for (let i = 0; i < count; i++) { advancePlayer(animation, 1 / 30); } };
+  const frames = (count: number) => {
+    for (let i = 0; i < count; i++) {
+      advancePlayer(animation, 1 / 30);
+    }
+  };
   const sleepIn = () => {
     // ACTIONS.SLEEPIN.fn: sleepingbag:DoSleep(act.doer) reaches the player's sleepingbaguser.
-    const action: PlayerAction<'SLEEPIN'> = new BufferedAction('SLEEPIN', () => { bag.DoSleep(sleeper); return true; }, () => true, { target: tent });
+    const action: PlayerAction<'SLEEPIN'> = new BufferedAction(
+      'SLEEPIN',
+      () => {
+        bag.DoSleep(sleeper);
+        return true;
+      },
+      () => true,
+      { target: tent },
+    );
     expect(animation.sg.pushBufferedAction(action)).toBe(true);
     frames(7);
   };
@@ -41,7 +58,11 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   // A tent refuses the day (ANNOUNCE_NODAYSLEEP in the character's speech).
   sleepIn();
   // The refusal is said from idle, so SGwilson's ontalk handler enters talk.
-  expect([animation.sg.stateName, sleeper.bed, talker.line.peek()]).toEqual(['talk', undefined, '我不要打乱规律的作息时间。']);
+  expect([animation.sg.stateName, sleeper.bed, talker.line.peek()]).toEqual([
+    'talk',
+    undefined,
+    '我不要打乱规律的作息时间。',
+  ]);
 
   clockstate.set({ phase: 'night', timeinphase: 0 });
   sleepIn();

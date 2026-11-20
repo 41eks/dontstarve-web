@@ -47,16 +47,21 @@ export class OceanWaves implements WaveSpawner {
   /** wave_shore.lua SetAnim: edge waves shift sideways and play the medium clip; corners play the big one. */
   spawnShore(x: number, z: number, rotation: number): void {
     const bearing = -(rotation + 90) * DEGREES;
-    const landAt = (angle: number) => this.map.isLandTile(this.map.tileAt(
-      x + this.scale * Math.cos(bearing + angle), z + this.scale * Math.sin(bearing + angle)));
-    const oceanAt = (angle: number) => this.map.isOceanTile(this.map.tileAt(
-      x + this.scale * Math.cos(bearing + angle), z + this.scale * Math.sin(bearing + angle)));
+    const landAt = (angle: number) =>
+      this.map.isLandTile(
+        this.map.tileAt(x + this.scale * Math.cos(bearing + angle), z + this.scale * Math.sin(bearing + angle)),
+      );
+    const oceanAt = (angle: number) =>
+      this.map.isOceanTile(
+        this.map.tileAt(x + this.scale * Math.cos(bearing + angle), z + this.scale * Math.sin(bearing + angle)),
+      );
     const left = landAt(0.25 * Math.PI) && oceanAt(0.5 * Math.PI);
     const right = landAt(-0.25 * Math.PI) && oceanAt(-0.5 * Math.PI);
     const half = 0.5 * this.map.tileSize;
     let animation: string = SHORE_SMALL[Math.floor(Math.random() * SHORE_SMALL.length)];
-    if (left && right) { animation = 'idle_big'; }
-    else if (left || right) {
+    if (left && right) {
+      animation = 'idle_big';
+    } else if (left || right) {
       const side = left ? -1 : 1;
       x += side * half * Math.cos(bearing - 0.5 * Math.PI);
       z += side * half * Math.sin(bearing - 0.5 * Math.PI);
@@ -67,49 +72,84 @@ export class OceanWaves implements WaveSpawner {
 
   /** A shore wave has a Transform rotation and lies OnGround; a shimmer faces the camera. */
   private spawn(archive: string, bank: string, animation: string, x: number, z: number, rotation?: number): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     const flat = rotation !== undefined;
-    const source = this.resources.archive({ animationArchive: archive, buildArchives: [archive], bank, multColour: WAVE_TINT });
+    const source = this.resources.archive({
+      animationArchive: archive,
+      buildArchives: [archive],
+      bank,
+      multColour: WAVE_TINT,
+    });
     const prefab = archive.replace('.zip', '');
     // PlayAnimation(animation, false); animover removes the wave once its clip has been drawn.
-    const wave: WaveEntity = createArchiveEntity(prefab, source, { name: animation, billboard: !flat }, prefab, instance => {
-      for (const tag of TAGS) { instance.addTag(tag); }
-      instance.persists = false;
-      instance.sprite.setGround(0, flat);
-      // Ground layers share group order 0 and sort by mesh order; a group order would draw the waves before the ocean.
-      instance.sprite.setMeshOrder(BACKGROUND_RENDER_ORDER);
-      instance.sprite.playOnce(animation, () => this.remove(wave));
-    });
+    const wave: WaveEntity = createArchiveEntity(
+      prefab,
+      source,
+      { name: animation, billboard: !flat },
+      prefab,
+      instance => {
+        for (const tag of TAGS) {
+          instance.addTag(tag);
+        }
+        instance.persists = false;
+        instance.sprite.setGround(0, flat);
+        // Ground layers share group order 0 and sort by mesh order; a group order would draw the waves before the ocean.
+        instance.sprite.setMeshOrder(BACKGROUND_RENDER_ORDER);
+        instance.sprite.playOnce(animation, () => this.remove(wave));
+      },
+    );
     wave.instance.setPosition(x, 0, z);
-    if (flat) { wave.instance.setRotation(rotation); }
+    if (flat) {
+      wave.instance.setRotation(rotation);
+    }
     const cleanups: (() => void)[] = [];
     this.active.set(wave, () => cleanups.forEach(stop => stop()));
     const tile = wave.instance.transform.getTileActivity(this.tickingarea, stop => cleanups.push(stop));
     if (tile) {
       const tileActivity = watchSignal(tile, stop => cleanups.push(stop));
       // wave_shimmer.lua / wave_shore.lua: OnEntitySleep = inst.Remove; sleeping FX never resume.
-      const stopSleep = createEffect(() => { if (!tileActivity.get()) { this.remove(wave); } });
-      if (this.active.has(wave)) { cleanups.push(stopSleep); } else { stopSleep(); }
+      const stopSleep = createEffect(() => {
+        if (!tileActivity.get()) {
+          this.remove(wave);
+        }
+      });
+      if (this.active.has(wave)) {
+        cleanups.push(stopSleep);
+      } else {
+        stopSleep();
+      }
     }
     // A wave spawned asleep was removed at once and is never drawn.
-    if (this.active.has(wave)) { this.displays.mount(wave.display); }
+    if (this.active.has(wave)) {
+      this.displays.mount(wave.display);
+    }
   }
 
   update(dt: number, _cameraQuaternion: THREE.Quaternion): void {
-    if (!this.disposed) { this.displays.update(Math.min(dt, 0.1)); }
+    if (!this.disposed) {
+      this.displays.update(Math.min(dt, 0.1));
+    }
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
-    for (const wave of [...this.active.keys()]) { this.remove(wave); }
+    for (const wave of [...this.active.keys()]) {
+      this.remove(wave);
+    }
     this.displays.dispose();
     this.resources.dispose();
   }
 
   private remove(wave: WaveEntity): void {
     const stop = this.active.get(wave);
-    if (!stop) { return; }
+    if (!stop) {
+      return;
+    }
     this.active.delete(wave);
     stop();
     wave.instance.remove();

@@ -28,16 +28,22 @@ export class WorldWind {
     this.random = random;
     this.angleState = createSignal(this.randomInt(0, 360));
     this.angle = readonlySignal(this.angleState);
-    this.changeState = createSignal<WorldWindChange>(Object.freeze({ angle: this.angleState.peek(), velocity: this.velocity }));
+    this.changeState = createSignal<WorldWindChange>(
+      Object.freeze({ angle: this.angleState.peek(), velocity: this.velocity }),
+    );
     this.windchange = readonlySignal(this.changeState);
     this.timer = new ComponentTimer(scheduler, () => this.onWindChange());
     this.Start();
   }
   /** Read-only view of the next-change task: scheduled while updating, stopped after Stop(). */
-  get timerSnapshot() { return this.timer.snapshot; }
+  get timerSnapshot() {
+    return this.timer.snapshot;
+  }
 
   /** math.random(min, max) with integer bounds. */
-  private randomInt(min: number, max: number): number { return min + Math.floor(this.random() * (max - min + 1)); }
+  private randomInt(min: number, max: number): number {
+    return min + Math.floor(this.random() * (max - min + 1));
+  }
 
   private onWindChange(): void {
     const angle = this.randomInt(0, 360);
@@ -50,10 +56,22 @@ export class WorldWind {
   }
 
   /** worldwind:Start — StartUpdatingComponent; the Lua initial timeToWindChange is 1. */
-  Start(): void { if (this.timer.snapshot.peek().status !== 'scheduled') { this.timer.start(1); } }
+  Start(): void {
+    if (this.timer.snapshot.peek().status !== 'scheduled') {
+      this.timer.start(1);
+    }
+  }
   /** worldwind:Stop. Stopping is distinct from expiring in the timer snapshot. */
-  Stop(): void { this.timer.stop(); }
-  GetWindAngle(): number { return this.angleState.peek(); }
-  GetWindVelocity(): number { return this.velocity; }
-  dispose(): void { this.Stop(); }
+  Stop(): void {
+    this.timer.stop();
+  }
+  GetWindAngle(): number {
+    return this.angleState.peek();
+  }
+  GetWindVelocity(): number {
+    return this.velocity;
+  }
+  dispose(): void {
+    this.Stop();
+  }
 }

@@ -13,7 +13,7 @@ describe('snow weather', () => {
     expect(weather.rainRate.peek()).toBe(0);
     const rate = weather.snowRate.peek();
     weather.OnUpdate(10);
-    expect(weather.snowLevel.peek()).toBeCloseTo(rate * 10 / 300);
+    expect(weather.snowLevel.peek()).toBeCloseTo((rate * 10) / 300);
     expect(weather.snowCover.peek()).toBeCloseTo(weather.snowLevel.peek() * 3);
     expect('set' in weather.snowLevel).toBe(false);
     expect('set' in weather.snowRate).toBe(false);
@@ -39,7 +39,8 @@ describe('snow weather', () => {
     seasonstate.set({ season: 'winter', progress: 0.5 });
     const temperature = createSignal(-25);
     const weather = new Weather({ totalDayTime: 480, temperature: () => temperature.get(), random: () => 0.5 });
-    weather.ForcePrecipitation(); weather.OnUpdate(0);
+    weather.ForcePrecipitation();
+    weather.OnUpdate(0);
     temperature.set(10);
     await Promise.resolve();
     expect(weather.preciptype.peek()).toBe('snow');
@@ -63,5 +64,4 @@ describe('snow weather', () => {
     await Promise.resolve();
     expect(weather.OnSave()).toEqual(saved);
   });
-
 });

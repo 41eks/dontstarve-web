@@ -1,17 +1,44 @@
 import { createTestWorldSources } from './worldContentFixture';
 import { expect, it, vi } from 'vitest';
-import { createSignal, getWatchWorldContent, type WorldPhase, type WorldContentEnvironment, type GetWatchWorldContent } from '../../signals/src';
+import {
+  createSignal,
+  getWatchWorldContent,
+  type WorldPhase,
+  type WorldContentEnvironment,
+  type GetWatchWorldContent,
+} from '../../signals/src';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Sleeper } from '../../componets/src/sleeper';
 
 it('reacts to day/night after effects settle, preserves other checks and cancels a queued effect on disposal', async () => {
-  const cycle = createSignal<WorldPhase>('day'), scheduler = new GameTimeScheduler();
-  const sources: WorldContentEnvironment = { ...createTestWorldSources(scheduler), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
+  const cycle = createSignal<WorldPhase>('day'),
+    scheduler = new GameTimeScheduler();
+  const sources: WorldContentEnvironment = {
+    ...createTestWorldSources(scheduler),
+    playerpositions: createSignal<import('three').Vector3[]>([]),
+    snowLevel: createSignal(0),
+    wind: createSignal({ angle: 0, velocity: 1 }),
+    perishTick: createSignal({ time: 0, total: 0 }),
+    scheduler,
+    temperature: createSignal(30),
+    cycle,
+    season: createSignal({ season: 'spring', progress: 0.5 }),
+  };
   const components = { combat: { target: undefined as object | undefined }, locomotor: { Stop: vi.fn() } };
   const PushEvent = vi.fn();
   let busy = true;
-  const sleeper = new Sleeper({ isValid: () => true, PushEvent, components, addTag() {}, removeTag() {},
-    sg: { hasStateTag: tag => tag === 'busy' && busy } }, (key, register) => getWatchWorldContent(key, register, sources), () => .5);
+  const sleeper = new Sleeper(
+    {
+      isValid: () => true,
+      PushEvent,
+      components,
+      addTag() {},
+      removeTag() {},
+      sg: { hasStateTag: tag => tag === 'busy' && busy },
+    },
+    (key, register) => getWatchWorldContent(key, register, sources),
+    () => 0.5,
+  );
 
   cycle.set('night');
   await new Promise(resolve => setTimeout(resolve, 0));
@@ -63,14 +90,29 @@ it('reacts to day/night after effects settle, preserves other checks and cancels
 });
 
 it('nocturnal sleepers own independent cycle watches and wake at dusk or night', async () => {
-  const scheduler = new GameTimeScheduler(), cycle = createSignal<WorldPhase>('day');
-  const sources: WorldContentEnvironment = { ...createTestWorldSources(scheduler), playerpositions: createSignal<import('three').Vector3[]>([]), snowLevel: createSignal(0), wind: createSignal({ angle: 0, velocity: 1 }), perishTick: createSignal({ time: 0, total: 0 }), scheduler, temperature: createSignal(30), cycle, season: createSignal({ season: 'spring', progress: .5 }) };
+  const scheduler = new GameTimeScheduler(),
+    cycle = createSignal<WorldPhase>('day');
+  const sources: WorldContentEnvironment = {
+    ...createTestWorldSources(scheduler),
+    playerpositions: createSignal<import('three').Vector3[]>([]),
+    snowLevel: createSignal(0),
+    wind: createSignal({ angle: 0, velocity: 1 }),
+    perishTick: createSignal({ time: 0, total: 0 }),
+    scheduler,
+    temperature: createSignal(30),
+    cycle,
+    season: createSignal({ season: 'spring', progress: 0.5 }),
+  };
   const requests = vi.fn();
   const watch: GetWatchWorldContent = (key, register) => {
-    requests(key); return getWatchWorldContent(key, register, sources);
+    requests(key);
+    return getWatchWorldContent(key, register, sources);
   };
   const events = [vi.fn(), vi.fn()];
-  const sleepers = events.map(PushEvent => new Sleeper({ isValid: () => true, PushEvent, components: {}, addTag() {}, removeTag() {} }, watch, () => .5));
+  const sleepers = events.map(
+    PushEvent =>
+      new Sleeper({ isValid: () => true, PushEvent, components: {}, addTag() {}, removeTag() {} }, watch, () => 0.5),
+  );
   sleepers.forEach(sleeper => sleeper.SetNocturnal(true));
   expect(requests).toHaveBeenCalledTimes(2);
   try {
@@ -93,5 +135,8 @@ it('nocturnal sleepers own independent cycle watches and wake at dusk or night',
     expect(sleepers[1].IsAsleep()).toBe(false);
     scheduler.advance(8);
     expect(events[0]).toHaveBeenCalledTimes(disposedEvents);
-  } finally { sleepers.forEach(sleeper => sleeper.dispose()); scheduler.dispose(); }
+  } finally {
+    sleepers.forEach(sleeper => sleeper.dispose());
+    scheduler.dispose();
+  }
 });

@@ -32,31 +32,50 @@ export class Inspectable {
   nameoverride?: string;
   /** inspectable.noanim: the speaker stays in its pose. */
   noanim?: boolean;
-  constructor(inst: InspectableInst) { this.inst = inst; inst.addTag('inspectable'); }
-  SetDescription(description: string | undefined): void { this.description = description; }
-  SetNameOverride(nameoverride: string | undefined): void { this.nameoverride = nameoverride; }
-  OnRemoveFromEntity(): void { this.inst.removeTag('inspectable'); }
+  constructor(inst: InspectableInst) {
+    this.inst = inst;
+    inst.addTag('inspectable');
+  }
+  SetDescription(description: string | undefined): void {
+    this.description = description;
+  }
+  SetNameOverride(nameoverride: string | undefined): void {
+    this.nameoverride = nameoverride;
+  }
+  OnRemoveFromEntity(): void {
+    this.inst.removeTag('inspectable');
+  }
 
   /** Inspectable:GetStatus, for the components the game has: diseaseable and witherable are not ported. */
   GetStatus(viewer?: object): string | undefined {
-    if (this.inst === viewer) { return undefined; }
-    const { health, sleeper, burnable, pickable, inventoryitem, occupiable } = (this.inst.components ?? {}) as StatusComponents;
-    return this.getstatus?.(this.inst, viewer) || (health?.IsDead() ? 'DEAD' : undefined)
-      || (sleeper?.IsAsleep() ? 'SLEEPING' : undefined)
-      || (burnable?.IsBurning() ? 'BURNING' : undefined)
-      || (pickable ? pickable.IsBarren() ? 'BARREN' : !pickable.canBePicked ? 'PICKED' : undefined : undefined)
-      || (inventoryitem?.owner ? 'HELD' : undefined)
-      || (occupiable?.IsOccupied?.() ? 'OCCUPIED' : undefined)
-      || (this.inst.hasTag?.('burnt') ? 'BURNT' : undefined);
+    if (this.inst === viewer) {
+      return undefined;
+    }
+    const { health, sleeper, burnable, pickable, inventoryitem, occupiable } = (this.inst.components ??
+      {}) as StatusComponents;
+    return (
+      this.getstatus?.(this.inst, viewer) ||
+      (health?.IsDead() ? 'DEAD' : undefined) ||
+      (sleeper?.IsAsleep() ? 'SLEEPING' : undefined) ||
+      (burnable?.IsBurning() ? 'BURNING' : undefined) ||
+      (pickable ? (pickable.IsBarren() ? 'BARREN' : !pickable.canBePicked ? 'PICKED' : undefined) : undefined) ||
+      (inventoryitem?.owner ? 'HELD' : undefined) ||
+      (occupiable?.IsOccupied?.() ? 'OCCUPIED' : undefined) ||
+      (this.inst.hasTag?.('burnt') ? 'BURNT' : undefined)
+    );
   }
 
   /** Inspectable:GetDescription. CanEntitySeeTarget's darkness branch has no port of its light query. */
   GetDescription(viewer: SpeakerInst): string | undefined {
-    if (this.inst === viewer) { return undefined; }
+    if (this.inst === viewer) {
+      return undefined;
+    }
     const desc = this.descriptionfn ? this.descriptionfn(viewer as never) : this.description;
     if (desc === undefined || viewer.hasTag('playerghost') || viewer.hasTag('mime')) {
       return GetDescription(viewer, this.inst, this.GetStatus(viewer));
     }
-    return (this.inst.components as StatusComponents | undefined)?.burnable?.IsSmoldering?.() ? GetString(viewer, 'DESCRIBE_SMOLDERING') : desc;
+    return (this.inst.components as StatusComponents | undefined)?.burnable?.IsSmoldering?.()
+      ? GetString(viewer, 'DESCRIBE_SMOLDERING')
+      : desc;
   }
 }

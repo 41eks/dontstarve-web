@@ -7,7 +7,7 @@ import type { EntityPersistData } from './saveRecord';
 export const OCEANVINE_DECO_ID = 'oceanvine_deco' as const;
 /** math.random(1, 6): the idle_N clips of vine_rainforest_border. */
 export const OCEANVINE_DECO_ANIMNUMS = [1, 2, 3, 4, 5, 6] as const;
-export type OceanVineDecoAnimNum = typeof OCEANVINE_DECO_ANIMNUMS[number];
+export type OceanVineDecoAnimNum = (typeof OCEANVINE_DECO_ANIMNUMS)[number];
 
 /** oceanvine_deco.lua commonfn: inst.animnum picks the loop. */
 export class OceanVineDecoInstance extends PrefabInstance {
@@ -20,7 +20,9 @@ function onsave(inst: OceanVineDecoInstance, data: EntityPersistData): void {
 }
 
 function onload(inst: OceanVineDecoInstance, data: EntityPersistData): void {
-  if (data.animnum === undefined) { return; }
+  if (data.animnum === undefined) {
+    return;
+  }
   inst.animnum = data.animnum;
   inst.AnimState.PlayAnimation(`idle_${inst.animnum}`, true);
 }
@@ -29,7 +31,10 @@ function onload(inst: OceanVineDecoInstance, data: EntityPersistData): void {
 function commonfn(): OceanVineDecoInstance {
   // SetBank("vine_rainforest_border"), SetBuild("waterforest_vines").
   const animnum = OCEANVINE_DECO_ANIMNUMS[Math.floor(Math.random() * OCEANVINE_DECO_ANIMNUMS.length)]!;
-  const inst = new OceanVineDecoInstance(OCEANVINE_DECO_ID, new SpriteState({ name: `idle_${animnum}`, billboard: true }));
+  const inst = new OceanVineDecoInstance(
+    OCEANVINE_DECO_ID,
+    new SpriteState({ name: `idle_${animnum}`, billboard: true }),
+  );
   inst.animnum = animnum;
   inst.addTag('NOBLOCK');
   inst.addTag('NOCLICK');
@@ -41,11 +46,17 @@ function commonfn(): OceanVineDecoInstance {
 }
 
 /** The oceanvine_deco Prefab oceanvine_deco.lua returns. */
-export function oceanVineDecoPrefabs(): Readonly<Record<typeof OCEANVINE_DECO_ID, PrefabEntityDefinition<OceanVineDecoInstance>>> {
+export function oceanVineDecoPrefabs(): Readonly<
+  Record<typeof OCEANVINE_DECO_ID, PrefabEntityDefinition<OceanVineDecoInstance>>
+> {
   return {
     [OCEANVINE_DECO_ID]: {
       fn: commonfn,
-      assets: { animationArchive: 'waterforest_vines.zip', buildArchives: ['waterforest_vines.zip'], bank: 'vine_rainforest_border' },
+      assets: {
+        animationArchive: 'waterforest_vines.zip',
+        buildArchives: ['waterforest_vines.zip'],
+        bank: 'vine_rainforest_border',
+      },
       // Every idle_N loops; the 66 vines of an imported world share their batches.
       assetOptions: { instancedAnimations: OCEANVINE_DECO_ANIMNUMS.map(n => `idle_${n}`) },
     },

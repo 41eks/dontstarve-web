@@ -9,7 +9,9 @@ registerAssetCache();
 
 const app = document.querySelector<HTMLElement>('#app');
 
-if (!app) { throw new Error('Missing #app mount point'); }
+if (!app) {
+  throw new Error('Missing #app mount point');
+}
 const launchMount = document.createElement('div');
 app.append(launchMount);
 const root = createRoot(launchMount);
@@ -29,7 +31,9 @@ async function loadGame(): Promise<void> {
 }
 
 const enterGame = (): void => {
-  if (started) { return; }
+  if (started) {
+    return;
+  }
   started = true;
   root.render(<GeneratingWorldPage />);
   void loadGame();

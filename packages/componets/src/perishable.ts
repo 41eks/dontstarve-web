@@ -1,4 +1,12 @@
-import { batch, createEffect, createMemo, createSignal, readonlySignal, watchSignal, type ReadonlySignal } from '../../signals/src';
+import {
+  batch,
+  createEffect,
+  createMemo,
+  createSignal,
+  readonlySignal,
+  watchSignal,
+  type ReadonlySignal,
+} from '../../signals/src';
 import type { PerishClock, PerishTick } from './worldperishclock';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer, type TimerSnapshot } from './timer';
@@ -8,11 +16,11 @@ export const TOTAL_DAY_TIME = 30 * 16;
 export const PERISH_SUPERFAST = 3 * TOTAL_DAY_TIME;
 export const PERISH_FAST = 6 * TOTAL_DAY_TIME;
 export const PERISH_MED = 10 * TOTAL_DAY_TIME;
-export const PERISH_FRESH = .5;
-export const PERISH_STALE = .2;
+export const PERISH_FRESH = 0.5;
+export const PERISH_STALE = 0.2;
 const PERISH_GROUND_MULT = 1.5;
-const PERISH_FRIDGE_MULT = .5;
-export const PERISH_CAGE_MULT = .25;
+const PERISH_FRIDGE_MULT = 0.5;
+export const PERISH_CAGE_MULT = 0.25;
 const PERISH_WET_MULT = 1.3;
 const PERISH_GLOBAL_MULT = 1;
 const UPDATE_PERIOD = 10;
@@ -30,7 +38,10 @@ export type PerishStage = 'fresh' | 'stale' | 'spoiled';
 export interface PerishableInst {
   readonly isRemoved: boolean;
   hasTag?(tag: string): boolean;
-  readonly components: { inventoryitem: { readonly owner: PerishableOwner | null; readonly slot: PerishableSlot | null }; stackable?: { count: number } };
+  readonly components: {
+    inventoryitem: { readonly owner: PerishableOwner | null; readonly slot: PerishableSlot | null };
+    stackable?: { count: number };
+  };
   readonly transform?: { readonly position: { readonly x: number; readonly y: number; readonly z: number } };
   PushEvent(name: string, data: unknown): void;
   remove?(): unknown;
@@ -64,8 +75,12 @@ const STOPPED = Object.freeze({ status: 'stopped' as const });
 const PERISHED: PerishTimer = Object.freeze({ status: 'perished' });
 
 function perishPercent(perishtime: number | undefined, timer: PerishTimer): number | undefined {
-  if (perishtime === undefined || timer.status === 'stopped') { return undefined; }
-  if (timer.status === 'perished' || perishtime <= 0) { return 0; }
+  if (perishtime === undefined || timer.status === 'stopped') {
+    return undefined;
+  }
+  if (timer.status === 'perished' || perishtime <= 0) {
+    return 0;
+  }
   return Math.max(0, Math.min(1, timer.remainingSeconds / perishtime));
 }
 
@@ -76,8 +91,9 @@ export class Perishable {
   readonly perishtime = readonlySignal(this.perishTimeState);
   readonly timer = readonlySignal(this.timerState);
   private readonly updateTaskState = createSignal<ComponentTimer | undefined>(undefined);
-  private readonly updateTimerMemo = createMemo((): TimerSnapshot =>
-    this.updateTaskState.get()?.snapshot.get() ?? STOPPED);
+  private readonly updateTimerMemo = createMemo(
+    (): TimerSnapshot => this.updateTaskState.get()?.snapshot.get() ?? STOPPED,
+  );
   readonly updateTimer = readonlySignal(this.updateTimerMemo);
   /** undefined without a perish time, so presentations hide the spoilage meter. */
   readonly percent: ReadonlySignal<number | undefined>;
@@ -95,7 +111,9 @@ export class Perishable {
   private readonly stopWatchingWet: () => void;
   /** Wetness in effect at lastTick, rather than the already changed source value. */
   private settledWet: boolean;
-  private get updateTask(): ComponentTimer | undefined { return this.updateTaskState.peek(); }
+  private get updateTask(): ComponentTimer | undefined {
+    return this.updateTaskState.peek();
+  }
   private world?: PerishWorld;
   private lastTick: PerishTick = Object.freeze({ time: 0, total: 0 });
   private disposed = false;
@@ -103,64 +121,108 @@ export class Perishable {
   constructor(inst: PerishableInst, wet: ReadonlySignal<boolean>, world?: PerishWorld) {
     this.inst = inst;
     let stop!: () => void;
-    this.wet = watchSignal(wet, cleanup => { stop = cleanup; });
+    this.wet = watchSignal(wet, cleanup => {
+      stop = cleanup;
+    });
     this.stopWatchingWet = stop;
     this.settledWet = this.wet.peek();
     this.percentMemo = createMemo(() => perishPercent(this.perishTimeState.get(), this.timerState.get()));
     this.stageMemo = createMemo((): PerishStage | undefined => {
       const percent = this.percentMemo.get();
-      return percent === undefined ? undefined
-        : percent >= PERISH_FRESH ? 'fresh' : percent > PERISH_STALE ? 'stale' : 'spoiled';
+      return percent === undefined
+        ? undefined
+        : percent >= PERISH_FRESH
+          ? 'fresh'
+          : percent > PERISH_STALE
+            ? 'stale'
+            : 'spoiled';
     });
     this.percent = readonlySignal(this.percentMemo);
     this.stage = readonlySignal(this.stageMemo);
     createEffect(() => {
       this.setWetness(this.wet.get());
     });
-    if (world) { this.BindWorld(world); }
+    if (world) {
+      this.BindWorld(world);
+    }
   }
 
-  IsFresh(): boolean { return this.stage.peek() === 'fresh'; }
-  IsStale(): boolean { return this.stage.peek() === 'stale'; }
-  IsSpoiled(): boolean { return this.stage.peek() === 'spoiled'; }
-  IsPerishing(): boolean { return this.timerState.peek().status === 'perishing'; }
-  GetPercent(): number { return this.percentMemo.peek() ?? 0; }
+  IsFresh(): boolean {
+    return this.stage.peek() === 'fresh';
+  }
+  IsStale(): boolean {
+    return this.stage.peek() === 'stale';
+  }
+  IsSpoiled(): boolean {
+    return this.stage.peek() === 'spoiled';
+  }
+  IsPerishing(): boolean {
+    return this.timerState.peek().status === 'perishing';
+  }
+  GetPercent(): number {
+    return this.percentMemo.peek() ?? 0;
+  }
 
   SetPerishTime(time: number): void {
-    if (!Number.isFinite(time) || time <= 0) { throw new RangeError('Invalid perish time'); }
+    if (!Number.isFinite(time) || time <= 0) {
+      throw new RangeError('Invalid perish time');
+    }
     this.flush();
     const status = this.timerState.peek().status;
-    if (this.disposed || this.inst.isRemoved || status === 'perished') { return; }
+    if (this.disposed || this.inst.isRemoved || status === 'perished') {
+      return;
+    }
     batch(() => {
       this.perishTimeState.set(time);
-      this.timerState.set(Object.freeze({ status: status === 'perishing' ? 'perishing' : 'paused', remainingSeconds: time }));
+      this.timerState.set(
+        Object.freeze({ status: status === 'perishing' ? 'perishing' : 'paused', remainingSeconds: time }),
+      );
     });
-    if (status === 'perishing') { this.updateTask?.start(UPDATE_PERIOD); }
+    if (status === 'perishing') {
+      this.updateTask?.start(UPDATE_PERIOD);
+    }
   }
 
   SetPercent(percent: number): void {
     const currentPerishTime = this.perishTimeState.peek();
-    if (currentPerishTime === undefined || !Number.isFinite(percent)) { return; }
+    if (currentPerishTime === undefined || !Number.isFinite(percent)) {
+      return;
+    }
     const clamped = Math.max(0, Math.min(1, percent));
     const currentTimer = this.timerState.peek();
-    if (this.disposed || this.inst.isRemoved || currentTimer.status === 'perished') { return; }
+    if (this.disposed || this.inst.isRemoved || currentTimer.status === 'perished') {
+      return;
+    }
     // Store commits re-apply snapshots: a no-op must retain the pending batch.
     // Read authoritative time because derived percent may be pending in an outer batch.
-    if (currentTimer.status !== 'stopped' && currentTimer.remainingSeconds / currentPerishTime === clamped) { return; }
+    if (currentTimer.status !== 'stopped' && currentTimer.remainingSeconds / currentPerishTime === clamped) {
+      return;
+    }
     this.flush();
     const perishtime = this.perishTimeState.peek()!;
     const timer = this.timerState.peek();
-    if (this.disposed || this.inst.isRemoved || timer.status === 'perished') { return; }
+    if (this.disposed || this.inst.isRemoved || timer.status === 'perished') {
+      return;
+    }
     const remainingSeconds = clamped * perishtime;
-    if (timer.status !== 'stopped' && timer.remainingSeconds / perishtime === clamped) { return; }
-    this.timerState.set(Object.freeze({
-      status: timer.status === 'perishing' ? 'perishing' : 'paused', remainingSeconds,
-    }));
-    if (timer.status === 'perishing') { this.updateTask?.start(UPDATE_PERIOD); }
+    if (timer.status !== 'stopped' && timer.remainingSeconds / perishtime === clamped) {
+      return;
+    }
+    this.timerState.set(
+      Object.freeze({
+        status: timer.status === 'perishing' ? 'perishing' : 'paused',
+        remainingSeconds,
+      }),
+    );
+    if (timer.status === 'perishing') {
+      this.updateTask?.start(UPDATE_PERIOD);
+    }
   }
 
   StartPerishing(): void {
-    if (this.disposed || this.inst.isRemoved) { return; }
+    if (this.disposed || this.inst.isRemoved) {
+      return;
+    }
     // Rebase while paused so restarting never charges time spent stopped.
     this.flush();
     const timer = this.timerState.peek();
@@ -174,54 +236,84 @@ export class Perishable {
     this.flush();
     this.updateTask?.stop();
     const timer = this.timerState.peek();
-    if (timer.status === 'perishing') { this.timerState.set(Object.freeze({ status: 'paused', remainingSeconds: timer.remainingSeconds })); }
+    if (timer.status === 'perishing') {
+      this.timerState.set(Object.freeze({ status: 'paused', remainingSeconds: timer.remainingSeconds }));
+    }
   }
 
   /** perishable.lua OnSave: perishremainingtime, and `paused` while no update task runs. */
   OnSave(): { time: number; paused?: true } | undefined {
     this.flush();
     const timer = this.timerState.peek();
-    if (timer.status === 'perishing') { return { time: timer.remainingSeconds }; }
-    if (timer.status === 'paused') { return { time: timer.remainingSeconds, paused: true }; }
+    if (timer.status === 'perishing') {
+      return { time: timer.remainingSeconds };
+    }
+    if (timer.status === 'paused') {
+      return { time: timer.remainingSeconds, paused: true };
+    }
     return undefined;
   }
 
   /** perishable.lua OnLoad: perishremainingtime, then StopPerishing when it was paused, else StartPerishing. */
   OnLoad(data: { time?: number; paused?: true } | undefined): void {
-    if (!data || this.disposed || this.inst.isRemoved || this.perishTimeState.peek() === undefined) { return; }
+    if (!data || this.disposed || this.inst.isRemoved || this.perishTimeState.peek() === undefined) {
+      return;
+    }
     if (data.time !== undefined) {
-      if (!Number.isFinite(data.time) || data.time < 0) { throw new RangeError('Invalid perish time'); }
+      if (!Number.isFinite(data.time) || data.time < 0) {
+        throw new RangeError('Invalid perish time');
+      }
       this.flush();
       this.timerState.set(Object.freeze({ status: 'paused', remainingSeconds: data.time }));
     }
-    if (data.paused) { this.StopPerishing(); }
-    else if (data.time !== undefined) { this.StartPerishing(); }
+    if (data.paused) {
+      this.StopPerishing();
+    } else if (data.time !== undefined) {
+      this.StartPerishing();
+    }
   }
 
   /** Settle a partial period before saving, transferring, eating or changing the timer. */
   flush(): void {
-    if (this.disposed || this.inst.isRemoved || !this.world) { return; }
+    if (this.disposed || this.inst.isRemoved || !this.world) {
+      return;
+    }
     this.Update(this.world.perishClock.GetTick(Math.max(this.lastTick.time, this.world.scheduler.now)));
   }
 
   /** Normal settlement, wake-up and future morning snapshots all consume the same prefix difference. */
   Update(tick: PerishTick): void {
-    if (this.disposed || this.inst.isRemoved) { return; }
-    if (!Number.isFinite(tick.time) || !Number.isFinite(tick.total)
-      || tick.time < this.lastTick.time || tick.total < this.lastTick.total) { throw new RangeError('Perish ticks must be finite and monotonic'); }
+    if (this.disposed || this.inst.isRemoved) {
+      return;
+    }
+    if (
+      !Number.isFinite(tick.time) ||
+      !Number.isFinite(tick.total) ||
+      tick.time < this.lastTick.time ||
+      tick.total < this.lastTick.total
+    ) {
+      throw new RangeError('Perish ticks must be finite and monotonic');
+    }
     const owner = this.inst.components.inventoryitem.owner;
     const frozen = this.inst.hasTag?.('frozen') === true;
-    const refrigeratedFrozen = frozen && owner?.hasTag('fridge') === true
-      && !owner.hasTag('nocool') && !owner.hasTag('lowcool');
+    const refrigeratedFrozen =
+      frozen && owner?.hasTag('fridge') === true && !owner.hasTag('nocool') && !owner.hasTag('lowcool');
     const frozenClock = frozen ? this.world?.perishClock.GetFrozenTick?.bind(this.world.perishClock) : undefined;
-    const accumulatedPerish = refrigeratedFrozen ? 0 : frozenClock
-      ? frozenClock(tick.time).total - frozenClock(this.lastTick.time).total
-      : tick.total - this.lastTick.total;
+    const accumulatedPerish = refrigeratedFrozen
+      ? 0
+      : frozenClock
+        ? frozenClock(tick.time).total - frozenClock(this.lastTick.time).total
+        : tick.total - this.lastTick.total;
     // Advance before callbacks: a perish event can remove or transfer this entity and flush again.
     this.lastTick = Object.freeze({ time: tick.time, total: tick.total });
-    const timer = this.timerState.peek(), perishtime = this.perishTimeState.peek();
-    if (timer.status !== 'perishing' || perishtime === undefined || this.inst.isRemoved) { return; }
-    if (accumulatedPerish === 0 && timer.remainingSeconds > 0) { return; }
+    const timer = this.timerState.peek(),
+      perishtime = this.perishTimeState.peek();
+    if (timer.status !== 'perishing' || perishtime === undefined || this.inst.isRemoved) {
+      return;
+    }
+    if (accumulatedPerish === 0 && timer.remainingSeconds > 0) {
+      return;
+    }
     const remainingSeconds = Math.min(perishtime, timer.remainingSeconds - accumulatedPerish * this.rateModifier());
     if (remainingSeconds > 0) {
       this.timerState.set(Object.freeze({ status: 'perishing', remainingSeconds }));
@@ -234,27 +326,45 @@ export class Perishable {
     this.updateTask?.stop();
     this.timerState.set(PERISHED);
     this.perishfn?.(this.inst);
-    if (this.inst.isRemoved) { return; }
+    if (this.inst.isRemoved) {
+      return;
+    }
     this.inst.PushEvent('perished', undefined);
-    const slot = this.inst.components.inventoryitem.slot, replacement = this.onperishreplacement;
-    if (this.inst.isRemoved || replacement === undefined) { return; }
+    const slot = this.inst.components.inventoryitem.slot,
+      replacement = this.onperishreplacement;
+    if (this.inst.isRemoved || replacement === undefined) {
+      return;
+    }
     // Holders give the replacement to the perished inst's slot.
-    if (slot) { slot.replace(replacement); return; }
+    if (slot) {
+      slot.replace(replacement);
+      return;
+    }
     // Otherwise SpawnPrefab(onperishreplacement) takes its place with its stack size, and the inst is removed.
     const goop = this.world?.SpawnPrefab?.(replacement);
-    if (!goop) { return; }
+    if (!goop) {
+      return;
+    }
     const stackable = this.inst.components.stackable;
-    if (goop.components.stackable && stackable) { goop.components.stackable.count = stackable.count; }
+    if (goop.components.stackable && stackable) {
+      goop.components.stackable.count = stackable.count;
+    }
     const position = this.inst.transform?.position;
-    if (position) { goop.transform.setPosition(position.x, position.y, position.z); }
+    if (position) {
+      goop.transform.setPosition(position.x, position.y, position.z);
+    }
     this.inst.remove?.();
   }
 
   /** The bound world's game-time scheduler, for components that share the item's world. */
-  get scheduler(): GameTimeScheduler | undefined { return this.world?.scheduler; }
+  get scheduler(): GameTimeScheduler | undefined {
+    return this.world?.scheduler;
+  }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.flush();
     this.disposed = true;
     this.stopWatchingWet();
@@ -267,34 +377,56 @@ export class Perishable {
 
   /** Bind at creation/restoration, before the first world frame; preserve state when changing worlds. */
   BindWorld(world: PerishWorld): void {
-    if (this.disposed || this.inst.isRemoved
-      || (world.perishClock === this.world?.perishClock && world.scheduler === this.world.scheduler)) { return; }
+    if (
+      this.disposed ||
+      this.inst.isRemoved ||
+      (world.perishClock === this.world?.perishClock && world.scheduler === this.world.scheduler)
+    ) {
+      return;
+    }
     this.flush();
-    if (this.inst.isRemoved || this.disposed) { return; }
+    if (this.inst.isRemoved || this.disposed) {
+      return;
+    }
     const remaining = this.updateTask?.remainingSeconds ?? UPDATE_PERIOD;
     this.updateTask?.stop();
     this.world = world;
     this.lastTick = world.perishClock.GetTick(world.scheduler.now);
     const task = new ComponentTimer(world.scheduler, () => {
       // Callbacks sample their deadline, including transfers and removals during a long-frame catch-up.
-      if (world.scheduler.now >= this.lastTick.time) { this.Update(world.perishClock.GetTick(world.scheduler.now)); }
-      if (!this.disposed && !this.inst.isRemoved && this.updateTask === task && this.IsPerishing()) { task.start(UPDATE_PERIOD); }
+      if (world.scheduler.now >= this.lastTick.time) {
+        this.Update(world.perishClock.GetTick(world.scheduler.now));
+      }
+      if (!this.disposed && !this.inst.isRemoved && this.updateTask === task && this.IsPerishing()) {
+        task.start(UPDATE_PERIOD);
+      }
     });
     this.updateTaskState.set(task);
-    if (this.IsPerishing()) { task.start(remaining); }
+    if (this.IsPerishing()) {
+      task.start(remaining);
+    }
   }
 
   private setWetness(wet: boolean): void {
-    if (this.disposed || this.inst.isRemoved || wet === this.settledWet) { return; }
+    if (this.disposed || this.inst.isRemoved || wet === this.settledWet) {
+      return;
+    }
     this.flush();
     this.settledWet = wet;
   }
 
   private rateModifier(): number {
     const owner = this.inst.components.inventoryitem.owner;
-    let modifier = owner?.hasTag('fridge') ? PERISH_FRIDGE_MULT
-      : owner ? 1 : this.occupierCage?.() ? PERISH_CAGE_MULT : PERISH_GROUND_MULT;
-    if (this.settledWet) { modifier *= PERISH_WET_MULT; }
+    let modifier = owner?.hasTag('fridge')
+      ? PERISH_FRIDGE_MULT
+      : owner
+        ? 1
+        : this.occupierCage?.()
+          ? PERISH_CAGE_MULT
+          : PERISH_GROUND_MULT;
+    if (this.settledWet) {
+      modifier *= PERISH_WET_MULT;
+    }
     return modifier * PERISH_GLOBAL_MULT * (this.localMultiplier?.() ?? 1);
   }
 }

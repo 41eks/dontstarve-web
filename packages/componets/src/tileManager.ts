@@ -1,5 +1,15 @@
 import type { Vector3, Vector3Like } from 'three';
-import { batch, createEffect, createMemo, createSignal, readonlySignal, watchSignal, type Memo, type ReadonlySignal, type Signal } from '../../signals/src/signal';
+import {
+  batch,
+  createEffect,
+  createMemo,
+  createSignal,
+  readonlySignal,
+  watchSignal,
+  type Memo,
+  type ReadonlySignal,
+  type Signal,
+} from '../../signals/src/signal';
 import { TILE_SIZE } from '../../prefab/src/tile';
 import type { TileStateQuery } from '../../signals/src/worldContent';
 import { tilePerfMeasure } from './tilePerf';
@@ -14,11 +24,17 @@ let currentGrid: TileGrid | undefined;
 
 /** 世界创建时注入存档的世界坐标尺寸；旧世界释放不能解除新世界的绑定。 */
 export function BindTileMapSize(size: number): () => void {
-  if (!Number.isFinite(size) || size <= 0) { throw new RangeError('Tile map size must be finite and positive'); }
+  if (!Number.isFinite(size) || size <= 0) {
+    throw new RangeError('Tile map size must be finite and positive');
+  }
   const min = Math.floor(-size / 2 / TILE_SIZE);
   const grid: TileGrid = { size, count: Math.ceil(size / 2 / TILE_SIZE) - min, offset: -min };
   currentGrid = grid;
-  return () => { if (currentGrid === grid) { currentGrid = undefined; } };
+  return () => {
+    if (currentGrid === grid) {
+      currentGrid = undefined;
+    }
+  };
 }
 
 /** 每个位置源、半径拥有独立网格，包含与存档地图范围相交的全部地皮。 */
@@ -37,41 +53,62 @@ function updateTileStates(
   batch(() => {
     const update = (x: number, z: number, active: boolean) => {
       const state = titlestates[x][z];
-      if (state.peek() !== active) { state.set(active); }
+      if (state.peek() !== active) {
+        state.set(active);
+      }
     };
     const last = grid.count - 1;
     const playerX = tile ? tile[0] + grid.offset : NaN;
     const playerZ = tile ? tile[1] + grid.offset : NaN;
     // 只关闭旧区域中已离开范围的格子，重叠区域保持原值。
     if (previous) {
-      const oldX = previous[0] + grid.offset, oldZ = previous[1] + grid.offset;
+      const oldX = previous[0] + grid.offset,
+        oldZ = previous[1] + grid.offset;
       for (let x = Math.max(0, oldX - radius); x <= Math.min(last, oldX + radius); x++) {
         for (let z = Math.max(0, oldZ - radius); z <= Math.min(last, oldZ + radius); z++) {
-          if (!tile || Math.max(Math.abs(x - playerX), Math.abs(z - playerZ)) > radius) { update(x, z, false); }
+          if (!tile || Math.max(Math.abs(x - playerX), Math.abs(z - playerZ)) > radius) {
+            update(x, z, false);
+          }
         }
       }
     }
-    if (!tile) { return; }
-    if (playerX >= 0 && playerX <= last && playerZ >= 0 && playerZ <= last) { update(playerX, playerZ, true); }
+    if (!tile) {
+      return;
+    }
+    if (playerX >= 0 && playerX <= last && playerZ >= 0 && playerZ <= last) {
+      update(playerX, playerZ, true);
+    }
     // 从新玩家格向外激活，半径外立即停止；地图外的玩家跳过完全不相交的内圈。
     const firstRing = Math.max(1, -playerX, playerX - last, -playerZ, playerZ - last);
-    const maxRing = Math.min(radius,
-      Math.max(Math.abs(playerX), Math.abs(playerX - last), Math.abs(playerZ), Math.abs(playerZ - last)));
+    const maxRing = Math.min(
+      radius,
+      Math.max(Math.abs(playerX), Math.abs(playerX - last), Math.abs(playerZ), Math.abs(playerZ - last)),
+    );
     for (let offset = 0; offset <= maxRing - firstRing; offset++) {
       const ring = firstRing + offset;
-      const left = playerX - ring, right = playerX + ring;
-      const top = playerZ - ring, bottom = playerZ + ring;
+      const left = playerX - ring,
+        right = playerX + ring;
+      const top = playerZ - ring,
+        bottom = playerZ + ring;
       if (top >= 0 && top <= last) {
-        for (let x = Math.max(0, left); x <= Math.min(last, right); x++) { update(x, top, true); }
+        for (let x = Math.max(0, left); x <= Math.min(last, right); x++) {
+          update(x, top, true);
+        }
       }
       if (right >= 0 && right <= last) {
-        for (let z = Math.max(0, top + 1); z <= Math.min(last, bottom); z++) { update(right, z, true); }
+        for (let z = Math.max(0, top + 1); z <= Math.min(last, bottom); z++) {
+          update(right, z, true);
+        }
       }
       if (bottom >= 0 && bottom <= last) {
-        for (let x = Math.min(last, right - 1); x >= Math.max(0, left); x--) { update(x, bottom, true); }
+        for (let x = Math.min(last, right - 1); x >= Math.max(0, left); x--) {
+          update(x, bottom, true);
+        }
       }
       if (left >= 0 && left <= last) {
-        for (let z = Math.min(last, bottom - 1); z >= Math.max(0, top + 1); z--) { update(left, z, true); }
+        for (let z = Math.min(last, bottom - 1); z >= Math.max(0, top + 1); z--) {
+          update(left, z, true);
+        }
       }
     }
   });
@@ -86,10 +123,19 @@ export function GetTileKeyAtPoint(position: Vector3): number {
 }
 
 function tileKeyAtPoint(position: Vector3Like, grid: TileGrid | undefined): number {
-  if (!grid || !Number.isFinite(position.x) || !Number.isFinite(position.z)
-    || position.x < -grid.size / 2 || position.x >= grid.size / 2
-    || position.z < -grid.size / 2 || position.z >= grid.size / 2) { return INVALID_TILE_KEY; }
-  const x = Math.floor(position.x / TILE_SIZE) + grid.offset, z = Math.floor(position.z / TILE_SIZE) + grid.offset;
+  if (
+    !grid ||
+    !Number.isFinite(position.x) ||
+    !Number.isFinite(position.z) ||
+    position.x < -grid.size / 2 ||
+    position.x >= grid.size / 2 ||
+    position.z < -grid.size / 2 ||
+    position.z >= grid.size / 2
+  ) {
+    return INVALID_TILE_KEY;
+  }
+  const x = Math.floor(position.x / TILE_SIZE) + grid.offset,
+    z = Math.floor(position.z / TILE_SIZE) + grid.offset;
   return x * grid.count + z;
 }
 
@@ -109,15 +155,25 @@ export class TileTracker {
   private readonly grid = currentGrid;
   private writes = 0;
   constructor(getPosition: () => Vector3Like, interval = 60) {
-    if (!Number.isInteger(interval) || interval < 1) { throw new RangeError('Tile tracker interval must be a positive integer'); }
-    this.getPosition = getPosition; this.interval = interval;
+    if (!Number.isInteger(interval) || interval < 1) {
+      throw new RangeError('Tile tracker interval must be a positive integer');
+    }
+    this.getPosition = getPosition;
+    this.interval = interval;
     this.state = createSignal(tileKeyAtPoint(getPosition(), this.grid));
     this.tile = readonlySignal(this.state);
   }
   /** 一次位置赋值之后调用；第 `interval` 次时刷新 key 并重新计数。 */
-  moved(): void { if (++this.writes >= this.interval) { this.sync(); } }
+  moved(): void {
+    if (++this.writes >= this.interval) {
+      this.sync();
+    }
+  }
   /** 立即读取当前位置并更新 key，同时重新计数。 */
-  sync(): void { this.writes = 0; this.state.set(tileKeyAtPoint(this.getPosition(), this.grid)); }
+  sync(): void {
+    this.writes = 0;
+    this.state.set(tileKeyAtPoint(this.getPosition(), this.grid));
+  }
 }
 
 /** 返回世界坐标所在的有符号地皮索引 [x, z]；负坐标向下取整。 */
@@ -144,20 +200,32 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
   const targets = new Map<ReadonlySignal<number>, TileStateTarget>();
   const grids = new Map<number, TileStateGrid>();
   let stopWatching!: () => void;
-  const player = watchSignal(source, stop => { stopWatching = stop; });
+  const player = watchSignal(source, stop => {
+    stopWatching = stop;
+  });
   let playerTile: [number, number] | undefined;
   let initialized = false;
   // 位置变化只触发这个管理器；跨 tile 后统一写入变化的格子。
   createEffect(() => {
     const point = player.get();
-    const next = point && Number.isFinite(point.x) && Number.isFinite(point.z) ? GetTileCoordsAtPoint(point) : undefined;
-    if (initialized && next?.[0] === playerTile?.[0] && next?.[1] === playerTile?.[1]) { return; }
+    const next =
+      point && Number.isFinite(point.x) && Number.isFinite(point.z) ? GetTileCoordsAtPoint(point) : undefined;
+    if (initialized && next?.[0] === playerTile?.[0] && next?.[1] === playerTile?.[1]) {
+      return;
+    }
     initialized = true;
     const previous = playerTile;
     playerTile = next;
-    tilePerfMeasure('player tile change', () => `${previous ?? '-'} -> ${playerTile ?? '-'} radii=${grids.size} targets=${targets.size}`, () => batch(() => {
-      for (const [radius, grid] of grids) { updateTileStates(grid.titlestates, previous, playerTile, radius, mapGrid); }
-    }));
+    tilePerfMeasure(
+      'player tile change',
+      () => `${previous ?? '-'} -> ${playerTile ?? '-'} radii=${grids.size} targets=${targets.size}`,
+      () =>
+        batch(() => {
+          for (const [radius, grid] of grids) {
+            updateTileStates(grid.titlestates, previous, playerTile, radius, mapGrid);
+          }
+        }),
+    );
   });
   let disposed = false;
   const cache: TileStateCache = {
@@ -165,13 +233,20 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
     get(tile, radius) {
       let target = targets.get(tile);
       const cached = target?.memos.get(radius);
-      if (cached) { cached.owners++; return cached.memo; }
+      if (cached) {
+        cached.owners++;
+        return cached.memo;
+      }
       if (!target) {
         let stop!: () => void;
-        const local = watchSignal(tile, cleanup => { stop = cleanup; });
+        const local = watchSignal(tile, cleanup => {
+          stop = cleanup;
+        });
         if (local.peek() === INVALID_TILE_KEY) {
           stop();
-          if (targets.size === 0) { cache.dispose(); }
+          if (targets.size === 0) {
+            cache.dispose();
+          }
           return undefined;
         }
         target = { tile: local, stop, memos: new Map() };
@@ -181,7 +256,8 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
       if (!grid) {
         grid = {
           titlestates: Array.from({ length: mapGrid.count }, () =>
-            Array.from({ length: mapGrid.count }, () => createSignal(false))),
+            Array.from({ length: mapGrid.count }, () => createSignal(false)),
+          ),
           memoCount: 0,
         };
         updateTileStates(grid.titlestates, undefined, playerTile, radius, mapGrid);
@@ -191,7 +267,9 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
       const ownedTarget = target;
       const active = createMemo(() => {
         const key = ownedTarget.tile.get();
-        if (key < 0) { return false; }
+        if (key < 0) {
+          return false;
+        }
         return ownedGrid.titlestates[Math.floor(key / mapGrid.count)]?.[key % mapGrid.count]?.get() ?? false;
       });
       grid.memoCount++;
@@ -199,28 +277,41 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
       const entry = { memo: active, owners: 1 };
       let removed = false;
       active.dispose = () => {
-        if (removed || --entry.owners > 0) { return; }
+        if (removed || --entry.owners > 0) {
+          return;
+        }
         removed = true;
         ownedTarget.memos.delete(radius);
         if (ownedTarget.memos.size === 0) {
           targets.delete(tile);
           ownedTarget.stop();
         }
-        if (--ownedGrid.memoCount === 0) { grids.delete(radius); }
-        try { disposeMemo(); } finally {
-          if (targets.size === 0) { cache.dispose(); }
+        if (--ownedGrid.memoCount === 0) {
+          grids.delete(radius);
+        }
+        try {
+          disposeMemo();
+        } finally {
+          if (targets.size === 0) {
+            cache.dispose();
+          }
         }
       };
       target.memos.set(radius, entry);
       return active;
     },
     dispose() {
-      if (disposed) { return; }
+      if (disposed) {
+        return;
+      }
       disposed = true;
       caches.delete(source);
       try {
         for (const target of [...targets.values()]) {
-          for (const entry of [...target.memos.values()]) { entry.owners = 1; entry.memo.dispose(); }
+          for (const entry of [...target.memos.values()]) {
+            entry.owners = 1;
+            entry.memo.dispose();
+          }
         }
       } finally {
         stopWatching();
@@ -238,9 +329,13 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
  */
 export function GetTileStateAtPoint(playerPosition: ReadonlySignal<Vector3 | undefined>): TileStateQuery {
   const grid = currentGrid;
-  if (!grid) { throw new Error('Tile map size is not bound'); }
+  if (!grid) {
+    throw new Error('Tile map size is not bound');
+  }
   return (position, radius = 10) => {
-    if (!Number.isInteger(radius) || radius < 0) { throw new RangeError('Tile activity radius must be a non-negative integer'); }
+    if (!Number.isInteger(radius) || radius < 0) {
+      throw new RangeError('Tile activity radius must be a non-negative integer');
+    }
     let cache = caches.get(playerPosition);
     if (cache && cache.grid !== grid) {
       cache.dispose();

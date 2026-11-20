@@ -21,44 +21,86 @@ afterEach(() => vi.unstubAllGlobals());
 
 it('walks to a finished pot, gives its product to the doer at the hit frame, and keeps it when cancelled or burnt', () => {
   vi.stubGlobal('window', new EventTarget());
-  const scene = new THREE.Scene(), player = new THREE.Group();
+  const scene = new THREE.Scene(),
+    player = new THREE.Group();
   const { instance, display } = createEmptyEntity('cookpot');
   const model = display.model;
-  instance.setPosition(20, 0, 0); scene.add(model);
-  const container = { canbeopened: true, IsFull: () => false, IsOpen: () => false,
-    GetAllItems: () => [], Close() {}, DestroyContents() {}, TrackContents() {}, openCount: { get: () => 0, peek: () => 0, subscribe: () => () => {} } };
-  const stewer = new Stewer({ prefab: 'cookpot', components: { container },
-    get position() { return instance.position; }, addTag: tag => instance.addTag(tag), removeTag: tag => instance.removeTag(tag) }, new GameTimeScheduler());
+  instance.setPosition(20, 0, 0);
+  scene.add(model);
+  const container = {
+    canbeopened: true,
+    IsFull: () => false,
+    IsOpen: () => false,
+    GetAllItems: () => [],
+    Close() {},
+    DestroyContents() {},
+    TrackContents() {},
+    openCount: { get: () => 0, peek: () => 0, subscribe: () => () => {} },
+  };
+  const stewer = new Stewer(
+    {
+      prefab: 'cookpot',
+      components: { container },
+      get position() {
+        return instance.position;
+      },
+      addTag: tag => instance.addTag(tag),
+      removeTag: tag => instance.removeTag(tag),
+    },
+    new GameTimeScheduler(),
+  );
   instance.components.stewer = stewer;
   registerActionEntity(prefabInstance(model)!);
   stewer.OnLoad({ product: 'kabobs', done: true });
-  const inst = wilsonPlayer(() => .2);
+  const inst = wilsonPlayer(() => 0.2);
   const stategraph = inst.sg;
   const animation = { stategraph };
-  const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() },
-    { physicsRadius: .5 * WORLD_SCALE });
+  const locomotor = new Locomotor(
+    { position: player.position, velocity: new THREE.Vector3() },
+    { physicsRadius: 0.5 * WORLD_SCALE },
+  );
   // The player inst: HARVEST gives the product to its own inventory.
   const inventory = createInventoryStore([]);
-  const create = vi.spyOn(inventory.entities, 'create'), give = vi.spyOn(inventory, 'GiveItem');
+  const create = vi.spyOn(inventory.entities, 'create'),
+    give = vi.spyOn(inventory, 'GiveItem');
   const doer = testPlayer({ model: withEntity(player, 'wilson'), inventory });
-  const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
-    renderer: { domElement: new EventTarget() }, actionEvents: new EventEmitter<PlayerActionEvents>() } as unknown as ActionWorldContext;
+  const world = {
+    scene,
+    player,
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+    actionEvents: new EventEmitter<PlayerActionEvents>(),
+  } as unknown as ActionWorldContext;
   let manual = false;
-  const controller = new PlayerController(world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), doer, () => manual);
-  const harvest = () => controller.DoAction(controller.createAction({ action: 'HARVEST', target: registerActionEntity(prefabInstance(model)!) })!);
+  const controller = new PlayerController(
+    world,
+    animation.stategraph,
+    locomotor,
+    createEquipmentExistenceState('HANDS'),
+    doer,
+    () => manual,
+  );
+  const harvest = () =>
+    controller.DoAction(
+      controller.createAction({ action: 'HARVEST', target: registerActionEntity(prefabInstance(model)!) })!,
+    );
   try {
     // componentactions SCENE.stewer: a pot done cooking offers HARVEST on both buttons.
     expect(sceneActions(model, doer)).toEqual(['HARVEST']);
     expect(sceneActions(model, doer, true)).toEqual(['HARVEST']);
     expect(harvest()).toBe(true);
     expect(locomotor.destination).toBeDefined();
-    player.position.x = 18.1; locomotor.update(16, 1 / 30);
+    player.position.x = 18.1;
+    locomotor.update(16, 1 / 30);
     expect(stategraph.stateName).toBe('dolongaction');
     // SGwilson.lua dolongaction: make_trap on the "make" handle as the state is entered, killed as it ends.
     expect(inst.SoundEmitter.PlaySound).toHaveBeenCalledWith('dontstarve/wilson/make_trap', 'make');
     expect(inst.SoundEmitter.KillSound).not.toHaveBeenCalledWith('make');
-    stategraph.update(.5);
-    manual = true; controller.update(); stategraph.update(2);
+    stategraph.update(0.5);
+    manual = true;
+    controller.update();
+    stategraph.update(2);
     expect(give).not.toHaveBeenCalled();
     expect(stewer.IsDone()).toBe(true);
     manual = false;
@@ -72,5 +114,12 @@ it('walks to a finished pot, gives its product to the doer at the hit frame, and
     stewer.OnLoad({ product: 'kabobs', done: true });
     instance.addTag('burnt');
     expect(sceneActions(model, doer)).toEqual([]);
-  } finally { controller.dispose(); stewer.OnRemoveFromEntity(); disposeActionEntity(findActionEntity(model)); instance.remove(); display.dispose(); inventory.dispose(); }
+  } finally {
+    controller.dispose();
+    stewer.OnRemoveFromEntity();
+    disposeActionEntity(findActionEntity(model));
+    instance.remove();
+    display.dispose();
+    inventory.dispose();
+  }
 });

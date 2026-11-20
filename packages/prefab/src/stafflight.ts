@@ -28,21 +28,36 @@ export type StaffLightId = typeof DWARF_STAR_ID | typeof POLAR_LIGHT_ID;
 const EXTINGUISH = 'extinguish';
 /** Each star bank's clips, from the source anim.bin. */
 const ANIMATION_LENGTHS = { star_hot: animationLengths('star_hot.zip'), star_cold: animationLengths('star_cold.zip') };
-const PULSE_PERIOD = .1;
+const PULSE_PERIOD = 0.1;
 
 /** stafflight.lua's makestafflight arguments for the two world stars. */
-const STAFF_LIGHTS: Record<StaffLightId, {
-  readonly is_hot: boolean;
-  readonly anim: keyof typeof ANIMATION_LENGTHS;
-  readonly colour: PrefabLocalLight['colour'];
-  readonly idles: readonly string[];
-  readonly duration: number;
-  readonly loopSound: SoundEventPath;
-}> = {
-  [DWARF_STAR_ID]: { is_hot: true, anim: 'star_hot', colour: YELLOWSTAFF_COLOUR, idles: ['idle_loop'],
-    duration: DWARF_STAR_DURATION, loopSound: 'dontstarve/common/staff_star_LP' },
-  [POLAR_LIGHT_ID]: { is_hot: false, anim: 'star_cold', colour: OPALSTAFF_COLOUR, idles: ['idle_loop', 'idle_loop2', 'idle_loop3'],
-    duration: POLAR_LIGHT_DURATION, loopSound: 'dontstarve/common/staff_coldlight_LP' },
+const STAFF_LIGHTS: Record<
+  StaffLightId,
+  {
+    readonly is_hot: boolean;
+    readonly anim: keyof typeof ANIMATION_LENGTHS;
+    readonly colour: PrefabLocalLight['colour'];
+    readonly idles: readonly string[];
+    readonly duration: number;
+    readonly loopSound: SoundEventPath;
+  }
+> = {
+  [DWARF_STAR_ID]: {
+    is_hot: true,
+    anim: 'star_hot',
+    colour: YELLOWSTAFF_COLOUR,
+    idles: ['idle_loop'],
+    duration: DWARF_STAR_DURATION,
+    loopSound: 'dontstarve/common/staff_star_LP',
+  },
+  [POLAR_LIGHT_ID]: {
+    is_hot: false,
+    anim: 'star_cold',
+    colour: OPALSTAFF_COLOUR,
+    idles: ['idle_loop', 'idle_loop2', 'idle_loop3'],
+    duration: POLAR_LIGHT_DURATION,
+    loopSound: 'dontstarve/common/staff_coldlight_LP',
+  },
 };
 
 /** stafflight.lua pulse_light: abs(sin(pi * timeAlive * .05)), using the scene's world scale. */
@@ -75,14 +90,15 @@ export class StaffLightInstance extends PrefabInstance {
   readonly no_wet_prefix = true;
   _killed = false;
   /** makestafflight's arguments, which its local functions close over. */
-  readonly settings: typeof STAFF_LIGHTS[StaffLightId];
+  readonly settings: (typeof STAFF_LIGHTS)[StaffLightId];
   declare SoundEmitter: SoundEmitter;
   /** inst.AnimState's playback: a clip ends after its source length in game time, whether or not its art is drawn. */
   readonly animstate: AnimState;
 
   constructor(prefab: StaffLightId, world: StaffLightWorld) {
     super(prefab, new SpriteState({ name: 'appear', billboard: true }));
-    const { scheduler } = world, settings = STAFF_LIGHTS[prefab];
+    const { scheduler } = world,
+      settings = STAFF_LIGHTS[prefab];
     this.settings = settings;
     this.BindScheduler(scheduler);
     this.AddSoundEmitter();
@@ -99,12 +115,18 @@ export class StaffLightInstance extends PrefabInstance {
     }
 
     this.addTag('ignorewalkableplatforms');
-    this.physicsRadiusOverride = .5;
-    if (settings.is_hot) { for (const tag of ['cooker', 'daylight', 'heatstar']) { this.addTag(tag); } }
+    this.physicsRadiusOverride = 0.5;
+    if (settings.is_hot) {
+      for (const tag of ['cooker', 'daylight', 'heatstar']) {
+        this.addTag(tag);
+      }
+    }
 
     const heater = addComponent(this, 'heater', Heater);
     heater.SetHeat(settings.is_hot ? 100 : -100);
-    if (!settings.is_hot) { heater.SetThermics(false, true); }
+    if (!settings.is_hot) {
+      heater.SetThermics(false, true);
+    }
 
     const sanityaura = addComponent(this, 'sanityaura', SanityAura);
     sanityaura.aura = SANITYAURA_SMALL;
@@ -122,13 +144,23 @@ export class StaffLightInstance extends PrefabInstance {
 
     let propagator: Propagator | undefined;
     if (settings.is_hot) {
-      propagator = addComponent(this, 'propagator', Propagator, 'default', radius =>
-        this.TheSim.FindEntities(this.position, radius, undefined, PROPAGATOR_CANT_TAGS), WORLD_SCALE, scheduler, world.getWatchWorldContent);
+      propagator = addComponent(
+        this,
+        'propagator',
+        Propagator,
+        'default',
+        radius => this.TheSim.FindEntities(this.position, radius, undefined, PROPAGATOR_CANT_TAGS),
+        WORLD_SCALE,
+        scheduler,
+        world.getWatchWorldContent,
+      );
       propagator.heatoutput = 15;
       propagator.spreading.set(true);
     }
 
-    if (settings.idles.length > 1) { this.ListenForEvent('animover', PlayRandomStarIdle); }
+    if (settings.idles.length > 1) {
+      this.ListenForEvent('animover', PlayRandomStarIdle);
+    }
   }
 }
 
@@ -151,7 +183,9 @@ function PlayAnimation(inst: StaffLightInstance, name: string): void {
 
 function PlayRandomStarIdle(inst: StaffLightInstance): void {
   // Don't if we're extinguished
-  if (inst._killed) { return; }
+  if (inst._killed) {
+    return;
+  }
   const { idles } = inst.settings;
   PlayAnimation(inst, idles[Math.floor(Math.random() * idles.length)]);
 }
@@ -169,7 +203,9 @@ function kill_light(inst: StaffLightInstance): void {
 }
 
 function ontimer(inst: StaffLightInstance, data: { name: string }): void {
-  if (data.name === EXTINGUISH) { kill_light(inst); }
+  if (data.name === EXTINGUISH) {
+    kill_light(inst);
+  }
 }
 
 function onhaunt(inst: StaffLightInstance): boolean {
@@ -182,9 +218,12 @@ function onhaunt(inst: StaffLightInstance): boolean {
 }
 
 /** The Prefab table stafflight.lua returns for the two world stars. */
-export function staffLightPrefabs(world: StaffLightWorld): Readonly<Record<StaffLightId, PrefabEntityDefinition<StaffLightInstance>>> {
+export function staffLightPrefabs(
+  world: StaffLightWorld,
+): Readonly<Record<StaffLightId, PrefabEntityDefinition<StaffLightInstance>>> {
   const define = (prefabId: StaffLightId): PrefabEntityDefinition<StaffLightInstance> => {
-    const { anim } = STAFF_LIGHTS[prefabId], archive = `${anim}.zip`;
+    const { anim } = STAFF_LIGHTS[prefabId],
+      archive = `${anim}.zip`;
     return {
       fn: () => new StaffLightInstance(prefabId, world),
       assets: { animationArchive: archive, buildArchives: [archive], bank: anim },

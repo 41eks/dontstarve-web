@@ -14,7 +14,10 @@ import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefa
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { testInventoryStore, testItem } from './testInventory';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop: vi.fn() })),
+}));
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -35,8 +38,11 @@ it('tracks the owner transform without a cached position, and releases visibilit
 });
 
 it('resolves the player icon from its actual native minimap atlas', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(
-    `../../../public${new URL(url).pathname}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) =>
+      new Response(await readFile(new URL(`../../../public${new URL(url).pathname}`, import.meta.url))),
+  );
   const icon = await loadMinimapIcon('http://minimap-test/dst/data', 'willow.png');
   expect(icon.name).toBe('willow.png');
   expect(icon.texturePath).toBe('http://minimap-test/dst/data/minimap/minimap_atlas2.tex');
@@ -53,8 +59,16 @@ it('resolves the player icon from its actual native minimap atlas', async () => 
 
 it('keeps a backpack icon on the logical item through equip, drop, reskin and load, disposing it only on removal', () => {
   const body = equipmentSlotAddress('body');
-  const specs = { backpack: { name: '背包', icon: 'backpack.tex', maxStack: 1, equippable: 'body' as const,
-    canGoInContainer: false, configureEntity: configureBackpackEntity } };
+  const specs = {
+    backpack: {
+      name: '背包',
+      icon: 'backpack.tex',
+      maxStack: 1,
+      equippable: 'body' as const,
+      canGoInContainer: false,
+      configureEntity: configureBackpackEntity,
+    },
+  };
   const store = testInventoryStore([{ address: body, slot: new BodySlot() }], specs, {});
   const backpack = testItem({ itemId: 'backpack', count: 1, entityId: 'map-backpack' });
   store.configureItem(backpack);
@@ -89,18 +103,28 @@ it('keeps a backpack icon on the logical item through equip, drop, reskin and lo
 });
 
 it('initializes the source pig king icon and priority, and hides it on scene disposal', async () => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(
-    `../../../public/dst/data/${String(url).slice('/dst/data/'.length)}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) =>
+      new Response(
+        await readFile(new URL(`../../../public/dst/data/${String(url).slice('/dst/data/'.length)}`, import.meta.url)),
+      ),
+  );
   const displays = new PrefabDisplayGroup(new Scene());
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { physics: new CANNON.World() });
-  prefabs.register(pigKingPrefabs({ TheCamera: fixedCamera(45), scheduler: new GameTimeScheduler(), dropLoot: vi.fn() }));
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {
+    physics: new CANNON.World(),
+  });
+  prefabs.register(
+    pigKingPrefabs({ TheCamera: fixedCamera(45), scheduler: new GameTimeScheduler(), dropLoot: vi.fn() }),
+  );
   const king = prefabs.spawn(PIGKING_ID, new Vector3(48, 0, 60));
   await new Promise(resolve => setTimeout(resolve, 0));
   const minimap = [...miniMapEntities()].find(icon => icon.position.x === 48 && icon.position.z === 60)!;
   expect(minimap.icon).toBe('pigking.png');
   expect(minimap.priority).toBe(1);
   // Scene teardown removes the king.
-  prefabs.dispose(); displays.dispose();
+  prefabs.dispose();
+  displays.dispose();
   expect(king.minimap.peek().enabled).toBe(false);
   expect(miniMapEntities().has(minimap)).toBe(false);
 });

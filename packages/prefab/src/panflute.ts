@@ -20,19 +20,24 @@ export interface PanfluteListener {
 }
 
 /** The player playing the flute: instrument:Play finds the listeners around it. */
-export interface PanfluteMusician { getPosition(): import('three').Vector3; readonly TheSim: EntityQuery }
+export interface PanfluteMusician {
+  getPosition(): import('three').Vector3;
+  readonly TheSim: EntityQuery;
+}
 export type PanfluteInstrument = Instrument<PanfluteMusician, PanfluteListener>;
 
 /** instrument.lua Play: TheSim:FindEntities(x, y, z, self.range, nil, {"FX", "DECOR", "INLIMBO"}) at the musician. */
 const findListeners = (musician: PanfluteMusician, range: number) =>
-  musician.TheSim.FindEntities(musician.getPosition(), range * TILE_SIZE / 4, undefined, ['FX', 'DECOR', 'INLIMBO']);
+  musician.TheSim.FindEntities(musician.getPosition(), (range * TILE_SIZE) / 4, undefined, ['FX', 'DECOR', 'INLIMBO']);
 
 /**
  * panflute.lua HearPanFlute for the ported branches: sleepers that are not players fall asleep.
  * Rider mounts, farmplanttendable, grogginess, knockedout and the Wortox buff/skills need unported components.
  */
 function HearPanFlute(listener: PanfluteListener, musician: unknown): void {
-  if (listener === musician || listener.hasTag('player') || !listener.hasTag('sleeper')) { return; }
+  if (listener === musician || listener.hasTag('player') || !listener.hasTag('sleeper')) {
+    return;
+  }
   listener.components.sleeper?.AddSleepiness(PANFLUTE_SLEEPINESS, PANFLUTE_SLEEPTIME);
 }
 
@@ -42,8 +47,15 @@ export function configurePanfluteEntity(entity: ItemEntity): void {
   entity.GetSkinBuild = () => itemSkinBuild(entity);
   entity.components.finiteuses.setMaxUses(PANFLUTE_USES);
   entity.components.finiteuses.setConsumption('PLAY', 1);
-  if (entity.components.instrument) { return; }
-  const instrument: PanfluteInstrument = addComponent(entity, 'instrument', Instrument<PanfluteMusician, PanfluteListener>, findListeners);
+  if (entity.components.instrument) {
+    return;
+  }
+  const instrument: PanfluteInstrument = addComponent(
+    entity,
+    'instrument',
+    Instrument<PanfluteMusician, PanfluteListener>,
+    findListeners,
+  );
   instrument.SetRange(PANFLUTE_SLEEPRANGE);
   instrument.SetOnHeardFn(HearPanFlute);
   addComponent(entity, 'tool', Tool).SetAction('PLAY');

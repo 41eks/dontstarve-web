@@ -1,10 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { zipSync } from 'fflate';
-import {
-  parseImageAtlasArchive,
-  parseImageAtlasXml,
-  preloadImageArchive,
-} from '@dontstarve-web/animation/imageAtlas';
+import { parseImageAtlasArchive, parseImageAtlasXml, preloadImageArchive } from '@dontstarve-web/animation/imageAtlas';
 
 const encoder = new TextEncoder();
 
@@ -22,30 +18,34 @@ function makeKtex(width: number, height: number, pixels: Uint8Array) {
 }
 
 function solidKtex(red: number, green: number, blue: number) {
-  return makeKtex(2, 2, new Uint8Array([
-    red, green, blue, 255, red, green, blue, 255,
-    red, green, blue, 255, red, green, blue, 255,
-  ]));
+  return makeKtex(
+    2,
+    2,
+    new Uint8Array([red, green, blue, 255, red, green, blue, 255, red, green, blue, 255, red, green, blue, 255]),
+  );
 }
 
 function atlasXml(texture: string, elements: string) {
   return encoder.encode(`<Atlas><Texture filename="${texture}"/><Elements>${elements}</Elements></Atlas>`);
 }
 
-const fullElement = (name: string) =>
-  `<Element v2="1" name="${name}" u2="0.5" v1="0.5" u1="0"/>`;
+const fullElement = (name: string) => `<Element v2="1" name="${name}" u2="0.5" v1="0.5" u1="0"/>`;
 
 afterEach(() => vi.unstubAllGlobals());
 
 describe('parseImageAtlasXml', () => {
   it('parses texture metadata regardless of attribute order', () => {
-    const parsed = parseImageAtlasXml(new TextDecoder().decode(
-      atlasXml('inventoryimages1.tex', fullElement('axe.tex')),
-    ));
+    const parsed = parseImageAtlasXml(
+      new TextDecoder().decode(atlasXml('inventoryimages1.tex', fullElement('axe.tex'))),
+    );
 
     expect(parsed.texture).toBe('inventoryimages1.tex');
     expect(parsed.elements.get('axe.tex')).toEqual({
-      name: 'axe.tex', u1: 0, u2: 0.5, v1: 0.5, v2: 1,
+      name: 'axe.tex',
+      u1: 0,
+      u2: 0.5,
+      v1: 0.5,
+      v2: 1,
     });
   });
 });
@@ -68,10 +68,7 @@ describe('parseImageAtlasArchive', () => {
       width: 2,
       height: 2,
     });
-    expect([...sprite.pixels]).toEqual([
-      20, 40, 60, 255, 20, 40, 60, 255,
-      20, 40, 60, 255, 20, 40, 60, 255,
-    ]);
+    expect([...sprite.pixels]).toEqual([20, 40, 60, 255, 20, 40, 60, 255, 20, 40, 60, 255, 20, 40, 60, 255]);
   });
 
   it('resolves legacy inventoryimages.xml to the numbered current atlases', () => {
@@ -85,10 +82,7 @@ describe('parseImageAtlasArchive', () => {
 
     const atlas = parseImageAtlasArchive(archive);
 
-    expect(atlas.pages.map(({ path }) => path)).toEqual([
-      'images/inventoryimages1.xml',
-      'images/inventoryimages2.xml',
-    ]);
+    expect(atlas.pages.map(({ path }) => path)).toEqual(['images/inventoryimages1.xml', 'images/inventoryimages2.xml']);
     expect(atlas.require('axe.tex').pixels[0]).toBe(255);
     expect(atlas.require('torch').pixels[1]).toBe(255);
     expect(atlas.get('legacy')).toBeUndefined();
@@ -104,7 +98,7 @@ describe('preloadImageArchive', () => {
     const second = preloadImageArchive(new URL('https://example.test/images.zip'));
 
     expect(first).toBe(second);
-    expect([...await first]).toEqual([1, 2, 3]);
+    expect([...(await first)]).toEqual([1, 2, 3]);
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 });

@@ -29,5 +29,5 @@ export class CampfireInstance extends PrefabInstance {
 }
 
 export function campfirePrefabs(world: PrefabWorldContext) {
-  return { [CAMPFIRE_ID]: buildingPrefab(declaration, 'campfire', .2, () => new CampfireInstance(), world) };
+  return { [CAMPFIRE_ID]: buildingPrefab(declaration, 'campfire', 0.2, () => new CampfireInstance(), world) };
 }

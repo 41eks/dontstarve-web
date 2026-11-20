@@ -26,7 +26,7 @@ type Graph<Name extends string> = StateGraphInstance<BernieStateInst, Name>;
 /** idle_nodir's facing switch at .5 seconds: idle_loop continues from the time idle_loop_nodir reached. */
 const switchToIdleLoop = <Name extends string>(sg: Graph<Name>) => {
   sg.context.playAnimation('idle_loop', true);
-  sg.context.setAnimationTime(.5);
+  sg.context.setAnimationTime(0.5);
 };
 
 /**
@@ -38,7 +38,9 @@ const bernieStates: StateDefinition<BernieStateInst, BernieStateName>[] = [
     name: 'idle',
     tags: ['idle', 'canrotate'],
     onenter: sg => {
-      if (!sg.context.isCurrentAnimation('idle_loop')) { sg.context.playAnimation('idle_loop', true); }
+      if (!sg.context.isCurrentAnimation('idle_loop')) {
+        sg.context.playAnimation('idle_loop', true);
+      }
       sg.setTimeout(sg.context.getCurrentAnimationLength());
     },
     ontimeout: sg => sg.goToState('idle'),
@@ -50,7 +52,7 @@ const bernieStates: StateDefinition<BernieStateInst, BernieStateName>[] = [
       sg.context.playAnimation('idle_loop_nodir');
       sg.setTimeout(sg.context.getCurrentAnimationLength());
     },
-    timeline: [TimeEvent(.5, switchToIdleLoop)],
+    timeline: [TimeEvent(0.5, switchToIdleLoop)],
     ontimeout: sg => sg.goToState('idle'),
   }),
   State<BernieStateInst, BernieStateName>({
@@ -82,7 +84,7 @@ const bernieBigStates: StateDefinition<BernieStateInst, BernieBigStateName>[] = 
     tags: ['idle', 'canrotate'],
     onenter: sg => {
       sg.context.playAnimation('idle_loop_nodir');
-      sg.setTimeout(.5);
+      sg.setTimeout(0.5);
     },
     ontimeout: switchToIdleLoop,
     // V2C: shouldn't happen
@@ -108,8 +110,16 @@ const bernieBigStates: StateDefinition<BernieStateInst, BernieBigStateName>[] = 
 ];
 
 /** SetStateGraph("SGbernie") / SetStateGraph("SGberniebig"): both start in `activate`. */
-export function createBernieStateGraph(inst: BernieStateInst, big: false, scheduler: GameTimeScheduler): Graph<BernieStateName>;
-export function createBernieStateGraph(inst: BernieStateInst, big: true, scheduler: GameTimeScheduler): Graph<BernieBigStateName>;
+export function createBernieStateGraph(
+  inst: BernieStateInst,
+  big: false,
+  scheduler: GameTimeScheduler,
+): Graph<BernieStateName>;
+export function createBernieStateGraph(
+  inst: BernieStateInst,
+  big: true,
+  scheduler: GameTimeScheduler,
+): Graph<BernieBigStateName>;
 export function createBernieStateGraph(inst: BernieStateInst, big: boolean, scheduler: GameTimeScheduler) {
   const sg = new StateGraphInstance(inst, big ? bernieBigStates : bernieStates, [], scheduler);
   sg.goToState('activate');

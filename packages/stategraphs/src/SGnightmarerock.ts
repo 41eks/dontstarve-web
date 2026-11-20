@@ -5,8 +5,11 @@ import type { SoundEmitter } from '../../prefab/src/soundEmitter';
 import type { Vector3Like } from 'three';
 
 export type NightmareRockStateName = 'idle' | 'raise' | 'lower' | 'conceal' | 'concealed' | 'reveal';
-export type NightmareRockSound = 'dontstarve/sanity/shadowrock_up' | 'dontstarve/sanity/shadowrock_down'
-  | 'dontstarve/sanity/shadowrock_conseal' | 'dontstarve/sanity/shadowrock_reveal';
+export type NightmareRockSound =
+  | 'dontstarve/sanity/shadowrock_up'
+  | 'dontstarve/sanity/shadowrock_down'
+  | 'dontstarve/sanity/shadowrock_conseal'
+  | 'dontstarve/sanity/shadowrock_reveal';
 
 /** The nightmarerock.lua inst fields and methods SGnightmarerock.lua reads. */
 export interface NightmareRockStateInst {
@@ -46,10 +49,15 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
       inst.SoundEmitter.PlaySound('dontstarve/sanity/shadowrock_up');
       inst.world.spawnPrefab('sanity_raise', inst.position);
     },
-    events: [EventHandler('animover', sg => {
-      if (concealedOrQueued(sg.context)) { sg.goToState('conceal', true); }
-      else { sg.goToState('idle'); }
-    })],
+    events: [
+      EventHandler('animover', sg => {
+        if (concealedOrQueued(sg.context)) {
+          sg.goToState('conceal', true);
+        } else {
+          sg.goToState('idle');
+        }
+      }),
+    ],
   }),
   State<NightmareRockStateInst, NightmareRockStateName>({
     name: 'lower',
@@ -107,10 +115,22 @@ export class NightmareRockStateGraph {
     this.sg.goToState('idle');
   }
 
-  get stateName(): NightmareRockStateName { return this.sg.stateName; }
-  hasStateTag(tag: string): boolean { return this.sg.hasStateTag(tag); }
-  goToState(name: NightmareRockStateName, data?: unknown): void { this.sg.goToState(name, data); }
-  pushEvent(name: string, data?: unknown): void { this.sg.pushEvent(name, data); }
-  update(dt: number): void { this.sg.update(dt); }
-  dispose(): void { this.sg.dispose(); }
+  get stateName(): NightmareRockStateName {
+    return this.sg.stateName;
+  }
+  hasStateTag(tag: string): boolean {
+    return this.sg.hasStateTag(tag);
+  }
+  goToState(name: NightmareRockStateName, data?: unknown): void {
+    this.sg.goToState(name, data);
+  }
+  pushEvent(name: string, data?: unknown): void {
+    this.sg.pushEvent(name, data);
+  }
+  update(dt: number): void {
+    this.sg.update(dt);
+  }
+  dispose(): void {
+    this.sg.dispose();
+  }
 }

@@ -19,16 +19,32 @@ export class HerdMember<Herd = object> {
     inst.addTag('herdmember');
   }
 
-  get enabled(): boolean { return this.enabledState; }
+  get enabled(): boolean {
+    return this.enabledState;
+  }
   set enabled(enabled: boolean) {
     this.enabledState = enabled;
-    if (enabled) { this.inst.addTag('herdmember'); } else { this.inst.removeTag('herdmember'); }
+    if (enabled) {
+      this.inst.addTag('herdmember');
+    } else {
+      this.inst.removeTag('herdmember');
+    }
   }
 
-  SetHerd(herd: Herd | undefined): void { this.herd = herd; }
-  SetHerdPrefab(prefab: string): void { this.herdprefab = prefab; }
-  GetHerd(): Herd | undefined { return this.herd; }
-  Enable(enabled: boolean): void { this.enabled = enabled; }
+  SetHerd(herd: Herd | undefined): void {
+    this.herd = herd;
+  }
+  SetHerdPrefab(prefab: string): void {
+    this.herdprefab = prefab;
+  }
+  GetHerd(): Herd | undefined {
+    return this.herd;
+  }
+  Enable(enabled: boolean): void {
+    this.enabled = enabled;
+  }
 
-  OnRemoveFromEntity(): void { this.inst.removeTag('herdmember'); }
+  OnRemoveFromEntity(): void {
+    this.inst.removeTag('herdmember');
+  }
 }

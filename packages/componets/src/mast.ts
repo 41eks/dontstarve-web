@@ -6,7 +6,10 @@ export const MAST_MALBATROSS = { MAX_VELOCITY: 4, SAIL_FORCE: 1.3, RUDDER_TURN_D
 export interface MastInst {
   addTag(tag: string): void;
   removeTag(tag: string): void;
-  readonly AnimState: { PlayAnimation(name: string, loop?: boolean): void; PushAnimation(name: string, loop?: boolean): void };
+  readonly AnimState: {
+    PlayAnimation(name: string, loop?: boolean): void;
+    PushAnimation(name: string, loop?: boolean): void;
+  };
 }
 
 /**
@@ -38,7 +41,9 @@ export class Mast {
   }
 
   /** is_sail_raised, with on_is_sail_raised's sailraised / saillowered tags. */
-  get is_sail_raised(): boolean { return this.sailRaised; }
+  get is_sail_raised(): boolean {
+    return this.sailRaised;
+  }
   set is_sail_raised(value: boolean) {
     this.sailRaised = value;
     this.inst.removeTag(value ? 'saillowered' : 'sailraised');
@@ -56,11 +61,16 @@ export class Mast {
     this.furlunits = this.furlunits_max;
     this.is_sail_transitioning = undefined;
     this.inst.removeTag('sail_transitioning');
-    if (!this.is_sail_raised) { return; }
+    if (!this.is_sail_raised) {
+      return;
+    }
     this.is_sail_raised = false;
     this.inst.AnimState.PlayAnimation('knot_tie', false);
-    if (this.inverted) { this.inst.AnimState.PushAnimation('open_loop', true); }
-    else { this.inst.AnimState.PushAnimation('closed', false); }
+    if (this.inverted) {
+      this.inst.AnimState.PushAnimation('open_loop', true);
+    } else {
+      this.inst.AnimState.PushAnimation('closed', false);
+    }
   }
 
   /** Mast:SailUnfurled: the sail is lowered. */
@@ -69,7 +79,10 @@ export class Mast {
     this.is_sail_transitioning = undefined;
     this.inst.removeTag('sail_transitioning');
     this.is_sail_raised = true;
-    if (this.inverted) { this.inst.AnimState.PlayAnimation('closed', false); }
-    else { this.inst.AnimState.PlayAnimation('open_loop', true); }
+    if (this.inverted) {
+      this.inst.AnimState.PlayAnimation('closed', false);
+    } else {
+      this.inst.AnimState.PlayAnimation('open_loop', true);
+    }
   }
 }

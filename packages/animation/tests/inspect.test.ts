@@ -23,7 +23,15 @@ const viewer = (prefab = 'wilson', tags: string[] = []) => testPlayer({ prefab, 
 function entity(prefab = 'birdcage') {
   const { instance, display } = createEmptyEntity(prefab);
   const inspectable = addComponent(instance, 'inspectable', Inspectable);
-  return { instance, display, inspectable, dispose() { instance.remove(); display.dispose(); } };
+  return {
+    instance,
+    display,
+    inspectable,
+    dispose() {
+      instance.remove();
+      display.dispose();
+    },
+  };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -33,14 +41,18 @@ describe('stringutil.lua GetDescription', () => {
     expect(GetDescription(viewer(), { prefab: 'birdcage' }, 'DEAD')).toBe(describeStrings.BIRDCAGE.DEAD);
     // An unknown status falls back to the topic's GENERIC.
     expect(GetDescription(viewer(), { prefab: 'birdcage' }, 'NOSUCHSTATUS')).toBe(describeStrings.BIRDCAGE.GENERIC);
-    vi.spyOn(Math, 'random').mockReturnValue(.99);
+    vi.spyOn(Math, 'random').mockReturnValue(0.99);
     const lines = describeStrings.ABIGAIL.LEVEL1;
     expect(GetDescription(viewer(), { prefab: 'abigail' }, 'LEVEL1')).toBe(lines[lines.length - 1]);
     vi.restoreAllMocks();
-    expect(GetDescription(viewer('wortox'), { prefab: 'birdcage' }, 'DEAD')).toBe(STRINGS.CHARACTERS.WORTOX.DESCRIBE.BIRDCAGE.DEAD);
+    expect(GetDescription(viewer('wortox'), { prefab: 'birdcage' }, 'DEAD')).toBe(
+      STRINGS.CHARACTERS.WORTOX.DESCRIBE.BIRDCAGE.DEAD,
+    );
     expect(GetDescription(viewer(), { prefab: 'no_such_prefab' })).toBe(STRINGS.CHARACTERS.GENERIC.DESCRIBE_GENERIC);
     expect(GetDescription(viewer('wilson', ['playerghost']), { prefab: 'birdcage' })).toMatch(/^[Oo]/);
-    expect(GetDescription(viewer(), { prefab: 'rock', nameoverride: 'birdcage' }, 'DEAD')).toBe(describeStrings.BIRDCAGE.DEAD);
+    expect(GetDescription(viewer(), { prefab: 'rock', nameoverride: 'birdcage' }, 'DEAD')).toBe(
+      describeStrings.BIRDCAGE.DEAD,
+    );
   });
 });
 
@@ -61,7 +73,9 @@ describe('inspectable.lua', () => {
 
   it('lets every item be examined', () => {
     const rocks = testItem({ itemId: 'rocks', count: 1 });
-    expect(rocks.components.inspectable!.GetDescription(viewer())).toBe((describeStrings as Record<string, unknown>).ROCKS);
+    expect(rocks.components.inspectable!.GetDescription(viewer())).toBe(
+      (describeStrings as Record<string, unknown>).ROCKS,
+    );
     expect(rocks.hasTag('inspectable')).toBe(true);
     rocks.destroy();
   });
@@ -69,7 +83,8 @@ describe('inspectable.lua', () => {
 
 describe('talker.lua', () => {
   it('shows one line for its duration, and a new line ends the one being said', () => {
-    const scheduler = new GameTimeScheduler(), PushEvent = vi.fn();
+    const scheduler = new GameTimeScheduler(),
+      PushEvent = vi.fn();
     const talker = new Talker({ PushEvent }, scheduler);
     talker.Say('first');
     expect(talker.line.peek()).toBe('first');
@@ -80,7 +95,7 @@ describe('talker.lua', () => {
     expect(PushEvent).toHaveBeenLastCalledWith('ontalk', { noanim: true, duration: 8 });
     scheduler.advance(7.9);
     expect(talker.IsTalking()).toBe(true);
-    scheduler.advance(.1);
+    scheduler.advance(0.1);
     expect(talker.line.peek()).toBeUndefined();
     expect(PushEvent).toHaveBeenLastCalledWith('donetalking');
     new Talker({ PushEvent, components: { health: { IsDead: () => true } } }, scheduler).Say('ignored');
@@ -111,7 +126,8 @@ describe('ACTIONS.LOOKAT', () => {
   it('says the description and takes the talk state until the line ends', () => {
     const { instance, dispose } = entity();
     const scheduler = new GameTimeScheduler();
-    const player = wilsonPlayer(() => 1), graph = player.sg;
+    const player = wilsonPlayer(() => 1),
+      graph = player.sg;
     // The player inst says the line with its own talker; its talk events reach its stategraph.
     const doer = testPlayer({ model: player.transform.model });
     const talker = addComponent(doer, 'talker', Talker, scheduler);
@@ -120,14 +136,23 @@ describe('ACTIONS.LOOKAT', () => {
     expect(graph.stateName).toBe('talk');
     scheduler.advance(2.5);
     expect(graph.stateName).toBe('idle');
-    graph.dispose(); scheduler.dispose(); dispose();
+    graph.dispose();
+    scheduler.dispose();
+    dispose();
   });
 
   it('Alt examines a target even when the click would do something else, on the move too', () => {
     const { instance, display, dispose } = entity();
     new THREE.Scene().add(display.model);
     registerActionEntity(instance);
-    const pointer = { trackPointer() {}, beginFrame() {}, endFrame() {}, pickMouseTarget: () => ({ object: display.model as THREE.Object3D }), groundPoint: () => undefined, dispose() {} };
+    const pointer = {
+      trackPointer() {},
+      beginFrame() {},
+      endFrame() {},
+      pickMouseTarget: () => ({ object: display.model as THREE.Object3D }),
+      groundPoint: () => undefined,
+      dispose() {},
+    };
     const picker = new PlayerActionPicker(pointer as never);
     const doer = sgDoer('run');
     picker.bindPlayer(doer, () => undefined);

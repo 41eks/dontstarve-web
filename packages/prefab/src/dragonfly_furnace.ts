@@ -50,7 +50,9 @@ export class DragonflyFurnaceInstance extends PrefabInstance<SpriteState, Dragon
   constructor(world: PrefabWorldContext) {
     super(DRAGONFLY_FURNACE_ID, new SpriteState({ name: 'hi', billboard: true }));
     const { scheduler } = world;
-    if (!scheduler) { throw new Error('A dragonfly furnace needs the world\'s scheduler'); }
+    if (!scheduler) {
+      throw new Error("A dragonfly furnace needs the world's scheduler");
+    }
     this.worldServices = world;
     this.BindScheduler(scheduler);
     this.AddSoundEmitter();
@@ -58,10 +60,12 @@ export class DragonflyFurnaceInstance extends PrefabInstance<SpriteState, Dragon
 
     // SetDeploySmartRadius(1.25): recipe min_spacing / 2.
     this.deploySmartRadius = 1.25 * WORLD_SCALE;
-    this.light.set({ radius: 1 * WORLD_SCALE, falloff: .9, intensity: .5, colour: [235 / 255, 121 / 255, 12 / 255] });
-    this.sprite.setLightOverride(.4);
+    this.light.set({ radius: 1 * WORLD_SCALE, falloff: 0.9, intensity: 0.5, colour: [235 / 255, 121 / 255, 12 / 255] });
+    this.sprite.setLightOverride(0.4);
 
-    for (const tag of ['structure', 'wildfireprotected', 'cooker']) { this.addTag(tag); }
+    for (const tag of ['structure', 'wildfireprotected', 'cooker']) {
+      this.addTag(tag);
+    }
 
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
@@ -87,12 +91,21 @@ export class DragonflyFurnaceInstance extends PrefabInstance<SpriteState, Dragon
     this.ListenForEvent('onbuilt', () => onbuilt(this));
     // inst.OnEntitySleep / inst.OnEntityWake, as the entity's tile sleeps and wakes.
     let stopStatus: (() => void) | undefined;
-    const status = watchSignal(this.status, stop => { stopStatus = stop; });
+    const status = watchSignal(this.status, stop => {
+      stopStatus = stop;
+    });
     const stopWake = createEffect(() => {
       const value = status.get();
-      if (value === 'active') { OnEntityWake(this); } else if (value === 'asleep') { OnEntitySleep(this); }
+      if (value === 'active') {
+        OnEntityWake(this);
+      } else if (value === 'asleep') {
+        OnEntitySleep(this);
+      }
     });
-    this.onRemove(() => { stopWake(); stopStatus?.(); });
+    this.onRemove(() => {
+      stopWake();
+      stopStatus?.();
+    });
   }
 }
 
@@ -110,7 +123,9 @@ function onworked(inst: DragonflyFurnaceInstance): void {
   if (inst._task2 !== undefined) {
     inst._task2.Cancel();
     inst._task2 = undefined;
-    if (!inst.IsAsleep()) { inst.SoundEmitter!.PlaySound(FIRE_LOOP, 'loop'); }
+    if (!inst.IsAsleep()) {
+      inst.SoundEmitter!.PlaySound(FIRE_LOOP, 'loop');
+    }
     if (inst._task1 !== undefined) {
       inst._task1.Cancel();
       inst._task1 = undefined;
@@ -134,7 +149,9 @@ function BuiltTimeLine1(inst: DragonflyFurnaceInstance): void {
 function BuiltTimeLine2(inst: DragonflyFurnaceInstance): void {
   inst._task2 = undefined;
   inst.SoundEmitter!.PlaySound('dontstarve/common/together/dragonfly_furnace/light');
-  if (!inst.IsAsleep()) { inst.SoundEmitter!.PlaySound(FIRE_LOOP, 'loop'); }
+  if (!inst.IsAsleep()) {
+    inst.SoundEmitter!.PlaySound(FIRE_LOOP, 'loop');
+  }
 }
 
 function onbuilt(inst: DragonflyFurnaceInstance): void {
@@ -156,7 +173,9 @@ function OnEntitySleep(inst: DragonflyFurnaceInstance): void {
 }
 
 function OnEntityWake(inst: DragonflyFurnaceInstance): void {
-  if (inst._task2 === undefined) { inst.SoundEmitter!.PlaySound(FIRE_LOOP, 'loop'); }
+  if (inst._task2 === undefined) {
+    inst.SoundEmitter!.PlaySound(FIRE_LOOP, 'loop');
+  }
 }
 
 function _CanBeOpened(inst: DragonflyFurnaceInstance): void {
@@ -180,15 +199,25 @@ function OnIncinerateItems(inst: DragonflyFurnaceInstance): void {
 
 function ShouldIncinerateItem(_inst: DragonflyFurnaceInstance, item: ItemEntity): boolean {
   // NOTES(JBK): Fruitcake hack. You think you can escape this so easily?
-  if (item.prefab === 'winter_food4') { return false; }
-  if (item.hasTag('irreplaceable')) { return false; }
+  if (item.prefab === 'winter_food4') {
+    return false;
+  }
+  if (item.hasTag('irreplaceable')) {
+    return false;
+  }
   const container = item.components.container;
-  if (container !== undefined && !container.IsEmpty()) { return false; }
+  if (container !== undefined && !container.IsEmpty()) {
+    return false;
+  }
   return true;
 }
 
 export function dragonflyFurnacePrefabs(world: PrefabWorldContext) {
-  return { [DRAGONFLY_FURNACE_ID]: { ...buildingPrefab(declaration, 'dragonfly_furnace', .5, () => new DragonflyFurnaceInstance(world), world),
-    // fn: MiniMapEntity:SetIcon("dragonfly_furnace.png").
-    minimapIcon: 'dragonfly_furnace.png' } };
+  return {
+    [DRAGONFLY_FURNACE_ID]: {
+      ...buildingPrefab(declaration, 'dragonfly_furnace', 0.5, () => new DragonflyFurnaceInstance(world), world),
+      // fn: MiniMapEntity:SetIcon("dragonfly_furnace.png").
+      minimapIcon: 'dragonfly_furnace.png',
+    },
+  };
 }

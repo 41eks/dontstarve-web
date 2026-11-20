@@ -87,7 +87,14 @@ export interface ItemPrefabWorld {
 }
 
 /** lootdropper.lua FlingItem scatters the stack (`fling`), or `launch` gives its exact flight; otherwise it is placed. */
-export interface GroundSpawnOptions { fling?: boolean; launch?: import('../../componets/src/inventoryphysics').LootLaunch }
+export interface GroundSpawnOptions {
+  fling?: boolean;
+  launch?: import('../../componets/src/inventoryphysics').LootLaunch;
+}
 
 /** Creates the inst and its display now; returns undefined when the world can no longer spawn. */
-export type SpawnGroundItem = (definition: GroundItemDefinition, position: ReadonlyVector3, options?: GroundSpawnOptions) => ItemEntity | undefined;
+export type SpawnGroundItem = (
+  definition: GroundItemDefinition,
+  position: ReadonlyVector3,
+  options?: GroundSpawnOptions,
+) => ItemEntity | undefined;

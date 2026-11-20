@@ -27,13 +27,17 @@ export function assetCachePlugin() {
             await hashDirectory(`${path}/`);
           } else if (entry.isFile()) {
             // Hash each file separately so path/content boundaries are unambiguous.
-            const contentHash = createHash('sha256').update(await readFile(join(publicDir, path))).digest('hex');
+            const contentHash = createHash('sha256')
+              .update(await readFile(join(publicDir, path)))
+              .digest('hex');
             hash.update(JSON.stringify([path, contentHash]));
           }
         }
       }
 
-      for (const directory of assetDirectories) { await hashDirectory(directory); }
+      for (const directory of assetDirectories) {
+        await hashDirectory(directory);
+      }
 
       this.emitFile({
         type: 'asset',

@@ -5,25 +5,39 @@ test('renders container slot insts through shared slots and releases replaced pa
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/tests/fixture.html');
-  await page.evaluate(async urls => {
-    const { Container } = await import(urls.container);
-    const { newItemEntity, StorageSlot } = await import(urls.inventory);
-    const item = (record: any): any => newItemEntity(record, undefined, item);
-    const panel = document.querySelector('dst-chest-panel')!;
-    const create = () => new Container({}, () => new StorageSlot(), item, (record: any) => item({ itemId: record.prefab, count: 1 }));
-    const toItem = (item: any) => ({
-      id: item.prefab, name: item.prefab, icon: `${item.prefab}.tex`, count: 0, maxStack: 20, tile: item.tile,
-    });
-    const container = create();
-    container.SetNumSlots(2);
-    panel.open({ containerId: 'container:first', slotCount: 2 });
-    const stop = panel.bindContainer(container.slots, toItem);
-    container.LoadSnapshot({ slots: [{ slotKey: '1', item: { itemId: 'log', count: 3 } }] });
-    (window as any).containerBinding = { panel, container, create, toItem, stop };
-  }, {
-    container: `/@fs${fileURLToPath(new URL('../../componets/src/container.ts', import.meta.url))}`,
-    inventory: `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`,
-  });
+  await page.evaluate(
+    async urls => {
+      const { Container } = await import(urls.container);
+      const { newItemEntity, StorageSlot } = await import(urls.inventory);
+      const item = (record: any): any => newItemEntity(record, undefined, item);
+      const panel = document.querySelector('dst-chest-panel')!;
+      const create = () =>
+        new Container(
+          {},
+          () => new StorageSlot(),
+          item,
+          (record: any) => item({ itemId: record.prefab, count: 1 }),
+        );
+      const toItem = (item: any) => ({
+        id: item.prefab,
+        name: item.prefab,
+        icon: `${item.prefab}.tex`,
+        count: 0,
+        maxStack: 20,
+        tile: item.tile,
+      });
+      const container = create();
+      container.SetNumSlots(2);
+      panel.open({ containerId: 'container:first', slotCount: 2 });
+      const stop = panel.bindContainer(container.slots, toItem);
+      container.LoadSnapshot({ slots: [{ slotKey: '1', item: { itemId: 'log', count: 3 } }] });
+      (window as any).containerBinding = { panel, container, create, toItem, stop };
+    },
+    {
+      container: `/@fs${fileURLToPath(new URL('../../componets/src/container.ts', import.meta.url))}`,
+      inventory: `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`,
+    },
+  );
   const panel = page.locator('dst-chest-panel');
   await expect(panel.locator('.inventory-slot')).toHaveCount(2);
   await expect(panel.locator('[data-slot-key="1"]')).toHaveAttribute('data-item-id', 'log');
@@ -51,7 +65,8 @@ test('renders container slot insts through shared slots and releases replaced pa
   await page.evaluate(() => {
     const state = (window as any).containerBinding;
     state.panel.remove();
-    state.next.dispose(); state.container.dispose();
+    state.next.dispose();
+    state.container.dispose();
   });
   expect(errors).toEqual([]);
 });

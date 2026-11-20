@@ -21,11 +21,19 @@ export class FaceEntity extends BehaviourNode {
   private readonly timeout?: number;
   private readonly customalert?: string;
 
-  constructor(inst: FaceEntityInst, getfn: FaceEntity['getfn'], keepfn: FaceEntity['keepfn'],
-    timeout?: number, customalert?: string) {
+  constructor(
+    inst: FaceEntityInst,
+    getfn: FaceEntity['getfn'],
+    keepfn: FaceEntity['keepfn'],
+    timeout?: number,
+    customalert?: string,
+  ) {
     super('FaceEntity');
-    this.inst = inst; this.getfn = getfn; this.keepfn = keepfn;
-    this.timeout = timeout; this.customalert = customalert;
+    this.inst = inst;
+    this.getfn = getfn;
+    this.keepfn = keepfn;
+    this.timeout = timeout;
+    this.customalert = customalert;
   }
 
   override Visit(): void {
@@ -35,7 +43,9 @@ export class FaceEntity extends BehaviourNode {
         this.status = RUNNING;
         this.inst.components.locomotor?.Stop();
         this.starttime = this.now;
-      } else { this.status = FAILED; }
+      } else {
+        this.status = FAILED;
+      }
     }
     if (this.status === RUNNING) {
       const sg = this.inst.sg;
@@ -46,9 +56,12 @@ export class FaceEntity extends BehaviourNode {
         this.status = SUCCESS;
         return;
       }
-      if (!this.target?.isValid() || !this.keepfn(this.inst, this.target)) { this.status = FAILED; }
-      else if (sg?.hasStateTag('canrotate')) { this.inst.FacePoint(this.target.getPosition()); }
-      this.Sleep(.5);
+      if (!this.target?.isValid() || !this.keepfn(this.inst, this.target)) {
+        this.status = FAILED;
+      } else if (sg?.hasStateTag('canrotate')) {
+        this.inst.FacePoint(this.target.getPosition());
+      }
+      this.Sleep(0.5);
     }
   }
 }

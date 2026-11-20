@@ -19,21 +19,34 @@ import { createPickupInventory } from './pickupFixture';
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 function setup(playerPosition = new THREE.Vector3()) {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))),
+  );
+  const scene = new THREE.Scene(),
+    scheduler = new GameTimeScheduler(),
+    awake = createSignal(true);
   const displays = new PrefabDisplayGroup(scene);
-  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim',
-    { tickingarea: () => createMemo(() => awake.get()), scheduler });
+  const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {
+    tickingarea: () => createMemo(() => awake.get()),
+    scheduler,
+  });
   const definitions = oceanVineDecoPrefabs();
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.oceanVineDecos);
-  const spawn = (record: EntitySaveRecord) =>
-    prefabs.restore(OCEANVINE_DECO_ID, record) as OceanVineDecoInstance;
+  const spawn = (record: EntitySaveRecord) => prefabs.restore(OCEANVINE_DECO_ID, record) as OceanVineDecoInstance;
   const records = () => registry.exportRecords().oceanvine_deco ?? [];
   const requested = (archive: string) =>
-    (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
-  const dispose = () => { registry.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose(); };
+    (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.some(([url]) =>
+      String(url).endsWith(`/dst/data/anim/${archive}`),
+    );
+  const dispose = () => {
+    registry.dispose();
+    prefabs.dispose();
+    displays.dispose();
+    scheduler.dispose();
+  };
   return { scene, awake, prefabs, registry, definitions, spawn, records, requested, dispose };
 }
 /** The imported default save's vines, as the game's save reader parses them. */
@@ -44,7 +57,10 @@ async function importedVines(): Promise<EntitySaveRecord[]> {
   const { player } = JSON.parse(await readFile(new URL(session.playerFile, cluster), 'utf8')) as { player: unknown };
   return deserializeSave(json, SAVE_CATALOG, player).world.entities.oceanvine_deco! as EntitySaveRecord[];
 }
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('loads imported save records with the idle_N loop, tags and bank oceanvine_deco.lua declares', async () => {
   const vines = await importedVines();
@@ -60,41 +76,64 @@ it('loads imported save records with the idle_N loop, tags and bank oceanvine_de
       expect(Object.keys(inst.components)).toContain('distancefade');
     }
     expect(definitions.oceanvine_deco).toMatchObject({
-      assets: { animationArchive: 'waterforest_vines.zip', buildArchives: ['waterforest_vines.zip'], bank: 'vine_rainforest_border' },
+      assets: {
+        animationArchive: 'waterforest_vines.zip',
+        buildArchives: ['waterforest_vines.zip'],
+        bank: 'vine_rainforest_border',
+      },
       assetOptions: { instancedAnimations: ['idle_1', 'idle_2', 'idle_3', 'idle_4', 'idle_5', 'idle_6'] },
     });
-    expect(records().map(record => record.components.animnum).sort()).toEqual([2, 5]);
+    expect(
+      records()
+        .map(record => record.components.animnum)
+        .sort(),
+    ).toEqual([2, 5]);
     await prefabDisplay(loaded[0]!.transform.model)!.artLoaded();
     expect(requested('waterforest_vines.zip')).toBe(true);
     expect(loaded[0]!.sprite.currentAnimation).toBe('idle_2');
-  } finally { dispose(); }
+  } finally {
+    dispose();
+  }
 });
 
 it('rebuilds the declared clip after tile sleep', async () => {
   const { scene, awake, spawn, records, dispose } = setup();
   try {
-    const saved: EntitySaveRecord = { id: 'sleeping-vine', transform: { position: [1, 0, 3], rotationY: 0 }, components: { animnum: 4 } };
+    const saved: EntitySaveRecord = {
+      id: 'sleeping-vine',
+      transform: { position: [1, 0, 3], rotationY: 0 },
+      components: { animnum: 4 },
+    };
     const inst = spawn(saved);
-    const model = inst.transform.model, before = inst.sprite.sprite.peek();
+    const model = inst.transform.model,
+      before = inst.sprite.sprite.peek();
     await prefabDisplay(model)!.artLoaded();
-    awake.set(false); await settle();
+    awake.set(false);
+    await settle();
     expect(inst.status.peek()).toBe('asleep');
     expect(inst.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
-    awake.set(true); await settle();
+    awake.set(true);
+    await settle();
     await prefabDisplay(model)!.artLoaded();
     expect(model.parent).toBe(scene);
     expect(inst.sprite.currentAnimation).toBe('idle_4');
     expect(inst.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_4', loop: true });
     expect(inst.sprite.sprite.peek().appearance).toEqual(before.appearance);
     expect(records()).toEqual([saved]);
-  } finally { dispose(); }
+  } finally {
+    dispose();
+  }
 });
 
 it('keeps a c_spawn vine through c_save and a reload, and rejects c_give', async () => {
-  const first = setup(new THREE.Vector3(3, 0, -6)), second = setup(), inventory = createPickupInventory();
+  const first = setup(new THREE.Vector3(3, 0, -6)),
+    second = setup(),
+    inventory = createPickupInventory();
   try {
-    expect((await executeDebugCommand('c_spawn("oceanvine_deco")', inventory, prefab => first.registry.spawn(prefab))).ok).toBe(true);
+    expect(
+      (await executeDebugCommand('c_spawn("oceanvine_deco")', inventory, prefab => first.registry.spawn(prefab))).ok,
+    ).toBe(true);
     expect((await executeDebugCommand('c_give("oceanvine_deco")', inventory)).ok).toBe(false);
     const spawned = [...first.prefabs.instances(OCEANVINE_DECO_ID)][0] as OceanVineDecoInstance;
     // math.random(1, 6), and its loop.
@@ -102,19 +141,44 @@ it('keeps a c_spawn vine through c_save and a reload, and rejects c_give', async
     expect(spawned.sprite.sprite.peek().clip).toMatchObject({ name: `idle_${spawned.animnum}`, loop: true });
     const before = first.registry.exportRecords();
     let json = '';
-    expect((await executeDebugCommand('c_save()', inventory, undefined, () => {
-      json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
-        { entities: before, inventory: inventory.exportSaved(), elapsedSeconds: 1, playerTransform: { position: [3, 0, -6], rotationY: 0 } }, SAVE_CATALOG);
-    })).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand('c_save()', inventory, undefined, () => {
+          json = serializeSave(
+            deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
+            {
+              entities: before,
+              inventory: inventory.exportSaved(),
+              elapsedSeconds: 1,
+              playerTransform: { position: [3, 0, -6], rotationY: 0 },
+            },
+            SAVE_CATALOG,
+          );
+        })
+      ).ok,
+    ).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG).world.entities.oceanvine_deco!;
     expect(saved).toEqual(before.oceanvine_deco);
     expect(saved).toHaveLength(1);
-    expect(saved[0]).toMatchObject({ id: spawned.entityId, transform: { position: [3, 0, -6] }, components: { animnum: spawned.animnum } });
+    expect(saved[0]).toMatchObject({
+      id: spawned.entityId,
+      transform: { position: [3, 0, -6] },
+      components: { animnum: spawned.animnum },
+    });
     await second.registry.restoreAll({ oceanvine_deco: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof OceanVineDecoInstance)) { throw new Error('The saved vine did not load'); }
+    if (!(loaded instanceof OceanVineDecoInstance)) {
+      throw new Error('The saved vine did not load');
+    }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
-    expect([loaded.animnum, loaded.sprite.sprite.peek().clip]).toMatchObject([spawned.animnum, { name: `idle_${spawned.animnum}`, loop: true }]);
+    expect([loaded.animnum, loaded.sprite.sprite.peek().clip]).toMatchObject([
+      spawned.animnum,
+      { name: `idle_${spawned.animnum}`, loop: true },
+    ]);
     expect(second.records()).toEqual(saved);
-  } finally { first.dispose(); second.dispose(); inventory.dispose(); }
+  } finally {
+    first.dispose();
+    second.dispose();
+    inventory.dispose();
+  }
 });

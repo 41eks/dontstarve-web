@@ -24,24 +24,58 @@ import { torchPrefabs } from './torch';
  * The item prefabs: every inventory item and piece of ground art, each from its own module where it has one, else drawn
  * from its ground art, else from its inventory image (`icons`).
  */
-export function itemPrefabs(world: ItemPrefabWorld,
-  icons: Readonly<Record<string, { readonly atlas: string; readonly image: string }>>): Record<string, ItemPrefabDefinition> {
+export function itemPrefabs(
+  world: ItemPrefabWorld,
+  icons: Readonly<Record<string, { readonly atlas: string; readonly image: string }>>,
+): Record<string, ItemPrefabDefinition> {
   const prefabs: Record<string, ItemPrefabDefinition> = {};
-  for (const [id, icon] of Object.entries(icons)) { prefabs[id] = iconItemPrefab(id, icon, world); }
-  for (const id of Object.keys(GROUND_ART_DEFINITIONS)) { prefabs[id] = groundItemPrefab(id, world); }
-  return Object.assign(prefabs,
+  for (const [id, icon] of Object.entries(icons)) {
+    prefabs[id] = iconItemPrefab(id, icon, world);
+  }
+  for (const id of Object.keys(GROUND_ART_DEFINITIONS)) {
+    prefabs[id] = groundItemPrefab(id, world);
+  }
+  return Object.assign(
+    prefabs,
     burnableItemPrefabs(world, [GUNPOWDER_ID, POOP_ID, 'rock_avocado_fruit_ripe']),
-    { [HEATROCK_ID]: groundItemPrefab(HEATROCK_ID, world, { configure: inst => declareHeatRockSprite(inst, inst.sprite) }) },
-    { [NIGHTMARE_TIMEPIECE_ID]: groundItemPrefab(NIGHTMARE_TIMEPIECE_ID, world, { configure: inst => declareNightmareTimepieceSprite(inst, inst.sprite) }) },
-    hatPrefabs(world), bernieItemPrefabs(world), firefliesPrefabs(world), butterflyPrefabs(world), molePrefabs(world),
-    lightflierPrefabs(world), lightbulbPrefabs(world), lanternPrefabs(world), phonographPrefabs(world), torchPrefabs(world),
-    poopPrefabs(world), rockAvocadoFruitPrefabs(world), gunpowderPrefabs(world));
+    {
+      [HEATROCK_ID]: groundItemPrefab(HEATROCK_ID, world, {
+        configure: inst => declareHeatRockSprite(inst, inst.sprite),
+      }),
+    },
+    {
+      [NIGHTMARE_TIMEPIECE_ID]: groundItemPrefab(NIGHTMARE_TIMEPIECE_ID, world, {
+        configure: inst => declareNightmareTimepieceSprite(inst, inst.sprite),
+      }),
+    },
+    hatPrefabs(world),
+    bernieItemPrefabs(world),
+    firefliesPrefabs(world),
+    butterflyPrefabs(world),
+    molePrefabs(world),
+    lightflierPrefabs(world),
+    lightbulbPrefabs(world),
+    lanternPrefabs(world),
+    phonographPrefabs(world),
+    torchPrefabs(world),
+    poopPrefabs(world),
+    rockAvocadoFruitPrefabs(world),
+    gunpowderPrefabs(world),
+  );
 }
 
 /** The stack a ground item definition describes, without its display metadata or saved prefab records. */
 function definitionStack(definition: GroundItemDefinition): InventoryStack {
-  const { entity: _entity, name: _name, icon: _icon, atlas: _atlas, torchLit: _torchLit, lanternOn: _lanternOn,
-    playbackRemaining: _playback, ...stack } = definition;
+  const {
+    entity: _entity,
+    name: _name,
+    icon: _icon,
+    atlas: _atlas,
+    torchLit: _torchLit,
+    lanternOn: _lanternOn,
+    playbackRemaining: _playback,
+    ...stack
+  } = definition;
   return stack;
 }
 
@@ -49,24 +83,41 @@ function definitionStack(definition: GroundItemDefinition): InventoryStack {
  * SpawnPrefab of a stack, set down at `position` as inventoryitem:OnDropped does: lootdropper FlingItem throws it
  * (`fling`), `launch` gives its exact flight, otherwise it lands where it is put. A given `entity` is that inst itself.
  */
-export function spawnGroundStack(world: Pick<ItemPrefabWorld, 'spawnItem'>, definition: GroundItemDefinition, position: ReadonlyVector3,
-  { fling = false, launch }: GroundSpawnOptions = {}): ItemEntity {
-  if (!Number.isSafeInteger(definition.count) || definition.count < 1) { throw new RangeError('Invalid ground item count'); }
+export function spawnGroundStack(
+  world: Pick<ItemPrefabWorld, 'spawnItem'>,
+  definition: GroundItemDefinition,
+  position: ReadonlyVector3,
+  { fling = false, launch }: GroundSpawnOptions = {},
+): ItemEntity {
+  if (!Number.isSafeInteger(definition.count) || definition.count < 1) {
+    throw new RangeError('Invalid ground item count');
+  }
   const inst = definition.entity ?? world.spawnItem(definitionStack(definition));
   inst.setPosition(position.x, 0, position.z);
   inst.components.inventoryitem.OnDropped(launch);
-  if (fling && !launch) { inst.components.inventoryphysics?.Launch(); }
+  if (fling && !launch) {
+    inst.components.inventoryphysics?.Launch();
+  }
   return inst;
 }
 
 /** lootdropper DropLoot: each piece of each stack is spawned on its own and flung. */
-export function flingLoot(world: Pick<ItemPrefabWorld, 'spawnItem'>, definitions: readonly GroundItemDefinition[], position: ReadonlyVector3,
-  launch?: () => LootLaunch): void {
+export function flingLoot(
+  world: Pick<ItemPrefabWorld, 'spawnItem'>,
+  definitions: readonly GroundItemDefinition[],
+  position: ReadonlyVector3,
+  launch?: () => LootLaunch,
+): void {
   const origin = position.clone();
   for (const definition of definitions) {
-    if (!Number.isSafeInteger(definition.count) || definition.count < 1) { throw new RangeError('Invalid loot count'); }
+    if (!Number.isSafeInteger(definition.count) || definition.count < 1) {
+      throw new RangeError('Invalid loot count');
+    }
     for (let index = 0; index < definition.count; index++) {
-      spawnGroundStack(world, { ...definition, entity: undefined, count: 1 }, origin, { fling: true, launch: launch?.() });
+      spawnGroundStack(world, { ...definition, entity: undefined, count: 1 }, origin, {
+        fling: true,
+        launch: launch?.(),
+      });
     }
   }
 }

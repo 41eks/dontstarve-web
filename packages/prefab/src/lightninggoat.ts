@@ -34,13 +34,22 @@ const SALTLICK_LIGHTNINGGOAT_USES = 1;
 /** setcharged: inst.chargeleft = 3 days. */
 export const LIGHTNING_GOAT_CHARGES = 3;
 /** MakeCharacterPhysics(inst, 100, .5). */
-const RADIUS = .5 * WORLD_SCALE;
+const RADIUS = 0.5 * WORLD_SCALE;
 
 /** inst.Light: radius .85 (DST units), falloff .5, intensity .75, colour (255, 255, 236). */
-const LIGHT = { radius: .85 * WORLD_SCALE, falloff: .5, intensity: .75, colour: [1, 1, 236 / 255] } as const;
+const LIGHT = { radius: 0.85 * WORLD_SCALE, falloff: 0.5, intensity: 0.75, colour: [1, 1, 236 / 255] } as const;
 
-SetSharedLootTable('lightninggoat', [['meat', 1], ['meat', 1], ['lightninggoathorn', .25]]);
-SetSharedLootTable('chargedlightninggoat', [['meat', 1], ['meat', 1], ['goatmilk', 1], ['lightninggoathorn', .25]]);
+SetSharedLootTable('lightninggoat', [
+  ['meat', 1],
+  ['meat', 1],
+  ['lightninggoathorn', 0.25],
+]);
+SetSharedLootTable('chargedlightninggoat', [
+  ['meat', 1],
+  ['meat', 1],
+  ['goatmilk', 1],
+  ['lightninggoathorn', 0.25],
+]);
 
 export interface LightningGoatWorld extends Pick<WorldContentContext, 'getWatchWorldContent'> {
   scheduler: GameTimeScheduler;
@@ -61,23 +70,41 @@ export interface LightningGoatWorld extends Pick<WorldContentContext, 'getWatchW
 }
 
 /** lightninggoat.lua OnSave: data.charged and data.chargeleft only exist while the goat is charged. */
-export interface LightningGoatSaveState { charged: true; chargeleft: number }
+export interface LightningGoatSaveState {
+  charged: true;
+  chargeleft: number;
+}
 
 type LightningGoatComponents = PrefabComponents & {
-  health: Health; sleeper: Sleeper; lootdropper: LootDropper; inspectable: Inspectable; knownlocations: KnownLocations;
-  herdmember: HerdMember; timer: Timer; saltlicker: SaltLicker; locomotor: LocoMotor; electricattacks?: ElectricAttacks;
+  health: Health;
+  sleeper: Sleeper;
+  lootdropper: LootDropper;
+  inspectable: Inspectable;
+  knownlocations: KnownLocations;
+  herdmember: HerdMember;
+  timer: Timer;
+  saltlicker: SaltLicker;
+  locomotor: LocoMotor;
+  electricattacks?: ElectricAttacks;
 };
 
 const LIGHTNING_GOAT_BANKS = ['lightning_goat_basic.zip', 'lightning_goat_actions.zip'] as const;
-const CLIP_LENGTHS: ReadonlyMap<string, number> = new Map(LIGHTNING_GOAT_BANKS.flatMap(bank => [...animationLengths(bank)]).reverse());
+const CLIP_LENGTHS: ReadonlyMap<string, number> = new Map(
+  LIGHTNING_GOAT_BANKS.flatMap(bank => [...animationLengths(bank)]).reverse(),
+);
 export const LIGHTNING_GOAT_BUILD = 'lightning_goat_build.zip';
 export const LIGHTNING_GOAT_SHOCKED_BUILD = 'lightning_goat_shocked_build.zip';
 /**
  * lightninggoat.lua SetBank("lightning_goat") over its basic and actions archives, with the build setcharged swaps for the
  * shocked one, and AnimState:Hide("fx") until it is charged.
  */
-export const LIGHTNING_GOAT_ART = { animationArchive: LIGHTNING_GOAT_BANKS[0], extraAnimationArchives: LIGHTNING_GOAT_BANKS.slice(1),
-  buildArchives: [LIGHTNING_GOAT_BUILD, LIGHTNING_GOAT_SHOCKED_BUILD], bank: 'lightning_goat', hiddenLayers: ['fx'] };
+export const LIGHTNING_GOAT_ART = {
+  animationArchive: LIGHTNING_GOAT_BANKS[0],
+  extraAnimationArchives: LIGHTNING_GOAT_BANKS.slice(1),
+  buildArchives: [LIGHTNING_GOAT_BUILD, LIGHTNING_GOAT_SHOCKED_BUILD],
+  bank: 'lightning_goat',
+  hiddenLayers: ['fx'],
+};
 
 /** lightninggoat.lua: the fields it keeps on inst, and the engine's Physics and AnimState the stategraph and locomotor drive. */
 export class LightningGoatInstance extends PrefabInstance implements FaceEntityInst {
@@ -103,9 +130,13 @@ export class LightningGoatInstance extends PrefabInstance implements FaceEntityI
   }
 
   // conventions-allow instance-method: GetTime(), which the brain and its behaviours call on inst.
-  getTime(): number { return this.GetTime(); }
+  getTime(): number {
+    return this.GetTime();
+  }
   // conventions-allow instance-method: math.random, which the brain's behaviours call on inst.
-  random(): number { return this.randomSource(); }
+  random(): number {
+    return this.randomSource();
+  }
 
   /** Transform:SetRotation; Transform:SetFourFaced draws the heading with four facings. */
   // conventions-allow instance-method: the engine's Transform:SetRotation, which locomotor and FaceEntity call on inst.
@@ -118,7 +149,9 @@ export class LightningGoatInstance extends PrefabInstance implements FaceEntityI
   // conventions-allow instance-method: the engine's Physics:SetMotorVel, which locomotor calls on inst.
   setMotorSpeed(speed: number): void {
     const body = this.physicsBody;
-    if (!body) { return; }
+    if (!body) {
+      return;
+    }
     const heading = THREE.MathUtils.degToRad(this.transform.rotation);
     body.velocity.x = Math.cos(heading) * speed;
     body.velocity.z = -Math.sin(heading) * speed;
@@ -131,7 +164,9 @@ function WatchCycles(inst: LightningGoatInstance, world: LightningGoatWorld): vo
   inst.cyclestask = inst.DoTaskInTime(world.secondsUntilNextDay(world.scheduler.now), () => {
     inst.cyclestask = undefined;
     ReduceCharges(inst, world);
-    if (inst.charged) { WatchCycles(inst, world); }
+    if (inst.charged) {
+      WatchCycles(inst, world);
+    }
   });
 }
 
@@ -146,27 +181,37 @@ function discharge(inst: LightningGoatInstance): void {
   inst.charged = false;
   inst.light.set(null);
   inst.chargeleft = undefined;
-  inst.cyclestask?.Cancel(); inst.cyclestask = undefined;
+  inst.cyclestask?.Cancel();
+  inst.cyclestask = undefined;
 }
 
 function ReduceCharges(inst: LightningGoatInstance, _world: LightningGoatWorld): void {
-  if (inst.chargeleft === undefined) { return; }
+  if (inst.chargeleft === undefined) {
+    return;
+  }
   inst.chargeleft -= 1;
-  if (inst.chargeleft <= 0) { discharge(inst); }
+  if (inst.chargeleft <= 0) {
+    discharge(inst);
+  }
 }
 
 /** setcharged: the shocked build with its fx layer, the light and three days of charge; `instant` skips the shocked state. */
 function setcharged(inst: LightningGoatInstance, world: LightningGoatWorld, instant = false): void {
-  if (inst.components.health.IsDead()) { return; }
+  if (inst.components.health.IsDead()) {
+    return;
+  }
   inst.addTag('charged');
   inst.addTag('electricdamageimmune');
-  const electricattacks = inst.components.electricattacks
-    ?? addComponent(inst, 'electricattacks', ElectricAttacks, () => removeComponent(inst, 'electricattacks'));
+  const electricattacks =
+    inst.components.electricattacks ??
+    addComponent(inst, 'electricattacks', ElectricAttacks, () => removeComponent(inst, 'electricattacks'));
   electricattacks.AddSource(inst);
   inst.components.lootdropper.SetChanceLootTable('chargedlightninggoat');
   inst.sprite.setBuildArchive(LIGHTNING_GOAT_SHOCKED_BUILD);
   inst.sprite.showLayer('fx');
-  if (!instant) { inst.stategraph.goToState('shocked'); }
+  if (!instant) {
+    inst.stategraph.goToState('shocked');
+  }
   // AnimState:SetBloomEffectHandle: bloom is not rendered.
   inst.charged = true;
   inst.chargeleft = LIGHTNING_GOAT_CHARGES;
@@ -179,7 +224,9 @@ function OnElectrocute(inst: LightningGoatInstance, world: LightningGoatWorld): 
 }
 
 function OnSave(inst: LightningGoatInstance, data: EntityPersistData): void {
-  if (inst.charged) { data.lightninggoat = { charged: true, chargeleft: inst.chargeleft! }; }
+  if (inst.charged) {
+    data.lightninggoat = { charged: true, chargeleft: inst.chargeleft! };
+  }
 }
 
 function OnLoad(inst: LightningGoatInstance, world: LightningGoatWorld, data: EntityPersistData): void {
@@ -197,11 +244,18 @@ function getstatus(inst: LightningGoatInstance): string | undefined {
 /** The brain's TheWorld: simutil.lua FindEntity / GetClosestInstWithTag over TheSim, and the map's IsAboveGroundAtPoint. */
 function CreateBrainWorld(inst: LightningGoatInstance, world: LightningGoatWorld): BrainWorld {
   const origin = new THREE.Vector3();
-  const at = (from: BrainEntity) => { const { x, y, z } = from.getPosition(); return origin.set(x, y, z); };
+  const at = (from: BrainEntity) => {
+    const { x, y, z } = from.getPosition();
+    return origin.set(x, y, z);
+  };
   return {
-    get isDay() { return world.clock.peek().phase === 'day'; },
-    findEntity: (from, radius, fn, must, cant, oneOf) => inst.TheSim.FindEntities(at(from), radius, must, cant, oneOf)
-      .find(entity => entity !== from && entity.IsVisible() && !entity.inlimbo && (!fn || fn(entity, from))),
+    get isDay() {
+      return world.clock.peek().phase === 'day';
+    },
+    findEntity: (from, radius, fn, must, cant, oneOf) =>
+      inst.TheSim.FindEntities(at(from), radius, must, cant, oneOf).find(
+        entity => entity !== from && entity.IsVisible() && !entity.inlimbo && (!fn || fn(entity, from)),
+      ),
     getClosestInstWithTag: (tags, from, radius) => {
       const [first, second] = inst.TheSim.FindEntities(at(from), radius, tags);
       return first !== from ? first : second;
@@ -220,13 +274,16 @@ function CreateBrainWorld(inst: LightningGoatInstance, world: LightningGoatWorld
  * spawnedforhunt, the DynamicShadow and bloom. herdmember and saltlicker are minimal: herds and salt licks are not ported.
  */
 function fn(world: LightningGoatWorld): LightningGoatInstance {
-  const { scheduler } = world, random = world.random ?? Math.random;
+  const { scheduler } = world,
+    random = world.random ?? Math.random;
   const inst = new LightningGoatInstance(scheduler);
   inst.BindScheduler(scheduler);
   const soundEmitter = inst.AddSoundEmitter();
   inst.setRotation(0);
   // AnimState:Hide("fx") is the art's hiddenLayers; setcharged shows it.
-  for (const tag of ['lightninggoat', 'animal', 'lightningrod']) { inst.addTag(tag); }
+  for (const tag of ['lightninggoat', 'animal', 'lightningrod']) {
+    inst.addTag(tag);
+  }
 
   const health = addComponent(inst, 'health', Health, undefined, scheduler);
   health.SetMaxHealth(LIGHTNING_GOAT_HEALTH);
@@ -249,26 +306,39 @@ function fn(world: LightningGoatWorld): LightningGoatInstance {
   inst.OnSave = OnSave;
   inst.OnLoad = (inst, data) => OnLoad(inst, world, data);
 
-  const locomotor = addComponent(inst, 'locomotor', LocoMotor, { arriveDistance: .15 * WORLD_SCALE, pathfinder: world.pathfinder });
+  const locomotor = addComponent(inst, 'locomotor', LocoMotor, {
+    arriveDistance: 0.15 * WORLD_SCALE,
+    pathfinder: world.pathfinder,
+  });
   locomotor.walkspeed = LIGHTNING_GOAT_WALK_SPEED;
   locomotor.runspeed = LIGHTNING_GOAT_RUN_SPEED;
 
-  const playSound = (sound: LightningGoatSound) => soundEmitter.PlaySound(`dontstarve_DLC001/creatures/lightninggoat/${sound}`);
+  const playSound = (sound: LightningGoatSound) =>
+    soundEmitter.PlaySound(`dontstarve_DLC001/creatures/lightninggoat/${sound}`);
   const stopSprite = inst.animstate.animation.subscribe(({ name, loop }) => inst.AnimState.PlayAnimation(name, loop));
-  inst.stategraph = new LightningGoatStateGraph({
-    locomotor, sleeper: inst.components.sleeper,
-    charged: () => inst.charged,
-    playSound,
-    doPeriodicTask: (period, task) => { const handle = inst.DoPeriodicTask(period, task); return () => handle.Cancel(); },
-    clearChargedLook: () => {
-      inst.sprite.hideLayer('fx');
-      inst.sprite.setBuildArchive(LIGHTNING_GOAT_BUILD);
+  inst.stategraph = new LightningGoatStateGraph(
+    {
+      locomotor,
+      sleeper: inst.components.sleeper,
+      charged: () => inst.charged,
+      playSound,
+      doPeriodicTask: (period, task) => {
+        const handle = inst.DoPeriodicTask(period, task);
+        return () => handle.Cancel();
+      },
+      clearChargedLook: () => {
+        inst.sprite.hideLayer('fx');
+        inst.sprite.setBuildArchive(LIGHTNING_GOAT_BUILD);
+      },
+      performBufferedAction: () => {
+        inst.PerformBufferedAction();
+      },
+      playAnimation: (name, loop) => inst.animstate.PlayAnimation(name, loop),
+      pushAnimation: (name, loop) => inst.animstate.PushAnimation(name, loop),
+      random,
     },
-    performBufferedAction: () => { inst.PerformBufferedAction(); },
-    playAnimation: (name, loop) => inst.animstate.PlayAnimation(name, loop),
-    pushAnimation: (name, loop) => inst.animstate.PushAnimation(name, loop),
-    random,
-  }, scheduler);
+    scheduler,
+  );
   inst.SetStateGraph(() => inst.stategraph.sg);
   inst.world = CreateBrainWorld(inst, world);
   inst.randomSource = random;
@@ -277,7 +347,8 @@ function fn(world: LightningGoatWorld): LightningGoatInstance {
   inst.onRemove(() => {
     inst.brain?.Stop();
     inst.stategraph.dispose();
-    stopSprite(); inst.animstate.dispose();
+    stopSprite();
+    inst.animstate.dispose();
     inst.light.set(null);
   });
   return inst;
@@ -285,25 +356,30 @@ function fn(world: LightningGoatWorld): LightningGoatInstance {
 
 /** Each frame after the physics step: the goat follows its body, then its stategraph, brain and locomotor run. */
 function OnUpdate(inst: LightningGoatInstance, world: LightningGoatWorld, dt: number): void {
-  if (inst.status.peek() !== 'active' || !Number.isFinite(dt) || dt < 0) { return; }
+  if (inst.status.peek() !== 'active' || !Number.isFinite(dt) || dt < 0) {
+    return;
+  }
   const body = inst.physicsBody;
   if (body) {
     const position = new THREE.Vector3(body.position.x, 0, body.position.z);
     world.constrainPosition(position);
     inst.setPosition(position.x, 0, position.z);
     if (body.position.x !== position.x || body.position.z !== position.z) {
-      body.position.x = position.x; body.position.z = position.z;
+      body.position.x = position.x;
+      body.position.z = position.z;
       body.aabbNeedsUpdate = true;
     }
   }
-  const step = Math.min(dt, .1);
+  const step = Math.min(dt, 0.1);
   inst.stategraph.update(step);
   inst.brain?.tick(world.scheduler.now);
   inst.components.locomotor.update(step);
 }
 
 /** The Prefab lightninggoat.lua returns, drawn from its shared archives over its plain and shocked builds. */
-export function lightningGoatPrefabs(world: LightningGoatWorld): Readonly<Record<typeof LIGHTNINGGOAT_ID, PrefabEntityDefinition<LightningGoatInstance>>> {
+export function lightningGoatPrefabs(
+  world: LightningGoatWorld,
+): Readonly<Record<typeof LIGHTNINGGOAT_ID, PrefabEntityDefinition<LightningGoatInstance>>> {
   return {
     [LIGHTNINGGOAT_ID]: {
       fn: position => {
@@ -315,7 +391,7 @@ export function lightningGoatPrefabs(world: LightningGoatWorld): Readonly<Record
       },
       assets: LIGHTNING_GOAT_ART,
       // MakeCharacterPhysics(inst, 100, .5)
-      physics: { make: (inst, radius) => MakeCharacterPhysics(inst, 100, radius), radius: .5 },
+      physics: { make: (inst, radius) => MakeCharacterPhysics(inst, 100, radius), radius: 0.5 },
       onSpawned: inst => {
         // A saved heading is the record's rotation, which the manager restores without SetRotation's facing.
         inst.setRotation(inst.transform.rotation);

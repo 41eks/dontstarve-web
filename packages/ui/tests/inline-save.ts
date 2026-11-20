@@ -7,26 +7,37 @@ type HeldRecord = { id: string; prefab: string; skinname?: string; components: R
  * A minimal forest save built in the test: one unbroken deciduous map, no entities and an empty player, so a page
  * does not depend on any bundled save file.
  */
-export function minimalSave(options: {
-  position?: [number, number, number];
-  stats?: { health: number; hunger: number; sanity: number };
-  /** inventory.lua OnSave's items, by one-based slot. */
-  items?: Record<string, HeldRecord>;
-  /** inventory.lua OnSave's equip, by EQUIPSLOTS name. */
-  equip?: Record<string, HeldRecord>;
-} = {}) {
+export function minimalSave(
+  options: {
+    position?: [number, number, number];
+    stats?: { health: number; hunger: number; sanity: number };
+    /** inventory.lua OnSave's items, by one-based slot. */
+    items?: Record<string, HeldRecord>;
+    /** inventory.lua OnSave's equip, by EQUIPSLOTS name. */
+    equip?: Record<string, HeldRecord>;
+  } = {},
+) {
   return {
-    format: 'three-roaming-save', schemaVersion: 1, gameVersion: '0.0.0',
+    format: 'three-roaming-save',
+    schemaVersion: 1,
+    gameVersion: '0.0.0',
     session: { id: 'test-session', createdAt: '2026-01-01T00:00:00.000Z' },
     snapshot: { id: '0000000001', parentId: null, savedAt: '2026-01-01T00:00:00.000Z', reason: 'manual' },
     world: {
-      shardId: 'master', prefab: 'forest', elapsedSeconds: 0, systems: {},
-      map: { kind: 'generated', generator: { id: 'test-world', options: { size: 1000, moonTreeCount: 0, moonTreeExclusionRadiusSquared: 0 } } },
+      shardId: 'master',
+      prefab: 'forest',
+      elapsedSeconds: 0,
+      systems: {},
+      map: {
+        kind: 'generated',
+        generator: { id: 'test-world', options: { size: 1000, moonTreeCount: 0, moonTreeExclusionRadiusSquared: 0 } },
+      },
       entities: {},
     },
     players: {
       local: {
-        prefab: 'wilson', shardId: 'master',
+        prefab: 'wilson',
+        shardId: 'master',
         transform: { position: options.position ?? [0, 0, 0], rotationY: 0 },
         ...(options.stats ? { stats: options.stats } : {}),
         inventory: { items: options.items ?? {}, equip: options.equip ?? {} },

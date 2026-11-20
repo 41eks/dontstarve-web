@@ -1,9 +1,9 @@
 import type { PerishStage } from './perishable';
 
 // tuning.lua
-const STALE_FOOD_HUNGER = .667;
-const SPOILED_FOOD_HUNGER = .5;
-const STALE_FOOD_HEALTH = .333;
+const STALE_FOOD_HUNGER = 0.667;
+const SPOILED_FOOD_HUNGER = 0.5;
+const STALE_FOOD_HEALTH = 0.333;
 const SPOILED_FOOD_HEALTH = 0;
 const SANITY_SMALL = 10;
 
@@ -33,12 +33,18 @@ export class Edible {
     this.inst = inst;
   }
 
-  OnEaten(eater: unknown): void { this.inst?.PushEvent('oneaten', { eater }); }
+  OnEaten(eater: unknown): void {
+    this.inst?.PushEvent('oneaten', { eater });
+  }
 
   /** edible.lua HandleEatRemove: OnEaten may already have removed the food. */
   HandleEatRemove(): boolean {
-    if (!this.inst) { return false; }
-    if (this.inst.isRemoved) { return true; }
+    if (!this.inst) {
+      return false;
+    }
+    if (this.inst.isRemoved) {
+      return true;
+    }
     return this.inst.components.stackable?.Consume() ?? this.inst.remove();
   }
 
@@ -46,8 +52,13 @@ export class Edible {
     const sanityvalue = this.sanityvalue;
     if (this.degrades_with_spoilage && sanityvalue >= 0) {
       const stage = this.perishStage();
-      if (stage === 'stale') { if (sanityvalue > 0) { return 0; } }
-      else if (stage === 'spoiled') { return -SANITY_SMALL; }
+      if (stage === 'stale') {
+        if (sanityvalue > 0) {
+          return 0;
+        }
+      } else if (stage === 'spoiled') {
+        return -SANITY_SMALL;
+      }
     }
     return sanityvalue;
   }
@@ -62,7 +73,9 @@ export class Edible {
 
   private spoilageMultiplier(value: number, stale: number, spoiled: number): number {
     // Negative values ignore spoilage.
-    if (!this.degrades_with_spoilage || value < 0) { return 1; }
+    if (!this.degrades_with_spoilage || value < 0) {
+      return 1;
+    }
     const stage = this.perishStage();
     return stage === 'stale' ? stale : stage === 'spoiled' ? spoiled : 1;
   }

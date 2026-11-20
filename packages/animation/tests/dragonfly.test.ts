@@ -11,24 +11,58 @@ import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { createTestWorldSources } from './worldContentFixture';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-const record: EntitySaveRecord = { id: 'dragonfly-101512', transform: { position: [2, 0, 3], rotationY: .2 },
-  components: { dragonfly: { playercombat: true, health: { health: 26000 }, inventory: { items: {}, equip: {} },
-    moisture: { moisture: 12 }, rampingspawner: { current_wave: 2, wave_num: 3, spawning_on: false },
-    knownlocations: { locations: [{ name: 'home', x: 4, y: 0, z: 5 }] },
-    timer: { timers: { groundpound_cd: { timeleft: 5, paused: true, initial_time: 10 } } } } } };
+const record: EntitySaveRecord = {
+  id: 'dragonfly-101512',
+  transform: { position: [2, 0, 3], rotationY: 0.2 },
+  components: {
+    dragonfly: {
+      playercombat: true,
+      health: { health: 26000 },
+      inventory: { items: {}, equip: {} },
+      moisture: { moisture: 12 },
+      rampingspawner: { current_wave: 2, wave_num: 3, spawning_on: false },
+      knownlocations: { locations: [{ name: 'home', x: 4, y: 0, z: 5 }] },
+      timer: { timers: { groundpound_cd: { timeleft: 5, paused: true, initial_time: 10 } } },
+    },
+  },
+};
 const setup = () => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
+  const scene = new THREE.Scene(),
+    scheduler = new GameTimeScheduler(),
+    awake = createSignal(true);
   const sources = createTestWorldSources(scheduler);
   const displays = new PrefabDisplayGroup(scene);
-  const dragonflies = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
-  dragonflies.register(dragonflyPrefabs({ scheduler, getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources) }));
-  return { scene, scheduler, awake, dragonflies,
+  const dragonflies = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {
+    tickingarea: () => createMemo(() => awake.get()),
+  });
+  dragonflies.register(
+    dragonflyPrefabs({
+      scheduler,
+      getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources),
+    }),
+  );
+  return {
+    scene,
+    scheduler,
+    awake,
+    dragonflies,
     spawn: () => dragonflies.restore(DRAGONFLY_ID, record).transform.model,
-    dispose: () => { dragonflies.dispose(); displays.dispose(); scheduler.dispose(); } };
+    dispose: () => {
+      dragonflies.dispose();
+      displays.dispose();
+      scheduler.dispose();
+    },
+  };
 };
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('loads the saved dragonfly through fn then OnLoad and keeps the Lua looping idle declaration', async () => {
   const { dragonflies, spawn, dispose } = setup();
@@ -37,12 +71,26 @@ it('loads the saved dragonfly through fn then OnLoad and keeps the Lua looping i
     await prefabDisplay(model)!.artLoaded();
     const instance = dragonflies.get(record.id)!;
     expect(instance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [] });
-    expect(instance.listTags()).toEqual(expect.arrayContaining(['epic', 'noepicmusic', 'monster', 'hostile', 'dragonfly',
-      'scarytoprey', 'largecreature', 'flying', 'ignorewalkableplatformdrowning']));
+    expect(instance.listTags()).toEqual(
+      expect.arrayContaining([
+        'epic',
+        'noepicmusic',
+        'monster',
+        'hostile',
+        'dragonfly',
+        'scarytoprey',
+        'largecreature',
+        'flying',
+        'ignorewalkableplatformdrowning',
+      ]),
+    );
     expect(dragonflies.exportRecords()[0].record).toEqual(record);
-    expect(PREFAB_DEFINITIONS.dragonflies.parseComponents(record.components, 'dragonfly', { grounded: true } as never))
-      .toEqual(record.components);
-  } finally { dispose(); }
+    expect(
+      PREFAB_DEFINITIONS.dragonflies.parseComponents(record.components, 'dragonfly', { grounded: true } as never),
+    ).toEqual(record.components);
+  } finally {
+    dispose();
+  }
 });
 
 it('rebuilds the declared idle clip after the tile sleeps', async () => {
@@ -51,13 +99,17 @@ it('rebuilds the declared idle clip after the tile sleeps', async () => {
     const model = spawn();
     await prefabDisplay(model)!.artLoaded();
     const instance = dragonflies.get(record.id)!;
-    awake.set(false); await settle();
+    awake.set(false);
+    await settle();
     expect(instance.status.peek()).toBe('asleep');
     expect(instance.sprite.loaded).toBe(false);
     expect(model.parent).toBeNull();
-    awake.set(true); await settle();
+    awake.set(true);
+    await settle();
     expect(model.parent).toBe(scene);
     expect(instance.sprite.currentAnimation).toBe('idle');
     expect(instance.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
-  } finally { dispose(); }
+  } finally {
+    dispose();
+  }
 });

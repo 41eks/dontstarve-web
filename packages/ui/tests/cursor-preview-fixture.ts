@@ -23,13 +23,20 @@ export async function checkCursorPreview() {
   camera.up.set(0, 0, -1);
   camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld();
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  const ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(40, 40).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial({ color: 0xffffff }),
+  );
   scene.add(ground);
   // A placer entity: its display reports the light override its sprite json declares.
-  const placer = createEmptyEntity('preview'), preview = placer.display.model;
-  preview.add(new THREE.Mesh(new THREE.PlaneGeometry(4, 4).rotateX(-Math.PI / 2),
-    new THREE.MeshBasicMaterial({ color: 0xffffff })));
+  const placer = createEmptyEntity('preview'),
+    preview = placer.display.model;
+  preview.add(
+    new THREE.Mesh(
+      new THREE.PlaneGeometry(4, 4).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    ),
+  );
   preview.position.set(-6, 0.1, 0);
   scene.add(preview);
   placer.instance.sprite.setLightOverride(1);
@@ -40,29 +47,47 @@ export async function checkCursorPreview() {
   const visibleRow = () => ui.element.shadowRoot!.querySelector<HTMLDivElement>('.label:not([hidden])')!;
   const glyph = visibleRow().querySelector('canvas')!;
   const labelState = () => {
-    const row = visibleRow(), text = row.querySelector('span')!, glyph = row.querySelector('canvas')!;
-    return { hidden: ui.element.hidden, text: text.textContent,
-      glyph: glyph.hidden ? undefined : glyph.dataset.glyph, colour: getComputedStyle(text).color };
+    const row = visibleRow(),
+      text = row.querySelector('span')!,
+      glyph = row.querySelector('canvas')!;
+    return {
+      hidden: ui.element.hidden,
+      text: text.textContent,
+      glyph: glyph.hidden ? undefined : glyph.dataset.glyph,
+      colour: getComputedStyle(text).color,
+    };
   };
   const rightPixels = glyph.getContext('2d')!.getImageData(0, 0, glyph.width, glyph.height).data;
   const rightGlyph = {
-    width: glyph.width, height: glyph.height,
+    width: glyph.width,
+    height: glyph.height,
     opaque: Array.from(rightPixels).filter((value, index) => index % 4 === 3 && value > 0).length,
   };
   const pixels = new Uint8Array(4);
   const sample = (x: number, z: number) => {
     const point = new THREE.Vector3(x, 0.1, z).project(camera);
     const gl = renderer.getContext();
-    gl.readPixels(Math.floor((point.x + 1) * 200), Math.floor((point.y + 1) * 200), 1, 1,
-      gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+    gl.readPixels(
+      Math.floor((point.x + 1) * 200),
+      Math.floor((point.y + 1) * 200),
+      1,
+      1,
+      gl.RGBA,
+      gl.UNSIGNED_BYTE,
+      pixels,
+    );
     return Array.from(pixels.slice(0, 3));
   };
-  const draw = () => { lighting.render(scene, camera); ui.update(); };
+  const draw = () => {
+    lighting.render(scene, camera);
+    ui.update();
+  };
   draw();
   const night = { preview: sample(-6, 0), ground: sample(6, 0), label: labelState() };
   const owner = createEmptyEntity('wilson');
   scene.add(owner.display.model);
-  const torchLight = spawnLightEntity('torchfire_light', owner.instance); torchLight.instance.light.set(TORCH_LIGHT);
+  const torchLight = spawnLightEntity('torchfire_light', owner.instance);
+  torchLight.instance.light.set(TORCH_LIGHT);
   const removeTorchLight = torchLight.remove;
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   await settle(); // The owner's display lists the light parented to it.
@@ -83,31 +108,52 @@ export async function checkCursorPreview() {
   // Real animation/build assets: previews stay in the scene and foot sorting; a committed building draws without
   // the placer's light override, and cancellation clears it.
   const player = new THREE.Object3D();
-  const world: WorldContext = { scene, camera, cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer, ground, player,
-    createCursorLabel: (value) => ui.createLabel(value) };
+  const world: WorldContext = {
+    scene,
+    camera,
+    cameraFacing: createSignal(8),
+    cameraHeading: createSignal(45),
+    renderer,
+    ground,
+    player,
+    createCursorLabel: value => ui.createLabel(value),
+  };
   const chest = managedBuildings(world);
   window.dispatchEvent(new PointerEvent('pointermove', { clientX: 200, clientY: 220 }));
   await chest.begin('treasurechest');
   chest.update(0);
   const chestPreview = chest.renderEntities[0].object;
-  const building = { inScene: chestPreview.parent === scene, override: displayLightOverride(chestPreview),
-    footY: chest.renderEntities[0].footPosition.y, label: labelState() };
+  const building = {
+    inScene: chestPreview.parent === scene,
+    override: displayLightOverride(chestPreview),
+    footY: chest.renderEntities[0].footPosition.y,
+    label: labelState(),
+  };
   const leftGlyph = visibleRow().querySelector('canvas')!;
   const leftPixels = leftGlyph.getContext('2d')!.getImageData(0, 0, leftGlyph.width, leftGlyph.height).data;
   const differentButtons = rightPixels.some((value, index) => value !== leftPixels[index]);
   renderer.domElement.dispatchEvent(new PointerEvent('pointerdown', { button: 0, clientX: 200, clientY: 220 }));
   // The build spawns the chest itself; the placer entity is released.
   const builtChest = chest.renderEntities[0]?.object;
-  const placed = { previewRemoved: chestPreview.parent === null, inScene: builtChest !== chestPreview && builtChest?.parent === scene,
-    override: (builtChest && displayLightOverride(builtChest)) || null, count: chest.exportRecords().length, label: labelState() };
+  const placed = {
+    previewRemoved: chestPreview.parent === null,
+    inScene: builtChest !== chestPreview && builtChest?.parent === scene,
+    override: (builtChest && displayLightOverride(builtChest)) || null,
+    count: chest.exportRecords().length,
+    label: labelState(),
+  };
   // A wall item's placer goes through the same build flow.
   await chest.begin('wall_stone_item');
   chest.update(0);
   const wallPreview = chest.placement.renderEntities[0].object;
   const wallBefore = { inScene: wallPreview.parent === scene, override: displayLightOverride(wallPreview) };
   chest.cancel();
-  const cancelled = { removed: wallPreview.parent === null, override: displayLightOverride(wallPreview) || null,
-    count: chest.exportRecords().filter(({ prefabId }) => prefabId === 'wall_stone').length, label: labelState() };
+  const cancelled = {
+    removed: wallPreview.parent === null,
+    override: displayLightOverride(wallPreview) || null,
+    count: chest.exportRecords().filter(({ prefabId }) => prefabId === 'wall_stone').length,
+    label: labelState(),
+  };
   const blocker = document.createElement('div');
   blocker.style.cssText = 'position:fixed;left:180px;top:200px;width:40px;height:40px;z-index:150';
   document.body.append(blocker);
@@ -119,6 +165,18 @@ export async function checkCursorPreview() {
   lighting.dispose();
   renderer.dispose();
   ui.dispose();
-  return { night, torch, committed, dayLabel, rightGlyph, differentButtons,
-    building, placed, wallBefore, cancelled, overUiHidden, unequippedHidden };
+  return {
+    night,
+    torch,
+    committed,
+    dayLabel,
+    rightGlyph,
+    differentButtons,
+    building,
+    placed,
+    wallBefore,
+    cancelled,
+    overUiHidden,
+    unequippedHidden,
+  };
 }

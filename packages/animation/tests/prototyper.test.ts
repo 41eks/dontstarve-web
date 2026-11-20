@@ -12,9 +12,11 @@ import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { bindTestWorld } from './worldContentFixture';
 
 function setup() {
-  const scene = new Scene(), ents = testEnts();
+  const scene = new Scene(),
+    ents = testEnts();
   const entity = (prefab: string, position = new Vector3()) => {
-    const inst = ents.track(entityOf(new Group(), prefab)), model = inst.transform.model;
+    const inst = ents.track(entityOf(new Group(), prefab)),
+      model = inst.transform.model;
     inst.setPosition(position.x, position.y, position.z);
     scene.add(model);
     registerActionEntity(prefabInstance(model)!);
@@ -22,7 +24,8 @@ function setup() {
   };
   const player = entity('waxwell');
   const builder = new Builder(player, {
-    findEntities: (...args) => ents.prefabs.FindEntities(...args) as never, researchMachineDistance: 4 * WORLD_SCALE,
+    findEntities: (...args) => ents.prefabs.FindEntities(...args) as never,
+    researchMachineDistance: 4 * WORLD_SCALE,
     entitiesChanged: ents.prefabs.entitiesChanged,
   });
   const station = (position: Vector3, levels: Record<string, number>) => {
@@ -36,7 +39,8 @@ function setup() {
 }
 
 it('reacts to position, station creation/removal, tags and technology without frame updates', async () => {
-  const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler);
+  const scheduler = new GameTimeScheduler(),
+    world = bindTestWorld(scheduler);
   const { station, builder, player } = setup();
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   const publish = () => world.playerpositions.set([player.getPosition().clone()]);
@@ -46,23 +50,40 @@ it('reacts to position, station creation/removal, tags and technology without fr
     await settle();
     expect(builder.current_prototyper).toBe(near.inst);
     const evaluate = vi.spyOn(builder, 'EvaluateTechTrees');
-    scheduler.advance(60); await settle();
+    scheduler.advance(60);
+    await settle();
     expect(evaluate).not.toHaveBeenCalled();
-    near.prototyper.SetTechLevel('SCIENCE', 2); await settle();
+    near.prototyper.SetTechLevel('SCIENCE', 2);
+    await settle();
     expect(builder.accessible_tech_trees.peek().SCIENCE).toBe(2);
-    other = station(new Vector3(1, 0, 0), { MAGIC: 1 }); await settle();
+    other = station(new Vector3(1, 0, 0), { MAGIC: 1 });
+    await settle();
     expect(builder.current_prototyper).toBe(other.inst);
-    other.inst.addTag('fire'); await settle();
+    other.inst.addTag('fire');
+    await settle();
     expect(builder.current_prototyper).toBe(near.inst);
-    near.inst.remove(); await settle();
+    near.inst.remove();
+    await settle();
     expect(builder.current_prototyper).toBeUndefined();
-    other.inst.removeTag('fire'); await settle();
-    player.setPosition(40, 0, 0); publish(); await settle();
+    other.inst.removeTag('fire');
+    await settle();
+    player.setPosition(40, 0, 0);
+    publish();
+    await settle();
     expect(other.prototyper.on).toBe(false);
-    builder.dispose(); evaluate.mockClear();
-    player.setPosition(0, 0, 0); publish(); await settle();
+    builder.dispose();
+    evaluate.mockClear();
+    player.setPosition(0, 0, 0);
+    publish();
+    await settle();
     expect(evaluate).not.toHaveBeenCalled();
-  } finally { builder.dispose(); near.prototyper.OnRemoveFromEntity(); other?.prototyper.OnRemoveFromEntity(); world.unbind(); scheduler.dispose(); }
+  } finally {
+    builder.dispose();
+    near.prototyper.OnRemoveFromEntity();
+    other?.prototyper.OnRemoveFromEntity();
+    world.unbind();
+    scheduler.dispose();
+  }
 });
 
 it('selects only the nearest eligible station at the scaled radius and clears its tech when leaving', () => {
@@ -87,12 +108,16 @@ it('selects only the nearest eligible station at the scaled radius and clears it
     player.setPosition(8 + 4 * WORLD_SCALE, 0, 0);
     builder.EvaluateTechTrees();
     expect(farther.prototyper.on).toBe(true);
-    player.setPosition(player.position.x + .001, 0, 0);
+    player.setPosition(player.position.x + 0.001, 0, 0);
     builder.EvaluateTechTrees();
     expect(builder.current_prototyper).toBeUndefined();
     expect(farther.prototyper.on).toBe(false);
     expect(builder.accessible_tech_trees.peek()).toMatchObject({ SCIENCE: 0, MAGIC: 0 });
-  } finally { builder.dispose(); nearer.prototyper.OnRemoveFromEntity(); farther.prototyper.OnRemoveFromEntity(); }
+  } finally {
+    builder.dispose();
+    nearer.prototyper.OnRemoveFromEntity();
+    farther.prototyper.OnRemoveFromEntity();
+  }
 });
 
 it('honours restricted tags, fire/INLIMBO, explicit selection and crafting disablement', () => {
@@ -122,7 +147,11 @@ it('honours restricted tags, fire/INLIMBO, explicit selection and crafting disab
     builder.EvaluateTechTrees();
     expect(first.prototyper.on).toBe(false);
     expect(builder.UsePrototyper(first.inst)).toBe(false);
-  } finally { builder.dispose(); first.prototyper.OnRemoveFromEntity(); second.prototyper.OnRemoveFromEntity(); }
+  } finally {
+    builder.dispose();
+    first.prototyper.OnRemoveFromEntity();
+    second.prototyper.OnRemoveFromEntity();
+  }
 });
 
 it('keeps a station on for its other doers and releases removal listeners on component teardown', async () => {

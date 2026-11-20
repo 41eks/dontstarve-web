@@ -4,7 +4,15 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { staffLightPrefabs, DWARF_STAR_ID } from '../../prefab/src/stafflight';
-import { DisposeSounds, PlaySound, PreloadSounds, PrewarmSounds, UpdateSoundListener, inverseSquareAttenuation, SOUND_MAX_DISTANCE } from '../../prefab/src/sound';
+import {
+  DisposeSounds,
+  PlaySound,
+  PreloadSounds,
+  PrewarmSounds,
+  UpdateSoundListener,
+  inverseSquareAttenuation,
+  SOUND_MAX_DISTANCE,
+} from '../../prefab/src/sound';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { DynamicMusic } from '../../componets/src/dynamicmusic';
 import { createSignal } from '../../signals/src/signal';
@@ -12,21 +20,36 @@ import { SoundPresentationScheduler } from '../../sound/src';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { SpriteState } from '../../display/src/spriteState';
 
-afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  DisposeSounds();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 async function setup() {
   const events = new EventTarget();
   vi.stubGlobal('window', events);
   const sources: {
-    buffer: AudioBuffer | null; loop: boolean; playbackRate: { value: number }; onended: (() => void) | null;
-    start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn>;
-    connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn>;
+    buffer: AudioBuffer | null;
+    loop: boolean;
+    playbackRate: { value: number };
+    onended: (() => void) | null;
+    start: ReturnType<typeof vi.fn>;
+    stop: ReturnType<typeof vi.fn>;
+    connect: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
   }[] = [];
-  const gains: { gain: { value: number }; connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }[] = [];
+  const gains: { gain: { value: number }; connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }[] =
+    [];
   const context = {
-    state: 'suspended', destination: {},
-    resume: vi.fn(async () => { context.state = 'running'; }),
-    close: vi.fn(async () => { context.state = 'closed'; }),
+    state: 'suspended',
+    destination: {},
+    resume: vi.fn(async () => {
+      context.state = 'running';
+    }),
+    close: vi.fn(async () => {
+      context.state = 'closed';
+    }),
     decodeAudioData: vi.fn(async () => ({}) as AudioBuffer),
     createGain: vi.fn(() => {
       const gain = { gain: { value: 1 }, connect: vi.fn(), disconnect: vi.fn() };
@@ -34,16 +57,33 @@ async function setup() {
       return gain;
     }),
     createBufferSource: vi.fn(() => {
-      const source = { buffer: null as AudioBuffer | null, loop: false, playbackRate: { value: 1 }, onended: null as (() => void) | null,
-        start: vi.fn(), stop: vi.fn(), connect: vi.fn(), disconnect: vi.fn() };
+      const source = {
+        buffer: null as AudioBuffer | null,
+        loop: false,
+        playbackRate: { value: 1 },
+        onended: null as (() => void) | null,
+        start: vi.fn(),
+        stop: vi.fn(),
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      };
       sources.push(source);
       return source;
     }),
   };
-  vi.stubGlobal('AudioContext', class { constructor() { return context; } });
+  vi.stubGlobal(
+    'AudioContext',
+    class {
+      constructor() {
+        return context;
+      }
+    },
+  );
   const archive = await readFile(new URL('../../../public/dst/data/anim/star_hot.zip', import.meta.url));
   const fetchMock = vi.fn(async (url: string) => {
-    if (url.endsWith('star_hot.zip')) { return new Response(archive); }
+    if (url.endsWith('star_hot.zip')) {
+      return new Response(archive);
+    }
     return new Response(new Uint8Array([0, 1]));
   });
   vi.stubGlobal('fetch', fetchMock);
@@ -53,9 +93,15 @@ async function setup() {
 it('prewarms registered sounds while suspended, waits for decoding and reuses shared layers and variants', async () => {
   const s = await setup();
   let finish!: (buffer: AudioBuffer) => void;
-  s.context.decodeAudioData.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  s.context.decodeAudioData.mockReturnValueOnce(
+    new Promise(resolve => {
+      finish = resolve;
+    }),
+  );
   let ready = false;
-  const loading = PrewarmSounds().then(() => { ready = true; });
+  const loading = PrewarmSounds().then(() => {
+    ready = true;
+  });
   await new Promise(resolve => setTimeout(resolve, 0));
   expect(s.context.decodeAudioData).toHaveBeenCalled();
   expect(ready).toBe(false);
@@ -67,11 +113,16 @@ it('prewarms registered sounds while suspended, waits for decoding and reuses sh
   const urls = s.fetchMock.mock.calls.map(([url]) => url);
   expect(new Set(urls).size).toBe(urls.length);
   expect(s.context.decodeAudioData).toHaveBeenCalledTimes(urls.length);
-  expect(urls).toEqual(expect.arrayContaining([
-    '/dst/data/sound/sfx.fsb-796.wav', '/dst/data/sound/sfx.fsb-797.wav',
-    '/dst/data/sound/common.fsb-158.wav', '/dst/data/sound/common.fsb-284.wav',
-    '/dst/data/sound/sfx.fsb-423.wav', '/dst/data/sound/sfx.fsb-424.wav',
-  ]));
+  expect(urls).toEqual(
+    expect.arrayContaining([
+      '/dst/data/sound/sfx.fsb-796.wav',
+      '/dst/data/sound/sfx.fsb-797.wav',
+      '/dst/data/sound/common.fsb-158.wav',
+      '/dst/data/sound/common.fsb-284.wav',
+      '/dst/data/sound/sfx.fsb-423.wav',
+      '/dst/data/sound/sfx.fsb-424.wav',
+    ]),
+  );
   await PrewarmSounds();
   await PreloadSounds('dontstarve/common/staff_coldlight_LP', 'dontstarve/wilson/hit');
   PlaySound('dontstarve/common/staff_coldlight_LP');
@@ -96,9 +147,9 @@ it('skips prewarming without Web Audio and can prepare when it becomes available
 });
 
 describe('dwarf star source sounds', () => {
-
   it('mutes at and beyond the cutoff, with a configurable maximum distance', () => {
-    const listener = new THREE.Vector3(), position = new THREE.Vector3();
+    const listener = new THREE.Vector3(),
+      position = new THREE.Vector3();
     expect(inverseSquareAttenuation(position, listener)).toBe(1);
     expect(inverseSquareAttenuation(position.set(12, 0, 0), listener)).toBe(1);
     expect(inverseSquareAttenuation(position.set(SOUND_MAX_DISTANCE - 1, 0, 0), listener)).toBeGreaterThan(0);
@@ -106,41 +157,46 @@ describe('dwarf star source sounds', () => {
     expect(inverseSquareAttenuation(position.set(SOUND_MAX_DISTANCE + 1, 0, 0), listener)).toBe(0);
     expect(inverseSquareAttenuation(position.set(30, 0, 0), listener, 12, 30)).toBe(0);
     position.set(12, 0, 12);
-    expect(inverseSquareAttenuation(position, listener)).toBe(.5);
+    expect(inverseSquareAttenuation(position, listener)).toBe(0.5);
     expect(position.toArray()).toEqual([12, 0, 12]);
     expect(listener.toArray()).toEqual([0, 0, 0]);
   });
 
   it('attenuates independent stars as the player moves and releases their gains', async () => {
     const s = await setup();
-    const manager = prefabManager(new PrefabDisplayGroup(new THREE.Scene()), '/dst/data/anim', { scheduler: new GameTimeScheduler() }, staffLightPrefabs);
+    const manager = prefabManager(
+      new PrefabDisplayGroup(new THREE.Scene()),
+      '/dst/data/anim',
+      { scheduler: new GameTimeScheduler() },
+      staffLightPrefabs,
+    );
     // The scene decodes every event before it starts, so a star's loop begins when it is spawned.
     await PrewarmSounds();
     UpdateSoundListener(new THREE.Vector3());
     const near = await manager.spawn(DWARF_STAR_ID, new THREE.Vector3());
     const far = await manager.spawn(DWARF_STAR_ID, new THREE.Vector3(24, 0, 0));
-    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1, 1, 0.25, 0.25].map(volume => volume * .7));
-    expect(s.sources.map((source) => source.connect.mock.calls[0][0])).toEqual(s.gains);
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1, 1, 0.25, 0.25].map(volume => volume * 0.7));
+    expect(s.sources.map(source => source.connect.mock.calls[0][0])).toEqual(s.gains);
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));
-    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 0.25, 0.25].map(volume => volume * .7));
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 0.25, 0.25].map(volume => volume * 0.7));
     far.setPosition(48, far.position.y, far.position.z);
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));
-    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1].map(volume => volume * .7));
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1].map(volume => volume * 0.7));
     UpdateSoundListener(new THREE.Vector3(144, 0, 0));
     expect(s.gains.map(({ gain }) => gain.value)).toEqual([0, 0, 0, 0]);
-    expect(s.sources.every((source) => source.stop.mock.calls.length === 0)).toBe(true);
+    expect(s.sources.every(source => source.stop.mock.calls.length === 0)).toBe(true);
     UpdateSoundListener(new THREE.Vector3(48, 0, 0));
-    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1].map(volume => volume * .7));
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1].map(volume => volume * 0.7));
     expect(near.position.x).toBe(0);
     // Player-local sounds bypass distance attenuation; SetVolume scales only their own gain.
     await PreloadSounds('dontstarve/wilson/use_gemstaff');
     const local = PlaySound('dontstarve/wilson/use_gemstaff');
     expect(s.sources[4].connect).toHaveBeenCalledWith(s.gains[4]);
     expect(s.gains[4].connect).toHaveBeenCalledWith(s.context.destination);
-    expect(s.gains[4].gain.value).toBe(.7);
-    local.setVolume(.5);
+    expect(s.gains[4].gain.value).toBe(0.7);
+    local.setVolume(0.5);
     UpdateSoundListener(new THREE.Vector3(144, 0, 0));
-    expect(s.gains[4].gain.value).toBe(.35);
+    expect(s.gains[4].gain.value).toBe(0.35);
     expect(local.isPlaying()).toBe(true);
     local.stop();
     expect(local.isPlaying()).toBe(false);
@@ -152,29 +208,34 @@ describe('dwarf star source sounds', () => {
     expect(s.gains[3].disconnect).not.toHaveBeenCalled();
     s.sources[1].onended!();
     s.sources[3].onended!();
-    expect(s.gains.every((gain) => gain.disconnect.mock.calls.length === 1)).toBe(true);
+    expect(s.gains.every(gain => gain.disconnect.mock.calls.length === 1)).toBe(true);
     UpdateSoundListener(new THREE.Vector3());
-    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1, .5].map(volume => volume * .7));
+    expect(s.gains.map(({ gain }) => gain.value)).toEqual([1 / 16, 1 / 16, 1, 1, 0.5].map(volume => volume * 0.7));
   });
 
   it('preloads all polar light layers and stops each independent summon together', async () => {
     const s = await setup();
     await PreloadSounds('dontstarve/common/staff_coldlight_LP', 'dontstarve/common/staffteleport');
     expect(s.fetchMock.mock.calls.map(([url]) => url)).toEqual([
-      '/dst/data/sound/sfx.fsb-796.wav', '/dst/data/sound/sfx.fsb-797.wav',
-      '/dst/data/sound/common.fsb-158.wav', '/dst/data/sound/common.fsb-284.wav',
+      '/dst/data/sound/sfx.fsb-796.wav',
+      '/dst/data/sound/sfx.fsb-797.wav',
+      '/dst/data/sound/common.fsb-158.wav',
+      '/dst/data/sound/common.fsb-284.wav',
     ]);
     const first = PlaySound('dontstarve/common/staff_coldlight_LP');
     const second = PlaySound('dontstarve/common/staff_coldlight_LP');
-    expect(s.sources.map((source) => source.loop)).toEqual(Array(6).fill(true));
+    expect(s.sources.map(source => source.loop)).toEqual(Array(6).fill(true));
     expect(s.sources[0].buffer).toBe(s.sources[3].buffer);
     first.stop();
     first.stop();
-    expect(s.sources.slice(0, 3).every((source) => source.stop.mock.calls.length === 1
-      && source.disconnect.mock.calls.length === 1)).toBe(true);
-    expect(s.sources.slice(3).every((source) => source.stop.mock.calls.length === 0)).toBe(true);
+    expect(
+      s.sources
+        .slice(0, 3)
+        .every(source => source.stop.mock.calls.length === 1 && source.disconnect.mock.calls.length === 1),
+    ).toBe(true);
+    expect(s.sources.slice(3).every(source => source.stop.mock.calls.length === 0)).toBe(true);
     second.stop();
-    expect(s.sources.every((source) => source.disconnect.mock.calls.length === 1)).toBe(true);
+    expect(s.sources.every(source => source.disconnect.mock.calls.length === 1)).toBe(true);
   });
 
   it('preloads moonstaff placement and plays wood with one source-defined rock variant', async () => {
@@ -183,8 +244,9 @@ describe('dwarf star source sounds', () => {
     await PreloadSounds(event);
     expect(s.fetchMock.mock.calls.map(([url]) => url)).toEqual([
       '/dst/data/sound/common.fsb-233.wav',
-      ...[857, 859, 861, 862, 863, 864, 865, 847, 848, 849, 850, 851, 852, 853, 854, 855, 856, 858]
-        .map(stream => `/dst/data/sound/sfx.fsb-${stream}.wav`),
+      ...[857, 859, 861, 862, 863, 864, 865, 847, 848, 849, 850, 851, 852, 853, 854, 855, 856, 858].map(
+        stream => `/dst/data/sound/sfx.fsb-${stream}.wav`,
+      ),
     ]);
     const first = PlaySound(event);
     const second = PlaySound(event);
@@ -207,7 +269,7 @@ describe('dwarf star source sounds', () => {
     await PreloadSounds('dontstarve/common/staff_star_create');
     const sound = PlaySound('dontstarve/common/staff_star_create');
     expect(s.context.decodeAudioData).toHaveBeenCalledTimes(2);
-    expect(s.sources.map((source) => source.loop)).toEqual([false]);
+    expect(s.sources.map(source => source.loop)).toEqual([false]);
     sound.stop();
     sound.stop();
     expect(s.sources[0].stop).toHaveBeenCalledOnce();
@@ -215,31 +277,46 @@ describe('dwarf star source sounds', () => {
 
   it('mixes independent beam layers and extends the player music until ten seconds after its last trigger', async () => {
     const s = await setup();
-    await PreloadSounds('dontstarve/common/together/moonbase/beam', 'dontstarve/music/music_epicfight_moonbase', 'dontstarve/music/music_epicfight_moonbase_b');
+    await PreloadSounds(
+      'dontstarve/common/together/moonbase/beam',
+      'dontstarve/music/music_epicfight_moonbase',
+      'dontstarve/music/music_epicfight_moonbase_b',
+    );
     const beam = PlaySound('dontstarve/common/together/moonbase/beam');
     expect(s.sources.map(source => source.loop)).toEqual([true, true]);
-    expect(s.gains[2].gain.value).toBeCloseTo(.63589698);
-    beam.setParameter?.('intensity', .6);
-    expect(s.gains[2].gain.value).toBeGreaterThan(.702564);
-    beam.setParameter?.('intensity', .9); expect(s.gains[2].gain.value).toBe(1);
-    beam.stop(); expect(s.sources.every(source => source.stop.mock.calls.length === 1)).toBe(true);
-    const scheduler = new GameTimeScheduler(), music = new DynamicMusic(scheduler, path => PlaySound(path));
-    music.TriggerMoonbase(1); const deadline = music.timer.peek();
-    scheduler.advance(5); music.TriggerMoonbase(1);
+    expect(s.gains[2].gain.value).toBeCloseTo(0.63589698);
+    beam.setParameter?.('intensity', 0.6);
+    expect(s.gains[2].gain.value).toBeGreaterThan(0.702564);
+    beam.setParameter?.('intensity', 0.9);
+    expect(s.gains[2].gain.value).toBe(1);
+    beam.stop();
+    expect(s.sources.every(source => source.stop.mock.calls.length === 1)).toBe(true);
+    const scheduler = new GameTimeScheduler(),
+      music = new DynamicMusic(scheduler, path => PlaySound(path));
+    music.TriggerMoonbase(1);
+    const deadline = music.timer.peek();
+    scheduler.advance(5);
+    music.TriggerMoonbase(1);
     expect(music.timer.peek()).not.toEqual(deadline);
     expect(s.sources).toHaveLength(3);
-    music.TriggerMoonbase(2); expect(s.sources[2].stop).toHaveBeenCalledOnce();
-    scheduler.advance(9.99); expect(s.sources[3].stop).not.toHaveBeenCalled();
-    scheduler.advance(.01); expect(s.sources[3].stop).toHaveBeenCalledOnce();
+    music.TriggerMoonbase(2);
+    expect(s.sources[2].stop).toHaveBeenCalledOnce();
+    scheduler.advance(9.99);
+    expect(s.sources[3].stop).not.toHaveBeenCalled();
+    scheduler.advance(0.01);
+    expect(s.sources[3].stop).toHaveBeenCalledOnce();
     expect(music.timer.peek().status).toBe('expired');
-    music.dispose(); scheduler.dispose();
+    music.dispose();
+    scheduler.dispose();
   });
 
   it('does not start or retain sounds if disposed during loading', async () => {
     const s = await setup();
     let finish!: (buffer: AudioBuffer) => void;
     // A pending PlaySound must remain cancelled even if its decode completes later.
-    const pending = new Promise<AudioBuffer>((resolve) => { finish = resolve; });
+    const pending = new Promise<AudioBuffer>(resolve => {
+      finish = resolve;
+    });
     s.context.decodeAudioData.mockReturnValue(pending);
     const loading = PreloadSounds('dontstarve/common/staff_star_create');
     const sound = PlaySound('dontstarve/common/staff_star_create');
@@ -265,7 +342,7 @@ it('selects registered waterfall sounds by player position and releases them on 
     gameTime.advance(5 / 30);
     expect(s.sources).toHaveLength(2);
     expect(s.sources.every(source => source.loop)).toBe(true);
-    expect(s.gains[0].gain.value).toBeCloseTo(.8 * .7);
+    expect(s.gains[0].gain.value).toBeCloseTo(0.8 * 0.7);
 
     playerPosition.set([new THREE.Vector3(1000, 0, 0)]);
     expect(s.gains[0].gain.value).toBe(0);
@@ -292,21 +369,22 @@ it('keeps three waterfall emitters and moves one through a volume fade as the ne
   const gameTime = new GameTimeScheduler();
   const presentation = new SoundPresentationScheduler(playerPosition, gameTime);
   try {
-    for (const x of [0, 10, 20, 30]) { presentation.registerWaterfallPool(new THREE.Vector3(x, 0, 0), 2, false); }
+    for (const x of [0, 10, 20, 30]) {
+      presentation.registerWaterfallPool(new THREE.Vector3(x, 0, 0), 2, false);
+    }
     gameTime.advance(5 / 30);
     expect(s.sources).toHaveLength(6);
     playerPosition.set([new THREE.Vector3(30, 0, 0)]);
     gameTime.advance(5 / 30);
-    gameTime.advance(.4);
+    gameTime.advance(0.4);
     expect(s.sources).toHaveLength(6);
     expect(s.sources.every(source => source.stop.mock.calls.length === 0)).toBe(true);
-    expect(s.gains[2].gain.value).toBeCloseTo(.8 * .7);
+    expect(s.gains[2].gain.value).toBeCloseTo(0.8 * 0.7);
   } finally {
     presentation.dispose();
     gameTime.dispose();
   }
 });
-
 
 it('mole sleep uses one short lowered sample rather than a raw sniff loop', async () => {
   const s = await setup();
@@ -315,15 +393,18 @@ it('mole sleep uses one short lowered sample rather than a raw sniff loop', asyn
   const sleep = PlaySound('dontstarve_DLC001/creatures/mole/sleep');
   expect(s.sources.map(source => source.loop)).toEqual([false, false]);
   expect(s.sources[0].playbackRate.value).toBe(1);
-  expect(s.sources[1].playbackRate.value).toBeCloseTo(2 ** -.25);
-  expect(s.gains[1].gain.value).toBeCloseTo(.07079457491636276 * .7);
-  sniff.stop(); expect(s.sources[0].stop).toHaveBeenCalledTimes(1);
+  expect(s.sources[1].playbackRate.value).toBeCloseTo(2 ** -0.25);
+  expect(s.gains[1].gain.value).toBeCloseTo(0.07079457491636276 * 0.7);
+  sniff.stop();
+  expect(s.sources[0].stop).toHaveBeenCalledTimes(1);
   expect(s.sources[1].stop).not.toHaveBeenCalled();
-  s.sources[1].onended!(); expect(sleep.isPlaying()).toBe(false);
+  s.sources[1].onended!();
+  expect(sleep.isPlaying()).toBe(false);
 });
 
 describe('SoundEmitter', () => {
-  const LOOP = 'dontstarve/common/staff_coldlight_LP', SHOT = 'dontstarve/wilson/hit';
+  const LOOP = 'dontstarve/common/staff_coldlight_LP',
+    SHOT = 'dontstarve/wilson/hit';
   async function emitterSetup() {
     const s = await setup();
     await PreloadSounds(LOOP, SHOT, 'dontstarve/common/together/boat/damage');
@@ -337,7 +418,8 @@ describe('SoundEmitter', () => {
     expect(emitter.PlayingSound('loop')).toBe(false);
     emitter.PlaySound(LOOP, 'loop');
     expect(emitter.PlayingSound('loop')).toBe(true);
-    const layers = s.sources.length, first = s.sources[0];
+    const layers = s.sources.length,
+      first = s.sources[0];
     emitter.PlaySound(LOOP, 'loop');
     expect(first.stop).toHaveBeenCalledOnce();
     expect(s.sources).toHaveLength(layers * 2);
@@ -352,15 +434,16 @@ describe('SoundEmitter', () => {
   it('applies volume to a slot, follows the transform and scales later sounds by the override', async () => {
     const { s, inst, emitter } = await emitterSetup();
     UpdateSoundListener(new THREE.Vector3());
-    emitter.PlaySound(LOOP, 'loop', .5);
-    const gain = s.gains.at(-1)!, half = gain.gain.value;
+    emitter.PlaySound(LOOP, 'loop', 0.5);
+    const gain = s.gains.at(-1)!,
+      half = gain.gain.value;
     emitter.SetVolume('loop', 1);
     expect(gain.gain.value).toBeCloseTo(half * 2);
     inst.transform.setPosition(SOUND_MAX_DISTANCE + 1, 0, 0);
     UpdateSoundListener(new THREE.Vector3());
     expect(gain.gain.value).toBe(0);
     inst.transform.setPosition(0, 0, 0);
-    emitter.OverrideVolumeMultiplier(.5);
+    emitter.OverrideVolumeMultiplier(0.5);
     emitter.PlaySound(LOOP, 'quiet');
     expect(s.gains.at(-1)!.gain.value).toBeCloseTo(half);
     inst.remove();
@@ -369,7 +452,8 @@ describe('SoundEmitter', () => {
   it('an emitter at the listener ignores distance, as the player does while the published listener lags behind it', async () => {
     const s = await setup();
     await PreloadSounds(SHOT);
-    const inst = new PrefabInstance('wilson', new SpriteState({ name: 'idle' })), emitter = inst.AddSoundEmitter({ atListener: true });
+    const inst = new PrefabInstance('wilson', new SpriteState({ name: 'idle' })),
+      emitter = inst.AddSoundEmitter({ atListener: true });
     UpdateSoundListener(new THREE.Vector3());
     inst.transform.setPosition(SOUND_MAX_DISTANCE * 2, 0, 0);
     emitter.PlaySound(SHOT);
@@ -379,11 +463,11 @@ describe('SoundEmitter', () => {
 
   it('passes parameters to the sound, by slot or as PlaySoundWithParams', async () => {
     const { s, inst, emitter } = await emitterSetup();
-    emitter.PlaySoundWithParams('dontstarve/common/together/boat/damage', { intensity: .8 });
+    emitter.PlaySoundWithParams('dontstarve/common/together/boat/damage', { intensity: 0.8 });
     const atEight = s.gains.map(gain => gain.gain.value);
     emitter.PlaySound('dontstarve/common/together/boat/damage', 'named');
     const named = s.gains.slice(atEight.length).map(gain => gain.gain.value);
-    emitter.SetParameter('named', 'intensity', .8);
+    emitter.SetParameter('named', 'intensity', 0.8);
     expect(s.gains.slice(atEight.length).map(gain => gain.gain.value)).toEqual(atEight);
     expect(named).not.toEqual(atEight);
     inst.remove();
@@ -408,7 +492,9 @@ describe('SoundEmitter', () => {
     emitter.PlaySound(LOOP, 'loop');
     emitter.PlaySound(SHOT);
     emitter.KillAllSounds();
-    for (const source of s.sources) { expect(source.stop).toHaveBeenCalledOnce(); }
+    for (const source of s.sources) {
+      expect(source.stop).toHaveBeenCalledOnce();
+    }
     expect(emitter.PlayingSound('loop')).toBe(false);
     inst.remove();
   });

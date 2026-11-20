@@ -1,7 +1,13 @@
 import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Equippable } from '../../componets/src/equippable';
-import { skinArchive, wornOwner, type EquipmentVisual, type EquipmentVisualFactory, type EquipmentArtOwner } from './equipmentVisual';
+import {
+  skinArchive,
+  wornOwner,
+  type EquipmentVisual,
+  type EquipmentVisualFactory,
+  type EquipmentArtOwner,
+} from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
 /** backpack.lua fn: the native map icon and the body equippable's onequip/onunequip; the container belongs to inventory. */
@@ -13,9 +19,14 @@ export function configureBackpackEntity(entity: ItemEntity): void {
     visual?.onunequip();
     const worn = wornOwner(owner);
     visual = worn && backpackVisual({ id: inst.id, prefab: inst.prefab, skinId: inst.skinId });
-    if (worn) { visual?.onequip(worn); }
+    if (worn) {
+      visual?.onequip(worn);
+    }
   });
-  equippable.SetOnUnequip(() => { visual?.onunequip(); visual = undefined; });
+  equippable.SetOnUnequip(() => {
+    visual?.onunequip();
+    visual = undefined;
+  });
 }
 
 /** backpack.lua onequip/onunequip. */
@@ -28,11 +39,17 @@ export const backpackVisual: EquipmentVisualFactory = item => {
       if (skin) {
         owner.PushEvent('equipskinneditem', item.skinId);
         owner.AnimState.OverrideItemSkinSymbol('swap_body', skin, 'swap_body', item.id, 'swap_backpack');
-      } else { owner.AnimState.OverrideSymbol('swap_body', 'swap_backpack', 'swap_body'); }
+      } else {
+        owner.AnimState.OverrideSymbol('swap_body', 'swap_backpack', 'swap_body');
+      }
     },
     onunequip() {
-      if (!owner) { return; }
-      if (skin) { owner.PushEvent('unequipskinneditem', item.skinId); }
+      if (!owner) {
+        return;
+      }
+      if (skin) {
+        owner.PushEvent('unequipskinneditem', item.skinId);
+      }
       owner.AnimState.ClearOverrideSymbol('swap_body');
       owner.AnimState.ClearOverrideSymbol('backpack');
       owner = undefined;

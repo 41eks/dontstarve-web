@@ -10,25 +10,32 @@ import initialWorld from '../../../public/saves/initial-world.json';
 import { testMap } from './tileMapFixture';
 import { createInventoryStore } from './testInventory';
 
-function makeClock(random: () => number = () => .5) {
+function makeClock(random: () => number = () => 0.5) {
   const scheduler = new GameTimeScheduler();
   const clock = new NightmareClock(scheduler, {
-    segs: TUNING.NIGHTMARE_SEGS, segTime: TUNING.SEG_TIME, segVariation: TUNING.NIGHTMARE_SEG_VARIATION, random,
+    segs: TUNING.NIGHTMARE_SEGS,
+    segTime: TUNING.SEG_TIME,
+    segVariation: TUNING.NIGHTMARE_SEG_VARIATION,
+    random,
   });
   return { scheduler, clock };
 }
 
 /** Cluster_62's Caves snapshot, as nightmareclock.lua OnSave wrote it. */
 const SOURCE_SAVE = {
-  lengths: { dawn: 2, calm: 12, wild: 5, warn: 3 }, phase: 'calm',
-  remainingtimeinphase: 46.403869628906, totaltimeinphase: 408.32238769531,
+  lengths: { dawn: 2, calm: 12, wild: 5, warn: 3 },
+  phase: 'calm',
+  remainingtimeinphase: 46.403869628906,
+  totaltimeinphase: 408.32238769531,
 } as const;
 
 describe('nightmareclock.lua', () => {
   it('runs the phases on game time and carries a long frame into the next phase', () => {
     const { scheduler, clock } = makeClock();
     const seen: string[] = [];
-    clock.phase.subscribe(phase => { seen.push(phase); });
+    clock.phase.subscribe(phase => {
+      seen.push(phase);
+    });
     // Initialization has no variation; later phases get segs + .5 * 3 segs.
     expect(clock.remainingTimeInPhase).toBe(360);
     scheduler.advance(359);
@@ -89,7 +96,9 @@ describe('nightmareclock.lua', () => {
   it('skips a phase that rolls no time, publishing only the one it stops on', () => {
     const { clock } = makeClock(() => 0);
     const seen: string[] = [];
-    clock.phase.subscribe(phase => { seen.push(phase); });
+    clock.phase.subscribe(phase => {
+      seen.push(phase);
+    });
     clock.SetSegs({ wild: 2 });
     expect(seen).toEqual(['wild']);
     expect(clock.remainingTimeInPhase).toBe(60);
@@ -107,7 +116,9 @@ describe('world nightmare clock', () => {
 
     const cave = createWorldState({ ...base, prefab: 'cave', systems: { nightmareclock: SOURCE_SAVE } });
     const stops: (() => void)[] = [];
-    const phase = cave.getWatchWorldContent('nightmarephase', stop => { stops.push(stop); });
+    const phase = cave.getWatchWorldContent('nightmarephase', stop => {
+      stops.push(stop);
+    });
     expect(phase.peek()).toBe('calm');
     cave.scheduler.advance(46);
     expect(phase.peek()).toBe('calm');
@@ -123,9 +134,17 @@ describe('world nightmare clock', () => {
     cave.nightmareclock!.LockPhase('wild');
     const saved = cave.nightmareclock!.OnSave();
     const inventory = createInventoryStore([]);
-    const json = serializeSave(template, {
-      entities: {}, inventory: inventory.exportSaved(), elapsedSeconds: 0, playerTransform: { position: [0, 0, 0], rotationY: 0 }, nightmareclock: saved,
-    }, SAVE_CATALOG);
+    const json = serializeSave(
+      template,
+      {
+        entities: {},
+        inventory: inventory.exportSaved(),
+        elapsedSeconds: 0,
+        playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        nightmareclock: saved,
+      },
+      SAVE_CATALOG,
+    );
     inventory.dispose();
     expect(deserializeSave(json, SAVE_CATALOG).world.systems.nightmareclock).toEqual(saved);
     cave.dispose();

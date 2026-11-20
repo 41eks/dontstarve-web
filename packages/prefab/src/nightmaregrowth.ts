@@ -21,11 +21,17 @@ export interface NightmareGrowthWorld {
   random?: () => number;
 }
 
-const ASSETS = { animationArchive: 'nightmaregrowth.zip', buildArchives: ['nightmaregrowth.zip'], bank: 'nightmaregrowth' };
+const ASSETS = {
+  animationArchive: 'nightmaregrowth.zip',
+  buildArchives: ['nightmaregrowth.zip'],
+  bank: 'nightmaregrowth',
+};
 
 /** nightmaregrowth.lua OnRemove, its inst.OnRemoveEntity: the crack goes with the growth. */
 function OnRemove(inst: NightmareGrowthInstance): void {
-  if (inst._crack && !inst._crack.isRemoved) { inst._crack.remove(); }
+  if (inst._crack && !inst._crack.isRemoved) {
+    inst._crack.remove();
+  }
 }
 
 /**
@@ -50,9 +56,14 @@ export class NightmareGrowthInstance extends PrefabInstance {
   }
 
   private SpawnCrack(): void {
-    if (this._crack && !this._crack.isRemoved) { return; }
+    if (this._crack && !this._crack.isRemoved) {
+      return;
+    }
     // Not parented: the crack is its own unsaved entity (persists = false), which OnRemove removes.
-    const crack = this._crack = this.world.spawnPrefab(NIGHTMAREGROWTH_CRACK_ID, new Vector3(this.position.x, 0, this.position.z));
+    const crack = (this._crack = this.world.spawnPrefab(
+      NIGHTMAREGROWTH_CRACK_ID,
+      new Vector3(this.position.x, 0, this.position.z),
+    ));
     if (this._crack_rotation !== undefined) {
       crack.SetRotation(this._crack_rotation);
       this._crack_rotation = undefined;
@@ -63,11 +74,15 @@ export class NightmareGrowthInstance extends PrefabInstance {
   override OnSave(_inst: unknown, data: EntityPersistData): void {
     const crack = this._crack && !this._crack.isRemoved ? this._crack : undefined;
     const rotation = crack ? crack.GetRotation() : this._crack_rotation;
-    if (rotation !== undefined) { data.nightmareGrowth = { crackRotation: rotation }; }
+    if (rotation !== undefined) {
+      data.nightmareGrowth = { crackRotation: rotation };
+    }
   }
 
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
-    if (data.nightmareGrowth?.crackRotation !== undefined) { this._crack_rotation = data.nightmareGrowth.crackRotation; }
+    if (data.nightmareGrowth?.crackRotation !== undefined) {
+      this._crack_rotation = data.nightmareGrowth.crackRotation;
+    }
   }
 }
 
@@ -77,20 +92,32 @@ export class NightmareGrowthCrackInstance extends PrefabInstance {
     super(NIGHTMAREGROWTH_CRACK_ID, new SpriteState({ name: 'crack_idle', held: true }));
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce('crack_idle');
-    this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);
-    for (const tag of ['FX', 'NOCLICK', 'DECOR']) { this.addTag(tag); }
+    this.sprite.setGround(0);
+    this.sprite.setMeshOrder(-0.5);
+    for (const tag of ['FX', 'NOCLICK', 'DECOR']) {
+      this.addTag(tag);
+    }
     this.persists = false;
     this.SetRotation(random() * 360);
   }
   private degrees = 0;
   /** Transform:SetRotation / GetRotation, in degrees as the source keeps them. */
-  SetRotation(degrees: number): void { this.degrees = degrees; this.transform.setRotation(degrees); }
-  GetRotation(): number { return this.degrees; }
+  SetRotation(degrees: number): void {
+    this.degrees = degrees;
+    this.transform.setRotation(degrees);
+  }
+  GetRotation(): number {
+    return this.degrees;
+  }
 }
 
 /** The nightmaregrowth and nightmaregrowth_crack Prefabs nightmaregrowth.lua returns; the spawners are not ported. */
-export function nightmareGrowthPrefabs(world: NightmareGrowthWorld): Readonly<Record<typeof NIGHTMAREGROWTH_ID, PrefabEntityDefinition<NightmareGrowthInstance>>
-  & Record<typeof NIGHTMAREGROWTH_CRACK_ID, PrefabEntityDefinition<NightmareGrowthCrackInstance>>> {
+export function nightmareGrowthPrefabs(
+  world: NightmareGrowthWorld,
+): Readonly<
+  Record<typeof NIGHTMAREGROWTH_ID, PrefabEntityDefinition<NightmareGrowthInstance>> &
+    Record<typeof NIGHTMAREGROWTH_CRACK_ID, PrefabEntityDefinition<NightmareGrowthCrackInstance>>
+> {
   const random = world.random ?? Math.random;
   return {
     [NIGHTMAREGROWTH_ID]: {

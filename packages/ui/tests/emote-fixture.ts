@@ -39,21 +39,39 @@ export async function createEmoteFixture() {
   const requests: string[] = [];
   let worldClicks = 0;
   const actionEvents = new EventEmitter<PlayerActionEvents>();
-  bindActionCancellation({ actionEvents }, locomotor, () => locomotor.stop(),
-    reason => reason === 'crafting' || reason === 'emote');
+  bindActionCancellation(
+    { actionEvents },
+    locomotor,
+    () => locomotor.stop(),
+    reason => reason === 'crafting' || reason === 'emote',
+  );
   setupEmoteWheel(emoteWheel, renderer.domElement, animation, actionEvents, () => {});
-  emoteWheel.addEventListener('game:emote-request', (event) => requests.push((event as CustomEvent<{ emote: string }>).detail.emote));
+  emoteWheel.addEventListener('game:emote-request', event =>
+    requests.push((event as CustomEvent<{ emote: string }>).detail.emote),
+  );
   renderer.domElement.addEventListener('pointerdown', () => worldClicks++);
   const draw = () => renderer.render(scene, camera);
   draw();
   return {
-    animation, emoteWheel, requests, locomotor, model,
+    animation,
+    emoteWheel,
+    requests,
+    locomotor,
+    model,
     /** The emote SGwilson's emote state is playing. */
-    get currentEmote() { return animation.emote?.id ?? null; },
+    get currentEmote() {
+      return animation.emote?.id ?? null;
+    },
     playEmote: (emote: Parameters<typeof playEmote>[1]) => playEmote(animation, emote),
-    get worldClicks() { return worldClicks; },
-    get moving() { return input.isPressed('KeyW'); },
-    get velocity() { return [body.velocity.x, body.velocity.y, body.velocity.z]; },
+    get worldClicks() {
+      return worldClicks;
+    },
+    get moving() {
+      return input.isPressed('KeyW');
+    },
+    get velocity() {
+      return [body.velocity.x, body.velocity.y, body.velocity.z];
+    },
     tick(count = 1) {
       for (let i = 0; i < count; i++) {
         movement(6, 1 / 30);
@@ -71,18 +89,32 @@ export async function createEmoteFixture() {
         for (const facing of ['up', 'down', 'side'] as const) {
           for (const mirrored of [false, true]) {
             facePlayer(animation, facing, mirrored);
-            if (!await playEmote(animation, id)) { failures.push(`start:${id}`); }
-            const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+            if (!(await playEmote(animation, id))) {
+              failures.push(`start:${id}`);
+            }
+            const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<
+              THREE.BufferGeometry,
+              THREE.MeshBasicMaterial[]
+            >;
             const before = [...mesh.geometry.getAttribute('position').array];
-            for (let f = 0; f < 8; f++) { advancePlayer(animation, 1 / 30); }
+            for (let f = 0; f < 8; f++) {
+              advancePlayer(animation, 1 / 30);
+            }
             const after = [...mesh.geometry.getAttribute('position').array];
-            if (JSON.stringify(before) !== JSON.stringify(after)) { changed++; }
-            else { failures.push(`static:${id}:${facing}:${mirrored}`); }
-            if (!mesh.geometry.drawRange.count || mesh.material.some((material) => !material.forceSinglePass)) {
+            if (JSON.stringify(before) !== JSON.stringify(after)) {
+              changed++;
+            } else {
+              failures.push(`static:${id}:${facing}:${mirrored}`);
+            }
+            if (!mesh.geometry.drawRange.count || mesh.material.some(material => !material.forceSinglePass)) {
               failures.push(`geometry:${id}:${facing}:${mirrored}`);
             }
-            for (let f = 0; f < 360; f++) { advancePlayer(animation, 1 / 30); }
-            if (((animation.emote?.id ?? null) === id) !== !!definition.loop) { failures.push(`end:${id}`); }
+            for (let f = 0; f < 360; f++) {
+              advancePlayer(animation, 1 / 30);
+            }
+            if (((animation.emote?.id ?? null) === id) !== !!definition.loop) {
+              failures.push(`end:${id}`);
+            }
             if (id === 'toast' && mesh.material.length < 2) {
               failures.push('toast props');
             }
@@ -93,24 +125,37 @@ export async function createEmoteFixture() {
       await animationEquipper.equip('strawhat', undefined, 'head');
       await animationEquipper.equip('torch');
       await playEmote(animation, 'wave');
-      const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-      const equipmentMaterials = mesh.material.map((material) => material.name);
+      const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<
+        THREE.BufferGeometry,
+        THREE.MeshBasicMaterial[]
+      >;
+      const equipmentMaterials = mesh.material.map(material => material.name);
       const withTorch = [...mesh.material];
       await animationEquipper.equip(null);
-      const torchRendered = withTorch.some((material) => !mesh.material.includes(material));
+      const torchRendered = withTorch.some(material => !mesh.material.includes(material));
       playPickup(animation);
       const pickupInterrupts = !(animation.emote !== null);
-      for (let i = 0; i < 120; i++) { advancePlayer(animation, 1 / 30); }
+      for (let i = 0; i < 120; i++) {
+        advancePlayer(animation, 1 / 30);
+      }
       await playEmote(animation, 'dance');
       setCrafting(animation, true);
-      const craftingInterrupts = !(animation.emote !== null) && !await playEmote(animation, 'happy');
+      const craftingInterrupts = !(animation.emote !== null) && !(await playEmote(animation, 'happy'));
       setCrafting(animation, false);
       const started = playEmote(animation, 'sit');
       cancelEmote(animation);
       const cancelledEmote = started && !(animation.emote !== null);
       startMovement(animation, 'idle');
       draw();
-      return { failures, changed, equipmentMaterials, torchRendered, pickupInterrupts, craftingInterrupts, cancelledEmote };
+      return {
+        failures,
+        changed,
+        equipmentMaterials,
+        torchRendered,
+        pickupInterrupts,
+        craftingInterrupts,
+        cancelledEmote,
+      };
     },
   };
 }

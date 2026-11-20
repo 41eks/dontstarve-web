@@ -11,16 +11,26 @@ import { prewarmScenePasses, renderSceneWithPasses } from '../../animation/src/s
 import { DisposeSounds } from '../../prefab/src/sound';
 
 export async function checkArchiveStatueInstancing() {
-  const scene = new THREE.Scene(), renderer = new THREE.WebGLRenderer();
+  const scene = new THREE.Scene(),
+    renderer = new THREE.WebGLRenderer();
   renderer.setSize(128, 128);
-  const camera = new THREE.OrthographicCamera(-30, 30, 30, -30, .1, 100);
+  const camera = new THREE.OrthographicCamera(-30, 30, 30, -30, 0.1, 100);
   camera.position.z = 40;
-  const scheduler = new GameTimeScheduler(), world = bindTestWorld(scheduler), awake = createSignal(true);
+  const scheduler = new GameTimeScheduler(),
+    world = bindTestWorld(scheduler),
+    awake = createSignal(true);
   const displays = new PrefabDisplayGroup(scene);
-  const manager = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim',
-    { tickingarea: () => createMemo(() => awake.get()) });
-  manager.register(archivePropsPrefabs({ scheduler, spawnGroundItem: () => undefined, fx: { collapse: () => {} },
-    spawnPrefab: (id, position) => manager.spawn(id, position) }));
+  const manager = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {
+    tickingarea: () => createMemo(() => awake.get()),
+  });
+  manager.register(
+    archivePropsPrefabs({
+      scheduler,
+      spawnGroundItem: () => undefined,
+      fx: { collapse: () => {} },
+      spawnPrefab: (id, position) => manager.spawn(id, position),
+    }),
+  );
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   const sample = async () => {
     await prewarmScenePasses(renderer, scene, camera);
@@ -32,33 +42,48 @@ export async function checkArchiveStatueInstancing() {
     for (let index = 0; index < 8; index++) {
       const position = new THREE.Vector3(index * 5 - 17.5, 0, 0);
       const statue = manager.spawn('archive_moon_statue', position, {
-        id: `statue:${index}`, transform: { position: position.toArray(), rotationY: 0 }, components: { archiveProp: { anim: 3 } },
+        id: `statue:${index}`,
+        transform: { position: position.toArray(), rotationY: 0 },
+        components: { archiveProp: { anim: 3 } },
       });
       await prefabDisplay(statue.transform.model)!.artLoaded();
     }
     await tick();
     const full = await sample();
     const targets = [...actionEntities()].filter(entity => entity.hasTag('MINE_workable'));
-    for (const target of targets) { target.components.workable!.WorkedBy(testPlayer(), 4); }
+    for (const target of targets) {
+      target.components.workable!.WorkedBy(testPlayer(), 4);
+    }
     await tick();
     const med = await sample();
-    for (const target of targets) { target.components.workable!.WorkedBy(testPlayer(), 3); }
+    for (const target of targets) {
+      target.components.workable!.WorkedBy(testPlayer(), 3);
+    }
     await tick();
     const low = await sample();
     const batch = scene.getObjectByName('ArchiveSpriteInstances:colour');
     const records = JSON.stringify(manager.exportRecords());
-    awake.set(false); await tick();
+    awake.set(false);
+    await tick();
     const asleep = await sample();
-    awake.set(true); await tick();
+    awake.set(true);
+    await tick();
     const restored = await sample();
     const shared = scene.getObjectByName('ArchiveSpriteInstances:colour') === batch;
-    const preserved = JSON.stringify(manager.exportRecords()) === records
-      && targets.every(target => target.components.workable!.GetWorkLeft() === 3);
+    const preserved =
+      JSON.stringify(manager.exportRecords()) === records &&
+      targets.every(target => target.components.workable!.GetWorkLeft() === 3);
     targets[0].components.workable!.WorkedBy(testPlayer(), 3);
     await tick();
     const removed = await sample();
     return { full, med, low, asleep, restored, shared, preserved, remaining: removed.count };
   } finally {
-    manager.dispose(); displays.dispose(); await tick(); world.unbind(); scheduler.dispose(); DisposeSounds(); renderer.dispose();
+    manager.dispose();
+    displays.dispose();
+    await tick();
+    world.unbind();
+    scheduler.dispose();
+    DisposeSounds();
+    renderer.dispose();
   }
 }

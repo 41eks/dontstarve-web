@@ -13,22 +13,50 @@ function fake(clip: { name: string; loop: boolean }) {
   const calls: string[] = [];
   let complete: (() => void) | undefined;
   const sprite = {
-    model, frameCount: 10, frame: 3, currentAnimation: clip.name, dispose: vi.fn(() => model.removeFromParent()), update: vi.fn(),
+    model,
+    frameCount: 10,
+    frame: 3,
+    currentAnimation: clip.name,
+    dispose: vi.fn(() => model.removeFromParent()),
+    update: vi.fn(),
     start: (name: string) => calls.push(`start:${name}`),
-    playOnce: (name: string, done?: () => void) => { calls.push(`once:${name}`); complete = done; },
-    setFrame: (frame: number) => calls.push(`frame:${frame}`), setPaused: vi.fn(), setFacing: (f: number) => calls.push(`facing:${f}`),
-    setAnimation: vi.fn(), setOpacity: vi.fn(), setColour: vi.fn(), setBuildArchive: (a: string) => calls.push(`build:${a}`),
-    setSymbolOverride: vi.fn(), setSymbolHidden: vi.fn(), faceCamera: vi.fn(), refreshTransform: vi.fn(),
+    playOnce: (name: string, done?: () => void) => {
+      calls.push(`once:${name}`);
+      complete = done;
+    },
+    setFrame: (frame: number) => calls.push(`frame:${frame}`),
+    setPaused: vi.fn(),
+    setFacing: (f: number) => calls.push(`facing:${f}`),
+    setAnimation: vi.fn(),
+    setOpacity: vi.fn(),
+    setColour: vi.fn(),
+    setBuildArchive: (a: string) => calls.push(`build:${a}`),
+    setSymbolOverride: vi.fn(),
+    setSymbolHidden: vi.fn(),
+    faceCamera: vi.fn(),
+    refreshTransform: vi.fn(),
   } as unknown as ArchiveSprite;
   return { sprite, calls, finish: () => complete?.() };
 }
 
 it('releases the drawn sprite while unloaded and rebuilds it with the logical clip; owners dress it again from `art`', async () => {
   const created: ReturnType<typeof fake>[] = [];
-  const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
-  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
+  const make = (clip: { name: string; loop: boolean }) => {
+    const entry = fake(clip);
+    created.push(entry);
+    return entry.sprite;
+  };
+  const resident = new ResidentSprite(
+    new THREE.Group(),
+    make,
+    { name: 'idle', loop: true },
+    make({ name: 'idle', loop: true }),
+  );
   resident.start('sway');
-  const stop = createEffect(() => { resident.art.get(); resident.setBuildArchive('bloom'); });
+  const stop = createEffect(() => {
+    resident.art.get();
+    resident.setBuildArchive('bloom');
+  });
   await new Promise(resolve => setTimeout(resolve, 0));
   resident.unload();
   expect(created[0].sprite.dispose).toHaveBeenCalledOnce();
@@ -43,8 +71,17 @@ it('releases the drawn sprite while unloaded and rebuilds it with the logical cl
 
 it('settles a transition requested or interrupted while unloaded instead of replaying it', () => {
   const created: ReturnType<typeof fake>[] = [];
-  const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
-  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
+  const make = (clip: { name: string; loop: boolean }) => {
+    const entry = fake(clip);
+    created.push(entry);
+    return entry.sprite;
+  };
+  const resident = new ResidentSprite(
+    new THREE.Group(),
+    make,
+    { name: 'idle', loop: true },
+    make({ name: 'idle', loop: true }),
+  );
   resident.playOnce('grow', () => resident.start('idle'));
   resident.unload();
   resident.playOnce('shrink', () => resident.start('idle'));
@@ -56,14 +93,26 @@ it('settles a transition requested or interrupted while unloaded instead of repl
 
 it('keeps the last pose of a finished one-shot clip when reloaded', () => {
   const created: ReturnType<typeof fake>[] = [];
-  const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
-  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'off', loop: false }, make({ name: 'off', loop: false }));
+  const make = (clip: { name: string; loop: boolean }) => {
+    const entry = fake(clip);
+    created.push(entry);
+    return entry.sprite;
+  };
+  const resident = new ResidentSprite(
+    new THREE.Group(),
+    make,
+    { name: 'off', loop: false },
+    make({ name: 'off', loop: false }),
+  );
   resident.playOnce('picked');
   created[0].finish();
-  resident.unload(); resident.load();
+  resident.unload();
+  resident.load();
   expect(created[1].calls).toEqual(expect.arrayContaining(['once:picked', 'frame:9']));
   // Told to rest on a clip's last frame while unloaded: the rebuilt sprite rests there, not on frame 0.
-  resident.unload(); resident.holdLastFrame('pst'); resident.load();
+  resident.unload();
+  resident.holdLastFrame('pst');
+  resident.load();
   expect(created[2].calls).toEqual(['once:pst', 'frame:9']);
 });
 
@@ -71,19 +120,27 @@ it('skips a clean entity root while empty, settles marked and resident writes, a
   const scene = new THREE.Scene();
   const created: ReturnType<typeof fake>[] = [];
   const root = new TransformRoot();
-  const resident = new ResidentSprite(root, clip => {
-    const entry = fake(clip); created.push(entry); return entry.sprite;
-  }, { name: 'idle', loop: true });
+  const resident = new ResidentSprite(
+    root,
+    clip => {
+      const entry = fake(clip);
+      created.push(entry);
+      return entry.sprite;
+    },
+    { name: 'idle', loop: true },
+  );
   scene.add(root);
   const placeholder = root.children[0];
   const updates = vi.spyOn(root, 'updateMatrix');
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
   try {
-    updateSceneMatrices(scene); updates.mockClear();
+    updateSceneMatrices(scene);
+    updates.mockClear();
     updateSceneMatrices(scene);
     expect(updates).not.toHaveBeenCalled();
     // An entity writes its root through its Transform, which marks it.
-    root.position.x = 4; markTransformDirty(root);
+    root.position.x = 4;
+    markTransformDirty(root);
     updateSceneMatrices(scene);
     expect(placeholder.matrixWorld.elements[12]).toBe(4);
 
@@ -98,13 +155,15 @@ it('skips a clean entity root while empty, settles marked and resident writes, a
 
     resident.unload();
     await tick();
-    updateSceneMatrices(scene); updates.mockClear();
+    updateSceneMatrices(scene);
+    updates.mockClear();
     updateSceneMatrices(scene);
     expect(updates).not.toHaveBeenCalled();
     expect(placeholder.matrixWorld.elements[13]).toBe(3);
 
     // FX attached to an otherwise empty resident are updated on every traversal while attached.
-    const fx = new THREE.Group(); root.add(fx);
+    const fx = new THREE.Group();
+    root.add(fx);
     fx.position.x = 2;
     updateSceneMatrices(scene);
     expect(fx.matrixWorld.elements[12]).toBe(6);
@@ -112,15 +171,20 @@ it('skips a clean entity root while empty, settles marked and resident writes, a
     updateSceneMatrices(scene);
     expect(fx.matrixWorld.elements[12]).toBe(9);
     fx.removeFromParent();
-    updateSceneMatrices(scene); updates.mockClear(); updateSceneMatrices(scene);
+    updateSceneMatrices(scene);
+    updates.mockClear();
+    updateSceneMatrices(scene);
     expect(updates).not.toHaveBeenCalled();
 
-    root.position.x = 11; markTransformDirty(root);
+    root.position.x = 11;
+    markTransformDirty(root);
     resident.load();
-    await tick(); updateSceneMatrices(scene);
+    await tick();
+    updateSceneMatrices(scene);
     expect(created[1].sprite.model.matrixWorld.elements[12]).toBe(11);
   } finally {
-    updates.mockRestore(); resident.dispose();
+    updates.mockRestore();
+    resident.dispose();
   }
 });
 
@@ -128,7 +192,12 @@ it('leaves its parent while inactive, returns on activation and stays out when a
   const scene = new THREE.Scene();
   const make = (clip: { name: string; loop: boolean }) => fake(clip).sprite;
   const tick = () => new Promise(resolve => setTimeout(resolve, 0));
-  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
+  const resident = new ResidentSprite(
+    new THREE.Group(),
+    make,
+    { name: 'idle', loop: true },
+    make({ name: 'idle', loop: true }),
+  );
   scene.add(resident.model);
   resident.model.position.set(3, 0, 5);
 
@@ -157,77 +226,121 @@ it('leaves its parent while inactive, returns on activation and stays out when a
   expect(scene.children).toHaveLength(0);
 });
 
-it.each(['archive', 'factory'] as const)('skips a clean %s entity root while settling marks, parent moves, queries and visual replacement', async kind => {
-  const scene = new THREE.Scene(), parent = new THREE.Group();
-  scene.add(parent);
-  const created: { sprite: ArchiveSprite; leaf: THREE.Object3D; gate: ReturnType<typeof installMatrixGate> }[] = [];
-  const make = (clip: { name: string; loop: boolean }) => {
-    const { sprite } = fake(clip), visual = sprite.model.children[0], leaf = new THREE.Object3D();
-    leaf.matrixAutoUpdate = false;
-    visual.add(leaf);
-    // The archive's stationary cache assumes static ancestors; the entity root invalidates it when it actually moves.
-    const gate = installMatrixGate(sprite.model, visual, true);
-    sprite.dispose = () => { gate.dispose(); sprite.model.removeFromParent(); };
-    created.push({ sprite, leaf, gate });
-    return sprite;
-  };
-  const first = make({ name: 'idle', loop: true });
-  const resident = kind === 'archive'
-    ? new ResidentSprite(new TransformRoot(), make, { name: 'idle', loop: true }, first)
-    : new ResidentSpriteController(new TransformRoot(), name => make({ name, loop: true }).model,
-      model => { created.find(entry => entry.sprite.model === model)!.sprite.dispose(); }, first.model, { name: 'idle' });
-  parent.add(resident.model);
-  const observer = vi.fn(), stop = watchWorldMatrixChanges(resident.model, observer);
-  const updates = vi.spyOn(resident.model, 'updateMatrix');
-  const tick = () => new Promise(resolve => setTimeout(resolve, 0));
-  try {
-    await tick(); updateSceneMatrices(scene);
-    observer.mockClear(); updates.mockClear();
-    for (let i = 0; i < 3; i++) { updateSceneMatrices(scene); }
-    expect(updates).not.toHaveBeenCalled();
-    expect(observer).not.toHaveBeenCalled();
+it.each(['archive', 'factory'] as const)(
+  'skips a clean %s entity root while settling marks, parent moves, queries and visual replacement',
+  async kind => {
+    const scene = new THREE.Scene(),
+      parent = new THREE.Group();
+    scene.add(parent);
+    const created: { sprite: ArchiveSprite; leaf: THREE.Object3D; gate: ReturnType<typeof installMatrixGate> }[] = [];
+    const make = (clip: { name: string; loop: boolean }) => {
+      const { sprite } = fake(clip),
+        visual = sprite.model.children[0],
+        leaf = new THREE.Object3D();
+      leaf.matrixAutoUpdate = false;
+      visual.add(leaf);
+      // The archive's stationary cache assumes static ancestors; the entity root invalidates it when it actually moves.
+      const gate = installMatrixGate(sprite.model, visual, true);
+      sprite.dispose = () => {
+        gate.dispose();
+        sprite.model.removeFromParent();
+      };
+      created.push({ sprite, leaf, gate });
+      return sprite;
+    };
+    const first = make({ name: 'idle', loop: true });
+    const resident =
+      kind === 'archive'
+        ? new ResidentSprite(new TransformRoot(), make, { name: 'idle', loop: true }, first)
+        : new ResidentSpriteController(
+            new TransformRoot(),
+            name => make({ name, loop: true }).model,
+            model => {
+              created.find(entry => entry.sprite.model === model)!.sprite.dispose();
+            },
+            first.model,
+            { name: 'idle' },
+          );
+    parent.add(resident.model);
+    const observer = vi.fn(),
+      stop = watchWorldMatrixChanges(resident.model, observer);
+    const updates = vi.spyOn(resident.model, 'updateMatrix');
+    const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+    try {
+      await tick();
+      updateSceneMatrices(scene);
+      observer.mockClear();
+      updates.mockClear();
+      for (let i = 0; i < 3; i++) {
+        updateSceneMatrices(scene);
+      }
+      expect(updates).not.toHaveBeenCalled();
+      expect(observer).not.toHaveBeenCalled();
 
-    resident.model.position.x = 4; markTransformDirty(resident.model);
-    updateSceneMatrices(scene);
-    expect(created[0].leaf.matrixWorld.elements[12]).toBe(4);
-    expect(observer).toHaveBeenCalledOnce();
-    observer.mockClear();
-    parent.position.x = 3;
-    resident.model.updateWorldMatrix(true, true);
-    expect(created[0].leaf.matrixWorld.elements[12]).toBe(7);
-    expect(observer).toHaveBeenCalledOnce();
+      resident.model.position.x = 4;
+      markTransformDirty(resident.model);
+      updateSceneMatrices(scene);
+      expect(created[0].leaf.matrixWorld.elements[12]).toBe(4);
+      expect(observer).toHaveBeenCalledOnce();
+      observer.mockClear();
+      parent.position.x = 3;
+      resident.model.updateWorldMatrix(true, true);
+      expect(created[0].leaf.matrixWorld.elements[12]).toBe(7);
+      expect(observer).toHaveBeenCalledOnce();
 
-    // A marked inner visual settles; an attached FX runs on every traversal while attached.
-    const fx = new THREE.Group(); resident.model.add(fx);
-    fx.position.x = 2;
-    first.model.children[0].position.y = 5; created[0].gate.markDirty();
-    updateSceneMatrices(scene);
-    expect(created[0].leaf.matrixWorld.elements[13]).toBe(5);
-    expect(fx.matrixWorld.elements[12]).toBe(9);
-    fx.position.x = 6; updateSceneMatrices(scene);
-    expect(fx.matrixWorld.elements[12]).toBe(13);
-    fx.removeFromParent();
+      // A marked inner visual settles; an attached FX runs on every traversal while attached.
+      const fx = new THREE.Group();
+      resident.model.add(fx);
+      fx.position.x = 2;
+      first.model.children[0].position.y = 5;
+      created[0].gate.markDirty();
+      updateSceneMatrices(scene);
+      expect(created[0].leaf.matrixWorld.elements[13]).toBe(5);
+      expect(fx.matrixWorld.elements[12]).toBe(9);
+      fx.position.x = 6;
+      updateSceneMatrices(scene);
+      expect(fx.matrixWorld.elements[12]).toBe(13);
+      fx.removeFromParent();
 
-    // A query settles a marked root at once.
-    resident.model.position.x = 8; markTransformDirty(resident.model);
-    resident.model.updateWorldMatrix(true, false);
-    updateSceneMatrices(scene);
-    expect(created[0].leaf.matrixWorld.elements[12]).toBe(11);
-    resident.setActive(false); await tick();
-    resident.setActive(true); await tick(); updateSceneMatrices(scene);
-    expect(created[1].leaf.matrixWorld.elements[12]).toBe(11);
-    observer.mockClear(); updates.mockClear();
-    updateSceneMatrices(scene);
-    expect(updates).not.toHaveBeenCalled();
-    expect(observer).not.toHaveBeenCalled();
-  } finally { updates.mockRestore(); stop(); resident.dispose(); }
-});
+      // A query settles a marked root at once.
+      resident.model.position.x = 8;
+      markTransformDirty(resident.model);
+      resident.model.updateWorldMatrix(true, false);
+      updateSceneMatrices(scene);
+      expect(created[0].leaf.matrixWorld.elements[12]).toBe(11);
+      resident.setActive(false);
+      await tick();
+      resident.setActive(true);
+      await tick();
+      updateSceneMatrices(scene);
+      expect(created[1].leaf.matrixWorld.elements[12]).toBe(11);
+      observer.mockClear();
+      updates.mockClear();
+      updateSceneMatrices(scene);
+      expect(updates).not.toHaveBeenCalled();
+      expect(observer).not.toHaveBeenCalled();
+    } finally {
+      updates.mockRestore();
+      stop();
+      resident.dispose();
+    }
+  },
+);
 
 it('holds a percent pose across unloading, apart from the entity pause, until another clip plays', () => {
   const created: ReturnType<typeof fake>[] = [];
-  const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
-  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
-  resident.setPercent('meter', .45);
+  const make = (clip: { name: string; loop: boolean }) => {
+    const entry = fake(clip);
+    created.push(entry);
+    return entry.sprite;
+  };
+  const resident = new ResidentSprite(
+    new THREE.Group(),
+    make,
+    { name: 'idle', loop: true },
+    make({ name: 'idle', loop: true }),
+  );
+  resident.setPercent('meter', 0.45);
   expect(created[0].calls.slice(-2)).toEqual(['once:meter', 'frame:4']);
   // Resuming the entity does not set the meter running.
   resident.setPaused(false);
@@ -242,8 +355,17 @@ it('holds a percent pose across unloading, apart from the entity pause, until an
 
 it('returns from a transient to the interrupted clip, frame and queue, and settles one that is unloaded', () => {
   const created: ReturnType<typeof fake>[] = [];
-  const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
-  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'idle', loop: true }, make({ name: 'idle', loop: true }));
+  const make = (clip: { name: string; loop: boolean }) => {
+    const entry = fake(clip);
+    created.push(entry);
+    return entry.sprite;
+  };
+  const resident = new ResidentSprite(
+    new THREE.Group(),
+    make,
+    { name: 'idle', loop: true },
+    make({ name: 'idle', loop: true }),
+  );
   const done = vi.fn();
   resident.playOnce('hit', done);
   resident.pushAnimation('idle', true);
@@ -264,8 +386,17 @@ it('returns from a transient to the interrupted clip, frame and queue, and settl
 
 it('plays what is pushed behind a loop after its current pass, and at once behind a finished one-shot', () => {
   const created: ReturnType<typeof fake>[] = [];
-  const make = (clip: { name: string; loop: boolean }) => { const entry = fake(clip); created.push(entry); return entry.sprite; };
-  const resident = new ResidentSprite(new THREE.Group(), make, { name: 'proximity_loop', loop: true }, make({ name: 'proximity_loop', loop: true }));
+  const make = (clip: { name: string; loop: boolean }) => {
+    const entry = fake(clip);
+    created.push(entry);
+    return entry.sprite;
+  };
+  const resident = new ResidentSprite(
+    new THREE.Group(),
+    make,
+    { name: 'proximity_loop', loop: true },
+    make({ name: 'proximity_loop', loop: true }),
+  );
   const [drawn] = created;
   // AnimState:PushAnimation behind a loop: the pass being drawn (frame 3) plays to its end first.
   resident.pushAnimation('proximity_pst');

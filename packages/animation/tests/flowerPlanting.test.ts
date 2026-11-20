@@ -6,7 +6,11 @@ import { withEntity } from './entityFixture';
 import { testPlayer } from './testPlayer';
 import { findActionEntity } from '../../prefab/src/actionEntity';
 import { prefabDisplay } from '@dontstarve-web/display';
-import { PrefabEntityManager, prefabInstance as lookupPrefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
+import {
+  PrefabEntityManager,
+  prefabInstance as lookupPrefabInstance,
+  type PrefabInstance,
+} from '../../prefab/src/prefabInstance';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
@@ -42,50 +46,113 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { createInventoryStore } from './testInventory';
 
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop() {} })) }));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => ({ stop() {} })),
+}));
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
-function setup(random = () => .5) {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+function setup(random = () => 0.5) {
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.stubGlobal('window', new EventTarget());
-  const scene = new THREE.Scene(), player = new THREE.Group(), canvas = new EventTarget();
-  const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
+  const scene = new THREE.Scene(),
+    player = new THREE.Group(),
+    canvas = new EventTarget();
+  const world = {
+    scene,
+    player,
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
     worldEvents: new EventEmitter<WorldEvents>(),
-    cameraFacing: createSignal(1), cameraHeading: createSignal(0), TheCamera: fixedCamera(0),
-    renderer: { domElement: canvas } as unknown as THREE.WebGLRenderer };
-  const scheduler = new GameTimeScheduler(), fire = FireFxHost.create('/dst/data/anim'), displays = new PrefabDisplayGroup(scene);
+    cameraFacing: createSignal(1),
+    cameraHeading: createSignal(0),
+    TheCamera: fixedCamera(0),
+    renderer: { domElement: canvas } as unknown as THREE.WebGLRenderer,
+  };
+  const scheduler = new GameTimeScheduler(),
+    fire = FireFxHost.create('/dst/data/anim'),
+    displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {});
-  prefabs.register(flowerPrefabs({ scheduler, fire, random, worldEvents: world.worldEvents, spawnGroundItem: vi.fn() }));
+  prefabs.register(
+    flowerPrefabs({ scheduler, fire, random, worldEvents: world.worldEvents, spawnGroundItem: vi.fn() }),
+  );
   const flowers = {
     /** SpawnSaveRecord for a saved flower. */
     spawnFromSave: (id: string, animation: FlowerAnimation, position: THREE.Vector3, planted = false) =>
-      prefabs.spawn('flower', position, { id, components: { flower: { animation, ...(planted ? { planted: true as const } : {}) } } }).transform.model,
+      prefabs.spawn('flower', position, {
+        id,
+        components: { flower: { animation, ...(planted ? { planted: true as const } : {}) } },
+      }).transform.model,
     exportRecords: () => prefabs.exportRecords().map(({ record }) => record),
   };
-  const inventory = createInventoryStore([]), registry = new EntityRegistry([], prefabs, () => player.position);
+  const inventory = createInventoryStore([]),
+    registry = new EntityRegistry([], prefabs, () => player.position);
   registry.registerPrefabs(PREFAB_DEFINITIONS.flowers);
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(),
-    elapsedSeconds: 100, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
-  return { world, flowers, prefabs, displays, inventory, registry, save,
-    dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); fire.dispose(); inventory.dispose(); scheduler.dispose(); } };
+  const save = () =>
+    serializeSave(
+      template,
+      {
+        entities: registry.exportRecords(),
+        inventory: inventory.exportSaved(),
+        elapsedSeconds: 100,
+        playerTransform: { position: [0, 0, 0], rotationY: 0 },
+      },
+      SAVE_CATALOG,
+    );
+  return {
+    world,
+    flowers,
+    prefabs,
+    displays,
+    inventory,
+    registry,
+    save,
+    dispose: () => {
+      registry.dispose();
+      prefabs.dispose();
+      displays.dispose();
+      fire.dispose();
+      inventory.dispose();
+      scheduler.dispose();
+    },
+  };
 }
 
 it('buffers planting at frame six, preserves cancelled butterflies and saves the flower and cursor stack', async () => {
-  const s = setup(), restored = setup();
+  const s = setup(),
+    restored = setup();
   let actor: ReturnType<typeof deployActor> | undefined;
   try {
     expect((await executeDebugCommand('c_give("butterfly",2)', s.inventory)).ok).toBe(true);
-    s.inventory.getEntity(inventorySlotAddress(0))!.setFreshnessPercent(.6);
+    s.inventory.getEntity(inventorySlotAddress(0))!.setFreshnessPercent(0.6);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
-    const spawnPrefab = vi.fn((_prefab: string, position: THREE.Vector3) => s.prefabs.spawn('planted_flower', position));
+    const spawnPrefab = vi.fn((_prefab: string, position: THREE.Vector3) =>
+      s.prefabs.spawn('planted_flower', position),
+    );
     const point = new THREE.Vector3(2, 0, 0);
     vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
-    actor = deployActor(s.world, s.inventory, createDeployMap({ turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }), blockers: placementEntities(s.world.scene), spawnPrefab }));
+    actor = deployActor(
+      s.world,
+      s.inventory,
+      createDeployMap({
+        turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
+        blockers: placementEntities(s.world.scene),
+        spawnPrefab,
+      }),
+    );
     const { graph } = actor;
     expect(actor.canDeploy(new THREE.Vector3(-1, 0, 0))).toBe(false);
     expect(actor.deploy(point)).toBe(true);
-    graph.update(5 / 30); actor.controller.cancel(); graph.update(1);
+    graph.update(5 / 30);
+    actor.controller.cancel();
+    graph.update(1);
     expect(spawnPrefab).not.toHaveBeenCalled();
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
     expect(s.flowers.exportRecords()).toEqual([]);
@@ -93,7 +160,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     graph.update(5 / 30);
     expect(s.inventory.get(cursorSlotAddress())?.count).toBe(2);
     graph.update(1 / 30);
-    expect(s.inventory.get(cursorSlotAddress())).toMatchObject({ count: 1, freshnessPercent: .6 });
+    expect(s.inventory.get(cursorSlotAddress())).toMatchObject({ count: 1, freshnessPercent: 0.6 });
     const record = s.flowers.exportRecords()[0];
     expect(record.transform.position).toEqual(point.toArray());
     expect(record.components.flower).toEqual({ animation: 'f6', planted: true });
@@ -101,31 +168,53 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
     expect(prefabInstance(flower)!.listTags()).toContain('flower');
     // The planted flower exists at once; its display draws it once the art has loaded.
     await prefabDisplay(flower)!.artLoaded();
-    expect(s.displays.renderEntities.find(entity => entity.object === flower)?.footPosition).toBe(prefabInstance(flower)!.position);
+    expect(s.displays.renderEntities.find(entity => entity.object === flower)?.footPosition).toBe(
+      prefabInstance(flower)!.position,
+    );
     expect(actor.canDeploy(new THREE.Vector3(4.2, 0, 0))).toBe(false);
     expect(actor.canDeploy(new THREE.Vector3(4.3, 0, 0))).toBe(true);
     let json = '';
-    expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand('c_save()', s.inventory, undefined, () => {
+          json = s.save();
+        })
+      ).ok,
+    ).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     await restored.registry.restoreAll({ flower: saved.world.entities.flower });
     loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     expect(restored.flowers.exportRecords()).toEqual(s.flowers.exportRecords());
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
     expect(saved.world.entities.flower).toEqual([record]);
-  } finally { actor?.controller.dispose(); actor?.graph.cancelAction(); s.dispose(); restored.dispose(); }
+  } finally {
+    actor?.controller.dispose();
+    actor?.graph.cancelAction();
+    s.dispose();
+    restored.dispose();
+  }
 });
 
 it('quick-picks petals at frame six, preserves a cancelled flower and reloads the harvested result', async () => {
-  const s = setup(), restored = setup();
+  const s = setup(),
+    restored = setup();
   const graph = wilsonPlayer(() => 1).sg;
   const animation = { stategraph: graph };
-  const locomotor = new Locomotor({ position: s.world.player.position, velocity: new THREE.Vector3() },
-    { physicsRadius: .5 * WORLD_SCALE });
+  const locomotor = new Locomotor(
+    { position: s.world.player.position, velocity: new THREE.Vector3() },
+    { physicsRadius: 0.5 * WORLD_SCALE },
+  );
   const killed = vi.fn();
   // The player inst: pickable:Pick(act.doer) spawns the petals into its inventory and its sanity takes the delta.
   const picker = testPlayer({ model: withEntity(s.world.player, 'wilson'), inventory: s.inventory });
   const sanity = vi.spyOn(addComponent(picker, 'sanity', Sanity, 200), 'DoDelta');
-  const controller = new PlayerController(s.world, animation.stategraph, locomotor, createEquipmentExistenceState('HANDS'), picker);
+  const controller = new PlayerController(
+    s.world,
+    animation.stategraph,
+    locomotor,
+    createEquipmentExistenceState('HANDS'),
+    picker,
+  );
   try {
     const flower = await s.flowers.spawnFromSave('flower:pick', 'f6', new THREE.Vector3(2, 0, 0));
     const component = prefabInstance(flower)!.components.pickable;
@@ -135,10 +224,12 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
     const picked = vi.fn(() => expect(flower.parent).toBe(s.world.scene));
     prefabInstance(flower)!.ListenForEvent('picked', picked);
     const pick = () => controller.DoAction(controller.createAction({ action: 'PICK', target: entity })!);
-    s.world.player.position.set(.5, 0, 0);
+    s.world.player.position.set(0.5, 0, 0);
     expect(pick()).toBe(true);
     expect(graph.stateName).toBe('doshortaction');
-    graph.update(5 / 30); controller.cancel(); graph.update(1);
+    graph.update(5 / 30);
+    controller.cancel();
+    graph.update(1);
     expect(s.inventory.count('petals')).toBe(0);
     expect(s.flowers.exportRecords()).toHaveLength(1);
     expect(sanity).not.toHaveBeenCalled();
@@ -159,12 +250,23 @@ it('quick-picks petals at frame six, preserves a cancelled flower and reloads th
     expect(s.prefabs.FindEntities(new THREE.Vector3(2, 0, 0), 1, ['flower'])).toEqual([]);
     expect(s.displays.renderEntities).toEqual([]);
     let json = '';
-    expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand('c_save()', s.inventory, undefined, () => {
+          json = s.save();
+        })
+      ).ok,
+    ).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     expect(saved.world.entities.flower).toEqual([]);
     loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
-  } finally { controller.dispose(); graph.cancelAction(); s.dispose(); restored.dispose(); }
+  } finally {
+    controller.dispose();
+    graph.cancelAction();
+    s.dispose();
+    restored.dispose();
+  }
 });
 
 it('applies rose thorns through combat and respects equipped bramble protection and plantkin sanity immunity', async () => {
@@ -174,7 +276,8 @@ it('applies rose thorns through combat and respects equipped bramble protection 
   const health = addComponent(picker, 'health', Health, 150);
   const sanity = vi.spyOn(addComponent(picker, 'sanity', Sanity, 200), 'DoDelta');
   addComponent(picker, 'combat', Combat, () => 0);
-  const pushEvent = vi.fn(); picker.ListenForEvent('thorns', () => pushEvent('thorns'));
+  const pushEvent = vi.fn();
+  picker.ListenForEvent('thorns', () => pushEvent('thorns'));
   try {
     // A carried protective item does not protect until equipped.
     s.inventory.add('torch', 1);
@@ -183,59 +286,112 @@ it('applies rose thorns through combat and respects equipped bramble protection 
     const rose = await s.flowers.spawnFromSave('rose:pick', 'rose', new THREE.Vector3());
     const component = prefabInstance(rose)!.components.pickable;
     expect(component!.pick({ picker, giveItem: () => false })).toBe(false);
-    expect(health.currenthealth).toBe(150); expect(sanity).not.toHaveBeenCalled();
-    expect(component!.pick({ picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count) })).toBe(true);
+    expect(health.currenthealth).toBe(150);
+    expect(sanity).not.toHaveBeenCalled();
+    expect(
+      component!.pick({ picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count) }),
+    ).toBe(true);
     expect(health.currenthealth).toBe(149);
     expect(pushEvent).toHaveBeenCalledExactlyOnceWith('thorns');
     expect(sanity).toHaveBeenCalledExactlyOnceWith(5);
     expect(s.inventory.EquipFromInventory(torch)).toBe(true);
     const protectedRose = await s.flowers.spawnFromSave('rose:protected', 'rose', new THREE.Vector3(8, 0, 0));
     picker.addTag('plantkin');
-    expect(prefabInstance(protectedRose)!.components.pickable!.pick({
-      picker, giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count),
-    })).toBe(true);
+    expect(
+      prefabInstance(protectedRose)!.components.pickable!.pick({
+        picker,
+        giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count),
+      }),
+    ).toBe(true);
     expect(health.currenthealth).toBe(149);
-    expect(pushEvent).toHaveBeenCalledOnce(); expect(sanity).toHaveBeenCalledOnce();
+    expect(pushEvent).toHaveBeenCalledOnce();
+    expect(sanity).toHaveBeenCalledOnce();
     expect(s.inventory.count('petals')).toBe(2);
-  } finally { picker.remove(); s.dispose(); }
+  } finally {
+    picker.remove();
+    s.dispose();
+  }
 });
 
 it('perishes harvested petals in discrete batches and preserves freshness and quantity through cursor transfer and reload', async () => {
-  const s = setup(), restored = setup(), world = createPerishWorld(), restoredWorld = createPerishWorld();
-  s.inventory.entities.bindPerishWorld(world); restored.inventory.entities.bindPerishWorld(restoredWorld);
-  const ground = new ItemWorldFixture(s.world.scene, s.world.camera, s.world.renderer, '/dst/data/databundles/images.zip',
-    s.inventory, '/dst/data/anim', s.world.player);
-  const restoredGround = new ItemWorldFixture(restored.world.scene, restored.world.camera, restored.world.renderer, '/dst/data/databundles/images.zip',
-    restored.inventory, '/dst/data/anim', restored.world.player);
-  ground.entities.bindPerishWorld(world); restoredGround.entities.bindPerishWorld(restoredWorld);
+  const s = setup(),
+    restored = setup(),
+    world = createPerishWorld(),
+    restoredWorld = createPerishWorld();
+  s.inventory.entities.bindPerishWorld(world);
+  restored.inventory.entities.bindPerishWorld(restoredWorld);
+  const ground = new ItemWorldFixture(
+    s.world.scene,
+    s.world.camera,
+    s.world.renderer,
+    '/dst/data/databundles/images.zip',
+    s.inventory,
+    '/dst/data/anim',
+    s.world.player,
+  );
+  const restoredGround = new ItemWorldFixture(
+    restored.world.scene,
+    restored.world.camera,
+    restored.world.renderer,
+    '/dst/data/databundles/images.zip',
+    restored.inventory,
+    '/dst/data/anim',
+    restored.world.player,
+  );
+  ground.entities.bindPerishWorld(world);
+  restoredGround.entities.bindPerishWorld(restoredWorld);
   try {
     const flower = await s.flowers.spawnFromSave('flower:petals', 'f1', new THREE.Vector3());
-    expect(prefabInstance(flower)!.components.pickable!.pick({
-      giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count),
-    })).toBe(true);
+    expect(
+      prefabInstance(flower)!.components.pickable!.pick({
+        giveItem: (itemId: string, count: number) => s.inventory.add(itemId, count),
+      }),
+    ).toBe(true);
     expect((await executeDebugCommand('c_give("petals")', s.inventory)).ok).toBe(true);
-    const entity = s.inventory.getEntity(inventorySlotAddress(0))!, perishable = entity.components.perishable;
+    const entity = s.inventory.getEntity(inventorySlotAddress(0))!,
+      perishable = entity.components.perishable;
     expect(perishable.perishtime.peek()).toBe(PERISH_FAST);
     const timer = perishable.timer.peek();
-    world.advance(9); expect(perishable.timer.peek()).toBe(timer);
+    world.advance(9);
+    expect(perishable.timer.peek()).toBe(timer);
     world.advance(1);
     expect(perishable.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST - 10 });
     world.advance(3);
     expect(s.inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
     expect(s.inventory.getEntity(cursorSlotAddress())).toBe(entity);
     expect(perishable.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST - 13 });
-    expect((await executeDebugCommand('c_spawn("petals")', s.inventory, async id => {
-      if (!PREFAB_DEFINITIONS.groundItems.debugSpawnIds.includes(id)) { return false; }
-      await ground.spawnFromSave('petals:ground', { ...SAVE_CATALOG.items[id], itemId: id, count: 1, freshnessPercent: .25 }, new THREE.Vector3(12, 0, 9));
-      return true;
-    })).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand('c_spawn("petals")', s.inventory, async id => {
+          if (!PREFAB_DEFINITIONS.groundItems.debugSpawnIds.includes(id)) {
+            return false;
+          }
+          await ground.spawnFromSave(
+            'petals:ground',
+            { ...SAVE_CATALOG.items[id], itemId: id, count: 1, freshnessPercent: 0.25 },
+            new THREE.Vector3(12, 0, 9),
+          );
+          return true;
+        })
+      ).ok,
+    ).toBe(true);
     let json = '';
-    expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => {
-      json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG), {
-        entities: { flower: s.flowers.exportRecords(), ...ground.exportEntities() }, inventory: s.inventory.exportSaved(),
-        elapsedSeconds: world.scheduler.now, playerTransform: { position: [0, 0, 0], rotationY: 0 },
-      }, SAVE_CATALOG);
-    })).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand('c_save()', s.inventory, undefined, () => {
+          json = serializeSave(
+            deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
+            {
+              entities: { flower: s.flowers.exportRecords(), ...ground.exportEntities() },
+              inventory: s.inventory.exportSaved(),
+              elapsedSeconds: world.scheduler.now,
+              playerTransform: { position: [0, 0, 0], rotationY: 0 },
+            },
+            SAVE_CATALOG,
+          );
+        })
+      ).ok,
+    ).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
     expect(restored.inventory.exportState()).toEqual(s.inventory.exportState());
@@ -253,28 +409,47 @@ it('perishes harvested petals in discrete batches and preserves freshness and qu
     expect(loaded.components.perishable.updateTimer.peek()).toEqual({ status: 'stopped' });
     expect(restored.inventory.get(cursorSlotAddress())).toMatchObject({ itemId: 'spoiled_food', count: 2 });
     expect(restored.inventory.count('petals')).toBe(0);
-  } finally { ground.dispose(); restoredGround.dispose(); s.dispose(); restored.dispose(); }
+  } finally {
+    ground.dispose();
+    restoredGround.dispose();
+    s.dispose();
+    restored.dispose();
+  }
 });
 
 it('spawns the source planted_flower command as a persistent flower, including its rose type', async () => {
-  const s = setup(() => 0), restored = setup();
+  const s = setup(() => 0),
+    restored = setup();
   try {
     s.world.player.position.set(9, 0, 6);
-    expect((await executeDebugCommand('c_spawn("planted_flower")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
+    expect((await executeDebugCommand('c_spawn("planted_flower")', s.inventory, id => s.registry.spawn(id))).ok).toBe(
+      true,
+    );
     const model = s.world.scene.children[0];
     expect(lookupPrefabInstance(model)?.prefab).toBe('flower');
     expect(prefabInstance(model)!.listTags()).toContain('thorny');
     let json = '';
-    expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
-    const saved = deserializeSave(json, SAVE_CATALOG), record = saved.world.entities.flower[0];
+    expect(
+      (
+        await executeDebugCommand('c_save()', s.inventory, undefined, () => {
+          json = s.save();
+        })
+      ).ok,
+    ).toBe(true);
+    const saved = deserializeSave(json, SAVE_CATALOG),
+      record = saved.world.entities.flower[0];
     await restored.registry.restoreAll({ flower: saved.world.entities.flower });
     expect(restored.flowers.exportRecords()).toEqual(s.flowers.exportRecords());
     expect(record.transform.position).toEqual([9, 0, 6]);
-  } finally { s.dispose(); restored.dispose(); }
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
 });
 
 it('restores natural flowers without changing their planted flag and preserves both origins through save/load', async () => {
-  const s = setup(), restored = setup();
+  const s = setup(),
+    restored = setup();
   try {
     await s.flowers.spawnFromSave('flower:natural', 'rose', new THREE.Vector3(12, 0, 24), false);
     await s.flowers.spawnFromSave('flower:planted', 'f4', new THREE.Vector3(24, 0, 24), true);
@@ -286,12 +461,17 @@ it('restores natural flowers without changing their planted flag and preserves b
     expect(restored.flowers.exportRecords()).toEqual(s.flowers.exportRecords());
     expect(prefabInstance<FlowerInstance>(restored.world.scene.children[0])!.planted).toBeUndefined();
     expect(prefabInstance(restored.world.scene.children[0])!.listTags()).toContain('thorny');
-  } finally { s.dispose(); restored.dispose(); }
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
 });
 
 it('uses the live instance in source callbacks and declares type changes without waiting for art', () => {
-  const scheduler = new GameTimeScheduler(), random = vi.fn(() => .5);
-  const worldEvents = new EventEmitter<WorldEvents>(), killed = vi.fn();
+  const scheduler = new GameTimeScheduler(),
+    random = vi.fn(() => 0.5);
+  const worldEvents = new EventEmitter<WorldEvents>(),
+    killed = vi.fn();
   worldEvents.on('plantkilled', killed);
   const fire = FireFxHost.create('/dst/data/anim');
   const flower = new FlowerInstance({ scheduler, fire, worldEvents, spawnGroundItem: vi.fn() }, random);
@@ -300,7 +480,8 @@ it('uses the live instance in source callbacks and declares type changes without
     expect(flower.sprite.loaded).toBe(false);
     expect(flower.animname).toBe('f6');
     expect(flower.sprite.sprite.peek()).toMatchObject({ clip: { name: 'f6', loop: false }, queue: [] });
-    const pickable = flower.components.pickable, initial = flower.sprite.sprite.peek();
+    const pickable = flower.components.pickable,
+      initial = flower.sprite.sprite.peek();
     flower.OnLoad!(flower, {});
     expect(flower.sprite.sprite.peek()).toBe(initial);
     expect(random).toHaveBeenCalledTimes(2);
@@ -327,8 +508,12 @@ it('uses the live instance in source callbacks and declares type changes without
     const picker = testPlayer();
     addComponent(picker, 'health', Health, 150);
     const sanity = vi.spyOn(addComponent(picker, 'sanity', Sanity, 200), 'DoDelta');
-    const attack = vi.spyOn(addComponent(picker, 'combat', Combat, () => 0), 'GetAttacked');
-    const thorns = vi.fn(); picker.ListenForEvent('thorns', () => thorns('thorns'));
+    const attack = vi.spyOn(
+      addComponent(picker, 'combat', Combat, () => 0),
+      'GetAttacked',
+    );
+    const thorns = vi.fn();
+    picker.ListenForEvent('thorns', () => thorns('thorns'));
     const events: string[] = [];
     worldEvents.on('plantkilled', () => events.push('plantkilled'));
     flower.ListenForEvent('picked', () => events.push('picked'));
@@ -340,11 +525,16 @@ it('uses the live instance in source callbacks and declares type changes without
     expect(killed).toHaveBeenCalledExactlyOnceWith({ doer: picker, pos: new THREE.Vector3(3, 0, 6) });
     expect(events).toEqual(['plantkilled', 'picked', 'removed']);
     expect(pickable.state.timer.peek()).toEqual({ status: 'stopped' });
-  } finally { flower.remove(); fire.dispose(); scheduler.dispose(); }
+  } finally {
+    flower.remove();
+    fire.dispose();
+    scheduler.dispose();
+  }
 });
 
 it('spawns natural flowers and explicit roses, saves their live fields and restores the source flower identity', async () => {
-  const s = setup(), restored = setup();
+  const s = setup(),
+    restored = setup();
   try {
     s.world.player.position.set(3, 0, 9);
     expect((await executeDebugCommand('c_spawn("flower")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
@@ -352,30 +542,54 @@ it('spawns natural flowers and explicit roses, saves their live fields and resto
     expect(natural.planted).toBeUndefined();
     expect(natural.animname).toBe('f6');
     s.world.player.position.set(12, 0, 6);
-    expect((await executeDebugCommand('c_spawn("flower_rose")', s.inventory, id => s.registry.spawn(id))).ok).toBe(true);
+    expect((await executeDebugCommand('c_spawn("flower_rose")', s.inventory, id => s.registry.spawn(id))).ok).toBe(
+      true,
+    );
     const rose = prefabInstance<FlowerInstance>(s.world.scene.children[1])!;
     expect(rose.prefab).toBe('flower');
     expect(rose.components.inspectable!.getstatus!()).toBe('ROSE');
     await prefabDisplay(s.world.scene.children[1])!.artLoaded();
     rose.DoRoseBounceAnim!();
-    expect(rose.sprite.sprite.peek()).toMatchObject({ clip: { name: 'rose_bounce', loop: false }, queue: [{ name: 'rose', loop: false }] });
+    expect(rose.sprite.sprite.peek()).toMatchObject({
+      clip: { name: 'rose_bounce', loop: false },
+      queue: [{ name: 'rose', loop: false }],
+    });
     // Persistence and the saved flower fields have no writable copy in the manager or display.
     rose.persists = false;
     expect(s.flowers.exportRecords().map(record => record.id)).toEqual([natural.entityId]);
     rose.persists = true;
     natural.OnLoad!(natural, { flower: { animation: 'f2', planted: true } });
     let json = '';
-    expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
+    expect(
+      (
+        await executeDebugCommand('c_save()', s.inventory, undefined, () => {
+          json = s.save();
+        })
+      ).ok,
+    ).toBe(true);
     const save = deserializeSave(json, SAVE_CATALOG);
     expect(save.world.entities.flower).toEqual([
-      { id: natural.entityId, transform: { position: [3, 0, 9], rotationY: 0 }, components: { flower: { animation: 'f2', planted: true } } },
-      { id: rose.entityId, transform: { position: [12, 0, 6], rotationY: 0 }, components: { flower: { animation: 'rose' } } },
+      {
+        id: natural.entityId,
+        transform: { position: [3, 0, 9], rotationY: 0 },
+        components: { flower: { animation: 'f2', planted: true } },
+      },
+      {
+        id: rose.entityId,
+        transform: { position: [12, 0, 6], rotationY: 0 },
+        components: { flower: { animation: 'rose' } },
+      },
     ]);
     await restored.registry.restoreAll({ flower: save.world.entities.flower });
     expect(restored.flowers.exportRecords()).toEqual(s.flowers.exportRecords());
-    expect(prefabInstance<FlowerInstance>(restored.world.scene.children[1])!.components.inspectable!.getstatus!()).toBe('ROSE');
+    expect(prefabInstance<FlowerInstance>(restored.world.scene.children[1])!.components.inspectable!.getstatus!()).toBe(
+      'ROSE',
+    );
     rose.remove();
     expect(s.flowers.exportRecords()).toHaveLength(1);
     expect(s.prefabs.FindEntities(rose.position, 1, ['flower'])).not.toContain(rose);
-  } finally { s.dispose(); restored.dispose(); }
+  } finally {
+    s.dispose();
+    restored.dispose();
+  }
 });

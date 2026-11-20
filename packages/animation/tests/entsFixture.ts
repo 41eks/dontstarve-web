@@ -11,7 +11,13 @@ export function testEnts() {
   const prefabs = new PrefabEntityManager<string, PrefabInstance<SpriteState, object>>(displays, undefined, {});
   return {
     prefabs,
-    track<T extends PrefabInstance<SpriteState, object>>(inst: T): T { prefabs.track(inst); return inst; },
-    dispose() { prefabs.dispose(); displays.dispose(); },
+    track<T extends PrefabInstance<SpriteState, object>>(inst: T): T {
+      prefabs.track(inst);
+      return inst;
+    },
+    dispose() {
+      prefabs.dispose();
+      displays.dispose();
+    },
   };
 }

@@ -4,9 +4,12 @@ import type { WorldTemperatureSaveData } from '../../packages/componets/src/worl
 import type { WeatherSaveData } from '../../packages/componets/src/weather';
 import type { NightmareClockSaveData } from '../../packages/componets/src/nightmareclock';
 
-
 /** One TheWorld.topology.nodes entry: node.x / node.y are the centre's world X and Z. */
-export interface WorldTopologyNode { x: number; z: number; type: number }
+export interface WorldTopologyNode {
+  x: number;
+  z: number;
+  type: number;
+}
 
 export interface SavedPlayer {
   prefab: 'wilson';
@@ -16,7 +19,14 @@ export interface SavedPlayer {
   inventory: import('@dontstarve-web/prefab/saveRecord').PlayerInventorySave;
   /** builder.lua's buffered builds. */
   builder: { bufferedBuilds: { recipeId: string; skinId?: string }[] };
-  stats?: { health: number; hunger: number; sanity: number; penalty?: number; sanitySane?: boolean; sanityMode?: 0 | 1 };
+  stats?: {
+    health: number;
+    hunger: number;
+    sanity: number;
+    penalty?: number;
+    sanitySane?: boolean;
+    sanityMode?: 0 | 1;
+  };
   /** player_common.lua OnSave `is_ghost`: the player resumes as a ghost on load. */
   ghost?: true;
   /** wortox.lua OnSave counters; the transient finishportalhoptask is not saved. */

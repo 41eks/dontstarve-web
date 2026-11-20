@@ -45,7 +45,9 @@ export class Burnable {
   private lightable = true;
   private ignoresFuel = false;
   private readonly removedState = createSignal(false);
-  private get removed(): boolean { return this.removedState.peek(); }
+  private get removed(): boolean {
+    return this.removedState.peek();
+  }
   private readonly scheduler: GameTimeScheduler;
   private readonly ownsScheduler: boolean;
   private readonly burnTimer: ComponentTimer;
@@ -71,20 +73,31 @@ export class Burnable {
     this.scheduler = scheduler ?? new GameTimeScheduler();
     this.ownsScheduler = !scheduler;
     this.burnTimer = new ComponentTimer(this.scheduler, () => {
-      if (this.removed || this.inst.isRemoved) { return; }
+      if (this.removed || this.inst.isRemoved) {
+        return;
+      }
       this.inst.PushEvent?.('onburnt', undefined);
       this.onburnt?.(this.inst);
-      if (!this.removed && !this.inst.isRemoved) { this.inst.components.explosive?.OnBurnt(); } // burnable.lua DoneBurning
+      if (!this.removed && !this.inst.isRemoved) {
+        this.inst.components.explosive?.OnBurnt();
+      } // burnable.lua DoneBurning
       this.Extinguish();
     });
     this.smolderTask = new ComponentTimer(this.scheduler, () => this.updateSmolder());
     this.phaseMemo = createMemo(() => {
-      if (this.removedState.get()) { return 'removed'; }
+      if (this.removedState.get()) {
+        return 'removed';
+      }
       const burning = this.burning.get();
       const smolder = this.smolderTask.snapshot.get();
       const burn = this.burnTimer.snapshot.get();
-      return burning ? 'burning' : smolder.status === 'scheduled' ? 'smoldering'
-        : burn.status === 'expired' ? 'burnt' : 'idle';
+      return burning
+        ? 'burning'
+        : smolder.status === 'scheduled'
+          ? 'smoldering'
+          : burn.status === 'expired'
+            ? 'burnt'
+            : 'idle';
     });
     this.timer = this.burnTimer.snapshot;
     this.phase = readonlySignal(this.phaseMemo);
@@ -93,29 +106,70 @@ export class Burnable {
   /** A world entity's Fueled; an inventory item's fueled settles its own consumption. */
   private get fueled(): { StartConsuming(): void; StopConsuming(): void } | undefined {
     const fueled = (this.inst.components as { fueled?: object }).fueled;
-    return fueled && 'StartConsuming' in fueled ? fueled as { StartConsuming(): void; StopConsuming(): void } : undefined;
+    return fueled && 'StartConsuming' in fueled
+      ? (fueled as { StartConsuming(): void; StopConsuming(): void })
+      : undefined;
   }
-  get canlight(): boolean { return this.lightable; }
-  set canlight(value: boolean) { this.lightable = value; this.refreshTags(); }
+  get canlight(): boolean {
+    return this.lightable;
+  }
+  set canlight(value: boolean) {
+    this.lightable = value;
+    this.refreshTags();
+  }
   /** burnable.ignorefuel: igniting and extinguishing leave a fueled component alone; onignorefuel tags burnableignorefuel. */
-  get ignorefuel(): boolean { return this.ignoresFuel; }
+  get ignorefuel(): boolean {
+    return this.ignoresFuel;
+  }
   set ignorefuel(value: boolean) {
     this.ignoresFuel = value;
-    if (value) { this.inst.addTag('burnableignorefuel'); } else { this.inst.removeTag('burnableignorefuel'); }
+    if (value) {
+      this.inst.addTag('burnableignorefuel');
+    } else {
+      this.inst.removeTag('burnableignorefuel');
+    }
   }
-  SetBurnTime(time: number): void { this.burntime = time; }
-  SetOnIgniteFn(fn: BurnableOnIgniteFn | undefined): void { this.onignite = fn; }
-  SetOnExtinguishFn(fn: BurnableOnExtinguishFn | undefined): void { this.onextinguish = fn; }
-  SetOnBurntFn(fn: BurnableOnBurntFn | undefined): void { this.onburnt = fn; }
-  IsBurning(): boolean { return this.burning.peek(); }
-  AddBurnFX(prefab: string, offset: { x: number; y: number; z: number }, followsymbol?: string, followaschild?: boolean,
-    scale?: number, followlayered?: boolean): void {
-    this.fxdata.push({ prefab, x: offset.x, y: offset.y, z: offset.z, follow: followsymbol,
-      followaschild: followaschild || undefined, followlayered: followlayered || undefined, scale: scale ?? 1 });
+  SetBurnTime(time: number): void {
+    this.burntime = time;
   }
-  SetFXSpawner(spawn: Burnable['spawnfx']): void { this.spawnfx = spawn; }
+  SetOnIgniteFn(fn: BurnableOnIgniteFn | undefined): void {
+    this.onignite = fn;
+  }
+  SetOnExtinguishFn(fn: BurnableOnExtinguishFn | undefined): void {
+    this.onextinguish = fn;
+  }
+  SetOnBurntFn(fn: BurnableOnBurntFn | undefined): void {
+    this.onburnt = fn;
+  }
+  IsBurning(): boolean {
+    return this.burning.peek();
+  }
+  AddBurnFX(
+    prefab: string,
+    offset: { x: number; y: number; z: number },
+    followsymbol?: string,
+    followaschild?: boolean,
+    scale?: number,
+    followlayered?: boolean,
+  ): void {
+    this.fxdata.push({
+      prefab,
+      x: offset.x,
+      y: offset.y,
+      z: offset.z,
+      follow: followsymbol,
+      followaschild: followaschild || undefined,
+      followlayered: followlayered || undefined,
+      scale: scale ?? 1,
+    });
+  }
+  SetFXSpawner(spawn: Burnable['spawnfx']): void {
+    this.spawnfx = spawn;
+  }
   /** An optional offset added on top of every AddBurnFX offset. */
-  SetFXOffset(offset: { x: number; y: number; z: number } | undefined): void { this.fxoffset = offset; }
+  SetFXOffset(offset: { x: number; y: number; z: number } | undefined): void {
+    this.fxoffset = offset;
+  }
   /** The level of any current or future burning effects. */
   SetFXLevel(level: number, percent = 1): void {
     this.fxlevel = level;
@@ -124,20 +178,30 @@ export class Burnable {
       fx.components.firefx?.SetPercentInLevel(percent);
     }
   }
-  IsSmoldering(): boolean { return this.smolderTask.snapshot.peek().status === 'scheduled'; }
+  IsSmoldering(): boolean {
+    return this.smolderTask.snapshot.peek().status === 'scheduled';
+  }
   Ignite(immediate = false, source?: IgniteSource, doer?: IgniteSource): void {
-    if (this.removed || this.inst.isRemoved || this.IsBurning() || this.inst.hasTag('fireimmune')) { return; }
+    if (this.removed || this.inst.isRemoved || this.IsBurning() || this.inst.hasTag('fireimmune')) {
+      return;
+    }
     this.StopSmoldering();
-    if (this.burntime !== undefined) { this.burnTimer.start(this.burntime); }
+    if (this.burntime !== undefined) {
+      this.burnTimer.start(this.burntime);
+    }
     this.setBurning(true);
     this.SpawnFX(immediate);
     this.inst.PushEvent?.('onignite', { source, doer });
     this.onignite?.(this.inst, source, doer);
-    if (!this.ignorefuel) { this.fueled?.StartConsuming(); }
+    if (!this.ignorefuel) {
+      this.fueled?.StartConsuming();
+    }
     this.inst.components.propagator?.spreading.set(true);
   }
   StartWildfire(): void {
-    if (this.removed || this.IsBurning() || this.IsSmoldering() || this.inst.hasTag('fireimmune')) { return; }
+    if (this.removed || this.IsBurning() || this.IsSmoldering() || this.inst.hasTag('fireimmune')) {
+      return;
+    }
     this.smolderRemaining.set(this.inst.components.propagator?.flashpoint ?? 10);
     this.smolderTask.start(Math.random() * 2);
     this.inst.addTag('smolder');
@@ -151,15 +215,23 @@ export class Burnable {
    * burnable.lua SmotherSmolder(smotherer): StopSmoldering. The smotherer's cost (finiteuses, stack or fire damage) and
    * StopSmoldering's heatpct for the propagator are not ported.
    */
-  SmotherSmolder(): void { this.StopSmoldering(); }
+  SmotherSmolder(): void {
+    this.StopSmoldering();
+  }
   Extinguish(): void {
     this.StopSmoldering();
-    if (!this.IsBurning()) { return; }
-    if (this.burnTimer.snapshot.peek().status === 'scheduled') { this.burnTimer.stop(); }
+    if (!this.IsBurning()) {
+      return;
+    }
+    if (this.burnTimer.snapshot.peek().status === 'scheduled') {
+      this.burnTimer.stop();
+    }
     this.inst.components.propagator?.spreading.set(false);
     this.setBurning(false);
     this.KillFX();
-    if (!this.ignorefuel) { this.fueled?.StopConsuming(); }
+    if (!this.ignorefuel) {
+      this.fueled?.StopConsuming();
+    }
     this.onextinguish?.(this.inst);
     this.inst.PushEvent?.('onextinguish', undefined);
   }
@@ -168,7 +240,9 @@ export class Burnable {
     const offset = this.fxoffset ?? { x: 0, y: 0, z: 0 };
     for (const v of this.fxdata) {
       const fx = this.spawnfx?.({ ...v, x: v.x + offset.x, y: v.y + offset.y, z: v.z + offset.z });
-      if (!fx) { continue; }
+      if (!fx) {
+        continue;
+      }
       this.fxchildren.push(fx);
       const firefx = fx.components.firefx;
       if (firefx) {
@@ -179,25 +253,43 @@ export class Burnable {
   }
   KillFX(): void {
     for (const fx of this.fxchildren.splice(0).reverse()) {
-      if (fx.components.firefx?.Extinguish()) { fx.RemoveOnAnimOver(); }
-      else { fx.Remove(); }
+      if (fx.components.firefx?.Extinguish()) {
+        fx.RemoveOnAnimOver();
+      } else {
+        fx.Remove();
+      }
     }
   }
   /** StartUpdatingComponent of each fx child's firefx. */
-  UpdateFX(dt: number): void { for (const fx of this.fxchildren) { fx.components.firefx?.OnUpdate(dt); } }
+  UpdateFX(dt: number): void {
+    for (const fx of this.fxchildren) {
+      fx.components.firefx?.OnUpdate(dt);
+    }
+  }
   Update(dt: number): void {
-    if (this.removed || !Number.isFinite(dt) || dt <= 0) { return; }
-    if (this.ownsScheduler) { this.scheduler.advance(dt); }
+    if (this.removed || !Number.isFinite(dt) || dt <= 0) {
+      return;
+    }
+    if (this.ownsScheduler) {
+      this.scheduler.advance(dt);
+    }
   }
   private updateSmolder(): void {
-    if (this.removed || this.inst.isRemoved) { return; }
+    if (this.removed || this.inst.isRemoved) {
+      return;
+    }
     const remaining = this.smolderRemaining.peek();
-    if (remaining === undefined) { return; }
+    if (remaining === undefined) {
+      return;
+    }
     const heat = this.inst.components.propagator?.NearbyHeat(12) ?? 0;
-    const next = remaining - 2 * Math.max(1, Math.min(2.2, 1 + (heat - 20) / 70 * 1.2));
+    const next = remaining - 2 * Math.max(1, Math.min(2.2, 1 + ((heat - 20) / 70) * 1.2));
     this.smolderRemaining.set(next);
-    if (next <= 0) { this.Ignite(); }
-    else { this.smolderTask.start(2); }
+    if (next <= 0) {
+      this.Ignite();
+    } else {
+      this.smolderTask.start(2);
+    }
   }
   /** EntityScript removal kills the fire without running the prefab's extinguish callback. */
   OnRemoveEntity(): void {
@@ -205,23 +297,44 @@ export class Burnable {
     this.KillFX();
     this.dispose();
   }
-  OnRemoveFromEntity(): void { this.dispose(); }
+  OnRemoveFromEntity(): void {
+    this.dispose();
+  }
   dispose(): void {
-    if (this.removed) { return; }
+    if (this.removed) {
+      return;
+    }
     this.Extinguish();
     this.spawnfx = undefined;
     this.removedState.set(true);
-    this.burnTimer.stop(); this.smolderTask.stop(); this.phaseMemo.dispose();
-    if (this.ownsScheduler) { this.scheduler.dispose(); }
-    for (const tag of ['canlight', 'nolight', 'fire', 'smolder', 'burnableignorefuel']) { this.inst.removeTag(tag); }
+    this.burnTimer.stop();
+    this.smolderTask.stop();
+    this.phaseMemo.dispose();
+    if (this.ownsScheduler) {
+      this.scheduler.dispose();
+    }
+    for (const tag of ['canlight', 'nolight', 'fire', 'smolder', 'burnableignorefuel']) {
+      this.inst.removeTag(tag);
+    }
   }
   private refreshTags(): void {
     const lightable = this.lightable && !this.IsBurning() && !this.removed;
-    for (const [tag, enabled] of [['canlight', lightable], ['nolight', !lightable], ['fire', this.IsBurning()]] as const) {
-      if (enabled) { this.inst.addTag(tag); } else { this.inst.removeTag(tag); }
+    for (const [tag, enabled] of [
+      ['canlight', lightable],
+      ['nolight', !lightable],
+      ['fire', this.IsBurning()],
+    ] as const) {
+      if (enabled) {
+        this.inst.addTag(tag);
+      } else {
+        this.inst.removeTag(tag);
+      }
     }
   }
   private setBurning(value: boolean): void {
-    batch(() => { this.burningState.set(value); this.refreshTags(); });
+    batch(() => {
+      this.burningState.set(value);
+      this.refreshTags();
+    });
   }
 }

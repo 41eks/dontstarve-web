@@ -1,10 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Vector3 } from 'three';
 import { inventorySlotAddress } from '@dontstarve-web/inventory';
-import {
-  ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION, FULL_ABSORPTION,
-
-} from '../../prefab/src/armorsnurtleshell';
+import { ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION, FULL_ABSORPTION } from '../../prefab/src/armorsnurtleshell';
 import { SpriteState } from '@dontstarve-web/display';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { addComponent } from '../../prefab/src/components';
@@ -15,13 +12,18 @@ import { testPlayer } from './testPlayer';
 import { wilsonPlayer } from './wilsonPlayer';
 
 let ents = testEnts();
-afterEach(() => { ents.dispose(); ents = testEnts(); });
+afterEach(() => {
+  ents.dispose();
+  ents = testEnts();
+});
 
 function wornShell() {
-  const world = createPerishWorld(), inventory = createPickupInventory();
+  const world = createPerishWorld(),
+    inventory = createPickupInventory();
   inventory.entities.bindPerishWorld(world);
   // The wearer is a player inst: its inventory wears the shell and its stategraph hides in it, pushing newstate on it.
-  const player = wilsonPlayer(), owner = testPlayer({ model: player.transform.model, inventory });
+  const player = wilsonPlayer(),
+    owner = testPlayer({ model: player.transform.model, inventory });
   const graph = player.sg;
   const goToState = vi.spyOn(graph, 'goToState');
   const playSound = vi.mocked(player.SoundEmitter.PlaySound);
@@ -31,14 +33,25 @@ function wornShell() {
   expect(inventory.EquipFromInventory(entity)).toBe(true);
   // inventory:Unequip calls equippable:Unequip(owner).
   const lifecycle = { onunequip: () => inventory.Unequip('body') };
-  return { world, entity, owner, lifecycle, playSound, states: () => goToState.mock.calls.map(([name]) => name),
-    leaveShell: () => graph.goToState('idle') };
+  return {
+    world,
+    entity,
+    owner,
+    lifecycle,
+    playSound,
+    states: () => goToState.mock.calls.map(([name]) => name),
+    leaveShell: () => graph.goToState('idle'),
+  };
 }
 
 class TargetingCombat {
   target: object | undefined;
-  readonly DropTarget = vi.fn(() => { this.target = undefined; });
-  constructor(_inst: unknown, target: object) { this.target = target; }
+  readonly DropTarget = vi.fn(() => {
+    this.target = undefined;
+  });
+  constructor(_inst: unknown, target: object) {
+    this.target = target;
+  }
 }
 class Attacker extends PrefabInstance<SpriteState, { combat?: TargetingCombat }> {}
 function attacker(target: object, position = new Vector3(3, 0, 0)) {
@@ -62,7 +75,8 @@ describe('armorsnurtleshell', () => {
 
   it('hides on use, absorbs everything while in the shell, and relaxes when the state ends', () => {
     const { entity, states, leaveShell } = wornShell();
-    const useable = entity.components.useableitem!, armor = entity.components.armor!;
+    const useable = entity.components.useableitem!,
+      armor = entity.components.armor!;
     expect(useable.StartUsingItem()).toBe(true);
     expect(states()).toEqual(['shell_enter']);
     expect(armor.GetAbsorption()).toBe(FULL_ABSORPTION);
@@ -75,11 +89,13 @@ describe('armorsnurtleshell', () => {
   it('drops the targets on a hiding owner five seconds after use, unless the use stops first', () => {
     const { world, entity, owner, leaveShell } = wornShell();
     const useable = entity.components.useableitem!;
-    const near = attacker(owner), far = attacker(owner, new Vector3(25, 0, 0)), other = attacker({});
+    const near = attacker(owner),
+      far = attacker(owner, new Vector3(25, 0, 0)),
+      other = attacker({});
     useable.StartUsingItem();
     world.advance(4.9);
     expect(near.DropTarget).not.toHaveBeenCalled();
-    world.advance(.1);
+    world.advance(0.1);
     expect(near.DropTarget).toHaveBeenCalledOnce();
     expect(far.DropTarget).not.toHaveBeenCalled();
     expect(other.DropTarget).not.toHaveBeenCalled();
@@ -99,7 +115,8 @@ describe('armorsnurtleshell', () => {
     const target = attacker(owner);
     entity.components.useableitem!.StartUsingItem();
     lifecycle.onunequip();
-    playSound.mockClear(); owner.PushEvent('blocked');
+    playSound.mockClear();
+    owner.PushEvent('blocked');
     expect(playSound).not.toHaveBeenCalled();
     world.advance(5);
     expect(target.DropTarget).not.toHaveBeenCalled(); // onunequip runs onstopuse
@@ -110,7 +127,7 @@ describe('armorsnurtleshell', () => {
     const { entity } = wornShell();
     const armor = entity.components.armor!;
     armor.TakeDamage(ARMORSNURTLESHELL / 2);
-    expect(armor.GetPercent()).toBeCloseTo(.5);
+    expect(armor.GetPercent()).toBeCloseTo(0.5);
     expect(armor.OnSave()).toEqual({ condition: ARMORSNURTLESHELL / 2 });
     armor.TakeDamage(ARMORSNURTLESHELL);
     expect(entity.isRemoved).toBe(true);

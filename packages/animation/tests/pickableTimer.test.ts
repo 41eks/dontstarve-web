@@ -8,7 +8,10 @@ it('publishes timer snapshots only at transitions and executes chained tasks at 
   const scheduler = new GameTimeScheduler(20);
   const deadlines: number[] = [];
   const followup = new ComponentTimer(scheduler, () => deadlines.push(scheduler.now));
-  const timer = new ComponentTimer(scheduler, () => { deadlines.push(scheduler.now); followup.start(2); });
+  const timer = new ComponentTimer(scheduler, () => {
+    deadlines.push(scheduler.now);
+    followup.start(2);
+  });
   const changed = vi.fn();
   const stop = timer.snapshot.subscribe(changed);
   timer.start(5);
@@ -21,29 +24,48 @@ it('publishes timer snapshots only at transitions and executes chained tasks at 
   expect(deadlines).toEqual([25, 27]);
   expect(timer.snapshot.peek()).toEqual({ status: 'expired' });
   expect(changed).toHaveBeenCalledTimes(2);
-  timer.start(1); timer.stop();
+  timer.start(1);
+  timer.stop();
   scheduler.advance(2);
   expect(deadlines).toEqual([25, 27]);
   expect(timer.snapshot.peek()).toEqual({ status: 'stopped' });
   expect('set' in timer.snapshot).toBe(false);
   expect(() => scheduler.advance(-1)).toThrow();
-  stop(); scheduler.dispose();
+  stop();
+  scheduler.dispose();
 });
 
 it('preserves paused regrowth through restoration and applies spring growth only on scheduling/resume', () => {
   const scheduler = new GameTimeScheduler();
   let spring = false;
-  const timing = { scheduler, growthDuration: (time: number) => time * (spring ? .75 : 1) };
+  const timing = { scheduler, growthDuration: (time: number) => time * (spring ? 0.75 : 1) };
   const { instance, display } = createEmptyEntity('grass');
-  instance.addTag('plant'); instance.addTag('renewable');
-  const onRegen = vi.fn(), order: string[] = [];
+  instance.addTag('plant');
+  instance.addTag('renewable');
+  const onRegen = vi.fn(),
+    order: string[] = [];
   let pickable: Pickable;
-  pickable = new Pickable(instance, 'cutgrass', 1440, 1, () => {
-    expect(pickable.canBePicked).toBe(true);
-    order.push('prefab');
-  }, onRegen, undefined, timing);
+  pickable = new Pickable(
+    instance,
+    'cutgrass',
+    1440,
+    1,
+    () => {
+      expect(pickable.canBePicked).toBe(true);
+      order.push('prefab');
+    },
+    onRegen,
+    undefined,
+    timing,
+  );
   const loot = {};
-  const picker = { loot, giveItem: () => { order.push('product'); return true; } };
+  const picker = {
+    loot,
+    giveItem: () => {
+      order.push('product');
+      return true;
+    },
+  };
   const onPicked = (_inst: unknown, data: unknown) => {
     expect(data).toEqual({ picker, loot, plant: instance });
     expect(pickable.state.phase.peek()).toBe('picked');
@@ -61,14 +83,25 @@ it('preserves paused regrowth through restoration and applies spring growth only
   const saved = pickable.exportState();
   expect(saved).toEqual({ picked: true, paused: true, regrowSeconds: 1340 });
   pickable.dispose();
-  stopPicked(); instance.remove(); display.dispose();
-  const restored = new Pickable(createEmptyEntity('grass').instance, 'cutgrass', 1440, 1, undefined, onRegen, saved, timing);
+  stopPicked();
+  instance.remove();
+  display.dispose();
+  const restored = new Pickable(
+    createEmptyEntity('grass').instance,
+    'cutgrass',
+    1440,
+    1,
+    undefined,
+    onRegen,
+    saved,
+    timing,
+  );
   spring = true;
   restored.resume();
   expect(restored.remainingSeconds).toBe(1005);
   scheduler.advance(1004.5);
   expect(restored.canBePicked).toBe(false);
-  scheduler.advance(.5);
+  scheduler.advance(0.5);
   expect(restored.canBePicked).toBe(true);
   expect(onRegen).toHaveBeenCalledOnce();
   expect(restored.exportState()).toEqual({});
@@ -90,7 +123,9 @@ it('restores a barren grass timer saved by pickable.lua and settles it at its de
   const scheduler = new GameTimeScheduler();
   const onRegen = vi.fn();
   const saved = { picked: true, transplanted: true, cyclesLeft: 0, maxCycles: 20, regrowSeconds: 1059 };
-  const pickable = new Pickable(createEmptyEntity('grass').instance, 'cutgrass', 1440, 1, undefined, onRegen, saved, { scheduler });
+  const pickable = new Pickable(createEmptyEntity('grass').instance, 'cutgrass', 1440, 1, undefined, onRegen, saved, {
+    scheduler,
+  });
   expect(pickable.IsBarren()).toBe(true);
   expect(pickable.canBePicked).toBe(false);
   expect(pickable.exportState()).toEqual(saved);
@@ -98,5 +133,6 @@ it('restores a barren grass timer saved by pickable.lua and settles it at its de
   expect(pickable.canBePicked).toBe(true);
   expect(pickable.cyclesLeft).toBe(0);
   expect(onRegen).toHaveBeenCalledOnce();
-  pickable.dispose(); scheduler.dispose();
+  pickable.dispose();
+  scheduler.dispose();
 });

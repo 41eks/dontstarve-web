@@ -3,7 +3,12 @@ import type { AnimState } from '@dontstarve-web/animation/animState';
 import { ItemEntity, registerItemEntityClass } from '@dontstarve-web/inventory';
 import type { EquipmentOwner } from '@dontstarve-web/signals';
 import * as THREE from 'three';
-import { handEquipmentVisual, skinArchive, type EquipmentVisualFactory, type HeldEquipFunctions } from './equipmentVisual';
+import {
+  handEquipmentVisual,
+  skinArchive,
+  type EquipmentVisualFactory,
+  type HeldEquipFunctions,
+} from './equipmentVisual';
 import { GROUND_ITEM_DEFINITIONS, groundItemPrefab, type ItemPrefabDefinition } from './groundItems';
 import type { ItemPrefabWorld } from './groundPrefab';
 import { TILE_SIZE } from './tile';
@@ -33,7 +38,9 @@ registerItemEntityClass(LANTERN_ID, (...item) => new LanternEntity(...item));
 
 /** The lantern's own inst, which the inventory constructs for every lantern. */
 function lanternEntity(entity: ItemEntity): LanternEntity {
-  if (!(entity instanceof LanternEntity)) { throw new Error(`${entity.prefab} is not a lantern entity`); }
+  if (!(entity instanceof LanternEntity)) {
+    throw new Error(`${entity.prefab} is not a lantern entity`);
+  }
   return entity;
 }
 
@@ -48,12 +55,14 @@ const isEquipped = (inst: LanternEntity) => inst.components.equippable?.IsEquipp
 /** fuelupdate: the light follows the fuel percent, radius 3 -> 5 and intensity .4 -> .6. */
 function fuelupdate(inst: LanternEntity): void {
   const fueled = inst.components.fueled;
-  if (!inst._light || !fueled) { return; }
+  if (!inst._light || !fueled) {
+    return;
+  }
   const fuelpercent = THREE.MathUtils.clamp(fueled.GetPercent(), 0, 1);
   inst._light.instance.light.set({
     radius: THREE.MathUtils.lerp(3, 5, fuelpercent) * (TILE_SIZE / 4),
-    intensity: THREE.MathUtils.lerp(.4, .6, fuelpercent),
-    falloff: .9,
+    intensity: THREE.MathUtils.lerp(0.4, 0.6, fuelpercent),
+    falloff: 0.9,
     colour: LANTERN_COLOUR,
   });
 }
@@ -65,9 +74,13 @@ function stoptrackingowner(inst: LanternEntity): void {
 }
 
 function starttrackingowner(inst: LanternEntity, owner: EquipmentOwner | undefined): void {
-  if (owner === inst._owner) { return; }
+  if (owner === inst._owner) {
+    return;
+  }
   stoptrackingowner(inst);
-  if (!owner?.ListenForEvent) { return; }
+  if (!owner?.ListenForEvent) {
+    return;
+  }
   inst._owner = owner;
   inst._stoptrackingowner = owner.ListenForEvent('equip', (_inst, data) => onownerequip(inst, data));
 }
@@ -75,12 +88,16 @@ function starttrackingowner(inst: LanternEntity, owner: EquipmentOwner | undefin
 /** inst._onownerequip */
 function onownerequip(inst: LanternEntity, data: unknown): void {
   const { item, eslot } = data as { item?: { hasTag?(tag: string): boolean }; eslot?: string };
-  if (item !== inst && (eslot === 'HANDS' || (eslot === 'BODY' && item?.hasTag?.('heavy')))) { turnoff(inst); }
+  if (item !== inst && (eslot === 'HANDS' || (eslot === 'BODY' && item?.hasTag?.('heavy')))) {
+    turnoff(inst);
+  }
 }
 
 function turnon(inst: LanternEntity): void {
   const fueled = inst.components.fueled;
-  if (inst.isRemoved || !fueled || fueled.IsEmpty()) { return; }
+  if (inst.isRemoved || !fueled || fueled.IsEmpty()) {
+    return;
+  }
   fueled.StartConsuming();
   const held = inst.components.inventoryitem.owner !== null;
   if (!inst._light) {
@@ -89,18 +106,24 @@ function turnon(inst: LanternEntity): void {
   }
   inst._light.setParent(held ? inst._ownerentity : inst);
   inst.sprite.playOnce('idle_on');
-  if (held && isEquipped(inst)) { inst._ownerAnimState?.Show('LANTERN_OVERLAY'); }
+  if (held && isEquipped(inst)) {
+    inst._ownerAnimState?.Show('LANTERN_OVERLAY');
+  }
   inst.components.machine!.isOn = true;
 }
 
 function turnoff(inst: LanternEntity): void {
   stoptrackingowner(inst);
-  if (inst.isRemoved) { return; }
+  if (inst.isRemoved) {
+    return;
+  }
   inst.components.fueled?.StopConsuming();
   inst._light?.remove();
   inst._light = undefined;
   inst.sprite.playOnce('idle_off');
-  if (isEquipped(inst)) { inst._ownerAnimState?.Hide('LANTERN_OVERLAY'); }
+  if (isEquipped(inst)) {
+    inst._ownerAnimState?.Hide('LANTERN_OVERLAY');
+  }
   inst.components.machine!.isOn = false;
 }
 
@@ -120,12 +143,15 @@ function ondropped(inst: LanternEntity): void {
 
 /** onequip: the swap art is the equippable's visual; LANTERN_OVERLAY shows only while there is fuel. */
 function onequip(inst: LanternEntity, owner: EquipmentOwner | undefined, holder: LanternHolder): void {
-  if (inst.isRemoved) { return; }
+  if (inst.isRemoved) {
+    return;
+  }
   inst._equipowner = owner;
   inst._ownerentity = holder.lightParent;
   inst._ownerAnimState = holder.AnimState;
-  if (inst.components.fueled!.IsEmpty()) { holder.AnimState?.Hide('LANTERN_OVERLAY'); }
-  else {
+  if (inst.components.fueled!.IsEmpty()) {
+    holder.AnimState?.Hide('LANTERN_OVERLAY');
+  } else {
     holder.AnimState?.Show('LANTERN_OVERLAY');
     turnon(inst);
   }
@@ -137,7 +163,9 @@ function onunequip(inst: LanternEntity): void {
   inst._ownerAnimState?.Hide('LANTERN_OVERLAY');
   inst._ownerAnimState = undefined;
   inst._equipowner = undefined;
-  if (inst.components.machine?.IsOn()) { starttrackingowner(inst, owner); }
+  if (inst.components.machine?.IsOn()) {
+    starttrackingowner(inst, owner);
+  }
 }
 
 /** fueled:SetDepletedFn(nofuel): an equipped lantern tells its owner it ran out. */
@@ -149,12 +177,16 @@ function nofuel(inst: LanternEntity): void {
 
 /** fueled:SetTakeFuelFn(ontakefuel) */
 function ontakefuel(inst: LanternEntity): void {
-  if (isEquipped(inst)) { turnon(inst); }
+  if (isEquipped(inst)) {
+    turnon(inst);
+  }
 }
 
 /** mininglantern.lua fn(): inventoryitem, machine and CAVE fueled with the callbacks it registers on them. */
 export function configureLanternEntity(entity: ItemEntity): void {
-  if (entity.components.machine) { return; }
+  if (entity.components.machine) {
+    return;
+  }
   const inst = lanternEntity(entity);
   inst.components.inventoryitem.SetOnPutInInventoryFn(() => turnoff(inst));
   inst.ListenForEvent('ondropped', () => ondropped(inst));
@@ -195,10 +227,14 @@ export function lanternPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefa
         const machine = inst.components.machine!;
         inst.sprite.playOnce(machine.IsOn() ? 'idle_on' : 'idle_off');
         // machine.lua OnSave writes the switch itself; fueled settles first.
-        inst.OnSave = () => { inst.components.fueled?.Settle(); };
+        inst.OnSave = () => {
+          inst.components.fueled?.Settle();
+        };
         // machine:OnLoad, once the machine's turnon / turnoff callbacks exist.
         const saved = inst.saveRecord?.components.machine;
-        if (saved) { machine.OnLoad(saved); }
+        if (saved) {
+          machine.OnLoad(saved);
+        }
       },
     }),
   };
@@ -207,5 +243,7 @@ export function lanternPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefa
 /** Source prefab onequip/onunequip: swap_lantern, or the skin's, named on the owner's AnimState. */
 export const lanternVisual: EquipmentVisualFactory = item => {
   const skin = skinArchive('lantern', GROUND_ITEM_DEFINITIONS.lantern.skinArchives, item.skinId);
-  return handEquipmentVisual(item, [...skin ? [skin] : [], 'swap_lantern'], 'swap_lantern', [{ symbol: 'lantern_overlay', source: 'lantern_overlay' }]);
+  return handEquipmentVisual(item, [...(skin ? [skin] : []), 'swap_lantern'], 'swap_lantern', [
+    { symbol: 'lantern_overlay', source: 'lantern_overlay' },
+  ]);
 };

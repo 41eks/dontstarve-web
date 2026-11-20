@@ -82,59 +82,159 @@ export interface DisplayEngine {
 export class ArchiveEngine implements DisplayEngine {
   private readonly resident: ResidentSprite;
 
-  constructor(resident: ResidentSprite) { this.resident = resident; }
+  constructor(resident: ResidentSprite) {
+    this.resident = resident;
+  }
 
-  get model(): THREE.Group { return this.resident.model; }
-  get art(): ReadonlySignal<number> { return this.resident.art; }
-  get loaded(): boolean { return this.resident.loaded; }
-  get pending(): Promise<void> | undefined { return this.resident.pending; }
-  get instanced(): InstancedSprite | undefined { return this.resident.instanced; }
-  get currentAnimation(): string { return this.resident.currentAnimation; }
-  get numFrames(): number { return this.resident.frameCount; }
-  getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean { return this.resident.getSymbolPosition(symbol, x, y, target); }
-  get currentAnimationLength(): number { return this.resident.currentAnimationLength; }
-  setActive(active: boolean): void { this.resident.setActive(active); }
-  update(dt: number): void { this.resident.update(dt); }
-  start(name: string): void { this.resident.start(name); }
-  playOnce(name: string, complete?: () => void): void { this.resident.playOnce(name, complete); }
-  holdLastFrame(name: string): void { this.resident.holdLastFrame(name); }
-  clearAnimation(): void { this.resident.clearAnimation(); }
-  setFrame(frame: number): void { this.resident.setFrame(frame); }
-  setPaused(paused: boolean): void { this.resident.setPaused(paused); }
-  setSkin(skin: SpriteSkin | undefined): void { this.resident.setSkin(skin); }
-  setAnimation(name: string): void { this.resident.setAnimation(name); }
-  setColour(colour: readonly number[]): void { this.resident.setColour([colour[0], colour[1], colour[2]]); }
-  setOpacity(opacity: number): void { this.resident.setOpacity(opacity); }
-  setErosion(amount: number): void { this.resident.setErosion(amount); }
-  setDepthOffset(enabled: boolean): void { this.resident.setDepthOffset(enabled); }
-  setInstancedWhile(follow: (() => boolean) | undefined): void { this.resident.setInstancedWhile(follow); }
-  get drawnInstanced(): boolean { return this.resident.drawnInstanced; }
-  setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void { this.resident.setSymbolOverride(symbol, archive, sourceSymbol); }
-  setSymbolHidden(symbol: string, hidden: boolean): void { this.resident.setSymbolHidden(symbol, hidden); }
-  setBuildArchive(archive: string): void { this.resident.setBuildArchive(archive); }
-  setGround(renderOrder: number, flat: boolean): void { this.resident.setGround(renderOrder, flat); }
-  setMeshOrder(order: number): void { this.resident.setMeshOrder(order); }
-  setFacing(facing: number): void { this.resident.setFacing(facing); }
-  setVisualHeight(height: number): void { this.resident.setVisualHeight(height); }
+  get model(): THREE.Group {
+    return this.resident.model;
+  }
+  get art(): ReadonlySignal<number> {
+    return this.resident.art;
+  }
+  get loaded(): boolean {
+    return this.resident.loaded;
+  }
+  get pending(): Promise<void> | undefined {
+    return this.resident.pending;
+  }
+  get instanced(): InstancedSprite | undefined {
+    return this.resident.instanced;
+  }
+  get currentAnimation(): string {
+    return this.resident.currentAnimation;
+  }
+  get numFrames(): number {
+    return this.resident.frameCount;
+  }
+  getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean {
+    return this.resident.getSymbolPosition(symbol, x, y, target);
+  }
+  get currentAnimationLength(): number {
+    return this.resident.currentAnimationLength;
+  }
+  setActive(active: boolean): void {
+    this.resident.setActive(active);
+  }
+  update(dt: number): void {
+    this.resident.update(dt);
+  }
+  start(name: string): void {
+    this.resident.start(name);
+  }
+  playOnce(name: string, complete?: () => void): void {
+    this.resident.playOnce(name, complete);
+  }
+  holdLastFrame(name: string): void {
+    this.resident.holdLastFrame(name);
+  }
+  clearAnimation(): void {
+    this.resident.clearAnimation();
+  }
+  setFrame(frame: number): void {
+    this.resident.setFrame(frame);
+  }
+  setPaused(paused: boolean): void {
+    this.resident.setPaused(paused);
+  }
+  setSkin(skin: SpriteSkin | undefined): void {
+    this.resident.setSkin(skin);
+  }
+  setAnimation(name: string): void {
+    this.resident.setAnimation(name);
+  }
+  setColour(colour: readonly number[]): void {
+    this.resident.setColour([colour[0], colour[1], colour[2]]);
+  }
+  setOpacity(opacity: number): void {
+    this.resident.setOpacity(opacity);
+  }
+  setErosion(amount: number): void {
+    this.resident.setErosion(amount);
+  }
+  setDepthOffset(enabled: boolean): void {
+    this.resident.setDepthOffset(enabled);
+  }
+  setInstancedWhile(follow: (() => boolean) | undefined): void {
+    this.resident.setInstancedWhile(follow);
+  }
+  get drawnInstanced(): boolean {
+    return this.resident.drawnInstanced;
+  }
+  setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void {
+    this.resident.setSymbolOverride(symbol, archive, sourceSymbol);
+  }
+  setSymbolHidden(symbol: string, hidden: boolean): void {
+    this.resident.setSymbolHidden(symbol, hidden);
+  }
+  setBuildArchive(archive: string): void {
+    this.resident.setBuildArchive(archive);
+  }
+  setGround(renderOrder: number, flat: boolean): void {
+    this.resident.setGround(renderOrder, flat);
+  }
+  setMeshOrder(order: number): void {
+    this.resident.setMeshOrder(order);
+  }
+  setFacing(facing: number): void {
+    this.resident.setFacing(facing);
+  }
+  setVisualHeight(height: number): void {
+    this.resident.setVisualHeight(height);
+  }
   // A static billboard ignores its root's rotation, so the drawn sprite itself is turned.
-  faceCamera(rotation: THREE.Quaternion): void { this.resident.faceCamera(rotation); }
-  dispose(): void { this.resident.dispose(); }
+  faceCamera(rotation: THREE.Quaternion): void {
+    this.resident.faceCamera(rotation);
+  }
+  dispose(): void {
+    this.resident.dispose();
+  }
 
-  setPercent(name: string, percent: number): void { this.resident.setPercent(name, percent); }
-  pushAnimation(name: string, loop = false): void { this.resident.pushAnimation(name, loop); }
-  playTransient(name: string): void { this.resident.playTransient(name); }
-  setPlaybackRate(rate: number): void { this.resident.setPlaybackRate(rate); }
-  setArtSource(source: SpriteArtSource): void { this.resident.setArtSource(source); }
-  setAnimState(state: ResolvedAnimState): void { this.resident.setAnimState(state); }
-  setTint(tint: SpriteTint): void { this.resident.setTint(tint); }
-  setComposites(frames: readonly CompositeSpriteFrame[]): void { this.resident.setComposites(frames); }
-  getResolvedFrame(): readonly ResolvedSprite[] { return this.resident.getResolvedFrame(); }
-  hideLayer(layer: string): void { this.resident.setLayerHidden(layer, true); }
-  showLayer(layer: string): void { this.resident.setLayerHidden(layer, false); }
-  setSymbolOverrides(overrides: SymbolOverrides, hiddenLayers?: readonly string[]): void { this.resident.setSymbolOverrides(overrides, hiddenLayers); }
-  overrideSymbol(symbol: string, override: SymbolOverride): void { this.resident.overrideSymbol(symbol, override); }
-  addOverrideBuild(name: string, override: BuildOverride): void { this.resident.addOverrideBuild(name, override); }
-  clearOverrideBuild(name: string): void { this.resident.clearOverrideBuild(name); }
+  setPercent(name: string, percent: number): void {
+    this.resident.setPercent(name, percent);
+  }
+  pushAnimation(name: string, loop = false): void {
+    this.resident.pushAnimation(name, loop);
+  }
+  playTransient(name: string): void {
+    this.resident.playTransient(name);
+  }
+  setPlaybackRate(rate: number): void {
+    this.resident.setPlaybackRate(rate);
+  }
+  setArtSource(source: SpriteArtSource): void {
+    this.resident.setArtSource(source);
+  }
+  setAnimState(state: ResolvedAnimState): void {
+    this.resident.setAnimState(state);
+  }
+  setTint(tint: SpriteTint): void {
+    this.resident.setTint(tint);
+  }
+  setComposites(frames: readonly CompositeSpriteFrame[]): void {
+    this.resident.setComposites(frames);
+  }
+  getResolvedFrame(): readonly ResolvedSprite[] {
+    return this.resident.getResolvedFrame();
+  }
+  hideLayer(layer: string): void {
+    this.resident.setLayerHidden(layer, true);
+  }
+  showLayer(layer: string): void {
+    this.resident.setLayerHidden(layer, false);
+  }
+  setSymbolOverrides(overrides: SymbolOverrides, hiddenLayers?: readonly string[]): void {
+    this.resident.setSymbolOverrides(overrides, hiddenLayers);
+  }
+  overrideSymbol(symbol: string, override: SymbolOverride): void {
+    this.resident.overrideSymbol(symbol, override);
+  }
+  addOverrideBuild(name: string, override: BuildOverride): void {
+    this.resident.addOverrideBuild(name, override);
+  }
+  clearOverrideBuild(name: string): void {
+    this.resident.clearOverrideBuild(name);
+  }
 }
 
 /** Creates an archive sprite in the clip an entity is logically in; `initial` is already built in the first clip. */

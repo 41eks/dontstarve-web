@@ -11,7 +11,10 @@ interface BodyRegistration {
 /** Logical transforms provide the same activity query used by their prefab and display. */
 export interface BodyTransform {
   readonly tileTracker: TileTracker;
-  getTileActivity(query: TileStateQuery | undefined, registerCleanup: (stop: () => void) => void): Memo<boolean> | undefined;
+  getTileActivity(
+    query: TileStateQuery | undefined,
+    registerCleanup: (stop: () => void) => void,
+  ): Memo<boolean> | undefined;
 }
 
 /** Cannon types its World fields as the dense implementation. Adapt its native sparse
@@ -19,10 +22,18 @@ export interface BodyTransform {
  * when tile sleep/wake changes Cannon's body indices. */
 class ContactMatrix extends CANNON.ArrayCollisionMatrix {
   private readonly contacts = new CANNON.ObjectCollisionMatrix();
-  override get(first: CANNON.Body, second: CANNON.Body): number { return this.contacts.get(first, second) ? 1 : 0; }
-  override set(first: CANNON.Body, second: CANNON.Body, value: boolean): void { this.contacts.set(first, second, value); }
-  override reset(): void { this.contacts.reset(); }
-  override setNumObjects(_count: number): void { /* Sparse storage follows contacts, not registered body count. */ }
+  override get(first: CANNON.Body, second: CANNON.Body): number {
+    return this.contacts.get(first, second) ? 1 : 0;
+  }
+  override set(first: CANNON.Body, second: CANNON.Body, value: boolean): void {
+    this.contacts.set(first, second, value);
+  }
+  override reset(): void {
+    this.contacts.reset();
+  }
+  override setNumObjects(_count: number): void {
+    /* Sparse storage follows contacts, not registered body count. */
+  }
 }
 
 /**
@@ -43,36 +54,59 @@ export class PhysicsWorld extends CANNON.World {
     this.collisionMatrixPrevious = new ContactMatrix();
   }
 
-  get registeredBodies(): Iterable<CANNON.Body> { return this.registrations.keys(); }
+  get registeredBodies(): Iterable<CANNON.Body> {
+    return this.registrations.keys();
+  }
 
   /** `dontRemoveOnSleep` keeps a static body simulated outside the ticking area (Physics:SetDontRemoveOnSleep). */
   override addBody(body: CANNON.Body, options: { dontRemoveOnSleep?: boolean; transform?: BodyTransform } = {}): void {
-    if (this.disposed) { throw new Error('Physics world is disposed'); }
-    if (this.registrations.has(body)) { return; }
+    if (this.disposed) {
+      throw new Error('Physics world is disposed');
+    }
+    if (this.registrations.has(body)) {
+      return;
+    }
     const registration: BodyRegistration = { dispose() {} };
     this.registrations.set(body, registration);
     // Infinite ground and moving bodies keep their existing simulation lifecycle.
-    if (options.dontRemoveOnSleep || body.type !== CANNON.Body.STATIC || body.shapes.some(shape => shape instanceof CANNON.Plane)) {
+    if (
+      options.dontRemoveOnSleep ||
+      body.type !== CANNON.Body.STATIC ||
+      body.shapes.some(shape => shape instanceof CANNON.Plane)
+    ) {
       this.setActive(body, true);
       return;
     }
     const position = new Vector3();
-    const tracker = registration.tracker = options.transform?.tileTracker
-      ?? new TileTracker(() => position.set(body.position.x, body.position.y, body.position.z));
+    const tracker = (registration.tracker =
+      options.transform?.tileTracker ??
+      new TileTracker(() => position.set(body.position.x, body.position.y, body.position.z)));
     const cleanups: (() => void)[] = [];
-    registration.dispose = () => { cleanups.splice(0).reverse().forEach(stop => stop()); };
+    registration.dispose = () => {
+      cleanups
+        .splice(0)
+        .reverse()
+        .forEach(stop => stop());
+    };
     const area = options.transform
       ? options.transform.getTileActivity(this.tickingarea, stop => cleanups.push(stop))
       : this.tickingarea?.(tracker.tile);
-    if (area && !options.transform) { cleanups.push(() => area.dispose()); }
-    if (!area) { this.setActive(body, true); return; }
+    if (area && !options.transform) {
+      cleanups.push(() => area.dispose());
+    }
+    if (!area) {
+      this.setActive(body, true);
+      return;
+    }
     const active = watchSignal(area, stop => cleanups.push(stop));
     createEffect(() => this.setActive(body, active.get()));
   }
 
   override removeBody(body: CANNON.Body): void {
     const registration = this.registrations.get(body);
-    if (!registration) { return; }
+    if (!registration) {
+      return;
+    }
     this.registrations.delete(body);
     registration.dispose();
     this.setActive(body, false);
@@ -99,9 +133,13 @@ export class PhysicsWorld extends CANNON.World {
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
-    for (const body of this.registrations.keys()) { this.removeBody(body); }
+    for (const body of this.registrations.keys()) {
+      this.removeBody(body);
+    }
   }
 }
 

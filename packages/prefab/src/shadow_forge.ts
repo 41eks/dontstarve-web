@@ -16,7 +16,7 @@ export const SHADOW_FORGE_ID = 'shadow_forge' as const;
 /** shadow_forge.lua assets: one archive holds the shadow_forge bank and build; MakeSnowCovered's symbol comes from snow.zip. */
 export const SHADOW_FORGE_ARCHIVES = ['shadow_forge.zip', 'snow.zip'];
 /** MakeObstaclePhysics(inst, 0.4). */
-const PHYSICS_RADIUS = .4;
+const PHYSICS_RADIUS = 0.4;
 /** SetDeploySmartRadius(DEPLOYSPACING_RADIUS[DEPLOYSPACING.DEFAULT] / 2), in DST units. */
 const DEPLOY_SMART_RADIUS = 2 / 2;
 /** tuning.lua HAUNT_TINY. */
@@ -33,7 +33,11 @@ export interface ShadowForgeWorld {
 /** shadow_forge.lua fn: the fields it sets on inst and the components it adds. */
 export class ShadowForgeInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    inspectable: Inspectable; prototyper: Prototyper; lootdropper: LootDropper; workable: Workable; hauntable: Hauntable;
+    inspectable: Inspectable;
+    prototyper: Prototyper;
+    lootdropper: LootDropper;
+    workable: Workable;
+    hauntable: Hauntable;
     lunarhailbuildup: LunarHailBuildup;
   };
   /** inst._activecount / inst._activetask: onactivate's pending uses, which are not ported. */
@@ -83,11 +87,18 @@ function fn(world: ShadowForgeWorld): ShadowForgeInstance {
 }
 
 /** The shadow_forge Prefab shadow_forge.lua returns; shadow_forge_kit and its placer are not ported. */
-export function shadowForgePrefabs(world: ShadowForgeWorld): Readonly<Record<typeof SHADOW_FORGE_ID, PrefabEntityDefinition<ShadowForgeInstance>>> {
+export function shadowForgePrefabs(
+  world: ShadowForgeWorld,
+): Readonly<Record<typeof SHADOW_FORGE_ID, PrefabEntityDefinition<ShadowForgeInstance>>> {
   return {
     [SHADOW_FORGE_ID]: {
       fn: () => fn(world),
-      assets: { animationArchive: 'shadow_forge.zip', buildArchives: SHADOW_FORGE_ARCHIVES, bank: 'shadow_forge', hiddenLayers: ['snow'] },
+      assets: {
+        animationArchive: 'shadow_forge.zip',
+        buildArchives: SHADOW_FORGE_ARCHIVES,
+        bank: 'shadow_forge',
+        hiddenLayers: ['snow'],
+      },
       physics: { make: MakeObstaclePhysics, radius: PHYSICS_RADIUS },
       minimapIcon: 'shadow_forge.png',
     },

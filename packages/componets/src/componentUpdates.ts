@@ -8,12 +8,18 @@ export class ComponentUpdates {
 
   register(component: UpdatingComponent): () => void {
     this.components.add(component);
-    return () => { this.components.delete(component); };
+    return () => {
+      this.components.delete(component);
+    };
   }
 
   update(dt: number): void {
-    for (const component of this.components) { component.OnUpdate(dt); }
+    for (const component of this.components) {
+      component.OnUpdate(dt);
+    }
   }
 
-  dispose(): void { this.components.clear(); }
+  dispose(): void {
+    this.components.clear();
+  }
 }

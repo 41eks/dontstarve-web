@@ -3,8 +3,13 @@ import { SpriteState } from '@dontstarve-web/display';
 import { Vector3 } from 'three';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import {
-  CharlieCutscene, WorldSettingsTimer, EntityTracker, ColourTweener,
-  type CharlieCutsceneSave, type WorldSettingsTimerSave, type EntityTrackerSave,
+  CharlieCutscene,
+  WorldSettingsTimer,
+  EntityTracker,
+  ColourTweener,
+  type CharlieCutsceneSave,
+  type WorldSettingsTimerSave,
+  type EntityTrackerSave,
 } from '../../componets/src/atriumGateSignatures';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { PointOfInterest } from '../../componets/src/statueglommerSignatures';
@@ -17,21 +22,32 @@ import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { Pathfinder } from './pathfinder';
 import { MakeObstaclePhysics, WORLD_SCALE } from './standardcomponents';
 
-export { ATRIUM_GATE_TIMER_NAMES, type AtriumGateTimerName, type AtriumGateTimerSave } from '../../componets/src/atriumGateSignatures';
+export {
+  ATRIUM_GATE_TIMER_NAMES,
+  type AtriumGateTimerName,
+  type AtriumGateTimerSave,
+} from '../../componets/src/atriumGateSignatures';
 
 export const ATRIUM_GATE_ID = 'atrium_gate' as const;
 const ATRIUM_GATE_FLOOR_ID = 'atrium_gate_floor' as const;
 const ATRIUM_GATE_TERRAFORM_BLOCKER_ID = 'atrium_gate_terraform_blocker' as const;
 const ATRIUM_GATE_ACTIVATEDFX_ID = 'atrium_gate_activatedfx' as const;
-type AtriumGateChildId = typeof ATRIUM_GATE_FLOOR_ID | typeof ATRIUM_GATE_TERRAFORM_BLOCKER_ID | typeof ATRIUM_GATE_ACTIVATEDFX_ID;
+type AtriumGateChildId =
+  | typeof ATRIUM_GATE_FLOOR_ID
+  | typeof ATRIUM_GATE_TERRAFORM_BLOCKER_ID
+  | typeof ATRIUM_GATE_ACTIVATEDFX_ID;
 /** ATRIUM_ARENA_SIZE, in DST units. */
 const ATRIUM_ARENA_SIZE = 14.55;
 /** LAYER_BACKGROUND always draws over LAYER_GROUND (turf, mesh orders [-1, -0.6)); SetSortOrder(-3) only orders it among
  * background decals. A group order would sort it before every turf mesh, so the order goes on the mesh, as for ponds. */
-const FLOOR_RENDER_ORDER = -.5 + (-3 - 3) * .01;
+const FLOOR_RENDER_ORDER = -0.5 + (-3 - 3) * 0.01;
 
 /** atrium_gate.lua OnSave. */
-export interface AtriumGateSaveState { vault_key_socketed?: true; can_spawn_charlie_hand_keystone?: true; launch_key?: true }
+export interface AtriumGateSaveState {
+  vault_key_socketed?: true;
+  can_spawn_charlie_hand_keystone?: true;
+  launch_key?: true;
+}
 export interface AtriumGateRecord {
   id: string;
   transform: { position: [number, number, number]; rotationY: number };
@@ -84,24 +100,47 @@ export class AtriumGateInstance extends PrefabInstance {
     // the listed repaired build. CharlieCutscene:OnLoad switches to atrium_gate_build.
     this.sprite.setBuildArchive('atrium_gate.zip');
     this.minimap.SetIcon('atrium_gate.png');
-    for (const tag of ['gemsocket', 'stargate', 'give_dolongaction']) { this.addTag(tag); }
+    for (const tag of ['gemsocket', 'stargate', 'give_dolongaction']) {
+      this.addTag(tag);
+    }
 
     // CreateFloor and AddTerraformBlockers: non-networked children that are never saved.
     const children = [world.spawnPrefab(ATRIUM_GATE_FLOOR_ID, position)];
-    const radius = Math.ceil(ATRIUM_ARENA_SIZE / 3), diameter = radius * 2;
+    const radius = Math.ceil(ATRIUM_ARENA_SIZE / 3),
+      diameter = radius * 2;
     for (let row = -3 * radius; row <= 3 * radius; row += diameter) {
       for (let col = -diameter; col <= diameter; col += diameter) {
-        for (const [x, z] of [[row, col], [col, row]]) {
-          children.push(world.spawnPrefab(ATRIUM_GATE_TERRAFORM_BLOCKER_ID,
-            new Vector3(position.x + x * WORLD_SCALE, 0, position.z + z * WORLD_SCALE)));
+        for (const [x, z] of [
+          [row, col],
+          [col, row],
+        ]) {
+          children.push(
+            world.spawnPrefab(
+              ATRIUM_GATE_TERRAFORM_BLOCKER_ID,
+              new Vector3(position.x + x * WORLD_SCALE, 0, position.z + z * WORLD_SCALE),
+            ),
+          );
         }
       }
     }
-    for (const child of children) { child.entityParent = this; }
+    for (const child of children) {
+      child.entityParent = this;
+    }
     InitializePathFinding(this, world.pathfinder);
 
     // A new pickable has no product until OnKeyGiven's SetUp: nothing to pick.
-    const pickable = addComponent(this, 'pickable', Pickable, 'atrium_key', undefined, 1, undefined, undefined, { picked: true }, { scheduler: world.scheduler });
+    const pickable = addComponent(
+      this,
+      'pickable',
+      Pickable,
+      'atrium_key',
+      undefined,
+      1,
+      undefined,
+      undefined,
+      { picked: true },
+      { scheduler: world.scheduler },
+    );
     pickable.canInteractWith = false;
     pickable.savesCanInteractWith = true;
     addComponent(this, 'trader', Trader);
@@ -118,23 +157,33 @@ export class AtriumGateInstance extends PrefabInstance {
 
     this.OnSave = (_inst, data) => {
       const own: AtriumGateSaveState = {
-        ...this.vault_key_socketed ? { vault_key_socketed: true as const } : {},
-        ...this.can_spawn_charlie_hand_keystone ? { can_spawn_charlie_hand_keystone: true as const } : {},
-        ...this._launchkey ? { launch_key: true as const } : {},
+        ...(this.vault_key_socketed ? { vault_key_socketed: true as const } : {}),
+        ...(this.can_spawn_charlie_hand_keystone ? { can_spawn_charlie_hand_keystone: true as const } : {}),
+        ...(this._launchkey ? { launch_key: true as const } : {}),
       };
-      if (Object.keys(own).length) { data.atriumGate = own; }
+      if (Object.keys(own).length) {
+        data.atriumGate = own;
+      }
     };
     this.OnLoad = (_inst, data) => {
       const own = data.atriumGate;
-      if (own?.vault_key_socketed) { SocketVaultKey(this); }
-      if (own?.can_spawn_charlie_hand_keystone) { this.can_spawn_charlie_hand_keystone = true; }
-      if (own?.launch_key) { this._launchkey = true; }
+      if (own?.vault_key_socketed) {
+        SocketVaultKey(this);
+      }
+      if (own?.can_spawn_charlie_hand_keystone) {
+        this.can_spawn_charlie_hand_keystone = true;
+      }
+      if (own?.launch_key) {
+        this._launchkey = true;
+      }
     };
     // The blockers and _gatefx are parented with entity:SetParent and retire with the gate.
     this.OnRemoveEntity = OnRemove;
   }
 
-  IsDestabilizing(): boolean { return this.components.worldsettingstimer.ActiveTimerExists('destabilizing'); }
+  IsDestabilizing(): boolean {
+    return this.components.worldsettingstimer.ActiveTimerExists('destabilizing');
+  }
 }
 
 function SocketVaultKey(inst: AtriumGateInstance): void {
@@ -144,16 +193,26 @@ function SocketVaultKey(inst: AtriumGateInstance): void {
 
 function SetMiniMapIcon(inst: AtriumGateInstance): void {
   const repaired = inst.components.charliecutscene.IsGateRepaired();
-  const active = inst.components.pickable.canInteractWith || inst.components.worldsettingstimer.ActiveTimerExists('destabilizedelay');
-  inst.minimap.SetIcon(active
-    ? (repaired ? 'atrium_gate_fixed_active.png' : 'atrium_gate_active.png')
-    : (repaired ? 'atrium_gate_fixed.png' : 'atrium_gate.png'));
+  const active =
+    inst.components.pickable.canInteractWith ||
+    inst.components.worldsettingstimer.ActiveTimerExists('destabilizedelay');
+  inst.minimap.SetIcon(
+    active
+      ? repaired
+        ? 'atrium_gate_fixed_active.png'
+        : 'atrium_gate_active.png'
+      : repaired
+        ? 'atrium_gate_fixed.png'
+        : 'atrium_gate.png',
+  );
 }
 
 function ShowFx(inst: AtriumGateInstance, state: 'idle' | 'overload'): void {
   if (!inst._gatefx) {
     const fx = inst.world.spawnPrefab(ATRIUM_GATE_ACTIVATEDFX_ID, inst.position);
-    if (!(fx instanceof AtriumGateFxInstance)) { throw new Error(`${ATRIUM_GATE_ACTIVATEDFX_ID} did not spawn its fx instance`); }
+    if (!(fx instanceof AtriumGateFxInstance)) {
+      throw new Error(`${ATRIUM_GATE_ACTIVATEDFX_ID} did not spawn its fx instance`);
+    }
     inst._gatefx = fx;
     fx.entityParent = inst;
   }
@@ -163,18 +222,28 @@ function ShowFx(inst: AtriumGateInstance, state: 'idle' | 'overload'): void {
 /** CharlieCutscene:OnLoad's appearance, then OnLoadPostPass; a new gate has none of their saved state. */
 function OnLoadPostPass(inst: AtriumGateInstance): void {
   const { charliecutscene, pickable, trader, worldsettingstimer, entitytracker } = inst.components;
-  if (charliecutscene.IsGateRepaired()) { inst.sprite.setBuildArchive('atrium_gate_build.zip'); }
+  if (charliecutscene.IsGateRepaired()) {
+    inst.sprite.setBuildArchive('atrium_gate_build.zip');
+  }
   SetMiniMapIcon(inst);
   if (inst.IsDestabilizing()) {
     // StartDestabilizing(inst, true)
-    trader.Disable(); pickable.canInteractWith = false;
+    trader.Disable();
+    pickable.canInteractWith = false;
     inst.removeTag('intense');
     ShowFx(inst, 'overload');
-    inst.light.set({ radius: 8 * WORLD_SCALE, falloff: .9, intensity: .65, colour: [200 / 255, 140 / 255, 140 / 255] });
-    inst.sprite.playOnce('overload_pre'); inst.sprite.pushAnimation('overload_loop', true);
+    inst.light.set({
+      radius: 8 * WORLD_SCALE,
+      falloff: 0.9,
+      intensity: 0.65,
+      colour: [200 / 255, 140 / 255, 140 / 255],
+    });
+    inst.sprite.playOnce('overload_pre');
+    inst.sprite.pushAnimation('overload_loop', true);
   } else if (worldsettingstimer.ActiveTimerExists('cooldown')) {
     // StartCooldown(inst, true)
-    trader.Disable(); pickable.canInteractWith = false;
+    trader.Disable();
+    pickable.canInteractWith = false;
     inst.sprite.start('cooldown');
   } else if (pickable.canInteractWith || worldsettingstimer.ActiveTimerExists('destabilizedelay')) {
     // OnKeyGiven(inst)
@@ -190,32 +259,49 @@ function OnLoadPostPass(inst: AtriumGateInstance): void {
       ShowFx(inst, 'idle');
       inst.sprite.start('idle_fight');
     }
-    if (delayed) { trader.Disable(); pickable.canInteractWith = false; inst.removeTag('intense'); }
+    if (delayed) {
+      trader.Disable();
+      pickable.canInteractWith = false;
+      inst.removeTag('intense');
+    }
   }
 }
 
 /** The 2×2 path tiles around the gate's centre. */
 function gateWalls(inst: PrefabInstance) {
   const { x, y, z } = inst.position;
-  const offset = .5 * WORLD_SCALE;
-  return [[-offset, -offset], [-offset, offset], [offset, -offset], [offset, offset]].map(([dx, dz]) => ({ x: x + dx, y, z: z + dz }));
+  const offset = 0.5 * WORLD_SCALE;
+  return [
+    [-offset, -offset],
+    [-offset, offset],
+    [offset, -offset],
+    [offset, offset],
+  ].map(([dx, dz]) => ({ x: x + dx, y, z: z + dz }));
 }
 
 /** atrium_gate.lua InitializePathFinding. */
 function InitializePathFinding(inst: PrefabInstance, pathfinder: Pathfinder | undefined): void {
-  for (const wall of gateWalls(inst)) { pathfinder?.AddWall(wall); }
+  for (const wall of gateWalls(inst)) {
+    pathfinder?.AddWall(wall);
+  }
 }
 
 /** atrium_gate.lua OnRemove, its inst.OnRemoveEntity. */
 function OnRemove(inst: AtriumGateInstance): void {
-  for (const wall of gateWalls(inst)) { inst.world.pathfinder?.RemoveWall(wall); }
+  for (const wall of gateWalls(inst)) {
+    inst.world.pathfinder?.RemoveWall(wall);
+  }
 }
 
 /** atrium_gate.lua CreateFloor. */
 function CreateFloor(position: ReadonlyVector3): PrefabInstance {
-  const inst = new PrefabInstance(ATRIUM_GATE_FLOOR_ID, new SpriteState({ name: 'idle_active', held: true, billboard: false }));
+  const inst = new PrefabInstance(
+    ATRIUM_GATE_FLOOR_ID,
+    new SpriteState({ name: 'idle_active', held: true, billboard: false }),
+  );
   inst.setPosition(position.x, 0, position.z);
-  inst.addTag('DECOR'); inst.addTag('NOCLICK');
+  inst.addTag('DECOR');
+  inst.addTag('NOCLICK');
   inst.persists = false;
   inst.sprite.playOnce('idle_active');
   inst.sprite.setGround(0);
@@ -250,10 +336,19 @@ export class AtriumGateFxInstance extends PrefabInstance {
       if (this.anim !== undefined) {
         this.sprite.pushAnimation(`${this.anim}_pst`, false);
         this.sprite.pushAnimation(`${anim}_pre`, false);
-      } else { this.sprite.playOnce(`${anim}_pre`); }
+      } else {
+        this.sprite.playOnce(`${anim}_pre`);
+      }
       this.sprite.pushAnimation(`${anim}_loop`, true);
-      if (anim === 'idle') { this.removeTag('NOCLICK'); this.removeTag('DECOR'); this.addTag('FX'); }
-      else { this.removeTag('FX'); this.addTag('DECOR'); this.addTag('NOCLICK'); }
+      if (anim === 'idle') {
+        this.removeTag('NOCLICK');
+        this.removeTag('DECOR');
+        this.addTag('FX');
+      } else {
+        this.removeTag('FX');
+        this.addTag('DECOR');
+        this.addTag('NOCLICK');
+      }
     }
     this.anim = anim;
   }
@@ -262,13 +357,24 @@ export class AtriumGateFxInstance extends PrefabInstance {
 const INSTANCED = { instancedAnimations: 'all' as const };
 
 /** The Prefabs atrium_gate.lua and atrium_gate_activatedfx.lua return, and the gate's non-networked children. */
-export function atriumGatePrefabs(world: AtriumGateWorld): Readonly<Record<typeof ATRIUM_GATE_ID, PrefabEntityDefinition<AtriumGateInstance>>
-  & Record<typeof ATRIUM_GATE_FLOOR_ID | typeof ATRIUM_GATE_TERRAFORM_BLOCKER_ID, PrefabEntityDefinition<PrefabInstance>>
-  & Record<typeof ATRIUM_GATE_ACTIVATEDFX_ID, PrefabEntityDefinition<AtriumGateFxInstance>>> {
+export function atriumGatePrefabs(
+  world: AtriumGateWorld,
+): Readonly<
+  Record<typeof ATRIUM_GATE_ID, PrefabEntityDefinition<AtriumGateInstance>> &
+    Record<
+      typeof ATRIUM_GATE_FLOOR_ID | typeof ATRIUM_GATE_TERRAFORM_BLOCKER_ID,
+      PrefabEntityDefinition<PrefabInstance>
+    > &
+    Record<typeof ATRIUM_GATE_ACTIVATEDFX_ID, PrefabEntityDefinition<AtriumGateFxInstance>>
+> {
   return {
     [ATRIUM_GATE_ID]: {
       fn: position => new AtriumGateInstance(world, position),
-      assets: { animationArchive: 'atrium_gate.zip', buildArchives: ['atrium_gate.zip', 'atrium_gate_build.zip'], bank: 'atrium_gate' },
+      assets: {
+        animationArchive: 'atrium_gate.zip',
+        buildArchives: ['atrium_gate.zip', 'atrium_gate_build.zip'],
+        bank: 'atrium_gate',
+      },
       assetOptions: INSTANCED,
       physics: { make: MakeObstaclePhysics, radius: 1 },
       onSpawned: OnLoadPostPass,
@@ -282,7 +388,11 @@ export function atriumGatePrefabs(world: AtriumGateWorld): Readonly<Record<typeo
     [ATRIUM_GATE_TERRAFORM_BLOCKER_ID]: { fn: CreateTerraformBlocker, targetable: false },
     [ATRIUM_GATE_ACTIVATEDFX_ID]: {
       fn: position => new AtriumGateFxInstance(position),
-      assets: { animationArchive: 'atrium_gate_overload_fx.zip', buildArchives: ['atrium_gate_overload_fx.zip'], bank: 'atrium_gate_overload_fx' },
+      assets: {
+        animationArchive: 'atrium_gate_overload_fx.zip',
+        buildArchives: ['atrium_gate_overload_fx.zip'],
+        bank: 'atrium_gate_overload_fx',
+      },
       assetOptions: INSTANCED,
       targetable: false,
     },

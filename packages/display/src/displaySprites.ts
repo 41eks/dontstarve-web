@@ -1,5 +1,9 @@
 import type * as THREE from 'three';
-import type { InstancedArchiveSprites, InstancedSprite, InstancedSpriteMember } from '@dontstarve-web/animation/instancedArchiveSprites';
+import type {
+  InstancedArchiveSprites,
+  InstancedSprite,
+  InstancedSpriteMember,
+} from '@dontstarve-web/animation/instancedArchiveSprites';
 import type { SpriteJson } from './spriteState';
 import type { LightJson } from './lightState';
 
@@ -21,19 +25,29 @@ export class DisplaySprite implements InstancedSpriteMember {
     byModel.set(model, this);
   }
 
-  get lightOverride(): number { return this.json.peek().lightOverride ?? 0; }
+  get lightOverride(): number {
+    return this.json.peek().lightOverride ?? 0;
+  }
 
-  get sprite(): InstancedSprite | undefined { return this.drawn; }
+  get sprite(): InstancedSprite | undefined {
+    return this.drawn;
+  }
 
   /** The display's drawn art changed: list its instance, if any, for that instance's pass. */
   setSprite(sprite: InstancedSprite | undefined): void {
-    if (sprite === this.drawn) { return; }
-    if (this.drawn) { byPass.get(this.drawn.pass)?.delete(this); }
+    if (sprite === this.drawn) {
+      return;
+    }
+    if (this.drawn) {
+      byPass.get(this.drawn.pass)?.delete(this);
+    }
     this.drawn = sprite;
-    if (!sprite) { return; }
+    if (!sprite) {
+      return;
+    }
     let members = byPass.get(sprite.pass);
     if (!members) {
-      byPass.set(sprite.pass, members = new Set());
+      byPass.set(sprite.pass, (members = new Set()));
       sprite.pass.bindMembers(members);
     }
     members.add(this);
@@ -49,7 +63,9 @@ export class DisplaySprite implements InstancedSpriteMember {
 export function displayLightOverride(object: THREE.Object3D): number {
   for (let node: THREE.Object3D | null = object; node; node = node.parent) {
     const display = byModel.get(node);
-    if (display) { return display.lightOverride; }
+    if (display) {
+      return display.lightOverride;
+    }
   }
   return 0;
 }
@@ -63,12 +79,22 @@ export interface DisplayLight {
 const lights = new Set<DisplayLight>();
 
 /** Every light of an active entity, as its display lists it; the renderer and light sampling read only this. */
-export function displayLights(): ReadonlySet<DisplayLight> { return lights; }
+export function displayLights(): ReadonlySet<DisplayLight> {
+  return lights;
+}
 
 /** The display keeps one record listed while its entity is active and its light is on. */
-export function listDisplayLight(previous: DisplayLight | undefined, model: THREE.Object3D, light: LightJson | undefined): DisplayLight | undefined {
-  if (previous) { lights.delete(previous); }
-  if (!light || light.radius <= 0 || light.intensity <= 0) { return undefined; }
+export function listDisplayLight(
+  previous: DisplayLight | undefined,
+  model: THREE.Object3D,
+  light: LightJson | undefined,
+): DisplayLight | undefined {
+  if (previous) {
+    lights.delete(previous);
+  }
+  if (!light || light.radius <= 0 || light.intensity <= 0) {
+    return undefined;
+  }
   const record = { model, light };
   lights.add(record);
   return record;

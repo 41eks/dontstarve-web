@@ -19,15 +19,22 @@ function target(itemId = 'opalstaff', remainingUses = 50): ItemEntity {
 
 describe('greenstaff source deconstruction', () => {
   it('uses the opal deconstruction recipe, condition rounding and precious gem exception', () => {
-    const opal = target('opalstaff', 1), yellow = target('yellowstaff', 20);
+    const opal = target('opalstaff', 1),
+      yellow = target('yellowstaff', 20);
     expect(deconstructionLoot(opal)).toEqual([
-      { itemId: 'nightmarefuel', count: 1 }, { itemId: 'livinglog', count: 1 }, { itemId: 'opalpreciousgem', count: 1 },
+      { itemId: 'nightmarefuel', count: 1 },
+      { itemId: 'livinglog', count: 1 },
+      { itemId: 'opalpreciousgem', count: 1 },
     ]);
-    expect(deconstructionLoot(yellow)).toEqual([{ itemId: 'nightmarefuel', count: 4 }, { itemId: 'livinglog', count: 2 }]);
+    expect(deconstructionLoot(yellow)).toEqual([
+      { itemId: 'nightmarefuel', count: 4 },
+      { itemId: 'livinglog', count: 2 },
+    ]);
     expect(deconstructionLoot({ prefab: 'wall_stone_item', components: {} })).toEqual([
       { itemId: 'cutstone', count: 1 },
     ]);
-    opal.destroy(); yellow.destroy();
+    opal.destroy();
+    yellow.destroy();
   });
 
   it('selects recipe targets and commits removal, cost and final equipment depletion through the store', async () => {
@@ -35,10 +42,14 @@ describe('greenstaff source deconstruction', () => {
     const inventory = testInventoryStore([{ address: slot, slot: new HandSlot() }], INVENTORY_ITEM_SPECS);
     const spawn = vi.fn();
     inventory.entities.bindEquipmentWorld({ greenStaffWorld: { spawnLoot: spawn } });
-    inventory.replaceState({ bufferedBuilds: [], slots: [{ address: slot, item: { itemId: 'greenstaff', count: 1, remainingUses: 1 } }] }, {});
+    inventory.replaceState(
+      { bufferedBuilds: [], slots: [{ address: slot, item: { itemId: 'greenstaff', count: 1, remainingUses: 1 } }] },
+      {},
+    );
     const entity = inventory.getEntity(slot)!;
     const opal = target();
-    const event = vi.fn(); opal.ListenForEvent('ondeconstructstructure', event);
+    const event = vi.fn();
+    opal.ListenForEvent('ondeconstructstructure', event);
     // The caster is the player inst, whose sanity pays the cast.
     const doer = testPlayer();
     const doDelta = vi.spyOn(addComponent(doer, 'sanity', Sanity, 200), 'DoDelta');
@@ -51,9 +62,14 @@ describe('greenstaff source deconstruction', () => {
     const action = createBufferedAction('CASTSPELL', { doer, target: opal, invobject: entity, pos: opal.position });
     expect(action.target).toBe(opal);
     expect(action.do()).toBe(true);
-    expect(spawn).toHaveBeenCalledWith([
-      { itemId: 'nightmarefuel', count: 4 }, { itemId: 'livinglog', count: 2 }, { itemId: 'opalpreciousgem', count: 1 },
-    ], opal.position);
+    expect(spawn).toHaveBeenCalledWith(
+      [
+        { itemId: 'nightmarefuel', count: 4 },
+        { itemId: 'livinglog', count: 2 },
+        { itemId: 'opalpreciousgem', count: 1 },
+      ],
+      opal.position,
+    );
     expect(event).toHaveBeenCalledWith(opal, doer);
     expect(opal.isRemoved).toBe(true);
     expect(doDelta).toHaveBeenCalledExactlyOnceWith(-20);
@@ -66,17 +82,25 @@ describe('greenstaff source deconstruction', () => {
     const entity = target('greenstaff', 5);
     const spawn = vi.fn();
     entity.equipmentWorld = { greenStaffWorld: { spawnLoot: spawn } };
-    const opal = target(), doer = testPlayer();
+    const opal = target(),
+      doer = testPlayer();
     const doDelta = vi.spyOn(addComponent(doer, 'sanity', Sanity, 200), 'DoDelta');
     let held = true;
-    const action = createBufferedAction('CASTSPELL', { doer, target: opal, invobject: entity, pos: opal.position }, () => held);
+    const action = createBufferedAction(
+      'CASTSPELL',
+      { doer, target: opal, invobject: entity, pos: opal.position },
+      () => held,
+    );
     held = false;
     expect(action.do()).toBe(false);
-    held = true; opal.addTag('INLIMBO');
+    held = true;
+    opal.addTag('INLIMBO');
     expect(action.do()).toBe(false);
-    expect(spawn).not.toHaveBeenCalled(); expect(doDelta).not.toHaveBeenCalled();
+    expect(spawn).not.toHaveBeenCalled();
+    expect(doDelta).not.toHaveBeenCalled();
     expect(entity.components.finiteuses.percent.peek()).toBe(1);
     expect(opal.isRemoved).toBe(false);
-    entity.destroy(); opal.destroy();
+    entity.destroy();
+    opal.destroy();
   });
 });

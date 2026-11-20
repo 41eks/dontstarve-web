@@ -12,7 +12,11 @@ import { DstMinimapElement } from './minimap';
 import { DstStatusHudElement } from './status-hud';
 import { DstSavingIndicatorElement } from './saving-indicator';
 
-export { INVENTORY_RECEIVE_DURATION_MS, INVENTORY_RECEIVE_PULSE_MS, type InventoryReceiveSource } from './slot/slot-receive-animation';
+export {
+  INVENTORY_RECEIVE_DURATION_MS,
+  INVENTORY_RECEIVE_PULSE_MS,
+  type InventoryReceiveSource,
+} from './slot/slot-receive-animation';
 
 export type { GameUiEventMap } from './events';
 export { CursorLabelUi, type CursorPointer } from './cursor-label';
@@ -40,10 +44,7 @@ export {
 } from './crafting-ui';
 export { DstDebugConsoleElement, type DebugCommandDetail } from './debug-console';
 export { DstEmoteWheelElement, type EmoteRequestDetail, type EmoteWheelToggleDetail } from './emote-wheel';
-export {
-  INVENTORY_ITEM_DISPLAY_SPECS,
-  type InventoryItemDisplaySpec,
-} from './inventory-items';
+export { INVENTORY_ITEM_DISPLAY_SPECS, type InventoryItemDisplaySpec } from './inventory-items';
 export {
   INVENTORY_PRODUCT_SPECS,
   INVENTORY_RECIPES,
@@ -64,7 +65,16 @@ export {
   inventorySlotAddress,
 } from './inventory-bar';
 export { DstMapControlsElement, type CameraTurnDirection } from './map-controls';
-export { DstMinimapElement, type MinimapOptions, type MinimapStateDetail, type MinimapActionRequestDetail, type MinimapPixels, type MinimapTerrain, type MinimapTileLayer, type MinimapTileLayerArt } from './minimap';
+export {
+  DstMinimapElement,
+  type MinimapOptions,
+  type MinimapStateDetail,
+  type MinimapActionRequestDetail,
+  type MinimapPixels,
+  type MinimapTerrain,
+  type MinimapTileLayer,
+  type MinimapTileLayerArt,
+} from './minimap';
 export type { MinimapOceanConfig, MinimapOceanTuning } from './minimap-ocean';
 export { MinimapView, MINIMAP_ZOOM_DEFAULT, MINIMAP_ZOOM_MAX, MINIMAP_ZOOM_MIN } from './minimap-view';
 export {
@@ -84,11 +94,7 @@ export {
   type SlotSelectDetail,
 } from './slot/slot-model';
 export { createSlotRenderer, type CreateSlotRendererOptions, type SlotRenderer } from './slot/slot-renderer';
-export {
-  bindSlotContextMenuInput,
-  type SlotSecondaryInput,
-  type SlotContextMenuRequest,
-} from './slot/slot-input';
+export { bindSlotContextMenuInput, type SlotSecondaryInput, type SlotContextMenuRequest } from './slot/slot-input';
 export {
   SlotTransferController,
   slotTransferController,
@@ -180,20 +186,45 @@ export function mountGameUi(options: MountGameUiOptions = {}): GameUiElements {
   const savingIndicator = getOrCreate('dst-saving-indicator', overlayTarget);
 
   if (options.assetBaseUrl) {
-    for (const element of [chestPanel, cookPotPanel, iceBoxPanel, backpackPanel, crafting, debugConsole, emoteWheel, statusHud, inventoryBar, mapControls, minimap, savingIndicator]) {
+    for (const element of [
+      chestPanel,
+      cookPotPanel,
+      iceBoxPanel,
+      backpackPanel,
+      crafting,
+      debugConsole,
+      emoteWheel,
+      statusHud,
+      inventoryBar,
+      mapControls,
+      minimap,
+      savingIndicator,
+    ]) {
       element.setAttribute('asset-base', options.assetBaseUrl);
     }
   }
 
-  return { chestPanel, cookPotPanel, iceBoxPanel, backpackPanel, crafting, debugConsole, emoteWheel, inventoryBar, mapControls, minimap, statusHud, savingIndicator };
+  return {
+    chestPanel,
+    cookPotPanel,
+    iceBoxPanel,
+    backpackPanel,
+    crafting,
+    debugConsole,
+    emoteWheel,
+    inventoryBar,
+    mapControls,
+    minimap,
+    statusHud,
+    savingIndicator,
+  };
 }
 
-function getOrCreate<K extends keyof HTMLElementTagNameMap>(
-  tagName: K,
-  target: ParentNode,
-): HTMLElementTagNameMap[K] {
+function getOrCreate<K extends keyof HTMLElementTagNameMap>(tagName: K, target: ParentNode): HTMLElementTagNameMap[K] {
   const existing = target.querySelector<HTMLElementTagNameMap[K]>(tagName);
-  if (existing) { return existing; }
+  if (existing) {
+    return existing;
+  }
 
   const element = document.createElement(tagName);
   target.append(element);

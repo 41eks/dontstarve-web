@@ -32,7 +32,11 @@ export class Pollinator<Flower extends PollinationFlower = PollinationFlower> {
     return flower !== undefined && flower.hasTag('flower') && !this.flowers.includes(flower);
   }
 
-  HasCollectedEnough(): boolean { return this.flowers.length > this.collectcount; }
+  HasCollectedEnough(): boolean {
+    return this.flowers.length > this.collectcount;
+  }
 
-  dispose(): void { this.inst.removeTag('pollinator'); }
+  dispose(): void {
+    this.inst.removeTag('pollinator');
+  }
 }

@@ -8,23 +8,23 @@ const undrawnGroups = new WeakSet<THREE.Object3D>();
  * proxies still support picking, but their batch performs its own foot sorting.
  */
 export function setSpriteRenderGroupDrawn(group: THREE.Object3D, drawn: boolean): void {
-  if (drawn) { undrawnGroups.delete(group); } else { undrawnGroups.add(group); }
+  if (drawn) {
+    undrawnGroups.delete(group);
+  } else {
+    undrawnGroups.add(group);
+  }
 }
 
-export function registerSpriteRenderGroup(
-  sprite: THREE.Object3D,
-  renderGroup: THREE.Group,
-): void {
+export function registerSpriteRenderGroup(sprite: THREE.Object3D, renderGroup: THREE.Group): void {
   // A sprite loaded or swapped under a stable root keeps the entity's order until the next sort.
   const previous = spriteRenderGroups.get(sprite);
-  if (previous && renderGroup && previous !== renderGroup) { renderGroup.renderOrder = previous.renderOrder; }
+  if (previous && renderGroup && previous !== renderGroup) {
+    renderGroup.renderOrder = previous.renderOrder;
+  }
   spriteRenderGroups.set(sprite, renderGroup);
 }
 
-export function setSpriteEntityRenderOrder(
-  sprite: THREE.Object3D,
-  renderOrder: number,
-): void {
+export function setSpriteEntityRenderOrder(sprite: THREE.Object3D, renderOrder: number): void {
   const renderGroup = spriteRenderGroups.get(sprite);
   if (!renderGroup) {
     throw new Error(`${sprite.name || 'Object3D'} is not a registered animated sprite`);
@@ -34,10 +34,14 @@ export function setSpriteEntityRenderOrder(
 
 /** Entity visibility, independent of whether its pixels use an ordinary mesh or an instance batch. */
 export function isSpriteEntityVisible(sprite: THREE.Object3D): boolean {
-  if (!sprite.visible) { return false; }
+  if (!sprite.visible) {
+    return false;
+  }
   const group = spriteRenderGroups.get(sprite);
   for (let node: THREE.Object3D | null = group ?? null; node && node !== sprite; node = node.parent) {
-    if (!node.visible) { return false; }
+    if (!node.visible) {
+      return false;
+    }
   }
   return true;
 }
@@ -47,7 +51,6 @@ export function isSpriteEntityRendered(sprite: THREE.Object3D): boolean {
   const group = spriteRenderGroups.get(sprite);
   return !(group && undrawnGroups.has(group)) && isSpriteEntityVisible(sprite);
 }
-
 
 /**
  * Each entity's render order is its own key, computed from its foot point and the camera alone: three.js sorts
@@ -78,12 +81,22 @@ export interface RenderOrderEntry {
   sortLayer?: number;
 }
 
-const bucket = (value: number, buckets: number) => Math.min(buckets - 1, Math.max(0, Math.round(value / QUANTUM) + buckets / 2));
+const bucket = (value: number, buckets: number) =>
+  Math.min(buckets - 1, Math.max(0, Math.round(value / QUANTUM) + buckets / 2));
 
-export function spriteRenderOrderKey(foot: ReadonlyVector3, view: THREE.Matrix4, renderLayer = 0, sortLayer = 1): number {
+export function spriteRenderOrderKey(
+  foot: ReadonlyVector3,
+  view: THREE.Matrix4,
+  renderLayer = 0,
+  sortLayer = 1,
+): number {
   const layer = renderLayer - MIN_RENDER_LAYER;
-  if (!Number.isInteger(layer) || layer < 0 || layer >= RENDER_LAYERS) { throw new Error(`Unsupported render layer ${renderLayer}`); }
-  if (!Number.isInteger(sortLayer) || sortLayer < 0 || sortLayer >= SORT_LAYERS) { throw new Error(`Unsupported sort layer ${sortLayer}`); }
+  if (!Number.isInteger(layer) || layer < 0 || layer >= RENDER_LAYERS) {
+    throw new Error(`Unsupported render layer ${renderLayer}`);
+  }
+  if (!Number.isInteger(sortLayer) || sortLayer < 0 || sortLayer >= SORT_LAYERS) {
+    throw new Error(`Unsupported sort layer ${sortLayer}`);
+  }
   // The view matrix is affine; compute just camera-space x and z, without a temporary vector.
   const m = view.elements;
   const depth = bucket(m[2] * foot.x + m[6] * foot.y + m[10] * foot.z + m[14], DEPTH_BUCKETS);
@@ -95,6 +108,8 @@ export function spriteRenderOrderKey(foot: ReadonlyVector3, view: THREE.Matrix4,
 export function updateSpriteRenderOrders(entries: readonly RenderOrderEntry[], view: THREE.Matrix4): void {
   for (let i = 0; i < entries.length; i++) {
     const { object, footPosition, renderLayer, sortLayer } = entries[i];
-    if (isSpriteEntityRendered(object)) { setSpriteEntityRenderOrder(object, spriteRenderOrderKey(footPosition, view, renderLayer, sortLayer)); }
+    if (isSpriteEntityRendered(object)) {
+      setSpriteEntityRenderOrder(object, spriteRenderOrderKey(footPosition, view, renderLayer, sortLayer));
+    }
   }
 }

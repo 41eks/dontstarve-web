@@ -18,9 +18,13 @@ export class PreparedFoodSlot implements ItemSlot {
     return this.entityState.peek()?.snapshot(false) ?? null;
   }
 
-  getEntity(): ItemEntity | null { return this.entityState.peek(); }
+  getEntity(): ItemEntity | null {
+    return this.entityState.peek();
+  }
   setEntity(entity: ItemEntity | null): void {
-    if (entity && entity.components.stackable.count !== 1) { throw new RangeError('Prepared food slots hold one item'); }
+    if (entity && entity.components.stackable.count !== 1) {
+      throw new RangeError('Prepared food slots hold one item');
+    }
     this.entityState.set(entity);
   }
 

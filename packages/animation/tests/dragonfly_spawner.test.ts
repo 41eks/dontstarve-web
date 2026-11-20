@@ -4,7 +4,11 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { createMemo, createSignal, getWatchWorldContent } from '@dontstarve-web/signals';
 import { dragonflyPrefabs, DRAGONFLY_ID } from '../../prefab/src/dragonfly';
-import { dragonflySpawnerPrefabs, DRAGONFLY_SPAWNER_ID, DragonflySpawnerInstance } from '../../prefab/src/dragonfly_spawner';
+import {
+  dragonflySpawnerPrefabs,
+  DRAGONFLY_SPAWNER_ID,
+  DragonflySpawnerInstance,
+} from '../../prefab/src/dragonfly_spawner';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
@@ -19,21 +23,49 @@ import { createTestWorldSources } from './worldContentFixture';
 import { createInventoryStore } from './testInventory';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-const saved: EntitySaveRecord = { id: 'spawner-1', transform: { position: [0, 0, 0], rotationY: 0 },
-  components: { dragonflySpawner: { childspawner: { childreninside: 1, childrenoutside: [],
-    spawning: true, regening: false, queued_spawn: true, timetonextspawn: 1, timetonextregen: 0,
-    emergencychildreninside: 0 } } } };
+const saved: EntitySaveRecord = {
+  id: 'spawner-1',
+  transform: { position: [0, 0, 0], rotationY: 0 },
+  components: {
+    dragonflySpawner: {
+      childspawner: {
+        childreninside: 1,
+        childrenoutside: [],
+        spawning: true,
+        regening: false,
+        queued_spawn: true,
+        timetonextspawn: 1,
+        timetonextregen: 0,
+        emergencychildreninside: 0,
+      },
+    },
+  },
+};
 
 function setup(initialAwake: boolean) {
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(initialAwake);
+  const scene = new THREE.Scene(),
+    scheduler = new GameTimeScheduler(),
+    awake = createSignal(initialAwake);
   const tickingarea = () => createMemo(() => awake.get());
   const sources = createTestWorldSources(scheduler);
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea });
-  const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
-  prefabs.register(dragonflyPrefabs({ scheduler, getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources) }));
-  prefabs.register(dragonflySpawnerPrefabs({ scheduler, spawnDragonfly: point => prefabs.spawn(DRAGONFLY_ID, point).transform.model,
-    resolveDragonfly: id => prefabs.get(id)?.transform.model, isPassable: () => true }));
+  const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)),
+    inventory = createInventoryStore([]);
+  prefabs.register(
+    dragonflyPrefabs({
+      scheduler,
+      getWatchWorldContent: (key, register) => getWatchWorldContent(key, register, sources),
+    }),
+  );
+  prefabs.register(
+    dragonflySpawnerPrefabs({
+      scheduler,
+      spawnDragonfly: point => prefabs.spawn(DRAGONFLY_ID, point).transform.model,
+      resolveDragonfly: id => prefabs.get(id)?.transform.model,
+      isPassable: () => true,
+    }),
+  );
   registry.registerPrefabs(PREFAB_DEFINITIONS.dragonflies);
   registry.registerPrefabs(PREFAB_DEFINITIONS.dragonflySpawners);
   /** The dragonflies' save records, as the save loop exports them. */
@@ -43,18 +75,47 @@ function setup(initialAwake: boolean) {
     getById: (id: string) => prefabs.get(id),
   };
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
-  return { scheduler, awake, dragonflies, prefabs, registry, inventory,
-    spawner: (record?: EntitySaveRecord) => prefabs.spawnAs(DragonflySpawnerInstance, DRAGONFLY_SPAWNER_ID, new THREE.Vector3(), record),
+  return {
+    scheduler,
+    awake,
+    dragonflies,
+    prefabs,
+    registry,
+    inventory,
+    spawner: (record?: EntitySaveRecord) =>
+      prefabs.spawnAs(DragonflySpawnerInstance, DRAGONFLY_SPAWNER_ID, new THREE.Vector3(), record),
     spawnerRecord: () => prefabs.exportRecords().find(({ prefabId }) => prefabId === DRAGONFLY_SPAWNER_ID)!.record,
-    save: () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
-      playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG),
-    dispose: () => { registry.dispose(); prefabs.dispose(); displays.dispose(); inventory.dispose(); scheduler.dispose(); } };
+    save: () =>
+      serializeSave(
+        template,
+        {
+          entities: registry.exportRecords(),
+          inventory: inventory.exportSaved(),
+          elapsedSeconds: 0,
+          playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        },
+        SAVE_CATALOG,
+      ),
+    dispose: () => {
+      registry.dispose();
+      prefabs.dispose();
+      displays.dispose();
+      inventory.dispose();
+      scheduler.dispose();
+    },
+  };
 }
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
 });
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 it('keeps the saved child queued while asleep and spawns it when the spawner wakes', async () => {
   const s = setup(false);
@@ -62,19 +123,31 @@ it('keeps the saved child queued while asleep and spawns it when the spawner wak
     const spawner = s.spawner(saved);
     await settle();
     expect(spawner.hasTag('CLASSIFIED')).toBe(true);
-    expect(PREFAB_DEFINITIONS.dragonflySpawners.parseComponents(saved.components, 'dragonfly_spawner', { grounded: true } as never))
-      .toEqual(saved.components);
+    expect(
+      PREFAB_DEFINITIONS.dragonflySpawners.parseComponents(saved.components, 'dragonfly_spawner', {
+        grounded: true,
+      } as never),
+    ).toEqual(saved.components);
     s.scheduler.advance(10);
     expect(s.dragonflies.exportRecords()).toHaveLength(0);
-    s.awake.set(true); await settle();
-    s.scheduler.advance(0); await settle();
+    s.awake.set(true);
+    await settle();
+    s.scheduler.advance(0);
+    await settle();
     const [child] = s.dragonflies.exportRecords();
     expect(child).toBeDefined();
-    expect(child.record.components.dragonfly!.knownlocations?.locations.map(location => location.name).sort())
-      .toEqual(['home', 'spawnpoint']);
-    expect(s.spawnerRecord().components.dragonflySpawner?.childspawner)
-      .toMatchObject({ childreninside: 0, childrenoutside: [child.record.id], queued_spawn: false });
-  } finally { s.dispose(); }
+    expect(child.record.components.dragonfly!.knownlocations?.locations.map(location => location.name).sort()).toEqual([
+      'home',
+      'spawnpoint',
+    ]);
+    expect(s.spawnerRecord().components.dragonflySpawner?.childspawner).toMatchObject({
+      childreninside: 0,
+      childrenoutside: [child.record.id],
+      queued_spawn: false,
+    });
+  } finally {
+    s.dispose();
+  }
 });
 
 it('relinks an outside dragonfly after load and regenerates one child after its removal', async () => {
@@ -83,48 +156,80 @@ it('relinks an outside dragonfly after load and regenerates one child after its 
   let spawner: EntitySaveRecord;
   try {
     first.spawner(saved);
-    await settle(); first.scheduler.advance(0); await settle();
+    await settle();
+    first.scheduler.advance(0);
+    await settle();
     child = first.dragonflies.exportRecords()[0].record;
     spawner = first.spawnerRecord();
-  } finally { first.dispose(); }
+  } finally {
+    first.dispose();
+  }
   const restored = setup(true);
   try {
     restored.dragonflies.spawn(new THREE.Vector3(...child.transform.position), child);
     restored.spawner(spawner);
-    await settle(); restored.scheduler.advance(0);
+    await settle();
+    restored.scheduler.advance(0);
     restored.scheduler.advance(10);
     expect(restored.dragonflies.exportRecords()).toHaveLength(1);
     restored.dragonflies.getById(child.id)!.remove();
-    expect(restored.spawnerRecord().components.dragonflySpawner?.worldsettingstimer?.timers.regen_dragonfly)
-      .toMatchObject({ timeleft: 9600 });
-    restored.scheduler.advance(9600 + 10); await settle();
+    expect(
+      restored.spawnerRecord().components.dragonflySpawner?.worldsettingstimer?.timers.regen_dragonfly,
+    ).toMatchObject({ timeleft: 9600 });
+    restored.scheduler.advance(9600 + 10);
+    await settle();
     expect(restored.dragonflies.exportRecords()).toHaveLength(1);
     expect(restored.dragonflies.exportRecords()[0].record.id).not.toBe(child.id);
-  } finally { restored.dispose(); }
+  } finally {
+    restored.dispose();
+  }
 });
 
 it('c_spawn releases the queued child, and c_save and reload keep their linkage; c_give is refused', async () => {
   const first = setup(true);
-  let json = '', childId = '';
+  let json = '',
+    childId = '';
   try {
-    expect((await executeDebugCommand(`c_spawn("${DRAGONFLY_SPAWNER_ID}")`, first.inventory, id => first.registry.spawn(id))).ok).toBe(true);
+    expect(
+      (await executeDebugCommand(`c_spawn("${DRAGONFLY_SPAWNER_ID}")`, first.inventory, id => first.registry.spawn(id)))
+        .ok,
+    ).toBe(true);
     expect((await executeDebugCommand(`c_give("${DRAGONFLY_SPAWNER_ID}")`, first.inventory)).ok).toBe(false);
     // fn's StartSpawning: the first spawn tick releases the one child inside.
-    first.scheduler.advance(10); await settle();
-    [{ record: { id: childId } }] = first.dragonflies.exportRecords();
-    expect((await executeDebugCommand('c_save()', first.inventory, undefined, () => { json = first.save(); })).ok).toBe(true);
-  } finally { first.dispose(); }
+    first.scheduler.advance(10);
+    await settle();
+    [
+      {
+        record: { id: childId },
+      },
+    ] = first.dragonflies.exportRecords();
+    expect(
+      (
+        await executeDebugCommand('c_save()', first.inventory, undefined, () => {
+          json = first.save();
+        })
+      ).ok,
+    ).toBe(true);
+  } finally {
+    first.dispose();
+  }
   const { entities } = deserializeSave(json, SAVE_CATALOG).world;
   expect(entities.dragonfly.map(({ id }) => id)).toEqual([childId]);
-  expect(entities.dragonfly_spawner[0]).toMatchObject({ transform: { position: [12, 0, -6] },
-    components: { dragonflySpawner: { childspawner: { childreninside: 0, childrenoutside: [childId] } } } });
+  expect(entities.dragonfly_spawner[0]).toMatchObject({
+    transform: { position: [12, 0, -6] },
+    components: { dragonflySpawner: { childspawner: { childreninside: 0, childrenoutside: [childId] } } },
+  });
 
   const second = setup(true);
   try {
     await second.registry.restoreAll(entities);
-    await settle(); second.scheduler.advance(0); second.scheduler.advance(10);
+    await settle();
+    second.scheduler.advance(0);
+    second.scheduler.advance(10);
     // The restored spawner owns the restored child instead of releasing another.
     expect(second.dragonflies.exportRecords().map(({ record }) => record.id)).toEqual([childId]);
     expect(second.registry.exportRecords().dragonfly_spawner).toEqual(entities.dragonfly_spawner);
-  } finally { second.dispose(); }
+  } finally {
+    second.dispose();
+  }
 });

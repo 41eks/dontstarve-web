@@ -1,0 +1,11 @@
+# Mirrored DST assets and saves.
+public/
+# Written by packages/ui/scripts/generate-categories.mjs, whose --check compares the exact output.
+packages/ui/src/categories/generated.ts
+# Data written and checked byte for byte by the import scripts; docs keep their own layout.
+*.json
+*.md
+*.html
+# pnpm writes its lockfile; workflow files keep their own layout.
+*.yaml
+*.yml

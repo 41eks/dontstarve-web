@@ -13,7 +13,10 @@ const doer = testPlayer();
 function setup(remainingUses: number, ocean: (point: THREE.Vector3) => boolean) {
   const slot = equipmentSlotAddress('hand');
   const inventory = testInventoryStore([{ address: slot, slot: new HandSlot() }], INVENTORY_ITEM_SPECS);
-  inventory.replaceState({ bufferedBuilds: [], slots: [{ address: slot, item: { itemId: 'trident', count: 1, remainingUses } }] }, {});
+  inventory.replaceState(
+    { bufferedBuilds: [], slots: [{ address: slot, item: { itemId: 'trident', count: 1, remainingUses } }] },
+    {},
+  );
   const entity = inventory.getEntity(slot)!;
   const spawnWaterspout = vi.fn();
   const trident = new TridentController(entity, {
@@ -28,11 +31,14 @@ describe('trident water spell', () => {
     const { inventory, entity, trident, spawnWaterspout } = setup(200, point => point.x > 0);
     expect(entity.hasTag('castonpointwater')).toBe(true);
     expect(entity.hasTag('castonpoint')).toBe(false);
-    const land = new THREE.Vector3(-30, 0, 0), water = new THREE.Vector3(60, 0, 0);
+    const land = new THREE.Vector3(-30, 0, 0),
+      water = new THREE.Vector3(60, 0, 0);
     expect(trident.spellcaster.canCast(doer, undefined, land)).toBe(false);
     expect(createBufferedAction('CASTSPELL', { doer, invobject: entity, pos: water }).do()).toBe(true);
     expect(spawnWaterspout).toHaveBeenCalledTimes(4);
-    for (const [point] of spawnWaterspout.mock.calls) { expect(point.distanceTo(water)).toBeCloseTo(2.75 * 0.65 * 3, 5); }
+    for (const [point] of spawnWaterspout.mock.calls) {
+      expect(point.distanceTo(water)).toBeCloseTo(2.75 * 0.65 * 3, 5);
+    }
     expect(entity.components.finiteuses.remaining).toBe(196);
     inventory.dispose();
   });

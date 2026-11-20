@@ -2,7 +2,10 @@
 export const UPGRADETYPES = { DEFAULT: 'default', MAST: 'mast' } as const;
 
 /** upgradeable.lua OnSave. */
-export interface UpgradeableSave { numupgrades: number; stage?: number }
+export interface UpgradeableSave {
+  numupgrades: number;
+  stage?: number;
+}
 
 export interface UpgradeableInst {
   addTag(tag: string): void;
@@ -29,25 +32,45 @@ export class Upgradeable {
   }
 
   /** upgradetype, with onupgradetype: the tag moves to the new type while the stage can still be upgraded. */
-  get upgradetype(): string | undefined { return this.type; }
+  get upgradetype(): string | undefined {
+    return this.type;
+  }
   set upgradetype(value: string | undefined) {
     const old = this.type;
     this.type = value;
     if (this.CanUpgrade()) {
-      if (old !== undefined) { this.inst.removeTag(`${old}_upgradeable`); }
-      if (value !== undefined) { this.inst.addTag(`${value}_upgradeable`); }
+      if (old !== undefined) {
+        this.inst.removeTag(`${old}_upgradeable`);
+      }
+      if (value !== undefined) {
+        this.inst.addTag(`${value}_upgradeable`);
+      }
     }
   }
 
-  get stage(): number | undefined { return this.stageValue; }
-  set stage(value: number | undefined) { this.stageValue = value; this.onstage(); }
-  get numstages(): number | undefined { return this.numstagesValue; }
-  set numstages(value: number | undefined) { this.numstagesValue = value; this.onstage(); }
+  get stage(): number | undefined {
+    return this.stageValue;
+  }
+  set stage(value: number | undefined) {
+    this.stageValue = value;
+    this.onstage();
+  }
+  get numstages(): number | undefined {
+    return this.numstagesValue;
+  }
+  set numstages(value: number | undefined) {
+    this.numstagesValue = value;
+    this.onstage();
+  }
 
   /** onstage: AddOrRemoveTag(upgradetype.."_upgradeable", CanUpgrade()). */
   private onstage(): void {
     const tag = `${this.type}_upgradeable`;
-    if (this.CanUpgrade()) { this.inst.addTag(tag); } else { this.inst.removeTag(tag); }
+    if (this.CanUpgrade()) {
+      this.inst.addTag(tag);
+    } else {
+      this.inst.removeTag(tag);
+    }
   }
 
   /** Upgradeable:CanUpgrade without a canupgradefn: the stage is below numstages. */

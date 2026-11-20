@@ -1,9 +1,5 @@
 import { AssetElement } from './assets';
-import {
-  categories,
-  type Recipe,
-  type RecipeIngredient,
-} from './categories';
+import { categories, type Recipe, type RecipeIngredient } from './categories';
 import { initializeCraftingControls } from './crafting-controls';
 import { createCraftingBackground } from './crafting-background';
 import styles from './styles/crafting-ui.css?inline';
@@ -23,7 +19,7 @@ export const CRAFT_DURATION_MS = 1_000;
 
 let resolveCraftingUiReady: () => void;
 /** Resolves after the first mounted crafting menu creates all groups, buttons and initial effects. */
-export const craftingUiReady: Promise<void> = new Promise((resolve) => {
+export const craftingUiReady: Promise<void> = new Promise(resolve => {
   resolveCraftingUiReady = resolve;
 });
 
@@ -37,10 +33,10 @@ export class DstCraftingUiElement extends AssetElement {
   private craftingRecipeId?: string;
   private craftingSkinId?: string;
   private craftingTimer?: ReturnType<typeof setTimeout>;
-  private readonly recipes = [...new Set(categories.flatMap((category) => category.recipes))];
+  private readonly recipes = [...new Set(categories.flatMap(category => category.recipes))];
   private readonly recipeIndices = new Map(this.recipes.map((recipe, index) => [recipe, index]));
-  private isLockedArray = this.recipes.map((recipe) => this.calculateRecipeLocked(recipe));
-  private readonly recipeLockStates = this.isLockedArray.map((locked) => createSignal(locked));
+  private isLockedArray = this.recipes.map(recipe => this.calculateRecipeLocked(recipe));
+  private readonly recipeLockStates = this.isLockedArray.map(locked => createSignal(locked));
   private readonly recipeBufferedStates = this.recipes.map(() => createSignal(false));
   private readonly recipeButtonEffects: Array<() => void> = [];
   private readonly controlEffects: Array<() => void> = [];
@@ -58,34 +54,46 @@ export class DstCraftingUiElement extends AssetElement {
   setMaterialSummary(summary: InventoryMaterialSummary): void {
     const next = { ...summary };
     const previous = this.materialSummary;
-    if (previous
-      && Object.keys(previous).length === Object.keys(next).length
-      && Object.entries(next).every(([itemId, count]) => previous[itemId] === count)) {
+    if (
+      previous &&
+      Object.keys(previous).length === Object.keys(next).length &&
+      Object.entries(next).every(([itemId, count]) => previous[itemId] === count)
+    ) {
       return;
     }
     this.materialSummary = next;
     this.updateRecipeLocks();
-    if (this.isConnected) { this.refreshMaterials?.(); }
+    if (this.isConnected) {
+      this.refreshMaterials?.();
+    }
   }
 
   setBufferedRecipes(recipeIds: Iterable<string>): void {
     const next = new Set(recipeIds);
-    if (next.size === this.bufferedRecipeIds.size
-      && [...next].every((recipeId) => this.bufferedRecipeIds.has(recipeId))) {
+    if (
+      next.size === this.bufferedRecipeIds.size &&
+      [...next].every(recipeId => this.bufferedRecipeIds.has(recipeId))
+    ) {
       return;
     }
     this.bufferedRecipeIds = next;
     this.updateRecipeLocks();
     this.recipes.forEach((recipe, index) => {
       const buffered = next.has(recipe.id);
-      if (buffered !== this.recipeBufferedStates[index].get()) { this.recipeBufferedStates[index].set(buffered); }
+      if (buffered !== this.recipeBufferedStates[index].get()) {
+        this.recipeBufferedStates[index].set(buffered);
+      }
     });
   }
 
   disconnectedCallback(): void {
     this.disposeEffects();
-    if (!this.craftingRecipeId) { return; }
-    if (this.craftingTimer !== undefined) { clearTimeout(this.craftingTimer); }
+    if (!this.craftingRecipeId) {
+      return;
+    }
+    if (this.craftingTimer !== undefined) {
+      clearTimeout(this.craftingTimer);
+    }
     const recipeId = this.craftingRecipeId;
     const skinId = this.craftingSkinId;
     this.craftingRecipeId = undefined;
@@ -159,10 +167,12 @@ export class DstCraftingUiElement extends AssetElement {
     const setCollapsed = (collapsed: boolean) => {
       this.collapsed = collapsed;
       panel.classList.toggle('is-collapsed', collapsed);
-      root.querySelectorAll<HTMLElement>('.craft-header, .craft-categories, .craft-recipes-area, .craft-detail').forEach((section) => {
-        section.inert = collapsed;
-        section.setAttribute('aria-hidden', String(collapsed));
-      });
+      root
+        .querySelectorAll<HTMLElement>('.craft-header, .craft-categories, .craft-recipes-area, .craft-detail')
+        .forEach(section => {
+          section.inert = collapsed;
+          section.setAttribute('aria-hidden', String(collapsed));
+        });
       viewToggle.setAttribute('aria-expanded', String(!collapsed));
       quickToggle.setAttribute('aria-expanded', String(!collapsed));
       quickToggle.setAttribute('aria-label', collapsed ? '展开制作菜单' : '收起制作菜单');
@@ -177,9 +187,9 @@ export class DstCraftingUiElement extends AssetElement {
       selectedSkinIds: this.selectedSkinIds,
       recipeButtonEffects: this.recipeButtonEffects,
       controlEffects: this.controlEffects,
-      availableCount: (ingredient) => this.availableCount(ingredient),
-      isRecipeLocked: (recipe) => this.isRecipeLocked(recipe),
-      isRecipeBuffered: (recipe) => this.isRecipeBuffered(recipe),
+      availableCount: ingredient => this.availableCount(ingredient),
+      isRecipeLocked: recipe => this.isRecipeLocked(recipe),
+      isRecipeBuffered: recipe => this.isRecipeBuffered(recipe),
       getCraftingRecipeId: () => this.craftingRecipeId,
       emitCraftRequest: (recipeId, skinId) => this.emitCraftRequest(recipeId, skinId),
       startCrafting: (recipeId, skinId) => this.startCrafting(recipeId, skinId),
@@ -194,7 +204,9 @@ export class DstCraftingUiElement extends AssetElement {
   /** The recipe's position in the recipes this panel was built with. */
   private recipeIndex(recipe: Recipe): number {
     const index = this.recipeIndices.get(recipe);
-    if (index === undefined) { throw new Error(`Recipe ${recipe.id} is not in the crafting panel`); }
+    if (index === undefined) {
+      throw new Error(`Recipe ${recipe.id} is not in the crafting panel`);
+    }
     return index;
   }
 
@@ -203,8 +215,11 @@ export class DstCraftingUiElement extends AssetElement {
   }
 
   private calculateRecipeLocked(recipe: Recipe): boolean {
-    return !this.bufferedRecipeIds.has(recipe.id) && (Boolean(recipe.locked)
-      || recipe.ingredients.some((ingredient) => this.availableCount(ingredient) < ingredient.required));
+    return (
+      !this.bufferedRecipeIds.has(recipe.id) &&
+      (Boolean(recipe.locked) ||
+        recipe.ingredients.some(ingredient => this.availableCount(ingredient) < ingredient.required))
+    );
   }
 
   private isRecipeBuffered(recipe: Recipe): boolean {
@@ -212,9 +227,11 @@ export class DstCraftingUiElement extends AssetElement {
   }
 
   private updateRecipeLocks(): void {
-    const nextIsLockedArray = this.recipes.map((recipe) => this.calculateRecipeLocked(recipe));
+    const nextIsLockedArray = this.recipes.map(recipe => this.calculateRecipeLocked(recipe));
     nextIsLockedArray.forEach((locked, index) => {
-      if (locked !== this.isLockedArray[index]) { this.recipeLockStates[index].set(locked); }
+      if (locked !== this.isLockedArray[index]) {
+        this.recipeLockStates[index].set(locked);
+      }
     });
     this.isLockedArray = nextIsLockedArray;
   }
@@ -226,8 +243,8 @@ export class DstCraftingUiElement extends AssetElement {
     this.collapseListeners = undefined;
     this.disposeControls?.();
     this.disposeControls = undefined;
-    this.recipeButtonEffects.splice(0).forEach((dispose) => dispose());
-    this.controlEffects.splice(0).forEach((dispose) => dispose());
+    this.recipeButtonEffects.splice(0).forEach(dispose => dispose());
+    this.controlEffects.splice(0).forEach(dispose => dispose());
     this.refreshMaterials = undefined;
     this.refreshBuildButton = undefined;
   }
@@ -247,23 +264,29 @@ export class DstCraftingUiElement extends AssetElement {
       this.craftingSkinId = undefined;
       this.emitCraftRequest(recipeId, skinId);
       this.emitCraftingState(recipeId, false, skinId);
-      if (this.isConnected) { this.refreshBuildButton?.(); }
+      if (this.isConnected) {
+        this.refreshBuildButton?.();
+      }
     }, CRAFT_DURATION_MS);
   }
 
   private emitCraftRequest(recipeId: string, skinId?: string): void {
-    this.dispatchEvent(new CustomEvent<CraftRequestDetail>('game:craft-request', {
-      bubbles: true,
-      composed: true,
-      detail: { recipeId, ...(skinId === undefined ? {} : { skinId }) },
-    }));
+    this.dispatchEvent(
+      new CustomEvent<CraftRequestDetail>('game:craft-request', {
+        bubbles: true,
+        composed: true,
+        detail: { recipeId, ...(skinId === undefined ? {} : { skinId }) },
+      }),
+    );
   }
 
   private emitCraftingState(recipeId: string, crafting: boolean, skinId?: string): void {
-    this.dispatchEvent(new CustomEvent<CraftingStateDetail>('game:crafting-state-change', {
-      bubbles: true,
-      composed: true,
-      detail: { recipeId, crafting, ...(skinId === undefined ? {} : { skinId }) },
-    }));
+    this.dispatchEvent(
+      new CustomEvent<CraftingStateDetail>('game:crafting-state-change', {
+        bubbles: true,
+        composed: true,
+        detail: { recipeId, crafting, ...(skinId === undefined ? {} : { skinId }) },
+      }),
+    );
   }
 }

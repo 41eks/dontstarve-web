@@ -1,4 +1,9 @@
-import { ArchiveSpriteAssets, preloadSharedArchiveSprite, type ArchiveSpriteDefinition, type ArchiveSpriteOptions } from '@dontstarve-web/animation/archiveSprite';
+import {
+  ArchiveSpriteAssets,
+  preloadSharedArchiveSprite,
+  type ArchiveSpriteDefinition,
+  type ArchiveSpriteOptions,
+} from '@dontstarve-web/animation/archiveSprite';
 import type { ArchiveSpriteSource } from './displayEngine';
 
 type ArchiveDefinition = Omit<ArchiveSpriteDefinition, 'animation' | 'loop'>;
@@ -15,7 +20,11 @@ export class SpriteResources {
   private disposed = false;
 
   /** `archives` shares an existing archive owner, such as the ground items' with their equipment art; these resources then release it. */
-  constructor(base = `${import.meta.env.BASE_URL}dst/data/anim`, materialName = 'sprite', archives = new ArchiveSpriteAssets(materialName, base)) {
+  constructor(
+    base = `${import.meta.env.BASE_URL}dst/data/anim`,
+    materialName = 'sprite',
+    archives = new ArchiveSpriteAssets(materialName, base),
+  ) {
     this.archives = archives;
   }
 
@@ -25,16 +34,29 @@ export class SpriteResources {
     if (!source) {
       let loaded: Awaited<ReturnType<typeof preloadSharedArchiveSprite>> | undefined;
       let pending: Promise<NonNullable<typeof loaded>> | undefined;
-      source = { create: clip => {
-        if (this.disposed) { throw new Error('Sprite resources disposed'); }
-        if (loaded) { return loaded(clip.name, clip.loop); }
-        pending ??= preloadSharedArchiveSprite(this.archives, definition, options).then(create => loaded = create,
-          error => { pending = undefined; throw error; });
-        return pending.then(create => {
-          if (this.disposed) { throw new Error('Sprite resources disposed'); }
-          return create(clip.name, clip.loop);
-        });
-      } };
+      source = {
+        create: clip => {
+          if (this.disposed) {
+            throw new Error('Sprite resources disposed');
+          }
+          if (loaded) {
+            return loaded(clip.name, clip.loop);
+          }
+          pending ??= preloadSharedArchiveSprite(this.archives, definition, options).then(
+            create => (loaded = create),
+            error => {
+              pending = undefined;
+              throw error;
+            },
+          );
+          return pending.then(create => {
+            if (this.disposed) {
+              throw new Error('Sprite resources disposed');
+            }
+            return create(clip.name, clip.loop);
+          });
+        },
+      };
       this.archiveSources.set(key, source);
     }
     return source;
@@ -42,7 +64,9 @@ export class SpriteResources {
 
   /** The owner first removes its entities, then releases their shared resources. */
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
     this.archives.dispose();
     this.archiveSources.clear();

@@ -1,12 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 
-import {
-  SpriteFrameRenderer,
-  createMaterials,
-  type BuildImage,
-  type ResolvedSprite,
-} from '../src/animationAssets';
+import { SpriteFrameRenderer, createMaterials, type BuildImage, type ResolvedSprite } from '../src/animationAssets';
 import { spriteSpatialRadius } from '../src/spatialBounds';
 
 function image(sampler = 0): BuildImage {
@@ -57,25 +52,26 @@ describe('SpriteFrameRenderer', () => {
     expect(mesh.material).toEqual([copy]);
     renderer.showShared(shared);
     expect(mesh.material[0]).toBe(copy);
-    source.opacity = .5;
+    source.opacity = 0.5;
     renderer.syncDepthOffset();
-    expect(copy).toMatchObject({ opacity: .5, polygonOffset: true });
+    expect(copy).toMatchObject({ opacity: 0.5, polygonOffset: true });
     let disposed = 0;
     copy.addEventListener('dispose', () => disposed++);
     renderer.setDepthOffset(false);
     expect(mesh.material).toEqual([source]);
     expect(disposed).toBe(1);
-    shared.geometry.dispose(); renderer.dispose();
+    shared.geometry.dispose();
+    renderer.dispose();
   });
 
-  it('bakes each part\'s symbol light override into its four vertices of the merged frame', () => {
+  it("bakes each part's symbol light override into its four vertices of the merged frame", () => {
     const visual = new THREE.Group();
     const renderer = new SpriteFrameRenderer(visual);
     const mesh = visual.children[0] as THREE.Mesh;
     const material = new THREE.MeshBasicMaterial();
-    renderer.show([sprite(material), { ...sprite(material), lightOverride: .5 }]);
+    renderer.show([sprite(material), { ...sprite(material), lightOverride: 0.5 }]);
     const light = mesh.geometry.getAttribute('spriteLightOverride');
-    expect(Array.from({ length: 8 }, (_, i) => light.getX(i))).toEqual([0, 0, 0, 0, .5, .5, .5, .5]);
+    expect(Array.from({ length: 8 }, (_, i) => light.getX(i))).toEqual([0, 0, 0, 0, 0.5, 0.5, 0.5, 0.5]);
     // A later frame without the override restores the part's own light.
     renderer.show([sprite(material), sprite(material)]);
     expect(light.getX(4)).toBe(0);
@@ -99,21 +95,13 @@ describe('SpriteFrameRenderer', () => {
     const renderer = new SpriteFrameRenderer(visual);
     const material = new THREE.MeshBasicMaterial();
 
-    renderer.show([
-      sprite(material, [2, 0, 0, 3, 10, 20]),
-      sprite(material, [1, 0, 0, 1, -4, -3]),
-    ]);
+    renderer.show([sprite(material, [2, 0, 0, 3, 10, 20]), sprite(material, [1, 0, 0, 1, -4, -3])]);
 
     expect(visual.children).toHaveLength(1);
     const mesh = visual.children[0] as THREE.Mesh;
     const positions = Array.from(mesh.geometry.getAttribute('position').array).slice(0, 24);
-    expect(positions).toEqual([
-      18, 29, 0, 22, 29, 0, 22, 41, 0, 18, 41, 0,
-      0, 0, 0, 2, 0, 0, 2, 4, 0, 0, 4, 0,
-    ]);
-    expect(Array.from(mesh.geometry.index!.array).slice(0, 12)).toEqual([
-      0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7,
-    ]);
+    expect(positions).toEqual([18, 29, 0, 22, 29, 0, 22, 41, 0, 18, 41, 0, 0, 0, 0, 2, 0, 0, 2, 4, 0, 0, 4, 0]);
+    expect(Array.from(mesh.geometry.index!.array).slice(0, 12)).toEqual([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7]);
     expect(mesh.geometry.drawRange).toEqual({ start: 0, count: 12 });
     expect(mesh.geometry.groups).toEqual([{ start: 0, count: 12, materialIndex: 0 }]);
   });

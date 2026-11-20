@@ -1,7 +1,13 @@
 import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
-import { createEffect, createMemo, WorldContentKey, type GameTimeScheduler, type GetWatchWorldContent } from '@dontstarve-web/signals';
+import {
+  createEffect,
+  createMemo,
+  WorldContentKey,
+  type GameTimeScheduler,
+  type GetWatchWorldContent,
+} from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -21,27 +27,38 @@ export const GROTTO_POOL_BIG_ID = 'grotto_pool_big' as const;
 export const GROTTO_POOL_SMALL_ID = 'grotto_pool_small' as const;
 export const GROTTO_POOL_IDS = [GROTTO_POOL_BIG_ID, GROTTO_POOL_SMALL_ID] as const;
 export const GROTTO_MOONGLASS_IDS = ['grotto_moonglass_1', 'grotto_moonglass_3', 'grotto_moonglass_4'] as const;
-export const GROTTO_WATERFALL_IDS = ['grotto_waterfall_big', 'grotto_waterfall_small1', 'grotto_waterfall_small2'] as const;
+export const GROTTO_WATERFALL_IDS = [
+  'grotto_waterfall_big',
+  'grotto_waterfall_small1',
+  'grotto_waterfall_small2',
+] as const;
 /** Every persistent prefab of grotto_pool_big.lua / grotto_pool_small.lua / grotto_pool_moonglass.lua / grotto_waterfall_*.lua. */
 export const GROTTO_IDS = [...GROTTO_POOL_IDS, ...GROTTO_MOONGLASS_IDS, ...GROTTO_WATERFALL_IDS] as const;
 /** makebigmist / makesmallmist: an unnamed, non-networked entity in the source. */
 export const GROTTO_POOL_MIST_ID = 'grotto_pool_mist' as const;
-export type GrottoPoolId = typeof GROTTO_POOL_IDS[number];
-export type GrottoId = typeof GROTTO_IDS[number];
-type MineableId = typeof GROTTO_MOONGLASS_IDS[number] | 'grotto_waterfall_small1' | 'grotto_waterfall_small2';
+export type GrottoPoolId = (typeof GROTTO_POOL_IDS)[number];
+export type GrottoId = (typeof GROTTO_IDS)[number];
+type MineableId = (typeof GROTTO_MOONGLASS_IDS)[number] | 'grotto_waterfall_small1' | 'grotto_waterfall_small2';
 type ChildId = Exclude<GrottoId, GrottoPoolId>;
 const SMALL_WATERFALLS = ['grotto_waterfall_small1', 'grotto_waterfall_small2'] as const;
 
 /** tuning.lua ROCKS_MINE, GROTTO_POOL_BIG_RADIUS / GROTTO_POOL_SMALL_RADIUS / GROTTO_MOONGLASS_REGROW_CHANCE. */
 const ROCKS_MINE = 6;
 const POOL_RADIUS = { grotto_pool_big: 5.5, grotto_pool_small: 2 } as const;
-const REGROW_CHANCE = .1;
+const REGROW_CHANCE = 0.1;
 /** LAYER_BACKGROUND with sort order 3: drawn under the world entities. */
-const BACKGROUND_RENDER_ORDER = -.5;
+const BACKGROUND_RENDER_ORDER = -0.5;
 
 // grotto_pool_moonglass.lua "moonglass_prop"; grotto_waterfall_small.lua defines "smallfalls" but both falls use "moonglass_prop".
-SetSharedLootTable('moonglass_prop', [['moonglass', 1], ['moonglass', 1], ['moonglass', .5]]);
-SetSharedLootTable('smallfalls', [['moonglass', 1], ['moonglass', .5]]);
+SetSharedLootTable('moonglass_prop', [
+  ['moonglass', 1],
+  ['moonglass', 1],
+  ['moonglass', 0.5],
+]);
+SetSharedLootTable('smallfalls', [
+  ['moonglass', 1],
+  ['moonglass', 0.5],
+]);
 
 /** grotto_pool_big.lua prefab_layout. */
 const BIG_LAYOUT = [
@@ -53,8 +70,8 @@ const BIG_LAYOUT = [
 ] as const satisfies readonly { name: ChildId; x: number; z: number }[];
 
 const POOLS = {
-  grotto_pool_big: { animation: 'idle', light: { radius: .9, intensity: .5 }, smartRadius: 5 },
-  grotto_pool_small: { animation: 'smallpool_idle', light: { radius: .6, intensity: .3 }, smartRadius: 2.5 },
+  grotto_pool_big: { animation: 'idle', light: { radius: 0.9, intensity: 0.5 }, smartRadius: 5 },
+  grotto_pool_small: { animation: 'smallpool_idle', light: { radius: 0.6, intensity: 0.3 }, smartRadius: 2.5 },
 } as const satisfies Record<GrottoPoolId, unknown>;
 const POOL_LIGHT_COLOUR = [227 / 255, 227 / 255, 227 / 255] as const;
 
@@ -63,19 +80,38 @@ const MINEABLES = {
   grotto_moonglass_1: { animation: 'moonglass_1', smartRadius: 2, physicsRadius: 2 },
   grotto_moonglass_3: { animation: 'moonglass_3', smartRadius: 2, physicsRadius: 2 },
   grotto_moonglass_4: { animation: 'moonglass_4', smartRadius: 2, physicsRadius: 2 },
-  grotto_waterfall_small1: { animation: 'water_small1', smartRadius: 1.5, physicsRadius: 2.5, lightOverride: .1 },
-  grotto_waterfall_small2: { animation: 'water_small2', smartRadius: 1, physicsRadius: 2.5, lightOverride: .1 },
-} as const satisfies Record<MineableId, { animation: string; smartRadius: number; physicsRadius: number; lightOverride?: number }>;
+  grotto_waterfall_small1: { animation: 'water_small1', smartRadius: 1.5, physicsRadius: 2.5, lightOverride: 0.1 },
+  grotto_waterfall_small2: { animation: 'water_small2', smartRadius: 1, physicsRadius: 2.5, lightOverride: 0.1 },
+} as const satisfies Record<
+  MineableId,
+  { animation: string; smartRadius: number; physicsRadius: number; lightOverride?: number }
+>;
 
-const POOL_ASSETS = { animationArchive: 'moonglasspool_tile.zip', buildArchives: ['moonglasspool_tile.zip'], bank: 'moonglasspool_tile' };
-const PROP_ASSETS = { animationArchive: 'moonglass_bigwaterfall.zip', buildArchives: ['moonglass_bigwaterfall.zip'], bank: 'moonglass_bigwaterfall' };
-const MIST_ASSETS = { animationArchive: 'moonglass_bigwaterfall_steam.zip', buildArchives: ['moonglass_bigwaterfall_steam.zip'], bank: 'moonglass_bigwaterfall_steam' };
+const POOL_ASSETS = {
+  animationArchive: 'moonglasspool_tile.zip',
+  buildArchives: ['moonglasspool_tile.zip'],
+  bank: 'moonglasspool_tile',
+};
+const PROP_ASSETS = {
+  animationArchive: 'moonglass_bigwaterfall.zip',
+  buildArchives: ['moonglass_bigwaterfall.zip'],
+  bank: 'moonglass_bigwaterfall',
+};
+const MIST_ASSETS = {
+  animationArchive: 'moonglass_bigwaterfall_steam.zip',
+  buildArchives: ['moonglass_bigwaterfall_steam.zip'],
+  bank: 'moonglass_bigwaterfall_steam',
+};
 const INSTANCED = { instancedAnimations: 'all', staticBillboard: true } as const;
 
 /** on_save: the child entity IDs with their prefab_layout index (the small pool's `wf_id` is index 1). */
-export interface GrottoPoolSaveState { children: { index: number; id: string }[] }
+export interface GrottoPoolSaveState {
+  children: { index: number; id: string }[];
+}
 /** workable.savestate = true on the mineable props, saved under this project's `grottoGlass` key. */
-export interface GrottoGlassSaveState { workleft: number }
+export interface GrottoGlassSaveState {
+  workleft: number;
+}
 
 export interface GrottoPoolWorld extends ToolMouseTargetWorld {
   scheduler: GameTimeScheduler;
@@ -91,7 +127,9 @@ export interface GrottoPoolWorld extends ToolMouseTargetWorld {
   getEntity(entityId: string): PrefabInstance | undefined;
 }
 
-export function isGrottoId(value: string): value is GrottoId { return GROTTO_IDS.some(known => known === value); }
+export function isGrottoId(value: string): value is GrottoId {
+  return GROTTO_IDS.some(known => known === value);
+}
 
 /** grotto_pool_big.lua / grotto_pool_small.lua poolfn. */
 export class GrottoPoolInstance extends PrefabInstance {
@@ -105,15 +143,23 @@ export class GrottoPoolInstance extends PrefabInstance {
   constructor(world: GrottoPoolWorld, prefab: GrottoPoolId, position: ReadonlyVector3) {
     super(prefab, new SpriteState({ name: POOLS[prefab].animation }));
     this.BindScheduler(world.scheduler);
-    const definition = POOLS[prefab], big = prefab === GROTTO_POOL_BIG_ID;
+    const definition = POOLS[prefab],
+      big = prefab === GROTTO_POOL_BIG_ID;
     this.setPosition(position.x, 0, position.z);
     // SetOrientation(OnGround), SetLayer(LAYER_BACKGROUND), SetSortOrder(3).
     this.sprite.setGround(0);
     this.sprite.setMeshOrder(BACKGROUND_RENDER_ORDER);
-    this.sprite.setLightOverride(.25);
-    this.light.set({ radius: definition.light.radius * WORLD_SCALE, falloff: .6, intensity: definition.light.intensity, colour: POOL_LIGHT_COLOUR });
+    this.sprite.setLightOverride(0.25);
+    this.light.set({
+      radius: definition.light.radius * WORLD_SCALE,
+      falloff: 0.6,
+      intensity: definition.light.intensity,
+      colour: POOL_LIGHT_COLOUR,
+    });
     this.addTag('blocker'); // MakeObstaclePhysics
-    for (const tag of ['antlion_sinkhole_blocker', 'birdblocker', 'watersource']) { this.addTag(tag); }
+    for (const tag of ['antlion_sinkhole_blocker', 'birdblocker', 'watersource']) {
+      this.addTag(tag);
+    }
     this.deploySmartRadius = definition.smartRadius * WORLD_SCALE;
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
@@ -129,12 +175,20 @@ export class GrottoPoolInstance extends PrefabInstance {
       setup_children(this, world, big);
     });
 
-    this.OnSave = (_inst, data) => { data.grottoPool = on_save(this); };
-    this.OnLoad = (_inst, data) => { this.savedChildren = data.grottoPool?.children.map(child => ({ ...child })); };
+    this.OnSave = (_inst, data) => {
+      data.grottoPool = on_save(this);
+    };
+    this.OnLoad = (_inst, data) => {
+      this.savedChildren = data.grottoPool?.children.map(child => ({ ...child }));
+    };
     // ListenForEvent("onremove", on_removed): children go from the last slot to the first.
     this.onRemove(() => {
       stopSound?.();
-      for (const child of [...this._children].reverse()) { if (child && !child.isRemoved) { child.remove(); } }
+      for (const child of [...this._children].reverse()) {
+        if (child && !child.isRemoved) {
+          child.remove();
+        }
+      }
       mist?.remove();
     });
   }
@@ -146,34 +200,54 @@ export class GrottoPoolInstance extends PrefabInstance {
   }
 
   /** Children not yet resolved by the 0-frame task are still the saved ones. */
-  get pendingChildren(): readonly GrottoPoolSaveState['children'][number][] { return this.savedChildren ?? []; }
+  get pendingChildren(): readonly GrottoPoolSaveState['children'][number][] {
+    return this.savedChildren ?? [];
+  }
 }
 
 function on_save(inst: GrottoPoolInstance): GrottoPoolSaveState {
-  const children = inst._children.flatMap((child, slot) => child ? [{ index: slot + 1, id: String(child.entityId) }] : []);
+  const children = inst._children.flatMap((child, slot) =>
+    child ? [{ index: slot + 1, id: String(child.entityId) }] : [],
+  );
   return { children: [...children, ...inst.pendingChildren] };
 }
 
 function on_load_postpass(inst: GrottoPoolInstance, world: GrottoPoolWorld): void {
   for (const { index, id } of inst.takeSavedChildren()) {
     const child = world.getEntity(id);
-    if (child && !child.isRemoved && index >= 1 && inst._children[index - 1] === undefined) { adopt(inst, index - 1, child); }
+    if (child && !child.isRemoved && index >= 1 && inst._children[index - 1] === undefined) {
+      adopt(inst, index - 1, child);
+    }
   }
 }
 
 function setup_children(inst: GrottoPoolInstance, world: GrottoPoolWorld, big: boolean): void {
-  const layout: readonly { name: ChildId; x: number; z: number }[] = big ? BIG_LAYOUT
+  const layout: readonly { name: ChildId; x: number; z: number }[] = big
+    ? BIG_LAYOUT
     : [{ name: SMALL_WATERFALLS[Math.floor(Math.random() * SMALL_WATERFALLS.length)], x: 0, z: 0 }];
   layout.forEach(({ name, x, z }, slot) => {
-    if (inst._children[slot] !== undefined) { return; }
-    adopt(inst, slot, world.spawnPrefab(name, new THREE.Vector3(inst.position.x + x * WORLD_SCALE, 0, inst.position.z + z * WORLD_SCALE)));
+    if (inst._children[slot] !== undefined) {
+      return;
+    }
+    adopt(
+      inst,
+      slot,
+      world.spawnPrefab(
+        name,
+        new THREE.Vector3(inst.position.x + x * WORLD_SCALE, 0, inst.position.z + z * WORLD_SCALE),
+      ),
+    );
   });
 }
 
 /** _children[i]:ListenForEvent("onremove", function() inst._children[i] = nil end). */
 function adopt(inst: GrottoPoolInstance, slot: number, child: PrefabInstance): void {
   inst._children[slot] = child;
-  child.onRemove(() => { if (inst._children[slot] === child) { inst._children[slot] = undefined; } });
+  child.onRemove(() => {
+    if (inst._children[slot] === child) {
+      inst._children[slot] = undefined;
+    }
+  });
 }
 
 /** makebigmist / makesmallmist: FX and NOCLICK, never asleep and never saved. */
@@ -183,7 +257,7 @@ function createMist(position: ReadonlyVector3): PrefabInstance {
   inst.addTag('FX');
   inst.addTag('NOCLICK');
   inst.persists = false;
-  inst.sprite.setLightOverride(.5);
+  inst.sprite.setLightOverride(0.5);
   return inst;
 }
 
@@ -215,7 +289,9 @@ export class GrottoGlassInstance extends PrefabInstance {
     this.world = world;
     this._anim = definition.animation;
     this.setPosition(position.x, 0, position.z);
-    if ('lightOverride' in definition) { this.sprite.setLightOverride(definition.lightOverride); }
+    if ('lightOverride' in definition) {
+      this.sprite.setLightOverride(definition.lightOverride);
+    }
     this.deploySmartRadius = definition.smartRadius * WORLD_SCALE;
     this.physicsRadiusOverride = definition.physicsRadius;
     this.addTag('moonglass');
@@ -225,9 +301,18 @@ export class GrottoGlassInstance extends PrefabInstance {
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(ROCKS_MINE);
     workable.SetOnWorkCallback((_inst, worker, workleft) => on_mined(this, worker, workleft));
-    workable.SetOnLoadFn(() => { if (workable.workleft.peek() <= 0) { set_mined(this); } });
-    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
-      { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+    workable.SetOnLoadFn(() => {
+      if (workable.workleft.peek() <= 0) {
+        set_mined(this);
+      }
+    });
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) =>
+      world.spawnGroundItem(
+        { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 },
+        new THREE.Vector3(point.x, point.y, point.z),
+        { fling: true },
+      ),
+    );
     lootdropper.SetChanceLootTable('moonglass_prop');
 
     this.sprite.setFrameAt(Math.random());
@@ -236,9 +321,15 @@ export class GrottoGlassInstance extends PrefabInstance {
     this.OnSave = (_inst, data) => {
       const work = data.workable;
       delete data.workable;
-      if (work?.workleft !== undefined) { data.grottoGlass = { workleft: work.workleft }; }
+      if (work?.workleft !== undefined) {
+        data.grottoGlass = { workleft: work.workleft };
+      }
     };
-    this.OnLoad = (_inst, data) => { if (data.grottoGlass) { workable.OnLoad({ workleft: data.grottoGlass.workleft }); } };
+    this.OnLoad = (_inst, data) => {
+      if (data.grottoGlass) {
+        workable.OnLoad({ workleft: data.grottoGlass.workleft });
+      }
+    };
     this.onRemove(() => this.stopMoonWatch.splice(0).forEach(stop => stop()));
   }
 
@@ -247,27 +338,41 @@ export class GrottoGlassInstance extends PrefabInstance {
     this.stopWatchingCaveFullMoon();
     const active = createMemo(() => this.status.get() === 'active');
     this.stopMoonWatch.push(() => active.dispose());
-    const moon = this.world.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.stopMoonWatch.push(stop), { active });
-    const cycle = this.world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.stopMoonWatch.push(stop), { active });
-    if (!moon || !cycle) { return; }
+    const moon = this.world.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.stopMoonWatch.push(stop), {
+      active,
+    });
+    const cycle = this.world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.stopMoonWatch.push(stop), {
+      active,
+    });
+    if (!moon || !cycle) {
+      return;
+    }
     const fullMoon = createMemo(() => moon.get().phase === 'full' && cycle.get() === 'night');
     this.stopMoonWatch.push(() => fullMoon.dispose());
     let previous = fullMoon.peek();
-    this.stopMoonWatch.push(createEffect(() => {
-      const value = fullMoon.get();
-      if (value === previous) { return; }
-      previous = value;
-      OnCaveFullMoon(this);
-    }));
+    this.stopMoonWatch.push(
+      createEffect(() => {
+        const value = fullMoon.get();
+        if (value === previous) {
+          return;
+        }
+        previous = value;
+        OnCaveFullMoon(this);
+      }),
+    );
   }
 
-  stopWatchingCaveFullMoon(): void { this.stopMoonWatch.splice(0).forEach(stop => stop()); }
+  stopWatchingCaveFullMoon(): void {
+    this.stopMoonWatch.splice(0).forEach(stop => stop());
+  }
 }
 
 type GrottoGlassWorld = Pick<GrottoPoolWorld, 'getWatchWorldContent' | 'fx' | 'spawnGroundItem'>;
 
 function on_mined(inst: GrottoGlassInstance, worker: Worker | undefined, workleft: number): void {
-  if (workleft > 0) { return; }
+  if (workleft > 0) {
+    return;
+  }
   // rock_break_fx.lua has no art: its local proxy only plays this sound.
   PlaySound('dontstarve/wilson/rock_break', inst.position);
   inst.components.lootdropper!.DropLoot(worker?.getPosition?.() ?? inst.position);
@@ -298,7 +403,9 @@ function set_full(inst: GrottoGlassInstance): void {
 }
 
 /** The Prefabs of grotto_pool_big.lua, grotto_pool_small.lua, grotto_pool_moonglass.lua, grotto_waterfall_*.lua and the pools' mist. */
-export function grottoPoolPrefabs(world: GrottoPoolWorld): Readonly<Record<GrottoId | typeof GROTTO_POOL_MIST_ID, PrefabEntityDefinition<PrefabInstance>>> {
+export function grottoPoolPrefabs(
+  world: GrottoPoolWorld,
+): Readonly<Record<GrottoId | typeof GROTTO_POOL_MIST_ID, PrefabEntityDefinition<PrefabInstance>>> {
   const pool = (prefab: GrottoPoolId): PrefabEntityDefinition<PrefabInstance> => ({
     fn: position => new GrottoPoolInstance(world, prefab, position),
     // LAYER_BACKGROUND ground art stays out of the upright instanced batches.
@@ -308,7 +415,8 @@ export function grottoPoolPrefabs(world: GrottoPoolWorld): Readonly<Record<Grott
   });
   const mineable = (prefab: MineableId): PrefabEntityDefinition<PrefabInstance> => ({
     fn: position => new GrottoGlassInstance(world, prefab, position),
-    assets: PROP_ASSETS, assetOptions: INSTANCED,
+    assets: PROP_ASSETS,
+    assetOptions: INSTANCED,
     onSpawned: inst => {
       new ToolMouseTarget(inst, world.handEquipment);
     },
@@ -323,6 +431,12 @@ export function grottoPoolPrefabs(world: GrottoPoolWorld): Readonly<Record<Grott
     grotto_waterfall_small2: mineable('grotto_waterfall_small2'),
     grotto_waterfall_big: { fn: createBigWaterfall, assets: PROP_ASSETS, assetOptions: INSTANCED },
     // SetCanSleep(false): the mist draws wherever its pool is.
-    [GROTTO_POOL_MIST_ID]: { fn: createMist, assets: MIST_ASSETS, assetOptions: INSTANCED, targetable: false, alwaysActive: true },
+    [GROTTO_POOL_MIST_ID]: {
+      fn: createMist,
+      assets: MIST_ASSETS,
+      assetOptions: INSTANCED,
+      targetable: false,
+      alwaysActive: true,
+    },
   };
 }

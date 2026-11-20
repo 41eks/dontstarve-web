@@ -25,22 +25,41 @@ export const MOONBUTTERFLY_SAPLING_ID = 'moonbutterfly_sapling' as const;
 /** tuning.lua MOON_TREE_CHOPS_TALL: the tall stage requires sixteen chops. */
 export const MOON_TREE_CHOPS_TALL = 16;
 export const MOON_TREE_SIZES = ['short', 'normal', 'tall'] as const;
-export type MoonTreeSize = typeof MOON_TREE_SIZES[number];
+export type MoonTreeSize = (typeof MOON_TREE_SIZES)[number];
 export const MOON_TREE_CHOPS = [8, 12, 16] as const;
 // tuning.lua day_time = 10 * 30 seconds, distinct from total_day_time = 480.
-export const MOON_TREE_GROWTH_TIME = [{ base: 450, random: 150 }, { base: 1500, random: 600 }, { base: 1500, random: 600 }] as const;
+export const MOON_TREE_GROWTH_TIME = [
+  { base: 450, random: 150 },
+  { base: 1500, random: 600 },
+  { base: 1500, random: 600 },
+] as const;
 export const MOONBUTTERFLY_SAPLING_GROW_TIME = { base: 225, random: 75 };
 export const MOON_TREE_SPAWN_IDS = [MOON_TREE_ID, 'moon_tree_short', 'moon_tree_normal', 'moon_tree_tall'] as const;
-export type MoonTreeSpawnId = typeof MOON_TREE_SPAWN_IDS[number];
-SetSharedLootTable('moontree_short', [['log', 1], ['log', 1], ['moon_tree_blossom', .5]]);
-SetSharedLootTable('moontree_normal', [['log', 1], ['log', 1], ['log', 1],
-  ['moon_tree_blossom', 1], ['moon_tree_blossom', .25], ['moonbutterfly', 1]]);
+export type MoonTreeSpawnId = (typeof MOON_TREE_SPAWN_IDS)[number];
+SetSharedLootTable('moontree_short', [
+  ['log', 1],
+  ['log', 1],
+  ['moon_tree_blossom', 0.5],
+]);
+SetSharedLootTable('moontree_normal', [
+  ['log', 1],
+  ['log', 1],
+  ['log', 1],
+  ['moon_tree_blossom', 1],
+  ['moon_tree_blossom', 0.25],
+  ['moonbutterfly', 1],
+]);
 
 // moontree.lua moontree_tall; entries whose prefab is not in the ground-item catalog are not dropped.
 SetSharedLootTable('moontree_tall', [
-  ['log', 1], ['log', 1], ['log', 1], ['log', 1],
-  ['moon_tree_blossom', 1], ['moon_tree_blossom', 1],
-  ['moonbutterfly', 1], ['moonbutterfly', .5],
+  ['log', 1],
+  ['log', 1],
+  ['log', 1],
+  ['log', 1],
+  ['moon_tree_blossom', 1],
+  ['moon_tree_blossom', 1],
+  ['moonbutterfly', 1],
+  ['moonbutterfly', 0.5],
 ]);
 
 // moontree.lua moontree_burnt: a burnt tree's chop leaves only charcoal.
@@ -62,11 +81,19 @@ export interface MoonTreeWorld extends ToolMouseTargetWorld {
 }
 
 /** moontree.lua OnSave keeps the stump flag; workable progress is not saved. */
-export interface MoonTreeSaveState { stump?: true; burnt?: true; size?: MoonTreeSize }
+export interface MoonTreeSaveState {
+  stump?: true;
+  burnt?: true;
+  size?: MoonTreeSize;
+}
 
 /** moontree.lua. Growth and work belong to the logical tree, independently of loaded art. */
 export class MoonTreeInstance extends PrefabInstance {
-  declare readonly components: PrefabInstance['components'] & { growable: Growable; lootdropper: LootDropper; timer: Timer };
+  declare readonly components: PrefabInstance['components'] & {
+    growable: Growable;
+    lootdropper: LootDropper;
+    timer: Timer;
+  };
   readonly world: MoonTreeWorld;
   readonly random: () => number;
   readonly sounds = new Set<SoundHandle>();
@@ -81,71 +108,109 @@ export class MoonTreeInstance extends PrefabInstance {
 
   constructor(world: MoonTreeWorld, position: ReadonlyVector3, stage: number, random: () => number) {
     super(MOON_TREE_ID, new SpriteState({ name: definitions.moonTree.animationName, billboard: true }));
-    this.world = world; this.random = random;
+    this.world = world;
+    this.random = random;
     this.BindScheduler(world.scheduler);
     this.setActive(false);
     this.setPosition(position.x, 0, position.z);
-    this.deploySmartRadius = 1.6 * UNIT; this.logicalPlacement = true;
+    this.deploySmartRadius = 1.6 * UNIT;
+    this.logicalPlacement = true;
     this.minimap.SetPriority(-1);
     // standardcomponents.lua MakeSnowCoveredPristine applies to trees and stumps, not saplings.
-    for (const tag of ['plant', 'tree', 'moon_tree', 'SnowCovered', 'shelter']) { this.addTag(tag); }
+    for (const tag of ['plant', 'tree', 'moon_tree', 'SnowCovered', 'shelter']) {
+      this.addTag(tag);
+    }
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(on_chop_tree);
     workable.SetOnFinishCallback(on_chop_tree_down);
     addComponent(this, 'lootdropper', LootDropper, prefab => {
-      world.dropLoot([{ itemId: prefab, count: 1 }], this.position); return undefined;
+      world.dropLoot([{ itemId: prefab, count: 1 }], this.position);
+      return undefined;
     });
-    const growable = addComponent(this, 'growable', Growable, world.scheduler, MOON_TREE_SIZES.map((size, index) => ({
-      time: () => MOON_TREE_GROWTH_TIME[index].base + (random() * 2 - 1) * MOON_TREE_GROWTH_TIME[index].random,
-      fn: () => setStage(this, size, index),
-      growfn: () => playGrowth(this, ['grow_tall_to_short', 'grow_short_to_normal', 'grow_normal_to_tall'][index], index === 0),
-    })), seconds => world.growthDuration?.(seconds) ?? seconds);
-    growable.loopstages = true; growable.springgrowth = true;
+    const growable = addComponent(
+      this,
+      'growable',
+      Growable,
+      world.scheduler,
+      MOON_TREE_SIZES.map((size, index) => ({
+        time: () => MOON_TREE_GROWTH_TIME[index].base + (random() * 2 - 1) * MOON_TREE_GROWTH_TIME[index].random,
+        fn: () => setStage(this, size, index),
+        growfn: () =>
+          playGrowth(this, ['grow_tall_to_short', 'grow_short_to_normal', 'grow_normal_to_tall'][index], index === 0),
+      })),
+      seconds => world.growthDuration?.(seconds) ?? seconds,
+    );
+    growable.loopstages = true;
+    growable.springgrowth = true;
     addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
-    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === 'decay') { this.remove(); } });
+    this.ListenForEvent('timerdone', (_inst, data) => {
+      if (data.name === 'decay') {
+        this.remove();
+      }
+    });
     this.OnSave = (_inst, data) => on_save(this, data);
     this.OnLoad = (_inst, data) => on_load(this, data);
     this.onRemove(() => {
       unbindFire(this);
-      this.stopSnow?.(); this.stopSnow = undefined;
-      for (const sound of this.sounds) { sound.stop(); }
+      this.stopSnow?.();
+      this.stopSnow = undefined;
+      for (const sound of this.sounds) {
+        sound.stop();
+      }
       this.sounds.clear();
     });
-    growable.SetStage(stage); growable.StartGrowing();
+    growable.SetStage(stage);
+    growable.StartGrowing();
   }
 
   /** OnEntitySleep / OnEntityWake follow the entity's tile. */
   override setActive(active: boolean): void {
     if (active !== this.awake && !this.isRemoved) {
       this.awake = active;
-      if (active) { on_wake(this); } else { on_sleep(this); }
+      if (active) {
+        on_wake(this);
+      } else {
+        on_sleep(this);
+      }
     }
     super.setActive(active);
   }
 
-  get isAwake(): boolean { return this.awake; }
+  get isAwake(): boolean {
+    return this.awake;
+  }
 
   /** inst.growfromseed: the transition out of the sapling that this tree replaced. */
-  growfromseed(): void { playGrowth(this, 'grow_seed_to_short'); }
+  growfromseed(): void {
+    playGrowth(this, 'grow_seed_to_short');
+  }
 }
 
 const sizeOf = (inst: MoonTreeInstance): MoonTreeSize => MOON_TREE_SIZES[inst.components.growable.GetStage() - 1];
 
 function playSound(inst: MoonTreeInstance, path: SoundEventPath): void {
-  for (const sound of inst.sounds) { if (sound.isPlaying?.() === false) { inst.sounds.delete(sound); } }
+  for (const sound of inst.sounds) {
+    if (sound.isPlaying?.() === false) {
+      inst.sounds.delete(sound);
+    }
+  }
   inst.sounds.add(PlaySound(path, inst.position));
 }
 
 function playGrowth(inst: MoonTreeInstance, clip: string, wilt = false): void {
-  if (!inst.isAwake || inst.catchingUp) { return; }
+  if (!inst.isAwake || inst.catchingUp) {
+    return;
+  }
   playSound(inst, wilt ? 'dontstarve/forest/treeGrowFromWilt' : 'dontstarve/forest/treeGrow');
   inst.sprite.playOnce(clip, () => inst.sprite.start(`sway1_loop_${sizeOf(inst)}`));
 }
 
 /** set_short / set_normal / set_tall. */
 function setStage(inst: MoonTreeInstance, size: MoonTreeSize, index: number): void {
-  if (inst.hasTag('stump') || inst.hasTag('burnt')) { return; }
+  if (inst.hasTag('stump') || inst.hasTag('burnt')) {
+    return;
+  }
   inst.components.workable!.SetWorkLeft(MOON_TREE_CHOPS[index]);
   inst.components.lootdropper.SetChanceLootTable(`moontree_${size}`);
   inst.sprite.start(`sway1_loop_${size}`);
@@ -156,35 +221,65 @@ function setStage(inst: MoonTreeInstance, size: MoonTreeSize, index: number): vo
 function burnSpec(inst: MoonTreeInstance): BurnSpec {
   const size = sizeOf(inst);
   if (inst.hasTag('stump')) {
-    return { propagator: 'medium', burnTime: size === 'short' ? 10 : size === 'normal' ? 20 : 30,
-      fxLevel: size === 'short' ? 2 : size === 'normal' ? 3 : 5, onBurnt: () => burnStump(inst) };
+    return {
+      propagator: 'medium',
+      burnTime: size === 'short' ? 10 : size === 'normal' ? 20 : 30,
+      fxLevel: size === 'short' ? 2 : size === 'normal' ? 3 : 5,
+      onBurnt: () => burnStump(inst),
+    };
   }
   return size === 'tall'
-    ? { propagator: 'medium', propagatorValues: { propagaterange: 7, heatoutput: 8.5 }, burnTime: TREE_BURN_TIME * 1.5, fxLevel: 5, onBurnt: () => on_moon_tree_burnt(inst, false) }
-    : { propagator: 'small', propagatorValues: { propagaterange: 5, heatoutput: 5 }, burnTime: size === 'short' ? TREE_BURN_TIME / 2 : TREE_BURN_TIME,
-      fxLevel: size === 'short' ? 2 : 3, onBurnt: () => on_moon_tree_burnt(inst, false) };
+    ? {
+        propagator: 'medium',
+        propagatorValues: { propagaterange: 7, heatoutput: 8.5 },
+        burnTime: TREE_BURN_TIME * 1.5,
+        fxLevel: 5,
+        onBurnt: () => on_moon_tree_burnt(inst, false),
+      }
+    : {
+        propagator: 'small',
+        propagatorValues: { propagaterange: 5, heatoutput: 5 },
+        burnTime: size === 'short' ? TREE_BURN_TIME / 2 : TREE_BURN_TIME,
+        fxLevel: size === 'short' ? 2 : 3,
+        onBurnt: () => on_moon_tree_burnt(inst, false),
+      };
 }
 
 function bindFire(inst: MoonTreeInstance): void {
-  if (!inst.isAwake || inst.burn || inst.hasTag('burnt') || inst.isRemoved) { return; }
+  if (!inst.isAwake || inst.burn || inst.hasTag('burnt') || inst.isRemoved) {
+    return;
+  }
   inst.burn = new BurnableBinding(inst, burnSpec(inst), inst.world);
 }
 
-function unbindFire(inst: MoonTreeInstance): void { inst.burn?.dispose(); inst.burn = undefined; }
+function unbindFire(inst: MoonTreeInstance): void {
+  inst.burn?.dispose();
+  inst.burn = undefined;
+}
 
 /** A stage change reconfigures the burnable in place, unless it is already burning. */
 function refreshFire(inst: MoonTreeInstance): void {
-  if (inst.burn?.burnable.IsBurning()) { return; }
-  unbindFire(inst); bindFire(inst);
+  if (inst.burn?.burnable.IsBurning()) {
+    return;
+  }
+  unbindFire(inst);
+  bindFire(inst);
 }
 
 /** weather.lua SNOW_COVERED_THRESHOLD; without a bound world the snow layer stays hidden. */
 function bindSnow(inst: MoonTreeInstance): void {
   inst.stopSnow?.();
   let stopWatch: (() => void) | undefined;
-  const level = inst.world.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { stopWatch = stop; });
-  const stopEffect = createRenderEffect(() => { inst.sprite.setSymbolHidden('snow', level ? level.get() < .015 : true); });
-  inst.stopSnow = () => { stopEffect(); stopWatch?.(); };
+  const level = inst.world.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => {
+    stopWatch = stop;
+  });
+  const stopEffect = createRenderEffect(() => {
+    inst.sprite.setSymbolHidden('snow', level ? level.get() < 0.015 : true);
+  });
+  inst.stopSnow = () => {
+    stopEffect();
+    stopWatch?.();
+  };
 }
 
 /** DefaultBurntFn on a stump: one ash, then the inst is removed. */
@@ -196,7 +291,9 @@ function burnStump(inst: MoonTreeInstance): void {
 // moontree.lua: thirty days with +/- 50% variance, created only once for a dead tree.
 function startDecay(inst: MoonTreeInstance): void {
   const { timer } = inst.components;
-  if (!timer.TimerExists('decay')) { timer.StartTimer('decay', 14400 + (inst.random() * 2 - 1) * 7200); }
+  if (!timer.TimerExists('decay')) {
+    timer.StartTimer('decay', 14400 + (inst.random() * 2 - 1) * 7200);
+  }
 }
 
 /** burnt_changes: no burnable, shelter or growth; one chop for charcoal. */
@@ -215,19 +312,28 @@ function burntChanges(inst: MoonTreeInstance): void {
 
 /** on_moon_tree_burnt_immediate_helper: burnt pose and tag at once; component changes follow after .5 seconds. */
 function on_moon_tree_burnt(inst: MoonTreeInstance, immediate: boolean): void {
-  if (inst.hasTag('burnt')) { return; }
+  if (inst.hasTag('burnt')) {
+    return;
+  }
   inst.addTag('burnt');
   inst.minimap.SetIcon('moon_tree_burnt.png');
   startDecay(inst);
   inst.sprite.start(`burnt_${sizeOf(inst)}`);
-  if (immediate) { burntChanges(inst); }
-  else { inst.DoTaskInTime(.5, burntChanges); }
+  if (immediate) {
+    burntChanges(inst);
+  } else {
+    inst.DoTaskInTime(0.5, burntChanges);
+  }
 }
 
 /** The prefabs the lootdropper generates that the ground-item catalog has, grouped into stacks. */
 function catalogLoot(inst: MoonTreeInstance): { itemId: string; count: number }[] {
   const items = new Map<string, number>();
-  for (const itemId of inst.components.lootdropper.GenerateLoot()) { if (Object.hasOwn(catalog.items, itemId)) { items.set(itemId, (items.get(itemId) ?? 0) + 1); } }
+  for (const itemId of inst.components.lootdropper.GenerateLoot()) {
+    if (Object.hasOwn(catalog.items, itemId)) {
+      items.set(itemId, (items.get(itemId) ?? 0) + 1);
+    }
+  }
   return [...items].map(([itemId, count]) => ({ itemId, count }));
 }
 
@@ -271,52 +377,85 @@ function on_chop_tree(inst: MoonTreeInstance): void {
   inst.sprite.playOnce(`chop_${size}`, () => inst.sprite.start(`sway1_loop_${size}`));
   const { x, z } = inst.position;
   const fx = inst.world.spawnPrefab('tree_petal_fx_chop', inst.position);
-  fx.setPosition(x, (size === 'short' ? .25 : size === 'normal' ? .8 + inst.random() * .25 : 2 + inst.random() * .25) * UNIT, z);
-  fx.setScale(size === 'short' ? .75 : size === 'normal' ? 1 : 1.25);
+  fx.setPosition(
+    x,
+    (size === 'short' ? 0.25 : size === 'normal' ? 0.8 + inst.random() * 0.25 : 2 + inst.random() * 0.25) * UNIT,
+    z,
+  );
+  fx.setScale(size === 'short' ? 0.75 : size === 'normal' ? 1 : 1.25);
 }
 
 /** on_chop_tree_down: fall away from the chopper, scatter loot on the fall side and leave a stump. */
 function on_chop_tree_down(inst: MoonTreeInstance, worker: Worker): void {
   playSound(inst, 'dontstarve/forest/treeFall');
-  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(inst.world.camera.getWorldQuaternion(new THREE.Quaternion())).setY(0).normalize();
+  const right = new THREE.Vector3(1, 0, 0)
+    .applyQuaternion(inst.world.camera.getWorldQuaternion(new THREE.Quaternion()))
+    .setY(0)
+    .normalize();
   const chopper = worker.getPosition?.();
   const { x, z } = inst.position;
-  const chopperOnRight = chopper ? (chopper.x - x) * right.x + (chopper.z - z) * right.z > 0 : inst.random() > .5;
-  inst.world.dropLoot(catalogLoot(inst), inst.getPosition().clone().addScaledVector(right, chopperOnRight ? -UNIT : UNIT));
+  const chopperOnRight = chopper ? (chopper.x - x) * right.x + (chopper.z - z) * right.z > 0 : inst.random() > 0.5;
+  inst.world.dropLoot(
+    catalogLoot(inst),
+    inst
+      .getPosition()
+      .clone()
+      .addScaledVector(right, chopperOnRight ? -UNIT : UNIT),
+  );
   const size = sizeOf(inst);
   make_stump(inst);
-  inst.sprite.playOnce(`${chopperOnRight ? 'fallleft' : 'fallright'}_${size}`, () => inst.sprite.start(`stump_${size}`));
+  inst.sprite.playOnce(`${chopperOnRight ? 'fallleft' : 'fallright'}_${size}`, () =>
+    inst.sprite.start(`stump_${size}`),
+  );
 }
 
 function on_wake(inst: MoonTreeInstance): void {
   inst.catchingUp = true;
-  try { inst.components.growable.OnEntityWake(); } finally { inst.catchingUp = false; }
-  bindSnow(inst); bindFire(inst);
+  try {
+    inst.components.growable.OnEntityWake();
+  } finally {
+    inst.catchingUp = false;
+  }
+  bindSnow(inst);
+  bindFire(inst);
 }
 
 function on_sleep(inst: MoonTreeInstance): void {
   inst.components.growable.OnEntitySleep();
   if (inst.burn?.burnable.IsBurning()) {
-    if (inst.hasTag('stump')) { inst.DoTaskInTime(0, burnStump); }
-    else { on_moon_tree_burnt(inst, true); }
+    if (inst.hasTag('stump')) {
+      inst.DoTaskInTime(0, burnStump);
+    } else {
+      on_moon_tree_burnt(inst, true);
+    }
   }
   unbindFire(inst);
-  inst.stopSnow?.(); inst.stopSnow = undefined;
+  inst.stopSnow?.();
+  inst.stopSnow = undefined;
 }
 
 /** on_save: a burning tree is saved as burnt; a burning stump is still a stump. */
 function on_save(inst: MoonTreeInstance, data: EntityPersistData): void {
   const stump = inst.hasTag('stump');
   const burnt = !stump && (inst.hasTag('burnt') || inst.burn?.burnable.IsBurning() === true);
-  data.moonTree = { size: sizeOf(inst), ...(stump ? { stump: true as const } : {}), ...(burnt ? { burnt: true as const } : {}) };
-  if (burnt) { data.growable = { stage: inst.components.growable.GetStage() }; }
+  data.moonTree = {
+    size: sizeOf(inst),
+    ...(stump ? { stump: true as const } : {}),
+    ...(burnt ? { burnt: true as const } : {}),
+  };
+  if (burnt) {
+    data.growable = { stage: inst.components.growable.GetStage() };
+  }
   // The timer's record keeps the name existing saves hold.
-  if (data.timer) { data.moonTreeTimer = data.timer; }
+  if (data.timer) {
+    data.moonTreeTimer = data.timer;
+  }
   delete data.timer;
 }
 
 function on_load(inst: MoonTreeInstance, data: EntityPersistData): void {
-  const saved = data.moonTree, { growable, timer } = inst.components;
+  const saved = data.moonTree,
+    { growable, timer } = inst.components;
   timer.OnLoad(data.moonTreeTimer);
   // An older record without growth holds its size, and an older forest's empty record is a tall tree.
   if (!data.growable) {
@@ -326,7 +465,9 @@ function on_load(inst: MoonTreeInstance, data: EntityPersistData): void {
   if (saved?.stump) {
     make_stump(inst);
     inst.sprite.playOnce(`stump_${sizeOf(inst)}`);
-  } else if (saved?.burnt) { on_moon_tree_burnt(inst, true); }
+  } else if (saved?.burnt) {
+    on_moon_tree_burnt(inst, true);
+  }
 }
 
 function onSpawned(inst: MoonTreeInstance): void {
@@ -345,19 +486,29 @@ export class MoonButterflySaplingInstance extends PrefabInstance {
     this.setActive(false);
     this.sprite.playOnce('idle');
     this.setPosition(position.x, 0, position.z);
-    this.deploySmartRadius = 1.6 * UNIT; this.logicalPlacement = true;
-    for (const tag of ['plant', 'moon_tree']) { this.addTag(tag); }
+    this.deploySmartRadius = 1.6 * UNIT;
+    this.logicalPlacement = true;
+    for (const tag of ['plant', 'moon_tree']) {
+      this.addTag(tag);
+    }
     const workable = addComponent(this, 'workable', Workable);
-    workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
+    workable.SetWorkAction('DIG');
+    workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(dig_up_sapling);
     const timer = addComponent(this, 'timer', Timer, world.scheduler, ['grow']);
     this.ListenForEvent('timerdone', () => grow_sapling(this));
-    timer.StartTimer('grow', MOONBUTTERFLY_SAPLING_GROW_TIME.base + (random() * 2 - 1) * MOONBUTTERFLY_SAPLING_GROW_TIME.random);
+    timer.StartTimer(
+      'grow',
+      MOONBUTTERFLY_SAPLING_GROW_TIME.base + (random() * 2 - 1) * MOONBUTTERFLY_SAPLING_GROW_TIME.random,
+    );
     this.OnSave = (_inst, data) => {
       // The timer's record keeps the name existing saves hold.
-      data.saplingTimer = data.timer; delete data.timer;
+      data.saplingTimer = data.timer;
+      delete data.timer;
     };
-    this.OnLoad = (_inst, data) => { timer.OnLoad(data.saplingTimer); };
+    this.OnLoad = (_inst, data) => {
+      timer.OnLoad(data.saplingTimer);
+    };
   }
 }
 
@@ -368,35 +519,59 @@ function dig_up_sapling(inst: MoonButterflySaplingInstance): void {
 
 function grow_sapling(inst: MoonButterflySaplingInstance): void {
   const tree = inst.world.spawnPrefab('moon_tree_short', inst.position);
-  if (!(tree instanceof MoonTreeInstance)) { throw new Error('moon_tree_short did not spawn a moon tree'); }
+  if (!(tree instanceof MoonTreeInstance)) {
+    throw new Error('moon_tree_short did not spawn a moon tree');
+  }
   tree.growfromseed();
   inst.remove();
 }
 
 /** moon_tree at a random or chosen size, and the moonbutterfly sapling that grows into one. */
-export function moonTreePrefabs(world: MoonTreeWorld, random: () => number = Math.random): Readonly<Record<MoonTreeSpawnId, PrefabEntityDefinition<MoonTreeInstance>>
-  & Record<typeof MOONBUTTERFLY_SAPLING_ID, PrefabEntityDefinition<MoonButterflySaplingInstance>>> {
+export function moonTreePrefabs(
+  world: MoonTreeWorld,
+  random: () => number = Math.random,
+): Readonly<
+  Record<MoonTreeSpawnId, PrefabEntityDefinition<MoonTreeInstance>> &
+    Record<typeof MOONBUTTERFLY_SAPLING_ID, PrefabEntityDefinition<MoonButterflySaplingInstance>>
+> {
   const standingAnimation = definitions.moonTree.animationName;
   const tree = (id: MoonTreeSpawnId): PrefabEntityDefinition<MoonTreeInstance> => ({
-    fn: position => new MoonTreeInstance(world, position, id === MOON_TREE_ID ? Math.min(3, Math.floor(random() * 3) + 1) : MOON_TREE_SPAWN_IDS.indexOf(id), random),
+    fn: position =>
+      new MoonTreeInstance(
+        world,
+        position,
+        id === MOON_TREE_ID ? Math.min(3, Math.floor(random() * 3) + 1) : MOON_TREE_SPAWN_IDS.indexOf(id),
+        random,
+      ),
     // MakeSnowCoveredPristine: the `snow` placeholder is drawn from snow.zip while the snow level is covered.
-    assets: { animationArchive: definitions.moonTree.archive,
-      buildArchives: [definitions.moonTree.archive, 'snow.zip'], bank: 'moon_tree', hiddenSymbols: ['snow'],
-      symbolOverrides: { snow: { archive: 'snow.zip', symbol: 'snow' } } },
-    assetOptions: { staticBillboard: true,
-      instancedAnimations: [...new Set([standingAnimation, ...MOON_TREE_SIZES.map(size => `sway1_loop_${size}`)])] },
+    assets: {
+      animationArchive: definitions.moonTree.archive,
+      buildArchives: [definitions.moonTree.archive, 'snow.zip'],
+      bank: 'moon_tree',
+      hiddenSymbols: ['snow'],
+      symbolOverrides: { snow: { archive: 'snow.zip', symbol: 'snow' } },
+    },
+    assetOptions: {
+      staticBillboard: true,
+      instancedAnimations: [...new Set([standingAnimation, ...MOON_TREE_SIZES.map(size => `sway1_loop_${size}`)])],
+    },
     alignBottom: true,
-    physics: { make: MakeObstaclePhysics, radius: .5 },
+    physics: { make: MakeObstaclePhysics, radius: 0.5 },
     minimapIcon: 'moon_tree.png',
     onSpawned,
   });
   return {
-    ...Object.fromEntries(MOON_TREE_SPAWN_IDS.map(id => [id, tree(id)])) as Record<MoonTreeSpawnId, PrefabEntityDefinition<MoonTreeInstance>>,
+    ...(Object.fromEntries(MOON_TREE_SPAWN_IDS.map(id => [id, tree(id)])) as Record<
+      MoonTreeSpawnId,
+      PrefabEntityDefinition<MoonTreeInstance>
+    >),
     [MOONBUTTERFLY_SAPLING_ID]: {
       fn: position => new MoonButterflySaplingInstance(world, position, random),
       assets: { animationArchive: 'baby_moon_tree.zip', buildArchives: ['baby_moon_tree.zip'], bank: 'baby_moon_tree' },
       assetOptions: { staticBillboard: true, instancedAnimations: 'all' },
-      onSpawned: inst => { new ToolMouseTarget(inst, world.handEquipment); },
+      onSpawned: inst => {
+        new ToolMouseTarget(inst, world.handEquipment);
+      },
     },
   };
 }

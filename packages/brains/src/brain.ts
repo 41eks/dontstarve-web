@@ -14,30 +14,42 @@ export abstract class Brain<Inst extends BehaviourContext = BrainInst> {
   /** brain.lua self.events: AddEventHandler's handlers, which inst:PushEvent reaches. */
   private readonly events = new Map<string, (data: unknown) => void>();
 
-  constructor(inst: Inst) { this.inst = inst; }
+  constructor(inst: Inst) {
+    this.inst = inst;
+  }
 
   protected abstract OnStart(): void;
   protected OnInitializationComplete?(): void;
   protected OnStop?(): void;
   protected DoUpdate?(): void;
 
-  protected get context(): BehaviourContext { return this.inst; }
+  protected get context(): BehaviourContext {
+    return this.inst;
+  }
 
   /** Brain:AddEventHandler(event, fn). */
-  AddEventHandler(event: string, fn: (data: unknown) => void): void { this.events.set(event, fn); }
+  AddEventHandler(event: string, fn: (data: unknown) => void): void {
+    this.events.set(event, fn);
+  }
   /** Brain:PushEvent: the handler for the event, if any, with the event's data. */
-  PushEvent(event: string, data?: unknown): void { this.events.get(event)?.(data); }
+  PushEvent(event: string, data?: unknown): void {
+    this.events.get(event)?.(data);
+  }
 
   ForceUpdate(): void {
     this.bt?.ForceUpdate();
     this.wakeAt = 0;
   }
 
-  GetSleepTime(): number | undefined { return this.bt ? this.bt.GetSleepTime() : 0; }
+  GetSleepTime(): number | undefined {
+    return this.bt ? this.bt.GetSleepTime() : 0;
+  }
 
   /** EntityScript:RestartBrain → Brain:_Start_Internal. */
   Start(): void {
-    if (!this.stopped) { return; }
+    if (!this.stopped) {
+      return;
+    }
     this.OnStart();
     this.stopped = false;
     this.wakeAt = 0;
@@ -45,14 +57,20 @@ export abstract class Brain<Inst extends BehaviourContext = BrainInst> {
   }
 
   Stop(): void {
-    if (this.stopped) { return; }
+    if (this.stopped) {
+      return;
+    }
     this.OnStop?.();
     this.bt?.Stop();
     this.stopped = true;
   }
 
-  Pause(): void { this.paused = true; }
-  Resume(): void { this.paused = false; }
+  Pause(): void {
+    this.paused = true;
+  }
+  Resume(): void {
+    this.paused = false;
+  }
 
   OnUpdate(): void {
     this.DoUpdate?.();
@@ -61,7 +79,9 @@ export abstract class Brain<Inst extends BehaviourContext = BrainInst> {
 
   /** BrainManager:Update for one instance: wake up once the previous sleep time has passed. */
   tick(now: number): void {
-    if (this.stopped || this.paused || now < this.wakeAt) { return; }
+    if (this.stopped || this.paused || now < this.wakeAt) {
+      return;
+    }
     this.OnUpdate();
     const sleep = this.GetSleepTime();
     // No sleep time means the tree hibernates until something forces an update.

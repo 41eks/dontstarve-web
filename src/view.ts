@@ -13,9 +13,16 @@ import { cursorUi, renderer, scene } from './universal';
 export const actionEvents = new EventEmitter<PlayerActionEvents>();
 export const screenProjection = new ScreenProjection(camera, renderer.domElement);
 export const view: WorldContext = {
-  scene, camera, renderer, ground, player, actionEvents, cameraFacing: followCamera.facing, cameraHeading: followCamera.headingAngle,
+  scene,
+  camera,
+  renderer,
+  ground,
+  player,
+  actionEvents,
+  cameraFacing: followCamera.facing,
+  cameraHeading: followCamera.headingAngle,
   TheCamera: followCamera,
-  createCursorLabel: (pointer) => cursorUi.createLabel(pointer),
+  createCursorLabel: pointer => cursorUi.createLabel(pointer),
 };
 
 view.mouseActions = new PlayerActionPicker(new PointerRaycaster(view), () => playerInstance.controllerEnabled);

@@ -3,20 +3,40 @@ import { fileURLToPath } from 'node:url';
 
 test('dwarf stars decode the source WAVs and stop independent loops on removal', async ({ page }) => {
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => { if (message.type() === 'error' || message.type() === 'warning') { errors.push(message.text()); } });
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error' || message.type() === 'warning') {
+      errors.push(message.text());
+    }
+  });
   await page.goto('/tests/dst-lighting.html');
-  const result = await page.evaluate(async (url) => {
-    const { prepareStarAudioCheck } = await import(url);
-    return prepareStarAudioCheck() as Promise<{
-      samples: { loop: boolean; length: number; channels: number; sampleRate: number }[];
-      casting: { beforeSoundFrame: number; onSoundFrame: number; afterCastSources: number; casts: number;
-        cancelledBeforeSound: boolean; duration: number; loop: boolean };
-    }>;
-  }, `/@fs${fileURLToPath(new URL('./stafflight-sound-fixture.ts', import.meta.url))}`);
+  const result = await page.evaluate(
+    async url => {
+      const { prepareStarAudioCheck } = await import(url);
+      return prepareStarAudioCheck() as Promise<{
+        samples: { loop: boolean; length: number; channels: number; sampleRate: number }[];
+        casting: {
+          beforeSoundFrame: number;
+          onSoundFrame: number;
+          afterCastSources: number;
+          casts: number;
+          cancelledBeforeSound: boolean;
+          duration: number;
+          loop: boolean;
+        };
+      }>;
+    },
+    `/@fs${fileURLToPath(new URL('./stafflight-sound-fixture.ts', import.meta.url))}`,
+  );
   const { samples, casting } = result;
-  expect(casting).toMatchObject({ beforeSoundFrame: 6, onSoundFrame: 7, afterCastSources: 7, casts: 1,
-    cancelledBeforeSound: true, loop: false });
+  expect(casting).toMatchObject({
+    beforeSoundFrame: 6,
+    onSoundFrame: 7,
+    afterCastSources: 7,
+    casts: 1,
+    cancelledBeforeSound: true,
+    loop: false,
+  });
   expect(casting.duration).toBeCloseTo(129478 / 44100, 3);
   expect(samples.map(({ loop }) => loop)).toEqual([true, false, true, false, true, false]);
   // decodeAudioData resamples to the browser's device sample rate.
@@ -24,9 +44,16 @@ test('dwarf stars decode the source WAVs and stop independent loops on removal',
   expect(samples[0].length / samples[0].sampleRate).toBeCloseTo(50275 / 44100, 3);
   expect(samples.every(({ channels }) => channels === 1)).toBe(true);
   await page.mouse.click(5, 5);
-  const check = (action: string) => page.evaluate((value) =>
-    (window as unknown as { checkStarAudio: (action: string) => { state: string; restoredRemoved: boolean; stops: number[] } })
-      .checkStarAudio(value), action);
+  const check = (action: string) =>
+    page.evaluate(
+      value =>
+        (
+          window as unknown as {
+            checkStarAudio: (action: string) => { state: string; restoredRemoved: boolean; stops: number[] };
+          }
+        ).checkStarAudio(value),
+      action,
+    );
   await expect.poll(async () => (await check('inspect')).state).toBe('running');
   // Removal kills the restored star's named loop; its unnamed staff_star_create one-shot outlives the entity, as a
   // sound played just before inst:Remove() does in wormwarning.lua.

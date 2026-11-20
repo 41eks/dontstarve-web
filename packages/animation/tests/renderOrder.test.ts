@@ -1,9 +1,14 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
-import { registerSpriteRenderGroup, spriteRenderOrderKey, updateSpriteRenderOrders, type RenderOrderEntry } from '../src/renderOrder';
+import {
+  registerSpriteRenderGroup,
+  spriteRenderOrderKey,
+  updateSpriteRenderOrders,
+  type RenderOrderEntry,
+} from '../src/renderOrder';
 
 function camera(position: THREE.Vector3Tuple, target: THREE.Vector3Tuple = [0, 0, 0]): THREE.Matrix4 {
-  const view = new THREE.PerspectiveCamera(35, 16 / 9, .1, 5000);
+  const view = new THREE.PerspectiveCamera(35, 16 / 9, 0.1, 5000);
   view.position.set(...position);
   view.lookAt(...target);
   view.updateMatrixWorld();
@@ -21,7 +26,8 @@ function makeEntry(position: THREE.Vector3, keys: Partial<RenderOrderEntry> = {}
 }
 
 /** The order three.js draws them in: ascending group render order. */
-const drawn = (entries: ReturnType<typeof makeEntry>[]) => [...entries].sort((a, b) => a.visual.renderOrder - b.visual.renderOrder);
+const drawn = (entries: ReturnType<typeof makeEntry>[]) =>
+  [...entries].sort((a, b) => a.visual.renderOrder - b.visual.renderOrder);
 
 describe('spriteRenderOrderKey', () => {
   const view = camera([0, 30, 50]);
@@ -42,14 +48,21 @@ describe('spriteRenderOrderKey', () => {
       const pan = frame - 25;
       const panned = camera([pan, 0, 50], [pan, 0, 0]);
       for (const matrix of [row, panned]) {
-        const keys = feet.map(x => spriteRenderOrderKey(new THREE.Vector3(x, 0, (Math.random() - .5) * 2e-7), matrix));
-        expect(feet.map((x, i) => [x, keys[i]]).sort((a, b) => a[1] - b[1]).map(([x]) => x)).toEqual([0, 3, 6, 9]);
+        const keys = feet.map(x => spriteRenderOrderKey(new THREE.Vector3(x, 0, (Math.random() - 0.5) * 2e-7), matrix));
+        expect(
+          feet
+            .map((x, i) => [x, keys[i]])
+            .sort((a, b) => a[1] - b[1])
+            .map(([x]) => x),
+        ).toEqual([0, 3, 6, 9]);
       }
     }
   });
 
   it('orders parts sharing a foot point by sort layer, between their neighbours', () => {
-    const behind = key(1, 0, 0, 0), owner = key(1, 0), fire = key(1, 0, 0, 2);
+    const behind = key(1, 0, 0, 0),
+      owner = key(1, 0),
+      fire = key(1, 0, 0, 2);
     expect(behind).toBeLessThan(owner);
     expect(owner).toBeLessThan(fire);
     // A millimetre further left or nearer is a different entity: it never falls between an owner and its fire.
@@ -95,7 +108,9 @@ describe('updateSpriteRenderOrders', () => {
 
 describe('registerSpriteRenderGroup', () => {
   it('keeps the entity order when a loaded sprite replaces its placeholder', () => {
-    const root = new THREE.Group(), placeholder = new THREE.Group(), loaded = new THREE.Group();
+    const root = new THREE.Group(),
+      placeholder = new THREE.Group(),
+      loaded = new THREE.Group();
     registerSpriteRenderGroup(root, placeholder);
     updateSpriteRenderOrders([{ object: root, footPosition: new THREE.Vector3(0, 0, -10) }], new THREE.Matrix4());
     registerSpriteRenderGroup(root, loaded);

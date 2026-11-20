@@ -4,7 +4,14 @@ import type { AnimStateArt, AnimStateJson, SymbolBuild } from '@dontstarve-web/a
 import type { SpriteMaterialOptions } from '@dontstarve-web/animation/animationAssets';
 import type { FxJson } from './fxAttachments';
 import type { FollowerFx } from './followerFx';
-import type { LayerAnimationController, LoadedBuildOverride, PercentAnimationController, TransientSpriteAnimationController, SpriteArtSource, SpriteTint } from '@dontstarve-web/animation/sprite';
+import type {
+  LayerAnimationController,
+  LoadedBuildOverride,
+  PercentAnimationController,
+  TransientSpriteAnimationController,
+  SpriteArtSource,
+  SpriteTint,
+} from '@dontstarve-web/animation/sprite';
 import type { ArchiveSprite } from '@dontstarve-web/animation/archiveSprite';
 
 type SymbolOverrideValue = Parameters<ArchiveSprite['overrideSymbol']>[1];
@@ -52,10 +59,16 @@ const ANIM_STATE_SLOT = 'anim-state:';
 type AnimStateAppearance = Extract<AppearanceJson, { kind: 'anim-state' }>;
 
 /** The entity's own AnimState first, then the slots other entities declared on it, in the order they were declared. */
-export function animStateDeclarations(appearance: SpriteJson['appearance']): readonly (readonly [string, AnimStateAppearance])[] {
+export function animStateDeclarations(
+  appearance: SpriteJson['appearance'],
+): readonly (readonly [string, AnimStateAppearance])[] {
   const own = appearance.get('anim-state');
   const declared: (readonly [string, AnimStateAppearance])[] = own?.kind === 'anim-state' ? [['anim-state', own]] : [];
-  for (const [key, op] of appearance) { if (op.kind === 'anim-state' && key.startsWith(ANIM_STATE_SLOT)) { declared.push([key, op]); } }
+  for (const [key, op] of appearance) {
+    if (op.kind === 'anim-state' && key.startsWith(ANIM_STATE_SLOT)) {
+      declared.push([key, op]);
+    }
+  }
   return declared;
 }
 
@@ -70,7 +83,12 @@ export type AppearanceJson =
   | { readonly kind: 'layer'; readonly layer: string; readonly hidden: boolean }
   | { readonly kind: 'symbols'; readonly overrides: SymbolOverrideMap; readonly hiddenLayers: readonly string[] }
   | { readonly kind: 'symbol'; readonly symbol: string; readonly override: SymbolOverrideValue }
-  | { readonly kind: 'archive-symbol'; readonly symbol: string; readonly archive?: string; readonly sourceSymbol?: string }
+  | {
+      readonly kind: 'archive-symbol';
+      readonly symbol: string;
+      readonly archive?: string;
+      readonly sourceSymbol?: string;
+    }
   | { readonly kind: 'archive-hidden'; readonly symbol: string; readonly hidden: boolean }
   | { readonly kind: 'archive-build'; readonly archive: string }
   | { readonly kind: 'build'; readonly name: string; readonly override: LoadedBuildOverride | undefined };
@@ -85,7 +103,10 @@ export interface SpriteDeclaration {
   readonly source?: SpriteSourceJson;
   readonly tint?: SpriteTint;
   /** `fx` is drawn at the follower's node by the display, which loads its art. */
-  readonly followers?: ReadonlyMap<THREE.Object3D, { readonly symbol: string; readonly x: number; readonly y: number; readonly fx?: FollowerFx }>;
+  readonly followers?: ReadonlyMap<
+    THREE.Object3D,
+    { readonly symbol: string; readonly x: number; readonly y: number; readonly fx?: FollowerFx }
+  >;
   /** Turned to the camera by the display: the source's default orientation, unlike OnGround art. Declared at creation. */
   readonly billboard?: boolean;
   readonly queue: readonly { readonly name: string; readonly loop: boolean }[];
@@ -204,17 +225,31 @@ export interface ArchiveSpriteCommands {
  * model. It offers the controller surface prefabs already call, so a prefab changes the json and the display reacts.
  */
 /** The first clip of a presentation, declared by the entity's constructor or by a new presentation of it. */
-export interface SpriteClipDeclaration { readonly name: string; readonly held?: boolean; readonly none?: boolean; readonly billboard?: boolean }
+export interface SpriteClipDeclaration {
+  readonly name: string;
+  readonly held?: boolean;
+  readonly none?: boolean;
+  readonly billboard?: boolean;
+}
 
 function initialJson(clip: SpriteClipDeclaration): SpriteDeclaration {
   return {
-    clip: clip.none ? { name: clip.name, loop: false, finished: true, none: true }
-      : { name: clip.name, loop: !clip.held, finished: clip.held === true }, queue: [], appearance: new Map(),
-    ...clip.billboard ? { billboard: true } : {},
+    clip: clip.none
+      ? { name: clip.name, loop: false, finished: true, none: true }
+      : { name: clip.name, loop: !clip.held, finished: clip.held === true },
+    queue: [],
+    appearance: new Map(),
+    ...(clip.billboard ? { billboard: true } : {}),
   };
 }
 
-export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimationController, PercentAnimationController, LayerAnimationController {
+export class SpriteState
+  implements
+    ArchiveSpriteCommands,
+    TransientSpriteAnimationController,
+    PercentAnimationController,
+    LayerAnimationController
+{
   private readonly declared: Signal<SpriteDeclaration>;
   /** The lifecycle of the entity this sprite belongs to; the entity binds its own. */
   private readonly lifecycle = createSignal(ALWAYS_ACTIVE);
@@ -241,12 +276,19 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   constructor(clip: SpriteClipDeclaration) {
     this.initialAnimation = clip.name;
     this.declared = createSignal(initialJson(clip));
-    this.sprite = readonlySignal(createMemo<SpriteJson>(() => ({ ...this.declared.get(), status: this.lifecycle.get().get() })));
+    this.sprite = readonlySignal(
+      createMemo<SpriteJson>(() => ({ ...this.declared.get(), status: this.lifecycle.get().get() })),
+    );
     this.skinId = {
-      get: () => this.declared.get().skinId, peek: () => this.state.skinId, set: value => this.setSkinId(value),
-      subscribe: listener => this.declared.subscribe((value, previous) => {
-        if (value.skinId !== previous.skinId) { listener(value.skinId, previous.skinId); }
-      }),
+      get: () => this.declared.get().skinId,
+      peek: () => this.state.skinId,
+      set: value => this.setSkinId(value),
+      subscribe: listener =>
+        this.declared.subscribe((value, previous) => {
+          if (value.skinId !== previous.skinId) {
+            listener(value.skinId, previous.skinId);
+          }
+        }),
     };
   }
 
@@ -258,17 +300,29 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   resetPresentation(clip: SpriteClipDeclaration): void {
     const { skinId } = this.state;
     this.initialAnimation = clip.name;
-    this.declared.set({ ...initialJson(clip), ...skinId === undefined ? {} : { skinId } });
+    this.declared.set({ ...initialJson(clip), ...(skinId === undefined ? {} : { skinId }) });
     this.fxDeclared.set(new Map());
     this.followed.set(undefined);
   }
 
   /** The entity's lifecycle, owned by the entity: its sprite is drawn in it. */
-  bindStatus(status: ReadonlySignal<PrefabStatus>): void { this.lifecycle.set(status); }
-  private get state(): SpriteDeclaration { return this.declared.peek(); }
-  protected write(patch: Partial<SpriteDeclaration>): void { this.declared.set({ ...this.state, ...patch }); }
-  setSkinId(skinId: string | undefined): void { if (skinId !== this.state.skinId) { this.write({ skinId }); } }
-  setSkinSource(skin: SkinJson): void { this.withAppearance('skin', { kind: 'skin', skin }); }
+  bindStatus(status: ReadonlySignal<PrefabStatus>): void {
+    this.lifecycle.set(status);
+  }
+  private get state(): SpriteDeclaration {
+    return this.declared.peek();
+  }
+  protected write(patch: Partial<SpriteDeclaration>): void {
+    this.declared.set({ ...this.state, ...patch });
+  }
+  setSkinId(skinId: string | undefined): void {
+    if (skinId !== this.state.skinId) {
+      this.write({ skinId });
+    }
+  }
+  setSkinSource(skin: SkinJson): void {
+    this.withAppearance('skin', { kind: 'skin', skin });
+  }
   /** The skins the declared skin source can draw, in its order: PREFAB_SKINS for this entity. */
   get skinNames(): readonly string[] {
     const declared = this.state.appearance.get('skin');
@@ -293,10 +347,14 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
    * loading, and plays on otherwise; fn's own clips were played before any display, so they play.
    */
   displayStarted(): void {
-    if (!this.playedWhilePending) { return; }
+    if (!this.playedWhilePending) {
+      return;
+    }
     this.playedWhilePending = false;
     const { clip, queue } = this.state;
-    if (this.probe && !this.drawn && (queue.length > 0 || !clip.loop && !clip.finished && !clip.none)) { this.settle(); }
+    if (this.probe && !this.drawn && (queue.length > 0 || (!clip.loop && !clip.finished && !clip.none))) {
+      this.settle();
+    }
   }
   /**
    * A display starts once the entity's fn, OnLoad and onSpawned have run: until it binds, followers get their nodes and
@@ -306,34 +364,65 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     const state = this;
     this.displayPending = true;
     this.playedWhilePending = false;
-    this.probe = { get currentAnimation() { return state.state.clip.name; }, numFrames: 0, currentAnimationLength: 0, loaded: false,
-      update() {}, createFollower: () => new THREE.Object3D() };
+    this.probe = {
+      get currentAnimation() {
+        return state.state.clip.name;
+      },
+      numFrames: 0,
+      currentAnimationLength: 0,
+      loaded: false,
+      update() {},
+      createFollower: () => new THREE.Object3D(),
+    };
   }
   private displayPending = false;
   private playedWhilePending = false;
-  artChanged(): void { this.artVersion.set(this.artVersion.peek() + 1); }
+  artChanged(): void {
+    this.artVersion.set(this.artVersion.peek() + 1);
+  }
 
-  get loaded(): boolean { return this.probe?.loaded ?? false; }
-  get currentAnimation(): string { return this.probe?.currentAnimation ?? this.state.clip.name; }
-  get numFrames(): number { return this.probe?.numFrames ?? 0; }
-  get currentAnimationLength(): number { return this.probe?.currentAnimationLength ?? 0; }
-  update(dt: number): void { this.probe?.update(dt); }
+  get loaded(): boolean {
+    return this.probe?.loaded ?? false;
+  }
+  get currentAnimation(): string {
+    return this.probe?.currentAnimation ?? this.state.clip.name;
+  }
+  get numFrames(): number {
+    return this.probe?.numFrames ?? 0;
+  }
+  get currentAnimationLength(): number {
+    return this.probe?.currentAnimationLength ?? 0;
+  }
+  update(dt: number): void {
+    this.probe?.update(dt);
+  }
 
   /** Nothing is drawn while the entity sleeps; a transition that was playing is not replayed but ends in its completion state. */
-  settleAsleep(): void { this.settle(); }
+  settleAsleep(): void {
+    this.settle();
+  }
   // Drawn only while the entity is active. Playing no animation, the sprite is built for the next clip, which is drawn rather than settled.
-  private get drawn(): boolean { return this.lifecycle.peek().peek() === 'active' && (this.state.clip.none === true || this.displayPending || (this.probe?.loaded ?? true)); }
+  private get drawn(): boolean {
+    return (
+      this.lifecycle.peek().peek() === 'active' &&
+      (this.state.clip.none === true || this.displayPending || (this.probe?.loaded ?? true))
+    );
+  }
   /** The completion state: the clip completes, and what was queued behind it is the clip now. */
   private settle(): void {
     const { clip, queue } = this.state;
     this.finish(clip);
     const last = queue[queue.length - 1];
-    if (last) { this.write({ clip: { name: last.name, loop: last.loop, finished: !last.loop }, queue: [], frame: undefined }); }
+    if (last) {
+      this.write({ clip: { name: last.name, loop: last.loop, finished: !last.loop }, queue: [], frame: undefined });
+    }
   }
 
   /** A clip's playback ended, or was settled because nothing is drawn: it completes once. */
   finish(clip: ClipJson): void {
-    if (this.state.clip !== clip || clip.finished) { return; }
+    if (this.state.clip !== clip || clip.finished) {
+      return;
+    }
     clip.finished = true;
     clip.complete?.();
   }
@@ -342,64 +431,110 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     this.write({ clip: { name, loop: true, finished: false }, queue: [], frame: undefined });
   }
   playOnce(name: string, complete?: () => void): void {
-    const clip: ClipJson = { name, loop: false, finished: false, complete }, drawn = this.drawn;
-    if (this.displayPending) { this.playedWhilePending = true; }
+    const clip: ClipJson = { name, loop: false, finished: false, complete },
+      drawn = this.drawn;
+    if (this.displayPending) {
+      this.playedWhilePending = true;
+    }
     this.write({ clip, queue: [], frame: undefined });
     // Nothing is drawn, so the transition completes at once.
-    if (!drawn) { this.finish(clip); }
+    if (!drawn) {
+      this.finish(clip);
+    }
   }
   /** AnimState with no animation playing: the drawn sprite is released until a clip is played again. */
   clearAnimation(): void {
-    this.write({ clip: { name: this.initialAnimation, loop: false, finished: true, none: true }, queue: [], frame: undefined });
+    this.write({
+      clip: { name: this.initialAnimation, loop: false, finished: true, none: true },
+      queue: [],
+      frame: undefined,
+    });
   }
   pushAnimation(name: string, loop = false): void {
     this.write({ queue: [...this.state.queue, { name, loop }] });
-    if (this.displayPending) { this.playedWhilePending = true; }
-    if (!this.drawn) { this.settle(); }
+    if (this.displayPending) {
+      this.playedWhilePending = true;
+    }
+    if (!this.drawn) {
+      this.settle();
+    }
   }
-  playTransient(name: string): void { this.write({ transient: { name } }); }
+  playTransient(name: string): void {
+    this.write({ transient: { name } });
+  }
   holdLastFrame(name: string): void {
     this.write({ clip: { name, loop: false, finished: true }, queue: [], frame: undefined });
   }
   setPercent(name: string, percent: number): void {
     this.write({ clip: { name, loop: false, finished: true, percent }, queue: [], frame: undefined });
   }
-  setFrame(frame: number): void { if (frame !== this.state.frame) { this.write({ frame }); } }
+  setFrame(frame: number): void {
+    if (frame !== this.state.frame) {
+      this.write({ frame });
+    }
+  }
   setFrameAt(fraction: number): void {
-    if (!(fraction >= 0 && fraction <= 1)) { throw new RangeError('Frame fraction must be within [0, 1]'); }
+    if (!(fraction >= 0 && fraction <= 1)) {
+      throw new RangeError('Frame fraction must be within [0, 1]');
+    }
     this.write({ frame: { at: fraction } });
   }
-  setArtSource(source: SpriteSourceJson): void { if (source !== this.state.source) { this.write({ source }); } }
+  setArtSource(source: SpriteSourceJson): void {
+    if (source !== this.state.source) {
+      this.write({ source });
+    }
+  }
   /** The entity's own AnimState, by its json signal: the display follows it rather than a copy. */
-  setAnimState(state: ReadonlySignal<AnimStateJson>, art?: AnimStateArt): void { this.withAppearance('anim-state', { kind: 'anim-state', state, art }); }
+  setAnimState(state: ReadonlySignal<AnimStateJson>, art?: AnimStateArt): void {
+    this.withAppearance('anim-state', { kind: 'anim-state', state, art });
+  }
   /**
    * Another entity's AnimState on this one, by its json signal, as an equipped item names its owner's symbols. It is drawn
    * over the entity's own (`setAnimState`) and over the slots declared before it; declaring it again keeps its place, and
    * undefined removes it.
    */
   declareAnimState(key: string, state: ReadonlySignal<AnimStateJson> | undefined, art?: AnimStateArt): void {
-    const slot = `${ANIM_STATE_SLOT}${key}`, appearance = new Map(this.state.appearance);
-    if (state) { appearance.set(slot, { kind: 'anim-state', state, art }); }
-    else if (!appearance.delete(slot)) { return; }
+    const slot = `${ANIM_STATE_SLOT}${key}`,
+      appearance = new Map(this.state.appearance);
+    if (state) {
+      appearance.set(slot, { kind: 'anim-state', state, art });
+    } else if (!appearance.delete(slot)) {
+      return;
+    }
     this.write({ appearance });
   }
   /** Wortox's blend tint; AnimState:SetAddColour's rgb, which setAddColour declares, is kept. */
-  setTint(tint: SpriteTint): void { const add = this.state.tint?.add; this.write({ tint: add ? { ...tint, add } : tint }); }
+  setTint(tint: SpriteTint): void {
+    const add = this.state.tint?.add;
+    this.write({ tint: add ? { ...tint, add } : tint });
+  }
   /** AnimState:SetAddColour(r, g, b, a): added to the art in proportion to its alpha; any blend tint is kept. */
   setAddColour(add: readonly number[]): void {
     const tint = this.state.tint ?? { colour: [0, 0, 0], amount: 0 };
-    if (tint.add?.every((value, i) => value === add[i]) ?? add.every(value => value === 0)) { return; }
+    if (tint.add?.every((value, i) => value === add[i]) ?? add.every(value => value === 0)) {
+      return;
+    }
     this.write({ tint: { ...tint, add: [add[0], add[1], add[2]] } });
   }
-  followSymbol(symbol: string, x: number, y: number, fx?: FollowerFx): { readonly node: THREE.Object3D; remove(): void } {
+  followSymbol(
+    symbol: string,
+    x: number,
+    y: number,
+    fx?: FollowerFx,
+  ): { readonly node: THREE.Object3D; remove(): void } {
     const node = this.probe?.createFollower?.();
-    if (!node) { throw new Error('The sprite has no display for a symbol follower'); }
-    this.write({ followers: new Map(this.state.followers).set(node, { symbol, x, y, ...fx ? { fx } : {} }) });
-    return { node, remove: () => {
-      const followers = new Map(this.state.followers);
-      followers.delete(node);
-      this.write({ followers });
-    } };
+    if (!node) {
+      throw new Error('The sprite has no display for a symbol follower');
+    }
+    this.write({ followers: new Map(this.state.followers).set(node, { symbol, x, y, ...(fx ? { fx } : {}) }) });
+    return {
+      node,
+      remove: () => {
+        const followers = new Map(this.state.followers);
+        followers.delete(node);
+        this.write({ followers });
+      },
+    };
   }
   setFacing(facing: number, mirrored?: boolean): void {
     if (facing !== this.state.facing || mirrored !== this.state.mirrored || this.state.facingRotation !== undefined) {
@@ -413,55 +548,100 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   }
   /** World-space direction; coincident points preserve the previous logical heading. */
   facePoint(from: THREE.Vector3, to: THREE.Vector3): void {
-    const x = to.x - from.x, z = to.z - from.z;
-    if (x * x + z * z > 1e-8) { this.setFacingRotation(Math.atan2(-z, x) * 180 / Math.PI, this.state.facingMode); }
+    const x = to.x - from.x,
+      z = to.z - from.z;
+    if (x * x + z * z > 1e-8) {
+      this.setFacingRotation((Math.atan2(-z, x) * 180) / Math.PI, this.state.facingMode);
+    }
   }
   setPlaybackRate(playbackRate: number): void {
-    if (playbackRate !== this.state.playbackRate) { this.write({ playbackRate }); }
+    if (playbackRate !== this.state.playbackRate) {
+      this.write({ playbackRate });
+    }
   }
-  setFrameSource(frameSource: SpriteJson['frameSource']): void { this.write({ frameSource }); }
-  setColour(colour: readonly number[]): void { this.write({ colour }); }
-  setOpacity(opacity: number): void { this.write({ opacity }); }
-  setLightOverride(lightOverride: number | null): void { this.write({ lightOverride: lightOverride ?? undefined }); }
-  setPaused(paused: boolean): void { this.write({ paused }); }
-  setVisible(visible: boolean): void { this.write({ visible }); }
-  setErosion(erosion: number): void { this.write({ erosion }); }
+  setFrameSource(frameSource: SpriteJson['frameSource']): void {
+    this.write({ frameSource });
+  }
+  setColour(colour: readonly number[]): void {
+    this.write({ colour });
+  }
+  setOpacity(opacity: number): void {
+    this.write({ opacity });
+  }
+  setLightOverride(lightOverride: number | null): void {
+    this.write({ lightOverride: lightOverride ?? undefined });
+  }
+  setPaused(paused: boolean): void {
+    this.write({ paused });
+  }
+  setVisible(visible: boolean): void {
+    this.write({ visible });
+  }
+  setErosion(erosion: number): void {
+    this.write({ erosion });
+  }
   /**
    * Display-only orientation and the entity's group order. The terrain is drawn at group order 0 and ordered by its
    * meshes, so a negative group order would put the entity under every turf layer: ground art takes order 0 (or above)
    * and places itself among the ground layers with `setMeshOrder`.
    */
   setGround(renderOrder: number, flat = true): void {
-    if (!(renderOrder >= 0)) { throw new RangeError(`Ground group order ${renderOrder} draws under the terrain; use setMeshOrder`); }
+    if (!(renderOrder >= 0)) {
+      throw new RangeError(`Ground group order ${renderOrder} draws under the terrain; use setMeshOrder`);
+    }
     this.write({ ground: { renderOrder, flat } });
   }
-  setMeshOrder(meshOrder: number): void { this.write({ meshOrder }); }
+  setMeshOrder(meshOrder: number): void {
+    this.write({ meshOrder });
+  }
   setLayer(layer: 'world' | 'background'): void {
     const background = layer === 'background' ? true : undefined;
-    if (background !== this.state.background) { this.write({ background }); }
+    if (background !== this.state.background) {
+      this.write({ background });
+    }
   }
-  setVisualHeight(visualHeight: number): void { if (visualHeight !== (this.state.visualHeight ?? 0)) { this.write({ visualHeight }); } }
-  setDepthOffset(depthOffset: boolean): void { this.write({ depthOffset }); }
-  setBehindFoot(behindFoot: boolean): void { if (behindFoot !== (this.state.behindFoot ?? false)) { this.write({ behindFoot }); } }
+  setVisualHeight(visualHeight: number): void {
+    if (visualHeight !== (this.state.visualHeight ?? 0)) {
+      this.write({ visualHeight });
+    }
+  }
+  setDepthOffset(depthOffset: boolean): void {
+    this.write({ depthOffset });
+  }
+  setBehindFoot(behindFoot: boolean): void {
+    if (behindFoot !== (this.state.behindFoot ?? false)) {
+      this.write({ behindFoot });
+    }
+  }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void {
     this.withAppearance(`archive-symbol:${symbol}`, { kind: 'archive-symbol', symbol, archive, sourceSymbol });
   }
   setSymbolHidden(symbol: string, hidden: boolean): void {
     this.withAppearance(`archive-hidden:${symbol}`, { kind: 'archive-hidden', symbol, hidden });
   }
-  setBuildArchive(archive: string): void { this.withAppearance('archive-build', { kind: 'archive-build', archive }); }
+  setBuildArchive(archive: string): void {
+    this.withAppearance('archive-build', { kind: 'archive-build', archive });
+  }
   /** Declares an effect under `key`; declaring the key again replaces it. */
-  attachFx(key: string, fx: FxJson): void { this.fxDeclared.set(new Map(this.fxDeclared.peek()).set(key, fx)); }
+  attachFx(key: string, fx: FxJson): void {
+    this.fxDeclared.set(new Map(this.fxDeclared.peek()).set(key, fx));
+  }
   detachFx(key: string): void {
     const fx = new Map(this.fxDeclared.peek());
     fx.delete(key);
     this.fxDeclared.set(fx);
   }
   /** Declares that the animation is this signal's value; the display keeps it so. Undefined ends it. */
-  followAnimation(source: ReadonlySignal<string | number> | undefined): void { this.followed.set(source); }
+  followAnimation(source: ReadonlySignal<string | number> | undefined): void {
+    this.followed.set(source);
+  }
 
-  hideLayer(layer: string): void { this.withAppearance(`layer:${layer}`, { kind: 'layer', layer, hidden: true }); }
-  showLayer(layer: string): void { this.withAppearance(`layer:${layer}`, { kind: 'layer', layer, hidden: false }); }
+  hideLayer(layer: string): void {
+    this.withAppearance(`layer:${layer}`, { kind: 'layer', layer, hidden: true });
+  }
+  showLayer(layer: string): void {
+    this.withAppearance(`layer:${layer}`, { kind: 'layer', layer, hidden: false });
+  }
   setSymbolOverrides(overrides: SymbolOverrideMap, hiddenLayers: readonly string[] = []): void {
     this.withAppearance('symbols', { kind: 'symbols', overrides, hiddenLayers });
   }

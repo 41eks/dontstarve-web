@@ -15,11 +15,13 @@ const GhostActionFilter = isGhostValidAction;
 const GHOST_ACTION_FILTER_PRIORITY = 99;
 
 /** tuning.lua GHOST_LIGHT_OVERRIDE / RESURRECT_HEALTH. */
-export const GHOST_LIGHT_OVERRIDE = .5;
+export const GHOST_LIGHT_OVERRIDE = 0.5;
 export const RESURRECT_HEALTH = 50;
 
 /** inst:Hide() / inst:Show() with the DynamicShadow. */
-function setHidden(inst: PlayerInstance, hidden: boolean): void { inst.sprite.setVisible(!hidden); }
+function setHidden(inst: PlayerInstance, hidden: boolean): void {
+  inst.sprite.setVisible(!hidden);
+}
 
 /** inst.Physics:Teleport(x, y, z): the transform moves, the body follows at once and stops. */
 function Teleport(inst: PlayerInstance, position: ReadonlyVector3): void {
@@ -29,12 +31,18 @@ function Teleport(inst: PlayerInstance, position: ReadonlyVector3): void {
 }
 
 /** skinner ghost_skin / normal_skin: the prefab's ghost and living builds. */
-function GhostBuild(inst: PlayerInstance): string { return `dynamic/ghost_${inst.prefab}_build.zip`; }
-export function PlayerBuild(inst: PlayerInstance): string { return `dynamic/${inst.prefab}.zip`; }
+function GhostBuild(inst: PlayerInstance): string {
+  return `dynamic/ghost_${inst.prefab}_build.zip`;
+}
+export function PlayerBuild(inst: PlayerInstance): string {
+  return `dynamic/${inst.prefab}.zip`;
+}
 
 /** AnimState:SetBank("ghost") + skinner ghost_skin + SetStateGraph("SGwilsonghost"); `loading` is inst.loading_ghost. */
 export function makeGhost(inst: PlayerInstance, loading = false): void {
-  if (inst.sg.isGhost) { return; }
+  if (inst.sg.isGhost) {
+    return;
+  }
   cancelEmote(inst);
   inst.AnimState.SetBank('ghost');
   inst.AnimState.SetBuild(GhostBuild(inst));
@@ -43,7 +51,9 @@ export function makeGhost(inst: PlayerInstance, loading = false): void {
 
 /** DoActualRez: the living bank and skin, SetStateGraph("SGwilson") and the source's rebirth state. */
 export function makeAlive(inst: PlayerInstance, state: 'portal_rez' | 'amulet_rebirth' = 'portal_rez'): void {
-  if (!inst.sg.isGhost) { return; }
+  if (!inst.sg.isGhost) {
+    return;
+  }
   inst.AnimState.SetBank('wilson');
   inst.AnimState.SetBuild(PlayerBuild(inst));
   inst.sg.becomeAlive(state);
@@ -52,7 +62,9 @@ export function makeAlive(inst: PlayerInstance, state: 'portal_rez' | 'amulet_re
 /** player_common_extensions.lua SpawnDeathProduct: skeleton_player at the death point, described with the character, name and cause. */
 function SpawnDeathProduct(inst: PlayerInstance, position: THREE.Vector3): void {
   const skel = inst.SpawnPrefab?.(SKELETON_PLAYER_ID, position);
-  if (skel instanceof SkeletonInstance) { skel.SetSkeletonDescription(inst.prefab, inst.transform.model.name, inst.deathcause); }
+  if (skel instanceof SkeletonInstance) {
+    skel.SetSkeletonDescription(inst.prefab, inst.transform.model.name, inst.deathcause);
+  }
 }
 
 /**
@@ -63,11 +75,17 @@ function SpawnDeathProduct(inst: PlayerInstance, position: THREE.Vector3): void 
  * here (burnable, freezable, propagator, grogginess, moisture, sheltered, debuffable, age, temperature, frostybreather).
  */
 export function OnMakePlayerGhost(inst: PlayerInstance, data?: { skeleton?: boolean; loading?: boolean }): void {
-  if (inst.hasTag('playerghost')) { return; }
+  if (inst.hasTag('playerghost')) {
+    return;
+  }
   const position = new THREE.Vector3(inst.position.x, 0, inst.position.z);
   const loading = data?.loading === true;
-  if (data?.skeleton) { SpawnDeathProduct(inst, position); }
-  if (!loading) { inst.SpawnPrefab?.('die_fx', position); }
+  if (data?.skeleton) {
+    SpawnDeathProduct(inst, position);
+  }
+  if (!loading) {
+    inst.SpawnPrefab?.('die_fx', position);
+  }
 
   makeGhost(inst, loading);
   inst.sprite.setLightOverride(GHOST_LIGHT_OVERRIDE);
@@ -78,17 +96,19 @@ export function OnMakePlayerGhost(inst: PlayerInstance, data?: { skeleton?: bool
   health.SetInvincible(true);
   health.canheal = false;
   if (!loading) {
-    sanity.SetPercent(.5);
+    sanity.SetPercent(0.5);
     hunger.SetPercent(2 / 3);
   }
   hunger.Pause();
   sanity.ignore = true;
   RemoveSlipperyFeet(inst);
 
-  MakeGhostPhysics(inst, 1, .5);
+  MakeGhostPhysics(inst, 1, 0.5);
   inst.components.playeractionpicker?.PushActionFilter(GhostActionFilter, GHOST_ACTION_FILTER_PRIORITY);
   inst.addTag('playerghost');
-  if (!loading) { health.SetCurrentHealth(RESURRECT_HEALTH); }
+  if (!loading) {
+    health.SetCurrentHealth(RESURRECT_HEALTH);
+  }
   // The death state disabled the controller; a ghost can move and act.
   inst.controllerEnabled = true;
   inst.ghostMode.set(true);
@@ -96,7 +116,12 @@ export function OnMakePlayerGhost(inst: PlayerInstance, data?: { skeleton?: bool
 }
 
 // Light:SetIntensity(.6) SetRadius(.5) SetFalloff(.6) SetColour(180/255, 195/255, 225/255)
-const GHOST_LIGHT = { radius: .5 * WORLD_SCALE, intensity: .6, falloff: .6, colour: [180 / 255, 195 / 255, 225 / 255] } as const;
+const GHOST_LIGHT = {
+  radius: 0.5 * WORLD_SCALE,
+  intensity: 0.6,
+  falloff: 0.6,
+  colour: [180 / 255, 195 / 255, 225 / 255],
+} as const;
 
 /** inst.Light:Enable(enabled) for the ghost's light. */
 function setGhostLight(inst: PrefabInstance, enabled: boolean): void {
@@ -104,7 +129,7 @@ function setGhostLight(inst: PrefabInstance, enabled: boolean): void {
 }
 
 /** tuning.lua PORTAL_HEALTH_PENALTY */
-export const PORTAL_HEALTH_PENALTY = .25;
+export const PORTAL_HEALTH_PENALTY = 0.25;
 
 /** What a resurrector (the multiplayer portal or a haunted amulet) offers the ghost. */
 export interface RezSource {
@@ -142,7 +167,9 @@ function revertMove(inst: PlayerInstance): void {
  */
 export function OnRespawnFromGhost(inst: PlayerInstance, data?: { source?: RezSource }): void {
   const source = data?.source;
-  if (!inst.hasTag('playerghost') || !(source?.prefab === 'amulet' || source?.hasTag('multiplayer_portal'))) { return; }
+  if (!inst.hasTag('playerghost') || !(source?.prefab === 'amulet' || source?.hasTag('multiplayer_portal'))) {
+    return;
+  }
   inst.addTag('reviving');
   inst.ShowHUD(false);
   inst.controllerEnabled = false;
@@ -151,7 +178,10 @@ export function OnRespawnFromGhost(inst: PlayerInstance, data?: { source?: RezSo
 }
 
 function DoMoveToRezSource(inst: PlayerInstance, source: RezSource, delay: number): void {
-  if (!source.isValid() || source.inlimbo) { revertRespawn(inst); return; }
+  if (!source.isValid() || source.inlimbo) {
+    revertRespawn(inst);
+    return;
+  }
   setHidden(inst, true);
   setGhostLight(inst, false);
   Teleport(inst, source.position);
@@ -159,9 +189,13 @@ function DoMoveToRezSource(inst: PlayerInstance, source: RezSource, delay: numbe
 }
 
 function DoRezDelay(inst: PlayerInstance, source: RezSource, delay: number): void {
-  if (!source.isValid() || source.inlimbo) { revertMove(inst); }
-  else if (delay <= 0) { DoActualRez(inst, source); }
-  else { inst.DoTaskInTime(Math.min(delay, .35), () => DoRezDelay(inst, source, delay - .35)); }
+  if (!source.isValid() || source.inlimbo) {
+    revertMove(inst);
+  } else if (delay <= 0) {
+    DoActualRez(inst, source);
+  } else {
+    inst.DoTaskInTime(Math.min(delay, 0.35), () => DoRezDelay(inst, source, delay - 0.35));
+  }
 }
 
 /**
@@ -169,10 +203,15 @@ function DoRezDelay(inst: PlayerInstance, source: RezSource, delay: number): voi
  * then the source is worn.
  */
 function EquipRezSource(inst: PlayerInstance, item: ItemEntity | undefined): boolean {
-  const inventory = inst.components.inventory, slot = item?.components.equippable?.equipslot;
-  if (!inventory || !item || !slot) { return false; }
+  const inventory = inst.components.inventory,
+    slot = item?.components.equippable?.equipslot;
+  if (!inventory || !item || !slot) {
+    return false;
+  }
   const worn = inventory.Unequip(slot);
-  if (worn && !inventory.GiveItem(worn)) { inventory.DropItem(worn); }
+  if (worn && !inventory.GiveItem(worn)) {
+    inventory.DropItem(worn);
+  }
   return inventory.Equip(item);
 }
 
@@ -186,7 +225,10 @@ function DoActualRez(inst: PlayerInstance, source: RezSource): void {
   const position = new THREE.Vector3(source.position.x, 0, source.position.z);
   const amulet = source.prefab === 'amulet';
   // The amulet is worn before the state that consumes it; one that cannot be worn leaves the ghost haunting.
-  if (amulet && !EquipRezSource(inst, source instanceof ItemEntity ? source : undefined)) { revertMove(inst); return; }
+  if (amulet && !EquipRezSource(inst, source instanceof ItemEntity ? source : undefined)) {
+    revertMove(inst);
+    return;
+  }
   inst.SpawnPrefab?.('die_fx', position);
   setHidden(inst, false);
   Teleport(inst, position);
@@ -198,7 +240,7 @@ function DoActualRez(inst: PlayerInstance, source: RezSource): void {
     source.PushEvent('rez_player');
   }
   setGhostLight(inst, false);
-  MakeCharacterPhysics(inst, 75, .5);
+  MakeCharacterPhysics(inst, 75, 0.5);
   makeAlive(inst, amulet ? 'amulet_rebirth' : 'portal_rez');
 
   // CommonActualRez

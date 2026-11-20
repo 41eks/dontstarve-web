@@ -4,9 +4,18 @@ import { AssetElement } from './assets';
 import type { GameUiEventMap } from './events';
 import styles from './styles/emote-wheel.css?inline';
 
-export interface EmoteRequestDetail { emote: EmoteName }
-export interface EmoteWheelToggleDetail { isOpen: boolean }
-interface WheelItem { label: string; icon: EmoteName; group?: EmoteGroup; emote?: EmoteName }
+export interface EmoteRequestDetail {
+  emote: EmoteName;
+}
+export interface EmoteWheelToggleDetail {
+  isOpen: boolean;
+}
+interface WheelItem {
+  label: string;
+  icon: EmoteName;
+  group?: EmoteGroup;
+  emote?: EmoteName;
+}
 
 const GROUPS: readonly WheelItem[] = [
   { label: '情绪', icon: 'wave', group: 'emotion' },
@@ -27,7 +36,9 @@ export class DstEmoteWheelElement extends AssetElement {
     this.attachShadow({ mode: 'open' });
   }
 
-  get isOpen(): boolean { return this.opened; }
+  get isOpen(): boolean {
+    return this.opened;
+  }
 
   override connectedCallback(): void {
     super.connectedCallback();
@@ -46,7 +57,9 @@ export class DstEmoteWheelElement extends AssetElement {
   }
 
   open(): void {
-    if (this.opened) { return; }
+    if (this.opened) {
+      return;
+    }
     this.opened = true;
     this.setGroup(null);
     this.overlay.hidden = false;
@@ -55,7 +68,9 @@ export class DstEmoteWheelElement extends AssetElement {
   }
 
   readonly close = (): void => {
-    if (!this.opened) { return; }
+    if (!this.opened) {
+      return;
+    }
     this.opened = false;
     this.overlay.hidden = true;
     (this.shadowRoot!.activeElement as HTMLElement | null)?.blur();
@@ -79,59 +94,86 @@ export class DstEmoteWheelElement extends AssetElement {
           <p class="emote-wheel__help">鼠标选择 · 左键确认 · G / Esc / 右键关闭</p>
         </section>`;
       this.overlay.addEventListener('pointermove', this.handlePointerMove);
-      this.overlay.addEventListener('pointerdown', (event) => {
+      this.overlay.addEventListener('pointerdown', event => {
         event.preventDefault();
         event.stopPropagation();
-        if (event.button === 2) { this.close(); }
+        if (event.button === 2) {
+          this.close();
+        }
       });
-      this.overlay.addEventListener('click', (event) => {
+      this.overlay.addEventListener('click', event => {
         event.stopPropagation();
-        if (event.composedPath().some((node) => node instanceof HTMLElement && node.classList.contains('emote-wheel__back'))) {
+        if (
+          event.composedPath().some(node => node instanceof HTMLElement && node.classList.contains('emote-wheel__back'))
+        ) {
           this.setGroup(null);
           return;
         }
         const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-index]');
-        if (button) { this.select(Number(button.dataset.index)); }
+        if (button) {
+          this.select(Number(button.dataset.index));
+        }
         this.executeSelection();
       });
-      this.overlay.addEventListener('contextmenu', (event) => { event.preventDefault(); event.stopPropagation(); });
-      this.overlay.addEventListener('wheel', (event) => { event.preventDefault(); event.stopPropagation(); }, { passive: false });
+      this.overlay.addEventListener('contextmenu', event => {
+        event.preventDefault();
+        event.stopPropagation();
+      });
+      this.overlay.addEventListener(
+        'wheel',
+        event => {
+          event.preventDefault();
+          event.stopPropagation();
+        },
+        { passive: false },
+      );
       this.setGroup(null);
     } else {
       void this.renderIcons();
     }
   }
 
-  private get overlay(): HTMLElement { return this.shadowRoot!.querySelector<HTMLElement>('.emote-overlay')!; }
+  private get overlay(): HTMLElement {
+    return this.shadowRoot!.querySelector<HTMLElement>('.emote-overlay')!;
+  }
 
   private setGroup(group: EmoteGroup | null): void {
     this.group = group;
-    this.items = group === null ? GROUPS : (Object.keys(EMOTES) as EmoteName[])
-      .filter((id) => EMOTES[id].group === group)
-      .map((id) => ({ label: EMOTES[id].label, icon: id, emote: id }));
+    this.items =
+      group === null
+        ? GROUPS
+        : (Object.keys(EMOTES) as EmoteName[])
+            .filter(id => EMOTES[id].group === group)
+            .map(id => ({ label: EMOTES[id].label, icon: id, emote: id }));
     const container = this.shadowRoot!.querySelector<HTMLElement>('.emote-wheel__items')!;
-    container.replaceChildren(...this.items.map((item, index) => {
-      const angle = index * Math.PI * 2 / this.items.length;
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.className = 'emote-wheel__item';
-      button.dataset.index = String(index);
-      if (item.emote) { button.dataset.emote = item.emote; }
-      if (item.group) { button.dataset.group = item.group; }
-      button.setAttribute('aria-label', item.label);
-      button.setAttribute('aria-pressed', 'false');
-      button.style.left = `${50 + Math.sin(angle) * 38}%`;
-      button.style.top = `${50 - Math.cos(angle) * 38}%`;
-      const canvas = document.createElement('canvas');
-      canvas.setAttribute('aria-hidden', 'true');
-      canvas.dataset.element = `gesture_wilson_${item.icon}.tex`;
-      const text = document.createElement('span');
-      text.textContent = item.label;
-      button.append(canvas, text);
-      button.addEventListener('pointerenter', () => this.select(index));
-      button.addEventListener('focus', () => this.select(index));
-      return button;
-    }));
+    container.replaceChildren(
+      ...this.items.map((item, index) => {
+        const angle = (index * Math.PI * 2) / this.items.length;
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'emote-wheel__item';
+        button.dataset.index = String(index);
+        if (item.emote) {
+          button.dataset.emote = item.emote;
+        }
+        if (item.group) {
+          button.dataset.group = item.group;
+        }
+        button.setAttribute('aria-label', item.label);
+        button.setAttribute('aria-pressed', 'false');
+        button.style.left = `${50 + Math.sin(angle) * 38}%`;
+        button.style.top = `${50 - Math.cos(angle) * 38}%`;
+        const canvas = document.createElement('canvas');
+        canvas.setAttribute('aria-hidden', 'true');
+        canvas.dataset.element = `gesture_wilson_${item.icon}.tex`;
+        const text = document.createElement('span');
+        text.textContent = item.label;
+        button.append(canvas, text);
+        button.addEventListener('pointerenter', () => this.select(index));
+        button.addEventListener('focus', () => this.select(index));
+        return button;
+      }),
+    );
     this.shadowRoot!.querySelector<HTMLElement>('.emote-wheel__back')!.hidden = group === null;
     this.selected = -1;
     this.select(-1);
@@ -144,13 +186,15 @@ export class DstEmoteWheelElement extends AssetElement {
       button.classList.toggle('is-selected', index === i);
       button.setAttribute('aria-pressed', String(index === i));
     });
-    this.shadowRoot!.querySelector<HTMLElement>('.emote-wheel__label')!.textContent = this.items[index]?.label
-      ?? (this.group === null ? '选择分类' : this.group === 'emotion' ? '情绪' : '动作');
+    this.shadowRoot!.querySelector<HTMLElement>('.emote-wheel__label')!.textContent =
+      this.items[index]?.label ?? (this.group === null ? '选择分类' : this.group === 'emotion' ? '情绪' : '动作');
   }
 
   private executeSelection(): void {
     const item = this.items[this.selected];
-    if (!item) { return; }
+    if (!item) {
+      return;
+    }
     if (item.group) {
       this.setGroup(item.group);
     } else if (item.emote) {
@@ -169,29 +213,50 @@ export class DstEmoteWheelElement extends AssetElement {
       return;
     }
     const angle = (Math.atan2(x, -y) + Math.PI * 2) % (Math.PI * 2);
-    this.select(Math.round(angle * this.items.length / (Math.PI * 2)) % this.items.length);
+    this.select(Math.round((angle * this.items.length) / (Math.PI * 2)) % this.items.length);
   };
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     // KeyboardEvent.target is retargeted to a host for inputs inside shadow DOM.
-    if (event.composedPath().some((node) => node instanceof HTMLInputElement
-      || node instanceof HTMLTextAreaElement || (node instanceof HTMLElement && node.isContentEditable))) { return; }
-    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) { return; }
+    if (
+      event
+        .composedPath()
+        .some(
+          node =>
+            node instanceof HTMLInputElement ||
+            node instanceof HTMLTextAreaElement ||
+            (node instanceof HTMLElement && node.isContentEditable),
+        )
+    ) {
+      return;
+    }
+    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) {
+      return;
+    }
     if (event.code === 'KeyG' || (this.opened && event.code === 'Escape')) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (event.repeat) { return; }
-      if (this.opened) { this.close(); }
-      else { this.open(); }
+      if (event.repeat) {
+        return;
+      }
+      if (this.opened) {
+        this.close();
+      } else {
+        this.open();
+      }
     }
   };
 
   private readonly handleConsoleToggle = (event: GameUiEventMap['game:debug-console-toggle']): void => {
-    if (event.detail.isOpen) { this.close(); }
+    if (event.detail.isOpen) {
+      this.close();
+    }
   };
 
   private readonly handleVisibilityChange = (): void => {
-    if (document.hidden) { this.close(); }
+    if (document.hidden) {
+      this.close();
+    }
   };
 
   private emit<T>(type: string, detail: T): void {
@@ -204,19 +269,27 @@ export class DstEmoteWheelElement extends AssetElement {
     const url = this.dataAsset('images/emotes_wilson.xml');
     try {
       const atlas = await loadImageAtlasFiles(url);
-      if (request !== this.iconRequest || !this.isConnected) { return; }
+      if (request !== this.iconRequest || !this.isConnected) {
+        return;
+      }
       for (const canvas of canvases) {
         const sprite = atlas.require(canvas.dataset.element!);
         canvas.width = sprite.width;
         canvas.height = sprite.height;
         const context = canvas.getContext('2d');
-        if (!context) { throw new Error('Canvas 2D context is unavailable'); }
+        if (!context) {
+          throw new Error('Canvas 2D context is unavailable');
+        }
         context.putImageData(new ImageData(Uint8ClampedArray.from(sprite.pixels), sprite.width, sprite.height), 0, 0);
         canvas.dataset.loaded = 'true';
       }
     } catch (error) {
-      if (request !== this.iconRequest) { return; }
-      for (const canvas of canvases) { canvas.dataset.error = error instanceof Error ? error.message : String(error); }
+      if (request !== this.iconRequest) {
+        return;
+      }
+      for (const canvas of canvases) {
+        canvas.dataset.error = error instanceof Error ? error.message : String(error);
+      }
     }
   }
 }

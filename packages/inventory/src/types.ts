@@ -1,4 +1,3 @@
-
 export type EquipmentKind = 'hand' | 'body' | 'head';
 
 /**

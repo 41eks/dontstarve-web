@@ -12,13 +12,16 @@ import { testItem } from './testInventory';
 function itemWorkable(workleft = 3) {
   const entity = testItem({ itemId: 'test_workable', count: 1 });
   const work = addComponent(entity, 'workable', Workable);
-  work.SetWorkAction('HAMMER'); work.SetWorkLeft(workleft);
+  work.SetWorkAction('HAMMER');
+  work.SetWorkLeft(workleft);
   return { entity, work };
 }
 
 it('publishes readonly work and derived eligibility, while successful work explicitly finishes in Lua event order', () => {
   const { entity, work } = itemWorkable();
-  const changed = vi.fn(), finish = vi.fn(), events: string[] = [];
+  const changed = vi.fn(),
+    finish = vi.fn(),
+    events: string[] = [];
   const stop = work.workleft.subscribe(changed);
   entity.ListenForEvent('worked', () => {
     events.push('worked');
@@ -27,10 +30,17 @@ it('publishes readonly work and derived eligibility, while successful work expli
   entity.ListenForEvent('workfinished', () => events.push('workfinished'));
   // The worker is a player inst; workable pushes "working" and "finishedwork" on it.
   const worker = testPlayer();
-  for (const name of ['working', 'finishedwork']) { worker.ListenForEvent(name, () => events.push(name)); }
-  const worked = vi.fn(() => { events.push('onwork'); });
+  for (const name of ['working', 'finishedwork']) {
+    worker.ListenForEvent(name, () => events.push(name));
+  }
+  const worked = vi.fn(() => {
+    events.push('onwork');
+  });
   work.SetOnWorkCallback(worked);
-  work.SetOnFinishCallback((inst, doer) => { events.push('onfinish'); finish(inst, doer); });
+  work.SetOnFinishCallback((inst, doer) => {
+    events.push('onfinish');
+    finish(inst, doer);
+  });
   try {
     for (const signal of [work.workleft, work.enabled, work.action, work.canBeWorked, work.actionTag, entity.removal]) {
       expect('set' in signal).toBe(false);
@@ -46,24 +56,44 @@ it('publishes readonly work and derived eligibility, while successful work expli
     expect(work.WorkedBy(worker)).toBe(false);
     expect(changed).toHaveBeenCalledExactlyOnceWith(2, 3);
     work.SetWorkable(true);
-    work.WorkedBy(worker); work.WorkedBy(worker);
+    work.WorkedBy(worker);
+    work.WorkedBy(worker);
     expect(work.workleft.peek()).toBe(0);
     expect(work.canBeWorked.peek()).toBe(false);
     expect(work.actionTag.peek()).toBeUndefined();
     expect(entity.hasTag('HAMMER_workable')).toBe(false);
-    expect(events).toEqual(['working', 'worked', 'onwork', 'working', 'worked', 'onwork',
-      'working', 'worked', 'onwork', 'onfinish', 'workfinished', 'finishedwork']);
+    expect(events).toEqual([
+      'working',
+      'worked',
+      'onwork',
+      'working',
+      'worked',
+      'onwork',
+      'working',
+      'worked',
+      'onwork',
+      'onfinish',
+      'workfinished',
+      'finishedwork',
+    ]);
     expect(finish).toHaveBeenCalledExactlyOnceWith(entity, worker);
     expect(work.WorkedBy(worker)).toBe(false);
-    work.SetWorkLeft(2); work.OnLoad({ workleft: 0 });
+    work.SetWorkLeft(2);
+    work.OnLoad({ workleft: 0 });
     expect(finish).toHaveBeenCalledOnce(); // Restoring zero updates state; it does not perform work.
-  } finally { stop(); entity.destroy(); }
+  } finally {
+    stop();
+    entity.destroy();
+  }
 });
 
 it('reads current action eligibility during a transaction and publishes only the committed derived state', () => {
   const { entity, work } = itemWorkable(2);
-  const canWork = vi.fn(), tags = vi.fn(), finish = vi.fn();
-  const stopWork = work.canBeWorked.subscribe(canWork), stopTags = work.actionTag.subscribe(tags);
+  const canWork = vi.fn(),
+    tags = vi.fn(),
+    finish = vi.fn();
+  const stopWork = work.canBeWorked.subscribe(canWork),
+    stopTags = work.actionTag.subscribe(tags);
   work.SetOnFinishCallback(finish);
   try {
     batch(() => {
@@ -85,14 +115,23 @@ it('reads current action eligibility during a transaction and publishes only the
     expect(canWork).toHaveBeenCalledExactlyOnceWith(false, true);
     expect(tags).toHaveBeenCalledExactlyOnceWith(undefined, 'HAMMER_workable');
     expect(finish).not.toHaveBeenCalled();
-  } finally { stopWork(); stopTags(); entity.destroy(); }
+  } finally {
+    stopWork();
+    stopTags();
+    entity.destroy();
+  }
 });
 
 it('preserves savestate rules and reacts to world removal, releasing memo dependencies on component disposal', () => {
-  const source = itemWorkable(), ordinary = itemWorkable(), persistent = itemWorkable();
-  const model = withEntity(new THREE.Group(), 'test_world'), entity = registerActionEntity(prefabInstance(model)!);
+  const source = itemWorkable(),
+    ordinary = itemWorkable(),
+    persistent = itemWorkable();
+  const model = withEntity(new THREE.Group(), 'test_world'),
+    entity = registerActionEntity(prefabInstance(model)!);
   const work = addComponent(prefabInstance(model)!, 'workable', Workable);
-  const reads = vi.spyOn(entity.removal, 'get'), eligibility = vi.fn(), finish = vi.fn();
+  const reads = vi.spyOn(entity.removal, 'get'),
+    eligibility = vi.fn(),
+    finish = vi.fn();
   const stop = work.canBeWorked.subscribe(eligibility);
   work.SetOnFinishCallback(finish);
   try {
@@ -119,5 +158,12 @@ it('preserves savestate rules and reacts to world removal, releasing memo depend
     expect(work.workleft.peek()).toBe(10);
     expect(work.canBeWorked.peek()).toBe(false);
     expect(work.actionTag.peek()).toBeUndefined();
-  } finally { stop(); reads.mockRestore(); work.dispose(); source.entity.destroy(); ordinary.entity.destroy(); persistent.entity.destroy(); }
+  } finally {
+    stop();
+    reads.mockRestore();
+    work.dispose();
+    source.entity.destroy();
+    ordinary.entity.destroy();
+    persistent.entity.destroy();
+  }
 });

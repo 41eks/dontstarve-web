@@ -15,10 +15,7 @@ import { createSceneEntities } from './sceneEntities';
 import type { EntityRegistry } from './entityRegistry';
 import { player, playerBody, playerInstance, disposePlayer } from './player';
 import { GetSpeedMultiplier } from '@dontstarve-web/prefab/player_common';
-import {
-  type PlaceableBuildingInteractionChange,
-  type PlaceableBuildingId,
-} from './placeableBuilding';
+import { type PlaceableBuildingInteractionChange, type PlaceableBuildingId } from './placeableBuilding';
 import { dstLighting, scene } from './universal';
 import { updateMovement } from './updatePlayerMovement';
 import { view } from './view';
@@ -86,7 +83,10 @@ middleTasks.push((dt: number) => {
 middleTasks.push(updateAnimation);
 
 // The debugger adds a mesh per body shape (thousands in the Caves); opt in with ?physicsDebug.
-if (!window.location.hostname.endsWith('github.io') && new URLSearchParams(window.location.search).has('physicsDebug')) {
+if (
+  !window.location.hostname.endsWith('github.io') &&
+  new URLSearchParams(window.location.search).has('physicsDebug')
+) {
   const cannonDebugger = CannonDebugger(scene, world, {
     color: 0x00ff00,
   });
@@ -99,8 +99,11 @@ export async function startScene(
   inventory: InventoryStore,
 ) {
   const blockDisabledController = (event: PointerEvent) => {
-    if (playerInstance.controllerEnabled) { return; }
-    event.preventDefault(); event.stopImmediatePropagation();
+    if (playerInstance.controllerEnabled) {
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
   };
   view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
   playerInstance.locomotor = locomotor;
@@ -108,15 +111,23 @@ export async function startScene(
   const scheduler = worldState.scheduler;
   const perishWorld: PerishWorld = { perishClock: worldState.perishClock, scheduler };
   inventory.entities.bindPerishWorld(perishWorld);
-  const entities = await createSceneEntities(world, worldState, consumeBufferedBuild,
-    onBuildingInteraction, inventory, scheduler);
+  const entities = await createSceneEntities(
+    world,
+    worldState,
+    consumeBufferedBuild,
+    onBuildingInteraction,
+    inventory,
+    scheduler,
+  );
   const { registry, prefabs } = entities;
   // The player is not SpawnPrefab'd here, but it is in Ents: TheSim queries find it and it queries through them.
   prefabs.track(playerInstance);
   try {
     // Scan the save here; the archive worker decodes the needed art while entities restore and share its cache.
-    void preloadAnimationArchives(savedPrefabArchives(registry.prefabDefinitions, initialSave.world.entities),
-      `${import.meta.env.BASE_URL}dst/data/anim`);
+    void preloadAnimationArchives(
+      savedPrefabArchives(registry.prefabDefinitions, initialSave.world.entities),
+      `${import.meta.env.BASE_URL}dst/data/anim`,
+    );
     await registry.restoreAll(initialSave.world.entities);
   } catch (error) {
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
@@ -162,27 +173,40 @@ export async function startScene(
     clockUpdater.flush();
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     return {
-      entities: registry.exportRecords(), elapsedSeconds: clockUpdater.elapsedSeconds, tiles: turfMap.exportTiles(),
+      entities: registry.exportRecords(),
+      elapsedSeconds: clockUpdater.elapsedSeconds,
+      tiles: turfMap.exportTiles(),
       worldtemperature: worldState.worldtemperature.OnSave(),
       weather: worldState.weather.OnSave(),
       nightmareclock: worldState.nightmareclock?.OnSave(),
       moon: { mooomphasecycle: worldState.moonPhaseCycle() },
       // Physics may place the foot a fraction below the ground while settling.
-      playerTransform: { position: [player.position.x, Math.max(0, player.position.y), player.position.z], rotationY: 0 },
+      playerTransform: {
+        position: [player.position.x, Math.max(0, player.position.y), player.position.z],
+        rotationY: 0,
+      },
     };
   };
   const removeLocomotorInput = setupLocomotorInput(view, locomotor);
-  const stopMovementEvents = bindActionCancellation(view, locomotor, () => locomotor.stop(),
-    reason => reason === 'crafting' || reason === 'emote');
+  const stopMovementEvents = bindActionCancellation(
+    view,
+    locomotor,
+    () => locomotor.stop(),
+    reason => reason === 'crafting' || reason === 'emote',
+  );
   let animation: ReturnType<typeof animate> | undefined;
   let startPromise: Promise<void> | undefined;
   let disposed = false;
   let preparing = false;
   const preparation = new AbortController();
   const start = (): Promise<void> => {
-    if (startPromise) { return startPromise; }
+    if (startPromise) {
+      return startPromise;
+    }
     startPromise = (async () => {
-      if (disposed) { throw new Error('Cannot start a disposed scene'); }
+      if (disposed) {
+        throw new Error('Cannot start a disposed scene');
+      }
       const { width, height } = view.renderer.domElement.getBoundingClientRect();
       camera.aspect = width / Math.max(1, height);
       camera.updateProjectionMatrix();
@@ -194,16 +218,22 @@ export async function startScene(
         const results = await Promise.allSettled([
           dstLighting.prewarm(scene, camera, preparation.signal),
           PrewarmSounds(),
-          prewarmCachedBuilds(playerInstance.equipmentAssets,
-            ['pan_flute.zip', ...Object.values(GROUND_ITEM_DEFINITIONS.panflute.skinArchives)]),
+          prewarmCachedBuilds(playerInstance.equipmentAssets, [
+            'pan_flute.zip',
+            ...Object.values(GROUND_ITEM_DEFINITIONS.panflute.skinArchives),
+          ]),
         ]);
         for (const result of results) {
-          if (result.status === 'rejected') { throw result.reason; }
+          if (result.status === 'rejected') {
+            throw result.reason;
+          }
         }
       } finally {
         preparing = false;
       }
-      if (disposed) { throw new Error('Scene disposed while preparing'); }
+      if (disposed) {
+        throw new Error('Scene disposed while preparing');
+      }
       animation = animate(world, camera);
       await animation.ready;
     })();
@@ -211,25 +241,39 @@ export async function startScene(
   };
   const disposalEvents = new EventEmitter<DisposalEvents>();
   const dispose = () => {
-    if (disposed) { return; }
+    if (disposed) {
+      return;
+    }
     disposed = true;
     preparation.abort();
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
-    if (playerInstance.locomotor === locomotor) { delete playerInstance.locomotor; }
+    if (playerInstance.locomotor === locomotor) {
+      delete playerInstance.locomotor;
+    }
     animation?.stop();
-    if (playerInstance.components.builder === builder) { removeComponent(playerInstance, 'builder'); }
+    if (playerInstance.components.builder === builder) {
+      removeComponent(playerInstance, 'builder');
+    }
     RemoveSlipperyFeet(playerInstance);
     const slipTask = backTasks.indexOf(updateSlipperyFeet);
-    if (slipTask >= 0) { backTasks.splice(slipTask, 1); }
+    if (slipTask >= 0) {
+      backTasks.splice(slipTask, 1);
+    }
     clockUpdater.flush();
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     locomotor.stop();
     removeLocomotorInput();
     stopMovementEvents();
     disposalEvents.emit('dispose', undefined);
-    for (const [tasks, task] of [[middleTasks, updateBeforePhysics], [backTasks, updateEntities], [backTasks, clockUpdater.update]] as const) {
+    for (const [tasks, task] of [
+      [middleTasks, updateBeforePhysics],
+      [backTasks, updateEntities],
+      [backTasks, clockUpdater.update],
+    ] as const) {
       const index = tasks.indexOf(task);
-      if (index >= 0) { tasks.splice(index, 1); }
+      if (index >= 0) {
+        tasks.splice(index, 1);
+      }
     }
     const releaseResources = () => {
       entities.dispose();
@@ -243,15 +287,26 @@ export async function startScene(
     };
     // compileAsync still polls its materials: retain them until the in-flight
     // batch settles, while aborting all subsequent uploads and scene startup.
-    if (preparing) { void startPromise?.catch(() => undefined).then(releaseResources); }
-    else { releaseResources(); }
+    if (preparing) {
+      void startPromise?.catch(() => undefined).then(releaseResources);
+    } else {
+      releaseResources();
+    }
   };
-  return { ...entities, byEntityId: registry.byEntityId, scheduler, weather: worldState.weather,
+  return {
+    ...entities,
+    byEntityId: registry.byEntityId,
+    scheduler,
+    weather: worldState.weather,
     getWatchWorldContent: worldState.getWatchWorldContent,
     moon: { SetMoonPhase: worldState.SetMoonPhase },
-    getSaveState, disposalEvents, start, dispose };
+    getSaveState,
+    disposalEvents,
+    start,
+    dispose,
+  };
 }
 
-export function scene_add(model:THREE.Object3D){
-  scene.add(model)
+export function scene_add(model: THREE.Object3D) {
+  scene.add(model);
 }

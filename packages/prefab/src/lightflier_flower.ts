@@ -32,11 +32,18 @@ export interface LightFlierFlowerSave extends PickableSaveState {
 
 /** STATE_ANIMS: the first clip once, then the second; only `idle` loops. */
 const STATE_ANIMS: Readonly<Record<BulbPlantLightState, readonly [string, string]>> = {
-  ON: ['recharge', 'idle'], CHARGED: ['revive', 'off'], RECHARGING: ['drain', 'withered'],
+  ON: ['recharge', 'idle'],
+  CHARGED: ['revive', 'off'],
+  RECHARGING: ['drain', 'withered'],
 };
-const LIGHT_MIN_TIME = 4, LIGHT_MAX_TIME = 8;
+const LIGHT_MIN_TIME = 4,
+  LIGHT_MAX_TIME = 8;
 /** tuning.lua LIGHTFLIER_FLOWER_RECHARGE_TIME, _LIGHT_TIME, _LIGHT_TIME_VARIANCE, _RECALL_DELAY, _RECALL_DELAY_VARIANCE. */
-const RECHARGE_TIME = 110, LIGHT_TIME = 140, LIGHT_TIME_VARIANCE = 50, RECALL_DELAY = 60, RECALL_DELAY_VARIANCE = 60;
+const RECHARGE_TIME = 110,
+  LIGHT_TIME = 140,
+  LIGHT_TIME_VARIANCE = 50,
+  RECALL_DELAY = 60,
+  RECALL_DELAY_VARIANCE = 60;
 /** tuning.lua LIGHTFLIER_FLOWER_TARGET_NUM_CHILDREN_OUTSIDE. */
 const TARGET_NUM_CHILDREN_OUTSIDE = 1;
 const RECALL_FREQUENCY = 8;
@@ -56,8 +63,14 @@ export interface LightFlierFlowerWorld {
 
 /** lightflier_flower.lua commonfn + single: the plant's own fields. */
 export class LightFlierFlowerInstance extends PrefabInstance {
-  declare readonly components: PrefabInstance['components'] & { pickable: Pickable; timer: Timer;
-    childspawner: ChildSpawner<LightFlierFlowerInstance, LightFlier>; burnable: Burnable; propagator: Propagator; hauntable: Hauntable };
+  declare readonly components: PrefabInstance['components'] & {
+    pickable: Pickable;
+    timer: Timer;
+    childspawner: ChildSpawner<LightFlierFlowerInstance, LightFlier>;
+    burnable: Burnable;
+    propagator: Propagator;
+    hauntable: Hauntable;
+  };
   readonly world: LightFlierFlowerWorld;
   plantname: LightFlierFlowerSave['variant'];
   light_state: BulbPlantLightState = 'CHARGED';
@@ -77,7 +90,7 @@ export class LightFlierFlowerInstance extends PrefabInstance {
     super(LIGHTFLIER_FLOWER_ID, new SpriteState({ name: 'off', held: true, billboard: true }));
     this.world = world;
     this.AnimState.DeclareAnimationAssets(LIGHTFLIER_FLOWER_ANIMATION_ARCHIVES, art);
-    this.plantname = random(world) < .5 ? 'single' : 'springy';
+    this.plantname = random(world) < 0.5 ? 'single' : 'springy';
     SetPlantArt(this);
     this._lightstart = world.scheduler.now - this._lighttime;
   }
@@ -93,15 +106,22 @@ function SetPlantArt(inst: LightFlierFlowerInstance): void {
   inst.AnimState.SetBuild(`bulb_plant_${inst.plantname}.zip`);
 }
 /** math.random(LIGHT_MIN_TIME, LIGHT_MAX_TIME). */
-const tweenTime = (inst: LightFlierFlowerInstance) => LIGHT_MIN_TIME + Math.min(LIGHT_MAX_TIME - LIGHT_MIN_TIME, Math.floor(random(inst.world) * 5));
+const tweenTime = (inst: LightFlierFlowerInstance) =>
+  LIGHT_MIN_TIME + Math.min(LIGHT_MAX_TIME - LIGHT_MIN_TIME, Math.floor(random(inst.world) * 5));
 
 /** OnLightDirty / OnUpdateLight, stepped every FRAMES by _lighttask until the tween ends. */
 function OnUpdateLight(inst: LightFlierFlowerInstance): void {
-  if (inst.isRemoved) { return; }
-  const remaining = inst._lightstart + inst._lighttime - inst.world.scheduler.now, done = remaining <= 1e-9;
+  if (inst.isRemoved) {
+    return;
+  }
+  const remaining = inst._lightstart + inst._lighttime - inst.world.scheduler.now,
+    done = remaining <= 1e-9;
   inst.light.set(bulbPlantLight(inst._islighton, done ? 1 : 1 - remaining / inst._lighttime));
   if (!done && !inst._lighttask) {
-    inst._lighttask = inst.DoTaskInTime(Math.min(FRAMES, remaining), () => { inst._lighttask = undefined; OnUpdateLight(inst); });
+    inst._lighttask = inst.DoTaskInTime(Math.min(FRAMES, remaining), () => {
+      inst._lighttask = undefined;
+      OnUpdateLight(inst);
+    });
   }
 }
 function StartLight(inst: LightFlierFlowerInstance, tween: number): void {
@@ -129,13 +149,17 @@ function SpawnLightflierFromStalk(inst: LightFlierFlowerInstance): void {
 }
 
 function ForceOff(inst: LightFlierFlowerInstance): void {
-  if (inst.light_state === 'ON') { SetLightState(inst, 'RECHARGING'); }
+  if (inst.light_state === 'ON') {
+    SetLightState(inst, 'RECHARGING');
+  }
   inst._islighton = false;
   EndLight(inst);
 }
 
 function ForceOn(inst: LightFlierFlowerInstance): void {
-  if (!inst.components.pickable.canBePicked) { return; }
+  if (!inst.components.pickable.canBePicked) {
+    return;
+  }
   SetLightState(inst, 'ON');
   inst._islighton = true;
   EndLight(inst);
@@ -150,18 +174,25 @@ function TurnOff(inst: LightFlierFlowerInstance): void {
 }
 
 function TurnOn(inst: LightFlierFlowerInstance): void {
-  if (!inst.components.pickable.canBePicked || inst.light_state !== 'CHARGED') { return; }
+  if (!inst.components.pickable.canBePicked || inst.light_state !== 'CHARGED') {
+    return;
+  }
   SetLightState(inst, 'ON');
   inst._islighton = true;
   StartLight(inst, tweenTime(inst));
   if (!inst.components.timer.TimerExists('turnoff')) {
-    inst.components.timer.StartTimer('turnoff', LIGHT_TIME + inst._lighttime + random(inst.world) * LIGHT_TIME_VARIANCE);
+    inst.components.timer.StartTimer(
+      'turnoff',
+      LIGHT_TIME + inst._lighttime + random(inst.world) * LIGHT_TIME_VARIANCE,
+    );
   }
 }
 
 function Recharge(inst: LightFlierFlowerInstance): void {
   SetLightState(inst, 'CHARGED');
-  if (IsInLight(inst)) { TurnOn(inst); }
+  if (IsInLight(inst)) {
+    TurnOn(inst);
+  }
 }
 
 function CancelCallForLightflierTask(inst: LightFlierFlowerInstance): void {
@@ -176,21 +207,31 @@ function CallForLightflier(inst: LightFlierFlowerInstance): void {
     return;
   }
   const returning = inst._lightflier_returning_home;
-  if (returning?.isValid() && !returning.components.formationfollower.active) { return; }
-  inst._lightflier_returning_home = [...childspawner.childrenoutside].find(fly => !fly.components.formationfollower.active);
+  if (returning?.isValid() && !returning.components.formationfollower.active) {
+    return;
+  }
+  inst._lightflier_returning_home = [...childspawner.childrenoutside].find(
+    fly => !fly.components.formationfollower.active,
+  );
 }
 
 function StartCallForLightflierTask(inst: LightFlierFlowerInstance): void {
   CancelCallForLightflierTask(inst);
-  inst._call_for_lightflier_task = inst.DoPeriodicTask(RECALL_FREQUENCY, CallForLightflier,
-    RECALL_DELAY + random(inst.world) * RECALL_DELAY_VARIANCE);
+  inst._call_for_lightflier_task = inst.DoPeriodicTask(
+    RECALL_FREQUENCY,
+    CallForLightflier,
+    RECALL_DELAY + random(inst.world) * RECALL_DELAY_VARIANCE,
+  );
 }
 
 function ontimerdone(inst: LightFlierFlowerInstance, { name }: EntityEventData['timerdone']): void {
-  if (name === 'recharge') { Recharge(inst); }
-  else if (name === 'turnoff') {
+  if (name === 'recharge') {
+    Recharge(inst);
+  } else if (name === 'turnoff') {
     TurnOff(inst);
-    if (inst.components.pickable.canBePicked) { inst.components.pickable.Pick(); }
+    if (inst.components.pickable.canBePicked) {
+      inst.components.pickable.Pick();
+    }
   }
 }
 
@@ -205,7 +246,9 @@ function onpickedfn(inst: LightFlierFlowerInstance, picker: unknown): void {
   ForceOff(inst);
   inst.components.timer.StopTimer('turnoff');
   inst.components.timer.StopTimer('recharge');
-  if (picker) { inst.SoundEmitter!.PlaySound('dontstarve/wilson/pickup_lightbulb'); }
+  if (picker) {
+    inst.SoundEmitter!.PlaySound('dontstarve/wilson/pickup_lightbulb');
+  }
   inst.sprite.playOnce('picking');
   inst.sprite.pushAnimation(inst.components.pickable.IsBarren() ? 'idle_dead' : 'picked', false);
   // Do not regrow until the population is lower than max.
@@ -222,33 +265,49 @@ function makeemptyfn(inst: LightFlierFlowerInstance): void {
 
 function OnIgnite(inst: LightFlierFlowerInstance): void {
   TurnOff(inst);
-  if (inst.components.pickable.canBePicked) { inst.components.pickable.Pick(); }
-  else if (inst.sprite.currentAnimation === 'picking') { inst.sprite.pushAnimation('picked', false); }
-  else { inst.sprite.playOnce('picked'); }
+  if (inst.components.pickable.canBePicked) {
+    inst.components.pickable.Pick();
+  } else if (inst.sprite.currentAnimation === 'picking') {
+    inst.sprite.pushAnimation('picked', false);
+  } else {
+    inst.sprite.playOnce('picked');
+  }
 }
 
 /** LightWatcher:IsInLight with SetLightThresh(.075) / SetDarkThresh(.05). */
 function IsInLight(inst: LightFlierFlowerInstance): boolean {
   const level = inst.world.getLightLevel(inst.transform.model);
-  inst._inlight = inst._inlight ? level > .05 : level >= .075;
+  inst._inlight = inst._inlight ? level > 0.05 : level >= 0.075;
   return inst._inlight;
 }
 
 /** The LightWatcher's enterlight, sampled every BULB_PLANT_LIGHT_SAMPLE_INTERVAL while awake. */
 function WatchLight(inst: LightFlierFlowerInstance): void {
   const wasInLight = inst._inlight;
-  if (IsInLight(inst) && !wasInLight) { TurnOn(inst); }
+  if (IsInLight(inst) && !wasInLight) {
+    TurnOn(inst);
+  }
 }
 
 /** OnEntityWake: the LightWatcher starts "in light", so TurnOnInLight waits a second; OnEntitySleep stops sampling. */
 function OnEntityWake(inst: LightFlierFlowerInstance, awake: boolean): void {
-  inst._lightwatchtask?.Cancel(); inst._lightwatchtask = undefined;
-  if (!awake) { return; }
+  inst._lightwatchtask?.Cancel();
+  inst._lightwatchtask = undefined;
+  if (!awake) {
+    return;
+  }
   inst._inlight = true;
   IsInLight(inst);
-  inst._lightwatchtask = inst.DoPeriodicTask(BULB_PLANT_LIGHT_SAMPLE_INTERVAL, WatchLight,
-    BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (.5 + random(inst.world) * .5));
-  inst.DoTaskInTime(1, flower => { if (IsInLight(flower)) { TurnOn(flower); } });
+  inst._lightwatchtask = inst.DoPeriodicTask(
+    BULB_PLANT_LIGHT_SAMPLE_INTERVAL,
+    WatchLight,
+    BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (0.5 + random(inst.world) * 0.5),
+  );
+  inst.DoTaskInTime(1, flower => {
+    if (IsInLight(flower)) {
+      TurnOn(flower);
+    }
+  });
   OnUpdateLight(inst);
 }
 
@@ -256,29 +315,48 @@ function OnSave(flower: LightFlierFlowerInstance, data: EntityPersistData): void
   const { pickable, childspawner, timer } = flower.components;
   const children = childspawner.OnSave();
   children.childrenoutside.push(...flower._pendingchildren);
-  const recharge = timer.GetTimeLeft('recharge'), turnoff = timer.GetTimeLeft('turnoff');
-  data.lightflierFlower = { variant: flower.plantname, lightState: flower.light_state, ...pickable.exportState(), childspawner: children,
-    ...recharge === undefined ? {} : { rechargeSeconds: recharge }, ...turnoff === undefined ? {} : { turnoffSeconds: turnoff } };
+  const recharge = timer.GetTimeLeft('recharge'),
+    turnoff = timer.GetTimeLeft('turnoff');
+  data.lightflierFlower = {
+    variant: flower.plantname,
+    lightState: flower.light_state,
+    ...pickable.exportState(),
+    childspawner: children,
+    ...(recharge === undefined ? {} : { rechargeSeconds: recharge }),
+    ...(turnoff === undefined ? {} : { turnoffSeconds: turnoff }),
+  };
   // The record keeps these components' state inside lightflierFlower.
-  delete data.pickable; delete data.childspawner; delete data.timer;
+  delete data.pickable;
+  delete data.childspawner;
+  delete data.timer;
 }
 
 /** onload_single and OnLoadPostPass: the settled clip of the saved state, then the children outside as they load. */
 function OnLoad(flower: LightFlierFlowerInstance, data: EntityPersistData): void {
   const saved = data.lightflierFlower;
-  if (!saved) { return; }
+  if (!saved) {
+    return;
+  }
   const { pickable, childspawner, timer } = flower.components;
   flower.plantname = saved.variant;
   SetPlantArt(flower);
   pickable.OnLoad(saved);
   flower.light_state = saved.lightState;
   childspawner.OnLoad(saved.childspawner);
-  if (saved.rechargeSeconds !== undefined) { timer.StartTimer('recharge', saved.rechargeSeconds); }
-  if (saved.turnoffSeconds !== undefined) { timer.StartTimer('turnoff', saved.turnoffSeconds); }
+  if (saved.rechargeSeconds !== undefined) {
+    timer.StartTimer('recharge', saved.rechargeSeconds);
+  }
+  if (saved.turnoffSeconds !== undefined) {
+    timer.StartTimer('turnoff', saved.turnoffSeconds);
+  }
   flower._islighton = saved.lightState === 'ON' && pickable.canBePicked;
-  if (!pickable.canBePicked) { flower.sprite.holdLastFrame('picked'); }
-  else if (flower._islighton) { flower.sprite.start('idle'); }
-  else { flower.sprite.holdLastFrame(STATE_ANIMS[flower.light_state][1]); }
+  if (!pickable.canBePicked) {
+    flower.sprite.holdLastFrame('picked');
+  } else if (flower._islighton) {
+    flower.sprite.start('idle');
+  } else {
+    flower.sprite.holdLastFrame(STATE_ANIMS[flower.light_state][1]);
+  }
   EndLight(flower);
   const outside = saved.childspawner.childrenoutside;
   flower._pendingchildren = [...outside];
@@ -289,7 +367,9 @@ function OnLoad(flower: LightFlierFlowerInstance, data: EntityPersistData): void
     });
     flower.onRemove(stop);
   }
-  if (!pickable.canBePicked && outside.length >= TARGET_NUM_CHILDREN_OUTSIDE) { StartCallForLightflierTask(flower); }
+  if (!pickable.canBePicked && outside.length >= TARGET_NUM_CHILDREN_OUTSIDE) {
+    StartCallForLightflierTask(flower);
+  }
 }
 
 function single(world: LightFlierFlowerWorld, art: SpriteResources['archives']): LightFlierFlowerInstance {
@@ -299,45 +379,89 @@ function single(world: LightFlierFlowerWorld, art: SpriteResources['archives']):
   inst.addTag('plant');
   inst.addTag('lightflier_home');
   inst.sprite.playOnce('off');
-  const colour = .75 + random(world) * .25;
+  const colour = 0.75 + random(world) * 0.25;
   inst.sprite.setColour([colour, colour, colour]);
   addComponent(inst, 'timer', Timer, world.scheduler);
-  const pickable = addComponent(inst, 'pickable', Pickable, undefined, LIGHTFLIER_FLOWER_REGROW_TIME, 1,
-    (picker: unknown) => onpickedfn(inst, picker), () => onregenfn(inst), undefined,
-    { scheduler: world.scheduler, onEmpty: () => makeemptyfn(inst) });
+  const pickable = addComponent(
+    inst,
+    'pickable',
+    Pickable,
+    undefined,
+    LIGHTFLIER_FLOWER_REGROW_TIME,
+    1,
+    (picker: unknown) => onpickedfn(inst, picker),
+    () => onregenfn(inst),
+    undefined,
+    { scheduler: world.scheduler, onEmpty: () => makeemptyfn(inst) },
+  );
   pickable.picksound = 'dontstarve/wilson/pickup_reeds';
   addComponent(inst, 'inspectable', Inspectable);
-  const childspawner = addComponent(inst, 'childspawner', ChildSpawner<LightFlierFlowerInstance, LightFlier>, world.scheduler, undefined, world.random);
+  const childspawner = addComponent(
+    inst,
+    'childspawner',
+    ChildSpawner<LightFlierFlowerInstance, LightFlier>,
+    world.scheduler,
+    undefined,
+    world.random,
+  );
   childspawner.onchildkilled = () => pickable.resume();
   childspawner.ongohome = () => {
-    if (!pickable.canBePicked) { pickable.regen(); }
+    if (!pickable.canBePicked) {
+      pickable.regen();
+    }
     ForceOn(inst);
   };
   // MakeMediumBurnable and MakeSmallPropagator.
   const burnable = addComponent(inst, 'burnable', Burnable, world.scheduler);
   burnable.SetBurnTime(20);
-  burnable.SetOnIgniteFn(() => { inst.persists = false; OnIgnite(inst); });
-  burnable.SetOnExtinguishFn(() => { inst.persists = true; });
-  burnable.SetOnBurntFn(() => { world.dropLoot('ash', 1, inst.position.clone()); inst.remove(); });
-  addComponent(inst, 'propagator', Propagator, 'small', () => [], WORLD_SCALE, world.scheduler, world.getWatchWorldContent);
+  burnable.SetOnIgniteFn(() => {
+    inst.persists = false;
+    OnIgnite(inst);
+  });
+  burnable.SetOnExtinguishFn(() => {
+    inst.persists = true;
+  });
+  burnable.SetOnBurntFn(() => {
+    world.dropLoot('ash', 1, inst.position.clone());
+    inst.remove();
+  });
+  addComponent(
+    inst,
+    'propagator',
+    Propagator,
+    'small',
+    () => [],
+    WORLD_SCALE,
+    world.scheduler,
+    world.getWatchWorldContent,
+  );
   // MakeHauntableIgnite's ignite is disabled in the source.
   addComponent(inst, 'hauntable', Hauntable, world.scheduler).SetOnHauntFn(() => false);
   inst.ListenForEvent('timerdone', ontimerdone);
   const status = watchSignal(inst.status, stop => inst.onRemove(stop));
   createEffect(() => OnEntityWake(inst, status.get() === 'active'));
-  inst.onRemove(() => { CancelCallForLightflierTask(inst); inst.light.set(null); });
+  inst.onRemove(() => {
+    CancelCallForLightflierTask(inst);
+    inst.light.set(null);
+  });
   inst.OnSave = OnSave;
   inst.OnLoad = OnLoad;
   return inst;
 }
 
 /** The Prefab lightflier_flower.lua returns. */
-export function lightflierFlowerPrefabs(world: LightFlierFlowerWorld): Readonly<Record<typeof LIGHTFLIER_FLOWER_ID, PrefabEntityDefinition<LightFlierFlowerInstance>>> {
+export function lightflierFlowerPrefabs(
+  world: LightFlierFlowerWorld,
+): Readonly<Record<typeof LIGHTFLIER_FLOWER_ID, PrefabEntityDefinition<LightFlierFlowerInstance>>> {
   return {
     [LIGHTFLIER_FLOWER_ID]: {
       fn: (_position, sprites) => single(world, sprites.archives),
       // The single bank and build; the plantname's SetBank / SetBuild picks the drawn one.
-      assets: { animationArchive: 'bulb_plant_single.zip', buildArchives: ['bulb_plant_single.zip'], bank: 'bulb_plant_single' },
+      assets: {
+        animationArchive: 'bulb_plant_single.zip',
+        buildArchives: ['bulb_plant_single.zip'],
+        bank: 'bulb_plant_single',
+      },
       // Each plant owns its tint (SetMultColour), so its sprites are created with a colour.
       assetOptions: { instancedAnimations: ['idle'], staticBillboard: true, colour: [1, 1, 1] },
       minimapIcon: 'bulb_plant.png',

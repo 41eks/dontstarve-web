@@ -13,6 +13,6 @@ describe('persistent entity IDs', () => {
     vi.stubGlobal('crypto', undefined);
     const ids = Array.from({ length: 100 }, newEntityId);
     expect(new Set(ids).size).toBe(100);
-    expect(ids.every((id) => /^e_[a-zA-Z0-9_]+$/.test(id))).toBe(true);
+    expect(ids.every(id => /^e_[a-zA-Z0-9_]+$/.test(id))).toBe(true);
   });
 });

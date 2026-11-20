@@ -11,12 +11,18 @@ import type { PrefabEntityDefinition, PrefabInstance } from '../../prefab/src/pr
 import { bindTestWorld } from './worldContentFixture';
 
 vi.mock('../../prefab/src/sound', () => ({ PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function setup() {
-  const fetch = vi.fn(() => { throw new Error('Logical plants must not load art'); });
+  const fetch = vi.fn(() => {
+    throw new Error('Logical plants must not load art');
+  });
   vi.stubGlobal('fetch', fetch);
-  const scheduler = new GameTimeScheduler(), fire = FireFxHost.create('/dst/data/anim');
+  const scheduler = new GameTimeScheduler(),
+    fire = FireFxHost.create('/dst/data/anim');
   const { season, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
   const spawnGroundItem = vi.fn();
   const world: PickablePlantWorld = { scheduler, fire, getWatchWorldContent, spawnGroundItem };
@@ -27,12 +33,24 @@ function setup() {
     inst.setPosition(position.x, position.y, position.z);
     return inst;
   };
-  return { world, spawn, scheduler, season, fetch, spawnGroundItem,
-    dispose: () => { fire.dispose(); unbind(); scheduler.dispose(); } };
+  return {
+    world,
+    spawn,
+    scheduler,
+    season,
+    fetch,
+    spawnGroundItem,
+    dispose: () => {
+      fire.dispose();
+      unbind();
+      scheduler.dispose();
+    },
+  };
 }
 
 it('registers grass callbacks without a manager or display, including winter pause, transplant and removal cancellation', () => {
-  const s = setup(), grass = s.spawn(grassPrefabs(s.world).grass);
+  const s = setup(),
+    grass = s.spawn(grassPrefabs(s.world).grass);
   const pickable = grass.components.pickable;
   try {
     expect(pickable.Pick({ giveItem: () => true })).toBe(true);
@@ -58,7 +76,10 @@ it('registers grass callbacks without a manager or display, including winter pau
     s.scheduler.advance(GRASS_REGROW_TIME * 2);
     expect(pickable.state.phase.peek()).toBe('removed');
     expect(s.fetch).not.toHaveBeenCalled();
-  } finally { grass.remove(); s.dispose(); }
+  } finally {
+    grass.remove();
+    s.dispose();
+  }
 });
 
 it('keeps the rock avocado burning callback on its inst and restores a burning mature bush without art', () => {
@@ -70,10 +91,16 @@ it('keeps the rock avocado burning callback on its inst and restores a burning m
     expect(bush.entityId).toBe('burning-bush');
     expect(bush.isRemoved).toBe(true);
     expect(s.spawnGroundItem.mock.calls.map(([item]) => item.itemId)).toEqual([
-      'rock_avocado_fruit', 'rock_avocado_fruit', 'rock_avocado_fruit', 'ash',
+      'rock_avocado_fruit',
+      'rock_avocado_fruit',
+      'rock_avocado_fruit',
+      'ash',
     ]);
     s.scheduler.advance(2000);
     expect(s.spawnGroundItem).toHaveBeenCalledTimes(4);
     expect(s.fetch).not.toHaveBeenCalled();
-  } finally { bush.remove(); s.dispose(); }
+  } finally {
+    bush.remove();
+    s.dispose();
+  }
 });

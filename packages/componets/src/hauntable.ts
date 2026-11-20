@@ -34,7 +34,9 @@ export class Hauntable {
   private readonly panicTask: ComponentTimer;
   private readonly panicking;
   panicable = false;
-  get panic(): boolean { return this.panicking.peek(); }
+  get panic(): boolean {
+    return this.panicking.peek();
+  }
   /** hauntable.lua DefaultOnHauntFn; SetOnHauntFn(nil) leaves DoHaunt only pushing `haunted`. */
   private onhaunt?: HauntableOnHauntFn = () => true;
   private hauntvalue: number | undefined;
@@ -50,20 +52,40 @@ export class Hauntable {
     this.panicking = createMemo(() => this.panicTask.snapshot.get().status === 'scheduled');
   }
 
-  get cooldownState() { return this.cooldown.snapshot; }
-  get panicTimer() { return this.panicTask.snapshot; }
-  Panic(seconds: number): void { this.panicTask.start(seconds); }
-  IsHaunted(): boolean { return this.hauntedValue; }
-  SetOnHauntFn(fn: HauntableOnHauntFn | undefined): void { this.onhaunt = fn; }
-  SetCooldown(seconds: number): void { this.cooldownSeconds = seconds; }
-  SetHauntValue(value: number | undefined): void { if (value) { this.hauntvalue = value; } }
+  get cooldownState() {
+    return this.cooldown.snapshot;
+  }
+  get panicTimer() {
+    return this.panicTask.snapshot;
+  }
+  Panic(seconds: number): void {
+    this.panicTask.start(seconds);
+  }
+  IsHaunted(): boolean {
+    return this.hauntedValue;
+  }
+  SetOnHauntFn(fn: HauntableOnHauntFn | undefined): void {
+    this.onhaunt = fn;
+  }
+  SetCooldown(seconds: number): void {
+    this.cooldownSeconds = seconds;
+  }
+  SetHauntValue(value: number | undefined): void {
+    if (value) {
+      this.hauntvalue = value;
+    }
+  }
 
   DoHaunt(doer: Haunter): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     if (this.onhaunt) {
       const success = this.onhaunt(this.inst, doer);
       if (success) {
-        if (this.hauntvalue === HAUNT_INSTANT_REZ && doer.hasTag('playerghost')) { doer.PushEvent('respawnfromghost', { source: this.inst }); }
+        if (this.hauntvalue === HAUNT_INSTANT_REZ && doer.hasTag('playerghost')) {
+          doer.PushEvent('respawnfromghost', { source: this.inst });
+        }
       }
       this.setHaunted(true);
       this.cooldown.start(this.cooldownSeconds ?? (success ? HAUNT_COOLDOWN_MEDIUM : HAUNT_COOLDOWN_SMALL));
@@ -78,14 +100,21 @@ export class Hauntable {
 
   /** inst:RemoveComponent("hauntable"): the cooldown task and the `haunted` tag go with it. */
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
-    this.panicTask.stop(); this.panicking.dispose();
+    this.panicTask.stop();
+    this.panicking.dispose();
     this.StopHaunt();
   }
 
   private setHaunted(haunted: boolean): void {
     this.hauntedValue = haunted;
-    if (haunted) { this.inst.addTag('haunted'); } else { this.inst.removeTag('haunted'); }
+    if (haunted) {
+      this.inst.addTag('haunted');
+    } else {
+      this.inst.removeTag('haunted');
+    }
   }
 }

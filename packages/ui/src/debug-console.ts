@@ -35,7 +35,9 @@ export class DstDebugConsoleElement extends AssetElement {
   }
 
   open(): void {
-    if (this.opened) { return; }
+    if (this.opened) {
+      return;
+    }
     this.opened = true;
     this.historyIndex = this.history.length;
     const consoleElement = this.requireConsole();
@@ -48,7 +50,9 @@ export class DstDebugConsoleElement extends AssetElement {
   }
 
   close(): void {
-    if (!this.opened) { return; }
+    if (!this.opened) {
+      return;
+    }
     this.opened = false;
     const consoleElement = this.requireConsole();
     consoleElement.hidden = true;
@@ -84,20 +88,26 @@ export class DstDebugConsoleElement extends AssetElement {
       </section>
     `;
 
-    this.shadowRoot!
-      .querySelector<HTMLFormElement>('.debug-console__form')!
-      .addEventListener('submit', this.handleSubmit);
+    this.shadowRoot!.querySelector<HTMLFormElement>('.debug-console__form')!.addEventListener(
+      'submit',
+      this.handleSubmit,
+    );
     this.requireInput().addEventListener('keydown', this.handleInputKeyDown);
-    this.requireInput().addEventListener('keyup', (event) => event.stopPropagation());
+    this.requireInput().addEventListener('keyup', event => event.stopPropagation());
     void this.renderBackground();
   }
 
   private readonly handleGlobalKeyDown = (event: KeyboardEvent): void => {
-    if (event.code !== 'Backquote' || event.ctrlKey || event.metaKey || event.altKey) { return; }
+    if (event.code !== 'Backquote' || event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
     event.preventDefault();
     event.stopImmediatePropagation();
-    if (this.opened) { this.close(); }
-    else { this.open(); }
+    if (this.opened) {
+      this.close();
+    } else {
+      this.open();
+    }
   };
 
   private readonly handleInputKeyDown = (event: KeyboardEvent): void => {
@@ -108,7 +118,9 @@ export class DstDebugConsoleElement extends AssetElement {
       this.close();
       return;
     }
-    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') { return; }
+    if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') {
+      return;
+    }
     event.preventDefault();
     if (event.key === 'ArrowUp') {
       this.historyIndex = Math.max(0, this.historyIndex - 1);
@@ -121,27 +133,35 @@ export class DstDebugConsoleElement extends AssetElement {
   private readonly handleSubmit = (event: SubmitEvent): void => {
     event.preventDefault();
     const command = this.requireInput().value.trim();
-    if (!command) { return; }
+    if (!command) {
+      return;
+    }
 
     if (this.history.at(-1) !== command) {
       this.history.push(command);
-      if (this.history.length > MAX_HISTORY) { this.history.shift(); }
+      if (this.history.length > MAX_HISTORY) {
+        this.history.shift();
+      }
     }
     this.historyIndex = this.history.length;
-    this.dispatchEvent(new CustomEvent<DebugCommandDetail>('game:debug-command', {
-      bubbles: true,
-      composed: true,
-      detail: { command },
-    }));
+    this.dispatchEvent(
+      new CustomEvent<DebugCommandDetail>('game:debug-command', {
+        bubbles: true,
+        composed: true,
+        detail: { command },
+      }),
+    );
     this.close();
   };
 
   private dispatchToggle(): void {
-    this.dispatchEvent(new CustomEvent('game:debug-console-toggle', {
-      bubbles: true,
-      composed: true,
-      detail: { isOpen: this.opened },
-    }));
+    this.dispatchEvent(
+      new CustomEvent('game:debug-console-toggle', {
+        bubbles: true,
+        composed: true,
+        detail: { isOpen: this.opened },
+      }),
+    );
   }
 
   private requireConsole(): HTMLElement {

@@ -24,12 +24,16 @@ export const CHESSPIECE_MALBATROSS_MARBLE_ID = 'chesspiece_malbatross_marble' as
 export const CHESSPIECE_MALBATROSS_SOURCE_PREFAB = 'chesspiece_malbatross' as const;
 /** MATERIALS[1] is marble. */
 export const CHESSPIECE_MARBLE_MATERIAL_ID = 1 as const;
-const PHYSICS_RADIUS = .45;
+const PHYSICS_RADIUS = 0.45;
 const TUNING_HAUNT_TINY = 1; // tuning.lua HAUNT_TINY.
 
-export interface ChesspieceSaveState { materialid: typeof CHESSPIECE_MARBLE_MATERIAL_ID }
+export interface ChesspieceSaveState {
+  materialid: typeof CHESSPIECE_MARBLE_MATERIAL_ID;
+}
 /** submersible.lua OnSave. */
-export interface SubmersibleSaveState { force_no_repositioning: boolean }
+export interface SubmersibleSaveState {
+  force_no_repositioning: boolean;
+}
 export interface ChesspieceWorld extends ToolMouseTargetWorld {
   scheduler: GameTimeScheduler;
   fx?: WorldContext['fx'];
@@ -43,7 +47,11 @@ export interface ChesspieceWorld extends ToolMouseTargetWorld {
  * tasks and onworkfinished's creature branch unreachable for this piece. It has no source skin.
  */
 export class ChesspieceInstance extends PrefabInstance {
-  declare readonly components: PrefabInstance['components'] & { workable: Workable; lootdropper: LootDropper; submersible: Submersible };
+  declare readonly components: PrefabInstance['components'] & {
+    workable: Workable;
+    lootdropper: LootDropper;
+    submersible: Submersible;
+  };
 
   constructor(world: ChesspieceWorld) {
     // fn: SetBank("chesspiece"), SetBuild("swap_chesspiece_malbatross_marble"), PlayAnimation("idle") without looping.
@@ -55,11 +63,17 @@ export class ChesspieceInstance extends PrefabInstance {
     const inventoryitem = addComponent(this, 'inventoryitem', InventoryItem);
     inventoryitem.cangoincontainer = false;
     const workable = addComponent(this, 'workable', Workable);
-    workable.SetWorkAction('HAMMER'); workable.SetWorkLeft(1);
+    workable.SetWorkAction('HAMMER');
+    workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(() => this.onworkfinished());
     // SetMaterial: MATERIALS[marble].prefab.
-    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
-      { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) =>
+      world.spawnGroundItem(
+        { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 },
+        new THREE.Vector3(point.x, point.y, point.z),
+        { fling: true },
+      ),
+    );
     lootdropper.SetLoot(['marble']);
     const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetHauntValue(TUNING_HAUNT_TINY);
@@ -77,7 +91,9 @@ export class ChesspieceInstance extends PrefabInstance {
   }
 
   /** equippable.lua's wetness check; this port has no moisture on the piece. */
-  GetIsWet(): boolean { return false; }
+  GetIsWet(): boolean {
+    return false;
+  }
 
   /** onworkfinished without the creature branch: DropLoot, collapse_small with the stone material, Remove. */
   private onworkfinished(): void {
@@ -88,11 +104,17 @@ export class ChesspieceInstance extends PrefabInstance {
 }
 
 /** The chesspiece_malbatross_marble Prefab chesspieces.lua returns; the other pieces and materials are not ported. */
-export function chesspiecePrefabs(world: ChesspieceWorld): Readonly<Record<typeof CHESSPIECE_MALBATROSS_MARBLE_ID, PrefabEntityDefinition<ChesspieceInstance>>> {
+export function chesspiecePrefabs(
+  world: ChesspieceWorld,
+): Readonly<Record<typeof CHESSPIECE_MALBATROSS_MARBLE_ID, PrefabEntityDefinition<ChesspieceInstance>>> {
   return {
     [CHESSPIECE_MALBATROSS_MARBLE_ID]: {
       fn: () => new ChesspieceInstance(world),
-      assets: { animationArchive: 'chesspiece.zip', buildArchives: ['swap_chesspiece_malbatross_marble.zip'], bank: 'chesspiece' },
+      assets: {
+        animationArchive: 'chesspiece.zip',
+        buildArchives: ['swap_chesspiece_malbatross_marble.zip'],
+        bank: 'chesspiece',
+      },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       physics: { make: MakeHeavyObstaclePhysics, radius: PHYSICS_RADIUS },
       onSpawned: inst => {

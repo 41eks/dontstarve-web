@@ -4,20 +4,31 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { ArchiveSpriteAssets, createSharedArchiveSprite, type ArchiveSprite } from '../src/archiveSprite';
 import { isSpriteEntityRendered, spriteRenderOrderKey, updateSpriteRenderOrders } from '../src/renderOrder';
 
-beforeEach(() => vi.stubGlobal('fetch', async (url: string) =>
-  new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+beforeEach(() =>
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  ),
+);
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 const definition = {
   animationArchive: 'mushroom_tree_tall.zip',
   buildArchives: ['mushroom_tree_tall.zip', 'mushroom_tree_tall_bloom.zip'],
   bank: 'mushroom_tree',
   hiddenSymbols: [1, 2, 3].flatMap(index => [`swap_acidglob${index}`, `swap_acidglob_bloom${index}`]),
-  animation: 'idle_loop', loop: true,
+  animation: 'idle_loop',
+  loop: true,
 };
-const mesh = (sprite: ArchiveSprite) => sprite.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
+const mesh = (sprite: ArchiveSprite) =>
+  sprite.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
 function finish(sprite: ArchiveSprite, next: string) {
-  for (let i = 0; i < 300 && sprite.currentAnimation !== next; i++) { sprite.update(.1); }
+  for (let i = 0; i < 300 && sprite.currentAnimation !== next; i++) {
+    sprite.update(0.1);
+  }
   expect(sprite.currentAnimation).toBe(next);
 }
 
@@ -32,37 +43,44 @@ it('changes baked animation geometry without invalidating static transforms, and
     expect(isSpriteEntityRendered(sprite.model)).toBe(false); // The idle batch owns sorting.
     const initialVisits = update.mock.calls.length;
     const firstFrame = mesh(sprite).geometry;
-    sprite.setFrame(5); scene.updateMatrixWorld();
+    sprite.setFrame(5);
+    scene.updateMatrixWorld();
     expect(mesh(sprite).geometry).not.toBe(firstFrame);
     expect(update).toHaveBeenCalledTimes(initialVisits);
-    sprite.playOnce('chop'); scene.updateMatrixWorld();
+    sprite.playOnce('chop');
+    scene.updateMatrixWorld();
     expect(isSpriteEntityRendered(sprite.model)).toBe(true);
     updateSpriteRenderOrders([{ object: sprite.model, footPosition: sprite.model.position }], new THREE.Matrix4());
     expect(sprite.model.children[0].renderOrder).toBe(spriteRenderOrderKey(sprite.model.position, new THREE.Matrix4()));
     expect(update).toHaveBeenCalledTimes(initialVisits);
-    sprite.model.position.set(30, 0, 60); sprite.refreshTransform();
+    sprite.model.position.set(30, 0, 60);
+    sprite.refreshTransform();
     scene.updateMatrixWorld();
     expect(mesh(sprite).matrixWorld.elements[12]).toBe(30);
     expect(update).toHaveBeenCalledTimes(initialVisits + 1);
-    const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), .5);
-    sprite.faceCamera(rotation); scene.updateMatrixWorld();
+    const rotation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.5);
+    sprite.faceCamera(rotation);
+    scene.updateMatrixWorld();
     expect(update).toHaveBeenCalledTimes(initialVisits + 2);
     sprite.start('idle_loop');
     expect(isSpriteEntityRendered(sprite.model)).toBe(false);
-  } finally { sprite.dispose(); assets.dispose(); }
+  } finally {
+    sprite.dispose();
+    assets.dispose();
+  }
 });
 
 it('shares idle, work and fall frames across tinted trees while playback and resource lifetimes stay independent', async () => {
   const assets = new ArchiveSpriteAssets();
-  const first = await createSharedArchiveSprite(assets, definition, { colour: [.5, .5, .5] });
-  const second = await createSharedArchiveSprite(assets, definition, { colour: [.9, .9, .9] });
+  const first = await createSharedArchiveSprite(assets, definition, { colour: [0.5, 0.5, 0.5] });
+  const second = await createSharedArchiveSprite(assets, definition, { colour: [0.9, 0.9, 0.9] });
   try {
     const sharedIdle = mesh(first).geometry;
     expect(mesh(second).geometry).toBe(sharedIdle);
     expect(mesh(first).material[0]).not.toBe(mesh(second).material[0]);
     expect(mesh(first).material[0].map).toBe(mesh(second).material[0].map);
-    expect(mesh(first).material[0].color.r).toBeCloseTo(.5);
-    expect(mesh(second).material[0].color.r).toBeCloseTo(.9);
+    expect(mesh(first).material[0].color.r).toBeCloseTo(0.5);
+    expect(mesh(second).material[0].color.r).toBeCloseTo(0.9);
     first.setFrame(5);
     expect(mesh(first).geometry).not.toBe(mesh(second).geometry);
     second.setFrame(5);
@@ -75,9 +93,11 @@ it('shares idle, work and fall frames across tinted trees while playback and res
     expect(second.currentAnimation).toBe('idle_loop');
     second.playOnce('chop');
     expect(mesh(second).geometry).toBe(workGeometry);
-    second.start('idle_loop'); second.setFrame(5);
+    second.start('idle_loop');
+    second.setFrame(5);
     // A second hit restarts the local work animation without affecting other trees.
-    first.update(.1); first.playOnce('chop', () => first.start('idle_loop'));
+    first.update(0.1);
+    first.playOnce('chop', () => first.start('idle_loop'));
     finish(first, 'idle_loop');
     first.setFrame(5);
     expect(mesh(first).geometry).toBe(mesh(second).geometry);
@@ -92,7 +112,9 @@ it('shares idle, work and fall frames across tinted trees while playback and res
     expect(mesh(first).geometry).toBe(mesh(second).geometry);
 
     const sharedStump = mesh(second).geometry;
-    const sharedDisposed = vi.fn(), workDisposed = vi.fn(), textureDisposed = vi.fn();
+    const sharedDisposed = vi.fn(),
+      workDisposed = vi.fn(),
+      textureDisposed = vi.fn();
     sharedStump.addEventListener('dispose', sharedDisposed);
     workGeometry.addEventListener('dispose', workDisposed);
     mesh(second).material[0].map!.addEventListener('dispose', textureDisposed);
@@ -109,7 +131,11 @@ it('shares idle, work and fall frames across tinted trees while playback and res
     expect(sharedDisposed).toHaveBeenCalledOnce();
     expect(workDisposed).toHaveBeenCalledOnce();
     expect(textureDisposed).toHaveBeenCalledOnce();
-  } finally { first.dispose(); second.dispose(); assets.dispose(); }
+  } finally {
+    first.dispose();
+    second.dispose();
+    assets.dispose();
+  }
 });
 
 it('keeps bloom builds and hidden-symbol variants separate without changing neighbouring trees', async () => {
@@ -131,7 +157,8 @@ it('keeps bloom builds and hidden-symbol variants separate without changing neig
     expect(mesh(second).geometry).toBe(bloom);
     expect(mesh(first).geometry).not.toBe(bloom);
     second.setBuildArchive('mushroom_tree_tall.zip');
-    first.setFrame(0); second.setFrame(0);
+    first.setFrame(0);
+    second.setFrame(0);
     const normalAgain = mesh(first).geometry;
     expect(mesh(second).geometry).toBe(normalAgain);
     first.setSymbolHidden('trnk_top', true);
@@ -141,30 +168,46 @@ it('keeps bloom builds and hidden-symbol variants separate without changing neig
     expect(mesh(first).geometry).toBe(mesh(second).geometry);
     first.setSymbolHidden('trnk_top', false);
     expect(mesh(first).geometry).toBe(normalAgain);
-  } finally { first.dispose(); second.dispose(); assets.dispose(); }
+  } finally {
+    first.dispose();
+    second.dispose();
+    assets.dispose();
+  }
 });
 
 it('shares birch appearances across private tints and changes leaf overrides without restarting work or changing neighbours', async () => {
   const assets = new ArchiveSpriteAssets();
   const definition = {
-    animationArchive: 'tree_leaf_tall.zip', buildArchives: ['tree_leaf_trunk_build.zip',
-      'tree_leaf_green_build.zip', 'tree_leaf_red_build.zip'], bank: 'tree_leaf', animation: 'sway1_loop_tall', loop: true,
+    animationArchive: 'tree_leaf_tall.zip',
+    buildArchives: ['tree_leaf_trunk_build.zip', 'tree_leaf_green_build.zip', 'tree_leaf_red_build.zip'],
+    bank: 'tree_leaf',
+    animation: 'sway1_loop_tall',
+    loop: true,
     symbolOverrides: { swap_leaves: { archive: 'tree_leaf_green_build.zip', symbol: 'swap_leaves' } },
     hiddenSymbols: ['mouseover', 'snow'],
   };
-  const first = await createSharedArchiveSprite(assets, definition, { colour: [.6, .6, .6], instancedAnimations: ['sway1_loop_tall'] });
-  const second = await createSharedArchiveSprite(assets, definition, { colour: [.9, .9, .9], instancedAnimations: ['sway1_loop_tall'] });
+  const first = await createSharedArchiveSprite(assets, definition, {
+    colour: [0.6, 0.6, 0.6],
+    instancedAnimations: ['sway1_loop_tall'],
+  });
+  const second = await createSharedArchiveSprite(assets, definition, {
+    colour: [0.9, 0.9, 0.9],
+    instancedAnimations: ['sway1_loop_tall'],
+  });
   try {
-    for (const sprite of [first, second]) { sprite.setBuildArchive('tree_leaf_trunk_build.zip'); }
+    for (const sprite of [first, second]) {
+      sprite.setBuildArchive('tree_leaf_trunk_build.zip');
+    }
     const green = mesh(second).geometry;
     expect(mesh(first).geometry).toBe(green);
     expect(mesh(first).visible).toBe(false);
     first.setColour([1, 1, 1]);
     expect(mesh(first).geometry).toBe(green);
     expect(mesh(first).material[0].color.r).toBe(1);
-    expect(mesh(second).material[0].color.r).toBeCloseTo(.9);
+    expect(mesh(second).material[0].color.r).toBeCloseTo(0.9);
     const finished = vi.fn(() => first.start('sway1_loop_tall'));
-    first.playOnce('chop_tall', finished); first.update(.1);
+    first.playOnce('chop_tall', finished);
+    first.update(0.1);
     first.setSymbolOverride('swap_leaves', 'tree_leaf_red_build.zip');
     expect(first.currentAnimation).toBe('chop_tall');
     expect(mesh(first).visible).toBe(true);
@@ -180,5 +223,9 @@ it('shares birch appearances across private tints and changes leaf overrides wit
     first.setSymbolOverride('swap_leaves', 'tree_leaf_red_build.zip');
     expect(mesh(first).geometry).toBe(red);
     expect(mesh(first).visible).toBe(false);
-  } finally { first.dispose(); second.dispose(); assets.dispose(); }
+  } finally {
+    first.dispose();
+    second.dispose();
+    assets.dispose();
+  }
 });

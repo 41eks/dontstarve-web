@@ -6,8 +6,21 @@ import { Witherable } from '../../componets/src/witherable';
 import { LootDropper } from '../../componets/src/lootdropper';
 import { Pickable } from './components/pickable';
 import { BurnableBinding } from './treeFire';
-import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter, MakeSmallObstaclePhysics, MakeSnowCovered } from './standardcomponents';
-import { PickablePlantInstance, plantLootSpawner, SpringGrowthMod, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
+import {
+  DefaultBurnFn,
+  DefaultExtinguishFn,
+  DefaultBurntFn,
+  MakeNoGrowInWinter,
+  MakeSmallObstaclePhysics,
+  MakeSnowCovered,
+} from './standardcomponents';
+import {
+  PickablePlantInstance,
+  plantLootSpawner,
+  SpringGrowthMod,
+  type PickablePlantRecord,
+  type PickablePlantWorld,
+} from './pickablePlant';
 
 export const BERRYBUSH_ID = 'berrybush' as const;
 export const BERRYBUSH_ARCHIVE = 'berrybush.zip';
@@ -24,9 +37,13 @@ export function berrybushRegrowTime(pickable: Pickable): number {
 }
 
 function setberries(inst: PickablePlantInstance, pct?: number): void {
-  const berries = pct === undefined ? undefined : pct >= .9 ? 'berriesmost' : pct >= .33 ? 'berriesmore' : 'berries';
+  const berries = pct === undefined ? undefined : pct >= 0.9 ? 'berriesmost' : pct >= 0.33 ? 'berriesmore' : 'berries';
   for (const berry_type of BERRY_TYPES) {
-    if (berry_type === berries) { inst.sprite.showLayer(berry_type); } else { inst.sprite.hideLayer(berry_type); }
+    if (berry_type === berries) {
+      inst.sprite.showLayer(berry_type);
+    } else {
+      inst.sprite.hideLayer(berry_type);
+    }
   }
 }
 
@@ -37,7 +54,9 @@ function makeemptyfn(inst: PickablePlantInstance): void {
   } else if (inst.hasTag('withered') || inst.sprite.currentAnimation === 'dead') {
     inst.AnimState.PlayAnimation('dead_to_idle');
     inst.AnimState.PushAnimation('idle', false);
-  } else { inst.AnimState.PlayAnimation('idle', true); }
+  } else {
+    inst.AnimState.PlayAnimation('idle', true);
+  }
   setberries(inst);
 }
 
@@ -49,7 +68,9 @@ function makebarrenfn(inst: PickablePlantInstance): void {
   if (!POPULATING && (inst.hasTag('withered') || inst.sprite.currentAnimation === 'idle')) {
     inst.AnimState.PlayAnimation('idle_to_dead');
     inst.AnimState.PushAnimation('dead', false);
-  } else { inst.AnimState.PlayAnimation('dead'); }
+  } else {
+    inst.AnimState.PlayAnimation('dead');
+  }
   setberries(inst);
 }
 
@@ -69,11 +90,16 @@ function onpickedfn(inst: PickablePlantInstance): void {
 
 function makefullfn(inst: PickablePlantInstance): void {
   const { pickable } = inst.components;
-  let anim = 'idle', berries: number | undefined;
-  if (pickable.canBePicked) { berries = pickable.cyclesLeft !== undefined ? pickable.cyclesLeft / pickable.maximumCycles! : 1; }
-  else if (pickable.IsBarren()) { anim = 'dead'; }
-  if (anim !== 'idle') { inst.AnimState.PlayAnimation(anim); }
-  else if (POPULATING) {
+  let anim = 'idle',
+    berries: number | undefined;
+  if (pickable.canBePicked) {
+    berries = pickable.cyclesLeft !== undefined ? pickable.cyclesLeft / pickable.maximumCycles! : 1;
+  } else if (pickable.IsBarren()) {
+    anim = 'dead';
+  }
+  if (anim !== 'idle') {
+    inst.AnimState.PlayAnimation(anim);
+  } else if (POPULATING) {
     inst.AnimState.PlayAnimation('idle', true);
     inst.sprite.setFrameAt(Math.random());
   } else {
@@ -84,12 +110,15 @@ function makefullfn(inst: PickablePlantInstance): void {
 }
 
 function dig_up_normal(inst: PickablePlantInstance): void {
-  const { pickable, witherable } = inst.components, lootdropper = inst.components.lootdropper!;
+  const { pickable, witherable } = inst.components,
+    lootdropper = inst.components.lootdropper!;
   if (witherable?.IsWithered() || pickable.IsBarren()) {
     lootdropper.SpawnLootPrefab('twigs', inst.position);
     lootdropper.SpawnLootPrefab('twigs', inst.position);
   } else {
-    if (pickable.canBePicked) { lootdropper.SpawnLootPrefab(pickable.product!, inst.position); }
+    if (pickable.canBePicked) {
+      lootdropper.SpawnLootPrefab(pickable.product!, inst.position);
+    }
     lootdropper.SpawnLootPrefab(`dug_${inst.prefab}`, inst.position, inst.skinId ? `dug_${inst.skinId}` : undefined);
   }
   inst.remove();
@@ -103,12 +132,16 @@ function ontransplantfn(inst: PickablePlantInstance): void {
 
 /** The save record's skin name, which SpawnSaveRecord applies. */
 function OnSave(inst: PickablePlantInstance, data: PickablePlantRecord['components']): void {
-  if (inst.skinId) { data.plant = { skinId: inst.skinId }; }
+  if (inst.skinId) {
+    data.plant = { skinId: inst.skinId };
+  }
 }
 
 function OnLoad(inst: PickablePlantInstance, data: PickablePlantRecord['components']): void {
   const skinId = data.plant?.skinId;
-  if (skinId !== undefined && !BERRYBUSH_SKINS.some(known => known === skinId)) { throw new Error(`Unsupported ${inst.prefab} skin: ${skinId}`); }
+  if (skinId !== undefined && !BERRYBUSH_SKINS.some(known => known === skinId)) {
+    throw new Error(`Unsupported ${inst.prefab} skin: ${skinId}`);
+  }
   inst.skinId = skinId;
 }
 
@@ -131,19 +164,52 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
   setberries(inst, 1);
   inst.sprite.setFrameAt(Math.random());
 
-  const pickable = addComponent(inst, 'pickable', Pickable, 'berries', BERRYBUSH_REGROW_TIME, 1, () => onpickedfn(inst), undefined, undefined, {
-    scheduler: world.scheduler, growthDuration: SpringGrowthMod(inst, world.getWatchWorldContent),
-    getRegenTime: berrybushRegrowTime, maxCycles: 4 + Math.floor(Math.random() * 2),
-    onEmpty: () => makeemptyfn(inst), onBarren: () => makebarrenfn(inst), onTransplant: () => ontransplantfn(inst),
-  });
+  const pickable = addComponent(
+    inst,
+    'pickable',
+    Pickable,
+    'berries',
+    BERRYBUSH_REGROW_TIME,
+    1,
+    () => onpickedfn(inst),
+    undefined,
+    undefined,
+    {
+      scheduler: world.scheduler,
+      growthDuration: SpringGrowthMod(inst, world.getWatchWorldContent),
+      getRegenTime: berrybushRegrowTime,
+      maxCycles: 4 + Math.floor(Math.random() * 2),
+      onEmpty: () => makeemptyfn(inst),
+      onBarren: () => makebarrenfn(inst),
+      onTransplant: () => ontransplantfn(inst),
+    },
+  );
   pickable.picksound = 'dontstarve/wilson/harvest_berries';
   pickable.makefullfn = () => makefullfn(inst);
 
-  addComponent(inst, 'witherable', Witherable, pickable, world.scheduler, () => world.getLocalTemperature?.(inst.position) ?? 20, world.rain);
+  addComponent(
+    inst,
+    'witherable',
+    Witherable,
+    pickable,
+    world.scheduler,
+    () => world.getLocalTemperature?.(inst.position) ?? 20,
+    world.rain,
+  );
 
   // MakeLargeBurnable + MakeMediumPropagator.
-  const burn = new BurnableBinding(inst, { propagator: 'medium', burnTime: 30, fxLevel: 4,
-    onIgnite: () => DefaultBurnFn(inst), onExtinguish: () => DefaultExtinguishFn(inst), onBurnt: () => DefaultBurntFn(inst, world) }, world);
+  const burn = new BurnableBinding(
+    inst,
+    {
+      propagator: 'medium',
+      burnTime: 30,
+      fxLevel: 4,
+      onIgnite: () => DefaultBurnFn(inst),
+      onExtinguish: () => DefaultExtinguishFn(inst),
+      onBurnt: () => DefaultBurntFn(inst, world),
+    },
+    world,
+  );
   inst.onRemove(() => burn.dispose());
 
   addComponent(inst, 'lootdropper', LootDropper, plantLootSpawner(world));
@@ -163,14 +229,21 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
 }
 
 /** berrybush.lua's createbush("berrybush", ...); berrybush2 and the juicy bush are separate source prefabs. */
-export function berrybushPrefabs(world: PickablePlantWorld): Readonly<Record<typeof BERRYBUSH_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
+export function berrybushPrefabs(
+  world: PickablePlantWorld,
+): Readonly<Record<typeof BERRYBUSH_ID, PrefabEntityDefinition<PickablePlantInstance>>> {
   return {
     [BERRYBUSH_ID]: {
       fn: () => fn(world),
-      assets: { animationArchive: BERRYBUSH_ARCHIVE, buildArchives: [BERRYBUSH_ARCHIVE, 'snow.zip'], bank: 'berrybush', hiddenLayers: ['snow'] },
+      assets: {
+        animationArchive: BERRYBUSH_ARCHIVE,
+        buildArchives: [BERRYBUSH_ARCHIVE, 'snow.zip'],
+        bank: 'berrybush',
+        hiddenLayers: ['snow'],
+      },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       skins: Object.fromEntries(BERRYBUSH_SKINS.map(skin => [skin, `dynamic/${skin}.zip`])),
-      physics: { make: MakeSmallObstaclePhysics, radius: .1 },
+      physics: { make: MakeSmallObstaclePhysics, radius: 0.1 },
       minimapIcon: 'berrybush.png',
     },
   };

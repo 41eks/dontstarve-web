@@ -10,7 +10,7 @@ import type { PrefabWorldContext } from './worldContext';
 
 /** mushroom_light.lua defines both the white mushroom light and the coloured light. */
 export const MUSHROOM_LIGHT_IDS = ['mushroom_light', 'mushroom_light2'] as const;
-export type MushroomLightId = typeof MUSHROOM_LIGHT_IDS[number];
+export type MushroomLightId = (typeof MUSHROOM_LIGHT_IDS)[number];
 
 /** mushroom_light.lua MakePlacer(name.."_placer", name, name, "idle"). */
 export const MUSHROOM_LIGHT_PLACERS = {
@@ -19,8 +19,12 @@ export const MUSHROOM_LIGHT_PLACERS = {
 };
 
 function onworked(inst: PrefabInstance, _worker: Worker, workleft: number): void {
-  if (inst.hasTag('burnt')) { return; }
-  if (workleft <= 0) { return; }
+  if (inst.hasTag('burnt')) {
+    return;
+  }
+  if (workleft <= 0) {
+    return;
+  }
   const on = inst.light.json.peek() !== undefined;
   inst.sprite.playOnce(on ? 'hit_on' : 'hit');
   inst.sprite.pushAnimation(on ? 'idle_on' : 'idle', false);
@@ -61,7 +65,19 @@ export class MushroomLightInstance extends PrefabInstance {
 
 export function mushroomLightPrefabs(world: PrefabWorldContext) {
   return {
-    mushroom_light: buildingPrefab(definitions.animatedBuildings.mushroom_light, 'mushroom_light', .25, () => new MushroomLightInstance('mushroom_light', world), world),
-    mushroom_light2: buildingPrefab(definitions.animatedBuildings.mushroom_light2, 'mushroom_light2', .4, () => new MushroomLightInstance('mushroom_light2', world), world),
+    mushroom_light: buildingPrefab(
+      definitions.animatedBuildings.mushroom_light,
+      'mushroom_light',
+      0.25,
+      () => new MushroomLightInstance('mushroom_light', world),
+      world,
+    ),
+    mushroom_light2: buildingPrefab(
+      definitions.animatedBuildings.mushroom_light2,
+      'mushroom_light2',
+      0.4,
+      () => new MushroomLightInstance('mushroom_light2', world),
+      world,
+    ),
   };
 }

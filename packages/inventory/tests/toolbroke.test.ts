@@ -8,12 +8,20 @@ import { inventorySlot, testInventoryStore } from './testItems';
 const specs = { bugnet: { name: '捕虫网', icon: 'bugnet.tex', maxStack: 1 } };
 
 it('pushes toolbroke to the player once, before the depleted tool is removed', () => {
-  const inventory = testInventoryStore([{
-    address: inventorySlotAddress(0), slot: inventorySlot({ itemId: 'bugnet', count: 1 }, specs),
-  }], specs);
+  const inventory = testInventoryStore(
+    [
+      {
+        address: inventorySlotAddress(0),
+        slot: inventorySlot({ itemId: 'bugnet', count: 1 }, specs),
+      },
+    ],
+    specs,
+  );
   const events: [string, unknown][] = [];
   const player = playerEntity();
-  player.ListenForEvent('toolbroke', (_inst, data) => { events.push(['toolbroke', data]); });
+  player.ListenForEvent('toolbroke', (_inst, data) => {
+    events.push(['toolbroke', data]);
+  });
   inventory.bindActor(player);
   try {
     const net = inventory.getEntity(inventorySlotAddress(0))!;
@@ -24,14 +32,17 @@ it('pushes toolbroke to the player once, before the depleted tool is removed', (
     expect(net.components.finiteuses.use()).toBe(true);
     expect(events).toEqual([['toolbroke', { tool: net }]]);
     expect(net.isRemoved).toBe(true);
-  } finally { inventory.dispose(); }
+  } finally {
+    inventory.dispose();
+  }
 });
 
 it('equips another item of the same prefab only when the slot is empty', () => {
   const item = { prefab: 'axe', components: { equippable: { equipslot: 'hand' } } };
   const equip = vi.fn(() => true);
   const inventory = (equipped: unknown) => ({
-    GetEquippedItem: () => equipped as never, FindItem: (test: (i: never) => boolean) => test(item as never) ? item as never : null,
+    GetEquippedItem: () => equipped as never,
+    FindItem: (test: (i: never) => boolean) => (test(item as never) ? (item as never) : null),
     EquipFromInventory: equip,
   });
   expect(equipSamePrefab(inventory({}), 'axe', 'hand')).toBe(false);

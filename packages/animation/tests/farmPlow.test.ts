@@ -25,22 +25,45 @@ import { workTargets } from './workTargets';
 import { createInventoryStore, testItem } from './testInventory';
 
 const soundStops = vi.hoisted(() => [] as ReturnType<typeof vi.fn>[]);
-vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
-  PlaySound: vi.fn(() => { const stop = vi.fn(); soundStops.push(stop); return { stop, isPlaying: () => true }; }) }));
+vi.mock('../../prefab/src/sound', () => ({
+  PreloadSounds: vi.fn(async () => {}),
+  PlaySound: vi.fn(() => {
+    const stop = vi.fn();
+    soundStops.push(stop);
+    return { stop, isPlaying: () => true };
+  }),
+}));
 beforeEach(() => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.stubGlobal('window', new EventTarget());
 });
-afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals(); soundStops.length = 0; });
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+  soundStops.length = 0;
+});
 
 function setup() {
   const turf = new TurfMap(96);
-  const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-    ground: new THREE.Group(), renderer: { domElement: new EventTarget() },
-    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
+  const world = {
+    scene: new THREE.Scene(),
+    player: new THREE.Group(),
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
+  } as unknown as WorldContext;
   const returnItem = vi.fn(() => {});
   const blockers = new SpatialIndex<{ position: THREE.Vector3; tags?: string[] }>(blocker => blocker.position);
-  const farm = farmFixture(world.scene, turf, { blockers: blockers as never, random: () => 0.5, spawnSaveRecord: returnItem });
+  const farm = farmFixture(world.scene, turf, {
+    blockers: blockers as never,
+    random: () => 0.5,
+    spawnSaveRecord: returnItem,
+  });
   return { turf, world, returnItem, blockers, farm, advance: farm.advance };
 }
 
@@ -53,12 +76,17 @@ it('loads original packed ground art and the actual inventory atlas', async () =
   try {
     const item = await createGroundItemVisual('farm_plow_item');
     expect(GROUND_ITEM_DEFINITIONS.farm_plow_item).toMatchObject({
-      atlas: 'images/inventoryimages2.xml', animation: 'idle_packed', bank: 'farm_plow', skinArchives: {},
+      atlas: 'images/inventoryimages2.xml',
+      animation: 'idle_packed',
+      bank: 'farm_plow',
+      skinArchives: {},
     });
     expect(item.model.children[0].children).toHaveLength(1);
     expect((item.model.children[0].children[0].children[0] as THREE.Mesh).geometry.drawRange.count).toBeGreaterThan(0);
     item.dispose();
-  } finally { assets.dispose(); }
+  } finally {
+    assets.dispose();
+  }
 });
 
 it('snaps deployment, drills for 15 seconds, terraforms and returns a folded three-use item', async () => {
@@ -70,9 +98,17 @@ it('snaps deployment, drills for 15 seconds, terraforms and returns a folded thr
     expect(use).toHaveBeenCalledExactlyOnceWith(1);
     expect(original.isRemoved).toBe(true);
     // deploy_item_save_record: the item's GetSaveRecord after its use, kept by id though the item is gone.
-    const savedItem = { id: original.id, prefab: 'farm_plow_item', components: { finiteuses: { uses: original.components.finiteuses.remaining } } };
-    expect(farm.plows()[0]).toMatchObject({ transform: { position: [6, 0, 6] },
-      components: { farmPlow: { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem: savedItem } } });
+    const savedItem = {
+      id: original.id,
+      prefab: 'farm_plow_item',
+      components: { finiteuses: { uses: original.components.finiteuses.remaining } },
+    };
+    expect(farm.plows()[0]).toMatchObject({
+      transform: { position: [6, 0, 6] },
+      components: {
+        farmPlow: { phase: 'drill_pre', remainingSeconds: FARM_PLOW_DRILLING_DURATION, deployItem: savedItem },
+      },
+    });
     expect(farm.map.canDeploy(new THREE.Vector3(4, 0, 4))).toBe(false);
     // drill_pre's animover starts drilling once the display has drawn it.
     await workTargets('HAMMER')[0].display!.artLoaded();
@@ -95,7 +131,9 @@ it('snaps deployment, drills for 15 seconds, terraforms and returns a folded thr
     turf.dig({ x: 6, z: 6 });
     expect(turf.getTileAtWorld({ x: 6, z: 6 })).toBe(WORLD_TILES.DECIDUOUS);
     expect(farm.decor().some(({ prefabId }) => prefabId === 'farm_soil')).toBe(false);
-  } finally { farm.dispose(); }
+  } finally {
+    farm.dispose();
+  }
 });
 
 it('does not return an exhausted item on its fourth use and one hammer hit recovers an active item', async () => {
@@ -112,14 +150,20 @@ it('does not return an exhausted item on its fourth use and one hammer hit recov
     farm.map.deploy(new THREE.Vector3(-13, 0, -1), original);
     await advance(3);
     const target = workTargets('HAMMER')[0];
-    target.work(); target.work();
+    target.work();
+    target.work();
     expect(target.isValid()).toBe(false);
     expect(farm.plows()).toEqual([]);
-    expect(returnItem).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(-18, 0, -6),
-      { id: original.id, prefab: 'farm_plow_item', components: { finiteuses: { uses: original.components.finiteuses.remaining } } });
+    expect(returnItem).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(-18, 0, -6), {
+      id: original.id,
+      prefab: 'farm_plow_item',
+      components: { finiteuses: { uses: original.components.finiteuses.remaining } },
+    });
     expect(turf.getTileAtWorld({ x: -18, z: -6 })).toBe(WORLD_TILES.DECIDUOUS);
     expect(farm.decor().every(({ record }) => record.components.farmSoil?.plowId !== target.id)).toBe(true);
-  } finally { farm.dispose(); }
+  } finally {
+    farm.dispose();
+  }
 });
 
 it('rejects hard terrain and blocking entities without spending an item', async () => {
@@ -138,26 +182,36 @@ it('rejects hard terrain and blocking entities without spending an item', async 
     expect(farm.plows()).toEqual([]);
     expect(original.isRemoved).toBe(false);
     expect(original.components.finiteuses.remaining).toBeUndefined();
-  } finally { farm.dispose(); }
+  } finally {
+    farm.dispose();
+  }
 });
 
 it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and commits one use at frame six', async () => {
   const { farm, turf, world, blockers } = setup();
   const inventory = createInventoryStore([]);
-  const map = createDeployMap({ turf, blockers: blockers as never, farm: farm.map }), actor = deployActor(world, inventory, map);
+  const map = createDeployMap({ turf, blockers: blockers as never, farm: farm.map }),
+    actor = deployActor(world, inventory, map);
   const placer = new DeployPlacer(world, map, () => inventory.GetActiveItem());
   const click = new THREE.Vector3(10, 0, 2);
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockImplementation(() => click.clone());
   try {
     expect(inventory.add('farm_plow_item', 1)).toBe(true);
     expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
     const entity = inventory.GetActiveItem()!;
-    for (const tag of ['usedeploystring', 'tile_deploy']) { expect(entity.hasTag(tag)).toBe(true); }
+    for (const tag of ['usedeploystring', 'tile_deploy']) {
+      expect(entity.hasTag(tag)).toBe(true);
+    }
 
     // Selecting the item shows farm_plow_item_placer and its tile_outline, snapped to the tile centre.
     placer.update();
-    expect(world.scene.children.map(model => model.name)).toEqual(expect.arrayContaining(['FarmPlowPlacer', 'FarmPlowTileOutline']));
+    expect(world.scene.children.map(model => model.name)).toEqual(
+      expect.arrayContaining(['FarmPlowPlacer', 'FarmPlowTileOutline']),
+    );
     const preview = world.scene.children.find(model => model.name === 'FarmPlowPlacer')!;
     expect(preview.position.toArray()).toEqual([6, 0, 6]);
 
@@ -171,7 +225,7 @@ it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and 
     expect(walk.distance).toBeUndefined();
     expect(walk.arrived!()).toBe(false);
     // CheckTileWithinRange: inside the clicked tile, however far from the click itself.
-    world.player.position.set(.5, 0, 11);
+    world.player.position.set(0.5, 0, 11);
     expect(walk.arrived!()).toBe(true);
     arrive();
     expect(actor.graph.stateName).toBe('doshortaction');
@@ -180,11 +234,19 @@ it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and 
     actor.graph.update(1 / 30);
     const [record] = farm.plows();
     expect(record.transform.position).toEqual([6, 0, 6]);
-    expect(record.components.farmPlow!.deployItem).toMatchObject({ prefab: 'farm_plow_item', components: { finiteuses: { uses: 3 } } });
+    expect(record.components.farmPlow!.deployItem).toMatchObject({
+      prefab: 'farm_plow_item',
+      components: { finiteuses: { uses: 3 } },
+    });
     expect(inventory.GetActiveItem()).toBeNull();
     placer.update();
     expect(world.scene.children.some(model => model.name === 'FarmPlowPlacer')).toBe(false);
-  } finally { placer.dispose(); actor.controller.dispose(); inventory.dispose(); farm.dispose(); }
+  } finally {
+    placer.dispose();
+    actor.controller.dispose();
+    inventory.dispose();
+    farm.dispose();
+  }
 });
 
 it('restores drilling progress, attached soil and remaining item uses without restarting the timer', async () => {
@@ -192,26 +254,52 @@ it('restores drilling progress, attached soil and remaining item uses without re
   try {
     // farm_plow.lua deploy_item_save_record: the item's GetSaveRecord, with one use left.
     const deployItem = { id: 'saved_item', prefab: 'farm_plow_item', components: { finiteuses: { uses: 1 } } };
-    farm.spawn('farm_plow', new THREE.Vector3(6, 0, 6), { farmPlow: { phase: 'drill_loop', remainingSeconds: 2, deployItem } }, 'saved_plow');
+    farm.spawn(
+      'farm_plow',
+      new THREE.Vector3(6, 0, 6),
+      { farmPlow: { phase: 'drill_loop', remainingSeconds: 2, deployItem } },
+      'saved_plow',
+    );
     const exported = farm.plows();
     exported[0].components.farmPlow!.deployItem!.components.finiteuses = { uses: 3 };
     expect(farm.plows()[0].components.farmPlow!.deployItem).toEqual(deployItem);
-    farm.spawn('farm_soil', new THREE.Vector3(6, 0, 10.5), { farmSoil: { broken: false, plowId: 'saved_plow' } }, 'saved_soil');
-    await farm.advance(.1);
+    farm.spawn(
+      'farm_soil',
+      new THREE.Vector3(6, 0, 10.5),
+      { farmSoil: { broken: false, plowId: 'saved_plow' } },
+      'saved_soil',
+    );
+    await farm.advance(0.1);
     // OnLoadPostPass links the soil to its restored plow.
-    expect(farm.decor().find(({ record }) => record.id === 'saved_soil')?.record.components.farmSoil).toEqual({ broken: false, plowId: 'saved_plow' });
+    expect(farm.decor().find(({ record }) => record.id === 'saved_soil')?.record.components.farmSoil).toEqual({
+      broken: false,
+      plowId: 'saved_plow',
+    });
     // OnSave writes the records the save reader returns unchanged.
-    const entities = { farm_plow: farm.plows(), farm_soil: farm.decor().map(({ record }) => record) }, inventory = createPickupInventory();
+    const entities = { farm_plow: farm.plows(), farm_soil: farm.decor().map(({ record }) => record) },
+      inventory = createPickupInventory();
     try {
-      const json = serializeSave(deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
-        { entities, inventory: inventory.exportSaved(), elapsedSeconds: 1, playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
+      const json = serializeSave(
+        deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG),
+        {
+          entities,
+          inventory: inventory.exportSaved(),
+          elapsedSeconds: 1,
+          playerTransform: { position: [0, 0, 0], rotationY: 0 },
+        },
+        SAVE_CATALOG,
+      );
       const saved = deserializeSave(json, SAVE_CATALOG).world.entities;
       expect({ farm_plow: saved.farm_plow, farm_soil: saved.farm_soil }).toEqual(entities);
-    } finally { inventory.dispose(); }
+    } finally {
+      inventory.dispose();
+    }
     expect(farm.plows()[0].id).toBe('saved_plow');
     await advance(5);
     expect(turf.getTileAtWorld({ x: 6, z: 6 })).toBe(WORLD_TILES.FARMING_SOIL);
     expect(returnItem).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(6, 0, 6), deployItem);
     expect(farm.plows()).toEqual([]);
-  } finally { farm.dispose(); }
+  } finally {
+    farm.dispose();
+  }
 });

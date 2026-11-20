@@ -1,6 +1,11 @@
 import { prefabDisplay } from '@dontstarve-web/display';
 import * as CANNON from 'cannon-es';
-import { updatePlayer, playerInst, type PlayerInstance, type PlayerPrefabOptions } from '../../prefab/src/player_common';
+import {
+  updatePlayer,
+  playerInst,
+  type PlayerInstance,
+  type PlayerPrefabOptions,
+} from '../../prefab/src/player_common';
 import { wortox } from '../../prefab/src/wortox';
 import type { PlayerFacing } from '../src/facing';
 import { PLAYER_FACING_VALUES } from '../src/facing';
@@ -26,7 +31,9 @@ export async function createPlayerPrefab(...args: Parameters<typeof wortox>) {
 
 const playerWorlds = new WeakMap<object, ReturnType<typeof testEnts>>();
 /** The Ents a test player is tracked in, for the entities it should find around it. */
-export function playerEnts(instance: object): ReturnType<typeof testEnts> { return playerWorlds.get(instance)!; }
+export function playerEnts(instance: object): ReturnType<typeof testEnts> {
+  return playerWorlds.get(instance)!;
+}
 const displays = new WeakMap<PlayerInstance, PrefabDisplay>();
 export function registerPlayer(model: NonNullable<Parameters<typeof prefabInstance>[0]>): void {
   const instance = playerInst(model);

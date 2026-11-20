@@ -2,12 +2,7 @@ import { HAT_DEFINITIONS, HAT_RECIPES, HAT_SKIN_SPECS } from '@dontstarve-web/pr
 import { GROUND_ITEM_DISPLAY_SPECS, GROUND_ITEM_SKIN_SPECS } from '@dontstarve-web/prefab/groundItems';
 import recipeDataJson from '@dontstarve-web/animation/recipes.json' with { type: 'json' };
 import type { InventoryRecipeDefinition, InventorySkinSpec } from '@dontstarve-web/inventory';
-import {
-  ingredientNames,
-  recipeDescriptions,
-  recipeNames,
-  recipeSkins,
-} from './generated';
+import { ingredientNames, recipeDescriptions, recipeNames, recipeSkins } from './generated';
 import type { Recipe, RecipeIngredient } from './types';
 
 interface LuaExpression {
@@ -40,7 +35,7 @@ export interface InventoryProductSpec {
 }
 
 const recipeData: RecipeData = recipeDataJson;
-const recipesById = new Map(recipeData.recipes.map((recipe) => [recipe.name, recipe]));
+const recipesById = new Map(recipeData.recipes.map(recipe => [recipe.name, recipe]));
 
 export { recipeData };
 
@@ -55,23 +50,28 @@ function recipeProduct(source: SourceRecipe) {
   return { id, count };
 }
 
-function createInventoryRecipe(
-  source: SourceRecipe,
-): InventoryRecipeDefinition | undefined {
+function createInventoryRecipe(source: SourceRecipe): InventoryRecipeDefinition | undefined {
   const product = recipeProduct(source);
-  if (!product) { return undefined; }
+  if (!product) {
+    return undefined;
+  }
 
   const ingredients: Record<string, number> = {};
   const requiredItems: string[] = [];
   for (const ingredient of source.ingredients) {
-    if (typeof ingredient.type !== 'string'
-      || typeof ingredient.amount !== 'number'
-      || !Number.isSafeInteger(ingredient.amount)
-      || ingredient.amount < 0) {
+    if (
+      typeof ingredient.type !== 'string' ||
+      typeof ingredient.amount !== 'number' ||
+      !Number.isSafeInteger(ingredient.amount) ||
+      ingredient.amount < 0
+    ) {
       return undefined;
     }
-    if (ingredient.amount === 0) { requiredItems.push(ingredient.type); }
-    else { ingredients[ingredient.type] = (ingredients[ingredient.type] ?? 0) + ingredient.amount; }
+    if (ingredient.amount === 0) {
+      requiredItems.push(ingredient.type);
+    } else {
+      ingredients[ingredient.type] = (ingredients[ingredient.type] ?? 0) + ingredient.amount;
+    }
   }
   return {
     recipeId: source.name,
@@ -83,34 +83,40 @@ function createInventoryRecipe(
   };
 }
 
-export const INVENTORY_RECIPES: Readonly<Record<string, InventoryRecipeDefinition>> =
-  { ...Object.fromEntries(recipeData.recipes.flatMap((source) => {
-    const recipe = createInventoryRecipe(source);
-    return recipe ? [[source.name, recipe]] : [];
-  })), ...HAT_RECIPES };
+export const INVENTORY_RECIPES: Readonly<Record<string, InventoryRecipeDefinition>> = {
+  ...Object.fromEntries(
+    recipeData.recipes.flatMap(source => {
+      const recipe = createInventoryRecipe(source);
+      return recipe ? [[source.name, recipe]] : [];
+    }),
+  ),
+  ...HAT_RECIPES,
+};
 
-function createInventoryProductSpec(
-  source: SourceRecipe,
-): readonly [string, InventoryProductSpec] | undefined {
+function createInventoryProductSpec(source: SourceRecipe): readonly [string, InventoryProductSpec] | undefined {
   const product = recipeProduct(source);
-  if (!product) { return undefined; }
+  if (!product) {
+    return undefined;
+  }
   const nameOverride = stringValue(source.config.nameoverride);
   const nameKey = nameOverride ?? product.id;
   const atlas = stringValue(source.config.atlas);
-  return [product.id, {
-    name: ingredientNames[nameKey]
-      ?? recipeNames[nameKey]
-      ?? recipeNames[source.name]
-      ?? humanize(product.id),
-    icon: stringValue(source.config.image) ?? `${product.id}.tex`,
-    ...(atlas ? { atlas } : {}),
-  }];
+  return [
+    product.id,
+    {
+      name: ingredientNames[nameKey] ?? recipeNames[nameKey] ?? recipeNames[source.name] ?? humanize(product.id),
+      icon: stringValue(source.config.image) ?? `${product.id}.tex`,
+      ...(atlas ? { atlas } : {}),
+    },
+  ];
 }
 
 const inventoryProductSpecs = new Map<string, InventoryProductSpec>();
 for (const source of recipeData.recipes) {
   const entry = createInventoryProductSpec(source);
-  if (!entry) { continue; }
+  if (!entry) {
+    continue;
+  }
   const [productId, spec] = entry;
   if (!inventoryProductSpecs.has(productId) || source.name === productId) {
     inventoryProductSpecs.set(productId, spec);
@@ -120,28 +126,41 @@ for (const source of recipeData.recipes) {
 export const INVENTORY_PRODUCT_SPECS: Readonly<Record<string, InventoryProductSpec>> =
   Object.fromEntries(inventoryProductSpecs);
 
-export const INVENTORY_SKIN_SPECS: Readonly<Record<string, InventorySkinSpec>> =
-  { ...Object.fromEntries(Object.entries(recipeSkins).flatMap(([recipeId, skins]) => skins.map((skin) => [skin.id, {
-    itemId: INVENTORY_RECIPES[recipeId]?.productId ?? recipeId,
-    name: skin.name,
-    icon: `${skin.id.replace(/_builder$/, '').replaceAll('_none', '')}.tex`,
-    atlas: 'images/inventoryimages.xml',
-  }]))), ...GROUND_ITEM_SKIN_SPECS, ...HAT_SKIN_SPECS };
+export const INVENTORY_SKIN_SPECS: Readonly<Record<string, InventorySkinSpec>> = {
+  ...Object.fromEntries(
+    Object.entries(recipeSkins).flatMap(([recipeId, skins]) =>
+      skins.map(skin => [
+        skin.id,
+        {
+          itemId: INVENTORY_RECIPES[recipeId]?.productId ?? recipeId,
+          name: skin.name,
+          icon: `${skin.id.replace(/_builder$/, '').replaceAll('_none', '')}.tex`,
+          atlas: 'images/inventoryimages.xml',
+        },
+      ]),
+    ),
+  ),
+  ...GROUND_ITEM_SKIN_SPECS,
+  ...HAT_SKIN_SPECS,
+};
 
-export const INVENTORY_RECIPE_SKINS: Readonly<Record<string, readonly string[]>> =
-  Object.fromEntries(Object.entries(recipeSkins).map(([id, skins]) => [id, skins.map((skin) => skin.id)]));
+export const INVENTORY_RECIPE_SKINS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
+  Object.entries(recipeSkins).map(([id, skins]) => [id, skins.map(skin => skin.id)]),
+);
 
 function stringValue(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined;
 }
 
 function humanize(id: string): string {
-  return id.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+  return id.replaceAll('_', ' ').replace(/\b\w/g, character => character.toUpperCase());
 }
 
 function colorFor(id: string): string {
   let hash = 0;
-  for (const character of id) { hash = (Math.imul(hash, 31) + character.charCodeAt(0)) | 0; }
+  for (const character of id) {
+    hash = (Math.imul(hash, 31) + character.charCodeAt(0)) | 0;
+  }
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue} 24% 48%)`;
 }
@@ -212,15 +231,15 @@ export function createRecipe(id: string): Recipe {
     ...(atlas ? { inventoryAtlas: atlas } : {}),
     inventoryIcon: image,
     ...(hat && !HAT_RECIPES[id] ? { locked: true } : {}),
-    ingredients: source.ingredients.map((ingredient) => {
+    ingredients: source.ingredients.map(ingredient => {
       const display = createIngredient(ingredient);
-      return hat && ingredient.amount === 0
-        ? { ...display, required: 1, requiredLabel: '1（不消耗）' } : display;
+      return hat && ingredient.amount === 0 ? { ...display, required: 1, requiredLabel: '1（不消耗）' } : display;
     }),
-    skins: (recipeSkins[product] ?? []).map((skin) => ({
+    skins: (recipeSkins[product] ?? []).map(skin => ({
       ...skin,
       inventoryAtlas: INVENTORY_SKIN_SPECS[skin.id]?.atlas ?? 'images/inventoryimages.xml',
-      inventoryIcon: INVENTORY_SKIN_SPECS[skin.id]?.icon ?? `${skin.id.replace(/_builder$/, '').replaceAll('_none', '')}.tex`,
+      inventoryIcon:
+        INVENTORY_SKIN_SPECS[skin.id]?.icon ?? `${skin.id.replace(/_builder$/, '').replaceAll('_none', '')}.tex`,
     })),
   };
 }

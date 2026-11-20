@@ -27,36 +27,63 @@ export class PoopFlies {
   readonly active = readonlySignal(this.swarming);
 
   constructor(inst: ItemEntity, world: ItemPrefabWorld) {
-    this.inst = inst; this.world = world;
-    const source = world.sprites.archive({ animationArchive: 'flies.zip', buildArchives: ['flies.zip'], bank: 'flies' }, { dynamicParent: true });
-    const flies = createArchiveEntity('flies', source, { name: 'swarm_pre', billboard: true }, 'flies', undefined, inst.status);
+    this.inst = inst;
+    this.world = world;
+    const source = world.sprites.archive(
+      { animationArchive: 'flies.zip', buildArchives: ['flies.zip'], bank: 'flies' },
+      { dynamicParent: true },
+    );
+    const flies = createArchiveEntity(
+      'flies',
+      source,
+      { name: 'swarm_pre', billboard: true },
+      'flies',
+      undefined,
+      inst.status,
+    );
     this.fliesInstance = flies.instance;
     flies.instance.persists = false;
     flies.instance.sprite.setVisible(false);
     // The decorative child must not enlarge the manure's pickup target, whenever its sprite is drawn again.
     const stopRaycast = createEffect(() => {
       flies.instance.sprite.art.get();
-      flies.display.model.traverse(object => { object.raycast = () => {}; });
+      flies.display.model.traverse(object => {
+        object.raycast = () => {};
+      });
     });
-    inst.sprite.attachFx('flies', { sprite: flies.instance.sprite, display: flies.display, active: this.active, sortLayer: 2 });
+    inst.sprite.attachFx('flies', {
+      sprite: flies.instance.sprite,
+      display: flies.display,
+      active: this.active,
+      sortLayer: 2,
+    });
     inst.onRemove(() => {
       this.Remove();
       inst.sprite.detachFx('flies');
-      stopRaycast(); flies.instance.remove(); flies.display.dispose();
+      stopRaycast();
+      flies.instance.remove();
+      flies.display.dispose();
     });
   }
 
   /** inst:SpawnChild("flies"). */
   Spawn(): void {
-    if (this.controller || this.inst.isRemoved || this.inst.components.inventoryitem.owner) { return; }
-    this.controller = new FliesController(this.fliesInstance, this.inst.transform.position, this.world.scheduler,
-      this.world.firefliesWorld.getWatchWorldContent);
+    if (this.controller || this.inst.isRemoved || this.inst.components.inventoryitem.owner) {
+      return;
+    }
+    this.controller = new FliesController(
+      this.fliesInstance,
+      this.inst.transform.position,
+      this.world.scheduler,
+      this.world.firefliesWorld.getWatchWorldContent,
+    );
     this.swarming.set(true);
   }
 
   /** inst.flies:Remove(). */
   Remove(): void {
-    this.controller?.dispose(); this.controller = undefined;
+    this.controller?.dispose();
+    this.controller = undefined;
     this.swarming.set(false);
   }
 }
@@ -71,6 +98,10 @@ function bindPoop(inst: ItemEntity, world: ItemPrefabWorld): void {
   inst.ListenForEvent('onputininventory', () => flies.Remove());
   // burnable:SetOnIgniteFn(OnBurn).
   inst.ListenForEvent('onignite', () => flies.Remove());
-  inst.sprite.playOnce('dump', () => { if (!inst.isRemoved) { inst.sprite.playOnce('idle'); } });
+  inst.sprite.playOnce('dump', () => {
+    if (!inst.isRemoved) {
+      inst.sprite.playOnce('idle');
+    }
+  });
   flies.Spawn();
 }

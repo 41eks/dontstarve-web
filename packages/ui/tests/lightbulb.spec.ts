@@ -3,16 +3,28 @@ import { expect, test } from '@playwright/test';
 
 test('lightbulb uses source ground art and only lights the world while dropped', async ({ page }) => {
   const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => { if (message.type() === 'error') { errors.push(message.text()); } });
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error') {
+      errors.push(message.text());
+    }
+  });
   await page.goto('/tests/dst-lighting.html');
-  const result = await page.evaluate(async (url) => {
-    const { checkLightbulbLighting } = await import(url);
-    return checkLightbulbLighting();
-  }, `/@fs${fileURLToPath(new URL('./lightbulb-fixture.ts', import.meta.url))}`);
+  const result = await page.evaluate(
+    async url => {
+      const { checkLightbulbLighting } = await import(url);
+      return checkLightbulbLighting();
+    },
+    `/@fs${fileURLToPath(new URL('./lightbulb-fixture.ts', import.meta.url))}`,
+  );
   expect(result.parameters).toMatchObject({ radius: 1.5, intensity: 0.5, falloff: 0.7 });
-  expect(result.source).toMatchObject({ animationArchive: 'bulb.zip', buildArchives: ['bulb.zip'],
-    bank: 'bulb', animation: 'idle', icon: 'lightbulb.tex' });
+  expect(result.source).toMatchObject({
+    animationArchive: 'bulb.zip',
+    buildArchives: ['bulb.zip'],
+    bank: 'bulb',
+    animation: 'idle',
+    icon: 'lightbulb.tex',
+  });
   expect(result.glowing.near).toBeGreaterThan(result.baseline + 100);
   expect(result.glowing.far).toBe(result.baseline);
   expect(result.disabled).toBe(result.baseline);

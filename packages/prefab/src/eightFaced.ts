@@ -14,12 +14,19 @@ export function SetEightFaced(
   frameFor: (facing: number) => number = facing => facing,
   rotation?: ReadonlySignal<number>,
 ): void {
-  if (!cameraFacing) { return; }
+  if (!cameraFacing) {
+    return;
+  }
   let stopWatching: (() => void) | undefined;
-  const facing = watchSignal(cameraFacing, stop => { stopWatching = stop; });
+  const facing = watchSignal(cameraFacing, stop => {
+    stopWatching = stop;
+  });
   const stopFacing = createRenderEffect(() => {
     const selected = facing.get();
     inst.sprite.setFacing(frameFor(rotation ? rotateFacing(selected, rotation.get()) : selected));
   });
-  inst.onRemove(() => { stopFacing(); stopWatching?.(); });
+  inst.onRemove(() => {
+    stopFacing();
+    stopWatching?.();
+  });
 }

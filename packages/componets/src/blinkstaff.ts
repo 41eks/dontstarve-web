@@ -40,7 +40,9 @@ export function isBlinkCaster(caster: object): caster is BlinkCaster {
   return 'physics' in caster && 'setPosition' in caster && 'DoTaskInTime' in caster && 'Hide' in caster;
 }
 
-export interface BlinkStaffInst { readonly isRemoved: boolean }
+export interface BlinkStaffInst {
+  readonly isRemoved: boolean;
+}
 /** blinkstaff.lua onblinkfn(inst, pt, caster). */
 export type BlinkFn<Inst> = LuaFn<[inst: Inst, position: THREE.Vector3, caster: BlinkCaster]>;
 
@@ -60,37 +62,58 @@ export class BlinkStaff<Inst extends BlinkStaffInst = BlinkStaffInst> {
   readonly world: BlinkStaffWorld;
 
   constructor(inst: Inst, world: BlinkStaffWorld) {
-    this.inst = inst; this.world = world;
+    this.inst = inst;
+    this.world = world;
     this.ResetSoundFX();
   }
 
-  SetFX(front?: string, back?: string): void { this.frontfx = front; this.backfx = back; }
+  SetFX(front?: string, back?: string): void {
+    this.frontfx = front;
+    this.backfx = back;
+  }
   ResetSoundFX(): void {
     this.presound = 'dontstarve/common/staff_blink';
     this.postsound = 'dontstarve/common/staff_blink';
   }
-  SetSoundFX(presound: string, postsound: string): void { this.presound = presound; this.postsound = postsound; }
+  SetSoundFX(presound: string, postsound: string): void {
+    this.presound = presound;
+    this.postsound = postsound;
+  }
 
   SpawnEffect(inst: BlinkCaster): void {
     const { x, y, z } = inst.position;
-    if (this.backfx !== undefined) { this.world.spawnFx(this.backfx, new THREE.Vector3(x, y - .1, z)); }
-    if (this.frontfx !== undefined) { this.world.spawnFx(this.frontfx, new THREE.Vector3(x, y, z)); }
+    if (this.backfx !== undefined) {
+      this.world.spawnFx(this.backfx, new THREE.Vector3(x, y - 0.1, z));
+    }
+    if (this.frontfx !== undefined) {
+      this.world.spawnFx(this.frontfx, new THREE.Vector3(x, y, z));
+    }
   }
 
   Blink(pt: THREE.Vector3, caster: BlinkCaster): boolean {
     const { map } = this.world;
-    if (this.inst.isRemoved || (caster.sg !== undefined && caster.sg.stateName !== 'quicktele')
-      || !map.isPassableAtPoint(pt) || map.isGroundTargetBlocked(pt)) { return false; }
+    if (
+      this.inst.isRemoved ||
+      (caster.sg !== undefined && caster.sg.stateName !== 'quicktele') ||
+      !map.isPassableAtPoint(pt) ||
+      map.isGroundTargetBlocked(pt)
+    ) {
+      return false;
+    }
     this.blinktask?.Cancel();
     this.SpawnEffect(caster);
-    if (this.presound) { caster.SoundEmitter?.PlaySound(this.presound); }
+    if (this.presound) {
+      caster.SoundEmitter?.PlaySound(this.presound);
+    }
     if (caster.sg === undefined) {
       caster.Hide();
       caster.components.health?.SetInvincible(true);
-    } else { caster.sg.statemem.onstartblinking?.(); }
+    } else {
+      caster.sg.statemem.onstartblinking?.();
+    }
     // DynamicPosition(pt): the point is kept as given.
     const dpt = pt.clone();
-    this.blinktask = caster.DoTaskInTime(.25, () => OnBlinked(caster, this, dpt));
+    this.blinktask = caster.DoTaskInTime(0.25, () => OnBlinked(caster, this, dpt));
     this.onblinkfn?.(this.inst, pt, caster);
     return true;
   }
@@ -100,12 +123,16 @@ function OnBlinked(caster: BlinkCaster, self: BlinkStaff, pt: THREE.Vector3): vo
   if (caster.sg === undefined) {
     caster.Show();
     caster.components.health?.SetInvincible(false);
-  } else { caster.sg.statemem.onstopblinking?.(); }
+  } else {
+    caster.sg.statemem.onstopblinking?.();
+  }
   const { map } = self.world;
   if (map.isPassableAtPoint(pt) && !map.isGroundTargetBlocked(pt)) {
     caster.setPosition(pt.x, pt.y, pt.z);
     caster.physics.Teleport();
   }
   self.SpawnEffect(caster);
-  if (self.postsound) { caster.SoundEmitter?.PlaySound(self.postsound); }
+  if (self.postsound) {
+    caster.SoundEmitter?.PlaySound(self.postsound);
+  }
 }

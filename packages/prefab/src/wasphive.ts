@@ -35,10 +35,17 @@ const UNIT = TILE_SIZE / 4;
 /** wasphive.lua fn: the components it adds. */
 export class WasphiveInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    health: Health; childspawner: ChildSpawner<WasphiveInstance, ChildSpawnerChild<WasphiveInstance>>;
-    worldsettingstimer: WorldSettingsTimer; lootdropper: LootDropper; burnable: Burnable;
-    playerprox: PlayerProx<WasphiveInstance>; combat: Combat; propagator: Propagator; lunarhailbuildup: LunarHailBuildup;
-    inspectable: Inspectable; hauntable: Hauntable;
+    health: Health;
+    childspawner: ChildSpawner<WasphiveInstance, ChildSpawnerChild<WasphiveInstance>>;
+    worldsettingstimer: WorldSettingsTimer;
+    lootdropper: LootDropper;
+    burnable: Burnable;
+    playerprox: PlayerProx<WasphiveInstance>;
+    combat: Combat;
+    propagator: Propagator;
+    lunarhailbuildup: LunarHailBuildup;
+    inspectable: Inspectable;
+    hauntable: Hauntable;
   };
   scrapbook_anim = 'cocoon_small';
 }
@@ -65,7 +72,12 @@ function fn(world: HiveWorld): WasphiveInstance {
 
   addComponent(inst, 'health', Health, undefined, world.scheduler).SetMaxHealth(WASPHIVE_HEALTH);
 
-  const childspawner = addComponent(inst, 'childspawner', ChildSpawner<WasphiveInstance, ChildSpawnerChild<WasphiveInstance>>, world.scheduler);
+  const childspawner = addComponent(
+    inst,
+    'childspawner',
+    ChildSpawner<WasphiveInstance, ChildSpawnerChild<WasphiveInstance>>,
+    world.scheduler,
+  );
   // `childspawner.childspawner = "killerbee"` sets an unused field, so childname keeps childspawner.lua's "".
   childspawner.childname = '';
   childspawner.SetRegenPeriod(WASPHIVE_REGEN_TIME);
@@ -87,13 +99,24 @@ function fn(world: HiveWorld): WasphiveInstance {
   burnable.SetFXLevel(4);
   burnable.SetBurnTime(LARGE_BURN_TIME);
 
-  addComponent(inst, 'playerprox', PlayerProx<WasphiveInstance>, world.getWatchWorldContent).SetDist(10 * UNIT, 13 * UNIT);
+  addComponent(inst, 'playerprox', PlayerProx<WasphiveInstance>, world.getWatchWorldContent).SetDist(
+    10 * UNIT,
+    13 * UNIT,
+  );
 
   addComponent(inst, 'combat', Combat, () => world.scheduler.now);
 
   // MakeMediumPropagator(inst), without SetOnFlashPoint.
-  addComponent(inst, 'propagator', Propagator, 'medium', radius =>
-    inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS), UNIT, world.scheduler, world.getWatchWorldContent);
+  addComponent(
+    inst,
+    'propagator',
+    Propagator,
+    'medium',
+    radius => inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS),
+    UNIT,
+    world.scheduler,
+    world.getWatchWorldContent,
+  );
   MakeSnowCovered(inst, world.getWatchWorldContent);
   // MakeSnowCovered's MakeLunarHailBuildup.
   addComponent(inst, 'lunarhailbuildup', LunarHailBuildup);
@@ -108,12 +131,19 @@ function fn(world: HiveWorld): WasphiveInstance {
 }
 
 /** The Prefab wasphive.lua returns. */
-export function wasphivePrefabs(world: HiveWorld): Readonly<Record<typeof WASPHIVE_ID, PrefabEntityDefinition<WasphiveInstance>>> {
+export function wasphivePrefabs(
+  world: HiveWorld,
+): Readonly<Record<typeof WASPHIVE_ID, PrefabEntityDefinition<WasphiveInstance>>> {
   return {
     [WASPHIVE_ID]: {
       fn: () => fn(world),
-      assets: { animationArchive: 'wasphive.zip', buildArchives: WASPHIVE_ARCHIVES, bank: 'wasphive', hiddenLayers: ['snow'] },
-      physics: { make: MakeObstaclePhysics, radius: .5 },
+      assets: {
+        animationArchive: 'wasphive.zip',
+        buildArchives: WASPHIVE_ARCHIVES,
+        bank: 'wasphive',
+        hiddenLayers: ['snow'],
+      },
+      physics: { make: MakeObstaclePhysics, radius: 0.5 },
       minimapIcon: 'wasphive.png',
     },
   };

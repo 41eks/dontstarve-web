@@ -1,29 +1,51 @@
 import { describe, expect, it, vi } from 'vitest';
-import { HandSlot, InventorySlot, InventoryStore, ItemEntityRegistry, equipmentSlotAddress, inventorySlotAddress } from '../src';
+import {
+  HandSlot,
+  InventorySlot,
+  InventoryStore,
+  ItemEntityRegistry,
+  equipmentSlotAddress,
+  inventorySlotAddress,
+} from '../src';
 import { addFueled } from './fueled';
 import { handSlot, inventorySlot, testInventoryStore, testItemRegistry } from './testItems';
 
-const a = inventorySlotAddress(0), b = inventorySlotAddress(1), hand = equipmentSlotAddress('hand');
+const a = inventorySlotAddress(0),
+  b = inventorySlotAddress(1),
+  hand = equipmentSlotAddress('hand');
 const specs = {
   farm_plow_item: { name: 'farm plow', icon: 'farm_plow_item.tex', maxStack: 1, maxUses: 4 },
-  torch: { name: 'torch', icon: 'torch.tex', maxStack: 1, maxFuel: 75, equippable: 'hand' as const, configureEntity: addFueled(75) },
+  torch: {
+    name: 'torch',
+    icon: 'torch.tex',
+    maxStack: 1,
+    maxFuel: 75,
+    equippable: 'hand' as const,
+    configureEntity: addFueled(75),
+  },
   log: { name: 'log', icon: 'log.tex', maxStack: 20 },
 };
 function setup() {
-  return testInventoryStore([
-    { address: a, slot: inventorySlot() }, { address: b, slot: inventorySlot() },
-    { address: hand, slot: handSlot() },
-  ], specs);
+  return testInventoryStore(
+    [
+      { address: a, slot: inventorySlot() },
+      { address: b, slot: inventorySlot() },
+      { address: hand, slot: handSlot() },
+    ],
+    specs,
+  );
 }
 
 describe('DST item identity and ownership', () => {
   it('indexes late-created map icons without scanning iconless items and releases removed icons from every registry', () => {
-    const entities = testItemRegistry(), adopted = testItemRegistry();
+    const entities = testItemRegistry(),
+      adopted = testItemRegistry();
     const insect = entities.create({ itemId: 'fireflies', count: 1 });
     const backpack = entities.create({ itemId: 'backpack', count: 1 });
     const icon = backpack.AddMiniMapEntity();
     icon.SetIcon('backpack.png');
-    adopted.adopt(backpack); adopted.adopt(backpack);
+    adopted.adopt(backpack);
+    adopted.adopt(backpack);
     const readInsectIcon = vi.spyOn(insect, 'MiniMapEntity', 'get');
     const readItems = vi.spyOn(entities, 'values');
     try {
@@ -41,7 +63,12 @@ describe('DST item identity and ownership', () => {
       expect(adopted.miniMapEntities).toEqual([]);
       expect(entities.get(backpack.id)).toBeUndefined();
       expect(insect.isRemoved).toBe(false);
-    } finally { readItems.mockRestore(); readInsectIcon.mockRestore(); entities.dispose(); adopted.dispose(); }
+    } finally {
+      readItems.mockRestore();
+      readInsectIcon.mockRestore();
+      entities.dispose();
+      adopted.dispose();
+    }
   });
 
   it('derives one item tile and preserves its state through transfers, extraction and load', () => {
@@ -53,10 +80,16 @@ describe('DST item identity and ownership', () => {
     expect(tile.peek()).toMatchObject({ name: store.getItemSpec('log').name, count: 8, wet: false });
     expect(tile.peek().image?.icon).toBe(store.getItemSpec('log').icon);
     const changes: string[] = [];
-    const stops = [tile.subscribe((next, previous) => {
-      for (const key of ['count', 'durabilityPercent', 'freshnessPercent', 'wet'] as const) { if (next[key] !== previous[key]) { changes.push(key); } }
-    })];
-    entity.setFreshnessPercent(.75);
+    const stops = [
+      tile.subscribe((next, previous) => {
+        for (const key of ['count', 'durabilityPercent', 'freshnessPercent', 'wet'] as const) {
+          if (next[key] !== previous[key]) {
+            changes.push(key);
+          }
+        }
+      }),
+    ];
+    entity.setFreshnessPercent(0.75);
     entity.setWet(true);
     expect(changes).toEqual(['freshnessPercent', 'wet']);
     changes.length = 0;
@@ -68,7 +101,7 @@ describe('DST item identity and ownership', () => {
     expect(store.transfer(a, b, 3)).toBe(true);
     expect(changes).toEqual(['count']);
     const split = store.getEntity(b)!;
-    expect(split.tile.peek().freshnessPercent).toBe(.75);
+    expect(split.tile.peek().freshnessPercent).toBe(0.75);
     expect(split.tile.peek().wet).toBe(true);
     expect(store.transfer(a, b, 100)).toBe(false);
     expect(changes).toEqual(['count']);
@@ -82,25 +115,32 @@ describe('DST item identity and ownership', () => {
     const restored = setup();
     restored.replaceState(saved, {});
     expect(restored.getEntity(a)?.snapshot()).toEqual(entity.snapshot());
-    expect(restored.getEntity(a)?.tile.peek()).toMatchObject({ freshnessPercent: .75, wet: true });
+    expect(restored.getEntity(a)?.tile.peek()).toMatchObject({ freshnessPercent: 0.75, wet: true });
     stops.forEach(stop => stop());
-    store.dispose(); restored.dispose();
+    store.dispose();
+    restored.dispose();
   });
 
   it('publishes fuel and finite uses directly without changing the item or quantity signal', () => {
     const store = setup();
     store.add('torch', 1);
     store.add('farm_plow_item', 1);
-    const torch = store.getEntity(a)!, plow = store.getEntity(b)!;
-    const count = vi.fn(), durability = vi.fn();
+    const torch = store.getEntity(a)!,
+      plow = store.getEntity(b)!;
+    const count = vi.fn(),
+      durability = vi.fn();
     torch.components.stackable.size.subscribe(count);
-    torch.tile.subscribe((next, previous) => { if (next.durabilityPercent !== previous.durabilityPercent) { durability(next.durabilityPercent, previous.durabilityPercent); } });
+    torch.tile.subscribe((next, previous) => {
+      if (next.durabilityPercent !== previous.durabilityPercent) {
+        durability(next.durabilityPercent, previous.durabilityPercent);
+      }
+    });
     expect(torch.tile.peek().durabilityPercent).toBe(1);
     expect(store.setRemainingFuel(a, 37.5)).toBe(true);
-    expect(durability).toHaveBeenCalledExactlyOnceWith(.5, 1);
+    expect(durability).toHaveBeenCalledExactlyOnceWith(0.5, 1);
     expect(count).not.toHaveBeenCalled();
     expect(plow.components.finiteuses.use()).toBe(true);
-    expect(plow.tile.peek().durabilityPercent).toBe(.75);
+    expect(plow.tile.peek().durabilityPercent).toBe(0.75);
     expect(plow.components.finiteuses.uses.peek()).toBe(3);
     expect(torch.setFreshnessPercent(NaN)).toBe(false);
     expect(torch.tile.peek().freshnessPercent).toBeUndefined();
@@ -116,7 +156,7 @@ describe('DST item identity and ownership', () => {
     expect(entity.components.finiteuses.use()).toBe(true);
     expect(store.get(a)?.remainingUses).toBe(3);
     // The slot keeps the same inst; itemtile follows the inst's tile, so the store has nothing to publish.
-    expect(entity.tile.peek().durabilityPercent).toBe(.75);
+    expect(entity.tile.peek().durabilityPercent).toBe(0.75);
     expect(changes).not.toHaveBeenCalled();
     expect(entity.components.finiteuses.use(-1)).toBe(false);
     expect(store.get(a)?.remainingUses).toBe(3);
@@ -140,16 +180,24 @@ describe('DST item identity and ownership', () => {
     const entity = store.getEntity(a)!;
     const runtime = { flush: vi.fn(), dispose: vi.fn() };
     entity.component('test', () => runtime);
-    expect(store.applySlotChanges([{ slot: a, itemId: 'torch', delta: -1 },
-      { slot: hand, itemId: 'torch', delta: 1 }])).toBe(true);
+    expect(
+      store.applySlotChanges([
+        { slot: a, itemId: 'torch', delta: -1 },
+        { slot: hand, itemId: 'torch', delta: 1 },
+      ]),
+    ).toBe(true);
     expect(store.getEntity(hand)).toBe(entity);
     expect(entity.components.inventoryitem.slot?.address).toEqual(hand);
     entity.setRemainingFuel(32.125);
     expect(store.get(hand)?.remainingFuel).toBe(32.125);
     store.add('log', 20);
     const owner = entity.components.inventoryitem.owner;
-    expect(store.applySlotChanges([{ slot: hand, itemId: 'torch', delta: -1 },
-      { slot: a, itemId: 'torch', delta: 1 }])).toBe(false);
+    expect(
+      store.applySlotChanges([
+        { slot: hand, itemId: 'torch', delta: -1 },
+        { slot: a, itemId: 'torch', delta: 1 },
+      ]),
+    ).toBe(false);
     expect(store.getEntity(hand)).toBe(entity);
     expect(entity.components.inventoryitem.owner).toBe(owner);
     expect(runtime.dispose).not.toHaveBeenCalled();
@@ -161,7 +209,11 @@ describe('DST item identity and ownership', () => {
     expect(restored.getEntity(hand)?.snapshot()).toEqual(entity.snapshot());
     expect(store.extract(hand, 1, entity)).toBe(entity);
     expect(entity.components.inventoryitem.owner).toBeNull();
-    expect(entity.component('test', () => { throw new Error('recreated component'); })).toBe(runtime);
+    expect(
+      entity.component('test', () => {
+        throw new Error('recreated component');
+      }),
+    ).toBe(runtime);
     store.applySlotChanges([{ slot: a, itemId: 'log', delta: -20 }]);
     expect(store.receive(entity)).toBe(true);
     expect(store.getEntity(a)).toBe(entity);
@@ -171,15 +223,29 @@ describe('DST item identity and ownership', () => {
     expect(runtime.dispose).toHaveBeenCalledOnce();
   });
 
-  it('makes every inst through the world\'s SpawnPrefab: created, restored, split and loaded into a backpack', () => {
+  it("makes every inst through the world's SpawnPrefab: created, restored, split and loaded into a backpack", () => {
     const spawned: string[] = [];
-    const entities: ItemEntityRegistry = new ItemEntityRegistry((prefab, saved) => { spawned.push(prefab); return entities.constructSaved(prefab, saved); });
-    const store = new InventoryStore([{ address: a, slot: new InventorySlot() }, { address: b, slot: new InventorySlot() }],
-      { ...specs, backpack: { name: 'backpack', icon: 'backpack.tex', maxStack: 1 } }, {}, entities);
+    const entities: ItemEntityRegistry = new ItemEntityRegistry((prefab, saved) => {
+      spawned.push(prefab);
+      return entities.constructSaved(prefab, saved);
+    });
+    const store = new InventoryStore(
+      [
+        { address: a, slot: new InventorySlot() },
+        { address: b, slot: new InventorySlot() },
+      ],
+      { ...specs, backpack: { name: 'backpack', icon: 'backpack.tex', maxStack: 1 } },
+      {},
+      entities,
+    );
     entities.create({ itemId: 'torch', count: 1 });
     store.replaceState({ bufferedBuilds: [], slots: [{ address: a, item: { itemId: 'log', count: 4 } }] }, {});
     expect(store.getEntity(a)).not.toBeNull();
-    entities.create({ itemId: 'backpack', count: 1, container: { slotCount: 8, slots: [{ slotKey: '0', item: { itemId: 'log', count: 1 } }] } });
+    entities.create({
+      itemId: 'backpack',
+      count: 1,
+      container: { slotCount: 8, slots: [{ slotKey: '0', item: { itemId: 'log', count: 1 } }] },
+    });
     expect(spawned).toEqual(['torch', 'log', 'backpack', 'log']);
     store.dispose();
   });

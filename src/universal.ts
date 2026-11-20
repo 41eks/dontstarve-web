@@ -31,10 +31,7 @@ function resizeRendererToDisplaySize() {
   const width = Math.max(1, Math.floor(window.innerWidth));
   const height = Math.max(1, Math.floor(window.innerHeight));
   const pixelRatio = Math.min(window.devicePixelRatio, 2);
-  const needsResize =
-    width !== displayWidth ||
-    height !== displayHeight ||
-    pixelRatio !== displayPixelRatio;
+  const needsResize = width !== displayWidth || height !== displayHeight || pixelRatio !== displayPixelRatio;
 
   if (needsResize) {
     renderer.setPixelRatio(pixelRatio);
@@ -55,8 +52,12 @@ scene.add(new THREE.AmbientLight(0xffffff, Math.PI));
 // main.ts publishes the initialized renderer before starting any scene tasks.
 // Importing the shared view no longer starts colour-cube fetches or loads saves.
 let dstLighting: DstLightingRenderer;
-window.addEventListener('game:lighting-ready', (event) => {
-  dstLighting = event.detail;
-}, { once: true });
+window.addEventListener(
+  'game:lighting-ready',
+  event => {
+    dstLighting = event.detail;
+  },
+  { once: true },
+);
 
 export { cursorUi, dstLighting, scene, renderer, resizeRendererToDisplaySize };

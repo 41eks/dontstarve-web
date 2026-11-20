@@ -13,7 +13,9 @@ const entity = (prefab: string) => new PrefabInstance(prefab, new SpriteState({ 
 
 describe('EntityScript events and Remove on PrefabInstance', () => {
   it('calls fn(source, data) and drops a cross-entity listener when either side is removed', () => {
-    const listener = entity('spider'), source = entity('spiderden'), other = entity('spiderden');
+    const listener = entity('spider'),
+      source = entity('spiderden'),
+      other = entity('spiderden');
     const fn = vi.fn();
     const hit = { attacker: other, damage: 10 };
     listener.ListenForEvent('attacked', fn, source);
@@ -26,7 +28,8 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     expect(fn).toHaveBeenCalledOnce();
 
     // The source retires: what the listener recorded about it goes too, and nothing calls it again.
-    const watcher = entity('spider'), seen = vi.fn();
+    const watcher = entity('spider'),
+      seen = vi.fn();
     watcher.ListenForEvent('onremove', seen, other);
     other.remove();
     expect(seen).toHaveBeenCalledExactlyOnceWith(other, undefined);
@@ -50,8 +53,10 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     sg.goToState('idle');
     expect(follow).toHaveBeenCalledOnce();
 
-    class EventBrain extends Brain<BehaviourContext> { protected OnStart(): void {} }
-    const brain = inst.brain = new EventBrain(inst as unknown as BehaviourContext);
+    class EventBrain extends Brain<BehaviourContext> {
+      protected OnStart(): void {}
+    }
+    const brain = (inst.brain = new EventBrain(inst as unknown as BehaviourContext));
     const heard = vi.fn();
     brain.AddEventHandler('attacked', heard);
     const hit = { attacker: entity('wilson'), damage: 10 };
@@ -66,10 +71,11 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     const inst = entity('molehill');
     inst.worldServices = { scheduler } as unknown as PrefabWorldContext;
     const order: string[] = [];
-    const task = vi.fn(), periodic = vi.fn();
+    const task = vi.fn(),
+      periodic = vi.fn();
     inst.DoTaskInTime(1, task);
-    inst.DoPeriodicTask(.5, periodic);
-    scheduler.advance(.5);
+    inst.DoPeriodicTask(0.5, periodic);
+    scheduler.advance(0.5);
     expect(periodic).toHaveBeenCalledOnce();
     inst.ListenForEvent('onremove', () => order.push(`onremove valid=${inst.isValid()}`));
     inst.onRemove(() => order.push('component'));
@@ -84,37 +90,47 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     scheduler.dispose();
   });
 
-  it('pushes an event in time, reports a task\'s remaining time, and keeps it when the entity joins another scheduler', () => {
-    const first = new GameTimeScheduler(), second = new GameTimeScheduler(100);
+  it("pushes an event in time, reports a task's remaining time, and keeps it when the entity joins another scheduler", () => {
+    const first = new GameTimeScheduler(),
+      second = new GameTimeScheduler(100);
     const inst = entity('lightflier');
     inst.BindScheduler(first);
     const heard = vi.fn();
     inst.ListenForEvent('timerdone', (_inst, data) => heard(data));
     const pushed = inst.PushEventInTime(2, 'timerdone', { name: 'grow' });
-    const periodic = vi.fn(), repeating = inst.DoPeriodicTask(1, periodic, 0);
+    const periodic = vi.fn(),
+      repeating = inst.DoPeriodicTask(1, periodic, 0);
     first.advance(0);
     expect(periodic).toHaveBeenCalledOnce();
-    first.advance(.5);
+    first.advance(0.5);
     expect(GetTaskRemaining(pushed, first.now)).toBe(1.5);
     // Moving to another world's game time keeps what is left of each task, and the old scheduler no longer runs them.
     inst.BindScheduler(second);
     expect(pushed.NextTime()).toBe(101.5);
     first.advance(10);
-    expect(heard).not.toHaveBeenCalled(); expect(periodic).toHaveBeenCalledOnce();
+    expect(heard).not.toHaveBeenCalled();
+    expect(periodic).toHaveBeenCalledOnce();
     second.advance(1.5);
     expect(heard).toHaveBeenCalledExactlyOnceWith({ name: 'grow' });
-    expect(pushed.NextTime()).toBeUndefined(); expect(GetTaskRemaining(pushed, second.now)).toBe(-1);
+    expect(pushed.NextTime()).toBeUndefined();
+    expect(GetTaskRemaining(pushed, second.now)).toBe(-1);
     expect(periodic).toHaveBeenCalledTimes(3);
     // A periodic task cancelled from its own callback does not run again.
     periodic.mockImplementation(() => repeating.Cancel());
-    second.advance(1); second.advance(5);
+    second.advance(1);
+    second.advance(5);
     expect(periodic).toHaveBeenCalledTimes(4);
-    first.dispose(); second.dispose();
+    first.dispose();
+    second.dispose();
   });
 
   it('removes AddChild children after its components and before OnRemoveEntity, and parented entities as it retires', () => {
-    const inst = entity('vault_pillar'), order: string[] = [];
-    const child = entity('flies'), released = entity('flies'), bottom = entity('vault_pillar_bottom'), moved = entity('fx');
+    const inst = entity('vault_pillar'),
+      order: string[] = [];
+    const child = entity('flies'),
+      released = entity('flies'),
+      bottom = entity('vault_pillar_bottom'),
+      moved = entity('fx');
     inst.AddChild(child);
     inst.AddChild(released);
     inst.RemoveChild(released);
@@ -129,10 +145,16 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
     inst.OnRemoveEntity = () => order.push(`OnRemoveEntity bottom valid=${bottom.isValid()}`);
     inst.remove();
     expect(order).toEqual(['component', 'child', 'OnRemoveEntity bottom valid=true', 'bottom']);
-    expect([child.isValid(), bottom.isValid(), released.isValid(), moved.isValid()]).toEqual([false, false, true, true]);
+    expect([child.isValid(), bottom.isValid(), released.isValid(), moved.isValid()]).toEqual([
+      false,
+      false,
+      true,
+      true,
+    ]);
 
     // A child removed first leaves its parent, which then has nothing of it to remove.
-    const parent = entity('poop'), flies = entity('flies');
+    const parent = entity('poop'),
+      flies = entity('flies');
     parent.AddChild(flies);
     flies.remove();
     expect(flies.parent).toBeUndefined();
@@ -143,7 +165,8 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
   });
 
   it('lets a homeseeker learn that its PrefabInstance home was removed', () => {
-    const home = entity('molehill'), seeker = new HomeSeeker<PrefabInstance>();
+    const home = entity('molehill'),
+      seeker = new HomeSeeker<PrefabInstance>();
     seeker.SetHome(home);
     home.remove();
     expect(seeker.home).toBeUndefined();
@@ -152,7 +175,8 @@ describe('EntityScript events and Remove on PrefabInstance', () => {
 
 describe('EntityScript queries on PrefabInstance', () => {
   it('measures distance and angle on the ground, and FacePoint waits while the stategraph is busy', () => {
-    const inst = entity('beefalo'), other = entity('wilson');
+    const inst = entity('beefalo'),
+      other = entity('wilson');
     other.setPosition(3, 0, -4);
     expect(inst.GetDistanceSqToInst(other)).toBe(25);
     expect(inst.IsNear(other, 5)).toBe(false);
@@ -163,7 +187,10 @@ describe('EntityScript queries on PrefabInstance', () => {
     inst.setRotation(30);
     expect(inst.GetAngleToPoint(inst.getPosition())).toBeCloseTo(30);
 
-    const sg = new StateGraphInstance<null, 'idle' | 'attack'>(null, [{ name: 'idle' }, { name: 'attack', tags: ['busy'] }]);
+    const sg = new StateGraphInstance<null, 'idle' | 'attack'>(null, [
+      { name: 'idle' },
+      { name: 'attack', tags: ['busy'] },
+    ]);
     inst.sg = sg;
     sg.goToState('attack');
     inst.FacePoint(0, 0, -2);
@@ -197,7 +224,8 @@ describe('EntityScript queries on PrefabInstance', () => {
     inst.ReturnToScene();
     expect(inst.IsAsleep()).toBe(false);
 
-    const first = new GameTimeScheduler(10), second = new GameTimeScheduler(100);
+    const first = new GameTimeScheduler(10),
+      second = new GameTimeScheduler(100);
     expect(() => inst.GetTimeAlive()).toThrow();
     inst.BindScheduler(first);
     first.advance(4);
@@ -205,15 +233,20 @@ describe('EntityScript queries on PrefabInstance', () => {
     inst.BindScheduler(second);
     second.advance(1);
     expect(inst.GetTimeAlive()).toBe(5);
-    first.dispose(); second.dispose();
+    first.dispose();
+    second.dispose();
   });
 
   it('makes the brain with SetBrain, holds it stopped per reason, and drops it while asleep for a new one on waking', () => {
     const inst = entity('pigman');
     const made: string[] = [];
     class TestBrain extends Brain<BehaviourContext> {
-      protected OnStart(): void { made.push('start'); }
-      protected override OnStop(): void { made.push('stop'); }
+      protected OnStart(): void {
+        made.push('start');
+      }
+      protected override OnStop(): void {
+        made.push('stop');
+      }
     }
     inst.SetBrain(owner => new TestBrain(owner as unknown as BehaviourContext));
     const first = inst.brain!;
@@ -250,7 +283,11 @@ describe('EntityScript queries on PrefabInstance', () => {
     const graph = () => {
       const sg = new StateGraphInstance<null, 'idle'>(null, [{ name: 'idle' }]);
       sg.goToState('idle');
-      return Object.assign(sg, { pauseSpy: vi.spyOn(sg, 'pause'), resumeSpy: vi.spyOn(sg, 'resume'), disposeSpy: vi.spyOn(sg, 'dispose') });
+      return Object.assign(sg, {
+        pauseSpy: vi.spyOn(sg, 'pause'),
+        resumeSpy: vi.spyOn(sg, 'resume'),
+        disposeSpy: vi.spyOn(sg, 'dispose'),
+      });
     };
     const first = inst.SetStateGraph(graph);
     expect(inst.sg).toBe(first);
@@ -280,10 +317,20 @@ describe('EntityScript queries on PrefabInstance', () => {
     const inst = entity('mole');
     const fired = vi.fn();
     inst.SetStateGraph(() => {
-      const sg = new StateGraphInstance<null, 'sleeping' | 'idle'>(null, [
-        { name: 'sleeping' },
-        { name: 'idle', timeline: [{ time: 1, fn: () => fired() }], onenter: sg => sg.setTimeout(2), ontimeout: () => fired('timeout') },
-      ], [], scheduler);
+      const sg = new StateGraphInstance<null, 'sleeping' | 'idle'>(
+        null,
+        [
+          { name: 'sleeping' },
+          {
+            name: 'idle',
+            timeline: [{ time: 1, fn: () => fired() }],
+            onenter: sg => sg.setTimeout(2),
+            ontimeout: () => fired('timeout'),
+          },
+        ],
+        [],
+        scheduler,
+      );
       sg.goToState('sleeping');
       return sg;
     });
@@ -292,9 +339,9 @@ describe('EntityScript queries on PrefabInstance', () => {
     scheduler.advance(5);
     expect(fired).not.toHaveBeenCalled();
     inst.ReturnToScene();
-    scheduler.advance(.9);
+    scheduler.advance(0.9);
     expect(fired).not.toHaveBeenCalled();
-    scheduler.advance(.2);
+    scheduler.advance(0.2);
     expect(fired).toHaveBeenCalledOnce();
     scheduler.advance(1);
     expect(fired).toHaveBeenLastCalledWith('timeout');

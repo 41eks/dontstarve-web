@@ -22,17 +22,25 @@ type MiniMapListener = (marker: MiniMapMarker, present: boolean) => void;
 const listeners = new Set<MiniMapListener>();
 
 /** Map-owned subscriptions list icons even when the entity's world sprite is asleep. */
-export function miniMapEntities(): ReadonlySet<MiniMapMarker> { return entities; }
+export function miniMapEntities(): ReadonlySet<MiniMapMarker> {
+  return entities;
+}
 
 /** Subscribe while the map is open. Initial entries and subsequent changes keep the same marker identity. */
 export function subscribeMiniMapEntities(listener: MiniMapListener): () => void {
   listeners.add(listener);
-  for (const marker of entities) { listener(marker, true); }
-  return () => { listeners.delete(listener); };
+  for (const marker of entities) {
+    listener(marker, true);
+  }
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 function notify(marker: MiniMapMarker, present: boolean): void {
-  for (const listener of listeners) { listener(marker, present); }
+  for (const listener of listeners) {
+    listener(marker, present);
+  }
 }
 
 /** Bind once when the logical entity receives its transform; the entity owns the returned cleanup. */
@@ -47,7 +55,9 @@ export function watchMiniMapEntity(source: MiniMapSource): () => void {
 
 /** A stable marker identity with lifecycle-managed local copies of the entity's signals. */
 class MiniMapBinding implements MiniMapMarker {
-  get position(): ReadonlyVector3 { return this.source.position; }
+  get position(): ReadonlyVector3 {
+    return this.source.position;
+  }
   private readonly cleanups: (() => void)[] = [];
   private readonly json;
   private readonly status;
@@ -60,9 +70,14 @@ class MiniMapBinding implements MiniMapMarker {
     this.status = source.status && watchSignal(source.status, stop => this.cleanups.push(stop));
     createEffect(() => {
       const json = this.json.get();
-      if (this.status?.get() === 'removed') { this.dispose(); return; }
+      if (this.status?.get() === 'removed') {
+        this.dispose();
+        return;
+      }
       if (!json.icon) {
-        if (entities.delete(this)) { notify(this, false); }
+        if (entities.delete(this)) {
+          notify(this, false);
+        }
         return;
       }
       // Iconless prefabs need no tracker or tile subscription. Movement inside one tile publishes nothing.
@@ -73,15 +88,29 @@ class MiniMapBinding implements MiniMapMarker {
     });
   }
 
-  get icon(): string { return this.json.peek().icon; }
-  get priority(): number { return this.json.peek().priority; }
-  get canUseCache(): boolean { return this.json.peek().canUseCache; }
-  get drawOverFogOfWar(): boolean { return this.json.peek().drawOverFogOfWar; }
-  get enabled(): boolean { return this.json.peek().enabled; }
+  get icon(): string {
+    return this.json.peek().icon;
+  }
+  get priority(): number {
+    return this.json.peek().priority;
+  }
+  get canUseCache(): boolean {
+    return this.json.peek().canUseCache;
+  }
+  get drawOverFogOfWar(): boolean {
+    return this.json.peek().drawOverFogOfWar;
+  }
+  get enabled(): boolean {
+    return this.json.peek().enabled;
+  }
 
   readonly dispose = (): void => {
-    if (entities.delete(this)) { notify(this, false); }
+    if (entities.delete(this)) {
+      notify(this, false);
+    }
     bindings.delete(this.source);
-    for (const stop of this.cleanups.splice(0)) { stop(); }
+    for (const stop of this.cleanups.splice(0)) {
+      stop();
+    }
   };
 }

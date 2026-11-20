@@ -16,7 +16,13 @@ import { withEntity } from './entityFixture';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { playerInst, createPlayer, type PlayerInstance } from './playerVisual';
-import { ReskinEffects, createReskinToolLifecycle, nextReskin, reskinEntity, reskinTargetOf } from '../../prefab/src/reskin_tool';
+import {
+  ReskinEffects,
+  createReskinToolLifecycle,
+  nextReskin,
+  reskinEntity,
+  reskinTargetOf,
+} from '../../prefab/src/reskin_tool';
 import { SpriteResources } from '@dontstarve-web/display';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { getActionString } from '../../stategraphs/src/actions';
@@ -44,17 +50,27 @@ beforeEach(() => {
     return new Response(await readFile(new URL(`../../../public/dst/data/${path}`, import.meta.url)));
   });
 });
-afterEach(() => { DisposeSounds(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  DisposeSounds();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function setupWorld() {
   return {
-    scene: new THREE.Scene(), player: withEntity(new THREE.Group(), 'wilson'), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
-    renderer: { domElement: new EventTarget() }, createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
+    scene: new THREE.Scene(),
+    player: withEntity(new THREE.Group(), 'wilson'),
+    camera: new THREE.PerspectiveCamera(),
+    ground: new THREE.Group(),
+    renderer: { domElement: new EventTarget() },
+    createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
 }
 
 function advance(animation: PlayerInstance, frames: number) {
-  for (let frame = 0; frame < frames; frame++) { advancePlayer(animation, 1 / 30); }
+  for (let frame = 0; frame < frames; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
 }
 
 it('casts at source frame nine once and cancels before commitment on unequip or another action', async () => {
@@ -63,8 +79,11 @@ it('casts at source frame nine once and cancels before commitment on unequip or 
   const animationEquipper = createPlayerEquipper(animation);
   await animationEquipper.equip('reskin_tool');
   const cast = vi.fn();
-  const tool = testItem({ itemId: 'reskin_tool', count: 1 }); tool.spelltype = 'RESKIN'; tool.addTag('veryquickcast');
-  const push = () => animation.sg.pushBufferedAction(new BufferedAction('CASTSPELL', cast, undefined, { invobject: tool }));
+  const tool = testItem({ itemId: 'reskin_tool', count: 1 });
+  tool.spelltype = 'RESKIN';
+  tool.addTag('veryquickcast');
+  const push = () =>
+    animation.sg.pushBufferedAction(new BufferedAction('CASTSPELL', cast, undefined, { invobject: tool }));
   expect(push()).toBe(true);
   expect(push()).toBe(false);
   advance(animation, 8);
@@ -88,7 +107,8 @@ it('casts at source frame nine once and cancels before commitment on unequip or 
 });
 
 it.each([undefined, 'reskin_tool_brush'])(
-  'draws %s puff with its source build and removes it at animation end', async (skinId) => {
+  'draws %s puff with its source build and removes it at animation end',
+  async skinId => {
     const camera = bindTestCamera();
     const scene = new THREE.Scene();
     const effects = new ReskinEffects(scene);
@@ -107,11 +127,15 @@ it.each([undefined, 'reskin_tool_brush'])(
     expect(displayLightOverride(object)).toBe(skinId ? 0 : 1);
     const mesh = object.children[0].children[0].children[0] as THREE.Mesh;
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
-    expect((mesh.material as THREE.MeshBasicMaterial[]).every((material) => material.forceSinglePass)).toBe(true);
-    expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${skinId ?? 'reskin_tool_fx'}`)).toBe(true);
+    expect((mesh.material as THREE.MeshBasicMaterial[]).every(material => material.forceSinglePass)).toBe(true);
+    expect(
+      (mesh.material as THREE.Material[]).some(material => material.name === `ground:${skinId ?? 'reskin_tool_fx'}`),
+    ).toBe(true);
     const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 1);
     camera.turn(quaternion);
-    for (let frame = 0; frame < 15; frame++) { effects.update(1 / 30); }
+    for (let frame = 0; frame < 15; frame++) {
+      effects.update(1 / 30);
+    }
     expect(object.children[0].quaternion.equals(quaternion)).toBe(true);
     expect(effects.renderEntities).toHaveLength(1);
     effects.update(1 / 30);
@@ -150,7 +174,9 @@ it('shares FX geometry while keeping playback independent and discarding unused 
   effects.update(0);
   expect(effects.renderEntities).toEqual([b]);
   expect(release).not.toHaveBeenCalled();
-  for (let frame = 0; frame < 16; frame++) { effects.update(1 / 30); }
+  for (let frame = 0; frame < 16; frame++) {
+    effects.update(1 / 30);
+  }
   expect(scene.children).toEqual([]);
   expect(release).not.toHaveBeenCalled();
   effects.dispose();
@@ -160,8 +186,11 @@ it('shares FX geometry while keeping playback independent and discarding unused 
 it('cycles building skins while preserving the container root, identity, state and saved foot', async () => {
   const world = setupWorld();
   const placement = managedBuildings(world, { consume: () => false });
-  const record: EntitySaveRecord = { id: 'e_open_chest', transform: { position: [3, 0, 4], rotationY: 0 },
-    components: { building: {}, container: { items: {} } } };
+  const record: EntitySaveRecord = {
+    id: 'e_open_chest',
+    transform: { position: [3, 0, 4], rotationY: 0 },
+    components: { building: {}, container: { items: {} } },
+  };
   const root = await placement.spawnFromSave('treasurechest', record);
   const target = reskinTargetOf(lookupPrefabInstance(root))!;
   const skins = Object.keys(definitions.animatedBuildings.treasurechest.skinArchives);
@@ -176,7 +205,9 @@ it('cycles building skins while preserving the container root, identity, state a
   expect(world.scene.children).toEqual([root]);
   expect(lookupPrefabInstance(root)?.entityId).toBe(record.id);
   expect(placement.exportRecords()[0].record).toMatchObject({
-    id: record.id, transform: record.transform, components: { building: { skinId: skins[0] } },
+    id: record.id,
+    transform: record.transform,
+    components: { building: { skinId: skins[0] } },
   });
   expect(lookupPrefabInstance(root)!.saveRecord!.components.container).toEqual(record.components.container);
   // The final skin returns to the base rather than dropping an unsupported skin ID into the save.
@@ -191,39 +222,70 @@ it('reskins dropped items without changing their count or entity ID and preserve
   const world = setupWorld();
   const inventory = createPickupInventory();
   const picked = vi.spyOn(inventory, 'Equip');
-  const manager = new ItemWorldFixture(world.scene, world.camera, world.renderer,
-    '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', world.player);
-  await manager.spawnFromSave('e_staff', {
-    itemId: 'greenstaff', count: 1, remainingUses: 4, name: '拆解魔杖', icon: 'greenstaff.tex', atlas: 'images/inventoryimages.xml',
-  }, new THREE.Vector3(3, 0, 4));
+  const manager = new ItemWorldFixture(
+    world.scene,
+    world.camera,
+    world.renderer,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    world.player,
+  );
+  await manager.spawnFromSave(
+    'e_staff',
+    {
+      itemId: 'greenstaff',
+      count: 1,
+      remainingUses: 4,
+      name: '拆解魔杖',
+      icon: 'greenstaff.tex',
+      atlas: 'images/inventoryimages.xml',
+    },
+    new THREE.Vector3(3, 0, 4),
+  );
   const first = manager.reskinTargets[0];
   const fx = { play: vi.fn(), dispose: vi.fn() };
   expect(reskinEntity(first, undefined, fx)).toBe(true);
   expect(fx.play).toHaveBeenCalledExactlyOnceWith(new THREE.Vector3(3, 0, 4), 'greenstaff');
   expect(first.isValid()).toBe(true);
   expect(manager.reskinTargets[0]).toBe(first);
-  expect(manager.exportRecords()[0]).toMatchObject({ id: 'e_staff', transform: { position: [3, 0, 4] },
-    skinname: 'greenstaff_an', components: { finiteuses: { uses: 4 } } });
+  expect(manager.exportRecords()[0]).toMatchObject({
+    id: 'e_staff',
+    transform: { position: [3, 0, 4] },
+    skinname: 'greenstaff_an',
+    components: { finiteuses: { uses: 4 } },
+  });
   expect(manager.reskinTargets[0].isValid()).toBe(true);
   const canvas = world.renderer.domElement;
   Object.assign(canvas, { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
   vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([
-    { object: manager.reskinTargets[0].transform.model.children[0].children[0], point: new THREE.Vector3(), distance: 1 } as THREE.Intersection,
+    {
+      object: manager.reskinTargets[0].transform.model.children[0].children[0],
+      point: new THREE.Vector3(),
+      distance: 1,
+    } as THREE.Intersection,
   ]);
   performPickupAction(itemAt(manager.reskinTargets[0].transform.model), pickupDoer(world.player, inventory));
-  expect(picked).toHaveBeenCalledWith(expect.objectContaining({ id: 'e_staff', prefab: 'greenstaff', skinId: 'greenstaff_an' }));
+  expect(picked).toHaveBeenCalledWith(
+    expect.objectContaining({ id: 'e_staff', prefab: 'greenstaff', skinId: 'greenstaff_an' }),
+  );
   expect(inventory.getEntity(equipmentSlotAddress('hand'))?.components.finiteuses.remaining).toBe(4);
   expect(manager.exportRecords()).toEqual([]);
 });
 
 it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or unequipped cast at impact', async () => {
   const world = setupWorld();
-  Object.assign(world.renderer.domElement, { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) });
-  world.camera.position.set(0, 2, 8); world.camera.lookAt(0, 0, 0); world.camera.updateMatrixWorld();
-  const picker = world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world));
+  Object.assign(world.renderer.domElement, {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }),
+  });
+  world.camera.position.set(0, 2, 8);
+  world.camera.lookAt(0, 0, 0);
+  world.camera.updateMatrixWorld();
+  const picker = (world.mouseActions = new PlayerActionPicker(new PointerRaycaster(world)));
   const model = withEntity(new THREE.Group(), 'twigs');
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial());
-  model.add(mesh); world.scene.add(model);
+  model.add(mesh);
+  world.scene.add(model);
   const entity = registerActionEntity(lookupPrefabInstance(model)!);
   expect(reskinTargetOf(lookupPrefabInstance(model))).toBeUndefined();
   const equipped = createEquipmentExistenceState('HANDS');
@@ -238,11 +300,19 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
   // The player's own locomotor; `walk` lets it arrive at the target.
   const walker = testLocomotor(world.player);
   const controller = new PlayerController(world, animation.graph, walker.locomotor, equipped, doer, () => false);
-  const walk = (action: Parameters<typeof controller.DoAction>[0]) => { const done = controller.DoAction(action); walker.arrive(); return done; };
+  const walk = (action: Parameters<typeof controller.DoAction>[0]) => {
+    const done = controller.DoAction(action);
+    walker.arrive();
+    return done;
+  };
   try {
     picker.pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
     // componentactions EQUIPPED.spellcaster: castontargets on the right button; CASTSPELL.strfn is the tool's spelltype.
-    expect(picker.getMouseActions().right).toMatchObject({ action: 'CASTSPELL', invobject: tool.entity, target: entity });
+    expect(picker.getMouseActions().right).toMatchObject({
+      action: 'CASTSPELL',
+      invobject: tool.entity,
+      target: entity,
+    });
     expect(getActionString(picker.getMouseActions().right!)).toBe('打扫');
     entity.addTag('nomagic');
     expect(picker.getMouseActions().right).toBeUndefined();
@@ -256,15 +326,25 @@ it('offers CASTSPELL on any entity, honors nomagic and fails an unskinnable or u
     animation.finish();
     // A skinnable target whose tool left the hand before the hit frame keeps its skin.
     const skinned = lookupPrefabInstance(model)!;
-    skinned.sprite.setSkinSource({ archives: { icebox_crystal: 'icebox_crystal.zip' }, art: new SpriteResources().archives });
+    skinned.sprite.setSkinSource({
+      archives: { icebox_crystal: 'icebox_crystal.zip' },
+      art: new SpriteResources().archives,
+    });
     expect(reskinTargetOf(skinned)).toBe(skinned);
     expect(walk(controller.createAction(picker.getMouseActions().right!)!)).toBe(true);
-    equipped.set(null); lifecycle.onunequip();
+    equipped.set(null);
+    lifecycle.onunequip();
     expect(animation.hit()).toBe(false);
     expect(reskinTargetOf(skinned)!.sprite.skinId.peek()).toBeUndefined();
     expect(fx.play).not.toHaveBeenCalled();
     lookupPrefabInstance(model)!.remove();
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(findActionEntity(model)).toBeUndefined();
-  } finally { controller.dispose(); picker.dispose(); disposeActionEntity(findActionEntity(model)); mesh.geometry.dispose(); mesh.material.dispose(); }
+  } finally {
+    controller.dispose();
+    picker.dispose();
+    disposeActionEntity(findActionEntity(model));
+    mesh.geometry.dispose();
+    mesh.material.dispose();
+  }
 });

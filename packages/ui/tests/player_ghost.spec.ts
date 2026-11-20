@@ -2,42 +2,79 @@ import { readSaveDownload } from './save-download';
 import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 
-const urls = Object.fromEntries(['main', 'universal', 'player', 'playerStats'].map(name =>
-  [name, `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`]));
+const urls = Object.fromEntries(
+  ['main', 'universal', 'player', 'playerStats'].map(name => [
+    name,
+    `/@fs${fileURLToPath(new URL(`../../../src/${name}.ts`, import.meta.url))}`,
+  ]),
+);
 
-test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes without a second skeleton', async ({ page }) => {
+test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes without a second skeleton', async ({
+  page,
+}) => {
   test.setTimeout(150_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') { errors.push(message.text()); } });
+  page.on('console', message => {
+    if (message.type() === 'error') {
+      errors.push(message.text());
+    }
+  });
   await page.route('**/saves/initial-world.json', async route => {
-    const response = await route.fetch(), save = await response.json();
-    save.world.entities = {}; save.world.elapsedSeconds = 0;
+    const response = await route.fetch(),
+      save = await response.json();
+    save.world.entities = {};
+    save.world.elapsedSeconds = 0;
     save.players.local.transform.position = [0, 0, 0];
     save.players.local.inventory = { items: {}, equip: {} };
     save.players.local.builder = { bufferedBuilds: [] };
     await route.fulfill({ response, json: save });
   });
-  const prepare = () => page.evaluate(async urls => {
-    const main = await import(urls.main), { scene } = await import(urls.universal);
-    const { player } = await import(urls.player), stats = await import(urls.playerStats);
-    (window as any).ghostGame = { main, scene, player, stats };
-  }, urls);
-  const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
-    new CustomEvent('game:debug-command', { detail: { command } })), command);
+  const prepare = () =>
+    page.evaluate(async urls => {
+      const main = await import(urls.main),
+        { scene } = await import(urls.universal);
+      const { player } = await import(urls.player),
+        stats = await import(urls.playerStats);
+      (window as any).ghostGame = { main, scene, player, stats };
+    }, urls);
+  const submit = (command: string) =>
+    page.evaluate(
+      command =>
+        document
+          .querySelector('dst-debug-console')!
+          .dispatchEvent(new CustomEvent('game:debug-command', { detail: { command } })),
+      command,
+    );
   const saveGame = async () => {
-    const download = page.waitForEvent('download'); await submit('c_save()');
+    const download = page.waitForEvent('download');
+    await submit('c_save()');
     return JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   };
-  const player = () => page.evaluate(() => {
-    const { player, stats } = (window as any).ghostGame, controller = (window as any).__prefabInstance(player);
-    return { ghost: controller.sg.isGhost, state: controller.sg.stateName, ghostMode: stats.playerGhostMode.peek(),
-      health: stats.playerStats.health.currenthealth, tagged: (window as any).__prefabInstance(player).listTags().includes('playerghost') };
-  });
-  const skeletons = () => page.evaluate(() => (window as any).ghostGame.scene.children
-    .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'skeleton_player').map((model: any) => ({ id: (window as any).__prefabInstance(model)?.entityId, ...(window as any).__prefabInstance(model)?.description })));
+  const player = () =>
+    page.evaluate(() => {
+      const { player, stats } = (window as any).ghostGame,
+        controller = (window as any).__prefabInstance(player);
+      return {
+        ghost: controller.sg.isGhost,
+        state: controller.sg.stateName,
+        ghostMode: stats.playerGhostMode.peek(),
+        health: stats.playerStats.health.currenthealth,
+        tagged: (window as any).__prefabInstance(player).listTags().includes('playerghost'),
+      };
+    });
+  const skeletons = () =>
+    page.evaluate(() =>
+      (window as any).ghostGame.scene.children
+        .filter((model: any) => (window as any).__prefabInstance(model)?.prefab === 'skeleton_player')
+        .map((model: any) => ({
+          id: (window as any).__prefabInstance(model)?.entityId,
+          ...(window as any).__prefabInstance(model)?.description,
+        })),
+    );
 
-  await page.goto('/tests/dst-lighting.html?save=initial-world.json'); await prepare();
+  await page.goto('/tests/dst-lighting.html?save=initial-world.json');
+  await prepare();
   expect(await player()).toMatchObject({ ghost: false, ghostMode: false, tagged: false });
   await page.evaluate(() => (window as any).ghostGame.stats.playerStats.health.DoDelta(-150));
   await expect.poll(async () => (await player()).state).toBe('death');
@@ -54,7 +91,8 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
   expect(saved.world.entities.skeleton_player).toHaveLength(1);
 
   await page.route('**/saves/initial-world.json', route => route.fulfill({ json: saved }));
-  await page.reload({ waitUntil: 'load' }); await prepare();
+  await page.reload({ waitUntil: 'load' });
+  await prepare();
   await expect.poll(async () => (await player()).ghost, { timeout: 30_000 }).toBe(true);
   // loading_ghost skips the appear animation and the skeleton/die_fx.
   expect(await player()).toMatchObject({ ghostMode: true, health: 50, state: 'idle' });
@@ -68,10 +106,19 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
   test.setTimeout(150_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') { errors.push(message.text()); } });
+  page.on('console', message => {
+    if (message.type() === 'error') {
+      errors.push(message.text());
+    }
+  });
   await page.route('**/saves/initial-world.json', async route => {
-    const response = await route.fetch(), save = await response.json();
-    save.world.entities = { multiplayer_portal_moonrock: [{ id: 'portal-1', transform: { position: [12, 0, 0], rotationY: 0 }, components: {} }] };
+    const response = await route.fetch(),
+      save = await response.json();
+    save.world.entities = {
+      multiplayer_portal_moonrock: [
+        { id: 'portal-1', transform: { position: [12, 0, 0], rotationY: 0 }, components: {} },
+      ],
+    };
     save.world.elapsedSeconds = 0;
     save.players.local.transform.position = [0, 0, 0];
     save.players.local.inventory = { items: {}, equip: {} };
@@ -79,25 +126,57 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
     await route.fulfill({ response, json: save });
   });
   const urlOf = (path: string) => `/@fs${fileURLToPath(new URL(`../../../${path}`, import.meta.url))}`;
-  const submit = (command: string) => page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
-    new CustomEvent('game:debug-command', { detail: { command } })), command);
-  const player = () => page.evaluate(() => {
-    const { player, stats } = (window as any).ghostGame, controller = (window as any).__prefabInstance(player);
-    const portal = (window as any).ghostGame.scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'multiplayer_portal_moonrock');
-    return { ghost: controller.sg.isGhost, state: controller.sg.stateName, ghostMode: stats.playerGhostMode.peek(),
-      health: stats.playerStats.health.currenthealth, penalty: stats.playerStats.health.penalty, invincible: stats.playerStats.health.invincible,
-      visible: player.visible && player.children.every((child: any) => child.visible), x: Math.round(player.position.x * 10) / 10,
-      slippery: !!(window as any).__prefabInstance(player).slipperyfeet, tags: (window as any).__prefabInstance(player).listTags(), portalTags: (window as any).__prefabInstance(portal).listTags(), hauntable: !!((window as any).__findActionEntity(portal)?.components ?? (window as any).__prefabInstance(portal)!.components).hauntable };
-  });
+  const submit = (command: string) =>
+    page.evaluate(
+      command =>
+        document
+          .querySelector('dst-debug-console')!
+          .dispatchEvent(new CustomEvent('game:debug-command', { detail: { command } })),
+      command,
+    );
+  const player = () =>
+    page.evaluate(() => {
+      const { player, stats } = (window as any).ghostGame,
+        controller = (window as any).__prefabInstance(player);
+      const portal = (window as any).ghostGame.scene.children.find(
+        (model: any) => (window as any).__prefabInstance(model)?.prefab === 'multiplayer_portal_moonrock',
+      );
+      return {
+        ghost: controller.sg.isGhost,
+        state: controller.sg.stateName,
+        ghostMode: stats.playerGhostMode.peek(),
+        health: stats.playerStats.health.currenthealth,
+        penalty: stats.playerStats.health.penalty,
+        invincible: stats.playerStats.health.invincible,
+        visible: player.visible && player.children.every((child: any) => child.visible),
+        x: Math.round(player.position.x * 10) / 10,
+        slippery: !!(window as any).__prefabInstance(player).slipperyfeet,
+        tags: (window as any).__prefabInstance(player).listTags(),
+        portalTags: (window as any).__prefabInstance(portal).listTags(),
+        hauntable: !!(
+          (window as any).__findActionEntity(portal)?.components ?? (window as any).__prefabInstance(portal)!.components
+        ).hauntable,
+      };
+    });
 
   await page.goto('/tests/dst-lighting.html?save=initial-world.json');
-  await page.evaluate(async urls => {
-    const main = await import(urls.main), { scene } = await import(urls.universal);
-    const { player } = await import(urls.player), stats = await import(urls.playerStats);
-    const { BufferedAction } = await import(urls.bufferedaction);
-    (window as any).ghostGame = { main, scene, player, stats, BufferedAction };
-  }, { main: urlOf('src/main.ts'), universal: urlOf('src/universal.ts'), player: urlOf('src/player.ts'), playerStats: urlOf('src/playerStats.ts'),
-    bufferedaction: urlOf('packages/stategraphs/src/bufferedaction.ts') });
+  await page.evaluate(
+    async urls => {
+      const main = await import(urls.main),
+        { scene } = await import(urls.universal);
+      const { player } = await import(urls.player),
+        stats = await import(urls.playerStats);
+      const { BufferedAction } = await import(urls.bufferedaction);
+      (window as any).ghostGame = { main, scene, player, stats, BufferedAction };
+    },
+    {
+      main: urlOf('src/main.ts'),
+      universal: urlOf('src/universal.ts'),
+      player: urlOf('src/player.ts'),
+      playerStats: urlOf('src/playerStats.ts'),
+      bufferedaction: urlOf('packages/stategraphs/src/bufferedaction.ts'),
+    },
+  );
   // portal_rez setting on: the portal is hauntable and a resurrector.
   expect(await player()).toMatchObject({ ghost: false, hauntable: true, slippery: true });
   expect((await player()).portalTags).toEqual(expect.arrayContaining(['multiplayer_portal', 'resurrector']));
@@ -110,30 +189,43 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
   // A real left click on the portal: the death state disabled the controller and OnMakePlayerGhost enables it again.
   // Aim at a solid pixel left of the portal's transparent centre.
   const click = await page.evaluate(async url => {
-    const { view } = await import(url), { scene } = (window as any).ghostGame;
-    const portal = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'multiplayer_portal_moonrock');
-    const at = portal.position.clone(); at.y = 1.5;
-    const ndc = at.project(view.camera), rect = view.renderer.domElement.getBoundingClientRect();
-    return { x: rect.left + (ndc.x + 1) / 2 * rect.width - 60, y: rect.top + (1 - ndc.y) / 2 * rect.height };
+    const { view } = await import(url),
+      { scene } = (window as any).ghostGame;
+    const portal = scene.children.find(
+      (model: any) => (window as any).__prefabInstance(model)?.prefab === 'multiplayer_portal_moonrock',
+    );
+    const at = portal.position.clone();
+    at.y = 1.5;
+    const ndc = at.project(view.camera),
+      rect = view.renderer.domElement.getBoundingClientRect();
+    return { x: rect.left + ((ndc.x + 1) / 2) * rect.width - 60, y: rect.top + ((1 - ndc.y) / 2) * rect.height };
   }, urlOf('src/view.ts'));
   await page.mouse.move(click.x, click.y);
-  await expect.poll(() => page.evaluate(async url => (await import(url)).view.mouseActions.getMouseActions().left?.action, urlOf('src/view.ts'))).toBe('HAUNT');
+  await expect
+    .poll(() =>
+      page.evaluate(
+        async url => (await import(url)).view.mouseActions.getMouseActions().left?.action,
+        urlOf('src/view.ts'),
+      ),
+    )
+    .toBe('HAUNT');
   await page.mouse.click(click.x, click.y);
   await expect.poll(async () => (await player()).state).toBe('haunt_pre');
   // The portal is now haunted (no second haunt), and the player is hidden and moved to it.
   await expect.poll(async () => (await player()).portalTags).toContain('haunted');
   await expect.poll(async () => (await player()).x, { timeout: 10_000 }).toBeGreaterThan(8);
   await expect.poll(async () => (await player()).state, { timeout: 15_000 }).toBe('portal_rez');
-  expect(await player()).toMatchObject({ ghost: false, ghostMode: false, penalty: .25, invincible: true });
+  expect(await player()).toMatchObject({ ghost: false, ghostMode: false, penalty: 0.25, invincible: true });
   await expect.poll(async () => (await player()).state, { timeout: 15_000 }).toBe('idle');
   expect(await player()).toMatchObject({ ghost: false, invincible: false, visible: true, health: 50, slippery: true });
   expect((await player()).tags).not.toContain('playerghost');
   // The haunt cooldown (HAUNT_COOLDOWN_MEDIUM) lapses on the game clock.
   await expect.poll(async () => (await player()).portalTags, { timeout: 15_000 }).not.toContain('haunted');
 
-  const download = page.waitForEvent('download'); await submit('c_save()');
+  const download = page.waitForEvent('download');
+  await submit('c_save()');
   const saved = JSON.parse(await readSaveDownload((await (await download).path())!, 'Master'));
   expect(saved.players.local.ghost).toBeFalsy();
-  expect(saved.players.local.stats).toMatchObject({ health: 50, penalty: .25 });
+  expect(saved.players.local.stats).toMatchObject({ health: 50, penalty: 0.25 });
   expect(errors).toEqual([]);
 });

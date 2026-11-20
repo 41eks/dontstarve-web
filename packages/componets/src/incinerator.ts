@@ -12,8 +12,10 @@ export interface IncineratorItem {
 export interface IncineratorInst<Item extends IncineratorItem = IncineratorItem> {
   readonly components: {
     readonly container?: {
-      DestroyContentsConditionally(filterfn: ((inst: unknown, item: Item) => boolean) | undefined,
-        onpredestroyitemcallbackfn?: (inst: unknown, item: Item) => void): void;
+      DestroyContentsConditionally(
+        filterfn: ((inst: unknown, item: Item) => boolean) | undefined,
+        onpredestroyitemcallbackfn?: (inst: unknown, item: Item) => void,
+      ): void;
     };
   };
 }
@@ -31,10 +33,16 @@ export class Incinerator<Inst extends IncineratorInst<Item>, Item extends Incine
   /** Set only while Incinerate runs, as OnPreDestroyItemCallbackFn reads it. */
   incinerate_doer?: object;
 
-  constructor(inst: Inst) { this.inst = inst; }
+  constructor(inst: Inst) {
+    this.inst = inst;
+  }
 
-  SetOnIncinerateFn(fn: LuaFn<[inst: Inst], void> | undefined): void { this.onincineratefn = fn; }
-  SetShouldIncinerateItemFn(fn: ShouldIncinerateItemFn<Inst, Item> | undefined): void { this.shouldincinerateitemfn = fn; }
+  SetOnIncinerateFn(fn: LuaFn<[inst: Inst], void> | undefined): void {
+    this.onincineratefn = fn;
+  }
+  SetShouldIncinerateItemFn(fn: ShouldIncinerateItemFn<Inst, Item> | undefined): void {
+    this.shouldincinerateitemfn = fn;
+  }
 
   /** Incinerator.OnPreDestroyItemCallbackFn: the item hears it is incinerated, and by whom. */
   private OnPreDestroyItemCallbackFn(item: Item): void {
@@ -43,11 +51,14 @@ export class Incinerator<Inst extends IncineratorInst<Item>, Item extends Incine
 
   Incinerate(doer?: object): boolean {
     const container = this.inst.components.container;
-    if (!container) { return false; }
+    if (!container) {
+      return false;
+    }
     this.incinerate_doer = doer;
     const filter = this.shouldincinerateitemfn;
-    container.DestroyContentsConditionally(filter && ((_inst, item) => filter(this.inst, item)),
-      (_inst, item) => this.OnPreDestroyItemCallbackFn(item));
+    container.DestroyContentsConditionally(filter && ((_inst, item) => filter(this.inst, item)), (_inst, item) =>
+      this.OnPreDestroyItemCallbackFn(item),
+    );
     this.onincineratefn?.(this.inst);
     this.incinerate_doer = undefined;
     return true;

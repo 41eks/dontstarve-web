@@ -44,7 +44,9 @@ export class DstChestPanelElement extends AssetElement {
   private closing = false;
   private stopContainerSignal?: () => void;
 
-  get isClosing(): boolean { return this.closing; }
+  get isClosing(): boolean {
+    return this.closing;
+  }
 
   constructor() {
     super();
@@ -55,17 +57,35 @@ export class DstChestPanelElement extends AssetElement {
     return this.container;
   }
 
-  protected get containerKind(): SlotContainerKind { return 'chest'; }
-  protected get defaultPanelArchive(): string { return 'ui_chest_3x3.zip'; }
-  protected get defaultColumns(): number { return 3; }
-  protected get backgroundAsset(): string { return 'ingredient_slot.tex.png'; }
-  protected get backgroundAtlas(): string | undefined { return undefined; }
+  protected get containerKind(): SlotContainerKind {
+    return 'chest';
+  }
+  protected get defaultPanelArchive(): string {
+    return 'ui_chest_3x3.zip';
+  }
+  protected get defaultColumns(): number {
+    return 3;
+  }
+  protected get backgroundAsset(): string {
+    return 'ingredient_slot.tex.png';
+  }
+  protected get backgroundAtlas(): string | undefined {
+    return undefined;
+  }
   /** `above` centres the panel over the anchor; `beside` places it to the anchor's right. */
-  protected get anchorPlacement(): 'above' | 'beside' { return 'above'; }
-  protected get panelModifierClass(): string { return ''; }
-  protected get showCloseButton(): boolean { return false; }
+  protected get anchorPlacement(): 'above' | 'beside' {
+    return 'above';
+  }
+  protected get panelModifierClass(): string {
+    return '';
+  }
+  protected get showCloseButton(): boolean {
+    return false;
+  }
   /** The open container's widget.buttoninfo. */
-  protected get buttonInfo(): BuildingContainerDefinition['button'] { return this.button; }
+  protected get buttonInfo(): BuildingContainerDefinition['button'] {
+    return this.button;
+  }
 
   private get slotsElement(): HTMLElement {
     return this.panel!.querySelector<HTMLElement>('.chest-panel__slots')!;
@@ -78,11 +98,17 @@ export class DstChestPanelElement extends AssetElement {
     const viewportMargin = 8;
     const panelGap = 10;
     if (this.anchorPlacement === 'beside') {
-      this.style.setProperty('--chest-panel-anchor-x',
-        `${Math.max(viewportMargin, Math.min(window.innerWidth - panelWidth - viewportMargin, clientX + panelGap))}px`);
-      this.style.setProperty('--chest-panel-anchor-y',
-        `${Math.max(panelHeight / 2 + viewportMargin,
-          Math.min(window.innerHeight - panelHeight / 2 - viewportMargin, clientY))}px`);
+      this.style.setProperty(
+        '--chest-panel-anchor-x',
+        `${Math.max(viewportMargin, Math.min(window.innerWidth - panelWidth - viewportMargin, clientX + panelGap))}px`,
+      );
+      this.style.setProperty(
+        '--chest-panel-anchor-y',
+        `${Math.max(
+          panelHeight / 2 + viewportMargin,
+          Math.min(window.innerHeight - panelHeight / 2 - viewportMargin, clientY),
+        )}px`,
+      );
       return;
     }
     const minX = panelWidth / 2 + viewportMargin;
@@ -90,18 +116,14 @@ export class DstChestPanelElement extends AssetElement {
     const minY = panelHeight + panelGap + viewportMargin;
     const maxY = Math.max(minY, window.innerHeight - viewportMargin);
 
-    this.style.setProperty(
-      '--chest-panel-anchor-x',
-      `${Math.min(maxX, Math.max(minX, clientX))}px`,
-    );
-    this.style.setProperty(
-      '--chest-panel-anchor-y',
-      `${Math.min(maxY, Math.max(minY, clientY))}px`,
-    );
+    this.style.setProperty('--chest-panel-anchor-x', `${Math.min(maxX, Math.max(minX, clientX))}px`);
+    this.style.setProperty('--chest-panel-anchor-y', `${Math.min(maxY, Math.max(minY, clientY))}px`);
   }
 
   open(options: OpenChestOptions): void {
-    if (!options.containerId) { throw new TypeError('Chest container id must not be empty'); }
+    if (!options.containerId) {
+      throw new TypeError('Chest container id must not be empty');
+    }
     if (!Number.isInteger(options.slotCount) || options.slotCount <= 0) {
       throw new RangeError(`Invalid chest slot count: ${options.slotCount}`);
     }
@@ -119,13 +141,17 @@ export class DstChestPanelElement extends AssetElement {
     this.slotBackground = options.slotBackground;
     this.button = options.button;
     this.selectedSlot.set(null);
-    if (this.isConnected) { this.render(); }
+    if (this.isConnected) {
+      this.render();
+    }
   }
 
   close(): void {
     this.stopContainerSignal?.();
     const containerId = this.container?.id;
-    if (!containerId) { return; }
+    if (!containerId) {
+      return;
+    }
     this.disposeRenderers();
     this.container = undefined;
     this.selectedSlot.set(null);
@@ -138,12 +164,16 @@ export class DstChestPanelElement extends AssetElement {
         this.closing = false;
         this.render();
       });
-    } else if (this.isConnected) { this.render(); }
-    this.dispatchEvent(new CustomEvent<ChestCloseDetail>('game:chest-close', {
-      bubbles: true,
-      composed: true,
-      detail: { containerId },
-    }));
+    } else if (this.isConnected) {
+      this.render();
+    }
+    this.dispatchEvent(
+      new CustomEvent<ChestCloseDetail>('game:chest-close', {
+        bubbles: true,
+        composed: true,
+        detail: { containerId },
+      }),
+    );
   }
 
   setSlot(address: SlotAddress, item: SlotItem | null): void {
@@ -156,18 +186,26 @@ export class DstChestPanelElement extends AssetElement {
 
   animateReceive(address: SlotAddress, source: InventoryReceiveSource, amount: number): void {
     this.requireSlot(address);
-    this.renderers.find(({ button }) => button.dataset.containerId === address.containerId
-      && button.dataset.slotKey === address.slotKey)?.animateReceive(source, amount);
+    this.renderers
+      .find(
+        ({ button }) =>
+          button.dataset.containerId === address.containerId && button.dataset.slotKey === address.slotKey,
+      )
+      ?.animateReceive(source, amount);
   }
 
   /** Binds the open panel's slots to the container's logical slots; closing or rebinding releases them. */
   bindContainer<TItem>(slots: EntitySlots<TItem>, toItem: (item: TItem) => SlotItem): () => void {
-    if (!this.container) { throw new Error('Open a container panel before binding its slots'); }
+    if (!this.container) {
+      throw new Error('Open a container panel before binding its slots');
+    }
     this.stopContainerSignal?.();
     const stop = bindSlotEntities(this.container, slots, toItem);
     const dispose = () => {
       stop();
-      if (this.stopContainerSignal === dispose) { this.stopContainerSignal = undefined; }
+      if (this.stopContainerSignal === dispose) {
+        this.stopContainerSignal = undefined;
+      }
     };
     this.stopContainerSignal = dispose;
     return dispose;
@@ -183,7 +221,9 @@ export class DstChestPanelElement extends AssetElement {
 
   /** Builds the static shadow DOM once; `render()` only updates it. */
   private ensurePanel(): HTMLElement {
-    if (this.panel) { return this.panel; }
+    if (this.panel) {
+      return this.panel;
+    }
     const root = this.shadowRoot!;
     root.innerHTML = `
       <style>${slotStyles}\n${styles}</style>
@@ -231,8 +271,8 @@ export class DstChestPanelElement extends AssetElement {
           panel.classList.remove('is-loading');
           panel.style.setProperty('--chest-art-width', String(width / 64));
           panel.style.setProperty('--chest-art-height', String(height / 64));
-          panel.style.setProperty('--chest-art-origin-x', `${originX / width * 100}%`);
-          panel.style.setProperty('--chest-art-origin-y', `${originY / height * 100}%`);
+          panel.style.setProperty('--chest-art-origin-x', `${(originX / width) * 100}%`);
+          panel.style.setProperty('--chest-art-origin-y', `${(originY / height) * 100}%`);
         },
       );
       // Until the art reports its real size the placeholder size would reflow the panel mid-animation.
@@ -241,19 +281,29 @@ export class DstChestPanelElement extends AssetElement {
         if (this.closing) {
           this.closing = false;
           this.render();
-        } else { panel.classList.remove('is-opening'); }
+        } else {
+          panel.classList.remove('is-opening');
+        }
       });
     }
-    if (!this.container) { return; }
+    if (!this.container) {
+      return;
+    }
 
     if (this.slotGrid) {
       const { x, y, columnSpacing, rowSpacing } = this.slotGrid;
       const rows = Math.ceil(this.container.slots.length / this.columns);
       // Centre the grid at Lua's slot centres, relative to the animation origin.
-      panel.style.setProperty('--storage-offset-x', String((x + (this.columns - 1) * columnSpacing / 2) / 64));
-      panel.style.setProperty('--storage-offset-y', String((-y + (rows - 1) * rowSpacing / 2) / 64));
-      panel.style.setProperty('--storage-column-gap', `calc((${columnSpacing} / 64 - 1 / 0.9) * var(--inventory-slot-layout-size))`);
-      panel.style.setProperty('--storage-row-gap', `calc((${rowSpacing} / 64 - 1 / 0.9) * var(--inventory-slot-layout-size))`);
+      panel.style.setProperty('--storage-offset-x', String((x + ((this.columns - 1) * columnSpacing) / 2) / 64));
+      panel.style.setProperty('--storage-offset-y', String((-y + ((rows - 1) * rowSpacing) / 2) / 64));
+      panel.style.setProperty(
+        '--storage-column-gap',
+        `calc((${columnSpacing} / 64 - 1 / 0.9) * var(--inventory-slot-layout-size))`,
+      );
+      panel.style.setProperty(
+        '--storage-row-gap',
+        `calc((${rowSpacing} / 64 - 1 / 0.9) * var(--inventory-slot-layout-size))`,
+      );
     } else {
       for (const name of ['--storage-offset-x', '--storage-offset-y', '--storage-column-gap', '--storage-row-gap']) {
         panel.style.removeProperty(name);
@@ -271,8 +321,8 @@ export class DstChestPanelElement extends AssetElement {
         backgroundAtlas: this.slotBackground?.atlas ?? this.backgroundAtlas,
         backgroundUrl: () => this.asset('bag/ingredient_slot.tex.png'),
         selectedSlot: this.selectedSlot.get,
-        onSelect: (selected) => this.selectSlot(selected),
-        onTransfer: (request) => this.dispatchTransfer(request),
+        onSelect: selected => this.selectSlot(selected),
+        onTransfer: request => this.dispatchTransfer(request),
       });
       this.renderers.push(renderer);
       grid.append(renderer.button);
@@ -298,11 +348,13 @@ export class DstChestPanelElement extends AssetElement {
   }
 
   private dispatchTransfer(detail: SlotTransferRequest): void {
-    this.dispatchEvent(new CustomEvent<SlotTransferRequest>('game:slot-transfer-request', {
-      bubbles: true,
-      composed: true,
-      detail,
-    }));
+    this.dispatchEvent(
+      new CustomEvent<SlotTransferRequest>('game:slot-transfer-request', {
+        bubbles: true,
+        composed: true,
+        detail,
+      }),
+    );
   }
 
   private requireSlot(address: SlotAddress): SlotModel {
@@ -313,7 +365,7 @@ export class DstChestPanelElement extends AssetElement {
   }
 
   private disposeRenderers(): void {
-    this.renderers.forEach((renderer) => renderer.disconnect());
+    this.renderers.forEach(renderer => renderer.disconnect());
     this.renderers.length = 0;
   }
 }

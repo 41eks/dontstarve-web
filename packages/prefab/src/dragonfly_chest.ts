@@ -28,7 +28,9 @@ function onclose(inst: PrefabInstance): void {
 }
 
 function onworked(inst: PrefabInstance): void {
-  if (inst.hasTag('burnt')) { return; }
+  if (inst.hasTag('burnt')) {
+    return;
+  }
   inst.components.container?.DropEverything(inst.position);
   inst.components.container?.Close();
   inst.sprite.playOnce('hit');
@@ -69,5 +71,10 @@ export class DragonflyChestInstance extends PrefabInstance {
 }
 
 export function dragonflyChestPrefabs(world: PrefabWorldContext) {
-  return { [DRAGONFLY_CHEST_ID]: { ...buildingPrefab(declaration, 'dragonfly_chest', undefined, () => new DragonflyChestInstance(world), world), minimapIcon: 'dragonflychest.png' } };
+  return {
+    [DRAGONFLY_CHEST_ID]: {
+      ...buildingPrefab(declaration, 'dragonfly_chest', undefined, () => new DragonflyChestInstance(world), world),
+      minimapIcon: 'dragonflychest.png',
+    },
+  };
 }

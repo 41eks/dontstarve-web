@@ -11,19 +11,32 @@ import { MakePondPhysics } from './standardcomponents';
 import { WORLD_SCALE } from './tile';
 
 export const LAVA_POND_ID = 'lava_pond' as const;
-export const LAVA_POND_ROCK_IDS = ['lava_pond_rock', 'lava_pond_rock2', 'lava_pond_rock3',
-  'lava_pond_rock4', 'lava_pond_rock5', 'lava_pond_rock6', 'lava_pond_rock7'] as const;
-export type LavaPondRockId = typeof LAVA_POND_ROCK_IDS[number];
+export const LAVA_POND_ROCK_IDS = [
+  'lava_pond_rock',
+  'lava_pond_rock2',
+  'lava_pond_rock3',
+  'lava_pond_rock4',
+  'lava_pond_rock5',
+  'lava_pond_rock6',
+  'lava_pond_rock7',
+] as const;
+export type LavaPondRockId = (typeof LAVA_POND_ROCK_IDS)[number];
 export type LavaPondRockType = '' | '2' | '3' | '4' | '5' | '6' | '7';
 /** NUM_ROCK_TYPES = 7: math.random(NUM_ROCK_TYPES) > 1 and tostring(rocktype) or "". */
 export const LAVA_POND_ROCK_TYPES = ['', '2', '3', '4', '5', '6', '7'] as const;
 export const LAVA_POND_HEAT = 500;
 /** MakePondPhysics(inst, 1.95), in scene units. */
 export const LAVA_POND_RADIUS = 1.95 * WORLD_SCALE;
-export interface LavaPondRockLayout { rocktype: LavaPondRockType; offset: [number, number, number]; }
+export interface LavaPondRockLayout {
+  rocktype: LavaPondRockType;
+  offset: [number, number, number];
+}
 /** lava_pond.lua OnSave: `data.rocks = inst.rocks`. */
-export interface LavaPondSaveState { rocks?: LavaPondRockLayout[]; }
-const copyLayout = (rocks: readonly LavaPondRockLayout[]) => rocks.map(rock => ({ ...rock, offset: [...rock.offset] as [number, number, number] }));
+export interface LavaPondSaveState {
+  rocks?: LavaPondRockLayout[];
+}
+const copyLayout = (rocks: readonly LavaPondRockLayout[]) =>
+  rocks.map(rock => ({ ...rock, offset: [...rock.offset] as [number, number, number] }));
 
 /** What the scene injects into every lava pond. */
 export interface LavaPondWorld {
@@ -55,13 +68,22 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
 
   constructor(world: LavaPondWorld, position: Vector3) {
     super(LAVA_POND_ID, new SpriteState({ name: 'bubble_lava' }));
-    this.world = world; this.random = world.random ?? Math.random;
+    this.world = world;
+    this.random = world.random ?? Math.random;
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     // OnGround, LAYER_BACKGROUND and sort order 3, as pond.lua: the art lies on the ground and the entity root stays in world space.
-    this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);
-    for (const tag of ['lava', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable']) { this.addTag(tag); }
-    this.light.set({ radius: 1.5 * WORLD_SCALE, falloff: .66, intensity: .66, colour: [235 / 255, 121 / 255, 12 / 255] });
+    this.sprite.setGround(0);
+    this.sprite.setMeshOrder(-0.5);
+    for (const tag of ['lava', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable']) {
+      this.addTag(tag);
+    }
+    this.light.set({
+      radius: 1.5 * WORLD_SCALE,
+      falloff: 0.66,
+      intensity: 0.66,
+      colour: [235 / 255, 121 / 255, 12 / 255],
+    });
     this.deploySmartRadius = 2 * WORLD_SCALE;
 
     const heater = addComponent(this, 'heater', Heater);
@@ -85,7 +107,9 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
   /** OnLoad cancels the pending task and spawns the saved rocks at once. */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
     const rocks = data.lavaPond?.rocks;
-    if (rocks === undefined || this.rocksState.peek() !== undefined || !this.task) { return; }
+    if (rocks === undefined || this.rocksState.peek() !== undefined || !this.task) {
+      return;
+    }
     this.task.Cancel();
     this.task = undefined;
     this.rocksState.set(copyLayout(rocks));
@@ -101,12 +125,19 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
       for (let i = 0; i < count; i++) {
         const theta = this.random() * Math.PI * 2;
         const rocktype = LAVA_POND_ROCK_TYPES[Math.floor(this.random() * LAVA_POND_ROCK_TYPES.length)];
-        layout.push({ rocktype, offset: [Math.sin(theta) * 2.1 + this.random() * .3, 0, Math.cos(theta) * 2.1 + this.random() * .3] });
+        layout.push({
+          rocktype,
+          offset: [Math.sin(theta) * 2.1 + this.random() * 0.3, 0, Math.cos(theta) * 2.1 + this.random() * 0.3],
+        });
       }
-      this.rocksState.set(rocks = layout);
+      this.rocksState.set((rocks = layout));
     }
     for (const { rocktype, offset } of rocks) {
-      const position = new Vector3(this.position.x + offset[0] * WORLD_SCALE, 0, this.position.z + offset[2] * WORLD_SCALE);
+      const position = new Vector3(
+        this.position.x + offset[0] * WORLD_SCALE,
+        0,
+        this.position.z + offset[2] * WORLD_SCALE,
+      );
       const rock = this.world.spawnPrefab(`lava_pond_rock${rocktype}`, position);
       rock.entityParent = this;
       rock.persists = false;
@@ -125,15 +156,21 @@ export class LavaPondRockInstance extends PrefabInstance {
     super(prefab, new SpriteState({ name: `idle${rocktype}`, billboard: true }));
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce(`idle${rocktype}`);
-    if (rocktype.length > 0) { this.prefabNameOverride = 'lava_pond_rock'; }
+    if (rocktype.length > 0) {
+      this.prefabNameOverride = 'lava_pond_rock';
+    }
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
   }
 }
 
 /** The Prefab table lava_pond.lua returns: the seven rocks and the pond. */
-export function lavaPondPrefabs(world: LavaPondWorld): Readonly<Record<typeof LAVA_POND_ID, PrefabEntityDefinition<LavaPondInstance>>
-  & Record<LavaPondRockId, PrefabEntityDefinition<LavaPondRockInstance>>> {
+export function lavaPondPrefabs(
+  world: LavaPondWorld,
+): Readonly<
+  Record<typeof LAVA_POND_ID, PrefabEntityDefinition<LavaPondInstance>> &
+    Record<LavaPondRockId, PrefabEntityDefinition<LavaPondRockInstance>>
+> {
   const rock = (id: LavaPondRockId): PrefabEntityDefinition<LavaPondRockInstance> => ({
     fn: position => new LavaPondRockInstance(id, new Vector3(position.x, 0, position.z)),
     assets: { animationArchive: 'scorched_rock.zip', buildArchives: ['scorched_rock.zip'], bank: 'scorched_rock' },
@@ -145,6 +182,9 @@ export function lavaPondPrefabs(world: LavaPondWorld): Readonly<Record<typeof LA
       physics: { make: MakePondPhysics, radius: 1.95 },
       minimapIcon: 'lava_pond.png',
     },
-    ...Object.fromEntries(LAVA_POND_ROCK_IDS.map(id => [id, rock(id)])) as Record<LavaPondRockId, PrefabEntityDefinition<LavaPondRockInstance>>,
+    ...(Object.fromEntries(LAVA_POND_ROCK_IDS.map(id => [id, rock(id)])) as Record<
+      LavaPondRockId,
+      PrefabEntityDefinition<LavaPondRockInstance>
+    >),
   };
 }

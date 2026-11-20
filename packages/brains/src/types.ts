@@ -30,8 +30,14 @@ export interface BrainComponents {
 export interface BrainWorld {
   readonly isDay: boolean;
   /** simutil.lua FindEntity: nearest visible entity other than `from` that passes the filters. */
-  findEntity(from: BrainEntity, radius: number, fn?: (guy: BrainEntity, from: BrainEntity) => boolean,
-    mustTags?: readonly string[], cantTags?: readonly string[], oneOfTags?: readonly string[]): BrainEntity | undefined;
+  findEntity(
+    from: BrainEntity,
+    radius: number,
+    fn?: (guy: BrainEntity, from: BrainEntity) => boolean,
+    mustTags?: readonly string[],
+    cantTags?: readonly string[],
+    oneOfTags?: readonly string[],
+  ): BrainEntity | undefined;
   /** simutil.lua GetClosestInstWithTag. */
   getClosestInstWithTag(tags: readonly string[], from: BrainEntity, radius: number): BrainEntity | undefined;
   /** Map:IsAboveGroundAtPoint: the world has no ocean/void here. */

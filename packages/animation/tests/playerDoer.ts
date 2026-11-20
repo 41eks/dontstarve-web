@@ -3,7 +3,10 @@ import type { InventoryStore } from '../../inventory/src';
 import { testPlayer, type TestPlayer } from './testPlayer';
 
 /** The player model's own entity as act.doer, owning `inventory` (an empty store unless given). */
-export function playerDoer(player: THREE.Object3D, components: { readonly inventory?: InventoryStore } = {}): TestPlayer {
+export function playerDoer(
+  player: THREE.Object3D,
+  components: { readonly inventory?: InventoryStore } = {},
+): TestPlayer {
   return testPlayer({ model: player, inventory: components.inventory });
 }
 

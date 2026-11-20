@@ -16,10 +16,15 @@ export class PrefabDisplayGroup {
   /** The scene's matrix update settles only the entity roots marked since the last one. */
   private readonly releaseRootUpdates: () => void;
 
-  constructor(scene: THREE.Scene) { this.scene = scene; this.releaseRootUpdates = retainEntityRootUpdates(scene); }
+  constructor(scene: THREE.Scene) {
+    this.scene = scene;
+    this.releaseRootUpdates = retainEntityRootUpdates(scene);
+  }
 
   add(options: PrefabDisplayOptions, footPosition?: ReadonlyVector3): PrefabDisplay {
-    if (this.disposed) { throw new Error('Prefab displays have been disposed'); }
+    if (this.disposed) {
+      throw new Error('Prefab displays have been disposed');
+    }
     const display = new PrefabDisplay(options);
     this.mount(display, footPosition);
     return display;
@@ -27,29 +32,54 @@ export class PrefabDisplayGroup {
 
   /** Adopt an existing display; the group owns its scene membership and final display cleanup. */
   mount(display: PrefabDisplay, footPosition?: ReadonlyVector3): void {
-    if (this.disposed) { throw new Error('Prefab displays have been disposed'); }
-    if (display.isRemoved) { return; }
-    if (this.entries.has(display)) { display.mount(this.scene); return; }
+    if (this.disposed) {
+      throw new Error('Prefab displays have been disposed');
+    }
+    if (display.isRemoved) {
+      return;
+    }
+    if (this.entries.has(display)) {
+      display.mount(this.scene);
+      return;
+    }
     this.entries.add(display);
     const foot = footPosition ?? display.model.position;
     const stopFollowing = createEffect(() => {
-      if (display.status.get() === 'asleep') { this.awake.delete(display); }
-      else { this.awake.set(display, foot); }
+      if (display.status.get() === 'asleep') {
+        this.awake.delete(display);
+      } else {
+        this.awake.set(display, foot);
+      }
     });
-    display.onDispose(() => { stopFollowing(); this.entries.delete(display); this.awake.delete(display); });
+    display.onDispose(() => {
+      stopFollowing();
+      this.entries.delete(display);
+      this.awake.delete(display);
+    });
     display.mount(this.scene);
   }
 
   get renderEntities() {
-    const entries: ({ object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number; sortLayer?: number } | FxRenderEntry)[] = [];
+    const entries: (
+      | { object: THREE.Group; footPosition: ReadonlyVector3; cameraDepth: number; sortLayer?: number }
+      | FxRenderEntry
+    )[] = [];
     for (const [display, footPosition] of this.awake) {
       const { model } = display;
-      if (model.parent !== this.scene || !model.visible || display.isRemoved) { continue; }
+      if (model.parent !== this.scene || !model.visible || display.isRemoved) {
+        continue;
+      }
       if (!display.hasGroundOrder && !display.empty) {
         const sortLayer = display.sortLayer;
-        entries.push(sortLayer === undefined ? { object: model, footPosition, cameraDepth: 0 } : { object: model, footPosition, cameraDepth: 0, sortLayer });
+        entries.push(
+          sortLayer === undefined
+            ? { object: model, footPosition, cameraDepth: 0 }
+            : { object: model, footPosition, cameraDepth: 0, sortLayer },
+        );
       }
-      for (const entry of display.fxRenderEntries) { entries.push(entry); }
+      for (const entry of display.fxRenderEntries) {
+        entries.push(entry);
+      }
     }
     return entries;
   }
@@ -57,15 +87,22 @@ export class PrefabDisplayGroup {
   update(dt: number): void {
     for (const display of this.awake.keys()) {
       display.update(dt);
-      if (display.isRemoved) { display.dispose(); }
+      if (display.isRemoved) {
+        display.dispose();
+      }
     }
   }
 
   dispose(): void {
-    if (this.disposed) { return; }
+    if (this.disposed) {
+      return;
+    }
     this.disposed = true;
-    for (const display of this.entries) { display.dispose(); }
-    this.entries.clear(); this.awake.clear();
+    for (const display of this.entries) {
+      display.dispose();
+    }
+    this.entries.clear();
+    this.awake.clear();
     this.releaseRootUpdates();
   }
 }

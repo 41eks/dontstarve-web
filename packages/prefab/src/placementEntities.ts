@@ -22,16 +22,25 @@ export interface PlacementBlocker {
   getInventoryRadius?(fallback: number): number | undefined;
 }
 export type PlacementQuery = SpatialQuery<PlacementBlocker>;
-interface WorldBlocker extends PlacementBlocker { readonly root: Object3D | null; valid(): boolean }
-const index = new SpatialIndex<WorldBlocker>(entry => entry.position, entry => Math.max(entry.smartRadius ?? 0,
-  (entry.groundTargetRadius ?? 0) + (entry.groundHoleRangeOverride ?? 0)));
+interface WorldBlocker extends PlacementBlocker {
+  readonly root: Object3D | null;
+  valid(): boolean;
+}
+const index = new SpatialIndex<WorldBlocker>(
+  entry => entry.position,
+  entry => Math.max(entry.smartRadius ?? 0, (entry.groundTargetRadius ?? 0) + (entry.groundHoleRangeOverride ?? 0)),
+);
 const models = new WeakMap<Object3D, { sync(): void }>();
 
 export function hasPlacementTag(blocker: PlacementBlocker, tag: string): boolean {
   return blocker.hasTag?.(tag) ?? blocker.tags?.includes(tag) ?? false;
 }
 export function ignoresPlacement(blocker: PlacementBlocker, tags: Iterable<string>): boolean {
-  for (const tag of tags) { if (hasPlacementTag(blocker, tag)) { return true; } }
+  for (const tag of tags) {
+    if (hasPlacementTag(blocker, tag)) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -40,58 +49,109 @@ export function registerPlacementEntity(instance: ActionEntity): () => void {
   const model = instance.transform.model;
   const entry: WorldBlocker = {
     // An asleep model has left the scene; its display still knows the parent it returns to.
-    get root() { return model.parent ? model : prefabDisplay(model)?.wakeParent ?? null; },
-    get logicalTree() { return instance.logicalPlacement; },
+    get root() {
+      return model.parent ? model : (prefabDisplay(model)?.wakeParent ?? null);
+    },
+    get logicalTree() {
+      return instance.logicalPlacement;
+    },
     inst: instance,
-    get position() { return instance.getPosition(); },
-    get prefab() { return instance.prefab; },
-    get smartRadius() { return instance.deploySmartRadius; },
+    get position() {
+      return instance.getPosition();
+    },
+    get prefab() {
+      return instance.prefab;
+    },
+    get smartRadius() {
+      return instance.deploySmartRadius;
+    },
     get groundTargetRadius() {
       return hasPlacementTag(entry, 'groundtargetblocker') || hasPlacementTag(entry, 'groundhole')
-        ? instance.ground_target_blocker_radius ?? instance._groundhole_outerradius ?? instance.getPhysicsRadius(0) ?? 0 : undefined;
+        ? (instance.ground_target_blocker_radius ??
+            instance._groundhole_outerradius ??
+            instance.getPhysicsRadius(0) ??
+            0)
+        : undefined;
     },
-    get groundHoleInnerRadius() { return instance._groundhole_innerradius; },
-    get groundHoleRangeOverride() { return instance._groundhole_rangeoverride; },
-    get inventoryRadius() { return (instance.components as { inventoryitem?: unknown }).inventoryitem ? instance.getPhysicsRadius(.5) ?? .5 : undefined; },
-    getInventoryRadius: fallback => (instance.components as { inventoryitem?: unknown }).inventoryitem ? instance.getPhysicsRadius(fallback) ?? fallback : undefined,
-    get visible() { return isSpriteEntityVisible(model); },
+    get groundHoleInnerRadius() {
+      return instance._groundhole_innerradius;
+    },
+    get groundHoleRangeOverride() {
+      return instance._groundhole_rangeoverride;
+    },
+    get inventoryRadius() {
+      return (instance.components as { inventoryitem?: unknown }).inventoryitem
+        ? (instance.getPhysicsRadius(0.5) ?? 0.5)
+        : undefined;
+    },
+    getInventoryRadius: fallback =>
+      (instance.components as { inventoryitem?: unknown }).inventoryitem
+        ? (instance.getPhysicsRadius(fallback) ?? fallback)
+        : undefined,
+    get visible() {
+      return isSpriteEntityVisible(model);
+    },
     hasTag: tag => instance.hasTag(tag),
-    valid: () => (!!model.parent || !!instance.logicalPlacement) && !instance.isRemoved
-      && (hasPlacementTag(entry, 'dockjammer') || !ignoresPlacement(entry, ['NOBLOCK', 'FX', 'DECOR', 'player'])),
+    valid: () =>
+      (!!model.parent || !!instance.logicalPlacement) &&
+      !instance.isRemoved &&
+      (hasPlacementTag(entry, 'dockjammer') || !ignoresPlacement(entry, ['NOBLOCK', 'FX', 'DECOR', 'player'])),
   };
-  const sync = () => { if (entry.valid()) { index.add(entry); } else { index.delete(entry); } };
+  const sync = () => {
+    if (entry.valid()) {
+      index.add(entry);
+    } else {
+      index.delete(entry);
+    }
+  };
   models.set(model, { sync });
   model.addEventListener('added', sync);
   model.addEventListener('removed', sync);
   sync();
   return () => {
-    index.delete(entry); models.delete(model);
-    model.removeEventListener('added', sync); model.removeEventListener('removed', sync);
+    index.delete(entry);
+    models.delete(model);
+    model.removeEventListener('added', sync);
+    model.removeEventListener('removed', sync);
   };
 }
 
 /** map.lua IsGroundTargetBlocked: only groundtargetblocker/groundhole tags block BLINK, not ordinary obstacles. */
 export function isGroundTargetBlocked(query: PlacementQuery, position: ReadonlyVector3, range: number): boolean {
   return query.someNear(position, range, blocker => {
-    if (!hasPlacementTag(blocker, 'groundtargetblocker') && !hasPlacementTag(blocker, 'groundhole')) { return false; }
+    if (!hasPlacementTag(blocker, 'groundtargetblocker') && !hasPlacementTag(blocker, 'groundhole')) {
+      return false;
+    }
     const radius = (blocker.groundTargetRadius ?? 0) + (blocker.groundHoleRangeOverride ?? range);
     const distanceSquared = blocker.position.distanceToSquared(position);
-    return distanceSquared < radius * radius && (blocker.groundHoleInnerRadius === undefined
-      || distanceSquared >= blocker.groundHoleInnerRadius * blocker.groundHoleInnerRadius);
+    return (
+      distanceSquared < radius * radius &&
+      (blocker.groundHoleInnerRadius === undefined ||
+        distanceSquared >= blocker.groundHoleInnerRadius * blocker.groundHoleInnerRadius)
+    );
   });
 }
 
 /** Called by moving entities after their authoritative transform is settled, never by a query. */
-export function syncPlacementEntity(model: Object3D): void { models.get(model)?.sync(); }
+export function syncPlacementEntity(model: Object3D): void {
+  models.get(model)?.sync();
+}
 
 export function placementEntities(root: Object3D): PlacementQuery {
   const includes = (entry: WorldBlocker) => {
-    if (!entry.valid()) { return false; }
-    for (let node: Object3D | null = entry.root; node; node = node.parent) { if (node === root) { return true; } }
+    if (!entry.valid()) {
+      return false;
+    }
+    for (let node: Object3D | null = entry.root; node; node = node.parent) {
+      if (node === root) {
+        return true;
+      }
+    }
     return false;
   };
   return {
-    someNear: (position, radius, predicate) => index.someNear(position, radius, entry => includes(entry) && predicate(entry)),
+    someNear: (position, radius, predicate) =>
+      index.someNear(position, radius, entry => includes(entry) && predicate(entry)),
     someOnTile: (position, predicate) => index.someOnTile(position, entry => includes(entry) && predicate(entry)),
   };
 }

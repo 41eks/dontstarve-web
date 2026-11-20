@@ -4,7 +4,10 @@ import type { LoadedSpriteSource, SpriteSource } from './prefabDisplay';
 
 const ICON_HEIGHT = 4;
 
-function iconArt(atlas: ImageAtlas, icon: string): { texture: THREE.DataTexture; material: THREE.SpriteMaterial; aspect: number } {
+function iconArt(
+  atlas: ImageAtlas,
+  icon: string,
+): { texture: THREE.DataTexture; material: THREE.SpriteMaterial; aspect: number } {
   const image = atlas.require(icon);
   const texture = new THREE.DataTexture(
     Uint8Array.from(image.pixels),
@@ -33,13 +36,18 @@ export class IconSpriteAtlases {
   private readonly loaded = new Map<string, ImageAtlas>();
   private readonly archiveUrl: string;
 
-  constructor(archiveUrl: string) { this.archiveUrl = archiveUrl; }
+  constructor(archiveUrl: string) {
+    this.archiveUrl = archiveUrl;
+  }
 
   private load(atlasPath: string): Promise<ImageAtlas> {
     let request = this.requests.get(atlasPath);
     if (!request) {
       request = loadImageAtlas(this.archiveUrl, atlasPath);
-      void request.then(atlas => this.loaded.set(atlasPath, atlas), () => this.requests.delete(atlasPath));
+      void request.then(
+        atlas => this.loaded.set(atlasPath, atlas),
+        () => this.requests.delete(atlasPath),
+      );
       this.requests.set(atlasPath, request);
     }
     return request;
@@ -65,7 +73,10 @@ export class IconSpriteAtlases {
       };
     };
     return {
-      peek: () => { const atlas = this.loaded.get(atlasPath); return atlas && draw(atlas); },
+      peek: () => {
+        const atlas = this.loaded.get(atlasPath);
+        return atlas && draw(atlas);
+      },
       load: () => this.load(atlasPath).then(draw),
       dispose() {
         art?.texture.dispose();
@@ -74,5 +85,8 @@ export class IconSpriteAtlases {
     };
   }
 
-  dispose(): void { this.requests.clear(); this.loaded.clear(); }
+  dispose(): void {
+    this.requests.clear();
+    this.loaded.clear();
+  }
 }

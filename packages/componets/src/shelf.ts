@@ -35,11 +35,20 @@ export class Shelf<Item, Inst extends ShelfInst = ShelfInst> {
     this.holder = holder;
   }
 
-  get cantakeitem(): boolean { return this.canTake; }
-  set cantakeitem(value: boolean) { this.canTake = value; this.refreshTag(); }
+  get cantakeitem(): boolean {
+    return this.canTake;
+  }
+  set cantakeitem(value: boolean) {
+    this.canTake = value;
+    this.refreshTag();
+  }
 
-  SetOnShelfItem(fn: ShelfOnShelfItemFn<Inst, Item> | undefined): void { this.onshelfitemfn = fn; }
-  SetOnTakeItem(fn: ShelfOnTakeItemFn<Inst, Item> | undefined): void { this.ontakeitemfn = fn; }
+  SetOnShelfItem(fn: ShelfOnShelfItemFn<Inst, Item> | undefined): void {
+    this.onshelfitemfn = fn;
+  }
+  SetOnTakeItem(fn: ShelfOnTakeItemFn<Inst, Item> | undefined): void {
+    this.ontakeitemfn = fn;
+  }
 
   PutItemOnShelf(item: Item): void {
     this.itemState.set(item);
@@ -49,12 +58,16 @@ export class Shelf<Item, Inst extends ShelfInst = ShelfInst> {
 
   TakeItem(taker: ShelfTaker<Item> | undefined): boolean {
     const item = this.itemState.peek();
-    if (!this.canTake || item === undefined) { return false; }
+    if (!this.canTake || item === undefined) {
+      return false;
+    }
     this.ontakeitemfn?.(this.inst, taker, item);
     this.holder.RemoveItem(item);
     this.itemState.set(undefined);
     this.refreshTag();
-    if (!taker?.GiveItem(item)) { this.holder.DropItem(item); }
+    if (!taker?.GiveItem(item)) {
+      this.holder.DropItem(item);
+    }
     return true;
   }
 
@@ -64,7 +77,10 @@ export class Shelf<Item, Inst extends ShelfInst = ShelfInst> {
   }
 
   private refreshTag(): void {
-    if (this.canTake && this.itemState.peek() !== undefined) { this.inst.addTag('takeshelfitem'); }
-    else { this.inst.removeTag('takeshelfitem'); }
+    if (this.canTake && this.itemState.peek() !== undefined) {
+      this.inst.addTag('takeshelfitem');
+    } else {
+      this.inst.removeTag('takeshelfitem');
+    }
   }
 }

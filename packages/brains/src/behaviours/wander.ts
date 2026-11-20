@@ -2,8 +2,18 @@ import { BehaviourNode, READY, RUNNING } from '../behaviourtree';
 import { DEGREES, FindWalkableOffset, FunctionOrValue, PI2, distsq } from '../simutil';
 import type { BrainInst, Vec3 } from '../types';
 
-export interface WanderTimes { minwalktime?: number; randwalktime?: number; minwaittime?: number; randwaittime?: number }
-export interface WanderData { wander_dist?: number | ((inst: BrainInst) => number); offest_attempts?: number; should_run?: boolean | ((inst: BrainInst) => boolean); leashwhengoinghome?: boolean }
+export interface WanderTimes {
+  minwalktime?: number;
+  randwalktime?: number;
+  minwaittime?: number;
+  randwaittime?: number;
+}
+export interface WanderData {
+  wander_dist?: number | ((inst: BrainInst) => number);
+  offest_attempts?: number;
+  should_run?: boolean | ((inst: BrainInst) => boolean);
+  leashwhengoinghome?: boolean;
+}
 
 /**
  * behaviours/wander.lua. `homelocation` is a position or a function returning one (undefined = no leash),
@@ -25,8 +35,15 @@ export class Wander extends BehaviourNode {
   private walking = false;
   private waittime = 0;
 
-  constructor(inst: BrainInst, homelocation: Wander['homepos'], max_dist: Wander['maxdist'], times?: WanderTimes,
-    getdirectionFn?: Wander['getdirectionFn'], setdirectionFn?: Wander['setdirectionFn'], data?: WanderData) {
+  constructor(
+    inst: BrainInst,
+    homelocation: Wander['homepos'],
+    max_dist: Wander['maxdist'],
+    times?: WanderTimes,
+    getdirectionFn?: Wander['getdirectionFn'],
+    setdirectionFn?: Wander['setdirectionFn'],
+    data?: WanderData,
+  ) {
     super('Wander');
     this.homepos = homelocation;
     this.maxdist = max_dist;
@@ -43,7 +60,9 @@ export class Wander extends BehaviourNode {
       minwaittime: times?.minwaittime ?? 1,
       randwaittime: times?.randwaittime ?? 3,
     };
-    if (this.times.minwaittime <= 0 && this.times.randwaittime <= 0) { this.times.no_wait_time = true; }
+    if (this.times.minwaittime <= 0 && this.times.randwaittime <= 0) {
+      this.times.no_wait_time = true;
+    }
   }
 
   override Visit(): void {
@@ -54,22 +73,33 @@ export class Wander extends BehaviourNode {
       this.walking = false;
       this.status = RUNNING;
     } else if (this.status === RUNNING) {
-      if (!this.walking && this.IsFarFromHome()) { this.PickNewDirection(); }
+      if (!this.walking && this.IsFarFromHome()) {
+        this.PickNewDirection();
+      }
       if (this.now > this.waittime) {
-        if (!this.walking || this.times.no_wait_time) { this.PickNewDirection(); }
-        else { this.HoldPosition(); }
-      } else if (!this.walking) { this.Sleep(this.waittime - this.now); }
-      else if (!locomotor.WantsToMoveForward()) { this.HoldPosition(); }
+        if (!this.walking || this.times.no_wait_time) {
+          this.PickNewDirection();
+        } else {
+          this.HoldPosition();
+        }
+      } else if (!this.walking) {
+        this.Sleep(this.waittime - this.now);
+      } else if (!locomotor.WantsToMoveForward()) {
+        this.HoldPosition();
+      }
     }
   }
 
   override DBString(): string {
     const home = this.GetHomePos();
-    return `${this.walking ? 'walk' : 'wait'} for ${(this.waittime - this.now).toFixed(2)}, ${home ? `${home.x},${home.z}` : 'false'}, ${
-      Math.sqrt(this.GetDistFromHomeSq() ?? 0).toFixed(2)}, ${this.far_from_home ? 'Go Home' : 'Go Wherever'}`;
+    return `${this.walking ? 'walk' : 'wait'} for ${(this.waittime - this.now).toFixed(2)}, ${home ? `${home.x},${home.z}` : 'false'}, ${Math.sqrt(
+      this.GetDistFromHomeSq() ?? 0,
+    ).toFixed(2)}, ${this.far_from_home ? 'Go Home' : 'Go Wherever'}`;
   }
 
-  GetHomePos(): Vec3 | undefined { return FunctionOrValue(this.homepos, this.inst); }
+  GetHomePos(): Vec3 | undefined {
+    return FunctionOrValue(this.homepos, this.inst);
+  }
 
   GetDistFromHomeSq(): number | undefined {
     const home = this.GetHomePos();
@@ -95,8 +125,9 @@ export class Wander extends BehaviourNode {
     const locomotor = this.inst.components.locomotor!;
     this.far_from_home = this.IsFarFromHome();
     this.walking = true;
-    if (this.far_from_home) { locomotor.GoToPoint(this.GetHomePos()!); }
-    else {
+    if (this.far_from_home) {
+      locomotor.GoToPoint(this.GetHomePos()!);
+    } else {
       const pt = this.inst.getPosition();
       let angle = this.getdirectionFn?.(this.inst);
       if (angle === undefined) {
@@ -110,8 +141,15 @@ export class Wander extends BehaviourNode {
         this.setdirectionFn?.(this.inst, angle);
       }
       const run = FunctionOrValue(this.should_run ?? false, this.inst);
-      if (found) { locomotor.GoToPoint({ x: pt.x + found.offset.x, y: pt.y + found.offset.y, z: pt.z + found.offset.z }, undefined, run); }
-      else { locomotor.WalkInDirection(angle / DEGREES, run); }
+      if (found) {
+        locomotor.GoToPoint(
+          { x: pt.x + found.offset.x, y: pt.y + found.offset.y, z: pt.z + found.offset.z },
+          undefined,
+          run,
+        );
+      } else {
+        locomotor.WalkInDirection(angle / DEGREES, run);
+      }
     }
     if (!this.leashwhengoinghome || !this.far_from_home) {
       this.Wait(this.times.minwalktime + this.context.random() * this.times.randwalktime);

@@ -5,7 +5,7 @@ import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 import { PlaySound } from './sound';
 
 export const SHOVEL_USES = 25; // tuning.lua SHOVEL_USES
-const SHOVEL_DAMAGE = WILSON_ATTACK * .5; // tuning.lua SHOVEL_DAMAGE
+const SHOVEL_DAMAGE = WILSON_ATTACK * 0.5; // tuning.lua SHOVEL_DAMAGE
 
 /**
  * shovel.lua MakeShovel fn, with gold_master_postinit for goldenshovel. Equippable's onequip / onunequip draw
@@ -32,10 +32,19 @@ const SWAPS = {
 
 /** Source prefab onequip/onunequip: the shovel's swap build, or only the skin's, named on the owner's AnimState. */
 export const shovelVisual: EquipmentVisualFactory = item => {
-  const tool = item.prefab as ShovelTool, swap = SWAPS[tool];
+  const tool = item.prefab as ShovelTool,
+    swap = SWAPS[tool];
   // OverrideItemSkinSymbol replaces this specific held symbol even when a skin
   // omits it entirely (the invisible skins). Do not recover the base tool.
   const skin = skinArchive(tool, GROUND_ITEM_DEFINITIONS[tool].skinArchives, item.skinId);
   const visual = handEquipmentVisual(item, [skin ?? swap.archive], swap.symbol);
-  return { ...visual, onequip(owner) { visual.onequip(owner); if (item.prefab === 'goldenshovel') { PlaySound('dontstarve/wilson/equip_item_gold'); } } };
+  return {
+    ...visual,
+    onequip(owner) {
+      visual.onequip(owner);
+      if (item.prefab === 'goldenshovel') {
+        PlaySound('dontstarve/wilson/equip_item_gold');
+      }
+    },
+  };
 };

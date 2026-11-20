@@ -4,34 +4,52 @@ import { getDstClock, getDstCycle, TUNING } from '../../../src/tuning';
 import type { DstStatusHudElement } from '../src/status-hud';
 
 async function setTime(page: Page, elapsedSeconds: number, dt = 0) {
-  await page.evaluate(async ({ state, timeinphase, dt, signalsUrl }) => {
-    const hud = document.querySelector('dst-status-hud') as DstStatusHudElement;
-    hud.advanceClockAnimation(dt);
-    const { clockstate, moonphasestate, batch } = await import(signalsUrl);
-    const { moonPhase, ...clock } = state;
-    batch(() => {
-      clockstate.set({ ...clock, timeinphase });
-      moonphasestate.set(moonPhase);
-    });
-    await Promise.resolve();
-  }, { state: getDstClock(elapsedSeconds), timeinphase: getDstCycle(elapsedSeconds).phaseProgress, dt,
-    signalsUrl: `/@fs${fileURLToPath(new URL('../../signals/src/index.ts', import.meta.url))}` });
+  await page.evaluate(
+    async ({ state, timeinphase, dt, signalsUrl }) => {
+      const hud = document.querySelector('dst-status-hud') as DstStatusHudElement;
+      hud.advanceClockAnimation(dt);
+      const { clockstate, moonphasestate, batch } = await import(signalsUrl);
+      const { moonPhase, ...clock } = state;
+      batch(() => {
+        clockstate.set({ ...clock, timeinphase });
+        moonphasestate.set(moonPhase);
+      });
+      await Promise.resolve();
+    },
+    {
+      state: getDstClock(elapsedSeconds),
+      timeinphase: getDstCycle(elapsedSeconds).phaseProgress,
+      dt,
+      signalsUrl: `/@fs${fileURLToPath(new URL('../../signals/src/index.ts', import.meta.url))}`,
+    },
+  );
 }
 
 test('follows world time, daytime segment pulses and source phase transitions', async ({ page }, testInfo) => {
   const assetRequests: string[] = [];
-  page.on('request', (request) => {
-    if (/clock_transitions|moon_phases/.test(request.url())) { assetRequests.push(new URL(request.url()).pathname); }
+  page.on('request', request => {
+    if (/clock_transitions|moon_phases/.test(request.url())) {
+      assetRequests.push(new URL(request.url()).pathname);
+    }
   });
   await page.goto('/tests/fixture.html');
   const clock = page.locator('dst-status-hud .world-clock__animation');
   await expect(clock).toHaveAttribute('data-state', 'ready', { timeout: 15_000 });
-  expect(assetRequests).toEqual(expect.arrayContaining([
-    '/dst/data/anim/clock_transitions.zip', '/dst/data/anim/moon_phases_clock.zip', '/dst/data/anim/moon_phases.zip',
-  ]));
-  expect(await clock.evaluate((canvas: HTMLCanvasElement) =>
-    canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data.some((value, index) => index % 4 === 3 && value > 0),
-  )).toBe(true);
+  expect(assetRequests).toEqual(
+    expect.arrayContaining([
+      '/dst/data/anim/clock_transitions.zip',
+      '/dst/data/anim/moon_phases_clock.zip',
+      '/dst/data/anim/moon_phases.zip',
+    ]),
+  );
+  expect(
+    await clock.evaluate((canvas: HTMLCanvasElement) =>
+      canvas
+        .getContext('2d')!
+        .getImageData(0, 0, canvas.width, canvas.height)
+        .data.some((value, index) => index % 4 === 3 && value > 0),
+    ),
+  ).toBe(true);
 
   await setTime(page, 10, 10);
   await expect(clock).toHaveAttribute('data-animation', 'idle_day');

@@ -34,8 +34,11 @@ export interface BufferedActionObject {
 /** The acting inst, as actions.lua's fns pass `act.doer` to the components they call. */
 export type BufferedActionDoer = import('../../componets/src/workable').Worker;
 
-export interface BufferedActionObjects<Target extends BufferedActionObject = BufferedActionObject,
-  Invobject extends BufferedActionObject = BufferedActionObject, Doer extends BufferedActionDoer = BufferedActionDoer> {
+export interface BufferedActionObjects<
+  Target extends BufferedActionObject = BufferedActionObject,
+  Invobject extends BufferedActionObject = BufferedActionObject,
+  Doer extends BufferedActionDoer = BufferedActionDoer,
+> {
   readonly doer?: Doer;
   readonly invobject?: Invobject;
   readonly target?: Target;
@@ -50,8 +53,12 @@ export interface BufferedActionObjects<Target extends BufferedActionObject = Buf
  * The actor owns one pending action; animation states choose when to execute it. `Target`, `Invobject` and `Doer` are
  * what the action was made with, so code holding the action it made reads them as those entities.
  */
-export class BufferedAction<Action extends string = string, Target extends BufferedActionObject = BufferedActionObject,
-  Invobject extends BufferedActionObject = BufferedActionObject, Doer extends BufferedActionDoer = BufferedActionDoer> {
+export class BufferedAction<
+  Action extends string = string,
+  Target extends BufferedActionObject = BufferedActionObject,
+  Invobject extends BufferedActionObject = BufferedActionObject,
+  Doer extends BufferedActionDoer = BufferedActionDoer,
+> {
   readonly action: Action;
   readonly doer: Doer | undefined;
   readonly invobject: Invobject | undefined;
@@ -66,7 +73,9 @@ export class BufferedAction<Action extends string = string, Target extends Buffe
   private onfail: (() => void)[] = [];
 
   constructor(
-    action: Action, execute: () => void | boolean, valid: () => boolean = () => true,
+    action: Action,
+    execute: () => void | boolean,
+    valid: () => boolean = () => true,
     objects: BufferedActionObjects<Target, Invobject, Doer> = {},
   ) {
     this.action = action;
@@ -81,30 +90,45 @@ export class BufferedAction<Action extends string = string, Target extends Buffe
     this.valid = valid;
   }
 
-  isValid(): boolean { return this.valid(); }
+  isValid(): boolean {
+    return this.valid();
+  }
   /** BufferedAction:Do runs the action, then Succeed() or Fail() notifies the pushing behaviour. */
   do(): boolean {
-    if (!this.isValid()) { return false; }
+    if (!this.isValid()) {
+      return false;
+    }
     const success = this.execute() !== false;
-    if (success) { this.succeed(); }
-    else { this.fail(); }
+    if (success) {
+      this.succeed();
+    } else {
+      this.fail();
+    }
     return success;
   }
 
-  addFailAction(fn: () => void): void { this.onfail.push(fn); }
-  addSuccessAction(fn: () => void): void { this.onsuccess.push(fn); }
+  addFailAction(fn: () => void): void {
+    this.onfail.push(fn);
+  }
+  addSuccessAction(fn: () => void): void {
+    this.onsuccess.push(fn);
+  }
 
   succeed(): void {
     const callbacks = this.onsuccess;
     this.onsuccess = [];
     this.onfail = [];
-    for (const callback of callbacks) { callback(); }
+    for (const callback of callbacks) {
+      callback();
+    }
   }
 
   fail(): void {
     const callbacks = this.onfail;
     this.onsuccess = [];
     this.onfail = [];
-    for (const callback of callbacks) { callback(); }
+    for (const callback of callbacks) {
+      callback();
+    }
   }
 }

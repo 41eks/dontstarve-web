@@ -208,7 +208,9 @@ export function structureHealth(data: EntityPersistData): { current: number; max
 
 /** Empties an OnSave's record in place, for a prefab that writes its whole record itself. */
 export function clearPersistData(data: EntityPersistData): void {
-  for (const key of Object.keys(data)) { Reflect.deleteProperty(data, key); }
+  for (const key of Object.keys(data)) {
+    Reflect.deleteProperty(data, key);
+  }
 }
 
 /** Removes the sprite's visual offset and flat-ground raycast rounding residue. */

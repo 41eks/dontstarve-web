@@ -6,7 +6,9 @@ import { PlayerActionPicker } from '../src/playeractionpicker.ts';
 
 test('Wortox point specials are fallbacks after equipped actions and never displace active-item actions', () => {
   const picker = new PlayerActionPicker({ beginFrame() {}, endFrame() {}, dispose() {}, pickMouseTarget() {} });
-  const blink = { action: 'BLINK' }, cast = { action: 'CASTSPELL' }, deploy = { action: 'DEPLOY' };
+  const blink = { action: 'BLINK' },
+    cast = { action: 'CASTSPELL' },
+    deploy = { action: 'DEPLOY' };
   picker.register(() => [{ action: blink, button: 'right', source: 'special' }]);
   assert.equal(picker.getMouseActions().right, blink);
   const stopCast = picker.register(() => [{ action: cast, button: 'right' }]);
@@ -22,17 +24,28 @@ test('Wortox point specials are fallbacks after equipped actions and never displ
 });
 
 test('shared picking resolves one entity and chooses independent button actions by source priority', t => {
-  const root = new Group(), child = new Object3D();
-  root.add(child); new Scene().add(root);
+  const root = new Group(),
+    child = new Object3D();
+  root.add(child);
+  new Scene().add(root);
   const mouseTarget = registerMouseTarget(root, () => true);
   t.after(() => mouseTarget.dispose());
-  let casts = 0, begin = 0, end = 0;
+  let casts = 0,
+    begin = 0,
+    end = 0;
   const pointer = {
-    beginFrame: () => begin++, endFrame: () => end++, dispose() {},
-    pickMouseTarget: () => { casts++; return { object: child }; },
+    beginFrame: () => begin++,
+    endFrame: () => end++,
+    dispose() {},
+    pickMouseTarget: () => {
+      casts++;
+      return { object: child };
+    },
   };
   const picker = new PlayerActionPicker(pointer);
-  const net = { action: 'NET' }, mine = { action: 'MINE' }, sweep = { action: 'CASTSPELL', modifier: 'RESKIN' };
+  const net = { action: 'NET' },
+    mine = { action: 'MINE' },
+    sweep = { action: 'CASTSPELL', modifier: 'RESKIN' };
   picker.register(() => [{ action: net, button: 'left', model: root }]);
   // Registration order cannot override the higher-priority NET action.
   picker.register(() => [{ action: mine, button: 'left', model: root }]);
@@ -45,23 +58,34 @@ test('shared picking resolves one entity and chooses independent button actions 
 });
 
 test('an unavailable foreground target blocks picking through it and unregistering preserves other sources', t => {
-  const front = new Group(), back = new Group();
+  const front = new Group(),
+    back = new Group();
   new Scene().add(front, back);
-  const frontTarget = registerMouseTarget(front, () => true), backTarget = registerMouseTarget(back, () => true);
-  t.after(() => { frontTarget.dispose(); backTarget.dispose(); });
+  const frontTarget = registerMouseTarget(front, () => true),
+    backTarget = registerMouseTarget(back, () => true);
+  t.after(() => {
+    frontTarget.dispose();
+    backTarget.dispose();
+  });
   let foreground = true;
   const pointer = {
-    beginFrame() {}, endFrame() {}, dispose() {},
+    beginFrame() {},
+    endFrame() {},
+    dispose() {},
     pickMouseTarget: () => ({ object: foreground ? front : back }),
   };
   const picker = new PlayerActionPicker(pointer);
-  const point = { action: 'TERRAFORM' }, net = { action: 'NET' };
-  const removeFront = picker.register(() => [{ action: { action: 'PICK' }, button: 'left', model: front, available: false }]);
+  const point = { action: 'TERRAFORM' },
+    net = { action: 'NET' };
+  const removeFront = picker.register(() => [
+    { action: { action: 'PICK' }, button: 'left', model: front, available: false },
+  ]);
   picker.register(() => [{ action: net, button: 'left', model: back }]);
   picker.register(() => [{ action: point, button: 'right' }]);
   assert.deepEqual(picker.getMouseActions(), { left: undefined, right: point });
   removeFront();
   assert.deepEqual(picker.getMouseActions(), { left: undefined, right: point });
-  frontTarget.dispose(); foreground = false;
+  frontTarget.dispose();
+  foreground = false;
   assert.deepEqual(picker.getMouseActions(), { left: net, right: point });
 });

@@ -25,24 +25,36 @@ export const ARCHIVE_AMBIENT_SFX_ID = 'archive_ambient_sfx' as const;
 /** CreateDropShadow's unnamed child of the portal. */
 const ARCHIVE_PORTAL_SHADOW_ID = 'archive_portal_shadow' as const;
 /** Prefabs that persist: archive_switch_pad has `persists = false` and the rubble worldgen items remove themselves. */
-export const ARCHIVE_PROP_IDS = [ARCHIVE_MOON_STATUE_ID, ARCHIVE_RUNE_STATUE_ID, ARCHIVE_PORTAL_ID, ARCHIVE_SWITCH_BASE_ID,
-  ARCHIVE_AMBIENT_SFX_ID] as const;
+export const ARCHIVE_PROP_IDS = [
+  ARCHIVE_MOON_STATUE_ID,
+  ARCHIVE_RUNE_STATUE_ID,
+  ARCHIVE_PORTAL_ID,
+  ARCHIVE_SWITCH_BASE_ID,
+  ARCHIVE_AMBIENT_SFX_ID,
+] as const;
 export const ARCHIVE_PROP_SPAWN_IDS = [...ARCHIVE_PROP_IDS, ARCHIVE_SWITCH_PAD_ID, 'rubble1', 'rubble2'] as const;
-export type ArchivePropId = typeof ARCHIVE_PROP_IDS[number];
-type ArchivePropPrefabId = typeof ARCHIVE_PROP_SPAWN_IDS[number] | typeof ARCHIVE_PORTAL_SHADOW_ID;
+export type ArchivePropId = (typeof ARCHIVE_PROP_IDS)[number];
+type ArchivePropPrefabId = (typeof ARCHIVE_PROP_SPAWN_IDS)[number] | typeof ARCHIVE_PORTAL_SHADOW_ID;
 
 const MOON_STATUE_VARIANTS = 4;
 const RUNE_STATUE_VARIANTS = 3;
 const NUM_STORY_LINES = 5;
 /** tuning.lua MARBLEPILLAR_MINE. */
 export const MARBLEPILLAR_MINE = 10;
-const PHYSICS_RADIUS = .66;
+const PHYSICS_RADIUS = 0.66;
 // archive_props.lua SetSharedLootTable('archive_statues', ...)
-SetSharedLootTable('archive_statues', [['thulecite', 1], ['moonrocknugget', 1], ['moonrocknugget', .05]]);
-const BACKGROUND_MESH_ORDER = -.5;
+SetSharedLootTable('archive_statues', [
+  ['thulecite', 1],
+  ['moonrocknugget', 1],
+  ['moonrocknugget', 0.05],
+]);
+const BACKGROUND_MESH_ORDER = -0.5;
 
 /** archive_props.lua OnSave: statues and rune statues write `anim`; rune statues add `storyprogress` once it is assigned. */
-export interface ArchivePropSaveState { anim?: number; storyprogress?: number; }
+export interface ArchivePropSaveState {
+  anim?: number;
+  storyprogress?: number;
+}
 
 export interface ArchivePropsWorld extends ToolMouseTargetWorld {
   /** worldgenitemfn's DoTaskInTime(0). */
@@ -57,8 +69,12 @@ export interface ArchivePropsWorld extends ToolMouseTargetWorld {
   spawnPrefab(prefab: typeof ARCHIVE_PORTAL_SHADOW_ID, position: ReadonlyVector3): PrefabInstance;
 }
 
-const archive = (name: string, bank: string, hiddenSymbols?: string[]) =>
-  ({ animationArchive: `${name}.zip`, buildArchives: [`${name}.zip`], bank, ...hiddenSymbols ? { hiddenSymbols } : {} });
+const archive = (name: string, bank: string, hiddenSymbols?: string[]) => ({
+  animationArchive: `${name}.zip`,
+  buildArchives: [`${name}.zip`],
+  bank,
+  ...(hiddenSymbols ? { hiddenSymbols } : {}),
+});
 
 /**
  * AnimState:SetOrientation(OnGround) and SetLayer(LAYER_BACKGROUND): flat art drawn above the turf and under the world.
@@ -66,12 +82,14 @@ const archive = (name: string, bank: string, hiddenSymbols?: string[]) =>
  */
 function layOnGround(inst: PrefabInstance, sortOrder: number, finalOffset = 0): void {
   inst.sprite.setGround(0);
-  inst.sprite.setMeshOrder(BACKGROUND_MESH_ORDER + (sortOrder - 3) * .01 + finalOffset * .001);
+  inst.sprite.setMeshOrder(BACKGROUND_MESH_ORDER + (sortOrder - 3) * 0.01 + finalOffset * 0.001);
 }
 
 /** ShowWorkState: low under a third of the work, med under two thirds, otherwise full; looping. */
 function ShowWorkState(inst: ArchiveMoonStatueInstance, _worker: unknown, workleft: number): void {
-  inst.sprite.start(`${workleft < MARBLEPILLAR_MINE / 3 ? 'idle_low_' : workleft < MARBLEPILLAR_MINE * 2 / 3 ? 'idle_med_' : 'idle_full_'}${inst.anim}`);
+  inst.sprite.start(
+    `${workleft < MARBLEPILLAR_MINE / 3 ? 'idle_low_' : workleft < (MARBLEPILLAR_MINE * 2) / 3 ? 'idle_med_' : 'idle_full_'}${inst.anim}`,
+  );
 }
 
 function setminimapiconstatue(inst: ArchiveMoonStatueInstance): void {
@@ -85,7 +103,9 @@ export class ArchiveMoonStatueInstance extends PrefabInstance {
 
   constructor(world: ArchivePropsWorld) {
     super(ARCHIVE_MOON_STATUE_ID, new SpriteState({ name: 'idle_full_1', billboard: true }));
-    for (const tag of ['structure', 'statue', 'dustable']) { this.addTag(tag); }
+    for (const tag of ['structure', 'statue', 'dustable']) {
+      this.addTag(tag);
+    }
     this.anim = 1 + Math.floor(Math.random() * MOON_STATUE_VARIANTS);
     this.sprite.playOnce(`idle_full_${this.anim}`); // PlayAnimation, never looping.
 
@@ -99,24 +119,32 @@ export class ArchiveMoonStatueInstance extends PrefabInstance {
       world.fx.collapse('small', this.position, 'rock');
       this.remove();
     });
-    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (prefab, position) => world.spawnGroundItem(
-      { ...GROUND_ITEM_DEFINITIONS[prefab], itemId: prefab, count: 1 },
-      new THREE.Vector3(position.x, position.y, position.z), { fling: true }));
+    const lootdropper = addComponent(this, 'lootdropper', LootDropper, (prefab, position) =>
+      world.spawnGroundItem(
+        { ...GROUND_ITEM_DEFINITIONS[prefab], itemId: prefab, count: 1 },
+        new THREE.Vector3(position.x, position.y, position.z),
+        { fling: true },
+      ),
+    );
     lootdropper.SetChanceLootTable('archive_statues');
     setminimapiconstatue(this);
 
     // workable.savestate is false: a surviving statue reloads with its full work count.
-    this.OnSave = (_inst, data) => { data.archiveProp = { anim: this.anim }; };
+    this.OnSave = (_inst, data) => {
+      data.archiveProp = { anim: this.anim };
+    };
     // onloadpostpass: a loaded statue shows its work state, looping.
     this.OnLoad = (_inst, data) => {
-      if (data.archiveProp?.anim !== undefined) { this.anim = data.archiveProp.anim; }
+      if (data.archiveProp?.anim !== undefined) {
+        this.anim = data.archiveProp.anim;
+      }
       setminimapiconstatue(this);
       ShowWorkState(this, undefined, workable.GetWorkLeft());
     };
   }
 }
 
-const runeAnimation = (anim: number) => anim === 1 ? 'idle' : `idle${anim}`;
+const runeAnimation = (anim: number) => (anim === 1 ? 'idle' : `idle${anim}`);
 
 /** runefn: ancient_text statue whose story line is assigned on first inspection and saved. */
 export class ArchiveRuneStatueInstance extends PrefabInstance {
@@ -125,33 +153,45 @@ export class ArchiveRuneStatueInstance extends PrefabInstance {
 
   constructor(story: { progress: number }) {
     super(ARCHIVE_RUNE_STATUE_ID, new SpriteState({ name: 'idle', billboard: true }));
-    for (const tag of ['structure', 'statue', 'dustable', 'ancient_text']) { this.addTag(tag); }
+    for (const tag of ['structure', 'statue', 'dustable', 'ancient_text']) {
+      this.addTag(tag);
+    }
     this.anim = 1 + Math.floor(Math.random() * RUNE_STATUE_VARIANTS);
     this.sprite.playOnce(runeAnimation(this.anim));
 
     // rune_AdvanceStory: `story` is the module-level `_storyprogress`, one per world.
     const advance = () => {
       if (this.storyprogress === undefined) {
-        story.progress = story.progress % NUM_STORY_LINES + 1;
+        story.progress = (story.progress % NUM_STORY_LINES) + 1;
         this.storyprogress = story.progress;
       }
     };
     const inspectable = addComponent(this, 'inspectable', Inspectable);
     /** getstatus: `LINE_<n>`, advancing the story on first use. */
-    inspectable.getstatus = () => { advance(); return `LINE_${this.storyprogress}`; };
+    inspectable.getstatus = () => {
+      advance();
+      return `LINE_${this.storyprogress}`;
+    };
     /** rune_getdescription: only a viewer holding an ancient_reader gets the line's text. */
     inspectable.descriptionfn = (viewer: { components?: { inventory?: { EquipHasTag(tag: string): boolean } } }) => {
-      if (!viewer.components?.inventory?.EquipHasTag('ancient_reader')) { return undefined; }
+      if (!viewer.components?.inventory?.EquipHasTag('ancient_reader')) {
+        return undefined;
+      }
       advance();
       return (STRINGS.ARCHIVE_RUNE_STATUE as Readonly<Record<string, string>>)[`LINE_${this.storyprogress}`];
     };
 
     this.OnSave = (_inst, data) => {
-      data.archiveProp = { anim: this.anim, ...this.storyprogress === undefined ? {} : { storyprogress: this.storyprogress } };
+      data.archiveProp = {
+        anim: this.anim,
+        ...(this.storyprogress === undefined ? {} : { storyprogress: this.storyprogress }),
+      };
     };
     this.OnLoad = (_inst, data) => {
       const saved = data.archiveProp;
-      if (!saved) { return; }
+      if (!saved) {
+        return;
+      }
       if (saved.storyprogress !== undefined) {
         this.storyprogress = saved.storyprogress;
         story.progress = Math.max(story.progress, saved.storyprogress);
@@ -159,7 +199,9 @@ export class ArchiveRuneStatueInstance extends PrefabInstance {
       if (saved.anim !== undefined) {
         this.anim = saved.anim;
         const anim = runeAnimation(this.anim);
-        if (this.sprite.currentAnimation !== anim) { this.sprite.playOnce(anim); }
+        if (this.sprite.currentAnimation !== anim) {
+          this.sprite.playOnce(anim);
+        }
       }
     };
   }
@@ -192,7 +234,10 @@ function CreateDropShadow(world: ArchivePropsWorld): PrefabInstance {
 }
 
 /** switchbasefn / switchpadfn: background decals. The base's archive_switch rotation and power listeners are not wired. */
-function groundDecal(prefab: typeof ARCHIVE_SWITCH_BASE_ID | typeof ARCHIVE_SWITCH_PAD_ID, sortOrder: number): PrefabInstance {
+function groundDecal(
+  prefab: typeof ARCHIVE_SWITCH_BASE_ID | typeof ARCHIVE_SWITCH_PAD_ID,
+  sortOrder: number,
+): PrefabInstance {
   const inst = new PrefabInstance(prefab, new SpriteState({ name: 'idle' }));
   inst.sprite.playOnce('idle');
   layOnGround(inst, sortOrder);
@@ -221,15 +266,20 @@ function worldgenitemfn(prefab: 'rubble1' | 'rubble2', scheduler: ArchivePropsWo
  * The Prefabs archive_props.lua returns, without the power-driven security desk, switch and pulse prefabs.
  * Each call is one world's `_storyprogress`.
  */
-export function archivePropsPrefabs(world: ArchivePropsWorld): Readonly<Record<ArchivePropPrefabId, PrefabEntityDefinition<PrefabInstance>>> {
+export function archivePropsPrefabs(
+  world: ArchivePropsWorld,
+): Readonly<Record<ArchivePropPrefabId, PrefabEntityDefinition<PrefabInstance>>> {
   const story = { progress: 0 };
   const obstacle = { make: MakeObstaclePhysics, radius: PHYSICS_RADIUS };
   return {
     [ARCHIVE_MOON_STATUE_ID]: {
       fn: () => new ArchiveMoonStatueInstance(world),
       assets: archive('archive_moon_statue', 'archive_moon_statue'),
-      assetOptions: { instancedAnimations: Array.from({ length: MOON_STATUE_VARIANTS }, (_, index) =>
-        ['full', 'med', 'low'].map(state => `idle_${state}_${index + 1}`)).flat() },
+      assetOptions: {
+        instancedAnimations: Array.from({ length: MOON_STATUE_VARIANTS }, (_, index) =>
+          ['full', 'med', 'low'].map(state => `idle_${state}_${index + 1}`),
+        ).flat(),
+      },
       physics: obstacle,
       onSpawned: inst => {
         new ToolMouseTarget(inst, world.handEquipment);
@@ -247,9 +297,19 @@ export function archivePropsPrefabs(world: ArchivePropsWorld): Readonly<Record<A
       assets: archive('archive_portal', 'archive_portal', ['archive_portal_base_01']),
       minimapIcon: 'archive_portal.png',
     },
-    [ARCHIVE_PORTAL_SHADOW_ID]: { fn: () => CreateDropShadow(world), assets: archive('archive_portal_base', 'archive_portal_base'), targetable: false },
-    [ARCHIVE_SWITCH_BASE_ID]: { fn: () => groundDecal(ARCHIVE_SWITCH_BASE_ID, 1), assets: archive('archive_switch_ground', 'archive_switch_ground') },
-    [ARCHIVE_SWITCH_PAD_ID]: { fn: () => groundDecal(ARCHIVE_SWITCH_PAD_ID, 2), assets: archive('archive_switch_ground_small', 'archive_switch_ground_small') },
+    [ARCHIVE_PORTAL_SHADOW_ID]: {
+      fn: () => CreateDropShadow(world),
+      assets: archive('archive_portal_base', 'archive_portal_base'),
+      targetable: false,
+    },
+    [ARCHIVE_SWITCH_BASE_ID]: {
+      fn: () => groundDecal(ARCHIVE_SWITCH_BASE_ID, 1),
+      assets: archive('archive_switch_ground', 'archive_switch_ground'),
+    },
+    [ARCHIVE_SWITCH_PAD_ID]: {
+      fn: () => groundDecal(ARCHIVE_SWITCH_PAD_ID, 2),
+      assets: archive('archive_switch_ground_small', 'archive_switch_ground_small'),
+    },
     [ARCHIVE_AMBIENT_SFX_ID]: { fn: ambientfn },
     rubble1: { fn: () => worldgenitemfn('rubble1', world.scheduler), alwaysActive: true },
     rubble2: { fn: () => worldgenitemfn('rubble2', world.scheduler), alwaysActive: true },

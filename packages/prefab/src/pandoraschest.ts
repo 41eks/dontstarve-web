@@ -28,12 +28,16 @@ export class PandorasChestInstance extends PrefabInstance {
     this.worldServices = world;
     MakeBuildingPersist(this);
     // MakeChest AddTag("structure"), AddTag("chest"); MakeSnowCoveredPristine AddTag("SnowCovered").
-    for (const tag of ['structure', 'chest', 'SnowCovered']) { this.addTag(tag); }
+    for (const tag of ['structure', 'chest', 'SnowCovered']) {
+      this.addTag(tag);
+    }
     const container = MakeBuildingContainer(this, PANDORAS_CHEST_ID, world);
     container.onopenfn = onopen;
     container.onclosefn = onclose;
     addComponent(this, 'inspectable', Inspectable);
-    if (world.scheduler) { addComponent(this, 'hauntable', Hauntable, world.scheduler).SetHauntValue(HAUNT_TINY); }
+    if (world.scheduler) {
+      addComponent(this, 'hauntable', Hauntable, world.scheduler).SetHauntValue(HAUNT_TINY);
+    }
     // MakeSnowCovered -> MakeLunarHailBuildup; pandora_master_postinit -> MakeRoseTarget_CreateFuel_IncreasedHorror.
     addComponent(this, 'lunarhailbuildup', LunarHailBuildup);
     addComponent(this, 'roseinspectable', RoseInspectable);
@@ -41,6 +45,10 @@ export class PandorasChestInstance extends PrefabInstance {
 }
 
 export function pandorasChestPrefabs(world: PrefabWorldContext) {
-  return { [PANDORAS_CHEST_ID]: { ...buildingPrefab(declaration, 'pandoras_chest', undefined, () => new PandorasChestInstance(world), world),
-    minimapIcon: 'pandoraschest.png' } };
+  return {
+    [PANDORAS_CHEST_ID]: {
+      ...buildingPrefab(declaration, 'pandoras_chest', undefined, () => new PandorasChestInstance(world), world),
+      minimapIcon: 'pandoraschest.png',
+    },
+  };
 }

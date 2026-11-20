@@ -18,7 +18,7 @@ export const REEDS_BUILD_ARCHIVE = 'reeds.zip';
 /** tuning.lua REEDS_REGROW_TIME: total_day_time * 3. */
 export const REEDS_REGROW_TIME = 480 * 3;
 /** tuning.lua SMALL_FUEL: seg_time * .5. */
-const SMALL_FUEL = 30 * .5;
+const SMALL_FUEL = 30 * 0.5;
 /** tuning.lua HAUNT_COOLDOWN_MEDIUM, from MakeHauntableIgnite. */
 const HAUNT_COOLDOWN_MEDIUM = 5;
 
@@ -30,7 +30,12 @@ export interface ReedsWorld {
 /** reeds.lua MakeReeds fn. */
 export class ReedsInstance extends PrefabInstance {
   declare readonly components: PrefabInstance['components'] & {
-    pickable: Pickable; inspectable: Inspectable; fuel: Fuel; burnable: Burnable; propagator: Propagator; hauntable: Hauntable;
+    pickable: Pickable;
+    inspectable: Inspectable;
+    fuel: Fuel;
+    burnable: Burnable;
+    propagator: Propagator;
+    hauntable: Hauntable;
   };
 }
 
@@ -53,11 +58,12 @@ function fn(world: ReedsWorld): ReedsInstance {
   inst.addTag('silviculture');
 
   inst.sprite.setFrameAt(Math.random());
-  const color = .75 + Math.random() * .25;
+  const color = 0.75 + Math.random() * 0.25;
   inst.AnimState.SetMultColour(color, color, color, 1);
 
   const pickable = addComponent(inst, 'pickable', Pickable, undefined, undefined, 1, undefined, undefined, undefined, {
-    scheduler: world.scheduler, onEmpty: () => makeemptyfn(inst),
+    scheduler: world.scheduler,
+    onEmpty: () => makeemptyfn(inst),
   });
   pickable.picksound = 'dontstarve/wilson/pickup_reeds';
   pickable.SetUp('cutreeds', REEDS_REGROW_TIME);
@@ -71,15 +77,25 @@ function fn(world: ReedsWorld): ReedsInstance {
   burnable.SetFXLevel(2);
   burnable.SetBurnTime(SMALL_FUEL);
   // MakeSmallPropagator(inst), without SetOnFlashPoint.
-  addComponent(inst, 'propagator', Propagator, 'small', radius =>
-    inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS), TILE_SIZE / 4, world.scheduler, world.getWatchWorldContent);
+  addComponent(
+    inst,
+    'propagator',
+    Propagator,
+    'small',
+    radius => inst.TheSim.FindEntities(inst.position, radius, undefined, PROPAGATOR_CANT_TAGS),
+    TILE_SIZE / 4,
+    world.scheduler,
+    world.getWatchWorldContent,
+  );
   // MakeHauntableIgnite(inst), without SetOnHauntFn.
   addComponent(inst, 'hauntable', Hauntable, world.scheduler).SetCooldown(HAUNT_COOLDOWN_MEDIUM);
   return inst;
 }
 
 /** The reeds Prefab reeds.lua returns. */
-export function reedsPrefabs(world: ReedsWorld): Readonly<Record<typeof REEDS_ID, PrefabEntityDefinition<ReedsInstance>>> {
+export function reedsPrefabs(
+  world: ReedsWorld,
+): Readonly<Record<typeof REEDS_ID, PrefabEntityDefinition<ReedsInstance>>> {
   return {
     [REEDS_ID]: {
       fn: () => fn(world),

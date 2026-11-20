@@ -29,20 +29,30 @@ export class SaltLicker {
   }
 
   Stop(): void {
-    if (this.uses_per_lick === undefined) { return; }
+    if (this.uses_per_lick === undefined) {
+      return;
+    }
     this.SetSalted(false);
     this.uses_per_lick = undefined;
   }
 
   SetSalted(salted: boolean): void {
-    if (this.salted === salted) { return; }
+    if (this.salted === salted) {
+      return;
+    }
     this.salted = salted;
-    if (salted) { this.inst.addTag('saltlicker_salted'); } else { this.inst.removeTag('saltlicker_salted'); }
+    if (salted) {
+      this.inst.addTag('saltlicker_salted');
+    } else {
+      this.inst.removeTag('saltlicker_salted');
+    }
     this.inst.PushEvent('saltchange', { salted });
   }
 
   /** saltlicker.lua OnSave: only a salted licker saves. */
-  OnSave(): { salted: true } | undefined { return this.salted ? { salted: true } : undefined; }
+  OnSave(): { salted: true } | undefined {
+    return this.salted ? { salted: true } : undefined;
+  }
 
   OnRemoveFromEntity(): void {
     this.Stop();

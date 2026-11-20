@@ -37,10 +37,15 @@ export interface SlotItem {
 
 /** Applies a tile declaration over the item's static fields. */
 export function slotItemWithTile(item: SlotItem, tile: ItemTileJson): SlotItem {
-  return { ...item,
+  return {
+    ...item,
     ...(tile.name === undefined ? {} : { name: tile.name }),
     ...(tile.image ? { icon: tile.image.icon, atlas: tile.image.atlas } : {}),
-    count: tile.count, durabilityPercent: tile.durabilityPercent, freshnessPercent: tile.freshnessPercent, wet: tile.wet };
+    count: tile.count,
+    durabilityPercent: tile.durabilityPercent,
+    freshnessPercent: tile.freshnessPercent,
+    wet: tile.wet,
+  };
 }
 
 /** Sample live values for input/transfer requests; never retain a second mutable count. */
@@ -50,9 +55,16 @@ export function currentSlotItem(item: SlotItem | null): SlotItem | null {
 
 /** A live item's values are published by its tile; only identity/static metadata replace the UI item. */
 export function sameSlotPresentation(left: SlotItem | null, right: SlotItem | null): boolean {
-  return left === right || !!left?.tile && left.tile === right?.tile
-    && left.entityId === right.entityId && left.id === right.id && left.skinId === right.skinId
-    && left.maxStack === right.maxStack && left.equippable === right.equippable;
+  return (
+    left === right ||
+    (!!left?.tile &&
+      left.tile === right?.tile &&
+      left.entityId === right.entityId &&
+      left.id === right.id &&
+      left.skinId === right.skinId &&
+      left.maxStack === right.maxStack &&
+      left.equippable === right.equippable)
+  );
 }
 
 export interface SlotModel {
@@ -76,14 +88,15 @@ export function createSlot(options: CreateSlotOptions): SlotModel {
     address: { ...options.address },
     item: readonlySignal(item),
     getItem: () => currentSlotItem(item.get()),
-    setItem: next => { if (!sameSlotPresentation(item.peek(), next)) { item.set(next); } },
+    setItem: next => {
+      if (!sameSlotPresentation(item.peek(), next)) {
+        item.set(next);
+      }
+    },
     accepts: options.accepts ?? (() => true),
   };
 }
 
 export function sameSlotAddress(left: SlotAddress | null, right: SlotAddress | null): boolean {
-  return left !== null
-    && right !== null
-    && left.containerId === right.containerId
-    && left.slotKey === right.slotKey;
+  return left !== null && right !== null && left.containerId === right.containerId && left.slotKey === right.slotKey;
 }

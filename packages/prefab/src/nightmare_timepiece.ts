@@ -3,7 +3,13 @@ import { addComponent } from './components';
 import type { ItemHolder } from '../../componets/src/inventoryitem';
 import { InventoryStore, type ItemEntity, type ItemRuntimeComponent } from '@dontstarve-web/inventory';
 import type { ArchiveSpriteCommands } from '@dontstarve-web/display';
-import { createEffect, getBoundWatchWorldContent, WorldContentKey, type WorldContentSignal, type WorldNightmarePhase } from '@dontstarve-web/signals';
+import {
+  createEffect,
+  getBoundWatchWorldContent,
+  WorldContentKey,
+  type WorldContentSignal,
+  type WorldNightmarePhase,
+} from '@dontstarve-web/signals';
 import catalog from './groundItems.json' with { type: 'json' };
 
 export const NIGHTMARE_TIMEPIECE_ID = 'nightmare_timepiece';
@@ -23,8 +29,13 @@ export type NightmareTimepieceStatus = 'WARN' | 'CALM' | 'DAWN' | 'NOMAGIC' | 'W
 type TrackerOwner = ItemHolder & { addTag(tag: string): void; removeTag(tag: string): void };
 
 function isTracker(owner: ItemHolder | null): owner is TrackerOwner {
-  return !!owner && 'addTag' in owner && typeof owner.addTag === 'function'
-    && 'removeTag' in owner && typeof owner.removeTag === 'function';
+  return (
+    !!owner &&
+    'addTag' in owner &&
+    typeof owner.addTag === 'function' &&
+    'removeTag' in owner &&
+    typeof owner.removeTag === 'function'
+  );
 }
 
 /** owner.components.inventory:Has(prefab, 1); an owner without an inventory (a chest) has none. */
@@ -51,17 +62,24 @@ class NightmareTimepiece implements ItemRuntimeComponent {
   }
 
   /** A saved item is built before its world exists; binding the item to a world is when the watch can follow one. */
-  BindScheduler(): void { this.bindWorld(); }
+  BindScheduler(): void {
+    this.bindWorld();
+  }
 
   private bindWorld(): void {
     this.stopWorld.splice(0).forEach(stop => stop());
     this.phase = getBoundWatchWorldContent()?.(WorldContentKey.NightmarePhase, stop => this.stopWorld.push(stop));
     const phase = this.phase;
-    if (phase) { this.stopWorld.push(createEffect(() => this.OnNightmarePhaseChanged(phase.get()))); }
-    else { this.OnNightmarePhaseChanged('none'); }
+    if (phase) {
+      this.stopWorld.push(createEffect(() => this.OnNightmarePhaseChanged(phase.get())));
+    } else {
+      this.OnNightmarePhaseChanged('none');
+    }
   }
 
-  private stateOf(phase: WorldNightmarePhase) { return STATES[phase] ?? DEFAULT_STATE; }
+  private stateOf(phase: WorldNightmarePhase) {
+    return STATES[phase] ?? DEFAULT_STATE;
+  }
 
   private OnNightmarePhaseChanged(phase: WorldNightmarePhase): void {
     const { anim, inventory } = this.stateOf(phase);
@@ -70,31 +88,48 @@ class NightmareTimepiece implements ItemRuntimeComponent {
   }
 
   /** A new ground visual starts from the catalog's clip; the watch keeps showing its phase. */
-  Declare(sprite: ArchiveSpriteCommands): void { sprite.playOnce(this.stateOf(this.phase?.peek() ?? 'none').anim); }
+  Declare(sprite: ArchiveSpriteCommands): void {
+    sprite.playOnce(this.stateOf(this.phase?.peek() ?? 'none').anim);
+  }
 
   GetStatus(): NightmareTimepieceStatus {
     const phase = this.phase?.peek() ?? 'none';
-    if (phase === 'warn') { return 'WARN'; }
-    if (phase === 'calm') { return 'CALM'; }
-    if (phase === 'dawn') { return 'DAWN'; }
-    if (phase !== 'wild') { return 'NOMAGIC'; }
+    if (phase === 'warn') {
+      return 'WARN';
+    }
+    if (phase === 'calm') {
+      return 'CALM';
+    }
+    if (phase === 'dawn') {
+      return 'DAWN';
+    }
+    if (phase !== 'wild') {
+      return 'NOMAGIC';
+    }
     const timeinphase = this.phase?.nightmareclock?.GetTimeInPhase() ?? 0;
-    return timeinphase < .33 ? 'WAXING' : timeinphase < .66 ? 'STEADY' : 'WANING';
+    return timeinphase < 0.33 ? 'WAXING' : timeinphase < 0.66 ? 'STEADY' : 'WANING';
   }
 
   private toground(): void {
     const owner = this.owner;
-    if (!owner) { return; }
+    if (!owner) {
+      return;
+    }
     this.owner = undefined;
-    if (!holds(owner, this.entity.prefab)) { owner.removeTag('nightmaretracker'); }
+    if (!holds(owner, this.entity.prefab)) {
+      owner.removeTag('nightmaretracker');
+    }
   }
 
   /** topocket: owner.components.inventoryitem:GetGrandOwner(), through a held backpack to whoever holds it. */
   private topocket(): void {
     // A backpack lying on the ground has no grand owner of its own; it is then the owner.
-    const item = this.entity.components.inventoryitem, grand = item.GetGrandOwner() ?? item.owner;
+    const item = this.entity.components.inventoryitem,
+      grand = item.GetGrandOwner() ?? item.owner;
     const owner = isTracker(grand) ? grand : undefined;
-    if (owner === this.owner) { return; }
+    if (owner === this.owner) {
+      return;
+    }
     this.toground();
     owner?.addTag('nightmaretracker');
     this.owner = owner;

@@ -11,12 +11,22 @@ const map: WaveMap = {
   isOceanTile: tile => tile === OCEAN,
 };
 
-function create(player: { x: number; z: number } | null, shore: [number, number, number][], shimmer: [string, number, number][]) {
+function create(
+  player: { x: number; z: number } | null,
+  shore: [number, number, number][],
+  shimmer: [string, number, number][],
+) {
   let seed = 1;
   return new WaveManager({
-    map, scale: 3, tiles: new Map([[OCEAN, 'shore']]),
-    spawner: { spawnShore: (x, z, bearing) => shore.push([x, z, bearing]), spawnShimmer: (kind, x, z) => shimmer.push([kind, x, z]) },
-    cameraDistance: () => 30, playerPosition: () => player,
+    map,
+    scale: 3,
+    tiles: new Map([[OCEAN, 'shore']]),
+    spawner: {
+      spawnShore: (x, z, bearing) => shore.push([x, z, bearing]),
+      spawnShimmer: (kind, x, z) => shimmer.push([kind, x, z]),
+    },
+    cameraDistance: () => 30,
+    playerPosition: () => player,
     random: () => (seed = (seed * 16807) % 2147483647) / 2147483647,
   });
 }
@@ -36,8 +46,14 @@ it('spawns waves only on ocean tiles around the player, none without a player', 
   expect(shore.length + shimmer.length).toBe(0);
 
   const manager = create({ x: 40, z: 0 }, shore, shimmer);
-  for (let i = 0; i < 20; i++) { manager.OnUpdate(0.1); }
+  for (let i = 0; i < 20; i++) {
+    manager.OnUpdate(0.1);
+  }
   expect(shimmer.length).toBeGreaterThan(0);
-  expect([...shore, ...shimmer].every(([a, b, c]) => (typeof a === 'string' ? (b as number) : (a as number)) >= 0 && c !== undefined)).toBe(true);
+  expect(
+    [...shore, ...shimmer].every(
+      ([a, b, c]) => (typeof a === 'string' ? (b as number) : (a as number)) >= 0 && c !== undefined,
+    ),
+  ).toBe(true);
   expect(shimmer.every(([kind]) => kind === 'wave_shimmer')).toBe(true);
 });

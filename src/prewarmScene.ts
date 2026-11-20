@@ -12,30 +12,48 @@ function createFrameBudget(signal?: AbortSignal): () => Promise<void> {
   let frameStart = performance.now();
   return async () => {
     signal?.throwIfAborted();
-    if (performance.now() - frameStart < FRAME_BUDGET_MS) { return; }
+    if (performance.now() - frameStart < FRAME_BUDGET_MS) {
+      return;
+    }
     await yieldLoadingFrame();
     signal?.throwIfAborted();
     frameStart = performance.now();
   };
 }
 
-export async function prewarmScene(renderer: THREE.WebGLRenderer, scene: THREE.Scene, camera: THREE.Camera, signal?: AbortSignal): Promise<void> {
+export async function prewarmScene(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  signal?: AbortSignal,
+): Promise<void> {
   signal?.throwIfAborted();
   const textures = new Set<THREE.Texture>();
   const objects: THREE.Object3D[] = [];
   const lights: THREE.Object3D[] = [];
   const addTexture = (value: unknown) => {
-    if (value instanceof THREE.Texture && !value.isRenderTargetTexture) { textures.add(value); }
-    else if (Array.isArray(value)) { value.forEach(addTexture); }
+    if (value instanceof THREE.Texture && !value.isRenderTargetTexture) {
+      textures.add(value);
+    } else if (Array.isArray(value)) {
+      value.forEach(addTexture);
+    }
   };
   scene.traverseVisible(object => {
-    if (object instanceof THREE.Light) { lights.push(object); }
-    if (!('material' in object)) { return; }
+    if (object instanceof THREE.Light) {
+      lights.push(object);
+    }
+    if (!('material' in object)) {
+      return;
+    }
     const { material } = object;
-    if (!material) { return; }
+    if (!material) {
+      return;
+    }
     objects.push(object);
     for (const entry of Array.isArray(material) ? material : [material]) {
-      if (!(entry instanceof THREE.Material)) { continue; }
+      if (!(entry instanceof THREE.Material)) {
+        continue;
+      }
       Object.values(entry).forEach(addTexture);
       addTexture(entry.userData.prewarmTextures);
       if (entry instanceof THREE.ShaderMaterial) {
@@ -66,8 +84,11 @@ export async function prewarmScene(renderer: THREE.WebGLRenderer, scene: THREE.S
         // Exercise uniforms and geometry too, even without KHR_parallel_shader_compile.
         // Each batch draws only into a single pixel; the game canvas stays untouched.
         renderer.setRenderTarget(staging);
-        try { renderer.render(batch, camera); }
-        finally { renderer.setRenderTarget(target); }
+        try {
+          renderer.render(batch, camera);
+        } finally {
+          renderer.setRenderTarget(target);
+        }
       }
     }
   } finally {

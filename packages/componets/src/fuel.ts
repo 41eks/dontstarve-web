@@ -13,19 +13,29 @@ export class Fuel {
   private type = 'BURNABLE';
   private ontaken?: FuelOnTakenFn;
   private readonly inst: FuelInst;
-  constructor(inst: FuelInst) { this.inst = inst; inst.addTag(`${this.type}_fuel`); }
-  get fueltype(): string { return this.type; }
+  constructor(inst: FuelInst) {
+    this.inst = inst;
+    inst.addTag(`${this.type}_fuel`);
+  }
+  get fueltype(): string {
+    return this.type;
+  }
   set fueltype(value: string) {
     this.inst.removeTag(`${this.type}_fuel`);
     this.type = value;
     this.inst.addTag(`${value}_fuel`);
   }
-  SetOnTakenFn(fn: FuelOnTakenFn | undefined): void { this.ontaken = fn; }
+  SetOnTakenFn(fn: FuelOnTakenFn | undefined): void {
+    this.ontaken = fn;
+  }
   Taken(target: unknown): void {
     this.inst.PushEvent('fueltaken', { taker: target });
     this.ontaken?.(this.inst, target);
   }
-  dispose(): void { this.inst.removeTag(`${this.type}_fuel`); this.ontaken = undefined; }
+  dispose(): void {
+    this.inst.removeTag(`${this.type}_fuel`);
+    this.ontaken = undefined;
+  }
 }
 
 export interface FuelItem {

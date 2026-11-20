@@ -24,27 +24,40 @@ export class OceanSurface {
     this.pipeline = new OceanRenderPipeline(material.map!, map);
   }
 
-  attach(mesh: THREE.Mesh): void { this.pipeline.attach(mesh); }
-  rebuildColours(): void { this.pipeline.rebuildColours(); }
+  attach(mesh: THREE.Mesh): void {
+    this.pipeline.attach(mesh);
+  }
+  rebuildColours(): void {
+    this.pipeline.rebuildColours();
+  }
 
   bindClock(source: ReadonlySignal<ClockState>): void {
     this.stopWatching?.();
-    this.clock = watchSignal(source, cleanup => { this.stopWatching = cleanup; });
+    this.clock = watchSignal(source, cleanup => {
+      this.stopWatching = cleanup;
+    });
     this.changePhase(this.clock.peek().phase, true);
     createEffect(() => this.changePhase(this.clock!.get().phase));
   }
 
   private changePhase(phase: ClockState['phase'], immediate = false): void {
-    if (!immediate && phase === this.phase) { return; }
+    if (!immediate && phase === this.phase) {
+      return;
+    }
     this.phase = phase;
     this.startFloor.copy(this.floor);
-    if (phase === 'day') { this.endFloor.copy(FLOOR); }
-    else { this.endFloor.set(0, 0, 0); }
+    if (phase === 'day') {
+      this.endFloor.copy(FLOOR);
+    } else {
+      this.endFloor.set(0, 0, 0);
+    }
     this.startBlend = this.blend;
     this.endBlend = phase === 'day' ? 0 : 1;
     this.delay = phase === 'night' ? 6 : 0;
     this.progress = immediate ? 1 : 0;
-    if (immediate) { this.applyBlend(); }
+    if (immediate) {
+      this.applyBlend();
+    }
   }
 
   private applyBlend(): void {
@@ -55,7 +68,9 @@ export class OceanSurface {
 
   update(dt: number): void {
     this.pipeline.update(dt);
-    if (this.progress >= 1) { return; }
+    if (this.progress >= 1) {
+      return;
+    }
     const waiting = Math.min(this.delay, dt);
     this.delay -= waiting;
     this.progress = Math.min(1, this.progress + (dt - waiting) * (this.phase === 'day' ? 1 : 0.1));

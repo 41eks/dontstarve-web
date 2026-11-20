@@ -6,7 +6,13 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabInstance, type PrefabInstance } from '../../prefab/src/prefabInstance';
-import { staffLightPrefabs, dwarfStarLight, DWARF_STAR_DURATION, type StaffLightId, type StaffLightInstance } from '../../prefab/src/stafflight';
+import {
+  staffLightPrefabs,
+  dwarfStarLight,
+  DWARF_STAR_DURATION,
+  type StaffLightId,
+  type StaffLightInstance,
+} from '../../prefab/src/stafflight';
 import { PlaySound } from '../../prefab/src/sound';
 import { clockstate, createMemo, createSignal, seasonstate } from '@dontstarve-web/signals';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
@@ -21,7 +27,6 @@ import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
 import { testInventoryStore, testItem } from './testInventory';
 
-
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}),
   PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true, setVolume: vi.fn() })),
@@ -29,18 +34,25 @@ vi.mock('../../prefab/src/sound', () => ({
 
 const managers: import('../../prefab/src/prefabInstance').PrefabEntityManager<StaffLightId, StaffLightInstance>[] = [];
 beforeEach(() => {
-  vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(
-    new URL(`../../../public${url}`, import.meta.url))));
+  vi.stubGlobal(
+    'fetch',
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
 });
 afterEach(async () => {
-  for (const manager of managers.splice(0)) { manager.dispose(); }
+  for (const manager of managers.splice(0)) {
+    manager.dispose();
+  }
   await Promise.resolve();
-  vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 /** The model the star's display keeps in `scene` while the star is awake. */
-const modelIn = (scene: THREE.Scene, star: PrefabInstance) => scene.children.find(child => prefabInstance(child) === star) as THREE.Group | undefined;
+const modelIn = (scene: THREE.Scene, star: PrefabInstance) =>
+  scene.children.find(child => prefabInstance(child) === star) as THREE.Group | undefined;
 /** A star exists as soon as it is spawned; its display then loads the art. */
 async function artLoaded(scene: THREE.Scene, star: StaffLightInstance): Promise<StaffLightInstance> {
   await prefabDisplay(modelIn(scene, star)!)!.artLoaded();
@@ -48,29 +60,67 @@ async function artLoaded(scene: THREE.Scene, star: StaffLightInstance): Promise<
   return star;
 }
 const haunter = { hasTag: () => false, PushEvent() {} };
-const sounds = (event: string) => vi.mocked(PlaySound).mock.calls.flatMap(([path], index) => path === event ? [vi.mocked(PlaySound).mock.results[index].value] : []);
+const sounds = (event: string) =>
+  vi
+    .mocked(PlaySound)
+    .mock.calls.flatMap(([path], index) => (path === event ? [vi.mocked(PlaySound).mock.results[index].value] : []));
 
 function setup(prefab: StaffLightId = 'stafflight') {
-  const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), awake = createSignal(true);
-  const displays = new PrefabDisplayGroup(scene), manager = prefabManager(displays, '/dst/data/anim', { scheduler, tickingarea: () => createMemo(() => awake.get()) }, staffLightPrefabs);
+  const scene = new THREE.Scene(),
+    scheduler = new GameTimeScheduler(),
+    awake = createSignal(true);
+  const displays = new PrefabDisplayGroup(scene),
+    manager = prefabManager(
+      displays,
+      '/dst/data/anim',
+      { scheduler, tickingarea: () => createMemo(() => awake.get()) },
+      staffLightPrefabs,
+    );
   managers.push(manager);
-  const spawn = (position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }) => manager.spawn(prefab, position, saved && {
-    id: saved.id, components: { timer: { timers: { extinguish: { timeleft: saved.remainingSeconds, paused: false, initial_time: DWARF_STAR_DURATION } } } },
-  });
+  const spawn = (position: THREE.Vector3, saved?: { id: string; remainingSeconds: number }) =>
+    manager.spawn(
+      prefab,
+      position,
+      saved && {
+        id: saved.id,
+        components: {
+          timer: {
+            timers: {
+              extinguish: { timeleft: saved.remainingSeconds, paused: false, initial_time: DWARF_STAR_DURATION },
+            },
+          },
+        },
+      },
+    );
   /** As the scene does: the world's scheduler advances, then the displays. */
-  const update = (dt: number) => { scheduler.advance(dt); displays.update(dt); };
+  const update = (dt: number) => {
+    scheduler.advance(dt);
+    displays.update(dt);
+  };
   return { manager, spawn, scene, scheduler, awake, update };
 }
 
 it('declares the source tags and components of each star', () => {
   const hot = setup().spawn(new THREE.Vector3());
-  for (const tag of ['HASHEATER', 'sanityaura', 'inspectable', 'ignorewalkableplatforms', 'cooker', 'daylight', 'heatstar']) { expect(hot.hasTag(tag)).toBe(true); }
-  expect(hot.physicsRadiusOverride).toBe(.5);
+  for (const tag of [
+    'HASHEATER',
+    'sanityaura',
+    'inspectable',
+    'ignorewalkableplatforms',
+    'cooker',
+    'daylight',
+    'heatstar',
+  ]) {
+    expect(hot.hasTag(tag)).toBe(true);
+  }
+  expect(hot.physicsRadiusOverride).toBe(0.5);
   expect(hot.components.propagator!.heatoutput).toBe(15);
   expect(hot.components.propagator!.spreading.peek()).toBe(true);
   expect(hot.components.sanityaura!.GetBaseAura()).toBeCloseTo(100 / 240);
   const cold = setup('staffcoldlight').spawn(new THREE.Vector3());
-  for (const tag of ['cooker', 'daylight', 'heatstar']) { expect(cold.hasTag(tag)).toBe(false); }
+  for (const tag of ['cooker', 'daylight', 'heatstar']) {
+    expect(cold.hasTag(tag)).toBe(false);
+  }
   expect(cold.components.propagator).toBeUndefined();
 });
 
@@ -78,9 +128,11 @@ it('pulses the light from .1s after spawning, as the periodic task enables it', 
   const { spawn, update } = setup();
   const star = spawn(new THREE.Vector3());
   expect(star.light.peek()).toBeUndefined();
-  update(.1);
-  expect(star.light.peek()!.radius).toBeCloseTo(dwarfStarLight(.1).radius);
-  for (let i = 0; i < 125; i++) { update(.1); }
+  update(0.1);
+  expect(star.light.peek()!.radius).toBeCloseTo(dwarfStarLight(0.1).radius);
+  for (let i = 0; i < 125; i++) {
+    update(0.1);
+  }
   expect(star.light.peek()!.radius).toBeCloseTo(dwarfStarLight(12.6).radius);
 });
 
@@ -88,7 +140,9 @@ it('draws a new star from appear, then settles into its idle', async () => {
   const { spawn, scene, update } = setup();
   const star = await artLoaded(scene, spawn(new THREE.Vector3()));
   expect(star.sprite.currentAnimation).toBe('appear');
-  for (let frame = 0; frame < 150; frame++) { update(1 / 30); }
+  for (let frame = 0; frame < 150; frame++) {
+    update(1 / 30);
+  }
   expect(star.sprite.currentAnimation).toBe('idle_loop');
 });
 
@@ -98,24 +152,24 @@ it('expires on the extinguish timer: disappear, animover kills the loop, Remove 
   const model = modelIn(scene, star)!;
   const play = vi.spyOn(star.sprite, 'playOnce');
   const loop = sounds('dontstarve/common/staff_star_LP')[0];
-  update(.7);
+  update(0.7);
   expect(star.persists).toBe(true);
   expect(play).not.toHaveBeenCalled();
-  update(.2);
+  update(0.2);
   expect(star._killed).toBe(true);
   expect(star.persists).toBe(false);
   expect(star.components.timer!.TimerExists('extinguish')).toBe(false);
   expect(manager.exportRecords()).toEqual([]);
   expect(play).toHaveBeenCalledExactlyOnceWith('disappear');
   // disappear (17 frames from 0.8s) ends on game time; its animover kills the loop.
-  update(.4);
+  update(0.4);
   expect(loop.stop).not.toHaveBeenCalled();
-  update(.1);
+  update(0.1);
   expect(loop.stop).toHaveBeenCalledOnce();
-  update(.39);
+  update(0.39);
   expect(star.isRemoved).toBe(false);
   expect(model.parent).toBe(scene);
-  update(.02);
+  update(0.02);
   expect(star.isRemoved).toBe(true);
   await settle();
   expect(model.parent).toBeNull();
@@ -131,19 +185,20 @@ it('haunting stops the timer and kills the light once; a repeat succeeds without
   expect(star.components.timer!.TimerExists('extinguish')).toBe(false);
   expect(star.persists).toBe(false);
   expect(play).toHaveBeenCalledExactlyOnceWith('disappear');
-  update(.6);
+  update(0.6);
   hauntable.DoHaunt(haunter);
   expect(play).toHaveBeenCalledOnce();
-  update(.41);
+  update(0.41);
   expect(star.isRemoved).toBe(true);
 });
 
 it('sleeps without touching lifetime, light or sound, and wakes on the same entity', async () => {
   const { manager, spawn, scene, awake, update } = setup();
   const star = await artLoaded(scene, spawn(new THREE.Vector3(4, 0, 6)));
-  const model = modelIn(scene, star)!, heater = star.components.heater;
+  const model = modelIn(scene, star)!,
+    heater = star.components.heater;
   const loop = sounds('dontstarve/common/staff_star_LP')[0];
-  update(.2);
+  update(0.2);
   awake.set(false);
   await settle();
   expect(star.status.peek()).toBe('asleep');
@@ -154,7 +209,9 @@ it('sleeps without touching lifetime, light or sound, and wakes on the same enti
   // The periodic task and timer are not gated by sleep, and the emitter keeps its loop.
   expect(star.light.peek()!.radius).toBeCloseTo(dwarfStarLight(10.2).radius);
   expect(loop.stop).not.toHaveBeenCalled();
-  expect(manager.exportRecords()[0].record.components.timer!.timers.extinguish.timeleft).toBeCloseTo(DWARF_STAR_DURATION - 10.2);
+  expect(manager.exportRecords()[0].record.components.timer!.timers.extinguish.timeleft).toBeCloseTo(
+    DWARF_STAR_DURATION - 10.2,
+  );
   const plays = vi.mocked(PlaySound).mock.calls.length;
   awake.set(true);
   await settle();
@@ -170,38 +227,42 @@ it('sleeps without touching lifetime, light or sound, and wakes on the same enti
 it('expires and is removed while asleep, without drawing anything', async () => {
   const { spawn, awake, update } = setup();
   awake.set(false);
-  const star = spawn(new THREE.Vector3(), { id: 'e_far', remainingSeconds: .5 });
+  const star = spawn(new THREE.Vector3(), { id: 'e_far', remainingSeconds: 0.5 });
   await settle();
   expect(star.status.peek()).toBe('asleep');
   expect(star.sprite.loaded).toBe(false);
   const loop = sounds('dontstarve/common/staff_star_LP')[0];
-  update(.6);
+  update(0.6);
   expect(star._killed).toBe(true);
   // Nothing draws disappear; it still ends after its 17 frames, and its animover kills the loop.
   expect(loop.stop).not.toHaveBeenCalled();
-  update(.5);
+  update(0.5);
   expect(loop.stop).toHaveBeenCalledOnce();
   expect(star.isRemoved).toBe(false);
-  update(.5);
+  update(0.5);
   expect(star.isRemoved).toBe(true);
   expect(star.sprite.loaded).toBe(false);
 });
 
 it('chains random polar idles on game time, asleep as awake, and stops once killed', async () => {
   const { spawn, scene, awake, update } = setup('staffcoldlight');
-  const random = vi.spyOn(Math, 'random').mockReturnValue(.5);
+  const random = vi.spyOn(Math, 'random').mockReturnValue(0.5);
   const star = await artLoaded(scene, spawn(new THREE.Vector3()));
   const clip = () => star.sprite.sprite.peek().clip;
   expect(clip().name).toBe('appear');
-  for (let frame = 0; frame < 150 && clip().name === 'appear'; frame++) { update(1 / 30); }
+  for (let frame = 0; frame < 150 && clip().name === 'appear'; frame++) {
+    update(1 / 30);
+  }
   expect(clip().name).toBe('idle_loop2');
   expect(clip().loop).toBe(false);
   // Asleep, nothing is drawn; each idle still ends after its 64 frames and the next one plays.
   awake.set(false);
   await settle();
   const idle = star.animstate.animation.peek();
-  for (let frame = 0; frame < 63; frame++) { update(1 / 30); }
-  update(.5 / 30);
+  for (let frame = 0; frame < 63; frame++) {
+    update(1 / 30);
+  }
+  update(0.5 / 30);
   expect(star.animstate.animation.peek()).toBe(idle);
   update(1 / 30);
   expect(star.animstate.animation.peek()).not.toBe(idle);
@@ -222,7 +283,9 @@ it('removes a star disposed while its art is loading and draws nothing when the 
   const { manager, spawn, scene } = setup();
   const fetchAsset = globalThis.fetch;
   let finishLoading!: () => void;
-  const loading = new Promise<void>(resolve => { finishLoading = resolve; });
+  const loading = new Promise<void>(resolve => {
+    finishLoading = resolve;
+  });
   vi.stubGlobal('fetch', async (...args: Parameters<typeof fetch>) => {
     await loading;
     return fetchAsset(...args);
@@ -237,7 +300,8 @@ it('removes a star disposed while its art is loading and draws nothing when the 
   expect(loop.stop).toHaveBeenCalled();
   expect(star.isRemoved).toBe(true);
   finishLoading();
-  await settle(); await settle();
+  await settle();
+  await settle();
   expect(scene.children).toEqual([]);
   expect(star.sprite.loaded).toBe(false);
   expect(manager.exportRecords()).toEqual([]);
@@ -246,7 +310,8 @@ it('removes a star disposed while its art is loading and draws nothing when the 
 it('world clock and season changes do not restart the idle', async () => {
   const { spawn, scene } = setup();
   const star = await artLoaded(scene, spawn(new THREE.Vector3()));
-  const play = vi.spyOn(star.sprite, 'playOnce'), idle = vi.spyOn(star.sprite, 'start');
+  const play = vi.spyOn(star.sprite, 'playOnce'),
+    idle = vi.spyOn(star.sprite, 'start');
   clockstate.set({ phase: 'dusk', timeinphase: 0.5 });
   seasonstate.set({ season: 'winter', progress: 0.5 });
   await Promise.resolve();
@@ -268,8 +333,11 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
   const stone = testItem({ itemId: 'heatrock', count: 1, temperature: { current: 30 } });
   configureHeatRockEntity(stone);
   stone.BindTemperatureWorld({
-    temperature: createSignal(0), componentUpdates: updates, unitScale: TILE_SIZE / 4,
-    findHeaters: (position, radius, ignoredTags) => star.TheSim.FindEntities(position, radius, ['HASHEATER'], ignoredTags) as never,
+    temperature: createSignal(0),
+    componentUpdates: updates,
+    unitScale: TILE_SIZE / 4,
+    findHeaters: (position, radius, ignoredTags) =>
+      star.TheSim.FindEntities(position, radius, ['HASHEATER'], ignoredTags) as never,
   });
   const temperature = stone.components.temperature!;
   const rock = stone.getComponent<HeatRock>('heatrock')!;
@@ -279,12 +347,12 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
     expect(temperature.GetCurrent()).toBe(31);
     expect(rock.range.peek()).toBe(5);
     // Half the search radius: heat = 100 * (1 - .5²) = 75; equilibrium with ambient 0 is 37.5.
-    stone.getPosition().set(5 * TILE_SIZE / 4, 0, 0);
+    stone.getPosition().set((5 * TILE_SIZE) / 4, 0, 0);
     temperature.SetTemperature(37.5);
     updates.update(1);
     expect(temperature.GetCurrent()).toBe(37.5);
     // At the search boundary the heat contribution is zero.
-    stone.getPosition().set(10 * TILE_SIZE / 4, 0, 0);
+    stone.getPosition().set((10 * TILE_SIZE) / 4, 0, 0);
     updates.update(1);
     expect(temperature.GetCurrent()).toBeCloseTo(37.3);
     stone.getPosition().set(0, 0, 0);
@@ -296,7 +364,10 @@ it('heats nearby thermal stones with distance falloff until permanent removal', 
     expect(star.TheSim.FindEntities(star.position, 1, ['HASHEATER'])).toEqual([]);
     updates.update(1);
     expect(temperature.GetCurrent()).toBeCloseTo(38.1);
-  } finally { stone.destroy(); updates.dispose(); }
+  } finally {
+    stone.destroy();
+    updates.dispose();
+  }
 });
 
 it('cools nearby thermal stones with endothermic falloff until permanent removal', async () => {
@@ -314,21 +385,25 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
   const stone = testItem({ itemId: 'heatrock', count: 1, temperature: { current: 6 } });
   configureHeatRockEntity(stone);
   stone.BindTemperatureWorld({
-    temperature: createSignal(35), componentUpdates: updates, unitScale: TILE_SIZE / 4,
-    findHeaters: (position, radius, ignoredTags) => star.TheSim.FindEntities(position, radius, ['HASHEATER'], ignoredTags) as never,
+    temperature: createSignal(35),
+    componentUpdates: updates,
+    unitScale: TILE_SIZE / 4,
+    findHeaters: (position, radius, ignoredTags) =>
+      star.TheSim.FindEntities(position, radius, ['HASHEATER'], ignoredTags) as never,
   });
-  const temperature = stone.components.temperature!, rock = stone.getComponent<HeatRock>('heatrock')!;
+  const temperature = stone.components.temperature!,
+    rock = stone.getComponent<HeatRock>('heatrock')!;
   try {
     expect(rock.range.peek()).toBe(2);
     updates.update(1);
     expect(temperature.GetCurrent()).toBe(5);
     expect(rock.range.peek()).toBe(1);
     // Cold-source falloff is relative to overheattemp 70: (-100 - 70) * .75 + 70 = -57.5.
-    stone.transform.setPosition(5 * TILE_SIZE / 4, 0, 0);
+    stone.transform.setPosition((5 * TILE_SIZE) / 4, 0, 0);
     temperature.SetTemperature(-11.25); // Equilibrium between ambient 35 and cooling target -57.5.
     updates.update(1);
     expect(temperature.GetCurrent()).toBe(-11.25);
-    stone.transform.setPosition(10 * TILE_SIZE / 4, 0, 0);
+    stone.transform.setPosition((10 * TILE_SIZE) / 4, 0, 0);
     updates.update(1);
     expect(temperature.GetCurrent()).toBeCloseTo(-11.05);
     awake.set(false);
@@ -348,43 +423,65 @@ it('cools nearby thermal stones with endothermic falloff until permanent removal
     expect(star.TheSim.FindEntities(star.position, 1, ['HASHEATER'])).toEqual([]);
     updates.update(1);
     expect(temperature.GetCurrent()).toBeCloseTo(4.2);
-  } finally { stone.destroy(); updates.dispose(); }
+  } finally {
+    stone.destroy();
+    updates.dispose();
+  }
 });
 
 it('spawns world lights through console definitions and saves and reloads their identity, position and settled lifetime', async () => {
-  const position = new THREE.Vector3(6, 7, 9), scheduler = new GameTimeScheduler();
+  const position = new THREE.Vector3(6, 7, 9),
+    scheduler = new GameTimeScheduler();
   const createRegistry = () => {
     const registry = new EntityRegistry();
-    const displays = new PrefabDisplayGroup(new THREE.Scene()), manager = prefabManager(displays, '/dst/data/anim', { scheduler }, staffLightPrefabs);
+    const displays = new PrefabDisplayGroup(new THREE.Scene()),
+      manager = prefabManager(displays, '/dst/data/anim', { scheduler }, staffLightPrefabs);
     managers.push(manager);
     registry.register(PREFAB_DEFINITIONS.staffLights, {
       restore: (prefabId, record) => manager.restore(prefabId, record),
       debugSpawn: prefabId => manager.spawn(prefabId, position.clone()),
       exportRecords: () => manager.exportRecords(),
-      update: (dt, quaternion) => { publishTestCamera(quaternion); displays.update(dt); },
+      update: (dt, quaternion) => {
+        publishTestCamera(quaternion);
+        displays.update(dt);
+      },
       dispose: () => manager.dispose(),
     });
     return registry;
   };
   const registry = createRegistry();
   const inventory = testInventoryStore([], SAVE_CATALOG.items);
-  const template = deserializeSave(await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'), SAVE_CATALOG);
-  const spawn = await executeDebugCommand('c_spawn("stafflight"); c_spawn("staffcoldlight")', inventory,
-    prefab => registry.spawn(prefab));
+  const template = deserializeSave(
+    await readFile(new URL('../../../public/saves/initial-world.json', import.meta.url), 'utf8'),
+    SAVE_CATALOG,
+  );
+  const spawn = await executeDebugCommand('c_spawn("stafflight"); c_spawn("staffcoldlight")', inventory, prefab =>
+    registry.spawn(prefab),
+  );
   expect(spawn.ok).toBe(true);
   scheduler.advance(0.25);
   let exported = '';
   const save = await executeDebugCommand('c_save()', inventory, undefined, () => {
-    exported = serializeSave(template, {
-      entities: { ...template.world.entities, ...registry.exportRecords() }, inventory: inventory.exportSaved(),
-      playerTransform: { position: [6, 0, 9], rotationY: 0 }, elapsedSeconds: 0.25,
-    }, SAVE_CATALOG);
+    exported = serializeSave(
+      template,
+      {
+        entities: { ...template.world.entities, ...registry.exportRecords() },
+        inventory: inventory.exportSaved(),
+        playerTransform: { position: [6, 0, 9], rotationY: 0 },
+        elapsedSeconds: 0.25,
+      },
+      SAVE_CATALOG,
+    );
   });
   expect(save.ok).toBe(true);
   const saved = deserializeSave(exported, SAVE_CATALOG);
   const records = { stafflight: saved.world.entities.stafflight, staffcoldlight: saved.world.entities.staffcoldlight };
   expect(records.stafflight[0].transform.position).toEqual([6, 0, 9]);
-  expect(records.stafflight[0].components.timer!.timers.extinguish).toEqual({ timeleft: DWARF_STAR_DURATION - 0.25, paused: false, initial_time: DWARF_STAR_DURATION });
+  expect(records.stafflight[0].components.timer!.timers.extinguish).toEqual({
+    timeleft: DWARF_STAR_DURATION - 0.25,
+    paused: false,
+    initial_time: DWARF_STAR_DURATION,
+  });
   expect(records.staffcoldlight[0].components.timer!.timers.extinguish.timeleft).toBe(960 - 0.25);
   expect(exported).not.toContain('staffLightState');
   // A source star's own duration is longer than a new one's; the old record shape is no longer read.
@@ -394,24 +491,42 @@ it('spawns world lights through console definitions and saves and reloads their 
     return JSON.stringify(save);
   };
   const source = { timeleft: 1500, paused: false, initial_time: 1680 };
-  expect(deserializeSave(withTimer({ timers: { extinguish: source } }), SAVE_CATALOG).world.entities.stafflight[0].components.timer!.timers.extinguish).toEqual(source);
+  expect(
+    deserializeSave(withTimer({ timers: { extinguish: source } }), SAVE_CATALOG).world.entities.stafflight[0].components
+      .timer!.timers.extinguish,
+  ).toEqual(source);
   expect(() => deserializeSave(withTimer({ remainingSeconds: 100 }), SAVE_CATALOG)).toThrow();
   expect(() => deserializeSave(withTimer({ timers: {} }), SAVE_CATALOG)).toThrow();
   const soundsBeforeRestore = vi.mocked(PlaySound).mock.calls.length;
   const restored = createRegistry();
   await restored.restoreAll(records);
   expect(restored.exportRecords()).toEqual(records);
-  expect(vi.mocked(PlaySound).mock.calls.slice(soundsBeforeRestore).map(([event]) => event))
-    .toEqual(['dontstarve/common/staff_star_LP', 'dontstarve/common/staff_star_create', 'dontstarve/common/staff_coldlight_LP', 'dontstarve/common/staff_star_create']);
+  expect(
+    vi
+      .mocked(PlaySound)
+      .mock.calls.slice(soundsBeforeRestore)
+      .map(([event]) => event),
+  ).toEqual([
+    'dontstarve/common/staff_star_LP',
+    'dontstarve/common/staff_star_create',
+    'dontstarve/common/staff_coldlight_LP',
+    'dontstarve/common/staff_star_create',
+  ]);
   for (const entity of restored.byEntityId.values()) {
     const star = entity as PrefabInstance;
     expect(star.persists).toBe(true);
     const heater = star.components.heater!;
-    expect(star.TheSim.FindEntities(star.position, 1, ['HASHEATER']).map(found => found.components.heater)).toContain(heater);
+    expect(star.TheSim.FindEntities(star.position, 1, ['HASHEATER']).map(found => found.components.heater)).toContain(
+      heater,
+    );
     expect(heater.GetHeat()).toBe(star.prefab === 'stafflight' ? 100 : -100);
     expect(heater.IsEndothermic()).toBe(star.prefab === 'staffcoldlight');
   }
   const stars = [...registry.byEntityId.values(), ...restored.byEntityId.values()] as PrefabInstance[];
-  registry.dispose(); restored.dispose(); inventory.dispose();
-  for (const star of stars) { expect(star.hasTag('HASHEATER')).toBe(false); }
+  registry.dispose();
+  restored.dispose();
+  inventory.dispose();
+  for (const star of stars) {
+    expect(star.hasTag('HASHEATER')).toBe(false);
+  }
 });

@@ -4,7 +4,10 @@ import { PrefabDisplayGroup, SpriteState, prefabDisplay } from '../../display/sr
 import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  BUTTERFLY_DEFINITIONS, ButterflyEntity, MakeButterflyCreature, UpdateButterfly,
+  BUTTERFLY_DEFINITIONS,
+  ButterflyEntity,
+  MakeButterflyCreature,
+  UpdateButterfly,
   type ButterflyWorld,
 } from '../../prefab/src/butterfly';
 
@@ -18,15 +21,25 @@ import { createPerishWorld } from './perishWorldFixture';
 import { createInventoryStore, testSavedItem } from './testInventory';
 
 const cleanups: (() => void)[] = [];
-afterEach(() => { cleanups.splice(0).forEach(stop => stop()); });
+afterEach(() => {
+  cleanups.splice(0).forEach(stop => stop());
+});
 
 function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = vi.fn()) {
   let complete: (() => void) | undefined;
   let current = 'idle_flight_loop';
   const animation = {
-    start: vi.fn((name: string) => { current = name; }), update: vi.fn(),
-    playOnce: vi.fn((name: string, callback?: () => void) => { current = name; complete = callback; }),
-    get currentAnimation() { return current; },
+    start: vi.fn((name: string) => {
+      current = name;
+    }),
+    update: vi.fn(),
+    playOnce: vi.fn((name: string, callback?: () => void) => {
+      current = name;
+      complete = callback;
+    }),
+    get currentAnimation() {
+      return current;
+    },
   };
   const scheduler = new GameTimeScheduler();
   const { cycle, getWatchWorldContent, unbind } = bindTestWorld(scheduler);
@@ -36,26 +49,55 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
   // TheSim: the butterfly, its flowers and the player are the entities one manager finds.
   const displays = new PrefabDisplayGroup(new THREE.Scene());
   const prefabs = new PrefabEntityManager<string, PrefabInstance<SpriteState, object>>(displays, '/dst/data/anim', {});
-  const entity = new ButterflyEntity(BUTTERFLY_DEFINITIONS[prefab], { itemId: prefab, count: 1 }, undefined, testSavedItem);
+  const entity = new ButterflyEntity(
+    BUTTERFLY_DEFINITIONS[prefab],
+    { itemId: prefab, count: 1 },
+    undefined,
+    testSavedItem,
+  );
   prefabs.track(entity);
   MakeButterflyCreature(entity, world, { animation, random: () => 0, dropLoot });
   const controller = entity;
   const add = (prefab: string, tags: readonly string[], position: THREE.Vector3) => {
     const inst = new PrefabInstance(prefab, new SpriteState({ name: 'idle', billboard: true }));
-    for (const tag of tags) { inst.addTag(tag); }
-    inst.setPosition(position.x, position.y, position.z); prefabs.track(inst);
+    for (const tag of tags) {
+      inst.addTag(tag);
+    }
+    inst.setPosition(position.x, position.y, position.z);
+    prefabs.track(inst);
     return inst;
   };
-  cleanups.push(() => { entity.remove(); prefabs.dispose(); displays.dispose(); unbind(); scheduler.dispose(); });
+  cleanups.push(() => {
+    entity.remove();
+    prefabs.dispose();
+    displays.dispose();
+    unbind();
+    scheduler.dispose();
+  });
   return {
-    cycle, animation, controller, world, entity,
+    cycle,
+    animation,
+    controller,
+    world,
+    entity,
     position: () => entity.transform.position.clone(),
     addThreat: (position: THREE.Vector3) => add('wilson', ['player', 'scarytoprey'], position),
     addFlower: (position: THREE.Vector3) => add('flower', ['flower'], position),
-    setDay: (value: boolean) => { cycle.set(value ? 'day' : 'dusk'); },
+    setDay: (value: boolean) => {
+      cycle.set(value ? 'day' : 'dusk');
+    },
     // The animover is handled on the stategraph's next update.
-    complete: () => { const callback = complete; complete = undefined; callback?.(); UpdateButterfly(entity, 0); },
-    tick: (seconds: number) => { for (let i = 0; i < Math.round(seconds * 10); i++) { UpdateButterfly(entity, 0.1); } },
+    complete: () => {
+      const callback = complete;
+      complete = undefined;
+      callback?.();
+      UpdateButterfly(entity, 0);
+    },
+    tick: (seconds: number) => {
+      for (let i = 0; i < Math.round(seconds * 10); i++) {
+        UpdateButterfly(entity, 0.1);
+      }
+    },
   };
 }
 
@@ -73,7 +115,7 @@ describe('live butterfly source behavior', () => {
     expect(s.animation.start).toHaveBeenCalledWith('flight_cycle');
     expect(s.controller.state).toBe('idle');
     const position = s.position().clone();
-    s.tick(.5);
+    s.tick(0.5);
     expect(s.position().equals(position)).toBe(true);
   });
 
@@ -86,7 +128,7 @@ describe('live butterfly source behavior', () => {
     expect(Math.abs(s.position().x - 3)).toBeGreaterThanOrEqual(10);
     expect(s.controller.state).toBe('idle');
     const position = s.position().clone();
-    s.tick(.5);
+    s.tick(0.5);
     expect(s.position().equals(position)).toBe(true);
   });
 
@@ -97,10 +139,10 @@ describe('live butterfly source behavior', () => {
     expect(s.controller.state).toBe('land');
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('land', expect.any(Function));
     // arrive_dist = ARRIVE_STEP + physics radii of the flower (0) and the butterfly (0.5)... measured to the flower's centre.
-    expect(s.position().distanceTo(new THREE.Vector3(3, 0, 0))).toBeLessThan(.7);
+    expect(s.position().distanceTo(new THREE.Vector3(3, 0, 0))).toBeLessThan(0.7);
     expect(s.controller.hasTag('flying')).toBe(false);
     const landed = s.position().clone();
-    s.tick(.5);
+    s.tick(0.5);
     expect(s.position().equals(landed)).toBe(true);
     s.complete();
     expect(s.controller.state).toBe('pollinate');
@@ -108,7 +150,7 @@ describe('live butterfly source behavior', () => {
     // GetRandomWithVariance(3, 1) with random 0 is 2 seconds.
     s.tick(1.9);
     expect(s.controller.state).toBe('pollinate');
-    s.tick(.2);
+    s.tick(0.2);
     expect(s.controller.state).toBe('takeoff');
     expect(s.animation.playOnce).toHaveBeenLastCalledWith('take_off', expect.any(Function));
     s.complete();
@@ -161,57 +203,120 @@ describe('moonbutterfly', () => {
 
 it('draws both butterflies from their own build in the shared batches, one-shots included', async () => {
   vi.stubGlobal('window', new EventTarget());
-  const fetch = vi.fn(async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
+  const fetch = vi.fn(
+    async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
+  );
   vi.stubGlobal('fetch', fetch);
   const inventory = createPickupInventory();
-  const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
-    inventory, '/dst/data/anim', new THREE.Group());
-  const requested = (archive: string) => fetch.mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
+  const items = new ItemWorldFixture(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(),
+    undefined,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    new THREE.Group(),
+  );
+  const requested = (archive: string) =>
+    fetch.mock.calls.some(([url]) => String(url).endsWith(`/dst/data/anim/${archive}`));
   // An instanced sprite hides its own meshes; the shared batch draws it.
   const ownShown = (inst: ButterflyEntity) => {
     let shown = 0;
-    inst.transform.model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) { shown++; } });
+    inst.transform.model.traverse(object => {
+      if (object instanceof THREE.Mesh && object.visible) {
+        shown++;
+      }
+    });
     return shown;
   };
   try {
-    items.spawnFromSave('wild', { ...SAVE_CATALOG.items.butterfly, itemId: 'butterfly', count: 1 }, new THREE.Vector3(3, 0, 0));
-    items.spawnFromSave('moon', { ...SAVE_CATALOG.items.moonbutterfly, itemId: 'moonbutterfly', count: 1 }, new THREE.Vector3(6, 0, 0));
+    items.spawnFromSave(
+      'wild',
+      { ...SAVE_CATALOG.items.butterfly, itemId: 'butterfly', count: 1 },
+      new THREE.Vector3(3, 0, 0),
+    );
+    items.spawnFromSave(
+      'moon',
+      { ...SAVE_CATALOG.items.moonbutterfly, itemId: 'moonbutterfly', count: 1 },
+      new THREE.Vector3(6, 0, 0),
+    );
     const [wild, moon] = ['wild', 'moon'].map(id => items.entities.get(id));
-    if (!(wild instanceof ButterflyEntity) || !(moon instanceof ButterflyEntity)) { throw new Error('both prefabs make a ButterflyEntity'); }
-    for (const inst of [wild, moon]) { await prefabDisplay(inst.transform.model)!.artLoaded(); }
+    if (!(wild instanceof ButterflyEntity) || !(moon instanceof ButterflyEntity)) {
+      throw new Error('both prefabs make a ButterflyEntity');
+    }
+    for (const inst of [wild, moon]) {
+      await prefabDisplay(inst.transform.model)!.artLoaded();
+    }
     expect(['butterfly_basic.zip', 'butterfly_moon.zip'].map(requested)).toEqual([true, true]);
     expect([ownShown(wild), ownShown(moon)]).toEqual([0, 0]);
     // A one-shot played by SGbutterfly still completes on the instanced path, and stays batched while it plays.
     const done = vi.fn();
     wild.sprite.playOnce('take_off', done);
-    items.update(.05);
+    items.update(0.05);
     expect(wild.sprite.currentAnimation).toBe('take_off');
     expect(ownShown(wild)).toBe(0);
-    for (let i = 0; i < 100 && !done.mock.calls.length; i++) { items.update(.05); }
+    for (let i = 0; i < 100 && !done.mock.calls.length; i++) {
+      items.update(0.05);
+    }
     expect(done).toHaveBeenCalledOnce();
-  } finally { items.dispose(); inventory.dispose(); vi.unstubAllGlobals(); }
+  } finally {
+    items.dispose();
+    inventory.dispose();
+    vi.unstubAllGlobals();
+  }
 });
 
 it('declares both butterflies as item prefabs', () => {
   const inventory = createPickupInventory();
-  const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
-    inventory, '/dst/data/anim', new THREE.Group());
+  const items = new ItemWorldFixture(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(),
+    undefined,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    new THREE.Group(),
+  );
   try {
     expect(['butterfly', 'moonbutterfly'].every(id => items.prefabs.has(id))).toBe(true);
-  } finally { items.dispose(); inventory.dispose(); }
+  } finally {
+    items.dispose();
+    inventory.dispose();
+  }
 });
 
 it('spawns a butterfly as its own entity, whose brain stops in an inventory and is remade when it is dropped', () => {
-  const inventory = createInventoryStore([]), world = createPerishWorld();
+  const inventory = createInventoryStore([]),
+    world = createPerishWorld();
   inventory.entities.bindPerishWorld(world);
-  const items = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
-    inventory, '/dst/data/anim', new THREE.Group());
-  const restored = new ItemWorldFixture(new THREE.Scene(), new THREE.PerspectiveCamera(), undefined, '/dst/data/databundles/images.zip',
-    createInventoryStore([]), '/dst/data/anim', new THREE.Group());
+  const items = new ItemWorldFixture(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(),
+    undefined,
+    '/dst/data/databundles/images.zip',
+    inventory,
+    '/dst/data/anim',
+    new THREE.Group(),
+  );
+  const restored = new ItemWorldFixture(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(),
+    undefined,
+    '/dst/data/databundles/images.zip',
+    createInventoryStore([]),
+    '/dst/data/anim',
+    new THREE.Group(),
+  );
   try {
-    items.spawnFromSave('wild', { ...SAVE_CATALOG.items.butterfly, itemId: 'butterfly', count: 1 }, new THREE.Vector3(3, 0, 0));
+    items.spawnFromSave(
+      'wild',
+      { ...SAVE_CATALOG.items.butterfly, itemId: 'butterfly', count: 1 },
+      new THREE.Vector3(3, 0, 0),
+    );
     const wild = items.entities.get('wild');
-    if (!(wild instanceof ButterflyEntity)) { throw new Error('the butterfly prefab makes a ButterflyEntity'); }
+    if (!(wild instanceof ButterflyEntity)) {
+      throw new Error('the butterfly prefab makes a ButterflyEntity');
+    }
     const brain = wild.brain;
     expect(brain?.stopped).toBe(false);
     expect(wild.sg?.stateName).toBe('idle');
@@ -229,5 +334,9 @@ it('spawns a butterfly as its own entity, whose brain stops in an inventory and 
     const [copy] = restored.entities.values();
     expect(copy).toBeInstanceOf(ButterflyEntity);
     expect(copy.getPosition().toArray()).toEqual([5, 0, 0]);
-  } finally { items.dispose(); restored.dispose(); inventory.dispose(); }
+  } finally {
+    items.dispose();
+    restored.dispose();
+    inventory.dispose();
+  }
 });

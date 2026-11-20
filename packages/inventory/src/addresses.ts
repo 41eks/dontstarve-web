@@ -9,7 +9,9 @@ export function cursorSlotAddress(): SlotAddress {
   return { containerId: PLAYER_CURSOR_CONTAINER_ID, slotKey: '0' };
 }
 export function backpackContainerId(entityId: string): string {
-  if (!entityId) { throw new TypeError('Backpack entity ID must not be empty'); }
+  if (!entityId) {
+    throw new TypeError('Backpack entity ID must not be empty');
+  }
   return `item:backpack:${entityId}`;
 }
 
