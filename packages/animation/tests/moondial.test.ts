@@ -54,7 +54,7 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     expect(displayLightOverride(model)).toBe(.1);
     // The waning look is the dial's own AnimState, so the new skin's sprite is dressed with it too.
     const declared = sprite.sprite.peek().appearance.get('anim-state')!;
-    if (declared.kind !== 'anim-state') throw new Error('Missing the dial AnimState');
+    if (declared.kind !== 'anim-state') { throw new Error('Missing the dial AnimState'); }
     expect(declared.state.peek().overrides.get(smallHash('reflection_half'))?.sources)
       .toEqual([{ archive: 'moondial_waning_build.zip', symbol: smallHash('reflection_half') }]);
     expect(placement.exportRecords()[0].record.components.building).toMatchObject({ skinId: 'moondial_an' });

@@ -22,7 +22,7 @@ export class HerdMember<Herd = object> {
   get enabled(): boolean { return this.enabledState; }
   set enabled(enabled: boolean) {
     this.enabledState = enabled;
-    if (enabled) this.inst.addTag('herdmember'); else this.inst.removeTag('herdmember');
+    if (enabled) { this.inst.addTag('herdmember'); } else { this.inst.removeTag('herdmember'); }
   }
 
   SetHerd(herd: Herd | undefined): void { this.herd = herd; }

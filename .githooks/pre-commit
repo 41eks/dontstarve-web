@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# ESLint (eslint.config.mjs) on the JS / TS files this commit adds or changes. Enabled by `pnpm install`'s prepare
+# script (git config core.hooksPath .githooks). It lints the files as they are in the working tree.
+set -euo pipefail
+
+mapfile -d '' files < <(git diff --cached --name-only --diff-filter=ACMR -z -- \
+  '*.ts' '*.tsx' '*.mts' '*.cts' '*.js' '*.mjs' '*.cjs')
+if (( ${#files[@]} == 0 )); then
+  exit 0
+fi
+
+if ! pnpm exec eslint --no-warn-ignored -- "${files[@]}"; then
+  echo 'pre-commit: ESLint failed. Fix the files above (pnpm exec eslint --fix <file>) and stage them again.' >&2
+  exit 1
+fi

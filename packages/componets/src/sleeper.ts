@@ -102,7 +102,7 @@ export class Sleeper {
 
   /** Sleeper:StartTesting: a sleeping inst tests for waking, an awake one for sleeping. */
   StartTesting(time?: number): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.testing = true;
     // some randomness on testing times; an explicit time delays only the first test.
     this.test.start(Math.max(0, time ?? this.testperiod + this.random() - .5));
@@ -110,19 +110,19 @@ export class Sleeper {
 
   /** sleeper.lua AddSleepiness: sleepiness above the resistance sleeps now, equal to it one resistance-second later. */
   AddSleepiness(sleepiness: number, sleeptime?: number): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.sleepiness += sleepiness;
-    if (this.IsAsleep() || this.sleepiness > this.resistance) this.GoToSleep(sleeptime);
+    if (this.IsAsleep() || this.sleepiness > this.resistance) { this.GoToSleep(sleeptime); }
     else if (this.sleepiness === this.resistance) {
       this.delayedSleepTime = sleeptime;
       this.delayedSleep.start(this.resistance);
-    } else if (this.wearoff.snapshot.peek().status !== 'scheduled') this.wearoff.start(this.wearofftime);
+    } else if (this.wearoff.snapshot.peek().status !== 'scheduled') { this.wearoff.start(this.wearofftime); }
   }
 
   private WearOff(): void {
-    if (this.sleepiness > 1) this.sleepiness -= 1;
+    if (this.sleepiness > 1) { this.sleepiness -= 1; }
     else if (this.sleepiness > 0) { this.sleepiness = 0; return; }
-    if (this.sleepiness > 0 && !this.disposed) this.wearoff.start(this.wearofftime);
+    if (this.sleepiness > 0 && !this.disposed) { this.wearoff.start(this.wearofftime); }
   }
 
   StopTesting(): void {
@@ -131,28 +131,28 @@ export class Sleeper {
   }
 
   private runTest(cycle: WorldPhase = this.cycle.peek()): void {
-    if (this.disposed || !this.testing) return;
+    if (this.disposed || !this.testing) { return; }
     if (this.IsAsleep()) {
-      if (this.waketestfn(this.inst, cycle)) this.WakeUp();
-    } else if (this.sleeptestfn(this.inst, cycle)) this.GoToSleep();
-    if (this.testing) this.StartTesting();
+      if (this.waketestfn(this.inst, cycle)) { this.WakeUp(); }
+    } else if (this.sleeptestfn(this.inst, cycle)) { this.GoToSleep(); }
+    if (this.testing) { this.StartTesting(); }
   }
 
   GoToSleep(sleeptime?: number): void {
     const { inst } = this;
-    if (this.disposed || !inst.isValid() || inst.components.health?.IsDead?.()) return;
+    if (this.disposed || !inst.isValid() || inst.components.health?.IsDead?.()) { return; }
     const wasasleep = this.IsAsleep();
     this.state.set(true);
     this.wearoff.stop();
     inst.StopBrain?.('sleeper');
-    if (!inst.sg?.hasStateTag('nosleep')) inst.components.locomotor?.Stop();
-    if (!wasasleep) inst.PushEvent('gotosleep');
+    if (!inst.sg?.hasStateTag('nosleep')) { inst.components.locomotor?.Stop(); }
+    if (!wasasleep) { inst.PushEvent('gotosleep'); }
     this.StartTesting(sleeptime);
   }
 
   WakeUp(): void {
     const { inst } = this;
-    if (!this.IsAsleep() || inst.components.health?.IsDead?.()) return;
+    if (!this.IsAsleep() || inst.components.health?.IsDead?.()) { return; }
     this.state.set(false);
     this.sleepiness = 0;
     inst.RestartBrain?.('sleeper');

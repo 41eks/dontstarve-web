@@ -183,6 +183,6 @@ it('declares the frames of the clips a leaf change waits on, as the source anims
   const assets = new ArchiveSpriteAssets('deciduoustree', '/dst/data/anim');
   const banks = await Promise.all(['short', 'normal', 'tall'].map(stage => assets.loadAnimation(`tree_leaf_${stage}.zip`)));
   const frames = new Map(banks.flatMap(bank => bank.animations).map(clip => [clip.name, clip.frames.length]));
-  for (const [clip, count] of Object.entries(DECIDUOUS_CLIP_FRAMES)) expect([clip, frames.get(clip)]).toEqual([clip, count]);
+  for (const [clip, count] of Object.entries(DECIDUOUS_CLIP_FRAMES)) { expect([clip, frames.get(clip)]).toEqual([clip, count]); }
   assets.dispose();
 });

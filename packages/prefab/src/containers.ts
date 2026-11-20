@@ -12,7 +12,7 @@ export type BuildingContainer = Container<InventoryStack, ItemEntity, ItemSlot>;
 
 /** AddComponent("container") on a storage building, with containers.lua's widget setup for its prefab. */
 export function createBuildingContainer(prefab: StorageBuildingId, inst: PrefabInstance): BuildingContainer {
-    if (prefab === 'icebox') inst.addTag('fridge');
+    if (prefab === 'icebox') { inst.addTag('fridge'); }
     const definition = buildingContainerDefinition(prefab);
     const createSlot = () => definition.singleItems ? new PreparedFoodSlot((_spec, itemId) => prefab !== 'cookpot' || (itemId !== undefined && IsCookingIngredient(itemId)))
             // containers.lua params.bookstation.itemtestfn: item:HasTag("bookcabinet_item").
@@ -36,7 +36,7 @@ const isIrreplaceable = (itemId: string) => IRREPLACEABLE_ITEMS.has(itemId);
 /** RemoveComponent("container") for a building, together with the slots registered in the world's inventory. */
 export function releaseBuildingContainer(inst: PrefabInstance): void {
     const container: BuildingContainer | undefined = inst.components.container;
-    if (!container) return;
+    if (!container) { return; }
     inst.worldServices?.unregisterContainer?.(`world:${inst.prefab}:${String(inst.entityId)}`, container);
     removeComponent(inst, 'container');
 }

@@ -43,7 +43,7 @@ async function setup() {
   vi.stubGlobal('AudioContext', class { constructor() { return context; } });
   const archive = await readFile(new URL('../../../public/dst/data/anim/star_hot.zip', import.meta.url));
   const fetchMock = vi.fn(async (url: string) => {
-    if (url.endsWith('star_hot.zip')) return new Response(archive);
+    if (url.endsWith('star_hot.zip')) { return new Response(archive); }
     return new Response(new Uint8Array([0, 1]));
   });
   vi.stubGlobal('fetch', fetchMock);
@@ -292,7 +292,7 @@ it('keeps three waterfall emitters and moves one through a volume fade as the ne
   const gameTime = new GameTimeScheduler();
   const presentation = new SoundPresentationScheduler(playerPosition, gameTime);
   try {
-    for (const x of [0, 10, 20, 30]) presentation.registerWaterfallPool(new THREE.Vector3(x, 0, 0), 2, false);
+    for (const x of [0, 10, 20, 30]) { presentation.registerWaterfallPool(new THREE.Vector3(x, 0, 0), 2, false); }
     gameTime.advance(5 / 30);
     expect(s.sources).toHaveLength(6);
     playerPosition.set([new THREE.Vector3(30, 0, 0)]);
@@ -408,7 +408,7 @@ describe('SoundEmitter', () => {
     emitter.PlaySound(LOOP, 'loop');
     emitter.PlaySound(SHOT);
     emitter.KillAllSounds();
-    for (const source of s.sources) expect(source.stop).toHaveBeenCalledOnce();
+    for (const source of s.sources) { expect(source.stop).toHaveBeenCalledOnce(); }
     expect(emitter.PlayingSound('loop')).toBe(false);
     inst.remove();
   });

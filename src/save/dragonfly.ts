@@ -5,19 +5,19 @@ import { array, fail, integer, number, object, string } from './validation';
 export function parseDragonflyState(value: unknown, path: string): DragonflySaveState {
   const data = object(value, path, ['playercombat', 'health', 'inventory', 'knownlocations', 'moisture',
     'rampingspawner', 'timer', 'sleeper', 'freezable', 'explosiveresist']);
-  if (data.playercombat !== undefined && data.playercombat !== true) fail(`${path}.playercombat`, 'expected true');
+  if (data.playercombat !== undefined && data.playercombat !== true) { fail(`${path}.playercombat`, 'expected true'); }
   const health = object(data.health, `${path}.health`, ['health', 'penalty', 'maxhealth']);
   const maximum = health.maxhealth === undefined ? 27500 : number(health.maxhealth, `${path}.health.maxhealth`, 1);
   const inventory = object(data.inventory, `${path}.inventory`, ['items', 'equip', 'activeitem']);
   if (!inventory.items || typeof inventory.items !== 'object' || Array.isArray(inventory.items))
-    fail(`${path}.inventory.items`, 'expected an object');
+    { fail(`${path}.inventory.items`, 'expected an object'); }
   if (!inventory.equip || typeof inventory.equip !== 'object' || Array.isArray(inventory.equip))
-    fail(`${path}.inventory.equip`, 'expected an object');
+    { fail(`${path}.inventory.equip`, 'expected an object'); }
   const items = object(inventory.items, `${path}.inventory.items`, Object.keys(inventory.items));
   const equip = object(inventory.equip, `${path}.inventory.equip`, Object.keys(inventory.equip));
   const moisture = object(data.moisture, `${path}.moisture`, ['moisture']);
   const ramping = object(data.rampingspawner, `${path}.rampingspawner`, ['current_wave', 'wave_num', 'spawning_on', 'spawns']);
-  if (typeof ramping.spawning_on !== 'boolean') fail(`${path}.rampingspawner.spawning_on`, 'expected boolean');
+  if (typeof ramping.spawning_on !== 'boolean') { fail(`${path}.rampingspawner.spawning_on`, 'expected boolean'); }
   const state: DragonflySaveState = {
     ...(data.playercombat === true ? { playercombat: true } : {}),
     health: { health: number(health.health, `${path}.health.health`, 0, maximum),
@@ -43,15 +43,15 @@ export function parseDragonflyState(value: unknown, path: string): DragonflySave
     const timer = object(data.timer, `${path}.timer`, ['timers']);
     const timers = object(timer.timers, `${path}.timer.timers`, ['groundpound_cd']);
     const cooldown = object(timers.groundpound_cd, `${path}.timer.timers.groundpound_cd`, ['timeleft', 'paused', 'initial_time']);
-    if (typeof cooldown.paused !== 'boolean') fail(`${path}.timer.timers.groundpound_cd.paused`, 'expected boolean');
+    if (typeof cooldown.paused !== 'boolean') { fail(`${path}.timer.timers.groundpound_cd.paused`, 'expected boolean'); }
     const initial_time = number(cooldown.initial_time, `${path}.timer.timers.groundpound_cd.initial_time`, 0);
     state.timer = { timers: { groundpound_cd: { timeleft: number(cooldown.timeleft,
       `${path}.timer.timers.groundpound_cd.timeleft`, 0, initial_time), paused: cooldown.paused, initial_time } } };
   }
-  for (const key of ['sleeper', 'freezable'] as const) if (data[key] !== undefined) {
+  for (const key of ['sleeper', 'freezable'] as const) { if (data[key] !== undefined) {
     const resist = object(data[key], `${path}.${key}`, ['extraresist']);
     state[key] = { extraresist: number(resist.extraresist, `${path}.${key}.extraresist`, 0) };
-  }
+  } }
   if (data.explosiveresist !== undefined) {
     const resist = object(data.explosiveresist, `${path}.explosiveresist`, ['resistance']);
     state.explosiveresist = { resistance: integer(resist.resistance, `${path}.explosiveresist.resistance`, 1, 100) };

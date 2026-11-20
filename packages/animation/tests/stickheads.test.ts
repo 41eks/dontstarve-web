@@ -38,7 +38,7 @@ async function setup(id: typeof HEADS[number]['id'] = PIG_HEAD_ID, tickingarea?:
   // The display loads the head's art; its clips play once it is drawn.
   await vi.waitFor(() => expect(sprite.loaded).toBe(true));
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-  const finish = () => { for (let i = 0; i < 90; i++) placement.displays.update(1 / 30); };
+  const finish = () => { for (let i = 0; i < 90; i++) { placement.displays.update(1 / 30); } };
   return { placement, scheduler, content, loot, model, sprite, settle, finish };
 }
 
@@ -76,7 +76,7 @@ it.each(HEADS)('$id burns to a burnt head that keeps sleeping, saves only the bu
     s.content.moon.set({ phase: 'full', waxing: false }); s.content.cycle.set('night'); await s.settle();
     expect(s.sprite.currentAnimation).toBe('burnt');
     expect(s.placement.exportRecords()[0].record.components.building).toMatchObject({ burnt: true });
-    for (let i = 0; i < 3; i++) performToolWork('HAMMER', entity, testPlayer());
+    for (let i = 0; i < 3; i++) { performToolWork('HAMMER', entity, testPlayer()); }
     expect(s.loot.flat().some(item => item.itemId === 'nightmarefuel')).toBe(true);
     expect(s.placement.exportRecords()).toEqual([]);
   } finally { s.placement.dispose(); }
@@ -88,7 +88,7 @@ it('releases the flies swarm sprite outside the tickingarea and rebuilds it with
   try {
     const swarm = s.model.children.find(child => child.name === 'flies')!;
     const flies = () => swarm;
-    const meshes = () => { let count = 0; flies().traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
+    const meshes = () => { let count = 0; flies().traverse(object => { if ((object as THREE.Mesh).isMesh) { count++; } }); return count; };
     await vi.waitFor(() => expect(meshes()).toBeGreaterThan(0));
     awake.set(false); await s.settle();
     expect(meshes()).toBe(0);
@@ -97,6 +97,6 @@ it('releases the flies swarm sprite outside the tickingarea and rebuilds it with
     awake.set(true); await s.settle();
     expect(swarm.parent).toBe(s.model);
     await vi.waitFor(() => expect(meshes()).toBeGreaterThan(0));
-    flies().traverse(object => { if ((object as THREE.Mesh).isMesh) expect(object.raycast).not.toBe(THREE.Mesh.prototype.raycast); });
+    flies().traverse(object => { if ((object as THREE.Mesh).isMesh) { expect(object.raycast).not.toBe(THREE.Mesh.prototype.raycast); } });
   } finally { s.placement.dispose(); }
 });

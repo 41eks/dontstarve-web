@@ -29,7 +29,7 @@ export async function checkGroundItemInstancing() {
         new THREE.Vector3(index % 6 * 3 - 8, 0, Math.floor(index / 6) * 3 - 5));
       await prefabDisplay(model)!.artLoaded();
       items.push(itemAt(model));
-      if (index === 0) sample();
+      if (index === 0) { sample(); }
     }
     const many = sample();
     const batch = scene.getObjectByName('ArchiveSpriteInstances:colour') as THREE.InstancedMesh;
@@ -48,7 +48,7 @@ export async function checkGroundItemInstancing() {
     items[0].remove();
     await tick();
     const removed = sample();
-    for (const item of items.slice(1)) item.remove();
+    for (const item of items.slice(1)) { item.remove(); }
     await tick();
     const empty = sample();
     return { many, asleep, awake, sameBatch, sameTexture, position, removed, empty };

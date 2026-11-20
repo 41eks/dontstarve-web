@@ -81,7 +81,7 @@ export class Sanity {
   GetPenaltyPercent(): number { return this.penalty; }
   GetMaxWithPenalty(): number { return this.max * (1 - this.penalty); }
   SetMax(amount: number): void {
-    if (finite(amount) <= 0) throw new RangeError('Maximum sanity must be positive');
+    if (finite(amount) <= 0) { throw new RangeError('Maximum sanity must be positive'); }
     batch(() => { this.maximumState.set(amount); this.currentState.set(amount); });
     this.DoDelta(0);
   }
@@ -94,35 +94,35 @@ export class Sanity {
     this.DoDelta(0);
   }
   EnableLunacy(enabled: boolean, source: unknown): void {
-    if (enabled) this.lunacySources.add(source); else this.lunacySources.delete(source);
+    if (enabled) { this.lunacySources.add(source); } else { this.lunacySources.delete(source); }
     this.UpdateMode_Internal();
   }
   UpdateMode_Internal(): void {
     const mode = this.lunacySources.size ? SANITY_MODE_LUNACY : SANITY_MODE_INSANITY;
-    if (mode === this.mode) return;
+    if (mode === this.mode) { return; }
     this.modeState.set(mode); this.inst.PushEvent?.('sanitymodechanged', { mode }); this.DoDelta(0);
   }
   SetInducedInsanity(source: unknown, enabled: boolean): void { this.setInduced(this.inducedInsanity, source, enabled); }
   SetInducedLunacy(source: unknown, enabled: boolean): void { this.setInduced(this.inducedLunacy, source, enabled); }
   private setInduced(state: typeof this.inducedInsanity, source: unknown, enabled: boolean): void {
     const sources = new Set(state.peek());
-    if (enabled) sources.add(source); else sources.delete(source);
+    if (enabled) { sources.add(source); } else { sources.delete(source); }
     state.set(sources); this.DoDelta(0);
   }
   DoDelta(delta: number, overtime?: boolean): void {
     finite(delta);
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     if (this.redirect) { this.redirect(this.inst, delta, overtime); return; }
-    if (this.ignore) return;
+    if (this.ignore) { return; }
     batch(() => {
       this.currentState.set(Math.min(Math.max(this.current + delta, 0), this.GetMaxWithPenalty()));
       const percent = this.GetRealPercent(), sane = this.saneState.peek();
       if (this.IsInsanityMode()) {
-        if (sane && percent <= 30 / 200) this.saneState.set(false);
-        else if (!sane && percent >= 35 / 200) this.saneState.set(true);
+        if (sane && percent <= 30 / 200) { this.saneState.set(false); }
+        else if (!sane && percent >= 35 / 200) { this.saneState.set(true); }
       } else {
-        if (sane && percent >= 170 / 200) this.saneState.set(false);
-        else if (!sane && percent <= 165 / 200) this.saneState.set(true);
+        if (sane && percent >= 170 / 200) { this.saneState.set(false); }
+        else if (!sane && percent <= 165 / 200) { this.saneState.set(true); }
       }
     });
     this.inst.PushEvent?.('sanitydelta', { oldpercent: this.oldPercent, newpercent: this.GetPercent(), overtime, sanitymode: this.mode });
@@ -137,13 +137,13 @@ export class Sanity {
     this.oldMode = this.mode;
   }
   GetRate(dt = 0): number {
-    if (this.disposed || this.isUpdatingBlocked()) return 0;
+    if (this.disposed || this.isUpdatingBlocked()) { return 0; }
     let dapperness = 0;
     if (this.dapperness_mult !== 0) {
       dapperness = this.dapperness;
       for (const slot of ['hand', 'head', 'body'] as const) {
         const item = this.inst.components.inventory?.GetEquippedItem(slot);
-        if (item && !item.isRemoved) dapperness += item.components.equippable?.GetDapperness(this.inst, this.no_moisture_penalty) ?? 0;
+        if (item && !item.isRemoved) { dapperness += item.components.equippable?.GetDapperness(this.inst, this.no_moisture_penalty) ?? 0; }
       }
       dapperness *= this.dapperness_mult;
     }
@@ -154,7 +154,7 @@ export class Sanity {
       || this.inst.hasTag('spawnprotection') || !!this.inst.sg?.hasStateTag('sleeping') || this.inst.is_teleporting === true;
   }
   OnUpdate(dt: number): void {
-    if (this.disposed || !Number.isFinite(dt) || dt <= 0) return;
+    if (this.disposed || !Number.isFinite(dt) || dt <= 0) { return; }
     this.UpdateMode_Internal();
     if (this.isUpdatingBlocked()) { this.rate = 0; return; }
     this.rate = this.GetRate(dt);
@@ -164,17 +164,17 @@ export class Sanity {
   OnLoad(data: Partial<SanitySaveData>): void {
     const current = data.current === undefined ? this.current : finite(data.current);
     const mode = data.mode ?? SANITY_MODE_INSANITY;
-    if (mode !== SANITY_MODE_INSANITY && mode !== SANITY_MODE_LUNACY) throw new RangeError('Invalid sanity mode');
+    if (mode !== SANITY_MODE_INSANITY && mode !== SANITY_MODE_LUNACY) { throw new RangeError('Invalid sanity mode'); }
     batch(() => {
-      if (data.sane !== undefined) this.saneState.set(data.sane);
+      if (data.sane !== undefined) { this.saneState.set(data.sane); }
       this.modeState.set(mode); this.currentState.set(current);
     });
-    if (data.current !== undefined) this.DoDelta(0);
+    if (data.current !== undefined) { this.DoDelta(0); }
   }
   dispose(): void { this.disposed = true; this.externalmodifiers.Reset(); this.percent.dispose(); this.sane.dispose(); }
 }
 
 function finite(value: number): number {
-  if (!Number.isFinite(value)) throw new RangeError('Sanity must be finite');
+  if (!Number.isFinite(value)) { throw new RangeError('Sanity must be finite'); }
   return value;
 }

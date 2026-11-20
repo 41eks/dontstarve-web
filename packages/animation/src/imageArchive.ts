@@ -11,7 +11,7 @@ export function preloadImageArchive(archiveUrl: string | URL): Promise<Uint8Arra
   let request = archiveRequests.get(key);
   if (!request) {
     request = fetch(key).then(async (response) => {
-      if (!response.ok) throw new Error(`Unable to load image archive ${key}: HTTP ${response.status}`);
+      if (!response.ok) { throw new Error(`Unable to load image archive ${key}: HTTP ${response.status}`); }
       return new Uint8Array(await response.arrayBuffer());
     });
     archiveRequests.set(key, request);

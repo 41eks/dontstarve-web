@@ -35,7 +35,7 @@ function setup(player = new THREE.Vector3()) {
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
   prefabs.register(ruinsStatuePrefabs({ scheduler }));
   const registry = new EntityRegistry([], prefabs, () => player.clone()), inventory = createInventoryStore([]);
-  for (const definition of Object.values(DEFINITIONS)) registry.registerPrefabs(definition);
+  for (const definition of Object.values(DEFINITIONS)) { registry.registerPrefabs(definition); }
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   const save = () => serializeSave(template, { entities: registry.exportRecords(), inventory: inventory.exportSaved(), elapsedSeconds: 0,
     playerTransform: { position: [0, 0, 0], rotationY: 0 } }, SAVE_CATALOG);
@@ -75,7 +75,7 @@ it.each(VARIANTS)('$id loads with the commonfn tags, its art and gem state, and 
     }
     await prefabDisplay(model)!.artLoaded();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining(`/dst/data/anim/${archive}`));
-    if (!gem) expect(fetch).not.toHaveBeenCalledWith(expect.stringContaining(gemArchive));
+    if (!gem) { expect(fetch).not.toHaveBeenCalledWith(expect.stringContaining(gemArchive)); }
     expect(inst.sprite.currentAnimation).toBe('idle_full');
     const exported = s.prefabs.exportRecords();
     expect(exported).toEqual([{ prefabId: id, record }]);

@@ -12,11 +12,11 @@ export class AnimationFollower {
   constructor(apply: (name: string) => void) { this.apply = apply; }
 
   follow(source: ReadonlySignal<string | number> | undefined): void {
-    if (source === this.source) return;
+    if (source === this.source) { return; }
     this.stop();
     this.stop = () => {};
     this.source = source;
-    if (!source) return;
+    if (!source) { return; }
     // The watched signal owns the effect that reads it: stopping the bridge stops both.
     const local = watchSignal(source, stop => { this.stop = stop; });
     createEffect(() => this.apply(String(local.get())));

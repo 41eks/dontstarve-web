@@ -8,7 +8,7 @@ test('animation decoder worker shares assets and retries failed skin loads', asy
   context.on('request', (request) => requests.push(request.url()));
   let skinAttempts = 0;
   await context.route('**/anim/dynamic/treasurechest_ancient.zip', (route) => {
-    if (++skinAttempts === 1) return route.fulfill({ status: 503, body: 'retry' });
+    if (++skinAttempts === 1) { return route.fulfill({ status: 503, body: 'retry' }); }
     return route.continue();
   });
   await page.goto('/tests/dst-lighting.html');

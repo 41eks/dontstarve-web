@@ -16,10 +16,10 @@ export const wortoxStates: WilsonState[] = [
       inst.context.entity.locomotor?.stop();
       inst.context.playClips(play('jumpin_pre'));
       const pos = inst.context.getBufferedAction()?.pos;
-      if (pos) inst.context.entity.soulHopHost?.facePoint(pos as Vector3);
+      if (pos) { inst.context.entity.soulHopHost?.facePoint(pos as Vector3); }
     },
     events: [EventHandler('animover', inst => {
-      if (inst.context.animationDone && !inst.context.performBufferedAction()) inst.context.finish();
+      if (inst.context.animationDone && !inst.context.performBufferedAction()) { inst.context.finish(); }
     })],
   }),
   state({
@@ -58,9 +58,9 @@ export const wortoxStates: WilsonState[] = [
       inst.context.entity.soulHopHost?.setPhysicsEnabled(false);
       inst.context.entity.locomotor?.stop();
       // Without data the player comes out where it stands.
-      if (data) inst.context.entity.soulHopHost?.teleport(data.dest);
+      if (data) { inst.context.entity.soulHopHost?.teleport(data.dest); }
       inst.context.entity.soulHopHost?.resetMinimapOffset?.();
-      if (data?.from_map) inst.context.entity.soulHopHost?.snapCamera?.();
+      if (data?.from_map) { inst.context.entity.soulHopHost?.snapCamera?.(); }
       inst.context.playClips(play('jumpout'));
       inst.context.entity.soulHopHost?.spawnFx('wortox_portal_jumpout_fx');
       inst.context.entity.soulHopHost?.setTint(1);

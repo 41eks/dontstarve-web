@@ -26,12 +26,12 @@ export class SpriteResources {
       let loaded: Awaited<ReturnType<typeof preloadSharedArchiveSprite>> | undefined;
       let pending: Promise<NonNullable<typeof loaded>> | undefined;
       source = { create: clip => {
-        if (this.disposed) throw new Error('Sprite resources disposed');
-        if (loaded) return loaded(clip.name, clip.loop);
+        if (this.disposed) { throw new Error('Sprite resources disposed'); }
+        if (loaded) { return loaded(clip.name, clip.loop); }
         pending ??= preloadSharedArchiveSprite(this.archives, definition, options).then(create => loaded = create,
           error => { pending = undefined; throw error; });
         return pending.then(create => {
-          if (this.disposed) throw new Error('Sprite resources disposed');
+          if (this.disposed) { throw new Error('Sprite resources disposed'); }
           return create(clip.name, clip.loop);
         });
       } };
@@ -42,7 +42,7 @@ export class SpriteResources {
 
   /** The owner first removes its entities, then releases their shared resources. */
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.archives.dispose();
     this.archiveSources.clear();

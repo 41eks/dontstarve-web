@@ -43,9 +43,9 @@ export class Transform {
    * the entity's cell current with it. One index owns an entity, so a second watcher is an error.
    */
   onMoved(listener: () => void): () => void {
-    if (this.#moved) throw new Error('Transform position already has a watcher');
+    if (this.#moved) { throw new Error('Transform position already has a watcher'); }
     this.#moved = listener;
-    return () => { if (this.#moved === listener) this.#moved = undefined; };
+    return () => { if (this.#moved === listener) { this.#moved = undefined; } };
   }
 
   /** Transform:SetPosition(pt:Get()). */
@@ -80,7 +80,7 @@ export class Transform {
 
   /** One query per transform/world, shared by display residency, actions and world-input gates. */
   getTileActivity(query: TileStateQuery | undefined, registerCleanup: (stop: () => void) => void): Memo<boolean> | undefined {
-    if (!query) return undefined;
+    if (!query) { return undefined; }
     let entry = this.#areas.get(query);
     if (!entry) {
       entry = { area: query(this.tileTracker.tile), owners: 0 };
@@ -90,7 +90,7 @@ export class Transform {
     const owned = entry;
     let released = false;
     registerCleanup(() => {
-      if (released) return;
+      if (released) { return; }
       released = true;
       if (--owned.owners === 0 && this.#areas.get(query) === owned) {
         owned.area?.dispose();
@@ -102,7 +102,7 @@ export class Transform {
 
   dispose(): void {
     this.#model.removeEventListener('added', this.#syncTile);
-    for (const { area } of this.#areas.values()) area?.dispose();
+    for (const { area } of this.#areas.values()) { area?.dispose(); }
     this.#areas.clear();
   }
 }

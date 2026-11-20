@@ -49,7 +49,7 @@ const FULL_FIRST_PERIOD = TURNON_FULL_FUELED_CONSUMPTION, FIRST_PERIOD = TURNON_
 
 /** Every torch the inventory constructs is the torch prefab's own entity. */
 function asTorch(entity: ItemEntity | null | undefined): TorchEntity {
-  if (!(entity instanceof TorchEntity)) throw new Error('expected a torch entity');
+  if (!(entity instanceof TorchEntity)) { throw new Error('expected a torch entity'); }
   return entity;
 }
 
@@ -157,10 +157,10 @@ describe('torch prefab burning lifecycle', () => {
     const pushed: unknown[] = [];
     // The player inst owns the store; player_common.lua listens for itemranout on it.
     const player = testPlayer({ inventory: store });
-    for (const name of ['equip', 'unequip', 'itemranout']) player.ListenForEvent(name, (_inst, data) => {
+    for (const name of ['equip', 'unequip', 'itemranout']) { player.ListenForEvent(name, (_inst, data) => {
       pushed.push({ name, slotEmpty: store.getEntity(hand) == null });
-      if (name === 'itemranout') OnItemRanOut(store, data);
-    });
+      if (name === 'itemranout') { OnItemRanOut(store, data); }
+    }); }
     try {
       store.add('torch', 2);
       store.applySlotChanges([{ slot: bag, itemId: 'torch', delta: -1 }, { slot: hand, itemId: 'torch', delta: 1 }]);

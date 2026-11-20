@@ -35,9 +35,9 @@ export class Eater {
   private oneat?: EaterOnEatFn;
   constructor(inst: EaterInstance) { this.inst = inst; this.SetDiet(['OMNI']); }
   SetDiet(types: readonly string[]): void {
-    for (const type of this.diet) this.inst.removeTag(`${type}_eater`);
+    for (const type of this.diet) { this.inst.removeTag(`${type}_eater`); }
     this.diet = types;
-    for (const type of types) this.inst.addTag(`${type}_eater`);
+    for (const type of types) { this.inst.addTag(`${type}_eater`); }
   }
   SetOnEatFn(fn: EaterOnEatFn | undefined): void { this.oneat = fn; }
   CanEat(food: EaterFood): boolean {
@@ -47,11 +47,11 @@ export class Eater {
   Eat(food: EaterFood, feeder: unknown = this.inst): boolean {
     food.flush?.();
     const edible = food.components?.edible;
-    if (!edible || !this.CanEat(food)) return false;
+    if (!edible || !this.CanEat(food)) { return false; }
     const health = edible.GetHealth(), hunger = edible.GetHunger(), sanity = edible.GetSanity();
-    if (health !== 0) this.inst.components.health?.DoDelta(health, false, food.prefab);
-    if (hunger !== 0) this.inst.components.hunger?.DoDelta(hunger);
-    if (sanity !== 0) this.inst.components.sanity?.DoDelta(sanity);
+    if (health !== 0) { this.inst.components.health?.DoDelta(health, false, food.prefab); }
+    if (hunger !== 0) { this.inst.components.hunger?.DoDelta(hunger); }
+    if (sanity !== 0) { this.inst.components.sanity?.DoDelta(sanity); }
     this.inst.PushEvent('oneat', { food, feeder }); this.oneat?.(this.inst, food, feeder);
     edible.OnEaten(this.inst);
     return edible.HandleEatRemove();

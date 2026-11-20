@@ -29,17 +29,17 @@ async function clusterSaveZip(document: SaveDocument, prefab: SaveDocument['worl
   const indexPath = 'Cluster_1/session.json';
   const indexSource = clusterFiles['Cluster_1/session.json'];
   const indexResponse = indexSource === undefined ? undefined : await fetch(indexSource);
-  if (indexResponse && !indexResponse.ok) throw new Error(`Unable to save ${indexPath}: HTTP ${indexResponse.status}`);
+  if (indexResponse && !indexResponse.ok) { throw new Error(`Unable to save ${indexPath}: HTTP ${indexResponse.status}`); }
   const oldSnapshots = indexResponse ? field(await indexResponse.json(), 'snapshots') : undefined;
   const indexBytes = strToU8(`${JSON.stringify({ activeShard: shard,
     snapshots: [...Array.isArray(oldSnapshots) ? oldSnapshots : [], { shard, sessionId: sourceSessionId,
       snapshotId: document.snapshot.id, worldFile: snapshotFile, playerFile, migration: null }] }, null, 2)}\n`);
   const entries = await Promise.all(Object.entries(clusterFiles).map(async ([path, url]) => {
-    if (path === activePath) return [path, activeBytes] as const;
-    if (path === playerPath) return [path, playerBytes] as const;
-    if (path === indexPath) return [path, indexBytes] as const;
+    if (path === activePath) { return [path, activeBytes] as const; }
+    if (path === playerPath) { return [path, playerBytes] as const; }
+    if (path === indexPath) { return [path, indexBytes] as const; }
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`Unable to save ${path}: HTTP ${response.status}`);
+    if (!response.ok) { throw new Error(`Unable to save ${path}: HTTP ${response.status}`); }
     return [path, new Uint8Array(await response.arrayBuffer())] as const;
   }));
   return zipSync({ ...Object.fromEntries(entries), [activePath]: activeBytes, [snapshotPath]: activeBytes,

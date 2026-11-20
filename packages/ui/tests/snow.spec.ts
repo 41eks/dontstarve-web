@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 test('snow renders with winter lighting, drains after stopping and releases its GPU resources', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', message => { if (message.type() === 'error') { errors.push(message.text()); } });
   await page.goto('/tests/dst-lighting.html');
   const result = await page.evaluate(async url => (await import(url)).checkSnow(),
     `/@fs${fileURLToPath(new URL('./snow-fixture.ts', import.meta.url))}`);

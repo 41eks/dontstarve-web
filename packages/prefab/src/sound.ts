@@ -409,7 +409,7 @@ export function inverseSquareAttenuation(
   position: ReadonlyVector3, listenerPosition: Vector3, referenceDistance = TILE_SIZE, maxDistance = SOUND_MAX_DISTANCE,
 ): number {
   const distanceSquared = position.distanceToSquared(listenerPosition);
-  if (distanceSquared >= maxDistance * maxDistance) return 0;
+  if (distanceSquared >= maxDistance * maxDistance) { return 0; }
   const referenceSquared = referenceDistance * referenceDistance;
   return referenceSquared / Math.max(referenceSquared, distanceSquared);
 }
@@ -428,15 +428,15 @@ function updateGain({ position, gain, volume }: { position?: ReadonlyVector3; ga
 /** Low-level listener update; the scene sound scheduler subscribes to player position. */
 export function UpdateSoundListener(position: ReadonlyVector3): void {
   listener.copy(position);
-  for (const sound of soundGains.values()) updateGain(sound);
+  for (const sound of soundGains.values()) { updateGain(sound); }
 }
 
 function unlock(): void {
-  if (context?.state === 'suspended') void context.resume().catch(() => undefined);
+  if (context?.state === 'suspended') { void context.resume().catch(() => undefined); }
 }
 
 function getContext(): AudioContext | undefined {
-  if (typeof AudioContext === 'undefined') return undefined;
+  if (typeof AudioContext === 'undefined') { return undefined; }
   if (!context) {
     context = new AudioContext();
     if (typeof window !== 'undefined') {
@@ -458,8 +458,8 @@ function intensityEnvelopes(path: SoundEventPath): readonly (Envelope | null)[] 
 /** FEV envelope points are linear between neighbours and hold the first/last value outside them. */
 function evaluateEnvelope(points: Envelope, x: number): number {
   const next = points.findIndex((point) => point[0] >= x);
-  if (next === 0) return points[0][1];
-  if (next < 0) return points[points.length - 1][1];
+  if (next === 0) { return points[0][1]; }
+  if (next < 0) { return points[points.length - 1][1]; }
   const [a, b] = [points[next - 1], points[next]];
   return a[1] + (b[1] - a[1]) * (x - a[0]) / (b[0] - a[0]);
 }
@@ -475,22 +475,22 @@ function loadSound(filename: string, audio: AudioContext): Promise<AudioBuffer> 
   if (!request) {
     request = (async () => {
       const response = await fetch(`${import.meta.env.BASE_URL}dst/data/sound/${filename}`);
-      if (!response.ok) throw new Error(`Unable to load ${filename}: ${response.status}`);
+      if (!response.ok) { throw new Error(`Unable to load ${filename}: ${response.status}`); }
       const buffer = await audio.decodeAudioData(await response.arrayBuffer());
-      if (audio === context) buffers.set(filename, buffer);
+      if (audio === context) { buffers.set(filename, buffer); }
       return buffer;
     })();
     requests.set(filename, request);
-    void request.catch(() => { if (requests.get(filename) === request) requests.delete(filename); });
+    void request.catch(() => { if (requests.get(filename) === request) { requests.delete(filename); } });
   }
   return request;
 }
 
 export async function PreloadSounds(...paths: SoundEventPath[]): Promise<void> {
   const audio = getContext();
-  if (!audio) return;
+  if (!audio) { return; }
   await Promise.all(paths.flatMap((path) => soundLayers(path).flat()).map((filename) => loadSound(filename, audio).catch((error: unknown) => {
-    if (audio === context) console.warn(`Unable to prepare ${filename}`, error);
+    if (audio === context) { console.warn(`Unable to prepare ${filename}`, error); }
   })));
 }
 
@@ -516,29 +516,29 @@ export function PlaySound(path: SoundEventPath, position?: ReadonlyVector3, offs
     looping: sounds[path].loop,
     isPlaying: () => !stopped && audio !== undefined,
     setVolume(volume) {
-      if (!Number.isFinite(volume) || volume < 0) throw new RangeError('Invalid sound volume');
-      if (!sound) return;
+      if (!Number.isFinite(volume) || volume < 0) { throw new RangeError('Invalid sound volume'); }
+      if (!sound) { return; }
       sound.volume = volume * eventVolume;
       updateGain(sound);
     },
     setParameter(name, value) {
-      if (!Number.isFinite(value)) throw new RangeError('Invalid sound parameter');
-      if (name !== 'intensity' || !envelopes) return;
+      if (!Number.isFinite(value)) { throw new RangeError('Invalid sound parameter'); }
+      if (name !== 'intensity' || !envelopes) { return; }
       const x = Math.max(0, Math.min(1, value));
-      envelopes.forEach((points, index) => { if (points && layerGains[index]) layerGains[index].gain.value = evaluateEnvelope(points, x); });
+      envelopes.forEach((points, index) => { if (points && layerGains[index]) { layerGains[index].gain.value = evaluateEnvelope(points, x); } });
     },
     stop() {
-      if (stopped) return;
+      if (stopped) { return; }
       stopped = true;
       playing.delete(handle);
       soundGains.delete(handle);
       for (const source of sources) { source.onended = null; source.stop(); source.disconnect(); }
       sources.clear();
-      for (const layer of layerGains) layer.disconnect();
+      for (const layer of layerGains) { layer.disconnect(); }
       gain?.disconnect();
     },
   };
-  if (!audio) return handle;
+  if (!audio) { return handle; }
   playing.add(handle);
   if (gain && sound) {
     soundGains.set(handle, sound);
@@ -546,12 +546,12 @@ export function PlaySound(path: SoundEventPath, position?: ReadonlyVector3, offs
     gain.connect(audio.destination);
   }
   const start = (buffer: AudioBuffer, layerIndex: number) => {
-    if (stopped || audio !== context) return;
+    if (stopped || audio !== context) { return; }
     const source = audio.createBufferSource();
     source.buffer = buffer;
     source.loop = sounds[path].loop;
     const event = sounds[path];
-    if ('pitchOctaves' in event && event.pitchOctaves !== 0) source.playbackRate.value = 2 ** event.pitchOctaves;
+    if ('pitchOctaves' in event && event.pitchOctaves !== 0) { source.playbackRate.value = 2 ** event.pitchOctaves; }
     source.connect(layerGains[layerIndex] ?? gain!);
     sources.add(source);
     source.onended = () => {
@@ -562,11 +562,11 @@ export function PlaySound(path: SoundEventPath, position?: ReadonlyVector3, offs
         playing.delete(handle);
         soundGains.delete(handle);
         gain?.disconnect();
-        for (const layer of layerGains) layer.disconnect();
+        for (const layer of layerGains) { layer.disconnect(); }
       }
     };
-    if (offsetSeconds > 0 && buffer.duration > 0) source.start(0, offsetSeconds % buffer.duration);
-    else source.start();
+    if (offsetSeconds > 0 && buffer.duration > 0) { source.start(0, offsetSeconds % buffer.duration); }
+    else { source.start(); }
   };
   if (envelopes) {
     for (let i = 0; i < filenames.length; i++) { const layer = audio.createGain(); layer.connect(gain!); layerGains.push(layer); }
@@ -574,18 +574,18 @@ export function PlaySound(path: SoundEventPath, position?: ReadonlyVector3, offs
   }
   for (const [layerIndex, filename] of filenames.entries()) {
     const buffer = buffers.get(filename);
-    if (buffer) start(buffer, layerIndex);
-    else void loadSound(filename, audio).then(buffer => start(buffer, layerIndex)).catch((error: unknown) => {
+    if (buffer) { start(buffer, layerIndex); }
+    else { void loadSound(filename, audio).then(buffer => start(buffer, layerIndex)).catch((error: unknown) => {
       handle.stop();
-      if (audio === context) console.warn(`Unable to play ${path}`, error);
-    });
+      if (audio === context) { console.warn(`Unable to play ${path}`, error); }
+    }); }
   }
   return handle;
 }
 
 /** Release the shared audio service when the game is closed. */
 export function DisposeSounds(): void {
-  for (const sound of playing) sound.stop();
+  for (const sound of playing) { sound.stop(); }
   if (typeof window !== 'undefined') {
     window.removeEventListener('pointerdown', unlock, true);
     window.removeEventListener('keydown', unlock, true);

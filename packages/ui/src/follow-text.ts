@@ -28,7 +28,7 @@ export function createFollowText({ camera, canvas, target, height, line }: Follo
   });
   const point = new THREE.Vector3();
   const update = () => {
-    if (element.hidden) return;
+    if (element.hidden) { return; }
     point.copy(target.position);
     point.y += height;
     point.project(camera);

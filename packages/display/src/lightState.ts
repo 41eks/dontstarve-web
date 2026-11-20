@@ -31,9 +31,9 @@ export class LightState {
   declare(key: string, light: ReadonlySignal<LightJson | undefined> | undefined): void {
     const slots = new Map(this.slotState.peek());
     if (light) {
-      if (slots.get(key) === light) return;
+      if (slots.get(key) === light) { return; }
       slots.set(key, light);
-    } else if (!slots.delete(key)) return;
+    } else if (!slots.delete(key)) { return; }
     this.slotState.set(slots);
   }
 }

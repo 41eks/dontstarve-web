@@ -17,7 +17,7 @@ const definition = {
 };
 const mesh = (sprite: ArchiveSprite) => sprite.model.children[0].children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
 function finish(sprite: ArchiveSprite, next: string) {
-  for (let i = 0; i < 300 && sprite.currentAnimation !== next; i++) sprite.update(.1);
+  for (let i = 0; i < 300 && sprite.currentAnimation !== next; i++) { sprite.update(.1); }
   expect(sprite.currentAnimation).toBe(next);
 }
 
@@ -155,7 +155,7 @@ it('shares birch appearances across private tints and changes leaf overrides wit
   const first = await createSharedArchiveSprite(assets, definition, { colour: [.6, .6, .6], instancedAnimations: ['sway1_loop_tall'] });
   const second = await createSharedArchiveSprite(assets, definition, { colour: [.9, .9, .9], instancedAnimations: ['sway1_loop_tall'] });
   try {
-    for (const sprite of [first, second]) sprite.setBuildArchive('tree_leaf_trunk_build.zip');
+    for (const sprite of [first, second]) { sprite.setBuildArchive('tree_leaf_trunk_build.zip'); }
     const green = mesh(second).geometry;
     expect(mesh(first).geometry).toBe(green);
     expect(mesh(first).visible).toBe(false);

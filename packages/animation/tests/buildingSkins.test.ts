@@ -83,7 +83,7 @@ async function buildingSprite(prefabId: typeof prefabIds[number], skinId?: strin
 function meshOf(model: THREE.Group) {
   const meshes: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>[] = [];
   model.traverse((object) => {
-    if (object instanceof THREE.Mesh) meshes.push(object as typeof meshes[number]);
+    if (object instanceof THREE.Mesh) { meshes.push(object as typeof meshes[number]); }
   });
   expect(meshes).toHaveLength(1);
   return meshes[0];
@@ -120,11 +120,11 @@ describe('DST building skins', () => {
     const animation = sprite;
     const complete = vi.fn(() => animation.start(buildingDefinitions[prefabId].idleAnimation ?? 'idle'));
     animation.playOnce('place', complete);
-    for (let frame = 0; frame < 100; frame++) animation.update(0.1);
+    for (let frame = 0; frame < 100; frame++) { animation.update(0.1); }
     expect(complete).toHaveBeenCalledTimes(1);
     if (prefabId.startsWith('researchlab')) {
       animation.start('proximity_loop');
-      for (let frame = 0; frame < 70; frame++) animation.update(1 / 30);
+      for (let frame = 0; frame < 70; frame++) { animation.update(1 / 30); }
     }
     expect(meshOf(model)).toBe(mesh);
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
@@ -167,10 +167,10 @@ describe('DST building skins', () => {
     expect(merchant.animations!.animations[0].bankHash).toBe(original.animations.animations[0].bankHash);
     const withFx = await buildingSprite('researchlab2', 'researchlab2_pod');
     const withoutFx = await buildingSprite('researchlab2', 'researchlab2_pod', { banks: [] });
-    for (const sprite of [withFx, withoutFx]) sprite.start('proximity_loop');
+    for (const sprite of [withFx, withoutFx]) { sprite.start('proximity_loop'); }
     let hasFx = false;
     for (let frame = 0; frame < 60; frame++) {
-      for (const sprite of [withFx, withoutFx]) sprite.update(1 / 30);
+      for (const sprite of [withFx, withoutFx]) { sprite.update(1 / 30); }
       hasFx ||= meshOf(withFx.model).geometry.drawRange.count > meshOf(withoutFx.model).geometry.drawRange.count;
     }
     expect(hasFx).toBe(true);
@@ -201,7 +201,7 @@ describe('DST building skins', () => {
     expect(lookupPrefabInstance(world.scene.children[0])?.skinId).toBe(skinId);
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
     expect(consume).toHaveBeenCalledWith(prefabId, skinId);
-    for (let frame = 0; frame < 100; frame++) placement.update(0.1);
+    for (let frame = 0; frame < 100; frame++) { placement.update(0.1); }
     const record = records()[0].record;
     expect(record.components.building).toEqual({ skinId });
     expect(record.transform.position).toEqual([3, 0, 4]);
@@ -248,7 +248,7 @@ describe('DST building skins', () => {
     const { world, buildings } = labWorld({ tickingarea: () => createMemo(() => awake.get()) });
     const model = buildings.spawnFromSave('researchlab4', { id: 'lab:resident', transform: { position: [3, 0, 4], rotationY: 0 },
       components: { building: {} } }) as THREE.Group;
-    const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };
+    const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) { count++; } }); return count; };
     const tick = () => new Promise(resolve => setTimeout(resolve, 0));
     await prefabDisplay(model)!.artLoaded();
     expect(meshes()).toBe(1);

@@ -71,7 +71,7 @@ export async function checkLightbulbLighting() {
     const bounds = new THREE.Box3();
     const vertices = mesh.geometry.getAttribute('position');
     for (let i = 0; i < mesh.geometry.drawRange.count / 6 * 4; i++)
-      bounds.expandByPoint(mesh.localToWorld(new THREE.Vector3().fromBufferAttribute(vertices, i)));
+      { bounds.expandByPoint(mesh.localToWorld(new THREE.Vector3().fromBufferAttribute(vertices, i))); }
     const point = bounds.getCenter(new THREE.Vector3()).project(camera);
     const canvas = renderer.domElement.getBoundingClientRect();
     renderer.domElement.dispatchEvent(new MouseEvent('pointerdown', {

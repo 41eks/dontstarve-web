@@ -152,7 +152,7 @@ describe('Lua container component', () => {
   it('validates loads before changing slots and disposes prepared items if restoration fails', () => {
     const prepared = testItem({ itemId: 'log', count: 1 });
     const restoreItem = vi.fn((record: HeldEntityRecord) => {
-      if (record.prefab === 'missing') throw new Error('Missing prefab');
+      if (record.prefab === 'missing') { throw new Error('Missing prefab'); }
       return prepared;
     });
     const container = createContainer(restoreItem);

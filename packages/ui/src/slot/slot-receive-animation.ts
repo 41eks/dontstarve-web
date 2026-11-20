@@ -51,9 +51,9 @@ export class SlotReceiveAnimation {
   receive(source: InventoryReceiveSource, amount: number): void {
     const item = this.getItem();
     if (!item || !Number.isSafeInteger(amount) || amount <= 0 || amount > this.getCount()
-      || !Number.isFinite(source.x) || !Number.isFinite(source.y) || !this.button.isConnected) return;
+      || !Number.isFinite(source.x) || !Number.isFinite(source.y) || !this.button.isConnected) { return; }
     const slotRect = this.button.getBoundingClientRect();
-    if (slotRect.width <= 0 || slotRect.height <= 0 || this.button.closest('[hidden]')) return;
+    if (slotRect.width <= 0 || slotRect.height <= 0 || this.button.closest('[hidden]')) { return; }
     // A previous landing may be scaling the icon. Measure its base size through
     // the slot's parent scale, so a new flight keeps the normal icon dimensions.
     const slotStyle = getComputedStyle(this.button);
@@ -109,11 +109,11 @@ export class SlotReceiveAnimation {
   }
 
   private remove(flight: Flight): void {
-    if (!this.flights.delete(flight)) return;
+    if (!this.flights.delete(flight)) { return; }
     flight.animation?.cancel();
     flight.element.remove();
     this.present();
-    if (!this.flights.size) window.removeEventListener('resize', this.cancel);
+    if (!this.flights.size) { window.removeEventListener('resize', this.cancel); }
   }
 
   private pulse(): void {
@@ -124,7 +124,7 @@ export class SlotReceiveAnimation {
   }
 
   readonly cancel = (): void => {
-    for (const flight of [...this.flights]) this.remove(flight);
+    for (const flight of [...this.flights]) { this.remove(flight); }
     this.pulses.forEach((animation) => animation.cancel());
     this.pulses = [];
     this.present();

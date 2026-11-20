@@ -30,16 +30,16 @@ export class Builder {
     this.inst = inst;
     this.world = world;
     const removal = watchSignal(inst.removal, stop => { this.stopRemoval = stop; });
-    createEffect(() => { if (removal.get()) this.dispose(); });
-    if (this.disposed) return;
+    createEffect(() => { if (removal.get()) { this.dispose(); } });
+    if (this.disposed) { return; }
     const positions = (world.getWatchWorldContent ?? getBoundWatchWorldContent())?.(
       WorldContentKey.PlayerPositions, stop => this.cleanups.push(stop));
     const entities = world.entitiesChanged && watchSignal(world.entitiesChanged, stop => this.cleanups.push(stop));
-    if (positions || entities) createEffect(() => {
+    if (positions || entities) { createEffect(() => {
       positions?.get();
       entities?.get();
       this.EvaluateTechTrees();
-    });
+    }); }
   }
   get current_prototyper(): PrototyperInst | undefined { return this.current; }
 
@@ -50,7 +50,7 @@ export class Builder {
       && (!station.components.prototyper.restrictedtag || this.inst.hasTag(station.components.prototyper.restrictedtag));
   }
   UsePrototyper(station?: PrototyperInst): boolean {
-    if (!this.enabled || this.disposed || (station && !this.eligible(station))) return false;
+    if (!this.enabled || this.disposed || (station && !this.eligible(station))) { return false; }
     this.override = station;
     this.EvaluateTechTrees();
     return true;
@@ -62,7 +62,7 @@ export class Builder {
       if (!stations.includes(station)) { stop(); this.stationWatches.delete(station); }
     }
     for (const station of stations) {
-      if (!station.components.prototyper || this.stationWatches.has(station)) continue;
+      if (!station.components.prototyper || this.stationWatches.has(station)) { continue; }
       const stops: (() => void)[] = [];
       const config = watchSignal(station.components.prototyper.configurationChanged, stop => stops.push(stop));
       const removal = watchSignal(station.removal, stop => stops.push(stop));
@@ -70,19 +70,19 @@ export class Builder {
       let initialized = false;
       createEffect(() => {
         config.get(); removal.get();
-        if (initialized) this.EvaluateTechTrees();
+        if (initialized) { this.EvaluateTechTrees(); }
         initialized = true;
       });
     }
   }
 
   EvaluateTechTrees(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     const old = this.current;
     const position = this.inst.getPosition();
     let stations: PrototyperInst[] = [];
     if (this.override && (!this.enabled || !this.eligible(this.override)
-      || !this.override.components.prototyper!.CanUsePrototyper(this.inst))) this.override = undefined;
+      || !this.override.components.prototyper!.CanUsePrototyper(this.inst))) { this.override = undefined; }
     if (this.enabled) {
       stations = this.override ? [this.override] : this.world.findEntities(position,
         this.world.researchMachineDistance ?? 4, ['prototyper'], this.exclude_tags)
@@ -91,13 +91,13 @@ export class Builder {
     this.current = undefined;
     this.watchStations(stations);
     for (const station of stations) {
-      if (!this.eligible(station)) continue;
+      if (!this.eligible(station)) { continue; }
       if (!this.current) {
         station.components.prototyper!.TurnOn(this.inst);
         this.current = station;
-      } else station.components.prototyper!.TurnOff(this.inst);
+      } else { station.components.prototyper!.TurnOff(this.inst); }
     }
-    if (old !== this.current && old && !old.isRemoved) old.components.prototyper?.TurnOff(this.inst);
+    if (old !== this.current && old && !old.isRemoved) { old.components.prototyper?.TurnOff(this.inst); }
     const trees = this.current?.components.prototyper?.GetTechTrees() ?? CreateTechTree();
     const previous = this.techTrees.peek();
     if (Object.keys(trees).some(key => trees[key] !== previous[key])) {
@@ -106,7 +106,7 @@ export class Builder {
     }
   }
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.enabled = false;
     this.EvaluateTechTrees();
     this.disposed = true;

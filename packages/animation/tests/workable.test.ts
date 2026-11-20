@@ -27,7 +27,7 @@ it('publishes readonly work and derived eligibility, while successful work expli
   entity.ListenForEvent('workfinished', () => events.push('workfinished'));
   // The worker is a player inst; workable pushes "working" and "finishedwork" on it.
   const worker = testPlayer();
-  for (const name of ['working', 'finishedwork']) worker.ListenForEvent(name, () => events.push(name));
+  for (const name of ['working', 'finishedwork']) { worker.ListenForEvent(name, () => events.push(name)); }
   const worked = vi.fn(() => { events.push('onwork'); });
   work.SetOnWorkCallback(worked);
   work.SetOnFinishCallback((inst, doer) => { events.push('onfinish'); finish(inst, doer); });

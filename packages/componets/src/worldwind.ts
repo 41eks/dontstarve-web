@@ -50,7 +50,7 @@ export class WorldWind {
   }
 
   /** worldwind:Start — StartUpdatingComponent; the Lua initial timeToWindChange is 1. */
-  Start(): void { if (this.timer.snapshot.peek().status !== 'scheduled') this.timer.start(1); }
+  Start(): void { if (this.timer.snapshot.peek().status !== 'scheduled') { this.timer.start(1); } }
   /** worldwind:Stop. Stopping is distinct from expiring in the timer snapshot. */
   Stop(): void { this.timer.stop(); }
   GetWindAngle(): number { return this.angleState.peek(); }

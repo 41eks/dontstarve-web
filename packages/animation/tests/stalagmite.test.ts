@@ -55,7 +55,7 @@ it('constructs saved ordinary and tall rocks with their source poses, colour, ta
     expect(logical.sprite.sprite.peek().colour).toEqual([.875, .875, .875]);
     expect(logical.components.workable!.GetWorkLeft()).toBe(2);
     expect(logical.components.workable!.OnSave()).toEqual({});
-    for (const tag of ['boulder', 'inspectable', 'MINE_workable']) expect(logical.hasTag(tag)).toBe(true);
+    for (const tag of ['boulder', 'inspectable', 'MINE_workable']) { expect(logical.hasTag(tag)).toBe(true); }
     logical.remove();
     const normal = s.manager.restore('stalagmite_med', record);
     const tall = s.manager.spawn('stalagmite_tall_low', new THREE.Vector3(5, 0, 6), { ...record, id: 'tall-rock' });

@@ -24,7 +24,7 @@ export function turfItemForTile(tileId: number): string | undefined {
 /** turfs.lua make_turf: groundtile tags, deployable(TURF), and one consumed turf. */
 export function configureTurfEntity(entity: ItemEntity): void {
   const name = turfTileName(entity.prefab);
-  if (!name) return;
+  if (!name) { return; }
   configureBurnableItemEntity(entity);
   entity.addTag('groundtile');
   entity.addTag('molebait');

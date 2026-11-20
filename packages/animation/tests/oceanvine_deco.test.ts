@@ -112,7 +112,7 @@ it('keeps a c_spawn vine through c_save and a reload, and rejects c_give', async
     expect(saved[0]).toMatchObject({ id: spawned.entityId, transform: { position: [3, 0, -6] }, components: { animnum: spawned.animnum } });
     await second.registry.restoreAll({ oceanvine_deco: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof OceanVineDecoInstance)) throw new Error('The saved vine did not load');
+    if (!(loaded instanceof OceanVineDecoInstance)) { throw new Error('The saved vine did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect([loaded.animnum, loaded.sprite.sprite.peek().clip]).toMatchObject([spawned.animnum, { name: `idle_${spawned.animnum}`, loop: true }]);
     expect(second.records()).toEqual(saved);

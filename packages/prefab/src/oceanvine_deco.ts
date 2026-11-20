@@ -20,7 +20,7 @@ function onsave(inst: OceanVineDecoInstance, data: EntityPersistData): void {
 }
 
 function onload(inst: OceanVineDecoInstance, data: EntityPersistData): void {
-  if (data.animnum === undefined) return;
+  if (data.animnum === undefined) { return; }
   inst.animnum = data.animnum;
   inst.AnimState.PlayAnimation(`idle_${inst.animnum}`, true);
 }

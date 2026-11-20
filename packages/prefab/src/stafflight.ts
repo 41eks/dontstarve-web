@@ -100,11 +100,11 @@ export class StaffLightInstance extends PrefabInstance {
 
     this.addTag('ignorewalkableplatforms');
     this.physicsRadiusOverride = .5;
-    if (settings.is_hot) for (const tag of ['cooker', 'daylight', 'heatstar']) this.addTag(tag);
+    if (settings.is_hot) { for (const tag of ['cooker', 'daylight', 'heatstar']) { this.addTag(tag); } }
 
     const heater = addComponent(this, 'heater', Heater);
     heater.SetHeat(settings.is_hot ? 100 : -100);
-    if (!settings.is_hot) heater.SetThermics(false, true);
+    if (!settings.is_hot) { heater.SetThermics(false, true); }
 
     const sanityaura = addComponent(this, 'sanityaura', SanityAura);
     sanityaura.aura = SANITYAURA_SMALL;
@@ -128,7 +128,7 @@ export class StaffLightInstance extends PrefabInstance {
       propagator.spreading.set(true);
     }
 
-    if (settings.idles.length > 1) this.ListenForEvent('animover', PlayRandomStarIdle);
+    if (settings.idles.length > 1) { this.ListenForEvent('animover', PlayRandomStarIdle); }
   }
 }
 
@@ -151,7 +151,7 @@ function PlayAnimation(inst: StaffLightInstance, name: string): void {
 
 function PlayRandomStarIdle(inst: StaffLightInstance): void {
   // Don't if we're extinguished
-  if (inst._killed) return;
+  if (inst._killed) { return; }
   const { idles } = inst.settings;
   PlayAnimation(inst, idles[Math.floor(Math.random() * idles.length)]);
 }
@@ -169,7 +169,7 @@ function kill_light(inst: StaffLightInstance): void {
 }
 
 function ontimer(inst: StaffLightInstance, data: { name: string }): void {
-  if (data.name === EXTINGUISH) kill_light(inst);
+  if (data.name === EXTINGUISH) { kill_light(inst); }
 }
 
 function onhaunt(inst: StaffLightInstance): boolean {

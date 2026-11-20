@@ -22,7 +22,7 @@ afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 it('aggregates routine render calls without User Timing or unbounded frame records, and resets the complete capture interval', async () => {
   const { spritePerf, spritePerfAsync, spritePerfSpan, view, measure } = await load('?perf');
-  for (let i = 0; i < 120; i++) expect(spritePerf('render', 'trees', () => i)).toBe(i);
+  for (let i = 0; i < 120; i++) { expect(spritePerf('render', 'trees', () => i)).toBe(i); }
   await spritePerfAsync('preload', 'build', async () => 'loaded');
   spritePerfSpan('resolve', 'clip')();
   expect(view!.summary()).toEqual({ render: { count: 120, total: 120, max: 1 },
@@ -41,7 +41,7 @@ it('aggregates routine render calls without User Timing or unbounded frame recor
 
 it('bounds detailed preparation records while retaining aggregate totals and chronological order', async () => {
   const { spritePerf, view } = await load('?perf');
-  for (let i = 0; i < 5000; i++) spritePerf('resolve', `${i}`, () => {});
+  for (let i = 0; i < 5000; i++) { spritePerf('resolve', `${i}`, () => {}); }
   expect(view!.records).toHaveLength(4096);
   expect(view!.records[0].key).toBe('904'); expect(view!.records.at(-1)!.key).toBe('4999');
   expect(view!.summary().resolve).toEqual({ count: 5000, total: 5000, max: 1 });

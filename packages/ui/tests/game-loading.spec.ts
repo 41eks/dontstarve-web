@@ -10,7 +10,7 @@ const textureLoaderUrl = `/@fs${fileURLToPath(new URL('../../animation/src/textu
 
 function pixelHash(pixels: Uint8Array): number {
   let hash = 2166136261;
-  for (const value of pixels) hash = Math.imul(hash ^ value, 16777619);
+  for (const value of pixels) { hash = Math.imul(hash ^ value, 16777619); }
   return hash >>> 0;
 }
 
@@ -33,7 +33,7 @@ test('keeps world generation visible until the complete game renders and preserv
     const postMessage = Worker.prototype.postMessage;
     Worker.prototype.postMessage = function (...args: Parameters<typeof postMessage>) {
       const request = args[0];
-      if (request && typeof request.url === 'string') (window as any).textureRequests.push(request.url);
+      if (request && typeof request.url === 'string') { (window as any).textureRequests.push(request.url); }
       return postMessage.apply(this, args);
     };
   });
@@ -133,7 +133,7 @@ test('keeps world generation visible until the complete game renders and preserv
     const { loadKtexTexture } = await import(textureLoaderUrl);
     const texture = await loadKtexTexture('/dst/data/levels/tiles/deciduous.tex');
     let hash = 2166136261;
-    for (const value of texture.pixels) hash = Math.imul(hash ^ value, 16777619);
+    for (const value of texture.pixels) { hash = Math.imul(hash ^ value, 16777619); }
     return { width: texture.width, height: texture.height, hash: hash >>> 0,
       requests: (window as any).textureRequests.filter((url: string) => url.endsWith('/levels/tiles/deciduous.tex')).length };
   }, textureLoaderUrl);

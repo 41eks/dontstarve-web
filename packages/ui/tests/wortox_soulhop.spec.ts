@@ -16,10 +16,10 @@ test('map right clicks teleport across ocean for free, release autopause once an
   source.world.map.generator.options.size = 768;
   source.world.map.defaultTileId = 1;
   source.world.map.tiles = [];
-  for (let row = -32; row < 32; row++) for (let col = -32; col < 32; col++) {
+  for (let row = -32; row < 32; row++) { for (let col = -32; col < 32; col++) {
     const land = row >= -1 && row <= 1 && (Math.abs(col) <= 1 || Math.abs(col - 23) <= 1);
     source.world.map.tiles.push({ col, row, tileId: land ? ground.GRASS.tileId : ground.OCEAN_COASTAL.tileId });
-  }
+  } }
   source.players.local.transform.position = [6, 0, 6];
   source.players.local.wortox = { freehops: 1, soulhopcost: 0 };
   source.players.local.inventory = { items: {}, equip: {} };
@@ -102,13 +102,13 @@ test('empty-inventory right clicks soul-hop, show Soul Echo, preserve counters o
   const messages: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => {
-    if (message.type() === 'info') messages.push(message.text());
-    if (message.type() === 'error' || message.type() === 'warning' && message.text().startsWith('Unable to prepare')) errors.push(message.text());
+    if (message.type() === 'info') { messages.push(message.text()); }
+    if (message.type() === 'error' || message.type() === 'warning' && message.text().startsWith('Unable to prepare')) { errors.push(message.text()); }
   });
   const source = await readImportedSave('Caves');
   source.world.entities = {}; source.world.elapsedSeconds = 0;
   source.world.map.tiles = [];
-  for (let row = -3; row <= 3; row++) for (let col = -3; col <= 3; col++) source.world.map.tiles.push({ col, row, tileId: 3 });
+  for (let row = -3; row <= 3; row++) { for (let col = -3; col <= 3; col++) { source.world.map.tiles.push({ col, row, tileId: 3 }); } }
   source.players.local.transform.position = [6, 0, 6];
   source.players.local.inventory = { items: {}, equip: {} };
   source.players.local.builder = { bufferedBuilds: [] };

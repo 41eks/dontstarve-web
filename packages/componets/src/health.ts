@@ -18,12 +18,12 @@ export interface HealthLoadData {
 }
 
 function finite(value: number, name: string): number {
-  if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite`);
+  if (!Number.isFinite(value)) { throw new RangeError(`${name} must be finite`); }
   return value;
 }
 
 function maximum(value: number): number {
-  if (finite(value, 'maxhealth') <= 0) throw new RangeError('maxhealth must be positive');
+  if (finite(value, 'maxhealth') <= 0) { throw new RangeError('maxhealth must be positive'); }
   return value;
 }
 
@@ -118,13 +118,13 @@ export class Health {
     const old = this.currentState.peek();
     this.currentState.set(clamp(finite(value, 'health'), this.GetMaxWithPenalty()));
     // health.lua pushes "death" when health first reaches zero.
-    if (old > 0 && this.currentState.peek() <= 0) this.inst.PushEvent?.('death', { cause, afflicter });
+    if (old > 0 && this.currentState.peek() <= 0) { this.inst.PushEvent?.('death', { cause, afflicter }); }
   }
 
   /** Positive amounts heal; negative amounts damage after absorption. Returns the applied delta, as in Lua. */
   DoDelta(amount: number, overtime?: boolean, cause?: string, ignoreInvincible = false, afflicter?: HealthAfflicter, ignoreAbsorb = false): number {
     finite(amount, 'amount');
-    if (!ignoreInvincible && (this.IsInvincible() || this.inst.is_teleporting)) return 0;
+    if (!ignoreInvincible && (this.IsInvincible() || this.inst.is_teleporting)) { return 0; }
     const oldPercent = this.GetPercent();
     if (amount < 0 && !ignoreAbsorb) {
       const absorb = this.playerabsorb !== 0 && afflicter?.hasTag('player') ? this.playerabsorb + this.absorb : this.absorb;
@@ -145,16 +145,16 @@ export class Health {
 
   /** health.lua StartRegen: DoDelta(amount, true, "regen") every `period` seconds while not dead. */
   StartRegen(amount: number, period: number, interruptcurrentregen?: boolean): void {
-    if (!this.scheduler) throw new Error('Health regen needs a scheduler');
-    if (interruptcurrentregen !== false) this.StopRegen();
+    if (!this.scheduler) { throw new Error('Health regen needs a scheduler'); }
+    if (interruptcurrentregen !== false) { this.StopRegen(); }
     const regen = this.regen ??= { amount, period };
     regen.amount = finite(amount, 'regen amount');
     regen.period = finite(period, 'regen period');
-    if (regen.task) return;
+    if (regen.task) { return; }
     const scheduler = this.scheduler;
     const tick = () => {
       regen.task = scheduler.schedule(regen.period, tick);
-      if (!this.IsDead()) this.DoDelta(regen.amount, true, 'regen');
+      if (!this.IsDead()) { this.DoDelta(regen.amount, true, 'regen'); }
     };
     regen.task = scheduler.schedule(regen.period, tick);
   }
@@ -184,7 +184,7 @@ export class Health {
     batch(() => {
       this.maximumState.set(maxhealth); this.penaltyState.set(penalty);
       this.currentState.set(clamp(health, maxhealth * (1 - penalty)));
-      if (data.invincible !== undefined) this.invincible = data.invincible;
+      if (data.invincible !== undefined) { this.invincible = data.invincible; }
     });
   }
 

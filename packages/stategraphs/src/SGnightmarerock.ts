@@ -47,8 +47,8 @@ const states: StateDefinition<NightmareRockStateInst, NightmareRockStateName>[] 
       inst.world.spawnPrefab('sanity_raise', inst.position);
     },
     events: [EventHandler('animover', sg => {
-      if (concealedOrQueued(sg.context)) sg.goToState('conceal', true);
-      else sg.goToState('idle');
+      if (concealedOrQueued(sg.context)) { sg.goToState('conceal', true); }
+      else { sg.goToState('idle'); }
     })],
   }),
   State<NightmareRockStateInst, NightmareRockStateName>({

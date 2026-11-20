@@ -102,23 +102,23 @@ type ListenerTable = Map<string, Map<EventEntity, StoredListener[]>>;
 
 function addListener(table: ListenerTable, event: string, entity: EventEntity, fn: StoredListener): void {
   let listeners = table.get(event);
-  if (!listeners) table.set(event, listeners = new Map());
+  if (!listeners) { table.set(event, listeners = new Map()); }
   let fns = listeners.get(entity);
-  if (!fns) listeners.set(entity, fns = []);
+  if (!fns) { listeners.set(entity, fns = []); }
   fns.push(fn);
 }
 
 function removeListener(table: ListenerTable | undefined, event: string, entity: EventEntity, fn: StoredListener): void {
   const listeners = table?.get(event);
-  if (!listeners) return;
+  if (!listeners) { return; }
   const fns = listeners.get(entity);
   if (fns) {
     // RemoveByValue: one registration of fn.
     const index = fns.indexOf(fn);
-    if (index >= 0) fns.splice(index, 1);
-    if (!fns.length) listeners.delete(entity);
+    if (index >= 0) { fns.splice(index, 1); }
+    if (!fns.length) { listeners.delete(entity); }
   }
-  if (!listeners.size) table!.delete(event);
+  if (!listeners.size) { table!.delete(event); }
 }
 
 /** The game-time scheduler an entity's tasks run on. */
@@ -148,7 +148,7 @@ export class EntityTask {
 
   /** Periodic:Cancel. */
   Cancel(): void {
-    if (this.nextTime === undefined) return;
+    if (this.nextTime === undefined) { return; }
     this.cancelScheduled?.();
     this.cancelScheduled = this.nextTime = undefined;
     this.finish(this);
@@ -168,7 +168,7 @@ export class EntityTask {
     // conventions-allow prefab-timer: EntityTask is the scheduler.lua Periodic that DoTaskInTime / DoPeriodicTask hand out.
     this.cancelScheduled = this.scheduler.schedule(delay, () => {
       if (this.period === undefined) { this.cancelScheduled = this.nextTime = undefined; this.finish(this); }
-      else this.arm(this.period);
+      else { this.arm(this.period); }
       this.fn();
     });
   }
@@ -191,7 +191,7 @@ type SpawnedRecord = EntityPersistRecord & { skinname?: string };
 
 /** spawnAs: the spawned entity, checked to be of the class the caller expects. */
 function checkedAs<Spawned>(type: abstract new (...args: never[]) => Spawned, prefabId: string, instance: unknown): Spawned {
-  if (!(instance instanceof type)) throw new TypeError(`${prefabId} does not spawn a ${type.name}`);
+  if (!(instance instanceof type)) { throw new TypeError(`${prefabId} does not spawn a ${type.name}`); }
   return instance;
 }
 
@@ -229,7 +229,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   set entityParent(parent: EventEntity | undefined) {
     this.engineParent?.engineChildren?.delete(this);
     this.engineParent = parent;
-    if (parent) (parent.engineChildren ??= new Set()).add(this);
+    if (parent) { (parent.engineChildren ??= new Set()).add(this); }
   }
   /** inst.parent: the entity whose AddChild made this one its child; its Remove removes this one. */
   parent?: EventEntity;
@@ -250,14 +250,14 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     const data: Record<string, unknown> = {};
     for (const [name, component] of Object.entries(this.components)) {
       const saved = persistentComponent(component)?.OnSave?.();
-      if (saved && typeof saved === 'object' && Object.keys(saved).length) data[name] = saved;
+      if (saved && typeof saved === 'object' && Object.keys(saved).length) { data[name] = saved; }
     }
     this.OnSave?.(this, data);
     return data;
   }
   /** EntityScript:SetPersistData: each saved component's OnLoad, then inst.OnLoad. */
   SetPersistData(data: EntityPersistData): void {
-    for (const [name, saved] of Object.entries(data)) persistentComponent(Reflect.get(this.components, name))?.OnLoad?.(saved);
+    for (const [name, saved] of Object.entries(data)) { persistentComponent(Reflect.get(this.components, name))?.OnLoad?.(saved); }
     this.OnLoad?.(this, data);
   }
   /**
@@ -281,7 +281,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
    * `atListener`: the listener is at the player in the source, while here it is published once per 60 frames.
    */
   AddSoundEmitter({ atListener = false }: { atListener?: boolean } = {}): SoundEmitter {
-    if (this.SoundEmitter) return this.SoundEmitter;
+    if (this.SoundEmitter) { return this.SoundEmitter; }
     const emitter = this.SoundEmitter = new SoundEmitter(atListener ? undefined : this.position);
     this.onRemove(() => emitter.OnRemoveEntity());
     return emitter;
@@ -321,7 +321,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.ClearStateGraph();
     const sg = create(this);
     this.sg = sg;
-    if (this.inlimbo) sg.pause?.();
+    if (this.inlimbo) { sg.pause?.(); }
     return sg;
   }
 
@@ -341,7 +341,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   PushBufferedAction(bufferedaction: BufferedAction): void {
     const current = this.bufferedaction;
     if (current && bufferedaction.target === current.target && bufferedaction.action === current.action
-      && bufferedaction.invobject === current.invobject && !this.sg?.hasStateTag('idle')) return;
+      && bufferedaction.invobject === current.invobject && !this.sg?.hasStateTag('idle')) { return; }
     this.ClearBufferedAction();
     // bufferedaction:TestForStart
     if (!bufferedaction.isValid()) {
@@ -349,7 +349,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
       return;
     }
     this.bufferedaction = bufferedaction;
-    if (!this.sg) this.PushEvent('startaction', { action: bufferedaction });
+    if (!this.sg) { this.PushEvent('startaction', { action: bufferedaction }); }
     // A stategraph without StartAction (the player's controller takes its actions itself) takes none.
     else if (!this.sg.startAction?.(bufferedaction)) {
       this.PushEvent('performaction', { action: bufferedaction });
@@ -360,25 +360,25 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   /** EntityScript:PerformBufferedAction: face the target, do the action, and fail it if it does not succeed. */
   PerformBufferedAction(): true | undefined {
     const bufferedaction = this.bufferedaction;
-    if (!bufferedaction) return undefined;
+    if (!bufferedaction) { return undefined; }
     const { target } = bufferedaction;
-    if (target && hasTransform(target) && target.isValid()) this.FacePoint(target.getPosition());
+    if (target && hasTransform(target) && target.isValid()) { this.FacePoint(target.getPosition()); }
     this.PushEvent('performaction', { action: bufferedaction });
     // Cached, as the source does: inst.bufferedaction may change during Do().
     if (bufferedaction.do()) {
-      if (this.bufferedaction === bufferedaction) this.bufferedaction = undefined;
+      if (this.bufferedaction === bufferedaction) { this.bufferedaction = undefined; }
       return true;
     }
     this.PushEvent('actionfailed', { action: bufferedaction });
     bufferedaction.fail();
-    if (this.bufferedaction === bufferedaction) this.bufferedaction = undefined;
+    if (this.bufferedaction === bufferedaction) { this.bufferedaction = undefined; }
     return undefined;
   }
 
   /** EntityScript:ClearBufferedAction: the pending action fails. */
   ClearBufferedAction(): void {
     const bufferedaction = this.bufferedaction;
-    if (!bufferedaction) return;
+    if (!bufferedaction) { return; }
     bufferedaction.fail();
     this.bufferedaction = undefined;
   }
@@ -402,7 +402,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.braindisabled = !!make && (this.inlimbo || this.IsAsleep());
     this.brain?.Stop();
     this.brain = make && !this.braindisabled ? make() : undefined;
-    if (this.brain && !this.brainstopped) this.brain.Start();
+    if (this.brain && !this.brainstopped) { this.brain.Start(); }
   }
 
   /** EntityScript:StopBrain(reason): the brain stops until every reason given here has been restarted. */
@@ -414,14 +414,14 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   /** EntityScript:RestartBrain(reason): drops `reason`; the brain starts again once no reason holds it. */
   RestartBrain(reason = ''): void {
-    if (!this.brainstopped?.delete(reason) || this.brainstopped.size) return;
+    if (!this.brainstopped?.delete(reason) || this.brainstopped.size) { return; }
     this.brainstopped = undefined;
     this.brain?.Start();
   }
 
   /** EntityScript:_DisableBrain_Internal, as OnEntitySleep and RemoveFromScene call it: the brain is dropped. */
   private disableBrain(): void {
-    if (!this.brainfn) return;
+    if (!this.brainfn) { return; }
     this.braindisabled = true;
     this.brain?.Stop();
     this.brain = undefined;
@@ -429,10 +429,10 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   /** EntityScript:_EnableBrain_Internal, as OnEntityWake and ReturnToScene call it: a new brain from brainfn. */
   private enableBrain(): void {
-    if (!this.braindisabled || !this.brainfn) return;
+    if (!this.braindisabled || !this.brainfn) { return; }
     this.braindisabled = false;
     this.brain = this.brainfn();
-    if (!this.brainstopped) this.brain.Start();
+    if (!this.brainstopped) { this.brain.Start(); }
   }
   /** inst:AddTag / RemoveTag: the tags the entity holds itself. */
   private readonly ownTags = createSignal<ReadonlySet<string>>(new Set());
@@ -441,9 +441,9 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   /** Every tag of the entity, its own and its components'. Current when read inside a batch; subscribers hear of it after. */
   readonly tags: Memo<ReadonlySet<string>> = createMemo(() => {
     const own = this.ownTags.get(), sources = this.tagSources.get();
-    if (!sources.length) return own;
+    if (!sources.length) { return own; }
     const tags = new Set(own);
-    for (const source of sources) for (const tag of source.derivedTags.get()) tags.add(tag);
+    for (const source of sources) { for (const tag of source.derivedTags.get()) { tags.add(tag); } }
     return tags;
   });
   private readonly removalHandlers = new Set<() => void>();
@@ -501,7 +501,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   /** EntityScript:GetDistanceSqToInst: both entities must be valid, as the source asserts. */
   GetDistanceSqToInst(inst: PositionedEntity): number {
-    if (!this.isValid() || !inst.isValid()) throw new Error(`GetDistanceSqToInst between ${this.prefab} and ${inst.prefab} needs two valid entities`);
+    if (!this.isValid() || !inst.isValid()) { throw new Error(`GetDistanceSqToInst between ${this.prefab} and ${inst.prefab} needs two valid entities`); }
     return this.GetDistanceSqToPoint(inst.getPosition());
   }
   /** EntityScript:GetDistanceSqToPoint. */
@@ -528,8 +528,8 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   FacePoint(x: number, y: number, z: number): void;
   FacePoint(point: Vector3Like): void;
   FacePoint(x: number | Vector3Like, y?: number, z?: number): void {
-    if (this.sg?.hasStateTag('busy')) return;
-    if (typeof x === 'number') this.ForceFacePoint(x, y!, z!); else this.ForceFacePoint(x);
+    if (this.sg?.hasStateTag('busy')) { return; }
+    if (typeof x === 'number') { this.ForceFacePoint(x, y!, z!); } else { this.ForceFacePoint(x); }
   }
   /**
    * EntityScript:PushEvent: every fn listening for it, called fn(inst, data) from a copy of the list, then the stategraph
@@ -537,9 +537,9 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
    */
   PushEvent<E extends string>(event: E, ...[data]: EventDataArgs<E>): void {
     const listeners = this.event_listeners?.get(event);
-    if (listeners) for (const fn of [...listeners.values()].flat()) fn(this, data);
+    if (listeners) { for (const fn of [...listeners.values()].flat()) { fn(this, data); } }
     // conventions-allow sg-forward: EntityScript:PushEvent's own forward to inst.sg.
-    if (this.sg?.isListeningForEvent(event)) this.sg.pushEvent(event, data);
+    if (this.sg?.isListeningForEvent(event)) { this.sg.pushEvent(event, data); }
     this.brain?.PushEvent(event, data);
   }
 
@@ -564,11 +564,11 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   /** EntityScript:RemoveAllEventCallbacks: what this entity listens for elsewhere, and what listens for it. */
   RemoveAllEventCallbacks(): void {
     for (const [event, sources] of this.event_listening ?? []) {
-      for (const source of sources.keys()) source.event_listeners?.get(event)?.delete(this);
+      for (const source of sources.keys()) { source.event_listeners?.get(event)?.delete(this); }
     }
     this.event_listening = undefined;
     for (const [event, listeners] of this.event_listeners ?? []) {
-      for (const listener of listeners.keys()) listener.event_listening?.get(event)?.delete(this);
+      for (const listener of listeners.keys()) { listener.event_listening?.get(event)?.delete(this); }
     }
     this.event_listeners = undefined;
   }
@@ -592,7 +592,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   CancelAllPendingTasks(): void {
     const tasks = this.pendingtasks;
     this.pendingtasks = undefined;
-    for (const task of tasks ?? []) task.Cancel();
+    for (const task of tasks ?? []) { task.Cancel(); }
   }
 
   /** GetTime() on the scheduler this entity's tasks run on. */
@@ -602,7 +602,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   private spawntime?: number;
   /** EntityScript:GetTimeAlive. */
   GetTimeAlive(): number {
-    if (this.spawntime === undefined) throw new Error(`${this.prefab} has no world scheduler for its spawn time`);
+    if (this.spawntime === undefined) { throw new Error(`${this.prefab} has no world scheduler for its spawn time`); }
     return this.GetTime() - this.spawntime;
   }
 
@@ -614,9 +614,9 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     const previous = this.worldServices?.scheduler;
     // The entity keeps its age on the scheduler it joins.
     this.spawntime = this.spawntime === undefined ? scheduler.now : this.spawntime + scheduler.now - (previous?.now ?? scheduler.now);
-    if (previous === scheduler) return;
+    if (previous === scheduler) { return; }
     this.worldServices = { ...this.worldServices, scheduler };
-    for (const task of this.pendingtasks ?? []) task.rebind(scheduler);
+    for (const task of this.pendingtasks ?? []) { task.rebind(scheduler); }
   }
 
   private sim?: EntityQuery;
@@ -625,14 +625,14 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
    * An entity outside any world has no TheSim to ask.
    */
   get TheSim(): EntityQuery {
-    if (!this.sim) throw new Error(`${this.prefab} is not in a world: it has no TheSim to query`);
+    if (!this.sim) { throw new Error(`${this.prefab} is not in a world: it has no TheSim to query`); }
     return this.sim;
   }
   BindSim(sim: EntityQuery): void { this.sim = sim; }
 
   private taskScheduler(): TaskScheduler {
     const scheduler = this.worldServices?.scheduler;
-    if (!scheduler) throw new Error(`${this.prefab} has no world scheduler for its tasks`);
+    if (!scheduler) { throw new Error(`${this.prefab} has no world scheduler for its tasks`); }
     return scheduler;
   }
 
@@ -649,7 +649,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   /** Hands `physics` to the host world; `ground` is the collider's origin when the model is drawn above it. */
   bindPhysics(world: CANNON.World, ground: () => Vector3Like = () => this.position): void {
-    if (this.physicsBinding || this.lifecycle.peek() === 'removed') return;
+    if (this.physicsBinding || this.lifecycle.peek() === 'removed') { return; }
     this.physicsBinding = bindPhysics(world, this.physics, ground, this.transform);
   }
 
@@ -665,17 +665,17 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   hasTag(tag: string): boolean { return this.tags.peek().has(tag); }
   addTag(tag: string): void {
     const tags = this.ownTags.peek();
-    if (!tags.has(tag)) this.ownTags.set(new Set(tags).add(tag));
+    if (!tags.has(tag)) { this.ownTags.set(new Set(tags).add(tag)); }
   }
   removeTag(tag: string): void {
     const tags = this.ownTags.peek();
-    if (!tags.has(tag)) return;
+    if (!tags.has(tag)) { return; }
     const next = new Set(tags);
     next.delete(tag);
     this.ownTags.set(next);
   }
   /** EntityScript:AddOrRemoveTag. */
-  AddOrRemoveTag(tag: string, condition: boolean): void { if (condition) this.addTag(tag); else this.removeTag(tag); }
+  AddOrRemoveTag(tag: string, condition: boolean): void { if (condition) { this.addTag(tag); } else { this.removeTag(tag); } }
   /** EntityScript:HasTags (HasAllTags): every one of the tags. */
   HasTags(tags: readonly string[]): boolean { return tags.every(tag => this.hasTag(tag)); }
   /** EntityScript:HasOneOfTags (HasAnyTag): at least one of the tags. */
@@ -704,7 +704,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   /** EntityScript:RemoveFromScene: INLIMBO, hidden with its art and minimap icon, then `enterlimbo`. */
   RemoveFromScene(): void {
-    if (this.isRemoved || this.ownTags.peek().has('INLIMBO')) return;
+    if (this.isRemoved || this.ownTags.peek().has('INLIMBO')) { return; }
     this.addTag('INLIMBO');
     this.minimap.SetEnabled(false);
     this.syncAwake();
@@ -715,7 +715,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
 
   /** EntityScript:ReturnToScene: shown again where its tile lets it wake, then `exitlimbo`. */
   ReturnToScene(): void {
-    if (this.isRemoved || !this.ownTags.peek().has('INLIMBO')) return;
+    if (this.isRemoved || !this.ownTags.peek().has('INLIMBO')) { return; }
     this.removeTag('INLIMBO');
     this.minimap.SetEnabled(true);
     this.syncAwake();
@@ -725,12 +725,12 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
   }
 
   private syncAwake(): void {
-    if (this.lifecycle.peek() === 'removed') return;
+    if (this.lifecycle.peek() === 'removed') { return; }
     const awake = this.tileAwake && !this.ownTags.peek().has('INLIMBO');
     this.sprite.setAwake(awake);
     this.lifecycle.set(awake ? 'active' : 'asleep');
     // After the entity's own sleep and wake handlers, as OnEntitySleep / OnEntityWake order them.
-    if (awake) this.enableBrain(); else this.disableBrain();
+    if (awake) { this.enableBrain(); } else { this.disableBrain(); }
   }
 
   /** inst.OnRemoveEntity(inst): the prefab's own teardown, after its components' and its children's. */
@@ -757,7 +757,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
    * It is valid until it retires last, taking the entities parented to it with entity:SetParent.
    */
   remove(): void {
-    if (this.removing || this.lifecycle.peek() === 'removed') return;
+    if (this.removing || this.lifecycle.peek() === 'removed') { return; }
     this.removing = true;
     this.parent?.RemoveChild(this);
     this.PushEvent('onremove');
@@ -766,7 +766,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     // The engine's MiniMapEntity goes with the entity; what lists it unsubscribes among the removal handlers below.
     this.minimap.SetEnabled(false);
     // addComponent registers each component's OnRemoveEntity here, beside the prefab's other teardown, in order.
-    for (const remove of this.removalHandlers) remove();
+    for (const remove of this.removalHandlers) { remove(); }
     this.removalHandlers.clear();
     const children = this.children;
     this.children = undefined;
@@ -780,7 +780,7 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
     this.engineParent?.engineChildren?.delete(this);
     const engineChildren = this.engineChildren;
     this.engineChildren = undefined;
-    for (const child of engineChildren ?? []) child.remove();
+    for (const child of engineChildren ?? []) { child.remove(); }
     // SGManager:OnRemoveEntity: the stategraph no longer runs; inst.sg stays readable, as in the source.
     this.sg?.dispose?.();
     this.removedState.set(true);
@@ -806,7 +806,7 @@ const instancesByModel = new WeakMap<Object3D, AnyPrefabInstance>();
 
 /** Bind the display's model to its logical entity; metadata remains on the instance. */
 export function bindInstance(model: Object3D, instance: AnyPrefabInstance): void {
-  if (model !== instance.transform.model) throw new Error('Display must use the prefab transform root');
+  if (model !== instance.transform.model) { throw new Error('Display must use the prefab transform root'); }
   instancesByModel.set(model, instance);
   instance.onRemove(watchMiniMapEntity(instance));
 }
@@ -821,7 +821,7 @@ export function prefabInstance<Instance extends AnyPrefabInstance = PrefabInstan
  * once its owner is removed; it is removed on its own.
  */
 function followOwner(instance: AnyPrefabInstance, ownerStatus: ReadonlySignal<PrefabStatus> | undefined): void {
-  if (!ownerStatus) return;
+  if (!ownerStatus) { return; }
   const follow = (status: PrefabStatus) => instance.setActive(status === 'active');
   follow(ownerStatus.peek());
   instance.onRemove(ownerStatus.subscribe(follow));
@@ -837,7 +837,7 @@ export type EntityClip<Instance extends PrefabInstance<SpriteState, object> = Pr
 
 function entityInstance<Instance extends PrefabInstance<SpriteState, object>>(prefab: string, clip: EntityClip<Instance>): Instance {
   if (clip.instance) {
-    if (clip.instance.isRemoved || clip.instance.prefab !== prefab) throw new Error('Cannot display a removed or different prefab instance');
+    if (clip.instance.isRemoved || clip.instance.prefab !== prefab) { throw new Error('Cannot display a removed or different prefab instance'); }
     clip.instance.sprite.resetPresentation(clip);
     return clip.instance;
   }
@@ -951,7 +951,7 @@ type ArchiveDefinition = Parameters<SpriteResources['archive']>[0];
  * the definition's other builds, layers and symbols. Without a declaration the definition's own archive.
  */
 function declaredArchive(assets: ArchiveDefinition, declared: SpriteSourceJson | undefined): ArchiveDefinition {
-  if (!declared || !('art' in declared)) return assets;
+  if (!declared || !('art' in declared)) { return assets; }
   const [animationArchive, ...extraAnimationArchives] = declared.animationArchives;
   return { ...assets, animationArchive: animationArchive!, extraAnimationArchives, bank: declared.bank,
     buildArchives: [declared.buildArchive, ...declared.fallbackBuilds ?? [], ...assets.buildArchives.slice(1)] };
@@ -1011,15 +1011,15 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
 
   /** Register source prefab declarations in this world's one collection and resource cache. */
   register(prefabs: Readonly<Record<Id, PrefabEntityDefinition<Instance>>>): void {
-    if (this.disposed) throw new Error('Cannot register prefabs after disposal');
-    for (const id of Object.keys(prefabs)) if (Object.hasOwn(this.prefabs, id)) throw new Error(`Duplicate prefab: ${id}`);
+    if (this.disposed) { throw new Error('Cannot register prefabs after disposal'); }
+    for (const id of Object.keys(prefabs)) { if (Object.hasOwn(this.prefabs, id)) { throw new Error(`Duplicate prefab: ${id}`); } }
     Object.assign(this.prefabs, prefabs);
   }
 
   has(prefabId: string): boolean { return Object.hasOwn(this.prefabs, prefabId); }
   /** An entity's prefab, which it was spawned by, as one of this manager's registered ids. */
   private registeredId(prefab: string): Id {
-    if (!this.isRegistered(prefab)) throw new Error(`Unregistered prefab: ${prefab}`);
+    if (!this.isRegistered(prefab)) { throw new Error(`Unregistered prefab: ${prefab}`); }
     return prefab;
   }
   private isRegistered(prefab: string): prefab is Id { return Object.hasOwn(this.prefabs, prefab); }
@@ -1029,7 +1029,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
 
   /** The live entities of one prefab, as Ents filtered by prefab, without visiting the others. */
   *instances(prefabId: string): IterableIterator<Instance> {
-    for (const instance of this.byPrefab.get(prefabId) ?? []) if (!instance.isRemoved) yield instance;
+    for (const instance of this.byPrefab.get(prefabId) ?? []) { if (!instance.isRemoved) { yield instance; } }
   }
 
   /**
@@ -1055,44 +1055,44 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   }
 
   private create(prefabId: Id, position: ReadonlyVector3, rotationY: number, saved: SpawnedRecord | undefined, skinId?: string): Instance {
-    if (this.disposed) throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`);
-    if (![position.x, position.y, position.z].every(Number.isFinite)) throw new RangeError(`Invalid ${prefabId} position`);
-    if (!this.has(prefabId)) throw new Error(`Unknown prefab: ${prefabId}`);
+    if (this.disposed) { throw new Error(`Cannot spawn ${prefabId}: its manager has been disposed`); }
+    if (![position.x, position.y, position.z].every(Number.isFinite)) { throw new RangeError(`Invalid ${prefabId} position`); }
+    if (!this.has(prefabId)) { throw new Error(`Unknown prefab: ${prefabId}`); }
     const { fn, assets, assetOptions, alignBottom, rayTestOnBB, targetable = true, physics, minimapIcon, onSpawned, skins, skinSymbols,
       baseSymbols, skinAnimationBanks, alwaysActive, materialOptions, icon } = this.prefabs[prefabId];
-    if (skinId !== undefined && !skins?.[skinId]) throw new Error(`Unsupported ${prefabId} skin: ${skinId}`);
+    if (skinId !== undefined && !skins?.[skinId]) { throw new Error(`Unsupported ${prefabId} skin: ${skinId}`); }
     const instance = fn(position, this.resources);
     // Its display starts after OnLoad; what OnLoad plays waits for it, which draws or settles it as its art has loaded.
     instance.sprite.bindPendingDisplay();
     // The world's scheduler for inst:DoTaskInTime, unless the prefab's fn already bound the one it scheduled on; binding
     // also takes the spawn time of an fn that set its world services directly.
     const scheduler = instance.worldServices?.scheduler ?? this.scheduler;
-    if (scheduler) instance.BindScheduler(scheduler);
+    if (scheduler) { instance.BindScheduler(scheduler); }
     instance.BindSim(this);
-    if (skins || materialOptions) instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins ?? {}, materialOptions,
+    if (skins || materialOptions) { instance.sprite.setSkinSource({ art: this.resources.archives, archives: skins ?? {}, materialOptions,
       ...skinSymbols ? { symbols: skinSymbols } : {}, ...baseSymbols ? { baseSymbols } : {},
-      ...skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {} });
+      ...skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {} }); }
     const iconSource = icon && this.iconSource(prefabId, icon);
     physics?.make(instance, physics.radius, physics.height);
-    if (minimapIcon) instance.minimap.SetIcon(minimapIcon);
+    if (minimapIcon) { instance.minimap.SetIcon(minimapIcon); }
     bindInstance(instance.transform.model, instance);
-    if (rayTestOnBB) instance.transform.model.userData.rayTestOnBB = true;
+    if (rayTestOnBB) { instance.transform.model.userData.rayTestOnBB = true; }
     instance.setPosition(position.x, 0, position.z);
-    if (rotationY) instance.transform.setSavedRotation(rotationY);
-    if (physics && this.physicsWorld) instance.bindPhysics(this.physicsWorld);
+    if (rotationY) { instance.transform.setSavedRotation(rotationY); }
+    if (physics && this.physicsWorld) { instance.bindPhysics(this.physicsWorld); }
     instance.entityId = saved?.id ?? newItemEntityId();
     if (saved) {
       instance.saveRecord = { id: saved.id, components: saved.components, transform: { position: [position.x, 0, position.z], rotationY },
         ...saved.skinname === undefined ? {} : { skinname: saved.skinname } };
       // SpawnSaveRecord's SpawnPrefab(record.prefab, record.skinname): the skin is the inst's before SetPersistData.
-      if (saved.skinname !== undefined) instance.skinId = saved.skinname;
+      if (saved.skinname !== undefined) { instance.skinId = saved.skinname; }
       POPULATING = true;
       try { instance.SetPersistData(saved.components); } finally { POPULATING = false; }
     }
-    if (skinId !== undefined) instance.skinId = skinId;
+    if (skinId !== undefined) { instance.skinId = skinId; }
     onSpawned?.(instance);
     // OnLoad may replace the entity, as a burnt tree turns to ash: a removed one gets no display or registration.
-    if (instance.isRemoved) return instance;
+    if (instance.isRemoved) { return instance; }
     // The display starts once fn, OnLoad and onSpawned have declared the entity's clip and its AnimState SetBank /
     // SetBuild, so its first sprite is drawn from the bank and build the entity is in, from its first frame.
     const declared = instance.sprite.sprite.peek().source;
@@ -1100,18 +1100,18 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     const art: PrefabDisplayArt = archive ? { archive: this.resources.archive(archive, assetOptions), declares: archive !== assets ? declared : undefined }
       : iconSource ? { source: iconSource } : { empty: true };
     const display = this.displays.add({ root: instance.transform.model, name: prefabId, alignBottom, art, sprite: instance.sprite, light: instance.light });
-    if ((assets || icon) && targetable) registerActionEntity(instance);
+    if ((assets || icon) && targetable) { registerActionEntity(instance); }
     this.entities.add(instance);
     const entityId = String(instance.entityId);
     this.byEntityId.set(entityId, instance);
     let ofPrefab = this.byPrefab.get(prefabId);
-    if (!ofPrefab) this.byPrefab.set(prefabId, ofPrefab = new Set());
+    if (!ofPrefab) { this.byPrefab.set(prefabId, ofPrefab = new Set()); }
     ofPrefab.add(instance);
     const stopActivity = watchTileActivity(display.model, alwaysActive ? undefined : this.tickingarea, active => instance.setActive(active));
     const stopIndex = this.index(instance);
     instance.onRemove(() => {
       stopActivity(); stopIndex(); this.entities.delete(instance); ofPrefab.delete(instance);
-      if (this.byEntityId.get(entityId) === instance) this.byEntityId.delete(entityId);
+      if (this.byEntityId.get(entityId) === instance) { this.byEntityId.delete(entityId); }
     });
     return instance;
   }
@@ -1135,7 +1135,7 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   private iconSource(prefabId: string, icon: { readonly atlas: string; readonly image: string }) {
     let source = this.iconSources.get(prefabId);
     if (!source) {
-      if (!this.iconArchiveUrl) throw new Error(`${prefabId} is drawn as an icon, but no icon archive was given`);
+      if (!this.iconArchiveUrl) { throw new Error(`${prefabId} is drawn as an icon, but no icon archive was given`); }
       this.icons ??= new IconSpriteAtlases(this.iconArchiveUrl);
       this.iconSources.set(prefabId, source = this.icons.source(icon.atlas, icon.image, prefabId));
     }
@@ -1147,8 +1147,8 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
    * It is not saved or looked up by entity ID here: its owner keeps those, and it leaves when it is removed.
    */
   track(instance: Instance): void {
-    if (this.disposed) throw new Error(`Cannot track ${instance.prefab}: its manager has been disposed`);
-    if (instance.isRemoved || this.entities.has(instance) || this.tracked.has(instance)) return;
+    if (this.disposed) { throw new Error(`Cannot track ${instance.prefab}: its manager has been disposed`); }
+    if (instance.isRemoved || this.entities.has(instance) || this.tracked.has(instance)) { return; }
     const stopIndex = this.index(instance);
     this.tracked.set(instance, stopIndex);
     instance.BindSim(this);
@@ -1162,16 +1162,16 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
    */
   FindEntities(position: ReadonlyVector3, radius: number,
     mustTags: readonly string[] = [], cantTags: readonly string[] = [], oneOfTags: readonly string[] = []): Instance[] {
-    if (!Number.isFinite(radius) || radius < 0) throw new RangeError('Invalid entity query radius');
-    if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) return [];
+    if (!Number.isFinite(radius) || radius < 0) { throw new RangeError('Invalid entity query radius'); }
+    if (!Number.isFinite(position.x) || !Number.isFinite(position.y) || !Number.isFinite(position.z)) { return []; }
     const radiusSquared = radius * radius;
     const found: { entity: Instance; distanceSquared: number }[] = [];
     this.grid.visit(position, radius, entity => {
-      if (entity.isRemoved) return;
+      if (entity.isRemoved) { return; }
       const distanceSquared = entity.getPosition().distanceToSquared(position);
-      if (!(distanceSquared <= radiusSquared)) return;
+      if (!(distanceSquared <= radiusSquared)) { return; }
       if (mustTags.some(tag => !entity.hasTag(tag)) || cantTags.some(tag => entity.hasTag(tag))
-        || (oneOfTags.length > 0 && !oneOfTags.some(tag => entity.hasTag(tag)))) return;
+        || (oneOfTags.length > 0 && !oneOfTags.some(tag => entity.hasTag(tag)))) { return; }
       found.push({ entity, distanceSquared });
     });
     return found.sort((a, b) => a.distanceSquared - b.distanceSquared).map(({ entity }) => entity);
@@ -1194,16 +1194,16 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
-    for (const entity of [...this.entities]) entity.remove();
+    for (const entity of [...this.entities]) { entity.remove(); }
     // A tracked entity belongs to its own owner, which removes it; it only leaves this index.
-    for (const stopIndex of [...this.tracked.values()]) stopIndex();
+    for (const stopIndex of [...this.tracked.values()]) { stopIndex(); }
     this.tracked.clear();
     this.grid.clear();
     // Every entity's display is released above, before the shared resources.
     this.resources.dispose();
-    for (const source of this.iconSources.values()) source.dispose();
+    for (const source of this.iconSources.values()) { source.dispose(); }
     this.iconSources.clear();
     this.icons?.dispose();
   }

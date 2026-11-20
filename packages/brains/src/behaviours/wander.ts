@@ -43,7 +43,7 @@ export class Wander extends BehaviourNode {
       minwaittime: times?.minwaittime ?? 1,
       randwaittime: times?.randwaittime ?? 3,
     };
-    if (this.times.minwaittime <= 0 && this.times.randwaittime <= 0) this.times.no_wait_time = true;
+    if (this.times.minwaittime <= 0 && this.times.randwaittime <= 0) { this.times.no_wait_time = true; }
   }
 
   override Visit(): void {
@@ -54,12 +54,12 @@ export class Wander extends BehaviourNode {
       this.walking = false;
       this.status = RUNNING;
     } else if (this.status === RUNNING) {
-      if (!this.walking && this.IsFarFromHome()) this.PickNewDirection();
+      if (!this.walking && this.IsFarFromHome()) { this.PickNewDirection(); }
       if (this.now > this.waittime) {
-        if (!this.walking || this.times.no_wait_time) this.PickNewDirection();
-        else this.HoldPosition();
-      } else if (!this.walking) this.Sleep(this.waittime - this.now);
-      else if (!locomotor.WantsToMoveForward()) this.HoldPosition();
+        if (!this.walking || this.times.no_wait_time) { this.PickNewDirection(); }
+        else { this.HoldPosition(); }
+      } else if (!this.walking) { this.Sleep(this.waittime - this.now); }
+      else if (!locomotor.WantsToMoveForward()) { this.HoldPosition(); }
     }
   }
 
@@ -95,7 +95,7 @@ export class Wander extends BehaviourNode {
     const locomotor = this.inst.components.locomotor!;
     this.far_from_home = this.IsFarFromHome();
     this.walking = true;
-    if (this.far_from_home) locomotor.GoToPoint(this.GetHomePos()!);
+    if (this.far_from_home) { locomotor.GoToPoint(this.GetHomePos()!); }
     else {
       const pt = this.inst.getPosition();
       let angle = this.getdirectionFn?.(this.inst);
@@ -110,8 +110,8 @@ export class Wander extends BehaviourNode {
         this.setdirectionFn?.(this.inst, angle);
       }
       const run = FunctionOrValue(this.should_run ?? false, this.inst);
-      if (found) locomotor.GoToPoint({ x: pt.x + found.offset.x, y: pt.y + found.offset.y, z: pt.z + found.offset.z }, undefined, run);
-      else locomotor.WalkInDirection(angle / DEGREES, run);
+      if (found) { locomotor.GoToPoint({ x: pt.x + found.offset.x, y: pt.y + found.offset.y, z: pt.z + found.offset.z }, undefined, run); }
+      else { locomotor.WalkInDirection(angle / DEGREES, run); }
     }
     if (!this.leashwhengoinghome || !this.far_from_home) {
       this.Wait(this.times.minwalktime + this.context.random() * this.times.randwalktime);

@@ -37,7 +37,7 @@ function setup(player = new THREE.Group(), random = () => 0.9, spawnLoot?: (item
   return { farm, turf, world };
 }
 function advance(animation: PlayerInstance, frames: number) {
-  for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30);
+  for (let i = 0; i < frames; i++) { advancePlayer(animation, 1 / 30); }
 }
 
 it('loads original ground and separate equipped art, visible skins and hidden equipped symbols', async () => {
@@ -93,8 +93,8 @@ it('removes one debris with source loot while preserving soil, terrain, other de
     const restored = setup();
     try {
       restored.turf.plow(point);
-      for (const { prefabId, record } of preserved) restored.farm.spawn(prefabId, new THREE.Vector3(...record.transform.position),
-        record.components, record.id);
+      for (const { prefabId, record } of preserved) { restored.farm.spawn(prefabId, new THREE.Vector3(...record.transform.position),
+        record.components, record.id); }
       expect(restored.farm.decor()).toEqual(preserved);
       expect(workTargets('DIG').map(({ id }) => id)).toEqual(['other']);
     } finally { restored.farm.dispose(); }
@@ -124,7 +124,7 @@ it('walks into reach, commits DIG at shovel_loop frame 15, and preserves cancell
     expect(dig()).toBe(true);
     expect(locomotor.destination).toBeDefined();
     player.position.set(3, 0, 4.5); locomotor.update(16, 1 / 30);
-    while (animation.sg.stateName === 'dig_start') advancePlayer(animation, 1 / 30);
+    while (animation.sg.stateName === 'dig_start') { advancePlayer(animation, 1 / 30); }
     advance(animation, 14);
     expect(farm.decor()).toHaveLength(1);
     expect(tool.components.finiteuses.remaining).toBeUndefined();

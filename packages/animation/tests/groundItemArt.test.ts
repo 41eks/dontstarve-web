@@ -41,7 +41,7 @@ function setup(active = createSignal(true)) {
 }
 function firstMesh(model: THREE.Object3D) {
   let mesh: THREE.Mesh | undefined;
-  model.traverse(child => { if (!mesh && child instanceof THREE.Mesh) mesh = child; });
+  model.traverse(child => { if (!mesh && child instanceof THREE.Mesh) { mesh = child; } });
   return mesh!;
 }
 
@@ -59,18 +59,18 @@ it('lets displays orient ground archives, hats and fallback icons, and resync sl
     const icon = world.manager.spawnFromSave('icon', { ...SAVE_CATALOG.items.beeswax, itemId: 'beeswax', count: 1 }, new THREE.Vector3(5, 0, 6));
     const billboards = [twig, hat, icon];
     await Promise.all([...billboards, card].map(model => prefabDisplay(model)!.artLoaded()));
-    for (const model of billboards) expect(drawnRotation(model).angleTo(initialRotation)).toBeLessThan(1e-7);
+    for (const model of billboards) { expect(drawnRotation(model).angleTo(initialRotation)).toBeLessThan(1e-7); }
     const cardRotation = drawnRotation(card), feet = billboards.map(model => model.position.toArray());
     const copies = billboards.flatMap(model => [vi.spyOn(model.quaternion, 'copy'), vi.spyOn(model.children[0].quaternion, 'copy')]);
     const turned = rotation(Math.PI / 3);
     content.camerarotation.set(turned);
     // The camera's publishing frame draws the new angle, without waiting for an effect microtask or a manager tick.
-    for (const model of billboards) expect(drawnRotation(model).angleTo(turned)).toBeLessThan(1e-7);
+    for (const model of billboards) { expect(drawnRotation(model).angleTo(turned)).toBeLessThan(1e-7); }
     expect(drawnRotation(card).angleTo(cardRotation)).toBeLessThan(1e-7);
     copies.forEach(copy => copy.mockClear());
     // A frame that publishes the same camera turns nothing again.
     world.manager.update(.1, turned);
-    for (const copy of copies) expect(copy).not.toHaveBeenCalled();
+    for (const copy of copies) { expect(copy).not.toHaveBeenCalled(); }
     expect(billboards.map(model => model.position.toArray())).toEqual(feet);
 
     active.set(false); await turn();
@@ -82,12 +82,12 @@ it('lets displays orient ground archives, hats and fallback icons, and resync sl
     content.camerarotation.set(wakingRotation);
     active.set(true); await turn();
     await Promise.all([twig, hat].map(model => prefabDisplay(model)!.artLoaded()));
-    for (const model of billboards) expect(drawnRotation(model).angleTo(wakingRotation)).toBeLessThan(1e-7);
+    for (const model of billboards) { expect(drawnRotation(model).angleTo(wakingRotation)).toBeLessThan(1e-7); }
     expect(drawnRotation(card).angleTo(cardRotation)).toBeLessThan(1e-7);
     world.dispose();
     copies.forEach(copy => copy.mockClear());
     content.camerarotation.set(rotation(Math.PI));
-    for (const copy of copies) expect(copy).not.toHaveBeenCalled();
+    for (const copy of copies) { expect(copy).not.toHaveBeenCalled(); }
   } finally { world.dispose(); content.unbind(); scheduler.dispose(); }
 });
 
@@ -194,8 +194,8 @@ it('uses the item prefabs for c_spawn, c_save ZIP export and restore of skins, q
     expect(saved.world.entities).toEqual(before);
     for (const model of restored.manager.restoreEntities(saved.world.entities)) {
       const instance = prefabInstance(model)!;
-      if (instance.prefab === 'rocks') expect(instance.sprite.currentAnimation).toBe('f2');
-      if (instance.prefab === 'singingshell_octave3') expect(instance.sprite.sprite.peek().appearance.get('archive-symbol:shell_placeholder')).toMatchObject({ sourceSymbol: 'octave3_2' });
+      if (instance.prefab === 'rocks') { expect(instance.sprite.currentAnimation).toBe('f2'); }
+      if (instance.prefab === 'singingshell_octave3') { expect(instance.sprite.sprite.peek().appearance.get('archive-symbol:shell_placeholder')).toMatchObject({ sourceSymbol: 'octave3_2' }); }
     }
     expect(restored.manager.exportEntities()).toEqual(world.manager.exportEntities());
     const invalid = structuredClone(saved);

@@ -47,7 +47,7 @@ it('updates application resources until scene disposal, then releases them once'
     stopInventoryReceived, stopEmoteWheel, stopContextMenu,
   });
   try {
-    for (const task of tasks) task(0.25);
+    for (const task of tasks) { task(0.25); }
     expect(statusHud.advanceClockAnimation).toHaveBeenCalledWith(0.25);
     expect(frameController.update).toHaveBeenCalledOnce();
     expect(panel.dispose).not.toHaveBeenCalled();
@@ -124,8 +124,8 @@ it('creates panels before scene initialization and owns subscriptions until expl
     expect(subscribeContextMenu).toHaveBeenCalledOnce();
     expect(setupEmoteWheel).toHaveBeenCalledWith(gameUi.emoteWheel, options.view.renderer.domElement,
       undefined, options.actionEvents, options.updateCursor);
-    for (const panel of panels) expect(panel.bindActions).toHaveBeenCalledWith(scene.buildingPlacement);
-    for (const task of tasks) task(.25);
+    for (const panel of panels) { expect(panel.bindActions).toHaveBeenCalledWith(scene.buildingPlacement); }
+    for (const task of tasks) { task(.25); }
     expect(gameUi.statusHud.advanceClockAnimation).toHaveBeenCalledWith(.25);
     events.emit('dispose', undefined);
     events.emit('dispose', undefined);
@@ -133,7 +133,7 @@ it('creates panels before scene initialization and owns subscriptions until expl
     expect(panelTasks).toEqual([]);
     expect(playerInstance.components.reader).toBeUndefined();
     expect(playerInstance.hasTag('reader')).toBe(false);
-    for (const panel of panels) expect(panel.dispose).toHaveBeenCalledOnce();
+    for (const panel of panels) { expect(panel.dispose).toHaveBeenCalledOnce(); }
     expect(stopReceived).toHaveBeenCalledOnce();
     expect(stopContextMenu).toHaveBeenCalledOnce();
     expect(vi.mocked(setupEmoteWheel).mock.results.at(-1)!.value).toHaveBeenCalledOnce();

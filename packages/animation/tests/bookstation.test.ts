@@ -117,7 +117,7 @@ it('spawns a skinned bookstation through c_spawn and keeps books with fractional
   const { inventory: restored, buildings: restoredBuildings } = stationWorld(scheduler);
   try {
     const spawn = async (id: string) => {
-      if (id !== 'bookstation') return false;
+      if (id !== 'bookstation') { return false; }
       buildings.spawnFromSave('bookstation', { id: 'library', transform: { position: [3, 0, -6], rotationY: 0 },
         components: { building: { skinId: 'bookstation_house' } } });
       return true;

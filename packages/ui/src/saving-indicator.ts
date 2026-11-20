@@ -18,13 +18,13 @@ export class DstSavingIndicatorElement extends AssetElement {
 
   startSave(): void {
     this.activeSaves++;
-    if (this.stage === 'pre' || this.stage === 'loop') return;
+    if (this.stage === 'pre' || this.stage === 'loop') { return; }
     this.startAnimation();
   }
 
   endSave(): void {
     this.activeSaves = Math.max(0, this.activeSaves - 1);
-    if (this.activeSaves > 0) return;
+    if (this.activeSaves > 0) { return; }
     this.hideText();
     // Let the intro and one loop finish even when JSON export completes before
     // the browser's next paint. The outro then plays without delaying download.
@@ -68,7 +68,7 @@ export class DstSavingIndicatorElement extends AssetElement {
       },
     );
     this.setStage('hidden');
-    if (wasVisible || this.activeSaves > 0) this.startAnimation();
+    if (wasVisible || this.activeSaves > 0) { this.startAnimation(); }
   }
 
   private get panel(): HTMLElement {
@@ -86,7 +86,7 @@ export class DstSavingIndicatorElement extends AssetElement {
     this.setStage('pre');
     this.textTimer = setTimeout(() => {
       this.textTimer = undefined;
-      if (this.activeSaves > 0) this.shadowRoot!.querySelector<HTMLElement>('.saving-indicator__text')!.hidden = false;
+      if (this.activeSaves > 0) { this.shadowRoot!.querySelector<HTMLElement>('.saving-indicator__text')!.hidden = false; }
     }, 500);
     this.background?.playOnce('save_pre', () => this.playLoop());
   }
@@ -94,7 +94,7 @@ export class DstSavingIndicatorElement extends AssetElement {
   private playLoop(): void {
     this.setStage('loop');
     this.background?.playOnce('save_loop', () => {
-      if (this.activeSaves > 0) this.playLoop();
+      if (this.activeSaves > 0) { this.playLoop(); }
       else {
         this.hideText();
         this.setStage('post');
@@ -104,9 +104,9 @@ export class DstSavingIndicatorElement extends AssetElement {
   }
 
   private hideText(): void {
-    if (this.textTimer !== undefined) clearTimeout(this.textTimer);
+    if (this.textTimer !== undefined) { clearTimeout(this.textTimer); }
     this.textTimer = undefined;
     const text = this.shadowRoot!.querySelector<HTMLElement>('.saving-indicator__text');
-    if (text) text.hidden = true;
+    if (text) { text.hidden = true; }
   }
 }

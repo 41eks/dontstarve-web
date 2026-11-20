@@ -17,12 +17,12 @@ for (let y = 0; y < paper.height; y++) {
   const row = y * (paper.width * 4 + 1);
   for (let x = 0; x < paper.width; x++) {
     const from = (y * paper.width + x) * 4, to = row + 1 + x * 4;
-    for (let c = 0; c < 3; c++) raw[to + c] = Math.round(colour[c] * paper.pixels[from + c] / 255);
+    for (let c = 0; c < 3; c++) { raw[to + c] = Math.round(colour[c] * paper.pixels[from + c] / 255); }
     raw[to + 3] = 255;
   }
 }
-const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
-const crc = buffer => { let c = 0xffffffff; for (const byte of buffer) c = crcTable[(c ^ byte) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) { c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; } return c >>> 0; });
+const crc = buffer => { let c = 0xffffffff; for (const byte of buffer) { c = crcTable[(c ^ byte) & 255] ^ (c >>> 8); } return (c ^ 0xffffffff) >>> 0; };
 const chunk = (type, data) => {
   const head = Buffer.alloc(8); head.writeUInt32BE(data.length); head.write(type, 4, 'latin1');
   const tail = Buffer.alloc(4); tail.writeUInt32BE(crc(Buffer.concat([head.subarray(4), data])));

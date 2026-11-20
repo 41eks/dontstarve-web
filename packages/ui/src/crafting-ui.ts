@@ -65,7 +65,7 @@ export class DstCraftingUiElement extends AssetElement {
     }
     this.materialSummary = next;
     this.updateRecipeLocks();
-    if (this.isConnected) this.refreshMaterials?.();
+    if (this.isConnected) { this.refreshMaterials?.(); }
   }
 
   setBufferedRecipes(recipeIds: Iterable<string>): void {
@@ -78,14 +78,14 @@ export class DstCraftingUiElement extends AssetElement {
     this.updateRecipeLocks();
     this.recipes.forEach((recipe, index) => {
       const buffered = next.has(recipe.id);
-      if (buffered !== this.recipeBufferedStates[index].get()) this.recipeBufferedStates[index].set(buffered);
+      if (buffered !== this.recipeBufferedStates[index].get()) { this.recipeBufferedStates[index].set(buffered); }
     });
   }
 
   disconnectedCallback(): void {
     this.disposeEffects();
-    if (!this.craftingRecipeId) return;
-    if (this.craftingTimer !== undefined) clearTimeout(this.craftingTimer);
+    if (!this.craftingRecipeId) { return; }
+    if (this.craftingTimer !== undefined) { clearTimeout(this.craftingTimer); }
     const recipeId = this.craftingRecipeId;
     const skinId = this.craftingSkinId;
     this.craftingRecipeId = undefined;
@@ -194,7 +194,7 @@ export class DstCraftingUiElement extends AssetElement {
   /** The recipe's position in the recipes this panel was built with. */
   private recipeIndex(recipe: Recipe): number {
     const index = this.recipeIndices.get(recipe);
-    if (index === undefined) throw new Error(`Recipe ${recipe.id} is not in the crafting panel`);
+    if (index === undefined) { throw new Error(`Recipe ${recipe.id} is not in the crafting panel`); }
     return index;
   }
 
@@ -214,7 +214,7 @@ export class DstCraftingUiElement extends AssetElement {
   private updateRecipeLocks(): void {
     const nextIsLockedArray = this.recipes.map((recipe) => this.calculateRecipeLocked(recipe));
     nextIsLockedArray.forEach((locked, index) => {
-      if (locked !== this.isLockedArray[index]) this.recipeLockStates[index].set(locked);
+      if (locked !== this.isLockedArray[index]) { this.recipeLockStates[index].set(locked); }
     });
     this.isLockedArray = nextIsLockedArray;
   }
@@ -247,7 +247,7 @@ export class DstCraftingUiElement extends AssetElement {
       this.craftingSkinId = undefined;
       this.emitCraftRequest(recipeId, skinId);
       this.emitCraftingState(recipeId, false, skinId);
-      if (this.isConnected) this.refreshBuildButton?.();
+      if (this.isConnected) { this.refreshBuildButton?.(); }
     }, CRAFT_DURATION_MS);
   }
 

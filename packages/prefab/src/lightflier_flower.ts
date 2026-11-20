@@ -97,7 +97,7 @@ const tweenTime = (inst: LightFlierFlowerInstance) => LIGHT_MIN_TIME + Math.min(
 
 /** OnLightDirty / OnUpdateLight, stepped every FRAMES by _lighttask until the tween ends. */
 function OnUpdateLight(inst: LightFlierFlowerInstance): void {
-  if (inst.isRemoved) return;
+  if (inst.isRemoved) { return; }
   const remaining = inst._lightstart + inst._lighttime - inst.world.scheduler.now, done = remaining <= 1e-9;
   inst.light.set(bulbPlantLight(inst._islighton, done ? 1 : 1 - remaining / inst._lighttime));
   if (!done && !inst._lighttask) {
@@ -129,13 +129,13 @@ function SpawnLightflierFromStalk(inst: LightFlierFlowerInstance): void {
 }
 
 function ForceOff(inst: LightFlierFlowerInstance): void {
-  if (inst.light_state === 'ON') SetLightState(inst, 'RECHARGING');
+  if (inst.light_state === 'ON') { SetLightState(inst, 'RECHARGING'); }
   inst._islighton = false;
   EndLight(inst);
 }
 
 function ForceOn(inst: LightFlierFlowerInstance): void {
-  if (!inst.components.pickable.canBePicked) return;
+  if (!inst.components.pickable.canBePicked) { return; }
   SetLightState(inst, 'ON');
   inst._islighton = true;
   EndLight(inst);
@@ -150,7 +150,7 @@ function TurnOff(inst: LightFlierFlowerInstance): void {
 }
 
 function TurnOn(inst: LightFlierFlowerInstance): void {
-  if (!inst.components.pickable.canBePicked || inst.light_state !== 'CHARGED') return;
+  if (!inst.components.pickable.canBePicked || inst.light_state !== 'CHARGED') { return; }
   SetLightState(inst, 'ON');
   inst._islighton = true;
   StartLight(inst, tweenTime(inst));
@@ -161,7 +161,7 @@ function TurnOn(inst: LightFlierFlowerInstance): void {
 
 function Recharge(inst: LightFlierFlowerInstance): void {
   SetLightState(inst, 'CHARGED');
-  if (IsInLight(inst)) TurnOn(inst);
+  if (IsInLight(inst)) { TurnOn(inst); }
 }
 
 function CancelCallForLightflierTask(inst: LightFlierFlowerInstance): void {
@@ -176,7 +176,7 @@ function CallForLightflier(inst: LightFlierFlowerInstance): void {
     return;
   }
   const returning = inst._lightflier_returning_home;
-  if (returning?.isValid() && !returning.components.formationfollower.active) return;
+  if (returning?.isValid() && !returning.components.formationfollower.active) { return; }
   inst._lightflier_returning_home = [...childspawner.childrenoutside].find(fly => !fly.components.formationfollower.active);
 }
 
@@ -187,10 +187,10 @@ function StartCallForLightflierTask(inst: LightFlierFlowerInstance): void {
 }
 
 function ontimerdone(inst: LightFlierFlowerInstance, { name }: EntityEventData['timerdone']): void {
-  if (name === 'recharge') Recharge(inst);
+  if (name === 'recharge') { Recharge(inst); }
   else if (name === 'turnoff') {
     TurnOff(inst);
-    if (inst.components.pickable.canBePicked) inst.components.pickable.Pick();
+    if (inst.components.pickable.canBePicked) { inst.components.pickable.Pick(); }
   }
 }
 
@@ -205,7 +205,7 @@ function onpickedfn(inst: LightFlierFlowerInstance, picker: unknown): void {
   ForceOff(inst);
   inst.components.timer.StopTimer('turnoff');
   inst.components.timer.StopTimer('recharge');
-  if (picker) inst.SoundEmitter!.PlaySound('dontstarve/wilson/pickup_lightbulb');
+  if (picker) { inst.SoundEmitter!.PlaySound('dontstarve/wilson/pickup_lightbulb'); }
   inst.sprite.playOnce('picking');
   inst.sprite.pushAnimation(inst.components.pickable.IsBarren() ? 'idle_dead' : 'picked', false);
   // Do not regrow until the population is lower than max.
@@ -222,9 +222,9 @@ function makeemptyfn(inst: LightFlierFlowerInstance): void {
 
 function OnIgnite(inst: LightFlierFlowerInstance): void {
   TurnOff(inst);
-  if (inst.components.pickable.canBePicked) inst.components.pickable.Pick();
-  else if (inst.sprite.currentAnimation === 'picking') inst.sprite.pushAnimation('picked', false);
-  else inst.sprite.playOnce('picked');
+  if (inst.components.pickable.canBePicked) { inst.components.pickable.Pick(); }
+  else if (inst.sprite.currentAnimation === 'picking') { inst.sprite.pushAnimation('picked', false); }
+  else { inst.sprite.playOnce('picked'); }
 }
 
 /** LightWatcher:IsInLight with SetLightThresh(.075) / SetDarkThresh(.05). */
@@ -237,18 +237,18 @@ function IsInLight(inst: LightFlierFlowerInstance): boolean {
 /** The LightWatcher's enterlight, sampled every BULB_PLANT_LIGHT_SAMPLE_INTERVAL while awake. */
 function WatchLight(inst: LightFlierFlowerInstance): void {
   const wasInLight = inst._inlight;
-  if (IsInLight(inst) && !wasInLight) TurnOn(inst);
+  if (IsInLight(inst) && !wasInLight) { TurnOn(inst); }
 }
 
 /** OnEntityWake: the LightWatcher starts "in light", so TurnOnInLight waits a second; OnEntitySleep stops sampling. */
 function OnEntityWake(inst: LightFlierFlowerInstance, awake: boolean): void {
   inst._lightwatchtask?.Cancel(); inst._lightwatchtask = undefined;
-  if (!awake) return;
+  if (!awake) { return; }
   inst._inlight = true;
   IsInLight(inst);
   inst._lightwatchtask = inst.DoPeriodicTask(BULB_PLANT_LIGHT_SAMPLE_INTERVAL, WatchLight,
     BULB_PLANT_LIGHT_SAMPLE_INTERVAL * (.5 + random(inst.world) * .5));
-  inst.DoTaskInTime(1, flower => { if (IsInLight(flower)) TurnOn(flower); });
+  inst.DoTaskInTime(1, flower => { if (IsInLight(flower)) { TurnOn(flower); } });
   OnUpdateLight(inst);
 }
 
@@ -266,19 +266,19 @@ function OnSave(flower: LightFlierFlowerInstance, data: EntityPersistData): void
 /** onload_single and OnLoadPostPass: the settled clip of the saved state, then the children outside as they load. */
 function OnLoad(flower: LightFlierFlowerInstance, data: EntityPersistData): void {
   const saved = data.lightflierFlower;
-  if (!saved) return;
+  if (!saved) { return; }
   const { pickable, childspawner, timer } = flower.components;
   flower.plantname = saved.variant;
   SetPlantArt(flower);
   pickable.OnLoad(saved);
   flower.light_state = saved.lightState;
   childspawner.OnLoad(saved.childspawner);
-  if (saved.rechargeSeconds !== undefined) timer.StartTimer('recharge', saved.rechargeSeconds);
-  if (saved.turnoffSeconds !== undefined) timer.StartTimer('turnoff', saved.turnoffSeconds);
+  if (saved.rechargeSeconds !== undefined) { timer.StartTimer('recharge', saved.rechargeSeconds); }
+  if (saved.turnoffSeconds !== undefined) { timer.StartTimer('turnoff', saved.turnoffSeconds); }
   flower._islighton = saved.lightState === 'ON' && pickable.canBePicked;
-  if (!pickable.canBePicked) flower.sprite.holdLastFrame('picked');
-  else if (flower._islighton) flower.sprite.start('idle');
-  else flower.sprite.holdLastFrame(STATE_ANIMS[flower.light_state][1]);
+  if (!pickable.canBePicked) { flower.sprite.holdLastFrame('picked'); }
+  else if (flower._islighton) { flower.sprite.start('idle'); }
+  else { flower.sprite.holdLastFrame(STATE_ANIMS[flower.light_state][1]); }
   EndLight(flower);
   const outside = saved.childspawner.childrenoutside;
   flower._pendingchildren = [...outside];
@@ -289,7 +289,7 @@ function OnLoad(flower: LightFlierFlowerInstance, data: EntityPersistData): void
     });
     flower.onRemove(stop);
   }
-  if (!pickable.canBePicked && outside.length >= TARGET_NUM_CHILDREN_OUTSIDE) StartCallForLightflierTask(flower);
+  if (!pickable.canBePicked && outside.length >= TARGET_NUM_CHILDREN_OUTSIDE) { StartCallForLightflierTask(flower); }
 }
 
 function single(world: LightFlierFlowerWorld, art: SpriteResources['archives']): LightFlierFlowerInstance {
@@ -310,7 +310,7 @@ function single(world: LightFlierFlowerWorld, art: SpriteResources['archives']):
   const childspawner = addComponent(inst, 'childspawner', ChildSpawner<LightFlierFlowerInstance, LightFlier>, world.scheduler, undefined, world.random);
   childspawner.onchildkilled = () => pickable.resume();
   childspawner.ongohome = () => {
-    if (!pickable.canBePicked) pickable.regen();
+    if (!pickable.canBePicked) { pickable.regen(); }
     ForceOn(inst);
   };
   // MakeMediumBurnable and MakeSmallPropagator.

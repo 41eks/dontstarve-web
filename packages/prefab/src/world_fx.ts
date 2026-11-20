@@ -115,14 +115,14 @@ function define(prefab: string, definition: FxDefinition, world: WorldFxWorld): 
       inst.BindScheduler(world.scheduler);
       inst.persists = false;
       inst.addTag('FX');
-      for (const tag of tags ?? []) inst.addTag(tag);
-      if (scale !== undefined) inst.setScale(scale);
-      if (finalOffset) inst.sprite.setDepthOffset(true);
-      for (const layer of hideLayers ?? []) inst.sprite.hideLayer(layer);
-      if (!levels) inst.sprite.playOnce(anim, () => {
+      for (const tag of tags ?? []) { inst.addTag(tag); }
+      if (scale !== undefined) { inst.setScale(scale); }
+      if (finalOffset) { inst.sprite.setDepthOffset(true); }
+      for (const layer of hideLayers ?? []) { inst.sprite.hideLayer(layer); }
+      if (!levels) { inst.sprite.playOnce(anim, () => {
         if (!lingerFrames) { inst.remove(); return; }
         inst.DoTaskInTime(lingerFrames * FRAMES, inst => inst.remove());
-      });
+      }); }
       return inst;
     },
     assets: { animationArchive: archive, buildArchives: [archive], bank, multColour: [tint[0], tint[1], tint[2], opacity] },
@@ -141,7 +141,7 @@ export function worldFxPrefabs(world: WorldFxWorld): Readonly<Record<WorldFxPref
 /** structure_collapse_fx.lua SetMaterial, which the source's playfx sounds from; rock has its own event. */
 function SetMaterial(inst: PrefabInstance, material?: CollapseMaterial): void {
   PlaySound('dontstarve/common/destroy_smoke', inst.position);
-  if (material) PlaySound(material === 'rock' ? 'dontstarve/wilson/rock_break' : `dontstarve/common/destroy_${material}`, inst.position);
+  if (material) { PlaySound(material === 'rock' ? 'dontstarve/wilson/rock_break' : `dontstarve/common/destroy_${material}`, inst.position); }
 }
 
 /** SpawnPrefab for the prefabs that spawn these effects; a collapse is spawned and given its material, as the sources do. */

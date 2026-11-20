@@ -36,7 +36,7 @@ export function hasTradableGoldValue(itemId: string): boolean {
 
 /** inst:AddComponent("tradable") with the item's goldvalue. */
 export function configureTradableEntity(entity: ItemEntity): void {
-  if (entity.components.tradable) return;
+  if (entity.components.tradable) { return; }
   addComponent(entity, 'tradable', Tradable).goldvalue = TRADABLE_GOLD_VALUES[entity.prefab] ?? 0;
   entity.addTag('tradable');
 }

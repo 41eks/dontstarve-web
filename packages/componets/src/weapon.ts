@@ -27,7 +27,7 @@ export class Weapon<Inst extends object = object> {
   }
 
   SetDamage(damage: number): void {
-    if (!Number.isFinite(damage) || damage < 0) throw new RangeError('Invalid weapon damage');
+    if (!Number.isFinite(damage) || damage < 0) { throw new RangeError('Invalid weapon damage'); }
     this.damage = damage;
   }
   SetRange(attack: number, hit = attack): void { this.attackrange = attack; this.hitrange = hit; }
@@ -39,7 +39,7 @@ export class Weapon<Inst extends object = object> {
   CanRangedAttack(): boolean { return this.projectile !== undefined; }
   /** LaunchProjectile: spawn and throw the projectile, then run onprojectilelaunched. */
   LaunchProjectile(attacker: CombatActor, target: CombatInst): void {
-    if (this.projectile === undefined) return;
+    if (this.projectile === undefined) { return; }
     const projectile = this.launchProjectile?.(attacker, target);
     this.onprojectilelaunched?.(this.inst, attacker, target, projectile);
   }

@@ -10,7 +10,7 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
   test.setTimeout(150_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', message => { if (message.type() === 'error') { errors.push(message.text()); } });
   const prepare = () => page.evaluate(async urls => {
     const main = await import(urls.main), { scene, renderer } = await import(urls.universal);
     const { camera } = await import(urls.camera), { player, playerBody } = await import(urls.player);
@@ -40,16 +40,16 @@ test('spawns and gives neutral thermal stones, reskins and transfers one, then s
       // Animation buffers can include unused vertices, and a frame's centre can be transparent.
       const box = mesh.geometry.boundingBox;
       try {
-        for (const y of [.5, .3, .7, .1, .9]) for (const x of [.5, .3, .7, .1, .9]) {
+        for (const y of [.5, .3, .7, .1, .9]) { for (const x of [.5, .3, .7, .1, .9]) {
           const sample = model.position.clone().set(box.min.x + (box.max.x - box.min.x) * x,
             box.min.y + (box.max.y - box.min.y) * y, box.min.z);
           mesh.localToWorld(sample).project(camera);
           const point = { x: rect.left + (sample.x + 1) * rect.width / 2, y: rect.top + (1 - sample.y) * rect.height / 2 };
           pointer.trackPointer({ clientX: point.x, clientY: point.y } as PointerEvent);
           let picked = pointer.pickMouseTarget()?.object;
-          while (picked && picked !== model) picked = picked.parent;
-          if (picked === model) return point;
-        }
+          while (picked && picked !== model) { picked = picked.parent; }
+          if (picked === model) { return point; }
+        } }
         throw new Error('No opaque thermal stone pixel to click');
       } finally { pointer.dispose(); }
     }, { id, pointerUrl: `/@fs${fileURLToPath(new URL('../../stategraphs/src/pointerRaycaster.ts', import.meta.url))}` });

@@ -57,22 +57,22 @@ export class CampfireFire implements BurnFX, FireFXInst {
       composite: { symbol: data.follow, offset: [data.x, data.y] } });
     const firefx = addComponent(this, 'firefx', FireFX);
     firefx.levels = FIRE_LEVELS;
-    if (updates) this.cleanups.push(updates.register(firefx));
+    if (updates) { this.cleanups.push(updates.register(firefx)); }
     firefx.SetLevel(1);
     // OnEntitySleep / OnEntityWake follow the owner's tile with the fx entity.
     const status = watchSignal(instance.status, stop => this.cleanups.push(stop));
     createEffect(() => {
       const value = status.get();
-      if (value === 'asleep') firefx.OnEntitySleep();
-      else if (value === 'active') firefx.OnEntityWake();
+      if (value === 'asleep') { firefx.OnEntitySleep(); }
+      else if (value === 'active') { firefx.OnEntityWake(); }
     });
   }
 
   Remove(): void {
-    if (this.instance.status.peek() === 'removed') return;
+    if (this.instance.status.peek() === 'removed') { return; }
     this.onAnimOver = undefined;
     this.cleanups.splice(0).forEach(stop => stop());
-    for (const sound of this.sounds.values()) sound.stop();
+    for (const sound of this.sounds.values()) { sound.stop(); }
     this.sounds.clear();
     this.owner.sprite.detachFx(this.key);
     this.instance.remove();
@@ -81,14 +81,14 @@ export class CampfireFire implements BurnFX, FireFXInst {
   RemoveOnAnimOver(): void { this.onAnimOver = () => this.Remove(); }
 
   PlayAnimation(name: string, loop = false): void {
-    if (loop) this.instance.sprite.start(name);
-    else this.instance.sprite.playOnce(name, () => this.onAnimOver?.());
+    if (loop) { this.instance.sprite.start(name); }
+    else { this.instance.sprite.playOnce(name, () => this.onAnimOver?.()); }
   }
   PushAnimation(name: string, loop = false): void { this.instance.sprite.pushAnimation(name, loop); }
 
   PlaySound(path: SoundEventPath, name?: string): void {
     const sound = PlaySound(path, this.owner.position);
-    if (name === undefined) return;
+    if (name === undefined) { return; }
     this.sounds.get(name)?.stop();
     this.sounds.set(name, sound);
   }

@@ -12,7 +12,7 @@ function createStore() {
 it('publishes equipment identity after commits; a transfer keeps the entity and a removal clears the slot', () => {
   const store = createStore();
   const observed: unknown[] = [];
-  const stop = store.handEquipment.subscribe(equipment => { if (equipment === null) observed.push(store.getEntity(hand)); });
+  const stop = store.handEquipment.subscribe(equipment => { if (equipment === null) { observed.push(store.getEntity(hand)); } });
   try {
     store.add('torch', 1, undefined, undefined, undefined, undefined, 18.5);
     const entity = store.getEntity(bag)!;

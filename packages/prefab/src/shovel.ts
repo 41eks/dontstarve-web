@@ -37,5 +37,5 @@ export const shovelVisual: EquipmentVisualFactory = item => {
   // omits it entirely (the invisible skins). Do not recover the base tool.
   const skin = skinArchive(tool, GROUND_ITEM_DEFINITIONS[tool].skinArchives, item.skinId);
   const visual = handEquipmentVisual(item, [skin ?? swap.archive], swap.symbol);
-  return { ...visual, onequip(owner) { visual.onequip(owner); if (item.prefab === 'goldenshovel') PlaySound('dontstarve/wilson/equip_item_gold'); } };
+  return { ...visual, onequip(owner) { visual.onequip(owner); if (item.prefab === 'goldenshovel') { PlaySound('dontstarve/wilson/equip_item_gold'); } } };
 };

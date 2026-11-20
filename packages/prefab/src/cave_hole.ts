@@ -54,8 +54,8 @@ function makeHolePhysics(inst: CaveHoleInstance, radius: number, height = 6): vo
  * under DOWNLEFT and the reverse; with the other six facings it keeps the hole a wide oval, far wall on top, at every heading.
  */
 function pitFrame(facing: number): number {
-  if (facing === FACING.UPLEFT) return FACING.DOWNLEFT;
-  if (facing === FACING.DOWNLEFT) return FACING.UPLEFT;
+  if (facing === FACING.UPLEFT) { return FACING.DOWNLEFT; }
+  if (facing === FACING.DOWNLEFT) { return FACING.UPLEFT; }
   return facing;
 }
 
@@ -77,7 +77,7 @@ export class CaveHoleInstance extends PrefabInstance {
     super(CAVE_HOLE_ID, new SpriteState({ name: 'idle' }));
     // PlayerProx reads the position once.
     this.setPosition(position.x, 0, position.z);
-    for (const tag of ['groundhole', 'blocker', 'blinkfocus']) this.addTag(tag);
+    for (const tag of ['groundhole', 'blocker', 'blinkfocus']) { this.addTag(tag); }
     this._groundhole_innerradius = INNER_RADIUS * WORLD_SCALE;
     this._groundhole_outerradius = OUTER_RADIUS * WORLD_SCALE;
     this._groundhole_rangeoverride = 0;
@@ -93,7 +93,7 @@ export class CaveHoleInstance extends PrefabInstance {
     addComponent(this, 'objectspawner', ObjectSpawner);
 
     this.OnSave = (_inst, data) => { data.allowspawn = this.allowspawn; };
-    this.OnLoad = (_inst, data) => { if (data.allowspawn !== undefined) this.allowspawn = data.allowspawn; };
+    this.OnLoad = (_inst, data) => { if (data.allowspawn !== undefined) { this.allowspawn = data.allowspawn; } };
   }
 }
 

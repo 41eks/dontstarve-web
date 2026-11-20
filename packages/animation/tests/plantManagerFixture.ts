@@ -9,7 +9,7 @@ import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import type { Scene } from 'three';
 
 const plantFixtures = new Set<() => void>();
-afterEach(() => { for (const dispose of plantFixtures) dispose(); plantFixtures.clear(); });
+afterEach(() => { for (const dispose of plantFixtures) { dispose(); } plantFixtures.clear(); });
 
 /** Own the injected display/fire resources in tests; return the actual generic manager without adapting its API. */
 export function plantManager<Id extends string, Instance extends PickablePlantInstance>(
@@ -23,6 +23,6 @@ export function plantManager<Id extends string, Instance extends PickablePlantIn
   const scheduler = season?.scheduler ?? new GameTimeScheduler();
   const world = { ...options, scheduler, fire, getWatchWorldContent };
   const manager = prefabManager(displays, '/dst/data/anim', world, define);
-  plantFixtures.add(() => { manager.dispose(); displays.dispose(); fire.dispose(); stopSeason?.(); if (!season) scheduler.dispose(); });
+  plantFixtures.add(() => { manager.dispose(); displays.dispose(); fire.dispose(); stopSeason?.(); if (!season) { scheduler.dispose(); } });
   return manager;
 }

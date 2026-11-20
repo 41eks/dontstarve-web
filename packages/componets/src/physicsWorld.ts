@@ -47,8 +47,8 @@ export class PhysicsWorld extends CANNON.World {
 
   /** `dontRemoveOnSleep` keeps a static body simulated outside the ticking area (Physics:SetDontRemoveOnSleep). */
   override addBody(body: CANNON.Body, options: { dontRemoveOnSleep?: boolean; transform?: BodyTransform } = {}): void {
-    if (this.disposed) throw new Error('Physics world is disposed');
-    if (this.registrations.has(body)) return;
+    if (this.disposed) { throw new Error('Physics world is disposed'); }
+    if (this.registrations.has(body)) { return; }
     const registration: BodyRegistration = { dispose() {} };
     this.registrations.set(body, registration);
     // Infinite ground and moving bodies keep their existing simulation lifecycle.
@@ -64,7 +64,7 @@ export class PhysicsWorld extends CANNON.World {
     const area = options.transform
       ? options.transform.getTileActivity(this.tickingarea, stop => cleanups.push(stop))
       : this.tickingarea?.(tracker.tile);
-    if (area && !options.transform) cleanups.push(() => area.dispose());
+    if (area && !options.transform) { cleanups.push(() => area.dispose()); }
     if (!area) { this.setActive(body, true); return; }
     const active = watchSignal(area, stop => cleanups.push(stop));
     createEffect(() => this.setActive(body, active.get()));
@@ -72,7 +72,7 @@ export class PhysicsWorld extends CANNON.World {
 
   override removeBody(body: CANNON.Body): void {
     const registration = this.registrations.get(body);
-    if (!registration) return;
+    if (!registration) { return; }
     this.registrations.delete(body);
     registration.dispose();
     this.setActive(body, false);
@@ -99,9 +99,9 @@ export class PhysicsWorld extends CANNON.World {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
-    for (const body of this.registrations.keys()) this.removeBody(body);
+    for (const body of this.registrations.keys()) { this.removeBody(body); }
   }
 }
 

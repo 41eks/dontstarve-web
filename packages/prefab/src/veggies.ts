@@ -71,7 +71,7 @@ const ITEMS: Record<string, Edibles> = { ...DRIED };
 for (const [name, veggie] of Object.entries(VEGGIES)) {
   ITEMS[name] = veggie.raw; ITEMS[`${name}_cooked`] = veggie.cooked;
 }
-for (const id of VEGGIE_SEED_IDS) ITEMS[id] = SEED_EDIBLES;
+for (const id of VEGGIE_SEED_IDS) { ITEMS[id] = SEED_EDIBLES; }
 
 export const VEGGIE_ITEM_IDS: readonly string[] = Object.keys(ITEMS);
 /** Edible values; fn_seeds, fn, fn_cooked and fn_dried all set sanity (default 0). */
@@ -82,7 +82,7 @@ export const VEGGIE_PERISH_TIMES = Object.fromEntries(Object.entries(ITEMS).map(
 /** veggies.lua's edible component belongs to the food inst, including food offered to livestock. */
 export function configureVeggieEntity(entity: ItemEntity): void {
   const values = ITEMS[entity.prefab];
-  if (!values || entity.components.edible) return;
+  if (!values || entity.components.edible) { return; }
   const edible = addComponent(entity, 'edible', Edible, () => entity.components.perishable.stage.peek());
   edible.healthvalue = values.health; edible.hungervalue = values.hunger; edible.sanityvalue = values.sanity;
   entity.addTag(VEGGIE_SEED_IDS.includes(entity.prefab) ? 'edible_SEEDS' : 'edible_VEGGIE');

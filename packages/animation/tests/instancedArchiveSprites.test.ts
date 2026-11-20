@@ -14,7 +14,7 @@ vi.mock('../src/rgbaSpriteAtlas', async () => {
       animationName: 'idle', frameIndex, minX: 0, minY: 0, maxX: 2, maxY: 2, width: 2, height: 2,
       u0: frameIndex / 2, v0: 0, u1: (frameIndex + 1) / 2, v1: 1,
     }));
-    if (animation.name === 'resized') Object.assign(frames[1], { minX: -2, maxX: 2, width: 4 });
+    if (animation.name === 'resized') { Object.assign(frames[1], { minX: -2, maxX: 2, width: 4 }); }
     const page = { texture, width: 4, height: 4, frameRate: 30, resolutionScale: 1, frames };
     const pages = animation.name === 'paged'
       ? frames.map(frame => ({ ...page, texture: texture.clone(), frames: [frame] })) : [page];

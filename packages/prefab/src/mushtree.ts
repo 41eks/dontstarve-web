@@ -138,13 +138,13 @@ export class MushtreeInstance extends PrefabInstance {
     this.setPosition(position.x, 0, position.z);
     const { data } = this;
     addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
-    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === 'decay') this.remove(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === 'decay') { this.remove(); } });
     const colour = .5 + Math.random() * .5;
     this.sprite.setColour([colour, colour, colour]);
     this.sprite.setFrameAt(Math.random());
     this.sprite.setBuildArchive(data.buildArchives[0]);
     // MakeObstaclePhysics adds `blocker`; the body itself is the definition's physics.
-    for (const tag of ['blocker', 'cavedweller', 'mushtree', 'plant', 'shelter', 'tree', ...data.webbable ? ['webbable'] : []]) this.addTag(tag);
+    for (const tag of ['blocker', 'cavedweller', 'mushtree', 'plant', 'shelter', 'tree', ...data.webbable ? ['webbable'] : []]) { this.addTag(tag); }
     this.light.set({ colour: data.lightColour, radius: data.lightRadius * (TILE_SIZE / 4), intensity: .8, falloff: .5 });
     addComponent(this, 'workable', Workable);
     addComponent(this, 'lootdropper', LootDropper, (prefab, point) => {
@@ -153,10 +153,10 @@ export class MushtreeInstance extends PrefabInstance {
     });
     this.components.lootdropper.SetLoot(data.loot);
     this.watchSeason(); this.bindBurn();
-    if (data.growable) this.createGrowable();
+    if (data.growable) { this.createGrowable(); }
     this.setupWork();
     // WatchWorldState("is"..season) and the constructor's in-season bloom; a `_stump` makes its stump in onSpawned, after its body.
-    if (data.season && this.season?.peek().season === data.season) this.setTreeState('bloom', true);
+    if (data.season && this.season?.peek().season === data.season) { this.setTreeState('bloom', true); }
 
     this.OnSave = (_inst, saved) => onsave(this, saved);
     this.OnLoad = (_inst, saved) => onload(this, saved);
@@ -169,7 +169,7 @@ export class MushtreeInstance extends PrefabInstance {
 
   private watchSeason(): void {
     const { data, world } = this;
-    if (!data.season || !world.getWatchWorldContent) return;
+    if (!data.season || !world.getWatchWorldContent) { return; }
     const cleanups: (() => void)[] = [];
     this.stopSeason = () => cleanups.splice(0).reverse().forEach(stop => stop());
     // The transform's shared activity: a stump stops following the season, not its own ticking area.
@@ -179,10 +179,10 @@ export class MushtreeInstance extends PrefabInstance {
     let previous = season.peek().season;
     cleanups.push(createEffect(() => {
       const current = season.get().season;
-      if (current === previous) return;
+      if (current === previous) { return; }
       const left = previous; previous = current;
-      if (current === data.season) this.onIsInSeason(true);
-      else if (left === data.season) this.onIsInSeason(false);
+      if (current === data.season) { this.onIsInSeason(true); }
+      else if (left === data.season) { this.onIsInSeason(false); }
     }));
   }
 
@@ -197,10 +197,10 @@ export class MushtreeInstance extends PrefabInstance {
 
   /** tree_burnt. */
   treeBurnt(): void {
-    if (this.isRemoved) return;
+    if (this.isRemoved) { return; }
     const position = this.position.clone();
     this.world.worldEvents.emit('spawnAsh', position);
-    if (Math.random() < .5) this.world.dropLoot([{ itemId: 'charcoal', count: 1 }], position);
+    if (Math.random() < .5) { this.world.dropLoot([{ itemId: 'charcoal', count: 1 }], position); }
     const bloom = this.treestate === 'bloom' && this.data.buildArchives.length > 1;
     this.world.spawnPrefab(`${this.prefab}${bloom ? '_bloom' : ''}_burntfx` as const, position);
     this.remove();
@@ -208,7 +208,7 @@ export class MushtreeInstance extends PrefabInstance {
 
   /** stump_burnt. */
   stumpBurnt(): void {
-    if (this.isRemoved) return;
+    if (this.isRemoved) { return; }
     this.world.worldEvents.emit('spawnAsh', this.position.clone());
     this.remove();
   }
@@ -225,15 +225,15 @@ export class MushtreeInstance extends PrefabInstance {
   /** A new tree's growable: a random stage, then growing. A saved one is loaded by SetPersistData. */
   startGrowth(): void {
     const growable = this.components.growable;
-    if (this.loadedGrowth || this.isRemoved || !growable) return;
+    if (this.loadedGrowth || this.isRemoved || !growable) { return; }
     growable.SetStage(Math.floor(Math.random() * 3) + 1);
-    if (!this.stump) growable.StartGrowing();
+    if (!this.stump) { growable.StartGrowing(); }
   }
 
   markGrowthLoaded(): void { this.loadedGrowth = true; }
 
   private doGrow(toStage: 1 | 2 | 3): void {
-    if (this.stump || this.isRemoved) return;
+    if (this.stump || this.isRemoved) { return; }
     this.sprite.playOnce(toStage === 1 ? 'shrink' : 'change', () => this.sprite.start('idle_loop'));
     PlaySound(toStage === 1 ? 'dontstarve/cave/mushtree_tall_shrink'
       : toStage === 2 ? 'dontstarve/cave/mushtree_tall_grow_1' : 'dontstarve/cave/mushtree_tall_grow_2', this.position);
@@ -241,7 +241,7 @@ export class MushtreeInstance extends PrefabInstance {
     this.growtask?.Cancel();
     this.growtask = this.DoTaskInTime(14 * FRAMES, () => {
       this.growtask = undefined;
-      if (this.stump) return;
+      if (this.stump) { return; }
       const growable = this.components.growable!;
       growable.SetStage(growable.GetNextStage());
     });
@@ -252,7 +252,7 @@ export class MushtreeInstance extends PrefabInstance {
     workable.SetWorkAction('CHOP'); workable.SetWorkLeft(this.data.work);
     workable.SetOnWorkCallback((_inst, _worker, workleft) => {
       PlaySound('dontstarve/wilson/use_axe_mushroom', this.position);
-      if (workleft > 0) this.sprite.playOnce('chop', () => this.sprite.start('idle_loop'));
+      if (workleft > 0) { this.sprite.playOnce('chop', () => this.sprite.start('idle_loop')); }
     });
     workable.SetOnFinishCallback(() => {
       // DropLoot, makestump, the fall sound, then fall and idle_stump.
@@ -267,13 +267,13 @@ export class MushtreeInstance extends PrefabInstance {
 
   private dropCatalogLoot(loot: readonly string[], position: ReadonlyVector3): void {
     const counts = new Map<string, number>();
-    for (const itemId of loot) if (Object.hasOwn(catalog.items, itemId)) counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
+    for (const itemId of loot) { if (Object.hasOwn(catalog.items, itemId)) { counts.set(itemId, (counts.get(itemId) ?? 0) + 1); } }
     this.world.dropLoot([...counts].map(([itemId, count]) => ({ itemId, count })), position);
   }
 
   /** makestump. */
   makeStump(decayRemaining?: number): void {
-    if (this.stump || this.isRemoved) return;
+    if (this.stump || this.isRemoved) { return; }
     this.cancelChange(); this.growtask?.Cancel(); this.growtask = undefined;
     this.stopSeason?.(); this.stopSeason = undefined;
     RemovePhysicsColliders(this);
@@ -285,7 +285,7 @@ export class MushtreeInstance extends PrefabInstance {
     workable.SetWorkLeft(1);
     this.sprite.start('idle_stump');
     this.minimap.SetIcon('mushroom_tree_stump.png'); this.light.set(null);
-    if (!timer.TimerExists('decay')) timer.StartTimer('decay', decayRemaining ?? DEAD_DECAY_TIME * (1 + (Math.random() - .5)));
+    if (!timer.TimerExists('decay')) { timer.StartTimer('decay', decayRemaining ?? DEAD_DECAY_TIME * (1 + (Math.random() - .5))); }
   }
 
   private cancelChange(): void {
@@ -293,7 +293,7 @@ export class MushtreeInstance extends PrefabInstance {
   }
 
   private swapBuild(state: MushtreeState): void {
-    if (!this.stump && !this.isRemoved) this.sprite.setBuildArchive(this.data.buildArchives[state === 'bloom' ? 1 : 0]);
+    if (!this.stump && !this.isRemoved) { this.sprite.setBuildArchive(this.data.buildArchives[state === 'bloom' ? 1 : 0]); }
   }
 
   /** bloom_tree / normal_tree(inst, instant). */
@@ -307,7 +307,7 @@ export class MushtreeInstance extends PrefabInstance {
   private changeDone(): void {
     this.changetask = undefined;
     const pending = this.pendingChange;
-    if (!pending || this.stump || this.isRemoved) return;
+    if (!pending || this.stump || this.isRemoved) { return; }
     if (pending.phase === 'delay') {
       this.sprite.playOnce('change', () => this.sprite.start('idle_loop'));
       PlaySound(pending.state === 'bloom' ? 'dontstarve/cave/mushtree_tall_grow_3' : 'dontstarve/cave/mushtree_tall_shrink', this.position);
@@ -320,9 +320,9 @@ export class MushtreeInstance extends PrefabInstance {
   }
 
   private onIsInSeason(inSeason: boolean): void {
-    if (!this.data.season || this.stump || this.isRemoved) return;
+    if (!this.data.season || this.stump || this.isRemoved) { return; }
     const state = inSeason ? 'bloom' : 'normal';
-    if (this.treestate !== state) this.setTreeState(state, false); else this.cancelChange();
+    if (this.treestate !== state) { this.setTreeState(state, false); } else { this.cancelChange(); }
   }
 
   get inSeason(): boolean { return this.season?.peek().season === this.data.season; }
@@ -337,24 +337,24 @@ function onsave(inst: MushtreeInstance, data: EntityPersistData): void {
   const mushtree: MushtreeSaveState = { ...inst.stump ? { stump: true } : {},
     ...inst.components.burnable?.IsBurning() ? { burnt: true } : {},
     ...inst.growable && !inst.stump ? { treestate: inst.treestate } : {}, ...decay === undefined ? {} : { decay } };
-  if (Object.keys(mushtree).length) data.mushtree = mushtree;
+  if (Object.keys(mushtree).length) { data.mushtree = mushtree; }
 }
 
 /** onload. */
 function onload(inst: MushtreeInstance, data: MushtreeComponents): void {
-  if (data.growable) inst.markGrowthLoaded();
+  if (data.growable) { inst.markGrowthLoaded(); }
   const state = data.mushtree;
-  if (!state) return;
+  if (!state) { return; }
   if (state.burnt) {
-    if (state.stump) inst.stumpBurnt(); else inst.treeBurnt();
-  } else if (state.stump) inst.makeStump(state.decay);
+    if (state.stump) { inst.stumpBurnt(); } else { inst.treeBurnt(); }
+  } else if (state.stump) { inst.makeStump(state.decay); }
   else if (inst.seasonal) {
     if (state.treestate === 'normal') {
       inst.setTreeState('normal', true);
-      if (inst.inSeason) inst.setTreeState('bloom', false);
+      if (inst.inSeason) { inst.setTreeState('bloom', false); }
     } else if (state.treestate === 'bloom') {
       inst.setTreeState('bloom', true);
-      if (!inst.inSeason) inst.setTreeState('normal', false);
+      if (!inst.inSeason) { inst.setTreeState('normal', false); }
     }
   }
 }
@@ -371,7 +371,7 @@ class MushtreeBurntFxInstance extends PrefabInstance {
     this.sprite.setBuildArchive(data.buildArchives[bloom ? 1 : 0]);
     this.sprite.playOnce('chop_burnt');
     const clip = animationTiming(data.animationArchive, 'chop_burnt'), duration = clip.frames / clip.frameRate;
-    this.animstate = new AnimState(scheduler, new Map([['chop_burnt', duration]]), event => { if (event === 'animover') this.remove(); });
+    this.animstate = new AnimState(scheduler, new Map([['chop_burnt', duration]]), event => { if (event === 'animover') { this.remove(); } });
     this.onRemove(() => this.animstate.dispose());
     this.animstate.PlayAnimation('chop_burnt'); this.DoTaskInTime(duration + FRAMES, inst => inst.remove());
     PlaySound('dontstarve/forest/treeCrumble', this.position);
@@ -392,9 +392,9 @@ export function mushtreePrefabs(world: MushtreeWorld): Readonly<Record<MushtreeS
       physics: { make: MakeObstaclePhysics, radius: .25 },
       minimapIcon: data.icon,
       onSpawned: inst => {
-        if (inst.isRemoved) return;
+        if (inst.isRemoved) { return; }
         inst.startGrowth();
-        if (stump) inst.makeStump();
+        if (stump) { inst.makeStump(); }
         new ToolMouseTarget(inst, world.handEquipment);
       },
     });

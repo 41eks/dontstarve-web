@@ -41,7 +41,7 @@ const Event = <E extends string>(name: E, fn: (sg: SG) => void) =>
   EventHandler<LightningGoatStateInst, LightningGoatStateName, E, LightningGoatSpec>(name, sg => fn(sg));
 const Time = TimeEvent<LightningGoatStateInst, LightningGoatStateName, LightningGoatSpec>;
 const goToIdle = (sg: SG) => sg.goToState('idle');
-const hornIfCharged = (sg: SG) => { if (sg.context.charged()) sg.context.playSound('jacobshorn'); };
+const hornIfCharged = (sg: SG) => { if (sg.context.charged()) { sg.context.playSound('jacobshorn'); } };
 
 /** GetRandomWithVariance(baseval, randomval): evaluated once, as the source's timeline table is built at load. */
 const withVariance = (base: number, variance: number) => base + (Math.random() * 2 * variance - variance);
@@ -160,14 +160,14 @@ const states: State[] = [
     onenter: sg => {
       sg.context.locomotor.StopMoving();
       sg.context.playAnimation('sleep_pst');
-      if (sg.context.sleeper.IsAsleep()) sg.context.sleeper.WakeUp();
+      if (sg.context.sleeper.IsAsleep()) { sg.context.sleeper.WakeUp(); }
     },
     events: [Event('animover', goToIdle)],
   },
 ];
 
 function onwakeup(sg: SG): void {
-  if (!sg.hasStateTag('nowake')) sg.goToState('wake');
+  if (!sg.hasStateTag('nowake')) { sg.goToState('wake'); }
 }
 
 /** SGlightninggoat's StateGraph("lightninggoat", states, events, "init"): AddInitState enters idle. */
@@ -179,8 +179,8 @@ export class LightningGoatStateGraph {
     // CommonHandlers.OnLocomote(false, true): the goat only walks.
     this.sg.listenForEvent('locomote', () => {
       const moving = this.sg.hasStateTag('moving'), wants = inst.locomotor.WantsToMoveForward();
-      if (moving && !wants) this.sg.goToState('walk_stop');
-      else if (this.sg.hasStateTag('idle') && wants) this.sg.goToState('walk_start');
+      if (moving && !wants) { this.sg.goToState('walk_stop'); }
+      else if (this.sg.hasStateTag('idle') && wants) { this.sg.goToState('walk_start'); }
     });
     // CommonHandlers.OnSleep(): health and electrocute checks have nothing to stop here.
     this.sg.listenForEvent('gotosleep', () => this.sg.goToState(this.sg.hasStateTag('sleeping') ? 'sleeping' : 'sleep'));

@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 test('ocean renders moving water and phase colours while snow follows terrain coast masks', async ({ page }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', message => { if (message.type() === 'error') { errors.push(message.text()); } });
   await page.goto('/tests/dst-lighting.html');
   const result = await page.evaluate(async url => (await import(url)).checkOceanRendering(),
     `/@fs${fileURLToPath(new URL('./ocean-fixture.ts', import.meta.url))}`);
@@ -29,7 +29,7 @@ test('ocean renders moving water and phase colours while snow follows terrain co
 test('ocean GPU passes preserve source blur, RGBA phase blend, light encoding and renderer resources', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', message => { if (message.type() === 'error') { errors.push(message.text()); } });
   await page.goto('/tests/dst-lighting.html');
   const result = await page.evaluate(async url => (await import(url)).checkOceanPipeline(),
     `/@fs${fileURLToPath(new URL('./ocean-pipeline-fixture.ts', import.meta.url))}`);

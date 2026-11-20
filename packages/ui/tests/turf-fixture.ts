@@ -42,7 +42,7 @@ export async function checkTurfOcclusion() {
       const model = world.spawnFromSave(`turf:${id}`, { itemId: id, count: 1, name: id, icon: '' }, feet);
       await prefabDisplay(model)!.artLoaded();
       world.archives.instancedSprites.flush(renderer);
-      for (const pitch of [30, 60]) for (const heading of [0, 45, 90]) {
+      for (const pitch of [30, 60]) { for (const heading of [0, 45, 90]) {
         const p = THREE.MathUtils.degToRad(pitch), h = THREE.MathUtils.degToRad(heading);
         camera.position.copy(feet).add(new THREE.Vector3(
           Math.cos(p) * Math.cos(h) * 50, Math.sin(p) * 50, Math.cos(p) * Math.sin(h) * 50,
@@ -52,13 +52,13 @@ export async function checkTurfOcclusion() {
         ground.visible = overlay.visible = false;
         renderSceneWithPasses(renderer, scene, camera);
         renderer.readRenderTargetPixels(target, 0, 0, 256, 256, reference);
-        if (!reference.some((value, i) => i % 4 < 2 && value > 10)) failures.push(`${id}:missing art`);
+        if (!reference.some((value, i) => i % 4 < 2 && value > 10)) { failures.push(`${id}:missing art`); }
         ground.visible = overlay.visible = true;
         renderSceneWithPasses(renderer, scene, camera);
         renderer.readRenderTargetPixels(target, 0, 0, 256, 256, actual);
         comparisons++;
-        if (actual.some((value, i) => value !== reference[i])) failures.push(`${id}:${pitch}:${heading}`);
-      }
+        if (actual.some((value, i) => value !== reference[i])) { failures.push(`${id}:${pitch}:${heading}`); }
+      } }
       itemAt(model).remove();
     }
   } finally {

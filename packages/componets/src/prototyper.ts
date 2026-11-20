@@ -39,9 +39,9 @@ export class Prototyper<Inst extends PrototyperInst = PrototyperInst> {
   get on(): boolean { return this.active; }
 
   TurnOn(doer: PrototyperDoer): void {
-    if (this.disposed || this.doers.has(doer) || doer.isRemoved) return;
+    if (this.disposed || this.doers.has(doer) || doer.isRemoved) { return; }
     const removal = watchSignal(doer.removal, stop => this.doers.set(doer, stop));
-    createEffect(() => { if (removal.get()) this.TurnOff(doer); });
+    createEffect(() => { if (removal.get()) { this.TurnOff(doer); } });
     this.onturnonfordoer?.(this.inst, doer);
     if (!this.active) {
       this.onturnon?.(this.inst);
@@ -50,7 +50,7 @@ export class Prototyper<Inst extends PrototyperInst = PrototyperInst> {
   }
   TurnOff(doer: PrototyperDoer): void {
     const stop = this.doers.get(doer);
-    if (!stop) return;
+    if (!stop) { return; }
     this.doers.delete(doer);
     stop();
     this.onturnofffordoer?.(this.inst, doer);
@@ -66,7 +66,7 @@ export class Prototyper<Inst extends PrototyperInst = PrototyperInst> {
   GetTechTrees(): TechTree { return { ...this.trees }; }
 
   OnRemoveFromEntity(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.inst.removeTag('prototyper');
     for (const [doer, stop] of this.doers) {
@@ -74,7 +74,7 @@ export class Prototyper<Inst extends PrototyperInst = PrototyperInst> {
       this.onturnofffordoer?.(this.inst, doer);
     }
     this.doers.clear();
-    if (this.active) this.onturnoff?.(this.inst);
+    if (this.active) { this.onturnoff?.(this.inst); }
     this.active = false;
   }
 }

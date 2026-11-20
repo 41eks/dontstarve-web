@@ -58,7 +58,7 @@ describe('ground item save records', () => {
       const matrices = vi.spyOn(model, 'updateWorldMatrix');
       const copies = vi.spyOn(model.position, 'copy');
       const query = placementEntities(scene);
-      for (let frame = 0; frame < 10; frame++) manager.update(.1, new THREE.Quaternion());
+      for (let frame = 0; frame < 10; frame++) { manager.update(.1, new THREE.Quaternion()); }
       expect(matrices).not.toHaveBeenCalled();
       expect(copies).not.toHaveBeenCalled();
       expect(query.someNear(origin, 1, blocker => blocker.prefab === 'log')).toBe(true);
@@ -330,7 +330,7 @@ describe('ground item save records', () => {
     // Refused drops make no inst.
     expect(manager.entities.values()).toEqual([]);
     const original = manager.entities.create({ itemId: 'log', count: 1 }), events: string[] = [];
-    for (const type of ['ondropped', 'onputininventory'] as const) original.ListenForEvent(type, () => events.push(type));
+    for (const type of ['ondropped', 'onputininventory'] as const) { original.ListenForEvent(type, () => events.push(type)); }
     expect(await manager.drop(definition, new THREE.Vector3(3, 7, 4), () => original)).toBe(true);
     expect(events).toEqual(['ondropped']);
     const model = original.transform.model;
@@ -412,7 +412,7 @@ describe('ground item save records', () => {
     const entity = manager.entities.get(lookupPrefabInstance(scene.children[0])!.entityId!)!;
     await prefabDisplay(scene.children[0])!.artLoaded();
     // The brain's priority scatter and Wander's initial wait come first, then the butterfly flies.
-    for (let frame = 0; frame < 40; frame++) manager.update(0.1, new THREE.Quaternion());
+    for (let frame = 0; frame < 40; frame++) { manager.update(0.1, new THREE.Quaternion()); }
     expect(entity.transform.position.length()).toBeGreaterThan(0);
     expect(scene.children[0].position.toArray()).toEqual(entity.transform.position.toArray());
     vi.spyOn(THREE.Raycaster.prototype, 'intersectObjects').mockReturnValue([

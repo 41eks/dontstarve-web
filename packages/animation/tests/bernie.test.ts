@@ -146,7 +146,7 @@ it('grows next to a crazy Willow, and the big Bernie deactivates straight back t
 
     // Once Willow recovers, berniebigbrain waits out MIN_ACTIVE_TIME, then deactivates without returning to bernie_active.
     s.setCrazy(false);
-    for (let step = 0; step < 50 && big.sg.stateName !== 'deactivate'; step++) s.scheduler.advance(.1);
+    for (let step = 0; step < 50 && big.sg.stateName !== 'deactivate'; step++) { s.scheduler.advance(.1); }
     expect(big.sg.stateName).toBe('deactivate');
     expect(big.GetTimeAlive()).toBeGreaterThanOrEqual(4);
     expect(big.GetTimeAlive()).toBeLessThan(4.2);

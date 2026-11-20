@@ -37,7 +37,7 @@ const tileOf = (point: Pick<THREE.Vector3, 'x' | 'z'>) => `${Math.floor(point.x 
  */
 export function createFarmMap({ turf, entities, blockers }: { turf: TurfMap; entities: FarmEntities; blockers: PlacementQuery }): FarmMap {
   function* farmEntities(): Generator<PrefabInstance> {
-    for (const id of FARM_ENTITY_IDS) yield* entities.instances(id);
+    for (const id of FARM_ENTITY_IDS) { yield* entities.instances(id); }
   }
   // The farm entities are found above; the query holds everything else.
   const external = (blocker: PlacementBlocker, ignored: readonly string[]) => !FARM_ENTITY_IDS.includes(blocker.prefab ?? '')
@@ -47,8 +47,8 @@ export function createFarmMap({ turf, entities, blockers }: { turf: TurfMap; ent
   /** map.lua IsDeployPointClear(pt, nil, min_spacing, nil, nil, nil, ignore_tags). */
   function isDeployPointClear(point: THREE.Vector3, minSpacing: number, ignored: readonly string[]): boolean {
     for (const inst of farmEntities()) {
-      if (ignored.some(tag => inst.hasTag(tag))) continue;
-      if (inst.position.distanceToSquared(point) < spacing(inst.deploySmartRadius, minSpacing) ** 2) return false;
+      if (ignored.some(tag => inst.hasTag(tag))) { continue; }
+      if (inst.position.distanceToSquared(point) < spacing(inst.deploySmartRadius, minSpacing) ** 2) { return false; }
     }
     return !blockers.someNear(point, minSpacing, blocker => external(blocker, ignored)
       && blocker.position.distanceToSquared(point) < spacing(blocker.smartRadius ?? (hasPlacementTag(blocker, 'farm_plant') ? .5 * FARM_SCALE : undefined), minSpacing) ** 2);
@@ -60,9 +60,9 @@ export function createFarmMap({ turf, entities, blockers }: { turf: TurfMap; ent
     },
     CollapseSoilAtPoint(point) {
       for (const soil of [...entities.instances('farm_soil')]) {
-        if (!soil.hasTag('soil')) continue;
+        if (!soil.hasTag('soil')) { continue; }
         const distanceSquared = soil.position.distanceToSquared(point);
-        if (distanceSquared > FARM_TILL_SPACING ** 2) continue;
+        if (distanceSquared > FARM_TILL_SPACING ** 2) { continue; }
         // GetDistanceSqToPoint < till_spacing * 0.5, a squared distance against Lua units.
         soil.PushEvent(distanceSquared < FARM_TILL_SPACING / FARM_SCALE * .5 * FARM_SCALE ** 2 ? 'collapsesoil' : 'breaksoil');
       }
@@ -72,21 +72,21 @@ export function createFarmMap({ turf, entities, blockers }: { turf: TurfMap; ent
     /** farmtiller.lua Till: CollapseSoilAtPoint, then SpawnPrefab("farm_soil"). */
     till(point) {
       const position = new THREE.Vector3(point.x, 0, point.z);
-      if (!map.CanTillSoilAtPoint(position)) return false;
+      if (!map.CanTillSoilAtPoint(position)) { return false; }
       map.CollapseSoilAtPoint(position);
       entities.spawn('farm_soil', position);
       return true;
     },
     canDeploy(point) {
       const center = tileCenter(point), tile = tileOf(center);
-      if (!turf.canPlow(point) || turf.getTileAtWorld(center) === WORLD_TILES.INVALID) return false;
-      for (const inst of farmEntities()) if (tileOf(inst.position) === tile && !PLOW_IGNORE_TAGS.some(tag => inst.hasTag(tag))) return false;
+      if (!turf.canPlow(point) || turf.getTileAtWorld(center) === WORLD_TILES.INVALID) { return false; }
+      for (const inst of farmEntities()) { if (tileOf(inst.position) === tile && !PLOW_IGNORE_TAGS.some(tag => inst.hasTag(tag))) { return false; } }
       return !blockers.someOnTile(center, blocker => external(blocker, PLOW_IGNORE_TAGS));
     },
     deploy(point, item) {
-      if (!map.canDeploy(point)) return false;
+      if (!map.canDeploy(point)) { return false; }
       if (item.prefab !== FARM_PLOW_ITEM_ID || item.isRemoved || item.components.inventoryitem.owner
-        || item.components.stackable.count !== 1) throw new Error('Deployment requires one detached farm_plow_item');
+        || item.components.stackable.count !== 1) { throw new Error('Deployment requires one detached farm_plow_item'); }
       // item_ondeploy: SpawnPrefab("farm_plow") at the tile centre, finiteuses:Use(1), then the item's save record.
       const plow = entities.spawnAs(FarmPlowInstance, FARM_PLOW_ID, tileCenter(point));
       item.components.finiteuses.setMaxUses(FARM_PLOW_USES);
@@ -102,7 +102,7 @@ export function createFarmMap({ turf, entities, blockers }: { turf: TurfMap; ent
   // Digging a farming tile back up collapses the soil on it.
   const stopDig = turf.onDig(point => {
     const tile = tileOf(point);
-    for (const soil of [...entities.instances('farm_soil')]) if (tileOf(soil.position) === tile) soil.PushEvent('collapsesoil');
+    for (const soil of [...entities.instances('farm_soil')]) { if (tileOf(soil.position) === tile) { soil.PushEvent('collapsesoil'); } }
   });
   return map;
 }

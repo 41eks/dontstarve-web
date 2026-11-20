@@ -34,8 +34,8 @@ it('uses the latest json skin while paused, reuses loaded art, and ignores a loa
   const first = new Promise<void>(resolve => { releaseFirst = resolve; });
   const last = new Promise<void>(resolve => { releaseLast = resolve; });
   const fetch = vi.fn(async (url: string) => {
-    if (url.includes('dynamic/greenstaff_an.')) await first;
-    if (url.includes('dynamic/greenstaff_planet.')) await last;
+    if (url.includes('dynamic/greenstaff_an.')) { await first; }
+    if (url.includes('dynamic/greenstaff_planet.')) { await last; }
     return fetchAsset(url);
   });
   vi.stubGlobal('fetch', fetch);
@@ -98,7 +98,7 @@ it('applies a layered skin without resetting the clip, progress, callback or pri
     const frames = sprite.numFrames, dt = sprite.currentAnimationLength / frames;
     const halfway = Math.floor(frames / 2);
     sprite.setFrame(1);
-    for (let frame = 1; frame < halfway; frame++) sprite.update(dt);
+    for (let frame = 1; frame < halfway; frame++) { sprite.update(dt); }
     const clip = sprite.sprite.peek().clip;
     instance.skinId = 'researchlab2_pod';
     await display.artLoaded();
@@ -111,7 +111,7 @@ it('applies a layered skin without resetting the clip, progress, callback or pri
     const op = sprite.sprite.peek().appearance.get('skin');
     expect(op?.kind).toBe('skin');
     expect(resources.archives.peekAnimation(definition.skinArchives!.researchlab2_pod)).toBeDefined();
-    for (let frame = halfway; frame < frames; frame++) sprite.update(dt);
+    for (let frame = halfway; frame < frames; frame++) { sprite.update(dt); }
     expect(complete).toHaveBeenCalledOnce();
     instance.skinId = undefined;
     await display.artLoaded();

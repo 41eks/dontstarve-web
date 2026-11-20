@@ -21,7 +21,7 @@ export type GrassWorld = PickablePlantWorld;
 
 function dig_up(inst: PickablePlantInstance): void {
   const { pickable, witherable } = inst.components, lootdropper = inst.components.lootdropper!;
-  if (pickable.canBePicked) lootdropper.SpawnLootPrefab(pickable.product!);
+  if (pickable.canBePicked) { lootdropper.SpawnLootPrefab(pickable.product!); }
   lootdropper.SpawnLootPrefab(witherable?.IsWithered() ? 'cutgrass' : 'dug_grass');
   inst.remove();
 }
@@ -35,14 +35,14 @@ function makeemptyfn(inst: PickablePlantInstance): void {
   if (!POPULATING && (inst.components.witherable?.IsWithered() || inst.sprite.currentAnimation === 'idle_dead')) {
     inst.AnimState.PlayAnimation('dead_to_empty');
     inst.AnimState.PushAnimation('picked', false);
-  } else inst.AnimState.PlayAnimation('picked');
+  } else { inst.AnimState.PlayAnimation('picked'); }
 }
 
 function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
   if (!POPULATING && inst.components.witherable?.IsWithered()) {
     inst.AnimState.PlayAnimation(wasempty ? 'empty_to_dead' : 'full_to_dead');
     inst.AnimState.PushAnimation('idle_dead', false);
-  } else inst.AnimState.PlayAnimation('idle_dead');
+  } else { inst.AnimState.PlayAnimation('idle_dead'); }
 }
 
 function onpickedfn(inst: PickablePlantInstance): void {
@@ -51,7 +51,7 @@ function onpickedfn(inst: PickablePlantInstance): void {
   if (inst.components.pickable.IsBarren()) {
     inst.AnimState.PushAnimation('empty_to_dead', false);
     inst.AnimState.PushAnimation('idle_dead', false);
-  } else inst.AnimState.PushAnimation('picked', false);
+  } else { inst.AnimState.PushAnimation('picked', false); }
 }
 
 /** The grass gekko morph timers are not ported. */

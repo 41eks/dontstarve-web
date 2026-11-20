@@ -43,12 +43,12 @@ const BASE_LIGHTS = Object.freeze({
 export function bulbPlantLight(on: boolean, progress: number, variant: BulbPlantVariant = 'single'): PrefabLocalLight | null {
   const k = THREE.MathUtils.clamp(progress, 0, 1);
   const base = BASE_LIGHTS[variant === 'double' || variant === 'triple' ? 'large' : 'small'];
-  if (!on && k >= 1 || on && k <= 0) return null;
+  if (!on && k >= 1 || on && k <= 0) { return null; }
   // The tween has settled: reuse the shared steady-state light rather than allocating one per frame.
-  if (on && k >= 1) return base;
-  if (!on) return { ...base,
+  if (on && k >= 1) { return base; }
+  if (!on) { return { ...base,
     radius: base.radius * (1 - k), intensity: base.intensity * (1 - k),
-    falloff: k + base.falloff * (1 - k) };
+    falloff: k + base.falloff * (1 - k) }; }
   if (k < 0.33) {
     const t = k / 0.33;
     return { ...base, radius: base.radius * 1.33 * t,
@@ -127,7 +127,7 @@ export class BulbPlantInstance extends PrefabInstance {
     this.DoTaskInTime(1, () => {
       this.awake = true;
       this.sampleLight();
-      if (this.inLight) this.TurnOn();
+      if (this.inLight) { this.TurnOn(); }
     });
     this.onRemove(() => {
       this.rechargeTimer.stop(); this.turnoffTimer.stop();
@@ -144,20 +144,20 @@ export class BulbPlantInstance extends PrefabInstance {
     };
     this.OnLoad = (_inst, data) => {
       const saved = data.bulbPlant;
-      if (!saved) return;
+      if (!saved) { return; }
       this.variant = saved.variant;
       SetPlantArt(this);
       this.light_state = saved.lightState;
       this.components.pickable.OnLoad(saved);
       this.lightOn = this.light_state === 'ON' && this.components.pickable.canBePicked;
       if (saved.remainingSeconds !== undefined) {
-        if (this.light_state === 'ON') this.turnoffTimer.start(saved.remainingSeconds);
-        else if (this.light_state === 'RECHARGING') this.rechargeTimer.start(saved.remainingSeconds);
+        if (this.light_state === 'ON') { this.turnoffTimer.start(saved.remainingSeconds); }
+        else if (this.light_state === 'RECHARGING') { this.rechargeTimer.start(saved.remainingSeconds); }
       }
       // ForceOn / ForceOff(on_load): the state's settled clip, without replaying its transition.
-      if (!this.components.pickable.canBePicked) this.sprite.holdLastFrame('picked');
-      else if (this.lightOn) this.sprite.start('idle');
-      else this.sprite.holdLastFrame(STATE_ANIMS[this.light_state][1]);
+      if (!this.components.pickable.canBePicked) { this.sprite.holdLastFrame('picked'); }
+      else if (this.lightOn) { this.sprite.start('idle'); }
+      else { this.sprite.holdLastFrame(STATE_ANIMS[this.light_state][1]); }
       this.refreshLight();
     };
   }
@@ -179,7 +179,7 @@ export class BulbPlantInstance extends PrefabInstance {
 
   /** TurnOn: only a pickable, CHARGED plant. */
   TurnOn(): void {
-    if (this.isRemoved || !this.components.pickable.canBePicked || this.light_state !== 'CHARGED') return;
+    if (this.isRemoved || !this.components.pickable.canBePicked || this.light_state !== 'CHARGED') { return; }
     this.SetLightState('ON');
     this.lightOn = true;
     this.startTween();
@@ -188,7 +188,7 @@ export class BulbPlantInstance extends PrefabInstance {
 
   /** TurnOff: the turnoff timer, or a regrowth, starts recharging. */
   TurnOff(): void {
-    if (this.isRemoved) return;
+    if (this.isRemoved) { return; }
     this.SetLightState('RECHARGING');
     this.lightOn = false;
     this.startTween();
@@ -198,12 +198,12 @@ export class BulbPlantInstance extends PrefabInstance {
   private Recharge(): void {
     this.SetLightState('CHARGED');
     this.sampleLight();
-    if (this.inLight) this.TurnOn();
+    if (this.inLight) { this.TurnOn(); }
   }
 
   private onpickedfn(): void {
     // ForceOff, then StopTimer turnoff / recharge.
-    if (this.light_state === 'ON') this.SetLightState('RECHARGING');
+    if (this.light_state === 'ON') { this.SetLightState('RECHARGING'); }
     this.lightOn = false;
     this.endTween();
     this.turnoffTimer.stop();
@@ -232,7 +232,7 @@ export class BulbPlantInstance extends PrefabInstance {
   private checkLight(): void {
     const wasInLight = this.inLight;
     this.sampleLight();
-    if (this.awake && !wasInLight && this.inLight) this.TurnOn();
+    if (this.awake && !wasInLight && this.inLight) { this.TurnOn(); }
   }
 
   /** LightWatcher SetLightThresh(.075) / SetDarkThresh(.05). */
@@ -256,7 +256,7 @@ export class BulbPlantInstance extends PrefabInstance {
 
   /** OnUpdateLight, repeated every FRAMES by OnLightDirty's periodic task until the tween ends. */
   private refreshLight(): void {
-    if (this.isRemoved) return;
+    if (this.isRemoved) { return; }
     // The last step lands on the tween's end, as OnUpdateLight clamps _lightframe to _lightmaxframe.
     const remaining = this.tweenStartedAt + this.tweenDuration - this.world.scheduler.now;
     const done = remaining <= 1e-9;

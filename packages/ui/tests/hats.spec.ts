@@ -23,7 +23,7 @@ test('all hats have inventory icons; craft respects single hats and nonconsumed 
     for (const id of HAT_IDS) {
       const { icon, atlas } = HAT_ITEM_SPECS[id];
       const sprite = (await loadImageAtlas('/dst/data/databundles/images.zip', atlas)).require(icon);
-      if (!sprite.pixels.some((v: number, index: number) => index % 4 === 3 && v > 0)) missingIcons.push(id);
+      if (!sprite.pixels.some((v: number, index: number) => index % 4 === 3 && v > 0)) { missingIcons.push(id); }
     }
     const store = createInventoryStore([{ slot_index: 0, id: 'cutgrass', num: 24 }]);
     const crafted = [store.craft(INVENTORY_RECIPES.strawhat), store.craft(INVENTORY_RECIPES.strawhat)];

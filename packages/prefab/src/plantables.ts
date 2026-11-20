@@ -18,13 +18,13 @@ const PLANTABLES: Readonly<Record<string, DeployPlacerArt & { prefab: string; sp
 /** plantables.lua make_plantable: deployedplant, deployable(PLANT) and its ondeploy. */
 export function configurePlantableEntity(entity: ItemEntity): void {
   const data = PLANTABLES[entity.prefab];
-  if (!data || entity.components.deployable) return;
+  if (!data || entity.components.deployable) { return; }
   configureBurnableItemEntity(entity);
   entity.addTag('deployedplant');
   addComponent(entity, 'deployable', Deployable, (point, deployer, map) => {
     // SpawnPrefab(data.name, inst.linked_skinname, inst.skin_id): dug_<skin> links to the plant's <skin>.
     const tree = map.SpawnPrefab(data.prefab, point, entity.skinId?.replace(/^dug_/, ''));
-    if (!tree) return false;
+    if (!tree) { return false; }
     entity.remove();
     tree.components.pickable?.OnTransplant();
     PlaySound('dontstarve/common/plant', deployer.position);

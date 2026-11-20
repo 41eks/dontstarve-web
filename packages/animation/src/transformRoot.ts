@@ -43,7 +43,7 @@ export class TransformRoot extends Group {
   }
 
   private watchParent(parent: Object3D | null): void {
-    if (parent === this.watchedParent) return;
+    if (parent === this.watchedParent) { return; }
     this.parentVersion?.dispose();
     this.watchedParent = parent;
     this.parentVersion = parent ? retainWorldMatrixVersion(parent) : undefined;
@@ -54,7 +54,7 @@ export class TransformRoot extends Group {
   private parentMoved(): boolean {
     this.watchParent(this.parent);
     const version = this.parentVersion?.read() ?? 0;
-    if (version === this.seenParentVersion) return false;
+    if (version === this.seenParentVersion) { return false; }
     this.seenParentVersion = version;
     return true;
   }
@@ -65,10 +65,10 @@ export class TransformRoot extends Group {
   /** A transform at or below this root changed; enclosing roots must also let the next traversal reach it. */
   markTransformDirty(): void {
     this.dirty = true;
-    if (settling) return;
+    if (settling) { return; }
     let outermost: TransformRoot = this;
-    for (let node = this.parent; node; node = node.parent) if (node instanceof TransformRoot) { node.dirty = true; outermost = node; }
-    if (outermost.parent) rootUpdates.get(outermost.parent)?.schedule(outermost);
+    for (let node = this.parent; node; node = node.parent) { if (node instanceof TransformRoot) { node.dirty = true; outermost = node; } }
+    if (outermost.parent) { rootUpdates.get(outermost.parent)?.schedule(outermost); }
   }
 
   /** A root with attached children (FX, symbol followers) may change below without a mark: it settles on every update. */
@@ -76,27 +76,27 @@ export class TransformRoot extends Group {
 
   override updateMatrixWorld(_force?: boolean): void {
     const parentMoved = this.parentMoved();
-    if (!parentMoved && !this.dirty && !this.matrixWorldNeedsUpdate && !this.volatile) return;
+    if (!parentMoved && !this.dirty && !this.matrixWorldNeedsUpdate && !this.volatile) { return; }
     this.updateMatrix();
     previousWorld.copy(this.matrixWorld);
-    if (this.parent) this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix);
-    else this.matrixWorld.copy(this.matrix);
+    if (this.parent) { this.matrixWorld.multiplyMatrices(this.parent.matrixWorld, this.matrix); }
+    else { this.matrixWorld.copy(this.matrix); }
     this.matrixWorldNeedsUpdate = false;
     // Cached descendants (a stationary sprite's matrix gate) assume a static parent: tell them it moved. A mark from
     // inside the subtree (a sprite turned to the camera) leaves this root's matrix as it was and needs no invalidation.
     // Their marks reach this root again, so it is cleaned only afterwards.
     if (!previousWorld.equals(this.matrixWorld)) {
       settling++;
-      try { for (const child of this.children) invalidateMatrixUpdates(child); }
+      try { for (const child of this.children) { invalidateMatrixUpdates(child); } }
       finally { settling--; }
     }
     this.dirty = false;
-    for (const child of this.children) child.updateMatrixWorld(true);
+    for (const child of this.children) { child.updateMatrixWorld(true); }
   }
 
   /** Queries settle the whole subtree when dirty, so a clean root always has current descendants. */
   override updateWorldMatrix(updateParents: boolean, _updateChildren: boolean): void {
-    if (updateParents && this.parent) this.parent.updateWorldMatrix(true, false);
+    if (updateParents && this.parent) { this.parent.updateWorldMatrix(true, false); }
     this.updateMatrixWorld(false);
   }
 }
@@ -127,13 +127,13 @@ class EntityRootUpdates implements MatrixUpdater {
   private full = true;
   private readonly parent: Object3D;
   private readonly original: { updateWorldMatrix: Object3D['updateWorldMatrix'] };
-  private readonly onChildAdded = ({ child }: { child: Object3D }) => { if (!(child instanceof TransformRoot)) this.plain.add(child); };
+  private readonly onChildAdded = ({ child }: { child: Object3D }) => { if (!(child instanceof TransformRoot)) { this.plain.add(child); } };
   private readonly onChildRemoved = ({ child }: { child: Object3D }) => { this.plain.delete(child); };
   release!: () => void;
 
   constructor(parent: Object3D, original: EntityRootUpdates['original']) {
     this.parent = parent; this.original = original;
-    for (const child of parent.children) if (!(child instanceof TransformRoot)) this.plain.add(child);
+    for (const child of parent.children) { if (!(child instanceof TransformRoot)) { this.plain.add(child); } }
     parent.addEventListener('childadded', this.onChildAdded);
     parent.addEventListener('childremoved', this.onChildRemoved);
   }
@@ -143,10 +143,10 @@ class EntityRootUpdates implements MatrixUpdater {
 
   updateMatrixWorld(force?: boolean): boolean {
     const parent = this.parent;
-    if (parent.matrixAutoUpdate) parent.updateMatrix();
+    if (parent.matrixAutoUpdate) { parent.updateMatrix(); }
     // updateMatrix() always raises matrixWorldNeedsUpdate, so movement is detected by comparing the world matrix.
-    if (parent.parent) parent.matrixWorld.multiplyMatrices(parent.parent.matrixWorld, parent.matrix);
-    else parent.matrixWorld.copy(parent.matrix);
+    if (parent.parent) { parent.matrixWorld.multiplyMatrices(parent.parent.matrixWorld, parent.matrix); }
+    else { parent.matrixWorld.copy(parent.matrix); }
     parent.matrixWorldNeedsUpdate = false;
     if (force || this.full || !this.world.equals(parent.matrixWorld)) {
       this.world.copy(parent.matrixWorld);
@@ -154,26 +154,26 @@ class EntityRootUpdates implements MatrixUpdater {
       this.pending.clear();
       for (const child of parent.children) {
         child.updateMatrixWorld(true);
-        if (child instanceof TransformRoot && child.volatile) this.pending.add(child);
+        if (child instanceof TransformRoot && child.volatile) { this.pending.add(child); }
       }
       return true;
     }
-    for (const child of this.plain) child.updateMatrixWorld(false);
+    for (const child of this.plain) { child.updateMatrixWorld(false); }
     const volatile = this.volatileRoots;
     let batch = this.pending;
     for (let pass = 0; pass < MAX_SETTLE_PASSES && batch.size; pass++) {
       // Roots marked while this batch settles form the next pass.
       this.pending = this.spare;
       for (const root of batch) {
-        if (root.parent !== parent) continue;
+        if (root.parent !== parent) { continue; }
         root.updateMatrixWorld(false);
-        if (root.volatile) volatile.add(root);
+        if (root.volatile) { volatile.add(root); }
       }
       batch.clear();
       this.spare = batch;
       batch = this.pending;
     }
-    for (const root of volatile) this.pending.add(root);
+    for (const root of volatile) { this.pending.add(root); }
     volatile.clear();
     return true;
   }
@@ -209,9 +209,9 @@ export function retainEntityRootUpdates(parent: Object3D): () => void {
   const owned = updates;
   let released = false;
   return () => {
-    if (released) return;
+    if (released) { return; }
     released = true;
-    if (--owned.owners === 0) owned.release();
+    if (--owned.owners === 0) { owned.release(); }
   };
 }
 

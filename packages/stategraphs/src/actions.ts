@@ -127,13 +127,13 @@ function strfn(act: ActionDescription): string | undefined {
     case 'ATTACK': {
       // The invobject is the weapon; PROP and WHACK are not ported.
       const combat = act.doer?.components?.combat, weapon = act.invobject?.components.weapon;
-      if (!target || !act.invobject || !combat) return undefined;
+      if (!target || !act.invobject || !combat) { return undefined; }
       return combat.CanExtinguishTarget(target, weapon) ? 'RANGEDSMOTHER' : combat.CanLightTarget(target, weapon) ? 'RANGEDLIGHT' : undefined;
     }
     case 'REEL': {
       const rod = act.invobject?.components.fishingrod;
-      if (!rod || rod.target !== act.target) return undefined;
-      if (rod.HasHookedFish()) return 'REEL';
+      if (!rod || rod.target !== act.target) { return undefined; }
+      if (rod.HasHookedFish()) { return 'REEL'; }
       // act.doer:HasTag("nibble"): the hook string is REEL's GENERIC.
       return act.doer?.sg?.hasStateTag('nibble') ? undefined : 'CANCEL';
     }

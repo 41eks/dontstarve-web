@@ -7,21 +7,21 @@ let worker: Worker | undefined;
 let nextId = 0;
 
 function getWorker(): Worker {
-  if (worker) return worker;
+  if (worker) { return worker; }
   const decoder = new Worker(new URL('./texture.worker.ts', import.meta.url), { type: 'module', name: 'dst-texture' });
   worker = decoder;
   decoder.onmessage = ({ data }: MessageEvent<TextureWorkerResponse>) => {
     const request = pending.get(data.id);
-    if (!request) return;
+    if (!request) { return; }
     pending.delete(data.id);
-    if ('error' in data) request.reject(new Error(data.error));
-    else request.resolve(data.texture);
+    if ('error' in data) { request.reject(new Error(data.error)); }
+    else { request.resolve(data.texture); }
   };
   const fail = (error: Error) => {
-    if (worker !== decoder) return;
+    if (worker !== decoder) { return; }
     decoder.terminate();
     worker = undefined;
-    for (const request of pending.values()) request.reject(error);
+    for (const request of pending.values()) { request.reject(error); }
     pending.clear();
   };
   decoder.onerror = event => fail(new Error(event.message || 'Texture worker failed'));
@@ -48,11 +48,11 @@ export function loadKtexTexture(path: string): Promise<DecodedTexture> {
       })
       : (async () => {
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`Unable to load texture ${url}: HTTP ${response.status}`);
+        if (!response.ok) { throw new Error(`Unable to load texture ${url}: HTTP ${response.status}`); }
         return parseKtex(new Uint8Array(await response.arrayBuffer()), url);
       })();
     requests.set(url, request);
-    void request.catch(() => { if (requests.get(url) === request) requests.delete(url); });
+    void request.catch(() => { if (requests.get(url) === request) { requests.delete(url); } });
   }
   return request;
 }
@@ -61,7 +61,7 @@ export function loadKtexTexture(path: string): Promise<DecodedTexture> {
 export function disposeTextureAssets(): void {
   worker?.terminate();
   worker = undefined;
-  for (const request of pending.values()) request.reject(new Error('Texture assets disposed'));
+  for (const request of pending.values()) { request.reject(new Error('Texture assets disposed')); }
   pending.clear();
   requests.clear();
 }

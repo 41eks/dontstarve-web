@@ -193,7 +193,7 @@ function getOrCreate<K extends keyof HTMLElementTagNameMap>(
   target: ParentNode,
 ): HTMLElementTagNameMap[K] {
   const existing = target.querySelector<HTMLElementTagNameMap[K]>(tagName);
-  if (existing) return existing;
+  if (existing) { return existing; }
 
   const element = document.createElement(tagName);
   target.append(element);

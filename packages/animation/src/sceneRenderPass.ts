@@ -31,7 +31,7 @@ export function createSceneRenderSnapshot(roots: readonly THREE.Object3D[]): { s
   const snapshotPasses = new Map<SceneRenderPass, SceneRenderPass>();
   // The borrowed passes keep drawing into the world the roots came from.
   let source: THREE.Object3D | undefined = roots[0];
-  while (source?.parent) source = source.parent;
+  while (source?.parent) { source = source.parent; }
   const sourceScene = source instanceof THREE.Scene ? source : scene;
   const syncResources = () => {
     for (const { source, copy } of borrowed) { copy.geometry = source.geometry; copy.material = source.material; }
@@ -57,9 +57,9 @@ export function createSceneRenderSnapshot(roots: readonly THREE.Object3D[]): { s
     object.onBeforeRender = source.onBeforeRender;
     object.onAfterRender = source.onAfterRender;
     const registration = registrations.get(source);
-    if (registration) cleanups.push(registerSceneRenderPass(object, snapshotPass(registration.pass)));
-    if ((source as THREE.Mesh).geometry) borrowed.push({ source: source as THREE.Mesh, copy: object as THREE.Mesh });
-    for (const child of source.children) object.add(copy(child));
+    if (registration) { cleanups.push(registerSceneRenderPass(object, snapshotPass(registration.pass))); }
+    if ((source as THREE.Mesh).geometry) { borrowed.push({ source: source as THREE.Mesh, copy: object as THREE.Mesh }); }
+    for (const child of source.children) { object.add(copy(child)); }
     return object;
   };
   for (const source of roots) {
@@ -69,25 +69,25 @@ export function createSceneRenderSnapshot(roots: readonly THREE.Object3D[]): { s
     object.matrixAutoUpdate = false;
     scene.add(object);
   }
-  return { scene, dispose() { for (const stop of cleanups.splice(0)) stop(); scene.clear(); } };
+  return { scene, dispose() { for (const stop of cleanups.splice(0)) { stop(); } scene.clear(); } };
 }
 
 function removeRegistration(registration: PassRegistration): void {
   const anchors = passes.get(registration.pass);
   anchors?.delete(registration);
-  if (!anchors?.size) passes.delete(registration.pass);
+  if (!anchors?.size) { passes.delete(registration.pass); }
 }
 
 export function registerSceneRenderPass(object: THREE.Object3D, pass: SceneRenderPass): () => void {
   const previous = registrations.get(object);
-  if (previous) removeRegistration(previous);
+  if (previous) { removeRegistration(previous); }
   const registration = { object, pass };
   registrations.set(object, registration);
   let anchors = passes.get(pass);
-  if (!anchors) passes.set(pass, anchors = new Set());
+  if (!anchors) { passes.set(pass, anchors = new Set()); }
   anchors.add(registration);
   return () => {
-    if (registrations.get(object) !== registration) return;
+    if (registrations.get(object) !== registration) { return; }
     registrations.delete(object);
     removeRegistration(registration);
   };
@@ -100,7 +100,7 @@ function visiblePasses(scene: THREE.Scene): SceneRenderPass[] {
   for (const [pass, anchors] of passes) {
     for (const { object } of anchors) {
       let node: THREE.Object3D | null = object;
-      while (node?.visible && node !== scene) node = node.parent;
+      while (node?.visible && node !== scene) { node = node.parent; }
       if (node === scene && scene.visible) { result.push(pass); break; }
     }
   }
@@ -112,7 +112,7 @@ export function renderScenePasses(renderer: THREE.WebGLRenderer, scene: THREE.Sc
   lighting?: ScenePassLighting): void {
   updateSceneMatrices(scene);
   camera.updateMatrixWorld();
-  for (const pass of visiblePasses(scene)) pass.render(renderer, camera, lighting, scene);
+  for (const pass of visiblePasses(scene)) { pass.render(renderer, camera, lighting, scene); }
 }
 
 /** Offscreen inputs and the world share one matrix traversal, including spatial-index updates. */
@@ -120,7 +120,7 @@ export function renderSceneWithPasses(renderer: THREE.WebGLRenderer, scene: THRE
   lighting?: ScenePassLighting | PrepareSceneLighting): void {
   updateSceneMatrices(scene);
   // A camera in the scene was already updated with its ancestors above.
-  if (camera.parent === null) camera.updateMatrixWorld();
+  if (camera.parent === null) { camera.updateMatrixWorld(); }
   const sceneAutoUpdate = scene.matrixWorldAutoUpdate;
   const cameraAutoUpdate = camera.matrixWorldAutoUpdate;
   try {
@@ -129,7 +129,7 @@ export function renderSceneWithPasses(renderer: THREE.WebGLRenderer, scene: THRE
     scene.matrixWorldAutoUpdate = false;
     camera.matrixWorldAutoUpdate = false;
     const preparedLighting = typeof lighting === 'function' ? lighting() : lighting;
-    for (const pass of visiblePasses(scene)) pass.render(renderer, camera, preparedLighting, scene);
+    for (const pass of visiblePasses(scene)) { pass.render(renderer, camera, preparedLighting, scene); }
     renderer.render(scene, camera);
   } finally {
     scene.matrixWorldAutoUpdate = sceneAutoUpdate;

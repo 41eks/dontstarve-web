@@ -27,29 +27,29 @@ const tornDown = new WeakSet<object>();
 export function addComponent<Inst extends Owner, Name extends ComponentName<Inst>, T extends Declared<Inst, Name>, A extends unknown[]>(
   inst: Inst, name: Name, Component: new (inst: Inst, ...args: A) => T, ...args: A
 ): T {
-  if (inst.isRemoved) throw new Error(`Cannot add ${name} to a removed entity`);
+  if (inst.isRemoved) { throw new Error(`Cannot add ${name} to a removed entity`); }
   // inst.components[name], the registry the entity declares by name.
   const existing: unknown = Reflect.get(inst.components, name);
-  if (existing) return existing as T;
+  if (existing) { return existing as T; }
   const component = new Component(inst, ...args);
   Reflect.set(inst.components, name, component);
   inst.onComponentAdded?.(name, component);
   if (isDerivedTags(component) && inst.addTagSource) {
     const stopTags = inst.addTagSource(component);
     let sources = tagSources.get(inst);
-    if (!sources) tagSources.set(inst, sources = new Map());
+    if (!sources) { tagSources.set(inst, sources = new Map()); }
     sources.set(name, stopTags);
   }
   let callbacks = removals.get(inst);
-  if (!callbacks) removals.set(inst, callbacks = new Map());
+  if (!callbacks) { removals.set(inst, callbacks = new Map()); }
   const entityCallbacks = callbacks;
   callbacks.set(name, inst.onRemove(() => {
     entityCallbacks.delete(name);
     const removed: Lifecycle = component;
     tornDown.add(removed);
-    if (removed.OnRemoveEntity) removed.OnRemoveEntity();
-    else if (removed.OnRemoveFromEntity) removed.OnRemoveFromEntity();
-    else removed.dispose?.();
+    if (removed.OnRemoveEntity) { removed.OnRemoveEntity(); }
+    else if (removed.OnRemoveFromEntity) { removed.OnRemoveFromEntity(); }
+    else { removed.dispose?.(); }
   }));
   return component;
 }
@@ -57,7 +57,7 @@ export function addComponent<Inst extends Owner, Name extends ComponentName<Inst
 /** RemoveComponent deletes the registration before invoking the component's OnRemoveFromEntity (or its teardown). */
 export function removeComponent<Inst extends Owner>(inst: Inst, name: ComponentName<Inst>): void {
   const registered: unknown = Reflect.get(inst.components, name);
-  if (!registered || typeof registered !== 'object') return;
+  if (!registered || typeof registered !== 'object') { return; }
   const component: Lifecycle = registered;
   Reflect.deleteProperty(inst.components, name);
   tagSources.get(inst)?.get(name)?.();
@@ -65,9 +65,9 @@ export function removeComponent<Inst extends Owner>(inst: Inst, name: ComponentN
   const callbacks = removals.get(inst);
   callbacks?.get(name)?.();
   callbacks?.delete(name);
-  if (callbacks?.size === 0) removals.delete(inst);
-  if (tornDown.has(component)) return;
-  if (inst.isRemoved && component.OnRemoveEntity) component.OnRemoveEntity();
-  else if (component.OnRemoveFromEntity) component.OnRemoveFromEntity();
-  else component.dispose?.();
+  if (callbacks?.size === 0) { removals.delete(inst); }
+  if (tornDown.has(component)) { return; }
+  if (inst.isRemoved && component.OnRemoveEntity) { component.OnRemoveEntity(); }
+  else if (component.OnRemoveFromEntity) { component.OnRemoveFromEntity(); }
+  else { component.dispose?.(); }
 }

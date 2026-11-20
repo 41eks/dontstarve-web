@@ -24,7 +24,7 @@ let atlasWorker: Worker | undefined;
 let nextRequestId = 0;
 
 function getAtlasWorker(): Worker {
-  if (atlasWorker) return atlasWorker;
+  if (atlasWorker) { return atlasWorker; }
   const worker = new Worker(new URL('./imageAtlas.worker.ts', import.meta.url), {
     type: 'module',
     name: 'dst-image-atlas',
@@ -32,15 +32,15 @@ function getAtlasWorker(): Worker {
   atlasWorker = worker;
   worker.onmessage = ({ data }: MessageEvent<ImageAtlasWorkerResponse>) => {
     const pending = pendingRequests.get(data.id);
-    if (!pending) return;
+    if (!pending) { return; }
     pendingRequests.delete(data.id);
-    if ('error' in data) pending.reject(new Error(data.error));
-    else pending.resolve(new DecodedImageAtlas(data.pages));
+    if ('error' in data) { pending.reject(new Error(data.error)); }
+    else { pending.resolve(new DecodedImageAtlas(data.pages)); }
   };
   const fail = (error: Error) => {
     worker.terminate();
     atlasWorker = undefined;
-    for (const pending of pendingRequests.values()) pending.reject(error);
+    for (const pending of pendingRequests.values()) { pending.reject(error); }
     pendingRequests.clear();
   };
   worker.onerror = (event) => fail(new Error(event.message || 'Image atlas worker failed'));
@@ -88,11 +88,11 @@ export function loadImageAtlasFiles(xmlUrl: string | URL): Promise<ImageAtlas> {
   if (!request) {
     request = (async () => {
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`Unable to load image atlas ${url}: HTTP ${response.status}`);
+      if (!response.ok) { throw new Error(`Unable to load image atlas ${url}: HTTP ${response.status}`); }
       const definition = parseImageAtlasXml(await response.text(), url);
       const texturePath = new URL(definition.texture, url).href;
       const texture = await fetch(texturePath);
-      if (!texture.ok) throw new Error(`Unable to load image texture ${texturePath}: HTTP ${texture.status}`);
+      if (!texture.ok) { throw new Error(`Unable to load image texture ${texturePath}: HTTP ${texture.status}`); }
       return new DecodedImageAtlas([{
         ...definition, path: url, texturePath,
         decodedTexture: parseKtex(new Uint8Array(await texture.arrayBuffer()), texturePath),

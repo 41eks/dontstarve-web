@@ -26,14 +26,14 @@ export class AnimationPlayback<Clip extends PlaybackClip> {
     return this.events.on(event, listener);
   }
   play(clips: readonly Clip[]): void {
-    if (!clips.length) throw new Error('Animation playback requires a clip');
+    if (!clips.length) { throw new Error('Animation playback requires a clip'); }
     this.queue = clips.slice(1);
     this.start(clips[0]);
   }
   push(clips: readonly Clip[]): void {
-    if (!clips.length) return;
-    if (this.completed) this.play(clips);
-    else this.queue = [...this.queue, ...clips];
+    if (!clips.length) { return; }
+    if (this.completed) { this.play(clips); }
+    else { this.queue = [...this.queue, ...clips]; }
   }
   private start(clip: Clip): void {
     this.cancel?.(); this.cancel = undefined;
@@ -41,8 +41,8 @@ export class AnimationPlayback<Clip extends PlaybackClip> {
     this.clip = clip; this.completed = false;
     const duration = this.select(clip);
     // A completion listener or the host's clip selection may have replaced playback.
-    if (revision !== this.revision) return;
-    if (!Number.isFinite(duration) || duration <= 0) throw new RangeError(`Invalid animation duration: ${clip.name}`);
+    if (revision !== this.revision) { return; }
+    if (!Number.isFinite(duration) || duration <= 0) { throw new RangeError(`Invalid animation duration: ${clip.name}`); }
     this.cancel = this.schedule(duration, () => this.complete());
   }
   private complete(): void {
@@ -50,11 +50,11 @@ export class AnimationPlayback<Clip extends PlaybackClip> {
     const clip = this.clip!, revision = this.revision;
     this.completed = true;
     this.events.emit('animover', clip);
-    if (revision !== this.revision) return;
+    if (revision !== this.revision) { return; }
     const [next, ...remaining] = this.queue;
     if (next) { this.queue = remaining; this.start(next); }
-    else if (clip.loop) this.start(clip);
-    else this.events.emit('animqueueover', clip);
+    else if (clip.loop) { this.start(clip); }
+    else { this.events.emit('animqueueover', clip); }
   }
   stop(): void {
     this.revision++;

@@ -9,7 +9,7 @@ import { prefabInstance } from './prefabInstance';
 export function watchTileActivity(model: THREE.Object3D, tickingarea: TileStateQuery | undefined, onActive: (active: boolean) => void): () => void {
   if (!tickingarea) { onActive(true); return () => {}; }
   const instance = prefabInstance(model);
-  if (!instance) throw new Error('Tile activity needs an entity-owned transform');
+  if (!instance) { throw new Error('Tile activity needs an entity-owned transform'); }
   instance.tileTracker.sync();
   const cleanups: (() => void)[] = [];
   const area = instance.transform.getTileActivity(tickingarea, stop => cleanups.push(stop));

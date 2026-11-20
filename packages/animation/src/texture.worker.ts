@@ -8,7 +8,7 @@ const postMessage = (message: TextureWorkerResponse, transfer: Transferable[]): 
 globalThis.addEventListener('message', async ({ data: { id, url } }: MessageEvent<TextureWorkerRequest>) => {
   try {
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`Unable to load texture ${url}: HTTP ${response.status}`);
+    if (!response.ok) { throw new Error(`Unable to load texture ${url}: HTTP ${response.status}`); }
     const texture = parseKtex(new Uint8Array(await response.arrayBuffer()), url);
     postMessage({ id, texture }, transferBuffers([texture.pixels]));
   } catch (error) {

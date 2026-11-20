@@ -38,7 +38,7 @@ export function MolePeekAction(inst: MoleActionInst, unit = 1): BufferedAction<M
 export function StealMoleBaitAction<Bait extends MoleBaitTarget>(inst: MoleActionInst, bait: Bait, unit = 1): BufferedAction<MoleAction, Bait> {
   return moleAction(inst, 'STEALMOLEBAIT', () => {
     // conventions-allow prefab-id-branch: ACTIONS.STEALMOLEBAIT.fn itself tests act.doer.prefab == "mole".
-    if (inst.prefab !== 'mole') return false;
+    if (inst.prefab !== 'mole') { return false; }
     bait.selectedasmoletarget = undefined;
     bait.PushEvent('onstolen', { thief: inst });
     return true;

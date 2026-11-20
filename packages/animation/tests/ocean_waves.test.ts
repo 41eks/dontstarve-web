@@ -49,7 +49,7 @@ it('plays standalone and undefined-query waves to completion once their declared
       expect(scene.children).toHaveLength(2);
       await Promise.all([shimmer, shore].map(model => prefabDisplay(model)!.artLoaded()));
       expect(instanceOf(shimmer).sprite.currentAnimation).toBe('idle');
-      for (let frame = 0; frame < 300; frame++) waves.update(.1, new THREE.Quaternion());
+      for (let frame = 0; frame < 300; frame++) { waves.update(.1, new THREE.Quaternion()); }
       expect(scene.children).toEqual([]);
       expect(instanceOf(shimmer).isRemoved && instanceOf(shore).isRemoved).toBe(true);
       waves.spawnShimmer('wave_shimmer', 12, 24);

@@ -41,13 +41,13 @@ export interface RuinsRelicWorld {
 }
 /** A skin the chair saves: only RUINS_CHAIR_SKINS reach a relic. */
 function ruinsChairSkin(skinId: string): keyof typeof RUINS_CHAIR_SKINS {
-  if (!isRuinsChairSkin(skinId)) throw new Error(`Unsupported ruins chair skin: ${skinId}`);
+  if (!isRuinsChairSkin(skinId)) { throw new Error(`Unsupported ruins chair skin: ${skinId}`); }
   return skinId;
 }
 const isRuinsChairSkin = (skinId: string): skinId is keyof typeof RUINS_CHAIR_SKINS => Object.hasOwn(RUINS_CHAIR_SKINS, skinId);
 export function relicName(id: RuinsRelicId): RelicName {
   const name = RELIC_NAMES.find(relic => id.endsWith(`_${relic}`));
-  if (!name) throw new Error(`${id} names no relic`);
+  if (!name) { throw new Error(`${id} names no relic`); }
   return name;
 }
 /** ruinsrelic.lua's replicas, as opposed to smashables.lua's natural relics and rubble. */
@@ -72,10 +72,10 @@ function onhammered(inst: RuinsRelicInstance | ItemEntity): void {
 
 /** The replica decor's inventory path shares the same constructor-only dependencies. */
 export function configureRuinsRelicItem(inst: ItemEntity): void {
-  if (!isRelicItem(inst.prefab)) return;
+  if (!isRelicItem(inst.prefab)) { return; }
   const scheduler = inst.components.perishable.scheduler;
-  if (scheduler && !inst.components.hauntable) addComponent(inst, 'hauntable', Hauntable, scheduler).SetOnHauntFn(() => false);
-  if ('furnituredecor' in inst.components) return;
+  if (scheduler && !inst.components.hauntable) { addComponent(inst, 'hauntable', Hauntable, scheduler).SetOnHauntFn(() => false); }
+  if ('furnituredecor' in inst.components) { return; }
   inst.addTag('furnituredecor');
   addComponent(inst, 'furnituredecor', FurnitureDecor);
   addComponent(inst, 'floater', Floater);
@@ -105,14 +105,14 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce(initialRubble ? 'broken' : 'idle');
     // ruinsrelic.lua and smashables.lua: a chair's AnimState:SetFinalOffset(-1).
-    if (this.name === 'chair') this.sprite.setBehindFoot(true);
+    if (this.name === 'chair') { this.sprite.setBehindFoot(true); }
     addComponent(this, 'inspectable', Inspectable).SetNameOverride('relic');
     addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
     const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     // standardcomponents.lua MakeHauntableWork's work callback is commented out; it returns false.
     hauntable.SetOnHauntFn(() => false);
-    if (this.replica) this.constructReplica();
-    else this.constructNatural(world, initialRubble);
+    if (this.replica) { this.constructReplica(); }
+    else { this.constructNatural(world, initialRubble); }
   }
 
   private constructReplica(): void {
@@ -126,23 +126,23 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
       addComponent(this, 'inventoryitemmoisture', InventoryItemMoisture);
     } else {
       this.deploySmartRadius = this.name === 'chair' ? 1 : 1.6;
-      if (this.name === 'chair') this.makeChair();
+      if (this.name === 'chair') { this.makeChair(); }
     }
   }
   private constructNatural(world: RuinsRelicWorld, rubble: boolean): void {
     for (const tag of ['cavedweller', 'smashable', 'object', this.name === 'table' || this.name === 'chair' ? 'stone' : 'clay',
-      'noauradamage', 'electricdamageimmune']) this.addTag(tag);
+      'noauradamage', 'electricdamageimmune']) { this.addTag(tag); }
     this.minimap.SetIcon('relic.png');
     this.deploySmartRadius = this.name === 'table' ? 1.6 : ['chair', 'vase', 'bowl'].includes(this.name) ? 1 : .25;
     const health = addComponent(this, 'health', Health, 90 + (Math.random() * 2 - 1) * 20);
     health.nofadeout = true; health.canheal = false;
     const combat = addComponent(this, 'combat', Combat, () => world.scheduler.now);
     combat.SetKeepTargetFunction(() => false);
-    if (this.animated) combat.onhitfn = () => this.onHit();
+    if (this.animated) { combat.onhitfn = () => this.onHit(); }
     addComponent(this, 'roseinspectable', RoseInspectable);
     health.ondelta = (_, old, current) => {
       if (!this.rubble && current < .5 && current < old) {
-        if (this.animated) this.sprite.playOnce('repair');
+        if (this.animated) { this.sprite.playOnce('repair'); }
         this.setRubble(true);
       }
     };
@@ -151,7 +151,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
   private makeChair(): void {
     addComponent(this, 'sittable', Sittable);
     // The constructor-only Sittable does not add its source tag itself.
-    for (const tag of ['cansit', 'structure', 'limited_chair', 'uncomfortable_chair']) this.addTag(tag);
+    for (const tag of ['cansit', 'structure', 'limited_chair', 'uncomfortable_chair']) { this.addTag(tag); }
   }
   private setRubble(rubble: boolean): void {
     this.rubble = rubble;
@@ -161,25 +161,25 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
         const repairable = addComponent(this, 'repairable', Repairable, undefined, 'stone');
         repairable.onrepaired = () => {
           if (this.components.health!.GetPercent() >= 1) {
-            if (this.animated) this.sprite.playOnce('hit');
+            if (this.animated) { this.sprite.playOnce('hit'); }
             this.setRubble(false);
-          } else this.onHit();
+          } else { this.onHit(); }
         };
       }
       if (this.name === 'chair') {
         removeComponent(this, 'sittable');
-        for (const tag of ['cansit', 'structure', 'limited_chair']) this.removeTag(tag);
+        for (const tag of ['cansit', 'structure', 'limited_chair']) { this.removeTag(tag); }
       }
     } else {
       removeComponent(this, 'repairable');
-      if (this.name === 'chair') this.makeChair();
+      if (this.name === 'chair') { this.makeChair(); }
     }
     const clip = rubble ? 'broken' : 'idle';
-    if (this.animated) this.sprite.pushAnimation(clip, false);
-    else this.sprite.playOnce(clip);
+    if (this.animated) { this.sprite.pushAnimation(clip, false); }
+    else { this.sprite.playOnce(clip); }
   }
   onHit(): void {
-    if (!this.animated) return;
+    if (!this.animated) { return; }
     this.sprite.playOnce(this.rubble ? 'repair' : 'hit');
     this.sprite.pushAnimation(this.rubble ? 'broken' : 'idle', false);
   }
@@ -190,10 +190,10 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
     if (this.replica) { this.skinId = data.ruinsRelic?.skinId; return; }
     const health = this.components.health!, saved = structureHealth(data);
-    if (saved) health.SetMaxHealth(saved.maximum);
+    if (saved) { health.SetMaxHealth(saved.maximum); }
     const rubble = data.ruinsRelic?.rubble === true;
-    if (rubble !== this.rubble) this.setRubble(rubble);
-    if (saved) health.OnLoad({ health: saved.current });
+    if (rubble !== this.rubble) { this.setRubble(rubble); }
+    if (saved) { health.OnLoad({ health: saved.current }); }
   }
   /** ruinsrelic.lua has no OnSave; the skin and an unported moisture payload keep their record fields. smashables.lua saves rubble and health. */
   override OnSave(_inst: unknown, data: EntityPersistData): void {

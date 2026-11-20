@@ -61,20 +61,20 @@ export class Fire implements BurnFX, FireFXInst {
     owner.sprite.attachFx(this.key, { sprite: instance.sprite, display, active: SHOWN, sortLayer: 2 });
     const firefx = addComponent(this, 'firefx', FireFX);
     firefx.levels = FIRE_LEVELS;
-    if (updates) this.cleanups.push(updates.register(firefx));
+    if (updates) { this.cleanups.push(updates.register(firefx)); }
     // OnEntitySleep / OnEntityWake follow the owner's tile with the child.
     const status = watchSignal(owner.status, stop => this.cleanups.push(stop));
     createEffect(() => {
       const value = status.get();
-      if (value === 'asleep') firefx.OnEntitySleep();
-      else if (value === 'active') firefx.OnEntityWake();
+      if (value === 'asleep') { firefx.OnEntitySleep(); }
+      else if (value === 'active') { firefx.OnEntityWake(); }
     });
   }
 
   Remove(): void {
-    if (this.instance.status.peek() === 'removed') return;
+    if (this.instance.status.peek() === 'removed') { return; }
     this.cleanups.splice(0).forEach(stop => stop());
-    for (const sound of this.sounds.values()) sound.stop();
+    for (const sound of this.sounds.values()) { sound.stop(); }
     this.sounds.clear();
     this.owner.sprite.detachFx(this.key);
     this.instance.remove();
@@ -88,7 +88,7 @@ export class Fire implements BurnFX, FireFXInst {
 
   PlaySound(path: SoundEventPath, name?: string): void {
     const sound = PlaySound(path, this.owner.position);
-    if (name === undefined) return;
+    if (name === undefined) { return; }
     this.sounds.get(name)?.stop();
     this.sounds.set(name, sound);
   }

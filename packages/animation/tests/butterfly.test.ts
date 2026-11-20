@@ -42,7 +42,7 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
   const controller = entity;
   const add = (prefab: string, tags: readonly string[], position: THREE.Vector3) => {
     const inst = new PrefabInstance(prefab, new SpriteState({ name: 'idle', billboard: true }));
-    for (const tag of tags) inst.addTag(tag);
+    for (const tag of tags) { inst.addTag(tag); }
     inst.setPosition(position.x, position.y, position.z); prefabs.track(inst);
     return inst;
   };
@@ -55,7 +55,7 @@ function setup(prefab: 'butterfly' | 'moonbutterfly' = 'butterfly', dropLoot = v
     setDay: (value: boolean) => { cycle.set(value ? 'day' : 'dusk'); },
     // The animover is handled on the stategraph's next update.
     complete: () => { const callback = complete; complete = undefined; callback?.(); UpdateButterfly(entity, 0); },
-    tick: (seconds: number) => { for (let i = 0; i < Math.round(seconds * 10); i++) UpdateButterfly(entity, 0.1); },
+    tick: (seconds: number) => { for (let i = 0; i < Math.round(seconds * 10); i++) { UpdateButterfly(entity, 0.1); } },
   };
 }
 
@@ -170,15 +170,15 @@ it('draws both butterflies from their own build in the shared batches, one-shots
   // An instanced sprite hides its own meshes; the shared batch draws it.
   const ownShown = (inst: ButterflyEntity) => {
     let shown = 0;
-    inst.transform.model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) shown++; });
+    inst.transform.model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) { shown++; } });
     return shown;
   };
   try {
     items.spawnFromSave('wild', { ...SAVE_CATALOG.items.butterfly, itemId: 'butterfly', count: 1 }, new THREE.Vector3(3, 0, 0));
     items.spawnFromSave('moon', { ...SAVE_CATALOG.items.moonbutterfly, itemId: 'moonbutterfly', count: 1 }, new THREE.Vector3(6, 0, 0));
     const [wild, moon] = ['wild', 'moon'].map(id => items.entities.get(id));
-    if (!(wild instanceof ButterflyEntity) || !(moon instanceof ButterflyEntity)) throw new Error('both prefabs make a ButterflyEntity');
-    for (const inst of [wild, moon]) await prefabDisplay(inst.transform.model)!.artLoaded();
+    if (!(wild instanceof ButterflyEntity) || !(moon instanceof ButterflyEntity)) { throw new Error('both prefabs make a ButterflyEntity'); }
+    for (const inst of [wild, moon]) { await prefabDisplay(inst.transform.model)!.artLoaded(); }
     expect(['butterfly_basic.zip', 'butterfly_moon.zip'].map(requested)).toEqual([true, true]);
     expect([ownShown(wild), ownShown(moon)]).toEqual([0, 0]);
     // A one-shot played by SGbutterfly still completes on the instanced path, and stays batched while it plays.
@@ -187,7 +187,7 @@ it('draws both butterflies from their own build in the shared batches, one-shots
     items.update(.05);
     expect(wild.sprite.currentAnimation).toBe('take_off');
     expect(ownShown(wild)).toBe(0);
-    for (let i = 0; i < 100 && !done.mock.calls.length; i++) items.update(.05);
+    for (let i = 0; i < 100 && !done.mock.calls.length; i++) { items.update(.05); }
     expect(done).toHaveBeenCalledOnce();
   } finally { items.dispose(); inventory.dispose(); vi.unstubAllGlobals(); }
 });
@@ -211,7 +211,7 @@ it('spawns a butterfly as its own entity, whose brain stops in an inventory and 
   try {
     items.spawnFromSave('wild', { ...SAVE_CATALOG.items.butterfly, itemId: 'butterfly', count: 1 }, new THREE.Vector3(3, 0, 0));
     const wild = items.entities.get('wild');
-    if (!(wild instanceof ButterflyEntity)) throw new Error('the butterfly prefab makes a ButterflyEntity');
+    if (!(wild instanceof ButterflyEntity)) { throw new Error('the butterfly prefab makes a ButterflyEntity'); }
     const brain = wild.brain;
     expect(brain?.stopped).toBe(false);
     expect(wild.sg?.stateName).toBe('idle');

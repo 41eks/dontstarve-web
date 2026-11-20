@@ -79,7 +79,7 @@ export class SpellCaster implements SpellCasterComponent {
   }
   canCast(doer: SpellCastDoer, target: SpellTarget | undefined, position: THREE.Vector3 | undefined): boolean {
     if (this.disposed || this.item.isRemoved || !this.spell
-      || (position && ![position.x, position.y, position.z].every(Number.isFinite))) return false;
+      || (position && ![position.x, position.y, position.z].every(Number.isFinite))) { return false; }
     if (target) {
       const inst = target;
       // TheNet:GetPVPEnabled() is false: a player casts on another player only with PvP.
@@ -92,7 +92,7 @@ export class SpellCaster implements SpellCasterComponent {
             && (Object.is(target, doer) || !(inst.hasTag('player') && doer.hasTag('player'))))
           || (this.canCastFn?.(doer, target, position, this.item) ?? false));
     }
-    if (!position) return this.fromInventory;
+    if (!position) { return this.fromInventory; }
     return (this.canCastFn?.(doer, target, position, this.item) ?? true) && !!this.map
       && (this.onPoint ? this.map.isAboveGroundAtPoint(position, this.onWater)
         : this.onWater && this.map.isOceanAtPoint(position)) && !this.map.isGroundTargetBlocked(position);
@@ -105,8 +105,8 @@ export class SpellCaster implements SpellCasterComponent {
     for (const [tag, enabled] of [['castfrominventory', this.fromInventory], ['castonpoint', this.onPoint], ['castonpointwater', this.onWater],
       ['castontargets', this.onTargets && !this.onRecipes && !this.onLocomotorsPvP], ['castonrecipes', this.onTargets && this.onRecipes],
       ['castonlocomotorspvp', this.onTargets && this.onLocomotorsPvP], ['veryquickcast', this.veryQuick]] as const) {
-      if (!this.disposed && this.spell && enabled) this.item.addTag(tag);
-      else this.item.removeTag(tag);
+      if (!this.disposed && this.spell && enabled) { this.item.addTag(tag); }
+      else { this.item.removeTag(tag); }
     }
   }
 }

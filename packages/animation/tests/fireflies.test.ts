@@ -371,7 +371,7 @@ describe('real fireflies archive and ground transfers', () => {
     await settle();
     const geometry = (model: THREE.Object3D) => {
       let result: THREE.BufferGeometry | undefined;
-      model.traverse(object => { if (object instanceof THREE.Mesh) result = object.geometry; });
+      model.traverse(object => { if (object instanceof THREE.Mesh) { result = object.geometry; } });
       return result;
     };
     // Source frame buffers belong to ArchiveSpriteAssets; a departing swarm drops its visual and instance.

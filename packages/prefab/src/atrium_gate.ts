@@ -84,7 +84,7 @@ export class AtriumGateInstance extends PrefabInstance {
     // the listed repaired build. CharlieCutscene:OnLoad switches to atrium_gate_build.
     this.sprite.setBuildArchive('atrium_gate.zip');
     this.minimap.SetIcon('atrium_gate.png');
-    for (const tag of ['gemsocket', 'stargate', 'give_dolongaction']) this.addTag(tag);
+    for (const tag of ['gemsocket', 'stargate', 'give_dolongaction']) { this.addTag(tag); }
 
     // CreateFloor and AddTerraformBlockers: non-networked children that are never saved.
     const children = [world.spawnPrefab(ATRIUM_GATE_FLOOR_ID, position)];
@@ -97,7 +97,7 @@ export class AtriumGateInstance extends PrefabInstance {
         }
       }
     }
-    for (const child of children) child.entityParent = this;
+    for (const child of children) { child.entityParent = this; }
     InitializePathFinding(this, world.pathfinder);
 
     // A new pickable has no product until OnKeyGiven's SetUp: nothing to pick.
@@ -122,13 +122,13 @@ export class AtriumGateInstance extends PrefabInstance {
         ...this.can_spawn_charlie_hand_keystone ? { can_spawn_charlie_hand_keystone: true as const } : {},
         ...this._launchkey ? { launch_key: true as const } : {},
       };
-      if (Object.keys(own).length) data.atriumGate = own;
+      if (Object.keys(own).length) { data.atriumGate = own; }
     };
     this.OnLoad = (_inst, data) => {
       const own = data.atriumGate;
-      if (own?.vault_key_socketed) SocketVaultKey(this);
-      if (own?.can_spawn_charlie_hand_keystone) this.can_spawn_charlie_hand_keystone = true;
-      if (own?.launch_key) this._launchkey = true;
+      if (own?.vault_key_socketed) { SocketVaultKey(this); }
+      if (own?.can_spawn_charlie_hand_keystone) { this.can_spawn_charlie_hand_keystone = true; }
+      if (own?.launch_key) { this._launchkey = true; }
     };
     // The blockers and _gatefx are parented with entity:SetParent and retire with the gate.
     this.OnRemoveEntity = OnRemove;
@@ -153,7 +153,7 @@ function SetMiniMapIcon(inst: AtriumGateInstance): void {
 function ShowFx(inst: AtriumGateInstance, state: 'idle' | 'overload'): void {
   if (!inst._gatefx) {
     const fx = inst.world.spawnPrefab(ATRIUM_GATE_ACTIVATEDFX_ID, inst.position);
-    if (!(fx instanceof AtriumGateFxInstance)) throw new Error(`${ATRIUM_GATE_ACTIVATEDFX_ID} did not spawn its fx instance`);
+    if (!(fx instanceof AtriumGateFxInstance)) { throw new Error(`${ATRIUM_GATE_ACTIVATEDFX_ID} did not spawn its fx instance`); }
     inst._gatefx = fx;
     fx.entityParent = inst;
   }
@@ -163,7 +163,7 @@ function ShowFx(inst: AtriumGateInstance, state: 'idle' | 'overload'): void {
 /** CharlieCutscene:OnLoad's appearance, then OnLoadPostPass; a new gate has none of their saved state. */
 function OnLoadPostPass(inst: AtriumGateInstance): void {
   const { charliecutscene, pickable, trader, worldsettingstimer, entitytracker } = inst.components;
-  if (charliecutscene.IsGateRepaired()) inst.sprite.setBuildArchive('atrium_gate_build.zip');
+  if (charliecutscene.IsGateRepaired()) { inst.sprite.setBuildArchive('atrium_gate_build.zip'); }
   SetMiniMapIcon(inst);
   if (inst.IsDestabilizing()) {
     // StartDestabilizing(inst, true)
@@ -203,12 +203,12 @@ function gateWalls(inst: PrefabInstance) {
 
 /** atrium_gate.lua InitializePathFinding. */
 function InitializePathFinding(inst: PrefabInstance, pathfinder: Pathfinder | undefined): void {
-  for (const wall of gateWalls(inst)) pathfinder?.AddWall(wall);
+  for (const wall of gateWalls(inst)) { pathfinder?.AddWall(wall); }
 }
 
 /** atrium_gate.lua OnRemove, its inst.OnRemoveEntity. */
 function OnRemove(inst: AtriumGateInstance): void {
-  for (const wall of gateWalls(inst)) inst.world.pathfinder?.RemoveWall(wall);
+  for (const wall of gateWalls(inst)) { inst.world.pathfinder?.RemoveWall(wall); }
 }
 
 /** atrium_gate.lua CreateFloor. */
@@ -250,7 +250,7 @@ export class AtriumGateFxInstance extends PrefabInstance {
       if (this.anim !== undefined) {
         this.sprite.pushAnimation(`${this.anim}_pst`, false);
         this.sprite.pushAnimation(`${anim}_pre`, false);
-      } else this.sprite.playOnce(`${anim}_pre`);
+      } else { this.sprite.playOnce(`${anim}_pre`); }
       this.sprite.pushAnimation(`${anim}_loop`, true);
       if (anim === 'idle') { this.removeTag('NOCLICK'); this.removeTag('DECOR'); this.addTag('FX'); }
       else { this.removeTag('FX'); this.addTag('DECOR'); this.addTag('NOCLICK'); }

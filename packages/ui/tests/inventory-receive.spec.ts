@@ -135,7 +135,7 @@ test(`the production crafting event keeps the flying icon in its slot size at ${
         return stack ? [{ slot, itemId: stack.itemId, skinId: stack.skinId, delta: -stack.count }] : [];
       });
     inventory.applySlotChanges(changes);
-    if (!inventory.add('cutgrass', 3)) throw new Error('No room for ingredients');
+    if (!inventory.add('cutgrass', 3)) { throw new Error('No room for ingredients'); }
     const source = screenProjection.GetScreenPos(player.position);
     document.querySelector('dst-crafting-ui')!.dispatchEvent(new CustomEvent('game:craft-request', {
       detail: { recipeId: 'rope' }, bubbles: true, composed: true,

@@ -48,7 +48,7 @@ function setup() {
   iceStaffLifecycle(staff, { launch: (owner, target, from) =>
     LaunchProjectile((prefab, position) => prefabs.spawn(prefab, position), ICE_PROJECTILE_ID, owner, target, from) });
   const hive = prefabs.spawnAs(BeehiveInstance, BEEHIVE_ID, new THREE.Vector3(12, 0, 0));
-  const fly = (seconds: number) => { for (let t = 0; t < seconds; t += 1 / 60) componentUpdates.update(1 / 60); };
+  const fly = (seconds: number) => { for (let t = 0; t < seconds; t += 1 / 60) { componentUpdates.update(1 / 60); } };
   /** One left-click attack: combat:DoAttack launches the projectile, which hits the hive in flight. */
   const shoot = () => { expect(combat.DoAttack(hive as never)).toBe(true); fly(1); };
   const tint = () => hive.sprite.sprite.peek().tint?.add;

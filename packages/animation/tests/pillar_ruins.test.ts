@@ -47,7 +47,7 @@ it('restores a saved pillar with its Lua clip, tags, bank and obstacle', async (
   const s = setup();
   try {
     const pillar = s.prefabs.spawn(PILLAR_RUINS_ID, new THREE.Vector3(3, 0, 6), record);
-    for (const tag of ['charge_barrier', 'quake_on_charge', 'blocker']) expect(pillar.hasTag(tag)).toBe(true);
+    for (const tag of ['charge_barrier', 'quake_on_charge', 'blocker']) { expect(pillar.hasTag(tag)).toBe(true); }
     expect(pillar.hasTag('NOBLOCK')).toBe(false);
     expect(pillar.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, queue: [], billboard: true });
     expect(pillar.getPhysicsRadius()).toBeCloseTo(2.35 * 3);

@@ -9,7 +9,7 @@ export class Follower<Target> {
   private readonly inst: { PushEvent(name: string, data: unknown): void };
   constructor(inst: Follower<Target>['inst']) { this.inst = inst; }
   SetLeader(leader?: Target): void {
-    if (leader === this.leader) return;
+    if (leader === this.leader) { return; }
     const old = this.leader; this.stopLeader?.(); this.stopLeader = undefined; this.leader = leader;
     this.stopLeader = (leader as FollowerLeader | undefined)?.ListenForEvent?.('onremove', () => this.StopFollowing());
     this.inst.PushEvent('leaderchanged', { new: leader, old });

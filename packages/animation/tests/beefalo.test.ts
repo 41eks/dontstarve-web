@@ -82,7 +82,7 @@ function setup(random: () => number = () => 0) {
     /** Advance game time to the next day boundary, running every task due on the way. */
     endDay: () => { scene.scheduler.advance(scene.world.secondsUntilNextDay(scene.scheduler.now)); },
     /** Game time reaches the end of the current clip. */
-    complete: () => { const timer = animstate.timer.peek(); if (timer.status === 'scheduled') scene.scheduler.advanceTo(timer.endTime); },
+    complete: () => { const timer = animstate.timer.peek(); if (timer.status === 'scheduled') { scene.scheduler.advanceTo(timer.endTime); } },
     /** The frame: game time, the physics step moving the body, then the beefalo's component update. */
     tick: (seconds: number) => {
       for (let i = 0; i < Math.round(seconds * 10); i++) {
@@ -310,7 +310,7 @@ describe('wild beefalo behavior', () => {
     s.endDay();
     expect(s.inst.hairGrowthPending).toBe(true);
     s.setNight(false);
-    for (let i = 0; i < 100 && s.inst.state !== 'hair_growth'; i++) s.tick(.1);
+    for (let i = 0; i < 100 && s.inst.state !== 'hair_growth'; i++) { s.tick(.1); }
     expect(s.inst.state).toBe('hair_growth');
     expect(s.clip()).toBe('hair_growth_pre');
     s.complete();
@@ -416,7 +416,7 @@ describe('original beefalo assets', () => {
       expect(drawn().length).toBeGreaterThan(0);
       const complete = vi.fn();
       sprite.playOnce('sleep_pre', complete);
-      for (let i = 0; i < 6; i++) sprite.update(0.1);
+      for (let i = 0; i < 6; i++) { sprite.update(0.1); }
       // A left-hand facing draws the right-hand clip mirrored.
       const scene = new THREE.Scene(), root = new TransformRoot();
       root.add(sprite.model); scene.add(root);
@@ -426,7 +426,7 @@ describe('original beefalo assets', () => {
       sprite.update(0);
       updateSceneMatrices(scene);
       expect(Math.sign(sprite.model.children[0].matrixWorld.elements[0])).toBe(-Math.sign(facingRight));
-      for (let i = 0; i < 6; i++) sprite.update(0.1);
+      for (let i = 0; i < 6; i++) { sprite.update(0.1); }
       expect(complete).toHaveBeenCalledTimes(1);
       for (const clip of ['walk_pre', 'walk_loop', 'walk_pst', 'graze2_pre', 'graze2_loop', 'graze2_pst',
         'graze_loop', 'alert_pre', 'alert_idle', 'sleep_loop', 'sleep_pst', 'shake', 'bellow']) {
@@ -492,7 +492,7 @@ describe('original beefalo assets', () => {
       player.velocity.x = i < 10 ? 16 : 0; // player_common MakeCharacterPhysics(75, .5) at run speed
       s.physics.step(1 / 60);
       s.componentUpdates.update(1 / 60);
-      if (i === 29) stoppedAt = body.position.x;
+      if (i === 29) { stoppedAt = body.position.x; }
     }
     expect(stoppedAt).toBeGreaterThan(0);
     // After the player stops, the beefalo only slides a short way.

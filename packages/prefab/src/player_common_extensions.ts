@@ -34,7 +34,7 @@ export function PlayerBuild(inst: PlayerInstance): string { return `dynamic/${in
 
 /** AnimState:SetBank("ghost") + skinner ghost_skin + SetStateGraph("SGwilsonghost"); `loading` is inst.loading_ghost. */
 export function makeGhost(inst: PlayerInstance, loading = false): void {
-  if (inst.sg.isGhost) return;
+  if (inst.sg.isGhost) { return; }
   cancelEmote(inst);
   inst.AnimState.SetBank('ghost');
   inst.AnimState.SetBuild(GhostBuild(inst));
@@ -43,7 +43,7 @@ export function makeGhost(inst: PlayerInstance, loading = false): void {
 
 /** DoActualRez: the living bank and skin, SetStateGraph("SGwilson") and the source's rebirth state. */
 export function makeAlive(inst: PlayerInstance, state: 'portal_rez' | 'amulet_rebirth' = 'portal_rez'): void {
-  if (!inst.sg.isGhost) return;
+  if (!inst.sg.isGhost) { return; }
   inst.AnimState.SetBank('wilson');
   inst.AnimState.SetBuild(PlayerBuild(inst));
   inst.sg.becomeAlive(state);
@@ -52,7 +52,7 @@ export function makeAlive(inst: PlayerInstance, state: 'portal_rez' | 'amulet_re
 /** player_common_extensions.lua SpawnDeathProduct: skeleton_player at the death point, described with the character, name and cause. */
 function SpawnDeathProduct(inst: PlayerInstance, position: THREE.Vector3): void {
   const skel = inst.SpawnPrefab?.(SKELETON_PLAYER_ID, position);
-  if (skel instanceof SkeletonInstance) skel.SetSkeletonDescription(inst.prefab, inst.transform.model.name, inst.deathcause);
+  if (skel instanceof SkeletonInstance) { skel.SetSkeletonDescription(inst.prefab, inst.transform.model.name, inst.deathcause); }
 }
 
 /**
@@ -63,11 +63,11 @@ function SpawnDeathProduct(inst: PlayerInstance, position: THREE.Vector3): void 
  * here (burnable, freezable, propagator, grogginess, moisture, sheltered, debuffable, age, temperature, frostybreather).
  */
 export function OnMakePlayerGhost(inst: PlayerInstance, data?: { skeleton?: boolean; loading?: boolean }): void {
-  if (inst.hasTag('playerghost')) return;
+  if (inst.hasTag('playerghost')) { return; }
   const position = new THREE.Vector3(inst.position.x, 0, inst.position.z);
   const loading = data?.loading === true;
-  if (data?.skeleton) SpawnDeathProduct(inst, position);
-  if (!loading) inst.SpawnPrefab?.('die_fx', position);
+  if (data?.skeleton) { SpawnDeathProduct(inst, position); }
+  if (!loading) { inst.SpawnPrefab?.('die_fx', position); }
 
   makeGhost(inst, loading);
   inst.sprite.setLightOverride(GHOST_LIGHT_OVERRIDE);
@@ -88,7 +88,7 @@ export function OnMakePlayerGhost(inst: PlayerInstance, data?: { skeleton?: bool
   MakeGhostPhysics(inst, 1, .5);
   inst.components.playeractionpicker?.PushActionFilter(GhostActionFilter, GHOST_ACTION_FILTER_PRIORITY);
   inst.addTag('playerghost');
-  if (!loading) health.SetCurrentHealth(RESURRECT_HEALTH);
+  if (!loading) { health.SetCurrentHealth(RESURRECT_HEALTH); }
   // The death state disabled the controller; a ghost can move and act.
   inst.controllerEnabled = true;
   inst.ghostMode.set(true);
@@ -142,7 +142,7 @@ function revertMove(inst: PlayerInstance): void {
  */
 export function OnRespawnFromGhost(inst: PlayerInstance, data?: { source?: RezSource }): void {
   const source = data?.source;
-  if (!inst.hasTag('playerghost') || !(source?.prefab === 'amulet' || source?.hasTag('multiplayer_portal'))) return;
+  if (!inst.hasTag('playerghost') || !(source?.prefab === 'amulet' || source?.hasTag('multiplayer_portal'))) { return; }
   inst.addTag('reviving');
   inst.ShowHUD(false);
   inst.controllerEnabled = false;
@@ -159,9 +159,9 @@ function DoMoveToRezSource(inst: PlayerInstance, source: RezSource, delay: numbe
 }
 
 function DoRezDelay(inst: PlayerInstance, source: RezSource, delay: number): void {
-  if (!source.isValid() || source.inlimbo) revertMove(inst);
-  else if (delay <= 0) DoActualRez(inst, source);
-  else inst.DoTaskInTime(Math.min(delay, .35), () => DoRezDelay(inst, source, delay - .35));
+  if (!source.isValid() || source.inlimbo) { revertMove(inst); }
+  else if (delay <= 0) { DoActualRez(inst, source); }
+  else { inst.DoTaskInTime(Math.min(delay, .35), () => DoRezDelay(inst, source, delay - .35)); }
 }
 
 /**
@@ -170,9 +170,9 @@ function DoRezDelay(inst: PlayerInstance, source: RezSource, delay: number): voi
  */
 function EquipRezSource(inst: PlayerInstance, item: ItemEntity | undefined): boolean {
   const inventory = inst.components.inventory, slot = item?.components.equippable?.equipslot;
-  if (!inventory || !item || !slot) return false;
+  if (!inventory || !item || !slot) { return false; }
   const worn = inventory.Unequip(slot);
-  if (worn && !inventory.GiveItem(worn)) inventory.DropItem(worn);
+  if (worn && !inventory.GiveItem(worn)) { inventory.DropItem(worn); }
   return inventory.Equip(item);
 }
 

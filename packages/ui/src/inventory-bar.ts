@@ -72,7 +72,7 @@ export class DstInventoryBarElement extends AssetElement {
 
   private inspectAsset(): string {
     const character = this.player;
-    if (!/^[a-z][a-z0-9_]*$/.test(character)) throw new Error(`Invalid player character: ${character}`);
+    if (!/^[a-z][a-z0-9_]*$/.test(character)) { throw new Error(`Invalid player character: ${character}`); }
     return this.asset(`bag/self_inspect_${character}.tex.png`);
   }
   private readonly inventory = createSlotContainer({
@@ -139,9 +139,9 @@ export class DstInventoryBarElement extends AssetElement {
   }
 
   protected render(): void {
-    if (!this.stopCursor) this.stopCursor = slotTransferController.bindCursor(this.cursor.getSlot(cursorSlotAddress().slotKey), origin => {
+    if (!this.stopCursor) { this.stopCursor = slotTransferController.bindCursor(this.cursor.getSlot(cursorSlotAddress().slotKey), origin => {
       this.dispatchEvent(new CustomEvent('game:cursor-return-request', { bubbles: true, composed: true, detail: { origin } }));
-    });
+    }); }
     if (this.initialized) {
       this.shadowRoot!
         .querySelector<HTMLImageElement>('.inventory-bar__inspect img')!
@@ -260,7 +260,7 @@ export class DstInventoryBarElement extends AssetElement {
       ? this.inventory
       : address.containerId === this.equipment.id ? this.equipment
       : address.containerId === this.cursor.id ? this.cursor : undefined;
-    if (!container) throw new RangeError(`Unknown inventory container: ${address.containerId}`);
+    if (!container) { throw new RangeError(`Unknown inventory container: ${address.containerId}`); }
     return container.getSlot(address.slotKey);
   }
 

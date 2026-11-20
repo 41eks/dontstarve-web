@@ -7,13 +7,13 @@ import { parseKtex } from '../../animation/src/parseKtex.ts';
 const source = '/data/copy/AssetArchive-Dev/data/DST/data';
 const destination = fileURLToPath(new URL('../../../public/dst/data/ui/bag/', import.meta.url));
 const check = process.argv.includes('--check');
-if (process.argv.slice(2).some(argument => argument !== '--check')) throw new Error('Usage: node import-self-inspect-icons.mjs [--check]');
+if (process.argv.slice(2).some(argument => argument !== '--check')) { throw new Error('Usage: node import-self-inspect-icons.mjs [--check]'); }
 
 function crc32(bytes) {
   let crc = 0xffffffff;
   for (const byte of bytes) {
     crc ^= byte;
-    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    for (let bit = 0; bit < 8; bit++) { crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0); }
   }
   return (crc ^ 0xffffffff) >>> 0;
 }
@@ -32,7 +32,7 @@ function png(texture, element) {
   const right = Math.min(texture.width, Math.floor(texture.width * Number(element.u2)) + 1);
   const bottom = Math.min(texture.height, Math.floor(texture.height * (1 - Number(element.v1))) + 1);
   const width = right - left, height = bottom - top;
-  if (width <= 0 || height <= 0) throw new Error(`Invalid bounds: ${element.name}`);
+  if (width <= 0 || height <= 0) { throw new Error(`Invalid bounds: ${element.name}`); }
   const rows = Buffer.alloc((width * 4 + 1) * height);
   for (let y = 0; y < height; y++) {
     const start = ((top + y) * texture.width + left) * 4;
@@ -51,14 +51,14 @@ for (const atlas of ['hud', 'hud2']) {
   const texture = parseKtex(readFileSync(`${source}/images/${atlas}.tex`), `${atlas}.tex`);
   for (const [tag] of xml.matchAll(/<Element\s[^>]+\/>/g)) {
     const element = Object.fromEntries([...tag.matchAll(/(\w+)="([^"]*)"/g)].map(([, key, value]) => [key, value]));
-    if (!/^self_inspect_[a-z0-9_]+\.tex$/.test(element.name) || names.has(element.name)) continue;
+    if (!/^self_inspect_[a-z0-9_]+\.tex$/.test(element.name) || names.has(element.name)) { continue; }
     names.add(element.name);
     const bytes = png(texture, element), path = `${destination}${element.name}.png`;
     if (check) {
-      if (!readFileSync(path).equals(bytes)) throw new Error(`Different native icon: ${element.name}`);
+      if (!readFileSync(path).equals(bytes)) { throw new Error(`Different native icon: ${element.name}`); }
     } else { mkdirSync(destination, { recursive: true }); writeFileSync(path, bytes); }
     count++;
   }
 }
-if (!names.has('self_inspect_waxwell.tex')) throw new Error('Missing Maxwell self-inspect icon');
+if (!names.has('self_inspect_waxwell.tex')) { throw new Error('Missing Maxwell self-inspect icon'); }
 console.log(`${check ? 'Checked' : 'Imported'} ${count} native self-inspect icons`);

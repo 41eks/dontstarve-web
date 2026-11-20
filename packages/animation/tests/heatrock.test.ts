@@ -165,7 +165,7 @@ it('renders the source neutral pose for base and skinned stones and resolves the
     items.update(1);
     expect(entity.snapshot()).toMatchObject({ skinId: 'heatrock_fantasy', temperature: { current: 0 }, lowTemp: 0 });
     let mesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-    model.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object as typeof mesh; });
+    model.traverse(object => { if (object instanceof THREE.Mesh) { mesh ??= object as typeof mesh; } });
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     expect(mesh.material.some(material => material.name === 'sprite:heatrock_fantasy')).toBe(true);
     entity.components.temperature!.SetTemperature(80);

@@ -20,7 +20,7 @@ export async function loadMinimapIcon(root: string, icon: string): Promise<Image
   for (const path of MINIMAP_ATLAS_PATHS) {
     const atlas = await loadImageAtlasFiles(`${base}/${path}`);
     const sprite = atlas.get(icon);
-    if (sprite) return sprite;
+    if (sprite) { return sprite; }
   }
   throw new Error(`Minimap atlases lack icon ${icon}`);
 }
@@ -60,25 +60,25 @@ export class MinimapIcons {
   dispose(): void {
     this.disposed = true;
     this.indices.clear(); this.icons.length = 0;
-    for (const url of this.urls) URL.revokeObjectURL(url);
+    for (const url of this.urls) { URL.revokeObjectURL(url); }
     this.urls.clear();
   }
 
   private async prepare(): Promise<void> {
     const atlases = await loadMinimapAtlases(this.root);
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     const pages = atlases.flatMap(atlas => atlas.pages);
     const results = await Promise.allSettled(pages.map(page => this.preparePage(page)));
-    for (const result of results) if (result.status === 'rejected') throw result.reason;
-    if (this.disposed) return;
+    for (const result of results) { if (result.status === 'rejected') { throw result.reason; } }
+    if (this.disposed) { return; }
     for (let index = 0; index < pages.length; index++) {
       const page = pages[index], result = results[index];
-      if (result.status !== 'fulfilled' || !result.value) continue;
-      for (const [name, element] of page.elements) if (!this.indices.has(name)) {
+      if (result.status !== 'fulfilled' || !result.value) { continue; }
+      for (const [name, element] of page.elements) { if (!this.indices.has(name)) {
         this.indices.set(name, this.icons.length);
         this.icons.push({ imageUrl: result.value.src, image: result.value, ...atlasElementBounds(page.decodedTexture, element),
           atlasWidth: page.decodedTexture.width, atlasHeight: page.decodedTexture.height });
-      }
+      } }
     }
     this.prepared = true;
   }
@@ -91,17 +91,17 @@ export class MinimapIcons {
     let retained = false;
     try {
       const blob = await canvas.convertToBlob();
-      if (this.disposed) return;
+      if (this.disposed) { return; }
       url = URL.createObjectURL(blob);
       this.urls.add(url);
       const image = new Image(); image.src = url;
       await image.decode();
-      if (this.disposed) return;
+      if (this.disposed) { return; }
       retained = true;
       return image;
     } finally {
       canvas.width = canvas.height = 0;
-      if (url && !retained && this.urls.delete(url)) URL.revokeObjectURL(url);
+      if (url && !retained && this.urls.delete(url)) { URL.revokeObjectURL(url); }
     }
   }
 }

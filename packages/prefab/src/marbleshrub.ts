@@ -76,7 +76,7 @@ export class MarbleShrubInstance extends PrefabInstance {
 
     this.deploySmartRadius = 1;
     this.minimap.SetIcon('marbleshrub1.png'); this.minimap.SetPriority(-1);
-    for (const tag of ['boulder', 'SnowCovered']) this.addTag(tag);
+    for (const tag of ['boulder', 'SnowCovered']) { this.addTag(tag); }
 
     // MakeSnowCovered, with weather.lua's SNOW_COVERED_THRESHOLD.
     let stopWatchingSnow: (() => void) | undefined;
@@ -104,7 +104,7 @@ export class MarbleShrubInstance extends PrefabInstance {
     this.onRemove(() => {
       stopSnow(); stopWatchingSnow?.();
       growable.dispose(); workable.dispose();
-      for (const sound of this.sounds) sound.stop();
+      for (const sound of this.sounds) { sound.stop(); }
     });
 
     // onsave: shapenumber only when it is not 1, color always; the growable saves itself.
@@ -113,9 +113,9 @@ export class MarbleShrubInstance extends PrefabInstance {
     };
     // onload; growable:OnLoad (run first by SetPersistData) re-enters the saved stage, which SetGrowth makes the statedata.
     this.OnLoad = (_inst, data) => {
-      if (!data.marbleShrub) return;
+      if (!data.marbleShrub) { return; }
       const shapenumber = data.marbleShrub.shapenumber ?? 1;
-      if (!Number.isInteger(shapenumber) || shapenumber < 1 || shapenumber > NUM_BUILDS) throw new RangeError('Invalid marble shrub shape');
+      if (!Number.isInteger(shapenumber) || shapenumber < 1 || shapenumber > NUM_BUILDS) { throw new RangeError('Invalid marble shrub shape'); }
       this.SetupShrubShape(shapenumber);
       this.SetMultColour(data.marbleShrub.color);
     };
@@ -135,7 +135,7 @@ export class MarbleShrubInstance extends PrefabInstance {
 
   private SetupShrubShape(buildnum: number): void {
     this.shapenumber = buildnum;
-    if (buildnum === 1) return;
+    if (buildnum === 1) { return; }
     this.sprite.setSymbolOverride('marbleshrub_top1', 'marbleshrub_build.zip', `marbleshrub_top${buildnum}`);
     this.minimap.SetIcon(`marbleshrub${buildnum}.png`);
   }
@@ -159,7 +159,7 @@ export class MarbleShrubInstance extends PrefabInstance {
     if (workleft > 0) { this.sprite.playOnce(this.statedata.hit); return; }
     this.sprite.playOnce(this.statedata.broken);
     this.sounds.add(PlaySound('dontstarve/wilson/rock_break', this.position));
-    for (const prefab of this.statedata.loot(chance => Math.random() <= chance)) this.components.lootdropper!.SpawnLootPrefab(prefab, this.position);
+    for (const prefab of this.statedata.loot(chance => Math.random() <= chance)) { this.components.lootdropper!.SpawnLootPrefab(prefab, this.position); }
     RemovePhysicsColliders(this);
     this.addTag('NOCLICK');
     this.persists = false;

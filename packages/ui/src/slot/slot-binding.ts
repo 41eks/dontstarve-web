@@ -18,7 +18,7 @@ export type EntitySlots<TItem> = readonly (EntitySlotSignal<TItem> | undefined)[
  */
 export function bindSlotEntities<TItem>(target: SlotContainer, slots: EntitySlots<TItem>, toItem: (item: TItem) => SlotItem): () => void {
   const stops = Object.entries(slots).flatMap(([slotKey, slot]) => {
-    if (!slot) return [];
+    if (!slot) { return []; }
     const model = target.getSlot(slotKey);
     const show = (item: TItem | null) => model.setItem(item === null ? null : toItem(item));
     show(slot.entity.peek());

@@ -67,7 +67,7 @@ export class DeciduousTreeLeaves {
     let first = true, previous = this.season.peek().season;
     createEffect(() => {
       const season = this.season.get().season;
-      if (first) first = false;
+      if (first) { first = false; }
       else if (season !== previous && !this.stopped && this.leafSignal.peek() !== leafStateFor(season)) {
         this.targetSignal.set(leafStateFor(season)); this.changeTimer.stop(); this.OnChangeLeaves();
       }
@@ -79,23 +79,23 @@ export class DeciduousTreeLeaves {
       this.buildSignal.set(saved.build ?? 'normal'); this.leafSignal.set(saved.leaf_state); this.targetSignal.set(saved.target_leaf_state);
       this.stopped = saved.stump === true;
       this.owner.applyBuild(); this.owner.updateLoot(); this.owner.setShelter(!this.stopped && this.buildSignal.peek() !== 'barren');
-      if (!this.stopped && saved.leaveschangetime !== undefined) this.changeTimer.start(saved.leaveschangetime);
-      else if (!this.stopped && saved.leaf_state !== saved.target_leaf_state) this.OnChangeLeaves();
+      if (!this.stopped && saved.leaveschangetime !== undefined) { this.changeTimer.start(saved.leaveschangetime); }
+      else if (!this.stopped && saved.leaf_state !== saved.target_leaf_state) { this.OnChangeLeaves(); }
     } else {
       this.targetSignal.set(leafStateFor(this.season.peek().season)); this.OnChangeLeaves();
     }
     this.ArmDay();
   }
-  private ArmDay(): void { if (!this.stopped) this.dayTimer.start(this.world.secondsUntilNextDay(this.scheduler.now)); }
+  private ArmDay(): void { if (!this.stopped) { this.dayTimer.start(this.world.secondsUntilNextDay(this.scheduler.now)); } }
   private OnCyclesChanged(): void {
     const calendar = this.world.seasonCalendar?.();
-    if (!calendar || calendar.remainingDays > 3 || this.changeTimer.remainingSeconds !== undefined) return;
+    if (!calendar || calendar.remainingDays > 3 || this.changeTimer.remainingSeconds !== undefined) { return; }
     const current = this.season.peek().season;
     let next = nextSeason[current];
-    while (next !== current && calendar.lengths[next] <= 0) next = nextSeason[next];
-    if (next === current || calendar.lengths[next] <= 0) return;
+    while (next !== current && calendar.lengths[next] <= 0) { next = nextSeason[next]; }
+    if (next === current || calendar.lengths[next] <= 0) { return; }
     this.targetSignal.set(leafStateFor(next)); this.changeTimer.stop();
-    if (this.targetSignal.peek() !== this.leafSignal.peek()) this.changeTimer.start(30 + Math.floor(this.random() * 871));
+    if (this.targetSignal.peek() !== this.leafSignal.peek()) { this.changeTimer.start(30 + Math.floor(this.random() * 871)); }
   }
   private OnChangeLeaves(): void {
     if (this.stopped) { this.changeTimer.stop(); return; }
@@ -104,39 +104,39 @@ export class DeciduousTreeLeaves {
     if (lastWork !== undefined && lastWork < this.scheduler.now - 10) { this.changeTimer.start(11); return; }
     this.changeTimer.stop(); this.completionTimer.stop();
     const target = this.targetSignal.peek();
-    if (target === undefined) return;
+    if (target === undefined) { return; }
     if (target !== 'barren') {
       this.buildSignal.set(target === 'colorful' ? (['red', 'orange', 'yellow'] as const)[Math.min(2, Math.floor(this.random() * 3))] : 'normal');
       this.owner.applyBuild();
-      if (this.leafSignal.peek() === 'barren') this.completionTimer.start(this.owner.playTransition('grow_leaves'));
-      else this.GrowLeaves();
+      if (this.leafSignal.peek() === 'barren') { this.completionTimer.start(this.owner.playTransition('grow_leaves')); }
+      else { this.GrowLeaves(); }
     } else {
       this.completionTimer.start(this.owner.playTransition('drop_leaves')); this.SpawnLeafFxAfter(11 / 30);
     }
     this.owner.setShelter(this.buildSignal.peek() !== 'barren');
   }
   private GrowLeaves(): void {
-    if (this.stopped) return;
+    if (this.stopped) { return; }
     const target = this.targetSignal.peek();
-    if (target === undefined) return;
-    if (target === 'barren') this.buildSignal.set('barren');
+    if (target === undefined) { return; }
+    if (target === 'barren') { this.buildSignal.set('barren'); }
     this.leafSignal.set(target); this.owner.applyBuild(); this.owner.updateLoot();
     this.owner.sway(); this.UpdateIdleLeafFx();
   }
   /** The source's animover listener survives interrupted leaf clips and finishes on the next one-shot. */
   OnAnimation(duration: number): void {
-    if (this.completionTimer.remainingSeconds !== undefined) this.completionTimer.start(duration);
+    if (this.completionTimer.remainingSeconds !== undefined) { this.completionTimer.start(duration); }
   }
   SpawnLeafFxAfter(seconds: number): void {
-    if (this.stopped) return;
+    if (this.stopped) { return; }
     const task = new ComponentTimer(this.scheduler, () => { this.delayedFx.delete(task); this.owner.spawnLeafFx(); });
     this.delayedFx.add(task); task.start(seconds);
   }
   SetAwake(awake: boolean): void { this.awake = awake; this.UpdateIdleLeafFx(); }
   private UpdateIdleLeafFx(): void {
     if (!this.stopped && this.awake && this.leafSignal.peek() === 'colorful') {
-      if (this.idleFxTimer.remainingSeconds === undefined) this.idleFxTimer.start(this.idlePeriod);
-    } else this.idleFxTimer.stop();
+      if (this.idleFxTimer.remainingSeconds === undefined) { this.idleFxTimer.start(this.idlePeriod); }
+    } else { this.idleFxTimer.stop(); }
   }
   OnSave(): DeciduousTreeSave {
     const build = this.buildSignal.peek(), remaining = this.changeTimer.remainingSeconds, target = this.targetSignal.peek();
@@ -147,10 +147,10 @@ export class DeciduousTreeLeaves {
   }
   Stop(): void {
     this.stopped = true; this.changeTimer.stop(); this.completionTimer.stop(); this.idleFxTimer.stop(); this.dayTimer.stop();
-    for (const task of this.delayedFx) task.stop(); this.delayedFx.clear();
+    for (const task of this.delayedFx) { task.stop(); } this.delayedFx.clear();
   }
   dispose(): void {
     this.Stop();
-    for (const stop of this.signalCleanups.splice(0).reverse()) stop();
+    for (const stop of this.signalCleanups.splice(0).reverse()) { stop(); }
   }
 }

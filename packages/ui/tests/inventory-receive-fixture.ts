@@ -27,8 +27,8 @@ export async function createReceiveFixture() {
   inventoryBar.bindInventory(inventory, createInventorySlotItem(inventory));
   const scene = new THREE.Scene();
   inventory.subscribeReceived((received, source) => {
-    if (source) inventoryReceiveEffect(ui,
-      screenProjection.GetScreenPos(new THREE.Vector3(source.x, source.y, source.z)))(received);
+    if (source) { inventoryReceiveEffect(ui,
+      screenProjection.GetScreenPos(new THREE.Vector3(source.x, source.y, source.z)))(received); }
   });
   const worldState = createWorldState({ elapsedSeconds: 450, systems: {}, map: { ...initialWorld.world.map, kind: 'generated' } });
   // Keep the capture scene in tickingarea, with the player outside the swarm's hide radius.
@@ -40,13 +40,13 @@ export async function createReceiveFixture() {
     inventory, inventoryBar, backpackPanel,
     equipBackpack() {
       const backpack = inventory.entities.create({ itemId: 'backpack', count: 1 });
-      if (!inventory.Equip(backpack)) throw new Error('Could not equip backpack');
+      if (!inventory.Equip(backpack)) { throw new Error('Could not equip backpack'); }
       const containerId = backpackContainerId(backpack.id);
       const container = backpack.components.container!;
       backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
       backpackPanel.bindContainer(container.slots, createInventorySlotItem(inventory));
       const maxStack = inventory.getItemSpec('rocks').maxStack;
-      if (!inventory.add('rocks', INVENTORY_SLOT_COUNT * maxStack)) throw new Error('Could not fill inventory');
+      if (!inventory.add('rocks', INVENTORY_SLOT_COUNT * maxStack)) { throw new Error('Could not fill inventory'); }
       // Leave capacity for one item so one receipt spans the main inventory and backpack.
       inventory.applySlotChanges([{ slot: inventorySlotAddress(0), itemId: 'rocks', delta: -1 }]);
       return { containerId, maxStack };

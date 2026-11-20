@@ -79,7 +79,7 @@ export class TurfMap implements GroundTerrain {
   private readonly keyed: Uint8Array;
 
   private terrainNames(): GroundTileName[] {
-    if (this.terrainNamesCache) return this.terrainNamesCache;
+    if (this.terrainNamesCache) { return this.terrainNamesCache; }
     const ids = new Set([...this.dugTiles.values()].map(tile => tile.tileId));
     return this.terrainNamesCache = (Object.keys(GROUND_TILE_DEFINITIONS) as GroundTileName[]).filter(name =>
       ['DIRT', 'DECIDUOUS', 'GRASS', 'WOODFLOOR', 'FARMING_SOIL', 'MONKEY_DOCK', 'OCEAN_COASTAL'].includes(name)
@@ -93,7 +93,7 @@ export class TurfMap implements GroundTerrain {
     this.cellMin = min; this.cellWidth = max - min;
     this.cells = new Uint16Array(this.cellWidth * this.cellWidth).fill(defaultTileId);
     this.keyed = new Uint8Array(this.cellWidth * this.cellWidth);
-    for (const tile of savedTiles) this.setDug(tile.col, tile.row, { ...tile });
+    for (const tile of savedTiles) { this.setDug(tile.col, tile.row, { ...tile }); }
   }
 
   private setDug(col: number, row: number, tile: TurfTileSave): void {
@@ -104,7 +104,7 @@ export class TurfMap implements GroundTerrain {
 
   private markKeyed(col: number, row: number): void {
     const c = col - this.cellMin, r = row - this.cellMin;
-    if (c >= 0 && c < this.cellWidth && r >= 0 && r < this.cellWidth) this.keyed[r * this.cellWidth + c] = 1;
+    if (c >= 0 && c < this.cellWidth && r >= 0 && r < this.cellWidth) { this.keyed[r * this.cellWidth + c] = 1; }
   }
 
   private isKeyed(col: number, row: number): boolean {
@@ -114,7 +114,7 @@ export class TurfMap implements GroundTerrain {
 
   private writeCell(col: number, row: number, tileId: number): void {
     const c = col - this.cellMin, r = row - this.cellMin;
-    if (c >= 0 && c < this.cellWidth && r >= 0 && r < this.cellWidth) this.cells[r * this.cellWidth + c] = tileId;
+    if (c >= 0 && c < this.cellWidth && r >= 0 && r < this.cellWidth) { this.cells[r * this.cellWidth + c] = tileId; }
   }
 
   private key(world: Vector2): string {
@@ -124,7 +124,7 @@ export class TurfMap implements GroundTerrain {
   getTileAtWorld(world: Vector2): number {
     if (!Number.isFinite(world.x) || !Number.isFinite(world.z)
       || world.x < -this.size / 2 || world.x >= this.size / 2
-      || world.z < -this.size / 2 || world.z >= this.size / 2) return WORLD_TILES.INVALID;
+      || world.z < -this.size / 2 || world.z >= this.size / 2) { return WORLD_TILES.INVALID; }
     const key = this.key(world);
     return this.dugTiles.get(key)?.tileId ?? this.originalTiles.get(key) ?? this.defaultTileId;
   }
@@ -142,15 +142,15 @@ export class TurfMap implements GroundTerrain {
       this.originalTiles.set(key, tileId);
       this.markKeyed(col, row);
       const effective = this.dugTiles.get(key)?.tileId ?? tileId;
-      if (this.tileAt(col, row) === effective) continue;
+      if (this.tileAt(col, row) === effective) { continue; }
       this.writeCell(col, row, effective);
-      if (!bounds) bounds = { minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 };
+      if (!bounds) { bounds = { minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 }; }
       else {
         bounds.minCol = Math.min(bounds.minCol, col); bounds.minRow = Math.min(bounds.minRow, row);
         bounds.maxCol = Math.max(bounds.maxCol, col + 1); bounds.maxRow = Math.max(bounds.maxRow, row + 1);
       }
     }
-    if (bounds) this.rebuildGeometry(bounds);
+    if (bounds) { this.rebuildGeometry(bounds); }
   }
 
   /** Inclusive-exclusive signed cell range [min, max) covering the generated world on both axes. */
@@ -176,7 +176,7 @@ export class TurfMap implements GroundTerrain {
 
   /** Map:SetTile plus the undertile component's record (dock tiles keep the ocean tile they cover). */
   setTile(col: number, row: number, tileId: TurfTileSave['tileId'], underTileId?: TurfTileSave['underTileId']): void {
-    if (this.tileAt(col, row) === WORLD_TILES.INVALID) throw new RangeError('Tile is outside the world');
+    if (this.tileAt(col, row) === WORLD_TILES.INVALID) { throw new RangeError('Tile is outside the world'); }
     this.setDug(col, row, { col, row, tileId, ...(underTileId === undefined ? {} : { underTileId }) });
     this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
   }
@@ -212,13 +212,13 @@ export class TurfMap implements GroundTerrain {
   falloffEdges(): FalloffEdge[] {
     const edges: FalloffEdge[] = [];
     const { min, max } = this.cellRange();
-    for (let row = min; row < max; row++) for (let col = min; col < max; col++) {
-      if (!hasDefaultFalloff(this.tileAt(col, row))) continue;
+    for (let row = min; row < max; row++) { for (let col = min; col < max; col++) {
+      if (!hasDefaultFalloff(this.tileAt(col, row))) { continue; }
       FALLOFF_EDGES.forEach(({ dx, dz }, edge) => {
         const neighbour = this.tileAt(col + dx, row + dz);
-        if (this.isVoidAtCell(col + dx, row + dz) || INVISIBLE_TILE_IDS.has(neighbour)) edges.push({ col, row, edge });
+        if (this.isVoidAtCell(col + dx, row + dz) || INVISIBLE_TILE_IDS.has(neighbour)) { edges.push({ col, row, edge }); }
       });
-    }
+    } }
     return edges;
   }
 
@@ -230,7 +230,7 @@ export class TurfMap implements GroundTerrain {
   /** The saved ocean tiles inside the world. */
   *oceanSurfaceCells(): Iterable<readonly [number, number]> {
     for (const tile of this.dugTiles.values()) {
-      if (isOceanTile(tile.tileId) && this.tileAt(tile.col, tile.row) !== WORLD_TILES.INVALID) yield [tile.col, tile.row];
+      if (isOceanTile(tile.tileId) && this.tileAt(tile.col, tile.row) !== WORLD_TILES.INVALID) { yield [tile.col, tile.row]; }
     }
   }
 
@@ -255,19 +255,19 @@ export class TurfMap implements GroundTerrain {
     const ids: number[] = [];
     for (let row = Math.max(min, bounds.minRow); row < Math.min(max, bounds.maxRow); row++) {
       for (let col = Math.max(min, bounds.minCol); col < Math.min(max, bounds.maxCol); col++) {
-        if (this.tileAt(col, row) === WORLD_TILES.INVALID) continue;
+        if (this.tileAt(col, row) === WORLD_TILES.INVALID) { continue; }
         ids.length = 0;
         let keyed = false;
-        for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+        for (let dz = -1; dz <= 1; dz++) { for (let dx = -1; dx <= 1; dx++) {
           const id = this.tileAt(col + dx, row + dz);
-          if (!ids.includes(id)) ids.push(id);
+          if (!ids.includes(id)) { ids.push(id); }
           keyed ||= this.isKeyed(col + dx, row + dz);
-        }
+        } }
         for (const tileId of ids) {
           const quads = layers.get(tileId);
-          if (!quads || (tileId === WORLD_TILES.DECIDUOUS && !keyed)) continue;
+          if (!quads || (tileId === WORLD_TILES.DECIDUOUS && !keyed)) { continue; }
           const variant = this.variantAt(col, row, tileId);
-          if (variant !== 17) quads.push({ col, row, variant });
+          if (variant !== 17) { quads.push({ col, row, variant }); }
         }
       }
     }
@@ -279,17 +279,17 @@ export class TurfMap implements GroundTerrain {
     const layers = new Map<number, GroundTileQuad[]>(this.groundLayers().map(({ tileId }) => [tileId, []]));
     const { min, max } = this.cellRange();
     for (let row = Math.max(min, bounds.minRow); row < Math.min(max, bounds.maxRow); row++)
-    for (let col = Math.max(min, bounds.minCol); col < Math.min(max, bounds.maxCol); col++) {
+    { for (let col = Math.max(min, bounds.minCol); col < Math.min(max, bounds.maxCol); col++) {
       const tileId = this.tileAt(col, row);
       if (!isOceanTile(tileId)) {
         layers.get(tileId)?.push({ col, row, variant: 1 });
       } else {
         for (const [landId, quads] of layers) {
           const variant = this.variantAt(col, row, landId);
-          if (variant !== 17) quads.push({ col, row, variant });
+          if (variant !== 17) { quads.push({ col, row, variant }); }
         }
       }
-    }
+    } }
     return layers;
   }
 
@@ -323,7 +323,7 @@ export class TurfMap implements GroundTerrain {
   }
 
   plow(world: Vector2): boolean {
-    if (!this.canPlow(world)) return false;
+    if (!this.canPlow(world)) { return false; }
     const col = Math.floor(world.x / TILE_SIZE), row = Math.floor(world.z / TILE_SIZE);
     this.setDug(col, row, { col, row, tileId: WORLD_TILES.FARMING_SOIL,
       underTileId: this.getTileAtWorld(world) });
@@ -338,7 +338,7 @@ export class TurfMap implements GroundTerrain {
 
   /** terraformer.lua: SetTile(..., WORLD_TILES.DIRT); dirt cannot be dug again. */
   dig(world: Vector2): boolean {
-    if (!this.canTerraform(world)) return false;
+    if (!this.canTerraform(world)) { return false; }
     const originalTileId = this.getTileAtWorld(world);
     const center = snapToTileCenter(world);
     const col = Math.floor(center.x / TILE_SIZE), row = Math.floor(center.z / TILE_SIZE);
@@ -347,9 +347,9 @@ export class TurfMap implements GroundTerrain {
     if (previous?.tileId === WORLD_TILES.FARMING_SOIL && previous.underTileId !== undefined) {
       this.setDug(col, row, { col, row, tileId: previous.underTileId });
     }
-    else this.setDug(col, row, { col, row, tileId: WORLD_TILES.DIRT });
+    else { this.setDug(col, row, { col, row, tileId: WORLD_TILES.DIRT }); }
     this.rebuildGeometry({ minCol: col, minRow: row, maxCol: col + 1, maxRow: row + 1 });
-    for (const listener of this.listeners) listener(world, originalTileId);
+    for (const listener of this.listeners) { listener(world, originalTileId); }
     return true;
   }
 
@@ -360,7 +360,7 @@ export class TurfMap implements GroundTerrain {
   private tileAt(col: number, row: number): number {
     const half = this.size / 2;
     if ((col + 1) * TILE_SIZE <= -half || col * TILE_SIZE >= half
-      || (row + 1) * TILE_SIZE <= -half || row * TILE_SIZE >= half) return WORLD_TILES.INVALID;
+      || (row + 1) * TILE_SIZE <= -half || row * TILE_SIZE >= half) { return WORLD_TILES.INVALID; }
     return this.cells[(row - this.cellMin) * this.cellWidth + col - this.cellMin];
   }
 
@@ -375,7 +375,7 @@ export class TurfMap implements GroundTerrain {
 
   private rebuildGeometry(bounds?: TerrainCellBounds): void {
     this.terrainNamesCache = undefined;
-    for (const listener of this.terrainListeners) listener(bounds);
+    for (const listener of this.terrainListeners) { listener(bounds); }
   }
 
   dispose(): void {

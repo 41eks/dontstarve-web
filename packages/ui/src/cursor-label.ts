@@ -65,8 +65,8 @@ export class CursorLabelUi {
         this.tooltips.set(key, { text, button, pointer });
         this.update();
       },
-      hide: () => { if (this.tooltips.delete(key)) this.update(); },
-      update: () => { if (this.tooltips.has(key)) this.update(); },
+      hide: () => { if (this.tooltips.delete(key)) { this.update(); } },
+      update: () => { if (this.tooltips.has(key)) { this.update(); } },
     };
   }
 
@@ -88,13 +88,13 @@ export class CursorLabelUi {
 
   /** Fullscreen UI owns the pointer while covering the world, including during unpaused map actions. */
   setWorldCovered(covered: boolean): void {
-    if (this.worldCovered === covered) return;
+    if (this.worldCovered === covered) { return; }
     this.worldCovered = covered;
     this.update();
   }
 
   private refresh(forceHitTest: boolean): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     if (this.worldCovered) {
       this.setHidden(true);
       return;
@@ -112,7 +112,7 @@ export class CursorLabelUi {
     const hasText = tooltip ? tooltip.pointer.isOverGround : !!actions?.left || !!actions?.right || !!hand;
     const visible = hasText;
     this.setHidden(!visible);
-    if (!visible || !pointer) return;
+    if (!visible || !pointer) { return; }
     if (tooltip) {
       this.setRow(this.rows[0], tooltip.text, tooltip.button);
       this.setRow(this.rows[1]);
@@ -125,7 +125,7 @@ export class CursorLabelUi {
     // Position depends only on the pointer, the row contents and the viewport.
     const layoutKey = `${pointer.pointerClientX},${pointer.pointerClientY},${window.innerWidth},${window.innerHeight},${
       this.rows.map(({ text, canvas }) => `${text.textContent}|${canvas.hidden}`).join(';')}`;
-    if (layoutKey === this.layoutKey) return;
+    if (layoutKey === this.layoutKey) { return; }
     this.layoutKey = layoutKey;
     this.element.style.left = `${pointer.pointerClientX}px`;
     this.element.style.top = `${pointer.pointerClientY}px`;
@@ -148,21 +148,21 @@ export class CursorLabelUi {
   }
 
   private setHidden(hidden: boolean): void {
-    if (this.element.hidden !== hidden) this.element.hidden = hidden;
+    if (this.element.hidden !== hidden) { this.element.hidden = hidden; }
   }
 
   private setRow(row: Row, text?: string, button?: 'left' | 'right'): void {
-    if (row.element.hidden !== (text === undefined)) row.element.hidden = text === undefined;
-    if (row.text.textContent !== (text ?? '')) row.text.textContent = text ?? '';
-    if (text === undefined) { if (!row.canvas.hidden) row.canvas.hidden = true; return; }
-    if (button) row.element.dataset.button = button; else delete row.element.dataset.button;
+    if (row.element.hidden !== (text === undefined)) { row.element.hidden = text === undefined; }
+    if (row.text.textContent !== (text ?? '')) { row.text.textContent = text ?? ''; }
+    if (text === undefined) { if (!row.canvas.hidden) { row.canvas.hidden = true; } return; }
+    if (button) { row.element.dataset.button = button; } else { delete row.element.dataset.button; }
     if (this.font && button && row.drawnButton !== button) {
       this.font.drawGlyph(row.canvas, button === 'right' ? 0xe101 : 0xe100);
       row.canvas.dataset.glyph = button === 'right' ? 'U+E101' : 'U+E100';
       row.drawnButton = button;
     }
     const canvasHidden = !this.font || !button;
-    if (row.canvas.hidden !== canvasHidden) row.canvas.hidden = canvasHidden;
+    if (row.canvas.hidden !== canvasHidden) { row.canvas.hidden = canvasHidden; }
   }
 
   dispose(): void {

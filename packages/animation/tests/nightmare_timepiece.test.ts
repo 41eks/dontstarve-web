@@ -193,7 +193,7 @@ describe('nightmare_timepiece.lua', () => {
       await flush();
       expect(entity.sprite.currentAnimation).toBe('idle_3');
       let mesh!: THREE.Mesh;
-      entity.transform.model.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object; });
+      entity.transform.model.traverse(object => { if (object instanceof THREE.Mesh) { mesh ??= object; } });
       expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     } finally { items.dispose(); s.dispose(); }
   });

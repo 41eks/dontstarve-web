@@ -24,7 +24,7 @@ export class SoundEmitter {
   /** PlaySoundWithParams(path, params, volume, ispredicted) has no name. */
   PlaySoundWithParams(path: SoundEventPath, params?: Readonly<Record<string, number>> | null, volume?: number | null): void {
     const handle = this.play(path, undefined, volume);
-    for (const [param, value] of Object.entries(params ?? {})) handle.setParameter?.(param, value);
+    for (const [param, value] of Object.entries(params ?? {})) { handle.setParameter?.(param, value); }
   }
 
   KillSound(name: string): void {
@@ -33,7 +33,7 @@ export class SoundEmitter {
   }
 
   KillAllSounds(): void {
-    for (const handle of [...this.named.values(), ...this.unnamed]) handle.stop();
+    for (const handle of [...this.named.values(), ...this.unnamed]) { handle.stop(); }
     this.named.clear();
     this.unnamed.clear();
   }
@@ -49,18 +49,18 @@ export class SoundEmitter {
 
   /** Nothing can reach a named or looping sound once its entity is gone. */
   OnRemoveEntity(): void {
-    for (const handle of this.named.values()) handle.stop();
+    for (const handle of this.named.values()) { handle.stop(); }
     this.named.clear();
-    for (const handle of this.unnamed) if (handle.looping) handle.stop();
+    for (const handle of this.unnamed) { if (handle.looping) { handle.stop(); } }
     this.unnamed.clear();
   }
 
   private play(path: SoundEventPath, name: string | null | undefined, volume: number | null | undefined): SoundHandle {
-    for (const handle of this.unnamed) if (!handle.isPlaying()) this.unnamed.delete(handle);
-    if (name) this.KillSound(name);
+    for (const handle of this.unnamed) { if (!handle.isPlaying()) { this.unnamed.delete(handle); } }
+    if (name) { this.KillSound(name); }
     const handle = PlaySound(path, this.position);
-    if (volume != null || this.volumeMultiplier !== 1) handle.setVolume((volume ?? 1) * this.volumeMultiplier);
-    if (name) this.named.set(name, handle); else this.unnamed.add(handle);
+    if (volume != null || this.volumeMultiplier !== 1) { handle.setVolume((volume ?? 1) * this.volumeMultiplier); }
+    if (name) { this.named.set(name, handle); } else { this.unnamed.add(handle); }
     return handle;
   }
 }

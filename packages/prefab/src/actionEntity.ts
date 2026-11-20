@@ -15,7 +15,7 @@ const byModel = new WeakMap<THREE.Object3D, ActionEntity>();
  */
 export function registerActionEntity<Instance extends ActionEntity>(instance: Instance): Instance {
   const inst: ActionEntity = instance;
-  if (registrations.has(inst) || inst.isRemoved) return instance;
+  if (registrations.has(inst) || inst.isRemoved) { return instance; }
   const model = inst.transform.model;
   const cleanups: (() => void)[] = [];
   // Registered before its placement entry first syncs, which reads the entity's tags through it.
@@ -27,7 +27,7 @@ export function registerActionEntity<Instance extends ActionEntity>(instance: In
   createEffect(() => mouse.setAwake(status.get() === 'active'));
   cleanups.push(registerPlacementEntity(inst));
   cleanups.push(inst.tags.subscribe(() => { syncPlacementEntity(model); mouse.refresh(); }));
-  const stopRemoval = inst.removal.subscribe(removed => { if (removed) disposeActionEntity(inst); });
+  const stopRemoval = inst.removal.subscribe(removed => { if (removed) { disposeActionEntity(inst); } });
   return instance;
 }
 
@@ -45,9 +45,9 @@ export function actionEntities(): Iterable<ActionEntity> { return registrations.
 
 /** Withdraw an entity from the mouse and placement registries, as removal does. */
 export function disposeActionEntity(instance: ActionEntity | undefined): void {
-  if (!instance) return;
+  if (!instance) { return; }
   const registration = registrations.get(instance);
-  if (!registration) return;
+  if (!registration) { return; }
   registrations.delete(instance);
   registration.dispose();
 }

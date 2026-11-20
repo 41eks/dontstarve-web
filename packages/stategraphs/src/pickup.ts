@@ -45,8 +45,8 @@ export function canPickUp(inst: ItemEntity): boolean {
 export function performPickupAction(inst: ItemEntity, doer: PickupDoer): boolean {
   const item = inst.components.inventoryitem, inventory = doer.components.inventory;
   if (!canPickUp(inst) || !item.CanBePickedUp(doer)
-    || (inst.hasTag('fire') && !inst.hasTag('lighter')) || inst.components.projectile?.IsThrown()) return false;
-  if (inst.components.container?.IsOpenedByOthers(doer)) return false;
+    || (inst.hasTag('fire') && !inst.hasTag('lighter')) || inst.components.projectile?.IsThrown()) { return false; }
+  if (inst.components.container?.IsOpenedByOthers(doer)) { return false; }
   doer.PushEvent('onpickupitem', { item: inst });
   const equippable = inst.components.equippable;
   if (equippable && !equippable.IsRestricted()) {
@@ -54,12 +54,12 @@ export function performPickupAction(inst: ItemEntity, doer: PickupDoer): boolean
     if (equip && !item.cangoincontainer) {
       const previous = inventory.Unequip(equippable.equipslot);
       if (previous) {
-        if (previous.components.inventoryitem.cangoincontainer) inventory.GiveItem(previous);
-        else inventory.DropItem(previous);
+        if (previous.components.inventoryitem.cangoincontainer) { inventory.GiveItem(previous); }
+        else { inventory.DropItem(previous); }
       }
       return inventory.Equip(inst);
     }
-    if (doer.hasTag('player') && (!equip || inventory.GetNumSlots() <= 0)) return inventory.Equip(inst);
+    if (doer.hasTag('player') && (!equip || inventory.GetNumSlots() <= 0)) { return inventory.Equip(inst); }
   }
   // GetPosition() in PICKUP.fn snapshots the source before OnPutInInventory moves the inst to (0, 0, 0).
   inventory.GiveItem(inst, inst.transform.position.clone());

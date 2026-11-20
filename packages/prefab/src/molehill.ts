@@ -46,16 +46,16 @@ export function createMoleHabitat(services: MoleHabitatServices): MoleHabitat {
     registerMole: mole => {
       moles.add(mole);
       const found = waiting.get(mole.id); waiting.delete(mole.id);
-      for (const fn of found ?? []) fn(mole);
+      for (const fn of found ?? []) { fn(mole); }
       return () => { moles.delete(mole); };
     },
     spawnMoveFx: position => fx.spawn('mole_move_fx', position),
     findMole: (id, found) => {
       const mole = [...moles].find(candidate => candidate.id === id);
       if (mole) { found(mole); return () => {}; }
-      let set = waiting.get(id); if (!set) waiting.set(id, set = new Set());
+      let set = waiting.get(id); if (!set) { waiting.set(id, set = new Set()); }
       const pending = set; pending.add(found);
-      return () => { pending.delete(found); if (!pending.size && waiting.get(id) === pending) waiting.delete(id); };
+      return () => { pending.delete(found); if (!pending.size && waiting.get(id) === pending) { waiting.delete(id); } };
     },
   };
 }
@@ -86,12 +86,12 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
     const inventory = addComponent(this, 'inventory', Inventory, 50, world.dropItem, world.itemSpecs);
     const spawner = addComponent(this, 'spawner', Spawner<Mole>, this.cycle.scheduler, () => {
       const mole = world.spawnItem({ itemId: 'mole', count: 1 });
-      if (!(mole instanceof Mole)) throw new Error('SpawnPrefab("mole") made no mole');
+      if (!(mole instanceof Mole)) { throw new Error('SpawnPrefab("mole") made no mole'); }
       configureMoleEntity(mole); BindMoleWorld(mole, world);
       // Dropping a spawned child does not invoke mole.lua's inventory-drop stun.
       world.showMole(mole, this.getPosition()); return mole;
     }, MOLE_RESPAWN_TIME);
-    spawner.onoccupied = () => { if (this.cycle.peek() !== 'day') this.startspawning(); };
+    spawner.onoccupied = () => { if (this.cycle.peek() !== 'day') { this.startspawning(); } };
     spawner.onvacate = () => this.stopspawning();
     // WorldSettings_Spawner_SpawnDelay: a new hill releases its first mole at once.
     spawner.SpawnWithDelay(0);
@@ -111,7 +111,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
   OnInit(): void {
     const spawner = this.components.spawner;
     createEffect(() => {
-      if (this.cycle.get() !== 'day' && spawner.IsOccupied()) this.startspawning(); else this.stopspawning();
+      if (this.cycle.get() !== 'day' && spawner.IsOccupied()) { this.startspawning(); } else { this.stopspawning(); }
     });
   }
 
@@ -122,7 +122,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
 
   private startspawning(): void {
     const spawner = this.components.spawner; spawner.SetQueueSpawning(false);
-    if (!spawner.IsSpawnPending()) spawner.SpawnWithDelay(5 + Math.floor(Math.random() * 16));
+    if (!spawner.IsSpawnPending()) { spawner.SpawnWithDelay(5 + Math.floor(Math.random() * 16)); }
   }
   private stopspawning(): void { this.components.spawner.SetQueueSpawning(true, 5 + Math.floor(Math.random() * 11)); }
 
@@ -154,12 +154,12 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
   /** spawner.lua OnLoad: SpawnSaveRecord of the occupant, the living child's relink, or the spawn delay. */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
     const saved = data.spawner;
-    if (!saved) return;
+    if (!saved) { return; }
     const { spawner } = this.components, world = this.world;
     if (saved.child) {
       spawner.CancelSpawning();
       const child = world.restoreItem(saved.child);
-      if (!(child instanceof Mole)) throw new Error('SpawnPrefab("mole") made no mole');
+      if (!(child instanceof Mole)) { throw new Error('SpawnPrefab("mole") made no mole'); }
       configureMoleEntity(child); BindMoleWorld(child, world);
       const position = this.getPosition();
       child.setPosition(position.x, position.y, position.z); world.showMole(child, position);
@@ -170,7 +170,7 @@ export class MolehillInstance extends PrefabInstance<SpriteState, MolehillCompon
       this.stopPending = world.findMole(saved.childid, child => {
         this.pendingChildId = undefined; this.stopPending = undefined; spawner.TakeOwnership(child);
       });
-    } else spawner.SpawnWithDelay(saved.startdelay ?? 0);
+    } else { spawner.SpawnWithDelay(saved.startdelay ?? 0); }
   }
 }
 

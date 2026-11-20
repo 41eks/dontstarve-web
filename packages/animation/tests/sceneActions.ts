@@ -19,7 +19,7 @@ export function sceneActions(model: Object3D, doer: SceneActionDoer = sceneDoer,
 /** The BufferedAction PlayerController would buffer for that action, as actions.lua's validfn judges it. */
 export function sceneAction(action: string, model: Object3D, doer: Doer = sceneDoer) {
   const target = findActionEntity(model);
-  if (!target) throw new Error(`No action entity for ${model.name}`);
+  if (!target) { throw new Error(`No action entity for ${model.name}`); }
   return createBufferedAction(action, { doer, target });
 }
 

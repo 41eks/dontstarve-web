@@ -49,29 +49,29 @@ export class RockAvocadoFruit {
     createEffect(() => this.workable.SetWorkLeft(count.get()));
   }
   bind(presentation: FruitPresentation): void { this.presentation = presentation; }
-  release(presentation: FruitPresentation): void { if (this.presentation === presentation) this.presentation = undefined; }
+  release(presentation: FruitPresentation): void { if (this.presentation === presentation) { this.presentation = undefined; } }
   private mine(worker: Worker, workdone: number): void {
     const presentation = this.presentation;
-    if (!presentation) throw new Error('Stone fruit mining requires a world to spawn its products');
+    if (!presentation) { throw new Error('Stone fruit mining requires a world to spawn its products'); }
     const count = this.entity.components.stackable.count;
     const worked = Math.max(1, Math.min(count, Math.ceil(workdone)));
-    if (count > worked) presentation.sprite.playOnce('mined', () => presentation.sprite.playOnce('idle'));
+    if (count > worked) { presentation.sprite.playOnce('mined', () => presentation.sprite.playOnce('idle')); }
     const counts = new Map<Product, number>(PRODUCTS.map(id => [id, 0]));
     for (let i = 0; i < worked; i++) { const id = rockAvocadoProduct(Math.random()); counts.set(id, (counts.get(id) ?? 0) + 1); }
     const origin = this.entity.getPosition(), target = worker.getPosition?.();
     for (const [prefab, amount] of counts) {
-      if (!amount) continue;
+      if (!amount) { continue; }
       const product = presentation.spawnGroundItem({ ...catalog.items[prefab], itemId: prefab, count: amount }, origin,
         { launch: scatterLaunch(origin, target) });
-      if (prefab === 'rock_avocado_fruit_ripe') product?.PushEvent('split_open', undefined);
+      if (prefab === 'rock_avocado_fruit_ripe') { product?.PushEvent('split_open', undefined); }
     }
-    if (worked === count) this.entity.remove();
+    if (worked === count) { this.entity.remove(); }
     else { this.entity.components.stackable.count = count - worked; this.workable.SetWorkLeft(count - worked); }
   }
   /** OnExplosion_rock_avocado_fruit_full: a fruit that survives the blast is thrown away from it. */
   private explode(data: { explosive?: Worker } | undefined): void {
     const target = data?.explosive?.getPosition?.();
-    if (target) this.entity.PushEvent('launch', scatterLaunch(this.entity.getPosition(), target));
+    if (target) { this.entity.PushEvent('launch', scatterLaunch(this.entity.getPosition(), target)); }
   }
   dispose(): void {
     this.cleanups.splice(0).forEach(stop => stop()); this.workable.dispose(); this.presentation = undefined;
@@ -79,21 +79,21 @@ export class RockAvocadoFruit {
 }
 
 export function configureRockAvocadoFruitEntity(entity: ItemEntity): void {
-  if (!ROCK_AVOCADO_ITEM_IDS.some(known => known === entity.prefab)) return;
+  if (!ROCK_AVOCADO_ITEM_IDS.some(known => known === entity.prefab)) { return; }
   configureTradableEntity(entity);
   if (entity.prefab === 'rock_avocado_fruit_sprout' && !entity.components.deployable) {
     configureBurnableItemEntity(entity);
     entity.addTag('deployedplant');
     addComponent(entity, 'deployable', Deployable, (point, _deployer, map) => {
       // rock_avocado_fruit.lua on_deploy_fn.
-      if (!map.SpawnPrefab('rock_avocado_fruit_sprout_sapling', point)) return false;
+      if (!map.SpawnPrefab('rock_avocado_fruit_sprout_sapling', point)) { return false; }
       entity.remove();
       PlaySound('dontstarve/wilson/plant_tree', point);
       return true;
     }, { mode: 'PLANT', spacing: 2 * (TILE_SIZE / 4), placer: { bank: 'rock_avo_fruit_master', build: 'rock_avocado_fruit_build',
       animationArchive: 'rock_avocado_fruit.zip', animation: 'idle_buried_seed' } });
   }
-  if (entity.prefab === 'rock_avocado_fruit') entity.component('rock_avocado_fruit', () => new RockAvocadoFruit(entity));
+  if (entity.prefab === 'rock_avocado_fruit') { entity.component('rock_avocado_fruit', () => new RockAvocadoFruit(entity)); }
   else if (entity.prefab === 'rock_avocado_fruit_ripe') { entity.addTag('molebait'); entity.addTag('cookable'); }
 }
 
@@ -109,7 +109,7 @@ export function rockAvocadoFruitPrefabs(world: ItemPrefabWorld): Record<string, 
     rock_avocado_fruit: groundItemPrefab('rock_avocado_fruit', world, {
       configure: inst => {
         const { spawnGroundItem } = world;
-        if (!spawnGroundItem) throw new Error('Stone fruit needs a world to spawn its products');
+        if (!spawnGroundItem) { throw new Error('Stone fruit needs a world to spawn its products'); }
         configureRockAvocadoFruitEntity(inst);
         const controller = inst.getComponent<RockAvocadoFruit>('rock_avocado_fruit')!;
         const presentation = { sprite: inst.sprite, spawnGroundItem };

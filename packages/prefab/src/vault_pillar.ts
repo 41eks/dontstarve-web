@@ -29,13 +29,13 @@ export class VaultPillarInstance extends PrefabInstance {
     bottom.entityParent = this;
 
     this.OnSave = (_inst, data) => {
-      if (this.capped !== undefined) data.capped = this.capped;
-      if (this.broken !== undefined) data.broken = this.broken;
+      if (this.capped !== undefined) { data.capped = this.capped; }
+      if (this.broken !== undefined) { data.broken = this.broken; }
     };
     this.OnLoad = (_inst, data) => {
-      if (data.capped) this.MakeCapped(data.capped);
-      else if (data.broken) this.MakeBroken(true);
-      else if (data.random && Math.random() < .5) this.MakeBroken(true);
+      if (data.capped) { this.MakeCapped(data.capped); }
+      else if (data.broken) { this.MakeBroken(true); }
+      else if (data.random && Math.random() < .5) { this.MakeBroken(true); }
     };
   }
 

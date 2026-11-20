@@ -57,7 +57,7 @@ function set_stage3(inst: RockAvocadoBushInstance): void {
 function set_stage4(inst: RockAvocadoBushInstance): void {
   inst.components.pickable.ChangeProduct(undefined);
   // If we got set here directly, instead of going through stage 3, we still need to be pickable.
-  if (!inst.components.pickable.canBePicked) inst.components.pickable.regen();
+  if (!inst.components.pickable.canBePicked) { inst.components.pickable.regen(); }
   play_idle(inst, 4);
 }
 
@@ -71,11 +71,11 @@ function growth_stages(inst: RockAvocadoBushInstance): GrowthStage[] {
 }
 
 function onregenfn(inst: RockAvocadoBushInstance): void {
-  if (inst.components.growable.GetStage() < 3) inst.components.growable.SetStage(3);
+  if (inst.components.growable.GetStage() < 3) { inst.components.growable.SetStage(3); }
 }
 
 function on_bush_burnt(inst: RockAvocadoBushInstance, world: PickablePlantWorld): void {
-  if (inst.components.growable.GetStage() === 3) for (let i = 0; i < 3; i++) inst.components.lootdropper.SpawnLootPrefab(ROCK_AVOCADO_FRUIT_ID);
+  if (inst.components.growable.GetStage() === 3) { for (let i = 0; i < 3; i++) { inst.components.lootdropper.SpawnLootPrefab(ROCK_AVOCADO_FRUIT_ID); } }
   inst.components.growable.StopGrowing();
   DefaultBurntFn(inst, world);
 }
@@ -89,7 +89,7 @@ function on_dug_up(inst: RockAvocadoBushInstance): void {
     lootdropper.SpawnLootPrefab('twigs', inst.position);
     lootdropper.SpawnLootPrefab('twigs', inst.position);
   } else {
-    if (growable.GetStage() === 3) for (let i = 0; i < 3; i++) lootdropper.SpawnLootPrefab(ROCK_AVOCADO_FRUIT_ID, inst.position);
+    if (growable.GetStage() === 3) { for (let i = 0; i < 3; i++) { lootdropper.SpawnLootPrefab(ROCK_AVOCADO_FRUIT_ID, inst.position); } }
     lootdropper.SpawnLootPrefab('dug_rock_avocado_bush', inst.position);
   }
   inst.remove();
@@ -104,17 +104,17 @@ function onpickedfn(inst: RockAvocadoBushInstance): void {
     inst.AnimState.PushAnimation('dead1', false);
     inst.components.growable.StopGrowing();
     inst.components.growable.magicgrowable = false;
-  } else inst.AnimState.PushAnimation('idle1', false);
+  } else { inst.AnimState.PushAnimation('idle1', false); }
 }
 
 function makeemptyfn(inst: RockAvocadoBushInstance): void {
-  if (POPULATING) return;
+  if (POPULATING) { return; }
   // SetStage(1) will change the animation, so store whether we came into this function dead first.
   const emptying_dead = inst.sprite.currentAnimation === 'dead1';
   inst.components.growable.SetStage(1);
   inst.components.growable.StartGrowing();
   inst.components.growable.magicgrowable = true;
-  if (!(inst.hasTag('withered') || emptying_dead)) inst.AnimState.PlayAnimation('idle1', false);
+  if (!(inst.hasTag('withered') || emptying_dead)) { inst.AnimState.PlayAnimation('idle1', false); }
   else {
     inst.AnimState.PlayAnimation('dead1_to_idle1');
     inst.AnimState.PushAnimation('idle1', false);
@@ -128,7 +128,7 @@ function makebarrenfn(inst: RockAvocadoBushInstance): void {
   if (!POPULATING && inst.hasTag('withered')) {
     inst.AnimState.PlayAnimation('idle1_to_dead1');
     inst.AnimState.PushAnimation('dead1', false);
-  } else inst.AnimState.PlayAnimation('dead1');
+  } else { inst.AnimState.PlayAnimation('dead1'); }
 }
 
 function ontransplantfn(inst: RockAvocadoBushInstance): void {
@@ -136,7 +136,7 @@ function ontransplantfn(inst: RockAvocadoBushInstance): void {
 }
 
 function on_save(inst: RockAvocadoBushInstance, data: PickablePlantRecord['components']): void {
-  if (inst.components.burnable?.IsBurning()) data.burning = true;
+  if (inst.components.burnable?.IsBurning()) { data.burning = true; }
 }
 
 /**
@@ -145,9 +145,9 @@ function on_save(inst: RockAvocadoBushInstance, data: PickablePlantRecord['compo
  * makebarrenfn set; a barren bush settles into it again here.
  */
 function on_load(inst: RockAvocadoBushInstance, data: PickablePlantRecord['components'], world: PickablePlantWorld): void {
-  if (data.burning) on_bush_burnt(inst, world);
-  else if (inst.components.witherable?.IsWithered()) inst.components.witherable.ForceWither();
-  else if (inst.components.pickable.IsBarren()) makebarrenfn(inst);
+  if (data.burning) { on_bush_burnt(inst, world); }
+  else if (inst.components.witherable?.IsWithered()) { inst.components.witherable.ForceWither(); }
+  else if (inst.components.pickable.IsBarren()) { makebarrenfn(inst); }
 }
 
 /**

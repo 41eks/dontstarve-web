@@ -54,7 +54,7 @@ describe('DST item identity and ownership', () => {
     expect(tile.peek().image?.icon).toBe(store.getItemSpec('log').icon);
     const changes: string[] = [];
     const stops = [tile.subscribe((next, previous) => {
-      for (const key of ['count', 'durabilityPercent', 'freshnessPercent', 'wet'] as const) if (next[key] !== previous[key]) changes.push(key);
+      for (const key of ['count', 'durabilityPercent', 'freshnessPercent', 'wet'] as const) { if (next[key] !== previous[key]) { changes.push(key); } }
     })];
     entity.setFreshnessPercent(.75);
     entity.setWet(true);
@@ -94,7 +94,7 @@ describe('DST item identity and ownership', () => {
     const torch = store.getEntity(a)!, plow = store.getEntity(b)!;
     const count = vi.fn(), durability = vi.fn();
     torch.components.stackable.size.subscribe(count);
-    torch.tile.subscribe((next, previous) => { if (next.durabilityPercent !== previous.durabilityPercent) durability(next.durabilityPercent, previous.durabilityPercent); });
+    torch.tile.subscribe((next, previous) => { if (next.durabilityPercent !== previous.durabilityPercent) { durability(next.durabilityPercent, previous.durabilityPercent); } });
     expect(torch.tile.peek().durabilityPercent).toBe(1);
     expect(store.setRemainingFuel(a, 37.5)).toBe(true);
     expect(durability).toHaveBeenCalledExactlyOnceWith(.5, 1);

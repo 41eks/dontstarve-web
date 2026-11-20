@@ -5,10 +5,10 @@ const sourceUrl = new URL('./recipes.lua', import.meta.url);
 const outputUrl = new URL('../recipes.json', import.meta.url);
 
 function longBracketEnd(source, start) {
-  if (source[start] !== '[') return undefined;
+  if (source[start] !== '[') { return undefined; }
   let cursor = start + 1;
-  while (source[cursor] === '=') cursor++;
-  if (source[cursor] !== '[') return undefined;
+  while (source[cursor] === '=') { cursor++; }
+  if (source[cursor] !== '[') { return undefined; }
   return { contentStart: cursor + 1, closing: `]${'='.repeat(cursor - start - 1)}]` };
 }
 
@@ -16,23 +16,23 @@ function skipQuotedString(source, start) {
   const quote = source[start];
   let cursor = start + 1;
   while (cursor < source.length) {
-    if (source[cursor] === '\\') cursor += 2;
-    else if (source[cursor++] === quote) break;
+    if (source[cursor] === '\\') { cursor += 2; }
+    else if (source[cursor++] === quote) { break; }
   }
   return cursor;
 }
 
 function skipLongString(source, start) {
   const bracket = longBracketEnd(source, start);
-  if (!bracket) return undefined;
+  if (!bracket) { return undefined; }
   const end = source.indexOf(bracket.closing, bracket.contentStart);
   return end < 0 ? source.length : end + bracket.closing.length;
 }
 
 function skipComment(source, start) {
-  if (source.slice(start, start + 2) !== '--') return undefined;
+  if (source.slice(start, start + 2) !== '--') { return undefined; }
   const longEnd = skipLongString(source, start + 2);
-  if (longEnd !== undefined) return longEnd;
+  if (longEnd !== undefined) { return longEnd; }
   const lineEnd = source.indexOf('\n', start + 2);
   return lineEnd < 0 ? source.length : lineEnd + 1;
 }
@@ -40,10 +40,10 @@ function skipComment(source, start) {
 function skipTrivia(source, start = 0) {
   let cursor = start;
   while (cursor < source.length) {
-    if (/\s/.test(source[cursor])) cursor++;
+    if (/\s/.test(source[cursor])) { cursor++; }
     else {
       const commentEnd = skipComment(source, cursor);
-      if (commentEnd === undefined) break;
+      if (commentEnd === undefined) { break; }
       cursor = commentEnd;
     }
   }
@@ -68,8 +68,8 @@ function matchingParen(source, open) {
       cursor = commentEnd;
       continue;
     }
-    if (character === '(') depth++;
-    else if (character === ')' && --depth === 0) return cursor;
+    if (character === '(') { depth++; }
+    else if (character === ')' && --depth === 0) { return cursor; }
     cursor++;
   }
   throw new Error(`Unclosed call at byte ${open}`);
@@ -130,8 +130,8 @@ function splitTopLevel(source, delimiter = ',') {
       cursor = commentEnd;
       continue;
     }
-    if (pairs[character]) closings.push(pairs[character]);
-    else if (closings.at(-1) === character) closings.pop();
+    if (pairs[character]) { closings.push(pairs[character]); }
+    else if (closings.at(-1) === character) { closings.pop(); }
     else if (!closings.length && source.startsWith(delimiter, cursor)) {
       parts.push(source.slice(start, cursor).trim());
       start = cursor + delimiter.length;
@@ -146,7 +146,7 @@ function splitTopLevel(source, delimiter = ',') {
 
 function decodeLuaString(source) {
   const quote = source[0];
-  if ((quote !== '"' && quote !== "'") || source.at(-1) !== quote) return undefined;
+  if ((quote !== '"' && quote !== "'") || source.at(-1) !== quote) { return undefined; }
   let result = '';
   for (let cursor = 1; cursor < source.length - 1; cursor++) {
     const character = source[cursor];
@@ -156,9 +156,9 @@ function decodeLuaString(source) {
     }
     const escaped = source[++cursor];
     const simple = { a: '\x07', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t', v: '\x0b' };
-    if (simple[escaped] !== undefined) result += simple[escaped];
+    if (simple[escaped] !== undefined) { result += simple[escaped]; }
     else if (escaped === 'z') {
-      while (/\s/.test(source[cursor + 1] ?? '')) cursor++;
+      while (/\s/.test(source[cursor + 1] ?? '')) { cursor++; }
     } else if (escaped === 'x') {
       result += String.fromCodePoint(Number.parseInt(source.slice(cursor + 1, cursor + 3), 16));
       cursor += 2;
@@ -166,8 +166,8 @@ function decodeLuaString(source) {
       const digits = source.slice(cursor).match(/^\d{1,3}/)?.[0] ?? escaped;
       result += String.fromCodePoint(Number.parseInt(digits, 10));
       cursor += digits.length - 1;
-    } else if (escaped === '\n') result += '\n';
-    else result += escaped;
+    } else if (escaped === '\n') { result += '\n'; }
+    else { result += escaped; }
   }
   return result;
 }
@@ -178,44 +178,44 @@ function luaExpression(source) {
 
 function topLevelAssignment(source) {
   const parts = splitTopLevel(source, '=');
-  if (parts.length !== 2) return undefined;
+  if (parts.length !== 2) { return undefined; }
   const index = source.indexOf('=');
-  if ('=<>~'.includes(source[index - 1] ?? '') || source[index + 1] === '=') return undefined;
+  if ('=<>~'.includes(source[index - 1] ?? '') || source[index + 1] === '=') { return undefined; }
   return parts;
 }
 
 function parseCall(source) {
   const match = /^([A-Za-z_]\w*)\s*\(/.exec(source);
-  if (!match) return undefined;
+  if (!match) { return undefined; }
   const open = source.indexOf('(', match[0].length - 1);
   const close = matchingParen(source, open);
-  if (source.slice(close + 1).trim()) return undefined;
+  if (source.slice(close + 1).trim()) { return undefined; }
   return { name: match[1], arguments: splitTopLevel(source.slice(open + 1, close)) };
 }
 
 function parseValue(source, environment = {}) {
   const value = source.trim();
-  if (!value || value === 'nil') return null;
-  if (value === 'true') return true;
-  if (value === 'false') return false;
-  if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value)) return Number(value);
+  if (!value || value === 'nil') { return null; }
+  if (value === 'true') { return true; }
+  if (value === 'false') { return false; }
+  if (/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(value)) { return Number(value); }
 
   const decoded = decodeLuaString(value);
-  if (decoded !== undefined) return decoded;
-  if (Object.hasOwn(environment, value)) return environment[value];
+  if (decoded !== undefined) { return decoded; }
+  if (Object.hasOwn(environment, value)) { return environment[value]; }
 
   const concatenated = splitTopLevel(value, '..');
   if (concatenated.length > 1) {
     const values = concatenated.map((part) => parseValue(part, environment));
-    if (values.every((part) => ['string', 'number'].includes(typeof part))) return values.join('');
+    if (values.every((part) => ['string', 'number'].includes(typeof part))) { return values.join(''); }
   }
 
   const call = parseCall(value);
   if (call?.name === 'tostring' && call.arguments.length === 1) {
     const argument = parseValue(call.arguments[0], environment);
-    if (typeof argument === 'string' || typeof argument === 'number') return String(argument);
+    if (typeof argument === 'string' || typeof argument === 'number') { return String(argument); }
   }
-  if (call?.name === 'Ingredient') return parseIngredient(call.arguments, environment);
+  if (call?.name === 'Ingredient') { return parseIngredient(call.arguments, environment); }
 
   if (value[0] === '{' && value.at(-1) === '}') {
     const entries = splitTopLevel(value.slice(1, -1)).filter(Boolean);
@@ -240,15 +240,15 @@ function parseIngredient(arguments_, environment) {
     type: parseValue(type, environment),
     amount: parseValue(amount, environment),
   };
-  if (atlas && atlas.trim() !== 'nil') ingredient.atlas = parseValue(atlas, environment);
-  if (deconstruct && deconstruct.trim() !== 'nil') ingredient.deconstruct = parseValue(deconstruct, environment);
-  if (image && image.trim() !== 'nil') ingredient.image = parseValue(image, environment);
+  if (atlas && atlas.trim() !== 'nil') { ingredient.atlas = parseValue(atlas, environment); }
+  if (deconstruct && deconstruct.trim() !== 'nil') { ingredient.deconstruct = parseValue(deconstruct, environment); }
+  if (image && image.trim() !== 'nil') { ingredient.image = parseValue(image, environment); }
   return ingredient;
 }
 
 function parseIngredientList(source, environment = {}) {
   const value = source.trim();
-  if (value[0] !== '{' || value.at(-1) !== '}') return parseValue(value, environment);
+  if (value[0] !== '{' || value.at(-1) !== '}') { return parseValue(value, environment); }
   return splitTopLevel(value.slice(1, -1))
     .filter(Boolean)
     .map((entry) => parseValue(entry, environment));
@@ -261,11 +261,11 @@ function parseTech(source, environment) {
 
 function parseRecipe2(argumentsSource, environment = {}) {
   const args = splitTopLevel(argumentsSource);
-  if (args.length < 3 || args.length > 4) throw new Error(`Unexpected Recipe2 signature: ${argumentsSource}`);
+  if (args.length < 3 || args.length > 4) { throw new Error(`Unexpected Recipe2 signature: ${argumentsSource}`); }
   const name = parseValue(args[0], environment);
-  if (typeof name !== 'string') throw new Error(`Recipe2 name is not static: ${args[0]}`);
+  if (typeof name !== 'string') { throw new Error(`Recipe2 name is not static: ${args[0]}`); }
   const ingredients = parseIngredientList(args[1], environment);
-  if (!Array.isArray(ingredients)) throw new Error(`${name}: ingredients are not an array`);
+  if (!Array.isArray(ingredients)) { throw new Error(`${name}: ingredients are not an array`); }
   return {
     name,
     ingredients,
@@ -303,7 +303,7 @@ function parseLegacyRecipe(argumentsSource) {
 
 function expandRecipe2(call) {
   const nameExpression = splitTopLevel(call.arguments)[0];
-  if (!nameExpression.includes('..i')) return [parseRecipe2(call.arguments)];
+  if (!nameExpression.includes('..i')) { return [parseRecipe2(call.arguments)]; }
   const commonAmounts = [8, 6, 4];
   const rareAmounts = [6, 4, 2];
   return commonAmounts.map((numCommonPetals, index) => parseRecipe2(call.arguments, {
@@ -329,14 +329,14 @@ function parseDeconstructionRecipe(argumentsSource, environment = {}) {
 
 function expandDeconstructionRecipe(call) {
   const nameExpression = splitTopLevel(call.arguments)[0];
-  if (!nameExpression.includes('..tostring(k)')) return [parseDeconstructionRecipe(call.arguments)];
+  if (!nameExpression.includes('..tostring(k)')) { return [parseDeconstructionRecipe(call.arguments)]; }
   return [1, 2, 3].map((k) => parseDeconstructionRecipe(call.arguments, { k }));
 }
 
 function assertUniqueNames(recipes, label) {
   const seen = new Set();
   for (const { name } of recipes) {
-    if (seen.has(name)) throw new Error(`Duplicate ${label} name: ${name}`);
+    if (seen.has(name)) { throw new Error(`Duplicate ${label} name: ${name}`); }
     seen.add(name);
   }
 }
@@ -364,7 +364,7 @@ const serialized = `${JSON.stringify(output, null, 2)}\n`;
 
 if (process.argv.includes('--check')) {
   const current = await readFile(outputUrl, 'utf8');
-  if (current !== serialized) throw new Error(`${fileURLToPath(outputUrl)} is out of date`);
+  if (current !== serialized) { throw new Error(`${fileURLToPath(outputUrl)} is out of date`); }
   console.log(`Validated ${recipes.length} recipes and ${deconstructionRecipes.length} deconstruction recipes.`);
 } else {
   await writeFile(outputUrl, serialized);

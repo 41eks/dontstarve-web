@@ -139,7 +139,7 @@ it('keeps c_spawn hives and imported ones through c_save and a reload, and rejec
     expect(savedBees![0]).toMatchObject({ id: spawned.entityId, transform: { position: [3, 0, -6] } });
     await second.registry.restoreAll({ beehive: savedBees!, wasphive: savedWasps! });
     const loaded = second.prefabs.get('imported-hive');
-    if (!(loaded instanceof BeehiveInstance)) throw new Error('The saved hive did not load');
+    if (!(loaded instanceof BeehiveInstance)) { throw new Error('The saved hive did not load'); }
     expect(loaded.position.toArray()).toEqual([20, 0, 1]);
     expect([loaded.components.health.currenthealth, loaded.components.childspawner.childreninside,
       loaded.components.childspawner.emergencychildreninside, clip(loaded)?.name]).toEqual([104, 2, 6, 'cocoon_small']);

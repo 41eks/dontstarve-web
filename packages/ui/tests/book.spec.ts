@@ -10,8 +10,8 @@ test('right-click reads book_rain: its fx and sounds play, moisture starts the r
   const errors: string[] = [];
   const sounds: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
-  page.on('request', request => { if (request.url().endsWith('.wav')) sounds.push(new URL(request.url()).pathname.split('/').pop()!); });
+  page.on('console', message => { if (message.type() === 'error') { errors.push(message.text()); } });
+  page.on('request', request => { if (request.url().endsWith('.wav')) { sounds.push(new URL(request.url()).pathname.split('/').pop()!); } });
   await page.route('**/saves/initial-world.json', async route => {
     const response = await route.fetch(), save = await response.json();
     save.players.local.stats = { health: 150, hunger: 150, sanity: 100 };

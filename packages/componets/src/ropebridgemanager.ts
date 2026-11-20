@@ -51,17 +51,17 @@ export class RopeBridgeManager {
   /** SpawnBridgeAnim: rotation 0 / 180 along x, -90 / 90 along z. */
   private SpawnBridgeAnim(key: string, x: number, z: number, direction: RopeBridgeTileSave['direction'],
     iconOffset: number | undefined, populating: boolean): void {
-    if (this.bridgeAnims.has(key)) return;
+    if (this.bridgeAnims.has(key)) { return; }
     const fx = this.spawnFx(x, z);
     fx.SetRotation(direction.x > 0 ? 0 : direction.x < 0 ? 180 : direction.z > 0 ? -90 : 90);
     fx.SetIconOffset(fx, iconOffset);
     this.bridgeAnims.set(key, fx);
-    if (populating) fx.SkipPre(fx);
+    if (populating) { fx.SkipPre(fx); }
   }
 
   /** The anims follow the world's lifetime: they do not persist and are removed with it. */
   dispose(): void {
-    for (const fx of this.bridgeAnims.values()) fx.remove();
+    for (const fx of this.bridgeAnims.values()) { fx.remove(); }
     this.bridgeAnims.clear();
   }
 }

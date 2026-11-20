@@ -64,13 +64,13 @@ export interface BuildPackage {
 
 /** The RGBA of an atlas that CPU drawing needs; an atlas already handed to the GPU no longer has it. */
 export function atlasPixels(atlas: BuildAtlas): Uint8Array {
-  if (!atlas.pixels) throw new Error('Atlas RGBA was released after its GPU upload');
+  if (!atlas.pixels) { throw new Error('Atlas RGBA was released after its GPU upload'); }
   return atlas.pixels;
 }
 
 function alphaChannel(pixels: Uint8Array): Uint8Array {
   const alpha = new Uint8Array(pixels.length >> 2);
-  for (let texel = 0; texel < alpha.length; texel++) alpha[texel] = pixels[texel * 4 + 3];
+  for (let texel = 0; texel < alpha.length; texel++) { alpha[texel] = pixels[texel * 4 + 3]; }
   return alpha;
 }
 
@@ -136,7 +136,7 @@ export function smallHash(value: string) {
   let hash = 0;
   for (const character of value) {
     let code = character.codePointAt(0) ?? 0;
-    if (code >= 65 && code <= 90) code += 32;
+    if (code >= 65 && code <= 90) { code += 32; }
     hash = (Math.imul(hash, 65599) + code) >>> 0;
   }
   return hash;
@@ -152,7 +152,7 @@ function skipHashTable(reader: BinaryReader) {
 
 function parseAnim(data: Uint8Array, label: string): ParsedAnim {
   const reader = new BinaryReader(data, label);
-  if (reader.ascii(4) !== 'ANIM') throw new Error(`${label}: invalid ANIM signature`);
+  if (reader.ascii(4) !== 'ANIM') { throw new Error(`${label}: invalid ANIM signature`); }
   reader.skip(16);
   const animationCount = reader.u32();
   const animations: Animation[] = [];
@@ -196,7 +196,7 @@ function median(values: number[]) {
 
 function parseBuild(data: Uint8Array, label: string): ParsedBuild {
   const reader = new BinaryReader(data, label);
-  if (reader.ascii(4) !== 'BILD') throw new Error(`${label}: invalid BILD signature`);
+  if (reader.ascii(4) !== 'BILD') { throw new Error(`${label}: invalid BILD signature`); }
   reader.skip(4);
   const symbolCount = reader.u32();
   reader.skip(4);
@@ -226,7 +226,7 @@ function parseBuild(data: Uint8Array, label: string): ParsedBuild {
     vertices.getFloat32(vertex * 24 + component * 4, true);
 
   for (const image of images) {
-    if (!image.vertexCount) continue;
+    if (!image.vertexCount) { continue; }
     const samplers: number[] = [];
     const bbxs: number[] = [];
     const bbys: number[] = [];
@@ -272,7 +272,7 @@ function findEntry(entries: Record<string, Uint8Array>, wanted: string) {
 
 async function loadEntries(file: string, assetBaseUrl: string) {
   const response = await fetch(`${assetBaseUrl.replace(/\/$/, '')}/${file}`);
-  if (!response.ok) throw new Error(`Unable to load animation asset ${file}: HTTP ${response.status}`);
+  if (!response.ok) { throw new Error(`Unable to load animation asset ${file}: HTTP ${response.status}`); }
   return unzipSync(new Uint8Array(await response.arrayBuffer()));
 }
 
@@ -282,18 +282,18 @@ async function buildPackageFromEntries(
   assetBaseUrl: string,
 ): Promise<BuildPackage> {
   const data = findEntry(entries, 'build.bin');
-  if (!data) throw new Error(`${file} does not contain build.bin`);
+  if (!data) { throw new Error(`${file} does not contain build.bin`); }
   const build = parseBuild(data, `${file}:build.bin`);
   let atlasEntries = entries;
   if (file.startsWith('dynamic/') && build.atlasNames.some((name) => !findEntry(entries, name))) {
     const atlasFile = file.replace(/\.zip$/, '.dyn');
     const response = await fetch(`${assetBaseUrl.replace(/\/$/, '')}/${atlasFile}`);
-    if (!response.ok) throw new Error(`Unable to load animation asset ${atlasFile}: HTTP ${response.status}`);
+    if (!response.ok) { throw new Error(`Unable to load animation asset ${atlasFile}: HTTP ${response.status}`); }
     atlasEntries = unzipSync(decodeDyn(new Uint8Array(await response.arrayBuffer())));
   }
   const atlases = build.atlasNames.map((name) => {
     const atlas = findEntry(entries, name) ?? findEntry(atlasEntries, name);
-    if (!atlas) throw new Error(`${file} does not contain ${name}`);
+    if (!atlas) { throw new Error(`${file} does not contain ${name}`); }
     const { width, height, pixels } = parseKtex(atlas, `${file}:${name}`);
     return { width, height, pixels, alpha: alphaChannel(pixels) };
   });
@@ -330,6 +330,6 @@ export async function readAnimationArchivePart<Kind extends keyof AnimationArchi
     const data = findEntry(entries, 'anim.bin');
     return (data ? parseAnim(data, `${file}:anim.bin`) : undefined) as AnimationArchiveParts[Kind];
   } finally {
-    if (--pending.users === 0) pendingEntries.delete(key);
+    if (--pending.users === 0) { pendingEntries.delete(key); }
   }
 }

@@ -108,7 +108,7 @@ it('spawns wild monkeytail, picks reeds, pauses in winter and reloads its discre
     expect(pickable.remainingSeconds).toBe(780);
     s.advance(780); expect(pickable.canBePicked).toBe(true);
     expect(plantInstance(model).sprite.currentAnimation).toBe('grow');
-    for (let frame = 0; frame < 90; frame++) s.advance(1 / 30);
+    for (let frame = 0; frame < 90; frame++) { s.advance(1 / 30); }
     expect(plantInstance(model).sprite.currentAnimation).toBe('idle');
     // A native mature plant has no transplanted-cycle limit.
     for (let i = 0; i < cycles! + 1; i++) { expect(pickable.pick(doer)).toBe(true); s.advance(1080); }
@@ -128,7 +128,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     expect(s.inventory.getItemSpec('dug_monkeytail').atlas).toBe('images/inventoryimages2.xml');
     let groundMesh!: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
     await (prefabDisplay(s.ground.reskinTargets[0].transform.model) as PrefabDisplay).artLoaded();
-    s.ground.reskinTargets[0].transform.model.traverse(object => { if (object instanceof THREE.Mesh) groundMesh ??= object as typeof groundMesh; });
+    s.ground.reskinTargets[0].transform.model.traverse(object => { if (object instanceof THREE.Mesh) { groundMesh ??= object as typeof groundMesh; } });
     expect(groundMesh.material.some(material => material.name === 'sprite:reeds_monkeytails')).toBe(true);
     expect(groundMesh.geometry.drawRange.count).toBeGreaterThan(0);
     s.player.position.set(0, 0, 0);
@@ -170,14 +170,14 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
     const cycles = pickable.cyclesLeft;
     for (let i = 0; i < cycles!; i++) {
       expect(pickable.pick({ giveItem: (id: string, count: number) => s.inventory.add(id, count) })).toBe(true);
-      if (i < cycles! - 1) s.advance(MONKEYTAIL_REGROW_TIME);
+      if (i < cycles! - 1) { s.advance(MONKEYTAIL_REGROW_TIME); }
     }
     expect(pickable.IsBarren()).toBe(true); expect(pickable.remainingSeconds).toBeUndefined();
     let json = '';
     expect((await executeDebugCommand('c_save()', s.inventory, undefined, () => { json = s.save(); })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG);
     loadSavedInventory(restored.inventory, saved, SAVE_CATALOG.recipes);
-    for (const record of saved.world.entities.monkeytail) await drawn(restored.monkeytails.restore('monkeytail', record).transform.model);
+    for (const record of saved.world.entities.monkeytail) { await drawn(restored.monkeytails.restore('monkeytail', record).transform.model); }
     restored.ground.restoreEntities(saved.world.entities);
     expect(restored.monkeytails.exportRecords().map(({ record }) => record)).toEqual(s.monkeytails.exportRecords().map(({ record }) => record));
     expect(restored.ground.exportEntities()).toEqual(s.ground.exportEntities());

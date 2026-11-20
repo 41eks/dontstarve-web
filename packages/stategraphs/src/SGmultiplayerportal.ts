@@ -22,7 +22,7 @@ export interface MultiplayerPortalStateInst {
 /** The local PlaySound: `inst.sounds[sound]`, unless it is nil or the named slot `id` is still playing. */
 function PlaySound(inst: MultiplayerPortalStateInst, sound: MultiplayerPortalSound, id?: string): void {
   const path = inst.sounds[sound];
-  if (path !== undefined && (id === undefined || !inst.SoundEmitter.PlayingSound(id))) inst.SoundEmitter.PlaySound(path, id);
+  if (path !== undefined && (id === undefined || !inst.SoundEmitter.PlayingSound(id))) { inst.SoundEmitter.PlaySound(path, id); }
 }
 
 type Graph = StateGraphInstance<MultiplayerPortalStateInst, MultiplayerPortalStateName>;
@@ -77,7 +77,7 @@ const states: StateDefinition<MultiplayerPortalStateInst, MultiplayerPortalState
       sg.goToState('spawn_loop');
     })],
     timeline: [at(11, sg => PlaySound(sg.context, 'blink'))],
-    onexit: sg => { if (!sg.statemem.keepactivatesound) sg.context.SoundEmitter.KillSound('portalactivate'); },
+    onexit: sg => { if (!sg.statemem.keepactivatesound) { sg.context.SoundEmitter.KillSound('portalactivate'); } },
   }),
   state({
     name: 'spawn_loop',

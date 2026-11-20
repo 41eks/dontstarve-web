@@ -22,12 +22,12 @@ export function FindValidPositionByFan(startAngle: number, radius: number, attem
     angles.push(tmp[i - 1]);
     angles.push(tmp[attempts - i]);
   }
-  if (iend * 2 < attempts) angles.push(tmp[iend]);
+  if (iend * 2 < attempts) { angles.push(tmp[iend]); }
   for (const [index, deflection] of angles.entries()) {
     let angle = startAngle + deflection;
-    if (angle > PI2) angle -= PI2;
+    if (angle > PI2) { angle -= PI2; }
     const offset = { x: radius * Math.cos(angle), y: 0, z: -radius * Math.sin(angle) };
-    if (test(offset)) return { offset, angle, deflected: index > 0 };
+    if (test(offset)) { return { offset, angle, deflected: index > 0 }; }
   }
   return undefined;
 }

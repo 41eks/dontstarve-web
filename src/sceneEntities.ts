@@ -511,7 +511,7 @@ export async function createSceneEntities(
 
   const stopDugTurf = turfMap.onDig((point, tileId) => {
     const itemId = turfItemForTile(tileId);
-    if (!itemId) return;
+    if (!itemId) { return; }
     const spec = GROUND_ITEM_DISPLAY_SPECS[itemId];
     groundItems.flingLoot([{ itemId, count: 1, name: spec.name, icon: spec.icon, atlas: spec.atlas }],
       new THREE.Vector3(point.x, 0, point.z));
@@ -643,7 +643,7 @@ export async function createSceneEntities(
 
   /** TheWorld as the item prefabs reach it. */
   function itemWorld(worldState: SceneWorldState): ItemPrefabWorld {
-    if (itemWorldInstance) return itemWorldInstance;
+    if (itemWorldInstance) { return itemWorldInstance; }
     function newItem(prefab: string): ItemEntity;
     function newItem<Entity extends ItemEntity>(prefab: string, factory: ItemEntityFactory<Entity>): Entity;
     function newItem(prefab: string, factory?: ItemEntityFactory): ItemEntity {
@@ -1026,8 +1026,8 @@ export async function createSceneEntities(
       dropLoot: (items, position) => {
         // Prefabs this project cannot spawn yet (trinkets, creatures, blueprints) are not dropped.
         const counts = new Map<string, number>();
-        for (const itemId of items) if (Object.hasOwn(SAVE_CATALOG.items, itemId)) counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
-        if (counts.size === 0) return;
+        for (const itemId of items) { if (Object.hasOwn(SAVE_CATALOG.items, itemId)) { counts.set(itemId, (counts.get(itemId) ?? 0) + 1); } }
+        if (counts.size === 0) { return; }
         groundItems.flingLoot([...counts].map(([itemId, count]) => ({ ...SAVE_CATALOG.items[itemId], itemId, count })), position);
       },
     }));
@@ -1097,7 +1097,7 @@ export async function createSceneEntities(
         groundItems.flingLoot([{ ...SAVE_CATALOG.items[prefab], itemId: prefab, count }], position);
       },
       *getPoopPositions() {
-        for (const poop of prefabs.instances('poop')) if (!poop.inlimbo) yield poop.position;
+        for (const poop of prefabs.instances('poop')) { if (!poop.inlimbo) { yield poop.position; } }
       },
       // SpawnPrefab("poop") and Transform:SetPosition.
       spawnPoop(position) {
@@ -1283,7 +1283,7 @@ export async function createSceneEntities(
     return new RopeBridgeManager({
       *ropeBridges() {
         for (const tile of turfMap.exportTiles()) {
-          if (tile.tileId === WORLD_TILES.ROPE_BRIDGE && tile.ropeBridge) yield [tile.col, tile.row, tile.ropeBridge] as const;
+          if (tile.tileId === WORLD_TILES.ROPE_BRIDGE && tile.ropeBridge) { yield [tile.col, tile.row, tile.ropeBridge] as const; }
         }
       },
       tileCenter: (col, row) => ({ x: (col + .5) * TILE_SIZE, z: (row + .5) * TILE_SIZE }),

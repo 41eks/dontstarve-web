@@ -113,7 +113,7 @@ export class ItemWorldFixture {
   /** DROP: the inst the holder lets go of is set down at `position`, or a stack the definition describes is spawned there. */
   drop(definition: GroundItemDefinition, position: ReadonlyVector3, take: () => boolean | ItemEntity): boolean {
     const taken = take();
-    if (!taken) return false;
+    if (!taken) { return false; }
     if (taken === true) { this.spawnGroundItem(definition, position); return true; }
     taken.setPosition(position.x, 0, position.z);
     taken.components.inventoryitem.OnDropped();
@@ -133,7 +133,7 @@ export class ItemWorldFixture {
   /** The same records as a save's `world.entities` holds them, by prefab. */
   exportEntities(): Record<string, EntitySaveRecord[]> {
     const entities: Record<string, EntitySaveRecord[]> = {};
-    for (const { prefabId, record } of this.prefabs.exportRecords()) (entities[prefabId] ??= []).push(record);
+    for (const { prefabId, record } of this.prefabs.exportRecords()) { (entities[prefabId] ??= []).push(record); }
     return entities;
   }
 
@@ -167,22 +167,22 @@ export class ItemWorldFixture {
   }
 
   *iteratePrefabPositions(prefab: string): IterableIterator<ReadonlyVector3> {
-    for (const inst of this.prefabs.instances(prefab)) if (!inst.inlimbo) yield inst.position;
+    for (const inst of this.prefabs.instances(prefab)) { if (!inst.inlimbo) { yield inst.position; } }
   }
 
   get renderEntities() { return this.displays.renderEntities; }
 
   /** A scene frame: game time and components, the camera published as the scene does, then the displays. */
   update(dt: number, cameraQuaternion?: THREE.Quaternion): void {
-    if (this.ownsScheduler && dt > 0) this.scheduler.advance(dt);
+    if (this.ownsScheduler && dt > 0) { this.scheduler.advance(dt); }
     this.componentUpdates.update(dt);
-    if (cameraQuaternion) publishTestCamera(cameraQuaternion);
+    if (cameraQuaternion) { publishTestCamera(cameraQuaternion); }
     this.displays.update(dt);
   }
 
   private disposed = false;
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.stopAsh?.();
     bindTestItemWorld(this.inventory.entities, undefined);
@@ -190,14 +190,14 @@ export class ItemWorldFixture {
     this.displays.dispose();
     this.sprites.dispose();
     this.componentUpdates.dispose();
-    if (this.ownsScheduler) this.scheduler.dispose();
+    if (this.ownsScheduler) { this.scheduler.dispose(); }
   }
 }
 
 /** The item inst a ground model draws. */
 export function itemAt(model: THREE.Object3D): ItemEntity {
   const inst = prefabInstance<ItemEntity>(model);
-  if (!inst) throw new Error('No item inst draws this model');
+  if (!inst) { throw new Error('No item inst draws this model'); }
   return inst;
 }
 

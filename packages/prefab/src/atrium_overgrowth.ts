@@ -31,7 +31,7 @@ export class AtriumOvergrowthInstance extends PrefabInstance {
 let _storyprogress = 0;
 
 function rune_onsave(inst: AtriumOvergrowthInstance, data: EntityPersistData): void {
-  if (inst.storyprogress !== undefined) data.atriumOvergrowth = { storyprogress: inst.storyprogress };
+  if (inst.storyprogress !== undefined) { data.atriumOvergrowth = { storyprogress: inst.storyprogress }; }
 }
 
 function rune_onload(inst: AtriumOvergrowthInstance, data: EntityPersistData): void {

@@ -108,14 +108,14 @@ function SetTall(inst: OceanTreeInstance): void {
 
 /** The stage whose Set* fn last chose the bank: growable's, or SetTall's for a no_grow tree that has none. */
 function showbuds(inst: OceanTreeInstance): void {
-  for (const num of inst.buds_used) inst.sprite.showLayer(`tree_bud${num}`);
+  for (const num of inst.buds_used) { inst.sprite.showLayer(`tree_bud${num}`); }
 }
 
 function onsave(inst: OceanTreeInstance, data: EntityPersistData): void {
   const state: OceanTreeSaveState = { supertall_growth_progress: inst.supertall_growth_progress };
-  if (inst.hasTag('burnt') || inst.components.burnable.IsBurning()) state.burnt = true;
-  if (inst.hasTag('stump')) state.stump = true;
-  if (inst.no_grow !== undefined) state.no_grow = inst.no_grow;
+  if (inst.hasTag('burnt') || inst.components.burnable.IsBurning()) { state.burnt = true; }
+  if (inst.hasTag('stump')) { state.stump = true; }
+  if (inst.no_grow !== undefined) { state.no_grow = inst.no_grow; }
   state.buds = [...inst.buds];
   state.buds_used = [...inst.buds_used];
   data.oceantree = state;
@@ -124,14 +124,14 @@ function onsave(inst: OceanTreeInstance, data: EntityPersistData): void {
 /** onload, without its stump and burnt branches (make_stump / OnBurnt are not ported; the save reader rejects them). */
 function onload(inst: OceanTreeInstance, data: EntityPersistData): void {
   const saved = data.oceantree;
-  if (!saved) return;
+  if (!saved) { return; }
   inst.no_grow = saved.no_grow;
   if (inst.no_grow) {
     SetTall(inst);
-    if (inst.components.growable) removeComponent(inst, 'growable');
+    if (inst.components.growable) { removeComponent(inst, 'growable'); }
   }
-  if (saved.buds) inst.buds = [...saved.buds];
-  if (saved.buds_used) inst.buds_used = [...saved.buds_used];
+  if (saved.buds) { inst.buds = [...saved.buds]; }
+  if (saved.buds_used) { inst.buds_used = [...saved.buds_used]; }
   inst.supertall_growth_progress = saved.supertall_growth_progress;
 }
 
@@ -140,7 +140,7 @@ function onload(inst: OceanTreeInstance, data: EntityPersistData): void {
  * supertall_growth_progress of STAGES_TO_SUPERTALL; the save reader rejects both, as neither is ported.
  */
 function onloadpostpass(inst: OceanTreeInstance): void {
-  if (inst.isRemoved) return;
+  if (inst.isRemoved) { return; }
   showbuds(inst);
 }
 
@@ -210,14 +210,14 @@ function fn(world: OceanTreeWorld, sprites: SpriteResources): OceanTreeInstance 
   inst.sprite.setFrameAt(Math.random());
   inst.buds = [1, 2, 3, 5, 6, 7];
   inst.buds_used = [];
-  for (let i = 1; i <= 7; i++) inst.sprite.hideLayer(`tree_bud${i}`);
+  for (let i = 1; i <= 7; i++) { inst.sprite.hideLayer(`tree_bud${i}`); }
   // The engine's component OnEntitySleep / OnEntityWake: growable pauses asleep and catches up on waking. The entity
   // starts asleep, as a loaded entity does, so its tile's first activation is the wake that settles a saved sleeptime.
   inst.setActive(false);
   inst.onRemove(createEffect(() => {
     const status = inst.status.get();
-    if (status === 'asleep') inst.components.growable?.OnEntitySleep();
-    else if (status === 'active') inst.components.growable?.OnEntityWake();
+    if (status === 'asleep') { inst.components.growable?.OnEntitySleep(); }
+    else if (status === 'active') { inst.components.growable?.OnEntityWake(); }
   }));
   return inst;
 }

@@ -59,7 +59,7 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
     // OnGround: lift only the artwork above terrain; the entity/save origin stays grounded. Ground layers share
     // group order 0 and use mesh order. A negative group order would draw the pond before transparent turf, which covers it up.
     this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);
-    for (const tag of ['watersource', 'pond', 'antlion_sinkhole_blocker', 'birdblocker']) this.addTag(tag);
+    for (const tag of ['watersource', 'pond', 'antlion_sinkhole_blocker', 'birdblocker']) { this.addTag(tag); }
 
     const fishable = addComponent(this, 'fishable', Fishable, scheduler);
     fishable.AddFish(POND_FISH.prefab, POND_FISH.build);
@@ -76,12 +76,12 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
   /** pond.lua OnInit: WatchWorldState("snowlevel", OnSnowLevel) and a first OnSnowLevel, through its own watched signal. */
   OnInit(): void {
     const snowLevel = this.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { this.stopWatching = stop; });
-    if (snowLevel) this.stopSnowLevel = snowLevel.subscribe(level => this.OnSnowLevel(level));
+    if (snowLevel) { this.stopSnowLevel = snowLevel.subscribe(level => this.OnSnowLevel(level)); }
     this.OnSnowLevel(snowLevel?.peek() ?? 0);
   }
 
   override OnSave(_inst: unknown, data: EntityPersistData): void {
-    if (this.plants) data.plants = this.plants;
+    if (this.plants) { data.plants = this.plants; }
   }
 
   /** Always before OnInit here, while the source's inst.task is still pending. */
@@ -90,7 +90,7 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
   }
 
   private SpawnPlants(): void {
-    if (this.plant_ents) return;
+    if (this.plant_ents) { return; }
     if (!this.plants) {
       this.plants = [];
       const count = 2 + Math.floor(Math.random() * 3);
@@ -103,7 +103,7 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
     for (const { offset } of this.plants) {
       const position = new Vector3(this.position.x + offset[0] * WORLD_SCALE, 0, this.position.z + offset[2] * WORLD_SCALE);
       const plant = this.spawnPrefab?.(MARSH_PLANT_ID, position);
-      if (!plant) continue;
+      if (!plant) { continue; }
       plant.entityParent = this;
       plant.persists = false;
       this.plant_ents.push(plant);
@@ -111,14 +111,14 @@ export class PondInstance extends PrefabInstance<SpriteState, PondComponents> {
   }
 
   private DespawnPlants(): void {
-    for (const plant of this.plant_ents ?? []) plant.remove();
+    for (const plant of this.plant_ents ?? []) { plant.remove(); }
     this.plant_ents = undefined;
     this.plants = undefined;
   }
 
   private OnSnowLevel(snowlevel: number): void {
     if (snowlevel > POND_FREEZE_SNOWLEVEL) {
-      if (this.frozen) return;
+      if (this.frozen) { return; }
       this.frozen = true;
       this.sprite.playOnce('frozen');
       this.components.fishable!.Freeze();

@@ -77,7 +77,7 @@ function createCanvas(width: number, height: number) {
 
 function context2d(canvas: HTMLCanvasElement) {
   const context = canvas.getContext('2d');
-  if (!context) throw new Error('Unable to create a 2D canvas context');
+  if (!context) { throw new Error('Unable to create a 2D canvas context'); }
   return context;
 }
 
@@ -192,7 +192,7 @@ type ComposeStep = void | typeof ATLAS_PENDING;
 function drain<T>(steps: Generator<ComposeStep, T>): T {
   for (;;) {
     const next = steps.next();
-    if (next.done) return next.value;
+    if (next.done) { return next.value; }
     if (next.value === ATLAS_PENDING) {
       steps.return(undefined as T);
       throw new Error('A source atlas is being decoded again; compose it with createResolvedRgbaSpriteAtlasComposer');
@@ -233,20 +233,20 @@ export function createResolvedRgbaSpriteAtlasComposer(
   let cancelled = false;
   return {
     step(budgetMs) {
-      if (cancelled) throw new Error('Atlas composition cancelled');
-      if (pages) return pages;
+      if (cancelled) { throw new Error('Atlas composition cancelled'); }
+      if (pages) { return pages; }
       const deadline = performance.now() + budgetMs;
       do {
         const end = spritePerfSpan('step:next', animation.name);
         let next: IteratorResult<ComposeStep, RgbaSpriteAtlas[]>;
         try { next = steps.next(); } catch (error) { cancelled = true; throw error; } finally { end(); }
-        if (next.done) return pages = next.value;
-        if (next.value === ATLAS_PENDING) return undefined;
+        if (next.done) { return pages = next.value; }
+        if (next.value === ATLAS_PENDING) { return undefined; }
       } while (performance.now() < deadline);
       return undefined;
     },
     cancel() {
-      if (cancelled || pages) return;
+      if (cancelled || pages) { return; }
       cancelled = true;
       steps.return([]);
     },
@@ -271,7 +271,7 @@ function* composeResolvedSteps(
       layouts.push(layoutFrame(animation, index, sprites));
       for (const { image, materials } of sprites) {
         const texture = materials[image.sampler ?? 0].map!;
-        if (!(texture instanceof THREE.DataTexture)) throw new Error('Instanced sprite source must be a decoded atlas');
+        if (!(texture instanceof THREE.DataTexture)) { throw new Error('Instanced sprite source must be a decoded atlas'); }
         density = Math.max(density, texture.image.width / image.canvasWidth!, texture.image.height / image.canvasHeight!);
       }
     } finally { end(); }
@@ -290,20 +290,20 @@ function* composeResolvedSteps(
   const minY = Math.floor(boundsMinY * resolutionScale) / resolutionScale;
   const maxX = Math.ceil(boundsMaxX * resolutionScale) / resolutionScale;
   const maxY = Math.ceil(boundsMaxY * resolutionScale) / resolutionScale;
-  for (const frame of layouts) Object.assign(frame, { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY });
+  for (const frame of layouts) { Object.assign(frame, { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY }); }
   const cellWidth = Math.ceil((maxX - minX) * resolutionScale) + 4;
   const cellHeight = Math.ceil((maxY - minY) * resolutionScale) + 4;
   const columns = Math.floor(maxTextureSize / cellWidth), rows = Math.floor(maxTextureSize / cellHeight);
-  if (columns < 1 || rows < 1) throw new Error('Sprite frame exceeds the maximum atlas size');
+  if (columns < 1 || rows < 1) { throw new Error('Sprite frame exceeds the maximum atlas size'); }
   const capacity = columns * rows;
-  for (const { sprites } of gpu ? [] : layouts) for (const { image, materials } of sprites) {
+  for (const { sprites } of gpu ? [] : layouts) { for (const { image, materials } of sprites) {
     const texture = materials[image.sampler ?? 0].map;
-    if (!(texture instanceof THREE.DataTexture)) throw new Error('Instanced sprite source must be a decoded atlas');
-    if (decodedSources.has(texture)) continue;
+    if (!(texture instanceof THREE.DataTexture)) { throw new Error('Instanced sprite source must be a decoded atlas'); }
+    if (decodedSources.has(texture)) { continue; }
     let pixels: Uint8Array | undefined;
-    while (!(pixels = atlasTexturePixels(texture))) yield ATLAS_PENDING;
+    while (!(pixels = atlasTexturePixels(texture))) { yield ATLAS_PENDING; }
     decodedSources.set(texture, yield* decodeTextureSteps({ width: texture.image.width, height: texture.image.height, pixels }));
-  }
+  } }
   const sourceOf = ({ image, materials }: ResolvedSprite) => decodedSources.get(materials[image.sampler ?? 0].map!)!;
   const pages: RgbaSpriteAtlas[] = [];
   const scratch = gpu ? new GpuAtlasScratch() : undefined;
@@ -319,7 +319,7 @@ function* composeResolvedSteps(
     return pages;
   } finally {
     scratch?.dispose();
-    if (!delivered) for (const page of pages) page.texture.dispose();
+    if (!delivered) { for (const page of pages) { page.texture.dispose(); } }
   }
 }
 
@@ -458,10 +458,10 @@ class GpuAtlasScratch {
   }
 
   private ensureCapacity(count: number): void {
-    if (count > 0x3fff) throw new Error('A sprite frame cannot contain more than 16383 parts');
-    if (count <= this.capacity) return;
+    if (count > 0x3fff) { throw new Error('A sprite frame cannot contain more than 16383 parts'); }
+    if (count <= this.capacity) { return; }
     // Dispose old GPU buffers before replacing attributes on this task's private geometry.
-    if (this.capacity) this.geometry.dispose();
+    if (this.capacity) { this.geometry.dispose(); }
     this.capacity = Math.min(0x3fff, THREE.MathUtils.ceilPowerOfTwo(count));
     this.positions = new Float32Array(this.capacity * 12);
     this.uvs = new Float32Array(this.capacity * 8);
@@ -478,7 +478,7 @@ class GpuAtlasScratch {
 
   private materialIndex(map: THREE.Texture): number {
     let index = this.materialIndices.get(map);
-    if (index !== undefined) return index;
+    if (index !== undefined) { return index; }
     index = this.materials.length;
     this.materialIndices.set(map, index);
     this.materials.push(new THREE.ShaderMaterial({
@@ -512,17 +512,17 @@ class GpuAtlasScratch {
       }
       const material = this.materialIndex(materials[image.sampler ?? 0].map!);
       if (material !== run) {
-        if (run >= 0) this.geometry.addGroup(runStart * 6, (part - runStart) * 6, run);
+        if (run >= 0) { this.geometry.addGroup(runStart * 6, (part - runStart) * 6, run); }
         run = material; runStart = part;
       }
     }
-    if (count) this.geometry.addGroup(runStart * 6, (count - runStart) * 6, run);
+    if (count) { this.geometry.addGroup(runStart * 6, (count - runStart) * 6, run); }
     this.geometry.setDrawRange(0, count * 6);
     for (const [name, length] of [['position', count * 12], ['uv', count * 8]] as const) {
       const attribute = this.geometry.getAttribute(name);
       // A render may not have consumed previous writes (e.g. during context loss).
       let end = length;
-      for (const range of attribute.updateRanges) end = Math.max(end, range.start + range.count);
+      for (const range of attribute.updateRanges) { end = Math.max(end, range.start + range.count); }
       attribute.clearUpdateRanges(); attribute.addUpdateRange(0, end); attribute.needsUpdate = true;
     }
   }
@@ -542,20 +542,20 @@ function* composeGpuPageSteps(
   layouts: FrameLayout[],
   options: Omit<RgbaSpriteAtlasOptions, 'animationName'>,
 ): Generator<ComposeStep, RgbaSpriteAtlas> {
-  if (layouts.length === 0) throw new Error('At least one sprite frame is required');
+  if (layouts.length === 0) { throw new Error('At least one sprite frame is required'); }
   const { width, height, resolutionScale } = layoutAtlasPage(layouts, options);
-  for (const frame of layouts) for (const { image, materials } of frame.sprites) {
+  for (const frame of layouts) { for (const { image, materials } of frame.sprites) {
     const texture = materials[image.sampler ?? 0].map!;
-    if (scratch.uploaded.has(texture)) continue;
+    if (scratch.uploaded.has(texture)) { continue; }
     const upload = () => {
       const end = spritePerfSpan('step:gpu-upload', texture.name || texture.uuid);
       try { return prepareAtlasTexture(renderer, texture); } finally { end(); }
     };
     // A released atlas whose GPU copy is being rebuilt would compose blank frames into the cached pages.
-    while (!upload()) yield ATLAS_PENDING;
+    while (!upload()) { yield ATLAS_PENDING; }
     scratch.uploaded.add(texture);
     yield;
-  }
+  } }
   const accumulation = new THREE.WebGLRenderTarget(width, height, { type: THREE.HalfFloatType, depthBuffer: false,
     minFilter: THREE.NearestFilter, magFilter: THREE.NearestFilter, generateMipmaps: false });
   const target = new THREE.WebGLRenderTarget(width, height, { depthBuffer: false,
@@ -595,7 +595,7 @@ function* composeGpuPageSteps(
   } finally {
     scratch.resolve.uniforms.map.value = null;
     accumulation.dispose();
-    if (!delivered) target.dispose();
+    if (!delivered) { target.dispose(); }
   }
 }
 
@@ -606,7 +606,7 @@ function* composeAtlasSteps(
   options: Omit<RgbaSpriteAtlasOptions, 'animationName'>,
 ): Generator<void, RgbaSpriteAtlas> {
   const frameIndices = options.frameIndices ?? animation.frames.map((_, index) => index);
-  if (frameIndices.length === 0) throw new Error('At least one sprite frame is required');
+  if (frameIndices.length === 0) { throw new Error('At least one sprite frame is required'); }
   const layouts = frameIndices.map(resolve);
   const { width, height, resolutionScale } = layoutAtlasPage(layouts, options);
   const endCanvas = spritePerfSpan('step:canvas', `${width}x${height}`);

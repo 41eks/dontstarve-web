@@ -34,7 +34,7 @@ it('visits local cells, stops at the first blocker and includes large smart radi
   type Entry = { position: THREE.Vector3; radius: number };
   const positionOf = vi.fn((entry: Entry) => entry.position);
   const index = new SpatialIndex(positionOf, (entry: Entry) => entry.radius);
-  for (let i = 0; i < 1000; i++) index.add({ position: new THREE.Vector3(1000 + i * 12, 0, 0), radius: 0 });
+  for (let i = 0; i < 1000; i++) { index.add({ position: new THREE.Vector3(1000 + i * 12, 0, 0), radius: 0 }); }
   const first = { position: new THREE.Vector3(-.1, 0, -.1), radius: 0 };
   index.add(first); index.add({ position: first.position.clone(), radius: 0 });
   positionOf.mockClear();

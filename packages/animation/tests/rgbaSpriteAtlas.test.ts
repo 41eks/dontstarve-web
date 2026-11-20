@@ -93,7 +93,7 @@ describe('RGBA sprite atlas', () => {
     const composer = createResolvedRgbaSpriteAtlasComposer(animation, frames, 16);
     // A zero budget still draws one frame, so an exhausted budget always makes progress without finishing the clip.
     let steps = 0, pages;
-    while (!(pages = composer.step(0))) steps++;
+    while (!(pages = composer.step(0))) { steps++; }
     try {
       expect(steps).toBeGreaterThan(1);
       expect(pages.map(page => page.frames)).toEqual(expected.map(page => page.frames));

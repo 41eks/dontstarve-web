@@ -23,7 +23,7 @@ export function treeWorld<Extra extends object>(tickingarea: TileStateQuery,
   return { ...world, prefabs, displays, scene, physics,
     records: () => prefabs.exportRecords().map(({ record }) => record),
     dispose: () => {
-      if (disposed) return;
+      if (disposed) { return; }
       disposed = true;
       prefabs.dispose(); displays.dispose(); world.fire.dispose();
     },

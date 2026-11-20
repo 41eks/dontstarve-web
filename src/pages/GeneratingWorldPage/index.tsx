@@ -21,7 +21,7 @@ export default function GeneratingWorldPage({ loadError }: GeneratingWorldPagePr
     document.title = "世界生成中"
     const stage = stageRef.current
     const host = canvasHostRef.current
-    if (!stage || !host) return
+    if (!stage || !host) { return }
     // transferControlToOffscreen is one-shot per canvas, so create it per effect run.
     const canvas = document.createElement("canvas")
     canvas.className = styles.animationCanvas
@@ -29,7 +29,7 @@ export default function GeneratingWorldPage({ loadError }: GeneratingWorldPagePr
     const offscreen = canvas.transferControlToOffscreen()
     const worker = new Worker(new URL("./stage.worker.ts", import.meta.url), { type: "module" })
     worker.onmessage = ({ data }: MessageEvent<StageWorkerResponse>) => {
-      if (data.type === "ready") setLoading(false)
+      if (data.type === "ready") { setLoading(false) }
       else {
         setError(data.message)
         setLoading(false)
@@ -62,7 +62,7 @@ export default function GeneratingWorldPage({ loadError }: GeneratingWorldPagePr
 
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio || loading) return
+    if (!audio || loading) { return }
     audio.volume = 0.72
     void audio.play().catch(() => undefined)
     return () => audio.pause()

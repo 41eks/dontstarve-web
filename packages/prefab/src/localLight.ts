@@ -32,7 +32,7 @@ export function spawnLightEntity(prefab: string, parent?: LightParent): LightEnt
   const key = `${prefab}:${nextId++}`;
   let current: LightParent | undefined;
   const setParent = (next: LightParent | undefined) => {
-    if (next === current || instance.isRemoved) return;
+    if (next === current || instance.isRemoved) { return; }
     current?.light.declare(key, undefined);
     current = next;
     current?.light.declare(key, instance.light.json);
@@ -43,7 +43,7 @@ export function spawnLightEntity(prefab: string, parent?: LightParent): LightEnt
     get parent() { return current; },
     setParent,
     remove: () => {
-      if (instance.isRemoved) return;
+      if (instance.isRemoved) { return; }
       setParent(undefined);
       instance.light.set(null);
       instance.remove();

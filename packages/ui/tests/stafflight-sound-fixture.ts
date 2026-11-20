@@ -40,26 +40,26 @@ export async function prepareStarAudioCheck() {
   const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   // SGwilson's equip/unequip handlers play item_out/item_in from idle; let them finish.
-  const settleEquip = () => { for (let frame = 0; frame < 24; frame++) advancePlayer(animation, 1 / 30); };
+  const settleEquip = () => { for (let frame = 0; frame < 24; frame++) { advancePlayer(animation, 1 / 30); } };
   await animationEquipper.equip('yellowstaff'); settleEquip();
   let casts = 0;
   animation.sg.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
     invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
   }));
-  for (let i = 0; i < 12; i++) advancePlayer(animation, 1 / 30);
+  for (let i = 0; i < 12; i++) { advancePlayer(animation, 1 / 30); }
   const beforeSoundFrame = sources.length;
   advancePlayer(animation, 1 / 30);
   const onSoundFrame = sources.length;
-  for (let i = 0; i < 50; i++) advancePlayer(animation, 1 / 30);
+  for (let i = 0; i < 50; i++) { advancePlayer(animation, 1 / 30); }
   const afterCastSources = sources.length;
   await animationEquipper.equip(null); settleEquip();
   await animationEquipper.equip('yellowstaff'); settleEquip();
   animation.sg.pushBufferedAction(new BufferedAction('CASTSPELL', () => { casts += 1; }, undefined, {
     invobject: { prefab: 'yellowstaff', castsound: 'dontstarve/common/staffteleport', hasTag: () => false },
   }));
-  for (let i = 0; i < 12; i++) advancePlayer(animation, 1 / 30);
+  for (let i = 0; i < 12; i++) { advancePlayer(animation, 1 / 30); }
   await animationEquipper.equip(null); settleEquip();
-  for (let i = 0; i < 30; i++) advancePlayer(animation, 1 / 30);
+  for (let i = 0; i < 30; i++) { advancePlayer(animation, 1 / 30); }
   const cancelledBeforeSound = sources.length === afterCastSources && casts === 1;
   const castBuffer = sources[6].source.buffer!;
   (window as unknown as { checkStarAudio: (action: string) => unknown }).checkStarAudio = (action) => {

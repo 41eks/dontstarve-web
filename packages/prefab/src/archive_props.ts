@@ -85,7 +85,7 @@ export class ArchiveMoonStatueInstance extends PrefabInstance {
 
   constructor(world: ArchivePropsWorld) {
     super(ARCHIVE_MOON_STATUE_ID, new SpriteState({ name: 'idle_full_1', billboard: true }));
-    for (const tag of ['structure', 'statue', 'dustable']) this.addTag(tag);
+    for (const tag of ['structure', 'statue', 'dustable']) { this.addTag(tag); }
     this.anim = 1 + Math.floor(Math.random() * MOON_STATUE_VARIANTS);
     this.sprite.playOnce(`idle_full_${this.anim}`); // PlayAnimation, never looping.
 
@@ -109,7 +109,7 @@ export class ArchiveMoonStatueInstance extends PrefabInstance {
     this.OnSave = (_inst, data) => { data.archiveProp = { anim: this.anim }; };
     // onloadpostpass: a loaded statue shows its work state, looping.
     this.OnLoad = (_inst, data) => {
-      if (data.archiveProp?.anim !== undefined) this.anim = data.archiveProp.anim;
+      if (data.archiveProp?.anim !== undefined) { this.anim = data.archiveProp.anim; }
       setminimapiconstatue(this);
       ShowWorkState(this, undefined, workable.GetWorkLeft());
     };
@@ -125,7 +125,7 @@ export class ArchiveRuneStatueInstance extends PrefabInstance {
 
   constructor(story: { progress: number }) {
     super(ARCHIVE_RUNE_STATUE_ID, new SpriteState({ name: 'idle', billboard: true }));
-    for (const tag of ['structure', 'statue', 'dustable', 'ancient_text']) this.addTag(tag);
+    for (const tag of ['structure', 'statue', 'dustable', 'ancient_text']) { this.addTag(tag); }
     this.anim = 1 + Math.floor(Math.random() * RUNE_STATUE_VARIANTS);
     this.sprite.playOnce(runeAnimation(this.anim));
 
@@ -141,7 +141,7 @@ export class ArchiveRuneStatueInstance extends PrefabInstance {
     inspectable.getstatus = () => { advance(); return `LINE_${this.storyprogress}`; };
     /** rune_getdescription: only a viewer holding an ancient_reader gets the line's text. */
     inspectable.descriptionfn = (viewer: { components?: { inventory?: { EquipHasTag(tag: string): boolean } } }) => {
-      if (!viewer.components?.inventory?.EquipHasTag('ancient_reader')) return undefined;
+      if (!viewer.components?.inventory?.EquipHasTag('ancient_reader')) { return undefined; }
       advance();
       return (STRINGS.ARCHIVE_RUNE_STATUE as Readonly<Record<string, string>>)[`LINE_${this.storyprogress}`];
     };
@@ -151,7 +151,7 @@ export class ArchiveRuneStatueInstance extends PrefabInstance {
     };
     this.OnLoad = (_inst, data) => {
       const saved = data.archiveProp;
-      if (!saved) return;
+      if (!saved) { return; }
       if (saved.storyprogress !== undefined) {
         this.storyprogress = saved.storyprogress;
         story.progress = Math.max(story.progress, saved.storyprogress);
@@ -159,7 +159,7 @@ export class ArchiveRuneStatueInstance extends PrefabInstance {
       if (saved.anim !== undefined) {
         this.anim = saved.anim;
         const anim = runeAnimation(this.anim);
-        if (this.sprite.currentAnimation !== anim) this.sprite.playOnce(anim);
+        if (this.sprite.currentAnimation !== anim) { this.sprite.playOnce(anim); }
       }
     };
   }

@@ -35,7 +35,7 @@ export const RESEARCH_LAB_SKIN_ARCHIVES: Readonly<Record<ResearchLabId, Readonly
 type ScienceMachineId = 'researchlab' | 'researchlab2';
 
 function onhammered(inst: PrefabInstance): void {
-    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    if (inst.components.burnable?.IsBurning()) { inst.components.burnable.Extinguish(); }
     inst.components.lootdropper!.DropLoot();
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
     inst.remove();
@@ -43,14 +43,14 @@ function onhammered(inst: PrefabInstance): void {
 
 /** onhit: the gift loop (isgifting) is not ported. */
 function onhit(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     const on = inst.components.prototyper?.on === true;
     inst.sprite.playOnce('hit');
     inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
 }
 
 function onturnoff(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     inst.sprite.playOnce('idle');
     inst.SoundEmitter!.KillSound('idlesound');
     inst.SoundEmitter!.KillSound('loop');
@@ -75,12 +75,12 @@ function createmachine(level: 1 | 2, name: ScienceMachineId, soundprefix: 'lvl1'
     const declaration: BuildingDeclaration = definitions.animatedBuildings[name];
 
     function onturnon(inst: PrefabInstance): void {
-        if (inst.hasTag('burnt')) return;
+        if (inst.hasTag('burnt')) { return; }
         const anim = inst.sprite;
         if (anim.currentAnimation === 'proximity_loop' || anim.currentAnimation === 'place') {
             // Push again even if already playing, in case an idle was also pushed.
             anim.pushAnimation('proximity_loop', true);
-        } else anim.start('proximity_loop');
+        } else { anim.start('proximity_loop'); }
         if (!inst.SoundEmitter!.PlayingSound('idlesound')) {
             inst.SoundEmitter!.KillSound('loop');
             inst.SoundEmitter!.PlaySound(`dontstarve/common/researchmachine_${soundprefix}_idle_LP`, 'idlesound');
@@ -94,7 +94,7 @@ function createmachine(level: 1 | 2, name: ScienceMachineId, soundprefix: 'lvl1'
 
     function fn(world: PrefabWorldContext): PrefabInstance {
         const { fire, scheduler } = world;
-        if (!fire || !scheduler) throw new Error(`A ${name} needs the world's fire effects and scheduler`);
+        if (!fire || !scheduler) { throw new Error(`A ${name} needs the world's fire effects and scheduler`); }
         const inst = new PrefabInstance(name, new SpriteState({ name: 'idle', billboard: true }));
         inst.worldServices = world;
         inst.AddSoundEmitter();

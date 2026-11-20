@@ -59,7 +59,7 @@ export class LootFling {
   }
 
   update(dt: number): void {
-    if (!Number.isFinite(dt) || dt <= 0 || this.settled) return;
+    if (!Number.isFinite(dt) || dt <= 0 || this.settled) { return; }
     let remaining = dt;
     while (remaining > 0 && !this.settled) {
       const landingTime = (this.velocity.y + Math.sqrt(this.velocity.y ** 2 + 2 * this.gravity * this.height)) / this.gravity;
@@ -68,7 +68,7 @@ export class LootFling {
       this.height = Math.max(0, this.height + this.velocity.y * step - 0.5 * this.gravity * step * step);
       this.velocity.y -= this.gravity * step;
       remaining = Math.max(0, remaining - step);
-      if (step < landingTime) break;
+      if (step < landingTime) { break; }
       this.height = 0;
       this.velocity.y = -this.velocity.y * LOOT_FLING.restitution;
       // Damp horizontal motion at each impact and stop tiny rebounds so loot
@@ -113,7 +113,7 @@ export class InventoryPhysics implements UpdatingComponent {
 
   /** FlingItem from the inst's position when `launch` is absent, else the launch's exact flight. */
   Launch(launch?: LootLaunch, dropperRadius?: number, random = Math.random): void {
-    if (this.inst.isRemoved) return;
+    if (this.inst.isRemoved) { return; }
     this.flight = new LootFling(this.inst.transform, dropperRadius, random, launch, this.unitScale);
     this.inst.sprite.setVisualHeight(this.flight.height);
     this.stopUpdating ??= this.updates.register(this);
@@ -133,7 +133,7 @@ export class InventoryPhysics implements UpdatingComponent {
   /** The body rests where it is, as when it is picked up mid-flight. */
   Stop(): void {
     this.stopUpdating?.(); this.stopUpdating = undefined;
-    if (!this.flight) return;
+    if (!this.flight) { return; }
     this.flight = undefined;
     this.inst.sprite.setVisualHeight(0);
   }

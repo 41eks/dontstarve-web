@@ -31,9 +31,9 @@ export class Reader<Inst extends ReaderInst, World> {
   SetOnReadFn(fn: ReaderOnReadFn<Inst, World> | undefined): void { this.onread = fn; }
 
   Read(book: ReadableBook<Inst, World>): BookResult | undefined {
-    if (!book.components.book) return undefined;
+    if (!book.components.book) { return undefined; }
     const result = book.components.book.OnRead(this.inst, this.world);
-    if (result[0]) this.onread?.(this.inst, book);
+    if (result[0]) { this.onread?.(this.inst, book); }
     return result;
   }
 

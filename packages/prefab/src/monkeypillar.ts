@@ -60,7 +60,7 @@ export class MonkeyPillarInstance extends PrefabInstance {
 
     queue_moveanim_task(this);
     this.ListenForEvent('animover', OnAnimOver);
-    this.OnSave = (_inst, data) => { if (this.pillar_id !== undefined) data.pillar_id = this.pillar_id; };
+    this.OnSave = (_inst, data) => { if (this.pillar_id !== undefined) { data.pillar_id = this.pillar_id; } };
     this.OnLoad = (_inst, data) => { setpillartype(this, data.pillar_id); };
 
     // OnEntitySleep / OnEntityWake; the idle clip waits with the entity, as the move task does.
@@ -71,7 +71,7 @@ export class MonkeyPillarInstance extends PrefabInstance {
       if (value === 'asleep') { this._moveanim_task?.Cancel(); this._moveanim_task = undefined; this.animstate.pause(); }
       else if (value === 'active') {
         this.animstate.resume();
-        if (!this._moveanim_task) queue_moveanim_task(this);
+        if (!this._moveanim_task) { queue_moveanim_task(this); }
       }
     });
     this.onRemove(() => {
@@ -100,7 +100,7 @@ function OnAnimOver(inst: MonkeyPillarInstance): void {
   if (inst._moveanim_trigger) {
     PlayAnimation(inst, `${idlename}_move`);
     inst._moveanim_trigger = false;
-  } else PlayAnimation(inst, idlename);
+  } else { PlayAnimation(inst, idlename); }
 }
 
 function setpillartype(inst: MonkeyPillarInstance, index?: MonkeyPillarId): void {

@@ -25,7 +25,7 @@ const PHASE_TEMPERATURES: Record<WorldPhase, number> = { day: 5, dusk: 0, night:
 
 /** worldtemperature.lua seasonal curves, preserving saved temperature terms. */
 function getWorldSeasonTemperature(state: SeasonState): number {
-  if ('temperature' in state) return state.temperature;
+  if ('temperature' in state) { return state.temperature; }
   const p = state.progress;
   switch (state.season) {
     case 'winter': return 5 - 30 * Math.sin(Math.PI * p);
@@ -37,8 +37,8 @@ function getWorldSeasonTemperature(state: SeasonState): number {
 }
 
 function getWorldPhaseTemperature(state: ClockState): number {
-  if ('temperature' in state) return state.temperature;
-  if (!Object.hasOwn(PHASE_TEMPERATURES, state.phase)) throw new RangeError(`Invalid phase: ${state.phase}`);
+  if ('temperature' in state) { return state.temperature; }
+  if (!Object.hasOwn(PHASE_TEMPERATURES, state.phase)) { throw new RangeError(`Invalid phase: ${state.phase}`); }
   return PHASE_TEMPERATURES[state.phase] * Math.sin(Math.PI * state.timeinphase);
 }
 
@@ -50,12 +50,12 @@ function defaultPerlin(x: number, y: number, z: number): number {
 }
 
 function finite(value: number, name: string): number {
-  if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite`);
+  if (!Number.isFinite(value)) { throw new RangeError(`${name} must be finite`); }
   return value;
 }
 
 function nonnegative(value: number, name: string): number {
-  if (finite(value, name) < 0) throw new RangeError(`${name} must be nonnegative`);
+  if (finite(value, name) < 0) { throw new RangeError(`${name} must be nonnegative`); }
   return value;
 }
 
@@ -77,8 +77,8 @@ export class WorldTemperature {
     try {
       this.temperature = createMemo(() => {
         const sample = this.perlin(0, 0, this.noisetime.get() * TEMPERATURE_NOISE_SCALE);
-        if (!Number.isFinite(sample)) throw new RangeError('perlin must be finite');
-        if (sample < 0 || sample > 1) throw new RangeError('perlin must be between 0 and 1');
+        if (!Number.isFinite(sample)) { throw new RangeError('perlin must be finite'); }
+        if (sample < 0 || sample > 1) { throw new RangeError('perlin must be between 0 and 1'); }
         const noise = 2 * TEMPERATURE_NOISE_MAG * sample - TEMPERATURE_NOISE_MAG;
         const { multiplier, locus } = this.modifiers.get();
         return (noise + getWorldSeasonTemperature(this.season.get()) + getWorldPhaseTemperature(this.clock.get()) - locus) * multiplier + locus;

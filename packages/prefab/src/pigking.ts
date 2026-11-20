@@ -34,7 +34,7 @@ const GOLD = 'goldnugget';
 
 /** pig_king's clips, from the source anim.bin. */
 const PIG_KING_ARCHIVE = definitions.pigKing.archive;
-if (!isTimedArchive(PIG_KING_ARCHIVE)) throw new Error(`No animation timings for ${PIG_KING_ARCHIVE}`);
+if (!isTimedArchive(PIG_KING_ARCHIVE)) { throw new Error(`No animation timings for ${PIG_KING_ARCHIVE}`); }
 const ANIMATION_LENGTHS = animationLengths(PIG_KING_ARCHIVE);
 
 /**
@@ -61,7 +61,7 @@ export class PigKingInstance extends PrefabInstance {
     this.addTag('blocker'); // MakeObstaclePhysics
     this.sprite.setDepthOffset(true); // SetFinalOffset(1)
     // AddTag("trader") is pristine: the trader below holds it while enabled.
-    for (const tag of ['king', 'birdblocker', 'antlion_sinkhole_blocker']) this.addTag(tag);
+    for (const tag of ['king', 'birdblocker', 'antlion_sinkhole_blocker']) { this.addTag(tag); }
     this.addTag('inspectable');
     this.minimap.SetPriority(1);
 
@@ -99,7 +99,7 @@ export class PigKingInstance extends PrefabInstance {
   // conventions-allow instance-method: the engine's AnimState calls SGpigking makes on its inst
   playAnimation(name: string, loop = false): void {
     this.animstate.PlayAnimation(name, loop);
-    if (loop) this.sprite.start(name); else this.sprite.playOnce(name);
+    if (loop) { this.sprite.start(name); } else { this.sprite.playOnce(name); }
   }
   // conventions-allow instance-method: the engine's AnimState calls SGpigking makes on its inst
   pushAnimation(name: string, loop = false): void {
@@ -112,7 +112,7 @@ export class PigKingInstance extends PrefabInstance {
     const origin = new THREE.Vector3(this.position.x, 0, this.position.z);
     const giverPosition = (giver as { position?: THREE.Vector3 } | undefined)?.position;
     let angle: number;
-    if (giverPosition) angle = Math.atan2(giverPosition.z - origin.z, giverPosition.x - origin.x);
+    if (giverPosition) { angle = Math.atan2(giverPosition.z - origin.z, giverPosition.x - origin.x); }
     else {
       const down = this.world.TheCamera.GetDownVec();
       angle = Math.atan2(down.z, down.x);
@@ -126,7 +126,7 @@ export class PigKingInstance extends PrefabInstance {
 
 function OnGetItemFromPlayer(inst: PigKingInstance, giver: unknown, item: TradeItem): void {
   const goldvalue = item.components?.tradable?.goldvalue ?? 0;
-  if (goldvalue <= 0) return;
+  if (goldvalue <= 0) { return; }
   inst.pigking.goToState('cointoss');
   inst.DoTaskInTime(TOSS_DELAY, () => inst.tradeForGold(goldvalue, giver));
 }
@@ -134,8 +134,8 @@ function OnGetItemFromPlayer(inst: PigKingInstance, giver: unknown, item: TradeI
 function OnIsNight(inst: PigKingInstance, isnight: boolean): void {
   inst.mem.sleeping = isnight;
   if (isnight) {
-    if (inst.pigking.hasStateTag('idle')) inst.pigking.goToState('sleep');
-  } else if (inst.pigking.hasStateTag('sleeping')) inst.pigking.goToState('wake');
+    if (inst.pigking.hasStateTag('idle')) { inst.pigking.goToState('sleep'); }
+  } else if (inst.pigking.hasStateTag('sleeping')) { inst.pigking.goToState('wake'); }
 }
 
 /** The Prefab pigking.lua returns. */

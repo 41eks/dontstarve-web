@@ -16,13 +16,13 @@ export const backTasks: Updatable[] = [];
 /** Removed tasks also stay inactive if the current frame already captured them. */
 export function registerFrontTask(update: Updatable): () => void {
     let active = true;
-    const task: Updatable = (dt, unpausedDt) => { if (active) update(dt, unpausedDt); };
+    const task: Updatable = (dt, unpausedDt) => { if (active) { update(dt, unpausedDt); } };
     frontTasks.push(task);
     return () => {
-        if (!active) return;
+        if (!active) { return; }
         active = false;
         const index = frontTasks.indexOf(task);
-        if (index >= 0) frontTasks.splice(index, 1);
+        if (index >= 0) { frontTasks.splice(index, 1); }
     };
 }
 
@@ -36,15 +36,15 @@ export function animate(world: World, camera: PerspectiveCamera) {
     const ready = new Promise<void>((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
     let frameId = requestAnimationFrame(tick);
     function stop() {
-        if (!active) return;
+        if (!active) { return; }
         active = false;
         cancelAnimationFrame(frameId);
         timer.dispose();
         debugStats?.dispose();
-        if (firstFrame) rejectReady(new Error('Scene stopped before its first frame'));
+        if (firstFrame) { rejectReady(new Error('Scene stopped before its first frame')); }
     }
     function tick() {
-        if (!active) return;
+        if (!active) { return; }
         try {
             timer.update();
             // The timer keeps running while paused, so resuming never replays the paused interval.
@@ -71,13 +71,13 @@ export function animate(world: World, camera: PerspectiveCamera) {
                 firstFrame = false;
                 resolveReady();
             }
-            if (active) frameId = requestAnimationFrame(tick);
+            if (active) { frameId = requestAnimationFrame(tick); }
         } catch (error) {
             const failedFirstFrame = firstFrame;
             firstFrame = false;
             stop();
-            if (failedFirstFrame) rejectReady(error);
-            else throw error;
+            if (failedFirstFrame) { rejectReady(error); }
+            else { throw error; }
         }
     }
 

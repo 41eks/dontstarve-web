@@ -133,7 +133,7 @@ it('preserves work through reskinning and restores proximity after hits', async 
     const effect = world.scene.children[0];
     await prefabDisplay(effect)!.artLoaded();
     let effectMesh!: THREE.Mesh;
-    effect.traverse(object => { if (object instanceof THREE.Mesh) effectMesh ??= object; });
+    effect.traverse(object => { if (object instanceof THREE.Mesh) { effectMesh ??= object; } });
     const disposeMaterial = vi.spyOn((effectMesh.material as THREE.Material[])[0], 'dispose');
     fx.dispose();
     await Promise.resolve();
@@ -155,7 +155,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     const sound = vi.mocked(PlaySound).mock.results.at(-1)!.value;
     expect(reskinEntity(reskinTarget())).toBe(true);
     expect(prefabInstance(model)!.components.prototyper).toBe(component);
-    for (let i = 0; i < 300; i++) placement.update(1 / 30);
+    for (let i = 0; i < 300; i++) { placement.update(1 / 30); }
     expect(animation().currentAnimation).toBe('proximity_loop');
     expect(sound.stop).not.toHaveBeenCalled();
     const record = placement.exportRecords()[0].record;
@@ -165,7 +165,7 @@ it('queues magic station transitions across reskinning, then rebuilds transient 
     expect(component!.on).toBe(false);
     expect(animation().currentAnimation).toBe('proximity_loop'); // PushAnimation waits for the current pass.
     expect(sound.stop).toHaveBeenCalledOnce();
-    for (let i = 0; i < 300; i++) placement.update(1 / 30);
+    for (let i = 0; i < 300; i++) { placement.update(1 / 30); }
     expect(animation().currentAnimation).toBe('idle');
     placement.dispose();
 

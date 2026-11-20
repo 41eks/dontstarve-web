@@ -63,16 +63,16 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
     this.deploySmartRadius = 2.5 * (TILE_SIZE / 4);
 
     // moonrock_common_postinit, outside a cave.
-    for (const symbol of ['light', 'portalbg', 'spiralfx1']) this.sprite.setSymbolOverride(symbol, 'portal_stone.zip', symbol);
+    for (const symbol of ['light', 'portalbg', 'spiralfx1']) { this.sprite.setSymbolOverride(symbol, 'portal_stone.zip', symbol); }
     this.sprite.setLightOverride(.04);
-    for (const layer of ['eye', 'eyefx', 'FX_rays']) this.sprite.hideLayer(layer);
+    for (const layer of ['eye', 'eyefx', 'FX_rays']) { this.sprite.hideLayer(layer); }
     this.addTag('moonportal');
     this.addTag('moontrader');
     // inst.fx = SpawnPrefab("multiplayer_portal_moonrock_fx"); fx.entity:SetParent(inst.entity).
     this.fx = world.spawnPrefab(PORTAL_FX_ID, position);
     this.fx.entityParent = this;
 
-    this.animstate = new AnimState(world.scheduler, PORTAL_ANIMATION_LENGTHS, event => { if (!this.isRemoved) this.sg.pushEvent(event); });
+    this.animstate = new AnimState(world.scheduler, PORTAL_ANIMATION_LENGTHS, event => { if (!this.isRemoved) { this.sg.pushEvent(event); } });
     this.SetStateGraph(inst => createMultiplayerPortalStateGraph(inst, world.scheduler));
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
@@ -107,12 +107,12 @@ export class PortalInstance extends PrefabInstance implements MultiplayerPortalS
 }
 
 function OnRezPlayer(inst: PortalInstance): void {
-  if (!inst.sg.hasStateTag('construction')) inst.sg.goToState('spawn_pre');
+  if (!inst.sg.hasStateTag('construction')) { inst.sg.goToState('spawn_pre'); }
 }
 
 function OnGetPortalRez(inst: PortalInstance, scheduler: GameTimeScheduler, portalrez: boolean): void {
   if (portalrez) {
-    if (inst.components.hauntable) return;
+    if (inst.components.hauntable) { return; }
     addComponent(inst, 'hauntable', Hauntable, scheduler).SetHauntValue(HAUNT_INSTANT_REZ);
     inst.addTag('resurrector');
   } else if (inst.components.hauntable) {

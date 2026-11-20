@@ -32,7 +32,7 @@ describe('trident water spell', () => {
     expect(trident.spellcaster.canCast(doer, undefined, land)).toBe(false);
     expect(createBufferedAction('CASTSPELL', { doer, invobject: entity, pos: water }).do()).toBe(true);
     expect(spawnWaterspout).toHaveBeenCalledTimes(4);
-    for (const [point] of spawnWaterspout.mock.calls) expect(point.distanceTo(water)).toBeCloseTo(2.75 * 0.65 * 3, 5);
+    for (const [point] of spawnWaterspout.mock.calls) { expect(point.distanceTo(water)).toBeCloseTo(2.75 * 0.65 * 3, 5); }
     expect(entity.components.finiteuses.remaining).toBe(196);
     inventory.dispose();
   });

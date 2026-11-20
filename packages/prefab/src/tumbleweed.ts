@@ -116,7 +116,7 @@ export class TumbleweedInstance extends PrefabInstance {
     }
     this.onRemove(() => {
       this.blowinwind.dispose();
-      for (const cleanup of cleanups.splice(0)) cleanup();
+      for (const cleanup of cleanups.splice(0)) { cleanup(); }
     });
   }
 
@@ -127,7 +127,7 @@ export class TumbleweedInstance extends PrefabInstance {
   placeOnSpawn(): void {
     const placed = this.position.clone();
     this.world.constrainPosition(placed);
-    if (placed.equals(this.position)) return;
+    if (placed.equals(this.position)) { return; }
     this.copyPosition(placed);
     this.physics.Teleport();
   }
@@ -146,11 +146,11 @@ export class TumbleweedInstance extends PrefabInstance {
   }
 
   private DoDirectionChange(change: WorldWindChange): void {
-    if (this.asleep || this.isRemoved) return;
+    if (this.asleep || this.isRemoved) { return; }
     const first = this.angle === undefined;
     this.angle = varyAngle(change.angle, this.random);
-    if (first) this.blowinwind.Start(this.angle * DEGREES, change.velocity);
-    else this.blowinwind.ChangeDirection(this.angle * DEGREES, change.velocity);
+    if (first) { this.blowinwind.Start(this.angle * DEGREES, change.velocity); }
+    else { this.blowinwind.ChangeDirection(this.angle * DEGREES, change.velocity); }
   }
 
   /** The bounce tasks of startmoving / OnEntityWake: their sounds are not ported, so only CheckGround remains. */
@@ -160,11 +160,11 @@ export class TumbleweedInstance extends PrefabInstance {
     });
   }
   private CheckGround(): void {
-    if (!this.world.isOnValidGround(this.position)) this.remove();
+    if (!this.world.isOnValidGround(this.position)) { this.remove(); }
   }
 
   private startmoving(): void {
-    if (this.asleep || this.isRemoved) return;
+    if (this.asleep || this.isRemoved) { return; }
     this.sprite.start('move_loop');
     this.armGroundCheck();
     this.blowinwind.Start();
@@ -173,7 +173,7 @@ export class TumbleweedInstance extends PrefabInstance {
   private stopPhysics(): void {
     this.locomotor.StopMoving();
     const body = this.physicsBody;
-    if (body) body.velocity.set(0, body.velocity.y, 0);
+    if (body) { body.velocity.set(0, body.velocity.y, 0); }
     this.blowinwind.Stop();
   }
 
@@ -185,7 +185,7 @@ export class TumbleweedInstance extends PrefabInstance {
 
   /** OnEntitySleep comes first so a clip the sleep settles cannot start moving; OnEntityWake plays once the display is awake. */
   override setActive(active: boolean): void {
-    if (this.isRemoved) return;
+    if (this.isRemoved) { return; }
     if (active) {
       this.asleep = false;
       super.setActive(true);
@@ -202,7 +202,7 @@ export class TumbleweedInstance extends PrefabInstance {
 
   /** OnLongAction: stop, settle, and roll again after two to six seconds. */
   private OnLongAction(): void {
-    if (this.isRemoved) return;
+    if (this.isRemoved) { return; }
     this.stopPhysics();
     this.CancelRunningTasks();
     this.sprite.playOnce('move_pst');
@@ -215,7 +215,7 @@ export class TumbleweedInstance extends PrefabInstance {
 
   /** onpickup: loot at the tumbleweed, the break fx, and no item for the picker. */
   private onpickup(): boolean {
-    if (this.isRemoved) return false;
+    if (this.isRemoved) { return false; }
     const position = this.position.clone();
     this.world.dropLoot(this.loot, position);
     this.world.spawnPrefab(TUMBLEWEED_BREAKFX_ID, position);
@@ -228,7 +228,7 @@ export class TumbleweedInstance extends PrefabInstance {
    * velocity that the next step applies.
    */
   private OnUpdate(dt: number): void {
-    if (!Number.isFinite(dt) || dt < 0) return;
+    if (!Number.isFinite(dt) || dt < 0) { return; }
     const body = this.physicsBody;
     if (body) {
       const position = new THREE.Vector3(body.position.x, 0, body.position.z);

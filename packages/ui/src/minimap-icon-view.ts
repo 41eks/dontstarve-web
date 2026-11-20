@@ -30,14 +30,14 @@ export class MinimapIconView {
   entities(): IterableIterator<MiniMapMarker> { return this.markers.keys(); }
 
   set(entity: MiniMapMarker, icon: MinimapIcon): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     let marker = this.markers.get(entity);
     if (!marker) {
       marker = { x: entity.position.x, z: entity.position.z, priority: entity.priority, icon };
       this.markers.set(entity, marker);
       this.ordered = undefined;
     } else {
-      if (marker.priority !== entity.priority) this.ordered = undefined;
+      if (marker.priority !== entity.priority) { this.ordered = undefined; }
       // Sample only on entity notifications, preserving TileTracker's update cadence.
       marker.x = entity.position.x; marker.z = entity.position.z;
       marker.priority = entity.priority; marker.icon = icon;
@@ -46,7 +46,7 @@ export class MinimapIconView {
   }
 
   delete(entity: MiniMapMarker): void {
-    if (!this.markers.delete(entity)) return;
+    if (!this.markers.delete(entity)) { return; }
     this.ordered = undefined;
     this.requestFrame();
   }
@@ -55,14 +55,14 @@ export class MinimapIconView {
 
   stop(): void {
     this.active = false;
-    if (this.frame !== undefined) cancelAnimationFrame(this.frame);
+    if (this.frame !== undefined) { cancelAnimationFrame(this.frame); }
     this.frame = undefined;
   }
 
   update(view: MinimapView): void { this.view = view; this.requestFrame(); }
 
   private requestFrame(): void {
-    if (!this.active || this.disposed || !this.view || this.frame !== undefined) return;
+    if (!this.active || this.disposed || !this.view || this.frame !== undefined) { return; }
     this.frame = requestAnimationFrame(() => { this.frame = undefined; this.draw(); });
   }
 
@@ -70,8 +70,8 @@ export class MinimapIconView {
     const view = this.view!;
     const ratio = window.devicePixelRatio || 1;
     const width = Math.max(1, Math.round(view.width * ratio)), height = Math.max(1, Math.round(view.height * ratio));
-    if (this.canvas.width !== width) this.canvas.width = width;
-    if (this.canvas.height !== height) this.canvas.height = height;
+    if (this.canvas.width !== width) { this.canvas.width = width; }
+    if (this.canvas.height !== height) { this.canvas.height = height; }
     const context = this.context;
     context.setTransform(width / view.width, 0, 0, height / view.height, 0, 0);
     context.clearRect(0, 0, view.width, view.height);
@@ -82,7 +82,7 @@ export class MinimapIconView {
       const point = view.worldToScreen(marker.x, marker.z), icon = marker.icon;
       const iconHeight = iconWidth * icon.height / icon.width;
       if (point.x + iconWidth / 2 < 0 || point.x - iconWidth / 2 > view.width
-        || point.z + iconHeight / 2 < 0 || point.z - iconHeight / 2 > view.height) continue;
+        || point.z + iconHeight / 2 < 0 || point.z - iconHeight / 2 > view.height) { continue; }
       // Project the anchor with the map heading, but keep the icon's own axes upright.
       context.drawImage(icon.image, icon.x, icon.y, icon.width, icon.height,
         point.x - iconWidth / 2, point.z - iconHeight / 2, iconWidth, iconHeight);
@@ -90,7 +90,7 @@ export class MinimapIconView {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.stop();
     this.markers.clear(); this.ordered = undefined; this.view = undefined;

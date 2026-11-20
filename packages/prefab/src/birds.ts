@@ -31,10 +31,10 @@ export function generateBirdLoot(bird: BirdId, random: () => number = Math.rando
 /** MakeSmallPerishableCreature's onperish: a starved bird in a holder is replaced by its loot. */
 function onperish(entity: ItemEntity): void {
   const owner = entity.components.inventoryitem.owner;
-  if (!owner) return;
+  if (!owner) { return; }
   // health is present, so the holder is told about the (negligent) murder first.
   owner.PushEvent('murdered', { victim: entity, stackmult: 1, negligent: true });
-  if (!isBirdId(entity.prefab)) throw new Error(`${entity.prefab} is not a bird`);
+  if (!isBirdId(entity.prefab)) { throw new Error(`${entity.prefab} is not a bird`); }
   entity.components.inventoryitem.slot?.replace(generateBirdLoot(entity.prefab));
 }
 
@@ -43,7 +43,7 @@ function onperish(entity: ItemEntity): void {
  * perishable that stops while the bird is on the ground (StopPerishing in OnDropped).
  */
 export function configureBirdEntity(entity: ItemEntity): void {
-  for (const tag of ['bird', entity.prefab, 'smallcreature', 'small_livestock', 'show_spoilage']) entity.addTag(tag);
+  for (const tag of ['bird', entity.prefab, 'smallcreature', 'small_livestock', 'show_spoilage']) { entity.addTag(tag); }
   // SGbird's stunned state allows pickup; the stunned ground pose is the only ground form ported.
   entity.components.inventoryitem.canbepickedup = true;
   entity.components.inventoryitem.canbepickedupalive = true;

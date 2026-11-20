@@ -31,17 +31,17 @@ export class DoAction extends BehaviourNode {
       this.action = action;
       this.pendingstatus = undefined;
       if (action) {
-        action.addFailAction(() => { if (action === this.action && this.pendingstatus === undefined) this.OnFail(); });
-        action.addSuccessAction(() => { if (action === this.action) this.OnSucceed(); });
+        action.addFailAction(() => { if (action === this.action && this.pendingstatus === undefined) { this.OnFail(); } });
+        action.addSuccessAction(() => { if (action === this.action) { this.OnSucceed(); } });
         this.inst.components.locomotor!.PushAction(action, FunctionOrValue(this.shouldrun ?? false));
         this.time = this.now;
         this.status = RUNNING;
-      } else this.status = FAILED;
+      } else { this.status = FAILED; }
     }
     if (this.status === RUNNING) {
-      if (this.timeout !== undefined && this.now - this.time > this.timeout) this.status = FAILED;
-      if (this.pendingstatus) this.status = this.pendingstatus;
-      else if (!this.action!.isValid()) this.status = FAILED;
+      if (this.timeout !== undefined && this.now - this.time > this.timeout) { this.status = FAILED; }
+      if (this.pendingstatus) { this.status = this.pendingstatus; }
+      else if (!this.action!.isValid()) { this.status = FAILED; }
     }
   }
 }

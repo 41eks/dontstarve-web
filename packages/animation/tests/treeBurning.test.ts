@@ -51,10 +51,10 @@ const light = (target: ComponentActionTarget) => {
 };
 /** Presentation effects (fire art) run on the signal queue, after the synchronous domain change. */
 const flush = () => new Promise(resolve => setTimeout(resolve, 0));
-const fires = (scene: THREE.Object3D) => { let count = 0; scene.traverse(child => { if (lookupPrefabInstance(child)?.prefab === 'fire') count++; }); return count; };
+const fires = (scene: THREE.Object3D) => { let count = 0; scene.traverse(child => { if (lookupPrefabInstance(child)?.prefab === 'fire') { count++; } }); return count; };
 const prefabsIn = (scene: THREE.Object3D, prefab: string) => {
   const found: NonNullable<ReturnType<typeof lookupPrefabInstance>>[] = [];
-  scene.traverse(child => { const instance = lookupPrefabInstance(child); if (instance?.prefab === prefab) found.push(instance); });
+  scene.traverse(child => { const instance = lookupPrefabInstance(child); if (instance?.prefab === prefab) { found.push(instance); } });
   return found;
 };
 
@@ -114,7 +114,7 @@ it('lights an evergreen with a torch, burns it for 45 seconds, then leaves one c
     expect(s.dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
     expect(prefabInstance(model)!.sprite.currentAnimation).toBe('chop_burnt_normal');
     expect(performToolWork('CHOP', target, testPlayer())).toBe(false);
-    for (let i = 0; i < 60; i++) s.displays.update(1 / 30);
+    for (let i = 0; i < 60; i++) { s.displays.update(1 / 30); }
     expect(s.records()).toEqual([]);
   } finally { s.dispose(); }
 });
@@ -192,7 +192,7 @@ it('burns a moon tree for its size-scaled time and keeps burnt state through unl
     expect(performToolWork('CHOP', findActionEntity(tree.transform.model)!, {})).toBe(true);
     random.mockRestore();
     expect(dropLoot).toHaveBeenCalledWith([{ itemId: 'charcoal', count: 1 }], tree.position);
-    for (let i = 0; i < 60; i++) s.displays.update(1 / 30);
+    for (let i = 0; i < 60; i++) { s.displays.update(1 / 30); }
     expect(s.records()).toEqual([]);
   } finally { s.dispose(); }
 });

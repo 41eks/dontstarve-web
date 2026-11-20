@@ -54,7 +54,7 @@ class StickHead {
             this.flies.instance.sprite.art.get();
             flies.traverse(object => { object.raycast = () => {}; });
         }));
-        if (world.scheduler) this.fliesController = new FliesController(this.flies.instance, inst.position, world.scheduler, world.getWatchWorldContent);
+        if (world.scheduler) { this.fliesController = new FliesController(this.flies.instance, inst.position, world.scheduler, world.getWatchWorldContent); }
         // The head never moves, so its private tile key gates the moon and phase inputs by tickingarea: outside it they hold their last value.
         const area = inst.transform.getTileActivity(world.tickingarea, stop => this.cleanups.push(stop));
         const options = area ? { active: area } : undefined;
@@ -74,9 +74,9 @@ class StickHead {
 
     /** OnFullMoon: wake or sleep, then settle on the idle pose. */
     onFullMoon(isfullmoon: boolean): void {
-        if (this.inst.hasTag('burnt')) return;
+        if (this.inst.hasTag('burnt')) { return; }
         const { sprite } = this.inst;
-        if (isfullmoon === this.awake) return;
+        if (isfullmoon === this.awake) { return; }
         this.awake = isfullmoon;
         sprite.playOnce(isfullmoon ? 'wake' : 'sleep', () => sprite.playOnce(this.idle));
     }
@@ -96,13 +96,13 @@ class StickHead {
 }
 
 function onworked(inst: StickHeadInstance): void {
-    if (!inst.hasTag('burnt')) inst.head.hit();
+    if (!inst.hasTag('burnt')) { inst.head.hit(); }
 }
 
 function onhammered(inst: StickHeadInstance): void {
-    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    if (inst.components.burnable?.IsBurning()) { inst.components.burnable.Extinguish(); }
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
-    if (inst.head.isFullMoon) inst.components.lootdropper!.SpawnLootPrefab('nightmarefuel');
+    if (inst.head.isFullMoon) { inst.components.lootdropper!.SpawnLootPrefab('nightmarefuel'); }
     inst.components.lootdropper!.DropLoot();
     inst.remove();
 }
@@ -114,7 +114,7 @@ export class StickHeadInstance extends PrefabInstance {
     constructor(id: StickHeadId, world: PrefabWorldContext, position: ReadonlyVector3, sprites: SpriteResources) {
         super(id, new SpriteState({ name: DECLARATIONS[id].idleAnimation ?? 'idle', billboard: true }));
         const { fire, scheduler } = world;
-        if (!fire || !scheduler) throw new Error('A stick head needs the world\'s fire effects and scheduler');
+        if (!fire || !scheduler) { throw new Error('A stick head needs the world\'s fire effects and scheduler'); }
         this.worldServices = world;
         // The head's tile key is taken where it stands.
         this.setPosition(position.x, 0, position.z);

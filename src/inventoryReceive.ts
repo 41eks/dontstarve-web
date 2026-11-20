@@ -6,7 +6,7 @@ export function inventoryReceiveEffect(
   source: InventoryReceiveSource | null,
 ): InventoryReceiveListener {
   return (received) => {
-    if (!source) return;
+    if (!source) { return; }
     for (const { slot, delta } of received) {
       if (ui.inventoryBar.containers.some(container => container.id === slot.containerId)) {
         ui.inventoryBar.animateReceive(slot, source, delta);

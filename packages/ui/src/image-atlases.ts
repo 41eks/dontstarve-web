@@ -14,16 +14,16 @@ export function initializeUiImageAtlases(): void {
     'images/inventoryimages.xml',
   ]);
   for (const category of categories) {
-    if ('iconAtlas' in category && category.iconAtlas) paths.add(category.iconAtlas);
+    if ('iconAtlas' in category && category.iconAtlas) { paths.add(category.iconAtlas); }
     for (const recipe of category.recipes) {
-      if (recipe.inventoryAtlas) paths.add(recipe.inventoryAtlas);
+      if (recipe.inventoryAtlas) { paths.add(recipe.inventoryAtlas); }
       for (const item of [...recipe.ingredients, ...recipe.skins]) {
-        if (item.inventoryAtlas) paths.add(item.inventoryAtlas);
+        if (item.inventoryAtlas) { paths.add(item.inventoryAtlas); }
       }
     }
   }
   for (const item of [...Object.values(INVENTORY_ITEM_DISPLAY_SPECS), ...Object.values(INVENTORY_SKIN_SPECS)]) {
-    if (item.atlas) paths.add(item.atlas);
+    if (item.atlas) { paths.add(item.atlas); }
   }
   registerImageAtlases(Object.fromEntries([...paths].map((path) => [path, () => loadImageAtlas(archive, path)])));
 }

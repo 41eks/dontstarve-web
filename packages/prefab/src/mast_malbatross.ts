@@ -66,11 +66,11 @@ function GetRotation(inst: MastMalbatrossInstance): number {
 /** onsave. The lamp and lightning rod upgrades are not ported, so neither of their branches saves. */
 function onsave(inst: MastMalbatrossInstance, data: EntityPersistData): void {
   const saved: MastMalbatrossSaveState = {};
-  if (inst.components.burnable.IsBurning() || inst.hasTag('burnt')) saved.burnt = true;
+  if (inst.components.burnable.IsBurning() || inst.hasTag('burnt')) { saved.burnt = true; }
   // inst.components.mast.boat is always nil: SetBoat is not ported.
   saved.rotation = GetRotation(inst);
   saved.is_sail_raised = inst.components.mast.is_sail_raised;
-  if (inst.skinId !== undefined) saved.skinId = inst.skinId;
+  if (inst.skinId !== undefined) { saved.skinId = inst.skinId; }
   data.mastMalbatross = saved;
 }
 
@@ -80,19 +80,19 @@ function onsave(inst: MastMalbatrossInstance, data: EntityPersistData): void {
  */
 function onload(inst: MastMalbatrossInstance, data: EntityPersistData): void {
   const saved = data.mastMalbatross;
-  if (!saved) return;
+  if (!saved) { return; }
   if (saved.skinId !== undefined) {
-    if (!MAST_MALBATROSS_SKINS.some(known => known === saved.skinId)) throw new Error(`Unsupported mast_malbatross skin: ${saved.skinId}`);
+    if (!MAST_MALBATROSS_SKINS.some(known => known === saved.skinId)) { throw new Error(`Unsupported mast_malbatross skin: ${saved.skinId}`); }
     inst.skinId = saved.skinId;
   }
   if (saved.burnt) {
     inst.components.burnable.onburnt?.(inst);
     inst.PushEvent('onburnt', undefined);
   }
-  if (saved.rotation !== undefined) inst.sprite.setFacingRotation(saved.rotation);
+  if (saved.rotation !== undefined) { inst.sprite.setFacingRotation(saved.rotation); }
   const mast = inst.components.mast;
   if (saved.is_sail_raised === !mast.inverted) {
-    if (mast.inverted) mast.SailFurled(); else mast.SailUnfurled();
+    if (mast.inverted) { mast.SailFurled(); } else { mast.SailUnfurled(); }
   }
 }
 

@@ -19,7 +19,7 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 /** An instanced sprite hides its own meshes; the shared batch draws it. */
 const ownShown = (model: THREE.Object3D) => {
   let shown = 0;
-  model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) shown++; });
+  model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) { shown++; } });
   return shown;
 };
 

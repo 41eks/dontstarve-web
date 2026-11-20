@@ -32,7 +32,7 @@ it('restores a sleeping plant with its identity and skin, and finishes burning w
     const model = workTargets('DIG')[0].model;
     const instance = plantInstance(model), components = instance.components;
     expect(model.parent).toBe(scene);
-    const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };
+    const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) { count++; } }); return count; };
     expect(meshes()).toBeGreaterThan(0);
 
     awake.set(false); await tick();

@@ -24,7 +24,7 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
   entity.addTag('nopunch');
   entity.spelltype = 'RESKIN';
   entity._cached_reskinname ??= new Map();
-  if (entity.components.spellcaster) return;
+  if (entity.components.spellcaster) { return; }
   const caster = addComponent(entity, 'spellcaster', SpellCaster);
   caster.canUseOnTargets = true;
   caster.canUseOnDead = true;
@@ -33,10 +33,10 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
   // the chosen skin's art when the sprite json names it.
   caster.SetSpellFn((_tool, target) => {
     const inst = reskinTargetOf(target);
-    if (!inst) return false;
+    if (!inst) { return false; }
     const fx = reskinFxPresenters.get(entity)?.prepare(entity.skinId);
     const reskinned = reskinEntity(inst, entity, fx);
-    if (!reskinned) fx?.dispose();
+    if (!reskinned) { fx?.dispose(); }
     return reskinned;
   });
   caster.SetCanCastFn((_doer, target) => {
@@ -50,7 +50,7 @@ export function configureReskinToolEntity(entity: ItemEntity): void {
 /** While held, the tool's spell spawns its fx through the scene's presenter. */
 export function createReskinToolLifecycle(entity: ItemEntity, effects: ReskinEffectPresenter | undefined): HeldEquipFunctions {
   return {
-    onequip() { if (effects) reskinFxPresenters.set(entity, effects); },
+    onequip() { if (effects) { reskinFxPresenters.set(entity, effects); } },
     onunequip() { reskinFxPresenters.delete(entity); },
   };
 }
@@ -62,7 +62,7 @@ export { nextReskin };
  * entity's sprite json; the entity's own skin functions follow that declaration. The fx plays at the entity.
  */
 export function reskinEntity(target: ReskinTarget, tool?: Pick<ItemEntity, '_cached_reskinname'>, fx?: ReskinFxMessage): boolean {
-  if (target.isRemoved) return false;
+  if (target.isRemoved) { return false; }
   const skinId = nextReskin(target.sprite.skinNames, target.sprite.skinId.peek(), tool?._cached_reskinname, target.prefab);
   tool?._cached_reskinname?.set(target.prefab, skinId);
   target.sprite.skinId.set(skinId);
@@ -104,7 +104,7 @@ class ReskinFx implements ReskinFxMessage {
   constructor(instance: PrefabInstance, toolSkinId?: string) { this.instance = instance; this.toolSkinId = toolSkinId; }
 
   play(position: ReadonlyVector3, prefabId: string): void {
-    if (this.played || this.instance.status.peek() === 'removed') return;
+    if (this.played || this.instance.status.peek() === 'removed') { return; }
     this.played = true;
     const info = fxInfo[prefabId];
     this.footPosition.copy(position);
@@ -115,7 +115,7 @@ class ReskinFx implements ReskinFxMessage {
     PlaySound(reskinEffectSound(this.toolSkinId), position);
   }
 
-  dispose(): void { if (!this.played) this.instance.remove(); }
+  dispose(): void { if (!this.played) { this.instance.remove(); } }
 }
 
 /** explode_small.lua: logical one-shot entities; all visual ownership stays in packages/display. */
@@ -130,9 +130,9 @@ export class ReskinEffects {
 
   /** Spawns the hidden puff at once; its display loads the art while the cast plays. */
   prepare(toolSkinId?: string): ReskinFxMessage {
-    if (this.disposed) throw new Error('Reskin effects have been disposed');
+    if (this.disposed) { throw new Error('Reskin effects have been disposed'); }
     const skinArchive = toolSkinId ? GROUND_ITEM_DEFINITIONS.reskin_tool.skinArchives[toolSkinId] : undefined;
-    if (toolSkinId && !skinArchive) throw new Error(`Unknown reskin tool skin: ${toolSkinId}`);
+    if (toolSkinId && !skinArchive) { throw new Error(`Unknown reskin tool skin: ${toolSkinId}`); }
     const archive = this.sprites.archive({
       animationArchive: 'reskin_tool_fx.zip', bank: 'fx_shadow_dust',
       buildArchives: ['reskin_tool_fx.zip', ...skinArchive ? [skinArchive] : []],
@@ -144,7 +144,7 @@ export class ReskinEffects {
     instance.persists = false;
     sprite.setVisible(false);
     sprite.setLightOverride(toolSkinId ? 0 : 1);
-    if (skinArchive) sprite.setSymbolOverride('shadow_dust', skinArchive);
+    if (skinArchive) { sprite.setSymbolOverride('shadow_dust', skinArchive); }
     const effect = new ReskinFx(instance, toolSkinId);
     const display = this.displays.add({ root: instance.transform.model, name: prefab, sprite, light: instance.light,
       art: { archive } }, effect.footPosition);
@@ -157,13 +157,13 @@ export class ReskinEffects {
 
   update(dt: number): void {
     this.displays.update(Math.min(dt, 0.1));
-    for (const effect of this.effects) if (effect.instance.status.peek() === 'removed') this.effects.delete(effect);
+    for (const effect of this.effects) { if (effect.instance.status.peek() === 'removed') { this.effects.delete(effect); } }
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
-    for (const effect of this.effects) effect.instance.remove();
+    for (const effect of this.effects) { effect.instance.remove(); }
     this.effects.clear();
     this.displays.dispose();
     this.sprites.dispose();

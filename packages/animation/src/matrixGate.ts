@@ -14,8 +14,8 @@ class LocalTransform {
   private automatic = true;
 
   matches(object: Object3D): boolean {
-    if (this.automatic !== object.matrixAutoUpdate) return false;
-    if (!this.automatic) return this.matrix!.equals(object.matrix);
+    if (this.automatic !== object.matrixAutoUpdate) { return false; }
+    if (!this.automatic) { return this.matrix!.equals(object.matrix); }
     const { position: p, quaternion: q, scale: s, pivot } = object;
     return this.px === p.x && this.py === p.y && this.pz === p.z
       && this.qx === q.x && this.qy === q.y && this.qz === q.z && this.qw === q.w
@@ -78,15 +78,15 @@ class MatrixGate {
 
   private capture(): void {
     const { model, visual } = this;
-    if (!this.stationary) this.local.capture(model);
-    if (!this.fixedVisual) this.visualLocal.capture(visual);
-    if (this.dynamicParent) this.capturedParentVersion = this.readParentVersion();
+    if (!this.stationary) { this.local.capture(model); }
+    if (!this.fixedVisual) { this.visualLocal.capture(visual); }
+    if (this.dynamicParent) { this.capturedParentVersion = this.readParentVersion(); }
     // A detached resident placeholder was not visited by this update.
     this.dirty = visual.parent !== model;
   }
 
   updateMatrixWorld(force?: boolean): boolean {
-    if (this.reusable()) return false;
+    if (this.reusable()) { return false; }
     this.original.updateMatrixWorld.call(this.model, force);
     this.capture();
     return true;
@@ -94,15 +94,15 @@ class MatrixGate {
 
   updateWorldMatrix(parents: boolean, children: boolean): boolean {
     const { model, visual } = this;
-    if (parents) model.parent?.updateWorldMatrix(true, false);
-    if (this.reusable()) return false;
+    if (parents) { model.parent?.updateWorldMatrix(true, false); }
+    if (this.reusable()) { return false; }
     this.original.updateWorldMatrix.call(model, false, children);
     // Shallow queries have not settled the descendant matrices.
     if (children) {
       model.matrixWorldNeedsUpdate = false;
       visual.matrixWorldNeedsUpdate = false;
       this.capture();
-    } else this.dirty = true;
+    } else { this.dirty = true; }
     return true;
   }
 

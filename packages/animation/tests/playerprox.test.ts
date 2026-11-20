@@ -56,7 +56,7 @@ it('caches player tiles between position snapshots and skips far players without
     playerpositions.set([farX, farZ]); await settle();
     const playerTileReads = () => tiles.mock.calls.filter(([point]) => point === farX || point === farZ).length;
     expect(playerTileReads()).toBe(2);
-    for (let poll = 0; poll < 5; poll++) prox.ForceUpdate();
+    for (let poll = 0; poll < 5; poll++) { prox.ForceUpdate(); }
     scheduler.advance(1);
     expect(playerTileReads()).toBe(2);
     expect(distanceX).not.toHaveBeenCalled(); expect(distanceZ).not.toHaveBeenCalled();

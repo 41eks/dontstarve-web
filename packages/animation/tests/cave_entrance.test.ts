@@ -56,7 +56,7 @@ it('mines a closed entrance into cave_entrance_open, dropping rocks and flint, a
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
     const [mine] = workTargets('MINE', s.scene);
-    for (let i = 0; i < 5; i++) expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
+    for (let i = 0; i < 5; i++) { expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true); }
     expect(s.caves.exportRecords().map(({ prefabId }) => prefabId)).toEqual(['cave_entrance']);
     expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
 

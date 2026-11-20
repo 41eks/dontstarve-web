@@ -7,7 +7,7 @@ export class HomeSeeker<T extends Home = Home> {
   private stop?: () => void;
   SetHome(home?: T): void {
     this.stop?.(); this.stop = undefined; this.home = home;
-    if (home) this.stop = home.ListenForEvent('onremove', () => this.SetHome());
+    if (home) { this.stop = home.ListenForEvent('onremove', () => this.SetHome()); }
   }
   HasHome(): boolean { return this.home?.isValid() ?? false; }
   GetHomePos(): Vector3 | undefined { return this.home?.getPosition(); }

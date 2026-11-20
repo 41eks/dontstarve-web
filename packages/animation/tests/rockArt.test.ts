@@ -14,11 +14,11 @@ beforeEach(() => vi.stubGlobal('fetch', async (url: string) =>
   new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)))));
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 async function loaded(...models: THREE.Object3D[]): Promise<void> {
-  for (let attempt = 0; attempt < 30 && !models.every(model => prefabInstance(model)!.sprite.loaded); attempt++) await new Promise(resolve => setTimeout(resolve, 0));
+  for (let attempt = 0; attempt < 30 && !models.every(model => prefabInstance(model)!.sprite.loaded); attempt++) { await new Promise(resolve => setTimeout(resolve, 0)); }
 }
 function firstMesh(model: THREE.Object3D): THREE.Mesh {
   let found: THREE.Mesh | undefined;
-  model.traverse(object => { if (!found && object instanceof THREE.Mesh) found = object; });
+  model.traverse(object => { if (!found && object instanceof THREE.Mesh) { found = object; } });
   return found!;
 }
 

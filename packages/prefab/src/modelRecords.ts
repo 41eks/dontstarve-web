@@ -11,13 +11,13 @@ export class ModelRecords<T> {
 }
 
 export function modelEntries<K extends Object3D, V>(records: Map<K, V>, model?: Object3D): [K, V][] {
-  if (!model) return [...records];
+  if (!model) { return [...records]; }
   const key = model as K, record = records.get(key);
   return record === undefined ? [] : [[key, record]];
 }
 
 export function modelValues<K extends Object3D, V>(records: Map<K, V>, model?: Object3D, all: Iterable<V> = records.values()): V[] {
-  if (!model) return [...all];
+  if (!model) { return [...all]; }
   const record = records.get(model as K);
   return record === undefined ? [] : [record];
 }

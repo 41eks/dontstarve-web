@@ -22,5 +22,5 @@ export function rockWorld(scene: THREE.Scene, options: { scheduler?: GameTimeSch
   return { scheduler, displays, prefabs,
     spawn: (id: string, position: THREE.Vector3, saved?: Parameters<typeof prefabs.spawn>[2]) => prefabs.spawn(id, position, saved).transform.model,
     exportRecords: () => prefabs.exportRecords(),
-    dispose() { prefabs.dispose(); displays.dispose(); if (!options.scheduler) scheduler.dispose(); } };
+    dispose() { prefabs.dispose(); displays.dispose(); if (!options.scheduler) { scheduler.dispose(); } } };
 }

@@ -38,14 +38,14 @@ export function createRecipeButtonMapper({
     effects.push(createEffect(() => {
       const lock = button.querySelector('.craft-lock');
       if (isLocked(recipe)) {
-        if (!lock) button.append(atlasImage('craft-lock', 'images/crafting_menu.xml', 'slot_fg_lock.tex'));
+        if (!lock) { button.append(atlasImage('craft-lock', 'images/crafting_menu.xml', 'slot_fg_lock.tex')); }
       } else {
         lock?.remove();
       }
     }));
     effects.push(createEffect(() => {
       const nextBuffered = isBuffered(recipe);
-      if (nextBuffered === buffered) return;
+      if (nextBuffered === buffered) { return; }
       buffered = nextBuffered;
       button.setAttribute('aria-label', buffered ? `${recipe.name}（已制作）` : recipe.name);
       button.querySelector('.craft-recipe-bg')!.replaceWith(atlasImage(

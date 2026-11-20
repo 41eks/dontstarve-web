@@ -158,7 +158,7 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
   const settle = () => new Promise(resolve => setTimeout(resolve, 0));
   const drawnIndices = (model: THREE.Group) => {
     let count = 0;
-    model.traverse(object => { if (object instanceof THREE.Mesh) count += object.geometry.drawRange.count; });
+    model.traverse(object => { if (object instanceof THREE.Mesh) { count += object.geometry.drawRange.count; } });
     return count;
   };
   try {

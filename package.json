@@ -9,7 +9,8 @@
     "test:asset-cache": "pnpm build && node --test tests/asset-cache-build.test.mjs && pnpm --filter @dontstarve-web/ui exec playwright test --config asset-cache.playwright.config.ts",
     "preview": "vite preview",
     "check:conventions": "node scripts/check-conventions.mjs --summary --baseline scripts/conventions-baseline.json",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "@types/react": "^18.3.31",

@@ -56,7 +56,7 @@ it('restores a saved rock with its Lua clip, tags, type and bank, without reroll
     expect(rock.sprite.sprite.peek().clip).toMatchObject({ name: 'full', loop: false });
     expect(rock.sprite.sprite.peek().queue).toEqual([]);
     expect(rock.rock_type).toBe(2);
-    for (const tag of ['boulder', 'moonglass', 'SnowCovered', 'inspectable', 'MINE_workable']) expect(rock.hasTag(tag)).toBe(true);
+    for (const tag of ['boulder', 'moonglass', 'SnowCovered', 'inspectable', 'MINE_workable']) { expect(rock.hasTag(tag)).toBe(true); }
     await prefabDisplay(rock.transform.model)!.artLoaded();
     // set_moonglass_type's SetBank / SetBuild: the display draws type 2, from the prefab's four ANIM assets.
     expect(rock.sprite.sprite.peek().source).toMatchObject({ bank: 'moonglass_rock2', buildArchive: 'moonglass_rock2.zip' });

@@ -36,7 +36,7 @@ it('spawns waves only on ocean tiles around the player, none without a player', 
   expect(shore.length + shimmer.length).toBe(0);
 
   const manager = create({ x: 40, z: 0 }, shore, shimmer);
-  for (let i = 0; i < 20; i++) manager.OnUpdate(0.1);
+  for (let i = 0; i < 20; i++) { manager.OnUpdate(0.1); }
   expect(shimmer.length).toBeGreaterThan(0);
   expect([...shore, ...shimmer].every(([a, b, c]) => (typeof a === 'string' ? (b as number) : (a as number)) >= 0 && c !== undefined)).toBe(true);
   expect(shimmer.every(([kind]) => kind === 'wave_shimmer')).toBe(true);

@@ -81,7 +81,7 @@ export class DeciduousInstance extends PrefabInstance {
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1; this.logicalPlacement = true;
     this.minimap.SetPriority(-1);
-    for (const tag of ['plant', 'tree', 'birchnut', 'deciduoustree', 'cattoyairborne', 'SnowCovered', '__combat']) this.addTag(tag);
+    for (const tag of ['plant', 'tree', 'birchnut', 'deciduoustree', 'cattoyairborne', 'SnowCovered', '__combat']) { this.addTag(tag); }
     const workable = addComponent(this, 'workable', Workable, () => world.scheduler.now);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(chop_tree);
@@ -95,10 +95,10 @@ export class DeciduousInstance extends PrefabInstance {
     })), seconds => world.growthDuration?.(seconds) ?? seconds);
     growable.loopstages = true; growable.springgrowth = true;
     addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
-    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === 'decay') this.remove(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === 'decay') { this.remove(); } });
     const leaves = this.leaves = new DeciduousTreeLeaves(world.scheduler, world, {
       lastWorkTime: () => this.components.workable?.lastworktime.peek(), applyBuild: () => applyBuild(this), updateLoot: () => updateLoot(this),
-      setShelter: value => { if (value) this.addTag('shelter'); else this.removeTag('shelter'); },
+      setShelter: value => { if (value) { this.addTag('shelter'); } else { this.removeTag('shelter'); } },
       playTransition: kind => {
         playSound(this, kind === 'grow_leaves' ? 'dontstarve/forest/treeGrow' : 'dontstarve/forest/treeWilt');
         return playOnce(this, `${kind}_${DECIDUOUS_STAGES[stageOf(this)]}`);
@@ -111,7 +111,7 @@ export class DeciduousInstance extends PrefabInstance {
       this.stopSnow?.(); this.stopSnow = undefined;
       unbindFire(this);
       leaves.dispose();
-      for (const sound of this.sounds) sound.stop();
+      for (const sound of this.sounds) { sound.stop(); }
       this.sounds.clear();
     });
     growable.SetStage(stage); growable.StartGrowing();
@@ -121,7 +121,7 @@ export class DeciduousInstance extends PrefabInstance {
   override setActive(active: boolean): void {
     if (active !== this.awake && !this.isRemoved) {
       this.awake = active;
-      if (active) OnEntityWake(this); else OnEntitySleep(this);
+      if (active) { OnEntityWake(this); } else { OnEntitySleep(this); }
     }
     super.setActive(active);
   }
@@ -135,7 +135,7 @@ const rest = (inst: DeciduousInstance) => inst.hasTag('stump') ? `stump_${DECIDU
   : `sway1_loop_${DECIDUOUS_STAGES[stageOf(inst)]}`;
 
 function playSound(inst: DeciduousInstance, path: SoundEventPath): void {
-  for (const sound of inst.sounds) if (sound.isPlaying?.() === false) inst.sounds.delete(sound);
+  for (const sound of inst.sounds) { if (sound.isPlaying?.() === false) { inst.sounds.delete(sound); } }
   inst.sounds.add(PlaySound(path, inst.position));
 }
 
@@ -144,7 +144,7 @@ function playOnce(inst: DeciduousInstance, clip: string): number {
   const duration = (DECIDUOUS_CLIP_FRAMES[clip] ?? 0) * FRAMES;
   inst.leaves.OnAnimation(duration);
   inst.sprite.playOnce(clip, () => {
-    if (inst.hasTag('stump')) inst.sprite.playOnce(rest(inst)); else inst.sprite.start(rest(inst));
+    if (inst.hasTag('stump')) { inst.sprite.playOnce(rest(inst)); } else { inst.sprite.start(rest(inst)); }
   });
   return duration;
 }
@@ -170,17 +170,17 @@ function setStage(inst: DeciduousInstance): void {
 }
 
 function grow(inst: DeciduousInstance): void {
-  if (!inst.isAwake || inst.catchingUp) return;
+  if (!inst.isAwake || inst.catchingUp) { return; }
   playSound(inst, 'dontstarve/forest/treeGrow');
   playOnce(inst, ['grow_tall_to_short', 'grow_short_to_normal', 'grow_normal_to_tall'][stageOf(inst)]);
-  if (inst.leaves.state.leaf.peek() === 'colorful') inst.leaves.SpawnLeafFxAfter(stageOf(inst) === 0 ? 17 / 30 : 10 / 30);
+  if (inst.leaves.state.leaf.peek() === 'colorful') { inst.leaves.SpawnLeafFxAfter(stageOf(inst) === 0 ? 17 / 30 : 10 / 30); }
 }
 
 function unbindFire(inst: DeciduousInstance): void { inst.fire?.dispose(); inst.fire = undefined; }
 
 /** OnEntityWake: MakeLargeBurnable + MakeMediumPropagator, or the stump's small pair, unless burnt. */
 function bindFire(inst: DeciduousInstance): void {
-  if (!inst.isAwake || inst.fire || inst.hasTag('burnt') || inst.isRemoved) return;
+  if (!inst.isAwake || inst.fire || inst.hasTag('burnt') || inst.isRemoved) { return; }
   inst.fire = new BurnableBinding(inst, inst.hasTag('stump')
     ? { propagator: 'small', burnTime: 10, fxLevel: 2, onBurnt: () => burnStump(inst) }
     : { propagator: 'medium', burnTime: TREE_BURN_TIME, fxLevel: 5, onBurnt: () => tree_burnt(inst) }, inst.world);
@@ -207,25 +207,25 @@ function burntChanges(inst: DeciduousInstance): void {
 
 /** OnBurnt: the burnt tag and pose at once; the component changes follow after .5 seconds. */
 function OnBurnt(inst: DeciduousInstance, immediate: boolean): void {
-  if (inst.hasTag('burnt')) return;
+  if (inst.hasTag('burnt')) { return; }
   inst.addTag('burnt');
   inst.minimap.SetIcon('tree_leaf_burnt.png');
   inst.sprite.start(rest(inst));
-  if (immediate) burntChanges(inst);
-  else inst.DoTaskInTime(.5, burntChanges);
+  if (immediate) { burntChanges(inst); }
+  else { inst.DoTaskInTime(.5, burntChanges); }
 }
 
 const cameraRight = (inst: DeciduousInstance) => new THREE.Vector3(1, 0, 0).applyQuaternion(inst.world.camera.getWorldQuaternion(new THREE.Quaternion()));
 
 /** OnAcornTask: the 10% acorn lands one camera-right unit to either side of the burnt tree, once. */
 function startAcornTask(inst: DeciduousInstance): void {
-  if (inst.burntcone || inst.acorntask) return;
+  if (inst.burntcone || inst.acorntask) { return; }
   inst.acorntask = inst.DoTaskInTime(10, () => {
     inst.acorntask = undefined;
     const position = inst.getPosition().clone().addScaledVector(cameraRight(inst), inst.random() < .5 ? WORLD_SCALE : -WORLD_SCALE);
     const loot = new Map<string, number>();
-    for (const itemId of inst.components.lootdropper.GenerateLoot(inst.random)) loot.set(itemId, (loot.get(itemId) ?? 0) + 1);
-    if (loot.size) inst.world.dropLoot([...loot].map(([itemId, count]) => ({ itemId, count })), position);
+    for (const itemId of inst.components.lootdropper.GenerateLoot(inst.random)) { loot.set(itemId, (loot.get(itemId) ?? 0) + 1); }
+    if (loot.size) { inst.world.dropLoot([...loot].map(([itemId, count]) => ({ itemId, count })), position); }
     inst.burntcone = true;
   });
 }
@@ -270,16 +270,16 @@ function make_stump(inst: DeciduousInstance): void {
 
 /** SpawnLeafFX: fx.lua's `<color>_leaves` or `<color>_leaves_chop`, which rustle as they spawn; a barren tree has none. */
 function spawnLeaves(inst: DeciduousInstance, chopped = false): void {
-  if (!inst.isAwake || inst.hasTag('stump')) return;
+  if (!inst.isAwake || inst.hasTag('stump')) { return; }
   const build = inst.leaves.state.build.peek();
-  if (build === 'barren') return;
+  if (build === 'barren') { return; }
   const { x, z } = inst.position;
   const y = (stageOf(inst) === 1 ? -.3 : 0) * WORLD_SCALE + (chopped ? inst.random() * 2 * WORLD_SCALE : 0);
   inst.world.spawnPrefab(`${build === 'normal' ? 'green' : build}_leaves${chopped ? '_chop' : ''}`, inst.position).setPosition(x, y, z);
 }
 
 function chop_tree(inst: DeciduousInstance): void {
-  if (!inst.isAwake) return;
+  if (!inst.isAwake) { return; }
   playSound(inst, 'dontstarve/wilson/use_axe_tree');
   spawnLeaves(inst, true);
   playOnce(inst, `chop_${DECIDUOUS_STAGES[stageOf(inst)]}`);
@@ -292,8 +292,8 @@ function chop_down_tree(inst: DeciduousInstance, worker: Worker): void {
   const workerPosition = worker.getPosition?.();
   const onRight = workerPosition ? workerPosition.clone().sub(inst.position).dot(right) > 0 : inst.random() <= .5;
   const loot = new Map<string, number>();
-  for (const itemId of inst.components.lootdropper.GenerateLoot()) loot.set(itemId, (loot.get(itemId) ?? 0) + 1);
-  if (stageOf(inst) === 2 && inst.leaves.state.leaf.peek() === 'colorful') loot.set('acorn', (loot.get('acorn') ?? 0) + 1);
+  for (const itemId of inst.components.lootdropper.GenerateLoot()) { loot.set(itemId, (loot.get(itemId) ?? 0) + 1); }
+  if (stageOf(inst) === 2 && inst.leaves.state.leaf.peek() === 'colorful') { loot.set('acorn', (loot.get('acorn') ?? 0) + 1); }
   inst.world.dropLoot([...loot].map(([itemId, count]) => ({ itemId, count })),
     inst.getPosition().clone().addScaledVector(right, onRight ? -WORLD_SCALE : WORLD_SCALE));
   const clip = `${onRight ? 'fallleft' : 'fallright'}_${DECIDUOUS_STAGES[stageOf(inst)]}`;
@@ -305,7 +305,7 @@ function chop_down_tree(inst: DeciduousInstance, worker: Worker): void {
 function bindSnow(inst: DeciduousInstance): void {
   let stopWatch: (() => void) | undefined;
   const snow = inst.world.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => { stopWatch = stop; });
-  if (!snow) return;
+  if (!snow) { return; }
   const stopEffect = createRenderEffect(() => { inst.sprite.setSymbolHidden('snow', snow.get() < .015); });
   inst.stopSnow = () => { stopEffect(); stopWatch?.(); };
 }
@@ -320,7 +320,7 @@ function OnEntityWake(inst: DeciduousInstance): void {
   }
   bindSnow(inst);
   bindFire(inst);
-  if (inst.hasTag('burnt')) startAcornTask(inst);
+  if (inst.hasTag('burnt')) { startAcornTask(inst); }
 }
 
 function OnEntitySleep(inst: DeciduousInstance): void {
@@ -328,8 +328,8 @@ function OnEntitySleep(inst: DeciduousInstance): void {
   inst.stopSnow?.(); inst.stopSnow = undefined;
   inst.leaves.SetAwake(false);
   if (inst.fire?.burnable.IsBurning()) {
-    if (inst.hasTag('stump')) inst.DoTaskInTime(0, burnStump);
-    else OnBurnt(inst, true);
+    if (inst.hasTag('stump')) { inst.DoTaskInTime(0, burnStump); }
+    else { OnBurnt(inst, true); }
   }
   unbindFire(inst);
 }
@@ -342,9 +342,9 @@ function onsave(inst: DeciduousInstance, data: EntityPersistData): void {
     const { stump: _stump, leaveschangetime: _change, ...leaves } = saved;
     data.deciduoustree = { ...leaves, burnt: true, ...(inst.burntcone ? { burntcone: true as const } : {}) };
     data.growable = { stage: inst.components.growable.GetStage() };
-  } else data.deciduoustree = saved;
+  } else { data.deciduoustree = saved; }
   // The timer's record keeps the name existing saves hold.
-  if (data.timer) data.deciduousTimer = data.timer;
+  if (data.timer) { data.deciduousTimer = data.timer; }
   delete data.timer;
 }
 
@@ -352,7 +352,7 @@ function onload(inst: DeciduousInstance, data: EntityPersistData): void {
   const saved = data.deciduoustree;
   if (saved) { inst.leaves.Initialize(saved); inst.leavesInitialized = true; }
   inst.components.timer.OnLoad(data.deciduousTimer);
-  if (saved?.stump) make_stump(inst);
+  if (saved?.stump) { make_stump(inst); }
   else if (saved?.burnt) {
     inst.burntcone = saved.burntcone === true;
     OnBurnt(inst, true);
@@ -362,7 +362,7 @@ function onload(inst: DeciduousInstance, data: EntityPersistData): void {
 function onSpawned(inst: DeciduousInstance): void {
   if (!inst.leavesInitialized) { inst.leaves.Initialize(); inst.leavesInitialized = true; }
   inst.sprite.start(rest(inst));
-  if (inst.hasTag('stump')) inst.sprite.playOnce(rest(inst));
+  if (inst.hasTag('stump')) { inst.sprite.playOnce(rest(inst)); }
   applyBuild(inst);
   inst.components.growable.OnEntitySleep();
   inst.mouseTarget = new ToolMouseTarget(inst, inst.world.handEquipment);

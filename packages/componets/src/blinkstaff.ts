@@ -73,21 +73,21 @@ export class BlinkStaff<Inst extends BlinkStaffInst = BlinkStaffInst> {
 
   SpawnEffect(inst: BlinkCaster): void {
     const { x, y, z } = inst.position;
-    if (this.backfx !== undefined) this.world.spawnFx(this.backfx, new THREE.Vector3(x, y - .1, z));
-    if (this.frontfx !== undefined) this.world.spawnFx(this.frontfx, new THREE.Vector3(x, y, z));
+    if (this.backfx !== undefined) { this.world.spawnFx(this.backfx, new THREE.Vector3(x, y - .1, z)); }
+    if (this.frontfx !== undefined) { this.world.spawnFx(this.frontfx, new THREE.Vector3(x, y, z)); }
   }
 
   Blink(pt: THREE.Vector3, caster: BlinkCaster): boolean {
     const { map } = this.world;
     if (this.inst.isRemoved || (caster.sg !== undefined && caster.sg.stateName !== 'quicktele')
-      || !map.isPassableAtPoint(pt) || map.isGroundTargetBlocked(pt)) return false;
+      || !map.isPassableAtPoint(pt) || map.isGroundTargetBlocked(pt)) { return false; }
     this.blinktask?.Cancel();
     this.SpawnEffect(caster);
-    if (this.presound) caster.SoundEmitter?.PlaySound(this.presound);
+    if (this.presound) { caster.SoundEmitter?.PlaySound(this.presound); }
     if (caster.sg === undefined) {
       caster.Hide();
       caster.components.health?.SetInvincible(true);
-    } else caster.sg.statemem.onstartblinking?.();
+    } else { caster.sg.statemem.onstartblinking?.(); }
     // DynamicPosition(pt): the point is kept as given.
     const dpt = pt.clone();
     this.blinktask = caster.DoTaskInTime(.25, () => OnBlinked(caster, this, dpt));
@@ -100,12 +100,12 @@ function OnBlinked(caster: BlinkCaster, self: BlinkStaff, pt: THREE.Vector3): vo
   if (caster.sg === undefined) {
     caster.Show();
     caster.components.health?.SetInvincible(false);
-  } else caster.sg.statemem.onstopblinking?.();
+  } else { caster.sg.statemem.onstopblinking?.(); }
   const { map } = self.world;
   if (map.isPassableAtPoint(pt) && !map.isGroundTargetBlocked(pt)) {
     caster.setPosition(pt.x, pt.y, pt.z);
     caster.physics.Teleport();
   }
   self.SpawnEffect(caster);
-  if (self.postsound) caster.SoundEmitter?.PlaySound(self.postsound);
+  if (self.postsound) { caster.SoundEmitter?.PlaySound(self.postsound); }
 }

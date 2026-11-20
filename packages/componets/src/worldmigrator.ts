@@ -43,14 +43,14 @@ export class WorldMigrator {
   /** onstatus: the `migrator` tag follows ACTIVE unless the actions are hidden. */
   private setStatus(status: WorldMigratorStatus): void {
     this.statusState.set(status);
-    if (!this.hiddenaction && status === 'active') this.inst.addTag('migrator');
-    else this.inst.removeTag('migrator');
+    if (!this.hiddenaction && status === 'active') { this.inst.addTag('migrator'); }
+    else { this.inst.removeTag('migrator'); }
   }
 
   SetHideActions(hidden: boolean): void {
     this.hiddenaction = hidden;
-    if (!hidden && this.statusState.peek() === 'active') this.inst.addTag('migrator');
-    else this.inst.removeTag('migrator');
+    if (!hidden && this.statusState.peek() === 'active') { this.inst.addTag('migrator'); }
+    else { this.inst.removeTag('migrator'); }
   }
 
   SetDestinationWorld(world: string | undefined, permanent?: boolean): void {
@@ -91,7 +91,7 @@ export class WorldMigrator {
 
   /** ACTIONS.MIGRATE.fn: false is the NODESTINATION failure. */
   Activate(doer: WorldMigratorDoer): boolean {
-    if (this.linkedWorld === undefined || !doer.hasTag('player')) return false;
+    if (this.linkedWorld === undefined || !doer.hasTag('player')) { return false; }
     this.inst.PushEvent?.('migration_activate', { doer });
     this.shard.migratePlayer(doer, this.id, this.linkedWorld);
     return true;

@@ -83,7 +83,7 @@ describe('session world temperature', () => {
       for (let frame = 0; frame < 59; frame++) {
         updater.update(frame % 2 === 0 ? .01 : .04);
         updater.update(0);
-        if (frame === 29) updater.flush();
+        if (frame === 29) { updater.flush(); }
       }
       expect(state.playerpositions.peek()).toBe(initial);
       expect(initial[0]).toEqual(new Vector3(3, 0, 4));
@@ -95,14 +95,14 @@ describe('session world temperature', () => {
       expect(positions).toHaveBeenCalledTimes(2);
       players.pop();
       players[0].set(20, 0, 30);
-      for (let frame = 0; frame < 59; frame++) updater.update(.02);
+      for (let frame = 0; frame < 59; frame++) { updater.update(.02); }
       expect(state.playerpositions.peek()).toBe(published);
       expect(published).toHaveLength(2);
       expect(published[0]).toEqual(new Vector3(12, 0, 15));
       updater.update(.02);
       expect(state.playerpositions.peek()).toEqual([new Vector3(20, 0, 30)]);
       const stationary = state.playerpositions.peek();
-      for (let frame = 0; frame < 120; frame++) updater.update(.02);
+      for (let frame = 0; frame < 120; frame++) { updater.update(.02); }
       expect(state.playerpositions.peek()).toBe(stationary);
     } finally { state.dispose(); }
   });

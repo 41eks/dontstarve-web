@@ -18,14 +18,14 @@ export function configureFarmHoeEntity(inst: ItemEntity): void {
   inst.addTag('sharp');
   const weapon = AddWeapon(inst, FARM_HOE_DAMAGE, false);
   addComponent(inst, 'farmtiller', FarmTiller);
-  if (inst.prefab === 'golden_farm_hoe') weapon.attackwear = 1 / GOLDENTOOLFACTOR;
+  if (inst.prefab === 'golden_farm_hoe') { weapon.attackwear = 1 / GOLDENTOOLFACTOR; }
 }
 
 /** While held in a world, the tiller tills that world's farm soil. */
 export function createFarmTillerLifecycle(entity: ItemEntity, map: FarmTillerMap): HeldEquipFunctions {
   return {
-    onequip() { if (entity.components.farmtiller) entity.components.farmtiller.map = map; },
-    onunequip() { if (entity.components.farmtiller) entity.components.farmtiller.map = undefined; },
+    onequip() { if (entity.components.farmtiller) { entity.components.farmtiller.map = map; } },
+    onunequip() { if (entity.components.farmtiller) { entity.components.farmtiller.map = undefined; } },
   };
 }
 const SWAPS = {

@@ -50,12 +50,12 @@ export class RuinsStatueInstance extends PrefabInstance {
     const variant = VARIANTS[prefab];
     this.gemArchive = variant.gemArchive;
     this.setPosition(position.x, 0, position.z);
-    for (const tag of ['cavedweller', 'structure', 'statue']) this.addTag(tag);
+    for (const tag of ['cavedweller', 'structure', 'statue']) { this.addTag(tag); }
     this.minimap.SetIcon('statue_ruins.png');
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('MINE'); workable.SetWorkLeft(10);
     const lootdropper = addComponent(this, 'lootdropper', LootDropper, () => undefined);
-    if (variant.chanceLootTable) lootdropper.SetChanceLootTable(variant.chanceLootTable);
+    if (variant.chanceLootTable) { lootdropper.SetChanceLootTable(variant.chanceLootTable); }
     const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetOnHauntFn(() => false);
     addComponent(this, 'inspectable', Inspectable);
@@ -63,15 +63,15 @@ export class RuinsStatueInstance extends PrefabInstance {
     // `_night` suffix because this world has the calm phase.
     this.sprite.start('idle_full');
     // gem() calls SetGemmed with a random gem; OnLoad calls it again when data.gem exists.
-    if (this.gemArchive) this.SetGemmed(RUINS_STATUE_GEMS[Math.floor(Math.random() * RUINS_STATUE_GEMS.length)]);
+    if (this.gemArchive) { this.SetGemmed(RUINS_STATUE_GEMS[Math.floor(Math.random() * RUINS_STATUE_GEMS.length)]); }
 
-    this.OnSave = (_inst, data) => { if (this.gemmed !== undefined) data.ruinsStatueMage = { gem: this.gemmed }; };
-    this.OnLoad = (_inst, data) => { if (data.ruinsStatueMage?.gem !== undefined) this.SetGemmed(data.ruinsStatueMage.gem); };
+    this.OnSave = (_inst, data) => { if (this.gemmed !== undefined) { data.ruinsStatueMage = { gem: this.gemmed }; } };
+    this.OnLoad = (_inst, data) => { if (data.ruinsStatueMage?.gem !== undefined) { this.SetGemmed(data.ruinsStatueMage.gem); } };
   }
 
   /** SetGemmed: the swap_gem override from the gem build, SetLoot({ "thulecite", gem }) and AddChanceLoot("thulecite", .05). */
   SetGemmed(gem: RuinsStatueGem): void {
-    if (!this.gemArchive) return;
+    if (!this.gemArchive) { return; }
     this.gemmed = gem;
     this.sprite.setSymbolOverride('swap_gem', this.gemArchive, gem);
     this.components.lootdropper.SetLoot(['thulecite', gem]);

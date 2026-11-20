@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 test('lightbulb uses source ground art and only lights the world while dropped', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', (message) => { if (message.type() === 'error') { errors.push(message.text()); } });
   await page.goto('/tests/dst-lighting.html');
   const result = await page.evaluate(async (url) => {
     const { checkLightbulbLighting } = await import(url);

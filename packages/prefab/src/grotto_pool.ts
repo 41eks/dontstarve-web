@@ -113,7 +113,7 @@ export class GrottoPoolInstance extends PrefabInstance {
     this.sprite.setLightOverride(.25);
     this.light.set({ radius: definition.light.radius * WORLD_SCALE, falloff: .6, intensity: definition.light.intensity, colour: POOL_LIGHT_COLOUR });
     this.addTag('blocker'); // MakeObstaclePhysics
-    for (const tag of ['antlion_sinkhole_blocker', 'birdblocker', 'watersource']) this.addTag(tag);
+    for (const tag of ['antlion_sinkhole_blocker', 'birdblocker', 'watersource']) { this.addTag(tag); }
     this.deploySmartRadius = definition.smartRadius * WORLD_SCALE;
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
@@ -134,7 +134,7 @@ export class GrottoPoolInstance extends PrefabInstance {
     // ListenForEvent("onremove", on_removed): children go from the last slot to the first.
     this.onRemove(() => {
       stopSound?.();
-      for (const child of [...this._children].reverse()) if (child && !child.isRemoved) child.remove();
+      for (const child of [...this._children].reverse()) { if (child && !child.isRemoved) { child.remove(); } }
       mist?.remove();
     });
   }
@@ -157,7 +157,7 @@ function on_save(inst: GrottoPoolInstance): GrottoPoolSaveState {
 function on_load_postpass(inst: GrottoPoolInstance, world: GrottoPoolWorld): void {
   for (const { index, id } of inst.takeSavedChildren()) {
     const child = world.getEntity(id);
-    if (child && !child.isRemoved && index >= 1 && inst._children[index - 1] === undefined) adopt(inst, index - 1, child);
+    if (child && !child.isRemoved && index >= 1 && inst._children[index - 1] === undefined) { adopt(inst, index - 1, child); }
   }
 }
 
@@ -165,7 +165,7 @@ function setup_children(inst: GrottoPoolInstance, world: GrottoPoolWorld, big: b
   const layout: readonly { name: ChildId; x: number; z: number }[] = big ? BIG_LAYOUT
     : [{ name: SMALL_WATERFALLS[Math.floor(Math.random() * SMALL_WATERFALLS.length)], x: 0, z: 0 }];
   layout.forEach(({ name, x, z }, slot) => {
-    if (inst._children[slot] !== undefined) return;
+    if (inst._children[slot] !== undefined) { return; }
     adopt(inst, slot, world.spawnPrefab(name, new THREE.Vector3(inst.position.x + x * WORLD_SCALE, 0, inst.position.z + z * WORLD_SCALE)));
   });
 }
@@ -173,7 +173,7 @@ function setup_children(inst: GrottoPoolInstance, world: GrottoPoolWorld, big: b
 /** _children[i]:ListenForEvent("onremove", function() inst._children[i] = nil end). */
 function adopt(inst: GrottoPoolInstance, slot: number, child: PrefabInstance): void {
   inst._children[slot] = child;
-  child.onRemove(() => { if (inst._children[slot] === child) inst._children[slot] = undefined; });
+  child.onRemove(() => { if (inst._children[slot] === child) { inst._children[slot] = undefined; } });
 }
 
 /** makebigmist / makesmallmist: FX and NOCLICK, never asleep and never saved. */
@@ -215,7 +215,7 @@ export class GrottoGlassInstance extends PrefabInstance {
     this.world = world;
     this._anim = definition.animation;
     this.setPosition(position.x, 0, position.z);
-    if ('lightOverride' in definition) this.sprite.setLightOverride(definition.lightOverride);
+    if ('lightOverride' in definition) { this.sprite.setLightOverride(definition.lightOverride); }
     this.deploySmartRadius = definition.smartRadius * WORLD_SCALE;
     this.physicsRadiusOverride = definition.physicsRadius;
     this.addTag('moonglass');
@@ -225,7 +225,7 @@ export class GrottoGlassInstance extends PrefabInstance {
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(ROCKS_MINE);
     workable.SetOnWorkCallback((_inst, worker, workleft) => on_mined(this, worker, workleft));
-    workable.SetOnLoadFn(() => { if (workable.workleft.peek() <= 0) set_mined(this); });
+    workable.SetOnLoadFn(() => { if (workable.workleft.peek() <= 0) { set_mined(this); } });
     const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
       { ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count: 1 }, new THREE.Vector3(point.x, point.y, point.z), { fling: true }));
     lootdropper.SetChanceLootTable('moonglass_prop');
@@ -236,9 +236,9 @@ export class GrottoGlassInstance extends PrefabInstance {
     this.OnSave = (_inst, data) => {
       const work = data.workable;
       delete data.workable;
-      if (work?.workleft !== undefined) data.grottoGlass = { workleft: work.workleft };
+      if (work?.workleft !== undefined) { data.grottoGlass = { workleft: work.workleft }; }
     };
-    this.OnLoad = (_inst, data) => { if (data.grottoGlass) workable.OnLoad({ workleft: data.grottoGlass.workleft }); };
+    this.OnLoad = (_inst, data) => { if (data.grottoGlass) { workable.OnLoad({ workleft: data.grottoGlass.workleft }); } };
     this.onRemove(() => this.stopMoonWatch.splice(0).forEach(stop => stop()));
   }
 
@@ -249,13 +249,13 @@ export class GrottoGlassInstance extends PrefabInstance {
     this.stopMoonWatch.push(() => active.dispose());
     const moon = this.world.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.stopMoonWatch.push(stop), { active });
     const cycle = this.world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.stopMoonWatch.push(stop), { active });
-    if (!moon || !cycle) return;
+    if (!moon || !cycle) { return; }
     const fullMoon = createMemo(() => moon.get().phase === 'full' && cycle.get() === 'night');
     this.stopMoonWatch.push(() => fullMoon.dispose());
     let previous = fullMoon.peek();
     this.stopMoonWatch.push(createEffect(() => {
       const value = fullMoon.get();
-      if (value === previous) return;
+      if (value === previous) { return; }
       previous = value;
       OnCaveFullMoon(this);
     }));
@@ -267,7 +267,7 @@ export class GrottoGlassInstance extends PrefabInstance {
 type GrottoGlassWorld = Pick<GrottoPoolWorld, 'getWatchWorldContent' | 'fx' | 'spawnGroundItem'>;
 
 function on_mined(inst: GrottoGlassInstance, worker: Worker | undefined, workleft: number): void {
-  if (workleft > 0) return;
+  if (workleft > 0) { return; }
   // rock_break_fx.lua has no art: its local proxy only plays this sound.
   PlaySound('dontstarve/wilson/rock_break', inst.position);
   inst.components.lootdropper!.DropLoot(worker?.getPosition?.() ?? inst.position);

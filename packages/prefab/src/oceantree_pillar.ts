@@ -66,11 +66,11 @@ export class OceanTreePillarInstance extends PrefabInstance {
 }
 
 function OnSave(inst: OceanTreePillarInstance, data: EntityPersistData): void {
-  if (inst.droppedvines) data.oceantreePillar = { droppedvines: true };
+  if (inst.droppedvines) { data.oceantreePillar = { droppedvines: true }; }
 }
 
 function OnLoad(inst: OceanTreePillarInstance, data: EntityPersistData): void {
-  if (data.oceantreePillar?.droppedvines) inst.droppedvines = true;
+  if (data.oceantreePillar?.droppedvines) { inst.droppedvines = true; }
 }
 
 /**

@@ -31,8 +31,8 @@ const states: StateDefinition<PigKingStateInst, PigKingStateName>[] = [
     name: 'idle',
     tags: ['idle'],
     onenter: sg => {
-      if (sg.context.mem.sleeping) sg.goToState('sleep');
-      else sg.context.playAnimation('idle', true);
+      if (sg.context.mem.sleeping) { sg.goToState('sleep'); }
+      else { sg.context.playAnimation('idle', true); }
     },
   }),
   State<PigKingStateInst, PigKingStateName>({

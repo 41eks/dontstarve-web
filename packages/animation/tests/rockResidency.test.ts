@@ -14,7 +14,7 @@ import { workTargets } from './workTargets';
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn() })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 async function waitForVisual(model: THREE.Object3D): Promise<void> {
-  for (let attempt = 0; attempt < 30 && !prefabInstance(model)!.sprite.loaded; attempt++) await settle();
+  for (let attempt = 0; attempt < 30 && !prefabInstance(model)!.sprite.loaded; attempt++) { await settle(); }
   expect(prefabInstance(model)!.sprite.loaded).toBe(true);
 }
 beforeEach(() => {
@@ -23,7 +23,7 @@ beforeEach(() => {
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 const spawnGroundItem = () => undefined;
-const meshes = (model: THREE.Object3D) => { const found: THREE.Mesh[] = []; model.traverse(o => { if (o instanceof THREE.Mesh) found.push(o); }); return found; };
+const meshes = (model: THREE.Object3D) => { const found: THREE.Mesh[] = []; model.traverse(o => { if (o instanceof THREE.Mesh) { found.push(o); } }); return found; };
 
 it('releases rock, skeleton and houndbone sprites outside the tickingarea and redresses them on return', async () => {
   const awake = createSignal(true), scheduler = new GameTimeScheduler();
@@ -69,7 +69,7 @@ it('releases rock, skeleton and houndbone sprites outside the tickingarea and re
     // Awake billboards turn in the task that publishes the rotation, before that frame renders.
     const turned = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 1.2);
     content.camerarotation.set(turned);
-    for (const model of models) expect(model.children[0].quaternion.equals(turned)).toBe(true);
+    for (const model of models) { expect(model.children[0].quaternion.equals(turned)).toBe(true); }
     expect((meshes(rock)[0].material as THREE.MeshBasicMaterial[])[0].color.r).toBe(colour);
     expect(bones.renderEntities).toHaveLength(3);
   } finally { bones.dispose(); displays.dispose(); content.unbind(); scheduler.dispose(); }

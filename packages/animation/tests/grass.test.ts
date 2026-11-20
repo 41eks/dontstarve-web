@@ -58,7 +58,7 @@ it('spawns grass through the debug command using its source bank and build, then
   const controller = plantInstance(model).sprite as { currentAnimation: string; update: (dt: number) => void };
   expect(controller.currentAnimation).toBe('idle');
   let mesh: THREE.Mesh | undefined;
-  model.traverse(object => { if (!mesh && object instanceof THREE.Mesh) mesh = object; });
+  model.traverse(object => { if (!mesh && object instanceof THREE.Mesh) { mesh = object; } });
   expect(mesh).toBeDefined();
   expect(mesh!.geometry.getAttribute('position').count).toBeGreaterThan(4);
 
@@ -74,7 +74,7 @@ it('spawns grass through the debug command using its source bank and build, then
   const pickable = plantInstance(model).components.pickable;
   expect(pickable.pick({ giveItem: (id: string, count: number) => id === 'cutgrass' && count === 1 })).toBe(true);
   expect(controller.currentAnimation).toBe('picking');
-  for (let i = 0; i < 60; i++) tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion());
+  for (let i = 0; i < 60; i++) { tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion()); }
   expect(controller.currentAnimation).toBe('picked');
   const pickedRecord = grasses.exportRecords().map(({ record }) => record)[0];
   expect(pickedRecord.components.pickable?.picked).toBe(true);
@@ -86,7 +86,7 @@ it('spawns grass through the debug command using its source bank and build, then
   tickWorld(scheduler, prefabDisplays(grasses), pickable.remainingSeconds!, new THREE.Quaternion());
   expect(controller.currentAnimation).toBe('grow');
   expect(pickable.state.phase.peek()).toBe('ready');
-  for (let i = 0; i < 60; i++) tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion());
+  for (let i = 0; i < 60; i++) { tickWorld(scheduler, prefabDisplays(grasses), 1 / 30, new THREE.Quaternion()); }
   expect(controller.currentAnimation).toBe('idle');
 
   const restored = await drawn(grasses.spawn('grass', new THREE.Vector3(...record.transform.position), {

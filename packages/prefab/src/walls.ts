@@ -41,8 +41,8 @@ const WALL_HEALTH_ANIMS: readonly { threshold: number; anim: string | readonly s
 /** walls.lua resolveanimtoplay; the full variant is stable for a world position in DST units. */
 export function resolveWallAnim(percent: number, position: ReadonlyVector3): string {
     for (const { threshold, anim } of WALL_HEALTH_ANIMS) {
-        if (percent > threshold) continue;
-        if (typeof anim === 'string') return anim;
+        if (percent > threshold) { continue; }
+        if (typeof anim === 'string') { return anim; }
         const x = Math.floor(position.x / UNIT), z = Math.floor(position.z / UNIT);
         const q1 = anim.length + 1, q2 = anim.length + 4;
         const mod = (value: number, divisor: number) => value - Math.floor(value / divisor) * divisor;
@@ -83,7 +83,7 @@ const isWallPrefabId = (id: string): id is WallPrefabId => !id.endsWith('_item')
 /** The wall a wall_*_item (or the wall itself) builds. */
 function wallPrefab(buildId: WallId): WallPrefabId {
     const prefab = wallWorldPrefab(buildId);
-    if (!isWallPrefabId(prefab)) throw new Error(`${buildId} builds no wall`);
+    if (!isWallPrefabId(prefab)) { throw new Error(`${buildId} builds no wall`); }
     return prefab;
 }
 export const WALL_PREFAB_IDS = WALL_IDS.filter((id): id is WallPrefabId => !id.endsWith('_item'));
@@ -157,7 +157,7 @@ function wallAssets(prefab: WallPrefabId, art: WallArt) {
  */
 function declareWallArt(inst: PrefabInstance, art: WallArt): void {
     inst.sprite.setFacingRotation(0);
-    if (art.multColour) inst.sprite.setColour(art.multColour);
+    if (art.multColour) { inst.sprite.setColour(art.multColour); }
 }
 
 export class WallInstance extends PrefabInstance {
@@ -196,11 +196,11 @@ function clearobstacle(inst: WallInstance): void {
 function onhealthchange(inst: WallInstance, old_percent: number, new_percent: number): void {
     const anim_to_play = resolveWallAnim(new_percent, inst.position);
     if (new_percent > 0) {
-        if (old_percent <= 0) makeobstacle(inst);
+        if (old_percent <= 0) { makeobstacle(inst); }
         inst.sprite.playOnce(`${anim_to_play}_hit`);
         inst.sprite.pushAnimation(anim_to_play, false);
     } else {
-        if (old_percent > 0) clearobstacle(inst);
+        if (old_percent > 0) { clearobstacle(inst); }
         inst.sprite.playOnce(anim_to_play);
     }
 }
@@ -214,17 +214,17 @@ function keeptargetfn(): boolean { return false; }
 function onload(inst: WallInstance, data: EntityPersistData): void {
     const { health } = inst.components;
     const saved = structureHealth(data);
-    if (saved) health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
-    if (data.wall?.skinId !== undefined) inst.skinId = data.wall.skinId;
+    if (saved) { health.OnLoad({ health: saved.current, maxhealth: saved.maximum }); }
+    if (data.wall?.skinId !== undefined) { inst.skinId = data.wall.skinId; }
     inst.sprite.playOnce(resolveWallAnim(health.GetPercent(), inst.position));
-    if (health.IsDead()) clearobstacle(inst);
+    if (health.IsDead()) { clearobstacle(inst); }
 }
 
 /** The record's `health` and `wall` entries, in place of health:OnSave's own shape. */
 function onsave(inst: WallInstance, data: EntityPersistData): void {
     const { health } = inst.components;
     data.health = { current: health.currenthealth, maximum: health.maxhealth };
-    if (inst.skinId !== undefined) data.wall = { skinId: inst.skinId };
+    if (inst.skinId !== undefined) { data.wall = { skinId: inst.skinId }; }
 }
 
 function onremove(inst: WallInstance): void {
@@ -242,7 +242,7 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
     /** onhammered: condition-scaled loot, collapse_small with the wall's material, then Remove. */
     function onhammered(inst: WallInstance): void {
         const num_loots = Math.max(1, Math.floor(data.maxloots * inst.components.health.GetPercent()));
-        for (let i = 0; i < num_loots; i++) inst.components.lootdropper.SpawnLootPrefab(data.loot);
+        for (let i = 0; i < num_loots; i++) { inst.components.lootdropper.SpawnLootPrefab(data.loot); }
         inst.worldServices?.fx?.collapse?.('small', inst.position, data.material);
         inst.remove();
     }
@@ -261,7 +261,7 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
         const inst = new WallInstance(prefab, new SpriteState({ name: 'half', held: true, billboard: true }));
         inst.worldServices = world;
         declareWallArt(inst, art);
-        for (const tag of ['wall', 'noauradamage', 'electricdamageimmune', ...data.tags]) inst.addTag(tag);
+        for (const tag of ['wall', 'noauradamage', 'electricdamageimmune', ...data.tags]) { inst.addTag(tag); }
         inst._pfwall = undefined;
         inst._ispathfinding = false;
         makeobstacle(inst);
@@ -279,7 +279,7 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
         health.ondelta = onhealthchange;
         health.nofadeout = true;
         health.canheal = false;
-        if (data.playerdamagemod !== undefined) health.SetAbsorptionAmountFromPlayer(data.playerdamagemod);
+        if (data.playerdamagemod !== undefined) { health.SetAbsorptionAmountFromPlayer(data.playerdamagemod); }
         const workable = addComponent(inst, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(data.maxwork ?? 3);

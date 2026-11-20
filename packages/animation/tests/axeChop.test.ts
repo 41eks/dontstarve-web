@@ -45,7 +45,7 @@ it('wears axes by CHOP consumption, with golden and moonglass variants, and remo
       expect(inventory.transfer(inventorySlotAddress(0), hand, 1)).toBe(true);
       const entity = inventory.getEntity(hand)!;
       // axe.lua fn and its master_postinit: tags, tool, weapon and finiteuses.
-      for (const tag of ['sharp', 'possessable_axe', 'tool', 'weapon', 'CHOP_tool']) expect(entity.hasTag(tag), tag).toBe(true);
+      for (const tag of ['sharp', 'possessable_axe', 'tool', 'weapon', 'CHOP_tool']) { expect(entity.hasTag(tag), tag).toBe(true); }
       expect(entity.components.weapon).toMatchObject({ damage, attackwear });
       expect(entity.components.tool!.GetEffectiveness('CHOP')).toBe(effectiveness);
       entity.components.finiteuses.useForAction('CHOP');
@@ -73,7 +73,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const controller = new PlayerController(world, animation.sg, new Locomotor({ position: player.position, velocity: new THREE.Vector3() }, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const chop = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'CHOP', target: target.entity as never, invobject: axe })!);
-  const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
+  const advance = (frames: number) => { for (let i = 0; i < frames; i++) { advancePlayer(animation, 1 / 30); } };
   try {
     player.position.set(1, 0, 3);
     await area.visit(player.position);
@@ -83,7 +83,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
 
     // chop_start → chop: the work lands on frame two of the chop loop and wears the axe.
     expect(chop(target)).toBe(true);
-    while (animation.sg.stateName === 'chop_start') advancePlayer(animation, 1 / 30);
+    while (animation.sg.stateName === 'chop_start') { advancePlayer(animation, 1 / 30); }
     expect(animation.sg.stateName).toBe('chop');
     expect(axe.components.finiteuses.remaining).toBeUndefined();
     advance(2);
@@ -116,7 +116,7 @@ it('chops a moon tree into a stump with an axe, dropping loot, keeping progress 
     // The chopper is a player inst standing at (1, 0, 3).
     const worker = testPlayer({ position: { x: 1, y: 0, z: 3 } });
     const tree = workTargets('CHOP')[0];
-    for (let i = 0; i < 15; i++) expect(performToolWork('CHOP', tree.entity, worker, axe)).toBe(true);
+    for (let i = 0; i < 15; i++) { expect(performToolWork('CHOP', tree.entity, worker, axe)).toBe(true); }
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/forest/treeFall', expect.any(THREE.Vector3));
     expect(dropLoot).toHaveBeenCalledOnce();
     // Four logs, two blossoms and the guaranteed moonbutterfly; the 50% second one stays away at random 0.9.
@@ -168,7 +168,7 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
   const world = { player, scene, camera, ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const controller = new PlayerController(world, animation.sg, new Locomotor({ position: player.position, velocity: new THREE.Vector3() }, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const dig = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'DIG', target: target.entity as never, invobject: shovel })!);
-  const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
+  const advance = (frames: number) => { for (let i = 0; i < frames; i++) { advancePlayer(animation, 1 / 30); } };
   try {
     const target = workTargets('DIG')[0];
     expect(workTargets('CHOP').map(target => target.id)).toEqual(['standing']);
@@ -191,7 +191,7 @@ it('digs a restored moon tree stump at shovel frame 15 and permanently removes i
     await drawn(reloaded.model);
     const geometryDispose = vi.spyOn((reloaded.model.children[0].children[0].children[0] as THREE.Mesh).geometry, 'dispose');
     expect(dig(reloaded)).toBe(true);
-    while (animation.sg.stateName === 'dig_start') advancePlayer(animation, 1 / 30);
+    while (animation.sg.stateName === 'dig_start') { advancePlayer(animation, 1 / 30); }
     advance(14);
     expect(reloaded.isValid()).toBe(true);
     expect(dropLoot).not.toHaveBeenCalled();

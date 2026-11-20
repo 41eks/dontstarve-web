@@ -38,8 +38,8 @@ export class StaffCastingLightInstance extends PrefabInstance {
     this._value += 1;
     if (this._value < this._duration) {
       const k = (this._value / this._duration) ** 5;
-      if (this.is_small) this.setLight(.3 + 4 * k, .8 - .7 * k, 1.1 + .3 * k);
-      else this.setLight(.3 + 10 * k, .8 - .6 * k, .9 - .4 * k);
+      if (this.is_small) { this.setLight(.3 + 4 * k, .8 - .7 * k, 1.1 + .3 * k); }
+      else { this.setLight(.3 + 10 * k, .8 - .6 * k, .9 - .4 * k); }
     } else {
       this.light.set(null);
       this.task?.Cancel(); this.task = undefined;

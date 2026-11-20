@@ -40,7 +40,7 @@ async function spawn(animation: string, skinId?: string) {
 
 function meshOf(model: THREE.Group) {
   const meshes: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>[] = [];
-  model.traverse(object => { if (object instanceof THREE.Mesh) meshes.push(object as typeof meshes[number]); });
+  model.traverse(object => { if (object instanceof THREE.Mesh) { meshes.push(object as typeof meshes[number]); } });
   expect(meshes).toHaveLength(1);
   return meshes[0];
 }
@@ -100,7 +100,7 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
     const display = prefabDisplay(model)!, occupiable = instance.components.occupiable!;
     const birdSlot = instance.sprite.sprite.peek().appearance.get('anim-state:bird');
     expect(birdSlot?.kind).toBe('anim-state');
-    if (birdSlot?.kind !== 'anim-state') throw new Error('The cage has no bird slot');
+    if (birdSlot?.kind !== 'anim-state') { throw new Error('The cage has no bird slot'); }
     expect(fetch).not.toHaveBeenCalledWith('/dst/data/anim/canary_build.zip');
     const bird = spawnItem({ itemId: 'canary', count: 1, freshnessPercent: .7 });
     expect(occupiable.Occupy(bird)).toBe(true);
@@ -158,6 +158,6 @@ it('draws the bird slot across reskin, sleep and restore, and clears it when the
     }
   } finally {
     placement.dispose();
-    for (const item of items) item.destroy();
+    for (const item of items) { item.destroy(); }
   }
 });

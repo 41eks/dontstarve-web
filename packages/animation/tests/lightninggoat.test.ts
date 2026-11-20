@@ -62,7 +62,7 @@ function setup(random: () => number = () => 0) {
     },
     addPlayer: (position: THREE.Vector3) => {
       const player = new PrefabInstance('wilson', new SpriteState({ name: 'idle_loop', billboard: true }));
-      for (const tag of ['player', 'character']) player.addTag(tag);
+      for (const tag of ['player', 'character']) { player.addTag(tag); }
       player.setPosition(position.x, position.y, position.z); prefabs.track(player);
       return player;
     },

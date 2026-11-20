@@ -66,7 +66,7 @@ export class FishingRod {
       const action = this.fishAction;
       this.fishAction = undefined;
       const fisherman = this.fisherman;
-      if (!fisherman) return;
+      if (!fisherman) { return; }
       this.inst.PushEvent(action === 'nibble' ? 'fishingnibble' : 'fishingloserod');
       fisherman.PushEvent(action === 'nibble' ? 'fishingnibble' : 'fishingloserod');
     });
@@ -79,8 +79,8 @@ export class FishingRod {
       this.scheduler = scheduler;
       this.fishtask = this.createTimer(scheduler);
     }
-    if (world) this.world = world;
-    if (updates) this.updates = updates;
+    if (world) { this.world = world; }
+    if (updates) { this.updates = updates; }
   }
 
   SetWaitTimes(min: number, max: number): void { this.minwaittime = min; this.maxwaittime = max; }
@@ -88,10 +88,10 @@ export class FishingRod {
 
   /** OnUpdate: fishing ends when the fisherman leaves the fishing states or the rod is unequipped. */
   OnUpdate(): void {
-    if (!this.IsFishing()) return;
+    if (!this.IsFishing()) { return; }
     const fisherman = this.fisherman!;
     if (fisherman.IsValid?.() === false || (!fisherman.sg?.hasStateTag('fishing') && !fisherman.sg?.hasStateTag('catchfish'))
-      || !this.inst.components.equippable?.IsEquipped()) this.StopFishing();
+      || !this.inst.components.equippable?.IsEquipped()) { this.StopFishing(); }
   }
 
   IsFishing(): boolean { return this.target !== undefined && this.fisherman !== undefined; }
@@ -101,7 +101,7 @@ export class FishingRod {
 
   StartFishing(target: FishingTarget, fisherman: Fisherman): void {
     this.StopFishing();
-    if (!target.components.fishable) return;
+    if (!target.components.fishable) { return; }
     this.target = target;
     this.fisherman = fisherman;
     // inst:StartUpdatingComponent(self): OnUpdate watches the fisherman's state each frame.
@@ -110,10 +110,10 @@ export class FishingRod {
 
   WaitForFish(): void {
     const fishable = this.target?.components.fishable;
-    if (!fishable) return;
+    if (!fishable) { return; }
     const fishleft = fishable.GetFishPercent();
     this.CancelFishTask();
-    if (fishleft > 0) this.startTask('nibble', this.minwaittime + (1 - fishleft) * (this.maxwaittime - this.minwaittime));
+    if (fishleft > 0) { this.startTask('nibble', this.minwaittime + (1 - fishleft) * (this.maxwaittime - this.minwaittime)); }
   }
 
   private startTask(action: FishTask, seconds: number): void {
@@ -141,7 +141,7 @@ export class FishingRod {
 
   Hook(): void {
     const fishable = this.target?.components.fishable;
-    if (!fishable || !this.fisherman) return;
+    if (!fishable || !this.fisherman) { return; }
     this.hookedfish = fishable.HookFish(this.fisherman);
     const durability = this.inst.components.finiteuses?.GetPercent();
     if (durability !== undefined) {
@@ -161,11 +161,11 @@ export class FishingRod {
 
   Reel(): void {
     const fishable = this.target?.components.fishable;
-    if (!fishable || !this.hookedfish || !this.fisherman) return;
+    if (!fishable || !this.hookedfish || !this.fisherman) { return; }
     this.caughtfish = fishable.RemoveFish(this.hookedfish);
     this.hookedfish = undefined;
     this.CancelFishTask();
-    if (!this.caughtfish) return;
+    if (!this.caughtfish) { return; }
     // The fish lands one unit beyond the fisherman, directly away from the water.
     const position = this.fisherman.getPosition().clone().setY(0);
     this.caughtPosition = position.clone().add(position.clone().sub(this.target!.getPosition()).normalize());
@@ -176,7 +176,7 @@ export class FishingRod {
 
   Collect(): void {
     const fish = this.caughtfish;
-    if (!fish || !this.fisherman || !this.caughtPosition) return;
+    if (!fish || !this.fisherman || !this.caughtPosition) { return; }
     this.world.landFish(fish, this.caughtPosition);
     this.inst.PushEvent('fishingcollect', { fish });
     this.fisherman.PushEvent('fishingcollect', { fish });

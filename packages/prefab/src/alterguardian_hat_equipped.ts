@@ -76,8 +76,8 @@ export class AlterguardianHatEquipped {
   /** The item skin replaces p4_piece and fx_glow; every other symbol stays the FX build's. */
   SetSkin(): void {
     const skin = this.art.skin;
-    if (!skin) return;
-    for (const symbol of ['p4_piece', 'fx_glow']) this.anim.OverrideItemSkinSymbol(symbol, skin.archive, symbol, this.key, this.art.archive);
+    if (!skin) { return; }
+    for (const symbol of ['p4_piece', 'fx_glow']) { this.anim.OverrideItemSkinSymbol(symbol, skin.archive, symbol, this.key, this.art.archive); }
   }
 
   Remove(): void { this.instance.remove(); }

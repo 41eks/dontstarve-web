@@ -43,6 +43,6 @@ export class AvoidElectricFence extends BehaviourNode {
       this.status = RUNNING;
       this.inst.components.combat?.DropTarget();
     }
-    if (this.status === RUNNING) this.inst.components.locomotor!.RunInDirection(this.run_angle!);
+    if (this.status === RUNNING) { this.inst.components.locomotor!.RunInDirection(this.run_angle!); }
   }
 }

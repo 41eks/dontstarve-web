@@ -83,7 +83,7 @@ it('lets collapse effects finish independently and reuses their art after a prev
     expect(first.position.equals(position)).toBe(true);
     await prefabDisplay(fx.renderEntities[0].object)!.artLoaded();
     expect(first.sprite.loaded).toBe(true);
-    for (let i = 0; i < 90; i++) fx.update(1 / 30, rotation);
+    for (let i = 0; i < 90; i++) { fx.update(1 / 30, rotation); }
     expect(first.isRemoved).toBe(true);
     expect(fx.renderEntities).toEqual([]);
     expect(scene.children).toEqual([]);

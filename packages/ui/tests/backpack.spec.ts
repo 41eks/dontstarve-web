@@ -12,8 +12,8 @@ test('equipping a backpack opens eight usable side slots and switches independen
     const { executeDebugCommand } = await import(urls.debug);
     main.inventory.replaceState({ slots: [], bufferedBuilds: [] }, {});
     const result = await executeDebugCommand('c_give("backpack", 2)', main.inventory);
-    if (!result.ok) throw new Error(result.message);
-    if (!main.inventory.add('cutgrass', 3)) throw new Error('Test inventory could not receive cutgrass');
+    if (!result.ok) { throw new Error(result.message); }
+    if (!main.inventory.add('cutgrass', 3)) { throw new Error('Test inventory could not receive cutgrass'); }
     (window as any).backpackGame = { main, player };
   }, {
     main: `/@fs${fileURLToPath(new URL('../../../src/main.ts', import.meta.url))}`,

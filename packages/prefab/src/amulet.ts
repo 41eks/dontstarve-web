@@ -29,14 +29,14 @@ export function configureAmuletEntity(entity: ItemEntity): void {
   equippable.SetOnUnequip((_inst, owner) => red.onunequip(owner));
   // The timer belongs to the world the item is bound to; a world-less entity is configured again once adopted.
   const scheduler = entity.components.perishable.scheduler;
-  if (!scheduler || entity.components.hauntable) return;
+  if (!scheduler || entity.components.hauntable) { return; }
   addComponent(entity, 'hauntable', Hauntable, scheduler).SetHauntValue(HAUNT_INSTANT_REZ);
 }
 
 /** amulet.lua healowner: convert hunger into health while hurt, one use per conversion. */
 function healowner(entity: ItemEntity, owner: EquipmentOwner): void {
   const { health, hunger } = owner.components ?? {};
-  if (!health || !hunger || !health.IsHurt() || hunger.current <= REDAMULET_MIN_HUNGER) return;
+  if (!health || !hunger || !health.IsHurt() || hunger.current <= REDAMULET_MIN_HUNGER) { return; }
   health.DoDelta(REDAMULET_CONVERSION, false, 'redamulet');
   hunger.DoDelta(-REDAMULET_CONVERSION);
   entity.components.finiteuses.use(1);
@@ -60,7 +60,7 @@ class RedAmulet implements ItemRuntimeComponent {
       this.visual = amuletVisual({ id: this.inst.id, prefab: this.inst.prefab, skinId: this.inst.skinId });
       this.visual.onequip(worn);
     }
-    if (!this.inst.worldServices?.scheduler) return;
+    if (!this.inst.worldServices?.scheduler) { return; }
     this.task = this.inst.DoPeriodicTask(REDAMULET_CONVERSION_TIME, inst => healowner(inst, owner));
   }
 
@@ -73,13 +73,13 @@ class RedAmulet implements ItemRuntimeComponent {
     if (visual && worn?.sg?.stateName === 'amulet_rebirth') {
       const release = worn.Retain();
       const stop = worn.ListenForEvent?.('newstate', (_inst, data) => {
-        if ((data as { statename?: string } | undefined)?.statename === 'amulet_rebirth') return;
+        if ((data as { statename?: string } | undefined)?.statename === 'amulet_rebirth') { return; }
         stop?.();
         visual.onunequip();
         release();
       });
       if (!stop) { visual.onunequip(); release(); }
-    } else visual?.onunequip();
+    } else { visual?.onunequip(); }
     this.task?.Cancel();
     this.task = undefined;
   }
@@ -97,12 +97,12 @@ export const amuletVisual: EquipmentVisualFactory = item => {
       if (skin) {
         owner.PushEvent('equipskinneditem', item.skinId);
         owner.AnimState.OverrideItemSkinSymbol('swap_body', skin, 'swap_body', item.id, 'torso_amulets');
-      } else owner.AnimState.OverrideSymbol('swap_body', 'torso_amulets', 'redamulet');
+      } else { owner.AnimState.OverrideSymbol('swap_body', 'torso_amulets', 'redamulet'); }
     },
     onunequip() {
-      if (!owner) return;
+      if (!owner) { return; }
       owner.AnimState.ClearOverrideSymbol('swap_body');
-      if (skin) owner.PushEvent('unequipskinneditem', item.skinId);
+      if (skin) { owner.PushEvent('unequipskinneditem', item.skinId); }
       owner = undefined;
     },
   };

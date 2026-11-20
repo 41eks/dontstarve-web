@@ -50,7 +50,7 @@ const sounds = () => vi.mocked(PlaySound).mock.calls.map(([path]) => path);
 /** Advances game time to the end of the portal's playing clip, whose animover starts the next state. */
 const finishClip = async (scheduler: GameTimeScheduler, portal: PortalInstance) => {
   const playing = portal.animstate.animation.peek();
-  for (let frame = 0; frame < 300 && portal.animstate.animation.peek() === playing; frame++) scheduler.advance(FRAMES);
+  for (let frame = 0; frame < 300 && portal.animstate.animation.peek() === playing; frame++) { scheduler.advance(FRAMES); }
   expect(portal.animstate.animation.peek()).not.toBe(playing);
   await turn();
 };

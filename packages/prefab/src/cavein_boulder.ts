@@ -67,15 +67,15 @@ export class CaveinBoulderInstance extends PrefabInstance {
 function OnWorked(inst: CaveinBoulderInstance, worker: Worker): void {
   PlaySound('dontstarve/wilson/rock_break', inst.position);
   const { lootdropper } = inst.components;
-  if (inst.raised) lootdropper.DropLoot(new THREE.Vector3(inst.position.x, 2, inst.position.z));
+  if (inst.raised) { lootdropper.DropLoot(new THREE.Vector3(inst.position.x, 2, inst.position.z)); }
   else if (inst.formed && worker.sg?.hasStateTag('working') && worker.getPosition) {
     const target = worker.getPosition();
     // LaunchAt(loot, inst, worker, 1, 1).
-    for (const loot of lootdropper.GenerateLoot()) lootdropper.SpawnLootPrefab(loot)?.PushEvent('launch', {
+    for (const loot of lootdropper.GenerateLoot()) { lootdropper.SpawnLootPrefab(loot)?.PushEvent('launch', {
       angle: Math.atan2(target.z - inst.position.z, target.x - inst.position.x) + (Math.random() * 2 - 1) * Math.PI / 6,
       height: 1, speed: { min: 1, range: 2 }, ySpeed: { min: 6, range: 2 },
-    });
-  } else lootdropper.DropLoot(inst.position);
+    }); }
+  } else { lootdropper.DropLoot(inst.position); }
   inst.remove();
 }
 
@@ -83,14 +83,14 @@ function OnWorked(inst: CaveinBoulderInstance, worker: Worker): void {
 function SetVariation(inst: CaveinBoulderInstance, variation: number): void {
   const overridden = inst.variation > 1;
   inst.variation = variation;
-  if (variation > 1) inst.sprite.setSymbolOverride('swap_boulder', 'swap_cavein_boulder.zip', `swap_boulder${variation}`);
+  if (variation > 1) { inst.sprite.setSymbolOverride('swap_boulder', 'swap_cavein_boulder.zip', `swap_boulder${variation}`); }
   // ClearOverrideSymbol: back to the build's own symbol.
-  else if (overridden) inst.sprite.setSymbolOverride('swap_boulder', 'swap_cavein_boulder.zip', 'swap_boulder');
+  else if (overridden) { inst.sprite.setSymbolOverride('swap_boulder', 'swap_cavein_boulder.zip', 'swap_boulder'); }
 }
 
 /** cavein_boulder.lua SetRaised(inst, true) for a boulder in the world, and its UpdateActions. */
 function SetRaised(inst: CaveinBoulderInstance): void {
-  if (inst.raised) return;
+  if (inst.raised) { return; }
   inst.raised = true;
   inst.sprite.playOnce('idle_raised');
   inst.components.workable!.SetWorkable(false);
@@ -99,8 +99,8 @@ function SetRaised(inst: CaveinBoulderInstance): void {
 /** cavein_boulder.lua OnPreLoad; the falling position is not ported. */
 function OnPreLoad(inst: CaveinBoulderInstance, data: CaveinBoulderSave | undefined): void {
   SetVariation(inst, Math.floor(data?.variation ?? 1 + Math.random() * NUM_VARIATIONS));
-  if (data?.raised) SetRaised(inst);
-  if (data?.formed || data?.raised) inst.formed = true;
+  if (data?.raised) { SetRaised(inst); }
+  if (data?.formed || data?.raised) { inst.formed = true; }
 }
 
 /** The cavein_boulder Prefab; its dust FX prefabs are not ported. */

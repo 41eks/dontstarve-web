@@ -44,7 +44,7 @@ const sway = (inst: PrefabInstance) => inst.sprite.sprite.peek().clip;
 /** The entity's own sprite meshes that are drawn; an instanced sprite hides them and the shared batch draws it. */
 const ownMeshesShown = (inst: PrefabInstance) => {
   let shown = 0;
-  inst.transform.model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) shown++; });
+  inst.transform.model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) { shown++; } });
   return shown;
 };
 /** The imported default save's trees, as the game's save reader parses them. */
@@ -166,7 +166,7 @@ it('keeps a c_spawn tree through c_save and a reload, and rejects c_give', async
       oceantree: { buds: [1, 2, 3, 5, 6, 7], buds_used: [3], supertall_growth_progress: 2 } } });
     await second.registry.restoreAll({ oceantree: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof OceanTreeInstance)) throw new Error('The saved tree did not load');
+    if (!(loaded instanceof OceanTreeInstance)) { throw new Error('The saved tree did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect(loaded.sprite.sprite.peek().source).toMatchObject({ bank: 'oceantree_normal', buildArchive: 'oceantree_normal.zip' });
     expect(sway(loaded)).toMatchObject({ loop: true });

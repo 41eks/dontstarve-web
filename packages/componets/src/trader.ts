@@ -42,8 +42,8 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown, Inst ex
     this.inst = inst;
     this.stopTags = createEffect(() => {
       const enabled = this.enabledState.get(), acceptsNonTradable = this.acceptNonTradableState.get();
-      if (enabled) inst.addTag('trader'); else inst.removeTag('trader');
-      if (enabled && acceptsNonTradable) inst.addTag('alltrader'); else inst.removeTag('alltrader');
+      if (enabled) { inst.addTag('trader'); } else { inst.removeTag('trader'); }
+      if (enabled && acceptsNonTradable) { inst.addTag('alltrader'); } else { inst.removeTag('alltrader'); }
     });
   }
 
@@ -60,7 +60,7 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown, Inst ex
   SetOnRefuse(fn: TraderOnRefuseFn<Inst, Item, Giver> | undefined): void { this.onrefuse = fn; }
 
   AbleToAccept(item: Item | undefined, giver?: Giver): TradeAcceptance {
-    if (!this.enabledState.peek() || !item) return { ok: false };
+    if (!this.enabledState.peek() || !item) { return { ok: false }; }
     return this.abletoaccepttest ? this.abletoaccepttest(this.inst, item, giver) : { ok: true };
   }
 
@@ -70,16 +70,16 @@ export class Trader<Item extends TradeItem = TradeItem, Giver = unknown, Inst ex
 
   /** `take` removes one item from its owner; it runs only after both tests pass. */
   AcceptGift(item: Item, take: (deleteItem: boolean) => boolean | Item, giver?: Giver): boolean {
-    if (!this.AbleToAccept(item, giver).ok) return false;
+    if (!this.AbleToAccept(item, giver).ok) { return false; }
     if (!this.WantsToAccept(item, giver)) {
       this.onrefuse?.(this.inst, giver, item);
       return false;
     }
     const taken = take(this.deleteitemonaccept);
-    if (!taken) return false;
-    if (typeof taken === 'object') item = taken;
+    if (!taken) { return false; }
+    if (typeof taken === 'object') { item = taken; }
     const inventory = (this.inst.components as { inventory?: { GiveItem(item: Item): boolean } } | undefined)?.inventory;
-    if (!this.deleteitemonaccept) inventory?.GiveItem(item);
+    if (!this.deleteitemonaccept) { inventory?.GiveItem(item); }
     this.onaccept?.(this.inst, giver, item);
     this.inst.PushEvent?.('trade', { giver, item });
     return true;

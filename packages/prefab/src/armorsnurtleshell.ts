@@ -40,8 +40,8 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
   private readonly ProtectionLevels = (): void => {
     const owner = this.owner;
     const equippedArmor = owner?.components?.inventory?.GetEquippedItem('body');
-    if (!owner || !equippedArmor) return;
-    if (owner.sg?.hasStateTag('shell')) equippedArmor.components.armor?.SetAbsorption(FULL_ABSORPTION);
+    if (!owner || !equippedArmor) { return; }
+    if (owner.sg?.hasStateTag('shell')) { equippedArmor.components.armor?.SetAbsorption(FULL_ABSORPTION); }
     else {
       equippedArmor.components.armor?.SetAbsorption(ARMORSNURTLESHELL_ABSORPTION);
       equippedArmor.components.useableitem?.StopUsingItem();
@@ -52,20 +52,20 @@ class ArmorSnurtleshell implements ItemRuntimeComponent {
   private droptargets(): void {
     this.task = undefined;
     const owner = this.owner, position = owner?.getPosition?.();
-    if (!owner || !position || !owner.sg?.hasStateTag('shell')) return;
+    if (!owner || !position || !owner.sg?.hasStateTag('shell')) { return; }
     // TARGET_MUST_TAGS { "_combat" } is the combat component's replica tag.
     for (const v of this.inst.TheSim.FindEntities(position, DROPTARGETS_RANGE, [], TARGET_CANT_TAGS)) {
       const combat = (v.components as { combat?: Combat }).combat;
-      if ((combat?.target as object | undefined) === owner) combat!.DropTarget();
+      if ((combat?.target as object | undefined) === owner) { combat!.DropTarget(); }
     }
   }
 
   onuse(): void {
     const owner = this.owner;
-    if (!owner) return;
+    if (!owner) { return; }
     owner.sg?.goToState('shell_enter');
     this.task?.Cancel();
-    if (!this.inst.worldServices?.scheduler) return;
+    if (!this.inst.worldServices?.scheduler) { return; }
     this.task = this.inst.DoTaskInTime(DROPTARGETS_DELAY, () => this.droptargets());
   }
 
@@ -102,7 +102,7 @@ export function configureArmorSnurtleshellEntity(inst: ItemEntity): void {
   inst.addTag('shell');
   inst.addTag('hardarmor');
   // The inventory configures an inst again on every commit; components are added once, as AddComponent in fn.
-  if (inst.getComponent('armorsnurtleshell')) return;
+  if (inst.getComponent('armorsnurtleshell')) { return; }
   const shell = inst.component('armorsnurtleshell', () => new ArmorSnurtleshell(inst));
   (addComponent(inst, 'armor', Armor)).InitCondition(ARMORSNURTLESHELL, ARMORSNURTLESHELL_ABSORPTION);
   const equippable = addComponent(inst, 'equippable', Equippable<ItemEntity>, 'body');

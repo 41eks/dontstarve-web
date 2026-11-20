@@ -17,7 +17,7 @@ const declaration = definitions.animatedBuildings.nightlight;
 export const NIGHT_LIGHT_PLACER = buildingPlacer(declaration, 'nightmare_torch');
 
 function onworked(inst: PrefabInstance): void {
-  if (inst.hasTag('burnt')) return;
+  if (inst.hasTag('burnt')) { return; }
   inst.sprite.playOnce('hit');
   inst.sprite.pushAnimation('idle', false);
 }

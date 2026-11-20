@@ -110,7 +110,7 @@ export class MiniMapRenderer {
 
   /** Loads the layer art and builds every chunk while the loading page is still visible. */
   prepare(): Promise<void> {
-    if (this.disposed) return Promise.resolve();
+    if (this.disposed) { return Promise.resolve(); }
     return this.preparation ??= this.load();
   }
 
@@ -130,16 +130,16 @@ export class MiniMapRenderer {
     this.ocean = this.createOcean(plate, cellSize);
     this.scene.add(this.ocean);
     const { min, max } = terrain.cellRange();
-    for (let row = min; row < max; row += CHUNK_CELLS) for (let col = min; col < max; col += CHUNK_CELLS) {
+    for (let row = min; row < max; row += CHUNK_CELLS) { for (let col = min; col < max; col += CHUNK_CELLS) {
       this.chunks.set(`${col},${row}`, { minCol: col, minRow: row, maxCol: Math.min(max, col + CHUNK_CELLS),
         maxRow: Math.min(max, row + CHUNK_CELLS), meshes: [], dirty: true });
-    }
+    } }
     let deadline = performance.now() + YIELD_MS;
     for (const chunk of this.chunks.values()) {
-      if (chunk.dirty) this.build(chunk);
+      if (chunk.dirty) { this.build(chunk); }
       if (performance.now() >= deadline) {
         await new Promise<void>(resolve => setTimeout(resolve, 0));
-        if (this.disposed) return;
+        if (this.disposed) { return; }
         deadline = performance.now() + YIELD_MS;
       }
     }
@@ -152,7 +152,7 @@ export class MiniMapRenderer {
 
   stop(): void {
     this.active = false;
-    if (this.frame !== undefined) cancelAnimationFrame(this.frame);
+    if (this.frame !== undefined) { cancelAnimationFrame(this.frame); }
     this.frame = undefined;
   }
 
@@ -165,7 +165,7 @@ export class MiniMapRenderer {
   isLandAt(x: number, z: number): boolean {
     const { terrain, cellSize } = this.options;
     const col = Math.floor(x / cellSize), row = Math.floor(z / cellSize), { min, max } = terrain.cellRange();
-    if (col < min || col >= max || row < min || row >= max) return false;
+    if (col < min || col >= max || row < min || row >= max) { return false; }
     const id = terrain.tileIdAtCell(col, row);
     return id !== 0 && !terrain.isVoidAtCell?.(col, row) && this.oceanIds !== undefined && !this.oceanIds.has(id);
   }
@@ -173,12 +173,12 @@ export class MiniMapRenderer {
   /** A layer declared after preparation (a newly deployed turf) loads its art, then redraws wherever its tiles are. */
   private loadDeclaredLayers(): void {
     const layers = this.layers;
-    if (!layers || this.disposed) return;
+    if (!layers || this.disposed) { return; }
     for (const [id, art] of this.options.terrain.tileLayerArt()) {
-      if (layers.has(id) || this.pendingLayers.has(id)) continue;
+      if (layers.has(id) || this.pendingLayers.has(id)) { continue; }
       this.pendingLayers.add(id);
       void loadMinimapTileLayer(this.options.assetBaseUrl, art).then(layer => {
-        if (this.disposed) return;
+        if (this.disposed) { return; }
         layers.set(id, layer);
         this.invalidate();
       }).catch(error => console.error('Unable to load minimap layer art', error))
@@ -189,25 +189,25 @@ export class MiniMapRenderer {
   private invalidate(bounds?: MinimapCellBounds): void {
     for (const chunk of this.chunks.values()) {
       if (bounds && (chunk.maxCol <= bounds.minCol || chunk.minCol >= bounds.maxCol
-        || chunk.maxRow <= bounds.minRow || chunk.minRow >= bounds.maxRow)) continue;
+        || chunk.maxRow <= bounds.minRow || chunk.minRow >= bounds.maxRow)) { continue; }
       chunk.dirty = true;
     }
     this.requestFrame();
   }
 
   private requestFrame(): void {
-    if (!this.active || !this.prepared || this.disposed || this.frame !== undefined) return;
+    if (!this.active || !this.prepared || this.disposed || this.frame !== undefined) { return; }
     this.frame = requestAnimationFrame(() => { this.frame = undefined; this.draw(); });
   }
 
   private draw(): void {
     const view = this.view;
-    if (!view || this.disposed) return;
+    if (!view || this.disposed) { return; }
     const renderer = this.renderer ??= this.createRenderer();
     const pixelRatio = window.devicePixelRatio || 1;
-    if (renderer.getPixelRatio() !== pixelRatio) renderer.setPixelRatio(pixelRatio);
+    if (renderer.getPixelRatio() !== pixelRatio) { renderer.setPixelRatio(pixelRatio); }
     const size = renderer.getSize(new THREE.Vector2());
-    if (size.x !== view.width || size.y !== view.height) renderer.setSize(view.width, view.height, false);
+    if (size.x !== view.width || size.y !== view.height) { renderer.setSize(view.width, view.height, false); }
     // World (x, z) to clip space through the view's screen transform.
     const [a, b, c, d, e, f] = view.canvasTransform(0, 0, 1);
     const sx = 2 / view.width, sy = -2 / view.height;
@@ -215,8 +215,8 @@ export class MiniMapRenderer {
     const visible = this.visibleCells(view);
     for (const chunk of this.chunks.values()) {
       const shown = chunk.maxCol > visible.minCol && chunk.minCol < visible.maxCol && chunk.maxRow > visible.minRow && chunk.minRow < visible.maxRow;
-      if (shown && chunk.dirty) this.build(chunk);
-      for (const mesh of chunk.meshes) mesh.visible = shown;
+      if (shown && chunk.dirty) { this.build(chunk); }
+      for (const mesh of chunk.meshes) { mesh.visible = shown; }
     }
     renderer.render(this.scene, this.camera);
   }
@@ -236,13 +236,13 @@ export class MiniMapRenderer {
     const { terrain } = this.options, layers = this.layers!, oceanIds = this.oceanIds!;
     // Land ids whose art has not loaded are drawn flat grey, below every layer.
     const missing: MinimapTileQuad[] = [];
-    for (let row = chunk.minRow; row < chunk.maxRow; row++) for (let col = chunk.minCol; col < chunk.maxCol; col++) {
+    for (let row = chunk.minRow; row < chunk.maxRow; row++) { for (let col = chunk.minCol; col < chunk.maxCol; col++) {
       const id = terrain.tileIdAtCell(col, row);
-      if (id !== 0 && !oceanIds.has(id) && !layers.has(id) && !terrain.isVoidAtCell?.(col, row)) missing.push({ col, row, variant: 1 });
-    }
-    if (missing.length) this.addMesh(chunk, MISSING_ART_ID, missing);
+      if (id !== 0 && !oceanIds.has(id) && !layers.has(id) && !terrain.isVoidAtCell?.(col, row)) { missing.push({ col, row, variant: 1 }); }
+    } }
+    if (missing.length) { this.addMesh(chunk, MISSING_ART_ID, missing); }
     for (const [id, quads] of terrain.tileLayerQuads(chunk)) {
-      if (quads.length && layers.has(id) && !oceanIds.has(id)) this.addMesh(chunk, id, quads);
+      if (quads.length && layers.has(id) && !oceanIds.has(id)) { this.addMesh(chunk, id, quads); }
     }
   }
 
@@ -254,8 +254,8 @@ export class MiniMapRenderer {
       const x0 = col * size, z0 = row * size, x1 = x0 + size, z1 = z0 + size;
       positions.set([x0, z0, x1, z0, x0, z1, x1, z1], i * 8);
       const mask = layer?.masks.get(variant);
-      if (layer && !mask) throw new Error(`Minimap layer ${id} lacks mask ${variant}`);
-      if (mask) uvs.set([mask.u0, mask.v0, mask.u1, mask.v0, mask.u0, mask.v1, mask.u1, mask.v1], i * 8);
+      if (layer && !mask) { throw new Error(`Minimap layer ${id} lacks mask ${variant}`); }
+      if (mask) { uvs.set([mask.u0, mask.v0, mask.u1, mask.v0, mask.u0, mask.v1, mask.u1, mask.v1], i * 8); }
       const v = i * 4;
       indices.set([v, v + 2, v + 1, v + 1, v + 2, v + 3], i * 6);
     });
@@ -275,7 +275,7 @@ export class MiniMapRenderer {
 
   private material(id: number, layer: MinimapTileLayer | undefined): THREE.RawShaderMaterial {
     let material = this.materials.get(id);
-    if (material) return material;
+    if (material) { return material; }
     material = new THREE.RawShaderMaterial({
       vertexShader: VERTEX, fragmentShader: layer ? LAYER_FRAGMENT : FLAT_FRAGMENT,
       uniforms: {
@@ -315,7 +315,7 @@ export class MiniMapRenderer {
   /** Byte-exact sources, as the composed image used: no colour-space conversion. */
   private texture(pixels: MinimapPixels, repeat: boolean): THREE.DataTexture {
     let texture = this.textures.get(pixels);
-    if (texture) return texture;
+    if (texture) { return texture; }
     texture = new THREE.DataTexture(new Uint8Array(pixels.data.buffer, pixels.data.byteOffset, pixels.data.length), pixels.width, pixels.height, THREE.RGBAFormat);
     texture.colorSpace = THREE.NoColorSpace;
     texture.flipY = false;
@@ -337,15 +337,15 @@ export class MiniMapRenderer {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.stop();
     this.stopTerrain();
-    for (const chunk of this.chunks.values()) for (const mesh of chunk.meshes) mesh.geometry.dispose();
+    for (const chunk of this.chunks.values()) { for (const mesh of chunk.meshes) { mesh.geometry.dispose(); } }
     this.chunks.clear();
     if (this.ocean) { this.ocean.geometry.dispose(); this.ocean.material.dispose(); }
-    for (const material of this.materials.values()) material.dispose();
-    for (const texture of this.textures.values()) texture.dispose();
+    for (const material of this.materials.values()) { material.dispose(); }
+    for (const texture of this.textures.values()) { texture.dispose(); }
     this.oceanTexture?.dispose();
     this.materials.clear(); this.textures.clear();
     this.renderer?.dispose();

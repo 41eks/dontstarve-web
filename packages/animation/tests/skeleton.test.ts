@@ -62,7 +62,7 @@ it('hammers a described player skeleton into two boneshards and keeps its pose a
     // SKELETON_WORK = 3 hammer hits; the last drops the `skeleton_player` table (two boneshards), collapses and removes it.
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const hammer = s.inventory.entities.create({ itemId: 'hammer', count: 1 }); s.inventory.GiveItem(hammer);
-    for (let i = 0; i < 2; i++) expect(performToolWork('HAMMER', target.entity, testPlayer(), hammer)).toBe(true);
+    for (let i = 0; i < 2; i++) { expect(performToolWork('HAMMER', target.entity, testPlayer(), hammer)).toBe(true); }
     expect(s.skeletons.exportRecords()).toHaveLength(1);
     expect(performToolWork('HAMMER', target.entity, testPlayer(), hammer)).toBe(true);
     expect(workTargets('HAMMER', s.scene)).toEqual([]); expect(s.skeletons.exportRecords()).toEqual([]);
@@ -95,7 +95,7 @@ it('spawns a creature skeleton with its own pose range and shared table, droppin
 
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const hammer = s.inventory.entities.create({ itemId: 'hammer', count: 1 }); s.inventory.GiveItem(hammer);
-    for (let i = 0; i < 3; i++) expect(performToolWork('HAMMER', targets[1].entity, testPlayer(), hammer)).toBe(true);
+    for (let i = 0; i < 3; i++) { expect(performToolWork('HAMMER', targets[1].entity, testPlayer(), hammer)).toBe(true); }
     await vi.waitFor(() => expect(s.ground.groundStacks().map(stack => stack.itemId).sort())
       .toEqual(['boneshard', 'boneshard', 'scrapbook_page']));
   } finally { s.dispose(); restored.dispose(); }

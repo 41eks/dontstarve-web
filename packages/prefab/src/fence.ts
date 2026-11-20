@@ -55,7 +55,7 @@ export function fixUpFenceRotation(rotation: number, neighbours: readonly FenceN
     const thisEnum = calcRotationEnum(rotation);
     const parallel = neighbours.find(({ isFence, rotation: other }) => isFence
         && thisEnum % (ROT_SIDES / 2) === calcRotationEnum(other) % (ROT_SIDES / 2));
-    if (parallel && (thisEnum + ROT_SIDES / 2) % ROT_SIDES === calcRotationEnum(parallel.rotation)) return rotation + 180;
+    if (parallel && (thisEnum + ROT_SIDES / 2) % ROT_SIDES === calcRotationEnum(parallel.rotation)) { return rotation + 180; }
     return rotation;
 }
 
@@ -102,7 +102,7 @@ export class FenceInstance extends PrefabInstance {
 }
 
 function onhammered(inst: PrefabInstance): void {
-    if (inst.isRemoved) return;
+    if (inst.isRemoved) { return; }
     inst.components.lootdropper!.DropLoot();
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
     inst.remove();
@@ -128,7 +128,7 @@ function InitializePathFinding(inst: PrefabInstance): void {
 function onburnt(inst: PrefabInstance): void {
     const world = inst.worldServices, position = inst.position.clone();
     const ash = world?.spawnItem?.({ itemId: 'ash', count: 1 });
-    if (ash) world?.dropItem?.(ash, position);
+    if (ash) { world?.dropItem?.(ash, position); }
     inst.remove();
 }
 
@@ -145,8 +145,8 @@ function onsave(inst: PrefabInstance, data: EntityPersistData): void {
 /** onload: SetOrientation(inst, data.rot * 45). */
 function onload(inst: PrefabInstance, data: EntityPersistData): void {
     const saved = data.fence;
-    if (!saved) return;
-    if (saved.skinId !== undefined) inst.skinId = fenceWorldSkin(FENCE_ID, saved.skinId);
+    if (!saved) { return; }
+    if (saved.skinId !== undefined) { inst.skinId = fenceWorldSkin(FENCE_ID, saved.skinId); }
     SetOrientation(inst, (saved.rot ?? 0) * 45);
 }
 
@@ -157,7 +157,7 @@ function fn(world: PrefabWorldContext, sprites: SpriteResources): FenceInstance 
     // Transform:SetEightFaced; SetBank(anims.wide), SetBuild("fence"), PlayAnimation("idle"). SpawnPrefab leaves rotation 0.
     SetOrientation(inst, 0, sprites.archives);
     inst.sprite.playOnce('idle');
-    for (const tag of ['wall', 'fence', 'alignwall', 'noauradamage', 'electricdamageimmune', 'rotatableobject']) inst.addTag(tag);
+    for (const tag of ['wall', 'fence', 'alignwall', 'noauradamage', 'electricdamageimmune', 'rotatableobject']) { inst.addTag(tag); }
     inst.DoTaskInTime(0, InitializePathFinding);
     addComponent(inst, 'inspectable', Inspectable);
     const lootdropper = addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
@@ -176,7 +176,7 @@ function fn(world: PrefabWorldContext, sprites: SpriteResources): FenceInstance 
     inst.ListenForEvent('death', onhammered);
     // MakeMediumBurnable + MakeMediumPropagator, with DefaultBurnFn / DefaultExtinguishFn / DefaultBurntFn.
     const { fire, scheduler } = world;
-    if (!fire) throw new Error('A fence needs the world\'s fire effects');
+    if (!fire) { throw new Error('A fence needs the world\'s fire effects'); }
     const burn = new BurnableBinding(inst, {
         propagator: 'medium', burnTime: FENCE_BURN_TIME, fxLevel: FENCE_FX_LEVEL,
         onIgnite: () => { inst.persists = false; },

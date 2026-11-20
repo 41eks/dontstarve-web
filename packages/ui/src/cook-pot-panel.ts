@@ -29,7 +29,7 @@ export class DstCookPotPanelElement extends DstChestPanelElement {
     button.type = 'button';
     button.addEventListener('click', () => {
       const container = this.slotContainer;
-      if (button.disabled || !container) return;
+      if (button.disabled || !container) { return; }
       this.dispatchEvent(new CustomEvent<ContainerButtonRequestDetail>('game:container-button', {
         bubbles: true, composed: true, detail: { containerId: container.id },
       }));
@@ -44,11 +44,11 @@ export class DstCookPotPanelElement extends DstChestPanelElement {
 
   private updateButton(): void {
     const button = this.shadowRoot?.querySelector<HTMLButtonElement>('.cook-pot-panel__cook');
-    if (!button) return;
+    if (!button) { return; }
     const info = this.buttonInfo;
     button.hidden = info === undefined;
     button.textContent = info?.text ?? '';
-    if (info) button.style.setProperty('--container-button-y', String(-info.y));
+    if (info) { button.style.setProperty('--container-button-y', String(-info.y)); }
     const slots = this.slotContainer?.slots ?? [];
     // buttoninfo.validfn: the cooker's container:IsFull(), the furnace's not container:IsEmpty().
     button.disabled = !info || !slots.length || (info.validfn === 'full'

@@ -12,7 +12,7 @@ export class ComponentUpdates {
   }
 
   update(dt: number): void {
-    for (const component of this.components) component.OnUpdate(dt);
+    for (const component of this.components) { component.OnUpdate(dt); }
   }
 
   dispose(): void { this.components.clear(); }

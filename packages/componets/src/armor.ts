@@ -32,13 +32,13 @@ export class Armor {
     this.percent = createMemo(() => this.conditionState.get() / this.maxconditionState.get());
     // armor.lua PercentChanged: a broken armor tells its wearer.
     this.stopPercentChanged = inst.ListenForEvent('percentusedchange', (_inst, data) => {
-      if (data.percent <= 0) this.inst.components.inventoryitem.owner?.PushEvent('armorbroke', { armor: this.inst });
+      if (data.percent <= 0) { this.inst.components.inventoryitem.owner?.PushEvent('armorbroke', { armor: this.inst }); }
     });
   }
 
   get maxcondition(): number { return this.maxconditionState.peek(); }
   InitCondition(amount: number, absorbPercent: number): void {
-    if (!Number.isFinite(amount) || amount <= 0) throw new RangeError('Invalid armor condition');
+    if (!Number.isFinite(amount) || amount <= 0) { throw new RangeError('Invalid armor condition'); }
     this.conditionState.set(amount);
     this.maxconditionState.set(amount);
     this.absorb_percent = absorbPercent;
@@ -56,7 +56,7 @@ export class Armor {
     if (next <= 0) {
       this.conditionState.set(0);
       this.onfinished?.(this.inst);
-      if (!this.keeponfinished) this.inst.remove();
+      if (!this.keeponfinished) { this.inst.remove(); }
     }
   }
   TakeDamage(amount: number): void {
@@ -70,7 +70,7 @@ export class Armor {
     return this.IsDamaged() ? { condition: this.conditionState.peek() } : undefined;
   }
   OnLoad(data: Partial<ArmorSaveData>): void {
-    if (data.condition !== undefined) this.SetCondition(data.condition);
+    if (data.condition !== undefined) { this.SetCondition(data.condition); }
   }
   dispose(): void { this.stopPercentChanged(); this.percent.dispose(); }
 }

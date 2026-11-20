@@ -33,7 +33,7 @@ export function createPlayerEquipper(animation: PlayerInstance) {
   const worn = new Map<Kind, ItemEntity>();
   const unequip = (kind: Kind) => {
     const item = worn.get(kind);
-    if (!item) return;
+    if (!item) { return; }
     worn.delete(kind);
     item.components.equippable?.Unequip(owner);
     owner.PushEvent('unequip', { item, eslot: ESLOTS[kind] });
@@ -44,8 +44,8 @@ export function createPlayerEquipper(animation: PlayerInstance) {
       const spec = prefab === null ? undefined : INVENTORY_ITEM_SPECS[prefab];
       const slot = kind ?? spec?.equippable ?? 'hand';
       unequip(slot);
-      if (prefab === null) return undefined;
-      if (!spec) throw new Error(`Unknown item: ${prefab}`);
+      if (prefab === null) { return undefined; }
+      if (!spec) { throw new Error(`Unknown item: ${prefab}`); }
       const item = registry.create({ itemId: prefab, count: 1, ...(skinId === undefined ? {} : { skinId }) });
       item.configure(spec);
       worn.set(slot, item);
@@ -53,6 +53,6 @@ export function createPlayerEquipper(animation: PlayerInstance) {
       owner.PushEvent('equip', { item, eslot: ESLOTS[slot] });
       return item;
     },
-    dispose() { for (const kind of [...worn.keys()]) unequip(kind); registry.dispose(); },
+    dispose() { for (const kind of [...worn.keys()]) { unequip(kind); } registry.dispose(); },
   };
 }

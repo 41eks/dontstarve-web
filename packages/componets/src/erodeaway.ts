@@ -21,7 +21,7 @@ export class ErodeAway {
   constructor(scheduler: GameTimeScheduler, setErosion: (amount: number) => void, remove: () => void, tickTime?: number) {
     this.scheduler = scheduler; this.setErosion = setErosion; this.tickTime = tickTime;
     this.erodeTask = new ComponentTimer(scheduler, remove);
-    this.delayTask = new ComponentTimer(scheduler, () => { this.erodeTask.start(1); if (this.tickTime) this.tick(); });
+    this.delayTask = new ComponentTimer(scheduler, () => { this.erodeTask.start(1); if (this.tickTime) { this.tick(); } });
     this.delay = this.delayTask.snapshot; this.timer = this.erodeTask.snapshot;
     this.active = createMemo(() => this.delay.get().status !== 'stopped' || this.timer.get().status !== 'stopped');
   }
@@ -31,12 +31,12 @@ export class ErodeAway {
   /** Presentation interpolation samples the deadline; completion never depends on rendering. */
   update(): void {
     const timer = this.timer.peek();
-    if (timer.status === 'scheduled') this.setErosion(Math.max(0, Math.min(1, 1 - (timer.endTime - this.scheduler.now))));
+    if (timer.status === 'scheduled') { this.setErosion(Math.max(0, Math.min(1, 1 - (timer.endTime - this.scheduler.now)))); }
   }
 
   private tick(): void {
     this.stopTick = undefined;
-    if (this.timer.peek().status !== 'scheduled') return;
+    if (this.timer.peek().status !== 'scheduled') { return; }
     this.update();
     this.stopTick = this.scheduler.schedule(this.tickTime!, () => this.tick());
   }

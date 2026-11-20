@@ -12,7 +12,7 @@ export class FormationFollower<Target, Member extends FormationMember<Target>> {
   private readonly inst: Member;
   constructor(inst: Member) { this.inst = inst; }
   SearchForFormation(leaders: readonly FormationLeader<Target, Member>[]): boolean {
-    for (const leader of leaders) if (!leader.IsFormationFull() && leader.NewFormationMember(this.inst)) return true;
+    for (const leader of leaders) { if (!leader.IsFormationFull() && leader.NewFormationMember(this.inst)) { return true; } }
     return false;
   }
   LeaveFormation(): void { this.formationleader?.OnLostFormationMember(this.inst); }

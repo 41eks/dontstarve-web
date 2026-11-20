@@ -53,13 +53,13 @@ it('renders the original ground seed pose and commits quick eating once at frame
   const stats = () => ({ hunger: instance.stats.hunger.current, health: instance.stats.health.currenthealth, sanity: instance.stats.sanity.current });
   try {
     expect(await seeds.use(source)).toBe(true);
-    for (let frame = 0; frame < 11; frame++) advancePlayer(animation, 1 / 30);
+    for (let frame = 0; frame < 11; frame++) { advancePlayer(animation, 1 / 30); }
     expect(store.get(slot)?.count).toBe(2);
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/eat', undefined);
     advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(1);
     expect(stats()).toEqual({ hunger: 109.6875, health: 150, sanity: 35 });
-    for (let frame = 0; frame < 40; frame++) advancePlayer(animation, 1 / 30);
+    for (let frame = 0; frame < 40; frame++) { advancePlayer(animation, 1 / 30); }
     expect(store.get(slot)?.count).toBe(1);
     expect(animation.sg.stateName).toBe('idle');
     await seeds.use(source);

@@ -101,7 +101,7 @@ export class DstChestPanelElement extends AssetElement {
   }
 
   open(options: OpenChestOptions): void {
-    if (!options.containerId) throw new TypeError('Chest container id must not be empty');
+    if (!options.containerId) { throw new TypeError('Chest container id must not be empty'); }
     if (!Number.isInteger(options.slotCount) || options.slotCount <= 0) {
       throw new RangeError(`Invalid chest slot count: ${options.slotCount}`);
     }
@@ -119,13 +119,13 @@ export class DstChestPanelElement extends AssetElement {
     this.slotBackground = options.slotBackground;
     this.button = options.button;
     this.selectedSlot.set(null);
-    if (this.isConnected) this.render();
+    if (this.isConnected) { this.render(); }
   }
 
   close(): void {
     this.stopContainerSignal?.();
     const containerId = this.container?.id;
-    if (!containerId) return;
+    if (!containerId) { return; }
     this.disposeRenderers();
     this.container = undefined;
     this.selectedSlot.set(null);
@@ -138,7 +138,7 @@ export class DstChestPanelElement extends AssetElement {
         this.closing = false;
         this.render();
       });
-    } else if (this.isConnected) this.render();
+    } else if (this.isConnected) { this.render(); }
     this.dispatchEvent(new CustomEvent<ChestCloseDetail>('game:chest-close', {
       bubbles: true,
       composed: true,
@@ -162,12 +162,12 @@ export class DstChestPanelElement extends AssetElement {
 
   /** Binds the open panel's slots to the container's logical slots; closing or rebinding releases them. */
   bindContainer<TItem>(slots: EntitySlots<TItem>, toItem: (item: TItem) => SlotItem): () => void {
-    if (!this.container) throw new Error('Open a container panel before binding its slots');
+    if (!this.container) { throw new Error('Open a container panel before binding its slots'); }
     this.stopContainerSignal?.();
     const stop = bindSlotEntities(this.container, slots, toItem);
     const dispose = () => {
       stop();
-      if (this.stopContainerSignal === dispose) this.stopContainerSignal = undefined;
+      if (this.stopContainerSignal === dispose) { this.stopContainerSignal = undefined; }
     };
     this.stopContainerSignal = dispose;
     return dispose;
@@ -183,7 +183,7 @@ export class DstChestPanelElement extends AssetElement {
 
   /** Builds the static shadow DOM once; `render()` only updates it. */
   private ensurePanel(): HTMLElement {
-    if (this.panel) return this.panel;
+    if (this.panel) { return this.panel; }
     const root = this.shadowRoot!;
     root.innerHTML = `
       <style>${slotStyles}\n${styles}</style>
@@ -241,10 +241,10 @@ export class DstChestPanelElement extends AssetElement {
         if (this.closing) {
           this.closing = false;
           this.render();
-        } else panel.classList.remove('is-opening');
+        } else { panel.classList.remove('is-opening'); }
       });
     }
-    if (!this.container) return;
+    if (!this.container) { return; }
 
     if (this.slotGrid) {
       const { x, y, columnSpacing, rowSpacing } = this.slotGrid;

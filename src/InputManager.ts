@@ -25,13 +25,13 @@ export class InputManager {
     }
 
     setBlocked(blocked: boolean): void {
-        if (this.disposed) return;
+        if (this.disposed) { return; }
         this.blocked = blocked;
         this.clearKeys();
     }
 
     dispose(): void {
-        if (this.disposed) return;
+        if (this.disposed) { return; }
         this.disposed = true;
         this.target.removeEventListener('keydown', this.handleKeyDown);
         this.target.removeEventListener('keyup', this.handleKeyUp);
@@ -43,23 +43,23 @@ export class InputManager {
 
     private readonly handleKeyDown = (event: KeyboardEvent) => {
         const key = event.code;
-        if (this.blocked || !isKey(key) || event.composedPath().some(isTextInput)) return;
+        if (this.blocked || !isKey(key) || event.composedPath().some(isTextInput)) { return; }
         const keys = this.keysState.peek();
-        if (keys.has(key)) return;
+        if (keys.has(key)) { return; }
         this.keysState.set(new Set([...keys, key]));
     };
 
     private readonly handleKeyUp = (event: KeyboardEvent) => {
         const key = event.code;
         const keys = this.keysState.peek();
-        if (!isKey(key) || !keys.has(key)) return;
+        if (!isKey(key) || !keys.has(key)) { return; }
         const next = new Set(keys);
         next.delete(key);
         this.keysState.set(next);
     };
 
     private readonly clearKeys = () => {
-        if (this.keysState.peek().size) this.keysState.set(new Set());
+        if (this.keysState.peek().size) { this.keysState.set(new Set()); }
     };
 }
 

@@ -40,7 +40,7 @@ export class SleepingBagUser<Inst extends object = object> implements SleepingBa
     this.tick = new ComponentTimer(options.scheduler, () => {
       this.SleepTick();
       // A tick may have woken the sleeper, which stops the task.
-      if (this.bed) this.tick.start(this.bed.tick_period);
+      if (this.bed) { this.tick.start(this.bed.tick_period); }
     });
   }
 
@@ -54,7 +54,7 @@ export class SleepingBagUser<Inst extends object = object> implements SleepingBa
   /** Waking when the phase leaves the bed's sleep phase, e.g. at dawn for a tent. */
   private wakeUpTest(phase: WorldPhase): void {
     const bed = this.bed;
-    if (bed && phase !== bed.GetSleepPhase()) bed.DoWakeUp();
+    if (bed && phase !== bed.GetSleepPhase()) { bed.DoWakeUp(); }
   }
 
   DoSleep(bed: SleepingBag): void {
@@ -69,12 +69,12 @@ export class SleepingBagUser<Inst extends object = object> implements SleepingBa
     this.stopWatchingPhase?.();
     this.stopWatchingPhase = undefined;
     this.bed = undefined;
-    if (!nostatechange) this.options.goToWakeup({ goodsleep: this.options.hasGoodSleepAid?.() === true });
+    if (!nostatechange) { this.options.goToWakeup({ goodsleep: this.options.hasGoodSleepAid?.() === true }); }
   }
 
   SleepTick(): void {
     const bed = this.bed;
-    if (!bed) return;
+    if (!bed) { return; }
     const { hunger, sanity, health } = this.options;
     const goodsleeper = this.options.hasGoodSleepAid?.() === true;
     const hungerTick = bed.hunger_tick * this.hunger_bonus_mult;
@@ -86,10 +86,10 @@ export class SleepingBagUser<Inst extends object = object> implements SleepingBa
       hunger.DoDelta(hungerTick, true, true);
       starving = hunger.IsStarving();
     }
-    if (sanity && sanity.GetPercentWithPenalty() < 1) sanity.DoDelta(sanityTick, true);
-    if (!starving && bed.healthsleep) health?.DoDelta(healthTick, true, undefined, true);
+    if (sanity && sanity.GetPercentWithPenalty() < 1) { sanity.DoDelta(sanityTick, true); }
+    if (!starving && bed.healthsleep) { health?.DoDelta(healthTick, true, undefined, true); }
     bed.TemperatureTick(this);
-    if (starving) bed.DoWakeUp();
+    if (starving) { bed.DoWakeUp(); }
   }
 
   dispose(): void {

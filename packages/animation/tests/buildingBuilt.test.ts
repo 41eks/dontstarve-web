@@ -61,7 +61,7 @@ it('runs a cookpot\'s built animation only after a successful placement', async 
     // MakePlacer: its own non-persisting entity, declaring a looping clip, SetLightOverride(1) and the placer tags.
     expect(placer.prefab).toBe('cookpot_placer');
     expect(placer.persists).toBe(false);
-    for (const tag of ['CLASSIFIED', 'NOCLICK', 'placer']) expect(placer.hasTag(tag)).toBe(true);
+    for (const tag of ['CLASSIFIED', 'NOCLICK', 'placer']) { expect(placer.hasTag(tag)).toBe(true); }
     expect(placer.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle_empty', loop: true }, lightOverride: 1, opacity: .65, visible: true });
     expect(placer.position.toArray()).toEqual([3, 0, 4]);
 
@@ -88,7 +88,7 @@ it('runs a cookpot\'s built animation only after a successful placement', async 
     expect(built.sprite.sprite.peek().lightOverride).toBeUndefined();
     expect(records()[1].record.transform.position).toEqual([3, 0, 4]);
     await vi.waitFor(() => expect(built.sprite.loaded).toBe(true));
-    for (let frame = 0; frame < 100; frame++) placement.update(0.1);
+    for (let frame = 0; frame < 100; frame++) { placement.update(0.1); }
     expect(built.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_empty', loop: false });
 
     await placement.spawnFromSave('cookpot', records()[1].record);

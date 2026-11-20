@@ -19,7 +19,7 @@ export const mouseTargets: ReadonlySet<MouseTargetEntity> = targets;
 
 /** Prefabs with conditional input opt in/out as their own state changes, independently of world queries. */
 export function setMouseTargetEnabled(model: Object3D, value: boolean): void {
-  if (enabled.get(model) === value) return;
+  if (enabled.get(model) === value) { return; }
   enabled.set(model, value);
   refreshMouseTarget(model);
 }
@@ -31,8 +31,8 @@ export function registerMouseTarget(entity: MouseTargetEntity) {
   const model = entity.transform.model;
   const registration: Registration = { entity, awake: true, refresh() {
     if (registration.awake && model.parent && enabled.get(model) !== false
-      && !entity.isRemoved && !entity.hasTag('NOCLICK')) targets.add(entity);
-    else targets.delete(entity);
+      && !entity.isRemoved && !entity.hasTag('NOCLICK')) { targets.add(entity); }
+    else { targets.delete(entity); }
   } };
   registrations.set(model, registration);
   registration.refresh();

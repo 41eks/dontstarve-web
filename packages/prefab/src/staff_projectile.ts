@@ -78,7 +78,7 @@ function common(prefab: StaffProjectileId, anim: string, lightoverride: number |
   const inst = new StaffProjectileInstance(prefab, new SpriteState({ name: anim, billboard: true }));
   // SetBank("projectile"), SetBuild("staff_projectile"), PlayAnimation(anim, true), SetLightOverride(lightoverride).
   inst.sprite.start(anim);
-  if (lightoverride !== undefined) inst.sprite.setLightOverride(lightoverride);
+  if (lightoverride !== undefined) { inst.sprite.setLightOverride(lightoverride); }
   inst.addTag('projectile');
   inst.persists = false;
   const projectile = addComponent(inst, 'projectile', Projectile);
@@ -88,9 +88,9 @@ function common(prefab: StaffProjectileId, anim: string, lightoverride: number |
   projectile.SetOnMissFn(() => inst.remove());
   inst.onRemove(world.componentUpdates.register({
     OnUpdate: dt => {
-      if (inst.isRemoved || !projectile.IsThrown()) return;
+      if (inst.isRemoved || !projectile.IsThrown()) { return; }
       projectile.Update(dt);
-      if (inst.isRemoved) return;
+      if (inst.isRemoved) { return; }
       inst.copyPosition(projectile.position);
       inst.sprite.setVisible(projectile.visible);
     },
@@ -126,7 +126,7 @@ export function LaunchProjectile(spawn: (prefab: StaffProjectileId, position: TH
   prefab: StaffProjectileId, owner: ProjectileOwner, target: ProjectileTarget, attacker: CombatActor): Projectile {
   const { x, z } = attacker.getPosition();
   const inst = spawn(prefab, new THREE.Vector3(x, 0, z));
-  if (!(inst instanceof StaffProjectileInstance)) throw new Error(`Unable to spawn ${prefab}`);
+  if (!(inst instanceof StaffProjectileInstance)) { throw new Error(`Unable to spawn ${prefab}`); }
   const projectile = inst.components.projectile;
   projectile.position.set(x, 0, z);
   projectile.Throw(owner, target, attacker);

@@ -41,7 +41,7 @@ function FindWalkableOffset(inst: MoleBrainInst, unit: number): Vector3 | undefi
   for (let i = 0; i < 120; i++) {
     const angle = start + i * Math.PI * 2 / 120;
     const x = position.x + Math.cos(angle) * radius, z = position.z - Math.sin(angle) * radius;
-    if (inst.world.isAboveGroundAtPoint(x, position.y, z)) return new Vector3(x, position.y, z);
+    if (inst.world.isAboveGroundAtPoint(x, position.y, z)) { return new Vector3(x, position.y, z); }
   }
   return undefined;
 }
@@ -62,7 +62,7 @@ export class MoleBrain extends Brain {
       return pos ? MakeMoleHillAction(inst, pos, unit) : undefined;
     };
     const takebait = () => {
-      if (inst.getTime() - inst.bornAt < 3 || inst.sg?.hasStateTag('busy') || shouldMakeMoleHome(inst) || isFull(inst)) return;
+      if (inst.getTime() - inst.bornAt < 3 || inst.sg?.hasStateTag('busy') || shouldMakeMoleHome(inst) || isFull(inst)) { return; }
       const target = inst.world.findEntity(inst, 20 * unit, IsMoleBait, ['molebait'], ['outofreach', 'INLIMBO', 'fire']);
       // Source checks the mark after FindEntity, rather than searching for the next bait.
       if (target && IsMoleBait(target) && !target.selectedasmoletarget && IsOnValidGround(inst, target)) {

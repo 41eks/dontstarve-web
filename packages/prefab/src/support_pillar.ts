@@ -43,16 +43,16 @@ function UpdateLevel(inst: SupportPillarInstance): void {
   const num = inst.components.constructionsite.GetSlotCount(1);
   inst._level = num >= 40 ? 0 : num >= 20 ? 1 : num >= 10 ? 2 : num > 0 ? 3 : 4;
   inst.suffix = inst._level > 0 ? `_${inst._level}` : '';
-  if (inst.suffix === '_4') inst.removeTag('quake_blocker');
+  if (inst.suffix === '_4') { inst.removeTag('quake_blocker'); }
   else {
     inst.addTag('quake_blocker');
-    if (inst.suffix === '') inst.components.constructionsite.Disable();
+    if (inst.suffix === '') { inst.components.constructionsite.Disable(); }
   }
 }
 
 function OnSave(inst: SupportPillarInstance, data: EntityPersistData): void {
   // data.regen: the rock pillar never has a _regentask.
-  if (inst.reinforced !== 0) data.supportPillar = { reinforced: inst.reinforced };
+  if (inst.reinforced !== 0) { data.supportPillar = { reinforced: inst.reinforced }; }
 }
 
 /** OnLoad, after constructionsite's OnLoad restored the materials. */

@@ -57,8 +57,8 @@ class NightmareTimepiece implements ItemRuntimeComponent {
     this.stopWorld.splice(0).forEach(stop => stop());
     this.phase = getBoundWatchWorldContent()?.(WorldContentKey.NightmarePhase, stop => this.stopWorld.push(stop));
     const phase = this.phase;
-    if (phase) this.stopWorld.push(createEffect(() => this.OnNightmarePhaseChanged(phase.get())));
-    else this.OnNightmarePhaseChanged('none');
+    if (phase) { this.stopWorld.push(createEffect(() => this.OnNightmarePhaseChanged(phase.get()))); }
+    else { this.OnNightmarePhaseChanged('none'); }
   }
 
   private stateOf(phase: WorldNightmarePhase) { return STATES[phase] ?? DEFAULT_STATE; }
@@ -74,19 +74,19 @@ class NightmareTimepiece implements ItemRuntimeComponent {
 
   GetStatus(): NightmareTimepieceStatus {
     const phase = this.phase?.peek() ?? 'none';
-    if (phase === 'warn') return 'WARN';
-    if (phase === 'calm') return 'CALM';
-    if (phase === 'dawn') return 'DAWN';
-    if (phase !== 'wild') return 'NOMAGIC';
+    if (phase === 'warn') { return 'WARN'; }
+    if (phase === 'calm') { return 'CALM'; }
+    if (phase === 'dawn') { return 'DAWN'; }
+    if (phase !== 'wild') { return 'NOMAGIC'; }
     const timeinphase = this.phase?.nightmareclock?.GetTimeInPhase() ?? 0;
     return timeinphase < .33 ? 'WAXING' : timeinphase < .66 ? 'STEADY' : 'WANING';
   }
 
   private toground(): void {
     const owner = this.owner;
-    if (!owner) return;
+    if (!owner) { return; }
     this.owner = undefined;
-    if (!holds(owner, this.entity.prefab)) owner.removeTag('nightmaretracker');
+    if (!holds(owner, this.entity.prefab)) { owner.removeTag('nightmaretracker'); }
   }
 
   /** topocket: owner.components.inventoryitem:GetGrandOwner(), through a held backpack to whoever holds it. */
@@ -94,7 +94,7 @@ class NightmareTimepiece implements ItemRuntimeComponent {
     // A backpack lying on the ground has no grand owner of its own; it is then the owner.
     const item = this.entity.components.inventoryitem, grand = item.GetGrandOwner() ?? item.owner;
     const owner = isTracker(grand) ? grand : undefined;
-    if (owner === this.owner) return;
+    if (owner === this.owner) { return; }
     this.toground();
     owner?.addTag('nightmaretracker');
     this.owner = owner;

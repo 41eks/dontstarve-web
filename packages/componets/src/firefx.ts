@@ -87,14 +87,14 @@ export class FireFX {
   }
 
   SetLevel(lev: number, immediate = false): void {
-    if (!(lev > 0 && lev !== this.level)) return;
+    if (!(lev > 0 && lev !== this.level)) { return; }
     if (this.playignitesound && (this.level === undefined || lev > this.level)) {
       this.inst.PlaySound(this.lightsound ?? (lev >= this.bigignitesoundthresh ? 'dontstarve/common/fireBurstLarge' : 'dontstarve/common/fireBurstSmall'));
     }
-    if (this.level !== undefined) immediate = true;
+    if (this.level !== undefined) { immediate = true; }
     this.level = Math.min(lev, this.levels.length);
     const params = this.levels[this.level - 1];
-    if (immediate || params.pre === undefined) this.inst.PlayAnimation(params.anim, true);
+    if (immediate || params.pre === undefined) { this.inst.PlayAnimation(params.anim, true); }
     else {
       this.inst.PlayAnimation(params.pre);
       this.inst.PushAnimation(params.anim, true);
@@ -103,10 +103,10 @@ export class FireFX {
     this.lightState = { radius: this.current_radius, intensity: params.intensity, falloff: params.falloff, colour: params.colour };
     this.light.set(this.lightState);
     if (this.playingsound !== params.sound) {
-      if (this.playingsound !== undefined) this.inst.KillSound('fire');
+      if (this.playingsound !== undefined) { this.inst.KillSound('fire'); }
       this.playingsound = params.sound;
       this.playingsoundintensity = undefined;
-      if (params.sound !== undefined && !this.inst.IsAsleep()) this.inst.PlaySound(params.sound, 'fire');
+      if (params.sound !== undefined && !this.inst.IsAsleep()) { this.inst.PlaySound(params.sound, 'fire'); }
     }
     if (this.playingsoundintensity !== params.soundintensity && params.sound !== undefined) {
       this.playingsoundintensity = params.soundintensity;
@@ -125,7 +125,7 @@ export class FireFX {
     }
     this.inst.PlaySound(this.extinguishsound ?? 'dontstarve/common/fireOut');
     const pst = this.level === undefined ? undefined : this.levels[this.level - 1]?.pst;
-    if (pst === undefined) return false;
+    if (pst === undefined) { return false; }
     this.inst.PlayAnimation(pst);
     return true;
   }
@@ -133,13 +133,13 @@ export class FireFX {
   OnEntitySleep(): void { this.inst.KillSound('fire'); }
 
   OnEntityWake(): void {
-    if (this.playingsound === undefined || this.inst.PlayingSound('fire')) return;
+    if (this.playingsound === undefined || this.inst.PlayingSound('fire')) { return; }
     this.inst.PlaySound(this.playingsound, 'fire');
-    if (this.playingsoundintensity !== undefined) this.inst.SetSoundParameter('fire', 'intensity', this.playingsoundintensity);
+    if (this.playingsoundintensity !== undefined) { this.inst.SetSoundParameter('fire', 'intensity', this.playingsoundintensity); }
   }
 
   private setLight(patch: Partial<NonNullable<FireFX['lightState']>>): void {
-    if (!this.lightState) return;
+    if (!this.lightState) { return; }
     this.lightState = { ...this.lightState, ...patch };
     this.light.set(this.lightState);
   }

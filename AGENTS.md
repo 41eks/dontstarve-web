@@ -10,7 +10,7 @@
 - 浏览器测试使用本 worktree 自己启动的 vite 测试服务和未被占用的端口，不复用其他 worktree 或会话的服务；不终止不属于本任务的进程。
 - 相关 vitest 测试和类型检查通过（改动影响启动、加载或性能时还需通过 Playwright）后，在任务分支上提交，再把最新的 `main` 合并进来并重新运行受影响的测试，然后把任务分支合并到 `main`。
 - 提交前运行 `pnpm check:conventions`，不得增加违规。它对照 `scripts/conventions-baseline.json` 检查本文件和各 package `AGENTS.md` 中可机械判断的规则，只在某个文件某条规则的违规数超过基线时失败；修掉违规后用 `node scripts/check-conventions.mjs --write-baseline scripts/conventions-baseline.json` 收紧基线。确属合理的例外在该行或上一行写 `// conventions-allow <规则>: <理由>`，不靠放宽基线绕过。
-- 提交前同样运行 `pnpm lint`（ESLint，规则见 `eslint.config.mjs`，目前为 `curly: all`：`if`／`else`／循环体一律用花括号块）。已有违规按文件记录在 `eslint-suppressions.json`，只有某文件违规数超过记录时才失败；改动的文件超出时可用 `pnpm exec eslint --fix <文件>` 修正，修掉旧违规后用 `pnpm lint --prune-suppressions` 收紧记录。不得用 `--suppress-all` 或 `--suppress-rule` 放宽记录来让新代码通过。
+- ESLint（规则见 `eslint.config.mjs`，目前为 `curly: all`：`if`／`else`／循环体一律用花括号块）由 pre-commit 钩子 `.githooks/pre-commit` 对暂存的 JS／TS 文件运行；`pnpm install` 的 `prepare` 脚本设置 `core.hooksPath`。钩子失败时用 `pnpm exec eslint --fix <文件>` 修正后重新暂存，不用 `--no-verify` 跳过；`pnpm lint` 检查整个仓库。
 - 合并到 `main` 时不得覆盖主检出目录中其他会话未提交的修改：不对主检出目录执行 `git stash`、`git reset`、`git checkout -- <path>` 或 `git clean`。如果合并会触及这些文件，先暂停并向用户确认处理方式。
 - 合并完成后删除该任务的 worktree 和分支。
 

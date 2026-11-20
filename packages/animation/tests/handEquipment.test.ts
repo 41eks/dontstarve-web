@@ -37,7 +37,7 @@ it('equips restored and committed torches through equippable with the owner, une
   // The player inst: the owner of the store and of the light its equipment attaches.
   const owner = testPlayer({ model: lightParent.transform.model, inventory: store });
   const events: string[] = [];
-  for (const name of ['equip', 'unequip']) owner.ListenForEvent(name, () => events.push(name));
+  for (const name of ['equip', 'unequip']) { owner.ListenForEvent(name, () => events.push(name)); }
   owner.OpenEquipmentView = createEquipmentViews(owner, { sprite: { sprite: new SpriteState({ name: 'idle' }), art: assets }, assets, hats, lightParent });
   try {
     store.replaceState({ slots: [
@@ -91,7 +91,7 @@ it("goes through SGwilson's equip and unequip handlers: item_out, item_in and it
   const player = await createPlayer('/dst/data/anim');
   const animation = playerInst(player);
   const equipper = createPlayerEquipper(animation);
-  const settle = () => { for (let frame = 0; frame < 30; frame++) advancePlayer(animation, 1 / 30); };
+  const settle = () => { for (let frame = 0; frame < 30; frame++) { advancePlayer(animation, 1 / 30); } };
   try {
     expect(animation.sg.stateName).toBe('idle');
     equipper.equip('torch');

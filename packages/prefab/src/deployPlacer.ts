@@ -41,26 +41,26 @@ export class DeployPlacer {
   }
 
   update(dt = 0): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     const active = this.getActiveItem();
     const item = active && !active.isRemoved && active.components.deployable ? active : undefined;
     if (item !== this.item || item?.skinId !== this.skinId) {
       this.item = item; this.skinId = item?.skinId;
       this.release();
       // inventoryitem_replica.lua GetDeployPlacerName.
-      if (item?.components.deployable?.usegridplacer) this.createGridPlacer(item);
-      else if (item?.prefab === FARM_PLOW_ITEM_ID) this.createPlowPlacer();
-      else if (item) this.createPlantPlacer(item);
+      if (item?.components.deployable?.usegridplacer) { this.createGridPlacer(item); }
+      else if (item?.prefab === FARM_PLOW_ITEM_ID) { this.createPlowPlacer(); }
+      else if (item) { this.createPlantPlacer(item); }
     }
     const placer = this.placer;
-    if (!placer || !item) return;
+    if (!placer || !item) { return; }
     placer.display.update(dt); placer.linked?.display.update(dt);
     const point = this.pointer.groundPoint();
     if (!!point !== placer.visible) {
       placer.instance.sprite.setVisible(placer.visible = !!point);
       placer.linked?.instance.sprite.setVisible(!!point);
     }
-    if (point) placer.place(point, item.components.deployable!.CanDeploy(point, this.map));
+    if (point) { placer.place(point, item.components.deployable!.CanDeploy(point, this.map)); }
   }
 
   private createGridPlacer(item: ItemEntity): void {
@@ -83,7 +83,7 @@ export class DeployPlacer {
         const centre = this.map.tileCenter(point);
         instance.setPosition(centre.x, .05, centre.z);
         // gridplacer.lua OnCanBuild / OnCannotBuild.
-        if (valid !== tinted) sprite.setColour((tinted = valid) ? [1, 1, 1] : [.75, .25, .25]);
+        if (valid !== tinted) { sprite.setColour((tinted = valid) ? [1, 1, 1] : [.75, .25, .25]); }
       } };
       this.world.scene.add(model);
     }).catch((error: unknown) => console.error('Unable to load turf gridplacer', error));
@@ -106,24 +106,24 @@ export class DeployPlacer {
       const centre = this.map.tileCenter(point);
       entity.instance.setPosition(centre.x, 0, centre.z);
       outline.instance.setPosition(centre.x, .05, centre.z);
-      if (valid === tinted) return;
+      if (valid === tinted) { return; }
       tinted = valid;
-      for (const { instance } of [entity, outline]) instance.sprite.setColour(valid ? [1, 1, 1] : [.75, .25, .25]);
+      for (const { instance } of [entity, outline]) { instance.sprite.setColour(valid ? [1, 1, 1] : [.75, .25, .25]); }
     } };
     this.world.scene.add(entity.display.model, outline.display.model);
   }
 
   private createPlantPlacer(item: ItemEntity): void {
     const definition = item.components.deployable?.placer;
-    if (!definition) return;
+    if (!definition) { return; }
     const skins = GROUND_ITEM_DEFINITIONS[item.prefab].skinArchives;
-    if (item.skinId !== undefined && !skins[item.skinId]) throw new Error(`Unsupported ${item.prefab} skin: ${item.skinId}`);
+    if (item.skinId !== undefined && !skins[item.skinId]) { throw new Error(`Unsupported ${item.prefab} skin: ${item.skinId}`); }
     // MakePlacer(name, bank, build, anim) in the item's skin, drawn by the shared batches. The placer's display loads its
     // art; it is hidden until the pointer is over the ground.
     const entity = createArchiveEntity(`${item.prefab}_placer`, this.resources.archive({ animationArchive: definition.animationArchive ?? `${definition.bank}.zip`,
       buildArchives: [`${definition.build}.zip`], bank: definition.bank }, PLACER_ARCHIVE_OPTIONS), { name: definition.animation, billboard: true }, 'PlantPlacer',
       placer => {
-        if (item.skinId === undefined) return;
+        if (item.skinId === undefined) { return; }
         placer.skinId = item.skinId;
         placer.sprite.setSkinSource({ art: this.resources.archives, archives: skins });
       });
@@ -133,14 +133,14 @@ export class DeployPlacer {
     let tinted: boolean | undefined;
     this.placer = { instance, display: entity.display, visible: false, place: (point, valid) => {
       instance.copyPosition(point);
-      if (valid !== tinted) instance.sprite.setColour((tinted = valid) ? [1, 1, 1] : [.75, .25, .25]);
+      if (valid !== tinted) { instance.sprite.setColour((tinted = valid) ? [1, 1, 1] : [.75, .25, .25]); }
     } };
     this.world.scene.add(entity.display.model);
   }
 
   private tagPlacer(instance: Placer['instance']): void {
     // prefabutil.lua MakePlacer and gridplacer.lua tag their placer "placer".
-    for (const tag of ['FX', 'NOCLICK', 'placer']) instance.addTag(tag);
+    for (const tag of ['FX', 'NOCLICK', 'placer']) { instance.addTag(tag); }
     instance.persists = false;
     instance.sprite.setLightOverride(1);
   }
@@ -152,11 +152,11 @@ export class DeployPlacer {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true; this.stopUpdate();
     this.release();
     this.gridAssets.dispose();
     this.resources.dispose();
-    if (this.pointer !== this.world.mouseActions?.pointer) this.pointer.dispose();
+    if (this.pointer !== this.world.mouseActions?.pointer) { this.pointer.dispose(); }
   }
 }

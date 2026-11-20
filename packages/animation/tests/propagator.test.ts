@@ -107,6 +107,6 @@ it('spreads an item fire through TheSim to the propagators in range, leaving out
   source.propagator.Update(.5);
   // MakeSmallPropagator's range is 4 units (12 here): only the log on the ground within it is heated.
   expect(heated.map(spy => spy.mock.calls.length > 0)).toEqual([true, false, false]);
-  for (const { entity } of [source, near, held, far]) entity.destroy();
+  for (const { entity } of [source, near, held, far]) { entity.destroy(); }
   ents.dispose();
 });

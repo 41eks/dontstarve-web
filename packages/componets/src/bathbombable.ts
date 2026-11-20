@@ -19,8 +19,8 @@ export class BathBombable<Item = unknown, Doer = unknown> {
   private setState(can: boolean, bombed: boolean): void {
     this.bombedState.set(bombed);
     this.canState.set(can);
-    if (this.disposed) return;
-    if (can) this.inst.addTag('bathbombable'); else this.inst.removeTag('bathbombable');
+    if (this.disposed) { return; }
+    if (can) { this.inst.addTag('bathbombable'); } else { this.inst.removeTag('bathbombable'); }
   }
   SetOnBathBombedFn(fn: BathBombedFn<Item, Doer> | undefined): void { this.onbathbombedfn = fn; }
   OnBathBombed(item?: Item, doer?: Doer): void {
@@ -30,7 +30,7 @@ export class BathBombable<Item = unknown, Doer = unknown> {
   DisableBathBombing(): void { this.setState(false, false); }
   Reset(): void { this.setState(true, false); }
   OnRemoveFromEntity(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true; this.inst.removeTag('bathbombable');
   }
   dispose(): void { this.OnRemoveFromEntity(); this.onbathbombedfn = undefined; }

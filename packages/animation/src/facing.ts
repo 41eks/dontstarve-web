@@ -31,7 +31,7 @@ export function facingFromRotation(rotation: number, heading: number): number {
  */
 export function rotateFacing(facing: number, rotation: number): number {
   const step = FACING_BY_STEP.findIndex(stepFacing => stepFacing === facing);
-  if (step < 0) throw new RangeError(`Not an eight-faced facing: ${facing}`);
+  if (step < 0) { throw new RangeError(`Not an eight-faced facing: ${facing}`); }
   const steps = step + Math.round(rotation / 45);
   return FACING_BY_STEP[((steps % 8) + 8) % 8];
 }
@@ -47,7 +47,7 @@ export function facingFromHeading(heading: number): number {
  * for the left-hand one.
  */
 export function selectsFacing(mask: number, facing: number): { matches: boolean; flipped: boolean } {
-  if ((mask & facing) === 0) return { matches: false, flipped: false };
+  if ((mask & facing) === 0) { return { matches: false, flipped: false }; }
   const right = LEFT_TO_RIGHT.get(facing);
   return { matches: true, flipped: right !== undefined && (mask & right) !== 0 };
 }

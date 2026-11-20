@@ -43,7 +43,7 @@ function setup(player = new THREE.Group()) {
   return { farm, turf, world, blockers };
 }
 function advance(animation: PlayerInstance, frames: number) {
-  for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30);
+  for (let i = 0; i < frames; i++) { advancePlayer(animation, 1 / 30); }
 }
 
 it('resolves both source ground builds, the separate golden held build and invisible equipment', async () => {
@@ -149,7 +149,7 @@ it('takes TILL at the point, creates one hole at till_loop frame 11, and drops a
     expect(farm.decor()).toEqual([]);
     walkIn();
     await vi.waitFor(() => { advancePlayer(animation, 1 / 30); expect(animation.sg.stateName).toBe('till_start'); });
-    while (animation.sg.stateName === 'till_start') advancePlayer(animation, 1 / 30);
+    while (animation.sg.stateName === 'till_start') { advancePlayer(animation, 1 / 30); }
     advance(animation, 10);
     expect(farm.decor()).toEqual([]);
     facePlayer(animation, 'side', true); advancePlayer(animation, 1 / 30);

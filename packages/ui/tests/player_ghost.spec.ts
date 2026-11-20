@@ -9,7 +9,7 @@ test('death leaves a skeleton, becomes a ghost, and a saved ghost resumes withou
   test.setTimeout(150_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', message => { if (message.type() === 'error') { errors.push(message.text()); } });
   await page.route('**/saves/initial-world.json', async route => {
     const response = await route.fetch(), save = await response.json();
     save.world.entities = {}; save.world.elapsedSeconds = 0;
@@ -68,7 +68,7 @@ test('a ghost that haunts the multiplayer portal is resurrected there with a hea
   test.setTimeout(150_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', message => { if (message.type() === 'error') { errors.push(message.text()); } });
   await page.route('**/saves/initial-world.json', async route => {
     const response = await route.fetch(), save = await response.json();
     save.world.entities = { multiplayer_portal_moonrock: [{ id: 'portal-1', transform: { position: [12, 0, 0], rotationY: 0 }, components: {} }] };

@@ -148,11 +148,11 @@ export function mergeCellRectangles(width: number, has: (col: number, row: numbe
     for (let col = 0; row < width && col < width;) {
       if (!has(col, row)) { col++; continue; }
       const start = col;
-      while (col < width && has(col, row)) col++;
+      while (col < width && has(col, row)) { col++; }
       const key = start * (width + 1) + col, previous = open.get(key);
-      if (previous) { open.delete(key); next.set(key, previous); } else next.set(key, { start, end: col, row });
+      if (previous) { open.delete(key); next.set(key, previous); } else { next.set(key, { start, end: col, row }); }
     }
-    for (const run of open.values()) rects.push(run.start, run.end, run.row, row);
+    for (const run of open.values()) { rects.push(run.start, run.end, run.row, row); }
     open = next;
   }
   return rects;
@@ -167,7 +167,7 @@ export function cellRectangleGeometry(rects: readonly number[], min: number, til
   for (let i = 0; i < rects.length; i += 4) {
     const x0 = Math.max(-half, (rects[i] + min) * tile), x1 = Math.min(half, (rects[i + 1] + min) * tile);
     const z0 = Math.max(-half, (rects[i + 2] + min) * tile), z1 = Math.min(half, (rects[i + 3] + min) * tile);
-    if (x1 <= x0 || z1 <= z0) continue;
+    if (x1 <= x0 || z1 <= z0) { continue; }
     const offset = vertices;
     for (let corner = 0; corner < 4; corner++, vertices++) {
       point.set(corner < 2 ? x0 : x1, 0, corner % 2 === 0 ? z0 : z1).applyMatrix4(inverse).toArray(positions, vertices * 3);
@@ -305,21 +305,21 @@ export class OceanRenderPipeline implements SceneRenderPass {
   }
 
   rebuildColours(): void {
-    for (let row = 0; row < this.width; row++) for (let col = 0; col < this.width; col++) {
+    for (let row = 0; row < this.width; row++) { for (let col = 0; col < this.width; col++) {
       const colour = this.map.oceanColoursAt?.(col + this.min, row + this.min)
         ?? (this.map.isOceanTileAt(col + this.min, row + this.min) ? OCEAN : LAND);
       const offset = (row * this.width + col) * 4;
       this.dayPixels.set(colour.day, offset);
       this.duskPixels.set(colour.dusk, offset);
       this.primaryPixels.set(colour.primary, offset);
-    }
+    } }
     this.day.needsUpdate = this.dusk.needsUpdate = this.primary.needsUpdate = true;
     this.rebuildFloor();
     this.coloursDirty = true;
   }
 
   setPhase(blend: number, floor: THREE.Vector3): void {
-    if (this.blendMaterial.uniforms.textureBlend.value !== blend) this.blendDirty = true;
+    if (this.blendMaterial.uniforms.textureBlend.value !== blend) { this.blendDirty = true; }
     this.blendMaterial.uniforms.textureBlend.value = blend;
     this.floorColour.copy(floor);
   }
@@ -327,15 +327,15 @@ export class OceanRenderPipeline implements SceneRenderPass {
   update(dt: number): void { this.combinedMaterial.uniforms.oceanTime.value += dt; }
 
   private syncGeometry(): void {
-    if (!this.surface) return;
+    if (!this.surface) { return; }
     this.combinedMesh.geometry = this.surface.geometry;
     this.combinedMesh.matrix.copy(this.surface.matrixWorld);
   }
 
   private resize(renderer: THREE.WebGLRenderer): void {
     const current = renderer.getRenderTarget();
-    if (current) this.bufferSize.set(current.width, current.height);
-    else renderer.getDrawingBufferSize(this.bufferSize);
+    if (current) { this.bufferSize.set(current.width, current.height); }
+    else { renderer.getDrawingBufferSize(this.bufferSize); }
     if (this.encoded.width !== this.bufferSize.x || this.encoded.height !== this.bufferSize.y) {
       this.encoded.setSize(this.bufferSize.x, this.bufferSize.y);
     }
@@ -395,15 +395,15 @@ export class OceanRenderPipeline implements SceneRenderPass {
   }
 
   render(renderer: THREE.WebGLRenderer, camera: THREE.Camera, lighting?: ScenePassLighting): void {
-    if (this.disposed || !this.surface) return;
+    if (this.disposed || !this.surface) { return; }
     this.syncGeometry();
     this.resize(renderer);
     const uniforms = this.combinedMaterial.uniforms;
     uniforms.lightmap.value = lighting?.texture ?? this.white;
     uniforms.useLightmap.value = lighting ? 1 : 0;
-    if (lighting) this.ambient.copy(lighting.ambient);
-    else this.ambient.set(1, 1, 1);
-    if (lighting) this.lightmapExtents.copy(lighting.extents);
+    if (lighting) { this.ambient.copy(lighting.ambient); }
+    else { this.ambient.set(1, 1, 1); }
+    if (lighting) { this.lightmapExtents.copy(lighting.extents); }
     this.withRendererState(renderer, () => {
       this.renderColourTextures(renderer);
       renderer.setRenderTarget(this.encoded);
@@ -430,14 +430,14 @@ export class OceanRenderPipeline implements SceneRenderPass {
   }
 
   async prewarm(renderer: THREE.WebGLRenderer, camera: THREE.Camera, signal?: AbortSignal): Promise<void> {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.syncGeometry();
     this.resize(renderer);
     for (const texture of [this.day, this.dusk, this.primary, this.white, this.combinedMaterial.uniforms.noiseTexture.value]) {
       signal?.throwIfAborted();
       renderer.initTexture(texture);
     }
-    for (const output of this.targets()) renderer.initRenderTarget(output);
+    for (const output of this.targets()) { renderer.initRenderTarget(output); }
     for (const material of [this.blurMaterial, this.blendMaterial]) {
       signal?.throwIfAborted();
       this.quad.material = material;
@@ -454,15 +454,15 @@ export class OceanRenderPipeline implements SceneRenderPass {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.unregister?.();
     this.floorMesh.removeFromParent();
-    if (this.ownsPlaceholderGeometry) this.combinedMesh.geometry.dispose();
+    if (this.ownsPlaceholderGeometry) { this.combinedMesh.geometry.dispose(); }
     this.floorMesh.geometry.dispose();
-    for (const output of this.targets()) output.dispose();
-    for (const texture of [this.day, this.dusk, this.primary, this.white]) texture.dispose();
-    for (const material of [this.blurMaterial, this.blendMaterial, this.combinedMaterial, this.resolveMaterial, this.floorMaterial]) material.dispose();
+    for (const output of this.targets()) { output.dispose(); }
+    for (const texture of [this.day, this.dusk, this.primary, this.white]) { texture.dispose(); }
+    for (const material of [this.blurMaterial, this.blendMaterial, this.combinedMaterial, this.resolveMaterial, this.floorMaterial]) { material.dispose(); }
     this.quad.geometry.dispose();
     this.combinedScene.clear();
     this.quadScene.clear();

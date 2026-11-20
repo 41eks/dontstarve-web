@@ -33,7 +33,7 @@ function setup() {
 }
 function meshes(model: THREE.Object3D): THREE.Mesh[] {
   const result: THREE.Mesh[] = [];
-  model.traverse(object => { if (object instanceof THREE.Mesh) result.push(object); });
+  model.traverse(object => { if (object instanceof THREE.Mesh) { result.push(object); } });
   return result;
 }
 
@@ -75,7 +75,7 @@ it('shares layered wall art, releases only visuals, restores current health/faci
     expect(instance.sprite).toBe(controller);
     expect(controller.currentAnimation).toBe('broken');
     expect(meshes(model)[0].geometry.drawRange.count).toBe(12);
-    for (const [key, component] of Object.entries(components)) expect(instance.components[key as keyof typeof components]).toBe(component);
+    for (const [key, component] of Object.entries(components)) { expect(instance.components[key as keyof typeof components]).toBe(component); }
     expect(lookupPrefabInstance(model)?.skinId).toBe(saved[0].record.components.wall!.skinId);
     const restored = wallsFixture(world, () => false);
     try {

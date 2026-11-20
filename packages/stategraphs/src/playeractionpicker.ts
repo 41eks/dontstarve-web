@@ -44,7 +44,7 @@ export class PlayerActionPicker {
   PushActionFilter(fn: ActionFilter, priority = 0): void { this.actionFilters.push({ fn, priority }); }
   PopActionFilter(fn: ActionFilter): void {
     const index = this.actionFilters.findLastIndex(filter => filter.fn === fn);
-    if (index >= 0) this.actionFilters.splice(index, 1);
+    if (index >= 0) { this.actionFilters.splice(index, 1); }
   }
   private get actionFilter(): ActionFilter | undefined {
     return this.actionFilters.reduce<{ fn: ActionFilter; priority: number } | undefined>(
@@ -55,7 +55,7 @@ export class PlayerActionPicker {
   bindPlayer(doer: SceneActionDoer & PointActionDoer, equippedItem: () => ItemEntity | undefined): () => void {
     const player = { doer, equippedItem };
     this.player = player;
-    return () => { if (this.player === player) this.player = undefined; };
+    return () => { if (this.player === player) { this.player = undefined; } };
   }
 
   /**
@@ -64,12 +64,12 @@ export class PlayerActionPicker {
    */
   private componentActions(target: THREE.Object3D | undefined): MouseActionCandidate[] {
     const player = this.player, entity = findActionEntity(target);
-    if (!player) return [];
+    if (!player) { return []; }
     const activeItem = player.doer.components?.inventory?.GetActiveItem?.();
-    if (!entity || !target) return activeItem ? this.activeItemPointActions(player, activeItem) : this.pointActions(player);
+    if (!entity || !target) { return activeItem ? this.activeItemPointActions(player, activeItem) : this.pointActions(player); }
     if (activeItem) {
       // GetRightClickActions: only an entity that does not catch the mouse leaves the active item's point actions.
-      if (entity.hasTag('walkableplatform') || entity.hasTag('ignoremouseover')) return this.activeItemPointActions(player, activeItem);
+      if (entity.hasTag('walkableplatform') || entity.hasTag('ignoremouseover')) { return this.activeItemPointActions(player, activeItem); }
       const uses = ([false, true] as const).flatMap(right => this.GetUseItemActions(entity, activeItem, right).map(action => ({
         action, button: right ? 'right' as const : 'left' as const, model: target, source: 'inventory' as const })));
       return entity.hasTag('walkableperipheral') ? [...uses, ...this.activeItemPointActions(player, activeItem)] : uses;
@@ -89,7 +89,7 @@ export class PlayerActionPicker {
   /** playeractionpicker.lua GetUseItemActions / SortActionList, including the current action filter. */
   GetUseItemActions(target: PlayerActionTarget, item: ItemEntity, right = false): ActionDescription[] {
     const doer = this.player?.doer;
-    if (!doer) return [];
+    if (!doer) { return []; }
     return collectUseItemActions(item, doer, target, right).map(action => ({ action, doer, target, invobject: item }))
       .filter(action => !this.actionFilter || this.actionFilter(action))
       .sort((a, b) => getActionPriority(b) - getActionPriority(a));
@@ -98,7 +98,7 @@ export class PlayerActionPicker {
   /** playeractionpicker.lua GetInventoryActions without the drop modifier: the item's INVENTORY actions, sorted. */
   GetInventoryActions(useitem: ItemEntity, right = false): ActionDescription[] {
     const doer = this.player?.doer;
-    if (!doer) return [];
+    if (!doer) { return []; }
     return collectInventoryActions(useitem, doer, right).map(action => ({ action, doer, invobject: useitem }))
       .filter(action => !this.actionFilter || this.actionFilter(action))
       .sort((a, b) => getActionPriority(b) - getActionPriority(a));
@@ -119,7 +119,7 @@ export class PlayerActionPicker {
   /** GetPointActions(position, useitem, true) for the active item; of its POINT entries only deployable is ported. */
   private activeItemPointActions(player: NonNullable<PlayerActionPicker['player']>, item: ItemEntity): MouseActionCandidate[] {
     const point = this.pointer.groundPoint();
-    if (!point) return [];
+    if (!point) { return []; }
     return collectPointActions(item, player.doer, point, true).filter(action => action === 'DEPLOY' || action === 'DEPLOY_TILEARRIVE').map(action => ({
       action: { action, doer: player.doer, invobject: item, pos: point }, button: 'right' as const, source: 'inventory' as const }));
   }
@@ -130,7 +130,7 @@ export class PlayerActionPicker {
    */
   private pointActions(player: NonNullable<PlayerActionPicker['player']>): MouseActionCandidate[] {
     const point = this.pointer.groundPoint();
-    if (!point) return [];
+    if (!point) { return []; }
     const item = player.equippedItem(), pos = point.clone(), doer = player.doer;
     return ([false, true] as const).flatMap(right => {
       const button = right ? 'right' as const : 'left' as const;
@@ -173,7 +173,7 @@ export class PlayerActionPicker {
     try {
       const hit = this.pointer.pickMouseTarget();
       let target = hit?.object ?? null;
-      while (target && !isMouseTarget(target)) target = target.parent;
+      while (target && !isMouseTarget(target)) { target = target.parent; }
       this.selectedModel = target ?? undefined;
       const candidates = [...this.componentActions(target ?? undefined), ...[...this.providers].flatMap(provider => provider(target ?? undefined))];
       const filter = this.actionFilter;
@@ -196,11 +196,11 @@ export class PlayerActionPicker {
       const doer = this.player?.doer, entity = findActionEntity(target ?? undefined);
       if (event?.altKey && doer && entity?.hasTag('inspectable') && (!doer.sg || ['moving', 'idle', 'channeling'].some(tag => doer.sg!.hasStateTag(tag)))) {
         const inspect = { action: 'LOOKAT', doer, target: entity };
-        if (!filter || filter(inspect)) result.left = inspect;
+        if (!filter || filter(inspect)) { result.left = inspect; }
       }
       if (result.left && result.right && result.left.action === result.right.action
-        && result.left.invobject === result.right.invobject) result.right = undefined;
-      if (event) this.eventActions.set(event, { actions: result, target: this.selectedModel });
+        && result.left.invobject === result.right.invobject) { result.right = undefined; }
+      if (event) { this.eventActions.set(event, { actions: result, target: this.selectedModel }); }
       return result;
     } finally { this.pointer.endFrame(); }
   }

@@ -27,11 +27,11 @@ export class UseableItem {
 
   private setInUse(inuse: boolean): void {
     this.inuseState.set(inuse);
-    if (inuse) this.inst.addTag('inuse'); else this.inst.removeTag('inuse');
+    if (inuse) { this.inst.addTag('inuse'); } else { this.inst.removeTag('inuse'); }
   }
   StartUsingItem(): boolean {
     this.setInUse(true);
-    if (this.onusefn) this.setInUse(this.onusefn(this.inst) !== false);
+    if (this.onusefn) { this.setInUse(this.onusefn(this.inst) !== false); }
     return this.inuseState.peek();
   }
   StopUsingItem(): void {

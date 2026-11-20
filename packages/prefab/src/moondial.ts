@@ -61,8 +61,8 @@ class Moondial {
             const { phase, waxing } = this.look.get();
             const waxingLook = (waxing && phase !== 'new') || phase === 'full';
             for (const symbol of REFLECTION_SYMBOLS) {
-                if (waxingLook) animState.ClearOverrideSymbol(symbol);
-                else animState.OverrideSymbol(symbol, WANING_BUILD, symbol);
+                if (waxingLook) { animState.ClearOverrideSymbol(symbol); }
+                else { animState.OverrideSymbol(symbol, WANING_BUILD, symbol); }
             }
             const light = LIGHT_STATES[phase];
             inst.sprite.setLightOverride(light.override);
@@ -78,7 +78,7 @@ class Moondial {
             const changed = phase !== this.phase;
             this.phase = phase; this.waxing = waxing;
             this.look.set({ phase, waxing });
-            if (first) { first = false; this.idle(); } else if (changed) this.next();
+            if (first) { first = false; this.idle(); } else if (changed) { this.next(); }
         });
     }
 
@@ -89,26 +89,26 @@ class Moondial {
 
     /** CalcTransitionAnimName. */
     private transitionAnimation(): string {
-        if (this.phase === 'full') return 'wax_to_full';
-        if (this.phase === 'new') return 'wane_to_new';
+        if (this.phase === 'full') { return 'wax_to_full'; }
+        if (this.phase === 'new') { return 'wane_to_new'; }
         return `${this.waxing ? 'wax' : 'wane'}_to_${this.phase}`;
     }
 
     private after(frames: number, run: () => void): void {
         const scheduler = this.inst.worldServices?.scheduler;
-        if (!scheduler) return;
-        const cancel = scheduler.schedule(frames * FRAMES, () => { this.pending.delete(cancel); if (!this.disposed) run(); });
+        if (!scheduler) { return; }
+        const cancel = scheduler.schedule(frames * FRAMES, () => { this.pending.delete(cancel); if (!this.disposed) { run(); } });
         this.pending.add(cancel);
     }
 
     private playSound(path: SoundEventPath): void {
-        for (const sound of this.sounds) if (!sound.isPlaying()) this.sounds.delete(sound);
+        for (const sound of this.sounds) { if (!sound.isPlaying()) { this.sounds.delete(sound); } }
         this.sounds.add(PlaySound(path, this.position));
     }
 
     /** Leaving any state cancels its timeline; idle's onexit kills the looping sound. */
     private exit(): void {
-        for (const cancel of this.pending) cancel();
+        for (const cancel of this.pending) { cancel(); }
         this.pending.clear();
         this.loop?.stop(); this.loop = undefined;
     }
@@ -116,7 +116,7 @@ class Moondial {
     private idle(): void {
         this.exit();
         this.sprite.start(this.phaseAnimation('idle'));
-        if (this.phase === 'full') this.loop = PlaySound(SOUND.full, this.position);
+        if (this.phase === 'full') { this.loop = PlaySound(SOUND.full, this.position); }
     }
 
     private next(): void {
@@ -135,16 +135,16 @@ class Moondial {
         this.exit();
         this.sprite.playOnce(this.phaseAnimation('place'), () => this.idle());
         this.after(5, () => this.playSound(SOUND.craft));
-        this.after(7, () => { if (this.phase !== 'new') this.playSound(SOUND.water); });
+        this.after(7, () => { if (this.phase !== 'new') { this.playSound(SOUND.water); } });
     }
 
     dispose(): void {
-        if (this.disposed) return;
+        if (this.disposed) { return; }
         this.disposed = true;
         this.exit();
-        for (const sound of this.sounds) sound.stop();
+        for (const sound of this.sounds) { sound.stop(); }
         this.sounds.clear();
-        for (const cleanup of this.cleanups) cleanup();
+        for (const cleanup of this.cleanups) { cleanup(); }
         this.inst.light.set(null);
         this.inst.sprite.setLightOverride(null);
     }

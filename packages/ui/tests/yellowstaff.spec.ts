@@ -7,10 +7,10 @@ for (const itemId of ['yellowstaff'] as const) {
     test.setTimeout(120_000);
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
-    if (!hasRandomUUID) await page.addInitScript(() => {
+    page.on('console', (message) => { if (message.type() === 'error') { errors.push(message.text()); } });
+    if (!hasRandomUUID) { await page.addInitScript(() => {
       Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
-    });
+    }); }
     await page.goto('/tests/dst-lighting.html');
     const result = await page.evaluate(async ({ url, itemId }) => {
       const { checkYellowStaff } = await import(url);

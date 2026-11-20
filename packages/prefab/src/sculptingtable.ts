@@ -44,20 +44,20 @@ const ITEM_SOUND = 'dontstarve/common/together/moonbase/moonstaff_place';
 
 /** inst.SoundEmitter:PlaySound: one-shots stop when the table is removed. */
 function playsound(inst: SculptingTableInstance, path: SoundEventPath): void {
-    for (const sound of inst._sounds) if (!sound.isPlaying()) inst._sounds.delete(sound);
+    for (const sound of inst._sounds) { if (!sound.isPlaying()) { inst._sounds.delete(sound); } }
     inst._sounds.add(PlaySound(path, inst.position));
 }
 
 function onhammered(inst: SculptingTableInstance): void {
     inst.components.lootdropper!.DropLoot();
     const { pickable } = inst.components;
-    if (pickable.canInteractWith && pickable.product) inst.components.lootdropper!.SpawnLootPrefab(pickable.product);
+    if (pickable.canInteractWith && pickable.product) { inst.components.lootdropper!.SpawnLootPrefab(pickable.product); }
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
     inst.remove();
 }
 
 function onhit(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     const on = inst.components.prototyper?.on === true;
     inst.sprite.playOnce('hit');
     inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
@@ -96,25 +96,25 @@ function giveitem(inst: SculptingTableInstance, itemname: SculptableMaterial): v
 }
 
 function ongivenitem(inst: SculptingTableInstance, _giver: unknown, item: TradeItem): void {
-    if (isSculptableMaterial(item.prefab)) giveitem(inst, item.prefab);
+    if (isSculptableMaterial(item.prefab)) { giveitem(inst, item.prefab); }
 }
 
 function abletoaccepttest(inst: SculptingTableInstance, item: TradeItem): TradeAcceptance {
-    if (inst.components.pickable.canInteractWith) return { ok: false, reason: 'SLOTFULL' };
+    if (inst.components.pickable.canInteractWith) { return { ok: false, reason: 'SLOTFULL' }; }
     return isSculptableMaterial(item.prefab) ? { ok: true } : { ok: false, reason: 'NOTSCULPTABLE' };
 }
 
 function onturnon(inst: SculptingTableInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     if (inst.sprite.currentAnimation === 'place' || inst.sprite.currentAnimation === 'proximity_loop') {
         inst.sprite.pushAnimation('proximity_loop', true);
-    } else inst.sprite.start('proximity_loop');
+    } else { inst.sprite.start('proximity_loop'); }
     inst._loop?.stop();
     inst._loop = PlaySound('dontstarve/common/together/sculpting_table/proximity_LP', inst.position);
 }
 
 function onturnoff(inst: SculptingTableInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     inst.sprite.pushAnimation('idle', false);
     inst._loop?.stop();
     inst._loop = undefined;
@@ -125,18 +125,18 @@ function onsave(inst: SculptingTableInstance, data: EntityPersistData): void {
     SaveBuildingSkin(inst, data);
     delete data.pickable;
     const { pickable } = inst.components;
-    if (pickable.canInteractWith && pickable.product) data.sculptingtable = { itemname: pickable.product };
+    if (pickable.canInteractWith && pickable.product) { data.sculptingtable = { itemname: pickable.product }; }
 }
 
 /** onload: giveitem restores the held block. */
 function onload(inst: SculptingTableInstance, data: EntityPersistData): void {
     LoadBuildingSkin(inst, data);
     const itemname = data.sculptingtable?.itemname;
-    if (itemname !== undefined && isSculptableMaterial(itemname)) giveitem(inst, itemname);
+    if (itemname !== undefined && isSculptableMaterial(itemname)) { giveitem(inst, itemname); }
 }
 
 function OnRemoveEntity(inst: SculptingTableInstance): void {
-    for (const sound of inst._sounds) sound.stop();
+    for (const sound of inst._sounds) { sound.stop(); }
     inst._sounds.clear();
     inst._loop?.stop();
     inst._loop = undefined;

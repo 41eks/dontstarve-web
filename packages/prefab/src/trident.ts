@@ -49,7 +49,7 @@ export class TridentController implements HeldEquipFunctions {
 
   /** create_water_explosion: waterspouts at four spokes around the target, then the use cost. */
   private createWaterExplosion(position: THREE.Vector3): boolean {
-    if (this.entity.isRemoved || !this.entity.components.inventoryitem.owner) return false;
+    if (this.entity.isRemoved || !this.entity.components.inventoryitem.owner) { return false; }
     // GetRandomWithVariance(-45, 20)
     let angle = -45 + (Math.random() * 2 - 1) * 20;
     for (let i = 0; i < 4; i++) {
@@ -57,7 +57,7 @@ export class TridentController implements HeldEquipFunctions {
       const point = position.clone();
       point.x += FX_RADIUS * Math.cos(angle * Math.PI / 180);
       point.z -= FX_RADIUS * Math.sin(angle * Math.PI / 180);
-      if (this.world.map.isOceanAtPoint(point)) this.world.spawnWaterspout(point);
+      if (this.world.map.isOceanAtPoint(point)) { this.world.spawnWaterspout(point); }
     }
     return this.entity.components.finiteuses.use(COST_PER_EXPLOSION);
   }

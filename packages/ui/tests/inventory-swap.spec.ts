@@ -50,13 +50,13 @@ test('cursor swaps, rejected placement and save reload preserve inventory and ba
 
   await page.evaluate(() => {
     const inventory = (window as any).swapInventory;
-    if (!inventory.add('backpack', 1)) throw new Error('Unable to give backpack');
+    if (!inventory.add('backpack', 1)) { throw new Error('Unable to give backpack'); }
     const source = inventory.addresses().find((address: any) => address.containerId === 'player:inventory'
       && inventory.get(address)?.itemId === 'backpack');
-    if (!inventory.transfer(source, { containerId: 'player:equipment', slotKey: 'body' }, 1)) throw new Error('Unable to equip backpack');
+    if (!inventory.transfer(source, { containerId: 'player:equipment', slotKey: 'body' }, 1)) { throw new Error('Unable to equip backpack'); }
     const bag = inventory.getEntity({ containerId: 'player:equipment', slotKey: 'body' });
     if (!inventory.transfer({ containerId: 'player:inventory', slotKey: '2' },
-      { containerId: `item:backpack:${bag.id}`, slotKey: '0' }, 8)) throw new Error('Unable to prepare backpack');
+      { containerId: `item:backpack:${bag.id}`, slotKey: '0' }, 8)) { throw new Error('Unable to prepare backpack'); }
   });
   const packSlot = page.locator('dst-backpack-panel [data-slot-key="0"]');
   await expect(packSlot).toHaveAttribute('data-item-id', 'log');

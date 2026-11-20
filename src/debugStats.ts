@@ -10,7 +10,7 @@ export function createDebugStats(renderer: WebGLRenderer) {
     let stats: import('stats-gl').default | undefined;
     let disposed = false;
     void import('stats-gl').then(({ default: Stats }) => {
-        if (disposed) return;
+        if (disposed) { return; }
         stats = new Stats({ trackGPU: mode === 'gpu' });
         stats.dom.dataset.debugStats = '';
         document.body.append(stats.dom);

@@ -45,7 +45,7 @@ export class RunAway extends BehaviourNode {
       this.huntertags = hunterparams.tags;
       this.hunternotags = hunterparams.notags;
       this.hunteroneoftags = hunterparams.oneoftags;
-    } else this.hunterfn = hunterparams;
+    } else { this.hunterfn = hunterparams; }
     this.inst = inst;
     this.shouldrunfn = fn;
     this.walk_instead = walk_instead;
@@ -56,14 +56,14 @@ export class RunAway extends BehaviourNode {
   /** Degrees; falls back to the straight away-direction when every deflected fan angle is blocked. */
   GetRunAngle(pt: { x: number; y: number; z: number }, hp: { x: number; y: number; z: number }): number {
     if (this.avoid_angle !== undefined) {
-      if (this.now - this.avoid_time! < 1) return this.avoid_angle;
+      if (this.now - this.avoid_time! < 1) { return this.avoid_angle; }
       this.avoid_time = undefined;
       this.avoid_angle = undefined;
     }
     let angle = this.inst.GetAngleToPoint(hp.x, hp.y, hp.z) + 180;
-    if (angle > 360) angle -= 360;
+    if (angle > 360) { angle -= 360; }
     const result = FindWalkableOffset(this.inst.world, pt, angle * DEGREES, 6, 8);
-    if (!result) return angle; // ok whatever, just run
+    if (!result) { return angle; } // ok whatever, just run
     const resultAngle = result.angle / DEGREES;
     if (result.deflected) {
       this.avoid_time = this.now;
@@ -80,8 +80,8 @@ export class RunAway extends BehaviourNode {
       this.hunter = this.gethunterfn
         ? this.gethunterfn(inst)
         : inst.world.findEntity(inst, this.see_dist, hunterfn && (guy => hunterfn(guy, inst)), this.huntertags, this.hunternotags, this.hunteroneoftags);
-      if (this.gethunterfn && this.hunter && !(this.hunter.isValid() && this.inst.IsNear(this.hunter, this.see_dist))) this.hunter = undefined;
-      if (this.hunter && this.shouldrunfn && !this.shouldrunfn(this.hunter, this.inst)) this.hunter = undefined;
+      if (this.gethunterfn && this.hunter && !(this.hunter.isValid() && this.inst.IsNear(this.hunter, this.see_dist))) { this.hunter = undefined; }
+      if (this.hunter && this.shouldrunfn && !this.shouldrunfn(this.hunter, this.inst)) { this.hunter = undefined; }
       this.status = this.hunter ? RUNNING : FAILED;
     }
     if (this.status === RUNNING) {
@@ -94,7 +94,7 @@ export class RunAway extends BehaviourNode {
         if (this.walk_instead) {
           locomotor.dest = undefined;
           locomotor.WalkInDirection(angle);
-        } else locomotor.RunInDirection(angle);
+        } else { locomotor.RunInDirection(angle); }
         if (distsq(hp, pt) > this.safe_dist * this.safe_dist) {
           this.status = SUCCESS;
           locomotor.Stop();

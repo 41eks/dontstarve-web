@@ -34,7 +34,7 @@ vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}),
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 function meshes(model: THREE.Object3D): THREE.Mesh[] {
   const result: THREE.Mesh[] = [];
-  model.traverse(object => { if (object instanceof THREE.Mesh) result.push(object); });
+  model.traverse(object => { if (object instanceof THREE.Mesh) { result.push(object); } });
   return result;
 }
 
@@ -142,7 +142,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     const previewInstance = lookupPrefabInstance<PrefabInstance>(preview)!;
     // MakePlacer("fence_item_placer", ...): its own non-persisting entity, shown once the pointer is over the ground.
     expect(previewInstance.persists).toBe(false);
-    for (const tag of ['CLASSIFIED', 'NOCLICK', 'placer']) expect(previewInstance.hasTag(tag)).toBe(true);
+    for (const tag of ['CLASSIFIED', 'NOCLICK', 'placer']) { expect(previewInstance.hasTag(tag)).toBe(true); }
     expect(previewInstance.sprite.sprite.peek()).toMatchObject({ clip: { name: 'idle', loop: true }, lightOverride: 1, visible: true });
     const snapped = snapToWallSlotCenter(new THREE.Vector3(7.2, 0, -4.1));
     expect([preview.position.x, preview.position.z]).toEqual([snapped.x, snapped.z]);
@@ -174,7 +174,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect([built.prefab, GetRotation(built), built.skinId]).toEqual(['fence', -90, 'fence_rose']);
     expect([built.position.x, built.position.z]).toEqual([snapped.x, snapped.z]);
     expect(built.sprite.sprite.peek().lightOverride).toBeUndefined();
-    for (const tag of ['wall', 'fence', 'alignwall', 'rotatableobject']) expect(built.hasTag(tag)).toBe(true);
+    for (const tag of ['wall', 'fence', 'alignwall', 'rotatableobject']) { expect(built.hasTag(tag)).toBe(true); }
     const [exported] = records(registry);
     expect(exported.components).toEqual({ fence: { rot: calcRotationEnum(-90), skinId: 'fence_rose' } });
 
@@ -288,7 +288,7 @@ it('draws narrow, wide and skinned fences in the shared batches, and keeps a fen
     const fence = (id: string) => prefabs.get(id) as FenceInstance;
     // An instanced sprite hides its own meshes; the shared batch draws it.
     const ownShown = (inst: FenceInstance) => meshes(inst.transform.model).filter(mesh => mesh.visible).length;
-    for (const id of ['narrow', 'wide', 'skinned']) await prefabDisplay(fence(id).transform.model)!.artLoaded();
+    for (const id of ['narrow', 'wide', 'skinned']) { await prefabDisplay(fence(id).transform.model)!.artLoaded(); }
     expect(fence('narrow').sprite.sprite.peek().source).toMatchObject({ bank: 'fence_thin', buildArchive: 'fence.zip' });
     expect(fence('wide').sprite.sprite.peek().source).toMatchObject({ bank: 'fence', buildArchive: 'fence.zip' });
     expect(['narrow', 'wide', 'skinned'].map(id => ownShown(fence(id)))).toEqual([0, 0, 0]);
@@ -330,6 +330,6 @@ it('draws the fence item and every item skin from the shared catalog, matching t
   try {
     const itemSkins = Object.keys(GROUND_ITEM_DEFINITIONS.fence_item.skinArchives);
     expect(itemSkins.map(skin => fenceWorldSkin('fence_item', skin))).toEqual(Object.keys(FENCE_SKIN_ARCHIVES));
-    for (const skinId of [undefined, itemSkins[0], itemSkins.at(-1)]) (await createGroundItemVisual('fence_item', skinId)).dispose();
+    for (const skinId of [undefined, itemSkins[0], itemSkins.at(-1)]) { (await createGroundItemVisual('fence_item', skinId)).dispose(); }
   } finally { assets.dispose(); }
 });

@@ -20,7 +20,7 @@ export interface ResolvedSprite {
 
 export async function loadAnim(file: string, assetBaseUrl: string): Promise<ParsedAnim> {
   const animations = await loadAnimationArchivePart(file, assetBaseUrl, 'animation');
-  if (!animations) throw new Error(`${file} does not contain anim.bin`);
+  if (!animations) { throw new Error(`${file} does not contain anim.bin`); }
   return animations;
 }
 
@@ -32,8 +32,8 @@ async function loadArchivePair<AnimationPart>(build: Promise<BuildPackage>, anim
   // Drain both worker responses on failure so an immediate retry cannot reuse
   // the other part's still-pending failed request.
   const [buildResult, animationResult] = await Promise.allSettled([build, animation]);
-  if (buildResult.status === 'rejected') throw buildResult.reason;
-  if (animationResult.status === 'rejected') throw animationResult.reason;
+  if (buildResult.status === 'rejected') { throw buildResult.reason; }
+  if (animationResult.status === 'rejected') { throw animationResult.reason; }
   return { buildPackage: buildResult.value, animations: animationResult.value };
 }
 
@@ -55,7 +55,7 @@ export function findImage(build: ParsedBuild, hash: number, frameIndex: number) 
   let result: BuildImage | undefined;
   for (const image of images) {
     if (image.index <= frameIndex && image.index + image.duration > frameIndex &&
-      (!result || image.index > result.index)) result = image;
+      (!result || image.index > result.index)) { result = image; }
   }
   // The animation loops its timeline; an absent build image stays invisible.
   // Wrapping symbol indices draws unrelated art (e.g. birch leaf slots 17..19).
@@ -90,7 +90,7 @@ const pendingReloads = new Set<Promise<void>>();
 
 function atlasSource(atlas: BuildAtlas, pointFiltering: boolean): AtlasSource {
   let sources = atlasSources.get(atlas);
-  if (!sources) atlasSources.set(atlas, sources = []);
+  if (!sources) { atlasSources.set(atlas, sources = []); }
   const slot = pointFiltering ? 1 : 0;
   let record = sources[slot];
   if (!record) {
@@ -98,7 +98,7 @@ function atlasSource(atlas: BuildAtlas, pointFiltering: boolean): AtlasSource {
     const source = new THREE.Source(image);
     // Without data three allocates the texture and calls onUpdate, which starts the reload.
     source.dataReady = image.data !== null;
-    if (atlas.alpha) setAtlasAlphaMask(source, atlas.alpha);
+    if (atlas.alpha) { setAtlasAlphaMask(source, atlas.alpha); }
     sources[slot] = record = { atlas, source, image, textures: new Set() };
     sourceRecords.set(source, record);
   }
@@ -107,22 +107,22 @@ function atlasSource(atlas: BuildAtlas, pointFiltering: boolean): AtlasSource {
 
 function onAtlasUpload(texture: THREE.Texture): void {
   const record = sourceRecords.get(texture.source);
-  if (!record) return;
+  if (!record) { return; }
   if (!record.source.dataReady) { reloadAtlasSource(record); return; }
   // The GPU holds the pixels now. Keep them only when they could not be decoded again or picking still reads them.
-  if (!record.atlas.alpha || !canReloadAtlasPixels(record.atlas)) return;
+  if (!record.atlas.alpha || !canReloadAtlasPixels(record.atlas)) { return; }
   record.image.data = null;
   record.source.dataReady = false;
   record.atlas.pixels = undefined;
 }
 
 function reloadAtlasSource(record: AtlasSource): void {
-  if (record.reload || !canReloadAtlasPixels(record.atlas)) return;
+  if (record.reload || !canReloadAtlasPixels(record.atlas)) { return; }
   const reload = reloadAtlasPixels(record.atlas).then(pixels => {
     record.image.data = pixels;
     record.source.dataReady = true;
     // Each renderer uploads once through whichever of these textures it binds first.
-    for (const texture of record.textures) texture.needsUpdate = true;
+    for (const texture of record.textures) { texture.needsUpdate = true; }
   }, error => console.error('Unable to reload a released animation atlas', error)).finally(() => {
     record.reload = undefined;
     pendingReloads.delete(reload);
@@ -164,13 +164,13 @@ export function atlasTexturePixels(texture: THREE.DataTexture): Uint8Array | und
     const { data } = texture.image;
     return data instanceof Uint8Array ? data : undefined;
   }
-  if (!record.image.data) reloadAtlasSource(record);
+  if (!record.image.data) { reloadAtlasSource(record); }
   return record.image.data ?? undefined;
 }
 
 /** Resolves once every atlas being decoded again has its pixels back. */
 export async function atlasReloadsSettled(): Promise<void> {
-  while (pendingReloads.size) await Promise.all(pendingReloads);
+  while (pendingReloads.size) { await Promise.all(pendingReloads); }
 }
 
 export function createMaterials(buildPackage: BuildPackage, options: SpriteMaterialOptions = {}) {
@@ -212,7 +212,7 @@ export class FrameGeometryCache {
 
   idOf(object: object): number {
     let id = this.ids.get(object);
-    if (id === undefined) this.ids.set(object, id = this.nextId++);
+    if (id === undefined) { this.ids.set(object, id = this.nextId++); }
     return id;
   }
 
@@ -230,7 +230,7 @@ export class FrameGeometryCache {
   }
 
   dispose(): void {
-    for (const { geometry } of this.frames.values()) THREE.BufferGeometry.prototype.dispose.call(geometry);
+    for (const { geometry } of this.frames.values()) { THREE.BufferGeometry.prototype.dispose.call(geometry); }
     this.frames.clear();
   }
 }
@@ -289,15 +289,15 @@ export class SpriteFrameRenderer {
    * camera heading. Frames drawn by an instance batch take the offset from their batch (`InstancedSprite.setDepthOffset`).
    */
   setDepthOffset(enabled: boolean): void {
-    if (enabled === (this.offsetCopies !== undefined)) return;
-    if (enabled) this.offsetCopies = new Map();
+    if (enabled === (this.offsetCopies !== undefined)) { return; }
+    if (enabled) { this.offsetCopies = new Map(); }
     else { this.disposeOffsetCopies(); this.offsetCopies = undefined; }
     this.draw(this.shown);
   }
 
   /** Copy the sources' current state (opacity, tint) into the depth-offset copies after their owner changed them. */
   syncDepthOffset(): void {
-    for (const [source, copy] of this.offsetCopies ?? []) this.copyOffset(source, copy);
+    for (const [source, copy] of this.offsetCopies ?? []) { this.copyOffset(source, copy); }
   }
 
   private draw(materials: THREE.MeshBasicMaterial[]): void {
@@ -324,7 +324,7 @@ export class SpriteFrameRenderer {
   }
 
   private disposeOffsetCopies(): void {
-    for (const copy of this.offsetCopies?.values() ?? []) copy.dispose();
+    for (const copy of this.offsetCopies?.values() ?? []) { copy.dispose(); }
     this.offsetCopies?.clear();
   }
 
@@ -335,7 +335,7 @@ export class SpriteFrameRenderer {
     this.frameVisible = frame.visible;
     this.mesh.visible = frame.visible && !this.instanced;
     setSpriteRenderGroupDrawn(this.visual, this.mesh.visible);
-    if (frame.visible && frame.geometry.boundingBox) publishSpriteSpatialBounds(this.visual, frame.geometry.boundingBox.getBoundingSphere(tightSphere));
+    if (frame.visible && frame.geometry.boundingBox) { publishSpriteSpatialBounds(this.visual, frame.geometry.boundingBox.getBoundingSphere(tightSphere)); }
   }
 
   /** The current own frame, detached from this renderer's later rewrites. */
@@ -347,7 +347,7 @@ export class SpriteFrameRenderer {
   /** The own buffers are only separate from the mesh's geometry while a shared frame is displayed. */
   dispose(): void {
     setInstancedSpriteProxy(this.mesh, false);
-    if (this.mesh.geometry !== this.geometry) this.geometry.dispose();
+    if (this.mesh.geometry !== this.geometry) { this.geometry.dispose(); }
     this.disposeOffsetCopies();
   }
 
@@ -438,7 +438,7 @@ export class SpriteFrameRenderer {
     this.geometry.getAttribute('spriteLightOverride').needsUpdate = true;
     markSpatialGeometryBounds(this.geometry);
     // The own frame's materials were rebuilt in place above.
-    if (this.offsetCopies) this.draw(this.materials);
+    if (this.offsetCopies) { this.draw(this.materials); }
   }
 
   /** Bounds only the drawn vertices; stale capacity beyond the draw range is ignored. */
@@ -446,10 +446,10 @@ export class SpriteFrameRenderer {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (let offset = 0; offset < vertexCount * 3; offset += 3) {
       const x = this.positions[offset], y = this.positions[offset + 1];
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
+      if (x < minX) { minX = x; }
+      if (x > maxX) { maxX = x; }
+      if (y < minY) { minY = y; }
+      if (y > maxY) { maxY = y; }
     }
     this.geometry.boundingBox!.min.set(minX, minY, 0);
     this.geometry.boundingBox!.max.set(maxX, maxY, 0);
@@ -476,7 +476,7 @@ export class SpriteFrameRenderer {
   }
 
   private ensureCapacity(quadCount: number) {
-    if (quadCount <= this.quadCapacity) return;
+    if (quadCount <= this.quadCapacity) { return; }
 
     this.quadCapacity = THREE.MathUtils.ceilPowerOfTwo(Math.max(quadCount, 16));
     this.positions = new Float32Array(this.quadCapacity * 4 * 3);

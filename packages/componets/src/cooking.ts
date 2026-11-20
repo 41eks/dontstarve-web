@@ -11,8 +11,8 @@ export const BASE_COOK_TIME = 30 * 2 * .3333;
 export function AddIngredientValues(names: readonly string[], tags: IngredientTags, cancook = false, candry = false): void {
   for (const name of names) {
     ingredients[name] = { tags: { ...tags } };
-    if (cancook) ingredients[`${name}_cooked`] = { tags: { ...tags, precook: 1 } };
-    if (candry) ingredients[`${name}_dried`] = { tags: { ...tags, dried: 1 } };
+    if (cancook) { ingredients[`${name}_cooked`] = { tags: { ...tags, precook: 1 } }; }
+    if (candry) { ingredients[`${name}_dried`] = { tags: { ...tags, dried: 1 } }; }
   }
 }
 
@@ -81,7 +81,7 @@ export function GetIngredientValues(prefablist: readonly string[]): { names: Ing
     const name = aliases[prefab] ?? prefab;
     names[name] = (names[name] ?? 0) + 1;
     for (const [tag, value] of Object.entries(ingredients[name]?.tags ?? {})) {
-      if (value !== undefined) tags[tag] = (tags[tag] ?? 0) + value;
+      if (value !== undefined) { tags[tag] = (tags[tag] ?? 0) + value; }
     }
   }
   return { names, tags };
@@ -92,7 +92,7 @@ export function AddCookerRecipe(cooker: string, recipe: PreparedFoodRecipe): voi
 }
 
 for (const recipe of Object.values(foods)) {
-  for (const cooker of ['cookpot', 'portablecookpot', 'archive_cookpot']) AddCookerRecipe(cooker, recipe);
+  for (const cooker of ['cookpot', 'portablecookpot', 'archive_cookpot']) { AddCookerRecipe(cooker, recipe); }
 }
 
 export function GetRecipe(cooker: string, product: string): PreparedFoodRecipe | undefined {
@@ -103,18 +103,18 @@ export function GetCandidateRecipes(cooker: string, ingdata: ReturnType<typeof G
   const candidates = Object.values(recipes[cooker] ?? {})
     .filter(recipe => recipe.test(cooker, ingdata.names, ingdata.tags))
     .sort((a, b) => b.priority - a.priority);
-  if (!candidates.length) return candidates;
+  if (!candidates.length) { return candidates; }
   return candidates.filter(recipe => recipe.priority === candidates[0].priority);
 }
 
 /** Source returns product and its cooktime multiplier; no candidate means no result. */
 export function CalculateRecipe(cooker: string, names: readonly string[], random: () => number = Math.random): readonly [string, number] | undefined {
   const candidates = GetCandidateRecipes(cooker, GetIngredientValues(names)).sort((a, b) => b.weight - a.weight);
-  if (!candidates.length) return undefined;
+  if (!candidates.length) { return undefined; }
   let value = random() * candidates.reduce((sum, recipe) => sum + recipe.weight, 0);
   for (const recipe of candidates) {
     value -= recipe.weight;
-    if (value <= 0) return [recipe.name, recipe.cooktime];
+    if (value <= 0) { return [recipe.name, recipe.cooktime]; }
   }
   return undefined;
 }

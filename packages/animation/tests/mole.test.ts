@@ -16,7 +16,7 @@ import { BindMoleWorld, MakeMole, Mole, SetAbovePhysics, UpdateMole, configureMo
 import { createMoleHabitat, molehillPrefabs, MOLEHILL_ID, MolehillInstance } from '../../prefab/src/molehill';
 
 function molehill(inst: unknown): MolehillInstance {
-  if (!(inst instanceof MolehillInstance)) throw new Error('Expected a molehill');
+  if (!(inst instanceof MolehillInstance)) { throw new Error('Expected a molehill'); }
   return inst;
 }
 import { configureMoleBaitEntity } from '../../prefab/src/molebait';
@@ -48,7 +48,7 @@ async function fixture(daytime = false) {
   const items: ItemEntity[] = [], drops: { entity?: ItemEntity; prefab: string; position: THREE.Vector3 }[] = [];
   const spawnItem = (state: InventoryStack) => {
     const item = state.itemId === 'mole' ? new Mole(state, undefined, testSavedItem) : testItem(state); items.push(item);
-    if (item instanceof Mole) { MakeMole(item); configureMoleEntity(item); } else configureMoleBaitEntity(item);
+    if (item instanceof Mole) { MakeMole(item); configureMoleEntity(item); } else { configureMoleBaitEntity(item); }
     // The item registry binds each inst to the world's scheduler; TheSim: the moles and the items they steal stand in
     // the manager that holds the hills.
     item.BindScheduler(scheduler); prefabs.track(item);
@@ -82,7 +82,7 @@ async function fixture(daytime = false) {
   const lengths = new Map(bank.animations.map(clip => [clip.name, clip.frames.length / clip.frameRate]));
   const mole = (position = new THREE.Vector3(), entityId?: string) => {
     const entity = spawnItem({ itemId: 'mole', count: 1, ...(entityId ? { entityId } : {}) }); entity.setPosition(position.x, position.y, position.z);
-    if (!(entity instanceof Mole)) throw new Error('a mole item is a Mole');
+    if (!(entity instanceof Mole)) { throw new Error('a mole item is a Mole'); }
     BindMoleWorld(entity, habitat, lengths); return entity;
   };
   const bait = (id: string, position = new THREE.Vector3(3, 0, 0), count = 1) => {
@@ -91,7 +91,7 @@ async function fixture(daytime = false) {
   };
   const advance = async (seconds: number, runBrain = true) => {
     for (let i = 0; i < Math.ceil(seconds * 30); i++) {
-      scheduler.advance(1 / 30); if (runBrain) for (const runtime of habitat.getMoles()) UpdateMole(runtime, 1 / 30);
+      scheduler.advance(1 / 30); if (runBrain) { for (const runtime of habitat.getMoles()) { UpdateMole(runtime, 1 / 30); } }
     }
     await settle();
   };
@@ -323,7 +323,7 @@ it('spawns a mole as its own entity, whose brain stops while it is held and is r
   try {
     items.spawnFromSave('mole', { ...SAVE_CATALOG.items.mole, itemId: 'mole', count: 1 }, new THREE.Vector3(3, 0, 0));
     const mole = items.entities.get('mole');
-    if (!(mole instanceof Mole)) throw new Error('the mole prefab makes a Mole');
+    if (!(mole instanceof Mole)) { throw new Error('the mole prefab makes a Mole'); }
     const brain = mole.brain;
     expect(brain?.stopped).toBe(false);
     expect(inventory.GiveItem(mole)).toBe(true);

@@ -19,5 +19,5 @@ export function listenInventoryEvents(
 ): () => void {
   const stops = (Object.entries(handlers) as [keyof PrefabInventoryEventMap, () => void][])
     .map(([event, handler]) => inst.ListenForEvent(event, () => handler()));
-  return () => { for (const stop of stops.splice(0)) stop(); };
+  return () => { for (const stop of stops.splice(0)) { stop(); } };
 }

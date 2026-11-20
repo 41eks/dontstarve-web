@@ -55,7 +55,7 @@ type AnimStateAppearance = Extract<AppearanceJson, { kind: 'anim-state' }>;
 export function animStateDeclarations(appearance: SpriteJson['appearance']): readonly (readonly [string, AnimStateAppearance])[] {
   const own = appearance.get('anim-state');
   const declared: (readonly [string, AnimStateAppearance])[] = own?.kind === 'anim-state' ? [['anim-state', own]] : [];
-  for (const [key, op] of appearance) if (op.kind === 'anim-state' && key.startsWith(ANIM_STATE_SLOT)) declared.push([key, op]);
+  for (const [key, op] of appearance) { if (op.kind === 'anim-state' && key.startsWith(ANIM_STATE_SLOT)) { declared.push([key, op]); } }
   return declared;
 }
 
@@ -245,7 +245,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     this.skinId = {
       get: () => this.declared.get().skinId, peek: () => this.state.skinId, set: value => this.setSkinId(value),
       subscribe: listener => this.declared.subscribe((value, previous) => {
-        if (value.skinId !== previous.skinId) listener(value.skinId, previous.skinId);
+        if (value.skinId !== previous.skinId) { listener(value.skinId, previous.skinId); }
       }),
     };
   }
@@ -268,7 +268,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   bindStatus(status: ReadonlySignal<PrefabStatus>): void { this.lifecycle.set(status); }
   private get state(): SpriteDeclaration { return this.declared.peek(); }
   protected write(patch: Partial<SpriteDeclaration>): void { this.declared.set({ ...this.state, ...patch }); }
-  setSkinId(skinId: string | undefined): void { if (skinId !== this.state.skinId) this.write({ skinId }); }
+  setSkinId(skinId: string | undefined): void { if (skinId !== this.state.skinId) { this.write({ skinId }); } }
   setSkinSource(skin: SkinJson): void { this.withAppearance('skin', { kind: 'skin', skin }); }
   /** The skins the declared skin source can draw, in its order: PREFAB_SKINS for this entity. */
   get skinNames(): readonly string[] {
@@ -294,10 +294,10 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
    * loading, and plays on otherwise; fn's own clips were played before any display, so they play.
    */
   displayStarted(): void {
-    if (!this.playedWhilePending) return;
+    if (!this.playedWhilePending) { return; }
     this.playedWhilePending = false;
     const { clip, queue } = this.state;
-    if (this.probe && !this.drawn && (queue.length > 0 || !clip.loop && !clip.finished && !clip.none)) this.settle();
+    if (this.probe && !this.drawn && (queue.length > 0 || !clip.loop && !clip.finished && !clip.none)) { this.settle(); }
   }
   /**
    * A display starts once the entity's fn, OnLoad and onSpawned have run: until it binds, followers get their nodes and
@@ -322,7 +322,7 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
 
   /** Nothing is drawn while the entity sleeps; a transition that was playing is not replayed but ends in its completion state. */
   setAwake(awake: boolean): void {
-    if (!awake) this.settle();
+    if (!awake) { this.settle(); }
     this.awake = awake;
   }
   // Playing no animation, the sprite is built for the next clip, which is drawn rather than settled.
@@ -332,12 +332,12 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
     const { clip, queue } = this.state;
     this.finish(clip);
     const last = queue[queue.length - 1];
-    if (last) this.write({ clip: { name: last.name, loop: last.loop, finished: !last.loop }, queue: [], frame: undefined });
+    if (last) { this.write({ clip: { name: last.name, loop: last.loop, finished: !last.loop }, queue: [], frame: undefined }); }
   }
 
   /** A clip's playback ended, or was settled because nothing is drawn: it completes once. */
   finish(clip: ClipJson): void {
-    if (this.state.clip !== clip || clip.finished) return;
+    if (this.state.clip !== clip || clip.finished) { return; }
     clip.finished = true;
     clip.complete?.();
   }
@@ -347,10 +347,10 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   }
   playOnce(name: string, complete?: () => void): void {
     const clip: ClipJson = { name, loop: false, finished: false, complete }, drawn = this.drawn;
-    if (this.displayPending) this.playedWhilePending = true;
+    if (this.displayPending) { this.playedWhilePending = true; }
     this.write({ clip, queue: [], frame: undefined });
     // Nothing is drawn, so the transition completes at once.
-    if (!drawn) this.finish(clip);
+    if (!drawn) { this.finish(clip); }
   }
   /** AnimState with no animation playing: the drawn sprite is released until a clip is played again. */
   clearAnimation(): void {
@@ -358,8 +358,8 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   }
   pushAnimation(name: string, loop = false): void {
     this.write({ queue: [...this.state.queue, { name, loop }] });
-    if (this.displayPending) this.playedWhilePending = true;
-    if (!this.drawn) this.settle();
+    if (this.displayPending) { this.playedWhilePending = true; }
+    if (!this.drawn) { this.settle(); }
   }
   playTransient(name: string): void { this.write({ transient: { name } }); }
   holdLastFrame(name: string): void {
@@ -368,12 +368,12 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   setPercent(name: string, percent: number): void {
     this.write({ clip: { name, loop: false, finished: true, percent }, queue: [], frame: undefined });
   }
-  setFrame(frame: number): void { if (frame !== this.state.frame) this.write({ frame }); }
+  setFrame(frame: number): void { if (frame !== this.state.frame) { this.write({ frame }); } }
   setFrameAt(fraction: number): void {
-    if (!(fraction >= 0 && fraction <= 1)) throw new RangeError('Frame fraction must be within [0, 1]');
+    if (!(fraction >= 0 && fraction <= 1)) { throw new RangeError('Frame fraction must be within [0, 1]'); }
     this.write({ frame: { at: fraction } });
   }
-  setArtSource(source: SpriteSourceJson): void { if (source !== this.state.source) this.write({ source }); }
+  setArtSource(source: SpriteSourceJson): void { if (source !== this.state.source) { this.write({ source }); } }
   /** The entity's own AnimState, by its json signal: the display follows it rather than a copy. */
   setAnimState(state: ReadonlySignal<AnimStateJson>, art?: AnimStateArt): void { this.withAppearance('anim-state', { kind: 'anim-state', state, art }); }
   /**
@@ -383,8 +383,8 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
    */
   declareAnimState(key: string, state: ReadonlySignal<AnimStateJson> | undefined, art?: AnimStateArt): void {
     const slot = `${ANIM_STATE_SLOT}${key}`, appearance = new Map(this.state.appearance);
-    if (state) appearance.set(slot, { kind: 'anim-state', state, art });
-    else if (!appearance.delete(slot)) return;
+    if (state) { appearance.set(slot, { kind: 'anim-state', state, art }); }
+    else if (!appearance.delete(slot)) { return; }
     this.write({ appearance });
   }
   /** Wortox's blend tint; AnimState:SetAddColour's rgb, which setAddColour declares, is kept. */
@@ -392,12 +392,12 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   /** AnimState:SetAddColour(r, g, b, a): added to the art in proportion to its alpha; any blend tint is kept. */
   setAddColour(add: readonly number[]): void {
     const tint = this.state.tint ?? { colour: [0, 0, 0], amount: 0 };
-    if (tint.add?.every((value, i) => value === add[i]) ?? add.every(value => value === 0)) return;
+    if (tint.add?.every((value, i) => value === add[i]) ?? add.every(value => value === 0)) { return; }
     this.write({ tint: { ...tint, add: [add[0], add[1], add[2]] } });
   }
   followSymbol(symbol: string, x: number, y: number, fx?: FollowerFx): { readonly node: THREE.Object3D; remove(): void } {
     const node = this.probe?.createFollower?.();
-    if (!node) throw new Error('The sprite has no display for a symbol follower');
+    if (!node) { throw new Error('The sprite has no display for a symbol follower'); }
     this.write({ followers: new Map(this.state.followers).set(node, { symbol, x, y, ...fx ? { fx } : {} }) });
     return { node, remove: () => {
       const followers = new Map(this.state.followers);
@@ -418,10 +418,10 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
   /** World-space direction; coincident points preserve the previous logical heading. */
   facePoint(from: THREE.Vector3, to: THREE.Vector3): void {
     const x = to.x - from.x, z = to.z - from.z;
-    if (x * x + z * z > 1e-8) this.setFacingRotation(Math.atan2(-z, x) * 180 / Math.PI, this.state.facingMode);
+    if (x * x + z * z > 1e-8) { this.setFacingRotation(Math.atan2(-z, x) * 180 / Math.PI, this.state.facingMode); }
   }
   setPlaybackRate(playbackRate: number): void {
-    if (playbackRate !== this.state.playbackRate) this.write({ playbackRate });
+    if (playbackRate !== this.state.playbackRate) { this.write({ playbackRate }); }
   }
   setFrameSource(frameSource: SpriteJson['frameSource']): void { this.write({ frameSource }); }
   setColour(colour: readonly number[]): void { this.write({ colour }); }
@@ -436,17 +436,17 @@ export class SpriteState implements ArchiveSpriteCommands, TransientSpriteAnimat
    * and places itself among the ground layers with `setMeshOrder`.
    */
   setGround(renderOrder: number, flat = true): void {
-    if (!(renderOrder >= 0)) throw new RangeError(`Ground group order ${renderOrder} draws under the terrain; use setMeshOrder`);
+    if (!(renderOrder >= 0)) { throw new RangeError(`Ground group order ${renderOrder} draws under the terrain; use setMeshOrder`); }
     this.write({ ground: { renderOrder, flat } });
   }
   setMeshOrder(meshOrder: number): void { this.write({ meshOrder }); }
   setLayer(layer: 'world' | 'background'): void {
     const background = layer === 'background' ? true : undefined;
-    if (background !== this.state.background) this.write({ background });
+    if (background !== this.state.background) { this.write({ background }); }
   }
-  setVisualHeight(visualHeight: number): void { if (visualHeight !== (this.state.visualHeight ?? 0)) this.write({ visualHeight }); }
+  setVisualHeight(visualHeight: number): void { if (visualHeight !== (this.state.visualHeight ?? 0)) { this.write({ visualHeight }); } }
   setDepthOffset(depthOffset: boolean): void { this.write({ depthOffset }); }
-  setBehindFoot(behindFoot: boolean): void { if (behindFoot !== (this.state.behindFoot ?? false)) this.write({ behindFoot }); }
+  setBehindFoot(behindFoot: boolean): void { if (behindFoot !== (this.state.behindFoot ?? false)) { this.write({ behindFoot }); } }
   setSymbolOverride(symbol: string, archive?: string, sourceSymbol?: string): void {
     this.withAppearance(`archive-symbol:${symbol}`, { kind: 'archive-symbol', symbol, archive, sourceSymbol });
   }

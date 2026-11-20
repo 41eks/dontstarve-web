@@ -32,11 +32,11 @@ export class FindFlower extends BehaviourNode {
         const action = CreateBufferedAction(this.inst, pollinator.target, 'POLLINATE', undefined, 0.1);
         this.inst.components.locomotor!.PushAction(action, this.shouldrun);
         this.status = RUNNING;
-      } else this.status = FAILED;
+      } else { this.status = FAILED; }
     }
     if (this.status === RUNNING) {
       const target = pollinator.target;
-      if (!target || !pollinator.CanPollinate(target) || this.isTargetedByOther(target)) this.status = FAILED;
+      if (!target || !pollinator.CanPollinate(target) || this.isTargetedByOther(target)) { this.status = FAILED; }
     }
   }
 

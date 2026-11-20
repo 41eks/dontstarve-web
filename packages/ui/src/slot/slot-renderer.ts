@@ -88,7 +88,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     }
     const atlasPath = item.atlas ?? 'images/inventoryimages.xml';
     const iconKey = `${atlasPath}\n${item.icon}`;
-    if (content.dataset.iconKey === iconKey) return;
+    if (content.dataset.iconKey === iconKey) { return; }
     content.dataset.iconKey = iconKey;
     content.replaceChildren(createAtlasImage('inventory-slot__icon', atlasPath, item.icon));
   };
@@ -108,8 +108,8 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   };
   const updateFreshness = (value: number | undefined) => {
     freshness.hidden = value === undefined;
-    if (spoilBackground) spoilBackground.hidden = value === undefined;
-    if (value === undefined) return;
+    if (spoilBackground) { spoilBackground.hidden = value === undefined; }
+    if (value === undefined) { return; }
     if (!spoilBackground) {
       spoilBackground = createAtlasImage('inventory-slot__spoil-background', 'images/hud.xml', 'inv_slot_spoiled.tex');
       button.insertBefore(spoilBackground, freshness);
@@ -121,7 +121,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   const updateWetness = (wet: boolean) => {
     wetness.hidden = !wet;
     button.classList.toggle('is-wet', wet);
-    if (!wet) return;
+    if (!wet) { return; }
     wetnessMeter ??= new AnimatedBackground(wetness, `${import.meta.env.BASE_URL}dst/data/anim/wet_meter.zip`, () => {});
     wetnessMeter.playOnce('idle');
   };
@@ -152,17 +152,17 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   };
 
   const bindItem = (item: SlotItem | null, previous: SlotItem | null) => {
-    if (!sameAppearance(item, previous)) updateItem(item);
-    if (item?.tile && item.tile === previous?.tile) return;
+    if (!sameAppearance(item, previous)) { updateItem(item); }
+    if (item?.tile && item.tile === previous?.tile) { return; }
     stopItemValues.forEach(stop => stop());
     stopItemValues = [];
     // A live item's tile declaration is the inst's own; the UI creates no value state of its own.
     const present = (next: SlotItem | null, last: SlotItem | null) => {
-      if (next?.icon !== last?.icon || next?.atlas !== last?.atlas) updateItem(next);
-      if (next?.count !== last?.count || !last) updateQuantity();
-      if (next?.durabilityPercent !== last?.durabilityPercent || !last) updateDurability(next?.durabilityPercent);
-      if (next?.freshnessPercent !== last?.freshnessPercent || !last) updateFreshness(next?.freshnessPercent);
-      if (next?.wet !== last?.wet || !last) updateWetness(next?.wet ?? false);
+      if (next?.icon !== last?.icon || next?.atlas !== last?.atlas) { updateItem(next); }
+      if (next?.count !== last?.count || !last) { updateQuantity(); }
+      if (next?.durabilityPercent !== last?.durabilityPercent || !last) { updateDurability(next?.durabilityPercent); }
+      if (next?.freshnessPercent !== last?.freshnessPercent || !last) { updateFreshness(next?.freshnessPercent); }
+      if (next?.wet !== last?.wet || !last) { updateWetness(next?.wet ?? false); }
     };
     const tile = item?.tile;
     if (item && tile) {
@@ -170,7 +170,7 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
       const update = () => { const next = slotItemWithTile(item, tile.peek()); present(next, last); last = next; };
       stopItemValues.push(tile.subscribe(update));
       update();
-    } else present(item, previous?.tile ? null : previous);
+    } else { present(item, previous?.tile ? null : previous); }
   };
 
   button.addEventListener('click', (event) => {
@@ -180,9 +180,9 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
     }
     // Selection runs first so a placeable item can claim the click for placement
     // instead of being picked up for a transfer.
-    if (options.onSelect?.(options.slot)) return;
+    if (options.onSelect?.(options.slot)) { return; }
     const result = slotTransferController.click(event, options.slot);
-    if (result.request) options.onTransfer?.(result.request);
+    if (result.request) { options.onTransfer?.(result.request); }
   });
   button.addEventListener('contextmenu', (event) => {
     event.preventDefault();
@@ -196,8 +196,8 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   });
   button.addEventListener('pointerup', (event) => {
     const result = slotTransferController.end(event);
-    if (result.dragged) suppressNextClick = true;
-    if (result.request) options.onTransfer?.(result.request);
+    if (result.dragged) { suppressNextClick = true; }
+    if (result.request) { options.onTransfer?.(result.request); }
   });
   button.addEventListener('pointercancel', (event) => {
     slotTransferController.cancel(event);
@@ -206,11 +206,11 @@ export function createSlotRenderer(options: CreateSlotRendererOptions): SlotRend
   return {
     button,
     connect() {
-      if (stopSubscriptions) return;
+      if (stopSubscriptions) { return; }
       stopSubscriptions = [];
       const contextMenu = bindSlotContextMenuInput(secondaryInput, options.slot);
       const stopRequests = contextMenu.request.subscribe(request => {
-        if (request) options.onContextMenu?.(request);
+        if (request) { options.onContextMenu?.(request); }
       });
       stopContextMenu = () => { stopRequests(); contextMenu.dispose(); };
       unregister = slotTransferController.register(options.slot, button);

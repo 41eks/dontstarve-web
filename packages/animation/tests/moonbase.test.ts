@@ -73,7 +73,7 @@ it('spawns moonbase through the debug command using its source art and restores 
   const consume = vi.fn(() => false);
   const placement = managedBuildings(world, { consume });
   const result = await executeDebugCommand('c_spawn("moonbase")', {} as InventoryStore, async (prefabId) => {
-    if (!isPlaceableBuildingId(prefabId)) return false;
+    if (!isPlaceableBuildingId(prefabId)) { return false; }
     await placement.spawn(prefabId);
     return true;
   });
@@ -122,7 +122,7 @@ async function createMoonbase(options: Partial<WorldContext> = {}, saved?: Param
     camera: new THREE.PerspectiveCamera(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), TheCamera: fixedCamera(45), renderer: { domElement: new EventTarget() },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }), ...options, spawnItem: testItem, restoreItem: testRestoreItem, itemEntities: testItemRegistry() } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
-  if (saved) placement.spawnFromSave('moonbase', saved); else await placement.spawn('moonbase');
+  if (saved) { placement.spawnFromSave('moonbase', saved); } else { await placement.spawn('moonbase'); }
   const model = world.scene.children[0] as THREE.Group;
   // One-shot clips such as fix_full play out only once the display has drawn the moonbase.
   await vi.waitFor(() => expect(prefabInstance(model)!.sprite.loaded).toBe(true));
@@ -328,7 +328,7 @@ it('cancels charge on early retrieval or moonset, then starts fresh and releases
 });
 
 it('persists paused named timers without ticking their snapshots and keeps expiry distinct from cancellation', () => {
-  const scheduler = new GameTimeScheduler(), done = vi.fn(), inst = { PushEvent: (name: string, data: unknown) => { if (name === 'timerdone') done((data as { name: string }).name); } };
+  const scheduler = new GameTimeScheduler(), done = vi.fn(), inst = { PushEvent: (name: string, data: unknown) => { if (name === 'timerdone') { done((data as { name: string }).name); } } };
   const timer = new Timer(inst, scheduler, ['charge']);
   timer.StartTimer('charge', 10); scheduler.advance(3); timer.PauseTimer('charge');
   expect(timer.snapshot('charge').peek()).toEqual({ status: 'paused', remainingSeconds: 7 });

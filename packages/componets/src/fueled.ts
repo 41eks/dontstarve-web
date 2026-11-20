@@ -81,15 +81,15 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
   set fueltype(value: string) {
     this.inst.removeTag(this.type === USAGE ? 'needssewing' : `${this.type}_fueled`);
     this.type = value;
-    if (value === USAGE) this.onmaxfuel();
-    else if (this.acceptingState) this.inst.addTag(`${value}_fueled`);
+    if (value === USAGE) { this.onmaxfuel(); }
+    else if (this.acceptingState) { this.inst.addTag(`${value}_fueled`); }
   }
   get accepting(): boolean { return this.acceptingState; }
   set accepting(value: boolean) {
     this.acceptingState = value;
-    if (this.type === USAGE) return;
-    if (value) this.inst.addTag(`${this.type}_fueled`);
-    else this.inst.removeTag(`${this.type}_fueled`);
+    if (this.type === USAGE) { return; }
+    if (value) { this.inst.addTag(`${this.type}_fueled`); }
+    else { this.inst.removeTag(`${this.type}_fueled`); }
   }
 
   SetSections(num: number): void { this.sections = num; }
@@ -115,10 +115,10 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
   }
 
   TakeFuelItem(item: FuelItem, doer?: object): boolean {
-    if (this.inst.isRemoved || item.isRemoved || !this.CanAcceptFuelItem(item)) return false;
+    if (this.inst.isRemoved || item.isRemoved || !this.CanAcceptFuelItem(item)) { return false; }
     // The fuel joins what is left at this moment.
     this.Settle();
-    if (this.inst.isRemoved) return false;
+    if (this.inst.isRemoved) { return false; }
     const fuel = item.components.fuel!;
     const fuelvalue = fuel.fuelvalue * this.bonusmult * (item.GetIsWet() ? WET_FUEL_PENALTY : 1);
     this.DoDelta(fuelvalue, doer);
@@ -131,7 +131,7 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
 
   InitializeFuelLevel(fuel: number): void {
     const oldsection = this.GetCurrentSection();
-    if (this.maxfuel < fuel) this.maxfuel = fuel;
+    if (this.maxfuel < fuel) { this.maxfuel = fuel; }
     this.setCurrent(fuel);
     const newsection = this.GetCurrentSection();
     if (oldsection !== newsection) {
@@ -147,48 +147,48 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
     if (oldsection !== newsection) {
       this.sectionfn?.(newsection, oldsection, this.inst, doer);
       this.inst.PushEvent?.('onfueldsectionchanged', { newsection, oldsection, doer });
-      if (this.currentfuel <= 0) this.depleted?.(this.inst);
+      if (this.currentfuel <= 0) { this.depleted?.(this.inst); }
     }
     this.inst.PushEvent?.('percentusedchange', { percent: this.GetPercent() });
   }
 
-  MakeEmpty(): void { if (this.currentfuel > 0) this.DoDelta(-this.currentfuel); }
+  MakeEmpty(): void { if (this.currentfuel > 0) { this.DoDelta(-this.currentfuel); } }
   SetPercent(amount: number): void { this.DoDelta(this.maxfuel * amount - this.currentfuel); }
 
   StartConsuming(): void {
     this.consumingState = true;
-    if (this.task || this.inst.isRemoved) return;
+    if (this.task || this.inst.isRemoved) { return; }
     const firstperioddt = this.firstperiod === undefined ? undefined
       : this.currentfuel >= this.maxfuel ? this.firstperiodfull ?? this.firstperiod : this.firstperiod;
-    if (this.scheduler) this.startTask(this.scheduler, firstperioddt);
-    else this.pendingfirstperioddt = firstperioddt;
+    if (this.scheduler) { this.startTask(this.scheduler, firstperioddt); }
+    else { this.pendingfirstperioddt = firstperioddt; }
   }
 
   /** Consume the part of the current period that has passed. */
   Settle(): void {
     const task = this.task;
-    if (!task) return;
+    if (!task) { return; }
     const dt = task.scheduler.now - task.settledAt;
     // Settle first: consumption may remove the inst and stop consuming.
     task.settledAt = task.scheduler.now;
-    if (dt > 0) this.DoUpdate(dt);
+    if (dt > 0) { this.DoUpdate(dt); }
   }
 
   /** The inst's world was bound or replaced: consumption continues on its game time. */
   BindScheduler(scheduler: GameTimeScheduler | undefined): void {
-    if (this.scheduler === scheduler) return;
+    if (this.scheduler === scheduler) { return; }
     this.Settle();
     const firstperioddt = this.firstperiodtask?.dt ?? this.pendingfirstperioddt;
     this.stopTask();
     this.scheduler = scheduler;
-    if (!this.consumingState || this.inst.isRemoved) return;
-    if (scheduler) this.startTask(scheduler, firstperioddt);
-    else this.pendingfirstperioddt = firstperioddt;
+    if (!this.consumingState || this.inst.isRemoved) { return; }
+    if (scheduler) { this.startTask(scheduler, firstperioddt); }
+    else { this.pendingfirstperioddt = firstperioddt; }
   }
 
   DoUpdate(dt: number): void {
-    if (this.consumingState) this.DoDelta(-dt * this.rate);
-    if (this.IsEmpty()) this.StopConsuming();
+    if (this.consumingState) { this.DoDelta(-dt * this.rate); }
+    if (this.IsEmpty()) { this.StopConsuming(); }
     this.updatefn?.(this.inst);
   }
   LongUpdate(dt: number): void { this.DoUpdate(dt); }
@@ -207,7 +207,7 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
     return this.currentfuel !== this.maxfuel ? { fuel: this.currentfuel } : undefined;
   }
   OnLoad(data: Partial<FueledSave>): void {
-    if (data.fuel !== undefined) this.InitializeFuelLevel(Math.max(0, data.fuel));
+    if (data.fuel !== undefined) { this.InitializeFuelLevel(Math.max(0, data.fuel)); }
   }
 
   /** OnRemoveFromEntity. */
@@ -222,16 +222,16 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
   private startTask(scheduler: GameTimeScheduler, firstperioddt?: number): void {
     this.pendingfirstperioddt = undefined;
     const timer = new ComponentTimer(scheduler, () => {
-      if (this.task?.timer !== timer || this.inst.isRemoved) return;
+      if (this.task?.timer !== timer || this.inst.isRemoved) { return; }
       timer.start(this.period);
       this.Settle();
     });
     this.task = { scheduler, timer, settledAt: scheduler.now };
     this.timerState.set(timer.snapshot);
     timer.start(this.period);
-    if (firstperioddt === undefined) return;
+    if (firstperioddt === undefined) { return; }
     const first = new ComponentTimer(scheduler, () => {
-      if (this.firstperiodtask?.timer !== first) return;
+      if (this.firstperiodtask?.timer !== first) { return; }
       this.firstperiodtask = undefined;
       this.DoUpdate(firstperioddt);
     });
@@ -250,15 +250,15 @@ export class Fueled<Inst extends FueledInst = FueledInst> {
   /** oncurrentfuel */
   private setCurrent(fuel: number): void {
     this.current.set(fuel);
-    if (fuel <= 0) this.inst.addTag('fueldepleted');
-    else this.inst.removeTag('fueldepleted');
+    if (fuel <= 0) { this.inst.addTag('fueldepleted'); }
+    else { this.inst.removeTag('fueldepleted'); }
     this.onmaxfuel();
   }
 
   /** onmaxfuel: a USAGE inst below its maximum needs sewing. */
   private onmaxfuel(): void {
-    if (this.type !== USAGE) return;
-    if (this.currentfuel < this.maxfuel) this.inst.addTag('needssewing');
-    else this.inst.removeTag('needssewing');
+    if (this.type !== USAGE) { return; }
+    if (this.currentfuel < this.maxfuel) { this.inst.addTag('needssewing'); }
+    else { this.inst.removeTag('needssewing'); }
   }
 }

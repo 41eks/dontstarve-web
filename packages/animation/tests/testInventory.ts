@@ -14,7 +14,7 @@ function handleWorld(handle: { world?: ItemWorld }): ItemWorld {
   return {
     isItemPrefab: prefab => handle.world?.isItemPrefab(prefab) ?? false,
     SpawnPrefab: (prefab, saved) => {
-      if (!handle.world) throw new Error(`No test item world spawns ${prefab}`);
+      if (!handle.world) { throw new Error(`No test item world spawns ${prefab}`); }
       return handle.world.SpawnPrefab(prefab, saved);
     },
   };
@@ -39,7 +39,7 @@ export function createInventoryStore(definitions: readonly InventoryItemDefiniti
 /** Puts a test registry in a test scene's world, or takes it out again with `undefined`. */
 export function bindTestItemWorld(entities: ItemEntityRegistry, world: ItemWorld | undefined): void {
   const handle = handles.get(entities);
-  if (!handle) throw new Error('This item registry was not made by testInventory');
+  if (!handle) { throw new Error('This item registry was not made by testInventory'); }
   handle.world = world;
 }
 
@@ -56,7 +56,7 @@ export function testItem(state: InventoryStack, perishWorld?: PerishWorld): Item
 /** SpawnSaveRecord of a test inst outside any world: the record's skin, then SetPersistData. */
 export function testSavedItem(prefab: string, saved: SpawnedItemRecord, perishWorld?: PerishWorld): ItemEntity {
   const inst = testItem({ itemId: prefab, count: 1, entityId: saved.id }, perishWorld);
-  if (saved.skinname !== undefined) inst.skinId = saved.skinname;
+  if (saved.skinname !== undefined) { inst.skinId = saved.skinname; }
   inst.SetPersistData(saved.components);
   return inst;
 }

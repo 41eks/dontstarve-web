@@ -44,11 +44,11 @@ export async function checkNightmareFuelTransparency() {
     // Opaque black source pixels hide both backgrounds. The corrected same
     // pose must reveal both the green channel and the changed red background.
     if (control.white[i] + control.white[i + 1] + control.white[i + 2] > 90
-      || Math.abs(control.white[i] - control.green[i]) > 2) continue;
+      || Math.abs(control.white[i] - control.green[i]) > 2) { continue; }
     opaqueInterior++;
     if (actual.white[i] > control.white[i] + 50
       && actual.green[i + 1] > control.green[i + 1] + 50
-      && actual.white[i] > actual.green[i] + 50) translucentInterior++;
+      && actual.white[i] > actual.green[i] + 50) { translucentInterior++; }
   }
   opaque.dispose(); world.dispose(); inventory.dispose(); renderer.dispose();
   return { opaqueInterior, translucentInterior };

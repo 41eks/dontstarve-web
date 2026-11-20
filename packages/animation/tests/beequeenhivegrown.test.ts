@@ -62,7 +62,7 @@ it('declares the Lua large_hit then nonlooping large sequence on a hammer hit an
     hive.components.workable.WorkedBy(testPlayer());
     expect(hive.sprite.sprite.peek().clip).toMatchObject({ name: 'large_hit', loop: false });
     expect(hive.sprite.sprite.peek().queue).toEqual([{ name: 'large', loop: false }]);
-    for (let i = 0; i < 120; i++) s.displays.update(.1);
+    for (let i = 0; i < 120; i++) { s.displays.update(.1); }
     expect(hive.sprite.currentAnimation).toBe('large');
     hive.components.workable.WorkedBy(testPlayer());
     entities = await s.save();

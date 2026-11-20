@@ -57,7 +57,7 @@ const land = { isPassableAtPoint: ({ x, z }: { x: number; z: number }) => Math.a
 const passable = (x: number, z: number) => land.isPassableAtPoint({ x, z });
 /** A wall line across x = 12, from z = -15 to 15. */
 function wallLine(pathfinder: Pathfinder) {
-  for (let z = -15; z <= 15; z += 3) pathfinder.AddWall(new THREE.Vector3(13.5, 0, z + 1.5));
+  for (let z = -15; z <= 15; z += 3) { pathfinder.AddWall(new THREE.Vector3(13.5, 0, z + 1.5)); }
 }
 function walk(locomotor: Locomotor, world: CANNON.World, pathfinder: Pathfinder, seconds: number, each?: () => void) {
   for (let i = 0; i < seconds * 60 && locomotor.destination; i++) {

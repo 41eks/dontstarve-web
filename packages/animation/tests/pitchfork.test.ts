@@ -25,7 +25,7 @@ beforeEach(() => {
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 function advance(animation: PlayerInstance, frames: number) {
-  for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 60);
+  for (let i = 0; i < frames; i++) { advancePlayer(animation, 1 / 60); }
 }
 
 describe('pitchfork source art and TERRAFORM timing', () => {

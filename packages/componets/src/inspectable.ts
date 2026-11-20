@@ -39,7 +39,7 @@ export class Inspectable {
 
   /** Inspectable:GetStatus, for the components the game has: diseaseable and witherable are not ported. */
   GetStatus(viewer?: object): string | undefined {
-    if (this.inst === viewer) return undefined;
+    if (this.inst === viewer) { return undefined; }
     const { health, sleeper, burnable, pickable, inventoryitem, occupiable } = (this.inst.components ?? {}) as StatusComponents;
     return this.getstatus?.(this.inst, viewer) || (health?.IsDead() ? 'DEAD' : undefined)
       || (sleeper?.IsAsleep() ? 'SLEEPING' : undefined)
@@ -52,7 +52,7 @@ export class Inspectable {
 
   /** Inspectable:GetDescription. CanEntitySeeTarget's darkness branch has no port of its light query. */
   GetDescription(viewer: SpeakerInst): string | undefined {
-    if (this.inst === viewer) return undefined;
+    if (this.inst === viewer) { return undefined; }
     const desc = this.descriptionfn ? this.descriptionfn(viewer as never) : this.description;
     if (desc === undefined || viewer.hasTag('playerghost') || viewer.hasTag('mime')) {
       return GetDescription(viewer, this.inst, this.GetStatus(viewer));

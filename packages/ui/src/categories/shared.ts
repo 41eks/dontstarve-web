@@ -59,7 +59,7 @@ function createInventoryRecipe(
   source: SourceRecipe,
 ): InventoryRecipeDefinition | undefined {
   const product = recipeProduct(source);
-  if (!product) return undefined;
+  if (!product) { return undefined; }
 
   const ingredients: Record<string, number> = {};
   const requiredItems: string[] = [];
@@ -70,8 +70,8 @@ function createInventoryRecipe(
       || ingredient.amount < 0) {
       return undefined;
     }
-    if (ingredient.amount === 0) requiredItems.push(ingredient.type);
-    else ingredients[ingredient.type] = (ingredients[ingredient.type] ?? 0) + ingredient.amount;
+    if (ingredient.amount === 0) { requiredItems.push(ingredient.type); }
+    else { ingredients[ingredient.type] = (ingredients[ingredient.type] ?? 0) + ingredient.amount; }
   }
   return {
     recipeId: source.name,
@@ -93,7 +93,7 @@ function createInventoryProductSpec(
   source: SourceRecipe,
 ): readonly [string, InventoryProductSpec] | undefined {
   const product = recipeProduct(source);
-  if (!product) return undefined;
+  if (!product) { return undefined; }
   const nameOverride = stringValue(source.config.nameoverride);
   const nameKey = nameOverride ?? product.id;
   const atlas = stringValue(source.config.atlas);
@@ -110,7 +110,7 @@ function createInventoryProductSpec(
 const inventoryProductSpecs = new Map<string, InventoryProductSpec>();
 for (const source of recipeData.recipes) {
   const entry = createInventoryProductSpec(source);
-  if (!entry) continue;
+  if (!entry) { continue; }
   const [productId, spec] = entry;
   if (!inventoryProductSpecs.has(productId) || source.name === productId) {
     inventoryProductSpecs.set(productId, spec);
@@ -141,7 +141,7 @@ function humanize(id: string): string {
 
 function colorFor(id: string): string {
   let hash = 0;
-  for (const character of id) hash = (Math.imul(hash, 31) + character.charCodeAt(0)) | 0;
+  for (const character of id) { hash = (Math.imul(hash, 31) + character.charCodeAt(0)) | 0; }
   const hue = Math.abs(hash) % 360;
   return `hsl(${hue} 24% 48%)`;
 }

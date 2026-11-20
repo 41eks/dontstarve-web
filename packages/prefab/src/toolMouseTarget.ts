@@ -29,20 +29,20 @@ export class ToolMouseTarget {
     const tags = watchSignal(instance.tags, stop => this.cleanups.push(stop));
     setMouseTargetEnabled(instance.transform.model, false);
     createEffect(() => {
-      if (this.disposed) return;
+      if (this.disposed) { return; }
       tags.get();
       const tool = equippedActionEntity(this.hand.get());
       setMouseTargetEnabled(this.inst.transform.model, this.canInteract(tool));
     });
-    createEffect(() => { if (status.get() === 'removed') this.dispose(); });
+    createEffect(() => { if (status.get() === 'removed') { this.dispose(); } });
   }
 
   private canInteract(tool: ComponentActionEntity | undefined): boolean {
-    if (this.inst.isRemoved || this.inst.hasTag('INLIMBO')) return false;
-    if (this.options.canInteractWithoutTool?.()) return true;
-    if (!tool || tool.isRemoved) return false;
+    if (this.inst.isRemoved || this.inst.hasTag('INLIMBO')) { return false; }
+    if (this.options.canInteractWithoutTool?.()) { return true; }
+    if (!tool || tool.isRemoved) { return false; }
     const actions = collectEquippedItemActions(tool, undefined, this.inst, true);
-    if (actions.length > 0) return true;
+    if (actions.length > 0) { return true; }
     // combat.lua CanLightTarget, for the fire staff's ATTACK (RANGEDLIGHT).
     const burnable = this.inst.components.burnable;
     return !!tool.components.weapon && tool.hasTag('rangedlighter') && !!burnable
@@ -50,7 +50,7 @@ export class ToolMouseTarget {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     setMouseTargetEnabled(this.inst.transform.model, false);
     this.cleanups.splice(0).forEach(stop => stop());

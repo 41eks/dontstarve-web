@@ -15,12 +15,12 @@ test('measures unchanged scene matrix preparation separately from drawing', asyn
     let objects = 0, automatic = 0, observed = 0;
     const families: Record<string, number> = {};
     scene.traverse((object: any) => {
-      objects++; if (object.matrixAutoUpdate) automatic++;
-      if (Object.hasOwn(object, 'updateMatrixWorld')) observed++;
+      objects++; if (object.matrixAutoUpdate) { automatic++; }
+      if (Object.hasOwn(object, 'updateMatrixWorld')) { observed++; }
       const family = (window as any).__prefabInstance(object)?.prefab;
-      if (family) families[family] = (families[family] ?? 0) + 1;
+      if (family) { families[family] = (families[family] ?? 0) + 1; }
     });
-    for (let i = 0; i < 10; i++) updateSceneMatrices(scene);
+    for (let i = 0; i < 10; i++) { updateSceneMatrices(scene); }
     let compositions = 0, multiplications = 0;
     const compose = Matrix4.prototype.compose, multiply = Matrix4.prototype.multiplyMatrices;
     Matrix4.prototype.compose = function(...args: any[]) { compositions++; return compose.apply(this, args); };
@@ -56,7 +56,7 @@ test('measures matrix preparation during live game frames', async ({ page }) => 
       await new Promise<void>(resolve => {
         scene.updateMatrixWorld = function(force: boolean) {
           const start = performance.now(); update.call(this, force); samples.push(performance.now() - start);
-          if (samples.length === 120) resolve();
+          if (samples.length === 120) { resolve(); }
         };
       });
     } finally { scene.updateMatrixWorld = update; }

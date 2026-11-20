@@ -20,7 +20,7 @@ export interface GroundTileQuad { col: number; row: number; variant: number }
 
 export async function fetchGroundAsset(root: string, path: string): Promise<Response> {
   const response = await fetch(`${root.replace(/\/$/, '')}/${path}`);
-  if (!response.ok) throw new Error(`Unable to load ${path}: HTTP ${response.status}`);
+  if (!response.ok) { throw new Error(`Unable to load ${path}: HTTP ${response.status}`); }
   return response;
 }
 
@@ -91,11 +91,11 @@ export function groundTileGeometry(quads: readonly GroundTileQuad[], assets: Gro
   const half = size / 2;
   for (const { col, row, variant } of quads) {
     const cell = cells[variant];
-    if (!cell) throw new Error(`Ground tile variant ${variant} is unavailable`);
+    if (!cell) { throw new Error(`Ground tile variant ${variant} is unavailable`); }
     const originX = col * tileSize, originZ = row * tileSize;
     const x0 = Math.max(-half, originX), x1 = Math.min(half, originX + tileSize);
     const z0 = Math.max(-half, originZ), z1 = Math.min(half, originZ + tileSize);
-    if (x1 <= x0 || z1 <= z0) continue;
+    if (x1 <= x0 || z1 <= z0) { continue; }
     const offset = vertices;
     for (let corner = 0; corner < 4; corner++, vertices++) {
       const x = corner < 2 ? x0 : x1, z = corner % 2 === 0 ? z0 : z1;

@@ -69,7 +69,7 @@ export function saveHiveHealth(inst: PrefabInstance & { components: { health: He
 /** health:OnLoad of the record's `{ current, maximum }`. */
 export function loadHiveHealth(inst: PrefabInstance & { components: { health: Health } }, data: EntityPersistData): void {
   const saved = structureHealth(data);
-  if (saved) inst.components.health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
+  if (saved) { inst.components.health.OnLoad({ health: saved.current, maxhealth: saved.maximum }); }
 }
 
 function SeasonalSpawnChanges(inst: BeehiveInstance, season: WorldSeason | undefined): void {

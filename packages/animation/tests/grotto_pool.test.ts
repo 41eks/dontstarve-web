@@ -89,7 +89,7 @@ it('a small pool sets up its mist, waterfall and sound on its first frame; minin
     expect(target.entity.prefab).toBe('grotto_waterfall_small2');
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
-    for (let i = 0; i < 6; i++) expect(target.work({}, pickaxe)).toBe(true);
+    for (let i = 0; i < 6; i++) { expect(target.work({}, pickaxe)).toBe(true); }
     expect(fall.sprite.sprite.peek().clip).toMatchObject({ name: 'water_small2_mined', loop: true });
     expect(fall.hasTag('NOCLICK')).toBe(true);
     expect(fall.physicsRadiusOverride).toBeUndefined();
@@ -119,7 +119,7 @@ it('c_save and reload link a big pool to its saved children by ID instead of spa
     expect([x, z]).toEqual([12 + 1.15 * 3, -6 - 2.77 * 3]);
     expect([...first.waterfalls.values()]).toEqual([{ radius: 5.5, large: true }]);
     const glass = pool._children[1] as GrottoGlassInstance;
-    for (let i = 0; i < 6; i++) glass.components.workable!.WorkedBy(testPlayer());
+    for (let i = 0; i < 6; i++) { glass.components.workable!.WorkedBy(testPlayer()); }
     // A removed child leaves its slot.
     pool._children[4]!.remove();
     expect(pool._children[4]).toBeUndefined();
@@ -155,7 +155,7 @@ it('accepts the imported Caves save with every grotto prop linked to an imported
   const all = new Map(Object.values(entities).flat().map(record => [record.id, record]));
   expect([entities.grotto_pool_big.length, entities.grotto_pool_small.length]).toEqual([5, 21]);
   for (const pool of [...entities.grotto_pool_big, ...entities.grotto_pool_small]) {
-    for (const { id } of pool.components.grottoPool!.children) expect(all.has(id)).toBe(true);
+    for (const { id } of pool.components.grottoPool!.children) { expect(all.has(id)).toBe(true); }
   }
 });
 

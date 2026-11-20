@@ -100,7 +100,7 @@ export function configureFoodEntity(entity: ItemEntity): void {
   configureVeggieEntity(entity);
   configureSeedEntity(entity);
   const values = FOOD_EFFECTS[entity.prefab];
-  if (!values) return;
+  if (!values) { return; }
   if (!entity.components.edible) {
     const perishable = entity.components.perishable;
     const edible = addComponent(entity, 'edible', Edible,
@@ -113,7 +113,7 @@ export function configureFoodEntity(entity: ItemEntity): void {
       : entity.prefab === 'butter' ? 'GENERIC' : 'VEGGIE';
     entity.addTag(`edible_${foodtype}`);
   }
-  if (values.foodDrink) entity.addTag('fooddrink');
+  if (values.foodDrink) { entity.addTag('fooddrink'); }
 }
 
 /** Read the food's existing edible component, including its current perish stage. */

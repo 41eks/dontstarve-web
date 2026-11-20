@@ -27,9 +27,9 @@ export class SlipperyFeetTarget {
   SetIsSlipperyAtPoint(fn: SlipperyFeetTargetIsSlipperyAtPointFn | undefined): void { this.isslipperyatfeetfn = fn; }
 
   IsSlipperyAtPosition(x: number, z: number): boolean {
-    if (this.isslipperyatfeetfn) return this.isslipperyatfeetfn(this.inst, x, 0, z);
+    if (this.isslipperyatfeetfn) { return this.isslipperyatfeetfn(this.inst, x, 0, z); }
     const radius = this.inst.getPhysicsRadius();
-    if (radius === undefined) return false;
+    if (radius === undefined) { return false; }
     const position = this.inst.getPosition();
     const dx = position.x - x, dz = position.z - z;
     return dx * dx + dz * dz < radius * radius;

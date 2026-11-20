@@ -116,9 +116,9 @@ it('renders real flies child art, plays looping audio and preserves manure throu
     expect(flies.children[0].getWorldQuaternion(new THREE.Quaternion()).angleTo(camera)).toBeLessThan(1e-7);
     expect(flies.parent).toBe(model);
     expect(prefabInstance(flies)!.listTags()).toEqual(['NOCLICK', 'DECOR']);
-    for (let frame = 0; frame < 20; frame++) manager.update(.1, new THREE.Quaternion());
+    for (let frame = 0; frame < 20; frame++) { manager.update(.1, new THREE.Quaternion()); }
     let mesh!: THREE.Mesh;
-    flies.traverse(object => { if (object instanceof THREE.Mesh) mesh ??= object; });
+    flies.traverse(object => { if (object instanceof THREE.Mesh) { mesh ??= object; } });
     expect(mesh.geometry.drawRange.count).toBeGreaterThan(0);
     const entries = manager.renderEntities;
     expect(entries.map(entry => entry.object)).toContain(flies);

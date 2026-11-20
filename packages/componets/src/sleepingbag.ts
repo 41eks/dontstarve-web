@@ -47,7 +47,7 @@ export class SleepingBag {
   SetTemperatureTickFn(fn: SleepingBagTemperatureTickFn | undefined): void { this.temperaturetickfn = fn; }
 
   DoSleep(doer: SleepingBagSleeper): void {
-    if (this.sleeperState.peek() !== undefined || doer.bed !== undefined) return;
+    if (this.sleeperState.peek() !== undefined || doer.bed !== undefined) { return; }
     this.sleeperState.set(doer);
     this.inst.addTag('hassleeper');
     doer.DoSleep(this);
@@ -56,7 +56,7 @@ export class SleepingBag {
 
   DoWakeUp(nostatechange = false): void {
     const sleeper = this.sleeperState.peek();
-    if (!sleeper || sleeper.bed !== this) return;
+    if (!sleeper || sleeper.bed !== this) { return; }
     sleeper.DoWakeUp(nostatechange);
     this.sleeperState.set(undefined);
     this.inst.removeTag('hassleeper');

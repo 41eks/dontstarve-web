@@ -114,7 +114,7 @@ it('keeps a c_spawn fissure through c_save and a reload, and rejects c_give', as
     expect(saved[0]).toMatchObject({ transform: { position: [3, 0, -6] }, components: {} });
     await second.registry.restoreAll({ moon_fissure: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof MoonFissureInstance)) throw new Error('The saved fissure did not load');
+    if (!(loaded instanceof MoonFissureInstance)) { throw new Error('The saved fissure did not load'); }
     expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'crack_idle', loop: true });
     expect([loaded.components.workable.maxwork.peek(), loaded.components.workable.workleft.peek(), loaded._level]).toEqual([1, 0, 2]);
     expect(second.records()).toEqual(saved);

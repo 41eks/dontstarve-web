@@ -8,7 +8,7 @@ import { PickablePlantInstance } from '../../prefab/src/pickablePlant';
 
 export function plantInstance(model: Object3D): PickablePlantInstance {
   const instance = prefabInstance(model);
-  if (!(instance instanceof PickablePlantInstance)) throw new Error(`Not a pickable plant: ${model.name}`);
+  if (!(instance instanceof PickablePlantInstance)) { throw new Error(`Not a pickable plant: ${model.name}`); }
   return instance;
 }
 
@@ -33,7 +33,7 @@ export function bindTestWorld(scheduler: GameTimeScheduler, tickingarea?: WorldC
   const { season, snowLevel, cycle, moon, playerpositions, camerarotation } = sources;
   const release = bindWorldContent(sources);
   boundCamera = camerarotation;
-  const unbind = () => { if (boundCamera === camerarotation) boundCamera = undefined; release(); };
+  const unbind = () => { if (boundCamera === camerarotation) { boundCamera = undefined; } release(); };
   const getContent: GetWatchWorldContent = (key, registerCleanup, options) => getWatchWorldContent(key, registerCleanup, sources, options);
   return { season, snowLevel, cycle, moon, playerpositions, camerarotation, getWatchWorldContent: getContent, tickingarea, unbind };
 }
@@ -45,7 +45,7 @@ let boundCamera: ReturnType<typeof createTestWorldSources>['camerarotation'] | u
  * the billboards following it turn. Without a bound world there is no camera to turn, as in a standalone game context.
  */
 export function publishTestCamera(rotation: Quaternion): void {
-  if (boundCamera && !boundCamera.peek().equals(rotation)) boundCamera.set(rotation.clone());
+  if (boundCamera && !boundCamera.peek().equals(rotation)) { boundCamera.set(rotation.clone()); }
 }
 
 /**

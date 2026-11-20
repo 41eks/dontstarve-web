@@ -41,7 +41,7 @@ function PlaySleepLoopSoundTask(inst: TentInstance): void {
 }
 
 function stopsleepsound(inst: TentInstance): void {
-    for (const task of inst.sleep_tasks ?? []) task.Cancel();
+    for (const task of inst.sleep_tasks ?? []) { task.Cancel(); }
     inst.sleep_tasks = undefined;
 }
 
@@ -60,10 +60,10 @@ export class TentInstance extends PrefabInstance {
 
     constructor(world: PrefabWorldContext) {
         super(TENT_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
-        if (!world.scheduler) throw new Error('A tent needs the world scheduler');
+        if (!world.scheduler) { throw new Error('A tent needs the world scheduler'); }
         this.worldServices = world;
         MakeBuildingPersist(this);
-        for (const tag of ['tent', 'structure']) this.addTag(tag);
+        for (const tag of ['tent', 'structure']) { this.addTag(tag); }
         const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
@@ -75,7 +75,7 @@ export class TentInstance extends PrefabInstance {
         uses.SetMaxUses(TENT_USES);
         uses.SetUses(TENT_USES);
         uses.SetOnFinished(() => {
-            if (this.hasTag('burnt')) return;
+            if (this.hasTag('burnt')) { return; }
             stopsleepsound(this);
             this.persists = false;
             this.sprite.playOnce('destroy', () => this.remove());
@@ -110,7 +110,7 @@ function onworked(inst: TentInstance): void {
 }
 
 function onhammered(inst: PrefabInstance): void {
-    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    if (inst.components.burnable?.IsBurning()) { inst.components.burnable.Extinguish(); }
     inst.components.lootdropper!.DropLoot();
     inst.worldServices?.fx?.collapse?.('big', inst.position, 'wood');
     inst.remove();

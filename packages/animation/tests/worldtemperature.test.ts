@@ -12,7 +12,7 @@ beforeEach(() => batch(() => {
   seasonstate.set({ season: 'autumn', progress: 0.5 });
   clockstate.set({ phase: 'day', timeinphase: 0 });
 }));
-afterEach(() => { for (const component of components.splice(0)) component.dispose(); });
+afterEach(() => { for (const component of components.splice(0)) { component.dispose(); } });
 
 describe('worldtemperature.lua temperature component', () => {
   it('combines seasonal curves, phase progress and noise, publishing reactively', () => {

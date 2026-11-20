@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 test('dwarf stars decode the source WAVs and stop independent loops on removal', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => { if (message.type() === 'error' || message.type() === 'warning') errors.push(message.text()); });
+  page.on('console', (message) => { if (message.type() === 'error' || message.type() === 'warning') { errors.push(message.text()); } });
   await page.goto('/tests/dst-lighting.html');
   const result = await page.evaluate(async (url) => {
     const { prepareStarAudioCheck } = await import(url);

@@ -17,7 +17,7 @@ export function testLocomotor(player: THREE.Object3D, options?: LocomotorOptions
     get walking() { return locomotor.bufferedAction !== undefined; },
     arrive(): void {
       const destination = locomotor.destination;
-      if (!destination) return;
+      if (!destination) { return; }
       player.position.set(destination.x, player.position.y, destination.z);
       locomotor.update(1, 1 / 30);
     },

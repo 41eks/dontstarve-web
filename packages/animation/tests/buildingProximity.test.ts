@@ -72,7 +72,7 @@ async function setup(definition: { archive: string } = definitions.animatedBuild
   /** LMB RUMMAGE: the locomotor buffers it in reach and doshortaction performs it on frame 6. */
   const act = () => { click(); locomotor.update(16, 1 / 30); stategraph.update(1); };
   const finish = () => {
-    for (let frame = 0; frame < 50; frame++) placement.update(0.1);
+    for (let frame = 0; frame < 50; frame++) { placement.update(0.1); }
   };
   return { placement, model, changes, playOnce, distance, click, act, finish, rummage, locomotor, mouseActions };
 }

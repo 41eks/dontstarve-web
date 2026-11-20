@@ -54,7 +54,7 @@ export class BurnableItemController {
 
   constructor(entity: ItemEntity) {
     this.entity = entity;
-    for (const tag of BURNABLE_ITEM_DEFINITIONS[entity.prefab].tags) entity.addTag(tag);
+    for (const tag of BURNABLE_ITEM_DEFINITIONS[entity.prefab].tags) { entity.addTag(tag); }
     const scheduler = entity.components.perishable.scheduler;
     this.ownsClock = !scheduler;
     this.burnable = addComponent(entity, 'burnable', Burnable, scheduler);
@@ -66,16 +66,16 @@ export class BurnableItemController {
     TILE_SIZE / 4, scheduler);
     this.burnable.SetOnIgniteFn(() => { entity.persists = false; }); // DefaultBurnFn
     this.burnable.SetOnExtinguishFn(() => { entity.persists = true; }); // DefaultExtinguishFn
-    if (!explosive) this.burnable.SetOnBurntFn(() => {
+    if (!explosive) { this.burnable.SetOnBurntFn(() => {
       const count = Math.min(ASH_MAX_STACK, entity.components.stackable.count);
       const position = entity.transform.position.clone();
       // DefaultBurntFn creates one ash stack at the original inst's position, then removes the inst.
       const spawnGroundItem = this.world?.spawnGroundItem;
-      if (!spawnGroundItem) throw new Error('Burning item requires a world to spawn ash');
+      if (!spawnGroundItem) { throw new Error('Burning item requires a world to spawn ash'); }
       spawnGroundItem({ ...catalog.items.ash, itemId: 'ash', count }, position);
       this.burntState.set(true);
       entity.remove();
-    });
+    }); }
   }
   bind(world: Pick<ItemPrefabWorld, 'spawnGroundItem'>): void {
     this.world = world;
@@ -83,12 +83,12 @@ export class BurnableItemController {
   }
   /** Advances the components' own clock; a world's scheduler advances them otherwise. */
   OnUpdate(dt: number): void {
-    if (this.removed || this.entity.isRemoved || this.entity.components.inventoryitem.owner) return;
+    if (this.removed || this.entity.isRemoved || this.entity.components.inventoryitem.owner) { return; }
     this.burnable.Update(dt);
     this.propagator.Update(dt);
   }
   dispose(): void {
-    if (this.removed) return;
+    if (this.removed) { return; }
     this.removed = true;
     this.burnable.SetOnExtinguishFn(undefined);
     this.burnable.dispose(); this.propagator.dispose();
@@ -97,7 +97,7 @@ export class BurnableItemController {
 }
 
 export function configureBurnableItemEntity(entity: ItemEntity): void {
-  if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, entity.prefab)) return;
+  if (!Object.hasOwn(BURNABLE_ITEM_DEFINITIONS, entity.prefab)) { return; }
   entity.component('burnable_item', () => new BurnableItemController(entity));
 }
 
@@ -110,11 +110,11 @@ export function bindBurnableItem(inst: ItemEntity, world: ItemPrefabWorld, fxLev
   configureBurnableItemEntity(inst);
   const controller = inst.getComponent<BurnableItemController>('burnable_item')!;
   controller.bind(world);
-  if (controller.ownsClock) inst.onRemove(world.componentUpdates.register(controller));
+  if (controller.ownsClock) { inst.onRemove(world.componentUpdates.register(controller)); }
   const fireSource = world.sprites.archive(FIRE_ART, FIRE_ART_OPTIONS);
   // fire.lua: the burning fx entity, drawn by its own display as a child of the item; tags FX and HASHEATER.
   const fire = createArchiveEntity('fire', fireSource, { name: `level${fxLevel}`, billboard: true }, 'fire', undefined, inst.status);
-  for (const tag of ['FX', 'HASHEATER']) fire.instance.addTag(tag);
+  for (const tag of ['FX', 'HASHEATER']) { fire.instance.addTag(tag); }
   fire.instance.persists = false;
   let sound: SoundHandle | undefined;
   let loop: SoundHandle | undefined;
@@ -127,16 +127,16 @@ export function bindBurnableItem(inst: ItemEntity, world: ItemPrefabWorld, fxLev
   };
   // Runs only when the burning state flips; a rerun from another value read by the sounds or light changes nothing.
   const syncBurning = (burning: boolean) => {
-    if (burning === burningNow) return;
+    if (burning === burningNow) { return; }
     if (burning) {
       burningNow = true;
       sound = PlaySound('dontstarve/common/campfire', inst.position);
-      if (loopSound) loop = PlaySound(loopSound, inst.position);
+      if (loopSound) { loop = PlaySound(loopSound, inst.position); }
       inst.light.set({ colour: [1, 1, 192 / 255], radius: (fxLevel + 1) * (TILE_SIZE / 4), intensity: .8, falloff: .33 });
     } else {
       const wasBurning = burningNow;
       clearBurning();
-      if (wasBurning) PlaySound('dontstarve/common/fireOut', inst.position);
+      if (wasBurning) { PlaySound('dontstarve/common/fireOut', inst.position); }
     }
   };
   inst.sprite.attachFx('fire', { sprite: fire.instance.sprite, display: fire.display, active: controller.burnable.burning, sortLayer: 2 });

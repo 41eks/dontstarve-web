@@ -16,13 +16,13 @@ it('queries bounded terrain with the same neighbour masks and reports the change
   // A reference calculation includes neighbours outside the requested chunk.
   for (const [id, quads] of map.tileLayerQuads(bounds)) {
     const expected = [];
-    for (let row = bounds.minRow; row < bounds.maxRow; row++) for (let col = bounds.minCol; col < bounds.maxCol; col++) {
+    for (let row = bounds.minRow; row < bounds.maxRow; row++) { for (let col = bounds.minCol; col < bounds.maxCol; col++) {
       const is = (dx: number, dz: number) => map.tileIdAtCell(col + dx, row + dz) === id;
       const cardinal = Number(is(-1, 0)) | Number(is(0, -1)) << 1 | Number(is(1, 0)) << 2 | Number(is(0, 1)) << 3;
       const diagonal = Number(is(-1, -1)) | Number(is(1, -1)) << 1 | Number(is(1, 1)) << 2 | Number(is(-1, 1)) << 3;
       const variant = groundTileVariant(is(0, 0), cardinal, diagonal);
-      if (variant !== 17) expected.push({ col, row, variant });
-    }
+      if (variant !== 17) { expected.push({ col, row, variant }); }
+    } }
     expect(quads).toEqual(expected);
   }
   const listener = vi.fn(), stop = map.onTerrainChanged(listener);
@@ -143,7 +143,7 @@ it('loads all source minimap masks and noise per terrain layer, and reports chan
   const alphas = (atlas: { data: Uint8ClampedArray; width: number; height: number }, rect: { u0: number; v0: number; u1: number; v1: number }) => {
     const values: number[] = [];
     for (let y = Math.ceil(rect.v0 * atlas.height); y < Math.floor(rect.v1 * atlas.height); y++) {
-      for (let x = Math.ceil(rect.u0 * atlas.width); x < Math.floor(rect.u1 * atlas.width); x++) values.push(atlas.data[(y * atlas.width + x) * 4 + 3]);
+      for (let x = Math.ceil(rect.u0 * atlas.width); x < Math.floor(rect.u1 * atlas.width); x++) { values.push(atlas.data[(y * atlas.width + x) * 4 + 3]); }
     }
     return values;
   };
@@ -168,9 +168,9 @@ it('loads all source minimap masks and noise per terrain layer, and reports chan
 
 it('shares straight, diagonal and concave neighbour masks across changes and save restoration', () => {
   const saved = [];
-  for (let row = -3; row < 3; row++) for (let col = -3; col < 3; col++) {
+  for (let row = -3; row < 3; row++) { for (let col = -3; col < 3; col++) {
     saved.push({ col, row, tileId: WORLD_TILES.OCEAN_COASTAL });
-  }
+  } }
   const map = new TurfMap(72, saved.filter(tile => tile.col !== 0 || tile.row !== 0));
   const land = () => map.tileLayerQuads().get(WORLD_TILES.DECIDUOUS)!;
   expect(land()).toHaveLength(9);

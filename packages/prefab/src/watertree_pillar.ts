@@ -69,12 +69,12 @@ function OnSave(inst: WatertreePillarInstance, data: EntityPersistData): void {
 /** The childspawner and timer components' OnLoad, which run before inst.OnLoad in the source, then OnLoad. */
 function OnLoad(inst: WatertreePillarInstance, data: EntityPersistData): void {
   const saved = data.watertreePillar;
-  if (!saved) return;
+  if (!saved) { return; }
   inst.components.childspawner.OnLoad(saved.childspawner);
   inst.components.timer.OnLoad(saved.timer);
   inst.num_oceantreenuts = saved.num_oceantreenuts;
-  if (saved.last_ram_time !== undefined) inst.last_ram_time = saved.last_ram_time;
-  if (saved.cocoons_to_regrow !== undefined) inst._cocoons_to_regrow = saved.cocoons_to_regrow;
+  if (saved.last_ram_time !== undefined) { inst.last_ram_time = saved.last_ram_time; }
+  if (saved.cocoons_to_regrow !== undefined) { inst._cocoons_to_regrow = saved.cocoons_to_regrow; }
 }
 
 /**

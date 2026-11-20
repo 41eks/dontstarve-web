@@ -64,7 +64,7 @@ export class SlipperyFeet {
   IsSlippery(): boolean { return this.sources.size > 0; }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.slowCheck.stop();
     this.stopInternal();
@@ -73,7 +73,7 @@ export class SlipperyFeet {
 
   StartSlipperySource(src: string, key: unknown = src): void {
     let keys = this.sources.get(src);
-    if (!keys) this.sources.set(src, keys = new Set());
+    if (!keys) { this.sources.set(src, keys = new Set()); }
     keys.add(key);
     this.startInternal();
   }
@@ -81,8 +81,8 @@ export class SlipperyFeet {
   StopSlipperySource(src: string, key: unknown = src): void {
     const keys = this.sources.get(src);
     keys?.delete(key);
-    if (keys?.size === 0) this.sources.delete(src);
-    if (this.sources.size === 0) this.stopInternal();
+    if (keys?.size === 0) { this.sources.delete(src); }
+    if (this.sources.size === 0) { this.stopInternal(); }
   }
 
   GetSlipperyAndNearbyEnts(): { slippery?: SlipperyFeetEntity; nearby?: SlipperyFeetEntity } {
@@ -93,23 +93,23 @@ export class SlipperyFeet {
   }
 
   private onSlowCheck(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     const { slippery, nearby } = this.GetSlipperyAndNearbyEnts();
     if (!slippery && !nearby) { this.slowCheck.start(SLIPPERY_SLOWCHECK_FREQUENCY); return; }
     // Use the faster updater to see when the player leaves the zone.
-    if (slippery) this.StartSlipperySource('ice_entity');
+    if (slippery) { this.StartSlipperySource('ice_entity'); }
     this.startUpdating('checkiceentity');
   }
 
   private startInternal(): void {
-    if (this.started) return;
+    if (this.started) { return; }
     this.started = true;
     this.stopNewState = this.inst.sg.onNewState(() => this.onNewState());
     this.onNewState();
   }
 
   private stopInternal(): void {
-    if (!this.started) return;
+    if (!this.started) { return; }
     this.started = false;
     this.stopNewState?.(); this.stopNewState = undefined;
     this.setAccumulating(false);
@@ -132,7 +132,7 @@ export class SlipperyFeet {
     this.slippiness = val;
     if (val > 0) {
       this.startUpdating('decay');
-      if (val >= this.threshold) this.inst.PushEvent('feetslipped');
+      if (val >= this.threshold) { this.inst.PushEvent('feetslipped'); }
     } else {
       this.decay_spd = 0;
       this.stopUpdating('decay');
@@ -141,7 +141,7 @@ export class SlipperyFeet {
 
   DoDelta(delta: number): void {
     if (delta > 0) { this.decay_spd = 0; this.SetCurrent(this.slippiness + delta); }
-    else this.SetCurrent(Math.max(0, this.slippiness + delta));
+    else { this.SetCurrent(Math.max(0, this.slippiness + delta)); }
   }
 
   CalcAccumulatingSpeed(): number {
@@ -150,14 +150,14 @@ export class SlipperyFeet {
   }
 
   private startUpdating(reason: string): void {
-    if (this.disposed) return;
-    if (this.updating.size === 0) this.slowCheck.stop();
+    if (this.disposed) { return; }
+    if (this.updating.size === 0) { this.slowCheck.stop(); }
     this.updating.add(reason);
   }
 
   private stopUpdating(reason: string): void {
-    if (!this.updating.delete(reason) || this.updating.size > 0 || this.disposed) return;
-    if (this.slowCheck.snapshot.peek().status !== 'scheduled') this.slowCheck.start(SLIPPERY_SLOWCHECK_FREQUENCY);
+    if (!this.updating.delete(reason) || this.updating.size > 0 || this.disposed) { return; }
+    if (this.slowCheck.snapshot.peek().status !== 'scheduled') { this.slowCheck.start(SLIPPERY_SLOWCHECK_FREQUENCY); }
   }
 
   private doDecay(dt: number): void {
@@ -168,17 +168,17 @@ export class SlipperyFeet {
   }
 
   update(dt: number): void {
-    if (this.disposed || this.updating.size === 0) return;
+    if (this.disposed || this.updating.size === 0) { return; }
     let rateIceEntity = 1;
     if (this.updating.has('checkiceentity')) {
       // There is an ice entity nearby that we need to see if we still apply.
       const { slippery, nearby } = this.GetSlipperyAndNearbyEnts();
-      if (!slippery) this.StopSlipperySource('ice_entity');
+      if (!slippery) { this.StopSlipperySource('ice_entity'); }
       else {
         this.StartSlipperySource('ice_entity');
         rateIceEntity = slippery.components.slipperyfeettarget!.GetSlipperyRate(this.inst);
       }
-      if (!nearby) this.stopUpdating('checkiceentity');
+      if (!nearby) { this.stopUpdating('checkiceentity'); }
     }
     if (this.updating.has('accumulate')) {
       this.DoDelta(this.CalcAccumulatingSpeed() * dt * rateIceEntity * (0.7 + 0.3 * this.random()));

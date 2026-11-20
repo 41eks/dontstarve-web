@@ -32,7 +32,7 @@ const findListeners = (musician: PanfluteMusician, range: number) =>
  * Rider mounts, farmplanttendable, grogginess, knockedout and the Wortox buff/skills need unported components.
  */
 function HearPanFlute(listener: PanfluteListener, musician: unknown): void {
-  if (listener === musician || listener.hasTag('player') || !listener.hasTag('sleeper')) return;
+  if (listener === musician || listener.hasTag('player') || !listener.hasTag('sleeper')) { return; }
   listener.components.sleeper?.AddSleepiness(PANFLUTE_SLEEPINESS, PANFLUTE_SLEEPTIME);
 }
 
@@ -42,7 +42,7 @@ export function configurePanfluteEntity(entity: ItemEntity): void {
   entity.GetSkinBuild = () => itemSkinBuild(entity);
   entity.components.finiteuses.setMaxUses(PANFLUTE_USES);
   entity.components.finiteuses.setConsumption('PLAY', 1);
-  if (entity.components.instrument) return;
+  if (entity.components.instrument) { return; }
   const instrument: PanfluteInstrument = addComponent(entity, 'instrument', Instrument<PanfluteMusician, PanfluteListener>, findListeners);
   instrument.SetRange(PANFLUTE_SLEEPRANGE);
   instrument.SetOnHeardFn(HearPanFlute);

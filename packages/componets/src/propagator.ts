@@ -17,7 +17,7 @@ const PROPAGATOR_SETTINGS = {
 } as const;
 
 function randomValue([base, variation]: readonly [number, number]): number {
-  if (variation === 0) return base;
+  if (variation === 0) { return base; }
   return base + Math.random() * variation;
 }
 
@@ -78,7 +78,7 @@ export class Propagator {
   }
   /** Bind world content when an inventory inst first enters the ground prefab system. */
   setWorldContent(getWatchWorldContent: GetWatchWorldContent | undefined): void {
-    if (this.removed) return;
+    if (this.removed) { return; }
     this.stopSeason?.(); this.stopSeason = undefined;
     this.seasonSignal.set(undefined);
     this.watchSeason(getWatchWorldContent);
@@ -90,17 +90,17 @@ export class Propagator {
   }
   /** StartUpdating while spreading or holding heat; StopUpdating once spreading ended and the heat is gone. */
   private reschedule(): void {
-    if (this.removed) return;
+    if (this.removed) { return; }
     const scheduled = this.updateTimer.snapshot.peek().status === 'scheduled';
     const spreading = this.spreading.peek();
     if (spreading || this.currentheat.peek() > 0) {
       // propagator.lua starts its periodic task after .5 + random() * .67 seconds.
-      if (!scheduled) this.updateTimer.start(spreading ? .5 : .5 + Math.random() * .67);
-    } else if (scheduled) this.updateTimer.stop();
+      if (!scheduled) { this.updateTimer.start(spreading ? .5 : .5 + Math.random() * .67); }
+    } else if (scheduled) { this.updateTimer.stop(); }
   }
   AcceptsHeat(): boolean { return !this.removed && this.acceptsheat && !this.pauseheating; }
   AddHeat(amount: number): void {
-    if (!this.AcceptsHeat() || this.inst.hasTag('fireimmune')) return;
+    if (!this.AcceptsHeat() || this.inst.hasTag('fireimmune')) { return; }
     const heat = Math.min(amount, this.maxHeatThisUpdate - this.heatThisUpdate);
     this.heatThisUpdate += heat;
     this.currentheat.set(this.currentheat.peek() + heat);
@@ -112,11 +112,11 @@ export class Propagator {
   }
   NearbyHeat(radius: number): number { return this.nearby(radius * this.unitsPerMeter).reduce((sum, inst) => sum + (inst.components.propagator?.currentheat.peek() ?? 0), 0); }
   Update(dt: number): void {
-    if (this.removed || !Number.isFinite(dt) || dt <= 0) return;
-    if (this.ownsScheduler) this.scheduler.advance(dt);
+    if (this.removed || !Number.isFinite(dt) || dt <= 0) { return; }
+    if (this.ownsScheduler) { this.scheduler.advance(dt); }
   }
   private updateHeat(): void {
-    if (this.removed || this.inst.isRemoved) return;
+    if (this.removed || this.inst.isRemoved) { return; }
     // this.calculateHeatCap();
     this.heatThisUpdate = 0;
     this.maxHeatThisUpdate = this.flashpoint / (1 + 3 * (1 - (1 - Math.random()) ** 3)) * .5;
@@ -127,18 +127,18 @@ export class Propagator {
       const position = this.inst.getPosition();
       const range = this.propagationRange.peek() * this.unitsPerMeter;
       for (const target of this.nearby(range)) {
-        if (target === this.inst || target.isRemoved || target.hasTag('INLIMBO')) continue;
+        if (target === this.inst || target.isRemoved || target.hasTag('INLIMBO')) { continue; }
         const distanceSquared = target.getPosition().distanceToSquared(position);
         const nrp = target.components.propagator;
         nrp?.AddHeat(this.heatoutput * Math.max(.1, 1 - distanceSquared / range ** 2) * .5);
       }
     }
-    if (spreading || this.currentheat.peek() > 0) this.updateTimer.start(.5);
+    if (spreading || this.currentheat.peek() > 0) { this.updateTimer.start(.5); }
   }
   dispose(): void {
     this.stopTask(); this.spreading.set(false); this.removed = true;
     this.updateTimer.stop(); this.updatingMemo.dispose(); this.propagationRangeMemo.dispose(); this.stopSeason?.();
-    if (this.ownsScheduler) this.scheduler.dispose();
+    if (this.ownsScheduler) { this.scheduler.dispose(); }
   }
   // private calculateHeatCap(): void {
   //   this.heatThisUpdate = 0;

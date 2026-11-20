@@ -127,29 +127,29 @@ const isCarryItem = (itemId: string): itemId is PlayerCarryItem => Object.hasOwn
 /** Prefab configuration for a hand inst: its own configureEntity, source tags, weapon and equippable onequip/onunequip. */
 export function configureEquipmentEntity(entity: ItemEntity): void {
   const entry = getHandEquipmentDefinition(entity.prefab);
-  if (!entry) return;
+  if (!entry) { return; }
   const { definition } = entry;
   definition.configureEntity?.(entity);
   if (!entity.getComponent('handequipment')) {
     const held = entity.component('handequipment', () => new HeldEquipment(entity, definition));
     const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'hand');
-    if (definition.walkspeedmult !== undefined) equippable.walkspeedmult = definition.walkspeedmult;
+    if (definition.walkspeedmult !== undefined) { equippable.walkspeedmult = definition.walkspeedmult; }
     equippable.SetOnEquip((_inst, owner) => held.onequip(owner));
     equippable.SetOnUnequip(() => held.onunequip());
   }
-  for (const tag of definition.tags ?? []) entity.addTag(tag);
+  for (const tag of definition.tags ?? []) { entity.addTag(tag); }
   if (definition.weapon && !entity.components.weapon) {
     // weapon.lua adds the "weapon" tag; weapon:OnAttack wears finiteuses only when the inst has them.
     const weapon = addComponent(entity, 'weapon', Weapon, () => definition.maxUses === undefined ? undefined : entity.components.finiteuses);
     weapon.SetDamage(definition.weapon.damage);
-    if (definition.weapon.attackwear !== undefined) weapon.attackwear = definition.weapon.attackwear;
-    if (definition.weapon.onattack) weapon.SetOnAttack(definition.weapon.onattack);
+    if (definition.weapon.attackwear !== undefined) { weapon.attackwear = definition.weapon.attackwear; }
+    if (definition.weapon.onattack) { weapon.SetOnAttack(definition.weapon.onattack); }
     entity.addTag('weapon');
   }
 }
 
 export function getHandEquipmentDefinition(itemId: string): { carryItem: PlayerCarryItem; definition: HandEquipmentDefinition } | undefined {
-  if (!isCarryItem(itemId)) return undefined;
+  if (!isCarryItem(itemId)) { return undefined; }
   return { carryItem: itemId, definition: definitions[itemId] };
 }
 

@@ -120,7 +120,7 @@ for (const [label, action, commitFrame, invobject] of [
     assert.equal(graph.isPerformingAction(action), false);
   });
 
-  if (invobject === reskinTool) for (const reason of ['unequip', 'cancel']) {
+  if (invobject === reskinTool) { for (const reason of ['unequip', 'cancel']) {
     test(`${label} discards uncommitted work on ${reason}`, () => {
       const { graph } = actor();
       let executed = 0;
@@ -128,14 +128,14 @@ for (const [label, action, commitFrame, invobject] of [
       graph.listenForEvent('actionfailed', ({ action }) => failures.push(action.action));
       graph.pushBufferedAction(new BufferedAction(action, () => { executed++; }, undefined, { invobject }));
       graph.update(2 * FRAMES);
-      if (reason === 'unequip') graph.pushEvent('unequip');
-      if (reason === 'cancel') graph.cancelAction();
+      if (reason === 'unequip') { graph.pushEvent('unequip'); }
+      if (reason === 'cancel') { graph.cancelAction(); }
       graph.update(10);
       assert.equal(executed, 0);
       assert.deepEqual(failures, [action]);
       assert.equal(graph.stateName, 'idle');
     });
-  }
+  } }
 }
 
 test('cast sound precedes commitment, committed effects keep running and early interruption removes them', () => {

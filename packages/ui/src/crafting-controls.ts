@@ -151,21 +151,21 @@ export function initializeCraftingControls(root: ShadowRoot, {
 
   const changeSkin = (offset: number) => {
     const recipe = selectedRecipeState.get();
-    if (!recipe || recipe.skins.length === 0) return;
+    if (!recipe || recipe.skins.length === 0) { return; }
     const selectedSkinId = selectedSkinIds.get(recipe.id);
     const currentIndex = selectedSkinId === undefined
       ? 0
       : recipe.skins.findIndex(({ id }) => id === selectedSkinId) + 1;
     const optionCount = recipe.skins.length + 1;
     const nextIndex = (currentIndex + offset + optionCount) % optionCount;
-    if (nextIndex === 0) selectedSkinIds.delete(recipe.id);
-    else selectedSkinIds.set(recipe.id, recipe.skins[nextIndex - 1].id);
+    if (nextIndex === 0) { selectedSkinIds.delete(recipe.id); }
+    else { selectedSkinIds.set(recipe.id, recipe.skins[nextIndex - 1].id); }
     updateSkinSelection(recipe);
   };
 
   const updateSelectedButton = (recipe: Recipe | undefined) => {
     const nextButton = recipe ? activeRecipeButtons[activeRecipes.indexOf(recipe)] : undefined;
-    if (nextButton === selectedRecipeButton) return;
+    if (nextButton === selectedRecipeButton) { return; }
     selectedRecipeButton?.setAttribute('aria-selected', 'false');
     nextButton?.setAttribute('aria-selected', 'true');
     selectedRecipeButton = nextButton;
@@ -181,7 +181,7 @@ export function initializeCraftingControls(root: ShadowRoot, {
 
   const selectRecipe = (recipe: Recipe) => {
     const index = activeRecipes.indexOf(recipe);
-    if (index >= 0) updateSelection(index);
+    if (index >= 0) { updateSelection(index); }
   };
 
   const mapRecipeToButton = createRecipeButtonMapper({
@@ -243,8 +243,8 @@ export function initializeCraftingControls(root: ShadowRoot, {
     categoryViews.forEach(({ category, recipeGroup, quickGroup }) => {
       const recipeHidden = activeCategoryId !== 'none' && category.id !== activeCategoryId;
       const quickHidden = category.id !== (activeCategoryId === 'none' ? categoryViews[0].category.id : activeCategoryId);
-      if (recipeGroup.hidden !== recipeHidden) recipeGroup.hidden = recipeHidden;
-      if (quickGroup.hidden !== quickHidden) quickGroup.hidden = quickHidden;
+      if (recipeGroup.hidden !== recipeHidden) { recipeGroup.hidden = recipeHidden; }
+      if (quickGroup.hidden !== quickHidden) { quickGroup.hidden = quickHidden; }
     });
   }));
 
@@ -254,13 +254,13 @@ export function initializeCraftingControls(root: ShadowRoot, {
     const view = activeCategoryId === 'none'
       ? allView
       : categoryViews.find(({ category }) => category.id === activeCategoryId) ?? categoryViews[0];
-    if (previousCategoryId !== undefined && previousCategoryId !== view.category.id) recipeGrid.scrollTop = 0;
+    if (previousCategoryId !== undefined && previousCategoryId !== view.category.id) { recipeGrid.scrollTop = 0; }
     activeRecipes = view.category.recipes;
     activeRecipeButtons = view.recipeButtons;
     categoryTitle.textContent = view.category.name;
     categoryButtons.forEach((button, index) => {
       const pressed = String(categories[index].id === view.category.id);
-      if (button.getAttribute('aria-pressed') !== pressed) button.setAttribute('aria-pressed', pressed);
+      if (button.getAttribute('aria-pressed') !== pressed) { button.setAttribute('aria-pressed', pressed); }
     });
     const preservedIndex = previousCategoryId === undefined
       ? activeRecipes.findIndex(({ id }) => id === initialSelectedRecipeId)
@@ -294,7 +294,7 @@ export function initializeCraftingControls(root: ShadowRoot, {
   nextSkinButton.addEventListener('click', () => changeSkin(1), { signal: listeners.signal });
   buildButton.addEventListener('click', () => {
     const recipe = selectedRecipeState.get();
-    if (!recipe || isRecipeLocked(recipe) || getCraftingRecipeId()) return;
+    if (!recipe || isRecipeLocked(recipe) || getCraftingRecipeId()) { return; }
     const skinId = selectedSkinIds.get(recipe.id);
     if (isRecipeBuffered(recipe)) {
       emitCraftRequest(recipe.id, skinId);

@@ -48,7 +48,7 @@ export async function setupHoverer() {
     equip: (value: boolean) => { equipped = value; step(); },
     valid: (value: boolean) => { valid = value; step(); },
     scaleTarget: (scale: number) => { target.scale.setScalar(scale); step(); },
-    tooltip: (value: boolean) => { if (value) tooltip.show('建造预览'); else tooltip.hide(); },
+    tooltip: (value: boolean) => { if (value) { tooltip.show('建造预览'); } else { tooltip.hide(); } },
     dispose: () => { disposeActionEntity(findActionEntity(target)); unregister(); picker.dispose(); ui.dispose(); renderer.dispose(); renderer.domElement.remove(); },
   } });
 }

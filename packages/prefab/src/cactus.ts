@@ -51,8 +51,8 @@ function onpickedfn(inst: CactusInstance, doer?: PickDoer): void {
       // You get a cactus flower, yay.
       const loot = inst.world.spawnItem?.({ itemId: CACTUS_FLOWER_ID, count: 1 });
       if (loot) {
-        if (inventory?.GiveItem) inventory.GiveItem(loot, inst.position.clone());
-        else inst.world.dropItem?.(loot, inst.position.clone());
+        if (inventory?.GiveItem) { inventory.GiveItem(loot, inst.position.clone()); }
+        else { inst.world.dropItem?.(loot, inst.position.clone()); }
       }
     }
   }

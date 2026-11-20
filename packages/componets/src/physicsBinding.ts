@@ -21,7 +21,7 @@ export interface PhysicsBinding {
  * mesh stands on the same origin, and its faces block spheres from either side.
  */
 function shapeBody(body: CANNON.Body, { capsule, mass, triangleMesh }: PhysicsJson): void {
-  while (body.shapes.length) body.removeShape(body.shapes[0]);
+  while (body.shapes.length) { body.removeShape(body.shapes[0]); }
   if (triangleMesh && mass === 0) {
     const vertices = triangleMesh.map(coordinate => coordinate * WORLD_SCALE);
     body.addShape(new CANNON.Trimesh(vertices, Array.from({ length: vertices.length / 3 }, (_, index) => index)));
@@ -39,17 +39,17 @@ function shapeBody(body: CANNON.Body, { capsule, mass, triangleMesh }: PhysicsJs
 const frictionMaterials = new WeakMap<CANNON.World, Map<number, CANNON.Material>>();
 function frictionMaterial(world: CANNON.World, friction: number): CANNON.Material {
   let materials = frictionMaterials.get(world);
-  if (!materials) frictionMaterials.set(world, materials = new Map());
+  if (!materials) { frictionMaterials.set(world, materials = new Map()); }
   let material = materials.get(friction);
-  if (!material) materials.set(friction, material = new CANNON.Material({ friction, restitution: 0 }));
+  if (!material) { materials.set(friction, material = new CANNON.Material({ friction, restitution: 0 })); }
   return material;
 }
 function contactRegisteredMaterials(world: CANNON.World, material: CANNON.Material): void {
   const others = new Set([world.defaultMaterial, ...getRegisteredPhysicsBodies(world).map(body => body.material)
     .filter((other): other is CANNON.Material => other !== null)]);
-  for (const other of others) if (!world.getContactMaterial(material, other)) {
+  for (const other of others) { if (!world.getContactMaterial(material, other)) {
     world.addContactMaterial(new CANNON.ContactMaterial(material, other, { friction: material.friction, restitution: 0 }));
-  }
+  } }
 }
 
 /** Translate the source ground bit to the host plane's group; all other source groups retain their bits. */
@@ -75,44 +75,44 @@ export function bindPhysics(world: CANNON.World, physics: PhysicsState, ground: 
   let registered: boolean | undefined;
 
   const damp = () => {
-    if (!body || !declared) return;
+    if (!body || !declared) { return; }
     const factor = Math.exp(-declared.damping * world.dt);
     body.velocity.x *= factor;
     body.velocity.z *= factor;
   };
   const unregister = () => {
-    if (!body || registered === undefined) return;
+    if (!body || registered === undefined) { return; }
     world.removeBody(body);
     world.removeEventListener('postStep', damp);
     registered = undefined;
   };
   const register = (dontRemoveOnSleep: boolean) => {
-    if (!body || registered === dontRemoveOnSleep) return;
+    if (!body || registered === dontRemoveOnSleep) { return; }
     unregister();
-    if (world instanceof PhysicsWorld) world.addBody(body, { dontRemoveOnSleep, transform });
-    else world.addBody(body);
+    if (world instanceof PhysicsWorld) { world.addBody(body, { dontRemoveOnSleep, transform }); }
+    else { world.addBody(body); }
     registered = dontRemoveOnSleep;
-    if (body.type === CANNON.Body.DYNAMIC) world.addEventListener('postStep', damp);
+    if (body.type === CANNON.Body.DYNAMIC) { world.addEventListener('postStep', damp); }
   };
   const place = () => {
-    if (!body || !declared) return;
+    if (!body || !declared) { return; }
     const { x, y, z } = ground();
     const lift = declared.mass > 0 ? declared.capsule.radius : declared.capsule.height / 2;
     body.position.set(x, y + lift * WORLD_SCALE, z);
     body.previousPosition.copy(body.position);
     body.interpolatedPosition.copy(body.position);
     body.aabbNeedsUpdate = true;
-    if (registered !== undefined && world instanceof PhysicsWorld) world.syncBody(body);
+    if (registered !== undefined && world instanceof PhysicsWorld) { world.syncBody(body); }
   };
   const apply = (next: PhysicsJson | undefined) => {
     if (!next) { unregister(); body = declared = undefined; return; }
     const previous = declared;
     declared = next;
     const moving = next.mass > 0;
-    if (!body) body = new CANNON.Body({ linearDamping: 0 });
+    if (!body) { body = new CANNON.Body({ linearDamping: 0 }); }
     const kind = moving ? CANNON.Body.DYNAMIC : CANNON.Body.STATIC;
     // PhysicsWorld gates static and moving bodies differently, so a body changing kind registers again.
-    if (body.type !== kind) unregister();
+    if (body.type !== kind) { unregister(); }
     if (!previous || previous.capsule !== next.capsule || previous.triangleMesh !== next.triangleMesh || previous.mass !== next.mass) {
       body.type = kind;
       body.mass = next.mass;
@@ -120,15 +120,15 @@ export function bindPhysics(world: CANNON.World, physics: PhysicsState, ground: 
       shapeBody(body, next);
       body.updateMassProperties();
       if (!previous || (previous.mass > 0) !== moving || previous.capsule.radius !== next.capsule.radius
-        || (!moving && previous.capsule.height !== next.capsule.height)) place();
+        || (!moving && previous.capsule.height !== next.capsule.height)) { place(); }
     }
     body.material = next.friction === undefined ? null : frictionMaterial(world, next.friction);
     body.collisionResponse = moving || (next.mask & COLLISION.CHARACTERS) !== 0;
     body.collisionFilterGroup = collisionBits(next.group);
     body.collisionFilterMask = collisionBits(next.mask);
-    if (next.active && (moving || next.mask !== 0)) register(next.dontRemoveOnSleep);
-    else unregister();
-    if (registered !== undefined && body.material) contactRegisteredMaterials(world, body.material);
+    if (next.active && (moving || next.mask !== 0)) { register(next.dontRemoveOnSleep); }
+    else { unregister(); }
+    if (registered !== undefined && body.material) { contactRegisteredMaterials(world, body.material); }
   };
 
   createEffect(() => apply(json.get()));
@@ -138,7 +138,7 @@ export function bindPhysics(world: CANNON.World, physics: PhysicsState, ground: 
   return {
     get body() { return body; },
     dispose() {
-      if (disposed) return;
+      if (disposed) { return; }
       disposed = true;
       cleanups.splice(0).forEach(stop => stop());
       unregister();

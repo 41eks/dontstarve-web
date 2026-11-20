@@ -47,7 +47,7 @@ export class WormholeInstance extends PrefabInstance implements WormholeStateIns
   // conventions-allow instance-method: the AnimState call SGwormhole makes; the logical clip's end is the animover.
   playAnimation(name: string, loop = false): void {
     this.animstate.PlayAnimation(name, loop);
-    if (loop) this.sprite.start(name); else this.sprite.playOnce(name);
+    if (loop) { this.sprite.start(name); } else { this.sprite.playOnce(name); }
   }
   // conventions-allow instance-method: SGwormhole's SetGroundLayering / SetBBLayering.
   setGroundLayering(ground: boolean): void {
@@ -57,21 +57,21 @@ export class WormholeInstance extends PrefabInstance implements WormholeStateIns
 }
 
 function onnear(inst: WormholeInstance): void {
-  if (!inst.sg.hasStateTag('open')) inst.sg.goToState('opening');
+  if (!inst.sg.hasStateTag('open')) { inst.sg.goToState('opening'); }
 }
 
 function onfar(inst: WormholeInstance): void {
-  if (inst.sg.hasStateTag('open')) inst.sg.goToState('closing');
+  if (inst.sg.hasStateTag('open')) { inst.sg.goToState('closing'); }
 }
 
 /** wormhole_init_fn's build swap is the skin; OnSave / OnLoad keep it under `wormhole`. */
 function OnSave(inst: PrefabInstance, data: EntityPersistData): void {
-  if (inst.skinId !== undefined) data.wormhole = { skinId: inst.skinId };
+  if (inst.skinId !== undefined) { data.wormhole = { skinId: inst.skinId }; }
 }
 function OnLoad(inst: PrefabInstance, data: EntityPersistData): void {
   const skinId = data.wormhole?.skinId;
-  if (skinId === undefined) return;
-  if (!WORMHOLE_SKINS.some(known => known === skinId)) throw new Error(`Unsupported wormhole skin: ${skinId}`);
+  if (skinId === undefined) { return; }
+  if (!WORMHOLE_SKINS.some(known => known === skinId)) { throw new Error(`Unsupported wormhole skin: ${skinId}`); }
   inst.skinId = skinId;
 }
 
@@ -82,7 +82,7 @@ function fn(world: WormholeWorld): WormholeInstance {
   inst.animstate = new AnimState(world.scheduler, ANIMATION_LENGTHS, event => inst.PushEvent(event));
   inst.onRemove(() => inst.animstate.dispose());
   inst.sprite.start('idle_loop');
-  for (const tag of ['trader', 'alltrader', 'antlion_sinkhole_blocker', 'wormhole']) inst.addTag(tag);
+  for (const tag of ['trader', 'alltrader', 'antlion_sinkhole_blocker', 'wormhole']) { inst.addTag(tag); }
   inst.SetStateGraph(inst => WormholeStateGraph(inst, world.scheduler));
   addComponent(inst, 'inspectable', Inspectable);
   inst.OnSave = OnSave;

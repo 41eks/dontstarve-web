@@ -51,8 +51,8 @@ const states: StateDefinition<BeefaloStateInst, BeefaloStateName>[] = [
       const inst = sg.context;
       inst.locomotor.StopMoving();
       if (inst.hairGrowthPending()) { sg.goToState('hair_growth'); return; }
-      if (pushanim) inst.pushAnimation('idle_loop', true);
-      else inst.playAnimation('idle_loop', true);
+      if (pushanim) { inst.pushAnimation('idle_loop', true); }
+      else { inst.playAnimation('idle_loop', true); }
       sg.setTimeout(1 + inst.random());
     },
     ontimeout: sg => {
@@ -60,7 +60,7 @@ const states: StateDefinition<BeefaloStateInst, BeefaloStateName>[] = [
       // Wild beefalo.lua initializes hunger to zero. No saddle, Carrat or mood branch is active here.
       if ((sg.context.hunger?.GetPercent() ?? 0) > 0) {
         sg.goToState(rand < .75 ? 'graze' : rand < .90 ? 'shake' : 'bellow');
-      } else sg.goToState(rand < .5 ? 'graze_empty' : rand < .75 ? 'shake' : 'bellow');
+      } else { sg.goToState(rand < .5 ? 'graze_empty' : rand < .75 ? 'shake' : 'bellow'); }
     },
   },
   {
@@ -117,7 +117,7 @@ const states: StateDefinition<BeefaloStateInst, BeefaloStateName>[] = [
       sg.goToState(sg.context.sleeper.IsAsleep() ? 'sleeping' : 'wake');
     })],
     onexit: sg => {
-      if (!sg.statemem.continuesleeping && sg.context.sleeper.IsAsleep()) sg.context.sleeper.WakeUp();
+      if (!sg.statemem.continuesleeping && sg.context.sleeper.IsAsleep()) { sg.context.sleeper.WakeUp(); }
     },
   },
   {
@@ -128,7 +128,7 @@ const states: StateDefinition<BeefaloStateInst, BeefaloStateName>[] = [
       sg.goToState('sleeping');
     })],
     onexit: sg => {
-      if (!sg.statemem.continuesleeping && sg.context.sleeper.IsAsleep()) sg.context.sleeper.WakeUp();
+      if (!sg.statemem.continuesleeping && sg.context.sleeper.IsAsleep()) { sg.context.sleeper.WakeUp(); }
     },
   },
   {
@@ -136,7 +136,7 @@ const states: StateDefinition<BeefaloStateInst, BeefaloStateName>[] = [
     onenter: sg => {
       sg.context.locomotor.StopMoving();
       sg.context.playAnimation('sleep_pst');
-      if (sg.context.sleeper.IsAsleep()) sg.context.sleeper.WakeUp();
+      if (sg.context.sleeper.IsAsleep()) { sg.context.sleeper.WakeUp(); }
     },
     events: [EventHandler('animover', sg => sg.goToState(sg.context.sleeper.IsAsleep() ? 'sleep' : 'idle'))],
   },
@@ -174,11 +174,11 @@ export class BeefaloStateGraph {
     this.sg = new StateGraphInstance(inst, guarded, [], scheduler);
     this.sg.listenForEvent('locomote', () => {
       const moving = this.sg.hasStateTag('moving'), wants = inst.locomotor.WantsToMoveForward();
-      if (moving && !wants) this.sg.goToState('walk_stop');
-      else if (this.sg.hasStateTag('idle') && wants) this.sg.goToState('walk_start');
+      if (moving && !wants) { this.sg.goToState('walk_stop'); }
+      else if (this.sg.hasStateTag('idle') && wants) { this.sg.goToState('walk_start'); }
     });
     this.sg.listenForEvent('gotosleep', () => {
-      if (!this.sg.hasAnyStateTag('nosleep', 'sleeping')) this.sg.goToState('sleep');
+      if (!this.sg.hasAnyStateTag('nosleep', 'sleeping')) { this.sg.goToState('sleep'); }
     });
     this.sg.listenForEvent('onwakeup', () => {
       if (!this.exiting && this.sg.hasStateTag('sleeping') && !this.sg.hasStateTag('nowake')) {

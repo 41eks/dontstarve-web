@@ -25,7 +25,7 @@ it('subscribes to prefab map declarations, preserves marker identity and foot po
     expect(miniMapEntities().size).toBe(before.length + 1);
     const changed = vi.fn(), stop = instance.minimap.json.subscribe(changed);
     const notified = vi.fn();
-    stopNotifications = subscribeMiniMapEntities((entry, present) => { if (entry === marker) notified(present); });
+    stopNotifications = subscribeMiniMapEntities((entry, present) => { if (entry === marker) { notified(present); } });
     expect(notified).toHaveBeenCalledExactlyOnceWith(true); notified.mockClear();
     instance.setPosition(2, 0, 4);
     expect(marker.position).toBe(instance.position);
@@ -35,7 +35,7 @@ it('subscribes to prefab map declarations, preserves marker identity and foot po
     instance.tileTracker.sync(); await settle();
     expect(notified).not.toHaveBeenCalled(); // Moving inside the tile never reaches DOM consumers.
     // Continuous movement refreshes the tile on the sixtieth write.
-    for (let i = 0; i < 59; i++) instance.setPosition(12, 0, 24);
+    for (let i = 0; i < 59; i++) { instance.setPosition(12, 0, 24); }
     await settle(); expect(notified).not.toHaveBeenCalled();
     instance.setPosition(12, 0, 24); await settle();
     expect(notified).toHaveBeenCalledExactlyOnceWith(true);

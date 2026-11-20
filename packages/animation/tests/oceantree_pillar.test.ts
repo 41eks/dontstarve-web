@@ -127,7 +127,7 @@ it('rebuilds the declared clips and override builds of the pillar, its children 
     const kids = [...children(inst), prefabs.spawn('oceantree_pillar_leaves', new THREE.Vector3(5, 0, 3))];
     const kidsBefore = kids.map(child => child.sprite.sprite.peek());
     await prefabDisplay(model)!.artLoaded();
-    for (const child of kids) await prefabDisplay(child.transform.model)!.artLoaded();
+    for (const child of kids) { await prefabDisplay(child.transform.model)!.artLoaded(); }
     awake.set(false); await settle();
     expect(kids.map(child => [child.status.peek(), child.sprite.loaded, child.transform.model.parent])).toEqual([
       ['asleep', false, null], ['asleep', false, null], ['asleep', false, null]]);
@@ -189,7 +189,7 @@ it('keeps a c_spawn pillar through c_save and a reload, leaves its children out,
       components: { oceantreePillar: { droppedvines: true } } });
     await second.registry.restoreAll({ oceantree_pillar: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof OceanTreePillarInstance)) throw new Error('The saved pillar did not load');
+    if (!(loaded instanceof OceanTreePillarInstance)) { throw new Error('The saved pillar did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
     expect(loaded.droppedvines).toBe(true);
