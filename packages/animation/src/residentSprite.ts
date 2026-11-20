@@ -78,13 +78,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   /** Inactive: the root is held out of the scene and returns to `home` on activation. */
   private asleep = false;
   private home: THREE.Object3D | undefined;
-  private create: (clip: {
-    name: string;
-    loop: boolean;
-    source?: import('./sprite').SpriteArtSource;
-  }) => ArchiveSprite | Promise<ArchiveSprite>;
-  /** The latest art source, kept across releases: a sprite built later starts in that bank and build. */
-  private artSource?: import('./sprite').SpriteArtSource;
+  private create: (clip: { name: string; loop: boolean }) => ArchiveSprite | Promise<ArchiveSprite>;
   // The owner may add the root to its parent after the tile was already found inactive.
   private readonly onAdded = () => {
     if (this.asleep) {
@@ -155,7 +149,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
       return;
     }
     const generation = ++this.generation;
-    const created = this.create({ name: this.clip.name, loop: this.clip.loop, source: this.artSource });
+    const created = this.create({ name: this.clip.name, loop: this.clip.loop });
     if (!(created instanceof Promise)) {
       this.attach(created);
       return;
@@ -519,7 +513,6 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     this.sprite?.setAnimState(state);
   }
   setArtSource(source: import('./sprite').SpriteArtSource): void {
-    this.artSource = source;
     this.sprite?.setArtSource(source);
   }
   setTint(tint: SpriteTint): void {

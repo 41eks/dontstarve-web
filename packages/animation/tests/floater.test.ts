@@ -6,6 +6,8 @@ import { withEntity } from './entityFixture';
 import { ItemWorldFixture } from './itemWorldFixture';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import type { ReadonlyVector3 } from '../src/transformRoot';
+import { createMemo, createSignal, type TileStateQuery } from '../../signals/src';
+import { prefabDisplay } from '../../display/src';
 
 vi.mock('@dontstarve-web/animation/imageAtlas', () => ({
   loadImageAtlas: async () => ({
@@ -24,7 +26,7 @@ const map = {
   isOceanAtPoint: (point: ReadonlyVector3) => point.x >= 10,
 };
 
-function setup() {
+function setup(tickingarea?: TileStateQuery) {
   vi.stubGlobal(
     'fetch',
     async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
@@ -50,7 +52,7 @@ function setup() {
     undefined,
     undefined,
     undefined,
-    undefined,
+    tickingarea,
     undefined,
     map,
   );
@@ -146,6 +148,34 @@ describe('floater', () => {
       expect(afloat.sprite.sprite.peek().oceanShading).toEqual({ float: [-0.05, 1, 1], blend: 0 });
       expect(fx.spawn).toHaveBeenCalledWith('splash', afloat.position);
       expect(afloat.isRemoved).toBe(false);
+    } finally {
+      world.dispose();
+    }
+  });
+
+  it('rebuilds a floating tool in its floating_item bank when its tile wakes again', async () => {
+    const awake = createSignal(true);
+    const { world, spawn } = setup(() => createMemo(() => awake.get()));
+    try {
+      const axe = spawn('axe', 15);
+      const display = prefabDisplay(axe.transform.model)!;
+      await display.artLoaded();
+      world.update(1 / 30);
+      await display.artLoaded();
+      world.update(1 / 30);
+      expect(axe.components.floater?.IsFloating()).toBe(true);
+      const drawn = (display as unknown as { engine: { loaded: boolean; currentAnimation: string } }).engine;
+      expect(drawn.currentAnimation).toBe('left');
+      // Sleeping releases the sprite; the one built on wake starts in the bank the sprite json declares.
+      awake.set(false);
+      world.update(1 / 30);
+      await new Promise(resolve => setTimeout(resolve, 0));
+      expect(drawn.loaded).toBe(false);
+      awake.set(true);
+      world.update(1 / 30);
+      await display.artLoaded();
+      expect(drawn.loaded).toBe(true);
+      expect(drawn.currentAnimation).toBe('left');
     } finally {
       world.dispose();
     }

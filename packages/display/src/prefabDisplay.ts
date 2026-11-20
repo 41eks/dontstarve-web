@@ -219,8 +219,10 @@ export class PrefabDisplay {
         }
         return drawn;
       };
-      const create: ArchiveSpriteSource['create'] = clip => {
-        const drawn = archive.create(clip);
+      // A sprite built after a release (the tile woke) starts in the bank and build the json declares now: its clip
+      // may exist only there, as floating_item's do.
+      const create = (clip: { name: string; loop: boolean }) => {
+        const drawn = archive.create({ ...clip, source: this.builtSource() });
         return drawn instanceof Promise ? drawn.then(prepare) : prepare(drawn);
       };
       this.engine = new ArchiveEngine(
@@ -872,6 +874,12 @@ export class PrefabDisplay {
       ...source.animationArchives.map(archive => source.art.loadAnimation(archive)),
       ...[source.buildArchive, ...(source.fallbackBuilds ?? [])].map(archive => source.art.loadBuild(archive)),
     ]);
+  }
+
+  /** The art source a newly built archive sprite starts in: none for the declaration the archive was made from. */
+  private builtSource(): SpriteArtSource | undefined {
+    const source = this.state.sprite.peek().source;
+    return source === this.archiveDeclares ? undefined : this.resolveSource(source);
   }
 
   private resolveSource(source: SpriteSourceJson | undefined): SpriteArtSource | undefined {
