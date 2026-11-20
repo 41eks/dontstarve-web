@@ -7,7 +7,7 @@ import { WORLD_TILES, isOceanTile } from '@dontstarve-web/prefab/turfMap';
 import { GROUND_TILE_DEFINITIONS } from '@dontstarve-web/prefab/groundTiles';
 import { GROUND_ART_DEFINITIONS, GROUND_ART_VARIANTS } from '@dontstarve-web/prefab/groundItems';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
-import { ITEM_PREFAB_IDS, PREFAB_DEFINITIONS, prefabSaveParsers, type PrefabDefinition } from '../prefabDefinitions';
+import { ITEM_PREFAB_IDS, PREFAB_DEFINITIONS, prefabSaveParsers, prefabSaveSkins, type PrefabDefinition } from '../prefabDefinitions';
 import type { EntitySaveContext } from './prefabComponents';
 import { PHONOGRAPH_PLAY_TIME } from '@dontstarve-web/prefab/phonograph';
 import { ROPEBRIDGE_HEALTH, type RopeBridgeTileSave } from '../../packages/componets/src/ropebridgemanager';
@@ -147,7 +147,8 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     ];
     return { position, rotationY: number(o.rotationY, `${path}.rotationY`, -Number.MAX_VALUE) };
   };
-  const parsers = prefabSaveParsers(catalog.prefabs ?? Object.values(PREFAB_DEFINITIONS));
+  const definitions = catalog.prefabs ?? Object.values(PREFAB_DEFINITIONS);
+  const parsers = prefabSaveParsers(definitions), prefabSkins = prefabSaveSkins(definitions);
   const itemRecords = new Set<string>(ITEM_PREFAB_IDS);
   const ids = new Set<string>();
   /** A record's ID, unique among the save's entities and the items they hold. */
@@ -290,10 +291,10 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       const recordPath = `${path}[${i}]`;
       const o = object(value, recordPath, ['id', 'transform', 'components', 'skinname']);
       const id = entityId(o.id, `${recordPath}.id`);
-      // GetSaveRecord's skinname belongs to an item; structures save their skin in their own data.
+      // GetSaveRecord's skinname, whatever the entity: an item's is one of its skins, another's one its prefab declares.
       const isItem = itemRecords.has(prefab);
-      if (o.skinname !== undefined && !isItem) { fail(`${recordPath}.skinname`, 'only an item saves its skin on the record'); }
-      const skinname = o.skinname === undefined ? undefined : itemSkin(o.skinname, `${recordPath}.skinname`, prefab, true);
+      const skinname = o.skinname === undefined ? undefined : isItem ? itemSkin(o.skinname, `${recordPath}.skinname`, prefab, true)
+        : choice(o.skinname, `${recordPath}.skinname`, prefabSkins.get(prefab) ?? []);
       const components = parsers.get(prefab)!(o.components, `${recordPath}.components`, context(prefab));
       // An item is saved where it lies; others stand on the ground.
       return { id, transform: transform(o.transform, `${recordPath}.transform`, !isItem), components,

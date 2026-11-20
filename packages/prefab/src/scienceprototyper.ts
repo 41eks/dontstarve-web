@@ -5,7 +5,7 @@ import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { SpriteState } from '@dontstarve-web/display';
 import { PrefabInstance } from './prefabInstance';
 import definitions from './definitions.json' with { type: 'json' };
-import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
+import { buildingPlacer, buildingPrefab, SaveBuilding, type BuildingDeclaration } from './building';
 import type { BuildingPlacerSpec } from './buildingPlacer';
 import { Prototyper } from '../../componets/src/prototyper';
 import { CreateTechTree, type TechTree } from '../../componets/src/techtree';
@@ -58,12 +58,11 @@ function onturnoff(inst: PrefabInstance): void {
 
 /** onsave/onload, with the skin the building save shape keeps beside data.burnt. */
 function onsave(inst: PrefabInstance, data: EntityPersistData): void {
-    SaveBuildingSkin(inst, data);
+    SaveBuilding(inst, data);
     onsaveBurnt(inst, data);
 }
 
 function onload(inst: PrefabInstance, data: EntityPersistData): void {
-    LoadBuildingSkin(inst, data);
     onloadBurnt(inst, data);
 }
 

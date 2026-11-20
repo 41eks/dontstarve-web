@@ -17,7 +17,7 @@ import { Trader, type TradeAcceptance, type TradeItem } from '../../componets/sr
 import { Inspectable } from '../../componets/src/inspectable';
 import { foods } from '../../componets/src/preparedfoods';
 import { FRAMES } from '../../stategraphs/src/stategraph';
-import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
+import { buildingPlacer, buildingPrefab, SaveBuilding, type BuildingDeclaration } from './building';
 import type { EntityPersistData } from './saveRecord';
 import { restoreWorldItem, type PrefabWorldContext } from './worldContext';
 import { BIRD_SOUNDS, isBirdId } from './birds';
@@ -398,7 +398,7 @@ function OnLoseShelfItem(inst: BirdcageInstance): void {
 
 /** birdcage.lua OnSave: CAGE_STATE and bird_type; occupiable saves the bird and the inventory the shelf's item. */
 function OnSave(inst: BirdcageInstance, data: EntityPersistData): void {
-    SaveBuildingSkin(inst, data);
+    SaveBuilding(inst, data);
     const occupant = GetBird(inst);
     if (occupant && !occupant.isRemoved) { data.occupiable = { occupant: occupant.GetSaveRecord() }; }
     data.CAGE_STATE = inst.CAGE_STATE;
@@ -407,7 +407,6 @@ function OnSave(inst: BirdcageInstance, data: EntityPersistData): void {
 
 /** OnLoad, then OnLoadPostPass: components first (the occupant), then the inst data and the shelf. */
 function OnLoad(inst: BirdcageInstance, data: EntityPersistData): void {
-    LoadBuildingSkin(inst, data);
     if (data.CAGE_STATE === undefined) { return; }
     const cageState = data.CAGE_STATE;
     batch(() => {

@@ -6,7 +6,7 @@ import { ItemEntity, type InventoryStack } from '@dontstarve-web/inventory';
 import { AnimState } from '@dontstarve-web/animation/animState';
 import definitions from './definitions.json' with { type: 'json' };
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
-import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
+import { buildingPlacer, buildingPrefab, SaveBuilding, type BuildingDeclaration } from './building';
 import type { EntityPersistData } from './saveRecord';
 import { Workable } from '../../componets/src/workable';
 import { Repairable } from '../../componets/src/repairable';
@@ -356,7 +356,7 @@ function UpdateWorkState(inst: MoonbaseInstance): void {
 
 /** onsave: the workable's record and the prefab's staff and timers, which stay nested under `moonbase`. */
 function onsave(inst: MoonbaseInstance, data: EntityPersistData): void {
-  SaveBuildingSkin(inst, data);
+  SaveBuilding(inst, data);
   delete data.timer;
   delete data.pickable;
   const { timer, workable } = inst.components;
@@ -369,7 +369,6 @@ function onsave(inst: MoonbaseInstance, data: EntityPersistData): void {
 
 /** onload: the workable has loaded its own record by now (SetPersistData); the timers and the staff are the prefab's. */
 function onload(inst: MoonbaseInstance, data: EntityPersistData): void {
-  LoadBuildingSkin(inst, data);
   inst.components.timer.OnLoad(data.moonbase?.timer);
   // onload: SpawnSaveRecord(data.staff).
   if (data.moonbase?.staff) { OnStaffGiven(inst, undefined, RestoreStaff(inst, data.moonbase.staff)); }

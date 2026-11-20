@@ -133,20 +133,19 @@ function onburnt(inst: PrefabInstance): void {
 }
 
 /**
- * onsave: data.rot unless it is 0, and the skin this project saves with it. A standing fence always has its one full
+ * onsave: data.rot unless it is 0. A standing fence always has its one full
  * health, so health:OnSave carries nothing its OnLoad would change; the record keeps the fence's own shape without it.
  */
 function onsave(inst: PrefabInstance, data: EntityPersistData): void {
     delete data.health;
     const rot = calcRotationEnum(GetRotation(inst));
-    data.fence = { ...(rot > 0 ? { rot } : {}), ...(inst.skinId === undefined ? {} : { skinId: inst.skinId }) };
+    data.fence = rot > 0 ? { rot } : {};
 }
 
 /** onload: SetOrientation(inst, data.rot * 45). */
 function onload(inst: PrefabInstance, data: EntityPersistData): void {
     const saved = data.fence;
     if (!saved) { return; }
-    if (saved.skinId !== undefined) { inst.skinId = fenceWorldSkin(FENCE_ID, saved.skinId); }
     SetOrientation(inst, (saved.rot ?? 0) * 45);
 }
 

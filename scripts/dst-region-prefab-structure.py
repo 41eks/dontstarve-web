@@ -23,9 +23,7 @@ def researchlab_components(prefab):
         skin = context['skin']
         if skin is not None and skin not in RESEARCH_LAB_SKINS[prefab]:
             raise ValueError(f'Unsupported {prefab} skin: {skin}')
-        return {'building': {'state': 'idle',
-                             **({'skinId': skin} if skin is not None else {}),
-                             **({'burnt': True} if data.get('burnt') else {})}}
+        return {'building': {'state': 'idle', **({'burnt': True} if data.get('burnt') else {})}}
     return convert
 
 
@@ -134,7 +132,6 @@ def mast_malbatross_components(data, context):
     if skin is not None:
         if skin not in MAST_MALBATROSS_SKINS:
             raise ValueError(f'Unsupported mast_malbatross skin: {skin}')
-        state['skinId'] = skin
     result = {'mastMalbatross': state}
     if 'upgradeable' in data:
         upgradeable = data['upgradeable']
@@ -550,7 +547,6 @@ def ruins_relic_components(prefab):
             if skin:
                 if prefab != 'ruinsrelic_chair' or skin not in {'ruinsrelic_chair_tesla', 'ruinsrelic_chair_toilet'}:
                     raise ValueError(f'Unsupported {prefab} skin')
-                result['ruinsRelic'] = {'skinId': skin}
             moisture = data.get('inventoryitemmoisture')
             if moisture:
                 if not isinstance(moisture, dict) or set(moisture) - {'moisture', 'wet'} \

@@ -73,9 +73,9 @@ export class WinterometerInstance extends PrefabInstance {
         // The first reading in fn is taken where the meter stands.
         this.setPosition(position.x, 0, position.z);
         MakeBuildingPersist(this);
-        const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
+        const { OnSave: saveBuilding } = this;
         this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsaveBurnt(inst, data); };
-        this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onloadBurnt(inst, data); };
+        this.OnLoad = onloadBurnt;
         this.addTag('structure');
         const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');

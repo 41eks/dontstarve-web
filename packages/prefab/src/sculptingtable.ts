@@ -8,7 +8,7 @@ import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { PrefabInstance } from './prefabInstance';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
-import { buildingPlacer, buildingPrefab, LoadBuildingSkin, SaveBuildingSkin, type BuildingDeclaration } from './building';
+import { buildingPlacer, buildingPrefab, SaveBuilding, type BuildingDeclaration } from './building';
 import { Pickable } from './components/pickable';
 import { Trader, type TradeAcceptance, type TradeItem } from '../../componets/src/trader';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
@@ -122,7 +122,7 @@ function onturnoff(inst: SculptingTableInstance): void {
 
 /** onsave: data.itemname = caninteractwith and product or nil. The pickable's own record stays out of the save. */
 function onsave(inst: SculptingTableInstance, data: EntityPersistData): void {
-    SaveBuildingSkin(inst, data);
+    SaveBuilding(inst, data);
     delete data.pickable;
     const { pickable } = inst.components;
     if (pickable.canInteractWith && pickable.product) { data.sculptingtable = { itemname: pickable.product }; }
@@ -130,7 +130,6 @@ function onsave(inst: SculptingTableInstance, data: EntityPersistData): void {
 
 /** onload: giveitem restores the held block. */
 function onload(inst: SculptingTableInstance, data: EntityPersistData): void {
-    LoadBuildingSkin(inst, data);
     const itemname = data.sculptingtable?.itemname;
     if (itemname !== undefined && isSculptableMaterial(itemname)) { giveitem(inst, itemname); }
 }

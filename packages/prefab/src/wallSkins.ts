@@ -54,4 +54,3 @@ export function wallWorldSkin(prefabId: string, skinId?: string): string | undef
   return worldSkin;
 }
 
-export interface WallSaveState { skinId?: string }

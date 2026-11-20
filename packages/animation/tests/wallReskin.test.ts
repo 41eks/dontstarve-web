@@ -55,7 +55,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
     const health = { current: 123, maximum: 400 };
     const model = await placement.spawnFromSave(prefabId, {
       id: `wall:${prefabId}`, transform: { position: [3, 0, -6], rotationY: 0 },
-      components: { health, wall: { skinId: Object.keys(WALL_SKIN_ARCHIVES[prefabId]).at(-1) } },
+      skinname: Object.keys(WALL_SKIN_ARCHIVES[prefabId]).at(-1), components: { health },
     });
     placement.update();
     const instance = lookupPrefabInstance(model)!;
@@ -92,7 +92,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
         expect(lookupPrefabInstance(model)?.skinId).toBe(skinId);
         const record = placement.exportRecords()[0].record;
         expect(record).toEqual({ id: `wall:${prefabId}`, transform: { position: [3, 0, -6], rotationY: 0 },
-          components: { health, ...(skinId === undefined ? {} : { wall: { skinId } }) } });
+          components: { health }, ...(skinId === undefined ? {} : { skinname: skinId }) });
         expect(prefabDisplay(placement.reskinTargets[0].transform.model)!.model).toBe(model);
         expect(placement.renderEntities[0].footPosition.toArray()).toEqual([3, 0, -6]);
 
@@ -141,7 +141,7 @@ it('maps every inventory wall skin to the correct world build and consumes the s
     await placement.begin('wall_stone_item', 'wall_stone_anitem');
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
     expect(placement.exportRecords()[0].prefabId).toBe('wall_stone');
-    expect(placement.exportRecords()[0].record.components.wall).toEqual({ skinId: 'wall_stone_an' });
+    expect(placement.exportRecords()[0].record.skinname).toBe('wall_stone_an');
     expect(store.get(inventorySlotAddress(0))?.count).toBe(2);
     expect(store.get(inventorySlotAddress(1))?.count).toBe(1);
     expect(store.takeItem('wall_stone_item', 'missing')).toBe(false);
@@ -203,7 +203,7 @@ it('c_spawn places walls by their world and item IDs, and c_save reloads one res
         inventory: inventory.exportSaved(), playerTransform: { position: [3, 0, -6], rotationY: 0 }, elapsedSeconds: 0 }, SAVE_CATALOG);
     })).ok).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG).world.entities.wall_stone!;
-    expect(saved[0]).toEqual({ ...spawned.record, components: { health: { current: 200, maximum: 400 }, wall: { skinId: 'wall_stone_an' } } });
+    expect(saved[0]).toEqual({ ...spawned.record, components: { health: { current: 200, maximum: 400 } }, skinname: 'wall_stone_an' });
     await second.registry.restoreAll({ wall_stone: saved });
     expect(second.registry.exportRecords().wall_stone).toEqual(saved);
     expect(second.placement.prefabs.get(saved[0].id)!.skinId).toBe('wall_stone_an');

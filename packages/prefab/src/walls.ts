@@ -209,22 +209,20 @@ function keeptargetfn(): boolean { return false; }
 
 /**
  * onload: a dead wall clears its obstacle. This project's record keeps health as `{ current, maximum }` under `health`,
- * which health:OnLoad reads here, and the skin under `wall`; the loaded health is shown as onhealthchange would.
+ * which health:OnLoad reads here; the loaded health is shown as onhealthchange would.
  */
 function onload(inst: WallInstance, data: EntityPersistData): void {
     const { health } = inst.components;
     const saved = structureHealth(data);
     if (saved) { health.OnLoad({ health: saved.current, maxhealth: saved.maximum }); }
-    if (data.wall?.skinId !== undefined) { inst.skinId = data.wall.skinId; }
     inst.sprite.playOnce(resolveWallAnim(health.GetPercent(), inst.position));
     if (health.IsDead()) { clearobstacle(inst); }
 }
 
-/** The record's `health` and `wall` entries, in place of health:OnSave's own shape. */
+/** The record's `health` entry, in place of health:OnSave's own shape. */
 function onsave(inst: WallInstance, data: EntityPersistData): void {
     const { health } = inst.components;
     data.health = { current: health.currenthealth, maximum: health.maxhealth };
-    if (inst.skinId !== undefined) { data.wall = { skinId: inst.skinId }; }
 }
 
 function onremove(inst: WallInstance): void {

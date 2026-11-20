@@ -72,7 +72,7 @@ it('loads the imported forest with distinct ocean types, ice, underlying dock ti
     expect(save.world.entities.evergreen.some(entity => entity.components.evergreenTimer)).toBe(true);
     expect(save.world.entities.pigking).toHaveLength(1);
     expect(save.world.entities.researchlab2).toHaveLength(1);
-    expect(save.world.entities.researchlab3[0].components.building?.skinId).toBe('researchlab3_nature');
+    expect(save.world.entities.researchlab3[0].skinname).toBe('researchlab3_nature');
     expect(save.world.entities.flower.length).toBeGreaterThan(0);
     expect(save.world.entities.flower.every(entity => entity.components.flower?.planted === undefined)).toBe(true);
     expect(save.world.entities.fireflies?.length).toBeGreaterThan(0);

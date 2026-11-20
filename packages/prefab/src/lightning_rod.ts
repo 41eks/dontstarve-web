@@ -157,9 +157,9 @@ export class LightningRodInstance extends PrefabInstance {
         super(LIGHTNING_ROD_ID, new SpriteState({ name: declaration.idleAnimation ?? 'idle', billboard: true }));
         this.worldServices = world;
         MakeBuildingPersist(this);
-        const { OnSave: saveBuilding, OnLoad: loadBuilding } = this;
+        const { OnSave: saveBuilding } = this;
         this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsave(inst, data); };
-        this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onload(inst, data); };
+        this.OnLoad = onload;
         const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);

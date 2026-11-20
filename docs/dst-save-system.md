@@ -677,10 +677,9 @@ three-roaming-save-v1.json
             "position": [25, 0, -12.25],
             "rotationY": 0
           },
+          "skinname": "treasurechest_ancient",
           "components": {
-            "building": {
-              "skinId": "treasurechest_ancient"
-            },
+            "building": {},
             "container": {
               "items": {
                 "1": {
@@ -815,7 +814,7 @@ three-roaming-save-v1.json
 |---|---|---|
 | 研究站、炼金引擎、箱子、帐篷 | 各自的建造 ID | `building`，以及将来的 `container` 等 |
 | 墙 | `wall_stone`、`wall_stone_2`、`wall_wood`、`wall_hay`、`wall_ruins`、`wall_ruins_2`、`wall_moonrock`、`wall_dreadstone`、`wall_scrap` | `health` 等逻辑状态 |
-| 栅栏 | `fence`（`fence_item` 只是地面/库存物品，不是世界实体） | `fence.rot`（`CalcRotationEnum`，0 省略）和 `fence.skinId`；燃烧中的栅栏 `persists = false`，不写入存档 |
+| 栅栏 | `fence`（`fence_item` 只是地面/库存物品，不是世界实体） | `fence.rot`（`CalcRotationEnum`，0 省略），皮肤在记录的 `skinname`；燃烧中的栅栏 `persists = false`，不写入存档 |
 | 地面物品 | 各自的物品 prefab ID（如 `log`、`torch`、`fireflies`） | `stack`；火把、提灯、留声机另有 `torch`、`lantern`、`phonograph` |
 | 蝴蝶种出的花 | `flower` | `flower.animation`（`f1`–`f10` 或 `rose`）和 `flower.planted` |
 | 单头、双头和三头灯草 | `flower_cave`、`flower_cave_double`、`flower_cave_triple` | `bulbPlant.variant`、`lightState` 和当前亮起/充能计时器的 `remainingSeconds` |
@@ -836,7 +835,7 @@ three-roaming-save-v1.json
 
 左键采摘成熟灯草后，荧光果（`lightbulb`）进入背包，单头/双头/三头分别产出 1/2/3 个；背包空间不足时保留成熟灯草。成功采摘播放 `picking`、`picked` 和玩家拾取动画，立即关闭灯草光源并清除亮起/充能计时。原版基础再生时间分别为 1440/2160/2880 秒，再生后播放 `grow`、`idle` 并重新充能。已采摘灯草的 `bulbPlant` 额外保存 `picked: true` 和 `regrowSeconds`，读档恢复空株外观与剩余再生时间。
 
-`building` 只保存实体的皮肤 `skinId` 和 prefab 的 `OnSave` 写入的 `burnt`。源 `OnSave` 不保存打开状态，容器读档后总是关闭。旧存档中的 `building.state` 仍可读取，但会被忽略，加载时也不重放一次性动画。
+`building` 只保存 prefab 的 `OnSave` 写入的 `burnt`，皮肤在记录的 `skinname`。源 `OnSave` 不保存打开状态，容器读档后总是关闭。旧存档中的 `building.state` 仍可读取，但会被忽略，加载时也不重放一次性动画。
 
 `c_save()` 保留皮肤和槽位内容，当前场景中容器的开关状态不受影响。
 
@@ -873,7 +872,7 @@ three-roaming-save-v1.json
 
 被容器、物品栏、鸟笼、月台、犁地机等持有的物品都保存为 `EntityScript:GetSaveRecord` 的形状（`HeldEntityRecord`）：`{ id, prefab, skinname?, components }`，没有位置。`components` 是 `GetPersistData`：各组件 `OnSave` 的记录按组件名保存，与 Lua 一致——`stackable: { stack }`（只在多于一个时写）、`finiteuses: { uses }`、`fueled: { fuel }`（满燃料时省略）、`perishable: { time, paused? }`（剩余秒数）、`armor: { condition }`、`temperature: { current }`、`inventoryitemmoisture: { moisture?, wet? }`、`container` / `inventory: { items }`、`health`、`knownlocations`，以及 prefab 自己 `OnSave` 的字段（`heatrock.lua` 的 `highTemp` / `lowTemp`、`mole.lua` 的 `needs_home_time`、提灯 `machine` 开关）。地面物品是同样的数据，放在 `world.entities[prefab]` 的记录里，皮肤是记录上的 `skinname`。
 
-本项目的扩展字段：`groundVariant`（静态地面美术的显示分支，由导入器从 `anim`、`glassname`、`variation` 等源字段推出）、`torch: { lit }`、留声机的 `phonograph: { remainingSeconds }`（续播剩余时间；它不另存 `machine`，否则读档会从头播放）。建筑的皮肤仍在 `building.skinId` 等自己的数据里，不用记录上的 `skinname`。
+本项目的扩展字段：`groundVariant`（静态地面美术的显示分支，由导入器从 `anim`、`glassname`、`variation` 等源字段推出）、`torch: { lit }`、留声机的 `phonograph: { remainingSeconds }`（续播剩余时间；它不另存 `machine`，否则读档会从头播放）。所有实体的皮肤都按 `EntityScript:GetSaveRecord` 写在记录的 `skinname` 上（读档时先应用，再执行 `SetPersistData`），组件数据里不存皮肤；非物品记录的 `skinname` 须是该 prefab 定义声明的皮肤之一。
 
 名称、图标、Atlas、最大堆叠数和装备类型都从当前 `INVENTORY_ITEM_SPECS` / `INVENTORY_SKIN_SPECS` 重建。读取时按物品规格校验（`src/save/deserialize.ts` 的 `item()`）：
 

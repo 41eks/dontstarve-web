@@ -140,14 +140,14 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
   const saved = await saveGame();
   // birdcage.lua OnSave's CAGE_STATE and bird_type; occupiable saves the canary's GetSaveRecord.
   const record = saved.world.entities.birdcage[0].components;
-  expect(record.building.skinId).toBe('birdcage_adventure');
+  expect(saved.world.entities.birdcage[0].skinname).toBe('birdcage_adventure');
   expect(record).toMatchObject({ CAGE_STATE: '_bird', bird_type: 'canary', occupiable: { occupant: { prefab: 'canary' } } });
   expect(record.occupiable.occupant.components.stackable).toBeUndefined();
   expect(record.occupiable.occupant.components.perishable.time).toBeGreaterThan(0);
   expect(JSON.stringify(saved.players.local.inventory)).not.toContain('canary');
 
   // A skinned cage keeps drawing its canary from the override build.
-  saved.world.entities.birdcage[0].components.building.skinId = 'birdcage_circus';
+  saved.world.entities.birdcage[0].skinname = 'birdcage_circus';
   await page.route('**/saves/birdcage-test.json', route => route.fulfill({ json: saved }));
   await page.reload(); await prepare();
   await expect.poll(cage).toMatchObject({ state: '_bird', bird: 'canary', animation: 'idle_bird' });

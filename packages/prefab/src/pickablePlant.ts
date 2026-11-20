@@ -24,7 +24,6 @@ export interface PickablePlantRecord {
   transform: { position: [number, number, number]; rotationY: number };
   components: { pickable?: PickableSaveState; witherable?: WitherableSave; growable?: GrowableSave;
     /** berrybush: the skin its save record names. */
-    plant?: { skinId?: string };
     /** rock_avocado_bush.lua on_save: data.burning. */
     burning?: true;
     /** mushrooms.lua OnSave: the rain days left before a picked mushroom regrows. */

@@ -170,10 +170,11 @@ it('keeps a selected skin and its fire offset through the building save shape', 
   const { placement } = createPlacement();
   try {
     const model = placement.spawnFromSave(FIRE_PIT_ID, { id: 'skinned', transform: { position: [1, 0, 2], rotationY: 0 },
-      components: { building: { skinId: 'firepit_hole' }, firepit: { fueled: { fuel: 200 } } } }) as THREE.Group;
+      skinname: 'firepit_hole', components: { building: {}, firepit: { fueled: { fuel: 200 } } } }) as THREE.Group;
     await vi.waitFor(() => expect(fire(model).fx).toMatchObject({ composite: { offset: [0, 25 + 26] } }));
     const { record } = placement.exportRecords()[0];
-    expect(record.components.building).toEqual({ skinId: 'firepit_hole' });
+    expect(record.components.building).toEqual({});
+    expect(record.skinname).toBe('firepit_hole');
     expect(record.components.firepit).toEqual({ fueled: { fuel: 200 } });
     expect(record.components).not.toHaveProperty('fueled');
   } finally { placement.dispose(); }

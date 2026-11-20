@@ -7,7 +7,7 @@ import { LootDropper } from '../../componets/src/lootdropper';
 import { Pickable } from './components/pickable';
 import { BurnableBinding } from './treeFire';
 import { DefaultBurnFn, DefaultExtinguishFn, DefaultBurntFn, MakeNoGrowInWinter, MakeSmallObstaclePhysics, MakeSnowCovered } from './standardcomponents';
-import { PickablePlantInstance, plantLootSpawner, SpringGrowthMod, type PickablePlantRecord, type PickablePlantWorld } from './pickablePlant';
+import { PickablePlantInstance, plantLootSpawner, SpringGrowthMod, type PickablePlantWorld } from './pickablePlant';
 
 export const BERRYBUSH_ID = 'berrybush' as const;
 export const BERRYBUSH_ARCHIVE = 'berrybush.zip';
@@ -101,17 +101,6 @@ function ontransplantfn(inst: PickablePlantInstance): void {
   inst.components.pickable.MakeBarren();
 }
 
-/** The save record's skin name, which SpawnSaveRecord applies. */
-function OnSave(inst: PickablePlantInstance, data: PickablePlantRecord['components']): void {
-  if (inst.skinId) { data.plant = { skinId: inst.skinId }; }
-}
-
-function OnLoad(inst: PickablePlantInstance, data: PickablePlantRecord['components']): void {
-  const skinId = data.plant?.skinId;
-  if (skinId !== undefined && !BERRYBUSH_SKINS.some(known => known === skinId)) { throw new Error(`Unsupported ${inst.prefab} skin: ${skinId}`); }
-  inst.skinId = skinId;
-}
-
 /**
  * berrybush.lua createbush(name, ...) fn with normal_postinit. Not ported: the perd and its shake, hauntables,
  * MakeWaxablePlant, lunar hail buildup and the lunarthrall herd save.
@@ -157,8 +146,6 @@ function fn(world: PickablePlantWorld): PickablePlantInstance {
   // normal_postinit
   workable.SetOnFinishCallback(dig_up_normal);
 
-  inst.OnSave = (_inst, data) => OnSave(inst, data);
-  inst.OnLoad = (_inst, data) => OnLoad(inst, data);
   return inst;
 }
 

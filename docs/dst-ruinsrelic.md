@@ -54,7 +54,7 @@ prefab 直接添加的 tags 都由实例持有。constructor-only 的 inspectabl
 
 ## 皮肤
 
-`prefabs/skinprefabs.lua` / `prefabskin.lua` 仅给 `ruinsrelic_chair` 定义 `ruinsrelic_chair_tesla` 和 `ruinsrelic_chair_toilet`。`basic_init_fn` 使用 `SetSkin(build_name, "ruins_chair")`，clear 恢复基础 build。对应 `anim/dynamic/<skin>.zip` 和 `.dyn` 按原字节镜像；通过 sprite 的 skin source 和现有 `reskin_tool` 目标换肤，`skinId` 保存在实例的 sprite json 和导出记录中。天然 chair 及其他 13 个 prefab 没有皮肤支持。
+`prefabs/skinprefabs.lua` / `prefabskin.lua` 仅给 `ruinsrelic_chair` 定义 `ruinsrelic_chair_tesla` 和 `ruinsrelic_chair_toilet`。`basic_init_fn` 使用 `SetSkin(build_name, "ruins_chair")`，clear 恢复基础 build。对应 `anim/dynamic/<skin>.zip` 和 `.dyn` 按原字节镜像；通过 sprite 的 skin source 和现有 `reskin_tool` 目标换肤，`skinId` 保存在实例的 sprite json 中，导出为记录的 `skinname`。天然 chair 及其他 13 个 prefab 没有皮肤支持。
 
 ## 导入结果与验收
 

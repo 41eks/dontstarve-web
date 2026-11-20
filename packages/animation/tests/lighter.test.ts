@@ -125,7 +125,7 @@ it('burns a cooking pot after 20 seconds, drops the product and disables cooking
   const { inventory, placement, dropLoot } = structureFixture();
   try {
     const model = await placement.spawnFromSave('cookpot', { id: 'burning_pot', transform: { position: [30, 0, 8], rotationY: 0 },
-      components: { building: { skinId: 'cookpot_cauldron' }, stewer: { product: 'meatballs', remainingtime: 15 } } });
+      skinname: 'cookpot_cauldron', components: { building: {}, stewer: { product: 'meatballs', remainingtime: 15 } } });
     prefabInstance(model)!.components.burnable!.Ignite();
     placement.update(19.9);
     expect(prefabInstance(model)!.listTags()).not.toContain('burnt'); expect(dropLoot).not.toHaveBeenCalled();
@@ -136,7 +136,8 @@ it('burns a cooking pot after 20 seconds, drops the product and disables cooking
     expect(dropLoot).toHaveBeenCalledExactlyOnceWith([{ itemId: 'meatballs', count: 1 }], new THREE.Vector3(30, 0, 8));
     placement.update(30); expect(dropLoot).toHaveBeenCalledTimes(1);
     const record = placement.exportRecords()[0].record;
-    expect(record.components.building).toMatchObject({ burnt: true, skinId: 'cookpot_cauldron' });
+    expect(record.components.building).toEqual({ burnt: true });
+    expect(record.skinname).toBe('cookpot_cauldron');
     expect(record.components.stewer).toBeUndefined();
     workTargets('HAMMER', model)[0].work();
     // The display leaves the scene once its removal effect has run.

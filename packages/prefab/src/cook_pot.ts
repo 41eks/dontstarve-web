@@ -4,7 +4,7 @@ import { addComponent } from './components';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import definitions from './definitions.json' with { type: 'json' };
-import { buildingPlacer, buildingPrefab, LoadBuildingSkin, MakeBuildingContainer, SaveBuildingSkin } from './building';
+import { buildingPlacer, buildingPrefab, MakeBuildingContainer, SaveBuilding } from './building';
 import type * as THREE from 'three';
 import { PrefabInstance, prefabInstance } from './prefabInstance';
 import { PlaySound } from './sound';
@@ -148,12 +148,11 @@ function onbuilt(inst: PrefabInstance): void {
 
 /** onsave/onload, with the skin the building save shape keeps beside data.burnt. */
 function onsave(inst: PrefabInstance, data: EntityPersistData): void {
-    SaveBuildingSkin(inst, data);
+    SaveBuilding(inst, data);
     onsaveBurnt(inst, data);
 }
 
 function onload(inst: PrefabInstance, data: EntityPersistData): void {
-    LoadBuildingSkin(inst, data);
     onloadBurnt(inst, data);
 }
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Item container save states: chest contents, skin and burnt flag."""
+"""Item container save states: chest contents and burnt flag; the skin, checked here, stays the record's skinname."""
 import json
 from pathlib import Path
 
@@ -36,7 +36,6 @@ def treasurechest_components(data, context):
         # DoUpgradeVisuals derives the treasurechest_upgraded_* build at runtime; the saved skinname is the base skin.
         if context['skin'] not in CHEST_SKINS or context['skin'].startswith('treasurechest_upgraded_'):
             raise ValueError(f'Unsupported treasurechest skin: {context["skin"]}')
-        building['skinId'] = context['skin']
     if data.get('burnt'):
         # DefaultBurntStructureFn removes the container, so a burnt chest saves no items.
         if 'container' in data:

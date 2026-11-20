@@ -32,19 +32,13 @@ export const RUINS_CHAIR_SKINS = {
   ruinsrelic_chair_tesla: 'dynamic/ruinsrelic_chair_tesla.zip',
   ruinsrelic_chair_toilet: 'dynamic/ruinsrelic_chair_toilet.zip',
 } as const;
-export interface RuinsRelicSaveState { rubble?: true; skinId?: keyof typeof RUINS_CHAIR_SKINS }
+export interface RuinsRelicSaveState { rubble?: true }
 export interface RelicMoistureSave { moisture?: number; wet?: true }
 export interface RuinsRelicWorld {
   scheduler: GameTimeScheduler;
   fx?: WorldContext['fx'];
   dropLoot?: WorldContext['dropLoot'];
 }
-/** A skin the chair saves: only RUINS_CHAIR_SKINS reach a relic. */
-function ruinsChairSkin(skinId: string): keyof typeof RUINS_CHAIR_SKINS {
-  if (!isRuinsChairSkin(skinId)) { throw new Error(`Unsupported ruins chair skin: ${skinId}`); }
-  return skinId;
-}
-const isRuinsChairSkin = (skinId: string): skinId is keyof typeof RUINS_CHAIR_SKINS => Object.hasOwn(RUINS_CHAIR_SKINS, skinId);
 export function relicName(id: RuinsRelicId): RelicName {
   const name = RELIC_NAMES.find(relic => id.endsWith(`_${relic}`));
   if (!name) { throw new Error(`${id} names no relic`); }
@@ -188,19 +182,18 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
    * `{ current, maximum }`, which the component's own OnLoad leaves alone, so all three steps run here.
    */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
-    if (this.replica) { this.skinId = data.ruinsRelic?.skinId; return; }
+    if (this.replica) { return; }
     const health = this.components.health!, saved = structureHealth(data);
     if (saved) { health.SetMaxHealth(saved.maximum); }
     const rubble = data.ruinsRelic?.rubble === true;
     if (rubble !== this.rubble) { this.setRubble(rubble); }
     if (saved) { health.OnLoad({ health: saved.current }); }
   }
-  /** ruinsrelic.lua has no OnSave; the skin and an unported moisture payload keep their record fields. smashables.lua saves rubble and health. */
+  /** ruinsrelic.lua has no OnSave; an unported moisture payload keeps its record field. smashables.lua saves rubble and health. */
   override OnSave(_inst: unknown, data: EntityPersistData): void {
     const health = this.components.health;
     clearPersistData(data);
     Object.assign(data, this.replica ? {
-      ...this.skinId ? { ruinsRelic: { skinId: ruinsChairSkin(this.skinId) } } : {},
       ...this.saveRecord?.components.inventoryitemmoisture
         ? { inventoryitemmoisture: { ...this.saveRecord.components.inventoryitemmoisture } } : {},
     } : { ...this.rubble ? { ruinsRelic: { rubble: true as const } } : {},

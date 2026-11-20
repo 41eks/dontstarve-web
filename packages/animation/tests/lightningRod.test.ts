@@ -115,7 +115,7 @@ it('keeps its charge and skin through c_save, and re-arms its day timer from the
     await strikeAt(placement, scene, fx, model.position);
     scheduler.advance(DAY);
     const saved = placement.exportRecords()[0].record;
-    expect(saved.components.building).toMatchObject({ skinId: 'lightning_rod_adventure' });
+    expect(saved.skinname).toBe('lightning_rod_adventure');
     expect(saved.components.lightningrod).toEqual({ charged: true, chargeleft: 2 });
 
     const save = structuredClone(initialWorld) as unknown as SaveDocument;

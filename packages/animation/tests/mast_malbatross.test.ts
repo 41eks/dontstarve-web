@@ -143,8 +143,8 @@ it('keeps a c_spawn mast through c_save and a reload, and rejects c_give', async
     expect([loaded.components.mast.is_sail_raised, loaded.components.upgradeable.stage]).toEqual([true, 1]);
     expect(second.records()).toEqual(saved);
     // A rotated, skinned mast keeps its facing rotation and skin through the same round trip.
-    const skinned: EntitySaveRecord = { id: 'skinned-mast', transform: { position: [5, 0, 1], rotationY: 0 },
-      components: { mastMalbatross: { rotation: 135, is_sail_raised: true, skinId: 'mast_malbatross_wagstaff' },
+    const skinned: EntitySaveRecord = { id: 'skinned-mast', transform: { position: [5, 0, 1], rotationY: 0 }, skinname: 'mast_malbatross_wagstaff',
+      components: { mastMalbatross: { rotation: 135, is_sail_raised: true },
         upgradeable: { numupgrades: 0, stage: 1 } } };
     await second.registry.restoreAll({ mast_malbatross: [skinned] });
     const restored = second.prefabs.get('skinned-mast')!;

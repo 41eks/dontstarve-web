@@ -182,7 +182,7 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     const spawn = async (id: string) => {
       if (id !== 'icebox') { return false; }
       await placement.spawnFromSave('icebox', { id: 'fridge', transform: { position: [3, 0, -6], rotationY: 0 },
-        components: { building: { skinId: 'icebox_crystal' } } });
+        skinname: 'icebox_crystal', components: { building: {} } });
       return true;
     };
     expect((await executeDebugCommand('c_spawn("icebox"); c_give("heatrock"); c_give("red_cap", 2)', inventory, spawn)).ok).toBe(true);
@@ -202,7 +202,11 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
     })).ok).toBe(true);
     const save = deserializeSave(json, SAVE_CATALOG), record = save.world.entities.icebox[0];
     expect(record.transform.position).toEqual([3, 0, -6]);
-    expect(record.components.building?.skinId).toBe('icebox_crystal');
+    expect(record.skinname).toBe('icebox_crystal');
+    // A structure's record.skinname names one of its own skins: another prefab's is refused.
+    const foreign = JSON.parse(json) as { world: { entities: { icebox: { skinname?: string }[] } } };
+    foreign.world.entities.icebox[0].skinname = 'cookpot_candy';
+    expect(() => deserializeSave(JSON.stringify(foreign), SAVE_CATALOG)).toThrow('world.entities.icebox[0].skinname');
     const restoredWorld = createPerishWorld(ambient, save.world.elapsedSeconds);
     restoredClock = restoredWorld.perishClock;
     restored.entities.bindPerishWorld(restoredWorld);

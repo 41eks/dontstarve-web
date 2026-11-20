@@ -203,4 +203,4 @@ Lua 链路是 containers.lua:buttoninfo.fn → ACTIONS.COOK.fn → stewer:StartC
 
 components/stewer.ts 用注入的游戏时间调度器管理烹饪任务（对应 Lua 的 `DoTaskInTime(cooktime, dostew)`，不逐帧更新）、readytocook/donecooking 标签、原料与厨师记录及保存恢复；prefab/cook_pot.ts 将开始、继续、完成回调接到动画和声音，并按配方的 build、symbol 和 potlevel 显示锅中产物。存档写 stewer 自己的 OnSave（product、done 或 remainingtime、ingredient_prefabs、chef_id），旧的 phase/remainingSeconds 格式在读取时迁移。目前的分支覆盖开始、完成和恢复，收获及锅内腐败另行实现。
 
-换肤的逻辑状态是实体 sprite json 的 skinId（建筑、墙、栅栏、植物、虫洞为 `PrefabInstance.sprite`，物品为 `ItemEntity.sprite`）。任何带 sprite 的实体经 `reskinTarget(view)` 成为 reskin 目标；施法前不等待皮肤资源，命中帧由 `reskinEntity()` 按 `reskin_tool.lua` 的 `spellCB` 重新计算 `GetNextSkin`、记入工具缓存并写入 sprite json。display 按声明加载并换上皮肤，保留实体根、组件、脚点和动画进度；实体自己的换肤后处理订阅该 skinId，保存读取 skinId.peek()。
+换肤的逻辑状态是实体 sprite json 的 skinId（建筑、墙、栅栏、植物、虫洞为 `PrefabInstance.sprite`，物品为 `ItemEntity.sprite`）。任何带 sprite 的实体经 `reskinTarget(view)` 成为 reskin 目标；施法前不等待皮肤资源，命中帧由 `reskinEntity()` 按 `reskin_tool.lua` 的 `spellCB` 重新计算 `GetNextSkin`、记入工具缓存并写入 sprite json。display 按声明加载并换上皮肤，保留实体根、组件、脚点和动画进度；实体自己的换肤后处理订阅该 skinId；保存时写在记录的 `skinname`，与 `EntityScript:GetSaveRecord` 一致。

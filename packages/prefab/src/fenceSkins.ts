@@ -23,4 +23,4 @@ export function fenceWorldSkin(buildId: FenceId, skinId?: string): string | unde
   return worldSkin;
 }
 
-export interface FenceSaveState { rot?: number; skinId?: string }
+export interface FenceSaveState { rot?: number }

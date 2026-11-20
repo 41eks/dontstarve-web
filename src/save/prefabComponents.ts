@@ -5,9 +5,6 @@ import { BEEFALO_BEARD_BITS, BEEFALO_BEHAVIOR } from '@dontstarve-web/prefab/bee
 import type { BeardSave } from '../../packages/componets/src/beard';
 import { BULB_PLANT_LIGHT_STATES, BULB_PLANT_MAX_ON_TIME, BULB_PLANT_MAX_RECHARGE_TIME,
   bulbPlantRegrowTime } from '@dontstarve-web/prefab/bulb_plant';
-import { WORMHOLE_SKINS } from '@dontstarve-web/prefab/wormhole';
-import { WALL_SKIN_ARCHIVES } from '@dontstarve-web/prefab/wallSkins';
-import { FENCE_SKIN_ARCHIVES } from '@dontstarve-web/prefab/fenceSkins';
 import { FARM_PLOW_DRILLING_DURATION, FARM_PLOW_USES, FARM_PLOW_ITEM_ID } from '@dontstarve-web/prefab/farm_plow';
 import { SCULPTABLE_MATERIALS } from '@dontstarve-web/prefab/sculptingtable';
 import { BIRDCAGE_STARVE_LOOT, CAGE_STATES } from '@dontstarve-web/prefab/birdcage';
@@ -48,7 +45,6 @@ export interface PrefabComponentSchema {
   /** pickable.lua regentime bounding a saved regrow task. */
   readonly pickCycles?: number;
   readonly minimumPickCycles?: number;
-  readonly plantSkins?: readonly string[];
   /** cave_fern.lua `names`: the pose clips a plant may save as `variant.anim`. */
   readonly plantVariants?: readonly string[];
   readonly regrowTime?: number;
@@ -149,10 +145,6 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       if (c.burning !== true) { fail(`${path}.burning`, 'expected true'); }
       components.burning = true;
     }
-    if (keys.includes('plant') && c.plant !== undefined) {
-      const p = `${path}.plant`, plant = object(c.plant, p, ['skinId']);
-      components.plant = plant.skinId === undefined ? {} : { skinId: choice(plant.skinId, `${p}.skinId`, schema.plantSkins ?? []) };
-    }
     if (keys.includes('variant') && c.variant !== undefined) {
       const p = `${path}.variant`, variant = object(c.variant, p, ['anim']);
       components.variant = { anim: choice(variant.anim, `${p}.anim`, schema.plantVariants ?? []) };
@@ -229,23 +221,12 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
       const debris = object(c.farmDebris, componentPath, ['animation']);
       components.farmDebris = { animation: choice(debris.animation, `${componentPath}.animation`, ['f1', 'f2', 'f3', 'f4']) };
     }
-    if (keys.includes('wall') && c.wall !== undefined) {
-      const componentPath = `${path}.wall`;
-      const wall = object(c.wall, componentPath, ['skinId']);
-      const skinId = wall.skinId === undefined ? undefined : string(wall.skinId, `${componentPath}.skinId`);
-      if (skinId !== undefined && !Object.hasOwn(WALL_SKIN_ARCHIVES[prefab] ?? {}, skinId)) {
-        fail(`${componentPath}.skinId`, 'unsupported wall skin');
-      }
-      components.wall = skinId === undefined ? {} : { skinId };
-    }
     if (keys.includes('fence') && c.fence !== undefined) {
       const componentPath = `${path}.fence`;
-      const fence = object(c.fence, componentPath, ['rot', 'skinId']);
+      const fence = object(c.fence, componentPath, ['rot']);
       const rot = fence.rot === undefined ? undefined : number(fence.rot, `${componentPath}.rot`, 1, 7);
       if (rot !== undefined && !Number.isInteger(rot)) { fail(`${componentPath}.rot`, 'expected an integer rotation enum'); }
-      const skinId = fence.skinId === undefined ? undefined : string(fence.skinId, `${componentPath}.skinId`);
-      if (skinId !== undefined && !Object.hasOwn(FENCE_SKIN_ARCHIVES, skinId)) { fail(`${componentPath}.skinId`, 'unsupported fence skin'); }
-      components.fence = { ...(rot === undefined ? {} : { rot }), ...(skinId === undefined ? {} : { skinId }) };
+      components.fence = rot === undefined ? {} : { rot };
     }
     if (keys.includes('moonTree') && c.moonTree !== undefined) {
       const componentPath = `${path}.moonTree`;
@@ -395,13 +376,6 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         } } };
       }
     }
-    if (keys.includes('wormhole') && c.wormhole !== undefined) {
-      const componentPath = `${path}.wormhole`;
-      const wormhole = object(c.wormhole, componentPath, ['skinId']);
-      components.wormhole = wormhole.skinId === undefined ? {} : {
-        skinId: choice(wormhole.skinId, `${componentPath}.skinId`, WORMHOLE_SKINS),
-      };
-    }
     if (keys.includes('nightmareGrowth')) {
       const componentPath = `${path}.nightmareGrowth`;
       const growth = object(c.nightmareGrowth, componentPath, ['crackRotation']);
@@ -409,15 +383,10 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
     }
     if (keys.includes('building')) {
       if (!building) { fail(path, `missing building definition for ${prefab}`); }
-      const b = object(c.building, `${path}.building`, ['state', 'skinId', 'burnt']);
+      const b = object(c.building, `${path}.building`, ['state', 'burnt']);
       // Older saves also carry `state`; source OnSave has no open state, so it is ignored.
-      const skinId = b.skinId === undefined ? undefined : string(b.skinId, `${path}.building.skinId`);
-      if (skinId !== undefined && !Object.hasOwn(building.skinArchives ?? {}, skinId)) { fail(`${path}.building.skinId`, 'unsupported building skin'); }
-      components.building = skinId === undefined ? {} : { skinId };
-      if (b.burnt !== undefined) {
-        if (b.burnt !== true || !schema.burntStructure) { fail(`${path}.building.burnt`, 'expected a burnt combustible building'); }
-        components.building.burnt = true;
-      }
+      if (b.burnt !== undefined && (b.burnt !== true || !schema.burntStructure)) { fail(`${path}.building.burnt`, 'expected a burnt combustible building'); }
+      components.building = b.burnt ? { burnt: true } : {};
       if (isContainer && (!b.burnt || c.container !== undefined)) {
         components.container = c.container === undefined ? { items: {} }
           : slotItems(c.container, `${path}.container`, containerDefinition!.slotCount,

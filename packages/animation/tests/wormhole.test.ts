@@ -146,7 +146,8 @@ it('reskins a live opening wormhole and restores its identity and skin', async (
         === skin.buildPackage.atlases[0].pixels)).toBe(true);
     });
     const [{ record: saved }] = s.prefabs.exportRecords();
-    expect(saved.components).toEqual({ wormhole: { skinId } });
+    expect(saved.components).toEqual({});
+    expect(saved.skinname).toBe(skinId);
     expect(PREFAB_DEFINITIONS.wormholes.parseComponents(saved.components, 'wormhole', {} as never)).toEqual(saved.components);
     expect(() => PREFAB_DEFINITIONS.wormholes.parseComponents({ wormhole: { skinId: 'missing' } }, 'wormhole', {} as never)).toThrow();
     const restored = setup();

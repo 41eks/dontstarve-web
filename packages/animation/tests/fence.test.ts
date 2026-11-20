@@ -176,7 +176,8 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect(built.sprite.sprite.peek().lightOverride).toBeUndefined();
     for (const tag of ['wall', 'fence', 'alignwall', 'rotatableobject']) { expect(built.hasTag(tag)).toBe(true); }
     const [exported] = records(registry);
-    expect(exported.components).toEqual({ fence: { rot: calcRotationEnum(-90), skinId: 'fence_rose' } });
+    expect(exported.components).toEqual({ fence: { rot: calcRotationEnum(-90) } });
+    expect(exported.skinname).toBe('fence_rose');
 
     // Reload the saved record into a fresh world.
     await restored.registry.restoreAll({ fence: [exported] });
@@ -199,7 +200,8 @@ it('is hammered in three hits for a twig, can be reskinned, and burns into ash w
     const reskin = reskinTargetOf(lookupPrefabInstance(model))!;
     expect(reskin.sprite.skinNames).toEqual(Object.keys(FENCE_SKIN_ARCHIVES));
     expect(reskinEntity(reskin)).toBe(true);
-    expect(records(registry)[0].components.fence).toEqual({ rot: 2, skinId: 'fence_ancient' });
+    expect(records(registry)[0].components.fence).toEqual({ rot: 2 });
+    expect(records(registry)[0].skinname).toBe('fence_ancient');
 
     const fire = fence.components.burnable!;
     fire.Ignite();

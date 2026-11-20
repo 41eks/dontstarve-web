@@ -48,7 +48,7 @@ async function setup(id: typeof RESEARCH_LAB_IDS[number], skinId?: string) {
   const placement = managedBuildings(world);
   const model = placement.spawnFromSave(id, {
     id: `test_${id}`, transform: { position: [3, 0, 4], rotationY: 0 },
-    components: { building: { ...(skinId ? { skinId } : {}) } },
+    ...skinId ? { skinname: skinId } : {}, components: { building: {} },
   });
   // The builder searches the world its player is in; a test that reloads into a new world moves it there.
   const sim = { current: placement.prefabs };
