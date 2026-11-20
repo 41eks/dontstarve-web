@@ -11,6 +11,7 @@ import { mountGameUi } from '../src';
 import { setupEmoteWheel } from '../../../src/emoteWheel';
 import { input } from '../../../src/InputManager';
 import { updateMovement } from '../../../src/updatePlayerMovement';
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { EventEmitter } from '../../signals/src';
 import { bindActionCancellation, type PlayerActionEvents } from '../../stategraphs/src';
 
@@ -35,7 +36,7 @@ export async function createEmoteFixture() {
   const camera = new THREE.PerspectiveCamera(35, 600 / 480, 0.1, 100);
   camera.position.set(0, 3, 20);
   camera.lookAt(0, 1.7, 0);
-  const movement = updateMovement(camera, model, body, locomotor);
+  const movement = updateMovement(fixedCamera(0), model, body, locomotor);
   const requests: string[] = [];
   let worldClicks = 0;
   const actionEvents = new EventEmitter<PlayerActionEvents>();

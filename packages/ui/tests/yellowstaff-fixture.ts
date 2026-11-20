@@ -28,7 +28,6 @@ import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { HandSlot, InventorySlot, equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { serializeSave } from '../../../src/save/serialize';
 import { deserializeSave } from '../../../src/save/deserialize';
-import { inventoryStateFromSave } from '../../../src/save/inventoryState';
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { clockstate, seasonstate } from '@dontstarve-web/signals';
 
@@ -226,17 +225,9 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
     ],
     INVENTORY_ITEM_SPECS,
   );
-  const savedInventory = inventoryStateFromSave(saved);
-  const addresses = restoredInventory.addresses();
-  restoredInventory.replaceState(
-    {
-      ...savedInventory,
-      slots: savedInventory.slots.filter(({ address: savedAddress }) =>
-        addresses.some(
-          address => address.containerId === savedAddress.containerId && address.slotKey === savedAddress.slotKey,
-        ),
-      ),
-    },
+  restoredInventory.loadSaved(
+    saved.players.local.inventory,
+    saved.players.local.builder.bufferedBuilds,
     SAVE_CATALOG.recipes,
   );
   const savedStaff = entity.snapshot();
