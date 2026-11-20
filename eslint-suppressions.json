@@ -1746,7 +1746,7 @@
   },
   "packages/display/src/spriteState.ts": {
     "curly": {
-      "count": 26
+      "count": 25
     }
   },
   "packages/display/src/vfx.ts": {

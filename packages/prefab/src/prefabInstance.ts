@@ -481,7 +481,9 @@ export class PrefabInstance<Sprite extends ArchiveSpriteCommands = SpriteState, 
       });
       this.status = status;
       this.releaseStatus = () => status.dispose();
-    } else this.status = readonlySignal(this.lifecycle);
+    } else {
+      this.status = readonlySignal(this.lifecycle);
+    }
     // The display draws the entity from its sprite json, in this lifecycle.
     sprite.bindStatus(this.status);
     this.transform = transform;
@@ -848,7 +850,9 @@ function entityInstance<Instance extends PrefabInstance<SpriteState, object>>(pr
   if (clip.instance) {
     if (clip.instance.isRemoved || clip.instance.prefab !== prefab) throw new Error('Cannot display a removed or different prefab instance');
     // Whose child an entity is belongs to the entity, not to one presentation of it.
-    if (ownerStatus) throw new Error('Cannot give an existing prefab instance an owner');
+    if (ownerStatus) {
+      throw new Error('Cannot give an existing prefab instance an owner');
+    }
     clip.instance.sprite.resetPresentation(clip);
     return clip.instance;
   }
