@@ -126,6 +126,7 @@ import { OASISLAKE_ARCHIVES, OASISLAKE_ID, OASISLAKE_MAX_FISH } from '@dontstarv
 import { BEEHIVE_ARCHIVES, BEEHIVE_HEALTH, BEEHIVE_ID, BEEHIVE_MAX_BEES } from '@dontstarve-web/prefab/beehive';
 import { SHADOW_FORGE_ARCHIVES, SHADOW_FORGE_ID } from '@dontstarve-web/prefab/shadow_forge';
 import { SPIDERDEN_ARCHIVES, SPIDERDEN_HEALTH, SPIDERDEN_ID } from '@dontstarve-web/prefab/spiderden';
+import { SEASTACK_ARCHIVES, SEASTACK_ID, SEASTACK_MINE, SEASTACK_STACK_TYPES } from '@dontstarve-web/prefab/seastack';
 import { WASPHIVE_ARCHIVES, WASPHIVE_HEALTH, WASPHIVE_ID, WASPHIVE_WASPS } from '@dontstarve-web/prefab/wasphive';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
@@ -633,6 +634,48 @@ const spiderDen: PrefabComponentParser = (value, path) => {
       ...(child.emergencychildreninside === undefined
         ? {}
         : { emergencychildreninside: integer(child.emergencychildreninside, `${p}.emergencychildreninside`, 0, 8) }),
+    };
+  }
+  if (upgradeable !== undefined) {
+    const p = `${path}.upgradeable`;
+    const upgrade = object(upgradeable, p, ['numupgrades', 'stage']);
+    components.upgradeable = {
+      numupgrades: integer(upgrade.numupgrades, `${p}.numupgrades`, 0),
+      ...(upgrade.stage === undefined ? {} : { stage: integer(upgrade.stage, `${p}.stage`, 1, 3) }),
+    };
+  }
+  return components;
+};
+/**
+ * seastack.lua OnSave writes the stack shape and tint; workable.savestate writes its work, and upgradeable saves its own
+ * record. The spawner prefabs in the same file are not ported.
+ */
+const seastack: PrefabComponentParser = (value, path) => {
+  const { stackid, tinted, workable, upgradeable } = object(value, path, [
+    'stackid',
+    'tinted',
+    'workable',
+    'upgradeable',
+  ]);
+  const components: ReturnType<PrefabComponentParser> = {};
+  if (stackid !== undefined) {
+    components.stackid = integer(stackid, `${path}.stackid`, 1, SEASTACK_STACK_TYPES);
+  }
+  if (tinted !== undefined) {
+    if (typeof tinted !== 'boolean') {
+      fail(`${path}.tinted`, 'expected boolean');
+    }
+    components.tinted = tinted;
+  }
+  if (workable !== undefined) {
+    const p = `${path}.workable`;
+    const work = object(workable, p, ['workleft', 'maxwork']);
+    if (work.maxwork !== undefined && work.maxwork !== -1) {
+      fail(`${p}.maxwork`, 'expected -1');
+    }
+    components.workable = {
+      workleft: number(work.workleft, `${p}.workleft`, 0, SEASTACK_MINE),
+      ...(work.maxwork === undefined ? {} : { maxwork: -1 }),
     };
   }
   if (upgradeable !== undefined) {
@@ -1344,6 +1387,12 @@ const WORLD_PREFAB_DEFINITIONS = {
     spiderDen,
     true,
     SPIDERDEN_ARCHIVES.map(archive => ({ animation: archive, build: archive })),
+  ),
+  seastacks: definePrefabs(
+    [SEASTACK_ID],
+    seastack,
+    true,
+    SEASTACK_ARCHIVES.map(archive => ({ animation: archive, build: archive })),
   ),
   wasphives: definePrefabs([WASPHIVE_ID], hive(WASPHIVE_WASPS, WASPHIVE_HEALTH), true, WASPHIVE_ARCHIVES),
   mastMalbatross: definePrefabs(

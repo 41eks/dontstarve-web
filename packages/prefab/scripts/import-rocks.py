@@ -52,6 +52,8 @@ ASSETS = {
     'shadow_forge': ['shadow_forge.zip'],
     # spiderden.lua: spider_cocoon.zip holds the spider_cocoon bank and build; frozen.zip is mirrored elsewhere.
     'spiderden': ['spider_cocoon.zip'],
+    # seastack.lua: water_rock_01.zip holds the water_rock01 bank and the water_rock_01 build.
+    'seastack': ['water_rock_01.zip'],
     # lightninggoat.lua: the lightning_goat bank's basic and actions archives, the build and the charged (shocked) build.
     'lightninggoat': ['lightning_goat_basic.zip', 'lightning_goat_actions.zip', 'lightning_goat_build.zip',
                       'lightning_goat_shocked_build.zip'],
@@ -195,6 +197,11 @@ def main():
                          'frozen_large', 'frozen_loop_pst_large', 'frozen_loop_pst_medium', 'frozen_loop_pst_small',
                          'frozen_medium', 'frozen_small', 'grow_medium_to_large', 'grow_sac_to_small',
                          'grow_small_to_medium', 'shave_large_to_medium', 'shave_medium_to_small']}
+    # seastack.lua: every clip of the water_rock01 bank; UpdateArt plays <stackid>_full / _low, and _med is kept although
+    # no source sets has_medium_state.
+    art |= {f'water_rock01/{clip}': {'animationArchive': 'water_rock_01.zip', 'bank': 'water_rock01', 'animation': clip}
+            for clip in [*(f'{stack}_{part}' for stack in range(1, 6) for part in ('emerge', 'full', 'low')),
+                         '1_med', '2_med', '4_med', 'hit_fx']}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives and {len(SKINS)} skin builds')
 

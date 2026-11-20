@@ -140,6 +140,8 @@ ENTITY_WHITELIST = {
     'treasurechest': CONTAINER['treasurechest_components'],
     'pandoraschest': CONTAINER['pandoraschest_components'],
     'shadow_forge': STRUCTURE['shadow_forge_components'],
+    # seastack.lua also returns two seastack_spawner_* entities, which are not ported.
+    'seastack': WORKABLE['seastack_components'],
     # spiderden.lua SetPrefabName saves its three level prefabs as `spiderden`; the level is growable.stage.
     'spiderden': STRUCTURE['spiderden_components'],
     'beefalo': CREATURE['beefalo_components'],
