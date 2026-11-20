@@ -329433,6 +329433,535 @@
           "components": {}
         }
       ],
+      "spiderden": [
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100074",
+          "transform": {
+            "position": [
+              414.06,
+              0.0,
+              -1220.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 243
+            },
+            "health": {
+              "current": 1000,
+              "maximum": 1000
+            },
+            "childspawner": {
+              "childreninside": 9,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 3
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100075",
+          "transform": {
+            "position": [
+              510.6,
+              0.0,
+              -1265.82
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 292
+            },
+            "health": {
+              "current": 1000,
+              "maximum": 1000
+            },
+            "childspawner": {
+              "childreninside": 9,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 3
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100076",
+          "transform": {
+            "position": [
+              363.24,
+              0.0,
+              -1280.28
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 297
+            },
+            "health": {
+              "current": 1000,
+              "maximum": 1000
+            },
+            "childspawner": {
+              "childreninside": 9,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 3
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100077",
+          "transform": {
+            "position": [
+              413.4,
+              0.0,
+              -1351.71
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 138006
+            },
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100078",
+          "transform": {
+            "position": [
+              366.45,
+              0.0,
+              -1371.78
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 138006
+            },
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100079",
+          "transform": {
+            "position": [
+              1232.16,
+              0.0,
+              -174.42
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 138006
+            },
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100080",
+          "transform": {
+            "position": [
+              1204.32,
+              0.0,
+              -366.78
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 32783
+            },
+            "health": {
+              "current": 1000,
+              "maximum": 1000
+            },
+            "childspawner": {
+              "childreninside": 9,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 3
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100081",
+          "transform": {
+            "position": [
+              1314.48,
+              0.0,
+              -354.45
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 51889
+            },
+            "health": {
+              "current": 1000,
+              "maximum": 1000
+            },
+            "childspawner": {
+              "childreninside": 9,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 3
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100082",
+          "transform": {
+            "position": [
+              1156.92,
+              0.0,
+              -392.25
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 1157
+            },
+            "health": {
+              "current": 1000,
+              "maximum": 1000
+            },
+            "childspawner": {
+              "childreninside": 9,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 3
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100083",
+          "transform": {
+            "position": [
+              -1280.4,
+              0.0,
+              1168.14
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 138006
+            },
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100084",
+          "transform": {
+            "position": [
+              -1215.51,
+              0.0,
+              1875.66
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 138006
+            },
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100085",
+          "transform": {
+            "position": [
+              -1806.27,
+              0.0,
+              1563.75
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 138006
+            },
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100086",
+          "transform": {
+            "position": [
+              305.22,
+              0.0,
+              -1578.48
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 138006
+            },
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100087",
+          "transform": {
+            "position": [
+              1003.05,
+              0.0,
+              -140.46
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 32768
+            },
+            "health": {
+              "current": 1000,
+              "maximum": 1000
+            },
+            "childspawner": {
+              "childreninside": 9,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 3
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100088",
+          "transform": {
+            "position": [
+              376.74,
+              0.0,
+              -1360.53
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 1,
+              "time": 0,
+              "sleeptime": 138006
+            },
+            "health": {
+              "current": 250,
+              "maximum": 250
+            },
+            "childspawner": {
+              "childreninside": 3,
+              "childrenoutside": [],
+              "emergencychildreninside": 0
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 1
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100089",
+          "transform": {
+            "position": [
+              388.86,
+              0.0,
+              -1220.19
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 243
+            },
+            "health": {
+              "current": 1000,
+              "maximum": 1000
+            },
+            "childspawner": {
+              "childreninside": 9,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 3
+            }
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_spiderden_id_100090",
+          "transform": {
+            "position": [
+              378.24,
+              0.0,
+              -1278.24
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "growable": {
+              "stage": 3,
+              "time": 0,
+              "sleeptime": 296
+            },
+            "health": {
+              "current": 1000,
+              "maximum": 1000
+            },
+            "childspawner": {
+              "childreninside": 9,
+              "childrenoutside": [],
+              "emergencychildreninside": 8
+            },
+            "upgradeable": {
+              "numupgrades": 0,
+              "stage": 3
+            }
+          }
+        }
+      ],
       "beefalo": [
         {
           "id": "dst_04E26ADB66396E8D_beefalo_id_101546",

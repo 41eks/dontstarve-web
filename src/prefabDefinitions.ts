@@ -125,6 +125,7 @@ import {
 import { OASISLAKE_ARCHIVES, OASISLAKE_ID, OASISLAKE_MAX_FISH } from '@dontstarve-web/prefab/oasislake';
 import { BEEHIVE_ARCHIVES, BEEHIVE_HEALTH, BEEHIVE_ID, BEEHIVE_MAX_BEES } from '@dontstarve-web/prefab/beehive';
 import { SHADOW_FORGE_ARCHIVES, SHADOW_FORGE_ID } from '@dontstarve-web/prefab/shadow_forge';
+import { SPIDERDEN_ARCHIVES, SPIDERDEN_HEALTH, SPIDERDEN_ID } from '@dontstarve-web/prefab/spiderden';
 import { WASPHIVE_ARCHIVES, WASPHIVE_HEALTH, WASPHIVE_ID, WASPHIVE_WASPS } from '@dontstarve-web/prefab/wasphive';
 import { SAPLING_PREFABS, SAPLING_REGROW_TIME } from '@dontstarve-web/prefab/sapling';
 import { POND_ID } from '@dontstarve-web/prefab/pond';
@@ -584,6 +585,66 @@ const hive =
     }
     return result;
   };
+/**
+ * spiderden.lua has no OnSave: health:OnSave is kept as the record's `{ current, maximum }`, and growable,
+ * childspawner and upgradeable save their own records. The spiders outside are not ported, so none is kept outside.
+ * The shaveable and bedazzlement components are signature-only, so their saved fields are not written.
+ */
+const spiderDen: PrefabComponentParser = (value, path) => {
+  const { health, childspawner, growable, upgradeable } = object(value, path, [
+    'health',
+    'childspawner',
+    'growable',
+    'upgradeable',
+  ]);
+  const components: ReturnType<PrefabComponentParser> = {};
+  let stage: number | undefined;
+  if (growable !== undefined) {
+    const p = `${path}.growable`;
+    const growth = object(growable, p, ['stage', 'time', 'sleeptime']);
+    // AttemptMakeQueen's stage 4 is not ported.
+    stage = integer(growth.stage, `${p}.stage`, 1, 3);
+    components.growable = {
+      stage,
+      ...(growth.time === undefined ? {} : { time: number(growth.time, `${p}.time`, 0, 19200) }),
+      ...(growth.sleeptime === undefined ? {} : { sleeptime: number(growth.sleeptime, `${p}.sleeptime`, 0) }),
+    };
+  }
+  if (health !== undefined) {
+    const p = `${path}.health`;
+    const h = object(health, p, ['current', 'maximum']);
+    const maximum = number(h.maximum, `${p}.maximum`, 1);
+    if (!SPIDERDEN_HEALTH.some(known => known === maximum)) {
+      fail(`${p}.maximum`, 'expected a spider den stage maximum');
+    }
+    if (stage !== undefined && maximum !== SPIDERDEN_HEALTH[stage - 1]) {
+      fail(`${p}.maximum`, 'must match the growable stage');
+    }
+    components.health = { current: number(h.current, `${p}.current`, 0, maximum), maximum };
+  }
+  if (childspawner !== undefined) {
+    const p = `${path}.childspawner`;
+    const child = object(childspawner, p, ['childreninside', 'childrenoutside', 'emergencychildreninside']);
+    array(child.childrenoutside, `${p}.childrenoutside`, 0);
+    components.childspawner = {
+      // 9 spiders in spring, floor(9 * 1.33); a runtime den clamps to its own max.
+      childreninside: integer(child.childreninside, `${p}.childreninside`, 0, 11),
+      childrenoutside: [],
+      ...(child.emergencychildreninside === undefined
+        ? {}
+        : { emergencychildreninside: integer(child.emergencychildreninside, `${p}.emergencychildreninside`, 0, 8) }),
+    };
+  }
+  if (upgradeable !== undefined) {
+    const p = `${path}.upgradeable`;
+    const upgrade = object(upgradeable, p, ['numupgrades', 'stage']);
+    components.upgradeable = {
+      numupgrades: integer(upgrade.numupgrades, `${p}.numupgrades`, 0),
+      ...(upgrade.stage === undefined ? {} : { stage: integer(upgrade.stage, `${p}.stage`, 1, 3) }),
+    };
+  }
+  return components;
+};
 const archiveStatue = componentParser({ keys: ['archiveProp'], archivePropVariants: 4 });
 const archiveRune = componentParser({ keys: ['archiveProp'], archivePropVariants: 3, archiveStoryLines: 5 });
 const farmSoil = componentParser({ keys: ['farmSoil'] });
@@ -1276,6 +1337,14 @@ const WORLD_PREFAB_DEFINITIONS = {
   beehives: definePrefabs([BEEHIVE_ID], hive(BEEHIVE_MAX_BEES, BEEHIVE_HEALTH), true, BEEHIVE_ARCHIVES),
   // shadow_forge.lua has no OnSave, and its workable sets no savestate: the record is identity and position only.
   shadowForges: definePrefabs([SHADOW_FORGE_ID], empty, true, SHADOW_FORGE_ARCHIVES),
+  // spiderden.lua makes spiderden, spiderden_2 and spiderden_3; SetPrefabName saves every level as `spiderden`, so
+  // only that ID is registered. Its stage comes from growable.
+  spiderDens: definePrefabs(
+    [SPIDERDEN_ID],
+    spiderDen,
+    true,
+    SPIDERDEN_ARCHIVES.map(archive => ({ animation: archive, build: archive })),
+  ),
   wasphives: definePrefabs([WASPHIVE_ID], hive(WASPHIVE_WASPS, WASPHIVE_HEALTH), true, WASPHIVE_ARCHIVES),
   mastMalbatross: definePrefabs(
     [MAST_MALBATROSS_ID],

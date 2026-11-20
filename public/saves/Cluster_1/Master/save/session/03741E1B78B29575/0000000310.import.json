@@ -473,6 +473,7 @@
     "treasurechest",
     "pandoraschest",
     "shadow_forge",
+    "spiderden",
     "beefalo",
     "lightninggoat",
     "dragonfly",
@@ -1125,6 +1126,10 @@
     "shadow_forge": {
       "source": 1,
       "imported": 1
+    },
+    "spiderden": {
+      "source": 22,
+      "imported": 22
     },
     "beefalo": {
       "source": 68,
@@ -68687,6 +68692,270 @@
         -308
       ],
       "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107529",
+      "prefab": "spiderden",
+      "sourceIndex": 1,
+      "sourceId": 107529,
+      "sourcePosition": [
+        378.878,
+        0,
+        -14.487
+      ],
+      "sourceNode": "Kill the spiders:1:SpiderVillage"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107530",
+      "prefab": "spiderden",
+      "sourceIndex": 2,
+      "sourceId": 107530,
+      "sourcePosition": [
+        -387.25,
+        0,
+        492.88
+      ],
+      "sourceNode": "For a nice walk:BG_67:BGForest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107531",
+      "prefab": "spiderden",
+      "sourceIndex": 3,
+      "sourceId": 107531,
+      "sourcePosition": [
+        -311.63,
+        0,
+        296.21
+      ],
+      "sourceNode": "For a nice walk:BG_68:BGForest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107532",
+      "prefab": "spiderden",
+      "sourceIndex": 4,
+      "sourceId": 107532,
+      "sourcePosition": [
+        -31.52,
+        0,
+        335.13
+      ],
+      "sourceNode": "Forest hunters:BG_87:BGForest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107533",
+      "prefab": "spiderden",
+      "sourceIndex": 5,
+      "sourceId": 107533,
+      "sourcePosition": [
+        -204.6,
+        0,
+        -155.75
+      ],
+      "sourceNode": "Squeltch:BG_97:BGMarsh"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107534",
+      "prefab": "spiderden",
+      "sourceIndex": 6,
+      "sourceId": 107534,
+      "sourcePosition": [
+        331.061,
+        0,
+        17.665
+      ],
+      "sourceNode": "Kill the spiders:BG_90:BGRocky"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107535",
+      "prefab": "spiderden",
+      "sourceIndex": 7,
+      "sourceId": 107535,
+      "sourcePosition": [
+        -295.69,
+        0,
+        -244.42
+      ],
+      "sourceNode": "Squeltch:BG_98:BGMarsh"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107536",
+      "prefab": "spiderden",
+      "sourceIndex": 8,
+      "sourceId": 107536,
+      "sourcePosition": [
+        -296.6,
+        0,
+        -196.8
+      ],
+      "sourceNode": "Squeltch:BG_98:BGMarsh"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107537",
+      "prefab": "spiderden",
+      "sourceIndex": 9,
+      "sourceId": 107537,
+      "sourcePosition": [
+        -232.62,
+        0,
+        43.77
+      ],
+      "sourceNode": "Great Plains:BG_43:BGSavanna"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107538",
+      "prefab": "spiderden",
+      "sourceIndex": 10,
+      "sourceId": 107538,
+      "sourcePosition": [
+        358.922,
+        0,
+        -4.699
+      ],
+      "sourceNode": "Kill the spiders:1:SpiderVillage"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107539",
+      "prefab": "spiderden",
+      "sourceIndex": 11,
+      "sourceId": 107539,
+      "sourcePosition": [
+        -508.35,
+        0,
+        440.67
+      ],
+      "sourceNode": "For a nice walk:BG_71:BGForest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107540",
+      "prefab": "spiderden",
+      "sourceIndex": 12,
+      "sourceId": 107540,
+      "sourcePosition": [
+        191.2,
+        0,
+        311.52
+      ],
+      "sourceNode": "The hunters:BG_18:BGSavanna"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107541",
+      "prefab": "spiderden",
+      "sourceIndex": 13,
+      "sourceId": 107541,
+      "sourcePosition": [
+        384.76,
+        0,
+        472.09
+      ],
+      "sourceNode": "The hunters:BG_23:BGSavanna"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107542",
+      "prefab": "spiderden",
+      "sourceIndex": 14,
+      "sourceId": 107542,
+      "sourcePosition": [
+        144.91,
+        0,
+        223.82
+      ],
+      "sourceNode": "The hunters:BG_19:BGSavanna"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107543",
+      "prefab": "spiderden",
+      "sourceIndex": 15,
+      "sourceId": 107543,
+      "sourcePosition": [
+        -504.84,
+        0,
+        443.07
+      ],
+      "sourceNode": "For a nice walk:BG_71:BGForest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107544",
+      "prefab": "spiderden",
+      "sourceIndex": 16,
+      "sourceId": 107544,
+      "sourcePosition": [
+        -451.83,
+        0,
+        511.43
+      ],
+      "sourceNode": "For a nice walk:BG_70:BGForest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107545",
+      "prefab": "spiderden",
+      "sourceIndex": 17,
+      "sourceId": 107545,
+      "sourcePosition": [
+        437.676,
+        0,
+        -7.216
+      ],
+      "sourceNode": "Kill the spiders:4:CrappyForest"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107546",
+      "prefab": "spiderden",
+      "sourceIndex": 18,
+      "sourceId": 107546,
+      "sourcePosition": [
+        -242.605,
+        0,
+        62.984
+      ],
+      "sourceNode": "Great Plains:BG_45:BGSavanna"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107547",
+      "prefab": "spiderden",
+      "sourceIndex": 19,
+      "sourceId": 107547,
+      "sourcePosition": [
+        387.627,
+        0,
+        -36.559
+      ],
+      "sourceNode": "Kill the spiders:1:SpiderVillage"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107548",
+      "prefab": "spiderden",
+      "sourceIndex": 20,
+      "sourceId": 107548,
+      "sourcePosition": [
+        371.459,
+        0,
+        -48.489
+      ],
+      "sourceNode": "Kill the spiders:0:SpiderVillage"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107549",
+      "prefab": "spiderden",
+      "sourceIndex": 21,
+      "sourceId": 107549,
+      "sourcePosition": [
+        404.729,
+        0,
+        -48.162
+      ],
+      "sourceNode": "Kill the spiders:0:SpiderVillage"
+    },
+    {
+      "id": "dst_03741E1B78B29575_spiderden_id_107550",
+      "prefab": "spiderden",
+      "sourceIndex": 22,
+      "sourceId": 107550,
+      "sourcePosition": [
+        -92.06,
+        0,
+        356.46
+      ],
+      "sourceNode": "Forest hunters:COVE_1:Blank"
     },
     {
       "id": "dst_03741E1B78B29575_beefalo_id_108876",

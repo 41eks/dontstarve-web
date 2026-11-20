@@ -86,6 +86,7 @@
     "./oasislake": "./src/oasislake.ts",
     "./beehive": "./src/beehive.ts",
     "./wasphive": "./src/wasphive.ts",
+    "./spiderden": "./src/spiderden.ts",
     "./oceanvine_deco": "./src/oceanvine_deco.ts",
     "./vault_pillar": "./src/vault_pillar.ts",
     "./monkeypillar": "./src/monkeypillar.ts",

@@ -31,6 +31,8 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
    */
   emergencychildname?: string;
   emergencychildrenperplayer = 1;
+  /** childspawner.lua allowboats: whether a child may leave onto a boat; the spawn branch is not ported. */
+  allowboats = false;
   canemergencyspawn = true;
   maxemergencychildren = 0;
   emergencychildreninside = 0;

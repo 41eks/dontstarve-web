@@ -55,7 +55,7 @@ python3 packages/prefab/scripts/import-static-layouts.py --source /path/to/DST/d
 
 `scripts/import-dst-region.py` 读取完整快照中的最终 `map.tiles`，不重新运行静态布局；实体从 `savedata.ents` 的白名单分组读取。只接受可读的开发版 Lua 世界快照，使用字面量解析器读取 table，不执行存档 Lua；压缩的正式版快照暂不支持。
 
-入口脚本只负责读取快照、组装存档外壳和写入／校验输出，转换按职责拆分到同目录模块（经 `runpy` 加载）：`dst-region-tile.py` 负责地皮栅格、底层地皮、坐标投影和出生点；`dst-region-prefab.py` 持有 `ENTITY_WHITELIST` 并完成实体 ID、坐标与子实体链接，各 prefab 的源状态转换器按组件类型位于 `dst-region-prefab-growable.py`（树木生长与腐朽计时器）、`-pickable.py`（采摘、枯萎、发光植物与子实体生成）、`-workable.py`（岩石、雕像等开采／敲击物件）、`-structure.py`（猪王、洞穴出入口、池塘与石窟池子物件）、`-inventory.py`（萤火虫／蝴蝶堆叠与静态散落物品）和 `-container.py`（箱子）；`dst-region-item.py` 将物品的 `GetSaveRecord` 转为项目的持有记录 `{ id, prefab, skinname?, components }`（组件数据保持 Lua 记录，只保留物品规格具有的组件），由玩家背包和箱子内容物共用；`dst-region-player.py` 负责玩家重置、位置与背包迁移。
+入口脚本只负责读取快照、组装存档外壳和写入／校验输出，转换按职责拆分到同目录模块（经 `runpy` 加载）：`dst-region-tile.py` 负责地皮栅格、底层地皮、坐标投影和出生点；`dst-region-prefab.py` 持有 `ENTITY_WHITELIST` 并完成实体 ID、坐标与子实体链接，各 prefab 的源状态转换器按组件类型位于 `dst-region-prefab-growable.py`（树木生长与腐朽计时器）、`-pickable.py`（采摘、枯萎、发光植物与子实体生成）、`-workable.py`（岩石、雕像等开采／敲击物件）、`-structure.py`（猪王、洞穴出入口、池塘、石窟池子物件与蛛巢）、`-inventory.py`（萤火虫／蝴蝶堆叠与静态散落物品）和 `-container.py`（箱子）；`dst-region-item.py` 将物品的 `GetSaveRecord` 转为项目的持有记录 `{ id, prefab, skinname?, components }`（组件数据保持 Lua 记录，只保留物品规格具有的组件），由玩家背包和箱子内容物共用；`dst-region-player.py` 负责玩家重置、位置与背包迁移。
 
 ```bash
 # 同时转换 forest 与 cave，输出两个独立的分片 JSON 和来源报告

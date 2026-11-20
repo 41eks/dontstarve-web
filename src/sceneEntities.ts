@@ -65,6 +65,7 @@ import { supportPillarPrefabs } from '@dontstarve-web/prefab/support_pillar';
 import { oasislakePrefabs } from '@dontstarve-web/prefab/oasislake';
 import { beehivePrefabs } from '@dontstarve-web/prefab/beehive';
 import { shadowForgePrefabs } from '@dontstarve-web/prefab/shadow_forge';
+import { spiderdenPrefabs } from '@dontstarve-web/prefab/spiderden';
 import { wasphivePrefabs } from '@dontstarve-web/prefab/wasphive';
 import { oceanVineDecoPrefabs } from '@dontstarve-web/prefab/oceanvine_deco';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
@@ -243,6 +244,7 @@ const MANAGER_DEFINITIONS = {
   oasislake: PREFAB_DEFINITIONS.oasislakes,
   beehive: PREFAB_DEFINITIONS.beehives,
   shadow_forge: PREFAB_DEFINITIONS.shadowForges,
+  spiderden: PREFAB_DEFINITIONS.spiderDens,
   wasphive: PREFAB_DEFINITIONS.wasphives,
   oceanvine_deco: PREFAB_DEFINITIONS.oceanVineDecos,
   atrium_gate: PREFAB_DEFINITIONS.atriumGates,
@@ -288,6 +290,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.oasislakes,
   PREFAB_DEFINITIONS.beehives,
   PREFAB_DEFINITIONS.shadowForges,
+  PREFAB_DEFINITIONS.spiderDens,
   PREFAB_DEFINITIONS.wasphives,
   PREFAB_DEFINITIONS.oceanVineDecos,
   PREFAB_DEFINITIONS.atriumGates,
@@ -535,6 +538,10 @@ export async function createSceneEntities(
     shadowForgePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
   );
   registry.registerPrefabs(PREFAB_DEFINITIONS.shadowForges);
+  prefabs.register(
+    spiderdenPrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
+  );
+  registry.registerPrefabs(PREFAB_DEFINITIONS.spiderDens);
   prefabs.register(
     wasphivePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
   );

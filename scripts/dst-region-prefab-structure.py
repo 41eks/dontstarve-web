@@ -235,6 +235,105 @@ def hive_components(prefab, max_children, max_health):
     return convert
 
 
+def spiderden_components(data):
+    # spiderden.lua has no OnSave: growable, health, childspawner, shaveable, upgradeable and worldsettingstimer save
+    # their own records. SetPrefabName saves spiderden, spiderden_2 and spiderden_3 all as `spiderden`, with the level
+    # only in growable.stage. The spiders outside, the spawn/regen timers and the unported queen stage are not carried
+    # over; the unported shaveable keeps only its saved prize_count and the bedazzlement only its empty record.
+    growth_stages = (3, 6, 9)
+    emergency_warriors = (0, 4, 8)
+    stage_health = (250, 500, 1000)
+    spring_combat_mod = 1.33
+    allowed = {'growable', 'health', 'childspawner', 'shaveable', 'upgradeable', 'worldsettingstimer', 'bedazzlement'}
+    if not isinstance(data, dict) or set(data) - allowed:
+        raise ValueError(f'Unsupported spiderden save state: {sorted(data or {})}')
+    if 'bedazzlement' in data and data['bedazzlement']:
+        raise ValueError('Unsupported spiderden bedazzled state')
+
+    def finite(value):
+        return type(value) in (int, float) and math.isfinite(value)
+
+    result = {}
+    stage = data.get('growable', {}).get('stage') if isinstance(data.get('growable'), dict) else None
+    if stage is not None and (type(stage) is not int or not 1 <= stage <= 3):
+        raise ValueError(f'Unsupported spiderden growable stage: {stage}')
+    growth = data.get('growable')
+    if growth is not None:
+        multiplier = growth.get('usetimemultiplier')
+        if multiplier not in (None, False) and (not finite(multiplier) or multiplier <= 0):
+            raise ValueError(f'Unsupported spiderden growable multiplier: {multiplier}')
+        if not isinstance(growth, dict) or set(growth) - {'stage', 'time', 'sleeptime', 'usetimemultiplier'} \
+                or type(growth.get('stage')) is not int or not 1 <= growth['stage'] <= 3 \
+                or any(not finite(growth[key]) or growth[key] < 0 for key in ('time', 'sleeptime') if key in growth):
+            raise ValueError(f'Unsupported spiderden growable: {growth}')
+        converted = {'stage': growth['stage']}
+        if 'time' in growth:
+            # growable.lua stores growth time divided by the stage multiplier; the project keeps actual seconds.
+            converted['time'] = round(growth['time'] * multiplier, 3) if multiplier else growth['time']
+        if 'sleeptime' in growth:
+            converted['sleeptime'] = growth['sleeptime']
+        result['growable'] = converted
+
+    health = data.get('health')
+    if health is not None:
+        if not isinstance(health, dict) or set(health) != {'health'} or not finite(health['health']) \
+                or stage is None or not 0 <= health['health'] <= stage_health[stage - 1]:
+            raise ValueError(f'Unsupported spiderden health: {health}')
+        result['health'] = {'current': health['health'], 'maximum': stage_health[stage - 1]}
+
+    child = data.get('childspawner')
+    if child is not None:
+        max_children = math.floor(growth_stages[(stage or 1) - 1] * spring_combat_mod)
+        max_emergency = emergency_warriors[(stage or 1) - 1]
+        if not isinstance(child, dict) or set(child) - {'childreninside', 'childrenoutside', 'emergencychildreninside',
+                                                        'emergencychildrenoutside', 'otherchildreninside',
+                                                        'otheremergencychildreninside', 'maxchildren', 'maxemergencychildren',
+                                                        'spawning', 'regening', 'queued_spawn', 'timetonextspawn',
+                                                        'timetonextregen'} \
+                or type(child.get('childreninside')) is not int or not 0 <= child['childreninside'] <= max_children \
+                or type(child.get('emergencychildreninside', 0)) is not int \
+                or not 0 <= child.get('emergencychildreninside', 0) <= max_emergency \
+                or any(not isinstance(child.get(key, {}), dict) or any(type(prefab) is not str or type(count) is not int
+                                                                      or count < 0
+                                                                      for prefab, count in child.get(key, {}).items())
+                       for key in ('otherchildreninside', 'otheremergencychildreninside')) \
+                or any(type(child[key]) is not int or child[key] < 0
+                       for key in ('maxchildren', 'maxemergencychildren') if key in child) \
+                or any(not isinstance(child.get(key, []), list) or any(type(guid) is not int for guid in child.get(key, []))
+                       for key in ('childrenoutside', 'emergencychildrenoutside')) \
+                or any(key in child and type(child[key]) is not bool for key in ('spawning', 'regening', 'queued_spawn')) \
+                or any(key in child and not finite(child[key]) for key in ('timetonextspawn', 'timetonextregen')):
+            raise ValueError(f'Unsupported spiderden childspawner: {child}')
+        result['childspawner'] = {'childreninside': child['childreninside'], 'childrenoutside': []}
+        if 'emergencychildreninside' in child:
+            result['childspawner']['emergencychildreninside'] = child['emergencychildreninside']
+
+    upgradeable = data.get('upgradeable')
+    if upgradeable is not None:
+        if not isinstance(upgradeable, dict) or set(upgradeable) - {'numupgrades', 'stage'} \
+                or type(upgradeable.get('numupgrades')) is not int or upgradeable['numupgrades'] < 0 \
+                or type(upgradeable.get('stage')) is not int or not 1 <= upgradeable['stage'] <= 3:
+            raise ValueError(f'Unsupported spiderden upgradeable: {upgradeable}')
+        result['upgradeable'] = {'numupgrades': upgradeable['numupgrades'], 'stage': upgradeable['stage']}
+
+    shaveable = data.get('shaveable')
+    if shaveable is not None:
+        if not isinstance(shaveable, dict) or set(shaveable) != {'prize_count'} \
+                or type(shaveable['prize_count']) is not int or shaveable['prize_count'] < 0:
+            raise ValueError(f'Unsupported spiderden shaveable: {shaveable}')
+
+    timers = data.get('worldsettingstimer')
+    if timers is not None:
+        if not isinstance(timers, dict) or set(timers) != {'timers'} or not isinstance(timers['timers'], dict) \
+                or set(timers['timers']) - {'ChildSpawner_SpawnPeriod', 'ChildSpawner_RegenPeriod'} \
+                or any(not isinstance(timer, dict) or set(timer) - {'timeleft', 'initial_time', 'paused'}
+                       or any(not finite(timer[key]) or timer[key] < 0 for key in ('timeleft', 'initial_time') if key in timer)
+                       or ('paused' in timer and type(timer['paused']) is not bool)
+                       for timer in timers['timers'].values()):
+            raise ValueError(f'Unsupported spiderden worldsettingstimer: {timers}')
+    return result
+
+
 def atrium_gate_components(data):
     # atrium_gate.lua OnSave plus the component records used by OnLoadPostPass.
     if set(data) - {'vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key',

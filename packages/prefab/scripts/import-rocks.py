@@ -50,6 +50,8 @@ ASSETS = {
     'wasphive': ['wasphive.zip'],
     # shadow_forge.lua: one archive holds the bank and the build; snow.zip is mirrored elsewhere.
     'shadow_forge': ['shadow_forge.zip'],
+    # spiderden.lua: spider_cocoon.zip holds the spider_cocoon bank and build; frozen.zip is mirrored elsewhere.
+    'spiderden': ['spider_cocoon.zip'],
     # lightninggoat.lua: the lightning_goat bank's basic and actions archives, the build and the charged (shocked) build.
     'lightninggoat': ['lightning_goat_basic.zip', 'lightning_goat_actions.zip', 'lightning_goat_build.zip',
                       'lightning_goat_shocked_build.zip'],
@@ -183,6 +185,16 @@ def main():
     art |= {f'shadow_forge/{clip}': {'animationArchive': 'shadow_forge.zip', 'bank': 'shadow_forge', 'animation': clip}
             for clip in ['idle', 'place', 'use', 'kit', 'hit_open', 'hit_closed', 'proximity_pre', 'proximity_loop',
                          'proximity_pst']}
+    # spiderden.lua: every clip of the spider_cocoon bank, including the unported queen, hit, death, freeze, shave and
+    # bedazzle branches.
+    art |= {f'spider_cocoon/{clip}': {'animationArchive': 'spider_cocoon.zip', 'bank': 'spider_cocoon', 'animation': clip}
+            for clip in ['cocoon_dead', 'cocoon_enter', 'cocoon_large', 'cocoon_large_bedazzled', 'cocoon_large_burst',
+                         'cocoon_large_burst_pst', 'cocoon_large_hit', 'cocoon_large_hit_combat', 'cocoon_medium',
+                         'cocoon_medium_bedazzled', 'cocoon_medium_hit', 'cocoon_medium_hit_combat', 'cocoon_sleep_loop',
+                         'cocoon_small', 'cocoon_small_bedazzled', 'cocoon_small_hit', 'cocoon_small_hit_combat',
+                         'frozen_large', 'frozen_loop_pst_large', 'frozen_loop_pst_medium', 'frozen_loop_pst_small',
+                         'frozen_medium', 'frozen_small', 'grow_medium_to_large', 'grow_sac_to_small',
+                         'grow_small_to_medium', 'shave_large_to_medium', 'shave_medium_to_small']}
     check_clips(art, {}, args.source)
     print(f'{"Checked" if args.check else "Imported"} {sum(map(len, ASSETS.values()))} animation/build archives and {len(SKINS)} skin builds')
 

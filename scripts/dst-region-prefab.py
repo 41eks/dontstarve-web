@@ -140,6 +140,8 @@ ENTITY_WHITELIST = {
     'treasurechest': CONTAINER['treasurechest_components'],
     'pandoraschest': CONTAINER['pandoraschest_components'],
     'shadow_forge': STRUCTURE['shadow_forge_components'],
+    # spiderden.lua SetPrefabName saves its three level prefabs as `spiderden`; the level is growable.stage.
+    'spiderden': STRUCTURE['spiderden_components'],
     'beefalo': CREATURE['beefalo_components'],
     'lightninggoat': CREATURE['lightninggoat_components'],
     'dragonfly': CREATURE['dragonfly_components'],
