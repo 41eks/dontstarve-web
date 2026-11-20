@@ -4,6 +4,7 @@ import {
   type ScenePassLighting,
   type SceneRenderPass,
 } from '@dontstarve-web/animation/sceneRenderPass';
+import { advanceOceanShadingTime, oceanShadingUniforms, setOceanTint } from '@dontstarve-web/animation/oceanShading';
 
 export interface OceanColourMap {
   readonly size: number;
@@ -257,6 +258,8 @@ export class OceanRenderPipeline implements SceneRenderPass {
   private readonly resolveMaterial: THREE.ShaderMaterial;
   private readonly floorMaterial: THREE.ShaderMaterial;
   private readonly bufferSize = new THREE.Vector2();
+  /** OCEAN_WORLD_EXTENTS: the colour textures' world minimum and one over their span. */
+  private readonly extents = new THREE.Vector4();
   private readonly clearColour = new THREE.Color();
   private surface?: THREE.Mesh;
   private unregister?: () => void;
@@ -297,7 +300,7 @@ export class OceanRenderPipeline implements SceneRenderPass {
       primaryTexture: { value: this.primaryBlur.texture },
       noiseTexture: { value: noise },
       oceanTime: { value: 0 },
-      oceanExtents: { value: new THREE.Vector4(this.min * map.tileSize, this.min * map.tileSize, 1 / span, 1 / span) },
+      oceanExtents: { value: this.extents.set(this.min * map.tileSize, this.min * map.tileSize, 1 / span, 1 / span) },
       lightmap: { value: this.white },
       lightmapExtents: { value: this.lightmapExtents },
       ambient: { value: this.ambient },
@@ -325,6 +328,8 @@ export class OceanRenderPipeline implements SceneRenderPass {
     this.floorMesh.name = 'OceanClearColour';
     this.floorMesh.frustumCulled = false;
     this.rebuildColours();
+    // anim.ksh's OCEAN_SAMPLER: the blurred day/dusk ocean colour, which SetOceanBlendParams tints sprites with.
+    setOceanTint(this.blended.texture, this.extents);
   }
 
   private material(
@@ -391,6 +396,8 @@ export class OceanRenderPipeline implements SceneRenderPass {
 
   update(dt: number): void {
     this.combinedMaterial.uniforms.oceanTime.value += dt;
+    // TIMEPARAMS.x, which SetFloatParams' bob follows; the world's one ocean advances it each frame.
+    advanceOceanShadingTime(dt);
   }
 
   private syncGeometry(): void {
@@ -558,6 +565,9 @@ export class OceanRenderPipeline implements SceneRenderPass {
       return;
     }
     this.disposed = true;
+    if (oceanShadingUniforms.dstOceanTint.value === this.blended.texture) {
+      setOceanTint(undefined);
+    }
     this.unregister?.();
     this.floorMesh.removeFromParent();
     if (this.ownsPlaceholderGeometry) {

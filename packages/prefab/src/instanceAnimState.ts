@@ -6,7 +6,7 @@ import { bankAnimationTiming } from './animationTimings';
 /** The sprite commands AnimState playback is written with. */
 export type AnimStateSprite = Pick<
   ArchiveSpriteCommands,
-  'start' | 'playOnce' | 'pushAnimation' | 'setColour' | 'setAddColour'
+  'start' | 'playOnce' | 'pushAnimation' | 'setColour' | 'setAddColour' | 'setFloatParams' | 'setOceanBlendParams'
 > &
   /** A factory sprite's state also takes a named bank and build and a playback rate. */
   Partial<Pick<SpriteState, 'setArtSource' | 'setPlaybackRate'>>;
@@ -101,6 +101,14 @@ export class InstanceAnimState extends AnimState {
     this.sprite.setPlaybackRate(multiplier);
   }
 
+  /** AnimState:SetFloatParams(offset, enabled, bob): anim.ksh bobs the sprite and cuts it below the waterline. */
+  SetFloatParams(offset: number, enabled: number, bob: number): void {
+    this.sprite.setFloatParams(offset, enabled, bob);
+  }
+  /** AnimState:SetOceanBlendParams(amount): anim.ksh multiplies the colour by the ocean's under it by `amount`. */
+  SetOceanBlendParams(amount: number): void {
+    this.sprite.setOceanBlendParams(amount);
+  }
   /** AnimState:SetMultColour(r, g, b, a): the entity's own multiplied colour; the source's callers keep alpha 1. */
   SetMultColour(r: number, g: number, b: number, _a = 1): void {
     this.sprite.setColour([r, g, b]);

@@ -163,7 +163,7 @@ function fn(world: OceanTreePillarWorld, position: ReadonlyVector3, sprites: Spr
   return inst;
 }
 
-/** ripples_fn: the FX | NOCLICK root_ripple loop. SetOceanBlendParams has no declaration and is skipped. */
+/** ripples_fn: the FX | NOCLICK root_ripple loop, tinted by the ocean (TUNING.OCEAN_SHADER.EFFECT_TINT_AMOUNT). */
 function ripples_fn(sprites: SpriteResources): PrefabInstance {
   const inst = new PrefabInstance(
     OCEANTREE_PILLAR_RIPPLES_ID,
@@ -172,6 +172,7 @@ function ripples_fn(sprites: SpriteResources): PrefabInstance {
   inst.addTag('FX');
   inst.addTag('NOCLICK');
   inst.AnimState.AddOverrideBuild('oceantree_pillar_small_build2');
+  inst.AnimState.SetOceanBlendParams(0.6);
   inst.sprite.setAnimState(inst.AnimState.json, sprites.archives);
   inst.persists = false;
   return inst;

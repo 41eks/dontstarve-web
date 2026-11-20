@@ -4,6 +4,14 @@ import type { AnimElement, BuildAtlas, BuildImage, ParsedAnim, ParsedBuild, Buil
 import { canReloadAtlasPixels, loadAnimationArchivePart, reloadAtlasPixels } from './animationArchiveLoader';
 import { raycastSprite, setAtlasAlphaMask, setInstancedSpriteProxy } from './spriteRaycast';
 import { setSpriteRenderGroupDrawn } from './renderOrder';
+import {
+  hasOceanShading,
+  injectOceanShading,
+  NO_OCEAN_SHADING,
+  oceanShadingMaterialUniforms,
+  type OceanShadingSource,
+  type SpriteOceanShading,
+} from './oceanShading';
 
 export { smallHash } from './animationArchive';
 export { atlasPixels } from './animationArchive';
@@ -307,9 +315,19 @@ export class SpriteFrameRenderer {
   private frameVisible = false;
   /** The source materials of the shown frame, which the mesh draws directly unless a depth offset is set. */
   private shown: THREE.MeshBasicMaterial[] = this.materials;
-  /** Private copies drawn with a depth offset, keyed by their source; shared source materials stay unchanged. */
+  /**
+   * Private copies drawn with a depth offset or this entity's ocean shading, keyed by their source; shared source
+   * materials stay unchanged.
+   */
   private offsetCopies?: Map<THREE.MeshBasicMaterial, THREE.MeshBasicMaterial>;
   private readonly offsetMaterials: THREE.MeshBasicMaterial[] = [];
+  private depthOffset = false;
+  private oceanShading: SpriteOceanShading = NO_OCEAN_SHADING;
+  /** The shading the copies were compiled with: a uniform per copy, rewritten in place when only the values change. */
+  private readonly oceanUniforms = new Map<
+    THREE.MeshBasicMaterial,
+    Extract<OceanShadingSource, { kind: 'uniforms' }>
+  >();
 
   constructor(visual: THREE.Group) {
     this.visual = visual;
@@ -337,15 +355,34 @@ export class SpriteFrameRenderer {
    * camera heading. Frames drawn by an instance batch take the offset from their batch (`InstancedSprite.setDepthOffset`).
    */
   setDepthOffset(enabled: boolean): void {
-    if (enabled === (this.offsetCopies !== undefined)) {
+    if (enabled === this.depthOffset) {
       return;
     }
-    if (enabled) {
-      this.offsetCopies = new Map();
-    } else {
-      this.disposeOffsetCopies();
-      this.offsetCopies = undefined;
+    this.depthOffset = enabled;
+    this.rebuildCopies();
+  }
+
+  /**
+   * AnimState:SetFloatParams and SetOceanBlendParams of this entity, through private copies of the shown materials.
+   * Frames drawn by an instance batch take them from their batch (`InstancedSprite.setOceanShading`).
+   */
+  setOceanShading(shading: SpriteOceanShading): void {
+    const before = hasOceanShading(this.oceanShading);
+    this.oceanShading = shading;
+    if (before !== hasOceanShading(shading)) {
+      this.rebuildCopies();
+      return;
     }
+    for (const uniforms of this.oceanUniforms.values()) {
+      uniforms.float.value.set(...shading.float);
+      uniforms.blend.value = shading.blend;
+    }
+  }
+
+  /** The copies follow which of the depth offset and the ocean shading apply: any compiles a fresh set. */
+  private rebuildCopies(): void {
+    this.disposeOffsetCopies();
+    this.offsetCopies = this.depthOffset || hasOceanShading(this.oceanShading) ? new Map() : undefined;
     this.draw(this.shown);
   }
 
@@ -380,9 +417,21 @@ export class SpriteFrameRenderer {
     // Material.copy omits compile callbacks; the copy must compile to the source's program.
     copy.onBeforeCompile = source.onBeforeCompile;
     copy.customProgramCacheKey = source.customProgramCacheKey;
-    copy.polygonOffset = true;
+    if (hasOceanShading(this.oceanShading)) {
+      let shading = this.oceanUniforms.get(copy);
+      if (!shading) {
+        this.oceanUniforms.set(copy, (shading = oceanShadingMaterialUniforms(this.oceanShading)));
+      }
+      const uniforms = shading;
+      copy.onBeforeCompile = (shader, renderer) => {
+        source.onBeforeCompile(shader, renderer);
+        injectOceanShading(shader, uniforms);
+      };
+      copy.customProgramCacheKey = () => `${source.customProgramCacheKey()}|dst-ocean-shading`;
+    }
+    copy.polygonOffset = this.depthOffset;
     copy.polygonOffsetFactor = 0;
-    copy.polygonOffsetUnits = DEPTH_OFFSET_UNITS;
+    copy.polygonOffsetUnits = this.depthOffset ? DEPTH_OFFSET_UNITS : 0;
     copy.needsUpdate = true;
     return copy;
   }
@@ -392,6 +441,7 @@ export class SpriteFrameRenderer {
       copy.dispose();
     }
     this.offsetCopies?.clear();
+    this.oceanUniforms.clear();
   }
 
   /** Draw a frame owned by a FrameGeometryCache instead of this renderer's own buffers. */
