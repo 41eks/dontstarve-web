@@ -1,3 +1,4 @@
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { wilsonPlayer } from './wilsonPlayer';
 import { testPlayer } from './testPlayer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
@@ -73,7 +74,7 @@ it('walks to the foot, cancels on unequip and commits LIGHT once at frame 13 wit
   const animation = { stategraph: graph };
   const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() },
     { physicsRadius: .5 * WORLD_SCALE });
-  const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
+  const world = { scene, player, camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), TheCamera: fixedCamera(45),
     renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const playerController = new PlayerController(world, animation.stategraph, locomotor, hand, doer, () => false);
   // EQUIPPED.lighter on the right button, then DoAction.
@@ -111,7 +112,7 @@ function structureFixture(onInteraction?: (change: PlaceableBuildingInteractionC
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
   const inventory = createPickupInventory(), scene = new THREE.Scene(), dropLoot = vi.fn();
-  const world: WorldContext = { spawnItem: testItem, restoreItem: testRestoreItem, scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
+  const world: WorldContext = { spawnItem: testItem, restoreItem: testRestoreItem, scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), TheCamera: fixedCamera(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
     registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container),

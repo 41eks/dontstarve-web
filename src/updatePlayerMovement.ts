@@ -6,12 +6,13 @@ import { input } from './InputManager';
 import type { PlayerBody } from './types/Player';
 import { MAX_PHYSICS_FRAME_TIME } from './physicsTiming';
 import { WORLD_SCALE } from '../packages/prefab/src/standardcomponents';
+import type { TheCamera } from '../packages/prefab/src/followcamera';
 
 export const JUMP_VELOCITY = 10;
 
 /** Keyboard direction and jump input; Locomotor owns horizontal velocity. */
 export function updateMovement(
-    camera: THREE.PerspectiveCamera,
+    theCamera: TheCamera,
     player: THREE.Group,
     playerBody: PlayerBody,
     locomotor: Locomotor,
@@ -23,15 +24,13 @@ export function updateMovement(
     const right = new THREE.Vector3();
     const direction = new THREE.Vector3();
     const target = new THREE.Vector3();
-    const up = new THREE.Vector3(0, 1, 0);
     /** Last horizontal travel direction: the slip states' motor velocity points along it. */
     const heading = new THREE.Vector3(0, 0, 1);
 
     return (speed: number, dt: number) => {
-        camera.getWorldDirection(forward);
-        forward.y = 0;
-        forward.normalize();
-        right.crossVectors(forward, up).normalize();
+        // playercontroller.lua: dir = TheCamera:GetRightVec() * xdir - TheCamera:GetDownVec() * ydir.
+        theCamera.GetDownVec(forward).negate();
+        theCamera.GetRightVec(right);
         direction.set(0, 0, 0);
         if (input.isPressed('KeyW')) direction.add(forward);
         if (input.isPressed('KeyS')) direction.sub(forward);

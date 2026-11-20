@@ -1,3 +1,4 @@
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { createSignal } from '../../signals/src';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
@@ -23,7 +24,7 @@ it('restores container contents, drops their live entities at the building foot 
   vi.spyOn(inventory, 'DropItem').mockImplementation(function (this: typeof inventory, ...args) {
     dropped.push(args[0]); return dropItem.apply(this, args);
   });
-  const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45),
+  const world = { scene, player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(), cameraFacing: createSignal(8), cameraHeading: createSignal(45), TheCamera: fixedCamera(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer, dropLoot,
     registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container), spawnItem: testItem, restoreItem: testRestoreItem } as WorldContext;
@@ -64,7 +65,7 @@ it('burns a chest through shared components, drops its live contents and restore
     dropped.push(args[0]); return dropItem.apply(this, args);
   });
   const world = { scene: new THREE.Scene(), player: new THREE.Group(), camera: new THREE.PerspectiveCamera(), ground: new THREE.Group(),
-    cameraFacing: createSignal(8), cameraHeading: createSignal(45),
+    cameraFacing: createSignal(8), cameraHeading: createSignal(45), TheCamera: fixedCamera(45),
     renderer: { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer,
     registerContainer: (id, container) => inventory.registerContainer(id, container),
     unregisterContainer: (id, container) => inventory.unregisterContainer(id, container), spawnItem: testItem, restoreItem: testRestoreItem } as WorldContext;

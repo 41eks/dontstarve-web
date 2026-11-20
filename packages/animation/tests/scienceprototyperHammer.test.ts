@@ -1,3 +1,4 @@
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { prefabDisplay } from '@dontstarve-web/display';
 import { createTestWorldFx } from './worldFxFixture';
 import { readFile } from 'node:fs/promises';
@@ -201,7 +202,7 @@ it('c_spawn then c_save reloads a research lab as a prototyper in the building s
   const registryFor = () => {
     const scene = new THREE.Scene(), displays = new PrefabDisplayGroup(scene);
     const world = { scene, player: new THREE.Object3D(), ground: new THREE.Group(), camera: new THREE.PerspectiveCamera(),
-      cameraFacing: createSignal(8), cameraHeading: createSignal(45), renderer: { domElement: new EventTarget() }, scheduler, fire,
+      cameraFacing: createSignal(8), cameraHeading: createSignal(45), TheCamera: fixedCamera(45), renderer: { domElement: new EventTarget() }, scheduler, fire,
       createCursorLabel: () => ({ show() {}, hide() {}, update() {} }) } as unknown as WorldContext;
     const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {});
     const placement = new PlaceableBuildingPlacement(world, () => true, undefined, prefabs);

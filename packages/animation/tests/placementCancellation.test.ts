@@ -1,3 +1,4 @@
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { withEntity } from './entityFixture';
 import { testLocomotor } from './testLocomotor';
 import { playerDoer } from './playerDoer';
@@ -127,7 +128,7 @@ function setup(kind: 'animated' | 'wall') {
   const world = {
     actionEvents: new EventEmitter<PlayerActionEvents>(),
     scene: new THREE.Scene(), player: new THREE.Object3D(), ground: new THREE.Group(),
-    camera: new THREE.PerspectiveCamera(), cameraFacing, cameraHeading: createSignal(45), renderer: { domElement: canvas },
+    camera: new THREE.PerspectiveCamera(), cameraFacing, cameraHeading: createSignal(45), TheCamera: fixedCamera(45), renderer: { domElement: canvas },
     createCursorLabel: () => ({
       show: () => { cursor.hidden = false; },
       hide: () => { cursor.hidden = true; },

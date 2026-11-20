@@ -1,3 +1,4 @@
+import type { TheCamera } from './followcamera';
 import { addComponent } from './components';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
@@ -19,7 +20,7 @@ export const PIGKING_ID = 'pigking' as const;
 /** What pigking.lua reads from TheWorld and TheCamera. */
 export interface PigKingWorld {
   /** TheCamera:GetDownVec when the giver is gone. */
-  camera: THREE.Camera;
+  TheCamera: TheCamera;
   scheduler: GameTimeScheduler;
   getWatchWorldContent?: GetWatchWorldContent;
   /** SpawnPrefab + Transform:SetPosition + launchitem for each launch factory call. */
@@ -113,9 +114,8 @@ export class PigKingInstance extends PrefabInstance {
     let angle: number;
     if (giverPosition) angle = Math.atan2(giverPosition.z - origin.z, giverPosition.x - origin.x);
     else {
-      // TheCamera:GetDownVec(): the screen-down direction on the ground.
-      const forward = this.world.camera.getWorldDirection(new THREE.Vector3());
-      angle = Math.atan2(-forward.z, -forward.x);
+      const down = this.world.TheCamera.GetDownVec();
+      angle = Math.atan2(down.z, down.x);
     }
     this.world.dropLoot([{ itemId: GOLD, count: goldvalue }], origin, () => ({
       angle: angle + (Math.random() * 60 - 30) * THREE.MathUtils.DEG2RAD,

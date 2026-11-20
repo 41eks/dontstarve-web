@@ -1,3 +1,4 @@
+import { fixedCamera } from '../../prefab/src/followcamera';
 import { PrefabDisplayGroup } from '../../display/src';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -12,7 +13,8 @@ export function managedBuildings(world: WorldContext, { consume = () => true, on
   const scheduler = world.scheduler ?? new GameTimeScheduler(), fire = world.fire ?? FireFxHost.create();
   const displays = new PrefabDisplayGroup(world.scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: world.tickingarea, physics: world.physics });
-  const placement = new PlaceableBuildingPlacement({ ...world, cameraFacing: world.cameraFacing ?? createSignal(8), cameraHeading: world.cameraHeading ?? createSignal(45), scheduler, fire }, consume, onInteraction, prefabs);
+  const placement = new PlaceableBuildingPlacement({ ...world, cameraFacing: world.cameraFacing ?? createSignal(8), cameraHeading: world.cameraHeading ?? createSignal(45),
+    TheCamera: world.TheCamera ?? fixedCamera(45), scheduler, fire }, consume, onInteraction, prefabs);
   let disposed = false;
   return {
     prefabs, displays, scheduler, placement,

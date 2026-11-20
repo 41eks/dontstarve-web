@@ -1230,7 +1230,7 @@ export async function createSceneEntities(
 
   function registerPigKings(registry: EntityRegistry, prefabId: 'pigking', worldState: SceneWorldState) {
     prefabs.register(pigKingPrefabs({
-      camera, scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
+      TheCamera: followCamera, scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent,
       dropLoot: (items, position, launch) => {
         groundItems.flingLoot(items.map((item) => ({ ...SAVE_CATALOG.items[item.itemId], ...item })), position, launch);
       },
