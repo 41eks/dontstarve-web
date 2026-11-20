@@ -40,7 +40,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { createInventoryStore } from './testInventory';
 
-const OPEN_GROUND = { isPassableAtPoint: () => true, isOceanAtWorld: () => false };
+const OPEN_GROUND = { isLandTileAtPoint: () => true, isOceanAtWorld: () => false };
 const DAY = 480;
 
 afterEach(() => {

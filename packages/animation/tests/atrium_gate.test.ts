@@ -196,7 +196,7 @@ it('rebuilds the declared idle clip and floor after tile sleep', async () => {
 });
 
 it('walls off its 2×2 path tiles until it is removed', () => {
-  const pathfinder = new Pathfinder({ isPassableAtPoint: () => true, isOceanAtWorld: () => false });
+  const pathfinder = new Pathfinder({ isLandTileAtPoint: () => true, isOceanAtWorld: () => false });
   const s = setup(pathfinder);
   const clear = (z: number) => pathfinder.IsClear({ x: 0, y: 0, z }, { x: 12, y: 0, z });
   const gate = s.prefabs.spawn(ATRIUM_GATE_ID, new THREE.Vector3(6, 0, 6));

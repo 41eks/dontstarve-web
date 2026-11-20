@@ -16,7 +16,7 @@ export interface FoundPath {
   readonly steps: readonly THREE.Vector3[];
 }
 
-export type PathfinderMap = Pick<TurfMap, 'isPassableAtPoint' | 'isOceanAtWorld'>;
+export type PathfinderMap = Pick<TurfMap, 'isLandTileAtPoint' | 'isOceanAtWorld'>;
 
 /**
  * walls.lua and fence.lua stand at x.5, and atrium_gate.lua walls off 2×2 from its centre at ±0.5,
@@ -341,13 +341,16 @@ export class Pathfinder implements LocoMotorPathfinder {
     }
   }
 
-  /** Land unless ignoreLand, ocean only with allowocean, as CanPathfindOnLand and CanPathfindOnWater read the caps. */
+  /**
+   * Land tiles unless ignoreLand, ocean tiles only with allowocean, as CanPathfindOnLand and CanPathfindOnWater read
+   * the caps. The grid is per tile: the land's overhang is not part of it.
+   */
   private walkable(caps: PathCaps | undefined): (point: THREE.Vector3) => boolean {
     const land = !caps?.ignoreLand,
       ocean = caps?.allowocean === true,
       walls = !caps?.ignorewalls;
     return point => {
-      if (!(land && this.map.isPassableAtPoint(point)) && !(ocean && this.map.isOceanAtWorld(point))) {
+      if (!(land && this.map.isLandTileAtPoint(point)) && !(ocean && this.map.isOceanAtWorld(point))) {
         return false;
       }
       return !walls || !this.walls.has(wallKey(point));

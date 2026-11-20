@@ -11,7 +11,12 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 
 /** A TurfMap stub that is all walkable land except for the overridden rules. */
 export const landTurf = (rules: Partial<Record<keyof TurfMap, unknown>>) =>
-  ({ getTileAtWorld: () => WORLD_TILES.DIRT, isOceanAtWorld: () => false, ...rules }) as unknown as TurfMap;
+  ({
+    getTileAtWorld: () => WORLD_TILES.DIRT,
+    isOceanAtWorld: () => false,
+    isPassableAtPoint: () => true,
+    ...rules,
+  }) as unknown as TurfMap;
 
 /** A player whose controller walks to DEPLOY with its own locomotor, which `deploy` lets arrive. */
 export function deployActor(

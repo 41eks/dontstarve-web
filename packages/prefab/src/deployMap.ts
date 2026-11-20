@@ -3,7 +3,7 @@ import { ItemEntity } from '@dontstarve-web/inventory';
 import type { DeployMap } from '../../componets/src/deployable';
 import { createDockWorld } from './dock_kit';
 import { IsDeployPointClear, type MapEntities } from './mapEntities';
-import { isLandTile, type TurfMap } from './turfMap';
+import type { TurfMap } from './turfMap';
 import type { WorldContext } from './worldContext';
 
 export interface DeployPlacerMap extends DeployMap {
@@ -35,7 +35,7 @@ export function createDeployMap({
     deployPlow: (point, inst) => inst instanceof ItemEntity && (farm?.deploy(point, inst) ?? false),
     canDeployDock: point => docks.canDeployDock(point),
     createDock: point => docks.createDock(point),
-    isPassableAtPoint: point => isLandTile(turf.getTileAtWorld(point)),
+    isPassableAtPoint: point => turf.isPassableAtPoint(point),
     isOceanTileAtPoint: point => turf.isOceanAtWorld(point),
     canPlaceTurf: point => turf.canPlaceTurf(point),
     setTile: (col, row, tileId) => turf.setTile(col, row, tileId as Parameters<TurfMap['setTile']>[2]),

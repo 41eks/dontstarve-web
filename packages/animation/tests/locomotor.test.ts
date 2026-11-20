@@ -54,10 +54,10 @@ it('gives manual movement priority and does not resume the cancelled target afte
 });
 
 const land = {
-  isPassableAtPoint: ({ x, z }: { x: number; z: number }) => Math.abs(x) <= 45 && Math.abs(z) <= 45,
+  isLandTileAtPoint: ({ x, z }: { x: number; z: number }) => Math.abs(x) <= 45 && Math.abs(z) <= 45,
   isOceanAtWorld: () => false,
 };
-const passable = (x: number, z: number) => land.isPassableAtPoint({ x, z });
+const passable = (x: number, z: number) => land.isLandTileAtPoint({ x, z });
 /** A wall line across x = 12, from z = -15 to 15. */
 function wallLine(pathfinder: Pathfinder) {
   for (let z = -15; z <= 15; z += 3) {
@@ -129,7 +129,7 @@ it('refuses a point off the ground, walks straight when no path exists, and stop
   expect(player.velocity).toEqual(new CANNON.Vec3(0, 3, 0));
   // Land cut off by water on every side has no path; locomotor.lua keeps heading straight for it.
   const isle = new Pathfinder({
-    isPassableAtPoint: ({ x, z }) => land.isPassableAtPoint({ x, z }) && !(x >= 12 && x <= 18),
+    isLandTileAtPoint: ({ x, z }) => land.isLandTileAtPoint({ x, z }) && !(x >= 12 && x <= 18),
     isOceanAtWorld: () => false,
   });
   const cutOff = new Locomotor(player, {

@@ -728,7 +728,7 @@ export async function createSceneEntities(
       const radius = 0.5 * WORLD_SCALE;
       const edge = initialSave.world.map.generator.options.size / 2 - radius;
       return (
-        turfMap.isPassableAtPoint(point) &&
+        turfMap.isLandTileAtPoint(point) &&
         Math.abs(point.x) <= edge &&
         Math.abs(point.z) <= edge &&
         !getRegisteredPhysicsBodies(world).some(
@@ -828,9 +828,7 @@ export async function createSceneEntities(
       map: {
         // map.lua IsPassableAtPointWithPlatformRadiusBias: land, the land's overhang, and the ocean when allowed.
         isPassableAtPoint: (point, allowWater) =>
-          turfMap.isPassableAtPoint(point) ||
-          turfMap.isVisualGroundAtPoint(point) ||
-          (allowWater && turfMap.isOceanAtWorld(point)),
+          turfMap.isPassableAtPoint(point) || (allowWater && turfMap.isOceanAtWorld(point)),
         isOceanAtPoint: point => turfMap.isOceanAtPoint(point),
       },
       physics: world,
@@ -1150,7 +1148,8 @@ export async function createSceneEntities(
         scheduler: worldState.scheduler,
         spawnDragonfly: position => prefabs.spawn(DRAGONFLY_ID, position).transform.model,
         resolveDragonfly: id => prefabs.get(id)?.transform.model,
-        isPassable: position => turfMap.isPassableAtPoint(position),
+        // childspawner SpawnChild's FindWalkableOffset: Map:IsAboveGroundAtPoint, a land tile.
+        isPassable: position => turfMap.isLandTileAtPoint(position),
       }),
     );
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
@@ -1353,7 +1352,8 @@ export async function createSceneEntities(
         getWatchWorldContent: worldState.getWatchWorldContent,
         componentUpdates: worldState.componentUpdates,
         spawnPrefab: (prefab, position) => prefabs.spawn(prefab, position),
-        isOnValidGround: position => turfMap.isPassableAtPoint(position),
+        // EntityScript:IsOnValidGround.
+        isOnValidGround: position => turfMap.isVisualGroundAtPoint(position),
         constrainPosition: position => {
           const edge = initialSave.world.map.generator.options.size / 2 - WORLD_SCALE;
           position.x = THREE.MathUtils.clamp(position.x, -edge, edge);
@@ -1453,7 +1453,7 @@ export async function createSceneEntities(
         return (
           Math.abs(point.x) <= edge &&
           Math.abs(point.z) <= edge &&
-          turfMap.isPassableAtPoint(point) &&
+          turfMap.isLandTileAtPoint(point) &&
           !planningObstacles(point)
         );
       },
@@ -1508,7 +1508,7 @@ export async function createSceneEntities(
         return (
           Math.abs(point.x) <= edge &&
           Math.abs(point.z) <= edge &&
-          turfMap.isPassableAtPoint(point) &&
+          turfMap.isLandTileAtPoint(point) &&
           !planningObstacles(point)
         );
       },

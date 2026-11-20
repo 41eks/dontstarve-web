@@ -29,3 +29,12 @@ it('leaves the overhang out of Map:IsOceanAtPoint but not out of the ocean tile 
   expect(map.isOceanAtPoint(water)).toBe(true);
   expect(map.isOceanAtPoint(at(0, 0, 0.5, 0.5))).toBe(false);
 });
+
+it('passes over the overhang as Map:IsPassableAtPoint does, while the land tile test stays per tile', () => {
+  const overhang = at(1, 0, 0.1, 0.5),
+    water = at(1, 0, 0.6, 0.5);
+  expect(map.isPassableAtPoint(overhang)).toBe(true);
+  expect(map.isLandTileAtPoint(overhang)).toBe(false);
+  expect(map.isPassableAtPoint(water)).toBe(false);
+  expect(map.isLandTileAtPoint(at(0, 0, 0.5, 0.5))).toBe(true);
+});

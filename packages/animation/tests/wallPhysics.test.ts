@@ -36,7 +36,7 @@ function setup(physics: CANNON.World = new CANNON.World()) {
   camera.position.set(0, 12, 40);
   camera.lookAt(0, 0, 0);
   camera.updateMatrixWorld();
-  const pathfinder = new Pathfinder({ isPassableAtPoint: () => true, isOceanAtWorld: () => false });
+  const pathfinder = new Pathfinder({ isLandTileAtPoint: () => true, isOceanAtWorld: () => false });
   const world = {
     physics,
     pathfinder,

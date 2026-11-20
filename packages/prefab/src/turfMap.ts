@@ -348,8 +348,17 @@ export class TurfMap implements GroundTerrain {
     );
   }
 
-  isPassableAtPoint(world: Vector2): boolean {
+  /** Map:IsLandTileAtPoint, and Map:IsAboveGroundAtPoint without allow_water: the tile is land, overhang excluded. */
+  isLandTileAtPoint(world: Vector2): boolean {
     return isLandTile(this.getTileAtWorld(world));
+  }
+
+  /**
+   * map.lua Map:IsPassableAtPoint without allow_water: land, or the land's overhang into a neighbouring tile
+   * (Map:IsVisualGroundAtPoint). Boats are not ported, so no walkable platform adds to it.
+   */
+  isPassableAtPoint(world: Vector2): boolean {
+    return this.isVisualGroundAtPoint(world);
   }
 
   /**

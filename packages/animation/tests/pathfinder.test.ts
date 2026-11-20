@@ -12,7 +12,7 @@ import {
 const point = (x: number, z = 0) => new THREE.Vector3(x, 0, z);
 /** Land within 60 of the origin along z, ocean for x beyond 30. */
 const map = {
-  isPassableAtPoint: ({ x, z }: { x: number; z: number }) => Math.abs(x) < 30 && Math.abs(z) < 60,
+  isLandTileAtPoint: ({ x, z }: { x: number; z: number }) => Math.abs(x) < 30 && Math.abs(z) < 60,
   isOceanAtWorld: ({ x, z }: { x: number; z: number }) => x >= 30 && x < 60 && Math.abs(z) < 60,
 };
 /** A wall line across x = 10, one path tile thick, from z = -30 to 30. */

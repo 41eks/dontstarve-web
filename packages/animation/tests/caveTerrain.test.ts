@@ -41,7 +41,8 @@ it('draws cave land only and blocks keyboard velocity and paths across void or f
     expect(map.isVoidAtCell(0, 0)).toBe(false);
     expect(map.canTerraform(new Vector3(18, 0, 6))).toBe(false);
     const body = new CANNON.Body({ mass: 1, shape: new CANNON.Sphere(1) });
-    body.position.set(10.9, 1, 6);
+    // Map:IsPassableAtPoint takes in the land's overhang, a quarter of the void tile beside it (x 12..15).
+    body.position.set(13.9, 1, 6);
     const pathfinder = new Pathfinder(map);
     const locomotor = new Locomotor(body, {
       footprintRadius: 1,

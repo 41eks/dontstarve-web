@@ -156,7 +156,7 @@ inventory.entities.bindEquipmentWorld({
   blinkStaffWorld: {
     map: {
       // Map:IsAboveGroundAtPoint without allow_water: a land tile.
-      isAboveGroundAtPoint: point => turfMap.isPassableAtPoint(point),
+      isAboveGroundAtPoint: point => turfMap.isLandTileAtPoint(point),
       isPassableAtPoint: point => turfMap.isPassableAtPoint(point),
       isGroundTargetBlocked: point => IsGroundTargetBlocked(prefabs, point, 0.5 * WORLD_SCALE),
     },

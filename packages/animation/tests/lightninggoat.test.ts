@@ -35,7 +35,7 @@ vi.mock('../../prefab/src/sound', async importOriginal => ({
   PlaySound: vi.fn(() => ({ stop() {}, isPlaying: () => false })),
 }));
 
-const OPEN_GROUND = { isPassableAtPoint: () => true, isOceanAtWorld: () => false };
+const OPEN_GROUND = { isLandTileAtPoint: () => true, isOceanAtWorld: () => false };
 const DAY = 480;
 const UNIT = 3;
 
