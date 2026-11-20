@@ -8,7 +8,6 @@ import { createRenderEffect, type ReadonlySignal } from '@dontstarve-web/signals
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import type { PrefabEntityDefinition } from './prefabInstance';
 import { InventoryPhysics, type LootLaunch } from '../../componets/src/inventoryphysics';
-import { syncPlacementEntity } from './placementEntities';
 import { ShouldEntitySink, SinkEntity } from './ocean_util';
 import type { FloaterSize } from '../../componets/src/floater';
 import { MakeInventoryFloatable } from './standardcomponents';
@@ -289,7 +288,6 @@ export function bindItemWorld(inst: ItemEntity, world: ItemPrefabWorld): void {
   const settle = () => {
     inst.transform.tileTracker.sync();
     inst.MiniMapEntity?.tileTracker.sync();
-    syncPlacementEntity(inst.transform.model);
   };
   inst.ListenForEvent('ondropped', settle);
   inst.ListenForEvent('on_landed', settle);

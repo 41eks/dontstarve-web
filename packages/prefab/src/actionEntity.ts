@@ -1,6 +1,5 @@
 import type * as THREE from 'three';
 import { createEffect, watchSignal } from '@dontstarve-web/signals';
-import { registerPlacementEntity, syncPlacementEntity } from './placementEntities';
 import type { ActionEntity } from './prefabInstance';
 import { registerMouseTarget } from './mouseTargets';
 
@@ -12,8 +11,8 @@ const registrations = new Map<ActionEntity, Registration>();
 const byModel = new WeakMap<THREE.Object3D, ActionEntity>();
 
 /**
- * Make an entity something the player can act on: a mouse target while it is awake and an entry in the placement
- * index, both following its tags. The instance is the action target itself; it leaves both when it is removed.
+ * Make an entity something the player can act on: a mouse target while it is awake, following its tags. The instance
+ * is the action target itself; it stops being one when it is removed.
  */
 export function registerActionEntity<Instance extends ActionEntity>(instance: Instance): Instance {
   const inst: ActionEntity = instance;
@@ -22,7 +21,6 @@ export function registerActionEntity<Instance extends ActionEntity>(instance: In
   }
   const model = inst.transform.model;
   const cleanups: (() => void)[] = [];
-  // Registered before its placement entry first syncs, which reads the entity's tags through it.
   registrations.set(inst, {
     dispose() {
       stopRemoval();
@@ -36,13 +34,7 @@ export function registerActionEntity<Instance extends ActionEntity>(instance: In
   // A mouse target while its entity is awake: the instance's status follows the ticking area and limbo.
   const status = watchSignal(inst.status, stop => cleanups.push(stop));
   createEffect(() => mouse.setAwake(status.get() === 'active'));
-  cleanups.push(registerPlacementEntity(inst));
-  cleanups.push(
-    inst.tags.subscribe(() => {
-      syncPlacementEntity(model);
-      mouse.refresh();
-    }),
-  );
+  cleanups.push(inst.tags.subscribe(() => mouse.refresh()));
   const stopRemoval = inst.removal.subscribe(removed => {
     if (removed) {
       disposeActionEntity(inst);

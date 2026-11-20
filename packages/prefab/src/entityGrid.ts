@@ -52,7 +52,7 @@ export class EntityGrid<Entity extends GridEntity> {
   }
 
   /** Visit every entity in a cell the XZ square around `position` touches; the caller tests the exact distance. */
-  visit(position: ReadonlyVector3, radius: number, visitor: (entity: Entity) => void): void {
+  visit(position: { readonly x: number; readonly z: number }, radius: number, visitor: (entity: Entity) => void): void {
     const minX = cellOf(position.x - radius),
       maxX = cellOf(position.x + radius);
     const minZ = cellOf(position.z - radius),

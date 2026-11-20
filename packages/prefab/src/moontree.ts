@@ -114,7 +114,6 @@ export class MoonTreeInstance extends PrefabInstance {
     this.setActive(false);
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1.6 * UNIT;
-    this.logicalPlacement = true;
     this.minimap.SetPriority(-1);
     // standardcomponents.lua MakeSnowCoveredPristine applies to trees and stumps, not saplings.
     for (const tag of ['plant', 'tree', 'moon_tree', 'SnowCovered', 'shelter']) {
@@ -487,7 +486,6 @@ export class MoonButterflySaplingInstance extends PrefabInstance {
     this.sprite.playOnce('idle');
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1.6 * UNIT;
-    this.logicalPlacement = true;
     for (const tag of ['plant', 'moon_tree']) {
       this.addTag(tag);
     }

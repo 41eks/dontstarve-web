@@ -22,7 +22,7 @@ import { view, actionEvents, screenProjection } from './view';
 import { followCamera } from './camera';
 import type { SpellCastMap } from '@dontstarve-web/stategraphs/castspell';
 import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
-import { isGroundTargetBlocked, placementEntities } from '../packages/prefab/src/placementEntities';
+import { IsGroundTargetBlocked } from '../packages/prefab/src/mapEntities';
 import { backpackContainerId } from '@dontstarve-web/inventory';
 import { player, playerBody, playerInstance, playerPhysics } from './player';
 import { setCrafting } from '@dontstarve-web/prefab/player_common';
@@ -110,12 +110,11 @@ window.addEventListener('contextmenu', event => {
   event.preventDefault();
 });
 
-const groundTargetBlockers = placementEntities(scene);
 /** Map:IsOceanAtPoint: the dug OCEAN_COASTAL tiles are the only water, and none of them is a visual ground. */
 const spellCastMap: SpellCastMap = {
   isAboveGroundAtPoint: point => turfMap.getTileAtWorld(point) !== WORLD_TILES.INVALID,
   isOceanAtPoint: point => turfMap.isOceanAtWorld(point),
-  isGroundTargetBlocked: point => isGroundTargetBlocked(groundTargetBlockers, point, 0.5 * WORLD_SCALE),
+  isGroundTargetBlocked: point => IsGroundTargetBlocked(prefabs, point, 0.5 * WORLD_SCALE),
 };
 
 // TheWorld's services the equipped items' callbacks read: maps, spawns, fx and the fishing world.
@@ -160,7 +159,7 @@ inventory.entities.bindEquipmentWorld({
       // Map:IsAboveGroundAtPoint without allow_water: a land tile.
       isAboveGroundAtPoint: point => turfMap.isPassableAtPoint(point),
       isPassableAtPoint: point => turfMap.isPassableAtPoint(point),
-      isGroundTargetBlocked: point => isGroundTargetBlocked(groundTargetBlockers, point, 0.5 * WORLD_SCALE),
+      isGroundTargetBlocked: point => IsGroundTargetBlocked(prefabs, point, 0.5 * WORLD_SCALE),
     },
     spawnFx: (prefab, position) => {
       if (isWorldFx(prefab)) {

@@ -1,9 +1,9 @@
-import { SpatialIndex } from '../../prefab/src/spatialIndex';
 import { readFile } from 'node:fs/promises';
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { FARM_PLOW_DRILLING_DURATION } from '../../prefab/src/farm_plow';
 import { farmFixture } from './farmFixture';
+import { placeEntity } from './mapEntitiesFixture';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
 import { SAVE_CATALOG } from '../../../src/save/catalog';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -58,13 +58,11 @@ function setup() {
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
   } as unknown as WorldContext;
   const returnItem = vi.fn(() => {});
-  const blockers = new SpatialIndex<{ position: THREE.Vector3; tags?: string[] }>(blocker => blocker.position);
   const farm = farmFixture(world.scene, turf, {
-    blockers: blockers as never,
     random: () => 0.5,
     spawnSaveRecord: returnItem,
   });
-  return { turf, world, returnItem, blockers, farm, advance: farm.advance };
+  return { turf, world, returnItem, farm, advance: farm.advance };
 }
 
 function item(remainingUses?: number) {
@@ -167,17 +165,16 @@ it('does not return an exhausted item on its fourth use and one hammer hit recov
 });
 
 it('rejects hard terrain and blocking entities without spending an item', async () => {
-  const { farm, turf, blockers } = setup();
+  const { farm, turf } = setup();
   const point = new THREE.Vector3(1, 0, 1);
   const original = item();
   try {
     turf.setOriginalTile(point, WORLD_TILES.WOODFLOOR);
     expect(farm.map.deploy(point, original)).toBe(false);
     turf.setOriginalTile(point, WORLD_TILES.DECIDUOUS);
-    const blocker = { position: point, tags: [] as string[] };
-    blockers.add(blocker);
+    const blocker = placeEntity(farm.prefabs, point);
     expect(farm.map.deploy(point, original)).toBe(false);
-    blocker.tags = ['FX'];
+    blocker.addTag('FX');
     expect(farm.map.canDeploy(point)).toBe(true);
     expect(farm.plows()).toEqual([]);
     expect(original.isRemoved).toBe(false);
@@ -188,9 +185,9 @@ it('rejects hard terrain and blocking entities without spending an item', async 
 });
 
 it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and commits one use at frame six', async () => {
-  const { farm, turf, world, blockers } = setup();
+  const { farm, turf, world } = setup();
   const inventory = createInventoryStore([]);
-  const map = createDeployMap({ turf, blockers: blockers as never, farm: farm.map }),
+  const map = createDeployMap({ turf, ents: farm.prefabs, farm: farm.map }),
     actor = deployActor(world, inventory, map);
   const placer = new DeployPlacer(world, map, () => inventory.GetActiveItem());
   const click = new THREE.Vector3(10, 0, 2);

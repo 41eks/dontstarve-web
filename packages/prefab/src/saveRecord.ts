@@ -98,7 +98,10 @@ export interface EntityPersistData {
   CAGE_STATE?: import('./birdcage').CageState;
   bird_type?: string;
   occupiable?: import('./birdcage').OccupiableSave;
-  workable?: { workleft: number; maxwork: number };
+  workable?: { workleft: number; maxwork?: number };
+  /** seastack.lua OnSave: the stack shape (1..5) and the powder-monkey tint. */
+  stackid?: number;
+  tinted?: boolean;
   /** inventory.lua OnSave of a creature or a machine that holds items. */
   inventory?: SlotItemsSave;
   childspawner?: import('../../componets/src/childspawner').ChildSpawnerSave;

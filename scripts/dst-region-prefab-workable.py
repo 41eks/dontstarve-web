@@ -122,6 +122,34 @@ def grotto_glass_components(data):
     return {'grottoGlass': {'workleft': work['workleft']}}
 
 
+def seastack_components(data):
+    # seastack.lua OnSave (stackid 1..5, tinted), workable.savestate (maxwork -1, workleft up to TUNING.SEASTACK_MINE)
+    # and upgradeable:OnSave. The spawner prefabs in the same file are not ported. The project's Workable omits a
+    # maxwork of -1, so only workleft is kept.
+    if not isinstance(data, dict) or set(data) - {'stackid', 'tinted', 'workable', 'upgradeable'}:
+        raise ValueError(f'Unsupported seastack save state: {sorted(data or {})}')
+    components = {}
+    stackid = data.get('stackid')
+    if type(stackid) is not int or not 1 <= stackid <= 5:
+        raise ValueError(f'Unsupported seastack stackid: {stackid}')
+    components['stackid'] = stackid
+    if type(data.get('tinted')) is not bool:
+        raise ValueError(f'Unsupported seastack tinted: {data.get("tinted")}')
+    components['tinted'] = data['tinted']
+    work = data.get('workable')
+    if not isinstance(work, dict) or set(work) - {'workleft', 'maxwork'} or work.get('maxwork', -1) != -1 \
+            or type(work.get('workleft')) not in (int, float) or not 0 <= work['workleft'] <= 9:
+        raise ValueError(f'Unsupported seastack workable: {work}')
+    components['workable'] = {'workleft': work['workleft']}
+    upgradeable = data.get('upgradeable')
+    if not isinstance(upgradeable, dict) or set(upgradeable) - {'numupgrades', 'stage'} \
+            or type(upgradeable.get('numupgrades')) is not int or upgradeable['numupgrades'] < 0 \
+            or type(upgradeable.get('stage')) is not int or not 1 <= upgradeable['stage'] <= 3:
+        raise ValueError(f'Unsupported seastack upgradeable: {upgradeable}')
+    components['upgradeable'] = {'numupgrades': upgradeable['numupgrades'], 'stage': upgradeable['stage']}
+    return components
+
+
 def rock_components(data):
     # rocks.lua / stalagmite.lua / stalagmite_tall.lua: no prefab OnSave; workable.savestate defaults false.
     if set(data) - {'workable'} or data.get('workable'):

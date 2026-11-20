@@ -10,7 +10,7 @@ import { CAVE_HOLE_ID, caveHolePrefabs, CaveHoleInstance } from '../../prefab/sr
 import { bindPhysics } from '../../componets/src/physicsBinding';
 import { PhysicsState } from '../../componets/src/physicsState';
 import { staticObstacleTest } from '../../prefab/src/locomotor';
-import { isGroundTargetBlocked, placementEntities } from '../../prefab/src/placementEntities';
+import { IsGroundTargetBlocked } from '../../prefab/src/mapEntities';
 import { MakeCharacterPhysics } from '../../prefab/src/standardcomponents';
 import { setMouseTargetEnabled } from '../../prefab/src/mouseTargets';
 import { isMouseTarget } from '../../stategraphs/src/mouseTargets';
@@ -159,8 +159,7 @@ it('blocks spheres at both walls, leaves the centre hollow and lets a soul hop l
     expect(staticObstacleTest([hole.physicsBody!], 0)(new THREE.Vector3(9, 0, 0))).toBe(false);
 
     // wortox.lua CanBlinkTo at world scale 3: the centre and beyond the outer wall are open, the ring between is not.
-    const blockers = placementEntities(s.scene),
-      blocked = (x: number) => isGroundTargetBlocked(blockers, new THREE.Vector3(x, 0, 0), 1.5);
+    const blocked = (x: number) => IsGroundTargetBlocked(s.prefabs, new THREE.Vector3(x, 0, 0), 1.5);
     expect([0, 4.4, 4.5, 8.2, 8.25].map(blocked)).toEqual([false, false, true, true, false]);
     // A hit on the hole would leave no ground point for BLINK; the same model is a target whenever it is enabled.
     const { model } = hole.transform;

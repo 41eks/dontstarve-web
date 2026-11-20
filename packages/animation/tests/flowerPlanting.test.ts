@@ -18,7 +18,6 @@ import { FlowerInstance, flowerPrefabs, type FlowerAnimation } from '../../prefa
 import { PrefabDisplayGroup } from '@dontstarve-web/display';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { createDeployMap } from '../../prefab/src/deployMap';
-import { placementEntities } from '../../prefab/src/placementEntities';
 import { deployActor, landTurf } from './deployActor';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
@@ -143,7 +142,7 @@ it('buffers planting at frame six, preserves cancelled butterflies and saves the
       s.inventory,
       createDeployMap({
         turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
-        blockers: placementEntities(s.world.scene),
+        ents: s.prefabs,
         spawnPrefab,
       }),
     );

@@ -1,5 +1,4 @@
-import { SpatialIndex } from '../../prefab/src/spatialIndex';
-import type { PlacementBlocker } from '../../prefab/src/placementEntities';
+import { mapEntities, placeEntity } from './mapEntitiesFixture';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
@@ -43,13 +42,7 @@ const oceanTiles = (): TurfTileSave[] =>
   }));
 const centre = (col: number, row: number) => new THREE.Vector3(col * 12 + 6, 0, row * 12 + 6);
 
-function setup(
-  tiles = oceanTiles(),
-  blockers = new SpatialIndex<PlacementBlocker>(
-    blocker => blocker.position,
-    blocker => blocker.smartRadius ?? 0,
-  ),
-) {
+function setup(tiles = oceanTiles()) {
   const turf = new TurfMap(96, tiles),
     renderer = { domElement: new EventTarget() } as unknown as THREE.WebGLRenderer;
   const camera = new THREE.PerspectiveCamera();
@@ -61,7 +54,8 @@ function setup(
     renderer,
     mouseActions: new PlayerActionPicker(new PointerRaycaster({ camera, renderer })),
   } as unknown as WorldContext;
-  return { turf, world, blockers, docks: createDockWorld(turf, blockers as never) };
+  const ents = mapEntities(world.scene);
+  return { turf, world, ents, docks: createDockWorld(turf, ents) };
 }
 
 it('is a 20-stack inventory item with its own ground art and icon', () => {
@@ -92,17 +86,16 @@ it('deploys only on ocean touching land or a dock, covers the ocean tile and sur
 });
 
 it('refuses a tile with an unrelated entity standing in the water or a dockjammer, ignores ones on land and the player', () => {
-  const blockers = new SpatialIndex<PlacementBlocker>(blocker => blocker.position);
-  blockers.add({ position: centre(0, 1), tags: ['player'] });
-  const { docks } = setup(oceanTiles(), blockers);
+  const { docks, ents } = setup();
+  placeEntity(ents, centre(0, 1), ['player']);
   expect(docks.canDeployDock(centre(0, 0))).toBe(true);
-  blockers.add({ position: centre(-1, 0), tags: [] }); // on land: IsDockNearOtherOnOcean ignores it
+  placeEntity(ents, centre(-1, 0)); // on land: IsDockNearOtherOnOcean ignores it
   expect(docks.canDeployDock(centre(0, 0))).toBe(true);
-  const obstacle = { position: new THREE.Vector3(8, 0, 8), tags: [] };
-  blockers.add(obstacle);
+  const obstacle = placeEntity(ents, new THREE.Vector3(8, 0, 8));
   expect(docks.canDeployDock(centre(0, 0))).toBe(false);
-  blockers.delete(obstacle);
-  blockers.add({ position: centre(0, 0), tags: ['dockjammer'] });
+  obstacle.remove();
+  // A dockjammer anywhere on the tile, beyond the entity spacing, still refuses it.
+  placeEntity(ents, new THREE.Vector3(11.5, 0, 0.5), ['dockjammer', 'NOBLOCK']);
   expect(docks.canDeployDock(centre(0, 0))).toBe(false);
 });
 
@@ -159,9 +152,9 @@ it('walks to the shore through DEPLOY, reaches over the water, consumes one kit 
     'fetch',
     async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
   );
-  const { turf, world, blockers } = setup();
+  const { turf, world, ents } = setup();
   const inventory = createInventoryStore([{ slot_index: 0, id: 'dock_kit', num: 2 }]);
-  const map = createDeployMap({ turf, blockers }),
+  const map = createDeployMap({ turf, ents }),
     actor = deployActor(world, inventory, map);
   const placer = new DeployPlacer(world, map, () => inventory.GetActiveItem());
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(centre(0, 0));

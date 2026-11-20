@@ -9,7 +9,6 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { monkeytailPrefabs, MONKEYTAIL_REGROW_TIME } from '../../prefab/src/monkeytail';
 import { createDeployMap } from '../../prefab/src/deployMap';
-import { placementEntities } from '../../prefab/src/placementEntities';
 import { deployActor, landTurf } from './deployActor';
 import { ItemWorldFixture } from './itemWorldFixture';
 import { inventorySlotAddress, cursorSlotAddress } from '../../inventory/src';
@@ -237,7 +236,7 @@ it('plants cursor-held roots and fertilizes at frame six, preserves cancellation
       s.inventory,
       createDeployMap({
         turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
-        blockers: placementEntities(s.scene),
+        ents: s.monkeytails,
         spawnPrefab,
       }),
       a.graph,

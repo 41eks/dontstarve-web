@@ -4,7 +4,6 @@ import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { grassPrefabs } from '../../prefab/src/grass';
 import { createDeployMap } from '../../prefab/src/deployMap';
-import { placementEntities } from '../../prefab/src/placementEntities';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { cursorSlotAddress, inventorySlotAddress } from '../../inventory/src';
 import { createSignal } from '../../signals/src';
@@ -90,7 +89,7 @@ function grassActor(s: Awaited<ReturnType<typeof setup>>) {
   const grasses = plantManager(grassPrefabs, s.scene, { spawnGroundItem: vi.fn() as never });
   const map = createDeployMap({
     turf: landTurf({ canDeployPlantAtPoint: (point: THREE.Vector3) => point.x >= 0 }),
-    blockers: placementEntities(s.scene),
+    ents: grasses,
     spawnPrefab: (_prefab, position) => grasses.spawn('grass', position),
   });
   return { grasses, actor: deployActor(s.world, s.inventory, map) };
@@ -235,7 +234,7 @@ it('turfs share the DEPLOY path: the raw click is walked to, and a tile lost on 
   let dirt = true;
   const setTile = vi.fn();
   const map = createDeployMap({
-    blockers: placementEntities(s.scene),
+    ents: { FindEntities: () => [], GetEntitiesOnTileAtPoint: () => [] },
     turf: landTurf({ canPlaceTurf: () => dirt, setTile, tileCenter: () => ({ x: 6, z: 6 }) }),
   });
   const actor = deployActor(s.world, s.inventory, map);

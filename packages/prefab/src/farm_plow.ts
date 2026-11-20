@@ -559,7 +559,7 @@ export function configureFarmPlowItemEntity(entity: ItemEntity): void {
     mode: 'CUSTOM',
     spacing: 2 * FARM_SCALE,
     usegridplacer: false,
-    candeploy: (point, map) => map.canDeployPlow(point),
+    candeploy: (point, map) => map.canDeployPlow(point, entity),
   });
 }
 

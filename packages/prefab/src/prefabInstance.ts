@@ -41,9 +41,10 @@ import type { DerivedTags } from '../../componets/src/derivedTags';
 import { newItemEntityId } from '../../inventory/src/entityId';
 import { registerActionEntity } from './actionEntity';
 import { watchTileActivity } from './tileActivity';
-import { WORLD_SCALE } from './tile';
+import { TILE_SIZE, WORLD_SCALE } from './tile';
 import { Transform, type ReadonlyVector3 } from './transform';
 import { EntityGrid } from './entityGrid';
+import { RegisterDeploySmartRadius, RegisterGroundTargetBlocker, type MapEntities } from './mapEntities';
 import type { PrefabWorldContext } from './worldContext';
 import { SoundEmitter } from './soundEmitter';
 import { InstanceAnimState } from './instanceAnimState';
@@ -412,16 +413,35 @@ export class PrefabInstance<
   }
   /** inst.physicsradiusoverride, in DST units. */
   physicsRadiusOverride?: number;
-  /** Deployable smart spacing, in world units. */
-  deploySmartRadius?: number;
-  /** inst.ground_target_blocker_radius (EntityScript:SetGroundTargetBlockerRadius), in world units. */
-  ground_target_blocker_radius?: number;
+  #deploySmartRadius?: number;
+  /** inst.deploy_smart_radius, in world units; setting it is EntityScript:SetDeploySmartRadius. */
+  get deploySmartRadius(): number | undefined {
+    return this.#deploySmartRadius;
+  }
+  set deploySmartRadius(radius: number | undefined) {
+    this.#deploySmartRadius = radius;
+    if (radius !== undefined) {
+      RegisterDeploySmartRadius(radius);
+    }
+  }
+  #groundTargetBlockerRadius?: number;
+  /** inst.ground_target_blocker_radius, in world units; setting it is EntityScript:SetGroundTargetBlockerRadius. */
+  get ground_target_blocker_radius(): number | undefined {
+    return this.#groundTargetBlockerRadius;
+  }
+  set ground_target_blocker_radius(radius: number | undefined) {
+    this.#groundTargetBlockerRadius = radius;
+    if (radius !== undefined) {
+      this.addTag('groundtargetblocker');
+      RegisterGroundTargetBlocker(radius);
+    } else {
+      this.removeTag('groundtargetblocker');
+    }
+  }
   /** inst._groundhole_*: the ring map.lua's IsGroundTargetBlocked refuses, in world units. */
   _groundhole_innerradius?: number;
   _groundhole_outerradius?: number;
   _groundhole_rangeoverride?: number;
-  /** A tree blocks placement as a logical entity, including while its visual sleeps out of the scene. */
-  logicalPlacement?: boolean;
   private physicsBinding?: PhysicsBinding;
   /** inst.sg: SetStateGraph's instance, as other code reads and drives it; cleared by ClearStateGraph. */
   sg?: EntityStateGraph;
@@ -1312,7 +1332,9 @@ export type PrefabEntityDefinition<Instance extends PrefabInstance<SpriteState, 
  * and each entity's display, tile activity and save record. What a prefab is stays in its `fn` and its components.
  * The entities stand on the ground: a position's height is dropped.
  */
-export class PrefabEntityManager<Id extends string, Instance extends PrefabInstance<SpriteState, object>> {
+export class PrefabEntityManager<Id extends string, Instance extends PrefabInstance<SpriteState, object>>
+  implements MapEntities
+{
   private readonly resources: SpriteResources;
   private readonly entities = new Set<Instance>();
   /** Entities spawned elsewhere which FindEntities still searches, such as the player. */
@@ -1657,6 +1679,21 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
       found.push({ entity, distanceSquared });
     });
     return found.sort((a, b) => a.distanceSquared - b.distanceSquared).map(({ entity }) => entity);
+  }
+
+  /** Map:GetEntitiesOnTileAtPoint: every entity whose position is on the tile under `position`. */
+  GetEntitiesOnTileAtPoint(position: ReadonlyVector3): Instance[] {
+    const col = Math.floor(position.x / TILE_SIZE),
+      row = Math.floor(position.z / TILE_SIZE);
+    const center = { x: (col + 0.5) * TILE_SIZE, z: (row + 0.5) * TILE_SIZE };
+    const found: Instance[] = [];
+    this.grid.visit(center, TILE_SIZE / 2, entity => {
+      const at = entity.getPosition();
+      if (!entity.isRemoved && Math.floor(at.x / TILE_SIZE) === col && Math.floor(at.z / TILE_SIZE) === row) {
+        found.push(entity);
+      }
+    });
+    return found;
   }
 
   /** The awake entities' displays, as the display group lists those in the scene. */

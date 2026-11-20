@@ -1,5 +1,5 @@
 import { addComponent } from './components';
-import { ignoresPlacement, hasPlacementTag, type PlacementQuery, type PlacementBlocker } from './placementEntities';
+import { IsDeployPointClear, IsNearOther, type MapEntities, type NearOther } from './mapEntities';
 import * as THREE from 'three';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Deployable } from '../../componets/src/deployable';
@@ -12,22 +12,9 @@ export const DOCK_KIT_ID = 'dock_kit';
 /** TUNING.STACK_SIZE_MEDITEM, the stackable default dock_kit.lua sets. */
 export const DOCK_KIT_MAX_STACK = 20;
 const SCALE = TILE_SIZE / 4;
-/** map.lua DEPLOY_IGNORE_TAGS. */
-const DEPLOY_IGNORE_TAGS = new Set([
-  'NOBLOCK',
-  'player',
-  'FX',
-  'INLIMBO',
-  'DECOR',
-  'walkableplatform',
-  'walkableperipheral',
-  'isdead',
-]);
 /** (TILE_SCALE / 2) + 1.2 in DST units: CanDeployDockAtPoint's min_distance_from_entities. */
 const MIN_DISTANCE_FROM_ENTITIES = (4 / 2 + 1.2) * SCALE;
 const DOCK_DEPLOY_SOUND = 'dontstarve/common/together/boat/damage' as const;
-
-export type DockBlocker = PlacementBlocker;
 
 /** tilegroups.lua classification: void tiles are neither land nor ocean. */
 export const dockMapOf = (turf: TurfMap): DockMap => ({
@@ -44,8 +31,9 @@ const cellOf = (point: Pick<THREE.Vector3, 'x' | 'z'>): [number, number] => [
 ];
 
 /** TheWorld.Map:CanDeployDockAtPoint and TheWorld.components.dockmanager, as dock_kit.lua reaches them. */
-export function createDockWorld(turf: TurfMap, blockers: PlacementQuery) {
+export function createDockWorld(turf: TurfMap, ents: MapEntities) {
   const map = dockMapOf(turf);
+  const isDockNearOtherOnOcean = dockNearOtherOnOcean(turf);
   // Built on first use: its roots come from the tiles, which a save restores after the map is wired.
   let manager: DockManager | undefined;
   return {
@@ -78,20 +66,10 @@ export function createDockWorld(turf: TurfMap, blockers: PlacementQuery) {
       if (!adjacent) {
         return false;
       }
-      if (blockers.someOnTile(center, blocker => hasPlacementTag(blocker, 'dockjammer'))) {
+      if (ents.GetEntitiesOnTileAtPoint(center).some(entity => entity.hasTag('dockjammer'))) {
         return false;
       }
-      return !blockers.someNear(center, MIN_DISTANCE_FROM_ENTITIES, blocker => {
-        if (blocker.visible === false || ignoresPlacement(blocker, DEPLOY_IGNORE_TAGS)) {
-          return false;
-        }
-        // IsDockNearOtherOnOcean only considers entities standing on ocean tiles.
-        const [bc, br] = cellOf(blocker.position);
-        if (map.isLandTile(map.getTile(bc, br))) {
-          return false;
-        }
-        return isNearOther(blocker, center, MIN_DISTANCE_FROM_ENTITIES);
-      });
+      return IsDeployPointClear(ents, center, undefined, MIN_DISTANCE_FROM_ENTITIES, isDockNearOtherOnOcean);
     },
     /** on_deploy: CreateDockAtPoint, then ResolveDockSafetyAtPoint; deployable tiles always touch land or a connected dock. */
     createDock(point: THREE.Vector3): void {
@@ -124,13 +102,10 @@ export function configureDockKitEntity(entity: ItemEntity): void {
   );
 }
 
-/** map.lua IsNearOther (min_spacing form) with deploy_smart_radius and inventoryitem physics radius. */
-function isNearOther(other: DockBlocker, pt: THREE.Vector3, minSpacing: number): boolean {
-  let spacing = minSpacing;
-  if (other.smartRadius !== undefined) {
-    spacing = other.smartRadius + minSpacing / 2;
-  } else if (other.inventoryRadius !== undefined) {
-    spacing = Math.min(other.inventoryRadius + minSpacing / 2, minSpacing);
-  }
-  return other.position.distanceToSquared(pt) < spacing ** 2;
+/** map.lua IsDockNearOtherOnOcean: IsNearOther, for entities not standing on visual ground. */
+function dockNearOtherOnOcean(turf: TurfMap): NearOther {
+  return (other, pt, minSpacing) => {
+    const position = other.getPosition();
+    return IsNearOther(other, pt, minSpacing) && !isLandTile(turf.tileIdAtCell(...cellOf(position)));
+  };
 }

@@ -35,7 +35,6 @@ import {
 } from '@dontstarve-web/prefab/groundItems';
 import { farmPrefabs } from '@dontstarve-web/prefab/farm_plow';
 import { createFarmMap } from '@dontstarve-web/prefab/farmMap';
-import { placementEntities } from '@dontstarve-web/prefab/placementEntities';
 import { playerStats } from './playerStats';
 import { SpriteResources } from '@dontstarve-web/display';
 import { staffCastingLightPrefabs } from '@dontstarve-web/prefab/staff_castinglight';
@@ -66,6 +65,7 @@ import { oasislakePrefabs } from '@dontstarve-web/prefab/oasislake';
 import { beehivePrefabs } from '@dontstarve-web/prefab/beehive';
 import { shadowForgePrefabs } from '@dontstarve-web/prefab/shadow_forge';
 import { spiderdenPrefabs } from '@dontstarve-web/prefab/spiderden';
+import { seastackPrefabs } from '@dontstarve-web/prefab/seastack';
 import { wasphivePrefabs } from '@dontstarve-web/prefab/wasphive';
 import { oceanVineDecoPrefabs } from '@dontstarve-web/prefab/oceanvine_deco';
 import { archivePillarPrefabs } from '@dontstarve-web/prefab/archive_pillar';
@@ -245,6 +245,7 @@ const MANAGER_DEFINITIONS = {
   beehive: PREFAB_DEFINITIONS.beehives,
   shadow_forge: PREFAB_DEFINITIONS.shadowForges,
   spiderden: PREFAB_DEFINITIONS.spiderDens,
+  seastack: PREFAB_DEFINITIONS.seastacks,
   wasphive: PREFAB_DEFINITIONS.wasphives,
   oceanvine_deco: PREFAB_DEFINITIONS.oceanVineDecos,
   atrium_gate: PREFAB_DEFINITIONS.atriumGates,
@@ -291,6 +292,7 @@ const SCENE_LIFECYCLE_ORDER = [
   PREFAB_DEFINITIONS.beehives,
   PREFAB_DEFINITIONS.shadowForges,
   PREFAB_DEFINITIONS.spiderDens,
+  PREFAB_DEFINITIONS.seastacks,
   PREFAB_DEFINITIONS.wasphives,
   PREFAB_DEFINITIONS.oceanVineDecos,
   PREFAB_DEFINITIONS.atriumGates,
@@ -542,6 +544,8 @@ export async function createSceneEntities(
     spiderdenPrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
   );
   registry.registerPrefabs(PREFAB_DEFINITIONS.spiderDens);
+  prefabs.register(seastackPrefabs({ scheduler: worldState.scheduler }));
+  registry.registerPrefabs(PREFAB_DEFINITIONS.seastacks);
   prefabs.register(
     wasphivePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
   );
@@ -1576,7 +1580,7 @@ export async function createSceneEntities(
 
   /** farm_plow, farm_soil, farm_soil_debris and the sown seeds, with TheWorld.Map's soil functions they share. */
   function registerFarm(registry: EntityRegistry, worldState: SceneWorldState) {
-    const farmMap = createFarmMap({ turf: turfMap, entities: prefabs, blockers: placementEntities(view.scene) });
+    const farmMap = createFarmMap({ turf: turfMap, entities: prefabs });
     prefabs.register(
       farmPrefabs({
         scheduler: worldState.scheduler,

@@ -79,7 +79,10 @@ it('loads the direct-path white road noise and the vault terrain independently o
 it('deploys one CotL turf on dirt, rejects covered ground and restores terrain art and diggability', async () => {
   const inventory = createInventoryStore([{ slot_index: 0, id: 'turf_cotl_brick', num: 2 }]);
   const map = new TurfMap(48);
-  const deployMap = createDeployMap({ turf: map, blockers: { someNear: () => false } as never });
+  const deployMap = createDeployMap({
+    turf: map,
+    ents: { FindEntities: () => [], GetEntitiesOnTileAtPoint: () => [] },
+  });
   const point = new THREE.Vector3(6, 0, 6),
     address = inventorySlotAddress(0);
   const deployer = { position: new THREE.Vector3(), PushEvent: vi.fn() };
