@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { BEEFALO_ART, BEEFALO_BEHAVIOR, BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, beefaloPrefabs, BeefaloInstance, type BeefaloWorld } from '../../prefab/src/beefalo';
+import { BEEFALO_ART, BEEFALO_BEHAVIOR, BEEFALO_HEALTH, BEEFALO_BUILD, BEEFALO_SHAVED_BUILD, beefaloPrefabs, BeefaloInstance, type BeefaloWorld } from '../../prefab/src/beefalo';
 import { createSignal, getWatchWorldContent, type WorldPhase, type WorldContentEnvironment } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
@@ -208,7 +208,7 @@ describe('wild beefalo behavior', () => {
     expect(vi.mocked(s.world.spawnPoop).mock.calls[0][0].toArray()).toEqual([s.inst.position.x - 3, 0, 0]);
     // GetPersistData: each component under its own name.
     const saved = s.record();
-    expect(Object.keys(saved.components).sort()).toEqual(['beard', 'periodicspawner']);
+    expect(Object.keys(saved.components).sort()).toEqual(['beard', 'health', 'periodicspawner']);
     const restored = s.restore({ ...saved, id: 'restored' });
     expect(s.prefabs.exportRecords().find(({ record }) => record.id === 'restored')!.record.components).toEqual(saved.components);
     restored.remove();
@@ -357,12 +357,29 @@ describe('wild beefalo behavior', () => {
   });
 });
 
+describe('beefalo health', () => {
+  it('has the source maximum and regenerates BEEFALO_HEALTH_REGEN every ten seconds up to it', () => {
+    const s = setup();
+    const { health } = s.inst.components;
+    expect([health.maxhealth, health.currenthealth, health.nofadeout]).toEqual([BEEFALO_HEALTH, BEEFALO_HEALTH, true]);
+    health.SetVal(900);
+    s.scheduler.advance(10);
+    // (500 * 2) / (total_day_time * 3) * 10
+    expect(health.currenthealth).toBeCloseTo(900 + 1000 / (480 * 3) * 10);
+    s.scheduler.advance(480 * 3);
+    expect(health.currenthealth).toBe(BEEFALO_HEALTH);
+    s.dispose();
+  });
+});
+
 describe('beefalo saves', () => {
   it('c_save()s the components through the save file and loads a record from before they saved themselves', () => {
     const s = setup();
     s.setNight(true); s.tick(7.1); s.complete();
     s.inst.components.beard.Shave(undefined);
     s.inst.components.knownlocations.RememberLocation('herd', new THREE.Vector3(5, 0, 6));
+    // A hurt beefalo, as an imported source save can hold one: health saves and loads under its own name.
+    s.inst.components.health.SetVal(998.9);
     const legacy = { id: 'legacy', transform: { position: [20, 0, 30] as [number, number, number], rotationY: 0 }, components: { beefalo: {
       home: [21, 0, 31] as [number, number, number], heading: 90, poopRemainingSeconds: 51, beard: { growth: 1, growthaccumulator: 0, bits: 0 } } } };
     const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
@@ -372,6 +389,8 @@ describe('beefalo saves', () => {
     expect(current.components).toEqual(s.record().components);
     const restored = s.restore(current), migrated = s.restore(old);
     expect(restored.components.beard.bits.peek()).toBe(0);
+    expect([restored.components.health.currenthealth, restored.components.health.maxhealth]).toEqual([998.9, BEEFALO_HEALTH]);
+    expect(migrated.components.health.currenthealth).toBe(BEEFALO_HEALTH);
     expect(restored.components.knownlocations.GetLocation('herd')).toMatchObject({ x: 5, z: 6 });
     // The legacy fields load into the components they belong to, and the next save writes only those.
     expect(migrated.transform.rotation).toBeCloseTo(90);
@@ -379,7 +398,7 @@ describe('beefalo saves', () => {
     expect(migrated.components.periodicspawner.remainingSeconds).toBeCloseTo(51);
     expect(migrated.components.beard.OnSave()).toEqual({ growth: 1, growthaccumulator: 0, bits: 0 });
     const resaved = s.prefabs.exportRecords().find(({ record }) => record.id === 'legacy')!.record;
-    expect(Object.keys(resaved.components).sort()).toEqual(['beard', 'knownlocations', 'periodicspawner']);
+    expect(Object.keys(resaved.components).sort()).toEqual(['beard', 'health', 'knownlocations', 'periodicspawner']);
     expect(resaved.transform.rotationY).toBeCloseTo(Math.PI / 2);
     s.dispose();
   });

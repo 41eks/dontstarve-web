@@ -16,7 +16,7 @@ python3 scripts/import-dst-region.py \
 python3 scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
 ```
 
-玩家当前在地表：最新地表快照 `0000000315` 的玩家文件转换后位于项目脚点 `[1345.317, 0, 1003.869]`。最新地表快照有 8,104 个实体，最新洞穴快照 `0000000145` 有 7,342 个实体；地表 `0000000310` 中一头受伤的 `beefalo` 被跳过（见各快照 `.import.json` 的 `skippedEntities`）；见 [遗迹家具移植](../docs/dst-ruinsrelic.md) 与 [石笋移植](../docs/dst-stalagmite.md)。早期快照没有玩家文件或组件表时，仍保留世界实体，游戏只从各 Session 的最新快照选择玩家。导入保留地表各海洋类型、海冰、码头／农田底层地皮。
+玩家当前在地表：最新地表快照 `0000000315` 的玩家文件转换后位于项目脚点 `[1345.317, 0, 1003.869]`。最新地表快照有 8,104 个实体，最新洞穴快照 `0000000145` 有 7,342 个实体；没有被跳过的实体（各快照 `.import.json` 的 `skippedEntities` 均为空；地表 `0000000310` 中受伤的 `beefalo` 保留生命值导入）；见 [遗迹家具移植](../docs/dst-ruinsrelic.md) 与 [石笋移植](../docs/dst-stalagmite.md)。早期快照没有玩家文件或组件表时，仍保留世界实体，游戏只从各 Session 的最新快照选择玩家。导入保留地表各海洋类型、海冰、码头／农田底层地皮。
 
 重新导入后、提交前，用 `scripts/dst-save-diff.py` 确认只有预期的实体组变化。它按实体组和导入报告汇总相对 git 版本的差异，并列出最新快照的 source／imported 数量；`--base` 指定比较的版本（默认 `HEAD`），有 `--expect` 时出现其他变更或预期 ID 未变化都以退出码 1 结束：
 

@@ -20,7 +20,7 @@ prefab 装配位于 `packages/prefab/src/beefalo.ts`：`beefaloPrefabs` 声明�
 
 `packages/componets/src/beard.ts` 按 `components/beard.lua` 提供 `Beard`：`bits`、`daysgrowth`、`daysgrowthaccumulator` 是私有可写 signal，只公开只读视图（`beard.bits.peek()`）；`hairy` 是由 `bits > 0` 派生的纯 memo；预设值用 `SetBits` / `SetDaysGrowth` 写入，`Reset`、`OnLoad` 用 `batch()` 一次提交，领域逻辑读取 `peek()`，批次内也能看到已写入的值。组件按 Lua 在构造时给实体加 `bearded`、`OnRemoveFromEntity` 时移除，与胡须数量无关。牛初始 `bits = 3`、`daysgrowth = 4`，回调为第 0 天 `OnShaved` 和第 3 天 `OnHairGrowth`；`OnShaved` 在 Lua 里只调用 `ApplyBuildOverrides`，这里由外观 effect 承担，第 0 天的空回调仅保留 `Shave` 回溯所需的标记。每日生长是共享游戏时间调度器上的一个离散 timer：`Beard` 持有 `ComponentTimer`（只读视图 `dayTimerState`，状态为 `scheduled` / `stopped` / `expired`），截止点是世界注入的 `secondsUntilNextDay(now)` 给出的下一个日界（`TOTAL_DAY_TIME` 的整数倍，调度器以世界已流逝秒数起算）。等待期间 signal 不变；到期时执行 `OnDayComplete` 并登记下一个日界，所以一次长帧或读档后的时间跳跃会逐天补发，第 3 天的 `OnHairGrowth` 只在恰好第 3 天执行一次。`Beard` 不读时钟或 tuning，也不订阅全局时钟；销毁、`EnableGrowth(false)` 写入 `stopped` 并撤销任务。timer 不入档，读档按当前世界时间重新登记。
 
-`Beard:Shave` 沿用 Lua 的回溯算法：先检查 `bits == 0`（`NOBITS`）和 `canshavetest`，再从当前 `daysgrowth` 向前找回调，`daysgrowth <= 0` 时 `Reset()` 调用 `OnResetBeard`——移除 `has_beard` 标签、播放 `shaved` 状态。`CanShaveTest` 在牛睡着时通过，醒着返回 `AWAKEBEEFALO`；牛铃主人、死亡与 `SOMEONEELSESBEEFALO` 分支依赖未移植的 `health` / `beefbell`。掉落的 `beefalowool` 由 `groundItems.flingLoot` 抛出，数量为剃掉的毛量。
+`Beard:Shave` 沿用 Lua 的回溯算法：先检查 `bits == 0`（`NOBITS`）和 `canshavetest`，再从当前 `daysgrowth` 向前找回调，`daysgrowth <= 0` 时 `Reset()` 调用 `OnResetBeard`——移除 `has_beard` 标签、播放 `shaved` 状态。`CanShaveTest` 在牛睡着时通过，醒着返回 `AWAKEBEEFALO`；牛铃主人、死亡与 `SOMEONEELSESBEEFALO` 分支依赖未移植的死亡流程 / `beefbell`。掉落的 `beefalowool` 由 `groundItems.flingLoot` 抛出，数量为剃掉的毛量。
 
 `OnResetBeard` 在睡着时设置 `statemem.continuesleeping`，保证切换到 `shaved` 不触发睡眠状态的退出唤醒。`shaved` 带 `busy/sleeping` 标签，播放 `shave`，结束后睡着则进入 `sleeping`，否则进入 `wake`；`hairGrowthPending` 是 `BeefaloInstance` 上的字段（对应 Lua 的 `inst.hairGrowthPending`），第 3 天回调在 `bits == 0` 时置位，牛下次进入 `idle` 时读取它，播放 `hair_growth_pre`，随后 `hair_growth_pop` 用 `SetBits(3)` 恢复毛量并清除标记。`has_beard` 不再是存储的标签：牛的 `hasTag()` 经组件 `HasTag` 从 `beard.hairy` 派生，`model.userData.tags` 只保留 `beefalo`、`animal`、`largecreature`。外观由一个只订阅 `beard.hairy` 的 effect 驱动 `SpriteController.setBuild`，在 `beefalo_build` 与 `beefalo_shaved_build` 之间切换（对应 `getbasebuild`），读档时随载入的毛量自动正确，无需单独的 `OnLoadPostPass`。两个 build 的材质由工厂共享并统一释放；牛销毁时取消每日订阅、停止 effect 并释放 memo，之后的天数变化不再生长。
 
@@ -28,7 +28,9 @@ prefab 装配位于 `packages/prefab/src/beefalo.ts`：`beefaloPrefabs` 声明�
 
 `c_save()` 在 `components.beard` 保存 `growth`、`growthaccumulator`、`bits`；读档按 `beard.lua:OnLoad` 重放 0 到 `daysgrowth` 的回调，`bits == 0` 时移除 `has_beard` 并应用剃光外观（对应 `OnLoadPostPass`）。缺少该字段的旧存档按满毛加载。
 
-尚未移植：`brushable`、`domesticatable`（剃毛的顺从度变化）、`skinner_beefalo`（`UnSkin`）、`rideable:Buck`、牛铃与 `health`。已移植的 passive 分支由 `BeefaloBrain` 的 `PriorityNode(.25)`、共享 `FaceEntity` 与 `Wander` 驱动；其余未接入分支不作为当前支持的功能。
+`health` 按 `beefalo.lua`：`SetMaxHealth(TUNING.BEEFALO_HEALTH)`（1000）、`nofadeout`、`StartRegen(BEEFALO_HEALTH_REGEN, 10)`（每 10 秒回 1000／(480×3)×10），由组件自己的 `OnSave`／`OnLoad` 存为记录的 `health`（`{ health, maxhealth }`），`c_save()` 保留。死亡、掉落、`combat` 与给骑手的 `OnHealthDelta` 未移植。
+
+尚未移植：`brushable`、`domesticatable`（剃毛的顺从度变化）、`skinner_beefalo`（`UnSkin`）、`rideable:Buck`、牛铃。已移植的 passive 分支由 `BeefaloBrain` 的 `PriorityNode(.25)`、共享 `FaceEntity` 与 `Wander` 驱动；其余未接入分支不作为当前支持的功能。
 
 ## 粪肥的苍蝇与声音
 

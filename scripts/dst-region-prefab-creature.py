@@ -108,12 +108,13 @@ def dragonfly_spawner_components(data):
 
 
 def beefalo_components(data, context):
-    # beefalo.lua OnSave (tendency, hascarrat) plus the component OnSaves. Only knownlocations, periodicspawner
+    # beefalo.lua OnSave (tendency, hascarrat) plus the component OnSaves. Only health, knownlocations, periodicspawner
     # and beard are ported. A wild, unclothed beefalo's other components are validated and dropped: hunger at its
     # default, no carrat, and no clothing. leader followers are babybeefalo, which is not ported; uniqueid, brushable
-    # and an unnamed writeable are rebuilt. health is not ported: a hurt beefalo is skipped (returns None) rather
-    # than healed. Domestication, riding and the saddle are not ported either: a domesticated beefalo imports as a
-    # wild one, dropping domesticatable (with its rideable saddle), its tendency, eater and beefalometrics.
+    # and an unnamed writeable are rebuilt. health:OnSave writes the current health (maxhealth only with save_maxhealth,
+    # which beefalo does not set); this port's Health saves its maximum too. Domestication, riding and the saddle are
+    # not ported: a domesticated beefalo imports as a wild one, dropping domesticatable (with its rideable saddle), its
+    # tendency, eater and beefalometrics.
     if set(data) - {'periodicspawner', 'tendency', 'hascarrat', 'carratcolor', 'leader', 'knownlocations', 'uniqueid',
                     'skinner_beefalo', 'brushable', 'domesticatable', 'health', 'hunger', 'beard', 'writeable',
                     'eater', 'beefalometrics'}:
@@ -143,8 +144,6 @@ def beefalo_components(data, context):
     if not isinstance(health, dict) or set(health) != {'health'} or not _finite(health['health']) \
             or not 0 < health['health'] <= 1000:
         raise ValueError('Unsupported beefalo health')
-    if health['health'] != 1000:
-        return None
     writeable = data.get('writeable')
     if writeable is not None and (not isinstance(writeable, dict) or writeable.get('text')):
         raise ValueError('Unsupported named beefalo')
@@ -168,7 +167,7 @@ def beefalo_components(data, context):
         raise ValueError('Unsupported beefalo periodicspawner state')
 
     # Each component saves under its own name, as EntityScript:GetPersistData does; DST does not save the rotation.
-    components = {}
+    components = {'health': {'health': health['health'], 'maxhealth': 1000}}
     if locations:
         components['knownlocations'] = {'locations': locations}
     if spawner.get('time', 0) > 0:

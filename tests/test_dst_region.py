@@ -444,7 +444,7 @@ end
         with self.assertRaisesRegex(ValueError, 'Unsupported pighead save state'):
             PREFAB['convert_entities'](terrain, groups, report, 'SESSION')
 
-    def test_beefalo_skips_a_hurt_one_and_imports_a_domesticated_one_as_wild(self):
+    def test_beefalo_keeps_a_hurt_ones_health_and_imports_a_domesticated_one_as_wild(self):
         terrain = {'width': 8, 'height': 6, 'topology': {'ids': ['Room']},
                    'nodeidtilemap': base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack('<48H', *[1] * 48)).decode()}
         report = {'nodes': ['Room'], 'translation': [0, 0, 0]}
@@ -461,10 +461,14 @@ end
 '''.replace('CLOTHING', clothing)
         entities, entity_report = PREFAB['convert_entities'](
             terrain, IMPORTER['LITERALS']['snapshot_entities'](source, ['beefalo']), report, 'S')
-        self.assertEqual(entity_report['skippedEntities'], [{'prefab': 'beefalo', 'sourceIndex': 1, 'sourceId': 1}])
-        self.assertEqual([entity['id'] for entity in entities['beefalo']], ['dst_S_beefalo_id_2'])
-        self.assertEqual(entities['beefalo'][0]['components'], {
+        self.assertEqual(entity_report['skippedEntities'], [])
+        self.assertEqual([entity['id'] for entity in entities['beefalo']], ['dst_S_beefalo_id_1', 'dst_S_beefalo_id_2'])
+        self.assertEqual(entities['beefalo'][0]['components'], {'health': {'health': 998.9, 'maxhealth': 1000}})
+        self.assertEqual(entities['beefalo'][1]['components'], {'health': {'health': 1000, 'maxhealth': 1000},
             'periodicspawner': {'time': 56}, 'beard': {'bits': 3, 'growth': 177, 'growthaccumulator': 0}})
+        with self.assertRaisesRegex(ValueError, 'Unsupported beefalo health'):
+            PREFAB['convert_entities'](terrain, {'beefalo': [{'id': 4, 'x': 0, 'z': 0, 'data': {'health': {'health': 0}}}]},
+                                       report, 'S')
         with self.assertRaisesRegex(ValueError, 'Unsupported beefalo tendency'):
             PREFAB['convert_entities'](terrain, {'beefalo': [{'id': 3, 'x': 0, 'z': 0, 'data': {'tendency': 'RIDER'}}]},
                                        report, 'S')

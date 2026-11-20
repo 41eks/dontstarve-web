@@ -784739,6 +784739,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -784770,6 +784774,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -784801,6 +784809,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -784832,6 +784844,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -784863,6 +784879,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -784884,6 +784904,41 @@
           }
         },
         {
+          "id": "dst_03741E1B78B29575_beefalo_id_108886",
+          "transform": {
+            "position": [
+              1302.696,
+              0.0,
+              1356.345
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "health": {
+              "health": 998.88943527729,
+              "maxhealth": 1000
+            },
+            "knownlocations": {
+              "locations": [
+                {
+                  "name": "herd",
+                  "x": 1298.25412,
+                  "y": 0.0,
+                  "z": 1359.211945
+                }
+              ]
+            },
+            "periodicspawner": {
+              "time": 37
+            },
+            "beard": {
+              "growthaccumulator": 0,
+              "growth": 160,
+              "bits": 3
+            }
+          }
+        },
+        {
           "id": "dst_03741E1B78B29575_beefalo_id_108888",
           "transform": {
             "position": [
@@ -784894,6 +784949,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -784925,6 +784984,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -784956,6 +785019,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -784987,6 +785054,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785018,6 +785089,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785049,6 +785124,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785080,6 +785159,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785111,6 +785194,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785142,6 +785229,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785173,6 +785264,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785204,6 +785299,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785235,6 +785334,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785266,6 +785369,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785297,6 +785404,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785328,6 +785439,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785359,6 +785474,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785390,6 +785509,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785421,6 +785544,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785452,6 +785579,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785483,6 +785614,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785514,6 +785649,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785545,6 +785684,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785576,6 +785719,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785607,6 +785754,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785638,6 +785789,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785669,6 +785824,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785700,6 +785859,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785731,6 +785894,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785762,6 +785929,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785793,6 +785964,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785824,6 +785999,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785855,6 +786034,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785886,6 +786069,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785917,6 +786104,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785948,6 +786139,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -785979,6 +786174,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786010,6 +786209,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786041,6 +786244,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786072,6 +786279,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786103,6 +786314,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786134,6 +786349,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786162,6 +786381,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786193,6 +786416,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786224,6 +786451,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786255,6 +786486,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786286,6 +786521,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786317,6 +786556,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786348,6 +786591,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786379,6 +786626,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786410,6 +786661,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786441,6 +786696,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786472,6 +786731,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786503,6 +786766,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786534,6 +786801,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786565,6 +786836,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786596,6 +786871,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786627,6 +786906,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786658,6 +786941,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786689,6 +786976,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786720,6 +787011,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786751,6 +787046,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {
@@ -786782,6 +787081,10 @@
             "rotationY": 0
           },
           "components": {
+            "health": {
+              "health": 1000,
+              "maxhealth": 1000
+            },
             "knownlocations": {
               "locations": [
                 {

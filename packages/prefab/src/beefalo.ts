@@ -10,6 +10,8 @@ import { Beard, type BeardSave } from '../../componets/src/beard';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import type { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { Sleeper } from '../../componets/src/sleeper';
+import { Health } from '../../componets/src/health';
+import { TOTAL_DAY_TIME } from '../../componets/src/perishable';
 import type { LocoMotorPathfinder } from '../../componets/src/locomotor';
 import { LocoMotor } from '../../componets/src/locomotor';
 import { KnownLocations } from '../../componets/src/knownlocations';
@@ -77,7 +79,12 @@ export interface LegacyBeefaloSave {
 export type BeefaloState = BeefaloStateName;
 
 type BeefaloComponents = PrefabComponents & { locomotor: LocoMotor; knownlocations: KnownLocations; periodicspawner: PeriodicSpawner;
-  beard: Beard; sleeper: Sleeper };
+  beard: Beard; sleeper: Sleeper; health: Health };
+
+/** tuning.lua BEEFALO_HEALTH (500 * 2, harder for multiplayer), BEEFALO_HEALTH_REGEN and BEEFALO_HEALTH_REGEN_PERIOD. */
+export const BEEFALO_HEALTH = 500 * 2;
+const BEEFALO_HEALTH_REGEN_PERIOD = 10;
+const BEEFALO_HEALTH_REGEN = BEEFALO_HEALTH / (TOTAL_DAY_TIME * 3) * BEEFALO_HEALTH_REGEN_PERIOD;
 
 /** The source banks the stategraph's clips come from, first match wins, as the sprite factory merges them. */
 const BEEFALO_BANKS = ['beefalo_basic.zip', 'beefalo_actions.zip', 'beefalo_actions_domestic.zip'] as const;
@@ -180,7 +187,7 @@ function CreateBrainWorld(inst: BeefaloInstance, world: BeefaloWorld): BrainWorl
   };
 }
 
-/** beefalo.lua beefalo(), as far as it is ported: a wild adult's herd location, beard, manure, locomotion, sleep, brain and stategraph. */
+/** beefalo.lua beefalo(), as far as it is ported: a wild adult's beard, health, herd location, manure, locomotion, sleep, brain and stategraph. */
 function fn(world: BeefaloWorld): BeefaloInstance {
   const { scheduler } = world, random = world.random ?? Math.random;
   const inst = new BeefaloInstance(scheduler);
@@ -207,6 +214,12 @@ function fn(world: BeefaloWorld): BeefaloInstance {
     if (hairy) inst.addTag('has_beard'); else inst.removeTag('has_beard');
     inst.sprite.setBuildArchive(hairy ? BEEFALO_BUILD : BEEFALO_SHAVED_BUILD);
   }));
+
+  // The OnDeath and OnHealthDelta listeners are for death, loot and the rider, which are not ported.
+  const health = addComponent(inst, 'health', Health, undefined, scheduler);
+  health.SetMaxHealth(BEEFALO_HEALTH);
+  health.nofadeout = true;
+  health.StartRegen(BEEFALO_HEALTH_REGEN, BEEFALO_HEALTH_REGEN_PERIOD);
 
   addComponent(inst, 'knownlocations', KnownLocations);
 

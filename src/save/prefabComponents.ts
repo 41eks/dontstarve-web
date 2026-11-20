@@ -36,6 +36,11 @@ export interface EntitySaveContext {
 
 export interface PrefabComponentSchema {
   readonly keys: readonly (keyof EntityPersistData)[];
+  /**
+   * `health` is health.lua's own OnSave (`{ health, maxhealth, penalty? }`, written by the Health component), not a
+   * structure's `{ current, maximum }` record.
+   */
+  readonly componentHealth?: true;
   /** MakeXBurnable(inst, nil, nil, true): a structure whose onsave can write `building.burnt`. */
   readonly burntStructure?: true;
   readonly timerDuration?: number;
@@ -598,7 +603,13 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         timeleft: number(extinguish.timeleft, `${p}.timers.extinguish.timeleft`, 0, initial_time), paused: extinguish.paused, initial_time,
       } } };
     }
-    if (c.health !== undefined) {
+    if (c.health !== undefined && schema.componentHealth) {
+      const p = `${path}.health`, h = object(c.health, p, ['health', 'maxhealth', 'penalty']);
+      // this port's Health always writes its maximum.
+      const maxhealth = number(h.maxhealth, `${p}.maxhealth`, Number.MIN_VALUE);
+      components.health = { health: number(h.health, `${p}.health`, 0, maxhealth), maxhealth,
+        ...h.penalty === undefined ? {} : { penalty: number(h.penalty, `${p}.penalty`, 0, 1) } };
+    } else if (c.health !== undefined) {
       const h = object(c.health, `${path}.health`, ['current', 'maximum']);
       const maximum = number(h.maximum, `${path}.health.maximum`, 1);
       components.health = { current: number(h.current, `${path}.health.current`, 0, maximum), maximum };
