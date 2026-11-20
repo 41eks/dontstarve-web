@@ -5,7 +5,7 @@ import { testPlayer } from './testPlayer';
 import { collectEquippedItemActions } from '../../stategraphs/src/componentactions';
 import { describe, expect, it, vi } from 'vitest';
 import { ItemEntity, HandSlot, equipmentSlotAddress } from '../../inventory/src';
-import { GreenStaffController, deconstructionLoot } from '../../prefab/src/staff';
+import { deconstructionLoot } from '../../prefab/src/staff';
 import { INVENTORY_ITEM_SPECS } from '../../../src/inventoryItems';
 import { testInventoryStore, testItem } from './testInventory';
 
@@ -33,11 +33,10 @@ describe('greenstaff source deconstruction', () => {
   it('selects recipe targets and commits removal, cost and final equipment depletion through the store', async () => {
     const slot = equipmentSlotAddress('hand');
     const inventory = testInventoryStore([{ address: slot, slot: new HandSlot() }], INVENTORY_ITEM_SPECS);
+    const spawn = vi.fn();
+    inventory.entities.bindEquipmentWorld({ greenStaffWorld: { spawnLoot: spawn } });
     inventory.replaceState({ bufferedBuilds: [], slots: [{ address: slot, item: { itemId: 'greenstaff', count: 1, remainingUses: 1 } }] }, {});
     const entity = inventory.getEntity(slot)!;
-    const spawn = vi.fn();
-    const staff = new GreenStaffController(entity, { spawnLoot: spawn });
-    staff.onequip();
     const opal = target();
     const event = vi.fn(); opal.ListenForEvent('ondeconstructstructure', event);
     // The caster is the player inst, whose sanity pays the cast.
@@ -64,9 +63,9 @@ describe('greenstaff source deconstruction', () => {
   });
 
   it('revalidates buffered targets and held identity without consuming or removing anything', async () => {
-    const entity = testItem({ itemId: 'greenstaff', count: 1 });
+    const entity = target('greenstaff', 5);
     const spawn = vi.fn();
-    new GreenStaffController(entity, { spawnLoot: spawn });
+    entity.equipmentWorld = { greenStaffWorld: { spawnLoot: spawn } };
     const opal = target(), doer = testPlayer();
     const doDelta = vi.spyOn(addComponent(doer, 'sanity', Sanity, 200), 'DoDelta');
     let held = true;

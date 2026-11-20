@@ -199,7 +199,9 @@ export const fireStaffVisual: EquipmentVisualFactory = item => staffVisual({ ...
 
 // staff.lua green()
 
+/** tuning.lua GREENSTAFF_USES and SANITY_MEDLARGE. */
 export const GREENSTAFF_USES = 5;
+const SANITY_MEDLARGE = 20;
 export const GREENSTAFF_COLOUR = [51 / 255, 153 / 255, 51 / 255] as const;
 /** What staff.lua destroystructure reads from the entity it deconstructs. */
 export interface DeconstructionComponents {
@@ -236,50 +238,50 @@ const ingredientSounds: Readonly<Record<string, SoundEventPath>> = {
   cutgrass: 'dontstarve/common/destroy_straw', cutreeds: 'dontstarve/common/destroy_straw',
 };
 
-export class GreenStaffController implements HeldEquipFunctions {
-  readonly spellcaster: SpellCaster;
-  private readonly entity: ItemEntity;
-  constructor(entity: ItemEntity, world: GreenStaffWorld) {
-    this.entity = entity;
-    entity.addTag('nopunch'); entity.addTag('shadowlevel');
-    entity.fxcolour = GREENSTAFF_COLOUR;
-    entity.components.finiteuses.setMaxUses(GREENSTAFF_USES);
-    this.spellcaster = addComponent(entity, 'spellcaster', SpellCaster);
-    this.spellcaster.canUseOnTargets = true;
-    this.spellcaster.canOnlyUseOnRecipes = true;
-    this.spellcaster.SetSpellFn((_staff, target, _position, doer) =>
-      target instanceof PrefabInstance && this.destroyStructure(target, doer, world));
+/**
+ * destroystructure(staff, target): the recipe's ingredients scaled by the target's condition, the target's contents
+ * dropped and one of it removed, then the caster's sanity and one use of the staff. The caster is the doer holding the
+ * staff (inventoryitem.owner). The itemmimic branch and the inventory, spawner, occupiable, trap, dryer, harvestable,
+ * constructionsite and inventoryitemholder drops are for components not ported.
+ */
+function destroystructure(staff: ItemEntity, target: unknown, caster: SpellCastDoer): boolean {
+  const world = (staff.equipmentWorld as { greenStaffWorld?: GreenStaffWorld } | undefined)?.greenStaffWorld;
+  if (!world || !(target instanceof PrefabInstance) || staff.isRemoved) { return false; }
+  // Action filters should prevent us from reaching here normally.
+  const recipe = getDeconstructionRecipe(target.prefab);
+  if (!recipe || !target.isValid()) { return false; }
+  // An item's pending stack and use changes settle before its condition is read.
+  if (target instanceof ItemEntity) { target.flush(); }
+  if (!target.isValid()) { return false; }
+  for (const ingredient of recipe.ingredients) {
+    const sound = ingredientSounds[ingredient.type];
+    if (sound) { PlaySound(sound, caster.position); }
   }
-  onequip(): void {}
-  onunequip(): void {}
-  dispose(): void {}
-  private destroyStructure(target: PrefabInstance, doer: SpellCastDoer, world: GreenStaffWorld): boolean {
-    const recipe = getDeconstructionRecipe(target.prefab);
-    if (!recipe || !target.isValid() || this.entity.isRemoved) { return false; }
-    // An item's pending stack and use changes settle before its condition is read.
-    if (target instanceof ItemEntity) { target.flush(); }
-    if (!target.isValid()) { return false; }
-    world.spawnLoot(deconstructionLoot(target), target.position);
-    for (const ingredient of recipe.ingredients) {
-      const sound = ingredientSounds[ingredient.type];
-      if (sound) { PlaySound(sound, doer.position); }
-    }
-    target.components.container?.DropEverything(target.position);
-    target.components.stewer?.Harvest();
-    target.PushEvent('ondeconstructstructure', doer);
-    // A stackable inst loses one of its stack (stackable:Get():Remove()); anything else is removed.
-    if (target.components.stackable) { target.components.stackable.Consume(); } else { target.remove(); }
-    PlaySound('dontstarve/common/staff_dissassemble', doer.position);
-    if (doer.components.staffsanity) { doer.components.staffsanity.doCastingDelta(-20); }
-    else { doer.components.sanity?.DoDelta(-20); }
-    const depleted = (this.entity.components.finiteuses.remaining ?? GREENSTAFF_USES) === 1;
-    this.entity.components.finiteuses.use(1);
-    if (depleted) { PlaySound('dontstarve/common/gem_shatter', doer.position); }
-    return true;
-  }
+  world.spawnLoot(deconstructionLoot(target), target.position);
+  target.components.container?.DropEverything(target.position);
+  target.components.stewer?.Harvest();
+  target.PushEvent('ondeconstructstructure', caster);
+  // If it's stackable we only want to destroy one of them.
+  if (target.components.stackable) { target.components.stackable.Consume(); } else { target.remove(); }
+  PlaySound('dontstarve/common/staff_dissassemble', caster.position);
+  if (caster.components.staffsanity) { caster.components.staffsanity.doCastingDelta(-SANITY_MEDLARGE); }
+  else { caster.components.sanity?.DoDelta(-SANITY_MEDLARGE); }
+  staff.components.finiteuses.use(1);
+  return true;
 }
-export function getGreenStaffController(entity: ItemEntity, world: GreenStaffWorld): GreenStaffController {
-  return entity.component('greenstaff', () => new GreenStaffController(entity, world));
+
+/** staff.lua green(): a spellcaster usable only on targets that have a recipe. */
+export function configureGreenStaffEntity(inst: ItemEntity): void {
+  // commonfn: the nopunch tag and the shadowlevel component's pristine tag.
+  inst.addTag('nopunch'); inst.addTag('shadowlevel');
+  inst.fxcolour = GREENSTAFF_COLOUR;
+  if (inst.components.spellcaster) { return; }
+  inst.components.finiteuses.setMaxUses(GREENSTAFF_USES);
+  inst.components.finiteuses.setOnFinished(() => onfinished(inst));
+  const spellcaster = addComponent(inst, 'spellcaster', SpellCaster);
+  spellcaster.canUseOnTargets = true;
+  spellcaster.canOnlyUseOnRecipes = true;
+  spellcaster.SetSpellFn((_staff, target, _pos, caster) => destroystructure(inst, target, caster));
 }
 
 // staff.lua purple(), registered as telestaff

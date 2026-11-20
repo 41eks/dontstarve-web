@@ -23,7 +23,7 @@ import { configureReskinToolEntity, createReskinToolLifecycle, reskinToolVisual 
 import { configureShovelEntity, shovelVisual, SHOVEL_USES } from './shovel';
 import { configureTorchEntity, createTorchHandLifecycle, onattack as torchOnAttack, torchVisual } from './torch';
 import { getTridentController, tridentVisual, TRIDENT_DAMAGE, TRIDENT_USES, type TridentWorld } from './trident';
-import { configureIceStaffEntity, iceStaffLifecycle, iceStaffVisual, ICESTAFF_TAGS, ICESTAFF_USES, type IceStaffWorld, configureOrangeStaffEntity, orangeStaffLifecycle, orangeStaffVisual, ORANGESTAFF_USES, CANE_SPEED_MULT, configureTeleStaffEntity, FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController, getGreenStaffController, getLightStaffController, GREENSTAFF_USES, TELESTAFF_USES, teleStaffVisual, yellowstaffVisual, type FireStaffWorld, type GreenStaffWorld, type LightStaffWorld, type TeleStaffWorld } from './staff';
+import { configureIceStaffEntity, iceStaffLifecycle, iceStaffVisual, ICESTAFF_TAGS, ICESTAFF_USES, type IceStaffWorld, configureOrangeStaffEntity, orangeStaffLifecycle, orangeStaffVisual, ORANGESTAFF_USES, CANE_SPEED_MULT, configureTeleStaffEntity, FIRESTAFF_TAGS, FIRESTAFF_USES, fireStaffVisual, getFireStaffController, configureGreenStaffEntity, getLightStaffController, GREENSTAFF_USES, TELESTAFF_USES, teleStaffVisual, yellowstaffVisual, type FireStaffWorld, type GreenStaffWorld, type LightStaffWorld, type TeleStaffWorld } from './staff';
 
 /** Golden tools' saved uses move in 1 / GOLDENTOOLFACTOR steps. */
 const GOLDEN_USE_STEP = 1 / GOLDENTOOLFACTOR;
@@ -82,7 +82,8 @@ const definitions: Record<PlayerCarryItem, HandEquipmentDefinition> = {
   lantern: { visual: lanternVisual, tags: ['light'], maxFuel: LANTERN_FUEL, configureEntity: configureLanternEntity, createLifecycle: createLanternHandLifecycle },
   yellowstaff: { visual: yellowstaffVisual, tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
   opalstaff: { visual: yellowstaffVisual, tags: ['nopunch'], createLifecycle: (entity, context) => context.lightStaffWorld ? getLightStaffController(entity, context.lightStaffWorld) : undefined },
-  greenstaff: { visual: yellowstaffVisual, tags: ['nopunch'], maxUses: GREENSTAFF_USES, createLifecycle: (entity, context) => context.greenStaffWorld ? getGreenStaffController(entity, context.greenStaffWorld) : undefined },
+  // staff.lua green(): its spellcaster is configured at spawn and reads TheWorld's loot spawn at the cast.
+  greenstaff: { visual: yellowstaffVisual, tags: ['nopunch'], maxUses: GREENSTAFF_USES, configureEntity: configureGreenStaffEntity },
   // staff.lua red(): weapon damage 0 (the projectile only lights), FIRESTAFF_USES uses, ranged lighter tags.
   firestaff: { visual: fireStaffVisual, maxUses: FIRESTAFF_USES, tags: FIRESTAFF_TAGS, weapon: { damage: 0 },
     createLifecycle: (entity, context) => context.fireStaffWorld ? getFireStaffController(entity, context.fireStaffWorld) : undefined },
