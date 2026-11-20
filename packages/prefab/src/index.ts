@@ -261,7 +261,7 @@ export {
   type SoundEventPath,
   type SoundHandle,
 } from './sound';
-export { FIREFLIES_ID, FIREFLIES_LIGHT, firefliesPrefabs, FirefliesController, type FirefliesWorld } from './fireflies';
+export { FIREFLIES_ID, FIREFLIES_LIGHT, firefliesPrefabs, FirefliesEntity, type FirefliesWorld } from './fireflies';
 export {
   BULB_PLANT_ID,
   BULB_PLANT_PREFABS,

@@ -57,10 +57,6 @@
   "packages/prefab/src/evergreens.ts": {
     "instance-method": 1
   },
-  "packages/prefab/src/fireflies.ts": {
-    "prefab-timer": 2,
-    "userdata": 1
-  },
   "packages/prefab/src/firepit.ts": {
     "instance-method": 6
   },
