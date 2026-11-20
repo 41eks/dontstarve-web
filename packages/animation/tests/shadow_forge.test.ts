@@ -112,7 +112,7 @@ it('keeps a c_spawn forge and an imported one through c_save and a reload, and r
     expect(saved[0]).toMatchObject({ id: spawned.entityId, transform: { position: [3, 0, -6] }, components: {} });
     await second.registry.restoreAll({ shadow_forge: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof ShadowForgeInstance)) throw new Error('The saved forge did not load');
+    if (!(loaded instanceof ShadowForgeInstance)) { throw new Error('The saved forge did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect([clip(loaded)?.name, loaded.components.workable.GetWorkLeft(), loaded.hasTag('shadow_forge')]).toEqual(['idle', 4, true]);
     expect(second.prefabs.get('imported-forge')?.position.toArray()).toEqual([5, 0, 1]);

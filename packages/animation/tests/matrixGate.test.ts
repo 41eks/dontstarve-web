@@ -10,7 +10,7 @@ it.each(['cache', 'observer'] as const)('shares updates and restores original me
   const gate = installMatrixGate(model, visual), observer = vi.fn(), stop = watchMatrixUpdates(model, observer);
   scene.updateMatrixWorld(); scene.updateMatrixWorld();
   expect(observer).toHaveBeenCalledTimes(1);
-  if (first === 'cache') gate.dispose(); else stop();
+  if (first === 'cache') { gate.dispose(); } else { stop(); }
   model.position.x = 6;
   scene.updateMatrixWorld();
   expect(visual.matrixWorld.elements[12]).toBe(6);
@@ -144,13 +144,13 @@ it('shares ancestor comparisons across siblings and detects a second ancestor up
     };
     try { updateSceneMatrices(scene); }
     finally { scene.updateMatrixWorld = update; }
-    for (const { visual } of siblings) expect(visual.matrixWorld.elements[12]).toBe(7);
+    for (const { visual } of siblings) { expect(visual.matrixWorld.elements[12]).toBe(7); }
 
     // Moving a model to a different ancestor must release its previous snapshot.
     scene.add(siblings[0].model);
     updateSceneMatrices(scene);
     expect(siblings[0].visual.matrixWorld.elements[12]).toBe(0);
-  } finally { for (const { gate } of siblings) gate.dispose(); }
+  } finally { for (const { gate } of siblings) { gate.dispose(); } }
   expect(parent.updateMatrixWorld).toBe(original);
   expect(parent.updateWorldMatrix).toBe(originalWorld);
 });

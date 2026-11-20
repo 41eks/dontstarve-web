@@ -58,7 +58,7 @@ export function resolveOverrideArt(element: AnimElement, overrides: ReadonlyMap<
   }
   for (const build of [...buildOverrides.values()].reverse()) {
     const image = findImage(build.build, element.imageHash, element.imageIndex);
-    if (image) return { element, image, materials: build.materials };
+    if (image) { return { element, image, materials: build.materials }; }
   }
   return undefined;
 }
@@ -98,12 +98,12 @@ export class SpriteMaterialDresser {
       material.color.copy(source.color).multiply(this.colour);
       material.opacity = source.opacity * this.opacity;
     }
-    for (const [base, halos] of this.bloomMaterials) for (const halo of halos.values()) halo.color.copy(base.color);
+    for (const [base, halos] of this.bloomMaterials) { for (const halo of halos.values()) { halo.color.copy(base.color); } }
   }
 
   dress(source: THREE.MeshBasicMaterial, halo?: BuildImage): THREE.MeshBasicMaterial {
     let material = this.privateMaterials.get(source);
-    if (!material && this.undressed) material = source;
+    if (!material && this.undressed) { material = source; }
     if (!material) {
       material = source.clone();
       material.color.copy(source.color).multiply(this.colour);
@@ -127,16 +127,16 @@ export class SpriteMaterialDresser {
 
   private bloom(base: THREE.MeshBasicMaterial, image: BuildImage): THREE.MeshBasicMaterial {
     let halos = this.bloomMaterials.get(base);
-    if (!halos) this.bloomMaterials.set(base, halos = new Map());
+    if (!halos) { this.bloomMaterials.set(base, halos = new Map()); }
     let material = halos.get(image);
-    if (!material) halos.set(image, material = createBloomMaterial(base, image));
+    if (!material) { halos.set(image, material = createBloomMaterial(base, image)); }
     return material;
   }
 
   dispose(): void {
-    for (const material of this.privateMaterials.values()) material.dispose();
+    for (const material of this.privateMaterials.values()) { material.dispose(); }
     this.privateMaterials.clear();
-    for (const halos of this.bloomMaterials.values()) for (const material of halos.values()) material.dispose();
+    for (const halos of this.bloomMaterials.values()) { for (const material of halos.values()) { material.dispose(); } }
     this.bloomMaterials.clear();
   }
 }
@@ -166,10 +166,10 @@ export function resolveDressedFrame(frames: readonly Animation['frames'][number]
   const followers = new Map<number, CompositeSpriteFrame[]>();
   // Each halo part, with the unpadded image its blur is bounded to.
   const halos = new Map<ResolvedSprite, BuildImage>();
-  for (const fx of composites) if (fx.symbol !== undefined && !fx.finalOffset) {
+  for (const fx of composites) { if (fx.symbol !== undefined && !fx.finalOffset) {
     const entries = followers.get(fx.symbol) ?? [];
     entries.push(fx); followers.set(fx.symbol, entries);
-  }
+  } }
   const sprites = frames.flatMap((frame) => [...frame.elements]
     .filter((element) => (!animState || animStateVisible(animState, element)) && dressing.visible(element))
     .sort((a, b) => b.z - a.z)
@@ -177,8 +177,8 @@ export function resolveDressedFrame(frames: readonly Animation['frames'][number]
       // Follower anchors can have no image in the owner's build. Resolve them before looking up body art.
       const followed = followers.get(element.imageHash);
       // Followers are their own entities; the owner's symbol light override and bloom are for its own art.
-      if (followed) return followed.flatMap(fx => fx.sprites.map(sprite => ({ ...sprite,
-        element: { ...sprite.element, matrix: composeSpriteMatrix(followMatrix(element.matrix, fx.offset), sprite.element.matrix) } })));
+      if (followed) { return followed.flatMap(fx => fx.sprites.map(sprite => ({ ...sprite,
+        element: { ...sprite.element, matrix: composeSpriteMatrix(followMatrix(element.matrix, fx.offset), sprite.element.matrix) } }))); }
       const declared = animState && resolveAnimStateSymbol(animState, element, dressing.animStateElapsed);
       const own = declared ?? dressing.resolveArt(element);
       const parts = own === undefined ? [] : Array.isArray(own) ? own : [own];
@@ -189,12 +189,12 @@ export function resolveDressedFrame(frames: readonly Animation['frames'][number]
   const elements = frames[0].elements;
   const back: ResolvedSprite[] = [], front: ResolvedSprite[] = [];
   for (const fx of composites) {
-    if (fx.symbol !== undefined && !fx.finalOffset) continue;
+    if (fx.symbol !== undefined && !fx.finalOffset) { continue; }
     let matrix: Matrix2D = [1, 0, 0, 1, 0, 0];
     if (fx.symbol !== undefined) {
       // Follower:FollowSymbol takes the symbol's position only; SetFinalOffset draws it before or after the owner.
       const anchor = elements.find(element => element.imageHash === fx.symbol);
-      if (!anchor) continue;
+      if (!anchor) { continue; }
       const [a, b, c, d, tx, ty] = anchor.matrix, [x, y] = fx.offset ?? [0, 0];
       matrix = fx.noFaced ? [dressing.mirrored ? -1 : 1, 0, 0, 1, a * x + c * y + tx, b * x + d * y + ty] : followMatrix(anchor.matrix, fx.offset);
     } else if (fx.detached) {

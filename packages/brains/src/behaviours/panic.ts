@@ -16,7 +16,7 @@ export class Panic extends BehaviourNode {
       this.PickNewDirection();
       this.status = RUNNING;
     } else {
-      if (this.now > this.waittime) this.PickNewDirection();
+      if (this.now > this.waittime) { this.PickNewDirection(); }
       this.Sleep(this.waittime - this.now);
     }
   }

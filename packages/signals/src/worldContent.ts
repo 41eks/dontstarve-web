@@ -122,7 +122,7 @@ let currentWorld: WorldContentEnvironment | undefined;
 /** The world owns the sources. Disposing an older world cannot unbind a newer world. */
 export function bindWorldContent(sources: WorldContentEnvironment): () => void {
   currentWorld = sources;
-  return () => { if (currentWorld === sources) currentWorld = undefined; };
+  return () => { if (currentWorld === sources) { currentWorld = undefined; } };
 }
 
 /** Standalone contexts without a world binding can skip world-driven behaviour. */
@@ -131,7 +131,7 @@ export function isWorldContentBound(): boolean { return currentWorld !== undefin
 /** Resolve the current world's query without passing its player position source to prefabs. */
 export function GetTileStateAtPoint(tile: ReadonlySignal<number>, radius = 10): Memo<boolean> | undefined {
   const query = currentWorld?.tickingarea;
-  if (!query) throw new Error('World tile activity is not bound');
+  if (!query) { throw new Error('World tile activity is not bound'); }
   return query(tile, radius);
 }
 
@@ -147,12 +147,12 @@ export function getWatchWorldContent<K extends WorldContentKey>(
   sources?: WorldContentEnvironment, options?: WatchWorldContentOptions,
 ): WorldContentSignal<WorldContentValues[K]> {
   const world = sources ?? currentWorld;
-  if (!world) throw new Error(`World content ${key} is not bound`);
+  if (!world) { throw new Error(`World content ${key} is not bound`); }
   const signals: WorldContentSources = world;
   const source = signals[key];
-  if (!source) throw new Error(`World content ${key} is not bound`);
-  if (!world.scheduler) throw new Error('World scheduler is not bound');
-  if (options?.tile && options.active) throw new Error(`World content ${key} is gated by either a tile or an activity`);
+  if (!source) { throw new Error(`World content ${key} is not bound`); }
+  if (!world.scheduler) { throw new Error('World scheduler is not bound'); }
+  if (options?.tile && options.active) { throw new Error(`World content ${key} is gated by either a tile or an activity`); }
   const area = options?.tile ? world.tickingarea?.(options.tile) : undefined;
   const local = watchSignal<WorldContentValues[K]>(source,
     area ? stop => registerCleanup(() => { stop(); area.dispose(); }) : registerCleanup, area ?? options?.active);

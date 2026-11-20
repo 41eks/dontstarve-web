@@ -78,7 +78,7 @@ const FRAGMENT_SHADER = /* glsl */`
 function sample<T extends readonly number[]>(stops: readonly Stop<T>[], t: number): number[] {
   for (let i = 1; i < stops.length; i++) {
     const [t1, v1] = stops[i];
-    if (t > t1 && i < stops.length - 1) continue;
+    if (t > t1 && i < stops.length - 1) { continue; }
     const [t0, v0] = stops[i - 1];
     const k = THREE.MathUtils.clamp((t - t0) / (t1 - t0), 0, 1);
     return v0.map((value, axis) => value + (v1[axis] - value) * k);
@@ -142,7 +142,7 @@ class Emitter {
   /** emit_fn: AddParticleUV inside the sphere emitter, with a random UV frame column. */
   private emit(origin: THREE.Vector3): void {
     const { spec } = this;
-    if (this.count >= spec.maxParticles) return;
+    if (this.count >= spec.maxParticles) { return; }
     const i = this.count++;
     let x: number, y: number, z: number;
     do { x = unitRand(); y = unitRand(); z = unitRand(); } while (x * x + y * y + z * z > 1);
@@ -177,7 +177,7 @@ class Emitter {
         }
         continue;
       }
-      for (let axis = 0; axis < 3; axis++) this.position[i * 3 + axis] += this.velocity[i * 3 + axis] * dt;
+      for (let axis = 0; axis < 3; axis++) { this.position[i * 3 + axis] += this.velocity[i * 3 + axis] * dt; }
       i++;
     }
   }
@@ -201,7 +201,7 @@ class Emitter {
         size.setXY(v, width * SCALE_FACTOR * WORLD_SCALE, height * SCALE_FACTOR * WORLD_SCALE);
       }
     }
-    for (const attribute of [position, uv, tint, size]) attribute.needsUpdate = true;
+    for (const attribute of [position, uv, tint, size]) { attribute.needsUpdate = true; }
     geometry.setDrawRange(0, this.count * 6);
   }
 
@@ -225,17 +225,17 @@ export class VfxEffect {
   constructor(node: THREE.Object3D, vfx: VfxJson, textures: readonly THREE.Texture[]) {
     this.node = node;
     this.emitters = vfx.emitters.map((spec, i) => new Emitter(spec, textures[i]));
-    for (const emitter of this.emitters) node.add(emitter.mesh);
+    for (const emitter of this.emitters) { node.add(emitter.mesh); }
   }
 
   update(dt: number): void {
-    if (!Number.isFinite(dt) || dt <= 0) return;
+    if (!Number.isFinite(dt) || dt <= 0) { return; }
     this.node.updateWorldMatrix(true, false);
     this.origin.setFromMatrixPosition(this.node.matrixWorld);
     this.tickRemainder = Math.min(this.tickRemainder + dt, TICK_TIME * MAX_TICKS_PER_FRAME);
     while (this.tickRemainder >= TICK_TIME) {
       this.tickRemainder -= TICK_TIME;
-      for (const emitter of this.emitters) emitter.tick(this.origin);
+      for (const emitter of this.emitters) { emitter.tick(this.origin); }
     }
     for (const emitter of this.emitters) {
       emitter.simulate(dt);
@@ -244,7 +244,7 @@ export class VfxEffect {
   }
 
   dispose(): void {
-    for (const emitter of this.emitters) emitter.dispose();
+    for (const emitter of this.emitters) { emitter.dispose(); }
     this.emitters.length = 0;
   }
 }

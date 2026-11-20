@@ -29,7 +29,7 @@ const LOOT: Readonly<Record<string, ChanceLootTable>> = {
   stalagmite_tall_med_rock: [['rocks', 1], ['rocks', 1], ['flint', 1], ['fossil_piece', .1], ['goldnugget', .15], ['flint', .6]],
   stalagmite_tall_low_rock: [['rocks', 1], ['flint', 1], ['fossil_piece', .1], ['goldnugget', .15], ['flint', .3]],
 };
-for (const [name, entries] of Object.entries(LOOT)) SetSharedLootTable(name, entries);
+for (const [name, entries] of Object.entries(LOOT)) { SetSharedLootTable(name, entries); }
 
 /** Neither prefab has OnSave / OnLoad and workable.savestate stays false: a record holds only identity and transform. */
 export interface StalagmiteWorld {
@@ -76,7 +76,7 @@ export class StalagmiteInstance extends PrefabInstance<SpriteState> {
     addComponent(this, 'inspectable', Inspectable);
     // Inspectable is an existing constructor-only dependency, so retain its source constructor tag here.
     this.addTag('inspectable');
-    if (stage !== 'full') workable.SetWorkLeft(WORK[stage]);
+    if (stage !== 'full') { workable.SetWorkLeft(WORK[stage]); }
     lootdropper.SetChanceLootTable(`${tall ? 'stalagmite_tall_' : ''}${stage}_rock`);
     // No prefab OnLoad or workable saved fields override the constructor's stage/work count/type/colour.
   }

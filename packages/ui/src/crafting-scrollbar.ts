@@ -22,9 +22,9 @@ export function createCraftingScrollbar(root: ShadowRoot): { refresh(): void; di
   }
 
   const refresh = () => {
-    if (frame) cancelAnimationFrame(frame);
+    if (frame) { cancelAnimationFrame(frame); }
     frame = 0;
-    if (disposed) return;
+    if (disposed) { return; }
     const maximum = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
     const height = Math.min(track.clientHeight, Math.max(24, track.clientHeight * viewport.clientHeight / Math.max(1, viewport.scrollHeight)));
     const travel = track.clientHeight - height;
@@ -38,7 +38,7 @@ export function createCraftingScrollbar(root: ShadowRoot): { refresh(): void; di
     track.tabIndex = maximum > 1 ? 0 : -1;
   };
   const schedule = () => {
-    if (!disposed && !frame) frame = requestAnimationFrame(refresh);
+    if (!disposed && !frame) { frame = requestAnimationFrame(refresh); }
   };
   const rowStep = () => {
     const row = viewport.querySelector<HTMLElement>('.craft-recipe-category:not([hidden]) .craft-recipe-row');
@@ -57,35 +57,35 @@ export function createCraftingScrollbar(root: ShadowRoot): { refresh(): void; di
       PageUp: -viewport.clientHeight, PageDown: viewport.clientHeight,
       Home: -viewport.scrollHeight, End: viewport.scrollHeight,
     };
-    if (!(event.key in amounts)) return;
+    if (!(event.key in amounts)) { return; }
     event.preventDefault();
     event.stopPropagation();
     scrollBy(amounts[event.key]);
   }, options);
   track.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 || event.target !== track) return;
+    if (event.button !== 0 || event.target !== track) { return; }
     event.preventDefault();
     const bounds = thumb.getBoundingClientRect();
     scrollBy(event.clientY < bounds.top ? -viewport.clientHeight : viewport.clientHeight);
   }, options);
   thumb.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0) { return; }
     event.preventDefault();
     event.stopPropagation();
     drag = { pointerId: event.pointerId, y: event.clientY, scrollTop: viewport.scrollTop };
     thumb.setPointerCapture(event.pointerId);
   }, options);
   thumb.addEventListener('pointermove', (event) => {
-    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (!drag || drag.pointerId !== event.pointerId) { return; }
     const bounds = track.getBoundingClientRect();
     const travel = track.clientHeight - thumb.offsetHeight;
-    if (bounds.height <= 0 || travel <= 0) return;
+    if (bounds.height <= 0 || travel <= 0) { return; }
     const maximum = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
     viewport.scrollTop = drag.scrollTop + (event.clientY - drag.y) * track.clientHeight / bounds.height / travel * maximum;
     refresh();
   }, options);
   const endDrag = () => {
-    if (drag && thumb.hasPointerCapture(drag.pointerId)) thumb.releasePointerCapture(drag.pointerId);
+    if (drag && thumb.hasPointerCapture(drag.pointerId)) { thumb.releasePointerCapture(drag.pointerId); }
     drag = undefined;
   };
   thumb.addEventListener('pointerup', endDrag, options);
@@ -106,7 +106,7 @@ export function createCraftingScrollbar(root: ShadowRoot): { refresh(): void; di
       listeners.abort();
       resize.disconnect();
       mutation.disconnect();
-      if (frame) cancelAnimationFrame(frame);
+      if (frame) { cancelAnimationFrame(frame); }
     },
   };
 }

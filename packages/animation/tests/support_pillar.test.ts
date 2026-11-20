@@ -124,7 +124,7 @@ it('keeps a c_spawn pillar and an imported one through c_save and a reload, and 
     expect(saved[0]).toMatchObject({ id: spawned.entityId, transform: { position: [3, 0, -6] } });
     await second.registry.restoreAll({ support_pillar: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof SupportPillarInstance)) throw new Error('The saved pillar did not load');
+    if (!(loaded instanceof SupportPillarInstance)) { throw new Error('The saved pillar did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     // OnLoad with no material: UpdateLevel keeps level 4 and plays idle_4.
     expect([loaded.suffix, clip(loaded)?.name, loaded.hasTag('quake_blocker')]).toEqual(['_4', 'idle_4', false]);

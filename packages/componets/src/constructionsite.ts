@@ -44,19 +44,19 @@ export class ConstructionSite {
   }
 
   OnSave(): ConstructionSiteSave | undefined {
-    if (this.materials.size === 0) return undefined;
+    if (this.materials.size === 0) { return undefined; }
     return { materials: Object.fromEntries([...this.materials].map(([prefab, { amount }]) => [prefab, amount])) };
   }
 
   /** OnLoad: the plan's materials take their slots, any other saved material is kept without one. */
   OnLoad(data: Partial<ConstructionSiteSave>): void {
-    if (data.materials === undefined) return;
+    if (data.materials === undefined) { return; }
     (CONSTRUCTION_PLANS[this.inst.prefab] ?? []).forEach(({ type }, index) => {
       const amount = data.materials![type];
-      if (amount !== undefined) this.materials.set(type, { amount, slot: index + 1 });
+      if (amount !== undefined) { this.materials.set(type, { amount, slot: index + 1 }); }
     });
     for (const [prefab, amount] of Object.entries(data.materials)) {
-      if (!this.materials.has(prefab)) this.materials.set(prefab, { amount });
+      if (!this.materials.has(prefab)) { this.materials.set(prefab, { amount }); }
     }
   }
 }

@@ -53,17 +53,17 @@ export class Repairable implements DerivedTags {
   }
   /** repairable.lua Repair(doer, repair_item): apply the repair, then remove one of the repair item's stack. */
   Repair(doer: unknown, item: RepairItem): boolean {
-    if (!this.CanRepair(item)) return false;
+    if (!this.CanRepair(item)) { return false; }
     const repairer = item.components!.repairer!;
-    if (this.health?.IsHurt() && repairer.healthrepairvalue > 0) this.health.DoDelta(repairer.healthrepairvalue);
-    else this.workable!.SetWorkLeft(this.workable!.GetWorkLeft() + repairer.workrepairvalue);
-    if (item.components?.stackable) item.components.stackable.Consume();
-    else item.remove?.();
+    if (this.health?.IsHurt() && repairer.healthrepairvalue > 0) { this.health.DoDelta(repairer.healthrepairvalue); }
+    else { this.workable!.SetWorkLeft(this.workable!.GetWorkLeft() + repairer.workrepairvalue); }
+    if (item.components?.stackable) { item.components.stackable.Consume(); }
+    else { item.remove?.(); }
     this.onrepaired?.(doer);
     return true;
   }
   dispose(): void {
-    if (this.disposed.peek()) return;
+    if (this.disposed.peek()) { return; }
     this.disposed.set(true);
     this.inst.removeTag(`repairable_${this.repairmaterial}`);
     this.derivedTagsMemo.dispose();

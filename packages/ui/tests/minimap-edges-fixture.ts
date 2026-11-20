@@ -9,10 +9,10 @@ import { BindTileMapSize } from '../../componets/src/tileManager';
 
 customElements.define('dst-minimap', DstMinimapElement);
 const tiles = [];
-for (let row = -4; row < 4; row++) for (let col = -4; col < 4; col++) {
-  if (col >= -1 && col <= 0 && row >= -1 && row <= 0) continue;
+for (let row = -4; row < 4; row++) { for (let col = -4; col < 4; col++) {
+  if (col >= -1 && col <= 0 && row >= -1 && row <= 0) { continue; }
   tiles.push({ col, row, tileId: WORLD_TILES.OCEAN_COASTAL });
-}
+} }
 const terrain = new TurfMap(96, tiles);
 terrain.setOriginalTile({ x: -6, z: -6 }, WORLD_TILES.WOODFLOOR);
 const groundDisplay = new GroundDisplay(terrain, '/dst/data');

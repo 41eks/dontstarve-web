@@ -25,7 +25,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
 });
 afterEach(() => {
-  for (const cleanup of cleanups.splice(0)) cleanup();
+  for (const cleanup of cleanups.splice(0)) { cleanup(); }
   vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 
@@ -175,7 +175,7 @@ it('draws its fire in the shared batches only while the plant is batched, offset
   await fire.display.artLoaded(); await new Promise(resolve => setTimeout(resolve, 0));
   const ownShown = (model: THREE.Object3D) => {
     let shown = 0;
-    model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) shown++; });
+    model.traverse(object => { if (object instanceof THREE.Mesh && object.visible) { shown++; } });
     return shown;
   };
   // fire.lua SetFinalOffset(FINALOFFSET_MAX): the effect declaration asks for the depth offset; the batch draws it.

@@ -36,9 +36,9 @@ const retained: InstancedSprite[] = [];
 const released = new Set<InstancedSprite>();
 /** Those not released yet, drawn in `scene`: a test's own entities, whatever art an earlier test's entities finish loading. */
 const live = (scene: THREE.Scene) => retained.filter(instance => {
-  if (released.has(instance)) return false;
+  if (released.has(instance)) { return false; }
   let node: THREE.Object3D | null = (instance as unknown as { model: THREE.Object3D }).model;
-  while (node && node !== scene) node = node.parent;
+  while (node && node !== scene) { node = node.parent; }
   return node === scene;
 });
 
@@ -92,7 +92,7 @@ function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () =
     exportRecords: () => prefabs.exportRecords(),
     get renderEntities() { return [...displays.renderEntities, ...placer.renderEntities]; },
     dispose() {
-      if (disposed) return;
+      if (disposed) { return; }
       disposed = true;
       placer.dispose(); prefabs.dispose(); displays.dispose(); sprites.dispose();
     },
@@ -114,7 +114,7 @@ function wallFlow(world: WorldContext, consume: () => boolean) {
     exportRecords: () => prefabs.exportRecords(),
     get renderEntities() { return [...displays.renderEntities, ...placer.renderEntities]; },
     dispose() {
-      if (disposed) return;
+      if (disposed) { return; }
       disposed = true;
       placer.dispose(); prefabs.dispose(); displays.dispose(); scheduler.dispose();
     },
@@ -237,7 +237,7 @@ it.each(['animated', 'wall'] as const)('%s right-click removes only the preview 
   }
   await begin();
   expect(store.exportState()).toEqual(paidState);
-  if (kind === 'animated') expect(lookupPrefabInstance(world.scene.children[1])?.skinId).toBe('treasurechest_cake');
+  if (kind === 'animated') { expect(lookupPrefabInstance(world.scene.children[1])?.skinId).toBe('treasurechest_cake'); }
   click(0);
   expect(consume).toHaveBeenCalledTimes(1);
   expect(displayLightOverride(world.scene.children[1])).toBe(0);
@@ -281,7 +281,7 @@ it.each(['animated', 'wall'] as const)('%s disposal removes placed sprites, prev
   await placement.spawn('building');
   await begin();
   await vi.waitFor(() => {
-    for (const model of world.scene.children) expect(lookupPrefabInstance(model)!.sprite.loaded).toBe(true);
+    for (const model of world.scene.children) { expect(lookupPrefabInstance(model)!.sprite.loaded).toBe(true); }
   });
   // The building or wall and its placer each release their instance in the shared batches.
   const resources = live(world.scene).map(instance => vi.spyOn(instance, 'dispose'));

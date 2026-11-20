@@ -117,7 +117,7 @@ it('draws the entity from its status and sprite json: sleeping completes a trans
   const placement = managedBuildings(world);
   await placement.spawn('treasurechest');
   const model = world.scene.children[0], instance = prefabInstance(model)!, sprite = instance.sprite;
-  const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) count++; }); return count; };
+  const meshes = () => { let count = 0; model.traverse(object => { if (object instanceof THREE.Mesh) { count++; } }); return count; };
   await tick();
   for (const key of ['components', 'display', 'animationController', 'getGroundPosition', 'burningSignal', 'burntSignal', 'skinIdSignal', 'fireSound', 'disposePreparedResources', 'disposeSpriteSource']) {
     expect(Object.hasOwn(model.userData, key), key).toBe(false);
@@ -275,7 +275,7 @@ it('applies a sprite json in the task that writes it and leaves unchanged frames
   const { instance, display } = createEmptyEntity('test');
   const apply = vi.spyOn(display as unknown as { applySprite(json: unknown): void }, 'applySprite');
   try {
-    for (let frame = 0; frame < 3; frame++) display.update(1 / 30);
+    for (let frame = 0; frame < 3; frame++) { display.update(1 / 30); }
     expect(apply).not.toHaveBeenCalled();
     instance.sprite.setOpacity(.5);
     expect(apply).toHaveBeenCalledOnce();

@@ -78,7 +78,7 @@ it('cancels the check while the hit clip plays and restarts it when the clip end
     expect(sprite.currentAnimation).toBe('hit');
     scheduler.advance(3);
     expect(percent).not.toHaveBeenCalled();
-    for (let i = 0; i < 90; i++) placement.displays.update(1 / 30);
+    for (let i = 0; i < 90; i++) { placement.displays.update(1 / 30); }
     scheduler.advance(0);
     expect(percent).toHaveBeenLastCalledWith('meter', 0);
   } finally { placement.dispose(); }

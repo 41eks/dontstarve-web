@@ -92,7 +92,7 @@ export class Rainfall {
     this.rate = watchSignal(options.rate, cleanup => { this.stopRate = cleanup; });
     createEffect(() => { this.particlesPerTick = options.fx.particlesPerTick * this.rate.get(); });
     void this.loadParticles().catch((error: unknown) => {
-      if (!this.disposed) console.error('Unable to load rain particles', error);
+      if (!this.disposed) { console.error('Unable to load rain particles', error); }
     });
   }
 
@@ -127,12 +127,12 @@ export class Rainfall {
     mesh.renderOrder = RENDER_ORDER;
     this.root.add(mesh);
     this.options.scene.add(this.root);
-    if (this.rate.peek() > 0) this.PostInit();
+    if (this.rate.peek() > 0) { this.PostInit(); }
   }
 
   /** rain.lua's emit_fn: a particle in the box over the emitter (CreateBoxEmitter + UnitRand). */
   private emitParticle(x: number, z: number): void {
-    if (this.count >= this.options.fx.maxParticles) return;
+    if (this.count >= this.options.fx.maxParticles) { return; }
     const i = this.count++;
     this.position.set([x + EMIT_HALF_EXTENT * unitRand(), this.options.fx.emitHeight * WORLD_SCALE,
       z + EMIT_HALF_EXTENT * unitRand()], i * 3);
@@ -177,7 +177,7 @@ export class Rainfall {
 
   /** Stretched, screen-facing quads of the scale envelope; the part under the ground is clipped away. */
   private writeGeometry(): void {
-    if (!this.mesh || !this.quads) return;
+    if (!this.mesh || !this.quads) { return; }
     const { position: attribute, positions: out, uv, uvs: uvOut } = this.quads;
     const { scale } = this.options.fx;
     const fullWidth = scale[0] * SCALE_FACTOR[0] * WORLD_SCALE / 2;
@@ -192,7 +192,7 @@ export class Rainfall {
       const halfWidth = fullWidth * nearness, halfHeight = fullHeight * nearness;
       // EnableDepthTest against the terrain: keep only the part of the streak at or above y = 0.
       const bottom = up.y > 1e-4 ? Math.max(-halfHeight, -cy / up.y) : -halfHeight;
-      if (bottom >= halfHeight) continue;
+      if (bottom >= halfHeight) { continue; }
       const v = (halfHeight - bottom) / (2 * halfHeight);
       const base = quads * 12;
       const points = [[-halfWidth, bottom], [halfWidth, bottom], [halfWidth, halfHeight], [-halfWidth, halfHeight]] as const;
@@ -231,7 +231,7 @@ export class Rainfall {
 
   /** Advance by `dt` game seconds; `cameraQuaternion` orients the billboards. */
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    if (this.disposed || !Number.isFinite(dt) || dt <= 0) return;
+    if (this.disposed || !Number.isFinite(dt) || dt <= 0) { return; }
     this.orient(cameraQuaternion);
     this.tickRemainder = Math.min(this.tickRemainder + dt, TICK_TIME * MAX_TICKS_PER_FRAME);
     while (this.tickRemainder >= TICK_TIME) {
@@ -243,7 +243,7 @@ export class Rainfall {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.stopRate();
     const mesh = this.mesh;

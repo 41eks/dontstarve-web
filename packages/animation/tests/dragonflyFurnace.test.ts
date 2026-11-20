@@ -49,7 +49,7 @@ it('builds on the source timeline, heats and lights, and hammers down to its loo
     // A drawn sprite plays its clips through; with nothing drawn they settle at once.
     await prefabDisplay(model)!.artLoaded();
     placement.update(FRAMES);
-    for (const tag of ['structure', 'wildfireprotected', 'cooker', 'HASHEATER']) expect(inst.hasTag(tag), tag).toBe(true);
+    for (const tag of ['structure', 'wildfireprotected', 'cooker', 'HASHEATER']) { expect(inst.hasTag(tag), tag).toBe(true); }
     expect(inst.components.heater!.GetHeat()).toBe(115);
     expect(inst.light.json.peek()).toMatchObject({ intensity: .5, falloff: .9, colour: [235 / 255, 121 / 255, 12 / 255] });
     expect(inst.minimap.icon).toBe('dragonfly_furnace.png');
@@ -136,7 +136,7 @@ it('c_spawn and c_save keep a skinned furnace with its contents', async () => {
   const restoredInventory = createPickupInventory(), restored = setup(restoredInventory);
   try {
     const spawn = async (id: string) => {
-      if (id !== 'dragonflyfurnace') return false;
+      if (id !== 'dragonflyfurnace') { return false; }
       placement.spawnFromSave('dragonflyfurnace', { id: 'furnace', transform: { position: [3, 0, -6], rotationY: 0 },
         components: { building: { skinId: 'dragonflyfurnace_crystal' } } });
       return true;

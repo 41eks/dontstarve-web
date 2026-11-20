@@ -71,20 +71,20 @@ export function groundFalloffGeometry(edges: readonly FalloffEdge[], assets: Gro
     const across = dx ? col : row;
     const variant = 1 + Math.abs(Math.imul(segment, 73856093) ^ Math.imul(across, 19349663) ^ Math.imul(edge, 83492791)) % assets.variants;
     const cell = assets.elements.get(String(variant).padStart(2, '0'));
-    if (!cell) throw new Error(`Ground falloff variant ${variant} is unavailable`);
+    if (!cell) { throw new Error(`Ground falloff variant ${variant} is unavailable`); }
     // The boundary line of the cell on its `dx`/`dz` side, from its low to its high end.
     const x0 = dx ? (col + (dx > 0 ? 1 : 0)) * tileSize : col * tileSize;
     const z0 = dz ? (row + (dz > 0 ? 1 : 0)) * tileSize : row * tileSize;
     const offset = positions.length / 3;
     const face = offset / 4;
     centres.set([dx ? x0 : x0 + tileSize / 2, -height / 2, dx ? z0 + tileSize / 2 : z0], face * 3);
-    for (const t of [0, tileSize]) for (const y of [0, -height]) {
+    for (const t of [0, tileSize]) { for (const y of [0, -height]) {
       positions.push(dx ? x0 : x0 + t, y, dx ? z0 + t : z0);
       // parseKtex's rows are top-down; invert XML's bottom-up V coordinates.
       const u = (along * tileSize - segment * width + t) / width;
       uvs.push(THREE.MathUtils.lerp(cell.u1, cell.u2, u),
         y === 0 ? 1 - cell.v2 : 1 - cell.v1);
-    }
+    } }
     indices.push(offset, offset + 1, offset + 2, offset + 2, offset + 1, offset + 3);
   }
   const geometry = new THREE.BufferGeometry();
@@ -101,7 +101,7 @@ export function groundFalloffGeometry(edges: readonly FalloffEdge[], assets: Gro
 /** Three.js sorts transparent objects, not faces within a merged mesh. Reorder only its index buffer. */
 export function sortGroundFalloffGeometry(geometry: THREE.BufferGeometry, modelView: THREE.Matrix4): void {
   const data = falloffFaceOrders.get(geometry);
-  if (!data || data.matrix?.equals(modelView)) return;
+  if (!data || data.matrix?.equals(modelView)) { return; }
   (data.matrix ??= new THREE.Matrix4()).copy(modelView);
   const matrix = modelView.elements;
   for (let i = 0; i < data.order.length; i++) {

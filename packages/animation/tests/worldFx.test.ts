@@ -20,7 +20,7 @@ async function spawned(fx: ReturnType<typeof createTestWorldFx>, prefab: WorldFx
   await prefabDisplay(model)!.artLoaded();
   const mesh = () => {
     let found: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]> | undefined;
-    model.traverse(object => { if (object instanceof THREE.Mesh) found = object as typeof found; });
+    model.traverse(object => { if (object instanceof THREE.Mesh) { found = object as typeof found; } });
     return found!;
   };
   return { model, mesh, instance: prefabInstance(model)! };
@@ -39,7 +39,7 @@ it('turns a spawned fx to the camera while it plays, with the entity unturned at
       const across = new THREE.Vector3(1, 0, 0).transformDirection(mesh().matrixWorld);
       expect(across.distanceTo(new THREE.Vector3(1, 0, 0).applyQuaternion(camera))).toBeCloseTo(0);
     }
-    for (let frame = 0; frame < 5; frame++) fx.update(1 / 15, turned(-Math.PI / 4));
+    for (let frame = 0; frame < 5; frame++) { fx.update(1 / 15, turned(-Math.PI / 4)); }
     scene.updateMatrixWorld();
     const origin = mesh().getWorldPosition(new THREE.Vector3());
     expect(Math.hypot(origin.x - 3, origin.z - 6)).toBeLessThan(1);
@@ -91,7 +91,7 @@ it('draws the source tint, alpha, scale and final offset, and is released with t
     expect(portal.instance.persists).toBe(false);
     expect(portal.instance.hasTag('FX')).toBe(true);
     fx.dispose();
-    for (const { instance } of [sanity, smoke, lightning, portal]) expect(instance.isRemoved).toBe(true);
+    for (const { instance } of [sanity, smoke, lightning, portal]) { expect(instance.isRemoved).toBe(true); }
     expect(scene.children).toEqual([]);
   } finally { fx.dispose(); }
 });

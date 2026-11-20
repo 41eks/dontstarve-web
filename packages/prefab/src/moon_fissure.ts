@@ -38,9 +38,9 @@ export class MoonFissureInstance extends PrefabInstance {
 function UpdateState(inst: MoonFissureInstance, moonphase: WorldMoonPhase): void {
     const level = MOON_STATES[moonphase];
     const lightstate = lightstate_data[level - 1]!;
-    for (const layer of LAYERS) inst.sprite.hideLayer(layer);
-    if (lightstate.enabled) inst.sprite.hideLayer('backing');
-    else inst.sprite.showLayer('backing');
+    for (const layer of LAYERS) { inst.sprite.hideLayer(layer); }
+    if (lightstate.enabled) { inst.sprite.hideLayer('backing'); }
+    else { inst.sprite.showLayer('backing'); }
     inst.components.sanityaura.max_distsq = lightstate.radius * lightstate.radius * 1.25 * 1.25;
     inst._level = level;
 }

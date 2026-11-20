@@ -10,7 +10,7 @@ import { prefabInstance } from '../../prefab/src/prefabInstance';
 const SPRITE_PICK_SCALE = 1.2;
 
 function mouseVisible(object: THREE.Object3D): boolean {
-    if (!object.visible && !isInstancedSpriteProxy(object)) return false;
+    if (!object.visible && !isInstancedSpriteProxy(object)) { return false; }
     const inst = findActionEntity(object) ?? prefabInstance(object);
     return !inst?.hasTag('NOCLICK');
 }
@@ -43,7 +43,7 @@ function spriteBounds(object: THREE.Object3D): THREE.Box3 {
             || part.version !== version || !part.matrix.equals(node.matrixWorld)) {
             Object.assign(part, { visible, geometry, attribute, version }); part.matrix.copy(node.matrixWorld); changed = true;
         }
-        if (visible) for (const child of node.children) inspect(child);
+        if (visible) { for (const child of node.children) { inspect(child); } }
     };
     inspect(object);
     if (count !== cache.parts.length) { cache.parts.length = count; changed = true; }
@@ -51,9 +51,9 @@ function spriteBounds(object: THREE.Object3D): THREE.Box3 {
         cache.box.makeEmpty();
         const partBox = new THREE.Box3();
         for (const part of cache.parts) {
-            if (!part.visible || !part.geometry) continue;
+            if (!part.visible || !part.geometry) { continue; }
             prepareSpatialGeometryBounds(part.geometry);
-            if (part.geometry.boundingBox) cache.box.union(partBox.copy(part.geometry.boundingBox).applyMatrix4(part.matrix));
+            if (part.geometry.boundingBox) { cache.box.union(partBox.copy(part.geometry.boundingBox).applyMatrix4(part.matrix)); }
         }
     }
     return cache.box;
@@ -76,11 +76,11 @@ function refreshPickEnvelope(entity: MouseTargetEntity): void {
     // The bounds read the current transforms, as the exact pick does.
     model.updateWorldMatrix(true, true);
     const box = spriteBounds(model);
-    if (box.isEmpty()) { if (!pickEnvelopes.has(entity)) pickEnvelopes.set(entity, 0); return; }
+    if (box.isEmpty()) { if (!pickEnvelopes.has(entity)) { pickEnvelopes.set(entity, 0); } return; }
     model.getWorldPosition(envelopeOrigin);
     box.getBoundingSphere(envelopeSphere);
     const radius = envelopeOrigin.distanceTo(envelopeSphere.center) + envelopeSphere.radius * SPRITE_PICK_SCALE;
-    if (radius > (pickEnvelopes.get(entity) ?? -1)) pickEnvelopes.set(entity, radius);
+    if (radius > (pickEnvelopes.get(entity) ?? -1)) { pickEnvelopes.set(entity, radius); }
 }
 
 /** Input:GetWorldEntityUnderMouse excludes invisible/NOCLICK entities before action selection. */
@@ -88,7 +88,7 @@ export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THR
     const hits: THREE.Intersection[] = [];
     const point = new THREE.Vector3();
     const intersect = (object: THREE.Object3D) => {
-        if (!mouseVisible(object)) return;
+        if (!mouseVisible(object)) { return; }
         let propagate = true;
         if (object.layers.test(raycaster.layers)) {
             if (object.userData.rayTestOnBB) {
@@ -96,7 +96,7 @@ export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THR
                 const box = spriteBounds(object);
                 if (!box.isEmpty() && raycaster.ray.intersectBox(box, point)) {
                     const distance = point.distanceTo(raycaster.ray.origin);
-                    if (distance >= raycaster.near && distance <= raycaster.far) hits.push({ distance, point: point.clone(), object });
+                    if (distance >= raycaster.near && distance <= raycaster.far) { hits.push({ distance, point: point.clone(), object }); }
                 }
                 return;
             }
@@ -105,11 +105,11 @@ export function intersectSpriteEntities(raycaster: THREE.Raycaster, objects: THR
             const result: unknown = object.raycast(raycaster, hits);
             propagate = result !== false;
         }
-        if (recursive && propagate) for (const child of object.children) intersect(child);
+        if (recursive && propagate) { for (const child of object.children) { intersect(child); } }
     };
     for (const object of objects) {
         let parent = object.parent;
-        while (parent && mouseVisible(parent)) parent = parent.parent;
+        while (parent && mouseVisible(parent)) { parent = parent.parent; }
         if (!parent) {
             object.updateWorldMatrix(true, true);
             intersect(object);
@@ -181,12 +181,12 @@ export class PointerRaycaster {
         objects: THREE.Object3D[],
         recursive = true,
     ): THREE.Intersection | undefined {
-        if (!this.updatePointerRay()) return undefined;
+        if (!this.updatePointerRay()) { return undefined; }
         return intersectSpriteEntities(this.raycaster, objects, recursive)[0];
     }
 
     pickMouseTarget(): THREE.Intersection | undefined {
-        if (!this.updatePointerRay()) return undefined;
+        if (!this.updatePointerRay()) { return undefined; }
         const { candidates, refreshed } = this, ray = this.raycaster.ray;
         candidates.length = 0; refreshed.length = 0;
         // Each root is refreshed once every `period` picks; one with no envelope yet is refreshed now.
@@ -196,11 +196,11 @@ export class PointerRaycaster {
         for (const entity of mouseTargets) {
             const model = entity.transform.model, envelope = pickEnvelopes.get(entity);
             const due = index++ % period === phase;
-            if (envelope === undefined || due) refreshed.push(entity);
-            else if (ray.distanceSqToPoint(model.getWorldPosition(envelopeOrigin)) > envelope * envelope) continue;
-            if (mouseVisible(model)) candidates.push(model);
+            if (envelope === undefined || due) { refreshed.push(entity); }
+            else if (ray.distanceSqToPoint(model.getWorldPosition(envelopeOrigin)) > envelope * envelope) { continue; }
+            if (mouseVisible(model)) { candidates.push(model); }
         }
-        for (const entity of refreshed) refreshPickEnvelope(entity);
+        for (const entity of refreshed) { refreshPickEnvelope(entity); }
         return intersectSpriteEntities(this.raycaster, candidates)[0] ?? this.pickPaddedTarget(candidates);
     }
 
@@ -215,27 +215,27 @@ export class PointerRaycaster {
         for (const model of candidates) {
             const bounds = spriteBounds(model);
             // Preserve transparent holes inside the original silhouette's enclosing box.
-            if (bounds.isEmpty() || raycaster.ray.intersectsBox(bounds)) continue;
+            if (bounds.isEmpty() || raycaster.ray.intersectsBox(bounds)) { continue; }
             bounds.getCenter(paddingCenter);
             paddedBounds.copy(bounds);
             paddedBounds.min.sub(paddingCenter).multiplyScalar(SPRITE_PICK_SCALE).add(paddingCenter);
             paddedBounds.max.sub(paddingCenter).multiplyScalar(SPRITE_PICK_SCALE).add(paddingCenter);
-            if (!raycaster.ray.intersectsBox(paddedBounds)) continue;
+            if (!raycaster.ray.intersectsBox(paddedBounds)) { continue; }
             // Contract the ray around the sprite centre, then reuse its exact alpha-aware picking.
             paddedRaycaster.ray.origin.copy(raycaster.ray.origin).sub(paddingCenter)
                 .multiplyScalar(1 / SPRITE_PICK_SCALE).add(paddingCenter);
             paddedRaycaster.ray.direction.copy(raycaster.ray.direction);
             const hit = intersectSpriteEntities(paddedRaycaster, [model])[0];
-            if (!hit) continue;
+            if (!hit) { continue; }
             hit.point.sub(paddingCenter).multiplyScalar(SPRITE_PICK_SCALE).add(paddingCenter);
             hit.distance = hit.point.distanceTo(raycaster.ray.origin);
-            if (!nearest || hit.distance < nearest.distance) nearest = hit;
+            if (!nearest || hit.distance < nearest.distance) { nearest = hit; }
         }
         return nearest;
     }
 
     private updatePointerRay(): boolean {
-        if (!this.hasPointerPosition) return false;
+        if (!this.hasPointerPosition) { return false; }
         const bounds = this.renderer.domElement.getBoundingClientRect();
         this.ndc.x = ((this.clientX - bounds.left) / bounds.width) * 2 - 1;
         this.ndc.y = -((this.clientY - bounds.top) / bounds.height) * 2 + 1;
@@ -263,8 +263,8 @@ export class PointerRaycaster {
     };
 
     private groundHit(): THREE.Intersection | undefined {
-        if (!this.ground) return undefined;
-        if (this.cacheGround && this.groundCached) return this.cachedGround;
+        if (!this.ground) { return undefined; }
+        if (this.cacheGround && this.groundCached) { return this.cachedGround; }
         this.ground.updateWorldMatrix(true, false);
         this.cachedGround = this.raycastPointer([this.ground], false);
         this.groundCached = true;

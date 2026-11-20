@@ -46,7 +46,7 @@ export class PhonographController {
     scheduler ??= entity.worldServices?.scheduler ?? entity.components.perishable.scheduler;
     this.ownsScheduler = scheduler === undefined;
     this.scheduler = scheduler ?? new GameTimeScheduler();
-    if (entity.worldServices?.scheduler !== this.scheduler) entity.BindScheduler(this.scheduler);
+    if (entity.worldServices?.scheduler !== this.scheduler) { entity.BindScheduler(this.scheduler); }
     const machine = addComponent(entity, 'machine', Machine, () => entity.components.perishable.scheduler ?? this.scheduler);
     machine.SetGroundOnlyMachine(true);
     machine.enabled = false;
@@ -60,9 +60,9 @@ export class PhonographController {
   get isPlaying(): boolean { return this.playtask !== undefined; }
 
   BindScheduler(scheduler: GameTimeScheduler): void {
-    if (scheduler === this.scheduler) return;
+    if (scheduler === this.scheduler) { return; }
     this.entity.BindScheduler(scheduler);
-    if (this.ownsScheduler) this.scheduler.dispose();
+    if (this.ownsScheduler) { this.scheduler.dispose(); }
     this.scheduler = scheduler; this.ownsScheduler = false;
   }
 
@@ -72,28 +72,28 @@ export class PhonographController {
   OnRecordInserted(): void {
     const machine = this.machine!;
     this.opening = true;
-    if (!machine.IsOn()) machine.TurnOn();
+    if (!machine.IsOn()) { machine.TurnOn(); }
     this.opening = false;
   }
 
   /** DropRecord: turn off, disable and drop the actual inventory contents. */
   DropRecord(): void {
     const machine = this.machine;
-    if (!machine) return;
-    if (machine.IsOn()) machine.TurnOff();
+    if (!machine) { return; }
+    if (machine.IsOn()) { machine.TurnOff(); }
     machine.enabled = false;
     this.entity.components.inventory!.DropEverything();
   }
 
   /** OnPutInInventory: a pocketed phonograph stops. */
-  OnPutInInventory(): void { if (this.machine?.IsOn()) this.machine.TurnOff(); }
+  OnPutInInventory(): void { if (this.machine?.IsOn()) { this.machine.TurnOff(); } }
   /** OnDroppedFromInventory / OnLoad: a loaded phonograph can be switched again. */
-  OnDropped(): void { if (this.machine && this.record) this.machine.enabled = true; }
+  OnDropped(): void { if (this.machine && this.record) { this.machine.enabled = true; } }
 
   /** Resume a saved song: the machine is on, with the rest of its play time. */
   resume(seconds: number): void {
     const machine = this.machine;
-    if (!machine || !this.play(seconds)) return;
+    if (!machine || !this.play(seconds)) { return; }
     machine.enabled = true;
     machine.isOn = true;
   }
@@ -109,16 +109,16 @@ export class PhonographController {
 
   play(seconds = PHONOGRAPH_PLAY_TIME, open = false): boolean {
     if (this.disposed || !this.record || !Object.hasOwn(RECORD_SONGS, this.record)
-      || !Number.isFinite(seconds) || seconds <= 0 || seconds > PHONOGRAPH_PLAY_TIME) return false;
+      || !Number.isFinite(seconds) || seconds <= 0 || seconds > PHONOGRAPH_PLAY_TIME) { return false; }
     this.sound?.stop();
     this.playtask?.Cancel();
     this.playtask = this.entity.DoTaskInTime(seconds, () => {
       this.playtask = undefined;
-      if (this.machine) this.machine.TurnOff(); else this.stop();
+      if (this.machine) { this.machine.TurnOff(); } else { this.stop(); }
     });
     this.sound = PlaySound(RECORD_SONGS[this.record], this.position, PHONOGRAPH_PLAY_TIME - seconds);
-    if (open) this.sprite.playOnce('open', () => { if (this.isPlaying) this.sprite.start('play_loop'); });
-    else this.sprite.start('play_loop');
+    if (open) { this.sprite.playOnce('open', () => { if (this.isPlaying) { this.sprite.start('play_loop'); } }); }
+    else { this.sprite.start('play_loop'); }
     return true;
   }
 
@@ -127,7 +127,7 @@ export class PhonographController {
     this.sound?.stop(); this.sound = undefined;
     this.playtask?.Cancel(); this.playtask = undefined;
     this.sprite.playOnce('idle');
-    if (wasPlaying && playEnd) PlaySound(END_SOUND, this.position);
+    if (wasPlaying && playEnd) { PlaySound(END_SOUND, this.position); }
   }
 
   snapshot(): Pick<GroundItemDefinition, 'phonographRecord' | 'playbackRemaining'> {
@@ -135,10 +135,10 @@ export class PhonographController {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.stop(false); this.disposed = true;
     this.stopEvents(); this.machine?.dispose();
-    if (this.ownsScheduler) this.scheduler.dispose();
+    if (this.ownsScheduler) { this.scheduler.dispose(); }
   }
 }
 
@@ -152,13 +152,13 @@ function onGetItemFromPlayer(inst: ItemEntity, item: ItemEntity): void {
 
 /** Register the source inventory, accept test and onaccept callback on the logical inst. */
 export function configurePhonographEntity(entity: ItemEntity, scheduler?: GameTimeScheduler): void {
-  for (const tag of ['structure', 'recordplayer', 'furnituredecor', 'groundonlymachine']) entity.addTag(tag);
+  for (const tag of ['structure', 'recordplayer', 'furnituredecor', 'groundonlymachine']) { entity.addTag(tag); }
   if (!entity.components.inventory) {
     const saved = entity.snapshot();
     const inventory = addComponent(entity, 'inventory', Inventory, 15, (item, position) => {
       const drop = entity.worldServices?.dropItem;
-      if (drop) drop(item, position);
-      else entity.components.inventoryitem.slot?.DropItem?.(item, position);
+      if (drop) { drop(item, position); }
+      else { entity.components.inventoryitem.slot?.DropItem?.(item, position); }
     });
     // Old saves only named the song. New saves retain each stored inst's identity and state.
     const items = saved.inventory ?? (saved.phonographRecord ? [{ itemId: RECORD_ID, count: 1,
@@ -173,7 +173,7 @@ export function configurePhonographEntity(entity: ItemEntity, scheduler?: GameTi
   // The song's remaining time resumes it; machine:OnLoad would restart it, so the switch is not saved apart.
   entity.OnSave = (_inst, data) => {
     delete data.machine;
-    if (controller.isPlaying) data.phonograph = { remainingSeconds: controller.remainingSeconds };
+    if (controller.isPlaying) { data.phonograph = { remainingSeconds: controller.remainingSeconds }; }
   };
   if (!entity.components.trader) {
     const trader = addComponent(entity, 'trader', Trader<ItemEntity>);
@@ -208,7 +208,7 @@ export function phonographPrefabs(world: ItemPrefabWorld): Record<string, ItemPr
         // OnLoad: a loaded machine can be switched again, and a song that was playing plays on.
         controller.OnDropped();
         const saved = inst.saveRecord?.components.phonograph;
-        if (saved?.remainingSeconds && !controller.isPlaying) controller.resume(saved.remainingSeconds);
+        if (saved?.remainingSeconds && !controller.isPlaying) { controller.resume(saved.remainingSeconds); }
       },
     }),
   };

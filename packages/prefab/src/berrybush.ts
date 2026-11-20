@@ -26,7 +26,7 @@ export function berrybushRegrowTime(pickable: Pickable): number {
 function setberries(inst: PickablePlantInstance, pct?: number): void {
   const berries = pct === undefined ? undefined : pct >= .9 ? 'berriesmost' : pct >= .33 ? 'berriesmore' : 'berries';
   for (const berry_type of BERRY_TYPES) {
-    if (berry_type === berries) inst.sprite.showLayer(berry_type); else inst.sprite.hideLayer(berry_type);
+    if (berry_type === berries) { inst.sprite.showLayer(berry_type); } else { inst.sprite.hideLayer(berry_type); }
   }
 }
 
@@ -37,7 +37,7 @@ function makeemptyfn(inst: PickablePlantInstance): void {
   } else if (inst.hasTag('withered') || inst.sprite.currentAnimation === 'dead') {
     inst.AnimState.PlayAnimation('dead_to_idle');
     inst.AnimState.PushAnimation('idle', false);
-  } else inst.AnimState.PlayAnimation('idle', true);
+  } else { inst.AnimState.PlayAnimation('idle', true); }
   setberries(inst);
 }
 
@@ -49,7 +49,7 @@ function makebarrenfn(inst: PickablePlantInstance): void {
   if (!POPULATING && (inst.hasTag('withered') || inst.sprite.currentAnimation === 'idle')) {
     inst.AnimState.PlayAnimation('idle_to_dead');
     inst.AnimState.PushAnimation('dead', false);
-  } else inst.AnimState.PlayAnimation('dead');
+  } else { inst.AnimState.PlayAnimation('dead'); }
   setberries(inst);
 }
 
@@ -70,9 +70,9 @@ function onpickedfn(inst: PickablePlantInstance): void {
 function makefullfn(inst: PickablePlantInstance): void {
   const { pickable } = inst.components;
   let anim = 'idle', berries: number | undefined;
-  if (pickable.canBePicked) berries = pickable.cyclesLeft !== undefined ? pickable.cyclesLeft / pickable.maximumCycles! : 1;
-  else if (pickable.IsBarren()) anim = 'dead';
-  if (anim !== 'idle') inst.AnimState.PlayAnimation(anim);
+  if (pickable.canBePicked) { berries = pickable.cyclesLeft !== undefined ? pickable.cyclesLeft / pickable.maximumCycles! : 1; }
+  else if (pickable.IsBarren()) { anim = 'dead'; }
+  if (anim !== 'idle') { inst.AnimState.PlayAnimation(anim); }
   else if (POPULATING) {
     inst.AnimState.PlayAnimation('idle', true);
     inst.sprite.setFrameAt(Math.random());
@@ -89,7 +89,7 @@ function dig_up_normal(inst: PickablePlantInstance): void {
     lootdropper.SpawnLootPrefab('twigs', inst.position);
     lootdropper.SpawnLootPrefab('twigs', inst.position);
   } else {
-    if (pickable.canBePicked) lootdropper.SpawnLootPrefab(pickable.product!, inst.position);
+    if (pickable.canBePicked) { lootdropper.SpawnLootPrefab(pickable.product!, inst.position); }
     lootdropper.SpawnLootPrefab(`dug_${inst.prefab}`, inst.position, inst.skinId ? `dug_${inst.skinId}` : undefined);
   }
   inst.remove();
@@ -103,12 +103,12 @@ function ontransplantfn(inst: PickablePlantInstance): void {
 
 /** The save record's skin name, which SpawnSaveRecord applies. */
 function OnSave(inst: PickablePlantInstance, data: PickablePlantRecord['components']): void {
-  if (inst.skinId) data.plant = { skinId: inst.skinId };
+  if (inst.skinId) { data.plant = { skinId: inst.skinId }; }
 }
 
 function OnLoad(inst: PickablePlantInstance, data: PickablePlantRecord['components']): void {
   const skinId = data.plant?.skinId;
-  if (skinId !== undefined && !BERRYBUSH_SKINS.some(known => known === skinId)) throw new Error(`Unsupported ${inst.prefab} skin: ${skinId}`);
+  if (skinId !== undefined && !BERRYBUSH_SKINS.some(known => known === skinId)) { throw new Error(`Unsupported ${inst.prefab} skin: ${skinId}`); }
   inst.skinId = skinId;
 }
 

@@ -47,7 +47,7 @@ export class OasislakeInstance extends PrefabInstance {
 }
 
 function OnSave(inst: OasislakeInstance, data: EntityPersistData): void {
-  if (!inst.regrowth) data.oasislake = { regrowth: false };
+  if (!inst.regrowth) { data.oasislake = { regrowth: false }; }
 }
 
 /** `data == nil or data.regrowth ~= false`: a record without the field loads as regrowing. */

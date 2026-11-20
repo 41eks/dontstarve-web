@@ -71,18 +71,18 @@ export async function createEmoteFixture() {
         for (const facing of ['up', 'down', 'side'] as const) {
           for (const mirrored of [false, true]) {
             facePlayer(animation, facing, mirrored);
-            if (!await playEmote(animation, id)) failures.push(`start:${id}`);
+            if (!await playEmote(animation, id)) { failures.push(`start:${id}`); }
             const mesh = model.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
             const before = [...mesh.geometry.getAttribute('position').array];
-            for (let f = 0; f < 8; f++) advancePlayer(animation, 1 / 30);
+            for (let f = 0; f < 8; f++) { advancePlayer(animation, 1 / 30); }
             const after = [...mesh.geometry.getAttribute('position').array];
-            if (JSON.stringify(before) !== JSON.stringify(after)) changed++;
-            else failures.push(`static:${id}:${facing}:${mirrored}`);
+            if (JSON.stringify(before) !== JSON.stringify(after)) { changed++; }
+            else { failures.push(`static:${id}:${facing}:${mirrored}`); }
             if (!mesh.geometry.drawRange.count || mesh.material.some((material) => !material.forceSinglePass)) {
               failures.push(`geometry:${id}:${facing}:${mirrored}`);
             }
-            for (let f = 0; f < 360; f++) advancePlayer(animation, 1 / 30);
-            if (((animation.emote?.id ?? null) === id) !== !!definition.loop) failures.push(`end:${id}`);
+            for (let f = 0; f < 360; f++) { advancePlayer(animation, 1 / 30); }
+            if (((animation.emote?.id ?? null) === id) !== !!definition.loop) { failures.push(`end:${id}`); }
             if (id === 'toast' && mesh.material.length < 2) {
               failures.push('toast props');
             }
@@ -100,7 +100,7 @@ export async function createEmoteFixture() {
       const torchRendered = withTorch.some((material) => !mesh.material.includes(material));
       playPickup(animation);
       const pickupInterrupts = !(animation.emote !== null);
-      for (let i = 0; i < 120; i++) advancePlayer(animation, 1 / 30);
+      for (let i = 0; i < 120; i++) { advancePlayer(animation, 1 / 30); }
       await playEmote(animation, 'dance');
       setCrafting(animation, true);
       const craftingInterrupts = !(animation.emote !== null) && !await playEmote(animation, 'happy');

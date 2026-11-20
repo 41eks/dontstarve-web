@@ -23,7 +23,7 @@ function sourceAssets() {
 
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
 const ticks = (owner: { update(dt: number): void }, seconds: number) => {
-  for (let i = 0; i < Math.round(seconds * 30); i++) owner.update(1 / 30);
+  for (let i = 0; i < Math.round(seconds * 30); i++) { owner.update(1 / 30); }
 };
 
 describe('Enlightened Crown source activation', () => {

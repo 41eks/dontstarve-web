@@ -20,7 +20,7 @@ export function bindSlotContextMenuInput(
   // Subscribe to each input transition: effects may coalesce repeated clicks and
   // must never execute an action again when only the slot's UI projection changes.
   const dispose = input.subscribe(control => {
-    if (!control) return;
+    if (!control) { return; }
     const item = slot.getItem();
     request.set({
       slot: { ...slot.address },

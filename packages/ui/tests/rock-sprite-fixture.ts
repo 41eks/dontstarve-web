@@ -28,7 +28,7 @@ export async function checkRockInstances() {
     await Promise.all(models.map(model => prefabDisplay(model)!.artLoaded()));
     await prewarmScenePasses(renderer, scene, camera);
     const calls = [await draw()];
-    const meshes = models.map(model => { let mesh: THREE.Mesh | undefined; model.traverse(object => { if (!mesh && object instanceof THREE.Mesh) mesh = object; }); return mesh!; });
+    const meshes = models.map(model => { let mesh: THREE.Mesh | undefined; model.traverse(object => { if (!mesh && object instanceof THREE.Mesh) { mesh = object; } }); return mesh!; });
     const hiddenSources = meshes.filter(mesh => !mesh.visible).length;
     const centre = new THREE.Box3().setFromObject(models[0]).getCenter(new THREE.Vector3());
     const ray = new THREE.Raycaster(centre.clone().add(new THREE.Vector3(0, 0, 50)), new THREE.Vector3(0, 0, -1));
@@ -36,11 +36,11 @@ export async function checkRockInstances() {
     const pixels = new Uint8Array(256 * 256 * 4);
     renderer.readRenderTargetPixels(target, 0, 0, 256, 256, pixels);
     let painted = 0;
-    for (let i = 0; i < pixels.length; i += 4) if (Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) > 30) painted++;
+    for (let i = 0; i < pixels.length; i += 4) { if (Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) > 30) { painted++; } }
     const mine = { entity: [...actionEntities()].find(entity => entity.hasTag('MINE_workable'))! };
-    for (let i = 0; i < 3; i++) performToolWork('MINE', mine.entity, testPlayer());
+    for (let i = 0; i < 3; i++) { performToolWork('MINE', mine.entity, testPlayer()); }
     calls.push(await draw());
-    for (let i = 0; i < 3; i++) performToolWork('MINE', mine.entity, testPlayer());
+    for (let i = 0; i < 3; i++) { performToolWork('MINE', mine.entity, testPlayer()); }
     calls.push(await draw());
     // A separate bank/build with a symbol override shares one batch across eight entities too.
     await Promise.all(Array.from({ length: 8 }, (_, index) => prefabDisplay(manager.spawn('cavein_boulder', new THREE.Vector3(index - 4, 0, 0), {

@@ -30,7 +30,7 @@ describe('original bugnet assets and Wilson action', () => {
   }
 
   function advance(controller: PlayerInstance, frames: number) {
-    for (let i = 0; i < frames; i++) advancePlayer(controller, 1 / 60);
+    for (let i = 0; i < frames; i++) { advancePlayer(controller, 1 / 60); }
   }
 
   it('uses the source ground pose, hand swap and skin builds', async () => {
@@ -39,7 +39,7 @@ describe('original bugnet assets and Wilson action', () => {
     expect(inventoryItemEquipmentKind('bugnet')).toBe('hand');
     const ground = await createGroundItemVisual('bugnet');
     const meshes: THREE.Mesh[] = [];
-    ground.model.traverse(object => { if (object instanceof THREE.Mesh) meshes.push(object); });
+    ground.model.traverse(object => { if (object instanceof THREE.Mesh) { meshes.push(object); } });
     expect(meshes).toHaveLength(1);
     expect(meshes[0].geometry.drawRange.count).toBeGreaterThan(0);
     expect((meshes[0].material as THREE.MeshBasicMaterial[])[0].name).toBe('sprite:swap_bugnet');

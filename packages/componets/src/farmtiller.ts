@@ -15,7 +15,7 @@ export class FarmTiller {
 
   /** Till: collapse the soil near the point and spawn farm_soil there; the doer hears "tilling". */
   Till(pt: Vector3, doer?: { PushEvent?(name: string, data?: unknown): void }): boolean {
-    if (!this.map?.canTill(pt) || !this.map.till(pt)) return false;
+    if (!this.map?.canTill(pt) || !this.map.till(pt)) { return false; }
     doer?.PushEvent?.('tilling');
     return true;
   }

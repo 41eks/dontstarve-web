@@ -32,9 +32,9 @@ test('subscribes to individual slot indicators, draws native meters and releases
     const button = bar.shadowRoot!.querySelector('.inventory-slot')!;
     const nodes = ['.inventory-slot__percent', '.inventory-slot__freshness', '.inventory-slot__wetness'];
     const observed = { mutations: [] as string[], icon: button.querySelector('.inventory-slot__icon') };
-    for (const selector of nodes) new MutationObserver(records => {
-      if (records.length) observed.mutations.push(selector);
-    }).observe(button.querySelector(selector)!, { attributes: true, childList: true, subtree: true });
+    for (const selector of nodes) { new MutationObserver(records => {
+      if (records.length) { observed.mutations.push(selector); }
+    }).observe(button.querySelector(selector)!, { attributes: true, childList: true, subtree: true }); }
     (window as any).slotValueFixture = { bar, button, observed };
     const address = { containerId: 'player:inventory', slotKey: '0' };
     bar.setSlot(address, { ...bar.getSlot(address)!, count: 2 });
@@ -98,7 +98,7 @@ test('renders the inst\'s tile declaration without replacing the UI item and unb
       berries: { name: '浆果', icon: 'berries.tex', maxStack: 40 },
       // A fueled prefab adds fueled and InitializeFuelLevel in its configuration.
       torch: { name: '火把', icon: 'torch.tex', maxStack: 1, maxFuel: 75,
-        configureEntity: (entity: any) => { if (!entity.components.fueled) entity.AddFueled().InitializeFuelLevel(75); } },
+        configureEntity: (entity: any) => { if (!entity.components.fueled) { entity.AddFueled().InitializeFuelLevel(75); } } },
     }, {}, entities);
     store.add('berries', 3);
     const entity = store.getEntity(address);

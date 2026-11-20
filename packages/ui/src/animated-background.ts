@@ -22,7 +22,7 @@ const requests = new Map<string, Promise<BackgroundAsset>>();
 
 function loadBackground(url: string): Promise<BackgroundAsset> {
   let request = requests.get(url);
-  if (request) return request;
+  if (request) { return request; }
   request = (async () => {
     const split = url.lastIndexOf('/');
     const { buildPackage, animations } = await loadAnimationArchive(url.slice(split + 1), url.slice(0, split));
@@ -73,16 +73,16 @@ export class AnimatedBackground {
     this.canvas = canvas;
     this.canvas.dataset.archive = url;
     void loadBackground(url).then((asset) => {
-      if (this.disposed) return;
+      if (this.disposed) { return; }
       this.asset = asset;
       this.canvas.width = asset.width;
       this.canvas.height = asset.height;
       onLayout({ width: asset.width, height: asset.height, originX: -asset.minX, originY: -asset.minY });
       this.canvas.dataset.loaded = 'true';
-      if (this.percent === undefined) this.requestId = requestAnimationFrame(this.tick);
-      else this.drawPercent();
+      if (this.percent === undefined) { this.requestId = requestAnimationFrame(this.tick); }
+      else { this.drawPercent(); }
     }).catch((error: unknown) => {
-      if (this.disposed) return;
+      if (this.disposed) { return; }
       this.canvas.dataset.error = error instanceof Error ? error.message : String(error);
     });
   }
@@ -96,13 +96,13 @@ export class AnimatedBackground {
     this.canvas.dataset.playing = 'true';
     this.onComplete = onComplete;
     this.startedAt = undefined;
-    if (this.asset && this.requestId === undefined) this.requestId = requestAnimationFrame(this.tick);
+    if (this.asset && this.requestId === undefined) { this.requestId = requestAnimationFrame(this.tick); }
   }
 
   /** AnimState:SetPercent selects a pose only when its input changes. */
   setPercent(name: string, percent: number): void {
-    if (this.disposed) return;
-    if (this.requestId !== undefined) cancelAnimationFrame(this.requestId);
+    if (this.disposed) { return; }
+    if (this.requestId !== undefined) { cancelAnimationFrame(this.requestId); }
     this.requestId = undefined;
     this.animation = name;
     this.percent = Math.max(0, Math.min(1, percent));
@@ -115,7 +115,7 @@ export class AnimatedBackground {
 
   private drawPercent(): void {
     const clip = this.asset?.clips.get(this.animation);
-    if (!clip || this.percent === undefined) return;
+    if (!clip || this.percent === undefined) { return; }
     this.drawFrame(clip, Math.min(clip.frameCount - 1, Math.floor(this.percent * clip.frameCount)));
   }
 
@@ -123,24 +123,24 @@ export class AnimatedBackground {
     const frame = clip.frames.get(frameIndex);
     const context = this.canvas.getContext('2d')!;
     context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    if (frame) context.drawImage(clip.source,
+    if (frame) { context.drawImage(clip.source,
       frame.u0 * clip.width, (1 - frame.v1) * clip.height, frame.width, frame.height,
-      frame.minX - this.asset!.minX, frame.minY - this.asset!.minY, frame.width, frame.height);
+      frame.minX - this.asset!.minX, frame.minY - this.asset!.minY, frame.width, frame.height); }
     this.canvas.dataset.frame = String(frameIndex);
   }
 
   dispose(): void {
     this.disposed = true;
-    if (this.requestId !== undefined) cancelAnimationFrame(this.requestId);
+    if (this.requestId !== undefined) { cancelAnimationFrame(this.requestId); }
     this.requestId = undefined;
     this.onComplete = undefined;
   }
 
   private readonly tick = (time: number) => {
     this.requestId = undefined;
-    if (!this.asset || this.disposed) return;
+    if (!this.asset || this.disposed) { return; }
     const clip = this.asset.clips.get(this.animation);
-    if (!clip) return;
+    if (!clip) { return; }
     this.startedAt ??= time;
     const elapsedFrame = Math.floor((time - this.startedAt) / 1000 * clip.frameRate);
     const frameIndex = Math.min(elapsedFrame, clip.frameCount - 1);

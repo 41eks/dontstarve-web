@@ -85,11 +85,11 @@ export async function checkSanityFilter() {
 
   // A high-frequency background exposes edge motion without moving the world.
   const pattern = new Uint8Array(128 * 128 * 4);
-  for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
+  for (let y = 0; y < 128; y++) { for (let x = 0; x < 128; x++) {
     const offset = (y * 128 + x) * 4;
     const value = ((x + y) % 4 < 2) ? 220 : 50;
     pattern.set([value, value / 2, 255 - value, 255], offset);
-  }
+  } }
   const patternTexture = new THREE.DataTexture(pattern, 128, 128);
   patternTexture.colorSpace = THREE.SRGBColorSpace;
   patternTexture.magFilter = THREE.LinearFilter;
@@ -102,13 +102,13 @@ export async function checkSanityFilter() {
   const after = read();
   let centreChanges = 0;
   let edgeChanges = 0;
-  for (let y = 0; y < 128; y++) for (let x = 0; x < 128; x++) {
+  for (let y = 0; y < 128; y++) { for (let x = 0; x < 128; x++) {
     const offset = (y * 128 + x) * 4;
     const changed = [0, 1, 2].some((c) => Math.abs(before[offset + c] - after[offset + c]) > 2);
-    if (!changed) continue;
-    if (x > 48 && x < 80 && y > 48 && y < 80) centreChanges++;
-    if (x < 16 || x > 112 || y < 16 || y > 112) edgeChanges++;
-  }
+    if (!changed) { continue; }
+    if (x > 48 && x < 80 && y > 48 && y < 80) { centreChanges++; }
+    if (x < 16 || x > 112 || y < 16 || y > 112) { edgeChanges++; }
+  } }
   sanity.SetCurrent(200);
   draw();
   const saneBefore = read();
@@ -134,7 +134,7 @@ export async function checkSanityFilter() {
       const frame = new Uint8Array(gl.drawingBufferWidth * gl.drawingBufferHeight * 4);
       gl.readPixels(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight, gl.RGBA, gl.UNSIGNED_BYTE, frame);
       for (let i = 0; i < frame.length; i += 4) {
-        for (let c = 0; c < 3; c++) maxBoundaryError = Math.max(maxBoundaryError, Math.abs(frame[i + c] - reference[c]));
+        for (let c = 0; c < 3; c++) { maxBoundaryError = Math.max(maxBoundaryError, Math.abs(frame[i + c] - reference[c])); }
       }
     }
   }

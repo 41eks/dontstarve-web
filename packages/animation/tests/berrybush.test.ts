@@ -74,7 +74,7 @@ it('picks native berries without consuming cycles, pauses in winter and reloads 
     const berriesShown = () => [...plantInstance(model).sprite.sprite.peek().appearance.values()]
       .some(op => op.kind === 'layer' && op.layer.startsWith('berries') && !op.hidden);
     expect(berriesShown()).toBe(true);
-    for (let frame = 0; frame < 90; frame++) s.advance(1 / 30);
+    for (let frame = 0; frame < 90; frame++) { s.advance(1 / 30); }
     expect(plantInstance(model).sprite.currentAnimation).toBe('idle');
     expect(berriesShown()).toBe(false);
     const waiting = pickable.state.timer.peek(); s.advance(100);
@@ -176,7 +176,7 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
   const s = setup();
   const drawnIndices = (model: THREE.Group) => {
     let count = 0;
-    model.traverse(object => { if (object instanceof THREE.Mesh) count += object.geometry.drawRange.count; });
+    model.traverse(object => { if (object instanceof THREE.Mesh) { count += object.geometry.drawRange.count; } });
     return count;
   };
   try {

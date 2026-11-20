@@ -116,7 +116,7 @@ it('rebuilds the declared idle clip and floor after tile sleep', async () => {
     // LAYER_BACKGROUND: its own mesh draws after every turf layer (< -0.6), outside the depth-writing instance batch.
     const meshes = floor.transform.model.getObjectsByProperty('isMesh', true) as THREE.Mesh[];
     expect(meshes.filter(mesh => mesh.visible).map(mesh => mesh.renderOrder)).toEqual([-.56]);
-    for (let node = meshes[0].parent; node && node !== floor.transform.model; node = node.parent) expect(node.renderOrder).toBe(0);
+    for (let node = meshes[0].parent; node && node !== floor.transform.model; node = node.parent) { expect(node.renderOrder).toBe(0); }
   } finally { s.dispose(); }
 });
 

@@ -153,7 +153,7 @@ it('picks DEPLOY_TILEARRIVE for the held item, arrives anywhere on the tile and 
     expect(inventory.add('farm_plow_item', 1)).toBe(true);
     expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 1)).toBe(true);
     const entity = inventory.GetActiveItem()!;
-    for (const tag of ['usedeploystring', 'tile_deploy']) expect(entity.hasTag(tag)).toBe(true);
+    for (const tag of ['usedeploystring', 'tile_deploy']) { expect(entity.hasTag(tag)).toBe(true); }
 
     // Selecting the item shows farm_plow_item_placer and its tile_outline, snapped to the tile centre.
     placer.update();

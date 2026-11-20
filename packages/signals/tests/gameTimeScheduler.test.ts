@@ -33,17 +33,17 @@ describe('game-time task queue', () => {
       expected.push({ id, at: scheduler.now + delay, order: expected.length, cancelled: false });
       stops.push(scheduler.schedule(delay, () => observed.push(id)));
     };
-    for (let i = 0; i < 10_001; i++) add(i, (Math.imul(i + 1, 2654435761) >>> 0) % 1000);
+    for (let i = 0; i < 10_001; i++) { add(i, (Math.imul(i + 1, 2654435761) >>> 0) % 1000); }
     for (let i = 0; i < 10_001; i += 3) {
       stops[i](); stops[i](); expected[i].cancelled = true;
     }
     scheduler.advanceTo(500);
     // Old handles for already-fired tasks must not cancel replacements at recycled heap indices.
     for (let i = 0; i < 10_001; i++) {
-      if (expected[i].at <= 500) stops[i]();
+      if (expected[i].at <= 500) { stops[i](); }
       else if (i % 7 === 0) { stops[i](); expected[i].cancelled = true; }
     }
-    for (let i = 10_001; i < 11_000; i++) add(i, i % 500);
+    for (let i = 10_001; i < 11_000; i++) { add(i, i % 500); }
     scheduler.advanceTo(1000);
     expect(observed).toEqual(expected.filter(task => !task.cancelled)
       .sort((a, b) => a.at - b.at || a.order - b.order).map(task => task.id));

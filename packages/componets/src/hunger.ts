@@ -34,7 +34,7 @@ export class Hunger {
   constructor(inst: HungerInst, maximum = 100, scheduler?: GameTimeScheduler) {
     this.inst = inst;
     this.SetMax(maximum);
-    if (scheduler) this.BindScheduler(scheduler);
+    if (scheduler) { this.BindScheduler(scheduler); }
   }
   get current(): number { return this.currentState.peek(); }
   get max(): number { return this.maximumState.peek(); }
@@ -43,12 +43,12 @@ export class Hunger {
     this.timer?.stop();
     this.timer = new ComponentTimer(scheduler, () => {
       this.DoDec(1);
-      if (!this.disposed && this.burning) this.timer!.start(1);
+      if (!this.disposed && this.burning) { this.timer!.start(1); }
     });
-    if (!this.disposed && this.burning) this.timer.start(1);
+    if (!this.disposed && this.burning) { this.timer.start(1); }
   }
   SetMax(amount: number): void {
-    if (finite(amount) <= 0) throw new RangeError('Maximum hunger must be positive');
+    if (finite(amount) <= 0) { throw new RangeError('Maximum hunger must be positive'); }
     batch(() => { this.maximumState.set(amount); this.currentState.set(amount); });
   }
   SetRate(rate: number): void { this.hungerrate = finite(rate); }
@@ -57,36 +57,36 @@ export class Hunger {
   IsPaused(): boolean { return !this.burning; }
   IsStarving(): boolean { return this.current <= 0; }
   Pause(): void { this.burning = false; this.timer?.stop(); }
-  Resume(): void { if (this.disposed || this.burning) return; this.burning = true; this.timer?.start(1); }
+  Resume(): void { if (this.disposed || this.burning) { return; } this.burning = true; this.timer?.start(1); }
   GetPercent(): number { return this.current / this.max; }
   SetPercent(percent: number, overtime?: boolean): void { this.SetCurrent(finite(percent) * this.max, overtime); }
   SetCurrent(current: number, overtime?: boolean): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     const old = this.current;
     this.currentState.set(Math.max(0, Math.min(finite(current), this.max)));
     this.inst.PushEvent?.('hungerdelta', { oldpercent: old / this.max, newpercent: this.GetPercent(), overtime, delta: this.current - old });
-    if (old > 0 && this.current <= 0) this.inst.PushEvent?.('startstarving');
-    else if (old <= 0 && this.current > 0) this.inst.PushEvent?.('stopstarving');
+    if (old > 0 && this.current <= 0) { this.inst.PushEvent?.('startstarving'); }
+    else if (old <= 0 && this.current > 0) { this.inst.PushEvent?.('stopstarving'); }
   }
   DoDelta(delta: number, overtime?: boolean, ignoreInvincible = false): void {
     finite(delta);
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     if (this.redirect) { this.redirect(this.inst, delta, overtime); return; }
-    if ((!ignoreInvincible && this.inst.components.health?.IsInvincible()) || this.inst.is_teleporting) return;
+    if ((!ignoreInvincible && this.inst.components.health?.IsInvincible()) || this.inst.is_teleporting) { return; }
     this.SetCurrent(this.current + delta, overtime);
   }
   DoDec(dt: number, ignoreDamage = false): void {
-    if (this.disposed || !this.burning || finite(dt) <= 0) return;
-    if (this.current > 0) this.DoDelta(-this.hungerrate * dt * this.burnrate * this.burnratemodifiers.Get(), true);
+    if (this.disposed || !this.burning || finite(dt) <= 0) { return; }
+    if (this.current > 0) { this.DoDelta(-this.hungerrate * dt * this.burnrate * this.burnratemodifiers.Get(), true); }
     else if (!ignoreDamage) {
-      if (this.overridestarvefn) this.overridestarvefn(this.inst, dt);
-      else this.inst.components.health?.DoDelta(-this.hurtrate * dt, true, 'hunger');
+      if (this.overridestarvefn) { this.overridestarvefn(this.inst, dt); }
+      else { this.inst.components.health?.DoDelta(-this.hurtrate * dt, true, 'hunger'); }
     }
   }
   LongUpdate(dt: number): void { this.DoDec(dt, true); }
   OnSave(): { hunger: number } | undefined { return this.current === this.max ? undefined : { hunger: this.current }; }
   OnLoad(data: { hunger?: number }): void {
-    if (data.hunger === undefined) return;
+    if (data.hunger === undefined) { return; }
     this.currentState.set(finite(data.hunger));
     this.DoDelta(0);
   }
@@ -95,6 +95,6 @@ export class Hunger {
 }
 
 function finite(value: number): number {
-  if (!Number.isFinite(value)) throw new RangeError('Hunger must be finite');
+  if (!Number.isFinite(value)) { throw new RangeError('Hunger must be finite'); }
   return value;
 }

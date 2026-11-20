@@ -43,7 +43,7 @@ export class Incinerator<Inst extends IncineratorInst<Item>, Item extends Incine
 
   Incinerate(doer?: object): boolean {
     const container = this.inst.components.container;
-    if (!container) return false;
+    if (!container) { return false; }
     this.incinerate_doer = doer;
     const filter = this.shouldincinerateitemfn;
     container.DestroyContentsConditionally(filter && ((_inst, item) => filter(this.inst, item)),

@@ -22,13 +22,13 @@ it('draws skinned berry layers and the snow override while retaining independent
   const second = await createSharedArchiveSprite(assets, definition, options);
   const mesh = (model: THREE.Object3D) => model.getObjectByProperty('isMesh', true) as THREE.Mesh;
   try {
-    for (const layer of ['berries', 'berriesmore']) first.setLayerHidden(layer, true);
+    for (const layer of ['berries', 'berriesmore']) { first.setLayerHidden(layer, true); }
     first.setFrame(0);
     const withSnow = mesh(first.model).geometry;
     first.setLayerHidden('snow', true);
     expect(mesh(first.model).geometry.drawRange.count).toBeLessThan(withSnow.drawRange.count);
     // Identical appearance data shares immutable geometry; changing a sibling does not rewrite it.
-    for (const layer of ['berries', 'berriesmore', 'snow']) second.setLayerHidden(layer, true);
+    for (const layer of ['berries', 'berriesmore', 'snow']) { second.setLayerHidden(layer, true); }
     expect(mesh(first.model).geometry).toBe(mesh(second.model).geometry);
     const shared = mesh(second.model).geometry;
     first.setLayerHidden('berriesmost', true);
@@ -56,7 +56,7 @@ it('shares later-selected clips without prefab clip lists while keeping opacity 
     expect(mesh(first).geometry).not.toBe(mesh(second).geometry);
     second.playOnce('moonglass_1_mined', doneSecond);
     expect(mesh(first).geometry).toBe(mesh(second).geometry);
-    for (let i = 0; i < 300 && doneFirst.mock.calls.length === 0; i++) first.update(.1);
+    for (let i = 0; i < 300 && doneFirst.mock.calls.length === 0; i++) { first.update(.1); }
     expect(doneFirst).toHaveBeenCalledOnce();
     expect(doneSecond).not.toHaveBeenCalled();
     first.update(.1);
@@ -121,7 +121,7 @@ it('pauses/resumes a source clip and accepts a caller-supplied food symbol overr
   const positions = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
   const version = positions.version;
   sprite.setPaused(true);
-  for (let i = 0; i < 10; i++) sprite.update(0.1);
+  for (let i = 0; i < 10; i++) { sprite.update(0.1); }
   expect(positions.version).toBe(version);
   sprite.setPaused(false);
   sprite.update(0.1);

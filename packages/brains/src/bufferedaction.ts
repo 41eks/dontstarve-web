@@ -8,14 +8,14 @@ import type { BrainEntity, BrainInst, Vec3 } from './types';
  */
 const ACTION_FNS: Readonly<Record<string, (doer: BrainInst, target: BrainEntity | undefined) => boolean | void>> = {
   POLLINATE: (doer, target) => {
-    if (doer.components.pollinator && target) return doer.components.pollinator.Pollinate(target) as boolean | void;
+    if (doer.components.pollinator && target) { return doer.components.pollinator.Pollinate(target) as boolean | void; }
     return undefined;
   },
   GOHOME: (doer, target) => {
-    if (doer.force_onwenthome_message) doer.PushEvent('onwenthome');
+    if (doer.force_onwenthome_message) { doer.PushEvent('onwenthome'); }
     const { spawner, childspawner } = target?.components ?? {};
-    if (spawner) return spawner.GoHome(doer);
-    if (childspawner) return childspawner.GoHome(doer);
+    if (spawner) { return spawner.GoHome(doer); }
+    if (childspawner) { return childspawner.GoHome(doer); }
     return false;
   },
 };

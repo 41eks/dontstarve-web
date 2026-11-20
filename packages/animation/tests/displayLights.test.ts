@@ -13,7 +13,7 @@ it('renders and samples only the lights displays list for active entities in the
   const lit = createEmptyEntity('lit'), asleep = createEmptyEntity('asleep'), held = createEmptyEntity('held');
   lit.instance.setPosition(130, 0, 0); asleep.instance.setPosition(131, 0, 0);
   scene.add(lit.display.model, asleep.display.model);
-  for (const { instance } of [lit, asleep, held]) instance.light.set(red);
+  for (const { instance } of [lit, asleep, held]) { instance.light.set(red); }
   // A light entity parented to `owner` has no display of its own: the owner's display lists it at the owner.
   const owner = createEmptyEntity('owner'); owner.instance.setPosition(132, 0, 0); scene.add(owner.display.model);
   const child = spawnLightEntity('lanternlight', owner.instance); child.instance.light.set({ ...red, colour: [0, 1, 0] });
@@ -51,7 +51,7 @@ it('renders and samples only the lights displays list for active entities in the
     expect(sources).toBe(0);
     expect(lighting.sampleLightLevel(sample)).toBe(0);
   } finally {
-    for (const { instance } of [lit, asleep, held]) instance.remove();
+    for (const { instance } of [lit, asleep, held]) { instance.remove(); }
     child.remove(); owner.instance.remove(); await settle();
     lighting.dispose(); scene.clear();
   }

@@ -93,8 +93,8 @@ export class BuildingPlacer<BuildId extends string> {
 
     /** Shows the placer at once; its display draws the preview when its art has loaded. */
     begin(buildId: BuildId, skinId?: string): void {
-        if (this.disposed) throw new Error('Placement has been disposed');
-        if (this.placer) return;
+        if (this.disposed) { throw new Error('Placement has been disposed'); }
+        if (this.placer) { return; }
         const spec = this.specs(buildId), art = spec.art(this.sprites, skinId);
         // MakePlacer: PlayAnimation(anim, true) with the shared placer declarations.
         const prefab = `${buildId}_placer`, clip = { name: spec.animation, billboard: true };
@@ -129,7 +129,7 @@ export class BuildingPlacer<BuildId extends string> {
 
     private followPointer(): void {
         this.cursor.update();
-        if (this.placer) this.placer.spec.onupdatetransform?.(this.placer.instance);
+        if (this.placer) { this.placer.spec.onupdatetransform?.(this.placer.instance); }
     }
 
     /** The placer's sprite and its ground-contact point for depth sorting. */
@@ -144,18 +144,18 @@ export class BuildingPlacer<BuildId extends string> {
         const target = this.player.position.clone().addScaledVector(direction, 10);
         const rayOrigin = new THREE.Vector3(target.x, target.y + 1000, target.z);
         const hit = this.pointer.raycast(rayOrigin, new THREE.Vector3(0, -1, 0), this.ground);
-        if (hit) return hit.point.clone();
+        if (hit) { return hit.point.clone(); }
         target.y = 0;
         return target;
     }
 
     dispose(): void {
-        if (this.disposed) return;
+        if (this.disposed) { return; }
         this.disposed = true;
         this.stopActionEvents();
         this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
         this.stopPlacerGate?.();
-        if (this.ownsPointer) this.pointer.dispose();
+        if (this.ownsPointer) { this.pointer.dispose(); }
         this.cancel();
         this.displays.dispose();
         this.sprites.dispose();
@@ -166,7 +166,7 @@ export class BuildingPlacer<BuildId extends string> {
             this.cancel();
             return;
         }
-        if (event.button !== 0 || event.defaultPrevented || !this.placer) return;
+        if (event.button !== 0 || event.defaultPrevented || !this.placer) { return; }
         event.preventDefault();
         this.commit(event);
     };
@@ -174,10 +174,10 @@ export class BuildingPlacer<BuildId extends string> {
     /** Commits the build at the placer's position: the building is spawned afresh and the placer released. */
     private commit(event: PointerEvent): void {
         const placer = this.placer;
-        if (!placer) return;
+        if (!placer) { return; }
         this.pointer.trackPointer(event);
         this.followPointer();
-        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(placer.buildId, placer.skinId)) return;
+        if (!this.pointer.isOverGround || !this.consumeBufferedBuild(placer.buildId, placer.skinId)) { return; }
         const position = placer.instance.position.clone();
         this.cancel();
         this.place(placer.buildId, position, placer.skinId, placer.instance);

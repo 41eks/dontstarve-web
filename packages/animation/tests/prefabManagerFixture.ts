@@ -9,7 +9,7 @@ const displayGroups = new WeakMap<object, PrefabDisplayGroup>();
 /** Tests advance their world's injected display owner directly. */
 export function prefabDisplays(manager: object): PrefabDisplayGroup {
   const displays = displayGroups.get(manager);
-  if (!displays) throw new Error('No display group registered for this test manager');
+  if (!displays) { throw new Error('No display group registered for this test manager'); }
   return displays;
 }
 

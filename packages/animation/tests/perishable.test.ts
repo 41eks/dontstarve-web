@@ -56,7 +56,7 @@ it('derives fresh, stale and spoiled from the settled red_cap timer and eats sou
   const timerChanges: unknown[] = [];
   const stop = perishable.timer.subscribe(timer => timerChanges.push(timer));
   const scheduled = perishable.updateTimer.peek();
-  for (let frame = 0; frame < 79; frame++) store.perishWorld.advance(.125);
+  for (let frame = 0; frame < 79; frame++) { store.perishWorld.advance(.125); }
   expect(timerChanges).toHaveLength(0);
   expect(perishable.updateTimer.peek()).toBe(scheduled);
   store.perishWorld.advance(.125);
@@ -207,7 +207,7 @@ it('settles partial batches before resetting freshness or perish time without ch
     { status: 'perishing', remainingSeconds: PERISH_MED * .5 - 2 },
     { status: 'perishing', remainingSeconds: PERISH_MED * 2 },
   ]);
-  for (let frame = 0; frame < 60; frame++) store.perishWorld.advance(.5);
+  for (let frame = 0; frame < 60; frame++) { store.perishWorld.advance(.5); }
   expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_MED * 2 - 30 });
   stop(); store.dispose();
 });
@@ -247,8 +247,8 @@ it.each(['SetPercent', 'SetPerishTime'] as const)('keeps the replacement when se
   const onPerish = vi.fn();
   perish.perishfn = onPerish;
   store.perishWorld.advance(2);
-  if (method === 'SetPercent') perish.SetPercent(1);
-  else perish.SetPerishTime(PERISH_MED * 2);
+  if (method === 'SetPercent') { perish.SetPercent(1); }
+  else { perish.SetPerishTime(PERISH_MED * 2); }
   expect(onPerish).toHaveBeenCalledTimes(1);
   expect(entity.isRemoved).toBe(true);
   expect(perish.timer.peek()).toEqual({ status: 'perished' });
@@ -452,7 +452,7 @@ it('gives meat and ice source perish times: meat spoils into spoiled_food, a hel
   expect(ice.hasTag('frozen')).toBe(true);
 
   world.advance(PERISH_SUPERFAST + 1);
-  for (const slot of [a, b]) store.getEntity(slot)?.components.perishable.flush();
+  for (const slot of [a, b]) { store.getEntity(slot)?.components.perishable.flush(); }
   expect(store.get(a)).toMatchObject({ itemId: 'meat', count: 2 });
   expect(store.get(b)).toBeNull();
   store.dispose();

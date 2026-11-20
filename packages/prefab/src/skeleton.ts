@@ -66,8 +66,8 @@ export class SkeletonInstance extends PrefabInstance {
     this.addTag('blocker'); // MakeSmallObstaclePhysics
     this.addTag('skeleton');
     const player = prefab === SKELETON_PLAYER_ID;
-    if (player) this.addTag('playerskeleton'); // player_custominit
-    else if (prefab !== 'skeleton') this.prefabNameOverride = 'skeleton_notplayer'; // creature_custominit
+    if (player) { this.addTag('playerskeleton'); } // player_custominit
+    else if (prefab !== 'skeleton') { this.prefabNameOverride = 'skeleton_notplayer'; } // creature_custominit
     this.addTag('inspectable');
 
     const lootdropper = addComponent(this, 'lootdropper', LootDropper, (itemId, point) => world.spawnGroundItem(
@@ -86,20 +86,20 @@ export class SkeletonInstance extends PrefabInstance {
 
   /** Player_SetSkeletonDescription. */
   SetSkeletonDescription(char: string, playername: string | undefined, cause: string | undefined, pkname?: string, userid?: string): void {
-    if (this.prefab !== SKELETON_PLAYER_ID) return;
+    if (this.prefab !== SKELETON_PLAYER_ID) { return; }
     this.description = { char, playername, userid, pkname, cause: pkname === undefined ? cause?.toLowerCase() : undefined };
   }
 }
 
 function OnLoad(inst: SkeletonInstance, data: SkeletonSaveState | undefined): void {
-  if (data?.anim === undefined) return;
+  if (data?.anim === undefined) { return; }
   inst.animnum = data.anim;
   inst.sprite.playOnce(`idle${inst.animnum}`);
 }
 
 function Player_OnLoad(inst: SkeletonInstance, data: SkeletonSaveState | undefined): void {
   OnLoad(inst, data);
-  if (!data?.char || (!data.cause && !data.pkname)) return;
+  if (!data?.char || (!data.cause && !data.pkname)) { return; }
   inst.description = { char: data.char, playername: data.playername, userid: data.userid, pkname: data.pkname, cause: data.cause };
 }
 

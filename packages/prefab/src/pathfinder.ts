@@ -49,7 +49,7 @@ function pushNode(heap: PathNode[], node: PathNode): void {
     let index = heap.push(node) - 1;
     while (index > 0) {
         const parent = (index - 1) >> 1;
-        if (!before(heap[index], heap[parent])) break;
+        if (!before(heap[index], heap[parent])) { break; }
         [heap[index], heap[parent]] = [heap[parent], heap[index]];
         index = parent;
     }
@@ -63,9 +63,9 @@ function popNode(heap: PathNode[]): PathNode {
         for (let index = 0; ;) {
             const left = index * 2 + 1, right = left + 1;
             let next = index;
-            if (left < heap.length && before(heap[left], heap[next])) next = left;
-            if (right < heap.length && before(heap[right], heap[next])) next = right;
-            if (next === index) break;
+            if (left < heap.length && before(heap[left], heap[next])) { next = left; }
+            if (right < heap.length && before(heap[right], heap[next])) { next = right; }
+            if (next === index) { break; }
             [heap[index], heap[next]] = [heap[next], heap[index]];
             index = next;
         }
@@ -99,20 +99,20 @@ export class GroundPathSearch {
 
     /** Visits up to `budget` nodes and returns how many it used; the search has finished once `result` is set. */
     advance(budget: number): number {
-        if (this.result !== undefined) return 0;
-        if (!this.started && !this.begin()) return 0;
+        if (this.result !== undefined) { return 0; }
+        if (!this.started && !this.begin()) { return 0; }
         const { open, costs, cellSize, target } = this;
         let used = 0;
         while (used < budget) {
             if (open.length === 0 || this.visited >= this.maxVisited) { this.result = null; break; }
             const current = popNode(open);
-            if (current.cost !== costs.get(nodeKey(current.x, current.z))) continue;
+            if (current.cost !== costs.get(nodeKey(current.x, current.z))) { continue; }
             this.visited += 1;
             used += 1;
             const currentPoint = this.point(current);
             if (this.heuristic(current.x, current.z) <= cellSize * 1.5 && this.clearSegment(currentPoint, target)) {
                 const path = [target.clone()];
-                for (let node: PathNode | undefined = current; node?.parent; node = node.parent) path.push(this.point(node));
+                for (let node: PathNode | undefined = current; node?.parent; node = node.parent) { path.push(this.point(node)); }
                 this.result = path.reverse();
                 break;
             }
@@ -134,19 +134,19 @@ export class GroundPathSearch {
     private expand(current: PathNode, currentPoint: THREE.Vector3): void {
         for (let dx = -1; dx <= 1; dx++) {
             for (let dz = -1; dz <= 1; dz++) {
-                if (dx === 0 && dz === 0) continue;
+                if (dx === 0 && dz === 0) { continue; }
                 const x = current.x + dx;
                 const z = current.z + dz;
                 const cost = current.cost + Math.hypot(dx, dz) * this.cellSize;
                 const key = nodeKey(x, z);
-                if (cost >= (this.costs.get(key) ?? Infinity)) continue;
+                if (cost >= (this.costs.get(key) ?? Infinity)) { continue; }
                 const next = { x, z, cost, score: cost + this.heuristic(x, z), order: this.order++, parent: current };
                 const nextPoint = this.point(next);
-                if (!this.isWalkable(nextPoint) || !this.clearSegment(currentPoint, nextPoint)) continue;
+                if (!this.isWalkable(nextPoint) || !this.clearSegment(currentPoint, nextPoint)) { continue; }
                 // Do not cut diagonally through blocked corners.
                 if (dx !== 0 && dz !== 0 && (
                     !this.isWalkable(this.point({ ...current, x })) || !this.isWalkable(this.point({ ...current, z }))
-                )) continue;
+                )) { continue; }
                 this.costs.set(key, cost);
                 pushNode(this.open, next);
             }
@@ -174,7 +174,7 @@ export function isClearSegment(from: THREE.Vector3, to: THREE.Vector3, spacing: 
     const steps = Math.max(1, Math.ceil(Math.hypot(to.x - from.x, to.z - from.z) / spacing));
     for (let i = 1; i <= steps; i++) {
         sample.lerpVectors(from, to, i / steps);
-        if (!isWalkable(sample)) return false;
+        if (!isWalkable(sample)) { return false; }
     }
     return true;
 }
@@ -207,9 +207,9 @@ export class Pathfinder implements LocoMotorPathfinder {
   /** Walls sharing a path tile keep it blocked until the last one leaves. */
   RemoveWall(point: LocoMotorPoint): void {
     const key = wallKey(point), count = this.walls.get(key);
-    if (count === undefined) return;
-    if (count > 1) this.walls.set(key, count - 1);
-    else this.walls.delete(key);
+    if (count === undefined) { return; }
+    if (count > 1) { this.walls.set(key, count - 1); }
+    else { this.walls.delete(key); }
   }
 
   IsClear(from: LocoMotorPoint, to: LocoMotorPoint, caps?: PathCaps): boolean {
@@ -228,7 +228,7 @@ export class Pathfinder implements LocoMotorPathfinder {
   /** Undefined for a handle with no search, as locomotor.lua's "LOST PATH SEARCH" expects. */
   GetSearchStatus(handle: number): SearchStatus | undefined {
     const search = this.searches.get(handle);
-    if (!search) return undefined;
+    if (!search) { return undefined; }
     const { result } = search.work;
     return result === undefined ? STATUS_CALCULATING : result === null ? STATUS_NOPATH : STATUS_FOUNDPATH;
   }
@@ -245,8 +245,8 @@ export class Pathfinder implements LocoMotorPathfinder {
   update(budget = NODES_PER_UPDATE): void {
     let left = budget;
     for (const { work } of this.searches.values()) {
-      if (work.result !== undefined) continue;
-      if (left <= 0) break;
+      if (work.result !== undefined) { continue; }
+      if (left <= 0) { break; }
       left -= work.advance(left);
     }
   }
@@ -255,7 +255,7 @@ export class Pathfinder implements LocoMotorPathfinder {
   private walkable(caps: PathCaps | undefined): (point: THREE.Vector3) => boolean {
     const land = !caps?.ignoreLand, ocean = caps?.allowocean === true, walls = !caps?.ignorewalls;
     return point => {
-      if (!(land && this.map.isPassableAtPoint(point)) && !(ocean && this.map.isOceanAtWorld(point))) return false;
+      if (!(land && this.map.isPassableAtPoint(point)) && !(ocean && this.map.isOceanAtWorld(point))) { return false; }
       return !walls || !this.walls.has(wallKey(point));
     };
   }

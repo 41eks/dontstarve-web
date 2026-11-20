@@ -35,10 +35,10 @@ function setup() {
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', { tickingarea: () => createMemo(() => awake.get()) });
   for (const declared of [pillarPrefabs(), atriumPillarPrefabs(), archivePillarPrefabs(), monkeyPillarPrefabs({ scheduler }),
-    vaultPillarPrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) })]) prefabs.register(declared);
+    vaultPillarPrefabs({ spawnPrefab: (id, position) => prefabs.spawn(id, position) })]) { prefabs.register(declared); }
   const registry = new EntityRegistry([], prefabs, () => new THREE.Vector3(12, 0, -6)), inventory = createInventoryStore([]);
   for (const definition of [PREFAB_DEFINITIONS.cavePillars, PREFAB_DEFINITIONS.atriumPillars, PREFAB_DEFINITIONS.archivePillars,
-    PREFAB_DEFINITIONS.vaultPillars, PREFAB_DEFINITIONS.monkeyPillars]) registry.registerPrefabs(definition);
+    PREFAB_DEFINITIONS.vaultPillars, PREFAB_DEFINITIONS.monkeyPillars]) { registry.registerPrefabs(definition); }
   const template = deserializeSave(JSON.stringify(initialWorld), SAVE_CATALOG);
   return { scene, awake, scheduler, prefabs, registry, inventory,
     find: <Instance extends PrefabInstance = PrefabInstance>(id: string) => scene.children.map(model => prefabInstance<PrefabInstance>(model)!).find(inst => inst.prefab === id) as Instance,
@@ -54,7 +54,7 @@ const requested = (archive: string) => (fetch as unknown as ReturnType<typeof vi
 /** Advances game time to the end of the pillar's playing clip, whose animover plays the next one. */
 const finishClip = async (scheduler: GameTimeScheduler, pillar: MonkeyPillarInstance) => {
   const playing = pillar.animstate.animation.peek();
-  for (let frame = 0; frame < 300 && pillar.animstate.animation.peek() === playing; frame++) scheduler.advance(FRAMES);
+  for (let frame = 0; frame < 300 && pillar.animstate.animation.peek() === playing; frame++) { scheduler.advance(FRAMES); }
   expect(pillar.animstate.animation.peek()).not.toBe(playing);
   await turn();
 };
@@ -142,7 +142,7 @@ it('save records load with the clip, tags and bank their Lua declares', async ()
     expect(monkey.animstate.animation.peek()).not.toBe(first);
     expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle3', loop: false, finished: false });
     // The move trigger, 15 to 25 seconds after spawning, plays idle3_move at the next animover, then idle3 again.
-    for (let clip = 0; clip < 6 && monkey.animstate.animation.peek().name !== 'idle3_move'; clip++) await finishClip(s.scheduler, monkey);
+    for (let clip = 0; clip < 6 && monkey.animstate.animation.peek().name !== 'idle3_move'; clip++) { await finishClip(s.scheduler, monkey); }
     expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle3_move', loop: false, finished: false });
     await finishClip(s.scheduler, monkey);
     expect(monkey.sprite.sprite.peek().clip.name).toBe('idle3');

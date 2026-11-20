@@ -51,11 +51,11 @@ export class PlayerProx<Inst extends PlayerProxInst = PlayerProxInst> {
     // A private tile key gates the player positions by tickingarea; the inst's position is read once, so it must not move.
     const tracker = new TileTracker(() => inst.getPosition());
     this.playerpositions = getWatchWorldContent?.(WorldContentKey.PlayerPositions, stop => { this.stopPlayers = stop; }, { tile: tracker.tile });
-    if (this.playerpositions) this.playerTiles = createMemo(() => this.playerpositions!.get().map(GetTileCoordsAtPoint));
-    if (this.playerpositions) createEffect(() => {
+    if (this.playerpositions) { this.playerTiles = createMemo(() => this.playerpositions!.get().map(GetTileCoordsAtPoint)); }
+    if (this.playerpositions) { createEffect(() => {
       this.playerpositions!.get();
       this.ForceUpdate();
-    });
+    }); }
     this.Schedule();
     const area = this.playerpositions?.area;
     if (area) {
@@ -64,7 +64,7 @@ export class PlayerProx<Inst extends PlayerProxInst = PlayerProxInst> {
       let previous = active.peek();
       createEffect(() => {
         const now = active.get();
-        if (now === previous) return;
+        if (now === previous) { return; }
         previous = now;
         if (!now) { if (this.enabled) { this.ForceUpdate(); this.Stop(); this.pausedByArea = true; } }
         else if (this.pausedByArea) { this.pausedByArea = false; this.Schedule(); this.ForceUpdate(); }
@@ -76,25 +76,25 @@ export class PlayerProx<Inst extends PlayerProxInst = PlayerProxInst> {
   SetOnPlayerFar(fn: PlayerProxOnFarFn<Inst> | undefined): void { this.onfar = fn; }
   IsPlayerClose(): boolean { return this.close.peek(); }
   Schedule(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.enabled = true;
   }
   ForceUpdate(): void {
-    if (!this.enabled || this.disposed || !this.inst.isValid()) return;
+    if (!this.enabled || this.disposed || !this.inst.isValid()) { return; }
     const origin = this.inst.getPosition(), wasClose = this.close.peek();
     const distance = wasClose ? this.far : this.near;
     const tile = GetTileCoordsAtPoint(origin);
     const tileRange = Math.ceil(Math.abs(distance) / TILE_SIZE);
     const playerTiles = this.playerTiles?.peek();
     const isClose = this.playerpositions?.peek().some((point, index) => {
-      if (getTileDistance(tile, playerTiles![index]) > tileRange) return false;
+      if (getTileDistance(tile, playerTiles![index]) > tileRange) { return false; }
       // Entities in one tile can straddle the radius boundary; only the tile
       // distance is shared, while exact distance and hysteresis remain private.
       return point.distanceToSquared(origin) < distance ** 2;
     }) ?? false;
-    if (wasClose === isClose) return;
+    if (wasClose === isClose) { return; }
     this.close.set(isClose);
-    if (isClose) this.onnear?.(this.inst); else this.onfar?.(this.inst);
+    if (isClose) { this.onnear?.(this.inst); } else { this.onfar?.(this.inst); }
   }
   Stop(): void { this.enabled = false; this.pausedByArea = false; }
   OnEntityWake(): void { this.Schedule(); this.ForceUpdate(); }

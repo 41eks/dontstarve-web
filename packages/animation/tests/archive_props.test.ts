@@ -44,8 +44,8 @@ function setup() {
   /** Restore every archive prop of a saved world, as the scene loader does. */
   const load = (json: string) => {
     for (const [prefabId, records] of Object.entries(deserializeSave(json, SAVE_CATALOG).world.entities)) {
-      if (!(PREFAB_DEFINITIONS.archiveProps.prefabIds as readonly string[]).includes(prefabId)) continue;
-      for (const record of records) prefabs.restore(prefabId, record);
+      if (!(PREFAB_DEFINITIONS.archiveProps.prefabIds as readonly string[]).includes(prefabId)) { continue; }
+      for (const record of records) { prefabs.restore(prefabId, record); }
     }
   };
   const find = <Instance extends PrefabInstance = PrefabInstance>(id: string) =>
@@ -78,7 +78,7 @@ it('mines an archive_moon_statue down for its loot and keeps its pose through sa
     // MARBLEPILLAR_MINE = 10 works; the final one drops the table (the 5% nugget misses at .5), collapses and removes the statue.
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 });
     const [mine] = workTargets('MINE', s.scene);
-    for (let i = 0; i < 9; i++) expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
+    for (let i = 0; i < 9; i++) { expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true); }
     expect(statue.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_low_3', loop: true });
     expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
     expect(workTargets('MINE', s.scene)).toEqual([]); expect(s.prefabs.exportRecords()).toEqual([]);

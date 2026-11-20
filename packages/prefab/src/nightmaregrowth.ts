@@ -25,7 +25,7 @@ const ASSETS = { animationArchive: 'nightmaregrowth.zip', buildArchives: ['night
 
 /** nightmaregrowth.lua OnRemove, its inst.OnRemoveEntity: the crack goes with the growth. */
 function OnRemove(inst: NightmareGrowthInstance): void {
-  if (inst._crack && !inst._crack.isRemoved) inst._crack.remove();
+  if (inst._crack && !inst._crack.isRemoved) { inst._crack.remove(); }
 }
 
 /**
@@ -50,7 +50,7 @@ export class NightmareGrowthInstance extends PrefabInstance {
   }
 
   private SpawnCrack(): void {
-    if (this._crack && !this._crack.isRemoved) return;
+    if (this._crack && !this._crack.isRemoved) { return; }
     // Not parented: the crack is its own unsaved entity (persists = false), which OnRemove removes.
     const crack = this._crack = this.world.spawnPrefab(NIGHTMAREGROWTH_CRACK_ID, new Vector3(this.position.x, 0, this.position.z));
     if (this._crack_rotation !== undefined) {
@@ -63,11 +63,11 @@ export class NightmareGrowthInstance extends PrefabInstance {
   override OnSave(_inst: unknown, data: EntityPersistData): void {
     const crack = this._crack && !this._crack.isRemoved ? this._crack : undefined;
     const rotation = crack ? crack.GetRotation() : this._crack_rotation;
-    if (rotation !== undefined) data.nightmareGrowth = { crackRotation: rotation };
+    if (rotation !== undefined) { data.nightmareGrowth = { crackRotation: rotation }; }
   }
 
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
-    if (data.nightmareGrowth?.crackRotation !== undefined) this._crack_rotation = data.nightmareGrowth.crackRotation;
+    if (data.nightmareGrowth?.crackRotation !== undefined) { this._crack_rotation = data.nightmareGrowth.crackRotation; }
   }
 }
 
@@ -78,7 +78,7 @@ export class NightmareGrowthCrackInstance extends PrefabInstance {
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce('crack_idle');
     this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);
-    for (const tag of ['FX', 'NOCLICK', 'DECOR']) this.addTag(tag);
+    for (const tag of ['FX', 'NOCLICK', 'DECOR']) { this.addTag(tag); }
     this.persists = false;
     this.SetRotation(random() * 360);
   }

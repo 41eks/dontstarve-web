@@ -59,7 +59,7 @@ function settleDerived(): void {
     while (pendingDerived.size) {
         const effects = [...pendingDerived];
         pendingDerived.clear();
-        for (const effect of effects) effect.runner();
+        for (const effect of effects) { effect.runner(); }
     }
 }
 
@@ -68,7 +68,7 @@ function settleMemos(): void {
         settleDerived();
         const effects = [...pendingMemos];
         pendingMemos.clear();
-        for (const effect of effects) effect.runner();
+        for (const effect of effects) { effect.runner(); }
     }
 }
 
@@ -78,13 +78,13 @@ export function batch<T>(fn: () => T): T {
     try {
         return fn();
     } finally {
-        if (batchDepth > 1) batchDepth--;
+        if (batchDepth > 1) { batchDepth--; }
         else {
             try {
                 settleMemos();
             } finally { batchDepth--; }
             const notifications = pendingListeners.splice(0);
-            for (const notify of notifications) notify();
+            for (const notify of notifications) { notify(); }
         }
     }
 }
@@ -118,10 +118,10 @@ function createEffectInternal(fn: () => void, synchronous: boolean, memo?: true)
         disposed: false,
         synchronous,
         runner: () => {
-            if (effect.disposed) return;
+            if (effect.disposed) { return; }
             // ✨ 核心清理动作：执行前，先把自己从所有旧的 Signal 依赖中清除
             cleanup(effect);
-            if (effect.disposed) return;
+            if (effect.disposed) { return; }
 
             // 处理嵌套，保存上一层的 Effect 对象
             const parentEffect = activeEffect;
@@ -151,12 +151,12 @@ export function createRenderEffect(fn: () => void) {
 }
 
 function disposeEffect(effect: Effect): void {
-    if (effect.disposed) return;
+    if (effect.disposed) { return; }
     effect.disposed = true;
     pendingMemos.delete(effect);
     pendingDerived.delete(effect);
     queue.delete(effect.runner);
-    for (const owner of effect.owners ?? []) owner.effects.delete(effect);
+    for (const owner of effect.owners ?? []) { owner.effects.delete(effect); }
     effect.owners?.clear();
     cleanup(effect);
 }
@@ -175,7 +175,7 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
     }
 
     function setState(newValue: T) {
-        if (_state === newValue) return; // 优化：值没变就不触发更新
+        if (_state === newValue) { return; } // 优化：值没变就不触发更新
         const previous = _state;
         _state = newValue;
 
@@ -186,17 +186,17 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
             const effect = currentSubscribers[i];
             if (effect != activeEffect && !effect.disposed) {
                 if (effect.synchronous) {
-                    if (batchDepth === 0) effect.runner();
-                    else if (effect.memo) pendingDerived.add(effect);
-                    else pendingMemos.add(effect);
+                    if (batchDepth === 0) { effect.runner(); }
+                    else if (effect.memo) { pendingDerived.add(effect); }
+                    else { pendingMemos.add(effect); }
                 }
-                else enqueue(effect.runner);
+                else { enqueue(effect.runner); }
             }
         }
         for (const listener of [...listeners]) {
-            const notify = () => { if (listeners.has(listener)) listener(newValue, previous); };
-            if (batchDepth > 0) pendingListeners.push(notify);
-            else notify();
+            const notify = () => { if (listeners.has(listener)) { listener(newValue, previous); } };
+            if (batchDepth > 0) { pendingListeners.push(notify); }
+            else { notify(); }
         }
     }
 
@@ -226,7 +226,7 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
         subscribe(listener) {
             listeners.add(listener);
             const stop = () => { listeners.delete(listener); owner?.listeners.delete(stop); };
-            if (owner && !owner.stopped) owner.listeners.add(stop);
+            if (owner && !owner.stopped) { owner.listeners.add(stop); }
             return stop;
         },
     };
@@ -268,8 +268,8 @@ function cleanup(effect: Effect) {
     // 清空自己的账本，等待下一次运行重新收集
     deps.length = 0;
     depsIndices.length = 0;
-    if (errors.length === 1) throw errors[0];
-    if (errors.length > 1) throw new AggregateError(errors, 'Failed to clean up effect');
+    if (errors.length === 1) { throw errors[0]; }
+    if (errors.length > 1) { throw new AggregateError(errors, 'Failed to clean up effect'); }
 }
 
 
@@ -288,7 +288,7 @@ function enqueue(fn: () => void) {
 
 // 核心：事件循环
 function _run() {
-    if (running) return; // 已在运行，直接退出
+    if (running) { return; } // 已在运行，直接退出
     running = true;
     Promise.resolve().then(() => {
         while (queue.size) {
@@ -323,21 +323,21 @@ export function watchSignal<T>(source: ReadonlySignal<T>, registerCleanup: (stop
     const owner: SignalObserverScope = { stopped: false, effects: new Set(), listeners: new Set() };
     const local = createSignalInternal(source.peek(), owner);
     const stop = createEffect(() => {
-        if (active && !active.get()) return;
+        if (active && !active.get()) { return; }
         local.set(source.get());
     }, true);
     const dispose = () => {
-        if (owner.stopped) return;
+        if (owner.stopped) { return; }
         owner.stopped = true;
         const errors: unknown[] = [];
         const release = (fn: () => void) => { try { fn(); } catch (error) { errors.push(error); } };
-        for (const unsubscribe of [...owner.listeners]) release(unsubscribe);
-        for (const effect of [...owner.effects]) release(() => disposeEffect(effect));
+        for (const unsubscribe of [...owner.listeners]) { release(unsubscribe); }
+        for (const effect of [...owner.effects]) { release(() => disposeEffect(effect)); }
         // Retain the final local value on removal inside a game-time transaction.
         release(settleMemos);
         release(stop);
-        if (errors.length === 1) throw errors[0];
-        if (errors.length > 1) throw new AggregateError(errors, 'Failed to stop watched signal');
+        if (errors.length === 1) { throw errors[0]; }
+        if (errors.length > 1) { throw new AggregateError(errors, 'Failed to stop watched signal'); }
     };
     try { registerCleanup(dispose); }
     catch (error) { dispose(); throw error; }
@@ -354,39 +354,39 @@ export function createMemo<T>(fn: () => T): Memo<T> {
     const listeners = new Set<SignalListener<T>>();
     /** The value before the current batch, while a commit notification is queued. */
     let beforeBatch: { value: T } | undefined;
-    const notify = (value: T, previous: T) => { for (const listener of [...listeners]) if (listeners.has(listener)) listener(value, previous); };
+    const notify = (value: T, previous: T) => { for (const listener of [...listeners]) { if (listeners.has(listener)) { listener(value, previous); } } };
 
     // Derived values stay current within a game frame; presentation effects
     // still use the normal microtask queue to batch their work.
     const stop = createEffectInternal(() => {
         const newValue = fn();
         const previous = memoState.peek() as T;
-        if (newValue === previous) return;
+        if (newValue === previous) { return; }
         memoState.set(newValue);
-        if (!listeners.size) return;
+        if (!listeners.size) { return; }
         if (batchDepth === 0) { notify(newValue, previous); return; }
         // Recomputed for reads inside the batch: subscribers hear once, at the commit, of the net change.
-        if (beforeBatch) return;
+        if (beforeBatch) { return; }
         beforeBatch = { value: previous };
         pendingListeners.push(() => {
             const { value: before } = beforeBatch!;
             beforeBatch = undefined;
             const value = memoState.peek() as T;
-            if (value !== before) notify(value, before);
+            if (value !== before) { notify(value, before); }
         });
     }, true, true);
     let disposed = false;
 
-    const read = () => { if (pendingDerived.size) settleDerived(); return memoState.get() as T; };
+    const read = () => { if (pendingDerived.size) { settleDerived(); } return memoState.get() as T; };
     return Object.assign(read, {
         get: read,
-        peek: () => { if (pendingDerived.size) settleDerived(); return memoState.peek() as T; },
+        peek: () => { if (pendingDerived.size) { settleDerived(); } return memoState.peek() as T; },
         subscribe: (listener: SignalListener<T>) => {
             listeners.add(listener);
             return () => { listeners.delete(listener); };
         },
         dispose() {
-            if (disposed) return;
+            if (disposed) { return; }
             disposed = true;
             // A timer callback may remove an entity inside an outer batch. Preserve
             // its final derived snapshot before releasing the pending dependencies.

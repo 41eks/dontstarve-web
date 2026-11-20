@@ -66,11 +66,11 @@ test('plants butterflies and saplings, picks the restored flower and saves its p
     const { scene, view, playerStats } = (window as any).plantGame;
     const flower = scene.children.find((model: any) => (window as any).__prefabInstance(model)?.prefab === 'flower');
     let mesh: any;
-    flower.traverse((object: any) => { if (object.isMesh && !mesh) mesh = object; });
+    flower.traverse((object: any) => { if (object.isMesh && !mesh) { mesh = object; } });
     mesh.updateWorldMatrix(true, false);
     const vertices = mesh.geometry.getAttribute('position'), center = flower.position.clone().set(0, 0, 0);
     const count = mesh.geometry.drawRange.count / 6 * 4;
-    for (let i = 0; i < count; i++) center.add(mesh.localToWorld(flower.position.clone().fromBufferAttribute(vertices, i)));
+    for (let i = 0; i < count; i++) { center.add(mesh.localToWorld(flower.position.clone().fromBufferAttribute(vertices, i))); }
     center.divideScalar(count).project(view.camera);
     const bounds = view.renderer.domElement.getBoundingClientRect();
     return { x: bounds.left + (center.x + 1) * bounds.width / 2, y: bounds.top + (1 - center.y) * bounds.height / 2,

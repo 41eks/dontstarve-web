@@ -26,7 +26,7 @@ export async function benchmarkInstancePreparation() {
       scene.updateMatrixWorld();
       const start = performance.now(); assets.instancedSprites.render(renderer, camera, undefined, scene);
       const elapsed = performance.now() - start;
-      if (frame >= 30) samples.push(elapsed);
+      if (frame >= 30) { samples.push(elapsed); }
       // Consume uploads outside the preparation measurement.
       const automatic = scene.matrixWorldAutoUpdate; scene.matrixWorldAutoUpdate = false;
       renderer.render(scene, camera); scene.matrixWorldAutoUpdate = automatic;

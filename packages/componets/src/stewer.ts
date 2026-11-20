@@ -77,14 +77,14 @@ export class Stewer {
   /** The container the stewer was added beside; the prefab adds it first. */
   private get container(): StewerContainer {
     const container = this.inst.components.container;
-    if (!container) throw new Error(`${this.inst.prefab} has no container for its stewer`);
+    if (!container) { throw new Error(`${this.inst.prefab} has no container for its stewer`); }
     return container;
   }
 
   private refreshReady(): void {
     const container = this.container;
-    if (!container.IsOpen() && container.IsFull()) this.inst.addTag('readytocook');
-    else this.inst.removeTag('readytocook');
+    if (!container.IsOpen() && container.IsFull()) { this.inst.addTag('readytocook'); }
+    else { this.inst.removeTag('readytocook'); }
   }
 
   CanCook(): boolean { return !this.removed && this.container.IsFull(); }
@@ -95,13 +95,13 @@ export class Stewer {
 
   /** stewer.lua:Harvest; the receiver gives the product to inventory or drops it. */
   Harvest(harvester?: StewerHarvester): boolean {
-    if (this.removed || !this.done) return false;
+    if (this.removed || !this.done) { return false; }
     if (this.product) {
       const count = this.GetRecipeForProduct()?.stacksize ?? 1;
       if (harvester) {
-        if (!harvester.giveItem(this.product, count, this.inst.position)) return false;
-      } else if (this.dropProduct) this.dropProduct(this.product, count);
-      else return false;
+        if (!harvester.giveItem(this.product, count, this.inst.position)) { return false; }
+      } else if (this.dropProduct) { this.dropProduct(this.product, count); }
+      else { return false; }
     }
     this.onharvest?.(this.inst);
     this.product = undefined;
@@ -113,11 +113,11 @@ export class Stewer {
   }
 
   StartCooking(doer?: { userid?: string }): boolean {
-    if (this.removed || this.cookTask.remainingSeconds !== undefined) return false;
+    if (this.removed || this.cookTask.remainingSeconds !== undefined) { return false; }
     const container = this.container;
     const names = container.GetAllItems().map(item => item.prefab);
     const recipe = CalculateRecipe(this.inst.prefab, names);
-    if (!recipe) return false;
+    if (!recipe) { return false; }
     this.chef_id = doer?.userid;
     this.ingredient_prefabs = names;
     this.done = false;
@@ -144,7 +144,7 @@ export class Stewer {
 
   /** stewer.lua LongUpdate: time that passed outside the scheduler, such as a skipped stretch of the world. */
   LongUpdate(dt: number): void {
-    if (this.removed || !this.IsCooking() || !Number.isFinite(dt) || dt <= 0) return;
+    if (this.removed || !this.IsCooking() || !Number.isFinite(dt) || dt <= 0) { return; }
     const remaining = this.GetTimeToCook() - dt;
     if (remaining > 0) { this.startCookTask(remaining); return; }
     this.cookTask.stop();
@@ -162,30 +162,30 @@ export class Stewer {
   }
 
   OnLoad(data: StewerSaveData): void {
-    if (data.product === undefined) return;
+    if (data.product === undefined) { return; }
     this.product = data.product;
     this.done = data.done ?? false;
     this.ingredient_prefabs = data.ingredient_prefabs ? [...data.ingredient_prefabs] : undefined;
     this.chef_id = data.chef_id;
-    if (this.done) this.cookTask.stop();
-    else this.startCookTask(Math.max(0, data.remainingtime ?? 0));
+    if (this.done) { this.cookTask.stop(); }
+    else { this.startCookTask(Math.max(0, data.remainingtime ?? 0)); }
     this.container.canbeopened = false;
     if (this.done) { this.inst.addTag('donecooking'); this.oncontinuedone?.(this.inst); }
-    else this.oncontinuecooking?.(this.inst);
+    else { this.oncontinuecooking?.(this.inst); }
   }
 
   OnRemoveFromEntity(): void {
-    if (this.removed) return;
+    if (this.removed) { return; }
     this.removed = true;
     this.cookTask.stop();
     this.stopContainer();
-    for (const tag of ['stewer', 'donecooking', 'readytocook']) this.inst.removeTag(tag);
+    for (const tag of ['stewer', 'donecooking', 'readytocook']) { this.inst.removeTag(tag); }
   }
 
   /** stewer.lua StopCooking("fire") drops its product even if cooking is unfinished. */
   StopCooking(reason?: string): void {
     this.cookTask.stop();
-    if (this.product && reason === 'fire') this.dropProduct?.(this.product);
+    if (this.product && reason === 'fire') { this.dropProduct?.(this.product); }
     this.product = undefined;
     this.done = false;
     this.inst.removeTag('donecooking');

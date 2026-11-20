@@ -17,14 +17,14 @@ import type { PrefabWorldContext } from './worldContext';
 export type MagicPrototyperId = 'researchlab3' | 'researchlab4';
 
 function onhammered(inst: PrefabInstance): void {
-    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    if (inst.components.burnable?.IsBurning()) { inst.components.burnable.Extinguish(); }
     inst.components.lootdropper!.DropLoot();
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
     inst.remove();
 }
 
 function onhit(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     const on = inst.components.prototyper?.on === true;
     inst.sprite.playOnce('hit');
     inst.sprite.pushAnimation(on ? 'proximity_loop' : 'idle', on);
@@ -50,28 +50,28 @@ function createmachine(level: 3 | 4, name: MagicPrototyperId, soundprefix: 'lvl3
     const declaration: BuildingDeclaration = definitions.animatedBuildings[name];
 
     function onturnon(inst: PrefabInstance): void {
-        if (inst.hasTag('burnt')) return;
+        if (inst.hasTag('burnt')) { return; }
         const anim = inst.sprite;
         if (mergeanims) {
             // In case other animations were still in queue.
-            if (anim.currentAnimation === 'proximity_loop') anim.start('proximity_loop');
+            if (anim.currentAnimation === 'proximity_loop') { anim.start('proximity_loop'); }
             else {
-                if (anim.currentAnimation === 'place') anim.pushAnimation('proximity_pre');
-                else anim.playOnce('proximity_pre');
+                if (anim.currentAnimation === 'place') { anim.pushAnimation('proximity_pre'); }
+                else { anim.playOnce('proximity_pre'); }
                 anim.pushAnimation('proximity_loop', true);
             }
         } else if (anim.currentAnimation === 'proximity_loop' || anim.currentAnimation === 'place') {
             // Push again even if already playing, in case an idle was also pushed.
             anim.pushAnimation('proximity_loop', true);
-        } else anim.start('proximity_loop');
+        } else { anim.start('proximity_loop'); }
         if (!inst.SoundEmitter!.PlayingSound('idlesound')) {
             inst.SoundEmitter!.PlaySound(`dontstarve/common/researchmachine_${soundprefix}_idle_LP`, 'idlesound');
         }
     }
 
     function onturnoff(inst: PrefabInstance): void {
-        if (inst.hasTag('burnt')) return;
-        if (mergeanims) inst.sprite.pushAnimation('proximity_pst', false);
+        if (inst.hasTag('burnt')) { return; }
+        if (mergeanims) { inst.sprite.pushAnimation('proximity_pst', false); }
         inst.sprite.pushAnimation('idle', false);
         inst.SoundEmitter!.KillSound('idlesound');
     }
@@ -83,7 +83,7 @@ function createmachine(level: 3 | 4, name: MagicPrototyperId, soundprefix: 'lvl3
 
     function fn(world: PrefabWorldContext): PrefabInstance {
         const { fire, scheduler } = world;
-        if (!fire || !scheduler) throw new Error(`A ${name} needs the world's fire effects and scheduler`);
+        if (!fire || !scheduler) { throw new Error(`A ${name} needs the world's fire effects and scheduler`); }
         const inst = new PrefabInstance(name, new SpriteState({ name: 'idle', billboard: true }));
         inst.worldServices = world;
         inst.AddSoundEmitter();

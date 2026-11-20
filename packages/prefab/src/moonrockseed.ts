@@ -12,7 +12,7 @@ export class MoonrockSeedInstance extends PrefabInstance {
     super(MOONROCKSEED_ID, new SpriteState({ name: 'idle', billboard: true }));
     this.sprite.playOnce('idle');
     this.sprite.setPaused(true);
-    for (const tag of ['irreplaceable', 'nonpotatable', 'celestial_station']) this.addTag(tag);
+    for (const tag of ['irreplaceable', 'nonpotatable', 'celestial_station']) { this.addTag(tag); }
   }
 }
 

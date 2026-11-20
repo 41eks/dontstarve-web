@@ -79,45 +79,45 @@ export class LightFlierHabitat {
     BindLightFlierWorld(fly, this, LIGHTFLIER_ANIMATION_LENGTHS);
     const found = this.waiting.get(fly.id);
     this.waiting.delete(fly.id);
-    for (const fn of found ?? []) fn(fly);
+    for (const fn of found ?? []) { fn(fly); }
   }
   /** `found` runs once the lightflier with this entity ID joins the world, or now if it has. */
   waitForFly(id: string, found: (fly: LightFlier) => void): () => void {
     const fly = [...this.flies].find(candidate => candidate.id === id);
     if (fly) { found(fly); return () => {}; }
     let set = this.waiting.get(id);
-    if (!set) this.waiting.set(id, set = new Set());
+    if (!set) { this.waiting.set(id, set = new Set()); }
     set.add(found);
-    return () => { set!.delete(found); if (!set!.size && this.waiting.get(id) === set) this.waiting.delete(id); };
+    return () => { set!.delete(found); if (!set!.size && this.waiting.get(id) === set) { this.waiting.delete(id); } };
   }
   spawn(position: Vector3): LightFlier {
-    if (this.disposed) throw new Error('Lightflier habitat unavailable');
+    if (this.disposed) { throw new Error('Lightflier habitat unavailable'); }
     const fly = this.services.spawnItem({ itemId: LIGHTFLIER_ID, count: 1 });
-    if (!(fly instanceof LightFlier)) throw new Error('SpawnPrefab("lightflier") made no lightflier');
+    if (!(fly instanceof LightFlier)) { throw new Error('SpawnPrefab("lightflier") made no lightflier'); }
     configureLightFlierEntity(fly);
     fly.setPosition(position.x, position.y, position.z); this.bind(fly);
     return fly;
   }
   findFormation(fly: LightFlier): void {
-    if (!inWorld(fly) || fly.inFormation || fly.getTime() - fly.lastAttacked < 4) return;
+    if (!inWorld(fly) || fly.inFormation || fly.getTime() - fly.lastAttacked < 4) { return; }
     const p = fly.getPosition();
     const nearby = [...this.formations].filter(leader => p.distanceToSquared(leader.position) <= (8 * WORLD_SCALE) ** 2);
-    if (fly.components.formationfollower.SearchForFormation(nearby)) return;
+    if (fly.components.formationfollower.SearchForFormation(nearby)) { return; }
     const target = this.services.getPlayers().find(player => player.isValid() && player.hasLightFlier()
       && ![...this.formations].some(leader => leader.target === player) && p.distanceToSquared(player.position) <= (9 * WORLD_SCALE) ** 2);
-    if (target) this.makeFormation(target, fly);
+    if (target) { this.makeFormation(target, fly); }
   }
   private makeFormation(target: LightFlierPlayer, fly: LightFlier): void {
     const leader = new FormationLeader<LightFlierPlayer, LightFlier>(target);
     leader.radius = 4.1 * WORLD_SCALE; leader.position.copy(fly.getPosition()); this.formations.add(leader);
     leader.ondisband = () => { this.formations.delete(leader); this.leaderTimers.get(leader)?.stop(); this.leaderTimers.delete(leader); this.distributenext.delete(leader); };
     leader.NewFormationMember(fly);
-    const timer = new ComponentTimer(this.services.scheduler, () => { this.validateFormation(leader); if (this.formations.has(leader)) timer.start(1); });
+    const timer = new ComponentTimer(this.services.scheduler, () => { this.validateFormation(leader); if (this.formations.has(leader)) { timer.start(1); } });
     this.leaderTimers.set(leader, timer); timer.start(1);
   }
   private validateFormation(leader: Leader): void {
     if (!leader.target.isValid() || !leader.target.hasLightFlier()) { leader.DisbandFormation(); return; }
-    if (leader.members.size <= 1) return;
+    if (leader.members.size <= 1) { return; }
     const otherLeaders = [...this.formations].filter(other => other !== leader && leader.position.distanceToSquared(other.position) <= ((8 + 4.1) * WORLD_SCALE) ** 2);
     if (this.distributenext.delete(leader)) {
       const other = otherLeaders.find(candidate => !candidate.IsFormationFull() && leader.members.size - 1 > candidate.members.size);
@@ -144,9 +144,9 @@ export class LightFlierHabitat {
     }
   }
   dispose(): void {
-    if (this.disposed) return; this.disposed = true;
-    for (const leader of this.formations) leader.dispose();
-    for (const timer of this.leaderTimers.values()) timer.stop(); this.leaderTimers.clear();
+    if (this.disposed) { return; } this.disposed = true;
+    for (const leader of this.formations) { leader.dispose(); }
+    for (const timer of this.leaderTimers.values()) { timer.stop(); } this.leaderTimers.clear();
     this.waiting.clear(); this.flies.clear();
   }
 }
@@ -200,7 +200,7 @@ export class LightFlier extends ItemEntity implements LightFlierBrainInst, LocoM
   // conventions-allow instance-method: childspawner:TakeOwnership calls it on the child.
   setHome(home?: LightFlierFlowerInstance): void {
     this.components.homeseeker.SetHome(home);
-    if (home) this.components.knownlocations.RememberLocation('home', home.getPosition());
+    if (home) { this.components.knownlocations.RememberLocation('home', home.getPosition()); }
   }
 }
 
@@ -210,7 +210,7 @@ function isDead(inst: LightFlier): boolean { return inst.components.health.IsDea
 
 function syncMotor(inst: LightFlier): void {
   const body = inst.physicsBody;
-  if (!body) return;
+  if (!body) { return; }
   const angle = inst.rotation * Math.PI / 180;
   body.velocity.x = Math.cos(angle) * inst.speed;
   body.velocity.z = -Math.sin(angle) * inst.speed;
@@ -218,7 +218,7 @@ function syncMotor(inst: LightFlier): void {
 
 /** lightflier.lua fn()'s creature: the sound emitter, ghost physics and the components that survive its world. */
 export function MakeLightFlier(inst: LightFlier): void {
-  if (inst.components.health) return;
+  if (inst.components.health) { return; }
   inst.AddSoundEmitter();
   MakeGhostPhysics(inst, 1, .5);
   addComponent(inst, 'health', Health, 25).OnLoad({ health: inst.lightflier?.health ?? 25 });
@@ -228,7 +228,7 @@ export function MakeLightFlier(inst: LightFlier): void {
   addComponent(inst, 'formationfollower', FormationFollower<LightFlierPlayer, LightFlier>);
   addComponent(inst, 'follower', Follower<LightFlierPlayer>);
   const saved = inst.lightflier;
-  if (saved?.knownHome) inst.components.knownlocations.RememberLocation('home', new Vector3(...saved.knownHome));
+  if (saved?.knownHome) { inst.components.knownlocations.RememberLocation('home', new Vector3(...saved.knownHome)); }
   const follower = inst.components.formationfollower;
   follower.onenterformation = () => OnEnterFormation(inst);
   follower.onleaveformation = () => OnLeaveFormation(inst);
@@ -250,7 +250,7 @@ function OnLeaveFormation(inst: LightFlier): void {
   if (home && inst.getPosition().distanceToSquared(home.getPosition()) > (28 * WORLD_SCALE) ** 2) {
     inst.PushEvent('detachchild'); inst.components.knownlocations.RememberLocation('home', inst.getPosition()); inst.setHome();
   }
-  if (inst.locomotor) inst.locomotor.walkspeed = 3.5 * WORLD_SCALE;
+  if (inst.locomotor) { inst.locomotor.walkspeed = 3.5 * WORLD_SCALE; }
   inst.removeTag('NOBLOCK'); inst.components.combat.DropTarget();
 }
 
@@ -259,26 +259,26 @@ function OnAttacked(inst: LightFlier): void {
   WakeUp(inst);
   const follower = inst.components.formationfollower;
   const members = follower.formationleader?.members ?? [inst];
-  for (const fly of members) fly.lastAttacked = inst.getTime() + Math.random();
+  for (const fly of members) { fly.lastAttacked = inst.getTime() + Math.random(); }
   follower.formationleader?.DisbandFormation();
 }
 
 function GoToSleep(inst: LightFlier): void { inst.brain?.Pause(); SetFormationActive(inst, false, WORLD_SCALE); EnableBuzz(inst, false); }
-function OnWakeUp(inst: LightFlier): void { if (!inst.components.freezable?.IsFrozen()) inst.brain?.Resume(); EnableBuzz(inst, true); }
+function OnWakeUp(inst: LightFlier): void { if (!inst.components.freezable?.IsFrozen()) { inst.brain?.Resume(); } EnableBuzz(inst, true); }
 function IsSleeping(inst: LightFlier): boolean { return inst.components.sleeper?.IsAsleep() ?? false; }
 function WakeUp(inst: LightFlier): void { inst.components.sleeper?.WakeUp(); }
 
 /** EnableBuzz: the fly_LP loop in the emitter's "loop" slot. */
 function EnableBuzz(inst: LightFlier, enabled: boolean): void {
   const sound = inst.SoundEmitter!;
-  if (!enabled || !inWorld(inst) || !inst.active.peek() || isDead(inst)) sound.KillSound('loop');
-  else if (!sound.PlayingSound('loop')) sound.PlaySound(LIGHTFLIER_SOUNDS[0], 'loop');
+  if (!enabled || !inWorld(inst) || !inst.active.peek() || isDead(inst)) { sound.KillSound('loop'); }
+  else if (!sound.PlayingSound('loop')) { sound.PlaySound(LIGHTFLIER_SOUNDS[0], 'loop'); }
 }
 
 /** Physics belongs to the logical item and survives replacing its display. */
 export function BindLightFlierPhysics(inst: LightFlier, world?: import('cannon-es').World): void {
   inst.physics.SetActive(inst.active.peek());
-  if (world) inst.bindPhysics(world, () => inst.getPosition());
+  if (world) { inst.bindPhysics(world, () => inst.getPosition()); }
 }
 
 /** SGlightflier's inst: the entity's AnimState, Physics, sleeper, buffered action and lootdropper. */
@@ -298,7 +298,7 @@ function stateContext(inst: LightFlier): LightFlierStateInst {
     isSleeping: () => IsSleeping(inst),
     wakeUp: () => WakeUp(inst),
     enableBuzz: enabled => EnableBuzz(inst, enabled),
-    land: landed => { if (landed) inst.removeTag('flying'); else inst.addTag('flying'); },
+    land: landed => { if (landed) { inst.removeTag('flying'); } else { inst.addTag('flying'); } },
     get SoundEmitter() { return inst.SoundEmitter!; },
     overrideFrozen: frozen => inst.sprite.setSymbolOverride('swap_frozen', frozen ? 'frozen.zip' : undefined, frozen ? 'frozen' : undefined),
     get freezable() { return inst.components.freezable; },
@@ -325,7 +325,7 @@ function CreateBrainWorld(inst: LightFlier): BrainWorld {
 
 /** The rest of fn() in the habitat's world: locomotor, SetStateGraph, SetBrain, the burnable and the day watch. */
 function BindLightFlierWorld(inst: LightFlier, habitat: LightFlierHabitat, lengths: ReadonlyMap<string, number>): void {
-  if (inst.habitat) return;
+  if (inst.habitat) { return; }
   inst.habitat = habitat; habitat.flies.add(inst);
   const services = habitat.services, scheduler = services.scheduler;
   inst.bornAt = scheduler.now - (inst.lightflier?.age ?? 0);
@@ -333,7 +333,7 @@ function BindLightFlierWorld(inst: LightFlier, habitat: LightFlierHabitat, lengt
   inst.locomotor = addComponent(inst, 'locomotor', LocoMotor, { arriveDistance: .15 * WORLD_SCALE });
   inst.locomotor.walkspeed = inst.locomotor.runspeed = 3.5 * WORLD_SCALE;
   inst.animstate = new AnimState(scheduler, lengths, event => inst.PushEvent(event));
-  if (!inst.worldServices?.scheduler) inst.BindScheduler(scheduler);
+  if (!inst.worldServices?.scheduler) { inst.BindScheduler(scheduler); }
   inst.stategraph = new LightFlierStateGraph(stateContext(inst), scheduler);
   inst.SetStateGraph(() => inst.stategraph.sg);
   inst.SetBrain(fly => new LightFlierBrain(fly, WORLD_SCALE));
@@ -348,7 +348,7 @@ function BindLightFlierWorld(inst: LightFlier, habitat: LightFlierHabitat, lengt
   inst.onRemove(() => {
     habitat.flies.delete(inst);
     inst.animstate.dispose(); inst.erosion?.dispose(); inst.SoundEmitter?.KillSound('loop');
-    for (const stop of inst.cleanups.splice(0)) stop();
+    for (const stop of inst.cleanups.splice(0)) { stop(); }
   });
   if (services.getWatchWorldContent) {
     addComponent(inst, 'sleeper', Sleeper, services.getWatchWorldContent).sleeptestfn = () => false;
@@ -365,29 +365,29 @@ function BindLightFlierWorld(inst: LightFlier, habitat: LightFlierHabitat, lengt
     });
   }
   if (inWorld(inst)) {
-    if (inst.active.peek()) { StartLookingForTarget(inst); EnableBuzz(inst, true); } else inst.brain?.Pause();
-  } else OnPutInInventory(inst);
+    if (inst.active.peek()) { StartLookingForTarget(inst); EnableBuzz(inst, true); } else { inst.brain?.Pause(); }
+  } else { OnPutInInventory(inst); }
 }
 
 function OnSleepGoHome(inst: LightFlier): void {
   inst.asleephometask = undefined;
-  if (!inst.active.peek() && inst.home?.isValid()) inst.home.components.childspawner.GoHome(inst);
+  if (!inst.active.peek() && inst.home?.isValid()) { inst.home.components.childspawner.GoHome(inst); }
 }
 
 function StartLookingForTarget(inst: LightFlier): void {
-  if (!inst.targetSearchEnabled) return;
+  if (!inst.targetSearchEnabled) { return; }
   StopLookingForTarget(inst);
   inst.targetsearchtask = inst.DoPeriodicTask(1, FindTarget);
 }
 function StopLookingForTarget(inst: LightFlier): void { inst.targetsearchtask?.Cancel(); inst.targetsearchtask = undefined; }
 function FindTarget(inst: LightFlier): void {
   inst.habitat!.findFormation(inst);
-  if (!inWorld(inst)) StopLookingForTarget(inst);
+  if (!inWorld(inst)) { StopLookingForTarget(inst); }
 }
 
 /** OnEntitySleep / OnEntityWake as the fly's tile activity reports them. */
 function SetActive(inst: LightFlier, active: boolean): void {
-  if (inst.active.peek() === active) return;
+  if (inst.active.peek() === active) { return; }
   inst.activeState.set(active);
   inst.physics.SetActive(active);
   const follower = inst.components.formationfollower;
@@ -395,7 +395,7 @@ function SetActive(inst: LightFlier, active: boolean): void {
     follower.LeaveFormation(); follower.StopUpdating(); StopLookingForTarget(inst); inst.brain?.Pause(); EnableBuzz(inst, false);
   } else if (inWorld(inst)) {
     follower.StartUpdating(); StartLookingForTarget(inst);
-    if (!inst.components.freezable?.IsFrozen() && !IsSleeping(inst)) inst.brain?.Resume(); EnableBuzz(inst, true);
+    if (!inst.components.freezable?.IsFrozen() && !IsSleeping(inst)) { inst.brain?.Resume(); } EnableBuzz(inst, true);
   }
 }
 
@@ -420,15 +420,15 @@ function OnDropped(inst: LightFlier): void {
   inst.components.perishable.StopPerishing(); inst.components.workable?.SetWorkLeft(1);
   inst.components.knownlocations.RememberLocation('home', inst.getPosition());
   inst.components.formationfollower.StartUpdating(); inst.stategraph?.goToState('idle');
-  if (!inst.active.peek()) inst.brain?.Pause();
+  if (!inst.active.peek()) { inst.brain?.Pause(); }
   StartLookingForTarget(inst); inst.components.sleeper?.StartTesting(); EnableBuzz(inst, true);
 }
 
 /** One frame: the brain, the formation's FollowerOnUpdate, the locomotor, the stategraph and the motor. */
 export function UpdateLightFlier(inst: LightFlier, dt: number): void {
-  if (!inWorld(inst) || !inst.active.peek()) return;
+  if (!inWorld(inst) || !inst.active.peek()) { return; }
   const body = inst.physicsBody;
-  if (body) inst.setPosition(body.position.x, 0, body.position.z);
+  if (body) { inst.setPosition(body.position.x, 0, body.position.z); }
   const step = Math.max(0, Math.min(dt, inst.habitat?.services.maxMovementStep ?? .1));
   if (!isDead(inst)) {
     inst.brain?.tick(inst.getTime());
@@ -437,16 +437,16 @@ export function UpdateLightFlier(inst: LightFlier, dt: number): void {
       const target = follower.targetpos, p = inst.getPosition();
       inst.locomotor.walkspeed = Math.min(p.distanceTo(target) * 8, 10.5 * WORLD_SCALE);
       inst.setRotation(inst.GetAngleToPoint(target.x, target.y, target.z));
-      if (!inst.locomotor.isUpdating) inst.locomotor.WalkForward(true);
+      if (!inst.locomotor.isUpdating) { inst.locomotor.WalkForward(true); }
     }
-    if (inst.locomotor.isUpdating) inst.locomotor.update(step);
+    if (inst.locomotor.isUpdating) { inst.locomotor.update(step); }
   }
   inst.stategraph.update(dt);
   inst.erosion?.update();
   if (!inst.stategraph.hasStateTag('busy') && inst.speed > 0) {
     const angle = inst.rotation * Math.PI / 180;
-    if (body) syncMotor(inst);
-    else inst.transform.offsetPosition(Math.cos(angle) * inst.speed * step, 0, -Math.sin(angle) * inst.speed * step);
+    if (body) { syncMotor(inst); }
+    else { inst.transform.offsetPosition(Math.cos(angle) * inst.speed * step, 0, -Math.sin(angle) * inst.speed * step); }
   }
 }
 
@@ -459,27 +459,27 @@ function LightFlierSave(inst: LightFlier): NonNullable<InventoryStack['lightflie
 
 /** The inventory item's side of lightflier.lua: tags, the NET workable, the VEGGIE eater and perishing while held. */
 export function configureLightFlierEntity(entity: ItemEntity): void {
-  for (const tag of LIGHTFLIER_TAGS) entity.addTag(tag);
+  for (const tag of LIGHTFLIER_TAGS) { entity.addTag(tag); }
   entity.components.inventoryitem.canbepickedup = false; entity.components.inventoryitem.canbepickedupalive = true;
   if (!entity.components.workable) {
     const workable = addComponent(entity, 'workable', Workable); workable.SetWorkAction('NET'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback((_inst, worker) => {
-      if (entity instanceof LightFlier) entity.home?.components.childspawner.OnChildKilled(entity);
+      if (entity instanceof LightFlier) { entity.home?.components.childspawner.OnChildKilled(entity); }
       worker.components?.inventory?.GiveItem?.(entity, entity.getPosition().clone());
     });
   }
   const eater = addComponent(entity, 'eater', Eater); eater.SetDiet(['VEGGIE']);
   eater.SetOnEatFn(() => entity.components.perishable.SetPercent(1));
   const perishable = entity.components.perishable;
-  if (perishable.perishtime.peek() === undefined) perishable.SetPerishTime(LIGHTFLIER_PERISH_TIME);
+  if (perishable.perishtime.peek() === undefined) { perishable.SetPerishTime(LIGHTFLIER_PERISH_TIME); }
   perishable.localMultiplier = () => entity.components.inventoryitem.owner ? 1 : 0;
   perishable.perishfn = () => {
-    const owner = entity.components.inventoryitem.owner; if (!owner) return;
+    const owner = entity.components.inventoryitem.owner; if (!owner) { return; }
     owner.PushEvent('murdered', { victim: entity, stackmult: entity.components.stackable.count, negligent: true });
     // Guaranteed one lightbulb per insect, so replacement retains exactly the original stack size.
     entity.components.inventoryitem.slot?.replace('lightbulb');
   };
-  if (!entity.components.inventoryitem.owner) perishable.StopPerishing();
+  if (!entity.components.inventoryitem.owner) { perishable.StopPerishing(); }
 }
 
 /**
@@ -498,7 +498,7 @@ export function lightflierPrefabs(world: ItemPrefabWorld): Record<string, ItemPr
       // The frozen states' swap_frozen symbol comes from frozen.zip.
       assets: { animationArchive: 'lightflier.zip', buildArchives: ['lightflier.zip', 'frozen.zip'], bank: 'lightflier' },
       onSpawned: inst => {
-        if (!(inst instanceof LightFlier)) return;
+        if (!(inst instanceof LightFlier)) { return; }
         MakeLightFlier(inst);
         world.configureItem(inst);
         configureLightFlierEntity(inst);
@@ -517,12 +517,12 @@ export function lightflierPrefabs(world: ItemPrefabWorld): Record<string, ItemPr
         let facing: number | undefined, erosion: number | undefined;
         inst.onRemove(world.componentUpdates.register({
           OnUpdate: dt => {
-            if (inst.status.peek() !== 'active' || !fly.active.peek()) return;
+            if (inst.status.peek() !== 'active' || !fly.active.peek()) { return; }
             UpdateLightFlier(fly, dt);
             const nextFacing = fourFacingFromRotation(fly.facing, heading?.peek() ?? 0);
-            if (nextFacing !== facing) sprite.setFacing(facing = nextFacing);
+            if (nextFacing !== facing) { sprite.setFacing(facing = nextFacing); }
             const nextErosion = fly.erosionValue;
-            if (nextErosion !== erosion) sprite.setErosion(erosion = nextErosion);
+            if (nextErosion !== erosion) { sprite.setErosion(erosion = nextErosion); }
             inst.light.set(inWorld(fly) ? { radius: 1.8 * WORLD_SCALE, intensity: .5, falloff: .7, colour: [237 / 255, 237 / 255, 209 / 255] } : null);
           },
         }));

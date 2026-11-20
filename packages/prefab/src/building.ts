@@ -31,11 +31,11 @@ export interface BuildingDeclaration {
 export function buildingPlacer({ archive, buildArchive = archive, buildLabel, name, idleAnimation = 'idle', previewAnimation = idleAnimation, skinArchives, skinSymbols,
   baseSymbols, skinAnimationBanks }: BuildingDeclaration, bank: string): BuildingPlacerSpec {
   return { buildLabel, name, animation: previewAnimation, art: (resources, skinId) => {
-    if (skinId !== undefined && !skinArchives?.[skinId]) throw new Error(`Unsupported ${name} skin: ${skinId}`);
+    if (skinId !== undefined && !skinArchives?.[skinId]) { throw new Error(`Unsupported ${name} skin: ${skinId}`); }
     return { archive: { animationArchive: archive, buildArchives: [buildArchive], bank }, initialize: entity => {
       entity.skinId = skinId;
-      if (skinArchives) entity.sprite.setSkinSource({ art: resources.archives, archives: skinArchives, ...skinSymbols ? { symbols: skinSymbols } : {},
-        ...baseSymbols ? { baseSymbols } : {}, ...skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {} });
+      if (skinArchives) { entity.sprite.setSkinSource({ art: resources.archives, archives: skinArchives, ...skinSymbols ? { symbols: skinSymbols } : {},
+        ...baseSymbols ? { baseSymbols } : {}, ...skinAnimationBanks ? { animationBanks: skinAnimationBanks } : {} }); }
     } };
   } };
 }
@@ -53,7 +53,7 @@ export function SaveBuildingSkin(inst: PrefabInstance, data: EntityPersistData):
 
 /** The skin half of a building's OnLoad; a prefab with its own onload calls it first. */
 export function LoadBuildingSkin(inst: PrefabInstance, data: EntityPersistData): void {
-  if (data.building?.skinId !== undefined) inst.skinId = data.building.skinId;
+  if (data.building?.skinId !== undefined) { inst.skinId = data.building.skinId; }
 }
 
 const addressedContainers = new WeakSet<PrefabInstance>();
@@ -61,9 +61,9 @@ const addressedContainers = new WeakSet<PrefabInstance>();
 /** Gives the UI and item moves an address for the slots the entity's container already owns; it needs the entity's ID. */
 function registerBuildingContainer(inst: PrefabInstance): void {
   const container: BuildingContainer | undefined = inst.components.container;
-  if (!container || addressedContainers.has(inst)) return;
+  if (!container || addressedContainers.has(inst)) { return; }
   addressedContainers.add(inst);
-  if (!isStorageBuildingId(inst.prefab)) throw new Error(`${inst.prefab} is not a storage building`);
+  if (!isStorageBuildingId(inst.prefab)) { throw new Error(`${inst.prefab} is not a storage building`); }
   inst.worldServices?.registerContainer?.(buildingContainerId(inst.prefab, String(inst.entityId)), container);
 }
 
@@ -92,7 +92,7 @@ export function MakeBuildingContainer(inst: PrefabInstance, prefab: StorageBuild
 
 /** What the mouse and the tools find on a building once it has its display: the greenstaff, the reskin tool and its workable. */
 function MakeBuildingTargets(inst: PrefabInstance, world: Pick<PrefabWorldContext, 'handEquipment'>): void {
-  if (!inst.components.workable) return;
+  if (!inst.components.workable) { return; }
   // A building that does something without a tool keeps its own actions under the mouse while no tool is held.
   new ToolMouseTarget(inst, world.handEquipment, {
     canInteractWithoutTool: () => !inst.hasTag('burnt') && !!(inst.components.container || inst.components.trader || inst.components.fueled

@@ -64,7 +64,7 @@ export class PhysicsState {
   SetCollisionGroup(group: number): void { this.write({ group }); }
   SetCollisionMask(...groups: number[]): void { this.write({ mask: groups.reduce((mask, group) => mask | group, 0) }); }
   ClearCollisionMask(): void { this.write({ mask: 0 }); }
-  SetActive(active: boolean): void { if (this.state.peek()?.active !== active) this.write({ active }); }
+  SetActive(active: boolean): void { if (this.state.peek()?.active !== active) { this.write({ active }); } }
   IsActive(): boolean { return this.state.peek()?.active ?? false; }
   SetDontRemoveOnSleep(dontRemoveOnSleep: boolean): void { this.write({ dontRemoveOnSleep }); }
   GetMass(): number { return this.state.peek()?.mass ?? 0; }

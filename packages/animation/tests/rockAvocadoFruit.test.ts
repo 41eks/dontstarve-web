@@ -91,7 +91,7 @@ it('mines a stack through the common tool action, rolls each consumed fruit, gro
       ['rock_avocado_fruit_ripe', 1], ['rock_avocado_fruit_ripe', 1], ['rock_avocado_fruit_sprout', 1], ['rocks', 1]]);
     expect(products[0].freshnessPercent).toBe(1);
     expect(model.parent).toBe(s.scene);
-    for (let frame = 0; frame < 90; frame++) s.ground.update(1 / 30, new THREE.Quaternion());
+    for (let frame = 0; frame < 90; frame++) { s.ground.update(1 / 30, new THREE.Quaternion()); }
     expect(s.ground.exportRecords().find(record => record.id === products[0].entityId)!.transform.position[0]).toBeGreaterThan(point.x);
     const before = s.ground.exportRecords();
     const saved = deserializeSave(s.save(), SAVE_CATALOG);
@@ -158,7 +158,7 @@ it('plants one sprout, preserves its named deadline through save/load, and becom
     // Sample the animated path too: seed_growth contains an unresolved engine snow placeholder.
     restored.scheduler.advance(900);
     const loaded = workTargets('DIG', restored.scene)[0].model;
-    for (let frame = 0; frame < 180 && loaded.parent; frame++) restored.advance(1 / 30);
+    for (let frame = 0; frame < 180 && loaded.parent; frame++) { restored.advance(1 / 30); }
     expect(loaded.parent).toBeNull();
   } finally { s.dispose(); restored.dispose(); }
 }, 15000);

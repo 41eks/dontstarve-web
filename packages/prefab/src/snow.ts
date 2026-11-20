@@ -59,7 +59,7 @@ export class SnowEffect {
   update(dt: number, cameraQuaternion: THREE.Quaternion): void { this.snowfall.update(dt, cameraQuaternion); }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.options.groundOverlay.declareOverlay('snow', undefined);
     this.snowfall.dispose();

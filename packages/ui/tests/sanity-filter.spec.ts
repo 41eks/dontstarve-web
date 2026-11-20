@@ -26,7 +26,7 @@ test('insanity LUTs use discrete grading levels, fade across phases and distort 
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
+    if (message.type() === 'error') { errors.push(message.text()); }
   });
   await page.goto('/tests/dst-lighting.html');
   const result = await page.evaluate(async (url) => {

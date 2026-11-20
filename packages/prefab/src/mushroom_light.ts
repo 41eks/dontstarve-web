@@ -19,8 +19,8 @@ export const MUSHROOM_LIGHT_PLACERS = {
 };
 
 function onworked(inst: PrefabInstance, _worker: Worker, workleft: number): void {
-  if (inst.hasTag('burnt')) return;
-  if (workleft <= 0) return;
+  if (inst.hasTag('burnt')) { return; }
+  if (workleft <= 0) { return; }
   const on = inst.light.json.peek() !== undefined;
   inst.sprite.playOnce(on ? 'hit_on' : 'hit');
   inst.sprite.pushAnimation(on ? 'idle_on' : 'idle', false);

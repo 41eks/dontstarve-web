@@ -90,7 +90,7 @@ it('picks twigs, regrows after four days through grow → sway, and saves/restor
     tickWorld(s.scheduler, prefabDisplays(s.saplings), 920, new THREE.Quaternion());
     expect(plantInstance(model).components.pickable.state.phase.peek()).toBe('ready');
     expect(animation.currentAnimation).toBe('grow');
-    for (let frame = 0; frame < 45; frame++) tickWorld(s.scheduler, prefabDisplays(s.saplings), 1 / 30, new THREE.Quaternion());
+    for (let frame = 0; frame < 45; frame++) { tickWorld(s.scheduler, prefabDisplays(s.saplings), 1 / 30, new THREE.Quaternion()); }
     expect(animation.currentAnimation).toBe('sway');
     // Regrowth tasks may not exceed TUNING.SAPLING_REGROW_TIME.
     const invalid = JSON.parse(s.save());

@@ -56,7 +56,7 @@ it('loads a saved chest with MakeChest tags and components and the non-looping c
     await prefabDisplay(model)!.artLoaded();
     expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/dst/data/anim/pandoras_chest.zip'));
     expect(instance.sprite.currentAnimation).toBe('closed');
-    for (const tag of ['structure', 'chest', 'SnowCovered']) expect(instance.hasTag(tag)).toBe(true);
+    for (const tag of ['structure', 'chest', 'SnowCovered']) { expect(instance.hasTag(tag)).toBe(true); }
     // indestructible = true: no workable, lootdropper or burnable.
     expect(Object.keys(instance.components).sort())
       .toEqual(['container', 'hauntable', 'inspectable', 'lunarhailbuildup', 'roseinspectable']);

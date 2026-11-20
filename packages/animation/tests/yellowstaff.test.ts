@@ -26,7 +26,7 @@ describe('yellowstaff source lighting', () => {
   const setupLights = () => {
     const scene = new THREE.Scene(), scheduler = new GameTimeScheduler();
     const displays = new PrefabDisplayGroup(scene), lights = prefabManager(displays, undefined, { scheduler }, staffCastingLightPrefabs);
-    const advanceFrames = (count: number) => { for (let i = 0; i < count; i++) scheduler.advance(FRAME); };
+    const advanceFrames = (count: number) => { for (let i = 0; i < count; i++) { scheduler.advance(FRAME); } };
     return { lights, displays, scheduler, advanceFrames };
   };
 

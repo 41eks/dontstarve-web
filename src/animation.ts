@@ -91,7 +91,7 @@ export function createAnimationUpdater(model: THREE.Group) {
             const isMoving = direction.lengthSq() > 0.0001;
             const isJumping = input.isPressed('Space') || !playerBody.canJump;
 
-            if (isMoving) sprite.facePoint(origin, direction);
+            if (isMoving) { sprite.facePoint(origin, direction); }
 
             startMovement(inst, isJumping ? 'jump' : isMoving
                 ? (input.isPressed('ShiftLeft') ? 'run' : 'walk')

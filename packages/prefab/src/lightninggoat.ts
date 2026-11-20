@@ -118,7 +118,7 @@ export class LightningGoatInstance extends PrefabInstance implements FaceEntityI
   // conventions-allow instance-method: the engine's Physics:SetMotorVel, which locomotor calls on inst.
   setMotorSpeed(speed: number): void {
     const body = this.physicsBody;
-    if (!body) return;
+    if (!body) { return; }
     const heading = THREE.MathUtils.degToRad(this.transform.rotation);
     body.velocity.x = Math.cos(heading) * speed;
     body.velocity.z = -Math.sin(heading) * speed;
@@ -131,7 +131,7 @@ function WatchCycles(inst: LightningGoatInstance, world: LightningGoatWorld): vo
   inst.cyclestask = inst.DoTaskInTime(world.secondsUntilNextDay(world.scheduler.now), () => {
     inst.cyclestask = undefined;
     ReduceCharges(inst, world);
-    if (inst.charged) WatchCycles(inst, world);
+    if (inst.charged) { WatchCycles(inst, world); }
   });
 }
 
@@ -150,14 +150,14 @@ function discharge(inst: LightningGoatInstance): void {
 }
 
 function ReduceCharges(inst: LightningGoatInstance, _world: LightningGoatWorld): void {
-  if (inst.chargeleft === undefined) return;
+  if (inst.chargeleft === undefined) { return; }
   inst.chargeleft -= 1;
-  if (inst.chargeleft <= 0) discharge(inst);
+  if (inst.chargeleft <= 0) { discharge(inst); }
 }
 
 /** setcharged: the shocked build with its fx layer, the light and three days of charge; `instant` skips the shocked state. */
 function setcharged(inst: LightningGoatInstance, world: LightningGoatWorld, instant = false): void {
-  if (inst.components.health.IsDead()) return;
+  if (inst.components.health.IsDead()) { return; }
   inst.addTag('charged');
   inst.addTag('electricdamageimmune');
   const electricattacks = inst.components.electricattacks
@@ -166,7 +166,7 @@ function setcharged(inst: LightningGoatInstance, world: LightningGoatWorld, inst
   inst.components.lootdropper.SetChanceLootTable('chargedlightninggoat');
   inst.sprite.setBuildArchive(LIGHTNING_GOAT_SHOCKED_BUILD);
   inst.sprite.showLayer('fx');
-  if (!instant) inst.stategraph.goToState('shocked');
+  if (!instant) { inst.stategraph.goToState('shocked'); }
   // AnimState:SetBloomEffectHandle: bloom is not rendered.
   inst.charged = true;
   inst.chargeleft = LIGHTNING_GOAT_CHARGES;
@@ -179,7 +179,7 @@ function OnElectrocute(inst: LightningGoatInstance, world: LightningGoatWorld): 
 }
 
 function OnSave(inst: LightningGoatInstance, data: EntityPersistData): void {
-  if (inst.charged) data.lightninggoat = { charged: true, chargeleft: inst.chargeleft! };
+  if (inst.charged) { data.lightninggoat = { charged: true, chargeleft: inst.chargeleft! }; }
 }
 
 function OnLoad(inst: LightningGoatInstance, world: LightningGoatWorld, data: EntityPersistData): void {
@@ -226,7 +226,7 @@ function fn(world: LightningGoatWorld): LightningGoatInstance {
   const soundEmitter = inst.AddSoundEmitter();
   inst.setRotation(0);
   // AnimState:Hide("fx") is the art's hiddenLayers; setcharged shows it.
-  for (const tag of ['lightninggoat', 'animal', 'lightningrod']) inst.addTag(tag);
+  for (const tag of ['lightninggoat', 'animal', 'lightningrod']) { inst.addTag(tag); }
 
   const health = addComponent(inst, 'health', Health, undefined, scheduler);
   health.SetMaxHealth(LIGHTNING_GOAT_HEALTH);
@@ -285,7 +285,7 @@ function fn(world: LightningGoatWorld): LightningGoatInstance {
 
 /** Each frame after the physics step: the goat follows its body, then its stategraph, brain and locomotor run. */
 function OnUpdate(inst: LightningGoatInstance, world: LightningGoatWorld, dt: number): void {
-  if (inst.status.peek() !== 'active' || !Number.isFinite(dt) || dt < 0) return;
+  if (inst.status.peek() !== 'active' || !Number.isFinite(dt) || dt < 0) { return; }
   const body = inst.physicsBody;
   if (body) {
     const position = new THREE.Vector3(body.position.x, 0, body.position.z);

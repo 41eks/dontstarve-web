@@ -27,7 +27,7 @@ export class FliesController {
     getWatchWorldContent?: GetWatchWorldContent) {
     const sprite = this.sprite = instance.sprite; this.position = position;
     sprite.setVisible(true);
-    for (const tag of ['NOCLICK', 'DECOR']) instance.addTag(tag);
+    for (const tag of ['NOCLICK', 'DECOR']) { instance.addTag(tag); }
     this.playerprox = new PlayerProx({ isValid: () => !this.disposed, getPosition: () => position }, getWatchWorldContent);
     this.playerprox.SetDist(2 * WORLD_SCALE, 3 * WORLD_SCALE);
     this.playerprox.SetOnPlayerNear(() => {
@@ -36,7 +36,7 @@ export class FliesController {
       sprite.playOnce('swarm_pst');
     });
     this.playerprox.SetOnPlayerFar(() => {
-      if (!this.asleep) this.startSound();
+      if (!this.asleep) { this.startSound(); }
       this.swarm();
     });
     this.swarm();
@@ -44,14 +44,14 @@ export class FliesController {
     instance.BindScheduler(scheduler);
     this.init = instance.DoTaskInTime(0, () => {
       this.playerprox.ForceUpdate();
-      if (!this.asleep && !this.playerprox.IsPlayerClose()) this.startSound();
+      if (!this.asleep && !this.playerprox.IsPlayerClose()) { this.startSound(); }
     });
   }
 
   private swarm(): void {
     const revision = ++this.animationRevision;
     this.sprite.playOnce('swarm_pre', () => {
-      if (!this.disposed && revision === this.animationRevision) this.sprite.start('swarm_loop');
+      if (!this.disposed && revision === this.animationRevision) { this.sprite.start('swarm_loop'); }
     });
   }
   private startSound(): void {
@@ -61,19 +61,19 @@ export class FliesController {
   }
   private stopSound(): void { this.sound?.stop(); this.sound = undefined; }
   OnEntityWake(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.asleep = false;
     this.playerprox.OnEntityWake();
-    if (!this.playerprox.IsPlayerClose() && !this.sound) this.startSound();
+    if (!this.playerprox.IsPlayerClose() && !this.sound) { this.startSound(); }
   }
   OnEntitySleep(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.asleep = true;
     this.playerprox.OnEntitySleep();
     this.stopSound();
   }
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.animationRevision++;
     this.init.Cancel(); this.playerprox.dispose(); this.stopSound();

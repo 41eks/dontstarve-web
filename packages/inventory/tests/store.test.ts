@@ -152,7 +152,7 @@ describe('inventory state restoration', () => {
     expect(listener).not.toHaveBeenCalled();
     expect(store.add('torch', 1)).toBe(true);
     listener.mockClear();
-    for (const seconds of [-1, 76, NaN, Infinity]) expect(store.setRemainingFuel(inventorySlotAddress(0), seconds)).toBe(false);
+    for (const seconds of [-1, 76, NaN, Infinity]) { expect(store.setRemainingFuel(inventorySlotAddress(0), seconds)).toBe(false); }
     expect(store.get(inventorySlotAddress(0))).toEqual({ itemId: 'torch', count: 1 });
     expect(listener).not.toHaveBeenCalled();
     // fueled.lua clamps at zero; removing an empty item is the prefab's depleted callback.

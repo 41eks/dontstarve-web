@@ -23,11 +23,11 @@ export interface PhysicsEntity { readonly physics: PhysicsState }
 
 /** standardcomponents.lua defaults used by the non-structure burnable prefabs. */
 export function DefaultBurnFn(inst: PrefabInstance): void {
-    if (!inst.hasTag('tree') && !inst.hasTag('structure')) inst.persists = false;
+    if (!inst.hasTag('tree') && !inst.hasTag('structure')) { inst.persists = false; }
 }
 
 export function DefaultExtinguishFn(inst: PrefabInstance): void {
-    if (!inst.hasTag('tree') && !inst.hasTag('structure')) inst.persists = true;
+    if (!inst.hasTag('tree') && !inst.hasTag('structure')) { inst.persists = true; }
 }
 
 export function DefaultBurntFn(inst: PrefabInstance, world: {
@@ -35,8 +35,8 @@ export function DefaultBurntFn(inst: PrefabInstance, world: {
     isOcean?(position: ReadonlyVector3): boolean;
 }): void {
     inst.components.growable?.StopGrowing();
-    if (inst.components.workable?.GetWorkAction() !== 'HAMMER') inst.components.workable?.SetWorkLeft(0);
-    if (!world.isOcean?.(inst.position)) world.spawnGroundItem({ ...catalog.items.ash, itemId: 'ash', count: 1 }, inst.position);
+    if (inst.components.workable?.GetWorkAction() !== 'HAMMER') { inst.components.workable?.SetWorkLeft(0); }
+    if (!world.isOcean?.(inst.position)) { world.spawnGroundItem({ ...catalog.items.ash, itemId: 'ash', count: 1 }, inst.position); }
     inst.remove();
 }
 
@@ -44,12 +44,12 @@ export function DefaultBurntFn(inst: PrefabInstance, world: {
 export function MakeNoGrowInWinter(inst: PrefabInstance & { components: { pickable: Pickable } },
     watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent()): void {
     const season = watch?.(WorldContentKey.Season, stop => inst.onRemove(stop));
-    if (!season) return;
+    if (!season) { return; }
     const toggle = (winter: boolean) => {
-        if (winter) inst.components.pickable.pause(); else inst.components.pickable.resume();
+        if (winter) { inst.components.pickable.pause(); } else { inst.components.pickable.resume(); }
     };
     season.subscribe((current, previous) => {
-        if ((current.season === 'winter') !== (previous.season === 'winter')) toggle(current.season === 'winter');
+        if ((current.season === 'winter') !== (previous.season === 'winter')) { toggle(current.season === 'winter'); }
     });
     toggle(season.peek().season === 'winter');
 }
@@ -66,10 +66,10 @@ export function MakeSnowCoveredPristine(inst: PrefabInstance): void {
  * is snow covered (weather.lua SNOW_COVERED_THRESHOLD). The prefab declares snow.zip and the hidden `snow` layer.
  */
 export function MakeSnowCovered(inst: PrefabInstance, watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent()): void {
-    if (!inst.hasTag('SnowCovered')) MakeSnowCoveredPristine(inst);
+    if (!inst.hasTag('SnowCovered')) { MakeSnowCoveredPristine(inst); }
     const snow = watch?.(WorldContentKey.SnowLevel, stop => inst.onRemove(stop));
     inst.onRemove(createRenderEffect(() => {
-        if ((snow?.get() ?? 0) >= .015) inst.sprite.showLayer('snow'); else inst.sprite.hideLayer('snow');
+        if ((snow?.get() ?? 0) >= .015) { inst.sprite.showLayer('snow'); } else { inst.sprite.hideLayer('snow'); }
     }));
 }
 
@@ -82,7 +82,7 @@ export function DefaultBurntStructureFn(inst: PrefabInstance): void {
     inst.components.burnable!.canlight = false;
     inst.sprite.start('burnt');
     inst.PushEvent('burntup', undefined);
-    for (const name of ['idlesound', 'sound', 'loop', 'snd']) inst.SoundEmitter?.KillSound(name);
+    for (const name of ['idlesound', 'sound', 'loop', 'snd']) { inst.SoundEmitter?.KillSound(name); }
     inst.components.workable?.SetWorkLeft(1);
     const container = inst.components.container;
     if (container) {
@@ -100,12 +100,12 @@ export function DefaultBurntStructureFn(inst: PrefabInstance): void {
 
 /** The onsave of a burnable structure's prefab: a burning structure saves as burnt. */
 export function onsaveBurnt(inst: PrefabInstance, data: EntityPersistData): void {
-    if (inst.hasTag('burnt') || inst.components.burnable?.IsBurning()) (data.building ??= {}).burnt = true;
+    if (inst.hasTag('burnt') || inst.components.burnable?.IsBurning()) { (data.building ??= {}).burnt = true; }
 }
 
 /** The onload of a burnable structure's prefab: data.burnt runs the burnable's onburnt. */
 export function onloadBurnt(inst: PrefabInstance, data: EntityPersistData): void {
-    if (data.building?.burnt) inst.components.burnable!.onburnt?.(inst);
+    if (data.building?.burnt) { inst.components.burnable!.onburnt?.(inst); }
 }
 
 /**
@@ -209,9 +209,9 @@ export function MakePondPhysics(inst: PhysicsEntity & { addTag(tag: string): voi
 /** standardcomponents.lua RemovePhysicsColliders(inst): a static body keeps its radius but stops colliding. */
 export function RemovePhysicsColliders(inst: PhysicsEntity): void {
   const phys = inst.physics;
-  if (!phys.json.peek()) return;
-  if (phys.GetMass() > 0) phys.SetCollisionMask(COLLISION.GROUND);
-  else phys.ClearCollisionMask();
+  if (!phys.json.peek()) { return; }
+  if (phys.GetMass() > 0) { phys.SetCollisionMask(COLLISION.GROUND); }
+  else { phys.ClearCollisionMask(); }
 }
 
 /** standardcomponents.lua shatterfx.character. */
@@ -239,7 +239,7 @@ function MakeFreezableCharacter(inst: FreezableCharacter, fxlevel: number, resis
     world.fx?.shatter(new THREE.Vector3(x + fx.x, y + fx.y, z + fx.z), level);
   });
   freezable.SetShatterFXLevel(fxlevel);
-  if (resistance !== undefined) freezable.SetResistance(resistance);
+  if (resistance !== undefined) { freezable.SetResistance(resistance); }
   freezable.AddShatterFX(SHATTER_FX_CHARACTER, offset, sym);
   return freezable;
 }

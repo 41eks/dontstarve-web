@@ -60,7 +60,7 @@ export class Equippable<Inst extends EquippableInst = EquippableInst> {
   SetDappernessFn(fn: EquippableDappernessFn<Inst> | undefined): void { this.dapperfn = fn; }
   GetDapperness(owner?: EquippableOwner, ignoreWetness = false): number {
     let dapperness = this.dapperfn ? this.dapperfn(this.inst, owner) : this.dapperness;
-    if (!ignoreWetness && this.inst.GetIsWet()) dapperness -= .1; // TUNING.WET_ITEM_DAPPERNESS
+    if (!ignoreWetness && this.inst.GetIsWet()) { dapperness -= .1; } // TUNING.WET_ITEM_DAPPERNESS
     return dapperness;
   }
 }

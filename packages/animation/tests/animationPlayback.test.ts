@@ -27,7 +27,7 @@ it('drops an obsolete queue when an animover handler replaces playback, and canc
     (seconds, complete) => scheduler.schedule(seconds, complete));
   playback.on('animover', clip => {
     events.push(`over:${clip.name}`);
-    if (clip.name === 'first') playback.play([{ name: 'replacement', loop: false }]);
+    if (clip.name === 'first') { playback.play([{ name: 'replacement', loop: false }]); }
   });
   playback.on('animqueueover', clip => events.push(`queueover:${clip.name}`));
   playback.play([{ name: 'first', loop: false }, { name: 'obsolete', loop: false }]);

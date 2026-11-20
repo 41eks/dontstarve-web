@@ -32,10 +32,10 @@ export interface MarbleBeanSaplingWorld extends ToolMouseTargetWorld {
 
 /** marblebean.lua: deployable(PLANT) with default spacing and its ondeploy; the sapling starts growing as it spawns. */
 export function configureMarbleBeanEntity(entity: ItemEntity): void {
-  if (entity.prefab !== 'marblebean' || entity.components.deployable) return;
+  if (entity.prefab !== 'marblebean' || entity.components.deployable) { return; }
   configureBurnableItemEntity(entity);
   addComponent(entity, 'deployable', Deployable, (point, _deployer, map) => {
-    if (!map.SpawnPrefab(MARBLEBEAN_SAPLING_ID, point)) return false;
+    if (!map.SpawnPrefab(MARBLEBEAN_SAPLING_ID, point)) { return false; }
     PlaySound('dontstarve/wilson/plant_tree', point);
     entity.remove();
     return true;
@@ -56,7 +56,7 @@ export class MarbleBeanSaplingInstance extends PrefabInstance {
     this.addTag('marbleshrub');
 
     const timer = addComponent(this, 'timer', Timer, world.scheduler, [GROW]);
-    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === GROW) this.growtree(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === GROW) { this.growtree(); } });
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(() => this.digup());

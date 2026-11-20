@@ -125,7 +125,7 @@ it('walks to the shore through DEPLOY, reaches over the water, consumes one kit 
     expect(inventory.transfer(inventorySlotAddress(0), cursorSlotAddress(), 2)).toBe(true);
     const entity = inventory.GetActiveItem()!;
     expect(entity.components.deployable).toMatchObject({ mode: 'CUSTOM', usegridplacer: true });
-    for (const tag of ['groundtile', 'deploykititem', 'usedeployspacingasoffset']) expect(entity.hasTag(tag)).toBe(true);
+    for (const tag of ['groundtile', 'deploykititem', 'usedeployspacingasoffset']) { expect(entity.hasTag(tag)).toBe(true); }
 
     placer.update();
     await vi.waitFor(() => expect(world.scene.children).toHaveLength(1));

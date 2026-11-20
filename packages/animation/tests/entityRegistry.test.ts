@@ -31,9 +31,9 @@ describe('entity registry', () => {
     const createWorld = () => {
       const scene = new THREE.Scene(), displays = new PrefabDisplayGroup(scene);
       const manager = new PrefabEntityManager<string, PrefabInstance>(displays, undefined, {});
-      for (const id of ['first', 'second']) manager.register({ [id]: { fn: () => new PrefabInstance(id, new SpriteState({ name: '' })) } });
+      for (const id of ['first', 'second']) { manager.register({ [id]: { fn: () => new PrefabInstance(id, new SpriteState({ name: '' })) } }); }
       const registry = new EntityRegistry([], manager, () => new THREE.Vector3(3, 0, 6), displays);
-      for (const family of families) registry.registerPrefabs(family);
+      for (const family of families) { registry.registerPrefabs(family); }
       return { scene, manager, displays, registry, dispose: () => { registry.dispose(); displays.dispose(); } };
     };
     const world = createWorld(), restored = createWorld();

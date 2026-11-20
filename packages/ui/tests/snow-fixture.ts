@@ -19,9 +19,9 @@ async function checkSnowMotion() {
   const snow = new SnowEffect({ scene, dataBaseUrl: '/dst/data', getFocus: () => new THREE.Vector3(),
     camera, rate, cover, groundOverlay });
   try {
-    for (let i = 0; i < 100 && !scene.getObjectByName('snow'); i++) await new Promise(resolve => setTimeout(resolve, 50));
+    for (let i = 0; i < 100 && !scene.getObjectByName('snow'); i++) { await new Promise(resolve => setTimeout(resolve, 50)); }
     const mesh = scene.getObjectByName('snow') as THREE.Mesh<THREE.BufferGeometry>;
-    if (!mesh) throw new Error('Snow motion art did not load');
+    if (!mesh) { throw new Error('Snow motion art did not load'); }
     rate.set(1); await Promise.resolve();
     snow.update(1 / 30, quaternion); snow.update(1 / 30, quaternion);
     rate.set(0); await Promise.resolve();
@@ -33,7 +33,7 @@ async function checkSnowMotion() {
         const corners = Array.from({ length: 4 }, (_, k) => new THREE.Vector3()
           .fromBufferAttribute(positions, i * 4 + k).project(camera));
         const center = new THREE.Vector3();
-        for (let k = 0; k < 4; k++) center.add(new THREE.Vector3().fromBufferAttribute(positions, i * 4 + k));
+        for (let k = 0; k < 4; k++) { center.add(new THREE.Vector3().fromBufferAttribute(positions, i * 4 + k)); }
         center.multiplyScalar(0.25);
         const depth = -center.applyMatrix4(camera.matrixWorldInverse).z;
         const width = (corners[1].x - corners[0].x) * 240;
@@ -50,9 +50,9 @@ async function checkSnowMotion() {
       quaternion = orient(heading);
       snow.update(1 / 30, quaternion);
       const before = sample();
-      for (let frame = 0; frame < 12; frame++) snow.update(1 / 30, quaternion);
+      for (let frame = 0; frame < 12; frame++) { snow.update(1 / 30, quaternion); }
       const after = sample();
-      if (before.length !== after.length || before.length === 0) throw new Error('Snow probe lost its fresh particles');
+      if (before.length !== after.length || before.length === 0) { throw new Error('Snow probe lost its fresh particles'); }
       const distances = before.map((p, i) => ({ dx: after[i].x - p.x, dy: p.y - after[i].y }));
       result.push({ count: after.length, minimumWidth: Math.min(...after.map(p => p.width)),
         minimumSize: Math.min(...after.map(p => p.size)), maximumSize: Math.max(...after.map(p => p.size)),
@@ -98,7 +98,7 @@ export async function checkSnow() {
   }
   const mesh = scene.getObjectByName('snow') as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial>;
   const [ground] = overlays();
-  if (!mesh || !ground) throw new Error('Snow textures did not load');
+  if (!mesh || !ground) { throw new Error('Snow textures did not load'); }
   const draw = () => lighting.render(scene, camera);
   const pixels = () => {
     const gl = renderer.getContext(), result = new Uint8Array(480 * 360 * 4);
@@ -117,8 +117,8 @@ export async function checkSnow() {
   let coveredPixels = 0, multicolorPixels = 0;
   for (let i = 0; i < coverPixels.length; i += 4) {
     const channels = [coverPixels[i], coverPixels[i + 1], coverPixels[i + 2]];
-    if (Math.max(...channels) > 12) coveredPixels++;
-    if (Math.max(...channels) - Math.min(...channels) > 1) multicolorPixels++;
+    if (Math.max(...channels) > 12) { coveredPixels++; }
+    if (Math.max(...channels) - Math.min(...channels) > 1) { multicolorPixels++; }
   }
   scene.background = background; terrain.visible = true;
   mesh.visible = false; draw();
@@ -127,7 +127,7 @@ export async function checkSnow() {
   const withSnow = pixels();
   let changedPixels = 0;
   for (let i = 0; i < without.length; i += 4) {
-    if (Math.abs(withSnow[i] - without[i]) + Math.abs(withSnow[i + 1] - without[i + 1]) + Math.abs(withSnow[i + 2] - without[i + 2]) > 12) changedPixels++;
+    if (Math.abs(withSnow[i] - without[i]) + Math.abs(withSnow[i + 1] - without[i + 1]) + Math.abs(withSnow[i + 2] - without[i + 2]) > 12) { changedPixels++; }
   }
   // Probe the actual shader: softness changes pixels near the viewport edges,
   // while the central region stays sharp. Selection normally stays per particle.
@@ -139,15 +139,15 @@ export async function checkSnow() {
   (blurAttribute.array as Float32Array).fill(1); blurAttribute.needsUpdate = true;
   draw(); const softPixels = pixels();
   let softEdgePixels = 0, softCentrePixels = 0;
-  for (let y = 0; y < 360; y++) for (let x = 0; x < 480; x++) {
+  for (let y = 0; y < 360; y++) { for (let x = 0; x < 480; x++) {
     const offset = (y * 480 + x) * 4;
     const difference = Math.abs(sharpPixels[offset] - softPixels[offset])
       + Math.abs(sharpPixels[offset + 1] - softPixels[offset + 1]) + Math.abs(sharpPixels[offset + 2] - softPixels[offset + 2]);
-    if (difference <= 3) continue;
+    if (difference <= 3) { continue; }
     const edge = Math.max(Math.abs((x + 0.5) / 240 - 1), Math.abs((y + 0.5) / 180 - 1));
-    if (edge > 0.7) softEdgePixels++;
-    if (edge < 0.55) softCentrePixels++;
-  }
+    if (edge > 0.7) { softEdgePixels++; }
+    if (edge < 0.55) { softCentrePixels++; }
+  } }
   (blurAttribute.array as Float32Array).set(originalBlur); blurAttribute.needsUpdate = true;
   // A close, depth-writing transparent group would occlude all world-space
   // flakes unless their final group order and disabled depth test both work.
@@ -163,14 +163,14 @@ export async function checkSnow() {
   let foregroundSnowPixels = 0;
   for (let i = 0; i < foregroundOnly.length; i += 4) {
     if (Math.abs(foregroundOnly[i] - snowfallInFront[i]) + Math.abs(foregroundOnly[i + 1] - snowfallInFront[i + 1])
-      + Math.abs(foregroundOnly[i + 2] - snowfallInFront[i + 2]) > 12) foregroundSnowPixels++;
+      + Math.abs(foregroundOnly[i + 2] - snowfallInFront[i + 2]) > 12) { foregroundSnowPixels++; }
   }
   foreground.removeFromParent(); obstruction.geometry.dispose(); obstruction.material.dispose();
   const paused = mesh.geometry.getAttribute('position').version;
   snow.update(0, quaternion);
   const pausePreserved = mesh.geometry.getAttribute('position').version === paused;
   rate.set(0); await Promise.resolve();
-  for (let frame = 0; frame < 240; frame++) snow.update(1 / 30, quaternion);
+  for (let frame = 0; frame < 240; frame++) { snow.update(1 / 30, quaternion); }
   const stopped = { quads: mesh.geometry.drawRange.count / 6, groundVisible: overlays().every(overlay => overlay.visible) };
   cover.set(0); await Promise.resolve();
   const melted = overlays().every(overlay => !overlay.visible);

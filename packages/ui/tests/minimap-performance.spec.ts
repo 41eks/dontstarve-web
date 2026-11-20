@@ -22,7 +22,7 @@ test('zooms the Master tree population on one viewport surface without per-icon 
     for (const [prefab, records] of Object.entries(save.world.entities)) {
       const name = prefab === 'evergreen' || prefab === 'evergreen_sparse' ? 'evergreen.png'
         : prefab === 'deciduoustree' ? 'tree_leaf.png' : prefab === 'moon_tree' ? 'moon_tree.png' : undefined;
-      if (!name) continue;
+      if (!name) { continue; }
       const icon = map.renderer.icons.get(map.renderer.icons.index(name));
       for (const record of records as any[]) {
         const [x, , z] = record.transform.position;

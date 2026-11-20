@@ -5,13 +5,13 @@ const instancedProxies = new WeakSet<THREE.Object3D>();
 
 /** A render-hidden source mesh still supplies the instanced entity's exact input shape. */
 export function setInstancedSpriteProxy(object: THREE.Object3D, enabled: boolean): void {
-  if (enabled) instancedProxies.add(object); else instancedProxies.delete(object);
+  if (enabled) { instancedProxies.add(object); } else { instancedProxies.delete(object); }
 }
 
 export function isInstancedSpriteProxy(object: THREE.Object3D): boolean { return instancedProxies.has(object); }
 
 function wrapPixel(index: number, size: number, wrapping: THREE.Wrapping): number {
-  if (wrapping === THREE.RepeatWrapping) return ((index % size) + size) % size;
+  if (wrapping === THREE.RepeatWrapping) { return ((index % size) + size) % size; }
   if (wrapping === THREE.MirroredRepeatWrapping) {
     const period = ((index % (2 * size)) + 2 * size) % (2 * size);
     return period < size ? period : 2 * size - period - 1;
@@ -29,13 +29,13 @@ function atlasAlpha(texture: THREE.DataTexture, uv: THREE.Vector2): number {
   const { width, height } = texture.image;
   const mask = alphaMasks.get(texture.source);
   const data = mask ?? texture.image.data, stride = mask ? 1 : 4, channel = mask ? 0 : 3;
-  if (!data || width === 0 || height === 0) return 1;
-  if (texture.matrixAutoUpdate) texture.updateMatrix();
+  if (!data || width === 0 || height === 0) { return 1; }
+  if (texture.matrixAutoUpdate) { texture.updateMatrix(); }
   texture.transformUv(textureUv.copy(uv));
   const x = textureUv.x * width, y = textureUv.y * height;
   const texel = (x: number, y: number) => data[(wrapPixel(y, height, texture.wrapT) * width
     + wrapPixel(x, width, texture.wrapS)) * stride + channel] / 255;
-  if (texture.magFilter === THREE.NearestFilter) return texel(Math.floor(x), Math.floor(y));
+  if (texture.magFilter === THREE.NearestFilter) { return texel(Math.floor(x), Math.floor(y)); }
   // Linear texels are centred at (i + .5) / size, including interpolation across wrapped edges.
   const x0 = Math.floor(x - .5), y0 = Math.floor(y - .5);
   const fx = x - .5 - x0, fy = y - .5 - y0;
@@ -52,13 +52,13 @@ export function raycastSprite(this: THREE.Mesh<THREE.BufferGeometry, THREE.MeshB
   let kept = start;
   for (let index = start; index < hits.length; index++) {
     const hit = hits[index], material = this.material[hit.face?.materialIndex ?? 0];
-    if (!material?.visible) continue;
+    if (!material?.visible) { continue; }
     const texture = material.map, uv = texture?.channel === 1 ? hit.uv1 : hit.uv;
     let alpha = material.opacity;
     // DST animation atlases are RGBA unsigned-byte DataTextures. Preserve geometric picking for other maps.
     if (texture instanceof THREE.DataTexture && texture.format === THREE.RGBAFormat
-      && texture.type === THREE.UnsignedByteType && uv) alpha *= atlasAlpha(texture, uv);
-    if (alpha > 0 && alpha >= material.alphaTest) hits[kept++] = hit;
+      && texture.type === THREE.UnsignedByteType && uv) { alpha *= atlasAlpha(texture, uv); }
+    if (alpha > 0 && alpha >= material.alphaTest) { hits[kept++] = hit; }
   }
   hits.length = kept;
 }

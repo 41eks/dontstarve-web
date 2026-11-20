@@ -52,7 +52,7 @@ export class HotspringInstance extends PrefabInstance {
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     this.sprite.setLayer('background'); this.sprite.setMeshOrder(BACKGROUND_MESH_ORDER);
-    for (const tag of ['watersource', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable']) this.addTag(tag);
+    for (const tag of ['watersource', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable']) { this.addTag(tag); }
     this.deploySmartRadius = 1.5 * WORLD_SCALE;
     this.light.set(null); // Light:Enable(false)
 
@@ -66,7 +66,7 @@ export class HotspringInstance extends PrefabInstance {
 
     this.OnSave = (_inst, data) => { data.hotspring = bathbombable.is_bathbombed ? { isbathbombed: true } : {}; };
     this.OnLoad = (_inst, data) => {
-      if (!data.hotspring?.isbathbombed) return;
+      if (!data.hotspring?.isbathbombed) { return; }
       this.populating = true;
       try { bathbombable.OnBathBombed(); } finally { this.populating = false; }
     };
@@ -76,8 +76,8 @@ export class HotspringInstance extends PrefabInstance {
     const status = watchSignal(this.status, stop => cleanups.push(stop));
     cleanups.push(createEffect(() => {
       const value = status.get();
-      if (value === 'asleep') StopFx(this);
-      else if (value === 'active') OnWake(this);
+      if (value === 'asleep') { StopFx(this); }
+      else if (value === 'active') { OnWake(this); }
     }));
     this.onRemove(() => {
       cleanups.splice(0).forEach(stop => stop());
@@ -109,7 +109,7 @@ function StopFx(inst: HotspringInstance): void {
 
 function OnWake(inst: HotspringInstance): void {
   const { is_bathbombed, can_be_bathbombed } = inst.components.bathbombable;
-  if (!inst._fx_task && (is_bathbombed || can_be_bathbombed)) StartFx(inst);
+  if (!inst._fx_task && (is_bathbombed || can_be_bathbombed)) { StartFx(inst); }
 }
 
 function GetHeat(inst: HotspringInstance): number {

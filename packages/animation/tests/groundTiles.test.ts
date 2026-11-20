@@ -60,7 +60,7 @@ it('commits generated tiles once, preserves saved overrides and retains geometry
     expect(changed).toHaveBeenCalledOnce();
     expect(map.getTileAtWorld(tiles[0].position)).toBe(WORLD_TILES.DIRT);
     expect(map.exportTiles()).toEqual(saved);
-    for (const { position, tileId } of tiles) reference.setOriginalTile(position, tileId);
+    for (const { position, tileId } of tiles) { reference.setOriginalTile(position, tileId); }
     const referenceDisplay = await drawGround(reference);
     for (const name of ['GRASS', 'WOODFLOOR', 'DECIDUOUS']) {
       const geometry = layerGeometry(display, name), expected = layerGeometry(referenceDisplay, name);
@@ -74,7 +74,7 @@ it('commits generated tiles once, preserves saved overrides and retains geometry
     map.setOriginalTile(tiles[0].position, WORLD_TILES.WOODFLOOR); // Saved dirt still wins.
     expect(changed).toHaveBeenCalledTimes(1);
     expect(layerMeshes(display, 'WOODFLOOR').map(mesh => mesh.geometry)).toEqual(geometries);
-    for (const spy of disposed) expect(spy).not.toHaveBeenCalled();
+    for (const spy of disposed) { expect(spy).not.toHaveBeenCalled(); }
     display.dispose(); referenceDisplay.dispose();
   } finally { map.dispose(); reference.dispose(); }
 });
@@ -117,13 +117,13 @@ it('borrows ground geometry and atlas shaders for depth, updates replacements, a
 
 it('selects every source mask for the 256 possible neighbours, with adjacent diagonal bits suppressed', () => {
   const variants = new Set<number>();
-  for (let c = 0; c < 16; c++) for (let d = 0; d < 16; d++) {
+  for (let c = 0; c < 16; c++) { for (let d = 0; d < 16; d++) {
     const variant = groundTileVariant(false, c, d);
     expect(variant).toBeGreaterThanOrEqual(2);
     expect(variant).toBeLessThanOrEqual(48);
     expect(groundTileVariant(true, c, d)).toBe(1);
     variants.add(variant);
-  }
+  } }
   expect(variants.size).toBe(47);
   expect(groundTileVariant(false, 0, 0)).toBe(17);
   expect(groundTileVariant(false, 1, 9)).toBe(2); // west absorbs northwest/southwest
@@ -138,7 +138,7 @@ it('updates the outer boundary of contiguous dirt while leaving its interior fre
   expect(layerMeshes(display, 'DECIDUOUS')).toHaveLength(0);
   map.dig({ x: 6, z: 6 });
   expect(layerGeometry(display, 'DECIDUOUS').getIndex()!.count).toBe(9 * 6);
-  for (let col = 0; col < 3; col++) for (let row = 0; row < 3; row++) map.dig({ x: col * 12 + 6, z: row * 12 + 6 });
+  for (let col = 0; col < 3; col++) { for (let row = 0; row < 3; row++) { map.dig({ x: col * 12 + 6, z: row * 12 + 6 }); } }
   const edge = layerGeometry(display, 'DECIDUOUS');
   expect(edge.getIndex()!.count).toBe(24 * 6);
   const positions = edge.getAttribute('position');
@@ -153,9 +153,9 @@ it('updates the outer boundary of contiguous dirt while leaving its interior fre
 
 it('renders woodfloor above deciduous and dirt, with a concave mask around an excavated wood tile', async () => {
   const map = new TurfMap(1000);
-  for (let col = 0; col < 3; col++) for (let row = 0; row < 3; row++) {
+  for (let col = 0; col < 3; col++) { for (let row = 0; row < 3; row++) {
     map.setOriginalTile({ x: col * 12 + 6, z: row * 12 + 6 }, WORLD_TILES.WOODFLOOR);
-  }
+  } }
   const display = await drawGround(map);
   expect(layerGeometry(display, 'WOODFLOOR').getIndex()!.count).toBe(25 * 6);
   const order = Object.fromEntries(map.groundLayers().map(({ art, renderOrder }) => [art.name, renderOrder]));
@@ -178,7 +178,7 @@ it('renders woodfloor above deciduous and dirt, with a concave mask around an ex
   const cell = assets.elements.get('16')!;
   let matched = false;
   for (let i = 0; i < position.count; i += 4) {
-    if (position.getX(i) !== 12 || position.getZ(i) !== 12) continue;
+    if (position.getX(i) !== 12 || position.getZ(i) !== 12) { continue; }
     expect(uvs.getX(i)).toBeCloseTo(cell.u1);
     expect(uvs.getY(i)).toBeCloseTo(1 - cell.v2);
     matched = true;
@@ -189,7 +189,7 @@ it('renders woodfloor above deciduous and dirt, with a concave mask around an ex
 
 it('draws the ocean surface as merged rectangles instead of a quad per cell', async () => {
   const tiles = [];
-  for (let row = 0; row < 3; row++) for (let col = -3; col < 0; col++) tiles.push({ col, row, tileId: WORLD_TILES.OCEAN_COASTAL });
+  for (let row = 0; row < 3; row++) { for (let col = -3; col < 0; col++) { tiles.push({ col, row, tileId: WORLD_TILES.OCEAN_COASTAL }); } }
   const map = new TurfMap(96, tiles);
   const display = await drawGround(map);
   const ocean = display.root.getObjectByName('TurfOcean:OCEAN_COASTAL') as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
@@ -232,7 +232,7 @@ it('restores ocean terrain, rejects land actions and keeps ground overlays on la
   const shoreCell = assets.elements.get('16')!;
   let foundCoast = false;
   for (let i = 0; i < positions.count; i += 4) {
-    if (positions.getX(i) !== -12 || positions.getZ(i) !== 0) continue;
+    if (positions.getX(i) !== -12 || positions.getZ(i) !== 0) { continue; }
     expect(tileUvs.getX(i)).toBeCloseTo(shoreCell.u1);
     expect(tileUvs.getY(i)).toBeCloseTo(1 - shoreCell.v2);
     foundCoast = true;

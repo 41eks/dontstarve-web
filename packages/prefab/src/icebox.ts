@@ -28,7 +28,7 @@ function onclose(inst: PrefabInstance): void {
 }
 
 function onworked(inst: PrefabInstance): void {
-  if (inst.hasTag('burnt')) return;
+  if (inst.hasTag('burnt')) { return; }
   inst.sprite.playOnce('hit');
   inst.sprite.pushAnimation('closed', false);
   inst.components.container?.DropEverything(inst.position);

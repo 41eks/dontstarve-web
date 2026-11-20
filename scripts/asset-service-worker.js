@@ -21,7 +21,7 @@ async function loadAsset(request) {
   try {
     cache = await caches.open(cacheName);
     const cached = await cache.match(request);
-    if (cached) return cached;
+    if (cached) { return cached; }
   } catch (error) {
     console.warn('Unable to read asset cache', error);
   }
@@ -45,7 +45,7 @@ async function loadRange(request, range) {
   const headers = new Headers(request.headers);
   headers.delete('range');
   const response = await loadAsset(new Request(request, { headers }));
-  if (response.status !== 200) return response;
+  if (response.status !== 200) { return response; }
 
   const data = await response.arrayBuffer();
   const length = data.byteLength;
@@ -70,13 +70,13 @@ async function loadRange(request, range) {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
   if (request.method !== 'GET' || request.cache === 'no-store' ||
-      !assetRoots.some(root => request.url.startsWith(root))) return;
+      !assetRoots.some(root => request.url.startsWith(root))) { return; }
 
   const rangeHeader = request.headers.get('range');
   if (rangeHeader !== null) {
     const range = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader);
     // Leave multipart ranges and conditional ranges to the server.
-    if (!range || (!range[1] && !range[2]) || request.headers.has('if-range')) return;
+    if (!range || (!range[1] && !range[2]) || request.headers.has('if-range')) { return; }
     event.respondWith(loadRange(request, range));
   } else {
     event.respondWith(loadAsset(request));

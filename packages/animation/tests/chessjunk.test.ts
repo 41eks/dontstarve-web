@@ -27,7 +27,7 @@ function setup(playerPosition = new THREE.Vector3()) {
     { tickingarea: () => createMemo(() => awake.get()), scheduler });
   prefabs.register(chessJunkPrefabs({ scheduler,
     fx: { spawn: () => { throw new Error('unexpected fx'); }, collapse: (size, _position, material) => { collapses.push(`${size}:${material}`); } },
-    dropLoot: items => { for (const item of items) dropped.push(item.itemId); } }));
+    dropLoot: items => { for (const item of items) { dropped.push(item.itemId); } } }));
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.chessJunk);
   const spawn = (id: ChessJunkId, record?: EntitySaveRecord) =>

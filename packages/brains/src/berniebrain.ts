@@ -79,7 +79,7 @@ export class BernieBrain extends Brain<BernieActiveBrainInst> {
   }
 
   private DoGoBig(leader: BerniePlayer | undefined): void {
-    if (!leader || leader.bigbernies) return;
+    if (!leader || leader.bigbernies) { return; }
     leader.blockbigbernies?.Cancel();
     // V2C: block other big bernies from triggering, since brain needs time to detect initial leader
     leader.blockbigbernies = leader.DoTaskInTime(.5, () => { leader.blockbigbernies = undefined; });
@@ -113,10 +113,10 @@ export class BernieBigBrain extends Brain<BernieBigBrainInst> {
   constructor(inst: BernieBigBrainInst, worldScale = 1) { super(inst); this.scale = worldScale; }
 
   private SetLeader(leader: BerniePlayer | undefined): void {
-    if (this._leader === leader) return;
+    if (this._leader === leader) { return; }
     if (this._leader?.bigbernies) {
       this._leader.bigbernies.delete(this.inst);
-      if (this._leader.bigbernies.size === 0) this._leader.bigbernies = undefined;
+      if (this._leader.bigbernies.size === 0) { this._leader.bigbernies = undefined; }
     }
     if (leader) {
       (leader.bigbernies ??= new Set()).add(this.inst);
@@ -126,16 +126,16 @@ export class BernieBigBrain extends Brain<BernieBigBrainInst> {
   }
 
   private ShouldDeactivate(): boolean {
-    if (this._leader && this.inst.sg.hasStateTag('busy')) return false;
+    if (this._leader && this.inst.sg.hasStateTag('busy')) { return false; }
     let closestleader: BerniePlayer | undefined, iscrazy = false;
     let rangesq = (FIND_LEADER_DIST * this.scale) ** 2;
     if (this._leader) {
-      if (this._leader.position.distanceToSquared(this.inst.position) < (LOSE_LEADER_DIST * this.scale) ** 2 && this.inst.isleadercrazy(this._leader)) iscrazy = true;
-      else this.SetLeader(undefined);
+      if (this._leader.position.distanceToSquared(this.inst.position) < (LOSE_LEADER_DIST * this.scale) ** 2 && this.inst.isleadercrazy(this._leader)) { iscrazy = true; }
+      else { this.SetLeader(undefined); }
     }
     if (!this._leader) {
       for (const v of this.inst.getPlayers()) {
-        if (!v.hasTag('bernieowner') || !(v.bigbernies === undefined || v.bigbernies.has(this.inst)) || !v.IsVisible()) continue;
+        if (!v.hasTag('bernieowner') || !(v.bigbernies === undefined || v.bigbernies.has(this.inst)) || !v.IsVisible()) { continue; }
         const d = v.position.distanceToSquared(this.inst.position);
         if (this.inst.isleadercrazy(v)) {
           if (d < (iscrazy ? rangesq : (FIND_LEADER_DIST * this.scale) ** 2)) { iscrazy = true; rangesq = d; closestleader = v; }
@@ -149,7 +149,7 @@ export class BernieBigBrain extends Brain<BernieBigBrainInst> {
       this.inst.should_shrink = undefined;
       return true;
     }
-    if (iscrazy || this.inst.sg.hasStateTag('busy')) return false;
+    if (iscrazy || this.inst.sg.hasStateTag('busy')) { return false; }
     return this.inst.GetTimeAlive() >= MIN_ACTIVE_TIME;
   }
 

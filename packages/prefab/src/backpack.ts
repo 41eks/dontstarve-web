@@ -13,7 +13,7 @@ export function configureBackpackEntity(entity: ItemEntity): void {
     visual?.onunequip();
     const worn = wornOwner(owner);
     visual = worn && backpackVisual({ id: inst.id, prefab: inst.prefab, skinId: inst.skinId });
-    if (worn) visual?.onequip(worn);
+    if (worn) { visual?.onequip(worn); }
   });
   equippable.SetOnUnequip(() => { visual?.onunequip(); visual = undefined; });
 }
@@ -28,11 +28,11 @@ export const backpackVisual: EquipmentVisualFactory = item => {
       if (skin) {
         owner.PushEvent('equipskinneditem', item.skinId);
         owner.AnimState.OverrideItemSkinSymbol('swap_body', skin, 'swap_body', item.id, 'swap_backpack');
-      } else owner.AnimState.OverrideSymbol('swap_body', 'swap_backpack', 'swap_body');
+      } else { owner.AnimState.OverrideSymbol('swap_body', 'swap_backpack', 'swap_body'); }
     },
     onunequip() {
-      if (!owner) return;
-      if (skin) owner.PushEvent('unequipskinneditem', item.skinId);
+      if (!owner) { return; }
+      if (skin) { owner.PushEvent('unequipskinneditem', item.skinId); }
       owner.AnimState.ClearOverrideSymbol('swap_body');
       owner.AnimState.ClearOverrideSymbol('backpack');
       owner = undefined;

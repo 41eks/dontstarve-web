@@ -29,7 +29,7 @@ export class WorldPerishClock implements PerishClock {
   private disposed = false;
 
   constructor(temperature: ReadonlySignal<number>, initialTime = 0) {
-    if (!Number.isFinite(initialTime) || initialTime < 0) throw new RangeError('Invalid initial perish time');
+    if (!Number.isFinite(initialTime) || initialTime < 0) { throw new RangeError('Invalid initial perish time'); }
     this.initialTime = this.time = initialTime;
     this.settled = createSignal(Object.freeze({ time: initialTime, total: 0 }));
     this.snapshot = readonlySignal(this.settled);
@@ -41,8 +41,8 @@ export class WorldPerishClock implements PerishClock {
 
   /** Each frame records its actual dt without publishing a signal or changing world temperature. */
   OnUpdate(dt: number): void {
-    if (!Number.isFinite(dt) || dt < 0) throw new RangeError('dt must be finite and nonnegative');
-    if (this.disposed || dt === 0) return;
+    if (!Number.isFinite(dt) || dt < 0) { throw new RangeError('dt must be finite and nonnegative'); }
+    if (this.disposed || dt === 0) { return; }
     const multiplier = this.multiplier.peek();
     let interval = this.intervals.at(-1);
     if (!interval || interval.multiplier !== multiplier) {
@@ -57,18 +57,18 @@ export class WorldPerishClock implements PerishClock {
 
   /** Publish only at the world's 60-frame settlement or an explicit partial settlement. */
   Flush(): void {
-    if (this.settled.peek().time !== this.time) this.settled.set(this.GetTick());
+    if (this.settled.peek().time !== this.time) { this.settled.set(this.GetTick()); }
   }
 
   /** Sampling the live integral also includes frames after the last published snapshot. */
   GetTick(time = this.time): PerishTick {
-    if (!Number.isFinite(time) || time < this.initialTime || time > this.time) throw new RangeError('Perish tick outside recorded game time');
-    if (time === this.time) return Object.freeze({ time, total: this.total });
+    if (!Number.isFinite(time) || time < this.initialTime || time > this.time) { throw new RangeError('Perish tick outside recorded game time'); }
+    if (time === this.time) { return Object.freeze({ time, total: this.total }); }
     let lo = 0, hi = this.intervals.length - 1;
     while (lo < hi) {
       const mid = (lo + hi) >>> 1;
-      if (this.intervals[mid].endTime < time) lo = mid + 1;
-      else hi = mid;
+      if (this.intervals[mid].endTime < time) { lo = mid + 1; }
+      else { hi = mid; }
     }
     const interval = this.intervals[lo];
     return Object.freeze({ time, total: interval.start.total + (time - interval.start.time) * interval.multiplier });
@@ -77,12 +77,12 @@ export class WorldPerishClock implements PerishClock {
   GetFrozenTick(time = this.time): PerishTick {
     // Validate and locate time using the same recorded intervals as normal perishables.
     this.GetTick(time);
-    if (time === this.time) return Object.freeze({ time, total: this.frozenTotal });
+    if (time === this.time) { return Object.freeze({ time, total: this.frozenTotal }); }
     let lo = 0, hi = this.intervals.length - 1;
     while (lo < hi) {
       const mid = (lo + hi) >>> 1;
-      if (this.intervals[mid].endTime < time) lo = mid + 1;
-      else hi = mid;
+      if (this.intervals[mid].endTime < time) { lo = mid + 1; }
+      else { hi = mid; }
     }
     const interval = this.intervals[lo];
     return Object.freeze({ time, total: interval.frozenStart
@@ -90,7 +90,7 @@ export class WorldPerishClock implements PerishClock {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.Flush();
     this.disposed = true;
     this.stopTemperature();

@@ -19,7 +19,7 @@ it('simulates active tiles while retaining dormant collision data, waking the sa
   const shapes = [...edge.shapes];
   try {
     world.addBody(ground); world.addBody(player); world.addBody(edge); world.addBody(next);
-    for (let i = 0; i < 1000; i++) world.addBody(obstacle(200 + i / 10));
+    for (let i = 0; i < 1000; i++) { world.addBody(obstacle(200 + i / 10)); }
     expect(world.bodies).toEqual([ground, player, edge]);
     expect(getRegisteredPhysicsBodies(world)).toHaveLength(1004);
     expect(next.world).toBeNull();

@@ -118,19 +118,19 @@ it('cools stones to the source floor, resumes ambient changes outside the fridge
     expect(temp.GetCurrent()).toBe(-5);
     temp.OnUpdate(1); // thaw to zero at 5 degrees/s before the ordinary warming branch
     temp.OnUpdate(.2); // zero still uses the thaw rate
-    for (let second = 0; second < 23; second++) temp.OnUpdate(1);
+    for (let second = 0; second < 23; second++) { temp.OnUpdate(1); }
     expect(temp.GetCurrent()).toBe(24);
     expect(rock.range.peek()).toBe(2); // strict > ambient - 10
     temp.OnUpdate(.1);
     expect(rock.range.peek()).toBe(3);
     expect(item.components.fueled!.currentfuel).toBe(87.5);
     expect(item.lowTemp).toBeUndefined();
-    for (let second = 0; second < 20; second++) temp.OnUpdate(1);
+    for (let second = 0; second < 20; second++) { temp.OnUpdate(1); }
     expect(item.components.fueled!.currentfuel).toBe(87.5);
     item.setRemainingFuel(12.5);
     inventory.transfer(held, chilled, 1); temp.OnUpdate(100);
     inventory.transfer(chilled, held, 1);
-    for (let second = 0; second < 21; second++) temp.OnUpdate(1);
+    for (let second = 0; second < 21; second++) { temp.OnUpdate(1); }
     expect(item.isRemoved).toBe(true);
     expect(inventory.getEntity(held)).toBeNull();
   } finally { inventory.dispose(); }
@@ -180,7 +180,7 @@ it('saves a spawned fridge with skinned cold stones and food through c_save and 
   let restoredClock: WorldPerishClock | undefined;
   try {
     const spawn = async (id: string) => {
-      if (id !== 'icebox') return false;
+      if (id !== 'icebox') { return false; }
       await placement.spawnFromSave('icebox', { id: 'fridge', transform: { position: [3, 0, -6], rotationY: 0 },
         components: { building: { skinId: 'icebox_crystal' } } });
       return true;

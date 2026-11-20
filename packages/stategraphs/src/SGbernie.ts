@@ -38,7 +38,7 @@ const bernieStates: StateDefinition<BernieStateInst, BernieStateName>[] = [
     name: 'idle',
     tags: ['idle', 'canrotate'],
     onenter: sg => {
-      if (!sg.context.isCurrentAnimation('idle_loop')) sg.context.playAnimation('idle_loop', true);
+      if (!sg.context.isCurrentAnimation('idle_loop')) { sg.context.playAnimation('idle_loop', true); }
       sg.setTimeout(sg.context.getCurrentAnimationLength());
     },
     ontimeout: sg => sg.goToState('idle'),

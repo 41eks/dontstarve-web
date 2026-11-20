@@ -51,14 +51,14 @@ type HatCatalogEntry = Omit<HatDefinition, 'equip' | 'skinEquipModes'> & {
   readonly skinEquipModes: Readonly<Record<string, string>>;
 };
 function rgb(hat: string, colour: readonly number[]): PrefabLocalLight['colour'] {
-  if (colour.length !== 3) throw new Error(`${hat}: light colour needs three channels`);
+  if (colour.length !== 3) { throw new Error(`${hat}: light colour needs three channels`); }
   const [r, g, b] = colour;
   return [r, g, b];
 }
 const HAT_EQUIP_MODES: readonly HatEquipMode[] = ['normal', 'opentop', 'fullhelm'];
 const isHatEquipMode = (mode: string): mode is HatEquipMode => HAT_EQUIP_MODES.some(known => known === mode);
 function hatEquipMode(hat: string, mode: string): HatEquipMode {
-  if (!isHatEquipMode(mode)) throw new Error(`${hat}: unknown equip mode ${mode}`);
+  if (!isHatEquipMode(mode)) { throw new Error(`${hat}: unknown equip mode ${mode}`); }
   return mode;
 }
 const CATALOG_HATS: Readonly<Record<string, HatCatalogEntry>> = catalog.hats;
@@ -97,9 +97,9 @@ export const HAT_RECIPES: Readonly<Record<string, InventoryRecipeDefinition>> = 
     for (const ingredient of source.ingredients) {
       // Character resources (balloonhat's sanity) have no inventory-slot equivalent.
       if (typeof ingredient.type !== 'string' || typeof ingredient.amount !== 'number'
-        || !Number.isSafeInteger(ingredient.amount) || ingredient.amount < 0) return [];
-      if (ingredient.amount === 0) requiredItems.push(ingredient.type);
-      else ingredients[ingredient.type] = (ingredients[ingredient.type] ?? 0) + ingredient.amount;
+        || !Number.isSafeInteger(ingredient.amount) || ingredient.amount < 0) { return []; }
+      if (ingredient.amount === 0) { requiredItems.push(ingredient.type); }
+      else { ingredients[ingredient.type] = (ingredients[ingredient.type] ?? 0) + ingredient.amount; }
     }
     const config = source.config as { product?: string; numtogive?: number };
     return [[source.name, {
@@ -178,8 +178,8 @@ export class HatActivationController {
 
   dispose(): void {
     this.stopActivated();
-    if (this.stopSanity) this.stopSanity();
-    else this.activatedMemo.dispose();
+    if (this.stopSanity) { this.stopSanity(); }
+    else { this.activatedMemo.dispose(); }
     this.removeAll();
     this.stopHidden();
     this.hiddenMemo.dispose();
@@ -187,13 +187,13 @@ export class HatActivationController {
 
   update(dt: number): void {
     const restoring = this.restoring.peek();
-    if (restoring === undefined) return;
+    if (restoring === undefined) { return; }
     this.restoring.set(restoring + dt >= 8 / 30 ? undefined : restoring + dt);
   }
 
   /** The swap_hat stays hidden across the switch: active turns on before a pending restore ends, and off after one starts. */
   private apply(active: boolean): void {
-    if (active === this.active.peek()) return;
+    if (active === this.active.peek()) { return; }
     if (active) { this.active.set(true); this.activate(); } else { this.deactivate(); this.active.set(false); }
   }
 
@@ -209,7 +209,7 @@ export class HatActivationController {
       const fx = new AlterguardianHatEquipped(art, owner);
       fx.OnActivated(isFront);
       fx.SetSkin();
-      if (isFront) this.front = fx; else this.back = fx;
+      if (isFront) { this.front = fx; } else { this.back = fx; }
     }
     // alterguardianhatlight is parented to the owner.
     const light = spawnLightEntity('alterguardianhatlight', this.owner);
@@ -219,7 +219,7 @@ export class HatActivationController {
 
   private deactivate(): void {
     this.removeLight?.(); this.removeLight = null;
-    if (this.front) this.restoring.set(0);
+    if (this.front) { this.restoring.set(0); }
     this.front?.OnDeactivated(); this.front = undefined;
     this.back?.OnDeactivated(); this.back = undefined;
   }
@@ -268,8 +268,8 @@ import { skinArchive, wornOwner, type EquipmentPresentation, type EquipmentVisua
 
 /** hats.lua simple(): the head equippable and its onequip/onunequip; dreadstone's wrap them as fns.dreadstone does. */
 export function configureHatEntity(entity: ItemEntity): void {
-  if (entity.prefab === DREADSTONEHAT_ID) configureDreadstoneHatEntity(entity);
-  if (entity.getComponent('hat')) return;
+  if (entity.prefab === DREADSTONEHAT_ID) { configureDreadstoneHatEntity(entity); }
+  if (entity.getComponent('hat')) { return; }
   const hat = entity.component('hat', () => new WornHat(entity));
   const equippable = addComponent(entity, 'equippable', Equippable<ItemEntity>, 'head');
   equippable.SetOnEquip((_inst, owner) => hat.onequip(owner));
@@ -288,10 +288,10 @@ class WornHat implements ItemRuntimeComponent {
       this.visual = hatVisual({ id: this.inst.id, prefab: this.inst.prefab, skinId: this.inst.skinId }, worn.presentation);
       this.visual.onequip(worn);
     }
-    if (this.inst.prefab === DREADSTONEHAT_ID) dreadstone_onequip(this.inst, owner);
+    if (this.inst.prefab === DREADSTONEHAT_ID) { dreadstone_onequip(this.inst, owner); }
   }
   onunequip(): void {
-    if (this.inst.prefab === DREADSTONEHAT_ID) dreadstone_onunequip(this.inst);
+    if (this.inst.prefab === DREADSTONEHAT_ID) { dreadstone_onunequip(this.inst); }
     this.visual?.onunequip(); this.visual = undefined;
   }
   dispose(): void { this.onunequip(); }
@@ -300,7 +300,7 @@ class WornHat implements ItemRuntimeComponent {
 /** hats.lua's simple/opentop/fullhelm equip branches and their owned follower FX; builds are named for the owner's display. */
 export function hatVisual(item: EquipmentVisualItem, context: Pick<EquipmentPresentation, 'assets' | 'hats' | 'lightParent' | 'sanityPercent'>): EquipmentVisual {
   const definition = Object.hasOwn(HAT_DEFINITIONS, item.prefab) ? HAT_DEFINITIONS[item.prefab] : undefined;
-  if (!definition) throw new Error(`Unknown hat: ${item.prefab}`);
+  if (!definition) { throw new Error(`Unknown hat: ${item.prefab}`); }
   const skin = skinArchive(item.prefab, definition.skinArchives, item.skinId);
   const mode = (item.skinId !== undefined ? definition.skinEquipModes[item.skinId] : undefined) ?? definition.equip.mode;
   const symbol = mode === 'fullhelm' ? 'headbase_hat' : 'swap_hat';
@@ -316,40 +316,40 @@ export function hatVisual(item: EquipmentVisualItem, context: Pick<EquipmentPres
       if (item.skinId) {
         owner.PushEvent('equipskinneditem', item.skinId);
         anim.OverrideItemSkinSymbol(symbol, builds, definition.equip.symbol, item.id);
-      } else anim.OverrideSymbol(symbol, builds, definition.equip.symbol);
-      if (mode !== 'fullhelm') anim.ClearOverrideSymbol('headbase_hat');
+      } else { anim.OverrideSymbol(symbol, builds, definition.equip.symbol); }
+      if (mode !== 'fullhelm') { anim.ClearOverrideSymbol('headbase_hat'); }
       for (const layer of ['HAT', 'HAIR_HAT', 'HAIR_NOHAT', 'HAIR', 'HEAD', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) {
         const visible = layer === 'HAT' ? mode !== 'fullhelm'
           : layer === 'HAIR_HAT' ? mode === 'normal'
           : layer === 'HAIR_NOHAT' || layer === 'HAIR' || layer === 'HEAD' ? mode === 'opentop'
           : layer === 'HEAD_HAT' ? mode !== 'opentop'
           : layer === 'HEAD_HAT_NOHELM' ? mode === 'normal' : mode === 'fullhelm';
-        if (visible) anim.Show(layer); else anim.Hide(layer);
+        if (visible) { anim.Show(layer); } else { anim.Hide(layer); }
       }
-      if (mode === 'fullhelm') for (const name of ['face', 'swap_face', 'beard', 'cheeks']) anim.HideSymbol(name);
+      if (mode === 'fullhelm') { for (const name of ['face', 'swap_face', 'beard', 'cheeks']) { anim.HideSymbol(name); } }
       // The hat's own animation follows the symbol, drawn from its bank by the owner's display.
-      if (follow) stops.push(anim.FollowSymbolAnimation(symbol, { bank: definition.archive, animation: follow.animation, builds, symbols: follow.symbols }));
+      if (follow) { stops.push(anim.FollowSymbolAnimation(symbol, { bank: definition.archive, animation: follow.animation, builds, symbols: follow.symbols })); }
       if (definition.equip.activated) {
         const current = activation = new HatActivationController(context.lightParent, {
           assets: context.hats, sanityPercent: context.sanityPercent, art: context.assets,
-          onSwapHatHidden: hidden => { if (hidden) anim.HideSymbol(symbol); else anim.ShowSymbol(symbol); },
+          onSwapHatHidden: hidden => { if (hidden) { anim.HideSymbol(symbol); } else { anim.ShowSymbol(symbol); } },
         });
         current.setHat({ definition, skinId: item.skinId });
         stops.push(anim.AddAttachment({ get isAnimating() { return current.isAnimating; }, update(dt) { current.update(dt); } }));
       }
     },
     onunequip() {
-      if (!owner) return;
-      for (const stop of stops) stop();
+      if (!owner) { return; }
+      for (const stop of stops) { stop(); }
       stops.length = 0;
       activation?.dispose(); activation = undefined;
       const anim = owner.AnimState;
-      if (item.skinId) owner.PushEvent('unequipskinneditem', item.skinId);
+      if (item.skinId) { owner.PushEvent('unequipskinneditem', item.skinId); }
       anim.ClearOverrideSymbol('headbase_hat');
       anim.ClearOverrideSymbol('swap_hat');
-      for (const layer of ['HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) anim.Hide(layer);
-      for (const layer of ['HAIR_NOHAT', 'HAIR', 'HEAD']) anim.Show(layer);
-      if (mode === 'fullhelm') for (const name of ['face', 'swap_face', 'beard', 'cheeks']) anim.ShowSymbol(name);
+      for (const layer of ['HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) { anim.Hide(layer); }
+      for (const layer of ['HAIR_NOHAT', 'HAIR', 'HEAD']) { anim.Show(layer); }
+      if (mode === 'fullhelm') { for (const name of ['face', 'swap_face', 'beard', 'cheeks']) { anim.ShowSymbol(name); } }
       owner = undefined;
     },
   };

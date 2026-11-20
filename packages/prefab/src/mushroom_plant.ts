@@ -40,11 +40,11 @@ export class MushroomPlantInstance extends PickablePlantInstance {
 }
 
 function onsave(inst: MushroomPlantInstance, data: PickablePlantRecord['components']): void {
-  if (inst.rain > 0) data.mushroom = { rain: inst.rain };
+  if (inst.rain > 0) { data.mushroom = { rain: inst.rain }; }
 }
 
 function onload(inst: MushroomPlantInstance, data: PickablePlantRecord['components']): void {
-  if (data.mushroom) inst.rain = data.mushroom.rain;
+  if (data.mushroom) { inst.rain = data.mushroom.rain; }
 }
 
 function onpickedfn(inst: MushroomPlantInstance): void {
@@ -62,25 +62,25 @@ function checkregrow(inst: MushroomPlantInstance): void {
   const { pickable } = inst.components;
   if (!pickable.canBePicked && inst.raining?.peek() === 'rain') {
     inst.rain -= 1;
-    if (inst.rain <= 0) pickable.regen();
+    if (inst.rain <= 0) { pickable.regen(); }
   }
 }
 
 function open(inst: MushroomPlantInstance): void {
-  if (!inst.components.pickable.canBePicked) return;
+  if (!inst.components.pickable.canBePicked) { return; }
   inst.growtask?.Cancel();
   inst.growtask = inst.DoTaskInTime(3 + Math.random() * 6, inst.opentaskfn);
 }
 
 function close(inst: MushroomPlantInstance): void {
-  if (!inst.components.pickable.canBePicked) return;
+  if (!inst.components.pickable.canBePicked) { return; }
   inst.growtask?.Cancel();
   inst.growtask = inst.DoTaskInTime(3 + Math.random() * 6, inst.closetaskfn);
 }
 
 function onregenfn(inst: MushroomPlantInstance): void {
   inst.components.pickable.canInteractWith = false; // Wait for the mushroom to become visible.
-  if (inst.data.open_time === inst.cavephase?.peek()) open(inst);
+  if (inst.data.open_time === inst.cavephase?.peek()) { open(inst); }
   else {
     inst.AnimState.PushAnimation('inground', false);
     inst.DoTaskInTime(.25, () => inst.SoundEmitter!.PlaySound('dontstarve/common/mushroom_down'));
@@ -88,7 +88,7 @@ function onregenfn(inst: MushroomPlantInstance): void {
 }
 
 function OnIsOpenPhase(inst: MushroomPlantInstance, isopen: boolean): void {
-  if (isopen) open(inst); else close(inst);
+  if (isopen) { open(inst); } else { close(inst); }
 }
 
 /**
@@ -134,7 +134,7 @@ function mushcommonfn(prefab: MushroomPlantId, world: PickablePlantWorld, positi
   const workable = addComponent(inst, 'workable', Workable<MushroomPlantInstance>);
   workable.SetWorkAction('DIG');
   workable.SetOnFinishCallback(inst => {
-    if (inst.components.pickable.canBePicked) inst.components.lootdropper!.SpawnLootPrefab(data.pickloot, inst.position);
+    if (inst.components.pickable.canBePicked) { inst.components.lootdropper!.SpawnLootPrefab(data.pickloot, inst.position); }
     inst.components.lootdropper!.SpawnLootPrefab(data.pickloot, inst.position);
     inst.remove();
   });
@@ -155,7 +155,7 @@ function mushcommonfn(prefab: MushroomPlantId, world: PickablePlantWorld, positi
       const isopen = cavephase.get() === data.open_time;
       const changed = previous !== undefined && previous !== isopen;
       previous = isopen;
-      if (changed) OnIsOpenPhase(inst, isopen);
+      if (changed) { OnIsOpenPhase(inst, isopen); }
     }));
   }
   inst.raining = world.rain ? watchSignal(world.rain, stop => inst.onRemove(stop)) : undefined;

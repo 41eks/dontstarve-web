@@ -38,7 +38,7 @@ it('names skin builds without loading them, replaces an unequipped skin and keep
   const archive = GROUND_ITEM_DEFINITIONS.hammer.skinArchives.hammer_invisible;
   const equipFns = (inst: ItemEntity) => ({
     onequip: (wearer: typeof owner) => inst.components.equippable!.Equip(wearer),
-    onunequip: () => { if (inst.components.equippable!.IsEquipped()) inst.components.equippable!.Unequip(owner); },
+    onunequip: () => { if (inst.components.equippable!.IsEquipped()) { inst.components.equippable!.Unequip(owner); } },
   });
   const skinned = equipFns(item), plain = equipFns(next);
   try {

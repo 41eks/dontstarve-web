@@ -97,7 +97,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     const sprite = prefabInstance(model)!.sprite;
     // growfromseed spawns the shrub at once; its display draws it once the art has loaded.
     await prefabDisplay(model)!.artLoaded();
-    const vertices = () => { let count = 0; model.traverse(o => { if (o instanceof THREE.Mesh) count += o.geometry.drawRange.count === Infinity ? o.geometry.index?.count ?? 0 : o.geometry.drawRange.count; }); return count; };
+    const vertices = () => { let count = 0; model.traverse(o => { if (o instanceof THREE.Mesh) { count += o.geometry.drawRange.count === Infinity ? o.geometry.index?.count ?? 0 : o.geometry.drawRange.count; } }); return count; };
     const bare = vertices();
     s.snowLevel.set(.02);
     // Appearance declarations update synchronously; the display applies them on its own schedule.
@@ -119,7 +119,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     // The worker holds its tool: SpawnPrefab puts the inst in the world, GiveItem takes it out of the scene.
     const pickaxe = s.inventory.entities.create({ itemId: 'pickaxe', count: 1 }); s.inventory.GiveItem(pickaxe);
     const [mine] = workTargets('MINE', s.scene);
-    for (let i = 0; i < 9; i++) expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
+    for (let i = 0; i < 9; i++) { expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true); }
     expect(s.shrubs.exportRecords()).toHaveLength(1);
     expect(performToolWork('MINE', mine.entity, testPlayer(), pickaxe)).toBe(true);
     expect(workTargets('MINE', s.scene)).toEqual([]); expect(s.shrubs.exportRecords()).toEqual([]);
@@ -142,7 +142,7 @@ it('plays a drawn shrub\'s grow clip and then rests on the new stage\'s idle', a
     expect(shrub.sprite.currentAnimation).toBe('idle_short');
     s.scheduler.advance(2700); s.shrubs.update(0);
     expect(shrub.sprite.currentAnimation).toBe('grow_short_to_normal');
-    for (let i = 0; i < 300; i++) s.shrubs.update(1 / 30);
+    for (let i = 0; i < 300; i++) { s.shrubs.update(1 / 30); }
     expect(shrub.sprite.currentAnimation).toBe('idle_normal');
   } finally { s.dispose(); }
 });

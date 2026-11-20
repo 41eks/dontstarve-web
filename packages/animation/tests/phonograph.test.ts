@@ -106,7 +106,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
   const controller = new PlayerController(world, graph, locomotor, inventory.handEquipment, playerDoer(player, { inventory }));
   const give = (model: THREE.Group, item: ItemEntity, cancel = false) => {
     const active = inventory.GetActiveItem();
-    if (active) inventory.extract(cursor, 1, active);
+    if (active) { inventory.extract(cursor, 1, active); }
     expect(inventory.receiveAt(cursor, item)).toBe(true);
     const target = manager.entities.get(lookupPrefabInstance(model)!.entityId!)!;
     const action = controller.GetItemUseAction(item, target)!;
@@ -116,7 +116,7 @@ it('preserves a loaded skinned record across reskin, pickup, inventory transfer,
     expect(controller.DoAction(action)).toBe(true);
     graph.update(12 / 30);
     expect(inventory.GetActiveItem()).toBe(item);
-    if (cancel) controller.cancel();
+    if (cancel) { controller.cancel(); }
     graph.update(1 / 30);
     return perform.mock.results.at(-1)?.value ?? false;
   };

@@ -39,7 +39,7 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
     getContext: () => ({ isContextLost: () => false }), initTexture() {}, compileAsync: async () => {} } as unknown as THREE.WebGLRenderer;
   const batches = () => {
     const result: THREE.InstancedMesh[] = [];
-    scene.traverse(object => { if (object instanceof THREE.InstancedMesh && object.name === 'ArchiveSpriteInstances:colour') result.push(object); });
+    scene.traverse(object => { if (object instanceof THREE.InstancedMesh && object.name === 'ArchiveSpriteInstances:colour') { result.push(object); } });
     return result;
   };
   const update = (dt: number) => {
@@ -69,7 +69,7 @@ it('batches both stalagmite banks and the lichen idle loop, retaining instance t
     expect(colours.sort()).toEqual(greys.map(value => Math.fround(value)).sort());
     for (const [index, model] of models.entries()) {
       const proxies: THREE.Mesh[] = [];
-      model.traverse(object => { if (object instanceof THREE.Mesh) proxies.push(object); });
+      model.traverse(object => { if (object instanceof THREE.Mesh) { proxies.push(object); } });
       expect(proxies.length).toBeGreaterThan(0);
       expect(proxies.every(mesh => !mesh.visible)).toBe(true); // Picking proxies never duplicate batch draw calls.
       expect(instances[index].sprite.sprite.peek().clip.loop).toBe(index >= 4);

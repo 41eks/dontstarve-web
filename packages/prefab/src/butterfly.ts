@@ -35,22 +35,22 @@ export function configureButterflyEntity(entity: ItemEntity): void {
   entity.addTag('catchable');
   if (!entity.components.deployable) {
     entity.addTag('deployedplant');
-    if (entity.prefab === MOONBUTTERFLY_ID) addComponent(entity, 'deployable', Deployable, (point, _deployer, map) => {
+    if (entity.prefab === MOONBUTTERFLY_ID) { addComponent(entity, 'deployable', Deployable, (point, _deployer, map) => {
         // moonbutterfly.lua OnDeploy.
-        if (!map.SpawnPrefab('moonbutterfly_sapling', point)) return false;
+        if (!map.SpawnPrefab('moonbutterfly_sapling', point)) { return false; }
         PlaySound('dontstarve/wilson/plant_tree', point);
         entity.remove();
         return true;
-      }, { mode: 'PLANT', spacing: 3.2 * (TILE_SIZE / 4), placer: { bank: 'baby_moon_tree', build: 'baby_moon_tree', animation: 'idle' } });
-    else addComponent(entity, 'deployable', Deployable, (point, deployer, map) => {
+      }, { mode: 'PLANT', spacing: 3.2 * (TILE_SIZE / 4), placer: { bank: 'baby_moon_tree', build: 'baby_moon_tree', animation: 'idle' } }); }
+    else { addComponent(entity, 'deployable', Deployable, (point, deployer, map) => {
         // butterfly.lua OnDeploy.
         const flower = map.SpawnPrefab('planted_flower', point);
-        if (!flower) return false;
+        if (!flower) { return false; }
         flower.PushEvent('growfrombutterfly');
         entity.remove();
         PlaySound('dontstarve/common/plant', deployer.position);
         return true;
-      }, { mode: 'PLANT', spacing: .75 * (TILE_SIZE / 4), placer: { bank: 'flowers', build: 'flowers', animation: 'f1' } });
+      }, { mode: 'PLANT', spacing: .75 * (TILE_SIZE / 4), placer: { bank: 'flowers', build: 'flowers', animation: 'f1' } }); }
   }
   if (entity.prefab === BUTTERFLY_ID) {
     entity.addTag('small_livestock');
@@ -59,20 +59,20 @@ export function configureButterflyEntity(entity: ItemEntity): void {
     perishable.localMultiplier = () => entity.components.inventoryitem.owner ? 1 : 0;
     perishable.perishfn = () => {
       const owner = entity.components.inventoryitem.owner, slot = entity.components.inventoryitem.slot;
-      if (!owner) return;
+      if (!owner) { return; }
       const count = entity.components.stackable.count;
       const position = entity.components.inventoryitem.GetHeldPosition()?.clone();
       const loot = new Map<string, number>();
-      for (let i = 0; i < count; i++) for (const prefab of BUTTERFLY_DEFINITIONS.butterfly.generateLoot(Math.random)) {
+      for (let i = 0; i < count; i++) { for (const prefab of BUTTERFLY_DEFINITIONS.butterfly.generateLoot(Math.random)) {
         loot.set(prefab, (loot.get(prefab) ?? 0) + 1);
-      }
+      } }
       owner.PushEvent('murdered', { victim: entity, stackmult: count, negligent: true });
-      if (entity.remove()) for (const [itemId, amount] of loot) {
+      if (entity.remove()) { for (const [itemId, amount] of loot) {
         const item = entity.worldServices?.spawnItem?.({ itemId, count: amount });
-        if (!item) continue;
-        if (position) item.setPosition(position.x, position.y, position.z);
+        if (!item) { continue; }
+        if (position) { item.setPosition(position.x, position.y, position.z); }
         slot?.GiveItem?.(item);
-      }
+      } }
     };
     entity.component('butterflyperishing', () => {
       const stops = [
@@ -88,7 +88,7 @@ export function configureButterflyEntity(entity: ItemEntity): void {
     workable.SetWorkLeft(1);
     workable.SetOnFinishCallback((_inst, worker) => {
       worker.components?.inventory?.GiveItem?.(entity, entity.transform.position);
-      if (worker.components?.inventory) PlaySound('dontstarve/common/butterfly_trap', entity.transform.position);
+      if (worker.components?.inventory) { PlaySound('dontstarve/common/butterfly_trap', entity.transform.position); }
     });
     entity.ListenForEvent('ondropped', () => workable.SetWorkLeft(1));
   }
@@ -213,15 +213,15 @@ export function MakeButterflyCreature(inst: ButterflyEntity, butterflyWorld: But
   inst.animation = services.animation ?? inst.sprite;
   inst.butterflyWorld = butterflyWorld;
   inst.cycle = butterflyWorld.getWatchWorldContent?.(WorldContentKey.Cycle, stop => inst.onRemove(stop));
-  if (services.random) inst.randomSource = services.random;
+  if (services.random) { inst.randomSource = services.random; }
   inst.dropLootItems = services.dropLoot;
-  for (const tag of definition.tags) inst.addTag(tag);
+  for (const tag of definition.tags) { inst.addTag(tag); }
   inst.world = createBrainWorld(inst);
   // locomotor must be constructed before the stategraph.
   inst.locomotor = addComponent(inst, 'locomotor', LocoMotor);
-  if (definition.walkspeed !== undefined) inst.locomotor.walkspeed = definition.walkspeed;
+  if (definition.walkspeed !== undefined) { inst.locomotor.walkspeed = definition.walkspeed; }
   addComponent(inst, 'knownlocations', KnownLocations);
-  if (definition.pollinates) addComponent(inst, 'pollinator', Pollinator<BrainEntity>);
+  if (definition.pollinates) { addComponent(inst, 'pollinator', Pollinator<BrainEntity>); }
   inst.stategraph = new ButterflyStateGraph(stateContext(inst));
   inst.SetStateGraph(() => inst.stategraph.sg);
   inst.SetBrain(definition.createBrain);
@@ -235,8 +235,8 @@ export function MakeButterflyCreature(inst: ButterflyEntity, butterflyWorld: But
 /** SGbutterfly's inst: the entity's AnimState, Physics, lootdropper and buffered action. */
 function stateContext(inst: ButterflyEntity): ButterflyStateInst {
   const playAnimation = (name: string, loop = false) => {
-    if (loop) inst.animation.start(name);
-    else inst.animation.playOnce(name, () => { inst.animationOver = true; });
+    if (loop) { inst.animation.start(name); }
+    else { inst.animation.playOnce(name, () => { inst.animationOver = true; }); }
   };
   return {
     locomotor: inst.locomotor,
@@ -247,7 +247,7 @@ function stateContext(inst: ButterflyEntity): ButterflyStateInst {
     isCurrentAnimation: name => inst.animation.currentAnimation === name,
     getCurrentAnimationLength: () => {
       const length = BUTTERFLY_ANIMATION_LENGTHS.get(inst.animation.currentAnimation);
-      if (length === undefined) throw new Error(`butterfly_basic.zip has no animation ${inst.animation.currentAnimation}`);
+      if (length === undefined) { throw new Error(`butterfly_basic.zip has no animation ${inst.animation.currentAnimation}`); }
       return length;
     },
     stopPhysics: () => { inst.motorSpeed = 0; },
@@ -282,24 +282,24 @@ function OnPutInInventory(inst: ButterflyEntity): void {
 
 /** One frame: brain, locomotor, stategraph, then the physics motor. */
 export function UpdateButterfly(inst: ButterflyEntity, dt: number): void {
-  if (inst.removed) return;
+  if (inst.removed) { return; }
   const step = Math.max(0, Math.min(dt, 0.1));
   inst.time += step;
   inst.brain?.tick(inst.time);
-  if (inst.locomotor.isUpdating) inst.locomotor.update(step);
-  if (inst.removed) return;
+  if (inst.locomotor.isUpdating) { inst.locomotor.update(step); }
+  if (inst.removed) { return; }
   if (inst.animationOver) {
     inst.animationOver = false;
     inst.PushEvent('animover');
-    if (inst.removed) return;
+    if (inst.removed) { return; }
   }
   inst.stategraph.update(step);
-  if (inst.removed) return;
+  if (inst.removed) { return; }
   stepMotor(inst, step);
 }
 
 function stepMotor(inst: ButterflyEntity, dt: number): void {
-  if (inst.motorSpeed <= 0) return;
+  if (inst.motorSpeed <= 0) { return; }
   const radians = inst.rotation / RADIANS;
   const position = inst.scratch.copy(inst.transform.position);
   position.x += Math.cos(radians) * inst.motorSpeed * dt;
@@ -325,7 +325,7 @@ function createBrainWorld(inst: ButterflyEntity): BrainWorld {
       return first !== from ? first : second;
     },
     isAboveGroundAtPoint: (x, _y, z) => {
-      if (!world.constrainPosition) return true;
+      if (!world.constrainPosition) { return true; }
       const point = new THREE.Vector3(x, 0, z);
       world.constrainPosition(point);
       return point.x === x && point.z === z;
@@ -340,7 +340,7 @@ function createBrainWorld(inst: ButterflyEntity): BrainWorld {
 export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefabId, ItemPrefabDefinition> {
   const dropLoot = (itemIds: readonly string[], position: THREE.Vector3) => {
     const counts = new Map<string, number>();
-    for (const itemId of itemIds) counts.set(itemId, (counts.get(itemId) ?? 0) + 1);
+    for (const itemId of itemIds) { counts.set(itemId, (counts.get(itemId) ?? 0) + 1); }
     const items: GroundItemDefinition[] = [...counts].map(([itemId, count]) => ({
       ...GROUND_ITEM_DEFINITIONS[itemId], itemId, count,
     }));
@@ -362,13 +362,13 @@ export function butterflyPrefabs(world: ItemPrefabWorld): Record<ButterflyPrefab
     onSpawned: inst => {
       world.configureItem(inst);
       (prefab === MOONBUTTERFLY_ID ? configureMoonButterflyEntity : configureButterflyEntity)(inst);
-      if (prefab === BUTTERFLY_ID && !inst.components.inventoryitem.owner) inst.components.perishable.StopPerishing();
-      if (!(inst instanceof ButterflyEntity)) return;
+      if (prefab === BUTTERFLY_ID && !inst.components.inventoryitem.owner) { inst.components.perishable.StopPerishing(); }
+      if (!(inst instanceof ButterflyEntity)) { return; }
       MakeButterflyCreature(inst, world.butterflyWorld, { dropLoot });
       const flicker = prefab === MOONBUTTERFLY_ID ? bindMoonButterfly(inst) : undefined;
       inst.onRemove(world.componentUpdates.register({
         OnUpdate: dt => {
-          if (inst.status.peek() !== 'active') return;
+          if (inst.status.peek() !== 'active') { return; }
           UpdateButterfly(inst, dt);
           flicker?.(dt);
         },
@@ -391,7 +391,7 @@ function bindMoonButterfly(entity: ButterflyEntity): (dt: number) => void {
   sprite.setLightOverride(.15);
   setLight(LIGHT_INTENSITY);
   entity.ListenForEvent('perished', () => {
-    if (entity.components.inventoryitem.owner || entity.removed) return;
+    if (entity.components.inventoryitem.owner || entity.removed) { return; }
     // onperish: the net no longer works, the light goes out, then `death` and removal after 3 seconds.
     entity.components.workable?.SetWorkable(false);
     lit = false;

@@ -63,15 +63,15 @@ test('application lighting starts in the saved elapsed-time phase without a star
   expect(result.readyCount).toBe(1);
   expect(result.publishedSharedInstance).toBe(true);
   expect(result.season).toBe(result.expectedSeason);
-  if (result.phase === 'night') expect(result.lightLevel).toBe(0);
-  else expect(result.lightLevel).toBeGreaterThan(0);
+  if (result.phase === 'night') { expect(result.lightLevel).toBe(0); }
+  else { expect(result.lightLevel).toBeGreaterThan(0); }
 });
 
 test('spring night lights ground and late instanced sprites only around the equipped torch', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('console', (message) => {
-    if (message.type() === 'error') errors.push(message.text());
+    if (message.type() === 'error') { errors.push(message.text()); }
   });
   await page.goto('/tests/dst-lighting.html');
   const result = await page.evaluate(async (url) => {

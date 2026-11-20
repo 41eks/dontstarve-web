@@ -33,7 +33,7 @@ beforeEach(() => {
     new URL(`../../../public${url}`, import.meta.url))));
 });
 afterEach(async () => {
-  for (const manager of managers.splice(0)) manager.dispose();
+  for (const manager of managers.splice(0)) { manager.dispose(); }
   await Promise.resolve();
   vi.restoreAllMocks(); vi.clearAllMocks(); vi.unstubAllGlobals();
 });
@@ -64,13 +64,13 @@ function setup(prefab: StaffLightId = 'stafflight') {
 
 it('declares the source tags and components of each star', () => {
   const hot = setup().spawn(new THREE.Vector3());
-  for (const tag of ['HASHEATER', 'sanityaura', 'inspectable', 'ignorewalkableplatforms', 'cooker', 'daylight', 'heatstar']) expect(hot.hasTag(tag)).toBe(true);
+  for (const tag of ['HASHEATER', 'sanityaura', 'inspectable', 'ignorewalkableplatforms', 'cooker', 'daylight', 'heatstar']) { expect(hot.hasTag(tag)).toBe(true); }
   expect(hot.physicsRadiusOverride).toBe(.5);
   expect(hot.components.propagator!.heatoutput).toBe(15);
   expect(hot.components.propagator!.spreading.peek()).toBe(true);
   expect(hot.components.sanityaura!.GetBaseAura()).toBeCloseTo(100 / 240);
   const cold = setup('staffcoldlight').spawn(new THREE.Vector3());
-  for (const tag of ['cooker', 'daylight', 'heatstar']) expect(cold.hasTag(tag)).toBe(false);
+  for (const tag of ['cooker', 'daylight', 'heatstar']) { expect(cold.hasTag(tag)).toBe(false); }
   expect(cold.components.propagator).toBeUndefined();
 });
 
@@ -80,7 +80,7 @@ it('pulses the light from .1s after spawning, as the periodic task enables it', 
   expect(star.light.peek()).toBeUndefined();
   update(.1);
   expect(star.light.peek()!.radius).toBeCloseTo(dwarfStarLight(.1).radius);
-  for (let i = 0; i < 125; i++) update(.1);
+  for (let i = 0; i < 125; i++) { update(.1); }
   expect(star.light.peek()!.radius).toBeCloseTo(dwarfStarLight(12.6).radius);
 });
 
@@ -88,7 +88,7 @@ it('draws a new star from appear, then settles into its idle', async () => {
   const { spawn, scene, update } = setup();
   const star = await artLoaded(scene, spawn(new THREE.Vector3()));
   expect(star.sprite.currentAnimation).toBe('appear');
-  for (let frame = 0; frame < 150; frame++) update(1 / 30);
+  for (let frame = 0; frame < 150; frame++) { update(1 / 30); }
   expect(star.sprite.currentAnimation).toBe('idle_loop');
 });
 
@@ -193,14 +193,14 @@ it('chains random polar idles on game time, asleep as awake, and stops once kill
   const star = await artLoaded(scene, spawn(new THREE.Vector3()));
   const clip = () => star.sprite.sprite.peek().clip;
   expect(clip().name).toBe('appear');
-  for (let frame = 0; frame < 150 && clip().name === 'appear'; frame++) update(1 / 30);
+  for (let frame = 0; frame < 150 && clip().name === 'appear'; frame++) { update(1 / 30); }
   expect(clip().name).toBe('idle_loop2');
   expect(clip().loop).toBe(false);
   // Asleep, nothing is drawn; each idle still ends after its 64 frames and the next one plays.
   awake.set(false);
   await settle();
   const idle = star.animstate.animation.peek();
-  for (let frame = 0; frame < 63; frame++) update(1 / 30);
+  for (let frame = 0; frame < 63; frame++) { update(1 / 30); }
   update(.5 / 30);
   expect(star.animstate.animation.peek()).toBe(idle);
   update(1 / 30);
@@ -413,5 +413,5 @@ it('spawns world lights through console definitions and saves and reloads their 
   }
   const stars = [...registry.byEntityId.values(), ...restored.byEntityId.values()] as PrefabInstance[];
   registry.dispose(); restored.dispose(); inventory.dispose();
-  for (const star of stars) expect(star.hasTag('HASHEATER')).toBe(false);
+  for (const star of stars) { expect(star.hasTag('HASHEATER')).toBe(false); }
 });

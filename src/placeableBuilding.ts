@@ -123,7 +123,7 @@ export class PlaceableBuildingPlacement {
      */
     performContainerAction(model: Object3D, action: ContainerButtonAction, doer: object): boolean {
         const inst = prefabInstance(model);
-        if (inst === undefined || inst.isRemoved || !model.visible) return false;
+        if (inst === undefined || inst.isRemoved || !model.visible) { return false; }
         return action === 'COOK' ? performCookAction(inst, doer) : inst.components.incinerator?.Incinerate(doer) ?? false;
     }
 

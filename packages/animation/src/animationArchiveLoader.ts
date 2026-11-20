@@ -15,22 +15,22 @@ let archiveWorker: Worker | undefined;
 let nextRequestId = 0;
 
 function getArchiveWorker(): Worker {
-  if (archiveWorker) return archiveWorker;
+  if (archiveWorker) { return archiveWorker; }
   const worker = new Worker(new URL('./animationArchive.worker.ts', import.meta.url), {
     type: 'module', name: 'dst-animation-archive',
   });
   archiveWorker = worker;
   worker.onmessage = ({ data }: MessageEvent<AnimationArchiveWorkerResponse>) => {
     const pending = pendingRequests.get(data.id);
-    if (!pending) return;
+    if (!pending) { return; }
     pendingRequests.delete(data.id);
-    if ('error' in data) pending.reject(new Error(data.error));
-    else pending.resolve(data.result);
+    if ('error' in data) { pending.reject(new Error(data.error)); }
+    else { pending.resolve(data.result); }
   };
   const fail = (error: Error) => {
     worker.terminate();
     archiveWorker = undefined;
-    for (const pending of pendingRequests.values()) pending.reject(error);
+    for (const pending of pendingRequests.values()) { pending.reject(error); }
     pendingRequests.clear();
   };
   worker.onerror = (event) => fail(new Error(event.message || 'Animation archive worker failed'));
@@ -68,12 +68,12 @@ export function loadAnimationArchivePart<Kind extends keyof AnimationArchivePart
   let request = requests.get(key);
   if (!request) {
     request = readPart(file, baseUrl, kind).then(result => {
-      if (result && 'atlases' in result) result.atlases.forEach((atlas, index) => atlasOrigins.set(atlas, { file, baseUrl, index }));
+      if (result && 'atlases' in result) { result.atlases.forEach((atlas, index) => atlasOrigins.set(atlas, { file, baseUrl, index })); }
       return result;
     });
     requests.set(key, request);
     void request.catch(() => {
-      if (requests.get(key) === request) requests.delete(key);
+      if (requests.get(key) === request) { requests.delete(key); }
     });
   }
   return request as Promise<AnimationArchiveParts[Kind]>;
@@ -85,13 +85,13 @@ export function canReloadAtlasPixels(atlas: BuildAtlas): boolean { return atlasO
 /** Decodes a released atlas page again from its archive; atlases of one build share a single decode. */
 export function reloadAtlasPixels(atlas: BuildAtlas): Promise<Uint8Array> {
   const origin = atlasOrigins.get(atlas);
-  if (!origin) return Promise.reject(new Error('Atlas has no archive to reload from'));
+  if (!origin) { return Promise.reject(new Error('Atlas has no archive to reload from')); }
   const key = `${origin.baseUrl}/${origin.file}`;
   let reload = reloads.get(key);
   if (!reload) {
     reload = readPart(origin.file, origin.baseUrl, 'build');
     reloads.set(key, reload);
-    const settle = () => { if (reloads.get(key) === reload) reloads.delete(key); };
+    const settle = () => { if (reloads.get(key) === reload) { reloads.delete(key); } };
     void reload.then(settle, settle);
   }
   return reload.then(({ atlases }) => atlases[origin.index].pixels!);
@@ -102,7 +102,7 @@ export function disposeAnimationAssets(): void {
   disposeTextureAssets();
   archiveWorker?.terminate();
   archiveWorker = undefined;
-  for (const pending of pendingRequests.values()) pending.reject(new Error('Animation assets disposed'));
+  for (const pending of pendingRequests.values()) { pending.reject(new Error('Animation assets disposed')); }
   pendingRequests.clear();
   requests.clear();
   reloads.clear();

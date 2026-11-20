@@ -30,7 +30,7 @@ it('runs SGwilson tent through the player prefab: refusal, sleeping in a bag, wa
   tent.addTag('tent');
   const bag = addComponent(tent, 'sleepingbag', SleepingBag);
   const tags = { has: (tag: string) => tent.hasTag(tag) };
-  const frames = (count: number) => { for (let i = 0; i < count; i++) advancePlayer(animation, 1 / 30); };
+  const frames = (count: number) => { for (let i = 0; i < count; i++) { advancePlayer(animation, 1 / 30); } };
   const sleepIn = () => {
     // ACTIONS.SLEEPIN.fn: sleepingbag:DoSleep(act.doer) reaches the player's sleepingbaguser.
     const action: PlayerAction<'SLEEPIN'> = new BufferedAction('SLEEPIN', () => { bag.DoSleep(sleeper); return true; }, () => true, { target: tent });

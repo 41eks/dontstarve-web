@@ -26,7 +26,7 @@ test('batch registers lazy atlases, reuses texture pages and retries failed regi
     }]);
     let attempts = 0;
     registerImageAtlases({
-      'test/first.xml': async () => { attempts++; if (attempts === 1) throw new Error('Temporary atlas failure'); return atlas; },
+      'test/first.xml': async () => { attempts++; if (attempts === 1) { throw new Error('Temporary atlas failure'); } return atlas; },
       'test/alias.xml': atlas,
     });
     const lazyAttempts = attempts;
@@ -70,8 +70,8 @@ test('retries failed worker downloads and keeps processing after an atlas parse 
   let attempts = 0;
   await context.route('**/databundles/images.zip?worker-retry', async (route) => {
     attempts++;
-    if (attempts === 1) await route.fulfill({ status: 503, body: 'Unavailable' });
-    else await route.continue();
+    if (attempts === 1) { await route.fulfill({ status: 503, body: 'Unavailable' }); }
+    else { await route.continue(); }
   });
   await page.goto('/tests/fixture.html');
 

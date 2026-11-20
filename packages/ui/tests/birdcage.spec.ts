@@ -11,7 +11,7 @@ const urls = {
 async function harness(page: Page, errors: string[]) {
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => {
-    if (message.type() === 'error' || (message.type() === 'warning' && /Unable to (prepare|play)/.test(message.text()))) errors.push(message.text());
+    if (message.type() === 'error' || (message.type() === 'warning' && /Unable to (prepare|play)/.test(message.text()))) { errors.push(message.text()); }
   });
   await page.route('**/saves/birdcage-test.json', route => route.fulfill({ json: minimalSave() }));
   const prepare = () => page.evaluate(async urls => {
@@ -22,7 +22,7 @@ async function harness(page: Page, errors: string[]) {
     const cageModel = () => scene.children.find((child: any) => child.name === 'birdcage');
     const cageMesh = () => {
       let mesh: any;
-      cageModel()?.traverse((child: any) => { if (child.isMesh) mesh = child; });
+      cageModel()?.traverse((child: any) => { if (child.isMesh) { mesh = child; } });
       return mesh;
     };
     const cagePoint = (action: string, button: 'left' | 'right' = 'left') => {
@@ -31,17 +31,17 @@ async function harness(page: Page, errors: string[]) {
       const box = mesh.geometry.boundingBox, rect = renderer.domElement.getBoundingClientRect();
       const picker = view.mouseActions;
       // Choose visible art that offers the requested action and is not covered by DOM UI.
-      for (const y of [.95, .05, .8, .2, .65, .35, .5]) for (const x of [.5, .35, .65, .2, .8, .05, .95]) {
+      for (const y of [.95, .05, .8, .2, .65, .35, .5]) { for (const x of [.5, .35, .65, .2, .8, .05, .95]) {
         const point = box.getCenter(model.position.clone());
         point.x = box.min.x + (box.max.x - box.min.x) * x;
         point.y = box.min.y + (box.max.y - box.min.y) * y;
         mesh.localToWorld(point).project(camera);
         const clientX = Math.round(rect.left + (point.x + 1) * rect.width / 2);
         const clientY = Math.round(rect.top + (1 - point.y) * rect.height / 2);
-        if (document.elementFromPoint(clientX, clientY) !== renderer.domElement) continue;
+        if (document.elementFromPoint(clientX, clientY) !== renderer.domElement) { continue; }
         const selected = picker.getMouseActions(new PointerEvent('pointermove', { clientX, clientY }))[button];
-        if (picker.targetModel === model && selected?.action === action) return { x: clientX, y: clientY };
-      }
+        if (picker.targetModel === model && selected?.action === action) { return { x: clientX, y: clientY }; }
+      } }
       return null;
     };
     (window as any).cageGame = { main, scene, renderer, camera, player, cageMesh, cagePoint };
@@ -55,7 +55,7 @@ async function harness(page: Page, errors: string[]) {
     await page.evaluate(command => document.querySelector('dst-debug-console')!.dispatchEvent(
       new CustomEvent('game:debug-command', { detail: { command } })), command);
     const result = await completed;
-    if (result.type() !== 'info') throw new Error(result.text());
+    if (result.type() !== 'info') { throw new Error(result.text()); }
   };
   const saveGame = async () => {
     const download = page.waitForEvent('download', { timeout: 20_000 }); await submit('c_save()');
@@ -65,7 +65,7 @@ async function harness(page: Page, errors: string[]) {
   const cage = () => page.evaluate(() => {
     const model = (window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage');
     const instance = (window as any).__prefabInstance(model);
-    if (!instance) return null;
+    if (!instance) { return null; }
     return { state: instance.CAGE_STATE, status: instance.components.inspectable.getstatus(), animation: instance.sprite.currentAnimation,
       bird: instance.components.occupiable?.GetOccupant()?.prefab ?? null, shelf: instance.components.inventory.GetItemInSlot(1)?.prefab ?? null,
       tags: ['occupied', 'takeshelfitem', 'trader'].filter(tag => instance.hasTag(tag)) };
@@ -124,7 +124,7 @@ test('keeps a canary in the cage, starves it onto the shelf and saves every stat
     if (!source || !store.applySlotChanges([
       { slot: inventorySlotAddress(Number(source.address.slotKey)), itemId: 'reskin_tool', skinId: source.item.skinId, delta: -1 },
       { slot: hand, itemId: 'reskin_tool', skinId: source.item.skinId, delta: 1 },
-    ])) throw new Error('Unable to equip sweeper');
+    ])) { throw new Error('Unable to equip sweeper'); }
     return true;
   }, `/@fs${fileURLToPath(new URL('../../inventory/src/index.ts', import.meta.url))}`);
   expect(sweeper).toBe(true);
@@ -240,7 +240,7 @@ test('feeds, wakes, releases and hammers an occupied cage', async ({ page }) => 
   await page.evaluate(() => {
     const model = (window as any).cageGame.scene.children.find((child: any) => child.name === 'birdcage');
     const workable = (window as any).__prefabInstance(model).components.workable;
-    for (let hit = 0; hit < 4; hit++) workable.WorkedBy({}, 1);
+    for (let hit = 0; hit < 4; hit++) { workable.WorkedBy({}, 1); }
   });
   await expect.poll(cage).toBeNull();
   await expect.poll(async () => (await saveGame()).world.entities.canary?.length ?? 0, { timeout: 15_000 }).toBeGreaterThan(0);

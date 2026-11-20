@@ -76,7 +76,7 @@ export function createSlot(options: CreateSlotOptions): SlotModel {
     address: { ...options.address },
     item: readonlySignal(item),
     getItem: () => currentSlotItem(item.get()),
-    setItem: next => { if (!sameSlotPresentation(item.peek(), next)) item.set(next); },
+    setItem: next => { if (!sameSlotPresentation(item.peek(), next)) { item.set(next); } },
     accepts: options.accepts ?? (() => true),
   };
 }

@@ -70,7 +70,7 @@ export function equipSamePrefab(
   prefab: string,
   equipslot?: EquipmentKind,
 ): boolean {
-  if (equipslot !== undefined && inventory.GetEquippedItem(equipslot)) return false;
+  if (equipslot !== undefined && inventory.GetEquippedItem(equipslot)) { return false; }
   const same = inventory.FindItem(item => item.prefab === prefab
     && item.components.equippable !== undefined
     && (equipslot === undefined || item.components.equippable.equipslot === equipslot));
@@ -82,9 +82,9 @@ const isEquipmentKind = (value: unknown): value is EquipmentKind => EQUIPMENT_KI
 
 /** player_common.lua OnItemRanOut, for the itemranout data the owner forwards. */
 export function OnItemRanOut(inventory: Parameters<typeof equipSamePrefab>[0], data: unknown): void {
-  if (typeof data !== 'object' || data === null || !('prefab' in data) || !('equipslot' in data)) return;
+  if (typeof data !== 'object' || data === null || !('prefab' in data) || !('equipslot' in data)) { return; }
   const { prefab, equipslot } = data;
-  if (typeof prefab === 'string' && isEquipmentKind(equipslot)) equipSamePrefab(inventory, prefab, equipslot);
+  if (typeof prefab === 'string' && isEquipmentKind(equipslot)) { equipSamePrefab(inventory, prefab, equipslot); }
 }
 
 /** player_common.lua AddComponent("builder"); the scene supplies spatial queries. */
@@ -97,7 +97,7 @@ export function bindPlayerBuilder(model: THREE.Group, world: Omit<BuilderWorld, 
 
 /** player_common.lua AddComponent("slipperyfeet"): frozen ponds are its slipperyfeettarget entities. */
 export function AddSlipperyFeet(inst: PlayerInstance): void {
-  if (inst.slipperyfeet || !inst.scheduler) return;
+  if (inst.slipperyfeet || !inst.scheduler) { return; }
   inst.slipperyfeet = new SlipperyFeet(inst, {
     scheduler: inst.scheduler,
     findSlipperyEntities: (position, radius) => inst.TheSim.FindEntities(position, radius, ['slipperyfeettarget']),
@@ -243,7 +243,7 @@ export function hasPlayerInventory(inst: PlayerInstance): inst is PlayerWithInve
 
 export function playerInst(model: THREE.Object3D): PlayerInstance {
   const instance = prefabInstance(model);
-  if (!(instance instanceof PlayerInstance)) throw new Error('Expected a player instance');
+  if (!(instance instanceof PlayerInstance)) { throw new Error('Expected a player instance'); }
   return instance;
 }
 
@@ -261,7 +261,7 @@ export interface PlayerPrefabOptions {
  */
 export function GetSpeedMultiplier(inst: PlayerInstance): number {
   const inventory = inst.components.inventory;
-  if (!inventory) return 1;
+  if (!inventory) { return 1; }
   let mult = 1;
   for (const kind of ['hand', 'body', 'head'] as const) {
     mult *= inventory.GetEquippedItem(kind)?.components.equippable?.GetWalkSpeedMult() ?? 1;
@@ -271,12 +271,12 @@ export function GetSpeedMultiplier(inst: PlayerInstance): number {
 
 /** player_common.lua fns.ShowHUD, assigned to inst.ShowHUD in master_postinit. */
 export function ShowHUD(inst: PlayerInstance, show: boolean): void {
-  if (show) inst.HUD?.Show(); else inst.HUD?.Hide();
+  if (show) { inst.HUD?.Show(); } else { inst.HUD?.Hide(); }
 }
 
 /** Movement input: walking or running cancels an emote. */
 export function startMovement(inst: PlayerInstance, state: WilsonMovementState): void {
-  if (state !== 'idle' && inst.emote !== null) cancelEmote(inst);
+  if (state !== 'idle' && inst.emote !== null) { cancelEmote(inst); }
   inst.sg.requestMovement(state);
 }
 
@@ -290,20 +290,20 @@ export function playPickup(inst: PlayerInstance): void { startOneShot(inst, 'pic
 
 /** ACTIONS.DROP: doshortaction performs the drop on its frame 6; onCancel runs if the action never performs. */
 export function playDrop(inst: PlayerInstance, onDrop: () => boolean, onCancel?: () => void): boolean {
-  if (inst.sg.hasStateTag('busy')) return false;
+  if (inst.sg.hasStateTag('busy')) { return false; }
   cancelEmote(inst);
   const action: PlayerAction<WilsonAction> = new BufferedAction('DROP', onDrop);
   const stop = inst.sg.listenForEvent('actionfailed', data => {
     if (data.action === action) { stop(); onCancel?.(); }
   });
   action.addSuccessAction(stop);
-  if (inst.sg.pushBufferedAction(action)) return true;
+  if (inst.sg.pushBufferedAction(action)) { return true; }
   stop();
   return false;
 }
 
 export function setCrafting(inst: PlayerInstance, crafting: boolean): void {
-  if (crafting) cancelEmote(inst);
+  if (crafting) { cancelEmote(inst); }
   inst.sg.requestCrafting(crafting);
 }
 
@@ -325,7 +325,7 @@ export function wakeFromBed(inst: PlayerInstance): void { inst.sg.pushLocomote()
 
 export function playEmote(inst: PlayerInstance, id: EmoteName): boolean {
   const definition: EmoteDefinition | undefined = EMOTES[id];
-  if (!definition || !inst.sg.canEmote()) return false;
+  if (!definition || !inst.sg.canEmote()) { return false; }
   cancelEmote(inst);
   inst.emote = {
     id,
@@ -351,7 +351,7 @@ export function followSymbol(inst: PlayerInstance, symbol: string, offsetX: numb
 
 /** One frame of the player's stategraph and its FX clock. */
 export function updatePlayer(inst: PlayerInstance, dt: number): void {
-  if (inst.isRemoved) return;
+  if (inst.isRemoved) { return; }
   const step = Math.max(0, Math.min(dt, 0.1));
   inst.fxScheduler.advance(step);
   inst.sg.update(step);
@@ -378,7 +378,7 @@ function releasePlayerAssets(inst: PlayerInstance): void {
 
 /** The emote ends with any state but emote's own. */
 function OnNewState(inst: PlayerInstance, data: EntityEventData['newstate']): void {
-  if (data.statename !== 'emote') inst.emote = null;
+  if (data.statename !== 'emote') { inst.emote = null; }
 }
 
 /** player_common.lua: MakeCharacterPhysics(inst, 75, .5), in DST units. */
@@ -416,11 +416,11 @@ export function MakePlayerCharacter(
       inst.AnimState.SetBank('wilson');
       inst.AnimState.SetBuild(PlayerBuild(inst));
       // player_common_extensions.lua SetupOverrideBuilds, for the ported states' item and emote prop symbols.
-      for (const build of ['player_actions_uniqueitem', 'player_emote_extra']) inst.AnimState.AddOverrideBuild(build);
+      for (const build of ['player_actions_uniqueitem', 'player_emote_extra']) { inst.AnimState.AddOverrideBuild(build); }
       // inst.Transform:SetFourFaced()
       inst.sprite.setFacingRotation(0, 4);
     });
-    if (options.scheduler) inst.BindScheduler(options.scheduler);
+    if (options.scheduler) { inst.BindScheduler(options.scheduler); }
     // inst.entity:AddSoundEmitter(); the listener is at the player.
     inst.AddSoundEmitter({ atListener: true });
     MakeCharacterPhysics(inst, 75, PLAYER_PHYSICS_RADIUS);
@@ -430,24 +430,24 @@ export function MakePlayerCharacter(
     inst.minimap.SetDrawOverFogOfWar(true);
     // upgrades.lua uses these exact upgrade type names.
     for (const tag of ['player', 'scarytoprey', 'character', 'lightningtarget', 'waterplant_upgradeuser', 'mast_upgradeuser',
-      'chest_upgradeuser', 'usesvegetarianequipment', 'ghostlyelixirable']) inst.addTag(tag);
+      'chest_upgradeuser', 'usesvegetarianequipment', 'ghostlyelixirable']) { inst.addTag(tag); }
     inst.setPosition(0, 30, 0);
 
     // The player's own AnimState declaration, beneath the slots its equipped items declare; the display loads the builds it names.
     inst.equipmentAssets = new GroundItemAssets();
     inst.sprite.setAnimState(inst.AnimState.json, inst.equipmentAssets);
-    for (const layer of ['ARM_carry', 'LANTERN_OVERLAY', 'HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) inst.AnimState.Hide(layer);
+    for (const layer of ['ARM_carry', 'LANTERN_OVERLAY', 'HAT', 'HAIR_HAT', 'HEAD_HAT', 'HEAD_HAT_NOHELM', 'HEAD_HAT_HELM']) { inst.AnimState.Hide(layer); }
     inst.hatAssets = new HatEquipmentAssets(assetBaseUrl);
 
     common_postinit?.(inst);
 
-    for (const tag of ['trader', 'debuffable', 'stageactor']) inst.addTag(tag);
+    for (const tag of ['trader', 'debuffable', 'stageactor']) { inst.addTag(tag); }
     inst.stats = createPlayerStats(inst, options.stats, options.scheduler);
     inst.scheduler = options.scheduler;
     inst.ShowHUD = show => ShowHUD(inst, show);
     inst.resources = resources;
     const stopSanity = options.componentUpdates?.register(inst.stats.sanity);
-    if (stopSanity) inst.onRemove(stopSanity);
+    if (stopSanity) { inst.onRemove(stopSanity); }
     if (options.scheduler) {
       // sleepingbaguser.lua: per-tick hunger, sanity and health in a bed; WatchWorldState("phase") wakes at the bed's phase end.
       const phase = createMemo(() => clockstate.get().phase);
@@ -473,7 +473,7 @@ export function MakePlayerCharacter(
     // ListenForEvent("death", ex_fns.OnPlayerDeath); SGwilson's own death handler hears the same event.
     inst.ListenForEvent('death', OnPlayerDeath);
     // ListenForEvent("itemranout", fns.OnItemRanOut)
-    inst.ListenForEvent('itemranout', (_inst, data) => { if (inst.components.inventory) OnItemRanOut(inst.components.inventory, data); });
+    inst.ListenForEvent('itemranout', (_inst, data) => { if (inst.components.inventory) { OnItemRanOut(inst.components.inventory, data); } });
     // ListenForEvent("makeplayerghost" / "respawnfromghost", ex_fns.OnMakePlayerGhost / OnRespawnFromGhost).
     inst.ListenForEvent('makeplayerghost', (_inst, data) => OnMakePlayerGhost(inst, data));
     inst.ListenForEvent('respawnfromghost', (_inst, data) => OnRespawnFromGhost(inst, data));

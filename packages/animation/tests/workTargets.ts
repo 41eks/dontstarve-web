@@ -23,7 +23,7 @@ export interface WorkTarget {
 
 /** `model` itself, or drawn somewhere below `root` (its scene, say). */
 function contains(root: Object3D, model: Object3D): boolean {
-  for (let node: Object3D | null = model; node; node = node.parent) if (node === root) return true;
+  for (let node: Object3D | null = model; node; node = node.parent) { if (node === root) { return true; } }
   return false;
 }
 

@@ -33,7 +33,7 @@ export function assetCachePlugin() {
         }
       }
 
-      for (const directory of assetDirectories) await hashDirectory(directory);
+      for (const directory of assetDirectories) { await hashDirectory(directory); }
 
       this.emitFile({
         type: 'asset',

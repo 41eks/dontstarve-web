@@ -53,7 +53,7 @@ const ROCKS: Readonly<Record<RockPrefabId, RockDefinition>> = {
     loot: [['rocks', 1], ['flint', 1], ['moonrocknugget', 1], ['moonrocknugget', 1], ['moonrocknugget', .6], ['moonrocknugget', .3]] },
 };
 
-for (const prefab of ROCK_PREFABS) SetSharedLootTable(prefab, ROCKS[prefab].loot);
+for (const prefab of ROCK_PREFABS) { SetSharedLootTable(prefab, ROCKS[prefab].loot); }
 
 export function isRockPrefab(value: string): value is RockPrefabId {
   return ROCK_PREFABS.some(known => known === value);
@@ -90,7 +90,7 @@ export class RockInstance extends PrefabInstance {
     this.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
     this.addTag('SnowCovered');
     this.addTag('boulder');
-    if (tag) this.addTag(tag);
+    if (tag) { this.addTag(tag); }
 
     addComponent(this, 'lootdropper', LootDropper, (loot, position) => world.spawnGroundItem(
       { ...GROUND_ITEM_DEFINITIONS[loot], itemId: loot, count: 1 },
@@ -122,7 +122,7 @@ function OnWork(inst: RockInstance, _worker: unknown, workleft: number): void {
     // rock_break_fx.lua has no art: its local proxy only plays this sound.
     PlaySound('dontstarve/wilson/rock_break', inst.position);
     inst.components.lootdropper.DropLoot(inst.position);
-    if (!inst.doNotRemoveOnWorkDone) inst.remove();
+    if (!inst.doNotRemoveOnWorkDone) { inst.remove(); }
   } else {
     inst.sprite.playOnce(workleft < ROCKS_MINE / 3 ? 'low' : workleft < ROCKS_MINE * 2 / 3 ? 'med' : 'full');
   }
@@ -170,7 +170,7 @@ export function rockPrefabs(world: RockShellWorld): Readonly<Record<RockPrefabId
     const { anim, tag, workleft, minimapicon } = ROCKS[prefab];
     prefabs[prefab] = {
       fn: () => {
-        if (prefab === 'rock_moon_shell') return new RockMoonShellInstance(world);
+        if (prefab === 'rock_moon_shell') { return new RockMoonShellInstance(world); }
         const inst = new RockInstance(prefab, world, anim, tag);
         inst.components.lootdropper.SetChanceLootTable(prefab);
         inst.components.workable!.SetWorkLeft(workleft);
@@ -215,7 +215,7 @@ export class MoonglassRockInstance extends RockInstance {
     this.components.lootdropper.SetChanceLootTable('rock_moon_glass');
     set_moonglass_type(this, MOONGLASS_ROCK_TYPES[Math.floor(Math.random() * MOONGLASS_ROCK_TYPES.length)]);
     this.OnSave = (_inst, data) => { data.rock_type = this.rock_type; };
-    this.OnLoad = (_inst, data) => { if (data.rock_type) set_moonglass_type(this, data.rock_type); };
+    this.OnLoad = (_inst, data) => { if (data.rock_type) { set_moonglass_type(this, data.rock_type); } };
   }
 }
 

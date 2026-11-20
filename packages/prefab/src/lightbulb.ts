@@ -11,8 +11,8 @@ export const LIGHTBULB_ID = 'lightbulb';
 export const LIGHTBULB_FUEL = 90;
 
 export function configureLightbulbEntity(entity: ItemEntity): void {
-  for (const tag of ['lightbattery', 'vasedecoration', 'light']) entity.addTag(tag);
-  if (entity.components.fuel) return;
+  for (const tag of ['lightbattery', 'vasedecoration', 'light']) { entity.addTag(tag); }
+  if (entity.components.fuel) { return; }
   const fuel = addComponent(entity, 'fuel', Fuel);
   fuel.fueltype = 'CAVE';
   fuel.fuelvalue = LIGHTBULB_FUEL;

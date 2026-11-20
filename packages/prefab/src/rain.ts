@@ -95,7 +95,7 @@ export class RainEffect {
       return;
     }
     // StartAmbientRainSound plays once, then only updates the `intensity` parameter.
-    if (!this.sound?.isPlaying()) this.sound = PlaySound(SOUND);
+    if (!this.sound?.isPlaying()) { this.sound = PlaySound(SOUND); }
     this.sound.setParameter?.('intensity', rate);
   }
 
@@ -109,7 +109,7 @@ export class RainEffect {
       splash = { instance, display, model: display.model, animation: instance.sprite };
     }
     splash.instance.setPosition(x, 0, z);
-    if (!splash.model.parent) this.options.scene.add(splash.model);
+    if (!splash.model.parent) { this.options.scene.add(splash.model); }
     this.splashes.push(splash);
     const shown = splash;
     splash.animation.playOnce('anim', () => this.recycle(shown));
@@ -118,11 +118,11 @@ export class RainEffect {
   /** raindrop.lua OnAnimOver: leave the scene and wait in the pool. */
   private recycle(splash: Splash): void {
     const index = this.splashes.indexOf(splash);
-    if (index < 0) return;
+    if (index < 0) { return; }
     this.splashes.splice(index, 1);
     splash.model.removeFromParent();
-    if (this.disposed) this.release(splash);
-    else this.pool.push(splash);
+    if (this.disposed) { this.release(splash); }
+    else { this.pool.push(splash); }
   }
 
   private release({ instance, display }: Splash): void { instance.remove(); display.dispose(); }
@@ -134,20 +134,20 @@ export class RainEffect {
       this.spawnRaindrop(x + SPLASH_HALF_EXTENT * unitRand(), z + SPLASH_HALF_EXTENT * unitRand());
       this.numSplashesToEmit -= 1;
     }
-    if (this.splashesPerTick > 0) this.numSplashesToEmit += this.splashesPerTick;
-    else for (const splash of this.pool.splice(0)) this.release(splash);
+    if (this.splashesPerTick > 0) { this.numSplashesToEmit += this.splashesPerTick; }
+    else { for (const splash of this.pool.splice(0)) { this.release(splash); } }
   }
 
   /** Advance by `dt` game seconds; `cameraQuaternion` orients the billboards. */
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    if (this.disposed || !Number.isFinite(dt) || dt <= 0) return;
+    if (this.disposed || !Number.isFinite(dt) || dt <= 0) { return; }
     this.tickRemainder = Math.min(this.tickRemainder + dt, TICK_TIME * MAX_TICKS_PER_FRAME);
     while (this.tickRemainder >= TICK_TIME) {
       this.tickRemainder -= TICK_TIME;
       this.tick();
     }
     this.rainfall.update(dt, cameraQuaternion);
-    for (const splash of [...this.splashes]) splash.display.update(dt);
+    for (const splash of [...this.splashes]) { splash.display.update(dt); }
   }
 
   /** Active splashes, so the shared renderer sorts them with other foot-sorted billboards. */
@@ -156,14 +156,14 @@ export class RainEffect {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.stopRate();
     this.sound?.stop();
     this.sound = undefined;
     this.rainfall.dispose();
     this.emitter.instance.remove(); this.emitter.display.dispose();
-    for (const splash of [...this.splashes, ...this.pool]) this.release(splash);
+    for (const splash of [...this.splashes, ...this.pool]) { this.release(splash); }
     this.splashes.length = 0;
     this.pool.length = 0;
     this.sprites.dispose();

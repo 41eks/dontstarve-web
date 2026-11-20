@@ -150,7 +150,7 @@ inventory.entities.bindEquipmentWorld({
       isPassableAtPoint: point => turfMap.isPassableAtPoint(point),
       isGroundTargetBlocked: point => isGroundTargetBlocked(groundTargetBlockers, point, .5 * WORLD_SCALE),
     },
-    spawnFx: (prefab, position) => { if (isWorldFx(prefab)) worldFx.spawn(prefab, position); },
+    spawnFx: (prefab, position) => { if (isWorldFx(prefab)) { worldFx.spawn(prefab, position); } },
   },
   // staff.lua telestaff: TheWorld's cave tag, topology nodes, map, lightning and moisture.
   teleStaffWorld: {
@@ -185,10 +185,10 @@ inventory.handEquipment.subscribe(equipment => {
 });
 inventory.bodyEquipment.subscribe(equipment => {
   const containerId = equipment?.itemId === 'backpack' && equipment.entity ? backpackContainerId(equipment.entity.id) : undefined;
-  if (gameUi.backpackPanel.slotContainer?.id !== containerId) gameUi.backpackPanel.close();
+  if (gameUi.backpackPanel.slotContainer?.id !== containerId) { gameUi.backpackPanel.close(); }
   if (containerId && !gameUi.backpackPanel.slotContainer) {
     const container = inventory.getEntity(bodySlotAddress)?.components.container;
-    if (!container) return;
+    if (!container) { return; }
     gameUi.backpackPanel.open({ containerId, slotCount: container.numslots, title: '背包' });
     gameUi.backpackPanel.bindContainer(container.slots, inventorySlotItem);
   }
@@ -213,7 +213,7 @@ window.dispatchEvent(new CustomEvent('game:lighting-ready', { detail: await ligh
 const sceneResources = await startScene(
   (buildingId, skinId) => inventory.takeBuffered(buildingId) || inventory.takeItem(buildingId, skinId),
   ({ buildId, isOpen, model }) => {
-    if (!isStorageBuildingId(buildId)) return;
+    if (!isStorageBuildingId(buildId)) { return; }
     const entityId = String(prefabInstance(model)?.entityId);
     disposalResources.setContainerOpen(buildId, model, isOpen);
     const id = buildingContainerId(buildId, entityId);
@@ -246,7 +246,7 @@ const wortox = await WortoxPlayer.create({
 const onMapActionRequest = (event: GameUiEventMap['game:map-action-request']) => {
   const { position } = event.detail;
   // MapScreen right click: ThePlayer.components.playercontroller:OnMapAction.
-  if (playerInstance.components.playercontroller?.OnMapAction(position)) event.preventDefault();
+  if (playerInstance.components.playercontroller?.OnMapAction(position)) { event.preventDefault(); }
 };
 gameUi.minimap.addEventListener('game:map-action-request', onMapActionRequest);
 disposalEvents.on('dispose', () => {
@@ -267,10 +267,10 @@ playerInstance.deathHost = {
 // the ghost's filter is pushed above it while dead.
 view.mouseActions?.PushActionFilter(PlayerActionFilter, -99);
 // The input's picker is the player's playeractionpicker; inst.HUD is the status and map controls.
-if (view.mouseActions) playerInstance.components.playeractionpicker = view.mouseActions;
+if (view.mouseActions) { playerInstance.components.playeractionpicker = view.mouseActions; }
 playerInstance.HUD = {
-  Show: () => { for (const element of [gameUi.statusHud, gameUi.mapControls]) element.style.visibility = ''; },
-  Hide: () => { for (const element of [gameUi.statusHud, gameUi.mapControls]) element.style.visibility = 'hidden'; },
+  Show: () => { for (const element of [gameUi.statusHud, gameUi.mapControls]) { element.style.visibility = ''; } },
+  Hide: () => { for (const element of [gameUi.statusHud, gameUi.mapControls]) { element.style.visibility = 'hidden'; } },
   // inventory:Hide() / Show() while asleep.
   controls: {
     HideCraftingAndInventory: () => { gameUi.inventoryBar.style.visibility = 'hidden'; },
@@ -283,13 +283,13 @@ const screenFade = createScreenFade();
 playerInstance.ScreenFade = (isfadein, time) => screenFade.fade(isfadein, time);
 playerInstance.SnapCamera = () => followCamera.snap();
 // A saved ghost resumes as a ghost (OnLoad is_ghost → OnMakePlayerGhost({ loading = true })).
-if (initialSave.players.local.ghost) playerInstance.PushEvent('makeplayerghost', { loading: true });
+if (initialSave.players.local.ghost) { playerInstance.PushEvent('makeplayerghost', { loading: true }); }
 const stopGhostWatch: (() => void)[] = [];
 // A ghost has no inventory: the bar follows the ghost-mode signal, hidden while true and shown again once false.
 const watchedGhostMode = watchSignal(playerGhostMode, stop => stopGhostWatch.push(stop));
 createEffect(() => { gameUi.inventoryBar.style.display = watchedGhostMode.get() ? 'none' : ''; });
 // A saved living player at zero health resumes the death flow after inventory and death handlers are bound.
-if (playerStats.health.IsDead() && !playerGhostMode.peek()) playerInstance.PushEvent('death', { cause: playerInstance.deathcause });
+if (playerStats.health.IsDead() && !playerGhostMode.peek()) { playerInstance.PushEvent('death', { cause: playerInstance.deathcause }); }
 disposalEvents.on('dispose', () => {
   stopGhostWatch.splice(0).forEach(stop => stop());
   playerInstance.deathHost = undefined;
@@ -298,7 +298,7 @@ disposalEvents.on('dispose', () => {
   playerInstance.SnapCamera = undefined;
   screenFade.dispose();
   delete playerInstance.HUD;
-  if (playerInstance.components.playeractionpicker === view.mouseActions) delete playerInstance.components.playeractionpicker;
+  if (playerInstance.components.playeractionpicker === view.mouseActions) { delete playerInstance.components.playeractionpicker; }
 });
 
 let lastSavedSnapshotId = initialSave.snapshot.id;
@@ -320,8 +320,8 @@ gameUi.debugConsole.addEventListener('game:debug-console-toggle', (event) => {
 gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
   const { command } = event.detail;
   void executeDebugCommand(command, inventory, (prefabId) => registry.spawn(prefabId), saveGame, setPlayerSanityPercent, async () => { await SendLightningStrike({ root: scene, fx: worldFx, sim: prefabs }, player.position); }).then((result) => {
-    if (result.ok) console.info(result.message);
-    else console.warn(result.message);
+    if (result.ok) { console.info(result.message); }
+    else { console.warn(result.message); }
   }).catch((error: unknown) => {
     console.error(`Unable to execute debug command: ${command}`, error);
   });
@@ -329,7 +329,7 @@ gameUi.debugConsole.addEventListener('game:debug-command', (event) => {
 
 window.addEventListener('game:slot-transfer-request', (event) => {
   const detail = event.detail;
-  if (!Number.isSafeInteger(detail.amount) || detail.amount <= 0) return;
+  if (!Number.isSafeInteger(detail.amount) || detail.amount <= 0) { return; }
 
   const transferred = detail.swapWith
     ? inventory.swap(detail.from, detail.to, {
@@ -347,10 +347,10 @@ window.addEventListener('game:cursor-return-request', event => {
 });
 window.addEventListener('game:slot-select', (event) => {
   const { slot } = event.detail;
-  if (inventory.GetActiveItem()) return;
+  if (inventory.GetActiveItem()) { return; }
   actionEvents.emit('action:interrupt', { reason: 'slot-select' });
   const stack = inventory.get(slot);
-  if (!stack || !isPlaceableBuildingId(stack.itemId)) return;
+  if (!stack || !isPlaceableBuildingId(stack.itemId)) { return; }
   // Placement claims the click so the stack is not picked up for a transfer.
   event.preventDefault();
   void buildingPlacement.begin(stack.itemId, stack.skinId).catch((error: unknown) => {
@@ -361,7 +361,7 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
   actionEvents.emit('action:interrupt', { reason: 'craft' });
   const { recipeId, skinId } = event.detail;
   const recipe = INVENTORY_RECIPES[recipeId];
-  if (!recipe) return;
+  if (!recipe) { return; }
 
   inventory.craft(recipe, skinId,
     inventoryReceiveEffect(gameUi, screenProjection.GetScreenPos(player.position)));
@@ -375,7 +375,7 @@ gameUi.crafting.addEventListener('game:craft-request', (event) => {
 });
 gameUi.crafting.addEventListener('game:crafting-state-change', (event) => {
   const { crafting } = event.detail;
-  if (crafting) actionEvents.emit('action:interrupt', { reason: 'crafting' });
+  if (crafting) { actionEvents.emit('action:interrupt', { reason: 'crafting' }); }
   setCrafting(playerInstance, crafting);
 });
 

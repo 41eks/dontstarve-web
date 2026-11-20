@@ -34,8 +34,8 @@ export class Upgradeable {
     const old = this.type;
     this.type = value;
     if (this.CanUpgrade()) {
-      if (old !== undefined) this.inst.removeTag(`${old}_upgradeable`);
-      if (value !== undefined) this.inst.addTag(`${value}_upgradeable`);
+      if (old !== undefined) { this.inst.removeTag(`${old}_upgradeable`); }
+      if (value !== undefined) { this.inst.addTag(`${value}_upgradeable`); }
     }
   }
 
@@ -47,7 +47,7 @@ export class Upgradeable {
   /** onstage: AddOrRemoveTag(upgradetype.."_upgradeable", CanUpgrade()). */
   private onstage(): void {
     const tag = `${this.type}_upgradeable`;
-    if (this.CanUpgrade()) this.inst.addTag(tag); else this.inst.removeTag(tag);
+    if (this.CanUpgrade()) { this.inst.addTag(tag); } else { this.inst.removeTag(tag); }
   }
 
   /** Upgradeable:CanUpgrade without a canupgradefn: the stage is below numstages. */

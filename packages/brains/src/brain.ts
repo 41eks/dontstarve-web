@@ -37,7 +37,7 @@ export abstract class Brain<Inst extends BehaviourContext = BrainInst> {
 
   /** EntityScript:RestartBrain → Brain:_Start_Internal. */
   Start(): void {
-    if (!this.stopped) return;
+    if (!this.stopped) { return; }
     this.OnStart();
     this.stopped = false;
     this.wakeAt = 0;
@@ -45,7 +45,7 @@ export abstract class Brain<Inst extends BehaviourContext = BrainInst> {
   }
 
   Stop(): void {
-    if (this.stopped) return;
+    if (this.stopped) { return; }
     this.OnStop?.();
     this.bt?.Stop();
     this.stopped = true;
@@ -61,7 +61,7 @@ export abstract class Brain<Inst extends BehaviourContext = BrainInst> {
 
   /** BrainManager:Update for one instance: wake up once the previous sleep time has passed. */
   tick(now: number): void {
-    if (this.stopped || this.paused || now < this.wakeAt) return;
+    if (this.stopped || this.paused || now < this.wakeAt) { return; }
     this.OnUpdate();
     const sleep = this.GetSleepTime();
     // No sleep time means the tree hibernates until something forces an update.

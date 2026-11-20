@@ -53,7 +53,7 @@ export class MinimapView {
     // Three.js is right-handed: looking along forward with +Y up, screen right is forward x up.
     this.rightX = Math.sin(radians); this.rightZ = -Math.cos(radians);
     // Cancel float residue so the unrotated map stays pixel-exact.
-    for (const key of ['forwardX', 'forwardZ', 'rightX', 'rightZ'] as const) if (Math.abs(this[key]) < 1e-12) this[key] = 0;
+    for (const key of ['forwardX', 'forwardZ', 'rightX', 'rightZ'] as const) { if (Math.abs(this[key]) < 1e-12) { this[key] = 0; } }
     this.clampCenter();
   }
 

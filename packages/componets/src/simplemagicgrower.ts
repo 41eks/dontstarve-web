@@ -17,7 +17,7 @@ export class SimpleMagicGrower {
   }
   SetLastStage(stage: number): void { this.lastStage = stage; }
   Grow(): void {
-    if (this.removed || this.lastStage === undefined) return;
+    if (this.removed || this.lastStage === undefined) { return; }
     if (this.growable.GetStage() < this.lastStage) {
       this.growable.DoGrowth(); this.task.start(Math.random());
     } else {

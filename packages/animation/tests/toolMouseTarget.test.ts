@@ -42,14 +42,14 @@ function setup(options?: ToolMouseTargetOptions) {
     if (itemId) {
       const entity = testItem({ itemId, count: 1 }); configureEquipmentEntity(entity); tools.push(entity);
       hand.set({ itemId, EQUIPSLOTS: 'HANDS', entity });
-    } else hand.set(null);
+    } else { hand.set(null); }
     await flush();
   };
   return { hand, tree, back, target, instance, workable, burnable, binding, pick, equip,
     dispose() {
       binding.dispose(); burnable.dispose();
       instance.remove(); disposeActionEntity(findActionEntity(tree)); disposeActionEntity(findActionEntity(back)); picker.dispose();
-      for (const tool of tools) tool.destroy(); geometry.dispose(); material.dispose();
+      for (const tool of tools) { tool.destroy(); } geometry.dispose(); material.dispose();
     } };
 }
 

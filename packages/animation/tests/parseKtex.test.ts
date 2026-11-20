@@ -102,7 +102,7 @@ describe('parseKtex', () => {
     block[0] = 200;
     block[1] = 100;
     let alphaIndices = 0n;
-    for (let pixel = 0; pixel < 16; pixel++) alphaIndices |= 2n << BigInt(pixel * 3);
+    for (let pixel = 0; pixel < 16; pixel++) { alphaIndices |= 2n << BigInt(pixel * 3); }
     for (let byte = 0; byte < 6; byte++) {
       block[2 + byte] = Number((alphaIndices >> BigInt(byte * 8)) & 0xffn);
     }

@@ -15,7 +15,7 @@ function walled(pathfinder: Pathfinder, halfSpan = 30) {
   return walls;
 }
 function finish(pathfinder: Pathfinder, handle: number) {
-  for (let i = 0; i < 100 && pathfinder.GetSearchStatus(handle) === STATUS_CALCULATING; i++) pathfinder.update();
+  for (let i = 0; i < 100 && pathfinder.GetSearchStatus(handle) === STATUS_CALCULATING; i++) { pathfinder.update(); }
   return pathfinder.GetSearchStatus(handle);
 }
 
@@ -51,7 +51,7 @@ it('searches across updates around a wall, with the start as the first step', ()
   expect(steps[0].toArray()).toEqual([0, 0, 0]);
   expect(steps.at(-1)!.toArray()).toEqual(to.toArray());
   for (const [index, step] of steps.entries()) {
-    if (index) expect(pathfinder.IsClear(steps[index - 1], step)).toBe(true);
+    if (index) { expect(pathfinder.IsClear(steps[index - 1], step)).toBe(true); }
   }
   expect(Math.max(...steps.map(step => Math.abs(step.z)))).toBeGreaterThan(30);
 });
@@ -87,7 +87,7 @@ it('finds the same path in slices as all at once', () => {
   search.advance(Infinity);
   const whole = search.result!;
   const handle = walls.SubmitSearch(point(0), point(20));
-  while (walls.GetSearchStatus(handle) === STATUS_CALCULATING) walls.update(7);
+  while (walls.GetSearchStatus(handle) === STATUS_CALCULATING) { walls.update(7); }
   expect(walls.GetSearchResult(handle)!.steps.slice(1).map(step => step.toArray())).toEqual(whole.map(step => step.toArray()));
 });
 

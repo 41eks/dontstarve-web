@@ -66,7 +66,7 @@ export default function HamletMainScreenPage({ onStart }: HamletMainScreenPagePr
 
   useEffect(() => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) { return }
     audio.volume = 0.68
     void audio.play().catch(() => setMusicPlaying(false))
     return () => {
@@ -77,7 +77,7 @@ export default function HamletMainScreenPage({ onStart }: HamletMainScreenPagePr
 
   useEffect(() => {
     const viewport = viewportRef.current
-    if (!viewport) return
+    if (!viewport) { return }
     const observer = new ResizeObserver(([entry]) => {
       setViewportSize({ width: entry.contentRect.width, height: entry.contentRect.height })
     })
@@ -89,13 +89,13 @@ export default function HamletMainScreenPage({ onStart }: HamletMainScreenPagePr
     const canvas = canvasRef.current
     const titleAsset = titleAssetRef.current
     const characterAsset = characterAssetRef.current
-    if (loading || !canvas || !titleAsset || !characterAsset) return
+    if (loading || !canvas || !titleAsset || !characterAsset) { return }
     const stage = createHamletStage(canvas, titleAsset, characterAsset)
     stage.resize(viewportSize.width, viewportSize.height)
     stageRef.current = stage
     return () => {
       stage.dispose()
-      if (stageRef.current === stage) stageRef.current = undefined
+      if (stageRef.current === stage) { stageRef.current = undefined }
     }
   }, [loading])
 
@@ -119,7 +119,7 @@ export default function HamletMainScreenPage({ onStart }: HamletMainScreenPagePr
       const elapsed = Math.min(100, time - previous)
       if (titleAsset && characterAsset && stage) {
         const idleAnimation = characterAsset.animations.find(animation => animation.name === "idle") || characterAsset.animation
-        if (!characterAnimation) characterAnimation = idleAnimation
+        if (!characterAnimation) { characterAnimation = idleAnimation }
         nextPigAction -= elapsed / 1000
         if (nextPigAction <= 0) {
           const actionName = PIG_ACTIONS[Math.floor(Math.random() * PIG_ACTIONS.length)]
@@ -175,7 +175,7 @@ export default function HamletMainScreenPage({ onStart }: HamletMainScreenPagePr
 
   const toggleMusic = () => {
     const audio = audioRef.current
-    if (!audio) return
+    if (!audio) { return }
     if (audio.paused) {
       void audio.play().catch(() => setMusicPlaying(false))
     } else {

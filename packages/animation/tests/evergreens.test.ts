@@ -116,7 +116,7 @@ it('commits source axe work, cancels before impact, preserves logical components
   const world = { player, camera: s.camera, scene: new THREE.Scene(), ground: new THREE.Group(), renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
   const controller = new PlayerController(world, animation.sg, new Locomotor({ position: player.position, velocity: new THREE.Vector3() }, { physicsRadius: .5 * WORLD_SCALE }), inventory.handEquipment, playerDoer(player));
   const chop = (target: { entity: object }) => controller.DoAction(controller.createAction({ action: 'CHOP', target: target.entity as never, invobject: axe })!);
-  const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
+  const advance = (frames: number) => { for (let i = 0; i < frames; i++) { advancePlayer(animation, 1 / 30); } };
   try {
     player.position.set(1, 0, 3);
     const tree = s.prefabs.spawn('evergreen_tall', new THREE.Vector3(1, 0, 0));
@@ -125,7 +125,7 @@ it('commits source axe work, cancels before impact, preserves logical components
     expect(chop(target)).toBe(true); controller.cancel(); advance(60);
     expect(work.GetWorkLeft()).toBe(15); expect(axe.components.finiteuses.remaining).toBeUndefined();
     expect(chop(target)).toBe(true);
-    while (animation.sg.stateName === 'chop_start') advancePlayer(animation, 1 / 30);
+    while (animation.sg.stateName === 'chop_start') { advancePlayer(animation, 1 / 30); }
     advance(2); expect(work.GetWorkLeft()).toBe(14); expect(axe.components.finiteuses.remaining).toBe(99);
     expect(s.displays.renderEntities.some(entry => entry.object.name === 'pine_needles_chop')).toBe(true);
     await drawn(tree.transform.model);

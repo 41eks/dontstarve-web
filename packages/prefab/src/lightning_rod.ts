@@ -47,8 +47,8 @@ class LightningRod {
         this.battery.SetCanBeUsedFn((_inst, _user, mult) => {
             if (mult) {
                 const charge = this.actualCharge;
-                if (charge !== undefined && charge >= mult) return [true];
-            } else if (this.charged) return [true];
+                if (charge !== undefined && charge >= mult) { return [true]; }
+            } else if (this.charged) { return [true]; }
             return [false, 'NOT_ENOUGH_CHARGE'];
         });
         this.battery.SetOnUsedFn((_inst, _user, mult) => {
@@ -79,7 +79,7 @@ class LightningRod {
 
     private armDay(): void {
         const world = this.inst.worldServices;
-        if (!this.charged || !world?.scheduler || !world.secondsUntilNextDay) return;
+        if (!this.charged || !world?.scheduler || !world.secondsUntilNextDay) { return; }
         this.daytask?.Cancel();
         this.daytask = this.inst.DoTaskInTime(world.secondsUntilNextDay(world.scheduler.now), () => {
             this.daytask = undefined;
@@ -90,15 +90,15 @@ class LightningRod {
 
     /** dozap: the sound and fx at the rod, then the next zap in 10–40 seconds. */
     dozap(): void {
-        if (this.removed) return;
+        if (this.removed) { return; }
         PlaySound(ZAP_SOUND, this.inst.position);
         this.inst.worldServices?.fx?.spawn('lightning_rod_fx', this.inst.position);
         this.zaptask?.Cancel();
-        if (this.inst.worldServices?.scheduler) this.zaptask = this.inst.DoTaskInTime(10 + Math.floor(Math.random() * 31), () => this.dozap());
+        if (this.inst.worldServices?.scheduler) { this.zaptask = this.inst.DoTaskInTime(10 + Math.floor(Math.random() * 31), () => this.dozap()); }
     }
 
     discharge(): void {
-        if (!this.charged) return;
+        if (!this.charged) { return; }
         this.daytask?.Cancel(); this.daytask = undefined;
         // AnimState:ClearBloomEffectHandle has no renderer here; the light is the visible charge.
         this.charged = false;
@@ -109,8 +109,8 @@ class LightningRod {
 
     private ondaycomplete(): void {
         this.dozap();
-        if (this.chargeleft! > 1) this.chargeleft! -= 1;
-        else this.discharge();
+        if (this.chargeleft! > 1) { this.chargeleft! -= 1; }
+        else { this.discharge(); }
     }
 
     setcharged(charges: number): void {
@@ -137,13 +137,13 @@ function onlightning(inst: LightningRodInstance): void {
 
 function onsave(inst: LightningRodInstance, data: EntityPersistData): void {
     const rod = inst.lightningRod;
-    if (rod.charged) data.lightningrod = { charged: true, chargeleft: rod.chargeleft! };
+    if (rod.charged) { data.lightningrod = { charged: true, chargeleft: rod.chargeleft! }; }
 }
 
 /** A charged save restores its remaining charge (and zaps once, as setcharged does). */
 function onload(inst: LightningRodInstance, data: EntityPersistData): void {
     const saved = data.lightningrod;
-    if (saved?.charged && saved.chargeleft > 0) inst.lightningRod.setcharged(saved.chargeleft);
+    if (saved?.charged && saved.chargeleft > 0) { inst.lightningRod.setcharged(saved.chargeleft); }
 }
 
 /** lightningrod.lua fn(), as far as it is ported: the charge, its battery and the hammer workable. */

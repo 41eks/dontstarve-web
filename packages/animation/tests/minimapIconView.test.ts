@@ -15,7 +15,7 @@ const context = { setTransform: vi.fn(), clearRect: vi.fn(), drawImage: vi.fn() 
 let frames: Map<number, FrameRequestCallback>, nextFrame: number;
 const flush = () => {
   const pending = [...frames.values()]; frames.clear();
-  for (const callback of pending) callback(0);
+  for (const callback of pending) { callback(0); }
 };
 
 beforeEach(() => {
@@ -115,7 +115,7 @@ it('prewarms two shared atlas images, reuses them across icon requests and relea
   const interrupted = new MinimapIcons('http://map.test/dst/data'), preparing = interrupted.prewarm();
   await vi.waitFor(() => expect(completions).toHaveLength(2));
   interrupted.dispose();
-  for (const resolve of completions) resolve();
+  for (const resolve of completions) { resolve(); }
   await preparing;
   expect(interrupted.ready).toBe(false); expect(interrupted.index('willow.png')).toBeUndefined();
   expect(revoke).toHaveBeenCalledTimes(4);

@@ -110,7 +110,7 @@ export class Mole extends ItemEntity implements MoleBrainInst, LocoMotorInst {
   // conventions-allow instance-method: spawner:TakeOwnership calls it on the child.
   setHome(home?: MolehillInstance): void {
     this.components.homeseeker.SetHome(home);
-    if (home) this.components.knownlocations.RememberLocation('home', home.getPosition());
+    if (home) { this.components.knownlocations.RememberLocation('home', home.getPosition()); }
   }
   /** spawner:GoHome's child:RemoveFromScene, as the mole stops in its hill. */
   // conventions-allow instance-method: spawner:GoHome calls it on the child.
@@ -135,7 +135,7 @@ export class Mole extends ItemEntity implements MoleBrainInst, LocoMotorInst {
   /** ACTIONS.MAKEMOLEHILL's fn. */
   // conventions-allow instance-method: ACTIONS.MAKEMOLEHILL's fn, which the brain's action runs for inst.
   makeHome(): boolean {
-    if (!this.moleWorld) return false;
+    if (!this.moleWorld) { return false; }
     this.moleWorld.makeHome(this); this.needs_home_time = undefined; return true;
   }
 }
@@ -146,7 +146,7 @@ function isDead(inst: Mole): boolean { return inst.components.health.IsDead(); }
 
 function syncMotor(inst: Mole): void {
   const body = inst.physicsBody;
-  if (!body) return;
+  if (!body) { return; }
   const angle = inst.rotation * Math.PI / 180;
   body.velocity.x = Math.cos(angle) * inst.speed;
   body.velocity.z = -Math.sin(angle) * inst.speed;
@@ -154,7 +154,7 @@ function syncMotor(inst: Mole): void {
 
 /** mole.lua fn()'s creature: the sound emitter, physics, health, combat, knownlocations and homeseeker. */
 export function MakeMole(inst: Mole, random: () => number = Math.random): void {
-  if (inst.components.health) return;
+  if (inst.components.health) { return; }
   inst.randomSource = random;
   inst.AddSoundEmitter();
   MakeCharacterPhysics(inst, 99999, .5);
@@ -179,9 +179,9 @@ export function MakeMole(inst: Mole, random: () => number = Math.random): void {
 
 /** Physics belongs to the logical item and survives replacing its display. */
 export function BindMolePhysics(inst: Mole, world?: import('cannon-es').World): void {
-  if (inst.isunder) SetUnderPhysics(inst); else SetAbovePhysics(inst);
+  if (inst.isunder) { SetUnderPhysics(inst); } else { SetAbovePhysics(inst); }
   inst.physics.SetActive(inWorld(inst));
-  if (world) inst.bindPhysics(world, () => inst.getPosition());
+  if (world) { inst.bindPhysics(world, () => inst.getPosition()); }
 }
 
 export function SetUnderPhysics(inst: Mole): void {
@@ -229,7 +229,7 @@ function stateContext(inst: Mole): MoleStateInst {
 
 /** The rest of fn() in the moles' world: inventory, locomotor, SetStateGraph, SetBrain, the home test and the sleeper. */
 export function BindMoleWorld(inst: Mole, services: MoleWorld, lengths: ReadonlyMap<string, number> = MOLE_ANIMATION_LENGTHS): void {
-  if (inst.moleWorld) return;
+  if (inst.moleWorld) { return; }
   inst.moleWorld = services;
   inst.cleanups.push(services.registerMole(inst));
   const { getWatchWorldContent } = services;
@@ -255,30 +255,30 @@ export function BindMoleWorld(inst: Mole, services: MoleWorld, lengths: Readonly
   inst.locomotor = addComponent(inst, 'locomotor', LocoMotor, { arriveDistance: .15 * WORLD_SCALE, pathfinder: services.pathfinder, pathcaps: { ignorecreep: true, ignorebridges: true } });
   inst.locomotor.walkspeed = 2.75 * WORLD_SCALE; inst.locomotor.runspeed = 6 * WORLD_SCALE;
   inst.animstate = new AnimState(scheduler, lengths, event => inst.PushEvent(event));
-  if (!inst.worldServices?.scheduler) inst.BindScheduler(scheduler);
+  if (!inst.worldServices?.scheduler) { inst.BindScheduler(scheduler); }
   inst.stategraph = new MoleStateGraph(stateContext(inst), scheduler);
   inst.SetStateGraph(() => inst.stategraph.sg);
   inst.stategraph.sg.onNewState(() => SyncStateTags(inst)); SyncStateTags(inst);
   inst.SetBrain(mole => new MoleBrain(mole, WORLD_SCALE));
-  if (!inWorld(inst)) inst.brain?.Stop();
+  if (!inWorld(inst)) { inst.brain?.Stop(); }
   inst.homechecktask = inst.DoTaskInTime(inst.make_home_delay, TestForMakeHome);
   const needsHomeElapsed = inst.saved?.needsHomeElapsed ?? inst.loadedNeedsHomeElapsed;
-  if (needsHomeElapsed !== undefined) inst.needs_home_time = inst.getTime() - needsHomeElapsed;
+  if (needsHomeElapsed !== undefined) { inst.needs_home_time = inst.getTime() - needsHomeElapsed; }
   inst.saved = undefined; inst.loadedNeedsHomeElapsed = undefined;
   addComponent(inst, 'sleeper', Sleeper, getWatchWorldContent, inst.randomSource, WORLD_SCALE).SetNocturnal(true);
   inst.addTag('sleeper');
-  if (inWorld(inst) && inst.dropPending) ondrop(inst);
+  if (inWorld(inst) && inst.dropPending) { ondrop(inst); }
   createEffect(() => { cycle.get(); inst.brain?.ForceUpdate(); });
 }
 
 /** TestForMakeHome */
-function TestForMakeHome(inst: Mole): void { if (!inst.home?.isValid()) inst.needs_home_time = inst.getTime(); }
+function TestForMakeHome(inst: Mole): void { if (!inst.home?.isValid()) { inst.needs_home_time = inst.getTime(); } }
 
 /** The stategraph's tags the source's other code reads as entity tags. */
 function SyncStateTags(inst: Mole): void {
-  for (const tag of inst.stateTags) inst.removeTag(tag);
+  for (const tag of inst.stateTags) { inst.removeTag(tag); }
   inst.stateTags = new Set(['noattack', 'noelectrocute', 'busy', 'sleeping', 'canwxscan', 'canelectrocute'].filter(tag => inst.stategraph.hasStateTag(tag)));
-  for (const tag of inst.stateTags) inst.addTag(tag);
+  for (const tag of inst.stateTags) { inst.addTag(tag); }
 }
 
 /** OnSleep / OnRemove: SoundEmitter:KillAllSounds(). */
@@ -289,7 +289,7 @@ function StartStunnedSounds(inst: Mole, skippre: boolean): void {
   // SGmole stunned: DoPeriodicTask(23 * FRAMES, PlayStunnedSound / KillStunnedSound).
   inst.playtask?.Cancel(); inst.killtask?.Cancel();
   inst.playtask = inst.DoPeriodicTask(23 / 30, () => {
-    if (!sound.PlayingSound('stunned')) sound.PlaySound(`${SOUND_PREFIX}sleep` as const, 'stunned');
+    if (!sound.PlayingSound('stunned')) { sound.PlaySound(`${SOUND_PREFIX}sleep` as const, 'stunned'); }
   }, delay);
   inst.killtask = inst.DoPeriodicTask(23 / 30, () => sound.KillSound('stunned'), delay + 11 / 30);
 }
@@ -305,25 +305,25 @@ function OnAttacked(inst: Mole, data: EntityEventData['attacked']): void {
   inst.stopfleetask?.Cancel();
   inst.stopfleetask = inst.DoTaskInTime(3 + Math.floor(inst.random() * 4), () => { inst.flee = false; });
   let count = 0;
-  for (const mole of inst.moleWorld?.getMoles() ?? []) if (mole.getPosition().distanceToSquared(inst.getPosition()) <= (30 * WORLD_SCALE) ** 2) {
-    mole.PushEvent('gohome'); if (++count > 5) break;
-  }
+  for (const mole of inst.moleWorld?.getMoles() ?? []) { if (mole.getPosition().distanceToSquared(inst.getPosition()) <= (30 * WORLD_SCALE) ** 2) {
+    mole.PushEvent('gohome'); if (++count > 5) { break; }
+  } }
   const weapon = data.weapon;
-  if (weapon?.hasTag('hammer')) { DropInventory(inst); if (!isDead(inst)) inst.stategraph.goToState('stunned'); }
-  else if (weapon && !isDead(inst) && !inst.stategraph.hasStateTag('busy')) inst.stategraph.goToState('hit');
+  if (weapon?.hasTag('hammer')) { DropInventory(inst); if (!isDead(inst)) { inst.stategraph.goToState('stunned'); } }
+  else if (weapon && !isDead(inst) && !inst.stategraph.hasStateTag('busy')) { inst.stategraph.goToState('hit'); }
 }
 
 /** OnWentHome: the stolen items go into the molehill, and the mole stops in idle. */
 function OnWentHome(inst: Mole): void {
   const molehill = inst.home;
-  if (!molehill) return;
+  if (!molehill) { return; }
   inst.components.inventory?.TransferInventory(molehill);
   inst.stategraph.goToState('idle');
 }
 
 /** OnHomeDugUp */
 export function OnHomeDugUp(inst: Mole): void {
-  inst.needs_home_time = inst.getTime(); DropInventory(inst); if (!isDead(inst)) inst.stategraph.goToState('stunned');
+  inst.needs_home_time = inst.getTime(); DropInventory(inst); if (!isDead(inst)) { inst.stategraph.goToState('stunned'); }
 }
 
 function onpickup(inst: Mole): void {
@@ -340,21 +340,21 @@ function ondrop(inst: Mole): void {
   if (inst.stategraph) {
     inst.dropPending = false; inst.stategraph.resume(); inst.stategraph.goToState('stunned', true); inst.brain?.Start(); inst.components.sleeper?.StartTesting();
   }
-  if (!inst.home?.isValid()) inst.needs_home_time = inst.getTime();
+  if (!inst.home?.isValid()) { inst.needs_home_time = inst.getTime(); }
 }
 
 /** One frame: the brain, the locomotor, the stategraph and the motor, which stops at the walkable edge. */
 export function UpdateMole(inst: Mole, dt: number): void {
-  if (!inWorld(inst) || isDead(inst)) return;
+  if (!inWorld(inst) || isDead(inst)) { return; }
   const body = inst.physicsBody;
-  if (body) inst.setPosition(body.position.x, 0, body.position.z);
-  inst.brain?.tick(inst.getTime()); if (inst.locomotor.isUpdating) inst.locomotor.update(dt); inst.stategraph.update(dt);
+  if (body) { inst.setPosition(body.position.x, 0, body.position.z); }
+  inst.brain?.tick(inst.getTime()); if (inst.locomotor.isUpdating) { inst.locomotor.update(dt); } inst.stategraph.update(dt);
   if (inst.speed > 0) {
     const angle = inst.rotation * Math.PI / 180;
     const p = inst.getPosition().clone().add(new Vector3(Math.cos(angle) * inst.speed * dt, 0, -Math.sin(angle) * inst.speed * dt));
     if (inst.moleWorld?.isWalkable(p)) {
-      if (body) syncMotor(inst); else inst.setPosition(p.x, p.y, p.z);
-    } else inst.locomotor.Stop();
+      if (body) { syncMotor(inst); } else { inst.setPosition(p.x, p.y, p.z); }
+    } else { inst.locomotor.Stop(); }
   }
 }
 
@@ -362,12 +362,12 @@ export function UpdateMole(inst: Mole, dt: number): void {
 function OnSave(inst: Mole, data: EntityPersistData): void {
   const elapsed = inst.needs_home_time === undefined ? inst.saved?.needsHomeElapsed ?? inst.loadedNeedsHomeElapsed
     : inst.getTime() - inst.needs_home_time;
-  if (elapsed !== undefined) data.needs_home_time = elapsed;
+  if (elapsed !== undefined) { data.needs_home_time = elapsed; }
 }
 
 /** mole.lua OnLoad: needs_home_time, which the mole's world converts to its clock once it binds. */
 function OnLoad(inst: Mole, data: EntityPersistData): void {
-  if (data.needs_home_time !== undefined) inst.loadedNeedsHomeElapsed = data.needs_home_time;
+  if (data.needs_home_time !== undefined) { inst.loadedNeedsHomeElapsed = data.needs_home_time; }
 }
 
 /** The runtime record a held mole carries in its stack: health, the time since it began needing a home, its items. */
@@ -381,19 +381,19 @@ function MoleOnSave(inst: Mole): MoleSave {
 
 /** The inventory item's side of mole.lua: tags, the ELEMENTAL eater and perishing while held. */
 export function configureMoleEntity(entity: ItemEntity): void {
-  for (const tag of ['animal', 'prey', 'mole', 'smallcreature', 'canbetrapped', 'baitstealer', 'cattoy', 'catfood', 'whackable', 'stunnedbybomb', 'cookable', 'small_livestock', 'show_spoilage']) entity.addTag(tag);
-  if (entity.components.eater) return;
+  for (const tag of ['animal', 'prey', 'mole', 'smallcreature', 'canbetrapped', 'baitstealer', 'cattoy', 'catfood', 'whackable', 'stunnedbybomb', 'cookable', 'small_livestock', 'show_spoilage']) { entity.addTag(tag); }
+  if (entity.components.eater) { return; }
   entity.components.inventoryitem.canbepickedup = false; entity.components.inventoryitem.canbepickedupalive = true;
   const eater = addComponent(entity, 'eater', Eater);
   eater.SetDiet(['ELEMENTAL']); eater.SetOnEatFn(() => entity.components.perishable.SetPercent(1));
   const perishable = entity.components.perishable;
-  if (perishable.perishtime.peek() === undefined) perishable.SetPerishTime(MOLE_PERISH_TIME);
+  if (perishable.perishtime.peek() === undefined) { perishable.SetPerishTime(MOLE_PERISH_TIME); }
   perishable.localMultiplier = () => entity.components.inventoryitem.owner ? 1 : 0;
   perishable.perishfn = () => {
     const owner = entity.components.inventoryitem.owner;
     if (owner) { owner.PushEvent('murdered', { victim: entity, stackmult: 1, negligent: true }); PlaySound(`${SOUND_PREFIX}death`); entity.components.inventoryitem.slot?.replace('smallmeat'); }
   };
-  if (!entity.components.inventoryitem.owner) perishable.StopPerishing();
+  if (!entity.components.inventoryitem.owner) { perishable.StopPerishing(); }
 }
 /** mole.lua: the mole's stategraph drives its sprite, and its brain and locomotion run while it is awake in the world. */
 export function molePrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
@@ -408,8 +408,8 @@ export function molePrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDe
       assets: { animationArchive: 'mole_basic.zip', buildArchives: ['mole_build.zip'], bank: 'mole' },
       onSpawned: inst => {
         const moleWorld = world.moleWorld;
-        if (!moleWorld) throw new Error('Mole world is unavailable');
-        if (!(inst instanceof Mole)) return;
+        if (!moleWorld) { throw new Error('Mole world is unavailable'); }
+        if (!(inst instanceof Mole)) { return; }
         MakeMole(inst);
         world.configureItem(inst);
         configureMoleEntity(inst);
@@ -423,12 +423,12 @@ export function molePrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDe
         let visible: boolean | undefined, facing: number | undefined;
         inst.onRemove(world.componentUpdates.register({
           OnUpdate: dt => {
-            if (inst.status.peek() !== 'active') return;
+            if (inst.status.peek() !== 'active') { return; }
             UpdateMole(mole, dt);
             const nextVisible = inWorld(mole);
-            if (nextVisible !== visible) sprite.setVisible(visible = nextVisible);
+            if (nextVisible !== visible) { sprite.setVisible(visible = nextVisible); }
             const nextFacing = fourFacingFromRotation(mole.facing, heading.peek());
-            if (nextFacing !== facing) sprite.setFacing(facing = nextFacing);
+            if (nextFacing !== facing) { sprite.setFacing(facing = nextFacing); }
           },
         }));
       },

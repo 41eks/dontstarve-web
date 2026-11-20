@@ -27,9 +27,9 @@ export class BeeQueenHiveInstance extends PrefabInstance {
     this.BindScheduler(world.scheduler);
     this.setPosition(position.x, 0, position.z);
     this.setScale(1.4);
-    for (const tag of ['event_trigger', 'antlion_sinkhole_blocker']) this.addTag(tag);
+    for (const tag of ['event_trigger', 'antlion_sinkhole_blocker']) { this.addTag(tag); }
     this.sprite.playOnce('large');
-    for (let level = 0; level < 3; level++) this.sprite.setSymbolHidden(`honey${level}`, true);
+    for (let level = 0; level < 3; level++) { this.sprite.setSymbolHidden(`honey${level}`, true); }
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
     workable.SetMaxWork(BEEQUEEN_HIVE_MAX_WORK);
@@ -44,7 +44,7 @@ export class BeeQueenHiveInstance extends PrefabInstance {
   /** The record keeps the timer component's save under beeQueenHiveTimer. */
   override OnSave(_inst: unknown, data: EntityPersistData): void {
     const saved = data.timer; delete data.timer;
-    if (saved) data.beeQueenHiveTimer = saved;
+    if (saved) { data.beeQueenHiveTimer = saved; }
   }
 
   /** inst.OnLoad = RefreshHoneyState, after the saved workable and timer. */
@@ -61,7 +61,7 @@ function honeyLevel(workleft: number): number {
 /** OnHoneyTask */
 function showHoneyLevel(inst: BeeQueenHiveInstance, level: number): void {
   inst._honeytask = undefined;
-  for (let i = 0; i <= 3; i++) inst.sprite.setSymbolHidden(`honey${i}`, i !== level);
+  for (let i = 0; i <= 3; i++) { inst.sprite.setSymbolHidden(`honey${i}`, i !== level); }
 }
 
 function setHoneyLevel(inst: BeeQueenHiveInstance, level: number, delay?: number): void {
@@ -69,14 +69,14 @@ function setHoneyLevel(inst: BeeQueenHiveInstance, level: number, delay?: number
   if (delay !== undefined) {
     showHoneyLevel(inst, level - 1);
     inst._honeytask = inst.DoTaskInTime(delay, inst => showHoneyLevel(inst, level));
-  } else showHoneyLevel(inst, level);
+  } else { showHoneyLevel(inst, level); }
 }
 
 function onWorked(inst: BeeQueenHiveInstance): void {
   const { workable, timer } = inst.components;
-  if (!workable.enabled.peek()) return;
+  if (!workable.enabled.peek()) { return; }
   timer.StopTimer('hiveregen');
-  if (workable.GetWorkLeft() < 1) workable.SetWorkLeft(1);
+  if (workable.GetWorkLeft() < 1) { workable.SetWorkLeft(1); }
   // OnWorked: large_hit, then a nonlooping large pose. No animover callback is attached here in Lua.
   inst.sprite.playOnce('large_hit');
   inst.sprite.pushAnimation('large', false);
@@ -85,11 +85,11 @@ function onWorked(inst: BeeQueenHiveInstance): void {
 }
 
 function onTimer(inst: BeeQueenHiveInstance, name: string): void {
-  if (name !== 'hiveregen' || !inst.components.workable.CanBeWorked() || inst.components.workable.GetWorkLeft() >= BEEQUEEN_HIVE_MAX_WORK) return;
+  if (name !== 'hiveregen' || !inst.components.workable.CanBeWorked() || inst.components.workable.GetWorkLeft() >= BEEQUEEN_HIVE_MAX_WORK) { return; }
   const old = honeyLevel(inst.components.workable.GetWorkLeft());
   inst.components.workable.SetWorkLeft(inst.components.workable.GetWorkLeft() + 1);
   const next = honeyLevel(inst.components.workable.GetWorkLeft());
-  if (inst.components.workable.GetWorkLeft() < BEEQUEEN_HIVE_MAX_WORK) inst.components.timer.StartTimer('hiveregen', SEG_TIME);
+  if (inst.components.workable.GetWorkLeft() < BEEQUEEN_HIVE_MAX_WORK) { inst.components.timer.StartTimer('hiveregen', SEG_TIME); }
   if (old !== next && inst.status.peek() === 'active') {
     inst.sprite.playOnce('transition');
     inst.sprite.pushAnimation('large', false);

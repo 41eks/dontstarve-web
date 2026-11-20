@@ -79,7 +79,7 @@ function updatephysics(inst: NightmareRockInstance): void {
   let mask: number = COLLISION.WORLD;
   if (!inst.conceal) {
     mask |= COLLISION.ITEMS;
-    if (inst.active) mask |= COLLISION.CHARACTERS;
+    if (inst.active) { mask |= COLLISION.CHARACTERS; }
   }
   inst.physics.SetCollisionMask(mask);
 }
@@ -100,8 +100,8 @@ function dotransition(inst: NightmareRockInstance): void {
   inst.transition_task = undefined;
   if (inst.conceal !== inst.conceal_queued) {
     if (!inst.sg.hasStateTag('busy')) {
-      if (inst.conceal_queued) inst.sg.goToState('conceal', inst.active);
-      else inst.sg.goToState('reveal');
+      if (inst.conceal_queued) { inst.sg.goToState('conceal', inst.active); }
+      else { inst.sg.goToState('reveal'); }
     }
   } else if (inst.active !== inst.active_queue && !inst.conceal_queued) {
     inst.sg.goToState(inst.active_queue ? 'raise' : 'lower');
@@ -128,10 +128,10 @@ function refresh(inst: NightmareRockInstance): void {
 
 /** DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET), then stagger the next spawned entity. */
 function AddRefreshTask(inst: NightmareRockInstance): void {
-  if (inst._refreshtask) return;
+  if (inst._refreshtask) { return; }
   inst._refreshtask = inst.DoPeriodicTask(UPDATE_INTERVAL, refresh, UPDATE_OFFSET);
   UPDATE_OFFSET += FRAMES;
-  if (UPDATE_OFFSET > UPDATE_INTERVAL) UPDATE_OFFSET = 0;
+  if (UPDATE_OFFSET > UPDATE_INTERVAL) { UPDATE_OFFSET = 0; }
 }
 
 function ConcealForMinigame(inst: NightmareRockInstance, conceal: boolean): void {

@@ -31,7 +31,7 @@ it('uses source ground art for base, ordinary, shared-build and invisible backpa
     expect(mesh.geometry.drawRange.count, skinId).toBeGreaterThan(0);
     expect(Array.from(mesh.geometry.getAttribute('position').array).every(Number.isFinite), skinId).toBe(true);
     expect(ground.model.children[0].children).toHaveLength(1);
-    if (skinId) expect(mesh.material.some((material) => material.name !== 'ground:swap_backpack'), skinId).toBe(true);
+    if (skinId) { expect(mesh.material.some((material) => material.name !== 'ground:swap_backpack'), skinId).toBe(true); }
     ground.dispose();
   }
   assets.dispose();

@@ -55,12 +55,12 @@ export class CaveEntranceInstance extends PrefabInstance {
     super(prefab, new SpriteState({ name: open ? 'no_access' : 'idle_closed', held: !open, billboard: true }));
     this.setPosition(position.x, 0, position.z);
     // PlayAnimation("idle_closed") plays once rather than resting on its last frame.
-    if (!open) this.sprite.playOnce('idle_closed');
+    if (!open) { this.sprite.playOnce('idle_closed'); }
     else { this.sprite.setLayer('background'); this.sprite.setMeshOrder(BACKGROUND_MESH_ORDER); }
     this.addTag('antlion_sinkhole_blocker');
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
-    if (open) open_fn(this, world); else closed_fn(this, world);
+    if (open) { open_fn(this, world); } else { closed_fn(this, world); }
   }
 }
 
@@ -107,7 +107,7 @@ export function caveEntrancePrefabs(world: CaveEntranceWorld): Readonly<Record<C
     minimapIcon: id === CAVE_ENTRANCE_ID ? 'cave_closed.png' : 'cave_open.png',
     onSpawned: inst => {
       const workable = inst.components.workable;
-      if (workable) new ToolMouseTarget(inst, world.handEquipment);
+      if (workable) { new ToolMouseTarget(inst, world.handEquipment); }
     },
   });
   return { cave_entrance: definition(CAVE_ENTRANCE_ID), cave_entrance_open: definition(CAVE_ENTRANCE_OPEN_ID) };

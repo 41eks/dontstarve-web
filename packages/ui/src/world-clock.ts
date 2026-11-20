@@ -60,7 +60,7 @@ function animationAsset(buildPackage: BuildPackage, animations: Animation[] = []
 
 function loadClockAssets(dataRoot: string): Promise<ClockAssets> {
   let request = requests.get(dataRoot);
-  if (request) return request;
+  if (request) { return request; }
   request = (async () => {
     const animRoot = `${dataRoot}anim`;
     const [clock, moon, moonPhases, hud] = await Promise.all([
@@ -111,7 +111,7 @@ function drawAnimation(
     const source = isMoon ? moonOverride : asset;
     const image = findImage(source.buildPackage.build,
       isMoon ? smallHash(moonSymbol) : element.imageHash, isMoon ? 0 : element.imageIndex);
-    if (!image) continue;
+    if (!image) { continue; }
     context.save();
     context.transform(...element.matrix);
     context.drawImage(source.atlases[image.sampler ?? 0],
@@ -124,7 +124,7 @@ function drawAnimation(
 /** A clip the clock's art must have. */
 function requiredAnimation(asset: AnimationAsset, name: string) {
   const animation = asset.animations.get(name);
-  if (!animation) throw new Error(`Clock art has no animation ${name}`);
+  if (!animation) { throw new Error(`Clock art has no animation ${name}`); }
   return animation;
 }
 
@@ -180,19 +180,19 @@ export class WorldClock {
       this.draw();
     });
     void loadClockAssets(dataRoot).then((assets) => {
-      if (this.disposed) return;
+      if (this.disposed) { return; }
       this.assets = assets;
       this.resize();
       canvas.dataset.state = 'ready';
     }).catch((error: unknown) => {
-      if (this.disposed) return;
+      if (this.disposed) { return; }
       canvas.dataset.state = 'error';
       canvas.dataset.error = error instanceof Error ? error.message : String(error);
     });
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.stopClockEffect();
     this.state.dispose();
@@ -218,7 +218,7 @@ export class WorldClock {
 
   /** Only active game frames advance decorative animation, never clock progress. */
   advanceAnimation(dt: number): void {
-    if (this.disposed || !Number.isFinite(dt) || dt <= 0) return;
+    if (this.disposed || !Number.isFinite(dt) || dt <= 0) { return; }
     this.clockElapsed += dt * 1000;
     this.moonElapsed += dt * 1000;
     this.draw();
@@ -253,7 +253,7 @@ export class WorldClock {
   }
 
   private draw(): void {
-    if (this.disposed || !this.assets) return;
+    if (this.disposed || !this.assets) { return; }
     const assets = this.assets;
     const { phase, moonPhase, waxing } = this.state.peek();
     const { canvas } = this;
@@ -287,12 +287,12 @@ export class WorldClock {
     drawAnimation(context, assets.clock, clock.animation, clock.frame);
     context.resetTransform();
     context.drawImage(this.faceCanvas, 0, 0);
-    if (canvas.dataset.animation !== clock.animation.name) canvas.dataset.animation = clock.animation.name;
+    if (canvas.dataset.animation !== clock.animation.name) { canvas.dataset.animation = clock.animation.name; }
   }
 
   /** Rebuild settled clock progress only on signal changes, resize or user focus. */
   private drawFace(): void {
-    if (this.disposed || !this.assets) return;
+    if (this.disposed || !this.assets) { return; }
     const assets = this.assets;
     const state = this.state.peek();
     const { phase, time, cycles, moonPhase, waxing, daySegments, duskSegments } = state;

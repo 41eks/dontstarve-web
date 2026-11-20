@@ -63,13 +63,13 @@ export class DstMinimapElement extends AssetElement {
     const heading = watchSignal(options.cameraHeading, stop => { this.headingCleanups.push(stop); });
     view.heading = heading.peek();
     this.renderer = new MinimapDomRenderer(options, this.dataAsset(''));
-    if (this.root) this.root.insertBefore(this.renderer.root, this.root.querySelector('.minimap__center'));
+    if (this.root) { this.root.insertBefore(this.renderer.root, this.root.querySelector('.minimap__center')); }
     createEffect(() => {
       view.heading = heading.get();
       this.updateView();
     });
-    if (this.isConnected) this.resize();
-    if (this.open) this.openView();
+    if (this.isConnected) { this.resize(); }
+    if (this.open) { this.openView(); }
   }
 
   /** Prepare static map art while the world generation page is still visible. */
@@ -79,9 +79,9 @@ export class DstMinimapElement extends AssetElement {
 
   setView({ x, z, zoom }: { x?: number; z?: number; zoom?: number }): void {
     const { view } = this;
-    if (!view) return;
-    if (zoom !== undefined) view.zoom = Math.min(MINIMAP_ZOOM_MAX, Math.max(MINIMAP_ZOOM_MIN, zoom));
-    if (x !== undefined || z !== undefined) view.center(x ?? view.centerX, z ?? view.centerZ);
+    if (!view) { return; }
+    if (zoom !== undefined) { view.zoom = Math.min(MINIMAP_ZOOM_MAX, Math.max(MINIMAP_ZOOM_MIN, zoom)); }
+    if (x !== undefined || z !== undefined) { view.center(x ?? view.centerX, z ?? view.centerZ); }
     this.cancelZoom();
     this.updateView();
   }
@@ -91,10 +91,10 @@ export class DstMinimapElement extends AssetElement {
   }
 
   setOpen(isOpen: boolean): void {
-    if (isOpen === this.open || !this.options) return;
+    if (isOpen === this.open || !this.options) { return; }
     this.open = isOpen;
     this.autopaused = isOpen;
-    if (this.root) this.root.hidden = !isOpen;
+    if (this.root) { this.root.hidden = !isOpen; }
     if (isOpen) {
       this.resize();
       this.openView(this.options.getPlayerPosition());
@@ -125,7 +125,7 @@ export class DstMinimapElement extends AssetElement {
     registerImageAtlases({ 'images/hud.xml': () => loadImageAtlas(archive, 'images/hud.xml') });
     this.background = createAtlasImage('minimap__background', 'images/hud.xml', 'map.tex');
     root.prepend(this.background);
-    if (this.renderer) root.insertBefore(this.renderer.root, root.querySelector('.minimap__center'));
+    if (this.renderer) { root.insertBefore(this.renderer.root, root.querySelector('.minimap__center')); }
     root.querySelector('.minimap__center')!.addEventListener('click', () => this.recenter());
     root.addEventListener('wheel', this.onWheel, { passive: false });
     root.addEventListener('pointerdown', this.onPointerDown);
@@ -144,11 +144,11 @@ export class DstMinimapElement extends AssetElement {
       void this.prepareTerrain().catch(error => console.error('Unable to prepare minimap terrain', error));
     }
     root.hidden = !this.open;
-    if (this.open) this.resize();
+    if (this.open) { this.resize(); }
   }
 
   private releaseHeading(): void {
-    for (const stop of this.headingCleanups.splice(0)) stop();
+    for (const stop of this.headingCleanups.splice(0)) { stop(); }
   }
 
   private disposeRenderer(): void {
@@ -174,13 +174,13 @@ export class DstMinimapElement extends AssetElement {
 
   private openView(center?: { x: number; z: number }): void {
     this.renderer?.start();
-    if (center) this.view?.center(center.x, center.z);
+    if (center) { this.view?.center(center.x, center.z); }
     this.cancelZoom();
     this.updateView();
   }
 
   private updateView(): void {
-    if (!this.open || !this.view) return;
+    if (!this.open || !this.view) { return; }
     this.renderer?.update(this.view);
     this.updateLandCursor();
   }
@@ -192,14 +192,14 @@ export class DstMinimapElement extends AssetElement {
   }
 
   private recenter(): void {
-    if (!this.options) return;
+    if (!this.options) { return; }
     const { x, z } = this.options.getPlayerPosition();
     this.view?.center(x, z);
     this.updateView();
   }
 
   private resize(): void {
-    if (!this.view || !this.root || !this.open) return;
+    if (!this.view || !this.root || !this.open) { return; }
     // View coordinates are CSS pixels; each surface applies devicePixelRatio when drawing.
     this.view.resize(this.root.clientWidth, this.root.clientHeight);
     this.updateView();
@@ -207,7 +207,7 @@ export class DstMinimapElement extends AssetElement {
 
   private onWheel = (event: WheelEvent): void => {
     event.preventDefault();
-    if (!this.view || !this.open || event.deltaY === 0) return;
+    if (!this.view || !this.open || event.deltaY === 0) { return; }
     const rect = this.root.getBoundingClientRect();
     this.cursor = { x: event.clientX - rect.left, y: event.clientY - rect.top };
     this.zoomFrom = this.view.zoom;
@@ -219,29 +219,29 @@ export class DstMinimapElement extends AssetElement {
 
   private advanceZoom = (): void => {
     this.zoomFrame = undefined;
-    if (!this.open || !this.view) return;
+    if (!this.open || !this.view) { return; }
     // Input can arrive after this frame's RAF timestamp. Sample the same clock
     // as onWheel so retargeting cannot produce negative progress or reverse zoom.
     const progress = Math.min(1, (performance.now() - this.zoomStartedAt) / (ZOOM_EASE_SECONDS * 1000));
     this.view.zoomAt(this.cursor.x, this.cursor.y, this.zoomFrom + (this.zoomTarget - this.zoomFrom) * progress);
     this.updateView();
-    if (progress < 1) this.zoomFrame = requestAnimationFrame(this.advanceZoom);
+    if (progress < 1) { this.zoomFrame = requestAnimationFrame(this.advanceZoom); }
   };
 
   private cancelZoom(): void {
-    if (this.zoomFrame !== undefined) cancelAnimationFrame(this.zoomFrame);
+    if (this.zoomFrame !== undefined) { cancelAnimationFrame(this.zoomFrame); }
     this.zoomFrame = undefined;
     this.zoomFrom = this.zoomTarget = this.view?.zoom ?? MINIMAP_ZOOM_DEFAULT;
   }
 
   private onPointerDown = (event: PointerEvent): void => {
-    if (!this.open || !this.view || event.defaultPrevented) return;
+    if (!this.open || !this.view || event.defaultPrevented) { return; }
     const onCenter = event.target instanceof Element && event.target.closest('.minimap__center') !== null;
     if (event.button === 2) {
-      if (onCenter) return;
+      if (onCenter) { return; }
       const rect = this.root.getBoundingClientRect();
       const point = this.view.screenToWorld(event.clientX - rect.left, event.clientY - rect.top);
-      if (!this.renderer?.terrain.isLandAt(point.x, point.z)) return;
+      if (!this.renderer?.terrain.isLandAt(point.x, point.z)) { return; }
       event.preventDefault();
       const accepted = !this.dispatchEvent(new CustomEvent<MinimapActionRequestDetail>('game:map-action-request', {
         bubbles: true, composed: true, cancelable: true, detail: { position: new Vector3(point.x, 0, point.z) },
@@ -250,7 +250,7 @@ export class DstMinimapElement extends AssetElement {
       if (accepted && this.open && this.autopaused) { this.autopaused = false; this.notifyMapState(); }
       return;
     }
-    if (event.button !== 0 || onCenter) return;
+    if (event.button !== 0 || onCenter) { return; }
     this.drag = { pointer: event.pointerId, x: event.clientX, y: event.clientY, moved: false };
     this.root.setPointerCapture(event.pointerId);
   };
@@ -260,10 +260,10 @@ export class DstMinimapElement extends AssetElement {
     this.hover = event.target instanceof Element && event.target.closest('.minimap__center') ? undefined : { x: event.clientX - rect.left, y: event.clientY - rect.top };
     this.updateLandCursor();
     const drag = this.drag;
-    if (!drag || drag.pointer !== event.pointerId) return;
+    if (!drag || drag.pointer !== event.pointerId) { return; }
     const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
     // Like MapWidget's drag threshold, ignore tiny jitters so clicks stay clicks.
-    if (!drag.moved && dx * dx + dy * dy < DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) return;
+    if (!drag.moved && dx * dx + dy * dy < DRAG_THRESHOLD_PX * DRAG_THRESHOLD_PX) { return; }
     drag.moved = true;
     this.root.classList.add('minimap--dragging');
     this.view?.pan(dx, dy);
@@ -273,14 +273,14 @@ export class DstMinimapElement extends AssetElement {
   };
 
   private onPointerEnd = (event: PointerEvent): void => {
-    if (this.drag?.pointer !== event.pointerId) return;
+    if (this.drag?.pointer !== event.pointerId) { return; }
     this.cancelDrag();
   };
 
   private cancelDrag(): void {
     const pointer = this.drag?.pointer;
     this.drag = undefined;
-    if (pointer !== undefined && this.root.hasPointerCapture(pointer)) this.root.releasePointerCapture(pointer);
+    if (pointer !== undefined && this.root.hasPointerCapture(pointer)) { this.root.releasePointerCapture(pointer); }
     this.root?.classList.remove('minimap--dragging');
   }
 
@@ -288,8 +288,8 @@ export class DstMinimapElement extends AssetElement {
     const target = event.target;
     const isTextInput = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
       || (target instanceof HTMLElement && target.isContentEditable);
-    if (isTextInput || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.code === 'KeyM') this.setOpen(!this.open);
-    else if (event.code === 'Escape' && this.open) this.setOpen(false);
+    if (isTextInput || event.repeat || event.ctrlKey || event.metaKey || event.altKey) { return; }
+    if (event.code === 'KeyM') { this.setOpen(!this.open); }
+    else if (event.code === 'Escape' && this.open) { this.setOpen(false); }
   };
 }

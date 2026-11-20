@@ -70,7 +70,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   expect(prefabInstance(restored)!.sprite.currentAnimation).toBe('cooking_loop');
   restoredPlacement.update(BEEFALO_FEED_COOK_TIME);
   expect(prefabInstance(restored)!.sprite.currentAnimation).toBe('cooking_pst');
-  for (let i = 0; i < 30; i++) restoredPlacement.update(.1);
+  for (let i = 0; i < 30; i++) { restoredPlacement.update(.1); }
   expect(prefabInstance(restored)!.sprite.currentAnimation).toBe('idle_full');
   expect(cookPotState(restored)).toMatchObject({ product: 'beefalofeed', phase: 'done', remainingSeconds: 0 });
   // A finished pot cannot be opened, so RUMMAGE is not offered (stewer.lua sets canbeopened false).
@@ -99,7 +99,7 @@ it('cooks with source food layers, resumes saved progress and preserves the prod
   await vi.waitFor(() => expect(drawsAtlas(high, ordinaryFood.atlases[0].pixels!)).toBe(true));
   // SetProductSymbol: kabobs fills the pot high; the food comes from the recipe's build and symbol.
   const declared = prefabInstance(high)!.sprite.sprite.peek().appearance.get('anim-state')!;
-  if (declared.kind !== 'anim-state') throw new Error('Missing the pot AnimState');
+  if (declared.kind !== 'anim-state') { throw new Error('Missing the pot AnimState'); }
   const product = declared.state.peek();
   expect(product.overrides.get(smallHash('swap_cooked'))?.sources).toEqual([{ archive: 'cook_pot_food.zip', symbol: smallHash('kabobs') }]);
   expect([...product.shownLayers!]).toEqual([smallHash('swap_high')]);

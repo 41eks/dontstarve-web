@@ -72,9 +72,9 @@ function decodeBC(data: Uint8Array, width: number, height: number, type: 1 | 2 |
         alphaTable[0] = alpha0;
         alphaTable[1] = alpha1;
         if (alpha0 > alpha1) {
-          for (let index = 1; index <= 6; index++) alphaTable[index + 1] = Math.round(((7 - index) * alpha0 + index * alpha1) / 7);
+          for (let index = 1; index <= 6; index++) { alphaTable[index + 1] = Math.round(((7 - index) * alpha0 + index * alpha1) / 7); }
         } else {
-          for (let index = 1; index <= 4; index++) alphaTable[index + 1] = Math.round(((5 - index) * alpha0 + index * alpha1) / 5);
+          for (let index = 1; index <= 4; index++) { alphaTable[index + 1] = Math.round(((5 - index) * alpha0 + index * alpha1) / 5); }
           alphaTable[6] = 0;
           alphaTable[7] = 255;
         }
@@ -110,18 +110,18 @@ function decodeBC(data: Uint8Array, width: number, height: number, type: 1 | 2 |
       offset += 8;
       for (let y = 0; y < 4; y++) {
         const sourceY = blockY * 4 + y;
-        if (sourceY >= height) break;
+        if (sourceY >= height) { break; }
         const rowStart = (height - 1 - sourceY) * width;
         for (let x = 0; x < 4; x++) {
           const targetX = blockX * 4 + x;
-          if (targetX >= width) break;
+          if (targetX >= width) { break; }
           const pixel = y * 4 + x;
           const colourIndex = (indices >>> (pixel * 2)) & 3;
           const target = (rowStart + targetX) * 4;
           const source = colourIndex * 4;
           const alpha = type === 1 ? (!fourColours && colourIndex === 3 ? 0 : 255) : alphas[pixel];
           output[target + 3] = alpha;
-          if (!alpha) continue;
+          if (!alpha) { continue; }
           if (premultiplied && alpha !== 255) {
             output[target] = Math.min(255, Math.round(colours[source] * 255 / alpha));
             output[target + 1] = Math.min(255, Math.round(colours[source + 1] * 255 / alpha));
@@ -143,7 +143,7 @@ const BC_TYPES = [1, 2, 3] as const;
 
 export function parseKtex(data: Uint8Array, label = 'KTEX'): DecodedTexture {
   const reader = new KtexReader(data, label);
-  if (reader.ascii(4) !== 'KTEX') throw new Error(`${label}: invalid KTEX signature`);
+  if (reader.ascii(4) !== 'KTEX') { throw new Error(`${label}: invalid KTEX signature`); }
   const header = reader.u32();
   const mipCount = Math.floor(header / 8192) % 32;
   const pixelFormat = Math.floor(header / 16) % 32;
@@ -151,7 +151,7 @@ export function parseKtex(data: Uint8Array, label = 'KTEX'): DecodedTexture {
     width: reader.u16(), height: reader.u16(), pitch: reader.u16(), size: reader.u32(),
   }));
   const first = mips[0];
-  if (!first) throw new Error(`${label}: texture contains no mip levels`);
+  if (!first) { throw new Error(`${label}: texture contains no mip levels`); }
   const source = reader.bytes(first.size);
   if (pixelFormat <= 2) {
     return {
@@ -160,7 +160,7 @@ export function parseKtex(data: Uint8Array, label = 'KTEX'): DecodedTexture {
     };
   }
   let pixels: Uint8Array;
-  if (pixelFormat === 4) pixels = new Uint8Array(source.subarray(0, first.width * first.height * 4));
+  if (pixelFormat === 4) { pixels = new Uint8Array(source.subarray(0, first.width * first.height * 4)); }
   else if (pixelFormat === 5) {
     pixels = new Uint8Array(first.width * first.height * 4);
     for (let sourceIndex = 0, targetIndex = 0;
@@ -172,7 +172,7 @@ export function parseKtex(data: Uint8Array, label = 'KTEX'): DecodedTexture {
       pixels[targetIndex + 3] = 255;
     }
   }
-  else throw new Error(`${label}: unsupported KTEX pixel format ${pixelFormat}`);
+  else { throw new Error(`${label}: unsupported KTEX pixel format ${pixelFormat}`); }
 
   const rowSize = first.width * 4;
   const flipped = new Uint8Array(pixels.length);

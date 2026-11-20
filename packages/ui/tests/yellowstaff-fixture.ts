@@ -74,7 +74,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   const animation = playerInst(player);
   const animationEquipper = createPlayerEquipper(animation);
   // SGwilson's equip/unequip handlers play item_out/item_in from idle; let them finish.
-  const settleEquip = () => { for (let frame = 0; frame < 24; frame++) advancePlayer(animation, 1 / 30); };
+  const settleEquip = () => { for (let frame = 0; frame < 24; frame++) { advancePlayer(animation, 1 / 30); } };
   const failures: string[] = [];
   const skins = [undefined, ...Object.keys(GROUND_ITEM_DEFINITIONS[itemId].skinArchives)];
   for (const skin of skins) {
@@ -86,8 +86,8 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
         facePlayer(animation, facing, mirrored);
         advancePlayer(animation, 0.05);
         const mesh = player.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
-        if (!mesh.material.some((material) => material.name === `ground:${build}`)) failures.push(`worn:${skin}:${facing}:${mirrored}`);
-        if (mesh.material.some((material) => !material.forceSinglePass)) failures.push('face passes');
+        if (!mesh.material.some((material) => material.name === `ground:${build}`)) { failures.push(`worn:${skin}:${facing}:${mirrored}`); }
+        if (mesh.material.some((material) => !material.forceSinglePass)) { failures.push('face passes'); }
       }
     }
   }
@@ -178,7 +178,7 @@ export async function checkYellowStaff(itemId: LightStaffId = 'yellowstaff') {
   tick(60);
   // The render entry is the star's own model; its display holds the drawn sprite's merged mesh.
   const star = stars.renderEntities[0]?.object as THREE.Group | undefined;
-  if (!star) throw new Error(`${itemId} summon failed: ${failures.join('; ')}`);
+  if (!star) { throw new Error(`${itemId} summon failed: ${failures.join('; ')}`); }
   const mesh = star.getObjectByProperty('isMesh', true) as THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial[]>;
   const appeared = mesh.geometry.drawRange.count > 0 && mesh.material.every((material) => material.forceSinglePass);
   const bright = sample(30);

@@ -19,9 +19,9 @@ export class Fertilizer {
    * (finiteuses.use does so on reaching zero); otherwise one of the stack is removed. onappliedfn is not ported.
    */
   OnApplied(_doer?: unknown, _target?: unknown): void {
-    if (this.inst.components.finiteuses?.use(1)) return;
-    if (this.inst.components.stackable) this.inst.components.stackable.Consume();
-    else this.inst.remove();
+    if (this.inst.components.finiteuses?.use(1)) { return; }
+    if (this.inst.components.stackable) { this.inst.components.stackable.Consume(); }
+    else { this.inst.remove(); }
   }
   dispose(): void { this.inst.removeTag('fertilizer'); }
 }

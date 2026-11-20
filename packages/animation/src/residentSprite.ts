@@ -63,7 +63,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   private home: THREE.Object3D | undefined;
   private create: (clip: { name: string; loop: boolean }) => ArchiveSprite | Promise<ArchiveSprite>;
   // The owner may add the root to its parent after the tile was already found inactive.
-  private readonly onAdded = () => { if (this.asleep) this.sleep(); };
+  private readonly onAdded = () => { if (this.asleep) { this.sleep(); } };
 
   /**
    * `initial` is an already created sprite in `clip`; without it the sprite stays unloaded until `load()`.
@@ -79,14 +79,14 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     this.model.add(this.placeholder);
     registerSpriteRenderGroup(this.model, this.placeholder);
     this.model.addEventListener('added', this.onAdded);
-    if (initial) this.attach(initial);
+    if (initial) { this.attach(initial); }
   }
 
   private attachHook?: (sprite: ArchiveSprite) => void;
   /** Applies prefab-specific changes to the drawn sprite, now and after every reload. */
   onAttach(hook: (sprite: ArchiveSprite) => void): void {
     this.attachHook = hook;
-    if (this.sprite) hook(this.sprite);
+    if (this.sprite) { hook(this.sprite); }
   }
 
   get loaded(): boolean { return this.sprite !== undefined; }
@@ -96,14 +96,14 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   get frame(): number { return this.sprite?.frame ?? 0; }
   /** The symbol's point in the entity root's frame, as a follower parented to the root reads it. */
   getSymbolPosition(symbol: string, x: number, y: number, target: THREE.Vector3): boolean {
-    if (!this.sprite?.getSymbolPosition(symbol, x, y, target)) return false;
+    if (!this.sprite?.getSymbolPosition(symbol, x, y, target)) { return false; }
     toParentFrame(this.sprite.model, target);
     return true;
   }
 
   /** Build the sprite for an active entity; a no-op while loaded or loading. A synchronous factory loads immediately. */
   load(): void {
-    if (this.disposed || this.sprite || this.loading || this.clip.none) return;
+    if (this.disposed || this.sprite || this.loading || this.clip.none) { return; }
     const generation = ++this.generation;
     const created = this.create({ name: this.clip.name, loop: this.clip.loop });
     if (!(created instanceof Promise)) { this.attach(created); return; }
@@ -114,8 +114,8 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
       this.attach(sprite);
     }, error => {
       this.loading = false;
-      if (!this.disposed && generation === this.generation) console.error('Unable to load sprite', error);
-    }).finally(() => { if (this.request === request) this.request = undefined; });
+      if (!this.disposed && generation === this.generation) { console.error('Unable to load sprite', error); }
+    }).finally(() => { if (this.request === request) { this.request = undefined; } });
   }
   private loading = false;
   private request?: Promise<void>;
@@ -127,7 +127,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     this.generation++;
     this.loading = false;
     const sprite = this.sprite;
-    if (!sprite) return;
+    if (!sprite) { return; }
     this.sprite = undefined;
     // A transition that was playing is not replayed on return: it settles into its completion state.
     this.settle();
@@ -146,7 +146,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
 
   private sleep(): void {
     const parent = this.model.parent;
-    if (!parent) return;
+    if (!parent) { return; }
     this.home = parent;
     this.model.removeFromParent();
   }
@@ -155,7 +155,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     this.asleep = false;
     const home = this.home;
     this.home = undefined;
-    if (home && !this.model.parent && !this.disposed) home.add(this.model);
+    if (home && !this.model.parent && !this.disposed) { home.add(this.model); }
   }
 
   private attach(sprite: ArchiveSprite): void {
@@ -165,9 +165,9 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     sprite.model.position.copy(this.placeholder.position);
     this.model.remove(this.placeholder);
     this.model.add(sprite.model);
-    if (this.facing) sprite.faceCamera(this.facing);
+    if (this.facing) { sprite.faceCamera(this.facing); }
     const renderGroup = sprite.model.children[0];
-    if (!(renderGroup instanceof THREE.Group)) throw new Error(`${this.model.name || 'Sprite'} has no render group to sort`);
+    if (!(renderGroup instanceof THREE.Group)) { throw new Error(`${this.model.name || 'Sprite'} has no render group to sort`); }
     registerSpriteRenderGroup(this.model, renderGroup);
     this.attachHook?.(sprite);
     this.play();
@@ -175,27 +175,27 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
 
   private play(): void {
     const clip = this.clip, sprite = this.sprite;
-    if (!sprite) return;
+    if (!sprite) { return; }
     if (clip.percent !== undefined) {
       sprite.playOnce(clip.name);
       sprite.setFrame(Math.min(Math.floor(clip.percent * sprite.frameCount), sprite.frameCount - 1));
     } else if (clip.loop) {
-      if (this.queue.length) this.playPass(clip, sprite); else sprite.start(clip.name);
+      if (this.queue.length) { this.playPass(clip, sprite); } else { sprite.start(clip.name); }
     } else if (clip.finished) { sprite.playOnce(clip.name); sprite.setFrame(sprite.frameCount - 1); }
-    else sprite.playOnce(clip.name, () => {
-      if (this.clip !== clip) return;
+    else { sprite.playOnce(clip.name, () => {
+      if (this.clip !== clip) { return; }
       clip.finished = true;
       clip.complete?.();
       // A callback that moved on to another clip, such as a transient returning, keeps that clip's queue.
-      if (this.clip === clip) this.advanceQueue();
-    });
-    if (clip.frame !== undefined) sprite.setFrame(clip.frame);
+      if (this.clip === clip) { this.advanceQueue(); }
+    }); }
+    if (clip.frame !== undefined) { sprite.setFrame(clip.frame); }
     this.applyPaused();
   }
 
   /** A looping clip with something queued behind it plays to the end of its pass, then the queue advances. */
   private playPass(clip: Clip, sprite: ArchiveSprite): void {
-    sprite.playOnce(clip.name, () => { if (this.clip === clip) this.advanceQueue(); });
+    sprite.playOnce(clip.name, () => { if (this.clip === clip) { this.advanceQueue(); } });
   }
 
   /** A percent pose holds still on its own; the entity's pause holds whatever clip plays. */
@@ -206,16 +206,16 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     const resume = this.leavesNoAnimation();
     this.queue = [];
     this.clip = { name, loop: true, finished: false };
-    if (resume) this.load();
+    if (resume) { this.load(); }
     this.play();
   }
   playOnce(name: string, complete?: () => void): void {
     const resume = this.leavesNoAnimation();
     this.queue = [];
     this.clip = { name, loop: false, complete, finished: false };
-    if (resume) this.load();
+    if (resume) { this.load(); }
     // Nothing is drawn while unloaded, so the transition settles at once into its completion state.
-    if (!this.sprite && !this.loading) this.settle(); else this.play();
+    if (!this.sprite && !this.loading) { this.settle(); } else { this.play(); }
   }
   /** Stops playing any animation: the drawn sprite is released until a clip is played again. */
   clearAnimation(): void {
@@ -230,7 +230,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     const resume = this.leavesNoAnimation();
     this.queue = [];
     this.clip = { name, loop: false, finished: true };
-    if (resume) this.load();
+    if (resume) { this.load(); }
     this.play();
   }
   private settle(): void {
@@ -252,10 +252,10 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
     const waiting = this.queue.length > 0;
     this.queue.push({ name, loop });
     const { sprite, clip } = this;
-    if (!sprite) { if (!this.loading) this.settle(); return; }
-    if (waiting) return;
+    if (!sprite) { if (!this.loading) { this.settle(); } return; }
+    if (waiting) { return; }
     // A finished one-shot has nothing left to wait for; a loop finishes the pass it is drawing.
-    if (clip.finished && !clip.none) this.advanceQueue();
+    if (clip.finished && !clip.none) { this.advanceQueue(); }
     else if (clip.loop && clip.percent === undefined) {
       const frame = sprite.frame;
       this.playPass(clip, sprite);
@@ -265,12 +265,12 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   }
   private advanceQueue(): void {
     const next = this.queue.shift();
-    if (!next) return;
+    if (!next) { return; }
     this.clip = { name: next.name, loop: next.loop, finished: false };
     this.play();
   }
   setAnimation(name: string): void {
-    if (this.clip.name === name) return;
+    if (this.clip.name === name) { return; }
     this.clip = { name, loop: this.clip.loop, finished: false };
     this.sprite?.setAnimation(name);
   }
@@ -281,11 +281,11 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   setPaused(paused: boolean): void { this.paused = paused; this.applyPaused(); }
   /** AnimState:SetPercent: the clip held at `percent` of its length, now and whenever the sprite is drawn again. */
   setPercent(name: string, percent: number): void {
-    if (!Number.isFinite(percent) || percent < 0 || percent > 1) throw new RangeError('Invalid animation percent');
+    if (!Number.isFinite(percent) || percent < 0 || percent > 1) { throw new RangeError('Invalid animation percent'); }
     const resume = this.leavesNoAnimation();
     this.queue = [];
     this.clip = { name, loop: false, finished: true, percent };
-    if (resume) this.load();
+    if (resume) { this.load(); }
     this.play();
   }
   /**
@@ -294,17 +294,17 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
    */
   playTransient(name: string): void {
     const interrupted = this.clip;
-    if (interrupted.none) return;
+    if (interrupted.none) { return; }
     const queue = this.queue, frame = this.sprite?.frame;
     const restore = interrupted.transient ?? (() => {
       this.clip = interrupted;
       this.queue = queue;
       this.play();
-      if (frame !== undefined && !interrupted.finished && interrupted.frame === undefined) this.sprite?.setFrame(frame);
+      if (frame !== undefined && !interrupted.finished && interrupted.frame === undefined) { this.sprite?.setFrame(frame); }
     });
     this.queue = [];
     this.clip = { name, loop: false, finished: false, complete: restore, transient: restore };
-    if (!this.sprite && !this.loading) this.settle(); else this.play();
+    if (!this.sprite && !this.loading) { this.settle(); } else { this.play(); }
   }
   setSkin(skin: import('./sprite').SpriteSkin | undefined): void { this.sprite?.setSkin(skin); }
   setFacing(facing: number): void { this.sprite?.setFacing(facing); }
@@ -346,12 +346,12 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   get instanced(): InstancedSprite | undefined { return this.sprite?.instanced; }
   /** LAYER_BACKGROUND art drawn by its mesh order within the ground layers; the group keeps its own order. */
   setMeshOrder(order: number): void {
-    if (!this.sprite) return;
+    if (!this.sprite) { return; }
     this.sprite.model.children[0].children[0].renderOrder = order;
   }
   /** Display-only orientation and background order, reapplied by the entity's sprite json after loading. */
   setGround(renderOrder: number, flat: boolean): void {
-    if (!this.sprite) return;
+    if (!this.sprite) { return; }
     const visual = this.sprite.model.children[0];
     visual.rotation.x = flat ? -Math.PI / 2 : 0;
     visual.position.y = flat ? .01 : 0;
@@ -361,7 +361,7 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   refreshTransform(): void { this.sprite?.refreshTransform(); }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.asleep = false;
     this.home = undefined;
@@ -422,7 +422,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.clip = { name: clip.name, loop: !clip.held, finished: clip.held === true };
     model.userData.billboard = true;
     registerSpriteRenderGroup(model, this.placeholder);
-    if (initial) this.attach(initial, false); else model.add(this.placeholder);
+    if (initial) { this.attach(initial, false); } else { model.add(this.placeholder); }
   }
 
   get loaded(): boolean { return this.sprite !== undefined; }
@@ -431,17 +431,17 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   get currentAnimationLength(): number { return 0; }
 
   setActive(active: boolean): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     if (!active) { this.unload(); return; }
-    if (this.sprite) return;
+    if (this.sprite) { return; }
     const sprite = this.create(this.clip.name);
-    if (sprite) this.attach(sprite, true);
+    if (sprite) { this.attach(sprite, true); }
   }
 
   /** Release the drawn sprite to its owner; the logical state stays. */
   private unload(): void {
     const sprite = this.sprite;
-    if (!sprite) return;
+    if (!sprite) { return; }
     this.settle();
     this.placeholder.visible = sprite.visible;
     this.placeholder.position.copy(sprite.position);
@@ -459,7 +459,7 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     if (!clip.loop && !clip.finished) {
       clip.finished = true;
       clip.complete?.();
-      if (this.clip !== clip) return;
+      if (this.clip !== clip) { return; }
     }
     const last = this.queue[this.queue.length - 1];
     if (last) {
@@ -474,14 +474,14 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     if (replay) {
       sprite.visible = this.placeholder.visible;
       // A sprite rebuilt on wake stands where the released one stood; a deferred first sprite keeps its own offset.
-      if (this.released) sprite.position.copy(this.placeholder.position);
-      else sprite.position.y += this.visualHeight;
+      if (this.released) { sprite.position.copy(this.placeholder.position); }
+      else { sprite.position.y += this.visualHeight; }
     }
     this.placeholder.removeFromParent();
     this.model.add(sprite);
     this.applyFacing();
     const renderGroup = sprite.children[0];
-    if (!(renderGroup instanceof THREE.Group)) throw new Error(`${this.model.name || 'Sprite'} has no render group to sort`);
+    if (!(renderGroup instanceof THREE.Group)) { throw new Error(`${this.model.name || 'Sprite'} has no render group to sort`); }
     registerSpriteRenderGroup(this.model, renderGroup);
   }
 
@@ -493,11 +493,11 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
   setOpacity(_opacity: number): void {}
   setSkin(_skin: import('./sprite').SpriteSkin | undefined): void {}
   setMeshOrder(order: number): void {
-    if (!this.sprite) return;
+    if (!this.sprite) { return; }
     this.sprite.children[0].children[0].renderOrder = order;
   }
   setGround(renderOrder: number, flat: boolean): void {
-    if (!this.sprite) return;
+    if (!this.sprite) { return; }
     const visual = this.sprite.children[0];
     visual.rotation.x = flat ? -Math.PI / 2 : 0;
     visual.position.y = flat ? .01 : 0;
@@ -540,9 +540,9 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
     this.applyFacing();
   }
   private applyFacing(): void {
-    if (!this.facing) return;
+    if (!this.facing) { return; }
     const visual = this.sprite ?? this.placeholder;
-    if (visual.quaternion.equals(this.facing)) return;
+    if (visual.quaternion.equals(this.facing)) { return; }
     visual.quaternion.copy(this.facing);
     markTransformDirty(this.model);
   }
@@ -556,11 +556,11 @@ export class ResidentSpriteController implements TransientSpriteAnimationControl
 
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     const sprite = this.sprite;
     this.sprite = undefined;
-    if (sprite) this.release(sprite);
+    if (sprite) { this.release(sprite); }
     this.placeholder.removeFromParent();
   }
 }

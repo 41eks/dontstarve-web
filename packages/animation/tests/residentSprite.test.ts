@@ -183,7 +183,7 @@ it.each(['archive', 'factory'] as const)('skips a clean %s entity root while set
   try {
     await tick(); updateSceneMatrices(scene);
     observer.mockClear(); updates.mockClear();
-    for (let i = 0; i < 3; i++) updateSceneMatrices(scene);
+    for (let i = 0; i < 3; i++) { updateSceneMatrices(scene); }
     expect(updates).not.toHaveBeenCalled();
     expect(observer).not.toHaveBeenCalled();
 

@@ -17,13 +17,13 @@ const declaration = definitions.animatedBuildings.pighouse;
 export const PIG_HOUSE_PLACER = buildingPlacer(declaration, 'pig_house');
 
 function onworked(inst: PrefabInstance): void {
-  if (inst.hasTag('burnt')) return;
+  if (inst.hasTag('burnt')) { return; }
   inst.sprite.playOnce('hit');
   inst.sprite.pushAnimation('idle', false);
 }
 
 function onhammered(inst: PrefabInstance): void {
-  if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+  if (inst.components.burnable?.IsBurning()) { inst.components.burnable.Extinguish(); }
   inst.components.lootdropper!.DropLoot();
   inst.worldServices?.fx?.collapse?.('big', inst.position, 'wood');
   inst.remove();

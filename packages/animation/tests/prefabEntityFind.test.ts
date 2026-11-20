@@ -10,7 +10,7 @@ function world() {
   });
   const spawn = (x: number, ...tags: string[]) => {
     const inst = prefabs.spawn('thing', new THREE.Vector3(x, 0, 0));
-    for (const tag of tags) inst.addTag(tag);
+    for (const tag of tags) { inst.addTag(tag); }
     return inst;
   };
   return { prefabs, spawn, dispose: () => { prefabs.dispose(); displays.dispose(); } };
@@ -31,7 +31,7 @@ it('finds every valid entity in range nearest first, asleep or in limbo, leaving
   expect(prefabs.FindEntities(origin, 4, ['a', 'b'])).toEqual([near]);
   expect(prefabs.FindEntities(origin, 10, [], [], ['b', 'missing'])).toEqual([near]);
   expect(prefabs.FindEntities(origin, 10)).toContain(outside);
-  for (const radius of [-1, NaN, Infinity]) expect(() => prefabs.FindEntities(origin, radius)).toThrow(RangeError);
+  for (const radius of [-1, NaN, Infinity]) { expect(() => prefabs.FindEntities(origin, radius)).toThrow(RangeError); }
   expect(prefabs.FindEntities(new THREE.Vector3(NaN, 0, 0), 4)).toEqual([]);
 
   // A removed entity leaves the query.

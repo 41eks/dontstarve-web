@@ -43,13 +43,13 @@ export class LootDropper {
     if (this.droprecipeloot && this.recipes && this.inst.prefab) {
       for (const { itemId, count } of GetRecipeLoot(this.recipes.get(this.inst.prefab), this.recipes,
         burnt, this.inst.components?.finiteuses?.GetPercent?.() ?? 1)) {
-        for (let i = 0; i < count; i++) loot.push(itemId);
+        for (let i = 0; i < count; i++) { loot.push(itemId); }
       }
     }
-    if (burnt && random() < .4) loot.push('charcoal');
+    if (burnt && random() < .4) { loot.push('charcoal'); }
     return loot;
   }
-  DropLoot(position = this.inst.getPosition()): void { for (const prefab of this.GenerateLoot()) this.SpawnLootPrefab(prefab, position); }
+  DropLoot(position = this.inst.getPosition()): void { for (const prefab of this.GenerateLoot()) { this.SpawnLootPrefab(prefab, position); } }
   SpawnLootPrefab(prefab: string, position = this.inst.getPosition(), skinId?: string): LootEntity | undefined {
     const loot = this.spawn(prefab, position, skinId);
     if (loot) {
@@ -66,8 +66,8 @@ export function GetRecipeLoot(recipe: LootRecipe | undefined, recipes: ReadonlyM
   for (const ingredient of recipe?.ingredients ?? []) {
     const amount = Math.ceil(ingredient.amount * (burnt ? .25 : .5) * percent); // TUNING.(BURNT_)HAMMER_LOOT_PERCENT
     if (ingredient.deconstruct) {
-      for (let i = 0; i < amount; i++) loot.push(...GetRecipeLoot(recipes.get(ingredient.type), recipes, burnt, percent));
-    } else loot.push({ itemId: ingredient.type, count: amount });
+      for (let i = 0; i < amount; i++) { loot.push(...GetRecipeLoot(recipes.get(ingredient.type), recipes, burnt, percent)); }
+    } else { loot.push({ itemId: ingredient.type, count: amount }); }
   }
   return loot;
 }

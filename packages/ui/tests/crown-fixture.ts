@@ -49,7 +49,7 @@ export async function checkCrown() {
   await display.artLoaded();
   advancePlayer(animation, 0.1);
   const rising = capture('Crown: activating');
-  for (let i = 0; i < 9; i++) advancePlayer(animation, 0.1);
+  for (let i = 0; i < 9; i++) { advancePlayer(animation, 0.1); }
   const orbit = capture('Crown: floating orbit');
   const bloomMaterials = (mesh.material as THREE.Material[]).filter(material => material.name.endsWith(':bloom'));
   const withBloom = renderer.domElement.toDataURL();
@@ -57,7 +57,7 @@ export async function checkCrown() {
   renderer.render(scene, camera);
   const bloomChangesPixels = withBloom !== renderer.domElement.toDataURL();
   bloomMaterials.forEach(material => { material.opacity = 0.6; });
-  for (let i = 0; i < 14; i++) advancePlayer(animation, 0.1);
+  for (let i = 0; i < 14; i++) { advancePlayer(animation, 0.1); }
   const rotated = capture('Crown: later orbit frame');
   const failures: string[] = [];
   for (const facing of ['down', 'up', 'side'] as const) {
@@ -66,16 +66,16 @@ export async function checkCrown() {
       advancePlayer(animation, 0.04);
       const names = mesh.geometry.groups.map(g => (mesh.material as THREE.Material[])[g.materialIndex!].name);
       if (!names[0].includes('hat_alterguardian_equipped') || !names.at(-1)!.includes('hat_alterguardian_equipped')
-        || visual.children.length !== 1) failures.push(`${facing}:${mirrored}`);
+        || visual.children.length !== 1) { failures.push(`${facing}:${mirrored}`); }
     }
   }
   facePlayer(animation, 'down');
   animationEquipper.equip('alterguardianhat', 'alterguardianhat_lastprism', 'head');
   await display.artLoaded();
-  for (let i = 0; i < 10; i++) advancePlayer(animation, 0.1);
+  for (let i = 0; i < 10; i++) { advancePlayer(animation, 0.1); }
   capture('Last Prism: floating orbit');
   sanity.SetCurrent(170);
-  for (let i = 0; i < 6; i++) advancePlayer(animation, 0.1);
+  for (let i = 0; i < 6; i++) { advancePlayer(animation, 0.1); }
   capture('Sanity <= 85%: inactive');
 
   // Exercise the actual world lightmap and read ground pixels in darkness.

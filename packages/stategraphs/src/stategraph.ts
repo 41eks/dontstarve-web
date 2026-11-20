@@ -66,7 +66,7 @@ export function State<Context, Name extends string, Spec extends StateGraphSpec 
 export function TimeEvent<Context, Name extends string, Spec extends StateGraphSpec = DefaultStateGraphSpec>(
   time: number, fn: TimelineEvent<Context, Name, Spec>['fn'],
 ): TimelineEvent<Context, Name, Spec> {
-  if (!Number.isFinite(time) || time < 0) throw new Error('Invalid timeline time');
+  if (!Number.isFinite(time) || time < 0) { throw new Error('Invalid timeline time'); }
   return { time, fn };
 }
 
@@ -144,17 +144,17 @@ export class StateGraphInstance<Context, Name extends string, Spec extends State
         this.syncSchedulerTime();
         const revision = this.revision;
         this.current.timeline?.[this.timelineIndex++]?.fn(this);
-        if (revision === this.revision) this.armTimeline();
+        if (revision === this.revision) { this.armTimeline(); }
       });
     }
     for (const state of states) {
-      if (this.states.has(state.name)) throw new Error(`Duplicate state ${state.name}`);
+      if (this.states.has(state.name)) { throw new Error(`Duplicate state ${state.name}`); }
       this.states.set(state.name, {
         ...state, timeline: [...state.timeline ?? []].sort((a, b) => a.time - b.time),
       });
     }
     for (const handler of actionHandlers) {
-      if (this.actionHandlers.has(handler.action)) throw new Error(`Duplicate action handler ${handler.action}`);
+      if (this.actionHandlers.has(handler.action)) { throw new Error(`Duplicate action handler ${handler.action}`); }
       this.actionHandlers.set(handler.action, handler);
     }
   }
@@ -177,7 +177,7 @@ export class StateGraphInstance<Context, Name extends string, Spec extends State
   hasStateTag(tag: string): boolean { return this.tags.has(tag); }
   /** StateGraphInstance:HasState: the graph defines a state of this name. */
   hasState(name: string): boolean {
-    for (const state of this.states.keys()) if (state === name) return true;
+    for (const state of this.states.keys()) { if (state === name) { return true; } }
     return false;
   }
   addStateTag(tag: string): void { this.tags.add(tag); }
@@ -186,14 +186,14 @@ export class StateGraphInstance<Context, Name extends string, Spec extends State
 
   getActionState(action: Spec['action']): Name | null {
     const handler = this.actionHandlers.get(action.action);
-    if (!handler || (handler.condition && !handler.condition(this))) return null;
+    if (!handler || (handler.condition && !handler.condition(this))) { return null; }
     const destination = handler.deststate(this, action);
     return destination != null && this.states.has(destination) ? destination : null;
   }
 
   startAction(action: Spec['action']): boolean {
     const destination = this.getActionState(action);
-    if (destination === null) return false;
+    if (destination === null) { return false; }
     // stategraph.lua StartAction: sg:GoToState(state) with no data.
     this.enterState(destination, undefined);
     return true;
@@ -204,9 +204,9 @@ export class StateGraphInstance<Context, Name extends string, Spec extends State
   }
 
   private enterState(name: Name, data: unknown): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     const state = this.states.get(name);
-    if (!state) throw new Error(`Unknown state ${name}`);
+    if (!state) { throw new Error(`Unknown state ${name}`); }
     this.current?.onexit?.(this, name);
     this.timeoutTimer?.stop();
     this.timelineTimer?.stop();
@@ -221,16 +221,16 @@ export class StateGraphInstance<Context, Name extends string, Spec extends State
     this.tags = new Set(state.tags);
     const revision = this.revision;
     state.onenter?.(this, data);
-    if (revision !== this.revision) return;
+    if (revision !== this.revision) { return; }
     this.armTimeline();
-    for (const listener of [...this.newStateListeners]) listener({ name });
+    for (const listener of [...this.newStateListeners]) { listener({ name }); }
   }
 
   private armTimeline(): void {
     const event = this.current.timeline?.[this.timelineIndex];
-    if (!event || !this.scheduler) return;
+    if (!event || !this.scheduler) { return; }
     this.timelineTimer!.start(Math.max(0, this.enteredAt + event.time - (this.pausedAt ?? this.scheduler.now)));
-    if (this.pausedAt !== undefined) this.timelineTimer!.pause();
+    if (this.pausedAt !== undefined) { this.timelineTimer!.pause(); }
   }
 
   private syncSchedulerTime(): void {
@@ -239,18 +239,18 @@ export class StateGraphInstance<Context, Name extends string, Spec extends State
   }
 
   setTimeout(duration: number): void {
-    if (!Number.isFinite(duration) || duration <= 0) throw new Error('Invalid state timeout');
+    if (!Number.isFinite(duration) || duration <= 0) { throw new Error('Invalid state timeout'); }
     if (this.timeoutTimer) {
       this.timeoutTimer.start(duration);
-      if (this.pausedAt !== undefined) this.timeoutTimer.pause();
-    } else this.timeout = this.timeInState + duration;
+      if (this.pausedAt !== undefined) { this.timeoutTimer.pause(); }
+    } else { this.timeout = this.timeInState + duration; }
   }
 
   /** Engine timers (e.g. animation completion) survive state transitions.
    * They are independent of the state's SetTimeout/ontimeout lifecycle.
    */
   schedule(duration: number, fn: () => void): () => void {
-    if (!Number.isFinite(duration) || duration <= 0) throw new Error('Invalid scheduled duration');
+    if (!Number.isFinite(duration) || duration <= 0) { throw new Error('Invalid scheduled duration'); }
     if (this.scheduler) {
       const cancelTask = this.scheduler.schedule(duration, () => {
         this.cancelScheduled.delete(cancel);
@@ -266,33 +266,33 @@ export class StateGraphInstance<Context, Name extends string, Spec extends State
   }
 
   listenForEvent<E extends string>(name: E, fn: (data: EventData<E>) => void): () => void {
-    if (name === 'newstate') throw new Error('newstate is not a stategraph event; use onNewState');
+    if (name === 'newstate') { throw new Error('newstate is not a stategraph event; use onNewState'); }
     let listeners = this.listeners.get(name);
-    if (!listeners) this.listeners.set(name, listeners = new Set());
+    if (!listeners) { this.listeners.set(name, listeners = new Set()); }
     listeners.add(fn);
     return () => {
       listeners.delete(fn);
-      if (!listeners.size) this.listeners.delete(name);
+      if (!listeners.size) { this.listeners.delete(name); }
     };
   }
 
   private notify(name: string, data?: unknown): void {
-    for (const listener of [...this.listeners.get(name) ?? []]) listener(data);
+    for (const listener of [...this.listeners.get(name) ?? []]) { listener(data); }
   }
 
   pushEvent(name: string, data?: unknown): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     const revision = this.revision;
     this.notify(name, data);
     // A listener can interrupt the state; its old handler must not run afterward.
-    if (revision !== this.revision) return;
+    if (revision !== this.revision) { return; }
     this.current.events?.find((event) => event.name === name)?.fn(this, data);
   }
 
   update(dt: number): void {
-    if (this.pausedAt !== undefined) return;
-    if (!Number.isFinite(dt) || dt < 0) throw new Error('Invalid stategraph timestep');
-    if (this.disposed) return;
+    if (this.pausedAt !== undefined) { return; }
+    if (!Number.isFinite(dt) || dt < 0) { throw new Error('Invalid stategraph timestep'); }
+    if (this.disposed) { return; }
     if (this.scheduler) {
       this.syncSchedulerTime();
       this.current.onupdate?.(this, dt);
@@ -306,7 +306,7 @@ export class StateGraphInstance<Context, Name extends string, Spec extends State
       const event = this.current.timeline?.[this.timelineIndex];
       let scheduled: { time: number; fn: () => void } | undefined;
       for (const task of this.scheduled) {
-        if (!scheduled || task.time < scheduled.time) scheduled = task;
+        if (!scheduled || task.time < scheduled.time) { scheduled = task; }
       }
       const taskTime = scheduled ? this.timeInState + scheduled.time - this.clock : Infinity;
       const deadline = Math.min(event?.time ?? Infinity, this.timeout ?? Infinity, taskTime);
@@ -332,32 +332,32 @@ export class StateGraphInstance<Context, Name extends string, Spec extends State
         this.scheduled.delete(scheduled);
         scheduled.fn();
       }
-      if (revision !== this.revision) updateDt = 0;
+      if (revision !== this.revision) { updateDt = 0; }
     }
     throw new Error('Stategraph did not advance time');
   }
 
   /** The engine suspends stategraph time while an inst is removed from the scene. */
   pause(): void {
-    if (this.pausedAt !== undefined || this.disposed) return;
+    if (this.pausedAt !== undefined || this.disposed) { return; }
     this.pausedAt = this.scheduler?.now ?? this.clock;
     this.timeoutTimer?.pause(); this.timelineTimer?.pause();
   }
   resume(): void {
-    if (this.pausedAt === undefined || this.disposed) return;
+    if (this.pausedAt === undefined || this.disposed) { return; }
     if (this.scheduler) {
       this.enteredAt += this.scheduler.now - this.pausedAt;
-      for (const timer of [this.timeoutTimer, this.timelineTimer]) if (timer?.snapshot.peek().status === 'paused') timer.start(timer.remainingSeconds!);
+      for (const timer of [this.timeoutTimer, this.timelineTimer]) { if (timer?.snapshot.peek().status === 'paused') { timer.start(timer.remainingSeconds!); } }
     }
     this.pausedAt = undefined;
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.timeoutTimer?.stop();
     this.timelineTimer?.stop();
-    for (const cancel of this.cancelScheduled) cancel();
+    for (const cancel of this.cancelScheduled) { cancel(); }
     this.scheduled.clear();
     this.listeners.clear();
   }

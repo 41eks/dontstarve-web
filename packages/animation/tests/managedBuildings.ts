@@ -24,7 +24,7 @@ export function managedBuildings(world: WorldContext, { consume = () => true, on
     get renderEntities() { return [...placement.renderEntities, ...displays.renderEntities]; },
     update(dt: number) { displays.update(dt); placement.update(dt); scheduler.advance(dt); },
     dispose() {
-      if (disposed) return;
+      if (disposed) { return; }
       disposed = true;
       placement.dispose(); prefabs.dispose(); displays.dispose(); fire.dispose();
     },

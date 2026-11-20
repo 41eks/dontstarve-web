@@ -36,7 +36,7 @@ it('exposes the loot prefabs with their own ground clips, icon atlases and stack
     expect(inventory.getItemSpec('cookingrecipecard').maxStack).toBe(1);
     const given = await executeDebugCommand(`${ART_IDS.map(id => `c_give("${id}", 1)`).join(';')}`, inventory);
     expect(given.ok).toBe(true);
-    for (const id of ART_IDS) expect(inventory.count(id)).toBe(1);
+    for (const id of ART_IDS) { expect(inventory.count(id)).toBe(1); }
     const spawned = await executeDebugCommand(['foliage', 'trinket_32', 'blueprint', 'scrapbook_page'].map(id => `c_spawn("${id}")`).join(';'),
       inventory, id => registry.spawn(id));
     expect(spawned.ok).toBe(true);

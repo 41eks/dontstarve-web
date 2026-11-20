@@ -23,13 +23,13 @@ it('uses 33 ordinary or 132 golden mining hits and removes depleted equipment th
       expect(inventory.add(prefab, 1)).toBe(true);
       expect(inventory.transfer(inventorySlotAddress(0), hand, 1)).toBe(true);
       const entity = inventory.getEntity(hand)!;
-      for (const tag of ['sharp', 'tool', 'weapon', 'MINE_tool']) expect(entity.hasTag(tag), tag).toBe(true);
+      for (const tag of ['sharp', 'tool', 'weapon', 'MINE_tool']) { expect(entity.hasTag(tag), tag).toBe(true); }
       expect(entity.components.weapon).toMatchObject({ damage: 34 * .8, attackwear: step });
       expect(entity.tile.peek().durabilityPercent).toBe(1);
       entity.components.finiteuses.useForAction('MINE');
       expect(entity.components.finiteuses.remaining).toBe(33 - step);
       expect(entity.tile.peek().durabilityPercent).toBe((33 - step) / 33);
-      for (let i = 1; i < hits - 1; i++) expect(entity.components.finiteuses.useForAction('MINE')).toBe(true);
+      for (let i = 1; i < hits - 1; i++) { expect(entity.components.finiteuses.useForAction('MINE')).toBe(true); }
       expect(entity.isRemoved).toBe(false);
       expect(entity.components.finiteuses.remaining).toBe(step);
       expect(entity.components.finiteuses.useForAction('MINE')).toBe(true);
@@ -61,14 +61,14 @@ it('changes full/med/low source poses and resets surviving rock work on reload',
   try {
     rocks.spawn('rock1', new THREE.Vector3(3, 0, 4));
     const target = workTargets('MINE')[0], animation = prefabInstance(target.model)!.sprite;
-    for (let i = 0; i < 3; i++) performToolWork('MINE', target.entity, testPlayer());
+    for (let i = 0; i < 3; i++) { performToolWork('MINE', target.entity, testPlayer()); }
     expect(target.entity.components.workable!.GetWorkLeft()).toBe(3);
     expect(animation.currentAnimation).toBe('med');
     const { prefabId, record } = rocks.exportRecords()[0];
     restored.spawn(prefabId, new THREE.Vector3(...record.transform.position), record);
     expect(restored.exportRecords()).toEqual(rocks.exportRecords());
     expect(workTargets('MINE').find(({ model }) => model !== target.model)!.entity.components.workable!.GetWorkLeft()).toBe(6);
-    for (let i = 0; i < 2; i++) performToolWork('MINE', target.entity, testPlayer());
+    for (let i = 0; i < 2; i++) { performToolWork('MINE', target.entity, testPlayer()); }
     expect(animation.currentAnimation).toBe('low');
     vi.spyOn(Math, 'random').mockReturnValue(.1);
     performToolWork('MINE', target.entity, testPlayer());

@@ -47,8 +47,8 @@ test('the land cursor and map actions follow tiles through holes, map transforms
   // Make an ocean hole inside a surrounding island, plus a separate small island.
   await page.evaluate(() => {
     const { terrain, map, WORLD_TILES } = (window as any).minimapEdges;
-    for (let row = -2; row <= 2; row++) for (let col = -2; col <= 2; col++)
-      terrain.setTile(col, row, WORLD_TILES.GRASS);
+    for (let row = -2; row <= 2; row++) { for (let col = -2; col <= 2; col++)
+      { terrain.setTile(col, row, WORLD_TILES.GRASS); } }
     terrain.setTile(0, 0, WORLD_TILES.OCEAN_COASTAL);
     terrain.setTile(3, 0, WORLD_TILES.GRASS);
     (window as any).mapRequests = [];
@@ -158,7 +158,7 @@ test('uses world ground artwork, keeps ocean composition, and preserves shared w
     (window as any).worldMapPoints = points;
     const materials = [...new Set(groundDisplay.root.children.filter((mesh: any) => mesh.material?.name.startsWith('DST ground:')).map((mesh: any) => mesh.material))];
     (window as any).worldMapDisposals = 0;
-    for (const material of materials) material.addEventListener('dispose', () => { (window as any).worldMapDisposals++; });
+    for (const material of materials) { material.addEventListener('dispose', () => { (window as any).worldMapDisposals++; }); }
     const size = [renderer.domElement.width, renderer.domElement.height];
     map.setView({ zoom: 20, x: 0, z: 0 });
     return { samples: sampleMapTerrain(map, points, { ocean: false }), withOcean: sampleMapTerrain(map, points),
@@ -212,7 +212,7 @@ test('the fullscreen map opens, pauses the game, zooms, pans, follows terrain ch
 
   await page.evaluate(() => {
     const backpack = document.querySelector('dst-backpack-panel') as any;
-    if (!backpack.slotContainer) backpack.open({ containerId: 'map-layout:backpack', slotCount: 8, title: '背包' });
+    if (!backpack.slotContainer) { backpack.open({ containerId: 'map-layout:backpack', slotCount: 8, title: '背包' }); }
     (window as any).mapGame.backpack = backpack.slotContainer;
   });
   const coveredByMap = (selector: string) => page.locator(selector).evaluate(element => {

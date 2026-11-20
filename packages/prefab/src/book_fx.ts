@@ -41,7 +41,7 @@ class FxInst implements WilsonFx {
       instance.persists = false;
       instance.sprite.playOnce(definition.anim);
       instance.sprite.setFacing(owner.instance.sprite.sprite.peek().facing ?? 8);
-      if ('opacity' in definition) instance.sprite.setOpacity(definition.opacity);
+      if ('opacity' in definition) { instance.sprite.setOpacity(definition.opacity); }
     }, owner.instance.status);
     this.instance = instance;
     instance.BindScheduler(owner.scheduler);
@@ -49,7 +49,7 @@ class FxInst implements WilsonFx {
       owner.instance.sprite.detachFx(this.key);
       owner.forget(this);
     });
-    if ('ground' in definition) this.detached = owner.groundPoint();
+    if ('ground' in definition) { this.detached = owner.groundPoint(); }
     this.declare(display);
     this.removeAfter(definition.anim);
   }
@@ -73,15 +73,15 @@ class FxInst implements WilsonFx {
   isValid(): boolean { return this.instance.status.peek() !== 'removed'; }
   remove(): void { this.instance.remove(); }
   detach(): void {
-    if (!this.isValid() || this.detached) return;
+    if (!this.isValid() || this.detached) { return; }
     this.detached = this.owner.groundPoint();
     const fx = this.owner.instance.sprite.fx.peek().get(this.key);
-    if (!fx) throw new Error(`${this.owner.instance.prefab} no longer declares the book fx ${this.key}`);
+    if (!fx) { throw new Error(`${this.owner.instance.prefab} no longer declares the book fx ${this.key}`); }
     this.owner.instance.sprite.attachFx(this.key, { ...fx, composite: { symbol: this.symbol, detached: this.detached } });
   }
   pushEvent(name: 'fail_fx'): void {
     const definition = FX_PREFABS[this.prefab];
-    if (name !== 'fail_fx' || !this.isValid() || !('failanim' in definition)) return;
+    if (name !== 'fail_fx' || !this.isValid() || !('failanim' in definition)) { return; }
     this.play(definition.failanim);
     PlaySound(BOOK_FX_FAIL_SOUND);
   }
@@ -101,7 +101,7 @@ export class BookFxController {
   }
 
   spawn(prefab: string, followSymbol?: string): WilsonFx {
-    if (this.disposed || !Object.hasOwn(FX_PREFABS, prefab)) throw new Error(`Invalid FX prefab ${prefab}`);
+    if (this.disposed || !Object.hasOwn(FX_PREFABS, prefab)) { throw new Error(`Invalid FX prefab ${prefab}`); }
     const fx = new FxInst(this, prefab as BookFxPrefab, followSymbol);
     this.fx.add(fx);
     return fx;
@@ -112,8 +112,8 @@ export class BookFxController {
   }
   forget(fx: FxInst): void { this.fx.delete(fx); }
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
-    for (const fx of this.fx) fx.remove();
+    for (const fx of this.fx) { fx.remove(); }
   }
 }

@@ -41,7 +41,7 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
     // PlayAnimation("idle_full") without a loop argument.
     this.sprite.playOnce('idle_full');
     const { scheduler } = world;
-    for (const tag of ['security_powerpoint', 'mech', 'electricdamageimmune']) this.addTag(tag);
+    for (const tag of ['security_powerpoint', 'mech', 'electricdamageimmune']) { this.addTag(tag); }
 
     const health = addComponent(this, 'health', Health, ARCHIVE_CENTIPEDE_HUSK_HEALTH, scheduler);
     health.ondelta = (_inst, oldpercent, newpercent) => this.OnHealthDelta(oldpercent, newpercent);
@@ -66,7 +66,7 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
   /** AnimState:PlayAnimation(first) and PushAnimation of the rest. */
   private play(first: string, ...queued: string[]): void {
     this.sprite.playOnce(first);
-    for (const name of queued) this.sprite.pushAnimation(name);
+    for (const name of queued) { this.sprite.pushAnimation(name); }
   }
 
   /** OnHealthDelta: the idle of the band health crosses into, and combat only above the bottom threshold. */
@@ -94,18 +94,18 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
     if (newpercent < BOTTOM_THRESHOLD) {
       // inst:RemoveComponent("combat"), then the floor at 15%.
       removeComponent(this, 'combat');
-      if (newpercent < BOTTOM_THRESHOLD - .05) this.components.health.SetPercent(BOTTOM_THRESHOLD - .05);
-    } else this.addCombat();
+      if (newpercent < BOTTOM_THRESHOLD - .05) { this.components.health.SetPercent(BOTTOM_THRESHOLD - .05); }
+    } else { this.addCombat(); }
   }
 
   /** OnAttacked: a hit clip for the current health band, unless a recovery clip is playing. */
   private OnAttacked(): void {
     const current = this.sprite.currentAnimation;
-    if (current === 'low_to_med' || current === 'med_to_full') return;
+    if (current === 'low_to_med' || current === 'med_to_full') { return; }
     const percent = this.components.health.GetPercent();
-    if (percent < LOW_THRESHOLD_DOWN) this.play('low_hit', 'idle_low');
-    else if (percent < MED_THRESHOLD_DOWN) this.play('med_hit', 'idle_med');
-    else this.play('full_hit', 'idle_full');
+    if (percent < LOW_THRESHOLD_DOWN) { this.play('low_hit', 'idle_low'); }
+    else if (percent < MED_THRESHOLD_DOWN) { this.play('med_hit', 'idle_med'); }
+    else { this.play('full_hit', 'idle_full'); }
   }
 
   /** playidle2: an idle2 flourish for the band while idling, then again 8–18 seconds later. */
@@ -115,9 +115,9 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
     if (current === 'idle_full' || current === 'idle_med' || current === 'idle_low') {
       PlaySound('grotto/creatures/centipede/electricity/idle2', this.position);
       const percent = this.components.health.GetPercent();
-      if (percent < LOW_THRESHOLD_DOWN) this.play('idle2_low', 'idle_low');
-      else if (percent < MED_THRESHOLD_DOWN) this.play('idle2_med', 'idle_med');
-      else this.play('idle2_full', 'idle_full');
+      if (percent < LOW_THRESHOLD_DOWN) { this.play('idle2_low', 'idle_low'); }
+      else if (percent < MED_THRESHOLD_DOWN) { this.play('idle2_med', 'idle_med'); }
+      else { this.play('idle2_full', 'idle_full'); }
     }
     this.idle2task = this.DoTaskInTime(Math.random() * 10 + 8, () => this.playidle2());
   }
@@ -134,7 +134,7 @@ export class ArchiveCentipedeHuskInstance extends PrefabInstance {
    */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
     const saved = structureHealth(data);
-    if (!saved) return;
+    if (!saved) { return; }
     this.components.health.OnLoad({ health: saved.current, maxhealth: saved.maximum });
     this.components.health.ForceUpdateHUD(true);
   }

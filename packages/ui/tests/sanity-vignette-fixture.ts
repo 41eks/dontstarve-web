@@ -15,12 +15,12 @@ export async function checkSanityVignette() {
   const initialFrame = vignette.canvas.dataset.frame;
   const insane = pixels();
   let edgeRedPixels = 0, centreAlpha = 0;
-  for (let y = 0; y < 720; y++) for (let x = 0; x < 1280; x++) {
+  for (let y = 0; y < 720; y++) { for (let x = 0; x < 1280; x++) {
     const i = (y * 1280 + x) * 4;
-    if (x > 480 && x < 800 && y > 270 && y < 450) centreAlpha = Math.max(centreAlpha, insane[i + 3]);
+    if (x > 480 && x < 800 && y > 270 && y < 450) { centreAlpha = Math.max(centreAlpha, insane[i + 3]); }
     if ((x < 128 || x >= 1152 || y < 72 || y >= 648)
-      && insane[i + 3] > 20 && insane[i] > insane[i + 1] + 25 && insane[i] > insane[i + 2] + 25) edgeRedPixels++;
-  }
+      && insane[i + 3] > 20 && insane[i] > insane[i + 1] + 25 && insane[i] > insane[i + 2] + 25) { edgeRedPixels++; }
+  } }
   vignette.update(1 / 12);
   const animated = pixels().some((v, i) => v !== insane[i]);
   const advancedFrame = vignette.canvas.dataset.frame;

@@ -41,11 +41,11 @@ type GroundItemCatalogEntry = Omit<GroundItemAssetDefinition, 'groundTile' | 'mu
   & { readonly groundTile?: string; readonly multColour?: readonly number[] };
 const isGroundTileName = (name: string): name is GroundTileName => Object.hasOwn(GROUND_TILE_DEFINITIONS, name);
 function groundTileName(id: string, name: string): GroundTileName {
-  if (!isGroundTileName(name)) throw new Error(`${id}: unknown groundTile ${name}`);
+  if (!isGroundTileName(name)) { throw new Error(`${id}: unknown groundTile ${name}`); }
   return name;
 }
 function rgba(id: string, colour: readonly number[]): readonly [number, number, number, number] {
-  if (colour.length !== 4) throw new Error(`${id}: multColour needs four channels`);
+  if (colour.length !== 4) { throw new Error(`${id}: multColour needs four channels`); }
   const [r, g, b, a] = colour;
   return [r, g, b, a];
 }
@@ -93,8 +93,8 @@ export interface ItemPrefabParts {
 export function groundArtArchive(itemId: string, variantName?: string): ArchiveSpriteDefinition & GroundArtDefinition {
   const base = GROUND_ART_DEFINITIONS[itemId];
   const variant = variantName === undefined ? undefined : GROUND_ART_VARIANTS[itemId]?.[variantName];
-  if (variantName !== undefined && !variant) throw new Error(`Unknown ground variant: ${itemId}/${variantName}`);
-  if (!base) throw new Error(`Unknown ground item: ${itemId}`);
+  if (variantName !== undefined && !variant) { throw new Error(`Unknown ground variant: ${itemId}/${variantName}`); }
+  if (!base) { throw new Error(`Unknown ground item: ${itemId}`); }
   return { ...base, ...variant } as ArchiveSpriteDefinition & GroundArtDefinition;
 }
 
@@ -118,11 +118,11 @@ export function groundItemPrefab(itemId: string, world: ItemPrefabWorld, parts: 
         inst.AnimState.SetBank(art.bank);
         inst.AnimState.SetBuild(art.buildArchives[0]!);
       }
-      for (const tag of art.tags ?? []) inst.addTag(tag);
-      for (const [symbol, override] of Object.entries(art.symbolOverrides)) inst.sprite.setSymbolOverride(symbol, override.archive, override.symbol);
-      for (const symbol of art.hiddenSymbols ?? []) inst.sprite.setSymbolHidden(symbol, true);
+      for (const tag of art.tags ?? []) { inst.addTag(tag); }
+      for (const [symbol, override] of Object.entries(art.symbolOverrides)) { inst.sprite.setSymbolOverride(symbol, override.archive, override.symbol); }
+      for (const symbol of art.hiddenSymbols ?? []) { inst.sprite.setSymbolHidden(symbol, true); }
       if (art.ground) { inst.sprite.setGround(3); inst.setScale(-1, 1.4, 1); }
-      else if (art.scale !== undefined) inst.setScale(art.scale);
+      else if (art.scale !== undefined) { inst.setScale(art.scale); }
       bindItemWorld(inst, world);
       return inst;
     },
@@ -133,17 +133,17 @@ export function groundItemPrefab(itemId: string, world: ItemPrefabWorld, parts: 
     // Ground art alone is only looked at.
     targetable: inventoryItem,
     onSpawned: inst => {
-      if (inventoryItem) world.configureItem(inst);
-      else inst.components.inventoryitem.canbepickedup = false;
+      if (inventoryItem) { world.configureItem(inst); }
+      else { inst.components.inventoryitem.canbepickedup = false; }
       // A variant's own clip and symbols, once the saved variant is known.
       const variant = groundArtArchive(itemId, inst.variant), clip = variant.animation;
       if (variant.bank !== art.bank) {
         inst.AnimState.SetBank(variant.bank);
         inst.AnimState.SetBuild(variant.buildArchives[0]!);
       }
-      if (clip !== art.animation) { if (art.loop) inst.sprite.start(clip); else inst.sprite.holdLastFrame(clip); }
+      if (clip !== art.animation) { if (art.loop) { inst.sprite.start(clip); } else { inst.sprite.holdLastFrame(clip); } }
       if (variant.symbolOverrides !== art.symbolOverrides) {
-        for (const [symbol, override] of Object.entries(variant.symbolOverrides)) inst.sprite.setSymbolOverride(symbol, override.archive, override.symbol);
+        for (const [symbol, override] of Object.entries(variant.symbolOverrides)) { inst.sprite.setSymbolOverride(symbol, override.archive, override.symbol); }
       }
       parts.configure?.(inst);
     },
@@ -211,7 +211,7 @@ export function bindComponentUpdates(inst: ItemEntity, updating: ReadonlySignal<
   let stop: (() => void) | undefined;
   const component = { OnUpdate: update };
   const follow = (on: boolean) => {
-    if (on && !inst.isRemoved) stop ??= updates.register(component);
+    if (on && !inst.isRemoved) { stop ??= updates.register(component); }
     else { stop?.(); stop = undefined; }
   };
   const unfollow = createRenderEffect(() => follow(updating.get()));

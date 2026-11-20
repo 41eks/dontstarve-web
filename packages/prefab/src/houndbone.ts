@@ -49,16 +49,16 @@ export class HoundboneInstance extends PrefabInstance {
 
     // workable.savestate is false: a surviving bone reloads with its full work count.
     this.OnSave = (_inst, data) => { data.houndbone = { bonetype: this.bonetype }; };
-    this.OnLoad = (_inst, data) => { if (data.houndbone?.bonetype !== undefined) SetBoneType(this, data.houndbone.bonetype); };
+    this.OnLoad = (_inst, data) => { if (data.houndbone?.bonetype !== undefined) { SetBoneType(this, data.houndbone.bonetype); } };
   }
 }
 
 function SetBoneType(inst: HoundboneInstance, bonetype: number): void {
-  if (!Number.isInteger(bonetype) || bonetype < 1 || bonetype > HOUNDBONE_PIECES.length) throw new RangeError(`Unsupported houndbone type: ${bonetype}`);
+  if (!Number.isInteger(bonetype) || bonetype < 1 || bonetype > HOUNDBONE_PIECES.length) { throw new RangeError(`Unsupported houndbone type: ${bonetype}`); }
   inst.bonetype = bonetype;
   inst.sprite.playOnce(HOUNDBONE_PIECES[bonetype - 1]);
   inst.components.lootdropper.ClearChanceLoot();
-  if (bonetype === 3) inst.components.lootdropper.AddChanceLoot('houndstooth', .5);
+  if (bonetype === 3) { inst.components.lootdropper.AddChanceLoot('houndstooth', .5); }
 }
 
 function onhammered(inst: HoundboneInstance, world: HoundboneWorld): void {

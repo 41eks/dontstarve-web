@@ -17,9 +17,9 @@ export const FENCE_SKIN_ARCHIVES: Readonly<Record<string, string>> = Object.from
 
 /** Inventory skins are `<skin>_item`; the linked world skin drops the suffix. */
 export function fenceWorldSkin(buildId: FenceId, skinId?: string): string | undefined {
-  if (skinId === undefined) return undefined;
+  if (skinId === undefined) { return undefined; }
   const worldSkin = buildId === FENCE_ITEM_ID ? skinId.replace(/_item$/, '') : skinId;
-  if (!Object.hasOwn(FENCE_SKIN_ARCHIVES, worldSkin)) throw new Error(`Unsupported ${buildId} skin: ${skinId}`);
+  if (!Object.hasOwn(FENCE_SKIN_ARCHIVES, worldSkin)) { throw new Error(`Unsupported ${buildId} skin: ${skinId}`); }
   return worldSkin;
 }
 

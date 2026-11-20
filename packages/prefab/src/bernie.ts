@@ -47,7 +47,7 @@ function isleadercrazy(leader: BerniePlayer): boolean {
 
 /** Each form's skin from another's, as the prefabs gsub the shadow / lunar builds and the form suffix. */
 function formSkin(skinId: string | undefined, from: '' | '_active' | '_big', to: '' | '_active' | '_big'): string | undefined {
-  if (skinId === undefined) return undefined;
+  if (skinId === undefined) { return undefined; }
   const base = skinId.replace('_shadow_build', '').replace('_lunar_build', '');
   return `${from ? base.replace(from, '') : base}${to}`;
 }
@@ -58,11 +58,11 @@ function formSkin(skinId: string | undefined, from: '' | '_active' | '_big', to:
  * the equippable, insulator and the transform_cd timer it carries over are not ported.
  */
 function bindBernieItem(inst: ItemEntity & { _activatetask?: EntityTask }, world: BernieWorld): void {
-  if (!inst.worldServices?.scheduler) inst.BindScheduler(world.scheduler);
+  if (!inst.worldServices?.scheduler) { inst.BindScheduler(world.scheduler); }
   // A held item is in limbo, and so asleep, as is one whose tile is.
   const refresh = () => {
     if (inst.isRemoved || inst.status.peek() !== 'active') { inst._activatetask?.Cancel(); inst._activatetask = undefined; }
-    else inst._activatetask ??= inst.DoPeriodicTask(1, () => tryreanimate(inst, world));
+    else { inst._activatetask ??= inst.DoPeriodicTask(1, () => tryreanimate(inst, world)); }
   };
   const stopStatus = inst.status.subscribe(refresh);
   refresh();
@@ -74,19 +74,19 @@ function tryreanimate(inst: ItemEntity, world: BernieWorld): void {
   let target: BerniePlayer | undefined, rangesq = (REANIMATE_RANGE * WORLD_SCALE) ** 2;
   const position = inst.position;
   for (const v of world.getPlayers()) {
-    if (!isleadercrazy(v) || !v.IsVisible()) continue;
+    if (!isleadercrazy(v) || !v.IsVisible()) { continue; }
     const distsq = v.position.distanceToSquared(position);
     if (distsq < rangesq) { rangesq = distsq; target = v; }
   }
-  if (!target) return;
+  if (!target) { return; }
   const active = world.spawnPrefab(BERNIE_ACTIVE_ID, position, formSkin(inst.skinId, '', '_active'));
-  if (active) inst.remove();
+  if (active) { inst.remove(); }
 }
 
 /** bernie_inactive.lua: the catalog art plays `inactive`, and the item reanimates near a crazy player. */
 export function bernieItemPrefabs(world: ItemPrefabWorld): Record<string, ItemPrefabDefinition> {
   const bernieWorld = world.bernieWorld;
-  return { [BERNIE_ITEM_ID]: groundItemPrefab(BERNIE_ITEM_ID, world, { configure: inst => { if (bernieWorld) bindBernieItem(inst, bernieWorld); } }) };
+  return { [BERNIE_ITEM_ID]: groundItemPrefab(BERNIE_ITEM_ID, world, { configure: inst => { if (bernieWorld) { bindBernieItem(inst, bernieWorld); } } }) };
 }
 
 /**
@@ -111,9 +111,9 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
     this.BindScheduler(world.scheduler);
     this.big = big;
     this.archive = big ? 'bernie_big.zip' : 'bernie.zip';
-    for (const tag of big ? ['largecreature', 'companion', 'soulless', 'crazy', 'bigbernie'] : ['smallcreature', 'companion', 'soulless']) this.addTag(tag);
+    for (const tag of big ? ['largecreature', 'companion', 'soulless', 'crazy', 'bigbernie'] : ['smallcreature', 'companion', 'soulless']) { this.addTag(tag); }
     this.addTag('inspectable');
-    if (big) this.setScale(.7);
+    if (big) { this.setScale(.7); }
     const health = addComponent(this, 'health', Health, big ? BERNIE_BIG_HEALTH : BERNIE_HEALTH);
     health.nofadeout = true;
     addComponent(this, 'timer', Timer, world.scheduler, ['transform_cd']);
@@ -137,8 +137,8 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
 
   /** BrainManager: an awake Bernie's brain updates again once its tree's sleep time has passed. */
   private think(): void {
-    if (this.isRemoved) return;
-    if (this.status.peek() === 'active') this.brain?.tick(this.world.scheduler.now);
+    if (this.isRemoved) { return; }
+    if (this.status.peek() === 'active') { this.brain?.tick(this.world.scheduler.now); }
     const sleep = this.brain?.GetSleepTime();
     this.DoTaskInTime(Math.max(sleep ?? 1, FRAMES), () => this.think());
   }
@@ -174,7 +174,7 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
       this.components.health.SetMaxHealth(saved.maximum);
       this.components.health.OnLoad({ health: saved.current });
     }
-    if (this.big) this.sg.goToState('idle');
+    if (this.big) { this.sg.goToState('idle'); }
   }
 
   /** bernie_big.lua onLeaderChanged; the skill tree speed, regen, health and allegiance branches are not ported. */
@@ -187,16 +187,16 @@ export class BernieInstance extends PrefabInstance implements BernieStateInst {
   GoInactive(): ItemEntity | undefined {
     const inactive = this.world.spawnInactive(this.position,
       formSkin(this.skinId, this.big ? '_big' : '_active', ''));
-    if (inactive) this.remove();
+    if (inactive) { this.remove(); }
     return inactive;
   }
 
   /** bernie_active.lua gobig: a crazy Willow nearby turns Bernie into bernie_big, which records her as its leader. */
   GoBig(leader: BerniePlayer): BernieInstance | undefined {
-    if (this.big || leader.bigbernies) return undefined;
+    if (this.big || leader.bigbernies) { return undefined; }
     const big = this.world.spawnPrefab(BERNIE_BIG_ID, this.position,
       formSkin(this.skinId, '_active', '_big')) as BernieInstance | undefined;
-    if (!big) return undefined;
+    if (!big) { return undefined; }
     (leader.bigbernies = new Set()).add(big);
     big.components.health.SetPercent(this.components.health.GetPercent());
     big.onLeaderChanged(leader);

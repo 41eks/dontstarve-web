@@ -76,8 +76,8 @@ export class Beard {
 
   EnableGrowth(enable: boolean): void {
     if (enable && !this.disposed) {
-      if (this.dayTimer.snapshot.peek().status !== 'scheduled') this.armDayTimer();
-    } else if (!enable) this.dayTimer.stop();
+      if (this.dayTimer.snapshot.peek().status !== 'scheduled') { this.armDayTimer(); }
+    } else if (!enable) { this.dayTimer.stop(); }
   }
 
   private armDayTimer(): void {
@@ -86,27 +86,27 @@ export class Beard {
 
   /** The timer expired at the day boundary: grow, then wait for the next one. */
   private onDayBoundary(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.OnDayComplete();
-    if (!this.disposed) this.armDayTimer();
+    if (!this.disposed) { this.armDayTimer(); }
   }
 
   private DoCallbacksForDay(): void { this.callbacks.get(this.daysgrowthState.peek())?.(this.inst); }
 
   OnDayComplete(): void {
-    if (this.pause) return;
+    if (this.pause) { return; }
     this.daysgrowthState.set(this.daysgrowthState.peek() + 1);
     this.DoCallbacksForDay();
   }
 
   ShouldTryToShave(doer: unknown): BeardVerdict {
-    if (this.bitsState.peek() === 0) return { ok: false, reason: 'NOBITS' };
+    if (this.bitsState.peek() === 0) { return { ok: false, reason: 'NOBITS' }; }
     return this.canshavetest?.(this.inst, doer) ?? { ok: true };
   }
 
   Shave(doer: unknown): BeardVerdict {
     const verdict = this.ShouldTryToShave(doer);
-    if (!verdict.ok) return verdict;
+    if (!verdict.ok) { return verdict; }
     const oldbits = this.bitsState.peek();
     let currentflag = true;
     let daysback = 0;
@@ -114,15 +114,15 @@ export class Beard {
       const cb = this.callbacks.get(k);
       if (cb) {
         // skip past current level
-        if (currentflag) currentflag = false;
+        if (currentflag) { currentflag = false; }
         else { cb(this.inst); break; }
       }
       daysback++;
     }
     this.daysgrowthState.set(this.daysgrowthState.peek() - daysback);
-    if (this.daysgrowthState.peek() <= 0) this.Reset();
+    if (this.daysgrowthState.peek() <= 0) { this.Reset(); }
     const dropbits = oldbits - this.bitsState.peek();
-    if (this.prize !== undefined && dropbits > 0) this.host.spawnPrize(this.prize, dropbits, this.inst.getPosition());
+    if (this.prize !== undefined && dropbits > 0) { this.host.spawnPrize(this.prize, dropbits, this.inst.getPosition()); }
     this.inst.PushEvent('shaved');
     return { ok: true };
   }
@@ -142,11 +142,11 @@ export class Beard {
 
   OnLoad(data: Partial<BeardSave>): void {
     batch(() => {
-      if (data.bits !== undefined) this.bitsState.set(data.bits);
-      if (data.growth !== undefined) this.daysgrowthState.set(data.growth);
-      if (data.growthaccumulator !== undefined) this.accumulatorState.set(data.growthaccumulator);
+      if (data.bits !== undefined) { this.bitsState.set(data.bits); }
+      if (data.growth !== undefined) { this.daysgrowthState.set(data.growth); }
+      if (data.growthaccumulator !== undefined) { this.accumulatorState.set(data.growthaccumulator); }
     });
-    for (let k = 0; k <= this.daysgrowthState.peek(); k++) this.callbacks.get(k)?.(this.inst);
+    for (let k = 0; k <= this.daysgrowthState.peek(); k++) { this.callbacks.get(k)?.(this.inst); }
   }
 
   /** Beard:OnRemoveFromEntity: growth stops and the "bearded" tag goes. */

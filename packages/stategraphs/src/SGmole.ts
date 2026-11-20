@@ -39,7 +39,7 @@ type MoleSound = 'death' | 'emerge' | 'emerge_voice' | 'hurt' | 'move' | 'retrac
  * with `if not inst.SoundEmitter:PlayingSound(slot)`.
  */
 function PlaySound(inst: MoleStateInst, name: MoleSound, slot?: string): void {
-  if (slot !== undefined && inst.SoundEmitter.PlayingSound(slot)) return;
+  if (slot !== undefined && inst.SoundEmitter.PlayingSound(slot)) { return; }
   inst.SoundEmitter.PlaySound(`dontstarve_DLC001/creatures/mole/${name}` as const, slot);
 }
 const sound = (frame: number, name: MoleSound, slot?: string) => TimeEvent<MoleStateInst, MoleState>(frame * FRAMES, sg => PlaySound(sg.context, name, slot));
@@ -54,7 +54,7 @@ const states: StateDefinition<MoleStateInst, MoleState>[] = [
       const inst = sg.context; inst.stopPhysics(); inst.SoundEmitter.KillSound('move');
       if (inst.isunder) { sg.addStateTag('noattack'); sg.addStateTag('noelectrocute'); }
       inst.playAnimation(inst.isunder ? 'idle_under' : 'idle', true);
-    }, timeline: [TimeEvent(FRAMES, sg => { if (!sg.context.isunder) PlaySound(sg.context, 'sniff', 'sniff'); }), kill(52, 'sniff')]
+    }, timeline: [TimeEvent(FRAMES, sg => { if (!sg.context.isunder) { PlaySound(sg.context, 'sniff', 'sniff'); } }), kill(52, 'sniff')]
   },
   { name: 'enter', tags: ['busy'], onenter: sg => above(sg, 'enter'), events: over('idle') },
   {
@@ -136,7 +136,7 @@ const states: StateDefinition<MoleStateInst, MoleState>[] = [
     name: 'sleep', tags: ['busy', 'sleeping'], onenter: sg => {
       const inst = sg.context; inst.locomotor.StopMoving();
       if (inst.isunder) { above(sg, 'enter'); PlaySound(inst, 'emerge'); inst.pushAnimation('sleep_pre'); }
-      else inst.playAnimation('sleep_pre');
+      else { inst.playAnimation('sleep_pre'); }
     }, timeline: [kill(1, 'sniff'), kill(1, 'stunned')], events: [...over('sleeping', true), EventHandler('onwakeup', sg => sg.goToState('wake'))]
   },
   {
@@ -156,14 +156,14 @@ export class MoleStateGraph {
     ActionHandler('STEALMOLEBAIT', () => inst.isunder ? 'steal_pre_under' : 'steal_pre_above'),
     ActionHandler('MAKEMOLEHILL', 'make_molehill'), ActionHandler('MOLEPEEK', 'peek')], scheduler);
     this.sg.listenForEvent('locomote', () => {
-      if (!this.hasStateTag('idle') && !this.hasStateTag('moving')) return;
+      if (!this.hasStateTag('idle') && !this.hasStateTag('moving')) { return; }
       const moving = inst.locomotor.WantsToMoveForward();
-      if (moving !== this.hasStateTag('moving')) this.goToState(moving ? inst.isunder ? 'walk_pre' : 'exit' : this.hasStateTag('moving') ? 'walk_pst' : 'idle');
+      if (moving !== this.hasStateTag('moving')) { this.goToState(moving ? inst.isunder ? 'walk_pre' : 'exit' : this.hasStateTag('moving') ? 'walk_pst' : 'idle'); }
     });
     this.sg.listenForEvent('attacked', data => inst.onAttacked(data));
     this.sg.listenForEvent('death', () => this.goToState('death'));
     this.sg.listenForEvent('stunbomb', () => this.sg.goToState('stunned', true));
-    this.sg.listenForEvent('gotosleep', () => { if (!inst.isDead()) this.goToState('sleep'); });
+    this.sg.listenForEvent('gotosleep', () => { if (!inst.isDead()) { this.goToState('sleep'); } });
     this.sg.goToState('idle');
   }
   get stateName(): MoleState { return this.sg.stateName; }

@@ -56,11 +56,11 @@ export class Mast {
     this.furlunits = this.furlunits_max;
     this.is_sail_transitioning = undefined;
     this.inst.removeTag('sail_transitioning');
-    if (!this.is_sail_raised) return;
+    if (!this.is_sail_raised) { return; }
     this.is_sail_raised = false;
     this.inst.AnimState.PlayAnimation('knot_tie', false);
-    if (this.inverted) this.inst.AnimState.PushAnimation('open_loop', true);
-    else this.inst.AnimState.PushAnimation('closed', false);
+    if (this.inverted) { this.inst.AnimState.PushAnimation('open_loop', true); }
+    else { this.inst.AnimState.PushAnimation('closed', false); }
   }
 
   /** Mast:SailUnfurled: the sail is lowered. */
@@ -69,7 +69,7 @@ export class Mast {
     this.is_sail_transitioning = undefined;
     this.inst.removeTag('sail_transitioning');
     this.is_sail_raised = true;
-    if (this.inverted) this.inst.AnimState.PlayAnimation('closed', false);
-    else this.inst.AnimState.PlayAnimation('open_loop', true);
+    if (this.inverted) { this.inst.AnimState.PlayAnimation('closed', false); }
+    else { this.inst.AnimState.PlayAnimation('open_loop', true); }
   }
 }

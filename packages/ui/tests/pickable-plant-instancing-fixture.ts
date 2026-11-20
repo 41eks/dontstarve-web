@@ -55,7 +55,7 @@ export async function checkPickablePlantInstancing() {
         prefabInstance(models[0])!.remove();
         const removed = await sample();
         result.push({ ready, asleep, restored, shared, preserved, removed });
-      } finally { for (const model of [...scene.children]) prefabInstance(model)?.remove(); }
+      } finally { for (const model of [...scene.children]) { prefabInstance(model)?.remove(); } }
     }
     return result;
   } finally { manager.dispose(); displays.dispose(); fire.dispose(); world.unbind(); scheduler.dispose(); renderer.dispose(); }

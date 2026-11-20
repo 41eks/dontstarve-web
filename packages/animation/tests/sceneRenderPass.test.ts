@@ -108,7 +108,7 @@ it.each(['pass', 'world'] as const)('restores automatic-update settings when the
   const failure = new Error('render failed');
   const renderer = { render: () => { throw failure; } } as unknown as THREE.WebGLRenderer;
   const unregister = registerSceneRenderPass(scene, {
-    render: () => { if (stage === 'pass') throw failure; },
+    render: () => { if (stage === 'pass') { throw failure; } },
     prewarm: async () => {},
   });
   try {

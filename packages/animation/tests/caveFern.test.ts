@@ -55,7 +55,7 @@ it('preserves cave fern poses and components across residency, then picks foliag
   const components = plants.map(plant => plantInstance(plant).components);
   const meshCount = (plant: THREE.Group) => {
     let count = 0;
-    plant.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; });
+    plant.traverse(object => { if ((object as THREE.Mesh).isMesh) { count++; } });
     return count;
   };
   await new Promise(resolve => setTimeout(resolve, 0));

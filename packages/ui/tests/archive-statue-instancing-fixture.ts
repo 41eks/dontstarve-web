@@ -39,10 +39,10 @@ export async function checkArchiveStatueInstancing() {
     await tick();
     const full = await sample();
     const targets = [...actionEntities()].filter(entity => entity.hasTag('MINE_workable'));
-    for (const target of targets) target.components.workable!.WorkedBy(testPlayer(), 4);
+    for (const target of targets) { target.components.workable!.WorkedBy(testPlayer(), 4); }
     await tick();
     const med = await sample();
-    for (const target of targets) target.components.workable!.WorkedBy(testPlayer(), 3);
+    for (const target of targets) { target.components.workable!.WorkedBy(testPlayer(), 3); }
     await tick();
     const low = await sample();
     const batch = scene.getObjectByName('ArchiveSpriteInstances:colour');

@@ -38,24 +38,24 @@ export class CreatureInventory {
   /** inventory.lua GetItemInSlot: slots count from 1. */
   GetItemInSlot(slot: number): ItemEntity | undefined { return this.slots[slot - 1]?.getEntity() ?? undefined; }
   GiveItem(item: ItemEntity): boolean {
-    if (item.isRemoved || item.components.inventoryitem.owner) return false;
+    if (item.isRemoved || item.components.inventoryitem.owner) { return false; }
     item.flush();
     const stackLimit = this.slots[0]?.maxStack(item.prefab) ?? 1;
-    if (stackLimit > 1) for (const slot of this.slots) {
+    if (stackLimit > 1) { for (const slot of this.slots) {
       const current = slot.getEntity();
-      if (!current || current.prefab !== item.prefab || current.skinId !== item.skinId || current.components.stackable.count >= stackLimit) continue;
+      if (!current || current.prefab !== item.prefab || current.skinId !== item.skinId || current.components.stackable.count >= stackLimit) { continue; }
       current.flush();
       const previous = current.components.stackable.count, received = Math.min(stackLimit - previous, item.components.stackable.count);
       const a = current.snapshot().freshnessPercent, b = item.snapshot().freshnessPercent;
       const consumed = received === item.components.stackable.count;
       batch(() => {
-        if (a !== undefined && b !== undefined) current.setFreshnessPercent((a * previous + b * received) / (previous + received));
-        if (item.GetIsWet()) current.setWet(true);
+        if (a !== undefined && b !== undefined) { current.setFreshnessPercent((a * previous + b * received) / (previous + received)); }
+        if (item.GetIsWet()) { current.setWet(true); }
         current.components.stackable.count += received;
-        if (consumed) item.destroy(); else item.components.stackable.count -= received;
+        if (consumed) { item.destroy(); } else { item.components.stackable.count -= received; }
       });
-      if (consumed) return true;
-    }
+      if (consumed) { return true; }
+    } }
     const index = this.slots.findIndex(slot => slot.getEntity() === null);
     if (index < 0) { this.drop(item, this.inst.getPosition().clone()); return true; }
     item.flush();
@@ -68,9 +68,9 @@ export class CreatureInventory {
     item.components.inventoryitem.SetOwner(this.inst, {
       address: { containerId: `creature:${this.inst.id}`, slotKey: String(index) },
       changed: () => undefined,
-      remove: () => { if (slot.getEntity() !== item) return false; slot.setEntity(null); item.components.inventoryitem.owner = null; item.destroy(); return true; },
+      remove: () => { if (slot.getEntity() !== item) { return false; } slot.setEntity(null); item.components.inventoryitem.owner = null; item.destroy(); return true; },
       replace: prefab => {
-        if (!this.spawn || slot.getEntity() !== item) return false;
+        if (!this.spawn || slot.getEntity() !== item) { return false; }
         const replacement = this.spawn({ itemId: prefab, count: item.components.stackable.count });
         this.RemoveItem(item);
         item.destroy();
@@ -83,7 +83,7 @@ export class CreatureInventory {
   }
   /** inventory.lua RemoveItem with wholestack: the item leaves its slot and stays valid. */
   RemoveItem(item: ItemEntity): void {
-    const slot = this.slots.find(slot => slot.getEntity() === item); if (!slot) return;
+    const slot = this.slots.find(slot => slot.getEntity() === item); if (!slot) { return; }
     slot.setEntity(null); item.components.inventoryitem.owner = null;
   }
   /** inventory.lua DropItem; an item already removed from its slot, as a failed shelf take leaves it, still drops. */
@@ -92,9 +92,9 @@ export class CreatureInventory {
   }
   TransferInventory(receiver: { components: { inventory?: CreatureInventory } }): void {
     const target = receiver.components.inventory;
-    if (!target) return;
+    if (!target) { return; }
     for (const item of this.GetItems()) {
-      item.flush(); this.RemoveItem(item); if (!target.GiveItem(item)) this.drop(item, this.inst.getPosition().clone());
+      item.flush(); this.RemoveItem(item); if (!target.GiveItem(item)) { this.drop(item, this.inst.getPosition().clone()); }
     }
   }
   DropEverything(): void {
@@ -107,14 +107,14 @@ export class CreatureInventory {
   GetSnapshot(): InventoryStack[] { return this.GetItems().map(item => { item.flush(); return item.snapshot(); }); }
   /** SpawnPrefab of each runtime stack a snapshot carried, given back to this inventory. */
   LoadSnapshot(items: readonly InventoryStack[], spawn: (state: InventoryStack) => ItemEntity): void {
-    for (const state of items) this.GiveItem(spawn(state));
+    for (const state of items) { this.GiveItem(spawn(state)); }
   }
   /** inventory.lua OnSave: each persisting item's GetSaveRecord under its one-based slot. */
   OnSave(): SlotItemsSave | undefined {
     const items: SlotItemsSave['items'] = {};
     this.slots.forEach((slot, index) => {
       const item = slot.getEntity();
-      if (item && item.persists) items[String(index + 1)] = item.GetSaveRecord();
+      if (item && item.persists) { items[String(index + 1)] = item.GetSaveRecord(); }
     });
     return Object.keys(items).length ? { items } : undefined;
   }
@@ -122,8 +122,8 @@ export class CreatureInventory {
   OnLoad(data: Partial<SlotItemsSave> | undefined): void {
     const restore = this.inst.worldServices?.restoreItem;
     const entries = Object.entries(data?.items ?? {});
-    if (!entries.length) return;
-    if (!restore) throw new Error(`${this.inst.id} has no world to load its inventory in`);
+    if (!entries.length) { return; }
+    if (!restore) { throw new Error(`${this.inst.id} has no world to load its inventory in`); }
     for (const [slot, record] of entries) {
       const index = Number(slot) - 1;
       if (!Number.isSafeInteger(index) || !this.slots[index] || this.slots[index].getEntity()) {

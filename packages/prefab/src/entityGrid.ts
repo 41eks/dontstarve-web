@@ -20,7 +20,7 @@ export class EntityGrid<Entity extends GridEntity> {
   private readonly keys = new Map<Entity, number>();
 
   insert(entity: Entity): void {
-    if (this.keys.has(entity)) return;
+    if (this.keys.has(entity)) { return; }
     const key = keyOf(cellOf(entity.position.x), cellOf(entity.position.z));
     this.keys.set(entity, key);
     this.bucket(key).add(entity);
@@ -28,9 +28,9 @@ export class EntityGrid<Entity extends GridEntity> {
 
   move(entity: Entity): void {
     const previous = this.keys.get(entity);
-    if (previous === undefined) return;
+    if (previous === undefined) { return; }
     const key = keyOf(cellOf(entity.position.x), cellOf(entity.position.z));
-    if (key === previous) return;
+    if (key === previous) { return; }
     this.leave(entity, previous);
     this.keys.set(entity, key);
     this.bucket(key).add(entity);
@@ -38,7 +38,7 @@ export class EntityGrid<Entity extends GridEntity> {
 
   remove(entity: Entity): void {
     const key = this.keys.get(entity);
-    if (key === undefined) return;
+    if (key === undefined) { return; }
     this.keys.delete(entity);
     this.leave(entity, key);
   }
@@ -49,27 +49,27 @@ export class EntityGrid<Entity extends GridEntity> {
     const minZ = cellOf(position.z - radius), maxZ = cellOf(position.z + radius);
     if ((maxX - minX + 1) * (maxZ - minZ + 1) > this.cells.size) {
       // A query wider than the occupied cells reads the occupied cells instead.
-      for (const cell of this.cells.values()) for (const entity of cell) visitor(entity);
+      for (const cell of this.cells.values()) { for (const entity of cell) { visitor(entity); } }
       return;
     }
-    for (let cx = minX; cx <= maxX; cx++) for (let cz = minZ; cz <= maxZ; cz++) {
+    for (let cx = minX; cx <= maxX; cx++) { for (let cz = minZ; cz <= maxZ; cz++) {
       const cell = this.cells.get(keyOf(cx, cz));
-      if (cell) for (const entity of cell) visitor(entity);
-    }
+      if (cell) { for (const entity of cell) { visitor(entity); } }
+    } }
   }
 
   clear(): void { this.cells.clear(); this.keys.clear(); }
 
   private bucket(key: number): Set<Entity> {
     let cell = this.cells.get(key);
-    if (!cell) this.cells.set(key, cell = new Set());
+    if (!cell) { this.cells.set(key, cell = new Set()); }
     return cell;
   }
 
   private leave(entity: Entity, key: number): void {
     const cell = this.cells.get(key);
-    if (!cell) return;
+    if (!cell) { return; }
     cell.delete(entity);
-    if (cell.size === 0) this.cells.delete(key);
+    if (cell.size === 0) { this.cells.delete(key); }
   }
 }

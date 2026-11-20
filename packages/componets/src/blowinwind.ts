@@ -50,7 +50,7 @@ export class BlowInWind {
       this.currentAngle = ang;
       this.inst.setRotation(this.currentAngle);
     }
-    if (vel !== undefined) this.velocMult = vel;
+    if (vel !== undefined) { this.velocMult = vel; }
     this.updating = true;
   }
   Stop(): void { this.updating = false; }
@@ -60,14 +60,14 @@ export class BlowInWind {
       this.windVector = { x: Math.cos(ang), z: Math.sin(ang) };
     }
   }
-  SetMaxSpeedMult(speed?: number): void { if (speed !== undefined) this.maxSpeedMult = speed; }
-  SetMinSpeedMult(speed?: number): void { if (speed !== undefined) this.minSpeedMult = speed; }
-  SetAverageSpeed(speed?: number): void { if (speed !== undefined) this.averageSpeed = speed; }
+  SetMaxSpeedMult(speed?: number): void { if (speed !== undefined) { this.maxSpeedMult = speed; } }
+  SetMinSpeedMult(speed?: number): void { if (speed !== undefined) { this.minSpeedMult = speed; } }
+  SetAverageSpeed(speed?: number): void { if (speed !== undefined) { this.averageSpeed = speed; } }
   GetSpeed(): number { return this.speed; }
   GetVelocity(): { x: number; z: number } { return this.velocity; }
 
   Update(dt: number): void {
-    if (!this.updating) return;
+    if (!this.updating) { return; }
     let vx = this.velocity.x + this.windVector.x * dt, vz = this.velocity.z + this.windVector.z * dt;
     let length = Math.hypot(vx, vz);
     if (length > 1) { vx /= length; vz /= length; length = 1; }

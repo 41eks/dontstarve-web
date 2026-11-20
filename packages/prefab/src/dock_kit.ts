@@ -48,18 +48,18 @@ export function createDockWorld(turf: TurfMap, blockers: PlacementQuery) {
     canDeployDock(point: THREE.Vector3): boolean {
       const [col, row] = cellOf(point), snapped = snapToTileCenter(point);
       const center = new THREE.Vector3(snapped.x, 0, snapped.z);
-      if (turf.tileIdAtCell(col, row) !== WORLD_TILES.OCEAN_COASTAL) return false;
+      if (turf.tileIdAtCell(col, row) !== WORLD_TILES.OCEAN_COASTAL) { return false; }
       let adjacent = false;
-      for (let dx = -1; dx <= 1 && !adjacent; dx++) for (let dz = -1; dz <= 1; dz++) {
+      for (let dx = -1; dx <= 1 && !adjacent; dx++) { for (let dz = -1; dz <= 1; dz++) {
         if ((dx !== 0 || dz !== 0) && map.isLandTile(map.getTile(col + dx, row + dz))) { adjacent = true; break; }
-      }
-      if (!adjacent) return false;
-      if (blockers.someOnTile(center, blocker => hasPlacementTag(blocker, 'dockjammer'))) return false;
+      } }
+      if (!adjacent) { return false; }
+      if (blockers.someOnTile(center, blocker => hasPlacementTag(blocker, 'dockjammer'))) { return false; }
       return !blockers.someNear(center, MIN_DISTANCE_FROM_ENTITIES, blocker => {
-        if (blocker.visible === false || ignoresPlacement(blocker, DEPLOY_IGNORE_TAGS)) return false;
+        if (blocker.visible === false || ignoresPlacement(blocker, DEPLOY_IGNORE_TAGS)) { return false; }
         // IsDockNearOtherOnOcean only considers entities standing on ocean tiles.
         const [bc, br] = cellOf(blocker.position);
-        if (map.isLandTile(map.getTile(bc, br))) return false;
+        if (map.isLandTile(map.getTile(bc, br))) { return false; }
         return isNearOther(blocker, center, MIN_DISTANCE_FROM_ENTITIES);
       });
     },
@@ -74,8 +74,8 @@ export function createDockWorld(turf: TurfMap, blockers: PlacementQuery) {
 
 /** dock_kit.lua: tags, deployable(CUSTOM) with its gridplacer, and on_deploy consuming one kit. */
 export function configureDockKitEntity(entity: ItemEntity): void {
-  if (entity.prefab !== DOCK_KIT_ID || entity.components.deployable) return;
-  for (const tag of ['groundtile', 'deploykititem', 'usedeployspacingasoffset', 'deployable']) entity.addTag(tag);
+  if (entity.prefab !== DOCK_KIT_ID || entity.components.deployable) { return; }
+  for (const tag of ['groundtile', 'deploykititem', 'usedeployspacingasoffset', 'deployable']) { entity.addTag(tag); }
   addComponent(entity, 'deployable', Deployable, (point, deployer, map) => {
     // PlaySoundWithParams("turnoftides/common/together/boat/damage", { intensity = 0.8 }) on the deployer.
     PlaySound(DOCK_DEPLOY_SOUND, deployer.position).setParameter?.('intensity', .8);
@@ -87,7 +87,7 @@ export function configureDockKitEntity(entity: ItemEntity): void {
 /** map.lua IsNearOther (min_spacing form) with deploy_smart_radius and inventoryitem physics radius. */
 function isNearOther(other: DockBlocker, pt: THREE.Vector3, minSpacing: number): boolean {
   let spacing = minSpacing;
-  if (other.smartRadius !== undefined) spacing = other.smartRadius + minSpacing / 2;
-  else if (other.inventoryRadius !== undefined) spacing = Math.min(other.inventoryRadius + minSpacing / 2, minSpacing);
+  if (other.smartRadius !== undefined) { spacing = other.smartRadius + minSpacing / 2; }
+  else if (other.inventoryRadius !== undefined) { spacing = Math.min(other.inventoryRadius + minSpacing / 2, minSpacing); }
   return other.position.distanceToSquared(pt) < spacing ** 2;
 }

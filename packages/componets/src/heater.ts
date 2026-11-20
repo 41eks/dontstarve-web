@@ -21,7 +21,7 @@ export class Heater {
   constructor(inst: HeaterInst) { this.inst = inst; inst.addTag('HASHEATER'); }
   private configure(patch: Partial<HeaterState>): void { this.state.set(Object.freeze({ ...this.state.peek(), ...patch })); }
   SetHeat(heat?: number): void {
-    if (heat !== undefined && !Number.isFinite(heat)) throw new RangeError('Invalid heater output');
+    if (heat !== undefined && !Number.isFinite(heat)) { throw new RangeError('Invalid heater output'); }
     this.configure({ heat });
   }
   SetHeatFn(heatfn: HeatFn | undefined): void { this.configure({ heatfn }); }
@@ -33,7 +33,7 @@ export class Heater {
   SetShouldFalloff(shouldFalloff: boolean): void { this.configure({ shouldFalloff }); }
   ShouldFalloff(): boolean { return this.state.peek().shouldFalloff; }
   SetHeatRadiusCutoff(radiusCutoff?: number): void {
-    if (radiusCutoff !== undefined && (!Number.isFinite(radiusCutoff) || radiusCutoff < 0)) throw new RangeError('Invalid heat radius');
+    if (radiusCutoff !== undefined && (!Number.isFinite(radiusCutoff) || radiusCutoff < 0)) { throw new RangeError('Invalid heat radius'); }
     this.configure({ radiusCutoff });
   }
   GetHeatRadiusCutoff(): number | undefined { return this.state.peek().radiusCutoff; }
@@ -43,7 +43,7 @@ export class Heater {
     return heatfn?.(this.inst, observer) ?? heat;
   }
   OnRemoveFromEntity(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true; this.inst.removeTag('HASHEATER');
   }
   dispose(): void { this.OnRemoveFromEntity(); }

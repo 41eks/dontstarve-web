@@ -30,6 +30,6 @@ export class MiniMapState {
 
   private update<K extends keyof MiniMapJson>(key: K, value: MiniMapJson[K]): void {
     const current = this.state.peek();
-    if (current[key] !== value) this.state.set({ ...current, [key]: value });
+    if (current[key] !== value) { this.state.set({ ...current, [key]: value }); }
   }
 }

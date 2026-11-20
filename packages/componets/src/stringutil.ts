@@ -17,13 +17,13 @@ function getmodifiedstring(topic: readonly Topic[] | Table, modifier: string | u
   const lines = Array.isArray(topic) ? topic as readonly Topic[] : undefined;
   const table = lines ? undefined : topic as Table;
   const ret = modifier === undefined ? undefined : table?.[modifier];
-  if (Array.isArray(ret) && ret.length > 0) return asString(randomLine(ret));
+  if (Array.isArray(ret) && ret.length > 0) { return asString(randomLine(ret)); }
   return asString(ret) ?? asString(table?.GENERIC) ?? (lines?.length ? asString(randomLine(lines)) : undefined);
 }
 
 function getcharacterstring(tab: Table | undefined, item: string | undefined, modifier: string | undefined): string | undefined {
   const topic = item === undefined ? undefined : tab?.[item];
-  if (topic === undefined) return undefined;
+  if (topic === undefined) { return undefined; }
   return typeof topic === 'string' ? topic : getmodifiedstring(topic as readonly Topic[] | Table, modifier?.toUpperCase());
 }
 
@@ -33,7 +33,7 @@ const pick = <T>(list: readonly T[]): T => list[Math.floor(Math.random() * list.
 function CraftOooh(): string {
   const start = (isstart: boolean) => {
     let str = isstart ? 'O' : 'o';
-    for (let i = 2, l = 2 + Math.floor(Math.random() * 3); i <= l; i++) str += Math.random() > .3 ? 'o' : 'O';
+    for (let i = 2, l = 2 + Math.floor(Math.random() * 3); i <= l; i++) { str += Math.random() > .3 ? 'o' : 'O'; }
     return str;
   };
   let str = '', isstart = true;
@@ -62,7 +62,7 @@ const characterTable = (name: string | undefined) => name === undefined ? undefi
 /** stringutil.lua GetString. */
 export function GetString(inst: SpeakerInst, stringtype: string, modifier?: string): string | undefined {
   const special = GetSpecialCharacterString(inst);
-  if (special !== undefined) return special;
+  if (special !== undefined) { return special; }
   const type = stringtype.toUpperCase();
   return getcharacterstring(characterTable(inst.prefab?.toUpperCase()), type, modifier)
     ?? getcharacterstring(GENERIC, type, modifier);
@@ -71,7 +71,7 @@ export function GetString(inst: SpeakerInst, stringtype: string, modifier?: stri
 /** stringutil.lua GetDescription. GetDescription_AddSpecialCases' shadowlevel, foodmemory and canfix suffixes are not ported. */
 export function GetDescription(inst: SpeakerInst, item: DescribedInst, modifier?: string): string {
   const special = GetSpecialCharacterString(inst);
-  if (special !== undefined) return special;
+  if (special !== undefined) { return special; }
   const itemname = (item.nameoverride ?? (item.components as { inspectable?: { nameoverride?: string } } | undefined)?.inspectable?.nameoverride ?? item.prefab)?.toUpperCase();
   return getcharacterstring(characterTable(inst.prefab?.toUpperCase())?.DESCRIBE as Table | undefined, itemname, modifier)
     ?? getcharacterstring(GENERIC.DESCRIBE as Table, itemname, modifier)

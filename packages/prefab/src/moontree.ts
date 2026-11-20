@@ -88,7 +88,7 @@ export class MoonTreeInstance extends PrefabInstance {
     this.deploySmartRadius = 1.6 * UNIT; this.logicalPlacement = true;
     this.minimap.SetPriority(-1);
     // standardcomponents.lua MakeSnowCoveredPristine applies to trees and stumps, not saplings.
-    for (const tag of ['plant', 'tree', 'moon_tree', 'SnowCovered', 'shelter']) this.addTag(tag);
+    for (const tag of ['plant', 'tree', 'moon_tree', 'SnowCovered', 'shelter']) { this.addTag(tag); }
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(on_chop_tree);
@@ -103,13 +103,13 @@ export class MoonTreeInstance extends PrefabInstance {
     })), seconds => world.growthDuration?.(seconds) ?? seconds);
     growable.loopstages = true; growable.springgrowth = true;
     addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
-    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === 'decay') this.remove(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === 'decay') { this.remove(); } });
     this.OnSave = (_inst, data) => on_save(this, data);
     this.OnLoad = (_inst, data) => on_load(this, data);
     this.onRemove(() => {
       unbindFire(this);
       this.stopSnow?.(); this.stopSnow = undefined;
-      for (const sound of this.sounds) sound.stop();
+      for (const sound of this.sounds) { sound.stop(); }
       this.sounds.clear();
     });
     growable.SetStage(stage); growable.StartGrowing();
@@ -119,7 +119,7 @@ export class MoonTreeInstance extends PrefabInstance {
   override setActive(active: boolean): void {
     if (active !== this.awake && !this.isRemoved) {
       this.awake = active;
-      if (active) on_wake(this); else on_sleep(this);
+      if (active) { on_wake(this); } else { on_sleep(this); }
     }
     super.setActive(active);
   }
@@ -133,19 +133,19 @@ export class MoonTreeInstance extends PrefabInstance {
 const sizeOf = (inst: MoonTreeInstance): MoonTreeSize => MOON_TREE_SIZES[inst.components.growable.GetStage() - 1];
 
 function playSound(inst: MoonTreeInstance, path: SoundEventPath): void {
-  for (const sound of inst.sounds) if (sound.isPlaying?.() === false) inst.sounds.delete(sound);
+  for (const sound of inst.sounds) { if (sound.isPlaying?.() === false) { inst.sounds.delete(sound); } }
   inst.sounds.add(PlaySound(path, inst.position));
 }
 
 function playGrowth(inst: MoonTreeInstance, clip: string, wilt = false): void {
-  if (!inst.isAwake || inst.catchingUp) return;
+  if (!inst.isAwake || inst.catchingUp) { return; }
   playSound(inst, wilt ? 'dontstarve/forest/treeGrowFromWilt' : 'dontstarve/forest/treeGrow');
   inst.sprite.playOnce(clip, () => inst.sprite.start(`sway1_loop_${sizeOf(inst)}`));
 }
 
 /** set_short / set_normal / set_tall. */
 function setStage(inst: MoonTreeInstance, size: MoonTreeSize, index: number): void {
-  if (inst.hasTag('stump') || inst.hasTag('burnt')) return;
+  if (inst.hasTag('stump') || inst.hasTag('burnt')) { return; }
   inst.components.workable!.SetWorkLeft(MOON_TREE_CHOPS[index]);
   inst.components.lootdropper.SetChanceLootTable(`moontree_${size}`);
   inst.sprite.start(`sway1_loop_${size}`);
@@ -166,7 +166,7 @@ function burnSpec(inst: MoonTreeInstance): BurnSpec {
 }
 
 function bindFire(inst: MoonTreeInstance): void {
-  if (!inst.isAwake || inst.burn || inst.hasTag('burnt') || inst.isRemoved) return;
+  if (!inst.isAwake || inst.burn || inst.hasTag('burnt') || inst.isRemoved) { return; }
   inst.burn = new BurnableBinding(inst, burnSpec(inst), inst.world);
 }
 
@@ -174,7 +174,7 @@ function unbindFire(inst: MoonTreeInstance): void { inst.burn?.dispose(); inst.b
 
 /** A stage change reconfigures the burnable in place, unless it is already burning. */
 function refreshFire(inst: MoonTreeInstance): void {
-  if (inst.burn?.burnable.IsBurning()) return;
+  if (inst.burn?.burnable.IsBurning()) { return; }
   unbindFire(inst); bindFire(inst);
 }
 
@@ -196,7 +196,7 @@ function burnStump(inst: MoonTreeInstance): void {
 // moontree.lua: thirty days with +/- 50% variance, created only once for a dead tree.
 function startDecay(inst: MoonTreeInstance): void {
   const { timer } = inst.components;
-  if (!timer.TimerExists('decay')) timer.StartTimer('decay', 14400 + (inst.random() * 2 - 1) * 7200);
+  if (!timer.TimerExists('decay')) { timer.StartTimer('decay', 14400 + (inst.random() * 2 - 1) * 7200); }
 }
 
 /** burnt_changes: no burnable, shelter or growth; one chop for charcoal. */
@@ -215,19 +215,19 @@ function burntChanges(inst: MoonTreeInstance): void {
 
 /** on_moon_tree_burnt_immediate_helper: burnt pose and tag at once; component changes follow after .5 seconds. */
 function on_moon_tree_burnt(inst: MoonTreeInstance, immediate: boolean): void {
-  if (inst.hasTag('burnt')) return;
+  if (inst.hasTag('burnt')) { return; }
   inst.addTag('burnt');
   inst.minimap.SetIcon('moon_tree_burnt.png');
   startDecay(inst);
   inst.sprite.start(`burnt_${sizeOf(inst)}`);
-  if (immediate) burntChanges(inst);
-  else inst.DoTaskInTime(.5, burntChanges);
+  if (immediate) { burntChanges(inst); }
+  else { inst.DoTaskInTime(.5, burntChanges); }
 }
 
 /** The prefabs the lootdropper generates that the ground-item catalog has, grouped into stacks. */
 function catalogLoot(inst: MoonTreeInstance): { itemId: string; count: number }[] {
   const items = new Map<string, number>();
-  for (const itemId of inst.components.lootdropper.GenerateLoot()) if (Object.hasOwn(catalog.items, itemId)) items.set(itemId, (items.get(itemId) ?? 0) + 1);
+  for (const itemId of inst.components.lootdropper.GenerateLoot()) { if (Object.hasOwn(catalog.items, itemId)) { items.set(itemId, (items.get(itemId) ?? 0) + 1); } }
   return [...items].map(([itemId, count]) => ({ itemId, count }));
 }
 
@@ -297,8 +297,8 @@ function on_wake(inst: MoonTreeInstance): void {
 function on_sleep(inst: MoonTreeInstance): void {
   inst.components.growable.OnEntitySleep();
   if (inst.burn?.burnable.IsBurning()) {
-    if (inst.hasTag('stump')) inst.DoTaskInTime(0, burnStump);
-    else on_moon_tree_burnt(inst, true);
+    if (inst.hasTag('stump')) { inst.DoTaskInTime(0, burnStump); }
+    else { on_moon_tree_burnt(inst, true); }
   }
   unbindFire(inst);
   inst.stopSnow?.(); inst.stopSnow = undefined;
@@ -309,9 +309,9 @@ function on_save(inst: MoonTreeInstance, data: EntityPersistData): void {
   const stump = inst.hasTag('stump');
   const burnt = !stump && (inst.hasTag('burnt') || inst.burn?.burnable.IsBurning() === true);
   data.moonTree = { size: sizeOf(inst), ...(stump ? { stump: true as const } : {}), ...(burnt ? { burnt: true as const } : {}) };
-  if (burnt) data.growable = { stage: inst.components.growable.GetStage() };
+  if (burnt) { data.growable = { stage: inst.components.growable.GetStage() }; }
   // The timer's record keeps the name existing saves hold.
-  if (data.timer) data.moonTreeTimer = data.timer;
+  if (data.timer) { data.moonTreeTimer = data.timer; }
   delete data.timer;
 }
 
@@ -326,7 +326,7 @@ function on_load(inst: MoonTreeInstance, data: EntityPersistData): void {
   if (saved?.stump) {
     make_stump(inst);
     inst.sprite.playOnce(`stump_${sizeOf(inst)}`);
-  } else if (saved?.burnt) on_moon_tree_burnt(inst, true);
+  } else if (saved?.burnt) { on_moon_tree_burnt(inst, true); }
 }
 
 function onSpawned(inst: MoonTreeInstance): void {
@@ -346,7 +346,7 @@ export class MoonButterflySaplingInstance extends PrefabInstance {
     this.sprite.playOnce('idle');
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1.6 * UNIT; this.logicalPlacement = true;
-    for (const tag of ['plant', 'moon_tree']) this.addTag(tag);
+    for (const tag of ['plant', 'moon_tree']) { this.addTag(tag); }
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('DIG'); workable.SetWorkLeft(1);
     workable.SetOnFinishCallback(dig_up_sapling);
@@ -368,7 +368,7 @@ function dig_up_sapling(inst: MoonButterflySaplingInstance): void {
 
 function grow_sapling(inst: MoonButterflySaplingInstance): void {
   const tree = inst.world.spawnPrefab('moon_tree_short', inst.position);
-  if (!(tree instanceof MoonTreeInstance)) throw new Error('moon_tree_short did not spawn a moon tree');
+  if (!(tree instanceof MoonTreeInstance)) { throw new Error('moon_tree_short did not spawn a moon tree'); }
   tree.growfromseed();
   inst.remove();
 }

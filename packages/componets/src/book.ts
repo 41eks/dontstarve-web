@@ -45,9 +45,9 @@ export class Book<Inst extends BookInst, Reader extends BookReaderInst, World ex
   ConsumeUse(): void { this.inst.components.finiteuses?.use(1); }
 
   Interact(fn: BookFn<Inst, Reader, World> | undefined, reader: Reader, world: World): BookResult {
-    if (!fn) return [true];
+    if (!fn) { return [true]; }
     const result = fn(this.inst, reader, world);
-    if (result[0]) this.ConsumeUse();
+    if (result[0]) { this.ConsumeUse(); }
     return result;
   }
 
@@ -60,7 +60,7 @@ export class Book<Inst extends BookInst, Reader extends BookReaderInst, World ex
   OnRead(reader: Reader, world: World): BookResult {
     const result = this.Interact(this.onread, reader, world);
     if (result[0] && reader.components.sanity) {
-      if (this.fx !== undefined) world.spawnFx?.(this.fx, reader);
+      if (this.fx !== undefined) { world.spawnFx?.(this.fx, reader); }
       this.DoReadPenalties(reader);
     }
     return result;

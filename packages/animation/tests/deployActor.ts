@@ -25,7 +25,7 @@ export function deployActor(world: WorldContext, inventory: InventoryStore, map:
     /** PlayerController:DoAction with the active item, then the locomotor's arrival. */
     deploy(point: THREE.Vector3): boolean {
       const action = controller.createAction({ action: 'DEPLOY', invobject: inventory.GetActiveItem() as never, pos: point });
-      if (!action || !controller.DoAction(action)) return false;
+      if (!action || !controller.DoAction(action)) { return false; }
       walker.arrive();
       return true;
     } };

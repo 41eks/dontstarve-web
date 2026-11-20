@@ -15,19 +15,19 @@ export function disposeSprite(root: THREE.Object3D): void {
   root.traverse((object) => {
     // Static sprites own fallback atlas materials even when the current pose
     // only draws skin symbols. Release those resources along with visible ones.
-    for (const material of object.userData.ownedSpriteMaterials ?? []) materials.add(material);
-    if (!(object instanceof THREE.Mesh)) return;
+    for (const material of object.userData.ownedSpriteMaterials ?? []) { materials.add(material); }
+    if (!(object instanceof THREE.Mesh)) { return; }
     geometries.add(object.geometry);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       materials.add(material);
     }
   });
   for (const material of materials) {
-    for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
+    for (const value of Object.values(material)) { if (value instanceof THREE.Texture) { textures.add(value); } }
   }
-  for (const geometry of geometries) geometry.dispose();
-  for (const material of materials) material.dispose();
-  for (const texture of textures) texture.dispose();
+  for (const geometry of geometries) { geometry.dispose(); }
+  for (const material of materials) { material.dispose(); }
+  for (const texture of textures) { texture.dispose(); }
   root.userData.disposeSpriteSource?.();
   delete root.userData.disposeSpriteSource;
 }

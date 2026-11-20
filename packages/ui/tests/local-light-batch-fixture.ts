@@ -56,7 +56,7 @@ export async function checkLocalLightBatch() {
   await settle();
   const stress = draw();
   // Reuse the grown buffers with a smaller batch before removing every source.
-  for (const child of [...scene.children].slice(2)) child.removeFromParent();
+  for (const child of [...scene.children].slice(2)) { child.removeFromParent(); }
   const shrunk = { ...draw(), pixel: sample() };
   scene.clear();
   const removed = { ...draw(), pixel: sample() };

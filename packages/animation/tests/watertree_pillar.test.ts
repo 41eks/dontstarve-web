@@ -137,7 +137,7 @@ it('keeps a c_spawn pillar through c_save and a reload, and rejects c_give', asy
       timer: { timers: { regrow_oceantreenut: { timeleft: 300, paused: false, initial_time: 300 } } } } } });
     await second.registry.restoreAll({ watertree_pillar: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof WatertreePillarInstance)) throw new Error('The saved pillar did not load');
+    if (!(loaded instanceof WatertreePillarInstance)) { throw new Error('The saved pillar did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: true });
     expect([loaded.num_oceantreenuts, loaded.last_ram_time, loaded._cocoons_to_regrow]).toEqual([2, 42.5, 0]);

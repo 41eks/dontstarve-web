@@ -174,12 +174,12 @@ function groundItemArchives(prefab: string, records: readonly ArchiveSaveRecord[
     const stack = record.components?.stack;
     const item = Object.hasOwn(GROUND_ART_DEFINITIONS, prefab)
       ? { ...GROUND_ART_DEFINITIONS[prefab], ...GROUND_ART_VARIANTS[prefab]?.[stack?.variant ?? ''] } : undefined;
-    if (!item) continue;
-    for (const build of item.buildArchives) specs.push({ animation: item.animationArchive, build });
-    for (const { archive } of Object.values(item.symbolOverrides)) specs.push({ animation: item.animationArchive, build: archive });
+    if (!item) { continue; }
+    for (const build of item.buildArchives) { specs.push({ animation: item.animationArchive, build }); }
+    for (const { archive } of Object.values(item.symbolOverrides)) { specs.push({ animation: item.animationArchive, build: archive }); }
     const skin = stack?.skinId !== undefined && Object.hasOwn(item.skinArchives, stack.skinId)
       ? item.skinArchives[stack.skinId] : undefined;
-    if (skin) specs.push(skin);
+    if (skin) { specs.push(skin); }
   }
   return specs;
 }
@@ -190,27 +190,27 @@ const ruinsStatueGem: PrefabComponentParser = (value, path) => {
   const data = object(value, path, ['ruinsStatueMage']);
   const state = object(data.ruinsStatueMage, `${path}.ruinsStatueMage`, ['gem']);
   if (!RUINS_STATUE_GEMS.includes(state.gem as typeof RUINS_STATUE_GEMS[number]))
-    fail(`${path}.ruinsStatueMage.gem`, 'unsupported ruins statue gem');
+    { fail(`${path}.ruinsStatueMage.gem`, 'unsupported ruins statue gem'); }
   return { ruinsStatueMage: { gem: state.gem as typeof RUINS_STATUE_GEMS[number] } };
 };
 /** archive_pillar.lua OnSave: data.broken. */
 const archivePillar: PrefabComponentParser = (value, path) => {
   const { broken } = object(value, path, ['broken']);
-  if (broken !== undefined && typeof broken !== 'boolean') fail(`${path}.broken`, 'expected boolean');
+  if (broken !== undefined && typeof broken !== 'boolean') { fail(`${path}.broken`, 'expected boolean'); }
   return broken === undefined ? {} : { broken };
 };
 /** vault_pillar.lua OnSave: data.capped or data.broken, and world generation's data.random. */
 const vaultPillar: PrefabComponentParser = (value, path) => {
   const { capped, broken, random } = object(value, path, ['capped', 'broken', 'random']);
   const cap = capped === undefined || capped === 1 || capped === 2 ? capped : fail(`${path}.capped`, 'expected 1 or 2');
-  if (broken !== undefined && broken !== 1) fail(`${path}.broken`, 'expected 1');
-  if (random !== undefined && random !== true) fail(`${path}.random`, 'expected true');
+  if (broken !== undefined && broken !== 1) { fail(`${path}.broken`, 'expected 1'); }
+  if (random !== undefined && random !== true) { fail(`${path}.random`, 'expected true'); }
   return { ...cap ? { capped: cap } : {}, ...broken ? { broken: 1 as const } : {}, ...random ? { random: true as const } : {} };
 };
 /** monkeypillar.lua OnSave: data.pillar_id. */
 const monkeyPillar: PrefabComponentParser = (value, path) => {
   const { pillar_id } = object(value, path, ['pillar_id']);
-  if (pillar_id === undefined) return {};
+  if (pillar_id === undefined) { return {}; }
   const id = MONKEY_PILLAR_IDS.find(known => known === pillar_id) ?? fail(`${path}.pillar_id`, 'unsupported monkey pillar');
   return { pillar_id: id };
 };
@@ -219,7 +219,7 @@ const WATERTREE_PILLAR_TIMERS: Readonly<Record<string, number>> = { regrow_ocean
 /** watertree_pillar.lua OnSave: num_oceantreenuts, last_ram_time and cocoons_to_regrow, with its childspawner and timer. */
 const watertreePillar: PrefabComponentParser = (value, path) => {
   const { watertreePillar: state } = object(value, path, ['watertreePillar']);
-  if (state === undefined) return {};
+  if (state === undefined) { return {}; }
   const p = `${path}.watertreePillar`;
   const data = object(state, p, ['num_oceantreenuts', 'last_ram_time', 'cocoons_to_regrow', 'childspawner', 'timer']);
   const child = object(data.childspawner, `${p}.childspawner`, ['childreninside', 'childrenoutside']);
@@ -229,14 +229,14 @@ const watertreePillar: PrefabComponentParser = (value, path) => {
     childspawner: { childreninside: integer(child.childreninside, `${p}.childspawner.childreninside`, 0, 1),
       childrenoutside: array(child.childrenoutside, `${p}.childspawner.childrenoutside`, 0).map((id, i) => string(id, `${p}.childspawner.childrenoutside[${i}]`)) },
   };
-  if (data.last_ram_time !== undefined) saved.last_ram_time = number(data.last_ram_time, `${p}.last_ram_time`, 0);
-  if (data.cocoons_to_regrow !== undefined) saved.cocoons_to_regrow = integer(data.cocoons_to_regrow, `${p}.cocoons_to_regrow`, 0, 1000);
+  if (data.last_ram_time !== undefined) { saved.last_ram_time = number(data.last_ram_time, `${p}.last_ram_time`, 0); }
+  if (data.cocoons_to_regrow !== undefined) { saved.cocoons_to_regrow = integer(data.cocoons_to_regrow, `${p}.cocoons_to_regrow`, 0, 1000); }
   if (data.timer !== undefined) {
     const timers = object(object(data.timer, `${p}.timer`, ['timers']).timers, `${p}.timer.timers`, Object.keys(WATERTREE_PILLAR_TIMERS));
     saved.timer = { timers: Object.fromEntries(Object.entries(timers).filter(([, timer]) => timer !== undefined).map(([name, timer]) => {
       const tp = `${p}.timer.timers.${name}`, t = object(timer, tp, ['timeleft', 'paused', 'initial_time']);
       const limit = WATERTREE_PILLAR_TIMERS[name]!;
-      if (typeof t.paused !== 'boolean') fail(`${tp}.paused`, 'expected boolean');
+      if (typeof t.paused !== 'boolean') { fail(`${tp}.paused`, 'expected boolean'); }
       return [name, { timeleft: number(t.timeleft, `${tp}.timeleft`, 0, limit), paused: t.paused,
         initial_time: number(t.initial_time, `${tp}.initial_time`, 0, limit) }];
     })) };
@@ -248,7 +248,7 @@ const oceanTreeGrowable = componentParser({ keys: ['growable'], growthStages: 3 
 const oceanTree: PrefabComponentParser = (value, path, context) => {
   const { growable, oceantree: state } = object(value, path, ['growable', 'oceantree']);
   const components = oceanTreeGrowable(growable === undefined ? {} : { growable }, path, context);
-  if (state === undefined) return components;
+  if (state === undefined) { return components; }
   const p = `${path}.oceantree`;
   const data = object(state, p, ['no_grow', 'buds', 'buds_used', 'supertall_growth_progress']);
   const buds = (key: 'buds' | 'buds_used') => array(data[key], `${p}.${key}`, 7).map((bud, i) => integer(bud, `${p}.${key}[${i}]`, 1, 7));
@@ -256,33 +256,33 @@ const oceanTree: PrefabComponentParser = (value, path, context) => {
     supertall_growth_progress: integer(data.supertall_growth_progress, `${p}.supertall_growth_progress`, 0, STAGES_TO_SUPERTALL - 1),
   };
   if (data.no_grow !== undefined) {
-    if (typeof data.no_grow !== 'boolean') fail(`${p}.no_grow`, 'expected boolean');
+    if (typeof data.no_grow !== 'boolean') { fail(`${p}.no_grow`, 'expected boolean'); }
     saved.no_grow = data.no_grow;
   }
-  if (data.buds !== undefined) saved.buds = buds('buds');
-  if (data.buds_used !== undefined) saved.buds_used = buds('buds_used');
+  if (data.buds !== undefined) { saved.buds = buds('buds'); }
+  if (data.buds_used !== undefined) { saved.buds_used = buds('buds_used'); }
   return { ...components, oceantree: saved };
 };
 /** oceantree_pillar.lua OnSave: data.droppedvines. */
 const oceanTreePillar: PrefabComponentParser = (value, path) => {
   const { oceantreePillar: state } = object(value, path, ['oceantreePillar']);
-  if (state === undefined) return {};
+  if (state === undefined) { return {}; }
   const { droppedvines } = object(state, `${path}.oceantreePillar`, ['droppedvines']);
-  if (droppedvines !== true) fail(`${path}.oceantreePillar.droppedvines`, 'expected true');
+  if (droppedvines !== true) { fail(`${path}.oceantreePillar.droppedvines`, 'expected true'); }
   return { oceantreePillar: { droppedvines: true } };
 };
 /** oceanvine_deco.lua onsave: data.animnum, 1..6. */
 const oceanVineDeco: PrefabComponentParser = (value, path) => {
   const { animnum } = object(value, path, ['animnum']);
-  if (animnum === undefined) return {};
+  if (animnum === undefined) { return {}; }
   return { animnum: OCEANVINE_DECO_ANIMNUMS.find(n => n === animnum) ?? fail(`${path}.animnum`, 'expected 1..6') };
 };
 /** atrium_overgrowth.lua rune_onsave: data.storyprogress, 1..NUM_STORY_LINES once assigned. */
 const atriumOvergrowth: PrefabComponentParser = (value, path) => {
   const { atriumOvergrowth: state } = object(value, path, ['atriumOvergrowth']);
-  if (state === undefined) return {};
+  if (state === undefined) { return {}; }
   const { storyprogress } = object(state, `${path}.atriumOvergrowth`, ['storyprogress']);
-  if (storyprogress === undefined) return {};
+  if (storyprogress === undefined) { return {}; }
   if (typeof storyprogress !== 'number' || !Number.isInteger(storyprogress) || storyprogress < 1 || storyprogress > ATRIUM_OVERGROWTH_STORY_LINES) {
     fail(`${path}.atriumOvergrowth.storyprogress`, `expected 1..${ATRIUM_OVERGROWTH_STORY_LINES}`);
   }
@@ -295,8 +295,8 @@ const mastMalbatross: PrefabComponentParser = (value, path) => {
   if (state !== undefined) {
     const at = `${path}.mastMalbatross`;
     const { burnt, rotation, is_sail_raised, skinId } = object(state, at, ['burnt', 'rotation', 'is_sail_raised', 'skinId']);
-    if (burnt !== undefined && burnt !== true) fail(`${at}.burnt`, 'expected true');
-    if (is_sail_raised !== undefined && typeof is_sail_raised !== 'boolean') fail(`${at}.is_sail_raised`, 'expected a boolean');
+    if (burnt !== undefined && burnt !== true) { fail(`${at}.burnt`, 'expected true'); }
+    if (is_sail_raised !== undefined && typeof is_sail_raised !== 'boolean') { fail(`${at}.is_sail_raised`, 'expected a boolean'); }
     result.mastMalbatross = {
       ...(burnt ? { burnt: true } : {}),
       ...(rotation === undefined ? {} : { rotation: number(rotation, `${at}.rotation`, -360, 360) }),
@@ -338,7 +338,7 @@ const oasislake: PrefabComponentParser = (value, path) => {
   const result: ReturnType<PrefabComponentParser> = {};
   if (state !== undefined) {
     const { regrowth } = object(state, `${path}.oasislake`, ['regrowth']);
-    if (regrowth !== false) throw new Error(`${path}.oasislake.regrowth must be false`);
+    if (regrowth !== false) { throw new Error(`${path}.oasislake.regrowth must be false`); }
     result.oasislake = { regrowth };
   }
   if (fishable !== undefined) {
@@ -398,7 +398,7 @@ const catalogBuilding = (burntStructure: boolean): PrefabComponentParser => (val
     const container = context.catalog.buildings[context.prefab].container;
     return (burntStructure ? container ? burntStorage : burntBuilding : container ? storage : building)(value, path, context);
   }
-  if (context.catalog.walls.includes(context.prefab)) return wall(value, path, context);
+  if (context.catalog.walls.includes(context.prefab)) { return wall(value, path, context); }
   return fail(path, `missing building definition for ${context.prefab}`);
 };
 /** The catalog buildings whose prefab makes them a burnable structure: MakeXBurnable(inst, nil, nil, true). */
@@ -418,7 +418,7 @@ const beeQueenHiveComponents: PrefabComponentParser = (value, path) => {
     const timer = object(data.beeQueenHiveTimer, `${path}.beeQueenHiveTimer`, ['timers']);
     const timers = object(timer.timers, `${path}.beeQueenHiveTimer.timers`, ['hiveregen']);
     const regen = object(timers.hiveregen, `${path}.beeQueenHiveTimer.timers.hiveregen`, ['timeleft', 'paused', 'initial_time']);
-    if (typeof regen.paused !== 'boolean') fail(`${path}.beeQueenHiveTimer.timers.hiveregen.paused`, 'expected boolean');
+    if (typeof regen.paused !== 'boolean') { fail(`${path}.beeQueenHiveTimer.timers.hiveregen.paused`, 'expected boolean'); }
     const duration = number(regen.initial_time, `${path}.beeQueenHiveTimer.timers.hiveregen.initial_time`, 0, 120);
     components.beeQueenHiveTimer = { timers: { hiveregen: {
       timeleft: number(regen.timeleft, `${path}.beeQueenHiveTimer.timers.hiveregen.timeleft`, 0, duration),
@@ -436,8 +436,8 @@ function ruinsRelicParser(id: RuinsRelicId): PrefabComponentParser {
     const components: EntityPersistData = {};
     if (data.ruinsRelic !== undefined) {
       const state = object(data.ruinsRelic, `${path}.ruinsRelic`, replica ? skins ? ['skinId'] : [] : ['rubble']);
-      if (state.rubble !== undefined && state.rubble !== true) fail(`${path}.ruinsRelic.rubble`, 'expected true');
-      if (state.skinId !== undefined && !Object.hasOwn(skins ?? {}, String(state.skinId))) fail(`${path}.ruinsRelic.skinId`, 'unsupported chair skin');
+      if (state.rubble !== undefined && state.rubble !== true) { fail(`${path}.ruinsRelic.rubble`, 'expected true'); }
+      if (state.skinId !== undefined && !Object.hasOwn(skins ?? {}, String(state.skinId))) { fail(`${path}.ruinsRelic.skinId`, 'unsupported chair skin'); }
       components.ruinsRelic = state as import('@dontstarve-web/prefab/ruinsrelic').RuinsRelicSaveState;
     }
     if (data.health !== undefined) {
@@ -447,7 +447,7 @@ function ruinsRelicParser(id: RuinsRelicId): PrefabComponentParser {
     }
     if (data.inventoryitemmoisture !== undefined) {
       const moisture = object(data.inventoryitemmoisture, `${path}.inventoryitemmoisture`, ['moisture', 'wet']);
-      if (moisture.wet !== undefined && moisture.wet !== true) fail(`${path}.inventoryitemmoisture.wet`, 'expected true');
+      if (moisture.wet !== undefined && moisture.wet !== true) { fail(`${path}.inventoryitemmoisture.wet`, 'expected true'); }
       components.inventoryitemmoisture = {
         ...moisture.moisture === undefined ? {} : { moisture: number(moisture.moisture, `${path}.inventoryitemmoisture.moisture`, 0, 100) },
         ...moisture.wet === true ? { wet: true as const } : {},
@@ -493,21 +493,21 @@ const WORLD_PREFAB_DEFINITIONS = {
     const components: EntityPersistData = {};
     if (data.statueglommer !== undefined) {
       const state = object(data.statueglommer, `${path}.statueglommer`, ['worked', 'spawned']);
-      for (const key of ['worked', 'spawned'] as const) if (state[key] !== undefined && state[key] !== true)
-        fail(`${path}.statueglommer.${key}`, 'expected true');
+      for (const key of ['worked', 'spawned'] as const) { if (state[key] !== undefined && state[key] !== true)
+        { fail(`${path}.statueglommer.${key}`, 'expected true'); } }
       components.statueglommer = { ...(state.worked ? { worked: true } : {}), ...(state.spawned ? { spawned: true } : {}) };
     }
     if (data.pickable !== undefined) {
       const state = object(data.pickable, `${path}.pickable`, ['picked', 'caninteractwith']);
-      if (state.picked !== undefined && state.picked !== true) fail(`${path}.pickable.picked`, 'expected true');
+      if (state.picked !== undefined && state.picked !== true) { fail(`${path}.pickable.picked`, 'expected true'); }
       if (state.caninteractwith !== undefined && state.caninteractwith !== true)
-        fail(`${path}.pickable.caninteractwith`, 'expected true');
+        { fail(`${path}.pickable.caninteractwith`, 'expected true'); }
       components.pickable = { ...(state.picked ? { picked: true } : {}),
         ...(state.caninteractwith ? { caninteractwith: true } : {}) };
     }
     if (data.workable !== undefined) {
       const state = object(data.workable, `${path}.workable`, ['maxwork', 'workleft']);
-      if (state.maxwork !== -1) fail(`${path}.workable.maxwork`, 'expected -1');
+      if (state.maxwork !== -1) { fail(`${path}.workable.maxwork`, 'expected -1'); }
       components.workable = { maxwork: -1, workleft: number(state.workleft, `${path}.workable.workleft`, 0, STATUEGLOMMER_WORK) };
     }
     return components;
@@ -517,36 +517,36 @@ const WORLD_PREFAB_DEFINITIONS = {
     const components: EntityPersistData = {};
     const flags = (value: unknown, field: string, keys: readonly string[]) => {
       const record = object(value, field, keys);
-      for (const [key, flag] of Object.entries(record)) if (flag !== true) fail(`${field}.${key}`, 'expected true');
+      for (const [key, flag] of Object.entries(record)) { if (flag !== true) { fail(`${field}.${key}`, 'expected true'); } }
       return record;
     };
-    if (data.atriumGate !== undefined) components.atriumGate = flags(data.atriumGate, `${path}.atriumGate`,
-      ['vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key']) as typeof components.atriumGate;
-    if (data.pickable !== undefined) components.pickable = flags(data.pickable, `${path}.pickable`,
-      ['picked', 'paused', 'caninteractwith']) as typeof components.pickable;
-    if (data.charliecutscene !== undefined) components.charliecutscene = flags(data.charliecutscene, `${path}.charliecutscene`,
-      ['running', 'gatefixed']) as typeof components.charliecutscene;
+    if (data.atriumGate !== undefined) { components.atriumGate = flags(data.atriumGate, `${path}.atriumGate`,
+      ['vault_key_socketed', 'can_spawn_charlie_hand_keystone', 'launch_key']) as typeof components.atriumGate; }
+    if (data.pickable !== undefined) { components.pickable = flags(data.pickable, `${path}.pickable`,
+      ['picked', 'paused', 'caninteractwith']) as typeof components.pickable; }
+    if (data.charliecutscene !== undefined) { components.charliecutscene = flags(data.charliecutscene, `${path}.charliecutscene`,
+      ['running', 'gatefixed']) as typeof components.charliecutscene; }
     if (data.worldsettingstimer !== undefined) {
       const timer = object(data.worldsettingstimer, `${path}.worldsettingstimer`, ['timers']);
       const entries = object(timer.timers, `${path}.worldsettingstimer.timers`, ATRIUM_GATE_TIMER_NAMES);
       const timers: NonNullable<typeof components.worldsettingstimer>['timers'] = {};
-      for (const name of ATRIUM_GATE_TIMER_NAMES) if (entries[name] !== undefined) {
+      for (const name of ATRIUM_GATE_TIMER_NAMES) { if (entries[name] !== undefined) {
         const field = `${path}.worldsettingstimer.timers.${name}`;
         const item = object(entries[name], field, ['timeleft', 'paused', 'blocklongupdate', 'initial_time']);
         if (typeof item.paused !== 'boolean' || (item.blocklongupdate !== undefined && typeof item.blocklongupdate !== 'boolean'))
-          fail(field, 'expected boolean timer flags');
+          { fail(field, 'expected boolean timer flags'); }
         timers[name] = { timeleft: number(item.timeleft, `${field}.timeleft`, 0, 1), paused: item.paused,
           ...(item.blocklongupdate === undefined ? {} : { blocklongupdate: item.blocklongupdate }),
           ...(item.initial_time === undefined ? {} : { initial_time: number(item.initial_time, `${field}.initial_time`, 0, 9600) }) };
-      }
+      } }
       components.worldsettingstimer = { timers };
     }
     if (data.entitytracker !== undefined) {
       const tracker = object(data.entitytracker, `${path}.entitytracker`, ['entities']);
-      if (!Array.isArray(tracker.entities)) fail(`${path}.entitytracker.entities`, 'expected array');
+      if (!Array.isArray(tracker.entities)) { fail(`${path}.entitytracker.entities`, 'expected array'); }
       components.entitytracker = { entities: tracker.entities.map((entry: unknown, index: number) => {
         const field = `${path}.entitytracker.entities.${index}`, item = object(entry, field, ['name', 'GUID']);
-        if (item.name !== 'stalker' && item.name !== 'charlie_hand') fail(`${field}.name`, 'unsupported target');
+        if (item.name !== 'stalker' && item.name !== 'charlie_hand') { fail(`${field}.name`, 'unsupported target'); }
         return { name: item.name, GUID: number(item.GUID, `${field}.GUID`, 0, Number.MAX_SAFE_INTEGER) };
       }) };
     }
@@ -563,11 +563,11 @@ const WORLD_PREFAB_DEFINITIONS = {
   atriumOvergrowths: definePrefabs([ATRIUM_OVERGROWTH_ID], atriumOvergrowth, true, ATRIUM_OVERGROWTH_ARCHIVES),
   chessJunk: definePrefabs(CHESSJUNK_IDS, (value, path) => {
     const data = object(value, path, ['chessJunk']);
-    if (data.chessJunk === undefined) return {};
+    if (data.chessJunk === undefined) { return {}; }
     const state = object(data.chessJunk, `${path}.chessJunk`, ['repaired', 'repairerid', 'repairerchar']);
-    if (state.repaired !== true) fail(`${path}.chessJunk.repaired`, 'expected true');
+    if (state.repaired !== true) { fail(`${path}.chessJunk.repaired`, 'expected true'); }
     for (const field of ['repairerid', 'repairerchar'] as const)
-      if (state[field] !== undefined && typeof state[field] !== 'string') fail(`${path}.chessJunk.${field}`, 'expected string');
+      { if (state[field] !== undefined && typeof state[field] !== 'string') { fail(`${path}.chessJunk.${field}`, 'expected string'); } }
     return { chessJunk: { repaired: true,
       ...(state.repairerid === undefined ? {} : { repairerid: state.repairerid as string }),
       ...(state.repairerchar === undefined ? {} : { repairerchar: state.repairerchar as string }) } };
@@ -578,12 +578,12 @@ const WORLD_PREFAB_DEFINITIONS = {
     const components: EntityPersistData = {};
     if (data.chesspiece !== undefined) {
       if (object(data.chesspiece, `${path}.chesspiece`, ['materialid']).materialid !== CHESSPIECE_MARBLE_MATERIAL_ID)
-        fail(`${path}.chesspiece.materialid`, 'expected marble');
+        { fail(`${path}.chesspiece.materialid`, 'expected marble'); }
       components.chesspiece = { materialid: CHESSPIECE_MARBLE_MATERIAL_ID };
     }
     if (data.submersible !== undefined) {
       const flag = object(data.submersible, `${path}.submersible`, ['force_no_repositioning']).force_no_repositioning;
-      if (typeof flag !== 'boolean') fail(`${path}.submersible.force_no_repositioning`, 'expected boolean');
+      if (typeof flag !== 'boolean') { fail(`${path}.submersible.force_no_repositioning`, 'expected boolean'); }
       components.submersible = { force_no_repositioning: flag };
     }
     return components;
@@ -669,7 +669,7 @@ const WORLD_PREFAB_DEFINITIONS = {
         .filter(key => child[key] !== undefined).map(key => [key, number(child[key], `${path}.dragonflySpawner.childspawner.${key}`, 0)])),
       ...Object.fromEntries((['spawning', 'regening', 'queued_spawn'] as const)
         .filter(key => child[key] !== undefined).map(key => {
-          if (typeof child[key] !== 'boolean') fail(`${path}.dragonflySpawner.childspawner.${key}`, 'expected boolean');
+          if (typeof child[key] !== 'boolean') { fail(`${path}.dragonflySpawner.childspawner.${key}`, 'expected boolean'); }
           return [key, child[key]];
         })),
     };
@@ -680,7 +680,7 @@ const WORLD_PREFAB_DEFINITIONS = {
       const value = object(timers.regen_dragonfly, `${path}.dragonflySpawner.worldsettingstimer.timers.regen_dragonfly`,
         ['timeleft', 'paused', 'initial_time']);
       // worldsettingstimer.lua OnSave writes v.paused, which is nil for a timer that was never paused.
-      if (value.paused !== undefined && typeof value.paused !== 'boolean') fail(`${path}.dragonflySpawner.worldsettingstimer.paused`, 'expected boolean');
+      if (value.paused !== undefined && typeof value.paused !== 'boolean') { fail(`${path}.dragonflySpawner.worldsettingstimer.paused`, 'expected boolean'); }
       worldsettingstimer = { timers: { regen_dragonfly: { timeleft: number(value.timeleft, `${path}.dragonflySpawner.worldsettingstimer.timeleft`, 0),
         paused: value.paused === true, initial_time: number(value.initial_time, `${path}.dragonflySpawner.worldsettingstimer.initial_time`, 0) } } };
     }
@@ -755,7 +755,7 @@ export function prefabSaveParsers(definitions: readonly PrefabDefinition[]): Rea
   const parsers = new Map<string, PrefabComponentParser>();
   for (const definition of definitions) {
     for (const id of definition.prefabIds) {
-      if (parsers.has(id)) throw new Error(`Duplicate saved prefab definition: ${id}`);
+      if (parsers.has(id)) { throw new Error(`Duplicate saved prefab definition: ${id}`); }
       parsers.set(id, definition.parseComponents);
     }
   }
@@ -769,7 +769,7 @@ export function savedPrefabArchives(
   const archives = new Map<string, AnimationArchiveSpec>();
   for (const definition of definitions) {
     for (const id of definition.prefabIds) {
-      if (!entities[id]?.length) continue;
+      if (!entities[id]?.length) { continue; }
       for (const spec of definition.archives(id, entities[id])) {
         archives.set(typeof spec === 'string' ? spec : `${spec.animation}\n${spec.build}`, spec);
       }

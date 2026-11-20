@@ -116,7 +116,7 @@ it('keeps a c_spawn overgrowth through c_save and a reload, and rejects c_give',
       components: { atriumOvergrowth: { storyprogress: 3 } } });
     await second.registry.restoreAll({ atrium_overgrowth: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof AtriumOvergrowthInstance)) throw new Error('The saved overgrowth did not load');
+    if (!(loaded instanceof AtriumOvergrowthInstance)) { throw new Error('The saved overgrowth did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
     expect(loaded.storyprogress).toBe(3);

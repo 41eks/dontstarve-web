@@ -46,22 +46,22 @@ export interface PickInventory {
 export function preparePickReceiver(picker: PickActor & { readonly components: { inventory?: PickInventory } },
   itemId: string, count: number, original?: ItemEntity): PreparedPickDoer {
   const inventory = picker.components.inventory as PickInventory | undefined;
-  if (!inventory) return { picker, giveItem: () => false, dispose: () => {} };
+  if (!inventory) { return { picker, giveItem: () => false, dispose: () => {} }; }
   const entity = original ?? inventory.entities.create({ itemId, count });
   let committed = false;
   return {
     loot: entity,
     picker,
     giveItem: (_itemId, _count, sourcePosition) => {
-      if (committed || entity.isRemoved) return false;
+      if (committed || entity.isRemoved) { return false; }
       committed = inventory.GiveItem(entity, sourcePosition);
       return committed;
     },
     giveEntity: (item, sourcePosition) => {
-      if (committed || item !== entity || item.isRemoved) return false;
+      if (committed || item !== entity || item.isRemoved) { return false; }
       committed = inventory.GiveItem(item, sourcePosition);
       return committed;
     },
-    dispose: () => { if (!committed && !original) inventory.entities.destroy(entity); },
+    dispose: () => { if (!committed && !original) { inventory.entities.destroy(entity); } },
   };
 }

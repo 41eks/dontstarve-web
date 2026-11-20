@@ -8,7 +8,7 @@ export const SEEDS_HUNGER = 4.6875;
 
 /** seeds.lua fn / veggies.lua fn_seeds: each seed declares its farmplantable product. */
 export function configureSeedEntity(inst: ItemEntity): void {
-  if (inst.prefab !== 'seeds' && !VEGGIE_SEED_IDS.some(known => known === inst.prefab)) return;
+  if (inst.prefab !== 'seeds' && !VEGGIE_SEED_IDS.some(known => known === inst.prefab)) { return; }
   if (!inst.components.farmplantable) {
     const plantable = addComponent(inst, 'farmplantable', FarmPlantable);
     plantable.plant = inst.prefab === 'seeds' ? 'farm_plant_randomseed' : `farm_plant_${inst.prefab.slice(0, -6)}`;

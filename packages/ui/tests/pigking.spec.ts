@@ -7,7 +7,7 @@ const urls = Object.fromEntries(['main', 'universal', 'camera', 'player'].map(na
 
 async function start(page: Page, errors: string[]) {
   page.on('pageerror', error => errors.push(error.message));
-  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', message => { if (message.type() === 'error') { errors.push(message.text()); } });
   await page.route('**/saves/initial-world.json', async route => {
     const response = await route.fetch(), save = await response.json();
     save.players.local.inventory = { items: {}, equip: {} };
@@ -38,7 +38,7 @@ test('places the default_pigking layout: grass and woodfloor tiles around the ki
     // One per entity: the display root carries the prefab, its drawn sprite only shares the name.
     const count = (prefab: string) => scene.children.filter((o: any) => (window as any).__prefabInstance(o)?.prefab === prefab).length;
     let grass = false;
-    scene.traverse((o: any) => { if (o.name === 'TurfBlend:GRASS' && o.visible) grass = true; });
+    scene.traverse((o: any) => { if (o.name === 'TurfBlend:GRASS' && o.visible) { grass = true; } });
     return { sanity: count('sanityrock'), insanity: count('insanityrock'), grass };
   });
   await expect.poll(layout, { timeout: 20_000 }).toEqual({ sanity: 4, insanity: 4, grass: true });

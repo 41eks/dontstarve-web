@@ -64,7 +64,7 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
     await display.artLoaded();
     const changed = vi.fn();
     const stopSkin = sprite.sprite.subscribe((value, previous) => {
-      if (value.skinId !== previous.skinId) changed(value.skinId, previous.skinId);
+      if (value.skinId !== previous.skinId) { changed(value.skinId, previous.skinId); }
     });
     const components = { ...instance.components };
     // Each archive sprite the display draws joins the shared batches once: a reskin dresses the drawn one instead.
@@ -83,11 +83,11 @@ it.each(['wall_stone', 'wall_dreadstone'] as WallId[])(
         expect(instance.skinId).toBe(skinId);
         expect(instance.sprite).toBe(sprite);
         expect(changed).toHaveBeenLastCalledWith(skinId, previousSkin);
-        for (const [name, component] of Object.entries(components)) expect(instance.components[name as keyof typeof components]).toBe(component);
+        for (const [name, component] of Object.entries(components)) { expect(instance.components[name as keyof typeof components]).toBe(component); }
         // walls.lua resolveanimtoplay: 123 / 400 health is at most 40%, the onequarter pose.
         expect(sprite.currentAnimation).toBe('onequarter_hit');
         expect(release).not.toHaveBeenCalled();
-        for (let frame = 0; frame < 60; frame++) placement.update(1 / 30);
+        for (let frame = 0; frame < 60; frame++) { placement.update(1 / 30); }
         expect(sprite.currentAnimation).toBe('onequarter');
         expect(lookupPrefabInstance(model)?.skinId).toBe(skinId);
         const record = placement.exportRecords()[0].record;

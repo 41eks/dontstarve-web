@@ -42,7 +42,7 @@ async function setup() {
   const health = addComponent(picker, 'health', Health, 150);
   addComponent(picker, 'combat', Combat, () => scheduler.now);
   const events: string[] = [];
-  for (const name of ['attacked', 'thorns']) picker.ListenForEvent(name, () => events.push(name));
+  for (const name of ['attacked', 'thorns']) { picker.ListenForEvent(name, () => events.push(name)); }
   const pick = (model: THREE.Group) => plantInstance(model).components.pickable.pick({ picker, giveItem: () => true });
   return { scheduler, world, inventory, cacti, picker, events, pick, health: () => health.currenthealth,
     dispose() { cacti.dispose(); inventory.dispose(); world.unbind(); } };

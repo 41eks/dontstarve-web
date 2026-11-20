@@ -8,9 +8,9 @@ import { renderSceneWithPasses } from '@dontstarve-web/animation/sceneRenderPass
 
 export async function checkOceanRendering() {
   const tiles = [];
-  for (let row = -5; row < 5; row++) for (let col = 0; col < 5; col++) {
+  for (let row = -5; row < 5; row++) { for (let col = 0; col < 5; col++) {
     tiles.push({ col, row, tileId: WORLD_TILES.OCEAN_COASTAL });
-  }
+  } }
   const map = new TurfMap(120, tiles);
   const ground = await createTurfGround({ assetBaseUrl: '/dst/data', noiseTexture: 'Ground_noise_deciduous',
     tileAtlas: 'DECIDUOUS', size: 120 });
@@ -57,24 +57,24 @@ export async function checkOceanRendering() {
     camera, rate: createSignal(0), cover: createSignal(3), groundOverlay: display });
   // Snow declares its overlay; the ground display loads it and draws it per chunk and layer.
   const overlayMeshes = () => display.root.children.filter(object => object.name === 'GroundOverlay:snow') as THREE.Mesh[];
-  for (let i = 0; i < 100 && !overlayMeshes().some(mesh => mesh.visible); i++) await new Promise(resolve => setTimeout(resolve, 10));
-  if (!overlayMeshes().some(mesh => mesh.visible)) throw new Error('Snow ground overlay did not load');
+  for (let i = 0; i < 100 && !overlayMeshes().some(mesh => mesh.visible); i++) { await new Promise(resolve => setTimeout(resolve, 10)); }
+  if (!overlayMeshes().some(mesh => mesh.visible)) { throw new Error('Snow ground overlay did not load'); }
   const snowy = pixels();
   let coastalSnowPixels = 0;
   // x=180 is the tile boundary at world x=0. The positive-X strip belongs to
   // the ocean grid but contains the land atlas's fading shoreline coverage.
-  for (let y = 180; y < 300; y++) for (let x = 180; x < 220; x++) {
+  for (let y = 180; y < 300; y++) { for (let x = 180; x < 220; x++) {
     const index = (y * 480 + x) * 4;
     if (Math.abs(snowy[index] - dusk[index]) + Math.abs(snowy[index + 1] - dusk[index + 1])
-      + Math.abs(snowy[index + 2] - dusk[index + 2]) > 3) coastalSnowPixels++;
-  }
+      + Math.abs(snowy[index + 2] - dusk[index + 2]) > 3) { coastalSnowPixels++; }
+  } }
   const result = { landBefore: pixel(withoutOcean, 60, 240), landAfter: pixel(daytime, 60, 240),
     oceanBefore: pixel(withoutOcean, 240, 240), oceanAfter: pixel(daytime, 240, 240),
     oceanMoved: pixel(moving, 240, 240), oceanDusk: pixel(dusk, 240, 240),
     oceanSnow: pixel(snowy, 240, 240), snowyLand: pixel(snowy, 60, 240), coastalSnowPixels };
   const previousGeometries = overlayMeshes().map(mesh => mesh.geometry);
   let released = 0;
-  for (const geometry of previousGeometries) geometry.addEventListener('dispose', () => released++);
+  for (const geometry of previousGeometries) { geometry.addEventListener('dispose', () => released++); }
   map.dig(new THREE.Vector3(-6, 0, 6));
   // The edit rebuilds the overlay of the chunk it reaches; this map is a single chunk.
   const coastUpdated = overlayMeshes().length > 0 && overlayMeshes().every(mesh => !previousGeometries.includes(mesh.geometry));
@@ -82,7 +82,7 @@ export async function checkOceanRendering() {
   const materials = overlayMeshes().map(mesh => mesh.material as THREE.Material);
   const borrowedAtlases = new Set<THREE.Texture>(materials.flatMap(material => material.userData.prewarmTextures));
   let borrowedAtlasesReleased = 0;
-  for (const atlas of borrowedAtlases) atlas.addEventListener('dispose', () => borrowedAtlasesReleased++);
+  for (const atlas of borrowedAtlases) { atlas.addEventListener('dispose', () => borrowedAtlasesReleased++); }
   renderer.setRenderTarget(null);
   document.body.append(renderer.domElement);
   renderSceneWithPasses(renderer, scene, camera);

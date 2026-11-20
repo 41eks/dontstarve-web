@@ -51,7 +51,7 @@ export class FirePitInstance extends PrefabInstance {
     constructor(world: PrefabWorldContext, position: ReadonlyVector3) {
         super(FIRE_PIT_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
         const { fire, scheduler } = world;
-        if (!fire || !scheduler) throw new Error('A firepit needs the world\'s fire effects and scheduler');
+        if (!fire || !scheduler) { throw new Error('A firepit needs the world\'s fire effects and scheduler'); }
         this.worldServices = world;
         // The pit lights in fn, and its fire's sounds start where the pit stands.
         this.setPosition(position.x, 0, position.z);
@@ -60,7 +60,7 @@ export class FirePitInstance extends PrefabInstance {
         this.OnSave = (inst, data) => { saveBuilding!(inst, data); onsave(this, data); };
         this.OnLoad = (inst, data) => { loadBuilding!(inst, data); onload(this, data); };
         this.minimap.SetPriority(1);
-        for (const tag of ['campfire', 'structure', 'wildfireprotected', 'cooker', 'storytellingprop']) this.addTag(tag);
+        for (const tag of ['campfire', 'structure', 'wildfireprotected', 'cooker', 'storytellingprop']) { this.addTag(tag); }
         const workable = addComponent(this, 'workable', Workable);
         workable.SetWorkAction('HAMMER');
         workable.SetWorkLeft(4);
@@ -92,7 +92,7 @@ export class FirePitInstance extends PrefabInstance {
         let previous = skin.peek();
         createEffect(() => {
             const skinId = skin.get();
-            if (skinId === previous) return;
+            if (skinId === previous) { return; }
             previous = skinId;
             this.setSkin(skinId);
             this.restart();
@@ -146,7 +146,7 @@ export class FirePitInstance extends PrefabInstance {
             burnable.Ignite(false, undefined, doer);
         }
         burnable.SetFXLevel(newsection, fueled.GetSectionPercent());
-        if (newsection === fueled.sections) this.queued_charcoal = !this.disable_charcoal;
+        if (newsection === fueled.sections) { this.queued_charcoal = !this.disable_charcoal; }
     }
 }
 
@@ -154,13 +154,13 @@ export class FirePitInstance extends PrefabInstance {
 function onsave(inst: FirePitInstance, data: EntityPersistData): void {
     const { fueled } = data;
     delete data.fueled;
-    if (fueled || inst.queued_charcoal) data.firepit = { ...(fueled ? { fueled } : {}), ...(inst.queued_charcoal ? { queued_charcoal: true as const } : {}) };
+    if (fueled || inst.queued_charcoal) { data.firepit = { ...(fueled ? { fueled } : {}), ...(inst.queued_charcoal ? { queued_charcoal: true as const } : {}) }; }
 }
 
 function onload(inst: FirePitInstance, data: EntityPersistData): void {
     const saved = data.firepit;
-    if (saved?.queued_charcoal) inst.queued_charcoal = true;
-    if (saved?.fueled) inst.loadFuel(saved.fueled);
+    if (saved?.queued_charcoal) { inst.queued_charcoal = true; }
+    if (saved?.fueled) { inst.loadFuel(saved.fueled); }
 }
 
 function onbuilt(inst: PrefabInstance): void {

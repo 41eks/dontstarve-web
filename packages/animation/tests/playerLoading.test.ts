@@ -42,22 +42,22 @@ it('creates the logical player and body synchronously and completes actions and 
     const read = vi.fn(() => true);
     const book = testItem({ itemId: 'book_silviculture', count: 1 }); book.def = { fx_under_prefab: 'fx_roots_under_book' };
     expect(animation.sg.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }))).toBe(true);
-    for (let frame = 0; frame < 60 && animation.sg.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
+    for (let frame = 0; frame < 60 && animation.sg.stateName !== 'book2'; frame++) { advancePlayer(animation, 1 / 30); }
     expect(animation.sg.stateName).toBe('book2');
     expect(instance.sprite.sprite.peek().source).toBe(living);
     const fx = [...instance.sprite.fx.peek().values()];
     expect(fx).toHaveLength(2);
     instance.setActive(false); await tick();
-    for (let frame = 0; frame < 240; frame++) advancePlayer(animation, 1 / 30);
+    for (let frame = 0; frame < 240; frame++) { advancePlayer(animation, 1 / 30); }
     expect(read).toHaveBeenCalledOnce();
     expect(instance.sprite.fx.peek().size).toBe(0);
-    for (const child of fx) expect(child.display!.isRemoved).toBe(true);
+    for (const child of fx) { expect(child.display!.isRemoved).toBe(true); }
     makeGhost(animation, true);
     expect(animation.sg.isGhost).toBe(true);
     advancePlayer(animation, 1 / 30);
     expect(instance.sprite.sprite.peek().source).toMatchObject({ bank: 'ghost', buildArchive: 'dynamic/ghost_wortox_build.zip' });
     makeAlive(animation);
-    for (let frame = 0; frame < 120; frame++) advancePlayer(animation, 1 / 30);
+    for (let frame = 0; frame < 120; frame++) { advancePlayer(animation, 1 / 30); }
     expect(animation.sg.isGhost).toBe(false);
     instance.setActive(true); await tick();
     const latest = instance.sprite.sprite.peek();

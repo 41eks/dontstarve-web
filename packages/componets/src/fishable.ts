@@ -48,20 +48,20 @@ export class Fishable {
     const prefabs = [...this.fish.keys()];
     const prefab = this.getfishfn?.(this.inst, fisherman) ?? prefabs[Math.floor(Math.random() * prefabs.length)];
     const fish = prefab === undefined ? undefined : this.fish.get(prefab);
-    if (!fish) return undefined;
+    if (!fish) { return undefined; }
     this.hookedfish.add(fish);
-    if (this.fishleft > 0) this.fishleft--;
+    if (this.fishleft > 0) { this.fishleft--; }
     return fish;
   }
 
   ReleaseFish(fish: HookedFish): void {
-    if (!this.hookedfish.delete(fish)) return;
-    if (this.fishleft < this.maxfish) this.fishleft++;
+    if (!this.hookedfish.delete(fish)) { return; }
+    if (this.fishleft < this.maxfish) { this.fishleft++; }
   }
 
   RemoveFish(fish: HookedFish): HookedFish | undefined {
-    if (!this.hookedfish.delete(fish)) return undefined;
-    if (this.respawn.snapshot.peek().status !== 'scheduled') this.RefreshFish();
+    if (!this.hookedfish.delete(fish)) { return undefined; }
+    if (this.respawn.snapshot.peek().status !== 'scheduled') { this.RefreshFish(); }
     return fish;
   }
 
@@ -70,14 +70,14 @@ export class Fishable {
   Unfreeze(): void { this.setFrozen(false); }
 
   private setFrozen(frozen: boolean): void {
-    if (frozen === this.frozen) return;
+    if (frozen === this.frozen) { return; }
     this.frozen = frozen;
-    if (frozen) this.inst.removeTag('fishable');
-    else this.inst.addTag('fishable');
+    if (frozen) { this.inst.removeTag('fishable'); }
+    else { this.inst.addTag('fishable'); }
   }
 
   RefreshFish(): void {
-    if (this.fishrespawntime !== undefined) this.respawn.start(this.fishrespawntime);
+    if (this.fishrespawntime !== undefined) { this.respawn.start(this.fishrespawntime); }
   }
 
   GetFishPercent(): number { return this.fishleft / this.maxfish; }
@@ -85,7 +85,7 @@ export class Fishable {
   private onRespawn(): void {
     if (this.fishleft < this.maxfish) {
       this.fishleft++;
-      if (this.fishleft < this.maxfish) this.RefreshFish();
+      if (this.fishleft < this.maxfish) { this.RefreshFish(); }
     }
   }
 
@@ -94,7 +94,7 @@ export class Fishable {
   }
 
   OnLoad(data?: FishableSave): void {
-    if (!data) return;
+    if (!data) { return; }
     this.fishleft = data.fish;
     this.RefreshFish();
   }

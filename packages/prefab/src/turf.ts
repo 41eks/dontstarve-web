@@ -22,7 +22,7 @@ export interface TurfGroundOptions {
 
 async function fetchBytes(url: string) {
     const response = await fetch(url);
-    if (!response.ok) throw new Error(`Unable to load ${url}: HTTP ${response.status}`);
+    if (!response.ok) { throw new Error(`Unable to load ${url}: HTTP ${response.status}`); }
     return response.arrayBuffer();
 }
 
@@ -70,7 +70,7 @@ export async function createTurfGround(options: TurfGroundOptions): Promise<THRE
         material.transparent = false;
         texture.offset.set(-size / 2 / tileSize, -size / 2 / tileSize);
         const cell = tileAssets.elements.get('01');
-        if (!cell) throw new Error('The ground tile atlas has no element 01');
+        if (!cell) { throw new Error('The ground tile atlas has no element 01'); }
         geometry.setAttribute('groundTileUv', new THREE.Float32BufferAttribute([
             cell.u1, 1 - cell.v2, cell.u2, 1 - cell.v2,
             cell.u1, 1 - cell.v1, cell.u2, 1 - cell.v1,

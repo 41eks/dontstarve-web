@@ -22,7 +22,7 @@ vi.mock('../../map/src/minimapIcons', () => ({ MinimapIcons: class {
 } }));
 
 let frames: Map<number, FrameRequestCallback>, nextFrame: number;
-const flush = () => { const pending = [...frames.values()]; frames.clear(); for (const fn of pending) fn(-100); };
+const flush = () => { const pending = [...frames.values()]; frames.clear(); for (const fn of pending) { fn(-100); } };
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const options = (): MinimapOptions => ({ terrain: {} as MinimapOptions['terrain'], cellSize: 12,
   getPlayerPosition: () => ({ x: 0, z: 0 }), cameraHeading: createSignal(-90) });

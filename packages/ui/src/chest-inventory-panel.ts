@@ -60,14 +60,14 @@ export function createChestInventoryPanel(
   let openButton: ContainerButtonAction | undefined;
   const pressButton = (event: GameUiEventMap['game:container-button']) => {
     const { containerId } = event.detail;
-    if (!openModel || !openButton || element.slotContainer?.id !== containerId) return;
+    if (!openModel || !openButton || element.slotContainer?.id !== containerId) { return; }
     actions?.performContainerAction(openModel, openButton, player);
   };
   element.addEventListener('game:container-button', pressButton);
 
   const update = () => {
     if (!openModel || !openModel.visible || (!element.slotContainer && !element.isClosing)) {
-      if (!element.hidden) element.hidden = true;
+      if (!element.hidden) { element.hidden = true; }
       return;
     }
 
@@ -117,8 +117,8 @@ export function createChestInventoryPanel(
     const inView = anchor.z >= -1 && anchor.z <= 1
       && anchor.x >= -1.2 && anchor.x <= 1.2
       && anchor.y >= -1.2 && anchor.y <= 1.2;
-    if (element.hidden === inView) element.hidden = !inView;
-    if (!inView) return;
+    if (element.hidden === inView) { element.hidden = !inView; }
+    if (!inView) { return; }
 
     const canvasBounds = canvas.getBoundingClientRect();
     element.setAnchor(
@@ -130,7 +130,7 @@ export function createChestInventoryPanel(
   const playerpositions = getWatchWorldContent(WorldContentKey.PlayerPositions, stop => cleanups.push(stop));
   createEffect(() => { playerpositions.get(); update(); });
   const close = () => {
-    if (openModel) closeContainer(openModel);
+    if (openModel) { closeContainer(openModel); }
     if (!element.isClosing) {
       openModel = undefined;
       element.hidden = true;
@@ -148,7 +148,7 @@ export function createChestInventoryPanel(
     },
     open(model, prefab, { containerId, slots }) {
       // One element shows one container at a time.
-      if (openModel !== model && element.slotContainer) element.close();
+      if (openModel !== model && element.slotContainer) { element.close(); }
       openModel = model;
       bounds0.makeEmpty();
       const container = buildingContainerDefinition(prefab);
@@ -165,11 +165,11 @@ export function createChestInventoryPanel(
         button: container.button,
         title: definitions.animatedBuildings[prefab].buildLabel,
       });
-      if (toItem) element.bindContainer(slots, toItem);
+      if (toItem) { element.bindContainer(slots, toItem); }
       update();
     },
     close(model) {
-      if (openModel === model) element.close();
+      if (openModel === model) { element.close(); }
       update();
     },
   };

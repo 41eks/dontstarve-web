@@ -130,7 +130,7 @@ it('returns normal writable signals with separate local subscribers and an indep
   // One registered cleanup cancels local listeners and retains the final source snapshot.
   batch(() => {
     source.set({ season: 'spring' });
-    for (const stop of firstCleanups.splice(0).reverse()) stop();
+    for (const stop of firstCleanups.splice(0).reverse()) { stop(); }
   });
   expect(first.peek().season).toBe('spring'); expect(observed).toEqual(['winter', 'summer', 'winter']);
   const before = reads;
@@ -141,7 +141,7 @@ it('returns normal writable signals with separate local subscribers and an indep
   // The returned object remains a standard signal after its source bridge is disconnected.
   first.set({ season: 'autumn' }); expect(first.peek().season).toBe('autumn');
   expect(source.peek().season).toBe('summer');
-  stopSource(); for (const stop of secondCleanups.splice(0).reverse()) stop();
+  stopSource(); for (const stop of secondCleanups.splice(0).reverse()) { stop(); }
 });
 
 it('keeps ordinary class createEffect subscriptions on the new signal and releases all class subscriptions at disposal', async () => {
@@ -161,7 +161,7 @@ it('keeps ordinary class createEffect subscriptions on the new signal and releas
         onCleanUp(() => cleanupCount++);
       });
     }
-    dispose() { for (const stop of this.cleanups.splice(0).reverse()) stop(); }
+    dispose() { for (const stop of this.cleanups.splice(0).reverse()) { stop(); } }
   }
   let owner: Observer | undefined;
   const stopParent = createEffect(() => { owner = new Observer(); onCleanUp(() => owner!.dispose()); });

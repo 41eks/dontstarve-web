@@ -62,15 +62,15 @@ export class FxAttachments {
   apply(declared: ReadonlyMap<string, FxJson> | undefined): void {
     let compositesChanged = false;
     for (const [key, entry] of [...this.attached]) {
-      if (declared?.get(key) === entry.fx) continue;
+      if (declared?.get(key) === entry.fx) { continue; }
       compositesChanged ||= entry.fx.composite !== undefined;
       this.detach(key, entry);
     }
-    for (const [key, fx] of declared ?? []) if (!this.attached.has(key)) {
+    for (const [key, fx] of declared ?? []) { if (!this.attached.has(key)) {
       compositesChanged ||= fx.composite !== undefined;
       this.attach(key, fx);
-    }
-    if (compositesChanged) this.changed();
+    } }
+    if (compositesChanged) { this.changed(); }
   }
 
   private attach(key: string, fx: FxJson): void {
@@ -79,24 +79,24 @@ export class FxAttachments {
     const model = fxModel(fx);
     model.position.set(0, 0, 0);
     // Drawn after its owner on the owner's plane: the owner's depth (an instance batch writes it) must not hide it.
-    if (!fx.composite && fx.sortLayer > 1) fx.sprite.setDepthOffset(true);
+    if (!fx.composite && fx.sortLayer > 1) { fx.sprite.setDepthOffset(true); }
     // Every batch draws before the ordinary billboards: a batched effect stays ordered with its owner only while the
     // owner is batched too, and is otherwise its own billboard, sorted against the owner's.
-    if (!fx.composite) fx.display.setInstancedWhile(this.ownerBatched);
+    if (!fx.composite) { fx.display.setInstancedWhile(this.ownerBatched); }
     // The watched signal owns the effect that reads it: stopping the bridge stops both.
     const active = watchSignal(fx.active, stop => { entry.stop = stop; });
     createEffect(() => {
       entry.enabled = active.get();
       if (fx.composite) { this.changed(); return; }
-      if (entry.enabled) this.owner.add(model);
-      else model.removeFromParent();
+      if (entry.enabled) { this.owner.add(model); }
+      else { model.removeFromParent(); }
     });
   }
 
   private detach(key: string, entry: Attached): void {
     entry.stop();
-    if (!entry.fx.composite && entry.fx.sortLayer > 1) entry.fx.sprite.setDepthOffset(false);
-    if (!entry.fx.composite) entry.fx.display.setInstancedWhile(undefined);
+    if (!entry.fx.composite && entry.fx.sortLayer > 1) { entry.fx.sprite.setDepthOffset(false); }
+    if (!entry.fx.composite) { entry.fx.display.setInstancedWhile(undefined); }
     fxModel(entry.fx).removeFromParent();
     this.attached.delete(key);
   }
@@ -113,7 +113,7 @@ export class FxAttachments {
   update(dt: number, owner?: SpriteJson): void {
     for (const { fx, enabled } of this.attached.values()) {
       if (fx.composite && enabled) {
-        if (owner?.facing !== undefined && !fx.composite.noFaced) (fx.sprite as import('./spriteState').SpriteState).setFacing(owner.facing);
+        if (owner?.facing !== undefined && !fx.composite.noFaced) { (fx.sprite as import('./spriteState').SpriteState).setFacing(owner.facing); }
         fx.sprite.update(dt);
       } else if (fxModel(fx).parent === this.owner) {
         fx.display.update(dt);
@@ -124,17 +124,17 @@ export class FxAttachments {
   /** Entries for the effects that are shown, ordered with the owner. */
   entries(): readonly FxRenderEntry[] {
     // Most owners show no effect; they share one empty list instead of allocating one per frame.
-    if (this.attached.size === 0) return NO_ENTRIES;
+    if (this.attached.size === 0) { return NO_ENTRIES; }
     const entries: FxRenderEntry[] = [];
     for (const { fx } of this.attached.values()) {
       const model = fxModel(fx);
-      if (fx.background || fx.composite || model.parent !== this.owner) continue;
+      if (fx.background || fx.composite || model.parent !== this.owner) { continue; }
       entries.push({ object: model, footPosition: this.owner.position, cameraDepth: 0, sortLayer: fx.sortLayer });
     }
     return entries;
   }
 
   dispose(): void {
-    for (const [key, entry] of [...this.attached]) this.detach(key, entry);
+    for (const [key, entry] of [...this.attached]) { this.detach(key, entry); }
   }
 }

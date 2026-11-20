@@ -84,10 +84,10 @@ export class BufferedAction<Action extends string = string, Target extends Buffe
   isValid(): boolean { return this.valid(); }
   /** BufferedAction:Do runs the action, then Succeed() or Fail() notifies the pushing behaviour. */
   do(): boolean {
-    if (!this.isValid()) return false;
+    if (!this.isValid()) { return false; }
     const success = this.execute() !== false;
-    if (success) this.succeed();
-    else this.fail();
+    if (success) { this.succeed(); }
+    else { this.fail(); }
     return success;
   }
 
@@ -98,13 +98,13 @@ export class BufferedAction<Action extends string = string, Target extends Buffe
     const callbacks = this.onsuccess;
     this.onsuccess = [];
     this.onfail = [];
-    for (const callback of callbacks) callback();
+    for (const callback of callbacks) { callback(); }
   }
 
   fail(): void {
     const callbacks = this.onfail;
     this.onsuccess = [];
     this.onfail = [];
-    for (const callback of callbacks) callback();
+    for (const callback of callbacks) { callback(); }
   }
 }

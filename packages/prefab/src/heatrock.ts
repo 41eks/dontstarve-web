@@ -60,7 +60,7 @@ export class HeatRock {
     entity.components.inventoryitem.SetImageFromSprite(({ skinId, clip }) => {
       const name = `${skinId ?? 'heat_rock'}${clip.name}.tex`;
       const image = HEATROCK_IMAGES_BY_NAME[name];
-      if (!image) throw new Error(`Missing thermal stone image: ${name}`);
+      if (!image) { throw new Error(`Missing thermal stone image: ${name}`); }
       return image;
     });
   }
@@ -70,15 +70,15 @@ export class HeatRock {
     this.ambientTemperature.set(ambient);
     const range = GetHeatRockRange(current, ambient), entity = this.entity;
     if (range <= 1) {
-      if (entity.lowTemp === undefined || entity.lowTemp > current) entity.lowTemp = Math.floor(current);
+      if (entity.lowTemp === undefined || entity.lowTemp > current) { entity.lowTemp = Math.floor(current); }
       entity.highTemp = undefined;
     } else if (range >= 5) {
-      if (entity.highTemp === undefined || entity.highTemp < current) entity.highTemp = Math.ceil(current);
+      if (entity.highTemp === undefined || entity.highTemp < current) { entity.highTemp = Math.ceil(current); }
       entity.lowTemp = undefined;
     } else if (entity.lowTemp !== undefined) {
-      if (GetHeatRockRange(entity.lowTemp, ambient) >= 3) entity.lowTemp = undefined;
-    } else if (entity.highTemp !== undefined && GetHeatRockRange(entity.highTemp, ambient) <= 3) entity.highTemp = undefined;
-    if (range === this.previousRange) return;
+      if (GetHeatRockRange(entity.lowTemp, ambient) >= 3) { entity.lowTemp = undefined; }
+    } else if (entity.highTemp !== undefined && GetHeatRockRange(entity.highTemp, ambient) <= 3) { entity.highTemp = undefined; }
+    if (range === this.previousRange) { return; }
     this.previousRange = range;
     if (hasrate && ((entity.lowTemp !== undefined && range >= 3) || (entity.highTemp !== undefined && range <= 3))) {
       entity.lowTemp = undefined; entity.highTemp = undefined;
@@ -98,11 +98,11 @@ export class HeatRock {
 /** A new ground visual presents the item's sprite in its default clip; the stone keeps playing its range, `1`..`5`. */
 export function declareHeatRockSprite(entity: ItemEntity, sprite: ArchiveSpriteCommands): void {
   const rock = entity.getComponent<HeatRock>('heatrock');
-  if (rock) sprite.start(String(rock.range.peek()));
+  if (rock) { sprite.start(String(rock.range.peek())); }
 }
 
 export function configureHeatRockEntity(entity: ItemEntity): void {
-  for (const tag of ['heatrock', 'icebox_valid', 'bait', 'molebait', 'HASHEATER', 'tradable']) entity.addTag(tag);
+  for (const tag of ['heatrock', 'icebox_valid', 'bait', 'molebait', 'HASHEATER', 'tradable']) { entity.addTag(tag); }
   if (!entity.components.fueled) {
     const fueled = entity.AddFueled();
     fueled.fueltype = 'USAGE';

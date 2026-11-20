@@ -27,8 +27,8 @@ import { torchPrefabs } from './torch';
 export function itemPrefabs(world: ItemPrefabWorld,
   icons: Readonly<Record<string, { readonly atlas: string; readonly image: string }>>): Record<string, ItemPrefabDefinition> {
   const prefabs: Record<string, ItemPrefabDefinition> = {};
-  for (const [id, icon] of Object.entries(icons)) prefabs[id] = iconItemPrefab(id, icon, world);
-  for (const id of Object.keys(GROUND_ART_DEFINITIONS)) prefabs[id] = groundItemPrefab(id, world);
+  for (const [id, icon] of Object.entries(icons)) { prefabs[id] = iconItemPrefab(id, icon, world); }
+  for (const id of Object.keys(GROUND_ART_DEFINITIONS)) { prefabs[id] = groundItemPrefab(id, world); }
   return Object.assign(prefabs,
     burnableItemPrefabs(world, [GUNPOWDER_ID, POOP_ID, 'rock_avocado_fruit_ripe']),
     { [HEATROCK_ID]: groundItemPrefab(HEATROCK_ID, world, { configure: inst => declareHeatRockSprite(inst, inst.sprite) }) },
@@ -51,11 +51,11 @@ function definitionStack(definition: GroundItemDefinition): InventoryStack {
  */
 export function spawnGroundStack(world: Pick<ItemPrefabWorld, 'spawnItem'>, definition: GroundItemDefinition, position: ReadonlyVector3,
   { fling = false, launch }: GroundSpawnOptions = {}): ItemEntity {
-  if (!Number.isSafeInteger(definition.count) || definition.count < 1) throw new RangeError('Invalid ground item count');
+  if (!Number.isSafeInteger(definition.count) || definition.count < 1) { throw new RangeError('Invalid ground item count'); }
   const inst = definition.entity ?? world.spawnItem(definitionStack(definition));
   inst.setPosition(position.x, 0, position.z);
   inst.components.inventoryitem.OnDropped(launch);
-  if (fling && !launch) inst.components.inventoryphysics?.Launch();
+  if (fling && !launch) { inst.components.inventoryphysics?.Launch(); }
   return inst;
 }
 
@@ -64,7 +64,7 @@ export function flingLoot(world: Pick<ItemPrefabWorld, 'spawnItem'>, definitions
   launch?: () => LootLaunch): void {
   const origin = position.clone();
   for (const definition of definitions) {
-    if (!Number.isSafeInteger(definition.count) || definition.count < 1) throw new RangeError('Invalid loot count');
+    if (!Number.isSafeInteger(definition.count) || definition.count < 1) { throw new RangeError('Invalid loot count'); }
     for (let index = 0; index < definition.count; index++) {
       spawnGroundStack(world, { ...definition, entity: undefined, count: 1 }, origin, { fling: true, launch: launch?.() });
     }

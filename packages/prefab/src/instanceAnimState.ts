@@ -42,16 +42,16 @@ export class InstanceAnimState extends AnimState {
   SetBuild(buildArchive: string): void { if (buildArchive !== this.buildArchive) { this.buildArchive = buildArchive; this.applyArt(); } }
 
   private applyArt(): void {
-    if (!this.assets || this.bank === undefined || this.buildArchive === undefined) return;
-    if (!this.sprite.setArtSource) throw new Error('This sprite cannot change its bank or build');
+    if (!this.assets || this.bank === undefined || this.buildArchive === undefined) { return; }
+    if (!this.sprite.setArtSource) { throw new Error('This sprite cannot change its bank or build'); }
     this.sprite.setArtSource({ animationArchives: this.assets.animationArchives, bank: this.bank, buildArchive: this.buildArchive, art: this.assets.art });
   }
 
   /** AnimState:PlayAnimation(name, loop): replaces the clip and clears the queue. */
   PlayAnimation(name: string, loop = false): void {
     this.currentAnimation = name;
-    if (loop) this.sprite.start(name);
-    else this.sprite.playOnce(name);
+    if (loop) { this.sprite.start(name); }
+    else { this.sprite.playOnce(name); }
   }
 
   /** AnimState:PushAnimation(name, loop); the loop the source omits is decided by the caller (see lua-api-map). */
@@ -59,14 +59,14 @@ export class InstanceAnimState extends AnimState {
 
   /** AnimState:GetCurrentAnimationLength(): the played clip's length in seconds at its own frame rate, from the source anim.bin. */
   GetCurrentAnimationLength(): number {
-    if (!this.assets || this.bank === undefined || this.currentAnimation === undefined) throw new Error('AnimState has no declared clip playing');
+    if (!this.assets || this.bank === undefined || this.currentAnimation === undefined) { throw new Error('AnimState has no declared clip playing'); }
     const timing = bankAnimationTiming(this.assets.animationArchives, this.currentAnimation, smallHash(this.bank));
     return timing.frames / timing.frameRate;
   }
 
   /** AnimState:SetDeltaTimeMultiplier(multiplier). */
   SetDeltaTimeMultiplier(multiplier: number): void {
-    if (!this.sprite.setPlaybackRate) throw new Error('This sprite cannot change its playback rate');
+    if (!this.sprite.setPlaybackRate) { throw new Error('This sprite cannot change its playback rate'); }
     this.sprite.setPlaybackRate(multiplier);
   }
 

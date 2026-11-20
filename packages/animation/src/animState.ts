@@ -71,9 +71,9 @@ export function resolveAnimState(state: AnimStateJson, art: AnimStateArt | undef
 } {
   const missing = { builds: new Set<string>(), animations: new Set<string>() };
   const build = (archive: string) => {
-    if (!art) throw new Error(`AnimState names ${archive}, but its entity has no art source`);
+    if (!art) { throw new Error(`AnimState names ${archive}, but its entity has no art source`); }
     const loaded = art.peekBuild(archive);
-    if (!loaded) missing.builds.add(archive);
+    if (!loaded) { missing.builds.add(archive); }
     return loaded;
   };
   const overrides = new Map<number, { build: SymbolBuild; symbol: number }[] | undefined>();
@@ -86,7 +86,7 @@ export function resolveAnimState(state: AnimStateJson, art: AnimStateArt | undef
   for (const [hash, declared] of state.symbolAnimations) {
     const builds = declared.builds.map(build);
     const animations = art?.peekAnimation(declared.bank);
-    if (!animations) missing.animations.add(declared.bank);
+    if (!animations) { missing.animations.add(declared.bank); }
     symbolAnimations.set(hash, animations && builds.every(Boolean) ? {
       animations, builds: builds as SymbolBuild[], animation: declared.animation,
       ...declared.symbols ? { symbols: new Set(declared.symbols) } : {},
@@ -106,7 +106,7 @@ interface MergeableAnimState<Override, Build, SymbolAnimation> extends Omit<Anim
 export function mergeAnimStates<Override, Build, SymbolAnimation>(
   states: readonly MergeableAnimState<Override, Build, SymbolAnimation>[],
 ): MergeableAnimState<Override, Build, SymbolAnimation> {
-  if (states.length === 1) return states[0];
+  if (states.length === 1) { return states[0]; }
   const overrides = new Map<number, Override>();
   const overrideBuilds: Build[] = [];
   const symbolAnimations = new Map<number, SymbolAnimation>();
@@ -114,15 +114,15 @@ export function mergeAnimStates<Override, Build, SymbolAnimation>(
   const hiddenLayers = new Set<number>(), hiddenSymbols = new Set<number>(), blooms = new Set<number>();
   const attachments: AnimationAttachment[] = [];
   for (const state of states) {
-    for (const [hash, override] of state.overrides) overrides.set(hash, override);
+    for (const [hash, override] of state.overrides) { overrides.set(hash, override); }
     overrideBuilds.push(...state.overrideBuilds ?? []);
-    for (const [hash, animation] of state.symbolAnimations) symbolAnimations.set(hash, animation);
-    for (const [hash, light] of state.symbolLightOverrides) symbolLightOverrides.set(hash, light);
-    for (const layer of state.hiddenLayers) hiddenLayers.add(layer);
-    for (const layer of state.shownLayers ?? []) hiddenLayers.delete(layer);
-    for (const symbol of state.hiddenSymbols) hiddenSymbols.add(symbol);
-    for (const symbol of state.shownSymbols ?? []) hiddenSymbols.delete(symbol);
-    for (const bloom of state.blooms) blooms.add(bloom);
+    for (const [hash, animation] of state.symbolAnimations) { symbolAnimations.set(hash, animation); }
+    for (const [hash, light] of state.symbolLightOverrides) { symbolLightOverrides.set(hash, light); }
+    for (const layer of state.hiddenLayers) { hiddenLayers.add(layer); }
+    for (const layer of state.shownLayers ?? []) { hiddenLayers.delete(layer); }
+    for (const symbol of state.hiddenSymbols) { hiddenSymbols.add(symbol); }
+    for (const symbol of state.shownSymbols ?? []) { hiddenSymbols.delete(symbol); }
+    for (const bloom of state.blooms) { blooms.add(bloom); }
     attachments.push(...state.attachments);
   }
   return { overrides, overrideBuilds, hiddenLayers, hiddenSymbols, symbolLightOverrides, symbolAnimations, blooms, attachments };
@@ -151,7 +151,7 @@ export function resolveAnimStateSymbol(state: ResolvedAnimState, element: AnimEl
   if (state.symbolAnimations.has(element.imageHash)) {
     const follow = state.symbolAnimations.get(element.imageHash);
     const animation = follow?.animations.animations.find(({ name }) => name === `${follow.animation}${element.imageIndex + 1}`);
-    if (!follow || !animation) return [];
+    if (!follow || !animation) { return []; }
     const frame = animation.frames[Math.floor(elapsed * animation.frameRate) % animation.frames.length];
     return [...frame.elements].filter(part => !follow.symbols || follow.symbols.has(part.imageHash))
       .sort((a, b) => b.z - a.z)
@@ -160,7 +160,7 @@ export function resolveAnimStateSymbol(state: ResolvedAnimState, element: AnimEl
   if (!state.overrides.has(element.imageHash)) {
     for (let index = (state.overrideBuilds?.length ?? 0) - 1; index >= 0; index--) {
       const sprite = resolveImage([state.overrideBuilds![index]], element);
-      if (sprite) return [sprite];
+      if (sprite) { return [sprite]; }
     }
     return undefined;
   }
@@ -218,7 +218,7 @@ export class AnimState {
   ClearOverrideBuild(build: string): void {
     const archive = this.archive(build);
     const { overrideBuilds = [] } = this.state.peek();
-    if (overrideBuilds.includes(archive)) this.update(() => ({ overrideBuilds: overrideBuilds.filter(other => other !== archive) }));
+    if (overrideBuilds.includes(archive)) { this.update(() => ({ overrideBuilds: overrideBuilds.filter(other => other !== archive) })); }
   }
   OverrideSymbol(symbol: string, build: SymbolSource, sourceSymbol: string): void {
     const hash = smallHash(sourceSymbol);
@@ -285,5 +285,5 @@ export class AnimState {
     return () => this.update(({ attachments }) => ({ attachments: attachments.filter(other => other !== attachment) }));
   }
   get isAnimating(): boolean { return this.state.peek().attachments.some(attachment => attachment.isAnimating); }
-  Update(dt: number): void { for (const attachment of this.state.peek().attachments) attachment.update(dt); }
+  Update(dt: number): void { for (const attachment of this.state.peek().attachments) { attachment.update(dt); } }
 }

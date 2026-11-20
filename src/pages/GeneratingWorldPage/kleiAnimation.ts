@@ -94,7 +94,7 @@ const median = (values: number[]) => {
 
 export function parseBuild(buffer: ArrayBuffer): Build {
   const reader = new BinaryReader(buffer)
-  if (reader.string(4) !== "BILD") throw new Error("不是有效的 Klei BILD 文件")
+  if (reader.string(4) !== "BILD") { throw new Error("不是有效的 Klei BILD 文件") }
   reader.skip(4)
   const symbolCount = reader.u32()
   reader.skip(4)
@@ -171,10 +171,10 @@ export function parseBuild(buffer: ArrayBuffer): Build {
 
 export function parseAnimations(buffer: ArrayBuffer): Animation[] {
   const reader = new BinaryReader(buffer)
-  if (reader.string(4) !== "ANIM") throw new Error("不是有效的 Klei ANIM 文件")
+  if (reader.string(4) !== "ANIM") { throw new Error("不是有效的 Klei ANIM 文件") }
   reader.skip(16)
   const animationCount = reader.u32()
-  if (!animationCount) throw new Error("动画文件不包含任何片段")
+  if (!animationCount) { throw new Error("动画文件不包含任何片段") }
 
   const animations: Animation[] = []
   for (let animationIndex = 0; animationIndex < animationCount; animationIndex += 1) {
@@ -223,22 +223,22 @@ export function parseAnimation(buffer: ArrayBuffer): Animation {
 
 export function parseAtlas(buffer: ArrayBuffer): DecodedTexture {
   const pixelFormat = Math.floor(new DataView(buffer).getUint32(4, true) / 16) % 32
-  if (pixelFormat !== 2) throw new Error(`当前展示仅支持 DXT5 图集（收到格式 ${pixelFormat}）`)
+  if (pixelFormat !== 2) { throw new Error(`当前展示仅支持 DXT5 图集（收到格式 ${pixelFormat}）`) }
   return parseKtex(new Uint8Array(buffer), "atlas")
 }
 
 export async function loadKleiAnimationAsset(root: string): Promise<KleiAnimationAsset> {
   const [animationBuffer, buildBuffer, atlasBuffer] = await Promise.all([
     fetch(`${root}/anim.bin`).then(response => {
-      if (!response.ok) throw new Error("无法读取 anim.bin")
+      if (!response.ok) { throw new Error("无法读取 anim.bin") }
       return response.arrayBuffer()
     }),
     fetch(`${root}/build.bin`).then(response => {
-      if (!response.ok) throw new Error("无法读取 build.bin")
+      if (!response.ok) { throw new Error("无法读取 build.bin") }
       return response.arrayBuffer()
     }),
     fetch(`${root}/atlas-0.tex`).then(response => {
-      if (!response.ok) throw new Error("无法读取 atlas-0.tex")
+      if (!response.ok) { throw new Error("无法读取 atlas-0.tex") }
       return response.arrayBuffer()
     }),
   ])

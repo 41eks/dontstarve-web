@@ -225,7 +225,7 @@ it('perishes harvested petals in discrete batches and preserves freshness and qu
     expect(s.inventory.getEntity(cursorSlotAddress())).toBe(entity);
     expect(perishable.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST - 13 });
     expect((await executeDebugCommand('c_spawn("petals")', s.inventory, async id => {
-      if (!PREFAB_DEFINITIONS.groundItems.debugSpawnIds.includes(id)) return false;
+      if (!PREFAB_DEFINITIONS.groundItems.debugSpawnIds.includes(id)) { return false; }
       await ground.spawnFromSave('petals:ground', { ...SAVE_CATALOG.items[id], itemId: id, count: 1, freshnessPercent: .25 }, new THREE.Vector3(12, 0, 9));
       return true;
     })).ok).toBe(true);

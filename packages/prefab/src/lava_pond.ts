@@ -60,7 +60,7 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
     this.setPosition(position.x, 0, position.z);
     // OnGround, LAYER_BACKGROUND and sort order 3, as pond.lua: the art lies on the ground and the entity root stays in world space.
     this.sprite.setGround(0); this.sprite.setMeshOrder(-.5);
-    for (const tag of ['lava', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable']) this.addTag(tag);
+    for (const tag of ['lava', 'antlion_sinkhole_blocker', 'birdblocker', 'inspectable']) { this.addTag(tag); }
     this.light.set({ radius: 1.5 * WORLD_SCALE, falloff: .66, intensity: .66, colour: [235 / 255, 121 / 255, 12 / 255] });
     this.deploySmartRadius = 2 * WORLD_SCALE;
 
@@ -85,7 +85,7 @@ export class LavaPondInstance extends PrefabInstance<SpriteState, LavaPondCompon
   /** OnLoad cancels the pending task and spawns the saved rocks at once. */
   override OnLoad(_inst: unknown, data: EntityPersistData): void {
     const rocks = data.lavaPond?.rocks;
-    if (rocks === undefined || this.rocksState.peek() !== undefined || !this.task) return;
+    if (rocks === undefined || this.rocksState.peek() !== undefined || !this.task) { return; }
     this.task.Cancel();
     this.task = undefined;
     this.rocksState.set(copyLayout(rocks));
@@ -125,7 +125,7 @@ export class LavaPondRockInstance extends PrefabInstance {
     super(prefab, new SpriteState({ name: `idle${rocktype}`, billboard: true }));
     this.setPosition(position.x, 0, position.z);
     this.sprite.playOnce(`idle${rocktype}`);
-    if (rocktype.length > 0) this.prefabNameOverride = 'lava_pond_rock';
+    if (rocktype.length > 0) { this.prefabNameOverride = 'lava_pond_rock'; }
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
   }

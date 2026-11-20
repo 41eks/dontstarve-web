@@ -15,7 +15,7 @@ export function testItem(state: InventoryStack, perishWorld?: PerishWorld): Item
 /** SpawnSaveRecord of a test inst: the record's skin, then SetPersistData. */
 export function testSavedItem(prefab: string, saved: SpawnedItemRecord, perishWorld?: PerishWorld): ItemEntity {
   const inst = testItem({ itemId: prefab, count: 1, entityId: saved.id }, perishWorld);
-  if (saved.skinname !== undefined) inst.skinId = saved.skinname;
+  if (saved.skinname !== undefined) { inst.skinId = saved.skinname; }
   inst.SetPersistData(saved.components);
   return inst;
 }
@@ -33,7 +33,7 @@ export function testInventoryStore(...[registrations, itemSpecs, skinSpecs = {},
 }
 
 function holding<Slot extends ItemSlot>(slot: Slot, stack: InventoryStack | null | undefined): Slot {
-  if (stack) slot.setEntity(testItem(stack));
+  if (stack) { slot.setEntity(testItem(stack)); }
   return slot;
 }
 /** Each slot class, already holding a test inst of `stack`. */

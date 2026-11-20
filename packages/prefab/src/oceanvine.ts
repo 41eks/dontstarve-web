@@ -33,7 +33,7 @@ export class OceanVineInstance extends PrefabInstance {
 function makeempty(inst: OceanVineInstance): void {
   inst.sprite.hideLayer('fig');
   inst.AnimState.PlayAnimation('idle_nofruit', true);
-  if (inst.components.inspectable) removeComponent(inst, 'inspectable');
+  if (inst.components.inspectable) { removeComponent(inst, 'inspectable'); }
 }
 
 /** pickable.makefullfn: the fig shown, settled while loading or grown, and inspectable again. */
@@ -45,7 +45,7 @@ function makefull(inst: OceanVineInstance): void {
     inst.AnimState.PlayAnimation('fruit_grow', false);
     inst.AnimState.PushAnimation('idle_fruit', true);
   }
-  if (!inst.components.inspectable) addComponent(inst, 'inspectable', Inspectable);
+  if (!inst.components.inspectable) { addComponent(inst, 'inspectable', Inspectable); }
 }
 
 function onloadpostpass(inst: OceanVineInstance): void {

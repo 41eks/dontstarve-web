@@ -135,28 +135,28 @@ export const COMPONENT_ACTIONS: {
   readonly INVENTORY: Readonly<Record<string, InventoryFn>>;
 } = {
   INVENTORY: {
-    book: (_inst, doer, actions) => { if (doer.hasTag('reader')) actions.push('READ'); },
+    book: (_inst, doer, actions) => { if (doer.hasTag('reader')) { actions.push('READ'); } },
     // The rider's FEED branches are not ported: no doer has a mount.
     edible: (inst, doer, actions, right) => {
-      if (!right && inst.components.equippable) return;
+      if (!right && inst.components.equippable) { return; }
       const eats = Object.values(FOODGROUP).some(group => doer.hasTag(`${group.name}_eater`)
         && group.types.some(type => inst.hasTag(`edible_${type}`)))
         || FOODTYPE.some(type => inst.hasTag(`edible_${type}`) && doer.hasTag(`${type}_eater`));
-      if (eats) actions.push('EAT');
+      if (eats) { actions.push('EAT'); }
     },
     instrument: (_inst, _doer, actions) => { actions.push('PLAY'); },
     // The crushitemcast rider / heavy-lifting gate is not ported: no doer has a mount.
-    spellcaster: (inst, _doer, actions) => { if (inst.hasTag('castfrominventory')) actions.push('CASTSPELL'); },
+    spellcaster: (inst, _doer, actions) => { if (inst.hasTag('castfrominventory')) { actions.push('CASTSPELL'); } },
   },
   USEITEM: {
     // The rider gates of these entries are not ported: no doer has a mount.
     bathbomb: (inst, _doer, target, actions) => {
-      if (inst.hasTag('bathbomb') && target.hasTag('bathbombable')) actions.push('BATHBOMB');
+      if (inst.hasTag('bathbomb') && target.hasTag('bathbombable')) { actions.push('BATHBOMB'); }
     },
     // The doer's self_fertilizable branch is not ported.
     fertilizer: (_inst, _doer, target, actions) => {
       if ((target.hasTag('notreadyforharvest') && !target.hasTag('withered')) || target.hasTag('fertile')
-        || target.hasTag('infertile') || target.hasTag('barren') || target.hasTag('fertilizable')) actions.push('FERTILIZE');
+        || target.hasTag('infertile') || target.hasTag('barren') || target.hasTag('fertilizable')) { actions.push('FERTILIZE'); }
     },
     occupier: (inst, _doer, target, actions) => {
       for (const type of OCCUPANTTYPE) {
@@ -165,26 +165,26 @@ export const COMPONENT_ACTIONS: {
     },
     // The heavy-lifting gate and the freshen_ branch are not ported.
     repairer: (inst, _doer, target, actions, right) => {
-      if (!right) return;
+      if (!right) { return; }
       for (const material of MATERIALS) {
-        if (!target.hasTag(`repairable_${material}`)) continue;
+        if (!target.hasTag(`repairable_${material}`)) { continue; }
         if ((inst.hasTag(`work_${material}`) && target.hasTag('workrepairable'))
           || (inst.hasTag(`health_${material}`) && target.hasTag('healthrepairable'))
-          || (inst.hasTag(`finiteuses_${material}`) && target.hasTag('finiteusesrepairable'))) actions.push('REPAIR');
+          || (inst.hasTag(`finiteuses_${material}`) && target.hasTag('finiteusesrepairable'))) { actions.push('REPAIR'); }
         return;
       }
     },
     // The unwrappable PEEKBUNDLE branch is not ported.
     shaver: (_inst, doer, target, actions) => {
-      if (target.hasTag('bearded') && (!target.hasTag('spiderden') || doer.hasTag('spiderwhisperer'))) actions.push('SHAVE');
+      if (target.hasTag('bearded') && (!target.hasTag('spiderden') || doer.hasTag('spiderwhisperer'))) { actions.push('SHAVE'); }
     },
     tradable: (_inst, _doer, target, actions) => {
-      if (target.hasTag('trader') && !['player', 'ghost', 'possessedbody'].some(tag => target.hasTag(tag))) actions.push('GIVE');
+      if (target.hasTag('trader') && !['player', 'ghost', 'possessedbody'].some(tag => target.hasTag(tag))) { actions.push('GIVE'); }
     },
     edible: (inst, _doer, target, actions) => {
       // componentactions.lua edible: the held small-livestock branch (pets and riders are not ported).
       if ((target.hasTag('small_livestock') || target.hasTag('handfed')) && target.components.inventoryitem?.owner
-        && target.components.eater?.CanEat(inst)) actions.push('FEED');
+        && target.components.eater?.CanEat(inst)) { actions.push('FEED'); }
     },
     fuel: (inst, _doer, target, actions) => {
       const fuel = inst.components.fuel;
@@ -193,25 +193,25 @@ export const COMPONENT_ACTIONS: {
       }
     },
     farmplantable: (_inst, _doer, target, actions) => {
-      if (target.hasTag('soil') && !target.hasTag('NOCLICK')) actions.push('PLANTSOIL');
+      if (target.hasTag('soil') && !target.hasTag('NOCLICK')) { actions.push('PLANTSOIL'); }
     },
   },
   SCENE: {
     container: (inst, doer, actions) => {
       // The bundle branch (WRAPBUNDLE / APPLYCONSTRUCTION) is not ported.
       if (!inst.hasTag('bundle') && !inst.hasTag('burnt') && inst.components.container?.canbeopened
-        && doer.components?.inventory) actions.push('RUMMAGE');
+        && doer.components?.inventory) { actions.push('RUMMAGE'); }
     },
     // The rider gate is not ported: no doer has a mount.
     incinerator: (inst, doer, actions, right) => {
       const container = inst.components.container;
-      if (!inst.hasTag('burnt') && right && container && !container.IsEmpty() && container.IsOpenedBy(doer)) actions.push('INCINERATE');
+      if (!inst.hasTag('burnt') && right && container && !container.IsEmpty() && container.IsOpenedBy(doer)) { actions.push('INCINERATE'); }
     },
     inspectable: (inst, doer, actions) => {
-      if (inst !== doer && (!doer.sg || (doer.sg.hasStateTag('idle') && !doer.sg.hasStateTag('moving')) || doer.sg.hasStateTag('channeling'))) actions.push('LOOKAT');
+      if (inst !== doer && (!doer.sg || (doer.sg.hasStateTag('idle') && !doer.sg.hasStateTag('moving')) || doer.sg.hasStateTag('channeling'))) { actions.push('LOOKAT'); }
     },
     hauntable: (inst, _doer, actions) => {
-      if (!inst.hasTag('haunted') && !inst.hasTag('catchable')) actions.push('HAUNT');
+      if (!inst.hasTag('haunted') && !inst.hasTag('catchable')) { actions.push('HAUNT'); }
     },
     inventoryitem: (inst, doer, actions, right) => {
       const item = inst.components.inventoryitem;
@@ -220,33 +220,33 @@ export const COMPONENT_ACTIONS: {
         && !(inst.hasTag('catchable') || (inst.hasTag('fire') && !inst.hasTag('lighter')) || inst.hasTag('smolder'))
         && (!inst.hasTag('spider') || (doer.hasTag('spiderwhisperer') && right))
         && (right || !inst.hasTag('heavy') || inst.hasTag('heavylift_lmb'))
-        && !(right && inst.components.container && !inst.components.equippable)) actions.push('PICKUP');
+        && !(right && inst.components.container && !inst.components.equippable)) { actions.push('PICKUP'); }
     },
     machine: (inst, _doer, actions, right) => {
-      if (!right || ['cooldown', 'fueldepleted', 'alwayson', 'emergency'].some(tag => inst.hasTag(tag)) || !inst.hasTag('enabled')) return;
+      if (!right || ['cooldown', 'fueldepleted', 'alwayson', 'emergency'].some(tag => inst.hasTag(tag)) || !inst.hasTag('enabled')) { return; }
       // A held machine is only usable while equipped, and equipped items are not in the scene.
-      if (inst.components.inventoryitem?.owner) return;
+      if (inst.components.inventoryitem?.owner) { return; }
       actions.push(inst.hasTag('turnedon') ? 'TURNOFF' : 'TURNON');
     },
-    occupiable: (inst, _doer, actions) => { if (inst.hasTag('occupied')) actions.push('HARVEST'); },
+    occupiable: (inst, _doer, actions) => { if (inst.hasTag('occupied')) { actions.push('HARVEST'); } },
     pickable: (inst, _doer, actions) => {
-      if (inst.hasTag('pickable') && !(inst.hasTag('fire') || inst.hasTag('intense'))) actions.push('PICK');
+      if (inst.hasTag('pickable') && !(inst.hasTag('fire') || inst.hasTag('intense'))) { actions.push('PICK'); }
     },
-    shelf: (inst, _doer, actions) => { if (inst.hasTag('takeshelfitem')) actions.push('TAKEITEM'); },
+    shelf: (inst, _doer, actions) => { if (inst.hasTag('takeshelfitem')) { actions.push('TAKEITEM'); } },
     sleepingbag: (inst, doer, actions) => {
       if (doer.hasTag('player') && !doer.hasTag('insomniac') && !inst.hasTag('hassleeper')
-        && (!inst.hasTag('spiderden') || doer.hasTag('spiderwhisperer'))) actions.push('SLEEPIN');
+        && (!inst.hasTag('spiderden') || doer.hasTag('spiderwhisperer'))) { actions.push('SLEEPIN'); }
     },
     // The readytocook / full-container COOK branch is the cook pot panel's.
-    stewer: (inst, _doer, actions) => { if (!inst.hasTag('burnt') && inst.hasTag('donecooking')) actions.push('HARVEST'); },
-    worldmigrator: (inst, _doer, actions) => { if (inst.hasTag('migrator')) actions.push('MIGRATE'); },
+    stewer: (inst, _doer, actions) => { if (!inst.hasTag('burnt') && inst.hasTag('donecooking')) { actions.push('HARVEST'); } },
+    worldmigrator: (inst, _doer, actions) => { if (inst.hasTag('migrator')) { actions.push('MIGRATE'); } },
   },
   POINT: {
     // GetPlatformAtPoint is not ported (no boats); IsTeleportingPermittedFromPointToPoint always permits.
     blinkstaff: (inst, doer, pos, actions, right) => {
       const map = inst.components.blinkstaff?.world.map;
       if (right && map && map.isAboveGroundAtPoint(pos, false) && !map.isGroundTargetBlocked(pos)
-        && !doer.hasTag('steeringboat') && !doer.hasTag('rotatingboat')) actions.push('BLINK');
+        && !doer.hasTag('steeringboat') && !doer.hasTag('rotatingboat')) { actions.push('BLINK'); }
     },
     deployable: (inst, doer, pos, actions, right) => {
       if (right && inst.components.inventoryitem && inst.components.deployable?.CanDeploy(pos, doer.Map)) {
@@ -254,31 +254,31 @@ export const COMPONENT_ACTIONS: {
       }
     },
     farmtiller: (inst, _doer, pos, actions, right) => {
-      if (right && inst.components.farmtiller?.CanTillSoilAtPoint(pos)) actions.push('TILL');
+      if (right && inst.components.farmtiller?.CanTillSoilAtPoint(pos)) { actions.push('TILL'); }
     },
     // The plow branch (CanPlowAtPoint) is not ported.
     terraformer: (inst, _doer, pos, actions, right) => {
-      if (right && inst.components.terraformer?.CanTerraformAtPoint(pos)) actions.push('TERRAFORM');
+      if (right && inst.components.terraformer?.CanTerraformAtPoint(pos)) { actions.push('TERRAFORM'); }
     },
     // The SPELLTYPES (<type>_spellcaster / _spelluser) gate is not ported; spellcaster:CanCast stands in for the map's
     // IsAboveGroundAtPoint / IsOceanAtPoint and IsGroundTargetBlocked checks.
     spellcaster: (inst, doer, pos, actions, right) => {
       if (!right || !(inst.hasTag('castonpoint') || inst.hasTag('castonpointwater'))
-        || doer.hasTag('steeringboat') || doer.hasTag('rotatingboat')) return;
-      if (inst.components.spellcaster?.canCast(doer, undefined, pos)) actions.push('CASTSPELL');
+        || doer.hasTag('steeringboat') || doer.hasTag('rotatingboat')) { return; }
+      if (inst.components.spellcaster?.canCast(doer, undefined, pos)) { actions.push('CASTSPELL'); }
     },
   },
   EQUIPPED: {
     fishingrod: (inst, doer, target, actions) => {
       const rod = inst.components.fishingrod;
-      if (!rod || !target.hasTag('fishable') || rod.HasCaughtFish()) return;
+      if (!rod || !target.hasTag('fishable') || rod.HasCaughtFish()) { return; }
       // target ~= fishingrod.target: identity, between the picked entity and the rod's fishing target.
-      if (!Object.is(target, rod.target)) actions.push('FISH');
-      else if (!doer?.sg || doer.sg.hasStateTag('fishing')) actions.push('REEL');
+      if (!Object.is(target, rod.target)) { actions.push('FISH'); }
+      else if (!doer?.sg || doer.sg.hasStateTag('fishing')) { actions.push('REEL'); }
     },
     lighter: (_inst, _doer, target, actions, right) => {
       if (right && target.hasTag('canlight') && !((target.hasTag('fueldepleted') && !target.hasTag('burnableignorefuel'))
-        || target.hasTag('INLIMBO'))) actions.push('LIGHT');
+        || target.hasTag('INLIMBO'))) { actions.push('LIGHT'); }
     },
     // The castonlocomotors, castonworkable, castoncombat and crushitemcast branches are not ported. TheNet:GetPVPEnabled()
     // is false, so castonlocomotorspvp reaches another player only when the doer is not one.
@@ -286,24 +286,24 @@ export const COMPONENT_ACTIONS: {
       if (right && !target.hasTag('nomagic') && (inst.hasTag('castontargets')
         || (inst.hasTag('castonrecipes') && !!target.prefab && !!getDeconstructionRecipe(target.prefab))
         || (target.hasTag('locomotor') && inst.hasTag('castonlocomotorspvp')
-          && (Object.is(target, doer) || !(target.hasTag('player') && doer?.hasTag('player')))))) actions.push('CASTSPELL');
+          && (Object.is(target, doer) || !(target.hasTag('player') && doer?.hasTag('player')))))) { actions.push('CASTSPELL'); }
     },
     // The rider gate, the item mimic, TargetForceAttackOnly and combat:IsAlly (no followers or allies) are not ported.
     weapon: (inst, doer, target, actions, right) => {
       const combat = doer?.components?.combat, weapon = inst.components.weapon;
-      if (inst.hasTag('outofammo') || !combat) return;
+      if (inst.hasTag('outofammo') || !combat) { return; }
       if (combat.CanExtinguishTarget(target, weapon) || (right && combat.CanLightTarget(target, weapon))) {
         actions.push('ATTACK');
       } else if (!right && !(target.hasTag('wall') || target.hasTag('mustforceattack'))
         && target.components.combat !== undefined && combat.CanTarget(target) && target.components.combat.CanBeAttacked()) {
-        if (target.hasTag('mole') && inst.hasTag('hammer')) actions.push('ATTACK');
+        if (target.hasTag('mole') && inst.hasTag('hammer')) { actions.push('ATTACK'); }
         else if (!(doer?.hasTag('player') && target.hasTag('player')) && !(inst.hasTag('tranquilizer') && !target.hasTag('sleeper'))) {
           actions.push('ATTACK');
         }
       }
     },
     tool: (inst, _doer, target, actions, right) => {
-      if (target.hasTag('INLIMBO') || inst.components.equippable?.IsRestricted()) return;
+      if (target.hasTag('INLIMBO') || inst.components.equippable?.IsRestricted()) { return; }
       for (const action of TOOLACTIONS) {
         if (inst.hasTag(`${action}_tool`) && isActionValid(target, action, right)) { actions.push(action); return; }
       }
@@ -316,15 +316,15 @@ export const COMPONENT_ACTIONS: {
 
 /** EntityScript:IsActionValid: an `rmb` action only on the right button, then any registered component's ISVALID. */
 export function isActionValid(inst: ComponentActionTarget, action: string, right: boolean): boolean {
-  if (getActionDef(action)?.rmb === true && !right) return false;
+  if (getActionDef(action)?.rmb === true && !right) { return false; }
   return Object.keys(inst.components ?? {}).some(name => COMPONENT_ACTIONS.ISVALID[name]?.(inst, action, right) === true);
 }
 
 /** EntityScript:CollectActions("SCENE", doer, actions, right): the actions an entity in the world offers the doer. */
 export function collectSceneActions(inst: ComponentActionEntity, doer: SceneActionDoer, right: boolean): SceneAction[] {
   const actions: SceneAction[] = [];
-  if (inst.isRemoved) return actions;
-  for (const name of Object.keys(inst.components)) COMPONENT_ACTIONS.SCENE[name]?.(inst, doer, actions, right);
+  if (inst.isRemoved) { return actions; }
+  for (const name of Object.keys(inst.components)) { COMPONENT_ACTIONS.SCENE[name]?.(inst, doer, actions, right); }
   return actions;
 }
 
@@ -332,16 +332,16 @@ export function collectSceneActions(inst: ComponentActionEntity, doer: SceneActi
 export function collectUseItemActions(item: ComponentActionEntity, doer: SceneActionDoer, target: ComponentActionEntity,
   right: boolean): UseItemAction[] {
   const actions: UseItemAction[] = [];
-  if (item.isRemoved || target.isRemoved) return actions;
-  for (const name of Object.keys(item.components)) COMPONENT_ACTIONS.USEITEM[name]?.(item, doer, target, actions, right);
+  if (item.isRemoved || target.isRemoved) { return actions; }
+  for (const name of Object.keys(item.components)) { COMPONENT_ACTIONS.USEITEM[name]?.(item, doer, target, actions, right); }
   return actions;
 }
 
 /** EntityScript:CollectActions("INVENTORY", doer, actions, right): what the item does used from its inventory slot. */
 export function collectInventoryActions(item: ComponentActionEntity, doer: SceneActionDoer, right: boolean): InventoryAction[] {
   const actions: InventoryAction[] = [];
-  if (item.isRemoved) return actions;
-  for (const name of Object.keys(item.components)) COMPONENT_ACTIONS.INVENTORY[name]?.(item, doer, actions, right);
+  if (item.isRemoved) { return actions; }
+  for (const name of Object.keys(item.components)) { COMPONENT_ACTIONS.INVENTORY[name]?.(item, doer, actions, right); }
   return actions;
 }
 
@@ -349,8 +349,8 @@ export function collectInventoryActions(item: ComponentActionEntity, doer: Scene
 export function collectEquippedItemActions(item: ComponentActionEntity | undefined, doer: EquippedActionDoer | undefined,
   target: ComponentActionTarget, right: boolean): EquippedAction[] {
   const actions: EquippedAction[] = [];
-  if (!item || item.isRemoved || target.isRemoved) return actions;
-  for (const name of Object.keys(item.components)) COMPONENT_ACTIONS.EQUIPPED[name]?.(item, doer, target, actions, right);
+  if (!item || item.isRemoved || target.isRemoved) { return actions; }
+  for (const name of Object.keys(item.components)) { COMPONENT_ACTIONS.EQUIPPED[name]?.(item, doer, target, actions, right); }
   return actions;
 }
 
@@ -358,14 +358,14 @@ export function collectEquippedItemActions(item: ComponentActionEntity | undefin
 export function collectPointActions(item: ComponentActionEntity | undefined, doer: PointActionDoer, pos: Vector3,
   right: boolean): EquippedAction[] {
   const actions: EquippedAction[] = [];
-  if (!item || item.isRemoved) return actions;
-  for (const name of Object.keys(item.components)) COMPONENT_ACTIONS.POINT[name]?.(item, doer, pos, actions, right);
+  if (!item || item.isRemoved) { return actions; }
+  for (const name of Object.keys(item.components)) { COMPONENT_ACTIONS.POINT[name]?.(item, doer, pos, actions, right); }
   return actions;
 }
 
 /** actions.lua LIGHT: the doer event precedes delegation to the lighter component. */
 export function performLightAction(tool: ComponentActionEntity, target: ComponentActionEntity, doer: WorkInst): boolean {
-  if (tool.isRemoved || target.isRemoved || !tool.components.lighter) return false;
+  if (tool.isRemoved || target.isRemoved || !tool.components.lighter) { return false; }
   doer.PushEvent?.('onstartedfire', { target });
   tool.components.lighter.Light(target, doer);
   return true;
@@ -375,14 +375,14 @@ export function performLightAction(tool: ComponentActionEntity, target: Componen
 export function performToolWork(action: WorkAction, target: ComponentActionEntity, worker: Worker, tool?: ComponentActionEntity): boolean {
   const workable = target.components.workable;
   if (target.isRemoved || !workable?.CanBeWorked() || workable.GetWorkAction() !== action
-    || tool?.isRemoved || tool?.components.equippable?.IsRestricted()) return false;
+    || tool?.isRemoved || tool?.components.equippable?.IsRestricted()) { return false; }
   const worked = workable.WorkedBy(worker, action === 'NET' ? 1 : tool?.components.tool?.GetEffectiveness(action) ?? 1);
   // BufferedAction:Do → inst:OnUsedAsItem → finiteuses:OnUsedAsItem, after successful work.
   if (worked) {
     const uses = tool?.components.finiteuses;
-    if (uses?.useForAction) uses.useForAction(action);
-    else if (uses?.use) uses.use(1);
-    else uses?.Use?.(1);
+    if (uses?.useForAction) { uses.useForAction(action); }
+    else if (uses?.use) { uses.use(1); }
+    else { uses?.Use?.(1); }
   }
   return worked;
 }

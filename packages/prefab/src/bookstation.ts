@@ -43,7 +43,7 @@ export class BookstationInstance extends PrefabInstance {
 }
 
 function onhammered(inst: BookstationInstance): void {
-    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    if (inst.components.burnable?.IsBurning()) { inst.components.burnable.Extinguish(); }
     inst.components.container?.DropEverything(inst.position);
     inst.components.lootdropper!.DropLoot();
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
@@ -51,7 +51,7 @@ function onhammered(inst: BookstationInstance): void {
 }
 
 function onhit(inst: BookstationInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     const on = inst.components.prototyper!.on;
     inst.AnimState.PlayAnimation('hit');
     inst.AnimState.PushAnimation(on ? 'proximity_loop' : 'idle', on);
@@ -70,14 +70,14 @@ function onload(inst: PrefabInstance, data: EntityPersistData): void {
 
 /** onturnon; the craft animation's _activetask (onactivate) is not ported. */
 function onturnon(inst: BookstationInstance): void {
-    if (inst.hasTag('burnt')) return;
-    if (inst.sprite.currentAnimation === 'place') inst.AnimState.PushAnimation('proximity_loop', true);
-    else inst.AnimState.PlayAnimation('proximity_loop', true);
+    if (inst.hasTag('burnt')) { return; }
+    if (inst.sprite.currentAnimation === 'place') { inst.AnimState.PushAnimation('proximity_loop', true); }
+    else { inst.AnimState.PlayAnimation('proximity_loop', true); }
     inst.SoundEmitter!.KillSound('idlesound');
 }
 
 function onturnoff(inst: BookstationInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     inst.AnimState.PlayAnimation('idle', true);
     inst.SoundEmitter!.KillSound('proximity_loop');
 }
@@ -89,7 +89,7 @@ function onbuilt(inst: BookstationInstance): void {
 }
 
 function onopen(inst: BookstationInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     const on = inst.components.prototyper!.on;
     inst.AnimState.PlayAnimation('hit');
     inst.AnimState.PushAnimation(on ? 'proximity_loop' : 'idle', on);
@@ -97,7 +97,7 @@ function onopen(inst: BookstationInstance): void {
 }
 
 function onclose(inst: BookstationInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     const on = inst.components.prototyper!.on;
     inst.AnimState.PlayAnimation('hit');
     inst.AnimState.PushAnimation(on ? 'proximity_loop' : 'idle', on);
@@ -110,9 +110,9 @@ function RestoreBooks(inst: BookstationInstance): void {
     const wicker_bonus = player !== undefined && prefabInstance(player)?.hasTag('bookbuilder') === true
         && player.position.distanceToSquared(inst.position) <= BOOKSTATION_BONUS_RANGE * BOOKSTATION_BONUS_RANGE ? BOOKSTATION_WICKER_BONUS : 1;
     for (const book of inst.components.container!.GetAllItems()) {
-        if (!book.hasTag('book') || !isBook(book.prefab)) continue;
+        if (!book.hasTag('book') || !isBook(book.prefab)) { continue; }
         const percent = book.components.finiteuses.percent.peek();
-        if (percent === undefined || percent >= 1) continue;
+        if (percent === undefined || percent >= 1) { continue; }
         book.components.finiteuses.setPercent(percent + BOOKSTATION_RESTORE_AMOUNT * wicker_bonus, BOOK_USE_STEP);
     }
 }
@@ -134,7 +134,7 @@ function UpdateBookAesthetics(inst: BookstationInstance, countoverride?: number)
 const hasBook = (inst: BookstationInstance) => inst.components.container?.GetAllItems().some(item => item.hasTag('book')) ?? false;
 
 function ItemGet(inst: BookstationInstance): void {
-    if (inst.RestoreTask === undefined && hasBook(inst)) inst.RestoreTask = inst.DoPeriodicTask(BOOKSTATION_RESTORE_TIME, RestoreBooks);
+    if (inst.RestoreTask === undefined && hasBook(inst)) { inst.RestoreTask = inst.DoPeriodicTask(BOOKSTATION_RESTORE_TIME, RestoreBooks); }
     UpdateBookAesthetics(inst);
 }
 
@@ -152,7 +152,7 @@ function ItemLose(inst: BookstationInstance): void {
  */
 function fn(world: PrefabWorldContext, sprites: SpriteResources): BookstationInstance {
     const { fire, scheduler } = world;
-    if (!fire || !scheduler) throw new Error('A bookstation needs the world\'s fire effects and scheduler');
+    if (!fire || !scheduler) { throw new Error('A bookstation needs the world\'s fire effects and scheduler'); }
     const inst = new BookstationInstance(BOOKSTATION_ID, new SpriteState({ name: 'idle', held: true, billboard: true }));
     inst.worldServices = world;
     inst.AddSoundEmitter();
@@ -195,7 +195,7 @@ function fn(world: PrefabWorldContext, sprites: SpriteResources): BookstationIns
     // events; with a book on the shelf ItemGet's branch applies, without one ItemLose's.
     inst.onRemove(createRenderEffect(() => {
         inst.components.container?.TrackContents();
-        if (hasBook(inst)) ItemGet(inst); else ItemLose(inst);
+        if (hasBook(inst)) { ItemGet(inst); } else { ItemLose(inst); }
     }));
     return inst;
 }

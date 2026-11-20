@@ -10,7 +10,7 @@ export function spatialAttributeVersion(attribute: BufferAttribute | Interleaved
 /** Sprite renderers maintain bounds over drawn vertices, excluding unused buffer capacity. */
 export function markSpatialGeometryBounds(geometry: BufferGeometry): void {
   const attribute = geometry.getAttribute('position');
-  if (attribute) geometryVersions.set(geometry, { attribute, version: spatialAttributeVersion(attribute) });
+  if (attribute) { geometryVersions.set(geometry, { attribute, version: spatialAttributeVersion(attribute) }); }
 }
 
 export function prepareSpatialGeometryBounds(geometry: BufferGeometry): void {
@@ -19,16 +19,16 @@ export function prepareSpatialGeometryBounds(geometry: BufferGeometry): void {
   if (previous && (previous.attribute !== attribute || previous.version !== version)) {
     geometry.computeBoundingBox(); geometry.computeBoundingSphere();
   } else {
-    if (!geometry.boundingBox) geometry.computeBoundingBox();
-    if (!geometry.boundingSphere) geometry.computeBoundingSphere();
+    if (!geometry.boundingBox) { geometry.computeBoundingBox(); }
+    if (!geometry.boundingSphere) { geometry.computeBoundingSphere(); }
   }
-  if (!previous || previous.attribute !== attribute || previous.version !== version) markSpatialGeometryBounds(geometry);
+  if (!previous || previous.attribute !== attribute || previous.version !== version) { markSpatialGeometryBounds(geometry); }
 }
 
 /** A conservative envelope of frames already displayed, independent of billboard facing. */
 export function publishSpriteSpatialBounds(visual: Object3D, sphere: Sphere): void {
   const radius = sphere.center.length() + sphere.radius;
-  if (radius <= (radii.get(visual) ?? -1)) return;
+  if (radius <= (radii.get(visual) ?? -1)) { return; }
   radii.set(visual, radius);
 }
 

@@ -59,7 +59,7 @@ it('drains only the wearer at the source rate using actual elapsed time, and sto
     expect(equippable.is_magic_dapperness).toBe(true);
     expect(equippable.dapperness).toBe(-1 / 3);
     // Frame durations vary while totaling one minute of active game time.
-    for (let i = 0; i < 60; i++) sanity.OnUpdate(i % 2 === 0 ? .25 : 1.75);
+    for (let i = 0; i < 60; i++) { sanity.OnUpdate(i % 2 === 0 ? .25 : 1.75); }
     expect(current.current).toBeCloseTo(180);
     expect(entity.components.equippable).toBe(equippable);
     inventory.transfer(hand, bag, 1);

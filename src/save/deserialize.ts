@@ -42,7 +42,7 @@ export interface SaveCatalog {
 export const MAX_SAVE_BYTES = 32 * 1024 * 1024;
 
 function ghostFlag(value: unknown): true {
-  if (value !== true) fail('players.local.ghost', 'expected true');
+  if (value !== true) { fail('players.local.ghost', 'expected true'); }
   return true;
 }
 
@@ -54,21 +54,21 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   let data: unknown;
   try { data = JSON.parse(text); } catch { fail('$', 'invalid JSON'); }
   if (sessionPlayer !== undefined) {
-    if (!data || typeof data !== 'object' || Array.isArray(data)) fail('$', 'expected a save object');
+    if (!data || typeof data !== 'object' || Array.isArray(data)) { fail('$', 'expected a save object'); }
     data = { ...data, players: { local: sessionPlayer } };
   }
   let nodes = 0;
   const visit = (value: unknown, depth: number) => {
     // Full forest snapshots include over 168,000 land/ocean tiles plus their entities.
-    if (++nodes > 2_000_000 || depth > 32) fail('$', 'data exceeds nesting or size limits');
-    if (typeof value === 'number' && !Number.isFinite(value)) fail('$', 'nonfinite number');
-    if (typeof value === 'string' && value.length > 256) fail('$', 'string is too long');
-    if (value && typeof value === 'object') Object.values(value).forEach((child) => visit(child, depth + 1));
+    if (++nodes > 2_000_000 || depth > 32) { fail('$', 'data exceeds nesting or size limits'); }
+    if (typeof value === 'number' && !Number.isFinite(value)) { fail('$', 'nonfinite number'); }
+    if (typeof value === 'string' && value.length > 256) { fail('$', 'string is too long'); }
+    if (value && typeof value === 'object') { Object.values(value).forEach((child) => visit(child, depth + 1)); }
   };
   visit(data, 0);
   const root = object(data, '$', ['format', 'schemaVersion', 'gameVersion', 'session', 'snapshot', 'world', 'players']);
-  if (root.format !== 'three-roaming-save') fail('format', 'unrecognized format');
-  if (root.schemaVersion !== 1) fail('schemaVersion', 'only version 1 is supported');
+  if (root.format !== 'three-roaming-save') { fail('format', 'unrecognized format'); }
+  if (root.schemaVersion !== 1) { fail('schemaVersion', 'only version 1 is supported'); }
   const session = object(root.session, 'session', ['id', 'createdAt', 'playerFile']);
   const playerFile = session.playerFile === undefined ? undefined : string(session.playerFile, 'session.playerFile');
   if (playerFile !== undefined && !/^(?:Master|Caves)\/save\/session\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+\/[0-9]{10}\.json$/.test(playerFile)) {
@@ -77,7 +77,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   const snapshot = object(root.snapshot, 'snapshot', ['id', 'parentId', 'savedAt', 'reason']);
   const id = snapshotId(snapshot.id, 'snapshot.id');
   const parentId = snapshot.parentId === null ? null : snapshotId(snapshot.parentId, 'snapshot.parentId');
-  if (parentId !== null && parentId >= id) fail('snapshot.parentId', 'must refer to an earlier snapshot');
+  if (parentId !== null && parentId >= id) { fail('snapshot.parentId', 'must refer to an earlier snapshot'); }
   const world = object(root.world, 'world', ['shardId', 'prefab', 'seed', 'elapsedSeconds', 'systems', 'map', 'entities']);
   const shardId = string(world.shardId, 'world.shardId');
   const map = object(world.map, 'world.map', ['kind', 'generator', 'tiles', 'defaultTileId', 'topology']);
@@ -113,14 +113,14 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       && tileId !== WORLD_TILES.RIFT_MOON) {
       fail(`${path}.underTileId`, 'only farming soil, docks, ice floes and lunar rift ground have an underlying tile');
     }
-    if (tileId === WORLD_TILES.MONKEY_DOCK && (underTileId === undefined || !isOceanTile(underTileId))) fail(`${path}.underTileId`, 'a dock covers an ocean tile');
-    if (tileId === WORLD_TILES.FARMING_SOIL && (underTileId !== undefined && isOceanTile(underTileId))) fail(`${path}.underTileId`, 'farming soil cannot cover ocean');
+    if (tileId === WORLD_TILES.MONKEY_DOCK && (underTileId === undefined || !isOceanTile(underTileId))) { fail(`${path}.underTileId`, 'a dock covers an ocean tile'); }
+    if (tileId === WORLD_TILES.FARMING_SOIL && (underTileId !== undefined && isOceanTile(underTileId))) { fail(`${path}.underTileId`, 'farming soil cannot cover ocean'); }
     // rift_terraformer.lua only turns land into RIFT_MOON, recording the replaced tile with undertile.
-    if (tileId === WORLD_TILES.RIFT_MOON && (underTileId !== undefined && isOceanTile(underTileId))) fail(`${path}.underTileId`, 'lunar rift ground cannot cover ocean');
+    if (tileId === WORLD_TILES.RIFT_MOON && (underTileId !== undefined && isOceanTile(underTileId))) { fail(`${path}.underTileId`, 'lunar rift ground cannot cover ocean'); }
     let ropeBridge: RopeBridgeTileSave | undefined;
     if (tile.ropeBridge !== undefined) {
       const at = `${path}.ropeBridge`;
-      if (tileId !== WORLD_TILES.ROPE_BRIDGE) fail(at, 'only rope bridge tiles carry bridge data');
+      if (tileId !== WORLD_TILES.ROPE_BRIDGE) { fail(at, 'only rope bridge tiles carry bridge data'); }
       const bridge = object(tile.ropeBridge, at, ['health', 'direction', 'iconOffset']);
       const direction = object(bridge.direction, `${at}.direction`, ['x', 'z']);
       const limit = ROPE_BRIDGE_DIRECTION_LIMIT;
@@ -131,7 +131,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       };
     }
     const key = `${col},${row}`;
-    if (tileKeys.has(key)) fail(path, 'duplicate terrain tile');
+    if (tileKeys.has(key)) { fail(path, 'duplicate terrain tile'); }
     tileKeys.add(key);
     return { col, row, tileId, ...(underTileId === undefined ? {} : { underTileId }), ...(ropeBridge ? { ropeBridge } : {}) };
   });
@@ -139,7 +139,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   const transform = (value: unknown, path: string, grounded: boolean): SavedTransform => {
     const o = object(value, path, ['position', 'rotationY']);
     const p = array(o.position, `${path}.position`, 3);
-    if (p.length !== 3) fail(`${path}.position`, 'expected three coordinates');
+    if (p.length !== 3) { fail(`${path}.position`, 'expected three coordinates'); }
     const position: [number, number, number] = [
       number(p[0], `${path}.position[0]`, -size / 2, size / 2),
       number(p[1], `${path}.position[1]`, 0, grounded ? 0 : 1000),
@@ -153,7 +153,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   /** A record's ID, unique among the save's entities and the items they hold. */
   const entityId = (value: unknown, path: string): string => {
     const id = string(value, path);
-    if (!/^[a-zA-Z0-9_:.-]+$/.test(id) || ids.has(id)) fail(path, 'invalid or duplicate entity ID');
+    if (!/^[a-zA-Z0-9_:.-]+$/.test(id) || ids.has(id)) { fail(path, 'invalid or duplicate entity ID'); }
     ids.add(id);
     return id;
   };
@@ -172,9 +172,9 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     const o = object(value, path, ['id', 'prefab', 'skinname', 'components']);
     const id = entityId(o.id, `${path}.id`);
     const prefab = string(o.prefab, `${path}.prefab`);
-    if (!Object.hasOwn(catalog.items, prefab) || !parsers.has(prefab)) fail(`${path}.prefab`, `unknown item ${prefab}`);
+    if (!Object.hasOwn(catalog.items, prefab) || !parsers.has(prefab)) { fail(`${path}.prefab`, `unknown item ${prefab}`); }
     const reason = refuse?.(prefab);
-    if (reason) fail(`${path}.prefab`, reason);
+    if (reason) { fail(`${path}.prefab`, reason); }
     const skinname = o.skinname === undefined ? undefined : itemSkin(o.skinname, `${path}.skinname`, prefab, false);
     const components = parsers.get(prefab)!(o.components, `${path}.components`, context(prefab));
     return { id, prefab, ...(skinname === undefined ? {} : { skinname }), components };
@@ -186,7 +186,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     const saved = object(o.items, `${path}.items`, Array.from({ length: slotCount }, (_, i) => String(i + 1)));
     return { items: Object.fromEntries(Object.entries(saved).map(([slot, record]) => {
       const item = held(record, `${path}.items.${slot}`, refuse);
-      if ((item.components.stackable?.stack ?? 1) > maxStack) fail(`${path}.items.${slot}.components.stackable.stack`, `expected at most ${maxStack}`);
+      if ((item.components.stackable?.stack ?? 1) > maxStack) { fail(`${path}.items.${slot}.components.stackable.stack`, `expected at most ${maxStack}`); }
       return [slot, item];
     })) };
   };
@@ -198,11 +198,11 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     // An item record in the world may be ground art alone, which no inventory holds.
     const spec: InventoryItemSpec | undefined = Object.hasOwn(catalog.items, prefab) ? catalog.items[prefab]
       : ground && art ? { name: art.name, icon: art.icon ?? '', maxStack: Number.MAX_SAFE_INTEGER } : undefined;
-    if (!spec) fail(path, `unknown item ${prefab}`);
+    if (!spec) { fail(path, `unknown item ${prefab}`); }
     const o = object(value, path, [...ITEM_RECORDS, ...extra]);
     const has = (key: string, available: unknown): boolean => {
-      if (o[key] === undefined) return false;
-      if (!available) fail(`${path}.${key}`, `${prefab} has no ${key}`);
+      if (o[key] === undefined) { return false; }
+      if (!available) { fail(`${path}.${key}`, `${prefab} has no ${key}`); }
       return true;
     };
     const data: EntityPersistData = {};
@@ -213,7 +213,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     if (has('finiteuses', spec.maxUses !== undefined)) {
       const step = spec.useStep ?? 1;
       const uses = number(object(o.finiteuses, `${path}.finiteuses`, ['uses']).uses, `${path}.finiteuses.uses`, step, spec.maxUses!);
-      if (!Number.isSafeInteger(uses / step)) fail(`${path}.finiteuses.uses`, 'invalid durability increment');
+      if (!Number.isSafeInteger(uses / step)) { fail(`${path}.finiteuses.uses`, 'invalid durability increment'); }
       data.finiteuses = { uses };
     }
     if (has('fueled', spec.maxFuel !== undefined)) {
@@ -221,7 +221,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     }
     if (has('perishable', spec.perishTime !== undefined)) {
       const saved = object(o.perishable, `${path}.perishable`, ['time', 'paused']);
-      if (saved.paused !== undefined && saved.paused !== true) fail(`${path}.perishable.paused`, 'expected true');
+      if (saved.paused !== undefined && saved.paused !== true) { fail(`${path}.perishable.paused`, 'expected true'); }
       data.perishable = { time: number(saved.time, `${path}.perishable.time`, 0, spec.perishTime!), ...saved.paused ? { paused: true as const } : {} };
     }
     if (has('armor', spec.maxArmor !== undefined)) {
@@ -231,12 +231,12 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     if (has('temperature', spec.savesTemperature)) {
       data.temperature = { current: number(object(o.temperature, `${path}.temperature`, ['current']).current, `${path}.temperature.current`, -20, 90) };
     }
-    if (has('highTemp', spec.savesTemperature)) data.highTemp = integer(o.highTemp, `${path}.highTemp`, -20, 90);
-    if (has('lowTemp', spec.savesTemperature)) data.lowTemp = integer(o.lowTemp, `${path}.lowTemp`, -20, 90);
-    if (data.highTemp !== undefined && data.lowTemp !== undefined) fail(path, 'a heat rock saves one temperature extreme');
+    if (has('highTemp', spec.savesTemperature)) { data.highTemp = integer(o.highTemp, `${path}.highTemp`, -20, 90); }
+    if (has('lowTemp', spec.savesTemperature)) { data.lowTemp = integer(o.lowTemp, `${path}.lowTemp`, -20, 90); }
+    if (data.highTemp !== undefined && data.lowTemp !== undefined) { fail(path, 'a heat rock saves one temperature extreme'); }
     if (o.inventoryitemmoisture !== undefined) {
       const saved = object(o.inventoryitemmoisture, `${path}.inventoryitemmoisture`, ['moisture', 'wet']);
-      if (saved.wet !== undefined && saved.wet !== true) fail(`${path}.inventoryitemmoisture.wet`, 'expected true');
+      if (saved.wet !== undefined && saved.wet !== true) { fail(`${path}.inventoryitemmoisture.wet`, 'expected true'); }
       data.inventoryitemmoisture = { ...saved.moisture === undefined ? {} : { moisture: number(saved.moisture, `${path}.inventoryitemmoisture.moisture`, 0, 100) },
         ...saved.wet ? { wet: true as const } : {} };
     }
@@ -264,19 +264,19 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
           y: number(location.y, `${p}.y`, -Number.MAX_SAFE_INTEGER), z: number(location.z, `${p}.z`, -Number.MAX_SAFE_INTEGER) };
       }) };
     }
-    if (has('needs_home_time', spec.creatureState === 'mole')) data.needs_home_time = number(o.needs_home_time, `${path}.needs_home_time`, 0);
-    if (o.groundVariant !== undefined) data.groundVariant = choice(o.groundVariant, `${path}.groundVariant`, Object.keys(GROUND_ART_VARIANTS[prefab] ?? {}));
+    if (has('needs_home_time', spec.creatureState === 'mole')) { data.needs_home_time = number(o.needs_home_time, `${path}.needs_home_time`, 0); }
+    if (o.groundVariant !== undefined) { data.groundVariant = choice(o.groundVariant, `${path}.groundVariant`, Object.keys(GROUND_ART_VARIANTS[prefab] ?? {})); }
     if (o.torch !== undefined) {
-      if (object(o.torch, `${path}.torch`, ['lit']).lit !== true) fail(`${path}.torch.lit`, 'expected true');
+      if (object(o.torch, `${path}.torch`, ['lit']).lit !== true) { fail(`${path}.torch.lit`, 'expected true'); }
       data.torch = { lit: true };
     }
     if (o.machine !== undefined) {
       const machine = object(o.machine, `${path}.machine`, ['ison']);
-      if (typeof machine.ison !== 'boolean') fail(`${path}.machine.ison`, 'expected boolean');
+      if (typeof machine.ison !== 'boolean') { fail(`${path}.machine.ison`, 'expected boolean'); }
       data.machine = { ison: machine.ison };
     }
     if (o.phonograph !== undefined) {
-      if (!Object.keys(data.inventory?.items ?? {}).length) fail(`${path}.phonograph`, 'playing machine requires a record');
+      if (!Object.keys(data.inventory?.items ?? {}).length) { fail(`${path}.phonograph`, 'playing machine requires a record'); }
       data.phonograph = { remainingSeconds: number(object(o.phonograph, `${path}.phonograph`, ['remainingSeconds']).remainingSeconds,
         `${path}.phonograph.remainingSeconds`, Number.MIN_VALUE, PHONOGRAPH_PLAY_TIME) };
     }
@@ -292,7 +292,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
       const id = entityId(o.id, `${recordPath}.id`);
       // GetSaveRecord's skinname belongs to an item; structures save their skin in their own data.
       const isItem = itemRecords.has(prefab);
-      if (o.skinname !== undefined && !isItem) fail(`${recordPath}.skinname`, 'only an item saves its skin on the record');
+      if (o.skinname !== undefined && !isItem) { fail(`${recordPath}.skinname`, 'only an item saves its skin on the record'); }
       const skinname = o.skinname === undefined ? undefined : itemSkin(o.skinname, `${recordPath}.skinname`, prefab, true);
       const components = parsers.get(prefab)!(o.components, `${recordPath}.components`, context(prefab));
       // An item is saved where it lies; others stand on the ground.
@@ -304,7 +304,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
 
   const players = object(root.players, 'players', ['local']);
   const player = object(players.local, 'players.local', ['prefab', 'shardId', 'transform', 'stats', 'ghost', 'wortox', 'inventory', 'builder']);
-  if (player.shardId !== shardId) fail('players.local.shardId', 'player must belong to this shard');
+  if (player.shardId !== shardId) { fail('players.local.shardId', 'player must belong to this shard'); }
   // inventory.lua OnSave of the player: items by slot, equip by EQUIPSLOTS name, and the cursor's activeitem.
   const savedInventory = object(player.inventory, 'players.local.inventory', ['items', 'equip', 'activeitem']);
   const equipped = object(savedInventory.equip ?? {}, 'players.local.inventory.equip', Object.keys(EQUIP_SLOTS));
@@ -326,13 +326,13 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     }
     bufferedIds.add(recipeId);
     const skinId = o.skinId === undefined ? undefined : string(o.skinId, `${path}.skinId`);
-    if (skinId !== undefined && !catalog.recipeSkins[recipeId]?.includes(skinId)) fail(`${path}.skinId`, 'invalid recipe skin');
+    if (skinId !== undefined && !catalog.recipeSkins[recipeId]?.includes(skinId)) { fail(`${path}.skinId`, 'invalid recipe skin'); }
     return { recipeId, ...(skinId === undefined ? {} : { skinId }) };
   });
   let stats: SaveDocument['players']['local']['stats'];
   if (player.stats !== undefined) {
     const o = object(player.stats, 'players.local.stats', ['health', 'hunger', 'sanity', 'penalty', 'sanitySane', 'sanityMode']);
-    if (o.sanitySane !== undefined && typeof o.sanitySane !== 'boolean') fail('players.local.stats.sanitySane', 'expected boolean');
+    if (o.sanitySane !== undefined && typeof o.sanitySane !== 'boolean') { fail('players.local.stats.sanitySane', 'expected boolean'); }
     stats = { health: number(o.health, 'players.local.stats.health'), hunger: number(o.hunger, 'players.local.stats.hunger'), sanity: number(o.sanity, 'players.local.stats.sanity'),
       ...o.penalty === undefined ? {} : { penalty: number(o.penalty, 'players.local.stats.penalty') },
       ...o.sanitySane === undefined ? {} : { sanitySane: o.sanitySane },
@@ -352,7 +352,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
     const path = 'world.systems.worldtemperature';
     const o = object(systemsData.worldtemperature, path,
       ['daylight', 'season', 'seasontemperature', 'phasetemperature', 'noisetime']);
-    if (o.daylight !== undefined && typeof o.daylight !== 'boolean') fail(`${path}.daylight`, 'expected a boolean');
+    if (o.daylight !== undefined && typeof o.daylight !== 'boolean') { fail(`${path}.daylight`, 'expected a boolean'); }
     systems.worldtemperature = {
       ...(o.daylight === undefined ? {} : { daylight: o.daylight }),
       season: choice(o.season, `${path}.season`, ['autumn', 'winter', 'spring', 'summer']),
@@ -396,7 +396,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   if (systemsData.random !== undefined) {
     const o = object(systemsData.random, 'world.systems.random', ['algorithm', 'state']);
     const state = array(o.state, 'world.systems.random.state', 4).map((value, i) => integer(value, `world.systems.random.state[${i}]`, 0, 0xffffffff));
-    if (state.length !== 4 || state.every((value) => value === 0)) fail('world.systems.random.state', 'expected four nonzero-state uint32 words');
+    if (state.length !== 4 || state.every((value) => value === 0)) { fail('world.systems.random.state', 'expected four nonzero-state uint32 words'); }
     systems.random = { algorithm: choice(o.algorithm, 'world.systems.random.algorithm', ['xoshiro128ss']), state };
   }
   return {

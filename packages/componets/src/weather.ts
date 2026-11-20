@@ -42,7 +42,7 @@ const MOISTURE_RATE = 0;
 const PRECIPITATION_TYPES: readonly PrecipitationType[] = ['none', 'rain', 'snow'];
 
 function finite(value: number, name: string): number {
-  if (!Number.isFinite(value)) throw new RangeError(`${name} must be finite`);
+  if (!Number.isFinite(value)) { throw new RangeError(`${name} must be finite`); }
   return value;
 }
 
@@ -85,7 +85,7 @@ export class Weather {
     this.random = options.random ?? Math.random;
     this.moistureceilState.set(this.randomizeMoistureCeil());
     this.precipitationRate = createMemo(() => {
-      if (this.preciptypeState.get() === 'none') return 0;
+      if (this.preciptypeState.get() === 'none') { return 0; }
       const floor = this.moisturefloorState.get();
       const p = Math.max(0, Math.min(1, (this.moistureState.get() - floor) / (this.moistureceilState.get() - floor)));
       const rate = MIN_PRECIP_RATE + (1 - MIN_PRECIP_RATE) * Math.sin(p * Math.PI);
@@ -148,17 +148,17 @@ export class Weather {
 
   /** The moisture branches of OnUpdate: dissipate while precipitating, otherwise accumulate toward the ceiling. */
   OnUpdate(dt: number): void {
-    if (!Number.isFinite(dt) || dt < 0) throw new RangeError('dt must be finite and nonnegative');
+    if (!Number.isFinite(dt) || dt < 0) { throw new RangeError('dt must be finite and nonnegative'); }
     // Lua samples the precipitation rate before settling moisture.
     const rate = this.precipitationRate.peek();
     if (this.preciptypeState.peek() !== 'none') {
       const moisture = Math.max(this.moistureState.peek() - rate * dt * PRECIP_RATE_SCALE, 0);
-      if (moisture <= this.moisturefloorState.peek()) this.stopPrecipitation();
-      else this.moistureState.set(moisture);
+      if (moisture <= this.moisturefloorState.peek()) { this.stopPrecipitation(); }
+      else { this.moistureState.set(moisture); }
     } else if (this.moistureceilState.peek() > 0) {
       const moisture = this.moistureState.peek() + MOISTURE_RATE * dt;
-      if (moisture >= this.moistureceilState.peek()) this.startPrecipitation();
-      else this.moistureState.set(moisture);
+      if (moisture >= this.moistureceilState.peek()) { this.startPrecipitation(); }
+      else { this.moistureState.set(moisture); }
     }
     const snowlevel = this.snowlevelState.peek();
     const temperature = this.options.temperature();
@@ -183,13 +183,13 @@ export class Weather {
   /** Validates every field before changing state, so a rejected load preserves the world. */
   OnLoad(data: Partial<WeatherSaveData>): void {
     const preciptype = data.preciptype ?? 'none';
-    if (!PRECIPITATION_TYPES.includes(preciptype)) throw new RangeError(`Invalid precipitation type: ${preciptype}`);
+    if (!PRECIPITATION_TYPES.includes(preciptype)) { throw new RangeError(`Invalid precipitation type: ${preciptype}`); }
     const moisture = finite(data.moisture ?? 0, 'moisture');
     const moisturefloor = finite(data.moisturefloor ?? 0, 'moisturefloor');
     const moistureceil = finite(data.moistureceil ?? this.randomizeMoistureCeil(), 'moistureceil');
     const peak = finite(data.peakprecipitationrate ?? 1, 'peakprecipitationrate');
     const snowlevel = finite(data.snowlevel ?? 0, 'snowlevel');
-    if (snowlevel < 0 || snowlevel > 1) throw new RangeError('snowlevel must be between 0 and 1');
+    if (snowlevel < 0 || snowlevel > 1) { throw new RangeError('snowlevel must be between 0 and 1'); }
     batch(() => {
       this.moistureState.set(moisture);
       this.moisturefloorState.set(moisturefloor);

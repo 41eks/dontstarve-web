@@ -91,7 +91,7 @@ function OnHit(inst: ChessJunkInstance): void {
 }
 
 function OnSave(pile: ChessJunkInstance, data: EntityPersistData): void {
-  if (!pile.repaired) return;
+  if (!pile.repaired) { return; }
   data.chessJunk = { repaired: true,
     ...pile.repairerid === undefined ? {} : { repairerid: pile.repairerid },
     ...pile.repairerchar === undefined ? {} : { repairerchar: pile.repairerchar } };
@@ -99,7 +99,7 @@ function OnSave(pile: ChessJunkInstance, data: EntityPersistData): void {
 
 function OnLoad(pile: ChessJunkInstance, data: EntityPersistData): void {
   const saved = data.chessJunk;
-  if (!saved?.repaired) return;
+  if (!saved?.repaired) { return; }
   pile.components.workable.SetWorkLeft(MAXHITS);
   OnRepaired(pile);
   pile.repairerid = saved.repairerid;

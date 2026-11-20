@@ -51,7 +51,7 @@ function OnWorked(inst: StatueGlommerInstance, _worker: unknown, workleft: numbe
         inst.sprite.playOnce('low');
         removeComponent(inst, 'workable');
         removeComponent(inst, 'lootdropper');
-    } else inst.sprite.playOnce(workleft < STATUEGLOMMER_WORK * .5 ? 'med' : 'full');
+    } else { inst.sprite.playOnce(workleft < STATUEGLOMMER_WORK * .5 ? 'med' : 'full'); }
 }
 
 /**
@@ -60,9 +60,9 @@ function OnWorked(inst: StatueGlommerInstance, _worker: unknown, workleft: numbe
  */
 function OnSave(inst: StatueGlommerInstance, data: EntityPersistData): void {
     const worked = inst.components.workable === undefined;
-    if (worked || inst.spawned) data.statueglommer = { ...(worked ? { worked: true } : {}), ...(inst.spawned ? { spawned: true } : {}) };
+    if (worked || inst.spawned) { data.statueglommer = { ...(worked ? { worked: true } : {}), ...(inst.spawned ? { spawned: true } : {}) }; }
     const workable = inst.components.workable;
-    if (workable) data.workable = { maxwork: workable.maxwork.peek(), workleft: workable.GetWorkLeft() };
+    if (workable) { data.workable = { maxwork: workable.maxwork.peek(), workleft: workable.GetWorkLeft() }; }
 }
 
 function OnLoad(inst: StatueGlommerInstance, data: EntityPersistData): void {
@@ -83,12 +83,12 @@ function OnLoad(inst: StatueGlommerInstance, data: EntityPersistData): void {
 
 function OnLoadWorked(inst: StatueGlommerInstance): void {
     const workable = inst.components.workable;
-    if (!workable) return;
+    if (!workable) { return; }
     if (workable.GetWorkLeft() <= 0) {
         inst.sprite.playOnce('low');
         removeComponent(inst, 'workable');
         removeComponent(inst, 'lootdropper');
-    } else inst.sprite.playOnce(workable.GetWorkLeft() < STATUEGLOMMER_WORK * .5 ? 'med' : 'full');
+    } else { inst.sprite.playOnce(workable.GetWorkLeft() < STATUEGLOMMER_WORK * .5 ? 'med' : 'full'); }
 }
 
 /**

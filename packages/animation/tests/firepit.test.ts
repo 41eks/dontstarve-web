@@ -51,7 +51,7 @@ it('burns its fuel down through the fire levels, goes out empty and relights whe
     await placement.spawn(FIRE_PIT_ID);
     const [{ display: { model }, entity }] = workTargets('HAMMER');
     const { components } = prefabInstance(model)!;
-    for (const tag of ['campfire', 'structure', 'wildfireprotected', 'BURNABLE_fueled']) expect(entity.hasTag(tag)).toBe(true);
+    for (const tag of ['campfire', 'structure', 'wildfireprotected', 'BURNABLE_fueled']) { expect(entity.hasTag(tag)).toBe(true); }
 
     // FIREPIT_FUEL_START is half of the maximum: section 3 of 4, at the bottom of its level.
     expect(components.burnable!.IsBurning()).toBe(true);

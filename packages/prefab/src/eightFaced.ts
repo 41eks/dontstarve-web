@@ -14,7 +14,7 @@ export function SetEightFaced(
   frameFor: (facing: number) => number = facing => facing,
   rotation?: ReadonlySignal<number>,
 ): void {
-  if (!cameraFacing) return;
+  if (!cameraFacing) { return; }
   let stopWatching: (() => void) | undefined;
   const facing = watchSignal(cameraFacing, stop => { stopWatching = stop; });
   const stopFacing = createRenderEffect(() => {

@@ -77,7 +77,7 @@ export function createInventoryStore(
     { length: INVENTORY_SLOT_COUNT },
     (_, index) => {
       const slot = new InventorySlot(INVENTORY_ITEM_SPECS), stack = stacks.get(index);
-      if (stack) slot.setEntity(entities.create(stack));
+      if (stack) { slot.setEntity(entities.create(stack)); }
       return { address: inventorySlotAddress(index), slot };
     },
   );

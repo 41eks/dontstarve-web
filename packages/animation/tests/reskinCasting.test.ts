@@ -54,7 +54,7 @@ function setupWorld() {
 }
 
 function advance(animation: PlayerInstance, frames: number) {
-  for (let frame = 0; frame < frames; frame++) advancePlayer(animation, 1 / 30);
+  for (let frame = 0; frame < frames; frame++) { advancePlayer(animation, 1 / 30); }
 }
 
 it('casts at source frame nine once and cancels before commitment on unequip or another action', async () => {
@@ -111,7 +111,7 @@ it.each([undefined, 'reskin_tool_brush'])(
     expect((mesh.material as THREE.Material[]).some((material) => material.name === `ground:${skinId ?? 'reskin_tool_fx'}`)).toBe(true);
     const quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 1);
     camera.turn(quaternion);
-    for (let frame = 0; frame < 15; frame++) effects.update(1 / 30);
+    for (let frame = 0; frame < 15; frame++) { effects.update(1 / 30); }
     expect(object.children[0].quaternion.equals(quaternion)).toBe(true);
     expect(effects.renderEntities).toHaveLength(1);
     effects.update(1 / 30);
@@ -150,7 +150,7 @@ it('shares FX geometry while keeping playback independent and discarding unused 
   effects.update(0);
   expect(effects.renderEntities).toEqual([b]);
   expect(release).not.toHaveBeenCalled();
-  for (let frame = 0; frame < 16; frame++) effects.update(1 / 30);
+  for (let frame = 0; frame < 16; frame++) { effects.update(1 / 30); }
   expect(scene.children).toEqual([]);
   expect(release).not.toHaveBeenCalled();
   effects.dispose();

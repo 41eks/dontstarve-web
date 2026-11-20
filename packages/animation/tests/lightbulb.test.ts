@@ -26,7 +26,7 @@ it('settles lightbulb freshness in batches, applies spoilage to eating, and repl
     expect(perish.timer.peek()).toEqual({ status: 'perishing', remainingSeconds: PERISH_FAST });
     expect(getFoodEffects(entity)).toEqual({ health: 1, hunger: 0, sanity: 0 });
     const changes: unknown[] = [], stop = perish.timer.subscribe(timer => changes.push(timer));
-    for (let frame = 0; frame < 79; frame++) world.advance(.125);
+    for (let frame = 0; frame < 79; frame++) { world.advance(.125); }
     expect(changes).toEqual([]);
     world.advance(.125);
     expect(changes).toEqual([{ status: 'perishing', remainingSeconds: PERISH_FAST - 10 }]);

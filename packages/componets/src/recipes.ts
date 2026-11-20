@@ -13,7 +13,7 @@ for (const entry of [...catalog.recipes, ...catalog.deconstructionRecipes]) {
   const config = entry.config as Record<string, unknown>;
   const rawIngredients = 'ingredients' in entry ? entry.ingredients : entry.returnIngredients;
   // Runtime Lua ingredient functions belong to prefabs outside the supported source branches.
-  if (rawIngredients.some(ingredient => typeof ingredient.type !== 'string' || typeof ingredient.amount !== 'number')) continue;
+  if (rawIngredients.some(ingredient => typeof ingredient.type !== 'string' || typeof ingredient.amount !== 'number')) { continue; }
   recipes.set(entry.name, {
     ingredients: rawIngredients as { type: string; amount: number }[],
     numtogive: typeof config.numtogive === 'number' ? config.numtogive : 1,

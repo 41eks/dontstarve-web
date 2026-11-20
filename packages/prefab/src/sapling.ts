@@ -24,7 +24,7 @@ function ontransplantfn(inst: PickablePlantInstance): void {
 
 function dig_up(inst: PickablePlantInstance): void {
   const { pickable, witherable } = inst.components, lootdropper = inst.components.lootdropper!;
-  if (pickable.canBePicked) lootdropper.SpawnLootPrefab(pickable.product!);
+  if (pickable.canBePicked) { lootdropper.SpawnLootPrefab(pickable.product!); }
   lootdropper.SpawnLootPrefab(witherable?.IsWithered() ? 'twigs' : `dug_${inst.prefab}`);
   inst.remove();
 }
@@ -42,14 +42,14 @@ function makeemptyfn(inst: PickablePlantInstance): void {
   if (!POPULATING && (inst.components.witherable?.IsWithered() || inst.sprite.currentAnimation === 'idle_dead')) {
     inst.AnimState.PlayAnimation('dead_to_empty');
     inst.AnimState.PushAnimation('empty', false);
-  } else inst.AnimState.PlayAnimation('empty');
+  } else { inst.AnimState.PlayAnimation('empty'); }
 }
 
 function makebarrenfn(inst: PickablePlantInstance, wasempty: boolean): void {
   if (!POPULATING && inst.components.witherable?.IsWithered()) {
     inst.AnimState.PlayAnimation(wasempty ? 'empty_to_dead' : 'full_to_dead');
     inst.AnimState.PushAnimation('idle_dead', false);
-  } else inst.AnimState.PlayAnimation('idle_dead');
+  } else { inst.AnimState.PlayAnimation('idle_dead'); }
 }
 
 /**

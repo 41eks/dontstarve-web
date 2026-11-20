@@ -51,9 +51,9 @@ export interface InventoryItemDefinition {
 function withTradable(itemId: string, configure: ((entity: ItemEntity) => void) | undefined): ((entity: ItemEntity) => void) | undefined {
   return entity => {
     configure?.(entity); configureFoodEntity(entity); configureMoleBaitEntity(entity); configurePlantableEntity(entity); configureRockAvocadoFruitEntity(entity); configureDockKitEntity(entity); configureFarmPlowItemEntity(entity); configureMarbleBeanEntity(entity);
-    if (Object.hasOwn(FERTILIZER_CYCLES, itemId)) configureFertilizerEntity(entity);
-    if (itemId === BATHBOMB_ID) configureBathbombEntity(entity);
-    if (hasTradableGoldValue(itemId)) configureTradableEntity(entity);
+    if (Object.hasOwn(FERTILIZER_CYCLES, itemId)) { configureFertilizerEntity(entity); }
+    if (itemId === BATHBOMB_ID) { configureBathbombEntity(entity); }
+    if (hasTradableGoldValue(itemId)) { configureTradableEntity(entity); }
   };
 }
 

@@ -17,13 +17,13 @@ export function animationLengths(archive: TimedArchive): ReadonlyMap<string, num
  */
 export function bankAnimationTiming(archives: readonly string[], name: string, bank: number) {
   const found = archives.flatMap(archive => TIMINGS[archive]?.filter(clip => clip.name === name && clip.bank === bank) ?? []);
-  if (found.length === 0) throw new Error(`Missing animation timing ${name} in ${archives.join(', ')}`);
-  if (found.length > 1) throw new Error(`Animation ${name} is in more than one of ${archives.join(', ')}`);
+  if (found.length === 0) { throw new Error(`Missing animation timing ${name} in ${archives.join(', ')}`); }
+  if (found.length > 1) { throw new Error(`Animation ${name} is in more than one of ${archives.join(', ')}`); }
   return found[0];
 }
 
 export function animationTiming(archive: string, name: string, bank?: number) {
   const timing = TIMINGS[archive]?.find(clip => clip.name === name && (bank === undefined || clip.bank === bank));
-  if (!timing) throw new Error(`Missing animation timing ${archive}:${name}`);
+  if (!timing) { throw new Error(`Missing animation timing ${archive}:${name}`); }
   return timing;
 }

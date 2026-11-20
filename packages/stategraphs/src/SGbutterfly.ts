@@ -57,12 +57,12 @@ const states: StateDefinition<ButterflyStateInst, ButterflyStateName>[] = [
     tags: ['idle'],
     onenter: (sg) => {
       sg.context.stopPhysics();
-      if (!sg.context.isCurrentAnimation('idle_flight_loop')) sg.context.playAnimation('idle_flight_loop', true);
+      if (!sg.context.isCurrentAnimation('idle_flight_loop')) { sg.context.playAnimation('idle_flight_loop', true); }
       sg.setTimeout(sg.context.getCurrentAnimationLength());
     },
     ontimeout: (sg) => {
-      if (sg.statemem.wantstomove) sg.goToState('moving');
-      else sg.goToState('idle');
+      if (sg.statemem.wantstomove) { sg.goToState('moving'); }
+      else { sg.goToState('idle'); }
     },
   }),
   State<ButterflyStateInst, ButterflyStateName>({
@@ -75,9 +75,9 @@ const states: StateDefinition<ButterflyStateInst, ButterflyStateName>[] = [
     },
     events: [EventHandler('animover', (sg) => {
       const action = sg.context.bufferedaction?.action;
-      if (action === 'POLLINATE') sg.goToState('pollinate');
-      else if (action === 'GOHOME') sg.context.remove();
-      else sg.goToState('land_idle');
+      if (action === 'POLLINATE') { sg.goToState('pollinate'); }
+      else if (action === 'GOHOME') { sg.context.remove(); }
+      else { sg.goToState('land_idle'); }
     })],
     onexit: (sg) => sg.context.raiseFlyingCreature(),
   }),
@@ -130,8 +130,8 @@ export class ButterflyStateGraph {
         const isMoving = this.sg.hasStateTag('moving');
         const wantsToMove = inst.locomotor.WantsToMoveForward();
         if (isMoving !== wantsToMove) {
-          if (wantsToMove) this.sg.statemem.wantstomove = true;
-          else this.sg.goToState('idle');
+          if (wantsToMove) { this.sg.statemem.wantstomove = true; }
+          else { this.sg.goToState('idle'); }
         }
       }
     });

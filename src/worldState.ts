@@ -69,7 +69,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
   const nightmareclock = world.prefab === 'cave' ? new NightmareClock(scheduler, {
     segs: TUNING.NIGHTMARE_SEGS, segTime: TUNING.SEG_TIME, segVariation: TUNING.NIGHTMARE_SEG_VARIATION,
   }) : undefined;
-  if (world.systems.nightmareclock) nightmareclock?.OnLoad(world.systems.nightmareclock);
+  if (world.systems.nightmareclock) { nightmareclock?.OnLoad(world.systems.nightmareclock); }
   const nightmarephase: ReadonlySignal<WorldNightmarePhase> = nightmareclock?.phase ?? readonlySignal(createSignal<WorldNightmarePhase>('none'));
   const moon = createMemo(() => ({ phase: moonphasestate.get(), waxing: clockstate.get().waxing ?? true }));
   const cycle = createMemo(() => clockstate.get().phase);
@@ -103,7 +103,7 @@ export function createWorldState(world: Pick<SaveDocument['world'], 'elapsedSeco
     SetMoonPhase(phase, waxing) {
       const length = MOON_PHASE_CYCLES.length;
       for (let i = waxing ? 1 : length / 2; i <= length; i++) {
-        if (MOON_PHASE_CYCLES[i - 1] !== phase) continue;
+        if (MOON_PHASE_CYCLES[i - 1] !== phase) { continue; }
         const cycles = clockstate.peek().cycles ?? 0;
         moonCycleOffset = (i - 1 - cycles % length + length) % length;
         // GetMoonPhase: both values are published at once.
@@ -130,7 +130,7 @@ export function createWorldClockUpdater(
   let pendingFrames = 0, pendingSeconds = 0;
   let playerPositionFrames = 0;
   const publishPlayerPositions = () => {
-    if (!getPlayerPositions) return;
+    if (!getPlayerPositions) { return; }
     const positions = getPlayerPositions(), previous = state.playerpositions.peek();
     if (positions.length !== previous.length || positions.some((position, index) => !position.equals(previous[index]))) {
       state.playerpositions.set(positions.map(position => position.clone()));
@@ -138,7 +138,7 @@ export function createWorldClockUpdater(
   };
   publishPlayerPositions();
   const flush = () => {
-    if (pendingFrames === 0) return;
+    if (pendingFrames === 0) { return; }
     const dt = pendingSeconds;
     pendingFrames = 0;
     pendingSeconds = 0;
@@ -153,12 +153,12 @@ export function createWorldClockUpdater(
     state.perishClock.Flush();
   };
   const updateClock = (dt: number) => {
-    if (!Number.isFinite(dt) || dt < 0) throw new RangeError('dt must be finite and nonnegative');
-    if (dt === 0) return;
+    if (!Number.isFinite(dt) || dt < 0) { throw new RangeError('dt must be finite and nonnegative'); }
+    if (dt === 0) { return; }
     state.perishClock.OnUpdate(dt);
     elapsedSeconds += dt;
     pendingSeconds += dt;
-    if (++pendingFrames === 60) flush();
+    if (++pendingFrames === 60) { flush(); }
     // Saving can flush world time early; player positions still publish once per 60 active frames.
     if (++playerPositionFrames === 60) {
       playerPositionFrames = 0;

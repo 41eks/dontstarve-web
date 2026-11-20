@@ -82,7 +82,7 @@ it('runs equippable Equip/Unequip with the actor in inventory.lua order, once pe
   const calls: string[] = [];
   // The player inst the inventory belongs to: inventory.lua pushes equip and unequip on it.
   const actor = playerEntity();
-  for (const name of ['equip', 'unequip']) actor.ListenForEvent(name, (_inst, data) => calls.push(`${name}:${(data as { item?: { prefab: string } }).item?.prefab}`));
+  for (const name of ['equip', 'unequip']) { actor.ListenForEvent(name, (_inst, data) => calls.push(`${name}:${(data as { item?: { prefab: string } }).item?.prefab}`)); }
   store.bindActor(actor);
   const watch = (prefab: string) => {
     store.add(prefab, 1);

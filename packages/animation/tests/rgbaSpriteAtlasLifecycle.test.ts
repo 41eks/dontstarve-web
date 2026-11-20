@@ -22,7 +22,7 @@ function rendererStub() {
     render: vi.fn((scene: THREE.Scene) => {
       renderer.info.render.frame++; renderer.info.render.calls++;
       const mesh = scene.children[0] as THREE.Mesh;
-      if (!Array.isArray(mesh.material)) return;
+      if (!Array.isArray(mesh.material)) { return; }
       draws.push({ geometry: mesh.geometry, position: mesh.geometry.getAttribute('position') as THREE.BufferAttribute,
         index: mesh.geometry.index!, count: mesh.geometry.drawRange.count, groups: mesh.geometry.groups.map(group => ({ ...group })) });
     }),
@@ -84,7 +84,7 @@ it('cancels a partly composed multipage atlas, releasing completed private pages
   const dispose = vi.spyOn(THREE.WebGLRenderTarget.prototype, 'dispose');
   const composer = createResolvedRgbaSpriteAtlasComposer(source.animation, source.frames, 8, renderer);
   try {
-    for (let step = 0; raw.clear.mock.calls.length < 2 && step < 30; step++) composer.step(0);
+    for (let step = 0; raw.clear.mock.calls.length < 2 && step < 30; step++) { composer.step(0); }
     expect(raw.clear).toHaveBeenCalledTimes(2);
     composer.cancel(); composer.cancel();
     expect(dispose).toHaveBeenCalledTimes(4);

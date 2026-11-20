@@ -65,7 +65,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
   private memos?: { readonly skinId: Memo<string | undefined>; readonly appearance: Memo<InventoryAppearance | undefined>; readonly image: Memo<InventoryImage | undefined> };
   ChangeImageName(icon: string, atlas: string): void {
     const previous = this.imagename.peek();
-    if (previous?.icon !== icon || previous?.atlas !== atlas) this.imagename.set(Object.freeze({ icon, atlas }));
+    if (previous?.icon !== icon || previous?.atlas !== atlas) { this.imagename.set(Object.freeze({ icon, atlas })); }
   }
   /**
    * A prefab whose image is a function of its sprite json (heatrock: skin and temperature-range clip). It must
@@ -75,7 +75,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
   /** Injected by the inventory: the prefab's or skin's name and default image. Pass a stable function. */
   SetDefaultAppearance(fn: (skinId: string | undefined) => InventoryAppearance): void { this.defaultAppearance.set(fn); }
   private get derived() {
-    if (this.memos) return this.memos;
+    if (this.memos) { return this.memos; }
     const skinId = createMemo(() => this.inst.sprite.sprite.get().skinId);
     const appearance = createMemo(() => this.defaultAppearance.get()?.(skinId.get()));
     const image = createMemo((): InventoryImage | undefined => {
@@ -105,7 +105,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
   /** inventoryitem:GetGrandOwner(): through a held holder (a worn backpack) to the one that holds it. */
   GetGrandOwner(): ItemHolder | null {
     const owner = this.ownerValue;
-    if (!owner) return null;
+    if (!owner) { return null; }
     const held = heldHolder(owner);
     return held ? held.GetGrandOwner() : owner;
   }
@@ -115,17 +115,17 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
    */
   GetHeldPosition(): import('three').Vector3 | undefined {
     const owner = this.ownerValue;
-    if (!owner) return undefined;
+    if (!owner) { return undefined; }
     return heldHolder(owner)?.GetHeldPosition() ?? owner.getPosition();
   }
   set owner(owner: Owner | null) {
     const previous = this.ownerValue;
     this.ownerValue = owner;
-    if (owner === null) this.slotValue = null;
+    if (owner === null) { this.slotValue = null; }
     // OnPutInInventory's RemoveFromScene and OnRemoved's ReturnToScene: a held inst is in limbo, as is its minimap icon.
     this.inst.MiniMapEntity?.SetEnabled(owner === null && !this.inst.isRemoved);
-    if (this.inst.isRemoved || (previous === null) === (owner === null)) return;
-    if (owner === null) this.inst.ReturnToScene?.(); else this.inst.RemoveFromScene?.();
+    if (this.inst.isRemoved || (previous === null) === (owner === null)) { return; }
+    if (owner === null) { this.inst.ReturnToScene?.(); } else { this.inst.RemoveFromScene?.(); }
   }
   canbepickedup = true;
   canbepickedupalive = false;
@@ -136,7 +136,7 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
 
   constructor(inst: Instance) { this.inst = inst; }
   CanBePickedUp(doer: InventoryActor): boolean {
-    if (this.grabbableoverridetag && doer.hasTag(this.grabbableoverridetag)) return true;
+    if (this.grabbableoverridetag && doer.hasTag(this.grabbableoverridetag)) { return true; }
     return this.canbepickedup && (!this.inst.hasTag('spider') || doer.hasTag('spiderwhisperer'));
   }
   SetOnPickupFn(fn: InventoryItemOnPickupFn<Instance> | undefined): void { this.onpickupfn = fn; }
@@ -154,8 +154,8 @@ export class InventoryItem<Instance extends InventoryItemInstance, Owner extends
     this.owner = null;
     // OnRemoved's ReturnToScene, also for an inst a holder took out of the scene without a store owner.
     this.inst.ReturnToScene?.();
-    if (launch) (this.inst.components as { inventoryphysics?: { Launch(launch?: import('./inventoryphysics').LootLaunch): void } } | undefined)
-      ?.inventoryphysics?.Launch(launch);
+    if (launch) { (this.inst.components as { inventoryphysics?: { Launch(launch?: import('./inventoryphysics').LootLaunch): void } } | undefined)
+      ?.inventoryphysics?.Launch(launch); }
     this.inst.PushEvent('ondropped', undefined);
   }
   OnPutInInventory(doer: ItemHolder): void {

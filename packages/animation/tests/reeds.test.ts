@@ -125,7 +125,7 @@ it('keeps a c_spawn reed through c_save and a reload, and rejects c_give', async
     expect(saved[0]).toMatchObject({ id: spawned.entityId, transform: { position: [3, 0, -6] } });
     await second.registry.restoreAll({ reeds: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof ReedsInstance)) throw new Error('The saved reed did not load');
+    if (!(loaded instanceof ReedsInstance)) { throw new Error('The saved reed did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect(clip(loaded)).toMatchObject({ name: 'idle', loop: true });
     expect(loaded.components.pickable.canBePicked).toBe(true);

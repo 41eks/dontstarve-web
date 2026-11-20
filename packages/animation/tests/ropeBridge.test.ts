@@ -81,7 +81,7 @@ it('spawns rope_bridge_fx for each saved bridge tile as ropebridgemanager OnLoad
   prefabs.register(ropeBridgePrefabs({ cameraFacing, spawnPrefab: (id, position) => prefabs.spawn(id, position) }));
   const manager = new RopeBridgeManager({
     *ropeBridges() {
-      for (const tile of map.exportTiles()) if (tile.ropeBridge) yield [tile.col, tile.row, tile.ropeBridge] as const;
+      for (const tile of map.exportTiles()) { if (tile.ropeBridge) { yield [tile.col, tile.row, tile.ropeBridge] as const; } }
     },
     tileCenter: (col, row) => ({ x: (col + .5) * TILE_SIZE, z: (row + .5) * TILE_SIZE }),
   }, (x, z) => prefabs.spawnAs(RopeBridgeFxInstance, ROPE_BRIDGE_FX_ID, new THREE.Vector3(x, 0, z)));

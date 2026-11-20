@@ -18,7 +18,7 @@ export interface CreateSlotContainerOptions {
 }
 
 export function createSlotContainer(options: CreateSlotContainerOptions): SlotContainer {
-  if (!options.id) throw new TypeError('Slot container id must not be empty');
+  if (!options.id) { throw new TypeError('Slot container id must not be empty'); }
 
   const uniqueKeys = new Set(options.slotKeys);
   if (uniqueKeys.size !== options.slotKeys.length || uniqueKeys.has('')) {
@@ -39,7 +39,7 @@ export function createSlotContainer(options: CreateSlotContainerOptions): SlotCo
     slots,
     getSlot(slotKey) {
       const slot = slotsByKey.get(slotKey);
-      if (!slot) throw new RangeError(`Unknown slot ${options.id}:${slotKey}`);
+      if (!slot) { throw new RangeError(`Unknown slot ${options.id}:${slotKey}`); }
       return slot;
     },
   };

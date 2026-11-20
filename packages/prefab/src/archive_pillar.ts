@@ -22,7 +22,7 @@ export class ArchivePillarInstance extends PrefabInstance {
     this.addTag('archive_pillar');
     choosebroken(this);
     this.OnSave = (_inst, data) => { data.broken = this.broken; };
-    this.OnLoad = (_inst, data) => { if (data.broken !== undefined) choosebroken(this, data.broken === true); };
+    this.OnLoad = (_inst, data) => { if (data.broken !== undefined) { choosebroken(this, data.broken === true); } };
   }
 }
 

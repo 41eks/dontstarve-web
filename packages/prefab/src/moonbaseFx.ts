@@ -54,7 +54,7 @@ export class MoonbaseEffects {
   private readonly sprites: SpriteResources;
   constructor(owner: PrefabInstance, scheduler: GameTimeScheduler, sprites: SpriteResources) {
     this.owner = owner; this.scheduler = scheduler; this.sprites = sprites;
-    if (!owner.worldServices?.scheduler) owner.BindScheduler(scheduler);
+    if (!owner.worldServices?.scheduler) { owner.BindScheduler(scheduler); }
   }
   private create(prefab: string, clip: string, sortLayer: number, cold = false): Fx {
     const source = cold ? coldSource(this.sprites) : beamSource(this.sprites);
@@ -72,14 +72,14 @@ export class MoonbaseEffects {
     return fx;
   }
   private remove(fx: Fx): void {
-    if (!this.effects.delete(fx)) return;
+    if (!this.effects.delete(fx)) { return; }
     this.owner.sprite.detachFx(fx.key);
     fx.instance.remove(); fx.display.dispose();
   }
   /** AnimState:PlayAnimation(name, loop) on the effect's logical clip and its drawn one. */
   private play(fx: Fx, name: string, loop = false): void {
     fx.animstate.PlayAnimation(name, loop);
-    if (loop) fx.animation.start(name); else fx.animation.playOnce(name);
+    if (loop) { fx.animation.start(name); } else { fx.animation.playOnce(name); }
   }
   /** AnimState:PushAnimation(name, loop). */
   private push(fx: Fx, name: string, loop: boolean): void {
@@ -104,7 +104,7 @@ export class MoonbaseEffects {
     this.lightstoptask?.Cancel(); this.lightstoptask = undefined;
   }
   private sound(event: 'beam_level_up' | 'beam_stop' | 'beam_stop_fail'): void {
-    for (const sound of this.oneShots) if (!sound.isPlaying()) this.oneShots.delete(sound);
+    for (const sound of this.oneShots) { if (!sound.isPlaying()) { this.oneShots.delete(sound); } }
     this.oneShots.add(PlaySound(`${PATH}${event}` as const, this.owner.position));
   }
   start(level: 1 | 2 | 3, restored = false): void {
@@ -113,27 +113,27 @@ export class MoonbaseEffects {
     this.front = this.create('positronbeam_front', 'lunar_front_pre', 2);
     for (const [fx, layer] of [[this.back, 'back'], [this.front, 'front']] as const) {
       // PlayAnimation("lunar_"..layer.."_pre"), PushAnimation("lunar_"..layer.."_loop", true).
-      if (restored) this.play(fx, `lunar_${layer}_loop`, true);
+      if (restored) { this.play(fx, `lunar_${layer}_loop`, true); }
       else { this.play(fx, `lunar_${layer}_pre`); this.push(fx, `lunar_${layer}_loop`, true); }
     }
     this.pulse = this.create('positronpulse', 'lunar_2_loop', 3);
     this.play(this.pulse, 'lunar_2_loop', true); this.pulse.animation.setVisible(false);
     this.beamSound = PlaySound(`${PATH}beam`, this.owner.position);
-    if (!restored) this.sound('beam_level_up');
+    if (!restored) { this.sound('beam_level_up'); }
     this.setLevel(level, false);
     this.startLight();
   }
   setLevel(level: 1 | 2 | 3, playSound = true): void {
-    if (!this.pulse) return;
+    if (!this.pulse) { return; }
     this.pulse.animation.setVisible(level > 1);
     if (level > 1) {
-      if (this.pulse.animstate.animation.peek().name !== `lunar_${level}_loop`) this.play(this.pulse, `lunar_${level}_loop`, true);
-      if (playSound) this.sound('beam_level_up');
+      if (this.pulse.animstate.animation.peek().name !== `lunar_${level}_loop`) { this.play(this.pulse, `lunar_${level}_loop`, true); }
+      if (playSound) { this.sound('beam_level_up'); }
     }
     this.beamSound?.setParameter?.('intensity', level === 1 ? 0 : level === 2 ? .6 : .9);
   }
   finish(): void {
-    if (!this.pulse) return;
+    if (!this.pulse) { return; }
     const pulse = this.pulse; this.pulse = undefined;
     this.beamSound?.stop(); this.beamSound = undefined;
     this.sound('beam_stop'); pulse.animation.setVisible(true);
@@ -145,20 +145,20 @@ export class MoonbaseEffects {
     if (this.pulse) { this.remove(this.pulse); this.pulse = undefined; }
     this.beamSound?.stop(); this.beamSound = undefined;
     if (this.front || this.back) {
-      for (const [fx, layer] of [[this.front, 'front'], [this.back, 'back']] as const) if (fx) {
-        if (layer === 'front') this.sound('beam_stop_fail');
+      for (const [fx, layer] of [[this.front, 'front'], [this.back, 'back']] as const) { if (fx) {
+        if (layer === 'front') { this.sound('beam_stop_fail'); }
         // PlayAnimation("lunar_"..layer.."_pst"), ListenForEvent("animover", inst.Remove) and
         // DoTaskInTime(GetCurrentAnimationLength() + FRAMES, inst.Remove).
         this.play(fx, `lunar_${layer}_pst`);
         fx.instance.ListenForEvent('animover', () => this.remove(fx));
         this.removeAfter(fx, fx.animstate.length + 1 / 30);
-      }
+      } }
       this.front = undefined; this.back = undefined;
       this.stopLight();
-    } else this.lightstarttask?.Cancel();
+    } else { this.lightstarttask?.Cancel(); }
   }
   showCold(): void {
-    if (this.cold) return;
+    if (this.cold) { return; }
     const cold = this.cold = this.create('staffcoldlightfx', 'appear', 1, true);
     // PlayAnimation("appear"), then ListenForEvent("animover", PlayRandomStarIdle).
     this.play(cold, 'appear');
@@ -174,8 +174,8 @@ export class MoonbaseEffects {
   dispose(): void {
     this.cancelLight();
     this.beamSound?.stop(); this.coldSound?.stop();
-    for (const sound of this.oneShots) sound.stop(); this.oneShots.clear();
-    for (const fx of this.effects) this.remove(fx);
+    for (const sound of this.oneShots) { sound.stop(); } this.oneShots.clear();
+    for (const fx of this.effects) { this.remove(fx); }
     this.front = this.back = this.pulse = this.cold = undefined;
     this.owner.light.set(null);
   }

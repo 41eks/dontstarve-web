@@ -38,7 +38,7 @@ it('skips a resting root, and updates it after marked writes, facing changes, re
   expect(root.transformDirty).toBe(false);
 
   visits.mockClear();
-  for (let i = 0; i < 3; i++) updateSceneMatrices(scene);
+  for (let i = 0; i < 3; i++) { updateSceneMatrices(scene); }
   expect(visits).not.toHaveBeenCalled();
 
   // An unmarked write is not seen: that is the contract every writer of a static transform follows.

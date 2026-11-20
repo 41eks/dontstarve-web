@@ -46,7 +46,7 @@ export class DstEmoteWheelElement extends AssetElement {
   }
 
   open(): void {
-    if (this.opened) return;
+    if (this.opened) { return; }
     this.opened = true;
     this.setGroup(null);
     this.overlay.hidden = false;
@@ -55,7 +55,7 @@ export class DstEmoteWheelElement extends AssetElement {
   }
 
   readonly close = (): void => {
-    if (!this.opened) return;
+    if (!this.opened) { return; }
     this.opened = false;
     this.overlay.hidden = true;
     (this.shadowRoot!.activeElement as HTMLElement | null)?.blur();
@@ -82,7 +82,7 @@ export class DstEmoteWheelElement extends AssetElement {
       this.overlay.addEventListener('pointerdown', (event) => {
         event.preventDefault();
         event.stopPropagation();
-        if (event.button === 2) this.close();
+        if (event.button === 2) { this.close(); }
       });
       this.overlay.addEventListener('click', (event) => {
         event.stopPropagation();
@@ -91,7 +91,7 @@ export class DstEmoteWheelElement extends AssetElement {
           return;
         }
         const button = (event.target as HTMLElement).closest<HTMLButtonElement>('[data-index]');
-        if (button) this.select(Number(button.dataset.index));
+        if (button) { this.select(Number(button.dataset.index)); }
         this.executeSelection();
       });
       this.overlay.addEventListener('contextmenu', (event) => { event.preventDefault(); event.stopPropagation(); });
@@ -116,8 +116,8 @@ export class DstEmoteWheelElement extends AssetElement {
       button.type = 'button';
       button.className = 'emote-wheel__item';
       button.dataset.index = String(index);
-      if (item.emote) button.dataset.emote = item.emote;
-      if (item.group) button.dataset.group = item.group;
+      if (item.emote) { button.dataset.emote = item.emote; }
+      if (item.group) { button.dataset.group = item.group; }
       button.setAttribute('aria-label', item.label);
       button.setAttribute('aria-pressed', 'false');
       button.style.left = `${50 + Math.sin(angle) * 38}%`;
@@ -150,7 +150,7 @@ export class DstEmoteWheelElement extends AssetElement {
 
   private executeSelection(): void {
     const item = this.items[this.selected];
-    if (!item) return;
+    if (!item) { return; }
     if (item.group) {
       this.setGroup(item.group);
     } else if (item.emote) {
@@ -175,23 +175,23 @@ export class DstEmoteWheelElement extends AssetElement {
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     // KeyboardEvent.target is retargeted to a host for inputs inside shadow DOM.
     if (event.composedPath().some((node) => node instanceof HTMLInputElement
-      || node instanceof HTMLTextAreaElement || (node instanceof HTMLElement && node.isContentEditable))) return;
-    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+      || node instanceof HTMLTextAreaElement || (node instanceof HTMLElement && node.isContentEditable))) { return; }
+    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) { return; }
     if (event.code === 'KeyG' || (this.opened && event.code === 'Escape')) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (event.repeat) return;
-      if (this.opened) this.close();
-      else this.open();
+      if (event.repeat) { return; }
+      if (this.opened) { this.close(); }
+      else { this.open(); }
     }
   };
 
   private readonly handleConsoleToggle = (event: GameUiEventMap['game:debug-console-toggle']): void => {
-    if (event.detail.isOpen) this.close();
+    if (event.detail.isOpen) { this.close(); }
   };
 
   private readonly handleVisibilityChange = (): void => {
-    if (document.hidden) this.close();
+    if (document.hidden) { this.close(); }
   };
 
   private emit<T>(type: string, detail: T): void {
@@ -204,19 +204,19 @@ export class DstEmoteWheelElement extends AssetElement {
     const url = this.dataAsset('images/emotes_wilson.xml');
     try {
       const atlas = await loadImageAtlasFiles(url);
-      if (request !== this.iconRequest || !this.isConnected) return;
+      if (request !== this.iconRequest || !this.isConnected) { return; }
       for (const canvas of canvases) {
         const sprite = atlas.require(canvas.dataset.element!);
         canvas.width = sprite.width;
         canvas.height = sprite.height;
         const context = canvas.getContext('2d');
-        if (!context) throw new Error('Canvas 2D context is unavailable');
+        if (!context) { throw new Error('Canvas 2D context is unavailable'); }
         context.putImageData(new ImageData(Uint8ClampedArray.from(sprite.pixels), sprite.width, sprite.height), 0, 0);
         canvas.dataset.loaded = 'true';
       }
     } catch (error) {
-      if (request !== this.iconRequest) return;
-      for (const canvas of canvases) canvas.dataset.error = error instanceof Error ? error.message : String(error);
+      if (request !== this.iconRequest) { return; }
+      for (const canvas of canvases) { canvas.dataset.error = error instanceof Error ? error.message : String(error); }
     }
   }
 }

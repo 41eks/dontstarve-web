@@ -33,23 +33,23 @@ export class Spawner<T extends SpawnerChild> {
   TakeOwnership(child: T): void {
     if (this.child !== child) {
       this.stops.splice(0).forEach(stop => stop()); this.child = child;
-      for (const event of ['ontrapped', 'death', 'detachchild', 'onremove']) this.stops.push(child.ListenForEvent(event, () => this.OnChildKilled(child)));
+      for (const event of ['ontrapped', 'death', 'detachchild', 'onremove']) { this.stops.push(child.ListenForEvent(event, () => this.OnChildKilled(child))); }
     }
     child.setHome(this.inst);
   }
   GoHome(child: T): boolean {
-    if (this.child !== child || this.occupied) return false;
+    if (this.child !== child || this.occupied) { return false; }
     this.occupied = true; child.enterHome(); this.onoccupied?.(); return true;
   }
   ReleaseChild(): boolean {
     this.CancelSpawning();
     if (!this.child) { const child = this.spawn(); this.TakeOwnership(child); this.GoHome(child); this.CancelSpawning(); }
-    if (!this.IsOccupied()) return false;
+    if (!this.IsOccupied()) { return false; }
     if (this.queued) { this.SpawnWithDelay(this.retry); return false; }
     this.occupied = false; this.TakeOwnership(this.child!); this.child!.leaveHome(); this.onvacate?.(this.child!); return true;
   }
   private OnChildKilled(child: T): void {
-    if (this.child !== child) return;
+    if (this.child !== child) { return; }
     this.stops.splice(0).forEach(stop => stop()); this.child = undefined; this.occupied = false; this.SpawnWithDelay(this.delay);
   }
   get remainingSeconds(): number | undefined { return this.task.remainingSeconds; }

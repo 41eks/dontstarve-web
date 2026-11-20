@@ -33,7 +33,7 @@ export async function checkOceanPipeline() {
   const targets = new Map<string, THREE.WebGLRenderTarget>();
   const setTarget = renderer.setRenderTarget.bind(renderer);
   renderer.setRenderTarget = (target, face, mip) => {
-    if (target?.texture.name.startsWith('DST ocean ')) targets.set(target.texture.name, target);
+    if (target?.texture.name.startsWith('DST ocean ')) { targets.set(target.texture.name, target); }
     setTarget(target, face, mip);
   };
   await prewarmScenePasses(renderer, scene, camera);
@@ -46,7 +46,7 @@ export async function checkOceanPipeline() {
     && JSON.stringify(renderer.getClearColor(new THREE.Color()).toArray()) === JSON.stringify(beforeColour);
   const readHalf = (name: string, x: number, y: number) => {
     const target = targets.get(name);
-    if (!target) throw new Error(`Missing ocean stage: ${name}`);
+    if (!target) { throw new Error(`Missing ocean stage: ${name}`); }
     const values = new Uint16Array(4);
     renderer.readRenderTargetPixels(target, x, y, 1, 1, values);
     return [...values].map(value => THREE.DataUtils.fromHalfFloat(value));
@@ -78,7 +78,7 @@ export async function checkOceanPipeline() {
   let borrowedNoiseDisposed = false;
   noise.addEventListener('dispose', () => { borrowedNoiseDisposed = true; });
   let targetsDisposed = 0;
-  for (const target of targets.values()) target.addEventListener('dispose', () => targetsDisposed++);
+  for (const target of targets.values()) { target.addEventListener('dispose', () => targetsDisposed++); }
   // The flat clear colour's 16×32 ocean cells merge into a single rectangle in the surface's local space.
   const floorGeometry = (mesh.getObjectByName('OceanClearColour') as THREE.Mesh).geometry;
   const floorTriangles = floorGeometry.index!.count / 3;

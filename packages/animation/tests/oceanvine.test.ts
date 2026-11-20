@@ -126,7 +126,7 @@ it('keeps a c_spawn vine through c_save and a reload, and rejects c_give', async
       components: { pickable: { picked: true, regrowSeconds: OCEANVINE_REGROW_TIME } } });
     await second.registry.restoreAll({ oceanvine: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof OceanVineInstance)) throw new Error('The saved vine did not load');
+    if (!(loaded instanceof OceanVineInstance)) { throw new Error('The saved vine did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect(loaded.sprite.sprite.peek().clip).toMatchObject({ name: 'idle_nofruit', loop: true });
     expect([loaded.components.pickable.canBePicked, loaded.components.pickable.remainingSeconds, layers(loaded)])

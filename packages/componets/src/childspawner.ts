@@ -68,22 +68,22 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
     });
     this.timer = this.regen.snapshot;
     this.spawnTick = new ComponentTimer(scheduler, () => {
-      if (!this.spawning || this.queued || !this.spawnChild || this.childreninside === 0) return;
+      if (!this.spawning || this.queued || !this.spawnChild || this.childreninside === 0) { return; }
       this.nextSpawn -= this.tickPeriod;
       if (this.nextSpawn < 0) {
         this.nextSpawn = this.spawnPeriod + (this.random() * 2 - 1) * this.spawnVariance;
-        if (this.awake) this.SpawnChild(); else this.QueueSpawnChild();
+        if (this.awake) { this.SpawnChild(); } else { this.QueueSpawnChild(); }
       }
-      if (this.spawning && !this.queued && this.childreninside > 0) this.spawnTick.start(this.tickPeriod);
+      if (this.spawning && !this.queued && this.childreninside > 0) { this.spawnTick.start(this.tickPeriod); }
     });
     this.queuedSpawn = new ComponentTimer(scheduler, () => {
-      if (!this.awake || !this.queued) return;
+      if (!this.awake || !this.queued) { return; }
       this.queued = false;
-      if (this.spawning) this.SpawnChild();
+      if (this.spawning) { this.SpawnChild(); }
       this.startSpawnUpdate();
     });
     this.spawnTimer = this.spawnTick.snapshot;
-    if (!saved?.childrenoutside.length) this.startRegen();
+    if (!saved?.childrenoutside.length) { this.startRegen(); }
   }
   get numchildrenoutside(): number { return this.childrenoutside.size; }
   GetTimeToNextSpawn(): number { return this.spawnPeriod + (this.random() * 2 - 1) * this.spawnVariance; }
@@ -100,7 +100,7 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
   SetMaxChildren(max: number): void {
     this.childreninside = Math.max(0, max - this.numchildrenoutside);
     this.maxchildren = max;
-    if (this.childreninside + this.numchildrenoutside >= max) this.regen.stop();
+    if (this.childreninside + this.numchildrenoutside >= max) { this.regen.stop(); }
     this.startRegen(); this.startSpawnUpdate();
   }
   /** ChildSpawner:SetMaxEmergencyChildren, with no emergency children outside. */
@@ -111,7 +111,7 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
   /** ChildSpawner:SetEmergencyRadius. */
   SetEmergencyRadius(rad: number): void { this.emergencydetectionradius = rad; }
   TakeOwnership(child: Child): void {
-    if (this.childrenoutside.has(child)) return;
+    if (this.childrenoutside.has(child)) { return; }
     child.setHome(this.home); this.childrenoutside.add(child);
     this.listeners.set(child, ['ontrapped', 'death', 'onremove', 'detachchild'].map(event =>
       child.ListenForEvent(event, () => this.OnChildKilled(child))));
@@ -120,11 +120,11 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
     }
   }
   OnChildKilled(child: Child): void {
-    if (!this.childrenoutside.has(child)) return;
+    if (!this.childrenoutside.has(child)) { return; }
     this.forget(child); this.onchildkilled?.(child); this.startRegen();
   }
   GoHome(child: Child): boolean {
-    if (!this.childrenoutside.has(child)) return false;
+    if (!this.childrenoutside.has(child)) { return false; }
     // Source calls ongohome before removing the child. Remove listeners first so
     // its onremove does not also execute the death/capture callback.
     this.ongohome?.(child); this.forget(child); child.remove();
@@ -136,13 +136,13 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
   }
   private startRegen(): void {
     if (this.regening && this.childreninside + this.numchildrenoutside < this.maxchildren && this.timer.peek().status !== 'scheduled')
-      this.regen.start(this.nextRegen);
+      { this.regen.start(this.nextRegen); }
   }
   /** childspawner.lua normal spawning branch; the periodic update interval is sampled once per task. */
   ConfigureSpawning(spawn: () => Child | undefined, period: number, variance = period * .1): void {
     this.spawnChild = spawn;
     this.spawnPeriod = period; this.spawnVariance = variance;
-    if (!this.spawning) this.nextSpawn = period;
+    if (!this.spawning) { this.nextSpawn = period; }
     this.startSpawnUpdate();
   }
   StartSpawning(): void { this.spawning = true; this.nextSpawn = 0; this.startSpawnUpdate(); }
@@ -154,17 +154,17 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
   OnEntitySleep(): void { this.awake = false; }
   OnEntityWake(): void {
     this.awake = true;
-    if (this.queued) this.queuedSpawn.start(0);
+    if (this.queued) { this.queuedSpawn.start(0); }
   }
   private startSpawnUpdate(): void {
     if (!this.spawnChild || !this.spawning || this.queued || this.childreninside === 0
-      || this.spawnTick.snapshot.peek().status === 'scheduled') return;
+      || this.spawnTick.snapshot.peek().status === 'scheduled') { return; }
     this.tickPeriod = 5 + this.random() * 5;
     this.spawnTick.start(this.tickPeriod);
   }
   private QueueSpawnChild(): void { this.queued = true; this.spawnTick.stop(); }
   private SpawnChild(): Child | undefined {
-    if (!this.awake || this.childreninside === 0) return;
+    if (!this.awake || this.childreninside === 0) { return; }
     const child = this.spawnChild?.();
     if (child) { this.childreninside--; this.TakeOwnership(child); }
     return child;
@@ -187,13 +187,13 @@ export class ChildSpawner<Home, Child extends ChildSpawnerChild<Home>> {
     this.nextRegen = data.timetonextregen ?? this.nextRegen;
     this.nextSpawn = data.timetonextspawn ?? this.nextSpawn;
     // A loaded entity that is already awake gets no later OnEntityWake to release its queued spawn.
-    if (this.queued) { this.spawnTick.stop(); if (this.awake) this.queuedSpawn.start(0); } else this.startSpawnUpdate();
-    if (this.regening) this.startRegen(); else this.regen.stop();
+    if (this.queued) { this.spawnTick.stop(); if (this.awake) { this.queuedSpawn.start(0); } } else { this.startSpawnUpdate(); }
+    if (this.regening) { this.startRegen(); } else { this.regen.stop(); }
   }
   LoadPostPass(resolve: (id: string) => Child | undefined, ids: readonly string[]): string[] {
     const pending: string[] = [];
-    for (const id of ids) { const child = resolve(id); if (child) this.TakeOwnership(child); else pending.push(id); }
-    if (!pending.length) this.startRegen(); return pending;
+    for (const id of ids) { const child = resolve(id); if (child) { this.TakeOwnership(child); } else { pending.push(id); } }
+    if (!pending.length) { this.startRegen(); } return pending;
   }
-  dispose(): void { this.regen.stop(); this.spawnTick.stop(); this.queuedSpawn.stop(); for (const child of this.childrenoutside) this.forget(child); }
+  dispose(): void { this.regen.stop(); this.spawnTick.stop(); this.queuedSpawn.stop(); for (const child of this.childrenoutside) { this.forget(child); } }
 }

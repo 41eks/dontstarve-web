@@ -79,14 +79,14 @@ function grow_anim_over(inst: RockAvocadoSaplingInstance): void {
 }
 
 function on_grow_timer_done(inst: RockAvocadoSaplingInstance, name: string): void {
-  if (name !== 'grow') return;
+  if (name !== 'grow') { return; }
   inst.seedGrowth = inst.DoTaskInTime(SEED_GROWTH_SECONDS, grow_anim_over);
   inst.sprite.playOnce('seed_growth');
 }
 
 function start_sprout_growing(inst: RockAvocadoSaplingInstance): void {
   const { timer } = inst.components;
-  if (!timer.TimerExists('grow')) timer.StartTimer('grow', ROCK_AVOCADO_SPROUT_GROW_TIME);
+  if (!timer.TimerExists('grow')) { timer.StartTimer('grow', ROCK_AVOCADO_SPROUT_GROW_TIME); }
 }
 
 function stop_sprout_growing(inst: RockAvocadoSaplingInstance): void {

@@ -79,21 +79,21 @@ export class Projectile<Inst = unknown> {
 
   Update(dt: number): void {
     const target = this.target;
-    if (!target) return;
-    if (this.homing && !target.isRemoved && !target.hasTag('INLIMBO')) this.dest.copy(target.getPosition());
+    if (!target) { return; }
+    if (this.homing && !target.isRemoved && !target.hasTag('INLIMBO')) { this.dest.copy(target.getPosition()); }
     if (this.delaypos) {
       this.delayRemaining -= dt;
       if (this.delayRemaining > 0) {
         this.delaypos.push(this.position.clone());
-        if (this.homing && this.checkTarget(target)) this.rotateToTarget();
+        if (this.homing && this.checkTarget(target)) { this.rotateToTarget(); }
         this.advance(dt);
         return;
       }
       const replay = this.delaypos;
       this.delaypos = undefined; this.visible = true;
-      for (const point of replay) if (this.doUpdate(target, point, dt)) return;
+      for (const point of replay) { if (this.doUpdate(target, point, dt)) { return; } }
     }
-    if (this.doUpdate(target, this.position, dt)) return;
+    if (this.doUpdate(target, this.position, dt)) { return; }
     this.advance(dt);
   }
 
@@ -101,7 +101,7 @@ export class Projectile<Inst = unknown> {
 
   private rotateToTarget(): void {
     this.heading.subVectors(this.dest, this.position);
-    if (this.heading.lengthSq() < 1e-12) this.heading.set(1, 0, 0); else this.heading.normalize();
+    if (this.heading.lengthSq() < 1e-12) { this.heading.set(1, 0, 0); } else { this.heading.normalize(); }
   }
 
   private checkTarget(target: ProjectileTarget): boolean {
@@ -114,7 +114,7 @@ export class Projectile<Inst = unknown> {
       const range = target.getPhysicsRadius() + this.hitdist;
       const distanceSq = pos.distanceToSquared(target.getPosition());
       if (distanceSq < range * range) { this.Hit(target); return true; }
-      if (this.dest.distanceToSquared(pos) > 1e-12) this.heading.subVectors(this.dest, pos).normalize();
+      if (this.dest.distanceToSquared(pos) > 1e-12) { this.heading.subVectors(this.dest, pos).normalize(); }
       const projected = this.scratch.copy(pos).addScaledVector(this.heading, this.speed * dt);
       // Overshooting the destination this frame counts as a hit.
       if (this.heading.dot(projected.subVectors(this.dest, projected)) < 0) { this.Hit(target); return true; }
@@ -147,16 +147,16 @@ export class Projectile<Inst = unknown> {
     this.movedTowardsTarget = distanceSq < this.stuckDistSq;
     const targetPosition = target.getPosition();
     const canCheck2D = targetPosition.distanceToSquared(this.stuckTargetPos!) < 0.01;
-    if (!canCheck2D) this.stuckTargetPos!.copy(targetPosition);
+    if (!canCheck2D) { this.stuckTargetPos!.copy(targetPosition); }
     if (realTravelSq < expected * expected || (canCheck2D && distanceSq < STUCKCHECK_2D_DIST_TO_NONMOVING_TARGET)) {
       this.stuckTime += dt;
-      if (this.stuckTime >= STUCKCHECK_TIME_TO_BE_STUCK) return true;
+      if (this.stuckTime >= STUCKCHECK_TIME_TO_BE_STUCK) { return true; }
     } else {
       this.stuckPos!.copy(pos);
       if (previous === !this.movedTowardsTarget && previous !== undefined) {
         this.stuckTime += dt;
-        if (this.stuckTime >= STUCKCHECK_TIME_TO_BE_STUCK) return true;
-      } else this.stuckTime = 0;
+        if (this.stuckTime >= STUCKCHECK_TIME_TO_BE_STUCK) { return true; }
+      } else { this.stuckTime = 0; }
     }
     this.stuckDistSq = distanceSq;
     return false;

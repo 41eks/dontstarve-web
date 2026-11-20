@@ -11,7 +11,7 @@ type GhostInstance = StateGraphInstance<WilsonStateGraph, WilsonStateName, Wilso
 /** SGwilsonghost idle/run: `if not inst.AnimState:IsCurrentAnimation("idle") then PlayAnimation("idle", true)`. */
 function playGhostIdle(inst: GhostInstance): void {
   const current = inst.context.currentClip;
-  if (current?.key !== 'ghost' || current.name !== 'idle') inst.context.playClips([ghostClip('idle', true)]);
+  if (current?.key !== 'ghost' || current.name !== 'idle') { inst.context.playClips([ghostClip('idle', true)]); }
 }
 const GHOST_HAUNT = 'dontstarve/ghost/ghost_haunt';
 
@@ -34,7 +34,7 @@ export const ghostStates: WilsonState[] = [
       playGhostIdle(inst);
       // The movement the browser requested during the state before it resumes, as the living idle does.
       const movement = inst.context.requestedMovement;
-      if (movement === 'walk' || movement === 'run') inst.goToState(movement);
+      if (movement === 'walk' || movement === 'run') { inst.goToState(movement); }
     },
   }),
   ...(['walk', 'run'] as const).map(name => State({
@@ -53,7 +53,7 @@ export const ghostStates: WilsonState[] = [
       inst.context.entity.SoundEmitter.PlaySound(GHOST_HOWL);
     },
     events: [
-      EventHandler('animover', inst => { if (inst.context.animationDone) inst.goToState('idle'); }),
+      EventHandler('animover', inst => { if (inst.context.animationDone) { inst.goToState('idle'); } }),
     ],
   }),
   State({
@@ -66,7 +66,7 @@ export const ghostStates: WilsonState[] = [
     },
     timeline: [TimeEvent(15 * FRAMES, inst => { inst.context.performBufferedAction(); })],
     events: [
-      EventHandler('animover', inst => { if (inst.context.animationDone) inst.goToState('haunt'); }),
+      EventHandler('animover', inst => { if (inst.context.animationDone) { inst.goToState('haunt'); } }),
     ],
   }),
   State({
@@ -78,7 +78,7 @@ export const ghostStates: WilsonState[] = [
     },
     events: [
       // Hidden if resurrecting.
-      EventHandler('animover', inst => { if (inst.context.animationDone && inst.context.entity.IsVisible()) inst.goToState('idle'); }),
+      EventHandler('animover', inst => { if (inst.context.animationDone && inst.context.entity.IsVisible()) { inst.goToState('idle'); } }),
     ],
   }),
   State({
@@ -92,7 +92,7 @@ export const ghostStates: WilsonState[] = [
     },
     timeline: [TimeEvent(3 * FRAMES, inst => { inst.removeStateTag('busy'); inst.removeStateTag('pausepredict'); })],
     events: [
-      EventHandler('animover', inst => { if (inst.context.animationDone) inst.goToState('idle'); }),
+      EventHandler('animover', inst => { if (inst.context.animationDone) { inst.goToState('idle'); } }),
     ],
   }),
 ];

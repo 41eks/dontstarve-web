@@ -31,7 +31,7 @@ const newWeather = () => new Weather({ totalDayTime: 480, temperature: () => 20,
 function pickedGrass(scene: THREE.Scene, scheduler: GameTimeScheduler, x: number) {
   const { instance, display } = createEmptyEntity('grass');
   const model = display.model; instance.setPosition(x, 0, 0);
-  for (const tag of ['plant', 'renewable', 'silviculture']) instance.addTag(tag);
+  for (const tag of ['plant', 'renewable', 'silviculture']) { instance.addTag(tag); }
   ents.track(instance);
   cleanups.push(() => { instance.remove(); display.dispose(); });
   const pickable = addComponent(instance, 'pickable', Pickable, 'cutgrass', 1440, 1, undefined, undefined,
@@ -106,7 +106,7 @@ it('reads book_rain: toggles precipitation through moisture, spawns its fx and c
   expect(weather.preciptype.peek()).toBe('rain');
   expect(weather.rainRate.peek()).toBeCloseTo(0.1, 5);
   // Moisture dissipates by rate * dt * 10, so the rate climbs toward the peak.
-  for (let i = 0; i < 500; i++) weather.OnUpdate(1);
+  for (let i = 0; i < 500; i++) { weather.OnUpdate(1); }
   expect(weather.rainRate.peek()).toBeGreaterThan(0.3);
   expect(weather.rainRate.peek()).toBeLessThanOrEqual(weather.peakprecipitationrate.peek());
 
@@ -134,7 +134,7 @@ it('lets rain dissipate to its floor on its own and restores precipitation from 
   expect(restored.rainRate.peek()).toBe(weather.rainRate.peek());
   expect(() => restored.OnLoad({ ...saved, preciptype: 'hail' as never })).toThrow(RangeError);
   expect(restored.OnSave()).toEqual(saved);
-  for (let i = 0; i < 2000 && weather.preciptype.peek() !== 'none'; i++) weather.OnUpdate(1);
+  for (let i = 0; i < 2000 && weather.preciptype.peek() !== 'none'; i++) { weather.OnUpdate(1); }
   expect(weather.preciptype.peek()).toBe('none');
   expect(weather.moisture.peek()).toBe(weather.moisturefloor.peek());
   // A finished rain re-randomizes the ceiling and does not restart without a new force.

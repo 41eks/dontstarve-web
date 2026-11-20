@@ -37,14 +37,14 @@ export interface CookPotState {
 
 export function cookPotState(model: THREE.Object3D): CookPotState | undefined {
     const stewer = prefabInstance(model)?.components.stewer;
-    if (!stewer?.product) return undefined;
+    if (!stewer?.product) { return undefined; }
     return { product: stewer.product, phase: stewer.IsDone() ? 'done' : 'cooking', remainingSeconds: stewer.GetTimeToCook() };
 }
 
 function onhammered(inst: PrefabInstance): void {
-    if (inst.components.burnable?.IsBurning()) inst.components.burnable.Extinguish();
+    if (inst.components.burnable?.IsBurning()) { inst.components.burnable.Extinguish(); }
     const stewer = inst.components.stewer;
-    if (!inst.hasTag('burnt') && stewer?.product !== undefined && stewer.IsDone()) stewer.Harvest();
+    if (!inst.hasTag('burnt') && stewer?.product !== undefined && stewer.IsDone()) { stewer.Harvest(); }
     inst.components.container?.DropEverything(inst.position);
     inst.components.lootdropper!.DropLoot();
     inst.worldServices?.fx?.collapse?.('small', inst.position, 'metal');
@@ -52,7 +52,7 @@ function onhammered(inst: PrefabInstance): void {
 }
 
 function onhit(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     const stewer = inst.components.stewer!;
     if (stewer.IsCooking()) {
         inst.AnimState.PlayAnimation('hit_cooking');
@@ -63,8 +63,8 @@ function onhit(inst: PrefabInstance): void {
         inst.AnimState.PushAnimation('idle_full', false);
     } else {
         const container = inst.components.container;
-        if (container?.IsOpen()) container.Close();
-        else PlaySound('dontstarve/common/cookingpot_close', inst.position);
+        if (container?.IsOpen()) { container.Close(); }
+        else { PlaySound('dontstarve/common/cookingpot_close', inst.position); }
         inst.AnimState.PlayAnimation('hit_empty');
         inst.AnimState.PushAnimation('idle_empty', false);
     }
@@ -72,7 +72,7 @@ function onhit(inst: PrefabInstance): void {
 
 /** startcookfn; the pot's Light is not ported. */
 function startcookfn(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     inst.AnimState.PlayAnimation('cooking_loop', true);
     inst.SoundEmitter!.KillSound('snd');
     inst.SoundEmitter!.PlaySound('dontstarve/common/cookingpot_rattle', 'snd');
@@ -80,13 +80,13 @@ function startcookfn(inst: PrefabInstance): void {
 
 /** onopen; cookingpot_open and the "snd" cookingpot loop have no sound mapping yet. */
 function onopen(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     inst.AnimState.PlayAnimation('cooking_pre_loop');
     inst.SoundEmitter!.KillSound('snd');
 }
 
 function onclose(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     if (!inst.components.stewer!.IsCooking()) {
         inst.AnimState.PlayAnimation('idle_empty');
         inst.SoundEmitter!.KillSound('snd');
@@ -101,19 +101,19 @@ function SetProductSymbol(inst: PrefabInstance, product: string): void {
     const overridesymbol = recipe?.overridesymbolname ?? product;
     const level = potlevel === 'high' || potlevel === 'low' ? potlevel : 'mid';
     for (const candidate of ['high', 'mid', 'low']) {
-        if (candidate === level) inst.AnimState.Show(`swap_${candidate}`); else inst.AnimState.Hide(`swap_${candidate}`);
+        if (candidate === level) { inst.AnimState.Show(`swap_${candidate}`); } else { inst.AnimState.Hide(`swap_${candidate}`); }
     }
     inst.AnimState.OverrideSymbol('swap_cooked', build, overridesymbol);
 }
 
 function ShowProduct(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     const product = inst.components.stewer!.product;
-    if (product !== undefined) SetProductSymbol(inst, product);
+    if (product !== undefined) { SetProductSymbol(inst, product); }
 }
 
 function donecookfn(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     inst.AnimState.PlayAnimation('cooking_pst');
     inst.AnimState.PushAnimation('idle_full', false);
     ShowProduct(inst);
@@ -122,20 +122,20 @@ function donecookfn(inst: PrefabInstance): void {
 }
 
 function continuedonefn(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     inst.AnimState.PlayAnimation('idle_full');
     ShowProduct(inst);
 }
 
 function continuecookfn(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     inst.AnimState.PlayAnimation('cooking_loop', true);
     inst.SoundEmitter!.KillSound('snd');
     inst.SoundEmitter!.PlaySound('dontstarve/common/cookingpot_rattle', 'snd');
 }
 
 function harvestfn(inst: PrefabInstance): void {
-    if (inst.hasTag('burnt')) return;
+    if (inst.hasTag('burnt')) { return; }
     inst.AnimState.PlayAnimation('idle_empty');
     PlaySound('dontstarve/common/cookingpot_close', inst.position);
 }
@@ -163,7 +163,7 @@ function onload(inst: PrefabInstance, data: EntityPersistData): void {
  */
 function fn(world: PrefabWorldContext, sprites: SpriteResources): PrefabInstance {
     const { fire, scheduler } = world;
-    if (!fire || !scheduler) throw new Error('A cookpot needs the world\'s fire effects and scheduler');
+    if (!fire || !scheduler) { throw new Error('A cookpot needs the world\'s fire effects and scheduler'); }
     const inst = new PrefabInstance(COOK_POT_ID, new SpriteState({ name: 'idle_empty', held: true, billboard: true }));
     inst.worldServices = world;
     inst.AddSoundEmitter();

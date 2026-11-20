@@ -20,13 +20,13 @@ beforeEach(() => {
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));
 });
 afterEach(async () => {
-  for (const player of players.splice(0)) player.instance.remove();
+  for (const player of players.splice(0)) { player.instance.remove(); }
   await settle();
   vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 const meshes = (model: THREE.Object3D) => {
   const result: THREE.Mesh[] = [];
-  model.traverse(object => { if (object instanceof THREE.Mesh) result.push(object); });
+  model.traverse(object => { if (object instanceof THREE.Mesh) { result.push(object); } });
   return result;
 };
 async function createPlayer() {
@@ -46,13 +46,13 @@ it('declares player art and retains its entity, equipment, body and shared asset
   expect(instance.position).toBe(model.position);
   expect(instance.physicsBody).toBe(body);
   const source = instance.sprite.sprite.peek().source!;
-  if (!('art' in source)) throw new Error('Expected named player art');
+  if (!('art' in source)) { throw new Error('Expected named player art'); }
   const materials = source.art.peekBuild(source.buildArchive)!.materials;
   const disposals = materials.map(material => vi.spyOn(material, 'dispose'));
   await animationEquipper.equip('pickaxe');
   const hit = vi.fn();
   expect(animation.sg.pushBufferedAction(new BufferedAction('MINE', hit))).toBe(true);
-  for (let frame = 0; frame < 5; frame++) advancePlayer(animation, 1 / 30);
+  for (let frame = 0; frame < 5; frame++) { advancePlayer(animation, 1 / 30); }
   facePlayer(animation, 'side', true);
   expect(instance.sprite.sprite.peek()).toMatchObject({ facing: 5, mirrored: true });
   instance.setActive(false); await settle();
@@ -62,24 +62,24 @@ it('declares player art and retains its entity, equipment, body and shared asset
   expect(instance.position).toBe(position);
   expect(position.toArray()).toEqual([12, 0, -6]);
   // The source action timeline remains logical while no visual exists.
-  for (let frame = 0; frame < 30; frame++) advancePlayer(animation, 1 / 30);
+  for (let frame = 0; frame < 30; frame++) { advancePlayer(animation, 1 / 30); }
   expect(hit).toHaveBeenCalledOnce();
   instance.setActive(true); await settle(); advancePlayer(animation, 0);
   expect(model.parent).toBe(scene);
   expect(meshes(model)).toHaveLength(1);
   const art = instance.sprite.sprite.peek();
   const restoredSource = art.source!;
-  if (!('art' in restoredSource)) throw new Error('Expected named player art');
+  if (!('art' in restoredSource)) { throw new Error('Expected named player art'); }
   expect(restoredSource.art.peekBuild(restoredSource.buildArchive)!.materials).toBe(materials);
   expect(art.appearance.get('anim-state')?.kind).toBe('anim-state');
   // The held item's art is in its own slot over the player's AnimState, and it survives sleep and wake.
   expect(declaredAnimState(instance.sprite).json.peek().overrides.has(smallHash('swap_object'))).toBe(true);
-  for (const dispose of disposals) expect(dispose).not.toHaveBeenCalled();
+  for (const dispose of disposals) { expect(dispose).not.toHaveBeenCalled(); }
   instance.remove();
   expect(world.bodies).not.toContain(body);
   await settle();
   expect(meshes(model)).toHaveLength(0);
-  for (const dispose of disposals) expect(dispose).toHaveBeenCalledOnce();
+  for (const dispose of disposals) { expect(dispose).toHaveBeenCalledOnce(); }
   const removed = instance.sprite.sprite.peek();
   animation.AnimState.Hide('HEAD'); advancePlayer(animation, 1);
   expect(instance.sprite.sprite.peek()).toBe(removed);
@@ -92,7 +92,7 @@ it('declares tagged book FX as child instances and expires them on game timers w
   const read = vi.fn(() => true);
   const push = () => animation.sg.pushBufferedAction(new BufferedAction('READ', read, undefined, { invobject: book }));
   expect(push()).toBe(true);
-  for (let frame = 0; frame < 60 && animation.sg.stateName !== 'book2'; frame++) advancePlayer(animation, 1 / 30);
+  for (let frame = 0; frame < 60 && animation.sg.stateName !== 'book2'; frame++) { advancePlayer(animation, 1 / 30); }
   expect(animation.sg.stateName).toBe('book2');
   await display.artLoaded(); advancePlayer(animation, 0);
   const fx = [...instance.sprite.fx.peek().values()];
@@ -107,16 +107,16 @@ it('declares tagged book FX as child instances and expires them on game timers w
   }
   expect(roots.length).toBeGreaterThan(0);
   const combined = display.resolveFrame();
-  for (const root of roots) expect(combined.some(part => part.image === root.image)).toBe(true);
+  for (const root of roots) { expect(combined.some(part => part.image === root.image)).toBe(true); }
   expect(meshes(model)).toHaveLength(1); // FX parts join the one merged character billboard.
   instance.setActive(false); await settle();
   for (const entry of fx) {
-    if (!entry.display) throw new Error(`Missing the display of ${entry.sprite}`);
+    if (!entry.display) { throw new Error(`Missing the display of ${entry.sprite}`); }
     expect(entry.display.resolveFrame()).toEqual([]); expect(entry.sprite.loaded).toBe(false);
   }
-  for (let frame = 0; frame < 240; frame++) advancePlayer(animation, 1 / 30);
+  for (let frame = 0; frame < 240; frame++) { advancePlayer(animation, 1 / 30); }
   expect(read).toHaveBeenCalledOnce();
-  for (const child of children) expect(child.status.peek()).toBe('removed');
+  for (const child of children) { expect(child.status.peek()).toBe('removed'); }
   expect(instance.sprite.fx.peek().size).toBe(0);
   instance.setActive(true); await settle(); advancePlayer(animation, 0);
   expect(meshes(model)).toHaveLength(1);
@@ -127,6 +127,6 @@ it('declares tagged book FX as child instances and expires them on game timers w
   expect(cancelled).toHaveLength(1);
   instance.remove(); await settle(); advancePlayer(animation, 1);
   expect(instance.sprite.fx.peek().size).toBe(0);
-  for (const child of cancelled) expect(child.status.peek()).toBe('removed');
+  for (const child of cancelled) { expect(child.status.peek()).toBe('removed'); }
   expect(read).toHaveBeenCalledOnce();
 });

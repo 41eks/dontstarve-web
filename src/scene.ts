@@ -99,7 +99,7 @@ export async function startScene(
   inventory: InventoryStore,
 ) {
   const blockDisabledController = (event: PointerEvent) => {
-    if (playerInstance.controllerEnabled) return;
+    if (playerInstance.controllerEnabled) { return; }
     event.preventDefault(); event.stopImmediatePropagation();
   };
   view.renderer.domElement.addEventListener('pointerdown', blockDisabledController, true);
@@ -180,9 +180,9 @@ export async function startScene(
   let preparing = false;
   const preparation = new AbortController();
   const start = (): Promise<void> => {
-    if (startPromise) return startPromise;
+    if (startPromise) { return startPromise; }
     startPromise = (async () => {
-      if (disposed) throw new Error('Cannot start a disposed scene');
+      if (disposed) { throw new Error('Cannot start a disposed scene'); }
       const { width, height } = view.renderer.domElement.getBoundingClientRect();
       camera.aspect = width / Math.max(1, height);
       camera.updateProjectionMatrix();
@@ -198,12 +198,12 @@ export async function startScene(
             ['pan_flute.zip', ...Object.values(GROUND_ITEM_DEFINITIONS.panflute.skinArchives)]),
         ]);
         for (const result of results) {
-          if (result.status === 'rejected') throw result.reason;
+          if (result.status === 'rejected') { throw result.reason; }
         }
       } finally {
         preparing = false;
       }
-      if (disposed) throw new Error('Scene disposed while preparing');
+      if (disposed) { throw new Error('Scene disposed while preparing'); }
       animation = animate(world, camera);
       await animation.ready;
     })();
@@ -211,16 +211,16 @@ export async function startScene(
   };
   const disposalEvents = new EventEmitter<DisposalEvents>();
   const dispose = () => {
-    if (disposed) return;
+    if (disposed) { return; }
     disposed = true;
     preparation.abort();
     view.renderer.domElement.removeEventListener('pointerdown', blockDisabledController, true);
-    if (playerInstance.locomotor === locomotor) delete playerInstance.locomotor;
+    if (playerInstance.locomotor === locomotor) { delete playerInstance.locomotor; }
     animation?.stop();
-    if (playerInstance.components.builder === builder) removeComponent(playerInstance, 'builder');
+    if (playerInstance.components.builder === builder) { removeComponent(playerInstance, 'builder'); }
     RemoveSlipperyFeet(playerInstance);
     const slipTask = backTasks.indexOf(updateSlipperyFeet);
-    if (slipTask >= 0) backTasks.splice(slipTask, 1);
+    if (slipTask >= 0) { backTasks.splice(slipTask, 1); }
     clockUpdater.flush();
     scheduler.advanceTo(clockUpdater.elapsedSeconds);
     locomotor.stop();
@@ -229,7 +229,7 @@ export async function startScene(
     disposalEvents.emit('dispose', undefined);
     for (const [tasks, task] of [[middleTasks, updateBeforePhysics], [backTasks, updateEntities], [backTasks, clockUpdater.update]] as const) {
       const index = tasks.indexOf(task);
-      if (index >= 0) tasks.splice(index, 1);
+      if (index >= 0) { tasks.splice(index, 1); }
     }
     const releaseResources = () => {
       entities.dispose();
@@ -243,8 +243,8 @@ export async function startScene(
     };
     // compileAsync still polls its materials: retain them until the in-flight
     // batch settles, while aborting all subsequent uploads and scene startup.
-    if (preparing) void startPromise?.catch(() => undefined).then(releaseResources);
-    else releaseResources();
+    if (preparing) { void startPromise?.catch(() => undefined).then(releaseResources); }
+    else { releaseResources(); }
   };
   return { ...entities, byEntityId: registry.byEntityId, scheduler, weather: worldState.weather,
     getWatchWorldContent: worldState.getWatchWorldContent,

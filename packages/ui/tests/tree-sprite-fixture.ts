@@ -7,10 +7,10 @@ import { DstLocalLighting } from '../../../src/dstLocalLighting';
 
 function checkAtlasFrameStability(renderer: THREE.WebGLRenderer, target: THREE.WebGLRenderTarget) {
   const data = new Uint8Array(8 * 4 * 4);
-  for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) {
+  for (let y = 0; y < 4; y++) { for (let x = 0; x < 4; x++) {
     const i = (y * 8 + x) * 4;
     data[i] = (x + y) % 2 ? 255 : 40; data[i + 1] = 150; data[i + 3] = 255;
-  }
+  } }
   const texture = new THREE.DataTexture(data, 8, 4);
   const source = new THREE.MeshBasicMaterial({ map: texture });
   const still: ResolvedSprite = {
@@ -29,7 +29,7 @@ function checkAtlasFrameStability(renderer: THREE.WebGLRenderer, target: THREE.W
   let reference: Uint8Array | undefined;
   const differences: number[] = [];
   try {
-    for (const page of pages) for (const frame of page.frames) {
+    for (const page of pages) { for (const frame of page.frames) {
       const geometry = createRgbaSpriteFrameGeometry(frame);
       const material = new THREE.MeshBasicMaterial({ map: page.texture, transparent: true, depthWrite: false, side: THREE.DoubleSide });
       const mesh = new THREE.Mesh(geometry, material); scene.add(mesh);
@@ -40,7 +40,7 @@ function checkAtlasFrameStability(renderer: THREE.WebGLRenderer, target: THREE.W
       // Different atlas UV offsets can change the final 8-bit rounding by one level.
       differences.push(pixels.reduce((sum, value, index) => sum + Number(Math.abs(value - reference![index]) > 1), 0));
       mesh.removeFromParent(); geometry.dispose(); material.dispose();
-    }
+    } }
     return differences;
   } finally { pages.forEach(page => page.texture.dispose()); texture.dispose(); source.dispose(); }
 }
@@ -96,22 +96,22 @@ export async function checkTreeSpriteRendering(instanced = false) {
     differences.push(cached.reduce((count, value, i) => count + Number(value !== reference[i]), 0));
     meanErrors.push(cached.reduce((sum, value, i) => sum + Math.abs(value - reference[i]), 0) / cached.length);
     for (let i = 0; i < cached.length; i += 4) {
-      if (cached[i] !== cached[0] || cached[i + 1] !== cached[1] || cached[i + 2] !== cached[2]) paintedPixels++;
+      if (cached[i] !== cached[0] || cached[i + 1] !== cached[1] || cached[i + 2] !== cached[2]) { paintedPixels++; }
     }
   };
   try {
     await prewarmScenePasses(renderer, scenes[0], camera);
     compare();
-    if (instanced) for (const frame of [0, 1, 2, 14, 15, 29]) {
-      for (const sprite of [...shared, ...independent]) sprite.setFrame(frame);
+    if (instanced) { for (const frame of [0, 1, 2, 14, 15, 29]) {
+      for (const sprite of [...shared, ...independent]) { sprite.setFrame(frame); }
       compare();
-    }
+    } }
     if (instanced) {
       camera.position.set(8, 12, 24); camera.lookAt(0, 6, 0);
-      for (const sprite of [...shared, ...independent]) sprite.model.quaternion.copy(camera.quaternion);
+      for (const sprite of [...shared, ...independent]) { sprite.model.quaternion.copy(camera.quaternion); }
       compare();
       camera.position.set(0, 6, 25); camera.lookAt(0, 6, 0);
-      for (const sprite of [...shared, ...independent]) sprite.model.quaternion.copy(camera.quaternion);
+      for (const sprite of [...shared, ...independent]) { sprite.model.quaternion.copy(camera.quaternion); }
     }
     shared[0].playOnce('chop'); independent[0].playOnce('chop');
     shared[0].update(.1); independent[0].update(.1);
@@ -138,15 +138,15 @@ export async function checkTreeSpriteRendering(instanced = false) {
       const after = versions();
       reusedInstanceBuffers = before.every((version, index) => version === after[index]);
       let sampleIndex = -1;
-      for (let y = 20; y < 172 && sampleIndex < 0; y++) for (let x = 20; x < 172; x++) {
+      for (let y = 20; y < 172 && sampleIndex < 0; y++) { for (let x = 20; x < 172; x++) {
         let interior = true;
-        for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) {
+        for (let dy = -2; dy <= 2; dy++) { for (let dx = -2; dx <= 2; dx++) {
           const i = ((y + dy) * 192 + x + dx) * 4;
-          if (treePixels[i + 2] < 45) interior = false;
-        }
+          if (treePixels[i + 2] < 45) { interior = false; }
+        } }
         if (interior) { sampleIndex = (y * 192 + x) * 4; break; }
-      }
-      if (sampleIndex < 0) throw new Error('No opaque tree sample');
+      } }
+      if (sampleIndex < 0) { throw new Error('No opaque tree sample'); }
       const px = sampleIndex / 4 % 192, py = Math.floor(sampleIndex / 4 / 192);
       const world = new THREE.Vector3((px + .5) / 96 - 1, (py + .5) / 96 - 1, 0).unproject(camera);
       // Turf draws transparently without writing depth, just like the real ground layers.
@@ -178,13 +178,13 @@ export async function checkTreeSpriteRendering(instanced = false) {
       renderer.info.reset(); pixels(scenes[0]); drawCalls.push(renderer.info.render.calls);
       shared[0].start('idle_loop');
       renderer.info.reset(); pixels(scenes[0]); drawCalls.push(renderer.info.render.calls);
-      for (const sprite of [...shared, ...extra]) sprite.dispose();
+      for (const sprite of [...shared, ...extra]) { sprite.dispose(); }
       renderer.info.reset(); pixels(scenes[0]); drawCalls.push(renderer.info.render.calls);
     }
     const stabilityDifferences = instanced ? checkAtlasFrameStability(renderer, target) : [];
     return { differences, meanErrors, paintedPixels, drawCalls, occlusion, stabilityDifferences, reusedInstanceBuffers };
   } finally {
-    for (const sprite of [...shared, ...independent]) sprite.dispose();
+    for (const sprite of [...shared, ...independent]) { sprite.dispose(); }
     assets.dispose(); target.dispose(); lighting?.dispose(); renderer.dispose();
   }
 }
@@ -232,12 +232,12 @@ export async function checkBirchLeafRendering(instanced = false) {
     const frame = bank.animations.find(clip => clip.name === 'sway1_loop_tall')!.frames[0];
     let expectedParts = 0;
     for (const element of [...frame.elements].sort((a, b) => b.z - a.z)) {
-      if (element.layerHash === smallHash('mouseover')) continue;
+      if (element.layerHash === smallHash('mouseover')) { continue; }
       const source = element.imageHash === smallHash('swap_leaves') ? 1 : 0;
       // Independent reference: an index outside the source duration draws nothing.
       const image = [trunk, leaf][source].build.symbols.get(element.imageHash)?.find(image =>
         image.vertexCount > 0 && image.index <= element.imageIndex && element.imageIndex < image.index + image.duration);
-      if (!image) continue;
+      if (!image) { continue; }
       const atlas = atlases[source][image.sampler ?? 0];
       const sx = atlas.width / image.canvasWidth!, sy = atlas.height / image.canvasHeight!;
       ctx.save(); ctx.transform(...element.matrix);
@@ -276,7 +276,7 @@ export async function checkBirchLeafRendering(instanced = false) {
       privateTint = colours.filter(colour => colour === .5).length === 1 && colours.filter(colour => colour === 1).length === 20;
       shared.playOnce('chop_tall', () => shared.start('sway1_loop_tall')); draw();
       workDrawn = mesh.visible;
-      for (let i = 0; i < 100 && shared.currentAnimation !== 'sway1_loop_tall'; i++) shared.update(.1);
+      for (let i = 0; i < 100 && shared.currentAnimation !== 'sway1_loop_tall'; i++) { shared.update(.1); }
       draw();
       shared.dispose(); extra.forEach(tree => tree.dispose()); draw();
     }
@@ -284,6 +284,6 @@ export async function checkBirchLeafRendering(instanced = false) {
   } finally {
     shared.dispose(); extra.forEach(tree => tree.dispose()); assets.dispose();
     renderer.dispose();
-    for (const canvas of [...sources, actual, reference]) canvas.width = canvas.height = 0;
+    for (const canvas of [...sources, actual, reference]) { canvas.width = canvas.height = 0; }
   }
 }

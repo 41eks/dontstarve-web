@@ -46,7 +46,7 @@ test('composes the frame into one background and replaces/releases it when layou
       return Math.max(...Array.from({ length: 25 }, (_, offset) => {
         const y = centre + offset - 12;
         let opaque = 0;
-        for (let x = 0; x < image.width; x++) if (data[(y * image.width + x) * 4 + 3] > 245) opaque++;
+        for (let x = 0; x < image.width; x++) { if (data[(y * image.width + x) * 4 + 3] > 245) { opaque++; } }
         return opaque / image.width;
       }));
     };

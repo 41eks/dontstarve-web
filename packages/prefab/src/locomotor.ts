@@ -20,8 +20,8 @@ export function staticObstacleTest(bodies: Iterable<CANNON.Body>, margin: number
     const boxes: CANNON.AABB[] = [];
     for (const body of bodies) {
         if (body.type !== CANNON.Body.STATIC || !body.collisionResponse
-            || !body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere || shape instanceof CANNON.Trimesh)) continue;
-        if (body.aabbNeedsUpdate) body.updateAABB();
+            || !body.shapes.some((shape) => shape instanceof CANNON.Box || shape instanceof CANNON.Sphere || shape instanceof CANNON.Trimesh)) { continue; }
+        if (body.aabbNeedsUpdate) { body.updateAABB(); }
         boxes.push(body.aabb);
     }
     const inside = (box: CANNON.AABB, point: THREE.Vector3) =>
@@ -34,16 +34,16 @@ export function staticObstacleTest(bodies: Iterable<CANNON.Body>, margin: number
         for (const box of boxes) {
             const x0 = Math.floor((box.lowerBound.x - margin) / OBSTACLE_CELL), x1 = Math.floor((box.upperBound.x + margin) / OBSTACLE_CELL);
             const z0 = Math.floor((box.lowerBound.z - margin) / OBSTACLE_CELL), z1 = Math.floor((box.upperBound.z + margin) / OBSTACLE_CELL);
-            for (let x = x0; x <= x1; x++) for (let z = z0; z <= z1; z++) {
+            for (let x = x0; x <= x1; x++) { for (let z = z0; z <= z1; z++) {
                 const key = x * 0x10000 + z;
                 const cell = result.get(key);
-                if (cell) cell.push(box); else result.set(key, [box]);
-            }
+                if (cell) { cell.push(box); } else { result.set(key, [box]); }
+            } }
         }
         return result;
     };
     return (point) => {
-        if (!cells && ++tests <= LINEAR_TESTS) return boxes.some((box) => inside(box, point));
+        if (!cells && ++tests <= LINEAR_TESTS) { return boxes.some((box) => inside(box, point)); }
         cells ??= bucket();
         return cells.get(obstacleCell(point.x, point.z))?.some((box) => inside(box, point)) ?? false;
     };
@@ -94,7 +94,7 @@ export class Locomotor {
     constructor(body: LocomotorBody, options: LocomotorOptions = {}) {
         this.body = body;
         this.arriveDistance = options.arriveDistance ?? 0.25;
-        if (!Number.isFinite(this.arriveDistance) || this.arriveDistance <= 0) throw new RangeError('Invalid arrival distance');
+        if (!Number.isFinite(this.arriveDistance) || this.arriveDistance <= 0) { throw new RangeError('Invalid arrival distance'); }
         this.pathing = options.pathfinder && new LocoMotorPath(options.pathfinder, options.pathcaps, ARRIVE_STEP);
         this.isPassable = options.isPassable;
         this.footprintRadius = options.footprintRadius ?? 0;
@@ -127,7 +127,7 @@ export class Locomotor {
 
     /** OnUpdate's reached_dest: within the arrive distance, or half this frame's run distance when that is longer. */
     private hasArrived(pending: PendingAction, runDistance = 0): boolean {
-        if (pending.action.arrived) return pending.action.arrived();
+        if (pending.action.arrived) { return pending.action.arrived(); }
         const target = pending.action.target.getPosition();
         return (target.x - this.body.position.x) ** 2 + (target.z - this.body.position.z) ** 2
             <= Math.max(pending.arriveDistance, runDistance * .5) ** 2;
@@ -223,8 +223,8 @@ export class Locomotor {
             if (!free(vx, vz)) {
                 const slideX = vx !== 0 && free(vx, 0);
                 const slideZ = vz !== 0 && free(0, vz);
-                if (slideX && !slideZ) vz = 0;
-                else if (slideZ && !slideX) vx = 0;
+                if (slideX && !slideZ) { vz = 0; }
+                else if (slideZ && !slideX) { vx = 0; }
                 else { vx = 0; vz = 0; }
                 if (vx === 0 && vz === 0 && !manualDirection) { this.stop(); return; }
             }
@@ -242,14 +242,14 @@ export function setupLocomotorInput(
 ): () => void {
     const pointer = new PointerRaycaster(world);
     const handlePointerDown = (event: PointerEvent) => {
-        if (event.button !== 0) return;
+        if (event.button !== 0) { return; }
         if (event.defaultPrevented) {
             locomotor.stop();
             return;
         }
         pointer.trackPointer(event);
         const point = pointer.groundPoint();
-        if (point) locomotor.goToPoint(point);
+        if (point) { locomotor.goToPoint(point); }
     };
     world.renderer.domElement.addEventListener('pointerdown', handlePointerDown);
     return () => {

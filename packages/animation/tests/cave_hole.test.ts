@@ -60,8 +60,8 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
     const hole = s.prefabs.spawnAs(CaveHoleInstance, CAVE_HOLE_ID, new THREE.Vector3(3, 0, 6), record);
     const surface = s.surface();
     expect(hole.allowspawn).toBe(false);
-    for (const tag of ['groundhole', 'blocker', 'blinkfocus']) expect(hole.hasTag(tag)).toBe(true);
-    for (const tag of ['DECOR', 'NOCLICK']) expect(surface.hasTag(tag)).toBe(true);
+    for (const tag of ['groundhole', 'blocker', 'blinkfocus']) { expect(hole.hasTag(tag)).toBe(true); }
+    for (const tag of ['DECOR', 'NOCLICK']) { expect(surface.hasTag(tag)).toBe(true); }
     expect(surface.persists).toBe(false);
     expect(surface.entityParent).toBe(hole);
     for (const [inst, hidden] of [[hole, 'surface'], [surface, 'hole']] as const) {
@@ -82,13 +82,13 @@ it('restores a saved hole with its Lua clips, tags, layers and surface child', a
     const sprite = hole.transform.model.children[0];
     const turned = sprite.quaternion.clone();
     s.cameraFacing.set(facingFromHeading(180)); await turn();
-    for (const inst of [hole, surface]) expect(inst.sprite.sprite.peek().facing).toBe(FACING.UP);
+    for (const inst of [hole, surface]) { expect(inst.sprite.sprite.peek().facing).toBe(FACING.UP); }
     expect(sprite.quaternion.equals(turned)).toBe(true);
     // The left diagonals take the other left-diagonal frame: the default heading 45 shows the frame stored as UPLEFT.
     s.cameraFacing.set(facingFromHeading(45)); await turn();
-    for (const inst of [hole, surface]) expect(inst.sprite.sprite.peek().facing).toBe(FACING.UPLEFT);
+    for (const inst of [hole, surface]) { expect(inst.sprite.sprite.peek().facing).toBe(FACING.UPLEFT); }
     s.cameraFacing.set(facingFromHeading(135)); await turn();
-    for (const inst of [hole, surface]) expect(inst.sprite.sprite.peek().facing).toBe(FACING.DOWNLEFT);
+    for (const inst of [hole, surface]) { expect(inst.sprite.sprite.peek().facing).toBe(FACING.DOWNLEFT); }
     expect(s.registry.exportRecords().cave_hole).toEqual([record]);
     hole.remove();
     expect(surface.isRemoved).toBe(true);

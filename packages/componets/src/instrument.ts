@@ -30,7 +30,7 @@ export class Instrument<Musician, Listener, Inst = unknown> {
     if (this.onheard) {
       const self: unknown = this.inst; // listeners are entities like the instrument; only identity is compared
       for (const listener of this.findListeners(musician, this.range)) {
-        if (listener !== self) this.onheard(listener, musician, this.inst);
+        if (listener !== self) { this.onheard(listener, musician, this.inst); }
       }
     }
     this.onfinishedplaying?.(this.inst, musician);

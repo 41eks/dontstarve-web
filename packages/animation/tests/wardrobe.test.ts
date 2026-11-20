@@ -29,7 +29,7 @@ beforeEach(() => {
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
 });
 afterEach(() => {
-  for (const cleanup of cleanups.splice(0)) cleanup();
+  for (const cleanup of cleanups.splice(0)) { cleanup(); }
   vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 

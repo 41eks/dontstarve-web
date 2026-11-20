@@ -92,7 +92,7 @@ export class Snowfall {
     this.rate = watchSignal(options.rate, cleanup => { this.stopRate = cleanup; });
     createEffect(() => { this.particlesPerTick = options.fx.particlesPerTick * this.rate.get(); });
     void this.loadParticles().catch((error: unknown) => {
-      if (!this.disposed) console.error('Unable to load snow particles', error);
+      if (!this.disposed) { console.error('Unable to load snow particles', error); }
     });
   }
 
@@ -155,7 +155,7 @@ export class Snowfall {
     this.mesh.renderOrder = Number.MAX_SAFE_INTEGER;
     this.root.add(this.mesh);
     this.options.scene.add(this.root);
-    if (this.rate.peek() > 0) this.PostInit();
+    if (this.rate.peek() > 0) { this.PostInit(); }
   }
 
   private tick(): void {
@@ -227,7 +227,7 @@ export class Snowfall {
   }
 
   private writeGeometry(cameraQuaternion: THREE.Quaternion): void {
-    if (!this.mesh || !this.quads) return;
+    if (!this.mesh || !this.quads) { return; }
     this.orient(cameraQuaternion);
     const { position: { attribute: position, values: vertices }, color: { attribute: color, values: colors },
       blur: { attribute: blur, values: blurValues } } = this.quads;
@@ -237,10 +237,10 @@ export class Snowfall {
       const x = this.position[i * 3], y = this.position[i * 3 + 1], z = this.position[i * 3 + 2];
       // Terrain has depthWrite=false to preserve billboard feet. Clip falling FX at its surface.
       const halfSize = HALF_SIZE * this.sizeMultiplier[i];
-      if (y < halfSize) continue;
+      if (y < halfSize) { continue; }
       // Prevent near-camera flakes becoming large white discs while zooming or turning.
       const depth = -this.cameraPoint.set(x, y, z).applyMatrix4(camera.matrixWorldInverse).z;
-      if (depth <= 0) continue;
+      if (depth <= 0) { continue; }
       const scale = halfSize * Math.min(1, depth / this.focusDepth);
       const fade = Math.min(1, (1 - this.age[i] / this.lifetime[i]) / 0.1);
       for (let k = 0; k < 4; k++) {
@@ -283,7 +283,7 @@ export class Snowfall {
   }
 
   update(dt: number, cameraQuaternion: THREE.Quaternion): void {
-    if (this.disposed || !this.mesh || !Number.isFinite(dt) || dt <= 0) return;
+    if (this.disposed || !this.mesh || !Number.isFinite(dt) || dt <= 0) { return; }
     this.orient(cameraQuaternion);
     // Emission and simulation share the 30 Hz source ticks. Keep particles' age
     // correct on long frames instead of emitting a whole frame's backlog at once.
@@ -302,7 +302,7 @@ export class Snowfall {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.stopRate();
     const mesh = this.mesh;

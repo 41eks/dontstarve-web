@@ -48,7 +48,7 @@ export class PoopFlies {
 
   /** inst:SpawnChild("flies"). */
   Spawn(): void {
-    if (this.controller || this.inst.isRemoved || this.inst.components.inventoryitem.owner) return;
+    if (this.controller || this.inst.isRemoved || this.inst.components.inventoryitem.owner) { return; }
     this.controller = new FliesController(this.fliesInstance, this.inst.transform.position, this.world.scheduler,
       this.world.firefliesWorld.getWatchWorldContent);
     this.swarming.set(true);
@@ -71,6 +71,6 @@ function bindPoop(inst: ItemEntity, world: ItemPrefabWorld): void {
   inst.ListenForEvent('onputininventory', () => flies.Remove());
   // burnable:SetOnIgniteFn(OnBurn).
   inst.ListenForEvent('onignite', () => flies.Remove());
-  inst.sprite.playOnce('dump', () => { if (!inst.isRemoved) inst.sprite.playOnce('idle'); });
+  inst.sprite.playOnce('dump', () => { if (!inst.isRemoved) { inst.sprite.playOnce('idle'); } });
   flies.Spawn();
 }

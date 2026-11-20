@@ -17,7 +17,7 @@ import { workTargets } from './workTargets';
 vi.mock('../../prefab/src/sound', () => ({ PreloadSounds: vi.fn(async () => {}), PlaySound: vi.fn(() => ({ stop: vi.fn(), isPlaying: () => true })) }));
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 const spawnGroundItem = () => undefined;
-const meshes = (model: THREE.Object3D) => { const found: THREE.Mesh[] = []; model.traverse(o => { if (o instanceof THREE.Mesh) found.push(o); }); return found; };
+const meshes = (model: THREE.Object3D) => { const found: THREE.Mesh[] = []; model.traverse(o => { if (o instanceof THREE.Mesh) { found.push(o); } }); return found; };
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal('fetch', async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))));

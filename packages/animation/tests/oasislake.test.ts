@@ -115,7 +115,7 @@ it('keeps a c_spawn lake and an imported one through c_save and a reload, and re
     expect(saved[0]).toMatchObject({ id: spawned.entityId, transform: { position: [3, 0, -6] } });
     await second.registry.restoreAll({ oasislake: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof OasislakeInstance)) throw new Error('The saved lake did not load');
+    if (!(loaded instanceof OasislakeInstance)) { throw new Error('The saved lake did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     expect([loaded.regrowth, loaded.components.fishable.fishleft, loaded.rotation, clip(loaded)?.name]).toEqual([false, 10, 45, 'idle']);
     const reloaded = second.prefabs.get('imported-lake') as OasislakeInstance;

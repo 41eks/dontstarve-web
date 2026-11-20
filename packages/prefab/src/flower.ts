@@ -32,12 +32,12 @@ export interface FlowerSaveState { animation: FlowerAnimation; planted?: true }
 
 /** flower.lua setflowertype: an unspecified type does not reroll an existing flower. */
 function setflowertype(inst: FlowerInstance, name?: FlowerAnimation): void {
-  if (inst.animname !== undefined && (name === undefined || inst.animname === name)) return;
-  if (inst.animname === 'rose') inst.removeTag('thorny');
+  if (inst.animname !== undefined && (name === undefined || inst.animname === name)) { return; }
+  if (inst.animname === 'rose') { inst.removeTag('thorny'); }
   inst.animname = name ?? (inst.random() < .01 ? 'rose' : FLOWER_ANIMATIONS[Math.floor(inst.random() * 10)]);
   // PlayAnimation(animname), without looping, even for a single-frame rest pose.
   inst.sprite.playOnce(inst.animname);
-  if (inst.animname === 'rose') inst.addTag('thorny');
+  if (inst.animname === 'rose') { inst.addTag('thorny'); }
   OnIsRoseDirty(inst);
 }
 
@@ -57,7 +57,7 @@ function onload(flower: FlowerInstance, data: EntityPersistData): void {
 function onpickedfn(inst: FlowerInstance, picker?: PickActor): void {
   const pos = inst.position.clone();
   if (picker) {
-    if (!picker.hasTag('plantkin')) picker.components.sanity?.DoDelta(FLOWER_PICK_SANITY);
+    if (!picker.hasTag('plantkin')) { picker.components.sanity?.DoDelta(FLOWER_PICK_SANITY); }
     if (inst.animname === 'rose' && picker.components.combat
       && !picker.components.inventory?.EquipHasTag('bramble_resistant') && !picker.hasTag('shadowminion')) {
       picker.components.combat.GetAttacked(inst, ROSE_DAMAGE);

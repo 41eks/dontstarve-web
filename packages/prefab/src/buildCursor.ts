@@ -29,7 +29,7 @@ export const PLACER_TAGS = ['CLASSIFIED', 'NOCLICK', 'placer'] as const;
 export function declarePlacer(placer: Pick<PrefabInstance, 'addTag' | 'persists'> & {
     readonly sprite: { setLightOverride(value: number | null): void; setVisible(visible: boolean): void };
 }): void {
-    for (const tag of PLACER_TAGS) placer.addTag(tag);
+    for (const tag of PLACER_TAGS) { placer.addTag(tag); }
     placer.persists = false;
     placer.sprite.setLightOverride(1);
     placer.sprite.setVisible(false);
@@ -71,11 +71,11 @@ export class BuildCursor {
 
     update(): void {
         this.label.update();
-        if (!this.preview) return;
+        if (!this.preview) { return; }
         const point = this.pointer.groundPoint();
         const shown = point !== undefined;
-        if (shown !== this.shown) this.preview.show(this.shown = shown);
-        if (!point) return;
+        if (shown !== this.shown) { this.preview.show(this.shown = shown); }
+        if (!point) { return; }
         const target = this.snap ? this.snap(point) : point;
         this.preview.setPosition(target.x, target.y + this.previewGroundOffset, target.z);
     }

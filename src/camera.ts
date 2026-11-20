@@ -178,7 +178,7 @@ export class FollowCameraController implements TheCamera {
   }
 
   update(dt: number): void {
-    if (this.paused) return;
+    if (this.paused) { return; }
 
     this.updateTargetPosition();
     const panAmount = dt * this.panGain;
@@ -268,8 +268,8 @@ backTasks.push((dt, unpausedDt = dt) => followCamera.update(unpausedDt));
 
 window.addEventListener('game:camera-turn', (event) => {
   const direction = event.detail.direction;
-  if (direction === 'left') followCamera.rotateRight();
-  else if (direction === 'right') followCamera.rotateLeft();
+  if (direction === 'left') { followCamera.rotateRight(); }
+  else if (direction === 'right') { followCamera.rotateLeft(); }
 });
 
 window.addEventListener('keydown', (event) => {
@@ -277,15 +277,15 @@ window.addEventListener('keydown', (event) => {
   const isTextInput = target instanceof HTMLInputElement
     || target instanceof HTMLTextAreaElement
     || (target instanceof HTMLElement && target.isContentEditable);
-  if (isTextInput || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+  if (isTextInput || event.repeat || event.ctrlKey || event.metaKey || event.altKey) { return; }
 
-  if (event.code === 'KeyQ') followCamera.rotateRight();
-  else if (event.code === 'KeyE') followCamera.rotateLeft();
+  if (event.code === 'KeyQ') { followCamera.rotateRight(); }
+  else if (event.code === 'KeyE') { followCamera.rotateLeft(); }
 });
 
 renderer.domElement.addEventListener('wheel', (event) => {
-  if (event.deltaY === 0) return;
+  if (event.deltaY === 0) { return; }
   event.preventDefault();
-  if (event.deltaY < 0) followCamera.zoomIn();
-  else followCamera.zoomOut();
+  if (event.deltaY < 0) { followCamera.zoomIn(); }
+  else { followCamera.zoomOut(); }
 }, { passive: false });

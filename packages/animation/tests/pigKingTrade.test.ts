@@ -28,7 +28,7 @@ afterEach(() => {
 
 const item = (itemId: string, tradable = true) => {
   const entity = testItem({ itemId, count: 1 });
-  if (tradable) configureTradableEntity(entity);
+  if (tradable) { configureTradableEntity(entity); }
   return entity;
 };
 

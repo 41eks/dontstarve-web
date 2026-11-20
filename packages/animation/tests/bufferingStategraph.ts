@@ -16,6 +16,6 @@ export function bufferingStategraph() {
     /** BufferedAction:Do for the last pushed action, even after it was cancelled: its own checks decide. */
     hit: () => last()?.do(),
     /** Plays the state out until the player is idle again. */
-    finish() { for (let i = 0; i < 300 && graph.stateName !== 'idle'; i++) graph.update(1 / 30); },
+    finish() { for (let i = 0; i < 300 && graph.stateName !== 'idle'; i++) { graph.update(1 / 30); } },
   };
 }

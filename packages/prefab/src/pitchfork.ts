@@ -25,7 +25,7 @@ export const pitchforkVisual: EquipmentVisualFactory = item => {
   const visual = handEquipmentVisual(item, [...skin ? [skin] : [], swap.archive], swap.symbol, [], false);
   return { ...visual, onequip(owner) {
     visual.onequip(owner);
-    if (item.prefab === 'goldenpitchfork') PlaySound('dontstarve/wilson/equip_item_gold');
+    if (item.prefab === 'goldenpitchfork') { PlaySound('dontstarve/wilson/equip_item_gold'); }
   } };
 };
 
@@ -37,13 +37,13 @@ export function configurePitchforkEntity(inst: ItemEntity): void {
   inst.addTag('sharp');
   const weapon = AddWeapon(inst, PITCHFORK_DAMAGE, false);
   addComponent(inst, 'terraformer', Terraformer);
-  if (inst.prefab === 'goldenpitchfork') weapon.attackwear = 1 / GOLDENTOOLFACTOR;
+  if (inst.prefab === 'goldenpitchfork') { weapon.attackwear = 1 / GOLDENTOOLFACTOR; }
 }
 
 /** While held in a world, the terraformer works that world's map. */
 export function createTerraformerLifecycle(entity: ItemEntity, map: TerraformerMap): HeldEquipFunctions {
   return {
-    onequip() { if (entity.components.terraformer) entity.components.terraformer.map = map; },
-    onunequip() { if (entity.components.terraformer) entity.components.terraformer.map = undefined; },
+    onequip() { if (entity.components.terraformer) { entity.components.terraformer.map = map; } },
+    onunequip() { if (entity.components.terraformer) { entity.components.terraformer.map = undefined; } },
   };
 }

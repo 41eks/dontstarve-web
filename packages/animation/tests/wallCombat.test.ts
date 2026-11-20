@@ -92,7 +92,7 @@ it('hammers out a middle wall once, invalidates stale targets and preserves the 
     expect(placement.exportRecords()).toEqual([before[0], before[2]]);
     const restored = setup();
     try {
-      for (const { prefabId, record } of placement.exportRecords()) await restored.placement.spawnFromSave(prefabId as 'wall_stone', record);
+      for (const { prefabId, record } of placement.exportRecords()) { await restored.placement.spawnFromSave(prefabId as 'wall_stone', record); }
       expect(restored.placement.exportRecords()).toEqual([before[0], before[2]]);
     } finally { restored.placement.dispose(); }
   } finally { placement.dispose(); }
@@ -133,7 +133,7 @@ it('gives walls source health, player damage reduction, health poses, weapon wea
     // Below 40% the queued pose follows the health change; at zero the wall is broken and no longer a target.
     stoneTarget.inst.components.health!.DoDelta(150 - stoneTarget.inst.components.health!.currenthealth);
     await settle();
-    for (let frame = 0; frame < 30; frame++) placement.update(1 / 30);
+    for (let frame = 0; frame < 30; frame++) { placement.update(1 / 30); }
     expect(pose(stone)).toBe('onequarter');
     stoneTarget.inst.components.health!.SetVal(5);
     expect(player.combat.DoAttack(stoneTarget.inst)).toBe(true);

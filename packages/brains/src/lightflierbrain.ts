@@ -39,7 +39,7 @@ export function SetFormationActive(inst: LightFlierBrainInst, active: boolean, u
 
 /** FindHome: a lightflier_flower within MAX_WANDER_DIST, not burnt or burning, takes ownership of the fly. */
 function FindHome(inst: LightFlierBrainInst, unit: number): void {
-  if (inst.home?.isValid()) return;
+  if (inst.home?.isValid()) { return; }
   inst.world.findEntity(inst, 10 * unit, undefined, ['lightflier_home'], ['burnt', 'fire'])?.components.childspawner?.TakeOwnership(inst);
 }
 
@@ -53,12 +53,12 @@ export class LightFlierBrain extends Brain {
     const gohome = () => {
       FindHome(inst, unit); const home = inst.home;
       if (!home?.isValid() || !CanGoHome(home) || inst.sg?.hasStateTag('busy')
-        || !(home._lightflier_returning_home === inst || inst.getTime() - inst.bornAt > 60 && home.components.childspawner.numchildrenoutside > 1)) return;
+        || !(home._lightflier_returning_home === inst || inst.getTime() - inst.bornAt > 60 && home.components.childspawner.numchildrenoutside > 1)) { return; }
       return CreateBufferedAction(inst, home, 'GOHOME', undefined, unit);
     };
     class Root extends PriorityNode {
       override Visit(): void {
-        if (this.lasttime === undefined || this.lasttime + .25 < this.now) SetFormationActive(inst, false, unit);
+        if (this.lasttime === undefined || this.lasttime + .25 < this.now) { SetFormationActive(inst, false, unit); }
         super.Visit();
       }
     }

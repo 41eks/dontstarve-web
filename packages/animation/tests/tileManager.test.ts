@@ -38,7 +38,7 @@ it('uses injected dimensions for grids, keys and exact bounds, including partial
     } finally { DisposeTileStates(player); unbind(); }
   }
   expect(() => GetTileStateAtPoint(createSignal(new Vector3()))).toThrow('not bound');
-  for (const size of [0, -1, NaN, Infinity]) expect(() => BindTileMapSize(size)).toThrow(RangeError);
+  for (const size of [0, -1, NaN, Infinity]) { expect(() => BindTileMapSize(size)).toThrow(RangeError); }
 });
 
 it('follows moving target signals across tiles and releases their bridges on disposal', async () => {
@@ -282,7 +282,7 @@ it('publishes changed tiles from the player outward in spiral order, including c
       // 故意反序登记，发布顺序应由螺旋决定。
       for (const [x, z] of [...expected].reverse()) {
         const state = GetTileStateAtPoint(player)(tileAt(new Vector3(x * 12, 0, z * 12)), 1)!;
-        stops.push(state.subscribe(active => { if (active) observed.push([x, z]); }));
+        stops.push(state.subscribe(active => { if (active) { observed.push([x, z]); } }));
       }
       const oldCenter = GetTileStateAtPoint(player)(tileAt(new Vector3(240, 0, 240)), 1)!;
       expect(oldCenter()).toBe(true);
@@ -296,7 +296,7 @@ it('publishes changed tiles from the player outward in spiral order, including c
         expect(expected.map(([x, z]) => GetTileStateAtPoint(player)(tileAt(new Vector3(x * 12, 0, z * 12)), 1)!()))
           .toEqual([true, false, false, true]);
       }
-    } finally { for (const stop of stops) stop(); DisposeTileStates(player); }
+    } finally { for (const stop of stops) { stop(); } DisposeTileStates(player); }
   }
 });
 
@@ -332,19 +332,19 @@ it('refreshes a tracker only after 60 position writes, and immediately on sync',
   const active = GetTileStateAtPoint(player)(tracker.tile, 0)!;
   const move = (x: number) => { owner.position.set(x, 0, 1); tracker.moved(); };
   try {
-    for (let write = 0; write < 59; write++) move(25);
+    for (let write = 0; write < 59; write++) { move(25); }
     expect(tracker.tile.peek()).toBe(GetTileKeyAtPoint(new Vector3(1, 0, 1))); expect(active()).toBe(true);
     move(25); // the 60th write refreshes
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(tracker.tile.peek()).toBe(GetTileKeyAtPoint(new Vector3(25, 0, 1))); expect(active()).toBe(false);
 
     // A teleport that replaces the vector is picked up by an immediate sync, which also restarts the count.
-    for (let write = 0; write < 30; write++) tracker.moved();
+    for (let write = 0; write < 30; write++) { tracker.moved(); }
     owner.position = new Vector3(0, 0, 0); tracker.sync();
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(active()).toBe(true);
     owner.position.set(25, 0, 1);
-    for (let write = 0; write < 59; write++) tracker.moved();
+    for (let write = 0; write < 59; write++) { tracker.moved(); }
     expect(tracker.tile.peek()).toBe(GetTileKeyAtPoint(new Vector3(0, 0, 0)));
     tracker.moved();
     expect(tracker.tile.peek()).toBe(GetTileKeyAtPoint(new Vector3(25, 0, 1)));

@@ -67,7 +67,7 @@ export function registerDisposal(events: EventEmitter<DisposalEvents>, resources
       stopControllerUpdates[index]();
       controller.dispose();
     });
-    for (const controller of resources.actionControllers) controller.dispose();
+    for (const controller of resources.actionControllers) { controller.dispose(); }
     resources.stopEmoteWheel();
     resources.stopContextMenu();
   });
@@ -112,7 +112,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         : buildId === 'icebox' ? iceBoxInventoryPanel : chestInventoryPanel;
       if (!isOpen) { panel.close(model); return; }
       const instance = prefabInstance(model), slots = instance?.components.container?.slots;
-      if (instance && slots) panel.open(model, buildId, { containerId: buildingContainerId(buildId, String(instance.entityId)), slots });
+      if (instance && slots) { panel.open(model, buildId, { containerId: buildingContainerId(buildId, String(instance.entityId)), slots }); }
     },
     register(events: EventEmitter<DisposalEvents>, scene: SceneResources) {
       const { buildingPlacement, worldFx, scheduler, weather, moon, getWatchWorldContent } = scene;
@@ -127,13 +127,13 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
       const frameControllers: FrameController[] = [];
       const actionControllers: Disposable[] = [];
       const stopInventoryReceived = inventory.subscribeReceived((received, source) => {
-        if (source) inventoryReceiveEffect(gameUi,
-          screenProjection.GetScreenPos(new Vector3(source.x, source.y, source.z)))(received);
+        if (source) { inventoryReceiveEffect(gameUi,
+          screenProjection.GetScreenPos(new Vector3(source.x, source.y, source.z)))(received); }
       });
       if (playerEntity) {
         // Pointer input is blocked while the sleeper's controller is disabled, so waking listens ahead of the canvas.
         const wakeOnPointer = (event: PointerEvent) => {
-          if (event.target === renderer.domElement && playerEntity.sg.isSleeping) wakeFromBed(playerEntity);
+          if (event.target === renderer.domElement && playerEntity.sg.isSleeping) { wakeFromBed(playerEntity); }
         };
         window.addEventListener('pointerdown', wakeOnPointer, true);
         actionControllers.push({ dispose() {
@@ -145,7 +145,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         root: view.scene, scheduler, weather, moon, getWatchWorldContent,
         spawnFx(prefab, reader) {
           const { x, z } = reader.getPosition();
-          if (isWorldFx(prefab)) worldFx.spawn(prefab, new Vector3(x, 0, z));
+          if (isWorldFx(prefab)) { worldFx.spawn(prefab, new Vector3(x, 0, z)); }
         },
       };
       addComponent(playerInstance, 'reader', Reader<PlayerInstance, BookWorld>, bookWorld);
@@ -159,11 +159,11 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
       if (playerEntity) {
         view.registerFrameTask = registerFrontTask;
         // playercontroller.lua: the picker's actions on any entity, buffered for the player.
-        if (!hasPlayerInventory(playerEntity)) throw new Error('The player acts with its inventory');
+        if (!hasPlayerInventory(playerEntity)) { throw new Error('The player acts with its inventory'); }
         const controller = new PlayerController(view, playerEntity.sg, locomotor, handEquipment, playerEntity, isActionInterrupting);
         playerInstance.components.playercontroller = controller;
         actionControllers.push(controller, { dispose() {
-          if (playerInstance.components.playercontroller === controller) delete playerInstance.components.playercontroller;
+          if (playerInstance.components.playercontroller === controller) { delete playerInstance.components.playercontroller; }
         } });
 
         // SGwilson.lua fishing states reach inst.components.inventory:GetEquippedItem(HANDS).components.fishingrod.
@@ -201,24 +201,24 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         actionEvents, updateCursor);
 
       const stopContextMenu = gameUi.inventoryBar.contextMenu.subscribe((request) => {
-        if (!request) return;
+        if (!request) { return; }
         const { slot, action, item } = request;
         actionEvents.emit('action:interrupt', { reason: 'slot-context-menu' });
-        if (isHandSlot(slot)) inventory.getEntity(slot)?.flush();
+        if (isHandSlot(slot)) { inventory.getEntity(slot)?.flush(); }
         const stack = inventory.get(slot);
         if (!stack || !item || stack.itemId !== item.id || stack.skinId !== item.skinId
-          || (item.entityId !== undefined && inventory.getEntity(slot)?.id !== item.entityId)) return;
+          || (item.entityId !== undefined && inventory.getEntity(slot)?.id !== item.entityId)) { return; }
         if (action === 'drop') {
           actionEvents.emit('action:interrupt', { reason: 'drop' });
           const entity = inventory.getEntity(slot);
-          if (!entity) return;
+          if (!entity) { return; }
           // DROP's perform frame: inventory:DropItem of the whole stack, if this inst is still the slot's.
-          if (playerEntity) playDrop(playerEntity, () => {
-            if (isHandSlot(slot)) inventory.getEntity(slot)?.flush();
-            if (inventory.getEntity(slot) !== entity) return false;
+          if (playerEntity) { playDrop(playerEntity, () => {
+            if (isHandSlot(slot)) { inventory.getEntity(slot)?.flush(); }
+            if (inventory.getEntity(slot) !== entity) { return false; }
             inventory.DropItem(entity, player.position.clone());
             return true;
-          });
+          }); }
           return;
         }
         // inventory.lua UseItemFromInvTile: with an active item, use it on the original inventory target.
@@ -226,11 +226,11 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
         if (activeItem) {
           const target = inventory.getEntity(slot), controller = playerInstance.components.playercontroller;
           const use = target && controller?.GetItemUseAction(activeItem, target);
-          if (use) controller?.DoAction(use);
+          if (use) { controller?.DoAction(use); }
           return;
         }
         if (inventory.getEntity(slot)?.components.deployable?.mode === 'PLANT') {
-          if (!inventory.get(cursorSlotAddress())) inventory.transfer(slot, cursorSlotAddress(), stack.count);
+          if (!inventory.get(cursorSlotAddress())) { inventory.transfer(slot, cursorSlotAddress(), stack.count); }
           return;
         }
         const entity = inventory.getEntity(slot);
@@ -251,7 +251,7 @@ export function createDisposalResources({ gameUi, view, screenProjection, invent
             entity.components.useableitem.StartUsingItem();
             return;
           }
-          if (target) inventory.transfer(slot, target, 1);
+          if (target) { inventory.transfer(slot, target, 1); }
         }
       });
       registerDisposal(events, {

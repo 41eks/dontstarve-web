@@ -128,7 +128,7 @@ export class BeefaloInstance extends PrefabInstance implements FaceEntityInst {
   // conventions-allow instance-method: the engine's Physics:SetMotorVel, which locomotor calls on inst.
   setMotorSpeed(speed: number): void {
     const body = this.physicsBody;
-    if (!body) return;
+    if (!body) { return; }
     const heading = THREE.MathUtils.degToRad(this.transform.rotation);
     body.velocity.x = Math.cos(heading) * speed;
     body.velocity.z = -Math.sin(heading) * speed;
@@ -137,7 +137,7 @@ export class BeefaloInstance extends PrefabInstance implements FaceEntityInst {
 
 /** OnResetBeard; brushable, domestication and skins are not ported. has_beard and the shaved build follow the beard's hairy memo. */
 function OnResetBeard(inst: BeefaloInstance): void {
-  if (inst.components.sleeper.IsAsleep()) inst.stategraph.sg.statemem.continuesleeping = true;
+  if (inst.components.sleeper.IsAsleep()) { inst.stategraph.sg.statemem.continuesleeping = true; }
   inst.stategraph.goToState('shaved');
 }
 
@@ -151,18 +151,18 @@ function OnShaved(): void {}
 
 /** OnHairGrowth; rideable's Buck is not ported. */
 function OnHairGrowth(inst: BeefaloInstance): void {
-  if (inst.components.beard.bits.peek() === 0) inst.hairGrowthPending = true;
+  if (inst.components.beard.bits.peek() === 0) { inst.hairGrowthPending = true; }
 }
 
 /** A save from before the components saved themselves: its fields load into the components they belong to. */
 function onload(inst: BeefaloInstance, data: EntityPersistData): void {
   const legacy = data.beefalo;
-  if (!legacy) return;
+  if (!legacy) { return; }
   inst.setRotation(legacy.heading);
-  if (!data.knownlocations) inst.components.knownlocations.OnLoad(legacy.knownlocations
-    ?? { locations: [{ name: 'herd', x: legacy.home[0], y: legacy.home[1], z: legacy.home[2] }] });
-  if (!data.periodicspawner && legacy.poopRemainingSeconds > 0) inst.components.periodicspawner.OnLoad({ time: legacy.poopRemainingSeconds });
-  if (!data.beard && legacy.beard) inst.components.beard.OnLoad(legacy.beard);
+  if (!data.knownlocations) { inst.components.knownlocations.OnLoad(legacy.knownlocations
+    ?? { locations: [{ name: 'herd', x: legacy.home[0], y: legacy.home[1], z: legacy.home[2] }] }); }
+  if (!data.periodicspawner && legacy.poopRemainingSeconds > 0) { inst.components.periodicspawner.OnLoad({ time: legacy.poopRemainingSeconds }); }
+  if (!data.beard && legacy.beard) { inst.components.beard.OnLoad(legacy.beard); }
 }
 
 /** The brain's TheWorld: simutil.lua FindEntity / GetClosestInstWithTag over TheSim, and the map's IsAboveGroundAtPoint. */
@@ -192,7 +192,7 @@ function fn(world: BeefaloWorld): BeefaloInstance {
   const { scheduler } = world, random = world.random ?? Math.random;
   const inst = new BeefaloInstance(scheduler);
   inst.BindScheduler(scheduler);
-  for (const tag of ['beefalo', 'animal', 'largecreature', 'bearded']) inst.addTag(tag);
+  for (const tag of ['beefalo', 'animal', 'largecreature', 'bearded']) { inst.addTag(tag); }
   inst.setRotation(0);
 
   const beard = addComponent(inst, 'beard', Beard, {
@@ -211,7 +211,7 @@ function fn(world: BeefaloWorld): BeefaloInstance {
   // follow whether the beard has bits.
   inst.onRemove(createRenderEffect(() => {
     const hairy = beard.hairy.get();
-    if (hairy) inst.addTag('has_beard'); else inst.removeTag('has_beard');
+    if (hairy) { inst.addTag('has_beard'); } else { inst.removeTag('has_beard'); }
     inst.sprite.setBuildArchive(hairy ? BEEFALO_BUILD : BEEFALO_SHAVED_BUILD);
   }));
 
@@ -271,7 +271,7 @@ function fn(world: BeefaloWorld): BeefaloInstance {
 
 /** Each frame after the physics step: the beefalo follows its body, then its stategraph, brain and locomotor run. */
 function OnUpdate(inst: BeefaloInstance, world: BeefaloWorld, dt: number): void {
-  if (inst.status.peek() !== 'active' || !Number.isFinite(dt) || dt < 0) return;
+  if (inst.status.peek() !== 'active' || !Number.isFinite(dt) || dt < 0) { return; }
   const body = inst.physicsBody;
   if (body) {
     const position = new THREE.Vector3(body.position.x, 0, body.position.z);
@@ -332,7 +332,7 @@ export function findBeefaloSpawnPoint(physics: CANNON.World, world: Pick<Beefalo
       const occupied = getRegisteredPhysicsBodies(physics).some(body => body.collisionResponse && body.shapes.some(shape =>
         shape instanceof CANNON.Sphere && Math.hypot(target.x - body.position.x, target.z - body.position.z)
           < shape.radius + BEEFALO_BEHAVIOR.radius + 1));
-      if (!occupied && world.isWalkable(target)) return target;
+      if (!occupied && world.isWalkable(target)) { return target; }
     }
   }
   throw new Error('附近没有可生成 beefalo 的空地');

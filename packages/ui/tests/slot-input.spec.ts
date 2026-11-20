@@ -12,7 +12,7 @@ test('samples the current UI slot on every input without replaying actions on sl
   const input = createSignal<SlotSecondaryInput | null>(null);
   const binding = bindSlotContextMenuInput(input, slot);
   const requests: SlotContextMenuRequest[] = [];
-  binding.request.subscribe(request => { if (request) requests.push(request); });
+  binding.request.subscribe(request => { if (request) { requests.push(request); } });
   const item: SlotItem = {
     entityId: 'first', id: 'seeds', name: '种子', count: 3, maxStack: 40, icon: 'seeds.tex',
   };

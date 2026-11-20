@@ -27,10 +27,10 @@ export class DisplaySprite implements InstancedSpriteMember {
 
   /** The display's drawn art changed: list its instance, if any, for that instance's pass. */
   setSprite(sprite: InstancedSprite | undefined): void {
-    if (sprite === this.drawn) return;
-    if (this.drawn) byPass.get(this.drawn.pass)?.delete(this);
+    if (sprite === this.drawn) { return; }
+    if (this.drawn) { byPass.get(this.drawn.pass)?.delete(this); }
     this.drawn = sprite;
-    if (!sprite) return;
+    if (!sprite) { return; }
     let members = byPass.get(sprite.pass);
     if (!members) {
       byPass.set(sprite.pass, members = new Set());
@@ -49,7 +49,7 @@ export class DisplaySprite implements InstancedSpriteMember {
 export function displayLightOverride(object: THREE.Object3D): number {
   for (let node: THREE.Object3D | null = object; node; node = node.parent) {
     const display = byModel.get(node);
-    if (display) return display.lightOverride;
+    if (display) { return display.lightOverride; }
   }
   return 0;
 }
@@ -67,8 +67,8 @@ export function displayLights(): ReadonlySet<DisplayLight> { return lights; }
 
 /** The display keeps one record listed while its entity is active and its light is on. */
 export function listDisplayLight(previous: DisplayLight | undefined, model: THREE.Object3D, light: LightJson | undefined): DisplayLight | undefined {
-  if (previous) lights.delete(previous);
-  if (!light || light.radius <= 0 || light.intensity <= 0) return undefined;
+  if (previous) { lights.delete(previous); }
+  if (!light || light.radius <= 0 || light.intensity <= 0) { return undefined; }
   const record = { model, light };
   lights.add(record);
   return record;

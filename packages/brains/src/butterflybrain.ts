@@ -17,13 +17,13 @@ const FLOWER_TAGS = ['flower'];
 
 function NearestFlowerPos(inst: BrainInst): Vec3 | undefined {
   const flower = inst.world.getClosestInstWithTag(FLOWER_TAGS, inst, SEE_FLOWER_DIST);
-  if (flower?.isValid()) return { ...flower.getPosition() };
+  if (flower?.isValid()) { return { ...flower.getPosition() }; }
   return undefined;
 }
 
 function GoHomeAction(inst: BrainInst) {
   const flower = inst.world.getClosestInstWithTag(FLOWER_TAGS, inst, SEE_FLOWER_DIST);
-  if (flower?.isValid()) return CreateBufferedAction(inst, flower, 'GOHOME', { ...flower.getPosition() });
+  if (flower?.isValid()) { return CreateBufferedAction(inst, flower, 'GOHOME', { ...flower.getPosition() }); }
   return undefined;
 }
 

@@ -15,7 +15,7 @@ export class ElectricAttacks {
 
   RemoveSource(source: object): void {
     this.sources.delete(source);
-    if (this.sources.size === 0) this.removeFromEntity();
+    if (this.sources.size === 0) { this.removeFromEntity(); }
   }
 
   /** _sources:Get(): whether any source is set. */

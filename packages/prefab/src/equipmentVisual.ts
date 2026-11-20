@@ -62,9 +62,9 @@ export type EquipmentVisualFactory = (item: EquipmentVisualItem) => EquipmentVis
 
 /** The skin's build, from the prefab's own skin table; an unknown skin is an error. */
 export function skinArchive(prefab: string, skins: Readonly<Record<string, string>>, skinId: string | undefined): string | undefined {
-  if (skinId === undefined) return undefined;
+  if (skinId === undefined) { return undefined; }
   const archive = skins[skinId];
-  if (!archive) throw new Error(`Unknown ${prefab} skin: ${skinId}`);
+  if (!archive) { throw new Error(`Unknown ${prefab} skin: ${skinId}`); }
   return archive;
 }
 
@@ -80,20 +80,20 @@ export function handEquipmentVisual(
   return {
     onequip(equipper) {
       owner = equipper;
-      if (item.skinId) owner.PushEvent('equipskinneditem', item.skinId);
+      if (item.skinId) { owner.PushEvent('equipskinneditem', item.skinId); }
       for (const { symbol, source } of [{ symbol: 'swap_object', source: sourceSymbol }, ...extraSymbols]) {
-        if (item.skinId) owner.AnimState.OverrideItemSkinSymbol(symbol, builds, source, item.id);
-        else owner.AnimState.OverrideSymbol(symbol, builds, source);
+        if (item.skinId) { owner.AnimState.OverrideItemSkinSymbol(symbol, builds, source, item.id); }
+        else { owner.AnimState.OverrideSymbol(symbol, builds, source); }
       }
       owner.AnimState.Show('ARM_carry');
       owner.AnimState.Hide('ARM_normal');
     },
     onunequip() {
-      if (!owner) return;
+      if (!owner) { return; }
       owner.AnimState.Hide('ARM_carry');
       owner.AnimState.Show('ARM_normal');
-      if (item.skinId && unequipSkinEvent) owner.PushEvent('unequipskinneditem', item.skinId);
-      for (const { symbol } of extraSymbols) owner.AnimState.ClearOverrideSymbol(symbol);
+      if (item.skinId && unequipSkinEvent) { owner.PushEvent('unequipskinneditem', item.skinId); }
+      for (const { symbol } of extraSymbols) { owner.AnimState.ClearOverrideSymbol(symbol); }
       owner = undefined;
     },
   };
@@ -123,7 +123,7 @@ export function createEquipmentViews(owner: EquipmentOwner, presentation: Equipm
     const slot = new EquipmentAnimState(presentation.sprite);
     slot.equip();
     let holds = 0, closed = false;
-    const settle = () => { if (closed && holds === 0) slot.unequip(); };
+    const settle = () => { if (closed && holds === 0) { slot.unequip(); } };
     // The owner's own members act on the owner itself; only AnimState is this inst's slot of its sprite.
     const view: EquipmentVisualOwner = {
       ListenForEvent: owner.ListenForEvent && ((name, listener) => owner.ListenForEvent!(name, listener)),
@@ -137,9 +137,9 @@ export function createEquipmentViews(owner: EquipmentOwner, presentation: Equipm
       Retain() {
         holds++;
         let released = false;
-        return () => { if (released) return; released = true; holds--; settle(); };
+        return () => { if (released) { return; } released = true; holds--; settle(); };
       },
-      close() { if (closed) return; closed = true; settle(); },
+      close() { if (closed) { return; } closed = true; settle(); },
     };
     return view;
   };

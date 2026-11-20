@@ -53,7 +53,7 @@ it('loads source records through construction, OnPreLoad and health.OnLoad, reta
     expect(inst.sprite.sprite.peek().queue).toEqual([]);
     expect(inst.components.health!.OnSave()).toMatchObject({ health: 18, maxhealth: 90 });
     for (const tag of ['cavedweller', 'smashable', 'object', 'stone', 'noauradamage', 'electricdamageimmune',
-      'inspectable', 'repairable_stone', 'healthrepairable']) expect(inst.hasTag(tag)).toBe(true);
+      'inspectable', 'repairable_stone', 'healthrepairable']) { expect(inst.hasTag(tag)).toBe(true); }
     expect(inst.hasTag('cansit')).toBe(false);
     expect(prefabInstance(vase)!.sprite.sprite.peek().clip).toMatchObject({ name: 'idle', loop: false });
     expect(prefabInstance(vase)!.sprite.sprite.peek().queue).toEqual([]);
@@ -114,7 +114,7 @@ it('c_spawn / c_give then c_save exports and reloads identity, transform, health
     expect(second.inventory.exportState().slots.filter(slot => slot.item?.itemId === 'ruinsrelic_plate')).toHaveLength(2);
     expect(second.registry.exportRecords().ruins_chair[0].components.ruinsRelic).toEqual({ rubble: true });
     await Promise.all(second.scene.children.map(model => prefabDisplay(model)!.artLoaded()));
-    for (let frame = 0; frame < 120; frame++) second.registry.update(1 / 30, new THREE.Quaternion());
+    for (let frame = 0; frame < 120; frame++) { second.registry.update(1 / 30, new THREE.Quaternion()); }
     for (const model of second.scene.children) {
       const inst = prefabInstance(model)!;
       expect(inst.position.toArray()).toEqual([12, 0, -6]);

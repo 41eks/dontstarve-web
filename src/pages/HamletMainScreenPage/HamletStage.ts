@@ -16,8 +16,8 @@ export type HamletStage = {
 function findImage(images: BuildImage[], requestedIndex: number) {
   let result: BuildImage | undefined
   for (const image of images) {
-    if (image.index > requestedIndex) break
-    if (image.index + image.duration > requestedIndex) result = image
+    if (image.index > requestedIndex) { break }
+    if (image.index + image.duration > requestedIndex) { result = image }
   }
   return result?.vertexCount ? result : undefined
 }
@@ -49,7 +49,7 @@ function createAnimationObject(asset: KleiAnimationAsset, renderOrderBase: numbe
 
   const geometryFor = (image: BuildImage) => {
     const cached = geometries.get(image)
-    if (cached) return cached
+    if (cached) { return cached }
     const x0 = image.x - image.width / 2
     const y0 = image.y - image.height / 2
     const x1 = x0 + image.width
@@ -71,11 +71,11 @@ function createAnimationObject(asset: KleiAnimationAsset, renderOrderBase: numbe
   }
 
   const showFrame = (animation: Animation, frameIndex: number) => {
-    if (animation === currentAnimation && frameIndex === currentFrame) return
+    if (animation === currentAnimation && frameIndex === currentFrame) { return }
     currentAnimation = animation
     currentFrame = frameIndex
     const frame = animation.frames[frameIndex]
-    if (!frame) return
+    if (!frame) { return }
     const sprites = frame.elements.map(element => ({
       element,
       image: findImage(asset.build.symbols.get(element.imghash) || [], element.imgindex),
@@ -97,7 +97,7 @@ function createAnimationObject(asset: KleiAnimationAsset, renderOrderBase: numbe
       mesh.matrix.set(a, c, 0, x, b, d, 0, y, 0, 0, 1, 0, 0, 0, 0, 1)
       mesh.renderOrder = renderOrderBase + spriteIndex
     })
-    for (let index = sprites.length; index < meshes.length; index += 1) meshes[index].visible = false
+    for (let index = sprites.length; index < meshes.length; index += 1) { meshes[index].visible = false }
   }
 
   showFrame(asset.animation, 0)

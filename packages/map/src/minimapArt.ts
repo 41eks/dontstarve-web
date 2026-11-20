@@ -23,7 +23,7 @@ export async function loadMinimapTileLayer(root: string, art: MinimapTileLayerAr
   const [atlas, noise, xml] = await Promise.all([
     loadMinimapPixels(`${base}/${art.texture}`), loadMinimapPixels(`${base}/${art.noise}`),
     fetch(`${base}/${art.atlas}`).then(response => {
-      if (!response.ok) throw new Error(`Unable to load ${art.atlas}: HTTP ${response.status}`);
+      if (!response.ok) { throw new Error(`Unable to load ${art.atlas}: HTTP ${response.status}`); }
       return response.text();
     }),
   ]);
@@ -31,7 +31,7 @@ export async function loadMinimapTileLayer(root: string, art: MinimapTileLayerAr
   const masks = new Map<number, MinimapMaskRect>();
   for (let variant = 1; variant <= 48; variant++) {
     const cell = elements.get(String(variant).padStart(2, '0'));
-    if (!cell) throw new Error(`Minimap atlas lacks mask ${variant}: ${art.atlas}`);
+    if (!cell) { throw new Error(`Minimap atlas lacks mask ${variant}: ${art.atlas}`); }
     // parseKtex's rows are top-down; invert XML's bottom-up V coordinates.
     masks.set(variant, { u0: cell.u1, v0: 1 - cell.v2, u1: cell.u2, v1: 1 - cell.v1 });
   }

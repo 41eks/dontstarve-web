@@ -147,9 +147,9 @@ describe('PlayerController', () => {
         s.click(0);
         expect(s.locomotor.bufferedAction).toBeDefined();
         if (reason === 'manual movement') { s.moveManually(); s.controller.update(); }
-        if (reason === 'Escape') window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' }));
-        if (reason === 'another action') s.actionEvents.emit('action:begin', { owner: {}, action: 'MIGRATE' });
-        if (reason === 'an unequipped tool') s.hand.set(null);
+        if (reason === 'Escape') { window.dispatchEvent(Object.assign(new Event('keydown'), { code: 'Escape' })); }
+        if (reason === 'another action') { s.actionEvents.emit('action:begin', { owner: {}, action: 'MIGRATE' }); }
+        if (reason === 'an unequipped tool') { s.hand.set(null); }
         if (reason === 'an invalid target') { rock.workable.SetWorkable(false); s.locomotor.update(16, 1 / 30); }
         expect(s.controller.bufferedAction).toBeUndefined();
         expect(s.locomotor.bufferedAction).toBeUndefined();
@@ -273,11 +273,11 @@ describe('PlayerController with the Wilson stategraph', () => {
       renderer: { domElement: new EventTarget() } } as unknown as ActionWorldContext;
     const locomotor = new Locomotor({ position: player.position, velocity: new THREE.Vector3() });
     const controller = new PlayerController(world, animation.sg, locomotor, inventory.handEquipment, playerDoer(player));
-    const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
+    const advance = (frames: number) => { for (let i = 0; i < frames; i++) { advancePlayer(animation, 1 / 30); } };
     const mine = () => controller.createAction({ action: 'MINE', target: workTargets('MINE')[0].entity, invobject: tool })!;
     const begin = () => {
       expect(controller.DoAction(mine())).toBe(true);
-      while (animation.sg.stateName === 'mine_start') advancePlayer(animation, 1 / 30);
+      while (animation.sg.stateName === 'mine_start') { advancePlayer(animation, 1 / 30); }
     };
     try {
       rocks.spawn('rock_flintless_low', new THREE.Vector3(1, 0, 0));
@@ -286,7 +286,7 @@ describe('PlayerController with the Wilson stategraph', () => {
       expect(locomotor.destination).toBeDefined();
       player.position.set(1, 0, 3); locomotor.update(16, 1 / 30);
       expect(animation.sg.stateName).toBe('mine_start');
-      while (animation.sg.stateName === 'mine_start') advancePlayer(animation, 1 / 30);
+      while (animation.sg.stateName === 'mine_start') { advancePlayer(animation, 1 / 30); }
       advance(6);
       expect(tool.components.finiteuses.remaining).toBeUndefined();
       expect(workTargets('MINE')[0].entity.components.workable!.GetWorkLeft()).toBe(2);
@@ -366,7 +366,7 @@ describe('PlayerController with the Wilson stategraph', () => {
     const ForcePrecipitation = vi.fn();
     const bookWorld = { root: world.scene, scheduler: new GameTimeScheduler(), getWatchWorldContent: () => { throw new Error('unused'); },
       weather: { preciptype: createSignal('none'), ForcePrecipitation }, moon: { SetMoonPhase: vi.fn() } } as unknown as BookWorld;
-    const finish = () => { for (let i = 0; i < 300 && animation.sg.stateName !== 'idle'; i++) advancePlayer(animation, 1 / 30); };
+    const finish = () => { for (let i = 0; i < 300 && animation.sg.stateName !== 'idle'; i++) { advancePlayer(animation, 1 / 30); } };
     try {
       // componentactions.lua book INVENTORY: only a reader is offered READ.
       expect(controller.GetInventoryItemAction(book)).toBeUndefined();

@@ -71,7 +71,7 @@ export class EvergreenInstance extends PrefabInstance {
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1; this.logicalPlacement = true;
     this.minimap.SetPriority(-1);
-    for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable', 'SnowCovered']) this.addTag(tag);
+    for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable', 'SnowCovered']) { this.addTag(tag); }
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(chop_tree);
@@ -85,12 +85,12 @@ export class EvergreenInstance extends PrefabInstance {
     })), seconds => world.growthDuration?.(seconds) ?? seconds);
     growable.loopstages = true; growable.springgrowth = true;
     addComponent(this, 'timer', Timer, world.scheduler, ['decay']);
-    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === 'decay') this.remove(); });
+    this.ListenForEvent('timerdone', (_inst, data) => { if (data.name === 'decay') { this.remove(); } });
     this.OnSave = (_inst, data) => onsave(this, data);
     this.OnLoad = (_inst, data) => onload(this, data);
     this.onRemove(() => {
       unbindFire(this);
-      for (const sound of this.sounds) sound.stop();
+      for (const sound of this.sounds) { sound.stop(); }
       this.sounds.clear();
     });
     growable.SetStage(stage); growable.StartGrowing();
@@ -100,7 +100,7 @@ export class EvergreenInstance extends PrefabInstance {
   override setActive(active: boolean): void {
     if (active !== this.awake && !this.isRemoved) {
       this.awake = active;
-      if (active) OnEntityWake(this); else OnEntitySleep(this);
+      if (active) { OnEntityWake(this); } else { OnEntitySleep(this); }
     }
     super.setActive(active);
   }
@@ -116,7 +116,7 @@ const rest = (inst: EvergreenInstance) => inst.hasTag('stump') ? `stump_${EVERGR
   : stageOf(inst) === 3 ? 'idle_old' : `sway1_loop_${EVERGREEN_STAGES[stageOf(inst)]}`;
 
 function playSound(inst: EvergreenInstance, path: SoundEventPath): void {
-  for (const sound of inst.sounds) if (sound.isPlaying?.() === false) inst.sounds.delete(sound);
+  for (const sound of inst.sounds) { if (sound.isPlaying?.() === false) { inst.sounds.delete(sound); } }
   inst.sounds.add(PlaySound(path, inst.position));
 }
 
@@ -124,13 +124,13 @@ function playSound(inst: EvergreenInstance, path: SoundEventPath): void {
 function setStage(inst: EvergreenInstance): void {
   inst.components.workable!.SetWorkLeft(EVERGREEN_CHOPS[stageOf(inst)]);
   inst.components.lootdropper.SetLoot(LOOT[stageOf(inst)].flatMap(({ itemId, count }) => Array.from({ length: count }, () => itemId)));
-  if (stageOf(inst) === 3) inst.removeTag('shelter'); else inst.addTag('shelter');
+  if (stageOf(inst) === 3) { inst.removeTag('shelter'); } else { inst.addTag('shelter'); }
   inst.sprite.start(rest(inst));
 }
 
 /** Grow*: the transition into the stage just set. */
 function grow(inst: EvergreenInstance): void {
-  if (!inst.isAwake || inst.catchingUp) return;
+  if (!inst.isAwake || inst.catchingUp) { return; }
   const stage = stageOf(inst);
   playSound(inst, stage === 3 ? 'dontstarve/forest/treeWilt'
     : stage === 0 ? 'dontstarve/forest/treeGrowFromWilt' : 'dontstarve/forest/treeGrow');
@@ -142,7 +142,7 @@ function unbindFire(inst: EvergreenInstance): void { inst.fire?.dispose(); inst.
 
 /** OnEntityWake: MakeLargeBurnable + MakeMediumPropagator, or the stump's small pair, unless burnt. */
 function bindFire(inst: EvergreenInstance): void {
-  if (!inst.isAwake || inst.fire || inst.hasTag('burnt') || inst.isRemoved) return;
+  if (!inst.isAwake || inst.fire || inst.hasTag('burnt') || inst.isRemoved) { return; }
   inst.fire = new BurnableBinding(inst, inst.hasTag('stump')
     ? { propagator: 'small', burnTime: 10, fxLevel: 2, onBurnt: () => burnStump(inst) }
     : { propagator: 'medium', burnTime: TREE_BURN_TIME, fxLevel: 5, onBurnt: () => tree_burnt(inst) }, inst.world);
@@ -169,23 +169,23 @@ function burntChanges(inst: EvergreenInstance): void {
 
 /** OnBurnt: the burnt pose and tag at once; the component changes follow after .5 seconds. */
 function OnBurnt(inst: EvergreenInstance, immediate: boolean): void {
-  if (inst.hasTag('burnt')) return;
+  if (inst.hasTag('burnt')) { return; }
   inst.addTag('burnt');
   inst.minimap.SetIcon('evergreen_burnt.png');
   inst.sprite.start(rest(inst));
-  if (immediate) burntChanges(inst);
-  else inst.DoTaskInTime(.5, burntChanges);
+  if (immediate) { burntChanges(inst); }
+  else { inst.DoTaskInTime(.5, burntChanges); }
 }
 
 function dropGrouped(inst: EvergreenInstance, items: readonly string[], position: ReadonlyVector3): void {
   const loot = new Map<string, number>();
-  for (const itemId of items) loot.set(itemId, (loot.get(itemId) ?? 0) + 1);
-  if (loot.size) inst.world.dropLoot([...loot].map(([itemId, count]) => ({ itemId, count })), position);
+  for (const itemId of items) { loot.set(itemId, (loot.get(itemId) ?? 0) + 1); }
+  if (loot.size) { inst.world.dropLoot([...loot].map(([itemId, count]) => ({ itemId, count })), position); }
 }
 
 /** onpineconetask: the 10% pinecone lands one unit away from the burnt tree, once. */
 function startPineconeTask(inst: EvergreenInstance): void {
-  if (inst.burntcone || inst.pineconetask) return;
+  if (inst.burntcone || inst.pineconetask) { return; }
   inst.pineconetask = inst.DoTaskInTime(10, () => {
     inst.pineconetask = undefined;
     const angle = inst.random() * Math.PI * 2;
@@ -234,9 +234,9 @@ function make_stump(inst: EvergreenInstance): void {
 
 /** chop_tree: the sound always; an old tree shows nothing else. */
 function chop_tree(inst: EvergreenInstance): void {
-  if (!inst.isAwake) return;
+  if (!inst.isAwake) { return; }
   playSound(inst, 'dontstarve/wilson/use_axe_tree');
-  if (stageOf(inst) === 3) return;
+  if (stageOf(inst) === 3) { return; }
   inst.sprite.playOnce(`chop_${EVERGREEN_STAGES[stageOf(inst)]}`, () => inst.sprite.start(rest(inst)));
   const { x, z } = inst.position;
   inst.world.spawnPrefab('pine_needles_chop', inst.position).setPosition(x, inst.random() * 2 * WORLD_SCALE, z);
@@ -259,14 +259,14 @@ function OnEntityWake(inst: EvergreenInstance): void {
   inst.catchingUp = true;
   try { inst.components.growable.OnEntityWake(); } finally { inst.catchingUp = false; }
   bindFire(inst);
-  if (inst.hasTag('burnt')) startPineconeTask(inst);
+  if (inst.hasTag('burnt')) { startPineconeTask(inst); }
 }
 
 function OnEntitySleep(inst: EvergreenInstance): void {
   inst.components.growable.OnEntitySleep();
   if (inst.fire?.burnable.IsBurning()) {
-    if (inst.hasTag('stump')) inst.DoTaskInTime(0, burnStump);
-    else OnBurnt(inst, true);
+    if (inst.hasTag('stump')) { inst.DoTaskInTime(0, burnStump); }
+    else { OnBurnt(inst, true); }
   }
   unbindFire(inst);
 }
@@ -275,17 +275,17 @@ function OnEntitySleep(inst: EvergreenInstance): void {
 function onsave(inst: EvergreenInstance, data: EntityPersistData): void {
   const stump = inst.hasTag('stump');
   const burnt = !stump && (inst.hasTag('burnt') || inst.fire?.burnable.IsBurning() === true);
-  if (stump) data.evergreen = { stump: true };
-  else if (burnt) data.evergreen = { burnt: true, ...(inst.burntcone ? { burntcone: true as const } : {}) };
-  if (burnt) data.growable = { stage: inst.components.growable.GetStage() };
+  if (stump) { data.evergreen = { stump: true }; }
+  else if (burnt) { data.evergreen = { burnt: true, ...(inst.burntcone ? { burntcone: true as const } : {}) }; }
+  if (burnt) { data.growable = { stage: inst.components.growable.GetStage() }; }
   // The timer's record keeps the name existing saves hold.
-  if (data.timer) data.evergreenTimer = data.timer;
+  if (data.timer) { data.evergreenTimer = data.timer; }
   delete data.timer;
 }
 
 function onload(inst: EvergreenInstance, data: EntityPersistData): void {
   inst.components.timer.OnLoad(data.evergreenTimer);
-  if (data.evergreen?.stump) make_stump(inst);
+  if (data.evergreen?.stump) { make_stump(inst); }
   else if (data.evergreen?.burnt) {
     inst.burntcone = data.evergreen.burntcone === true;
     OnBurnt(inst, true);

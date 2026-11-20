@@ -248,7 +248,7 @@ it('narrows picking to targets whose padded envelope the ray reaches, following 
     expect(pointer.pickMouseTarget()?.object).toBe(front.mesh);
     raycasts.forEach(spy => spy.mockRestore());
   } finally {
-    for (const model of [...scene.children]) disposeActionEntity(findActionEntity(model));
+    for (const model of [...scene.children]) { disposeActionEntity(findActionEntity(model)); }
     pointer.dispose(); geometry.dispose(); material.dispose();
   }
 });

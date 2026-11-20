@@ -73,7 +73,7 @@ export class DragonflyInstance extends PrefabInstance {
     this.setPosition(position.x, 0, position.z);
     this.setScale(1.3);
     for (const tag of ['epic', 'noepicmusic', 'monster', 'hostile', 'dragonfly', 'scarytoprey',
-      'largecreature', 'flying', 'ignorewalkableplatformdrowning']) this.addTag(tag);
+      'largecreature', 'flying', 'ignorewalkableplatformdrowning']) { this.addTag(tag); }
     this.sprite.start('idle'); // AnimState:PlayAnimation('idle', true) in fn.
     const health = addComponent(this, 'health', Health, 27500);
     const knownlocations = addComponent(this, 'knownlocations', KnownLocations);
@@ -112,7 +112,7 @@ export class DragonflyInstance extends PrefabInstance {
         ...cooldown ? { timer: { timers: { groundpound_cd: cooldown } } } : {} };
     };
     this.OnLoad = (_inst, data) => {
-      if (!data.dragonfly) return;
+      if (!data.dragonfly) { return; }
       this.saved = structuredClone(data.dragonfly);
       health.OnLoad(this.saved.health);
       knownlocations.OnLoad(this.saved.knownlocations);

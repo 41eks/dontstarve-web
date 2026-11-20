@@ -37,11 +37,11 @@ export class MinimapDomRenderer {
 
   /** Opening reconciles once; later notifications update only their own icon records. */
   start(): void {
-    if (this.disposed || this.stopWatching) return;
+    if (this.disposed || this.stopWatching) { return; }
     this.terrain.start();
     this.dom.start();
     const current = miniMapEntities();
-    for (const entity of this.dom.entities()) if (!current.has(entity)) this.updateEntity(entity, false);
+    for (const entity of this.dom.entities()) { if (!current.has(entity)) { this.updateEntity(entity, false); } }
     this.stopWatching = subscribeMiniMapEntities((entity, present) => this.updateEntity(entity, present));
   }
 
@@ -53,7 +53,7 @@ export class MinimapDomRenderer {
       this.terrain.prepare(),
       this.icons.prewarm(),
     ]);
-    if (this.isListening) for (const entity of miniMapEntities()) this.updateEntity(entity, true);
+    if (this.isListening) { for (const entity of miniMapEntities()) { this.updateEntity(entity, true); } }
   }
 
   inspect(): MinimapInspection {
@@ -61,14 +61,14 @@ export class MinimapDomRenderer {
   }
 
   update(view: MinimapView): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.dom.update(view);
     this.terrain.update(view);
   }
 
   /** Map notifications update one icon and coalesce drawing into the next frame. */
   private updateEntity(entity: MiniMapMarker, present: boolean): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     if (!present || !entity.enabled || !entity.icon) {
       this.dom.delete(entity);
       return;
@@ -80,7 +80,7 @@ export class MinimapDomRenderer {
   }
 
   dispose(): void {
-    if (this.disposed) return;
+    if (this.disposed) { return; }
     this.disposed = true;
     this.stop();
     this.terrain.dispose();

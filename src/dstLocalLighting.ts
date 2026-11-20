@@ -58,17 +58,17 @@ const renderingLighting = new Set<DstLocalLighting>();
 let originalMaterialBeforeRender: MaterialRenderHook | undefined;
 
 function installMaterialHook(): void {
-  if (originalMaterialBeforeRender) return;
+  if (originalMaterialBeforeRender) { return; }
   const original = THREE.Material.prototype.onBeforeRender;
   originalMaterialBeforeRender = original;
   THREE.Material.prototype.onBeforeRender = function (this: THREE.Material, renderer, scene, camera, geometry, object, group) {
     original.call(this, renderer, scene, camera, geometry, object, group);
-    for (const lighting of renderingLighting) lighting.prepareDrawnMaterial(this, object, renderer);
+    for (const lighting of renderingLighting) { lighting.prepareDrawnMaterial(this, object, renderer); }
   };
 }
 
 function uninstallMaterialHook(): void {
-  if (!originalMaterialBeforeRender || renderingLighting.size) return;
+  if (!originalMaterialBeforeRender || renderingLighting.size) { return; }
   THREE.Material.prototype.onBeforeRender = originalMaterialBeforeRender;
   originalMaterialBeforeRender = undefined;
 }
@@ -79,7 +79,7 @@ const isScene = (object: THREE.Object3D | null): object is THREE.Scene =>
 
 function sceneOf(object: THREE.Object3D): THREE.Scene | undefined {
   let root = object;
-  while (root.parent) root = root.parent;
+  while (root.parent) { root = root.parent; }
   return isScene(root) ? root : undefined;
 }
 
@@ -187,7 +187,7 @@ export class DstLocalLighting {
     this.target.dispose();
     this.ambientMaterial.dispose();
     this.lightmapMaterial.dispose();
-    for (const quad of this.scene.children) if (quad instanceof THREE.Mesh) quad.geometry.dispose();
+    for (const quad of this.scene.children) { if (quad instanceof THREE.Mesh) { quad.geometry.dispose(); } }
     this.scene.clear();
   }
 
@@ -196,16 +196,16 @@ export class DstLocalLighting {
     let r = this.ambient.value.x, g = this.ambient.value.y, b = this.ambient.value.z;
     for (const listed of displayLights()) {
       const { model: owner, light } = listed;
-      if (owner === exclude) continue;
+      if (owner === exclude) { continue; }
       // Attenuation reaches zero at 3 radii (see the edge fade below), so farther lights cannot contribute.
       // Owners are parented to the scene root or an unrotated group, so the local position is checked before the full lookup.
       const reach = light.radius * 3;
       const local = owner.position;
-      if (isScene(owner.parent) && (Math.abs(position.x - local.x) >= reach || Math.abs(position.z - local.z) >= reach)) continue;
+      if (isScene(owner.parent) && (Math.abs(position.x - local.x) >= reach || Math.abs(position.z - local.z) >= reach)) { continue; }
       const origin = this.getLightPosition(listed);
-      if (!origin) continue;
+      if (!origin) { continue; }
       const distance = Math.max(Math.hypot(position.x - origin.x, position.z - origin.z) / light.radius, 0.0001);
-      if (distance >= 3) continue;
+      if (distance >= 3) { continue; }
       const edge = THREE.MathUtils.clamp((distance - 2.5) / 0.5, 0, 1);
       const attenuation = THREE.MathUtils.clamp(Math.exp(Math.log(light.falloff) * distance ** 2), 0, 1)
         * (1 - edge * edge * (3 - 2 * edge));
@@ -224,8 +224,8 @@ export class DstLocalLighting {
     for (const listed of displayLights()) {
       const settings = listed.light;
       const position = this.getLightPosition(listed, preparedScene);
-      if (!position) continue;
-      if (count === 0) this.ownerPosition.copy(position);
+      if (!position) { continue; }
+      if (count === 0) { this.ownerPosition.copy(position); }
       origins.setXYZ(count, position.x, position.z, settings.radius);
       colours.setXYZ(count, settings.colour[0] * settings.intensity,
         settings.colour[1] * settings.intensity, settings.colour[2] * settings.intensity);
@@ -267,36 +267,36 @@ export class DstLocalLighting {
   /** Display lights are listed only while their entity is active; one held out of the scene (in a pack) emits nothing. */
   private getLightPosition({ model }: DisplayLight, preparedScene?: THREE.Scene): THREE.Vector3 | undefined {
     const scene = sceneOf(model);
-    if (!scene) return;
+    if (!scene) { return; }
     return scene === preparedScene
       ? this.lightPosition.setFromMatrixPosition(model.matrixWorld) : model.getWorldPosition(this.lightPosition);
   }
 
   private ensureLightCapacity(count: number): void {
-    if (count <= this.lightCapacity) return;
+    if (count <= this.lightCapacity) { return; }
     // Release old GPU attributes before replacing them; retain and re-upload the shared quad.
-    if (this.lightCapacity) this.lightGeometry.dispose();
+    if (this.lightCapacity) { this.lightGeometry.dispose(); }
     this.lightCapacity = THREE.MathUtils.ceilPowerOfTwo(count);
     this.lightAttributes = lightAttributes(this.lightCapacity);
-    for (const [name, attribute] of Object.entries(this.lightAttributes)) this.lightGeometry.setAttribute(name, attribute);
+    for (const [name, attribute] of Object.entries(this.lightAttributes)) { this.lightGeometry.setAttribute(name, attribute); }
   }
 
   /** One-off patch of every material already in the scene, for prewarming; frames patch lazily when drawn. */
   prepareScene(scene: THREE.Scene): void {
     scene.traverse((object) => {
-      if (!('material' in object)) return;
+      if (!('material' in object)) { return; }
       const { material } = object;
-      for (const entry of Array.isArray(material) ? material : [material]) if (entry instanceof THREE.Material) this.patchMaterial(entry);
+      for (const entry of Array.isArray(material) ? material : [material]) { if (entry instanceof THREE.Material) { this.patchMaterial(entry); } }
     });
   }
 
   /** Called from Material.onBeforeRender for each draw: patch new materials and set this object's light override. */
   prepareDrawnMaterial(material: THREE.Material, object: THREE.Object3D, renderer: THREE.WebGLRenderer): void {
     // The hook is global to three; other renderers (loading and menu stages) are not ours to light.
-    if (renderer !== this.renderer) return;
+    if (renderer !== this.renderer) { return; }
     this.patchMaterial(material);
     const uniform = this.lightOverrides.get(material);
-    if (!uniform) return;
+    if (!uniform) { return; }
     // The entity's AnimState light override is declared on its display; a symbol's own override is a vertex attribute.
     const value = displayLightOverride(object);
     // Sprite materials are per entity; three uploads this uniform when the material changes,
@@ -305,12 +305,12 @@ export class DstLocalLighting {
   }
 
   private patchMaterial(material: THREE.Material): void {
-    if (this.patchedMaterials.has(material) || !material.colorWrite) return;
+    if (this.patchedMaterials.has(material) || !material.colorWrite) { return; }
     if (!(material instanceof THREE.MeshBasicMaterial
       || material instanceof THREE.MeshLambertMaterial
       || material instanceof THREE.MeshStandardMaterial
       || material instanceof THREE.MeshPhongMaterial
-      || material instanceof THREE.LineBasicMaterial)) return;
+      || material instanceof THREE.LineBasicMaterial)) { return; }
 
     const previousCompile = material.onBeforeCompile;
     const previousKey = material.customProgramCacheKey();

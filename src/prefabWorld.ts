@@ -28,7 +28,7 @@ export const itemWorld: ItemWorld = {
   isItemPrefab: prefab => ITEM_IDS.has(prefab),
   SpawnPrefab(prefab, saved): ItemEntity {
     const entity = prefabs.spawn(prefab, ITEM_ORIGIN, saved);
-    if (!(entity instanceof ItemEntity)) throw new Error(`${prefab} does not spawn an item entity`);
+    if (!(entity instanceof ItemEntity)) { throw new Error(`${prefab} does not spawn an item entity`); }
     return entity;
   },
 };

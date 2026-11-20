@@ -32,7 +32,7 @@ export class BT {
   Stop(): void { this.root.Stop(); }
 
   GetSleepTime(): number | undefined {
-    if (this.forceupdate) return 0;
+    if (this.forceupdate) { return 0; }
     return this.root.GetTreeSleepTime();
   }
 
@@ -52,13 +52,13 @@ export class BehaviourNode {
   constructor(name = '', children?: BehaviourNode[]) {
     this.name = name;
     this.children = children;
-    for (const child of children ?? []) child.parent = this;
+    for (const child of children ?? []) { child.parent = this; }
   }
 
   /** Nodes are built before the tree exists; BT hands every node its clock and random source. */
   attach(context: BehaviourContext): void {
     this.context = context;
-    for (const child of this.children ?? []) child.attach(context);
+    for (const child of this.children ?? []) { child.attach(context); }
   }
 
   protected get now(): number { return this.context.getTime(); }
@@ -72,7 +72,7 @@ export class BehaviourNode {
 
   GetTreeString(indent = ''): string {
     let result = `${indent}${this.GetString()}>${(this.GetTreeSleepTime() ?? 0).toFixed(2)}\n`;
-    for (const child of this.children ?? []) result += child.GetTreeString(`${indent}   >`);
+    for (const child of this.children ?? []) { result += child.GetTreeString(`${indent}   >`); }
     return result;
   }
 
@@ -82,7 +82,7 @@ export class BehaviourNode {
 
   GetSleepTime(): number | undefined {
     if (this.status === RUNNING && !this.children && !(this instanceof ConditionNode)) {
-      if (this.nextupdatetime !== undefined) return Math.max(0, this.nextupdatetime - this.now);
+      if (this.nextupdatetime !== undefined) { return Math.max(0, this.nextupdatetime - this.now); }
       return 0;
     }
     return undefined;
@@ -91,12 +91,12 @@ export class BehaviourNode {
   GetTreeSleepTime(): number | undefined {
     let sleeptime: number | undefined;
     for (const child of this.children ?? []) {
-      if (child.status !== RUNNING) continue;
+      if (child.status !== RUNNING) { continue; }
       const t = child.GetTreeSleepTime();
-      if (t !== undefined && (sleeptime === undefined || sleeptime > t)) sleeptime = t;
+      if (t !== undefined && (sleeptime === undefined || sleeptime > t)) { sleeptime = t; }
     }
     const mine = this.GetSleepTime();
-    if (mine !== undefined && (sleeptime === undefined || sleeptime > mine)) sleeptime = mine;
+    if (mine !== undefined && (sleeptime === undefined || sleeptime > mine)) { sleeptime = mine; }
     return sleeptime;
   }
 
@@ -109,24 +109,24 @@ export class BehaviourNode {
 
   SaveStatus(): void {
     this.lastresult = this.status;
-    for (const child of this.children ?? []) child.SaveStatus();
+    for (const child of this.children ?? []) { child.SaveStatus(); }
   }
 
   Step(): void {
-    if (this.status !== RUNNING) this.Reset();
-    else for (const child of this.children ?? []) child.Step();
+    if (this.status !== RUNNING) { this.Reset(); }
+    else { for (const child of this.children ?? []) { child.Step(); } }
   }
 
   Reset(): void {
     if (this.status !== READY) {
       this.status = READY;
-      for (const child of this.children ?? []) child.Reset();
+      for (const child of this.children ?? []) { child.Reset(); }
     }
   }
 
   Stop(): void {
     this.OnStop?.();
-    for (const child of this.children ?? []) child.Stop();
+    for (const child of this.children ?? []) { child.Stop(); }
   }
 }
 
@@ -166,8 +166,8 @@ export class WaitNode extends BehaviourNode {
       this.wake_time = current + (typeof this.wait_time === 'function' ? this.wait_time() : this.wait_time);
       this.status = RUNNING;
     }
-    if (current >= this.wake_time) this.status = SUCCESS;
-    else this.Sleep(current - this.wake_time);
+    if (current >= this.wake_time) { this.status = SUCCESS; }
+    else { this.Sleep(current - this.wake_time); }
   }
 }
 
@@ -177,7 +177,7 @@ export class SequenceNode extends BehaviourNode {
   override DBString(): string { return String(this.idx + 1); }
   override Reset(): void { super.Reset(); this.idx = 0; }
   override Visit(): void {
-    if (this.status !== RUNNING) this.idx = 0;
+    if (this.status !== RUNNING) { this.idx = 0; }
     const children = this.children!;
     while (this.idx < children.length) {
       const child = children[this.idx];
@@ -198,7 +198,7 @@ export class SelectorNode extends BehaviourNode {
   override DBString(): string { return String(this.idx + 1); }
   override Reset(): void { super.Reset(); this.idx = 0; }
   override Visit(): void {
-    if (this.status !== RUNNING) this.idx = 0;
+    if (this.status !== RUNNING) { this.idx = 0; }
     const children = this.children!;
     while (this.idx < children.length) {
       const child = children[this.idx];
@@ -227,10 +227,10 @@ export class ParallelNode extends BehaviourNode {
   constructor(children: BehaviourNode[], name = 'Parallel') { super(name, children); }
 
   override Step(): void {
-    if (this.status !== RUNNING) this.Reset();
+    if (this.status !== RUNNING) { this.Reset(); }
     else {
       for (const child of this.children!) {
-        if (child.status === SUCCESS && child instanceof ConditionNode) child.Reset();
+        if (child.status === SUCCESS && child instanceof ConditionNode) { child.Reset(); }
         child.Step();
       }
     }
@@ -239,7 +239,7 @@ export class ParallelNode extends BehaviourNode {
   override Visit(): void {
     let done = true, anyDone = false;
     for (const child of this.children!) {
-      if (child instanceof ConditionNode) child.Reset();
+      if (child instanceof ConditionNode) { child.Reset(); }
       if (child.status !== SUCCESS) {
         child.Visit();
         if (child.status === FAILED) {
@@ -247,8 +247,8 @@ export class ParallelNode extends BehaviourNode {
           return;
         }
       }
-      if (child.status === RUNNING) done = false;
-      else anyDone = true;
+      if (child.status === RUNNING) { done = false; }
+      else { anyDone = true; }
     }
     this.status = done || (this.stoponanycomplete && anyDone) ? SUCCESS : RUNNING;
   }
@@ -275,14 +275,14 @@ export class PriorityNode extends BehaviourNode {
 
   override attach(context: BehaviourContext): void {
     super.attach(context);
-    if (!this.noscatter && this.period !== undefined) this.lasttime = this.period * .5 + this.period * context.random();
+    if (!this.noscatter && this.period !== undefined) { this.lasttime = this.period * .5 + this.period * context.random(); }
   }
 
   override GetSleepTime(): number | undefined {
     if (this.status === RUNNING) {
-      if (!this.period) return 0;
+      if (!this.period) { return 0; }
       let timeTo = 0;
-      if (this.lasttime !== undefined) timeTo = Math.max(0, this.lasttime + this.period - this.now);
+      if (this.lasttime !== undefined) { timeTo = Math.max(0, this.lasttime + this.period - this.now); }
       return timeTo;
     }
     return this.status === READY ? 0 : undefined;
@@ -303,7 +303,7 @@ export class PriorityNode extends BehaviourNode {
       let found = false;
       this.children!.forEach((child, idx) => {
         if (!found) {
-          if (child.status === FAILED || child.status === SUCCESS) child.Reset();
+          if (child.status === FAILED || child.status === SUCCESS) { child.Reset(); }
           child.Visit();
           const cs = child.status;
           if (cs === SUCCESS || cs === RUNNING) {
@@ -311,15 +311,15 @@ export class PriorityNode extends BehaviourNode {
             found = true;
             this.idx = idx;
           }
-        } else child.Reset();
+        } else { child.Reset(); }
       });
-      if (!found) this.status = FAILED;
+      if (!found) { this.status = FAILED; }
     } else if (this.idx !== undefined) {
       const child = this.children![this.idx];
       if (child.status === RUNNING) {
         child.Visit();
         this.status = child.status;
-        if (this.status !== RUNNING) this.lasttime = undefined;
+        if (this.status !== RUNNING) { this.lasttime = undefined; }
       }
     }
   }
@@ -332,9 +332,9 @@ export class EventNode extends BehaviourNode {
   constructor(inst: { ListenForEvent(name: string, fn: () => void): void; RemoveEventCallback(name: string, fn: () => void): void; brain?: { ForceUpdate(): void } }, event: string, child: BehaviourNode, priority = 0) {
     super(`Event(${event})`, [child]); this.priority = priority;
     const listener = () => {
-      if (this.status === RUNNING) child.Reset();
+      if (this.status === RUNNING) { child.Reset(); }
       this.triggered = true; inst.brain?.ForceUpdate();
-      this.DoToParents(node => { if (node instanceof PriorityNode) node.lasttime = undefined; });
+      this.DoToParents(node => { if (node instanceof PriorityNode) { node.lasttime = undefined; } });
     };
     inst.ListenForEvent(event, listener);
     this.OnStop = () => inst.RemoveEventCallback(event, listener);
@@ -342,7 +342,7 @@ export class EventNode extends BehaviourNode {
   override Step(): void { super.Step(); this.triggered = false; }
   override Reset(): void { this.triggered = false; super.Reset(); }
   override Visit(): void {
-    if (this.status === READY && this.triggered) this.status = RUNNING;
+    if (this.status === READY && this.triggered) { this.status = RUNNING; }
     if (this.status === RUNNING) { this.children![0].Visit(); this.status = this.children![0].status; }
   }
 }

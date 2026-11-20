@@ -1,11 +1,8 @@
 import tseslint from 'typescript-eslint';
 
 /**
- * ESLint for rules the TypeScript compiler and scripts/check-conventions.mjs do not cover.
- *
- * Existing violations are recorded per file and rule in eslint-suppressions.json (ESLint's bulk suppressions): a file
- * fails only when it has more of them than recorded. After fixing some, tighten the record with
- * `pnpm lint --prune-suppressions`; never grow it with `--suppress-all` to make new code pass.
+ * ESLint for rules the TypeScript compiler and scripts/check-conventions.mjs do not cover. The pre-commit hook
+ * (.githooks/pre-commit) runs it on the staged files; `pnpm lint` runs it on the whole repository.
  */
 export default [
   {

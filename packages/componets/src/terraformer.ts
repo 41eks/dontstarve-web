@@ -19,7 +19,7 @@ export class Terraformer {
 
   /** Terraform: the tile at the point becomes the ground underneath, then onterraform reaches the tool and the doer. */
   Terraform(pt: Pick<Vector3, 'x' | 'z'>, doer?: { PushEvent?(name: string, data?: unknown): void }): boolean {
-    if (!this.map?.canTerraform(pt) || !this.map.dig(pt)) return false;
+    if (!this.map?.canTerraform(pt) || !this.map.dig(pt)) { return false; }
     this.inst.PushEvent('onterraform');
     doer?.PushEvent?.('onterraform');
     return true;

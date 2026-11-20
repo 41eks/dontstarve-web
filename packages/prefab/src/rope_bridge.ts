@@ -77,14 +77,14 @@ function childPosition(inst: RopeBridgeFxInstance, offset: THREE.Vector3): THREE
 }
 
 function placeChildren(inst: RopeBridgeFxInstance): void {
-  if (inst.rope1) inst.rope1.copyPosition(childPosition(inst, ROPE1_OFFSET));
-  if (inst.rope2) inst.rope2.copyPosition(childPosition(inst, ROPE2_OFFSET));
-  if (inst.icon && inst.iconoffset > 1) inst.icon.copyPosition(childPosition(inst, ICON_OFFSET));
+  if (inst.rope1) { inst.rope1.copyPosition(childPosition(inst, ROPE1_OFFSET)); }
+  if (inst.rope2) { inst.rope2.copyPosition(childPosition(inst, ROPE2_OFFSET)); }
+  if (inst.icon && inst.iconoffset > 1) { inst.icon.copyPosition(childPosition(inst, ICON_OFFSET)); }
 }
 
 function CreateRope(inst: RopeBridgeFxInstance, offset: THREE.Vector3): RopeBridgeRopeInstance {
   const rope = inst.world.spawnPrefab(ROPE_BRIDGE_ROPE_ID, childPosition(inst, offset));
-  if (!(rope instanceof RopeBridgeRopeInstance)) throw new TypeError('rope_bridge_fx rope did not spawn a rope');
+  if (!(rope instanceof RopeBridgeRopeInstance)) { throw new TypeError('rope_bridge_fx rope did not spawn a rope'); }
   rope.entityParent = inst;
   return rope;
 }
@@ -103,8 +103,8 @@ function OnAnimData(inst: RopeBridgeFxInstance): void {
     if (animid === ANIM_ID.place) {
       rope.sprite.playOnce(`rope_place_${rope.variation}`);
       rope.sprite.pushAnimation(`rope_support_${rope.variation}`, false);
-    } else if (animid === ANIM_ID.idle) rope.sprite.playOnce(`rope_support_${rope.variation}`);
-    else if (animid === ANIM_ID.shake) rope.sprite.start(`rope_shake_${rope.variation}`);
+    } else if (animid === ANIM_ID.idle) { rope.sprite.playOnce(`rope_support_${rope.variation}`); }
+    else if (animid === ANIM_ID.shake) { rope.sprite.start(`rope_shake_${rope.variation}`); }
   }
 }
 
@@ -114,7 +114,7 @@ function GetAnimDataForState(inst: RopeBridgeFxInstance, state: keyof typeof ANI
 
 /** SkipPre: straight to bridge_idle; CancelSounds has no place sound to cancel, as the SoundEmitter is not ported. */
 function SkipPre(inst: RopeBridgeFxInstance): void {
-  if (inst.killed) return;
+  if (inst.killed) { return; }
   inst.sprite.playOnce('bridge_idle');
   inst.animdata = GetAnimDataForState(inst, 'idle');
   OnAnimData(inst);
@@ -131,7 +131,7 @@ function OnIconOffset(inst: RopeBridgeFxInstance): void {
     inst.icon = inst.world.spawnPrefab(ROPE_BRIDGE_ICON_ID, inst.position);
     inst.icon.entityParent = inst;
   }
-  if (inst.iconoffset > 1) inst.icon.copyPosition(childPosition(inst, ICON_OFFSET));
+  if (inst.iconoffset > 1) { inst.icon.copyPosition(childPosition(inst, ICON_OFFSET)); }
 }
 
 /** SetIconOffset: nil no icon, 0 at the centre, anything else offset. */
@@ -160,7 +160,7 @@ function fn(world: RopeBridgeWorld, position: ReadonlyVector3): RopeBridgeFxInst
   inst.sprite.setMeshOrder(BACKGROUND_MESH_ORDER + (1 - 3) * .01);
   const rope1 = Math.floor(Math.random() * 4);
   let rope2 = Math.floor(Math.random() * 3);
-  if (rope2 >= rope1) rope2 += 1;
+  if (rope2 >= rope1) { rope2 += 1; }
   inst.animdata = (rope1 << 4) | (rope2 << 2);
   OnAnimData(inst);
   inst.persists = false;

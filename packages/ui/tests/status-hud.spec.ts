@@ -21,7 +21,7 @@ async function setTime(page: Page, elapsedSeconds: number, dt = 0) {
 test('follows world time, daytime segment pulses and source phase transitions', async ({ page }, testInfo) => {
   const assetRequests: string[] = [];
   page.on('request', (request) => {
-    if (/clock_transitions|moon_phases/.test(request.url())) assetRequests.push(new URL(request.url()).pathname);
+    if (/clock_transitions|moon_phases/.test(request.url())) { assetRequests.push(new URL(request.url()).pathname); }
   });
   await page.goto('/tests/fixture.html');
   const clock = page.locator('dst-status-hud .world-clock__animation');

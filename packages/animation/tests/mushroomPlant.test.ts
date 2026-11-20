@@ -50,7 +50,7 @@ it('opens at night, is picked for a blue_cap, regrows after rainy periods and ke
     expect(record.components.pickable?.picked).toBe(true);
     expect(record.components.mushroom?.rain).toBeGreaterThan(0);
     s.rain.set('rain');
-    for (let i = 0; i < 40 && !pickable.canBePicked; i++) s.advance(30);
+    for (let i = 0; i < 40 && !pickable.canBePicked; i++) { s.advance(30); }
     expect(pickable.canBePicked).toBe(true);
     expect(s.mushrooms.exportRecords()[0].record.components.pickable).toBeUndefined();
 
@@ -137,7 +137,7 @@ it('releases the mushroom sprite outside the tickingarea and keeps its pose and 
     '/dst/data/databundles/images.zip', inventory, '/dst/data/anim', new THREE.Group());
   const mushrooms = plantManager(mushroomPlantPrefabs, new THREE.Scene(), { rain: createSignal<'none' | 'rain' | 'snow'>('none'),
     tickingarea: () => createMemo(() => awake.get()), spawnGroundItem: (definition, position, options) => ground.spawnGroundItem(definition, position, options) });
-  const meshes = (model: THREE.Object3D) => { let count = 0; model.traverse(object => { if ((object as THREE.Mesh).isMesh) count++; }); return count; };
+  const meshes = (model: THREE.Object3D) => { let count = 0; model.traverse(object => { if ((object as THREE.Mesh).isMesh) { count++; } }); return count; };
   try {
     const model = await drawn(mushrooms.spawn('blue_mushroom', new THREE.Vector3(3, 0, 4), undefined).transform.model);
     await settle();

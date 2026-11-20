@@ -38,7 +38,7 @@ beforeEach(() => {
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
 });
 afterEach(() => {
-  for (const cleanup of cleanups.splice(0)) cleanup();
+  for (const cleanup of cleanups.splice(0)) { cleanup(); }
   vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 
@@ -147,8 +147,8 @@ it('draws each container prefab from its source bank and skin build, and keeps i
     expect(model.getObjectsByProperty('isMesh', true).length, id).toBeGreaterThan(0);
     expect(inst.sprite.currentAnimation).toBe(declaration.idleAnimation);
     // fn: MiniMapEntity:SetIcon, declared as the definition's minimapIcon.
-    if (id === 'icebox' || id === 'saltbox') expect(inst.minimap.icon).toBe(`${id}.png`);
-    if (skinId !== undefined) expect(fetched.some(url => url.endsWith(declaration.skinArchives![skinId]))).toBe(true);
+    if (id === 'icebox' || id === 'saltbox') { expect(inst.minimap.icon).toBe(`${id}.png`); }
+    if (skinId !== undefined) { expect(fetched.some(url => url.endsWith(declaration.skinArchives![skinId]))).toBe(true); }
     expect(buildings.exportRecords().find(({ record: saved }) => saved.id === record.id)?.record).toEqual(record);
   }
 });
@@ -173,14 +173,14 @@ it('draws the moved animated buildings through their archive or controller art, 
     buildings.displays.update(1 / 30);
     expect(model.getObjectsByProperty('isMesh', true).length, id).toBeGreaterThan(0);
     expect(fetched.some(url => url.endsWith(`/${declaration.buildArchive ?? declaration.archive}`)), id).toBe(true);
-    if (skinId !== undefined) expect(fetched.some(url => url.endsWith(declaration.skinArchives![skinId])), id).toBe(true);
+    if (skinId !== undefined) { expect(fetched.some(url => url.endsWith(declaration.skinArchives![skinId])), id).toBe(true); }
     // fn: MiniMapEntity:SetIcon, an icon the source atlases hold; stickheads.lua has no map entity.
     const icon = prefabInstance(model)!.minimap.icon;
-    if (id === 'pighead' || id === 'mermhead') expect(icon, id).toBe('');
-    else expect(minimapAtlases, id).toContain(`"${icon}"`);
-    if (id === 'moonbase') expect(prefabInstance(model)!.minimap.priority).toBe(4);
-    if (id === 'researchlab3') expect(prefabInstance(model)!.minimap.priority).toBe(5);
-    if (id === 'moondial') expect(prefabInstance(model)!.minimap.drawOverFogOfWar).toBe(true);
+    if (id === 'pighead' || id === 'mermhead') { expect(icon, id).toBe(''); }
+    else { expect(minimapAtlases, id).toContain(`"${icon}"`); }
+    if (id === 'moonbase') { expect(prefabInstance(model)!.minimap.priority).toBe(4); }
+    if (id === 'researchlab3') { expect(prefabInstance(model)!.minimap.priority).toBe(5); }
+    if (id === 'moondial') { expect(prefabInstance(model)!.minimap.drawOverFogOfWar).toBe(true); }
   }
   const records = buildings.exportRecords();
   expect(records.map(({ prefabId }) => prefabId).sort()).toEqual([...ids].sort());
@@ -190,8 +190,8 @@ it('draws the moved animated buildings through their archive or controller art, 
   save.players.local.inventory = { items: {}, equip: {} };
   save.players.local.builder = { bufferedBuilds: [] };
   const parsed = deserializeSave(JSON.stringify(save), SAVE_CATALOG).world.entities;
-  for (const { record } of records) buildings.prefabs.get(record.id)!.remove();
-  for (const id of ids) for (const record of parsed[id]) buildings.spawnFromSave(id, record);
+  for (const { record } of records) { buildings.prefabs.get(record.id)!.remove(); }
+  for (const id of ids) { for (const record of parsed[id]) { buildings.spawnFromSave(id, record); } }
   expect(buildings.exportRecords().sort((a, b) => a.record.id.localeCompare(b.record.id)))
     .toEqual(records.sort((a, b) => a.record.id.localeCompare(b.record.id)));
 });

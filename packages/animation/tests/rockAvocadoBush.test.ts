@@ -130,7 +130,7 @@ it('digs three separate fruits and a root, transplants, fertilizes and stops aft
     expect(s.inventory.count('rock_avocado_fruit')).toBe(9);
     expect(growable!.state.timer.peek().status).toBe('stopped'); expect(growable!.magicgrowable).toBe(false);
     expect(plantInstance(model).sprite.currentAnimation).toBe('picked');
-    for (let frame = 0; frame < 150; frame++) s.advance(1 / 30);
+    for (let frame = 0; frame < 150; frame++) { s.advance(1 / 30); }
     expect(plantInstance(model).sprite.currentAnimation).toBe('dead1');
     expect(pickable.Fertilize(fertilizer)).toBe(true);
     witherable!.ForceWither(); expect(growable!.IsGrowing()).toBe(false);

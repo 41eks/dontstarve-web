@@ -112,8 +112,8 @@ it('casts at a pond, waits for a bite, hooks, reels and lands a pondfish; a stra
     dispose: () => playerController.dispose(),
   };
   const fishable = () => findActionEntity(pond)!.components.fishable!;
-  const advance = (frames: number) => { for (let i = 0; i < frames; i++) advancePlayer(animation, 1 / 30); };
-  const advanceUntil = (done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) advancePlayer(animation, 1 / 30); expect(done()).toBe(true); };
+  const advance = (frames: number) => { for (let i = 0; i < frames; i++) { advancePlayer(animation, 1 / 30); } };
+  const advanceUntil = (done: () => boolean) => { for (let i = 0; i < 300 && !done(); i++) { advancePlayer(animation, 1 / 30); } expect(done()).toBe(true); };
   try {
     expect(inventoryItemEquipmentKind('fishingrod')).toBe('hand');
     expect(inventoryItemMaxStack('fishingrod')).toBe(1);

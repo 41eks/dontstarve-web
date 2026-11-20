@@ -32,7 +32,7 @@ export function nextReskin(skins: readonly string[], current?: string,
   cache?: ReadonlyMap<string, string | undefined>, prefab?: string): string | undefined {
   if (cache && prefab) {
     const cached = cache.get(prefab);
-    if (cached !== current) return cached;
+    if (cached !== current) { return cached; }
   }
   return skins[(current === undefined ? -1 : skins.indexOf(current)) + 1];
 }

@@ -46,10 +46,10 @@ export class LightStaffController implements HeldEquipFunctions {
   /** finiteuses' maximum, which an unworn staff's uses default to. */
   private readonly maxUses: number;
   constructor(entity: ItemEntity, world: LightStaffWorld) {
-    if (!isLightStaff(entity.prefab)) throw new Error('LightStaffController requires a light staff');
+    if (!isLightStaff(entity.prefab)) { throw new Error('LightStaffController requires a light staff'); }
     this.entity = entity; this.world = world; this.maxUses = LIGHT_STAFF_USES[entity.prefab];
     entity.addTag('nopunch'); entity.addTag('allow_action_on_impassable');
-    if (entity.prefab === 'yellowstaff') entity.addTag('shadowlevel');
+    if (entity.prefab === 'yellowstaff') { entity.addTag('shadowlevel'); }
     entity.castsound = LIGHT_STAFF_CAST_SOUND;
     entity.fxcolour = entity.prefab === 'opalstaff' ? OPALSTAFF_COLOUR : YELLOWSTAFF_COLOUR;
     entity.components.finiteuses.setMaxUses(this.maxUses);
@@ -65,13 +65,13 @@ export class LightStaffController implements HeldEquipFunctions {
   onunequip(): void {}
   dispose(): void {}
   private createLight(position: ReadonlyVector3, doer: SpellCastDoer): boolean {
-    if (this.entity.isRemoved) return false;
+    if (this.entity.isRemoved) { return false; }
     this.world.spawnPrefab(this.product, position);
     const depleted = (this.entity.components.finiteuses.remaining ?? this.maxUses) === 1;
-    if (!this.entity.components.finiteuses.use(1)) return false;
-    if (depleted) PlaySound('dontstarve/common/gem_shatter', doer.position);
-    if (doer.components.staffsanity) doer.components.staffsanity.doCastingDelta(-LIGHT_STAFF_SANITY_COST);
-    else doer.components.sanity?.DoDelta(-LIGHT_STAFF_SANITY_COST);
+    if (!this.entity.components.finiteuses.use(1)) { return false; }
+    if (depleted) { PlaySound('dontstarve/common/gem_shatter', doer.position); }
+    if (doer.components.staffsanity) { doer.components.staffsanity.doCastingDelta(-LIGHT_STAFF_SANITY_COST); }
+    else { doer.components.sanity?.DoDelta(-LIGHT_STAFF_SANITY_COST); }
     return true;
   }
 }
@@ -94,7 +94,7 @@ export function staffVisual(item: EquipmentVisualItem & { readonly prefab: Staff
 
 export const yellowstaffVisual: EquipmentVisualFactory = item => {
   const { prefab } = item;
-  if (!isStaff(prefab)) throw new Error(`${prefab} is not a staff`);
+  if (!isStaff(prefab)) { throw new Error(`${prefab} is not a staff`); }
   return staffVisual({ ...item, prefab });
 };
 
@@ -165,27 +165,27 @@ export class FireStaffController implements HeldEquipFunctions {
   /** onattack_red(inst, attacker, target, skipsanity) */
   private onAttack(attacker: FireStaffAttacker | undefined, target: FireStaffTarget, skipsanity = false): void {
     if (!skipsanity && attacker) {
-      if (attacker.components.staffsanity) attacker.components.staffsanity.doCastingDelta(-SANITY_SUPERTINY);
-      else attacker.components.sanity?.DoDelta(-SANITY_SUPERTINY);
+      if (attacker.components.staffsanity) { attacker.components.staffsanity.doCastingDelta(-SANITY_SUPERTINY); }
+      else { attacker.components.sanity?.DoDelta(-SANITY_SUPERTINY); }
     }
-    if (target.isRemoved) return; // killed or removed in the combat damage phase
+    if (target.isRemoved) { return; } // killed or removed in the combat damage phase
     const { burnable, freezable, fueled, sleeper, combat } = target.components;
     if (burnable && !burnable.IsBurning()) {
-      if (freezable?.IsFrozen()) freezable.Unfreeze();
+      if (freezable?.IsFrozen()) { freezable.Unfreeze(); }
       else if (!fueled || (fueled.fueltype !== 'BURNABLE' && fueled.secondaryfueltype !== 'BURNABLE')) {
         // Does not take burnable fuel, so just burn it.
-        if (burnable.canlight || combat) burnable.Ignite(true, this.entity, attacker);
+        if (burnable.canlight || combat) { burnable.Ignite(true, this.entity, attacker); }
       } else if (fueled.accepting) {
         // Takes burnable fuel, so fuel it.
         const fuel = this.world.createFuel?.();
-        if (fuel) { if (fuel.components.fuel?.fueltype !== 'BURNABLE' || !fueled.TakeFuelItem(fuel)) fuel.remove(); }
+        if (fuel) { if (fuel.components.fuel?.fueltype !== 'BURNABLE' || !fueled.TakeFuelItem(fuel)) { fuel.remove(); } }
       }
     }
     if (freezable) {
       freezable.AddColdness(-1);
-      if (freezable.IsFrozen()) freezable.Unfreeze();
+      if (freezable.IsFrozen()) { freezable.Unfreeze(); }
     }
-    if (sleeper?.IsAsleep()) sleeper.WakeUp();
+    if (sleeper?.IsAsleep()) { sleeper.WakeUp(); }
     target.PushEvent?.('attacked', { attacker, damage: 0, weapon: this.entity });
   }
 }
@@ -217,7 +217,7 @@ export interface GreenStaffWorld {
 /** staff.lua destroystructure: one recipe product, scaled by its current condition. */
 export function deconstructionLoot(target: { readonly prefab: string; readonly components: DeconstructionComponents }): DeconstructionLoot[] {
   const recipe = getDeconstructionRecipe(target.prefab);
-  if (!recipe) return [];
+  if (!recipe) { return []; }
   const components = target.components;
   const condition = (!recipe.ignoresFiniteUses ? components.finiteuses?.percent.peek() : undefined)
     ?? (components.inventoryitem ? components.fueled?.percent.peek() ?? components.armor?.GetPercent() : undefined) ?? 1;
@@ -255,26 +255,26 @@ export class GreenStaffController implements HeldEquipFunctions {
   dispose(): void {}
   private destroyStructure(target: PrefabInstance, doer: SpellCastDoer, world: GreenStaffWorld): boolean {
     const recipe = getDeconstructionRecipe(target.prefab);
-    if (!recipe || !target.isValid() || this.entity.isRemoved) return false;
+    if (!recipe || !target.isValid() || this.entity.isRemoved) { return false; }
     // An item's pending stack and use changes settle before its condition is read.
-    if (target instanceof ItemEntity) target.flush();
-    if (!target.isValid()) return false;
+    if (target instanceof ItemEntity) { target.flush(); }
+    if (!target.isValid()) { return false; }
     world.spawnLoot(deconstructionLoot(target), target.position);
     for (const ingredient of recipe.ingredients) {
       const sound = ingredientSounds[ingredient.type];
-      if (sound) PlaySound(sound, doer.position);
+      if (sound) { PlaySound(sound, doer.position); }
     }
     target.components.container?.DropEverything(target.position);
     target.components.stewer?.Harvest();
     target.PushEvent('ondeconstructstructure', doer);
     // A stackable inst loses one of its stack (stackable:Get():Remove()); anything else is removed.
-    if (target.components.stackable) target.components.stackable.Consume(); else target.remove();
+    if (target.components.stackable) { target.components.stackable.Consume(); } else { target.remove(); }
     PlaySound('dontstarve/common/staff_dissassemble', doer.position);
-    if (doer.components.staffsanity) doer.components.staffsanity.doCastingDelta(-20);
-    else doer.components.sanity?.DoDelta(-20);
+    if (doer.components.staffsanity) { doer.components.staffsanity.doCastingDelta(-20); }
+    else { doer.components.sanity?.DoDelta(-20); }
     const depleted = (this.entity.components.finiteuses.remaining ?? GREENSTAFF_USES) === 1;
     this.entity.components.finiteuses.use(1);
-    if (depleted) PlaySound('dontstarve/common/gem_shatter', doer.position);
+    if (depleted) { PlaySound('dontstarve/common/gem_shatter', doer.position); }
     return true;
   }
 }
@@ -348,9 +348,9 @@ function getrandomposition(world: TeleStaffWorld, caster: Teleportee | undefined
   const centers: THREE.Vector3[] = [];
   for (const node of world.topologyNodes) {
     const center = new THREE.Vector3(node.x, 0, node.z);
-    if (world.isPassableAtPoint(center) && node.type !== NODE_TYPE_SEPARATED_ROOM) centers.push(center);
+    if (world.isPassableAtPoint(center) && node.type !== NODE_TYPE_SEPARATED_ROOM) { centers.push(center); }
   }
-  if (centers.length > 0) return centers[Math.floor(Math.random() * centers.length)];
+  if (centers.length > 0) { return centers[Math.floor(Math.random() * centers.length)]; }
   // caster:GetPosition(); a haunted staff has no caster, and the haunt is not ported.
   const { x, y, z } = (caster ?? teleportee).position;
   return new THREE.Vector3(x, y, z);
@@ -401,7 +401,7 @@ function teleport_start(teleportee: Teleportee, staff: ItemEntity, caster: Telep
   }
   staff.components.finiteuses.use(1);
   // There's a roof over your head, magic lightning can't strike! The ms_miniquake it pushes instead is not ported.
-  if (world.isCave) return;
+  if (world.isCave) { return; }
   let is_teleporting_player = false;
   if (locpos) {
     if (isTeleporteePlayer(teleportee)) {
@@ -415,11 +415,11 @@ function teleport_start(teleportee: Teleportee, staff: ItemEntity, caster: Telep
   const { x, y, z } = teleportee.position;
   world.sendLightningStrike(new THREE.Vector3(x, y, z));
   if (caster) {
-    if (caster.components.staffsanity) caster.components.staffsanity.doCastingDelta(-SANITY_HUGE);
-    else caster.components.sanity?.DoDelta(-SANITY_HUGE);
+    if (caster.components.staffsanity) { caster.components.staffsanity.doCastingDelta(-SANITY_HUGE); }
+    else { caster.components.sanity?.DoDelta(-SANITY_HUGE); }
   }
   world.deltaMoisture(TELESTAFF_MOISTURE);
-  if (!locpos) return;
+  if (!locpos) { return; }
   const destination = locpos;
   if (is_teleporting_player && isTeleporteePlayer(teleportee)) {
     teleportee.sg.statemem.teleport_task = teleportee.DoTaskInTime(3, () => teleport_continue(teleportee, destination, world));
@@ -437,7 +437,7 @@ function teleport_func(inst: ItemEntity, target: object | undefined, caster: Spe
   const world = (inst.equipmentWorld as { teleStaffWorld?: TeleStaffWorld } | undefined)?.teleStaffWorld;
   const casterInst = caster instanceof PrefabInstance ? caster as Teleportee : undefined;
   const teleportee = target instanceof PrefabInstance ? target as Teleportee : casterInst;
-  if (!world || !teleportee || inst.isRemoved) return false;
+  if (!world || !teleportee || inst.isRemoved) { return false; }
   teleport_start(teleportee, inst, casterInst, teleportee.hasTag('noteleport'), world);
   return true;
 }
@@ -453,7 +453,7 @@ export function configureTeleStaffEntity(inst: ItemEntity): void {
   // commonfn: the nopunch tag and the shadowlevel component's pristine tag.
   inst.addTag('nopunch'); inst.addTag('shadowlevel');
   inst.fxcolour = TELESTAFF_COLOUR;
-  if (inst.components.spellcaster) return;
+  if (inst.components.spellcaster) { return; }
   inst.components.finiteuses.setMaxUses(TELESTAFF_USES);
   inst.components.finiteuses.setOnFinished(() => onfinished(inst));
   const spellcaster = addComponent(inst, 'spellcaster', SpellCaster);
@@ -478,8 +478,8 @@ export const ORANGESTAFF_COLOUR = [1, 145 / 255, 0] as const;
 
 /** onblink: the caster's sanity and one use of the staff. */
 function onblink(staff: ItemEntity, _pos: THREE.Vector3, caster: BlinkCaster): void {
-  if (caster.components.staffsanity) caster.components.staffsanity.doCastingDelta(-SANITY_MED);
-  else caster.components.sanity?.DoDelta(-SANITY_MED);
+  if (caster.components.staffsanity) { caster.components.staffsanity.doCastingDelta(-SANITY_MED); }
+  else { caster.components.sanity?.DoDelta(-SANITY_MED); }
   staff.components.finiteuses.use(1);
 }
 
@@ -491,7 +491,7 @@ export function configureOrangeStaffEntity(inst: ItemEntity): void {
   inst.addTag('shadowlevel');
   inst.fxcolour = ORANGESTAFF_COLOUR;
   inst.castsound = LIGHT_STAFF_CAST_SOUND;
-  if (inst.components.weapon) return;
+  if (inst.components.weapon) { return; }
   inst.components.finiteuses.setMaxUses(ORANGESTAFF_USES);
   inst.components.finiteuses.setOnFinished(() => onfinished(inst));
   // weapon.lua adds the "weapon" tag; without finiteuses the attacks cost no uses.
@@ -540,19 +540,19 @@ export interface IceStaffTarget extends CombatInst {
 /** onattack_blue(inst, attacker, target, skipsanity). The skin's skin_sound is not ported. */
 function onattack_blue(inst: ItemEntity, attacker: FireStaffAttacker | undefined, target: IceStaffTarget, skipsanity = false): void {
   if (!skipsanity && attacker) {
-    if (attacker.components.staffsanity) attacker.components.staffsanity.doCastingDelta(-SANITY_SUPERTINY);
-    else attacker.components.sanity?.DoDelta(-SANITY_SUPERTINY);
+    if (attacker.components.staffsanity) { attacker.components.staffsanity.doCastingDelta(-SANITY_SUPERTINY); }
+    else { attacker.components.sanity?.DoDelta(-SANITY_SUPERTINY); }
   }
-  if (target.isRemoved) return; // target killed or removed in combat damage phase
+  if (target.isRemoved) { return; } // target killed or removed in combat damage phase
   const { sleeper, burnable, combat } = target.components;
-  if (sleeper?.IsAsleep()) sleeper.WakeUp();
+  if (sleeper?.IsAsleep()) { sleeper.WakeUp(); }
   if (burnable) {
-    if (burnable.IsBurning()) burnable.Extinguish();
-    else if (burnable.IsSmoldering()) burnable.SmotherSmolder();
+    if (burnable.IsBurning()) { burnable.Extinguish(); }
+    else if (burnable.IsSmoldering()) { burnable.SmotherSmolder(); }
   }
   // The attacker is the player inst, a combat entity itself.
   combat?.SuggestTarget(attacker as CombatInst | undefined);
-  if (target.sg && !target.sg.hasStateTag('frozen')) target.PushEvent?.('attacked', { attacker, damage: 0, weapon: inst });
+  if (target.sg && !target.sg.hasStateTag('frozen')) { target.PushEvent?.('attacked', { attacker, damage: 0, weapon: inst }); }
   // valid check in case any of the previous callbacks or events removed the target
   const freezable = target.components.freezable;
   if (freezable && !target.isRemoved) {

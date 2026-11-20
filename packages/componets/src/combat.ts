@@ -52,7 +52,7 @@ export class Combat {
   DropTarget(): void { this.target = undefined; }
   /** combat.lua SuggestTarget: take the target when there is none; cansuggesttargetfn and SetTarget's events are not ported. */
   SuggestTarget(target: CombatInst | undefined): boolean {
-    if (this.target !== undefined || target === undefined) return false;
+    if (this.target !== undefined || target === undefined) { return false; }
     this.target = target;
     return true;
   }
@@ -103,14 +103,14 @@ export class Combat {
   }
 
   CanHitTarget(target: CombatInst, weapon = this.getWeapon()): boolean {
-    if (this.inst.isRemoved || target.isRemoved || target.hasTag('INLIMBO')) return false;
-    if (!this.CanLightTarget(target, weapon) && !this.CanExtinguishTarget(target, weapon) && !target.components.combat?.CanBeAttacked()) return false;
-    if (this.ignorehitrange) return true;
+    if (this.inst.isRemoved || target.isRemoved || target.hasTag('INLIMBO')) { return false; }
+    if (!this.CanLightTarget(target, weapon) && !this.CanExtinguishTarget(target, weapon) && !target.components.combat?.CanBeAttacked()) { return false; }
+    if (this.ignorehitrange) { return true; }
     return distanceSq(this.inst.getPosition(), target.getPosition()) <= this.CalcHitRangeSq(target);
   }
 
   CalcDamage(target: CombatInst, weapon = this.getWeapon()): number {
-    if (target.hasTag('alwaysblock')) return 0;
+    if (target.hasTag('alwaysblock')) { return 0; }
     // No player damage multiplier applies to weapons or to non-player targets.
     return (weapon ? weapon.GetDamage() : this.defaultdamage) * this.damagemultiplier;
   }
@@ -136,16 +136,16 @@ export class Combat {
   /** combat.lua GetAttacked: armor first, then health; fully absorbed damage is "blocked" instead of "attacked". */
   GetAttacked(attacker: CombatActor, damage: number, weapon?: Weapon): boolean {
     const health = this.inst.components.health;
-    if (!health || health.IsDead()) return true;
+    if (!health || health.IsDead()) { return true; }
     const original_damage = damage;
     const inventory = this.inst.components.inventory;
-    if (inventory?.ApplyDamage) damage = inventory.ApplyDamage(damage, attacker, weapon);
+    if (inventory?.ApplyDamage) { damage = inventory.ApplyDamage(damage, attacker, weapon); }
     if (damage <= 0 && original_damage > 0) {
       this.inst.PushEvent?.('blocked', { attacker, damage, original_damage });
       return false;
     }
     // Only positive damage reaches health; it fires ondelta before onhitfn.
-    if (damage > 0) health.DoDelta(-damage, false, attacker.hasTag('player') ? 'player' : undefined, false, attacker);
+    if (damage > 0) { health.DoDelta(-damage, false, attacker.hasTag('player') ? 'player' : undefined, false, attacker); }
     this.inst.PushEvent?.('attacked', { attacker, damage, original_damage, weapon });
     this.onhitfn?.(this.inst, attacker, damage);
     return true;

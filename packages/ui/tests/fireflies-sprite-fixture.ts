@@ -52,7 +52,7 @@ export async function checkFirefliesInstances() {
   };
   const sourceMeshes = () => swarms.map(swarm => {
     let mesh: THREE.Mesh | undefined;
-    swarm.model.traverse(object => { if (object instanceof THREE.Mesh) mesh = object; });
+    swarm.model.traverse(object => { if (object instanceof THREE.Mesh) { mesh = object; } });
     return mesh;
   });
   try {
@@ -67,10 +67,10 @@ export async function checkFirefliesInstances() {
     const pixels = new Uint8Array(256 * 256 * 4);
     renderer.readRenderTargetPixels(target, 0, 0, 256, 256, pixels);
     const bright = [0, 0];
-    for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
+    for (let y = 0; y < 256; y++) { for (let x = 0; x < 256; x++) {
       const i = (y * 256 + x) * 4;
-      if (Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) > 50) bright[x < 128 ? 0 : 1]++;
-    }
+      if (Math.max(pixels[i], pixels[i + 1], pixels[i + 2]) > 50) { bright[x < 128 ? 0 : 1]++; }
+    } }
     const hiddenSourceCount = sourceMeshes().filter(mesh => mesh && !mesh.visible).length;
     const centre = new THREE.Box3().setFromObject(swarms[0].model).getCenter(new THREE.Vector3());
     const point = centre.project(camera), rect = renderer.domElement.getBoundingClientRect();
@@ -118,7 +118,7 @@ export async function checkFirefliesInstances() {
     awake.set(true); await settle(); daylight.push(draw());
     advance(5); await settle(); daylight.push(draw());
     registrations.push(mouseTargets.size);
-    for (const entity of entities) entity.remove();
+    for (const entity of entities) { entity.remove(); }
     await settle(); calls.push(draw());
     registrations.push(mouseTargets.size);
     return { calls, bright, hiddenSourceCount, retainedOffscreen, mouseTargeting, registrations, preVisible, loopVisible, unloaded, cancelled, daylight };
@@ -127,6 +127,6 @@ export async function checkFirefliesInstances() {
     net.destroy(); pointer.dispose(); renderer.domElement.remove();
     unbind(); area.dispose(); scheduler.dispose();
     target.dispose(); lighting.dispose(); renderer.dispose();
-    if (mouseTargets.size) throw new Error('Mouse registrations survived fireflies disposal');
+    if (mouseTargets.size) { throw new Error('Mouse registrations survived fireflies disposal'); }
   }
 }

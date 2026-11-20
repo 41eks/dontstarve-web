@@ -8,7 +8,7 @@ export const ICE_ID = 'ice';
  * Not ported: DoDeltaMoistureToEntity on the owner and the farming_manager soil moisture, which need wetness/farming systems.
  */
 export function configureIceEntity(entity: ItemEntity): void {
-  for (const tag of ['frozen', 'molebait', 'watersource']) entity.addTag(tag);
+  for (const tag of ['frozen', 'molebait', 'watersource']) { entity.addTag(tag); }
   entity.components.perishable.perishfn = () => {
     if (entity.components.inventoryitem.owner) { entity.remove(); return; }
     entity.persists = false;

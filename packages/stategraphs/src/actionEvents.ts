@@ -13,10 +13,10 @@ export interface PlayerActionEvents {
 export function bindActionCancellation(world: Pick<ActionWorldContext, 'actionEvents'>, owner: object,
   cancel: () => void, shouldInterrupt: (reason: ActionInterruptReason) => boolean = reason => reason !== 'drop'): () => void {
   const stopBegin = world.actionEvents?.on('action:begin', event => {
-    if (event.owner !== owner) cancel();
+    if (event.owner !== owner) { cancel(); }
   });
   const stopInterrupt = world.actionEvents?.on('action:interrupt', event => {
-    if (shouldInterrupt(event.reason)) cancel();
+    if (shouldInterrupt(event.reason)) { cancel(); }
   });
   return () => { stopBegin?.(); stopInterrupt?.(); };
 }

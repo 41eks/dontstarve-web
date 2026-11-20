@@ -32,7 +32,7 @@ function setup(players: LightFlierPlayer[] = [], withWorld = false) {
   const scene = new THREE.Scene(), scheduler = new GameTimeScheduler(), entities: ItemEntity[] = [], loot: string[] = [];
   const awake = createSignal(true), area = createMemo(() => awake.get());
   const world = withWorld ? bindTestWorld(scheduler, () => area) : undefined;
-  const dropLoot = (id: string, count: number) => { for (let i = 0; i < count; i++) loot.push(id); };
+  const dropLoot = (id: string, count: number) => { for (let i = 0; i < count; i++) { loot.push(id); } };
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance<SpriteState, object>>(displays, '/dst/data/anim', { scheduler, tickingarea: world?.tickingarea });
   // TheSim: the players the brain runs from stand in the same manager as the flies and their homes.
@@ -46,7 +46,7 @@ function setup(players: LightFlierPlayer[] = [], withWorld = false) {
   prefabs.register(lightflierFlowerPrefabs({ scheduler, habitat, dropLoot, getWatchWorldContent: world?.getWatchWorldContent, getLightLevel: () => 1 }));
   const spawn = (position: THREE.Vector3, record?: EntitySaveRecord) => prefabs.spawnAs(LightFlierFlowerInstance, LIGHTFLIER_FLOWER_ID, position, record);
   const records = () => prefabs.exportRecords().map(({ record }) => record);
-  const step = async (dt: number) => { scheduler.advance(dt); for (const fly of habitat.flies) UpdateLightFlier(fly, dt); habitat.update(dt); displays.update(dt); await task(); };
+  const step = async (dt: number) => { scheduler.advance(dt); for (const fly of habitat.flies) { UpdateLightFlier(fly, dt); } habitat.update(dt); displays.update(dt); await task(); };
   const dispose = () => { entities.forEach(entity => entity.destroy()); prefabs.dispose(); displays.dispose(); habitat.dispose(); world?.unbind(); area.dispose(); scheduler.dispose(); };
   return { scene, scheduler, entities, habitat, prefabs, spawn, records, loot, step, dispose, awake };
 }
@@ -95,7 +95,7 @@ it('restores child ownership and returns home only at the source stategraph fram
     home.components.burnable.Ignite(); restored.scheduler.advance(1 / 30 + .001);
     expect(child.isRemoved).toBe(false); expect(child.stategraph.stateName).toBe('idle');
     home.components.burnable.Extinguish();
-    for (let i = 0; i < 12 && !child.isRemoved; i++) await restored.step(.25);
+    for (let i = 0; i < 12 && !child.isRemoved; i++) { await restored.step(.25); }
     expect(child.isRemoved).toBe(true); expect(home.components.pickable.canBePicked).toBe(true);
     expect(home.light_state).toBe('ON'); expect(home.components.childspawner.numchildrenoutside).toBe(0);
   } finally { s.dispose(); restored.dispose(); }
@@ -111,7 +111,7 @@ it('forms a following circle only for a player holding a lightflier, and detache
     home.components.pickable.Pick(); const fly = [...s.habitat.flies][0];
     await s.step(1); expect(s.habitat.formations.size).toBe(1); expect(fly.inFormation).toBe(true);
     expect(fly.hasTag('NOBLOCK')).toBe(true);
-    for (let i = 0; i < 20; i++) await s.step(.1);
+    for (let i = 0; i < 20; i++) { await s.step(.1); }
     expect(fly.components.formationfollower.targetpos).toBeInstanceOf(THREE.Vector3);
     expect(fly.components.formationfollower.active).toBe(true);
     fly.getPosition().set(100, 0, 0); carrying = false; await s.step(1);
@@ -176,7 +176,7 @@ it('spawns a lightflier as its own entity, whose brain stops while it is held an
   try {
     items.spawnFromSave('fly', { ...SAVE_CATALOG.items.lightflier, itemId: 'lightflier', count: 1 }, new THREE.Vector3(3, 0, 0));
     const fly = items.entities.get('fly');
-    if (!(fly instanceof LightFlier)) throw new Error('the lightflier prefab makes a LightFlier');
+    if (!(fly instanceof LightFlier)) { throw new Error('the lightflier prefab makes a LightFlier'); }
     expect(world.flies.has(fly)).toBe(true);
     const brain = fly.brain;
     expect(brain?.stopped).toBe(false);
@@ -190,7 +190,7 @@ it('spawns a lightflier as its own entity, whose brain stops while it is held an
     expect(fly.stategraph.stateName).toBe('idle');
     restored.restoreEntities(items.exportEntities());
     const [copy] = restored.entities.values();
-    if (!(copy instanceof LightFlier)) throw new Error('a saved lightflier restores as a LightFlier');
+    if (!(copy instanceof LightFlier)) { throw new Error('a saved lightflier restores as a LightFlier'); }
     expect(restoredWorld.flies.has(copy)).toBe(true);
   } finally { items.dispose(); restored.dispose(); world.dispose(); restoredWorld.dispose(); inventory.dispose(); restoredInventory.dispose(); scheduler.dispose(); }
 });

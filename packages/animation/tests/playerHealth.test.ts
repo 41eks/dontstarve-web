@@ -41,7 +41,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
   instance.HUD = hud;
   const stopDeath = instance.ListenForEvent('death', death);
   animation.deathHost = { dropEverything: vi.fn(), isPassableAtPoint: () => true };
-  const frames = (count: number) => { for (let i = 0; i < count; i++) advancePlayer(animation, 1 / 30); };
+  const frames = (count: number) => { for (let i = 0; i < count; i++) { advancePlayer(animation, 1 / 30); } };
   try {
     expect(stats.health).toBe(health);
     expect(instance.components.hunger).toBe(stats.hunger);
@@ -55,7 +55,7 @@ it('eats eight red caps, dies through component events, becomes a ghost and save
       expect(health.currenthealth).toBe(Math.max(0, 150 - 20 * (eaten - 1)));
       frames(1);
       expect(health.currenthealth).toBe(Math.max(0, 150 - 20 * eaten));
-      if (eaten < 8) frames(40);
+      if (eaten < 8) { frames(40); }
     }
     expect(inventory.getEntity(slot)).toBeNull();
     expect(animation.sg.stateName).toBe('death');
@@ -157,10 +157,10 @@ it('resurrects a loaded ghost from a haunted amulet, wearing that inst and retur
     expect(amulet.isRemoved).toBe(true);
     expect(hud.Hide).toHaveBeenCalled();
     const graph = instance.sg;
-    for (let frame = 0; frame < 81; frame++) advancePlayer(instance, 1 / 30);
+    for (let frame = 0; frame < 81; frame++) { advancePlayer(instance, 1 / 30); }
     expect(sleeper.GoToSleep).toHaveBeenCalledExactlyOnceWith(20);
     hud.Show.mockClear();
-    for (let frame = 0; frame < 300 && graph.stateName === 'amulet_rebirth'; frame++) advancePlayer(instance, 1 / 30);
+    for (let frame = 0; frame < 300 && graph.stateName === 'amulet_rebirth'; frame++) { advancePlayer(instance, 1 / 30); }
     expect(graph.stateName).toBe('idle');
     expect(hud.Show).toHaveBeenCalled();
     expect(instance.controllerEnabled).toBe(true);

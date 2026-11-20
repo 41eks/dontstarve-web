@@ -44,11 +44,11 @@ export function testPlayer({ entity, model, inventory = createInventoryStore([])
   const existing = entity ?? (model && prefabInstance(model));
   const inst: PrefabInstance<ArchiveSpriteCommands> = existing
     ?? testEnts().track(model ? entityOf(model, prefab) : createEmptyEntity(prefab).instance);
-  for (const tag of ['player', ...tags]) inst.addTag(tag);
-  if (position) inst.setPosition(position.x, position.y, position.z);
+  for (const tag of ['player', ...tags]) { inst.addTag(tag); }
+  if (position) { inst.setPosition(position.x, position.y, position.z); }
   inst.components.inventory = inventory;
   inventory.bindActor(inst);
-  if (!ownsStore(inst)) throw new Error('A test player owns its inventory store');
-  if (map) inst.Map = map;
+  if (!ownsStore(inst)) { throw new Error('A test player owns its inventory store'); }
+  if (map) { inst.Map = map; }
   return inst;
 }

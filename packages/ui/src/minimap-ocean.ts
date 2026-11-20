@@ -38,7 +38,7 @@ export function boxBlur(values: Float32Array, side: number, size: number, passes
       for (let line = 0; line < side; line++) {
         const at = (i: number) => horizontal ? line * side + Math.min(side - 1, Math.max(0, i)) : Math.min(side - 1, Math.max(0, i)) * side + line;
         let sum = 0;
-        for (let i = -size; i <= size; i++) sum += source[at(i)];
+        for (let i = -size; i <= size; i++) { sum += source[at(i)]; }
         for (let i = 0; i < side; i++) {
           target[horizontal ? line * side + i : i * side + line] = sum / window;
           sum += source[at(i + size + 1)] - source[at(i - size)];
@@ -89,11 +89,11 @@ export function renderMinimapOcean(side: number, cellSize: number, isOcean: (col
   const texelsPerCell = Math.max(1, Math.round(cellSize / TEXEL_WORLD_SIZE));
   const texels = side * texelsPerCell;
   const land = new Float32Array(texels * texels), mask = new Float32Array(texels * texels);
-  for (let y = 0; y < texels; y++) for (let x = 0; x < texels; x++) {
+  for (let y = 0; y < texels; y++) { for (let x = 0; x < texels; x++) {
     const ocean = isOcean(Math.floor(x / texelsPerCell), Math.floor(y / texelsPerCell));
     land[y * texels + x] = ocean ? 0 : 1;
     mask[y * texels + x] = ocean ? 1 : 0;
-  }
+  } }
   const alphaTexture = boxBlur(land, texels, tuning.TEXTURE_ALPHA_BLUR_SIZE, tuning.TEXTURE_ALPHA_BLUR_PASS_COUNT);
   const maskTexture = boxBlur(mask, texels, tuning.MASK_BLUR_SIZE, tuning.MASK_BLUR_PASS_COUNT);
 
@@ -105,7 +105,7 @@ export function renderMinimapOcean(side: number, cellSize: number, isOcean: (col
   const { EDGE_PARAMS0: p0, EDGE_PARAMS1: p1, EDGE_SHADOW_PARAMS: ps, EDGE_FADE_PARAMS: pf } = tuning;
   const inset = pf.MASK_INSET, range = 1 + 2 * inset;
   const paper: [number, number, number] = [0, 0, 0];
-  for (let py = 0; py < size; py++) for (let px = 0; px < size; px++) {
+  for (let py = 0; py < size; py++) { for (let px = 0; px < size; px++) {
     const u = (px + 0.5) / size, v = (py + 0.5) / size;
     const maskAlpha = bilinear(maskTexture, texels,
       Math.min(1, Math.max(0, u * range - inset)), Math.min(1, Math.max(0, v * range - inset)));
@@ -125,6 +125,6 @@ export function renderMinimapOcean(side: number, cellSize: number, isOcean: (col
       data[i + c] = Math.round(colour * visible * 255);
     }
     data[i + 3] = 255;
-  }
+  } }
   return { data, width: size, height: size };
 }

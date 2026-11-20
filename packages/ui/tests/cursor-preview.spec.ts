@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
 test('world previews override lighting and UI labels use controllers mouse glyphs', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('console', (message) => { if (message.type() === 'error') { errors.push(message.text()); } });
   await page.goto('/tests/dst-lighting.html');
   const result = await page.evaluate(async (url) => {
     const { checkCursorPreview } = await import(url);

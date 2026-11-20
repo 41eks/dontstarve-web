@@ -28,15 +28,15 @@ const atlasCache = new Map<string, Promise<AtlasData>>()
 function loadAtlas(name: string, assetRoot: string) {
   const cacheKey = `${assetRoot}/${name}`
   const cached = atlasCache.get(cacheKey)
-  if (cached) return cached
+  if (cached) { return cached }
 
   const promise = Promise.all([
     fetch(`${assetRoot}/${name}.tex`).then(response => {
-      if (!response.ok) throw new Error(`无法读取 ${name}.tex`)
+      if (!response.ok) { throw new Error(`无法读取 ${name}.tex`) }
       return response.arrayBuffer()
     }),
     fetch(`${assetRoot}/${name}.xml`).then(response => {
-      if (!response.ok) throw new Error(`无法读取 ${name}.xml`)
+      if (!response.ok) { throw new Error(`无法读取 ${name}.xml`) }
       return response.text()
     }),
   ]).then(([textureBuffer, xml]) => {
@@ -54,7 +54,7 @@ function loadAtlas(name: string, assetRoot: string) {
     const elements = new Map<string, ElementBounds>()
     documentXml.querySelectorAll("Element").forEach(element => {
       const spriteName = element.getAttribute("name")
-      if (!spriteName) return
+      if (!spriteName) { return }
       elements.set(spriteName, {
         u1: Number(element.getAttribute("u1")),
         u2: Number(element.getAttribute("u2")),
@@ -83,9 +83,9 @@ export default function AtlasSprite({
   useEffect(() => {
     let cancelled = false
     loadAtlas(atlas, assetRoot).then(({ image, elements }) => {
-      if (cancelled || !canvasRef.current) return
+      if (cancelled || !canvasRef.current) { return }
       const bounds = elements.get(sprite)
-      if (!bounds) throw new Error(`${atlas}.xml 中不存在 ${sprite}`)
+      if (!bounds) { throw new Error(`${atlas}.xml 中不存在 ${sprite}`) }
 
       const sx = Math.floor(bounds.u1 * image.width)
       const sy = Math.floor((1 - bounds.v2) * image.height)
@@ -97,7 +97,7 @@ export default function AtlasSprite({
       canvas.width = width
       canvas.height = height
       const context = canvas.getContext("2d")
-      if (!context) return
+      if (!context) { return }
       context.clearRect(0, 0, width, height)
       context.drawImage(image, sx, sy, width, height, 0, 0, width, height)
 
@@ -111,7 +111,7 @@ export default function AtlasSprite({
         context.putImageData(pixels, 0, 0)
       }
     }).catch(reason => {
-      if (!cancelled) setError(reason instanceof Error ? reason.message : String(reason))
+      if (!cancelled) { setError(reason instanceof Error ? reason.message : String(reason)) }
     })
     return () => { cancelled = true }
   }, [assetRoot, atlas, sprite, tint])

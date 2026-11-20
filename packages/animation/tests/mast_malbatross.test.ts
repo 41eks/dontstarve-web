@@ -83,7 +83,7 @@ it('loads a saved mast with the clips, tags, bank and component values mast.lua 
     expect(records()).toEqual([saved]);
     await prefabDisplay(inst.transform.model)!.artLoaded();
     for (const archive of ['boat_mast_malbatross_wip.zip', 'boat_mast_malbatross_knots_wip.zip', 'boat_mast_malbatross_opens_wip.zip',
-      'boat_mast_malbatross_build.zip']) expect(requested(archive)).toBe(true);
+      'boat_mast_malbatross_build.zip']) { expect(requested(archive)).toBe(true); }
     expect(requested('dynamic/mast_malbatross_tesla.zip')).toBe(false);
   } finally { dispose(); }
 });
@@ -136,7 +136,7 @@ it('keeps a c_spawn mast through c_save and a reload, and rejects c_give', async
     expect(saved[0]).toMatchObject({ id: spawned.entityId, transform: { position: [3, 0, -6] } });
     await second.registry.restoreAll({ mast_malbatross: saved });
     const loaded = second.prefabs.get(saved[0]!.id);
-    if (!(loaded instanceof MastMalbatrossInstance)) throw new Error('The saved mast did not load');
+    if (!(loaded instanceof MastMalbatrossInstance)) { throw new Error('The saved mast did not load'); }
     expect(loaded.position.toArray()).toEqual([3, 0, -6]);
     // is_sail_raised == inverted: onload leaves the sail alone, so the mast stays closed.
     expect(clip(loaded)).toMatchObject({ name: 'closed', loop: false });
