@@ -1,5 +1,5 @@
 /** constants.lua UPGRADETYPES, the values the ported prefabs set. */
-export const UPGRADETYPES = { DEFAULT: 'default', SPIDER: 'spider', MAST: 'mast' } as const;
+export const UPGRADETYPES = { DEFAULT: 'default', SPIDER: 'spider', MAST: 'mast', WATERPLANT: 'waterplant' } as const;
 
 /** upgradeable.lua OnSave. */
 export interface UpgradeableSave {

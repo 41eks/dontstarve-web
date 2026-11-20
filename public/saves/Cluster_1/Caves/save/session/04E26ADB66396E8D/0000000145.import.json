@@ -555,6 +555,7 @@
     "treasurechest",
     "pandoraschest",
     "shadow_forge",
+    "seastack",
     "spiderden",
     "beefalo",
     "lightninggoat",
@@ -1118,6 +1119,10 @@
     "shadow_forge": {
       "source": 1,
       "imported": 1
+    },
+    "seastack": {
+      "source": 0,
+      "imported": 0
     },
     "spiderden": {
       "source": 17,
