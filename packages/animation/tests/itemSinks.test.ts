@@ -96,6 +96,8 @@ describe('inventoryitem landing and sinks', () => {
   });
 
   it('lands a flung item where its flight ends, and never sinks a held one', () => {
+    // A fixed rightward, minimum-speed fling keeps the deterministic landing in the ocean around x = 15.
+    vi.spyOn(Math, 'random').mockReturnValue(0);
     const { world, inventory, spawn } = setup();
     try {
       const flung = spawn('rocks', 15, true);
