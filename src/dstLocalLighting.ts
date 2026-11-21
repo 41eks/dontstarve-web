@@ -429,17 +429,20 @@ export class DstLocalLighting {
       shader.uniforms.dstLightmap = this.lightmap;
       shader.uniforms.dstLightmapExtents = this.extents;
       shader.uniforms.dstLightOverride = lightOverride;
-      shader.vertexShader = shader.vertexShader
-        .replace(
-          '#include <common>',
-          `
+      // A copy compiled through its source's patched callback (depth-offset and ocean copies) already has the lighting
+      // code; it binds its own uniforms above and adds the code only once.
+      if (!shader.vertexShader.includes('varying vec2 vDstWorldXZ')) {
+        shader.vertexShader = shader.vertexShader
+          .replace(
+            '#include <common>',
+            `
         #include <common>
         varying vec2 vDstWorldXZ;
       `,
-        )
-        .replace(
-          '#include <project_vertex>',
-          `
+          )
+          .replace(
+            '#include <project_vertex>',
+            `
         #include <project_vertex>
         vec4 dstWorldPosition = vec4(transformed, 1.0);
         #ifdef USE_BATCHING
@@ -450,11 +453,11 @@ export class DstLocalLighting {
         #endif
         vDstWorldXZ = (modelMatrix * dstWorldPosition).xz;
       `,
-        );
-      shader.fragmentShader = shader.fragmentShader
-        .replace(
-          '#include <common>',
-          `
+          );
+        shader.fragmentShader = shader.fragmentShader
+          .replace(
+            '#include <common>',
+            `
         #include <common>
         uniform sampler2D dstLightmap;
         uniform vec4 dstLightmapExtents;
@@ -462,10 +465,10 @@ export class DstLocalLighting {
         uniform float dstLightOverride;
         varying vec2 vDstWorldXZ;
       `,
-        )
-        .replace(
-          '#include <colorspace_fragment>',
-          `
+          )
+          .replace(
+            '#include <colorspace_fragment>',
+            `
         vec2 dstLightUv = (vDstWorldXZ - dstLightmapExtents.xy) * dstLightmapExtents.zw;
         vec3 dstLight = dstAmbientColour;
         if (all(greaterThanEqual(dstLightUv, vec2(0.0)))
@@ -478,7 +481,8 @@ export class DstLocalLighting {
         gl_FragColor.rgb = sRGBTransferEOTF(vec4(dstDisplay * dstLight, 1.0)).rgb;
         #include <colorspace_fragment>
       `,
-        );
+          );
+      }
     };
     material.customProgramCacheKey = () => `${previousKey}:dst-world-lightmap-v3`;
     material.needsUpdate = true;

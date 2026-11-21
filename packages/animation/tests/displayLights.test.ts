@@ -4,6 +4,7 @@ import { createEmptyEntity } from '../../prefab/src/prefabInstance';
 import { spawnLightEntity } from '../../prefab/src/localLight';
 import { displayLights } from '../../display/src/displaySprites';
 import { DstLocalLighting } from '../../../src/dstLocalLighting';
+import { injectOceanShading, oceanShadingMaterialUniforms } from '../src/oceanShading';
 
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
@@ -85,4 +86,48 @@ it('renders and samples only the lights displays list for active entities in the
     scene.clear();
   }
   expect(displayLights().size).toBe(0); // Removed entities release their listing.
+});
+
+it("lights a depth-offset or ocean copy compiled through its lit source once, with the copy's own override", () => {
+  const lighting = new DstLocalLighting(),
+    renderer = {
+      autoClear: false,
+      getRenderTarget: () => null,
+      setRenderTarget: vi.fn(),
+      render: vi.fn(),
+    } as unknown as THREE.WebGLRenderer;
+  const object = new THREE.Object3D();
+  const basicShader = () =>
+    ({
+      vertexShader: THREE.ShaderLib.basic.vertexShader,
+      fragmentShader: THREE.ShaderLib.basic.fragmentShader,
+      uniforms: {},
+    }) as unknown as THREE.WebGLProgramParametersWithUniforms;
+  const count = (text: string, part: string) => text.split(part).length - 1;
+  try {
+    lighting.renderLightmap(renderer, new THREE.Scene());
+    const source = new THREE.MeshBasicMaterial();
+    lighting.prepareDrawnMaterial(source, object, renderer);
+    // animationAssets copyOffset: the copy compiles through the source's callback, then adds the ocean shading.
+    const copy = new THREE.MeshBasicMaterial().copy(source),
+      ocean = oceanShadingMaterialUniforms({ float: [0, 1, 1], blend: 1 });
+    copy.onBeforeCompile = (shader, gl) => {
+      source.onBeforeCompile(shader, gl);
+      injectOceanShading(shader, ocean);
+    };
+    lighting.prepareDrawnMaterial(copy, object, renderer);
+    const shader = basicShader();
+    copy.onBeforeCompile(shader, renderer);
+    expect(count(shader.vertexShader, 'varying vec2 vDstWorldXZ')).toBe(1);
+    expect(count(shader.vertexShader, 'vec4 dstWorldPosition')).toBe(1);
+    expect(count(shader.fragmentShader, 'uniform sampler2D dstLightmap')).toBe(1);
+    expect(count(shader.fragmentShader, 'vec3 dstDisplay')).toBe(1);
+    expect(count(shader.vertexShader, 'varying vec3 vDstOceanWorld')).toBe(1);
+    // The override the copy is drawn with is the copy's, not its source's.
+    const sourceShader = basicShader();
+    source.onBeforeCompile(sourceShader, renderer);
+    expect(shader.uniforms.dstLightOverride).not.toBe(sourceShader.uniforms.dstLightOverride);
+  } finally {
+    lighting.dispose();
+  }
 });
