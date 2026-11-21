@@ -179,7 +179,8 @@ export function buildingPrefab<Instance extends PrefabInstance>(
     ...(skinSymbols ? { skinSymbols } : {}),
     ...(baseSymbols ? { baseSymbols } : {}),
     ...(skinAnimationBanks ? { skinAnimationBanks } : {}),
-    alignBottom: true,
+    // No alignBottom: the art hangs from its pivot, the foot the depth sort reads, so a base drawn below the pivot
+    // (a chest's) meets the ground where the entity sorts.
     ...(radius === undefined ? {} : { physics: { make: MakeObstaclePhysics, radius } }),
     onSpawned: inst => {
       MakeBuildingTargets(inst, world);

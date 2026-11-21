@@ -25,8 +25,6 @@ export interface BuildingPlacerSpec {
    * instanced batches.
    */
   art(resources: SpriteResources, skinId?: string): PlacerArt;
-  /** Stands the placer's lowest point on the ground, as this project draws its buildings (the default). */
-  readonly alignBottom?: boolean;
   /** The deploy mode's snap of the pointer point, such as DEPLOYMODE.WALL's wall grid. */
   snap?(point: THREE.Vector3): THREE.Vector3;
   /** placer.lua onupdatetransform: runs each frame once the placer has followed the pointer. */
@@ -131,7 +129,7 @@ export class BuildingPlacer<BuildId extends string> {
       declarePlacer(entity);
       entity.sprite.setOpacity(PLACER_OPACITY);
     };
-    const options = { alignBottom: spec.alignBottom ?? true };
+    // Drawn from the art's pivot, as the building it places is.
     const { instance, display } = createArchiveEntity(
       prefab,
       this.sprites.archive(art.archive, PLACER_ARCHIVE_OPTIONS),
@@ -141,8 +139,6 @@ export class BuildingPlacer<BuildId extends string> {
         art.initialize?.(entity);
         declare(entity);
       },
-      undefined,
-      options,
     );
     this.ents?.track(instance);
     this.displays.mount(display);

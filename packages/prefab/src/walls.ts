@@ -382,7 +382,6 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
     // Every health anim and its _hit rests on its last frame: all of them are drawn by the shared batches.
     assetOptions: { instancedAnimations: 'all', ...(art.multColour ? { colour: [1, 1, 1] as const } : {}) },
     skins,
-    alignBottom: true,
     // MakeObstaclePhysics(inst, .5); inst.Physics:SetDontRemoveOnSleep(true).
     physics: { make: (inst, radius) => MakeObstaclePhysics(inst, radius).SetDontRemoveOnSleep(true), radius: 0.5 },
     onSpawned: inst => {

@@ -105,13 +105,14 @@ it('builds through its placer: a refused or cancelled build makes nothing, a com
   expect(spawn).toHaveBeenCalledOnce();
 });
 
-it('stands its sprite on the ground, and the greenstaff can deconstruct it', async () => {
+it('hangs its sprite from the art pivot, and the greenstaff can deconstruct it', async () => {
   const { physics, prefabs, displays } = setup();
   const wardrobe = prefabs.spawn(WARDROBE_ID, new THREE.Vector3(1, 0, 2));
   await prefabDisplay(wardrobe.transform.model)!.artLoaded();
   displays.update(1 / 30);
   wardrobe.transform.model.updateWorldMatrix(true, true);
-  expect(new THREE.Box3().setFromObject(wardrobe.transform.model).min.y).toBeCloseTo(0);
+  // The pivot is the foot the depth sort reads; the base drawn below it meets the ground where the entity sorts.
+  expect(new THREE.Box3().setFromObject(wardrobe.transform.model).min.y).toBeCloseTo(-0.547, 2);
   expect(wardrobe.isValid()).toBe(true);
   wardrobe.remove();
   expect(wardrobe.isRemoved).toBe(true);
