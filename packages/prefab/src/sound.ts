@@ -669,6 +669,13 @@ const sounds = {
   // moondial.lua / SGmoondial.lua → dontstarve.fev sounddefs 2361 (fill_2_1..4), 2362/2363 (full_LP, one sample),
   // 2367 (water_movement_1..5) and 2366 (place), together file_index 1324–1328, 1336–1341 (+ 1).
   'dontstarve/common/together/moondial/fill': { bank: 'together', streams: [1325, 1326, 1327, 1328], loop: false },
+  // moon_fissure.lua delayed_transition → turnoftides.fev common/together/moon_fissure/crack_open: sounddef 54,
+  // crack_open_moon_fissure_DST-001..006, turnoftides file_index 690–695 (+ 1).
+  'turnoftides/common/together/moon_fissure/crack_open': {
+    bank: 'turnoftides',
+    streams: [691, 692, 693, 694, 695, 696],
+    loop: false,
+  },
   'dontstarve/common/together/moondial/full_LP': { bank: 'together', streams: [1329], loop: true },
   'dontstarve/common/together/moondial/water_movement': {
     bank: 'together',

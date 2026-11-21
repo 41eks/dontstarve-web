@@ -115,6 +115,16 @@ function refreshPickEnvelope(entity: MouseTargetEntity): void {
   }
 }
 
+/**
+ * A root's world origin for the envelope test. A root directly in the scene (which is never transformed) is where its
+ * position says, current without walking or updating world matrices; a nested one is read through them.
+ */
+function pickOrigin(model: THREE.Object3D): THREE.Vector3 {
+  return model.parent && !model.parent.parent
+    ? envelopeOrigin.copy(model.position)
+    : model.getWorldPosition(envelopeOrigin);
+}
+
 /** Input:GetWorldEntityUnderMouse excludes invisible/NOCLICK entities before action selection. */
 export function intersectSpriteEntities(
   raycaster: THREE.Raycaster,
@@ -182,7 +192,6 @@ export class PointerRaycaster {
   private cachedGround?: THREE.Intersection;
   private pickCount = 0;
   private readonly candidates: THREE.Object3D[] = [];
-  private readonly refreshed: MouseTargetEntity[] = [];
 
   /** Object-only picking can omit ground; ground queries then return no hit. */
   constructor(world: Pick<WorldContext, 'camera' | 'renderer'> & Partial<Pick<WorldContext, 'ground' | 'scene'>>) {
@@ -240,30 +249,27 @@ export class PointerRaycaster {
     if (!this.updatePointerRay()) {
       return undefined;
     }
-    const { candidates, refreshed } = this,
+    const { candidates } = this,
       ray = this.raycaster.ray;
     candidates.length = 0;
-    refreshed.length = 0;
-    // Each root is refreshed once every `period` picks; one with no envelope yet is refreshed now.
+    // Each root is refreshed once every `period` picks; one with no envelope yet is refreshed now. A refreshed root
+    // then faces the same envelope test as the others: only the ray's neighbours reach the exact pick.
     const period = Math.max(1, Math.ceil(mouseTargets.size / ENVELOPE_REFRESHES_PER_PICK)),
       phase = this.pickCount++ % period;
     let index = 0;
     // The registry already excludes removed, detached, inactive, disabled and NOCLICK roots.
     for (const entity of mouseTargets) {
-      const model = entity.transform.model,
-        envelope = pickEnvelopes.get(entity);
-      const due = index++ % period === phase;
-      if (envelope === undefined || due) {
-        refreshed.push(entity);
-      } else if (ray.distanceSqToPoint(model.getWorldPosition(envelopeOrigin)) > envelope * envelope) {
+      const model = entity.transform.model;
+      if (index++ % period === phase || !pickEnvelopes.has(entity)) {
+        refreshPickEnvelope(entity);
+      }
+      const envelope = pickEnvelopes.get(entity)!;
+      if (ray.distanceSqToPoint(pickOrigin(model)) > envelope * envelope) {
         continue;
       }
       if (mouseVisible(model)) {
         candidates.push(model);
       }
-    }
-    for (const entity of refreshed) {
-      refreshPickEnvelope(entity);
     }
     return intersectSpriteEntities(this.raycaster, candidates)[0] ?? this.pickPaddedTarget(candidates);
   }
