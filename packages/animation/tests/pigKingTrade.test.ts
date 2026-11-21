@@ -7,7 +7,7 @@ import * as CANNON from 'cannon-es';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import { pigKingPrefabs, PIGKING_ID, PigKingInstance } from '../../prefab/src/pigking';
-import { configureTradableEntity } from '../../prefab/src/tradable';
+import { configureTradableEntity, hasTradableGoldValue } from '../../prefab/src/tradable';
 import { bindTestWorld } from './worldContentFixture';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import { testItem } from './testInventory';
@@ -106,6 +106,20 @@ describe('Pig King trading and sleeping', () => {
     expect(toss).toMatchObject({ height: 4.5, speed: { min: 2, range: 4 }, ySpeed: { min: 8, range: 2 } });
     run(6);
     expect(king.sg.stateName).toBe('idle');
+    dispose();
+  });
+
+  it('trades trinkets for their GOLD_VALUES.TRINKETS entry, or 3 past the table', async () => {
+    const { king, dropLoot, run, dispose } = await setup();
+    expect(hasTradableGoldValue('trinket_1')).toBe(true);
+    expect(give(king, item('trinket_1')).accepted).toBe(true);
+    run(6);
+    expect(give(king, item('trinket_46')).accepted).toBe(true);
+    run(6);
+    expect(dropLoot.mock.calls.map(([items]) => items)).toEqual([
+      [{ itemId: 'goldnugget', count: 4 }],
+      [{ itemId: 'goldnugget', count: 3 }],
+    ]);
     dispose();
   });
 

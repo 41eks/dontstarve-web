@@ -1,9 +1,16 @@
 import { addComponent } from './components';
 import type { ItemEntity } from '@dontstarve-web/inventory';
 import { Tradable } from '../../componets/src/tradable';
+import { TRINKET_IDS } from './trinkets';
 
 // tuning.lua GOLD_VALUES.MEAT
 const MEAT = 1;
+
+// tuning.lua GOLD_VALUES.TRINKETS, indexed by trinket number from 1; trinkets.lua pays 3 for the numbers past it.
+const TRINKET_GOLD = [
+  4, 6, 4, 5, 4, 5, 4, 8, 7, 2, 5, 8, 5, 3, 4, 4, 2, 6, 6, 7, 5, 4, 3, 8, 2, 9, 4, 4, 4, 4, 4, 1, 1, 1, 1, 1, 1,
+];
+const TRINKET_DEFAULT_GOLD = 3;
 
 /**
  * Every cataloged item whose Lua adds the tradable component, with its `goldvalue`. meats.lua common()
@@ -87,6 +94,10 @@ export const TRADABLE_GOLD_VALUES: Readonly<Record<string, number>> = {
   telestaff: 0,
   orangestaff: 0,
   icestaff: 0,
+  // trinkets.lua MakeTrinket: goldvalue = TUNING.GOLD_VALUES.TRINKETS[num] or 3.
+  ...Object.fromEntries(
+    TRINKET_IDS.map(id => [id, TRINKET_GOLD[Number(id.slice('trinket_'.length)) - 1] ?? TRINKET_DEFAULT_GOLD]),
+  ),
 };
 
 export function hasTradableGoldValue(itemId: string): boolean {
