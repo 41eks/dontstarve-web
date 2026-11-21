@@ -60,6 +60,8 @@ export function isSpriteEntityRendered(sprite: THREE.Object3D): boolean {
  * - camera-space foot depth, far to near, in millimetre buckets so float noise cannot reorder overlapping sprites;
  * - camera-space foot x, left to right, in millimetre buckets: entities on one line of sight (a row of walls) share
  *   a depth, and their order across the screen does not change while the camera pans;
+ * - both measured along the camera's axes without its translation, which shifts every entity alike: a panning camera
+ *   moves no bucket boundary between two feet, so neighbours a fraction of a millimetre apart keep their order;
  * - `sortLayer` (default 1), for parts that share one foot point: an effect passes its owner's foot and draws after
  *   it (2) or behind it (0).
  *
@@ -84,12 +86,10 @@ export interface RenderOrderEntry {
 const bucket = (value: number, buckets: number) =>
   Math.min(buckets - 1, Math.max(0, Math.round(value / QUANTUM) + buckets / 2));
 
-export function spriteRenderOrderKey(
-  foot: ReadonlyVector3,
-  view: THREE.Matrix4,
-  renderLayer = 0,
-  sortLayer = 1,
-): number {
+/** The foot coordinates a key reads, so a batch's own position record can be passed without a vector. */
+type FootPoint = Readonly<Pick<ReadonlyVector3, 'x' | 'y' | 'z'>>;
+
+export function spriteRenderOrderKey(foot: FootPoint, view: THREE.Matrix4, renderLayer = 0, sortLayer = 1): number {
   const layer = renderLayer - MIN_RENDER_LAYER;
   if (!Number.isInteger(layer) || layer < 0 || layer >= RENDER_LAYERS) {
     throw new Error(`Unsupported render layer ${renderLayer}`);
@@ -99,9 +99,18 @@ export function spriteRenderOrderKey(
   }
   // The view matrix is affine; compute just camera-space x and z, without a temporary vector.
   const m = view.elements;
-  const depth = bucket(m[2] * foot.x + m[6] * foot.y + m[10] * foot.z + m[14], DEPTH_BUCKETS);
-  const lateral = bucket(m[0] * foot.x + m[4] * foot.y + m[8] * foot.z + m[12], LATERAL_BUCKETS);
+  const depth = bucket(m[2] * foot.x + m[6] * foot.y + m[10] * foot.z, DEPTH_BUCKETS);
+  const lateral = bucket(spriteRenderLateral(foot, view), LATERAL_BUCKETS);
   return 1 + layer * DEPTH_BUCKETS + depth + (lateral * SORT_LAYERS + sortLayer) / FRACTION;
+}
+
+/** The key's render layer and depth bucket: keys in one share a camera depth to the millimetre, so are coplanar. */
+export const spriteRenderDepthGroup = (key: number): number => Math.floor(key);
+
+/** The key's left-to-right axis: camera-space foot x, without the camera's translation. */
+export function spriteRenderLateral(foot: FootPoint, view: THREE.Matrix4): number {
+  const m = view.elements;
+  return m[0] * foot.x + m[4] * foot.y + m[8] * foot.z;
 }
 
 /** Writes every shown entity's key; hidden entities and sprites drawn by an instance batch keep theirs. */

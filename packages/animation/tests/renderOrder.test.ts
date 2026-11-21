@@ -59,6 +59,15 @@ describe('spriteRenderOrderKey', () => {
     }
   });
 
+  it('keeps every key while the camera pans, so neighbours a fraction of a millimetre apart never swap', () => {
+    const feet = [new THREE.Vector3(1, 0, 2), new THREE.Vector3(1.0004, 0, 2.0003)];
+    const still = feet.map(foot => spriteRenderOrderKey(foot, view));
+    for (let frame = 0; frame < 50; frame++) {
+      const panned = camera([frame * 0.0137, 30, 50 + frame * 0.0071], [frame * 0.0137, 0, frame * 0.0071]);
+      expect(feet.map(foot => spriteRenderOrderKey(foot, panned))).toEqual(still);
+    }
+  });
+
   it('orders parts sharing a foot point by sort layer, between their neighbours', () => {
     const behind = key(1, 0, 0, 0),
       owner = key(1, 0),

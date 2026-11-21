@@ -10,6 +10,13 @@ import {
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
 import { watchWorldMatrixChanges } from './matrixUpdates';
 import { DEPTH_OFFSET_UNITS } from './animationAssets';
+import { spriteRenderDepthGroup, spriteRenderLateral, spriteRenderOrderKey } from './renderOrder';
+
+/**
+ * `DEPTH_OFFSET_UNITS` depth-buffer steps of a 24-bit buffer, in clip-space depth (a step is 2^-24 of the [0, 1]
+ * window range, 2^-23 of NDC): past float rounding between coplanar billboards, far below any real gap.
+ */
+const DEPTH_RANK_STEP = -DEPTH_OFFSET_UNITS * 2 ** -23;
 import { compileSceneAsync } from './compileScene';
 import {
   injectOceanShading,
@@ -79,10 +86,17 @@ interface DrawEntry {
   entry: Entry;
   member: InstancedSpriteMember;
   frame: RgbaSpriteAtlasFrame;
-  depth: number;
+  page: DrawPage;
+  /** The foot's world position, which `spriteRenderOrderKey` reads. */
   x: number;
   y: number;
   z: number;
+  /** `spriteRenderOrderKey` of the foot. */
+  key: number;
+  /** `spriteRenderLateral` of the foot. */
+  lateral: number;
+  /** Clip-space depth towards the camera, resolving coplanar overlaps in draw order (see `rank`). */
+  bias: number;
   camera: number;
 }
 /** One atlas page, drawn as is or towards the camera after the ordinary batches: each is its own batch. */
@@ -108,6 +122,7 @@ interface InstanceState {
   opacity: number;
   light: number;
   erosion: number;
+  bias: number;
   ocean?: SpriteOceanShading;
 }
 /** A page batch's quad and its per-instance sprite attributes. */
@@ -118,6 +133,8 @@ type BatchAttributes = {
   spriteOpacity: THREE.InstancedBufferAttribute;
   spriteLightOverride: THREE.InstancedBufferAttribute;
   spriteErosion: THREE.InstancedBufferAttribute;
+  /** DrawEntry.bias. */
+  spriteDepthBias: THREE.InstancedBufferAttribute;
   /** FLOAT_PARAMS in xyz, the ocean blend in w. */
   spriteOcean: THREE.InstancedBufferAttribute;
   /** The entity's world xz, which the float bob's phase follows (MatrixW's translation). */
@@ -219,6 +236,14 @@ function material(atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial): THRE
       varying float vSpriteLightOverride;
       attribute float spriteErosion;
       varying float vSpriteErosion;
+      attribute float spriteDepthBias;
+    `,
+      )
+      .replace(
+        '#include <project_vertex>',
+        `
+      #include <project_vertex>
+      gl_Position.z -= spriteDepthBias * gl_Position.w;
     `,
       )
       .replace(
@@ -254,7 +279,7 @@ function material(atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial): THRE
       );
     injectOceanShading(shader, { kind: 'attributes' });
   };
-  result.customProgramCacheKey = () => 'dst-instanced-archive-sprite-v4';
+  result.customProgramCacheKey = () => 'dst-instanced-archive-sprite-v5';
   return result;
 }
 
@@ -271,6 +296,8 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   private members: ReadonlySet<InstancedSpriteMember> = new Set();
   private readonly scenes = new Map<THREE.Scene, SceneBatches>();
   private readonly draws = new Map<THREE.Scene, Map<PageKey, DrawPage>>();
+  /** Scratch for `rank`. */
+  private readonly ranked: DrawEntry[] = [];
   private readonly pageKeys = new WeakMap<RgbaSpriteAtlas, readonly [PageKey, PageKey]>();
   private readonly matrix = new THREE.Matrix4();
   private readonly frameMatrix = new THREE.Matrix4();
@@ -444,6 +471,46 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     return keys[offset ? 1 : 0];
   }
 
+  /**
+   * Orders one scene's drawn sprites by their foot key, an offset sprite after the others on its foot, then the
+   * entity's id. Each page draws its sprites in this order. The depth batches write every page's depth before any
+   * colour, so overlapping sprites on one camera plane would otherwise be decided by float noise in their depths and
+   * flicker as the camera moves: each later one of an overlapping coplanar run is drawn `DEPTH_RANK_STEP` nearer.
+   * A run restarts where the next sprite clears the run on screen, so the nudge stays a few depth steps.
+   */
+  private rank(pages: ReadonlyMap<PageKey, DrawPage>): void {
+    const ranked = this.ranked;
+    ranked.length = 0;
+    for (const page of pages.values()) {
+      for (let index = 0; index < page.count; index++) {
+        ranked.push(page.members[index]);
+      }
+      page.entries.length = 0;
+    }
+    ranked.sort(
+      (a, b) =>
+        a.key - b.key || Number(a.entry.depthOffset) - Number(b.entry.depthOffset) || a.entry.foot.id - b.entry.foot.id,
+    );
+    let group = NaN,
+      rank = 0,
+      right = -Infinity;
+    for (const draw of ranked) {
+      const radius = draw.entry.spatial!.sphere.radius;
+      const depthGroup = spriteRenderDepthGroup(draw.key);
+      if (depthGroup !== group || draw.lateral - radius > right) {
+        group = depthGroup;
+        rank = 0;
+        right = -Infinity;
+      } else {
+        rank++;
+      }
+      right = Math.max(right, draw.lateral + radius);
+      draw.bias = rank * DEPTH_RANK_STEP;
+      draw.page.entries.push(draw);
+    }
+    ranked.length = 0;
+  }
+
   /** An offset batch draws after the ordinary ones, a few depth-buffer steps towards the camera. */
   private static layer(batch: PageBatch): void {
     const { offset } = batch.key;
@@ -480,6 +547,10 @@ export class InstancedArchiveSprites implements SceneRenderPass {
     );
     geometry.setAttribute(
       'spriteErosion',
+      new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1).setUsage(THREE.DynamicDrawUsage),
+    );
+    geometry.setAttribute(
+      'spriteDepthBias',
       new THREE.InstancedBufferAttribute(new Float32Array(capacity), 1).setUsage(THREE.DynamicDrawUsage),
     );
     geometry.setAttribute(
@@ -699,28 +770,30 @@ export class InstancedArchiveSprites implements SceneRenderPass {
           }),
         );
       }
-      const world = entry.foot.matrixWorld.elements,
-        view = camera.matrixWorldInverse.elements;
+      const world = entry.foot.matrixWorld.elements;
       const x = world[12],
         y = world[13],
         z = world[14];
       let draw = entry.draw;
       if (!draw) {
-        entry.draw = draw = { entry, member, frame, x, y, z, depth: 0, camera: -1 };
+        entry.draw = draw = { entry, member, frame, page, x, y, z, key: 0, lateral: 0, bias: 0, camera: -1 };
       }
       if (draw.camera !== this.cameraVersion || draw.x !== x || draw.y !== y || draw.z !== z) {
-        const depth = Math.round((view[2] * x + view[6] * y + view[10] * z + view[14]) / 0.001);
-        if (draw.depth !== depth || draw.x !== x || draw.z !== z) {
-          page.sortDirty = true;
-        }
-        draw.depth = depth;
         draw.x = x;
         draw.y = y;
         draw.z = z;
+        // The ordinary sprites' foot key, so batched and ordinary sprites follow one rule.
+        const key = spriteRenderOrderKey(draw, camera.matrixWorldInverse);
+        if (draw.key !== key) {
+          page.sortDirty = true;
+        }
+        draw.key = key;
+        draw.lateral = spriteRenderLateral(draw, camera.matrixWorldInverse);
         draw.camera = this.cameraVersion;
       }
       draw.member = member;
       draw.frame = frame;
+      draw.page = page;
       if (page.members[page.count] !== draw) {
         page.members[page.count] = draw;
         page.sortDirty = true;
@@ -728,22 +801,16 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       page.count++;
     }
     for (const pages of draws.values()) {
+      let dirty = false;
       for (const page of pages.values()) {
         if (page.members.length !== page.count) {
           page.members.length = page.count;
           page.sortDirty = true;
         }
-        if (page.sortDirty) {
-          page.entries.length = page.count;
-          for (let index = 0; index < page.count; index++) {
-            page.entries[index] = page.members[index];
-          }
-          if (page.count > 1) {
-            page.entries.sort(
-              (a, b) => a.depth - b.depth || a.x - b.x || a.z - b.z || a.entry.foot.id - b.entry.foot.id,
-            );
-          }
-        }
+        dirty ||= page.sortDirty;
+      }
+      if (dirty) {
+        this.rank(pages);
       }
     }
     // Retain the pass on the batch group so removing/hiding the last entity clears stale instances too.
@@ -808,6 +875,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
         const opacity = batch.geometry.getAttribute('spriteOpacity');
         const lightOverride = batch.geometry.getAttribute('spriteLightOverride');
         const erosion = batch.geometry.getAttribute('spriteErosion');
+        const depthBias = batch.geometry.getAttribute('spriteDepthBias');
         const ocean = batch.geometry.getAttribute('spriteOcean');
         const oceanOrigin = batch.geometry.getAttribute('spriteOceanOrigin');
         const writer = batch.attributes,
@@ -815,7 +883,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
           oceanValues = this.oceanValues;
         writer.begin();
         for (let index = 0; index < page.entries.length; index++) {
-          const { entry, member, frame } = page.entries[index];
+          const { entry, member, frame, bias } = page.entries[index];
           let previous = batch.transforms[index];
           const replaced = !previous || previous.id !== entry.model.id;
           if (!previous) {
@@ -829,6 +897,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
               opacity: NaN,
               light: NaN,
               erosion: NaN,
+              bias: NaN,
             };
           }
           if (replaced || previous.transformVersion !== entry.spatial!.version) {
@@ -847,6 +916,10 @@ export class InstancedArchiveSprites implements SceneRenderPass {
             values[2] = frame.u1;
             values[3] = frame.v1;
             writer.write(uv, index, values);
+          }
+          if (replaced || previous.bias !== bias) {
+            values[0] = previous.bias = bias;
+            writer.write(depthBias, index, values);
           }
           // The light is the display's declaration, read directly from its member.
           const light = member.lightOverride;
