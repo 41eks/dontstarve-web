@@ -139,6 +139,9 @@ ENTITY_WHITELIST = {
     'lava_pond': STRUCTURE['lava_pond_components'],
     'treasurechest': CONTAINER['treasurechest_components'],
     'pandoraschest': CONTAINER['pandoraschest_components'],
+    'cookpot': CONTAINER['cookpot_components'],
+    'icebox': CONTAINER['storage_components']('icebox', 9),
+    'saltbox': CONTAINER['storage_components']('saltbox', 9),
     'shadow_forge': STRUCTURE['shadow_forge_components'],
     # seastack.lua also returns two seastack_spawner_* entities, which are not ported.
     'seastack': WORKABLE['seastack_components'],
@@ -152,7 +155,7 @@ ENTITY_WHITELIST = {
 # Source groups saved under another project prefab.
 TARGET_PREFABS = {'chesspiece_malbatross': 'chesspiece_malbatross_marble'}
 # Converters that also receive the record's skin and item converters.
-CONTAINER_PREFABS = {'treasurechest', 'pandoraschest'}
+CONTAINER_PREFABS = {'treasurechest', 'pandoraschest', 'cookpot', 'icebox', 'saltbox'}
 ITEM_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'moonbase'}
 RECORD_CONTEXT_PREFABS = {'ruinsrelic_chair', *ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4',
                           'mast_malbatross'}

@@ -472,6 +472,9 @@
     "lava_pond",
     "treasurechest",
     "pandoraschest",
+    "cookpot",
+    "icebox",
+    "saltbox",
     "shadow_forge",
     "seastack",
     "spiderden",
@@ -1123,6 +1126,18 @@
     "pandoraschest": {
       "source": 0,
       "imported": 0
+    },
+    "cookpot": {
+      "source": 4,
+      "imported": 4
+    },
+    "icebox": {
+      "source": 1,
+      "imported": 1
+    },
+    "saltbox": {
+      "source": 1,
+      "imported": 1
     },
     "shadow_forge": {
       "source": 1,
@@ -68681,6 +68696,78 @@
       "sourceNode": "MoonIsland_Beach:2:MoonIsland_Blank"
     },
     {
+      "id": "dst_03741E1B78B29575_cookpot_id_112485",
+      "prefab": "cookpot",
+      "sourceIndex": 1,
+      "sourceId": 112485,
+      "sourcePosition": [
+        410,
+        0,
+        -314
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cookpot_id_112487",
+      "prefab": "cookpot",
+      "sourceIndex": 2,
+      "sourceId": 112487,
+      "sourcePosition": [
+        406,
+        0,
+        -318
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cookpot_id_112489",
+      "prefab": "cookpot",
+      "sourceIndex": 3,
+      "sourceId": 112489,
+      "sourcePosition": [
+        406,
+        0,
+        -314
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cookpot_id_112491",
+      "prefab": "cookpot",
+      "sourceIndex": 4,
+      "sourceId": 112491,
+      "sourcePosition": [
+        410,
+        0,
+        -318
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_icebox_id_111758",
+      "prefab": "icebox",
+      "sourceIndex": 1,
+      "sourceId": 111758,
+      "sourcePosition": [
+        408,
+        0,
+        -316
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_saltbox_id_115305",
+      "prefab": "saltbox",
+      "sourceIndex": 1,
+      "sourceId": 115305,
+      "sourcePosition": [
+        406.5,
+        0,
+        -316
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
       "id": "dst_03741E1B78B29575_shadow_forge_index_000001",
       "prefab": "shadow_forge",
       "sourceIndex": 1,
@@ -109391,6 +109478,48 @@
         "prefab": "moonglass",
         "components": [
           "glassname"
+        ]
+      },
+      {
+        "path": "icebox.id_111758.container.1",
+        "prefab": "ice",
+        "components": [
+          "anim"
+        ]
+      },
+      {
+        "path": "icebox.id_111758.container.2",
+        "prefab": "ice",
+        "components": [
+          "anim"
+        ]
+      },
+      {
+        "path": "icebox.id_111758.container.3",
+        "prefab": "ice",
+        "components": [
+          "anim"
+        ]
+      },
+      {
+        "path": "icebox.id_111758.container.8",
+        "prefab": "ice",
+        "components": [
+          "anim"
+        ]
+      },
+      {
+        "path": "saltbox.id_115305.container.5",
+        "prefab": "monstermeat",
+        "components": [
+          "perishable"
+        ]
+      },
+      {
+        "path": "saltbox.id_115305.container.6",
+        "prefab": "plantmeat",
+        "components": [
+          "perishable"
         ]
       }
     ]

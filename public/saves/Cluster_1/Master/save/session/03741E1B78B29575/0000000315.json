@@ -785778,6 +785778,276 @@
           }
         }
       ],
+      "cookpot": [
+        {
+          "id": "dst_03741E1B78B29575_cookpot_id_119811",
+          "transform": {
+            "position": [
+              1272.0,
+              0.0,
+              996.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          },
+          "skinname": "cookpot_kitchen"
+        },
+        {
+          "id": "dst_03741E1B78B29575_cookpot_id_119813",
+          "transform": {
+            "position": [
+              1260.0,
+              0.0,
+              1008.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          },
+          "skinname": "cookpot_kitchen"
+        },
+        {
+          "id": "dst_03741E1B78B29575_cookpot_id_119815",
+          "transform": {
+            "position": [
+              1260.0,
+              0.0,
+              996.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          },
+          "skinname": "cookpot_kitchen"
+        },
+        {
+          "id": "dst_03741E1B78B29575_cookpot_id_119817",
+          "transform": {
+            "position": [
+              1272.0,
+              0.0,
+              1008.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {},
+            "stewer": {
+              "product": "jellybean",
+              "done": true,
+              "ingredient_prefabs": [
+                "royal_jelly",
+                "kelp",
+                "kelp",
+                "kelp"
+              ],
+              "chef_id": "KU_s42VTETf"
+            }
+          },
+          "skinname": "cookpot_kitchen"
+        }
+      ],
+      "icebox": [
+        {
+          "id": "dst_03741E1B78B29575_icebox_id_112183",
+          "transform": {
+            "position": [
+              1266.0,
+              0.0,
+              1002.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {
+                "1": {
+                  "id": "dst_03741E1B78B29575_icebox_id_112183_0",
+                  "prefab": "ice",
+                  "components": {
+                    "stackable": {
+                      "stack": 39
+                    },
+                    "perishable": {
+                      "time": 943.72484573283
+                    }
+                  }
+                },
+                "2": {
+                  "id": "dst_03741E1B78B29575_icebox_id_112183_1",
+                  "prefab": "ice",
+                  "components": {
+                    "stackable": {
+                      "stack": 5
+                    },
+                    "perishable": {
+                      "time": 990.76389617943
+                    }
+                  }
+                },
+                "3": {
+                  "id": "dst_03741E1B78B29575_icebox_id_112183_2",
+                  "prefab": "ice",
+                  "components": {
+                    "stackable": {
+                      "stack": 40
+                    },
+                    "perishable": {
+                      "time": 1370.7142081638
+                    }
+                  }
+                },
+                "5": {
+                  "id": "dst_03741E1B78B29575_icebox_id_112183_4",
+                  "prefab": "heatrock",
+                  "skinname": "heatrock_fantasy",
+                  "components": {
+                    "fueled": {
+                      "fuel": 75
+                    }
+                  }
+                },
+                "6": {
+                  "id": "dst_03741E1B78B29575_icebox_id_112183_5",
+                  "prefab": "dragonfruit",
+                  "components": {
+                    "perishable": {
+                      "time": 2512.1343357408
+                    }
+                  }
+                },
+                "8": {
+                  "id": "dst_03741E1B78B29575_icebox_id_112183_7",
+                  "prefab": "ice",
+                  "components": {
+                    "stackable": {
+                      "stack": 36
+                    },
+                    "perishable": {
+                      "time": 1266.0734744764
+                    }
+                  }
+                }
+              }
+            },
+            "building": {}
+          }
+        }
+      ],
+      "saltbox": [
+        {
+          "id": "dst_03741E1B78B29575_saltbox_id_116586",
+          "transform": {
+            "position": [
+              1261.5,
+              0.0,
+              1002.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {
+                "1": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116586_0",
+                  "prefab": "plantmeat",
+                  "components": {
+                    "stackable": {
+                      "stack": 5
+                    }
+                  }
+                },
+                "2": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116586_1",
+                  "prefab": "kelp",
+                  "components": {
+                    "stackable": {
+                      "stack": 38
+                    },
+                    "perishable": {
+                      "time": 3625.8986329157
+                    }
+                  }
+                },
+                "3": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116586_2",
+                  "prefab": "bird_egg",
+                  "components": {
+                    "stackable": {
+                      "stack": 14
+                    },
+                    "perishable": {
+                      "time": 4131.5156137143
+                    }
+                  }
+                },
+                "4": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116586_3",
+                  "prefab": "kelp",
+                  "components": {
+                    "stackable": {
+                      "stack": 40
+                    },
+                    "perishable": {
+                      "time": 1239.3309197901
+                    }
+                  }
+                },
+                "5": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116586_4",
+                  "prefab": "spoiled_food",
+                  "components": {
+                    "stackable": {
+                      "stack": 10
+                    }
+                  }
+                },
+                "7": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116586_6",
+                  "prefab": "tomato",
+                  "components": {
+                    "stackable": {
+                      "stack": 7
+                    },
+                    "perishable": {
+                      "time": 1007.7323401381
+                    }
+                  }
+                },
+                "8": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116586_7",
+                  "prefab": "cave_banana",
+                  "components": {
+                    "stackable": {
+                      "stack": 16
+                    },
+                    "perishable": {
+                      "time": 2304.4682444344
+                    }
+                  }
+                }
+              }
+            },
+            "building": {}
+          }
+        }
+      ],
       "shadow_forge": [
         {
           "id": "dst_03741E1B78B29575_shadow_forge_index_000001",

@@ -554,6 +554,65 @@ end
         with self.assertRaisesRegex(ValueError, 'item catalog'):
             PREFAB['convert_entities'](terrain, source, report, 'BOX')
 
+    def test_cookpot_icebox_and_saltbox_import_contents_stewer_and_skins(self):
+        encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
+        terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}
+        catalog = {'items': {'log': {'maxStack': 40}}, 'skins': {}}
+        source = {
+            'cookpot': [
+                {'id': 1, 'x': 1, 'z': 1, 'skinname': 'cookpot_kitchen', 'data': {
+                    'stewer': {'product': 'meatballs', 'done': True, 'ingredient_prefabs': ['plantmeat'],
+                               'chef_id': 'KU_1', 'product_spoilage': 0, 'spoiltime': 1},
+                    'container': {'items': {}}}},
+                {'id': 2, 'x': 2, 'z': 2, 'data': {
+                    'container': {'items': {3: {'prefab': 'log', 'data': {'stackable': {'stack': 2}}}}},
+                    'stewer': {'product': 'kabobs', 'done': False, 'remainingtime': 12.5}}},
+                {'id': 3, 'x': 3, 'z': 3, 'data': {'burnt': True}},
+                {'id': 6, 'x': 6, 'z': 6, 'data': {
+                    'container': {'items': {}},
+                    'stewer': {'chef_id': 'KU_1', 'ingredient_prefabs': ['kelp', 'kelp', 'kelp', 'kelp']}}},
+            ],
+            'icebox': [{'id': 4, 'x': 4, 'z': 4, 'skinname': 'icebox_kitchen',
+                        'data': {'container': {'items': {1: {'prefab': 'log'}}}}}],
+            'saltbox': [{'id': 5, 'x': 5, 'z': 5, 'data': {}}],
+        }
+        entities, provenance = PREFAB['convert_entities'](terrain, source, {'translation': [0, 0, 0]}, 'CONT', catalog)
+        cooked, empty, burnt, harvested = entities['cookpot']
+        # cookpot.lua keeps only burnt; stewer.lua OnSave writes the product and its cooking state.
+        self.assertEqual(cooked['components'], {
+            'container': {'items': {}},
+            'building': {},
+            'stewer': {'product': 'meatballs', 'done': True, 'ingredient_prefabs': ['plantmeat'], 'chef_id': 'KU_1'}})
+        self.assertEqual(cooked['skinname'], 'cookpot_kitchen')
+        self.assertEqual(empty['components'], {
+            'container': {'items': {'3': {'id': 'dst_CONT_cookpot_id_2_2', 'prefab': 'log',
+                                          'components': {'stackable': {'stack': 2}}}}},
+            'building': {},
+            'stewer': {'product': 'kabobs', 'remainingtime': 12.5}})
+        self.assertEqual(burnt['components'], {'building': {'burnt': True}})
+        # stewer.lua OnLoad ignores a harvested pot's remaining ingredients.
+        self.assertEqual(harvested['components'], {'container': {'items': {}}, 'building': {}})
+        # icebox.lua / saltbox.lua save only container.lua's items; preserver.lua saves nothing.
+        self.assertEqual(entities['icebox'][0]['components'], {
+            'container': {'items': {'1': {'id': 'dst_CONT_icebox_id_4_0', 'prefab': 'log', 'components': {}}}},
+            'building': {}})
+        self.assertEqual(entities['icebox'][0]['skinname'], 'icebox_kitchen')
+        self.assertEqual(entities['saltbox'][0]['components'], {'container': {'items': {}}, 'building': {}})
+        self.assertEqual(provenance['skippedEntities'], [])
+        for prefab, data, skin in [
+                ('cookpot', {'burnt': True, 'container': {'items': {}}}, None),
+                ('cookpot', {'stewer': {'product': 'meatballs', 'cooktime': 3}}, None),
+                ('cookpot', {'stewer': {'product': 'meatballs', 'done': 'yes'}}, None),
+                ('cookpot', {}, 'cookpot_unknown'),
+                ('icebox', {'preserver': {}}, None),
+                ('icebox', {}, 'icebox_unknown'),
+                ('saltbox', {'burnt': True}, None)]:
+            with self.assertRaises(ValueError):
+                PREFAB['convert_entities'](terrain, {prefab: [{'skinname': skin, 'data': data}]},
+                                           {'translation': [0, 0, 0]}, 'CONT', catalog)
+        with self.assertRaisesRegex(ValueError, 'item catalog'):
+            PREFAB['convert_entities'](terrain, {'icebox': [{'data': {}}]}, {'translation': [0, 0, 0]}, 'CONT')
+
     def test_layout_entities_align_with_wood_floor_for_odd_and_even_map_dimensions(self):
         for width, height, source_centre in [(7, 5, (0, 0)), (8, 6, (-2, -2))]:
             with self.subTest(width=width, height=height):

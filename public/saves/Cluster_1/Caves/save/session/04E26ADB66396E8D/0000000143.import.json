@@ -554,6 +554,9 @@
     "lava_pond",
     "treasurechest",
     "pandoraschest",
+    "cookpot",
+    "icebox",
+    "saltbox",
     "shadow_forge",
     "seastack",
     "spiderden",
@@ -1113,6 +1116,18 @@
       "imported": 3
     },
     "pandoraschest": {
+      "source": 0,
+      "imported": 0
+    },
+    "cookpot": {
+      "source": 1,
+      "imported": 1
+    },
+    "icebox": {
+      "source": 2,
+      "imported": 2
+    },
+    "saltbox": {
       "source": 0,
       "imported": 0
     },
@@ -74996,6 +75011,42 @@
       "sourceNode": "CentipedeCaveTask:6:VentsRoom"
     },
     {
+      "id": "dst_04E26ADB66396E8D_cookpot_id_115311",
+      "prefab": "cookpot",
+      "sourceIndex": 1,
+      "sourceId": 115311,
+      "sourcePosition": [
+        308,
+        0,
+        110
+      ],
+      "sourceNode": "CaveExitTask6:BG_4:BGSinkhole"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_icebox_id_104545",
+      "prefab": "icebox",
+      "sourceIndex": 1,
+      "sourceId": 104545,
+      "sourcePosition": [
+        385.5,
+        0,
+        482
+      ],
+      "sourceNode": "CentipedeCaveTask:5:RockTreeRoom"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_icebox_id_104562",
+      "prefab": "icebox",
+      "sourceIndex": 2,
+      "sourceId": 104562,
+      "sourcePosition": [
+        308.5,
+        0,
+        112
+      ],
+      "sourceNode": "CaveExitTask6:BG_4:BGSinkhole"
+    },
+    {
       "id": "dst_04E26ADB66396E8D_shadow_forge_index_000001",
       "prefab": "shadow_forge",
       "sourceIndex": 1,
@@ -88551,7 +88602,55 @@
   },
   "containerItems": {
     "skipped": [],
-    "droppedComponents": []
+    "droppedComponents": [
+      {
+        "path": "icebox.id_104545.container.1",
+        "prefab": "heatrock",
+        "components": [
+          "temperature",
+          "lowTemp"
+        ]
+      },
+      {
+        "path": "icebox.id_104545.container.4",
+        "prefab": "heatrock",
+        "components": [
+          "lowTemp",
+          "temperature"
+        ]
+      },
+      {
+        "path": "icebox.id_104545.container.7",
+        "prefab": "heatrock",
+        "components": [
+          "lowTemp",
+          "temperature"
+        ]
+      },
+      {
+        "path": "icebox.id_104545.container.8",
+        "prefab": "heatrock",
+        "components": [
+          "temperature",
+          "lowTemp"
+        ]
+      },
+      {
+        "path": "icebox.id_104545.container.9",
+        "prefab": "heatrock",
+        "components": [
+          "lowTemp",
+          "temperature"
+        ]
+      },
+      {
+        "path": "icebox.id_104562.container.2",
+        "prefab": "ice",
+        "components": [
+          "anim"
+        ]
+      }
+    ]
   },
   "skippedEntities": [],
   "groundItemScope": "Ground art as item prefabs saved under their own IDs: identity, position, quantity, skin and visual variants. Existing prefab behavior is reused; art-only IDs add no gameplay components.",
