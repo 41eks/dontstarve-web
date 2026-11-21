@@ -475,6 +475,10 @@ FEV 引用分别为 `sfx/wilson/attack_whoosh_weapon_1.wav` 至 `_4.wav`、
 
 `SGmoondial.lua` 使用四个事件，`dontstarve.fev` 解析如下（bank 均为 `together`，`-s` = file_index + 1）：`fill` sounddef 2361（`moondial_fill_2_1..4`，file_index 1324–1327）、`full_LP` sounddef 2362/2363（同一 `moondial_full_LP.wav`，file_index 1328，循环，作为单层映射）、`water_movement` sounddef 2367（`moondial_water_movement_1..5`，file_index 1337–1341）、`craft` sounddef 2366（`moondial_place.wav`，file_index 1336）。11 份样本用 `-m -s` 核对流名后以 `-i` 导出为 `together.fsb-1325..1329/1337..1342.wav`，与源目录已有的 `together.fsb#<index>.wav` 字节一致。`hit` 事件（sounddef 2364）在状态图里没有被播放，未导出。
 
+### 月亮裂隙裂开声
+
+`prefabs/moon_fissure.lua` 的 `delayed_transition` 播放 `turnoftides/common/together/moon_fissure/crack_open`。`turnoftides.fev` 解析为 sounddef 54：`crack_open_moon_fissure_DST-001..006.wav`，bank `turnoftides`，零基 file_index 690–695（`-s` 691–696），一次性。用 `-m -s` 核对流名后以 `-i` 导出 `public/dst/data/sound/turnoftides.fsb-691..696.wav`，六份均与源目录已有的 `turnoftides.fsb#<index>.wav` 字节一致。映射在 `sound.ts`，月相过渡时播放一次。
+
 ### 鼹鼠
 
 `SGmole.lua` → `dontstarve_DLC001.fev` 的 `creatures/mole/*`：death sounddef 12 → mole 1；emerge/retract 14/15 → 2–4；emerge_voice 18 → 5–7；hurt 13 → 8–10；jump 68 → 11；pickup 70 → 12–13；sniff/sleep 16/69 → 14–25；move 17 → 26。这里的数字已经把零基 file_index 加 1。用安装 CLI 的 `-h` 和逐流 `-m -s` 验证，再用 `-i` 导出 `sound/mole.fsb-<index>.wav`，全部 26 个流均与源目录既有解码 WAV 字节一致。统一在 `sound.ts` 预加载，鼹鼠各自持有 move/sniff/sleep 音源，拾取、回巢、移除时停止并断开连接。

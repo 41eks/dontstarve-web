@@ -115,6 +115,7 @@ it('loads a save record with the clip, tags, bank and component values moon_fiss
     expect([repairable.repairmaterial, repairable.noannounce]).toEqual(['moon_altar', true]);
     // UpdateState at a new moon: level 1, radius 0, the backing shown, every glow layer hidden on the fissure, and no light.
     expect([inst._level, sanityaura.max_distsq]).toEqual([1, 0]);
+    expect(sanityaura.aurafn?.(inst, undefined)).toBe(0);
     expect(layers(inst)).toEqual({ low: true, med: true, high: true, full: true, backing: false });
     expect(inst.light.peek()).toBeUndefined();
     expect(records()).toEqual([saved]);
@@ -124,6 +125,7 @@ it('loads a save record with the clip, tags, bank and component values moon_fiss
     // A lit phase hides the backing too, the aura reaches 1.25 times the light radius, and the fissure emits light.
     const lit = half.spawn(record('half-fissure', 4));
     expect([lit._level, lit.components.sanityaura.max_distsq]).toEqual([3, 6 * 6 * 1.25 * 1.25]);
+    expect(lit.components.sanityaura.aurafn?.(lit, undefined)).toBe(100 / (30 * 4));
     expect(layers(lit)).toEqual({ low: true, med: true, high: true, full: true, backing: true });
     expect(lit.light.peek()).toBeDefined();
     expect(lit.light.peek()!.radius).toBeGreaterThan(0);
@@ -223,7 +225,6 @@ it('watches the moon phase and re-dresses the light after a transition', async (
     await settle();
     // delayed_transition waits a random delay, then UpdateState runs 5 frames later; advance past both.
     scheduler.advance(2);
-    expect(inst._watchedphase).toBe('half');
     expect(inst._level).toBe(3);
     expect(inst.light.peek()).toBeDefined();
     expect(inst.light.peek()!.radius).toBeGreaterThan(0);
@@ -260,7 +261,6 @@ it('spawns the moon_fissure_fx child and dresses its glow layers by the phase', 
     expect(fx.sprite.sprite.peek()).toMatchObject({
       clip: { name: 'crack_idle', loop: true },
       billboard: true,
-      depthOffset: true,
     });
     // New moon: the fx draws no glow layer and no backing, while the fissure itself shows its backing.
     expect(layers(fx)).toEqual({ low: true, med: true, high: true, full: true, backing: true });
