@@ -374,9 +374,6 @@ function startOneShot(inst: PlayerInstance, state: WilsonOneShotState): void {
   inst.sg.requestOneShot(state);
 }
 
-export function playEat(inst: PlayerInstance): void {
-  startOneShot(inst, 'eat');
-}
 export function playPickup(inst: PlayerInstance): void {
   startOneShot(inst, 'pickup');
 }

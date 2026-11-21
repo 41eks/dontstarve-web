@@ -190,5 +190,5 @@ export function configureVeggieEntity(entity: ItemEntity): void {
   edible.healthvalue = values.health;
   edible.hungervalue = values.hunger;
   edible.sanityvalue = values.sanity;
-  entity.addTag(VEGGIE_SEED_IDS.includes(entity.prefab) ? 'edible_SEEDS' : 'edible_VEGGIE');
+  edible.foodtype = VEGGIE_SEED_IDS.includes(entity.prefab) ? 'SEEDS' : 'VEGGIE';
 }

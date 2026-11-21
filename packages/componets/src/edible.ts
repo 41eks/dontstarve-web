@@ -12,11 +12,14 @@ interface EdibleInstance {
   readonly components: { stackable?: { Consume(): boolean } };
   remove(): boolean;
   PushEvent(name: string, data: unknown): void;
+  addTag(tag: string): void;
+  removeTag(tag: string): void;
 }
 
 /** components/edible.lua value getters for an eater without eater-specific spoilage rules. */
 export class Edible {
   private readonly inst?: EdibleInstance;
+  private type = 'GENERIC';
   healthvalue = 10;
   hungervalue = 10;
   sanityvalue = 0;
@@ -31,6 +34,17 @@ export class Edible {
   constructor(inst: EdibleInstance | undefined, perishStage: () => PerishStage | undefined = () => undefined) {
     this.perishStage = perishStage;
     this.inst = inst;
+    inst?.addTag(`edible_${this.type}`);
+  }
+
+  /** FOODTYPE; edible.lua onfoodtype replaces the inst's `edible_<type>` tag, which eaters and actions read. */
+  get foodtype(): string {
+    return this.type;
+  }
+  set foodtype(value: string) {
+    this.inst?.removeTag(`edible_${this.type}`);
+    this.type = value;
+    this.inst?.addTag(`edible_${value}`);
   }
 
   OnEaten(eater: unknown): void {

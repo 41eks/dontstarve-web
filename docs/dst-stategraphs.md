@@ -15,7 +15,7 @@
 | `terraform` | `shovel_pre → shovel_loop` 共用状态时钟，第 25 帧提交、移除 `busy` 并播放挖地声；队列完成后在 `idle` 播放 `shovel_pst` |
 | `dig_start` / `dig` | `shovel_pre → shovel_loop`；loop 第 15 帧移除 `predig`、播放挖掘声并提交；收尾动画留在 `idle` |
 | `bugnet_start` / `bugnet` | `bugnet_pre → bugnet`；第 10 帧提交、移除 `prenet` 并播放默认挖掘声 |
-| `eat` | 保留现有 `playEat()` 的单段视觉接口；完整 Lua 吃食状态尚未移植，库存食用走 `quickeat` |
+| `eat` | `EAT` 的 MEAT／`sloweat` 分支：停止移动，`eat_pre → eat`；第 6 帧吃食声、第 28 帧提交、第 30 帧移除 `busy`，第 70 帧或退出时停止 `eating` 声音；队列结束进入待机。喂食、灵魂、重物与 `queue_post_eat_state` 分支未移植 |
 | `quickeat` | 根据饮品选择 `quick_drink_pre → quick_drink` 或 `quick_eat_pre → quick_eat`；第 10 帧声音、第 12 帧提交并移除 `busy` |
 | `doshortaction` | `pickup → pickup_pst`；第 6 帧移除 `busy` 并提交，第 10 帧状态超时进入 `idle, true`；退出仅清理该状态自己的缓冲动作 |
 | `dolongaction` | `HARVEST` 的普通未骑乘分支：`build_pre → build_loop`，第 4 帧移除 `busy`，1 秒超时停止制作声、播放 `build_pst` 并提交；队列结束进入待机，退出清理自己尚未提交的动作及声音 |
@@ -55,7 +55,7 @@
 | `DIG` | 有 `predig` 时拒绝，否则根据 `digging` 选择 `dig` / `dig_start` |
 | `NET` | 无 `NET_tool` 的对象走 `doshortaction`；有该标签时按 `prenet/netting` 选择动作循环或前摇 |
 | `CASTSPELL` | 工具有 `veryquickcast` 时进入 `veryquickcastspell`，普通法杖进入 `castspell`；未实现的特殊工具分支拒绝 |
-| `EAT` | 检查源 `busy` 条件；当前已验证的库存食物仍进入 `quickeat` |
+| `EAT` | 检查源 `busy` 条件；`quickeat` 标签进 `quickeat`，`sloweat` 或 `edible.foodtype == MEAT` 且非 `fooddrink` 进 `eat`，其余进 `quickeat` |
 | `PLANTSOIL` | 普通角色进入 `dolongaction`，超时后执行 `farmplantable:Plant`；Quagmire 专属角色分支尚未移植 |
 | `PLANT` / `TERRAFORM` / `TILL` | 源 Lua 本身使用固定目标：`doshortaction` / `terraform` / `till_start` |
 | `READ` | `book`；`simplebook` 的 `cookbook_open` 与 `aspiring_bookworm` 的 `book_peruse` 尚未移植 |
