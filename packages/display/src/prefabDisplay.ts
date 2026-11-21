@@ -4,6 +4,7 @@ import {
   createEffect,
   createMemo,
   createRenderEffect,
+  createSignal,
   getBoundWatchWorldContent,
   watchSignal,
   WorldContentKey,
@@ -189,18 +190,20 @@ export class PrefabDisplay {
   /** The bank each json clip was declared in: a clip names an animation of that bank only. */
   private declaredClip?: { readonly clip: ClipJson; readonly bank: string | number | undefined };
 
-  /** Ground declarations keep their explicit group order and do not join billboard foot sorting. */
-  /** Ground art and LAYER_BACKGROUND art draw by their own order, outside the depth-sorted world layer. */
-  get hasGroundOrder(): boolean {
-    const json = this.state.sprite.peek();
-    return json.ground !== undefined || json.background === true;
-  }
-  /** The foot-point sort layer: 0 for a negative SetFinalOffset, otherwise the default. */
-  get sortLayer(): number | undefined {
-    return this.state.sprite.peek().behindFoot ? 0 : undefined;
-  }
   /** A transform-only entity draws nothing of its own, so it takes no foot order; FX attached to it still do. */
   readonly empty: boolean;
+  /** Whether another display shows this one as its effect, which orders it at the owner's foot instead. */
+  private readonly attachedAsFx = createSignal(false);
+  /**
+   * The foot-point sort layer of this display's own sprite: 0 for a negative SetFinalOffset, otherwise 1. Undefined
+   * when it takes no foot order: an empty display, ground and LAYER_BACKGROUND art (drawn by their own order), and an
+   * effect ordered with its owner.
+   */
+  readonly footSortLayer: ReadonlySignal<0 | 1 | undefined>;
+  /** inst:Hide / inst:Show: the model, and the effects under it, are drawn only while the json shows it. */
+  readonly visible: ReadonlySignal<boolean>;
+  /** The render entries of the effects shown now, ordered with this display. */
+  readonly fxRenderEntries: ReadonlySignal<readonly FxRenderEntry[]>;
 
   constructor(options: PrefabDisplayOptions) {
     const { art: drawWith, sprite: state } = options;
@@ -306,6 +309,18 @@ export class PrefabDisplay {
     const status = createMemo(() => json.get().status);
     this.status = status;
     this.cleanups.push(() => status.dispose());
+    const footSortLayer = createMemo(() => {
+      const { ground, background, behindFoot } = json.get();
+      if (this.empty || this.attachedAsFx.get() || ground !== undefined || background === true) {
+        return undefined;
+      }
+      return behindFoot ? 0 : 1;
+    });
+    this.footSortLayer = footSortLayer;
+    this.cleanups.push(() => footSortLayer.dispose());
+    const visible = createMemo(() => json.get().visible !== false);
+    this.visible = visible;
+    this.cleanups.push(() => visible.dispose());
     if (options.light) {
       const light = watchSignal(options.light.json, stop => this.cleanups.push(stop));
       let listed: DisplayLight | undefined;
@@ -333,6 +348,7 @@ export class PrefabDisplay {
       () => this.engine.setComposites?.(this.fx.compositeFrames()),
       () => this.engine.drawnInstanced ?? false,
     );
+    this.fxRenderEntries = this.fx.renderEntries;
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
     this.cleanups.push(
       createEffect(() => {
@@ -435,9 +451,9 @@ export class PrefabDisplay {
     this.engine.setInstancedWhile?.(follow);
   }
 
-  /** Render entries of the effects that are shown now, for the owner's registry to sort with it. */
-  get fxRenderEntries(): readonly FxRenderEntry[] {
-    return this.fx.entries();
+  /** Set by the owner that shows this display as its effect, for as long as it does. */
+  setAttachedAsFx(attached: boolean): void {
+    this.attachedAsFx.set(attached);
   }
 
   /** Camera facing belongs to the visual, preserving the entity's logical heading. */

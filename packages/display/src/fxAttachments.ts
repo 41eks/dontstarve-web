@@ -1,6 +1,6 @@
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type * as THREE from 'three';
-import { createEffect, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
+import { createEffect, createMemo, createSignal, watchSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import type { ArchiveSpriteCommands, SpriteJson } from './spriteState';
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
 import type { CompositeSpriteFrame } from '@dontstarve-web/animation/sprite';
@@ -42,6 +42,8 @@ interface Attached {
   readonly fx: FxJson;
   enabled: boolean;
   stop(): void;
+  /** A billboard effect ordered at the owner's foot: its entry, listed while the effect is shown under the owner. */
+  readonly sorted?: { readonly entry: FxRenderEntry; readonly shown: ReadonlySignal<boolean> };
 }
 
 const NO_ENTRIES: readonly FxRenderEntry[] = Object.freeze([]);
@@ -55,8 +57,20 @@ const NO_ENTRIES: readonly FxRenderEntry[] = Object.freeze([]);
 export class FxAttachments {
   private readonly owner: THREE.Group;
   private readonly attached = new Map<string, Attached>();
+  /** The attached effects that order at the owner's foot, whether shown now or not. */
+  private readonly sorted = createSignal<readonly Attached[]>([]);
   private readonly changed: () => void;
   private readonly ownerBatched: () => boolean;
+  /** Entries for the effects shown under the owner now, ordered with it. */
+  readonly renderEntries = createMemo(() => {
+    let entries: FxRenderEntry[] | undefined;
+    for (const { sorted } of this.sorted.get()) {
+      if (sorted!.shown.get()) {
+        (entries ??= []).push(sorted!.entry);
+      }
+    }
+    return entries ?? NO_ENTRIES;
+  });
 
   /** `ownerBatched`: whether the owner's last frame was drawn by the shared batches. */
   constructor(owner: THREE.Group, changed: () => void = () => {}, ownerBatched: () => boolean = () => false) {
@@ -86,9 +100,37 @@ export class FxAttachments {
   }
 
   private attach(key: string, fx: FxJson): void {
-    const entry: Attached = { fx, enabled: fx.active.peek(), stop: () => {} };
-    this.attached.set(key, entry);
+    const stops: (() => void)[] = [];
+    // The watched signals own the effect and memo that read them: stopping the bridges stops those too.
+    const active = watchSignal(fx.active, stop => stops.push(stop));
     const model = fxModel(fx);
+    let sorted: Attached['sorted'];
+    if (!fx.background && !fx.composite) {
+      const status = watchSignal(fx.display.status, stop => stops.push(stop));
+      // Under the owner while enabled, until its own display sleeps or is removed.
+      const shown = createMemo(() => active.get() && status.get() === 'active');
+      stops.push(() => shown.dispose());
+      const entry = { object: model, footPosition: this.owner.position, cameraDepth: 0, sortLayer: fx.sortLayer };
+      sorted = { entry, shown };
+    }
+    // A billboard effect is drawn under the owner, so its own display takes no foot order of its own.
+    if (!fx.composite) {
+      fx.display.setAttachedAsFx(true);
+    }
+    const entry: Attached = {
+      fx,
+      enabled: fx.active.peek(),
+      stop: () => {
+        for (const stop of stops) {
+          stop();
+        }
+      },
+      sorted,
+    };
+    this.attached.set(key, entry);
+    if (sorted) {
+      this.sorted.set([...this.sorted.peek(), entry]);
+    }
     model.position.set(0, 0, 0);
     // Drawn after its owner on the owner's plane: the owner's depth (an instance batch writes it) must not hide it.
     if (!fx.composite && fx.sortLayer > 1) {
@@ -99,10 +141,6 @@ export class FxAttachments {
     if (!fx.composite) {
       fx.display.setInstancedWhile(this.ownerBatched);
     }
-    // The watched signal owns the effect that reads it: stopping the bridge stops both.
-    const active = watchSignal(fx.active, stop => {
-      entry.stop = stop;
-    });
     createEffect(() => {
       entry.enabled = active.get();
       if (fx.composite) {
@@ -118,6 +156,12 @@ export class FxAttachments {
   }
 
   private detach(key: string, entry: Attached): void {
+    if (entry.sorted) {
+      this.sorted.set(this.sorted.peek().filter(other => other !== entry));
+    }
+    if (!entry.fx.composite) {
+      entry.fx.display.setAttachedAsFx(false);
+    }
     entry.stop();
     if (!entry.fx.composite && entry.fx.sortLayer > 1) {
       entry.fx.sprite.setDepthOffset(false);
@@ -163,26 +207,10 @@ export class FxAttachments {
     }
   }
 
-  /** Entries for the effects that are shown, ordered with the owner. */
-  entries(): readonly FxRenderEntry[] {
-    // Most owners show no effect; they share one empty list instead of allocating one per frame.
-    if (this.attached.size === 0) {
-      return NO_ENTRIES;
-    }
-    const entries: FxRenderEntry[] = [];
-    for (const { fx } of this.attached.values()) {
-      const model = fxModel(fx);
-      if (fx.background || fx.composite || model.parent !== this.owner) {
-        continue;
-      }
-      entries.push({ object: model, footPosition: this.owner.position, cameraDepth: 0, sortLayer: fx.sortLayer });
-    }
-    return entries;
-  }
-
   dispose(): void {
     for (const [key, entry] of [...this.attached]) {
       this.detach(key, entry);
     }
+    this.renderEntries.dispose();
   }
 }
