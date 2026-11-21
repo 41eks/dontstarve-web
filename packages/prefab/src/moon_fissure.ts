@@ -9,6 +9,7 @@ import {
   type WorldMoonState,
   type WorldPhase,
 } from '@dontstarve-web/signals';
+import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { FRAMES } from '../../stategraphs/src/stategraph';
 import { addComponent } from './components';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
@@ -19,12 +20,15 @@ import { Repairable } from '../../componets/src/repairable';
 import { WORLD_SCALE } from './tile';
 
 export const MOON_FISSURE_ID = 'moon_fissure' as const;
+export const MOON_FISSURE_FX_ID = 'moon_fissure_fx' as const;
 /** MATERIALS.MOON_ALTAR. */
 const MOON_ALTAR = 'moon_altar';
 
 export interface MoonFissureWorld {
   readonly scheduler: GameTimeScheduler;
   readonly getWatchWorldContent?: GetWatchWorldContent;
+  /** SpawnPrefab("moon_fissure_fx"), parented to the fissure with entity:SetParent. */
+  spawnPrefab(prefab: typeof MOON_FISSURE_FX_ID, position: ReadonlyVector3): PrefabInstance;
 }
 
 /** inst.Light:SetColour's r, g, b, as OnUpdateLight tints them. */
@@ -34,24 +38,52 @@ const b = 170 / 255;
 /** moon_fissure.lua LIGHT_RADIUS_RATE: each frame moves this fraction of the remaining gap toward the target. */
 const LIGHT_RADIUS_RATE = 1 / (12 * FRAMES);
 
+/** The glow layers lightstate_data's rows show on inst.fx, keyed as the source `layers` table. */
+type MoonLayer = 'low' | 'med' | 'high' | 'full';
+
 /** lightstate_data's rows, as the fissure reads them: the light's target and the layers and sanity aura each row drives. */
 interface MoonLightState {
   readonly enabled: boolean;
   readonly radius: number;
   readonly intensity: number;
   readonly falloff: number;
+  readonly layers: Readonly<Record<MoonLayer, boolean>>;
 }
 
 const lightstate_data: readonly MoonLightState[] = [
-  { enabled: false, radius: 0, intensity: 1.0, falloff: 1.0 },
-  { enabled: true, radius: 3, intensity: 0.3, falloff: 2.25 },
-  { enabled: true, radius: 6, intensity: 0.4, falloff: 2.0 },
-  { enabled: true, radius: 11, intensity: 0.5, falloff: 1.9 },
-  { enabled: true, radius: 11, intensity: 0.5, falloff: 1.9 },
+  {
+    enabled: false,
+    radius: 0,
+    intensity: 1.0,
+    falloff: 1.0,
+    layers: { low: false, med: false, high: false, full: false },
+  },
+  {
+    enabled: true,
+    radius: 3,
+    intensity: 0.3,
+    falloff: 2.25,
+    layers: { low: true, med: false, high: false, full: false },
+  },
+  {
+    enabled: true,
+    radius: 6,
+    intensity: 0.4,
+    falloff: 2.0,
+    layers: { low: true, med: true, high: false, full: false },
+  },
+  {
+    enabled: true,
+    radius: 11,
+    intensity: 0.5,
+    falloff: 1.9,
+    layers: { low: true, med: true, high: true, full: false },
+  },
+  { enabled: true, radius: 11, intensity: 0.5, falloff: 1.9, layers: { low: true, med: true, high: true, full: true } },
 ];
 
 /** The keys of every row's `layers`. */
-const LAYERS = ['low', 'med', 'high', 'full'];
+const LAYERS = ['low', 'med', 'high', 'full'] as const;
 
 const MOON_STATES: Readonly<Record<WorldMoonPhase, number>> = { new: 1, quarter: 2, half: 3, threequarter: 4, full: 5 };
 
@@ -81,6 +113,8 @@ export class MoonFissureInstance extends PrefabInstance {
   _lighttask?: EntityTask;
   /** inst._transition_task: the delayed transition, then the UpdateState it schedules. */
   _transition_task?: EntityTask;
+  /** inst.fx: the moon_fissure_fx child, parented with entity:SetParent and dressed by UpdateState. */
+  declare fx: PrefabInstance;
   /** inst.Light's current radius (DST units), intensity and falloff, interpolated by OnUpdateLight. */
   _lightradius = 0;
   _lightintensity = 0;
@@ -142,7 +176,7 @@ function OnEntityWake(inst: MoonFissureInstance): void {
 
 /**
  * UpdateState, for the fissure's own AnimState, components and Light: every glow layer is hidden on the fissure itself
- * (they are drawn by inst.fx), `backing` shows only while the light is off, and the light enables only on a lit phase.
+ * and shown on inst.fx where the phase lights it, `backing` moves between the two, and the light enables on a lit phase.
  */
 function UpdateState(inst: MoonFissureInstance): void {
   const moonphase = inst._watchedphase ?? 'new';
@@ -150,10 +184,17 @@ function UpdateState(inst: MoonFissureInstance): void {
   const lightstate = lightstate_data[level - 1]!;
   for (const layer of LAYERS) {
     inst.sprite.hideLayer(layer);
+    if (lightstate.layers[layer]) {
+      inst.fx.sprite.showLayer(layer);
+    } else {
+      inst.fx.sprite.hideLayer(layer);
+    }
   }
   if (lightstate.enabled) {
+    inst.fx.sprite.showLayer('backing');
     inst.sprite.hideLayer('backing');
   } else {
+    inst.fx.sprite.hideLayer('backing');
     inst.sprite.showLayer('backing');
   }
   inst.components.sanityaura.max_distsq = lightstate.radius * lightstate.radius * 1.25 * 1.25;
@@ -166,6 +207,8 @@ function delayed_transition(inst: MoonFissureInstance): void {
   inst._level = 0;
   inst.sprite.playOnce('transition');
   inst.sprite.pushAnimation('crack_idle', true);
+  inst.fx.sprite.playOnce('transition');
+  inst.fx.sprite.pushAnimation('crack_idle', true);
   inst._transition_task = inst.DoTaskInTime(5 * FRAMES, UpdateState);
 }
 
@@ -192,9 +235,9 @@ function WatchMoonPhase(inst: MoonFissureInstance): void {
 
 /**
  * moon_fissure.lua fn, for loading, drawing and saving. Not ported: the SoundEmitter, inspectable.getstatus,
- * sanityaura's aurafn / fallofffn, repairable's onrepaired / checkmaterialfn, and the moon_fissure_fx child.
+ * sanityaura's aurafn / fallofffn, and repairable's onrepaired / checkmaterialfn.
  */
-function fn(world: MoonFissureWorld): MoonFissureInstance {
+function fn(world: MoonFissureWorld, position: ReadonlyVector3): MoonFissureInstance {
   // SetBank / SetBuild("moon_fissure"), PlayAnimation("crack_idle", true).
   const inst = new MoonFissureInstance(MOON_FISSURE_ID, new SpriteState({ name: 'crack_idle', billboard: true }));
   inst.physicsRadiusOverride = 0.4;
@@ -216,22 +259,46 @@ function fn(world: MoonFissureWorld): MoonFissureInstance {
   sanityaura.max_distsq = 1;
   const repairable = addComponent(inst, 'repairable', Repairable, workable, MOON_ALTAR);
   repairable.noannounce = true;
+  // SpawnPrefab("moon_fissure_fx") and entity:SetParent(inst.entity).
+  inst.fx = world.spawnPrefab(MOON_FISSURE_FX_ID, position);
+  inst.fx.entityParent = inst;
   UpdateState(inst);
   inst._lighttask = inst.DoPeriodicTask(FRAMES, OnUpdateLight);
   WatchMoonPhase(inst);
   return inst;
 }
 
-/** The moon_fissure Prefab moon_fissure.lua returns; moon_fissure_plugged and moon_fissure_fx are not ported. */
-export function moonFissurePrefabs(
-  world: MoonFissureWorld,
-): Readonly<Record<typeof MOON_FISSURE_ID, PrefabEntityDefinition<MoonFissureInstance>>> {
+/** fx_fn: SetBank / SetBuild("moon_fissure_fx"), PlayAnimation("crack_idle", true); DECOR | NOCLICK, not saved. */
+function fx_fn(): PrefabInstance {
+  const inst = new PrefabInstance(MOON_FISSURE_FX_ID, new SpriteState({ name: 'crack_idle', billboard: true }));
+  inst.sprite.setDepthOffset(true);
+  inst.addTag('DECOR');
+  inst.addTag('NOCLICK');
+  inst.persists = false;
+  return inst;
+}
+
+/** The moon_fissure and moon_fissure_fx Prefabs moon_fissure.lua returns; moon_fissure_plugged is not ported. */
+export function moonFissurePrefabs(world: MoonFissureWorld): Readonly<{
+  [MOON_FISSURE_ID]: PrefabEntityDefinition<MoonFissureInstance>;
+  [MOON_FISSURE_FX_ID]: PrefabEntityDefinition<PrefabInstance>;
+}> {
   return {
     [MOON_FISSURE_ID]: {
-      fn: () => fn(world),
+      fn: position => fn(world, position),
       assets: { animationArchive: 'moon_fissure.zip', buildArchives: ['moon_fissure.zip'], bank: 'moon_fissure' },
       // The 70 fissures of an imported world share one batch for their loop.
       assetOptions: { instancedAnimations: ['crack_idle'] },
+    },
+    [MOON_FISSURE_FX_ID]: {
+      fn: () => fx_fn(),
+      assets: {
+        animationArchive: 'moon_fissure_fx.zip',
+        buildArchives: ['moon_fissure_fx.zip'],
+        bank: 'moon_fissure_fx',
+      },
+      assetOptions: { instancedAnimations: ['crack_idle'] },
+      targetable: false,
     },
   };
 }

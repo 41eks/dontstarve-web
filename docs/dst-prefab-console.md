@@ -30,7 +30,9 @@
 
 2026-11-16 补充 `watertree_pillar`：`prefabs/watertree_pillar.lua` 注册 `Prefab("watertree_pillar", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("watertree_pillar")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，存档字段 `watertreePillar` 保存 `num_oceantreenuts`、`last_ram_time`、`cocoons_to_regrow`、`childspawner.childreninside` 和 `timer`；同文件的 `watertree_pillar_ripples`、`watertree_pillar_roots` 是不入档的子实体，未移植。`Cluster_62` 最新地表快照有 9 个，导入 9 个；洞穴快照没有。
 
-2026-11-15 补充 `moon_fissure`：`prefabs/moon_fissure.lua` 注册 `Prefab("moon_fissure", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("moon_fissure")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，没有 OnSave 和组件存档字段；同文件的 `moon_fissure_plugged`、`moon_fissure_fx` 未移植。`Cluster_62` 最新地表快照有 70 个，导入 70 个；洞穴快照没有。
+2026-11-15 补充 `moon_fissure`：`prefabs/moon_fissure.lua` 注册 `Prefab("moon_fissure", fn, assets, prefabs)`，`fn` 没有 `inventoryitem`，原版可 `c_spawn("moon_fissure")`，不能放入物品栏。项目接入该世界实体的 `c_spawn`、`c_save()` 与读档，没有 OnSave 和组件存档字段；同文件的 `moon_fissure_plugged` 未移植。`Cluster_62` 最新地表快照有 70 个，导入 70 个；洞穴快照没有。
+
+2026-11-21 补充 `moon_fissure_fx`：`prefabs/moon_fissure.lua` 的 `Prefab("moon_fissure_fx", fx_fn, assets)`，`persists = false`、标签 `DECOR`／`NOCLICK` 的发光子实体，原版可 `c_spawn("moon_fissure_fx")`。项目接入 `c_spawn`：随 `moon_fissure` 生成并 `entityParent` 挂到裂隙上，`UpdateState` 按月亮盈亏切换 `low`／`med`／`high`／`full`／`backing` 图层；不入档，没有 `c_give`。
 
 2026-11-05 补充其余石柱：`prefabs/pillar.lua` 的 `pillar_cave`、`pillar_cave_flintless`、`pillar_cave_rock`、`pillar_algae`，`atrium_pillar.lua` 的 `pillar_atrium`，`archive_pillar.lua` 的 `archive_pillar`，`vault_pillar.lua` 的 `vault_pillar`，`monkeypillar.lua` 的 `monkeypillar` 都没有 `inventoryitem`，原版可 `c_spawn`，不能放入物品栏。项目接入这些世界实体的 `c_spawn`、`c_save()` 与读档；`archive_pillar` 保留 `broken`，`vault_pillar` 保留 `capped`／`broken`，`monkeypillar` 保留 `pillar_id`。
 
@@ -578,6 +580,7 @@ ID 与来源按项目地面资源目录核对，组件证据来自对应 Lua 文
 | `pillar_atrium` | 可生成 | 不能入栏 | `prefabs/atrium_pillar.lua` |
 | `archive_pillar` | 可生成 | 不能入栏 | `prefabs/archive_pillar.lua` |
 | `moon_fissure` | 可生成 | 不能入栏 | `prefabs/moon_fissure.lua` |
+| `moon_fissure_fx` | 可生成 | 不能入栏 | `prefabs/moon_fissure.lua` |
 | `watertree_pillar` | 可生成 | 不能入栏 | `prefabs/watertree_pillar.lua` |
 | `oceantree` | 可生成 | 不能入栏 | `prefabs/oceantree.lua` |
 | `oceantree_pillar` | 可生成 | 不能入栏 | `prefabs/oceantree_pillar.lua` |

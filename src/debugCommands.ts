@@ -16,10 +16,12 @@ type ParsedCommand =
   | { type: 'save' }
   | { type: 'lightning' }
   | { type: 'sanity'; percent: number }
-  | { type: 'teleport'; x: number; z: number };
+  | { type: 'teleport'; x: number; z: number }
+  | { type: 'gonext'; prefabId: string };
 
 const GIVE_COMMAND = /^\s*c_give\s*[(（]\s*(["'])([^"']+)\1\s*(?:[,，]\s*(\d+)\s*)?[)）]\s*;?\s*$/;
 const SPAWN_COMMAND = /^\s*c_spawn\s*[(（]\s*(["'])([^"']+)\1\s*[)）]\s*;?\s*$/;
+const GONEXT_COMMAND = /^\s*c_gonext\s*[(（]\s*(["'])([^"']+)\1\s*[)）]\s*;?\s*$/;
 const SAVE_COMMAND = /^\s*c_save\s*[(（]\s*[)）]\s*;?\s*$/;
 const LIGHTNING_COMMAND = /^\s*c_lightning\s*[(（]\s*[)）]\s*;?\s*$/;
 const SANITY_COMMAND = /^\s*c_setsanity\s*[(（]\s*(\d+(?:\.\d*)?|\.\d+)\s*[)）]\s*;?\s*$/;
@@ -35,6 +37,12 @@ export type DebugSendLightning = () => void | Promise<void>;
 export type DebugSaveGame = () => void | Promise<void>;
 /** ThePlayer.Transform:SetPosition(x, y, z): the player lands at y = 0, so only x and z move it. */
 export type DebugTeleportPlayer = (x: number, z: number) => void | Promise<void>;
+/** c_findnext's result: the next live instance of the prefab and where to stand. */
+export interface DebugNextEntity {
+  readonly x: number;
+  readonly z: number;
+}
+export type DebugFindNextEntity = (prefabId: string) => DebugNextEntity | undefined;
 
 export async function executeDebugCommand(
   command: string,
@@ -44,13 +52,14 @@ export async function executeDebugCommand(
   setSanity?: (percent: number) => void,
   sendLightning?: DebugSendLightning,
   teleportPlayer?: DebugTeleportPlayer,
+  findNextEntity?: DebugFindNextEntity,
 ): Promise<DebugCommandResult> {
   const commands = splitCommands(command)?.map(parseCommand);
   if (!commands?.length || commands.some(entry => entry === undefined)) {
     return {
       ok: false,
       message:
-        '无效命令：请使用 c_give("item_id", count)、c_spawn("prefab_id")、c_setsanity(percent)、c_lightning()、c_save() 或 ThePlayer.Transform:SetPosition(x, y, z)；多条命令用分号分隔',
+        '无效命令：请使用 c_give("item_id", count)、c_spawn("prefab_id")、c_gonext("prefab_id")、c_setsanity(percent)、c_lightning()、c_save() 或 ThePlayer.Transform:SetPosition(x, y, z)；多条命令用分号分隔',
     };
   }
 
@@ -64,6 +73,7 @@ export async function executeDebugCommand(
       setSanity,
       sendLightning,
       teleportPlayer,
+      findNextEntity,
     );
     messages.push(result.message);
     if (!result.ok) {
@@ -125,6 +135,10 @@ function parseCommand(command: string): ParsedCommand | undefined {
   if (give) {
     return { type: 'give', give };
   }
+  const gonext = GONEXT_COMMAND.exec(command);
+  if (gonext) {
+    return { type: 'gonext', prefabId: gonext[2].toLowerCase() };
+  }
   const prefabId = parseSpawnCommand(command);
   if (prefabId) {
     return { type: 'spawn', prefabId };
@@ -140,7 +154,19 @@ async function executeSingleCommand(
   setSanity?: (percent: number) => void,
   sendLightning?: DebugSendLightning,
   teleportPlayer?: DebugTeleportPlayer,
+  findNextEntity?: DebugFindNextEntity,
 ): Promise<DebugCommandResult> {
+  if (command.type === 'gonext') {
+    if (!findNextEntity || !teleportPlayer) {
+      return { ok: false, message: '当前无法查找场景对象' };
+    }
+    const found = findNextEntity(command.prefabId);
+    if (!found) {
+      return { ok: false, message: `未找到场景对象：${command.prefabId}` };
+    }
+    await teleportPlayer(found.x, found.z);
+    return { ok: true, message: `已传送到 ${command.prefabId}` };
+  }
   if (command.type === 'teleport') {
     if (!teleportPlayer) {
       return { ok: false, message: '当前无法传送玩家' };

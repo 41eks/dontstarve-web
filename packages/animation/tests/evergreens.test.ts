@@ -19,7 +19,8 @@ import { equipmentSlotAddress, inventorySlotAddress } from '../../inventory/src'
 import { playerInst, createPlayer } from './playerVisual';
 import type { ActionWorldContext } from '../../stategraphs/src/actionContext';
 import { workTargets } from './workTargets';
-import { drawn } from './worldContentFixture';
+import { bindTestWorld, drawn } from './worldContentFixture';
+import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { PlayerController } from '../../stategraphs/src/playercontroller';
 import { Locomotor } from '../../prefab/src/locomotor';
 import { WORLD_SCALE } from '../../prefab/src/tile';
@@ -50,17 +51,53 @@ afterEach(() => {
 
 async function setup() {
   let spring = false;
-  const world = treeWorld(area.query, world => evergreenPrefabs(world, () => 0.5), {
-    growthDuration: (seconds: number) => seconds * (spring ? 0.75 : 1),
-  });
+  const scheduler = new GameTimeScheduler();
+  const content = bindTestWorld(scheduler);
+  const world = treeWorld(
+    area.query,
+    world => evergreenPrefabs(world, () => 0.5),
+    {
+      growthDuration: (seconds: number) => seconds * (spring ? 0.75 : 1),
+      getWatchWorldContent: content.getWatchWorldContent,
+    },
+    { scheduler },
+  );
   await area.visit(new THREE.Vector3());
   return {
     ...world,
+    content,
+    dispose: () => {
+      content.unbind();
+      world.dispose();
+    },
     spring: () => {
       spring = true;
     },
   };
 }
+
+it('replaces the build snow symbol and hides it until the world snow level covers it', async () => {
+  const s = await setup();
+  try {
+    const tree = s.prefabs.spawn('evergreen_tall', new THREE.Vector3(3, 0, 0)),
+      sprite = prefabInstance(tree.transform.model)!.sprite,
+      appearance = () => sprite.sprite.peek().appearance;
+    // MakeSnowCoveredPristine: the build's own `snow` symbol is replaced from snow.zip and starts hidden.
+    expect(appearance().get('archive-symbol:snow')).toMatchObject({
+      kind: 'archive-symbol',
+      symbol: 'snow',
+      archive: 'snow.zip',
+      sourceSymbol: 'snow',
+    });
+    expect(appearance().get('layer:snow')).toMatchObject({ kind: 'layer', layer: 'snow', hidden: true });
+    s.content.snowLevel.set(0.5);
+    expect(appearance().get('layer:snow')).toMatchObject({ hidden: false });
+    s.content.snowLevel.set(0.01);
+    expect(appearance().get('layer:snow')).toMatchObject({ hidden: true });
+  } finally {
+    s.dispose();
+  }
+});
 
 it('cycles all four source stages and split archives, resets chop work, removes old-tree shelter, and accelerates new spring timers', async () => {
   const s = await setup();
