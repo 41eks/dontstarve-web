@@ -211,7 +211,7 @@ function fn(world: PlantPrefabWorld): BerrybushInstance {
   workable.SetWorkAction('DIG');
   workable.SetWorkLeft(1);
 
-  MakeSnowCovered(inst, world.getWatchWorldContent);
+  MakeSnowCovered(inst);
   MakeNoGrowInWinter(inst, world.getWatchWorldContent);
 
   // normal_postinit

@@ -24,6 +24,7 @@ export const WorldContentKey = {
   RainRate: 'rainRate',
   SnowRate: 'snowRate',
   SnowCover: 'snowCover',
+  SnowCovered: 'snowCovered',
 } as const;
 export type WorldContentKey = (typeof WorldContentKey)[keyof typeof WorldContentKey];
 
@@ -46,6 +47,8 @@ export interface WorldContentValues {
   rainRate: number;
   snowRate: number;
   snowCover: number;
+  /** worldstate.lua issnowcovered: the world state TheSim:HandleAllSnowSymbols shows SnowCovered entities' snow by. */
+  snowCovered: boolean;
   playerpositions: Vector3[];
   /** Camera world orientation, republished only when it changes; billboards copy it instead of polling the camera. */
   camerarotation: Quaternion;
@@ -63,6 +66,7 @@ export function createIdleWeatherSources() {
     rainRate: readonlySignal(createSignal(0)),
     snowRate: readonlySignal(createSignal(0)),
     snowCover: readonlySignal(createSignal(0)),
+    snowCovered: readonlySignal(createSignal(false)),
   } satisfies Pick<
     WorldContentSources,
     | 'moisture'
@@ -74,6 +78,7 @@ export function createIdleWeatherSources() {
     | 'rainRate'
     | 'snowRate'
     | 'snowCover'
+    | 'snowCovered'
   >;
 }
 

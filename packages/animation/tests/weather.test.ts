@@ -32,6 +32,13 @@ describe('snow weather', () => {
     expect(weather.snowLevel.peek()).toBeCloseTo(cover - (1 / 120 + 1 / 20) * 0.01);
     weather.OnUpdate(100);
     expect(weather.snowCover.peek()).toBe(0);
+    // weather.lua _snowcovered: SNOW_COVERED_THRESHOLD over the level (wetness is not ported, so the overlay is snow).
+    expect(weather.snowCovered.peek()).toBe(false);
+    weather.OnLoad({ ...weather.OnSave(), snowlevel: 0.015 });
+    expect(weather.snowCovered.peek()).toBe(true);
+    weather.OnLoad({ ...weather.OnSave(), snowlevel: 0.0149 });
+    expect(weather.snowCovered.peek()).toBe(false);
+    expect('set' in weather.snowCovered).toBe(false);
     weather.dispose();
   });
 

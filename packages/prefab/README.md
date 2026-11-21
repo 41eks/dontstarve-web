@@ -131,7 +131,7 @@ worldgen 写好的地皮；手写的初始存档由 `scripts/import-static-layou
 调用方负责传入 `${import.meta.env.BASE_URL}dst/data/anim` 形式的动画资源根路径；prefab 包不依赖应用的 Vite base 配置。
 
 月树默认有 500 个实体记录，visual 按所在 tile 的 tickingarea 驻留；地图分布沿用原有的
-1000 × 1000 区域和出生点空地。月树通过 `createSharedArchiveSprite()` 的预加载入口（`preloadSharedArchiveSprite()`，先加载一次再同步创建）使用共享帧缓存；`sway1_loop_*` 待机交给 `InstancedArchiveSprites`，同积雪状态的月树共享合成图集，砍伐、倒下、树桩和燃烧后的 `burnt_*` 继续用共享帧。积雪层由 `snow.zip` 的 `snow` 符号按 `SnowLevel ≥ 0.015` 通过 `setSymbolHidden()` 切换。所有实体保留稳定根节点、组件与逻辑动画，活动实体持有实际 visual。tile effect 更新活动集合和驻留，无需逐帧扫描全部实体；每帧调用 `update(dt)` 和 `setNormals(cameraQuaternion)`；
+1000 × 1000 区域和出生点空地。月树通过 `createSharedArchiveSprite()` 的预加载入口（`preloadSharedArchiveSprite()`，先加载一次再同步创建）使用共享帧缓存；`sway1_loop_*` 待机交给 `InstancedArchiveSprites`，同积雪状态的月树共享合成图集，砍伐、倒下、树桩和燃烧后的 `burnt_*` 继续用共享帧。积雪由 `snow.zip` 的 `snow` 符号覆盖，`snow` 层由 display 按世界 `SnowCovered` 切换（`TheSim:HandleAllSnowSymbols`）。所有实体保留稳定根节点、组件与逻辑动画，活动实体持有实际 visual。tile effect 更新活动集合和驻留，无需逐帧扫描全部实体；每帧调用 `update(dt)` 和 `setNormals(cameraQuaternion)`；
 将 `activeEntities` 的模型及其 `position` 脚点加入动态精灵的深度排序。
 `dispose()` 会释放全部模型及共享资源。
 

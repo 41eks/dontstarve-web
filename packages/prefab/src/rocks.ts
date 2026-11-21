@@ -1,9 +1,13 @@
 import { Workable } from '../../componets/src/workable';
 import * as THREE from 'three';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
-import { createRenderEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
-import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
+import {
+  MakeObstaclePhysics,
+  MakeSnowCovered,
+  MakeSnowCoveredPristine,
+  RemovePhysicsColliders,
+} from './standardcomponents';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { ErodeAway } from '../../componets/src/erodeaway';
@@ -168,7 +172,6 @@ export function rockArchives(prefab: RockPrefabId) {
 
 export interface RockWorld extends ToolMouseTargetWorld {
   scheduler: GameTimeScheduler;
-  getWatchWorldContent?: GetWatchWorldContent;
   /** lootdropper:SpawnLootPrefab when the rock is mined out; the loot's display loads its art. */
   spawnGroundItem: SpawnGroundItem;
 }
@@ -187,9 +190,7 @@ export class RockInstance extends PrefabInstance {
   constructor(prefab: string, world: RockWorld, anim: string, tag?: string, multcolour = 0.5) {
     super(prefab, new SpriteState({ name: anim, billboard: true }));
     this.sprite.playOnce(anim); // PlayAnimation(anim), never looping.
-    // MakeSnowCoveredPristine, then MakeSnowCovered with weather.lua's SNOW_COVERED_THRESHOLD.
-    this.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
-    this.addTag('SnowCovered');
+    MakeSnowCoveredPristine(this);
     this.addTag('boulder');
     if (tag) {
       this.addTag(tag);
@@ -210,22 +211,15 @@ export class RockInstance extends PrefabInstance {
       const colour = multcolour + Math.random() * (1 - multcolour);
       this.sprite.setColour([colour, colour, colour]);
     }
-    let stopWatchingSnow: (() => void) | undefined;
-    const snowLevel = world.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => {
-      stopWatchingSnow = stop;
-    });
-    const stopSnow = createRenderEffect(() => this.sprite.setSymbolHidden('snow', (snowLevel?.get() ?? 0) < 0.015));
     const hauntable = addComponent(this, 'hauntable', Hauntable, world.scheduler);
     hauntable.SetOnHauntFn(() => false); // MakeHauntableWork's work code is commented out in source.
     // Constructor-only dependencies: inspectable's tag is its source constructor's, and nameoverride and
     // SetLunarHailBuildupAmountSmall configure behavior these classes do not have yet.
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
+    // MakeSnowCovered, then its MakeLunarHailBuildup.
+    MakeSnowCovered(this);
     addComponent(this, 'lunarhailbuildup', LunarHailBuildup);
-    this.onRemove(() => {
-      stopSnow();
-      stopWatchingSnow?.();
-    });
   }
 }
 
@@ -286,7 +280,7 @@ const rockAssets = (prefab: RockPrefabId) => {
     animationArchive: `${build}.zip`,
     buildArchives: [`${build}.zip`, 'snow.zip'],
     bank,
-    hiddenSymbols: ['snow'],
+    hiddenLayers: ['snow'],
   };
 };
 
@@ -387,7 +381,7 @@ export function moonglassRockPrefabs(
         animationArchive: 'moonglass_rock.zip',
         buildArchives: ['moonglass_rock.zip', 'snow.zip'],
         bank: 'moonglass_rock',
-        hiddenSymbols: ['snow'],
+        hiddenLayers: ['snow'],
       },
       assetOptions: { instancedAnimations: 'all', staticBillboard: true },
       physics: { make: MakeObstaclePhysics, radius: 1 },

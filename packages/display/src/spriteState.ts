@@ -115,6 +115,11 @@ export interface SpriteDeclaration {
   >;
   /** Turned to the camera by the display: the source's default orientation, unlike OnGround art. Declared at creation. */
   readonly billboard?: boolean;
+  /**
+   * MakeSnowCoveredPristine: the entity carries the SnowCovered tag, and the display shows or hides its `snow` layer by
+   * the world's issnowcovered as TheSim:HandleAllSnowSymbols does. Declared at creation.
+   */
+  readonly snowCovered?: true;
   readonly queue: readonly { readonly name: string; readonly loop: boolean }[];
   /** A frame of the clip, or `at`, a fraction of its length that the display resolves once the clip's art has loaded. */
   readonly frame?: number | { readonly at: number };
@@ -223,6 +228,8 @@ export interface ArchiveSpriteCommands {
   setSymbolHidden(symbol: string, hidden: boolean): void;
   hideLayer(layer: string): void;
   showLayer(layer: string): void;
+  /** MakeSnowCoveredPristine's SnowCovered tag, as the engine reads it: the `snow` layer follows issnowcovered. */
+  setSnowCovered(): void;
   setBuildArchive(archive: string): void;
   setGround(renderOrder: number, flat?: boolean): void;
   setMeshOrder(order: number): void;
@@ -669,6 +676,11 @@ export class SpriteState
   }
   showLayer(layer: string): void {
     this.withAppearance(`layer:${layer}`, { kind: 'layer', layer, hidden: false });
+  }
+  setSnowCovered(): void {
+    if (!this.state.snowCovered) {
+      this.write({ snowCovered: true });
+    }
   }
   setSymbolOverrides(overrides: SymbolOverrideMap, hiddenLayers: readonly string[] = []): void {
     this.withAppearance('symbols', { kind: 'symbols', overrides, hiddenLayers });

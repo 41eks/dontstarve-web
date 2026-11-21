@@ -1,7 +1,6 @@
 import { Workable } from '../../componets/src/workable';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
-import { createRenderEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { SpriteState } from '@dontstarve-web/display';
 import { Growable } from '../../componets/src/growable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -73,7 +72,6 @@ export interface MoonTreeWorld extends ToolMouseTargetWorld {
   readonly camera: THREE.Camera;
   /** DefaultBurntFn: one ash at the burnt inst's position. */
   readonly worldEvents: WorldEventEmitter;
-  readonly getWatchWorldContent?: GetWatchWorldContent;
   /** SpawnPrefab for the petals a chop throws off and the tree a sapling grows into. */
   spawnPrefab(prefab: string, position: ReadonlyVector3): PrefabInstance;
   growthDuration?(seconds: number): number;
@@ -100,8 +98,6 @@ export class MoonTreeInstance extends PrefabInstance {
   mouseTarget?: ToolMouseTarget;
   /** MakeXBurnable + MakeXPropagator while the tree is awake. */
   burn?: BurnableBinding;
-  /** Private snow-level bridge; its cleanup owns the source subscription and the layer effect. */
-  stopSnow?: () => void;
   /** Growth settled while the visual was unloaded is shown as its final stage, without the transition animation. */
   catchingUp = false;
   private awake = false;
@@ -119,6 +115,9 @@ export class MoonTreeInstance extends PrefabInstance {
     for (const tag of ['plant', 'tree', 'moon_tree', 'SnowCovered', 'shelter']) {
       this.addTag(tag);
     }
+    // MakeSnowCoveredPristine: the snow override and hidden layer are the art's (see assets), so plants stay instanced;
+    // the display shows the layer by the world's issnowcovered.
+    this.sprite.setSnowCovered();
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(on_chop_tree);
@@ -152,8 +151,6 @@ export class MoonTreeInstance extends PrefabInstance {
     this.OnLoad = (_inst, data) => on_load(this, data);
     this.onRemove(() => {
       unbindFire(this);
-      this.stopSnow?.();
-      this.stopSnow = undefined;
       for (const sound of this.sounds) {
         sound.stop();
       }
@@ -263,22 +260,6 @@ function refreshFire(inst: MoonTreeInstance): void {
   }
   unbindFire(inst);
   bindFire(inst);
-}
-
-/** weather.lua SNOW_COVERED_THRESHOLD; without a bound world the snow layer stays hidden. */
-function bindSnow(inst: MoonTreeInstance): void {
-  inst.stopSnow?.();
-  let stopWatch: (() => void) | undefined;
-  const level = inst.world.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => {
-    stopWatch = stop;
-  });
-  const stopEffect = createRenderEffect(() => {
-    inst.sprite.setSymbolHidden('snow', level ? level.get() < 0.015 : true);
-  });
-  inst.stopSnow = () => {
-    stopEffect();
-    stopWatch?.();
-  };
 }
 
 /** DefaultBurntFn on a stump: one ash, then the inst is removed. */
@@ -415,7 +396,6 @@ function on_wake(inst: MoonTreeInstance): void {
   } finally {
     inst.catchingUp = false;
   }
-  bindSnow(inst);
   bindFire(inst);
 }
 
@@ -429,8 +409,6 @@ function on_sleep(inst: MoonTreeInstance): void {
     }
   }
   unbindFire(inst);
-  inst.stopSnow?.();
-  inst.stopSnow = undefined;
 }
 
 /** on_save: a burning tree is saved as burnt; a burning stump is still a stump. */
@@ -541,12 +519,12 @@ export function moonTreePrefabs(
         id === MOON_TREE_ID ? Math.min(3, Math.floor(random() * 3) + 1) : MOON_TREE_SPAWN_IDS.indexOf(id),
         random,
       ),
-    // MakeSnowCoveredPristine: the `snow` placeholder is drawn from snow.zip while the snow level is covered.
+    // MakeSnowCoveredPristine: the `snow` layer is drawn from snow.zip while the world is snow covered.
     assets: {
       animationArchive: definitions.moonTree.archive,
       buildArchives: [definitions.moonTree.archive, 'snow.zip'],
       bank: 'moon_tree',
-      hiddenSymbols: ['snow'],
+      hiddenLayers: ['snow'],
       symbolOverrides: { snow: { archive: 'snow.zip', symbol: 'snow' } },
     },
     assetOptions: {

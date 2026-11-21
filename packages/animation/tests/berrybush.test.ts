@@ -357,15 +357,14 @@ it('updates snow art after spawning and reskinning and cleans up each removed pl
     s.snowLevel.set(0.5);
     await settleEffects();
     expect(drawnIndices(first)).toBeGreaterThan(bareReplacement);
-    const hide = vi.spyOn(plantInstance(first).sprite, 'hideLayer');
+    // The snow layer is the display's to follow: the plant's sprite json does not change with the world's cover.
+    const json = plantInstance(first).sprite.sprite.peek();
     s.snowLevel.set(0);
-    expect(hide).toHaveBeenCalledExactlyOnceWith('snow');
-    hide.mockClear();
+    expect(plantInstance(first).sprite.sprite.peek()).toBe(json);
     plantInstance(first).remove();
     s.snowLevel.set(0.5);
     s.snowLevel.set(0);
     await settleEffects();
-    expect(hide).not.toHaveBeenCalled();
     expect(drawnIndices(second)).toBeLessThan(secondSnow);
   } finally {
     s.dispose();

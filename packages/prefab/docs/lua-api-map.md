@@ -92,7 +92,7 @@
 | `inst:WatchWorldState("isnight", fn)`（只在值变化时调用） | 世界 `Cycle` 信号上的 `createMemo` + `createEffect`，比较上一次的值再调用，`inst.onRemove` 里停止 | `fireflies.ts`（`WatchIsNight`） | |
 | `inst:ListenForEvent(event, fn, source)`、`PushEvent`、`RemoveEventCallback` | 同名方法 | `mushroom_light.ts` | `fn(inst, data)`，`inst` 是推送事件的实体；`source` 监听别的实体，双方记账，任一方 Remove 时自动解除；`ListenForEvent` 另返回取消函数；`PushEvent` 在 `inst.sg` 监听该事件时转发给它，再转给 `inst.brain`，不要再手写转发；不用 `model` 事件 |
 | 事件的 `data`（如 `{ name = name }`） | 推送方在 `EntityEventData`（`componets/src/entityEvents.ts`）登记数据形状；prefab 自己推的事件在推送方旁用 `declare module '../../componets/src/entityEvents'` 补登记 | `timer.ts`、`player_common_extensions.ts` | `ListenForEvent`、`PushEvent`、`EventHandler`、`sg.listenForEvent` 按事件名推出 `data` 类型，监听方不再写 `data as`；已登记事件 `PushEvent` 必须带数据（数据可缺省的事件除外），未登记事件的 `data` 是 `unknown`；组件的结构接口用 `EventListening['ListenForEvent']` |
-| `inst:WatchWorldState("snowlevel", fn)` | `world.getWatchWorldContent(WorldContentKey.SnowLevel, cleanup)` + effect | `monkeypillar.ts` | 也有注入的世界信号；按相邻 prefab 选用 |
+| `inst:WatchWorldState("snowlevel", fn)` | `world.getWatchWorldContent(WorldContentKey.SnowLevel, cleanup)` + `subscribe`／effect | `pond.ts` | 也有注入的世界信号；按相邻 prefab 选用；雪层显隐不用它，见 `MakeSnowCovered` |
 | stategraph 的全局 `EventHandler`；`GoToState` 推的 `"newstate"` | `sg.listenForEvent(name, fn)`；`sg.onNewState(fn)` | `SGwilson.ts` | `listenForEvent` 决定 `isListeningForEvent`，即 `inst:PushEvent` 会不会转发；`newstate` 不是 sg 事件，`listenForEvent('newstate')` 会抛错 |
 | `inst:DoTaskInTime(t, fn)` | `inst.DoTaskInTime(t, fn)`（`fn(inst)`） | `monkeypillar.ts` | 返回 `EntityTask`（`Cancel()`、`NextTime()`），Remove 自动取消，`onRemove` 里不再手写取消；Lua 的额外参数写进闭包。不要再为实体计时 `new ComponentTimer` 或调 `scheduler.schedule` |
 | `inst:DoPeriodicTask(t, fn, initialdelay)` | `inst.DoPeriodicTask(t, fn, initialdelay)` | `nightmarerock.ts` | 同上；回调里 `Cancel()` 自己即停止 |
@@ -121,7 +121,7 @@
 | `TheWorld.Map:IsVisualGroundAtPoint(x, y, z)`、`inst:IsOnValidGround()` | `TurfMap.isVisualGroundAtPoint(point)` | `tumbleweed.ts`（`isOnValidGround`） | 按引擎反汇编实现 |
 | `TheWorld.Map:IsOceanAtPoint(x, y, z)` | `TurfMap.isOceanAtPoint(point)` | `floater.ts`、`trident.ts` | 海洋格去掉裙边；船未移植 |
 | `TheWorld.Map:IsOceanTileAtPoint(x, y, z)` | `TurfMap.isOceanAtWorld(point)` | `deployMap.ts` | 只看 tile |
-| `MakeSnowCovered` | `setSymbolOverride('snow', 'snow.zip', 'snow')` + `setSymbolHidden` 跟雪量；植物用 `snowCovered: true` | `monkeypillar.ts`、`berrybush.ts` | `buildArchives` 要加 `snow.zip`，`hiddenSymbols: ['snow']` |
+| `MakeSnowCoveredPristine`、`MakeSnowCovered` | 同名函数（`standardcomponents.ts`）：符号覆盖、`SnowCovered` 标签、`sprite.setSnowCovered()` 和隐藏 `snow` 层；之后的显隐即 `TheSim:HandleAllSnowSymbols`，由 display 按世界 `SnowCovered`（`issnowcovered`）切换 `snow` 层，prefab 不监听雪量 | `monkeypillar.ts`、`berrybush.ts` | `buildArchives` 要加 `snow.zip`，`hiddenLayers: ['snow']`；合批植物（`moontree.ts`）把覆盖和隐藏层写在 `assets`，只调 `setSnowCovered()`；`MakeLunarHailBuildup` 的 `lunarhailbuildup` 由调用方添加，`LunarBuildup` 的符号替换未移植 |
 
 | `inst.components.inspectable`、`GetDescription(viewer, inst, status)` | `addComponent(inst, 'inspectable', Inspectable)`；`getstatus` 返回 Lua 的状态键 | `archive_props.ts` | 物品默认都有；文本来自 `componets/src/strings.json`（`import-speech.py` 由 `chinese_s.po` 生成），只含 GENERIC 和 WORTOX |
 | `inst.components.talker:Say(text)` | 玩家的 `components.talker.Say(text)` | `actionfns.ts` | 只支持单行；推 `ontalk`／`donetalking`，头顶文字由 `createFollowText` 显示 |

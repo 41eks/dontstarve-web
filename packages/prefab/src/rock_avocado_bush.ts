@@ -269,7 +269,7 @@ function rock_avocado_bush(world: PlantPrefabWorld): RockAvocadoBushInstance {
   inst.OnSave = (_inst, data) => on_save(inst, data);
   inst.OnLoad = (_inst, data) => on_load(inst, data, world);
 
-  MakeSnowCovered(inst, world.getWatchWorldContent);
+  MakeSnowCovered(inst);
   return inst;
 }
 

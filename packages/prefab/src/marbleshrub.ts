@@ -1,7 +1,6 @@
 import { addComponent } from './components';
 import * as THREE from 'three';
 import { SpriteState } from '@dontstarve-web/display';
-import { createRenderEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Growable } from '../../componets/src/growable';
@@ -10,7 +9,12 @@ import { Workable } from '../../componets/src/workable';
 import type { SpawnGroundItem } from './groundPrefab';
 import { PrefabInstance, type PrefabEntityDefinition } from './prefabInstance';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
-import { MakeObstaclePhysics, RemovePhysicsColliders } from './standardcomponents';
+import {
+  MakeObstaclePhysics,
+  MakeSnowCovered,
+  MakeSnowCoveredPristine,
+  RemovePhysicsColliders,
+} from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { GROUND_ITEM_DEFINITIONS } from './groundItems';
 
@@ -86,8 +90,6 @@ export interface MarbleShrubSaveState {
 
 export interface MarbleShrubWorld extends ToolMouseTargetWorld {
   scheduler: GameTimeScheduler;
-  /** Snow level is read through a lifecycle-managed bridge owned by each shrub. */
-  getWatchWorldContent?: GetWatchWorldContent;
   /** lootdropper:SpawnLootPrefab when the shrub is mined; the loot's display loads its art. */
   spawnGroundItem: SpawnGroundItem;
 }
@@ -105,24 +107,15 @@ export class MarbleShrubInstance extends PrefabInstance {
   constructor(position: ReadonlyVector3, world: MarbleShrubWorld, growthstage: number) {
     super(MARBLESHRUB_ID, new SpriteState({ name: 'idle_short', billboard: true }));
     this.setPosition(position.x, 0, position.z);
-    const { scheduler, getWatchWorldContent, spawnGroundItem } = world;
+    const { scheduler, spawnGroundItem } = world;
     this.BindScheduler(scheduler);
     this.statedata = STAGES[growthstage - 1];
 
     this.deploySmartRadius = 1;
     this.minimap.SetIcon('marbleshrub1.png');
     this.minimap.SetPriority(-1);
-    for (const tag of ['boulder', 'SnowCovered']) {
-      this.addTag(tag);
-    }
-
-    // MakeSnowCovered, with weather.lua's SNOW_COVERED_THRESHOLD.
-    let stopWatchingSnow: (() => void) | undefined;
-    const snowLevel = getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => {
-      stopWatchingSnow = stop;
-    });
-    this.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
-    const stopSnow = createRenderEffect(() => this.sprite.setSymbolHidden('snow', (snowLevel?.get() ?? 0) < 0.015));
+    MakeSnowCoveredPristine(this);
+    this.addTag('boulder');
 
     const growTime = () => MARBLESHRUB_GROW_TIME.base + (Math.random() * 2 - 1) * MARBLESHRUB_GROW_TIME.random;
     const growable = addComponent(
@@ -150,13 +143,12 @@ export class MarbleShrubInstance extends PrefabInstance {
     workable.SetWorkAction('MINE');
     workable.SetWorkLeft(STAGES[0].workleft);
     workable.SetOnWorkCallback((_inst, _worker, workleft) => this.onworked(workleft));
+    MakeSnowCovered(this);
 
     growable.SetStage(growthstage);
     growable.StartGrowing();
 
     this.onRemove(() => {
-      stopSnow();
-      stopWatchingSnow?.();
       growable.dispose();
       workable.dispose();
       for (const sound of this.sounds) {
@@ -247,7 +239,7 @@ export function marbleShrubPrefabs(
       animationArchive: 'marbleshrub.zip',
       buildArchives: ['marbleshrub.zip', 'marbleshrub_build.zip', 'snow.zip'],
       bank: 'marbleshrub',
-      hiddenSymbols: ['snow'],
+      hiddenLayers: ['snow'],
     },
     assetOptions: { instancedAnimations: 'all', staticBillboard: true, colour: [1, 1, 1] },
     physics: { make: MakeObstaclePhysics, radius: PHYSICS_RADIUS },

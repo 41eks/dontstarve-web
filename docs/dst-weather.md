@@ -68,7 +68,10 @@ snowRate = preciptype == "snow" ? precipitationRate : 0
   meltRate = 1/120 + min(temperature / 20, 1) / 20
   snowlevel = max(snowlevel - meltRate × dt, 0)
 snowCover = snowlevel × 3
+snowCovered = snowlevel >= 0.015
 ```
+
+`snowCovered` 是 weather.lua 的 `_snowcovered`（`issnowcovered`）：地面覆盖层为雪且 `snowlevel ≥ SNOW_COVERED_THRESHOLD`。湿度未移植，覆盖层只要有积雪就是雪，所以只看阈值。带 `SnowCovered` 声明（`MakeSnowCoveredPristine`）的实体由 `PrefabDisplay` 按它显示或隐藏 `snow` 层，对应 `TheSim:HandleAllSnowSymbols`；prefab 不监听雪量。
 
 `snowLevel` 在 0～1，`snowCover` 在 **0～3**，表示三层遮罩的开启程度，不能把它提前限制到 0～1。停雪不清除积雪；零度及以下不融雪。下雨时也可保留或融化既有积雪，取决于温度。
 

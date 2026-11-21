@@ -536,9 +536,7 @@ export async function createSceneEntities(
     }),
   );
   registry.registerPrefabs(PREFAB_DEFINITIONS.beehives);
-  prefabs.register(
-    shadowForgePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
-  );
+  prefabs.register(shadowForgePrefabs({ scheduler: worldState.scheduler }));
   registry.registerPrefabs(PREFAB_DEFINITIONS.shadowForges);
   prefabs.register(
     spiderdenPrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
@@ -946,7 +944,6 @@ export async function createSceneEntities(
       rockPrefabs({
         handEquipment: sceneInventory.handEquipment,
         scheduler: scheduler ?? worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
         spawnGroundItem,
         spawnPrefab: (id, position) => prefabs.spawn(id, position),
       }),
@@ -961,7 +958,6 @@ export async function createSceneEntities(
       moonglassRockPrefabs({
         handEquipment: sceneInventory.handEquipment,
         scheduler: scheduler ?? worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
         spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
       }),
     );
@@ -1006,9 +1002,7 @@ export async function createSceneEntities(
   }
 
   function registerMonkeyPillars(registry: EntityRegistry, prefabId: 'monkeypillar', worldState: SceneWorldState) {
-    prefabs.register(
-      monkeyPillarPrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
-    );
+    prefabs.register(monkeyPillarPrefabs({ scheduler: worldState.scheduler }));
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);
     return prefabs;
   }
@@ -1090,7 +1084,6 @@ export async function createSceneEntities(
       marbleShrubPrefabs({
         handEquipment: sceneInventory.handEquipment,
         scheduler: scheduler ?? worldState.scheduler,
-        getWatchWorldContent: worldState.getWatchWorldContent,
         spawnGroundItem: (definition, position, options) => groundItems.spawnGroundItem(definition, position, options),
       }),
     );
@@ -1573,7 +1566,6 @@ export async function createSceneEntities(
           );
         },
         season: worldState.season,
-        getWatchWorldContent: worldState.getWatchWorldContent,
         secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - (now % TUNING.TOTAL_DAY_TIME),
       }),
     );
@@ -1622,7 +1614,6 @@ export async function createSceneEntities(
             position,
           );
         },
-        getWatchWorldContent: worldState.getWatchWorldContent,
       }),
     );
     registry.registerPrefabs(MANAGER_DEFINITIONS[prefabId]);

@@ -39,6 +39,7 @@ const START_SNOW_THRESHOLDS: Record<WorldSeason, number> = { autumn: -5, winter:
 const STOP_SNOW_THRESHOLDS: Record<WorldSeason, number> = { autumn: 0, winter: 10, spring: 0, summer: 0 };
 const SNOW_ACCUM_RATE = 1 / 300;
 const SNOW_MELT_RATE = 1 / 20;
+const SNOW_COVERED_THRESHOLD = 0.015;
 const MIN_SNOW_MELT_RATE = 1 / 120;
 const PEAK_PRECIPITATION_RANGES: Record<WorldSeason, { min: number; max: number }> = {
   autumn: { min: 0.1, max: 0.66 },
@@ -62,7 +63,7 @@ function finite(value: number, name: string): number {
  * The precipitation part of components/weather.lua: moisture, its ceiling and floor, the precipitation type and the
  * derived precipitation rate, temperature-driven rain/snow transitions and snow accumulation/melting.
  * Moisture only moves by `ForcePrecipitation` (the `ms_forceprecipitation` event, used by
- * `book_rain`), by `DeltaMoisture` (`ms_deltamoisture`, the telestaff) and by dissipating while it precipitates. Wetness, entity snow cover, lightning, lunar hail, precipitation
+ * `book_rain`), by `DeltaMoisture` (`ms_deltamoisture`, the telestaff) and by dissipating while it precipitates. Wetness, lightning, lunar hail, precipitation
  * modes and the seasonal moisture rate are not ported.
  */
 export class Weather {
@@ -85,9 +86,15 @@ export class Weather {
   readonly snowRate: ReadonlySignal<number>;
   /** weather.lua SetGroundOverlay: three successive texture-mask layers. */
   readonly snowCover: ReadonlySignal<number>;
+  /**
+   * weather.lua _snowcovered: the ground overlay is snow and snowlevel reaches SNOW_COVERED_THRESHOLD. Wetness is not
+   * ported, so the overlay is snow whenever any snow lies (`_wetness < 5`).
+   */
+  readonly snowCovered: ReadonlySignal<boolean>;
   private readonly rainRateMemo: Memo<number>;
   private readonly snowRateMemo: Memo<number>;
   private readonly snowCoverMemo: Memo<number>;
+  private readonly snowCoveredMemo: Memo<boolean>;
   private readonly stopTemperature: () => void;
   private readonly options: WeatherOptions;
   private readonly random: () => number;
@@ -111,6 +118,8 @@ export class Weather {
     this.snowRate = readonlySignal(this.snowRateMemo);
     this.snowCoverMemo = createMemo(() => this.snowlevelState.get() * 3);
     this.snowCover = readonlySignal(this.snowCoverMemo);
+    this.snowCoveredMemo = createMemo(() => this.snowlevelState.get() >= SNOW_COVERED_THRESHOLD);
+    this.snowCovered = readonlySignal(this.snowCoveredMemo);
     this.stopTemperature = createEffect(() => {
       this.updatePrecipitationType(seasonstate.get().season, options.temperature());
     });
@@ -235,6 +244,7 @@ export class Weather {
   dispose(): void {
     this.stopTemperature();
     this.snowCoverMemo.dispose();
+    this.snowCoveredMemo.dispose();
     this.snowRateMemo.dispose();
     this.rainRateMemo.dispose();
     this.precipitationRate.dispose();

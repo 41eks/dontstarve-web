@@ -1,7 +1,6 @@
 import { Workable } from '../../componets/src/workable';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import * as THREE from 'three';
-import { createRenderEffect, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import { SpriteState } from '@dontstarve-web/display';
 import { Growable } from '../../componets/src/growable';
 import { LootDropper, SetSharedLootTable } from '../../componets/src/lootdropper';
@@ -63,7 +62,6 @@ export interface DeciduousWorld extends ToolMouseTargetWorld, LeafWorld {
   readonly camera: THREE.Camera;
   /** DefaultBurntFn: one ash at the burnt inst's position. */
   readonly worldEvents: WorldEventEmitter;
-  readonly getWatchWorldContent?: GetWatchWorldContent;
   /** SpawnPrefab for the leaves the tree throws off. */
   spawnPrefab(prefab: string, position: ReadonlyVector3): PrefabInstance;
   growthDuration?(seconds: number): number;
@@ -88,7 +86,6 @@ export class DeciduousInstance extends PrefabInstance {
   fire?: BurnableBinding;
   burntcone = false;
   acorntask?: EntityTask;
-  stopSnow?: () => void;
   firstFrame = true;
   /** Growth settled while the visual was unloaded is shown as its final stage, without the transition animation. */
   catchingUp = false;
@@ -107,6 +104,9 @@ export class DeciduousInstance extends PrefabInstance {
     for (const tag of ['plant', 'tree', 'birchnut', 'deciduoustree', 'cattoyairborne', 'SnowCovered', '__combat']) {
       this.addTag(tag);
     }
+    // MakeSnowCoveredPristine: the snow override and hidden layer are the art's (see assets), so plants stay instanced;
+    // the display shows the layer by the world's issnowcovered.
+    this.sprite.setSnowCovered();
     const workable = addComponent(this, 'workable', Workable, () => world.scheduler.now);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(chop_tree);
@@ -161,8 +161,6 @@ export class DeciduousInstance extends PrefabInstance {
     this.OnSave = (_inst, data) => onsave(this, data);
     this.OnLoad = (_inst, data) => onload(this, data);
     this.onRemove(() => {
-      this.stopSnow?.();
-      this.stopSnow = undefined;
       unbindFire(this);
       leaves.dispose();
       for (const sound of this.sounds) {
@@ -434,24 +432,6 @@ function chop_down_tree(inst: DeciduousInstance, worker: Worker): void {
   playOnce(inst, clip);
 }
 
-/** weather.lua SNOW_COVERED_THRESHOLD, followed while the tree is awake; its cleanup owns the source and the effect. */
-function bindSnow(inst: DeciduousInstance): void {
-  let stopWatch: (() => void) | undefined;
-  const snow = inst.world.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => {
-    stopWatch = stop;
-  });
-  if (!snow) {
-    return;
-  }
-  const stopEffect = createRenderEffect(() => {
-    inst.sprite.setSymbolHidden('snow', snow.get() < 0.015);
-  });
-  inst.stopSnow = () => {
-    stopEffect();
-    stopWatch?.();
-  };
-}
-
 function OnEntityWake(inst: DeciduousInstance): void {
   inst.catchingUp = true;
   try {
@@ -464,7 +444,6 @@ function OnEntityWake(inst: DeciduousInstance): void {
     inst.firstFrame = false;
     inst.sprite.setFrameAt(inst.random());
   }
-  bindSnow(inst);
   bindFire(inst);
   if (inst.hasTag('burnt')) {
     startAcornTask(inst);
@@ -473,8 +452,6 @@ function OnEntityWake(inst: DeciduousInstance): void {
 
 function OnEntitySleep(inst: DeciduousInstance): void {
   inst.components.growable.OnEntitySleep();
-  inst.stopSnow?.();
-  inst.stopSnow = undefined;
   inst.leaves.SetAwake(false);
   if (inst.fire?.burnable.IsBurning()) {
     if (inst.hasTag('stump')) {
@@ -559,7 +536,8 @@ export function deciduousPrefabs(
         swap_leaves: { archive: 'tree_leaf_green_build.zip', symbol: 'swap_leaves' },
         snow: { archive: 'snow.zip', symbol: 'snow' },
       },
-      hiddenSymbols: ['mouseover', 'snow'],
+      hiddenSymbols: ['mouseover'],
+      hiddenLayers: ['snow'],
     },
     assetOptions: {
       staticBillboard: true,

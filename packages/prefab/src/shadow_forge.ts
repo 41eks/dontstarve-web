@@ -1,5 +1,4 @@
 import { SpriteState } from '@dontstarve-web/display';
-import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { Hauntable } from '../../componets/src/hauntable';
 import { Inspectable } from '../../componets/src/inspectable';
@@ -24,10 +23,9 @@ const HAUNT_TINY = 1;
 /** tuning.lua PROTOTYPER_TREES.SHADOW_FORGE. */
 const SHADOW_FORGE_TREES = { SHADOWFORGING: 2 };
 
-/** What the scene injects: the hauntable's scheduler and MakeSnowCovered's snow level. */
+/** What the scene injects: the hauntable's scheduler. */
 export interface ShadowForgeWorld {
   scheduler: GameTimeScheduler;
-  getWatchWorldContent?: GetWatchWorldContent;
 }
 
 /** shadow_forge.lua fn: the fields it sets on inst and the components it adds. */
@@ -80,7 +78,7 @@ function fn(world: ShadowForgeWorld): ShadowForgeInstance {
 
   addComponent(inst, 'hauntable', Hauntable, world.scheduler).SetHauntValue(HAUNT_TINY);
 
-  MakeSnowCovered(inst, world.getWatchWorldContent);
+  MakeSnowCovered(inst);
   // MakeSnowCovered's MakeLunarHailBuildup: a constructor-only signature.
   addComponent(inst, 'lunarhailbuildup', LunarHailBuildup);
   return inst;

@@ -57,7 +57,7 @@ createEffect(() => this.runTest(this.cycle.get()));
 
 蝴蝶与萤火虫各自通过 `WorldContentKey.Cycle` 读取世界昼夜，不再从光照渲染器的 phase 反推。满月仍是 `night`；蝴蝶在行为树检查 `isday` 时读取私有信号，萤火虫在普通 effect 中统一处理光照显隐：读取私有昼夜／位置输入、放置状态及检查 timer 的只读状态；昼夜切换和丢弃后的 2～3 秒检查由游戏时间调度器推进，淡出后的 NET 禁用也由调度器完成，入栏／移除取消任务。逐帧更新只推进动画与光照插值。
 
-天气信号 `Moisture`、`MoistureCeil`、`MoistureFloor`、`PrecipType`、`PeakPrecipitationRate`、`PrecipitationRate`、`RainRate`、`SnowRate`、`SnowCover` 同样在世界 init 时注入 `Weather` 的原有只读信号，经 `getWatchWorldContent` 取得私有本地信号，传入 `{ tile }` 时受 tickingarea 门控；没有 `Weather` 的独立世界用 `createIdleWeatherSources()` 提供干燥默认值。
+天气信号 `Moisture`、`MoistureCeil`、`MoistureFloor`、`PrecipType`、`PeakPrecipitationRate`、`PrecipitationRate`、`RainRate`、`SnowRate`、`SnowCover`、`SnowCovered` 同样在世界 init 时注入 `Weather` 的原有只读信号，经 `getWatchWorldContent` 取得私有本地信号，传入 `{ tile }` 时受 tickingarea 门控；没有 `Weather` 的独立世界用 `createIdleWeatherSources()` 提供干燥默认值。
 
 `SnowLevel`（`snowLevel`）在世界 init 时注入 `Weather.snowLevel` 的原有只读信号，计算、保存和恢复由天气组件负责。Pond 接收 `getWatchWorldContent` 并自行创建私有 SnowLevel signal，用普通 effect 的 `get()` 调用冻结／解冻方法；清理统一登记到池塘管理器。天气和世界时间仍按 60 活动帧结算。
 

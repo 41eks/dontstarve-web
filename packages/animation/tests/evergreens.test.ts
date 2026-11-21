@@ -90,10 +90,9 @@ it('replaces the build snow symbol and hides it until the world snow level cover
       sourceSymbol: 'snow',
     });
     expect(appearance().get('layer:snow')).toMatchObject({ kind: 'layer', layer: 'snow', hidden: true });
-    s.content.snowLevel.set(0.5);
-    expect(appearance().get('layer:snow')).toMatchObject({ hidden: false });
-    s.content.snowLevel.set(0.01);
-    expect(appearance().get('layer:snow')).toMatchObject({ hidden: true });
+    // The SnowCovered tag, as the display reads it; the world's cover is the display's to follow.
+    expect(prefabInstance(tree.transform.model)!.hasTag('SnowCovered')).toBe(true);
+    expect(sprite.sprite.peek().snowCovered).toBe(true);
   } finally {
     s.dispose();
   }

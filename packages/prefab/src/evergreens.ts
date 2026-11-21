@@ -15,7 +15,6 @@ import { MakeObstaclePhysics, MakeSnowCovered, RemovePhysicsColliders, WORLD_SCA
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { BurnableBinding, TREE_BURN_TIME, type FireFxHost } from './treeFire';
 import type { WorldEventEmitter } from './worldContext';
-import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 
 export const EVERGREEN_ID = 'evergreen' as const;
 export const EVERGREEN_SPAWN_IDS = [EVERGREEN_ID, 'evergreen_short', 'evergreen_normal', 'evergreen_tall'] as const;
@@ -57,8 +56,6 @@ export interface EvergreenWorld extends ToolMouseTargetWorld {
   readonly camera: THREE.Camera;
   /** DefaultBurntFn: one ash at the burnt inst's position. */
   readonly worldEvents: WorldEventEmitter;
-  /** MakeSnowCovered's snow level; without a bound world the snow layer stays hidden. */
-  readonly getWatchWorldContent?: GetWatchWorldContent;
   /** SpawnPrefab for the needles a chop throws off. */
   spawnPrefab(prefab: string, position: ReadonlyVector3): PrefabInstance;
   growthDuration?(seconds: number): number;
@@ -97,8 +94,8 @@ export class EvergreenInstance extends PrefabInstance {
       this.addTag(tag);
     }
     // evergreens.lua MakeSnowCoveredPristine + MakeSnowCovered: the build's own `snow` symbol is replaced from
-    // snow.zip and hidden until weather.lua's snow level covers the world.
-    MakeSnowCovered(this, this.world.getWatchWorldContent);
+    // snow.zip; the display shows it while the world is snow covered.
+    MakeSnowCovered(this);
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(chop_tree);

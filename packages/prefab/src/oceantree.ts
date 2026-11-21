@@ -220,9 +220,9 @@ function fn(world: OceanTreeWorld, sprites: SpriteResources): OceanTreeInstance 
   inst.addTag('event_trigger');
   inst.addTag('tree');
   inst.setScale(1.1);
-  // MakeSnowCoveredPristine: the snow override, the SnowCovered tag and the hidden layer; MakeSnowCovered below finds
-  // the tag and only follows the snow level, which this one call already does.
-  MakeSnowCovered(inst, world.getWatchWorldContent);
+  // MakeSnowCoveredPristine: the snow override, the SnowCovered tag and the hidden layer; MakeSnowCovered finds the tag
+  // already there, so this one call does both.
+  MakeSnowCovered(inst);
 
   const stage = 1 + Math.floor(Math.random() * 3);
   inst.AnimState.DeclareAnimationAssets(ANIMATION_ARCHIVES, sprites.archives);

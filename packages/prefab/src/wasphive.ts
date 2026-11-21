@@ -117,7 +117,7 @@ function fn(world: HiveWorld): WasphiveInstance {
     world.scheduler,
     world.getWatchWorldContent,
   );
-  MakeSnowCovered(inst, world.getWatchWorldContent);
+  MakeSnowCovered(inst);
   // MakeSnowCovered's MakeLunarHailBuildup.
   addComponent(inst, 'lunarhailbuildup', LunarHailBuildup);
 

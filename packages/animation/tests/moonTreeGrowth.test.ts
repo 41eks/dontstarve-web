@@ -254,11 +254,12 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
     await settle();
     expect(drawnIndices(model)).toBeGreaterThan(bareIndices);
     const oldAnimation = prefabInstance(model)!.sprite;
-    const hide = vi.spyOn(oldAnimation, 'setSymbolHidden');
+    // The tree declares SnowCovered once; the cover is the display's to follow, which an asleep tree does not.
+    const declared = oldAnimation.sprite.peek();
+    expect(declared.snowCovered).toBe(true);
     await area.visit(new THREE.Vector3(500, 0, 0));
     s.snowLevel.set(0);
     await settle();
-    expect(hide).not.toHaveBeenCalled();
     s.snowLevel.set(0.5);
     await area.visit(new THREE.Vector3());
     expect(tree.transform.model).toBe(model);
@@ -267,7 +268,6 @@ it('shows source snow art at the cover threshold, restores it on reload and rele
     s.snowLevel.set(0);
     await settle();
     expect(drawnIndices(tree.transform.model)).toBe(bareIndices);
-    expect(hide).toHaveBeenCalledWith('snow', true);
   } finally {
     s.dispose();
   }

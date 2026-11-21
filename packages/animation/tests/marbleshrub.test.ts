@@ -52,8 +52,8 @@ function setup() {
   );
   const spawnGroundItem: ItemWorldFixture['spawnGroundItem'] = (definition, position, options) =>
     ground.spawnGroundItem(definition, position, options);
-  const { snowLevel, getWatchWorldContent } = bindTestWorld(scheduler);
-  const shrubs = marbleShrubWorld(scene, { scheduler, getWatchWorldContent, spawnGroundItem }, { physics });
+  const { snowLevel } = bindTestWorld(scheduler);
+  const shrubs = marbleShrubWorld(scene, { scheduler, spawnGroundItem }, { physics });
   const { saplings } = shrubs;
   const registry = new EntityRegistry();
   registry.register(PREFAB_DEFINITIONS.marbleShrubs, {
@@ -122,8 +122,9 @@ const dropped = (s: ReturnType<typeof setup>) =>
 
 it('plants a marblebean, digs it back up, and grows it into a mineable shrub that survives save/load', async () => {
   vi.spyOn(Math, 'random').mockReturnValue(0.5);
-  const s = setup(),
-    restored = setup();
+  // Displays follow the world bound last, as the scene binds one; the restored world binds only for the reload.
+  const s = setup();
+  let restored: ReturnType<typeof setup> | undefined;
   try {
     expect((await executeDebugCommand('c_give("marblebean",3)', s.inventory, id => s.registry.spawn(id))).ok).toBe(
       true,
@@ -190,15 +191,16 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
       return count;
     };
     const bare = vertices();
+    // HandleAllSnowSymbols is the display's: the shrub declares SnowCovered and its json stays as it is.
+    const declared = sprite.sprite.peek();
+    expect(declared.snowCovered).toBe(true);
     s.snowLevel.set(0.02);
-    // Appearance declarations update synchronously; the display applies them on its own schedule.
-    expect(sprite.sprite.peek().appearance.get('archive-hidden:snow')).toMatchObject({ hidden: false });
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(vertices()).toBeGreaterThan(bare);
     s.snowLevel.set(0);
-    expect(sprite.sprite.peek().appearance.get('archive-hidden:snow')).toMatchObject({ hidden: true });
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(vertices()).toBe(bare);
+    expect(sprite.sprite.peek()).toBe(declared);
 
     let json = '';
     expect(
@@ -210,6 +212,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     ).toBe(true);
     const saved = deserializeSave(json, SAVE_CATALOG),
       record = saved.world.entities.marbleshrub[0];
+    restored = setup();
     restored.shrubs.spawn('marbleshrub', new THREE.Vector3(...record.transform.position), record);
     expect(restored.shrubs.exportRecords()).toEqual([s.shrubs.exportRecords()[0]]);
 
@@ -234,7 +237,7 @@ it('plants a marblebean, digs it back up, and grows it into a mineable shrub tha
     await vi.waitFor(() => expect(dropped(s)).toEqual(['marble', 'marble', 'marblebean']));
   } finally {
     s.dispose();
-    restored.dispose();
+    restored?.dispose();
   }
 }, 20000);
 

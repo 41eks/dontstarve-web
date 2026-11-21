@@ -121,6 +121,8 @@ export class PrefabDisplay {
   /** Archives the AnimState names that this display is loading. */
   private readonly loadingArt = new Set<string>();
   private dressedVersion = -1;
+  /** The world's issnowcovered, watched only by a SnowCovered declaration. */
+  private snowCovered?: ReadonlySignal<boolean>;
   private frameSource?: {
     declaration: NonNullable<SpriteJson['frameSource']>;
     progress: ReadonlySignal<number | undefined>;
@@ -344,15 +346,26 @@ export class PrefabDisplay {
         state.artChanged();
       }),
     );
-    // A billboard (declared by its first clip) turns to TheCamera itself, through its own bridge to the world's camera
-    // rotation, only when the camera turns. The rotation changes every frame of a turn, so it applies before that frame
-    // renders, not a microtask later. An asleep display unsubscribes and resyncs to the camera when it wakes.
-    const watchWorldContent = first.billboard ? getBoundWatchWorldContent() : undefined;
+    // World inputs a display follows through its own bridges; an asleep display unsubscribes and resyncs when it wakes.
+    const watchWorldContent = first.billboard || first.snowCovered ? getBoundWatchWorldContent() : undefined;
     if (watchWorldContent) {
       const active = createMemo(() => status.get() === 'active');
       this.cleanups.push(() => active.dispose());
-      const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop), { active });
-      this.cleanups.push(createRenderEffect(() => this.faceCamera(camera.get())));
+      // A billboard (declared by its first clip) turns to TheCamera itself, only when the camera turns. The rotation
+      // changes every frame of a turn, so it applies before that frame renders, not a microtask later.
+      if (first.billboard) {
+        const camera = watchWorldContent(WorldContentKey.CameraRotation, stop => this.cleanups.push(stop), { active });
+        this.cleanups.push(createRenderEffect(() => this.faceCamera(camera.get())));
+      }
+      // worldstate.lua OnSnowCoveredChanged -> TheSim:HandleAllSnowSymbols: the engine shows or hides the `snow` layer
+      // of every SnowCovered entity (declared at creation) when issnowcovered changes.
+      if (first.snowCovered) {
+        const snowCovered = watchWorldContent(WorldContentKey.SnowCovered, stop => this.cleanups.push(stop), {
+          active,
+        });
+        this.snowCovered = snowCovered;
+        this.cleanups.push(createRenderEffect(() => this.dressSnow(snowCovered.get())));
+      }
     }
     displaysByModel.set(this.model, this);
   }
@@ -790,7 +803,22 @@ export class PrefabDisplay {
         this.dressOne(op);
       }
     }
+    if (this.snowCovered) {
+      this.dressSnow(this.snowCovered.peek());
+    }
     this.dressAnimStates(json);
+  }
+
+  /** HandleAllSnowSymbols on this entity: the snow layer shown while the world is snow covered. */
+  private dressSnow(covered: boolean): void {
+    if (!this.engine.loaded) {
+      return;
+    }
+    if (covered) {
+      this.engine.showLayer('snow');
+    } else {
+      this.engine.hideLayer('snow');
+    }
   }
 
   private dressOne(op: AppearanceJson): void {

@@ -1,20 +1,13 @@
 import { addComponent } from './components';
 import { SpriteState } from '@dontstarve-web/display';
-import {
-  createEffect,
-  createRenderEffect,
-  watchSignal,
-  WorldContentKey,
-  type GameTimeScheduler,
-  type GetWatchWorldContent,
-} from '@dontstarve-web/signals';
+import { createEffect, watchSignal, type GameTimeScheduler } from '@dontstarve-web/signals';
 import type { ReadonlyVector3 } from '../../animation/src/transformRoot';
 import { AnimState } from '../../componets/src/animstate';
 import { Inspectable } from '../../componets/src/dragonflySignatures';
 import { LunarHailBuildup } from '../../componets/src/pandoraschestSignatures';
 import { animationLengths, animationTiming } from './animationTimings';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
-import { MakeObstaclePhysics } from './standardcomponents';
+import { MakeObstaclePhysics, MakeSnowCovered, MakeSnowCoveredPristine } from './standardcomponents';
 import { WORLD_SCALE } from './tile';
 
 export const MONKEYPILLAR_ID = 'monkeypillar' as const;
@@ -30,7 +23,6 @@ const ANIMATION_LENGTHS = animationLengths(ARCHIVE);
 
 export interface MonkeyPillarWorld {
   scheduler: GameTimeScheduler;
-  getWatchWorldContent?: GetWatchWorldContent;
 }
 
 /** monkeypillar.lua fn. AnimState starts with no animation: the bank and build wait for setpillartype. */
@@ -49,7 +41,7 @@ export class MonkeyPillarInstance extends PrefabInstance {
     this.animstate = new AnimState(world.scheduler, ANIMATION_LENGTHS, event => this.PushEvent(event));
     this.setPosition(position.x, 0, position.z);
     this.addTag('blocker'); // MakeObstaclePhysics
-    this.addTag('SnowCovered'); // MakeSnowCoveredPristine
+    MakeSnowCoveredPristine(this);
     this.AddSoundEmitter();
     this.light.set({
       intensity: 0.6,
@@ -59,17 +51,11 @@ export class MonkeyPillarInstance extends PrefabInstance {
     });
     this.sprite.setLightOverride(0.25);
 
-    // MakeSnowCovered, with weather.lua's SNOW_COVERED_THRESHOLD.
-    let stopWatchingSnow: (() => void) | undefined;
-    const snowLevel = world.getWatchWorldContent?.(WorldContentKey.SnowLevel, stop => {
-      stopWatchingSnow = stop;
-    });
-    this.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
-    const stopSnow = createRenderEffect(() => this.sprite.setSymbolHidden('snow', (snowLevel?.get() ?? 0) < 0.015));
-
     // Constructor-only dependencies: inspectable's tag is its source constructor's.
     this.addTag('inspectable');
     addComponent(this, 'inspectable', Inspectable);
+    // MakeSnowCovered, then its MakeLunarHailBuildup.
+    MakeSnowCovered(this);
     addComponent(this, 'lunarhailbuildup', LunarHailBuildup);
 
     queue_moveanim_task(this);
@@ -103,8 +89,6 @@ export class MonkeyPillarInstance extends PrefabInstance {
     });
     this.onRemove(() => {
       this.animstate.dispose();
-      stopSnow();
-      stopWatchingSnow?.();
       stopStatus?.();
       stopTask();
     });
@@ -159,7 +143,7 @@ export function monkeyPillarPrefabs(
         animationArchive: 'pillar_monkey.zip',
         buildArchives: ['pillar_monkey.zip', 'snow.zip'],
         bank: 'pillar_monkey',
-        hiddenSymbols: ['snow'],
+        hiddenLayers: ['snow'],
       },
       physics: { make: MakeObstaclePhysics, radius: 0.6, height: 24 },
       // not POPULATING: setpillartype(inst). A saved entity's OnLoad picked it already.

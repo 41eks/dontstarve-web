@@ -10,12 +10,7 @@ import type { EntityPersistData } from './saveRecord';
 import type { SpawnGroundItem } from './groundPrefab';
 import type { ReadonlyVector3 } from './transform';
 import catalog from './groundItems.json' with { type: 'json' };
-import {
-  createRenderEffect,
-  getBoundWatchWorldContent,
-  WorldContentKey,
-  type GetWatchWorldContent,
-} from '@dontstarve-web/signals';
+import { getBoundWatchWorldContent, WorldContentKey, type GetWatchWorldContent } from '@dontstarve-web/signals';
 import type { Pickable } from './components/pickable';
 
 /** World units per DST unit. */
@@ -83,34 +78,27 @@ export function MakeNoGrowInWinter(
   toggle(season.peek().season === 'winter');
 }
 
-/** standardcomponents.lua MakeSnowCoveredPristine: the snow symbol override, the SnowCovered tag and the hidden snow layer. */
+/**
+ * standardcomponents.lua MakeSnowCoveredPristine: the snow symbol override, the SnowCovered tag and the hidden snow layer.
+ * The engine reads that tag (TheSim:HandleAllSnowSymbols), so the sprite declares it for the display, which then shows
+ * the layer while the world is snow covered.
+ */
 export function MakeSnowCoveredPristine(inst: PrefabInstance): void {
   inst.sprite.setSymbolOverride('snow', 'snow.zip', 'snow');
   inst.addTag('SnowCovered');
+  inst.sprite.setSnowCovered();
   inst.sprite.hideLayer('snow');
 }
 
 /**
- * standardcomponents.lua MakeSnowCoveredPristine + MakeSnowCovered: the snow symbol from snow.zip, shown while the world
- * is snow covered (weather.lua SNOW_COVERED_THRESHOLD). The prefab declares snow.zip and the hidden `snow` layer.
+ * standardcomponents.lua MakeSnowCovered: MakeSnowCoveredPristine unless the prefab already called it. Its Show/Hide by
+ * TheWorld.state.issnowcovered, like every later change, is the display's HandleAllSnowSymbols. The caller adds
+ * MakeLunarHailBuildup's lunarhailbuildup itself.
  */
-export function MakeSnowCovered(
-  inst: PrefabInstance,
-  watch: GetWatchWorldContent | undefined = getBoundWatchWorldContent(),
-): void {
+export function MakeSnowCovered(inst: PrefabInstance): void {
   if (!inst.hasTag('SnowCovered')) {
     MakeSnowCoveredPristine(inst);
   }
-  const snow = watch?.(WorldContentKey.SnowLevel, stop => inst.onRemove(stop));
-  inst.onRemove(
-    createRenderEffect(() => {
-      if ((snow?.get() ?? 0) >= 0.015) {
-        inst.sprite.showLayer('snow');
-      } else {
-        inst.sprite.hideLayer('snow');
-      }
-    }),
-  );
 }
 
 /**

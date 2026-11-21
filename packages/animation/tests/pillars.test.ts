@@ -258,7 +258,7 @@ it('sleeping releases the sprite and waking restores the declared clip and appea
     // The drawn clip settled while unloaded holds its last frame; the logical clip resumes and its end plays the next.
     expect(monkey.sprite.currentAnimation).toBe('idle2');
     expect(monkey._moveanim_task).toBeDefined();
-    expect(monkey.sprite.sprite.peek().appearance.get('archive-hidden:snow')).toMatchObject({ hidden: true });
+    expect(monkey.sprite.sprite.peek().appearance.get('layer:snow')).toMatchObject({ hidden: true });
     await finishClip(s.scheduler, monkey);
     expect(monkey.sprite.sprite.peek().clip).toMatchObject({ name: 'idle2', finished: false });
     expect(s.prefabs.exportRecords()).toEqual(before);

@@ -2,6 +2,7 @@ import { Quaternion } from 'three';
 import {
   bindWorldContent,
   createIdleWeatherSources,
+  createMemo,
   createSignal,
   getWatchWorldContent,
   type GetWatchWorldContent,
@@ -66,6 +67,8 @@ export function createTestWorldSources(scheduler: GameTimeScheduler) {
     wind: createSignal({ angle: 0, velocity: 0 }),
     perishTick: createSignal({ time: 0, total: 0 }),
     ...createIdleWeatherSources(),
+    // Weather.snowCovered: weather.lua SNOW_COVERED_THRESHOLD over the level these tests set.
+    snowCovered: createMemo(() => snowLevel.get() >= 0.015),
   } satisfies WorldContentEnvironment;
 }
 
