@@ -342,7 +342,7 @@ it('narrows picking to targets whose padded envelope the ray reaches, following 
     inst.setPosition(x, 0, 0);
     return { model, mesh, inst };
   };
-  // 48 targets: each pick refreshes 16 of them; the far ones that are not due are culled by their envelope.
+  // 48 targets: each pick refreshes 16 of them; every far one, refreshed or not, is culled by its envelope.
   const targets = Array.from({ length: 48 }, (_, i) => target(20 + i * 5));
   const renderer = {
     domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) },
@@ -353,7 +353,7 @@ it('narrows picking to targets whose padded envelope the ray reaches, following 
     expect(pointer.pickMouseTarget()).toBeUndefined(); // Learns every envelope.
     const raycasts = targets.map(({ mesh }) => vi.spyOn(mesh, 'raycast'));
     expect(pointer.pickMouseTarget()).toBeUndefined();
-    expect(raycasts.filter(spy => spy.mock.calls.length > 0).length).toBeLessThanOrEqual(16);
+    expect(raycasts.filter(spy => spy.mock.calls.length > 0)).toEqual([]);
     // A known target moved under the pointer is picked on the next frame: its envelope moves with its root.
     targets[30].inst.setPosition(0, 0, 0);
     expect(pointer.pickMouseTarget()?.object).toBe(targets[30].mesh);
