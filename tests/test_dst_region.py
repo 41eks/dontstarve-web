@@ -672,7 +672,7 @@ end
                                  'noisetime': 133451.859375, 'daylight': True},
             'weather': {'moisture': 2198.4311523438, 'moisturefloor': 279.15209960938,
                         'moistureceil': 11392.370117188, 'preciptype': 'none',
-                        'peakprecipitationrate': 0.73351341485977, 'snowlevel': 0,
+                        'peakprecipitationrate': 0.73351341485977, 'snowlevel': 0.62,
                         'wetness': 0, 'lightningmode': 'rain', 'precipmode': 'dynamic', 'temperature': 52.8},
         }
         systems, elapsed, report = SYSTEMS['convert_systems'](persistdata, 'forest')
@@ -687,7 +687,7 @@ end
         # Only the weather fields the project stores survive; unported wetness, lightning and snow thresholds drop.
         self.assertEqual(systems['weather'], {
             'moisture': 2198.4311523438, 'moisturefloor': 279.15209960938, 'moistureceil': 11392.370117188,
-            'preciptype': 'none', 'peakprecipitationrate': 0.73351341485977, 'snowlevel': 0})
+            'preciptype': 'none', 'peakprecipitationrate': 0.73351341485977, 'snowlevel': 0.62})
         # seasons.lua's own 9/4/3 day is mapped onto the project's 10/4/2 day so the same phase progresses.
         self.assertAlmostEqual(elapsed, 282 * 480 + progress * 300)
         self.assertEqual(report['season'], {'name': 'autumn', 'remainingDays': 18})

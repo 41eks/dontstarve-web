@@ -9,6 +9,8 @@ https://41eks.github.io/dontstarve-web/
 
 控制台支持 `ThePlayer.Transform:SetPosition(x, y, z)` 传送玩家：脚点落到 `(x, 0, z)`，`y` 仅为兼容原版调用写法、不改变高度；传送会停止当前移动，同步刚体与地皮活动区，并吸附跟随相机。该命令可和 `c_give`、`c_spawn`、`c_save()` 等用分号连接，传送后的玩家位置随 `c_save()` 保存。
 
+`c_gonext("prefab_id")` 查找该 prefab 的下一个存活世界实例并传送过去，例如 `c_gonext("spider")`、`c_gonext("log")`。重复执行按实例生成顺序循环；查找和传送使用与 `ThePlayer.Transform:SetPosition` 相同的落点、刚体、活动区和相机处理。找不到目标时玩家留在原地并返回错误。
+
 制作菜单右侧快捷栏按面板高度整体同比缩放，按钮、页码和槽位间距保持比例；窗口变矮时不再溢出面板。大小屏均将面板中心对齐窗口高度的 50%；展开和收起共用垂直定位与缩放原点，仅横向移动。该布局调整不改变调试命令的语法、参数、支持 ID 或存档格式。
 
 地面物品与库存物品共用一个逻辑实例：`ItemEntity` 继承 `PrefabInstance`，`prefabInstance(model)` 返回库存持有的同一对象。身份、标签、事件、组件、皮肤、持久化和逻辑生命周期统一保存在实例上；`stackable` 管数量，`perishable` 管整叠新鲜度。落地时 display 绑定原实例，拾取只释放地面 display，重新丢弃保留实例及组件；`instance.position`、`entity.transform.position` 与当前地面 model 的位置引用同一个向量，不再绑定第二个地面实例或转发库存事件。模型和显示资源通过 `prefabDisplay(model)` 获取。这次统一保留 `c_spawn`、`c_give`、`c_save()` 的语法、参数、支持 ID 与存档格式。

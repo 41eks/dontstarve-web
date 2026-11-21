@@ -855,6 +855,7 @@ const WORLD_PREFAB_DEFINITIONS = {
       { animation: 'evergreen_short_normal.zip', build: 'evergreen_new.zip' },
       { animation: 'evergreen_tall_old.zip', build: 'evergreen_new.zip' },
       'pine_needles.zip',
+      'snow.zip',
     ],
   ),
   pigKings: definePrefabs(['pigking'], empty, true, [definitions.pigKing.archive]),

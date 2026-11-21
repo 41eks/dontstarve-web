@@ -389,6 +389,35 @@ function saveGame(): Promise<void> {
 gameUi.debugConsole.addEventListener('game:debug-console-toggle', event => {
   input.setBlocked(event.detail.isOpen);
 });
+/** ThePlayer.Transform:SetPosition: stop walking, move the foot and body together, and snap the camera. */
+function teleportPlayerTo(x: number, z: number): void {
+  locomotor.stop();
+  playerInstance.setPosition(x, 0, z);
+  playerPhysics.Teleport();
+  playerBody.velocity.set(0, playerBody.velocity.y, 0);
+  playerInstance.tileTracker.sync();
+  playerInstance.SnapCamera?.();
+}
+
+/** c_findnext: the next live instance of the prefab, cycling in insertion order and skipping the player. */
+let lastGonext: { prefabId: string; entityId: string } | undefined;
+function findNextEntity(prefabId: string): { x: number; z: number } | undefined {
+  const matches = [...prefabs.instances(prefabId)].filter(instance => instance !== playerInstance);
+  if (!matches.length) {
+    return undefined;
+  }
+  let index = 0;
+  if (lastGonext?.prefabId === prefabId) {
+    const previous = matches.findIndex(instance => String(instance.entityId) === lastGonext!.entityId);
+    if (previous >= 0) {
+      index = (previous + 1) % matches.length;
+    }
+  }
+  const instance = matches[index]!;
+  lastGonext = { prefabId, entityId: String(instance.entityId) };
+  return { x: instance.position.x, z: instance.position.z };
+}
+
 gameUi.debugConsole.addEventListener('game:debug-command', event => {
   const { command } = event.detail;
   void executeDebugCommand(
@@ -400,15 +429,8 @@ gameUi.debugConsole.addEventListener('game:debug-command', event => {
     async () => {
       await SendLightningStrike({ root: scene, fx: worldFx, sim: prefabs }, player.position);
     },
-    (x, z) => {
-      // ThePlayer.Transform:SetPosition: stop walking, move the foot and body together, and snap the camera.
-      locomotor.stop();
-      playerInstance.setPosition(x, 0, z);
-      playerPhysics.Teleport();
-      playerBody.velocity.set(0, playerBody.velocity.y, 0);
-      playerInstance.tileTracker.sync();
-      playerInstance.SnapCamera?.();
-    },
+    teleportPlayerTo,
+    findNextEntity,
   )
     .then(result => {
       if (result.ok) {

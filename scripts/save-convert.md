@@ -10,7 +10,7 @@ python3 scripts/import-dst-region.py \
   --forest-origin-cell 189 197
 ```
 
-命令转换源目录中所有世界快照（当前共 12 份：地表 `0000000310`–`0000000315`、洞穴 `0000000140`–`0000000145`）及各自存在的玩家文件，按世界类型写入 `Master/save/session/<session>/<snapshot>.json` 或 `Caves/save/session/<session>/<snapshot>.json`。同编号玩家文件放在该 Session 的用户子目录；世界 JSON 的 `session.playerFile` 指向它。`Master.json`、`Caves.json` 及各自的 `.import.json` 是每种世界最新快照的便捷副本。`session.json` 列出全部转换结果；游戏从每个 Session 的最新快照判断玩家是否已迁移，再加载唯一没有 `migration` 标记的玩家所在世界。源目录中洞穴快照实际保存在 `Master/save/session/04E26ADB66396E8D/`，也会按洞穴类型归入输出的 Caves 目录；`Caves` 物理目录里同一 Session 只剩建档当天的 `0000000002`、`0000000003`，作为残留跳过。`--origin-cell COL ROW` 在整簇导入时只固定洞穴原点；地表独立居中，可用 `--forest-origin-cell COL ROW` 固定。检查已有结果而不写入文件时，在相同命令末尾加 `--check`。
+命令转换源目录中所有世界快照（当前共 12 份：地表 `0000000310`–`0000000315`、洞穴 `0000000140`–`0000000145`）及各自存在的玩家文件，按世界类型写入 `Master/save/session/<session>/<snapshot>.json` 或 `Caves/save/session/<session>/<snapshot>.json`。同编号玩家文件放在该 Session 的用户子目录；世界 JSON 的 `session.playerFile` 指向它。`Master.json`、`Caves.json` 及各自的 `.import.json` 是每种世界最新快照的便捷副本。`session.json` 列出全部转换结果；游戏从每个 Session 的最新快照判断玩家是否已迁移，再加载唯一没有 `migration` 标记的玩家所在世界。不带 `?save=` 启动时读取的是 `session.json` 指向的 Session 快照（例如地表 `Master/save/session/03741E1B78B29575/0000000315.json`），不是 `Master.json`／`Caves.json` 便捷副本；调试存档字段请改前者，或用 `?save=Cluster_1/Master.json` 显式加载副本。源目录中洞穴快照实际保存在 `Master/save/session/04E26ADB66396E8D/`，也会按洞穴类型归入输出的 Caves 目录；`Caves` 物理目录里同一 Session 只剩建档当天的 `0000000002`、`0000000003`，作为残留跳过。`--origin-cell COL ROW` 在整簇导入时只固定洞穴原点；地表独立居中，可用 `--forest-origin-cell COL ROW` 固定。检查已有结果而不写入文件时，在相同命令末尾加 `--check`。
 
 ```bash
 python3 scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
