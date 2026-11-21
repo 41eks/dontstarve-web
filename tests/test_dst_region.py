@@ -21,6 +21,20 @@ class RegionImportTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'plants'):
             convert({'plants': [{'offset': [1, 0]}]})
 
+    def test_hotspring_import_keeps_the_bath_bomb_state_and_rejects_unported_glass(self):
+        convert = PREFAB['ENTITY_WHITELIST']['hotspring']
+        self.assertEqual(convert({}), {'hotspring': {}})
+        # Every hot spring saves its MINE workable; the project does not port it, so it is dropped after validation.
+        self.assertEqual(convert({'workable': {'maxwork': -1, 'workleft': 6}}), {'hotspring': {}})
+        self.assertEqual(convert({'workable': {'maxwork': -1, 'workleft': 0}, 'isbathbombed': True}),
+                         {'hotspring': {'isbathbombed': True}})
+        for data in ({'glassed': True}, {'empty': True}, {'delay_refill': True},
+                     {'glassed': True, 'isbathbombed': True}, {'isbathbombed': False},
+                     {'workable': {'maxwork': 6, 'workleft': 6}},
+                     {'workable': {'maxwork': -1, 'workleft': 7}}, {'unknown': True}):
+            with self.assertRaises(ValueError):
+                convert(data)
+
     def test_staff_lights_keep_the_source_extinguish_timer_and_reject_unknown_state(self):
         encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
         terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}

@@ -133,6 +133,7 @@ ENTITY_WHITELIST = {
     'grotto_waterfall_small1': WORKABLE['grotto_glass_components'],
     'grotto_waterfall_small2': WORKABLE['grotto_glass_components'],
     'pond': STRUCTURE['pond_components'],
+    'hotspring': STRUCTURE['hotspring_components'],
     # tuning.lua YELLOWSTAFF_STAR_DURATION and OPALSTAFF_STAR_DURATION.
     'stafflight': STRUCTURE['staff_light_components'](480 * 3.5),
     'staffcoldlight': STRUCTURE['staff_light_components'](480 * 2),

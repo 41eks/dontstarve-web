@@ -500,6 +500,7 @@
     "grotto_waterfall_small1",
     "grotto_waterfall_small2",
     "pond",
+    "hotspring",
     "stafflight",
     "staffcoldlight",
     "lava_pond",
@@ -1142,6 +1143,10 @@
     "pond": {
       "source": 27,
       "imported": 27
+    },
+    "hotspring": {
+      "source": 9,
+      "imported": 9
     },
     "stafflight": {
       "source": 0,
@@ -68545,6 +68550,114 @@
         4.63
       ],
       "sourceNode": "Magic meadow:1:Pondopolis"
+    },
+    {
+      "id": "dst_03741E1B78B29575_hotspring_id_112065",
+      "prefab": "hotspring",
+      "sourceIndex": 1,
+      "sourceId": 112065,
+      "sourcePosition": [
+        567.75,
+        0,
+        -348.5
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_hotspring_id_112066",
+      "prefab": "hotspring",
+      "sourceIndex": 2,
+      "sourceId": 112066,
+      "sourcePosition": [
+        495.79,
+        0,
+        -292.46
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_hotspring_id_112067",
+      "prefab": "hotspring",
+      "sourceIndex": 3,
+      "sourceId": 112067,
+      "sourcePosition": [
+        500.22,
+        0,
+        -315.29
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_hotspring_id_112068",
+      "prefab": "hotspring",
+      "sourceIndex": 4,
+      "sourceId": 112068,
+      "sourcePosition": [
+        504.51,
+        0,
+        -312.91
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_hotspring_id_112069",
+      "prefab": "hotspring",
+      "sourceIndex": 5,
+      "sourceId": 112069,
+      "sourcePosition": [
+        547.86,
+        0,
+        -319.02
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_hotspring_id_112070",
+      "prefab": "hotspring",
+      "sourceIndex": 6,
+      "sourceId": 112070,
+      "sourcePosition": [
+        480.08,
+        0,
+        -271.87
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_hotspring_id_112071",
+      "prefab": "hotspring",
+      "sourceIndex": 7,
+      "sourceId": 112071,
+      "sourcePosition": [
+        551.67,
+        0,
+        -371.36
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_hotspring_id_112072",
+      "prefab": "hotspring",
+      "sourceIndex": 8,
+      "sourceId": 112072,
+      "sourcePosition": [
+        464.45,
+        0,
+        -275.89
+      ],
+      "sourceNode": "MoonIsland_Baths:1:MoonIsland_Baths"
+    },
+    {
+      "id": "dst_03741E1B78B29575_hotspring_id_112073",
+      "prefab": "hotspring",
+      "sourceIndex": 9,
+      "sourceId": 112073,
+      "sourcePosition": [
+        552.95,
+        0,
+        -335.96
+      ],
+      "sourceNode": "MoonIsland_Baths:0:MoonIsland_Baths"
     },
     {
       "id": "dst_03741E1B78B29575_staffcoldlight_id_183010",
