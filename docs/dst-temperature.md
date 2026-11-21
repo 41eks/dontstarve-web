@@ -34,7 +34,7 @@
 
 [packages/ui/src/world-clock.ts](../packages/ui/src/world-clock.ts) 用 `createMemo` 和 `createEffect` 直接读取世界 signal，没有 `setClock()` 或应用到 HUD 的时钟状态回调。指针、日期、扇区和文字缓存到静态 Canvas；活动游戏帧通过 `advanceClockAnimation(dt)` 推进装饰动画并与缓存图层合成，使用当帧的实际 `dt`，不重复应用 60 帧结算时间。没有独立 RAF 或墙钟定时器，暂停时动画也停止。HUD 移除、重新挂载和场景销毁会释放 clock 的 effect、memo 及帧任务。
 
-现阶段季节没有自动推进组件。旧存档使用 `world.systems.season.name`（默认春季）的中点温度，并以 `world.elapsedSeconds` 初始化噪声时间；新存档恢复保存的季节温度和噪声时间，再按累计游戏时间恢复当前昼夜进度。修改季节 signal 会立即派生温度并更新季节光照，不需要逐帧重复写入。环境温度尚未接入 HUD 的角色体温显示。
+现阶段季节没有自动推进组件。旧存档使用 `world.systems.season.name`（默认春季）的中点温度，并以 `world.elapsedSeconds` 初始化噪声时间；新存档恢复保存的季节温度和噪声时间，再按累计游戏时间恢复当前昼夜进度。从 DST 存档导入的默认存档（`Cluster_1`）还写入源存档的 `worldtemperature` 季节温度、时段温度和 `noisetime`，因此不再退回到季节中点。修改季节 signal 会立即派生温度并更新季节光照，不需要逐帧重复写入。环境温度尚未接入 HUD 的角色体温显示。
 
 ```ts
 import { WorldTemperature } from '../packages/componets/src/worldtemperature';

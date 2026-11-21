@@ -436,6 +436,50 @@
   "landCells": 44042,
   "savedCells": 45984,
   "note": "Original impassable gaps and FAKE_GROUND are non-walkable; only whitelisted source entities are imported. No bridges are generated.",
+  "worldSystems": {
+    "clock": {
+      "cycles": 280,
+      "phase": "day",
+      "totaltimeinphase": 300,
+      "remainingtimeinphase": 298.99975585938,
+      "segs": {
+        "night": 3,
+        "day": 10,
+        "dusk": 3
+      }
+    },
+    "moonphasecycle": 1,
+    "season": {
+      "name": "autumn",
+      "remainingDays": 20
+    },
+    "worldtemperature": {
+      "season": "autumn",
+      "seasontemperature": 55,
+      "phasetemperature": 0.052371703053381,
+      "noisetime": 137702.59375,
+      "daylight": true
+    },
+    "weather": {
+      "moisture": 1386.9326171875,
+      "moisturefloor": 821.2373046875,
+      "moistureceil": 7452.9887695313,
+      "preciptype": "none",
+      "peakprecipitationrate": 0.59455132484436
+    },
+    "nightmareclock": {
+      "lengths": {
+        "calm": 12,
+        "warn": 3,
+        "wild": 5,
+        "dawn": 2
+      },
+      "phase": "dawn",
+      "totaltimeinphase": 79.341384887695,
+      "remainingtimeinphase": 18.229377746582
+    },
+    "elapsedSeconds": 134401.00024414062
+  },
   "entityWhitelist": [
     "pigking",
     "moonbase",

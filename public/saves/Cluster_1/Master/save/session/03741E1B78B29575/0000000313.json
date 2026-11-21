@@ -16,8 +16,36 @@
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 0,
-    "systems": {},
+    "elapsedSeconds": 134881.12575954862,
+    "systems": {
+      "clock": {
+        "day": 282,
+        "phase": "day",
+        "phaseProgress": 0.00375253182870372
+      },
+      "moon": {
+        "mooomphasecycle": 11
+      },
+      "season": {
+        "name": "autumn",
+        "daysRemaining": 19
+      },
+      "worldtemperature": {
+        "season": "autumn",
+        "seasontemperature": 52.5,
+        "phasetemperature": 0.058943266794337,
+        "noisetime": 132935.234375,
+        "daylight": true
+      },
+      "weather": {
+        "moisture": 1719.8658447266,
+        "moisturefloor": 279.15209960938,
+        "moistureceil": 11392.370117188,
+        "preciptype": "none",
+        "peakprecipitationrate": 0.73351341485977,
+        "snowlevel": 0
+      }
+    },
     "map": {
       "kind": "generated",
       "defaultTileId": 1,

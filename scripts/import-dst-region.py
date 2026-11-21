@@ -10,10 +10,11 @@ import subprocess
 SCRIPTS = Path(__file__).resolve().parent
 ROOT = SCRIPTS.parent
 LITERALS = runpy.run_path(str(SCRIPTS / 'dst-save-literal.py'))
-# Each part owns its source -> project conversion: tiles (map, coordinates, spawn), prefabs (entities), player.
+# Each part owns its source -> project conversion: tiles (map, coordinates, spawn), prefabs (entities), player, systems.
 TILE = runpy.run_path(str(SCRIPTS / 'dst-region-tile.py'))
 PREFAB = runpy.run_path(str(SCRIPTS / 'dst-region-prefab.py'))
 PLAYER = runpy.run_path(str(SCRIPTS / 'dst-region-player.py'))
+SYSTEMS = runpy.run_path(str(SCRIPTS / 'dst-region-systems.py'))
 
 
 def convert(terrain, template, supported, origin_cell=None):
@@ -60,6 +61,12 @@ def import_shard(shard, template, supported, catalog, origin_cell=None, snapshot
     source_text = source.read_text()
     terrain = LITERALS['snapshot_map'](source_text)
     result, report = convert(terrain, template, supported, origin_cell)
+    network = LITERALS['snapshot_world'](source_text)
+    if not isinstance(network, dict) or set(network) != {'persistdata'}:
+        raise ValueError('Expected world_network persistdata')
+    result['world']['systems'], result['world']['elapsedSeconds'], systems_report = SYSTEMS['convert_systems'](
+        network['persistdata'], terrain['prefab'])
+    report['worldSystems'] = systems_report
     source_entities = LITERALS['snapshot_entities'](source_text, PREFAB['source_prefabs']())
     result['world']['entities'], entity_report = PREFAB['convert_entities'](
         terrain, source_entities, report, session_id, catalog)
