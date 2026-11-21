@@ -20,6 +20,7 @@ import { bindSlotEntities, type EntitySlotSignal } from './slot/slot-binding';
 import type { InventoryReceiveSource } from './slot/slot-receive-animation';
 import { slotTransferController, type SlotTransferRequest } from './slot/slot-transfer';
 import styles from './styles/inventory-bar.css?inline';
+import { proportionalHudScale } from './hud-scale';
 import slotStyles from './styles/slot.css?inline';
 
 export type InventoryBarItem = SlotItem;
@@ -38,6 +39,9 @@ interface SlotDescriptor {
   label: string;
   backgroundAsset: string;
 }
+
+// inventorybar.lua
+const INVENTORY_BASE_SCALE = 0.6;
 
 const equipmentSlots = [
   { kind: 'hand', label: '手部装备', asset: 'equip_slot.tex.png' },
@@ -97,6 +101,7 @@ export class DstInventoryBarElement extends AssetElement {
   readonly contextMenu = readonlySignal(this.contextMenuState);
   private readonly renderers: SlotRenderer[] = [];
   private initialized = false;
+  private stopScale?: () => void;
 
   constructor() {
     super();
@@ -141,6 +146,25 @@ export class DstInventoryBarElement extends AssetElement {
 
   disconnectedCallback(): void {
     this.disposeRenderers();
+    this.stopScale?.();
+    this.stopScale = undefined;
+  }
+
+  /** controls.lua bottom_root (SCALEMODE_PROPORTIONAL, bottom-middle) times inventorybar.lua's base_scale 0.6. */
+  private bindScale(): void {
+    if (this.stopScale) {
+      return;
+    }
+    const bar = this.shadowRoot!.querySelector<HTMLElement>('.inventory-bar')!;
+    const apply = () => {
+      bar.style.setProperty(
+        '--inventory-bar-scale',
+        String(proportionalHudScale(window.innerWidth, window.innerHeight) * INVENTORY_BASE_SCALE),
+      );
+    };
+    window.addEventListener('resize', apply);
+    apply();
+    this.stopScale = () => window.removeEventListener('resize', apply);
   }
 
   protected render(): void {
@@ -157,6 +181,7 @@ export class DstInventoryBarElement extends AssetElement {
         renderer.refresh();
         renderer.connect();
       });
+      this.bindScale();
       return;
     }
     this.initialized = true;
@@ -178,13 +203,13 @@ export class DstInventoryBarElement extends AssetElement {
       </section>
     `;
 
+    // inventorybar.lua: bg, then bgcover over it, both behind the slot row.
     const backdrop = createAtlasImage('inventory-bar__backdrop', 'images/hud.xml', 'inventory_bg.tex');
-    root.querySelector('.inventory-bar__backdrop')!.replaceWith(backdrop);
-    void backdrop.ready
-      .then(() => {
-        backdrop.style.aspectRatio = `${backdrop.dataset.width} / ${backdrop.dataset.height}`;
-      })
-      .catch((error: unknown) => console.error('Unable to load inventory background', error));
+    const cover = createAtlasImage('inventory-bar__cover', 'images/hud.xml', 'inventory_bg_cover.tex');
+    root.querySelector('.inventory-bar__backdrop')!.replaceWith(backdrop, cover);
+    for (const image of [backdrop, cover]) {
+      void image.ready.catch((error: unknown) => console.error('Unable to load inventory background', error));
+    }
 
     const inventoryGroups = root.querySelectorAll<HTMLElement>('.inventory-bar__item-group');
     this.inventory.slots.forEach((slot, index) => {
@@ -210,6 +235,7 @@ export class DstInventoryBarElement extends AssetElement {
       renderer.refresh();
       renderer.connect();
     });
+    this.bindScale();
     root.querySelector<HTMLButtonElement>('.inventory-bar__inspect')!.addEventListener('click', () => {
       this.dispatchEvent(
         new CustomEvent('game:self-inspect', {

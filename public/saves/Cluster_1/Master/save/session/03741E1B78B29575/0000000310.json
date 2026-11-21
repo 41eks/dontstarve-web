@@ -784727,6 +784727,316 @@
           }
         }
       ],
+      "cookpot": [
+        {
+          "id": "dst_03741E1B78B29575_cookpot_id_117300",
+          "transform": {
+            "position": [
+              1272.0,
+              0.0,
+              996.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          },
+          "skinname": "cookpot_kitchen"
+        },
+        {
+          "id": "dst_03741E1B78B29575_cookpot_id_117302",
+          "transform": {
+            "position": [
+              1260.0,
+              0.0,
+              1008.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          },
+          "skinname": "cookpot_kitchen"
+        },
+        {
+          "id": "dst_03741E1B78B29575_cookpot_id_117304",
+          "transform": {
+            "position": [
+              1260.0,
+              0.0,
+              996.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          },
+          "skinname": "cookpot_kitchen"
+        },
+        {
+          "id": "dst_03741E1B78B29575_cookpot_id_117306",
+          "transform": {
+            "position": [
+              1272.0,
+              0.0,
+              1008.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {},
+            "stewer": {
+              "product": "jellybean",
+              "done": true,
+              "ingredient_prefabs": [
+                "royal_jelly",
+                "kelp",
+                "kelp",
+                "kelp"
+              ],
+              "chef_id": "KU_s42VTETf"
+            }
+          },
+          "skinname": "cookpot_kitchen"
+        }
+      ],
+      "icebox": [
+        {
+          "id": "dst_03741E1B78B29575_icebox_id_110934",
+          "transform": {
+            "position": [
+              1266.0,
+              0.0,
+              1002.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {
+                "1": {
+                  "id": "dst_03741E1B78B29575_icebox_id_110934_0",
+                  "prefab": "ice",
+                  "components": {
+                    "stackable": {
+                      "stack": 39
+                    },
+                    "perishable": {
+                      "time": 943.72484573283
+                    }
+                  }
+                },
+                "2": {
+                  "id": "dst_03741E1B78B29575_icebox_id_110934_1",
+                  "prefab": "ice",
+                  "components": {
+                    "stackable": {
+                      "stack": 5
+                    },
+                    "perishable": {
+                      "time": 990.76389617943
+                    }
+                  }
+                },
+                "3": {
+                  "id": "dst_03741E1B78B29575_icebox_id_110934_2",
+                  "prefab": "ice",
+                  "components": {
+                    "stackable": {
+                      "stack": 40
+                    },
+                    "perishable": {
+                      "time": 1370.7142081638
+                    }
+                  }
+                },
+                "4": {
+                  "id": "dst_03741E1B78B29575_icebox_id_110934_3",
+                  "prefab": "dragonfruit_seeds",
+                  "components": {
+                    "stackable": {
+                      "stack": 8
+                    },
+                    "perishable": {
+                      "time": 17953.128475203
+                    }
+                  }
+                },
+                "8": {
+                  "id": "dst_03741E1B78B29575_icebox_id_110934_7",
+                  "prefab": "ice",
+                  "components": {
+                    "stackable": {
+                      "stack": 36
+                    },
+                    "perishable": {
+                      "time": 1266.0734744764
+                    }
+                  }
+                }
+              }
+            },
+            "building": {}
+          }
+        }
+      ],
+      "saltbox": [
+        {
+          "id": "dst_03741E1B78B29575_saltbox_id_116107",
+          "transform": {
+            "position": [
+              1261.5,
+              0.0,
+              1002.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {
+                "1": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116107_0",
+                  "prefab": "kelp",
+                  "components": {
+                    "stackable": {
+                      "stack": 26
+                    },
+                    "perishable": {
+                      "time": 4027.5076250437
+                    }
+                  }
+                },
+                "2": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116107_1",
+                  "prefab": "meat",
+                  "components": {
+                    "stackable": {
+                      "stack": 10
+                    },
+                    "perishable": {
+                      "time": 927.37878238746
+                    }
+                  }
+                },
+                "3": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116107_2",
+                  "prefab": "bird_egg",
+                  "components": {
+                    "stackable": {
+                      "stack": 4
+                    },
+                    "perishable": {
+                      "time": 3832.1146810039
+                    }
+                  }
+                },
+                "4": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116107_3",
+                  "prefab": "kelp",
+                  "components": {
+                    "stackable": {
+                      "stack": 38
+                    },
+                    "perishable": {
+                      "time": 1197.7473400143
+                    }
+                  }
+                },
+                "5": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116107_4",
+                  "prefab": "monstermeat",
+                  "components": {
+                    "stackable": {
+                      "stack": 10
+                    }
+                  }
+                },
+                "6": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116107_5",
+                  "prefab": "plantmeat",
+                  "components": {
+                    "stackable": {
+                      "stack": 8
+                    }
+                  }
+                },
+                "7": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116107_6",
+                  "prefab": "tomato",
+                  "components": {
+                    "stackable": {
+                      "stack": 7
+                    },
+                    "perishable": {
+                      "time": 1897.6074764714
+                    }
+                  }
+                },
+                "8": {
+                  "id": "dst_03741E1B78B29575_saltbox_id_116107_7",
+                  "prefab": "cave_banana",
+                  "components": {
+                    "stackable": {
+                      "stack": 16
+                    },
+                    "perishable": {
+                      "time": 3193.2244273578
+                    }
+                  }
+                }
+              }
+            },
+            "building": {}
+          }
+        }
+      ],
+      "dragonflychest": [
+        {
+          "id": "dst_03741E1B78B29575_dragonflychest_id_150009",
+          "transform": {
+            "position": [
+              1170.0,
+              0.0,
+              1014.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          }
+        }
+      ],
+      "wardrobe": [
+        {
+          "id": "dst_03741E1B78B29575_wardrobe_index_000001",
+          "transform": {
+            "position": [
+              -18.0,
+              0.0,
+              -486.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {}
+          }
+        }
+      ],
       "shadow_forge": [
         {
           "id": "dst_03741E1B78B29575_shadow_forge_index_000001",

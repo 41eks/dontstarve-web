@@ -34,6 +34,14 @@ def pigking_components(data):
     return {}
 
 
+def wardrobe_components(data):
+    # wardrobe.lua OnSave writes only burnt, and the project's wardrobe port has no burnable to restore it: reject it
+    # rather than import a wardrobe that would silently come back unburnt. The prefab's building record stays empty.
+    if data:
+        raise ValueError(f'Unsupported wardrobe save state: {sorted(data)}')
+    return {'building': {}}
+
+
 def moonbase_components(data, context):
     # moonbase.lua OnSave/OnLoad: workable owns the repair state; pickable gates the held staff.
     if context['skin'] is not None or set(data) - {'workable', 'pickable', 'staff', 'staffname', 'staffuse', 'timer'}:
