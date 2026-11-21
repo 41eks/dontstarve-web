@@ -12,6 +12,7 @@ import { DisposeTileStates, GetTileStateAtPoint } from '../../componets/src/tile
 import { useTestTileMap } from './tileMapFixture';
 import { SpriteFrameRenderer, type ResolvedSprite } from '../src/animationAssets';
 import { mouseTargets, setMouseTargetEnabled } from '../../prefab/src/mouseTargets';
+import { publishSpriteSpatialBounds } from '../src/spatialBounds';
 import { testItem } from './testInventory';
 
 useTestTileMap();
@@ -361,6 +362,56 @@ it('narrows picking to targets whose padded envelope the ray reaches, following 
     const front = target(0);
     front.inst.setPosition(0, 0, 2);
     expect(pointer.pickMouseTarget()?.object).toBe(front.mesh);
+    raycasts.forEach(spy => spy.mockRestore());
+  } finally {
+    for (const model of [...scene.children]) {
+      disposeActionEntity(findActionEntity(model));
+    }
+    pointer.dispose();
+    geometry.dispose();
+    material.dispose();
+  }
+});
+
+it("reads a sprite root's envelope from its renderer, and follows art that grows at the next pick", () => {
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  camera.position.z = 10;
+  camera.updateMatrixWorld();
+  const scene = new THREE.Scene(),
+    geometry = new THREE.PlaneGeometry(2, 2),
+    material = new THREE.MeshBasicMaterial();
+  // A sprite root as a renderer draws it: a mesh under a visual whose shown frames publish their envelope.
+  const target = (x: number) => {
+    const model = new THREE.Group(),
+      visual = new THREE.Group(),
+      mesh = new THREE.Mesh(geometry, material);
+    visual.add(mesh);
+    model.add(visual);
+    scene.add(model);
+    const inst = registerActionEntity(prefabInstance(withEntity(model, 'rock'))!);
+    inst.setPosition(x, 0, 0);
+    publishSpriteSpatialBounds(visual, new THREE.Sphere(new THREE.Vector3(), Math.SQRT2));
+    return { visual, mesh };
+  };
+  const targets = Array.from({ length: 48 }, (_, i) => target(20 + i * 5));
+  const renderer = {
+    domElement: { getBoundingClientRect: () => ({ left: 0, top: 0, width: 100, height: 100 }) },
+  } as unknown as THREE.WebGLRenderer;
+  const pointer = new PointerRaycaster({ camera, renderer, scene });
+  pointer.trackPointer({ clientX: 50, clientY: 50 } as PointerEvent);
+  // The world box a measured root needs: published art never builds one.
+  const measure = vi.spyOn(THREE.Box3.prototype, 'union');
+  try {
+    expect(pointer.pickMouseTarget()).toBeUndefined();
+    const raycasts = targets.map(({ mesh }) => vi.spyOn(mesh, 'raycast'));
+    expect(pointer.pickMouseTarget()).toBeUndefined();
+    expect(raycasts.filter(spy => spy.mock.calls.length > 0)).toEqual([]);
+    expect(measure).not.toHaveBeenCalled();
+    // The first target shows a frame reaching the ray. Its turn of the round-robin is two picks away (48 roots, 16
+    // a pick), yet the grown envelope lets the very next pick reach it.
+    targets[0].mesh.position.x = -20;
+    publishSpriteSpatialBounds(targets[0].visual, new THREE.Sphere(new THREE.Vector3(-20, 0, 0), Math.SQRT2));
+    expect(pointer.pickMouseTarget()?.object).toBe(targets[0].mesh);
     raycasts.forEach(spy => spy.mockRestore());
   } finally {
     for (const model of [...scene.children]) {

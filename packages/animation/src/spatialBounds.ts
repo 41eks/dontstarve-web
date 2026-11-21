@@ -38,6 +38,8 @@ export function prepareSpatialGeometryBounds(geometry: BufferGeometry): void {
   }
 }
 
+const growthListeners = new Set<(visual: Object3D) => void>();
+
 /** A conservative envelope of frames already displayed, independent of billboard facing. */
 export function publishSpriteSpatialBounds(visual: Object3D, sphere: Sphere): void {
   const radius = sphere.center.length() + sphere.radius;
@@ -45,6 +47,15 @@ export function publishSpriteSpatialBounds(visual: Object3D, sphere: Sphere): vo
     return;
   }
   radii.set(visual, radius);
+  for (const listener of growthListeners) {
+    listener(visual);
+  }
+}
+
+/** Calls `listener` with each visual whose envelope grows, as a frame it shows reaches farther than any before. */
+export function onSpriteSpatialGrowth(listener: (visual: Object3D) => void): () => void {
+  growthListeners.add(listener);
+  return () => growthListeners.delete(listener);
 }
 
 export function spriteSpatialRadius(visual: Object3D): number | undefined {

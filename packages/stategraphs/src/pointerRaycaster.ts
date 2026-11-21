@@ -2,7 +2,12 @@ import { findActionEntity } from '../../prefab/src/actionEntity';
 import * as THREE from 'three';
 import type { ActionWorldContext as WorldContext } from './actionContext.ts';
 import { mouseTargets, type MouseTargetEntity } from '../../prefab/src/mouseTargets';
-import { prepareSpatialGeometryBounds, spatialAttributeVersion } from '../../animation/src/spatialBounds.ts';
+import {
+  onSpriteSpatialGrowth,
+  prepareSpatialGeometryBounds,
+  spatialAttributeVersion,
+  spriteSpatialRadius,
+} from '../../animation/src/spatialBounds.ts';
 import { isInstancedSpriteProxy } from '../../animation/src/spriteRaycast.ts';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 
@@ -87,29 +92,66 @@ function spriteBounds(object: THREE.Object3D): THREE.Box3 {
 /**
  * Broad phase for pointer picking: per target root, the farthest any picked bounds have reached from its origin,
  * padded as the padded pick enlarges them. It only grows, so a ray farther than this from the root misses both picks.
- * Billboards turn and entities move about that origin, so neither invalidates it; a changed frame, scale or
- * visibility is caught when the root is next refreshed.
+ * Billboards turn and entities move about that origin, so neither invalidates it. Sprite art is read from the
+ * envelope its renderer publishes for the frames it has shown: a frame reaching farther refreshes the root at the next
+ * pick. Other art is measured; a changed scale, offset or measured art is caught when the root is next refreshed.
  */
 const pickEnvelopes = new WeakMap<MouseTargetEntity, number>();
 /** Roots refreshed per pick, round-robin, so each target's envelope follows its art within a few frames. */
 const ENVELOPE_REFRESHES_PER_PICK = 16;
 const envelopeOrigin = new THREE.Vector3();
+const visualOrigin = new THREE.Vector3();
 const envelopeSphere = new THREE.Sphere();
+/** Every entity above a sprite visual whose published envelope grew since the entity was last refreshed. */
+const grownEntities = new WeakSet<object>();
+onSpriteSpatialGrowth(visual => {
+  for (let node: THREE.Object3D | null = visual; node; node = node.parent) {
+    const entity = prefabInstance(node);
+    if (entity) {
+      grownEntities.add(entity);
+    }
+  }
+});
 
 function refreshPickEnvelope(entity: MouseTargetEntity): void {
   const model = entity.transform.model;
-  // The bounds read the current transforms, as the exact pick does.
+  grownEntities.delete(entity);
+  // The envelope reads the current transforms, as the exact pick does.
   model.updateWorldMatrix(true, true);
-  const box = spriteBounds(model);
-  if (box.isEmpty()) {
+  model.getWorldPosition(envelopeOrigin);
+  let radius = -1,
+    measured = false;
+  const visit = (node: THREE.Object3D, published: boolean) => {
+    const own = spriteSpatialRadius(node);
+    if (own !== undefined) {
+      node.getWorldPosition(visualOrigin);
+      const reach = own * node.matrixWorld.getMaxScaleOnAxis() * SPRITE_PICK_SCALE;
+      radius = Math.max(radius, envelopeOrigin.distanceTo(visualOrigin) + reach);
+    } else if (!published && node instanceof THREE.Mesh && mouseVisible(node)) {
+      measured = true;
+    }
+    for (const child of node.children) {
+      visit(child, published || own !== undefined);
+    }
+  };
+  visit(model, false);
+  // Art no renderer publishes for, such as a plain mesh: measure the root's visible bounds.
+  if (measured) {
+    const box = spriteBounds(model);
+    if (!box.isEmpty()) {
+      box.getBoundingSphere(envelopeSphere);
+      radius = Math.max(
+        radius,
+        envelopeOrigin.distanceTo(envelopeSphere.center) + envelopeSphere.radius * SPRITE_PICK_SCALE,
+      );
+    }
+  }
+  if (radius < 0) {
     if (!pickEnvelopes.has(entity)) {
       pickEnvelopes.set(entity, 0);
     }
     return;
   }
-  model.getWorldPosition(envelopeOrigin);
-  box.getBoundingSphere(envelopeSphere);
-  const radius = envelopeOrigin.distanceTo(envelopeSphere.center) + envelopeSphere.radius * SPRITE_PICK_SCALE;
   if (radius > (pickEnvelopes.get(entity) ?? -1)) {
     pickEnvelopes.set(entity, radius);
   }
@@ -252,15 +294,16 @@ export class PointerRaycaster {
     const { candidates } = this,
       ray = this.raycaster.ray;
     candidates.length = 0;
-    // Each root is refreshed once every `period` picks; one with no envelope yet is refreshed now. A refreshed root
-    // then faces the same envelope test as the others: only the ray's neighbours reach the exact pick.
+    // Each root is refreshed once every `period` picks; one with no envelope yet, or whose sprite art has grown, is
+    // refreshed now. A refreshed root then faces the same envelope test as the others: only the ray's neighbours reach
+    // the exact pick.
     const period = Math.max(1, Math.ceil(mouseTargets.size / ENVELOPE_REFRESHES_PER_PICK)),
       phase = this.pickCount++ % period;
     let index = 0;
     // The registry already excludes removed, detached, inactive, disabled and NOCLICK roots.
     for (const entity of mouseTargets) {
       const model = entity.transform.model;
-      if (index++ % period === phase || !pickEnvelopes.has(entity)) {
+      if (index++ % period === phase || !pickEnvelopes.has(entity) || grownEntities.has(entity)) {
         refreshPickEnvelope(entity);
       }
       const envelope = pickEnvelopes.get(entity)!;
