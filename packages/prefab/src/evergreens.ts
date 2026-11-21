@@ -11,10 +11,11 @@ import { addComponent, removeComponent } from './components';
 import { PrefabInstance, type EntityTask, type PrefabEntityDefinition } from './prefabInstance';
 import type { EntityPersistData } from './saveRecord';
 import { PlaySound, type SoundEventPath, type SoundHandle } from './sound';
-import { MakeObstaclePhysics, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
+import { MakeObstaclePhysics, MakeSnowCovered, RemovePhysicsColliders, WORLD_SCALE } from './standardcomponents';
 import { ToolMouseTarget, type ToolMouseTargetWorld } from './toolMouseTarget';
 import { BurnableBinding, TREE_BURN_TIME, type FireFxHost } from './treeFire';
 import type { WorldEventEmitter } from './worldContext';
+import type { GetWatchWorldContent } from '@dontstarve-web/signals';
 
 export const EVERGREEN_ID = 'evergreen' as const;
 export const EVERGREEN_SPAWN_IDS = [EVERGREEN_ID, 'evergreen_short', 'evergreen_normal', 'evergreen_tall'] as const;
@@ -56,6 +57,8 @@ export interface EvergreenWorld extends ToolMouseTargetWorld {
   readonly camera: THREE.Camera;
   /** DefaultBurntFn: one ash at the burnt inst's position. */
   readonly worldEvents: WorldEventEmitter;
+  /** MakeSnowCovered's snow level; without a bound world the snow layer stays hidden. */
+  readonly getWatchWorldContent?: GetWatchWorldContent;
   /** SpawnPrefab for the needles a chop throws off. */
   spawnPrefab(prefab: string, position: ReadonlyVector3): PrefabInstance;
   growthDuration?(seconds: number): number;
@@ -90,9 +93,12 @@ export class EvergreenInstance extends PrefabInstance {
     this.setPosition(position.x, 0, position.z);
     this.deploySmartRadius = 1;
     this.minimap.SetPriority(-1);
-    for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable', 'SnowCovered']) {
+    for (const tag of ['plant', 'tree', 'evergreens', 'evergreen', 'petrifiable']) {
       this.addTag(tag);
     }
+    // evergreens.lua MakeSnowCoveredPristine + MakeSnowCovered: the build's own `snow` symbol is replaced from
+    // snow.zip and hidden until weather.lua's snow level covers the world.
+    MakeSnowCovered(this, this.world.getWatchWorldContent);
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('CHOP');
     workable.SetOnWorkCallback(chop_tree);
@@ -444,7 +450,7 @@ export function evergreenPrefabs(
     assets: {
       animationArchive: 'evergreen_short_normal.zip',
       extraAnimationArchives: ['evergreen_tall_old.zip'],
-      buildArchives: ['evergreen_new.zip'],
+      buildArchives: ['evergreen_new.zip', 'snow.zip'],
       bank: 'evergreen_short',
     },
     assetOptions: {
