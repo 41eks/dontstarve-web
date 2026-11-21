@@ -14,6 +14,9 @@ export default [
     rules: {
       // Every if / else / for / while / do body is a braced block, even a single statement.
       curly: ['error', 'all'],
+      // A new object is built with { ...a, ...b }, not Object.assign({}, …); scripts/check-conventions.mjs's
+      // object-assign-state covers Object.assign into an existing object.
+      'prefer-object-spread': 'error',
     },
   },
 ];
