@@ -22,6 +22,17 @@ export interface SanityInst extends EquippableOwner {
 export const SANITY_MODE_INSANITY = 0;
 export const SANITY_MODE_LUNACY = 1;
 export type SanityMode = typeof SANITY_MODE_INSANITY | typeof SANITY_MODE_LUNACY;
+/** constants.lua RATE_SCALE */
+export const RATE_SCALE = {
+  NEUTRAL: 0,
+  INCREASE_HIGH: 1,
+  INCREASE_MED: 2,
+  INCREASE_LOW: 3,
+  DECREASE_HIGH: 4,
+  DECREASE_MED: 5,
+  DECREASE_LOW: 6,
+} as const;
+export type RateScale = (typeof RATE_SCALE)[keyof typeof RATE_SCALE];
 export interface SanitySaveData {
   current: number;
   sane: boolean;
@@ -62,6 +73,8 @@ export class Sanity {
   no_moisture_penalty = false;
   ignore = false;
   rate = 0;
+  /** sanity.lua self.ratescale, which the sanity badge's arrow reads through the replica. */
+  ratescale: RateScale = RATE_SCALE.NEUTRAL;
   readonly externalmodifiers = new SourceModifierList(0, (a, b) => a + b);
   custom_rate_fn?: (inst: SanityInst, dt: number) => number;
   redirect?: (inst: SanityInst, delta: number, overtime?: boolean) => void;
@@ -263,6 +276,9 @@ export class Sanity {
     }
     this.oldMode = this.mode;
   }
+  GetRateScale(): RateScale {
+    return this.ratescale;
+  }
   GetRate(dt = 0): number {
     if (this.disposed || this.isUpdatingBlocked()) {
       return 0;
@@ -297,11 +313,21 @@ export class Sanity {
     }
     this.UpdateMode_Internal();
     if (this.isUpdatingBlocked()) {
+      // Disable arrows.
       this.rate = 0;
+      this.ratescale = RATE_SCALE.NEUTRAL;
       return;
     }
-    this.rate = this.GetRate(dt);
-    this.DoDelta(this.rate * dt, true);
+    const rate = (this.rate = this.GetRate(dt));
+    this.ratescale =
+      (rate > 0.2 && RATE_SCALE.INCREASE_HIGH) ||
+      (rate > 0.1 && RATE_SCALE.INCREASE_MED) ||
+      (rate > 0.01 && RATE_SCALE.INCREASE_LOW) ||
+      (rate < -0.3 && RATE_SCALE.DECREASE_HIGH) ||
+      (rate < -0.1 && RATE_SCALE.DECREASE_MED) ||
+      (rate < -0.02 && RATE_SCALE.DECREASE_LOW) ||
+      RATE_SCALE.NEUTRAL;
+    this.DoDelta(rate * dt, true);
   }
   OnSave(): SanitySaveData {
     return { current: this.current, sane: this.saneState.peek(), mode: this.mode };

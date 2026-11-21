@@ -7,7 +7,7 @@ async function setTime(page: Page, elapsedSeconds: number, dt = 0) {
   await page.evaluate(
     async ({ state, timeinphase, dt, signalsUrl }) => {
       const hud = document.querySelector('dst-status-hud') as DstStatusHudElement;
-      hud.advanceClockAnimation(dt);
+      hud.advanceAnimation(dt);
       const { clockstate, moonphasestate, batch } = await import(signalsUrl);
       const { moonPhase, ...clock } = state;
       batch(() => {
@@ -70,7 +70,7 @@ test('follows world time, daytime segment pulses and source phase transitions', 
     observer.observe(canvas, { attributes: true, attributeFilter: ['data-rotation', 'data-day', 'data-phase'] });
     const frames = [canvas.toDataURL()];
     for (let frame = 0; frame < 8; frame++) {
-      hud.advanceClockAnimation(1 / 60);
+      hud.advanceAnimation(1 / 60);
       frames.push(canvas.toDataURL());
     }
     const progressWrites = observer.takeRecords().length;

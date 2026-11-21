@@ -51,6 +51,28 @@ export interface EntityEventData {
   newstate: { readonly statename: string };
   /** health.lua SetVal, at zero health; a creature without health pushes it without data. */
   death: { readonly cause?: string } | undefined;
+  /** health.lua DoDelta. */
+  healthdelta: {
+    readonly oldpercent: number;
+    readonly newpercent: number;
+    readonly overtime?: boolean;
+    readonly cause?: string;
+    readonly amount: number;
+  };
+  /** hunger.lua SetCurrent. */
+  hungerdelta: {
+    readonly oldpercent: number;
+    readonly newpercent: number;
+    readonly overtime?: boolean;
+    readonly delta: number;
+  };
+  /** sanity.lua DoDelta. */
+  sanitydelta: {
+    readonly oldpercent: number;
+    readonly newpercent: number;
+    readonly overtime?: boolean;
+    readonly sanitymode: number;
+  };
   /** entityscript.lua PushBufferedAction / ClearBufferedAction. */
   actionfailed: { readonly action: BufferedAction; readonly reason?: string };
 }

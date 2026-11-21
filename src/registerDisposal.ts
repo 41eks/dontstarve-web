@@ -57,7 +57,7 @@ export interface FrameController extends Disposable {
 
 interface DisposalResources {
   panels: readonly Disposable[];
-  statusHud: Disposable & { advanceClockAnimation(dt: number): void };
+  statusHud: Disposable & { advanceAnimation(dt: number): void };
   frameControllers: readonly FrameController[];
   actionControllers: readonly Disposable[];
   stopInventoryReceived: () => void;
@@ -67,7 +67,7 @@ interface DisposalResources {
 
 /** Own application frame tasks and subscribe to explicit scene disposal once. */
 export function registerDisposal(events: EventEmitter<DisposalEvents>, resources: DisposalResources): () => void {
-  const stopClockAnimation = registerFrontTask(dt => resources.statusHud.advanceClockAnimation(dt));
+  const stopHudAnimation = registerFrontTask(dt => resources.statusHud.advanceAnimation(dt));
   const stopControllerUpdates = resources.frameControllers.map(controller =>
     registerFrontTask(() => controller.update()),
   );
@@ -76,7 +76,7 @@ export function registerDisposal(events: EventEmitter<DisposalEvents>, resources
     for (const panel of resources.panels) {
       panel.dispose();
     }
-    stopClockAnimation();
+    stopHudAnimation();
     resources.statusHud.dispose();
     resources.stopInventoryReceived();
     resources.frameControllers.forEach((controller, index) => {

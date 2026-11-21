@@ -152,6 +152,10 @@ test('keeps world generation visible until the complete game renders and preserv
   await expect(generatingPage).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).drawsAtReady)).toBe(1);
   await expect(page.locator('#app > dst-crafting-ui')).toHaveCount(1);
+  // The status badges load their art and bind to the player's stat events.
+  await expect(page.locator('dst-status-hud .survival-hud')).toHaveAttribute('data-state', 'ready', {
+    timeout: 15_000,
+  });
   await page.keyboard.press('Backquote');
   await expect(page.locator('dst-debug-console input')).toBeFocused();
   const source = parseKtex(

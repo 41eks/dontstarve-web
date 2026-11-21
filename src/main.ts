@@ -80,14 +80,8 @@ gameUi.minimap.addEventListener('game:map-state', event => {
     mapAutopaused = autopaused;
   }
 });
-const stopStatsUpdates: (() => void)[] = [];
-const watchedStats = [playerStats.health.current, playerStats.hunger.value, playerStats.sanity.value].map(stat =>
-  watchSignal<unknown>(stat, stop => stopStatsUpdates.push(stop)),
-);
-createRenderEffect(() => {
-  watchedStats.forEach(stat => stat.get());
-  gameUi.statusHud.setStats(getPlayerStats());
-});
+// StatusDisplays listens to the player's stat delta events; statusHud.dispose() removes the listeners.
+gameUi.statusHud.setOwner(playerInstance);
 export const inventory = createInventoryStore(itemWorld);
 const inventorySlotItem = createInventorySlotItem(inventory);
 export const handEquipment = inventory.handEquipment;
@@ -273,7 +267,6 @@ document.body.append(sanityVignette.canvas);
 const stopVignetteUpdate = registerFrontTask(dt => sanityVignette.update(dt));
 disposalEvents.on('dispose', () => {
   gameUi.minimap.dispose();
-  stopStatsUpdates.forEach(stop => stop());
   stopVignetteUpdate();
   sanityVignette.dispose();
 });

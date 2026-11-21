@@ -53,7 +53,7 @@ vi.mock('../../../src/player', () => {
 it('updates application resources until scene disposal, then releases them once', () => {
   const events = new EventEmitter<DisposalEvents>();
   const panel = { dispose: vi.fn() };
-  const statusHud = { advanceClockAnimation: vi.fn(), dispose: vi.fn() };
+  const statusHud = { advanceAnimation: vi.fn(), dispose: vi.fn() };
   const frameController = { update: vi.fn(), dispose: vi.fn() };
   const actionController = { dispose: vi.fn() };
   const stopInventoryReceived = vi.fn(),
@@ -72,7 +72,7 @@ it('updates application resources until scene disposal, then releases them once'
     for (const task of tasks) {
       task(0.25);
     }
-    expect(statusHud.advanceClockAnimation).toHaveBeenCalledWith(0.25);
+    expect(statusHud.advanceAnimation).toHaveBeenCalledWith(0.25);
     expect(frameController.update).toHaveBeenCalledOnce();
     expect(panel.dispose).not.toHaveBeenCalled();
 
@@ -119,7 +119,7 @@ it('creates panels before scene initialization and owns subscriptions until expl
       containers: [{ id: 'player:inventory' }],
       animateReceive: vi.fn(),
     },
-    statusHud: { advanceClockAnimation: vi.fn(), dispose: vi.fn() },
+    statusHud: { advanceAnimation: vi.fn(), dispose: vi.fn() },
   };
   const screenPosition = { x: 200, y: 150 };
   const screenProjection = { GetScreenPos: vi.fn(() => screenPosition) };
@@ -202,7 +202,7 @@ it('creates panels before scene initialization and owns subscriptions until expl
     for (const task of tasks) {
       task(0.25);
     }
-    expect(gameUi.statusHud.advanceClockAnimation).toHaveBeenCalledWith(0.25);
+    expect(gameUi.statusHud.advanceAnimation).toHaveBeenCalledWith(0.25);
     events.emit('dispose', undefined);
     events.emit('dispose', undefined);
     expect(tasks.size).toBe(0);
