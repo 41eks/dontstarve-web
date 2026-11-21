@@ -125,3 +125,34 @@ it('does not recreate a removed player or write its json when a pending source f
   expect(model.getObjectByProperty('isMesh', true)).toBeUndefined();
   expect(model.parent).toBeNull();
 });
+
+it('revives without replaying a ghost clip on the living bank when the ghost art failed to load', async () => {
+  vi.stubGlobal('window', new EventTarget());
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.stubGlobal('fetch', async (url: string) => {
+    if (url.includes('ghost_wortox_build')) {
+      throw new TypeError('Failed to fetch');
+    }
+    return new Response(await readFile(new URL(`../../../public${url}`, import.meta.url)));
+  });
+  const world = new CANNON.World();
+  const { instance, model, display } = wortox('/dst/data/anim', world);
+  registerPlayer(model);
+  display.mount(new THREE.Scene());
+  try {
+    await display.artLoaded();
+    advancePlayer(instance, 1 / 30);
+    // The ghost bank's appear clip is declared while its art fails to load.
+    makeGhost(instance);
+    await tick();
+    await tick();
+    expect(instance.sprite.sprite.peek().clip.name).toBe('appear');
+    // DoActualRez switches bank, then build, then plays the rebirth clip of the living bank.
+    expect(() => makeAlive(instance, 'amulet_rebirth')).not.toThrow();
+    expect(instance.sprite.sprite.peek().clip.name).toBe('amulet_rebirth');
+    expect(instance.sprite.currentAnimation).toBe('amulet_rebirth');
+  } finally {
+    instance.remove();
+    display.dispose();
+  }
+});

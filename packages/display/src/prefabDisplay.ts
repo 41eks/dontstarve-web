@@ -188,6 +188,8 @@ export class PrefabDisplay {
     tint?: SpriteJson['tint'];
     appearance: ReadonlyMap<string, AppearanceJson>;
   };
+  /** The bank each json clip was declared in: a clip names an animation of that bank only. */
+  private declaredClip?: { readonly clip: ClipJson; readonly bank: string | number | undefined };
 
   /** Ground declarations keep their explicit group order and do not join billboard foot sorting. */
   /** Ground art and LAYER_BACKGROUND art draw by their own order, outside the depth-sorted world layer. */
@@ -594,6 +596,10 @@ export class PrefabDisplay {
       return;
     }
     const { engine: controller, applied, state } = this;
+    if (json.clip !== this.declaredClip?.clip) {
+      this.declaredClip = { clip: json.clip, bank: json.source?.bank };
+    }
+    const clipInBank = this.declaredClip.bank === json.source?.bank;
     this.followFrameSource(json.frameSource);
     if (json.visible !== undefined) {
       this.model.visible = json.visible;
@@ -610,7 +616,9 @@ export class PrefabDisplay {
         controller.setArtSource?.(source);
       }
     }
-    if (json.clip !== applied.clip) {
+    // A clip whose bank's art never arrived is not played in the bank that replaced it; its next clip is, as
+    // AnimState:SetBank leaves nothing to play until PlayAnimation names a clip of the new bank.
+    if (json.clip !== applied.clip && clipInBank) {
       const clip = json.clip;
       if (clip.none) {
         if (!controller.clearAnimation) {
@@ -631,11 +639,11 @@ export class PrefabDisplay {
       applied.frame = undefined;
       applied.paused = undefined;
     }
-    for (; applied.queue < json.queue.length; applied.queue++) {
+    for (; json.clip === applied.clip && applied.queue < json.queue.length; applied.queue++) {
       const entry = json.queue[applied.queue];
       controller.pushAnimation(entry.name, entry.loop);
     }
-    if (json.frame !== applied.frame) {
+    if (json.clip === applied.clip && json.frame !== applied.frame) {
       const frame = this.frameIndex(json.frame);
       // A fractional frame waits for the clip's art; dressing the drawn sprite applies it.
       if (frame !== undefined || json.frame === undefined) {
