@@ -97,6 +97,8 @@ export interface PrefabDisplayOptions {
 }
 
 const displaysByModel = new WeakMap<THREE.Object3D, PrefabDisplay>();
+/** A display ordered with an effect drawn after it stays out of the shared batches. */
+const NEVER_BATCHED = () => false;
 const rootRotation = new THREE.Quaternion();
 const localFacing = new THREE.Quaternion();
 
@@ -142,7 +144,8 @@ export class PrefabDisplay {
   /** The deferred sprite source while this display loads it. */
   private sourceLoading?: Promise<unknown>;
   private fx!: FxAttachments;
-  private instancedWhile?: () => boolean;
+  /** The batching condition the owner of this display's effect role sets; undefined draws with the batches. */
+  private readonly instancedWhile = createSignal<(() => boolean) | undefined>(undefined);
   private readonly follower = new AnimationFollower(name => {
     if (!this.engine.setAnimation) {
       throw new Error('This display cannot follow an animation');
@@ -348,17 +351,33 @@ export class PrefabDisplay {
     this.fx = new FxAttachments(
       this.model,
       () => this.engine.setComposites?.(this.fx.compositeFrames()),
-      () => this.engine.drawnInstanced ?? false,
+      () => this.drawnInstanced,
     );
     this.fxRenderEntries = this.fx.renderEntries;
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
+    // An effect drawn after this display (FINALOFFSET_MAX fire) is ordered with it by foot key, which only the ordinary
+    // billboards follow: every batch draws before them and resolves coplanar sprites by depth. While one is shown, this
+    // display leaves the batches, and an effect following it (`ownerBatched`) leaves with it.
+    const frontFxShown = createMemo(() => this.fx.renderEntries.get().some(({ sortLayer }) => sortLayer > 1));
+    this.cleanups.push(() => frontFxShown.dispose());
+    const batchFollow = createMemo(() => (frontFxShown.get() ? NEVER_BATCHED : this.instancedWhile.get()));
+    this.cleanups.push(() => batchFollow.dispose());
+    // A sprite the art replaced takes the condition again; one that never had a condition keeps the default.
+    let given: (() => boolean) | undefined;
+    this.cleanups.push(
+      createEffect(() => {
+        art.get();
+        const follow = batchFollow.get();
+        if (follow !== undefined || given !== undefined) {
+          this.engine.setInstancedWhile?.(follow);
+        }
+        given = follow;
+      }),
+    );
     this.cleanups.push(
       createEffect(() => {
         art.get();
         this.listed.setSprite(this.engine.instanced);
-        if (this.instancedWhile) {
-          this.engine.setInstancedWhile?.(this.instancedWhile);
-        }
         this.applySprite(this.json.peek());
         this.dress(json.peek());
         state.artChanged();
@@ -457,11 +476,12 @@ export class PrefabDisplay {
 
   /** Draw with the shared batches only while `follow()` holds, for every sprite this display draws; the owner of an effect sets it. */
   setInstancedWhile(follow: (() => boolean) | undefined): void {
-    if (this.instancedWhile === follow) {
-      return;
-    }
-    this.instancedWhile = follow;
-    this.engine.setInstancedWhile?.(follow);
+    this.instancedWhile.set(follow);
+  }
+
+  /** Whether the shared batches drew this display's last frame. */
+  get drawnInstanced(): boolean {
+    return this.engine.drawnInstanced ?? false;
   }
 
   /** Set by the owner that shows this display as its effect, for as long as it does. */
