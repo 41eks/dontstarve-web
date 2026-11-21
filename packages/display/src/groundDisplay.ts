@@ -45,11 +45,15 @@ export interface GroundTerrain extends OceanColourMap {
   cellRange(): { min: number; max: number };
   /** falloffdefs.lua: the cliff art, and the land cell sides that carry a cliff. */
   readonly falloffArt: GroundFalloffArt;
-  falloffEdges(): readonly FalloffEdge[];
+  /** In row, column, edge order; with `bounds`, only the edges of cells within them. */
+  falloffEdges(bounds?: GroundCellBounds): readonly FalloffEdge[];
   /** The ocean pass's art, or `undefined` when the world has no ocean surface to draw. */
   oceanArt(): GroundTileArt | undefined;
-  /** Cells the ocean surface covers; the ocean pass shades by world position, so only their footprint matters. */
-  oceanSurfaceCells(): Iterable<readonly [col: number, row: number]>;
+  /**
+   * Cells the ocean surface covers (with `bounds`, those within them); the ocean pass shades by world position, so only
+   * their footprint matters.
+   */
+  oceanSurfaceCells(bounds?: GroundCellBounds): Iterable<readonly [col: number, row: number]>;
   groundLayers(): readonly GroundLayerDeclaration[];
   /** Edge-mask quads of every declared layer whose cell lies within `bounds`. */
   groundLayerQuads(bounds: GroundCellBounds): ReadonlyMap<number, readonly GroundTileQuad[]>;
@@ -102,7 +106,8 @@ const releaseMeshes = (meshes: THREE.Mesh[]) => {
 };
 
 /** Draws the world's declared ground layers, ground overlays, cliffs and ocean surface. A terrain change rebuilds only
- * the layer chunks it reaches; a newly declared layer or overlay loads its art here and then draws wherever its tiles are.
+ * the layer chunks it reaches, and the cliff and ocean meshes only when the cells it reaches change them; a newly
+ * declared layer or overlay loads its art here and then draws wherever its tiles are.
  */
 export class GroundDisplay implements GroundOverlayHost {
   readonly root = new THREE.Group();
@@ -115,6 +120,13 @@ export class GroundDisplay implements GroundOverlayHost {
   private disposed = false;
   private falloffAssets?: GroundFalloffAssets;
   private falloffMesh?: THREE.Mesh;
+  /** The cliff edges the falloff mesh draws, in the terrain's row, column, edge order. */
+  private falloffEdges: readonly FalloffEdge[] = [];
+  /** The ocean surface mesh's cells, as `cellIndex` values. */
+  private readonly oceanCells = new Set<number>();
+  /** The terrain's cellRange, which is fixed for its lifetime. */
+  private readonly cellMin: number;
+  private readonly cellWidth: number;
   private readonly depthPrepass = new GroundDepthPrepass();
   private ocean?: OceanSurface;
   private oceanMesh?: THREE.Mesh;
@@ -139,18 +151,19 @@ export class GroundDisplay implements GroundOverlayHost {
         });
       }
     }
+    this.cellMin = min;
+    this.cellWidth = max - min;
     this.stopTerrain = terrain.onTerrainChanged(bounds => {
       this.declare(true);
-      // Variants read the eight neighbours, so an edit reaches one cell beyond its bounds.
-      this.rebuild(
-        bounds && {
-          minCol: bounds.minCol - 1,
-          minRow: bounds.minRow - 1,
-          maxCol: bounds.maxCol + 1,
-          maxRow: bounds.maxRow + 1,
-        },
-      );
-      this.rebuildCliffsAndOcean();
+      // Variants read the eight neighbours and cliffs the four sides, so an edit reaches one cell beyond its bounds.
+      const reach = bounds && {
+        minCol: bounds.minCol - 1,
+        minRow: bounds.minRow - 1,
+        maxCol: bounds.maxCol + 1,
+        maxRow: bounds.maxRow + 1,
+      };
+      this.rebuild(reach);
+      this.rebuildCliffsAndOcean(reach);
     });
   }
 
@@ -217,31 +230,63 @@ export class GroundDisplay implements GroundOverlayHost {
     }
   }
 
-  private rebuildCliffsAndOcean(): void {
+  /** With `bounds`, only the cells within them are re-read, and a mesh is rebuilt only when they change it. */
+  private rebuildCliffsAndOcean(bounds?: GroundCellBounds): void {
     if (this.disposed) {
       return;
     }
-    this.rebuildOcean();
-    this.rebuildFalloff();
-    this.ocean?.rebuildColours();
+    this.rebuildOcean(bounds);
+    this.rebuildFalloff(bounds);
+    this.ocean?.rebuildColours(bounds);
+  }
+
+  private cellIndex(col: number, row: number): number {
+    return (row - this.cellMin) * this.cellWidth + col - this.cellMin;
   }
 
   /** The ocean surface's footprint: its cells merged into rectangles. */
-  private rebuildOcean(): void {
+  private rebuildOcean(bounds?: GroundCellBounds): void {
     const mesh = this.oceanMesh;
     if (!mesh) {
       return;
     }
-    const { min, max } = this.terrain.cellRange();
-    const surface = new Set<string>();
-    for (const [col, row] of this.terrain.oceanSurfaceCells()) {
-      surface.add(`${col},${row}`);
+    const cells = this.oceanCells;
+    if (bounds) {
+      const within = new Set<number>();
+      for (const [col, row] of this.terrain.oceanSurfaceCells(bounds)) {
+        within.add(this.cellIndex(col, row));
+      }
+      const max = this.cellMin + this.cellWidth;
+      let changed = false;
+      for (let row = Math.max(this.cellMin, bounds.minRow); row < Math.min(max, bounds.maxRow); row++) {
+        for (let col = Math.max(this.cellMin, bounds.minCol); col < Math.min(max, bounds.maxCol); col++) {
+          const index = this.cellIndex(col, row);
+          if (within.has(index) === cells.has(index)) {
+            continue;
+          }
+          changed = true;
+          if (within.has(index)) {
+            cells.add(index);
+          } else {
+            cells.delete(index);
+          }
+        }
+      }
+      if (!changed) {
+        return;
+      }
+    } else {
+      cells.clear();
+      for (const [col, row] of this.terrain.oceanSurfaceCells()) {
+        cells.add(this.cellIndex(col, row));
+      }
     }
-    const rects = mergeCellRectangles(max - min, (col, row) => surface.has(`${col + min},${row + min}`));
+    const width = this.cellWidth;
+    const rects = mergeCellRectangles(width, (col, row) => cells.has(row * width + col));
     mesh.geometry.dispose();
     mesh.geometry = cellRectangleGeometry(
       rects,
-      min,
+      this.cellMin,
       this.terrain.tileSize,
       this.terrain.size / 2,
       new THREE.Matrix4(),
@@ -249,11 +294,30 @@ export class GroundDisplay implements GroundOverlayHost {
     mesh.visible = rects.length > 0;
   }
 
-  private rebuildFalloff(): void {
+  private rebuildFalloff(bounds?: GroundCellBounds): void {
     if (!this.falloffAssets || !this.falloffMesh) {
       return;
     }
-    const edges = this.terrain.falloffEdges();
+    let edges: readonly FalloffEdge[];
+    if (bounds) {
+      const inside = ({ col, row }: FalloffEdge) =>
+        col >= bounds.minCol && col < bounds.maxCol && row >= bounds.minRow && row < bounds.maxRow;
+      const previous = this.falloffEdges.filter(inside);
+      const next = this.terrain.falloffEdges(bounds);
+      if (
+        previous.length === next.length &&
+        previous.every(({ col, row, edge }, i) => col === next[i].col && row === next[i].row && edge === next[i].edge)
+      ) {
+        return;
+      }
+      // Keep the terrain's row, column, edge order, so the faces' tie order matches a whole-map rebuild.
+      edges = [...this.falloffEdges.filter(edge => !inside(edge)), ...next].sort(
+        (a, b) => a.row - b.row || a.col - b.col || a.edge - b.edge,
+      );
+    } else {
+      edges = this.terrain.falloffEdges();
+    }
+    this.falloffEdges = edges;
     this.falloffMesh.geometry.dispose();
     this.falloffMesh.geometry = groundFalloffGeometry(edges, this.falloffAssets);
     this.depthPrepass.sync(this.falloffMesh);

@@ -27,8 +27,8 @@ export class OceanSurface {
   attach(mesh: THREE.Mesh): void {
     this.pipeline.attach(mesh);
   }
-  rebuildColours(): void {
-    this.pipeline.rebuildColours();
+  rebuildColours(bounds?: Parameters<OceanRenderPipeline['rebuildColours']>[0]): void {
+    this.pipeline.rebuildColours(bounds);
   }
 
   bindClock(source: ReadonlySignal<ClockState>): void {

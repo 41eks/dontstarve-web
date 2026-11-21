@@ -267,6 +267,8 @@ export class OceanRenderPipeline implements SceneRenderPass {
   private blendDirty = true;
   private renderer?: THREE.WebGLRenderer;
   private readonly map: OceanColourMap;
+  /** 1 where the colour textures' cell is an ocean tile; the clear-colour floor covers these cells. */
+  private readonly oceanMask: Uint8Array;
   private ownsPlaceholderGeometry = true;
   private disposed = false;
 
@@ -274,6 +276,7 @@ export class OceanRenderPipeline implements SceneRenderPass {
     this.map = map;
     this.min = Math.floor(-map.size / 2 / map.tileSize);
     this.width = Math.ceil(map.size / 2 / map.tileSize) - this.min;
+    this.oceanMask = new Uint8Array(this.width * this.width);
     const pixels = () => new Uint8Array(this.width * this.width * 4);
     this.day = palette('DST ocean day palette', (this.dayPixels = pixels()), this.width, this.width);
     this.dusk = palette('DST ocean dusk palette', (this.duskPixels = pixels()), this.width, this.width);
@@ -369,21 +372,55 @@ export class OceanRenderPipeline implements SceneRenderPass {
     this.unregister = registerSceneRenderPass(surface, this);
   }
 
-  rebuildColours(): void {
-    for (let row = 0; row < this.width; row++) {
-      for (let col = 0; col < this.width; col++) {
-        const colour =
-          this.map.oceanColoursAt?.(col + this.min, row + this.min) ??
-          (this.map.isOceanTileAt(col + this.min, row + this.min) ? OCEAN : LAND);
-        const offset = (row * this.width + col) * 4;
+  /**
+   * Re-reads each cell's colours, or with `bounds` (signed cells) only those within them: a cell's colour is its own
+   * tile's. The textures upload and the floor rebuilds only when the re-read cells change them.
+   */
+  rebuildColours(bounds?: {
+    readonly minCol: number;
+    readonly minRow: number;
+    readonly maxCol: number;
+    readonly maxRow: number;
+  }): void {
+    const { width, min } = this;
+    let coloursChanged = !bounds,
+      oceanChanged = !bounds;
+    const same = (pixels: Uint8Array, offset: number, colour: readonly number[]) =>
+      colour.every((value, i) => pixels[offset + i] === value);
+    const rows = bounds ? [Math.max(0, bounds.minRow - min), Math.min(width, bounds.maxRow - min)] : [0, width];
+    const cols = bounds ? [Math.max(0, bounds.minCol - min), Math.min(width, bounds.maxCol - min)] : [0, width];
+    for (let row = rows[0]; row < rows[1]; row++) {
+      for (let col = cols[0]; col < cols[1]; col++) {
+        const ocean = this.map.isOceanTileAt(col + min, row + min);
+        const colour = this.map.oceanColoursAt?.(col + min, row + min) ?? (ocean ? OCEAN : LAND);
+        const cell = row * width + col,
+          offset = cell * 4;
+        if (this.oceanMask[cell] !== Number(ocean)) {
+          this.oceanMask[cell] = Number(ocean);
+          oceanChanged = true;
+        }
+        if (
+          !coloursChanged &&
+          !(
+            same(this.dayPixels, offset, colour.day) &&
+            same(this.duskPixels, offset, colour.dusk) &&
+            same(this.primaryPixels, offset, colour.primary)
+          )
+        ) {
+          coloursChanged = true;
+        }
         this.dayPixels.set(colour.day, offset);
         this.duskPixels.set(colour.dusk, offset);
         this.primaryPixels.set(colour.primary, offset);
       }
     }
-    this.day.needsUpdate = this.dusk.needsUpdate = this.primary.needsUpdate = true;
-    this.rebuildFloor();
-    this.coloursDirty = true;
+    if (coloursChanged) {
+      this.day.needsUpdate = this.dusk.needsUpdate = this.primary.needsUpdate = true;
+      this.coloursDirty = true;
+    }
+    if (oceanChanged) {
+      this.rebuildFloor();
+    }
   }
 
   setPhase(blend: number, floor: THREE.Vector3): void {
@@ -520,7 +557,8 @@ export class OceanRenderPipeline implements SceneRenderPass {
       this.surface.updateWorldMatrix(true, false);
       inverse.copy(this.surface.matrixWorld).invert();
     }
-    const rects = mergeCellRectangles(width, (col, row) => map.isOceanTileAt(col + min, row + min));
+    const mask = this.oceanMask;
+    const rects = mergeCellRectangles(width, (col, row) => mask[row * width + col] === 1);
     const geometry = cellRectangleGeometry(rects, min, map.tileSize, map.size / 2, inverse);
     this.floorMesh.geometry.dispose();
     this.floorMesh.geometry = geometry;

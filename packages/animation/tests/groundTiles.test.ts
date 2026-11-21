@@ -142,6 +142,9 @@ it('sorts merged cliff faces across negative coordinates without replacing verti
     const version = geometry.index!.version;
     sortGroundFalloffGeometry(geometry, new THREE.Matrix4().makeRotationY(Math.PI));
     expect(geometry.index!.version).toBe(version);
+    // A panning camera moves every face by the same depth: the order stands and the index is not re-uploaded.
+    sortGroundFalloffGeometry(geometry, new THREE.Matrix4().makeRotationY(Math.PI).setPosition(30, -5, 12));
+    expect(geometry.index!.version).toBe(version);
     sortGroundFalloffGeometry(geometry, new THREE.Matrix4());
     expect(geometry.index!.getX(0)).toBe(0);
     expect(geometry.getAttribute('position')).toBe(vertices);
@@ -281,6 +284,48 @@ it('draws the ocean surface as merged rectangles instead of a quad per cell', as
   expect([box.min.x, box.max.x, box.min.z, box.max.z]).toEqual([-36, 0, 0, 36]);
   expect(map.dig(new THREE.Vector3(-18, 0, 18))).toBe(false);
   display.dispose();
+});
+
+it('rebuilds cliffs and ocean only for edits that change them, matching a whole-map draw', async () => {
+  const tiles = [];
+  for (let col = -4; col < 4; col++) {
+    tiles.push({ col, row: -4, tileId: WORLD_TILES.IMPASSABLE });
+  }
+  for (let row = 0; row < 3; row++) {
+    for (let col = -4; col < -1; col++) {
+      tiles.push({ col, row, tileId: WORLD_TILES.OCEAN_COASTAL });
+    }
+  }
+  const map = new TurfMap(96, tiles);
+  const meshes = (display: Awaited<ReturnType<typeof drawGround>>) =>
+    ['TurfFalloff', 'TurfOcean:OCEAN_COASTAL', 'OceanClearColour'].map(
+      name => display.root.getObjectByName(name) as THREE.Mesh,
+    );
+  const display = await drawGround(map);
+  const before = meshes(display).map(mesh => mesh.geometry);
+  expect(before[0].getIndex()!.count).toBeGreaterThan(0);
+  // Retiling land away from the void and the ocean leaves every cliff and ocean cell as it was.
+  map.setTile(2, 2, WORLD_TILES.ROCKY);
+  for (const [index, mesh] of meshes(display).entries()) {
+    expect(mesh.geometry).toBe(before[index]);
+  }
+  // Land over the void moves the cliffs; land turned ocean grows the surface and its floor.
+  map.setTile(0, -4, WORLD_TILES.DIRT);
+  map.setTile(-1, 1, WORLD_TILES.OCEAN_COASTAL);
+  const after = meshes(display);
+  for (const [index, mesh] of after.entries()) {
+    expect(mesh.geometry).not.toBe(before[index]);
+  }
+  const reference = await drawGround(map);
+  for (const [index, mesh] of meshes(reference).entries()) {
+    expect(Array.from(after[index].geometry.getAttribute('position').array)).toEqual(
+      Array.from(mesh.geometry.getAttribute('position').array),
+    );
+    expect(Array.from(after[index].geometry.getIndex()!.array)).toEqual(Array.from(mesh.geometry.getIndex()!.array));
+  }
+  reference.dispose();
+  display.dispose();
+  map.dispose();
 });
 
 it('restores ocean terrain, rejects land actions and keeps ground overlays on land', async () => {
