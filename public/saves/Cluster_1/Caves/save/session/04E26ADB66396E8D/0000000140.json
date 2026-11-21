@@ -16,8 +16,46 @@
   "world": {
     "shardId": "caves",
     "prefab": "cave",
-    "elapsedSeconds": 0,
-    "systems": {},
+    "elapsedSeconds": 133441.0076904297,
+    "systems": {
+      "clock": {
+        "day": 279,
+        "phase": "day",
+        "phaseProgress": 0.0033589680989666304
+      },
+      "moon": {
+        "mooomphasecycle": 19
+      },
+      "season": {
+        "name": "summer",
+        "daysRemaining": 2
+      },
+      "worldtemperature": {
+        "season": "summer",
+        "seasontemperature": 71.269465723032,
+        "phasetemperature": 0.052761568289171,
+        "noisetime": 136802.625,
+        "daylight": true
+      },
+      "weather": {
+        "moisture": 1024.1743164063,
+        "moisturefloor": 821.2373046875,
+        "moistureceil": 7452.9887695313,
+        "preciptype": "none",
+        "peakprecipitationrate": 0.59455132484436
+      },
+      "nightmareclock": {
+        "lengths": {
+          "calm": 12,
+          "warn": 3,
+          "wild": 5,
+          "dawn": 2
+        },
+        "phase": "wild",
+        "totaltimeinphase": 211.44738769531,
+        "remainingtimeinphase": 102.16902923584
+      }
+    },
     "map": {
       "kind": "generated",
       "defaultTileId": 1,

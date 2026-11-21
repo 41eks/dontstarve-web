@@ -212,7 +212,7 @@ alpha = first + second + third
 
 `rainRate`、`snowRate`、`snowCover` 派生恢复；季节及温度保存在 `world.systems.worldtemperature`，不得只保存冬季的外观。旧天气存档缺少 `snowlevel` 时从零积雪恢复；非法字段在更改状态前校验，失败时保留原状态。详见 [保存系统](dst-save-system.md)。
 
-默认存档当前为冬季中点，季节温度 −25°C，降水类型为雪并带薄积雪。现有调试方式为 `c_give("book_rain")` 后右键阅读：无降水时请求开始，有降水时请求停止；雨雪类型仍取决于温度。成功阅读消耗 1 次耐久（初始 5 次），基础理智代价为 33，并使用现有阅读状态、`book_fx`／`swap_books`、`fx_book_rain` 及 `wickerbottom_rework/book_spells/rain` 音效。
+默认存档（`Cluster_1` 地表最新快照 `0000000315`）按源存档恢复为第 283 日秋季，季节温度 50、时段温度 3.72、湿度 2198，`preciptype = none`、峰值 0.734、积雪 0；洞穴最新快照 `0000000145` 为第 281 日秋季、湿度 1487。现有调试方式为 `c_give("book_rain")` 后右键阅读：无降水时请求开始，有降水时请求停止；雨雪类型仍取决于温度。成功阅读消耗 1 次耐久（初始 5 次），基础理智代价为 33，并使用现有阅读状态、`book_fx`／`swap_books`、`fx_book_rain` 及 `wickerbottom_rework/book_spells/rain` 音效。
 
 当前没有新增天气控制台命令；天气管理器持有的雨雪 FX 不通过 `c_spawn("rain")`／`c_spawn("snow")` 暴露，也不作为持久实体导出。命令语法、参数和其他支持的 prefab/item ID 保持既有规则。
 

@@ -623,6 +623,27 @@ def pond_components(data):
     return {'plants': [{'offset': [plant['offset'][0], plant['offset'][1], 0 - plant['offset'][2]]} for plant in plants]} if plants else {}
 
 
+def hotspring_components(data):
+    # hotspring.lua OnSave writes at most one of delay_refill / glassed / isbathbombed / empty; workable.savestate
+    # writes maxwork/workleft. Only the normal and bath-bombed, non-glass state is ported.
+    if set(data) - {'workable', 'delay_refill', 'glassed', 'isbathbombed', 'empty'}:
+        raise ValueError('Unsupported hotspring save state')
+    flags = [key for key in ('delay_refill', 'glassed', 'isbathbombed', 'empty') if key in data]
+    if any(data[key] is not True for key in flags) or len(flags) > 1:
+        raise ValueError('Unsupported hotspring state flags')
+    if set(flags) - {'isbathbombed'}:
+        # The full-moon glassing, the mined-empty spring and its pending refill are not ported.
+        raise ValueError(f'Unsupported hotspring state: {flags[0]}')
+    workable = data.get('workable')
+    # Every hot spring saves its MINE workable (savestate = true, TUNING.HOTSPRING_WORK = 6, maxwork = -1), which the
+    # project does not port: the state is validated, then dropped.
+    if workable is not None and (not isinstance(workable, dict) or set(workable) != {'maxwork', 'workleft'}
+                                 or type(workable['maxwork']) is not int or workable['maxwork'] != -1
+                                 or type(workable['workleft']) is not int or not 0 <= workable['workleft'] <= 6):
+        raise ValueError('Unsupported hotspring workable state')
+    return {'hotspring': {'isbathbombed': True} if 'isbathbombed' in data else {}}
+
+
 def lava_pond_components(data):
     # lava_pond.lua OnSave/OnLoad: the rock layout spawned around the pool.
     if set(data) - {'rocks'}:

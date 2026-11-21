@@ -2,7 +2,14 @@ import { PrefabDisplayGroup, prefabDisplay } from '@dontstarve-web/display';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { createMemo, createSignal, type WorldMoonPhase, type WorldMoonState } from '@dontstarve-web/signals';
+import {
+  createMemo,
+  createSignal,
+  WorldContentKey,
+  type WorldMoonPhase,
+  type WorldMoonState,
+  type WorldPhase,
+} from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { moonFissurePrefabs, MOON_FISSURE_ID, MoonFissureInstance } from '../../prefab/src/moon_fissure';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
@@ -27,13 +34,17 @@ function setup(phase: WorldMoonPhase = 'new', playerPosition = new THREE.Vector3
     scheduler = new GameTimeScheduler(),
     awake = createSignal(true);
   const moon = createSignal<WorldMoonState>({ phase, waxing: true });
+  const cycle = createSignal<WorldPhase>('night');
   const displays = new PrefabDisplayGroup(scene);
   const prefabs = new PrefabEntityManager<string, PrefabInstance>(displays, '/dst/data/anim', {
     tickingarea: () => createMemo(() => awake.get()),
     scheduler,
   });
-  // TheWorld.state.moonphase, as the world's Moon content.
-  const definitions = moonFissurePrefabs({ getWatchWorldContent: (() => moon) as never });
+  // TheWorld.state.moonphase / isnight, as the world's Moon and Cycle content.
+  const definitions = moonFissurePrefabs({
+    scheduler,
+    getWatchWorldContent: ((key: WorldContentKey) => (key === WorldContentKey.Moon ? moon : cycle)) as never,
+  });
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
   registry.registerPrefabs(PREFAB_DEFINITIONS.moonFissures);
@@ -49,7 +60,7 @@ function setup(phase: WorldMoonPhase = 'new', playerPosition = new THREE.Vector3
     displays.dispose();
     scheduler.dispose();
   };
-  return { scene, awake, prefabs, registry, definitions, spawn, records, requested, dispose };
+  return { scene, awake, scheduler, moon, cycle, prefabs, registry, definitions, spawn, records, requested, dispose };
 }
 const record = (id: string, x: number): EntitySaveRecord => ({
   id,
@@ -96,17 +107,21 @@ it('loads a save record with the clip, tags, bank and component values moon_fiss
     const { workable, sanityaura, repairable } = inst.components;
     expect([workable.maxwork.peek(), workable.workleft.peek(), workable.savestate]).toEqual([1, 0, false]);
     expect([repairable.repairmaterial, repairable.noannounce]).toEqual(['moon_altar', true]);
-    // UpdateState at a new moon: level 1, radius 0, the backing shown and every glow layer hidden on the fissure.
+    // UpdateState at a new moon: level 1, radius 0, the backing shown, every glow layer hidden on the fissure, and no light.
     expect([inst._level, sanityaura.max_distsq]).toEqual([1, 0]);
     expect(layers(inst)).toEqual({ low: true, med: true, high: true, full: true, backing: false });
+    expect(inst.light.peek()).toBeUndefined();
     expect(records()).toEqual([saved]);
     await prefabDisplay(inst.transform.model)!.artLoaded();
     expect(requested('moon_fissure.zip')).toBe(true);
     expect(inst.sprite.currentAnimation).toBe('crack_idle');
-    // A lit phase hides the backing too, and the aura reaches 1.25 times the light radius.
+    // A lit phase hides the backing too, the aura reaches 1.25 times the light radius, and the fissure emits light.
     const lit = half.spawn(record('half-fissure', 4));
     expect([lit._level, lit.components.sanityaura.max_distsq]).toEqual([3, 6 * 6 * 1.25 * 1.25]);
     expect(layers(lit)).toEqual({ low: true, med: true, high: true, full: true, backing: true });
+    expect(lit.light.peek()).toBeDefined();
+    expect(lit.light.peek()!.radius).toBeGreaterThan(0);
+    expect(lit.light.peek()!.colour).toEqual([130 / 255, 160 / 255, 170 / 255]);
   } finally {
     dispose();
     half.dispose();
@@ -189,5 +204,40 @@ it('keeps a c_spawn fissure through c_save and a reload, and rejects c_give', as
     first.dispose();
     second.dispose();
     inventory.dispose();
+  }
+});
+
+it('watches the moon phase and re-dresses the light after a transition', async () => {
+  const { scheduler, moon, spawn, dispose } = setup('new');
+  try {
+    const inst = spawn(record('watching-fissure', 1));
+    expect(inst._level).toBe(1);
+    expect(inst.light.peek()).toBeUndefined();
+    moon.set({ phase: 'half', waxing: true });
+    await settle();
+    // delayed_transition waits a random delay, then UpdateState runs 5 frames later; advance past both.
+    scheduler.advance(2);
+    expect(inst._watchedphase).toBe('half');
+    expect(inst._level).toBe(3);
+    expect(inst.light.peek()).toBeDefined();
+    expect(inst.light.peek()!.radius).toBeGreaterThan(0);
+  } finally {
+    dispose();
+  }
+});
+
+it('dims the light colour by the ambient brightness during the day', async () => {
+  const { scheduler, cycle, spawn, dispose } = setup('half');
+  try {
+    const inst = spawn(record('day-fissure', 1));
+    const night = inst.light.peek()!.colour;
+    cycle.set('day');
+    scheduler.advance(1 / 30);
+    const day = inst.light.peek()!.colour;
+    expect(day[0]).toBeLessThan(night[0]);
+    expect(day[1]).toBeLessThan(night[1]);
+    expect(day[2]).toBeLessThan(night[2]);
+  } finally {
+    dispose();
   }
 });

@@ -24,4 +24,6 @@ python3 scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output 
 python3 scripts/dst-save-diff.py --expect pillar_cave monkeypillar
 ```
 
+世界状态从每份快照的 `world_network_fn` 导入，不沿用模板默认值：`clock.cycles`、`phase`、`remainingtimeinphase` → `world.elapsedSeconds`（按项目的固定 10/4/2 段换算）和 `world.systems.clock`（`day = cycles + 1`），`mooomphasecycle` → `systems.moon`；`seasons.season`／`remainingdaysinseason` → `systems.season`；`worldtemperature` 的季节温度、时段温度、`noisetime` 和 `daylight` → `systems.worldtemperature`；`weather`（地表）或 `caveweather`（洞穴）的 `moisture`、`moisturefloor`、`moistureceil`、`preciptype`、`peakprecipitationrate`、`snowlevel` → `systems.weather`；洞穴的 `nightmareclock` 原样保留。`seasons.lua` 的季节段数尚未移植，导入按源阶段内的进度映射到项目固定段长，因此同一日、同一时段及进度恢复。`fumarolelocaltemperature`、`quaker` 等未移植状态校验后丢弃，来源值记录在 `.import.json` 的 `worldSystems`。
+
 单分片导入、其他参数和源快照限制见 [地表与洞穴地图导入](../docs/dst-static-layouts.md#从完整存档导入地表与洞穴地图)。

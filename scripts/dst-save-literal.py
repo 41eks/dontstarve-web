@@ -107,6 +107,13 @@ def snapshot_map(text):
     return LiteralReader(text, match.end()).value()
 
 
+def snapshot_world(text):
+    match = re.search(r'tablefunctions\["world_network_fn"\]\s*=\s*function\(\)\s*return\s+', text)
+    if not match:
+        raise ValueError('Expected a readable DST development world snapshot with world_network_fn')
+    return LiteralReader(text, match.end()).value()
+
+
 def snapshot_entities(text, prefabs):
     """Read only explicitly requested prefab groups; never execute the wrapper functions."""
     groups = {}

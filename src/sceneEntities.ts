@@ -1674,7 +1674,9 @@ export async function createSceneEntities(
   }
 
   function registerMoonFissures(registry: EntityRegistry, worldState: SceneWorldState) {
-    prefabs.register(moonFissurePrefabs({ getWatchWorldContent: worldState.getWatchWorldContent }));
+    prefabs.register(
+      moonFissurePrefabs({ scheduler: worldState.scheduler, getWatchWorldContent: worldState.getWatchWorldContent }),
+    );
     registry.registerPrefabs(PREFAB_DEFINITIONS.moonFissures);
   }
 

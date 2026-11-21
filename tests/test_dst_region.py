@@ -10,6 +10,7 @@ import unittest
 
 IMPORTER = runpy.run_path(str(Path(__file__).resolve().parents[1] / 'scripts/import-dst-region.py'))
 TILE, PREFAB, PLAYER = IMPORTER['TILE'], IMPORTER['PREFAB'], IMPORTER['PLAYER']
+SYSTEMS = IMPORTER['SYSTEMS']
 
 
 class RegionImportTest(unittest.TestCase):
@@ -19,6 +20,20 @@ class RegionImportTest(unittest.TestCase):
         self.assertEqual(convert({}), {})
         with self.assertRaisesRegex(ValueError, 'plants'):
             convert({'plants': [{'offset': [1, 0]}]})
+
+    def test_hotspring_import_keeps_the_bath_bomb_state_and_rejects_unported_glass(self):
+        convert = PREFAB['ENTITY_WHITELIST']['hotspring']
+        self.assertEqual(convert({}), {'hotspring': {}})
+        # Every hot spring saves its MINE workable; the project does not port it, so it is dropped after validation.
+        self.assertEqual(convert({'workable': {'maxwork': -1, 'workleft': 6}}), {'hotspring': {}})
+        self.assertEqual(convert({'workable': {'maxwork': -1, 'workleft': 0}, 'isbathbombed': True}),
+                         {'hotspring': {'isbathbombed': True}})
+        for data in ({'glassed': True}, {'empty': True}, {'delay_refill': True},
+                     {'glassed': True, 'isbathbombed': True}, {'isbathbombed': False},
+                     {'workable': {'maxwork': 6, 'workleft': 6}},
+                     {'workable': {'maxwork': -1, 'workleft': 7}}, {'unknown': True}):
+            with self.assertRaises(ValueError):
+                convert(data)
 
     def test_staff_lights_keep_the_source_extinguish_timer_and_reject_unknown_state(self):
         encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
@@ -132,8 +147,11 @@ class RegionImportTest(unittest.TestCase):
                            'nodeidtilemap': encode([1] * 49), 'topology': {'ids': ['Room'], 'nodes': []},
                            'world_tile_map': {'IMPASSABLE': 1, 'GRASS': 8, 'OCEAN_SWELL': 201, 'OCEAN_ICE': 300}}
                 source = 'tablefunctions["map_fn"] = function() return ' + literal(terrain) + '\nend\n'
-                (session / '0000000001').write_text(source)
-                (session / snapshot).write_text(source + 'tablefunctions["ents_grass_fn"] = function() return {{id=7,x=0,z=0}} end')
+                network = 'tablefunctions["world_network_fn"] = function() return {persistdata={}} end\n'
+                (session / '0000000001').write_text(source + network)
+                (session / snapshot).write_text(
+                    source + network
+                    + 'tablefunctions["ents_grass_fn"] = function() return {{id=7,x=0,z=0}} end')
                 player = {'prefab': 'wortox', 'x': 0 if prefab == 'forest' else 2,
                           'z': 0 if prefab == 'forest' else -2,
                           'data': {'migration': {'worldid': '1', 'portalid': 4, 'sessionid': session_id}}
@@ -145,7 +163,7 @@ class RegionImportTest(unittest.TestCase):
             # Caves copy (0000000001, 0000000005) is left over and skipped.
             newer_cave = cluster / 'Master/save/session/CAVE'
             (newer_cave / 'USER').mkdir(parents=True)
-            (newer_cave / '0000000006').write_text(source)
+            (newer_cave / '0000000006').write_text(source + network)
             (newer_cave / 'USER/0000000006').write_text('return ' + literal({
                 'prefab': 'wortox', 'x': 4, 'z': -4, 'data': {}}))
             output = Path(directory) / 'converted'
@@ -155,6 +173,7 @@ class RegionImportTest(unittest.TestCase):
             caves = json.loads((output / 'Caves.json').read_text())
             self.assertEqual((forest['world']['prefab'], forest['world']['shardId'], forest['snapshot']['id']),
                              ('forest', 'master', '0000000003'))
+            self.assertEqual((forest['world']['systems'], forest['world']['elapsedSeconds']), ({}, 0))
             self.assertEqual((caves['world']['prefab'], caves['snapshot']['id']), ('cave', '0000000006'))
             self.assertEqual(forest['players'], {})
             self.assertEqual(caves['players'], {})
@@ -635,6 +654,58 @@ end
                                            {'translation': [0, 0, 0]}, 'CONT', catalog)
         with self.assertRaisesRegex(ValueError, 'item catalog'):
             PREFAB['convert_entities'](terrain, {'icebox': [{'data': {}}]}, {'translation': [0, 0, 0]}, 'CONT')
+
+    def test_world_network_imports_clock_season_temperature_and_weather(self):
+        persistdata = {
+            'clock': {'cycles': 282, 'phase': 'day', 'mooomphasecycle': 11, 'totaltimeinphase': 270,
+                      'remainingtimeinphase': 197.89109802246, 'segs': {'day': 9, 'dusk': 4, 'night': 3},
+                      'dsa_clocksync_moonphaselocked': True, 'dsa_clock_is_cave': False,
+                      'dsa_extradata': {'dsa_shard_proxy': {'from': 'forest'}}},
+            'seasons': {'mode': 'cycle', 'premode': False,
+                        'israndom': {'autumn': False, 'winter': False, 'spring': False, 'summer': False},
+                        'season': 'autumn', 'totaldaysinseason': 20, 'elapseddaysinseason': 2,
+                        'remainingdaysinseason': 18,
+                        'segs': {name: {'day': 8, 'dusk': 4, 'night': 4} for name in ('autumn', 'winter', 'spring',
+                                                                                      'summer')},
+                        'lengths': {'autumn': 20, 'winter': 15, 'spring': 20, 'summer': 15}},
+            'worldtemperature': {'season': 'autumn', 'seasontemperature': 50, 'phasetemperature': 3.7199605273993,
+                                 'noisetime': 133451.859375, 'daylight': True},
+            'weather': {'moisture': 2198.4311523438, 'moisturefloor': 279.15209960938,
+                        'moistureceil': 11392.370117188, 'preciptype': 'none',
+                        'peakprecipitationrate': 0.73351341485977, 'snowlevel': 0,
+                        'wetness': 0, 'lightningmode': 'rain', 'precipmode': 'dynamic', 'temperature': 52.8},
+        }
+        systems, elapsed, report = SYSTEMS['convert_systems'](persistdata, 'forest')
+        # clock.lua's completed cycles are the project's elapsed cycle count; day 283 is the displayed day.
+        progress = 1 - 197.89109802246 / 270
+        self.assertEqual(systems['clock'], {'day': 283, 'phase': 'day', 'phaseProgress': progress})
+        self.assertEqual(systems['moon'], {'mooomphasecycle': 11})
+        self.assertEqual(systems['season'], {'name': 'autumn', 'daysRemaining': 18})
+        self.assertEqual(systems['worldtemperature'], {
+            'season': 'autumn', 'seasontemperature': 50, 'phasetemperature': 3.7199605273993,
+            'noisetime': 133451.859375, 'daylight': True})
+        # Only the weather fields the project stores survive; unported wetness, lightning and snow thresholds drop.
+        self.assertEqual(systems['weather'], {
+            'moisture': 2198.4311523438, 'moisturefloor': 279.15209960938, 'moistureceil': 11392.370117188,
+            'preciptype': 'none', 'peakprecipitationrate': 0.73351341485977, 'snowlevel': 0})
+        # seasons.lua's own 9/4/3 day is mapped onto the project's 10/4/2 day so the same phase progresses.
+        self.assertAlmostEqual(elapsed, 282 * 480 + progress * 300)
+        self.assertEqual(report['season'], {'name': 'autumn', 'remainingDays': 18})
+        # A cave keeps its nightmare clock; a forest world has no such component.
+        cave = {'clock': persistdata['clock'],
+                'nightmareclock': {'lengths': {'calm': 12, 'warn': 3, 'wild': 5, 'dawn': 2}, 'phase': 'calm',
+                                   'totaltimeinphase': 447.65588378906, 'remainingtimeinphase': 366.03344726563}}
+        cave_systems, _, _ = SYSTEMS['convert_systems'](cave, 'cave')
+        self.assertEqual(cave_systems['nightmareclock'], cave['nightmareclock'])
+        for prefab, data in [('forest', cave), ('cave', {**cave, 'clock': {**persistdata['clock'], 'phase': 'full_moon'}}),
+                             ('forest', {**persistdata, 'seasons': {**persistdata['seasons'],
+                                                                    'israndom': {**persistdata['seasons']['israndom'],
+                                                                                 'winter': True}}}),
+                             ('forest', {**persistdata, 'weather': {**persistdata['weather'], 'peakprecipitationrate': 2}}),
+                             ('forest', {**persistdata, 'weather': persistdata['weather'],
+                                         'caveweather': persistdata['weather']})]:
+            with self.assertRaises(ValueError):
+                SYSTEMS['convert_systems'](data, prefab)
 
     def test_layout_entities_align_with_wood_floor_for_odd_and_even_map_dimensions(self):
         for width, height, source_centre in [(7, 5, (0, 0)), (8, 6, (-2, -2))]:

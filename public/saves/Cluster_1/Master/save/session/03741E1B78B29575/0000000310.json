@@ -16,8 +16,35 @@
   "world": {
     "shardId": "master",
     "prefab": "forest",
-    "elapsedSeconds": 0,
-    "systems": {},
+    "elapsedSeconds": 132430.32836914062,
+    "systems": {
+      "clock": {
+        "day": 276,
+        "phase": "night",
+        "phaseProgress": 0.17213948567708337
+      },
+      "moon": {
+        "mooomphasecycle": 11
+      },
+      "season": {
+        "name": "summer",
+        "daysRemaining": 5
+      },
+      "worldtemperature": {
+        "season": "summer",
+        "seasontemperature": 89.641016151378,
+        "phasetemperature": -3.0888915522788,
+        "noisetime": 130460.1171875
+      },
+      "weather": {
+        "moisture": 898.16882324219,
+        "moisturefloor": 279.15209960938,
+        "moistureceil": 11392.370117188,
+        "preciptype": "none",
+        "peakprecipitationrate": 0.73351341485977,
+        "snowlevel": 0
+      }
+    },
     "map": {
       "kind": "generated",
       "defaultTileId": 1,
@@ -783753,6 +783780,134 @@
                 ]
               }
             ]
+          }
+        }
+      ],
+      "hotspring": [
+        {
+          "id": "dst_03741E1B78B29575_hotspring_id_112065",
+          "transform": {
+            "position": [
+              1745.25,
+              0.0,
+              1099.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "hotspring": {}
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_hotspring_id_112066",
+          "transform": {
+            "position": [
+              1529.37,
+              0.0,
+              931.38
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "hotspring": {}
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_hotspring_id_112067",
+          "transform": {
+            "position": [
+              1542.66,
+              0.0,
+              999.87
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "hotspring": {}
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_hotspring_id_112068",
+          "transform": {
+            "position": [
+              1555.53,
+              0.0,
+              992.73
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "hotspring": {}
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_hotspring_id_112069",
+          "transform": {
+            "position": [
+              1685.58,
+              0.0,
+              1011.06
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "hotspring": {}
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_hotspring_id_112070",
+          "transform": {
+            "position": [
+              1482.24,
+              0.0,
+              869.61
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "hotspring": {}
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_hotspring_id_112071",
+          "transform": {
+            "position": [
+              1697.01,
+              0.0,
+              1168.08
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "hotspring": {}
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_hotspring_id_112072",
+          "transform": {
+            "position": [
+              1435.35,
+              0.0,
+              881.67
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "hotspring": {}
+          }
+        },
+        {
+          "id": "dst_03741E1B78B29575_hotspring_id_112073",
+          "transform": {
+            "position": [
+              1700.85,
+              0.0,
+              1061.88
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "hotspring": {}
           }
         }
       ],
