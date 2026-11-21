@@ -26,20 +26,20 @@ export interface FoodEffects {
   readonly foodDrink?: boolean;
 }
 
-/** Source prefab declarations used to configure each food's edible component. */
-export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
+/** Source prefab declarations used to configure each food's edible component; foodtype defaults to VEGGIE. */
+export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects & { readonly foodtype?: string }>> = {
   butterflywings: { health: 8, hunger: 9.375, sanity: 0 },
-  butter: { health: 40, hunger: 25, sanity: 0 },
+  butter: { health: 40, hunger: 25, sanity: 0, foodtype: 'GENERIC' },
   // lightbulb.lua: HEALING_TINY, zero hunger, default zero sanity, VEGGIE.
   rock_avocado_fruit_ripe: { health: 1, hunger: 12.5, sanity: 0 },
   rock_avocado_fruit_ripe_cooked: { health: 3, hunger: 12.5, sanity: 0 },
   lightbulb: { health: 1, hunger: 0, sanity: 0 },
   // prefabs/seeds.lua: raw seeds → health 0, hunger CALORIES_TINY / 2, default sanity 0.
-  seeds: { health: 0, hunger: SEEDS_HUNGER, sanity: 0 },
+  seeds: { health: 0, hunger: SEEDS_HUNGER, sanity: 0, foodtype: 'SEEDS' },
   // prefabs/veggies.lua: raw, cooked, dried and seed items.
   ...VEGGIE_FOOD_EFFECTS,
   // preparedfoods.lua: meatballs → HEALING_SMALL / CALORIES_SMALL * 5 / SANITY_TINY.
-  meatballs: { health: 3, hunger: 62.5, sanity: 5 },
+  meatballs: { health: 3, hunger: 62.5, sanity: 5, foodtype: 'MEAT' },
   // preparedfoods.lua: bananajuice → HEALING_MEDSMALL / CALORIES_MED / SANITY_LARGE.
   // prefabs/preparedfoods.lua installs edible; the fooddrink tag selects quick drinking.
   [BANANAJUICE_ID]: { health: 8, hunger: 25, sanity: 33, foodDrink: true },
@@ -53,7 +53,11 @@ export const FOOD_EFFECTS: Readonly<Record<string, FoodEffects>> = {
   // prefabs/moonbutterflywings.lua: HEALING_MEDSMALL, CALORIES_TINY, SANITY_MED.
   moonbutterflywings: { health: 8, hunger: 9.375, sanity: 15 },
   // prefabs/pondfish.lua pondfish_data: HEALING_TINY, CALORIES_SMALL, no sanity, MEAT.
-  pondfish: { health: 1, hunger: 12.5, sanity: 0 },
+  pondfish: { health: 1, hunger: 12.5, sanity: 0, foodtype: 'MEAT' },
+  // prefabs/meats.lua raw: HEALING_TINY, CALORIES_MED, -SANITY_SMALL; common() sets FOODTYPE.MEAT.
+  meat: { health: 1, hunger: 25, sanity: -10, foodtype: 'MEAT' },
+  // prefabs/meats.lua smallmeat: 0, CALORIES_SMALL, -SANITY_SMALL, MEAT.
+  smallmeat: { health: 0, hunger: 12.5, sanity: -10, foodtype: 'MEAT' },
   red_cap: { health: -20, hunger: 12.5, sanity: 0 },
   red_cap_cooked: { health: 1, hunger: 0, sanity: -10 },
   green_cap: { health: 0, hunger: 12.5, sanity: -50 },
@@ -120,15 +124,7 @@ export function configureFoodEntity(entity: ItemEntity): void {
     edible.healthvalue = values.health;
     edible.hungervalue = values.hunger;
     edible.sanityvalue = values.sanity;
-    const foodtype =
-      entity.prefab === 'seeds'
-        ? 'SEEDS'
-        : entity.prefab === 'meatballs' || entity.prefab === 'pondfish'
-          ? 'MEAT'
-          : entity.prefab === 'butter'
-            ? 'GENERIC'
-            : 'VEGGIE';
-    entity.addTag(`edible_${foodtype}`);
+    edible.foodtype = values.foodtype ?? 'VEGGIE';
   }
   if (values.foodDrink) {
     entity.addTag('fooddrink');

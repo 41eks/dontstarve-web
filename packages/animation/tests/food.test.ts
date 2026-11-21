@@ -61,8 +61,8 @@ async function fixture(itemId = 'bananajuice') {
   return { animation, actions, store, slot, entity };
 }
 
-it('eats meatballs through the solid-food action and commits edible stats and one item at the eat frame', async () => {
-  const { animation, actions, store, slot, entity } = await fixture('meatballs');
+it('eats raw meat through the long MEAT eat state and commits its edible stats and one item at frame 28', async () => {
+  const { animation, actions, store, slot, entity } = await fixture('meat');
   playerStats.hunger.SetCurrent(50);
   const onEaten = vi.fn();
   entity.ListenForEvent('oneaten', onEaten);
@@ -70,11 +70,15 @@ it('eats meatballs through the solid-food action and commits edible stats and on
     // componentactions.lua edible INVENTORY: EAT for food in the player's OMNI diet, nothing for an item without edible.
     store.add('log', 1);
     expect(actions.controller.GetInventoryItemAction(store.getEntity(inventorySlotAddress(1))!)).toBeUndefined();
+    expect(entity.hasTag('edible_MEAT')).toBe(true);
+    expect(entity.hasTag('edible_GENERIC')).toBe(false);
     const picked = actions.controller.GetInventoryItemAction(entity)!;
     expect([picked.action, picked.invobject, picked.target]).toEqual(['EAT', entity, undefined]);
     expect(await actions.use(entity)).toBe(true);
-    expect(animation.sg.animationClip.key).toBe('quick_eat_pre');
-    for (let frame = 0; frame < 11; frame++) {
+    // SGwilson EAT: FOODTYPE.MEAT that is not a drink goes to "eat", not "quickeat".
+    expect(animation.sg.stateName).toBe('eat');
+    expect(animation.sg.animationClip.key).toBe('eat_pre');
+    for (let frame = 0; frame < 27; frame++) {
       advancePlayer(animation, 1 / 30);
     }
     expect(onEaten).not.toHaveBeenCalled();
@@ -82,11 +86,13 @@ it('eats meatballs through the solid-food action and commits edible stats and on
     expect(PlaySound).toHaveBeenCalledWith('dontstarve/wilson/eat', undefined);
     advancePlayer(animation, 1 / 30);
     expect(store.get(slot)?.count).toBe(1);
-    expect(getPlayerStats()).toEqual({ health: 143, hunger: 112.5, sanity: 40 });
-    for (let frame = 0; frame < 40; frame++) {
+    // meats.lua raw: HEALING_TINY, CALORIES_MED, -SANITY_SMALL.
+    expect(getPlayerStats()).toMatchObject({ health: 141, hunger: 75, sanity: 25 });
+    expect(onEaten).toHaveBeenCalledOnce();
+    for (let frame = 0; frame < 120; frame++) {
       advancePlayer(animation, 1 / 30);
     }
-    expect(onEaten).toHaveBeenCalledOnce();
+    expect(animation.sg.stateName).toBe('idle');
   } finally {
     actions.dispose();
     store.dispose();

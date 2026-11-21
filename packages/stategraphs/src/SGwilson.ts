@@ -24,7 +24,7 @@ import { GetString } from '../../componets/src/stringutil';
 import { ghostActionHandlers, ghostStates } from './SGwilsonghost.ts';
 
 export type WilsonMovementState = 'idle' | 'walk' | 'run' | 'jump';
-export type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'item_hat' | 'pickup';
+export type WilsonOneShotState = 'item_in' | 'item_out' | 'item_hat' | 'pickup';
 export type WilsonStateName =
   | WilsonMovementState
   | WilsonOneShotState
@@ -42,6 +42,7 @@ export type WilsonStateName =
   | 'castspell'
   | 'veryquickcastspell'
   | 'quickeat'
+  | 'eat'
   | 'migrate'
   | 'doshortaction'
   | 'dolongaction'
@@ -117,6 +118,8 @@ export type WilsonAnimationKey =
   | 'staff'
   | 'atk_pre'
   | 'atk'
+  | 'eat_pre'
+  | 'eat'
   | 'quick_eat_pre'
   | 'quick_eat'
   | 'quick_drink_pre'
@@ -337,6 +340,8 @@ export interface WilsonStateMem {
   action: PlayerAction<WilsonAction> | null;
   /** sleeping: the wakeup was asked for, not an interruption. */
   iswaking: boolean;
+  /** eat: the eating sound is still owned by the state and is killed at frame 70 or on exit (all food but GEARS). */
+  doeatingsfx: boolean;
   /** toolbroke: the broken tool's prefab, equipped again from the inventory on exit. */
   toolname: string;
   /** The slip states: the speed they slow down from. */
@@ -1150,10 +1155,36 @@ const states: WilsonState[] = [
     ],
   }),
   State({
-    // Visual-only playEat() adapter; inventory food uses quickeat.
+    // SGwilson.lua eat: the long eat for MEAT and "sloweat" food. Feeding by another player, souls, heavy lifting,
+    // queued post-eat states and hunger pausing belong to unported branches.
     name: 'eat',
     tags: ['busy', 'nodangle', 'keep_pocket_rummage'],
-    onenter: inst => inst.context.playClips([clip('eat')]),
+    onenter: inst => {
+      inst.context.entity.locomotor?.stop();
+      const food = inst.context.getBufferedAction()?.invobject;
+      inst.statemem.doeatingsfx = food?.components.edible?.foodtype !== 'GEARS';
+      inst.context.playClips([clip('eat_pre'), clip('eat')]);
+    },
+    timeline: [
+      // DoEatSound(inst): the eating handle, unless one is already playing.
+      TimeEvent(6 * FRAMES, inst => {
+        if (inst.statemem.doeatingsfx && !inst.context.entity.SoundEmitter.PlayingSound('eating')) {
+          inst.context.entity.SoundEmitter.PlaySound('dontstarve/wilson/eat', 'eating');
+        }
+      }),
+      TimeEvent(28 * FRAMES, inst => {
+        inst.context.performBufferedAction();
+      }),
+      TimeEvent(30 * FRAMES, inst => {
+        inst.removeStateTag('busy');
+      }),
+      TimeEvent(70 * FRAMES, inst => {
+        if (inst.statemem.doeatingsfx) {
+          inst.statemem.doeatingsfx = false;
+          inst.context.entity.SoundEmitter.KillSound('eating');
+        }
+      }),
+    ],
     events: [
       EventHandler('animqueueover', inst => {
         if (inst.context.animationDone) {
@@ -1161,6 +1192,11 @@ const states: WilsonState[] = [
         }
       }),
     ],
+    onexit: inst => {
+      if (inst.statemem.doeatingsfx) {
+        inst.context.entity.SoundEmitter.KillSound('eating');
+      }
+    },
   }),
   State({
     name: 'quickeat',
@@ -2209,8 +2245,14 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName, Wils
     if (!obj?.components.edible) {
       return null;
     }
-    // eater:PrefersToEat, the soul branch, the slow/meat "eat" state and floating remain unported: only quickeat is connected.
-    return 'quickeat';
+    // eater:PrefersToEat, the soul branch and floating remain unported.
+    // MEAT goes to the long eat unless it is a drink (#EGGNOG_HACK in the source).
+    if (obj.hasTag('quickeat')) {
+      return 'quickeat';
+    }
+    return obj.hasTag('sloweat') || (obj.components.edible.foodtype === 'MEAT' && !obj.hasTag('fooddrink'))
+      ? 'eat'
+      : 'quickeat';
   }),
   ActionHandler('CASTSPELL', (_inst, action) => {
     const tool = action.invobject;

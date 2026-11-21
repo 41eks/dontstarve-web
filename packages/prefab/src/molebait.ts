@@ -10,7 +10,7 @@ export function configureMoleBaitEntity(entity: ItemEntity): void {
   if (definition?.elementalFoodHunger !== undefined && !entity.components.edible) {
     const edible = addComponent(entity, 'edible', Edible, () => entity.components.perishable.stage.peek());
     edible.hungervalue = definition.elementalFoodHunger;
-    entity.addTag('edible_ELEMENTAL');
+    edible.foodtype = 'ELEMENTAL';
   }
   if (!definition?.moleBait) {
     return;
