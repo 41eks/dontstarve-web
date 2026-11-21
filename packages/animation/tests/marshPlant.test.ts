@@ -234,7 +234,7 @@ it('haunting fails with the source cooldown, and c_spawn plants save and reload 
   expect(hauntable.IsHaunted()).toBe(false);
 });
 
-it('draws its fire in the shared batches only while the plant is batched, offset towards the camera after it', async () => {
+it('draws the burning plant and its fire as their own billboards, the fire after the plant', async () => {
   const { plants, plantDisplays, scene } = setup();
   const plant = plants.spawn(MARSH_PLANT_ID, new THREE.Vector3());
   await prefabDisplay(plant.transform.model)!.artLoaded();
@@ -251,19 +251,12 @@ it('draws its fire in the shared batches only while the plant is batched, offset
     });
     return shown;
   };
-  // fire.lua SetFinalOffset(FINALOFFSET_MAX): the effect declaration asks for the depth offset; the batch draws it.
-  expect(fire.sprite.sprite.peek()).toMatchObject({ clip: { name: 'level3', loop: true }, depthOffset: true });
-  expect([ownShown(plant.transform.model), ownShown(fire.display.model)]).toEqual([0, 0]);
-  expect(fire.display.model.parent).toBe(plant.transform.model);
-  expect(scene.children).toContain(plant.transform.model);
-  // A plant drawn as its own billboard (dressed with runtime overrides) draws after every batch: its fire leaves the
-  // batches with it, so it is still drawn after the plant, and returns once the plant does.
-  plant.sprite.setSymbolOverrides(new Map(), ['shadow']);
   plantDisplays.update(1 / 30);
+  // fire.lua SetFinalOffset(FINALOFFSET_MAX): ordered after the plant on its foot, which only the ordinary billboards
+  // follow, so both leave the batches while it burns.
+  expect(fire.sprite.sprite.peek()).toMatchObject({ clip: { name: 'level3', loop: true }, depthOffset: true });
   expect(ownShown(plant.transform.model)).toBeGreaterThan(0);
   expect(ownShown(fire.display.model)).toBeGreaterThan(0);
-  plant.sprite.setSymbolOverrides(new Map());
-  plantDisplays.update(1 / 30);
-  plantDisplays.update(1 / 30);
-  expect([ownShown(plant.transform.model), ownShown(fire.display.model)]).toEqual([0, 0]);
+  expect(fire.display.model.parent).toBe(plant.transform.model);
+  expect(scene.children).toContain(plant.transform.model);
 });
