@@ -366,11 +366,11 @@ export class TurfMap implements GroundTerrain {
    * side whose neighbour is void or an invisible tile, such as a rope bridge over the abyss. INVISIBLE's
    * invisible_falloff on the invisible tile's own sides is not drawn.
    */
-  falloffEdges(): FalloffEdge[] {
+  falloffEdges(bounds?: GroundCellBounds): FalloffEdge[] {
     const edges: FalloffEdge[] = [];
     const { min, max } = this.cellRange();
-    for (let row = min; row < max; row++) {
-      for (let col = min; col < max; col++) {
+    for (let row = Math.max(min, bounds?.minRow ?? min); row < Math.min(max, bounds?.maxRow ?? max); row++) {
+      for (let col = Math.max(min, bounds?.minCol ?? min); col < Math.min(max, bounds?.maxCol ?? max); col++) {
         if (!hasDefaultFalloff(this.tileAt(col, row))) {
           continue;
         }
@@ -392,11 +392,24 @@ export class TurfMap implements GroundTerrain {
       : undefined;
   }
 
-  /** The saved ocean tiles inside the world. */
-  *oceanSurfaceCells(): Iterable<readonly [number, number]> {
-    for (const tile of this.dugTiles.values()) {
-      if (isOceanTile(tile.tileId) && this.tileAt(tile.col, tile.row) !== WORLD_TILES.INVALID) {
-        yield [tile.col, tile.row];
+  /** The saved ocean tiles inside the world, or only those within `bounds`. */
+  *oceanSurfaceCells(bounds?: GroundCellBounds): Iterable<readonly [number, number]> {
+    const isSurface = (tile: TurfTileSave | undefined): tile is TurfTileSave =>
+      tile !== undefined && isOceanTile(tile.tileId) && this.tileAt(tile.col, tile.row) !== WORLD_TILES.INVALID;
+    if (!bounds) {
+      for (const tile of this.dugTiles.values()) {
+        if (isSurface(tile)) {
+          yield [tile.col, tile.row];
+        }
+      }
+      return;
+    }
+    const { min, max } = this.cellRange();
+    for (let row = Math.max(min, bounds.minRow); row < Math.min(max, bounds.maxRow); row++) {
+      for (let col = Math.max(min, bounds.minCol); col < Math.min(max, bounds.maxCol); col++) {
+        if (isSurface(this.dugTiles.get(`${col},${row}`))) {
+          yield [col, row];
+        }
       }
     }
   }

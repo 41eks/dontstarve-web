@@ -33,7 +33,8 @@ interface FalloffFaceOrder {
   centres: Float64Array;
   depths: Float64Array;
   order: number[];
-  matrix?: THREE.Matrix4;
+  /** The view-space depth axis (modelView's third row) the order was sorted along. */
+  axis?: [number, number, number];
 }
 const falloffFaceOrders = new WeakMap<THREE.BufferGeometry, FalloffFaceOrder>();
 
@@ -143,18 +144,20 @@ export function groundFalloffGeometry(
   return geometry;
 }
 
-/** Three.js sorts transparent objects, not faces within a merged mesh. Reorder only its index buffer. */
+/**
+ * Three.js sorts transparent objects, not faces within a merged mesh. Reorder only its index buffer. The order depends
+ * only on the view-space depth axis: a translation adds the same depth to every face, so a panning camera keeps it.
+ */
 export function sortGroundFalloffGeometry(geometry: THREE.BufferGeometry, modelView: THREE.Matrix4): void {
   const data = falloffFaceOrders.get(geometry);
-  if (!data || data.matrix?.equals(modelView)) {
+  const matrix = modelView.elements;
+  if (!data || (data.axis && data.axis[0] === matrix[2] && data.axis[1] === matrix[6] && data.axis[2] === matrix[10])) {
     return;
   }
-  (data.matrix ??= new THREE.Matrix4()).copy(modelView);
-  const matrix = modelView.elements;
+  data.axis = [matrix[2], matrix[6], matrix[10]];
   for (let i = 0; i < data.order.length; i++) {
     const p = i * 3;
-    data.depths[i] =
-      matrix[2] * data.centres[p] + matrix[6] * data.centres[p + 1] + matrix[10] * data.centres[p + 2] + matrix[14];
+    data.depths[i] = matrix[2] * data.centres[p] + matrix[6] * data.centres[p + 1] + matrix[10] * data.centres[p + 2];
   }
   data.order.sort((a, b) => data.depths[a] - data.depths[b] || a - b);
   const index = geometry.index!;
