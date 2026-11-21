@@ -29,7 +29,7 @@ import { BULB_PLANT_PREFABS, BULB_PLANT_VARIANTS } from '@dontstarve-web/prefab/
 import { CAVE_HOLE_ID } from '@dontstarve-web/prefab/cave_hole';
 import { CAVE_PILLAR_IDS, PILLAR_RUINS_ID } from '@dontstarve-web/prefab/pillar';
 import { PILLAR_ATRIUM_ID } from '@dontstarve-web/prefab/atrium_pillar';
-import { MOON_FISSURE_ID } from '@dontstarve-web/prefab/moon_fissure';
+import { MOON_FISSURE_ID, MOON_FISSURE_FX_ID } from '@dontstarve-web/prefab/moon_fissure';
 import {
   WATERTREE_PILLAR_ARCHIVES,
   WATERTREE_PILLAR_ID,
@@ -1155,7 +1155,13 @@ const WORLD_PREFAB_DEFINITIONS = {
   pillarRuins: definePrefabs([PILLAR_RUINS_ID], empty, true, ['pillar_ruins.zip']),
   cavePillars: definePrefabs(CAVE_PILLAR_IDS, empty, true, prefab => [`${prefab}.zip`]),
   atriumPillars: definePrefabs([PILLAR_ATRIUM_ID], empty, true, ['pillar_atrium.zip']),
-  moonFissures: definePrefabs([MOON_FISSURE_ID], empty, true, ['moon_fissure.zip']),
+  // moon_fissure_fx is persists = false: c_spawn creates it, and no save holds it.
+  moonFissures: definePrefabs(
+    [MOON_FISSURE_ID],
+    empty,
+    [MOON_FISSURE_ID, MOON_FISSURE_FX_ID],
+    ['moon_fissure.zip', 'moon_fissure_fx.zip'],
+  ),
   watertreePillars: definePrefabs([WATERTREE_PILLAR_ID], watertreePillar, true, WATERTREE_PILLAR_ARCHIVES),
   oceanTrees: definePrefabs([OCEANTREE_ID], oceanTree, true, [...OCEANTREE_ARCHIVES, 'snow.zip']),
   // The ripples, roots and leaves are persists = false: c_spawn creates them, and no save holds them.

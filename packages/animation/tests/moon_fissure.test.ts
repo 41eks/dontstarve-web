@@ -11,7 +11,12 @@ import {
   type WorldPhase,
 } from '@dontstarve-web/signals';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { moonFissurePrefabs, MOON_FISSURE_ID, MoonFissureInstance } from '../../prefab/src/moon_fissure';
+import {
+  moonFissurePrefabs,
+  MOON_FISSURE_FX_ID,
+  MOON_FISSURE_ID,
+  MoonFissureInstance,
+} from '../../prefab/src/moon_fissure';
 import { PrefabEntityManager, type PrefabInstance } from '../../prefab/src/prefabInstance';
 import type { EntitySaveRecord } from '../../prefab/src/saveRecord';
 import initialWorld from '../../../public/saves/initial-world.json' with { type: 'json' };
@@ -44,6 +49,7 @@ function setup(phase: WorldMoonPhase = 'new', playerPosition = new THREE.Vector3
   const definitions = moonFissurePrefabs({
     scheduler,
     getWatchWorldContent: ((key: WorldContentKey) => (key === WorldContentKey.Moon ? moon : cycle)) as never,
+    spawnPrefab: (id, position) => prefabs.spawn(id, position),
   });
   prefabs.register(definitions);
   const registry = new EntityRegistry([], prefabs, () => playerPosition);
@@ -238,6 +244,48 @@ it('dims the light colour by the ambient brightness during the day', async () =>
     expect(day[1]).toBeLessThan(night[1]);
     expect(day[2]).toBeLessThan(night[2]);
   } finally {
+    dispose();
+  }
+});
+
+it('spawns the moon_fissure_fx child and dresses its glow layers by the phase', async () => {
+  const { scheduler, moon, spawn, dispose } = setup('new');
+  try {
+    const inst = spawn(record('fissure-with-fx', 1));
+    const fx = inst.fx;
+    expect(fx.prefab).toBe(MOON_FISSURE_FX_ID);
+    expect(fx.entityParent).toBe(inst);
+    expect(fx.listTags()).toEqual(['DECOR', 'NOCLICK']);
+    expect(fx.persists).toBe(false);
+    expect(fx.sprite.sprite.peek()).toMatchObject({
+      clip: { name: 'crack_idle', loop: true },
+      billboard: true,
+      depthOffset: true,
+    });
+    // New moon: the fx draws no glow layer and no backing, while the fissure itself shows its backing.
+    expect(layers(fx)).toEqual({ low: true, med: true, high: true, full: true, backing: true });
+    await prefabDisplay(fx.transform.model)!.artLoaded();
+    expect(fx.sprite.currentAnimation).toBe('crack_idle');
+    // A half moon lights low and med on the fx and moves the backing onto it.
+    moon.set({ phase: 'half', waxing: true });
+    await settle();
+    scheduler.advance(2);
+    expect(layers(fx)).toEqual({ low: false, med: false, high: true, full: true, backing: false });
+    expect(layers(inst)).toEqual({ low: true, med: true, high: true, full: true, backing: true });
+  } finally {
+    dispose();
+  }
+});
+
+it('supports c_spawn of the moon_fissure_fx child', async () => {
+  const { registry, dispose } = setup('quarter');
+  const inventory = createPickupInventory();
+  try {
+    expect(
+      (await executeDebugCommand('c_spawn("moon_fissure_fx")', inventory, prefab => registry.spawn(prefab))).ok,
+    ).toBe(true);
+  } finally {
+    inventory.dispose();
     dispose();
   }
 });

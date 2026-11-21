@@ -19,8 +19,8 @@ ASSETS = {
     'moonrockseed': ['moonrock_seed.zip'],
     'stalagmite': ['rock_stalagmite.zip'],
     'stalagmite_tall': ['rock_stalagmite_tall.zip'],
-    # moon_fissure.lua also lists moon_fissure_fx.zip, the bank of its unported moon_fissure_fx child.
-    'moon_fissure': ['moon_fissure.zip'],
+    # moon_fissure.lua: the fissure's bank and the moon_fissure_fx child's bank.
+    'moon_fissure': ['moon_fissure.zip', 'moon_fissure_fx.zip'],
     # watertree_pillar.lua: the bank, its build and the override build all three of its prefabs add.
     'watertree_pillar': ['oceantree_pillar.zip', 'oceantree_pillar_build1.zip', 'oceantree_pillar_build2.zip'],
     # oceantree.lua: one bank and build per growth stage, and MakeEnriched's build.
@@ -117,8 +117,10 @@ def main():
             for clip in clips}
     art |= {f'pillar_vault/{clip}': {'animationArchive': 'pillar_vault_deep.zip', 'bank': 'pillar_vault', 'animation': clip}
             for clip in ['idle_upper', 'idle_lower', 'idle_upper_capped', 'idle_upper_capped_2', 'idle_upper_broken']}
-    # moon_fissure.lua fn's loop and delayed_transition's clip.
+    # moon_fissure.lua fn's loop and delayed_transition's clip, and its moon_fissure_fx child's.
     art |= {f'moon_fissure/{clip}': {'animationArchive': 'moon_fissure.zip', 'bank': 'moon_fissure', 'animation': clip}
+            for clip in ['crack_idle', 'transition']}
+    art |= {f'moon_fissure_fx/{clip}': {'animationArchive': 'moon_fissure_fx.zip', 'bank': 'moon_fissure_fx', 'animation': clip}
             for clip in ['crack_idle', 'transition']}
     # watertree_pillar.lua: fn's idle loop, and root_ripple / root_shadow of its unported ripples and roots children.
     art |= {f'oceantree_pillar/{clip}': {'animationArchive': 'oceantree_pillar.zip', 'bank': 'oceantree_pillar', 'animation': clip}
