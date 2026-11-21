@@ -476,9 +476,6 @@ export class ResidentSprite implements ArchiveSprite, TransientSpriteAnimationCo
   setDepthOffset(enabled: boolean): void {
     this.sprite?.setDepthOffset(enabled);
   }
-  setInstancedWhile(follow: (() => boolean) | undefined): void {
-    this.sprite?.setInstancedWhile(follow);
-  }
   get drawnInstanced(): boolean {
     return this.sprite?.drawnInstanced ?? false;
   }

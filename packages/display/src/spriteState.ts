@@ -149,7 +149,7 @@ export interface SpriteDeclaration {
   readonly meshOrder?: number;
   /** AnimState:SetLayer(LAYER_BACKGROUND) on billboard art: drawn by meshOrder with the ground layers, not depth-sorted. */
   readonly background?: boolean;
-  /** An effect drawn on its owner's plane, a few depth steps towards the camera. */
+  /** A positive AnimState:SetFinalOffset: drawn after what shares its foot point (foot sort layer 2). */
   readonly depthOffset?: boolean;
   /** AnimState:SetFinalOffset(-1) on a standalone entity: it sorts before what shares its foot point, such as a sitter. */
   readonly behindFoot?: boolean;

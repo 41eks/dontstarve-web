@@ -234,7 +234,7 @@ it('haunting fails with the source cooldown, and c_spawn plants save and reload 
   expect(hauntable.IsHaunted()).toBe(false);
 });
 
-it('draws the burning plant and its fire as their own billboards, the fire after the plant', async () => {
+it('keeps the burning plant in the shared batches, its fire ordered after it on its foot', async () => {
   const { plants, plantDisplays, scene } = setup();
   const plant = plants.spawn(MARSH_PLANT_ID, new THREE.Vector3());
   await prefabDisplay(plant.transform.model)!.artLoaded();
@@ -242,21 +242,13 @@ it('draws the burning plant and its fire as their own billboards, the fire after
   const [fire] = plant.sprite.fx.peek().values();
   await fire.display.artLoaded();
   await new Promise(resolve => setTimeout(resolve, 0));
-  const ownShown = (model: THREE.Object3D) => {
-    let shown = 0;
-    model.traverse(object => {
-      if (object instanceof THREE.Mesh && object.visible) {
-        shown++;
-      }
-    });
-    return shown;
-  };
   plantDisplays.update(1 / 30);
-  // fire.lua SetFinalOffset(FINALOFFSET_MAX): ordered after the plant on its foot, which only the ordinary billboards
-  // follow, so both leave the batches while it burns.
+  // fire.lua SetFinalOffset(FINALOFFSET_MAX): sort layer 2 on the plant's foot, after the plant whichever way each is
+  // drawn, so the plant stays batched while it burns.
+  const display = prefabDisplay(plant.transform.model)!;
   expect(fire.sprite.sprite.peek()).toMatchObject({ clip: { name: 'level3', loop: true }, depthOffset: true });
-  expect(ownShown(plant.transform.model)).toBeGreaterThan(0);
-  expect(ownShown(fire.display.model)).toBeGreaterThan(0);
+  expect(display.fxRenderEntries.peek().map(({ sortLayer }) => sortLayer)).toEqual([2]);
+  expect(display.drawnInstanced).toBe(true);
   expect(fire.display.model.parent).toBe(plant.transform.model);
   expect(scene.children).toContain(plant.transform.model);
 });

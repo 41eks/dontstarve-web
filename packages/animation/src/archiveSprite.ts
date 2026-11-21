@@ -289,14 +289,8 @@ export interface ArchiveSprite {
   setErosion(amount: number): void;
   /** AnimState:SetFloatParams and SetOceanBlendParams, on the sprite's own materials and its shared-batch instance. */
   setOceanShading(shading: import('./oceanShading').SpriteOceanShading): void;
-  /** Draw a few depth steps towards the camera, so an effect on its owner's plane is not hidden by the owner's depth. */
+  /** A positive SetFinalOffset: drawn after the others on its foot, by its own and its shared-batch instance's key. */
   setDepthOffset(enabled: boolean): void;
-  /**
-   * Draw with the shared batches only while `follow()` holds, checked on every update; otherwise as the sprite's own
-   * billboard. An effect drawn after its owner follows whether the owner is batched, since every batch draws before the
-   * ordinary billboards.
-   */
-  setInstancedWhile(follow: (() => boolean) | undefined): void;
   /** Whether the shared batches drew the last frame shown. */
   readonly drawnInstanced: boolean;
   /**
@@ -482,8 +476,6 @@ function constructArchiveSprite(
   let loop = definition.loop;
   let onComplete: (() => void) | undefined;
   let playbackRate = 1;
-  let instancedWhile: (() => boolean) | undefined;
-  let batchAllowed = true;
   let drawnInstanced = false;
   // Per-entity dressing. While any of it applies, frames are resolved for this sprite alone, outside shared frames and instances.
   let animState: ResolvedAnimState | undefined;
@@ -585,12 +577,6 @@ function constructArchiveSprite(
       previousFrame = -1;
       refresh = true;
     }
-    const allowed = instancedWhile?.() ?? true;
-    if (allowed !== batchAllowed) {
-      batchAllowed = allowed;
-      previousFrame = -1;
-      refresh = true;
-    }
     if (paused && !refresh) {
       return;
     }
@@ -643,7 +629,6 @@ function constructArchiveSprite(
     const instanced = (drawnInstanced =
       !!instances &&
       !ownFrame &&
-      batchAllowed &&
       (options.instancedAnimations === 'all' || (loop && options.instancedAnimations!.includes(animation.name))));
     if (instances) {
       renderer.setInstanced(instanced);
@@ -861,13 +846,6 @@ function constructArchiveSprite(
         renderer.setDepthOffset(enabled);
         instances?.setDepthOffset(enabled);
       }
-    },
-    setInstancedWhile(follow) {
-      if (disposed || follow === instancedWhile) {
-        return;
-      }
-      instancedWhile = follow;
-      update(0, true);
     },
     get drawnInstanced() {
       return drawnInstanced;

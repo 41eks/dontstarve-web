@@ -22,8 +22,7 @@ import initialWorld from '../../../public/saves/initial-world.json' with { type:
 import { EntityRegistry } from '../../../src/entityRegistry';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { bindTestWorld, drawn, tickWorld, plantInstance } from './worldContentFixture';
-import { prefabDisplay } from '../../display/src/prefabDisplay';
+import { bindTestWorld, tickWorld, plantInstance } from './worldContentFixture';
 import { workTargets } from './workTargets';
 import { canDoSceneAction } from './sceneActions';
 
@@ -165,35 +164,6 @@ it('digs mature/picked grass through workable, preserves dug-item commands and r
     registry.dispose();
     s.dispose();
     restored.dispose();
-  }
-});
-
-it('draws burning grass and its fire as ordinary billboards ordered by foot key, and batches the grass again once out', async () => {
-  const s = setup();
-  try {
-    const model = await drawn(s.grass.spawn('grass', new THREE.Vector3(3, 0, 6)).transform.model);
-    const display = prefabDisplay(model)!;
-    const frame = async () => {
-      await new Promise(resolve => setTimeout(resolve, 0));
-      tickWorld(s.scheduler, prefabDisplays(s.grass), 1 / 30, new THREE.Quaternion());
-    };
-    await frame();
-    expect(display.drawnInstanced).toBe(true);
-    const burnable = plantInstance(model).components.burnable;
-    burnable.Ignite();
-    await frame();
-    const fire = model.children.map(child => prefabDisplay(child)).find(child => child !== undefined)!;
-    await fire.artLoaded();
-    await frame();
-    // fire.lua's SetFinalOffset(FINALOFFSET_MAX): drawn after the grass on its foot, which only ordinary billboards follow.
-    expect(display.fxRenderEntries.peek().map(({ sortLayer }) => sortLayer)).toEqual([2]);
-    expect(display.drawnInstanced).toBe(false);
-    expect(fire.drawnInstanced).toBe(false);
-    burnable.Extinguish();
-    await frame();
-    expect(display.drawnInstanced).toBe(true);
-  } finally {
-    s.dispose();
   }
 });
 

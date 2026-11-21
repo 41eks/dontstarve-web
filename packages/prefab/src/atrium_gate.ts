@@ -379,7 +379,7 @@ export function atriumGatePrefabs(
       physics: { make: MakeObstaclePhysics, radius: 1 },
       onSpawned: OnLoadPostPass,
     },
-    // LAYER_BACKGROUND ground art: instance batches draw upright billboards with a depth prepass, so it stays out of them.
+    // LAYER_BACKGROUND ground art: instance batches draw foot-ordered upright billboards, so it stays out of them.
     [ATRIUM_GATE_FLOOR_ID]: {
       fn: CreateFloor,
       assets: { animationArchive: 'atrium_floor.zip', buildArchives: ['atrium_floor.zip'], bank: 'atrium_floor' },

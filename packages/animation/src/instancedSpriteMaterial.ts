@@ -1,9 +1,15 @@
 import * as THREE from 'three';
-import { DEPTH_OFFSET_UNITS } from './animationAssets';
 import { injectOceanShading } from './oceanShading';
 import type { RgbaSpriteAtlas } from './rgbaSpriteAtlas';
 
-function colourMaterial(atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial): THREE.MeshBasicMaterial {
+/**
+ * One atlas page's material: transparent and without depth writes, like the ordinary billboards, since each batch is
+ * drawn at its place in the scene's key order. It reads the per-instance sprite attributes.
+ */
+export function createInstancedSpriteMaterial(
+  atlas: RgbaSpriteAtlas,
+  source: THREE.MeshBasicMaterial,
+): THREE.MeshBasicMaterial {
   const result = new THREE.MeshBasicMaterial({
     map: atlas.texture,
     color: source.color,
@@ -28,14 +34,6 @@ function colourMaterial(atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial)
       varying float vSpriteLightOverride;
       attribute float spriteErosion;
       varying float vSpriteErosion;
-      attribute float spriteDepthBias;
-    `,
-      )
-      .replace(
-        '#include <project_vertex>',
-        `
-      #include <project_vertex>
-      gl_Position.z -= spriteDepthBias * gl_Position.w;
     `,
       )
       .replace(
@@ -71,42 +69,6 @@ function colourMaterial(atlas: RgbaSpriteAtlas, source: THREE.MeshBasicMaterial)
       );
     injectOceanShading(shader, { kind: 'attributes' });
   };
-  result.customProgramCacheKey = () => 'dst-instanced-archive-sprite-v5';
+  result.customProgramCacheKey = () => 'dst-instanced-archive-sprite-v6';
   return result;
-}
-
-/**
- * One atlas page's materials: the transparent colour pass (no depth write) and its alpha-tested, colour-disabled
- * depth prepass, both reading the per-instance sprite attributes.
- */
-export function createInstancedSpriteMaterials(
-  atlas: RgbaSpriteAtlas,
-  source: THREE.MeshBasicMaterial,
-): { colour: THREE.MeshBasicMaterial; depth: THREE.MeshBasicMaterial } {
-  const colour = colourMaterial(atlas, source),
-    depth = colour.clone();
-  depth.name = 'Instanced archive sprite depth';
-  // Material.clone() deliberately omits callbacks.
-  depth.onBeforeCompile = colour.onBeforeCompile;
-  depth.customProgramCacheKey = colour.customProgramCacheKey;
-  depth.transparent = false;
-  depth.colorWrite = false;
-  depth.depthWrite = true;
-  depth.alphaTest = 0.98;
-  return { colour, depth };
-}
-
-/** An offset batch draws after the ordinary ones, a few depth-buffer steps towards the camera. */
-export function layerInstancedSpriteMeshes(colour: THREE.Mesh, depth: THREE.Mesh, offset: boolean): void {
-  colour.renderOrder = offset ? -0.39 : -0.4;
-  depth.renderOrder = offset ? -0.395 : -0.41;
-  for (const material of [colour.material, depth.material] as THREE.Material[]) {
-    if (material.polygonOffset === offset) {
-      continue;
-    }
-    material.polygonOffset = offset;
-    material.polygonOffsetFactor = 0;
-    material.polygonOffsetUnits = offset ? DEPTH_OFFSET_UNITS : 0;
-    material.needsUpdate = true;
-  }
 }

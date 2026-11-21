@@ -4,7 +4,7 @@ import * as CANNON from 'cannon-es';
 import { world, worldState } from './physics';
 import CannonDebugger from 'cannon-es-debugger';
 import * as THREE from 'three';
-import { updateSpriteRenderOrders } from '@dontstarve-web/animation';
+import { setOrdinarySpriteKeys, updateSpriteRenderOrders } from '@dontstarve-web/animation';
 import { EventEmitter } from '@dontstarve-web/signals';
 
 import { animate, backTasks, middleTasks } from './animate';
@@ -63,12 +63,16 @@ const updatePlayerMovement = updateMovement(followCamera, player, playerBody, lo
 const updateAnimation = createAnimationUpdater(player);
 const cameraWorldQuaternion = new THREE.Quaternion();
 const playerRenderEntries = [{ object: player, footPosition: player.position }];
+/** The ordinary billboards' keys written this frame, which the scene's batches are drawn around. */
+const ordinaryKeys: number[] = [];
 
 // Every shown entity writes its own key each frame, so one spawned, moved or given an effect (fire) orders itself
 // even while the player and camera stand still.
 function updateCharacterRenderOrder(registry: EntityRegistry) {
-  updateSpriteRenderOrders(playerRenderEntries, camera.matrixWorldInverse);
-  updateSpriteRenderOrders(registry.renderEntities, camera.matrixWorldInverse);
+  ordinaryKeys.length = 0;
+  updateSpriteRenderOrders(playerRenderEntries, camera.matrixWorldInverse, ordinaryKeys);
+  updateSpriteRenderOrders(registry.renderEntities, camera.matrixWorldInverse, ordinaryKeys);
+  setOrdinarySpriteKeys(scene, ordinaryKeys);
 }
 
 /** The player's run speed, times locomotor:GetSpeedMultiplier (equipped items' walkspeedmult). */

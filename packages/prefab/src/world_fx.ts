@@ -12,7 +12,7 @@ interface FxDefinition {
   readonly opacity?: number;
   readonly scale?: number;
   readonly tint?: readonly [number, number, number];
-  /** AnimState:SetFinalOffset above the entity's layer: drawn a few depth steps towards the camera. */
+  /** AnimState:SetFinalOffset above the entity's layer: drawn after what shares its foot point. */
   readonly finalOffset?: number;
   /** Frames between animover and Remove, as wortox_portal_fx.lua's DoTaskInTime(2 * FRAMES). */
   readonly lingerFrames?: number;

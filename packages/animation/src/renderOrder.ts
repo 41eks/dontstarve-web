@@ -104,21 +104,27 @@ export function spriteRenderOrderKey(foot: FootPoint, view: THREE.Matrix4, rende
   return 1 + layer * DEPTH_BUCKETS + depth + (lateral * SORT_LAYERS + sortLayer) / FRACTION;
 }
 
-/** The key's render layer and depth bucket: keys in one share a camera depth to the millimetre, so are coplanar. */
-export const spriteRenderDepthGroup = (key: number): number => Math.floor(key);
-
 /** The key's left-to-right axis: camera-space foot x, without the camera's translation. */
-export function spriteRenderLateral(foot: FootPoint, view: THREE.Matrix4): number {
+function spriteRenderLateral(foot: FootPoint, view: THREE.Matrix4): number {
   const m = view.elements;
   return m[0] * foot.x + m[4] * foot.y + m[8] * foot.z;
 }
 
-/** Writes every shown entity's key; hidden entities and sprites drawn by an instance batch keep theirs. */
-export function updateSpriteRenderOrders(entries: readonly RenderOrderEntry[], view: THREE.Matrix4): void {
+/**
+ * Writes every shown entity's key; hidden entities and sprites drawn by an instance batch keep theirs. Each key
+ * written is also added to `written`, for the scene's painter to place the batches around these billboards.
+ */
+export function updateSpriteRenderOrders(
+  entries: readonly RenderOrderEntry[],
+  view: THREE.Matrix4,
+  written?: number[],
+): void {
   for (let i = 0; i < entries.length; i++) {
     const { object, footPosition, renderLayer, sortLayer } = entries[i];
     if (isSpriteEntityRendered(object)) {
-      setSpriteEntityRenderOrder(object, spriteRenderOrderKey(footPosition, view, renderLayer, sortLayer));
+      const key = spriteRenderOrderKey(footPosition, view, renderLayer, sortLayer);
+      setSpriteEntityRenderOrder(object, key);
+      written?.push(key);
     }
   }
 }

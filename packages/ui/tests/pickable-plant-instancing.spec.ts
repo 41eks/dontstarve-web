@@ -11,12 +11,12 @@ test('pickable bushes share instance batches through sleep, wake and removal', a
   );
   expect(result).toEqual(
     Array.from({ length: 3 }, () => ({
-      ready: { calls: 2, count: 12 },
+      ready: { calls: 1, count: 12 },
       asleep: { calls: 0, count: 0 },
-      restored: { calls: 2, count: 12 },
+      restored: { calls: 1, count: 12 },
       shared: true,
       preserved: true,
-      removed: { calls: 2, count: 11 },
+      removed: { calls: 1, count: 11 },
     })),
   );
   expect(errors).toEqual([]);

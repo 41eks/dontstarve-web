@@ -69,7 +69,8 @@ export class PrefabDisplayGroup {
       }
     });
     const own = { object: display.model, footPosition: foot, cameraDepth: 0 };
-    const behindFoot = { ...own, sortLayer: 0 };
+    const behindFoot = { ...own, sortLayer: 0 },
+      afterFoot = { ...own, sortLayer: 2 };
     let listed = NO_ENTRIES;
     // In the task that wakes, spawns or removes the entity: the frame that follows orders it.
     const stopListing = createRenderEffect(() => {
@@ -77,7 +78,7 @@ export class PrefabDisplayGroup {
       if (display.status.get() === 'active' && display.visible.get()) {
         const layer = display.footSortLayer.get();
         const fx = display.fxRenderEntries.get();
-        next = layer === undefined ? fx : [layer === 0 ? behindFoot : own, ...fx];
+        next = layer === undefined ? fx : [layer === 0 ? behindFoot : layer === 2 ? afterFoot : own, ...fx];
       }
       for (const entry of listed) {
         if (!next.includes(entry)) {

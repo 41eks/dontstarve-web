@@ -57,8 +57,6 @@ export interface DisplayEngine {
   /** AnimState:SetFloatParams and SetOceanBlendParams. Archive sprites only. */
   setOceanShading?(shading: SpriteOceanShading): void;
   setDepthOffset?(enabled: boolean): void;
-  /** Archive sprites: drawn by the shared batches only while `follow()` holds. */
-  setInstancedWhile?(follow: (() => boolean) | undefined): void;
   /** Archive sprites: whether the shared batches drew the last frame. */
   readonly drawnInstanced?: boolean;
   setSymbolOverride?(symbol: string, archive?: string, sourceSymbol?: string): void;
@@ -160,9 +158,6 @@ export class ArchiveEngine implements DisplayEngine {
   }
   setDepthOffset(enabled: boolean): void {
     this.resident.setDepthOffset(enabled);
-  }
-  setInstancedWhile(follow: (() => boolean) | undefined): void {
-    this.resident.setInstancedWhile(follow);
   }
   get drawnInstanced(): boolean {
     return this.resident.drawnInstanced;

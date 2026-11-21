@@ -14,7 +14,9 @@ test('rocks batch their source poses and split-build art while retaining alpha p
     async url => (await import(url)).checkRockInstances(),
     `/@fs${fileURLToPath(new URL('./rock-sprite-fixture.ts', import.meta.url))}`,
   );
-  expect(result.calls).toEqual([2, 4, 2, 4, 0]);
+  // One draw per batch in key order. The boulders stand among the first row of rocks, so the two pages interleave
+  // there and are drawn as seven runs.
+  expect(result.calls).toEqual([1, 2, 1, 7, 0]);
   expect(result.hiddenSources).toBe(32);
   expect(result.alphaPickable).toBe(true);
   expect(result.painted).toBeGreaterThan(100);

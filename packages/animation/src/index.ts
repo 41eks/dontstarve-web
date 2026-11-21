@@ -25,6 +25,7 @@ export {
   spriteRenderOrderKey,
   updateSpriteRenderOrders,
 } from './renderOrder';
+export { setOrdinarySpriteKeys } from './scenePainter';
 export {
   ArchiveSpriteAssets,
   createArchiveSprite,

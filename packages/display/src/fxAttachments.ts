@@ -60,7 +60,6 @@ export class FxAttachments {
   /** The attached effects that order at the owner's foot, whether shown now or not. */
   private readonly sorted = createSignal<readonly Attached[]>([]);
   private readonly changed: () => void;
-  private readonly ownerBatched: () => boolean;
   /** Entries for the effects shown under the owner now, ordered with it. */
   readonly renderEntries = createMemo(() => {
     let entries: FxRenderEntry[] | undefined;
@@ -72,11 +71,9 @@ export class FxAttachments {
     return entries ?? NO_ENTRIES;
   });
 
-  /** `ownerBatched`: whether the owner's last frame was drawn by the shared batches. */
-  constructor(owner: THREE.Group, changed: () => void = () => {}, ownerBatched: () => boolean = () => false) {
+  constructor(owner: THREE.Group, changed: () => void = () => {}) {
     this.owner = owner;
     this.changed = changed;
-    this.ownerBatched = ownerBatched;
   }
 
   apply(declared: ReadonlyMap<string, FxJson> | undefined): void {
@@ -132,14 +129,9 @@ export class FxAttachments {
       this.sorted.set([...this.sorted.peek(), entry]);
     }
     model.position.set(0, 0, 0);
-    // Drawn after its owner on the owner's plane: the owner's depth (an instance batch writes it) must not hide it.
+    // Drawn after its owner on the owner's foot: a batched instance of it takes that sort layer too.
     if (!fx.composite && fx.sortLayer > 1) {
       fx.sprite.setDepthOffset(true);
-    }
-    // Every batch draws before the ordinary billboards: a batched effect stays ordered with its owner only while the
-    // owner is batched too, and is otherwise its own billboard, sorted against the owner's.
-    if (!fx.composite) {
-      fx.display.setInstancedWhile(this.ownerBatched);
     }
     createEffect(() => {
       entry.enabled = active.get();
@@ -167,7 +159,6 @@ export class FxAttachments {
       entry.fx.sprite.setDepthOffset(false);
     }
     if (!entry.fx.composite) {
-      entry.fx.display.setInstancedWhile(undefined);
     }
     fxModel(entry.fx).removeFromParent();
     this.attached.delete(key);

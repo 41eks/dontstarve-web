@@ -2,18 +2,19 @@ import * as THREE from 'three';
 import type { Animation, ResolvedSprite } from './animationAssets';
 import { compileSceneAsync } from './compileScene';
 import { InstancedSpriteAtlases, appearanceLocation, type Appearance } from './instancedSpriteAtlases';
-import { InstancedSpriteBatches, type PageKey } from './instancedSpriteBatches';
-import {
-  SpriteCameraView,
-  createSpriteSpatial,
-  rankSprites,
-  type FootOrder,
-  type SpriteSpatial,
-} from './instancedSpriteOrder';
+import { InstancedSpriteBatches, type BatchedSegment, type SegmentKey } from './instancedSpriteBatches';
+import { SpriteCameraView, createSpriteSpatial, type FootOrder, type SpriteSpatial } from './instancedSpriteOrder';
 import { watchWorldMatrixChanges } from './matrixUpdates';
 import { NO_OCEAN_SHADING, type SpriteOceanShading } from './oceanShading';
-import type { RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
+import type { RgbaSpriteAtlas, RgbaSpriteAtlasFrame } from './rgbaSpriteAtlas';
 import { registerSceneRenderPass, type SceneRenderPass } from './sceneRenderPass';
+import {
+  orderScenePainter,
+  scenePainter,
+  type PainterPage,
+  type PainterPass,
+  type PainterSegment,
+} from './scenePainter';
 import { spritePerf } from './spritePerf';
 
 /** One entity's retained instance. The pass draws it only while the display layer lists it as a member. */
@@ -28,8 +29,8 @@ export interface InstancedSprite {
   /** AnimState:SetFloatParams and SetOceanBlendParams, independent for each entity in a shared batch. */
   setOceanShading(value: SpriteOceanShading): void;
   /**
-   * Drawn towards the camera after the ordinary batches, as an effect drawn after its owner on the owner's plane
-   * (fire.lua's SetFinalOffset): the depth its owner's batch wrote must not hide it.
+   * Drawn after the others on its foot (a positive SetFinalOffset, as fire.lua's effect after its owner): its foot key
+   * takes sort layer 2, as an ordinary billboard's does.
    */
   setDepthOffset(enabled: boolean): void;
   dispose(): void;
@@ -63,31 +64,35 @@ interface DrawEntry extends FootOrder {
   member: InstancedSpriteMember;
   frame: RgbaSpriteAtlasFrame;
   page: DrawPage;
-  /** Clip-space depth towards the camera, resolving coplanar overlaps in draw order (see `rankSprites`). */
-  bias: number;
 }
-interface DrawPage {
+interface DrawPage extends PainterPage {
+  readonly atlas: RgbaSpriteAtlas;
   source: THREE.MeshBasicMaterial;
+  /** This frame's drawn sprites in collection order; only the first `count` are current. */
   members: DrawEntry[];
+  /** The current members in draw order: by foot key, then entity. */
   entries: DrawEntry[];
   count: number;
   sortDirty: boolean;
+  version: number;
 }
+
+let nextPageId = 0;
+
+const byFoot = (a: DrawEntry, b: DrawEntry) => a.key - b.key || a.entry.foot.id - b.entry.foot.id;
 
 /** Main-thread time per rendered frame spent composing atlases for appearances shown for the first time. */
 const COMPOSE_BUDGET_MS = 4;
 
 /** Render-only batching. Entity nodes, source geometry and alpha picking remain independently owned. */
-export class InstancedArchiveSprites implements SceneRenderPass {
+export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
   private readonly atlases = new InstancedSpriteAtlases();
   private readonly batches = new InstancedSpriteBatches(this);
   private readonly view = new SpriteCameraView();
   /** Every retained instance, for atlas invalidation, prewarming and disposal; drawing walks the display's members. */
   private readonly retained = new Set<Entry>();
   private members: ReadonlySet<InstancedSpriteMember> = new Set();
-  private readonly draws = new Map<THREE.Scene, Map<PageKey, DrawPage>>();
-  /** Scratch for `rankSprites`. */
-  private readonly ranked: DrawEntry[] = [];
+  private readonly draws = new Map<THREE.Scene, Map<RgbaSpriteAtlas, DrawPage>>();
   private renderer?: THREE.WebGLRenderer;
   private contextLost = false;
 
@@ -281,36 +286,26 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       if (!pages) {
         draws.set(scene, (pages = new Map()));
       }
-      const key = this.batches.pageKey(atlas, entry.depthOffset);
-      let page = pages.get(key);
+      let page = pages.get(atlas);
       if (!page) {
         const first = appearance.frames[0][0];
         pages.set(
-          key,
+          atlas,
           (page = {
+            id: nextPageId++,
+            atlas,
             source: first.materials[first.image.sampler ?? 0],
             members: [],
             entries: [],
             count: 0,
             sortDirty: false,
+            version: 0,
           }),
         );
       }
-      const draw = (entry.draw ??= {
-        entry,
-        member,
-        frame,
-        page,
-        x: 0,
-        y: 0,
-        z: 0,
-        key: 0,
-        lateral: 0,
-        bias: 0,
-        camera: -1,
-      });
+      const draw = (entry.draw ??= { entry, member, frame, page, x: 0, y: 0, z: 0, sortLayer: -1, key: 0, camera: -1 });
       // The ordinary sprites' foot key, so batched and ordinary sprites follow one rule.
-      if (view.placeFoot(draw, entry.foot.matrixWorld)) {
+      if (view.placeFoot(draw, entry.foot.matrixWorld, entry.depthOffset ? 2 : 1)) {
         page.sortDirty = true;
       }
       draw.member = member;
@@ -322,20 +317,45 @@ export class InstancedArchiveSprites implements SceneRenderPass {
       }
       page.count++;
     }
-    for (const pages of draws.values()) {
-      let dirty = false;
+    for (const [drawn, pages] of draws) {
+      const current: DrawPage[] = [];
       for (const page of pages.values()) {
         if (page.members.length !== page.count) {
           page.members.length = page.count;
           page.sortDirty = true;
         }
-        dirty ||= page.sortDirty;
+        if (page.sortDirty) {
+          page.entries.length = 0;
+          page.entries.push(...page.members);
+          page.entries.sort(byFoot);
+          page.version++;
+        }
+        if (page.count > 0) {
+          current.push(page);
+        }
       }
-      if (dirty) {
-        rankSprites(pages.values(), this.ranked);
+      // Drawn once the scene's painter has every pass's pages and cuts them into its key order.
+      scenePainter(drawn).collect(this, current);
+    }
+  }
+
+  /** The painter's runs of this pass's pages in `scene`: each run is one batch, at its first sprite's key. */
+  drawSegments(scene: THREE.Scene, segments: ReadonlyMap<PainterPage, readonly PainterSegment[]>): void {
+    const batched = new Map<SegmentKey, BatchedSegment>();
+    for (const [painted, runs] of segments) {
+      const page = painted as DrawPage;
+      for (let index = 0; index < runs.length; index++) {
+        const { start, end, key } = runs[index];
+        batched.set(this.batches.segmentKey(page.atlas, index), {
+          source: page.source,
+          entries: page.entries,
+          start,
+          end,
+          order: key,
+        });
       }
     }
-    this.batches.submit(draws);
+    this.batches.submit(scene, batched);
   }
 
   async prewarm(
@@ -346,6 +366,7 @@ export class InstancedArchiveSprites implements SceneRenderPass {
   ): Promise<void> {
     signal?.throwIfAborted();
     this.renderPass(renderer, camera, scene, Infinity, 'compose:prewarm');
+    orderScenePainter(scene);
     await this.batches.compile(renderer, camera, signal);
     // Prepare the ordinary shared-frame material variant used when an entity starts working.
     const proxies = new Set<THREE.Mesh>();

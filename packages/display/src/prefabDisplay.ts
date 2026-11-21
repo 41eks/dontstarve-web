@@ -97,8 +97,6 @@ export interface PrefabDisplayOptions {
 }
 
 const displaysByModel = new WeakMap<THREE.Object3D, PrefabDisplay>();
-/** A display ordered with an effect drawn after it stays out of the shared batches. */
-const NEVER_BATCHED = () => false;
 const rootRotation = new THREE.Quaternion();
 const localFacing = new THREE.Quaternion();
 
@@ -144,8 +142,6 @@ export class PrefabDisplay {
   /** The deferred sprite source while this display loads it. */
   private sourceLoading?: Promise<unknown>;
   private fx!: FxAttachments;
-  /** The batching condition the owner of this display's effect role sets; undefined draws with the batches. */
-  private readonly instancedWhile = createSignal<(() => boolean) | undefined>(undefined);
   private readonly follower = new AnimationFollower(name => {
     if (!this.engine.setAnimation) {
       throw new Error('This display cannot follow an animation');
@@ -200,11 +196,12 @@ export class PrefabDisplay {
   /** Whether another display shows this one as its effect, which orders it at the owner's foot instead. */
   private readonly attachedAsFx = createSignal(false);
   /**
-   * The foot-point sort layer of this display's own sprite: 0 for a negative SetFinalOffset, otherwise 1. Undefined
+   * The foot-point sort layer of this display's own sprite: 0 for a negative SetFinalOffset, 2 for a positive one
+   * (moon_fissure's SetFinalOffset(3), declared as its depth offset), otherwise 1. Undefined
    * when it takes no foot order: an empty display, ground and LAYER_BACKGROUND art (drawn by their own order), and an
    * effect ordered with its owner.
    */
-  readonly footSortLayer: ReadonlySignal<0 | 1 | undefined>;
+  readonly footSortLayer: ReadonlySignal<0 | 1 | 2 | undefined>;
   /** inst:Hide / inst:Show: the model, and the effects under it, are drawn only while the json shows it. */
   readonly visible: ReadonlySignal<boolean>;
   /** The render entries of the effects shown now, ordered with this display. */
@@ -315,11 +312,11 @@ export class PrefabDisplay {
     this.status = status;
     this.cleanups.push(() => status.dispose());
     const footSortLayer = createMemo(() => {
-      const { ground, background, behindFoot } = json.get();
+      const { ground, background, behindFoot, depthOffset } = json.get();
       if (this.empty || this.attachedAsFx.get() || ground !== undefined || background === true) {
         return undefined;
       }
-      return behindFoot ? 0 : 1;
+      return behindFoot ? 0 : depthOffset ? 2 : 1;
     });
     this.footSortLayer = footSortLayer;
     this.cleanups.push(() => footSortLayer.dispose());
@@ -348,32 +345,9 @@ export class PrefabDisplay {
     const followed = watchSignal(state.animationSource, stop => this.cleanups.push(stop));
     const declaredFx = watchSignal(state.fx, stop => this.cleanups.push(stop));
     this.cleanups.push(createEffect(() => this.follower.follow(followed.get())));
-    this.fx = new FxAttachments(
-      this.model,
-      () => this.engine.setComposites?.(this.fx.compositeFrames()),
-      () => this.drawnInstanced,
-    );
+    this.fx = new FxAttachments(this.model, () => this.engine.setComposites?.(this.fx.compositeFrames()));
     this.fxRenderEntries = this.fx.renderEntries;
     this.cleanups.push(createEffect(() => this.fx.apply(declaredFx.get())));
-    // An effect drawn after this display (FINALOFFSET_MAX fire) is ordered with it by foot key, which only the ordinary
-    // billboards follow: every batch draws before them and resolves coplanar sprites by depth. While one is shown, this
-    // display leaves the batches, and an effect following it (`ownerBatched`) leaves with it.
-    const frontFxShown = createMemo(() => this.fx.renderEntries.get().some(({ sortLayer }) => sortLayer > 1));
-    this.cleanups.push(() => frontFxShown.dispose());
-    const batchFollow = createMemo(() => (frontFxShown.get() ? NEVER_BATCHED : this.instancedWhile.get()));
-    this.cleanups.push(() => batchFollow.dispose());
-    // A sprite the art replaced takes the condition again; one that never had a condition keeps the default.
-    let given: (() => boolean) | undefined;
-    this.cleanups.push(
-      createEffect(() => {
-        art.get();
-        const follow = batchFollow.get();
-        if (follow !== undefined || given !== undefined) {
-          this.engine.setInstancedWhile?.(follow);
-        }
-        given = follow;
-      }),
-    );
     this.cleanups.push(
       createEffect(() => {
         art.get();
@@ -472,11 +446,6 @@ export class PrefabDisplay {
       return;
     }
     this.state.update(dt);
-  }
-
-  /** Draw with the shared batches only while `follow()` holds, for every sprite this display draws; the owner of an effect sets it. */
-  setInstancedWhile(follow: (() => boolean) | undefined): void {
-    this.instancedWhile.set(follow);
   }
 
   /** Whether the shared batches drew this display's last frame. */

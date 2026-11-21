@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 
 const moduleUrl = (path: string) => `/@fs${fileURLToPath(new URL(path, import.meta.url))}`;
 
-test('ground items share two draw calls and retain the batch across sleep, wake and removal', async ({ page }) => {
+test('ground items share one draw call and retain the batch across sleep, wake and removal', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/tests/fixture.html');
@@ -12,13 +12,13 @@ test('ground items share two draw calls and retain the batch across sleep, wake 
     return checkGroundItemInstancing();
   }, moduleUrl('./ground-item-instancing-fixture.ts'));
   expect(result).toEqual({
-    many: { calls: 2, count: 24 },
-    asleep: { calls: 2, count: 23 },
-    awake: { calls: 2, count: 24 },
+    many: { calls: 1, count: 24 },
+    asleep: { calls: 1, count: 23 },
+    awake: { calls: 1, count: 24 },
     sameBatch: true,
     sameTexture: true,
     position: [-8, 0, -5],
-    removed: { calls: 2, count: 23 },
+    removed: { calls: 1, count: 23 },
     empty: { calls: 0, count: 0 },
   });
   expect(errors).toEqual([]);

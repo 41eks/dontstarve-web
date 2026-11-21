@@ -3,7 +3,9 @@ import { afterEach, expect, it, vi } from 'vitest';
 import type { Animation, ResolvedSprite } from '../src/animationAssets';
 import { InstancedArchiveSprites } from '../src/instancedArchiveSprites';
 import { installMatrixGate } from '../src/matrixGate';
-import { updateSceneMatrices } from '../src/matrixUpdates';
+import { renderScenePasses } from '../src/sceneRenderPass';
+import { spriteRenderOrderKey } from '../src/renderOrder';
+import { setOrdinarySpriteKeys } from '../src/scenePainter';
 
 vi.mock('../src/rgbaSpriteAtlas', async () => {
   const THREE = await import('three');
@@ -94,11 +96,8 @@ function setup(separateFoot = false) {
     show(0);
     return { model, visual, foot, handle, member, show, gate };
   });
-  const render = () => {
-    updateSceneMatrices(scene);
-    camera.updateMatrixWorld();
-    instances.render(renderer, camera, undefined, scene);
-  };
+  // The scene's passes, then its painter, which hands each batch its runs in key order.
+  const render = () => renderScenePasses(renderer, scene, camera);
   const batch = () => scene.getObjectByName('ArchiveSpriteInstances:colour') as THREE.InstancedMesh;
   return {
     instances,
@@ -166,7 +165,8 @@ it('advances only UVs on stationary animation frames, reusing culling, depth ord
     s.render();
     const changedSorts = sort.mock.calls.length,
       changedCulls = cull.mock.calls.length;
-    expect(changedSorts).toBe(1);
+    // The page's own order, then the scene's key order across every page and billboard.
+    expect(changedSorts).toBe(2);
     expect(changedCulls).toBe(1);
     const matrix = new THREE.Matrix4();
     mesh.getMatrixAt(2, matrix);
@@ -327,7 +327,8 @@ it('invalidates transformed bounds on appearance changes and keeps a recycled pa
     expect(matrix.elements[12]).toBe(0);
     s.entries[0].handle.hide();
     s.render();
-    expect(mesh.parent).toBeNull();
+    // Parked off-scene with its segment group.
+    expect(s.scene.getObjectById(mesh.id)).toBeUndefined();
     s.entries[0].handle.setOpacity(0.25);
     s.entries[0].show(1, 'paged');
     s.render();
@@ -359,104 +360,46 @@ it('retains all unconsumed attribute update ranges across passes', () => {
   }
 });
 
-it('draws a depth-offset instance in its own batch, towards the camera after the ordinary ones, and moves it back', () => {
+it('draws each run of a page at its place in the key order, cut where an ordinary billboard falls between', () => {
   const s = setup();
   try {
-    const batches = () =>
-      s.scene
-        .getObjectByName('InstancedArchiveSprites')!
-        .children.filter(
-          (mesh): mesh is THREE.InstancedMesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> =>
-            mesh instanceof THREE.InstancedMesh,
-        );
-    const colours = () => batches().filter(mesh => mesh.name === 'ArchiveSpriteInstances:colour');
-    s.render();
-    expect(colours().map(mesh => [mesh.count, mesh.renderOrder, mesh.material.polygonOffset])).toEqual([
-      [3, -0.4, false],
-    ]);
-    // fire.lua SetFinalOffset: the owner effect is drawn after the ordinary batches, a few depth steps nearer the camera.
-    s.entries[1].handle.setDepthOffset(true);
-    s.render();
-    const offset = colours().find(mesh => mesh.material.polygonOffset)!;
-    expect(
-      colours()
-        .map(mesh => mesh.count)
-        .sort(),
-    ).toEqual([1, 2]);
-    expect([offset.count, offset.renderOrder, offset.material.polygonOffsetUnits]).toEqual([1, -0.39, -4]);
-    const depth = batches().find(mesh => mesh.name === 'ArchiveSpriteInstances:depth' && mesh.material.polygonOffset)!;
-    expect([depth.count, depth.renderOrder > -0.4]).toEqual([1, true]);
-    s.entries[1].handle.setDepthOffset(false);
-    s.render();
-    expect(colours().map(mesh => [mesh.count, mesh.renderOrder, mesh.material.polygonOffset])).toEqual([
-      [3, -0.4, false],
-    ]);
-  } finally {
-    s.dispose();
-  }
-});
-
-it('stacks coplanar overlapping sprites in one draw order across batches, steady while the camera pans', () => {
-  const s = setup();
-  try {
-    const colours = () =>
-      s.scene
-        .getObjectByName('InstancedArchiveSprites')!
-        .children.filter(
-          (mesh): mesh is THREE.InstancedMesh =>
-            mesh instanceof THREE.InstancedMesh && mesh.name === 'ArchiveSpriteInstances:colour',
-        );
-    /** Each batch's instances in draw order, as [entry index, depth bias]. */
-    const drawn = () =>
-      colours().map(mesh => {
-        const bias = mesh.geometry.getAttribute('spriteDepthBias');
-        return Array.from({ length: mesh.count }, (_, i) => [mesh.instanceColor!.getX(i) * 2, bias.getX(i)]);
+    /** Each drawn batch as [its group order, its sprites in draw order by entry index]. */
+    const drawn = () => {
+      const result: [number, number[]][] = [];
+      s.scene.traverse(object => {
+        if (object instanceof THREE.InstancedMesh && object.name === 'ArchiveSpriteInstances:colour') {
+          const mesh = object as THREE.InstancedMesh;
+          result.push([
+            mesh.parent!.renderOrder,
+            Array.from({ length: mesh.count }, (_, i) => Math.round(mesh.instanceColor!.getX(i) * 2)),
+          ]);
+        }
       });
+      return result.sort(([a], [b]) => a - b);
+    };
+    // Far to near along the camera: the first is drawn first.
     s.entries.forEach((entry, index) => {
       entry.handle.setColour([index / 2, 1, 1]);
-      entry.model.position.x = 0;
+      entry.model.position.set(0, 0, (index - 1) * 2);
     });
     s.render();
-    // One foot point: drawn in entity order, each later one nudged nearer, so the depth pass agrees with the order.
-    const [stack] = drawn();
-    const step = stack[1][1];
-    expect(step).toBeGreaterThan(0);
-    expect(stack).toEqual([
-      [0, 0],
-      [1, step],
-      [2, 2 * step],
-    ]);
-    const bias = s.batch().geometry.getAttribute('spriteDepthBias') as THREE.InstancedBufferAttribute;
-    const version = bias.version;
-    s.camera.position.x = 0.3721;
-    s.camera.position.y = -1.234;
-    s.render();
-    expect(drawn()).toEqual([stack]);
-    expect(bias.version).toBe(version);
-    // An effect on its owner's foot (SetFinalOffset) ranks after the sprites it shares the plane with, in its own batch.
-    s.entries[0].handle.setDepthOffset(true);
-    s.render();
-    expect(drawn().sort((a, b) => a.length - b.length)).toEqual([
-      [[0, 2 * step]],
-      [
-        [1, 0],
-        [2, step],
-      ],
-    ]);
-    s.entries[0].handle.setDepthOffset(false);
-    // Sprites clear of each other on screen, or at another depth, need no nudge.
-    s.entries.forEach((entry, index) => {
-      entry.model.position.x = (index - 1) * 3;
-    });
-    s.entries[2].model.position.set(0.5, 0, -1);
+    const keys = s.entries.map(entry => spriteRenderOrderKey(entry.model.position, s.camera.matrixWorldInverse, 0, 1));
+    expect(drawn()).toEqual([[keys[0], [0, 1, 2]]]);
+    // A billboard (the player) between the first two: the page is drawn as two batches around it.
+    const between = spriteRenderOrderKey(new THREE.Vector3(0, 0, -1), s.camera.matrixWorldInverse);
+    setOrdinarySpriteKeys(s.scene, [between]);
     s.render();
     expect(drawn()).toEqual([
-      [
-        [2, 0],
-        [0, 0],
-        [1, 0],
-      ],
+      [keys[0], [0]],
+      [keys[1], [1, 2]],
     ]);
+    expect(keys[0] < between && between < keys[1]).toBe(true);
+    setOrdinarySpriteKeys(s.scene, []);
+    // A positive SetFinalOffset on a shared foot draws after the others there, as an ordinary billboard's would.
+    s.entries.forEach(entry => entry.model.position.set(0, 0, 0));
+    s.entries[0].handle.setDepthOffset(true);
+    s.render();
+    expect(drawn().map(([, order]) => order)).toEqual([[1, 2, 0]]);
   } finally {
     s.dispose();
   }

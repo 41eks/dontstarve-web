@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { updateSceneMatrices } from './matrixUpdates';
+import { orderScenePainter } from './scenePainter';
 
 /** Display-space world lightmap, shared with the ordinary world materials. */
 export interface ScenePassLighting {
@@ -167,6 +168,7 @@ export function renderScenePasses(
   for (const pass of visiblePasses(scene)) {
     pass.render(renderer, camera, lighting, scene);
   }
+  orderScenePainter(scene);
 }
 
 /** Offscreen inputs and the world share one matrix traversal, including spatial-index updates. */
@@ -192,6 +194,8 @@ export function renderSceneWithPasses(
     for (const pass of visiblePasses(scene)) {
       pass.render(renderer, camera, preparedLighting, scene);
     }
+    // Every batch's place among the ordinary billboards needs every pass's sprites.
+    orderScenePainter(scene);
     renderer.render(scene, camera);
   } finally {
     scene.matrixWorldAutoUpdate = sceneAutoUpdate;
