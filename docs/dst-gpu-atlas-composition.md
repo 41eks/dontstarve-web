@@ -39,7 +39,7 @@
 
 1. **上传源贴图。** 对页内用到、当前任务尚未上传的每张源贴图调用 `renderer.initTexture`，每张一步；它是不可再切的主线程调用，同一任务的其他页复用上传结果。
 2. **清除累积目标。** 累积目标为 `HalfFloatType` 的 `WebGLRenderTarget`，不带深度，最近邻采样。
-3. **逐帧绘制。** `GpuAtlasScratch` 在同一任务内跨帧和跨页复用 geometry、顶点／UV 数组、预建索引、源材质及全屏通道。容量不足时按二次幂扩展（不超过现有 16 位索引限制），扩展前释放旧 GPU 缓冲；每帧重建连续 groups，更新 `drawRange`，只提交有效写入区间并合并未消费更新。每帧把各零件按源 z 顺序画成带 UV 的四边形：
+3. **逐帧绘制。** `GpuAtlasScratch` 在同一任务内跨帧和跨页复用 geometry、顶点／UV 数组和预建索引。零件材质与全屏 resolve 通道属于每个渲染器一份的 `GpuAtlasMaterials`，所有任务共用且不释放：Three.js 在程序的最后一个材质释放时删除该程序，按任务创建／释放材质会让每个新外观重新编译两个着色器，在 Windows ANGLE 上即 GPU 进程内的 D3D 编译；进入新区域时大量外观同时合成，曾与纹理上传叠加导致 GPU 进程崩溃。任务在多帧间交错推进，因此 `map` 与页尺寸 `size` 只在同步绘制前写入当前任务的值，绘制后清空，不让共享材质持有任何任务的源贴图或目标。容量不足时按二次幂扩展（不超过现有 16 位索引限制），扩展前释放旧 GPU 缓冲；每帧重建连续 groups，更新 `drawRange`，只提交有效写入区间并合并未消费更新。每帧把各零件按源 z 顺序画成带 UV 的四边形：
    - 顶点位置为零件变换后的页内像素坐标，公式与原 canvas 的 `setTransform` 一致：`(a·x + c·y + tx − minX)·scale + atlasX`，`y` 同理。
    - UV 取 `bbx／canvasWidth`、`bby／canvasHeight` 一类的归一化矩形，与普通精灵网格采样的范围一致；源贴图 `flipY = false`，行从上到下存放，所以 `v` 直接取行号除以高度。
    - 同一帧内连续使用同一源贴图的零件合成一个几何组，不同贴图交错时分成多组，保持图层顺序。
@@ -54,7 +54,7 @@
 
 ### 生命周期
 
-合成任务的 `cancel()` 显式关闭生成器，释放当前页的累积目标、未交付的最终目标及之前已完成但尚未交付的页；异常走相同的 `finally` 清理。任务结束时统一释放 `GpuAtlasScratch` 的临时材质、几何体与全屏通道。正常完成后，页的所有权交给调用方，后续 `cancel()` 不再释放这些页；最终纹理监听 `dispose` 并释放 render target，因此 `InstancedArchiveSprites` 统一调用 `atlas.texture.dispose()` 即可。已取消的任务不可继续推进。
+合成任务的 `cancel()` 显式关闭生成器，释放当前页的累积目标、未交付的最终目标及之前已完成但尚未交付的页；异常走相同的 `finally` 清理。任务结束时统一释放 `GpuAtlasScratch` 的几何体；共享材质随渲染器保留，上下文恢复后由 Three.js 重新编译。正常完成后，页的所有权交给调用方，后续 `cancel()` 不再释放这些页；最终纹理监听 `dispose` 并释放 render target，因此 `InstancedArchiveSprites` 统一调用 `atlas.texture.dispose()` 即可。已取消的任务不可继续推进。
 
 ### 回退
 
@@ -98,7 +98,7 @@ build 图集由 worker 解码为 RGBA，同时生成每像素 1 字节的 alpha�
 
 ## 测试
 
-- 单元测试 `packages/animation/tests/rgbaSpriteAtlas.test.ts`：分步合成器逐帧推进，结果与同步合成一致（CPU 路径）。`rgbaSpriteAtlasLifecycle.test.ts` 验证懒解析、跨页几何／索引复用、交错材质组、有效区间、渲染器统计与状态保持，以及多页中途取消／绘制失败时的资源释放。`atlasRelease.test.ts` 验证源图集共享 `Source`、上传后释放 RGBA、释放后 alpha 拾取不变，以及无数据 GPU 拷贝触发的重新解码与再次释放。
+- 单元测试 `packages/animation/tests/rgbaSpriteAtlas.test.ts`：分步合成器逐帧推进，结果与同步合成一致（CPU 路径）。`rgbaSpriteAtlasLifecycle.test.ts` 验证懒解析、跨页几何／索引复用、交错材质组、有效区间、渲染器统计与状态保持，多页中途取消／绘制失败时的资源释放，以及交错任务共用同一组不释放的合成材质且各自绘制时读到自己的贴图与页尺寸。`atlasRelease.test.ts` 验证源图集共享 `Source`、上传后释放 RGBA、释放后 alpha 拾取不变，以及无数据 GPU 拷贝触发的重新解码与再次释放。
 - 浏览器测试 `packages/ui/tests/tree-sprite.spec.ts` 与 `trees.spec.ts`：实例化的杂木与桦树帧与普通渲染逐像素对比（平均误差小于 2），覆盖层顺序、符号覆盖、隐藏符号、着色保持私有、砍伐后恢复以及 draw call 数。测试夹具在对比前调用 `flush(renderer)`，保证新外观已合成完。
 - 这些测试环境支持浮点渲染，实例化对比走 GPU 路径；CPU 单测使用模拟 canvas 验证布局与分步调用。当前尚无同一像素夹具强制走 GPU／CPU 两路的直接对比，不能将已有测试视为两路逐像素一致的证明。
 - 浏览器测试 `packages/ui/tests/atlas-lifecycle.spec.ts` 使用真实荧光花：多个动画帧均有绘制内容、脚点位置保留、前景误差受控，`idle → off → idle` 复用同一实例批次；首次绘制后源图集 RGBA 已释放；真实 `WEBGL_lose_context` 丢失／恢复后，首次绘制触发重新解码，等待 `atlasReloadsSettled()` 后图集重建，图像与恢复前一致。恢复调用放在丢失事件完成派发后的宏任务中。实体移出视野后空闲网格退出场景，回到视野时仍复用原批次且图像一致。

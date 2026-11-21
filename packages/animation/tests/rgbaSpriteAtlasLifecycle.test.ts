@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import type { Animation, ResolvedSprite } from '../src/animationAssets';
-import { createResolvedRgbaSpriteAtlasComposer } from '../src/rgbaSpriteAtlas';
+import { createResolvedRgbaSpriteAtlasComposer, type RgbaSpriteAtlas } from '../src/rgbaSpriteAtlas';
 
 /** Exercises ownership and buffer writes; pixel correctness is checked by real WebGL browser tests. */
 function rendererStub() {
@@ -14,6 +14,10 @@ function rendererStub() {
     index: THREE.BufferAttribute;
     count: number;
     groups: THREE.BufferGeometry['groups'];
+    /** The part materials and the textures and page size they held while this draw ran. */
+    materials: THREE.ShaderMaterial[];
+    maps: (THREE.Texture | null)[];
+    size: [number, number];
   }[] = [];
   const renderer = {
     extensions: { has: () => true },
@@ -46,14 +50,19 @@ function rendererStub() {
         index: mesh.geometry.index!,
         count: mesh.geometry.drawRange.count,
         groups: mesh.geometry.groups.map(group => ({ ...group })),
+        materials: [...(mesh.material as THREE.ShaderMaterial[])],
+        maps: mesh.geometry.groups.map(
+          group => (mesh.material as THREE.ShaderMaterial[])[group.materialIndex!].uniforms.map.value,
+        ),
+        size: (mesh.material as THREE.ShaderMaterial[])[0].uniforms.size.value.toArray(),
       });
     }),
   };
   return { renderer: renderer as unknown as THREE.WebGLRenderer, raw: renderer, draws };
 }
 
-function clip() {
-  const texture = new THREE.DataTexture(new Uint8Array(4 * 4 * 4), 4, 4);
+function clip(size = 4) {
+  const texture = new THREE.DataTexture(new Uint8Array(size * size * 4), size, size);
   const other = texture.clone();
   const materials = [texture, other].map(map => new THREE.MeshBasicMaterial({ map }));
   const part: ResolvedSprite = {
@@ -63,14 +72,14 @@ function clip() {
       duration: 1,
       x: 0,
       y: 0,
-      width: 4,
-      height: 4,
+      width: size,
+      height: size,
       vertexIndex: 0,
       vertexCount: 6,
       bbx: 0,
       bby: 0,
-      canvasWidth: 4,
-      canvasHeight: 4,
+      canvasWidth: size,
+      canvasHeight: size,
     },
     materials: [materials[0]],
   };
@@ -85,6 +94,7 @@ function clip() {
   return {
     animation,
     frames,
+    textures: [texture, other],
     dispose() {
       materials.forEach(material => material.dispose());
       texture.dispose();
@@ -179,5 +189,50 @@ it('releases all targets and restores renderer state when a draw fails', () => {
   } finally {
     composer.cancel();
     source.dispose();
+  }
+});
+
+it('shares one set of composition materials per renderer across interleaved tasks, never disposing their programs', () => {
+  const small = clip(),
+    large = clip(6),
+    { renderer, draws } = rendererStub();
+  const dispose = vi.spyOn(THREE.Material.prototype, 'dispose');
+  const first = createResolvedRgbaSpriteAtlasComposer(small.animation, small.frames, 8, renderer);
+  const second = createResolvedRgbaSpriteAtlasComposer(large.animation, large.frames, 16, renderer);
+  let firstPages: RgbaSpriteAtlas[] | undefined, secondPages: RgbaSpriteAtlas[] | undefined;
+  try {
+    // Alternate single steps so each task draws while the other is mid-page.
+    for (let step = 0; (!firstPages || !secondPages) && step < 200; step++) {
+      firstPages ??= first.step(0);
+      secondPages ??= second.step(0);
+    }
+    expect(firstPages).toHaveLength(3);
+    expect(secondPages).toHaveLength(3);
+    const own = (textures: THREE.Texture[]) => draws.filter(draw => textures.includes(draw.maps[0]!));
+    const smallDraws = own(small.textures),
+      largeDraws = own(large.textures);
+    expect(smallDraws).toHaveLength(3);
+    expect(largeDraws).toHaveLength(3);
+    // The same material objects keep three.js programs alive for every later task on this renderer.
+    expect(new Set(draws.flatMap(draw => draw.materials)).size).toBe(2);
+    expect(largeDraws[1].materials).toEqual(smallDraws[1].materials);
+    // Each draw sees its own task's textures and page size, even after the other task drew in between.
+    expect(smallDraws[1].maps).toEqual([small.textures[0], small.textures[1], small.textures[0]]);
+    expect(largeDraws[1].maps).toEqual([large.textures[0], large.textures[1], large.textures[0]]);
+    expect(smallDraws.map(draw => draw.size)).toEqual(firstPages!.map(page => [page.width, page.height]));
+    expect(largeDraws.map(draw => draw.size)).toEqual(secondPages!.map(page => [page.width, page.height]));
+    expect(largeDraws[0].size).not.toEqual(smallDraws[0].size);
+    // Finishing a task neither disposes the shared materials nor leaves its textures referenced by them.
+    expect(dispose).not.toHaveBeenCalled();
+    expect([...new Set(draws.flatMap(draw => draw.materials))].map(material => material.uniforms.map.value)).toEqual([
+      null,
+      null,
+    ]);
+  } finally {
+    first.cancel();
+    second.cancel();
+    [...(firstPages ?? []), ...(secondPages ?? [])].forEach(page => page.texture.dispose());
+    small.dispose();
+    large.dispose();
   }
 });

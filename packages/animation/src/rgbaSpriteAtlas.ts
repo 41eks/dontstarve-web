@@ -380,7 +380,7 @@ function* composeResolvedSteps(
   }
   const sourceOf = ({ image, materials }: ResolvedSprite) => decodedSources.get(materials[image.sampler ?? 0].map!)!;
   const pages: RgbaSpriteAtlas[] = [];
-  const scratch = gpu ? new GpuAtlasScratch() : undefined;
+  const scratch = gpu ? new GpuAtlasScratch(gpu) : undefined;
   let delivered = false;
   try {
     for (let offset = 0; offset < layouts.length; offset += capacity) {
@@ -530,19 +530,16 @@ function withRendererState(renderer: THREE.WebGLRenderer, draw: () => void) {
   }
 }
 
-/** Task-owned scratch buffers and materials, reused across frames and pages, never shared finished geometry. */
-class GpuAtlasScratch {
-  readonly scene = new THREE.Scene();
-  readonly camera = new THREE.Camera();
+/**
+ * One renderer's composition materials, shared by every task and never disposed. three.js deletes a program once its
+ * last material is disposed, so per-task materials recompiled both shaders for every newly shown appearance; in a
+ * busy area that stacked hundreds of program links on the GPU process. Tasks interleave across frames, so `map` and
+ * `size` hold a task's values only for the synchronous draw that reads them and are cleared after it.
+ */
+class GpuAtlasMaterials {
   readonly size = { value: new THREE.Vector2() };
-  readonly uploaded = new Set<THREE.Texture>();
-  private readonly materials: THREE.ShaderMaterial[] = [];
-  private readonly materialIndices = new Map<THREE.Texture, number>();
-  private readonly geometry = new THREE.BufferGeometry<Record<'position' | 'uv', THREE.BufferAttribute>>();
-  private readonly mesh = new THREE.Mesh(this.geometry, this.materials);
-  private positions = new Float32Array();
-  private uvs = new Float32Array();
-  private capacity = 0;
+  /** Part materials by index within one frame's draw; only `map` differs between them. */
+  readonly parts: THREE.ShaderMaterial[] = [];
   readonly resolve = new THREE.ShaderMaterial({
     uniforms: { map: { value: null as THREE.Texture | null } },
     vertexShader: GPU_RESOLVE_VERTEX,
@@ -552,12 +549,77 @@ class GpuAtlasScratch {
     depthWrite: false,
   });
   readonly resolveScene = new THREE.Scene();
-  private readonly quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.resolve);
 
   constructor() {
-    this.mesh.frustumCulled = this.quad.frustumCulled = false;
+    const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.resolve);
+    quad.frustumCulled = false;
+    this.resolveScene.add(quad);
+  }
+
+  part(index: number, map: THREE.Texture): void {
+    while (this.parts.length <= index) {
+      this.parts.push(
+        new THREE.ShaderMaterial({
+          uniforms: { map: { value: null as THREE.Texture | null }, size: this.size },
+          vertexShader: GPU_VERTEX,
+          fragmentShader: GPU_PART_FRAGMENT,
+          transparent: true,
+          depthTest: false,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+          forceSinglePass: true,
+          blending: THREE.CustomBlending,
+          blendEquation: THREE.AddEquation,
+          blendSrc: THREE.OneFactor,
+          blendDst: THREE.OneMinusSrcAlphaFactor,
+          blendSrcAlpha: THREE.OneFactor,
+          blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
+        }),
+      );
+    }
+    this.parts[index].uniforms.map.value = map;
+  }
+
+  /** Drops the last draw's textures so the shared materials keep no task's sources or targets alive. */
+  release(): void {
+    for (const material of this.parts) {
+      material.uniforms.map.value = null;
+    }
+    this.resolve.uniforms.map.value = null;
+  }
+}
+
+const gpuAtlasMaterials = new WeakMap<THREE.WebGLRenderer, GpuAtlasMaterials>();
+
+function sharedGpuAtlasMaterials(renderer: THREE.WebGLRenderer): GpuAtlasMaterials {
+  let materials = gpuAtlasMaterials.get(renderer);
+  if (!materials) {
+    gpuAtlasMaterials.set(renderer, (materials = new GpuAtlasMaterials()));
+  }
+  return materials;
+}
+
+/** Task-owned scratch buffers, reused across frames and pages, never shared finished geometry. */
+class GpuAtlasScratch {
+  readonly scene = new THREE.Scene();
+  readonly camera = new THREE.Camera();
+  /** This task's current page size, copied into the shared uniform for each of its draws. */
+  readonly size = new THREE.Vector2();
+  readonly uploaded = new Set<THREE.Texture>();
+  readonly materials: GpuAtlasMaterials;
+  /** The current frame's source textures by part material index. */
+  private readonly materialIndices = new Map<THREE.Texture, number>();
+  private readonly geometry = new THREE.BufferGeometry<Record<'position' | 'uv', THREE.BufferAttribute>>();
+  private readonly mesh: THREE.Mesh;
+  private positions = new Float32Array();
+  private uvs = new Float32Array();
+  private capacity = 0;
+
+  constructor(renderer: THREE.WebGLRenderer) {
+    this.materials = sharedGpuAtlasMaterials(renderer);
+    this.mesh = new THREE.Mesh(this.geometry, this.materials.parts);
+    this.mesh.frustumCulled = false;
     this.scene.add(this.mesh);
-    this.resolveScene.add(this.quad);
   }
 
   private ensureCapacity(count: number): void {
@@ -595,36 +657,21 @@ class GpuAtlasScratch {
 
   private materialIndex(map: THREE.Texture): number {
     let index = this.materialIndices.get(map);
-    if (index !== undefined) {
-      return index;
+    if (index === undefined) {
+      index = this.materialIndices.size;
+      this.materialIndices.set(map, index);
+      this.materials.part(index, map);
     }
-    index = this.materials.length;
-    this.materialIndices.set(map, index);
-    this.materials.push(
-      new THREE.ShaderMaterial({
-        uniforms: { map: { value: map }, size: this.size },
-        vertexShader: GPU_VERTEX,
-        fragmentShader: GPU_PART_FRAGMENT,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false,
-        side: THREE.DoubleSide,
-        forceSinglePass: true,
-        blending: THREE.CustomBlending,
-        blendEquation: THREE.AddEquation,
-        blendSrc: THREE.OneFactor,
-        blendDst: THREE.OneMinusSrcAlphaFactor,
-        blendSrcAlpha: THREE.OneFactor,
-        blendDstAlpha: THREE.OneMinusSrcAlphaFactor,
-      }),
-    );
     return index;
   }
 
+  /** Fills the buffers and binds the shared materials for one frame; the caller renders it before yielding. */
   drawFrame(frame: FrameLayout, scale: number): void {
     const count = frame.sprites.length;
     this.ensureCapacity(count);
     this.geometry.clearGroups();
+    this.materialIndices.clear();
+    this.materials.size.value.copy(this.size);
     let run = -1,
       runStart = 0;
     for (let part = 0; part < count; part++) {
@@ -676,13 +723,11 @@ class GpuAtlasScratch {
     }
   }
 
+  /** Releases this task's buffers; the shared materials stay with the renderer. */
   dispose(): void {
+    this.materialIndices.clear();
     this.geometry.dispose();
-    this.materials.forEach(material => material.dispose());
-    this.quad.geometry.dispose();
-    this.resolve.dispose();
     this.scene.clear();
-    this.resolveScene.clear();
   }
 }
 
@@ -736,7 +781,7 @@ function* composeGpuPageSteps(
   target.texture.colorSpace = THREE.SRGBColorSpace;
   let delivered = false;
   try {
-    scratch.size.value.set(width, height);
+    scratch.size.set(width, height);
     withRendererState(renderer, () => {
       renderer.setRenderTarget(accumulation);
       renderer.setClearColor(0x000000, 0);
@@ -756,19 +801,21 @@ function* composeGpuPageSteps(
           });
         }
       } finally {
+        scratch.materials.release();
         end();
       }
       yield;
     }
     const end = spritePerfSpan('step:gpu-resolve', `${width}x${height}`);
     try {
-      scratch.resolve.uniforms.map.value = accumulation.texture;
+      scratch.materials.resolve.uniforms.map.value = accumulation.texture;
       withRendererState(renderer, () => {
         renderer.setRenderTarget(target);
         renderer.autoClear = false;
-        renderer.render(scratch.resolveScene, scratch.camera);
+        renderer.render(scratch.materials.resolveScene, scratch.camera);
       });
     } finally {
+      scratch.materials.release();
       end();
     }
     const atlas = atlasResult(animation, layouts, target.texture, width, height, resolutionScale);
@@ -776,7 +823,6 @@ function* composeGpuPageSteps(
     delivered = true;
     return atlas;
   } finally {
-    scratch.resolve.uniforms.map.value = null;
     accumulation.dispose();
     if (!delivered) {
       target.dispose();
