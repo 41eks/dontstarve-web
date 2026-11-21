@@ -329536,6 +329536,25 @@
           }
         }
       ],
+      "dragonflyfurnace": [
+        {
+          "id": "dst_04E26ADB66396E8D_dragonflyfurnace_id_106206",
+          "transform": {
+            "position": [
+              1192.5,
+              0.0,
+              867.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          }
+        }
+      ],
       "shadow_forge": [
         {
           "id": "dst_04E26ADB66396E8D_shadow_forge_index_000001",

@@ -786048,6 +786048,41 @@
           }
         }
       ],
+      "dragonflychest": [
+        {
+          "id": "dst_03741E1B78B29575_dragonflychest_id_101525",
+          "transform": {
+            "position": [
+              1170.0,
+              0.0,
+              1014.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          }
+        }
+      ],
+      "wardrobe": [
+        {
+          "id": "dst_03741E1B78B29575_wardrobe_index_000001",
+          "transform": {
+            "position": [
+              -18.0,
+              0.0,
+              -486.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {}
+          }
+        }
+      ],
       "shadow_forge": [
         {
           "id": "dst_03741E1B78B29575_shadow_forge_index_000001",

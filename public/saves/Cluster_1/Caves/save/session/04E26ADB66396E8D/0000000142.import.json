@@ -557,6 +557,9 @@
     "cookpot",
     "icebox",
     "saltbox",
+    "dragonflychest",
+    "dragonflyfurnace",
+    "wardrobe",
     "shadow_forge",
     "seastack",
     "spiderden",
@@ -1127,6 +1130,18 @@
       "imported": 2
     },
     "saltbox": {
+      "source": 0,
+      "imported": 0
+    },
+    "dragonflychest": {
+      "source": 0,
+      "imported": 0
+    },
+    "dragonflyfurnace": {
+      "source": 1,
+      "imported": 1
+    },
+    "wardrobe": {
       "source": 0,
       "imported": 0
     },
@@ -74884,6 +74899,18 @@
         112
       ],
       "sourceNode": "CaveExitTask6:BG_4:BGSinkhole"
+    },
+    {
+      "id": "dst_04E26ADB66396E8D_dragonflyfurnace_id_106206",
+      "prefab": "dragonflyfurnace",
+      "sourceIndex": 1,
+      "sourceId": 106206,
+      "sourcePosition": [
+        381.5,
+        0,
+        -309
+      ],
+      "sourceNode": "Sacred:7:Spiral"
     },
     {
       "id": "dst_04E26ADB66396E8D_shadow_forge_index_000001",

@@ -10,8 +10,12 @@ DEFINITIONS = json.loads((ROOT / 'packages/prefab/src/definitions.json').read_te
 CHEST_SKINS = DEFINITIONS['treasurechest']['skinArchives']
 # containers.lua params.treasurechest: the 3 x 3 chest widget.
 CHEST_SLOT_COUNT = 9
-# containers.lua params.cookpot: the 1 x 4 cocking pot widget.
+# containers.lua params.cookpot: the 1 x 4 cooking pot widget.
 COOK_POT_SLOT_COUNT = 4
+# containers.lua params.dragonflychest (params.shadowchester): the 3 x 4 chest widget.
+DRAGONFLY_CHEST_SLOT_COUNT = 12
+# containers.lua params.dragonflyfurnace: the 2 x 2 cooker widget.
+DRAGONFLY_FURNACE_SLOT_COUNT = 4
 # stewer.lua OnSave; product_spoilage and spoiltime belong to spoilage, which the project does not port.
 STEWER_FIELDS = {'product', 'done', 'remainingtime', 'ingredient_prefabs', 'chef_id', 'product_spoilage', 'spoiltime'}
 
@@ -85,6 +89,35 @@ def storage_components(prefab, slot_count):
             raise ValueError(f'Unsupported {prefab} container state')
         return {'container': context['items'](container.get('items', {}), 'container', slot_count), 'building': {}}
     return convert
+
+
+def dragonflychest_components(data, context):
+    # dragonfly_chest.lua has no OnSave of its own and cannot burn; container.lua OnSave writes items, and
+    # upgradeable.lua writes numupgrades/stage. Only the unupgraded chest is ported.
+    if set(data) - {'container', 'upgradeable'}:
+        raise ValueError('Unsupported dragonflychest save state')
+    if data.get('upgradeable', {'numupgrades': 0, 'stage': 1}) != {'numupgrades': 0, 'stage': 1}:
+        raise ValueError('Unsupported dragonflychest upgradeable state')
+    # DoUpgradeVisuals derives the dragonflychest_upgraded_* build at runtime; the saved skinname is the base skin.
+    check_skin('dragonflychest', context['skin'], lambda skin: skin.startswith('dragonflychest_upgraded_'))
+    container = data.get('container') or {}
+    if not isinstance(container, dict) or set(container) - {'items'}:
+        raise ValueError('Unsupported dragonflychest container state')
+    return {'container': context['items'](container.get('items', {}), 'container', DRAGONFLY_CHEST_SLOT_COUNT),
+            'building': {}}
+
+
+def dragonflyfurnace_components(data, context):
+    # dragonfurnace.lua's furnace saves only container.lua's items: the incinerator and heater save nothing.
+    # The `salad` flag belongs to the unported saladfurnace prefab and is rejected with every other field.
+    if set(data) - {'container'}:
+        raise ValueError('Unsupported dragonflyfurnace save state')
+    check_skin('dragonflyfurnace', context['skin'])
+    container = data.get('container') or {}
+    if not isinstance(container, dict) or set(container) - {'items'}:
+        raise ValueError('Unsupported dragonflyfurnace container state')
+    return {'container': context['items'](container.get('items', {}), 'container', DRAGONFLY_FURNACE_SLOT_COUNT),
+            'building': {}}
 
 
 def stewer_components(data):
