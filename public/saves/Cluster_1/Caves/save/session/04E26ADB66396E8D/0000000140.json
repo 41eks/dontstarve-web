@@ -329309,6 +329309,142 @@
           }
         }
       ],
+      "cookpot": [
+        {
+          "id": "dst_04E26ADB66396E8D_cookpot_id_100858",
+          "transform": {
+            "position": [
+              972.0,
+              0.0,
+              -390.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          },
+          "skinname": "cookpot_kitchen"
+        }
+      ],
+      "icebox": [
+        {
+          "id": "dst_04E26ADB66396E8D_icebox_id_105004",
+          "transform": {
+            "position": [
+              1204.5,
+              0.0,
+              -1506.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {
+                "1": {
+                  "id": "dst_04E26ADB66396E8D_icebox_id_105004_0",
+                  "prefab": "heatrock",
+                  "skinname": "heatrock_fantasy",
+                  "components": {
+                    "fueled": {
+                      "fuel": 87.5
+                    }
+                  }
+                },
+                "4": {
+                  "id": "dst_04E26ADB66396E8D_icebox_id_105004_3",
+                  "prefab": "heatrock",
+                  "skinname": "heatrock_fantasy",
+                  "components": {}
+                },
+                "7": {
+                  "id": "dst_04E26ADB66396E8D_icebox_id_105004_6",
+                  "prefab": "heatrock",
+                  "skinname": "heatrock_fantasy",
+                  "components": {}
+                },
+                "8": {
+                  "id": "dst_04E26ADB66396E8D_icebox_id_105004_7",
+                  "prefab": "heatrock",
+                  "skinname": "heatrock_fantasy",
+                  "components": {
+                    "fueled": {
+                      "fuel": 25
+                    }
+                  }
+                },
+                "9": {
+                  "id": "dst_04E26ADB66396E8D_icebox_id_105004_8",
+                  "prefab": "heatrock",
+                  "skinname": "heatrock_fantasy",
+                  "components": {}
+                }
+              }
+            },
+            "building": {}
+          }
+        },
+        {
+          "id": "dst_04E26ADB66396E8D_icebox_id_105024",
+          "transform": {
+            "position": [
+              973.5,
+              0.0,
+              -396.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {
+                "1": {
+                  "id": "dst_04E26ADB66396E8D_icebox_id_105024_0",
+                  "prefab": "spoiled_food",
+                  "components": {
+                    "stackable": {
+                      "stack": 6
+                    }
+                  }
+                },
+                "2": {
+                  "id": "dst_04E26ADB66396E8D_icebox_id_105024_1",
+                  "prefab": "ice",
+                  "components": {
+                    "stackable": {
+                      "stack": 2
+                    },
+                    "perishable": {
+                      "time": 1090.3760178405
+                    }
+                  }
+                }
+              }
+            },
+            "building": {}
+          }
+        }
+      ],
+      "dragonflyfurnace": [
+        {
+          "id": "dst_04E26ADB66396E8D_dragonflyfurnace_id_105216",
+          "transform": {
+            "position": [
+              1192.5,
+              0.0,
+              867.0
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "container": {
+              "items": {}
+            },
+            "building": {}
+          }
+        }
+      ],
       "shadow_forge": [
         {
           "id": "dst_04E26ADB66396E8D_shadow_forge_index_000001",

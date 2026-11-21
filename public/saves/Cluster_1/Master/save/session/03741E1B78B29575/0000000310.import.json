@@ -472,6 +472,12 @@
     "lava_pond",
     "treasurechest",
     "pandoraschest",
+    "cookpot",
+    "icebox",
+    "saltbox",
+    "dragonflychest",
+    "dragonflyfurnace",
+    "wardrobe",
     "shadow_forge",
     "seastack",
     "spiderden",
@@ -1123,6 +1129,30 @@
     "pandoraschest": {
       "source": 0,
       "imported": 0
+    },
+    "cookpot": {
+      "source": 4,
+      "imported": 4
+    },
+    "icebox": {
+      "source": 1,
+      "imported": 1
+    },
+    "saltbox": {
+      "source": 1,
+      "imported": 1
+    },
+    "dragonflychest": {
+      "source": 1,
+      "imported": 1
+    },
+    "dragonflyfurnace": {
+      "source": 0,
+      "imported": 0
+    },
+    "wardrobe": {
+      "source": 1,
+      "imported": 1
     },
     "shadow_forge": {
       "source": 1,
@@ -68688,6 +68718,101 @@
       "sourceNode": "MoonIsland_Beach:2:MoonIsland_Blank"
     },
     {
+      "id": "dst_03741E1B78B29575_cookpot_id_117300",
+      "prefab": "cookpot",
+      "sourceIndex": 1,
+      "sourceId": 117300,
+      "sourcePosition": [
+        410,
+        0,
+        -314
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cookpot_id_117302",
+      "prefab": "cookpot",
+      "sourceIndex": 2,
+      "sourceId": 117302,
+      "sourcePosition": [
+        406,
+        0,
+        -318
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cookpot_id_117304",
+      "prefab": "cookpot",
+      "sourceIndex": 3,
+      "sourceId": 117304,
+      "sourcePosition": [
+        406,
+        0,
+        -314
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_cookpot_id_117306",
+      "prefab": "cookpot",
+      "sourceIndex": 4,
+      "sourceId": 117306,
+      "sourcePosition": [
+        410,
+        0,
+        -318
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_icebox_id_110934",
+      "prefab": "icebox",
+      "sourceIndex": 1,
+      "sourceId": 110934,
+      "sourcePosition": [
+        408,
+        0,
+        -316
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_saltbox_id_116107",
+      "prefab": "saltbox",
+      "sourceIndex": 1,
+      "sourceId": 116107,
+      "sourcePosition": [
+        406.5,
+        0,
+        -316
+      ],
+      "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_dragonflychest_id_150009",
+      "prefab": "dragonflychest",
+      "sourceIndex": 1,
+      "sourceId": 150009,
+      "sourcePosition": [
+        376,
+        0,
+        -320
+      ],
+      "sourceNode": "MoonIsland_Beach:2:MoonIsland_Blank"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wardrobe_index_000001",
+      "prefab": "wardrobe",
+      "sourceIndex": 1,
+      "sourcePosition": [
+        -20,
+        0,
+        180
+      ],
+      "sourceNode": "Forest hunters:2:MoonbaseOne"
+    },
+    {
       "id": "dst_03741E1B78B29575_shadow_forge_index_000001",
       "prefab": "shadow_forge",
       "sourceIndex": 1,
@@ -109399,6 +109524,48 @@
         "components": [
           "perishable",
           "glassname"
+        ]
+      },
+      {
+        "path": "icebox.id_110934.container.1",
+        "prefab": "ice",
+        "components": [
+          "anim"
+        ]
+      },
+      {
+        "path": "icebox.id_110934.container.2",
+        "prefab": "ice",
+        "components": [
+          "anim"
+        ]
+      },
+      {
+        "path": "icebox.id_110934.container.3",
+        "prefab": "ice",
+        "components": [
+          "anim"
+        ]
+      },
+      {
+        "path": "icebox.id_110934.container.8",
+        "prefab": "ice",
+        "components": [
+          "anim"
+        ]
+      },
+      {
+        "path": "saltbox.id_116107.container.5",
+        "prefab": "monstermeat",
+        "components": [
+          "perishable"
+        ]
+      },
+      {
+        "path": "saltbox.id_116107.container.6",
+        "prefab": "plantmeat",
+        "components": [
+          "perishable"
         ]
       }
     ]
