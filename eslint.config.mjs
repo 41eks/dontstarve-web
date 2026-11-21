@@ -14,6 +14,22 @@ export default [
     rules: {
       // Every if / else / for / while / do body is a braced block, even a single statement.
       curly: ['error', 'all'],
+      // A new object is built with { ...a, ...b }, not Object.assign({}, …); scripts/check-conventions.mjs's
+      // object-assign-state covers Object.assign into an existing object.
+      'prefer-object-spread': 'error',
+      // Properties are written through their owner's interface or built into a new object, never defined onto one.
+      'no-restricted-properties': [
+        'error',
+        ...[
+          ['Object', 'defineProperty'],
+          ['Object', 'defineProperties'],
+          ['Reflect', 'defineProperty'],
+        ].map(([object, property]) => ({
+          object,
+          property,
+          message: 'Write through the owner (setter, method, addComponent) or build a new object instead.',
+        })),
+      ],
     },
   },
 ];

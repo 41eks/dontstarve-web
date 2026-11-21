@@ -226,10 +226,14 @@ export function getWatchWorldContent<K extends WorldContentKey>(
       : registerCleanup,
     area ?? options?.active,
   );
-  return Object.defineProperties(local, {
-    scheduler: { value: world.scheduler, enumerable: true },
-    perishClock: { value: world.perishClock, enumerable: true },
-    nightmareclock: { value: world.nightmareclock, enumerable: true },
-    ...(area ? { area: { value: area, enumerable: true } } : {}),
-  }) as WorldContentSignal<WorldContentValues[K]>;
+  return {
+    get: local.get,
+    peek: local.peek,
+    subscribe: local.subscribe,
+    set: local.set,
+    scheduler: world.scheduler,
+    perishClock: world.perishClock,
+    nightmareclock: world.nightmareclock,
+    ...(area ? { area } : {}),
+  };
 }
