@@ -112,6 +112,74 @@ describe('debug command punctuation', () => {
     expect(teleport).not.toHaveBeenCalled();
   });
 
+  it.each(['c_gonext("spider")', " c_gonext （ 'SPIDER' ） ; "])(
+    'teleports to the next matching entity using %s',
+    async command => {
+      const teleport = vi.fn();
+      const findNext = vi.fn(() => ({ x: 18, z: -35 }));
+      expect(
+        await executeDebugCommand(
+          command,
+          createInventory(),
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          teleport,
+          findNext,
+        ),
+      ).toEqual({ ok: true, message: '已传送到 spider' });
+      expect(findNext).toHaveBeenCalledExactlyOnceWith('spider');
+      expect(teleport).toHaveBeenCalledExactlyOnceWith(18, -35);
+    },
+  );
+
+  it('reports a missing c_gonext target without moving the player', async () => {
+    const teleport = vi.fn();
+    const findNext = vi.fn(() => undefined);
+    expect(
+      await executeDebugCommand(
+        'c_gonext("missing")',
+        createInventory(),
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        teleport,
+        findNext,
+      ),
+    ).toEqual({ ok: false, message: '未找到场景对象：missing' });
+    expect(teleport).not.toHaveBeenCalled();
+  });
+
+  it.each(['c_gonext(spider)', 'c_gonext()', 'c_gonext("spider", 2)'])(
+    'rejects an invalid c_gonext command: %s',
+    async command => {
+      const teleport = vi.fn();
+      const findNext = vi.fn(() => ({ x: 1, z: 2 }));
+      expect(
+        (
+          await executeDebugCommand(
+            command,
+            createInventory(),
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            teleport,
+            findNext,
+          )
+        ).ok,
+      ).toBe(false);
+      expect(findNext).not.toHaveBeenCalled();
+      expect(teleport).not.toHaveBeenCalled();
+    },
+  );
+
+  it('reports an unavailable c_gonext lookup', async () => {
+    expect((await executeDebugCommand('c_gonext("spider")', createInventory())).ok).toBe(false);
+  });
+
   it('reports an unavailable player teleport', async () => {
     expect((await executeDebugCommand('ThePlayer.Transform:SetPosition(0, 0, 0)', createInventory())).ok).toBe(false);
   });
