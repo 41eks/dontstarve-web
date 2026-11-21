@@ -553,7 +553,6 @@ export function moonTreePrefabs(
       staticBillboard: true,
       instancedAnimations: [...new Set([standingAnimation, ...MOON_TREE_SIZES.map(size => `sway1_loop_${size}`)])],
     },
-    alignBottom: true,
     physics: { make: MakeObstaclePhysics, radius: 0.5 },
     minimapIcon: 'moon_tree.png',
     onSpawned,

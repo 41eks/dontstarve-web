@@ -161,7 +161,7 @@ it('keeps a symbol follower on a camera-facing archive sprite, whatever the came
   }
 });
 
-it('lifts the drawn archive sprite off a grounded entity, across deferred art and reloading', async () => {
+it('raises the drawn archive sprite by its visual height, across deferred art and reloading', async () => {
   vi.stubGlobal(
     'fetch',
     async (url: string) => new Response(await readFile(new URL(`../../../public${url}`, import.meta.url))),
@@ -179,7 +179,6 @@ it('lifts the drawn archive sprite off a grounded entity, across deferred art an
       root: instance.transform.model,
       name,
       sprite: instance.sprite,
-      alignBottom: true,
       art: {
         archive: {
           create: () =>

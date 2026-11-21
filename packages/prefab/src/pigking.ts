@@ -177,8 +177,6 @@ export function pigKingPrefabs(
         buildArchives: [definitions.pigKing.archive],
         bank: 'Pig_King',
       },
-      // The art stands its lowest point on the entity's feet, as the project draws its standing landmarks.
-      alignBottom: true,
       physics: { make: MakeObstaclePhysics, radius: 2, height: 0.5 },
       minimapIcon: 'pigking.png',
     },

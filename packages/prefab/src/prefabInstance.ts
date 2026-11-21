@@ -1161,7 +1161,7 @@ export function createPrefabEntity<Instance extends PrefabInstance<SpriteState, 
   /** Sets the entity's appearance before the first sprite is drawn, so it is drawn dressed. */
   initialize?: (instance: Instance) => void,
   ownerStatus?: ReadonlySignal<PrefabStatus>,
-  displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom' | 'dependencies'>,
+  displayOptions?: Pick<PrefabDisplayOptions, 'dependencies'>,
 ): { instance: Instance; display: PrefabDisplay } {
   const instance = entityInstance(prefab, clip, ownerStatus);
   initialize?.(instance);
@@ -1185,13 +1185,11 @@ export function createArchiveEntity<Instance extends PrefabInstance<SpriteState,
   name?: string,
   initialize?: (instance: Instance) => void,
   ownerStatus?: ReadonlySignal<PrefabStatus>,
-  displayOptions?: Pick<PrefabDisplayOptions, 'alignBottom'>,
 ): { instance: Instance; display: PrefabDisplay } {
   const instance = entityInstance(prefab, clip, ownerStatus);
   initialize?.(instance);
   const display = new PrefabDisplay({
     root: instance.transform.model,
-    ...displayOptions,
     name,
     art: { archive },
     sprite: instance.sprite,
@@ -1251,8 +1249,6 @@ interface PrefabEntityCommon<Instance extends PrefabInstance<SpriteState, object
   skinAnimationBanks?: Readonly<Record<string, readonly string[]>>;
   /** How the builds' materials are made (multColour, point filtering), with or without skins. */
   materialOptions?: import('@dontstarve-web/animation/animationAssets').SpriteMaterialOptions;
-  /** Stands the sprite's lowest point on the ground, as this project draws its buildings and their placers. */
-  alignBottom?: boolean;
   /** AnimState:SetRayTestOnBB: the mouse hits the art's bounding box rather than its opaque pixels. */
   rayTestOnBB?: boolean;
   /** False for what is only ever looked at, such as a transient effect: not a mouse target or an entity that queries find. */
@@ -1462,7 +1458,6 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
       fn,
       assets,
       assetOptions,
-      alignBottom,
       rayTestOnBB,
       targetable = true,
       physics,
@@ -1554,7 +1549,6 @@ export class PrefabEntityManager<Id extends string, Instance extends PrefabInsta
     const display = this.displays.add({
       root: instance.transform.model,
       name: prefabId,
-      alignBottom,
       art,
       sprite: instance.sprite,
       light: instance.light,

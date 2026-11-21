@@ -248,6 +248,4 @@ export interface ArchiveSpriteSource {
   /** `source`: the bank and build the entity has switched to, which a sprite built now starts in. */
   create(clip: { name: string; loop: boolean; source?: SpriteArtSource }): ArchiveSprite | Promise<ArchiveSprite>;
   initial?: ArchiveSprite;
-  /** Preserve artwork that rests its lowest point on the entity's ground origin. */
-  alignBottom?: boolean;
 }

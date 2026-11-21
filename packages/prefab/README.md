@@ -110,7 +110,7 @@ build 从 DST `databundles/anim_dynamic.zip` 提取，`.dyn` 文件原样复制�
 制作时选择的箱子皮肤会映射到 `${import.meta.env.BASE_URL}dst/data/anim/dynamic/`
 下对应的 DST build，并在预览、放置及后续开关动画中保持不变。
 
-`pigKingPrefabs` 对应 `pigking.lua`：`PigKingInstance` 由全局 `PrefabEntityManager` 生成与保存，声明 billboard、`alignBottom`、`SetFinalOffset(1)`（`setDepthOffset`）、`MakeObstaclePhysics(inst, 2, .5)`、地图图标 `pigking.png`（优先级 1）、`inspectable`、`trader` 组件和 `SGpigking` 状态机（注入的 `WatchWorldState("isnight")` 驱动昼夜睡觉、金块交易、拒绝）；美术未绘制时单次动画立即结算，状态机直接走到下一状态。不创建任何地皮，`default_pigking` 布局的地皮已写在存档地图里。小游戏、`hauntable`、`DynamicShadow`、音乐与节日交易未移植。
+`pigKingPrefabs` 对应 `pigking.lua`：`PigKingInstance` 由全局 `PrefabEntityManager` 生成与保存，声明 billboard、`SetFinalOffset(1)`（`setDepthOffset`）、`MakeObstaclePhysics(inst, 2, .5)`、地图图标 `pigking.png`（优先级 1）、`inspectable`、`trader` 组件和 `SGpigking` 状态机（注入的 `WatchWorldState("isnight")` 驱动昼夜睡觉、金块交易、拒绝）；美术未绘制时单次动画立即结算，状态机直接走到下一状态。不创建任何地皮，`default_pigking` 布局的地皮已写在存档地图里。小游戏、`hauntable`、`DynamicShadow`、音乐与节日交易未移植。
 猪王周围的地皮和岩石属于世界生成（原版 `default_pigking.lua` 静态布局），运行时不再摆放：从 DST 导入的存档地图本来就带有
 worldgen 写好的地皮；手写的初始存档由 `scripts/import-static-layouts.py` 把 40 块 `GRASS`、12 块 `WOODFLOOR` 写进 `world.map.tiles`，
 并校验 8 块岩石已是存档实体（见 [静态布局](../../docs/dst-static-layouts.md)）。

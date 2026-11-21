@@ -114,7 +114,6 @@ function buildingFlow(world: WorldContext, consume: () => boolean, onbuilt: () =
         assets: { animationArchive: declaration.archive, buildArchives: [declaration.archive], bank: 'chest' },
         assetOptions: { instancedAnimations: 'all' },
         skins: declaration.skinArchives,
-        alignBottom: true,
       },
     },
   );

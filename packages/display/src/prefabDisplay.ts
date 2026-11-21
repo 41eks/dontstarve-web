@@ -81,8 +81,6 @@ export interface PrefabDisplayOptions {
   readonly root: THREE.Group;
   readonly name?: string;
   readonly art: PrefabDisplayArt;
-  /** Keep the entity at its foot point, offsetting only its private drawn sprite. */
-  readonly alignBottom?: boolean;
   /**
    * Sources of the fx prefabs this entity spawns, as a Lua prefab's dependency list: they load with the entity's own art,
    * so a transition such as a collapse is drawn when it is spawned rather than settled undrawn.
@@ -211,23 +209,10 @@ export class PrefabDisplay {
     if ('archive' in drawWith) {
       const { archive } = drawWith;
       const clip = { name: first.clip.name, loop: !held, none: first.clip.none };
-      const prepare = (drawn: import('@dontstarve-web/animation/archiveSprite').ArchiveSprite) => {
-        if (archive.alignBottom || options.alignBottom) {
-          drawn.model.updateWorldMatrix(true, true);
-          const bounds = new THREE.Box3().setFromObject(drawn.model);
-          drawn.model.children[0].position.y -= bounds.min.y;
-        }
-        return drawn;
-      };
       // A sprite built after a release (the tile woke) starts in the bank and build the json declares now: its clip
       // may exist only there, as floating_item's do.
-      const create = (clip: { name: string; loop: boolean }) => {
-        const drawn = archive.create({ ...clip, source: this.builtSource() });
-        return drawn instanceof Promise ? drawn.then(prepare) : prepare(drawn);
-      };
-      this.engine = new ArchiveEngine(
-        new ResidentSprite(options.root, create, clip, archive.initial && prepare(archive.initial), options.name),
-      );
+      const create = (clip: { name: string; loop: boolean }) => archive.create({ ...clip, source: this.builtSource() });
+      this.engine = new ArchiveEngine(new ResidentSprite(options.root, create, clip, archive.initial, options.name));
     } else {
       const source =
         'source' in drawWith
@@ -237,30 +222,7 @@ export class PrefabDisplay {
               release: (model: THREE.Group) => model.removeFromParent(),
             };
       let ready = 'load' in source ? source.peek() : source;
-      // The foot offset is measured once, on the entity's first clip, so that every sprite drawn later, in whatever clip
-      // the entity is in by then (a deferred source's first one included), stands at the same point.
-      let bottom: number | undefined;
-      const measureBottom = (drawn: THREE.Group) => {
-        drawn.updateWorldMatrix(true, true);
-        const bounds = new THREE.Box3().setFromObject(drawn);
-        return bounds.isEmpty() ? 0 : bounds.min.y;
-      };
-      const create = (animation: string, frame?: 'first' | 'last') => {
-        const drawn = ready?.create(animation, frame);
-        if (drawn && options.alignBottom) {
-          if (bottom === undefined) {
-            if (animation === first.clip.name) {
-              bottom = measureBottom(drawn);
-            } else {
-              const initial = ready!.create(first.clip.name, held ? 'last' : 'first');
-              bottom = measureBottom(initial);
-              ready!.release(initial);
-            }
-          }
-          drawn.position.y -= bottom;
-        }
-        return drawn;
-      };
+      const create = (animation: string, frame?: 'first' | 'last') => ready?.create(animation, frame);
       this.engine = new ResidentSpriteController(
         options.root,
         animation => create(animation),

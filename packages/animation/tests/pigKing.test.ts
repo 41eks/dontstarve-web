@@ -117,8 +117,8 @@ describe('Pig King prefab', () => {
       await prefabDisplay(king.transform.model)!.artLoaded();
       expect(fetch).toHaveBeenCalledTimes(1);
       expect(king.sprite.currentAnimation).toBe('idle');
-      // alignBottom: the art's lowest point is on the feet.
-      expect(new THREE.Box3().setFromObject(king.transform.model).min.y).toBeCloseTo(0);
+      // The art hangs from its pivot, the foot the depth sort reads: the platform is drawn below it, as in the source.
+      expect(new THREE.Box3().setFromObject(king.transform.model).min.y).toBeCloseTo(-3.266, 2);
       king.remove();
       expect(s.physics.bodies).not.toContain(body);
       expect(king.hasTag('trader')).toBe(false);
