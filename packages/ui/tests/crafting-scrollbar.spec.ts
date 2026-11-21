@@ -76,6 +76,9 @@ test('keeps the recipe viewport, scrollbar and details inside the painted frame 
     { width: 375, height: 667 },
   ]) {
     await page.setViewportSize(size);
+    // The menu rescales on the window's resize event: 600 units at min(w / 1280, h / 720, 1.25).
+    const scale = Math.min(size.width / 1280, size.height / 720, 1.25);
+    await expect.poll(async () => (await panel.boundingBox())!.height).toBeCloseTo(600 * scale, 1);
     const bounds = await page.locator('dst-crafting-ui').evaluate(host => {
       const root = host.shadowRoot!;
       const panel = root.querySelector('.craft-panel')!.getBoundingClientRect();

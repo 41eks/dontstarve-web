@@ -1,5 +1,9 @@
 :host {
-  --inventory-slot-layout-size: min(57.05px, calc(5.1493vw - 2.581px));
+  /*
+   * The inventory bar's on-screen slot (W = 68 at Inv's 0.6 under the proportional HUD scale) before the panels'
+   * 0.75 scale.
+   */
+  --inventory-slot-layout-size: calc(68 * 0.6 / 0.75 * min(100vw / 1280, 100vh / 720, 1.25px));
 
   display: contents;
 }
@@ -179,10 +183,4 @@
   top: calc(var(--chest-art-origin-y) - 1.5 / 64 * var(--inventory-slot-layout-size));
   grid-template-columns: repeat(2, var(--inventory-slot-layout-size));
   gap: calc(11 / 64 * var(--inventory-slot-layout-size));
-}
-
-@media (max-width: 700px) {
-  :host {
-    --inventory-slot-layout-size: calc(5.1493vw - 1.018px);
-  }
 }
