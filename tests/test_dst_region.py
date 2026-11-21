@@ -554,7 +554,7 @@ end
         with self.assertRaisesRegex(ValueError, 'item catalog'):
             PREFAB['convert_entities'](terrain, source, report, 'BOX')
 
-    def test_cookpot_icebox_and_saltbox_import_contents_stewer_and_skins(self):
+    def test_container_buildings_import_contents_stewer_and_skins(self):
         encode = lambda values: base64.b64encode(b'VRSN\0\x01\0\0\0' + struct.pack(f'<{len(values)}H', *values)).decode()
         terrain = {'width': 3, 'height': 3, 'topology': {'ids': ['Forest']}, 'nodeidtilemap': encode([1] * 9)}
         catalog = {'items': {'log': {'maxStack': 40}}, 'skins': {}}
@@ -575,6 +575,12 @@ end
             'icebox': [{'id': 4, 'x': 4, 'z': 4, 'skinname': 'icebox_kitchen',
                         'data': {'container': {'items': {1: {'prefab': 'log'}}}}}],
             'saltbox': [{'id': 5, 'x': 5, 'z': 5, 'data': {}}],
+            'dragonflychest': [{'id': 7, 'x': 7, 'z': 7, 'skinname': 'dragonflychest_fantasy', 'data': {
+                'container': {'items': {12: {'prefab': 'log'}}},
+                'upgradeable': {'numupgrades': 0, 'stage': 1}}}],
+            'dragonflyfurnace': [{'id': 8, 'x': 8, 'z': 8,
+                                  'data': {'container': {'items': {4: {'prefab': 'log'}}}}}],
+            'wardrobe': [{'id': 9, 'x': 9, 'z': 9}],
         }
         entities, provenance = PREFAB['convert_entities'](terrain, source, {'translation': [0, 0, 0]}, 'CONT', catalog)
         cooked, empty, burnt, harvested = entities['cookpot']
@@ -598,6 +604,17 @@ end
             'building': {}})
         self.assertEqual(entities['icebox'][0]['skinname'], 'icebox_kitchen')
         self.assertEqual(entities['saltbox'][0]['components'], {'container': {'items': {}}, 'building': {}})
+        # dragonfly_chest.lua saves container.lua's items and upgradeable.lua's unupgraded state; it cannot burn.
+        self.assertEqual(entities['dragonflychest'][0]['components'], {
+            'container': {'items': {'12': {'id': 'dst_CONT_dragonflychest_id_7_11', 'prefab': 'log', 'components': {}}}},
+            'building': {}})
+        self.assertEqual(entities['dragonflychest'][0]['skinname'], 'dragonflychest_fantasy')
+        # dragonfurnace.lua's furnace saves only its container; the incinerator and heater save nothing.
+        self.assertEqual(entities['dragonflyfurnace'][0]['components'], {
+            'container': {'items': {'4': {'id': 'dst_CONT_dragonflyfurnace_id_8_3', 'prefab': 'log', 'components': {}}}},
+            'building': {}})
+        # wardrobe.lua has no save state the project ports beyond its empty building record.
+        self.assertEqual(entities['wardrobe'][0]['components'], {'building': {}})
         self.assertEqual(provenance['skippedEntities'], [])
         for prefab, data, skin in [
                 ('cookpot', {'burnt': True, 'container': {'items': {}}}, None),
@@ -606,7 +623,13 @@ end
                 ('cookpot', {}, 'cookpot_unknown'),
                 ('icebox', {'preserver': {}}, None),
                 ('icebox', {}, 'icebox_unknown'),
-                ('saltbox', {'burnt': True}, None)]:
+                ('saltbox', {'burnt': True}, None),
+                ('dragonflychest', {'upgradeable': {'numupgrades': 1, 'stage': 2}}, None),
+                ('dragonflychest', {'burnt': True}, None),
+                ('dragonflychest', {}, 'dragonflychest_upgraded_fantasy'),
+                ('dragonflyfurnace', {'salad': True}, None),
+                ('dragonflyfurnace', {}, 'dragonflyfurnace_unknown'),
+                ('wardrobe', {'burnt': True}, None)]:
             with self.assertRaises(ValueError):
                 PREFAB['convert_entities'](terrain, {prefab: [{'skinname': skin, 'data': data}]},
                                            {'translation': [0, 0, 0]}, 'CONT', catalog)
