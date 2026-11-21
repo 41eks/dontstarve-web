@@ -6,6 +6,7 @@ import {
   type Animation,
   type BuildPackage,
 } from '@dontstarve-web/animation/animationAssets';
+import { createMemo, createSignal, type ReadonlySignal } from '@dontstarve-web/signals';
 
 /** UIAnim art: one build with its atlases as canvases, and the bank's animations when the archive has them. */
 export interface UiAnimAsset {
@@ -161,52 +162,84 @@ export function animationLength(asset: UiAnimAsset, name: string): number {
   return (requireAnimation(asset, name).frames.length / FPS) * 1000;
 }
 
+const canonical = new WeakMap<Animation, readonly number[]>();
+
+/**
+ * Each frame's first frame with the same elements. A clip whose frames are identical, like sanity_arrow's four empty
+ * "neutral" frames, draws one picture while it loops.
+ */
+function canonicalFrames(animation: Animation): readonly number[] {
+  let frames = canonical.get(animation);
+  if (!frames) {
+    const first = new Map<string, number>();
+    frames = animation.frames.map((frame, index) => {
+      const key = JSON.stringify(frame.elements);
+      if (!first.has(key)) {
+        first.set(key, index);
+      }
+      return first.get(key)!;
+    });
+    canonical.set(animation, frames);
+  }
+  return frames;
+}
+
 interface Step {
   readonly anim: string;
   readonly loop: boolean;
 }
 
+interface Timeline {
+  readonly start: number;
+  readonly steps: readonly Step[];
+}
+
+/** The drawn animation and frame. */
+export interface AnimFrame {
+  readonly anim: string;
+  readonly frame: number;
+}
+
 /**
  * One UIAnim's AnimState timeline: PlayAnimation replaces the queue and PushAnimation appends; a looping step repeats
  * only while it is the last queued, and a finished non-looping queue holds its last frame. Times are badge
- * milliseconds.
+ * milliseconds on the badge's clock signal. The drawn animation and frame are memos of it, so a reader is notified
+ * only when the drawn frame changes, not on every clock tick.
  */
 export class AnimQueue {
-  private start = 0;
-  private steps: Step[] = [];
+  private readonly timeline = createSignal<Timeline>({ start: 0, steps: [] });
   private readonly asset: UiAnimAsset;
+  private readonly current: ReadonlySignal<AnimFrame | undefined>;
 
-  constructor(asset: UiAnimAsset) {
+  constructor(asset: UiAnimAsset, clock: ReadonlySignal<number>) {
     this.asset = asset;
+    const anim = createMemo(() => this.at(this.timeline.get(), clock.get())?.anim);
+    // The drawn picture's frame, so stepping between identical frames notifies nobody.
+    const frame = createMemo(() => {
+      const current = this.at(this.timeline.get(), clock.get());
+      const animation = current && this.asset.animations.get(current.anim);
+      return animation ? canonicalFrames(animation)[current.frame] : current?.frame;
+    });
+    this.current = createMemo(() => {
+      const name = anim.get();
+      const index = frame.get();
+      return name === undefined || index === undefined ? undefined : { anim: name, frame: index };
+    });
   }
 
   private frames(anim: string): number {
     return Math.max(1, this.asset.animations.get(anim)?.frames.length ?? 1);
   }
 
-  PlayAnimation(time: number, anim: string, loop = false): void {
-    this.start = time;
-    this.steps = [{ anim, loop }];
-  }
-
-  PushAnimation(time: number, anim: string, loop = true): void {
-    if (this.steps.length === 0 || this.resolve(time).over) {
-      this.PlayAnimation(time, anim, loop);
-    } else {
-      this.steps.push({ anim, loop });
+  private at({ start, steps }: Timeline, time: number): (AnimFrame & { over: boolean }) | undefined {
+    if (steps.length === 0) {
+      return undefined;
     }
-  }
-
-  get playing(): boolean {
-    return this.steps.length > 0;
-  }
-
-  resolve(time: number): { anim: string; frame: number; over: boolean } {
-    let elapsed = Math.floor((Math.max(0, time - this.start) * FPS) / 1000);
-    for (let index = 0; index < this.steps.length; index++) {
-      const step = this.steps[index];
+    let elapsed = Math.floor((Math.max(0, time - start) * FPS) / 1000);
+    for (let index = 0; index < steps.length; index++) {
+      const step = steps[index];
       const count = this.frames(step.anim);
-      if (step.loop && index === this.steps.length - 1) {
+      if (step.loop && index === steps.length - 1) {
         return { anim: step.anim, frame: elapsed % count, over: false };
       }
       if (elapsed < count) {
@@ -214,8 +247,29 @@ export class AnimQueue {
       }
       elapsed -= count;
     }
-    const step = this.steps[this.steps.length - 1];
+    const step = steps[steps.length - 1];
     return { anim: step.anim, frame: this.frames(step.anim) - 1, over: true };
+  }
+
+  PlayAnimation(time: number, anim: string, loop = false): void {
+    this.timeline.set({ start: time, steps: [{ anim, loop }] });
+  }
+
+  PushAnimation(time: number, anim: string, loop = true): void {
+    const timeline = this.timeline.peek();
+    if (timeline.steps.length === 0 || this.resolve(time).over) {
+      this.PlayAnimation(time, anim, loop);
+    } else {
+      this.timeline.set({ start: timeline.start, steps: [...timeline.steps, { anim, loop }] });
+    }
+  }
+
+  get playing(): boolean {
+    return this.timeline.peek().steps.length > 0;
+  }
+
+  resolve(time: number): AnimFrame & { over: boolean } {
+    return this.at(this.timeline.peek(), time) ?? { anim: '', frame: 0, over: true };
   }
 
   /** AnimState:IsCurrentAnimation */
@@ -223,12 +277,11 @@ export class AnimQueue {
     return this.playing && this.resolve(time).anim === anim;
   }
 
-  /** Draws the current frame; nothing until the first PlayAnimation. */
-  draw(context: CanvasRenderingContext2D, time: number, options?: DrawOptions): void {
-    if (!this.playing) {
-      return;
+  /** Draws the current frame; nothing until the first PlayAnimation. Reading it tracks only the drawn frame. */
+  draw(context: CanvasRenderingContext2D, options?: DrawOptions): void {
+    const current = this.current.get();
+    if (current) {
+      drawFrame(context, this.asset, requireAnimation(this.asset, current.anim), current.frame, options);
     }
-    const { anim, frame } = this.resolve(time);
-    drawFrame(context, this.asset, requireAnimation(this.asset, anim), frame, options);
   }
 }

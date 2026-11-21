@@ -1,3 +1,4 @@
+import { createSignal } from '@dontstarve-web/signals';
 import { Badge, FRAME_LAYER, type BadgeArt } from './badge';
 import { AnimQueue, drawFrame, percentFrame, requireAnimation, type UiAnimAsset } from './ui-anim';
 import type { BadgeOwner } from './owner';
@@ -16,7 +17,7 @@ export interface HealthBadgeArt extends BadgeArt {
  * source yet, so their children stay hidden; the bufficon shows its idle buff_none.
  */
 export class HealthBadge extends Badge {
-  private topperFrame = 0;
+  private readonly topperFrame = createSignal(0);
   private readonly circleframe2: AnimQueue;
   private readonly sanityarrow: AnimQueue;
   private readonly bufficon: AnimQueue;
@@ -28,13 +29,13 @@ export class HealthBadge extends Badge {
     super(art, [174 / 255, 21 / 255, 21 / 255]);
     this.owner = owner;
     // circleframe:Hide("frame") leaves the heart icon; circleframe2 draws the ring.
-    this.circleframe.hiddenLayers = new Set([FRAME_LAYER]);
-    this.topperFrame = percentFrame(requireAnimation(art.meter, 'anim'), 1);
-    this.circleframe2 = new AnimQueue(art.meter);
+    this.circleframeHidden = new Set([FRAME_LAYER]);
+    this.topperFrame.set(percentFrame(requireAnimation(art.meter, 'anim'), 1));
+    this.circleframe2 = new AnimQueue(art.meter, this.clock);
     this.circleframe2.PlayAnimation(0, 'frame');
-    this.sanityarrow = new AnimQueue(art.arrow);
+    this.sanityarrow = new AnimQueue(art.arrow, this.clock);
     this.sanityarrow.PlayAnimation(0, 'neutral');
-    this.bufficon = new AnimQueue(art.buff);
+    this.bufficon = new AnimQueue(art.buff, this.clock);
     this.bufficon.PlayAnimation(0, 'buff_none');
   }
 
@@ -45,7 +46,7 @@ export class HealthBadge extends Badge {
   /** HealthBadge:SetPercent(val, max, penaltypercent) */
   SetHealthPercent(val: number, max: number, penaltypercent = 0): void {
     this.SetPercent(val, max);
-    this.topperFrame = percentFrame(requireAnimation(this.art.meter, 'anim'), 1 - penaltypercent);
+    this.topperFrame.set(percentFrame(requireAnimation(this.art.meter, 'anim'), 1 - penaltypercent));
   }
 
   protected OnUpdate(): void {
@@ -65,9 +66,12 @@ export class HealthBadge extends Badge {
 
   protected override drawUnderNumber(context: CanvasRenderingContext2D): void {
     const { meter } = this.art;
-    drawFrame(context, meter, requireAnimation(meter, 'anim'), this.topperFrame, { tint: BLACK, scale: [1, -1] });
-    this.circleframe2.draw(context, this.time);
-    this.sanityarrow.draw(context, this.time);
-    this.bufficon.draw(context, this.time, { scale: [-1, 1] });
+    drawFrame(context, meter, requireAnimation(meter, 'anim'), this.topperFrame.get(), {
+      tint: BLACK,
+      scale: [1, -1],
+    });
+    this.circleframe2.draw(context);
+    this.sanityarrow.draw(context);
+    this.bufficon.draw(context, { scale: [-1, 1] });
   }
 }

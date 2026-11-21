@@ -1,4 +1,5 @@
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
+import { createSignal, readonlySignal, type ReadonlySignal } from '@dontstarve-web/signals';
 import {
   AnimQueue,
   animationLength,
@@ -6,7 +7,6 @@ import {
   loadUiAnim,
   percentFrame,
   requireAnimation,
-  type DrawOptions,
   type Rgb,
   type SymbolOverride,
   type UiAnimAsset,
@@ -49,57 +49,81 @@ export function drawBadgeText(context: CanvasRenderingContext2D, value: string, 
  * widgets/badge.lua without circular_meter or a custom anim: pulse, warning, backing, anim, anim_bonus, circleframe,
  * underNumber and num, drawn in that child order. Badge time only runs while the HUD's game frames do
  * (dont_update_while_paused).
+ *
+ * Everything draw shows is a signal, and each AnimQueue's frame a memo of the badge clock, so a reactive draw reruns
+ * only when the picture changes.
  */
 export abstract class Badge {
-  time = 0;
+  /** Badge milliseconds; the AnimQueues' frames are memos of it. */
+  protected readonly clock = createSignal(0);
   percent = 1;
-  focused = false;
-  protected num = '';
+  private readonly focusedState = createSignal(false);
+  private readonly numState = createSignal('');
+  /** num's string, tracked. */
+  readonly numberSignal: ReadonlySignal<string> = readonlySignal(this.numState);
   private readonly pulse: AnimQueue;
-  private pulseColour: Rgb = GREEN;
+  private readonly pulseColour = createSignal<Rgb>(GREEN);
   private readonly warning: AnimQueue;
-  private warningColour: Rgb = RED;
-  private warningShown = false;
+  private readonly warningColour = createSignal<Rgb>(RED);
+  private readonly warningShown = createSignal(false);
   private warningstarted = false;
   private warningDelayUntil: number | undefined;
-  protected anim: { tint: Rgb; frame: number };
-  protected circleframe: { frame: number; overrides: Map<number, SymbolOverride>; hiddenLayers?: Set<number> };
-  protected readonly backingOverrides = new Map<number, SymbolOverride>();
+  protected readonly animTint: ReturnType<typeof createSignal<Rgb>>;
+  private readonly animFrame = createSignal(0);
+  private readonly circleframeFrame = createSignal(0);
+  /** circleframe's override of "icon". */
+  protected readonly iconOverride: ReturnType<typeof createSignal<SymbolOverride>>;
+  /** circleframe's hidden layers. */
+  protected circleframeHidden: ReadonlySet<number> | undefined;
+  protected readonly backingOverrides = createSignal<ReadonlyMap<number, SymbolOverride>>(new Map());
 
   protected readonly art: BadgeArt;
 
   constructor(art: BadgeArt, tint: Rgb) {
     this.art = art;
-    this.pulse = new AnimQueue(art.pulse);
-    this.warning = new AnimQueue(art.pulse);
-    this.anim = { tint, frame: 0 };
-    this.circleframe = { frame: 0, overrides: new Map([[ICON, { asset: art.icon, symbol: ICON }]]) };
+    this.pulse = new AnimQueue(art.pulse, this.clock);
+    this.warning = new AnimQueue(art.pulse, this.clock);
+    this.animTint = createSignal(tint);
+    this.iconOverride = createSignal<SymbolOverride>({ asset: art.icon, symbol: ICON });
+  }
+
+  get time(): number {
+    return this.clock.peek();
+  }
+
+  get focused(): boolean {
+    return this.focusedState.peek();
+  }
+
+  /** Badge:OnGainFocus / OnLoseFocus show and hide num. */
+  set focused(value: boolean) {
+    this.focusedState.set(value);
   }
 
   /** num's string. */
   get number(): string {
-    return this.num;
+    return this.numState.peek();
   }
 
   /** The arrow animation the badge last played, 'neutral' before its first update. */
   abstract get arrow(): string;
 
   get warningVisible(): boolean {
-    return this.warningShown;
+    return this.warningShown.peek();
   }
 
   /** Badge:SetPercent(val, max) */
   SetPercent(val: number, max = 100): void {
-    this.anim.frame = percentFrame(requireAnimation(this.art.meter, 'anim'), 1 - val);
-    this.circleframe.frame = percentFrame(requireAnimation(this.art.meter, 'frame'), 1 - val);
-    this.num = String(Math.ceil(val * max));
+    this.animFrame.set(percentFrame(requireAnimation(this.art.meter, 'anim'), 1 - val));
+    this.circleframeFrame.set(percentFrame(requireAnimation(this.art.meter, 'frame'), 1 - val));
+    this.numState.set(String(Math.ceil(val * max)));
     this.percent = val;
   }
 
   private pulseWith(colour: Rgb, delay: number): void {
-    this.pulseColour = colour;
+    this.pulseColour.set(colour);
     this.pulse.PlayAnimation(this.time, 'pulse');
-    this.warningShown = false;
+    this.warningShown.set(false);
     this.warningDelayUntil = this.time + delay;
   }
 
@@ -114,32 +138,32 @@ export abstract class Badge {
   StopWarning(): void {
     if (this.warningstarted) {
       this.warningstarted = false;
-      this.warningShown = false;
+      this.warningShown.set(false);
     }
   }
 
   StartWarning(colour: Rgb = RED): void {
-    this.warningColour = colour;
+    this.warningColour.set(colour);
     if (!this.warningstarted) {
       this.warningstarted = true;
-      if (this.warningDelayUntil === undefined && !this.warningShown) {
+      if (this.warningDelayUntil === undefined && !this.warningShown.peek()) {
         this.showWarning();
       }
     }
   }
 
   private showWarning(): void {
-    this.warningShown = true;
+    this.warningShown.set(true);
     this.warning.PlayAnimation(this.time, 'pulse', true);
   }
 
   /** Advances badge time by `dt` milliseconds and runs the widget's OnUpdate. */
   advance(dt: number): void {
-    this.time += dt;
+    this.clock.set(this.time + dt);
     if (this.warningDelayUntil !== undefined && this.time >= this.warningDelayUntil) {
       // CheckWarning
       this.warningDelayUntil = undefined;
-      if (this.warningstarted && !this.warningShown) {
+      if (this.warningstarted && !this.warningShown.peek()) {
         this.showWarning();
       }
     }
@@ -153,22 +177,25 @@ export abstract class Badge {
 
   /** num, and children added after it. */
   protected drawNumber(context: CanvasRenderingContext2D): void {
-    if (this.focused) {
-      drawBadgeText(context, this.num, 3, 0);
+    if (this.focusedState.get()) {
+      drawBadgeText(context, this.numState.get(), 3, 0);
     }
   }
 
+  /** Draws the badge, reading its state through signals so a reactive caller reruns only when the picture changes. */
   draw(context: CanvasRenderingContext2D): void {
     const { meter } = this.art;
-    this.pulse.draw(context, this.time, { tint: this.pulseColour });
-    if (this.warningShown) {
-      this.warning.draw(context, this.time, { tint: this.warningColour });
+    this.pulse.draw(context, { tint: this.pulseColour.get() });
+    if (this.warningShown.get()) {
+      this.warning.draw(context, { tint: this.warningColour.get() });
     }
-    drawFrame(context, meter, requireAnimation(meter, 'bg'), 0, { overrides: this.backingOverrides });
-    drawFrame(context, meter, requireAnimation(meter, 'anim'), this.anim.frame, { tint: this.anim.tint });
+    drawFrame(context, meter, requireAnimation(meter, 'bg'), 0, { overrides: this.backingOverrides.get() });
+    drawFrame(context, meter, requireAnimation(meter, 'anim'), this.animFrame.get(), { tint: this.animTint.get() });
     // anim_bonus is hidden: these badges never pass SetPercent a bonus value.
-    const circleframe: DrawOptions = this.circleframe;
-    drawFrame(context, meter, requireAnimation(meter, 'frame'), this.circleframe.frame, circleframe);
+    drawFrame(context, meter, requireAnimation(meter, 'frame'), this.circleframeFrame.get(), {
+      overrides: new Map([[ICON, this.iconOverride.get()]]),
+      hiddenLayers: this.circleframeHidden,
+    });
     this.drawUnderNumber(context);
     this.drawNumber(context);
   }

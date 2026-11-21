@@ -5,6 +5,7 @@ import type { Badge } from './badge/badge';
 import type { BadgeOwner } from './badge/owner';
 import styles from './styles/status-hud.css?inline';
 import { proportionalHudScale } from './hud-scale';
+import { createEffect, createSignal } from '@dontstarve-web/signals';
 
 export type { BadgeOwner, StatDeltaData } from './badge/owner';
 
@@ -34,6 +35,9 @@ export class DstStatusHudElement extends AssetElement {
   private observer?: ResizeObserver;
   private readonly canvases = new Map<BadgeName, HTMLCanvasElement>();
   private readonly hits = new Map<BadgeName, HTMLElement>();
+  /** Bumped when layout resizes (and so clears) the badge canvases. */
+  private readonly canvasLayout = createSignal(0);
+  private stopBadges: (() => void)[] = [];
 
   constructor() {
     super();
@@ -47,8 +51,7 @@ export class DstStatusHudElement extends AssetElement {
   dispose(): void {
     this.clock?.dispose();
     this.clock = undefined;
-    this.status?.dispose();
-    this.status = undefined;
+    this.disposeStatus();
     this.observer?.disconnect();
     this.observer = undefined;
   }
@@ -56,8 +59,7 @@ export class DstStatusHudElement extends AssetElement {
   /** The HUD's owner: StatusDisplays listens to its stat events and the badges read its components. */
   setOwner(owner: BadgeOwner | undefined): void {
     this.owner = owner;
-    this.status?.dispose();
-    this.status = undefined;
+    this.disposeStatus();
     const art = this.art;
     if (!owner || !art) {
       return;
@@ -65,8 +67,7 @@ export class DstStatusHudElement extends AssetElement {
     void art.then(loaded => {
       if (this.owner === owner && this.art === art && !this.status) {
         this.status = new StatusDisplays(loaded, owner);
-        this.updateLabels();
-        this.drawBadges();
+        this.bindBadges(this.status);
         this.shadowRoot!.querySelector('.survival-hud')!.setAttribute('data-state', 'ready');
       }
     });
@@ -80,8 +81,6 @@ export class DstStatusHudElement extends AssetElement {
     this.clock?.advanceAnimation(dt);
     if (this.status) {
       this.status.advance(dt * 1000);
-      this.updateLabels();
-      this.drawBadges();
     }
   }
 
@@ -89,35 +88,37 @@ export class DstStatusHudElement extends AssetElement {
     return this.status?.[name];
   }
 
-  private updateLabels(): void {
-    for (const name of BADGE_ORDER) {
-      const badge = this.badge(name);
-      const hit = this.hits.get(name);
-      if (badge && hit) {
-        const label = `${BADGES[name].label} ${badge.number}`;
-        // Stats drain every frame; an unchanged label must not touch the DOM.
-        if (hit.getAttribute('aria-label') !== label) {
-          hit.setAttribute('aria-label', label);
-        }
-      }
-    }
+  private disposeStatus(): void {
+    this.stopBadges.splice(0).forEach(stop => stop());
+    this.status?.dispose();
+    this.status = undefined;
   }
 
-  private drawBadges(): void {
+  /**
+   * Each badge's canvas repaints in an effect that reads the badge's signals, so it reruns only when the picture
+   * changes (a new animation frame, percent, tint, warning or focus) or layout resizes the canvas, not every frame.
+   */
+  private bindBadges(status: StatusDisplays): void {
     for (const name of BADGE_ORDER) {
-      const badge = this.badge(name);
-      const canvas = this.canvases.get(name);
-      if (!badge || !canvas) {
-        continue;
-      }
-      const context = canvas.getContext('2d')!;
-      const pixels = canvas.width / BADGES[name].size;
-      context.resetTransform();
-      context.clearRect(0, 0, canvas.width, canvas.height);
-      context.setTransform(pixels, 0, 0, pixels, canvas.width / 2, canvas.height / 2);
-      badge.draw(context);
-      canvas.dataset.arrow = badge.arrow;
-      canvas.dataset.warning = badge.warningVisible ? 'on' : 'off';
+      const badge = status[name];
+      const canvas = this.canvases.get(name)!;
+      const hit = this.hits.get(name)!;
+      this.stopBadges.push(
+        createEffect(() => {
+          this.canvasLayout.get();
+          const context = canvas.getContext('2d')!;
+          const pixels = canvas.width / BADGES[name].size;
+          context.resetTransform();
+          context.clearRect(0, 0, canvas.width, canvas.height);
+          context.setTransform(pixels, 0, 0, pixels, canvas.width / 2, canvas.height / 2);
+          badge.draw(context);
+          canvas.dataset.arrow = badge.arrow;
+          canvas.dataset.warning = badge.warningVisible ? 'on' : 'off';
+        }),
+        createEffect(() => {
+          hit.setAttribute('aria-label', `${BADGES[name].label} ${badge.numberSignal.get()}`);
+        }),
+      );
     }
   }
 
@@ -142,7 +143,7 @@ export class DstStatusHudElement extends AssetElement {
       canvas.width = canvas.height = Math.max(1, Math.round(size * k * ratio));
       place(this.hits.get(name)!, x, y, BADGE_RADIUS * 2, BADGE_RADIUS * 2);
     }
-    this.drawBadges();
+    this.canvasLayout.set(this.canvasLayout.peek() + 1);
   }
 
   protected render(): void {
@@ -175,7 +176,6 @@ export class DstStatusHudElement extends AssetElement {
         const badge = this.badge(name);
         if (badge) {
           badge.focused = focused;
-          this.drawBadges();
         }
       };
       hit.addEventListener('mouseenter', focus(true));

@@ -25,7 +25,7 @@ export class HungerBadge extends Badge {
   constructor(art: HungerBadgeArt, owner: BadgeOwner) {
     super(art, [255 / 255, 204 / 255, 51 / 255]);
     this.owner = owner;
-    this.hungerarrow = new AnimQueue(art.arrow);
+    this.hungerarrow = new AnimQueue(art.arrow, this.clock);
     this.hungerarrow.PlayAnimation(0, 'neutral');
   }
 
@@ -96,6 +96,6 @@ export class HungerBadge extends Badge {
   }
 
   protected override drawUnderNumber(context: CanvasRenderingContext2D): void {
-    this.hungerarrow.draw(context, this.time);
+    this.hungerarrow.draw(context);
   }
 }

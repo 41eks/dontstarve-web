@@ -1,4 +1,5 @@
 import { smallHash } from '@dontstarve-web/animation/animationAssets';
+import { createSignal } from '@dontstarve-web/signals';
 import { Badge, FRAME_LAYER, ICON, type BadgeArt } from './badge';
 import { AnimQueue, drawFrame, percentFrame, requireAnimation, type Rgb, type UiAnimAsset } from './ui-anim';
 import type { BadgeOwner } from './owner';
@@ -34,14 +35,14 @@ export class SanityBadge extends Badge {
   private val = 1;
   private max = 100;
   private penaltypercent = 0;
-  private topperFrame: number;
+  private readonly topperFrame = createSignal(0);
   private readonly circleframe2: AnimQueue;
   private readonly circleframe2Options;
   private readonly sanityarrow: AnimQueue;
   private arrowdir: string | undefined;
   private transitionAt: number | undefined;
   /** SpawnTransitionFX: a sibling UIAnim at the badge's position, killed on animover. */
-  private transitionFx: AnimQueue | undefined;
+  private readonly transitionFx = createSignal<AnimQueue | undefined>(undefined);
   private readonly hideFrame = new Set([FRAME_LAYER]);
 
   private readonly owner: BadgeOwner;
@@ -49,15 +50,15 @@ export class SanityBadge extends Badge {
   constructor(art: SanityBadgeArt, owner: BadgeOwner) {
     super(art, SANITY_TINT);
     this.owner = owner;
-    this.topperFrame = percentFrame(requireAnimation(art.meter, 'anim'), 1);
-    this.circleframe.hiddenLayers = this.hideFrame;
-    this.circleframe2 = new AnimQueue(art.icon);
+    this.topperFrame.set(percentFrame(requireAnimation(art.meter, 'anim'), 1));
+    this.circleframeHidden = this.hideFrame;
+    this.circleframe2 = new AnimQueue(art.icon, this.clock);
     this.circleframe2Options = {
       overrides: new Map([[smallHash('frame_circle'), { asset: art.meter, symbol: smallHash('frame_circle') }]]),
       hiddenLayers: new Set([smallHash('FX')]),
     };
     this.circleframe2.PlayAnimation(0, 'frame');
-    this.sanityarrow = new AnimQueue(art.arrow);
+    this.sanityarrow = new AnimQueue(art.arrow, this.clock);
     this.sanityarrow.PlayAnimation(0, 'neutral');
   }
 
@@ -76,13 +77,13 @@ export class SanityBadge extends Badge {
       this.sanitymode = mode;
       const { icon } = this.art;
       if (mode === SANITY_MODE_INSANITY) {
-        this.backingOverrides.clear();
-        this.anim.tint = SANITY_TINT;
-        this.circleframe.overrides.set(ICON, { asset: icon, symbol: ICON });
+        this.backingOverrides.set(new Map());
+        this.animTint.set(SANITY_TINT);
+        this.iconOverride.set({ asset: icon, symbol: ICON });
       } else {
-        this.backingOverrides.set(smallHash('bg'), { asset: icon, symbol: smallHash('lunacy_bg') });
-        this.anim.tint = LUNACY_TINT;
-        this.circleframe.overrides.set(ICON, { asset: icon, symbol: smallHash('lunacy_icon') });
+        this.backingOverrides.set(new Map([[smallHash('bg'), { asset: icon, symbol: smallHash('lunacy_bg') }]]));
+        this.animTint.set(LUNACY_TINT);
+        this.iconOverride.set({ asset: icon, symbol: smallHash('lunacy_icon') });
       }
       this.SetPercent(this.val, this.max);
     }
@@ -95,7 +96,7 @@ export class SanityBadge extends Badge {
     this.max = max;
     this.SetPercent(val, max);
     this.penaltypercent = penaltypercent;
-    this.topperFrame = percentFrame(requireAnimation(this.art.meter, 'anim'), 1 - penaltypercent);
+    this.topperFrame.set(percentFrame(requireAnimation(this.art.meter, 'anim'), 1 - penaltypercent));
 
     const mode = this.owner.components.sanity?.GetSanityMode() ?? SANITY_MODE_INSANITY;
     if (mode !== this.sanitymode) {
@@ -105,8 +106,9 @@ export class SanityBadge extends Badge {
       }
       const anim = this.sanitymode !== SANITY_MODE_INSANITY ? 'transition_sanity' : 'transition_lunacy';
       this.circleframe2.PlayAnimation(this.time, anim);
-      this.transitionFx = new AnimQueue(this.art.icon);
-      this.transitionFx.PlayAnimation(this.time, anim);
+      const fx = new AnimQueue(this.art.icon, this.clock);
+      fx.PlayAnimation(this.time, anim);
+      this.transitionFx.set(fx);
       this.circleframe2.PushAnimation(this.time, 'frame', false);
       this.transitionAt = this.time + 6 * FRAME_MS;
     }
@@ -136,8 +138,8 @@ export class SanityBadge extends Badge {
     if (this.transitionAt !== undefined && this.time >= this.transitionAt) {
       this.DoTransition();
     }
-    if (this.transitionFx?.resolve(this.time).over) {
-      this.transitionFx = undefined;
+    if (this.transitionFx.peek()?.resolve(this.time).over) {
+      this.transitionFx.set(undefined);
     }
     const sanity = this.owner.components.sanity;
     let anim = 'neutral';
@@ -171,13 +173,16 @@ export class SanityBadge extends Badge {
 
   protected override drawUnderNumber(context: CanvasRenderingContext2D): void {
     const { meter } = this.art;
-    drawFrame(context, meter, requireAnimation(meter, 'anim'), this.topperFrame, { tint: BLACK, scale: [1, -1] });
-    this.circleframe2.draw(context, this.time, this.circleframe2Options);
-    this.sanityarrow.draw(context, this.time);
+    drawFrame(context, meter, requireAnimation(meter, 'anim'), this.topperFrame.get(), {
+      tint: BLACK,
+      scale: [1, -1],
+    });
+    this.circleframe2.draw(context, this.circleframe2Options);
+    this.sanityarrow.draw(context);
   }
 
   override draw(context: CanvasRenderingContext2D): void {
     super.draw(context);
-    this.transitionFx?.draw(context, this.time, { hiddenLayers: this.hideFrame });
+    this.transitionFx.get()?.draw(context, { hiddenLayers: this.hideFrame });
   }
 }
