@@ -395,3 +395,69 @@ it('draws a depth-offset instance in its own batch, towards the camera after the
     s.dispose();
   }
 });
+
+it('stacks coplanar overlapping sprites in one draw order across batches, steady while the camera pans', () => {
+  const s = setup();
+  try {
+    const colours = () =>
+      s.scene
+        .getObjectByName('InstancedArchiveSprites')!
+        .children.filter(
+          (mesh): mesh is THREE.InstancedMesh =>
+            mesh instanceof THREE.InstancedMesh && mesh.name === 'ArchiveSpriteInstances:colour',
+        );
+    /** Each batch's instances in draw order, as [entry index, depth bias]. */
+    const drawn = () =>
+      colours().map(mesh => {
+        const bias = mesh.geometry.getAttribute('spriteDepthBias');
+        return Array.from({ length: mesh.count }, (_, i) => [mesh.instanceColor!.getX(i) * 2, bias.getX(i)]);
+      });
+    s.entries.forEach((entry, index) => {
+      entry.handle.setColour([index / 2, 1, 1]);
+      entry.model.position.x = 0;
+    });
+    s.render();
+    // One foot point: drawn in entity order, each later one nudged nearer, so the depth pass agrees with the order.
+    const [stack] = drawn();
+    const step = stack[1][1];
+    expect(step).toBeGreaterThan(0);
+    expect(stack).toEqual([
+      [0, 0],
+      [1, step],
+      [2, 2 * step],
+    ]);
+    const bias = s.batch().geometry.getAttribute('spriteDepthBias') as THREE.InstancedBufferAttribute;
+    const version = bias.version;
+    s.camera.position.x = 0.3721;
+    s.camera.position.y = -1.234;
+    s.render();
+    expect(drawn()).toEqual([stack]);
+    expect(bias.version).toBe(version);
+    // An effect on its owner's foot (SetFinalOffset) ranks after the sprites it shares the plane with, in its own batch.
+    s.entries[0].handle.setDepthOffset(true);
+    s.render();
+    expect(drawn().sort((a, b) => a.length - b.length)).toEqual([
+      [[0, 2 * step]],
+      [
+        [1, 0],
+        [2, step],
+      ],
+    ]);
+    s.entries[0].handle.setDepthOffset(false);
+    // Sprites clear of each other on screen, or at another depth, need no nudge.
+    s.entries.forEach((entry, index) => {
+      entry.model.position.x = (index - 1) * 3;
+    });
+    s.entries[2].model.position.set(0.5, 0, -1);
+    s.render();
+    expect(drawn()).toEqual([
+      [
+        [2, 0],
+        [0, 0],
+        [1, 0],
+      ],
+    ]);
+  } finally {
+    s.dispose();
+  }
+});
