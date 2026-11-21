@@ -14,6 +14,7 @@ for (const itemId of ['yellowstaff'] as const) {
       });
       if (!hasRandomUUID) {
         await page.addInitScript(() => {
+          // eslint-disable-next-line no-restricted-properties -- stubs out a browser API the page has not loaded yet
           Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
         });
       }

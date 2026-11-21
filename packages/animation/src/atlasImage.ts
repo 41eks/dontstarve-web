@@ -165,7 +165,7 @@ function spriteSheet(): CSSStyleSheet {
 
 /** Each element has its own CSS crop while sharing the atlas's decoded PNG URL. */
 export function createAtlasImage(className: string, atlasPath: string, elementName: string): AtlasImageElement {
-  const element = document.createElement('span') as AtlasImageElement;
+  const element: HTMLSpanElement & { ready?: Promise<void> } = document.createElement('span');
   element.className = className;
   element.dataset.atlas = atlasPath;
   element.dataset.element = elementName;
@@ -193,12 +193,12 @@ export function createAtlasImage(className: string, atlasPath: string, elementNa
     sprite.style.backgroundPosition = `${region.atlasWidth === region.width ? 0 : (region.x / (region.atlasWidth - region.width)) * 100}% ${region.atlasHeight === region.height ? 0 : (region.y / (region.atlasHeight - region.height)) * 100}%`;
     element.dataset.loaded = 'true';
   });
-  Object.defineProperty(element, 'ready', { value: ready });
+  element.ready = ready;
   void ready.catch((error: unknown) => {
     element.dataset.error = error instanceof Error ? error.message : String(error);
     element.dispatchEvent(new Event('error'));
   });
-  return element;
+  return element as AtlasImageElement;
 }
 
 export function disposeAtlasImages(): void {
