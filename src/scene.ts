@@ -192,7 +192,7 @@ export async function startScene(
     view,
     locomotor,
     () => locomotor.stop(),
-    reason => reason === 'crafting' || reason === 'emote',
+    reason => reason === 'emote',
   );
   let animation: ReturnType<typeof animate> | undefined;
   let startPromise: Promise<void> | undefined;

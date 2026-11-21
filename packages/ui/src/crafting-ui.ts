@@ -11,12 +11,6 @@ export interface CraftRequestDetail {
   skinId?: string;
 }
 
-export interface CraftingStateDetail extends CraftRequestDetail {
-  crafting: boolean;
-}
-
-export const CRAFT_DURATION_MS = 1_000;
-
 let resolveCraftingUiReady: () => void;
 /** Resolves after the first mounted crafting menu creates all groups, buttons and initial effects. */
 export const craftingUiReady: Promise<void> = new Promise(resolve => {
@@ -30,9 +24,6 @@ export class DstCraftingUiElement extends AssetElement {
   private materialSummary?: InventoryMaterialSummary;
   private readonly selectedRecipeState = createSignal<Recipe | undefined>(undefined);
   private readonly selectedSkinIds = new Map<string, string>();
-  private craftingRecipeId?: string;
-  private craftingSkinId?: string;
-  private craftingTimer?: ReturnType<typeof setTimeout>;
   private readonly recipes = [...new Set(categories.flatMap(category => category.recipes))];
   private readonly recipeIndices = new Map(this.recipes.map((recipe, index) => [recipe, index]));
   private isLockedArray = this.recipes.map(recipe => this.calculateRecipeLocked(recipe));
@@ -44,7 +35,6 @@ export class DstCraftingUiElement extends AssetElement {
   private disposeControls?: () => void;
   private disposeBackground?: () => void;
   private refreshMaterials?: () => void;
-  private refreshBuildButton?: () => void;
 
   constructor() {
     super();
@@ -88,18 +78,6 @@ export class DstCraftingUiElement extends AssetElement {
 
   disconnectedCallback(): void {
     this.disposeEffects();
-    if (!this.craftingRecipeId) {
-      return;
-    }
-    if (this.craftingTimer !== undefined) {
-      clearTimeout(this.craftingTimer);
-    }
-    const recipeId = this.craftingRecipeId;
-    const skinId = this.craftingSkinId;
-    this.craftingRecipeId = undefined;
-    this.craftingSkinId = undefined;
-    this.craftingTimer = undefined;
-    this.emitCraftingState(recipeId, false, skinId);
   }
 
   protected render(): void {
@@ -190,12 +168,9 @@ export class DstCraftingUiElement extends AssetElement {
       availableCount: ingredient => this.availableCount(ingredient),
       isRecipeLocked: recipe => this.isRecipeLocked(recipe),
       isRecipeBuffered: recipe => this.isRecipeBuffered(recipe),
-      getCraftingRecipeId: () => this.craftingRecipeId,
       emitCraftRequest: (recipeId, skinId) => this.emitCraftRequest(recipeId, skinId),
-      startCrafting: (recipeId, skinId) => this.startCrafting(recipeId, skinId),
     });
     this.refreshMaterials = controls.refreshMaterials;
-    this.refreshBuildButton = controls.refreshBuildButton;
     this.disposeControls = controls.dispose;
     this.disposeBackground = createCraftingBackground(root).dispose;
     resolveCraftingUiReady();
@@ -246,28 +221,10 @@ export class DstCraftingUiElement extends AssetElement {
     this.recipeButtonEffects.splice(0).forEach(dispose => dispose());
     this.controlEffects.splice(0).forEach(dispose => dispose());
     this.refreshMaterials = undefined;
-    this.refreshBuildButton = undefined;
   }
 
   private availableCount(ingredient: RecipeIngredient): number {
     return this.materialSummary?.[ingredient.id] ?? ingredient.available;
-  }
-
-  private startCrafting(recipeId: string, skinId?: string): void {
-    this.craftingRecipeId = recipeId;
-    this.craftingSkinId = skinId;
-    this.emitCraftingState(recipeId, true, skinId);
-    this.refreshBuildButton?.();
-    this.craftingTimer = setTimeout(() => {
-      this.craftingTimer = undefined;
-      this.craftingRecipeId = undefined;
-      this.craftingSkinId = undefined;
-      this.emitCraftRequest(recipeId, skinId);
-      this.emitCraftingState(recipeId, false, skinId);
-      if (this.isConnected) {
-        this.refreshBuildButton?.();
-      }
-    }, CRAFT_DURATION_MS);
   }
 
   private emitCraftRequest(recipeId: string, skinId?: string): void {
@@ -276,16 +233,6 @@ export class DstCraftingUiElement extends AssetElement {
         bubbles: true,
         composed: true,
         detail: { recipeId, ...(skinId === undefined ? {} : { skinId }) },
-      }),
-    );
-  }
-
-  private emitCraftingState(recipeId: string, crafting: boolean, skinId?: string): void {
-    this.dispatchEvent(
-      new CustomEvent<CraftingStateDetail>('game:crafting-state-change', {
-        bubbles: true,
-        composed: true,
-        detail: { recipeId, crafting, ...(skinId === undefined ? {} : { skinId }) },
       }),
     );
   }

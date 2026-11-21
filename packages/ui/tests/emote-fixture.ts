@@ -1,5 +1,5 @@
 import { wortox } from '../../prefab/src/wortox';
-import { cancelEmote, playEmote, playPickup, setCrafting, startMovement } from '../../prefab/src/player_common';
+import { cancelEmote, playBuild, playEmote, playPickup, startMovement } from '../../prefab/src/player_common';
 import { createPlayerEquipper } from '../../animation/tests/playerEquipFixture';
 import { advancePlayer, facePlayer, registerPlayer } from '../../animation/tests/playerVisual';
 import * as THREE from 'three';
@@ -44,7 +44,7 @@ export async function createEmoteFixture() {
     { actionEvents },
     locomotor,
     () => locomotor.stop(),
-    reason => reason === 'crafting' || reason === 'emote',
+    reason => reason === 'emote',
   );
   setupEmoteWheel(emoteWheel, renderer.domElement, animation, actionEvents, () => {});
   emoteWheel.addEventListener('game:emote-request', event =>
@@ -140,9 +140,11 @@ export async function createEmoteFixture() {
         advancePlayer(animation, 1 / 30);
       }
       await playEmote(animation, 'dance');
-      setCrafting(animation, true);
+      playBuild(animation, () => true);
       const craftingInterrupts = !(animation.emote !== null) && !(await playEmote(animation, 'happy'));
-      setCrafting(animation, false);
+      for (let i = 0; i < 60; i++) {
+        advancePlayer(animation, 1 / 30);
+      }
       const started = playEmote(animation, 'sit');
       cancelEmote(animation);
       const cancelledEmote = started && !(animation.emote !== null);

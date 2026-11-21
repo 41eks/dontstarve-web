@@ -127,7 +127,18 @@ for (const viewport of [{ width: 375, height: 667 }]) {
             composed: true,
           }),
         );
-        return { source, count: inventory.count('rope') };
+        // The BUILD action makes the rope when its dolongaction times out.
+        const built = await new Promise<boolean>(resolve => {
+          const started = performance.now();
+          const poll = () =>
+            inventory.count('rope') > 0
+              ? resolve(true)
+              : performance.now() - started > 10_000
+                ? resolve(false)
+                : requestAnimationFrame(poll);
+          poll();
+        });
+        return { source, count: built ? inventory.count('rope') : 0 };
       },
       {
         main: moduleUrl('../../../src/main.ts'),

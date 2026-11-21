@@ -402,11 +402,16 @@ export function playDrop(inst: PlayerInstance, onDrop: () => boolean, onCancel?:
   return false;
 }
 
-export function setCrafting(inst: PlayerInstance, crafting: boolean): void {
-  if (crafting) {
-    cancelEmote(inst);
+/**
+ * builder:MakeRecipe for a recipe without a placer: the BUILD action runs SGwilson's dolongaction, whose timeout performs
+ * `onBuild` (builder:DoBuild), which checks the ingredients again.
+ */
+export function playBuild(inst: PlayerInstance, onBuild: () => boolean): boolean {
+  if (inst.sg.hasAnyStateTag('drowning', 'falling', 'floating', 'nointerrupt', 'nopredict', 'pausepredict')) {
+    return false;
   }
-  inst.sg.requestCrafting(crafting);
+  cancelEmote(inst);
+  return inst.sg.pushBufferedAction(new BufferedAction('BUILD', onBuild));
 }
 
 /** Wortox's soul hop while its skill is bound; unbinding cancels a pending hop and clears the portal tint. */

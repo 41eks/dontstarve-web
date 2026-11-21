@@ -2,7 +2,7 @@ import { makeAlive, makeGhost } from '../../prefab/src/player_common_extensions'
 import type { PlayerAction } from '../../stategraphs/src/actionfns';
 import { PrefabInstance } from '../../prefab/src/prefabInstance';
 import { SpriteState } from '../../display/src';
-import { playDrop, startMovement } from '../../prefab/src/player_common';
+import { playBuild, playDrop, startMovement } from '../../prefab/src/player_common';
 import { createPlayerEquipper } from './playerEquipFixture';
 import { advancePlayer, facePlayer } from './playerVisual';
 import { prefabDisplay } from '@dontstarve-web/display';
@@ -177,6 +177,31 @@ it('performs a drop on the doshortaction frame and reports a cancelled drop', as
     advancePlayer(animation, 1 / 30);
   }
   expect(never).not.toHaveBeenCalled();
+});
+
+it('builds a recipe when the BUILD dolongaction times out, and a repeated request keeps the running build', async () => {
+  const animation = playerInst(await createPlayer('/dst/data/anim'));
+  const build = vi.fn(() => true);
+  expect(playBuild(animation, build)).toBe(true);
+  expect(animation.sg.stateName).toBe('dolongaction');
+  for (let frame = 0; frame < 5; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
+  // The busy tag is gone after 4 frames; the same BUILD again does not restart the timer.
+  expect(playBuild(animation, build)).toBe(false);
+  for (let frame = 0; frame < 24; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
+  expect(build).not.toHaveBeenCalled();
+  for (let frame = 0; frame < 2; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
+  expect(build).toHaveBeenCalledOnce();
+  for (let frame = 0; frame < 30; frame++) {
+    advancePlayer(animation, 1 / 30);
+  }
+  expect(animation.sg.stateName).toBe('idle');
+  expect(build).toHaveBeenCalledOnce();
 });
 
 it('advances rendered frames in animation without reading the stategraph clock or publishing frame state', async () => {

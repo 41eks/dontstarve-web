@@ -15,9 +15,7 @@ interface CraftingControlsOptions {
   availableCount: (ingredient: RecipeIngredient) => number;
   isRecipeLocked: (recipe: Recipe) => boolean;
   isRecipeBuffered: (recipe: Recipe) => boolean;
-  getCraftingRecipeId: () => string | undefined;
   emitCraftRequest: (recipeId: string, skinId?: string) => void;
-  startCrafting: (recipeId: string, skinId?: string) => void;
 }
 
 const baseUrl = import.meta.env.BASE_URL;
@@ -91,9 +89,7 @@ export function initializeCraftingControls(
     availableCount,
     isRecipeLocked,
     isRecipeBuffered,
-    getCraftingRecipeId,
     emitCraftRequest,
-    startCrafting,
   }: CraftingControlsOptions,
 ) {
   const listeners = new AbortController();
@@ -140,18 +136,8 @@ export function initializeCraftingControls(
       buildButton.textContent = '暂无配方';
       return;
     }
-    const craftingRecipeId = getCraftingRecipeId();
-    buildButton.disabled = isRecipeLocked(recipe) || Boolean(craftingRecipeId);
-    const buffered = isRecipeBuffered(recipe);
-    buildButton.textContent = craftingRecipeId
-      ? craftingRecipeId === recipe.id
-        ? '制作中…'
-        : '请稍候'
-      : buffered
-        ? '放置'
-        : recipe.locked
-          ? '尚未解锁'
-          : '建造';
+    buildButton.disabled = isRecipeLocked(recipe);
+    buildButton.textContent = isRecipeBuffered(recipe) ? '放置' : recipe.locked ? '尚未解锁' : '建造';
   };
 
   const updateSkinSelection = (recipe: Recipe) => {
@@ -343,15 +329,11 @@ export function initializeCraftingControls(
     'click',
     () => {
       const recipe = selectedRecipeState.get();
-      if (!recipe || isRecipeLocked(recipe) || getCraftingRecipeId()) {
+      // craftingmenu_details.lua's build button only asks: the builder decides whether to buffer or start BUILD.
+      if (!recipe || isRecipeLocked(recipe)) {
         return;
       }
-      const skinId = selectedSkinIds.get(recipe.id);
-      if (isRecipeBuffered(recipe)) {
-        emitCraftRequest(recipe.id, skinId);
-        return;
-      }
-      startCrafting(recipe.id, skinId);
+      emitCraftRequest(recipe.id, selectedSkinIds.get(recipe.id));
     },
     { signal: listeners.signal },
   );
@@ -390,7 +372,6 @@ export function initializeCraftingControls(
 
   return {
     refreshMaterials,
-    refreshBuildButton,
     dispose: () => {
       scrollbar.dispose();
       listeners.abort();

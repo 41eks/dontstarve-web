@@ -35,13 +35,7 @@ export { DstCookPotPanelElement, type ContainerButtonRequestDetail } from './coo
 export { DstIceBoxPanelElement } from './ice-box-panel';
 export { DstBackpackPanelElement } from './backpack-panel';
 export { PreparedFoodSlot } from './slot/prepared-food-slot';
-export {
-  CRAFT_DURATION_MS,
-  craftingUiReady,
-  DstCraftingUiElement,
-  type CraftingStateDetail,
-  type CraftRequestDetail,
-} from './crafting-ui';
+export { craftingUiReady, DstCraftingUiElement, type CraftRequestDetail } from './crafting-ui';
 export { DstDebugConsoleElement, type DebugCommandDetail } from './debug-console';
 export { DstEmoteWheelElement, type EmoteRequestDetail, type EmoteWheelToggleDetail } from './emote-wheel';
 export { INVENTORY_ITEM_DISPLAY_SPECS, type InventoryItemDisplaySpec } from './inventory-items';

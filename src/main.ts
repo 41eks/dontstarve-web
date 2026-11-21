@@ -25,7 +25,7 @@ import { WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
 import { IsGroundTargetBlocked } from '../packages/prefab/src/mapEntities';
 import { backpackContainerId } from '@dontstarve-web/inventory';
 import { player, playerBody, playerInstance, playerPhysics } from './player';
-import { setCrafting } from '@dontstarve-web/prefab/player_common';
+import { playBuild } from '@dontstarve-web/prefab/player_common';
 import { createEquipmentViews } from '@dontstarve-web/prefab/equipmentVisual';
 import { getHandEquipmentDefinition, type HandEquipmentWorld } from '@dontstarve-web/prefab/handEquipment';
 import { cursorUi, renderer, scene } from './universal';
@@ -468,21 +468,20 @@ gameUi.crafting.addEventListener('game:craft-request', event => {
     return;
   }
 
-  inventory.craft(recipe, skinId, inventoryReceiveEffect(gameUi, screenProjection.GetScreenPos(player.position)));
-  // Buffered builds place as soon as they are crafted. Walls are not buffered:
-  // crafting only fills the inventory, and placing starts from the slot click.
-  if (isPlaceableBuildingId(recipeId) && inventory.isBuffered(recipeId)) {
+  const make = () =>
+    inventory.craft(recipe, skinId, inventoryReceiveEffect(gameUi, screenProjection.GetScreenPos(player.position)));
+  if (!recipe.buffered) {
+    // builder:MakeRecipe: the BUILD action makes the product when its dolongaction times out. Walls have no placer:
+    // crafting only fills the inventory, and placing starts from the slot click.
+    playBuild(playerInstance, make);
+    return;
+  }
+  // builder:BufferBuild buffers a placer's build at once; the placer's BUILD makes it.
+  if ((inventory.isBuffered(recipeId) || make()) && isPlaceableBuildingId(recipeId)) {
     void buildingPlacement.begin(recipeId, inventory.bufferedSkin(recipeId)).catch((error: unknown) => {
       console.error(`Unable to start ${recipeId} placement`, error);
     });
   }
-});
-gameUi.crafting.addEventListener('game:crafting-state-change', event => {
-  const { crafting } = event.detail;
-  if (crafting) {
-    actionEvents.emit('action:interrupt', { reason: 'crafting' });
-  }
-  setCrafting(playerInstance, crafting);
 });
 
 /** All startup resources and bindings are ready, and the complete scene has rendered. */

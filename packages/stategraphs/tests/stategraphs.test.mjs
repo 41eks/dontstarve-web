@@ -374,12 +374,16 @@ test('movement, crafting, equipment transitions and half-speed pickup return to 
   assert.equal(graph.stateName, 'pickup');
   graph.update(0.01);
   assert.equal(graph.stateName, 'run');
-  graph.requestCrafting(true);
+  // builder:MakeRecipe: BUILD runs dolongaction and builds on its 1 s timeout, then movement resumes.
+  let built = 0;
+  assert.equal(graph.pushBufferedAction(new BufferedAction('BUILD', () => ++built > 0)), true);
+  assert.equal(graph.stateName, 'dolongaction');
   assert.equal(graph.pushBufferedAction(new BufferedAction('MINE', () => {})), false);
-  graph.requestOneShot('item_out');
+  graph.update(0.99);
+  assert.equal(built, 0);
+  graph.update(0.02);
+  assert.equal(built, 1);
   graph.update(1);
-  assert.equal(graph.stateName, 'build');
-  graph.requestCrafting(false);
   assert.equal(graph.stateName, 'run');
   graph.requestMovement('jump');
   assert.equal(graph.pushBufferedAction(new BufferedAction('TERRAFORM', () => {})), false);
@@ -940,7 +944,6 @@ test('death drops everything, plays the clip and holds the dead state against ev
   ]);
 
   graph.requestMovement('run');
-  graph.requestCrafting(true);
   graph.requestOneShot('item_out');
   graph.pushEvent('unequip', { eslot: 'HANDS' });
   graph.pushEvent('death');
@@ -986,9 +989,7 @@ test('a ghost idles, runs, howls on appear and hit, refuses actions and never ju
   const idleStarts = log.filter(entry => entry === 'anim:idle').length;
   graph.requestMovement('walk');
   assert.equal(log.filter(entry => entry === 'anim:idle').length, idleStarts, 'running keeps the idle loop');
-  graph.requestCrafting(true);
   graph.requestOneShot('eat');
-  assert.equal(graph.isCrafting, false);
   assert.equal(graph.stateName, 'walk');
   assert.equal(graph.pushBufferedAction(new BufferedAction('PICK', () => true)), false, 'no ghost action handler');
 

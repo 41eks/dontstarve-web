@@ -127,7 +127,6 @@ it('commits BLINK after the pre-animation, teleports after 11 frames and restore
   expect(collisions).toBe(false);
   expect(health.invincible).toBe(true);
   graph.requestOneShot('item_out');
-  graph.requestCrafting(true);
   graph.pushEvent('unequip');
   expect(graph.stateName).toBe('portal_jumpout');
   graph.update(7 / 30);
@@ -231,7 +230,6 @@ it('runs the map right click as BLINK_MAP without walking, revalidates before co
     expect(teleport).toHaveBeenCalledExactlyOnceWith(point);
     expect(snapCamera).toHaveReturnedWith(point);
     graph.requestOneShot('item_out');
-    graph.requestCrafting(true);
     graph.pushEvent('unequip');
     expect(graph.stateName).toBe('portal_jumpout');
     graph.update(14 / 30);

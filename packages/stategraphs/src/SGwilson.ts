@@ -28,7 +28,6 @@ export type WilsonOneShotState = 'eat' | 'item_in' | 'item_out' | 'item_hat' | '
 export type WilsonStateName =
   | WilsonMovementState
   | WilsonOneShotState
-  | 'build'
   | 'emote'
   | 'talk'
   | 'mine_start'
@@ -93,14 +92,16 @@ export type WilsonStateName =
   | 'portal_jumpout'
   /** SGwilson.lua amulet_rebirth: the player rising from a red amulet after a haunt resurrection. */
   | 'amulet_rebirth';
-/** The actions SGwilson buffers: every ported actions.lua fn, and DROP / PLANT, which the player's inst makes itself. */
-export type WilsonAction = PlayerActionId | 'DROP' | 'PLANT';
+/**
+ * The actions SGwilson buffers: every ported actions.lua fn, and DROP / PLANT / BUILD, which the player's inst makes
+ * itself (BUILD from builder:MakeRecipe).
+ */
+export type WilsonAction = PlayerActionId | 'DROP' | 'PLANT' | 'BUILD';
 export type WilsonAnimationKey =
   | 'dial_loop'
   | 'wortox_portal'
   | WilsonMovementState
   | WilsonOneShotState
-  | 'build'
   | 'emote'
   | 'pickaxe_pre'
   | 'pickaxe_loop'
@@ -484,13 +485,13 @@ function playHitSounds(entity: WilsonStateInst): void {
 
 const clip = (key: WilsonAnimationKey, name: string = key): WilsonAnimationClip => ({ key, name });
 
-/** SGwilson.lua idle onenter (ClearBufferedAction), then the movement or crafting the browser requested during the action. */
+/** SGwilson.lua idle onenter (ClearBufferedAction), then the movement the browser requested during the action. */
 function onEnterIdle(inst: WilsonInstance, pushanim: boolean): void {
   const graph = inst.context;
   graph.releaseAction();
   // Lua's idle state stays while a pushed post-animation is still playing.
-  if (!pushanim && (graph.isCrafting || graph.requestedMovement !== 'idle')) {
-    inst.goToState(graph.isCrafting ? 'build' : graph.requestedMovement);
+  if (!pushanim && graph.requestedMovement !== 'idle') {
+    inst.goToState(graph.requestedMovement);
     return;
   }
   const idle = { ...clip('idle', 'idle_loop'), loop: true };
@@ -2086,11 +2087,6 @@ const applicationStates: WilsonState[] = [
     onenter: inst => inst.context.playClips([{ ...clip('jump'), loop: true }]),
   }),
   State({
-    name: 'build',
-    tags: ['crafting', 'busy'],
-    onenter: inst => inst.context.playClips([{ ...clip('build', 'build_loop'), loop: true }]),
-  }),
-  State({
     name: 'pickup',
     tags: ['busy'],
     onenter: inst => inst.context.playClips([{ ...clip('pickup'), playbackRate: 0.5 }]),
@@ -2154,6 +2150,8 @@ const actionHandlers: StateActionHandler<WilsonStateGraph, WilsonStateName, Wils
     }
     return inst.hasStateTag('netting') ? 'bugnet' : 'bugnet_start';
   }),
+  // rec.sg_state and the hungrybuilder / fastbuilder / slowbuilder destinations are unported states.
+  ActionHandler('BUILD', 'dolongaction'),
   ActionHandler('PLANT', 'doshortaction'),
   ActionHandler('PLANTSOIL', 'dolongaction'),
   ActionHandler('FERTILIZE', 'doshortaction'),
@@ -2251,7 +2249,6 @@ export class WilsonStateGraph {
   private loadingGhostFlag = false;
   private bufferedAction: PlayerAction<WilsonAction> | null = null;
   private movementState: WilsonMovementState = 'idle';
-  private crafting = false;
   private readonly playback: AnimationPlayback<WilsonAnimationClip>;
   private clipStartedAt = 0;
   private preparedEmote: readonly WilsonAnimationClip[] = [];
@@ -2266,8 +2263,8 @@ export class WilsonStateGraph {
     this.playback = new AnimationPlayback<WilsonAnimationClip>(
       clip => {
         this.clipStartedAt = this.sg.elapsedTime;
-        if (this.stateName === 'idle' && clip.key === 'idle' && (this.crafting || this.movementState !== 'idle')) {
-          this.sg.goToState(this.crafting ? 'build' : this.movementState);
+        if (this.stateName === 'idle' && clip.key === 'idle' && this.movementState !== 'idle') {
+          this.sg.goToState(this.movementState);
           return 0;
         }
         // AnimState:SetDeltaTimeMultiplier and PlayAnimation; the clip's length at that rate schedules animover.
@@ -2388,10 +2385,7 @@ export class WilsonStateGraph {
     return Math.max(0, this.sg.elapsedTime - this.clipStartedAt);
   }
   get isOneShot(): boolean {
-    return !['idle', 'walk', 'run', 'jump', 'build', 'emote'].includes(this.stateName);
-  }
-  get isCrafting(): boolean {
-    return this.crafting;
+    return !['idle', 'walk', 'run', 'jump', 'emote'].includes(this.stateName);
   }
   /** inst:HasTag("playerghost"): SGwilsonghost replaced SGwilson. */
   get isGhost(): boolean {
@@ -2503,8 +2497,8 @@ export class WilsonStateGraph {
   }
 
   /**
-   * inst:SetStateGraph("SGwilsonghost") from OnMakePlayerGhost. The stategraph is replaced, so pending actions, emotes and
-   * crafting end; `loading` (inst.loading_ghost) skips the appear animation.
+   * inst:SetStateGraph("SGwilsonghost") from OnMakePlayerGhost. The stategraph is replaced, so pending actions and emotes
+   * end; `loading` (inst.loading_ghost) skips the appear animation.
    */
   becomeGhost(loading = false): void {
     if (this.ghost) {
@@ -2513,7 +2507,6 @@ export class WilsonStateGraph {
     this.ghost = true;
     this.playback.stop();
     this.releaseAction();
-    this.crafting = false;
     this.movementState = 'idle';
     this.sg.dispose();
     this.sg = new StateGraphInstance(this, ghostStates, ghostActionHandlers);
@@ -2540,7 +2533,6 @@ export class WilsonStateGraph {
     this.ghost = false;
     this.playback.stop();
     this.releaseAction();
-    this.crafting = false;
     this.movementState = 'idle';
     this.sg.dispose();
     this.createGraph();
@@ -2560,27 +2552,8 @@ export class WilsonStateGraph {
       return;
     }
     this.movementState = state;
-    if (!this.crafting && !this.isOneShot && this.stateName !== 'emote') {
+    if (!this.isOneShot && this.stateName !== 'emote') {
       this.sg.goToState(state);
-    }
-  }
-
-  /** Update the persistent browser crafting request and reconcile the state. */
-  requestCrafting(crafting: boolean): void {
-    if (this.ghost) {
-      return;
-    }
-    if (crafting && this.isSoulHopping) {
-      return;
-    }
-    if (crafting === this.crafting) {
-      return;
-    }
-    this.crafting = crafting;
-    if (crafting && (this.activeAction !== null || this.stateName === 'emote')) {
-      this.finish();
-    } else if (!this.isOneShot) {
-      this.sg.goToState(crafting ? 'build' : this.movementState);
     }
   }
 
@@ -2689,14 +2662,14 @@ export class WilsonStateGraph {
   }
 
   finish(pushanim = false): void {
-    // The dead never resume movement or crafting.
+    // The dead never resume movement.
     if (this.isDead) {
       return;
     }
     this.releaseAction();
     // Lua's GoToState("idle", true) preserves the current animation queue.
-    // Ordinary completion resumes the browser's requested movement/crafting state.
-    this.sg.goToState(pushanim ? 'idle' : this.crafting ? 'build' : this.movementState, pushanim);
+    // Ordinary completion resumes the browser's requested movement state.
+    this.sg.goToState(pushanim ? 'idle' : this.movementState, pushanim);
   }
 
   canEmote(): boolean {

@@ -2,8 +2,8 @@ import type { ActionWorldContext } from './actionContext.ts';
 import type { WilsonAction } from './SGwilson.ts';
 
 /** An action whose start cancels other work: one the player buffers, or the building placer's BUILD. */
-export type PlayerActionKind = WilsonAction | 'BUILD';
-export type ActionInterruptReason = 'slot-select' | 'slot-context-menu' | 'drop' | 'craft' | 'crafting' | 'emote';
+export type PlayerActionKind = WilsonAction;
+export type ActionInterruptReason = 'slot-select' | 'slot-context-menu' | 'drop' | 'craft' | 'emote';
 export interface PlayerActionEvents {
   'action:begin': { owner: object; action: PlayerActionKind };
   'action:interrupt': { reason: ActionInterruptReason };

@@ -1,7 +1,7 @@
 import type { SlotAddress } from '@dontstarve-web/inventory';
 import type { ChestCloseDetail } from './chest-panel';
 import type { ContainerButtonRequestDetail } from './cook-pot-panel';
-import type { CraftingStateDetail, CraftRequestDetail } from './crafting-ui';
+import type { CraftRequestDetail } from './crafting-ui';
 import type { DebugCommandDetail } from './debug-console';
 import type { EmoteRequestDetail, EmoteWheelToggleDetail } from './emote-wheel';
 import type { CameraTurnDirection } from './map-controls';
@@ -27,7 +27,6 @@ export interface GameUiEventMap {
   'game:cursor-return-request': CustomEvent<{ origin?: SlotAddress }>;
   'game:slot-select': CustomEvent<SlotSelectDetail>;
   'game:craft-request': CustomEvent<CraftRequestDetail>;
-  'game:crafting-state-change': CustomEvent<CraftingStateDetail>;
   'game:emote-wheel-toggle': CustomEvent<EmoteWheelToggleDetail>;
   'game:emote-request': CustomEvent<EmoteRequestDetail>;
 }
