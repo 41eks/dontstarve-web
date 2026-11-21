@@ -53,7 +53,8 @@ test('uses atlas arrows and scrolls with clicks, wheel, keyboard and a scaled th
   expect(fraction).toBeGreaterThan(0.35);
   expect(fraction).toBeLessThan(0.75);
 
-  await crafting.locator('.craft-category[aria-label="光源"]').click();
+  // Three rows of recipes fit the 3.5-row viewport.
+  await crafting.locator('.craft-category[aria-label="精炼"]').click();
   await expect(scrollbar).toBeHidden();
   expect(await viewport.evaluate(node => node.scrollTop)).toBe(0);
   await crafting.locator('.craft-category[aria-label="工具"]').click();
@@ -78,7 +79,8 @@ test('keeps the recipe viewport, scrollbar and details inside the painted frame 
     const bounds = await page.locator('dst-crafting-ui').evaluate(host => {
       const root = host.shadowRoot!;
       const panel = root.querySelector('.craft-panel')!.getBoundingClientRect();
-      const inset = (panel.width * 34) / 1024;
+      // MakeFrame paints its side pieces outside the 500-unit content box.
+      const inset = 0;
       const viewport = root.querySelector<HTMLElement>('.craft-recipes')!;
       const areas = ['.craft-recipes-area', '.craft-recipe-scrollbar', '.craft-detail'].map(selector => {
         const area = root.querySelector(selector)!.getBoundingClientRect();

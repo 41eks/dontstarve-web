@@ -14,51 +14,52 @@
   --ink: #191a18;
   --night: #192329;
   --paper: #c8bfaa;
-  --craft-panel-height: min(760px, calc(100vh - 36px));
-  --craft-header-height: 68px;
-  --craft-categories-height: 112px;
-  --craft-divider-height: 8px;
-  --craft-detail-height: 238px;
-  --craft-panel-scale: 0.75;
-  --craft-collapsed-peek: 16px;
-  --craft-panel-offset-x: 0px;
+  /* constants.lua BROWN. */
+  --brown: rgb(97 73 46);
+  /* left_root's SCALEMODE_PROPORTIONAL scale, set from the window size. */
+  --craft-hud-scale: 1;
+  /* craftingmenu_hud.lua opened_pos: the 500-unit frame is centred 275 units right of the left-middle anchor. */
+  --craft-panel-offset-x: 25px;
   position: fixed;
   z-index: 30;
   top: 50%;
-  left: clamp(14px, 2.4vw, 34px);
-  width: min(580px, calc(100vw - 108px));
-  height: var(--craft-panel-height);
+  left: 0;
+  /* craftingmenu_widget.lua MakeFrame(500, HEIGHT = 600), in UI units. */
+  width: 500px;
+  height: 600px;
   display: grid;
-  grid-template-rows:
-    var(--craft-header-height) var(--craft-categories-height)
-    minmax(0, 1fr) var(--craft-divider-height) var(--craft-detail-height);
+  /*
+   * MakeFilterPanel's 147 units (top row, divider and two filter rows), the recipe grid's 3.5 rows of 66 (231),
+   * its bottom divider, then the details.
+   */
+  grid-template-rows: 44px 103px 231px 10px 212px;
   color: var(--ink);
   text-align: left;
   pointer-events: auto;
-  transform: translateY(-50%) scale(var(--craft-panel-scale)) translateX(var(--craft-panel-offset-x));
+  transform: translateY(-50%) scale(var(--craft-hud-scale)) translateX(var(--craft-panel-offset-x));
   transform-origin: left center;
-  padding: 8px 20px;
+  padding: 0;
   border: 0;
   background: transparent;
   isolation: isolate;
 }
 
 .craft-background {
+  /* Placed and sized around the content box by crafting-background.ts. */
   position: absolute;
   z-index: -1;
-  left: 0;
-  width: 100%;
   background-repeat: no-repeat;
   background-size: 100% 100%;
   pointer-events: none;
 }
 
 .craft-header {
+  /* MakeFilterPanel's top row: 38-unit buttons whose outer centres are 215 units either side of the middle. */
   display: grid;
-  grid-template-columns: 48px 1fr 48px;
+  grid-template-columns: 38px 1fr 38px;
   gap: 12px;
   align-items: center;
-  padding: 9px 16px;
+  padding: 0 16px;
   background: transparent;
 }
 
@@ -90,8 +91,8 @@
 }
 
 .craft-view-toggle {
-  width: 42px;
-  height: 42px;
+  width: 38px;
+  height: 38px;
   color: #26231c;
   border: 4px solid #38271b;
   border-radius: 3px;
@@ -103,8 +104,8 @@
 
 .craft-favorite {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 38px;
+  height: 38px;
   padding: 0;
   background: transparent;
 }
@@ -157,11 +158,13 @@
 }
 
 .craft-categories {
+  /* The filter grid: 11 buttons of 38 on a 43-unit pitch, rows centred 75 and 118 units below the top. */
   display: grid;
   grid-template-columns: repeat(11, minmax(0, 1fr));
-  grid-template-rows: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, 38px);
+  align-content: start;
   gap: 5px;
-  padding: 9px 12px;
+  padding: 12px 16px 0;
   overflow: hidden;
   background: transparent;
 }
@@ -212,28 +215,29 @@
 }
 
 .craft-recipes-area {
+  /* The ScrollingGrid is 7 × 66 = 462 wide, centred 2 units left; its scrollbar is 7 units past the grid's edge. */
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 24px;
-  gap: 4px;
+  grid-template-columns: 462px 24px;
   min-width: 0;
   min-height: 0;
-  padding: 9px 6px 10px;
+  padding: 0 0 0 17px;
   overflow: hidden;
 }
 
 .craft-recipes {
   --craft-recipe-columns: 7;
-  --craft-recipe-column-gap: 5px;
-  container-type: inline-size;
+  --craft-recipe-column-gap: 6px;
+  /* 60-unit cells on a 66-unit pitch both ways, so the 231-unit viewport shows 3.5 rows. */
+  --craft-recipe-row-height: 60px;
   display: grid;
   grid-template-columns: repeat(var(--craft-recipe-columns), minmax(0, 1fr));
   grid-auto-rows: auto;
   align-content: start;
   column-gap: var(--craft-recipe-column-gap);
-  row-gap: 8px;
+  row-gap: 6px;
   min-width: 0;
   min-height: 0;
-  padding: 0;
+  padding: 3px;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: none;
@@ -245,10 +249,16 @@
 }
 
 .craft-recipe-scrollbar {
+  /* scrollbar_height_offset = -50: 181 units, centred on the grid; its centre is 486 units from the frame's left. */
   display: grid;
   grid-template-rows: 24px minmax(0, 1fr) 24px;
   gap: 4px;
+  align-self: center;
+  justify-self: start;
+  width: 24px;
+  height: 181px;
   min-height: 0;
+  margin-left: -5px;
 }
 
 .craft-recipe-scrollbar[hidden] {
@@ -329,7 +339,7 @@
   position: relative;
   aspect-ratio: 1;
   min-width: 0;
-  min-height: 62px;
+  min-height: 0;
   padding: 0;
   background: transparent;
 }
@@ -343,10 +353,6 @@
 
 .craft-recipe-row {
   /* Reserve the actual row height while offscreen content is skipped. */
-  --craft-recipe-row-height: max(
-    62px,
-    calc((100cqw - (var(--craft-recipe-columns) - 1) * var(--craft-recipe-column-gap)) / var(--craft-recipe-columns))
-  );
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns: repeat(var(--craft-recipe-columns), minmax(0, 1fr));
@@ -443,33 +449,49 @@
 }
 
 .craft-detail {
+  /*
+   * craftingmenu_details.lua with panel_width 460: the left half (230, centred 115 units left of the middle) holds the
+   * name, divider and description; the right root, centred 120 units right, stacks the skins selector (110 × 0.85),
+   * the ingredients (45) and the build button (65 × 0.7).
+   */
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
-  grid-template-rows: 1fr 50px;
-  gap: 6px 14px;
-  padding: 14px 17px 12px;
+  grid-template-columns: 230px 230px;
+  grid-template-rows: 6px 94px 13px 48px 6px 45px;
+  grid-template-areas:
+    'copy .'
+    'copy preview'
+    'copy .'
+    'copy materials'
+    'copy .'
+    'copy build';
+  column-gap: 5px;
+  padding: 0 15px 0 20px;
   overflow: hidden;
   background: transparent;
 }
 
 .craft-copy {
-  align-self: center;
+  grid-area: copy;
+  align-self: start;
   min-width: 0;
 }
 
 .craft-detail-heading {
+  /* The name (UIFONT 30) is centred over the half, then a 4-unit BROWN line 40 units below the top. */
+  position: relative;
   display: grid;
-  grid-template-columns: 29px 1fr;
-  align-items: center;
-  gap: 8px;
-  padding-bottom: 8px;
-  border-bottom: 3px solid transparent;
-  border-image: linear-gradient(90deg, #8d6a3f, transparent) 1;
+  place-items: center;
+  height: 44px;
+  padding: 0 16px 4px;
+  border-bottom: 4px solid var(--brown);
 }
 
 .craft-detail-favorite {
-  position: relative;
+  /* The favourite button is centred 2 units from the half's left edge. */
+  position: absolute;
+  top: 5px;
+  left: -12.5px;
   display: block;
   width: 29px;
   height: 29px;
@@ -495,37 +517,49 @@
 }
 
 .craft-detail h2 {
+  max-width: 100%;
   margin: 0;
   overflow: hidden;
   color: #eee7d7;
+  text-align: center;
   text-shadow: 1px 1px 2px #000;
-  font: 800 22px/1.2 var(--sans);
+  font: 800 30px/1 var(--sans);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .craft-copy p {
-  margin: 22px 0 0 34px;
+  /* BODYTEXTFONT 25, at most two lines, centred. */
+  display: -webkit-box;
+  margin: 7px 0 0;
+  overflow: hidden;
   color: #eee7d7;
+  text-align: center;
   text-shadow: 1px 1px 2px #000;
-  font-size: 16px;
+  font-size: 25px;
   font-weight: 600;
+  line-height: 25px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .craft-preview {
+  /* craftingmenu_skinselector.lua: a 220 × 110 spinner at SCALE 0.85 between two BROWN lines; its text is hidden. */
   position: relative;
+  grid-area: preview;
+  justify-self: center;
   display: grid;
   grid-template-columns: 30px minmax(0, 1fr) 30px;
+  width: 187px;
   min-width: 0;
-  grid-template-rows: 1fr auto;
   align-items: center;
-  padding: 8px 4px 5px;
+  border-block: 2px solid var(--brown);
   background: rgb(113 91 61 / 20%);
 }
 
 .craft-selected-icon {
-  height: 85px;
-  padding: 2px 7px;
+  /* The spinner's fgimage: a 64-unit image at 1.2 × 0.85. */
+  height: 65px;
 }
 
 .craft-placeholder-large {
@@ -533,10 +567,12 @@
 }
 
 .craft-preview strong {
-  grid-column: 1 / -1;
-  color: #27374b;
-  text-align: center;
-  font-size: 14px;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .craft-arrow {
@@ -576,34 +612,37 @@
 }
 
 .craft-materials {
+  /* craftingmenu_ingredients.lua: 64-unit ingredients 10 apart at INGREDIENTS_SCALE 0.75, shrunk past four. */
   display: flex;
-  grid-column: 1 / 2;
+  grid-area: materials;
   justify-self: center;
-  align-items: flex-end;
-  gap: 6px;
+  align-items: center;
+  gap: 7.5px;
   min-width: 0;
   max-width: 100%;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
-.craft-materials::-webkit-scrollbar {
-  display: none;
+.craft-materials:has(> :nth-child(5)) {
+  transform: scale(calc(4 / 5));
+}
+
+.craft-materials:has(> :nth-child(6)) {
+  transform: scale(calc(4 / 6));
 }
 
 .craft-material {
+  position: relative;
   display: flex;
-  width: 52px;
+  width: 48px;
   flex-shrink: 0;
   flex-direction: column;
   align-items: stretch;
-  gap: 2px;
 }
 
 .craft-material-asset {
   display: block;
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   padding: 2px;
   border: 2px solid #34251b;
   background: #dfd5bc;
@@ -618,20 +657,24 @@
 }
 
 .craft-placeholder-material {
-  width: 52px;
-  height: 52px;
+  width: 48px;
+  height: 48px;
   min-height: 0;
   border-radius: 2px;
   background-color: #eee4cb;
 }
 
 .craft-material-count {
+  /* ingredientui.lua: the quantity (24 × 0.75) sits 7 right of and 32 below the image centre. */
+  position: absolute;
+  top: 39px;
+  left: 5px;
   display: block;
   width: 100%;
   text-align: center;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 800;
-  line-height: 15px;
+  line-height: 18px;
   text-shadow:
     -1px -1px 0 #eee,
     1px -1px 0 #eee,
@@ -648,15 +691,18 @@
 }
 
 .craft-build {
+  /* An ImageButton at 0.7: 145–300 × 65 around its 40-unit text. */
+  grid-area: build;
   align-self: center;
   justify-self: center;
-  min-width: 120px;
-  height: 39px;
+  min-width: 102px;
+  max-width: 210px;
+  height: 45px;
   color: #1d211e;
   border: 3px solid #3b3328;
   border-radius: 3px;
   background: #b9b8a7;
-  font-size: 18px;
+  font-size: 28px;
   font-weight: 800;
   box-shadow:
     inset 0 0 0 2px #e0ddcb,
@@ -675,11 +721,12 @@
 }
 
 .craft-quickbar {
-  /* Keep the pinbar's logical layout together as the parent panel changes height. */
-  --craft-quickbar-scale: calc(var(--craft-panel-height) / 760px);
+  /* Fit the pinbar's 760-unit column to the 600-unit frame; the panel's transform applies the HUD scale. */
+  --craft-quickbar-scale: calc(600 / 760);
   position: absolute;
   top: 50%;
-  right: -48px;
+  /* The pinbar keeps its place beside the frame as both slide: 5 units past the frame's right edge. */
+  right: -53px;
   width: 48px;
   height: 760px;
   display: grid;
@@ -834,14 +881,9 @@
 }
 
 .craft-panel.is-collapsed {
-  --craft-panel-offset-x: calc(-100% + var(--craft-collapsed-peek));
-  left: 0;
+  /* closed_pos is 530 units left of opened_pos: only the right side piece stays on screen. */
+  --craft-panel-offset-x: -505px;
   pointer-events: none;
-}
-
-.craft-panel.is-collapsed .craft-quickbar {
-  /* Attach to side.tex's painted inner edge, skipping its transparent margin. */
-  right: calc(-48px + 100% * 14 / 1024);
 }
 
 .craft-panel.is-collapsed .craft-quick-item::after {
@@ -861,64 +903,4 @@
 .craft-panel button:focus-visible {
   outline: 3px solid #f5d36d;
   outline-offset: 2px;
-}
-
-@media (max-width: 700px), (max-height: 650px) {
-  .craft-panel {
-    --craft-panel-height: calc(100vh - 24px);
-    left: 12px;
-    width: min(580px, calc(100vw - 24px));
-    height: var(--craft-panel-height);
-    --craft-header-height: 60px;
-    --craft-categories-height: 82px;
-    --craft-divider-height: 7px;
-    --craft-detail-height: 200px;
-  }
-
-  .craft-categories {
-    padding-block: 7px;
-  }
-
-  .craft-detail {
-    padding-block: 9px;
-  }
-
-  .craft-copy p {
-    margin-top: 10px;
-  }
-
-  .craft-selected-icon {
-    height: 65px;
-  }
-}
-
-@media (max-width: 460px) {
-  .craft-panel {
-    --craft-header-height: 58px;
-    --craft-categories-height: 64px;
-    --craft-detail-height: 178px;
-  }
-
-  .craft-categories {
-    grid-template-columns: repeat(11, 42px);
-    overflow-x: auto;
-  }
-
-  .craft-detail {
-    grid-template-columns: 1fr 132px;
-  }
-
-  .craft-copy p {
-    margin-left: 0;
-    font-size: 13px;
-  }
-
-  .craft-detail h2 {
-    font-size: 18px;
-  }
-
-  .craft-build {
-    min-width: 104px;
-    font-size: 16px;
-  }
 }

@@ -4,13 +4,10 @@ import { StatusDisplays, loadStatusArt, type StatusArt } from './badge/status-di
 import type { Badge } from './badge/badge';
 import type { BadgeOwner } from './badge/owner';
 import styles from './styles/status-hud.css?inline';
+import { proportionalHudScale } from './hud-scale';
 
 export type { BadgeOwner, StatDeltaData } from './badge/owner';
 
-// constants.lua
-const RESOLUTION_X = 1280;
-const RESOLUTION_Y = 720;
-const MAX_HUD_SCALE = 1.25;
 // controls.lua: topright_root → sidepanel(-80, -60) → clock(0, 0) and StatusDisplays(0, -110);
 // statusdisplays.lua: stomach (column2 -40, 20), heart (column4 40, 20), brain (column3 0, -40). Lua +y is up.
 const SIDEPANEL = { x: -80, y: -60 };
@@ -129,7 +126,7 @@ export class DstStatusHudElement extends AssetElement {
     const root = this.shadowRoot!.querySelector<HTMLElement>('.survival-hud')!;
     const width = root.clientWidth,
       height = root.clientHeight;
-    const k = Math.min(width / RESOLUTION_X, height / RESOLUTION_Y, MAX_HUD_SCALE);
+    const k = proportionalHudScale(width, height);
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     const place = (element: HTMLElement, x: number, y: number, w: number, h: number) => {
       element.style.left = `${width + x * k - (w * k) / 2}px`;

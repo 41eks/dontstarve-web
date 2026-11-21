@@ -2,6 +2,7 @@ import { AssetElement } from './assets';
 import { categories, type Recipe, type RecipeIngredient } from './categories';
 import { initializeCraftingControls } from './crafting-controls';
 import { createCraftingBackground } from './crafting-background';
+import { proportionalHudScale } from './hud-scale';
 import styles from './styles/crafting-ui.css?inline';
 import type { InventoryMaterialSummary } from '@dontstarve-web/inventory';
 import { createSignal } from '@dontstarve-web/signals';
@@ -172,7 +173,16 @@ export class DstCraftingUiElement extends AssetElement {
     });
     this.refreshMaterials = controls.refreshMaterials;
     this.disposeControls = controls.dispose;
-    this.disposeBackground = createCraftingBackground(root).dispose;
+    const background = createCraftingBackground(root);
+    // controls.lua left_root: SCALEMODE_PROPORTIONAL, anchored left-middle.
+    const applyScale = () => {
+      const scale = proportionalHudScale(window.innerWidth, window.innerHeight);
+      panel.style.setProperty('--craft-hud-scale', String(scale));
+      background.setScale(scale);
+    };
+    window.addEventListener('resize', applyScale, { signal: listeners.signal });
+    applyScale();
+    this.disposeBackground = background.dispose;
     resolveCraftingUiReady();
   }
 
