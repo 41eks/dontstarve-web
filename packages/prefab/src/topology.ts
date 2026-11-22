@@ -1,5 +1,5 @@
 import { GROUND_TILE_DEFINITIONS } from './groundTiles';
-import { WORLD_SCALE } from '@dontstarve-web/animation/units';
+import { dstUnitsToWorld } from '@dontstarve-web/animation/units';
 import { TILE_SIZE, type Vector2 } from './tile';
 import { isLandTile, WORLD_TILES, type TurfMap } from './turfMap';
 
@@ -84,7 +84,7 @@ function testArea(map: TurfMap, x: number, z: number, onLand: boolean, r: number
   let best: { tile: number; layer: number; x: number; z: number } | undefined;
   for (let dz = -1; dz <= 1; dz++) {
     for (let dx = -1; dx <= 1; dx++) {
-      const point = { x: x + dx * r * WORLD_SCALE, z: z + dz * r * WORLD_SCALE };
+      const point = { x: x + dstUnitsToWorld(dx * r), z: z + dstUnitsToWorld(dz * r) };
       const tile = map.getTileAtWorld(point);
       if (onLand === isLandTile(tile)) {
         const layer = renderLayer(tile);

@@ -1,4 +1,5 @@
 import type { Vector3 } from 'three';
+import { dstUnitsToWorld } from '@dontstarve-web/animation/units';
 import type { EventDataArgs } from './entityEvents';
 
 /** The topology node AreaAware reports: the parts of TheWorld.topology.nodes[i] its listeners read. */
@@ -25,8 +26,6 @@ export interface AreaAwareInst {
 export interface AreaAwareWorld {
   /** TheWorld.Map:FindVisualNodeAtPoint(x, y, z): the node and its index, 0 for none. */
   FindVisualNodeAtPoint(point: Vector3): { node: AreaNode | undefined; index: number };
-  /** Project world units per DST unit: SetUpdateDist takes DST units. */
-  readonly worldScale: number;
 }
 
 /** components/areaaware.lua: pushes "changearea" when the entity moves onto another topology node. */
@@ -42,7 +41,7 @@ export class AreaAware {
   constructor(inst: AreaAwareInst, world: AreaAwareWorld) {
     this.inst = inst;
     this.world = world;
-    this.updatedistsq = (4 * world.worldScale) ** 2;
+    this.updatedistsq = dstUnitsToWorld(4) ** 2;
   }
 
   UpdatePosition(point: Vector3): void {
@@ -70,7 +69,7 @@ export class AreaAware {
 
   /** SetUpdateDist(dist), in DST units. */
   SetUpdateDist(dist: number): void {
-    this.updatedistsq = (dist * this.world.worldScale) ** 2;
+    this.updatedistsq = dstUnitsToWorld(dist) ** 2;
   }
 
   GetCurrentArea(): AreaData | undefined {

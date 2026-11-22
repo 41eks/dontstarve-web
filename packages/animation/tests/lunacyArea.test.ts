@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vitest';
-import { WORLD_SCALE } from '../src/units';
+import { dstUnitsToWorld } from '../src/units';
 import { ComponentUpdates } from '../../componets/src/componentUpdates';
 import { SANITY_MODE_INSANITY, SANITY_MODE_LUNACY } from '../../componets/src/sanity';
 import { DisposeSounds } from '../../prefab/src/sound';
@@ -65,7 +65,6 @@ it('turns the player lunacy on the lunar island and back to insanity on the main
       componentUpdates,
       areaaware: {
         FindVisualNodeAtPoint: point => FindVisualNodeAtPoint(map, topology, point),
-        worldScale: WORLD_SCALE,
       },
     }),
   );
@@ -84,7 +83,7 @@ it('turns the player lunacy on the lunar island and back to insanity on the main
 
   // Within SetUpdateDist(.45) of the last check, the area is not re-tested.
   const pushed = changes.length;
-  player.setPosition(lunar.x + 0.4 * WORLD_SCALE, 0, lunar.z);
+  player.setPosition(lunar.x + dstUnitsToWorld(0.4), 0, lunar.z);
   componentUpdates.update(1 / 30);
   expect(changes.length).toBe(pushed);
 
