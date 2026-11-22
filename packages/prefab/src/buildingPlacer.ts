@@ -4,7 +4,7 @@ import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import * as THREE from 'three';
 import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
-import { createArchiveEntity, type PrefabInstance, type PrefabEntityManager } from './prefabInstance';
+import { createArchiveEntity, prefabInstance, type PrefabInstance, type PrefabEntityManager } from './prefabInstance';
 import type { WorldContext } from './worldContext';
 
 /** The shared archive a placer draws: its bank, build and animation archives. */
@@ -29,6 +29,11 @@ export interface BuildingPlacerSpec {
   snap?(point: THREE.Vector3): THREE.Vector3;
   /** placer.lua onupdatetransform: runs each frame once the placer has followed the pointer. */
   onupdatetransform?(placer: PrefabInstance): void;
+  /**
+   * A deployable item's placer (DEPLOYMODE.WALL): the click is the player's DEPLOY action, which walks to the placer
+   * and spends the item on its hit frame, instead of placing at once.
+   */
+  readonly deploy?: boolean;
 }
 
 /** This project draws placers translucent; MakePlacer itself only sets SetLightOverride(1). */
@@ -235,11 +240,30 @@ export class BuildingPlacer<BuildId extends string> {
     }
     this.pointer.trackPointer(event);
     this.followPointer();
-    if (!this.pointer.isOverGround || !this.consumeBufferedBuild(placer.buildId, placer.skinId)) {
+    if (!this.pointer.isOverGround) {
       return;
     }
-    const position = placer.instance.position.clone();
+    const { buildId, skinId, instance, spec } = placer,
+      position = instance.position.clone();
+    if (spec.deploy) {
+      const deploy = () => {
+        if (!this.consumeBufferedBuild(buildId, skinId)) {
+          return false;
+        }
+        this.place(buildId, position, skinId, instance);
+        return true;
+      };
+      // The player walks there first; the locomotor input must not stop the walk this click starts.
+      if (prefabInstance(this.player)?.components.playercontroller?.DoDeployAction(position, deploy)) {
+        event.stopImmediatePropagation();
+        this.cancel();
+      }
+      return;
+    }
+    if (!this.consumeBufferedBuild(buildId, skinId)) {
+      return;
+    }
     this.cancel();
-    this.place(placer.buildId, position, placer.skinId, placer.instance);
+    this.place(buildId, position, skinId, instance);
   }
 }

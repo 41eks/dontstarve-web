@@ -1,4 +1,5 @@
 import { bindActionCancellation } from './actionEvents.ts';
+import { BufferedAction } from './bufferedaction.ts';
 import { isHandActionBusy, type ActionLocomotor, type ActionWorldContext } from './actionContext.ts';
 import {
   createBufferedAction,
@@ -157,6 +158,19 @@ export class PlayerController {
     }
     const pos = action.pos!;
     return new Vector3(pos.x, pos.y, pos.z);
+  }
+
+  /**
+   * PlayerController:OnLeftClick with the deploy placer shown: BufferedAction(self.inst, nil, ACTIONS.DEPLOY, activeitem,
+   * pos) and DoAction, so the player walks within DEPLOY's distance and doshortaction's hit frame deploys. `deploy`
+   * stands in for the item's deployable:Deploy (DEPLOYMODE.WALL), which spends the item and spawns what it places.
+   */
+  DoDeployAction(pos: Vector3, deploy: () => boolean): boolean {
+    const action: PlayerAction<WilsonAction> = new BufferedAction('DEPLOY', deploy, undefined, {
+      doer: this.doer,
+      pos: { x: pos.x, y: pos.y, z: pos.z },
+    });
+    return this.DoAction(action);
   }
 
   /** PlayerController:DoAction: locomotor:PushAction walks to the target and the inst buffers the action there. */

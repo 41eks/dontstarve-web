@@ -7,6 +7,7 @@ import { actionTool } from './actionFixtures';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { deployingPlayer } from './deployingPlayer';
 import { InstancedArchiveSprites, type InstancedSprite } from '../src/instancedArchiveSprites';
 import { PrefabDisplayGroup, prefabDisplay, SpriteResources, SpriteState } from '../../display/src';
 import { ResidentSprite } from '../src/residentSprite';
@@ -82,7 +83,11 @@ beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
 });
 
+/** The deploying players a test made, disposed while its stubs are still in place. */
+const players: ReturnType<typeof deployingPlayer>[] = [];
+
 afterEach(() => {
+  players.splice(0).forEach(player => player.dispose());
   vi.restoreAllMocks();
   vi.resetAllMocks();
   vi.unstubAllGlobals();
@@ -234,9 +239,19 @@ function setup(kind: 'animated' | 'wall') {
   const consume = vi.fn(() => store.takeBuffered('building') || store.takeItem('building'));
   const onbuilt = vi.fn();
   const placement = kind === 'animated' ? buildingFlow(world, consume, onbuilt) : wallFlow(world, consume);
+  // A wall item's click is the player's DEPLOY: it walks to the slot and deploys on the hit frame.
+  const player = kind === 'wall' ? deployingPlayer(world) : undefined;
+  if (player) {
+    players.push(player);
+  }
   const begin = () => placement.begin('building', store.bufferedSkin('building'));
-  const click = (button: number) => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
-  return { world, cameraFacing, cursor, store, recipe, consume, onbuilt, placement, begin, click };
+  const click = (button: number) => {
+    canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
+    if (button === 0) {
+      player?.deploy();
+    }
+  };
+  return { world, cameraFacing, cursor, store, recipe, consume, onbuilt, placement, begin, click, player };
 }
 
 it('an accepted action cancels a paid preview through events and skips its own cancellation', async () => {
@@ -301,6 +316,34 @@ it('an accepted action cancels a paid preview through events and skips its own c
     placement.dispose();
     store.dispose();
   }
+});
+
+it('a wall click walks the player to the slot and deploys only on the hit frame', async () => {
+  const { world, store, consume, placement, begin, player } = setup('wall');
+  const { walk, animation } = player!;
+  await begin();
+  const preview = world.scene.children[0];
+  const slot = snapToWallSlotCenter(new THREE.Vector3(3, 0, 4));
+  const click = new Event('pointerdown', { cancelable: true });
+  world.renderer.domElement.dispatchEvent(Object.assign(click, { button: 0 }));
+  // The placer is released and the player sets off; nothing is spent or placed yet.
+  expect(preview.parent).toBeNull();
+  expect(click.defaultPrevented).toBe(true);
+  expect(walk.walking).toBe(true);
+  expect([walk.locomotor.destination?.x, walk.locomotor.destination?.z]).toEqual([slot.x, slot.z]);
+  expect(world.player.position.toArray()).toEqual([0, 0, 0]);
+  expect(consume).not.toHaveBeenCalled();
+  expect(placement.exportRecords()).toHaveLength(0);
+
+  walk.arrive();
+  expect(animation.last?.action).toBe('DEPLOY');
+  expect(animation.graph.stateName).toBe('doshortaction');
+  expect(consume).not.toHaveBeenCalled();
+  animation.hit();
+  expect(consume).toHaveBeenCalledOnce();
+  expect(store.count('building')).toBe(0);
+  const [placed] = placement.exportRecords();
+  expect(placed.record.transform.position).toEqual([slot.x, 0, slot.z]);
 });
 
 it.each(['animated', 'wall'] as const)(

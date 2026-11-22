@@ -395,6 +395,8 @@ function MakeWallType(prefab: WallPrefabId, data: WallData, art: WallArt, world:
     name: art.name,
     animation: 'half',
     snap,
+    // wall_*_item deployable: SetDeployMode(DEPLOYMODE.WALL).
+    deploy: true,
     art: (resources: SpriteResources, skinId?: string) => ({
       archive: wallAssets(prefab, art),
       initialize: entity => {

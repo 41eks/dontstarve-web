@@ -273,6 +273,8 @@ export function fencePlacer(
     name: FENCE_ID,
     animation: 'idle',
     snap,
+    // fence_item deployable: SetDeployMode(DEPLOYMODE.WALL).
+    deploy: true,
     // The shared archive of the bank SetOrientation picks for the first rotation; a later rotation that changes the
     // bank reaches the archive sprite as AnimState SetBank (setArtSource).
     art: (resources, skinId) => {

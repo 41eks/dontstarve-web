@@ -25,7 +25,8 @@ import type { WorldContext } from '../../prefab/src/worldContext';
 import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { createArchiveSprite } from '../src/archiveSprite';
 import { FACING, facingFromRotation, selectsFacing } from '../src/facing';
-import { createMemo, createSignal } from '../../signals/src';
+import { createMemo, createSignal, EventEmitter } from '../../signals/src';
+import type { PlayerActionEvents } from '../../stategraphs/src/actionEvents';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { FireFxHost } from '../../prefab/src/treeFire';
 import { snapToWallSlotCenter } from '../../prefab/src/tile';
@@ -40,6 +41,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { bindTestWorld } from './worldContentFixture';
 import { workTargets } from './workTargets';
 import { testInventoryStore, testItem } from './testInventory';
+import { deployingPlayer } from './deployingPlayer';
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}),
@@ -101,6 +103,7 @@ function setup(consume: (id: string, skinId?: string) => boolean = () => true, p
     tickingarea: () => createMemo(() => awake.get()),
     pathfinder: { AddWall: addWall, RemoveWall: removeWall },
     createCursorLabel: () => ({ show() {}, hide() {}, update() {} }),
+    actionEvents: new EventEmitter<PlayerActionEvents>(),
     dropLoot,
     dropItem,
     spawnItem,
@@ -239,6 +242,8 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(7.2, 0, -4.1));
   const restored = setup();
+  // The fence item's click is the player's DEPLOY: it walks to the slot and deploys on the hit frame.
+  const player = deployingPlayer(world);
   try {
     await placement.begin('fence_item', 'fence_rose_item');
     update();
@@ -279,6 +284,8 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect(workTargets('HAMMER')).toEqual([]);
 
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
+    expect(consume).not.toHaveBeenCalled();
+    player.deploy();
     expect(consume).toHaveBeenCalledWith('fence_item', 'fence_rose_item');
     expect(workTargets('HAMMER')).toHaveLength(1);
     expect(world.physics!.bodies).toHaveLength(1);
@@ -303,6 +310,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
     expect(records(restored.registry)).toEqual([exported]);
     expect(restored.world.physics!.bodies).toHaveLength(1);
   } finally {
+    player.dispose();
     dispose();
     restored.dispose();
   }
