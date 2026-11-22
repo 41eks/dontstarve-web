@@ -4,6 +4,7 @@ import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import definitions from './definitions.json' with { type: 'json' };
+import { PIGHEAD_WORK_LEFT } from './generated/pighead.schema';
 import {
   createEffect,
   createMemo,
@@ -181,7 +182,7 @@ export class StickHeadInstance extends PrefabInstance {
     this.addTag('beaverchewable'); // for werebeaver
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction('HAMMER');
-    workable.SetWorkLeft(3);
+    workable.SetWorkLeft(id === PIG_HEAD_ID ? PIGHEAD_WORK_LEFT : 3);
     workable.SetOnWorkCallback(onworked);
     workable.SetOnFinishCallback(onhammered);
     addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
