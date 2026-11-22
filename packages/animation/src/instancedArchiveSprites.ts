@@ -83,6 +83,9 @@ const byFoot = (a: DrawEntry, b: DrawEntry) => a.key - b.key || a.entry.foot.id 
 
 /** Main-thread time per rendered frame spent composing atlases for appearances shown for the first time. */
 const COMPOSE_BUDGET_MS = 4;
+/** How often the pass looks for appearances no entity uses (`InstancedSpriteAtlases.releaseUnused`). */
+const RELEASE_SWEEP_MS = 1000;
+
 /** The loading page's composition time per frame: prewarm finishes every atlas, but never in one task. */
 const PREWARM_COMPOSE_BUDGET_MS = 8;
 
@@ -99,6 +102,7 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
   private readonly draws = new Map<THREE.Scene, Map<RgbaSpriteAtlas, DrawPage>>();
   private renderer?: THREE.WebGLRenderer;
   private contextLost = false;
+  private lastReleaseSweep = -Infinity;
 
   private readonly onContextLost = (event: Event): void => {
     event.preventDefault();
@@ -229,12 +233,45 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
     );
   }
 
-  /** Spread atlas composition over frames: an appearance is drawn once its pages exist, never composed inside the draw loop. */
+  /** Every appearance a retained entity shows, or still draws while the one it shows is composed. */
+  private usedAppearances(): Set<Appearance> {
+    const used = new Set<Appearance>();
+    for (const entry of this.retained) {
+      if (entry.appearance) {
+        used.add(entry.appearance);
+      }
+      if (entry.ready) {
+        used.add(entry.ready);
+      }
+    }
+    return used;
+  }
+
+  /**
+   * Spread atlas composition over frames: an appearance is drawn once its pages exist, never composed inside the draw
+   * loop. Once a second it releases what no entity uses, so composed pages follow the appearances actually shown.
+   */
   private composeAtlases(renderer: THREE.WebGLRenderer, budgetMs: number, phase?: string): void {
     this.bindRenderer(renderer);
-    if (!this.contextLost) {
-      this.atlases.step(renderer, budgetMs, phase);
+    if (this.contextLost) {
+      return;
     }
+    const now = performance.now();
+    const sweep = now - this.lastReleaseSweep >= RELEASE_SWEEP_MS;
+    const used = this.atlases.pending || sweep ? this.usedAppearances() : undefined;
+    if (sweep) {
+      this.lastReleaseSweep = now;
+      const released = this.atlases.releaseUnused(used!, now);
+      if (released.length) {
+        // No entity draws them: their draw pages hold no members and their batches are recycled at the next submit.
+        for (const pages of this.draws.values()) {
+          for (const atlas of released) {
+            pages.delete(atlas);
+          }
+        }
+      }
+    }
+    this.atlases.step(renderer, budgetMs, phase, used);
   }
 
   /** Composes every pending appearance now, for callers that need the next draw to be complete. */

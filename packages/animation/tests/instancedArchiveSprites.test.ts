@@ -7,11 +7,19 @@ import { renderScenePasses } from '../src/sceneRenderPass';
 import { spriteRenderOrderKey } from '../src/renderOrder';
 import { setOrdinarySpriteKeys } from '../src/scenePainter';
 
+/** The animation names composed, in order, and the textures of the pages the mock composer delivered. */
+const composed = vi.hoisted(() => ({
+  names: [] as string[],
+  textures: [] as { name: string; texture: THREE.Texture }[],
+}));
+
 vi.mock('../src/rgbaSpriteAtlas', async () => {
   const THREE = await import('three');
   return {
     createResolvedRgbaSpriteAtlasComposer: (animation: Animation, resolve: (index: number) => ResolvedSprite[]) => {
+      composed.names.push(animation.name);
       const texture = new THREE.DataTexture(new Uint8Array(4 * 4 * 4), 4, 4);
+      composed.textures.push({ name: animation.name, texture });
       let prepared = false;
       const frames = [0, 1].map(frameIndex => ({
         animationName: 'idle',
@@ -30,7 +38,9 @@ vi.mock('../src/rgbaSpriteAtlas', async () => {
       if (animation.name === 'resized') {
         Object.assign(frames[1], { minX: -2, maxX: 2, width: 4 });
       }
-      const page = { texture, width: 4, height: 4, frameRate: 30, resolutionScale: 1, frames };
+      // A "huge" appearance reports the page size of a large composed clip (the texture itself stays 4x4).
+      const side = animation.name.startsWith('huge') ? 8192 : 4;
+      const page = { texture, width: side, height: side, frameRate: 30, resolutionScale: 1, frames };
       const pages =
         animation.name === 'paged'
           ? frames.map(frame => ({ ...page, texture: texture.clone(), frames: [frame] }))
@@ -400,6 +410,52 @@ it('draws each run of a page at its place in the key order, cut where an ordinar
     s.entries[0].handle.setDepthOffset(true);
     s.render();
     expect(drawn().map(([, order]) => order)).toEqual([[1, 2, 0]]);
+  } finally {
+    s.dispose();
+  }
+});
+
+it('composes only appearances still shown, and releases unused pages past the budget after the delay', () => {
+  const s = setup();
+  let now = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
+  composed.names.length = composed.textures.length = 0;
+  try {
+    // A state passed through before the first render is never composed.
+    s.entries[0].show(0, 'passing');
+    s.entries[0].show(0);
+    s.entries[1].show(0, 'huge-a');
+    s.entries[2].show(0, 'huge-b');
+    s.render();
+    expect(composed.names.sort()).toEqual(['huge-a', 'huge-b', 'idle']);
+
+    // Nobody shows the huge appearances any more: 2 x 256 MB of unused pages, over the 256 MB budget. The entities
+    // still draw them until this render moves them to the composed idle, so the next sweep starts their idle time.
+    s.entries[1].show(0);
+    s.entries[2].show(0);
+    now = 1_000;
+    s.render();
+    const texture = (name: string) => composed.textures.find(entry => entry.name === name)!.texture;
+    const disposeA = vi.spyOn(texture('huge-a'), 'dispose'),
+      disposeB = vi.spyOn(texture('huge-b'), 'dispose');
+    now = 2_000;
+    s.render();
+    now = 11_000;
+    s.render();
+    expect(disposeA).not.toHaveBeenCalled();
+    expect(disposeB).not.toHaveBeenCalled();
+    // Ten seconds unused: one goes, and only one, since the other alone fits the budget.
+    now = 12_500;
+    s.render();
+    expect(disposeA.mock.calls.length + disposeB.mock.calls.length).toBe(1);
+    // Shown again, a released appearance is composed anew; the kept one is reused.
+    composed.names.length = 0;
+    s.entries[1].show(0, 'huge-a');
+    s.entries[2].show(0, 'huge-b');
+    now = 13_000;
+    s.render();
+    expect(composed.names).toEqual([disposeA.mock.calls.length ? 'huge-a' : 'huge-b']);
+    expect(s.batch().count).toBe(1);
   } finally {
     s.dispose();
   }

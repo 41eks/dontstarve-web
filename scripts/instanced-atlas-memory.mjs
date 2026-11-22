@@ -136,6 +136,7 @@ async function measure(options, baseUrl) {
         const appearances = new Map();
         const request = InstancedSpriteAtlases.prototype.request;
         InstancedSpriteAtlases.prototype.request = function (key, animation, resolve) {
+          window.__instancedAtlases = this;
           const appearance = request.call(this, key, animation, resolve);
           const record = appearances.get(key) ?? { key, appearance, requests: 0 };
           record.requests++;
@@ -203,7 +204,9 @@ async function measure(options, baseUrl) {
             }
           }
         });
-        return { appearances, batches: { meshes, instances, capacity, attributeBytes } };
+        // Every appearance an entity shows is composed or queued: a non-empty queue after settling means art not drawn yet.
+        const queued = window.__instancedAtlases?.composing?.size ?? 0;
+        return { appearances, queued, batches: { meshes, instances, capacity, attributeBytes } };
       },
       { universalUrl: fsUrl('src/universal.ts') },
     );
@@ -213,7 +216,7 @@ async function measure(options, baseUrl) {
   }
 }
 
-function report(options, { appearances, batches, loadMs, problems }) {
+function report(options, { appearances, queued, batches, loadMs, problems }) {
   appearances.sort((a, b) => b.bytes - a.bytes);
   const total = appearances.reduce((sum, { bytes }) => sum + bytes, 0);
   const pageCount = appearances.reduce((sum, { pages }) => sum + pages.length, 0);
@@ -221,14 +224,14 @@ function report(options, { appearances, batches, loadMs, problems }) {
   const accumulation = Math.max(0, ...appearances.map(({ accumulationBytes }) => accumulationBytes));
   if (options.json) {
     process.stdout.write(
-      `${JSON.stringify({ save: options.save ?? '(active session)', loadMs, total, pageCount, accumulation, batches, problems, appearances }, null, 2)}\n`,
+      `${JSON.stringify({ save: options.save ?? '(active session)', loadMs, total, pageCount, accumulation, queued, batches, problems, appearances }, null, 2)}\n`,
     );
     return;
   }
   const lines = [
     `save: ${options.save ?? '(active session)'}   loaded in ${(loadMs / 1000).toFixed(1)} s`,
     `composed atlas pages: ${size(total)} in ${pageCount} pages for ${appearances.length} appearances` +
-      (pending ? ` (${pending} not composed yet)` : ''),
+      (pending ? ` (${pending} without pages: ${queued} queued to compose, the rest shown by no entity)` : ''),
     `transient accumulation target while composing the largest page: ${size(accumulation)}`,
     `InstancedMesh batches: ${batches.meshes} meshes, ${batches.instances} drawn of ${batches.capacity} slots, ` +
       `${size(batches.attributeBytes)} of instance attributes (drawn: in view now)`,

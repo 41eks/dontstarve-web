@@ -91,6 +91,14 @@ Spine 去掉 `premultiplied_alpha_fragment` 与 `colorspace_fragment`，让预�
 
 普通动态 sprite 的 `SpriteFrameRenderer` 已按容量复用缓冲，普通共享帧已通过 `FrameGeometryCache` 换帧复用，不能将 Spine 每次更新重写骨骼网格的方式整体套用到这些路径。其 `addUpdateRange()` 思路可用于仍需重写的私有缓冲；多个未消费更新区间必须保留，不能因后一次写入丢弃前一次更新。
 
+## 合成外观的释放
+
+`InstancedSpriteAtlases` 按外观 key 缓存合成页。外观在有实体显示（`entry.appearance`）或仍在绘制（`entry.ready`）时算作在用，在用的外观不释放。
+
+- **一闪而过的状态不合成：** 合成按首次请求顺序排队；轮到时已没有实体显示或绘制它（例如生成过程中先显示、同一帧又换掉的外观），就直接出队，不创建合成器。再次显示会重新排队。
+- **没人用的合成页按预算释放：** 实例批次每秒检查一次。连续 10 秒（`RELEASE_UNUSED_AFTER_MS`）无人使用、且全部闲置外观的合成页合计超过 256 MB（`UNUSED_PAGE_BUDGET_BYTES`）时，从闲置最久的开始释放，直到闲置页回到预算内；没有页的闲置记录 10 秒后直接删除。释放后再显示的外观在重新合成完成前不绘制，所以不在实体刚睡眠时立即释放。
+- 效果（`scripts/instanced-atlas-memory.mjs`，默认 Caves 存档）：常青树三种积雪状态各合成一份 `sway1_loop_tall` 的情况消失，合成页从 2265 MB 降到 799 MB，146 个只在生成过程中出现过的外观不再合成；稳定后合成队列为空，说明在用的外观都已绘制。
+
 ## 源图集内存
 
 build 图集由 worker 读出，同时生成每纹素 1 bit 的拾取覆盖掩码（`alphaMask.ts`）。主 renderer 支持 `WEBGL_compressed_texture_s3tc`／`_srgb` 且能走 GPU 合成时（`atlasFormat.ts` 的 `configureAtlasCompression()`，在 `src/universal.ts` 创建 renderer 后调用），场景 sprite 的 build（`ArchiveSpriteAssets`、符号／build 覆盖、预加载）把 DXT1/3/5 页保留为 BC 块，以 `CompressedTexture` 原样上传，显存为 RGBA 的 1/8（DXT1）或 1/4（DXT3/5）；其余页（非 BC、宽高不是 4 的倍数）和 UI 读取的 build 仍解码为 RGBA，两种形式分开缓存。BC 块在 worker 中按块行与块内 4 行翻转成与解码 RGBA 相同的布局，alpha 只解 alpha 通道。DXT3/5 的颜色是预乘的：这些页不走采样器的 sRGB 解码，按线性格式上传，由 `AtlasSpriteMaterial`（编译钩子是方法，克隆的着色／bloom 材质同样生效）和 GPU 合成的部件着色器先除以 alpha 再做 sRGB 解码；过滤因此在预乘空间进行，缩小采样时边缘比 RGBA 路径少一圈透明黑色的混入。压缩页没有 RGBA，CPU 合成回退不会用到它们。`createAtlasTexture()` 为每个图集按过滤方式共享一个 Three.js `Source`，同一图集的所有纹理在 renderer 内只有一份 GPU 拷贝，引用计数和释放仍由 Three.js 与各所有者的 `dispose()` 负责。带数据的上传完成后（`onUpdate`）丢弃 CPU 端 RGBA 或 BC 块，只保留覆盖掩码供 `spriteRaycast.ts` 拾取；无法从动画包重新解码（非 loader 加载）或没有 alpha 的图集保留 RGBA。
