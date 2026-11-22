@@ -81,8 +81,9 @@ it('loads imported save records with the idle_N loop, tags and bank oceanvine_de
         buildArchives: ['waterforest_vines.zip'],
         bank: 'vine_rainforest_border',
       },
-      assetOptions: { instancedAnimations: ['idle_1', 'idle_2', 'idle_3', 'idle_4', 'idle_5', 'idle_6'] },
     });
+    // The long idle_N loops are drawn as ordinary sprites: precomposing them for instance batches costs gigabytes.
+    expect(definitions.oceanvine_deco.assetOptions?.instancedAnimations).toBeUndefined();
     expect(
       records()
         .map(record => record.components.animnum)

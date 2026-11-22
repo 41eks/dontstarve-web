@@ -57,8 +57,9 @@ export function oceanVineDecoPrefabs(): Readonly<
         buildArchives: ['waterforest_vines.zip'],
         bank: 'vine_rainforest_border',
       },
-      // Every idle_N loops; the 66 vines of an imported world share their batches.
-      assetOptions: { instancedAnimations: OCEANVINE_DECO_ANIMNUMS.map(n => `idle_${n}`) },
+      // Not instanced: an instance batch draws precomposed frames, and the six 72-frame idle_N loops of this large art
+      // composed into about 5.7 GB of atlas pages for the 66 vines of an imported world, which ran the GPU process out
+      // of memory while loading. Ordinary sprites draw the parts straight from the shared build atlas.
     },
   };
 }
