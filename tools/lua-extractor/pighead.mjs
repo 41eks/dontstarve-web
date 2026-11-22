@@ -1,10 +1,12 @@
 import { readFile, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { isDeepStrictEqual, parseArgs } from 'node:util';
 
 import { format } from 'prettier';
 
 import { recordPrefab } from './record.mjs';
 import { stickHeadConfig } from './stickhead-config.mjs';
+import { emitStickHeadScaffold } from './stickhead-scaffold.mjs';
 import { emitStickHeadSignatures } from './stickhead-signatures.mjs';
 
 const { values } = parseArgs({
@@ -13,6 +15,7 @@ const { values } = parseArgs({
     'source-root': { type: 'string', default: process.env.DST_LUA_ROOT },
     check: { type: 'boolean' },
     'callback-source': { type: 'boolean' },
+    scaffold: { type: 'string' },
   },
 });
 
@@ -71,10 +74,20 @@ async function main() {
   if (!values['source-root']) {
     throw new Error('Pass --source-root <DST scripts directory> or set DST_LUA_ROOT');
   }
-  if (values.check && values['callback-source']) {
-    throw new Error('--callback-source prints a report and cannot be used with --check');
+  const scaffold = values.scaffold !== undefined;
+  if ([values.check, values['callback-source'], scaffold].filter(Boolean).length > 1) {
+    throw new Error('Use only one of --check, --callback-source, and --scaffold');
   }
-  const snapshot = await recordPrefab(values['source-root'], 'prefabs/stickheads.lua', 'pighead', {
+  const file = 'prefabs/stickheads.lua';
+  if (scaffold) {
+    const source = await readFile(resolve(values['source-root'], file), 'utf8');
+    const output = emitStickHeadScaffold(source, file, values.scaffold);
+    process.stdout.write(
+      await format(output, { parser: 'typescript', singleQuote: true, printWidth: 120, arrowParens: 'avoid' }),
+    );
+    return;
+  }
+  const snapshot = await recordPrefab(values['source-root'], file, 'pighead', {
     includeCallbackSource: values['callback-source'],
   });
   const json = JSON.stringify(snapshot, null, 2) + '\n';

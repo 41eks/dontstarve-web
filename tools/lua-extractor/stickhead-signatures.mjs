@@ -110,13 +110,26 @@ function uniqueIdentifier(name, used) {
   return identifier;
 }
 
+export function stickHeadFunctionNames(localFunctions) {
+  const usedNames = new Set(['Parameters', ...typeImports.map(([name]) => name)]);
+  const topLevelNames = new Set(localFunctions.filter(fn => fn.topLevel).map(fn => fn.name));
+  return localFunctions.map(fn => {
+    const needsSuffix = usedNames.has(fn.name) || (!fn.topLevel && topLevelNames.has(fn.name));
+    const baseName = needsSuffix ? `${fn.name}_L${fn.startLine}C${fn.startColumn + 1}` : fn.name;
+    const exportName = uniqueIdentifier(baseName, usedNames);
+    const identifiers = new Set();
+    const parameterNames = fn.parameters.map(name => uniqueIdentifier(name === '...' ? 'args' : name, identifiers));
+    return { exportName, parameterNames };
+  });
+}
+
 export function emitStickHeadSignatures(snapshots) {
   const [{ localFunctions }] = snapshots;
   const contracts = registeredTypes(snapshots);
   const usedTypes = new Set();
-  const usedNames = new Set(['Parameters', ...typeImports.map(([name]) => name)]);
-  const topLevelNames = new Set(localFunctions.filter(fn => fn.topLevel).map(fn => fn.name));
-  const declarations = localFunctions.map(fn => {
+  const names = stickHeadFunctionNames(localFunctions);
+  const declarations = localFunctions.map((fn, functionIndex) => {
+    const { exportName, parameterNames } = names[functionIndex];
     const key = sourceKey(fn);
     const staticKinds = new Set(fn.staticUses?.map(({ kind }) => kind));
     const staticKind = staticKinds.size === 1 ? staticKinds.values().next().value : undefined;
@@ -124,20 +137,16 @@ export function emitStickHeadSignatures(snapshots) {
       contracts.get(key) ??
       staticContracts.get(staticKind) ??
       (fn.topLevel && fn.name === 'create_common' ? commonFactory : undefined);
-    const identifiers = new Set();
     const parameters = fn.parameters.map((name, index) => {
       if (name === '...') {
-        return `...${uniqueIdentifier('args', identifiers)}: unknown[]`;
+        return `...${parameterNames[index]}: unknown[]`;
       }
       const type = contract?.parameters[index] ?? 'unknown';
       usedTypes.add(type);
-      return `${uniqueIdentifier(name, identifiers)}: ${type}`;
+      return `${parameterNames[index]}: ${type}`;
     });
     const returnType = contract?.returnType ?? (fn.returnsValue ? 'unknown' : 'void');
     usedTypes.add(returnType);
-    const needsSuffix = usedNames.has(fn.name) || (!fn.topLevel && topLevelNames.has(fn.name));
-    const baseName = needsSuffix ? `${fn.name}_L${fn.startLine}C${fn.startColumn + 1}` : fn.name;
-    const exportName = uniqueIdentifier(baseName, usedNames);
     return `/** ${fn.name} from ${fn.file}:${fn.startLine}. */
 export type ${exportName} = (${parameters.join(', ')}) => ${returnType};`;
   });

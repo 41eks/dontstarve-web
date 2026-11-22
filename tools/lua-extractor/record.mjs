@@ -2,8 +2,9 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import luaparse from 'luaparse';
 import { LuaFactory } from 'wasmoon';
+
+import { localFunctionNodes, luaParameterNames, parseLuaSource, returnsValue } from './lua-source.mjs';
 
 const runtime = ['recorder.lua', 'sandbox.lua'].map(file =>
   readFileSync(new URL('runtime/' + file, import.meta.url), 'utf8'),
@@ -16,47 +17,22 @@ const scenarios = [
 
 function getSourceNodes(file, readSource, sourceNodes) {
   if (!sourceNodes.has(file)) {
-    const nodes = [];
-    luaparse.parse(readSource(file), {
-      luaVersion: '5.1',
-      locations: true,
-      scope: true,
-      onCreateNode(node) {
-        if (node.type === 'FunctionDeclaration' || node.type === 'CallExpression' || node.type === 'Chunk') {
-          nodes.push(node);
-        }
-      },
-    });
-    sourceNodes.set(file, nodes);
+    sourceNodes.set(file, parseLuaSource(readSource(file)));
   }
   return sourceNodes.get(file);
 }
 
 function describeFunction(node, file) {
-  const { identifier, loc, parameters } = node;
+  const { identifier, loc } = node;
   return {
     file,
     ...(identifier?.type === 'Identifier' ? { name: identifier.name } : {}),
-    parameters: parameters.map(parameter => (parameter.type === 'Identifier' ? parameter.name : '...')),
+    parameters: luaParameterNames(node),
     startLine: loc.start.line,
     endLine: loc.end.line,
     startColumn: loc.start.column,
     endColumn: loc.end.column,
   };
-}
-
-function returnsValue(statements) {
-  return statements.some(statement => {
-    if (statement.type === 'ReturnStatement') {
-      return statement.arguments.length > 0;
-    }
-    if (statement.type === 'FunctionDeclaration') {
-      return false;
-    }
-    return (
-      statement.clauses?.some(clause => returnsValue(clause.body)) || (statement.body && returnsValue(statement.body))
-    );
-  });
 }
 
 function staticFunctionUses(nodes) {
@@ -85,27 +61,23 @@ function staticFunctionUses(nodes) {
 function listLocalFunctions(file, readSource, sourceNodes) {
   const nodes = getSourceNodes(file, readSource, sourceNodes);
   const topLevel = new Set(nodes.find(node => node.type === 'Chunk').body);
-  const declarations = nodes.filter(
-    node => node.type === 'FunctionDeclaration' && node.isLocal && node.identifier?.type === 'Identifier',
-  );
+  const declarations = localFunctionNodes(nodes);
   const counts = new Map();
   for (const { identifier } of declarations) {
     counts.set(identifier.name, (counts.get(identifier.name) ?? 0) + 1);
   }
   const uses = staticFunctionUses(nodes);
-  return declarations
-    .map(node => {
-      const { name } = node.identifier;
-      // Leave shadowed names to the runtime identity or the unknown-type fallback.
-      const references = counts.get(name) === 1 ? uses.get(name) : undefined;
-      return {
-        ...describeFunction(node, file),
-        topLevel: topLevel.has(node),
-        returnsValue: returnsValue(node.body),
-        ...(references ? { staticUses: references } : {}),
-      };
-    })
-    .sort((a, b) => a.startLine - b.startLine || a.startColumn - b.startColumn);
+  return declarations.map(node => {
+    const { name } = node.identifier;
+    // Leave shadowed names to the runtime identity or the unknown-type fallback.
+    const references = counts.get(name) === 1 ? uses.get(name) : undefined;
+    return {
+      ...describeFunction(node, file),
+      topLevel: topLevel.has(node),
+      returnsValue: returnsValue(node.body),
+      ...(references ? { staticUses: references } : {}),
+    };
+  });
 }
 
 function locateCallback(callback, readSource, sourceNodes) {
