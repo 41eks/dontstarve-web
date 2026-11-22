@@ -9,6 +9,7 @@
     "./parseKtex": "./src/parseKtex.ts",
     "./textureLoader": "./src/textureLoader.ts",
     "./animationAssets": "./src/animationAssets.ts",
+    "./atlasFormat": "./src/atlasFormat.ts",
     "./preloadArchives": "./src/preloadArchives.ts",
     "./hatAssets": "./src/hatAssets.ts",
     "./renderOrder": "./src/renderOrder.ts",

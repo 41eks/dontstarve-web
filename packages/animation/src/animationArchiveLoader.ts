@@ -16,8 +16,11 @@ const pendingRequests = new Map<
     reject: (error: Error) => void;
   }
 >();
-/** Where each cached build atlas came from, so released RGBA can be decoded again. */
-const atlasOrigins = new WeakMap<BuildAtlas, { file: string; baseUrl: string; index: number }>();
+/** Where each cached build atlas came from, so released RGBA or blocks can be read again. */
+const atlasOrigins = new WeakMap<
+  BuildAtlas,
+  { file: string; baseUrl: string; index: number; compressedAtlases: boolean }
+>();
 const reloads = new Map<string, Promise<BuildPackage>>();
 let archiveWorker: Worker | undefined;
 let nextRequestId = 0;
@@ -56,12 +59,17 @@ function getArchiveWorker(): Worker {
   return worker;
 }
 
-function loadInWorker(file: string, assetBaseUrl: string, kind: keyof AnimationArchiveParts): Promise<ArchivePart> {
+function loadInWorker(
+  file: string,
+  assetBaseUrl: string,
+  kind: keyof AnimationArchiveParts,
+  compressedAtlases: boolean,
+): Promise<ArchivePart> {
   return new Promise((resolve, reject) => {
     const worker = getArchiveWorker();
     const id = ++nextRequestId;
     pendingRequests.set(id, { resolve, reject });
-    const request: AnimationArchiveWorkerRequest = { id, file, assetBaseUrl, kind };
+    const request: AnimationArchiveWorkerRequest = { id, file, assetBaseUrl, kind, compressedAtlases };
     try {
       worker.postMessage(request);
     } catch (error) {
@@ -71,27 +79,40 @@ function loadInWorker(file: string, assetBaseUrl: string, kind: keyof AnimationA
   });
 }
 
-function readPart<Kind extends keyof AnimationArchiveParts>(file: string, baseUrl: string, kind: Kind) {
+function readPart<Kind extends keyof AnimationArchiveParts>(
+  file: string,
+  baseUrl: string,
+  kind: Kind,
+  compressedAtlases: boolean,
+) {
   // Resolve relative asset paths against the page, not the Worker's own URL.
   return (
     typeof document !== 'undefined' && typeof Worker !== 'undefined'
-      ? loadInWorker(file, new URL(`${baseUrl}/`, document.baseURI).href, kind)
-      : readAnimationArchivePart(file, baseUrl, kind)
+      ? loadInWorker(file, new URL(`${baseUrl}/`, document.baseURI).href, kind, compressedAtlases)
+      : readAnimationArchivePart(file, baseUrl, kind, compressedAtlases)
   ) as Promise<AnimationArchiveParts[Kind]>;
 }
 
+/**
+ * `compressedAtlases` keeps a build's BC pages as blocks for a renderer that samples them (`atlasCompressionEnabled`);
+ * the two forms of one build are cached apart. It does not apply to the animation part.
+ */
 export function loadAnimationArchivePart<Kind extends keyof AnimationArchiveParts>(
   file: string,
   assetBaseUrl: string,
   kind: Kind,
+  compressedAtlases = false,
 ): Promise<AnimationArchiveParts[Kind]> {
   const baseUrl = assetBaseUrl.replace(/\/$/, '');
-  const key = `${baseUrl}/${file}\n${kind}`;
+  const compressed = kind === 'build' && compressedAtlases;
+  const key = `${baseUrl}/${file}\n${kind}${compressed ? '\nbc' : ''}`;
   let request = requests.get(key);
   if (!request) {
-    request = readPart(file, baseUrl, kind).then(result => {
+    request = readPart(file, baseUrl, kind, compressed).then(result => {
       if (result && 'atlases' in result) {
-        result.atlases.forEach((atlas, index) => atlasOrigins.set(atlas, { file, baseUrl, index }));
+        result.atlases.forEach((atlas, index) =>
+          atlasOrigins.set(atlas, { file, baseUrl, index, compressedAtlases: compressed }),
+        );
       }
       return result;
     });
@@ -105,21 +126,24 @@ export function loadAnimationArchivePart<Kind extends keyof AnimationArchivePart
   return request as Promise<AnimationArchiveParts[Kind]>;
 }
 
-/** Whether a cached atlas can be decoded again after its RGBA is released. */
-export function canReloadAtlasPixels(atlas: BuildAtlas): boolean {
+/** Whether a cached atlas can be read again after its RGBA or blocks are released. */
+export function canReloadAtlasData(atlas: BuildAtlas): boolean {
   return atlasOrigins.has(atlas);
 }
 
-/** Decodes a released atlas page again from its archive; atlases of one build share a single decode. */
-export function reloadAtlasPixels(atlas: BuildAtlas): Promise<Uint8Array> {
+/**
+ * Reads a released atlas page again from its archive, in the form it was loaded in: RGBA, or the blocks of a
+ * compressed page. Atlases of one build share a single read.
+ */
+export function reloadAtlasData(atlas: BuildAtlas): Promise<Uint8Array> {
   const origin = atlasOrigins.get(atlas);
   if (!origin) {
     return Promise.reject(new Error('Atlas has no archive to reload from'));
   }
-  const key = `${origin.baseUrl}/${origin.file}`;
+  const key = `${origin.baseUrl}/${origin.file}${origin.compressedAtlases ? '\nbc' : ''}`;
   let reload = reloads.get(key);
   if (!reload) {
-    reload = readPart(origin.file, origin.baseUrl, 'build');
+    reload = readPart(origin.file, origin.baseUrl, 'build', origin.compressedAtlases);
     reloads.set(key, reload);
     const settle = () => {
       if (reloads.get(key) === reload) {
@@ -128,7 +152,14 @@ export function reloadAtlasPixels(atlas: BuildAtlas): Promise<Uint8Array> {
     };
     void reload.then(settle, settle);
   }
-  return reload.then(({ atlases }) => atlases[origin.index].pixels!);
+  return reload.then(({ atlases }) => {
+    const { pixels, blocks } = atlases[origin.index];
+    const data = atlas.bcType ? blocks : pixels;
+    if (!data) {
+      throw new Error(`${origin.file} atlas ${origin.index} was read again in another form`);
+    }
+    return data;
+  });
 }
 
 /** Release CPU assets and the decoder worker when the game is shut down. */

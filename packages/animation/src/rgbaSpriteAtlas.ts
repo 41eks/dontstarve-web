@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import { spritePerfSpan } from './spritePerf';
+import { canComposeAtlasOnGpu, isPremultipliedSrgbAtlas, PREMULTIPLIED_SRGB_TEXEL } from './atlasFormat';
 
 import {
   atlasPixels,
@@ -306,15 +307,11 @@ function* composeResolvedSteps(
       const sprites = typeof frames === 'function' ? frames(index) : frames[index];
       layouts.push(layoutFrame(animation, index, sprites));
       for (const { image, materials } of sprites) {
-        const texture = materials[image.sampler ?? 0].map!;
-        if (!(texture instanceof THREE.DataTexture)) {
-          throw new Error('Instanced sprite source must be a decoded atlas');
+        const texture = materials[image.sampler ?? 0].map;
+        if (!texture) {
+          throw new Error('Instanced sprite source must be a build atlas');
         }
-        density = Math.max(
-          density,
-          texture.image.width / image.canvasWidth!,
-          texture.image.height / image.canvasHeight!,
-        );
+        density = Math.max(density, texture.width / image.canvasWidth!, texture.height / image.canvasHeight!);
       }
     } finally {
       end();
@@ -362,8 +359,8 @@ function* composeResolvedSteps(
   for (const { sprites } of gpu ? [] : layouts) {
     for (const { image, materials } of sprites) {
       const texture = materials[image.sampler ?? 0].map;
-      if (!(texture instanceof THREE.DataTexture)) {
-        throw new Error('Instanced sprite source must be a decoded atlas');
+      if (!texture) {
+        throw new Error('Instanced sprite source must be a build atlas');
       }
       if (decodedSources.has(texture)) {
         continue;
@@ -372,10 +369,7 @@ function* composeResolvedSteps(
       while (!(pixels = atlasTexturePixels(texture))) {
         yield ATLAS_PENDING;
       }
-      decodedSources.set(
-        texture,
-        yield* decodeTextureSteps({ width: texture.image.width, height: texture.image.height, pixels }),
-      );
+      decodedSources.set(texture, yield* decodeTextureSteps({ width: texture.width, height: texture.height, pixels }));
     }
   }
   const sourceOf = ({ image, materials }: ResolvedSprite) => decodedSources.get(materials[image.sampler ?? 0].map!)!;
@@ -466,11 +460,6 @@ function atlasResult(
   };
 }
 
-/** Rendering premultiplied 16-bit colour needs one of these; without them the canvas path composes instead. */
-export function canComposeAtlasOnGpu(renderer: THREE.WebGLRenderer): boolean {
-  return renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float');
-}
-
 const GPU_VERTEX = `
   uniform vec2 size;
   varying vec2 vUv;
@@ -480,12 +469,20 @@ const GPU_VERTEX = `
   }
 `;
 
-/** Source texels are sRGB-decoded by the sampler, so parts blend in linear light; output is premultiplied. */
+/**
+ * Source texels are sRGB-decoded by the sampler, or by the shader for a premultiplied BC page, so parts blend in linear
+ * light; output is premultiplied.
+ */
 const GPU_PART_FRAGMENT = `
   uniform sampler2D map;
+  uniform bool premultipliedSrgb;
   varying vec2 vUv;
+  ${PREMULTIPLIED_SRGB_TEXEL}
   void main() {
     vec4 texel = texture2D(map, vUv);
+    if (premultipliedSrgb) {
+      texel = dstPremultipliedSrgbTexel(texel);
+    }
     gl_FragColor = vec4(texel.rgb * texel.a, texel.a);
   }
 `;
@@ -560,7 +557,11 @@ class GpuAtlasMaterials {
     while (this.parts.length <= index) {
       this.parts.push(
         new THREE.ShaderMaterial({
-          uniforms: { map: { value: null as THREE.Texture | null }, size: this.size },
+          uniforms: {
+            map: { value: null as THREE.Texture | null },
+            premultipliedSrgb: { value: false },
+            size: this.size,
+          },
           vertexShader: GPU_VERTEX,
           fragmentShader: GPU_PART_FRAGMENT,
           transparent: true,
@@ -578,6 +579,7 @@ class GpuAtlasMaterials {
       );
     }
     this.parts[index].uniforms.map.value = map;
+    this.parts[index].uniforms.premultipliedSrgb.value = isPremultipliedSrgbAtlas(map);
   }
 
   /** Drops the last draw's textures so the shared materials keep no task's sources or targets alive. */

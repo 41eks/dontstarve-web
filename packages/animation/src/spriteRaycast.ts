@@ -35,10 +35,10 @@ export function setAtlasAlphaMask(source: THREE.Source<unknown>, alpha: Uint8Arr
 }
 
 /** Sample the existing decoded atlas, using the same UV transform, orientation and filtering as the sprite. */
-function atlasAlpha(texture: THREE.DataTexture, uv: THREE.Vector2): number {
-  const { width, height } = texture.image;
+function atlasAlpha(texture: THREE.Texture, uv: THREE.Vector2): number {
+  const { width, height, data: pixels } = texture.image as { width: number; height: number; data?: Uint8Array | null };
   const mask = alphaMasks.get(texture.source);
-  const data = mask ?? texture.image.data,
+  const data = mask ?? pixels,
     stride = mask ? 1 : 4,
     channel = mask ? 0 : 3;
   if (!data || width === 0 || height === 0) {
@@ -83,12 +83,15 @@ export function raycastSprite(
     const texture = material.map,
       uv = texture?.channel === 1 ? hit.uv1 : hit.uv;
     let alpha = material.opacity;
-    // DST animation atlases are RGBA unsigned-byte DataTextures. Preserve geometric picking for other maps.
+    // DST animation atlases have an alpha mask (compressed pages only that) or are RGBA unsigned-byte DataTextures.
+    // Preserve geometric picking for other maps.
     if (
-      texture instanceof THREE.DataTexture &&
-      texture.format === THREE.RGBAFormat &&
-      texture.type === THREE.UnsignedByteType &&
-      uv
+      texture &&
+      uv &&
+      (alphaMasks.has(texture.source) ||
+        (texture instanceof THREE.DataTexture &&
+          texture.format === THREE.RGBAFormat &&
+          texture.type === THREE.UnsignedByteType))
     ) {
       alpha *= atlasAlpha(texture, uv);
     }

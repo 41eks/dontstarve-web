@@ -1,10 +1,12 @@
+import { atlasCompressionEnabled } from './atlasFormat';
 import { loadAnimationArchivePart } from './animationArchiveLoader';
 
 /** A zip read for both parts, or split when the prefab pairs one bank archive with another build archive. */
 export type AnimationArchiveSpec = string | { readonly animation: string; readonly build: string };
 
 /**
- * Warm the shared archive caches so later factory creation reuses the decoded parts.
+ * Warm the shared archive caches so later factory creation reuses the decoded parts, in the atlas form scene sprites
+ * load (see `atlasCompressionEnabled`).
  * Failures are ignored here: the prefab that actually needs the archive still reports its own load error.
  */
 export async function preloadAnimationArchives(
@@ -15,7 +17,9 @@ export async function preloadAnimationArchives(
   signal?.throwIfAborted();
   const requests = new Map<string, () => Promise<unknown>>();
   const add = (file: string, kind: 'animation' | 'build') =>
-    requests.set(`${kind}\n${file}`, () => loadAnimationArchivePart(file, assetBaseUrl, kind));
+    requests.set(`${kind}\n${file}`, () =>
+      loadAnimationArchivePart(file, assetBaseUrl, kind, atlasCompressionEnabled()),
+    );
   for (const spec of specs) {
     if (typeof spec === 'string') {
       add(spec, 'animation');

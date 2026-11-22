@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseKtex } from '@dontstarve-web/animation/parseKtex';
+import { parseKtex, parseKtexBlocks, type BcType } from '@dontstarve-web/animation/parseKtex';
 
 function makeKtex(pixelFormat: number, width: number, height: number, data: Uint8Array, mipCount = 1) {
   const output = new Uint8Array(8 + mipCount * 10 + data.length);
@@ -102,5 +102,40 @@ describe('parseKtex', () => {
     const truncated = makeKtex(4, 1, 1, new Uint8Array([1, 2, 3, 4])).subarray(0, 20);
 
     expect(() => parseKtex(truncated, 'truncated.tex')).toThrow('truncated.tex: unexpected end of file at byte 18');
+  });
+
+  /** Deterministic pseudo-random BC data, so every block mode and index pattern is sampled. */
+  function randomBlocks(type: BcType, width: number, height: number) {
+    const data = new Uint8Array((width / 4) * (height / 4) * (type === 1 ? 8 : 16));
+    let seed = 12345 + type;
+    for (let index = 0; index < data.length; index++) {
+      seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+      data[index] = seed >>> 24;
+    }
+    return data;
+  }
+
+  it.each([1, 2, 3] as const)('keeps BC%i blocks for upload in the flipped layout of the decoded RGBA', type => {
+    const width = 8,
+      height = 12;
+    const ktex = makeKtex(type - 1, width, height, randomBlocks(type, width, height));
+    const decoded = parseKtex(ktex).pixels;
+
+    const compressed = parseKtexBlocks(ktex)!;
+    expect(compressed).toMatchObject({ width, height, bcType: type });
+    // Decoding the uploaded blocks (parseKtex flips once more) gives the decoded RGBA with its rows reversed back.
+    const reflipped = parseKtex(makeKtex(type - 1, width, height, compressed.blocks)).pixels;
+    const rowSize = width * 4;
+    for (let y = 0; y < height; y++) {
+      expect(reflipped.subarray(y * rowSize, (y + 1) * rowSize)).toEqual(
+        decoded.subarray((height - 1 - y) * rowSize, (height - y) * rowSize),
+      );
+    }
+    expect(compressed.alpha).toEqual(decoded.filter((_, index) => index % 4 === 3));
+  });
+
+  it('leaves textures that are not whole BC blocks to RGBA decoding', () => {
+    expect(parseKtexBlocks(makeKtex(2, 4, 6, randomBlocks(3, 4, 8)))).toBeUndefined();
+    expect(parseKtexBlocks(makeKtex(4, 4, 4, new Uint8Array(64)))).toBeUndefined();
   });
 });

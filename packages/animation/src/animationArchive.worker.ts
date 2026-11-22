@@ -8,13 +8,15 @@ const postMessage = (message: AnimationArchiveWorkerResponse, transfer: Transfer
 
 globalThis.addEventListener(
   'message',
-  async ({ data: { id, file, assetBaseUrl, kind } }: MessageEvent<AnimationArchiveWorkerRequest>) => {
+  async ({
+    data: { id, file, assetBaseUrl, kind, compressedAtlases },
+  }: MessageEvent<AnimationArchiveWorkerRequest>) => {
     try {
-      const result = await readAnimationArchivePart(file, assetBaseUrl, kind);
-      // Ownership of RGBA and alpha buffers moves to the main-thread cache without a copy.
+      const result = await readAnimationArchivePart(file, assetBaseUrl, kind, compressedAtlases);
+      // Ownership of RGBA, block and alpha buffers moves to the main-thread cache without a copy.
       const buffers =
         result && 'atlases' in result
-          ? transferBuffers(result.atlases.flatMap(({ pixels, alpha }) => [pixels, alpha]))
+          ? transferBuffers(result.atlases.flatMap(({ pixels, blocks, alpha }) => [pixels, blocks, alpha]))
           : [];
       postMessage({ id, result }, buffers);
     } catch (error) {

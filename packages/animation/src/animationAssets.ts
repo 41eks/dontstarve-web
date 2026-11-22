@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import { markSpatialGeometryBounds, publishSpriteSpatialBounds } from './spatialBounds';
 import type { AnimElement, BuildAtlas, BuildImage, ParsedAnim, ParsedBuild, BuildPackage } from './animationArchive';
-import { canReloadAtlasPixels, loadAnimationArchivePart, reloadAtlasPixels } from './animationArchiveLoader';
+import { canReloadAtlasData, loadAnimationArchivePart, reloadAtlasData } from './animationArchiveLoader';
+import { isPremultipliedSrgbAtlas, markPremultipliedSrgbAtlas, PREMULTIPLIED_SRGB_TEXEL } from './atlasFormat';
+import type { BcType } from './parseKtex';
 import { raycastSprite, setAtlasAlphaMask, setInstancedSpriteProxy } from './spriteRaycast';
 import { setSpriteRenderGroupDrawn } from './renderOrder';
 import {
@@ -43,8 +45,9 @@ export async function loadAnim(file: string, assetBaseUrl: string): Promise<Pars
   return animations;
 }
 
-export function loadBuild(file: string, assetBaseUrl: string): Promise<BuildPackage> {
-  return loadAnimationArchivePart(file, assetBaseUrl, 'build');
+/** `compressedAtlases` keeps BC pages as blocks for the scene renderer (`atlasCompressionEnabled`); RGBA otherwise. */
+export function loadBuild(file: string, assetBaseUrl: string, compressedAtlases = false): Promise<BuildPackage> {
+  return loadAnimationArchivePart(file, assetBaseUrl, 'build', compressedAtlases);
 }
 
 async function loadArchivePair<AnimationPart>(build: Promise<BuildPackage>, animation: Promise<AnimationPart>) {
@@ -65,8 +68,11 @@ export async function loadAnimationArchive(file: string, assetBaseUrl: string) {
 }
 
 /** Skin builds often reuse their prefab's bank and contain no anim.bin. */
-export async function loadSpriteSkinArchive(file: string, assetBaseUrl: string) {
-  return loadArchivePair(loadBuild(file, assetBaseUrl), loadAnimationArchivePart(file, assetBaseUrl, 'animation'));
+export async function loadSpriteSkinArchive(file: string, assetBaseUrl: string, compressedAtlases = false) {
+  return loadArchivePair(
+    loadBuild(file, assetBaseUrl, compressedAtlases),
+    loadAnimationArchivePart(file, assetBaseUrl, 'animation'),
+  );
 }
 
 export function findImage(build: ParsedBuild, hash: number, frameIndex: number) {
@@ -95,8 +101,8 @@ export interface SpriteMaterialOptions {
 
 /**
  * One three.js Source per atlas and filtering, so every texture of it shares one GPU copy (three counts its users).
- * The RGBA leaves the CPU after that copy is made; a GPU copy made without data (a restored context, a new renderer)
- * decodes the page again from its archive and uploads it. One renderer draws the build atlases.
+ * The RGBA or BC blocks leave the CPU after that copy is made; a GPU copy made without data (a restored context, a new
+ * renderer) reads the page again from its archive and uploads it. One renderer draws the build atlases.
  */
 interface AtlasImage {
   data: Uint8Array | null;
@@ -107,14 +113,32 @@ interface AtlasImage {
 interface AtlasSource {
   readonly atlas: BuildAtlas;
   readonly source: THREE.Source<AtlasImage>;
+  /** RGBA pages upload `image.data`; a compressed page uploads its blocks as the one level every texture shares. */
   readonly image: AtlasImage;
-  readonly textures: Set<THREE.DataTexture>;
+  readonly mipmaps?: THREE.CompressedTextureMipmap[];
+  readonly textures: Set<THREE.Texture>;
   reload?: Promise<void>;
 }
 
 const atlasSources = new WeakMap<BuildAtlas, [linear?: AtlasSource, point?: AtlasSource]>();
 const sourceRecords = new WeakMap<THREE.Source<unknown>, AtlasSource>();
 const pendingReloads = new Set<Promise<void>>();
+/** The level data of a compressed page whose blocks were released; three reads none while the source is not ready. */
+const RELEASED_BLOCKS = new Uint8Array(0);
+const BC_FORMATS: Record<BcType, THREE.CompressedPixelFormat> = {
+  1: THREE.RGBA_S3TC_DXT1_Format,
+  2: THREE.RGBA_S3TC_DXT3_Format,
+  3: THREE.RGBA_S3TC_DXT5_Format,
+};
+
+function setAtlasData(record: AtlasSource, data: Uint8Array | undefined): void {
+  if (record.mipmaps) {
+    record.mipmaps[0].data = data ?? RELEASED_BLOCKS;
+  } else {
+    record.image.data = data ?? null;
+  }
+  record.source.dataReady = data !== undefined;
+}
 
 function atlasSource(atlas: BuildAtlas, pointFiltering: boolean): AtlasSource {
   let sources = atlasSources.get(atlas);
@@ -124,15 +148,20 @@ function atlasSource(atlas: BuildAtlas, pointFiltering: boolean): AtlasSource {
   const slot = pointFiltering ? 1 : 0;
   let record = sources[slot];
   if (!record) {
-    const image: AtlasImage = { data: atlas.pixels ?? null, width: atlas.width, height: atlas.height };
+    const { width, height, bcType } = atlas;
+    const image: AtlasImage = { data: null, width, height };
     const source = new THREE.Source(image);
-    // Without data three allocates the texture and calls onUpdate, which starts the reload.
-    source.dataReady = image.data !== null;
+    const mipmaps = bcType ? [{ data: RELEASED_BLOCKS, width, height }] : undefined;
+    if (bcType && bcType !== 1) {
+      markPremultipliedSrgbAtlas(source);
+    }
     if (atlas.alpha) {
       setAtlasAlphaMask(source, atlas.alpha);
     }
-    sources[slot] = record = { atlas, source, image, textures: new Set() };
+    sources[slot] = record = { atlas, source, image, mipmaps, textures: new Set() };
     sourceRecords.set(source, record);
+    // Without data three allocates the texture and calls onUpdate, which starts the reload.
+    setAtlasData(record, bcType ? atlas.blocks : atlas.pixels);
   }
   return record;
 }
@@ -146,24 +175,26 @@ function onAtlasUpload(texture: THREE.Texture): void {
     reloadAtlasSource(record);
     return;
   }
-  // The GPU holds the pixels now. Keep them only when they could not be decoded again or picking still reads them.
-  if (!record.atlas.alpha || !canReloadAtlasPixels(record.atlas)) {
+  // The GPU holds the texels now. Keep them only when they could not be read again or picking still reads them.
+  if (!record.atlas.alpha || !canReloadAtlasData(record.atlas)) {
     return;
   }
-  record.image.data = null;
-  record.source.dataReady = false;
-  record.atlas.pixels = undefined;
+  setAtlasData(record, undefined);
+  if (record.mipmaps) {
+    record.atlas.blocks = undefined;
+  } else {
+    record.atlas.pixels = undefined;
+  }
 }
 
 function reloadAtlasSource(record: AtlasSource): void {
-  if (record.reload || !canReloadAtlasPixels(record.atlas)) {
+  if (record.reload || !canReloadAtlasData(record.atlas)) {
     return;
   }
-  const reload = reloadAtlasPixels(record.atlas)
+  const reload = reloadAtlasData(record.atlas)
     .then(
-      pixels => {
-        record.image.data = pixels;
-        record.source.dataReady = true;
+      data => {
+        setAtlasData(record, data);
         // Each renderer uploads once through whichever of these textures it binds first.
         for (const texture of record.textures) {
           texture.needsUpdate = true;
@@ -179,11 +210,16 @@ function reloadAtlasSource(record: AtlasSource): void {
   pendingReloads.add(reload);
 }
 
-export function createAtlasTexture(atlas: BuildAtlas, pointFiltering = false): THREE.DataTexture {
+/** An RGBA DataTexture, or a CompressedTexture of the page's BC blocks when its build was loaded compressed. */
+export function createAtlasTexture(atlas: BuildAtlas, pointFiltering = false): THREE.Texture {
   const record = atlasSource(atlas, pointFiltering);
-  const texture = new THREE.DataTexture(null, atlas.width, atlas.height, THREE.RGBAFormat);
+  const texture =
+    record.mipmaps && atlas.bcType
+      ? new THREE.CompressedTexture(record.mipmaps, atlas.width, atlas.height, BC_FORMATS[atlas.bcType])
+      : new THREE.DataTexture(null, atlas.width, atlas.height, THREE.RGBAFormat);
   texture.source = record.source;
-  texture.colorSpace = THREE.SRGBColorSpace;
+  // A premultiplied page is sampled raw and decoded by its material (`AtlasSpriteMaterial`).
+  texture.colorSpace = isPremultipliedSrgbAtlas(texture) ? THREE.NoColorSpace : THREE.SRGBColorSpace;
   texture.flipY = false;
   texture.generateMipmaps = false;
   texture.magFilter = pointFiltering ? THREE.NearestFilter : THREE.LinearFilter;
@@ -206,11 +242,14 @@ export function prepareAtlasTexture(renderer: THREE.WebGLRenderer, texture: THRE
 }
 
 /** The RGBA of an atlas texture for CPU composition, or undefined while a released atlas is decoded again. */
-export function atlasTexturePixels(texture: THREE.DataTexture): Uint8Array | undefined {
+export function atlasTexturePixels(texture: THREE.Texture): Uint8Array | undefined {
   const record = sourceRecords.get(texture.source);
   if (!record) {
-    const { data } = texture.image;
+    const { data } = texture.image as { data?: unknown };
     return data instanceof Uint8Array ? data : undefined;
+  }
+  if (record.mipmaps) {
+    throw new Error('A compressed atlas has no RGBA; compose it on the GPU');
   }
   if (!record.image.data) {
     reloadAtlasSource(record);
@@ -225,10 +264,33 @@ export async function atlasReloadsSettled(): Promise<void> {
   }
 }
 
+/**
+ * A build atlas material. Its compile hook is a method rather than an assigned callback, so clones (dressed, tinted or
+ * bloom copies) still decode a premultiplied-sRGB page, while the hooks a renderer layers on (world lighting) stay off
+ * clones as before. Straight-alpha pages compile as a plain MeshBasicMaterial.
+ */
+export class AtlasSpriteMaterial extends THREE.MeshBasicMaterial {
+  override onBeforeCompile(shader: THREE.WebGLProgramParametersWithUniforms): void {
+    if (!isPremultipliedSrgbAtlas(this.map)) {
+      return;
+    }
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <map_pars_fragment>', `#include <map_pars_fragment>\n${PREMULTIPLIED_SRGB_TEXEL}`)
+      .replace(
+        '#include <map_fragment>',
+        '#ifdef USE_MAP\n  diffuseColor *= dstPremultipliedSrgbTexel(texture2D(map, vMapUv));\n#endif',
+      );
+  }
+
+  override customProgramCacheKey(): string {
+    return isPremultipliedSrgbAtlas(this.map) ? 'dst-premultiplied-srgb-atlas' : '';
+  }
+}
+
 export function createMaterials(buildPackage: BuildPackage, options: SpriteMaterialOptions = {}) {
   const [red, green, blue, alpha] = options.multColour ?? [1, 1, 1, 1];
   return buildPackage.atlases.map(atlas => {
-    return new THREE.MeshBasicMaterial({
+    return new AtlasSpriteMaterial({
       map: createAtlasTexture(atlas, options.pointFiltering),
       color: new THREE.Color().setRGB(red, green, blue),
       opacity: alpha,

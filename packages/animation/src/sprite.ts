@@ -1,3 +1,4 @@
+import { atlasCompressionEnabled } from './atlasFormat';
 import type * as THREE from 'three';
 import {
   createMaterials,
@@ -67,7 +68,7 @@ export async function loadSymbolOverride(
   archive: string,
   symbol: string,
 ): Promise<LoadedSymbolOverride> {
-  const loaded = await loadSpriteSkinArchive(archive, assetBaseUrl);
+  const loaded = await loadSpriteSkinArchive(archive, assetBaseUrl, atlasCompressionEnabled());
   const materials = createMaterials(loaded.buildPackage);
   return {
     build: loaded.buildPackage.build,
@@ -90,7 +91,7 @@ export interface LoadedBuildOverride {
 }
 
 export async function loadBuildOverride(assetBaseUrl: string, archive: string): Promise<LoadedBuildOverride> {
-  const loaded = await loadSpriteSkinArchive(archive, assetBaseUrl);
+  const loaded = await loadSpriteSkinArchive(archive, assetBaseUrl, atlasCompressionEnabled());
   const materials = createMaterials(loaded.buildPackage);
   return {
     build: loaded.buildPackage.build,

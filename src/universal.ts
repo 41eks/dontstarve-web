@@ -3,12 +3,15 @@
 import * as THREE from 'three';
 import type { DstLightingRenderer } from './dstLighting';
 import { CursorLabelUi } from '@dontstarve-web/ui/cursor-label';
+import { configureAtlasCompression } from '@dontstarve-web/animation/atlasFormat';
 const scene = new THREE.Scene();
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.domElement.dataset.gameCanvas = '';
 renderer.domElement.dataset.loaded = 'false';
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+// Before any scene build loads: where the GPU samples BC pages, build atlases stay compressed in GPU memory.
+configureAtlasCompression(renderer);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight, false);
 Object.assign(renderer.domElement.style, {

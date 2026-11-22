@@ -1,5 +1,5 @@
 import { unzipSync } from 'fflate';
-import { parseKtex } from './parseKtex';
+import { parseKtex, parseKtexBlocks, type BcType } from './parseKtex';
 import { decodeDyn } from './decodeDyn';
 
 export type Matrix2D = [number, number, number, number, number, number];
@@ -47,13 +47,17 @@ export interface ParsedBuild {
 }
 
 /**
- * One build atlas page. Its RGBA is released once the GPU holds it (see `createAtlasTexture`), and decoded again from
+ * One build atlas page, as RGBA or, when loaded for a renderer that samples them (see `atlasFormat.ts`), as the BC
+ * blocks of a DXT1/3/5 page. Either is released once the GPU holds it (see `createAtlasTexture`), and read again from
  * the archive only when a GPU copy has to be rebuilt; `alpha` (one byte per texel) stays for input picking.
  */
 export interface BuildAtlas {
   readonly width: number;
   readonly height: number;
   pixels: Uint8Array | undefined;
+  /** BC blocks of a compressed page, flipped like the RGBA; a compressed page never has `pixels`. */
+  blocks?: Uint8Array;
+  readonly bcType?: BcType;
   readonly alpha?: Uint8Array;
 }
 
@@ -64,6 +68,9 @@ export interface BuildPackage {
 
 /** The RGBA of an atlas that CPU drawing needs; an atlas already handed to the GPU no longer has it. */
 export function atlasPixels(atlas: BuildAtlas): Uint8Array {
+  if (atlas.bcType) {
+    throw new Error('A compressed atlas has no RGBA; load its build without atlas compression');
+  }
   if (!atlas.pixels) {
     throw new Error('Atlas RGBA was released after its GPU upload');
   }
@@ -299,6 +306,7 @@ async function buildPackageFromEntries(
   entries: Record<string, Uint8Array>,
   file: string,
   assetBaseUrl: string,
+  compressedAtlases: boolean,
 ): Promise<BuildPackage> {
   const data = findEntry(entries, 'build.bin');
   if (!data) {
@@ -314,10 +322,15 @@ async function buildPackageFromEntries(
     }
     atlasEntries = unzipSync(decodeDyn(new Uint8Array(await response.arrayBuffer())));
   }
-  const atlases = build.atlasNames.map(name => {
+  const atlases = build.atlasNames.map((name): BuildAtlas => {
     const atlas = findEntry(entries, name) ?? findEntry(atlasEntries, name);
     if (!atlas) {
       throw new Error(`${file} does not contain ${name}`);
+    }
+    const compressed = compressedAtlases ? parseKtexBlocks(atlas, `${file}:${name}`) : undefined;
+    if (compressed) {
+      const { width, height, blocks, bcType, alpha } = compressed;
+      return { width, height, pixels: undefined, blocks, bcType, alpha };
     }
     const { width, height, pixels } = parseKtex(atlas, `${file}:${name}`);
     return { width, height, pixels, alpha: alphaChannel(pixels) };
@@ -331,7 +344,7 @@ export interface AnimationArchiveParts {
 }
 
 // Only retain ZIP contents while consumers are parsing them. The caller caches
-// parsed results, so compressed entries need not remain alongside RGBA pixels.
+// parsed results, so compressed entries need not remain alongside atlas texels.
 const pendingEntries = new Map<
   string,
   {
@@ -344,6 +357,7 @@ export async function readAnimationArchivePart<Kind extends keyof AnimationArchi
   file: string,
   assetBaseUrl: string,
   kind: Kind,
+  compressedAtlases = false,
 ): Promise<AnimationArchiveParts[Kind]> {
   const key = `${assetBaseUrl.replace(/\/$/, '')}/${file}`;
   let pending = pendingEntries.get(key);
@@ -355,7 +369,12 @@ export async function readAnimationArchivePart<Kind extends keyof AnimationArchi
   try {
     const entries = await pending.request;
     if (kind === 'build') {
-      return (await buildPackageFromEntries(entries, file, assetBaseUrl)) as AnimationArchiveParts[Kind];
+      return (await buildPackageFromEntries(
+        entries,
+        file,
+        assetBaseUrl,
+        compressedAtlases,
+      )) as AnimationArchiveParts[Kind];
     }
     const data = findEntry(entries, 'anim.bin');
     return (data ? parseAnim(data, `${file}:anim.bin`) : undefined) as AnimationArchiveParts[Kind];

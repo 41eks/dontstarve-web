@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { isPremultipliedSrgbAtlas, PREMULTIPLIED_SRGB_TEXEL } from './atlasFormat';
 import {
   findImage,
   type AnimElement,
@@ -328,6 +329,7 @@ function createBloomMaterial(base: THREE.MeshBasicMaterial, image: BuildImage): 
   material.blending = THREE.AdditiveBlending;
   material.opacity = 0.6;
   material.alphaTest = 0.001;
+  const premultiplied = isPremultipliedSrgbAtlas(base.map);
   material.onBeforeCompile = shader => {
     shader.uniforms.hatBloomBounds = {
       value: new THREE.Vector4(
@@ -347,6 +349,7 @@ function createBloomMaterial(base: THREE.MeshBasicMaterial, image: BuildImage): 
       #include <common>
       uniform vec4 hatBloomBounds;
       uniform vec2 hatBloomStep;
+      ${premultiplied ? `#define DST_PREMULTIPLIED_SRGB_MAP\n${PREMULTIPLIED_SRGB_TEXEL}` : ''}
     `,
       )
       .replace(
@@ -363,6 +366,9 @@ function createBloomMaterial(base: THREE.MeshBasicMaterial, image: BuildImage): 
           if (all(greaterThanEqual(uv, hatBloomBounds.xy))
             && all(lessThanEqual(uv, hatBloomBounds.zw))) {
             vec4 texel = texture2D(map, uv);
+            #ifdef DST_PREMULTIPLIED_SRGB_MAP
+              texel = dstPremultipliedSrgbTexel(texel);
+            #endif
             halo += vec4(texel.rgb * texel.a, texel.a) * weight;
           }
         }
@@ -371,7 +377,7 @@ function createBloomMaterial(base: THREE.MeshBasicMaterial, image: BuildImage): 
     `,
       );
   };
-  material.customProgramCacheKey = () => 'dst-hat-bloom-v1';
+  material.customProgramCacheKey = () => `dst-hat-bloom-v1${premultiplied ? ':premultiplied-srgb' : ''}`;
   return material;
 }
 

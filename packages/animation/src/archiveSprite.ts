@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { atlasCompressionEnabled } from './atlasFormat';
 import { spritePerf, spritePerfAsync } from './spritePerf';
 import {
   createMaterials,
@@ -241,7 +242,7 @@ export class ArchiveSpriteAssets {
     const key = buildKey(archive, options);
     let request = this.builds.get(key);
     if (!request) {
-      request = loadBuild(archive, this.assetBaseUrl).then(asset => {
+      request = loadBuild(archive, this.assetBaseUrl, atlasCompressionEnabled()).then(asset => {
         const materials = createMaterials(asset, options);
         for (const material of materials) {
           material.name = `${this.materialNamePrefix}:${asset.build.name}`;
