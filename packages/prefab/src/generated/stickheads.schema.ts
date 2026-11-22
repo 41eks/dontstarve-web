@@ -4,6 +4,9 @@ import type { StickHeadInstance } from '../stickheads';
 /** WatchWorldState("isfullmoon") callback from prefabs/stickheads.lua:48. */
 export type OnFullMoon = (inst: StickHeadInstance, isfullmoon: boolean) => void;
 
+/** SetOnWorkCallback callback from prefabs/stickheads.lua:41. */
+export type OnWorked = (inst: StickHeadInstance) => void;
+
 export const STICK_HEAD_CONFIG = {
   pighead: {
     archive: 'pig_head.zip',

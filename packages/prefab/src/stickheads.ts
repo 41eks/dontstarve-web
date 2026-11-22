@@ -4,7 +4,7 @@ import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import definitions from './definitions.json' with { type: 'json' };
-import { STICK_HEAD_CONFIG } from './generated/stickheads.schema';
+import { STICK_HEAD_CONFIG, type OnWorked as OnWorkedCallback } from './generated/stickheads.schema';
 import {
   createEffect,
   createMemo,
@@ -158,11 +158,11 @@ class StickHead {
   }
 }
 
-function onworked(inst: StickHeadInstance): void {
+const OnWorked: OnWorkedCallback = inst => {
   if (!inst.hasTag('burnt')) {
     inst.head.hit();
   }
-}
+};
 
 function onhammered(inst: StickHeadInstance): void {
   if (inst.components.burnable?.IsBurning()) {
@@ -203,7 +203,7 @@ export class StickHeadInstance extends PrefabInstance {
     const workable = addComponent(this, 'workable', Workable);
     workable.SetWorkAction(config.workable.action);
     workable.SetWorkLeft(config.workable.workLeft);
-    workable.SetOnWorkCallback(onworked);
+    workable.SetOnWorkCallback(OnWorked);
     workable.SetOnFinishCallback(onhammered);
     addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
     const head = (this.head = new StickHead(this, config, world, sprites));

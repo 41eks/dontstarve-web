@@ -85,30 +85,54 @@ function readComponents(recording) {
   };
 }
 
-export function stickHeadOnFullMoon(snapshots) {
+function readSharedCallback(snapshots, { name, target, method, prefixArgs, minParameters, maxParameters }) {
   const callbacks = snapshots.flatMap(({ prefab, recordings }) =>
     recordings
       .filter(recording => recording.scenario.master)
       .map(recording => {
-        const watchers = findCalls(recording, 'inst', 'WatchWorldState').filter(call => call.args[0] === 'isfullmoon');
-        if (watchers.length !== 1) {
-          throw new Error(`${prefab}: expected one isfullmoon watcher in ${recording.scenario.name}`);
+        const registrations = findCalls(recording, target, method).filter(call =>
+          prefixArgs.every((argument, index) => call.args[index] === argument),
+        );
+        if (registrations.length !== 1) {
+          throw new Error(`${prefab}: expected one ${name} registration in ${recording.scenario.name}`);
         }
-        const { args, source } = watchers[0];
-        const callback = args[1];
+        const { args, source } = registrations[0];
+        const callback = args[prefixArgs.length];
         if (
-          args.length !== 2 ||
+          args.length !== prefixArgs.length + 1 ||
           callback?.kind !== 'callback' ||
-          callback.name !== 'OnFullMoon' ||
-          callback.parameters.length !== 2 ||
+          callback.name !== name ||
+          callback.parameters.length < minParameters ||
+          callback.parameters.length > maxParameters ||
           callback.parameters.includes('...')
         ) {
-          throw new Error(`${prefab}: unsupported OnFullMoon watcher at ${source.file}:${source.line}`);
+          throw new Error(`${prefab}: unsupported ${name} registration at ${source.file}:${source.line}`);
         }
         return callback;
       }),
   );
-  return requireSame(callbacks, 'OnFullMoon callback declaration');
+  return requireSame(callbacks, `${name} callback declaration`);
+}
+
+export function stickHeadCallbacks(snapshots) {
+  return {
+    onFullMoon: readSharedCallback(snapshots, {
+      name: 'OnFullMoon',
+      target: 'inst',
+      method: 'WatchWorldState',
+      prefixArgs: ['isfullmoon'],
+      minParameters: 2,
+      maxParameters: 2,
+    }),
+    onWorked: readSharedCallback(snapshots, {
+      name: 'OnWorked',
+      target: 'components.workable',
+      method: 'SetOnWorkCallback',
+      prefixArgs: [],
+      minParameters: 1,
+      maxParameters: 4,
+    }),
+  };
 }
 
 export function stickHeadConfig({ prefab, recordings }) {
