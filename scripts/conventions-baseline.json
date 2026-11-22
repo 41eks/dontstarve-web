@@ -158,9 +158,6 @@
   "packages/prefab/src/staff_castinglight.ts": {
     "instance-method": 3
   },
-  "packages/prefab/src/stickheads.ts": {
-    "child-traversal": 1
-  },
   "packages/prefab/src/tumbleweed.ts": {
     "instance-method": 13
   },

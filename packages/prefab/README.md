@@ -306,6 +306,8 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 `spawn(position, saved?)` 同步创建星体，施法提交帧与读档都用它，美术由 display 加载；`update(dt, cameraQuaternion)` 只推进显示，
 `exportRecords()` 返回可保存记录，`dispose()` 移除所有星体并释放共享资源。
 
+`c_spawn("pighead")` 和 `c_spawn("mermhead")` 生成可检查、可闹鬼的头部建筑。闹鬼会唤醒头部，4 秒后在非满月时恢复睡眠。烧毁状态通过 `c_save()` 保存在 `components.building.burnt`。
+
 矮星音频随场景启动时的 `PrewarmSounds()` 一起解码：出现时播放 `dontstarve/common/staff_star_create`，
 每颗矮星独立循环 `dontstarve/common/staff_star_LP`，消失动画结束时停止；
 移除及 `dispose()` 会停止并断开所属矮星的音源。休眠不停声，由距离衰减静音；读档与 Lua 一样重新执行 `fn()`，出现声和 `appear` 也会重播。

@@ -1,24 +1,30 @@
-import { LootDropper } from '../../componets/src/lootdropper';
-import { addComponent } from './components';
 import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
+import { createEffect, createMemo, createSignal, readonlySignal, WorldContentKey } from '@dontstarve-web/signals';
+import type { GetWatchWorldContent, ReadonlySignal } from '@dontstarve-web/signals';
+import type { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
+import { Hauntable, HAUNT_COOLDOWN_MEDIUM } from '../../componets/src/hauntable';
+import { Inspectable } from '../../componets/src/inspectable';
+import { LootDropper } from '../../componets/src/lootdropper';
 import { Workable } from '../../componets/src/workable';
-import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
+import { buildingPlacer, buildingPrefab, SaveBuilding, type BuildingDeclaration } from './building';
+import { addComponent } from './components';
 import definitions from './definitions.json' with { type: 'json' };
-import { STICK_HEAD_CONFIG, type OnWorked as OnWorkedCallback } from './generated/stickheads.schema';
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  readonlySignal,
-  WorldContentKey,
-  type Memo,
-} from '@dontstarve-web/signals';
 import { FliesController } from './flies';
-import { createArchiveEntity, PrefabInstance } from './prefabInstance';
-import type { ReadonlyVector3 } from './transform';
-import { buildingPlacer, buildingPrefab, MakeBuildingPersist, type BuildingDeclaration } from './building';
-import { DefaultBurntStructureFn, onloadBurnt, onsaveBurnt } from './standardcomponents';
+import {
+  STICK_HEAD_CONFIG,
+  type OnFinish as OnFinishCallback,
+  type OnFinishHaunt as OnFinishHauntCallback,
+  type OnFullMoon as OnFullMoonCallback,
+  type OnHaunt as OnHauntCallback,
+  type OnWorked as OnWorkedCallback,
+  type onload as OnLoadCallback,
+  type onsave as OnSaveCallback,
+} from './generated/stickheads.schema';
+import { createArchiveEntity, PrefabInstance, type PrefabComponents } from './prefabInstance';
 import { PlaySound } from './sound';
+import { DefaultBurntStructureFn, onloadBurnt, onsaveBurnt } from './standardcomponents';
+import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
+import type { ReadonlyVector3 } from './transform';
 import { BurnableBinding } from './treeFire';
 import type { PrefabWorldContext } from './worldContext';
 
@@ -27,216 +33,252 @@ export type PigHeadId = typeof PIG_HEAD_ID;
 export const MERM_HEAD_ID = 'mermhead' as const;
 export type MermHeadId = typeof MERM_HEAD_ID;
 type StickHeadId = PigHeadId | MermHeadId;
-type StickHeadAppearance = Pick<
-  (typeof STICK_HEAD_CONFIG)[StickHeadId],
-  'child' | 'idleAnimation' | 'wakeAnimation' | 'idleAwake'
->;
+
+const SHOWN = readonlySignal(createSignal(true));
+/** tuning.lua HAUNT_TINY. */
+const HAUNT_TINY = 1;
+
+export class StickHeadInstance extends PrefabInstance {
+  declare readonly prefab: StickHeadId;
+  declare readonly components: PrefabComponents & {
+    lootdropper: LootDropper;
+    hauntable: Hauntable;
+  };
+  /** The head's temporary awake state is set by the moon and haunt callbacks. */
+  awake?: true;
+  flies?: PrefabInstance;
+  scrapbook_anim?: string;
+  /** The tile-gated value of TheWorld.state.isfullmoon. */
+  fullMoon?: ReadonlySignal<boolean>;
+
+  constructor(id: StickHeadId, world: PrefabWorldContext, position: ReadonlyVector3, sprites: SpriteResources) {
+    const { idleAnimation } = STICK_HEAD_CONFIG[id];
+    super(id, new SpriteState({ name: idleAnimation, billboard: true, held: true }));
+    create_common(this, world, position, sprites);
+  }
+}
+
+const OnFinish: OnFinishCallback = inst => {
+  const { burnable, lootdropper } = inst.components;
+  if (burnable?.IsBurning()) {
+    burnable.Extinguish();
+  }
+  inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
+  if (inst.fullMoon?.peek()) {
+    lootdropper.SpawnLootPrefab('nightmarefuel');
+  }
+  lootdropper.DropLoot();
+  inst.remove();
+};
+
+const OnWorked: OnWorkedCallback = inst => {
+  if (!inst.hasTag('burnt')) {
+    const { idleAwake, idleAnimation } = STICK_HEAD_CONFIG[inst.prefab];
+    inst.sprite.playOnce('hit');
+    inst.sprite.pushAnimation(inst.awake ? idleAwake : idleAnimation, true);
+  }
+};
+
+const OnFullMoon: OnFullMoonCallback = (inst, isfullmoon) => {
+  if (!inst.hasTag('burnt')) {
+    const { wakeAnimation, idleAwake, idleAnimation } = STICK_HEAD_CONFIG[inst.prefab];
+    if (isfullmoon) {
+      if (!inst.awake) {
+        inst.awake = true;
+        inst.sprite.playOnce(wakeAnimation);
+        inst.sprite.pushAnimation(idleAwake, false);
+      }
+    } else if (inst.awake) {
+      inst.awake = undefined;
+      inst.sprite.playOnce('sleep');
+      inst.sprite.pushAnimation(idleAnimation, false);
+    }
+  }
+};
+
+const onsave: OnSaveCallback = (inst, data) => {
+  SaveBuilding(inst, data);
+  onsaveBurnt(inst, data);
+};
+
+const onload: OnLoadCallback = (inst, data) => {
+  onloadBurnt(inst, data);
+};
+
+const OnFinishHaunt: OnFinishHauntCallback = inst => {
+  if (inst.awake && !(inst.fullMoon?.peek() || inst.hasTag('burnt'))) {
+    inst.awake = undefined;
+    inst.sprite.playOnce('sleep');
+    inst.sprite.pushAnimation(STICK_HEAD_CONFIG[inst.prefab].idleAnimation, false);
+  }
+};
+
+const OnHaunt: OnHauntCallback = inst => {
+  if (!(inst.awake || inst.hasTag('burnt'))) {
+    const { wakeAnimation, idleAwake } = STICK_HEAD_CONFIG[inst.prefab];
+    inst.awake = true;
+    inst.sprite.playOnce(wakeAnimation);
+    inst.sprite.pushAnimation(idleAwake, true);
+    inst.DoTaskInTime(4, OnFinishHaunt);
+    inst.components.hauntable.SetHauntValue(HAUNT_TINY);
+    return true;
+  }
+  return false;
+};
+
+/** SpawnChild("flies"): the child follows the head's tile activity and owns its own animation and audio. */
+function spawnFlies(
+  inst: StickHeadInstance,
+  sprites: SpriteResources,
+  scheduler: GameTimeScheduler,
+  getWatchWorldContent?: GetWatchWorldContent,
+): PrefabInstance {
+  const { child } = STICK_HEAD_CONFIG[inst.prefab];
+  const source = sprites.archive(
+    { animationArchive: 'flies.zip', buildArchives: ['flies.zip'], bank: 'flies' },
+    { dynamicParent: true, pickable: false },
+  );
+  const flies = createArchiveEntity(
+    child,
+    source,
+    { name: 'swarm_pre', billboard: true },
+    child,
+    entity => {
+      entity.persists = false;
+    },
+    inst.status,
+  );
+  inst.AddChild(flies.instance);
+  inst.sprite.attachFx(child, {
+    sprite: flies.instance.sprite,
+    display: flies.display,
+    active: SHOWN,
+    sortLayer: 2,
+  });
+  const controller = new FliesController(flies.instance, inst.position, scheduler, getWatchWorldContent);
+  flies.instance.onRemove(() => controller.dispose());
+  inst.onRemove(() => inst.sprite.detachFx(child));
+  return flies.instance;
+}
+
+/** worldstate.lua: isfullmoon = isnight and moonphase == "full". */
+function watchFullMoon(inst: StickHeadInstance, world: PrefabWorldContext): void {
+  if (!world.getWatchWorldContent) {
+    return;
+  }
+  const stopOnRemove = (stop: () => void) => inst.onRemove(stop);
+  const area = inst.transform.getTileActivity(world.tickingarea, stopOnRemove);
+  const options = area ? { active: area } : undefined;
+  const moon = world.getWatchWorldContent(WorldContentKey.Moon, stopOnRemove, options);
+  const cycle = world.getWatchWorldContent(WorldContentKey.Cycle, stopOnRemove, options);
+  const fullMoon = createMemo(() => moon.get().phase === 'full' && cycle.get() === 'night');
+  inst.fullMoon = fullMoon;
+  const stop = createEffect(() => OnFullMoon(inst, fullMoon.get()));
+  inst.onRemove(() => {
+    stop();
+    fullMoon.dispose();
+  });
+}
+
+function create_common(
+  inst: StickHeadInstance,
+  world: PrefabWorldContext,
+  position: ReadonlyVector3,
+  sprites: SpriteResources,
+): void {
+  const { fire, scheduler } = world;
+  if (!fire || !scheduler) {
+    throw new Error("A stick head needs the world's fire effects and scheduler");
+  }
+  const config = STICK_HEAD_CONFIG[inst.prefab];
+  inst.worldServices = world;
+  inst.setPosition(position.x, 0, position.z);
+  inst.BindScheduler(scheduler);
+  inst.AddSoundEmitter();
+  for (const tag of config.tags) {
+    inst.addTag(tag);
+  }
+  inst.scrapbook_anim = config.idleAnimation;
+
+  addComponent(inst, 'lootdropper', LootDropper, spawnStructureLoot(inst), STRUCTURE_LOOT_RECIPES);
+  addComponent(inst, 'inspectable', Inspectable);
+  inst.flies = spawnFlies(inst, sprites, scheduler, world.getWatchWorldContent);
+
+  const workable = addComponent(inst, 'workable', Workable<StickHeadInstance>);
+  workable.SetWorkAction(config.workable.action);
+  workable.SetWorkLeft(config.workable.workLeft);
+  workable.SetOnWorkCallback(OnWorked);
+  workable.SetOnFinishCallback(OnFinish);
+
+  const burn = new BurnableBinding(
+    inst,
+    {
+      ...config.burnable,
+      propagator: 'small',
+      onExtinguish: () => PlaySound('dontstarve/common/fireOut', inst.position),
+      onBurnt: () => {
+        DefaultBurntStructureFn(inst);
+        burn.dispose();
+      },
+    },
+    { fire, scheduler },
+  );
+
+  inst.OnSave = onsave;
+  inst.OnLoad = onload;
+  watchFullMoon(inst, world);
+
+  const hauntable = addComponent(inst, 'hauntable', Hauntable, scheduler);
+  hauntable.SetCooldown(HAUNT_COOLDOWN_MEDIUM);
+  hauntable.SetOnHauntFn(OnHaunt);
+}
+
+function create_pighead(
+  world: PrefabWorldContext,
+  position: ReadonlyVector3,
+  sprites: SpriteResources,
+): StickHeadInstance {
+  return new StickHeadInstance(PIG_HEAD_ID, world, position, sprites);
+}
+
+function create_mermhead(
+  world: PrefabWorldContext,
+  position: ReadonlyVector3,
+  sprites: SpriteResources,
+): StickHeadInstance {
+  return new StickHeadInstance(MERM_HEAD_ID, world, position, sprites);
+}
 
 function buildingDeclaration(id: StickHeadId): BuildingDeclaration {
   const { archive, idleAnimation } = STICK_HEAD_CONFIG[id];
   return { ...definitions.animatedBuildings[id], archive, idleAnimation };
 }
 
-const DECLARATIONS: Readonly<Record<StickHeadId, BuildingDeclaration>> = {
+const DECLARATIONS = {
   [PIG_HEAD_ID]: buildingDeclaration(PIG_HEAD_ID),
   [MERM_HEAD_ID]: buildingDeclaration(MERM_HEAD_ID),
 };
 
-/** stickheads.lua MakePlacer(name.."_placer", bankandbuild, bankandbuild, "idle_asleep"). */
 export const STICK_HEAD_PLACERS = {
   [PIG_HEAD_ID]: buildingPlacer(DECLARATIONS[PIG_HEAD_ID], STICK_HEAD_CONFIG[PIG_HEAD_ID].bank),
   [MERM_HEAD_ID]: buildingPlacer(DECLARATIONS[MERM_HEAD_ID], STICK_HEAD_CONFIG[MERM_HEAD_ID].bank),
 };
 
-const SHOWN = readonlySignal(createSignal(true));
-
-/** inst.awake plus the isfullmoon watcher; `awake` is never saved and is rebuilt from the world on load. */
-class StickHead {
-  private awake = false;
-  private readonly cleanups: (() => void)[] = [];
-  private readonly fliesController?: FliesController;
-  private readonly fullMoon?: Memo<boolean>;
-  readonly flies: ReturnType<typeof createArchiveEntity>;
-  private readonly inst: PrefabInstance;
-  private readonly appearance: StickHeadAppearance;
-
-  constructor(
-    inst: PrefabInstance,
-    appearance: StickHeadAppearance,
-    world: PrefabWorldContext,
-    sprites: SpriteResources,
-  ) {
-    this.inst = inst;
-    this.appearance = appearance;
-    const { child } = appearance;
-    // create_common: SpawnChild("flies") beside the head, drawn from the world's shared flies archive.
-    const fliesSource = sprites.archive(
-      { animationArchive: 'flies.zip', buildArchives: ['flies.zip'], bank: 'flies' },
-      { dynamicParent: true },
-    );
-    this.flies = createArchiveEntity(
-      child,
-      fliesSource,
-      { name: 'swarm_pre', billboard: true },
-      child,
-      flies => {
-        flies.persists = false;
-      },
-      inst.status,
-    );
-    const flies = this.flies.display.model;
-    inst.sprite.attachFx(child, {
-      sprite: this.flies.instance.sprite,
-      display: this.flies.display,
-      active: SHOWN,
-      sortLayer: 2,
-    });
-    // The decorative child must not enlarge the head's pickup target, whenever its sprite is rebuilt.
-    this.cleanups.push(
-      createEffect(() => {
-        this.flies.instance.sprite.art.get();
-        flies.traverse(object => {
-          object.raycast = () => {};
-        });
-      }),
-    );
-    if (world.scheduler) {
-      this.fliesController = new FliesController(
-        this.flies.instance,
-        inst.position,
-        world.scheduler,
-        world.getWatchWorldContent,
-      );
-    }
-    // The head never moves, so its private tile key gates the moon and phase inputs by tickingarea: outside it they hold their last value.
-    const area = inst.transform.getTileActivity(world.tickingarea, stop => this.cleanups.push(stop));
-    const options = area ? { active: area } : undefined;
-    const moon = world.getWatchWorldContent?.(WorldContentKey.Moon, stop => this.cleanups.push(stop), options);
-    const cycle = world.getWatchWorldContent?.(WorldContentKey.Cycle, stop => this.cleanups.push(stop), options);
-    if (moon && cycle) {
-      // worldstate.lua: isfullmoon = isnight and moonphase == "full". The first run is the constructor's OnFullMoon call.
-      const fullMoon = createMemo(() => moon.get().phase === 'full' && cycle.get() === 'night');
-      this.fullMoon = fullMoon;
-      // The memo and effect read the local signals, so their stop callbacks release them.
-      createEffect(() => this.onFullMoon(fullMoon.get()));
-    }
-  }
-
-  get isFullMoon(): boolean {
-    return this.fullMoon?.peek() ?? false;
-  }
-  get idle(): string {
-    const { idleAwake, idleAnimation } = this.appearance;
-    return this.awake ? idleAwake : idleAnimation;
-  }
-
-  /** OnFullMoon: wake or sleep, then settle on the idle pose. */
-  onFullMoon(isfullmoon: boolean): void {
-    if (this.inst.hasTag('burnt')) {
-      return;
-    }
-    const { sprite } = this.inst;
-    if (isfullmoon === this.awake) {
-      return;
-    }
-    this.awake = isfullmoon;
-    sprite.playOnce(isfullmoon ? this.appearance.wakeAnimation : 'sleep', () => sprite.playOnce(this.idle));
-  }
-
-  /** OnWorked: hit, then back to the current idle pose. */
-  hit(): void {
-    const { sprite } = this.inst;
-    sprite.playOnce('hit', () => sprite.start(this.idle));
-  }
-
-  dispose(): void {
-    this.cleanups.splice(0).forEach(stop => stop());
-    this.fliesController?.dispose();
-    this.inst.sprite.detachFx(this.appearance.child);
-    this.flies.instance.remove();
-    this.flies.display.dispose();
-  }
-}
-
-const OnWorked: OnWorkedCallback = inst => {
-  if (!inst.hasTag('burnt')) {
-    inst.head.hit();
-  }
-};
-
-function onhammered(inst: StickHeadInstance): void {
-  if (inst.components.burnable?.IsBurning()) {
-    inst.components.burnable.Extinguish();
-  }
-  inst.worldServices?.fx?.collapse?.('small', inst.position, 'wood');
-  if (inst.head.isFullMoon) {
-    inst.components.lootdropper!.SpawnLootPrefab('nightmarefuel');
-  }
-  inst.components.lootdropper!.DropLoot();
-  inst.remove();
-}
-
-/** stickheads.lua create_common: both heads share work, burn, loot and full-moon behaviour; only art and recipe loot differ. */
-export class StickHeadInstance extends PrefabInstance {
-  readonly head: StickHead;
-
-  constructor(id: StickHeadId, world: PrefabWorldContext, position: ReadonlyVector3, sprites: SpriteResources) {
-    const config = STICK_HEAD_CONFIG[id];
-    super(id, new SpriteState({ name: config.idleAnimation, billboard: true }));
-    const { fire, scheduler } = world;
-    if (!fire || !scheduler) {
-      throw new Error("A stick head needs the world's fire effects and scheduler");
-    }
-    this.worldServices = world;
-    // The head's tile key is taken where it stands.
-    this.setPosition(position.x, 0, position.z);
-    MakeBuildingPersist(this);
-    const { OnSave: saveBuilding } = this;
-    this.OnSave = (inst, data) => {
-      saveBuilding!(inst, data);
-      onsaveBurnt(inst, data);
-    };
-    this.OnLoad = onloadBurnt;
-    for (const tag of config.tags) {
-      this.addTag(tag);
-    }
-    const workable = addComponent(this, 'workable', Workable);
-    workable.SetWorkAction(config.workable.action);
-    workable.SetWorkLeft(config.workable.workLeft);
-    workable.SetOnWorkCallback(OnWorked);
-    workable.SetOnFinishCallback(onhammered);
-    addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
-    const head = (this.head = new StickHead(this, config, world, sprites));
-    this.onRemove(() => head.dispose());
-    // MakeSmallBurnable and MakeSmallPropagator bind the fire behavior to this instance.
-    const burn = new BurnableBinding(
-      this,
-      {
-        ...config.burnable,
-        propagator: 'small',
-        onExtinguish: () => {
-          PlaySound('dontstarve/common/fireOut', this.position);
-        },
-        onBurnt: () => {
-          DefaultBurntStructureFn(this);
-          burn.dispose();
-        },
-      },
-      { fire, scheduler },
-    );
-    this.onRemove(() => burn.dispose());
-  }
-}
-
-/** The Prefab table stickheads.lua returns for the two heads; the placers are the build flow's. */
 export function stickHeadPrefabs(world: PrefabWorldContext) {
-  const define = (id: StickHeadId) =>
-    buildingPrefab(
-      DECLARATIONS[id],
-      STICK_HEAD_CONFIG[id].bank,
+  return {
+    [PIG_HEAD_ID]: buildingPrefab(
+      DECLARATIONS[PIG_HEAD_ID],
+      STICK_HEAD_CONFIG[PIG_HEAD_ID].bank,
       undefined,
-      (position, sprites) => new StickHeadInstance(id, world, position, sprites),
+      (position, sprites) => create_pighead(world, position, sprites),
       world,
-    );
-  return { [PIG_HEAD_ID]: define(PIG_HEAD_ID), [MERM_HEAD_ID]: define(MERM_HEAD_ID) };
+    ),
+    [MERM_HEAD_ID]: buildingPrefab(
+      DECLARATIONS[MERM_HEAD_ID],
+      STICK_HEAD_CONFIG[MERM_HEAD_ID].bank,
+      undefined,
+      (position, sprites) => create_mermhead(world, position, sprites),
+      world,
+    ),
+  };
 }

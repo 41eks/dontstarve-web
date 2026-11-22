@@ -391,12 +391,12 @@ export class SpriteFrameRenderer {
     Extract<OceanShadingSource, { kind: 'uniforms' }>
   >();
 
-  constructor(visual: THREE.Group) {
+  constructor(visual: THREE.Group, pickable = true) {
     this.visual = visual;
     this.mesh = new THREE.Mesh(this.geometry, this.materials);
     // Frame parts are baked into geometry; this private mesh stays at identity.
     this.mesh.matrixAutoUpdate = false;
-    this.mesh.raycast = raycastSprite;
+    this.mesh.raycast = pickable ? raycastSprite : () => {};
     // The frame geometry is rewritten by show(), which keeps its bounding sphere current.
     this.geometry.boundingSphere = new THREE.Sphere();
     this.geometry.boundingBox = new THREE.Box3();

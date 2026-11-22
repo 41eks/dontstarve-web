@@ -72,6 +72,8 @@ export interface ArchiveSpriteOptions {
   staticBillboard?: boolean;
   /** Ancestors are assumed static; set when the parent moves while this sprite stays attached to it. */
   dynamicParent?: boolean;
+  /** Decorative art can be displayed without contributing pointer hits. */
+  pickable?: boolean;
   /** The bank and build the entity already switched to (AnimState:SetBank / SetBuild); its first clip is found there. */
   artSource?: SpriteArtSource;
 }
@@ -460,7 +462,7 @@ function constructArchiveSprite(
   model.add(visual);
   registerSpriteRenderGroup(model, visual);
   const matrixGate = installMatrixGate(model, visual, options.staticBillboard, undefined, options.dynamicParent);
-  const renderer = new SpriteFrameRenderer(visual);
+  const renderer = new SpriteFrameRenderer(visual, options.pickable);
   const instances = options.instancedAnimations?.length
     ? assets.instancedSprites.retain(
         model,

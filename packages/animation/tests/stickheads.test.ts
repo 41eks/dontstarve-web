@@ -3,7 +3,7 @@ import { testPlayer } from './testPlayer';
 import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
-import { PIG_HEAD_ID, MERM_HEAD_ID } from '../../prefab/src/stickheads';
+import { PIG_HEAD_ID, MERM_HEAD_ID, StickHeadInstance } from '../../prefab/src/stickheads';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { performToolWork } from '../../stategraphs/src/componentactions';
 import type { SpriteState } from '../../display/src';
@@ -140,6 +140,36 @@ it.each(HEADS)(
     }
   },
 );
+
+it('wakes when haunted and sleeps after four seconds unless the moon is full', async () => {
+  const s = await setup();
+  try {
+    const inst = prefabInstance(s.model);
+    if (!(inst instanceof StickHeadInstance)) {
+      throw new Error('Expected a stick head instance');
+    }
+    const hauntable = inst.components.hauntable!;
+    hauntable.DoHaunt(testPlayer());
+    expect(inst.awake).toBe(true);
+    expect(s.sprite.currentAnimation).toBe('wake');
+    s.placement.update(3);
+    expect(inst.awake).toBe(true);
+    s.placement.update(1);
+    expect(inst.awake).toBeUndefined();
+    expect(s.sprite.currentAnimation).toBe('sleep');
+
+    s.placement.update(1);
+    expect(hauntable.IsHaunted()).toBe(false);
+    hauntable.DoHaunt(testPlayer());
+    s.content.moon.set({ phase: 'full', waxing: false });
+    s.content.cycle.set('night');
+    await s.settle();
+    s.placement.update(4);
+    expect(inst.awake).toBe(true);
+  } finally {
+    s.placement.dispose();
+  }
+});
 
 it('releases the flies swarm sprite outside the tickingarea and rebuilds it without becoming clickable', async () => {
   const awake = createSignal(true);
