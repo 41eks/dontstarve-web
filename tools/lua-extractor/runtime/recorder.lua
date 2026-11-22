@@ -79,9 +79,10 @@ local function recorded_methods(entity, target, names)
 end
 
 local component_methods = {
-    lootdropper = { "SetLoot" },
+    lootdropper = { "SetLoot", "SetLootSetupFn" },
     inspectable = {},
-    workable = { "SetWorkAction", "SetWorkLeft", "SetOnWorkCallback" },
+    workable = { "SetWorkAction", "SetWorkLeft", "SetOnWorkCallback", "SetOnFinishCallback" },
+    ghostgestalter = {},
     burnable = { "SetFXLevel", "SetBurnTime", "AddBurnFX", "SetOnIgniteFn", "SetOnExtinguishFn", "SetOnBurntFn" },
     propagator = { "SetOnFlashPoint" },
     hauntable = { "SetOnHauntFn" },
@@ -92,7 +93,7 @@ local function create_entity()
     local entity = next_entity
     local components, tags = {}, {}
     local fields = { components = components }
-    local methods = recorded_methods(entity, "inst", { "WatchWorldState" })
+    local methods = recorded_methods(entity, "inst", { "WatchWorldState", "SetDeploySmartRadius", "SetStateGraph", "DoTaskInTime" })
 
     methods.AddTag = function(_, tag)
         record(entity, "inst", "call", "AddTag", tag)
@@ -119,7 +120,13 @@ local function create_entity()
     local engine_methods = recorded_methods(entity, "entity", { "SetPristine" })
     local engine_objects = {
         Transform = {},
-        AnimState = { "SetBank", "SetBuild", "PlayAnimation", "PushAnimation" },
+        AnimState = {
+            "SetBank", "SetBuild", "PlayAnimation", "PushAnimation", "SetLightOverride",
+            "ClearOverrideSymbol", "OverrideSymbol",
+        },
+        MiniMapEntity = { "SetIcon", "SetCanUseCache", "SetDrawOverFogOfWar" },
+        Light = { "Enable", "SetFalloff", "SetIntensity", "SetColour", "SetRadius" },
+        Physics = { "SetMass", "SetCollisionGroup", "SetCollisionMask", "SetCapsule" },
         SoundEmitter = {},
         Network = {},
     }

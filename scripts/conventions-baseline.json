@@ -90,9 +90,6 @@
     "component-dispose-on-remove": 3,
     "instance-method": 8
   },
-  "packages/prefab/src/moondial.ts": {
-    "prefab-timer": 1
-  },
   "packages/prefab/src/moontree.ts": {
     "instance-method": 2
   },

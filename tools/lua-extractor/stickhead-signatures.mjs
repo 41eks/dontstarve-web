@@ -65,7 +65,7 @@ function sourceKey({ file, startLine, startColumn }) {
   return `${file}:${startLine}:${startColumn}`;
 }
 
-function registeredTypes(snapshots) {
+function registeredTypes(snapshots, registrations) {
   const contracts = new Map();
   for (const { recordings } of snapshots) {
     for (const { entity, operations } of recordings) {
@@ -110,8 +110,8 @@ function uniqueIdentifier(name, used) {
   return identifier;
 }
 
-export function stickHeadFunctionNames(localFunctions) {
-  const usedNames = new Set(['Parameters', ...typeImports.map(([name]) => name)]);
+export function prefabFunctionNames(localFunctions, imports = typeImports) {
+  const usedNames = new Set(['Parameters', ...imports.map(([name]) => name)]);
   const topLevelNames = new Set(localFunctions.filter(fn => fn.topLevel).map(fn => fn.name));
   return localFunctions.map(fn => {
     const needsSuffix = usedNames.has(fn.name) || (!fn.topLevel && topLevelNames.has(fn.name));
@@ -124,10 +124,19 @@ export function stickHeadFunctionNames(localFunctions) {
 }
 
 export function emitStickHeadSignatures(snapshots) {
+  return emitPrefabSignatures(snapshots, {
+    registrations,
+    staticContracts,
+    typeImports,
+    helpers: { create_common: commonFactory },
+  });
+}
+
+export function emitPrefabSignatures(snapshots, { registrations, staticContracts, typeImports, helpers = {} }) {
   const [{ localFunctions }] = snapshots;
-  const contracts = registeredTypes(snapshots);
+  const contracts = registeredTypes(snapshots, registrations);
   const usedTypes = new Set();
-  const names = stickHeadFunctionNames(localFunctions);
+  const names = prefabFunctionNames(localFunctions, typeImports);
   const declarations = localFunctions.map((fn, functionIndex) => {
     const { exportName, parameterNames } = names[functionIndex];
     const key = sourceKey(fn);
@@ -136,7 +145,7 @@ export function emitStickHeadSignatures(snapshots) {
     const contract =
       contracts.get(key) ??
       staticContracts.get(staticKind) ??
-      (fn.topLevel && fn.name === 'create_common' ? commonFactory : undefined);
+      (fn.topLevel && Object.hasOwn(helpers, fn.name) ? helpers[fn.name] : undefined);
     const parameters = fn.parameters.map((name, index) => {
       if (name === '...') {
         return `...${parameterNames[index]}: unknown[]`;
@@ -151,7 +160,7 @@ export function emitStickHeadSignatures(snapshots) {
 export type ${exportName} = (${parameters.join(', ')}) => ${returnType};`;
   });
   const imports = typeImports
-    .filter(([name]) => [...usedTypes].some(type => type === name || type.includes(`<${name}<`)))
+    .filter(([name]) => [...usedTypes].some(type => type.match(/[\w$]+/g)?.includes(name)))
     .map(([name, from]) => `import type { ${name} } from '${from}';`);
   return [imports.join('\n'), ...declarations].join('\n\n').trim();
 }

@@ -9,7 +9,7 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario)
         -- Record engine-provided action identity symbolically.
         IsConsole = function() return false end,
         ACTIONS = { HAMMER = { kind = "symbol", name = "ACTIONS.HAMMER" } },
-        TheWorld = { ismastersim = scenario.master, state = { isfullmoon = scenario.fullMoon } },
+        TheWorld = { ismastersim = scenario.master, state = scenario.state or { isfullmoon = scenario.fullMoon } },
         CreateEntity = recorder.createEntity,
         Asset = function(kind, path, parameter)
             return { type = kind, path = path, parameter = parameter }

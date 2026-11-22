@@ -4,7 +4,9 @@ import * as THREE from 'three';
 import { readFile } from 'node:fs/promises';
 import { afterEach, expect, it, vi } from 'vitest';
 import { bindTestWorld } from './worldContentFixture';
-import { MOONDIAL_ID } from '../../prefab/src/moondial';
+import { MOONDIAL_ID, MoondialInstance } from '../../prefab/src/moondial';
+import { animationLengths } from '../../prefab/src/animationTimings';
+import { FRAMES } from '../../stategraphs/src/stategraph';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { displayLightOverride } from '../../display/src/displaySprites';
 import { smallHash } from '../src/animationAssets';
@@ -89,6 +91,29 @@ it('keeps phase look and playback through reskin and records only its skin', asy
     moon.set({ phase: 'full', waxing: true });
     await new Promise(resolve => setTimeout(resolve, 0));
     expect(readMoon).not.toHaveBeenCalled();
+  } finally {
+    dispose();
+  }
+});
+
+it('runs the placed timeline and returns to idle without advancing the display', async () => {
+  const { placement, scheduler, play, dispose } = await createPlacement();
+  try {
+    const inst = placement.prefabs.spawnAs(MoondialInstance, MOONDIAL_ID, new THREE.Vector3());
+    expect(inst.components.inspectable?.GetStatus()).toBe('GENERIC');
+    inst.PushEvent('onbuilt');
+    expect(inst.sg.stateName).toBe('placed');
+
+    scheduler.advance(4 * FRAMES);
+    expect(play).not.toHaveBeenCalled();
+    scheduler.advance(FRAMES);
+    expect(play).toHaveBeenCalledWith('dontstarve/common/together/moondial/craft', inst.position);
+    expect(inst.sg.stateName).toBe('placed');
+
+    const duration = animationLengths('moondial.zip').get('place_new')!;
+    scheduler.advance(duration);
+    expect(inst.sg.stateName).toBe('idle');
+    expect(inst.sprite.sprite.peek().clip.name).toBe('idle_new');
   } finally {
     dispose();
   }

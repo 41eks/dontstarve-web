@@ -48,6 +48,8 @@ export interface WorldContext extends ActionWorldContext, Partial<WorldContentCo
   secondsUntilNextDay?: (now: number) => number;
   /** SpawnPrefab for transient fx.lua prefabs; their display loads the art. */
   fx?: Pick<import('./world_fx').WorldFx, 'spawn'> & Partial<Pick<import('./world_fx').WorldFx, 'collapse'>>;
+  /** TheWorld:HasTag("cave"). */
+  readonly isCave?: boolean;
   /** TheWorld.state.isnight. */
   isNight?: import('@dontstarve-web/signals').ReadonlySignal<boolean>;
   /** SpawnPrefab for an inventory item: a configured inst that nothing owns yet. */

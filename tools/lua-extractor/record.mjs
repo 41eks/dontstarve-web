@@ -9,7 +9,7 @@ import { localFunctionNodes, luaParameterNames, parseLuaSource, returnsValue } f
 const runtime = ['recorder.lua', 'sandbox.lua'].map(file =>
   readFileSync(new URL('runtime/' + file, import.meta.url), 'utf8'),
 );
-const scenarios = [
+const defaultScenarios = [
   { name: 'client', master: false, fullMoon: false, seed: 42 },
   { name: 'master', master: true, fullMoon: false, seed: 42 },
   { name: 'master-full-moon', master: true, fullMoon: true, seed: 43 },
@@ -91,7 +91,12 @@ function locateCallback(callback, readSource, sourceNodes) {
   return { ...callback, ...describeFunction(matches[0], file) };
 }
 
-export async function recordPrefab(sourceRoot, file, prefab, { includeCallbackSource = false } = {}) {
+export async function recordPrefab(
+  sourceRoot,
+  file,
+  prefab,
+  { includeCallbackSource = false, scenarios = defaultScenarios } = {},
+) {
   const sources = new Map();
   const sourceNodes = new Map();
   function readSource(path) {

@@ -28,3 +28,13 @@ node tools/lua-extractor/pighead.mjs --scaffold OnFullMoon
 The command only reads the Lua source and prints TypeScript. The AST preserves the `if`/`elseif`/`else` structure and returns. Each condition, statement, or return value has a numbered `TODO` and its Lua source above it. A multiline Lua statement gets a single placeholder with the full line range. Other compound statements get one placeholder for the block.
 
 The scaffold imports the generated signature from `./stickheads.schema`. When using the output as a file, place it beside that schema or adjust the import. Run the normal generation command first when the Lua declaration has changed. The placeholders throw with the Lua location so incomplete code fails immediately if invoked.
+
+## Moondial
+
+```sh
+pnpm extract:lua --prefab moondial
+pnpm extract:lua --prefab moondial --check
+node tools/lua-extractor/pighead.mjs --prefab moondial --scaffold onmoonphasechagned
+```
+
+The moondial profile records the constructor on the client and in each of the five master moon phases. Its schema supplies the split bank/build assets, initial animation, tags, collider and deploy radii, minimap settings, hammer work, reflection symbols, and phase light. The trace includes the altar and ghost gestalter registrations for later ports.

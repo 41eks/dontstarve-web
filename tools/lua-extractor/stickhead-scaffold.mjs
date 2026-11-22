@@ -1,5 +1,5 @@
 import { localFunctionNodes, luaParameterNames, parseLuaSource, returnsValue } from './lua-source.mjs';
-import { stickHeadFunctionNames } from './stickhead-signatures.mjs';
+import { prefabFunctionNames } from './stickhead-signatures.mjs';
 
 function alwaysReturns(statements) {
   const last = statements.at(-1);
@@ -24,11 +24,11 @@ function luaComment(source, { loc, range }) {
     .join('\n');
 }
 
-export function emitStickHeadScaffold(source, file, selector) {
+export function emitStickHeadScaffold(source, file, selector, { schema = 'stickheads', typeImports } = {}) {
   const parsed = parseLuaSource(source);
   const nodes = localFunctionNodes(parsed);
   const topLevel = new Set(parsed.find(node => node.type === 'Chunk').body);
-  const names = stickHeadFunctionNames(
+  const names = prefabFunctionNames(
     nodes.map(node => ({
       name: node.identifier.name,
       parameters: luaParameterNames(node),
@@ -36,6 +36,7 @@ export function emitStickHeadScaffold(source, file, selector) {
       startLine: node.loc.start.line,
       startColumn: node.loc.start.column,
     })),
+    typeImports,
   );
   const index = names.findIndex(({ exportName }) => exportName === selector);
   if (index === -1) {
@@ -93,7 +94,7 @@ export function emitStickHeadScaffold(source, file, selector) {
   const args = parameterNames.map((name, index) => (parameters[index].type === 'VarargLiteral' ? '...' + name : name));
   const unused = parameterNames.length ? `void [${parameterNames.join(', ')}];\n` : '';
   return `// Scaffold from ${file}:${loc.start.line}.
-import type { ${exportName} as LuaSignature } from './stickheads.schema';
+import type { ${exportName} as LuaSignature } from './${schema}.schema';
 
 ${helper}
 export const ${exportName}: LuaSignature = (${args.join(', ')}) => {

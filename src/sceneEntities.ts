@@ -637,6 +637,7 @@ export async function createSceneEntities(
         cycle: worldState.cycle,
         getWatchWorldContent: worldState.getWatchWorldContent,
         tickingarea: worldState.tickingarea,
+        isCave: initialSave.world.prefab === 'cave',
         isNight: worldState.isNight,
         perishClock: worldState.perishClock,
         secondsUntilNextDay: now => TUNING.TOTAL_DAY_TIME - (now % TUNING.TOTAL_DAY_TIME),

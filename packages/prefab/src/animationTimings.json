@@ -3011,6 +3011,194 @@
       "frames": 27
     }
   ],
+  "moondial.zip": [
+    {
+      "name": "idle_new",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 3
+    },
+    {
+      "name": "wax_to_quarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "wane_to_new",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "idle_quarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 30
+    },
+    {
+      "name": "wax_to_half",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "wane_to_quarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "idle_half",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 30
+    },
+    {
+      "name": "wax_to_threequarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "wane_to_half",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "idle_threequarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 30
+    },
+    {
+      "name": "wax_to_full",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "wane_to_threequarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 15
+    },
+    {
+      "name": "idle_full",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 30
+    },
+    {
+      "name": "place_new",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "place_quarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "place_half",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "place_threequarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "place_full",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 17
+    },
+    {
+      "name": "hit_new",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 22
+    },
+    {
+      "name": "hit_quarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 22
+    },
+    {
+      "name": "hit_half",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 22
+    },
+    {
+      "name": "hit_threequarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 22
+    },
+    {
+      "name": "hit_full",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 22
+    },
+    {
+      "name": "glassed_from_new",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 39
+    },
+    {
+      "name": "glassed_from_quarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 39
+    },
+    {
+      "name": "glassed_from_half",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 39
+    },
+    {
+      "name": "glassed_from_threequarter",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 39
+    },
+    {
+      "name": "glassed_from_full",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 26
+    },
+    {
+      "name": "glassed",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 35
+    },
+    {
+      "name": "hit_glassed",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 14
+    },
+    {
+      "name": "glassed_pst",
+      "bank": 2025067473,
+      "frameRate": 30.0,
+      "frames": 32
+    }
+  ],
   "teleporter_worm.zip": [
     {
       "name": "idle_loop",
