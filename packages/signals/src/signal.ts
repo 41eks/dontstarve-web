@@ -20,31 +20,38 @@ export function readonlySignal<T>(signal: ReadonlySignal<T>): ReadonlySignal<T> 
   return { get: signal.get, peek: signal.peek, subscribe: signal.subscribe };
 }
 
+/**
+ * Every game entity holds dozens of signals and effects, so their containers are allocated on first use: a signal
+ * without subscribers, an effect without onCleanUp and an observer scope without consumers carry no empty collections.
+ * A dependency link is one pair in each side's single array, rather than one entry in each of two parallel arrays.
+ */
 type Effect = {
   runner: () => void;
-  cleanups: (() => void)[];
-  deps: any[]; // 存它依赖的 Signal 对象
-  depsIndices: number[]; // 存它在各个 Signal.subscribers 数组里的下标
+  cleanups: (() => void)[] | undefined;
+  /** Pairs [signal node, index of this effect's pair in that node's `subscribers`]. */
+  deps: (SignalNode | number)[];
   disposed: boolean;
   synchronous: boolean;
   /** A createMemo's computation: inside a batch, a read of any memo runs it before reading. */
-  memo?: true;
-  owners?: Set<SignalObserverScope>;
+  memo: true | undefined;
+  owners: Set<SignalObserverScope> | undefined;
 };
 
 /** Class-local signals retain observer ownership even when an effect changes dependencies. */
 type SignalObserverScope = {
   stopped: boolean;
-  effects: Set<Effect>;
-  listeners: Set<() => void>;
+  effects: Set<Effect> | undefined;
+  listeners: Set<() => void> | undefined;
 };
 
 type SignalNode = {
-  subscribers: Effect[]; // 存订阅了它的 Effect
-  subscriberIndices: number[]; // 存各个 Effect 把该 Signal 记在 deps 里的下标
+  /** Pairs [subscribed effect, index of this signal's pair in that effect's `deps`]. */
+  subscribers: (Effect | number)[];
 };
 
 let activeEffect: Effect | null = null;
+/** The deps of an effect that has not read a signal yet; never written, replaced by the first link. */
+const NO_DEPS: (SignalNode | number)[] = [];
 let batchDepth = 0;
 /** Memo computations whose inputs changed inside the current batch. */
 const pendingDerived = new Set<Effect>();
@@ -98,7 +105,7 @@ export function batch<T>(fn: () => T): T {
 
 export function onCleanUp(fn: () => void) {
   if (activeEffect) {
-    activeEffect.cleanups.push(fn);
+    (activeEffect.cleanups ??= []).push(fn);
   } else {
     console.warn('onCleanUp 必须在 createEffect 的同步执行上下文中调用！');
   }
@@ -117,12 +124,12 @@ export function createEffect(fn: () => void, synchronous = false) {
 function createEffectInternal(fn: () => void, synchronous: boolean, memo?: true) {
   // 构造出一个标准的 Effect 对象
   const effect: Effect = {
-    ...(memo ? { memo } : {}),
-    deps: [], // 初始化空账本
-    depsIndices: [],
-    cleanups: [],
+    memo,
+    deps: NO_DEPS, // 初始化空账本：首次依赖时换成自己的数组
+    cleanups: undefined,
     disposed: false,
     synchronous,
+    owners: undefined,
     runner: () => {
       if (effect.disposed) {
         return;
@@ -173,7 +180,7 @@ function disposeEffect(effect: Effect): void {
   pendingDerived.delete(effect);
   queue.delete(effect.runner);
   for (const owner of effect.owners ?? []) {
-    owner.effects.delete(effect);
+    owner.effects?.delete(effect);
   }
   effect.owners?.clear();
   cleanup(effect);
@@ -186,11 +193,9 @@ export function createSignal<T>(initialValue: T): Signal<T> {
 
 function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): Signal<T> {
   let _state = initialValue;
-  const listeners = new Set<SignalListener<T>>();
-  const signalObj: SignalNode = {
-    subscribers: [],
-    subscriberIndices: [],
-  };
+  let listeners: Set<SignalListener<T>> | undefined;
+  /** Created by the first tracked read; effects keep it in their deps until they clean up. */
+  let signalObj: SignalNode | undefined;
 
   function setState(newValue: T) {
     if (_state === newValue) {
@@ -199,11 +204,10 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
     const previous = _state;
     _state = newValue;
 
-    const currentSubscribers = [...signalObj.subscribers];
-    // const currentSubscribers = signalObj.subscribers;
+    const currentSubscribers = signalObj?.subscribers.length ? [...signalObj.subscribers] : [];
 
-    for (let i = 0; i < currentSubscribers.length; i++) {
-      const effect = currentSubscribers[i];
+    for (let i = 0; i < currentSubscribers.length; i += 2) {
+      const effect = currentSubscribers[i] as Effect;
       if (effect != activeEffect && !effect.disposed) {
         if (effect.synchronous) {
           if (batchDepth === 0) {
@@ -218,9 +222,13 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
         }
       }
     }
-    for (const listener of [...listeners]) {
+    if (!listeners?.size) {
+      return;
+    }
+    const current = listeners;
+    for (const listener of [...current]) {
       const notify = () => {
-        if (listeners.has(listener)) {
+        if (current.has(listener)) {
           listener(newValue, previous);
         }
       };
@@ -235,20 +243,27 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
   function getState() {
     if (activeEffect) {
       if (owner && !owner.stopped) {
-        owner.effects.add(activeEffect);
+        (owner.effects ??= new Set()).add(activeEffect);
         (activeEffect.owners ??= new Set()).add(owner);
       }
-      // 获取在彼此数组中即将推入的下标
-      const effectIndex = activeEffect.deps.length;
-      const signalIndex = signalObj.subscribers.length;
+      // 获取在彼此数组中即将推入的配对下标
+      const effectIndex = activeEffect.deps.length >> 1;
+      const signalIndex = signalObj ? signalObj.subscribers.length >> 1 : 0;
 
-      // 1. Signal 记录 Effect 以及 Effect 的下标
-      signalObj.subscribers.push(activeEffect);
-      signalObj.subscriberIndices.push(effectIndex);
+      // 1. Signal 记录 Effect 以及 Effect 的下标。The first link is an exact-size literal: most signals keep one or
+      // two subscribers, and a first push would reserve sixteen slots.
+      if (signalObj) {
+        signalObj.subscribers.push(activeEffect, effectIndex);
+      } else {
+        signalObj = { subscribers: [activeEffect, effectIndex] };
+      }
 
       // 2. Effect 记录 Signal 以及 Signal 的下标
-      activeEffect.deps.push(signalObj);
-      activeEffect.depsIndices.push(signalIndex);
+      if (activeEffect.deps === NO_DEPS) {
+        activeEffect.deps = [signalObj, signalIndex];
+      } else {
+        activeEffect.deps.push(signalObj, signalIndex);
+      }
     }
     return _state;
   }
@@ -258,13 +273,14 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
     set: setState,
     peek: () => _state,
     subscribe(listener) {
-      listeners.add(listener);
+      const current = (listeners ??= new Set());
+      current.add(listener);
       const stop = () => {
-        listeners.delete(listener);
-        owner?.listeners.delete(stop);
+        current.delete(listener);
+        owner?.listeners?.delete(stop);
       };
       if (owner && !owner.stopped) {
-        owner.listeners.add(stop);
+        (owner.listeners ??= new Set()).add(stop);
       }
       return stop;
     },
@@ -274,42 +290,35 @@ function createSignalInternal<T>(initialValue: T, owner?: SignalObserverScope): 
 function cleanup(effect: Effect) {
   const errors: unknown[] = [];
   // A cleanup may dispose its own class; remove callbacks before invoking them.
-  for (const fn of effect.cleanups.splice(0)) {
+  for (const fn of effect.cleanups?.length ? effect.cleanups.splice(0) : []) {
     try {
       fn();
     } catch (error) {
       errors.push(error);
     }
   }
-  const { deps, depsIndices } = effect;
+  // NO_DEPS is never written: an effect that has read nothing has nothing to unlink.
+  const { deps } = effect;
+  for (let i = 0; i < deps.length; i += 2) {
+    const subscribers = (deps[i] as SignalNode).subscribers;
+    const signalIndex = deps[i + 1] as number; // 当前 effect 在这个 signal 里的配对位置
+    const lastIndex = (subscribers.length >> 1) - 1;
 
-  for (let i = 0; i < deps.length; i++) {
-    const signal = deps[i] as SignalNode;
-    const signalIndex = depsIndices[i]; // 当前 effect 在这个 signal 里的位置
-
-    const subscribers = signal.subscribers;
-    const subscriberIndices = signal.subscriberIndices;
-
-    const lastIndex = subscribers.length - 1;
-    const lastEffect = subscribers[lastIndex];
-
-    // 如果要删的正好是最后一个，直接 pop 就行。如果不是，就执行替换。
+    // 如果要删的正好是最后一个，直接截断就行。如果不是，就把末尾的配对挪到空位上。
     if (signalIndex !== lastIndex) {
-      const sourceIndex = subscriberIndices[lastIndex];
-      lastEffect.depsIndices[sourceIndex] = signalIndex; // effect的新位置是 signalIndex 了
-      // 1. 将末尾的effect挪到要删除的空位上
-      subscribers[signalIndex] = subscribers[lastIndex]; //j
-      subscriberIndices[signalIndex] = subscriberIndices[lastIndex];
+      const lastEffect = subscribers[lastIndex * 2] as Effect;
+      const sourceIndex = subscribers[lastIndex * 2 + 1] as number;
+      lastEffect.deps[sourceIndex * 2 + 1] = signalIndex; // effect的新位置是 signalIndex 了
+      subscribers[signalIndex * 2] = lastEffect;
+      subscribers[signalIndex * 2 + 1] = sourceIndex;
     }
-
-    // 3. 丢弃末尾（因为它已经被挪走了，或者它就是要被删的本身）
-    subscribers.pop();
-    subscriberIndices.pop();
+    subscribers.length -= 2;
   }
 
   // 清空自己的账本，等待下一次运行重新收集
-  deps.length = 0;
-  depsIndices.length = 0;
+  if (deps.length) {
+    deps.length = 0;
+  }
   if (errors.length === 1) {
     throw errors[0];
   }
@@ -367,7 +376,7 @@ export function watchSignal<T>(
   registerCleanup: (stop: () => void) => void,
   active?: ReadonlySignal<boolean>,
 ): Signal<T> {
-  const owner: SignalObserverScope = { stopped: false, effects: new Set(), listeners: new Set() };
+  const owner: SignalObserverScope = { stopped: false, effects: undefined, listeners: undefined };
   const local = createSignalInternal(source.peek(), owner);
   const stop = createEffect(() => {
     if (active && !active.get()) {
@@ -388,10 +397,10 @@ export function watchSignal<T>(
         errors.push(error);
       }
     };
-    for (const unsubscribe of [...owner.listeners]) {
+    for (const unsubscribe of [...(owner.listeners ?? [])]) {
       release(unsubscribe);
     }
-    for (const effect of [...owner.effects]) {
+    for (const effect of [...(owner.effects ?? [])]) {
       release(() => disposeEffect(effect));
     }
     // Retain the final local value on removal inside a game-time transaction.
@@ -420,12 +429,16 @@ export function watchSignal<T>(
  */
 export function createMemo<T>(fn: () => T): Memo<T> {
   const memoState = createSignal<T | undefined>(undefined);
-  const listeners = new Set<SignalListener<T>>();
+  let listeners: Set<SignalListener<T>> | undefined;
   /** The value before the current batch, while a commit notification is queued. */
   let beforeBatch: { value: T } | undefined;
   const notify = (value: T, previous: T) => {
-    for (const listener of [...listeners]) {
-      if (listeners.has(listener)) {
+    const current = listeners;
+    if (!current) {
+      return;
+    }
+    for (const listener of [...current]) {
+      if (current.has(listener)) {
         listener(value, previous);
       }
     }
@@ -441,7 +454,7 @@ export function createMemo<T>(fn: () => T): Memo<T> {
         return;
       }
       memoState.set(newValue);
-      if (!listeners.size) {
+      if (!listeners?.size) {
         return;
       }
       if (batchDepth === 0) {
@@ -482,9 +495,10 @@ export function createMemo<T>(fn: () => T): Memo<T> {
       return memoState.peek() as T;
     },
     subscribe: (listener: SignalListener<T>) => {
-      listeners.add(listener);
+      const current = (listeners ??= new Set());
+      current.add(listener);
       return () => {
-        listeners.delete(listener);
+        current.delete(listener);
       };
     },
     dispose() {

@@ -270,7 +270,7 @@ export async function atlasReloadsSettled(): Promise<void> {
  * clones as before. Straight-alpha pages compile as a plain MeshBasicMaterial.
  */
 export class AtlasSpriteMaterial extends THREE.MeshBasicMaterial {
-  override onBeforeCompile(shader: THREE.WebGLProgramParametersWithUniforms): void {
+  override onBeforeCompile(shader: THREE.WebGLProgramParametersWithUniforms, _renderer?: THREE.WebGLRenderer): void {
     if (!isPremultipliedSrgbAtlas(this.map)) {
       return;
     }

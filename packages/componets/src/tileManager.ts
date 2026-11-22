@@ -37,14 +37,37 @@ export function BindTileMapSize(size: number): () => void {
   };
 }
 
-/** 每个位置源、半径拥有独立网格，包含与存档地图范围相交的全部地皮。 */
+/**
+ * 每个位置源、半径拥有独立网格。只有被某个实体的 tile 读到过的地皮才有状态 Signal（按 tile key 存放，首次读到时按当前
+ * 玩家位置初始化）；整张地图逐格建 Signal 会让一个半径占用上百 MB。
+ */
 interface TileStateGrid {
-  titlestates: Signal<boolean>[][];
+  states: Map<number, Signal<boolean>>;
   memoCount: number;
 }
 
+/** Whether tile (x, z) of the grid lies in the square of `radius` tiles around the player's tile. */
+function tileActive(x: number, z: number, tile: [number, number] | undefined, radius: number, grid: TileGrid): boolean {
+  return !!tile && Math.max(Math.abs(x - tile[0] - grid.offset), Math.abs(z - tile[1] - grid.offset)) <= radius;
+}
+
+function tileState(
+  states: TileStateGrid,
+  key: number,
+  tile: [number, number] | undefined,
+  radius: number,
+  grid: TileGrid,
+): Signal<boolean> {
+  let state = states.states.get(key);
+  if (!state) {
+    state = createSignal(tileActive(Math.floor(key / grid.count), key % grid.count, tile, radius, grid));
+    states.states.set(key, state);
+  }
+  return state;
+}
+
 function updateTileStates(
-  titlestates: Signal<boolean>[][],
+  states: Map<number, Signal<boolean>>,
   previous: [number, number] | undefined,
   tile: [number, number] | undefined,
   radius: number,
@@ -52,8 +75,8 @@ function updateTileStates(
 ): void {
   batch(() => {
     const update = (x: number, z: number, active: boolean) => {
-      const state = titlestates[x][z];
-      if (state.peek() !== active) {
+      const state = states.get(x * grid.count + z);
+      if (state && state.peek() !== active) {
         state.set(active);
       }
     };
@@ -222,7 +245,7 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
       () =>
         batch(() => {
           for (const [radius, grid] of grids) {
-            updateTileStates(grid.titlestates, previous, playerTile, radius, mapGrid);
+            updateTileStates(grid.states, previous, playerTile, radius, mapGrid);
           }
         }),
     );
@@ -254,23 +277,18 @@ function createTileStateCache(source: ReadonlySignal<Vector3 | undefined>, mapGr
       }
       let grid = grids.get(radius);
       if (!grid) {
-        grid = {
-          titlestates: Array.from({ length: mapGrid.count }, () =>
-            Array.from({ length: mapGrid.count }, () => createSignal(false)),
-          ),
-          memoCount: 0,
-        };
-        updateTileStates(grid.titlestates, undefined, playerTile, radius, mapGrid);
+        grid = { states: new Map(), memoCount: 0 };
         grids.set(radius, grid);
       }
       const ownedGrid = grid;
       const ownedTarget = target;
       const active = createMemo(() => {
         const key = ownedTarget.tile.get();
-        if (key < 0) {
+        if (key < 0 || key >= mapGrid.count * mapGrid.count) {
           return false;
         }
-        return ownedGrid.titlestates[Math.floor(key / mapGrid.count)]?.[key % mapGrid.count]?.get() ?? false;
+        // Creating a tile's state on its first read is a cache fill: it starts at the player's current activity.
+        return tileState(ownedGrid, key, playerTile, radius, mapGrid).get();
       });
       grid.memoCount++;
       const disposeMemo = active.dispose;
