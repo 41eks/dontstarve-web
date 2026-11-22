@@ -21,17 +21,34 @@ test('batch registers lazy atlases, reuses texture pages and retries failed regi
         pixels[offset + 2] = offset < 32 ? 0 : 255;
         pixels[offset + 3] = 255;
       }
+      // An uncompressed KTEX (pixel format 4) stores rows bottom-up: reverse them so it decodes to `pixels`.
+      const ktex = new Uint8Array(18 + pixels.length);
+      ktex.set([0x4b, 0x54, 0x45, 0x58]);
+      const view = new DataView(ktex.buffer);
+      view.setUint32(4, 8192 + 4 * 16, true);
+      view.setUint16(8, 4, true);
+      view.setUint16(10, 4, true);
+      view.setUint16(12, 16, true);
+      view.setUint32(14, pixels.length, true);
+      for (let row = 0; row < 4; row++) {
+        ktex.set(pixels.subarray(row * 16, row * 16 + 16), 18 + (3 - row) * 16);
+      }
+      const { imageAtlasPage } = (await import(
+        parserModuleUrl
+      )) as typeof import('../../animation/src/imageAtlasParser');
       const atlas = new DecodedImageAtlas([
-        {
-          path: 'test/page.xml',
-          texture: 'page.tex',
-          texturePath: 'test/page.tex',
-          decodedTexture: { width: 4, height: 4, pixels },
-          elements: new Map([
-            ['wide.tex', { name: 'wide.tex', u1: 0, u2: 0.999, v1: 0.625, v2: 0.875 }],
-            ['bottom.tex', { name: 'bottom.tex', u1: 0.625, u2: 0.875, v1: 0.125, v2: 0.375 }],
-          ]),
-        },
+        imageAtlasPage(
+          {
+            texture: 'page.tex',
+            elements: new Map([
+              ['wide.tex', { name: 'wide.tex', u1: 0, u2: 0.999, v1: 0.625, v2: 0.875 }],
+              ['bottom.tex', { name: 'bottom.tex', u1: 0.625, u2: 0.875, v1: 0.125, v2: 0.375 }],
+            ]),
+          },
+          'test/page.xml',
+          'test/page.tex',
+          ktex,
+        ),
       ]);
       let attempts = 0;
       registerImageAtlases({

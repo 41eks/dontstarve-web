@@ -1,3 +1,4 @@
+import { decodeImageAtlasPage } from './imageAtlas';
 import { atlasElementBounds, type ImageAtlas, type ImageAtlasElement, type ImageAtlasPage } from './imageAtlasParser';
 
 export interface AtlasImageRegion {
@@ -41,7 +42,11 @@ async function textureImage(page: ImageAtlasPage, currentGeneration: number): Pr
   let request = textures.get(page.texturePath);
   if (!request) {
     request = (async () => {
-      const { width, height, pixels } = page.decodedTexture;
+      // A transient decode: once encoded, the image URL is all this page needs.
+      const { width, height, pixels } = await decodeImageAtlasPage(page);
+      if (currentGeneration !== generation) {
+        throw new Error('Atlas images were disposed');
+      }
       const canvas = document.createElement('canvas');
       canvas.width = width;
       canvas.height = height;
@@ -138,9 +143,9 @@ export async function getAtlasImage(atlasPath: string, elementName: string): Pro
   }
   const region = regions.get(regionKey) ?? {
     imageUrl,
-    ...atlasElementBounds(indexed.page.decodedTexture, indexed.element),
-    atlasWidth: indexed.page.decodedTexture.width,
-    atlasHeight: indexed.page.decodedTexture.height,
+    ...atlasElementBounds(indexed.page, indexed.element),
+    atlasWidth: indexed.page.width,
+    atlasHeight: indexed.page.height,
   };
   regions.set(regionKey, region);
   return region;

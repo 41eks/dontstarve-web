@@ -175,6 +175,10 @@ const region = await getAtlasImage('images/crafting_menu.xml', 'pinslot_bg');
 注册按图集路径去重，同名小图通过图集路径区分。页面内显式结束游戏时可调用 `disposeAtlasImages()`
 释放 Blob URL 和注册表；下一次初始化重新注册。`pagehide` 不执行该清理。
 
+图集页（`ImageAtlasPage`）只保留 KTEX 原文件和宽高，不常驻解码后的 RGBA（BC 页约为 RGBA 的 1/4 或 1/8）。
+`atlas.get()`／`require()` 只解码小图覆盖的 BC 块（`parseKtexRegion`），裁切结果按小图缓存；需要整页像素的读取方
+（共享 PNG Blob、小地图图标表）调用 `decodeImageAtlasPage(page)`，在图集 worker 中临时解码一份，编码完即丢弃。
+
 UI 的批量注册入口是 `packages/ui/src/image-atlases.ts`；资源包路径只在此处配置，
 制作、HUD、物品栏和接收动画的调用方不再传入 `archiveUrl`。
 

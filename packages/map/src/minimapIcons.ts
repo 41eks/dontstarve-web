@@ -1,11 +1,11 @@
-import { loadImageAtlasFiles, type ImageAtlasSprite } from '@dontstarve-web/animation/imageAtlas';
+import { decodeImageAtlasPage, loadImageAtlasFiles, type ImageAtlasSprite } from '@dontstarve-web/animation/imageAtlas';
 import { atlasElementBounds, type ImageAtlasPage } from '../../animation/src/imageAtlasParser';
 
 // prefabs/minimap.lua registers these two source atlases.
 const MINIMAP_ATLAS_PATHS = ['minimap/minimap_data1.xml', 'minimap/minimap_data2.xml'] as const;
 
-/** Fetch and decode both atlases ahead of the first icon request. Their BC textures are decoded on the main
- * thread, so this belongs to loading rather than to the first frame that shows a marker.
+/** Fetch both atlases ahead of the first icon request; their pages are decoded in the image atlas worker when the
+ * sheets are prepared.
  */
 async function loadMinimapAtlases(root: string) {
   const base = root.replace(/\/$/, '');
@@ -104,9 +104,9 @@ export class MinimapIcons {
           this.icons.push({
             imageUrl: result.value.src,
             image: result.value,
-            ...atlasElementBounds(page.decodedTexture, element),
-            atlasWidth: page.decodedTexture.width,
-            atlasHeight: page.decodedTexture.height,
+            ...atlasElementBounds(page, element),
+            atlasWidth: page.width,
+            atlasHeight: page.height,
           });
         }
       }
@@ -115,7 +115,11 @@ export class MinimapIcons {
   }
 
   private async preparePage(page: ImageAtlasPage): Promise<HTMLImageElement | undefined> {
-    const { width, height, pixels } = page.decodedTexture;
+    // Decoded once, off the main thread, and dropped after the image is encoded.
+    const { width, height, pixels } = await decodeImageAtlasPage(page);
+    if (this.disposed) {
+      return;
+    }
     const canvas = new OffscreenCanvas(width, height);
     canvas.getContext('2d')!.putImageData(new ImageData(Uint8ClampedArray.from(pixels), width, height), 0, 0);
     let url: string | undefined;

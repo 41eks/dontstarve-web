@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseKtex, parseKtexBlocks, type BcType } from '@dontstarve-web/animation/parseKtex';
+import { parseKtex, parseKtexBlocks, parseKtexRegion, type BcType } from '@dontstarve-web/animation/parseKtex';
 import { ALPHA_MASK_THRESHOLD, alphaMaskTexel, packAlphaMask } from '../src/alphaMask';
 
 function makeKtex(pixelFormat: number, width: number, height: number, data: Uint8Array, mipCount = 1) {
@@ -148,4 +148,32 @@ describe('parseKtex', () => {
     expect(parseKtexBlocks(makeKtex(2, 4, 6, randomBlocks(3, 4, 8)))).toBeUndefined();
     expect(parseKtexBlocks(makeKtex(4, 4, 4, new Uint8Array(64)))).toBeUndefined();
   });
+
+  it.each([
+    [0, 12, 10],
+    [1, 12, 10],
+    [2, 12, 10],
+    [2, 8, 7],
+    [4, 6, 5],
+  ] as const)(
+    'decodes a region of pixel format %i (%ix%i) as the crop of the whole decode',
+    (format, width, height) => {
+      const data =
+        format === 4
+          ? Uint8Array.from({ length: width * height * 4 }, (_, index) => (index * 37) & 255)
+          : randomBlocks(BC_FORMAT_TYPES[format], Math.ceil(width / 4) * 4, Math.ceil(height / 4) * 4);
+      const ktex = makeKtex(format, width, height, data);
+      const full = parseKtex(ktex).pixels;
+      const region = { x: 1, y: 2, width: width - 3, height: height - 4 };
+      const crop = new Uint8Array(region.width * region.height * 4);
+      for (let y = 0; y < region.height; y++) {
+        const start = ((region.y + y) * width + region.x) * 4;
+        crop.set(full.subarray(start, start + region.width * 4), y * region.width * 4);
+      }
+      expect(parseKtexRegion(ktex, region)).toEqual({ width: region.width, height: region.height, pixels: crop });
+      expect(() => parseKtexRegion(ktex, { x: 0, y: 0, width: width + 1, height: 1 })).toThrow('region outside');
+    },
+  );
 });
+
+const BC_FORMAT_TYPES = { 0: 1, 1: 2, 2: 3 } as const;

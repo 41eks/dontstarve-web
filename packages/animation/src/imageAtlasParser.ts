@@ -1,5 +1,5 @@
 import { unzipSync } from 'fflate';
-import { parseKtex, type DecodedTexture } from './parseKtex';
+import { ktexSize, parseKtexRegion, type DecodedTexture } from './parseKtex';
 
 export interface ImageAtlasElement {
   readonly name: string;
@@ -14,10 +14,30 @@ export interface ParsedImageAtlasXml {
   readonly elements: ReadonlyMap<string, ImageAtlasElement>;
 }
 
+/**
+ * One atlas page. It keeps the page's KTEX file (BC pages are a quarter or an eighth of their RGBA) rather than decoded
+ * pixels: a sprite decodes only its own blocks, and a whole-page reader decodes a transient copy
+ * (`decodeImageAtlasPage`). Decoded 2048² pages kept per atlas were most of the UI's CPU memory.
+ */
 export interface ImageAtlasPage extends ParsedImageAtlasXml {
   readonly path: string;
   readonly texturePath: string;
-  readonly decodedTexture: DecodedTexture;
+  readonly width: number;
+  readonly height: number;
+  readonly ktex: Uint8Array;
+}
+
+/** A page from its parsed XML and its KTEX file, which it keeps as its own buffer. */
+export function imageAtlasPage(
+  definition: ParsedImageAtlasXml,
+  path: string,
+  texturePath: string,
+  ktex: Uint8Array,
+): ImageAtlasPage {
+  const { width, height } = ktexSize(ktex, texturePath);
+  // A ZIP entry may view the archive's buffer; a page must not retain (or transfer) the whole archive.
+  const own = ktex.byteOffset === 0 && ktex.byteLength === ktex.buffer.byteLength ? ktex : ktex.slice();
+  return { texture: definition.texture, elements: definition.elements, path, texturePath, width, height, ktex: own };
 }
 
 export interface ImageAtlasSprite extends DecodedTexture {
@@ -190,17 +210,6 @@ export function atlasElementBounds(texture: Pick<DecodedTexture, 'width' | 'heig
   return { x: left, y: top, width, height };
 }
 
-export function cropAtlasTexture(texture: DecodedTexture, element: ImageAtlasElement): DecodedTexture {
-  const { x: left, y: top, width, height } = atlasElementBounds(texture, element);
-
-  const pixels = new Uint8Array(width * height * 4);
-  for (let y = 0; y < height; y++) {
-    const sourceStart = ((top + y) * texture.width + left) * 4;
-    pixels.set(texture.pixels.subarray(sourceStart, sourceStart + width * 4), y * width * 4);
-  }
-  return { width, height, pixels };
-}
-
 export class DecodedImageAtlas implements ImageAtlas {
   readonly pages: readonly ImageAtlasPage[];
   private readonly index = new Map<string, IndexedElement>();
@@ -229,7 +238,8 @@ export class DecodedImageAtlas implements ImageAtlas {
     if (cached) {
       return cached;
     }
-    const cropped = cropAtlasTexture(indexed.page.decodedTexture, indexed.element);
+    const { page, element } = indexed;
+    const cropped = parseKtexRegion(page.ktex, atlasElementBounds(page, element), page.texturePath);
     const sprite: ImageAtlasSprite = {
       ...cropped,
       name: indexed.element.name,
@@ -266,13 +276,7 @@ export function parseImageAtlasArchive(data: Uint8Array, atlasPath = 'images/inv
     if (!texture) {
       throw new Error(`ZIP archive does not contain ${texturePath}`);
     }
-    return {
-      path,
-      texture: definition.texture,
-      texturePath,
-      elements: definition.elements,
-      decodedTexture: parseKtex(texture.data, texturePath),
-    };
+    return imageAtlasPage(definition, path, texturePath, texture.data);
   });
   return new DecodedImageAtlas(pages);
 }
