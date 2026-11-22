@@ -161,16 +161,18 @@ export class PlayerController {
   }
 
   /**
-   * PlayerController:OnLeftClick with the deploy placer shown: BufferedAction(self.inst, nil, ACTIONS.DEPLOY, activeitem,
-   * pos) and DoAction, so the player walks within DEPLOY's distance and doshortaction's hit frame deploys. `deploy`
-   * stands in for the item's deployable:Deploy (DEPLOYMODE.WALL), which spends the item and spawns what it places.
+   * PlayerController:OnLeftClick with a placer shown. The deploy placer's BufferedAction(self.inst, nil, ACTIONS.DEPLOY,
+   * activeitem, pos) walks within DEPLOY's distance and deploys on doshortaction's hit frame; a recipe placer's
+   * builder:MakeRecipeAtPoint pushes BufferedAction(self.inst, nil, ACTIONS.BUILD, nil, pt, recipe) to the locomotor,
+   * which walks there and builds on dolongaction's timeout. `perform` stands in for deployable:Deploy (DEPLOYMODE.WALL)
+   * or builder:DoBuild: it spends the item or the buffered build and spawns what it places.
    */
-  DoDeployAction(pos: Vector3, deploy: () => boolean): boolean {
-    const action: PlayerAction<WilsonAction> = new BufferedAction('DEPLOY', deploy, undefined, {
+  DoPlacerAction(action: 'DEPLOY' | 'BUILD', pos: Vector3, perform: () => boolean): boolean {
+    const buffered: PlayerAction<WilsonAction> = new BufferedAction(action, perform, undefined, {
       doer: this.doer,
       pos: { x: pos.x, y: pos.y, z: pos.z },
     });
-    return this.DoAction(action);
+    return this.DoAction(buffered);
   }
 
   /** PlayerController:DoAction: locomotor:PushAction walks to the target and the inst buffers the action there. */

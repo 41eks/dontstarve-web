@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { prefabDisplay, PrefabDisplayGroup } from '../../display/src';
 import { createSignal } from '../../signals/src';
+import { disposePlacingPlayers, placingPlayer } from './placingPlayer';
 import { PrefabEntityManager, PrefabInstance } from '../../prefab/src/prefabInstance';
 import { WORLD_SCALE } from '../../prefab/src/tile';
 import { WARDROBE_ID } from '../../prefab/src/wardrobe';
@@ -35,6 +36,7 @@ beforeEach(() => {
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
 });
 afterEach(() => {
+  disposePlacingPlayers();
   for (const cleanup of cleanups.splice(0)) {
     cleanup();
   }
@@ -74,7 +76,14 @@ function setup() {
     prefabs.dispose();
     displays.dispose();
   });
-  const click = (button = 0) => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
+  // A left click is the player's BUILD: it walks to the placer and builds on the hit frame.
+  const player = placingPlayer(world);
+  const click = (button = 0) => {
+    canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button }));
+    if (button === 0) {
+      player.place();
+    }
+  };
   return { physics, displays, prefabs, consume, placement, registry, click };
 }
 
@@ -89,7 +98,9 @@ it('builds through its placer: a refused or cancelled build makes nothing, a com
   await placement.begin(WARDROBE_ID);
   consume.mockReturnValueOnce(false);
   click();
+  // builder:DoBuild refuses on the hit frame; the click released the placer, so the build starts again.
   expect(prefabs.exportRecords()).toEqual([]);
+  await placement.begin(WARDROBE_ID);
   click();
   expect(consume).toHaveBeenCalledTimes(2);
   const wardrobe = spawn.mock.results[0].value as PrefabInstance;

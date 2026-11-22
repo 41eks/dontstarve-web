@@ -30,8 +30,8 @@ export interface BuildingPlacerSpec {
   /** placer.lua onupdatetransform: runs each frame once the placer has followed the pointer. */
   onupdatetransform?(placer: PrefabInstance): void;
   /**
-   * A deployable item's placer (DEPLOYMODE.WALL): the click is the player's DEPLOY action, which walks to the placer
-   * and spends the item on its hit frame, instead of placing at once.
+   * A deployable item's placer (DEPLOYMODE.WALL): the click is the player's DEPLOY action, not a recipe's BUILD. Either
+   * walks the player to the placer before it spends anything and places.
    */
   readonly deploy?: boolean;
 }
@@ -232,7 +232,7 @@ export class BuildingPlacer<BuildId extends string> {
     this.commit(event);
   };
 
-  /** Commits the build at the placer's position: the building is spawned afresh and the placer released. */
+  /** Commits the build at the placer: the player walks there, and its BUILD or DEPLOY spawns the building afresh. */
   private commit(event: PointerEvent): void {
     const placer = this.placer;
     if (!placer) {
@@ -245,25 +245,18 @@ export class BuildingPlacer<BuildId extends string> {
     }
     const { buildId, skinId, instance, spec } = placer,
       position = instance.position.clone();
-    if (spec.deploy) {
-      const deploy = () => {
-        if (!this.consumeBufferedBuild(buildId, skinId)) {
-          return false;
-        }
-        this.place(buildId, position, skinId, instance);
-        return true;
-      };
-      // The player walks there first; the locomotor input must not stop the walk this click starts.
-      if (prefabInstance(this.player)?.components.playercontroller?.DoDeployAction(position, deploy)) {
-        event.stopImmediatePropagation();
-        this.cancel();
+    const perform = () => {
+      if (!this.consumeBufferedBuild(buildId, skinId)) {
+        return false;
       }
-      return;
+      this.place(buildId, position, skinId, instance);
+      return true;
+    };
+    // The player walks there first; the locomotor input must not stop the walk this click starts.
+    const controller = prefabInstance(this.player)?.components.playercontroller;
+    if (controller?.DoPlacerAction(spec.deploy ? 'DEPLOY' : 'BUILD', position, perform)) {
+      event.stopImmediatePropagation();
+      this.cancel();
     }
-    if (!this.consumeBufferedBuild(buildId, skinId)) {
-      return;
-    }
-    this.cancel();
-    this.place(buildId, position, skinId, instance);
   }
 }

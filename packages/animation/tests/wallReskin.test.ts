@@ -26,7 +26,7 @@ import { deserializeSave } from '../../../src/save/deserialize';
 import { serializeSave } from '../../../src/save/serialize';
 import { snapToWallSlotCenter } from '../../prefab/src/tile';
 import { slotWith, testInventoryStore } from './testInventory';
-import { deployingPlayer } from './deployingPlayer';
+import { placingPlayer } from './placingPlayer';
 
 beforeEach(() => {
   vi.stubGlobal('window', new EventTarget());
@@ -186,13 +186,13 @@ it('maps every inventory wall skin to the correct world build and consumes the s
   );
   const { world, canvas, placement } = setup((id, skinId) => store.takeItem(id, skinId));
   // The wall item's click is the player's DEPLOY: it walks to the slot and deploys on the hit frame.
-  const player = deployingPlayer(world);
+  const player = placingPlayer(world);
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 3));
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
   try {
     await placement.begin('wall_stone_item', 'wall_stone_anitem');
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
-    player.deploy();
+    player.place();
     expect(placement.exportRecords()[0].prefabId).toBe('wall_stone');
     expect(placement.exportRecords()[0].record.skinname).toBe('wall_stone_an');
     expect(store.get(inventorySlotAddress(0))?.count).toBe(2);

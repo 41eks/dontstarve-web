@@ -7,6 +7,7 @@ import { readFile } from 'node:fs/promises';
 import { unzipSync } from 'fflate';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { decodeDyn } from '../src/decodeDyn';
+import { disposePlacingPlayers, placingPlayer } from './placingPlayer';
 import { loadAnimationArchive, loadSpriteSkinArchive, smallHash } from '../src/animationAssets';
 import { ArchiveSpriteAssets, createArchiveSprite, type ArchiveSprite } from '../src/archiveSprite';
 import { setSpriteEntityRenderOrder } from '../src/renderOrder';
@@ -64,6 +65,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  disposePlacingPlayers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -259,6 +261,7 @@ describe('DST building skins', () => {
       const skinId = recipeSkins[prefabId][0].id;
       const consume = vi.fn(() => true);
       const placement = managedBuildings(world, { consume });
+      const player = placingPlayer(world);
       vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
       vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(3, 0, 4));
       vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
@@ -267,6 +270,7 @@ describe('DST building skins', () => {
       expect(records()).toHaveLength(0);
       expect(lookupPrefabInstance(world.scene.children[0])?.skinId).toBe(skinId);
       canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
+      player.place();
       expect(consume).toHaveBeenCalledWith(prefabId, skinId);
       for (let frame = 0; frame < 100; frame++) {
         placement.update(0.1);

@@ -41,7 +41,7 @@ import { serializeSave } from '../../../src/save/serialize';
 import { bindTestWorld } from './worldContentFixture';
 import { workTargets } from './workTargets';
 import { testInventoryStore, testItem } from './testInventory';
-import { deployingPlayer } from './deployingPlayer';
+import { placingPlayer } from './placingPlayer';
 
 vi.mock('../../prefab/src/sound', () => ({
   PreloadSounds: vi.fn(async () => {}),
@@ -243,7 +243,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
   vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(new THREE.Vector3(7.2, 0, -4.1));
   const restored = setup();
   // The fence item's click is the player's DEPLOY: it walks to the slot and deploys on the hit frame.
-  const player = deployingPlayer(world);
+  const player = placingPlayer(world);
   try {
     await placement.begin('fence_item', 'fence_rose_item');
     update();
@@ -285,7 +285,7 @@ it('previews against the camera, swaps banks as it rotates, places on click and 
 
     canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
     expect(consume).not.toHaveBeenCalled();
-    player.deploy();
+    player.place();
     expect(consume).toHaveBeenCalledWith('fence_item', 'fence_rose_item');
     expect(workTargets('HAMMER')).toHaveLength(1);
     expect(world.physics!.bodies).toHaveLength(1);

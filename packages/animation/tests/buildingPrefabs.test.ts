@@ -18,6 +18,7 @@ import { PointerRaycaster } from '../../stategraphs/src/pointerRaycaster';
 import { PlaceableBuildingPlacement } from '../../../src/placeableBuilding';
 import { PREFAB_DEFINITIONS } from '../../../src/prefabDefinitions';
 import { managedBuildings } from './managedBuildings';
+import { disposePlacingPlayers, placingPlayer } from './placingPlayer';
 import definitions from '../../prefab/src/definitions.json';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
 import { deserializeSave } from '../../../src/save/deserialize';
@@ -44,6 +45,7 @@ beforeEach(() => {
   vi.spyOn(PointerRaycaster.prototype, 'isOverGround', 'get').mockReturnValue(true);
 });
 afterEach(() => {
+  disposePlacingPlayers();
   for (const cleanup of cleanups.splice(0)) {
     cleanup();
   }
@@ -78,19 +80,26 @@ function setup() {
     prefabs.dispose();
     displays.dispose();
   });
-  return { canvas, scene, physics, displays, prefabs, placement, collapse, dropLoot };
+  return { world, canvas, scene, physics, displays, prefabs, placement, collapse, dropLoot };
 }
 
 it('builds through its placer in the selected skin, and onbuilt plays the placing clip', async () => {
-  const { placement, canvas, prefabs } = setup();
+  const { world, placement, canvas, prefabs } = setup();
+  // The click is the player's BUILD: it walks to the placer and builds on the hit frame.
+  const player = placingPlayer(world);
   const spawn = vi.spyOn(prefabs, 'spawn'),
     playOnce = vi.spyOn(SpriteState.prototype, 'playOnce');
   await placement.begin(CAMPFIRE_ID, 'campfire_cabin');
   canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
+  expect(spawn).not.toHaveBeenCalled();
+  player.place();
   const campfire = spawn.mock.results[0].value as PrefabInstance;
   expect(campfire.position.toArray()).toEqual([3, 0, 4]);
   expect(campfire.skinId).toBe('campfire_cabin');
-  expect(playOnce).toHaveBeenCalledExactlyOnceWith('place');
+  // The player's own dolongaction plays clips too; the campfire's onbuilt plays "place" once.
+  expect(playOnce.mock.calls.filter((_, index) => playOnce.mock.contexts[index] === campfire.sprite)).toEqual([
+    ['place'],
+  ]);
   await expect(placement.begin(NIGHT_LIGHT_ID, 'not_a_skin')).rejects.toThrow('skin');
 });
 

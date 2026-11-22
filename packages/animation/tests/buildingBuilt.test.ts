@@ -15,8 +15,10 @@ import { miniMapEntities } from '../../map/src/minimapEntities';
 import type { WorldContext } from '../../prefab/src/worldContext';
 import type { SpriteAnimationController } from '../src/sprite';
 import { sceneActions } from './sceneActions';
+import { disposePlacingPlayers, placingPlayer } from './placingPlayer';
 
 afterEach(() => {
+  disposePlacingPlayers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -51,7 +53,12 @@ async function setup(definition: { archive: string }) {
   vi.spyOn(PointerRaycaster.prototype, 'raycastPointer').mockImplementation(
     objects => ({ object: objects[0], point: new THREE.Vector3() }) as THREE.Intersection,
   );
-  const click = () => canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
+  // The click is the player's BUILD: it walks to the placer and builds on the hit frame.
+  const player = placingPlayer(world);
+  const click = () => {
+    canvas.dispatchEvent(Object.assign(new Event('pointerdown'), { button: 0 }));
+    player.place();
+  };
   return { placement, world, consume, isOverGround, click };
 }
 
@@ -88,10 +95,13 @@ it("runs a cookpot's built animation only after a successful placement", async (
     isOverGround.mockReturnValue(true);
     consume.mockReturnValue(false);
     click();
+    // builder:DoBuild refuses on the hit frame: nothing is built, and the placer was released by the click.
     expect(onbuilt()).toHaveLength(0);
     expect(records()).toHaveLength(1);
+    expect(placer.status.peek()).toBe('removed');
 
     consume.mockReturnValue(true);
+    await placement.begin('cookpot');
     click();
     expect(onbuilt()).toHaveLength(1);
     // The build spawns the building itself and releases the placer.
@@ -100,7 +110,6 @@ it("runs a cookpot's built animation only after a successful placement", async (
     ] as PrefabInstance;
     expect(built.prefab).toBe('cookpot');
     expect(built.transform.model).not.toBe(placerModel);
-    expect(placer.status.peek()).toBe('removed');
     expect(placerModel.parent).toBeNull();
     // onbuilt: PlayAnimation("place"), PushAnimation("idle_empty", false).
     expect(playOnce.mock.calls.filter(([name]) => name === 'place')).toHaveLength(1);
@@ -185,6 +194,7 @@ it('binds a committed building collider at its foot, restores it from saves and 
     click();
     expect(physics.bodies).toHaveLength(0);
     consume.mockReturnValue(true);
+    await placement.begin('cookpot');
     click();
     expect(physics.bodies).toHaveLength(1);
     const record = placement.exportRecords().find(({ prefabId }) => prefabId === 'cookpot')!.record;

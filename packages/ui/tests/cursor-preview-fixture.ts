@@ -107,7 +107,12 @@ export async function checkCursorPreview() {
 
   // Real animation/build assets: previews stay in the scene and foot sorting; a committed building draws without
   // the placer's light override, and cancellation clears it.
-  const player = new THREE.Object3D();
+  // The player's controller takes the placer's click; walking there is not what this checks, so it builds at once.
+  const playerEntity = createEmptyEntity('wilson'),
+    player = playerEntity.display.model;
+  playerEntity.instance.components.playercontroller = {
+    DoPlacerAction: (_action: string, _pos: THREE.Vector3, perform: () => boolean) => perform(),
+  } as unknown as NonNullable<typeof playerEntity.instance.components.playercontroller>;
   const world: WorldContext = {
     scene,
     camera,
