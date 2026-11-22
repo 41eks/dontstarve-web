@@ -85,56 +85,6 @@ function readComponents(recording) {
   };
 }
 
-function readSharedCallback(snapshots, { name, target, method, prefixArgs, minParameters, maxParameters }) {
-  const callbacks = snapshots.flatMap(({ prefab, recordings }) =>
-    recordings
-      .filter(recording => recording.scenario.master)
-      .map(recording => {
-        const registrations = findCalls(recording, target, method).filter(call =>
-          prefixArgs.every((argument, index) => call.args[index] === argument),
-        );
-        if (registrations.length !== 1) {
-          throw new Error(`${prefab}: expected one ${name} registration in ${recording.scenario.name}`);
-        }
-        const { args, source } = registrations[0];
-        const callback = args[prefixArgs.length];
-        if (
-          args.length !== prefixArgs.length + 1 ||
-          callback?.kind !== 'callback' ||
-          callback.name !== name ||
-          callback.parameters.length < minParameters ||
-          callback.parameters.length > maxParameters ||
-          callback.parameters.includes('...')
-        ) {
-          throw new Error(`${prefab}: unsupported ${name} registration at ${source.file}:${source.line}`);
-        }
-        return callback;
-      }),
-  );
-  return requireSame(callbacks, `${name} callback declaration`);
-}
-
-export function stickHeadCallbacks(snapshots) {
-  return {
-    onFullMoon: readSharedCallback(snapshots, {
-      name: 'OnFullMoon',
-      target: 'inst',
-      method: 'WatchWorldState',
-      prefixArgs: ['isfullmoon'],
-      minParameters: 2,
-      maxParameters: 2,
-    }),
-    onWorked: readSharedCallback(snapshots, {
-      name: 'OnWorked',
-      target: 'components.workable',
-      method: 'SetOnWorkCallback',
-      prefixArgs: [],
-      minParameters: 1,
-      maxParameters: 4,
-    }),
-  };
-}
-
 export function stickHeadConfig({ prefab, recordings }) {
   try {
     const appearance = requireSame(recordings.map(readAppearance), 'initial art and animation');

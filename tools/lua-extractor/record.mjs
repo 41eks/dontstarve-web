@@ -20,8 +20,9 @@ function getSourceNodes(file, readSource, sourceNodes) {
     luaparse.parse(readSource(file), {
       luaVersion: '5.1',
       locations: true,
+      scope: true,
       onCreateNode(node) {
-        if (node.type === 'FunctionDeclaration' || node.type === 'CallExpression') {
+        if (node.type === 'FunctionDeclaration' || node.type === 'CallExpression' || node.type === 'Chunk') {
           nodes.push(node);
         }
       },
@@ -29,6 +30,82 @@ function getSourceNodes(file, readSource, sourceNodes) {
     sourceNodes.set(file, nodes);
   }
   return sourceNodes.get(file);
+}
+
+function describeFunction(node, file) {
+  const { identifier, loc, parameters } = node;
+  return {
+    file,
+    ...(identifier?.type === 'Identifier' ? { name: identifier.name } : {}),
+    parameters: parameters.map(parameter => (parameter.type === 'Identifier' ? parameter.name : '...')),
+    startLine: loc.start.line,
+    endLine: loc.end.line,
+    startColumn: loc.start.column,
+    endColumn: loc.end.column,
+  };
+}
+
+function returnsValue(statements) {
+  return statements.some(statement => {
+    if (statement.type === 'ReturnStatement') {
+      return statement.arguments.length > 0;
+    }
+    if (statement.type === 'FunctionDeclaration') {
+      return false;
+    }
+    return (
+      statement.clauses?.some(clause => returnsValue(clause.body)) || (statement.body && returnsValue(statement.body))
+    );
+  });
+}
+
+function staticFunctionUses(nodes) {
+  const uses = new Map();
+  for (const node of nodes) {
+    if (node.type !== 'CallExpression' || node.arguments[1]?.type !== 'Identifier' || !node.arguments[1].isLocal) {
+      continue;
+    }
+    const { base } = node;
+    const kind =
+      base.type === 'Identifier' && base.name === 'Prefab' && !base.isLocal
+        ? 'Prefab'
+        : base.indexer === ':' && base.identifier?.name === 'DoTaskInTime'
+          ? 'DoTaskInTime'
+          : undefined;
+    if (kind) {
+      const { name } = node.arguments[1];
+      const references = uses.get(name) ?? [];
+      references.push({ kind, line: node.loc.start.line });
+      uses.set(name, references);
+    }
+  }
+  return uses;
+}
+
+function listLocalFunctions(file, readSource, sourceNodes) {
+  const nodes = getSourceNodes(file, readSource, sourceNodes);
+  const topLevel = new Set(nodes.find(node => node.type === 'Chunk').body);
+  const declarations = nodes.filter(
+    node => node.type === 'FunctionDeclaration' && node.isLocal && node.identifier?.type === 'Identifier',
+  );
+  const counts = new Map();
+  for (const { identifier } of declarations) {
+    counts.set(identifier.name, (counts.get(identifier.name) ?? 0) + 1);
+  }
+  const uses = staticFunctionUses(nodes);
+  return declarations
+    .map(node => {
+      const { name } = node.identifier;
+      // Leave shadowed names to the runtime identity or the unknown-type fallback.
+      const references = counts.get(name) === 1 ? uses.get(name) : undefined;
+      return {
+        ...describeFunction(node, file),
+        topLevel: topLevel.has(node),
+        returnsValue: returnsValue(node.body),
+        ...(references ? { staticUses: references } : {}),
+      };
+    })
+    .sort((a, b) => a.startLine - b.startLine || a.startColumn - b.startColumn);
 }
 
 function locateCallback(callback, readSource, sourceNodes) {
@@ -39,14 +116,7 @@ function locateCallback(callback, readSource, sourceNodes) {
   if (matches.length !== 1) {
     throw new Error(`Expected one callback declaration at ${file}:${startLine}-${endLine}, found ${matches.length}`);
   }
-  const { identifier, loc, parameters } = matches[0];
-  return {
-    ...callback,
-    ...(identifier?.type === 'Identifier' ? { name: identifier.name } : {}),
-    parameters: parameters.map(parameter => (parameter.type === 'Identifier' ? parameter.name : '...')),
-    startColumn: loc.start.column,
-    endColumn: loc.end.column,
-  };
+  return { ...callback, ...describeFunction(matches[0], file) };
 }
 
 export async function recordPrefab(sourceRoot, file, prefab, { includeCallbackSource = false } = {}) {
@@ -128,5 +198,12 @@ export async function recordPrefab(sourceRoot, file, prefab, { includeCallbackSo
     path,
     sha256: createHash('sha256').update(sources.get(path)).digest('hex'),
   }));
-  return { version: 1, prefab, file, inputs, recordings };
+  return {
+    version: 1,
+    prefab,
+    file,
+    inputs,
+    localFunctions: listLocalFunctions(file, readSource, sourceNodes),
+    recordings,
+  };
 }

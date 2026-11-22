@@ -80,6 +80,156 @@
       "sha256": "b546720be4ed09553a38c39f20b658bdf6d0a07ec948e7ff21c26d0e024737ef"
     }
   ],
+  "localFunctions": [
+    {
+      "file": "prefabs/stickheads.lua",
+      "name": "OnFinish",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 27,
+      "endLine": 39,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/stickheads.lua",
+      "name": "OnWorked",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 41,
+      "endLine": 46,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/stickheads.lua",
+      "name": "OnFullMoon",
+      "parameters": [
+        "inst",
+        "isfullmoon"
+      ],
+      "startLine": 48,
+      "endLine": 62,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/stickheads.lua",
+      "name": "onsave",
+      "parameters": [
+        "inst",
+        "data"
+      ],
+      "startLine": 64,
+      "endLine": 68,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/stickheads.lua",
+      "name": "onload",
+      "parameters": [
+        "inst",
+        "data"
+      ],
+      "startLine": 70,
+      "endLine": 74,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/stickheads.lua",
+      "name": "OnFinishHaunt",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 76,
+      "endLine": 82,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false,
+      "staticUses": [
+        {
+          "kind": "DoTaskInTime",
+          "line": 97
+        }
+      ]
+    },
+    {
+      "file": "prefabs/stickheads.lua",
+      "name": "OnHaunt",
+      "parameters": [
+        "inst",
+        "haunter"
+      ],
+      "startLine": 84,
+      "endLine": 102,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": true
+    },
+    {
+      "file": "prefabs/stickheads.lua",
+      "name": "create_common",
+      "parameters": [
+        "bankandbuild"
+      ],
+      "startLine": 104,
+      "endLine": 153,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": true
+    },
+    {
+      "file": "prefabs/stickheads.lua",
+      "name": "create_pighead",
+      "parameters": [],
+      "startLine": 155,
+      "endLine": 165,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": true,
+      "staticUses": [
+        {
+          "kind": "Prefab",
+          "line": 179
+        }
+      ]
+    },
+    {
+      "file": "prefabs/stickheads.lua",
+      "name": "create_mermhead",
+      "parameters": [],
+      "startLine": 167,
+      "endLine": 177,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": true,
+      "staticUses": [
+        {
+          "kind": "Prefab",
+          "line": 180
+        }
+      ]
+    }
+  ],
   "recordings": [
     {
       "scenario": {
