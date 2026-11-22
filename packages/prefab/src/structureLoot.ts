@@ -20,13 +20,17 @@ export const STRUCTURE_LOOT_RECIPES = new Map<string, LootRecipe>([
   ]),
 ]);
 
-/** The structure lootdropper's spawn: the world's item spawning services; loot rules stay in the component. */
+/**
+ * The structure lootdropper's spawn: the world's item spawning services; loot rules stay in the component. Each piece
+ * is thrown as lootdropper:SpawnLootPrefab's FlingItem does, so the loot scatters instead of piling on one point.
+ */
 export function spawnStructureLoot(inst: LootInst & { worldServices?: Partial<PrefabWorldContext> }): LootSpawn {
   return (prefab, position, skinId) => {
     const world = inst.worldServices;
     if (world?.spawnItem && world.dropItem) {
       const item = world.spawnItem({ itemId: prefab, count: 1, ...(skinId ? { skinId } : {}) });
       world.dropItem(item, position);
+      item.components.inventoryphysics?.Launch();
       return item;
     }
     world?.dropLoot?.([{ itemId: prefab, count: 1, ...(skinId ? { skinId } : {}) }], position);

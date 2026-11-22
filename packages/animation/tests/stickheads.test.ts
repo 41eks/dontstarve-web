@@ -14,6 +14,10 @@ import { createMemo, createSignal, type TileStateQuery } from '../../signals/src
 import { bindTestWorld } from './worldContentFixture';
 import { workTargets } from './workTargets';
 import { managedBuildings } from './managedBuildings';
+import { ItemWorldFixture } from './itemWorldFixture';
+import { createPickupInventory } from './pickupFixture';
+import { withEntity } from './entityFixture';
+import type { ItemEntity } from '../../inventory/src/entity';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -38,7 +42,11 @@ const HEADS = [
   },
 ] as const;
 
-async function setup(id: (typeof HEADS)[number]['id'] = PIG_HEAD_ID, tickingarea?: TileStateQuery) {
+async function setup(
+  id: (typeof HEADS)[number]['id'] = PIG_HEAD_ID,
+  tickingarea?: TileStateQuery,
+  services: Partial<WorldContext> = {},
+) {
   vi.stubGlobal('window', new EventTarget());
   vi.stubGlobal(
     'fetch',
@@ -59,6 +67,7 @@ async function setup(id: (typeof HEADS)[number]['id'] = PIG_HEAD_ID, tickingarea
     getWatchWorldContent: content.getWatchWorldContent,
     tickingarea,
     dropLoot: (items: { itemId: string; count: number }[]) => loot.push(items),
+    ...services,
   } as unknown as WorldContext;
   const placement = managedBuildings(world, { consume: () => false });
   placement.spawn(id);
@@ -114,6 +123,47 @@ it.each(HEADS)(
     }
   },
 );
+
+it('flings each piece of hammered loot apart, as FlingItem does, through the scene item spawn', async () => {
+  // The application's item wiring: spawnItem, then the inventory's DropItem onto the ground.
+  const items = new ItemWorldFixture(
+    new THREE.Scene(),
+    new THREE.PerspectiveCamera(),
+    undefined,
+    '/dst/data/databundles/images.zip',
+    createPickupInventory(),
+    '/dst/data/anim',
+    withEntity(new THREE.Group(), 'wilson'),
+  );
+  const s = await setup(PIG_HEAD_ID, undefined, {
+    spawnItem: items.world.spawnItem,
+    dropItem: items.world.dropItem,
+  });
+  try {
+    const head = workTargets('HAMMER')[0].entity,
+      origin = head.getPosition().clone();
+    for (let i = 0; i < 3; i++) {
+      expect(performToolWork('HAMMER', head, testPlayer())).toBe(true);
+    }
+    expect(s.loot).toEqual([]);
+    const dropped = ['pigskin', 'twigs'].flatMap(id => [...items.prefabs.instances(id)]) as ItemEntity[];
+    expect(dropped.map(item => item.prefab).sort()).toEqual(['pigskin', 'pigskin', 'twigs', 'twigs']);
+    // Each piece leaves the head's point in its own direction and flies until it rests on the ground.
+    for (const item of dropped) {
+      expect(item.components.inventoryphysics?.flying).toBe(true);
+      expect(item.position.distanceTo(origin)).toBeGreaterThan(0);
+    }
+    for (let frame = 0; frame < 120 && dropped.some(item => item.components.inventoryphysics?.flying); frame++) {
+      items.update(1 / 30);
+    }
+    expect(dropped.some(item => item.components.inventoryphysics?.flying)).toBe(false);
+    const landed = new Set(dropped.map(item => `${item.position.x},${item.position.z}`));
+    expect(landed.size).toBe(dropped.length);
+  } finally {
+    s.placement.dispose();
+    items.dispose();
+  }
+});
 
 it.each(HEADS)(
   '$id burns to a burnt head that keeps sleeping, saves only the burnt state and drops reduced loot',
