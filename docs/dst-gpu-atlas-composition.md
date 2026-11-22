@@ -78,6 +78,7 @@ Spine 去掉 `premultiplied_alpha_fragment` 与 `colorspace_fragment`，让预�
 
 - 源贴图首次 `initTexture` 仍是一次主线程调用，最大约 10ms。
 - 图集页的半浮点累积目标在合成期间占用显存，页尺寸最大 `min(4096, maxTextureSize)`，合成完成立即释放。
+- 合成后的页按"帧数 × 单帧尺寸"增长，零件跨帧复用的好处全部失去。长循环的大幅美术不适合实例化：`oceanvine_deco` 的 6 个 72 帧循环合成后约 5.7 GB，导致加载时 GPU 进程内存不足，见 [GPU 进程 OOM 案例](gpu-process-oom.md)。
 - 重采样质量与 canvas 的 `imageSmoothingQuality = 'high'` 不同：GPU 使用源贴图自身的线性过滤，没有 mipmap。当前对比测试的平均误差仍小于 2，但缩放比例明显小于 1 的动画需要重新核对。
 
 ## 实例批次复用与上下文恢复
