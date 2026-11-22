@@ -86,6 +86,8 @@
 | Lua | TS | 示例 | 差异 |
 | --- | --- | --- | --- |
 | `inst:AddComponent("x")` | `const x = addComponent(this, 'x', X, ...args)`（`src/components.ts`） | `moontree.ts` | 只能这样加组件，见 [AGENTS.md](../AGENTS.md#components)；`inst:RemoveComponent("x")` 用 `removeComponent`；查有没有实现：`dst-lua-inventory.py` |
+| `inst:AddComponent("savedrotation")`（`dodelayedpostpassapply`） | `addComponent(inst, 'savedrotation', SavedRotation)`；读档在定义的 `onSpawned` 里调用 `LoadPostPass(inst.saveRecord.components.savedrotation)` | `furniture_chairs.ts` | `OnSave` 读 `inst.transform.rotation`（度）；`LoadRotation` 与 `SetRotation` 相同（船未移植）。四向实体按 `lightninggoat.ts` 覆盖 `setRotation`，同时写 `sprite.setFacingRotation(deg, 4)` |
+| `inst:AddComponent("sittable")` | `addComponent(inst, 'sittable', Sittable)`（`componets/src/sittable.ts`） | `furniture_chairs.ts`、`ruinsrelic.ts` | `cansit` 由占用者派生（`DerivedTags`）；SIT 动作与坐者未移植，没有地方设置占用者 |
 | `inst.components.workable.workleft = n`（直接写字段） | `workable.WriteWorkLeft(n)` | `moon_fissure.ts` | 不钳制、不改 `workable` 开关；`SetWorkLeft` 至少为 1 |
 | 组件回调（`SetOnFinishCallback` 等） | 同名方法 | `chesspieces.ts` | 回调写在所属 prefab 模块 |
 | `inst.components.sanityaura.aurafn = fn`、`fallofffn = fn` | `SanityAura.aurafn`／`fallofffn` 字段，`GetBaseAura(observer)`／`GetAura(observer)` 按源计算 | `moon_fissure.ts` | 光环值随状态变化用 `aurafn`，固定值用 `aura`；`max_distsq` 单位按源 |

@@ -86,6 +86,8 @@ local component_methods = {
     burnable = { "SetFXLevel", "SetBurnTime", "AddBurnFX", "SetOnIgniteFn", "SetOnExtinguishFn", "SetOnBurntFn" },
     propagator = { "SetOnFlashPoint" },
     hauntable = { "SetOnHauntFn" },
+    sittable = {},
+    savedrotation = {},
 }
 
 local function create_entity()
@@ -93,7 +95,9 @@ local function create_entity()
     local entity = next_entity
     local components, tags = {}, {}
     local fields = { components = components }
-    local methods = recorded_methods(entity, "inst", { "WatchWorldState", "SetDeploySmartRadius", "SetStateGraph", "DoTaskInTime" })
+    local methods = recorded_methods(entity, "inst", {
+        "WatchWorldState", "SetDeploySmartRadius", "SetStateGraph", "DoTaskInTime", "ListenForEvent",
+    })
 
     methods.AddTag = function(_, tag)
         record(entity, "inst", "call", "AddTag", tag)
@@ -117,12 +121,12 @@ local function create_entity()
         return child
     end
 
-    local engine_methods = recorded_methods(entity, "entity", { "SetPristine" })
+    local engine_methods = recorded_methods(entity, "entity", { "SetPristine", "SetParent" })
     local engine_objects = {
-        Transform = {},
+        Transform = { "SetNoFaced", "SetFourFaced", "SetEightFaced" },
         AnimState = {
             "SetBank", "SetBuild", "PlayAnimation", "PushAnimation", "SetLightOverride",
-            "ClearOverrideSymbol", "OverrideSymbol",
+            "ClearOverrideSymbol", "OverrideSymbol", "SetFinalOffset", "Hide",
         },
         MiniMapEntity = { "SetIcon", "SetCanUseCache", "SetDrawOverFogOfWar" },
         Light = { "Enable", "SetFalloff", "SetIntensity", "SetColour", "SetRadius" },
@@ -143,9 +147,20 @@ local function create_entity()
     return proxy(entity, "inst", fields, methods)
 end
 
+local resolve_prefab
+
 return {
     operations = operations,
     createEntity = create_entity,
+    setPrefabResolver = function(resolve)
+        resolve_prefab = resolve
+    end,
+    -- The global SpawnPrefab: the child's constructor records first, then the spawn names it at the call site.
+    spawnPrefab = function(name)
+        local child = resolve_prefab(name)
+        record(0, "global", "call", "SpawnPrefab", name, child)
+        return child
+    end,
     entityId = function(entity)
         return assert(proxies[entity], "constructor did not return a recorded entity").entity
     end,

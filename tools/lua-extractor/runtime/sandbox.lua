@@ -1,4 +1,4 @@
-return function(recorder, read_source, prefab_file, prefab_id, scenario)
+return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_requires)
     local env = {
         assert = assert, error = error, ipairs = ipairs, next = next, pairs = pairs,
         pcall = pcall, select = select, tonumber = tonumber, tostring = tostring, type = type,
@@ -37,7 +37,22 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario)
     env.require("constants")
     env.require("tuning")
     env.require("standardcomponents")
-    local definitions = table.pack(load_source(prefab_file)())
+    -- A profile's extra source modules (util.lua's shallowcopy, prefabutil.lua's MakePlacer) load after the defaults.
+    for _, name in ipairs(extra_requires or {}) do
+        env.require(name)
+    end
+    local definitions
+    -- SpawnPrefab of a prefab the same file returns runs that prefab's recorded constructor.
+    recorder.setPrefabResolver(function(name)
+        for i = 1, definitions.n do
+            if definitions[i].name == name then
+                return definitions[i].fn()
+            end
+        end
+        error("SpawnPrefab of a prefab outside " .. prefab_file .. ": " .. name)
+    end)
+    env.SpawnPrefab = recorder.spawnPrefab
+    definitions = table.pack(load_source(prefab_file)())
     for i = 1, definitions.n do
         local prefab = definitions[i]
         if prefab.name == prefab_id then

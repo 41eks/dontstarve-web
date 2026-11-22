@@ -195,8 +195,8 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
   }
   private makeChair(): void {
     addComponent(this, 'sittable', Sittable);
-    // The constructor-only Sittable does not add its source tag itself.
-    for (const tag of ['cansit', 'structure', 'limited_chair', 'uncomfortable_chair']) {
+    // Sittable derives its own cansit tag.
+    for (const tag of ['structure', 'limited_chair', 'uncomfortable_chair']) {
       this.addTag(tag);
     }
   }
@@ -219,7 +219,7 @@ export class RuinsRelicInstance extends PrefabInstance<SpriteState> {
       }
       if (this.name === 'chair') {
         removeComponent(this, 'sittable');
-        for (const tag of ['cansit', 'structure', 'limited_chair']) {
+        for (const tag of ['structure', 'limited_chair']) {
           this.removeTag(tag);
         }
       }

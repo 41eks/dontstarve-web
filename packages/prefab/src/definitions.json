@@ -419,6 +419,21 @@
       },
       "skinSymbols": ["basin"]
     },
+    "wood_chair": {
+      "archive": "wood_chair.zip",
+      "buildArchive": "wood_chair_chair.zip",
+      "buildLabel": "木椅",
+      "idleAnimation": "idle",
+      "name": "WoodChair",
+      "skinArchives": {
+        "wood_chair_cawnival": "dynamic/wood_chair_cawnival.zip",
+        "wood_chair_fantasy": "dynamic/wood_chair_fantasy.zip",
+        "wood_chair_hallowed": "dynamic/wood_chair_hallowed.zip",
+        "wood_chair_handmade": "dynamic/wood_chair_handmade.zip",
+        "wood_chair_rose": "dynamic/wood_chair_rose.zip",
+        "wood_chair_western": "dynamic/wood_chair_western.zip"
+      }
+    },
     "lightning_rod": {
       "archive": "lightning_rod.zip",
       "buildLabel": "避雷针",

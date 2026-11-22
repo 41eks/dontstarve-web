@@ -310,6 +310,8 @@ RGB `(237,237,209)/255`。范围不随掉落堆叠数量增加，也没有火把
 
 `c_spawn("moondial")` 生成的月晷可以检查并按月相更新反光和灯光。放置、锤击和月相切换的动画与声音由 `SGmoondial` 驱动，皮肤和建筑位置沿用现有存档格式。
 
+`c_spawn("wood_chair")` 在玩家前方生成木椅（`furniture_chairs.lua` 的 `AddChair`），无额外参数，不支持 `c_give`。椅子用 `anim/wood_chair.zip` 的 bank `wood_chair` 和 `anim/wood_chair_chair.zip` 的 build，按 Lua 不循环 `idle`、`SetFinalOffset(-1)`、隐藏 `back_over` 图层，四向朝向；同时生成不入档的 FX 子实体 `wood_chair_back`（同一 bank／build，`SetFinalOffset(3)`，隐藏 `parts` 图层）。标签 `blocker`、`structure`、`faced_chair`、`rotatableobject`、`inspectable`、`cansit`、`canlight`、`HAMMER_workable`，半径 0.25 的障碍碰撞。锤子一击播放 `wood` 坍塌效果、按配方掉落后移除；受击时椅子与靠背播 `hit` 后回到 `idle`；建造（`onbuilt`）播 `place` 后回到 `idle`；可燃，烧毁后椅子循环 `burnt`、靠背播一次 `burnt` 并移除 `sittable`。皮肤 `wood_chair_cawnival`、`_fantasy`、`_hallowed`、`_handmade`、`_rose`、`_western`：椅子整体换 build，靠背只换 `chair01_parts` 符号。`c_save()` 保存 ID、位置、`building.burnt`、`savedrotation.rotation` 和皮肤；默认 `Cluster_1/Master.json` 含 1 把（朝向 -75°）。未接入：坐下（SIT 动作与坐者状态图，`sittable` 没有占用者）、建造音效 `repair_stonefurniture`、`CHEVO_makechair` 世界事件、放置器的四向朝向与固定镜头偏移、建造时按放置朝向写入旋转。
+
 矮星音频随场景启动时的 `PrewarmSounds()` 一起解码：出现时播放 `dontstarve/common/staff_star_create`，
 每颗矮星独立循环 `dontstarve/common/staff_star_LP`，消失动画结束时停止；
 移除及 `dispose()` 会停止并断开所属矮星的音源。休眠不停声，由距离衰减静音；读档与 Lua 一样重新执行 `fn()`，出现声和 `appear` 也会重播。

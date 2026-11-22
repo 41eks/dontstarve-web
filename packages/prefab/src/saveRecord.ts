@@ -81,6 +81,8 @@ export interface EntityPersistData {
   /** rock_avocado_bush.lua on_save: data.burning. */
   burning?: true;
   building?: { burnt?: true };
+  /** savedrotation.lua OnSave: Transform:GetRotation in degrees, written when it is not 0. */
+  savedrotation?: import('../../componets/src/savedrotation').SavedRotationSaveData;
   stewer?: import('../../componets/src/stewer').StewerSaveData;
   container?: SlotItemsSave;
   /** health.lua OnSave, or a structure's own { current, maximum } record (relics, walls). */

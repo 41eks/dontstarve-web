@@ -50,6 +50,7 @@ import { NIGHT_LIGHT_ID, NIGHT_LIGHT_PLACER, nightLightPrefabs } from '@dontstar
 import { PIG_HOUSE_ID, PIG_HOUSE_PLACER, pigHousePrefabs } from '@dontstarve-web/prefab/pighouse';
 import { BIRDCAGE_ID, BIRDCAGE_PLACER, birdcagePrefabs } from '@dontstarve-web/prefab/birdcage';
 import { MOONDIAL_ID, MOONDIAL_PLACER, moondialPrefabs } from '@dontstarve-web/prefab/moondial';
+import { WOOD_CHAIR_ID, WOOD_CHAIR_PLACER, woodChairPrefabs } from '@dontstarve-web/prefab/furniture_chairs';
 import { STICK_HEAD_PLACERS, stickHeadPrefabs } from '@dontstarve-web/prefab/stickheads';
 import { WINTEROMETER_ID, WINTEROMETER_PLACER, winterometerPrefabs } from '@dontstarve-web/prefab/winterometer';
 import { LIGHTNING_ROD_ID, LIGHTNING_ROD_PLACER, lightningRodPrefabs } from '@dontstarve-web/prefab/lightning_rod';
@@ -76,6 +77,7 @@ const MANAGED_BUILDING_PLACERS = {
   [TENT_ID]: TENT_PLACER,
   [MOONBASE_ID]: MOONBASE_PLACER,
   [MOONDIAL_ID]: MOONDIAL_PLACER,
+  [WOOD_CHAIR_ID]: WOOD_CHAIR_PLACER,
   [SCULPTING_TABLE_ID]: SCULPTING_TABLE_PLACER,
   [WINTEROMETER_ID]: WINTEROMETER_PLACER,
   [LIGHTNING_ROD_ID]: LIGHTNING_ROD_PLACER,
@@ -143,6 +145,7 @@ export class PlaceableBuildingPlacement {
       ...tentPrefabs(services),
       ...moonbasePrefabs(services),
       ...moondialPrefabs(services),
+      ...woodChairPrefabs({ ...services, spawnPrefab: (id, position) => prefabs.spawn(id, position) }),
       ...sculptingTablePrefabs(services),
       ...winterometerPrefabs(services),
       ...lightningRodPrefabs(services),

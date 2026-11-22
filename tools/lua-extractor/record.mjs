@@ -95,7 +95,7 @@ export async function recordPrefab(
   sourceRoot,
   file,
   prefab,
-  { includeCallbackSource = false, scenarios = defaultScenarios } = {},
+  { includeCallbackSource = false, scenarios = defaultScenarios, requires = [] } = {},
 ) {
   const sources = new Map();
   const sourceNodes = new Map();
@@ -120,10 +120,11 @@ export async function recordPrefab(
       lua.global.set('scenario', scenario);
       lua.global.set('recorderSource', runtime[0]);
       lua.global.set('sandboxSource', runtime[1]);
+      lua.global.set('extraRequires', requires);
       const result = lua.doStringSync(`
         local recorder = assert(load(recorderSource, "@recorder.lua"))()
         local record = assert(load(sandboxSource, "@sandbox.lua"))()
-        return record(recorder, readSource, prefabFile, prefabId, scenario)
+        return record(recorder, readSource, prefabFile, prefabId, scenario, extraRequires)
       `);
       const observed = JSON.parse(
         JSON.stringify(result, (key, value) => {

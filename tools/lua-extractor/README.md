@@ -38,3 +38,15 @@ node tools/lua-extractor/pighead.mjs --prefab moondial --scaffold onmoonphasecha
 ```
 
 The moondial profile records the constructor on the client and in each of the five master moon phases. Its schema supplies the split bank/build assets, initial animation, tags, collider and deploy radii, minimap settings, hammer work, reflection symbols, and phase light. The trace includes the altar and ghost gestalter registrations for later ports.
+
+## Wood chair
+
+```sh
+pnpm extract:lua --prefab wood_chair
+pnpm extract:lua --prefab wood_chair --check
+pnpm extract:lua --prefab wood_chair --scaffold OnChairBurnt
+```
+
+The profile runs `prefabs/furniture_chairs.lua` with `util.lua` and `prefabutil.lua` loaded, because the file calls `shallowcopy`, `MakePlacer` and `MakeDeployableKitItem` while it builds its list. It records the client and two MasterSim seeds. The sandbox's `SpawnPrefab` runs the constructor of a prefab the same file returns, so the trace includes `wood_chair_back` and its `entity:SetParent`. The two seeds draw different `MakeSmallPropagator` values. The config checks that both fall in the `small` preset's ranges instead of copying them.
+
+`wood_chair.schema.ts` supplies the bank/build archives, the idle clip, the four facings, the final offsets and hidden layers of the chair and its back, the tags, collider and deploy radii, `inspectable.nameoverride`, `savedrotation.dodelayedpostpassapply`, hammer work, haunt cooldown and burn settings. `localContracts` types the animation helpers and the nested `fn` / `backfn`, which no registration records. The rocking-chair branches (`OnSyncChairRocking`, `OnBecomeSittable`) and the back's client-only `OnEntityReplicated` are not recorded for this ID.

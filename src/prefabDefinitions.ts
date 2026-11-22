@@ -174,6 +174,7 @@ import { TREASURE_CHEST_ID } from '@dontstarve-web/prefab/treasurechest';
 import { BOOKSTATION_ID } from '@dontstarve-web/prefab/bookstation';
 import { WINTEROMETER_ID } from '@dontstarve-web/prefab/winterometer';
 import { PIG_HEAD_ID, MERM_HEAD_ID } from '@dontstarve-web/prefab/stickheads';
+import { WOOD_CHAIR_ID } from '@dontstarve-web/prefab/furniture_chairs';
 import { RESEARCH_LAB_IDS } from '@dontstarve-web/prefab/scienceprototyper';
 import { SCULPTING_TABLE_ID } from '@dontstarve-web/prefab/sculptingtable';
 import { BIRDCAGE_ID } from '@dontstarve-web/prefab/birdcage';
@@ -701,6 +702,8 @@ const birdcage = componentParser({ keys: ['building', 'CAGE_STATE', 'bird_type',
 const lightningRod = componentParser({ keys: ['building', 'lightningrod'] });
 const firepit = componentParser({ keys: ['building', 'firepit'] });
 const moonbase = componentParser({ keys: ['building', 'workable', 'moonbase'] });
+/** furniture_chairs.lua OnSave writes only burnt (as building.burnt); savedrotation saves its own record. */
+const woodChair = componentParser({ keys: ['building', 'savedrotation'], burntStructure: true });
 const tent = componentParser({ keys: ['building', 'finiteuses'], finiteUses: TENT_USES });
 const cookPot = componentParser({ keys: ['building', 'container', 'stewer'], burntStructure: true });
 const wall = componentParser({ keys: ['health'] });
@@ -1089,6 +1092,7 @@ const WORLD_PREFAB_DEFINITIONS = {
       [BIRDCAGE_ID]: birdcage,
       [TENT_ID]: tent,
       [MOONBASE_ID]: moonbase,
+      [WOOD_CHAIR_ID]: woodChair,
       [LIGHTNING_ROD_ID]: lightningRod,
       [FIRE_PIT_ID]: firepit,
       [FENCE_ID]: fence,

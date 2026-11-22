@@ -154,6 +154,7 @@
     "./moontree": "./src/moontree.ts",
     "./moonbase": "./src/moonbase.ts",
     "./moondial": "./src/moondial.ts",
+    "./furniture_chairs": "./src/furniture_chairs.ts",
     "./dock_kit": "./src/dock_kit.ts",
     "./sculptingtable": "./src/sculptingtable.ts",
     "./winterometer": "./src/winterometer.ts",

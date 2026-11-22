@@ -10,6 +10,30 @@ RESEARCH_LAB_SKINS = {
     for prefab, definition in json.loads((ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings'].items()
     if prefab in ('researchlab', 'researchlab2', 'researchlab3', 'researchlab4')
 }
+WOOD_CHAIR_SKINS = set(
+    json.loads((ROOT / 'packages/prefab/src/definitions.json').read_text())['animatedBuildings']['wood_chair']['skinArchives'])
+
+
+def wood_chair_components(data, context):
+    # furniture_chairs.lua OnSave writes only burnt; savedrotation.lua OnSave writes a non-zero rotation in degrees.
+    # The project saves the burnt flag as building.burnt, and every building record carries `building`.
+    if set(data) - {'burnt', 'savedrotation'}:
+        raise ValueError(f'Unsupported wood_chair save state: {data}')
+    if 'burnt' in data and data['burnt'] is not True:
+        raise ValueError('Expected a true wood_chair burnt flag')
+    result = {'building': {'burnt': True} if data.get('burnt') else {}}
+    if 'savedrotation' in data:
+        saved = data['savedrotation']
+        if not isinstance(saved, dict) or set(saved) != {'rotation'}:
+            raise ValueError(f'Unsupported wood_chair savedrotation: {saved}')
+        rotation = saved['rotation']
+        if type(rotation) not in (int, float) or not math.isfinite(rotation) or not -180 <= rotation <= 180 or rotation == 0:
+            raise ValueError(f'Unsupported wood_chair rotation: {rotation}')
+        result['savedrotation'] = {'rotation': rotation}
+    skin = context['skin']
+    if skin is not None and skin not in WOOD_CHAIR_SKINS:
+        raise ValueError(f'Unsupported wood_chair skin: {skin}')
+    return result
 
 
 def researchlab_components(prefab):

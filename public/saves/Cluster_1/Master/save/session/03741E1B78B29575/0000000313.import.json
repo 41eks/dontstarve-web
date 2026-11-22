@@ -400,6 +400,7 @@
     "atrium_statue",
     "atrium_overgrowth",
     "mast_malbatross",
+    "wood_chair",
     "support_pillar",
     "oasislake",
     "beehive",
@@ -739,6 +740,10 @@
     "mast_malbatross": {
       "source": 2,
       "imported": 2
+    },
+    "wood_chair": {
+      "source": 1,
+      "imported": 1
     },
     "support_pillar": {
       "source": 0,
@@ -1998,6 +2003,18 @@
         -348.914
       ],
       "sourceNode": "MoonIsland_Beach:1:MoonIsland_Beach"
+    },
+    {
+      "id": "dst_03741E1B78B29575_wood_chair_id_101717",
+      "prefab": "wood_chair",
+      "sourceIndex": 1,
+      "sourceId": 101717,
+      "sourcePosition": [
+        579,
+        0,
+        489.5
+      ],
+      "sourceNode": "StaticLayoutIsland:HermitcrabIsland"
     },
     {
       "id": "dst_03741E1B78B29575_oasislake_id_100162",

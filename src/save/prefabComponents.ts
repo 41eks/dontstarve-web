@@ -666,6 +666,16 @@ export function componentParser(schema: PrefabComponentSchema): PrefabComponentP
         crackRotation: number(growth.crackRotation, `${componentPath}.crackRotation`, 0, 360),
       };
     }
+    // savedrotation.lua OnSave: Transform:GetRotation, a heading in (-180, 180], absent at 0.
+    if (keys.includes('savedrotation') && c.savedrotation !== undefined) {
+      const componentPath = `${path}.savedrotation`;
+      const saved = object(c.savedrotation, componentPath, ['rotation']);
+      const rotation = number(saved.rotation, `${componentPath}.rotation`, -180, 180);
+      if (rotation === 0) {
+        fail(`${componentPath}.rotation`, 'savedrotation does not save a rotation of 0');
+      }
+      components.savedrotation = { rotation };
+    }
     if (keys.includes('building')) {
       if (!building) {
         fail(path, `missing building definition for ${prefab}`);

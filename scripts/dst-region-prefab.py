@@ -28,6 +28,7 @@ ENTITY_WHITELIST = {
     'atrium_statue': STRUCTURE['atrium_statue_components'],
     'atrium_overgrowth': STRUCTURE['atrium_overgrowth_components'],
     'mast_malbatross': STRUCTURE['mast_malbatross_components'],
+    'wood_chair': STRUCTURE['wood_chair_components'],
     'support_pillar': STRUCTURE['support_pillar_components'],
     'oasislake': STRUCTURE['oasislake_components'],
     # tuning.lua: math.ceil(BEEHIVE_BEES * SPRING_COMBAT_MOD) bees in spring, health 200; WASPHIVE_WASPS, health 250.
@@ -162,7 +163,7 @@ TARGET_PREFABS = {'chesspiece_malbatross': 'chesspiece_malbatross_marble'}
 CONTAINER_PREFABS = {'treasurechest', 'pandoraschest', 'cookpot', 'icebox', 'saltbox', 'dragonflychest', 'dragonflyfurnace'}
 ITEM_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'moonbase'}
 RECORD_CONTEXT_PREFABS = {'ruinsrelic_chair', *ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4',
-                          'mast_malbatross'}
+                          'mast_malbatross', 'wood_chair'}
 # Converters that also receive the record's project position and a converter for saved source positions.
 POSITION_CONTEXT_PREFABS = {'beefalo', 'lightninggoat', 'dragonfly'}
 

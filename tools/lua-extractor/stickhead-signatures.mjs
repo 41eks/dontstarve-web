@@ -132,11 +132,24 @@ export function emitStickHeadSignatures(snapshots) {
   });
 }
 
-export function emitPrefabSignatures(snapshots, { registrations, staticContracts, typeImports, helpers = {} }) {
+/**
+ * `localContracts` types local functions no recording registers (helpers that callbacks call, or constructors nested in a
+ * factory), by their Lua name at any depth. The name must be declared once.
+ */
+export function emitPrefabSignatures(
+  snapshots,
+  { registrations, staticContracts, typeImports, helpers = {}, localContracts = {} },
+) {
   const [{ localFunctions }] = snapshots;
   const contracts = registeredTypes(snapshots, registrations);
   const usedTypes = new Set();
   const names = prefabFunctionNames(localFunctions, typeImports);
+  for (const name of Object.keys(localContracts)) {
+    const count = localFunctions.filter(fn => fn.name === name).length;
+    if (count !== 1) {
+      throw new Error(`Expected one local function ${name} for its contract, found ${count}`);
+    }
+  }
   const declarations = localFunctions.map((fn, functionIndex) => {
     const { exportName, parameterNames } = names[functionIndex];
     const key = sourceKey(fn);
@@ -144,6 +157,7 @@ export function emitPrefabSignatures(snapshots, { registrations, staticContracts
     const staticKind = staticKinds.size === 1 ? staticKinds.values().next().value : undefined;
     const contract =
       contracts.get(key) ??
+      (Object.hasOwn(localContracts, fn.name) ? localContracts[fn.name] : undefined) ??
       staticContracts.get(staticKind) ??
       (fn.topLevel && Object.hasOwn(helpers, fn.name) ? helpers[fn.name] : undefined);
     const parameters = fn.parameters.map((name, index) => {

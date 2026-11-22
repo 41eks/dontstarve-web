@@ -699207,6 +699207,25 @@
           }
         }
       ],
+      "wood_chair": [
+        {
+          "id": "dst_03741E1B78B29575_wood_chair_id_101717",
+          "transform": {
+            "position": [
+              1779.0,
+              0.0,
+              -1414.5
+            ],
+            "rotationY": 0
+          },
+          "components": {
+            "building": {},
+            "savedrotation": {
+              "rotation": -74.999984741211
+            }
+          }
+        }
+      ],
       "oasislake": [
         {
           "id": "dst_03741E1B78B29575_oasislake_id_100162",
