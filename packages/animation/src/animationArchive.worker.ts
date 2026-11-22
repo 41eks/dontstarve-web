@@ -16,7 +16,7 @@ globalThis.addEventListener(
       // Ownership of RGBA, block and alpha buffers moves to the main-thread cache without a copy.
       const buffers =
         result && 'atlases' in result
-          ? transferBuffers(result.atlases.flatMap(({ pixels, blocks, alpha }) => [pixels, blocks, alpha]))
+          ? transferBuffers(result.atlases.flatMap(({ pixels, blocks, alpha }) => [pixels, blocks, alpha?.bits]))
           : [];
       postMessage({ id, result }, buffers);
     } catch (error) {

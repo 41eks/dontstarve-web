@@ -1,4 +1,5 @@
 import { unzipSync } from 'fflate';
+import { packAlphaMask, type AlphaMask } from './alphaMask';
 import { parseKtex, parseKtexBlocks, type BcType } from './parseKtex';
 import { decodeDyn } from './decodeDyn';
 
@@ -49,7 +50,7 @@ export interface ParsedBuild {
 /**
  * One build atlas page, as RGBA or, when loaded for a renderer that samples them (see `atlasFormat.ts`), as the BC
  * blocks of a DXT1/3/5 page. Either is released once the GPU holds it (see `createAtlasTexture`), and read again from
- * the archive only when a GPU copy has to be rebuilt; `alpha` (one byte per texel) stays for input picking.
+ * the archive only when a GPU copy has to be rebuilt; `alpha` (one bit per texel) stays for input picking.
  */
 export interface BuildAtlas {
   readonly width: number;
@@ -58,7 +59,8 @@ export interface BuildAtlas {
   /** BC blocks of a compressed page, flipped like the RGBA; a compressed page never has `pixels`. */
   blocks?: Uint8Array;
   readonly bcType?: BcType;
-  readonly alpha?: Uint8Array;
+  /** Picking coverage, one bit per texel (see `alphaMask.ts`). */
+  readonly alpha?: AlphaMask;
 }
 
 export interface BuildPackage {
@@ -75,14 +77,6 @@ export function atlasPixels(atlas: BuildAtlas): Uint8Array {
     throw new Error('Atlas RGBA was released after its GPU upload');
   }
   return atlas.pixels;
-}
-
-function alphaChannel(pixels: Uint8Array): Uint8Array {
-  const alpha = new Uint8Array(pixels.length >> 2);
-  for (let texel = 0; texel < alpha.length; texel++) {
-    alpha[texel] = pixels[texel * 4 + 3];
-  }
-  return alpha;
 }
 
 class BinaryReader {
@@ -333,7 +327,7 @@ async function buildPackageFromEntries(
       return { width, height, pixels: undefined, blocks, bcType, alpha };
     }
     const { width, height, pixels } = parseKtex(atlas, `${file}:${name}`);
-    return { width, height, pixels, alpha: alphaChannel(pixels) };
+    return { width, height, pixels, alpha: packAlphaMask(pixels, width, height, 4, 3) };
   });
   return { build, atlases };
 }

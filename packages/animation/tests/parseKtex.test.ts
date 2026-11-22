@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseKtex, parseKtexBlocks, type BcType } from '@dontstarve-web/animation/parseKtex';
+import { ALPHA_MASK_THRESHOLD, alphaMaskTexel, packAlphaMask } from '../src/alphaMask';
 
 function makeKtex(pixelFormat: number, width: number, height: number, data: Uint8Array, mipCount = 1) {
   const output = new Uint8Array(8 + mipCount * 10 + data.length);
@@ -131,7 +132,16 @@ describe('parseKtex', () => {
         decoded.subarray((height - 1 - y) * rowSize, (height - y) * rowSize),
       );
     }
-    expect(compressed.alpha).toEqual(decoded.filter((_, index) => index % 4 === 3));
+    expect(compressed.alpha).toEqual(packAlphaMask(decoded, width, height, 4, 3));
+  });
+
+  it('marks a texel covered from the alpha a material with alphaTest 0.01 draws at full opacity', () => {
+    const alpha = new Uint8Array([0, ALPHA_MASK_THRESHOLD - 1, ALPHA_MASK_THRESHOLD, 255, 128, 0, 0, 0, 1]);
+    const mask = packAlphaMask(alpha, 3, 3);
+    expect(mask.bits.length).toBe(2);
+    expect([0, 1, 2, 3, 4, 5, 6, 7, 8].map(index => alphaMaskTexel(mask, index % 3, Math.floor(index / 3)))).toEqual([
+      0, 0, 1, 1, 1, 0, 0, 0, 0,
+    ]);
   });
 
   it('leaves textures that are not whole BC blocks to RGBA decoding', () => {

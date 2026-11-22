@@ -41,9 +41,11 @@ it('releases build atlas RGBA after the GPU upload, keeps alpha picking and deco
   } = await loadBuild('bulb_plant_single.zip', '/dst/data/anim');
   const original = atlas.pixels!.slice();
   const texel = (alpha: (value: number) => boolean) => {
-    const index = atlas.alpha!.findIndex(alpha);
+    const index = original.findIndex((value, channel) => channel % 4 === 3 && alpha(value)) >> 2;
     return [index % atlas.width, Math.floor(index / atlas.width)] as const;
   };
+  // Picking keeps one coverage bit per texel, not a byte.
+  expect(atlas.alpha!.bits.length).toBe(Math.ceil((atlas.width * atlas.height) / 8));
   const opaque = texel(value => value === 255),
     clear = texel(value => value === 0);
   // An RGBA build (loaded without atlas compression) makes DataTextures.
@@ -82,8 +84,9 @@ it('uploads a compressed build atlas as its BC blocks, keeps alpha picking and r
   expect(atlas.pixels).toBeUndefined();
   expect(atlas.alpha).toEqual(rgbaBuild.atlases[0].alpha);
   const blocks = atlas.blocks!.slice();
-  const opaque = atlas.alpha!.findIndex(value => value === 255),
-    clear = atlas.alpha!.findIndex(value => value === 0);
+  const rgba = rgbaBuild.atlases[0].pixels!;
+  const opaque = rgba.findIndex((value, channel) => channel % 4 === 3 && value === 255) >> 2,
+    clear = rgba.findIndex((value, channel) => channel % 4 === 3 && value === 0) >> 2;
 
   const [material] = createMaterials(compressedBuild);
   const texture = material.map as THREE.CompressedTexture;

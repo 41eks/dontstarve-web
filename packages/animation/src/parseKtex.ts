@@ -1,3 +1,5 @@
+import { packAlphaMask, type AlphaMask } from './alphaMask';
+
 export interface DecodedTexture {
   width: number;
   height: number;
@@ -13,8 +15,8 @@ export interface CompressedTexture {
   /** BC1 (DXT1) colour is straight; BC2/BC3 (DXT3/DXT5) colour is premultiplied by alpha. */
   bcType: BcType;
   blocks: Uint8Array;
-  /** One byte per texel, in the layout of the decoded RGBA: picking reads it without the colour. */
-  alpha: Uint8Array;
+  /** Picking coverage in the layout of the decoded RGBA, read without the colour. */
+  alpha: AlphaMask;
 }
 
 class KtexReader {
@@ -315,7 +317,7 @@ export function parseKtexBlocks(data: Uint8Array, label = 'KTEX'): CompressedTex
     height,
     bcType,
     blocks: flipBcBlocks(source.subarray(0, size), width, height, bcType),
-    alpha: decodeBcAlpha(source, width, height, bcType),
+    alpha: packAlphaMask(decodeBcAlpha(source, width, height, bcType), width, height),
   };
 }
 

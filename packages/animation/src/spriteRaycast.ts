@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { alphaMaskTexel, type AlphaMask } from './alphaMask';
 
 const textureUv = new THREE.Vector2();
 const instancedProxies = new WeakSet<THREE.Object3D>();
@@ -27,21 +28,21 @@ function wrapPixel(index: number, size: number, wrapping: THREE.Wrapping): numbe
   return Math.max(0, Math.min(size - 1, index));
 }
 
-const alphaMasks = new WeakMap<THREE.Source<unknown>, Uint8Array>();
+const alphaMasks = new WeakMap<THREE.Source<unknown>, AlphaMask>();
 
-/** One alpha byte per texel of an atlas source, which outlives the RGBA released after the GPU upload. */
-export function setAtlasAlphaMask(source: THREE.Source<unknown>, alpha: Uint8Array): void {
+/** The picking coverage of an atlas source, which outlives the RGBA or blocks released after the GPU upload. */
+export function setAtlasAlphaMask(source: THREE.Source<unknown>, alpha: AlphaMask): void {
   alphaMasks.set(source, alpha);
 }
 
-/** Sample the existing decoded atlas, using the same UV transform, orientation and filtering as the sprite. */
+/**
+ * Sample the atlas coverage, using the same UV transform, orientation and filtering as the sprite. A mask gives 0 or 1
+ * per texel (covered at full opacity), so its filtered value is the covered share; a decoded RGBA gives the alpha.
+ */
 function atlasAlpha(texture: THREE.Texture, uv: THREE.Vector2): number {
   const { width, height, data: pixels } = texture.image as { width: number; height: number; data?: Uint8Array | null };
   const mask = alphaMasks.get(texture.source);
-  const data = mask ?? pixels,
-    stride = mask ? 1 : 4,
-    channel = mask ? 0 : 3;
-  if (!data || width === 0 || height === 0) {
+  if ((!mask && !pixels) || width === 0 || height === 0) {
     return 1;
   }
   if (texture.matrixAutoUpdate) {
@@ -50,8 +51,11 @@ function atlasAlpha(texture: THREE.Texture, uv: THREE.Vector2): number {
   texture.transformUv(textureUv.copy(uv));
   const x = textureUv.x * width,
     y = textureUv.y * height;
-  const texel = (x: number, y: number) =>
-    data[(wrapPixel(y, height, texture.wrapT) * width + wrapPixel(x, width, texture.wrapS)) * stride + channel] / 255;
+  const texel = (x: number, y: number) => {
+    const column = wrapPixel(x, width, texture.wrapS),
+      row = wrapPixel(y, height, texture.wrapT);
+    return mask ? alphaMaskTexel(mask, column, row) : pixels![(row * width + column) * 4 + 3] / 255;
+  };
   if (texture.magFilter === THREE.NearestFilter) {
     return texel(Math.floor(x), Math.floor(y));
   }
