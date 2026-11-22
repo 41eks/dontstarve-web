@@ -11,7 +11,7 @@ const runtime = ['recorder.lua', 'sandbox.lua'].map(file =>
 const scenarios = [
   { name: 'client', master: false, fullMoon: false, seed: 42 },
   { name: 'master', master: true, fullMoon: false, seed: 42 },
-  { name: 'master-full-moon', master: true, fullMoon: true, seed: 42 },
+  { name: 'master-full-moon', master: true, fullMoon: true, seed: 43 },
 ];
 
 function getSourceNodes(file, readSource, sourceNodes) {

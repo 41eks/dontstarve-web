@@ -4,7 +4,7 @@ import { SpriteState, type SpriteResources } from '@dontstarve-web/display';
 import { Workable } from '../../componets/src/workable';
 import { spawnStructureLoot, STRUCTURE_LOOT_RECIPES } from './structureLoot';
 import definitions from './definitions.json' with { type: 'json' };
-import { PIGHEAD_WORK_LEFT } from './generated/pighead.schema';
+import { STICK_HEAD_CONFIG } from './generated/stickheads.schema';
 import {
   createEffect,
   createMemo,
@@ -27,16 +27,25 @@ export type PigHeadId = typeof PIG_HEAD_ID;
 export const MERM_HEAD_ID = 'mermhead' as const;
 export type MermHeadId = typeof MERM_HEAD_ID;
 type StickHeadId = PigHeadId | MermHeadId;
+type StickHeadAppearance = Pick<
+  (typeof STICK_HEAD_CONFIG)[StickHeadId],
+  'child' | 'idleAnimation' | 'wakeAnimation' | 'idleAwake'
+>;
+
+function buildingDeclaration(id: StickHeadId): BuildingDeclaration {
+  const { archive, idleAnimation } = STICK_HEAD_CONFIG[id];
+  return { ...definitions.animatedBuildings[id], archive, idleAnimation };
+}
 
 const DECLARATIONS: Readonly<Record<StickHeadId, BuildingDeclaration>> = {
-  [PIG_HEAD_ID]: definitions.animatedBuildings.pighead,
-  [MERM_HEAD_ID]: definitions.animatedBuildings.mermhead,
+  [PIG_HEAD_ID]: buildingDeclaration(PIG_HEAD_ID),
+  [MERM_HEAD_ID]: buildingDeclaration(MERM_HEAD_ID),
 };
 
 /** stickheads.lua MakePlacer(name.."_placer", bankandbuild, bankandbuild, "idle_asleep"). */
 export const STICK_HEAD_PLACERS = {
-  [PIG_HEAD_ID]: buildingPlacer(DECLARATIONS[PIG_HEAD_ID], 'pig_head'),
-  [MERM_HEAD_ID]: buildingPlacer(DECLARATIONS[MERM_HEAD_ID], 'merm_head'),
+  [PIG_HEAD_ID]: buildingPlacer(DECLARATIONS[PIG_HEAD_ID], STICK_HEAD_CONFIG[PIG_HEAD_ID].bank),
+  [MERM_HEAD_ID]: buildingPlacer(DECLARATIONS[MERM_HEAD_ID], STICK_HEAD_CONFIG[MERM_HEAD_ID].bank),
 };
 
 const SHOWN = readonlySignal(createSignal(true));
@@ -49,26 +58,34 @@ class StickHead {
   private readonly fullMoon?: Memo<boolean>;
   readonly flies: ReturnType<typeof createArchiveEntity>;
   private readonly inst: PrefabInstance;
+  private readonly appearance: StickHeadAppearance;
 
-  constructor(inst: PrefabInstance, world: PrefabWorldContext, sprites: SpriteResources) {
+  constructor(
+    inst: PrefabInstance,
+    appearance: StickHeadAppearance,
+    world: PrefabWorldContext,
+    sprites: SpriteResources,
+  ) {
     this.inst = inst;
+    this.appearance = appearance;
+    const { child } = appearance;
     // create_common: SpawnChild("flies") beside the head, drawn from the world's shared flies archive.
     const fliesSource = sprites.archive(
       { animationArchive: 'flies.zip', buildArchives: ['flies.zip'], bank: 'flies' },
       { dynamicParent: true },
     );
     this.flies = createArchiveEntity(
-      'flies',
+      child,
       fliesSource,
       { name: 'swarm_pre', billboard: true },
-      'flies',
+      child,
       flies => {
         flies.persists = false;
       },
       inst.status,
     );
     const flies = this.flies.display.model;
-    inst.sprite.attachFx('flies', {
+    inst.sprite.attachFx(child, {
       sprite: this.flies.instance.sprite,
       display: this.flies.display,
       active: SHOWN,
@@ -109,7 +126,8 @@ class StickHead {
     return this.fullMoon?.peek() ?? false;
   }
   get idle(): string {
-    return this.awake ? 'idle_awake' : 'idle_asleep';
+    const { idleAwake, idleAnimation } = this.appearance;
+    return this.awake ? idleAwake : idleAnimation;
   }
 
   /** OnFullMoon: wake or sleep, then settle on the idle pose. */
@@ -122,7 +140,7 @@ class StickHead {
       return;
     }
     this.awake = isfullmoon;
-    sprite.playOnce(isfullmoon ? 'wake' : 'sleep', () => sprite.playOnce(this.idle));
+    sprite.playOnce(isfullmoon ? this.appearance.wakeAnimation : 'sleep', () => sprite.playOnce(this.idle));
   }
 
   /** OnWorked: hit, then back to the current idle pose. */
@@ -134,7 +152,7 @@ class StickHead {
   dispose(): void {
     this.cleanups.splice(0).forEach(stop => stop());
     this.fliesController?.dispose();
-    this.inst.sprite.detachFx('flies');
+    this.inst.sprite.detachFx(this.appearance.child);
     this.flies.instance.remove();
     this.flies.display.dispose();
   }
@@ -163,7 +181,8 @@ export class StickHeadInstance extends PrefabInstance {
   readonly head: StickHead;
 
   constructor(id: StickHeadId, world: PrefabWorldContext, position: ReadonlyVector3, sprites: SpriteResources) {
-    super(id, new SpriteState({ name: DECLARATIONS[id].idleAnimation ?? 'idle', billboard: true }));
+    const config = STICK_HEAD_CONFIG[id];
+    super(id, new SpriteState({ name: config.idleAnimation, billboard: true }));
     const { fire, scheduler } = world;
     if (!fire || !scheduler) {
       throw new Error("A stick head needs the world's fire effects and scheduler");
@@ -178,22 +197,22 @@ export class StickHeadInstance extends PrefabInstance {
       onsaveBurnt(inst, data);
     };
     this.OnLoad = onloadBurnt;
-    this.addTag('structure');
-    this.addTag('beaverchewable'); // for werebeaver
+    for (const tag of config.tags) {
+      this.addTag(tag);
+    }
     const workable = addComponent(this, 'workable', Workable);
-    workable.SetWorkAction('HAMMER');
-    workable.SetWorkLeft(id === PIG_HEAD_ID ? PIGHEAD_WORK_LEFT : 3);
+    workable.SetWorkAction(config.workable.action);
+    workable.SetWorkLeft(config.workable.workLeft);
     workable.SetOnWorkCallback(onworked);
     workable.SetOnFinishCallback(onhammered);
     addComponent(this, 'lootdropper', LootDropper, spawnStructureLoot(this), STRUCTURE_LOOT_RECIPES);
-    const head = (this.head = new StickHead(this, world, sprites));
+    const head = (this.head = new StickHead(this, config, world, sprites));
     this.onRemove(() => head.dispose());
-    // MakeSmallBurnable(inst, nil, nil, true): SMALL_BURNTIME, fire level 2, small propagator, burnt structure.
+    // MakeSmallBurnable and MakeSmallPropagator bind the fire behavior to this instance.
     const burn = new BurnableBinding(
       this,
       {
-        burnTime: 10,
-        fxLevel: 2,
+        ...config.burnable,
         propagator: 'small',
         onExtinguish: () => {
           PlaySound('dontstarve/common/fireOut', this.position);
@@ -211,13 +230,13 @@ export class StickHeadInstance extends PrefabInstance {
 
 /** The Prefab table stickheads.lua returns for the two heads; the placers are the build flow's. */
 export function stickHeadPrefabs(world: PrefabWorldContext) {
-  const define = (id: StickHeadId, bank: string) =>
+  const define = (id: StickHeadId) =>
     buildingPrefab(
       DECLARATIONS[id],
-      bank,
+      STICK_HEAD_CONFIG[id].bank,
       undefined,
       (position, sprites) => new StickHeadInstance(id, world, position, sprites),
       world,
     );
-  return { [PIG_HEAD_ID]: define(PIG_HEAD_ID, 'pig_head'), [MERM_HEAD_ID]: define(MERM_HEAD_ID, 'merm_head') };
+  return { [PIG_HEAD_ID]: define(PIG_HEAD_ID), [MERM_HEAD_ID]: define(MERM_HEAD_ID) };
 }
