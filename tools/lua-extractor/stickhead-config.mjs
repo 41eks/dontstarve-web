@@ -85,6 +85,32 @@ function readComponents(recording) {
   };
 }
 
+export function stickHeadOnFullMoon(snapshots) {
+  const callbacks = snapshots.flatMap(({ prefab, recordings }) =>
+    recordings
+      .filter(recording => recording.scenario.master)
+      .map(recording => {
+        const watchers = findCalls(recording, 'inst', 'WatchWorldState').filter(call => call.args[0] === 'isfullmoon');
+        if (watchers.length !== 1) {
+          throw new Error(`${prefab}: expected one isfullmoon watcher in ${recording.scenario.name}`);
+        }
+        const { args, source } = watchers[0];
+        const callback = args[1];
+        if (
+          args.length !== 2 ||
+          callback?.kind !== 'callback' ||
+          callback.name !== 'OnFullMoon' ||
+          callback.parameters.length !== 2 ||
+          callback.parameters.includes('...')
+        ) {
+          throw new Error(`${prefab}: unsupported OnFullMoon watcher at ${source.file}:${source.line}`);
+        }
+        return callback;
+      }),
+  );
+  return requireSame(callbacks, 'OnFullMoon callback declaration');
+}
+
 export function stickHeadConfig({ prefab, recordings }) {
   try {
     const appearance = requireSame(recordings.map(readAppearance), 'initial art and animation');

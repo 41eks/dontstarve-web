@@ -512,6 +512,9 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "OnWorked",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 41
             }
@@ -533,6 +536,9 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "OnFinish",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 27
             }
@@ -614,6 +620,9 @@
               "file": "standardcomponents.lua",
               "kind": "callback",
               "name": "DefaultBurnFn",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 12
             }
@@ -635,6 +644,9 @@
               "file": "standardcomponents.lua",
               "kind": "callback",
               "name": "DefaultExtinguishFn",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 46
             }
@@ -656,6 +668,9 @@
               "file": "standardcomponents.lua",
               "kind": "callback",
               "name": "DefaultBurntStructureFn",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 52
             }
@@ -703,6 +718,9 @@
               "file": "standardcomponents.lua",
               "kind": "callback",
               "name": "DefaultIgniteFn",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 6
             }
@@ -802,6 +820,10 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "onsave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
               "startColumn": 0,
               "startLine": 64
             }
@@ -823,6 +845,10 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "onload",
+              "parameters": [
+                "inst",
+                "data"
+              ],
               "startColumn": 0,
               "startLine": 70
             }
@@ -845,6 +871,10 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "OnFullMoon",
+              "parameters": [
+                "inst",
+                "isfullmoon"
+              ],
               "startColumn": 0,
               "startLine": 48
             }
@@ -905,6 +935,10 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "OnHaunt",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
               "startColumn": 0,
               "startLine": 84
             }
@@ -1201,6 +1235,9 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "OnWorked",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 41
             }
@@ -1222,6 +1259,9 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "OnFinish",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 27
             }
@@ -1303,6 +1343,9 @@
               "file": "standardcomponents.lua",
               "kind": "callback",
               "name": "DefaultBurnFn",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 12
             }
@@ -1324,6 +1367,9 @@
               "file": "standardcomponents.lua",
               "kind": "callback",
               "name": "DefaultExtinguishFn",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 46
             }
@@ -1345,6 +1391,9 @@
               "file": "standardcomponents.lua",
               "kind": "callback",
               "name": "DefaultBurntStructureFn",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 52
             }
@@ -1392,6 +1441,9 @@
               "file": "standardcomponents.lua",
               "kind": "callback",
               "name": "DefaultIgniteFn",
+              "parameters": [
+                "inst"
+              ],
               "startColumn": 0,
               "startLine": 6
             }
@@ -1491,6 +1543,10 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "onsave",
+              "parameters": [
+                "inst",
+                "data"
+              ],
               "startColumn": 0,
               "startLine": 64
             }
@@ -1512,6 +1568,10 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "onload",
+              "parameters": [
+                "inst",
+                "data"
+              ],
               "startColumn": 0,
               "startLine": 70
             }
@@ -1534,6 +1594,10 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "OnFullMoon",
+              "parameters": [
+                "inst",
+                "isfullmoon"
+              ],
               "startColumn": 0,
               "startLine": 48
             }
@@ -1634,6 +1698,10 @@
               "file": "prefabs/stickheads.lua",
               "kind": "callback",
               "name": "OnHaunt",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
               "startColumn": 0,
               "startLine": 84
             }

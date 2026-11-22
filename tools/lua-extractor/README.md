@@ -12,6 +12,6 @@ Wasmoon runs the original `prefabs/stickheads.lua` for `pighead` and `mermhead` 
 
 The generated `stickheads.schema.ts` supplies the archive, animation bank, initial and full-moon clips, constructor tags, child prefab, hammer action and work count, and burn duration and FX level. The shared handwritten prefab uses these defaults for both variants through the existing sprite, component, and child attachment APIs. The CLI also syncs the two archive and initial clip fields in the building catalog for save archive selection.
 
-The recorded child is a reference. Child and component constructors are outside the recording scope. World watchers and gameplay callbacks are captured at registration, and the trace includes the full-moon callback the Lua constructor itself invokes. The TypeScript prefab owns the runtime effects and callbacks. Random propagator values remain in the snapshot.
+The recorded child is a reference. Child and component constructors are outside the recording scope. World watchers and gameplay callbacks are captured at registration, and the trace includes the full-moon callback the Lua constructor itself invokes. The generator emits the `OnFullMoon` callback type with parameter names from the Lua AST and the argument types from the `WatchWorldState("isfullmoon")` mapping. The TypeScript prefab owns the runtime effects and callbacks. Random propagator values remain in the snapshot.
 
 `--check` compares the snapshot, generated TypeScript, and the two catalog rows. Unsupported mappings report an error before writing generated files.

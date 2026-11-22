@@ -39,10 +39,11 @@ function locateCallback(callback, readSource, sourceNodes) {
   if (matches.length !== 1) {
     throw new Error(`Expected one callback declaration at ${file}:${startLine}-${endLine}, found ${matches.length}`);
   }
-  const { identifier, loc } = matches[0];
+  const { identifier, loc, parameters } = matches[0];
   return {
     ...callback,
     ...(identifier?.type === 'Identifier' ? { name: identifier.name } : {}),
+    parameters: parameters.map(parameter => (parameter.type === 'Identifier' ? parameter.name : '...')),
     startColumn: loc.start.column,
     endColumn: loc.end.column,
   };
