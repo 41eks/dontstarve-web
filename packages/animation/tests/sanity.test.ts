@@ -35,6 +35,10 @@ it('uses source lunacy thresholds, induced percentages and penalty caps without 
     sanity.EnableLunacy(true, 'island');
     sanity.SetCurrent(170);
     expect(sanity.IsEnlightened()).toBe(true);
+    // Enlightened is not insane: playerhud plays the "basic" vignette, and colourcube grades lunacy.
+    expect(sanity.sane.get()).toBe(false);
+    expect(sanity.insane.get()).toBe(false);
+    expect(sanity.lunacyMode.get()).toBe(true);
     sanity.SetCurrent(167);
     expect(sanity.IsEnlightened()).toBe(true);
     sanity.SetCurrent(165);
@@ -42,6 +46,8 @@ it('uses source lunacy thresholds, induced percentages and penalty caps without 
     sanity.EnableLunacy(false, 'island');
     sanity.SetInducedInsanity('source', true);
     expect(sanity.IsInsane()).toBe(true);
+    expect(sanity.insane.get()).toBe(true);
+    expect(sanity.lunacyMode.get()).toBe(false);
     expect(sanity.GetPercent()).toBe(0);
     expect(sanity.current).toBe(165);
     sanity.SetInducedInsanity('source', false);

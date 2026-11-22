@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { afterEach, expect, it, vi } from 'vitest';
 import { clockstate, seasonstate, moonphasestate } from '@dontstarve-web/signals';
 import { DstLightingRenderer } from '../../../src/dstLighting';
+import { Sanity } from '../../componets/src/sanity';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -72,5 +73,43 @@ it('derives lighting with an effect, preserves transitions across progress updat
     expect(lighting.getSeason()).toBe('autumn');
   } finally {
     lighting.dispose();
+  }
+});
+
+it('drops the insanity grading and distortion in lunacy mode, as colourcube.lua SetOnlyLunacyIntensityParams', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      const file = await readFile(
+        new URL(`../../../public/dst/data/images/colour_cubes/${url.split('/').at(-1)}`, import.meta.url),
+      );
+      return new Response(file);
+    }),
+  );
+  const sanity = new Sanity({ components: {}, hasTag: () => false }, 200);
+  sanity.SetCurrent(40);
+  const renderer = { capabilities: { maxSamples: 4 } } as THREE.WebGLRenderer;
+  const lighting = await DstLightingRenderer.create(renderer, '/dst/data/images/colour_cubes', {
+    sanityPercent: sanity.percent,
+    lunacyMode: sanity.lunacyMode,
+  });
+  const { bakeMaterial, material } = lighting as unknown as {
+    bakeMaterial: THREE.ShaderMaterial;
+    material: THREE.ShaderMaterial;
+  };
+  const effects = () => [bakeMaterial.uniforms.insanityIntensity.value, material.uniforms.distortionIntensity.value];
+  try {
+    expect(effects().every(value => value > 0)).toBe(true);
+    // Low enlightenment and full enlightenment both show no insanity filter.
+    sanity.EnableLunacy(true, 'island');
+    expect(effects()).toEqual([0, 0]);
+    sanity.SetCurrent(200);
+    expect(effects()).toEqual([0, 0]);
+    sanity.SetCurrent(40);
+    sanity.EnableLunacy(false, 'island');
+    expect(effects().every(value => value > 0)).toBe(true);
+  } finally {
+    lighting.dispose();
+    sanity.dispose();
   }
 });

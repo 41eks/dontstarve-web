@@ -18,6 +18,8 @@ export type DstLightPhase = 'day' | 'dusk' | 'night' | 'full_moon';
 
 export interface DstLightingState {
   sanityPercent?: ReadonlySignal<number>;
+  /** sanity:IsLunacyMode(): colourcube.lua drops the insanity grading and distortion. */
+  lunacyMode?: ReadonlySignal<boolean>;
   /** playervision:HasGhostVision(); replaces the ambient colour cube. */
   ghostVision?: ReadonlySignal<boolean>;
 }
@@ -391,10 +393,11 @@ export class DstLightingRenderer {
     const bakeQuad = new THREE.Mesh(geometry, this.bakeMaterial);
     bakeQuad.frustumCulled = false;
     this.bakeScene.add(bakeQuad);
-    if (initialState.sanityPercent) {
-      this.stopSanitySubscription = initialState.sanityPercent.subscribe(percent => this.applySanityPercent(percent));
-    }
-    this.applySanityPercent(initialState.sanityPercent?.peek() ?? 1);
+    const { sanityPercent, lunacyMode } = initialState;
+    const applySanity = () => this.applySanity(sanityPercent?.peek() ?? 1, lunacyMode?.peek() ?? false);
+    const stops = [sanityPercent?.subscribe(applySanity), lunacyMode?.subscribe(applySanity)];
+    this.stopSanitySubscription = () => stops.forEach(stop => stop?.());
+    applySanity();
     this.applyAmbientUniform();
     // Retain the previous rendering palette only to select transition duration.
     let previousPalette = LUT_PATHS[season];
@@ -456,16 +459,20 @@ export class DstLightingRenderer {
     return this.sanityPercent;
   }
 
-  /** Apply DST's quadratic grading using the nearest 10% sanity level. */
-  private applySanityPercent(percent: number): void {
+  /**
+   * Apply DST's quadratic grading using the nearest 10% sanity level. In lunacy mode colourcube.lua's
+   * SetOnlyLunacyIntensityParams sets the insanity cube's lerp to 0 and the distortion factor to 1, so neither shows;
+   * the lunacy cube and overlay are not ported.
+   */
+  private applySanity(percent: number, lunacy: boolean): void {
     if (!Number.isFinite(percent)) {
       throw new Error('Sanity percent must be finite');
     }
     this.sanityPercent = THREE.MathUtils.clamp(percent, 0, 1);
     const gradingPercent = Math.round(this.sanityPercent * SANITY_GRADING_STEPS) / SANITY_GRADING_STEPS;
-    this.bakeMaterial.uniforms.insanityIntensity.value = (1 - gradingPercent) ** 2;
+    this.bakeMaterial.uniforms.insanityIntensity.value = lunacy ? 0 : (1 - gradingPercent) ** 2;
     this.bakeDirty = true;
-    this.material.uniforms.distortionIntensity.value = (1 - this.sanityPercent) ** 2;
+    this.material.uniforms.distortionIntensity.value = lunacy ? 0 : (1 - this.sanityPercent) ** 2;
     // outQuad(1 - percent, 0, 0.2, 1), with DST's default distortion modifier 1.
     // Slow the orbit to half speed without changing its amplitude or grading.
     this.distortionSpeed = 0.2 * (1 - this.sanityPercent ** 2) * 0.5;

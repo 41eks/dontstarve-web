@@ -7,7 +7,7 @@ import {
 } from '@dontstarve-web/animation/animationAssets';
 import { createEffect, type ReadonlySignal } from '@dontstarve-web/signals';
 
-/** playerhud.lua CreateOverlays / GoSane / GoInsane: an ungraded UIAnim. */
+/** playerhud.lua CreateOverlays / GoSane / GoInsane / GoEnlightened: an ungraded UIAnim, "insane" only while insane. */
 export class SanityVignette {
   readonly canvas = document.createElement('canvas');
   private readonly context: CanvasRenderingContext2D;
@@ -20,7 +20,7 @@ export class SanityVignette {
   private drawnFrame = -1;
   private disposed = false;
 
-  private constructor(sane: ReadonlySignal<boolean>) {
+  private constructor(insane: ReadonlySignal<boolean>) {
     // constants.lua RESOLUTION_X/Y and SCALEMODE_FIXEDSCREEN_NONDYNAMIC.
     this.canvas.width = 1280;
     this.canvas.height = 720;
@@ -39,11 +39,11 @@ export class SanityVignette {
       throw new Error('Unable to create DST vignette canvas');
     }
     this.context = context;
-    this.stopState = createEffect(() => this.play(sane.get() ? 'basic' : 'insane'));
+    this.stopState = createEffect(() => this.play(insane.get() ? 'insane' : 'basic'));
   }
 
-  static async create(sane: ReadonlySignal<boolean>, animRoot: string): Promise<SanityVignette> {
-    const vignette = new SanityVignette(sane);
+  static async create(insane: ReadonlySignal<boolean>, animRoot: string): Promise<SanityVignette> {
+    const vignette = new SanityVignette(insane);
     try {
       const { buildPackage, animations } = await loadAnimationArchive('vig.zip', animRoot);
       vignette.buildPackage = buildPackage;

@@ -4,7 +4,7 @@ import { SanityVignette } from '../src/sanity-vignette';
 export async function checkSanityVignette() {
   const sanity = new Sanity({ components: { inventory: { GetEquippedItem: () => null } }, hasTag: () => false }, 200);
   const current = sanity;
-  const vignette = await SanityVignette.create(sanity.sane, '/dst/data/anim');
+  const vignette = await SanityVignette.create(sanity.insane, '/dst/data/anim');
   document.body.append(vignette.canvas);
   const context = vignette.canvas.getContext('2d')!;
   const pixels = () => context.getImageData(0, 0, 1280, 720).data;

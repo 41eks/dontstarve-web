@@ -67,6 +67,15 @@ export class Sanity {
       lunacy = this.inducedLunacy.get().size > 0;
     return mode === SANITY_MODE_INSANITY ? (sane && !insanity) || lunacy : (sane && !lunacy) || insanity;
   });
+  /** IsInsane(), tracked: the "goinsane" side of playerhud's vignette (enlightenment plays "basic"). */
+  readonly insane = createMemo(
+    () =>
+      this.modeState.get() === SANITY_MODE_INSANITY &&
+      (!this.saneState.get() || this.inducedInsanity.get().size > 0) &&
+      this.inducedLunacy.get().size === 0,
+  );
+  /** IsLunacyMode(), tracked: colourcube.lua grades lunacy instead of insanity. */
+  readonly lunacyMode = createMemo(() => this.modeState.get() === SANITY_MODE_LUNACY);
   dapperness = 0;
   dapperness_mult = 1;
   rate_modifier = 1;
@@ -354,6 +363,8 @@ export class Sanity {
     this.externalmodifiers.Reset();
     this.percent.dispose();
     this.sane.dispose();
+    this.insane.dispose();
+    this.lunacyMode.dispose();
   }
 }
 

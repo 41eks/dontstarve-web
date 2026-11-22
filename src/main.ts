@@ -58,6 +58,7 @@ const animRoot = `${import.meta.env.BASE_URL}dst/data/anim`;
 void loadAnimationArchive('vig.zip', animRoot).catch(() => undefined);
 const lightingReady = DstLightingRenderer.create(renderer, `${import.meta.env.BASE_URL}dst/data/images/colour_cubes`, {
   sanityPercent: playerStats.sanity.percent,
+  lunacyMode: playerStats.sanity.lunacyMode,
   // player_classified pushes isghostmode into playervision:SetGhostVision.
   ghostVision: playerGhostMode,
 });
@@ -262,7 +263,7 @@ gameUi.minimap.bind({
   getPlayerPosition: () => player.position,
   cameraHeading: view.cameraHeading,
 });
-const sanityVignette = await SanityVignette.create(playerSanity.sane, animRoot);
+const sanityVignette = await SanityVignette.create(playerSanity.insane, animRoot);
 document.body.append(sanityVignette.canvas);
 const stopVignetteUpdate = registerFrontTask(dt => sanityVignette.update(dt));
 disposalEvents.on('dispose', () => {
