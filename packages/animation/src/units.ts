@@ -13,6 +13,14 @@ export const TILE_SIZE = 12;
 export const WORLD_SCALE = TILE_SIZE / DST_TILE_SCALE;
 
 /**
+ * A length written in DST Lua units (a TUNING value, a FindEntities radius) as project world units, the units of
+ * entity positions and of EntityQuery.FindEntities.
+ */
+export function dstUnitsToWorld(dstUnits: number): number {
+  return dstUnits * WORLD_SCALE;
+}
+
+/**
  * Animation pixels per DST unit: consolecommands.lua c_showradius ("300: Game Unit to Pixel conversion" over the
  * 1900-pixel firefighter ring, i.e. 1900 px across a 1900 / 300 unit radius).
  */

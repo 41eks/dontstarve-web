@@ -1,7 +1,9 @@
 import { played, wilsonPlayer } from './wilsonPlayer';
 import { expect, it, vi } from 'vitest';
 import { GameTimeScheduler } from '../../componets/src/gameTimeScheduler';
-import { SlipperyFeet } from '../../componets/src/slipperyfeet';
+import { SLIPPERY_CHECK_RADIUS, SLIPPERY_SLOWCHECK_FREQUENCY, SlipperyFeet } from '../../componets/src/slipperyfeet';
+import { WORLD_SCALE } from '../src/units';
+import { Vector3 } from 'three';
 import { SlipperyFeetTarget } from '../../componets/src/slipperyfeettarget';
 
 const FRAME = 1 / 30;
@@ -129,4 +131,21 @@ it('removes the tag and stops listening when the component is removed or dispose
   feet.dispose();
   step(60);
   expect(feet.isUpdating).toBe(false);
+});
+
+it('searches SLIPPERY_CHECK_RADIUS DST units around the player, converted to world units', () => {
+  const scheduler = new GameTimeScheduler();
+  const radii: number[] = [];
+  const feet = new SlipperyFeet(
+    {
+      getPosition: () => new Vector3(),
+      getMotorSpeed: () => 0,
+      PushEvent: () => {},
+      sg: { hasStateTag: () => false, hasAnyStateTag: () => false, onNewState: () => () => {} },
+    },
+    { scheduler, findSlipperyEntities: (_, radius) => (radii.push(radius), []) },
+  );
+  scheduler.advance(SLIPPERY_SLOWCHECK_FREQUENCY);
+  expect(radii).toEqual([SLIPPERY_CHECK_RADIUS * WORLD_SCALE]);
+  feet.dispose();
 });

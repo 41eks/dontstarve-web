@@ -2,8 +2,10 @@ import type { Vector3 } from 'three';
 import type { GameTimeScheduler } from './gameTimeScheduler';
 import { ComponentTimer } from './timer';
 import type { SlipperyFeetTarget } from './slipperyfeettarget';
+import { dstUnitsToWorld } from '@dontstarve-web/animation/units';
 
 // components/slipperyfeet.lua. Speeds are DST units per second (TUNING.WILSON_RUN_SPEED = 6).
+/** In DST units, as the Lua passes it to TheSim:FindEntities; converted to world units at the query. */
 export const SLIPPERY_CHECK_RADIUS = 12;
 export const SLIPPERY_SLOWCHECK_FREQUENCY = 1;
 export const WILSON_RUN_SPEED = 6;
@@ -28,7 +30,7 @@ export interface SlipperyFeetInst {
 
 export interface SlipperyFeetOptions {
   scheduler: GameTimeScheduler;
-  /** TheSim:FindEntities(x, 0, z, radius, {"slipperyfeettarget"}). */
+  /** TheSim:FindEntities(x, 0, z, radius, {"slipperyfeettarget"}), with position and radius in world units. */
   findSlipperyEntities(position: Vector3, radius: number): readonly SlipperyFeetEntity[];
   random?: () => number;
 }
@@ -103,7 +105,7 @@ export class SlipperyFeet {
 
   GetSlipperyAndNearbyEnts(): { slippery?: SlipperyFeetEntity; nearby?: SlipperyFeetEntity } {
     const position = this.inst.getPosition();
-    const ents = this.options.findSlipperyEntities(position, SLIPPERY_CHECK_RADIUS);
+    const ents = this.options.findSlipperyEntities(position, dstUnitsToWorld(SLIPPERY_CHECK_RADIUS));
     const slippery = ents.find(ent => ent.components.slipperyfeettarget?.IsSlipperyAtPosition(position.x, position.z));
     return { slippery, nearby: ents[0] };
   }
