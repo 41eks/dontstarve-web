@@ -189,3 +189,51 @@ test('keeps the generating page and reports a failed game load', async ({ page }
   await expect(generatingPage).toHaveAttribute('aria-busy', 'false');
   await expect(page.locator('canvas[data-game-canvas][data-loaded="true"]')).toHaveCount(0);
 });
+
+test('finishes loading when the WebGL context is lost and restored while the scene is being prepared', async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => {
+    if (message.type() === 'error') {
+      errors.push(message.text());
+    }
+  });
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => {
+    release = resolve;
+  });
+  let waiting = false;
+  // Hold loading before scene preparation so the prewarm can be instrumented first.
+  await page.route('**/dst/data/anim/vig.zip', async route => {
+    waiting = true;
+    await pending;
+    await route.continue();
+  });
+  await openGame(page);
+  const canvas = page.locator('canvas[data-game-canvas]');
+  await expect.poll(() => waiting, { timeout: 90_000 }).toBe(true);
+  await page.evaluate(async lightingUrl => {
+    const { DstLightingRenderer } = await import(lightingUrl);
+    const prewarm = DstLightingRenderer.prototype.prewarm;
+    (window as any).prewarmRuns = 0;
+    DstLightingRenderer.prototype.prewarm = function (...args: any[]) {
+      const run = ++(window as any).prewarmRuns;
+      const running = prewarm.apply(this, args);
+      if (run === 1) {
+        // A GPU reset in the middle of preparation, as on the deployed site: the browser restores it shortly after.
+        const control = this.renderer.getContext().getExtension('WEBGL_lose_context')!;
+        control.loseContext();
+        setTimeout(() => control.restoreContext(), 500);
+      }
+      return running;
+    };
+  }, lightingUrl);
+  release();
+  await expect(canvas).toHaveAttribute('data-loaded', 'true', { timeout: 150_000 });
+  await expect(page.getByRole('main', { name: '世界生成中' })).toHaveCount(0);
+  expect(await page.evaluate(() => (window as any).prewarmRuns)).toBe(2);
+  expect(errors).toEqual([]);
+});

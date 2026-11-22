@@ -47,6 +47,11 @@ export class InstancedSpriteAtlases {
     return appearance;
   }
 
+  /** Whether any requested appearance still waits for its pages. */
+  get pending(): boolean {
+    return this.composing.size > 0;
+  }
+
   /** Queues an appearance that lost or never had its pages. */
   enqueue(appearance: Appearance): void {
     if (!appearance.pages) {

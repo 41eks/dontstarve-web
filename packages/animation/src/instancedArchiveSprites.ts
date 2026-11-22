@@ -83,6 +83,10 @@ const byFoot = (a: DrawEntry, b: DrawEntry) => a.key - b.key || a.entry.foot.id 
 
 /** Main-thread time per rendered frame spent composing atlases for appearances shown for the first time. */
 const COMPOSE_BUDGET_MS = 4;
+/** The loading page's composition time per frame: prewarm finishes every atlas, but never in one task. */
+const PREWARM_COMPOSE_BUDGET_MS = 8;
+
+const nextFrame = (): Promise<void> => new Promise(resolve => requestAnimationFrame(() => resolve()));
 
 /** Render-only batching. Entity nodes, source geometry and alpha picking remain independently owned. */
 export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
@@ -365,7 +369,15 @@ export class InstancedArchiveSprites implements SceneRenderPass, PainterPass {
     scene: THREE.Scene,
   ): Promise<void> {
     signal?.throwIfAborted();
-    this.renderPass(renderer, camera, scene, Infinity, 'compose:prewarm');
+    // Every visible appearance is composed before the game starts, spread over loading frames: submitting all
+    // their uploads, targets and draws from one task queued the whole load's atlas work on the GPU at once.
+    this.composeAtlases(renderer, PREWARM_COMPOSE_BUDGET_MS, 'compose:prewarm');
+    while (this.atlases.pending && !this.contextLost) {
+      await nextFrame();
+      signal?.throwIfAborted();
+      this.composeAtlases(renderer, PREWARM_COMPOSE_BUDGET_MS, 'compose:prewarm');
+    }
+    this.renderPass(renderer, camera, scene, 0, 'compose:prewarm');
     orderScenePainter(scene);
     await this.batches.compile(renderer, camera, signal);
     // Prepare the ordinary shared-frame material variant used when an entity starts working.

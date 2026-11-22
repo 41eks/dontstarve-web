@@ -8,6 +8,68 @@ export function yieldLoadingFrame(): Promise<void> {
 
 const FRAME_BUDGET_MS = 8;
 
+/** Resolves once the renderer's context is usable again, rejecting if `signal` aborts first. */
+function contextRestored(renderer: THREE.WebGLRenderer, signal?: AbortSignal): Promise<void> {
+  const canvas = renderer.domElement;
+  return new Promise((resolve, reject) => {
+    if (!renderer.getContext().isContextLost()) {
+      resolve();
+      return;
+    }
+    const done = () => {
+      canvas.removeEventListener('webglcontextrestored', onRestored);
+      signal?.removeEventListener('abort', onAbort);
+    };
+    const onRestored = () => {
+      done();
+      resolve();
+    };
+    const onAbort = () => {
+      done();
+      reject(signal!.reason);
+    };
+    canvas.addEventListener('webglcontextrestored', onRestored);
+    signal?.addEventListener('abort', onAbort);
+  });
+}
+
+/**
+ * Runs a GPU prewarm again after the WebGL context is lost and restored while it runs. A GPU reset during loading
+ * makes compiles against the lost context throw (three.js reads a null shader precision); the game keeps loading
+ * once the browser restores the context instead of failing to start. Other errors and aborts propagate.
+ */
+export async function prewarmThroughContextLoss(
+  renderer: THREE.WebGLRenderer,
+  prewarm: () => Promise<void>,
+  signal?: AbortSignal,
+): Promise<void> {
+  const canvas = renderer.domElement;
+  for (;;) {
+    let lost = renderer.getContext().isContextLost();
+    const onLost = () => {
+      lost = true;
+    };
+    canvas.addEventListener('webglcontextlost', onLost);
+    try {
+      if (!lost) {
+        await prewarm();
+      }
+    } catch (error) {
+      signal?.throwIfAborted();
+      if (!lost && !renderer.getContext().isContextLost()) {
+        throw error;
+      }
+    } finally {
+      canvas.removeEventListener('webglcontextlost', onLost);
+    }
+    if (!lost && !renderer.getContext().isContextLost()) {
+      return;
+    }
+    console.warn('WebGL context lost while preparing the scene; preparing again once it is restored');
+    await contextRestored(renderer, signal);
+  }
+}
+
 /** Returns a checkpoint that yields a frame only after the work since the last yield used up the budget. */
 function createFrameBudget(signal?: AbortSignal): () => Promise<void> {
   let frameStart = performance.now();

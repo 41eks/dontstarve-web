@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { prewarmScene } from '../../../src/prewarmScene';
+import { prewarmScene, prewarmThroughContextLoss } from '../../../src/prewarmScene';
 
 beforeEach(() =>
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
@@ -69,4 +69,44 @@ it('stops later batches on cancellation without drawing or changing the render t
   expect(s.renderer.render).not.toHaveBeenCalled();
   expect(s.renderer.getRenderTarget()).toBe(s.target);
   expect(s.meshes.every(mesh => mesh.parent === s.parent)).toBe(true);
+});
+
+it('prepares the scene again after a context lost during loading is restored, and still fails on other errors', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  const canvas = new EventTarget();
+  let lost = false;
+  const renderer = {
+    domElement: canvas,
+    getContext: () => ({ isContextLost: () => lost }),
+  } as unknown as THREE.WebGLRenderer;
+  let runs = 0;
+  // The first run loses the context halfway; compiling then throws as three.js does on a lost context.
+  const prewarm = vi.fn(async () => {
+    runs++;
+    if (runs === 1) {
+      lost = true;
+      canvas.dispatchEvent(new Event('webglcontextlost'));
+      throw new TypeError("Cannot read properties of null (reading 'precision')");
+    }
+  });
+  let settled = false;
+  const preparing = prewarmThroughContextLoss(renderer, prewarm).then(() => {
+    settled = true;
+  });
+  await new Promise(resolve => setTimeout(resolve));
+  // Loading waits on the lost context instead of failing the game start.
+  expect(settled).toBe(false);
+  expect(prewarm).toHaveBeenCalledOnce();
+  lost = false;
+  canvas.dispatchEvent(new Event('webglcontextrestored'));
+  await preparing;
+  expect(prewarm).toHaveBeenCalledTimes(2);
+
+  const failure = new Error('missing build');
+  await expect(prewarmThroughContextLoss(renderer, () => Promise.reject(failure))).rejects.toBe(failure);
+  const aborted = new AbortController();
+  lost = true;
+  const waiting = prewarmThroughContextLoss(renderer, prewarm, aborted.signal);
+  aborted.abort(new Error('scene disposed'));
+  await expect(waiting).rejects.toThrow('scene disposed');
 });

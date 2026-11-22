@@ -8,6 +8,7 @@ import { setOrdinarySpriteKeys, updateSpriteRenderOrders } from '@dontstarve-web
 import { EventEmitter } from '@dontstarve-web/signals';
 
 import { animate, backTasks, middleTasks } from './animate';
+import { prewarmThroughContextLoss } from './prewarmScene';
 import { createAnimationUpdater } from './animation';
 import { ground, groundDisplay, turfMap, pathfinder } from './building';
 import { camera, followCamera } from './camera';
@@ -220,7 +221,11 @@ export async function startScene(
       try {
         // Retain resources until every preparation settles, including on failure or disposal.
         const results = await Promise.allSettled([
-          dstLighting.prewarm(scene, camera, preparation.signal),
+          prewarmThroughContextLoss(
+            view.renderer,
+            () => dstLighting.prewarm(scene, camera, preparation.signal),
+            preparation.signal,
+          ),
           PrewarmSounds(),
           prewarmCachedBuilds(playerInstance.equipmentAssets, [
             'pan_flute.zip',
