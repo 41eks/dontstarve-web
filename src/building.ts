@@ -3,6 +3,7 @@
 import { createTurfGround } from '@dontstarve-web/prefab/turf';
 import { Pathfinder } from '@dontstarve-web/prefab/pathfinder';
 import { TurfMap, WORLD_TILES } from '@dontstarve-web/prefab/turfMap';
+import { WorldTopology } from '@dontstarve-web/prefab/topology';
 import { GroundDisplay } from '@dontstarve-web/display';
 import { initialSave } from './save/initialSave';
 
@@ -18,6 +19,8 @@ export const turfMap = new TurfMap(
   initialSave.world.map.tiles,
   initialSave.world.map.defaultTileId,
 );
+/** TheWorld.topology and the map's per-tile node IDs. */
+export const worldTopology = new WorldTopology(initialSave.world.map.topology);
 /** TheWorld.Pathfinder. */
 export const pathfinder = new Pathfinder(turfMap);
 // The plane remains a pointer target; local maps draw only their saved land cells.

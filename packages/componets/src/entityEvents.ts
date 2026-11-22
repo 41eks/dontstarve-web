@@ -51,6 +51,8 @@ export interface EntityEventData {
   newstate: { readonly statename: string };
   /** health.lua SetVal, at zero health; a creature without health pushes it without data. */
   death: { readonly cause?: string } | undefined;
+  /** areaaware.lua UpdatePosition: the new node's data, nil off every node. */
+  changearea: import('./areaaware').AreaData | undefined;
   /** health.lua DoDelta. */
   healthdelta: {
     readonly oldpercent: number;

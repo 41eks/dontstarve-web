@@ -1,11 +1,18 @@
 import { wortox } from '@dontstarve-web/prefab/wortox';
 import { initialSave } from './save/initialSave';
 import { world, worldState } from './physics';
+import { turfMap, worldTopology } from './building';
+import { FindVisualNodeAtPoint } from '@dontstarve-web/prefab/topology';
+import { WORLD_SCALE } from '@dontstarve-web/animation/units';
 
 const playerPrefab = wortox(`${import.meta.env.BASE_URL}dst/data/anim`, world, {
   stats: { ...initialSave.players.local.stats },
   scheduler: worldState.scheduler,
   componentUpdates: worldState.componentUpdates,
+  areaaware: {
+    FindVisualNodeAtPoint: point => FindVisualNodeAtPoint(turfMap, worldTopology, point),
+    worldScale: WORLD_SCALE,
+  },
 });
 await playerPrefab.display.artLoaded();
 playerPrefab.instance.setPosition(...initialSave.players.local.transform.position);

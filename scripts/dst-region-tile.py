@@ -102,15 +102,34 @@ def decode_underneath(terrain):
 
 
 def convert_topology_nodes(nodes, translation):
-    # TheWorld.topology.nodes as staff.lua getrandomposition reads them: each node's centre (node.x, node.y are the
-    # world X and Z) and its NODE_TYPE, projected like entity positions.
+    # TheWorld.topology.nodes as staff.lua getrandomposition and areaaware.lua read them: each node's centre (node.x,
+    # node.y are the world X and Z) projected like entity positions, its NODE_TYPE and its tags.
     converted = []
     for node in nodes:
         if type(node.get('type')) is not int or any(type(node.get(axis)) not in (int, float) for axis in 'xy'):
             raise ValueError(f'Unsupported topology node: {sorted(node)}')
+        tags = node.get('tags') or []
+        # Worldgen keeps tags as given; a few rooms carry a number beside their names (table.contains compares any type).
+        if not isinstance(tags, list) or any(type(tag) not in (str, int) for tag in tags):
+            raise ValueError(f'Unsupported topology node tags: {tags}')
         x, _, z = project_position([node['x'], 0, node['y']], translation)
-        converted.append({'x': x, 'z': z, 'type': node['type']})
+        converted.append({'x': x, 'z': z, 'type': node['type'], **({'tags': tags} if tags else {})})
     return converted
+
+
+def convert_node_id_grid(nodes, width, height, origin_x, origin_z):
+    # The map's nodeidtilemap (Map:GetNodeIdAtPoint) in project cells, row by row as [nodeId, count] runs. Source
+    # rows grow along DST +Z and are mirrored like the tiles: source cell (x, z) is project (x - origin_x,
+    # origin_z - z - 1).
+    runs = []
+    for z in range(height - 1, -1, -1):
+        for x in range(width):
+            node_id = nodes[z * width + x]
+            if runs and runs[-2] == node_id:
+                runs[-1] += 1
+            else:
+                runs += [node_id, 1]
+    return {'col': -origin_x, 'row': origin_z - height, 'width': width, 'height': height, 'runs': runs}
 
 
 def convert_map(terrain, supported, origin_cell=None):
@@ -190,7 +209,8 @@ def convert_map(terrain, supported, origin_cell=None):
         'map': {'kind': 'generated', 'defaultTileId': 1, 'tiles': saved_tiles,
                 'generator': {'id': 'dst-map-v1', 'options': {
                     'size': half * 2 * TILE_SIZE, 'moonTreeCount': 0, 'moonTreeExclusionRadiusSquared': 0}},
-                'topology': {'nodes': convert_topology_nodes(terrain['topology']['nodes'], translation)}},
+                'topology': {'nodes': convert_topology_nodes(terrain['topology']['nodes'], translation),
+                             'nodeIdGrid': convert_node_id_grid(nodes, width, height, origin_x, origin_z)}},
         'entities': {},
     }
     spawn_position = [(spawn[0] - origin_x + .5) * TILE_SIZE, 0, (origin_z - spawn[1] - .5) * TILE_SIZE]

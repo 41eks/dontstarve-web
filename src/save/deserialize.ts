@@ -2,6 +2,7 @@ import type { InventoryItemSpec, InventoryRecipeDefinition, InventorySkinSpec } 
 import type { SaveDocument } from './types';
 import type { BuildingContainerDefinition } from '@dontstarve-web/prefab/containers';
 import { WORLD_TILES, isOceanTile } from '@dontstarve-web/prefab/turfMap';
+import type { TopologySave } from '@dontstarve-web/prefab/topology';
 import { GROUND_TILE_DEFINITIONS } from '@dontstarve-web/prefab/groundTiles';
 import { GROUND_ART_DEFINITIONS, GROUND_ART_VARIANTS } from '@dontstarve-web/prefab/groundItems';
 import { TILE_SIZE } from '@dontstarve-web/prefab/tile';
@@ -80,6 +81,55 @@ function ghostFlag(value: unknown): true {
 }
 
 /** Parses and validates all data before any resources or runtime entities are created. */
+/** TheWorld.topology: node centres, NODE_TYPEs and tags, and the run-length nodeidtilemap. */
+function deserializeTopology(value: unknown, size: number): TopologySave {
+  const topology = object(value, 'world.map.topology', ['nodes', 'nodeIdGrid']);
+  const nodes = array(topology.nodes, 'world.map.topology.nodes', 100_000).map((entry, i) => {
+    const path = `world.map.topology.nodes[${i}]`;
+    const node = object(entry, path, ['x', 'z', 'type', 'tags']);
+    return {
+      x: number(node.x, `${path}.x`, -size, size),
+      z: number(node.z, `${path}.z`, -size, size),
+      type: integer(node.type, `${path}.type`, 0, 7),
+      ...(node.tags === undefined
+        ? {}
+        : {
+            tags: array(node.tags, `${path}.tags`, 64).map((tag, j) =>
+              typeof tag === 'number' ? integer(tag, `${path}.tags[${j}]`) : string(tag, `${path}.tags[${j}]`),
+            ),
+          }),
+    };
+  });
+  if (topology.nodeIdGrid === undefined) {
+    return { nodes };
+  }
+  const path = 'world.map.topology.nodeIdGrid';
+  const grid = object(topology.nodeIdGrid, path, ['col', 'row', 'width', 'height', 'runs']);
+  const cells = Math.ceil(size / TILE_SIZE) + 1;
+  const width = integer(grid.width, `${path}.width`, 0, cells),
+    height = integer(grid.height, `${path}.height`, 0, cells);
+  const runs = array(grid.runs, `${path}.runs`, 2 * width * height).map((run, i) =>
+    integer(run, `${path}.runs[${i}]`, 0, i % 2 === 0 ? 65_535 : width * height),
+  );
+  let total = 0;
+  for (let i = 1; i < runs.length; i += 2) {
+    total += runs[i];
+  }
+  if (runs.length % 2 !== 0 || total !== width * height) {
+    fail(`${path}.runs`, 'runs must be [nodeId, count] pairs covering the grid');
+  }
+  return {
+    nodes,
+    nodeIdGrid: {
+      col: integer(grid.col, `${path}.col`, -cells, cells),
+      row: integer(grid.row, `${path}.row`, -cells, cells),
+      width,
+      height,
+      runs,
+    },
+  };
+}
+
 export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlayer?: unknown): SaveDocument {
   if (text.length > MAX_SAVE_BYTES || new TextEncoder().encode(text).byteLength > MAX_SAVE_BYTES) {
     fail('$', 'file is too large');
@@ -162,24 +212,7 @@ export function deserializeSave(text: string, catalog: SaveCatalog, sessionPlaye
   if (world.prefab === 'cave' && defaultTileId !== WORLD_TILES.IMPASSABLE) {
     fail('world.map.defaultTileId', 'cave maps require an impassable background');
   }
-  const topology =
-    map.topology === undefined
-      ? undefined
-      : {
-          nodes: array(
-            object(map.topology, 'world.map.topology', ['nodes']).nodes,
-            'world.map.topology.nodes',
-            100_000,
-          ).map((value, i) => {
-            const path = `world.map.topology.nodes[${i}]`;
-            const node = object(value, path, ['x', 'z', 'type']);
-            return {
-              x: number(node.x, `${path}.x`, -size, size),
-              z: number(node.z, `${path}.z`, -size, size),
-              type: integer(node.type, `${path}.type`, 0, 7),
-            };
-          }),
-        };
+  const topology = map.topology === undefined ? undefined : deserializeTopology(map.topology, size);
   const tiles =
     map.tiles === undefined
       ? undefined

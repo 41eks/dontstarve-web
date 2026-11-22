@@ -5,11 +5,7 @@ import type { WeatherSaveData } from '../../packages/componets/src/weather';
 import type { NightmareClockSaveData } from '../../packages/componets/src/nightmareclock';
 
 /** One TheWorld.topology.nodes entry: node.x / node.y are the centre's world X and Z. */
-export interface WorldTopologyNode {
-  x: number;
-  z: number;
-  type: number;
-}
+export type WorldTopologyNode = import('@dontstarve-web/prefab/topology').TopologyNode;
 
 export interface SavedPlayer {
   prefab: 'wilson';
@@ -70,8 +66,8 @@ export interface SaveDocument {
         seed?: string;
         options: { size: number; moonTreeCount: number; moonTreeExclusionRadiusSquared: number };
       };
-      /** TheWorld.topology: each node's centre on the ground and its worldgen NODE_TYPE. */
-      topology?: { nodes: WorldTopologyNode[] };
+      /** TheWorld.topology: each node's centre, NODE_TYPE and tags, and the map's per-tile node IDs. */
+      topology?: import('@dontstarve-web/prefab/topology').TopologySave;
     };
     entities: Record<string, EntitySaveRecord[]>;
   };

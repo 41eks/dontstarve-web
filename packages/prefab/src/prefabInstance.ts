@@ -57,6 +57,7 @@ export type ActionEntity = PrefabInstance<ArchiveSpriteCommands, ActionComponent
 export interface PrefabComponents extends ActionComponents {
   hunger?: import('../../componets/src/hunger').Hunger;
   sanity?: import('../../componets/src/sanity').Sanity;
+  areaaware?: import('../../componets/src/areaaware').AreaAware;
   /** The player's store, or a creature's or structure's Lua inventory component. */
   inventory?: import('@dontstarve-web/inventory').InventoryStore | import('../../componets/src/inventory').Inventory;
   playercontroller?: import('../../stategraphs/src/playercontroller').PlayerController;

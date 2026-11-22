@@ -35,6 +35,7 @@
     "./player_common": "./src/player_common.ts",
     "./pitchfork": "./src/pitchfork.ts",
     "./turfMap": "./src/turfMap.ts",
+    "./topology": "./src/topology.ts",
     "./groundTiles": "./src/groundTiles.ts",
     "./hammer": "./src/hammer.ts",
     "./pickaxe": "./src/pickaxe.ts",

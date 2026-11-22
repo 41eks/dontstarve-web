@@ -41,6 +41,7 @@ import { Health } from '../../componets/src/health';
 import { Hunger } from '../../componets/src/hunger';
 import { Sanity, type SanityMode } from '../../componets/src/sanity';
 import { Eater } from '../../componets/src/eater';
+import { AreaAware, type AreaAwareWorld } from '../../componets/src/areaaware';
 
 /** tuning.lua WILSON_HEALTH / WILSON_HUNGER / WILSON_SANITY, the player_common.lua defaults. Older saves may omit all stats. */
 export const WILSON_HEALTH = 150;
@@ -334,6 +335,8 @@ export interface PlayerPrefabOptions {
   stats?: PlayerStatsSave;
   scheduler?: GameTimeScheduler;
   componentUpdates?: ComponentUpdates;
+  /** TheWorld.Map's topology lookup for the player's areaaware. */
+  areaaware?: AreaAwareWorld;
 }
 
 /**
@@ -610,6 +613,15 @@ export function MakePlayerCharacter(
     if (stopSanity) {
       inst.onRemove(stopSanity);
     }
+    if (options.areaaware) {
+      // inst:AddComponent("areaaware"); SetUpdateDist(.45); it updates every frame (StartUpdatingComponent).
+      const areaaware = addComponent(inst, 'areaaware', AreaAware, options.areaaware);
+      areaaware.SetUpdateDist(0.45);
+      const stopAreaAware = options.componentUpdates?.register(areaaware);
+      if (stopAreaAware) {
+        inst.onRemove(stopAreaAware);
+      }
+    }
     if (options.scheduler) {
       // sleepingbaguser.lua: per-tick hunger, sanity and health in a bed; WatchWorldState("phase") wakes at the bed's phase end.
       const phase = createMemo(() => clockstate.get().phase);
@@ -652,6 +664,10 @@ export function MakePlayerCharacter(
     // ListenForEvent("makeplayerghost" / "respawnfromghost", ex_fns.OnMakePlayerGhost / OnRespawnFromGhost).
     inst.ListenForEvent('makeplayerghost', (_inst, data) => OnMakePlayerGhost(inst, data));
     inst.ListenForEvent('respawnfromghost', (_inst, data) => OnRespawnFromGhost(inst, data));
+    // ListenForEvent("changearea", fns.OnChangeArea): a lunacyarea node enables lunacy.
+    inst.ListenForEvent('changearea', (_inst, area) => {
+      inst.components.sanity?.EnableLunacy(area?.tags?.includes('lunacyarea') === true, 'lunacyarea');
+    });
     inst.onRemove(() => OnRemoveEntity(inst));
 
     inst.SetStateGraph(inst => new WilsonStateGraph(inst));
