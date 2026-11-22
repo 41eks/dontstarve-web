@@ -2,7 +2,6 @@ export { AnimationPlayback, type PlaybackClip } from './animationPlayback';
 export { parseKtex, type DecodedTexture } from './parseKtex';
 export { disposeAnimationAssets } from './animationAssets';
 export {
-  cropAtlasTexture,
   loadImageAtlas,
   preloadImageArchive,
   parseImageAtlasArchive,

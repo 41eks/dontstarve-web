@@ -1,10 +1,17 @@
 import { imageArchiveUrl, preloadImageArchive } from './imageArchive';
-import { DecodedImageAtlas, parseImageAtlasArchive, parseImageAtlasXml, type ImageAtlas } from './imageAtlasParser';
-import { parseKtex } from './parseKtex';
+import {
+  DecodedImageAtlas,
+  imageAtlasPage,
+  parseImageAtlasArchive,
+  parseImageAtlasXml,
+  type ImageAtlas,
+  type ImageAtlasPage,
+} from './imageAtlasParser';
+import { parseKtex, type DecodedTexture } from './parseKtex';
 import type { ImageAtlasWorkerRequest, ImageAtlasWorkerResponse } from './imageAtlasWorkerProtocol';
 
 export {
-  cropAtlasTexture,
+  imageAtlasPage,
   parseImageAtlasArchive,
   parseImageAtlasXml,
   type ImageAtlas,
@@ -19,7 +26,7 @@ const atlasRequests = new Map<string, Promise<ImageAtlas>>();
 const pendingRequests = new Map<
   number,
   {
-    resolve: (atlas: ImageAtlas) => void;
+    resolve: (result: Extract<ImageAtlasWorkerResponse, { pages: unknown } | { texture: unknown }>) => void;
     reject: (error: Error) => void;
   }
 >();
@@ -44,7 +51,7 @@ function getAtlasWorker(): Worker {
     if ('error' in data) {
       pending.reject(new Error(data.error));
     } else {
-      pending.resolve(new DecodedImageAtlas(data.pages));
+      pending.resolve(data);
     }
   };
   const fail = (error: Error) => {
@@ -60,19 +67,49 @@ function getAtlasWorker(): Worker {
   return worker;
 }
 
-function loadInWorker(archiveUrl: string, atlasPath: string): Promise<ImageAtlas> {
+type WorkerTask = ImageAtlasWorkerRequest extends infer Request
+  ? Request extends { id: number }
+    ? Omit<Request, 'id'>
+    : never
+  : never;
+
+function requestWorker(
+  task: WorkerTask,
+): Promise<Extract<ImageAtlasWorkerResponse, { pages: unknown } | { texture: unknown }>> {
   return new Promise((resolve, reject) => {
     const worker = getAtlasWorker();
     const id = ++nextRequestId;
     pendingRequests.set(id, { resolve, reject });
-    const request: ImageAtlasWorkerRequest = { id, archiveUrl, atlasPath };
     try {
-      worker.postMessage(request);
+      worker.postMessage({ id, ...task } as ImageAtlasWorkerRequest);
     } catch (error) {
       pendingRequests.delete(id);
       reject(error);
     }
   });
+}
+
+async function loadInWorker(archiveUrl: string, atlasPath: string): Promise<ImageAtlas> {
+  const result = await requestWorker({ archiveUrl, atlasPath });
+  if (!('pages' in result)) {
+    throw new Error('Image atlas worker returned no pages');
+  }
+  return new DecodedImageAtlas(result.pages);
+}
+
+/**
+ * The whole page as RGBA, decoded off the main thread where Workers exist. The result is not cached: a reader that
+ * needs the page once (to encode it as an image) drops it afterwards, and the page keeps only its KTEX.
+ */
+export async function decodeImageAtlasPage(page: ImageAtlasPage): Promise<DecodedTexture> {
+  if (typeof document === 'undefined' || typeof Worker === 'undefined') {
+    return parseKtex(page.ktex, page.texturePath);
+  }
+  const result = await requestWorker({ ktex: page.ktex, label: page.texturePath });
+  if (!('texture' in result)) {
+    throw new Error('Image atlas worker returned no texture');
+  }
+  return result.texture;
 }
 
 export function loadImageAtlas(
@@ -111,12 +148,7 @@ export function loadImageAtlasFiles(xmlUrl: string | URL): Promise<ImageAtlas> {
         throw new Error(`Unable to load image texture ${texturePath}: HTTP ${texture.status}`);
       }
       return new DecodedImageAtlas([
-        {
-          ...definition,
-          path: url,
-          texturePath,
-          decodedTexture: parseKtex(new Uint8Array(await texture.arrayBuffer()), texturePath),
-        },
+        imageAtlasPage(definition, url, texturePath, new Uint8Array(await texture.arrayBuffer())),
       ]);
     })();
     atlasRequests.set(url, request);

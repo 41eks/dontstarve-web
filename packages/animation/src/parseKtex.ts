@@ -96,18 +96,33 @@ function decodeBc3Alpha(data: Uint8Array, offset: number, alphaTable: Uint8Array
   }
 }
 
-function decodeBC(data: Uint8Array, width: number, height: number, type: BcType) {
-  // Decodes straight into the final vertically flipped, un-premultiplied RGBA layout.
-  const output = new Uint8Array(width * height * 4);
+/** A rectangle of a texture in its final (vertically flipped) layout: row 0 is the last source row. */
+export interface TextureRegion {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+function decodeBC(data: Uint8Array, width: number, height: number, type: BcType, region?: TextureRegion) {
+  // Decodes straight into the final vertically flipped, un-premultiplied RGBA layout; a region decodes only the
+  // blocks that cover it, into an RGBA of the region's size.
+  const { x: regionX, y: regionY, width: regionWidth, height: regionHeight } = region ?? { x: 0, y: 0, width, height };
+  const output = new Uint8Array(regionWidth * regionHeight * 4);
   const colours = new Uint8Array(16);
   const alphas = new Uint8Array(16);
   const alphaTable = new Uint8Array(8);
   const blocksX = Math.ceil(width / 4);
-  const blocksY = Math.ceil(height / 4);
+  const blockBytes = type === 1 ? 8 : 16;
   const premultiplied = type !== 1;
-  let offset = 0;
-  for (let blockY = 0; blockY < blocksY; blockY++) {
-    for (let blockX = 0; blockX < blocksX; blockX++) {
+  // Final rows [regionY, regionY + regionHeight) are source rows [height - regionY - regionHeight, height - 1 - regionY].
+  const firstBlockY = Math.floor((height - regionY - regionHeight) / 4),
+    lastBlockY = Math.floor((height - 1 - regionY) / 4);
+  const firstBlockX = Math.floor(regionX / 4),
+    lastBlockX = Math.floor((regionX + regionWidth - 1) / 4);
+  for (let blockY = firstBlockY; blockY <= lastBlockY; blockY++) {
+    for (let blockX = firstBlockX; blockX <= lastBlockX; blockX++) {
+      let offset = (blockY * blocksX + blockX) * blockBytes;
       if (type === 2) {
         decodeBc2Alpha(data, offset, alphas);
         offset += 8;
@@ -146,16 +161,22 @@ function decodeBC(data: Uint8Array, width: number, height: number, type: BcType)
       }
       const indices =
         (data[offset + 4] | (data[offset + 5] << 8) | (data[offset + 6] << 16) | (data[offset + 7] << 24)) >>> 0;
-      offset += 8;
       for (let y = 0; y < 4; y++) {
         const sourceY = blockY * 4 + y;
         if (sourceY >= height) {
           break;
         }
-        const rowStart = (height - 1 - sourceY) * width;
+        const targetY = height - 1 - sourceY - regionY;
+        if (targetY < 0 || targetY >= regionHeight) {
+          continue;
+        }
+        const rowStart = targetY * regionWidth;
         for (let x = 0; x < 4; x++) {
-          const targetX = blockX * 4 + x;
-          if (targetX >= width) {
+          const targetX = blockX * 4 + x - regionX;
+          if (targetX < 0) {
+            continue;
+          }
+          if (targetX >= regionWidth || blockX * 4 + x >= width) {
             break;
           }
           const pixel = y * 4 + x;
@@ -319,6 +340,44 @@ export function parseKtexBlocks(data: Uint8Array, label = 'KTEX'): CompressedTex
     blocks: flipBcBlocks(source.subarray(0, size), width, height, bcType),
     alpha: packAlphaMask(decodeBcAlpha(source, width, height, bcType), width, height),
   };
+}
+
+/** The size of a KTEX texture without decoding it. */
+export function ktexSize(data: Uint8Array, label = 'KTEX'): { width: number; height: number } {
+  const { width, height } = readKtex(data, label);
+  return { width, height };
+}
+
+/**
+ * The RGBA of one region of a KTEX texture, as `parseKtex` would give it after cropping. A BC texture decodes only the
+ * blocks covering the region, so an icon costs its own few blocks rather than the whole page.
+ */
+export function parseKtexRegion(data: Uint8Array, region: TextureRegion, label = 'KTEX'): DecodedTexture {
+  const { pixelFormat, width, height, source } = readKtex(data, label);
+  if (
+    region.width <= 0 ||
+    region.height <= 0 ||
+    region.x < 0 ||
+    region.y < 0 ||
+    region.x + region.width > width ||
+    region.y + region.height > height
+  ) {
+    throw new Error(`${label}: region outside the ${width}x${height} texture`);
+  }
+  if (pixelFormat <= 2) {
+    return {
+      width: region.width,
+      height: region.height,
+      pixels: decodeBC(source, width, height, BC_TYPES[pixelFormat], region),
+    };
+  }
+  const full = parseKtex(data, label).pixels;
+  const pixels = new Uint8Array(region.width * region.height * 4);
+  for (let y = 0; y < region.height; y++) {
+    const start = ((region.y + y) * width + region.x) * 4;
+    pixels.set(full.subarray(start, start + region.width * 4), y * region.width * 4);
+  }
+  return { width: region.width, height: region.height, pixels };
 }
 
 export function parseKtex(data: Uint8Array, label = 'KTEX'): DecodedTexture {
