@@ -30,7 +30,7 @@ export * from './farmActions.ts';
 export { ACTIONS, getActionPriority, getActionString } from './actions.ts';
 export type { ActionDescription, MouseActionId } from './actions.ts';
 export { PlayerActionPicker } from './playeractionpicker.ts';
-export type { MouseActionCandidate, MouseActions } from './playeractionpicker.ts';
+export type { MouseActionCandidate, MouseActions, MouseControlPointer } from './playeractionpicker.ts';
 export * from './playercontroller.ts';
 export { createBufferedAction, ACTION_FNS } from './actionfns.ts';
 export type { PlayerActionId } from './actionfns.ts';

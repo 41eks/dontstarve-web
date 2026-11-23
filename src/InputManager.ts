@@ -1,4 +1,5 @@
 import { createMemo, createSignal, readonlySignal } from '@dontstarve-web/signals';
+import type { PlayerController } from '@dontstarve-web/stategraphs';
 
 const movementKeys = ['KeyW', 'KeyA', 'KeyS', 'KeyD'] as const;
 const supportedKeys = new Set<string>([...movementKeys, 'ShiftLeft', 'Space']);
@@ -75,6 +76,24 @@ export class InputManager {
 }
 
 export const input = new InputManager();
+
+/** UI elements receive their own DOM events. Only an unconsumed canvas press goes to the world. */
+export function bindWorldControls(
+  canvas: HTMLCanvasElement,
+  controller: Pick<PlayerController, 'OnControl'>,
+): () => void {
+  const pointerDown = (event: PointerEvent): void => {
+    if (event.defaultPrevented || (event.button !== 0 && event.button !== 2)) {
+      return;
+    }
+    const { clientX, clientY, altKey } = event;
+    if (controller.OnControl(event.button === 0 ? 'PRIMARY' : 'SECONDARY', { clientX, clientY, altKey })) {
+      event.preventDefault();
+    }
+  };
+  canvas.addEventListener('pointerdown', pointerDown);
+  return () => canvas.removeEventListener('pointerdown', pointerDown);
+}
 
 export type Key = 'KeyW' | 'KeyA' | 'KeyS' | 'KeyD' | 'ShiftLeft' | 'Space';
 

@@ -97,7 +97,7 @@ export {
   type BuildingContainerDefinition,
 } from './containers';
 export { isPlayerNearby, PLAYER_PROXIMITY_ENTER_DISTANCE, PLAYER_PROXIMITY_EXIT_DISTANCE } from './playerProximity';
-export { Locomotor, setupLocomotorInput, type LocomotorOptions } from './locomotor';
+export { Locomotor, type LocomotorOptions } from './locomotor';
 export {
   GroundPathSearch,
   Pathfinder,

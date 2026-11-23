@@ -1,10 +1,11 @@
 import type { TheCamera } from './followcamera';
 import { PrefabDisplayGroup, SpriteResources, type PrefabDisplay } from '@dontstarve-web/display';
 import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
+import type { MouseControlPointer, PlayerController, PlayerPlacement } from '@dontstarve-web/stategraphs';
 import { bindActionCancellation } from '@dontstarve-web/stategraphs/actionEvents';
 import * as THREE from 'three';
 import { BuildCursor, declarePlacer, entityPlacer } from './buildCursor';
-import { createArchiveEntity, prefabInstance, type PrefabInstance, type PrefabEntityManager } from './prefabInstance';
+import { createArchiveEntity, type PrefabInstance, type PrefabEntityManager } from './prefabInstance';
 import type { WorldContext } from './worldContext';
 
 /** The shared archive a placer draws: its bank, build and animation archives. */
@@ -53,7 +54,7 @@ export const PLACER_ARCHIVE_OPTIONS = {
  * override, opacity and whether it is shown; its display draws it. Committing a build consumes the buffered build and
  * hands the position to `place`, which spawns the building itself, never this entity.
  */
-export class BuildingPlacer<BuildId extends string> {
+export class BuildingPlacer<BuildId extends string> implements PlayerPlacement {
   private disposed = false;
   private readonly specs: (buildId: BuildId) => BuildingPlacerSpec;
   private readonly consumeBufferedBuild: (buildId: BuildId, skinId?: string) => boolean;
@@ -65,9 +66,7 @@ export class BuildingPlacer<BuildId extends string> {
   ) => void;
   private readonly actionEvents: WorldContext['actionEvents'];
   private readonly stopActionEvents: () => void;
-  private readonly stopPlacerGate?: () => void;
   private readonly ownsPointer: boolean;
-  private readonly canvas: HTMLCanvasElement;
   private readonly theCamera: TheCamera;
   private readonly ground: THREE.Object3D;
   private readonly player: THREE.Object3D;
@@ -104,7 +103,6 @@ export class BuildingPlacer<BuildId extends string> {
       () => this.cancel(),
       reason => reason === 'emote',
     );
-    this.canvas = world.renderer.domElement;
     this.theCamera = world.TheCamera;
     this.ground = world.ground;
     this.player = world.player;
@@ -112,9 +110,10 @@ export class BuildingPlacer<BuildId extends string> {
     this.ownsPointer = !world.mouseActions?.pointer;
     this.pointer = world.mouseActions?.pointer ?? new PointerRaycaster(world);
     this.cursor = new BuildCursor(world, this.pointer);
-    // Action controllers see no mouse action while the placer is shown, so the click reaches the placer.
-    this.stopPlacerGate = world.mouseActions?.registerPlacer(() => this.placer !== undefined);
-    this.canvas.addEventListener('pointerdown', this.handlePointerDown);
+  }
+
+  get active(): boolean {
+    return this.placer !== undefined;
   }
 
   /** Shows the placer at once; its display draws the preview when its art has loaded. */
@@ -210,8 +209,6 @@ export class BuildingPlacer<BuildId extends string> {
     }
     this.disposed = true;
     this.stopActionEvents();
-    this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
-    this.stopPlacerGate?.();
     if (this.ownsPointer) {
       this.pointer.dispose();
     }
@@ -220,25 +217,13 @@ export class BuildingPlacer<BuildId extends string> {
     this.sprites.dispose();
   }
 
-  private readonly handlePointerDown = (event: PointerEvent) => {
-    if (event.button === 2) {
-      this.cancel();
-      return;
-    }
-    if (event.button !== 0 || event.defaultPrevented || !this.placer) {
-      return;
-    }
-    event.preventDefault();
-    this.commit(event);
-  };
-
-  /** Commits the build at the placer: the player walks there, and its BUILD or DEPLOY spawns the building afresh. */
-  private commit(event: PointerEvent): void {
+  /** The player walks to the placer, then BUILD or DEPLOY spawns the building. */
+  confirm(pointer: MouseControlPointer, controller: Pick<PlayerController, 'DoPlacerAction'>): void {
     const placer = this.placer;
     if (!placer) {
       return;
     }
-    this.pointer.trackPointer(event);
+    this.pointer.trackPointer(pointer);
     this.followPointer();
     if (!this.pointer.isOverGround) {
       return;
@@ -252,10 +237,7 @@ export class BuildingPlacer<BuildId extends string> {
       this.place(buildId, position, skinId, instance);
       return true;
     };
-    // The player walks there first; the locomotor input must not stop the walk this click starts.
-    const controller = prefabInstance(this.player)?.components.playercontroller;
-    if (controller?.DoPlacerAction(spec.deploy ? 'DEPLOY' : 'BUILD', position, perform)) {
-      event.stopImmediatePropagation();
+    if (controller.DoPlacerAction(spec.deploy ? 'DEPLOY' : 'BUILD', position, perform)) {
       this.cancel();
     }
   }

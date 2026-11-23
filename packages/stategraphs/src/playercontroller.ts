@@ -15,7 +15,7 @@ import { equippedActionEntity, type SceneActionDoer } from './componentactions.t
 import type { WilsonStateGraph } from './SGwilson.ts';
 import { prefabInstance } from '../../prefab/src/prefabInstance';
 import { watchHandEquipment, type HandEquipmentSignal } from './handEquipment.ts';
-import { PlayerActionPicker } from './playeractionpicker.ts';
+import { PlayerActionPicker, type MouseControlPointer } from './playeractionpicker.ts';
 import { PointerRaycaster } from './pointerRaycaster.ts';
 import type { WilsonAction } from './SGwilson.ts';
 import type { EntityQuery } from '../../prefab/src/prefabInstance';
@@ -26,9 +26,23 @@ import { ItemEntity } from '../../inventory/src/entity';
 
 export type PlayerLocomotor = ActionLocomotor & Required<Pick<ActionLocomotor, 'PushAction'>>;
 
+export type MouseControl = 'PRIMARY' | 'SECONDARY';
+
+export interface PlayerPlacement {
+  readonly active: boolean;
+  confirm(pointer: MouseControlPointer, controller: Pick<PlayerController, 'DoPlacerAction'>): void;
+  cancel(): void;
+}
+
+interface PlayerControlOptions {
+  readonly isPaused?: () => boolean;
+  readonly placement?: PlayerPlacement;
+}
+
 type PlayerDoer = PlayerActionDoer &
   SceneActionDoer & {
     readonly components?: { combat?: Combat };
+    readonly controllerEnabled?: boolean;
     /** TheSim of the world the player is in. */
     readonly TheSim: EntityQuery;
     /** player_common.lua MakeCharacterPhysics(inst, 75, .5). */
@@ -55,6 +69,7 @@ export class PlayerController {
   private readonly picker: PlayerActionPicker;
   private readonly ownsPicker: boolean;
   private readonly doer: PlayerDoer;
+  private readonly controls: PlayerControlOptions;
   /** CONTROL_ATTACK held: attacks repeat after each one; CONTROL_FORCE_ATTACK (Ctrl) allows non-hostile targets. */
   private attackHeld = false;
   private forceAttack = false;
@@ -72,6 +87,7 @@ export class PlayerController {
     /** The player inst as act.doer: actions reach its tags, events, position, stategraph and components. */
     doer: PlayerDoer,
     isManualMovement = () => false,
+    controls: PlayerControlOptions = {},
   ) {
     this.world = world;
     this.stategraph = stategraph;
@@ -81,6 +97,7 @@ export class PlayerController {
     this.ownsPicker = !world.mouseActions;
     this.picker = world.mouseActions ?? new PlayerActionPicker(new PointerRaycaster(world));
     this.doer = doer;
+    this.controls = controls;
     this.cleanups.push(this.picker.bindPlayer(this.doer, () => this.equippedItem()));
     this.cleanups.push(bindActionCancellation(world, this, () => this.cancel()));
     // An action keeps the hand item it was picked with; equipping another drops it.
@@ -96,8 +113,6 @@ export class PlayerController {
     if (removeFrameTask) {
       this.cleanups.push(removeFrameTask);
     }
-    // Capture, so a work click cannot also open a container, place a building or walk.
-    world.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown, true);
     window.addEventListener('keydown', this.handleKeyDown);
     window.addEventListener('keyup', this.handleKeyUp);
     window.addEventListener('blur', this.handleBlur);
@@ -379,40 +394,52 @@ export class PlayerController {
     if (this.ownsPicker) {
       this.picker.dispose();
     }
-    this.world.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown, true);
     window.removeEventListener('keydown', this.handleKeyDown);
     window.removeEventListener('keyup', this.handleKeyUp);
     window.removeEventListener('blur', this.handleBlur);
   }
 
-  private readonly handlePointerDown = (event: PointerEvent): void => {
-    if (event.defaultPrevented || (event.button !== 0 && event.button !== 2)) {
-      return;
+  /** Input dispatches a world button press here after UI has handled the pointer. */
+  OnControl(control: MouseControl, pointer: MouseControlPointer): boolean {
+    if (this.disposed || this.controls.isPaused?.() || this.doer.controllerEnabled === false) {
+      return false;
     }
-    const actions = this.picker.getMouseActions(event);
-    const picked = event.button === 0 ? actions.left : actions.right;
-    const action = picked && this.createAction(picked);
-    // Another click is another action: WALKTO or one buffered elsewhere replaces this one.
-    if (!action) {
-      this.cancel();
-      // OnRightClick: no action returns the active item. Only deployable items are ported; other held items' RMB controllers read their own clicks.
-      const inventory = this.doer.components.inventory;
-      if (
-        event.button === 2 &&
-        !picked &&
-        this.picker.canPickClickAction() &&
-        inventory.GetActiveItem()?.components.deployable
-      ) {
-        event.preventDefault();
-        event.stopImmediatePropagation();
-        inventory.ReturnActiveItem();
+
+    this.stategraph.cancelEmote();
+    const placement = this.controls.placement;
+    if (placement?.active) {
+      if (control === 'PRIMARY') {
+        placement.confirm(pointer, this);
+      } else {
+        placement.cancel();
       }
-      return;
+      return true;
     }
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    this.DoAction(action);
-  };
+
+    const actions = this.picker.getMouseActions(pointer);
+    const picked = control === 'PRIMARY' ? actions.left : actions.right;
+    const action = picked && this.createAction(picked);
+    if (action) {
+      this.DoAction(action);
+      return true;
+    }
+
+    this.cancel();
+    if (picked) {
+      return false;
+    }
+    if (control === 'PRIMARY') {
+      const point = this.picker.pointer.groundPoint();
+      return point !== undefined && this.locomotor.goToPoint(point);
+    }
+
+    const inventory = this.doer.components.inventory;
+    if (!inventory.GetActiveItem()?.components.deployable) {
+      return false;
+    }
+    inventory.ReturnActiveItem();
+    return true;
+  }
 
   private readonly handleKeyDown = (event: KeyboardEvent): void => {
     if (isTextInput(event)) {

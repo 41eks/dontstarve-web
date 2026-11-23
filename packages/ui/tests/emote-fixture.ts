@@ -46,7 +46,7 @@ export async function createEmoteFixture() {
     () => locomotor.stop(),
     reason => reason === 'emote',
   );
-  setupEmoteWheel(emoteWheel, renderer.domElement, animation, actionEvents, () => {});
+  setupEmoteWheel(emoteWheel, animation, actionEvents, () => {});
   emoteWheel.addEventListener('game:emote-request', event =>
     requests.push((event as CustomEvent<{ emote: string }>).detail.emote),
   );

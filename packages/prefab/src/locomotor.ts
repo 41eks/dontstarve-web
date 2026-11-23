@@ -1,9 +1,7 @@
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
-import { PointerRaycaster } from '@dontstarve-web/stategraphs/pointerRaycaster';
 import type { LocomotorAction } from '@dontstarve-web/stategraphs/actionContext';
 import { LocoMotorPath, type LocoMotorPathfinder, type PathCaps } from '../../componets/src/locomotor';
-import type { WorldContext } from './worldContext';
 import { WORLD_SCALE } from './tile';
 
 const OBSTACLE_CELL = 4;
@@ -294,31 +292,4 @@ export class Locomotor {
     this.body.velocity.z = vz;
     // Keep vertical velocity for gravity and jumping.
   }
-}
-
-/** Register after interaction handlers; consumed clicks never become WALKTO actions. */
-export function setupLocomotorInput(
-  world: Pick<WorldContext, 'camera' | 'renderer' | 'ground'>,
-  locomotor: Locomotor,
-): () => void {
-  const pointer = new PointerRaycaster(world);
-  const handlePointerDown = (event: PointerEvent) => {
-    if (event.button !== 0) {
-      return;
-    }
-    if (event.defaultPrevented) {
-      locomotor.stop();
-      return;
-    }
-    pointer.trackPointer(event);
-    const point = pointer.groundPoint();
-    if (point) {
-      locomotor.goToPoint(point);
-    }
-  };
-  world.renderer.domElement.addEventListener('pointerdown', handlePointerDown);
-  return () => {
-    world.renderer.domElement.removeEventListener('pointerdown', handlePointerDown);
-    pointer.dispose();
-  };
 }

@@ -62,7 +62,7 @@ afterEach(() => {
 });
 
 /** A player with a picker, a real locomotor on the player's own position and a buffering stategraph. */
-function setup(tool: Parameters<typeof actionTool>[0]) {
+function setup(tool: Parameters<typeof actionTool>[0], isPaused?: () => boolean) {
   const scene = new THREE.Scene(),
     canvas = new EventTarget();
   const { instance: playerInstance, display: playerDisplay } = createEmptyEntity('player');
@@ -84,7 +84,9 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
   hand.set(equipped);
   const animation = bufferingStategraph();
   let manual = false;
-  const controller = new PlayerController(world, animation.graph, locomotor, hand, playerDoer(player), () => manual);
+  const controller = new PlayerController(world, animation.graph, locomotor, hand, playerDoer(player), () => manual, {
+    isPaused,
+  });
   vi.spyOn(PointerRaycaster.prototype, 'trackPointer').mockImplementation(() => {});
   const pick = vi.spyOn(PointerRaycaster.prototype, 'pickMouseTarget');
   const created: { remove(): void }[] = [];
@@ -100,11 +102,11 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
     pick.mockReturnValue({ object: display.model } as unknown as THREE.Intersection);
     return { instance, display, entity, workable };
   };
-  const click = (button: 0 | 2) => {
-    const event = Object.assign(new Event('pointerdown', { cancelable: true }), { button });
-    canvas.dispatchEvent(event);
-    return event;
-  };
+  const click = (button: 0 | 2) =>
+    controller.OnControl(button === 0 ? 'PRIMARY' : 'SECONDARY', {
+      clientX: 0,
+      clientY: 0,
+    });
   return {
     world,
     player,
@@ -130,7 +132,68 @@ function setup(tool: Parameters<typeof actionTool>[0]) {
   };
 }
 
+it('forwards only unconsumed primary and secondary canvas presses and unbinds on disposal', async () => {
+  const { bindWorldControls, input } =
+    await vi.importActual<typeof import('../../../src/InputManager')>('../../../src/InputManager');
+  const canvas = new EventTarget();
+  const world = { OnControl: vi.fn(() => true) };
+  const dispose = bindWorldControls(canvas as HTMLCanvasElement, world);
+  const press = (button: number, consumed = false) => {
+    const event = Object.assign(new Event('pointerdown', { cancelable: true }), {
+      button,
+      clientX: 12,
+      clientY: 34,
+      altKey: true,
+    });
+    if (consumed) {
+      event.preventDefault();
+    }
+    canvas.dispatchEvent(event);
+  };
+  try {
+    press(0, true);
+    press(1);
+    press(0);
+    press(2);
+    expect(world.OnControl.mock.calls).toEqual([
+      ['PRIMARY', { clientX: 12, clientY: 34, altKey: true }],
+      ['SECONDARY', { clientX: 12, clientY: 34, altKey: true }],
+    ]);
+    dispose();
+    press(0);
+    expect(world.OnControl).toHaveBeenCalledTimes(2);
+  } finally {
+    dispose();
+    input.dispose();
+  }
+});
+
 describe('PlayerController', () => {
+  it('walks to empty ground and ignores world clicks while paused', () => {
+    let paused = true;
+    const s = setup('pickaxe', () => paused);
+    try {
+      const point = new THREE.Vector3(8, 0, 4);
+      const project = vi.spyOn(PointerRaycaster.prototype, 'groundPoint').mockReturnValue(point);
+      pickNothing();
+      expect(s.click(0)).toBe(false);
+      expect(project).not.toHaveBeenCalled();
+      expect(s.locomotor.destination).toBeUndefined();
+
+      paused = false;
+      expect(s.click(0)).toBe(true);
+      expect(s.locomotor.destination).toEqual(point);
+      expect(s.controller.bufferedAction).toBeUndefined();
+
+      s.target('rock1', 'MINE', new THREE.Vector3(12, 0, 0));
+      expect(s.click(0)).toBe(true);
+      expect(s.controller.bufferedAction?.action).toBe('MINE');
+      expect(s.locomotor.destination).toEqual(new THREE.Vector3(12, 0, 0));
+    } finally {
+      s.dispose();
+    }
+  });
+
   it('buffers the picked equipped action, walks into the arrive distance and works the target at the hit frame', () => {
     const s = setup('pickaxe');
     try {
@@ -140,7 +203,7 @@ describe('PlayerController', () => {
         left: { action: 'MINE', target: rock.entity, invobject: s.equipped.entity },
       });
       expect(s.world.mouseActions!.getMouseActions().right).toBeUndefined();
-      expect(s.click(0).defaultPrevented).toBe(true);
+      expect(s.click(0)).toBe(true);
       expect(s.controller.bufferedAction).toMatchObject({
         action: 'MINE',
         target: rock.entity,
@@ -178,8 +241,8 @@ describe('PlayerController', () => {
       expect(s.world.mouseActions!.getMouseActions()).toEqual({
         right: expect.objectContaining({ action: 'HAMMER', target: wall.entity }),
       });
-      expect(s.click(0).defaultPrevented).toBe(false);
-      expect(s.click(2).defaultPrevented).toBe(true);
+      expect(s.click(0)).toBe(false);
+      expect(s.click(2)).toBe(true);
       expect(s.animation.last).toMatchObject({ action: 'HAMMER', invobject: s.equipped.entity });
       const shovel = actionTool('shovel').entity,
         plant = s.target('grass', 'DIG', new THREE.Vector3(1, 0, 0)).entity;
@@ -250,7 +313,7 @@ describe('PlayerController scene actions', () => {
       expect(picker.getMouseActions().left).toBeUndefined();
       picker.PushActionFilter(isGhostValidAction, 99);
       expect(picker.getMouseActions().left).toMatchObject({ action: 'HAUNT', target: entity });
-      expect(s.click(0).defaultPrevented).toBe(true);
+      expect(s.click(0)).toBe(true);
       // mindistance = 2 outweighs ARRIVE_STEP plus the player's .5 radius.
       s.player.position.x = 10 - 2.1 * WORLD_SCALE;
       s.locomotor.update(16, 1 / 30);
@@ -312,7 +375,7 @@ describe('PlayerController point actions', () => {
         action: 'TERRAFORM',
         invobject: s.equipped.entity,
       });
-      expect(s.click(2).defaultPrevented).toBe(true);
+      expect(s.click(2)).toBe(true);
       expect(s.animation.sg.pushBufferedAction).not.toHaveBeenCalled();
       // No action distance: ARRIVE_STEP plus the player's radius from the point itself.
       s.player.position.set(12.1 - 1.9, 0, 0.1);
