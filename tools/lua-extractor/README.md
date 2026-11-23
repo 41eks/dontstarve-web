@@ -70,4 +70,13 @@ pnpm extract:lua --prefab wood_chair --scaffold OnChairBurnt
 
 The profile runs `prefabs/furniture_chairs.lua` with `util.lua` and `prefabutil.lua` loaded, because the file calls `shallowcopy`, `MakePlacer` and `MakeDeployableKitItem` while it builds its list. It records the client and two MasterSim seeds. The sandbox's `SpawnPrefab` runs the constructor of a prefab the same file returns, so the trace includes `wood_chair_back` and its `entity:SetParent`. The two seeds draw different `MakeSmallPropagator` values. The config checks that both fall in the `small` preset's ranges instead of copying them.
 
-`wood_chair.schema.ts` supplies the bank/build archives, the idle clip, the four facings, the final offsets and hidden layers of the chair and its back, the tags, collider and deploy radii, `inspectable.nameoverride`, `savedrotation.dodelayedpostpassapply`, hammer work, haunt cooldown and burn settings. `localContracts` types the animation helpers and the nested `fn` / `backfn`, which no registration records. The rocking-chair branches (`OnSyncChairRocking`, `OnBecomeSittable`) and the back's client-only `OnEntityReplicated` are not recorded for this ID.
+The first MasterSim scenario also records skins (`skins: true` on a scenario). The sandbox loads `prefabskin.lua` and `prefabs/skinprefabs.lua`. For each skin whose `base_prefab` is the recorded prefab, it constructs a fresh entity and runs the skin's own `init_fn`, as the engine applies a skin after `fn`. The recording keeps only the operations from `init_fn` in `recording.skins`, together with the children that construction spawned, so the main trace stays the same. For `wood_chair`, each init_fn must:
+
+- `SetSkin(<skin build>, "wood_chair_chair")` the chair;
+- `OverrideItemSkinSymbol` the back's symbols from the same build, passing the chair's GUID.
+
+Every skin must override the same back symbols, and any other operation is an error. Each skin build is mirrored as `anim/dynamic/<build>.zip`.
+
+`wood_chair.schema.ts` supplies the bank/build archives of the chair and its back, the idle clip, the four facings, the final offsets and hidden layers of the chair and its back, the skins and the back's skin symbols, the tags, collider and deploy radii, `inspectable.nameoverride`, `savedrotation.dodelayedpostpassapply`, hammer work, haunt cooldown and burn settings. `localContracts` types the animation helpers and the nested `fn` / `backfn`, which no registration records. The rocking-chair branches (`OnSyncChairRocking`, `OnBecomeSittable`) and the back's client-only `OnEntityReplicated` are not recorded for this ID.
+
+The CLI writes the recorded skins into `animatedBuildings.wood_chair.skinArchives` in `packages/prefab/src/definitions.json`. The skin import, the save converter and the building placer all read that row, and `--check` fails when the row and the recording differ. The skins' `clear_fn` (`wood_chair_clear_fn`) is not recorded.

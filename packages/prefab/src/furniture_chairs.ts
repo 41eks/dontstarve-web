@@ -38,19 +38,18 @@ export const WOOD_CHAIR_BACK_ID = WOOD_CHAIR_CONFIG.back.prefab;
 const CONFIG = WOOD_CHAIR_CONFIG;
 const FACINGS = CONFIG.facings;
 
+/**
+ * skinprefabs.lua's wood_chair skins, as recorded: each init_fn is wood_chair_init_fn's basic_init_fn SetSkin on the
+ * chair. The generator writes the same table into the catalog row.
+ */
+export const WOOD_CHAIR_SKIN_ARCHIVES: Readonly<Record<string, string>> = CONFIG.skins;
 const declaration: BuildingDeclaration = {
   ...definitions.animatedBuildings.wood_chair,
   archive: CONFIG.archive,
   buildArchive: CONFIG.buildArchive,
   idleAnimation: CONFIG.idleAnimation,
+  skinArchives: WOOD_CHAIR_SKIN_ARCHIVES,
 };
-/** skinprefabs.lua's wood_chair skins: each init_fn is wood_chair_init_fn's basic_init_fn SetSkin on the chair. */
-export const WOOD_CHAIR_SKIN_ARCHIVES: Readonly<Record<string, string>> = declaration.skinArchives!;
-/**
- * prefabskin.lua wood_chair_init_fn: the back keeps its base build except chair01_parts, which
- * OverrideItemSkinSymbol takes from the skin build.
- */
-const BACK_SKIN_SYMBOLS = ['chair01_parts'] as const;
 /** MakePlacer("wood_chair_placer", bank, build, "idle", ..., 15, "four"); the fixed camera offset is not ported. */
 export const WOOD_CHAIR_PLACER = buildingPlacer(declaration, CONFIG.bank);
 
@@ -303,9 +302,14 @@ export function woodChairPrefabs(world: WoodChairWorld): {
     },
     [WOOD_CHAIR_BACK_ID]: {
       fn: () => backfn(),
-      assets: { animationArchive: CONFIG.archive, buildArchives: [CONFIG.buildArchive], bank: CONFIG.bank },
+      assets: {
+        animationArchive: CONFIG.back.archive,
+        buildArchives: [CONFIG.back.buildArchive],
+        bank: CONFIG.back.bank,
+      },
+      // wood_chair_init_fn: the back keeps its base build except the symbols OverrideItemSkinSymbol takes from the skin.
       skins: WOOD_CHAIR_SKIN_ARCHIVES,
-      skinSymbols: BACK_SKIN_SYMBOLS,
+      skinSymbols: CONFIG.back.skinSymbols,
       targetable: false,
     },
   };

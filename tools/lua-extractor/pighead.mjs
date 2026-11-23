@@ -94,8 +94,36 @@ const PROFILES = {
     config: woodChairConfig,
     signatures: woodChairSignatures,
     constant: 'WOOD_CHAIR_CONFIG',
+    // The skin import, save converter and building placer read the catalog's skins: the recorded skins are written there.
+    catalog: config => ({ wood_chair: { skinArchives: config.skins } }),
   },
 };
+
+/**
+ * definitions.json with `rows` (id -> fields) written into its animatedBuildings rows, so the shared building catalog
+ * and the generated declarations agree. Each row is matched and rewritten in the file's own formatting.
+ */
+async function syncCatalog(rows, check) {
+  const catalogFile = new URL('../../packages/prefab/src/definitions.json', import.meta.url);
+  let catalogText = await readFile(catalogFile, 'utf8');
+  const catalog = JSON.parse(catalogText);
+  for (const [id, fields] of Object.entries(rows)) {
+    const entry = catalog.animatedBuildings[id];
+    if (!entry) {
+      throw new Error(`No building catalog row for ${id}`);
+    }
+    const next = { ...entry, ...fields };
+    if (!isDeepStrictEqual(entry, next)) {
+      const row = value => `    "${id}": ${JSON.stringify(value, null, 2).replaceAll('\n', '\n    ')}`;
+      const previous = row(entry);
+      if (!catalogText.includes(previous)) {
+        throw new Error(`Couldn't find the building catalog row for ${id}`);
+      }
+      catalogText = catalogText.replace(previous, () => row(next));
+    }
+  }
+  await updateFile(catalogFile, catalogText, check);
+}
 
 /** The checked-in snapshot of `prefab`, which must have been recorded from this `source`. */
 async function checkedSnapshot(prefab, file, source) {
@@ -172,6 +200,9 @@ export const ${generated.constant} = ${JSON.stringify(config, null, 2)} as const
       schema,
       values.check,
     );
+    if (generated.catalog) {
+      await syncCatalog(generated.catalog(config), values.check);
+    }
     if (!process.exitCode) {
       console.log(
         `${values.check ? 'Verified' : 'Generated'} ${prefab} (${snapshot.recordings.length} scenarios, ${snapshot.localFunctions.length} signatures${unexecutedSummary(snapshot)}).`,
@@ -195,25 +226,16 @@ export const STICK_HEAD_CONFIG = ${JSON.stringify(declarations, null, 2)} as con
     { parser: 'typescript', singleQuote: true, printWidth: 120, trailingComma: 'all' },
   );
 
-  // The save archive picker reads the shared building catalog. Its two art fields mirror
-  // the declaration so fresh placement, save loading and archive selection agree.
-  const catalogFile = new URL('../../packages/prefab/src/definitions.json', import.meta.url);
-  let catalogText = await readFile(catalogFile, 'utf8');
-  const catalog = JSON.parse(catalogText);
-  for (const [id, { archive, idleAnimation }] of Object.entries(declarations)) {
-    const entry = catalog.animatedBuildings[id];
-    if (entry.archive !== archive || entry.idleAnimation !== idleAnimation) {
-      const row = value => `    "${id}": ${JSON.stringify(value, null, 2).replaceAll('\n', '\n    ')}`;
-      const previous = row(entry);
-      if (!catalogText.includes(previous)) {
-        throw new Error(`Couldn't find the building catalog row for ${id}`);
-      }
-      catalogText = catalogText.replace(previous, () => row({ ...entry, archive, idleAnimation }));
-    }
-  }
   await updateFile(new URL('snapshots/pighead.json', import.meta.url), json, values.check);
   await updateFile(schemaFile, schema, values.check);
-  await updateFile(catalogFile, catalogText, values.check);
+  // The save archive picker reads the shared building catalog. Its two art fields mirror
+  // the declaration so fresh placement, save loading and archive selection agree.
+  await syncCatalog(
+    Object.fromEntries(
+      Object.entries(declarations).map(([id, { archive, idleAnimation }]) => [id, { archive, idleAnimation }]),
+    ),
+    values.check,
+  );
   if (!process.exitCode) {
     const counts = snapshot.recordings.map(({ scenario, operations }) => `${scenario.name} ${operations.length}`);
     console.log(

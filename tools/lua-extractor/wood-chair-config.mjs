@@ -13,7 +13,7 @@ export const woodChairProfile = {
   requires: ['util', 'prefabutil'],
   scenarios: [
     { name: 'client', master: false, seed: 42 },
-    { name: 'master', master: true, seed: 42 },
+    { name: 'master', master: true, seed: 42, skins: true },
     { name: 'master-seed-43', master: true, seed: 43 },
   ],
   typeImports: [
@@ -93,6 +93,57 @@ function smallPropagator(recordings, entity) {
   return 'small';
 }
 
+/**
+ * skinprefabs.lua's wood_chair skins, from each recorded init_fn (prefabskin.lua wood_chair_init_fn):
+ * basic_init_fn's AnimState:SetSkin(skin build, base build) on the chair, and OverrideItemSkinSymbol of the back's
+ * symbols from the same skin build, keyed by the chair's GUID. A skin's build is mirrored as anim/dynamic/<build>.zip.
+ * Any other init_fn operation is unsupported.
+ */
+function recordedSkins(recording, { build: baseBuild, backPrefab }) {
+  if (!recording.skins?.length) {
+    throw new Error(`Expected the recorded wood_chair skins in ${recording.scenario.name}`);
+  }
+  let backSymbols;
+  const skins = recording.skins.map(({ name, entity, spawned, operations }) => {
+    const back = spawned.filter(({ prefab }) => prefab === backPrefab);
+    if (back.length !== 1) {
+      throw new Error(`Expected the ${name} chair to spawn one ${backPrefab}`);
+    }
+    const [setSkin, ...overrides] = operations;
+    if (
+      setSkin?.entity !== entity ||
+      setSkin.target !== 'AnimState' ||
+      setSkin.name !== 'SetSkin' ||
+      setSkin.args.length !== 2 ||
+      setSkin.args[1] !== baseBuild
+    ) {
+      throw new Error(`Expected ${name}'s init_fn to SetSkin the chair over ${baseBuild}`);
+    }
+    const [skinBuild] = setSkin.args;
+    const symbols = overrides.map(({ entity: target, target: object, name: method, args }) => {
+      const [symbol, build, sourceSymbol, guid, defaultBuild] = args;
+      if (
+        target !== back[0].entity ||
+        object !== 'AnimState' ||
+        method !== 'OverrideItemSkinSymbol' ||
+        build !== skinBuild ||
+        sourceSymbol !== symbol ||
+        guid !== entity ||
+        defaultBuild !== baseBuild
+      ) {
+        throw new Error(`Unsupported ${name} init_fn operation: ${object}.${method}`);
+      }
+      return symbol;
+    });
+    if (backSymbols && JSON.stringify(backSymbols) !== JSON.stringify(symbols)) {
+      throw new Error(`Expected every wood_chair skin to override the same back symbols, not ${symbols} in ${name}`);
+    }
+    backSymbols = symbols;
+    return [name, `dynamic/${skinBuild}.zip`];
+  });
+  return { skins: Object.fromEntries(skins), backSkinSymbols: backSymbols };
+}
+
 export function woodChairConfig(snapshot) {
   const [client, master, otherSeed] = snapshot.recordings;
   const chair = master.entity;
@@ -138,15 +189,25 @@ export function woodChairConfig(snapshot) {
   }
   const savedRotation = args(master, chair, 'components.savedrotation', 'dodelayedpostpassapply', 'write')[0];
   const events = ops(master, chair, 'inst', 'ListenForEvent').map(op => op.args[0]);
+  const { skins, backSkinSymbols } = recordedSkins(master, { build: chairLook.build, backPrefab: spawn.args[0] });
   return {
     archive: animation.slice(5),
     buildArchive: buildArchive.slice(5),
     ...chairLook,
+    skins,
     physicsRadius,
     physicsHeight,
     deployRadius,
     burnable: args(master, chair, 'inst', '_burnable', 'write')[0],
-    back: { prefab: spawn.args[0], ...backLook, persists: false },
+    // Prefab(name.."_back", backfn, assets): the back's archives are the chair's, checked above for its bank and build.
+    back: {
+      prefab: spawn.args[0],
+      archive: animation.slice(5),
+      buildArchive: buildArchive.slice(5),
+      ...backLook,
+      skinSymbols: backSkinSymbols,
+      persists: false,
+    },
     scrapbookFacing: args(master, chair, 'inst', 'scrapbook_facing', 'write')[0],
     inspectable: { nameoverride: args(master, chair, 'components.inspectable', 'nameoverride', 'write')[0] },
     savedrotation: { dodelayedpostpassapply: savedRotation },

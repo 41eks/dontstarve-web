@@ -94,7 +94,8 @@ local function create_entity()
     next_entity = next_entity + 1
     local entity = next_entity
     local components, tags = {}, {}
-    local fields = { components = components }
+    -- inst.GUID: the recorded entity id, so a skin init_fn passing it can be matched to its entity.
+    local fields = { components = components, GUID = entity }
     local methods = recorded_methods(entity, "inst", {
         "WatchWorldState", "SetDeploySmartRadius", "SetStateGraph", "DoTaskInTime", "ListenForEvent",
     })
@@ -127,6 +128,8 @@ local function create_entity()
         AnimState = {
             "SetBank", "SetBuild", "PlayAnimation", "PushAnimation", "SetLightOverride",
             "ClearOverrideSymbol", "OverrideSymbol", "SetFinalOffset", "Hide",
+            -- prefabskin.lua init_fns: basic_init_fn SetSkin, and the item skin symbols of a child.
+            "SetSkin", "OverrideItemSkinSymbol",
         },
         MiniMapEntity = { "SetIcon", "SetCanUseCache", "SetDrawOverFogOfWar" },
         Light = { "Enable", "SetFalloff", "SetIntensity", "SetColour", "SetRadius" },

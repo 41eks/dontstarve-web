@@ -195,7 +195,14 @@ export async function recordPrefab(
           }
           if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
             const keys = Object.keys(value).sort();
-            if (key === 'args' || key === 'operations' || key === 'assets' || key === 'prefabDependencies') {
+            if (
+              key === 'args' ||
+              key === 'operations' ||
+              key === 'assets' ||
+              key === 'prefabDependencies' ||
+              key === 'spawned' ||
+              key === 'skins'
+            ) {
               if (keys.length !== 0) {
                 throw new Error(`Expected a Lua sequence for ${key}`);
               }

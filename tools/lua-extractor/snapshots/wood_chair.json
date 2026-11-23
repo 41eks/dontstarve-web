@@ -52,8 +52,16 @@
       "sha256": "8636ea21bae7993206a2877d72494699989fd72f964cd2b3111fd2bbc6fe5c7d"
     },
     {
+      "path": "prefabs/skinprefabs.lua",
+      "sha256": "133c8e00c2a73ffd57491fab9548d4fe8d92072554cbe83a39a8d79138c5c9c9"
+    },
+    {
       "path": "prefabs/waxed_plant_common.lua",
       "sha256": "779154db72e2eb51a8c784b9caaa7c814c8e619e00844ff9226d909f66c2a7bb"
+    },
+    {
+      "path": "prefabskin.lua",
+      "sha256": "0fa4f5adfa4e2a74549f9e4234623e9804cc387efb39c81801e130894e61560e"
     },
     {
       "path": "prefabskins.lua",
@@ -833,7 +841,8 @@
       "scenario": {
         "name": "master",
         "master": true,
-        "seed": 42
+        "seed": 42,
+        "skins": true
       },
       "assets": [
         {
@@ -1963,6 +1972,266 @@
       "prefabDependencies": [
         "collapse_small",
         "wood_chair_back"
+      ],
+      "skins": [
+        {
+          "entity": 3,
+          "name": "wood_chair_cawnival",
+          "operations": [
+            {
+              "args": [
+                "wood_chair_cawnival",
+                "wood_chair_chair"
+              ],
+              "entity": 3,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "chair01_parts",
+                "wood_chair_cawnival",
+                "chair01_parts",
+                3,
+                "wood_chair_chair"
+              ],
+              "entity": 4,
+              "kind": "call",
+              "name": "OverrideItemSkinSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 250
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": [
+            {
+              "entity": 4,
+              "prefab": "wood_chair_back"
+            }
+          ]
+        },
+        {
+          "entity": 5,
+          "name": "wood_chair_fantasy",
+          "operations": [
+            {
+              "args": [
+                "wood_chair_fantasy",
+                "wood_chair_chair"
+              ],
+              "entity": 5,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "chair01_parts",
+                "wood_chair_fantasy",
+                "chair01_parts",
+                5,
+                "wood_chair_chair"
+              ],
+              "entity": 6,
+              "kind": "call",
+              "name": "OverrideItemSkinSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 250
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": [
+            {
+              "entity": 6,
+              "prefab": "wood_chair_back"
+            }
+          ]
+        },
+        {
+          "entity": 7,
+          "name": "wood_chair_hallowed",
+          "operations": [
+            {
+              "args": [
+                "wood_chair_hallowed",
+                "wood_chair_chair"
+              ],
+              "entity": 7,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "chair01_parts",
+                "wood_chair_hallowed",
+                "chair01_parts",
+                7,
+                "wood_chair_chair"
+              ],
+              "entity": 8,
+              "kind": "call",
+              "name": "OverrideItemSkinSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 250
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": [
+            {
+              "entity": 8,
+              "prefab": "wood_chair_back"
+            }
+          ]
+        },
+        {
+          "entity": 9,
+          "name": "wood_chair_handmade",
+          "operations": [
+            {
+              "args": [
+                "wood_chair_handmade",
+                "wood_chair_chair"
+              ],
+              "entity": 9,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "chair01_parts",
+                "wood_chair_handmade",
+                "chair01_parts",
+                9,
+                "wood_chair_chair"
+              ],
+              "entity": 10,
+              "kind": "call",
+              "name": "OverrideItemSkinSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 250
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": [
+            {
+              "entity": 10,
+              "prefab": "wood_chair_back"
+            }
+          ]
+        },
+        {
+          "entity": 11,
+          "name": "wood_chair_rose",
+          "operations": [
+            {
+              "args": [
+                "wood_chair_rose",
+                "wood_chair_chair"
+              ],
+              "entity": 11,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "chair01_parts",
+                "wood_chair_rose",
+                "chair01_parts",
+                11,
+                "wood_chair_chair"
+              ],
+              "entity": 12,
+              "kind": "call",
+              "name": "OverrideItemSkinSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 250
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": [
+            {
+              "entity": 12,
+              "prefab": "wood_chair_back"
+            }
+          ]
+        },
+        {
+          "entity": 13,
+          "name": "wood_chair_western",
+          "operations": [
+            {
+              "args": [
+                "wood_chair_western",
+                "wood_chair_chair"
+              ],
+              "entity": 13,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "chair01_parts",
+                "wood_chair_western",
+                "chair01_parts",
+                13,
+                "wood_chair_chair"
+              ],
+              "entity": 14,
+              "kind": "call",
+              "name": "OverrideItemSkinSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 250
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": [
+            {
+              "entity": 14,
+              "prefab": "wood_chair_back"
+            }
+          ]
+        }
       ]
     },
     {

@@ -53,15 +53,64 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
     end)
     env.SpawnPrefab = recorder.spawnPrefab
     definitions = table.pack(load_source(prefab_file)())
+
+    -- skinprefabs.lua's skins of the prefab, in file order. Each skin's init_fn runs on a freshly constructed entity, as
+    -- the engine applies a skin after fn. Only the init_fn's operations are kept, with the children that construction
+    -- spawned (by prefab and entity id), so the main recording is not changed.
+    local function record_skins(prefab)
+        env.CreatePrefabSkin = function(name, info)
+            info.name = name
+            return info
+        end
+        -- prefabskin.lua requires class.lua and prefabs.lua for its Prefab class; the sandbox's Prefab stands in.
+        loaded["class"] = true
+        loaded["prefabs"] = true
+        env.require("prefabskin")
+        local skin_prefabs = table.pack(load_source("prefabs/skinprefabs.lua")())
+        local operations = recorder.operations
+        local skins = {}
+        for i = 1, skin_prefabs.n do
+            local skin = skin_prefabs[i]
+            if skin.base_prefab == prefab.name then
+                local mark = #operations
+                local inst = prefab.fn()
+                local constructed = #operations
+                skin.init_fn(inst, nil)
+                local spawned, skin_operations = {}, {}
+                for k = mark + 1, constructed do
+                    local operation = operations[k]
+                    if operation.target == "global" and operation.name == "SpawnPrefab" then
+                        spawned[#spawned + 1] = { prefab = operation.args[1], entity = operation.args[2].entity }
+                    end
+                end
+                for k = constructed + 1, #operations do
+                    skin_operations[#skin_operations + 1] = operations[k]
+                end
+                for k = #operations, mark + 1, -1 do
+                    operations[k] = nil
+                end
+                skins[#skins + 1] = {
+                    name = skin.name,
+                    entity = recorder.entityId(inst),
+                    spawned = spawned,
+                    operations = skin_operations,
+                }
+            end
+        end
+        return skins
+    end
+
     for i = 1, definitions.n do
         local prefab = definitions[i]
         if prefab.name == prefab_id then
             local entity = prefab.fn()
+            local skins = scenario.skins and record_skins(prefab) or nil
             return {
                 entity = recorder.entityId(entity),
                 assets = prefab.assets,
                 prefabDependencies = prefab.dependencies,
                 operations = recorder.operations,
+                skins = skins,
             }
         end
     end
