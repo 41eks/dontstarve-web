@@ -6,30 +6,35 @@ from pathlib import Path
 import runpy
 import struct
 import zlib
+from typing import Any, Sequence
+
+from dst_save_schema import (
+    NodeIdGridSave, Position, RopeBridgeTileSave, SavedWorld, Shard, TopologyNode, TurfTileSave, WorldPrefab,
+)
 
 LITERALS = runpy.run_path(str(Path(__file__).with_name('dst-save-literal.py')))
 TILE_SIZE = 12
-SHARDS = {'forest': ('Master', 'master'), 'cave': ('Caves', 'caves')}
+SHARDS: dict[WorldPrefab, tuple[Shard, str]] = {'forest': ('Master', 'master'), 'cave': ('Caves', 'caves')}
 # tiledefs.lua TileRanges.OCEAN; OCEAN_ICE belongs to LAND.
 OCEAN_TILES = {'OCEAN_COASTAL_SHORE', 'OCEAN_COASTAL', 'OCEAN_WATERLOG', 'OCEAN_BRINEPOOL',
                'OCEAN_SWELL', 'OCEAN_ROUGH', 'OCEAN_HAZARDOUS', 'OCEAN_BRINEPOOL_SHORE'}
 
 
-def source_grid_position(coordinate, extent):
+def source_grid_position(coordinate: float, extent: int) -> float:
     # map/bunch_spawner.lua and waterlog_worldgen.lua checkIfValidGround:
     # floor(extent / 2 + .5 + coordinate / TILE_SCALE).
     # These are cell-boundary coordinates, matching the project's floor(world / TILE_SIZE).
     return coordinate / 4 + extent / 2 + .5
 
 
-def project_position(coordinates, translation):
+def project_position(coordinates: Sequence[float], translation: Position) -> Position:
     # DST's world is left-handed and Three.js is right-handed (see packages/ui/src/minimap-view.ts):
     # keep X and negate Z so the imported map is not mirrored.
     x, y, z = (round(value * TILE_SIZE / 4 + shift, 6) for value, shift in zip(coordinates, translation))
     return [x, y, 0 - z]
 
 
-def decode_grid(encoded, width, height):
+def decode_grid(encoded: str, width: int, height: int) -> tuple[int, ...]:
     data = base64.b64decode(encoded, validate=True)
     if data[:9] != b'VRSN\0\x01\0\0\0' or len(data) != 9 + width * height * 2:
         raise ValueError('Unsupported DST grid header or dimensions')
@@ -53,7 +58,7 @@ def decode_zipped(saved, component):
     return LITERALS['returned_table'](raw.decode())
 
 
-def decode_rope_bridges(terrain):
+def decode_rope_bridges(terrain: dict[str, Any]) -> dict[int, RopeBridgeTileSave]:
     # components/ropebridgemanager.lua OnSave: the duration grid's { health, direction, icon_offset } per tile index.
     saved = terrain.get('persistdata', {}).get('ropebridgemanager')
     if saved is None:
@@ -66,7 +71,7 @@ def decode_rope_bridges(terrain):
     grid = data.get('duration') or {}
     if grid == []:
         return {}
-    bridges = {}
+    bridges: dict[int, RopeBridgeTileSave] = {}
     for index, entry in grid.items():
         # Older saves kept only the health number, without a direction for SpawnBridgeAnim.
         if type(index) is not int or not 0 <= index < terrain['width'] * terrain['height'] \
@@ -81,12 +86,16 @@ def decode_rope_bridges(terrain):
         if icon_offset is not None and (type(icon_offset) is not int or icon_offset < 0):
             raise ValueError(f'Unsupported rope bridge icon offset at {index}: {icon_offset}')
         # The world is mirrored along z (mirroredAxis), as positions are.
-        bridges[index] = {'health': health, 'direction': {'x': direction['x'], 'z': -direction['z'] if direction['z'] else 0},
-                          **({'iconOffset': icon_offset} if icon_offset is not None else {})}
+        bridge: RopeBridgeTileSave = {
+            'health': health, 'direction': {'x': direction['x'], 'z': -direction['z'] if direction['z'] else 0},
+        }
+        if icon_offset is not None:
+            bridge['iconOffset'] = icon_offset
+        bridges[index] = bridge
     return bridges
 
 
-def decode_underneath(terrain):
+def decode_underneath(terrain: dict[str, Any]) -> dict[int, int]:
     # components/undertile.lua -> DataGrid:Save -> ZipAndEncodeSaveData.
     saved = terrain.get('persistdata', {}).get('undertile')
     if saved is None:
@@ -101,10 +110,10 @@ def decode_underneath(terrain):
     return grid
 
 
-def convert_topology_nodes(nodes, translation):
+def convert_topology_nodes(nodes: list[dict[str, Any]], translation: Position) -> list[TopologyNode]:
     # TheWorld.topology.nodes as staff.lua getrandomposition and areaaware.lua read them: each node's centre (node.x,
     # node.y are the world X and Z) projected like entity positions, its NODE_TYPE and its tags.
-    converted = []
+    converted: list[TopologyNode] = []
     for node in nodes:
         if type(node.get('type')) is not int or any(type(node.get(axis)) not in (int, float) for axis in 'xy'):
             raise ValueError(f'Unsupported topology node: {sorted(node)}')
@@ -113,15 +122,20 @@ def convert_topology_nodes(nodes, translation):
         if not isinstance(tags, list) or any(type(tag) not in (str, int) for tag in tags):
             raise ValueError(f'Unsupported topology node tags: {tags}')
         x, _, z = project_position([node['x'], 0, node['y']], translation)
-        converted.append({'x': x, 'z': z, 'type': node['type'], **({'tags': tags} if tags else {})})
+        saved: TopologyNode = {'x': x, 'z': z, 'type': node['type']}
+        if tags:
+            saved['tags'] = tags
+        converted.append(saved)
     return converted
 
 
-def convert_node_id_grid(nodes, width, height, origin_x, origin_z):
+def convert_node_id_grid(
+    nodes: tuple[int, ...], width: int, height: int, origin_x: int, origin_z: int,
+) -> NodeIdGridSave:
     # The map's nodeidtilemap (Map:GetNodeIdAtPoint) in project cells, row by row as [nodeId, count] runs. Source
     # rows grow along DST +Z and are mirrored like the tiles: source cell (x, z) is project (x - origin_x,
     # origin_z - z - 1).
-    runs = []
+    runs: list[int] = []
     for z in range(height - 1, -1, -1):
         for x in range(width):
             node_id = nodes[z * width + x]
@@ -132,7 +146,9 @@ def convert_node_id_grid(nodes, width, height, origin_x, origin_z):
     return {'col': -origin_x, 'row': origin_z - height, 'width': width, 'height': height, 'runs': runs}
 
 
-def convert_map(terrain, supported, origin_cell=None):
+def convert_map(
+    terrain: dict[str, Any], supported: dict[str, int], origin_cell: list[int] | None = None,
+) -> tuple[SavedWorld, Position, dict[str, Any]]:
     """The project world (without entities), the player's spawn position and the provenance report."""
     prefab = terrain['prefab']
     if prefab not in SHARDS:
@@ -168,10 +184,10 @@ def convert_map(terrain, supported, origin_cell=None):
     half = max(abs(origin_x), abs(width - 1 - origin_x), abs(origin_z), abs(height - 1 - origin_z)) + 3
     underneath = decode_underneath(terrain)
     bridges = decode_rope_bridges(terrain)
-    saved_tiles = []
+    saved_tiles: list[TurfTileSave] = []
     for x, z, name, tile_id, _ in map_cells:
         # Source rows grow along DST +Z; project_position negates Z, so rows are mirrored around the origin.
-        tile = {'col': x - origin_x, 'row': origin_z - z - 1, 'tileId': tile_id}
+        tile: TurfTileSave = {'col': x - origin_x, 'row': origin_z - z - 1, 'tileId': tile_id}
         if name in ('FARMING_SOIL', 'MONKEY_DOCK', 'OCEAN_ICE', 'RIFT_MOON') and z * width + x in underneath:
             under_name = source_names.get(underneath[z * width + x])
             if under_name not in supported:
@@ -202,9 +218,9 @@ def convert_map(terrain, supported, origin_cell=None):
     cx = sum(c[0] for c in spawn_cells) / len(spawn_cells)
     cz = sum(c[1] for c in spawn_cells) / len(spawn_cells)
     spawn = min(interior, key=lambda c: (c[0] - cx) ** 2 + (c[1] - cz) ** 2)
-    translation = [(source_grid_position(0, width) - origin_x) * TILE_SIZE, 0,
-                   (source_grid_position(0, height) - origin_z) * TILE_SIZE]
-    world = {
+    translation: Position = [(source_grid_position(0, width) - origin_x) * TILE_SIZE, 0,
+                             (source_grid_position(0, height) - origin_z) * TILE_SIZE]
+    world: SavedWorld = {
         'shardId': shard_id, 'prefab': prefab, 'elapsedSeconds': 0, 'systems': {},
         'map': {'kind': 'generated', 'defaultTileId': 1, 'tiles': saved_tiles,
                 'generator': {'id': 'dst-map-v1', 'options': {
@@ -213,7 +229,7 @@ def convert_map(terrain, supported, origin_cell=None):
                              'nodeIdGrid': convert_node_id_grid(nodes, width, height, origin_x, origin_z)}},
         'entities': {},
     }
-    spawn_position = [(spawn[0] - origin_x + .5) * TILE_SIZE, 0, (origin_z - spawn[1] - .5) * TILE_SIZE]
+    spawn_position: Position = [(spawn[0] - origin_x + .5) * TILE_SIZE, 0, (origin_z - spawn[1] - .5) * TILE_SIZE]
     report = {
         'scope': 'full-map', 'nodes': names,
         **({'unassignedNodeIds': sorted(unassigned_nodes)} if unassigned_nodes else {}),

@@ -6,8 +6,32 @@ An item keeps GetSaveRecord's shape: its prefab, its skinname and the records of
 HeldEntityRecord declares it.
 """
 
+from typing import Any, cast
 
-def lua_slots(items, path):
+from pydantic import JsonValue
+from typing_extensions import TypedDict
+
+from dst_save_schema import HeldEntityRecord, ItemSpec, SaveCatalog, SlotItemsSave
+
+
+class SkippedItem(TypedDict):
+    path: str
+    prefab: str | None
+    reason: str
+
+
+class DroppedComponents(TypedDict):
+    path: str
+    prefab: str
+    components: list[str]
+
+
+class ItemImportReport(TypedDict):
+    skipped: list[SkippedItem]
+    droppedComponents: list[DroppedComponents]
+
+
+def lua_slots(items: object, path: str) -> list[tuple[int, Any]]:
     # Inventory/Container:OnSave key items by one-based slot; a table with holes is read as a keyed dict.
     if isinstance(items, list):
         return list(enumerate(items, 1))
@@ -16,9 +40,18 @@ def lua_slots(items, path):
     return sorted(items.items())
 
 
-def item_components(prefab, data, spec, path, entity_id, catalog, report):
+def item_components(
+    prefab: str,
+    data: dict[str, Any],
+    spec: ItemSpec,
+    path: str,
+    entity_id: str,
+    catalog: SaveCatalog,
+    report: ItemImportReport,
+) -> tuple[dict[str, JsonValue], list[str]]:
     """An item's component records the project keeps, and the names of the ones it drops."""
-    components, dropped = {}, []
+    components: dict[str, JsonValue] = {}
+    dropped: list[str] = []
     count = (data.get('stackable') or {}).get('stack', 1)
     if type(count) is not int or not 1 <= count <= spec['maxStack']:
         raise ValueError(f'{path}: stack {count} exceeds {prefab} maxStack {spec["maxStack"]}')
@@ -48,38 +81,43 @@ def item_components(prefab, data, spec, path, entity_id, catalog, report):
             if moisture:
                 components['inventoryitemmoisture'] = moisture
         elif component == 'container' and 'containerSlots' in spec:
-            components['container'] = convert_slots(value.get('items', {}), f'{path}.container', spec['containerSlots'],
-                                                    entity_id, catalog, report)
+            slots = convert_slots(value.get('items', {}), f'{path}.container', spec['containerSlots'],
+                                  entity_id, catalog, report)
+            components['container'] = cast(JsonValue, slots)
         else:
             dropped.append(component)
     return components, dropped
 
 
-def convert_item(record, path, entity_id, catalog, report):
+def convert_item(
+    record: dict[str, Any], path: str, entity_id: str, catalog: SaveCatalog, report: ItemImportReport,
+) -> HeldEntityRecord | None:
     """GetSaveRecord of an inventory item -> held record; unsupported items and components are reported."""
     prefab = record.get('prefab')
-    spec = catalog['items'].get(prefab)
-    if spec is None:
+    spec = catalog['items'].get(prefab) if isinstance(prefab, str) else None
+    if not isinstance(prefab, str) or spec is None:
         report['skipped'].append({'path': path, 'prefab': prefab, 'reason': 'unknown item'})
         return None
     data = record.get('data') or {}
     if not isinstance(data, dict):
         raise ValueError(f'Expected component data at {path}')
-    item, dropped = {'id': entity_id, 'prefab': prefab}, []
+    dropped = []
     skin = record.get('skinname')
-    if skin is not None:
-        if skin in catalog['skins'] and catalog['skins'][skin] in (None, prefab):
-            item['skinname'] = skin
-        else:
-            dropped.append('skinname')
-    item['components'], dropped_components = item_components(prefab, data, spec, path, entity_id, catalog, report)
+    if skin is not None and (skin not in catalog['skins'] or catalog['skins'][skin] not in (None, prefab)):
+        dropped.append('skinname')
+        skin = None
+    components, dropped_components = item_components(prefab, data, spec, path, entity_id, catalog, report)
     dropped += dropped_components
     if dropped:
         report['droppedComponents'].append({'path': path, 'prefab': prefab, 'components': dropped})
-    return item
+    if skin is not None:
+        return {'id': entity_id, 'prefab': prefab, 'skinname': skin, 'components': components}
+    return {'id': entity_id, 'prefab': prefab, 'components': components}
 
 
-def convert_slots(items, path, slot_count, entity_prefix, catalog, report):
+def convert_slots(
+    items: object, path: str, slot_count: int, entity_prefix: str, catalog: SaveCatalog, report: ItemImportReport,
+) -> SlotItemsSave:
     """Container:OnSave items -> held records by one-based slot; items that cannot go in a container are reported."""
     converted_items = {}
     for slot, child in lua_slots(items, path):

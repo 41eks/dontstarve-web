@@ -1,15 +1,35 @@
-// Prints the item and skin catalog that save validation uses, for Python importers.
+// Shares the game's item catalog and save validator with the DST importer.
+import { createInterface } from 'node:readline';
+import { stdin } from 'node:process';
 import { createServer } from 'vite';
 
 const server = await createServer({
   root: new URL('..', import.meta.url).pathname,
   logLevel: 'error',
   appType: 'custom',
-  server: { middlewareMode: true, hmr: false },
+  server: { middlewareMode: true, hmr: false, ws: false },
   optimizeDeps: { noDiscovery: true },
 });
 try {
   const { SAVE_CATALOG } = await server.ssrLoadModule('/src/save/catalog.ts');
+  if (process.argv.includes('--validate')) {
+    const { deserializeSave } = await server.ssrLoadModule('/src/save/deserialize.ts');
+    for await (const line of createInterface({ input: stdin })) {
+      const [path, text, player] = JSON.parse(line);
+      try {
+        deserializeSave(text, SAVE_CATALOG, player ?? undefined);
+      } catch (error) {
+        throw new Error(`${path}: ${error.message}`);
+      }
+    }
+  } else {
+    printCatalog(SAVE_CATALOG);
+  }
+} finally {
+  await server.close();
+}
+
+function printCatalog(catalog) {
   const fields = [
     'maxStack',
     'maxUses',
@@ -21,15 +41,13 @@ try {
     'containerSlots',
   ];
   const items = Object.fromEntries(
-    Object.entries(SAVE_CATALOG.items).map(([itemId, spec]) => [
+    Object.entries(catalog.items).map(([itemId, spec]) => [
       itemId,
       Object.fromEntries(fields.filter(field => spec[field] !== undefined).map(field => [field, spec[field]])),
     ]),
   );
   const skins = Object.fromEntries(
-    Object.entries(SAVE_CATALOG.skins).map(([skinId, skin]) => [skinId, skin.itemId ?? null]),
+    Object.entries(catalog.skins).map(([skinId, skin]) => [skinId, skin.itemId ?? null]),
   );
   process.stdout.write(JSON.stringify({ items, skins }));
-} finally {
-  await server.close();
 }

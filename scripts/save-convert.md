@@ -1,9 +1,9 @@
 # DST 存档转换
 
-在仓库根目录运行 `scripts/import-dst-region.py`，可将原版 Cluster 的地表与洞穴快照转换为本项目的 JSON 存档：
+在仓库根目录安装 Node 依赖（`pnpm install --frozen-lockfile`），再用 `uv run` 将原版 Cluster 的地表与洞穴快照转换为本项目的 JSON 存档。入口脚本声明了 Python 3.11 及 Pydantic 2 依赖，`uv` 自动准备运行环境。
 
 ```bash
-python3 scripts/import-dst-region.py \
+uv run scripts/import-dst-region.py \
   --cluster public/saves/Cluster_65 \
   --output public/saves/Cluster_1 \
   --origin-cell 214 213 \
@@ -13,10 +13,14 @@ python3 scripts/import-dst-region.py \
 命令转换源目录中所有世界快照（当前共 12 份：地表 `0000000310`–`0000000315`、洞穴 `0000000140`–`0000000145`）及各自存在的玩家文件，按世界类型写入 `Master/save/session/<session>/<snapshot>.json` 或 `Caves/save/session/<session>/<snapshot>.json`。同编号玩家文件放在该 Session 的用户子目录；世界 JSON 的 `session.playerFile` 指向它。`Master.json`、`Caves.json` 及各自的 `.import.json` 是每种世界最新快照的便捷副本。`session.json` 列出全部转换结果；游戏从每个 Session 的最新快照判断玩家是否已迁移，再加载唯一没有 `migration` 标记的玩家所在世界。不带 `?save=` 启动时读取的是 `session.json` 指向的 Session 快照（例如地表 `Master/save/session/03741E1B78B29575/0000000315.json`），不是 `Master.json`／`Caves.json` 便捷副本；调试存档字段请改前者，或用 `?save=Cluster_1/Master.json` 显式加载副本。源目录中洞穴快照实际保存在 `Master/save/session/04E26ADB66396E8D/`，也会按洞穴类型归入输出的 Caves 目录；`Caves` 物理目录里同一 Session 只剩建档当天的 `0000000002`、`0000000003`，作为残留跳过。`--origin-cell COL ROW` 在整簇导入时只固定洞穴原点；地表独立居中，可用 `--forest-origin-cell COL ROW` 固定。检查已有结果而不写入文件时，在相同命令末尾加 `--check`。
 
 ```bash
-python3 scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
+uv run scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
 ```
 
-玩家当前在地表：最新地表快照 `0000000315` 的玩家文件转换后位于项目脚点 `[1345.317, 0, 1003.869]`。最新地表快照有 8,104 个实体，最新洞穴快照 `0000000145` 有 7,342 个实体；没有被跳过的实体（各快照 `.import.json` 的 `skippedEntities` 均为空；地表 `0000000310` 中受伤的 `beefalo` 保留生命值导入）；见 [遗迹家具移植](../docs/dst-ruinsrelic.md) 与 [石笋移植](../docs/dst-stalagmite.md)。早期快照没有玩家文件或组件表时，仍保留世界实体，游戏只从各 Session 的最新快照选择玩家。导入保留地表各海洋类型、海冰、码头／农田底层地皮。
+转换和 `--check` 都会先校验整批数据，再写入或比对文件。`scripts/dst_save_schema.py` 使用 `TypedDict`、`Literal` 和 Pydantic `TypeAdapter` 描述世界、地图、玩家、持有物品、分离的 Session 玩家文件和索引，与 [TS 存档类型](../src/save/types.ts) 及 [实体存档类型](../packages/prefab/src/saveRecord.ts) 对齐。修改存档字段时同步更新对应定义。迁移目标坐标随原始迁移记录留在 `.import.json`，游戏存档和 Session 索引只写 TS 声明的迁移字段。
+
+转换器调用游戏的 [TS 读档器](../src/save/deserialize.ts) 验证每份世界及其玩家数据。具体 prefab 的组件、皮肤、物品规格和跨字段限制随游戏的读档规则更新。校验错误会注明文件和字段路径。`--check` 还会逐字节比较存档、索引和来源报告。
+
+玩家当前在地表：最新地表快照 `0000000315` 的玩家文件转换后位于项目脚点 `[1345.317, 0, 1003.869]`。最新地表快照有 9,053 个实体，最新洞穴快照 `0000000145` 有 7,368 个实体；没有被跳过的实体（各快照 `.import.json` 的 `skippedEntities` 均为空；地表 `0000000310` 中受伤的 `beefalo` 保留生命值导入）；见 [遗迹家具移植](../docs/dst-ruinsrelic.md) 与 [石笋移植](../docs/dst-stalagmite.md)。早期快照没有玩家文件或组件表时，仍保留世界实体，游戏只从各 Session 的最新快照选择玩家。导入保留地表各海洋类型、海冰、码头／农田底层地皮。
 
 重新导入后、提交前，用 `scripts/dst-save-diff.py` 确认只有预期的实体组变化。它按实体组和导入报告汇总相对 git 版本的差异，并列出最新快照的 source／imported 数量；`--base` 指定比较的版本（默认 `HEAD`），有 `--expect` 时出现其他变更或预期 ID 未变化都以退出码 1 结束：
 

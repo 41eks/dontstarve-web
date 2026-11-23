@@ -3,17 +3,20 @@
 import math
 from pathlib import Path
 import runpy
+from typing import Any
+
+from dst_save_schema import EquipKind, EquipSlot, PlayerInventorySave, Position, SaveCatalog, SavedPlayer
 
 TILE = runpy.run_path(str(Path(__file__).with_name('dst-region-tile.py')))
 ITEM = runpy.run_path(str(Path(__file__).with_name('dst-region-item.py')))
 project_position, lua_slots, convert_item = TILE['project_position'], ITEM['lua_slots'], ITEM['convert_item']
 
 # inventory.lua EQUIPSLOTS names, which the save keeps, -> the project equip kind an item declares.
-EQUIP_SLOTS = {'hands': 'hand', 'body': 'body', 'head': 'head'}
+EQUIP_SLOTS: dict[EquipSlot, EquipKind] = {'hands': 'hand', 'body': 'body', 'head': 'head'}
 PLAYER_SLOT_COUNT = 15
 
 
-def reset_player(player, shard_id, position):
+def reset_player(player: SavedPlayer, shard_id: str, position: Position) -> None:
     """The template player becomes a full-stat Wilson with empty inventory at the map's spawn."""
     player['prefab'] = 'wilson'
     player['shardId'] = shard_id
@@ -24,16 +27,20 @@ def reset_player(player, shard_id, position):
     player['builder'] = {'bufferedBuilds': []}
 
 
-def convert_player(source, translation, size, entity_prefix, catalog):
+def convert_player(
+    source: dict[str, Any], translation: Position, size: float, entity_prefix: str, catalog: SaveCatalog,
+) -> tuple[Position, PlayerInventorySave, dict[str, Any]]:
     """A DST player snapshot's position and inventory; stats and the character stay the template's."""
     data = source.get('data') or {}
     inventory = data.get('inventory') or {}
-    report = {'character': source.get('prefab'), 'sourcePosition': [source.get('x', 0), 0, source.get('z', 0)],
-              'skipped': [], 'droppedComponents': []}
+    report: dict[str, Any] = {
+        'character': source.get('prefab'), 'sourcePosition': [source.get('x', 0), 0, source.get('z', 0)],
+        'skipped': [], 'droppedComponents': [],
+    }
     position = project_position(report['sourcePosition'], translation)
     if any(type(value) not in (int, float) or not math.isfinite(value) or abs(value) > size / 2 for value in position):
         raise ValueError('Player position is outside the imported map')
-    converted = {'items': {}, 'equip': {}}
+    converted: PlayerInventorySave = {'items': {}, 'equip': {}}
     for slot, record in lua_slots(inventory.get('items', {}), 'inventory.items'):
         if slot > PLAYER_SLOT_COUNT:
             raise ValueError(f'inventory.items.{slot} is outside the player inventory')
@@ -62,7 +69,7 @@ def convert_player(source, translation, size, entity_prefix, catalog):
     return position, converted, report
 
 
-def player_snapshot(session, snapshot):
+def player_snapshot(session: Path, snapshot: str) -> tuple[Path | None, Path | None]:
     """The single local player's file saved with this world snapshot, if the player was in this shard."""
     users = sorted(path for path in session.iterdir() if path.is_dir())
     if len(users) > 1:

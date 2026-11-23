@@ -5,12 +5,18 @@
 (src/save/types.ts `world.systems`); fields for features it has not ported are validated, then dropped.
 """
 import math
+from typing import Any, TypeVar, cast
 
-SEASONS = ('autumn', 'winter', 'spring', 'summer')
-CLOCK_PHASES = ('day', 'dusk', 'night')
+from dst_save_schema import (
+    ClockPhase, ClockSave, MoonSave, NightmareClockSave, NightmareLengths, NightmarePhase, Number, Precipitation,
+    Season, SeasonSave, WeatherSave, WorldPrefab, WorldSystems, WorldTemperatureSave,
+)
+
+SEASONS: tuple[Season, ...] = ('autumn', 'winter', 'spring', 'summer')
+CLOCK_PHASES: tuple[ClockPhase, ...] = ('day', 'dusk', 'night')
 SEASON_MODES = ('cycle', 'endless', 'always')
-NIGHTMARE_PHASES = ('calm', 'warn', 'wild', 'dawn')
-PRECIPITATION_TYPES = ('none', 'rain', 'snow')
+NIGHTMARE_PHASES: tuple[NightmarePhase, ...] = ('calm', 'warn', 'wild', 'dawn')
+PRECIPITATION_TYPES: tuple[Precipitation, ...] = ('none', 'rain', 'snow')
 
 # src/tuning.ts TUNING: SEG_TIME 30 and the fixed 10 / 4 / 2 day, dusk and night segments. seasons.lua gives each
 # season its own 16 segments, which the project does not port yet: the import keeps the source phase and its progress
@@ -25,15 +31,15 @@ NUM_CLOCK_SEGS = 16
 MOON_PHASE_CYCLES = 20
 
 
-def number(value, name, minimum=None, maximum=None):
-    if type(value) not in (int, float) or not math.isfinite(value):
+def number(value: object, name: str, minimum: Number | None = None, maximum: Number | None = None) -> Number:
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value):
         raise ValueError(f'Unsupported {name}')
     if (minimum is not None and value < minimum) or (maximum is not None and value > maximum):
         raise ValueError(f'Unsupported {name}')
     return value
 
 
-def integer(value, name, minimum=None, maximum=None):
+def integer(value: object, name: str, minimum: int | None = None, maximum: int | None = None) -> int:
     if type(value) is not int:
         raise ValueError(f'Unsupported {name}')
     if (minimum is not None and value < minimum) or (maximum is not None and value > maximum):
@@ -41,19 +47,22 @@ def integer(value, name, minimum=None, maximum=None):
     return value
 
 
-def choice(value, name, choices):
+T = TypeVar('T')
+
+
+def choice(value: object, name: str, choices: tuple[T, ...]) -> T:
     if value not in choices:
         raise ValueError(f'Unsupported {name}')
-    return value
+    return cast(T, value)
 
 
-def fields(data, name, allowed):
+def fields(data: object, name: str, allowed: set[str]) -> dict[str, Any]:
     if not isinstance(data, dict) or set(data) - allowed:
         raise ValueError(f'Unsupported {name} state')
     return data
 
 
-def convert_clock(data):
+def convert_clock(data: object) -> tuple[ClockSave, MoonSave, Number]:
     """clock.lua OnSave -> systems.clock / systems.moon, and the elapsed seconds carrying its cycles and phase."""
     data = fields(data, 'clock', {'cycles', 'phase', 'mooomphasecycle', 'totaltimeinphase', 'remainingtimeinphase', 'segs',
                                   'dsa_clocksync_moonphaselocked', 'dsa_clock_is_cave', 'dsa_extradata'})
@@ -84,7 +93,7 @@ def convert_clock(data):
     return ({'day': cycles + 1, 'phase': phase, 'phaseProgress': progress}, {'mooomphasecycle': moon}, elapsed)
 
 
-def convert_season(data):
+def convert_season(data: object) -> SeasonSave:
     """seasons.lua OnSave -> systems.season; the calendar's modes and segments are not ported."""
     data = fields(data, 'seasons', {'mode', 'premode', 'israndom', 'segs', 'season', 'totaldaysinseason',
                                     'elapseddaysinseason', 'remainingdaysinseason', 'lengths'})
@@ -121,21 +130,25 @@ def convert_season(data):
     return {'name': season, 'daysRemaining': remaining}
 
 
-def convert_worldtemperature(data):
+def convert_worldtemperature(data: object) -> WorldTemperatureSave:
     """worldtemperature.lua OnSave -> systems.worldtemperature."""
     data = fields(data, 'worldtemperature', {'daylight', 'season', 'seasontemperature', 'phasetemperature', 'noisetime'})
     season = choice(data.get('season'), 'worldtemperature season', SEASONS)
     # Lua writes daylight only when it is true.
     if 'daylight' in data and data['daylight'] is not True:
         raise ValueError('Unsupported worldtemperature daylight')
-    return {'season': season,
-            'seasontemperature': number(data.get('seasontemperature'), 'worldtemperature seasontemperature'),
-            'phasetemperature': number(data.get('phasetemperature'), 'worldtemperature phasetemperature'),
-            'noisetime': number(data.get('noisetime'), 'worldtemperature noisetime', minimum=0),
-            **({'daylight': True} if data.get('daylight') is True else {})}
+    result: WorldTemperatureSave = {
+        'season': season,
+        'seasontemperature': number(data.get('seasontemperature'), 'worldtemperature seasontemperature'),
+        'phasetemperature': number(data.get('phasetemperature'), 'worldtemperature phasetemperature'),
+        'noisetime': number(data.get('noisetime'), 'worldtemperature noisetime', minimum=0),
+    }
+    if data.get('daylight') is True:
+        result['daylight'] = True
+    return result
 
 
-def convert_weather(data):
+def convert_weather(data: object) -> WeatherSave:
     """weather.lua / cave_weather.lua OnSave -> systems.weather."""
     data = fields(data, 'weather', {
         'temperature', 'daylight', 'season', 'noisetime', 'moisturerateval', 'moisturerateoffset',
@@ -143,7 +156,7 @@ def convert_weather(data):
         'moisturefloormultiplier', 'moistureceil', 'precipmode', 'preciptype', 'peakprecipitationrate',
         'snowlevel', 'lunarhaillevel', 'snowcovered', 'startsnowthreshold', 'stopsnowthreshold', 'lightningmode',
         'minlightningdelay', 'maxlightningdelay', 'nextlightningtime', 'wetness', 'wet'})
-    result = {
+    result: WeatherSave = {
         'moisture': number(data.get('moisture'), 'weather moisture', minimum=0),
         'moisturefloor': number(data.get('moisturefloor'), 'weather moisturefloor', minimum=0),
         'moistureceil': number(data.get('moistureceil'), 'weather moistureceil', minimum=0),
@@ -172,7 +185,7 @@ def convert_weather(data):
     return result
 
 
-def convert_nightmareclock(data):
+def convert_nightmareclock(data: object) -> NightmareClockSave:
     """nightmareclock.lua OnSave -> systems.nightmareclock."""
     data = fields(data, 'nightmareclock', {'lengths', 'phase', 'totaltimeinphase', 'remainingtimeinphase'})
     lengths = fields(data.get('lengths'), 'nightmareclock lengths', set(NIGHTMARE_PHASES))
@@ -180,14 +193,19 @@ def convert_nightmareclock(data):
     remaining = number(data.get('remainingtimeinphase'), 'nightmareclock remaining time', minimum=0)
     if remaining > total:
         raise ValueError('Unsupported nightmareclock remaining time')
-    return {'lengths': {name: integer(lengths.get(name), f'nightmareclock {name} length', minimum=0, maximum=63)
-                        for name in NIGHTMARE_PHASES},
+    saved_lengths = cast(NightmareLengths, {
+        name: integer(lengths.get(name), f'nightmareclock {name} length', minimum=0, maximum=63)
+        for name in NIGHTMARE_PHASES
+    })
+    return {'lengths': saved_lengths,
             'phase': choice(data.get('phase'), 'nightmareclock phase', NIGHTMARE_PHASES),
             'totaltimeinphase': total,
             'remainingtimeinphase': remaining}
 
 
-def convert_systems(persistdata, prefab):
+def convert_systems(
+    persistdata: object, prefab: WorldPrefab,
+) -> tuple[WorldSystems, Number, dict[str, Any]]:
     """world_network_fn's persistdata -> (world.systems, world.elapsedSeconds, provenance)."""
     # An empty Lua table reads as []: a snapshot may save no world_network state.
     if persistdata == []:
@@ -198,7 +216,9 @@ def convert_systems(persistdata, prefab):
              'fumarolelocaltemperature', 'quaker'}
     if set(persistdata) - known:
         raise ValueError(f'Unsupported world_network state: {sorted(set(persistdata) - known)}')
-    systems, report, elapsed = {}, {}, 0
+    systems: WorldSystems = {}
+    report: dict[str, Any] = {}
+    elapsed: Number = 0
     clock = persistdata.get('clock')
     if clock is not None:
         systems['clock'], systems['moon'], elapsed = convert_clock(clock)

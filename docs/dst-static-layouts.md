@@ -59,17 +59,17 @@ python3 packages/prefab/scripts/import-static-layouts.py --source /path/to/DST/d
 
 ```bash
 # 同时转换 forest 与 cave，输出两个独立的分片 JSON 和来源报告
-python3 scripts/import-dst-region.py \
+uv run scripts/import-dst-region.py \
   --cluster public/saves/Cluster_58 \
   --output public/saves/Cluster_1 --origin-cell 281 392
 
 # 校验两份存档及来源报告，不写文件
-python3 scripts/import-dst-region.py \
+uv run scripts/import-dst-region.py \
   --cluster public/saves/Cluster_58 \
   --output public/saves/Cluster_1 --origin-cell 281 392 --check
 
 # 仍支持只转换一张地图，自动按源 map.prefab 判断 forest / cave
-python3 scripts/import-dst-region.py \
+uv run scripts/import-dst-region.py \
   --shard public/saves/Cluster_58/Master \
   --output /tmp/Master.json
 ```
@@ -159,8 +159,8 @@ cd packages/ui && npx playwright test tests/pigking.spec.ts
 当前默认存档来源为 `Cluster_65`；保持原点重新生成及校验：
 
 ```bash
-python3 scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197
-python3 scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
+uv run scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197
+uv run scripts/import-dst-region.py --cluster public/saves/Cluster_65 --output public/saves/Cluster_1 --origin-cell 214 213 --forest-origin-cell 189 197 --check
 ```
 
 地表检测到 174 种、2,463 个散落物品实体（合计 10,537 件），洞穴 85 种、1,132 个实体（3,417 件）。每份 `.import.json` 的 `groundItemCounts` 记录 `entities`、`quantity` 和 `sourceComponents`；数量按地面实体的 stackable.stack 计算，不遍历玩家库存、容器或包裹内容。`groundItemScope` 明确记录美术范围。
