@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 
 import { LuaFactory } from 'wasmoon';
 
+import { scanClipPlays } from './clip-scan.mjs';
+
 import {
   localFunctionNodes,
   luaParameterNames,
@@ -220,6 +222,9 @@ export async function recordPrefab(
       lua.global.close();
     }
   }
+  const unexecuted = unexecutedRegions(readSource(file), executedLines, enteredFunctions);
+  const clipPlays = recordedClipPlays(file, readSource, recordings, unexecuted);
+  // After every scan, so each file a scan read is an input.
   const inputs = [...sources.keys()].sort().map(path => ({
     path,
     sha256: createHash('sha256').update(sources.get(path)).digest('hex'),
@@ -230,7 +235,35 @@ export async function recordPrefab(
     file,
     inputs,
     localFunctions: listLocalFunctions(file, readSource, sourceNodes),
-    unexecuted: unexecutedRegions(readSource(file), executedLines, enteredFunctions),
+    unexecuted,
+    clipPlays,
     recordings,
   };
+}
+
+/**
+ * The prefab file's AnimState plays (scanClipPlays), then those of each callback another file defines that a recording
+ * registered, such as standardcomponents.lua's DefaultBurntStructureFn. A play in the prefab file says whether any
+ * scenario ran its line; a callback elsewhere has no coverage.
+ */
+function recordedClipPlays(file, readSource, recordings, unexecuted) {
+  const notRun = line =>
+    unexecuted.some(region => !region.indeterminate && line >= region.startLine && line <= region.endLine);
+  const plays = scanClipPlays(readSource(file), file).map(play => ({ ...play, ran: !notRun(play.line) }));
+  const callbacks = new Map();
+  for (const { operations } of recordings) {
+    for (const operation of operations) {
+      for (const argument of operation.args) {
+        if (argument?.kind === 'callback' && argument.file !== file) {
+          callbacks.set(`${argument.file}:${argument.startLine}`, argument);
+        }
+      }
+    }
+  }
+  for (const callback of [...callbacks.values()].sort((a, b) =>
+    a.file === b.file ? a.startLine - b.startLine : a.file < b.file ? -1 : 1,
+  )) {
+    plays.push(...scanClipPlays(readSource(callback.file), callback.file, callback));
+  }
+  return plays;
 }

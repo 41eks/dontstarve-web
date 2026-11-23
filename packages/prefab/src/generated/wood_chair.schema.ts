@@ -99,6 +99,42 @@ export const WOOD_CHAIR_CONFIG = {
     wood_chair_rose: 'dynamic/wood_chair_rose.zip',
     wood_chair_western: 'dynamic/wood_chair_western.zip',
   },
+  clips: {
+    burnt: {
+      name: 'burnt',
+      facings: ['right', 'up', 'left', 'down', 'upright', 'upleft', 'downright', 'downleft'],
+      frames: 1,
+    },
+    hit: {
+      name: 'hit',
+      facings: ['right', 'up', 'left', 'down'],
+      frames: 9,
+    },
+    idle: {
+      name: 'idle',
+      facings: ['right', 'up', 'left', 'down'],
+      frames: 1,
+    },
+    place: {
+      name: 'place',
+      facings: ['right', 'up', 'left', 'down'],
+      frames: 15,
+    },
+  },
+  clipsNotInBank: {
+    rocking_loop: [
+      'prefabs/furniture_chairs.lua:93 OnSyncChairRocking',
+      'prefabs/furniture_chairs.lua:95 OnSyncChairRocking',
+      'prefabs/furniture_chairs.lua:100 OnSyncChairRocking',
+    ],
+    rocking_pre: ['prefabs/furniture_chairs.lua:88 OnSyncChairRocking'],
+    rocking_pst: [
+      'prefabs/furniture_chairs.lua:106 OnSyncChairRocking',
+      'prefabs/furniture_chairs.lua:111 OnSyncChairRocking',
+      'prefabs/furniture_chairs.lua:132 OnBecomeSittable',
+    ],
+  },
+  dynamicClips: [],
   physicsRadius: 0.25,
   physicsHeight: 2,
   deployRadius: 0.875,

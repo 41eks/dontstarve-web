@@ -40,6 +40,8 @@ export const WOOD_CHAIR_ID = 'wood_chair' as const;
 export const WOOD_CHAIR_BACK_ID = WOOD_CHAIR_CONFIG.back.prefab;
 const CONFIG = WOOD_CHAIR_CONFIG;
 const FACINGS = CONFIG.facings;
+/** The clips of the bank the chair and its back draw, from its anim.bin; a clip the Lua plays that the bank lacks is not here. */
+const CLIPS = CONFIG.clips;
 
 /**
  * skinprefabs.lua's wood_chair skins, as recorded: each init_fn is wood_chair_init_fn's basic_init_fn SetSkin on the
@@ -111,8 +113,8 @@ const _PushAnimation: PushAnimationFn = (inst, anim, loop) => {
 
 const OnHit: OnHitFn = inst => {
   if (!inst.hasTag('burnt')) {
-    _PlayAnimation(inst, 'hit', undefined);
-    _PushAnimation(inst, 'idle', false);
+    _PlayAnimation(inst, CLIPS.hit.name, undefined);
+    _PushAnimation(inst, CLIPS.idle.name, false);
     inst.components.sittable!.EjectOccupier();
   }
 };
@@ -129,8 +131,8 @@ const OnHammered: OnHammeredFn = inst => {
  * TheWorld:PushEvent("CHEVO_makechair", { target, doer }), which only the unported Carnival event listens for.
  */
 const OnBuilt: OnBuiltFn = inst => {
-  _PlayAnimation(inst, 'place', undefined);
-  _PushAnimation(inst, 'idle', false);
+  _PlayAnimation(inst, CLIPS.place.name, undefined);
+  _PushAnimation(inst, CLIPS.idle.name, false);
 };
 
 const CancelSitterAnimOver: CancelSitterAnimOverFn = inst => {
@@ -145,7 +147,7 @@ const CancelSitterAnimOver: CancelSitterAnimOverFn = inst => {
 const OnChairBurnt: OnChairBurntFn = inst => {
   DefaultBurntStructureFn(inst);
   if (inst.back !== undefined) {
-    inst.back.AnimState.PlayAnimation('burnt');
+    inst.back.AnimState.PlayAnimation(CLIPS.burnt.name);
   }
   CancelSitterAnimOver(inst);
   removeComponent(inst, 'sittable');

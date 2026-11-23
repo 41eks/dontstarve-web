@@ -289,6 +289,137 @@
       "text": "local function create_mermhead()"
     }
   ],
+  "clipPlays": [
+    {
+      "clip": "hit",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 43,
+      "within": "OnWorked",
+      "ran": false
+    },
+    {
+      "clip": "idle_awake",
+      "kind": "push",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 44,
+      "within": "OnWorked",
+      "ran": false
+    },
+    {
+      "clip": "idle_asleep",
+      "kind": "push",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 44,
+      "within": "OnWorked",
+      "ran": false
+    },
+    {
+      "clip": "wake",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 53,
+      "within": "OnFullMoon",
+      "ran": true
+    },
+    {
+      "clip": "idle_awake",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 54,
+      "within": "OnFullMoon",
+      "ran": true
+    },
+    {
+      "clip": "sleep",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 58,
+      "within": "OnFullMoon",
+      "ran": false
+    },
+    {
+      "clip": "idle_asleep",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 59,
+      "within": "OnFullMoon",
+      "ran": false
+    },
+    {
+      "clip": "sleep",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 79,
+      "within": "OnFinishHaunt",
+      "ran": false
+    },
+    {
+      "clip": "idle_asleep",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 80,
+      "within": "OnFinishHaunt",
+      "ran": false
+    },
+    {
+      "clip": "wake",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 95,
+      "within": "OnHaunt",
+      "ran": false
+    },
+    {
+      "clip": "idle_awake",
+      "kind": "push",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 96,
+      "within": "OnHaunt",
+      "ran": false
+    },
+    {
+      "clip": "idle_asleep",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/stickheads.lua",
+      "line": 117,
+      "within": "create_common",
+      "ran": true
+    },
+    {
+      "clip": "burnt",
+      "kind": "play",
+      "loop": true,
+      "target": "inst",
+      "file": "standardcomponents.lua",
+      "line": 56,
+      "within": "DefaultBurntStructureFn"
+    }
+  ],
   "recordings": [
     {
       "scenario": {

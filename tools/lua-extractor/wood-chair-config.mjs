@@ -1,3 +1,5 @@
+import { readBankClips } from './anim-bin.mjs';
+import { clipCatalog } from './clip-scan.mjs';
 import { emitPrefabSignatures } from './stickhead-signatures.mjs';
 
 const instance = 'WoodChairInstance';
@@ -190,11 +192,20 @@ export function woodChairConfig(snapshot) {
   const savedRotation = args(master, chair, 'components.savedrotation', 'dodelayedpostpassapply', 'write')[0];
   const events = ops(master, chair, 'inst', 'ListenForEvent').map(op => op.args[0]);
   const { skins, backSkinSymbols } = recordedSkins(master, { build: chairLook.build, backPrefab: spawn.args[0] });
+  // The chair and its back play every clip on the one bank: its anim.bin, as the game loads it from public/dst/data.
+  const { clips, clipsNotInBank, dynamicClips } = clipCatalog({
+    plays: snapshot.clipPlays,
+    bankClips: readBankClips(new URL(`../../public/dst/data/${animation}`, import.meta.url), chairLook.bank),
+    facings: chairLook.facings,
+  });
   return {
     archive: animation.slice(5),
     buildArchive: buildArchive.slice(5),
     ...chairLook,
     skins,
+    clips,
+    clipsNotInBank,
+    dynamicClips,
     physicsRadius,
     physicsHeight,
     deployRadius,

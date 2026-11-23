@@ -327,6 +327,18 @@
       "text": "local function getghostgestalttarget(inst,doer)"
     }
   ],
+  "clipPlays": [
+    {
+      "clip": "idle_new",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/moondial.lua",
+      "line": 167,
+      "within": "fn",
+      "ran": true
+    }
+  ],
   "recordings": [
     {
       "scenario": {

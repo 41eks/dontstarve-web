@@ -50,6 +50,29 @@ The list shows up in three places:
 
 `--scaffold` and `--unexecuted` read the checked-in snapshot and fail when it was recorded from a different Lua file, so regenerate after the source changes. Everything listed comes from the Lua source alone and has to be ported by reading it. The pighead profile marks a signature only when neither `pighead` nor `mermhead` runs the function. Its scaffold and `--unexecuted` read the pighead snapshot.
 
+## Clips
+
+Every snapshot carries `clipPlays`, a static scan (`clip-scan.mjs`) of each `AnimState:PlayAnimation` / `PushAnimation`. It covers the prefab file and every callback a recording registered from another file, such as `standardcomponents.lua`'s `DefaultBurntStructureFn`. For each play it records:
+
+- the clip;
+- play or push;
+- the loop argument: `true`, `false`, `omitted` or `dynamic`;
+- the entity expression it plays on;
+- the line and enclosing function;
+- for the prefab file, whether a scenario ran that line.
+
+A local function that forwards a parameter as the clip, such as furniture_chairs.lua's `_PlayAnimation(inst, anim, loop)`, is followed to its call sites. Each site then reports one play per target, in the caller's terms (`inst`, `inst.back`). A `cond and "a" or "b"` argument yields both clips. Any other computed clip is kept as its expression.
+
+The scan does not see clips played from a stategraph (`SG*.lua`) or from a component. Lua's default for an omitted `PushAnimation` loop is not settled (see `packages/prefab/docs/lua-api-map.md`), so it stays `omitted`.
+
+A profile turns the plays into a schema clip table with `clipCatalog`, which reads the bank's `anim.bin` from the mirrored archive under `public/dst/data` (`anim-bin.mjs`):
+
+- `clips`: every clip of the bank, with the facings it covers and its frame count;
+- `clipsNotInBank`: clips the Lua plays that the bank lacks, with where;
+- `dynamicClips`: computed clips.
+
+Generation and `--check` fail when a clip the Lua plays lacks a facing that the Transform face mode needs. TS reads clip names from the table (`CONFIG.clips.hit.name`), so a clip missing from the bank does not compile.
+
 ## Moondial
 
 ```sh
@@ -77,6 +100,6 @@ The first MasterSim scenario also records skins (`skins: true` on a scenario). T
 
 Every skin must override the same back symbols, and any other operation is an error. Each skin build is mirrored as `anim/dynamic/<build>.zip`.
 
-`wood_chair.schema.ts` supplies the bank/build archives of the chair and its back, the idle clip, the four facings, the final offsets and hidden layers of the chair and its back, the skins and the back's skin symbols, the tags, collider and deploy radii, `inspectable.nameoverride`, `savedrotation.dodelayedpostpassapply`, hammer work, haunt cooldown and burn settings. `localContracts` types the animation helpers and the nested `fn` / `backfn`, which no registration records. The rocking-chair branches (`OnSyncChairRocking`, `OnBecomeSittable`) and the back's client-only `OnEntityReplicated` are not recorded for this ID.
+`wood_chair.schema.ts` supplies the bank/build archives of the chair and its back, the idle clip, the four facings, the final offsets and hidden layers of the chair and its back, the skins and the back's skin symbols, the bank's clips (`idle`, `hit`, `place` in four facings, `burnt` in eight), with `rocking_pre` / `rocking_loop` / `rocking_pst` listed as played only by the rocking-chair branches and absent from this bank, the tags, collider and deploy radii, `inspectable.nameoverride`, `savedrotation.dodelayedpostpassapply`, hammer work, haunt cooldown and burn settings. `localContracts` types the animation helpers and the nested `fn` / `backfn`, which no registration records. The rocking-chair branches (`OnSyncChairRocking`, `OnBecomeSittable`) and the back's client-only `OnEntityReplicated` are not recorded for this ID.
 
 The CLI writes the recorded skins into `animatedBuildings.wood_chair.skinArchives` in `packages/prefab/src/definitions.json`. The skin import, the save converter and the building placer all read that row, and `--check` fails when the row and the recording differ. The skins' `clear_fn` (`wood_chair_clear_fn`) is not recorded.

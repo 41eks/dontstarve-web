@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Mirror DST building archives, skin build archives and their companion atlas packages.
 
---check compares every mirrored file byte for byte and audits the clips of the banks listed in BANK_CLIPS.
+--check compares every mirrored file byte for byte. The clips a prefab's Lua plays are checked against the mirrored
+bank by `pnpm extract:lua --prefab <id> --check`, which generates the schema's clip table from the bank's anim.bin.
 """
 
 import argparse
 import json
 from pathlib import Path
-import struct
 import sys
 import zipfile
 
@@ -17,42 +17,6 @@ BASE_ARCHIVES = {
     # furniture_chairs.lua AddChair("wood_chair", "wood_chair", "wood_chair_chair", ...): the build, then the bank.
     "wood_chair": ["anim/wood_chair_chair.zip", "anim/wood_chair.zip"],
 }
-# Clip audit: archive -> the clips the prefab's Lua plays and the facing mask each must cover. Every other clip in the
-# bank is listed, so a clip no current branch selects is still seen.
-FOUR_FACED = 0b1111  # right, up, left, down
-BANK_CLIPS = {
-    # OnHit hit -> idle, OnBuilt place -> idle, DefaultBurntStructureFn burnt (looping), back's OnChairBurnt burnt.
-    "anim/wood_chair.zip": {"idle": FOUR_FACED, "hit": FOUR_FACED, "place": FOUR_FACED, "burnt": FOUR_FACED},
-}
-
-
-def bank_clips(data):
-    """anim.bin: each clip's name with the union of its facing masks."""
-    if data[:4] != b"ANIM":
-        raise ValueError("Invalid animation archive")
-    offset = 20
-
-    def read(fmt):
-        nonlocal offset
-        result = struct.unpack_from("<" + fmt, data, offset)
-        offset += struct.calcsize("<" + fmt)
-        return result[0] if len(result) == 1 else result
-
-    clips = {}
-    for _ in range(read("I")):
-        length = read("I")
-        name = data[offset:offset + length].decode("utf-8")
-        offset += length
-        facing, _bank, _rate, frames = read("BIfI")
-        clips[name] = clips.get(name, 0) | facing
-        for _ in range(frames):
-            offset += 16
-            events = read("I")
-            offset += events * 4
-            elements = read("I")
-            offset += elements * 40
-    return clips
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -88,14 +52,6 @@ def main():
         stale = [path for path, data in files.items()
                  if not (destination / path).is_file() or (destination / path).read_bytes() != data]
         problems = [f"{path} differs from the source" for path in stale]
-        for archive, required in BANK_CLIPS.items():
-            with zipfile.ZipFile(args.source / archive) as bundle:
-                clips = bank_clips(bundle.read("anim.bin"))
-            for clip, mask in required.items():
-                if clips.get(clip, 0) & mask != mask:
-                    problems.append(f"{archive}: {clip} does not cover facings {mask:#06b}")
-            listed = ", ".join(f"{name} {facings:#010b}" for name, facings in clips.items())
-            print(f"{archive}: {len(clips)} clips ({listed})")
         if problems:
             print("\n".join(problems), file=sys.stderr)
             raise SystemExit(1)
