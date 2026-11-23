@@ -4,12 +4,12 @@ import { Panic } from './behaviours/panic';
 import type { BrainInst } from './types';
 
 /** brains/braincommon.lua: only the panic triggers shared by the ported brains. */
-export function ShouldTriggerPanic(inst: BrainInst): boolean {
+export function ShouldTriggerPanic(inst: Pick<BrainInst, 'components'>): boolean {
   const { health, hauntable } = inst.components;
   return !!(health && (health.takingfiredamage || (health.GetLunarBurnFlags?.() ?? 0) !== 0)) || !!hauntable?.panic;
 }
 
-export function PanicTrigger(inst: BrainInst): BehaviourNode {
+export function PanicTrigger(inst: Pick<BrainInst, 'components'>): BehaviourNode {
   return WhileNode(() => ShouldTriggerPanic(inst), 'PanicTrigger', new Panic(inst));
 }
 

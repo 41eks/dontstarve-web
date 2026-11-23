@@ -69,9 +69,9 @@ function look(recording, entity) {
  * MakeSmallPropagator: flashpoint 5 + random()*5, range 3 + random()*2, heat 3 + random()*2. Both seeds must land in
  * those ranges and draw differently, so the TS 'small' preset (which draws its own) is the matching declaration.
  */
-function smallPropagator(recordings, entity) {
+export function smallPropagator(recordings) {
   const draws = recordings.map(recording => {
-    const write = name => args(recording, entity, 'components.propagator', name, 'write')[0];
+    const write = name => args(recording, recording.entity, 'components.propagator', name, 'write')[0];
     const draw = {
       flashpoint: write('flashpoint'),
       propagaterange: write('propagaterange'),
@@ -225,7 +225,7 @@ export function woodChairConfig(snapshot) {
     workable: { action: workAction.name.slice('ACTIONS.'.length), workLeft },
     hauntable: { cooldown: args(master, chair, 'components.hauntable', 'cooldown', 'write')[0] },
     burnfx: { prefab: burnFx[0], level: fxLevel, burnTime },
-    propagator: smallPropagator([master, otherSeed], chair),
+    propagator: smallPropagator([master, otherSeed]),
     events,
   };
 }

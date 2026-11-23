@@ -28,6 +28,7 @@ ENTITY_WHITELIST = {
     'atrium_statue': STRUCTURE['atrium_statue_components'],
     'atrium_overgrowth': STRUCTURE['atrium_overgrowth_components'],
     'mast_malbatross': STRUCTURE['mast_malbatross_components'],
+    'stagehand': STRUCTURE['stagehand_components'],
     'wood_chair': STRUCTURE['wood_chair_components'],
     'support_pillar': STRUCTURE['support_pillar_components'],
     'oasislake': STRUCTURE['oasislake_components'],
@@ -163,7 +164,7 @@ TARGET_PREFABS = {'chesspiece_malbatross': 'chesspiece_malbatross_marble'}
 CONTAINER_PREFABS = {'treasurechest', 'pandoraschest', 'cookpot', 'icebox', 'saltbox', 'dragonflychest', 'dragonflyfurnace'}
 ITEM_CONTEXT_PREFABS = {*CONTAINER_PREFABS, 'moonbase'}
 RECORD_CONTEXT_PREFABS = {'ruinsrelic_chair', *ITEM_CONTEXT_PREFABS, 'researchlab', 'researchlab2', 'researchlab3', 'researchlab4',
-                          'mast_malbatross', 'wood_chair'}
+                          'mast_malbatross', 'wood_chair', 'stagehand'}
 # Converters that also receive the record's project position and a converter for saved source positions.
 POSITION_CONTEXT_PREFABS = {'beefalo', 'lightninggoat', 'dragonfly'}
 
@@ -206,7 +207,7 @@ def convert_entities(terrain, source_entities, report, session_id, catalog=None)
             data = record.get('data') or {}
             if not isinstance(data, dict):
                 raise ValueError(f'Expected {prefab} component data at source index {index}')
-            if 'lunarhailbuildup' in data:
+            if 'lunarhailbuildup' in data and prefab != 'stagehand':
                 # lunarhailbuildup.lua OnSave (MakeSnowCovered's buildup from lunar hail) is not ported: dropped on import.
                 buildup = data['lunarhailbuildup']
                 if not isinstance(buildup, dict) or set(buildup) - {'workleft', 'buildupcurrent'}:

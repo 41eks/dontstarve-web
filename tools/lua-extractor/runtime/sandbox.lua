@@ -11,6 +11,7 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
         ACTIONS = { HAMMER = { kind = "symbol", name = "ACTIONS.HAMMER" } },
         TheWorld = { ismastersim = scenario.master, state = scenario.state or { isfullmoon = scenario.fullMoon } },
         CreateEntity = recorder.createEntity,
+        SetSharedLootTable = recorder.setSharedLootTable,
         Asset = function(kind, path, parameter)
             return { type = kind, path = path, parameter = parameter }
         end,
@@ -104,6 +105,22 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
         local prefab = definitions[i]
         if prefab.name == prefab_id then
             local entity = prefab.fn()
+            for _, call in ipairs(scenario.instanceCalls or {}) do
+                local name = call[1]
+                entity[name](entity, table.unpack(call, 2))
+            end
+            if scenario.lunarHailWorkable then
+                recorder.setLunarHailWorkable(true)
+                env.UpdateLunarHailBuildup(entity)
+                recorder.setLunarHailWorkable(false)
+            end
+            local tuning
+            if scenario.tuning then
+                tuning = {}
+                for _, name in ipairs(scenario.tuning) do
+                    tuning[name] = assert(env.TUNING[name], name)
+                end
+            end
             local skins = scenario.skins and record_skins(prefab) or nil
             return {
                 entity = recorder.entityId(entity),
@@ -111,6 +128,7 @@ return function(recorder, read_source, prefab_file, prefab_id, scenario, extra_r
                 prefabDependencies = prefab.dependencies,
                 operations = recorder.operations,
                 skins = skins,
+                tuning = tuning,
             }
         end
     end

@@ -105,6 +105,7 @@ import { lavaPondPrefabs } from '@dontstarve-web/prefab/lava_pond';
 import { wormholePrefabs } from '@dontstarve-web/prefab/wormhole';
 import { portalPrefabs } from '@dontstarve-web/prefab/portal';
 import { nightmareGrowthPrefabs, NightmareGrowthCrackInstance } from '@dontstarve-web/prefab/nightmaregrowth';
+import { stagehandPrefabs } from '@dontstarve-web/prefab/stagehand';
 import { nightmareRockPrefabs } from '@dontstarve-web/prefab/nightmarerock';
 import { pigKingPrefabs } from '@dontstarve-web/prefab/pigking';
 import { BERNIE_ITEM_ID, berniePrefabs, type BernieWorld } from '@dontstarve-web/prefab/bernie';
@@ -510,6 +511,26 @@ export async function createSceneEntities(
   registerNightmareGrowths(registry, 'nightmaregrowth', worldState);
   registerBeefalos(registry, 'beefalo', worldState);
   registerLightningGoats(registry, 'lightninggoat', worldState);
+  prefabs.register(
+    stagehandPrefabs({
+      scheduler: worldState.scheduler,
+      componentUpdates: worldState.componentUpdates,
+      fire: prefabFire,
+      fx: Managers['world_fx'],
+      physics: world,
+      pathfinder,
+      getWatchWorldContent: worldState.getWatchWorldContent,
+      getLightLevel: position => dstLighting.sampleLightLevel(position),
+      spawnLoot(id, position) {
+        const item = SAVE_CATALOG.items[id];
+        if (item) {
+          groundItems.flingLoot([{ ...item, itemId: id, count: 1 }], position);
+        }
+        return undefined;
+      },
+    }),
+  );
+  registry.registerPrefabs(PREFAB_DEFINITIONS.stagehand);
   Managers['evergreen'] = registerEvergreens(registry, 'evergreen', worldState);
   Managers['deciduoustree'] = registerDeciduousTrees(registry, 'deciduoustree', worldState);
   const farmMap = registerFarm(registry, worldState);

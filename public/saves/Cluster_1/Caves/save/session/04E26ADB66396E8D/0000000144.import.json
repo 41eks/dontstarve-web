@@ -492,6 +492,7 @@
     "atrium_statue",
     "atrium_overgrowth",
     "mast_malbatross",
+    "stagehand",
     "wood_chair",
     "support_pillar",
     "oasislake",
@@ -741,6 +742,10 @@
       "imported": 4
     },
     "mast_malbatross": {
+      "source": 0,
+      "imported": 0
+    },
+    "stagehand": {
       "source": 0,
       "imported": 0
     },

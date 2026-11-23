@@ -4,6 +4,34 @@ import { TILE_SIZE } from './tile';
 
 // dontstarve.fev file_index is zero-based; these vgmstream stream IDs are one-based.
 const sounds = {
+  // SGstagehand.lua → dontstarve.fev sounddefs 1361, 1362 and 2415+2188+2416.
+  'dontstarve/creatures/together/stagehand/hit': {
+    bank: 'sfx',
+    streams: [
+      995, 996, 997, 998, 999, 1000, 1001, 1002, 1003, 1004, 1005, 1006, 1007, 1008, 1009, 1010, 1011, 1012, 1013, 1014,
+      1015, 1016, 1017, 1018, 1019, 1020, 1021, 1022,
+    ],
+    loop: false,
+    volume: 0.20206914842128754,
+    pitchOctaves: 0.0625,
+  },
+  'dontstarve/creatures/together/stagehand/awake_pre': {
+    bank: 'sfx',
+    streams: [975, 976, 977, 978, 979, 980, 981, 982, 983, 984, 985, 986, 987, 988, 989, 990, 991, 992, 993, 994],
+    loop: false,
+    volume: 0.3548133969306946,
+    pitchOctaves: 0.2083333283662796,
+  },
+  'dontstarve/creatures/together/stagehand/footstep': {
+    bank: 'sanity',
+    streams: [28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42],
+    loop: false,
+    volume: 0.1729816347360611,
+    layers: [
+      { bank: 'sfx', streams: [971, 972, 973, 974] },
+      { bank: 'sanity', streams: [28, 30, 31, 32, 33, 34, 35, 36, 37, 39, 40, 41, 42] },
+    ],
+  },
   // lightflier.lua / SGlightflier.lua -> grotto.fev sounddefs 87+88 / 83 / 81; file_index + 1.
   'grotto/creatures/light_bug/fly_LP': {
     bank: 'grotto_sfx',

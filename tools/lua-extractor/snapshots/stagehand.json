@@ -1,0 +1,4341 @@
+{
+  "version": 1,
+  "prefab": "stagehand",
+  "file": "prefabs/stagehand.lua",
+  "inputs": [
+    {
+      "path": "beefalo_clothing.lua",
+      "sha256": "1b3affed9b341883c3a507d8f26d12f89ebc103af81590d1d92e9dfa57e78e7f"
+    },
+    {
+      "path": "behaviours/avoidelectricfence.lua",
+      "sha256": "67eda0dd991210814eb38bf7be1956e4df9fdabdd024073827ca7a3bd7a3e962"
+    },
+    {
+      "path": "behaviours/findclosest.lua",
+      "sha256": "cc351d7a8bb03b92f55e8bbb968fb0b9e909cd4ecf596784b5ec1fc4a51e61ea"
+    },
+    {
+      "path": "behaviours/panic.lua",
+      "sha256": "0b643db1a260b712b5c209201cef0a36c4cc3108186cd055d38e56ea4d56d167"
+    },
+    {
+      "path": "behaviours/standstill.lua",
+      "sha256": "90a85b74a89700e46197ef8f9d791d51827460a878d6c8ac6c54bf70e115e2d7"
+    },
+    {
+      "path": "behaviours/wander.lua",
+      "sha256": "323705e8b75a4167f2c27340a34895de812db971a94f10a0214c31d15f0c91cb"
+    },
+    {
+      "path": "behaviourtree.lua",
+      "sha256": "8777ed3e593180c8c161485a263c7f605a95d73d702a636ee5525ba810274f0e"
+    },
+    {
+      "path": "brain.lua",
+      "sha256": "5bd13c7c41c9c6d76e9c0ba2efda2c6a0d39c12fa849a0508006b13fdd3ffcc0"
+    },
+    {
+      "path": "brains/braincommon.lua",
+      "sha256": "8bc3f8f7b8432fa4bb3f6068364358d4257512812c1d9461fd7e12acecbf3e5f"
+    },
+    {
+      "path": "brains/stagehandbrain.lua",
+      "sha256": "265b256ee71b9fbb387fff33a220934b8b54168e659943f55c8c944776957e43"
+    },
+    {
+      "path": "class.lua",
+      "sha256": "5411394cbff2004d9522f55fb797d5e1878c1777eaa5fa649b58b8c09c8f8c6f"
+    },
+    {
+      "path": "clothing.lua",
+      "sha256": "52b7057bad95915e3d93aaaf8dca05ef5f4a0d04baa5d6f10db5f9121f07b3b9"
+    },
+    {
+      "path": "constants.lua",
+      "sha256": "3cad6171ecbb91f9d48f0edc17eda14b8cfe00bda16fdb62aff50e5ef97b6fc9"
+    },
+    {
+      "path": "easing.lua",
+      "sha256": "eb93ed610474d24735b09c9f1ca06f16234f3ac88915bdcf7f9e2a1ee4be6a32"
+    },
+    {
+      "path": "emote_items.lua",
+      "sha256": "a6eb4593f2297582baab39fad236e04042672a3bae03fb5d4d13dfc489cae51e"
+    },
+    {
+      "path": "entitlementlookups.lua",
+      "sha256": "a7bb6d251063380247c12e60af8142693f126a9c43e648a7219de88cb68a011c"
+    },
+    {
+      "path": "idleanimations_items.lua",
+      "sha256": "a7b5ba56ac0de7c49940199df44cc454bbd775ea8b10998f43e72f662b3e5342"
+    },
+    {
+      "path": "item_blacklist.lua",
+      "sha256": "33bbe148ce474563cc675fa1870a21f6f12514faaac82adf832ff4ce54115c38"
+    },
+    {
+      "path": "misc_items.lua",
+      "sha256": "597529d571f2834afc814539ac8cc2c51f7ce501cfd9d91c0181a2553d90cdd9"
+    },
+    {
+      "path": "prefabs/fertilizer_nutrient_defs.lua",
+      "sha256": "6ea1dc039d1deb3042b42e215b2b9f1884e28696fa21968aac466cd01c6af6fd"
+    },
+    {
+      "path": "prefabs/skinprefabs.lua",
+      "sha256": "133c8e00c2a73ffd57491fab9548d4fe8d92072554cbe83a39a8d79138c5c9c9"
+    },
+    {
+      "path": "prefabs/stagehand.lua",
+      "sha256": "796590f25a7b557b0a205debc1348f0423c6667dc29d762a6cdbd0165ee0e620"
+    },
+    {
+      "path": "prefabs/waxed_plant_common.lua",
+      "sha256": "779154db72e2eb51a8c784b9caaa7c814c8e619e00844ff9226d909f66c2a7bb"
+    },
+    {
+      "path": "prefabskin.lua",
+      "sha256": "0fa4f5adfa4e2a74549f9e4234623e9804cc387efb39c81801e130894e61560e"
+    },
+    {
+      "path": "prefabskins.lua",
+      "sha256": "1e4c7d2920b0839a748012db083e12041346396f99c79b9e60487319d4395e96"
+    },
+    {
+      "path": "standardcomponents.lua",
+      "sha256": "616d45f39e3d244d86b277aa1cb35a15ed681274dfd02a693146195b87cee454"
+    },
+    {
+      "path": "stategraphs/SGstagehand.lua",
+      "sha256": "a46ae76751a86f9bad4443c677e0380900ea1f115e89816e55017eabd9f35913"
+    },
+    {
+      "path": "stategraphs/commonstates.lua",
+      "sha256": "d1c0a63bbcb96dce51d3a93d8b6ef6be24962dd3847478b220317ce34edc5e2d"
+    },
+    {
+      "path": "techtree.lua",
+      "sha256": "a98c86aca4cbb9ee1d9b33648af29822ad86edf4f55148723baaf5a86aab77d6"
+    },
+    {
+      "path": "tuning.lua",
+      "sha256": "66b66c1bc8431f8d086814d96056ff0e5a9a8591f2a98d3cc7b3ff1cf363abcc"
+    },
+    {
+      "path": "util.lua",
+      "sha256": "f3d7e7fc87cf85d254404b519e1b85c60c10769b64cbbb458af7f3ca9c5a38ea"
+    },
+    {
+      "path": "vector3.lua",
+      "sha256": "b546720be4ed09553a38c39f20b658bdf6d0a07ec948e7ff21c26d0e024737ef"
+    }
+  ],
+  "localFunctions": [
+    {
+      "file": "prefabs/stagehand.lua",
+      "name": "onworked",
+      "parameters": [
+        "inst",
+        "worker"
+      ],
+      "startLine": 20,
+      "endLine": 23,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/stagehand.lua",
+      "name": "getstatus",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 25,
+      "endLine": 27,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": true
+    },
+    {
+      "file": "prefabs/stagehand.lua",
+      "name": "CanStandUp",
+      "parameters": [
+        "inst"
+      ],
+      "startLine": 29,
+      "endLine": 32,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": true
+    },
+    {
+      "file": "prefabs/stagehand.lua",
+      "name": "ChangePhysics",
+      "parameters": [
+        "inst",
+        "is_standing"
+      ],
+      "startLine": 41,
+      "endLine": 59,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": false
+    },
+    {
+      "file": "prefabs/stagehand.lua",
+      "name": "fn",
+      "parameters": [],
+      "startLine": 61,
+      "endLine": 131,
+      "startColumn": 0,
+      "endColumn": 3,
+      "topLevel": true,
+      "returnsValue": true,
+      "staticUses": [
+        {
+          "kind": "Prefab",
+          "line": 133
+        }
+      ]
+    }
+  ],
+  "unexecuted": [
+    {
+      "kind": "function",
+      "name": "onworked",
+      "startLine": 20,
+      "endLine": 23,
+      "text": "local function onworked(inst, worker)"
+    },
+    {
+      "kind": "function",
+      "name": "getstatus",
+      "startLine": 25,
+      "endLine": 27,
+      "text": "local function getstatus(inst)"
+    },
+    {
+      "kind": "function",
+      "name": "CanStandUp",
+      "startLine": 29,
+      "endLine": 32,
+      "text": "local function CanStandUp(inst)"
+    }
+  ],
+  "clipPlays": [
+    {
+      "clip": "idle",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "prefabs/stagehand.lua",
+      "line": 79,
+      "within": "fn",
+      "ran": true
+    },
+    {
+      "clip": "awake_idle",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 92,
+      "within": "idle.onenter"
+    },
+    {
+      "clip": "peeking_idle_loop_01",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 120,
+      "within": "idle_hiding.onenter"
+    },
+    {
+      "clip": "peeking_idle_loop_02",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 120,
+      "within": "idle_hiding.onenter"
+    },
+    {
+      "clip": "idle_loop_01",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 120,
+      "within": "idle_hiding.onenter"
+    },
+    {
+      "clip": "peeking_idle_loop_01",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 127,
+      "within": "idle_hiding.onenter"
+    },
+    {
+      "clip": "peeking_idle_loop_02",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 127,
+      "within": "idle_hiding.onenter"
+    },
+    {
+      "clip": "idle_loop_01",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 127,
+      "within": "idle_hiding.onenter"
+    },
+    {
+      "clip": "idle_loop_01",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 133,
+      "within": "idle_hiding.onenter"
+    },
+    {
+      "clip": "sleep",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 153,
+      "within": "hide.onenter"
+    },
+    {
+      "clip": "awake_pre",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 178,
+      "within": "standup.onenter"
+    },
+    {
+      "clip": "hit",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 207,
+      "within": "hit.onenter"
+    },
+    {
+      "clip": "awake_hit",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 207,
+      "within": "hit.onenter"
+    },
+    {
+      "clip": "extinguish",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 246,
+      "within": "extinguish.onenter"
+    },
+    {
+      "clip": "extinguish",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 275,
+      "within": "giveup.onenter"
+    },
+    {
+      "clip": "sleep",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 278,
+      "within": "giveup.onenter"
+    },
+    {
+      "clip": "extinguish",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 279,
+      "within": "giveup.onenter"
+    },
+    {
+      "clip": "walk_pre",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "via": "CommonStates.AddWalkStates",
+      "source": "stategraphs/commonstates.lua:691",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 321,
+      "within": "main chunk"
+    },
+    {
+      "clip": "walk_loop",
+      "kind": "play",
+      "loop": true,
+      "target": "inst",
+      "via": "CommonStates.AddWalkStates",
+      "source": "stategraphs/commonstates.lua:719",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 321,
+      "within": "main chunk"
+    },
+    {
+      "clip": "walk_pst",
+      "kind": "push",
+      "loop": false,
+      "target": "inst",
+      "via": "CommonStates.AddWalkStates",
+      "source": "stategraphs/commonstates.lua:742",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 321,
+      "within": "main chunk"
+    },
+    {
+      "clip": "walk_pst",
+      "kind": "play",
+      "loop": "omitted",
+      "target": "inst",
+      "via": "CommonStates.AddWalkStates",
+      "source": "stategraphs/commonstates.lua:744",
+      "file": "stategraphs/SGstagehand.lua",
+      "line": 321,
+      "within": "main chunk"
+    }
+  ],
+  "recordings": [
+    {
+      "scenario": {
+        "name": "client",
+        "master": false,
+        "seed": 42
+      },
+      "assets": [
+        {
+          "path": "anim/stagehand.zip",
+          "type": "ANIM"
+        },
+        {
+          "path": "sound/sfx.fsb",
+          "type": "SOUND"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [
+            "stagehand_creature",
+            [
+              [
+                "endtable_blueprint",
+                1
+              ]
+            ]
+          ],
+          "entity": 0,
+          "kind": "call",
+          "name": "SetSharedLootTable",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 15
+          },
+          "target": "global"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 64
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 65
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddSoundEmitter",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 66
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 67
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 68
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFourFaced",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 70
+          },
+          "target": "Transform"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFriction",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 72
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            5
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetDamping",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 73
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "HasTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 49
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 50
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 51
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 52
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 53
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            1
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 75
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "stagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 77
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "stagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 78
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 79
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "notraptrigger"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 81
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "antlion_sinkhole_blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 82
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "electricdamageimmune"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 83
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "shadow_aligned"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 84
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow",
+            "snow",
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "OverrideSymbol",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 836
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "SnowCovered"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 837
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "Hide",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 839
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 88
+          },
+          "target": "entity"
+        }
+      ],
+      "prefabDependencies": [
+        "campfirefire",
+        "endtable_blueprint"
+      ]
+    },
+    {
+      "scenario": {
+        "name": "master-day",
+        "master": true,
+        "seed": 42,
+        "skins": true,
+        "tuning": [
+          "SEG_TIME",
+          "LUNARHAIL_BUILDUP_DECAY_TICK_TIME",
+          "LUNARHAIL_BUILDUP_DECAY_RATE"
+        ]
+      },
+      "assets": [
+        {
+          "path": "anim/stagehand.zip",
+          "type": "ANIM"
+        },
+        {
+          "path": "sound/sfx.fsb",
+          "type": "SOUND"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [
+            "stagehand_creature",
+            [
+              [
+                "endtable_blueprint",
+                1
+              ]
+            ]
+          ],
+          "entity": 0,
+          "kind": "call",
+          "name": "SetSharedLootTable",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 15
+          },
+          "target": "global"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 64
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 65
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddSoundEmitter",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 66
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 67
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 68
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFourFaced",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 70
+          },
+          "target": "Transform"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFriction",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 72
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            5
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetDamping",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 73
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "HasTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 49
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 50
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 51
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 52
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 53
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            1
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 75
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "stagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 77
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "stagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 78
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 79
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "notraptrigger"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 81
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "antlion_sinkhole_blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 82
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "electricdamageimmune"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 83
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "shadow_aligned"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 84
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow",
+            "snow",
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "OverrideSymbol",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 836
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "SnowCovered"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 837
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "Hide",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 839
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 88
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "HIDING"
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 94
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "propagator"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 201
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "acceptsheat",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 202
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 10,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "name": "DefaultIgniteFn",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 6
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnFlashPoint",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 203
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            9.65406089019784
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "flashpoint",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 204
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            0.5
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "decayrate",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 205
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            3.9035677987184862
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "propagaterange",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 206
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            4.09376622486843
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "heatoutput",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 207
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "damagerange",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 209
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "damages",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 210
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            "SnowCovered"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "HasTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 843
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "Hide",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 850
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "lunarhailbuildup"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 888
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "lunarhailbuildupworkablestatechanged",
+            {
+              "endColumn": 3,
+              "endLine": 885,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "name": "OnLunarHailBuildupWorkableStateChanged",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 883
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "ListenForEvent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 889
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0,
+            {
+              "endColumn": 3,
+              "endLine": 881,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "name": "UpdateLunarHailBuildup",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 857
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "DoTaskInTime",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 890
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "updatelunarhailbuilduptask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 890
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetTotalWorkAmount",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 903
+          },
+          "target": "components.lunarhailbuildup"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMoonGlassAmount",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 904
+          },
+          "target": "components.lunarhailbuildup"
+        },
+        {
+          "args": [
+            "burnable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 101
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFXLevel",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 102
+          },
+          "target": "components.burnable"
+        },
+        {
+          "args": [
+            10
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBurnTime",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 103
+          },
+          "target": "components.burnable"
+        },
+        {
+          "args": [
+            "campfirefire",
+            {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "swap_fire"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddBurnFX",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 104
+          },
+          "target": "components.burnable"
+        },
+        {
+          "args": [
+            "workable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 106
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "symbol",
+              "name": "ACTIONS.HAMMER"
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetWorkAction",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 107
+          },
+          "target": "components.workable"
+        },
+        {
+          "args": [
+            86
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetWorkLeft",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 108
+          },
+          "target": "components.workable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "onworked",
+              "parameters": [
+                "inst",
+                "worker"
+              ],
+              "startColumn": 0,
+              "startLine": 20
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnWorkCallback",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 110
+          },
+          "target": "components.workable"
+        },
+        {
+          "args": [
+            "locomotor"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 112
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            8
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "walkspeed",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 113
+          },
+          "target": "components.locomotor"
+        },
+        {
+          "args": [
+            false
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetTriggersCreep",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 114
+          },
+          "target": "components.locomotor"
+        },
+        {
+          "args": [
+            {
+              "ignorecreep": true
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "pathcaps",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 115
+          },
+          "target": "components.locomotor"
+        },
+        {
+          "args": [
+            {
+              "awake_pre": "dontstarve/creatures/together/stagehand/awake_pre",
+              "footstep": "dontstarve/creatures/together/stagehand/footstep",
+              "hit": "dontstarve/creatures/together/stagehand/hit"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "sounds",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 116
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 32,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "CanStandUp",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 29
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "CanStandUp",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 118
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 59,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "ChangePhysics",
+              "parameters": [
+                "inst",
+                "is_standing"
+              ],
+              "startColumn": 0,
+              "startLine": 41
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "ChangePhysics",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 119
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "SGstagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetStateGraph",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 121
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBrain",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 122
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 124
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 27,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 125
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "lootdropper"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 127
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "stagehand_creature"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetChanceLootTable",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 128
+          },
+          "target": "components.lootdropper"
+        }
+      ],
+      "prefabDependencies": [
+        "campfirefire",
+        "endtable_blueprint"
+      ],
+      "skins": [
+        {
+          "entity": 2,
+          "name": "stagehand_carpet",
+          "operations": [
+            {
+              "args": [
+                "endtable_carpet",
+                "stagehand"
+              ],
+              "entity": 2,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "stagehand_fingers",
+                "stagehand",
+                "stagehand_fingers"
+              ],
+              "entity": 2,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1748
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "fx",
+                "stagehand",
+                "fx"
+              ],
+              "entity": 2,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1749
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "dark_spew",
+                "stagehand",
+                "dark_spew"
+              ],
+              "entity": 2,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1750
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": []
+        },
+        {
+          "entity": 3,
+          "name": "stagehand_cawnival",
+          "operations": [
+            {
+              "args": [
+                "endtable_cawnival",
+                "stagehand"
+              ],
+              "entity": 3,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "stagehand_fingers",
+                "stagehand",
+                "stagehand_fingers"
+              ],
+              "entity": 3,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1748
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "fx",
+                "stagehand",
+                "fx"
+              ],
+              "entity": 3,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1749
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "dark_spew",
+                "stagehand",
+                "dark_spew"
+              ],
+              "entity": 3,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1750
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": []
+        },
+        {
+          "entity": 4,
+          "name": "stagehand_cawnival_alt",
+          "operations": [
+            {
+              "args": [
+                "endtable_cawnival",
+                "stagehand"
+              ],
+              "entity": 4,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "stagehand_fingers",
+                "stagehand",
+                "stagehand_fingers"
+              ],
+              "entity": 4,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1748
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "fx",
+                "stagehand",
+                "fx"
+              ],
+              "entity": 4,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1749
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "dark_spew",
+                "stagehand",
+                "dark_spew"
+              ],
+              "entity": 4,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1750
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": []
+        },
+        {
+          "entity": 5,
+          "name": "stagehand_dragonfly",
+          "operations": [
+            {
+              "args": [
+                "endtable_dragonfly",
+                "stagehand"
+              ],
+              "entity": 5,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "stagehand_fingers",
+                "stagehand",
+                "stagehand_fingers"
+              ],
+              "entity": 5,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1748
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "fx",
+                "stagehand",
+                "fx"
+              ],
+              "entity": 5,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1749
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "dark_spew",
+                "stagehand",
+                "dark_spew"
+              ],
+              "entity": 5,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1750
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": []
+        },
+        {
+          "entity": 6,
+          "name": "stagehand_vintage",
+          "operations": [
+            {
+              "args": [
+                "endtable_vintage",
+                "stagehand"
+              ],
+              "entity": 6,
+              "kind": "call",
+              "name": "SetSkin",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 111
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "stagehand_fingers",
+                "stagehand",
+                "stagehand_fingers"
+              ],
+              "entity": 6,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1748
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "fx",
+                "stagehand",
+                "fx"
+              ],
+              "entity": 6,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1749
+              },
+              "target": "AnimState"
+            },
+            {
+              "args": [
+                "dark_spew",
+                "stagehand",
+                "dark_spew"
+              ],
+              "entity": 6,
+              "kind": "call",
+              "name": "OverrideSymbol",
+              "source": {
+                "file": "prefabskin.lua",
+                "line": 1750
+              },
+              "target": "AnimState"
+            }
+          ],
+          "spawned": []
+        }
+      ],
+      "tuning": {
+        "LUNARHAIL_BUILDUP_DECAY_RATE": 0.0020833333333333333,
+        "LUNARHAIL_BUILDUP_DECAY_TICK_TIME": 4.5,
+        "SEG_TIME": 30
+      }
+    },
+    {
+      "scenario": {
+        "name": "master-dusk-snow",
+        "master": true,
+        "seed": 43,
+        "lunarHailWorkable": true,
+        "state": {
+          "isdusk": true,
+          "issnowcovered": true
+        }
+      },
+      "assets": [
+        {
+          "path": "anim/stagehand.zip",
+          "type": "ANIM"
+        },
+        {
+          "path": "sound/sfx.fsb",
+          "type": "SOUND"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [
+            "stagehand_creature",
+            [
+              [
+                "endtable_blueprint",
+                1
+              ]
+            ]
+          ],
+          "entity": 0,
+          "kind": "call",
+          "name": "SetSharedLootTable",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 15
+          },
+          "target": "global"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 64
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 65
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddSoundEmitter",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 66
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 67
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 68
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFourFaced",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 70
+          },
+          "target": "Transform"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFriction",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 72
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            5
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetDamping",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 73
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "HasTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 49
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 50
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 51
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 52
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 53
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            1
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 75
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "stagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 77
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "stagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 78
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 79
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "notraptrigger"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 81
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "antlion_sinkhole_blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 82
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "electricdamageimmune"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 83
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "shadow_aligned"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 84
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow",
+            "snow",
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "OverrideSymbol",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 836
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "SnowCovered"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 837
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "Hide",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 839
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 88
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "HIDING"
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 94
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "propagator"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 201
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "acceptsheat",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 202
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 10,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "name": "DefaultIgniteFn",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 6
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnFlashPoint",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 203
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            8.83678118413474
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "flashpoint",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 204
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            0.5
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "decayrate",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 205
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            4.586837580855308
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "propagaterange",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 206
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            3.3043369497493127
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "heatoutput",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 207
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "damagerange",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 209
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "damages",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 210
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            "SnowCovered"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "HasTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 843
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "Show",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 848
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "lunarhailbuildup"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 888
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "lunarhailbuildupworkablestatechanged",
+            {
+              "endColumn": 3,
+              "endLine": 885,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "name": "OnLunarHailBuildupWorkableStateChanged",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 883
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "ListenForEvent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 889
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0,
+            {
+              "endColumn": 3,
+              "endLine": 881,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "name": "UpdateLunarHailBuildup",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 857
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "DoTaskInTime",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 890
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "updatelunarhailbuilduptask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 890
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetTotalWorkAmount",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 903
+          },
+          "target": "components.lunarhailbuildup"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMoonGlassAmount",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 904
+          },
+          "target": "components.lunarhailbuildup"
+        },
+        {
+          "args": [
+            "burnable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 101
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFXLevel",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 102
+          },
+          "target": "components.burnable"
+        },
+        {
+          "args": [
+            10
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBurnTime",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 103
+          },
+          "target": "components.burnable"
+        },
+        {
+          "args": [
+            "campfirefire",
+            {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "swap_fire"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddBurnFX",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 104
+          },
+          "target": "components.burnable"
+        },
+        {
+          "args": [
+            "workable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 106
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "symbol",
+              "name": "ACTIONS.HAMMER"
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetWorkAction",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 107
+          },
+          "target": "components.workable"
+        },
+        {
+          "args": [
+            86
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetWorkLeft",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 108
+          },
+          "target": "components.workable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "onworked",
+              "parameters": [
+                "inst",
+                "worker"
+              ],
+              "startColumn": 0,
+              "startLine": 20
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnWorkCallback",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 110
+          },
+          "target": "components.workable"
+        },
+        {
+          "args": [
+            "locomotor"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 112
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            8
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "walkspeed",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 113
+          },
+          "target": "components.locomotor"
+        },
+        {
+          "args": [
+            false
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetTriggersCreep",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 114
+          },
+          "target": "components.locomotor"
+        },
+        {
+          "args": [
+            {
+              "ignorecreep": true
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "pathcaps",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 115
+          },
+          "target": "components.locomotor"
+        },
+        {
+          "args": [
+            {
+              "awake_pre": "dontstarve/creatures/together/stagehand/awake_pre",
+              "footstep": "dontstarve/creatures/together/stagehand/footstep",
+              "hit": "dontstarve/creatures/together/stagehand/hit"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "sounds",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 116
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 32,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "CanStandUp",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 29
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "CanStandUp",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 118
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 59,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "ChangePhysics",
+              "parameters": [
+                "inst",
+                "is_standing"
+              ],
+              "startColumn": 0,
+              "startLine": 41
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "ChangePhysics",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 119
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "SGstagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetStateGraph",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 121
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBrain",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 122
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 124
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 27,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 125
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "lootdropper"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 127
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "stagehand_creature"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetChanceLootTable",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 128
+          },
+          "target": "components.lootdropper"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "updatelunarhailbuilduptask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 858
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow",
+            "snow",
+            "lunarhail_snow_buildup"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "OverrideSymbol",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 874
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "Show",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 877
+          },
+          "target": "AnimState"
+        }
+      ],
+      "prefabDependencies": [
+        "campfirefire",
+        "endtable_blueprint"
+      ]
+    },
+    {
+      "scenario": {
+        "name": "master-night-standing",
+        "master": true,
+        "seed": 44,
+        "lunarHailWorkable": true,
+        "state": {
+          "isnight": true,
+          "isfullmoon": false
+        },
+        "instanceCalls": [
+          [
+            "ChangePhysics",
+            true
+          ]
+        ]
+      },
+      "assets": [
+        {
+          "path": "anim/stagehand.zip",
+          "type": "ANIM"
+        },
+        {
+          "path": "sound/sfx.fsb",
+          "type": "SOUND"
+        }
+      ],
+      "entity": 1,
+      "operations": [
+        {
+          "args": [
+            "stagehand_creature",
+            [
+              [
+                "endtable_blueprint",
+                1
+              ]
+            ]
+          ],
+          "entity": 0,
+          "kind": "call",
+          "name": "SetSharedLootTable",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 15
+          },
+          "target": "global"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTransform",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 64
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddAnimState",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 65
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddSoundEmitter",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 66
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddPhysics",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 67
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddNetwork",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 68
+          },
+          "target": "entity"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFourFaced",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 70
+          },
+          "target": "Transform"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFriction",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 72
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            5
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetDamping",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 73
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "HasTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 49
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 50
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 51
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            512
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 52
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            256,
+            1024,
+            16384
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionMask",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 53
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            0.5,
+            1
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCapsule",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 75
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            "stagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBank",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 77
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "stagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBuild",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 78
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "idle"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "PlayAnimation",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 79
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "notraptrigger"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 81
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "antlion_sinkhole_blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 82
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "electricdamageimmune"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 83
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "shadow_aligned"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 84
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow",
+            "snow",
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "OverrideSymbol",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 836
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "SnowCovered"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 837
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "Hide",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 839
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetPristine",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 88
+          },
+          "target": "entity"
+        },
+        {
+          "args": [
+            "HIDING"
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "scrapbook_speechstatus",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 94
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "propagator"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 201
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "acceptsheat",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 202
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 10,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "name": "DefaultIgniteFn",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 6
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnFlashPoint",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 203
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            9.71013633420068
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "flashpoint",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 204
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            0.5
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "decayrate",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 205
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            4.706588065262948
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "propagaterange",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 206
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            4.0059796995166845
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "heatoutput",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 207
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "damagerange",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 209
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            true
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "damages",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 210
+          },
+          "target": "components.propagator"
+        },
+        {
+          "args": [
+            "hauntable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1108
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            3
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "cooldown",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1109
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 7,
+              "endLine": 1121,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "parameters": [
+                "inst",
+                "haunter"
+              ],
+              "startColumn": 43,
+              "startLine": 1110
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnHauntFn",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 1110
+          },
+          "target": "components.hauntable"
+        },
+        {
+          "args": [
+            "SnowCovered"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "HasTag",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 843
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "Hide",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 850
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "lunarhailbuildup"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 888
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "lunarhailbuildupworkablestatechanged",
+            {
+              "endColumn": 3,
+              "endLine": 885,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "name": "OnLunarHailBuildupWorkableStateChanged",
+              "parameters": [
+                "inst",
+                "data"
+              ],
+              "startColumn": 0,
+              "startLine": 883
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "ListenForEvent",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 889
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            0,
+            {
+              "endColumn": 3,
+              "endLine": 881,
+              "file": "standardcomponents.lua",
+              "kind": "callback",
+              "name": "UpdateLunarHailBuildup",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 857
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "DoTaskInTime",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 890
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "updatelunarhailbuilduptask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 890
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetTotalWorkAmount",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 903
+          },
+          "target": "components.lunarhailbuildup"
+        },
+        {
+          "args": [
+            1
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMoonGlassAmount",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 904
+          },
+          "target": "components.lunarhailbuildup"
+        },
+        {
+          "args": [
+            "burnable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 101
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            2
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetFXLevel",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 102
+          },
+          "target": "components.burnable"
+        },
+        {
+          "args": [
+            10
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBurnTime",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 103
+          },
+          "target": "components.burnable"
+        },
+        {
+          "args": [
+            "campfirefire",
+            {
+              "x": 0,
+              "y": 0,
+              "z": 0
+            },
+            "swap_fire"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddBurnFX",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 104
+          },
+          "target": "components.burnable"
+        },
+        {
+          "args": [
+            "workable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 106
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "kind": "symbol",
+              "name": "ACTIONS.HAMMER"
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetWorkAction",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 107
+          },
+          "target": "components.workable"
+        },
+        {
+          "args": [
+            86
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetWorkLeft",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 108
+          },
+          "target": "components.workable"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 23,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "onworked",
+              "parameters": [
+                "inst",
+                "worker"
+              ],
+              "startColumn": 0,
+              "startLine": 20
+            }
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetOnWorkCallback",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 110
+          },
+          "target": "components.workable"
+        },
+        {
+          "args": [
+            "locomotor"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 112
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            8
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "walkspeed",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 113
+          },
+          "target": "components.locomotor"
+        },
+        {
+          "args": [
+            false
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetTriggersCreep",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 114
+          },
+          "target": "components.locomotor"
+        },
+        {
+          "args": [
+            {
+              "ignorecreep": true
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "pathcaps",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 115
+          },
+          "target": "components.locomotor"
+        },
+        {
+          "args": [
+            {
+              "awake_pre": "dontstarve/creatures/together/stagehand/awake_pre",
+              "footstep": "dontstarve/creatures/together/stagehand/footstep",
+              "hit": "dontstarve/creatures/together/stagehand/hit"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "sounds",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 116
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 32,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "CanStandUp",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 29
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "CanStandUp",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 118
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 59,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "ChangePhysics",
+              "parameters": [
+                "inst",
+                "is_standing"
+              ],
+              "startColumn": 0,
+              "startLine": 41
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "ChangePhysics",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 119
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "SGstagehand"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetStateGraph",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 121
+          },
+          "target": "inst"
+        },
+        {
+          "args": [],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetBrain",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 122
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "inspectable"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 124
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            {
+              "endColumn": 3,
+              "endLine": 27,
+              "file": "prefabs/stagehand.lua",
+              "kind": "callback",
+              "name": "getstatus",
+              "parameters": [
+                "inst"
+              ],
+              "startColumn": 0,
+              "startLine": 25
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "getstatus",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 125
+          },
+          "target": "components.inspectable"
+        },
+        {
+          "args": [
+            "lootdropper"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "AddComponent",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 127
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "stagehand_creature"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetChanceLootTable",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 128
+          },
+          "target": "components.lootdropper"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "HasTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 43
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "blocker"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "RemoveTag",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 44
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            100
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetMass",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 45
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            1024
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "SetCollisionGroup",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 46
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            224
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "CollidesWith",
+          "source": {
+            "file": "prefabs/stagehand.lua",
+            "line": 47
+          },
+          "target": "Physics"
+        },
+        {
+          "args": [
+            {
+              "kind": "nil"
+            }
+          ],
+          "entity": 1,
+          "kind": "write",
+          "name": "updatelunarhailbuilduptask",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 858
+          },
+          "target": "inst"
+        },
+        {
+          "args": [
+            "snow",
+            "snow",
+            "lunarhail_buildup"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "OverrideSymbol",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 874
+          },
+          "target": "AnimState"
+        },
+        {
+          "args": [
+            "snow"
+          ],
+          "entity": 1,
+          "kind": "call",
+          "name": "Show",
+          "source": {
+            "file": "standardcomponents.lua",
+            "line": 877
+          },
+          "target": "AnimState"
+        }
+      ],
+      "prefabDependencies": [
+        "campfirefire",
+        "endtable_blueprint"
+      ]
+    }
+  ]
+}
